@@ -1,0 +1,4 @@
+interface:
+  display_name: "Huitun XHS Topic Heat"
+  short_description: "Collect exact Huitun views and safely backfill Feishu"
+  default_prompt: "Use $huitun-to-feishu-keyword-heat to collect exact Huitun topic views for the Feishu A-candidate queue and prepare a guarded backfill."

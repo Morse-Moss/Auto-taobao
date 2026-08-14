@@ -1,0 +1,50 @@
+{
+  "run": {
+    "source": "xiaowangshen-market-analysis",
+    "started_at": "2026-08-05 14:36",
+    "keyword": "浴缸",
+    "channel": "所有宝贝",
+    "sort": "销量",
+    "pages": "1-40",
+    "price_range": "0-不限",
+    "frequency_seconds": "10-15",
+    "completed_pages": "1-40",
+    "row_count": 1343,
+    "risk_or_security_prompts": [],
+    "trial_authorization": "user-authorized free trial; page showed 已试用 1/10"
+  },
+  "artifact": {
+    "path": "C:\\Users\\Administrator\\Downloads\\【 浴缸 】价格从高到低排序Top1343 - 2026-08-05 14_36 - 市场数据分析 - 小旺神.xlsx",
+    "size_bytes": 45496017,
+    "sha256": "6697FB8534975F78DDD82728FDEC61F07A13B86ABE644D11510D1EB8E2736294",
+    "stable_after_5_seconds": true,
+    "plugin_filename_mismatch": "The generated filename says 价格从高到低排序, but the live result title says 销量排序 and workbook prices are not descending."
+  },
+  "validation": {
+    "zip_crc_ok": true,
+    "sheet": "xlsx",
+    "data_rows": 1343,
+    "columns": 16,
+    "rank_range": "1-1343",
+    "ranks_contiguous_unique": true,
+    "empty_links": 0,
+    "duplicate_links": 0,
+    "duplicate_titles": 48,
+    "embedded_media": 1343,
+    "bad_images": 0,
+    "dominant_image_dimensions": "220x220 (1316/1343)",
+    "formula_count": 0,
+    "preserved_display_values": [
+      "100+",
+      "本月行业热销",
+      "-"
+    ]
+  },
+  "live_evidence": {
+    "title": "【 浴缸 】销量排序Top1343 - 2026-08-05 14:36 - 市场数据分析",
+    "progress": "您搜索的页数：第 1 ~ 40 页，已成功获取：第 1 ~ 40 页",
+    "count": "商品数量：1343",
+    "export_tip_after_completion": "",
+    "risk_markers": []
+  }
+}

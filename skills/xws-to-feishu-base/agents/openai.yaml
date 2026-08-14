@@ -1,0 +1,4 @@
+interface:
+  display_name: "小旺神图片导入飞书"
+  short_description: "将小旺神 XLSX 内嵌商品图和竞品字段导入飞书空副本"
+  default_prompt: "Use $xws-to-feishu-base to import this Xiaowangshen XLSX with real attachment images into my authorized empty Feishu Bitable copy."

@@ -1,0 +1,47 @@
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Dependencies and language caches
+node_modules/
+**/__pycache__/
+*.py[cod]
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Generated runtime evidence, backups, renders, and exports
+runtime/**/*-backups/
+runtime/**/*-runs/
+runtime/**/*-render*/
+runtime/**/images/
+runtime/**/qa-*/
+runtime/**/xws-api-*/
+runtime/**/docx-qa-*/
+runtime/**/*.json
+runtime/**/*.jsonl
+runtime/**/*.log
+runtime/**/*.png
+runtime/**/*.jpg
+runtime/**/*.jpeg
+runtime/**/*.webp
+runtime/**/*.pdf
+runtime/**/*.docx
+runtime/**/*.xlsx
+runtime/**/*.xls
+runtime/**/*.csv
+runtime/**/*.tsv
+runtime/**/*.zip
+
+# Temporary files
+*.tmp
+*.bak
+*.swp

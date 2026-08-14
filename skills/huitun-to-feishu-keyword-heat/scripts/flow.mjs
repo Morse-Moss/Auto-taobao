@@ -1,0 +1,389 @@
+import crypto from 'node:crypto';
+
+export const A_THRESHOLD = 10_000_000;
+export const DEFAULT_RESULT_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
+export const HUITUN_RESULT_SCHEMA_VERSION = 1;
+export const HUITUN_RESULT_SOURCE = Object.freeze({
+  platform: '灰豚数据红薯版',
+  page: '话题搜索',
+  url: 'https://xhs.huitun.com/#/anchor/anchor_topic',
+  match_rule: '去除话题首尾#后与搜索词完全一致；不累加相近话题',
+});
+
+export const DEFAULT_TARGET = Object.freeze({
+  appToken: 'N21Abkg0HakO6AsbCaDckvcwnVd',
+  tableId: 'tblN1uT1LpzyqqWx',
+  tableName: '关键词分析 V1（修正版）',
+  envFile: 'E:/小红书/.env.local',
+});
+
+export const WRITABLE_FIELDS = new Set(['内容热度（后续）', '灰豚话题浏览量']);
+const EXPECTED_FORMULA_FIELDS = new Set(['优先级']);
+const VALUE_OPTIONS = new Set([
+  'app-token',
+  'table-id',
+  'table-name',
+  'env-file',
+  'proxy',
+  'output-dir',
+  'results',
+  'confirm-table',
+  'poll-seconds',
+  'query-timeout-seconds',
+  'max-candidates',
+  'result-max-age-hours',
+]);
+
+function plain(value) {
+  if (value == null) return '';
+  if (Array.isArray(value)) return value.map(plain).join(',');
+  if (typeof value === 'object') return String(value.text ?? value.name ?? value.value ?? '').trim();
+  return String(value).trim();
+}
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+  }
+  return value;
+}
+
+export function canonicalEqual(left, right) {
+  return JSON.stringify(canonicalize(left)) === JSON.stringify(canonicalize(right));
+}
+
+function numericOption(value, name, minimum) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < minimum) throw new Error(`${name} must be at least ${minimum}`);
+  return number;
+}
+
+export function parseOptions(argv, env = process.env) {
+  const options = {
+    ...DEFAULT_TARGET,
+    proxy: env.HUITUN_PROXY || 'http://127.0.0.1:3456',
+    outputDir: '',
+    resultsPath: '',
+    pollMs: 1_000,
+    queryTimeoutMs: 30_000,
+    maxCandidates: 50,
+    resultMaxAgeMs: DEFAULT_RESULT_MAX_AGE_MS,
+    apply: false,
+    confirmTable: '',
+    selfTest: false,
+    help: false,
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === '--apply') options.apply = true;
+    else if (token === '--self-test') options.selfTest = true;
+    else if (token === '--help' || token === '-h') options.help = true;
+    else if (token.startsWith('--')) {
+      const separator = token.indexOf('=');
+      const key = token.slice(2, separator > 0 ? separator : undefined);
+      if (!VALUE_OPTIONS.has(key)) throw new Error(`unknown option: --${key}`);
+      let value = separator > 0 ? token.slice(separator + 1) : argv[index + 1];
+      if (separator < 0) index += 1;
+      if (value === undefined || value === '' || value.startsWith('--')) throw new Error(`missing value for --${key}`);
+      value = value.trim();
+      if (key === 'app-token') options.appToken = value;
+      else if (key === 'table-id') options.tableId = value;
+      else if (key === 'table-name') options.tableName = value;
+      else if (key === 'env-file') options.envFile = value;
+      else if (key === 'proxy') options.proxy = value.replace(/\/$/u, '');
+      else if (key === 'output-dir') options.outputDir = value;
+      else if (key === 'results') options.resultsPath = value;
+      else if (key === 'confirm-table') options.confirmTable = value;
+      else if (key === 'poll-seconds') options.pollMs = numericOption(value, 'poll-seconds', 0.5) * 1_000;
+      else if (key === 'query-timeout-seconds') options.queryTimeoutMs = numericOption(value, 'query-timeout-seconds', 5) * 1_000;
+      else if (key === 'max-candidates') options.maxCandidates = numericOption(value, 'max-candidates', 1);
+      else if (key === 'result-max-age-hours') options.resultMaxAgeMs = numericOption(value, 'result-max-age-hours', 0.1) * 60 * 60 * 1_000;
+    } else {
+      throw new Error(`unknown argument: ${token}`);
+    }
+  }
+
+  if (!options.appToken || !options.tableId || !options.tableName || !options.envFile) {
+    throw new Error('app-token, table-id, table-name, and env-file are required');
+  }
+  if (!Number.isInteger(options.maxCandidates)) throw new Error('max-candidates must be an integer');
+  if (options.apply && options.confirmTable !== options.tableId) {
+    throw new Error(`--apply requires --confirm-table ${options.tableId}`);
+  }
+  return options;
+}
+
+export function parseDisplayedViews(value) {
+  const source = plain(value).replaceAll(',', '').replace(/\s+/gu, '');
+  const match = source.match(/^(\d+(?:\.\d+)?)(亿|万|w|W)?$/u);
+  if (!match) throw new Error(`Unsupported Huitun view value: ${plain(value) || '<empty>'}`);
+  const multiplier = match[2] === '亿' ? 100_000_000 : ['万', 'w', 'W'].includes(match[2]) ? 10_000 : 1;
+  const result = Number(match[1]) * multiplier;
+  if (!Number.isSafeInteger(result) || result < 0) throw new Error(`Invalid Huitun view value: ${value}`);
+  return result;
+}
+
+export function normalizeTopic(value) {
+  return plain(value).replace(/^#+|#+$/gu, '').trim();
+}
+
+export function contentHeatForViews(views) {
+  if (!Number.isSafeInteger(views) || views < 0) throw new Error(`Invalid numeric views: ${views}`);
+  return views >= A_THRESHOLD ? '高' : '低';
+}
+
+export function classifyTopicSnapshot({ keyword, rows, emptyText }) {
+  const search = plain(keyword);
+  if (!search) throw new Error('Huitun keyword is empty');
+  const exact = (Array.isArray(rows) ? rows : []).filter((row) => normalizeTopic(row?.[0]) === search);
+  if (exact.length > 1) throw new Error(`More than one exact Huitun topic matched ${search}`);
+  if (exact.length === 1) {
+    const topic = plain(exact[0][0]);
+    const viewsRaw = plain(exact[0][1]);
+    return { keyword: search, status: 'FOUND_EXACT', topic, viewsRaw, views: parseDisplayedViews(viewsRaw) };
+  }
+  const evidence = plain(emptyText) || '灰豚返回相近话题，无完全同名话题';
+  return { keyword: search, status: 'NO_EXACT_TOPIC', topic: null, viewsRaw: evidence, views: 0 };
+}
+
+const HARD_RISK_RULES = [
+  ['CAPTCHA', /验证码|滑块验证/u],
+  ['SECURITY', /安全验证|账号异常|风控|访问受限|操作频繁/u],
+  ['PERMISSION', /无权限|权限不足/u],
+  ['LOGIN_CHALLENGE', /扫码登录|微信登录|短信验证/u],
+  ['LOGIN_REQUIRED', /请登录/u],
+];
+
+export function detectHumanRequired({ visibleTexts = [] } = {}, { allowLogin = false } = {}) {
+  const texts = (Array.isArray(visibleTexts) ? visibleTexts : [visibleTexts]).map(plain).filter(Boolean);
+  const source = texts.join('\n');
+  for (const [code, pattern] of HARD_RISK_RULES) {
+    if (pattern.test(source)) return { code, text: source.slice(0, 500) };
+  }
+  if (!allowLogin && texts.some((text) => text === '登录/注册')) {
+    return { code: 'LOGIN_REQUIRED', text: source.slice(0, 500) };
+  }
+  return null;
+}
+
+function isHuitunPage(target) {
+  if (target?.type !== 'page' || !target.targetId) return false;
+  try {
+    return ['https://dy.huitun.com', 'https://xhs.huitun.com'].includes(new URL(target.url).origin);
+  } catch {
+    return false;
+  }
+}
+
+export function selectRunTarget(targets, runLabel) {
+  const matches = (Array.isArray(targets) ? targets : [])
+    .filter((target) => isHuitunPage(target) && target.automationLabel === runLabel);
+  if (matches.length !== 1) throw new Error(`Expected one labeled Huitun target for ${runLabel}; received ${matches.length}`);
+  return matches[0];
+}
+
+export function selectCandidates(records) {
+  const candidates = (Array.isArray(records) ? records : []).filter((record) => (
+    plain(record.fields?.优先级) === 'A候选'
+  ));
+  const seen = new Set();
+  for (const record of candidates) {
+    const keyword = candidateKeyword(record);
+    if (!keyword) throw new Error(`Empty A-candidate keyword for record ${plain(record.record_id) || '<missing>'}`);
+    if (seen.has(keyword)) throw new Error(`Duplicate A-candidate keyword: ${keyword}`);
+    seen.add(keyword);
+  }
+  return candidates;
+}
+
+export function candidateKeyword(record) {
+  return plain(record?.fields?.搜索词);
+}
+
+export function buildQueueBinding({ appToken, tableId, tableName, records }) {
+  const target = {
+    appToken: plain(appToken),
+    tableId: plain(tableId),
+    tableName: plain(tableName),
+  };
+  if (!target.appToken || !target.tableId || !target.tableName) {
+    throw new Error('Huitun queue binding requires app token, table ID, and table name');
+  }
+  const queue = selectCandidates(records).map((record) => {
+    const recordId = plain(record.record_id);
+    if (!recordId) throw new Error(`A-candidate ${candidateKeyword(record)} has no record ID`);
+    return { recordId, keyword: candidateKeyword(record) };
+  }).sort((left, right) => left.recordId.localeCompare(right.recordId) || left.keyword.localeCompare(right.keyword, 'zh-CN'));
+  const queueFingerprint = crypto.createHash('sha256')
+    .update(JSON.stringify(canonicalize({ ...target, queue })))
+    .digest('hex');
+  return { tableId: target.tableId, tableName: target.tableName, queueFingerprint };
+}
+
+export function validateResultDocument({ document, binding, maxAgeMs = DEFAULT_RESULT_MAX_AGE_MS, nowMs = Date.now() }) {
+  if (document?.schemaVersion !== HUITUN_RESULT_SCHEMA_VERSION) {
+    throw new Error(`Unsupported Huitun result schema: ${document?.schemaVersion ?? '<missing>'}`);
+  }
+  for (const [name, expected] of Object.entries(HUITUN_RESULT_SOURCE)) {
+    if (document.source?.[name] !== expected) {
+      throw new Error(`Invalid Huitun result source ${name}: ${plain(document.source?.[name]) || '<missing>'}`);
+    }
+  }
+  if (!canonicalEqual(document.target, binding)) throw new Error('Huitun result binding does not match the live queue');
+  if (!Number.isFinite(maxAgeMs) || maxAgeMs <= 0 || !Number.isFinite(nowMs)) {
+    throw new Error('Invalid Huitun result freshness policy');
+  }
+  const collectedAt = Date.parse(document.source?.collected_at);
+  if (!Number.isFinite(collectedAt)) throw new Error('Huitun result source collected_at is missing or invalid');
+  if (collectedAt > nowMs + 5 * 60 * 1_000) throw new Error('Huitun result collected_at is in the future');
+  if (nowMs - collectedAt > maxAgeMs) throw new Error('Huitun result is stale or expired');
+  return normalizeResults(document);
+}
+
+export function normalizeResults(document) {
+  if (!document || !Array.isArray(document.items)) throw new Error('Huitun result document must contain an items array');
+  const seen = new Set();
+  return document.items.map((item) => {
+    const keyword = plain(item.keyword);
+    if (!keyword || seen.has(keyword)) throw new Error(`Invalid or duplicate Huitun keyword: ${keyword || '<empty>'}`);
+    seen.add(keyword);
+    if (item.status === 'FOUND_EXACT') {
+      const topic = plain(item.topic);
+      if (normalizeTopic(topic) !== keyword) throw new Error(`Huitun topic is not an exact match for ${keyword}: ${topic}`);
+      const views = parseDisplayedViews(item.viewsRaw);
+      if (item.views !== views) throw new Error(`Numeric views do not match displayed views for ${keyword}`);
+      return { keyword, status: item.status, topic, viewsRaw: plain(item.viewsRaw), views, contentHeat: contentHeatForViews(views) };
+    }
+    if (item.status === 'NO_EXACT_TOPIC') {
+      if (item.topic != null || item.views !== 0) throw new Error(`No-result item must use null topic and zero views: ${keyword}`);
+      return { keyword, status: item.status, topic: null, viewsRaw: plain(item.viewsRaw), views: 0, contentHeat: '低' };
+    }
+    throw new Error(`Unsupported Huitun result status for ${keyword}: ${item.status}`);
+  });
+}
+
+function uniqueRecord(records, keyword) {
+  const matches = records.filter((record) => candidateKeyword(record) === keyword);
+  if (matches.length !== 1) throw new Error(`Expected exactly one Feishu record for ${keyword}; received ${matches.length}`);
+  return matches[0];
+}
+
+export function buildUpdatePlan({ records, resultDocument, resultContext }) {
+  if (!resultContext) throw new Error('Huitun result provenance context is required');
+  const results = validateResultDocument({ document: resultDocument, ...resultContext });
+  const candidateNames = selectCandidates(records).map((record) => plain(record.fields?.搜索词)).sort();
+  const resultNames = results.map((item) => item.keyword).sort();
+  if (!canonicalEqual(candidateNames, resultNames)) {
+    throw new Error(`Live A-candidate queue differs from Huitun results: queue=${JSON.stringify(candidateNames)} results=${JSON.stringify(resultNames)}`);
+  }
+
+  const updates = [];
+  const expected = [];
+  for (const result of results) {
+    const record = uniqueRecord(records, result.keyword);
+    const desired = { '内容热度（后续）': result.contentHeat, 灰豚话题浏览量: result.views };
+    const fields = {};
+    for (const [name, value] of Object.entries(desired)) {
+      const existing = record.fields?.[name];
+      const blank = existing == null || plain(existing) === '';
+      if (!blank && plain(existing) !== String(value)) {
+        throw new Error(`Refusing to overwrite ${name} for ${result.keyword}: ${plain(existing)}`);
+      }
+      if (blank) fields[name] = value;
+    }
+    if (Object.keys(fields).length > 0) updates.push({ record_id: record.record_id, fields });
+    expected.push({
+      recordId: record.record_id,
+      keyword: result.keyword,
+      status: result.status,
+      topic: result.topic,
+      viewsRaw: result.viewsRaw,
+      desired,
+      expectedPriority: result.views >= A_THRESHOLD ? 'A-立即跟进' : 'B-持续观察',
+    });
+  }
+  return { updates, expected };
+}
+
+export function assertAuthorizedMutation({ appToken, tableId, method, apiPath, body, plan }) {
+  const expectedPath = `/bitable/v1/apps/${appToken}/tables/${tableId}/records/batch_update`;
+  const valid = method === 'POST' && apiPath === expectedPath
+    && Array.isArray(body?.records) && body.records.length > 0
+    && body.records.every((record) => record.record_id && Object.keys(record.fields ?? {}).length > 0
+      && Object.keys(record.fields).every((name) => WRITABLE_FIELDS.has(name)))
+    && canonicalEqual(body.records, plan.updates);
+  if (!valid) throw new Error('Blocked unauthorized Huitun mutation');
+}
+
+function canonicalRecord(record, ignoredFields = new Set()) {
+  return {
+    record_id: record.record_id,
+    fields: Object.fromEntries(Object.entries(record.fields ?? {})
+      .filter(([name]) => !ignoredFields.has(name))
+      .sort(([left], [right]) => left.localeCompare(right, 'zh-CN'))),
+  };
+}
+
+export function verifyBackfill({ before, after, plan }) {
+  if (before.length !== after.length) throw new Error('Huitun backfill changed the record count');
+  const expectedById = new Map(plan.expected.map((item) => [item.recordId, item]));
+  const afterById = new Map(after.map((record) => [record.record_id, record]));
+  for (const prior of before) {
+    const next = afterById.get(prior.record_id);
+    if (!next) throw new Error(`Huitun backfill removed record ${prior.record_id}`);
+    const expected = expectedById.get(prior.record_id);
+    if (!expected) {
+      if (!canonicalEqual(prior, next)) throw new Error(`Huitun backfill changed unrelated record ${prior.record_id}`);
+      continue;
+    }
+    const ignored = new Set([...WRITABLE_FIELDS, ...EXPECTED_FORMULA_FIELDS]);
+    if (!canonicalEqual(canonicalRecord(prior, ignored), canonicalRecord(next, ignored))) {
+      throw new Error(`Huitun backfill changed unauthorized fields for ${expected.keyword}`);
+    }
+    for (const [name, value] of Object.entries(expected.desired)) {
+      if (plain(next.fields?.[name]) !== String(value)) throw new Error(`${name} verification failed for ${expected.keyword}`);
+    }
+    if (plain(next.fields?.优先级) !== expected.expectedPriority) {
+      throw new Error(`Priority verification failed for ${expected.keyword}: ${plain(next.fields?.优先级)}`);
+    }
+  }
+  return {
+    recordsWritten: plan.updates.length,
+    verified: plan.expected.map((item) => ({ keyword: item.keyword, ...item.desired, priority: item.expectedPriority })),
+  };
+}
+
+export function resultSnapshotSignature(snapshot) {
+  return JSON.stringify(canonicalize({
+    rows: Array.isArray(snapshot?.rows) ? snapshot.rows : [],
+    emptyText: plain(snapshot?.emptyText),
+  }));
+}
+
+export function advanceQuerySettlement({ keyword, preSignature, preLoading = false, state = {}, snapshot }) {
+  const search = plain(keyword);
+  const query = plain(snapshot?.query);
+  if (query !== search) throw new Error(`Huitun query changed unexpectedly: expected ${search}, received ${query}`);
+  const signature = resultSnapshotSignature(snapshot);
+  const loading = Number(snapshot?.loading) > 0;
+  const hasResult = (Array.isArray(snapshot?.rows) && snapshot.rows.length > 0) || Boolean(plain(snapshot?.emptyText));
+  const previousLoading = state.previousLoading ?? Boolean(preLoading);
+  const loadingTransition = loading && !previousLoading;
+  const transitionSeen = Boolean(state.transitionSeen) || loadingTransition || signature !== preSignature;
+  let previousSignature = state.previousSignature || '';
+  let stableCount = Number(state.stableCount) || 0;
+  if (!transitionSeen || loading || !hasResult) {
+    previousSignature = '';
+    stableCount = 0;
+  } else {
+    stableCount = signature === previousSignature ? stableCount + 1 : 1;
+    previousSignature = signature;
+  }
+  const nextState = { transitionSeen, previousLoading: loading, previousSignature, stableCount };
+  const result = stableCount >= 2
+    ? classifyTopicSnapshot({ keyword: search, rows: snapshot.rows, emptyText: snapshot.emptyText })
+    : null;
+  return { state: nextState, result };
+}

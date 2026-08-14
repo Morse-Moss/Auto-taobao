@@ -1,0 +1,4 @@
+interface:
+  display_name: "小旺神市场分析导出"
+  short_description: "从淘宝首页运行小旺神并验证竞品导出文件"
+  default_prompt: "Use $xws-export-market-analysis to run a monitored Taobao competitor export and validate the CSV/XLSX outputs."

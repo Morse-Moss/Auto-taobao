@@ -1,0 +1,59 @@
+{
+  "run": {
+    "source": "xiaowangshen-market-analysis",
+    "started_at": "2026-08-05 15:46",
+    "entry": "Taobao home -> search 浴缸 -> Xiaowangshen 市场分析",
+    "keyword": "浴缸",
+    "channel": "所有宝贝",
+    "sort": "销量",
+    "pages": "1-40",
+    "price_range": "0-不限",
+    "frequency_seconds": "10-15",
+    "completed_pages": "1-40",
+    "row_count": 1333,
+    "risk_or_security_prompts": [],
+    "trial_counter_before_start": "已试用: 1 / 10",
+    "trial_counter_after_completion": "not visible on the result dialog"
+  },
+  "artifacts": {
+    "xlsx": {
+      "path": "C:\\Users\\Administrator\\Downloads\\【 浴缸 】价格从高到低排序Top1333 - 2026-08-05 15_46 - 市场数据分析 - 小旺神.xlsx",
+      "size_bytes": 45113079,
+      "sha256": "F54A0266FECFA08493C92BA3D94540582A8911AF285A0F4E7ADFBF94B190F64B",
+      "stable_after_5_seconds": true
+    },
+    "csv": {
+      "path": "C:\\Users\\Administrator\\Downloads\\【 浴缸 】价格从高到低排序Top1333 - 2026-08-05 15_46 - 市场数据分析 - 小旺神.csv",
+      "size_bytes": 572782,
+      "sha256": "3D08397904041E2ACABCDF56306AA3BFD6947F1EFCFAFF7EAD79FDD7D45F9161"
+    },
+    "plugin_filename_mismatch": "The generated filenames say 价格从高到低排序, but the live result title says 销量排序. Original filenames were preserved."
+  },
+  "validation": {
+    "zip_crc_ok": true,
+    "sheet": "xlsx",
+    "data_rows": 1333,
+    "columns": 16,
+    "rank_range": "1-1333",
+    "ranks_contiguous_unique": true,
+    "empty_links": 0,
+    "duplicate_links": 0,
+    "embedded_media": 1333,
+    "bad_images": 0,
+    "dominant_image_dimensions": "220x220 (1305/1333)",
+    "formula_count": 0,
+    "csv_xlsx_headers_match": true,
+    "csv_xlsx_non_image_field_differences": 0
+  },
+  "live_evidence": {
+    "title": "【 浴缸 】销量排序Top1333 - 2026-08-05 15:46 - 市场数据分析",
+    "progress": "您搜索的页数：第 1 ~ 40 页，已成功获取：第 1 ~ 40 页",
+    "count": "商品数量：1333",
+    "risk_markers": []
+  },
+  "comparison": {
+    "previous_run_rows": 1343,
+    "current_run_rows": 1333,
+    "interpretation": "The live Taobao search result changed between runs; the current export itself is complete and internally consistent."
+  }
+}
