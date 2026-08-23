@@ -1,0 +1,4 @@
+interface:
+  display_name: "小旺神 SKU 采集入库"
+  short_description: "从淘宝小旺神采集 A/B 竞品 SKU 并安全写入飞书"
+  default_prompt: "使用 $xws-sku-collection 从真实淘宝商品页采集 A/B 竞品 SKU，先做小旺神登录预检并保留运营告警，再 dry-run，获精确授权后写入飞书并回读验收。"
