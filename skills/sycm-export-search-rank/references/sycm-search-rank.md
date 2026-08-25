@@ -1,6 +1,6 @@
 # 生意参谋搜索排行已验证模式
 
-Updated: 2026-08-04
+Updated: 2026-08-16
 
 ## Page Contract
 
@@ -9,13 +9,18 @@ Updated: 2026-08-04
 - Current weekly category: `家装主材 > 浴缸/淋浴房 > 浴缸 > 普通浴缸`
 - Current category query: `parentCateId=201833103`, `cateId=50002411`
 - Current category selector leaf: `li.tree-item[title="浴缸 > 普通浴缸"]`
+- Required reporting period: `7天`; the displayed range must contain exactly seven calendar dates inclusive.
 
 Treat all selectors and IDs as observations from 2026-08-04, not permanent platform contracts.
 
 ## Verified UI Patterns
 
-- Read the current day from `.oui-date-picker-current-date`.
-- Change a day with the two `.item-date button.arrow` controls. The URL's `dateRange` is an observed result, not the action source.
+- Entering Search Ranking from the home page can reset the period to `日`. Explicitly select `7天` on every run; do not reuse the previous visual state.
+- The live selected `7天` button uses the Ant Design class `ant-btn-primary`. Also accept explicit `aria-selected`, `aria-pressed`, or `aria-checked` state, but require the displayed range to span exactly seven inclusive calendar days.
+- Read the complete range from `.oui-date-picker-current-date`. Treat `--date` as the range end date.
+- Change the range end date with the two `.item-date button.arrow` controls. The URL's `dateRange` is an observed result, not the action source.
+- Use the shared Proxy `/click` endpoint for normal SPA controls, including Market, Search Ranking, the reporting-period button, pagination, and date arrows. On 2026-08-16, `/clickAt` returned success for these controls without causing the required state transition.
+- Rediscover and validate the current SYCM target through `/targets` before every browser action.
 - Read the page size from `.oui-page-size-select .ant-select-selection-selected-value`.
 - Read the active page from `.ant-pagination-item-active` and advance with `.ant-pagination-next`.
 - Select the data table by its required header texts. Do not select the fixed operation table or the calendar table.
@@ -43,4 +48,6 @@ Do not read cookies, local/session storage, credential fields, password-manager 
 
 ## Last Verified Dataset
 
-The 2026-08-03 ordinary-bathtub run returned six pages with `50/50/50/50/50/17` rows, 267 contiguous ranks, unique search terms, and no blank metrics. Use this only as regression context; future row counts may legitimately change.
+On 2026-08-16, two independent ordinary-bathtub runs for `2026-08-09 ~ 2026-08-15` each returned six pages with `50/50/50/50/50/50` rows, 300 contiguous ranks, unique search terms, and no blank metrics. Their CSV SHA-256 values were identical: `A46B6673E0C1A168FE2E94F705404A57C768472B787C24AFCC94E476E6EC8DCC`.
+
+The archived 267-row runs under `evidence/stability-20260804` used the daily period. They remain valid extraction-stability evidence, but they are not valid weekly search-heat input. Future row counts may legitimately change.

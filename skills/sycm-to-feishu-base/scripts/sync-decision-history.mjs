@@ -7,19 +7,22 @@ import { fileURLToPath } from 'node:url';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 const SNAPSHOT_FIELDS = [
-  { snapshot: '重点达标', recent: '近2周重点达标次数' },
-  { snapshot: 'A级达标', recent: '近2周A级达标次数' },
-  { snapshot: '探索达标', recent: '近2周探索达标次数' },
+  { snapshot: '重点达标', recent: '近2周重点达标次数', previous: '上一有效周重点达标' },
+  { snapshot: 'A级达标', recent: '近2周A级达标次数', previous: '上一有效周A级达标' },
+  { snapshot: '探索达标', recent: '近2周探索达标次数', previous: '上一有效周探索达标' },
 ];
 const SNAPSHOT_FIELD_NAMES = SNAPSHOT_FIELDS.map((item) => item.snapshot);
 const RECENT_FIELD_NAMES = SNAPSHOT_FIELDS.map((item) => item.recent);
+const PREVIOUS_FIELD_NAMES = SNAPSHOT_FIELDS.map((item) => item.previous);
+const VISUAL_SNAPSHOT_FIELD_NAMES = ['标准归并词', '是否重点词', '优先级'];
+const CURRENT_PERIOD_FIELD = '本期标记';
 const BATCH_VALIDITY_FIELD = '批次有效性';
 const VALID_BATCH = '有效';
 const INVALID_PERIOD_BATCH = '无效-周期错误';
 const SERVICE_LABELS = new Set(['痛点/清洁', '痛点/漏水', '痛点/排水', '痛点/维修']);
-const CURRENT_REQUIRED_FIELDS = [
-  '关键词编号', '关键词分类', '细分标签', '搜索热度', '内容热度', '交易热度', '优先级',
-  ...RECENT_FIELD_NAMES,
+const ANALYSIS_REQUIRED_FIELDS = [
+  '关键词编号', '标准归并词', '关键词分类', '细分标签', '搜索热度', '内容热度',
+  '交易热度', '是否重点词', '优先级',
 ];
 const HISTORY_REQUIRED_FIELDS = ['关键词编号', '批次编号', BATCH_VALIDITY_FIELD];
 
@@ -238,7 +241,8 @@ function priorityATarget(fields) {
   if (!priority || priority === '待数据' || priority.startsWith('#')) {
     return { value: null, reason: 'MISSING_PRIORITY' };
   }
-  if (!['A-立即跟进', 'A候选', 'B-持续观察', 'C-常规跟踪'].includes(priority)) {
+  if (priority === 'A候选') return { value: null, reason: 'HUITUN_PENDING' };
+  if (!['A-立即跟进', 'B-持续观察', 'C-常规跟踪'].includes(priority)) {
     return { value: null, reason: 'UNVERIFIED_PRIORITY' };
   }
   return { value: Number(priority === 'A-立即跟进'), reason: 'COMPLETE' };
@@ -271,6 +275,21 @@ function planWrite(record, fieldName, desired, maximum, context, allowCorrection
     throw new Error(`${context} has an invalid ${fieldName}: ${current}`);
   }
   if (current !== null && current !== desired && !allowCorrection) {
+    throw new Error(`${context} has a ${fieldName} conflict: existing ${current}, desired ${desired}`);
+  }
+  return current === desired ? null : desired;
+}
+
+function visualSnapshotValue(fields, fieldName) {
+  const value = plain(fields?.[fieldName]);
+  if (!value) return { value: null, reason: 'MISSING_VISUAL_SNAPSHOT' };
+  if (value.startsWith('#')) return { value: null, reason: 'UNVERIFIED_VISUAL_SNAPSHOT' };
+  return { value, reason: 'COMPLETE' };
+}
+
+function planTextWrite(record, fieldName, desired, context, allowCorrection = false) {
+  const current = plain(record.fields?.[fieldName]);
+  if (current && current !== desired && !allowCorrection) {
     throw new Error(`${context} has a ${fieldName} conflict: existing ${current}, desired ${desired}`);
   }
   return current === desired ? null : desired;
@@ -356,6 +375,27 @@ export function buildDecisionHistoryPlan({
           if (desired !== null) fieldsToWrite[snapshot] = desired;
           values[snapshot] = result.value;
         }
+        for (const fieldName of VISUAL_SNAPSHOT_FIELD_NAMES) {
+          const result = visualSnapshotValue(source.fields, fieldName);
+          if (result.value === null) {
+            pendingHistory.push({
+              recordId: historyRecord.record_id,
+              batchNumber: batch,
+              keywordNumber: number,
+              fieldName,
+              reason: result.reason,
+            });
+            continue;
+          }
+          const desired = planTextWrite(
+            historyRecord,
+            fieldName,
+            result.value,
+            `History batch ${batch} keyword ${number}`,
+            recalculateExistingSnapshots,
+          );
+          if (desired !== null) fieldsToWrite[fieldName] = desired;
+        }
       } else {
         for (const { snapshot } of SNAPSHOT_FIELDS) {
           const existing = existingNumber(historyRecord, snapshot);
@@ -382,44 +422,42 @@ export function buildDecisionHistoryPlan({
   const pendingCurrent = [];
   for (const [number, record] of currentIndex) {
     const fieldsToWrite = {};
-    for (const { snapshot, recent } of SNAPSHOT_FIELDS) {
+    for (const { snapshot, previous } of SNAPSHOT_FIELDS) {
       let desired = null;
       if (latestBatchNumbers.length < 2) {
         pendingCurrent.push({
           recordId: record.record_id,
           keywordNumber: number,
-          fieldName: recent,
+          fieldName: previous,
           reason: 'INSUFFICIENT_HISTORY',
         });
       } else {
-        let pending = false;
-        let count = 0;
-        for (const batch of latestBatchNumbers) {
-          const historyIndex = historyIndexes.get(batch);
-          if (!historyIndex.has(number)) continue;
-          const value = computedByBatch.get(batch).get(number)?.[snapshot];
-          if (value === undefined) {
-            pending = true;
-            break;
-          }
-          count += value;
-        }
-        if (pending) {
-          pendingCurrent.push({
-            recordId: record.record_id,
-            keywordNumber: number,
-            fieldName: recent,
-            reason: 'INCOMPLETE_TWO_WEEK_SNAPSHOT',
-          });
+        const previousBatch = latestBatchNumbers[0];
+        const historyIndex = historyIndexes.get(previousBatch);
+        if (!historyIndex.has(number)) {
+          desired = 0;
         } else {
-          desired = count;
+          const value = computedByBatch.get(previousBatch).get(number)?.[snapshot];
+          if (value === undefined) {
+            pendingCurrent.push({
+              recordId: record.record_id,
+              keywordNumber: number,
+              fieldName: previous,
+              reason: 'INCOMPLETE_PREVIOUS_WEEK_SNAPSHOT',
+            });
+          } else {
+            desired = value;
+          }
         }
       }
-      const existing = existingNumber(record, recent);
+      const existing = existingNumber(record, previous);
+      if (existing !== null && (existing < 0 || existing > 1)) {
+        throw new Error(`Current keyword ${number} has an invalid ${previous}: ${existing}`);
+      }
       if (desired === null) {
-        if (existing !== null) fieldsToWrite[recent] = null;
+        if (existing !== null) fieldsToWrite[previous] = null;
       } else if (existing !== desired) {
-        fieldsToWrite[recent] = desired;
+        fieldsToWrite[previous] = desired;
       }
     }
     if (Object.keys(fieldsToWrite).length) {
@@ -437,7 +475,28 @@ export function buildDecisionHistoryPlan({
   };
 }
 
-export function buildDecisionHistorySchemaPlan({ fields }) {
+export function assertCurrentVisualizationReady(plan, currentBatchNumber) {
+  const pending = (plan?.pendingHistory ?? []).filter((item) =>
+    item.batchNumber === Number(currentBatchNumber) && VISUAL_SNAPSHOT_FIELD_NAMES.includes(item.fieldName));
+  if (pending.length) {
+    throw new Error(`Current visualization snapshots are incomplete: ${pending.length} cells`);
+  }
+}
+
+function fieldReference(tableId, fieldId) {
+  return `bitable::$table[${tableId}].$field[${fieldId}]`;
+}
+
+function uniqueField(fields, fieldName) {
+  const matches = (fields ?? []).filter((field) => field.field_name === fieldName);
+  if (matches.length !== 1) throw new Error(`Expected exactly one field named ${fieldName}; received ${matches.length}`);
+  return matches[0];
+}
+
+export function buildDecisionHistorySchemaPlan({ tableId, fields, currentBatchNumber }) {
+  const batch = Number(currentBatchNumber);
+  if (!tableId) throw new Error('History table ID is required for visualization schema planning');
+  if (!Number.isInteger(batch) || batch < 1) throw new Error('Current batch number must be a positive integer');
   const creates = [];
   for (const fieldName of SNAPSHOT_FIELD_NAMES) {
     const matches = (fields ?? []).filter((field) => field.field_name === fieldName);
@@ -449,7 +508,36 @@ export function buildDecisionHistorySchemaPlan({ fields }) {
       creates.push({ fieldName, body: { field_name: fieldName, type: 2 } });
     }
   }
-  return { creates };
+  for (const fieldName of VISUAL_SNAPSHOT_FIELD_NAMES) {
+    const matches = (fields ?? []).filter((field) => field.field_name === fieldName);
+    if (matches.length > 1) throw new Error(`Expected at most one field named ${fieldName}`);
+    if (matches.length === 1 && matches[0].type !== 1) {
+      throw new Error(`${fieldName} expected text type 1; received ${matches[0].type}`);
+    }
+    if (matches.length === 0) creates.push({ fieldName, body: { field_name: fieldName, type: 1 } });
+  }
+
+  const batchField = uniqueField(fields, '批次编号');
+  const validityField = uniqueField(fields, BATCH_VALIDITY_FIELD);
+  const formulaExpression = `IF(AND(${fieldReference(tableId, batchField.field_id)}=${batch},${fieldReference(tableId, validityField.field_id)}="${VALID_BATCH}"),"是","否")`;
+  const markerBody = {
+    field_name: CURRENT_PERIOD_FIELD,
+    type: 20,
+    property: { formula_expression: formulaExpression },
+  };
+  const markerMatches = (fields ?? []).filter((field) => field.field_name === CURRENT_PERIOD_FIELD);
+  if (markerMatches.length > 1) throw new Error(`Expected at most one field named ${CURRENT_PERIOD_FIELD}`);
+  const updates = [];
+  if (markerMatches.length === 0) {
+    creates.push({ fieldName: CURRENT_PERIOD_FIELD, body: markerBody });
+  } else {
+    const marker = markerMatches[0];
+    if (marker.type !== 20) throw new Error(`${CURRENT_PERIOD_FIELD} expected formula type 20; received ${marker.type}`);
+    if (marker.property?.formula_expression !== formulaExpression) {
+      updates.push({ fieldId: marker.field_id, fieldName: CURRENT_PERIOD_FIELD, body: markerBody });
+    }
+  }
+  return { creates, updates };
 }
 
 function exactKeys(value, expected) {
@@ -459,8 +547,14 @@ function exactKeys(value, expected) {
 export function assertDecisionHistoryMutation({ method, path, body }, scope) {
   if (method === 'GET') return;
   const root = `/bitable/v1/apps/${scope.appToken}/tables`;
-  if (scope.allowHistoryFieldCreate && method === 'POST' && path === `${root}/${scope.historyTableId}/fields` &&
-      exactKeys(body, ['field_name', 'type']) && SNAPSHOT_FIELD_NAMES.includes(body.field_name) && body.type === 2) return;
+  const fieldRoot = `${root}/${scope.historyTableId}/fields`;
+  if (method === 'POST' && path === fieldRoot &&
+      scope.schemaPlan?.creates?.some((create) => same(create.body, body))) return;
+  if (method === 'PUT') {
+    const update = scope.schemaPlan?.updates?.find((item) =>
+      path === `${fieldRoot}/${item.fieldId}` && same(item.body, body));
+    if (update) return;
+  }
 
   const match = path.match(new RegExp(`^${root}/([^/]+)/records/batch_update$`, 'u'));
   const records = body?.records;
@@ -468,19 +562,15 @@ export function assertDecisionHistoryMutation({ method, path, body }, scope) {
     throw new Error(`Blocked unauthorized decision history mutation: ${method} ${path}`);
   }
   const tableId = match[1];
-  if (tableId === scope.historyTableId && records.every((record) => {
-    const entries = Object.entries(record.fields ?? {});
-    return record.record_id && entries.length > 0 && entries.every(([name, value]) =>
-      SNAPSHOT_FIELD_NAMES.includes(name) && [0, 1].includes(value));
-  })) return;
+  const matchesPlanned = (record, planned) => record.record_id && planned?.some((item) =>
+    item.record_id === record.record_id && same(item.fields, record.fields));
+  if (tableId === scope.historyTableId && records.every((record) =>
+    matchesPlanned(record, scope.historyUpdates))) return;
   if (tableId === scope.historyTableId && records.every((record) =>
     record.record_id && scope.verifiedBatchRecordIds?.has(record.record_id) &&
     exactKeys(record.fields, [BATCH_VALIDITY_FIELD]) && record.fields[BATCH_VALIDITY_FIELD] === VALID_BATCH)) return;
-  if (tableId === scope.currentTableId && records.every((record) => {
-    const entries = Object.entries(record.fields ?? {});
-    return record.record_id && entries.length > 0 && entries.every(([name, value]) =>
-      RECENT_FIELD_NAMES.includes(name) && (value === null || (Number.isInteger(value) && value >= 0 && value <= 2)));
-  })) return;
+  if (tableId === scope.currentTableId && records.every((record) =>
+    matchesPlanned(record, scope.currentUpdates))) return;
   throw new Error(`Blocked unauthorized decision history mutation: ${method} ${path}`);
 }
 
@@ -523,19 +613,75 @@ function verifyDerivedRecords(before, after, updates, fieldName) {
   }
 }
 
-export function verifyDecisionHistoryApply({ before, after, schemaPlan, plan, promotionPlan = { updates: [] } }) {
+function verifyDerivedTextRecords(before, after, updates, fieldName) {
+  const afterById = new Map(after.map((record) => [record.record_id, record]));
+  const updatesById = new Map(updates
+    .filter((record) => Object.hasOwn(record.fields ?? {}, fieldName))
+    .map((record) => [record.record_id, plain(record.fields[fieldName])]));
+  for (const prior of before) {
+    const next = afterById.get(prior.record_id);
+    if (!next) throw new Error(`Decision history verification lost record ${prior.record_id}`);
+    if (updatesById.has(prior.record_id)) {
+      if (plain(next.fields?.[fieldName]) !== updatesById.get(prior.record_id)) {
+        throw new Error(`Decision history verification failed for ${fieldName} on ${prior.record_id}`);
+      }
+    } else if (plain(prior.fields?.[fieldName]) !== plain(next.fields?.[fieldName])) {
+      throw new Error(`Decision history verification found an unplanned ${fieldName} change on ${prior.record_id}`);
+    }
+  }
+}
+
+function fieldMatchesBody(field, body) {
+  if (!field || field.field_name !== body.field_name || field.type !== body.type) return false;
+  if (body.property?.formula_expression !== undefined) {
+    return field.property?.formula_expression === body.property.formula_expression;
+  }
+  return true;
+}
+
+function verifyCurrentPeriodRecords(records, currentBatchNumber) {
+  let currentRows = 0;
+  for (const record of records) {
+    const batch = batchNumber(record);
+    const validity = plain(record.fields?.[BATCH_VALIDITY_FIELD]) || '待核验';
+    const expected = batch === currentBatchNumber && validity === VALID_BATCH ? '是' : '否';
+    const actual = plain(record.fields?.[CURRENT_PERIOD_FIELD]);
+    if (actual !== expected) {
+      throw new Error(`Decision history verification failed for ${CURRENT_PERIOD_FIELD} on ${record.record_id}: expected ${expected}, received ${actual || '<blank>'}`);
+    }
+    if (actual === '是') currentRows += 1;
+  }
+  return currentRows;
+}
+
+export function verifyDecisionHistoryApply({
+  before,
+  after,
+  schemaPlan,
+  plan,
+  promotionPlan = { updates: [] },
+  currentBatchNumber,
+}) {
   if (!same(before.currentFields, after.currentFields)) throw new Error('Decision history changed current table field definitions');
   if (after.historyFields.length !== before.historyFields.length + schemaPlan.creates.length) {
     throw new Error('Decision history changed the history field count unexpectedly');
   }
+  const schemaUpdates = new Map((schemaPlan.updates ?? []).map((update) => [update.fieldId, update]));
   for (const field of before.historyFields) {
     const next = after.historyFields.find((candidate) => candidate.field_id === field.field_id);
-    if (!next || !same(field, next)) throw new Error(`Decision history changed history field ${field.field_name}`);
+    const planned = schemaUpdates.get(field.field_id);
+    if (planned) {
+      if (!fieldMatchesBody(next, planned.body)) {
+        throw new Error(`Decision history failed to update history field ${field.field_name}`);
+      }
+    } else if (!next || !same(field, next)) {
+      throw new Error(`Decision history changed history field ${field.field_name}`);
+    }
   }
   const previousIds = new Set(before.historyFields.map((field) => field.field_id));
   const added = after.historyFields.filter((field) => !previousIds.has(field.field_id));
-  if (added.length !== schemaPlan.creates.length || added.some((field, index) =>
-    field.field_name !== schemaPlan.creates[index]?.fieldName || field.type !== schemaPlan.creates[index]?.body.type)) {
+  if (added.length !== schemaPlan.creates.length || schemaPlan.creates.some((create) =>
+    !fieldMatchesBody(added.find((field) => field.field_name === create.fieldName), create.body))) {
     throw new Error('Decision history created an unauthorized history field');
   }
 
@@ -543,15 +689,28 @@ export function verifyDecisionHistoryApply({ before, after, schemaPlan, plan, pr
     throw new Error('Decision history changed a table record count');
   }
   if (!same(
-    canonicalRecords(before.currentRecords, new Set([...RECENT_FIELD_NAMES, '是否重点词', '对应产品方向'])),
-    canonicalRecords(after.currentRecords, new Set([...RECENT_FIELD_NAMES, '是否重点词', '对应产品方向'])),
+    canonicalRecords(before.currentRecords, new Set([...PREVIOUS_FIELD_NAMES, ...RECENT_FIELD_NAMES, '是否重点词', '对应产品方向'])),
+    canonicalRecords(after.currentRecords, new Set([...PREVIOUS_FIELD_NAMES, ...RECENT_FIELD_NAMES, '是否重点词', '对应产品方向'])),
   ) || !same(
-    canonicalRecords(before.historyRecords, new Set([...SNAPSHOT_FIELD_NAMES, BATCH_VALIDITY_FIELD])),
-    canonicalRecords(after.historyRecords, new Set([...SNAPSHOT_FIELD_NAMES, BATCH_VALIDITY_FIELD])),
+    canonicalRecords(before.historyRecords, new Set([
+      ...SNAPSHOT_FIELD_NAMES,
+      ...VISUAL_SNAPSHOT_FIELD_NAMES,
+      CURRENT_PERIOD_FIELD,
+      BATCH_VALIDITY_FIELD,
+    ])),
+    canonicalRecords(after.historyRecords, new Set([
+      ...SNAPSHOT_FIELD_NAMES,
+      ...VISUAL_SNAPSHOT_FIELD_NAMES,
+      CURRENT_PERIOD_FIELD,
+      BATCH_VALIDITY_FIELD,
+    ])),
   )) throw new Error('Decision history changed business data');
 
   for (const fieldName of SNAPSHOT_FIELD_NAMES) {
     verifyDerivedRecords(before.historyRecords, after.historyRecords, plan.historyUpdates, fieldName);
+  }
+  for (const fieldName of VISUAL_SNAPSHOT_FIELD_NAMES) {
+    verifyDerivedTextRecords(before.historyRecords, after.historyRecords, plan.historyUpdates, fieldName);
   }
   const validityAfter = new Map(after.historyRecords.map((record) => [record.record_id, plain(record.fields?.[BATCH_VALIDITY_FIELD])]));
   const promotedIds = new Set(promotionPlan.updates.map((record) => record.record_id));
@@ -561,13 +720,18 @@ export function verifyDecisionHistoryApply({ before, after, schemaPlan, plan, pr
       throw new Error(`Decision history verification found an unplanned ${BATCH_VALIDITY_FIELD} change on ${record.record_id}`);
     }
   }
-  for (const fieldName of RECENT_FIELD_NAMES) {
+  for (const fieldName of PREVIOUS_FIELD_NAMES) {
     verifyDerivedRecords(before.currentRecords, after.currentRecords, plan.currentUpdates, fieldName);
   }
+  const currentPeriodRows = currentBatchNumber
+    ? verifyCurrentPeriodRecords(after.historyRecords, currentBatchNumber)
+    : 0;
   return {
     historyFieldsCreated: schemaPlan.creates.length,
+    historyFieldsUpdated: schemaPlan.updates?.length ?? 0,
     historyRecordsWritten: plan.historyUpdates.length,
     currentRecordsWritten: plan.currentUpdates.length,
+    currentPeriodRows,
   };
 }
 
@@ -586,18 +750,29 @@ function readEnv(file) {
   return values;
 }
 
-class FeishuApi {
+export class FeishuApi {
   #token;
 
-  constructor({ appId, appSecret, appToken, mutationGuard }) {
+  constructor({
+    appId,
+    appSecret,
+    appToken,
+    mutationGuard,
+    fetchImpl = globalThis.fetch,
+    sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+    readRetryDelays = [500, 1000, 2000, 4000, 8000],
+  }) {
     this.appId = appId;
     this.appSecret = appSecret;
     this.appToken = appToken;
     this.mutationGuard = mutationGuard;
+    this.fetchImpl = fetchImpl;
+    this.sleep = sleep;
+    this.readRetryDelays = readRetryDelays;
   }
 
   async authenticate() {
-    const response = await fetch(`${API_ROOT}/auth/v3/tenant_access_token/internal`, {
+    const response = await this.fetchImpl(`${API_ROOT}/auth/v3/tenant_access_token/internal`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ app_id: this.appId, app_secret: this.appSecret }),
@@ -610,17 +785,23 @@ class FeishuApi {
 
   async request(method, requestPath, body) {
     if (method !== 'GET') this.mutationGuard({ method, path: requestPath, body });
-    const response = await fetch(`${API_ROOT}${requestPath}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${this.#token}`,
-        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
-    const payload = await response.json();
-    if (!response.ok || payload.code !== 0) throw new Error(`Feishu API failed: ${method} ${requestPath} ${response.status} ${payload.code ?? ''} ${payload.msg ?? ''}`.trim());
-    return payload.data ?? {};
+    for (let attempt = 0; ; attempt += 1) {
+      const response = await this.fetchImpl(`${API_ROOT}${requestPath}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${this.#token}`,
+          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      const payload = await response.json();
+      if (response.ok && payload.code === 0) return payload.data ?? {};
+      const canRetry = method === 'GET' && payload.code === 1254607 && attempt < this.readRetryDelays.length;
+      if (!canRetry) {
+        throw new Error(`Feishu API failed: ${method} ${requestPath} ${response.status} ${payload.code ?? ''} ${payload.msg ?? ''}`.trim());
+      }
+      await this.sleep(this.readRetryDelays[attempt]);
+    }
   }
 
   async listTables() {
@@ -648,6 +829,10 @@ class FeishuApi {
     return this.request('POST', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/fields`, body);
   }
 
+  updateField(tableId, fieldId, body) {
+    return this.request('PUT', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/fields/${fieldId}`, body);
+  }
+
   async batchUpdate(tableId, records) {
     for (let index = 0; index < records.length; index += 500) {
       await this.request('POST', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/records/batch_update`, {
@@ -669,6 +854,17 @@ function assertFields(fields, names, label) {
   const missing = names.filter((name) => !present.includes(name));
   if (missing.length) throw new Error(`${label} is missing fields: ${missing.join(', ')}`);
   if (new Set(present).size !== present.length) throw new Error(`${label} contains duplicate field names`);
+}
+
+export function assertDecisionHistoryFieldContract({
+  currentFields,
+  previousFields = [],
+  hasPreviousTable = false,
+  apply = false,
+}) {
+  assertFields(currentFields, ANALYSIS_REQUIRED_FIELDS, 'Current table');
+  if (hasPreviousTable) assertFields(previousFields, ANALYSIS_REQUIRED_FIELDS, 'Previous table');
+  if (apply) assertFields(currentFields, PREVIOUS_FIELD_NAMES, 'Current table');
 }
 
 function digest(value) {
@@ -696,6 +892,13 @@ function writeBackup(options, snapshot) {
 }
 
 function summaryFor(options, schemaPlan, plan) {
+  const countBy = (items, key) => Object.fromEntries([...items.reduce((counts, item) => {
+    const value = item[key] ?? '<unknown>';
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+    return counts;
+  }, new Map())].sort(([left], [right]) => String(left).localeCompare(String(right), 'zh-CN')));
+  const writtenCurrentFields = plan.currentUpdates.flatMap((update) => Object.keys(update.fields ?? {}).map((fieldName) => ({ fieldName })));
+  const writtenHistoryFields = plan.historyUpdates.flatMap((update) => Object.keys(update.fields ?? {}).map((fieldName) => ({ fieldName })));
   return {
     mode: options.apply ? 'APPLY_READY' : 'DRY_RUN_READY',
     appToken: options.appToken,
@@ -705,13 +908,26 @@ function summaryFor(options, schemaPlan, plan) {
     ignoredBatchNumbers: plan.ignoredBatchNumbers,
     planned: {
       historyFieldsToCreate: schemaPlan.creates.length,
+      historyFieldsToUpdate: schemaPlan.updates.length,
       historyValidityToWrite: plan.promotionPlan?.updates.length ?? 0,
       historySnapshotsToWrite: plan.historyUpdates.length,
       currentCountsToWrite: plan.currentUpdates.length,
+      historySnapshotCellsByField: countBy(writtenHistoryFields, 'fieldName'),
+      currentSnapshotCellsByField: countBy(writtenCurrentFields, 'fieldName'),
+    },
+    visualization: {
+      source: options.historyTableName,
+      currentBatchNumber: options.currentBatchNumber,
+      markerField: CURRENT_PERIOD_FIELD,
+      snapshotFields: VISUAL_SNAPSHOT_FIELD_NAMES,
     },
     pending: {
       historySnapshots: plan.pendingHistory.length,
       currentCounts: plan.pendingCurrent.length,
+      historyByField: countBy(plan.pendingHistory, 'fieldName'),
+      historyByReason: countBy(plan.pendingHistory, 'reason'),
+      currentByField: countBy(plan.pendingCurrent, 'fieldName'),
+      currentByReason: countBy(plan.pendingCurrent, 'reason'),
     },
   };
 }
@@ -724,7 +940,9 @@ async function main() {
     appToken: options.appToken,
     currentTableId: options.currentTableId,
     historyTableId: options.historyTableId,
-    allowHistoryFieldCreate: false,
+    schemaPlan: { creates: [], updates: [] },
+    historyUpdates: [],
+    currentUpdates: [],
     verifiedBatchRecordIds: new Set(),
   };
   const api = new FeishuApi({
@@ -747,9 +965,13 @@ async function main() {
     options.previousTableId ? api.listFields(options.previousTableId) : Promise.resolve([]),
     options.previousTableId ? api.listRecords(options.previousTableId) : Promise.resolve([]),
   ]);
-  assertFields(currentFields, CURRENT_REQUIRED_FIELDS, 'Current table');
+  assertDecisionHistoryFieldContract({
+    currentFields,
+    previousFields,
+    hasPreviousTable: Boolean(options.previousTableId),
+    apply: options.apply,
+  });
   assertFields(historyFields, HISTORY_REQUIRED_FIELDS, 'History table');
-  if (options.previousTableId) assertFields(previousFields, CURRENT_REQUIRED_FIELDS, 'Previous table');
   if (currentRecords.length !== options.expectedCurrentRows) {
     throw new Error(`Current table expected ${options.expectedCurrentRows} rows; received ${currentRecords.length}`);
   }
@@ -773,7 +995,11 @@ async function main() {
     if (!previousValidBatchNumber) throw new Error('A previous analysis table was supplied but no previous valid history batch exists');
     batchTables.unshift({ batchNumber: previousValidBatchNumber, records: previousRecords });
   }
-  const schemaPlan = buildDecisionHistorySchemaPlan({ fields: historyFields });
+  const schemaPlan = buildDecisionHistorySchemaPlan({
+    tableId: options.historyTableId,
+    fields: historyFields,
+    currentBatchNumber: options.currentBatchNumber,
+  });
   const plan = buildDecisionHistoryPlan({
     batchTables,
     historyRecords: effectiveHistoryRecords,
@@ -786,15 +1012,25 @@ async function main() {
     console.log(JSON.stringify(summary, null, 2));
     return;
   }
+  assertCurrentVisualizationReady(plan, options.currentBatchNumber);
 
   const before = { currentFields, currentRecords, historyFields, historyRecords };
   const backup = writeBackup(options, before);
+  scope.schemaPlan = schemaPlan;
+  scope.historyUpdates = plan.historyUpdates;
+  scope.currentUpdates = plan.currentUpdates;
   scope.verifiedBatchRecordIds = new Set(promotionPlan.updates.map((record) => record.record_id));
-  scope.allowHistoryFieldCreate = schemaPlan.creates.length > 0;
-  for (const create of schemaPlan.creates) await api.createField(options.historyTableId, create.body);
+  for (const create of schemaPlan.creates.filter((item) => item.fieldName !== CURRENT_PERIOD_FIELD)) {
+    await api.createField(options.historyTableId, create.body);
+  }
   await api.batchUpdate(options.historyTableId, promotionPlan.updates);
   await api.batchUpdate(options.historyTableId, plan.historyUpdates);
   await api.batchUpdate(options.currentTableId, plan.currentUpdates);
+  const currentPeriodCreate = schemaPlan.creates.find((item) => item.fieldName === CURRENT_PERIOD_FIELD);
+  if (currentPeriodCreate) await api.createField(options.historyTableId, currentPeriodCreate.body);
+  for (const update of schemaPlan.updates) {
+    await api.updateField(options.historyTableId, update.fieldId, update.body);
+  }
 
   let after;
   for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -809,14 +1045,28 @@ async function main() {
       historyRecords: nextHistoryRecords,
     };
     try {
-      verifyDecisionHistoryApply({ before, after, schemaPlan, plan, promotionPlan });
+      verifyDecisionHistoryApply({
+        before,
+        after,
+        schemaPlan,
+        plan,
+        promotionPlan,
+        currentBatchNumber: options.currentBatchNumber,
+      });
       break;
     } catch (error) {
       if (attempt === 29) throw error;
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
-  const verification = verifyDecisionHistoryApply({ before, after, schemaPlan, plan, promotionPlan });
+  const verification = verifyDecisionHistoryApply({
+    before,
+    after,
+    schemaPlan,
+    plan,
+    promotionPlan,
+    currentBatchNumber: options.currentBatchNumber,
+  });
   const settledPlan = buildDecisionHistoryPlan({
     batchTables: [
       ...(options.previousTableId ? [{ batchNumber: previousValidBatchNumber, records: previousRecords }] : []),
@@ -831,7 +1081,15 @@ async function main() {
     verifyHistoryBatch: options.verifyHistoryBatch,
     expectedVerifiedBatchRows: options.expectedVerifiedBatchRows,
   });
+  const settledSchemaPlan = buildDecisionHistorySchemaPlan({
+    tableId: options.historyTableId,
+    fields: after.historyFields,
+    currentBatchNumber: options.currentBatchNumber,
+  });
   if (settledPromotion.updates.length) throw new Error('History batch promotion apply is not idempotent');
+  if (settledSchemaPlan.creates.length || settledSchemaPlan.updates.length) {
+    throw new Error('Decision history schema apply is not idempotent');
+  }
   if (settledPlan.historyUpdates.length || settledPlan.currentUpdates.length) {
     throw new Error('Decision history apply is not idempotent');
   }

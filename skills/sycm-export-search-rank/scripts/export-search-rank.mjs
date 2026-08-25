@@ -8,12 +8,17 @@ import { spawnSync } from "node:child_process";
 
 import {
   assertAllowedSycmUrl,
+  ensureSevenDayPeriod,
   enterSearchRankFromHome,
+  PERIOD_SELECTED_CLASS_PATTERN,
+  parseReportingWindow,
+  rediscoverSycmTarget,
   resolveSycmTarget,
   waitForVisibleOption,
   waitForSycmPath,
 } from "./full-flow.mjs";
 import { publishValidatedOutputs } from "./output-publish.mjs";
+import { verifyExportPair } from "./source-period-proof.mjs";
 
 const PROXY_DEFAULT = "http://127.0.0.1:3456";
 const REQUIRED_HEADERS = ["排名", "搜索词", "搜索人气", "点击率", "支付转化率"];
@@ -28,6 +33,7 @@ function parseArgs(argv) {
   const args = {
     proxy: process.env.SYCM_PROXY || PROXY_DEFAULT,
     target: "",
+    period: "7d",
     date: "latest",
     cateId: "50002411",
     category: "普通浴缸",
@@ -59,6 +65,7 @@ function parseArgs(argv) {
     i += 1;
     if (key === "proxy") args.proxy = value.replace(/\/$/u, "");
     else if (key === "target") args.target = value;
+    else if (key === "period") args.period = value;
     else if (key === "date") args.date = value;
     else if (key === "cate-id") args.cateId = value;
     else if (key === "category") args.category = value;
@@ -70,6 +77,7 @@ function parseArgs(argv) {
   }
   if (!Number.isFinite(args.delayMs) || args.delayMs < 800) throw new Error("--delay-ms must be at least 800");
   if (!Number.isInteger(args.maxPages) || args.maxPages < 1) throw new Error("--max-pages must be a positive integer");
+  if (args.period !== "7d") throw new Error("--period currently supports only 7d");
   return args;
 }
 
@@ -77,7 +85,8 @@ function printHelp() {
   console.log(`Usage: node export-search-rank.mjs [options]
 
 Options:
-  --date latest|YYYY-MM-DD  Select the day with the page date arrows (default: latest)
+  --period 7d               Require the 7-day reporting period (default: 7d)
+  --date latest|YYYY-MM-DD  Select the end date of the 7-day reporting window (default: latest)
   --cate-id ID              Expected page category id (default: 50002411)
   --category TEXT           Expected visible category label (default: 普通浴缸)
   --output-dir DIR          Output directory (default: ~/Downloads)
@@ -111,8 +120,17 @@ async function request(proxy, endpoint, options = {}) {
   }
 }
 
+async function freshTarget(proxy, expectedTarget) {
+  const target = await rediscoverSycmTarget({
+    expectedTarget,
+    listTargets: () => request(proxy, "/targets"),
+  });
+  return target.targetId;
+}
+
 async function evaluate(proxy, target, expression) {
-  const data = await request(proxy, `/eval?target=${encodeURIComponent(target)}`, {
+  const currentTarget = await freshTarget(proxy, target);
+  const data = await request(proxy, `/eval?target=${encodeURIComponent(currentTarget)}`, {
     method: "POST",
     headers: { "content-type": "text/plain; charset=utf-8" },
     body: expression,
@@ -126,8 +144,9 @@ async function evaluate(proxy, target, expression) {
   }
 }
 
-async function clickAt(proxy, target, selector) {
-  return request(proxy, `/clickAt?target=${encodeURIComponent(target)}`, {
+async function click(proxy, target, selector) {
+  const currentTarget = await freshTarget(proxy, target);
+  return request(proxy, `/click?target=${encodeURIComponent(currentTarget)}`, {
     method: "POST",
     headers: { "content-type": "text/plain; charset=utf-8" },
     body: selector,
@@ -136,7 +155,8 @@ async function clickAt(proxy, target, selector) {
 
 async function navigate(proxy, target, value) {
   const url = assertAllowedSycmUrl(value);
-  return request(proxy, `/navigate?target=${encodeURIComponent(target)}&url=${encodeURIComponent(url.href)}`);
+  const currentTarget = await freshTarget(proxy, target);
+  return request(proxy, `/navigate?target=${encodeURIComponent(currentTarget)}&url=${encodeURIComponent(url.href)}`);
 }
 
 async function createTab(proxy, value) {
@@ -149,11 +169,6 @@ function humanRequired(reason, details = {}) {
   error.code = "HUMAN_REQUIRED";
   error.details = details;
   return error;
-}
-
-function dateFromText(value) {
-  const match = String(value || "").match(/(\d{4}-\d{2}-\d{2})/u);
-  return match?.[1] || "";
 }
 
 function utcDay(value) {
@@ -196,6 +211,24 @@ async function inspectPage(proxy, target) {
     const prev = document.querySelector('.ant-pagination-prev');
     const arrows = Array.from(document.querySelectorAll('.item-date .oui-date-picker-particle-button button.arrow'))
       .map((button) => ({ disabled: button.disabled || button.getAttribute('aria-disabled') === 'true' }));
+    const periodLabels = new Set(['7天', '30天', '日']);
+    const periodNodes = Array.from(document.querySelectorAll('.item-date button, .item-date [role="tab"], .item-date [role="radio"], .item-date label, .item-date li, .item-date a, .item-date span, .item-date div'))
+      .filter(visible)
+      .filter((el) => periodLabels.has(el.innerText.trim()))
+      .filter((el) => !Array.from(el.children).some((child) => visible(child) && child.innerText.trim() === el.innerText.trim()));
+    const periodOptions = Array.from(periodLabels, (label) => {
+      const node = periodNodes.find((el) => el.innerText.trim() === label);
+      if (!node) return null;
+      const target = node.closest('button, [role="tab"], [role="radio"], label, li, a') || node;
+      const candidates = [target, target.parentElement].filter(Boolean);
+      const selected = candidates.some((el) =>
+        el.getAttribute('aria-selected') === 'true' ||
+        el.getAttribute('aria-pressed') === 'true' ||
+        el.getAttribute('aria-checked') === 'true' ||
+        new RegExp(${JSON.stringify(PERIOD_SELECTED_CLASS_PATTERN.source)}, 'iu').test(String(el.className || ''))
+      );
+      return { label, selected, tagName: target.tagName, className: String(target.className || '') };
+    }).filter(Boolean);
     return {
       url: location.href,
       title: document.title,
@@ -208,6 +241,7 @@ async function inspectPage(proxy, target) {
       nextDisabled: !next || next.classList.contains('ant-pagination-disabled') || next.getAttribute('aria-disabled') === 'true',
       prevDisabled: !prev || prev.classList.contains('ant-pagination-disabled') || prev.getAttribute('aria-disabled') === 'true',
       arrows,
+      periodOptions,
       rowCount: dataTable ? dataTable.querySelectorAll('tbody tr[data-row-key]').length : 0,
       hasDataTable: Boolean(dataTable),
       dialogs,
@@ -256,6 +290,24 @@ async function waitForPath(proxy, target, expectedPath, expected = {}) {
   });
 }
 
+async function waitForSelector(proxy, target, selector, timeoutMs = 15000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const state = await inspectPage(proxy, target);
+    guardSession(state);
+    const ready = await evaluate(proxy, target, `(() => {
+      const element = document.querySelector(${JSON.stringify(selector)});
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    })()`);
+    if (ready) return true;
+    await sleep(250);
+  }
+  throw new Error(`Timed out waiting for selector: ${selector}`);
+}
+
 async function discoverTarget(proxy, explicitTarget, fromHome) {
   const targets = await request(proxy, "/targets");
   try {
@@ -273,10 +325,33 @@ async function discoverTarget(proxy, explicitTarget, fromHome) {
   }
 }
 
+async function clickReportingPeriod(proxy, target, label) {
+  const selector = await evaluate(proxy, target, `(() => {
+    const visible = (el) => {
+      if (!el) return false;
+      const style = getComputedStyle(el); const rect = el.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    };
+    const expected = ${JSON.stringify(label)};
+    const labels = Array.from(document.querySelectorAll('.item-date button, .item-date [role="tab"], .item-date [role="radio"], .item-date label, .item-date li, .item-date a, .item-date span, .item-date div'))
+      .filter(visible)
+      .filter((el) => el.innerText.trim() === expected)
+      .filter((el) => !Array.from(el.children).some((child) => visible(child) && child.innerText.trim() === expected));
+    const node = labels[0];
+    const clickable = node?.closest('button, [role="tab"], [role="radio"], label, li, a') || node;
+    if (!clickable) return '';
+    document.querySelectorAll('[data-codex-sycm-period]').forEach((el) => el.removeAttribute('data-codex-sycm-period'));
+    clickable.setAttribute('data-codex-sycm-period', 'target');
+    return '[data-codex-sycm-period="target"]';
+  })()`);
+  if (!selector) throw new Error(`Could not prepare reporting period option: ${label}`);
+  await click(proxy, target, selector);
+}
+
 async function selectDate(proxy, target, desired, delayMs) {
   let state = await inspectPage(proxy, target);
   guardPage(state);
-  const current = dateFromText(state.currentDate);
+  const current = parseReportingWindow(state.currentDate)?.endDate || "";
   if (!current) throw new Error("Could not read the current page date");
   const targetDate = desired === "latest" ? (state.updateDay || current) : desired;
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(targetDate)) throw new Error(`Invalid --date: ${targetDate}`);
@@ -291,17 +366,20 @@ async function selectDate(proxy, target, desired, delayMs) {
     state = await inspectPage(proxy, target);
     guardPage(state);
     if (state.arrows?.[direction < 0 ? 0 : 1]?.disabled) {
-      throw humanRequired("页面日期控件不允许继续移动到目标日期", { current: dateFromText(state.currentDate), targetDate });
+      throw humanRequired("页面日期控件不允许继续移动到目标日期", {
+        current: parseReportingWindow(state.currentDate)?.endDate || "",
+        targetDate,
+      });
     }
-    const before = dateFromText(state.currentDate);
-    await clickAt(proxy, target, `.item-date .oui-date-picker-particle-button button.arrow:nth-of-type(${selectorIndex})`);
-    state = await waitFor(proxy, target, (next) => dateFromText(next.currentDate) !== before, 15000, "date control");
+    const before = parseReportingWindow(state.currentDate)?.endDate || "";
+    await click(proxy, target, `.item-date .oui-date-picker-particle-button button.arrow:nth-of-type(${selectorIndex})`);
+    state = await waitFor(proxy, target, (next) => parseReportingWindow(next.currentDate)?.endDate !== before, 15000, "date control");
     guardPage(state);
     await sleep(delayMs);
   }
   state = await inspectPage(proxy, target);
   guardPage(state);
-  if (dateFromText(state.currentDate) !== targetDate) {
+  if (parseReportingWindow(state.currentDate)?.endDate !== targetDate) {
     throw new Error(`Date selection did not settle on ${targetDate}`);
   }
   return { state, date: targetDate };
@@ -311,7 +389,7 @@ async function ensurePageSize(proxy, target, delayMs) {
   let state = await inspectPage(proxy, target);
   guardPage(state);
   if (state.pageSize === "50") return state;
-  await clickAt(proxy, target, ".oui-page-size-select .ant-select-selection");
+  await click(proxy, target, ".oui-page-size-select .ant-select-selection");
   await waitForVisibleOption({
     readOption: () => evaluate(proxy, target, `(() => {
       const visible = (el) => {
@@ -343,8 +421,8 @@ async function goFirstPage(proxy, target, delayMs) {
     if (state.activePage === 1) return state;
     if (state.activePage === null) throw new Error("Could not read active pagination page");
     const first = await evaluate(proxy, target, `Boolean(document.querySelector('.ant-pagination-item[title="1"]'))`);
-    if (first) await clickAt(proxy, target, '.ant-pagination-item[title="1"]');
-    else if (!state.prevDisabled) await clickAt(proxy, target, '.ant-pagination-prev:not(.ant-pagination-disabled)');
+    if (first) await click(proxy, target, '.ant-pagination-item[title="1"]');
+    else if (!state.prevDisabled) await click(proxy, target, '.ant-pagination-prev:not(.ant-pagination-disabled)');
     else throw new Error("Pagination is not on page 1 and previous is disabled");
     await waitFor(proxy, target, (next) => next.activePage !== state.activePage, 10000, "first pagination page");
     await sleep(delayMs);
@@ -492,7 +570,8 @@ async function main() {
       cateId: args.cateId,
       category: args.category,
       navigate: (url) => navigate(proxy, target, url),
-      clickAt: (selector) => clickAt(proxy, target, selector),
+      waitForSelector: (selector) => waitForSelector(proxy, target, selector),
+      click: (selector) => click(proxy, target, selector),
       waitForPath: (expectedPath, expected) => waitForPath(proxy, target, expectedPath, expected),
       guardSession,
     });
@@ -508,7 +587,19 @@ async function main() {
   if (args.category && !state.categoryTitle.includes(args.category)) {
     throw humanRequired("当前页面可见类目与预期不一致，请人工用页面类目选择器切换后再继续", { actualCategory: state.categoryTitle, expectedCategory: args.category });
   }
+  await ensureSevenDayPeriod({
+    inspect: () => inspectPage(proxy, target),
+    clickPeriod: (label) => clickReportingPeriod(proxy, target, label),
+    guardPage,
+    sleep,
+  });
   const dateResult = await selectDate(proxy, target, args.date, args.delayMs);
+  const reporting = await ensureSevenDayPeriod({
+    inspect: () => inspectPage(proxy, target),
+    clickPeriod: (label) => clickReportingPeriod(proxy, target, label),
+    guardPage,
+    sleep,
+  });
   state = await ensurePageSize(proxy, target, args.delayMs);
   state = await goFirstPage(proxy, target, args.delayMs);
   const pagePayloads = [];
@@ -521,7 +612,7 @@ async function main() {
     console.error(`SYCM page ${payload.page ?? pageIndex + 1}: ${payload.rows.length} rows`);
     if (payload.nextDisabled) break;
     const beforePage = payload.page;
-    await clickAt(proxy, target, '.ant-pagination-next:not(.ant-pagination-disabled)');
+    await click(proxy, target, '.ant-pagination-next:not(.ant-pagination-disabled)');
     await waitFor(proxy, target, (next) => next.activePage !== beforePage && next.rowCount > 0, 15000, "next pagination page");
     await sleep(args.delayMs);
   }
@@ -539,19 +630,25 @@ async function main() {
     source: "生意参谋搜索排行",
     sourceUrl: state.url,
     date: dateResult.date,
+    period: reporting.period,
+    startDate: reporting.startDate,
+    endDate: reporting.endDate,
+    dayCount: reporting.dayCount,
+    dateRange: reporting.dateRange,
     category: state.categoryTitle,
     cateId: state.cateId,
     exportedAt: new Date().toISOString(),
     pages: pagePayloads.length,
     ...checked.validation,
   };
-  const { csvFile, xlsxFile } = await publishValidatedOutputs({
+  const { csvFile, xlsxFile, validation: proof } = await publishValidatedOutputs({
     outputDir: args.outputDir,
     base,
     writeCsv: (file) => writeCsv(checked.rows, file),
     writeXlsx: (file) => writeXlsx(metadata, checked.rows, file),
+    verifyOutputs: (csv, xlsx) => verifyExportPair({ csv, xlsx, expectedEndDate: reporting.endDate }),
   });
-  console.log(JSON.stringify({ ok: true, metadata, csv: csvFile, xlsx: xlsxFile }, null, 2));
+  console.log(JSON.stringify({ ok: true, metadata, csv: csvFile, xlsx: xlsxFile, proof }, null, 2));
 }
 
 main().catch((error) => {

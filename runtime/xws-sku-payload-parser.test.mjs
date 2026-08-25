@@ -153,3 +153,29 @@ test('preserves the SKU name for each combination when a product has multiple na
 
   assert.deepEqual(plan.rows.map((row) => row.fields.SKU名称), ['椭圆款', '嵌缸款']);
 });
+
+test('preserves a plain specification value as both name and specification', () => {
+  const payload = [
+    '1.2米',
+    '白色【双人】套装',
+  ].join('\n');
+  const topology = {
+    version: 'xws-tmall-sku-topology-v1',
+    payloadSha256: sha256(payload),
+    dimensionPropertyIndex: 0,
+    specificationPropertyIndex: 1,
+    specificationSegmentCount: 1,
+    specificationSegmentCounts: [1],
+    specificationSeparator: '',
+    properties: [
+      { values: [{ payloadLineIndex: 0, payloadLineSha256: sha256('1.2米'), empty: false }] },
+      { values: [{ payloadLineIndex: 1, payloadLineSha256: sha256('白色【双人】套装'), empty: false }] },
+    ],
+    validCombinations: [{ skuId: 'sku-plain', propertyValueIndexes: [0, 0] }],
+  };
+
+  const plan = parseXwsSkuPayload(payload, source, topology);
+
+  assert.equal(plan.rows[0].fields.SKU名称, '白色【双人】套装');
+  assert.equal(plan.rows[0].fields.SKU规格, '白色【双人】套装');
+});

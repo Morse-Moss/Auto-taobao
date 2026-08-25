@@ -9,7 +9,9 @@ import { parseBaseUrl } from './import-core.mjs';
 import { runCompetitorV2 } from './competitor-v2-runner.mjs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
+const WEEKLY_TABLE_NAME = /^(竞品周|SKU周)_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/u;
 const ALLOWED_TABLES = new Set(['竞品主表', 'SKU明细', '问题库']);
+const ALLOWED_WRITE_TABLE_IDS = new Set(['tblJ9LHFN6pMVjPv', 'tblddWTrPeB4TKmR']);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
 function positiveInteger(value, name) {
@@ -22,7 +24,7 @@ function positiveInteger(value, name) {
 export function parseCliArgs(argv) {
   const options = {
     apply: false,
-    expectedRows: 1333,
+    expectedRows: undefined,
     searchKeyword: '浴缸',
     uploadConcurrency: 3,
     recordBatchSize: 100,
@@ -49,6 +51,7 @@ export function parseCliArgs(argv) {
   }
   if (!options.xlsx) throw new Error('--xlsx is required');
   if (!options.baseUrl) throw new Error('--base-url is required');
+  if (options.expectedRows == null) throw new Error('--expected-rows is required');
   const target = parseBaseUrl(options.baseUrl);
   if (options.apply && !options.envFile) throw new Error('--env-file is required with --apply');
   if (options.apply && !options.confirmAppToken) throw new Error('--confirm-app-token is required with --apply');
@@ -141,11 +144,12 @@ export class CompetitorV2FeishuClient {
     } while (pageToken);
     const main = items.find((item) => item.name === '竞品主表');
     this.mainTableId = main?.tableId ?? this.mainTableId;
+    this.weeklyTableIds = new Set(items.filter((item) => WEEKLY_TABLE_NAME.test(item.name)).map((item) => item.tableId));
     return items;
   }
 
   async createTable(name, definitions) {
-    if (!ALLOWED_TABLES.has(name)) throw new Error(`Blocked table creation: ${name}`);
+    if (!ALLOWED_TABLES.has(name) && !WEEKLY_TABLE_NAME.test(name)) throw new Error(`Blocked table creation: ${name}`);
     const data = await this.request('POST', `/bitable/v1/apps/${this.appToken}/tables`, {
       table: {
         name,
@@ -200,12 +204,24 @@ export class CompetitorV2FeishuClient {
   }
 
   async batchCreateRecords(tableId, fieldsList) {
-    if (tableId !== this.mainTableId) throw new Error('Blocked record write outside 竞品主表');
+    if (!ALLOWED_WRITE_TABLE_IDS.has(tableId) && tableId !== this.mainTableId && !this.weeklyTableIds?.has(tableId)) {
+      throw new Error('Blocked record write outside authorized competitor tables');
+    }
     if (fieldsList.length < 1 || fieldsList.length > 500) {
       throw new Error(`Batch size must be between 1 and 500; received ${fieldsList.length}`);
     }
     const data = await this.request('POST', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/records/batch_create`, {
       records: fieldsList.map((fields) => ({ fields })),
+    });
+    return (data.records ?? []).map((record) => record.record_id);
+  }
+
+  async batchUpdateRecords(tableId, records) {
+    if (!Array.isArray(records) || records.length < 1 || records.length > 500) {
+      throw new Error(`Batch update size must be between 1 and 500; received ${records?.length ?? 0}`);
+    }
+    const data = await this.request('POST', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/records/batch_update`, {
+      records: records.map((record) => ({ record_id: record.recordId ?? record.record_id, fields: record.fields })),
     });
     return (data.records ?? []).map((record) => record.record_id);
   }

@@ -1,0 +1,4 @@
+Current stage: STAGED - the validated 1-40 CSV snapshot and the agreed history-table structure are complete and API-verified.
+Last verified step: 1,461 keyed rows have collection start/end dates set to 2026-08-24; the 10 placeholder fields were cleared and deleted without changing the 1,469 records. History table now has 30 named fields and six settled Feishu formula fields. Counts remain history 1,469 (8 original empty placeholders), main 1,333, SKU 444. No business table or record was deleted.
+Next exact action: operator acceptance. Future weekly runs should append a new period key and preserve the mixed-snapshot/image caveat for this 2026-08-24 run; do not claim image completeness for the 25-40 XLSX because Xiaowangshen supplied three fewer embedded images.
+Scope boundary: preserve all 16 source fields; update only named analysis fields and controlled AI backfill; do not run Feishu AI, create/delete tables, touch other tables, commit, push, or deploy.

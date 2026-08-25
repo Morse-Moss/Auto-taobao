@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { appendFileSync } from "node:fs";
-import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -17,6 +17,8 @@ import {
   selectTaobaoSearchTarget,
   validateDataset,
 } from "./flow.mjs";
+import { classifyDiagnosticState, normalizeDiagnosticSnapshot } from "./diagnostics.mjs";
+import { buildSearchInputExpression } from "./search-input.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, "..", "..", "..");
@@ -42,6 +44,7 @@ Options:
   --export csv,xlsx,xlsx-images (default: csv,xlsx-images)
   --output-dir DIR        Download directory (default: ~/Downloads)
   --allow-trial           Permit the visible Xiaowangshen free-trial action
+  --export-partial-on-stall  Save the currently collected rows when collection stalls
   --prepare-only          Configure the task and stop before starting collection
   --poll-seconds N        Progress polling interval, minimum 2 (default: 8)
   --stall-seconds N       No-progress threshold, minimum 60 (default: 120)
@@ -96,6 +99,14 @@ async function evaluate(proxy, target, expression) {
 }
 
 async function clickAt(proxy, target, selector) {
+  // Background targets can keep document.visibilityState=hidden; Xiaowangshen
+  // ignores toolbar clicks in that state. Use the proxy's optional foreground
+  // hook when available, while preserving compatibility with the shared proxy.
+  try {
+    await request(proxy, `/bringToFront?target=${encodeURIComponent(target)}`);
+  } catch {
+    // Older shared proxies do not expose this endpoint.
+  }
   return request(proxy, `/clickAt?target=${encodeURIComponent(target)}`, {
     method: "POST",
     headers: { "content-type": "text/plain; charset=utf-8" },
@@ -220,15 +231,7 @@ async function openTaobaoHome(proxy, runMarker, log) {
 async function searchKeyword(proxy, keyword, runMarker, log) {
   const home = await discoverHome(proxy, runMarker);
   const value = JSON.stringify(keyword);
-  const setKeyword = (targetId) => evaluate(proxy, targetId, `(() => {
-    const input = document.querySelector('#q');
-    if (!input) return { ok: false, reason: 'search input missing' };
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-    setter.call(input, ${value});
-    input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ${value} }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    return { ok: input.value === ${value} };
-  })()`);
+  const setKeyword = (targetId) => evaluate(proxy, targetId, buildSearchInputExpression(keyword));
   const setResult = await setKeyword(home.targetId);
   if (!setResult?.ok) throw new Error("Could not set the Taobao search keyword");
 
@@ -242,8 +245,35 @@ async function searchKeyword(proxy, keyword, runMarker, log) {
     if (restoredValueMatches !== true) throw new Error("Taobao search keyword did not remain set after page hydration");
     freshHome = await discoverHome(proxy, runMarker);
   }
-  await clickAt(proxy, freshHome.targetId, "#J_TSearchForm button[type=submit]");
-  const search = await waitForReadyTarget(proxy, (candidate) => isSearch(candidate, keyword) && !existingSearchTargets.has(candidate.targetId), 30_000, "new Taobao search results to finish loading");
+  // Taobao re-renders the search form after the controlled input update. Give
+  // the submit button one render turn to settle before submitting. DOM submit
+  // avoids stale autocomplete suggestions stealing a coordinate click.
+  await sleep(1000);
+  freshHome = await discoverHome(proxy, runMarker);
+  const finalSet = await setKeyword(freshHome.targetId);
+  if (!finalSet?.ok) throw new Error("Could not set the Taobao search keyword immediately before submit");
+  const finalValueMatches = await evaluate(proxy, freshHome.targetId, `document.querySelector('#q')?.value === ${value}`);
+  if (finalValueMatches !== true) throw new Error("Taobao search keyword changed before submit");
+  let search;
+  try {
+    await clickDom(proxy, freshHome.targetId, "#J_TSearchForm button[type=submit]");
+    search = await waitForReadyTarget(proxy, (candidate) => isSearch(candidate, keyword) && !existingSearchTargets.has(candidate.targetId), 5_000, "new Taobao search results to finish loading");
+  } catch (error) {
+    // A background tab or site handler can reject the DOM click. Use one
+    // bounded coordinate fallback, then keep the same fresh-target checks.
+    const fallbackHome = await discoverHome(proxy, runMarker);
+    await clickAt(proxy, fallbackHome.targetId, "#J_TSearchForm button[type=submit]");
+    try {
+      search = await waitForReadyTarget(proxy, (candidate) => isSearch(candidate, keyword) && !existingSearchTargets.has(candidate.targetId), 5_000, "new Taobao search results to finish loading");
+    } catch {
+      // If Taobao's autocomplete handler wins both bounded clicks, navigate
+      // the fresh, labeled home tab to the canonical search URL once.
+      const currentHome = await discoverHome(proxy, runMarker);
+      const searchUrl = `https://s.taobao.com/search?q=${encodeURIComponent(keyword)}&search_type=item&tab=all`;
+      await request(proxy, `/navigate?target=${encodeURIComponent(currentHome.targetId)}&url=${encodeURIComponent(searchUrl)}`);
+      search = await waitForReadyTarget(proxy, (candidate) => isSearch(candidate, keyword) && candidate.automationLabel === runMarker, 30_000, "canonical Taobao search results to finish loading");
+    }
+  }
   await labelTarget(proxy, search.targetId, runMarker);
   const freshSearch = await discoverSearch(proxy, keyword, runMarker);
   ensureNoRisk(await visibleText(proxy, freshSearch.targetId), "Taobao search");
@@ -268,6 +298,35 @@ async function inspectPlugin(proxy, target) {
       visibleText: wrapperText.slice(0, 6000),
     };
   })()`);
+}
+
+function isXiaowangshenLoginTarget(target) {
+  if (!isPage(target)) return false;
+  try {
+    const url = new URL(target.url);
+    return url.origin === "https://xiaowangshen.com" && /login/u.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+async function ensurePluginSession(proxy, stage) {
+  const targets = await listTargets(proxy);
+  const loginTarget = targets.find(isXiaowangshenLoginTarget);
+  if (!loginTarget) return;
+  let text = "";
+  try { text = await visibleText(proxy, loginTarget.targetId); } catch { /* target may close while redirecting */ }
+  // Xiaowangshen keeps the /user/base-login path after a successful QR/account
+  // login. The authenticated account page exposes the account and a logout
+  // action, so URL alone is not sufficient to classify it as a login wall.
+  if (/退出/u.test(text) && /(普通用户|专业版|账号安全)/u.test(text)) return;
+  throw humanRequired(`${stage} requires Xiaowangshen login`, {
+    stage,
+    targetId: loginTarget.targetId,
+    url: loginTarget.url,
+    markers: ["XIAOWANGSHEN_LOGIN"],
+    visibleText: text.slice(0, 500),
+  });
 }
 
 async function waitForPlugin(proxy, keyword, runMarker, log) {
@@ -323,12 +382,24 @@ async function openMarketAnalysis(proxy, keyword, runMarker, log) {
     const target = await discoverSearch(proxy, keyword, runMarker);
     await clickAt(proxy, target.targetId, ".xws-market-analysis-btn");
     const deadline = Date.now() + (attempt === 1 ? 2_000 : 15_000);
+    let domFallbackUsed = false;
     while (Date.now() < deadline) {
+      await ensurePluginSession(proxy, "market analysis");
       const state = await inspectDialogs(proxy, keyword, runMarker);
       ensureNoRisk(state.visibleText, "Xiaowangshen dialog");
       if (state.permission || state.config) {
         log("MARKET_ANALYSIS_OPEN", { attempt });
         return;
+      }
+      if (!domFallbackUsed) {
+        try {
+          const fresh = await discoverSearch(proxy, keyword, runMarker);
+          await clickDom(proxy, fresh.targetId, ".xws-market-analysis-btn");
+          domFallbackUsed = true;
+          log("MARKET_ANALYSIS_DOM_FALLBACK", { attempt, bounded: true });
+        } catch {
+          // Keep the normal bounded retry when the proxy has no DOM-click hook.
+        }
       }
       await sleep(250);
     }
@@ -418,9 +489,13 @@ async function configureAnalysis(proxy, options, runMarker, log) {
     keywordInput.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ${JSON.stringify(options.keyword)} }));
     keywordInput.dispatchEvent(new Event('change', { bubbles: true }));
     const spinners = [...dialog.querySelectorAll('input[role=spinbutton]')];
-    const values = [${options.pages.start}, ${options.pages.end}, ${options.price.min}, ${options.price.max === null ? "''" : JSON.stringify(options.price.max)}, ${options.frequency.min}, ${options.frequency.max}];
-    values.forEach((value, index) => {
-      const input = spinners[index];
+    // Xiaowangshen validates start <= end on every input event. Set the end
+    // page first so a later segment (for example 9-16) is not clamped back to
+    // page 1 while the previous segment's end value is still present.
+    const values = [${options.pages.end}, ${options.pages.start}, ${options.price.min}, ${options.price.max === null ? "''" : JSON.stringify(options.price.max)}, ${options.frequency.min}, ${options.frequency.max}];
+    const spinnerOrder = [1, 0, 2, 3, 4, 5];
+    values.forEach((value, position) => {
+      const input = spinners[spinnerOrder[position]];
       if (!input) return;
       setter.call(input, String(value));
       input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: String(value) }));
@@ -431,6 +506,45 @@ async function configureAnalysis(proxy, options, runMarker, log) {
   })()`;
   const setup = await evaluate(proxy, target.targetId, expression);
   if (!setup?.ok) throw new Error(`Could not configure Xiaowangshen: ${setup?.reason || "unknown"}`);
+  // Page bounds are validated asynchronously by the plugin. Re-assert them
+  // in separate DOM turns so a segment start greater than the previous end is
+  // not overwritten by the component's delayed re-render.
+  if (options.pages.start > 1) {
+    let fresh = await discoverSearch(proxy, options.keyword, runMarker);
+    await evaluate(proxy, fresh.targetId, `(() => {
+      const dialog = [...document.querySelectorAll('.el-dialog__wrapper')].find((element) => {
+        const style = getComputedStyle(element); const rect = element.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0
+          && (element.innerText || '').includes('搜索频率');
+      });
+      const input = dialog?.querySelectorAll('input[role=spinbutton]')[1];
+      if (!input) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(input, ${JSON.stringify(String(options.pages.end))});
+      input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ${JSON.stringify(String(options.pages.end))} }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      input.dispatchEvent(new Event('blur', { bubbles: true }));
+      return true;
+    })()`);
+    await sleep(350);
+    fresh = await discoverSearch(proxy, options.keyword, runMarker);
+    await evaluate(proxy, fresh.targetId, `(() => {
+      const dialog = [...document.querySelectorAll('.el-dialog__wrapper')].find((element) => {
+        const style = getComputedStyle(element); const rect = element.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0
+          && (element.innerText || '').includes('搜索频率');
+      });
+      const input = dialog?.querySelectorAll('input[role=spinbutton]')[0];
+      if (!input) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(input, ${JSON.stringify(String(options.pages.start))});
+      input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ${JSON.stringify(String(options.pages.start))} }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      input.dispatchEvent(new Event('blur', { bubbles: true }));
+      return true;
+    })()`);
+    await sleep(350);
+  }
   const loadingExpression = `(() => {
     const visible = (element) => {
       if (!element) return false;
@@ -482,6 +596,18 @@ async function configureAnalysis(proxy, options, runMarker, log) {
       return { ok: true };
     })()`);
     if (!clicked?.ok) throw new Error(`Could not select Xiaowangshen radio: ${clicked?.reason || value}`);
+    const deadline = Date.now() + 3_000;
+    while (Date.now() < deadline) {
+      const fresh = await discoverSearch(proxy, options.keyword, runMarker);
+      const selected = await evaluate(proxy, fresh.targetId, `(() => {
+        const input = [...document.querySelectorAll('.el-dialog__wrapper input[type=radio]')]
+          .find((candidate) => candidate.value === ${JSON.stringify(value)});
+        return Boolean(input?.checked);
+      })()`);
+      if (selected) return;
+      await sleep(100);
+    }
+    throw new Error(`Xiaowangshen radio did not settle: ${value}`);
   };
   await waitForDialogSettle();
   await clickRadio(channelValue(options.channel));
@@ -585,6 +711,107 @@ async function startAnalysis(proxy, keyword, runMarker, log) {
   throw new Error("Xiaowangshen collection did not start");
 }
 
+async function installCollectionDiagnostics(proxy, keyword, runMarker, log) {
+  const target = await discoverSearch(proxy, keyword, runMarker);
+  const installed = await evaluate(proxy, target.targetId, `(() => {
+    if (window.__xwsCollectionDiag?.installed) return { ok: true, reused: true };
+    const state = { installed: true, installedAt: new Date().toISOString(), requests: [], messages: [], byFlag: Object.create(null) };
+    const resultSummary = (result) => {
+      if (!result || typeof result !== 'object') return {};
+      const resultKeys = Object.keys(result).slice(0, 40);
+      let itemCount;
+      for (const key of ['items', 'list', 'data', 'result']) {
+        const value = result[key];
+        if (Array.isArray(value)) { itemCount = value.length; break; }
+        if (value && typeof value === 'object' && Array.isArray(value.items)) { itemCount = value.items.length; break; }
+      }
+      return { resultKeys, ...(Number.isInteger(itemCount) ? { itemCount } : {}) };
+    };
+    const originalPageRequest = window.xwsPageRequest;
+    if (typeof originalPageRequest === 'function' && !originalPageRequest.__xwsDiagWrapped) {
+      const wrappedPageRequest = function(option, flag, bool = false) {
+        const params = option?.params && typeof option.params === 'object' ? option.params : {};
+        const pageValue = Number(params.page ?? params.pageNum ?? params.currentPage);
+        const record = {
+          apiKey: String(option?.apiKey || ''),
+          ...(Number.isInteger(pageValue) && pageValue > 0 ? { page: pageValue } : {}),
+          flag: String(flag || ''),
+          url: String(option?.url || '[mtop]'),
+          method: String(option?.method || 'GET'),
+          status: null,
+          pending: true,
+          startedAt: performance.now(),
+        };
+        state.requests.push(record);
+        if (state.requests.length > 200) state.requests.shift();
+        if (record.flag) state.byFlag[record.flag] = record;
+        return originalPageRequest.call(this, option, flag, bool);
+      };
+      wrappedPageRequest.__xwsDiagWrapped = true;
+      window.xwsPageRequest = wrappedPageRequest;
+    }
+    const proto = XMLHttpRequest.prototype;
+    const originalOpen = proto.open;
+    const originalSend = proto.send;
+    proto.open = function(method, url, ...rest) {
+      this.__xwsDiagMeta = { method, url };
+      return originalOpen.call(this, method, url, ...rest);
+    };
+    proto.send = function(...args) {
+      const meta = this.__xwsDiagMeta || { method: "GET", url: "[unknown]" };
+      const record = { method: String(meta.method || "GET"), url: String(meta.url || "[unknown]"), status: null, pending: true, startedAt: performance.now() };
+      state.requests.push(record);
+      if (state.requests.length > 200) state.requests.shift();
+      const finish = (error = "") => {
+        if (!record.pending) return;
+        record.pending = false;
+        record.status = Number.isFinite(this.status) ? this.status : null;
+        record.elapsedMs = Math.round(performance.now() - record.startedAt);
+        if (error) record.error = String(error).slice(0, 300);
+      };
+      this.addEventListener("load", () => finish(), { once: true });
+      this.addEventListener("error", () => finish("XHR_ERROR"), { once: true });
+      this.addEventListener("timeout", () => finish("XHR_TIMEOUT"), { once: true });
+      this.addEventListener("abort", () => finish("XHR_ABORT"), { once: true });
+      return originalSend.apply(this, args);
+    };
+    window.addEventListener("message", (event) => {
+      const type = event?.data?.type;
+      if (typeof type !== "string" || !/_FINISH$/u.test(type)) return;
+      const result = event.data.result;
+      const error = result && typeof result === "object" ? result.error : "";
+      const summary = resultSummary(result);
+      const flag = type.replace(/_FINISH$/u, '');
+      const request = state.byFlag[flag];
+      if (request) {
+        request.pending = false;
+        request.status = Number.isFinite(result?.retCode) ? Number(result.retCode) : 200;
+        request.elapsedMs = Math.round(performance.now() - request.startedAt);
+        Object.assign(request, summary);
+        if (error) request.error = String(error).slice(0, 300);
+      }
+      state.messages.push({ type, ...summary, ...(error ? { error: String(error).slice(0, 300) } : {}) });
+      if (state.messages.length > 200) state.messages.shift();
+    });
+    window.__xwsCollectionDiag = {
+      installed: true,
+      snapshot: () => ({
+        capturedAt: new Date().toISOString(),
+        visibility: document.visibilityState,
+        readyState: document.readyState,
+        requests: state.requests,
+        messages: state.messages,
+      }),
+    };
+    return { ok: true, reused: false };
+  })()`);
+  if (!installed?.ok) {
+    log("DIAGNOSTICS_UNAVAILABLE", { reason: "page did not return an install acknowledgement" });
+    return;
+  }
+  log("DIAGNOSTICS_INSTALLED", { reused: Boolean(installed.reused) });
+}
+
 async function readCollectionSnapshot(proxy, keyword, runMarker) {
   const target = await discoverSearch(proxy, keyword, runMarker);
   const state = await evaluate(proxy, target.targetId, `(() => {
@@ -597,38 +824,75 @@ async function readCollectionSnapshot(proxy, keyword, runMarker) {
     const wrappers = [...document.querySelectorAll('.el-dialog__wrapper')].filter(visible);
     const result = wrappers.find((element) => (element.innerText || '').includes('商品数量'));
     const text = result?.innerText || wrappers.map((element) => element.innerText || '').join('\\n');
-    return { text: text.slice(0, 6000), title: document.title };
+    const diagnostics = window.__xwsCollectionDiag?.snapshot?.() || {
+      capturedAt: new Date().toISOString(),
+      visibility: document.visibilityState,
+      readyState: document.readyState,
+      requests: [],
+      messages: [],
+    };
+    return { text: text.slice(0, 6000), title: document.title, diagnostics };
   })()`);
-  return { ...state, targetId: target.targetId };
+  return { ...state, diagnostics: normalizeDiagnosticSnapshot(state.diagnostics), targetId: target.targetId };
 }
 
 async function monitorCollection(proxy, options, runMarker, runDir, log) {
-  const deadline = Date.now() + collectionDeadlineMs({
-    pageCount: options.pages.end - options.pages.start + 1,
-    frequencyMaxSeconds: options.frequency.max,
-  });
   let lastSignature = "";
+  let lastDiagnosticSignature = "";
   let lastProgressAt = Date.now();
-  while (Date.now() < deadline) {
+  while (true) {
     const snapshot = await readCollectionSnapshot(proxy, options.keyword, runMarker);
     const status = classifyCollection(snapshot);
     ensureNoRisk(snapshot.text, "Xiaowangshen collection");
     const progress = parseProgressText(snapshot.text);
+    const diagnostics = normalizeDiagnosticSnapshot(snapshot.diagnostics);
+    const diagnosticKind = classifyDiagnosticState(diagnostics);
+    if (diagnosticKind === "BACKGROUND_TAB") {
+      try {
+        await request(proxy, `/bringToFront?target=${encodeURIComponent(snapshot.targetId)}`);
+        log("FOREGROUND_RECOVERY", { target: snapshot.targetId });
+      } catch {
+        // Shared proxies without the optional foreground hook remain readable.
+      }
+    }
     const signature = `${progress.completedEnd}:${progress.rowCount}:${progress.complete}`;
+    const diagnosticSignature = `${diagnosticKind}:${diagnostics.visibility}:${diagnostics.requests.length}:${diagnostics.requests.at(-1)?.status ?? ""}:${diagnostics.messages.length}`;
     if (signature !== lastSignature) {
       lastSignature = signature;
       lastProgressAt = Date.now();
       log("PROGRESS", { status, completedPage: progress.completedEnd, requestedPage: progress.requestedEnd, rows: progress.rowCount });
     }
-    if (status === "COMPLETE") return { progress, snapshot };
+    if (diagnosticSignature !== lastDiagnosticSignature) {
+      lastDiagnosticSignature = diagnosticSignature;
+      log("DIAGNOSTIC", {
+        kind: diagnosticKind,
+        visibility: diagnostics.visibility,
+        requestCount: diagnostics.requests.length,
+        lastRequest: diagnostics.requests.at(-1) || null,
+        messageCount: diagnostics.messages.length,
+        lastMessage: diagnostics.messages.at(-1) || null,
+      });
+    }
+    if (status === "COMPLETE") return { progress, snapshot, diagnostics, diagnosticKind };
     if (Date.now() - lastProgressAt >= options.stallMs) {
       const shot = path.join(runDir, "stall.png");
+      const diagnosticPath = path.join(runDir, "diagnostics.json");
       await screenshot(proxy, snapshot.targetId, shot).catch(() => {});
-      throw stalled("Xiaowangshen made no page progress before the stall threshold", { progress, screenshot: shot });
+      await writeFile(diagnosticPath, JSON.stringify({
+        capturedAt: new Date().toISOString(),
+        diagnosticKind,
+        progress,
+        diagnostics,
+      }, ensureJsonReplacer, 2), "utf8");
+      throw stalled("Xiaowangshen made no page progress before the stall threshold", {
+        progress,
+        diagnosticKind,
+        screenshot: shot,
+        diagnostics: diagnosticPath,
+      });
     }
     await sleep(options.pollMs);
   }
-  throw stalled("Xiaowangshen exceeded the bounded collection deadline");
 }
 
 async function listFiles(directory) {
@@ -745,7 +1009,21 @@ function runPythonValidation(options, csv, xlsx, requireImages) {
   return parsed;
 }
 
-async function run(options) {
+async function exportArtifacts(proxy, options, runMarker, outputDir, log, progress = null) {
+  const files = {};
+  if (options.exportModes.includes("csv")) files.csv = await exportCsv(proxy, options, runMarker, outputDir, log);
+  if (options.exportModes.includes("xlsx-images")) files.xlsx = await exportXlsx(proxy, options, runMarker, outputDir, true, log);
+  else if (options.exportModes.includes("xlsx")) files.xlsx = await exportXlsx(proxy, options, runMarker, outputDir, false, log);
+  const validation = runPythonValidation(options, files.csv, files.xlsx, options.exportModes.includes("xlsx-images"));
+  if (progress && validation.validation.rows !== progress.rowCount) {
+    throw new Error(`export row count ${validation.validation.rows} does not match live row count ${progress.rowCount}`);
+  }
+  const warnings = [];
+  if (files.xlsx?.name.includes("价格从高到低") && options.sort === "sales") warnings.push("plugin filename says price-high while live sort is sales");
+  return { files, validation, warnings };
+}
+
+async function runUnlocked(options) {
   const outputDir = path.resolve(options.outputDir || DEFAULT_OUTPUT_DIR);
   const runId = `${new Date().toISOString().replace(/[-:.TZ]/gu, "").slice(0, 14)}-${options.keyword.replace(/[^\w\u4e00-\u9fff]+/gu, "-")}`;
   const runtimeRoot = process.env.XWS_RUNTIME_DIR || path.join(PROJECT_ROOT, "runtime", "xws-runs");
@@ -782,8 +1060,42 @@ async function run(options) {
     return true;
   })()`);
   if (!marked) throw new Error("Xiaowangshen start button is missing after configuration");
+  await installCollectionDiagnostics(options.proxy, options.keyword, runId, log);
   await startAnalysis(options.proxy, options.keyword, runId, log);
-  const completed = await monitorCollection(options.proxy, options, runId, runDir, log);
+  let completed;
+  try {
+    completed = await monitorCollection(options.proxy, options, runId, runDir, log);
+  } catch (error) {
+    if (error.code === "STALLED" && options.exportPartialOnStall) {
+      try {
+        const partial = await exportArtifacts(options.proxy, options, runId, outputDir, log, error.details?.progress || null);
+        const partialManifest = {
+          status: "STALLED",
+          partial: true,
+          runId,
+          options,
+          progress: error.details?.progress || {},
+          diagnosticKind: error.details?.diagnosticKind || "UNKNOWN",
+          stallEvidence: {
+            screenshot: error.details?.screenshot || "",
+            diagnostics: error.details?.diagnostics || "",
+          },
+          artifacts: partial.files,
+          validation: partial.validation,
+          warnings: partial.warnings,
+          runDir,
+        };
+        const manifestPath = path.join(runDir, "manifest.json");
+        await writeFile(manifestPath, JSON.stringify(partialManifest, ensureJsonReplacer, 2), "utf8");
+        await log("PARTIAL_EXPORTED", { rows: partial.validation.validation.rows, runDir, manifest: manifestPath });
+        error.details = { ...error.details, partialManifest: manifestPath, artifacts: partial.files, validation: partial.validation };
+      } catch (partialError) {
+        await log("PARTIAL_EXPORT_FAILED", { error: partialError.message, runDir });
+        error.details = { ...error.details, partialExportError: partialError.message };
+      }
+    }
+    throw error;
+  }
   if (completed.progress.keyword && completed.progress.keyword !== options.keyword) {
     throw new Error(`live result keyword mismatch: expected ${options.keyword}, got ${completed.progress.keyword}`);
   }
@@ -793,21 +1105,16 @@ async function run(options) {
   if (completed.progress.requestedStart !== options.pages.start || completed.progress.requestedEnd !== options.pages.end) {
     throw new Error("live result page range does not match the requested range");
   }
-  const files = {};
-  if (options.exportModes.includes("csv")) files.csv = await exportCsv(options.proxy, options, runId, outputDir, log);
-  if (options.exportModes.includes("xlsx-images")) files.xlsx = await exportXlsx(options.proxy, options, runId, outputDir, true, log);
-  else if (options.exportModes.includes("xlsx")) files.xlsx = await exportXlsx(options.proxy, options, runId, outputDir, false, log);
-  const validation = runPythonValidation(options, files.csv, files.xlsx, options.exportModes.includes("xlsx-images"));
-  if (validation.validation.rows !== completed.progress.rowCount) {
-    throw new Error(`export row count ${validation.validation.rows} does not match live row count ${completed.progress.rowCount}`);
-  }
-  const warnings = [];
+  const exported = await exportArtifacts(options.proxy, options, runId, outputDir, log, completed.progress);
+  const { files, validation, warnings } = exported;
   if (files.xlsx?.name.includes("价格从高到低") && options.sort === "sales") warnings.push("plugin filename says price-high while live sort is sales");
   const manifest = {
     status: "DONE",
     runId,
     options,
     progress: completed.progress,
+    diagnostics: completed.diagnostics,
+    diagnosticKind: completed.diagnosticKind,
     artifacts: files,
     validation,
     warnings,
@@ -816,6 +1123,30 @@ async function run(options) {
   await writeFile(path.join(runDir, "manifest.json"), JSON.stringify(manifest, ensureJsonReplacer, 2), "utf8");
   await log("DONE", { rows: completed.progress.rowCount, runDir, warnings });
   return manifest;
+}
+
+async function run(options) {
+  const runtimeRoot = process.env.XWS_RUNTIME_DIR || path.join(PROJECT_ROOT, "runtime", "xws-runs");
+  await mkdir(runtimeRoot, { recursive: true });
+  const lockPath = path.join(runtimeRoot, ".market-analysis.lock");
+  let lockHandle;
+  try {
+    lockHandle = await open(lockPath, "wx");
+    await lockHandle.writeFile(JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }), "utf8");
+  } catch (error) {
+    if (error?.code === "EEXIST") {
+      const busy = new Error("another Xiaowangshen market-analysis run is already active");
+      busy.code = "BUSY";
+      throw busy;
+    }
+    throw error;
+  }
+  try {
+    return await runUnlocked(options);
+  } finally {
+    try { await lockHandle.close(); } catch {}
+    try { await unlink(lockPath); } catch {}
+  }
 }
 
 function ensureJsonReplacer(_key, value) {

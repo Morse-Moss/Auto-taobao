@@ -1,11 +1,35 @@
 ---
 name: xws-export-market-analysis
 description: Run Xiaowangshen (小旺神) Taobao market-analysis competitor exports from the logged-in Taobao home page, configure search/channel/sort/page/price/frequency settings, monitor slow collection with bounded progress checks, and validate the resulting CSV/XLSX files. Use for requests to collect competitor product data, price/sales/ranking tables, or repeat the Xiaowangshen export workflow. Do not use this skill to modify Feishu bases; hand a validated artifact to xws-to-feishu-base instead.
+metadata:
+  version: "2.0.0"
 ---
 
 # 小旺神市场分析导出
 
+Version: `2.0.0`
+
 Use the bundled runner to start at Taobao home, search the requested keyword, open Xiaowangshen market analysis, configure the requested contract, wait for the plugin's own collection to finish, export files, and validate them. Keep the browser session and the shared Proxy under the user's control.
+
+## Data Fidelity and Batch Identity
+
+- Treat the plugin's displayed and exported values as source data. Preserve `月收货人数` or `付款人数` exactly, including uniform values such as `1`, `0`, `-`, and `100+`. Never infer, smooth, reject, or replace a value because it looks unusual; plausibility observations are report-only and never justify a local rewrite.
+- Structural validation is still mandatory: row count, contiguous ranks, unique product links, field order, CSV/XLSX equality, and image integrity when images are requested. A business-looking anomaly must not be converted into a validation failure.
+- A clean latest full-range run starts from a new adaptive checkpoint and requests `1-END`. Do not seed that run with historical or legacy segmented records. If a stalled run resumes from `completedEnd + 1`, preserve every part's source timestamp and label a merge that combines different collection times as `mixed_snapshot`; it must not be presented as a same-time snapshot.
+- The live result dialog and the downloaded CSV are the authority for rows and fields. Filenames may be stale or misleading; retain the filename warning and do not change the data to match it.
+
+## Image and Export Boundaries
+
+- CSV is the canonical row/field artifact. XLSX with images is a media variant and must be checked separately.
+- If Xiaowangshen itself omits one or more embedded images, preserve the original download and report the missing product links. Do not synthesize images, visit product detail pages to repair a market-analysis export, or claim that the image-complete XLSX contract passed.
+- A partial-media XLSX does not invalidate the CSV collection, but it is not eligible for an image-required Feishu import until the image contract is satisfied.
+
+## Observed Runtime Rules
+
+- `开始分析` may need one bounded retry when the result dialog does not open; after the visible result dialog appears, continue with the same run rather than launching a duplicate collection.
+- A diagnostic request with HTTP `200` or a successful `*_FINISH` message is a completed request signal. `NO_REQUEST_SIGNAL` is reserved for a snapshot with no completed or pending request evidence; page progress and the stall threshold remain the completion authority.
+- Export downloads can be slow. Keep one supervised process and wait for a new, stable file; do not create parallel export clicks or retry storms.
+- Login, CAPTCHA/slider, security, quota, or account-risk controls remain hard stops. Do not use detail-page browsing as a workaround for a missing image or field.
 
 ## Required Skills and Dependencies
 
@@ -51,6 +75,38 @@ node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\export
 py -3 "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\validate-output.py" --self-test
 ```
 
+For a full 1-40 collection, use the adaptive runner. It starts one `1-40` task, records each verified progress
+boundary, and when the plugin stalls it automatically starts only the remaining tail (`33-40`, then `36-40`,
+for example). It has no fixed total runtime limit: `--stall-seconds` is only the continuous no-progress threshold.
+Every stalled run must first produce a validated partial CSV; otherwise the cursor does not advance. Completed
+parts are merged by product link and re-ranked before a final CSV/XLSX is published.
+
+```powershell
+node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\run-adaptive-export.mjs" `
+  --keyword "浴缸" --pages 1-40 --frequency 30-45 --stall-seconds 300 `
+  --channel all --sort sales --price 0-unlimited --export csv,xlsx-images `
+  --checkpoint "D:\Retire\sycm-automation\runtime\xws-bathtub-adaptive-checkpoint.json" `
+  --output-dir "C:\Users\Administrator\Downloads" --allow-trial
+```
+
+Re-running the same adaptive command reads the checkpoint and starts from its verified `completedEnd + 1`.
+It never treats a no-progress stall, login wall, CAPTCHA, or security prompt as permission to skip pages.
+
+The older segmented runner remains available for compatibility with historical checkpoints. It writes one
+checkpoint JSON and keeps completed segment artifacts, but it is not the default strategy for new full-range runs.
+
+```powershell
+node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\run-segmented-export.mjs" `
+  --keyword "浴缸" --pages 1-40 --segment-size 8 --frequency 30-45 `
+  --channel all --sort sales --price 0-unlimited --export csv,xlsx-images `
+  --checkpoint "D:\Retire\sycm-automation\runtime\xws-bathtub-checkpoint.json" `
+  --output-dir "C:\Users\Administrator\Downloads" --allow-trial
+```
+
+The segmented runner records `RUNNING`, `DONE`, `STALLED`, `HUMAN_REQUIRED`, or `FAILED` per page segment.
+When a segment stops, resolve the recorded issue and run the same command again to continue from that segment.
+It does not bypass login, CAPTCHA, slider, or security controls.
+
 ## Workflow Contract
 
 Follow this order; the runner owns the polling loop so the model does not wait page by page:
@@ -75,7 +131,10 @@ The event log (`events.jsonl`) and manifest use these states/events:
 
 Risk markers transition to `HUMAN_REQUIRED`. A collection with no changed completed-page, row-count, or completion signature for the stall threshold transitions to `STALLED` and records a best-effort screenshot. Both are terminal for that run; do not silently retry.
 
-Defaults are an 8-second progress poll, a 120-second no-progress threshold, and a bounded deadline of `pages * (max_frequency + 15 seconds) + 500 seconds`. Use `--poll-seconds` or `--stall-seconds` only when the task requires it; the parser enforces minimums. A slow Xiaowangshen response is expected and is supervised by one process, not by repeated browser clicks.
+Defaults for a single run are an 8-second progress poll and a 120-second continuous no-progress threshold. The
+adaptive runner uses a conservative 300-second stall threshold and deliberately has no overall wall-clock cutoff.
+A slow Xiaowangshen response is supervised by one process, not by repeated browser clicks. Its checkpoint stores
+the requested range, each attempted tail, verified page progress, diagnostics, and validated partial artifacts.
 
 ## Output Contract
 
@@ -97,7 +156,7 @@ The runner writes a per-run `runtime/xws-runs/<run-id>/events.jsonl` and `manife
 ## Failure Handling and Handoff
 
 - `HUMAN_REQUIRED`: stop browser actions and name the page/control the user must resolve. Resume only after the user confirms it is cleared.
-- `STALLED`: preserve the run directory and screenshot, report the last observed page/row count, and inspect the plugin manually before deciding whether to start a new run.
+- `STALLED`: preserve the run directory, screenshot, diagnostics, and validated partial artifact. The adaptive runner resumes from the next verified page; if no validated partial CSV exists, it stops without advancing the cursor.
 - Missing target, toolbar, dialog, export button, or download: fail the run with its evidence; rediscover once at the next explicitly bounded step, never indefinitely.
 - Validation failure: do not pass the file to Feishu. Keep the artifacts for diagnosis and report the first failing contract.
 

@@ -24,7 +24,7 @@ test('analysis table keeps both keyword columns and puts collection date last', 
     '排名', '搜索词', '搜索人气', '点击率', '支付转化率',
     '关键词编号', '一级类目', '主关键词', '原始关键词',
     '标准归并词', '关键词分类', '细分标签', '用户意图', '分析状态',
-    '来源渠道', '搜索热度', '内容热度（后续）', '交易热度',
+    '来源渠道', '搜索热度', '内容热度', '交易热度',
     '是否重点词', '优先级', '对应产品方向', '采集日期',
   ]);
 });
@@ -54,13 +54,17 @@ test('keyword library uses a six-digit permanent auto-number field', () => {
 test('heat classifiers follow the approved operations thresholds', () => {
   assert.equal(classifySearchHeat('15万 ~ 30万'), '高');
   assert.equal(classifySearchHeat('5000 ~ 1万'), '高');
-  assert.equal(classifySearchHeat('2500 ~ 5000'), '中');
-  assert.equal(classifySearchHeat('1200 ~ 2500'), '低');
+  assert.equal(classifySearchHeat('2500 ~ 5000'), '高');
+  assert.equal(classifySearchHeat('1200 ~ 2500'), '高');
+  assert.equal(classifySearchHeat('600 ~ 1200'), '中');
+  assert.equal(classifySearchHeat('300 ~ 600'), '低');
+  assert.equal(classifySearchHeat('0 ~ 20'), '低');
   assert.equal(classifyTradeHeat('-'), '无数据');
   assert.equal(classifyTradeHeat('0% ~ 1%'), '低');
   assert.equal(classifyTradeHeat('1% ~ 2.5%'), '中');
   assert.equal(classifyTradeHeat('2.5% ~ 5%'), '中');
   assert.equal(classifyTradeHeat('5% ~ 7.5%'), '高');
+  assert.equal(classifyTradeHeat('40% ~ 45%'), '高');
 });
 
 test('formula contract has six active fields and trade heat ignores click rate', () => {
@@ -77,6 +81,9 @@ test('formula contract has six active fields and trade heat ignores click rate',
     '一级类目', '主关键词', '原始关键词', '来源渠道', '搜索热度', '交易热度',
   ]);
   assert.match(formulas.原始关键词, /fldSearch/);
+  assert.match(formulas.搜索热度, /fldPopularity\]="1200 ~ 2500"[\s\S]*,"高"/u);
+  assert.match(formulas.搜索热度, /fldPopularity\]="600 ~ 1200"[\s\S]*,"中"/u);
+  assert.match(formulas.搜索热度, /fldPopularity\]="300 ~ 600"[\s\S]*,"低"/u);
   assert.doesNotMatch(formulas.交易热度, /fldClick/);
   assert.match(formulas.交易热度, /fldTrade/);
 });

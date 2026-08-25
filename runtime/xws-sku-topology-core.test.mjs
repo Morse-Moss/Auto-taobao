@@ -215,3 +215,36 @@ test('accepts a current price object when a page SKU has no subPrice field', () 
 
   assert.deepEqual(topology.validCombinations, [{ skuId: 'sku-price-object', propertyValueIndexes: [0, 0] }]);
 });
+
+test('supports plain specification values when the page exposes no stable separator', () => {
+  const payload = [
+    '1.2m',
+    '1.3m',
+    '白色【双人】套装',
+    '白色【双人】裸缸',
+  ].join('\n');
+  const page = {
+    properties: [
+      { propertyIndex: 0, propertyNameSha256: sha256('尺寸'), values: [0, 1].map((lineIndex, valueIndex) => ({
+        valueIndex, nameSha256: sha256(payload.split('\n')[lineIndex]), empty: false,
+      })) },
+      { propertyIndex: 1, propertyNameSha256: sha256('规格'), values: [2, 3].map((lineIndex, valueIndex) => ({
+        valueIndex, nameSha256: sha256(payload.split('\n')[lineIndex]), empty: false,
+      })) },
+    ],
+    skuEntries: [
+      { skuId: 'sku-plain-01', propertyValueIndexes: [0, 0], hasSubPrice: true },
+      { skuId: 'sku-plain-02', propertyValueIndexes: [1, 1], hasSubPrice: true },
+    ],
+  };
+
+  const topology = buildXwsSkuTopology(payload, page);
+
+  assert.equal(topology.specificationSeparator, '');
+  assert.equal(topology.specificationSegmentCount, 1);
+  assert.deepEqual(topology.specificationSegmentCounts, [1]);
+  assert.deepEqual(topology.validCombinations, [
+    { skuId: 'sku-plain-01', propertyValueIndexes: [0, 0] },
+    { skuId: 'sku-plain-02', propertyValueIndexes: [1, 1] },
+  ]);
+});

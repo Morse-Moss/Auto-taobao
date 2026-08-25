@@ -3,6 +3,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { parseOptions } from "../scripts/flow.mjs";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const cli = path.join(root, "scripts", "export-market-analysis.mjs");
@@ -41,4 +42,9 @@ test("CLI rejects invalid frequency ranges before browser access", () => {
   ], { encoding: "utf8" });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /frequency range/u);
+});
+
+test("CLI accepts a conservative frequency above one minute", () => {
+  const options = parseOptions(["--keyword", "浴缸", "--frequency", "90-120"]);
+  assert.deepEqual(options.frequency, { min: 90, max: 120 });
 });

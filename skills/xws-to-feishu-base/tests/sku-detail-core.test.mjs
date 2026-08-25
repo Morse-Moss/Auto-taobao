@@ -61,6 +61,9 @@ test('SKU space rule uses explicit normalized dimensions and sends all ambiguous
     assert.equal(result.status, '需人工核验', skuSize);
   }
   assert.equal(classify('', '1.2米').applicableSpace, '小户型');
+  const thicknessInSpec = classify('1.6m', 'pmma（25mm厚）亚光白+有溢水+下水器+排水软管');
+  assert.equal(thicknessInSpec.applicableSpace, '常规卫生间');
+  assert.equal(thicknessInSpec.status, '已判定');
   assert.doesNotMatch(JSON.stringify(classify('1.9m')), /大户型/u);
 });
 

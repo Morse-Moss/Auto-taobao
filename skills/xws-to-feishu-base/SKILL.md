@@ -99,7 +99,7 @@ node "D:\Retire\sycm-automation\skills\xws-to-feishu-base\scripts\import-competi
   --xlsx "C:\path\to\xiaowangshen.xlsx" `
   --base-url "https://tenant.feishu.cn/base/APP_TOKEN?table=TABLE_ID" `
   --work-dir "D:\Retire\sycm-automation\runtime\competitor-v2-dry-run" `
-  --expected-rows 1333 `
+  --expected-rows ACTUAL_SOURCE_ROW_COUNT `
   --search-keyword "浴缸"
 ```
 
@@ -111,7 +111,7 @@ node "D:\Retire\sycm-automation\skills\xws-to-feishu-base\scripts\import-competi
   --base-url "https://tenant.feishu.cn/base/APP_TOKEN?table=TABLE_ID" `
   --env-file "C:\path\to\.env.local" `
   --work-dir "D:\Retire\sycm-automation\runtime\competitor-v2-live" `
-  --expected-rows 1333 `
+  --expected-rows ACTUAL_SOURCE_ROW_COUNT `
   --search-keyword "浴缸" `
   --apply `
   --confirm-app-token "APP_TOKEN"
@@ -123,17 +123,18 @@ The verified 2026-08-18 run imported 1,333 rows and 1,333 attachments into an au
 
 Use `migrate-competitor-v2-analysis.mjs` only for an explicitly authorized existing `竞品主表` that already contains the V2 fields. It converts the two analysis gates (`是否有效竞品`, `排除原因`) and seven deterministic outputs (`月收货人数计算值`, `计算口径`, `月收货金额`, `客单价带分类`, `竞品分类`, `待补数据项`, `数据状态`) to live Feishu formulas, adds only approved options when the live field is actually multi-select, and verifies every affected field after read-back. Validity uses explicit title evidence; category placement is preserved but not used because accessories can share the bathtub category path. Downstream formulas reuse the raw-title gate rather than depending on another formula field. Formula writes happen first and must settle in Feishu before any record write is planned. The only permitted record write is a batch update containing the seven AI fields, populated exclusively with blank-value sentinels derived from the settled Feishu `是否有效竞品` result: valid rows use `无注明`, while `否`/`待确认` rows use `不适用`; existing non-empty AI values are preserved. Formula fields, source fields, and other record fields are blocked by the mutation guard. The script never clicks or runs Feishu AI and reports `aiRunTriggered=false`.
 
-Run dry-run first, then apply with both exact target confirmations:
+Run dry-run first, then apply with both exact target confirmations. `--expected-rows` must be the current
+validated XLSX row count for this run; it has no historical default:
 
 ```powershell
 node "D:\Retire\sycm-automation\skills\xws-to-feishu-base\scripts\migrate-competitor-v2-analysis.mjs" `
   --base-url "https://tenant.feishu.cn/base/APP_TOKEN?table=TABLE_ID" `
-  --expected-rows 1333
+  --expected-rows ACTUAL_CURRENT_TABLE_ROW_COUNT
 
 node "D:\Retire\sycm-automation\skills\xws-to-feishu-base\scripts\migrate-competitor-v2-analysis.mjs" `
   --base-url "https://tenant.feishu.cn/base/APP_TOKEN?table=TABLE_ID" `
   --env-file "C:\path\to\.env.local" `
-  --expected-rows 1333 `
+  --expected-rows ACTUAL_CURRENT_TABLE_ROW_COUNT `
   --apply `
   --confirm-app-token "APP_TOKEN" `
   --confirm-table-id "TABLE_ID"

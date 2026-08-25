@@ -1,4 +1,4 @@
 interface:
   display_name: "SYCM Search Rank Export"
-  short_description: "Export and verify SYCM search ranking data"
-  default_prompt: "Use $sycm-export-search-rank to export the current SYCM search ranking into verified CSV and XLSX files."
+  short_description: "Export verified 7-day SYCM search rankings"
+  default_prompt: "Use $sycm-export-search-rank to export the current seven-day SYCM search ranking into verified CSV and XLSX files."

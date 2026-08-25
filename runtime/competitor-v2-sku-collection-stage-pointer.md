@@ -1,11 +1,11 @@
 # Competitor V2 SKU Collection
 
 ```yaml
-stage: EXECUTE
-outcome: The authorized third SKU batch was created once and fully verified; the workflow is ready to select the next live A/B competitor.
+stage: CLOSE
+outcome: The 2026-08-25 SKU collection batches were written and verified, then preserved in SKU周_2026-08-23_2026-08-29.
 controls:
   execution: STAGED
-  risk: STANDARD
+  risk: CRITICAL
   delivery: LOCAL
 scope:
   owned:
@@ -67,12 +67,13 @@ review:
   knowledge_impact:
   - Completed: v1.2.0 captures the repeatable guarded contract, atomic clipboard step, batch index, and retry/recovery evidence split.
   - Completed: v1.3.0 adds Edge-profile persistence boundaries, read-only auth preflight, capture gating, and structured operator alert output.
+  - Completed: v1.8.0 records fresh product identity gating, explicit SKU尺寸 precedence over specification thickness, and same-week snapshot comparison normalization.
 non_goals:
   - Bulk collection, product-link discovery by title inference, and any main-table AI-field change.
 ```
 
-Current stage: CLOSE - APPLIED_AND_VERIFIED. Ten eligible A/B competitors are complete. The latest three batches created 108, 48, and 48 SKU rows for sources `recvsD4nahz8LT`, `recvsD4wKXbExT`, and `recvsD4wKX3typ`.
+Current stage: WEEKLY-MODEL - COMPLETE_FOR_2026-08-23_2026-08-29. Competitor weekly snapshot was repaired from the complete 1461-row source, master index was upserted to 2004 products, stable text links were written, and obsolete per-week bidirectional relation fields were removed.
 
-Last completed verified step: the latest three guarded applies created and API-confirmed 204 records, increasing SKU rows from 240 to 444. Fresh read-back verified all 204 unique keys, `所属竞品` relations, and space decisions. Final queue read reports `eligible=10`, `alreadyCollected=10`, `pending=0`, and `unsupportedLink=0`.
+Last completed verified step: `竞品周_2026-08-23_2026-08-29` has 1461 contiguous unique ranks and 1461 real image attachments; `竞品主表` has 2004 rows and all 1461 weekly products have `主表记录ID`; `SKU周_2026-08-23_2026-08-29` has 734 rows, 684 current-week competitor links, and 50 explicit historical-not-in-current-week statuses. Focused SKU tests (60) and XWS/Feishu tests (72) passed.
 
-Next exact action: no SKU collection queue remains. Preserve the independent batch evidence and use Skill v1.6.0 for the next explicitly authorized A/B refresh or newly added competitor.
+Next exact action: start the next weekly collection by selecting the newest valid A/B queue and creating a new per-product evidence directory; do not reuse these payloads or assume the 2026-08-23 period for a future week.

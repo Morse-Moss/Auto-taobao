@@ -6,6 +6,7 @@ import {
   assertAuthorizedMutation,
   buildDecisionPlan,
 } from './keyword-decision-engine.mjs';
+import { retiredKeywordDecisionWriter } from './retired-keyword-decision-writer.mjs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 const APP_TOKEN = 'N21Abkg0HakO6AsbCaDckvcwnVd';
@@ -185,6 +186,7 @@ function verifyCurrentShape(fields, records) {
 }
 
 async function main() {
+  retiredKeywordDecisionWriter();
   const apply = process.argv.includes('--apply');
   const confirmation = process.argv.find((arg) => arg.startsWith('--confirm-table='))?.split('=', 2)[1];
   if (apply && confirmation !== CURRENT_TABLE_ID) {

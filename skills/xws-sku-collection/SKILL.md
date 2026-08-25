@@ -2,12 +2,12 @@
 name: xws-sku-collection
 description: "Collect sellable SKUs for A/B competitors from real Taobao product pages through Xiaowangshen, build a deterministic dry-run, and write only explicitly authorized batches to Feishu with read-back verification."
 metadata:
-  version: "1.6.0"
+version: "1.9.0"
 ---
 
 # 小旺神 SKU 采集入库
 
-Version: `1.6.0`
+Version: `1.8.0`
 
 Use this skill when the user asks to collect SKU information for A/B competitors classified in a Feishu
 `竞品主表`, using the visible SKU copy control on the real Taobao product page, and then write the result to the
@@ -23,8 +23,53 @@ set of specification options, so an internal `+` in a value remains part of the 
 counts, and combinations without price evidence remain blocked. Product URLs may be `item.taobao.com` or
 `detail.tmall.com`; preflight and topology must use the live URL actually opened in Edge.
 
-This skill owns the SKU collection boundary only. The existing `xws-to-feishu-base` skill owns XLSX competitor
-imports and V2 table/schema creation; do not combine those workflows in one run.
+Version `1.7.1` records the login-boundary fix: the toolbar's normal personal-center `请登录` entry is not a
+login wall. Preflight only treats a visible login dialog, CAPTCHA/security control, or explicit Xiaowangshen
+login/verification text as an auth blocker. A visible SKU control plus a successful clipboard read is sufficient
+when the page has no separate success toast. Never ask the operator to log in solely because `#xws-detail-tool`
+contains static `请登录` text.
+
+Version `1.8.0` records two deterministic recovery rules from the 2026-08-25 batches:
+
+- After navigating to a new product, require a fresh product-ID/page-URL match before reading the clipboard. A
+  reused page can show a successful copy message while leaving the previous product's payload in the clipboard;
+  the payload hash and capture receipt must be rejected when the page identity is not fresh.
+- For space classification, an explicit `SKU尺寸` is the only dimension source. Do not mix measurements found in
+  `SKU规格` (for example, `18mm`/`25mm` thickness) into the space decision. Use specification dimensions only as
+  a deterministic fallback when `SKU尺寸` is absent; ambiguous ranges remain `需人工核验`.
+
+This skill owns the SKU collection boundary and weekly snapshot handoff. The existing `xws-to-feishu-base` skill
+owns XLSX competitor imports and V2 table/schema creation; do not combine those workflows in one run.
+
+Version `1.9.0` records the weekly storage correction completed on 2026-08-25:
+
+- `竞品周_YYYY-MM-DD_YYYY-MM-DD` is repaired from the complete source export before any main-table sync. The
+  source rank is authoritative and must remain contiguous/unique; do not copy rank values from a partial history
+  table. Preserve source images as real Feishu attachments, using embedded workbook images first and the same-row
+  source image URL only as an attachment-upload fallback.
+- The current `竞品主表` is a master index, not a weekly snapshot. Upsert the current weekly product set into it,
+  preserve existing AI/manual values, retain products absent from the current week, and mark them as not present
+  instead of deleting them. A stable text `商品ID` is required in both the master and weekly competitor table.
+- Weekly SKU selection uses the current weekly Feishu formula result (`是否有效竞品=是` and `竞品分类` A/B),
+  while a repeated week is idempotent by `SKU周期唯一键`. A later week re-collects the same product because SKU
+  options may change; it never overwrites a prior weekly snapshot.
+- Do not create a new bidirectional relation field for each weekly table. Keep only the stable current relations
+  `竞品主表.SKU采集明细` and `SKU明细.所属竞品`; weekly tables use text `主表记录ID`, `竞品周记录ID`,
+  `商品周期唯一键`, and `SKU周期唯一键`. If an old SKU weekly row belongs to a product absent from the current
+  competitor weekly table, set `竞品周关联状态=历史商品，本周竞品周未出现` instead of leaving the relation silently blank.
+- Feishu Open API is the write path for records, attachments, fields, formulas, and read-back verification. DOM is
+  reserved for browser-only collection/configuration surfaces. A Feishu bot webhook is notification-only and must
+  not replace the Bitable Open API.
+
+Weekly storage uses explicit per-week tables: `SKU明细` (`tblddWTrPeB4TKmR`) is the current working table keyed
+by `SKU唯一键`, while each collection creates `SKU周_YYYY-MM-DD_YYYY-MM-DD` and preserves that week's snapshot.
+Competitor imports use the matching `竞品周_YYYY-MM-DD_YYYY-MM-DD` table. Same-week reruns must target the same
+named table and deduplicate by the business key; a new week must create new tables. Run
+`runtime/create-weekly-history-tables.mjs` before a new weekly import. Never invent dates for older rows.
+
+Latest-week source rule: select competitors from the newest valid `竞品周_YYYY-MM-DD_YYYY-MM-DD` table, then
+resolve each product to a stable `竞品主表` record before creating current SKU rows. If no main record exists,
+stop before writing; do not create an unlinked SKU row and do not silently point a SKU at a weekly row.
 
 ## Required Access
 

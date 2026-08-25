@@ -39,7 +39,7 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
     const body = await new Promise((resolve) => {
       let text = "";
       request.on("data", (chunk) => { text += chunk; });
-      request.on("end", () => resolve(text));
+    request.on("end", () => resolve(text));
     });
     const send = (value) => {
       response.setHeader("content-type", "application/json");
@@ -119,11 +119,11 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
     }
     if (url.pathname === "/eval") {
       const target = url.searchParams.get("target");
-      if (target === "home" && body.includes("document.readyState")) {
+      if (target === "home" && body.trim() === "document.readyState") {
         homeReadyChecks += 1;
         if (homeReadyChecks >= 2) homeReady = true;
         send(homeReady ? "complete" : "loading");
-      } else if (target === "search" && body.includes("document.readyState")) {
+      } else if (target === "search" && body.trim() === "document.readyState") {
         searchReadyChecks += 1;
         if (searchReadyChecks >= 2) searchReady = true;
         send(searchReady ? "complete" : "loading");
@@ -174,6 +174,8 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
           priceMaxUnlimited: unlimitedPriceAsZero,
           hasStart: true,
         });
+      } else if (full && started && body.includes("title: document.title")) {
+        send({ text: "【 浴缸 】销量排序Top2 - 2026-08-05 15:46 - 市场数据分析\n您搜索的页数：第 1 ~ 1 页，已成功获取：第 1 ~ 1 页\n商品数量：2", title: "浴缸_淘宝搜索" });
       } else if (full && startClickMissesOnce && startClicks === 1 && body.includes("title: document.title")) {
         response.statusCode = 409;
         response.end(JSON.stringify({ error: "start result dialog did not open" }));

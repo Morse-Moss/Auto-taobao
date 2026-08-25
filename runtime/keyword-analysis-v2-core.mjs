@@ -75,7 +75,7 @@ export const TEST_ANALYSIS_FIELDS = [
   field('分析状态'),
   field('平台来源'),
   field('搜索热度'),
-  field('内容热度（后续）'),
+  field('内容热度'),
   field('交易热度'),
   field('是否重点词'),
   field('优先级'),

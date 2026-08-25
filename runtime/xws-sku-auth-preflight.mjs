@@ -143,13 +143,12 @@ const PAGE_EXPRESSION = `(() => {
   };
   const text = (value) => String(value || '').replace(/\\s+/gu, ' ').trim();
   const root = document.querySelector('#xws-detail-tool');
-  const rootText = text(root?.innerText);
   const visibleDialogs = [...document.querySelectorAll('.el-dialog__wrapper,[role="dialog"]')]
     .filter(visible)
     .map((element) => text(element.innerText || element.getAttribute('aria-label')));
-  const combinedText = [rootText, ...visibleDialogs].join('\\n');
+  const combinedText = visibleDialogs.join('\\n');
   const loginMarkers = [];
-  if (/(?:请登录|登录小旺神|小旺神登录)/iu.test(combinedText)) loginMarkers.push('XWS_LOGIN');
+  if (/(?:登录小旺神|小旺神登录|登录\\/验证后)/iu.test(combinedText)) loginMarkers.push('XWS_LOGIN');
   if (/(?:当前浏览器不支持弹窗登录|即将往小旺神官网进行登录)/iu.test(combinedText)) {
     loginMarkers.push('XWS_LOGIN_REDIRECT');
   }

@@ -597,6 +597,9 @@ test('record migration never resets user or AI data', () => {
 
 test('migration CLI requires exact apply confirmations', () => {
   assert.equal(typeof competitorCore.parseCompetitorMigrationArgs, 'function');
+  assert.throws(() => competitorCore.parseCompetitorMigrationArgs([
+    '--base-url', 'https://tenant.feishu.cn/base/app123?table=tbl123',
+  ]), /--expected-rows is required/u);
   const dryRun = competitorCore.parseCompetitorMigrationArgs([
     '--base-url', 'https://tenant.feishu.cn/base/app123?table=tbl123',
     '--expected-rows', '1333',

@@ -2,11 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 let buildDryRunReceipt;
+let assertMainTableHasRecords;
 try {
-  ({ buildDryRunReceipt } = await import('./run-xws-sku-dry-run.mjs'));
+  ({ buildDryRunReceipt, assertMainTableHasRecords } = await import('./run-xws-sku-dry-run.mjs'));
 } catch {
   // The first red run intentionally exercises the missing adapter.
 }
+
+test('accepts a non-empty main table without a historical row-count baseline', () => {
+  assert.equal(typeof assertMainTableHasRecords, 'function');
+  assert.doesNotThrow(() => assertMainTableHasRecords([{ recordId: 'rec-main' }]));
+  assert.throws(() => assertMainTableHasRecords([]), /at least one main record/u);
+});
 
 test('builds a summary receipt without exposing parsed SKU fields', () => {
   assert.equal(typeof buildDryRunReceipt, 'function');

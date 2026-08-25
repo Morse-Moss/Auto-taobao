@@ -16,7 +16,6 @@ const RUNTIME_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const COLLECTION_DIRECTORY = resolve(RUNTIME_DIRECTORY, 'competitor-v2-sku-collection');
 const PARSER_PATH = resolve(RUNTIME_DIRECTORY, 'xws-sku-payload-parser.mjs');
 const DEFAULT_ENV_FILE = 'E:/小红书/.env.local';
-const EXPECTED_MAIN_RECORDS = 1333;
 const TARGET = {
   appToken: 'OWebbPUcBa7B8JseYLccQCy9nkf',
   mainTableId: 'tblJ9LHFN6pMVjPv',
@@ -109,6 +108,13 @@ function assertTable(tables, tableId, name) {
   return matches[0];
 }
 
+export function assertMainTableHasRecords(records) {
+  if (!Array.isArray(records) || records.length === 0) {
+    throw new Error('竞品主表 must contain at least one main record');
+  }
+  return records;
+}
+
 function selectedRecord(records, recordId) {
   const matches = records.filter((record) => record.recordId === recordId);
   if (matches.length !== 1) throw new Error('Expected exactly one selected main record; received ' + matches.length);
@@ -164,9 +170,7 @@ async function readLiveState(envFile) {
   ]);
   assertTable(tables, TARGET.mainTableId, TARGET.mainTableName);
   assertTable(tables, TARGET.skuTableId, TARGET.skuTableName);
-  if (mainRecords.length !== EXPECTED_MAIN_RECORDS) {
-    throw new Error('Expected ' + EXPECTED_MAIN_RECORDS + ' main records; received ' + mainRecords.length);
-  }
+  assertMainTableHasRecords(mainRecords);
   return { mainFields, skuFields, mainRecords, skuRecords };
 }
 

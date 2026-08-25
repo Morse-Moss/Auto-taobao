@@ -10,14 +10,30 @@ export const HUITUN_RESULT_SOURCE = Object.freeze({
   match_rule: '去除话题首尾#后与搜索词完全一致；不累加相近话题',
 });
 
+export function assertProxyBrowserHealth(health, expectedBrowserId = 'edge') {
+  if (health?.status !== 'ok' || health?.connected !== true) {
+    throw new Error(`Proxy is not connected to ${expectedBrowserId}`);
+  }
+  const actual = plain(health.browser?.id);
+  if (actual !== expectedBrowserId) {
+    throw new Error(`Proxy browser mismatch: expected ${expectedBrowserId}, received ${actual || '<missing>'}`);
+  }
+  return true;
+}
+
+export function hasConfirmedAccount(value) {
+  return /(?:^|\s)(?:ID|DY)[：:\s]*\d+/iu.test(plain(value));
+}
+
 export const DEFAULT_TARGET = Object.freeze({
   appToken: 'N21Abkg0HakO6AsbCaDckvcwnVd',
-  tableId: 'tblN1uT1LpzyqqWx',
-  tableName: '关键词分析 V1（修正版）',
+  tableId: '',
+  tableName: '',
   envFile: 'E:/小红书/.env.local',
 });
 
-export const WRITABLE_FIELDS = new Set(['内容热度（后续）', '灰豚话题浏览量']);
+// 内容热度由上游内容平台/AI流程提供；灰豚只负责补充原始浏览量证据。
+export const WRITABLE_FIELDS = new Set(['灰豚话题浏览量']);
 const EXPECTED_FORMULA_FIELDS = new Set(['优先级']);
 const VALUE_OPTIONS = new Set([
   'app-token',
@@ -34,7 +50,7 @@ const VALUE_OPTIONS = new Set([
   'result-max-age-hours',
 ]);
 
-function plain(value) {
+export function plain(value) {
   if (value == null) return '';
   if (Array.isArray(value)) return value.map(plain).join(',');
   if (typeof value === 'object') return String(value.text ?? value.name ?? value.value ?? '').trim();
@@ -73,11 +89,13 @@ export function parseOptions(argv, env = process.env) {
     confirmTable: '',
     selfTest: false,
     help: false,
+    candidateMode: 'A_ONLY',
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
     if (token === '--apply') options.apply = true;
+    else if (token === '--fallback-b') options.candidateMode = 'B_FALLBACK';
     else if (token === '--self-test') options.selfTest = true;
     else if (token === '--help' || token === '-h') options.help = true;
     else if (token.startsWith('--')) {
@@ -105,7 +123,7 @@ export function parseOptions(argv, env = process.env) {
     }
   }
 
-  if (!options.appToken || !options.tableId || !options.tableName || !options.envFile) {
+  if (!options.help && !options.selfTest && (!options.appToken || !options.tableId || !options.tableName || !options.envFile)) {
     throw new Error('app-token, table-id, table-name, and env-file are required');
   }
   if (!Number.isInteger(options.maxCandidates)) throw new Error('max-candidates must be an integer');
@@ -129,6 +147,7 @@ export function normalizeTopic(value) {
   return plain(value).replace(/^#+|#+$/gu, '').trim();
 }
 
+// Kept only for compatibility with old evidence tooling; never used for a Feishu write.
 export function contentHeatForViews(views) {
   if (!Number.isSafeInteger(views) || views < 0) throw new Error(`Invalid numeric views: ${views}`);
   return views >= A_THRESHOLD ? '高' : '低';
@@ -184,8 +203,44 @@ export function selectRunTarget(targets, runLabel) {
   return matches[0];
 }
 
-export function selectCandidates(records) {
-  const candidates = (Array.isArray(records) ? records : []).filter((record) => (
+export function selectCandidates(records, { mode = 'A_ONLY' } = {}) {
+  const source = Array.isArray(records) ? records : [];
+  if (mode === 'B_FALLBACK') {
+    const aQueue = source.filter((record) => plain(record.fields?.优先级) === 'A候选');
+    if (aQueue.length > 0) throw new Error(`A-candidate queue exists; B fallback is not allowed (${aQueue.length} row(s))`);
+    const candidates = source.filter((record) => (
+      candidateKeyword(record)
+      && plain(record.fields?.搜索热度) === '高'
+      && ['中', '高'].includes(plain(record.fields?.交易热度))
+    ));
+    const seen = new Set();
+    for (const record of candidates) {
+      const keyword = candidateKeyword(record);
+      if (seen.has(keyword)) throw new Error(`Duplicate B-fallback keyword: ${keyword}`);
+      seen.add(keyword);
+    }
+    return candidates;
+  }
+  if (mode !== 'A_ONLY') throw new Error(`Unsupported Huitun candidate mode: ${mode}`);
+  const pending = source.filter((record) => (
+    candidateKeyword(record) && ['', '待数据'].includes(plain(record.fields?.优先级))
+  ));
+  if (pending.length > 0) {
+    const pendingValues = pending.map((record) => plain(record.fields?.优先级));
+    const reasons = [
+      ...(pendingValues.includes('待数据') ? ['优先级=待数据'] : []),
+      ...(pendingValues.includes('') ? ['优先级 is blank'] : []),
+    ];
+    const error = new Error(`${pending.length} populated row(s) are not ready for Huitun (${reasons.join(', ')}); finish Feishu AI analysis before Huitun collection`);
+    error.code = 'AI_REQUIRED';
+    error.details = {
+      pendingCount: pending.length,
+      sampleKeywords: pending.slice(0, 5).map(candidateKeyword),
+    };
+    throw error;
+  }
+
+  const candidates = source.filter((record) => (
     plain(record.fields?.优先级) === 'A候选'
   ));
   const seen = new Set();
@@ -202,7 +257,7 @@ export function candidateKeyword(record) {
   return plain(record?.fields?.搜索词);
 }
 
-export function buildQueueBinding({ appToken, tableId, tableName, records }) {
+export function buildQueueBinding({ appToken, tableId, tableName, records, candidateMode = 'A_ONLY' }) {
   const target = {
     appToken: plain(appToken),
     tableId: plain(tableId),
@@ -211,7 +266,7 @@ export function buildQueueBinding({ appToken, tableId, tableName, records }) {
   if (!target.appToken || !target.tableId || !target.tableName) {
     throw new Error('Huitun queue binding requires app token, table ID, and table name');
   }
-  const queue = selectCandidates(records).map((record) => {
+  const queue = selectCandidates(records, { mode: candidateMode }).map((record) => {
     const recordId = plain(record.record_id);
     if (!recordId) throw new Error(`A-candidate ${candidateKeyword(record)} has no record ID`);
     return { recordId, keyword: candidateKeyword(record) };
@@ -254,11 +309,11 @@ export function normalizeResults(document) {
       if (normalizeTopic(topic) !== keyword) throw new Error(`Huitun topic is not an exact match for ${keyword}: ${topic}`);
       const views = parseDisplayedViews(item.viewsRaw);
       if (item.views !== views) throw new Error(`Numeric views do not match displayed views for ${keyword}`);
-      return { keyword, status: item.status, topic, viewsRaw: plain(item.viewsRaw), views, contentHeat: contentHeatForViews(views) };
+      return { keyword, status: item.status, topic, viewsRaw: plain(item.viewsRaw), views };
     }
     if (item.status === 'NO_EXACT_TOPIC') {
       if (item.topic != null || item.views !== 0) throw new Error(`No-result item must use null topic and zero views: ${keyword}`);
-      return { keyword, status: item.status, topic: null, viewsRaw: plain(item.viewsRaw), views: 0, contentHeat: '低' };
+      return { keyword, status: item.status, topic: null, viewsRaw: plain(item.viewsRaw), views: 0 };
     }
     throw new Error(`Unsupported Huitun result status for ${keyword}: ${item.status}`);
   });
@@ -270,10 +325,34 @@ function uniqueRecord(records, keyword) {
   return matches[0];
 }
 
-export function buildUpdatePlan({ records, resultDocument, resultContext }) {
+function isMissingPriorityInput(value) {
+  return ['', '待核验'].includes(plain(value));
+}
+
+function expectedPriorityAfterViews(record, views) {
+  const fields = record.fields ?? {};
+  const category = plain(fields.关键词分类);
+  if (category === '品牌词') return 'C-常规跟踪';
+  if (isMissingPriorityInput(category)
+      || (category === '痛点词' && isMissingPriorityInput(fields.细分标签))
+      || isMissingPriorityInput(fields.搜索热度)
+      || isMissingPriorityInput(fields.交易热度)) {
+    return '待数据';
+  }
+  const searchReady = ['中', '高'].includes(plain(fields.搜索热度));
+  const tradeReady = ['中', '高'].includes(plain(fields.交易热度));
+  const contentReady = ['中', '高'].includes(plain(fields.内容热度));
+  if (views >= A_THRESHOLD && searchReady && contentReady && plain(fields.交易热度) === '高') {
+    return 'A-立即跟进';
+  }
+  if (searchReady && tradeReady) return 'B-持续观察';
+  return 'C-常规跟踪';
+}
+
+export function buildUpdatePlan({ records, resultDocument, resultContext, candidateMode = 'A_ONLY' }) {
   if (!resultContext) throw new Error('Huitun result provenance context is required');
   const results = validateResultDocument({ document: resultDocument, ...resultContext });
-  const candidateNames = selectCandidates(records).map((record) => plain(record.fields?.搜索词)).sort();
+  const candidateNames = selectCandidates(records, { mode: candidateMode }).map((record) => plain(record.fields?.搜索词)).sort();
   const resultNames = results.map((item) => item.keyword).sort();
   if (!canonicalEqual(candidateNames, resultNames)) {
     throw new Error(`Live A-candidate queue differs from Huitun results: queue=${JSON.stringify(candidateNames)} results=${JSON.stringify(resultNames)}`);
@@ -283,7 +362,7 @@ export function buildUpdatePlan({ records, resultDocument, resultContext }) {
   const expected = [];
   for (const result of results) {
     const record = uniqueRecord(records, result.keyword);
-    const desired = { '内容热度（后续）': result.contentHeat, 灰豚话题浏览量: result.views };
+    const desired = { 灰豚话题浏览量: result.views };
     const fields = {};
     for (const [name, value] of Object.entries(desired)) {
       const existing = record.fields?.[name];
@@ -300,8 +379,9 @@ export function buildUpdatePlan({ records, resultDocument, resultContext }) {
       status: result.status,
       topic: result.topic,
       viewsRaw: result.viewsRaw,
+      contentHeat: plain(record.fields?.内容热度),
       desired,
-      expectedPriority: result.views >= A_THRESHOLD ? 'A-立即跟进' : 'B-持续观察',
+      expectedPriority: expectedPriorityAfterViews(record, result.views),
     });
   }
   return { updates, expected };
@@ -351,7 +431,12 @@ export function verifyBackfill({ before, after, plan }) {
   }
   return {
     recordsWritten: plan.updates.length,
-    verified: plan.expected.map((item) => ({ keyword: item.keyword, ...item.desired, priority: item.expectedPriority })),
+    verified: plan.expected.map((item) => ({
+      keyword: item.keyword,
+      contentHeat: item.contentHeat,
+      views: item.desired.灰豚话题浏览量,
+      priority: item.expectedPriority,
+    })),
   };
 }
 

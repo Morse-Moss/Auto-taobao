@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { retiredHuitunResultWriter } from './retired-huitun-result-writer.mjs';
+
 export const APP_TOKEN = 'N21Abkg0HakO6AsbCaDckvcwnVd';
 export const TABLE_ID = 'tblN1uT1LpzyqqWx';
 export const TABLE_NAME = '关键词分析 V1（修正版）';
@@ -11,7 +13,9 @@ export const A_THRESHOLD = 10_000_000;
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 const ENV_FILE = 'E:/小红书/.env.local';
 const BACKUP_DIR = path.resolve('runtime/keyword-analysis-backups');
-const WRITABLE_FIELDS = new Set(['内容热度（后续）', '灰豚话题浏览量']);
+// This fixed-table entry is retired, but its safety contract mirrors the active Skill:
+// upstream content heat is read-only here; only Huitun topic views may be written.
+const WRITABLE_FIELDS = new Set(['灰豚话题浏览量']);
 const FORMULA_FIELDS = new Set(['是否重点词', '优先级']);
 
 function plain(value) {
@@ -85,11 +89,11 @@ export function normalizeResults(document) {
       if (normalizeTopic(topic) !== keyword) throw new Error(`Huitun topic is not an exact match for ${keyword}: ${topic}`);
       const views = parseDisplayedViews(item.viewsRaw);
       if (item.views !== views) throw new Error(`Numeric views do not match displayed views for ${keyword}`);
-      return { keyword, status: item.status, topic, viewsRaw: plain(item.viewsRaw), views, contentHeat: contentHeatForViews(views) };
+      return { keyword, status: item.status, topic, viewsRaw: plain(item.viewsRaw), views };
     }
     if (item.status === 'NO_EXACT_TOPIC') {
       if (item.topic != null || item.views !== 0) throw new Error(`No-result item must use null topic and zero views: ${keyword}`);
-      return { keyword, status: item.status, topic: null, viewsRaw: plain(item.viewsRaw), views: 0, contentHeat: '低' };
+      return { keyword, status: item.status, topic: null, viewsRaw: plain(item.viewsRaw), views: 0 };
     }
     throw new Error(`Unsupported Huitun result status for ${keyword}: ${item.status}`);
   });
@@ -99,6 +103,30 @@ function uniqueRecord(records, keyword) {
   const matches = records.filter((record) => plain(record.fields?.搜索词) === keyword);
   if (matches.length !== 1) throw new Error(`Expected exactly one Feishu record for ${keyword}; received ${matches.length}`);
   return matches[0];
+}
+
+function isMissingPriorityInput(value) {
+  return ['', '待核验'].includes(plain(value));
+}
+
+function expectedPriorityAfterViews(record, views) {
+  const fields = record.fields ?? {};
+  const category = plain(fields.关键词分类);
+  if (category === '品牌词') return 'C-常规跟踪';
+  if (isMissingPriorityInput(category)
+      || (category === '痛点词' && isMissingPriorityInput(fields.细分标签))
+      || isMissingPriorityInput(fields.搜索热度)
+      || isMissingPriorityInput(fields.交易热度)) {
+    return '待数据';
+  }
+  const searchReady = ['中', '高'].includes(plain(fields.搜索热度));
+  const tradeReady = ['中', '高'].includes(plain(fields.交易热度));
+  const contentReady = ['中', '高'].includes(plain(fields.内容热度));
+  if (views >= A_THRESHOLD && searchReady && contentReady && plain(fields.交易热度) === '高') {
+    return 'A-立即跟进';
+  }
+  if (searchReady && tradeReady) return 'B-持续观察';
+  return 'C-常规跟踪';
 }
 
 export function buildHuitunUpdatePlan({ records, resultDocument }) {
@@ -114,7 +142,7 @@ export function buildHuitunUpdatePlan({ records, resultDocument }) {
   const expected = [];
   for (const result of results) {
     const record = uniqueRecord(records, result.keyword);
-    const desired = { '内容热度（后续）': result.contentHeat, '灰豚话题浏览量': result.views };
+    const desired = { 灰豚话题浏览量: result.views };
     const fields = {};
     for (const [name, value] of Object.entries(desired)) {
       const existing = record.fields?.[name];
@@ -131,8 +159,9 @@ export function buildHuitunUpdatePlan({ records, resultDocument }) {
       status: result.status,
       topic: result.topic,
       viewsRaw: result.viewsRaw,
+      contentHeat: plain(record.fields?.内容热度),
       desired,
-      expectedPriority: result.views >= A_THRESHOLD ? 'A-立即跟进' : 'B-持续观察',
+      expectedPriority: expectedPriorityAfterViews(record, result.views),
     });
   }
   return { updates, expected };
@@ -182,7 +211,12 @@ export function verifyHuitunBackfill({ before, after, plan }) {
   }
   return {
     recordsWritten: plan.updates.length,
-    verified: plan.expected.map((item) => ({ keyword: item.keyword, ...item.desired, priority: item.expectedPriority })),
+    verified: plan.expected.map((item) => ({
+      keyword: item.keyword,
+      contentHeat: item.contentHeat,
+      views: item.desired.灰豚话题浏览量,
+      priority: item.expectedPriority,
+    })),
   };
 }
 
@@ -283,7 +317,7 @@ function summarizePlan(plan) {
     status: item.status,
     topic: item.topic,
     viewsRaw: item.viewsRaw,
-    contentHeat: item.desired['内容热度（后续）'],
+    contentHeat: item.contentHeat,
     views: item.desired.灰豚话题浏览量,
     expectedPriority: item.expectedPriority,
     willWrite: plan.updates.some((update) => update.record_id === item.recordId),
@@ -291,6 +325,7 @@ function summarizePlan(plan) {
 }
 
 async function main() {
+  retiredHuitunResultWriter();
   const apply = process.argv.includes('--apply');
   const confirmation = process.argv.find((arg) => arg.startsWith('--confirm-table='))?.slice('--confirm-table='.length);
   const resultPathArg = process.argv.find((arg) => arg.startsWith('--results='))?.slice('--results='.length);
@@ -309,7 +344,7 @@ async function main() {
   if (table?.name !== TABLE_NAME) throw new Error(`Authorized table mismatch: ${table?.name ?? '<missing>'}`);
   const [fields, records] = await Promise.all([api.listFields(), api.listRecords()]);
   requiredField(fields, '搜索词');
-  requiredField(fields, '内容热度（后续）', 1);
+  requiredField(fields, '内容热度', 1);
   requiredField(fields, '灰豚话题浏览量', 2);
   requiredField(fields, '优先级', 20);
   const plan = buildHuitunUpdatePlan({ records, resultDocument });

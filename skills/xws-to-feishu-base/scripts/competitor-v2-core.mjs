@@ -215,7 +215,13 @@ function skuEvidenceValue(skuSize, skuSpec) {
 }
 
 export function classifySkuSpace({ skuSize, skuSpec = '', skuName = '' } = {}) {
-  const sources = [skuSize, skuSpec].map(skuDimensionCandidates);
+  const explicitSize = skuDimensionCandidates(skuSize);
+  // SKU尺寸 is the product-dimension field. When it contains a usable
+  // dimension, do not mix specification measurements such as 18mm/25mm
+  // thickness into the space decision.
+  const sources = explicitSize.candidates.length > 0
+    ? [explicitSize]
+    : [explicitSize, skuDimensionCandidates(skuSpec)];
   const candidates = [];
   for (const source of sources) {
     for (const candidate of source.candidates) {
@@ -875,7 +881,7 @@ export function buildCompetitorAIAnalysisPlan({ records, fields, searchKeyword =
 }
 
 export function parseCompetitorMigrationArgs(argv) {
-  const options = { apply: false, expectedRows: 1333, tableName: '竞品主表' };
+  const options = { apply: false, expectedRows: undefined, tableName: '竞品主表' };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--apply') options.apply = true;
@@ -891,6 +897,7 @@ export function parseCompetitorMigrationArgs(argv) {
     } else throw new Error(`Unknown argument: ${arg}`);
   }
   if (!options.baseUrl) throw new Error('--base-url is required');
+  if (options.expectedRows == null) throw new Error('--expected-rows is required');
   if (!/^\d+$/u.test(String(options.expectedRows)) || Number(options.expectedRows) < 1) {
     throw new Error('--expected-rows must be a positive integer');
   }

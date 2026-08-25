@@ -15,7 +15,7 @@ async function assertNonEmpty(file) {
   if (!info.isFile() || info.size < 1) throw new Error(`Output is empty: ${file}`);
 }
 
-export async function publishValidatedOutputs({ outputDir, base, writeCsv, writeXlsx }) {
+export async function publishValidatedOutputs({ outputDir, base, writeCsv, writeXlsx, verifyOutputs }) {
   if (!base || path.basename(base) !== base) throw new Error("Output base name is invalid");
   await mkdir(outputDir, { recursive: true });
   const csvFile = path.join(outputDir, `${base}.csv`);
@@ -32,11 +32,12 @@ export async function publishValidatedOutputs({ outputDir, base, writeCsv, write
     await writeXlsx(tempXlsx);
     await assertNonEmpty(tempCsv);
     await assertNonEmpty(tempXlsx);
+    const validation = verifyOutputs ? await verifyOutputs(tempCsv, tempXlsx) : undefined;
     await rename(tempXlsx, xlsxFile);
     publishedXlsx = true;
     await rename(tempCsv, csvFile);
     publishedCsv = true;
-    return { csvFile, xlsxFile };
+    return { csvFile, xlsxFile, validation };
   } catch (error) {
     if (publishedCsv) await rm(csvFile, { force: true });
     if (publishedXlsx) await rm(xlsxFile, { force: true });

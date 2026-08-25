@@ -10,7 +10,7 @@ import {
 } from './keyword-decision-engine.mjs';
 
 const searchRanges = [
-  '20 ~ 50', '50 ~ 150', '150 ~ 300', '300 ~ 600', '600 ~ 1200',
+  '0 ~ 20', '20 ~ 50', '50 ~ 150', '150 ~ 300', '300 ~ 600', '600 ~ 1200',
   '1200 ~ 2500', '2500 ~ 5000', '5000 ~ 1万', '1万 ~ 2万',
 ];
 
@@ -46,6 +46,7 @@ test('platform ranges compare only exact known intervals', () => {
   assert.equal(comparePlatformRange('1200 ~ 2500', '2500 ~ 5000', searchRanges), '下降');
   assert.equal(comparePlatformRange('-', '2500 ~ 5000', searchRanges), '不可比');
   assert.equal(comparePlatformRange('未知区间', '2500 ~ 5000', searchRanges), '不可比');
+  assert.equal(comparePlatformRange('0 ~ 20', '20 ~ 50', searchRanges), '下降');
 });
 
 test('weekly grouping follows Asia/Shanghai rather than UTC day boundaries', () => {

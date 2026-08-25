@@ -108,6 +108,16 @@ function classifyProperties(lines, properties) {
   const specificationValues = specificationProperty.values.filter((value) => !value.empty)
     .map((value) => lines[value.payloadLineIndex]);
   const separator = stableSpecificationSeparator(specificationValues);
+  const hasKnownSeparator = specificationValues.some((value) => String(value ?? '').includes('-') || String(value ?? '').includes('+'));
+  if (!separator && !hasKnownSeparator && specificationValues.length > 0) {
+    return {
+      dimensionPropertyIndex: dimensions[0].propertyIndex,
+      specificationPropertyIndex: specificationProperties[0].propertyIndex,
+      specificationSegmentCount: 1,
+      specificationSegmentCounts: [1],
+      specificationSeparator: '',
+    };
+  }
   const parsedSpecifications = specificationValues.map((value) => (
     specificationParts(value, separator) || { separator, parts: [String(value ?? '').trim()] }
   ));

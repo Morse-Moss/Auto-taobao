@@ -24,7 +24,18 @@ const resultItems = [
 ];
 
 function record(id, search, priority = 'A候选', extra = {}) {
-  return { record_id: id, fields: { 搜索词: search, 优先级: priority, ...extra } };
+  return {
+    record_id: id,
+    fields: {
+      搜索词: search,
+      优先级: priority,
+      关键词分类: '大词',
+      搜索热度: '高',
+      交易热度: '高',
+      内容热度: '中',
+      ...extra,
+    },
+  };
 }
 
 function context(records) {
@@ -66,8 +77,8 @@ test('requires the result set to equal the complete live A-candidate queue', () 
   const records = [record('r1', '家用浴缸'), record('r2', '新型泡澡浴缸'), record('r3', '浴缸', 'B-持续观察')];
   const plan = planFor(records);
   assert.deepEqual(plan.updates, [
-    { record_id: 'r1', fields: { '内容热度（后续）': '低', 灰豚话题浏览量: 1_094_000 } },
-    { record_id: 'r2', fields: { '内容热度（后续）': '低', 灰豚话题浏览量: 0 } },
+    { record_id: 'r1', fields: { 灰豚话题浏览量: 1_094_000 } },
+    { record_id: 'r2', fields: { 灰豚话题浏览量: 0 } },
   ]);
   const changed = [...records, record('r4', '新增候选')];
   assert.throws(() => buildUpdatePlan({ records: changed, resultDocument: resultDocument(records), resultContext: context(changed) }), /binding|queue differs/i);
@@ -95,7 +106,7 @@ test('refuses to overwrite a non-empty Huitun field', () => {
   assert.throws(() => planFor(records), /refusing to overwrite/i);
 });
 
-test('allows only the exact two-field batch update against the confirmed target', () => {
+test('allows only the exact topic-view batch update against the confirmed target', () => {
   const records = [record('r1', '家用浴缸'), record('r2', '新型泡澡浴缸')];
   const plan = planFor(records);
   const apiPath = '/bitable/v1/apps/app/tables/table/records/batch_update';
@@ -112,8 +123,8 @@ test('verification permits formula settlement but rejects every unrelated change
   const before = [record('r1', '家用浴缸'), record('r2', '新型泡澡浴缸')];
   const plan = planFor(before);
   const after = [
-    record('r1', '家用浴缸', 'B-持续观察', { '内容热度（后续）': '低', 灰豚话题浏览量: 1_094_000 }),
-    record('r2', '新型泡澡浴缸', 'B-持续观察', { '内容热度（后续）': '低', 灰豚话题浏览量: 0 }),
+    record('r1', '家用浴缸', 'B-持续观察', { 灰豚话题浏览量: 1_094_000 }),
+    record('r2', '新型泡澡浴缸', 'B-持续观察', { 灰豚话题浏览量: 0 }),
   ];
   assert.equal(verifyBackfill({ before, after, plan }).recordsWritten, 2);
   const corrupted = structuredClone(after);
@@ -122,4 +133,81 @@ test('verification permits formula settlement but rejects every unrelated change
   const formulaCorrupted = structuredClone(after);
   formulaCorrupted[0].fields.是否重点词 = '是';
   assert.throws(() => verifyBackfill({ before, after: formulaCorrupted, plan }), /unauthorized/i);
+});
+
+test('B fallback keeps medium-trade keywords at B even when Huitun views exceed 1000w', () => {
+  const records = [record('r1', '浴缸', 'B-持续观察', {
+    搜索热度: '高',
+    交易热度: '中',
+    内容热度: '高',
+    灰豚话题浏览量: 700_000_000,
+  })];
+  const binding = buildQueueBinding({ ...TARGET, records, candidateMode: 'B_FALLBACK' });
+  const document = {
+    schemaVersion: 1,
+    source: {
+      platform: '灰豚数据红薯版',
+      page: '话题搜索',
+      url: 'https://xhs.huitun.com/#/anchor/anchor_topic',
+      collected_at: '2026-08-14T07:59:00.000Z',
+      match_rule: '去除话题首尾#后与搜索词完全一致；不累加相近话题',
+    },
+    target: binding,
+    items: [{ keyword: '浴缸', status: 'FOUND_EXACT', topic: '#浴缸#', viewsRaw: '7.0亿', views: 700_000_000 }],
+  };
+  const plan = buildUpdatePlan({
+    records,
+    resultDocument: document,
+    candidateMode: 'B_FALLBACK',
+    resultContext: { binding, maxAgeMs: 24 * 60 * 60 * 1_000, nowMs: NOW },
+  });
+  assert.equal(plan.expected[0].expectedPriority, 'B-持续观察');
+  assert.deepEqual(plan.updates, []);
+});
+
+test('Huitun only writes topic views and preserves the upstream content heat', () => {
+  const records = [record('r1', '家用浴缸', 'A候选', {
+    搜索热度: '高',
+    交易热度: '高',
+    内容热度: '中',
+  })];
+  const document = {
+    schemaVersion: 1,
+    source: {
+      platform: '灰豚数据红薯版',
+      page: '话题搜索',
+      url: 'https://xhs.huitun.com/#/anchor/anchor_topic',
+      collected_at: '2026-08-14T07:59:00.000Z',
+      match_rule: '去除话题首尾#后与搜索词完全一致；不累加相近话题',
+    },
+    target: buildQueueBinding({ ...TARGET, records }),
+    // An old result file may contain this derived value; it must be ignored.
+    items: [{ keyword: '家用浴缸', status: 'FOUND_EXACT', topic: '#家用浴缸#', viewsRaw: '1.2亿', views: 120_000_000, contentHeat: '高' }],
+  };
+  const plan = buildUpdatePlan({ records, resultDocument: document, resultContext: context(records) });
+  assert.deepEqual(plan.updates, [{ record_id: 'r1', fields: { 灰豚话题浏览量: 120_000_000 } }]);
+  assert.equal(plan.expected[0].desired.内容热度, undefined);
+
+  const apiPath = '/bitable/v1/apps/app/tables/table/records/batch_update';
+  assert.doesNotThrow(() => assertAuthorizedMutation({
+    appToken: 'app', tableId: 'table', method: 'POST', apiPath,
+    body: { records: plan.updates }, plan,
+  }));
+  assert.throws(() => assertAuthorizedMutation({
+    appToken: 'app', tableId: 'table', method: 'POST', apiPath,
+    body: { records: [{ record_id: 'r1', fields: { 内容热度: '高' } }] }, plan,
+  }), /unauthorized/i);
+
+  const after = [record('r1', '家用浴缸', 'A-立即跟进', {
+    搜索热度: '高',
+    交易热度: '高',
+    内容热度: '中',
+    灰豚话题浏览量: 120_000_000,
+  })];
+  assert.deepEqual(verifyBackfill({ before: records, after, plan }).verified, [{
+    keyword: '家用浴缸',
+    contentHeat: '中',
+    views: 120_000_000,
+    priority: 'A-立即跟进',
+  }]);
 });

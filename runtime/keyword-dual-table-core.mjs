@@ -54,7 +54,7 @@ export const ANALYSIS_FIELDS = [
   field('分析状态'),
   field('来源渠道'),
   field('搜索热度'),
-  field('内容热度（后续）'),
+  field('内容热度'),
   field('交易热度'),
   field('是否重点词'),
   field('优先级'),
@@ -84,18 +84,18 @@ export const HISTORY_FIELDS = [
 ];
 
 const SEARCH_HIGH = new Set([
-  '5000 ~ 1万', '1万 ~ 2万', '2万 ~ 4万', '4万 ~ 8万',
+  '1200 ~ 2500', '2500 ~ 5000', '5000 ~ 1万', '1万 ~ 2万', '2万 ~ 4万', '4万 ~ 8万',
   '8万 ~ 15万', '15万 ~ 30万',
 ]);
-const SEARCH_MEDIUM = new Set(['2500 ~ 5000']);
+const SEARCH_MEDIUM = new Set(['600 ~ 1200']);
 const SEARCH_LOW = new Set([
+  '0 ~ 20',
   '20 ~ 50', '50 ~ 150', '150 ~ 300', '300 ~ 600',
-  '600 ~ 1200', '1200 ~ 2500',
 ]);
 
 const TRADE_HIGH = new Set([
   '5% ~ 7.5%', '7.5% ~ 10%', '10% ~ 15%', '15% ~ 20%',
-  '20% ~ 25%', '25% ~ 30%', '30% ~ 35%',
+  '20% ~ 25%', '25% ~ 30%', '30% ~ 35%', '40% ~ 45%',
 ]);
 const TRADE_MEDIUM = new Set(['1% ~ 2.5%', '2.5% ~ 5%']);
 const TRADE_LOW = new Set(['0% ~ 1%']);

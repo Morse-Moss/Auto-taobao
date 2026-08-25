@@ -50,6 +50,30 @@ test("publishes validated workbook first and CSV as the completion marker", asyn
   }
 });
 
+test("publishes neither final file when pair verification fails", async () => {
+  const outputDir = await mkdtemp(path.join(tmpdir(), "sycm-publish-test-"));
+  try {
+    await assert.rejects(
+      publishValidatedOutputs({
+        outputDir,
+        base: "invalid-pair",
+        writeCsv: (file) => writeFile(file, "csv", "utf8"),
+        writeXlsx: (file) => writeFile(file, "xlsx", "utf8"),
+        verifyOutputs: async (csv, xlsx) => {
+          assert.equal(await readFile(csv, "utf8"), "csv");
+          assert.equal(await readFile(xlsx, "utf8"), "xlsx");
+          throw new Error("pair verification failed");
+        },
+      }),
+      /pair verification failed/u,
+    );
+    assert.equal(await exists(path.join(outputDir, "invalid-pair.csv")), false);
+    assert.equal(await exists(path.join(outputDir, "invalid-pair.xlsx")), false);
+  } finally {
+    await rm(outputDir, { recursive: true, force: true });
+  }
+});
+
 test("refuses to overwrite an existing output", async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), "sycm-publish-test-"));
   const csvFile = path.join(outputDir, "existing.csv");

@@ -17,9 +17,12 @@ const detectHumanRequired = flow.detectHumanRequired ?? missing('detectHumanRequ
 const selectRunTarget = flow.selectRunTarget ?? missing('selectRunTarget');
 const parseOptions = flow.parseOptions ?? missing('parseOptions');
 const candidateKeyword = flow.candidateKeyword ?? missing('candidateKeyword');
+const selectCandidates = flow.selectCandidates ?? missing('selectCandidates');
 const advanceQuerySettlement = flow.advanceQuerySettlement ?? missing('advanceQuerySettlement');
 const resultSnapshotSignature = flow.resultSnapshotSignature ?? missing('resultSnapshotSignature');
 const canonicalEqual = flow.canonicalEqual ?? missing('canonicalEqual');
+const assertProxyBrowserHealth = flow.assertProxyBrowserHealth ?? missing('assertProxyBrowserHealth');
+const hasConfirmedAccount = flow.hasConfirmedAccount ?? missing('hasConfirmedAccount');
 
 test('parses Huitun display units without changing the displayed evidence', () => {
   assert.equal(parseDisplayedViews('109.4w'), 1_094_000);
@@ -155,6 +158,39 @@ test('reads Feishu text fields without assuming they are plain strings', () => {
   assert.equal(candidateKeyword({ fields: { 搜索词: [{ text: '家用浴缸' }] } }), '家用浴缸');
 });
 
+test('stops before Huitun candidate selection while populated AI rows are pending', () => {
+  assert.throws(() => selectCandidates([
+    { record_id: 'rec-pending', fields: { 搜索词: '家用浴缸', 优先级: '待数据' } },
+    { record_id: 'rec-candidate', fields: { 搜索词: '小浴缸', 优先级: 'A候选' } },
+  ]), (error) => {
+    assert.equal(error.code, 'AI_REQUIRED');
+    assert.match(error.message, /1 populated row.*待数据/iu);
+    return true;
+  });
+
+  assert.throws(() => selectCandidates([
+    { record_id: 'rec-unsettled', fields: { 搜索词: '家用浴缸', 优先级: '' } },
+  ]), (error) => error.code === 'AI_REQUIRED' && /blank/iu.test(error.message));
+
+  assert.deepEqual(selectCandidates([
+    { record_id: 'rec-placeholder', fields: { 搜索词: '', 优先级: '待数据' } },
+    { record_id: 'rec-candidate', fields: { 搜索词: '小浴缸', 优先级: 'A候选' } },
+    { record_id: 'rec-final', fields: { 搜索词: '普通浴缸', 优先级: 'C-暂不跟进' } },
+  ]).map((record) => record.record_id), ['rec-candidate']);
+});
+
+test('B fallback selects strict high-search medium/high-trade rows only when no A queue exists', () => {
+  const b = { record_id: 'rec-b', fields: { 搜索词: '浴缸', 搜索热度: '高', 交易热度: '中', 优先级: '待数据' } };
+  assert.deepEqual(selectCandidates([b], { mode: 'B_FALLBACK' }).map((record) => record.record_id), ['rec-b']);
+  assert.throws(() => selectCandidates([
+    b,
+    { record_id: 'rec-a', fields: { 搜索词: '人造石浴缸', 优先级: 'A候选' } },
+  ], { mode: 'B_FALLBACK' }), /A-candidate queue exists/i);
+  assert.deepEqual(selectCandidates([
+    { record_id: 'rec-low', fields: { 搜索词: '小浴缸', 搜索热度: '低', 交易热度: '高', 优先级: '待数据' } },
+  ], { mode: 'B_FALLBACK' }), []);
+});
+
 test('rediscovers only the tab labeled for the current run', () => {
   const targets = [
     { targetId: 'user-tab', type: 'page', url: 'https://xhs.huitun.com/#/home' },
@@ -165,11 +201,27 @@ test('rediscovers only the tab labeled for the current run', () => {
 });
 
 test('CLI defaults to dry-run and requires an exact table confirmation for writes', () => {
-  const options = parseOptions([]);
+  const target = ['--table-id', 'tblCurrent', '--table-name', '关键词分析 V1（2026-08-14）'];
+  assert.throws(() => parseOptions([]), /table-id, table-name/iu);
+  const options = parseOptions(target);
   assert.equal(options.apply, false);
   assert.equal(options.proxy, 'http://127.0.0.1:3456');
-  assert.equal(options.tableId, 'tblN1uT1LpzyqqWx');
+  assert.equal(options.tableId, 'tblCurrent');
   assert.equal(options.resultMaxAgeMs, 24 * 60 * 60 * 1_000);
-  assert.throws(() => parseOptions(['--apply']), /confirm-table/i);
-  assert.equal(parseOptions(['--apply', '--confirm-table', 'tblN1uT1LpzyqqWx']).apply, true);
+  assert.equal(options.candidateMode, 'A_ONLY');
+  assert.equal(parseOptions([...target, '--fallback-b']).candidateMode, 'B_FALLBACK');
+  assert.throws(() => parseOptions([...target, '--apply']), /confirm-table/i);
+  assert.equal(parseOptions([...target, '--apply', '--confirm-table', 'tblCurrent']).apply, true);
+});
+
+test('proxy health must identify the requested Edge browser', () => {
+  assert.doesNotThrow(() => assertProxyBrowserHealth({ status: 'ok', connected: true, browser: { id: 'edge' } }, 'edge'));
+  assert.throws(() => assertProxyBrowserHealth({ status: 'ok', connected: true, browser: { id: 'browser-service' } }, 'edge'), /browser mismatch/i);
+  assert.throws(() => assertProxyBrowserHealth({ status: 'ok', connected: false, browser: { id: 'edge' } }, 'edge'), /not connected/i);
+});
+
+test('confirmed Huitun accounts accept both ID and DY header formats', () => {
+  assert.equal(hasConfirmedAccount('ID：1001392394'), true);
+  assert.equal(hasConfirmedAccount('DY003719756'), true);
+  assert.equal(hasConfirmedAccount('登录/注册'), false);
 });

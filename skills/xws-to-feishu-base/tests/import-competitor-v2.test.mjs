@@ -8,23 +8,27 @@ const required = [
   '--base-url', 'https://tenant.feishu.cn/base/app123?table=tblSource',
   '--work-dir', 'D:/work',
   '--search-keyword', '浴缸',
-  '--expected-rows', '1333',
 ];
 
 test('dry-run does not require credentials or a mutation confirmation', () => {
-  const options = parseCliArgs(required);
+  const options = parseCliArgs([...required, '--expected-rows', '3']);
   assert.equal(options.apply, false);
-  assert.equal(options.expectedRows, 1333);
+  assert.equal(options.expectedRows, 3);
   assert.equal(options.searchKeyword, '浴缸');
 });
 
+test('row count must be explicit instead of defaulting to a historical snapshot size', () => {
+  assert.throws(() => parseCliArgs(required), /--expected-rows is required/u);
+});
+
 test('apply requires an env file and explicit app-token confirmation', () => {
-  assert.throws(() => parseCliArgs([...required, '--apply']), /--env-file/u);
+  const withRows = [...required, '--expected-rows', '3'];
+  assert.throws(() => parseCliArgs([...withRows, '--apply']), /--env-file/u);
   assert.throws(() => parseCliArgs([
-    ...required, '--apply', '--env-file', 'E:/private.env',
+    ...withRows, '--apply', '--env-file', 'E:/private.env',
   ]), /--confirm-app-token/u);
   const options = parseCliArgs([
-    ...required, '--apply', '--env-file', 'E:/private.env',
+    ...withRows, '--apply', '--env-file', 'E:/private.env',
     '--confirm-app-token', 'app123', '--upload-concurrency', '3',
   ]);
   assert.equal(options.confirmAppToken, 'app123');
@@ -32,6 +36,6 @@ test('apply requires an env file and explicit app-token confirmation', () => {
 });
 
 test('numeric options reject zero, negative, and non-integer values', () => {
-  assert.throws(() => parseCliArgs(required.with(required.indexOf('1333'), '0')), /positive integer/u);
+  assert.throws(() => parseCliArgs([...required, '--expected-rows', '0']), /positive integer/u);
   assert.throws(() => parseCliArgs([...required, '--upload-concurrency', '1.5']), /positive integer/u);
 });

@@ -43,6 +43,12 @@ test("detects platform controls and classifies them as human required", () => {
   assert.equal(classifyCollection({ text }), "HUMAN_REQUIRED");
 });
 
+test("detects Taobao's sliding-verification wording", () => {
+  const text = "因出现滑动验证，本次分析不扣除使用次数";
+  assert.deepEqual(detectRiskMarkers(text), ["CAPTCHA"]);
+  assert.equal(classifyCollection({ text }), "HUMAN_REQUIRED");
+});
+
 test("classifies active and completed collection snapshots", () => {
   assert.equal(classifyCollection({ text: resultText() }), "COLLECTING");
   assert.equal(classifyCollection({ text: resultText({ completed: 40, rows: 1333 }) }), "COMPLETE");
@@ -94,4 +100,9 @@ test("parses the reusable default run contract", () => {
   assert.equal(options.sort, "sales");
   assert.equal(options.fromTaobaoHome, true);
   assert.equal(options.allowTrial, false);
+});
+
+test("accepts the controlled partial-export-on-stall flag", () => {
+  const options = parseOptions(["--keyword", "浴缸", "--export-partial-on-stall"]);
+  assert.equal(options.exportPartialOnStall, true);
 });

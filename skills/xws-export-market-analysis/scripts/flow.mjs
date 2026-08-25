@@ -27,7 +27,7 @@ function supportedHeaders(headers) {
 }
 
 const RISK_RULES = [
-  ["CAPTCHA", /验证码|滑块验证/u],
+  ["CAPTCHA", /验证码|滑块验证|滑动验证/u],
   ["QR_OR_SMS", /二维码|扫码登录|短信验证/u],
   ["LOGIN_REQUIRED", /请登录|登录后|登录\/验证/u],
   ["SECURITY", /安全验证|账号异常|风控|访问受限|操作频繁/u],
@@ -71,6 +71,7 @@ export function parseOptions(argv, env = process.env) {
     stallMs: 120_000,
     fromTaobaoHome: true,
     allowTrial: false,
+    exportPartialOnStall: false,
     prepareOnly: false,
     selfTest: false,
     help: false,
@@ -79,6 +80,7 @@ export function parseOptions(argv, env = process.env) {
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
     if (token === "--allow-trial") options.allowTrial = true;
+    else if (token === "--export-partial-on-stall") options.exportPartialOnStall = true;
     else if (token === "--prepare-only") options.prepareOnly = true;
     else if (token === "--from-taobao-home") options.fromTaobaoHome = true;
     else if (token === "--self-test") options.selfTest = true;
@@ -117,7 +119,7 @@ export function parseOptions(argv, env = process.env) {
     throw new Error("unsupported sort mode");
   }
   if (options.pages.end > 100) throw new Error("page range cannot exceed 100");
-  if (options.frequency.max > 60) throw new Error("frequency range cannot exceed 60 seconds");
+  if (options.frequency.max > 300) throw new Error("frequency range cannot exceed 300 seconds");
   const exportModes = new Set(["csv", "xlsx", "xlsx-images"]);
   if (!options.exportModes.length || options.exportModes.some((mode) => !exportModes.has(mode))) {
     throw new Error("export must contain csv, xlsx, or xlsx-images");

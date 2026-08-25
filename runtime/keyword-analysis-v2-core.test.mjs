@@ -19,7 +19,7 @@ test('V2 schema reuses the original analysis columns without adding fields', () 
     '排名', '搜索词', '搜索人气', '点击率', '支付转化率',
     '关键词编号', '一级类目', '主关键词', '原始关键词', '标准归并词',
     '关键词分类', '细分标签', '用户意图', '分析状态', '平台来源',
-    '搜索热度', '内容热度（后续）',
+    '搜索热度', '内容热度',
     '交易热度', '是否重点词', '优先级', '对应产品方向', '采集日期',
   ]);
   assert.equal(TEST_ANALYSIS_FIELDS[0].type, 2);

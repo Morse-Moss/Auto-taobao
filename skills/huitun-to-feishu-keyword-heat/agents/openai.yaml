@@ -1,4 +1,4 @@
 interface:
-  display_name: "Huitun XHS Topic Heat"
-  short_description: "Collect exact Huitun views and safely backfill Feishu"
-  default_prompt: "Use $huitun-to-feishu-keyword-heat to collect exact Huitun topic views for the Feishu A-candidate queue and prepare a guarded backfill."
+  display_name: "灰豚小红书话题热度"
+  short_description: "按本周飞书 A 候选采集灰豚同名话题浏览量并只回填浏览量字段"
+  default_prompt: "使用 $huitun-to-feishu-keyword-heat 对当前周表的 A 候选采集灰豚同名话题浏览量，并只受保护回填灰豚话题浏览量。"

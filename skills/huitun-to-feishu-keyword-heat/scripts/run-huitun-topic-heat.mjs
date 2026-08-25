@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   advanceQuerySettlement,
+  assertProxyBrowserHealth,
   assertAuthorizedMutation,
   buildQueueBinding,
   buildUpdatePlan,
@@ -16,7 +17,9 @@ import {
   detectHumanRequired,
   HUITUN_RESULT_SCHEMA_VERSION,
   HUITUN_RESULT_SOURCE,
+  hasConfirmedAccount,
   parseOptions,
+  plain,
   resultSnapshotSignature,
   selectCandidates,
   selectRunTarget,
@@ -35,26 +38,27 @@ function helpText() {
   return `Usage: node run-huitun-topic-heat.mjs [options]
 
 Reads the complete Feishu A候选 queue, collects exact-name topic views from
-灰豚数据红薯版, and prepares or applies a protected two-field backfill.
+灰豚数据红薯版, and prepares or applies a protected topic-view backfill.
 
 Options:
   --app-token ID              Feishu Base app token
-  --table-id ID               Authorized Feishu table ID
-  --table-name TEXT           Exact authorized table name
+  --table-id ID               Required weekly Feishu table ID
+  --table-name TEXT           Required exact weekly table name
   --env-file FILE             File containing FEISHU_APP_ID and FEISHU_APP_SECRET
   --proxy URL                 Shared web-access Proxy (default: http://127.0.0.1:3456)
   --output-dir DIR            Run evidence directory root
   --results FILE              Reuse a collected result file and skip browser collection
   --result-max-age-hours N    Reject reused results older than N hours (default: 24)
   --max-candidates N          Refuse an unexpectedly large queue (default: 50)
+  --fallback-b                Use the explicitly authorized strict B fallback when no A queue exists
   --poll-seconds N            Result stability poll interval (default: 1)
   --query-timeout-seconds N   Per-keyword deadline (default: 30)
-  --apply                     Write the two authorized fields after dry-run validation
+  --apply                     Write the one authorized field after dry-run validation
   --confirm-table ID          Required with --apply and must equal --table-id
   --self-test                 Run network-free checks
   --help                      Show this help
 
-Defaults point to the currently authorized 关键词分析 V1（修正版） table.
+Rows with blank 优先级 or 优先级=待数据 stop with AI_REQUIRED before browser work.
 Without --apply, the command is read-only apart from local evidence files.
 `;
 }
@@ -195,7 +199,7 @@ async function inspectAuthorizedTable(api, options) {
   }
   const [fields, records] = await Promise.all([api.listFields(), api.listRecords()]);
   requiredField(fields, '搜索词');
-  requiredField(fields, '内容热度（后续）', 1);
+  requiredField(fields, '内容热度', 1);
   requiredField(fields, '灰豚话题浏览量', 2);
   requiredField(fields, '优先级', 20);
   return { fields, records };
@@ -308,8 +312,8 @@ class HuitunBrowser {
       const candidates = [...document.querySelectorAll('[role=dialog],.ant-modal-wrap,.ant-message-notice-content,.ant-notification-notice,.ant-drawer,[class*=captcha],[class*=Captcha],[class*=verify],[class*=Verify],button,a')];
       const visibleTexts = candidates.filter(visible).map((element) => (element.innerText || '').trim())
         .filter((text) => text && text.length <= 500 && riskPattern.test(text));
-      const accountText = [...document.querySelectorAll('header *,[class*=header] *')].filter(visible)
-        .map((element) => (element.innerText || '').trim()).find((text) => /ID[：:]\\s*\\d+/u.test(text)) || '';
+      const accountText = [...document.querySelectorAll('header,header *,[class*=header],[class*=header] *')].filter(visible)
+        .map((element) => (element.innerText || '').trim()).find((text) => /(?:DY[0-9]+|ID[:： ]*[0-9]+)/u.test(text)) || '';
       return { title: document.title, url: location.href, visibleTexts, accountText };
     })()`);
   }
@@ -318,10 +322,23 @@ class HuitunBrowser {
     const snapshot = await this.inspectPage();
     const blocker = detectHumanRequired(snapshot);
     if (blocker) throw humanRequired(`${stage} requires user action`, blocker);
-    if (requireAccount && !/ID[：:]\s*\d+/u.test(snapshot.accountText || '')) {
+    if (requireAccount && !hasConfirmedAccount(snapshot.accountText)) {
       throw humanRequired(`${stage} login state could not be confirmed`, { code: 'LOGIN_REQUIRED' });
     }
     return snapshot;
+  }
+
+  async waitForAccount({ stage, allowLogin = false }) {
+    let snapshot;
+    const deadline = Date.now() + 10_000;
+    while (Date.now() < deadline) {
+      snapshot = await this.inspectPage();
+      const blocker = detectHumanRequired(snapshot, { allowLogin });
+      if (blocker) throw humanRequired(`${stage} requires user action`, blocker);
+      if (hasConfirmedAccount(snapshot.accountText)) return snapshot;
+      await sleep(300);
+    }
+    throw humanRequired(`${stage} login state could not be confirmed`, { code: 'LOGIN_REQUIRED' });
   }
 
   async dismissMarketingModal() {
@@ -340,21 +357,65 @@ class HuitunBrowser {
       modal.setAttribute('data-huitun-marketing-modal', '1');
       return true;
     })()`);
-    if (marked) {
+    if (!marked) return false;
+    await this.evaluate(`(() => {
+      const event = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true });
+      document.dispatchEvent(event);
+      window.dispatchEvent(event);
+    })()`);
+    await sleep(300);
+    let stillVisible = await this.evaluate(`(() => {
+      const modal = document.querySelector('[data-huitun-marketing-modal="1"]');
+      if (!modal) return false;
+      const style = getComputedStyle(modal);
+      const rect = modal.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    })()`);
+    if (stillVisible) {
       await this.clickDom('[data-huitun-marketing-modal="1"]');
       await sleep(300);
+      stillVisible = await this.evaluate(`(() => {
+        const modal = document.querySelector('[data-huitun-marketing-modal="1"]');
+        if (!modal) return false;
+        const style = getComputedStyle(modal);
+        const rect = modal.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+      })()`);
     }
+    if (stillVisible) throw humanRequired('灰豚新人营销弹窗无法自动关闭', { code: 'MARKETING_MODAL' });
+    this.log('MARKETING_MODAL_DISMISSED');
+    return true;
   }
 
   async switchToRedBook() {
     let target = await this.target();
     if (new URL(target.url).origin === 'https://xhs.huitun.com') return;
-    const officialSnapshot = await this.inspectPage();
-    const officialBlocker = detectHumanRequired(officialSnapshot, { allowLogin: true });
-    if (officialBlocker) throw humanRequired('灰豚官网 requires user action', officialBlocker);
+    await this.waitForAccount({ stage: '灰豚官网', allowLogin: true });
     await this.dismissMarketingModal();
-    await this.clickAt('span.antd-pro-components-mod-basic-header-index-header_link.ant-dropdown-trigger');
-    const marked = await this.evaluate(`(() => {
+    const triggerMarked = await this.evaluate(`(() => {
+      const visible = (element) => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+      };
+      const candidates = [...document.querySelectorAll('header *,[class*=header] *,button,[role=button],span[class*="header_link"][class*="dropdown-trigger"],[class*=header] img[src*="logo_dy"]')]
+        .filter(visible)
+        .filter((element) => /(?:抖音|红薯|抖泰|平台).{0,4}版$/u.test((element.innerText || '').trim())
+          || /header_link.*dropdown-trigger/u.test(String(element.className))
+          || /logo_dy/u.test(element.src || ''))
+        .sort((left, right) => left.getBoundingClientRect().width - right.getBoundingClientRect().width);
+      const target = candidates[0];
+      if (!target) return false;
+      const trigger = target.closest('span[class*="header_link"][class*="dropdown-trigger"]') || target;
+      trigger.setAttribute('data-huitun-platform-trigger', '1');
+      return true;
+    })()`);
+    if (triggerMarked) await this.clickAt('[data-huitun-platform-trigger="1"]');
+    else await this.clickAt('span.antd-pro-components-mod-basic-header-index-header_link.ant-dropdown-trigger');
+    let marked = false;
+    const menuDeadline = Date.now() + 5_000;
+    while (Date.now() < menuDeadline && !marked) {
+      marked = await this.evaluate(`(() => {
       const visible = (element) => {
         const style = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
@@ -366,7 +427,9 @@ class HuitunBrowser {
       if (!item) return false;
       item.setAttribute('data-huitun-xhs-platform', '1');
       return true;
-    })()`);
+      })()`);
+      if (!marked) await sleep(200);
+    }
     if (!marked) throw new Error('The visible red-book platform option was not found');
     await this.clickAt('[data-huitun-xhs-platform="1"]');
 
@@ -383,7 +446,7 @@ class HuitunBrowser {
   }
 
   async openTopicSearch() {
-    await this.ensureAllowed({ requireAccount: true, stage: '灰豚红薯版' });
+    await this.waitForAccount({ stage: '灰豚红薯版' });
     let target = await this.target();
     if (!target.url.includes('#/anchor/anchor_topic')) {
       const linkReady = await this.evaluate(`(() => {
@@ -510,11 +573,24 @@ function summarizePlan(plan) {
     status: item.status,
     topic: item.topic,
     viewsRaw: item.viewsRaw,
-    contentHeat: item.desired['内容热度（后续）'],
+    contentHeat: item.contentHeat,
     views: item.desired.灰豚话题浏览量,
     expectedPriority: item.expectedPriority,
     willWrite: plan.updates.some((update) => update.record_id === item.recordId),
   }));
+}
+
+export function buildAiRequiredManifest({ runId, options, snapshot, error, runDir }) {
+  if (error?.code !== 'AI_REQUIRED') throw new Error('AI_REQUIRED manifest requires an AI_REQUIRED error');
+  return {
+    status: 'AI_REQUIRED',
+    runId,
+    target: { tableId: options.tableId, tableName: options.tableName },
+    fieldCount: snapshot.fields.length,
+    recordCount: snapshot.records.length,
+    pendingCount: Number(error.details?.pendingCount ?? 0),
+    runDir,
+  };
 }
 
 function writeBackup({ runDir, options, fields, records, resultDocument }) {
@@ -536,7 +612,7 @@ async function waitForFormulaSettlement(api, plan) {
     const byId = new Map(records.map((record) => [record.record_id, record]));
     const settled = plan.expected.every((item) => {
       const value = byId.get(item.recordId)?.fields?.优先级;
-      return String(value?.text ?? value?.name ?? value?.value ?? value ?? '').trim() === item.expectedPriority;
+      return plain(value) === item.expectedPriority;
     });
     if (settled) return records;
     await sleep(1_000);
@@ -545,7 +621,7 @@ async function waitForFormulaSettlement(api, plan) {
 }
 
 function selfTest() {
-  const options = parseOptions([]);
+  const options = parseOptions(['--self-test']);
   const exact = classifyTopicSnapshot({ keyword: '家用浴缸', rows: [['#家用浴缸#', '109.4w']], emptyText: '' });
   const noExact = classifyTopicSnapshot({ keyword: '家用浴缸', rows: [['#成人家用浴缸#', '9.5w']], emptyText: '' });
   const records = [{ record_id: 'r1', fields: { 搜索词: '家用浴缸', 优先级: 'A候选' } }];
@@ -572,7 +648,7 @@ function selfTest() {
   return {
     ok: true,
     checks: {
-      options: options.apply === false && options.tableId === 'tblN1uT1LpzyqqWx',
+      options: options.apply === false && options.tableId === '' && options.tableName === '',
       exactMatch: exact.views === 1_094_000 && exact.topic === '#家用浴缸#',
       noExact: noExact.views === 0 && noExact.topic === null,
       risk: detectHumanRequired({ visibleTexts: ['请完成滑块验证'] })?.code === 'CAPTCHA'
@@ -595,6 +671,10 @@ async function run(options) {
     fs.appendFileSync(eventsPath, `${JSON.stringify(record)}\n`, 'utf8');
   };
 
+  const proxyHealth = await proxyRequest(options.proxy, '/health');
+  assertProxyBrowserHealth(proxyHealth, 'edge');
+  log('PROXY_READY', { browser: proxyHealth.browser.id });
+
   log('START', { tableId: options.tableId, tableName: options.tableName, apply: options.apply });
   const env = readEnv(path.resolve(options.envFile));
   if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) throw new Error('Feishu app credentials unavailable');
@@ -607,7 +687,17 @@ async function run(options) {
   await api.authenticate();
 
   let snapshot = await inspectAuthorizedTable(api, options);
-  const candidates = selectCandidates(snapshot.records);
+  let candidates;
+  try {
+    candidates = selectCandidates(snapshot.records, { mode: options.candidateMode });
+  } catch (error) {
+    if (error.code === 'AI_REQUIRED') {
+      const manifest = buildAiRequiredManifest({ runId, options, snapshot, error, runDir });
+      writeJson(path.join(runDir, 'manifest.json'), manifest);
+      log('AI_REQUIRED', { pendingCount: manifest.pendingCount, runDir });
+    }
+    throw error;
+  }
   if (candidates.length > options.maxCandidates) {
     throw new Error(`A-candidate queue ${candidates.length} exceeds --max-candidates ${options.maxCandidates}`);
   }
@@ -631,6 +721,7 @@ async function run(options) {
     tableId: options.tableId,
     tableName: options.tableName,
     records: snapshot.records,
+    candidateMode: options.candidateMode,
   });
 
   let resultDocument;
@@ -681,10 +772,12 @@ async function run(options) {
     tableId: options.tableId,
     tableName: options.tableName,
     records: snapshot.records,
+    candidateMode: options.candidateMode,
   });
   const plan = buildUpdatePlan({
     records: snapshot.records,
     resultDocument,
+    candidateMode: options.candidateMode,
     resultContext: { binding: liveBinding, maxAgeMs: options.resultMaxAgeMs },
   });
   const summary = {
@@ -706,7 +799,7 @@ async function run(options) {
   const backup = writeBackup({ runDir, options, fields: snapshot.fields, records: snapshot.records, resultDocument });
   log('BACKUP_WRITTEN', { path: backup.path, sha256: backup.sha256 });
   if (plan.updates.length > 0) {
-    log('APPLY_STARTED', { records: plan.updates.length, fields: ['内容热度（后续）', '灰豚话题浏览量'] });
+    log('APPLY_STARTED', { records: plan.updates.length, fields: ['灰豚话题浏览量'] });
     await api.apply(plan);
   }
   const after = await waitForFormulaSettlement(api, plan);
@@ -754,4 +847,4 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   process.exitCode = await main();
 }
 
-export { helpText, run, selfTest };
+export { helpText, run, selfTest, waitForFormulaSettlement };

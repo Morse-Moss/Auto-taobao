@@ -1,4 +1,4 @@
 interface:
-  display_name: "生意参谋到飞书词库"
-  short_description: "导出生意参谋搜索排行并导入复刻的飞书多维表格自动化流程"
-  default_prompt: "使用生意参谋到飞书词库 Skill，导出指定搜索排行并写入飞书多维表副本。"
+  display_name: "生意参谋到飞书周更"
+  short_description: "周更生意参谋搜索排行，复用编号并同步飞书分析历史"
+  default_prompt: "使用 $sycm-to-feishu-base 完成本周生意参谋到飞书的完整周更：七天采集和飞书写入后停在 AI 检查点，AI 完成后续跑公式、灰豚和历史联动，直到最终验收。"

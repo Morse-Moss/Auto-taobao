@@ -52,6 +52,14 @@ function normalizeSource(source = {}) {
 }
 
 function parseSpecification(value, segmentCount, separator = '-', allowedSegmentCounts = [segmentCount]) {
+  if (!separator) {
+    if (!allowedSegmentCounts.includes(1)) {
+      throw new Error('SKU specification must contain an observed number of non-empty segments');
+    }
+    const specification = text(value);
+    if (!specification) throw new Error('SKU specification is empty');
+    return { name: specification, specification };
+  }
   const segments = text(value).split(separator).map((part) => part.trim()).filter(Boolean);
   if (!allowedSegmentCounts.includes(segments.length)) {
     throw new Error('SKU specification must contain an observed number of non-empty segments');
@@ -83,13 +91,15 @@ export function parseXwsSkuPayload(rawPayload, source, topology) {
   const dimensionPropertyIndex = topology.dimensionPropertyIndex;
   const specificationPropertyIndex = topology.specificationPropertyIndex;
   const specificationSegmentCount = topology.specificationSegmentCount;
-  const specificationSeparator = text(topology.specificationSeparator) || '-';
+  const specificationSeparator = topology.specificationSeparator == null
+    ? '-'
+    : String(topology.specificationSeparator);
   const specificationSegmentCounts = Array.isArray(topology.specificationSegmentCounts)
     ? topology.specificationSegmentCounts.filter(Number.isInteger)
     : [specificationSegmentCount];
   if (propertyCount !== 2 || !Number.isInteger(dimensionPropertyIndex) || !Number.isInteger(specificationPropertyIndex)
     || dimensionPropertyIndex === specificationPropertyIndex || !Number.isInteger(specificationSegmentCount)
-    || specificationSegmentCount < 2) {
+    || specificationSegmentCount < 1) {
     throw new Error('SKU topology does not describe the verified two-property layout');
   }
 

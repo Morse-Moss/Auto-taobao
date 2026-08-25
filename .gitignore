@@ -41,6 +41,35 @@ runtime/**/*.csv
 runtime/**/*.tsv
 runtime/**/*.zip
 
+# Local browser/runtime sessions and historical run artifacts
+runtime/edge-isolated-*/
+runtime/isolated-proxy/
+runtime/competitor-v2-*/
+runtime/competitor-weekly-schema-migration/
+runtime/competitor-v2-sku-collection/
+runtime/keyword-analysis-backups/
+runtime/keyword-analysis-receipts/
+runtime/keyword-ops-review-render*/
+runtime/keyword-dual-table-docx-render*/
+runtime/keyword-decision-report*/
+runtime/local-analysis-runs/
+runtime/dashboard-sync-*/
+runtime/period-fix-*/
+runtime/weekly-runs/
+runtime/huitun-runs/
+runtime/top617-extract/
+runtime/xws-api-*/
+runtime/xws-runs*/
+runtime/xws-bathtub-*-runs/
+runtime/repair-weekly-images/
+runtime/*-stability-round*/
+runtime/*-dry-run*/
+runtime/*-live*/
+runtime/*.remote.js
+runtime/*.remote.backup.js
+runtime/prompt-panel-inspect-copy.txt
+runtime/screenshot-response.txt
+
 # Temporary files
 *.tmp
 *.bak

@@ -377,7 +377,7 @@ async function verifyTarget(api, tableId, definitions, sourceRecords, tableKind)
   if (tableKind === 'analysis') {
     result.analysisStatus = distribution(records, '分析状态');
     result.frozenBlankCounts = Object.fromEntries([
-      '内容热度（后续）', '是否重点词', '优先级', '对应产品方向',
+      '内容热度', '是否重点词', '优先级', '对应产品方向',
     ].map((name) => [name, records.filter((record) => !plainValue(record.fields?.[name])).length]));
   } else {
     result.trendBlankCounts = Object.fromEntries([

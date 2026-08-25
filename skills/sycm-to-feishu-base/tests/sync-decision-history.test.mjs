@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  assertCurrentVisualizationReady,
   assertDecisionHistoryMutation,
+  assertDecisionHistoryFieldContract,
   buildDecisionHistoryPlan,
   buildDecisionHistorySchemaPlan,
+  FeishuApi,
   parseOptions,
   planVerifiedBatchPromotion,
   verifyDecisionHistoryApply,
@@ -14,11 +17,13 @@ const current = (recordId, keywordNumber, fields = {}) => ({
   record_id: recordId,
   fields: {
     关键词编号: keywordNumber,
+    标准归并词: '浴缸',
     关键词分类: '场景词',
     细分标签: ['场景/家用'],
     搜索热度: '高',
     内容热度: '中',
     交易热度: '高',
+    是否重点词: '是',
     优先级: 'B-持续观察',
     ...fields,
   },
@@ -33,6 +38,60 @@ const history = (recordId, batchNumber, keywordNumber, snapshot = null, validity
     批次有效性: validity,
     ...fields,
   },
+});
+
+test('retries only transient not-ready Feishu reads with bounded backoff', async () => {
+  let calls = 0;
+  const sleeps = [];
+  const api = new FeishuApi({
+    appId: 'app-id',
+    appSecret: 'app-secret',
+    appToken: 'app-token',
+    mutationGuard: () => {},
+    fetchImpl: async () => {
+      calls += 1;
+      if (calls < 3) return { ok: false, status: 400, json: async () => ({ code: 1254607, msg: 'Data not ready' }) };
+      return { ok: true, status: 200, json: async () => ({ code: 0, data: { items: ['ready'] } }) };
+    },
+    sleep: async (milliseconds) => { sleeps.push(milliseconds); },
+    readRetryDelays: [250, 1000],
+  });
+  assert.deepEqual(await api.request('GET', '/records'), { items: ['ready'] });
+  assert.equal(calls, 3);
+  assert.deepEqual(sleeps, [250, 1000]);
+
+  calls = 0;
+  await assert.rejects(() => api.request('POST', '/records', { value: 1 }), /1254607/iu);
+  assert.equal(calls, 1);
+});
+
+test('dry-run can plan before snapshot fields exist but apply requires all write targets', () => {
+  const analysisFields = [
+    '关键词编号', '标准归并词', '关键词分类', '细分标签', '搜索热度', '内容热度',
+    '交易热度', '是否重点词', '优先级',
+  ].map((field_name) => ({ field_name }));
+  assert.doesNotThrow(() => assertDecisionHistoryFieldContract({
+    currentFields: analysisFields,
+    previousFields: analysisFields,
+    hasPreviousTable: true,
+    apply: false,
+  }));
+  assert.throws(() => assertDecisionHistoryFieldContract({
+    currentFields: analysisFields,
+    previousFields: analysisFields,
+    hasPreviousTable: true,
+    apply: true,
+  }), /上一有效周重点达标/iu);
+  assert.doesNotThrow(() => assertDecisionHistoryFieldContract({
+    currentFields: [
+      ...analysisFields,
+      ...['上一有效周重点达标', '上一有效周A级达标', '上一有效周探索达标']
+        .map((field_name) => ({ field_name })),
+    ],
+    previousFields: analysisFields,
+    hasPreviousTable: true,
+    apply: true,
+  }));
 });
 
 test('plans one history snapshot per batch and a two-week count for the current table', () => {
@@ -59,16 +118,16 @@ test('plans one history snapshot per batch and a two-week count for the current 
   });
 
   assert.deepEqual(plan.historyUpdates, [
-    { record_id: 'h11', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1 } },
-    { record_id: 'h12', fields: { 重点达标: 0, A级达标: 0, 探索达标: 1 } },
-    { record_id: 'h21', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1 } },
-    { record_id: 'h22', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1 } },
-    { record_id: 'h23', fields: { 重点达标: 1, A级达标: 1, 探索达标: 1 } },
+    { record_id: 'h11', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1, 标准归并词: '浴缸', 是否重点词: '是', 优先级: 'B-持续观察' } },
+    { record_id: 'h12', fields: { 重点达标: 0, A级达标: 0, 探索达标: 1, 标准归并词: '浴缸', 是否重点词: '是', 优先级: 'B-持续观察' } },
+    { record_id: 'h21', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1, 标准归并词: '浴缸', 是否重点词: '是', 优先级: 'B-持续观察' } },
+    { record_id: 'h22', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1, 标准归并词: '浴缸', 是否重点词: '是', 优先级: 'B-持续观察' } },
+    { record_id: 'h23', fields: { 重点达标: 1, A级达标: 1, 探索达标: 1, 标准归并词: '浴缸', 是否重点词: '是', 优先级: 'A-立即跟进' } },
   ]);
   assert.deepEqual(plan.currentUpdates, [
-    { record_id: 'c1', fields: { 近2周重点达标次数: 2, 近2周A级达标次数: 0, 近2周探索达标次数: 2 } },
-    { record_id: 'c2', fields: { 近2周重点达标次数: 1, 近2周A级达标次数: 0, 近2周探索达标次数: 2 } },
-    { record_id: 'c3', fields: { 近2周重点达标次数: 1, 近2周A级达标次数: 1, 近2周探索达标次数: 1 } },
+    { record_id: 'c1', fields: { 上一有效周重点达标: 1, 上一有效周A级达标: 0, 上一有效周探索达标: 1 } },
+    { record_id: 'c2', fields: { 上一有效周重点达标: 0, 上一有效周A级达标: 0, 上一有效周探索达标: 1 } },
+    { record_id: 'c3', fields: { 上一有效周重点达标: 0, 上一有效周A级达标: 0, 上一有效周探索达标: 0 } },
   ]);
   assert.deepEqual(plan.latestBatchNumbers, [1, 2]);
   assert.equal(plan.pendingHistory.length, 0);
@@ -83,7 +142,7 @@ test('keeps the key-word snapshot independent when only content heat is missing'
     currentBatchNumber: 2,
   });
   assert.deepEqual(oneBatch.historyUpdates, [
-    { record_id: 'h21', fields: { 重点达标: 1, A级达标: 0 } },
+    { record_id: 'h21', fields: { 重点达标: 1, A级达标: 0, 标准归并词: '浴缸', 是否重点词: '是', 优先级: 'B-持续观察' } },
   ]);
   assert.deepEqual(oneBatch.currentUpdates, []);
   assert.deepEqual(oneBatch.pendingHistory.map((item) => item.fieldName), ['探索达标']);
@@ -98,9 +157,32 @@ test('keeps the key-word snapshot independent when only content heat is missing'
     currentBatchNumber: 2,
   });
   assert.deepEqual(missingAi.currentUpdates, [
-    { record_id: 'c1', fields: { 近2周重点达标次数: 2, 近2周A级达标次数: 0 } },
+    { record_id: 'c1', fields: { 上一有效周重点达标: 1, 上一有效周A级达标: 0, 上一有效周探索达标: 1 } },
   ]);
-  assert.deepEqual(missingAi.pendingCurrent.map((item) => item.fieldName), ['近2周探索达标次数']);
+  assert.equal(missingAi.pendingCurrent.length, 0);
+});
+
+test('keeps A-candidate history unknown until Huitun evidence resolves it', () => {
+  const plan = buildDecisionHistoryPlan({
+    batchTables: [
+      { batchNumber: 1, records: [current('p1', 'KW000001')] },
+      { batchNumber: 2, records: [current('c1', 'KW000001', { 优先级: 'A候选' })] },
+    ],
+    historyRecords: [
+      history('h11', 1, 'KW000001'),
+      history('h21', 2, 'KW000001'),
+    ],
+    currentBatchNumber: 2,
+  });
+  const currentHistoryUpdate = plan.historyUpdates.find((update) => update.record_id === 'h21');
+  assert.equal(Object.hasOwn(currentHistoryUpdate.fields, 'A级达标'), false);
+  assert.deepEqual(plan.pendingHistory.filter((item) => item.recordId === 'h21' && item.fieldName === 'A级达标'), [{
+    recordId: 'h21',
+    batchNumber: 2,
+    keywordNumber: 'KW000001',
+    fieldName: 'A级达标',
+    reason: 'HUITUN_PENDING',
+  }]);
 });
 
 test('future weeks can reuse a stored previous snapshot without reopening every old analysis table', () => {
@@ -112,8 +194,8 @@ test('future weeks can reuse a stored previous snapshot without reopening every 
     ],
     currentBatchNumber: 3,
   });
-  assert.deepEqual(plan.historyUpdates, [{ record_id: 'h31', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1 } }]);
-  assert.deepEqual(plan.currentUpdates, [{ record_id: 'c3', fields: { 近2周重点达标次数: 2, 近2周A级达标次数: 0, 近2周探索达标次数: 2 } }]);
+  assert.deepEqual(plan.historyUpdates, [{ record_id: 'h31', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1, 标准归并词: '浴缸', 是否重点词: '是', 优先级: 'B-持续观察' } }]);
+  assert.deepEqual(plan.currentUpdates, [{ record_id: 'c3', fields: { 上一有效周重点达标: 1, 上一有效周A级达标: 0, 上一有效周探索达标: 1 } }]);
 });
 
 test('uses only verified valid batches and ignores an intervening daily batch', () => {
@@ -131,7 +213,7 @@ test('uses only verified valid batches and ignores an intervening daily batch', 
   });
   assert.deepEqual(plan.latestBatchNumbers, [1, 3]);
   assert.deepEqual(plan.ignoredBatchNumbers, [2]);
-  assert.deepEqual(plan.currentUpdates, [{ record_id: 'c3', fields: { 近2周重点达标次数: 2, 近2周A级达标次数: 0, 近2周探索达标次数: 2 } }]);
+  assert.deepEqual(plan.currentUpdates, [{ record_id: 'c3', fields: { 上一有效周重点达标: 1, 上一有效周A级达标: 0, 上一有效周探索达标: 1 } }]);
 });
 
 test('treats a legacy blank validity as unverified instead of silently accepting it', () => {
@@ -220,7 +302,7 @@ test('ignores a completely blank Feishu placeholder but rejects a populated row 
     historyRecords: [history('h1', 1, 'KW000001')],
     currentBatchNumber: 1,
   });
-  assert.deepEqual(valid.historyUpdates, [{ record_id: 'h1', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1 } }]);
+  assert.deepEqual(valid.historyUpdates, [{ record_id: 'h1', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1, 标准归并词: '浴缸', 是否重点词: '是', 优先级: 'B-持续观察' } }]);
 
   assert.throws(() => buildDecisionHistoryPlan({
     batchTables: [{ batchNumber: 1, records: [
@@ -240,24 +322,192 @@ test('does not overwrite a conflicting derived snapshot', () => {
   }), /conflict/iu);
 });
 
-test('plans all three history snapshot fields without touching the deprecated analysis field', () => {
-  assert.deepEqual(buildDecisionHistorySchemaPlan({ fields: [] }), {
+test('plans all three numeric snapshot fields and validates their types', () => {
+  const formula = 'IF(AND(bitable::$table[tblHistory].$field[fldBatch]=3,bitable::$table[tblHistory].$field[fldValidity]="有效"),"是","否")';
+  const baseFields = [
+    { field_id: 'fldBatch', field_name: '批次编号', type: 2 },
+    { field_id: 'fldValidity', field_name: '批次有效性', type: 1 },
+    { field_id: 'fldMerge', field_name: '标准归并词', type: 1 },
+    { field_id: 'fldImportant', field_name: '是否重点词', type: 1 },
+    { field_id: 'fldPriority', field_name: '优先级', type: 1 },
+    { field_id: 'fldCurrent', field_name: '本期标记', type: 20, property: { formula_expression: formula } },
+  ];
+  assert.deepEqual(buildDecisionHistorySchemaPlan({
+    tableId: 'tblHistory',
+    currentBatchNumber: 3,
+    fields: baseFields,
+  }), {
     creates: [
       { fieldName: '重点达标', body: { field_name: '重点达标', type: 2 } },
       { fieldName: 'A级达标', body: { field_name: 'A级达标', type: 2 } },
       { fieldName: '探索达标', body: { field_name: '探索达标', type: 2 } },
     ],
+    updates: [],
   });
   assert.deepEqual(buildDecisionHistorySchemaPlan({
+    tableId: 'tblHistory',
+    currentBatchNumber: 3,
     fields: [
+      ...baseFields,
       { field_id: 'fldSnapshot', field_name: '重点达标', type: 2 },
       { field_id: 'fldA', field_name: 'A级达标', type: 2 },
       { field_id: 'fldExplore', field_name: '探索达标', type: 2 },
     ],
-  }), { creates: [] });
+  }), { creates: [], updates: [] });
   assert.throws(() => buildDecisionHistorySchemaPlan({
-    fields: [{ field_id: 'fldSnapshot', field_name: '重点达标', type: 1 }],
+    tableId: 'tblHistory',
+    currentBatchNumber: 3,
+    fields: [...baseFields, { field_id: 'fldSnapshot', field_name: '重点达标', type: 1 }],
   }), /number type 2/iu);
+});
+
+test('snapshots the three dashboard dimensions from each supplied weekly analysis table', () => {
+  const plan = buildDecisionHistoryPlan({
+    batchTables: [{ batchNumber: 1, records: [current('c1', 'KW000001', {
+      标准归并词: '家用浴缸',
+      是否重点词: '是',
+      优先级: 'A-立即跟进',
+    })] }],
+    historyRecords: [history('h1', 1, 'KW000001')],
+    currentBatchNumber: 1,
+  });
+  assert.deepEqual(plan.historyUpdates, [{
+    record_id: 'h1',
+    fields: {
+      重点达标: 1,
+      A级达标: 1,
+      探索达标: 1,
+      标准归并词: '家用浴缸',
+      是否重点词: '是',
+      优先级: 'A-立即跟进',
+    },
+  }]);
+  assert.equal(plan.pendingHistory.length, 0);
+});
+
+test('plans dashboard snapshot fields and one formula-driven current-period marker', () => {
+  const expression = 'IF(AND(bitable::$table[tblHistory].$field[fldBatch]=3,bitable::$table[tblHistory].$field[fldValidity]="有效"),"是","否")';
+  assert.deepEqual(buildDecisionHistorySchemaPlan({
+    tableId: 'tblHistory',
+    currentBatchNumber: 3,
+    fields: [
+      { field_id: 'fldBatch', field_name: '批次编号', type: 2 },
+      { field_id: 'fldValidity', field_name: '批次有效性', type: 1 },
+    ],
+  }), {
+    creates: [
+      { fieldName: '重点达标', body: { field_name: '重点达标', type: 2 } },
+      { fieldName: 'A级达标', body: { field_name: 'A级达标', type: 2 } },
+      { fieldName: '探索达标', body: { field_name: '探索达标', type: 2 } },
+      { fieldName: '标准归并词', body: { field_name: '标准归并词', type: 1 } },
+      { fieldName: '是否重点词', body: { field_name: '是否重点词', type: 1 } },
+      { fieldName: '优先级', body: { field_name: '优先级', type: 1 } },
+      { fieldName: '本期标记', body: { field_name: '本期标记', type: 20, property: { formula_expression: expression } } },
+    ],
+    updates: [],
+  });
+});
+
+test('updates only the current-period formula when the valid batch advances', () => {
+  const fields = [
+    { field_id: 'fldBatch', field_name: '批次编号', type: 2 },
+    { field_id: 'fldValidity', field_name: '批次有效性', type: 1 },
+    { field_id: 'fldTarget', field_name: '重点达标', type: 2 },
+    { field_id: 'fldA', field_name: 'A级达标', type: 2 },
+    { field_id: 'fldExplore', field_name: '探索达标', type: 2 },
+    { field_id: 'fldMerge', field_name: '标准归并词', type: 1 },
+    { field_id: 'fldImportant', field_name: '是否重点词', type: 1 },
+    { field_id: 'fldPriority', field_name: '优先级', type: 1 },
+    {
+      field_id: 'fldCurrent',
+      field_name: '本期标记',
+      type: 20,
+      property: {
+        formula_expression: 'IF(AND(bitable::$table[tblHistory].$field[fldBatch]=2,bitable::$table[tblHistory].$field[fldValidity]="有效"),"是","否")',
+      },
+    },
+  ];
+  const plan = buildDecisionHistorySchemaPlan({ tableId: 'tblHistory', currentBatchNumber: 3, fields });
+  assert.deepEqual(plan.creates, []);
+  assert.deepEqual(plan.updates, [{
+    fieldId: 'fldCurrent',
+    fieldName: '本期标记',
+    body: {
+      field_name: '本期标记',
+      type: 20,
+      property: {
+        formula_expression: 'IF(AND(bitable::$table[tblHistory].$field[fldBatch]=3,bitable::$table[tblHistory].$field[fldValidity]="有效"),"是","否")',
+      },
+    },
+  }]);
+  const settledFields = fields.map((field) => field.field_id === 'fldCurrent'
+    ? { ...field, ...structuredClone(plan.updates[0].body) }
+    : field);
+  assert.deepEqual(buildDecisionHistorySchemaPlan({
+    tableId: 'tblHistory',
+    currentBatchNumber: 3,
+    fields: settledFields,
+  }), { creates: [], updates: [] });
+});
+
+test('blocks apply before the current dashboard snapshots are complete', () => {
+  const plan = buildDecisionHistoryPlan({
+    currentBatchNumber: 3,
+    batchTables: [{ batchNumber: 3, records: [current('c1', 'KW000001', { 优先级: '' })] }],
+    historyRecords: [history('h1', 3, 'KW000001')],
+  });
+  assert.throws(() => assertCurrentVisualizationReady(plan, 3), /incomplete: 1 cells/iu);
+
+  const complete = buildDecisionHistoryPlan({
+    currentBatchNumber: 3,
+    batchTables: [{ batchNumber: 3, records: [current('c1', 'KW000001')] }],
+    historyRecords: [history('h1', 3, 'KW000001')],
+  });
+  assert.doesNotThrow(() => assertCurrentVisualizationReady(complete, 3));
+});
+
+test('an invalid batch can never evaluate as the current dashboard period', () => {
+  const historyFields = [
+    { field_id: 'fldBatch', field_name: '批次编号', type: 2 },
+    { field_id: 'fldValidity', field_name: '批次有效性', type: 1 },
+    { field_id: 'fldKey', field_name: '本期标记', type: 20, property: {
+      formula_expression: 'IF(AND(bitable::$table[tblHistory].$field[fldBatch]=3,bitable::$table[tblHistory].$field[fldValidity]="有效"),"是","否")',
+    } },
+  ];
+  const before = {
+    currentFields: [],
+    currentRecords: [],
+    historyFields,
+    historyRecords: [history('valid', 3, 'KW000001', null, '有效'), history('invalid', 3, 'KW000002', null, '无效-周期错误')],
+  };
+  const after = structuredClone(before);
+  after.historyRecords[0].fields.本期标记 = '是';
+  after.historyRecords[1].fields.本期标记 = '否';
+  assert.equal(verifyDecisionHistoryApply({
+    before,
+    after,
+    schemaPlan: { creates: [], updates: [] },
+    plan: { historyUpdates: [], currentUpdates: [] },
+    currentBatchNumber: 3,
+  }).currentPeriodRows, 1);
+
+  after.historyRecords[1].fields.本期标记 = '是';
+  assert.throws(() => verifyDecisionHistoryApply({
+    before,
+    after,
+    schemaPlan: { creates: [], updates: [] },
+    plan: { historyUpdates: [], currentUpdates: [] },
+    currentBatchNumber: 3,
+  }), /expected 否/iu);
+});
+
+test('requires dashboard source fields on weekly analysis tables', () => {
+  const oldFields = [
+    '关键词编号', '关键词分类', '细分标签', '搜索热度', '内容热度', '交易热度', '优先级',
+  ].map((field_name) => ({ field_name }));
+  assert.throws(() => assertDecisionHistoryFieldContract({
+    currentFields: oldFields,
+  }), /标准归并词/iu);
 });
 
 test('mutation guard permits only the new history snapshot and current helper writes', () => {
@@ -265,7 +515,12 @@ test('mutation guard permits only the new history snapshot and current helper wr
     appToken: 'app',
     currentTableId: 'tblCurrent',
     historyTableId: 'tblHistory',
-    allowHistoryFieldCreate: true,
+    schemaPlan: {
+      creates: [{ fieldName: '重点达标', body: { field_name: '重点达标', type: 2 } }],
+      updates: [],
+    },
+    historyUpdates: [{ record_id: 'h1', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1 } }],
+    currentUpdates: [{ record_id: 'c1', fields: { 上一有效周重点达标: 1, 上一有效周A级达标: 0, 上一有效周探索达标: 1 } }],
     verifiedBatchRecordIds: new Set(['hLegacy']),
   };
   const root = '/bitable/v1/apps/app/tables';
@@ -287,7 +542,7 @@ test('mutation guard permits only the new history snapshot and current helper wr
   assert.doesNotThrow(() => assertDecisionHistoryMutation({
     method: 'POST',
     path: `${root}/tblCurrent/records/batch_update`,
-    body: { records: [{ record_id: 'c1', fields: { 近2周重点达标次数: 2, 近2周A级达标次数: 0, 近2周探索达标次数: 2 } }] },
+    body: { records: [{ record_id: 'c1', fields: { 上一有效周重点达标: 1, 上一有效周A级达标: 0, 上一有效周探索达标: 1 } }] },
   }, scope));
 
   for (const request of [
@@ -331,35 +586,54 @@ test('CLI is read-only by default and apply requires exact three-target confirma
 test('write verification permits only planned helpers and the dependent key-word formula result', () => {
   const before = {
     currentFields: [{ field_id: 'f1', field_name: '搜索词', type: 1 }],
-    historyFields: [{ field_id: 'h1', field_name: '批次编号', type: 2 }],
+    historyFields: [
+      { field_id: 'h1', field_name: '批次编号', type: 2 },
+      { field_id: 'h2', field_name: '批次有效性', type: 1 },
+    ],
     currentRecords: [current('c1', 'KW000001', { 搜索词: '浴缸', 是否重点词: '待数据' })],
     historyRecords: [history('r1', 2, 'KW000001')],
   };
-  const schemaPlan = buildDecisionHistorySchemaPlan({ fields: before.historyFields });
+  const schemaPlan = buildDecisionHistorySchemaPlan({
+    tableId: 'tblHistory',
+    currentBatchNumber: 2,
+    fields: before.historyFields,
+  });
   const plan = {
-    historyUpdates: [{ record_id: 'r1', fields: { 重点达标: 1, A级达标: 0, 探索达标: 1 } }],
-    currentUpdates: [{ record_id: 'c1', fields: { 近2周重点达标次数: 2, 近2周A级达标次数: 0, 近2周探索达标次数: 2 } }],
+    historyUpdates: [{ record_id: 'r1', fields: {
+      重点达标: 1,
+      A级达标: 0,
+      探索达标: 1,
+      标准归并词: '浴缸',
+      是否重点词: '是',
+      优先级: 'B-持续观察',
+    } }],
+    currentUpdates: [{ record_id: 'c1', fields: { 上一有效周重点达标: 1, 上一有效周A级达标: 0, 上一有效周探索达标: 1 } }],
   };
   const after = structuredClone(before);
-  after.historyFields.push(
-    { field_id: 'h2', field_name: '重点达标', type: 2 },
-    { field_id: 'h3', field_name: 'A级达标', type: 2 },
-    { field_id: 'h4', field_name: '探索达标', type: 2 },
-  );
-  after.historyRecords[0].fields.重点达标 = 1;
-  after.historyRecords[0].fields.A级达标 = 0;
-  after.historyRecords[0].fields.探索达标 = 1;
-  after.currentRecords[0].fields.近2周重点达标次数 = 2;
-  after.currentRecords[0].fields.近2周A级达标次数 = 0;
-  after.currentRecords[0].fields.近2周探索达标次数 = 2;
+  after.historyFields.push(...schemaPlan.creates.map((create, index) => ({
+    field_id: `new${index + 1}`,
+    ...structuredClone(create.body),
+  })));
+  Object.assign(after.historyRecords[0].fields, plan.historyUpdates[0].fields, { 本期标记: '是' });
+  after.currentRecords[0].fields.上一有效周重点达标 = 1;
+  after.currentRecords[0].fields.上一有效周A级达标 = 0;
+  after.currentRecords[0].fields.上一有效周探索达标 = 1;
   after.currentRecords[0].fields.是否重点词 = '是';
-  assert.deepEqual(verifyDecisionHistoryApply({ before, after, schemaPlan, plan }), {
-    historyFieldsCreated: 3,
+  assert.deepEqual(verifyDecisionHistoryApply({ before, after, schemaPlan, plan, currentBatchNumber: 2 }), {
+    historyFieldsCreated: 7,
+    historyFieldsUpdated: 0,
     historyRecordsWritten: 1,
     currentRecordsWritten: 1,
+    currentPeriodRows: 1,
   });
 
   const corrupted = structuredClone(after);
   corrupted.currentRecords[0].fields.搜索词 = '被改坏';
-  assert.throws(() => verifyDecisionHistoryApply({ before, after: corrupted, schemaPlan, plan }), /business data/iu);
+  assert.throws(() => verifyDecisionHistoryApply({
+    before,
+    after: corrupted,
+    schemaPlan,
+    plan,
+    currentBatchNumber: 2,
+  }), /business data/iu);
 });

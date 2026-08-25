@@ -6,7 +6,11 @@ import { fileURLToPath } from "node:url";
 
 import {
   assertAllowedSycmUrl,
+  ensureSevenDayPeriod,
   enterSearchRankFromHome,
+  isSelectedPeriodOption,
+  parseReportingWindow,
+  rediscoverSycmTarget,
   resolveSycmTarget,
   selectSycmTarget,
   waitForVisibleOption,
@@ -49,6 +53,26 @@ test("current-page mode requires a search-ranking tab", () => {
   assert.throws(() => selectSycmTarget(targets.slice(0, 1), "", false), /search-ranking tab/u);
 });
 
+test("rediscovers the expected SYCM target before each browser action", async () => {
+  let reads = 0;
+  const target = await rediscoverSycmTarget({
+    expectedTarget: "rank",
+    listTargets: async () => {
+      reads += 1;
+      return [
+        { targetId: "external", type: "page", url: "https://example.com/" },
+        { targetId: "rank", type: "page", url: "https://sycm.taobao.com/mc/free/search_rank" },
+      ];
+    },
+  });
+  assert.equal(reads, 1);
+  assert.equal(target.targetId, "rank");
+  await assert.rejects(
+    rediscoverSycmTarget({ expectedTarget: "rank", listTargets: async () => [] }),
+    /expected SYCM target is no longer available/u,
+  );
+});
+
 test("runs only the approved home to search-ranking transition order", async () => {
   const actions = [];
   const states = [
@@ -60,7 +84,8 @@ test("runs only the approved home to search-ranking transition order", async () 
     cateId: "50002411",
     category: "普通浴缸",
     navigate: async (url) => actions.push(["navigate", url]),
-    clickAt: async (selector) => actions.push(["click", selector]),
+    waitForSelector: async (selector) => actions.push(["selector", selector]),
+    click: async (selector) => actions.push(["click", selector]),
     waitForPath: async (path) => {
       actions.push(["wait", path]);
       return states.shift();
@@ -69,7 +94,9 @@ test("runs only the approved home to search-ranking transition order", async () 
   });
 
   assert.match(result.url, /\/mc\/free\/search_rank/u);
-  assert.deepEqual(actions.map(([action]) => action), ["navigate", "wait", "click", "wait", "click", "wait"]);
+  assert.deepEqual(actions.map(([action]) => action), [
+    "navigate", "wait", "selector", "click", "wait", "selector", "click", "wait",
+  ]);
 });
 
 test("does not click anything after home navigation fails", async () => {
@@ -78,7 +105,8 @@ test("does not click anything after home navigation fails", async () => {
     enterSearchRankFromHome({
       cateId: "50002411",
       navigate: async () => {},
-      clickAt: async (selector) => clicks.push(selector),
+      waitForSelector: async () => {},
+      click: async (selector) => clicks.push(selector),
       waitForPath: async () => { throw new Error("home did not load"); },
       guardSession: () => {},
     }),
@@ -97,7 +125,8 @@ test("stops before search-ranking when market category is wrong", async () => {
     enterSearchRankFromHome({
       cateId: "50002411",
       navigate: async () => {},
-      clickAt: async (selector) => clicks.push(selector),
+      waitForSelector: async () => {},
+      click: async (selector) => clicks.push(selector),
       waitForPath: async () => states.shift(),
       guardSession: () => {},
     }),
@@ -116,7 +145,8 @@ test("stops when the visible category is not ordinary bathtub", async () => {
       cateId: "50002411",
       category: "普通浴缸",
       navigate: async () => {},
-      clickAt: async () => {},
+      waitForSelector: async () => {},
+      click: async () => {},
       waitForPath: async () => states.shift(),
       guardSession: () => {},
     }),
@@ -226,4 +256,91 @@ test("page-size selection waits for the 50 option to become visible", async () =
     timeoutMs: 100,
   });
   assert.equal(reads, 2);
+});
+
+test("parses the complete seven-day reporting window", () => {
+  assert.deepEqual(parseReportingWindow("统计时间 2026-08-09 ~ 2026-08-15"), {
+    startDate: "2026-08-09",
+    endDate: "2026-08-15",
+    dayCount: 7,
+    dateRange: "2026-08-09 ~ 2026-08-15",
+  });
+  assert.deepEqual(parseReportingWindow("2026-08-15"), {
+    startDate: "2026-08-15",
+    endDate: "2026-08-15",
+    dayCount: 1,
+    dateRange: "2026-08-15",
+  });
+});
+
+test("recognizes the live Ant Design primary period button as selected", () => {
+  assert.equal(isSelectedPeriodOption([
+    { className: "ant-btn oui-canary-btn ant-btn-primary ant-btn-sm" },
+  ]), true);
+  assert.equal(isSelectedPeriodOption([
+    { className: "ant-btn oui-canary-btn ant-btn-sm" },
+  ]), false);
+});
+
+test("switches from daily data to the selected seven-day period", async () => {
+  const states = [
+    {
+      currentDate: "2026-08-15",
+      periodOptions: [
+        { label: "7天", selected: false },
+        { label: "30天", selected: false },
+        { label: "日", selected: true },
+      ],
+    },
+    {
+      currentDate: "2026-08-09 ~ 2026-08-15",
+      periodOptions: [
+        { label: "7天", selected: true },
+        { label: "30天", selected: false },
+        { label: "日", selected: false },
+      ],
+    },
+  ];
+  const clicks = [];
+  const result = await ensureSevenDayPeriod({
+    inspect: async () => states.shift() ?? {
+      currentDate: "2026-08-09 ~ 2026-08-15",
+      periodOptions: [{ label: "7天", selected: true }],
+    },
+    clickPeriod: async (label) => clicks.push(label),
+    guardPage: () => {},
+    sleep: async () => {},
+    timeoutMs: 100,
+  });
+
+  assert.deepEqual(clicks, ["7天"]);
+  assert.equal(result.period, "7天");
+  assert.equal(result.dateRange, "2026-08-09 ~ 2026-08-15");
+  assert.equal(result.dayCount, 7);
+});
+
+test("refuses to continue when seven-day selection cannot be verified", async () => {
+  await assert.rejects(
+    ensureSevenDayPeriod({
+      inspect: async () => ({
+        currentDate: "2026-08-15",
+        periodOptions: [
+          { label: "7天", selected: false },
+          { label: "日", selected: true },
+        ],
+      }),
+      clickPeriod: async () => {},
+      guardPage: () => {},
+      sleep: async () => {},
+      timeoutMs: 1,
+    }),
+    /Could not verify selected 7-day reporting period/u,
+  );
+});
+
+test("official exporter documents the fixed seven-day contract", () => {
+  const result = spawnSync(process.execPath, [path.join(SCRIPT_DIR, "export-search-rank.mjs"), "--help"], { encoding: "utf8" });
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /--period 7d/u);
+  assert.match(result.stdout, /end date of the 7-day reporting window/u);
 });
