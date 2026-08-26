@@ -10,7 +10,7 @@ test('updates one sanitized index while preserving the product identity and arti
   const directory = await mkdtemp(path.join(os.tmpdir(), 'xws-sku-index-'));
   const first = await updateSkuBatchIndex({
     directory,
-    source: { mainRecordId: 'recMain', productId: '1038622504551', classification: 'A-高销量高GMV竞品' },
+    source: { mainRecordId: 'recMain', productId: '1038622504551', classification: 'A-爆款竞品' },
     artifacts: { payload: 'D:/other/payload.txt', captureReceipt: 'D:/other/capture.json' },
   });
   const second = await updateSkuBatchIndex({

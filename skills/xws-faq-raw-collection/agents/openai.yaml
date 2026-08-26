@@ -1,0 +1,4 @@
+interface:
+  display_name: "Xiaowangshen FAQ Raw Collection"
+  short_description: "Collect raw FAQ sources and dated weekly snapshots"
+  default_prompt: "Use $xws-faq-raw-collection to collect raw FAQ evidence from the latest competitor week."

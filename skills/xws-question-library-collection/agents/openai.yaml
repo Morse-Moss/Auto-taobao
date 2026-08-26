@@ -1,0 +1,4 @@
+interface:
+  display_name: "小旺神问题库采集"
+  short_description: "采集 A/B 级竞品 TOP5 的问大家和评论原文"
+  default_prompt: "使用最新竞品周表筛选 A/B 级月收货人数 TOP5，按规则采集问大家和评论原始数据并写入问题周表。"

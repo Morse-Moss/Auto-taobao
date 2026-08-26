@@ -1,0 +1,3 @@
+display_name: "FAQ 周更运营入口"
+short_description: "用自然语言执行小旺神 FAQ 采集、分析和问题库发布"
+default_prompt: "执行本周 FAQ 采集并更新运营问题库"

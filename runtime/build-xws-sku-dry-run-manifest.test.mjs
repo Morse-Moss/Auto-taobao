@@ -31,7 +31,7 @@ function fixture() {
         productId: '1053695212757',
         productUrl: 'https://item.taobao.com/item.htm?id=1053695212757',
         validity: '是',
-        classification: 'A-高销量高GMV竞品',
+        classification: 'A-爆款竞品',
         copiedItem: 'SKU',
         copyFeedback: '已复制',
       },
@@ -62,7 +62,7 @@ test('builds a sanitized evidence descriptor only when the captured hashes agree
     productId: '1053695212757',
     productUrl: 'https://item.taobao.com/item.htm?id=1053695212757',
     capturedValidity: '是',
-    capturedClassification: 'A-高销量高GMV竞品',
+    capturedClassification: 'A-爆款竞品',
   });
   assert.equal(evidence.propertyCount, 2);
   assert.equal(evidence.validCombinationCount, 1);

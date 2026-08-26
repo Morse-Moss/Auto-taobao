@@ -78,7 +78,8 @@ Use `import-competitor-v2.mjs` when the Xiaowangshen export must become a struct
 
 - `竞品主表`: source fields plus calculated values and deferred-data markers.
 - `SKU明细`: schema only; keep empty until SKU collection is separately authorized.
-- `问题库`: schema only; keep empty until 问大家/评论 collection is separately authorized.
+- `问题库`: fixed operator-facing eight-field mirror; raw collection writes to dated `问题库_开始日期_结束日期`,
+  and the post-analysis mirror may populate this table only after the dated source and Feishu summary are verified.
 
 The empty `SKU明细` schema is part of the same V2 contract: its fields are `商品链接`, `商品标题`, `竞品分类`, `SKU名称`, `SKU规格`, `SKU尺寸`, `尺寸汇总`, `适用空间`, `空间判定状态`, `空间判定依据`, `商品ID`, `SKU唯一键`, `采集状态`, and `待补数据项`. `适用空间` is a single-select field with only `小户型` and `常规卫生间`; `大户型` is intentionally excluded. `所属竞品` is a single bidirectional relation to `竞品主表`, with the reciprocal main-table field `SKU采集明细`. Schema preparation may add or repair only these approved empty-table fields and relation metadata; it must not create SKU records or alter existing main-table values.
 

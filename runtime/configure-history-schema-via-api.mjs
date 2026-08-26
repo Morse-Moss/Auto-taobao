@@ -50,7 +50,7 @@ const operations = [
   { name: '是否有效竞品', type: 20, property: { formatter: '', formula_expression: validity } },
   { name: '月收货人数计算值', type: 20, property: { formatter: '0', formula_expression: `IF(NOT(${validGate}),"",IFERROR(VALUE(SUBSTITUTE(${rawMonthly},"+","")),""))` } },
   { name: '月收货金额', type: 20, property: { formatter: '0.0', formula_expression: `IF(OR(NOT(${validGate}),ISBLANK(${price}),${monthly}=""),"",${price}*${monthly})` } },
-  { name: '竞品分类', type: 20, property: { formatter: '', formula_expression: `IF(OR(NOT(${validGate}),ISBLANK(${price})),"不适用",IF(AND(${monthly}>=80,${amount}>=200000),"A-高销量高GMV竞品",IF(AND(FIND("人造石",${title})>0,${monthly}>=10),"B-高价值竞品",IF(${price}>=8000,"C-中价位竞品",IF(${price}<1000,"D-低价位竞品","无分类")))))` } },
+  { name: '竞品分类', type: 20, property: { formatter: '', formula_expression: `IF(OR(NOT(${validGate}),ISBLANK(${price})),"不适用",IF(AND(${monthly}>=80,${amount}>=200000),"A-爆款竞品",IF(AND(FIND("人造石",${title})>0,${monthly}>=10),"B-高价值竞品",IF(${price}>=8000,"C-差异化竞品",IF(${price}<1000,"D-价格/流量型竞品","无分类")))))` } },
   { name: '数据状态', type: 20, property: { formatter: '', formula_expression: `IF(NOT(${validGate}),"",IF(${monthly}="","部分待补","可用"))` } },
   { name: '待补数据项', type: 20, property: { formatter: '', formula_expression: `IF(NOT(${validGate}),"",IF(${monthly}="","月收货人数精确值",""))` } },
 ];

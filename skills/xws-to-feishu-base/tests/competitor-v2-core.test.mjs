@@ -86,7 +86,7 @@ test('known title evidence produces multi-value attributes and one highest-prior
   assert.deepEqual(record.安装方式, ['独立']);
   assert.deepEqual(record.功能, ['按摩', '恒温']);
   assert.deepEqual(record.风格, ['日式']);
-  assert.equal(record.竞品分类, 'A-高销量高GMV竞品');
+  assert.equal(record.竞品分类, 'A-爆款竞品');
 });
 
 test('approved material aliases normalize to human-made stone and C uses price only', () => {
@@ -97,7 +97,7 @@ test('approved material aliases normalize to human-made stone and C uses price o
     是否有效竞品: '是',
   }), { searchKeyword: '浴缸' });
   assert.deepEqual(record.材质分类, ['人造石']);
-  assert.equal(record.竞品分类, 'C-中价位竞品');
+  assert.equal(record.竞品分类, 'C-差异化竞品');
   assert.equal(record.待补数据项.includes('C类主图造型'), false);
 });
 
@@ -158,7 +158,7 @@ test('D uses price below 1000 and C uses the approved 8000 price threshold', () 
     月收货人数: '1',
     是否有效竞品: '是',
   }), { searchKeyword: '浴缸' });
-  assert.equal(d.竞品分类, 'D-低价位竞品');
+  assert.equal(d.竞品分类, 'D-价格/流量型竞品');
 
   const c = buildCompetitorRecord(sourceRow({
     商品标题: '异形浴缸',
@@ -166,7 +166,7 @@ test('D uses price below 1000 and C uses the approved 8000 price threshold', () 
     月收货人数: '1',
     是否有效竞品: '是',
   }), { searchKeyword: '浴缸' });
-  assert.equal(c.竞品分类, 'C-中价位竞品');
+  assert.equal(c.竞品分类, 'C-差异化竞品');
   assert.equal(c.待补数据项.includes('C类主图造型'), false);
 });
 
@@ -177,7 +177,7 @@ test('updated competitor labels distinguish mid-price, low-price, no-class, and 
     月收货人数: '1',
     是否有效竞品: '是',
   }), { searchKeyword: '浴缸' });
-  assert.equal(midPrice.竞品分类, 'C-中价位竞品');
+  assert.equal(midPrice.竞品分类, 'C-差异化竞品');
 
   const lowPrice = buildCompetitorRecord(sourceRow({
     商品标题: '成人浴缸',
@@ -185,7 +185,7 @@ test('updated competitor labels distinguish mid-price, low-price, no-class, and 
     月收货人数: '1',
     是否有效竞品: '是',
   }), { searchKeyword: '浴缸' });
-  assert.equal(lowPrice.竞品分类, 'D-低价位竞品');
+  assert.equal(lowPrice.竞品分类, 'D-价格/流量型竞品');
 
   const noClass = buildCompetitorRecord(sourceRow({
     商品标题: '成人浴缸',
@@ -484,9 +484,9 @@ test('field migration plan creates review fields and makes only safe determinist
     );
   }
   assert.match(plan.formulas[6].body.property.formula_expression, /CONTAIN\(.+人造石/u);
-  assert.match(plan.formulas[6].body.property.formula_expression, /A-高销量高GMV竞品/u);
-  assert.match(plan.formulas[6].body.property.formula_expression, /C-中价位竞品/u);
-  assert.match(plan.formulas[6].body.property.formula_expression, /D-低价位竞品/u);
+  assert.match(plan.formulas[6].body.property.formula_expression, /A-爆款竞品/u);
+  assert.match(plan.formulas[6].body.property.formula_expression, /C-差异化竞品/u);
+  assert.match(plan.formulas[6].body.property.formula_expression, /D-价格\/流量型竞品/u);
   assert.deepEqual(plan.optionUpdates.map((item) => item.fieldName), [
     '材质分类', '外形', '安装方式', '功能', '风格', '适用空间',
   ]);
@@ -637,7 +637,7 @@ test('migration mutation guard blocks deletes, field creation, formula record wr
   assert.throws(() => competitorCore.assertCompetitorMigrationMutation({
     method: 'POST',
     path: '/bitable/v1/apps/app123/tables/tbl123/records/batch_update',
-    body: { records: [{ record_id: 'rec1', fields: { 竞品分类: 'A-高销量高GMV竞品' } }] },
+    body: { records: [{ record_id: 'rec1', fields: { 竞品分类: 'A-爆款竞品' } }] },
   }, scope), /Blocked/u);
   assert.throws(() => competitorCore.assertCompetitorMigrationMutation({
     method: 'DELETE', path: '/bitable/v1/apps/app123/tables/tbl123/fields/fldPending', body: {},

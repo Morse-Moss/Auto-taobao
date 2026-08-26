@@ -55,7 +55,7 @@ test('builds sanitized status and operator alert artifacts', async () => {
     mainRecordId: 'recMain',
     productId: '1059970355633',
     productUrl: 'https://item.taobao.com/item.htm?id=1059970355633',
-    classification: 'A-高销量高GMV竞品',
+    classification: 'A-爆款竞品',
     validity: '是',
   };
   const status = buildAuthStatus({
@@ -90,7 +90,7 @@ test('requires source identity and output directory', () => {
     '--product-id', '1',
     '--product-url', 'https://item.taobao.com/item.htm?id=1',
     '--record-id', 'recMain',
-    '--classification', 'A-高销量高GMV竞品',
+    '--classification', 'A-爆款竞品',
     '--validity', '是',
     '--output-directory', 'D:/tmp/batch',
   ]);
@@ -121,7 +121,7 @@ test('writes and deduplicates an AUTH_REQUIRED operator alert without external n
     productId: '1059970355633',
     productUrl: 'https://item.taobao.com/item.htm?id=1059970355633',
     recordId: 'recMain',
-    classification: 'A-高销量高GMV竞品',
+    classification: 'A-爆款竞品',
     validity: '是',
     outputDirectory: directory,
     checkedAt: new Date().toISOString(),

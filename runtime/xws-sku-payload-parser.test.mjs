@@ -8,7 +8,7 @@ const source = {
   productId: '1053695212757',
   productUrl: 'https://item.taobao.com/item.htm?id=1053695212757',
   productTitle: 'Synthetic product',
-  competitorClass: 'A-高销量高GMV竞品',
+  competitorClass: 'A-爆款竞品',
   mainRecordId: 'recSynthetic',
 };
 

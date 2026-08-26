@@ -5,7 +5,7 @@ import { buildSnapshotPlan } from './sync-weekly-sku-history.mjs';
 const sku = (key, overrides = {}) => ({
   recordId: `rec-${key}`,
   fields: {
-    商品ID: 'p-1', 商品链接: 'https://item.taobao.com/item.htm?id=p-1', 商品标题: '浴缸', 竞品分类: 'A-高销量高GMV竞品',
+    商品ID: 'p-1', 商品链接: 'https://item.taobao.com/item.htm?id=p-1', 商品标题: '浴缸', 竞品分类: 'A-爆款竞品',
     SKU唯一键: key, SKU名称: '白色', SKU规格: '1500mm', SKU尺寸: '小户型', 尺寸汇总: '1.5m', 适用空间: '小户型',
     空间判定状态: '已判定', 空间判定依据: 'SKU尺寸', 采集状态: '已采集', 所属竞品: [{ record_id: 'rec-main' }], ...overrides,
   },

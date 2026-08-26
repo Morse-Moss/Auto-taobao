@@ -31,7 +31,7 @@ const INSTALLATIONS = ['独立', '嵌入', '靠墙', '台上/搁置'];
 const FUNCTIONS = ['普通', '按摩', '智能', '恒温'];
 const STYLES = ['极简', '奶油', '日式', '轻奢'];
 const COMPETITOR_CLASSES = [
-  'A-高销量高GMV竞品', 'B-高价值竞品', 'C-中价位竞品', 'D-低价位竞品', '无分类', '不适用',
+  'A-爆款竞品', 'B-高价值竞品', 'C-差异化竞品', 'D-价格/流量型竞品', '无分类', '不适用',
 ];
 export const SKU_APPLICABLE_SPACES = ['小户型', '常规卫生间'];
 export const SKU_SPACE_DECISION_STATUSES = ['已判定', '需人工核验'];
@@ -760,7 +760,7 @@ export function buildCompetitorFieldMigrationPlan({ tableId, fields }) {
           field_name: '竞品分类',
           type: FORMULA,
           property: {
-            formula_expression: `IF(OR(${invalidGate},ISBLANK(${price})),"不适用",IF(AND(${monthly}>=80,${amountReference}>=200000),"A-高销量高GMV竞品",IF(AND(${materialMatch},${monthly}>=10),"B-高价值竞品",IF(${price}>=8000,"C-中价位竞品",IF(${price}<1000,"D-低价位竞品","无分类")))))`,
+            formula_expression: `IF(OR(${invalidGate},ISBLANK(${price})),"不适用",IF(AND(${monthly}>=80,${amountReference}>=200000),"A-爆款竞品",IF(AND(${materialMatch},${monthly}>=10),"B-高价值竞品",IF(${price}>=8000,"C-差异化竞品",IF(${price}<1000,"D-价格/流量型竞品","无分类")))))`,
           },
         },
       },
@@ -1042,13 +1042,13 @@ export function buildCompetitorRecord(row, { searchKeyword }) {
   let competitorClass = '不适用';
 
   if (isValid && monthlyValue != null && monthlyValue >= 80 && monthlyAmount >= 200000) {
-    competitorClass = 'A-高销量高GMV竞品';
+    competitorClass = 'A-爆款竞品';
   }
   if (competitorClass === '不适用' && isValid && materials.includes('人造石') && monthlyValue != null && monthlyValue >= 10) {
     competitorClass = 'B-高价值竞品';
   }
-  if (competitorClass === '不适用' && isValid && price >= 8000) competitorClass = 'C-中价位竞品';
-  if (competitorClass === '不适用' && isValid && price < 1000) competitorClass = 'D-低价位竞品';
+  if (competitorClass === '不适用' && isValid && price >= 8000) competitorClass = 'C-差异化竞品';
+  if (competitorClass === '不适用' && isValid && price < 1000) competitorClass = 'D-价格/流量型竞品';
   if (competitorClass === '不适用' && isValid) competitorClass = '无分类';
 
   const pending = [];
@@ -1069,7 +1069,7 @@ export function buildCompetitorRecord(row, { searchKeyword }) {
   if (isValid && styles.includes('无注明')) addPending('风格');
   if (isValid && dimensions === '无注明') addPending('尺寸');
   if (isValid && applicableSpaces.includes('无注明')) addPending('适用空间');
-  if (isValid && ['A-高销量高GMV竞品', 'B-高价值竞品'].includes(competitorClass)) {
+  if (isValid && ['A-爆款竞品', 'B-高价值竞品'].includes(competitorClass)) {
     addPending('SKU尺寸', '适用空间', '问大家', '评论');
   }
 

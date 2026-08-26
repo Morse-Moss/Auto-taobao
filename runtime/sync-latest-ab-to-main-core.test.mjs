@@ -23,7 +23,7 @@ test('upserts latest A/B products by stable product ID and does not copy formula
 });
 
 test('ignores non-A/B rows from the latest period', () => {
-  const plan = buildMainUpsertPlan({ historyRecords: [history('1001', 'C-中价位竞品')], mainRecords: [] });
+  const plan = buildMainUpsertPlan({ historyRecords: [history('1001', 'C-差异化竞品')], mainRecords: [] });
   assert.equal(plan.summary.latestAbRows, 0);
   assert.equal(plan.summary.toCreate, 0);
 });

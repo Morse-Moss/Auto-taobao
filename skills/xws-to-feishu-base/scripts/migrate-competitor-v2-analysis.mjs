@@ -214,7 +214,7 @@ function verifyRecords(before, after, expectedUpdates) {
           : Number(fields.价格) >= 8000 ? 'C'
             : Number(fields.价格) < 1000 ? 'D' : '无分类';
     const normalizedClass = plainFeishuFormulaValue(fields.竞品分类);
-    const classPrefix = { A: 'A-高销量高GMV竞品', B: 'B-高价值竞品', C: 'C-中价位竞品', D: 'D-低价位竞品' }[expectedClass] ?? expectedClass;
+    const classPrefix = { A: 'A-爆款竞品', B: 'B-高价值竞品', C: 'C-差异化竞品', D: 'D-价格/流量型竞品' }[expectedClass] ?? expectedClass;
     if (normalizedClass !== classPrefix) {
       throw new Error(`Record ${id} competitor class formula is unsettled`);
     }

@@ -57,7 +57,7 @@ export const TABLE_DEFINITIONS = {
     field('批次ID'), field('商品ID'), field('快照唯一键'), field('来源时间', DATE),
     field('搜索关键词'), field('公式版本'), field('AI提示词版本'),
     select('是否有效竞品', ['是', '否', '待确认']),
-    select('竞品分类', ['A-高销量高GMV竞品', 'B-高价值竞品', 'C-中价位竞品', 'D-低价位竞品', '无分类', '不适用']),
+    select('竞品分类', ['A-爆款竞品', 'B-高价值竞品', 'C-差异化竞品', 'D-价格/流量型竞品', '无分类', '不适用']),
     field('月收货人数计算值', NUMBER),
     select('计算口径', ['精确值', '下限值', '不可计算']),
     field('月收货金额', NUMBER),

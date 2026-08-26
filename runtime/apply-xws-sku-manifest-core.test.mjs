@@ -26,7 +26,7 @@ function writeFields(skuId, overrides = {}) {
   return {
     商品链接: 'https://item.taobao.com/item.htm?id=1053695212757',
     商品标题: 'Synthetic product',
-    竞品分类: 'A-高销量高GMV竞品',
+    竞品分类: 'A-爆款竞品',
     SKU名称: '独立浴缸',
     SKU规格: '独立浴缸-左排-恒温',
     SKU尺寸: '1.2米',
@@ -65,7 +65,7 @@ function manifest() {
       productId: '1053695212757',
       productUrl: 'https://item.taobao.com/item.htm?id=1053695212757',
       productTitle: 'Synthetic product',
-      competitorClass: 'A-高销量高GMV竞品',
+      competitorClass: 'A-爆款竞品',
     },
     plan: {
       summary: {

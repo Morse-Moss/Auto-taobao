@@ -5,6 +5,7 @@ import { latestWeeklyTable, parseWeeklyTable, weeklyTableName } from './weekly-t
 test('builds and parses dated weekly table names', () => {
   const name = weeklyTableName('SKU', '2026-08-31', '2026-09-06');
   assert.equal(name, 'SKU周_2026-08-31_2026-09-06');
+  assert.equal(weeklyTableName('问题库', '2026-08-31', '2026-09-06'), '问题库_2026-08-31_2026-09-06');
   assert.deepEqual(parseWeeklyTable({ tableId: 'tbl-1', name }), {
     tableId: 'tbl-1', name, kind: 'SKU', startDate: '2026-08-31', endDate: '2026-09-06',
   });

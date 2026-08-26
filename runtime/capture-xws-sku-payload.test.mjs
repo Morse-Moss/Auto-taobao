@@ -69,7 +69,7 @@ test('captures the clipboard once, validates source metadata, and persists a has
       recordId: 'recSkuProbe',
       productId: '1038622504551',
       productUrl: 'https://item.taobao.com/item.htm?id=1038622504551',
-      classification: 'A-高销量高GMV竞品',
+      classification: 'A-爆款竞品',
       validity: '是',
       copiedItem: 'SKU',
       copyFeedback: '已复制',

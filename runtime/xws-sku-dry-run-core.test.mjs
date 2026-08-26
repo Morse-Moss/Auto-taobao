@@ -18,7 +18,7 @@ const source = {
   productId: '1053695212757',
   productUrl: 'https://item.taobao.com/item.htm?id=1053695212757',
   productTitle: 'Synthetic product',
-  competitorClass: 'A-高销量高GMV竞品',
+  competitorClass: 'A-爆款竞品',
   mainRecordId: 'recMain',
 };
 
@@ -157,7 +157,7 @@ test('rejects a SKU schema that reintroduces the retired large-space option', ()
 
 test('rejects source data when the current Feishu formula is no longer an A or B competitor', () => {
   const mainRecord = liveMainRecord();
-  mainRecord.fields.竞品分类 = [{ text: 'C-中价位竞品' }];
+  mainRecord.fields.竞品分类 = [{ text: 'C-差异化竞品' }];
 
   assert.throws(() => plan({ mainRecord }), /A or B/u);
 });

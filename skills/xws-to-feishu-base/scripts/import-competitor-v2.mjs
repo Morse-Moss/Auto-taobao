@@ -9,9 +9,9 @@ import { parseBaseUrl } from './import-core.mjs';
 import { runCompetitorV2 } from './competitor-v2-runner.mjs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
-const WEEKLY_TABLE_NAME = /^(竞品周|SKU周)_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/u;
+const WEEKLY_TABLE_NAME = /^(竞品周|SKU周|问题库|问题库分析|问题主题汇总)_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/u;
 const ALLOWED_TABLES = new Set(['竞品主表', 'SKU明细', '问题库']);
-const ALLOWED_WRITE_TABLE_IDS = new Set(['tblJ9LHFN6pMVjPv', 'tblddWTrPeB4TKmR']);
+const ALLOWED_WRITE_TABLE_IDS = new Set(['tblJ9LHFN6pMVjPv', 'tblddWTrPeB4TKmR', 'tblRS5lo0nNN3DOJ']);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
 function positiveInteger(value, name) {
@@ -164,6 +164,10 @@ export class CompetitorV2FeishuClient {
     const id = data.table_id ?? data.table?.table_id;
     if (!id) throw new Error(`Feishu did not return a table id for ${name}`);
     if (name === '竞品主表') this.mainTableId = id;
+    if (WEEKLY_TABLE_NAME.test(name)) {
+      this.weeklyTableIds ??= new Set();
+      this.weeklyTableIds.add(id);
+    }
     return id;
   }
 
@@ -175,6 +179,23 @@ export class CompetitorV2FeishuClient {
       type: field.type,
       property: field.property,
     }));
+  }
+
+  async createField(tableId, definition) {
+    const data = await this.request('POST', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/fields`, {
+      field_name: definition.name,
+      type: definition.type,
+      ...(definition.property ? { property: definition.property } : {}),
+    });
+    return data.field_id ?? data.field?.field_id;
+  }
+
+  async updateField(tableId, fieldId, definition) {
+    return this.request('PUT', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/fields/${fieldId}`, {
+      field_name: definition.name,
+      type: definition.type,
+      ...(definition.property ? { property: definition.property } : {}),
+    });
   }
 
   async listRecords(tableId) {
@@ -224,6 +245,17 @@ export class CompetitorV2FeishuClient {
       records: records.map((record) => ({ record_id: record.recordId ?? record.record_id, fields: record.fields })),
     });
     return (data.records ?? []).map((record) => record.record_id);
+  }
+
+  async batchDeleteRecords(tableId, recordIds) {
+    if (!ALLOWED_WRITE_TABLE_IDS.has(tableId) && tableId !== this.mainTableId && !this.weeklyTableIds?.has(tableId)) {
+      throw new Error('Blocked record delete outside authorized competitor tables');
+    }
+    if (!Array.isArray(recordIds) || recordIds.length < 1 || recordIds.length > 500) {
+      throw new Error(`Batch delete size must be between 1 and 500; received ${recordIds?.length ?? 0}`);
+    }
+    await this.request('POST', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/records/batch_delete`, { records: recordIds });
+    return recordIds;
   }
 
   async deleteTable(tableId) {
