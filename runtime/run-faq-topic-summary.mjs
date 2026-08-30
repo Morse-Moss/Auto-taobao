@@ -1,188 +1,92 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+#!/usr/bin/env node
+import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { CompetitorV2FeishuClient } from '../skills/xws-to-feishu-base/scripts/import-competitor-v2.mjs';
-import {
-  FAQ_ANALYSIS_VERSION,
-  FAQ_TOPIC_COUNT_FORMULA,
-  buildTopicSummaryFields,
-  buildTopicSummaryRecords,
-} from './faq-topic-summary.mjs';
+import { FAQ_ANALYSIS_VERSION, FAQ_LABEL_CATALOG } from './faq-text-analysis.mjs';
+import { FAQ_DEDUP_VERSION, FAQ_OPERATOR_CONTENT_VERSION, FAQ_PAIN_DESCRIPTION_VERSION, FAQ_REPRESENTATIVE_SELECTION_VERSION, FAQ_SUMMARY_VERSION, buildCumulativeSummary, buildSummary, classifyAndDeduplicate } from './faq-local-summary.mjs';
+import { readOperatorContent } from './faq-operator-content.mjs';
 
-const DEFAULT_ENV_FILE = 'E:/小红书/.env.local';
-const BASE_URL_PATTERN = /\/base\/([^?/#]+)/u;
-
-function text(value) {
-  if (Array.isArray(value)) return value.map(text).filter(Boolean).join(',');
-  if (value && typeof value === 'object') {
-    if (Object.prototype.hasOwnProperty.call(value, 'text')) return text(value.text);
-    if (Object.prototype.hasOwnProperty.call(value, 'record_ids')) return value.record_ids.map(text).join(',');
-    if (Object.prototype.hasOwnProperty.call(value, 'record_id')) return text(value.record_id);
-  }
-  return String(value ?? '').trim();
-}
-
-function relationIds(value) {
-  const ids = [];
-  const visit = (item) => {
-    if (item == null) return;
-    if (Array.isArray(item)) return item.forEach(visit);
-    if (typeof item === 'string') { if (item.startsWith('rec')) ids.push(item); return; }
-    if (typeof item === 'object') for (const key of ['record_ids', 'recordIds', 'record_id', 'recordId', 'value']) visit(item[key]);
-  };
-  visit(value);
-  return [...new Set(ids)].sort();
-}
-
-function parseEnvFile(path) {
-  const values = {};
-  for (const raw of readFileSync(path, 'utf8').split(/\r?\n/u)) {
-    const line = raw.trim();
-    if (!line || line.startsWith('#')) continue;
-    const separator = line.indexOf('=');
-    if (separator < 1) continue;
-    let value = line.slice(separator + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
-    values[line.slice(0, separator).trim()] = value;
-  }
-  return values;
-}
-
-function parseCliArgs(argv) {
-  const options = { envFile: DEFAULT_ENV_FILE, apply: false };
-  const valueOptions = new Map([
-    ['--base-url', 'baseUrl'], ['--env-file', 'envFile'], ['--period-start', 'periodStart'],
-    ['--period-end', 'periodEnd'], ['--output-dir', 'outputDir'], ['--confirm-app-token', 'confirmAppToken'],
-  ]);
+function parseArgs(argv) {
+  const options = { runtimeRoot: 'runtime' };
+  const valueOptions = new Map([['--runtime-root', 'runtimeRoot'], ['--period-start', 'periodStart'], ['--period-end', 'periodEnd'], ['--output-dir', 'outputDir'], ['--operator-xlsx', 'operatorXlsx'], ['--python', 'python']]);
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
-    if (arg === '--apply') options.apply = true;
-    else if (valueOptions.has(arg)) {
-      const value = argv[++index];
-      if (!value || value.startsWith('--')) throw new Error(`${arg} requires a value`);
-      options[valueOptions.get(arg)] = value;
-    } else throw new Error(`Unknown argument: ${arg}`);
+    if (!valueOptions.has(arg)) throw new Error(`Unknown argument: ${arg}`);
+    const value = argv[++index];
+    if (!value || value.startsWith('--')) throw new Error(`${arg} requires a value`);
+    options[valueOptions.get(arg)] = value;
   }
-  for (const name of ['baseUrl', 'periodStart', 'periodEnd']) if (!String(options[name] ?? '').trim()) throw new Error(`--${name} is required`);
-  const appToken = options.baseUrl.match(BASE_URL_PATTERN)?.[1];
-  if (!appToken) throw new Error('--base-url must contain /base/<app-token>');
-  if (options.apply && options.confirmAppToken !== appToken) throw new Error('--apply requires matching --confirm-app-token');
-  return { ...options, appToken, period: `${options.periodStart}_${options.periodEnd}` };
+  for (const name of ['periodStart', 'periodEnd']) if (!/^\d{4}-\d{2}-\d{2}$/u.test(String(options[name] ?? ''))) throw new Error(`--${name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)} must be YYYY-MM-DD`);
+  options.period = `${options.periodStart}_${options.periodEnd}`;
+  options.outputDir ??= resolve(options.runtimeRoot, 'faq-analysis', options.period);
+  return options;
 }
 
-function tableName(period) { return `问题主题汇总_${period}`; }
+function hash(value) { return createHash('sha256').update(value).digest('hex'); }
 
-function sameField(actual, expected) {
-  if (!actual || actual.fieldName !== expected.name || Number(actual.type) !== Number(expected.type)) return false;
-  if (expected.type === 21) return actual.property?.table_id === expected.property?.table_id;
-  if (expected.type === 20) {
-    // Feishu rewrites formulas to an internal table/field-ID expression after creation.
-    return typeof actual.property?.formula_expression === 'string'
-      && /COUNTA\(/u.test(actual.property.formula_expression);
+async function verifiedPeriods(runtimeRoot) {
+  const root = resolve(runtimeRoot, 'faq-analysis');
+  if (!existsSync(root)) return [];
+  const periods = [];
+  for (const period of await readdir(root)) {
+    const receiptPath = resolve(root, period, 'classification-receipt.json');
+    const classifiedPath = resolve(root, period, 'classified-records.jsonl');
+    if (!existsSync(receiptPath) || !existsSync(classifiedPath)) continue;
+    const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
+    const classifiedText = await readFile(classifiedPath, 'utf8');
+    if (receipt.mode !== 'APPLIED_AND_VERIFIED' || receipt.period !== period || receipt.analysisVersion !== FAQ_ANALYSIS_VERSION || receipt.classifiedSnapshot?.sha256 !== hash(classifiedText)) continue;
+    periods.push({ period, records: classifiedText.split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line)) });
   }
-  return true;
+  return periods.sort((left, right) => left.period.localeCompare(right.period));
 }
-
-function formulaUsesOverflowField(field) {
-  return typeof field?.property?.formula_expression === 'string'
-    && /COUNTA\(/u.test(field.property.formula_expression)
-    && /关联分析记录补充|\$field\[[^\]]+\].*COUNTA/u.test(field.property.formula_expression);
-}
-
-async function ensureTable(client, name, detailTableId) {
-  const tables = await client.listTables();
-  const matches = tables.filter((table) => table.name === name);
-  if (matches.length > 1) throw new Error(`Multiple topic summary tables named ${name}`);
-  const definitions = buildTopicSummaryFields(detailTableId);
-  let tableId;
-  if (matches.length) {
-    tableId = matches[0].tableId;
-  } else {
-    // Feishu rejects link properties in the table-create payload. Create the
-    // fields in order after the empty table exists so the relation is valid.
-    tableId = await client.createTable(name, [definitions[0]]);
-  }
-  let fields = await client.listFields(tableId);
-  if (fields.length > definitions.length || fields.some((field, index) => !sameField(field, definitions[index]))) {
-    throw new Error(`Topic summary schema mismatch: ${name}`);
-  }
-  for (const definition of definitions.slice(fields.length)) {
-    const createDefinition = definition.name === '出现次数'
-      ? { ...definition, property: { ...definition.property, formula_expression: 'COUNTA(关联分析记录)' } }
-      : definition;
-    await client.createField(tableId, createDefinition);
-  }
-  fields = await client.listFields(tableId);
-  if (fields.length !== definitions.length || definitions.some((field, index) => !sameField(fields[index], field))) throw new Error(`Topic summary schema mismatch: ${name}`);
-  const formula = fields.find((field) => field.fieldName === '出现次数');
-  if (!formulaUsesOverflowField(formula)) {
-    await client.updateField(tableId, formula.fieldId, definitions.find((field) => field.name === '出现次数'));
-  }
-  return tableId;
-}
-
-function sameIds(left, right) { return JSON.stringify(relationIds(left)) === JSON.stringify([...right].sort()); }
 
 export async function main(argv = process.argv.slice(2)) {
-  const options = parseCliArgs(argv);
-  const env = parseEnvFile(resolve(options.envFile));
-  if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) throw new Error('Environment file must define FEISHU_APP_ID and FEISHU_APP_SECRET');
-  const client = new CompetitorV2FeishuClient({ appId: env.FEISHU_APP_ID, appSecret: env.FEISHU_APP_SECRET, appToken: options.appToken });
-  await client.authenticate();
-  const tables = await client.listTables();
-  const detailTable = tables.find((table) => table.name === `问题库分析_${options.period}`);
-  if (!detailTable) throw new Error(`Missing detail analysis table for period ${options.period}`);
-  const detailRecords = await client.listRecords(detailTable.tableId);
-  if (detailRecords.length === 0) throw new Error('Detail analysis table is empty');
-  const desired = buildTopicSummaryRecords(detailRecords, options.period);
-  const topicIds = new Map(desired.map((record) => [record.fields.高频问题或关键词, {
-    primary: relationIds(record.fields.关联分析记录),
-    overflow: relationIds(record.fields.关联分析记录补充),
-  }]));
-  const tableId = await ensureTable(client, tableName(options.period), detailTable.tableId);
-  const existing = await client.listRecords(tableId);
-  const existingByTopic = new Map(existing.map((record) => [text(record.fields?.高频问题或关键词), record]).filter(([topic]) => topic));
-  const creates = [];
-  const updates = [];
-  for (const record of desired) {
-    const topic = record.fields.高频问题或关键词;
-    const prior = existingByTopic.get(topic);
-    if (!prior) creates.push(record.fields);
-    else if (!sameIds(prior.fields?.关联分析记录, topicIds.get(topic).primary)
-      || !sameIds(prior.fields?.关联分析记录补充, topicIds.get(topic).overflow)
-      || text(prior.fields?.分析版本) !== FAQ_ANALYSIS_VERSION || text(prior.fields?.统计范围) !== options.period) {
-      updates.push({ recordId: prior.recordId, fields: record.fields });
+  const options = parseArgs(argv);
+  if (!options.operatorXlsx) throw new Error('--operator-xlsx is required');
+  const operatorContent = readOperatorContent(options.operatorXlsx, { python: options.python });
+  const classifiedPath = resolve(options.outputDir, 'classified-records.jsonl');
+  const classificationReceiptPath = resolve(options.outputDir, 'classification-receipt.json');
+  const rawPath = resolve(options.runtimeRoot, 'question-library-collection', options.period, 'raw-records.jsonl');
+  if (!existsSync(classifiedPath) || !existsSync(classificationReceiptPath) || !existsSync(rawPath)) throw new Error('Missing verified FAQ classification artifacts');
+  const classifiedText = await readFile(classifiedPath, 'utf8');
+  const rawText = await readFile(rawPath, 'utf8');
+  const classificationReceipt = JSON.parse(await readFile(classificationReceiptPath, 'utf8'));
+  if (classificationReceipt.mode !== 'APPLIED_AND_VERIFIED' || classificationReceipt.period !== options.period || classificationReceipt.analysisVersion !== FAQ_ANALYSIS_VERSION || classificationReceipt.rawSnapshot?.sha256 !== hash(rawText) || classificationReceipt.classifiedSnapshot?.sha256 !== hash(classifiedText)) throw new Error('FAQ classification evidence mismatch');
+  const classified = classifiedText.split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
+  const weeklyDedup = classifyAndDeduplicate(classified);
+  const weekly = buildSummary(weeklyDedup.records, { period: options.period, scope: 'weekly', includeShare: false, operatorContent });
+  const periods = await verifiedPeriods(options.runtimeRoot);
+  if (!periods.some((entry) => entry.period === options.period)) throw new Error(`Current period classification receipt is not verified: ${options.period}`);
+  const cumulative = buildCumulativeSummary(periods, { operatorContent });
+  const expectedLabels = new Set(FAQ_LABEL_CATALOG.map(({ label }) => label));
+  const assertSummary = (summary, name) => {
+    if (summary.rows.length !== expectedLabels.size || new Set(summary.rows.map((row) => row.分类标签)).size !== expectedLabels.size || summary.rows.some((row) => !expectedLabels.has(row.分类标签))) {
+      throw new Error(`${name} must contain exactly ${expectedLabels.size} unique FAQ labels`);
     }
-  }
-  const outputDir = resolve(options.outputDir ?? `runtime/faq-analysis/${options.period}`);
-  await mkdir(outputDir, { recursive: true });
-  if (!options.apply) {
-    console.log(JSON.stringify({ mode: 'DRY_RUN_READY', period: options.period, table: { tableId, name: tableName(options.period) }, detailRecords: detailRecords.length, topics: desired.length, toCreate: creates.length, toUpdate: updates.length, formula: FAQ_TOPIC_COUNT_FORMULA, analysisVersion: FAQ_ANALYSIS_VERSION }, null, 2));
-    return;
-  }
-  for (let index = 0; index < creates.length; index += 500) await client.batchCreateRecords(tableId, creates.slice(index, index + 500));
-  for (let index = 0; index < updates.length; index += 500) await client.batchUpdateRecords(tableId, updates.slice(index, index + 500));
-  const after = await client.listRecords(tableId);
-  if (after.length !== desired.length) throw new Error(`Topic summary count mismatch: expected ${desired.length}, got ${after.length}`);
-  const afterByTopic = new Map(after.map((record) => [text(record.fields?.高频问题或关键词), record]));
-  const counts = {};
-  for (const record of desired) {
-    const topic = record.fields.高频问题或关键词;
-    const actual = afterByTopic.get(topic);
-    if (!actual || !sameIds(actual.fields?.关联分析记录, topicIds.get(topic).primary)
-      || !sameIds(actual.fields?.关联分析记录补充, topicIds.get(topic).overflow)) throw new Error(`Topic summary read-back mismatch for ${topic}`);
-    const count = Number(text(actual.fields?.出现次数));
-    const expectedCount = topicIds.get(topic).primary.length + topicIds.get(topic).overflow.length;
-    if (!Number.isFinite(count) || count !== expectedCount) throw new Error(`Topic summary formula unsettled for ${topic}: expected ${expectedCount}, got ${text(actual.fields?.出现次数)}`);
-    counts[topic] = count;
-  }
-  const receipt = { mode: 'APPLIED_AND_VERIFIED', period: options.period, table: { tableId, name: tableName(options.period) }, detailTable: { tableId: detailTable.tableId, name: detailTable.name }, detailRecords: detailRecords.length, topicRecords: after.length, toCreate: creates.length, toUpdate: updates.length, counts, formula: FAQ_TOPIC_COUNT_FORMULA, analysisVersion: FAQ_ANALYSIS_VERSION, rawContentModified: false };
-  await writeFile(resolve(outputDir, 'topic-summary-apply-receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+    if (summary.operatorContentVersion !== FAQ_OPERATOR_CONTENT_VERSION || !summary.operatorContentSource?.sha256) throw new Error(`${name} is missing verified operator content`);
+    if (summary.rows.some((row) => {
+      const evidence = row.representativeEvidence;
+      if (row.出现次数 > 0 && (!evidence || !evidence.sourceKey || !/^[a-f0-9]{64}$/u.test(evidence.rawHash) || !Number.isInteger(evidence.candidateCount) || evidence.candidateCount < 1)) return true;
+      return evidence && (!evidence.sourceKey || !/^[a-f0-9]{64}$/u.test(evidence.rawHash) || !Number.isInteger(evidence.candidateCount) || evidence.candidateCount < 1);
+    })) {
+      throw new Error(`${name} contains invalid representative evidence`);
+    }
+  };
+  assertSummary(weekly, 'weekly summary');
+  assertSummary(cumulative, 'cumulative summary');
+  await mkdir(resolve(options.outputDir), { recursive: true });
+  const weeklyText = `${JSON.stringify(weekly, null, 2)}\n`;
+  const cumulativeText = `${JSON.stringify(cumulative, null, 2)}\n`;
+  const weeklyPath = resolve(options.outputDir, 'weekly-summary.json');
+  const cumulativePath = resolve(options.outputDir, 'cumulative-summary.json');
+  await writeFile(weeklyPath, weeklyText, 'utf8');
+  await writeFile(cumulativePath, cumulativeText, 'utf8');
+  const receipt = { mode: 'APPLIED_AND_VERIFIED', period: options.period, analysisVersion: FAQ_ANALYSIS_VERSION, dedupVersion: FAQ_DEDUP_VERSION, summaryVersion: FAQ_SUMMARY_VERSION, representativeSelectionVersion: FAQ_REPRESENTATIVE_SELECTION_VERSION, painDescriptionVersion: FAQ_PAIN_DESCRIPTION_VERSION, operatorContentVersion: operatorContent.version, source: { rawSnapshot: { path: rawPath, sha256: hash(rawText) }, classifiedSnapshot: { path: classifiedPath, sha256: hash(classifiedText) }, operatorXlsx: operatorContent.source }, periods: periods.map((entry) => entry.period), weekly: { path: weeklyPath, sha256: hash(weeklyText), denominator: weekly.denominator, rows: weekly.rows.length, labels: weekly.rows.map((row) => row.分类标签) }, cumulative: { path: cumulativePath, sha256: hash(cumulativeText), denominator: cumulative.denominator, rows: cumulative.rows.length, labels: cumulative.rows.map((row) => row.分类标签) }, weeklyDuplicates: weeklyDedup.duplicates.length, feishuWrites: 0 };
+  await writeFile(resolve(options.outputDir, 'aggregate-receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
   console.log(JSON.stringify(receipt, null, 2));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  main().catch((error) => { console.error(error.stack || error.message); process.exitCode = 1; });
-}
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main().catch((error) => { console.error(error.stack || error.message); process.exitCode = 1; });

@@ -15,6 +15,7 @@
 - Stop for login, CAPTCHA, QR/SMS, account-risk, security, permission, or other platform controls. Do not dismiss or bypass them.
 - Modify only authorized Feishu copies, never the original template.
 - Preserve displayed ranges and `-` values verbatim.
+- After selecting 50 rows per page in SYCM, wait for the table itself to refill to at least 50 rows; the selector can show 50 while stale data is still rendering, which can skip ranks 11-50.
 
 ## Acceptance
 

@@ -9,8 +9,9 @@ import { parseBaseUrl } from './import-core.mjs';
 import { runCompetitorV2 } from './competitor-v2-runner.mjs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
-const WEEKLY_TABLE_NAME = /^(竞品周|SKU周|问题库|问题库分析|问题主题汇总)_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/u;
-const ALLOWED_TABLES = new Set(['竞品主表', 'SKU明细', '问题库']);
+const WEEKLY_TABLE_NAME = /^(竞品周|SKU周|问题库)_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/u;
+const FAQ_WEEKLY_TABLE_NAME = /^问题库_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/u;
+const ALLOWED_TABLES = new Set(['竞品主表', 'SKU明细', '竞品历史总表 V1']);
 const ALLOWED_WRITE_TABLE_IDS = new Set(['tblJ9LHFN6pMVjPv', 'tblddWTrPeB4TKmR', 'tblRS5lo0nNN3DOJ']);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
@@ -99,6 +100,23 @@ export class CompetitorV2FeishuClient {
     this.appToken = appToken;
     this.transport = transport;
     this.mainTableId = null;
+    this.faqTargetTableIds = new Set();
+    this.faqTargetTableNames = new Map();
+    this.historyTargetTableId = null;
+  }
+
+  authorizeHistoryTarget(tableId, tableName) {
+    if (!tableId || tableName !== '竞品历史总表 V1') throw new Error('Blocked history target');
+    this.historyTargetTableId = tableId;
+  }
+
+  authorizeFaqTargets(targets) {
+    const entries = Object.entries(targets ?? {});
+    if (entries.length !== 2) throw new Error('FAQ publishing requires exactly two target tables');
+    const names = new Set(entries.map(([, name]) => name));
+    if (!names.has('问题主库') || [...names].filter((name) => FAQ_WEEKLY_TABLE_NAME.test(name)).length !== 1) throw new Error('FAQ target names must be 问题主库 and one dated 问题库 table');
+    this.faqTargetTableIds = new Set(entries.map(([tableId]) => tableId));
+    this.faqTargetTableNames = new Map(entries);
   }
 
   async authenticate() {
@@ -224,10 +242,14 @@ export class CompetitorV2FeishuClient {
     return data.file_token;
   }
 
-  async batchCreateRecords(tableId, fieldsList) {
-    if (!ALLOWED_WRITE_TABLE_IDS.has(tableId) && tableId !== this.mainTableId && !this.weeklyTableIds?.has(tableId)) {
+  #assertWritableTable(tableId) {
+    if (!ALLOWED_WRITE_TABLE_IDS.has(tableId) && tableId !== this.historyTargetTableId && !this.faqTargetTableIds?.has(tableId) && tableId !== this.mainTableId && !this.weeklyTableIds?.has(tableId)) {
       throw new Error('Blocked record write outside authorized competitor tables');
     }
+  }
+
+  async batchCreateRecords(tableId, fieldsList) {
+    this.#assertWritableTable(tableId);
     if (fieldsList.length < 1 || fieldsList.length > 500) {
       throw new Error(`Batch size must be between 1 and 500; received ${fieldsList.length}`);
     }
@@ -238,6 +260,7 @@ export class CompetitorV2FeishuClient {
   }
 
   async batchUpdateRecords(tableId, records) {
+    this.#assertWritableTable(tableId);
     if (!Array.isArray(records) || records.length < 1 || records.length > 500) {
       throw new Error(`Batch update size must be between 1 and 500; received ${records?.length ?? 0}`);
     }
@@ -248,9 +271,7 @@ export class CompetitorV2FeishuClient {
   }
 
   async batchDeleteRecords(tableId, recordIds) {
-    if (!ALLOWED_WRITE_TABLE_IDS.has(tableId) && tableId !== this.mainTableId && !this.weeklyTableIds?.has(tableId)) {
-      throw new Error('Blocked record delete outside authorized competitor tables');
-    }
+    this.#assertWritableTable(tableId);
     if (!Array.isArray(recordIds) || recordIds.length < 1 || recordIds.length > 500) {
       throw new Error(`Batch delete size must be between 1 and 500; received ${recordIds?.length ?? 0}`);
     }

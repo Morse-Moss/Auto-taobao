@@ -107,7 +107,7 @@ test('dry-run validates rows and images without touching Feishu', async () => {
   assert.deepEqual(client.uploads, []);
 });
 
-test('apply creates three tables and imports all main records with attachments', async () => {
+test('apply creates competitor tables and imports all main records with attachments', async () => {
   const client = new FakeClient();
   const result = await runCompetitorV2({
     manifest: manifest(),
@@ -120,9 +120,8 @@ test('apply creates three tables and imports all main records with attachments',
   });
   assert.equal(result.importedRows, 3);
   assert.equal(result.attachmentCount, 3);
-  assert.deepEqual(client.tables.map((table) => table.name), ['竞品主表', 'SKU明细', '问题库']);
+  assert.deepEqual(client.tables.map((table) => table.name), ['竞品主表', 'SKU明细']);
   assert.equal(client.records.get('tbl2').length, 0);
-  assert.equal(client.records.get('tbl3').length, 0);
   assert.equal(client.uploads.length, 3);
 });
 

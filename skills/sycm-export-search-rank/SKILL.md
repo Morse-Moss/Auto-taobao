@@ -32,6 +32,8 @@ node "D:\Retire\sycm-automation\skills\sycm-export-search-rank\scripts\export-se
 
 `--date` is the end date of the seven-day window. The page can return to `日` when entered again, so never assume the previous period selection persisted.
 
+After selecting `50` in the page-size control, wait for both the control to display `50` and the data table to contain at least 50 real rows. The control updates before the table finishes refilling; navigating immediately can skip ranks 11-50 and must be treated as an incomplete page, not as valid source data.
+
 Do not assemble homepage navigation with ad-hoc PowerShell. The Node.js entry point is the only supported full workflow. Omit `--from-home` only when intentionally exporting from an already-open search-ranking page.
 
 3. If the script returns `HUMAN_REQUIRED`, leave the browser unchanged, state the exact handoff, and continue only after the user resolves it.

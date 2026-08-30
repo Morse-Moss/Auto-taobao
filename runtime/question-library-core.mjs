@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 const TEXT = 1;
 const NUMBER = 2;
 const SINGLE_SELECT = 3;
@@ -96,6 +98,22 @@ export function sourceRecordKey({ period, productId, sourceType, sourceHash, sou
   return [period, productId, sourceType, sourceHash, sourceRowNumber].map(text).join('|');
 }
 
+export function normalizeFaqSourceText(value) {
+  return text(value).normalize('NFKC').replace(/[\r\n\t ]+/gu, ' ').trim();
+}
+
+export function crossWeekRecordIdentity({ productId, sourceType, rawContent, stableSourceId, buyerId, reviewTime, sku }) {
+  if (text(stableSourceId)) return { key: `id:${text(stableSourceId)}`, method: 'stable-source-id' };
+  const stable = [productId, sourceType, buyerId, reviewTime, sku].map(text);
+  if (stable.slice(2).some(Boolean)) return { key: `fields:${stable.join('|')}`, method: 'stable-field-combination' };
+  const normalized = normalizeFaqSourceText(rawContent);
+  if (!text(productId) || !text(sourceType) || !normalized) throw new Error('productId, sourceType and rawContent are required for cross-week identity');
+  return {
+    key: `text:${createHash('sha256').update(`${text(productId)}\n${text(sourceType)}\n${normalized}`).digest('hex')}`,
+    method: 'normalized-content-fallback',
+  };
+}
+
 export function buildQuestionRecord({
   period,
   competitor,
@@ -123,5 +141,7 @@ export function buildQuestionRecord({
     采集状态: '已采集',
     来源记录唯一键: sourceRecordKey({ period, productId, sourceType, sourceHash, sourceRowNumber }),
     采集时间: text(collectedAt) || new Date().toISOString(),
+    crossWeekDedupKey: crossWeekRecordIdentity({ productId, sourceType, rawContent }).key,
+    dedupMethod: crossWeekRecordIdentity({ productId, sourceType, rawContent }).method,
   };
 }

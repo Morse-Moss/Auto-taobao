@@ -21,8 +21,8 @@ Use this skill when the user asks for the next weekly question-library collectio
 4. Require exactly five products. Use their real `商品链接`; never infer a URL from a title.
 
 The current verified Feishu target is Base `OWebbPUcBa7B8JseYLccQCy9nkf`. The raw weekly source must be resolved by
-exact dated table name before any write. After analysis, the fixed `问题库` table is populated as the operator-facing
-mirror through `runtime/sync-question-library-template.mjs`; it is not a second raw source.
+exact dated table name before collection. After evidence validation, this compatibility entry point writes only the
+local raw snapshot; the separate FAQ publish stage owns `问题主库` and `问题库_<period>` summary tables.
 
 ## Browser collection
 
@@ -40,18 +40,11 @@ For each selected product:
 - Store a sanitized product receipt containing product ID, source record IDs, source hashes, timestamps, and quota
   observations. Raw exports remain local evidence and are never committed.
 
-## Feishu snapshot
+## Local snapshot
 
-Create or reuse exactly `问题库_YYYY-MM-DD_YYYY-MM-DD` as the raw source table. The fixed `问题库` table is populated
-only by the post-analysis mirror step and retains its existing operator header.
-
-Write one row per raw source row:
-
-- `来源类型=问大家`: preserve one question and answer pair in `原始内容`.
-- `来源类型=评论`: preserve one review's raw content.
-- Leave `高频问题或关键词` and `出现次数` blank; set `采集状态=已采集` only after raw content is present.
-- Use `来源记录唯一键=周期|商品ID|来源类型|源文件SHA-256|导出行号` for idempotency.
-- Preserve `主表记录ID` and `竞品周记录ID` as stable text IDs; do not add a new weekly bidirectional relation.
+Create `runtime/question-library-collection/<period>/raw-records.jsonl` after all evidence is verified. Write one row per
+raw source row, preserving the question-answer or review content, source key, product IDs, collection time, and the
+cross-week deduplication key. Do not write raw FAQ records to Feishu from this compatibility workflow.
 
 ## Guarded commands
 
@@ -76,6 +69,6 @@ node "D:\Retire\sycm-automation\runtime\run-question-library-collection.mjs" `
   --confirm-app-token <app-token> --apply
 ```
 
-The apply path must read the source tables again, refuse a changed top-five selection, create records in batches of
-at most 500, and read back every `来源记录唯一键` and non-empty `原始内容`. A repeated apply against the same
-evidence must report `toCreate=0` and must not overwrite existing raw data.
+The apply path must read the source tables again, refuse a changed top-five selection, validate every local evidence
+receipt, and write a content-addressed local raw snapshot. A repeated apply against the same evidence must report an
+exact snapshot match and must not overwrite existing raw data.

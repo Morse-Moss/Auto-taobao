@@ -346,15 +346,17 @@ export function classifyCompetitorValidity(row) {
 
 function classifyMaterials(title) {
   const normalized = title.toLowerCase();
-  const hasHumanMadeStone = HUMAN_MADE_STONE_ALIASES.some((alias) => (
-    normalized.includes(alias.toLowerCase())
-  ));
-  const materials = matchLabels(title, MATERIALS).filter((material) => (
-    material !== '亚克力' && material !== '人造石'
-  ));
-  if (hasHumanMadeStone) materials.unshift('人造石');
-  else if (title.includes('亚克力')) materials.unshift('亚克力');
-  return materials;
+  const candidates = [
+    ...HUMAN_MADE_STONE_ALIASES.map((alias) => ({ alias, material: '人造石' })),
+    ...MATERIALS.filter((material) => material !== '透明' && material !== '人造石')
+      .map((material) => ({ alias: material, material })),
+  ].flatMap(({ alias, material }) => {
+    const index = normalized.indexOf(alias.toLowerCase());
+    return index < 0 ? [] : [{ index, material, length: alias.length }];
+  });
+  if (candidates.length === 0) return [];
+  candidates.sort((left, right) => left.index - right.index || right.length - left.length || left.material.localeCompare(right.material, 'zh-CN'));
+  return [candidates[0].material];
 }
 
 function classifyShapes(title) {

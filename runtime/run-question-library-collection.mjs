@@ -6,8 +6,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { CompetitorV2FeishuClient } from '../skills/xws-to-feishu-base/scripts/import-competitor-v2.mjs';
-import { buildQuestionRecord, normalizeExportRows, QUESTION_WEEKLY_FIELDS, selectTopABCompetitors } from './question-library-core.mjs';
-import { weeklyTableName } from './weekly-table-target.mjs';
+import { buildQuestionRecord, normalizeExportRows, selectTopABCompetitors } from './question-library-core.mjs';
 
 const DEFAULT_ENV_FILE = 'E:/小红书/.env.local';
 const BASE_URL_PATTERN = /\/base\/([^?/#]+)/u;
@@ -205,24 +204,6 @@ export async function readEvidence(root, productId) {
   };
 }
 
-function questionFields(fields) {
-  const result = { ...fields };
-  if (result.高频问题或关键词 === '') delete result.高频问题或关键词;
-  if (result.出现次数 === '') delete result.出现次数;
-  return result;
-}
-
-async function ensureQuestionTable(client, name) {
-  const tables = await client.listTables();
-  const matches = tables.filter((table) => table.name === name);
-  if (matches.length > 1) throw new Error(`Multiple tables named ${name}`);
-  const tableId = matches.length ? matches[0].tableId : await client.createTable(name, QUESTION_WEEKLY_FIELDS);
-  const fields = await client.listFields(tableId);
-  if (fields.length !== QUESTION_WEEKLY_FIELDS.length || fields.some((actual, index) => actual.fieldName !== QUESTION_WEEKLY_FIELDS[index].name || actual.type !== QUESTION_WEEKLY_FIELDS[index].type)) {
-    throw new Error(`Question weekly table schema mismatch: ${name}`);
-  }
-  return tableId;
-}
 
 export async function main(argv = process.argv.slice(2)) {
   const options = parseCliArgs(argv);
@@ -253,21 +234,26 @@ export async function main(argv = process.argv.slice(2)) {
   const evidenceByProduct = {};
   for (const product of plan.products) evidenceByProduct[product.productId] = await readEvidence(options.evidenceRoot, product.productId);
   const records = buildRecordsFromEvidence({ plan, evidenceByProduct, collectedAt: new Date().toISOString() });
-  const tableId = await ensureQuestionTable(client, weeklyTableName('问题库', options.periodStart, options.periodEnd));
-  const existing = await client.listRecords(tableId);
-  const existingByKey = new Map(existing.map((record) => [text(record.fields?.来源记录唯一键), record]).filter(([key]) => key));
-  const creates = [];
-  for (const record of records) {
-    const prior = existingByKey.get(record.来源记录唯一键);
-    if (prior && text(prior.fields?.原始内容) !== record.原始内容) throw new Error(`Source key content conflict: ${record.来源记录唯一键}`);
-    if (!prior) creates.push(questionFields(record));
+  const rawLines = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
+  const rawPath = resolve(outputDir, 'raw-records.jsonl');
+  const rawHash = hashBytes(Buffer.from(rawLines, 'utf8'));
+  if (existsSync(rawPath)) {
+    const existingBytes = await readFile(rawPath);
+    if (hashBytes(existingBytes) !== rawHash) throw new Error('Existing local raw snapshot differs from current evidence');
+  } else {
+    await writeFile(rawPath, rawLines, 'utf8');
   }
-  for (let index = 0; index < creates.length; index += 500) await client.batchCreateRecords(tableId, creates.slice(index, index + 500));
-  const after = await client.listRecords(tableId);
-  const keys = new Set(after.map((record) => text(record.fields?.来源记录唯一键)).filter(Boolean));
-  for (const record of records) if (!keys.has(record.来源记录唯一键)) throw new Error(`Missing read-back key: ${record.来源记录唯一键}`);
-  const receipt = { mode: 'APPLIED_AND_VERIFIED', period: options.period, table: { tableId, name: weeklyTableName('问题库', options.periodStart, options.periodEnd) }, top5: plan.products.map(({ competitor, ...product }) => product), sourceRecords: records.length, toCreate: creates.length, tableRecordCount: after.length, analysisFieldsWritten: false };
-  await writeFile(resolve(outputDir, 'apply-receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+  const receipt = {
+    mode: 'APPLIED_AND_VERIFIED',
+    period: options.period,
+    snapshot: { path: rawPath, sha256: rawHash, format: 'jsonl' },
+    top5: plan.products.map(({ competitor, ...product }) => product),
+    sourceRecords: records.length,
+    dedupKeys: records.map((record) => record.crossWeekDedupKey),
+    analysisFieldsWritten: false,
+    feishuWrites: 0,
+  };
+  await writeFile(resolve(outputDir, 'raw-snapshot-receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
   console.log(JSON.stringify(receipt, null, 2));
 }
 

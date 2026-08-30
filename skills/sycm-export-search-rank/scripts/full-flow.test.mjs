@@ -13,6 +13,7 @@ import {
   rediscoverSycmTarget,
   resolveSycmTarget,
   selectSycmTarget,
+  waitForPageSize,
   waitForVisibleOption,
   waitForSycmPath,
 } from "./full-flow.mjs";
@@ -245,6 +246,20 @@ test("search-ranking route waits for its data table before returning", async () 
     sleep: async () => {},
     timeoutMs: 100,
   });
+  assert.equal(result.rowCount, 50);
+});
+
+test("page-size selection waits for the table to refill after selecting 50", async () => {
+  let reads = 0;
+  const result = await waitForPageSize({
+    inspect: async () => {
+      reads += 1;
+      return { pageSize: "50", rowCount: reads < 3 ? 0 : 50 };
+    },
+    sleep: async () => {},
+    timeoutMs: 100,
+  });
+  assert.equal(reads, 3);
   assert.equal(result.rowCount, 50);
 });
 

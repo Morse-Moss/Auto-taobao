@@ -1,6 +1,6 @@
 ---
 name: xws-faq-raw-collection
-description: "Collect a reproducible weekly FAQ source snapshot from qualifying Taobao competitors: raw 问大家, raw 评论, per-product evidence, and a dated Feishu question table. Do not use for market-analysis or SKU collection."
+description: "Collect a reproducible weekly FAQ source snapshot from qualifying Taobao competitors: raw 问大家, raw 评论, and per-product local evidence. Do not use for market-analysis or SKU collection."
 metadata:
   version: "1.2.0"
 ---
@@ -67,20 +67,12 @@ decodes UTF-8 strictly then GB18030, writes one lossless TXT entry per CSV row w
 raw and normalized hashes plus excluded media-entry count. The ZIP remains the only source hash used for idempotency.
 Do not hand-edit `reviews.csv`.
 
-## Feishu snapshot
+## Local snapshot
 
-After all five products have complete evidence, create or reuse exactly `问题库_<开始日期>_<结束日期>` as the
-immutable raw source table. Use the Bitable Open API, not Feishu DOM, for writes and read-back.
-
-Write one row per raw source row with these fields:
-
-`商品ID`, `主表记录ID`, `竞品周记录ID`, `商品链接`, `商品标题`, `竞品分类`, `来源类型`, `原始内容`,
-`高频问题或关键词`, `出现次数`, `采集状态`, `来源记录唯一键`, `采集时间`
-
-`来源类型` is `问大家` or `评论`; analysis fields remain blank; `采集状态=已采集` only for non-empty raw content.
-The write is guarded until every selected product has both source receipts, except an explicitly verified empty
-问大家 source. Batch at most 500 records, read back keys and raw content, and rerun against the same evidence to
-prove `toCreate=0`.
+After all five products have complete evidence, run `runtime/run-question-library-collection.mjs --apply` to build
+`runtime/question-library-collection/<period>/raw-records.jsonl` and `raw-snapshot-receipt.json`. The snapshot keeps
+one row per raw source row with product identity, source type, original content, source key, collection time, and the
+cross-week deduplication key. No FAQ raw, analysis, or summary table is written to Feishu by this workflow.
 
 ## Operational commands
 
@@ -95,14 +87,9 @@ bounded retry after reopening the product page; repeated failure writes an alert
 Stop the current product and write an alert for login, CAPTCHA, risk, quota exhaustion, missing toolbar, identity
 mismatch, export failure, or missing download. Do not fabricate rows, infer URLs, or silently retry indefinitely.
 
-Success requires: five locked products, each source traceable to its product and raw file, no analysis values written,
-Feishu read-back complete, and a repeated apply reporting `toCreate=0`. During optimization or evidence repair,
-never run `--apply`; finish offline validation first.
+Success requires: five locked products, each source traceable to its product and raw file, and a verified local raw
+snapshot. During optimization or evidence repair, finish offline validation before any Feishu publish step.
 
-## Operator mirror
-
-The fixed `问题库` table is the operator-facing mirror and uses its existing eight-field header. After the dated raw
-table is analyzed, run `runtime/sync-question-library-template.mjs` with the same period. It copies the raw text,
-classified topic, and the occurrence count read back from the Feishu formula summary into the fixed table. It must
-stop when the fixed table is non-empty but differs from the selected period; it must never silently append duplicates
-or overwrite another period. A repeated sync against the same period must report an exact match and `toCreate=0`.
+The later local analysis stage writes classified records, weekly summaries, cumulative summaries, and their receipts.
+Only the separate publish stage writes the approved three-column weekly table and four-column `问题主库`; it never
+writes the old row-level FAQ, analysis, or formula-summary tables.

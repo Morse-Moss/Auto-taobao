@@ -6,19 +6,19 @@ import { determineFaqOperatorState } from './faq-operator-core.mjs';
 const complete = {
   manifestLocked: true,
   evidenceComplete: true,
-  rawImported: true,
-  analysisVerified: true,
-  summaryVerified: true,
-  operatorPublished: true,
+  localSnapshotBuilt: true,
+  localAnalysisVerified: true,
+  localSummariesBuilt: true,
+  summariesPublished: true,
 };
 
 test('operator state exposes exactly one next action', () => {
   assert.equal(determineFaqOperatorState({}).nextAction, 'LOCK_TOP5');
-  assert.equal(determineFaqOperatorState({ ...complete, evidenceComplete: false, rawImported: false, analysisVerified: false, summaryVerified: false, operatorPublished: false }).nextAction, 'COLLECT_EVIDENCE');
-  assert.equal(determineFaqOperatorState({ ...complete, rawImported: false, analysisVerified: false, summaryVerified: false, operatorPublished: false }).nextAction, 'IMPORT_RAW');
-  assert.equal(determineFaqOperatorState({ ...complete, analysisVerified: false, summaryVerified: false, operatorPublished: false }).nextAction, 'ANALYZE');
-  assert.equal(determineFaqOperatorState({ ...complete, summaryVerified: false, operatorPublished: false }).nextAction, 'SUMMARIZE');
-  assert.equal(determineFaqOperatorState({ ...complete, operatorPublished: false }).nextAction, 'PUBLISH_OPERATOR_TABLE');
+  assert.equal(determineFaqOperatorState({ ...complete, evidenceComplete: false, localSnapshotBuilt: false, localAnalysisVerified: false, localSummariesBuilt: false, summariesPublished: false }).nextAction, 'COLLECT_EVIDENCE');
+  assert.equal(determineFaqOperatorState({ ...complete, localSnapshotBuilt: false, localAnalysisVerified: false, localSummariesBuilt: false, summariesPublished: false }).nextAction, 'BUILD_LOCAL_SNAPSHOT');
+  assert.equal(determineFaqOperatorState({ ...complete, localAnalysisVerified: false, localSummariesBuilt: false, summariesPublished: false }).nextAction, 'ANALYZE_LOCAL');
+  assert.equal(determineFaqOperatorState({ ...complete, localSummariesBuilt: false, summariesPublished: false }).nextAction, 'BUILD_LOCAL_SUMMARIES');
+  assert.equal(determineFaqOperatorState({ ...complete, summariesPublished: false }).nextAction, 'PUBLISH_FEISHU_SUMMARIES');
   assert.equal(determineFaqOperatorState(complete).nextAction, 'DONE');
 });
 
@@ -31,6 +31,6 @@ test('operator state reports a recorded blocker before advancing', () => {
 });
 
 test('operator state rejects impossible stage ordering', () => {
-  assert.throws(() => determineFaqOperatorState({ rawImported: true, manifestLocked: false }), /invalid FAQ operator state/u);
-  assert.throws(() => determineFaqOperatorState({ summaryVerified: true, analysisVerified: false }), /invalid FAQ operator state/u);
+  assert.throws(() => determineFaqOperatorState({ localSnapshotBuilt: true, manifestLocked: false }), /invalid FAQ operator state/u);
+  assert.throws(() => determineFaqOperatorState({ localSummariesBuilt: true, localAnalysisVerified: false }), /invalid FAQ operator state/u);
 });

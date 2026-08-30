@@ -14,6 +14,7 @@ import {
   parseReportingWindow,
   rediscoverSycmTarget,
   resolveSycmTarget,
+  waitForPageSize,
   waitForVisibleOption,
   waitForSycmPath,
 } from "./full-flow.mjs";
@@ -408,7 +409,10 @@ async function ensurePageSize(proxy, target, delayMs) {
     })()`),
     sleep,
   });
-  state = await waitFor(proxy, target, (next) => next.pageSize === "50", 10000, "page size 50");
+  state = await waitForPageSize({
+    inspect: () => inspectPage(proxy, target),
+    sleep,
+  });
   guardPage(state);
   await sleep(delayMs);
   return state;

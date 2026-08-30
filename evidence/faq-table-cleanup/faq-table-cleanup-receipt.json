@@ -1,0 +1,27 @@
+{
+  "completedAt": "2026-08-28T02:03:44.0789883Z",
+  "mode": "APPLIED_AND_VERIFIED",
+  "baseToken": "OWebbPUcBa7B8JseYLccQCy9nkf",
+  "backupPath": "D:\\Retire\\sycm-automation\\evidence\\faq-table-cleanup\\faq-table-cleanup-before-20260828T015757Z.json",
+  "backupSha256": "20dcd1e27bc7509e4f7d4464619eda791167b0ab091757975d048e4e0782bbd5",
+  "deleted": [
+    {
+      "tableId": "tblaU7nzxz8IP6mp",
+      "name": "问题库分析_2026-08-23_2026-08-29",
+      "records": 1415
+    },
+    {
+      "tableId": "tblKxVimYXxVmi9A",
+      "name": "问题主题汇总_2026-08-23_2026-08-29",
+      "records": 11
+    }
+  ],
+  "retained": [
+    "竞品主表",
+    "SKU明细",
+    "竞品周_2026-08-23_2026-08-29",
+    "SKU周_2026-08-23_2026-08-29",
+    "问题主库",
+    "问题库_2026-08-23_2026-08-29"
+  ]
+}

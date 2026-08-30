@@ -4,7 +4,6 @@ import { readFile as readFileDefault } from 'node:fs/promises';
 import { validateSourceHeaders } from './import-core.mjs';
 import {
   COMPETITOR_MAIN_FIELDS,
-  QUESTION_LIBRARY_FIELDS,
   SKU_DETAIL_FIELDS,
   buildCompetitorRecord,
   buildFeishuCompetitorRecord,
@@ -13,7 +12,6 @@ import {
 const TABLES = [
   { name: '竞品主表', fields: COMPETITOR_MAIN_FIELDS },
   { name: 'SKU明细', fields: SKU_DETAIL_FIELDS },
-  { name: '问题库', fields: QUESTION_LIBRARY_FIELDS },
 ];
 
 function tableId(table) {
@@ -211,10 +209,8 @@ export async function runCompetitorV2({
   const tableIds = {};
   for (const definition of TABLES) tableIds[definition.name] = await ensureTable(client, definition);
 
-  for (const name of ['SKU明细', '问题库']) {
-    const records = await client.listRecords(tableIds[name]);
-    if (records.length !== 0) throw new Error(`${name} must remain empty in this stage`);
-  }
+  const skuRecords = await client.listRecords(tableIds.SKU明细);
+  if (skuRecords.length !== 0) throw new Error('SKU明细 must remain empty in this stage');
 
   const existing = await client.listRecords(tableIds.竞品主表);
   const resumedFromRows = existing.length;

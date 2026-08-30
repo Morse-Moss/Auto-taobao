@@ -1,109 +1,56 @@
 #!/usr/bin/env node
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '..', '..', '..');
-const FORMULA_SCRIPT = path.join(PROJECT_ROOT, 'runtime', 'apply-weekly-decision-formulas.mjs');
-const HUITUN_SCRIPT = path.join(PROJECT_ROOT, 'skills', 'huitun-to-feishu-keyword-heat', 'scripts', 'run-huitun-topic-heat.mjs');
-const HISTORY_SCRIPT = path.join(SCRIPT_DIR, 'sync-decision-history.mjs');
+import { canonicalDigest, validatePublishPlan, validatePublishReadback } from '../../../runtime/weekly-local-analysis.mjs';
+
+const API_ROOT = 'https://open.feishu.cn/open-apis';
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 function optionKey(name) {
   return name.replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase());
 }
 
 export function parseOptions(argv, dependencies = {}) {
-  const options = {
-    apply: false,
-    recalculateExistingSnapshots: false,
-    envFile: 'E:/小红书/.env.local',
-    proxy: 'http://127.0.0.1:3456',
-    runRoot: path.join(PROJECT_ROOT, 'runtime', 'weekly-runs'),
-    maxCandidates: 50,
-    resultMaxAgeHours: 24,
-  };
-  const values = new Set([
-    'pre-ai-manifest',
-    'base-url', 'current-table-id', 'current-table-name', 'previous-table-id', 'previous-table-name',
-    'verify-history-batch', 'expected-verified-batch-rows', 'history-table-id', 'history-table-name',
-    'current-batch-number', 'expected-current-rows', 'expected-history-rows', 'env-file', 'proxy',
-    'run-root', 'huitun-results', 'max-candidates', 'result-max-age-hours', 'confirm-base',
-    'confirm-current-table', 'confirm-history-table',
-  ]);
-  const explicit = new Set();
+  const options = { apply: false, envFile: 'E:/小红书/.env.local' };
+  const values = new Set(['publish-artifact', 'pre-ai-manifest', 'env-file', 'receipt-file', 'confirm-base', 'confirm-current-table', 'confirm-history-table', 'confirm-library-table']);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (!argument.startsWith('--')) throw new Error(`Unexpected argument: ${argument}`);
     const name = argument.slice(2);
-    if (name === 'apply' || name === 'recalculate-existing-snapshots') {
-      options[optionKey(name)] = true;
-      explicit.add(optionKey(name));
+    if (name === 'apply') {
+      options.apply = true;
       continue;
     }
     if (!values.has(name)) throw new Error(`Unknown option: --${name}`);
     const value = argv[index + 1];
     if (!value || value.startsWith('--')) throw new Error(`Missing value for --${name}`);
-    const key = optionKey(name);
-    options[key] = value;
-    explicit.add(key);
+    options[optionKey(name)] = value;
     index += 1;
   }
-  if (options.preAiManifest) {
-    options.preAiManifest = path.resolve(options.preAiManifest);
-    const readManifest = dependencies.readManifest ?? ((file) => JSON.parse(fs.readFileSync(file, 'utf8')));
-    const manifest = readManifest(options.preAiManifest);
-    if (manifest?.status !== 'READY_FOR_AI' || !manifest.postAi) {
-      throw new Error('--pre-ai-manifest must reference a READY_FOR_AI manifest with postAi context');
-    }
-    const contextFields = [
-      'baseUrl', 'currentTableId', 'currentTableName', 'historyTableId', 'historyTableName',
-      'previousTableId', 'previousTableName', 'verifyHistoryBatch', 'expectedVerifiedBatchRows',
-      'currentBatchNumber', 'expectedCurrentRows', 'expectedHistoryRows', 'envFile', 'proxy',
-    ];
-    for (const key of contextFields) {
-      const value = manifest.postAi[key];
-      if (value == null || value === '') continue;
-      if (explicit.has(key) && String(options[key]) !== String(value)) {
-        throw new Error(`--pre-ai-manifest conflicts with explicit ${key}`);
-      }
-      if (!explicit.has(key)) options[key] = value;
-    }
+  if (!options.publishArtifact) {
+    if (options.preAiManifest) throw new Error('--pre-ai-manifest is obsolete; provide --publish-artifact from a PUBLISH_READY artifact');
+    throw new Error('Required: --publish-artifact');
   }
-  const required = [
-    'baseUrl', 'currentTableId', 'currentTableName', 'historyTableId', 'historyTableName',
-    'currentBatchNumber', 'expectedCurrentRows', 'expectedHistoryRows',
-  ];
-  const missing = required.filter((name) => !options[name]);
-  if (missing.length) throw new Error(`Missing required options: ${missing.join(', ')}`);
-
-  const parsed = new URL(options.baseUrl);
-  const match = parsed.pathname.match(/^\/base\/([^/]+)$/u);
-  if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.feishu.cn') || !match) {
-    throw new Error('Base URL must be an https://*.feishu.cn/base/<app-token> URL');
+  options.publishArtifact = path.resolve(options.publishArtifact);
+  const readArtifact = dependencies.readArtifact ?? ((file) => JSON.parse(fs.readFileSync(file, 'utf8')));
+  const artifact = readArtifact(options.publishArtifact);
+  if (artifact?.status !== 'PUBLISH_READY' || !artifact.publishPlan) {
+    throw new Error('Publish artifact must have status PUBLISH_READY and a publishPlan');
   }
-  options.appToken = match[1];
-  if (Boolean(options.previousTableId) !== Boolean(options.previousTableName)) {
-    throw new Error('--previous-table-id and --previous-table-name must be supplied together');
+  if (!artifact.evidence?.source || !artifact.evidence?.providerDigest || !artifact.evidence?.promptDigest) {
+    throw new Error('Publish artifact evidence is incomplete');
   }
-  if (Boolean(options.verifyHistoryBatch) !== Boolean(options.expectedVerifiedBatchRows)) {
-    throw new Error('--verify-history-batch and --expected-verified-batch-rows must be supplied together');
-  }
-  if (options.verifyHistoryBatch && !options.previousTableId) {
-    throw new Error('--verify-history-batch requires the previous analysis table');
-  }
-  for (const name of ['currentBatchNumber', 'expectedCurrentRows', 'expectedHistoryRows', 'maxCandidates', 'verifyHistoryBatch', 'expectedVerifiedBatchRows']) {
-    if (options[name] === undefined) continue;
-    options[name] = Number(options[name]);
-    if (!Number.isInteger(options[name]) || options[name] < 1) throw new Error(`${name} must be a positive integer`);
-  }
-  options.resultMaxAgeHours = Number(options.resultMaxAgeHours);
-  if (!Number.isFinite(options.resultMaxAgeHours) || options.resultMaxAgeHours < 0.1) {
-    throw new Error('resultMaxAgeHours must be at least 0.1');
-  }
-  if (options.huitunResults) options.huitunResults = path.resolve(options.huitunResults);
+  options.artifact = artifact;
+  options.appToken = artifact.publishPlan.appToken;
+  const tables = artifact.publishPlan.tables;
+  options.currentTableId = tables?.current?.tableId;
+  options.historyTableId = tables?.history?.tableId;
+  options.libraryTableId = tables?.library?.tableId;
+  if (!options.appToken || !options.currentTableId || !options.historyTableId || !options.libraryTableId) throw new Error('Publish artifact target is incomplete');
   if (options.apply && options.confirmBase !== options.appToken) {
     throw new Error(`--apply requires --confirm-base ${options.appToken}`);
   }
@@ -113,235 +60,184 @@ export function parseOptions(argv, dependencies = {}) {
   if (options.apply && options.confirmHistoryTable !== options.historyTableId) {
     throw new Error(`--apply requires --confirm-history-table ${options.historyTableId}`);
   }
+  if (options.apply && options.confirmLibraryTable !== options.libraryTableId) {
+    throw new Error(`--apply requires --confirm-library-table ${options.libraryTableId}`);
+  }
   return options;
 }
 
-function stamp() {
-  return new Date().toISOString().replace(/[-:]/gu, '').replace(/\.\d{3}Z$/u, 'Z');
+function readEnv(file) {
+  const values = {};
+  for (const raw of fs.readFileSync(file, 'utf8').split(/\r?\n/u)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const separator = line.indexOf('=');
+    if (separator < 1) continue;
+    let value = line.slice(separator + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+    values[line.slice(0, separator).trim()] = value;
+  }
+  return values;
 }
 
-async function defaultRunProcess(script, args) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [script, ...args], { cwd: PROJECT_ROOT, windowsHide: true });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (chunk) => { stdout += chunk; });
-    child.stderr.on('data', (chunk) => {
-      stderr += chunk;
-      process.stderr.write(chunk);
-    });
-    child.on('error', reject);
-    child.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(`Stage failed (${path.basename(script)}, exit ${code}): ${stderr.trim() || stdout.trim()}`));
-        return;
-      }
-      try {
-        resolve(JSON.parse(stdout.trim()));
-      } catch {
-        reject(new Error(`Stage returned invalid JSON (${path.basename(script)})`));
-      }
-    });
-  });
-}
+class FeishuApi {
+  #token;
 
-function parseJsonLines(value) {
-  return String(value).split(/\r?\n/u).map((line) => line.trim()).filter(Boolean).flatMap((line) => {
-    try {
-      return [JSON.parse(line)];
-    } catch {
-      return [];
+  constructor({ appId, appSecret, appToken }) {
+    this.appId = appId;
+    this.appSecret = appSecret;
+    this.appToken = appToken;
+  }
+
+  async authenticate() {
+    const response = await fetch(`${API_ROOT}/auth/v3/tenant_access_token/internal`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app_id: this.appId, app_secret: this.appSecret }),
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.code !== 0) throw new Error(`Feishu authentication failed: ${response.status} ${payload.code ?? ''} ${payload.msg ?? ''}`.trim());
+    this.#token = payload.tenant_access_token ?? payload.data?.tenant_access_token;
+    if (!this.#token) throw new Error('Feishu authentication returned no token');
+  }
+
+  async request(method, requestPath, body) {
+    const response = await fetch(`${API_ROOT}${requestPath}`, {
+      method,
+      headers: { Authorization: `Bearer ${this.#token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.code !== 0) throw new Error(`Feishu API failed: ${method} ${requestPath} ${response.status} ${payload.code ?? ''} ${payload.msg ?? ''}`.trim());
+    return payload.data ?? {};
+  }
+
+  async listRecords(tableId) {
+    const records = [];
+    let pageToken;
+    do {
+      const query = new URLSearchParams({ page_size: '500' });
+      if (pageToken) query.set('page_token', pageToken);
+      const data = await this.request('GET', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/records?${query}`);
+      records.push(...(data.items ?? []));
+      pageToken = data.has_more ? data.page_token : undefined;
+    } while (pageToken);
+    return records;
+  }
+
+  async batchUpdate(tableId, records) {
+    for (let index = 0; index < records.length; index += 500) {
+      await this.request('POST', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/records/batch_update`, {
+        records: records.slice(index, index + 500),
+      });
     }
-  });
+  }
+
+  async batchCreate(tableId, records) {
+    for (let index = 0; index < records.length; index += 500) {
+      await this.request('POST', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/records/batch_create`, {
+        records: records.slice(index, index + 500),
+      });
+    }
+  }
 }
 
-async function defaultRunHuitun(options) {
-  const args = [
-    '--app-token', options.appToken,
-    '--table-id', options.tableId,
-    '--table-name', options.tableName,
-    '--env-file', options.envFile,
-    '--proxy', options.proxy,
-    '--output-dir', options.outputDir,
-    '--max-candidates', String(options.maxCandidates),
-    '--result-max-age-hours', String(options.resultMaxAgeHours),
-  ];
-  if (options.resultsPath) args.push('--results', options.resultsPath);
-  if (options.apply) args.push('--apply', '--confirm-table', options.tableId);
+function digest(value) {
+  return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
 
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [HUITUN_SCRIPT, ...args], { cwd: PROJECT_ROOT, windowsHide: true });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (chunk) => {
-      stdout += chunk;
-      process.stderr.write(chunk);
-    });
-    child.stderr.on('data', (chunk) => {
-      stderr += chunk;
-      process.stderr.write(chunk);
-    });
-    child.on('error', reject);
-    child.on('close', (code) => {
-      if (code !== 0) {
-        const detail = parseJsonLines(stderr).at(-1);
-        const error = new Error(detail?.error || `Huitun stage failed with exit ${code}`);
-        error.code = detail?.status || 'FAILED';
-        error.details = detail?.details || {};
-        reject(error);
-        return;
+async function defaultReadTarget(options) {
+  const env = readEnv(path.resolve(options.envFile));
+  if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) throw new Error('Feishu app credentials unavailable');
+  const api = new FeishuApi({ appId: env.FEISHU_APP_ID, appSecret: env.FEISHU_APP_SECRET, appToken: options.appToken });
+  await api.authenticate();
+  const [records, historyRecords, libraryRecords] = await Promise.all([
+    api.listRecords(options.currentTableId),
+    api.listRecords(options.historyTableId),
+    api.listRecords(options.libraryTableId),
+  ]);
+  return { api, records, tables: { history: { records: historyRecords }, library: { records: libraryRecords } } };
+}
+
+function validateTableUpdates(plan, records) {
+  const byId = new Map((records ?? []).map((record) => [record.record_id, record]));
+  for (const update of plan.updates ?? []) {
+    if (!byId.has(update.record_id)) throw new Error(`Publish record mismatch for ${update.record_id}`);
+  }
+}
+
+function validateUpdateReadback(updates, records) {
+  const byId = new Map((records ?? []).map((record) => [record.record_id, record]));
+  for (const update of updates ?? []) {
+    const record = byId.get(update.record_id);
+    if (!record) throw new Error(`Publish record mismatch for ${update.record_id}`);
+    for (const [name, value] of Object.entries(update.fields ?? {})) {
+      if (JSON.stringify(record.fields?.[name]) !== JSON.stringify(value)) {
+        throw new Error(`Publish value mismatch for ${update.record_id}:${name}`);
       }
-      const runDir = parseJsonLines(stdout).reverse().find((item) => item.runDir)?.runDir;
-      if (!runDir) {
-        reject(new Error('Huitun stage returned no run directory'));
-        return;
-      }
-      try {
-        resolve(JSON.parse(fs.readFileSync(path.join(runDir, 'manifest.json'), 'utf8')));
-      } catch {
-        reject(new Error('Huitun stage returned no readable manifest'));
-      }
-    });
-  });
+    }
+  }
 }
 
-function defaultWriteManifest(runDir, payload) {
-  const file = path.join(runDir, 'post-ai-manifest.json');
-  fs.writeFileSync(file, `${JSON.stringify(payload, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' });
-  return file;
-}
-
-function formulaChanges(summary) {
-  return (summary.schemaFieldsToRename?.length ?? 0)
-    + (summary.schemaFieldsToCreate?.length ?? 0)
-    + (summary.formulaFieldsToUpdate?.length ?? 0);
-}
-
-function buildHuitunOptions(options, runDir, { apply = false, resultsPath = '' } = {}) {
-  return {
-    appToken: options.appToken,
-    tableId: options.currentTableId,
-    tableName: options.currentTableName,
-    envFile: options.envFile,
-    proxy: options.proxy,
-    outputDir: path.join(runDir, 'huitun'),
-    maxCandidates: options.maxCandidates,
-    resultMaxAgeHours: options.resultMaxAgeHours,
-    resultsPath: resultsPath ? path.resolve(resultsPath) : '',
-    apply,
-  };
+function validatePlanDigest(publishPlan) {
+  const withoutDigest = { ...publishPlan };
+  delete withoutDigest.planDigest;
+  if (publishPlan.planDigest !== canonicalDigest(withoutDigest)) throw new Error('Plan digest mismatch');
 }
 
 export async function runPostAiWorkflow(options, dependencies = {}) {
-  const runProcess = dependencies.runProcess ?? defaultRunProcess;
-  const runHuitun = dependencies.runHuitun ?? defaultRunHuitun;
-  const makeDirectory = dependencies.makeDirectory ?? ((directory) => fs.mkdirSync(directory, { recursive: true }));
-  const writeManifest = dependencies.writeManifest ?? defaultWriteManifest;
-  const runDir = path.resolve(options.runRoot, `batch-${options.currentBatchNumber}`, `post-ai-${stamp()}`);
-  makeDirectory(runDir);
-
-  const finish = (status, stages) => {
-    const manifest = {
-      status,
-      createdAt: new Date().toISOString(),
-      target: {
-        appToken: options.appToken,
-        currentTableId: options.currentTableId,
-        currentTableName: options.currentTableName,
-        historyTableId: options.historyTableId,
-        historyTableName: options.historyTableName,
-        currentBatchNumber: options.currentBatchNumber,
-      },
-      stages,
-      runDir,
-    };
-    const manifestFile = writeManifest(runDir, manifest);
-    return { ...manifest, manifestFile };
-  };
-
-  const formulaArgs = [
-    '--base-url', options.baseUrl,
-    '--table-id', options.currentTableId,
-    '--table-name', options.currentTableName,
-    '--env-file', options.envFile,
-  ];
-  const formulaDryRun = await runProcess(FORMULA_SCRIPT, formulaArgs);
-  if (formulaDryRun.mode !== 'DRY_RUN_READY') throw new Error('Decision formula stage did not reach DRY_RUN_READY');
-  let formulaApply = null;
-  if (formulaChanges(formulaDryRun) > 0) {
-    if (!options.apply) return finish('FORMULAS_DRY_RUN_READY', { formulas: { dryRun: formulaDryRun, apply: null } });
-    formulaApply = await runProcess(FORMULA_SCRIPT, [
-      ...formulaArgs,
-      '--receipt-file', path.join(runDir, 'decision-formulas-receipt.json'),
-      '--apply', '--confirm-base', options.appToken, '--confirm-table', options.currentTableId,
-    ]);
-    if (formulaApply.mode !== 'APPLIED_AND_VERIFIED') throw new Error('Decision formula stage did not verify');
-  }
-
-  const huitunDryRun = await runHuitun(buildHuitunOptions(options, runDir, {
-    resultsPath: options.huitunResults || '',
-  }));
-  let huitunApply = null;
-  if (huitunDryRun.status === 'DRY_RUN_READY') {
-    if (!options.apply) {
-      return finish('HUITUN_DRY_RUN_READY', {
-        formulas: { dryRun: formulaDryRun, apply: formulaApply },
-        huitun: { dryRun: huitunDryRun, apply: null },
-      });
-    }
-    if (!huitunDryRun.resultsPath) throw new Error('Huitun dry-run returned no reusable result path');
-    huitunApply = await runHuitun(buildHuitunOptions(options, runDir, {
-      apply: true,
-      resultsPath: huitunDryRun.resultsPath,
-    }));
-    if (huitunApply.status !== 'APPLIED_AND_VERIFIED') throw new Error('Huitun apply stage did not verify');
-  } else if (huitunDryRun.status !== 'DONE_NO_CANDIDATES') {
-    throw new Error(`Unexpected Huitun state: ${huitunDryRun.status}`);
-  }
-
-  const historyArgs = [
-    '--base-url', options.baseUrl,
-    '--current-table-id', options.currentTableId,
-    '--current-table-name', options.currentTableName,
-    '--history-table-id', options.historyTableId,
-    '--history-table-name', options.historyTableName,
-    '--current-batch-number', String(options.currentBatchNumber),
-    '--expected-current-rows', String(options.expectedCurrentRows),
-    '--expected-history-rows', String(options.expectedHistoryRows),
-    '--env-file', options.envFile,
-  ];
-  if (options.previousTableId) {
-    historyArgs.push('--previous-table-id', options.previousTableId, '--previous-table-name', options.previousTableName);
-  }
-  if (options.verifyHistoryBatch) {
-    historyArgs.push(
-      '--verify-history-batch', String(options.verifyHistoryBatch),
-      '--expected-verified-batch-rows', String(options.expectedVerifiedBatchRows),
-    );
-  }
-  if (options.recalculateExistingSnapshots) historyArgs.push('--recalculate-existing-snapshots');
-  const historyDryRun = await runProcess(HISTORY_SCRIPT, historyArgs);
-  if (historyDryRun.mode !== 'DRY_RUN_READY') throw new Error('Decision history stage did not reach DRY_RUN_READY');
+  const artifact = options.artifact ?? JSON.parse(fs.readFileSync(options.publishArtifact, 'utf8'));
+  const readTarget = dependencies.readTarget ?? defaultReadTarget;
+  const target = await readTarget(options, artifact);
+  const publishPlan = artifact.publishPlan;
+  const tables = publishPlan.tables;
+  validatePlanDigest(publishPlan);
+  const currentPlan = tables.current;
+  const historyPlan = tables.history;
+  const libraryPlan = tables.library;
+  const current = { appToken: options.appToken, tableId: options.currentTableId, records: target.records ?? [] };
+  validatePublishPlan(currentPlan, current);
+  validateTableUpdates(historyPlan, target.tables?.history?.records ?? []);
   if (!options.apply) {
-    return finish('POST_AI_DRY_RUN_READY', {
-      formulas: { dryRun: formulaDryRun, apply: formulaApply },
-      huitun: { dryRun: huitunDryRun, apply: huitunApply },
-      history: { dryRun: historyDryRun, apply: null },
-    });
+    return {
+      status: 'PUBLISH_DRY_RUN_READY', artifact: options.publishArtifact, planDigest: publishPlan.planDigest,
+      tables: {
+        current: { updates: currentPlan.updates.length },
+        history: { creates: (historyPlan.creates ?? []).length, updates: (historyPlan.updates ?? []).length },
+        library: { creates: (libraryPlan.creates ?? []).length },
+      },
+    };
   }
-  const historyApply = await runProcess(HISTORY_SCRIPT, [
-    ...historyArgs,
-    '--receipt-file', path.join(runDir, 'decision-history-receipt.json'),
-    '--apply', '--confirm-base', options.appToken,
-    '--confirm-current-table', options.currentTableId,
-    '--confirm-history-table', options.historyTableId,
+  if (!target.api || typeof target.api.batchUpdate !== 'function') throw new Error('Publish target does not provide a batchUpdate client');
+  if ((libraryPlan.creates ?? []).length > 0) {
+    if (typeof target.api.batchCreate !== 'function') throw new Error('Publish target does not provide a batchCreate client');
+    await target.api.batchCreate(options.libraryTableId, libraryPlan.creates);
+  }
+  await target.api.batchUpdate(options.currentTableId, currentPlan.updates);
+  await target.api.batchUpdate(options.historyTableId, historyPlan.updates ?? []);
+  const [afterCurrent, afterHistory, afterLibrary] = await Promise.all([
+    target.api.listRecords(options.currentTableId),
+    target.api.listRecords(options.historyTableId),
+    target.api.listRecords(options.libraryTableId),
   ]);
-  if (historyApply.mode !== 'APPLIED_AND_VERIFIED') throw new Error('Decision history stage did not verify');
-  return finish('POST_AI_COMPLETED', {
-    formulas: { dryRun: formulaDryRun, apply: formulaApply },
-    huitun: { dryRun: huitunDryRun, apply: huitunApply },
-    history: { dryRun: historyDryRun, apply: historyApply },
-  });
+  validatePublishPlan(currentPlan, { ...current, records: afterCurrent });
+  validatePublishReadback(currentPlan, afterCurrent);
+  validateUpdateReadback(historyPlan.updates, afterHistory);
+  if ((libraryPlan.creates ?? []).length > 0 && afterLibrary.length < libraryPlan.creates.length) {
+    throw new Error('Publish library readback mismatch');
+  }
+  const receipt = {
+    status: 'PUBLISHED_AND_VERIFIED', appToken: options.appToken,
+    tables: { current: { updates: currentPlan.updates.length }, history: { creates: historyPlan.creates.length, updates: historyPlan.updates.length }, library: { creates: libraryPlan.creates.length } },
+    planDigest: publishPlan.planDigest, artifactDigest: artifact.artifactDigest,
+    verifiedRecords: { current: afterCurrent.length, history: afterHistory.length, library: afterLibrary.length },
+  };
+  if (options.receiptFile) {
+    const receiptFile = path.resolve(options.receiptFile);
+    fs.mkdirSync(path.dirname(receiptFile), { recursive: true });
+    fs.writeFileSync(receiptFile, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+    receipt.receiptFile = receiptFile;
+  }
+  return receipt;
 }
 
 async function main() {
@@ -351,7 +247,7 @@ async function main() {
 
 if (path.resolve(process.argv[1] || '') === path.resolve(fileURLToPath(import.meta.url))) {
   main().catch((error) => {
-    console.error(JSON.stringify({ status: error.code || 'FAILED', error: error.message, details: error.details || {} }));
-    process.exitCode = error.code === 'HUMAN_REQUIRED' ? 2 : error.code === 'STALLED' ? 3 : 1;
+    console.error(JSON.stringify({ status: error.code || 'FAILED', error: error.message }));
+    process.exitCode = 1;
   });
 }

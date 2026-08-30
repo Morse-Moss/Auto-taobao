@@ -1,10 +1,10 @@
 const ORDERED_STAGES = [
   ['manifestLocked', 'LOCK_TOP5'],
   ['evidenceComplete', 'COLLECT_EVIDENCE'],
-  ['rawImported', 'IMPORT_RAW'],
-  ['analysisVerified', 'ANALYZE'],
-  ['summaryVerified', 'SUMMARIZE'],
-  ['operatorPublished', 'PUBLISH_OPERATOR_TABLE'],
+  ['localSnapshotBuilt', 'BUILD_LOCAL_SNAPSHOT'],
+  ['localAnalysisVerified', 'ANALYZE_LOCAL'],
+  ['localSummariesBuilt', 'BUILD_LOCAL_SUMMARIES'],
+  ['summariesPublished', 'PUBLISH_FEISHU_SUMMARIES'],
 ];
 
 export function determineFaqOperatorState(input = {}) {

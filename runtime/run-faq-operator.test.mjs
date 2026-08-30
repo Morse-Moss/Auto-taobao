@@ -4,12 +4,24 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { FAQ_ANALYSIS_VERSION, FAQ_LABEL_CATALOG } from './faq-text-analysis.mjs';
+import { FAQ_DEDUP_VERSION, FAQ_OPERATOR_CONTENT_VERSION, FAQ_PAIN_DESCRIPTION_VERSION, FAQ_REPRESENTATIVE_SELECTION_VERSION, FAQ_SUMMARY_VERSION } from './faq-local-summary.mjs';
 import { buildAdvanceCommand, inspectFaqOperatorStatus } from './run-faq-operator.mjs';
 
 async function json(path, value) {
   await mkdir(join(path, '..'), { recursive: true });
   await writeFile(path, JSON.stringify(value), 'utf8');
 }
+
+const labels = FAQ_LABEL_CATALOG.map(({ label }) => label);
+const summaryReceipt = (period) => ({
+  mode: 'APPLIED_AND_VERIFIED', period, analysisVersion: FAQ_ANALYSIS_VERSION, dedupVersion: FAQ_DEDUP_VERSION,
+  summaryVersion: FAQ_SUMMARY_VERSION, representativeSelectionVersion: FAQ_REPRESENTATIVE_SELECTION_VERSION,
+  painDescriptionVersion: FAQ_PAIN_DESCRIPTION_VERSION,
+  operatorContentVersion: FAQ_OPERATOR_CONTENT_VERSION,
+  source: { operatorXlsx: { path: 'operator.xlsx', sha256: 'a'.repeat(64) } },
+  weekly: { path: 'weekly-summary.json', rows: 21, labels }, cumulative: { path: 'cumulative-summary.json', rows: 21, labels },
+});
 
 test('status advances one stage at a time and never treats missing evidence as imported', async () => {
   const root = await mkdtemp(join(tmpdir(), 'faq-operator-'));
@@ -39,22 +51,27 @@ test('verified downstream summary can recover a missing analysis receipt', async
     await json(join(directory, 'qa-receipt.json'), { productId: product.productId, status: 'EMPTY_SOURCE_ROWS' });
     await json(join(directory, 'reviews-receipt.json'), { productId: product.productId, status: 'COMPLETED' });
   }
-  await json(join(collection, 'apply-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, sourceRecords: 5, tableRecordCount: 5 });
-  await json(join(analysis, 'topic-summary-apply-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, detailRecords: 5, topicRecords: 1, counts: { 其他: 5 } });
+  await json(join(collection, 'raw-snapshot-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, sourceRecords: 5, snapshot: { format: 'jsonl' } });
+  await json(join(analysis, 'classification-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, analysisVersion: FAQ_ANALYSIS_VERSION, classifiedRecords: 5 });
+  await json(join(analysis, 'aggregate-receipt.json'), summaryReceipt(period));
   const status = await inspectFaqOperatorStatus({ runtimeRoot: root, period });
-  assert.equal(status.analysisVerified, true);
-  assert.equal(status.summaryVerified, true);
-  assert.equal(status.nextAction, 'PUBLISH_OPERATOR_TABLE');
+  assert.equal(status.localAnalysisVerified, true);
+  assert.equal(status.localSummariesBuilt, true);
+  assert.equal(status.nextAction, 'PUBLISH_FEISHU_SUMMARIES');
 });
 
-test('advance command is deterministic and publication replacement is explicit', () => {
-  const common = { periodStart: '2026-08-23', periodEnd: '2026-08-29', baseUrl: 'https://tenant.feishu.cn/base/appToken', envFile: 'D:/secret.env' };
-  assert.deepEqual(buildAdvanceCommand('ANALYZE', common), {
+test('advance command targets append-only detail enrichment', () => {
+  const common = { periodStart: '2026-08-23', periodEnd: '2026-08-29', baseUrl: 'https://tenant.feishu.cn/base/appToken', envFile: 'D:/secret.env', runtimeRoot: 'D:/runtime', operatorXlsx: 'D:/operator.xlsx' };
+  assert.deepEqual(buildAdvanceCommand('ANALYZE_LOCAL', common), {
     script: 'runtime/run-faq-text-analysis.mjs',
-    args: ['--base-url', common.baseUrl, '--env-file', common.envFile, '--period-start', common.periodStart, '--period-end', common.periodEnd, '--apply', '--confirm-app-token', 'appToken'],
+    args: ['--runtime-root', common.runtimeRoot, '--period-start', common.periodStart, '--period-end', common.periodEnd],
   });
-  assert.throws(() => buildAdvanceCommand('PUBLISH_OPERATOR_TABLE', common), /explicit replacement intent/u);
-  assert.equal(buildAdvanceCommand('PUBLISH_OPERATOR_TABLE', { ...common, replaceCurrent: true }).args.includes('--replace-current'), true);
+  assert.throws(() => buildAdvanceCommand('PUBLISH_FEISHU_SUMMARIES', common), /master-table-id and --weekly-table-id/u);
+  const publish = buildAdvanceCommand('PUBLISH_FEISHU_SUMMARIES', { ...common, masterTableId: 'tbl-master', weeklyTableId: 'tbl-weekly' });
+  assert.equal(publish.script, 'runtime/publish-faq-detail-enrichment.mjs');
+  assert.equal(publish.args.includes('--master-table-id'), true);
+  assert.equal(publish.args.includes('--weekly-table-id'), true);
+  assert.equal(publish.args.includes('--replace-current'), false);
   assert.equal(buildAdvanceCommand('COLLECT_EVIDENCE', common), null);
 });
 
@@ -74,12 +91,13 @@ test('a publication receipt from another period does not complete the current pe
     await json(join(directory, 'qa-receipt.json'), { productId: product.productId, status: 'EMPTY_SOURCE_ROWS' });
     await json(join(directory, 'reviews-receipt.json'), { productId: product.productId, status: 'COMPLETED' });
   }
-  await json(join(collection, 'apply-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, sourceRecords: 5, tableRecordCount: 5 });
-  await json(join(analysis, 'topic-summary-apply-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, detailRecords: 5, topicRecords: 1 });
-  await json(join(analysis, 'template-sync-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period: '2026-08-16_2026-08-22', targetRecords: 5 });
+  await json(join(collection, 'raw-snapshot-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, sourceRecords: 5, snapshot: { format: 'jsonl' } });
+  await json(join(analysis, 'classification-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, analysisVersion: FAQ_ANALYSIS_VERSION, classifiedRecords: 5 });
+  await json(join(analysis, 'aggregate-receipt.json'), summaryReceipt(period));
+  await json(join(analysis, 'publish-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period: '2026-08-16_2026-08-22', schemaVersion: 'faq-feishu-summary-v1.0.0', rows: { master: 21, weekly: 21 }, master: { name: '问题主库' }, weekly: { name: `问题库_${period}` }, analysisVersion: FAQ_ANALYSIS_VERSION, dedupVersion: FAQ_DEDUP_VERSION, summaryVersion: FAQ_SUMMARY_VERSION, representativeSelectionVersion: FAQ_REPRESENTATIVE_SELECTION_VERSION, painDescriptionVersion: FAQ_PAIN_DESCRIPTION_VERSION, source: { weeklyHash: 'weekly', cumulativeHash: 'cumulative' }, feishuWrites: 1 });
   const status = await inspectFaqOperatorStatus({ runtimeRoot: root, period });
-  assert.equal(status.operatorPublished, false);
-  assert.equal(status.nextAction, 'PUBLISH_OPERATOR_TABLE');
+  assert.equal(status.summariesPublished, false);
+  assert.equal(status.nextAction, 'PUBLISH_FEISHU_SUMMARIES');
 });
 
 test('an unresolved product alert blocks collection progress', async () => {

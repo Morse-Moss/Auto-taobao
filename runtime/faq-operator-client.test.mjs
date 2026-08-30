@@ -25,5 +25,5 @@ test('batchDeleteRecords uses the authorized operator table and string record ID
 test('batchDeleteRecords rejects an unauthorized table', async () => {
   const client = new CompetitorV2FeishuClient({ appId: 'app-id', appSecret: 'app-secret', appToken: 'base-token', transport: async () => response({ code: 0, tenant_access_token: 'tenant-token' }) });
   await client.authenticate();
-  await assert.rejects(() => client.batchDeleteRecords('tblNotAuthorized', ['rec1']), /Blocked record delete/u);
+  await assert.rejects(() => client.batchDeleteRecords('tblNotAuthorized', ['rec1']), /Blocked record write/u);
 });

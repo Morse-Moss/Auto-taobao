@@ -212,3 +212,17 @@ export async function waitForVisibleOption({
   }
   throw new Error("Timed out waiting for visible page-size option 50");
 }
+
+export async function waitForPageSize({
+  inspect,
+  sleep,
+  timeoutMs = 10000,
+}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const state = await inspect();
+    if (state.pageSize === "50" && state.rowCount >= 50) return state;
+    await sleep(250);
+  }
+  throw new Error("Timed out waiting for 50-row page data");
+}

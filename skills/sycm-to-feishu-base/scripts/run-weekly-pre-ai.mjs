@@ -5,6 +5,8 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import crypto from 'node:crypto';
+
 import { parseSourceCsv } from './update-weekly-base.mjs';
 import { verifyExportPair } from '../../sycm-export-search-rank/scripts/source-period-proof.mjs';
 
@@ -147,6 +149,7 @@ export async function runWorkflow(options, dependencies = {}) {
   const verifySourcePair = dependencies.verifySourcePair ?? verifyExportPair;
   const writeManifest = dependencies.writeManifest ?? defaultWriteManifest;
   const makeDirectory = dependencies.makeDirectory ?? ((directory) => fs.mkdirSync(directory, { recursive: true }));
+  const writeFile = dependencies.writeFile ?? ((file, content) => fs.writeFileSync(file, content, { encoding: 'utf8', flag: 'wx' }));
   const runDir = path.resolve(options.runRoot, options.collectionDate, `pre-ai-${stamp()}`);
   makeDirectory(runDir);
 
@@ -180,52 +183,26 @@ export async function runWorkflow(options, dependencies = {}) {
     throw new Error(`Source proof expected ${sourceProof.rowCount} rows; CSV contains ${sourceRows.length}`);
   }
 
-  const copyArgs = [
-    '--base-url', options.baseUrl,
-    '--source-table-id', options.sourceTableId,
-    '--source-table-name', options.sourceTableName,
-    '--new-table-name', options.newTableName,
-    '--proxy', options.proxy,
-  ];
-  const copyDryRun = await runProcess(COPY_SCRIPT, copyArgs);
-  const copy = await runProcess(COPY_SCRIPT, [...copyArgs, '--apply', '--confirm-base', options.appToken]);
-  if (!copy.newTableId || copy.newTableName !== options.newTableName) throw new Error('Weekly table copy did not return the requested table identity');
-
-  const receiptFile = path.join(runDir, 'weekly-base-update-receipt.json');
-  const updateArgs = [
-    '--base-url', options.baseUrl,
-    '--source-csv', sourceCsv,
-    '--source-xlsx', sourceXlsx,
-    '--weekly-table-id', copy.newTableId,
-    '--weekly-table-name', copy.newTableName,
-    '--history-table-id', options.historyTableId,
-    '--library-table-id', options.libraryTableId,
-    '--protected-table-id', options.sourceTableId,
-    '--protected-table-name', options.sourceTableName,
-    '--collection-date', options.collectionDate,
-    '--batch-number', String(options.batchNumber),
-    '--expected-source-rows', String(sourceRows.length),
-    '--expected-history-before', String(options.expectedHistoryBefore),
-    '--category', options.category,
-    '--env-file', options.envFile,
-  ];
-  if (options.invalidateHistoryBatch) {
-    updateArgs.push(
-      '--invalidate-history-batch', String(options.invalidateHistoryBatch),
-      '--expected-invalid-batch-rows', String(options.expectedInvalidBatchRows),
-    );
-  }
-  const updateDryRun = await runProcess(UPDATE_SCRIPT, updateArgs);
-  if (updateDryRun.mode !== 'DRY_RUN_READY') throw new Error('Weekly Base update did not reach DRY_RUN_READY');
-  const update = await runProcess(UPDATE_SCRIPT, [
-    ...updateArgs,
-    '--receipt-file', receiptFile,
-    '--apply', '--confirm-base', options.appToken, '--confirm-weekly-table', copy.newTableId,
-  ]);
-  if (update.mode !== 'APPLIED_AND_VERIFIED') throw new Error('Weekly Base update did not verify');
-
+  const inputSnapshot = {
+    collectionDate: options.collectionDate,
+    batchNumber: options.batchNumber,
+    category: options.category,
+    sourceRows,
+    target: {
+      appToken: options.appToken,
+      sourceTableId: options.sourceTableId,
+      sourceTableName: options.sourceTableName,
+      newTableName: options.newTableName,
+      historyTableId: options.historyTableId,
+      libraryTableId: options.libraryTableId,
+    },
+  };
+  const inputSnapshotFile = path.join(runDir, 'input-snapshot.json');
+  const inputSnapshotText = `${JSON.stringify(inputSnapshot, null, 2)}\n`;
+  writeFile(inputSnapshotFile, inputSnapshotText);
+  const digest = (value) => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
   const manifest = {
-    status: 'READY_FOR_AI',
+    status: 'LOCAL_INPUT_READY',
     createdAt: new Date().toISOString(),
     collectionDate: options.collectionDate,
     batchNumber: options.batchNumber,
@@ -237,16 +214,23 @@ export async function runWorkflow(options, dependencies = {}) {
       exportReceipt,
       proof: sourceProof,
     },
-    weeklyTable: { id: copy.newTableId, name: copy.newTableName, url: copy.newTableUrl },
-    copyDryRun,
-    copy,
-    updateDryRun,
-    update,
+    inputSnapshot: {
+      file: inputSnapshotFile,
+      sha256: crypto.createHash('sha256').update(inputSnapshotText).digest('hex'),
+      digest: digest(inputSnapshot),
+    },
+    target: {
+      appToken: options.appToken,
+      sourceTableId: options.sourceTableId,
+      sourceTableName: options.sourceTableName,
+      newTableName: options.newTableName,
+      historyTableId: options.historyTableId,
+      libraryTableId: options.libraryTableId,
+      expectedHistoryBefore: options.expectedHistoryBefore,
+    },
     postAi: {
       runner: path.join(SCRIPT_DIR, 'run-weekly-post-ai.mjs'),
       baseUrl: options.baseUrl,
-      currentTableId: copy.newTableId,
-      currentTableName: copy.newTableName,
       previousTableId: options.sourceTableId,
       previousTableName: options.sourceTableName,
       historyTableId: options.historyTableId,
@@ -257,7 +241,7 @@ export async function runWorkflow(options, dependencies = {}) {
       envFile: options.envFile,
       proxy: options.proxy,
     },
-    nextStage: '只运行运营已确认的复制 AI 字段；完成后把本清单交给 postAi.runner，一次续跑公式、灰豚和历史同步。对应产品方向由近两周达标次数公式自动重算。',
+    nextStage: '本地读取输入快照，执行规则、provider AI 和灰豚证据分析，生成 PUBLISH_READY artifact 后交给唯一发布器。',
   };
   const manifestFile = writeManifest(runDir, manifest);
   return { ...manifest, manifestFile };

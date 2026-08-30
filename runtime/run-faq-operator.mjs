@@ -5,6 +5,9 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
+import { FAQ_ANALYSIS_VERSION, FAQ_LABEL_CATALOG } from './faq-text-analysis.mjs';
+import { FAQ_DEDUP_VERSION, FAQ_OPERATOR_CONTENT_VERSION, FAQ_PAIN_DESCRIPTION_VERSION, FAQ_REPRESENTATIVE_SELECTION_VERSION, FAQ_SUMMARY_VERSION } from './faq-local-summary.mjs';
+import { FAQ_SCHEMA_VERSION } from './faq-topic-summary.mjs';
 import { determineFaqOperatorState } from './faq-operator-core.mjs';
 
 const DEFAULT_BASE_URL = 'https://rcndesfqro3x.feishu.cn/base/OWebbPUcBa7B8JseYLccQCy9nkf';
@@ -19,11 +22,22 @@ function verified(receipt, period) {
   return receipt?.mode === 'APPLIED_AND_VERIFIED' && receipt?.period === period;
 }
 
+function hasAllLabels(rows) {
+  const expected = new Set(FAQ_LABEL_CATALOG.map(({ label }) => label));
+  const labels = rows?.map((row) => row.分类标签);
+  return Array.isArray(labels) && labels.length === expected.size && new Set(labels).size === expected.size && labels.every((label) => expected.has(label));
+}
+
 function publicationVerified(receipt, period) {
-  if (receipt?.mode !== 'APPLIED_AND_VERIFIED' || Number(receipt?.targetRecords) < 1) return false;
-  if (receipt.period) return receipt.period === period;
-  return receipt.source?.name === `问题库分析_${period}`
-    && receipt.summary?.name === `问题主题汇总_${period}`;
+  return verified(receipt, period)
+    && receipt.version === 'faq-detail-enrichment-v1.0.0'
+    && receipt.master?.name === '问题主库'
+    && receipt.weekly?.name === `问题库_${period}`
+    && receipt.master?.records === 1692
+    && receipt.weekly?.records === 1692
+    && receipt.master?.updates >= 0
+    && receipt.weekly?.updates >= 0
+    && Number(receipt.feishuWrites) >= 0;
 }
 
 async function inspectEvidence(collectionDir, products) {
@@ -74,24 +88,38 @@ export async function inspectFaqOperatorStatus({ runtimeRoot = 'runtime', period
     ? await inspectEvidence(collectionDir, products)
     : { completedProducts: 0, evidenceComplete: false };
   const [rawReceipt, analysisReceipt, summaryReceipt, publishReceipt] = await Promise.all([
-    readJson(resolve(collectionDir, 'apply-receipt.json')),
-    readJson(resolve(analysisDir, 'apply-receipt.json')),
-    readJson(resolve(analysisDir, 'topic-summary-apply-receipt.json')),
-    readJson(resolve(analysisDir, 'template-sync-receipt.json')),
+    readJson(resolve(collectionDir, 'raw-snapshot-receipt.json')),
+    readJson(resolve(analysisDir, 'classification-receipt.json')),
+    readJson(resolve(analysisDir, 'aggregate-receipt.json')),
+    readJson(resolve(analysisDir, 'detail-enrichment-receipt.json')),
   ]);
-  const rawImported = verified(rawReceipt, period);
-  const summaryVerified = verified(summaryReceipt, period);
+  const rawSnapshotBuilt = verified(rawReceipt, period) && rawReceipt.snapshot?.format === 'jsonl';
   const analysisVerified = verified(analysisReceipt, period)
-    || (summaryVerified && Number(summaryReceipt.detailRecords) > 0);
-  const operatorPublished = publicationVerified(publishReceipt, period);
+    && analysisReceipt.analysisVersion === FAQ_ANALYSIS_VERSION
+    && Number(analysisReceipt.classifiedRecords) >= 0;
+  const summaryVerified = Boolean(verified(summaryReceipt, period)
+    && summaryReceipt.analysisVersion === FAQ_ANALYSIS_VERSION
+    && summaryReceipt.dedupVersion === FAQ_DEDUP_VERSION
+    && summaryReceipt.summaryVersion === FAQ_SUMMARY_VERSION
+    && summaryReceipt.representativeSelectionVersion === FAQ_REPRESENTATIVE_SELECTION_VERSION
+    && summaryReceipt.painDescriptionVersion === FAQ_PAIN_DESCRIPTION_VERSION
+    && summaryReceipt.operatorContentVersion === FAQ_OPERATOR_CONTENT_VERSION
+    && summaryReceipt.source?.operatorXlsx?.sha256
+    && summaryReceipt.weekly?.path
+    && summaryReceipt.cumulative?.path
+    && summaryReceipt.weekly?.rows === 21
+    && summaryReceipt.cumulative?.rows === 21
+    && hasAllLabels((summaryReceipt.weekly?.labels ?? []).map((分类标签) => ({ 分类标签 })))
+    && hasAllLabels((summaryReceipt.cumulative?.labels ?? []).map((分类标签) => ({ 分类标签 }))));
+  const summariesPublished = publicationVerified(publishReceipt, period);
   const state = determineFaqOperatorState({
     blocker: evidence.blocker,
     manifestLocked,
     evidenceComplete: evidence.evidenceComplete,
-    rawImported,
-    analysisVerified,
-    summaryVerified,
-    operatorPublished,
+    localSnapshotBuilt: rawSnapshotBuilt,
+    localAnalysisVerified: analysisVerified,
+    localSummariesBuilt: summaryVerified,
+    summariesPublished,
   });
   return {
     period,
@@ -100,23 +128,33 @@ export async function inspectFaqOperatorStatus({ runtimeRoot = 'runtime', period
     completedProducts: evidence.completedProducts,
     manifestLocked,
     evidenceComplete: evidence.evidenceComplete,
-    rawImported,
-    analysisVerified,
-    summaryVerified,
-    operatorPublished,
-    rawRecords: Number(rawReceipt?.tableRecordCount ?? summaryReceipt?.detailRecords ?? 0),
-    topicRecords: Number(summaryReceipt?.topicRecords ?? 0),
-    operatorRecords: Number(publishReceipt?.targetRecords ?? 0),
+    localSnapshotBuilt: rawSnapshotBuilt,
+    localAnalysisVerified: analysisVerified,
+    localSummariesBuilt: summaryVerified,
+    summariesPublished,
+    rawRecords: Number(rawReceipt?.sourceRecords ?? 0),
+    topicRecords: Number(summaryReceipt?.weekly?.rows ?? 0),
+    operatorRecords: Number(publishReceipt?.master?.records ?? 0),
+    summaryVersions: summaryVerified ? { analysisVersion: summaryReceipt.analysisVersion, dedupVersion: summaryReceipt.dedupVersion, summaryVersion: summaryReceipt.summaryVersion } : null,
+    detailEnrichmentVersion: publishReceipt?.version ?? null,
   };
 }
 
-function commonArgs(options) {
-  return [
-    '--base-url', options.baseUrl,
-    '--env-file', options.envFile,
-    '--period-start', options.periodStart,
-    '--period-end', options.periodEnd,
-  ];
+function periodArgs(options) {
+  return ['--period-start', options.periodStart, '--period-end', options.periodEnd];
+}
+
+function collectionArgs(options) {
+  return ['--base-url', options.baseUrl, '--env-file', options.envFile, ...periodArgs(options)];
+}
+
+function localArgs(options) {
+  return ['--runtime-root', options.runtimeRoot, ...periodArgs(options)];
+}
+
+function summaryArgs(options) {
+  if (!options.operatorXlsx) throw new Error('building FAQ summaries requires --operator-xlsx');
+  return [...localArgs(options), '--operator-xlsx', options.operatorXlsx];
 }
 
 function appToken(baseUrl) {
@@ -126,19 +164,22 @@ function appToken(baseUrl) {
 }
 
 export function buildAdvanceCommand(action, options) {
-  const args = commonArgs(options);
   const confirm = ['--confirm-app-token', appToken(options.baseUrl)];
   if (action === 'COLLECT_EVIDENCE') return null;
-  if (action === 'LOCK_TOP5') return { script: 'runtime/run-question-library-collection.mjs', args };
-  if (action === 'IMPORT_RAW') return {
+  if (action === 'LOCK_TOP5') return { script: 'runtime/run-question-library-collection.mjs', args: collectionArgs(options) };
+  if (action === 'BUILD_LOCAL_SNAPSHOT') return {
     script: 'runtime/run-question-library-collection.mjs',
-    args: [...args, '--evidence-root', resolve(options.runtimeRoot ?? 'runtime', 'question-library-collection', `${options.periodStart}_${options.periodEnd}`), '--apply', ...confirm],
+    args: [...collectionArgs(options), '--evidence-root', resolve(options.runtimeRoot ?? 'runtime', 'question-library-collection', `${options.periodStart}_${options.periodEnd}`), '--output-dir', resolve(options.runtimeRoot ?? 'runtime', 'question-library-collection', `${options.periodStart}_${options.periodEnd}`), '--apply', ...confirm],
   };
-  if (action === 'ANALYZE') return { script: 'runtime/run-faq-text-analysis.mjs', args: [...args, '--apply', ...confirm] };
-  if (action === 'SUMMARIZE') return { script: 'runtime/run-faq-topic-summary.mjs', args: [...args, '--apply', ...confirm] };
-  if (action === 'PUBLISH_OPERATOR_TABLE') {
-    if (!options.replaceCurrent) throw new Error('publishing the operator table requires explicit replacement intent');
-    return { script: 'runtime/sync-question-library-template.mjs', args: ['--env-file', options.envFile, '--period-start', options.periodStart, '--period-end', options.periodEnd, '--apply', '--replace-current', ...confirm] };
+  if (action === 'ANALYZE_LOCAL') return { script: 'runtime/run-faq-text-analysis.mjs', args: localArgs(options) };
+  if (action === 'BUILD_LOCAL_SUMMARIES') return { script: 'runtime/run-faq-topic-summary.mjs', args: summaryArgs(options) };
+  if (action === 'PUBLISH_FEISHU_SUMMARIES') {
+    if (!options.masterTableId || !options.weeklyTableId) throw new Error('publishing FAQ detail enrichment requires --master-table-id and --weekly-table-id');
+    if (!options.operatorXlsx) throw new Error('publishing FAQ detail enrichment requires --operator-xlsx');
+    return {
+      script: 'runtime/publish-faq-detail-enrichment.mjs',
+      args: [...periodArgs(options), '--operator-xlsx', options.operatorXlsx, '--base-url', options.baseUrl, '--env-file', options.envFile, '--master-table-id', options.masterTableId, '--weekly-table-id', options.weeklyTableId, '--apply', ...confirm],
+    };
   }
   if (action === 'DONE') return null;
   throw new Error(`Unsupported FAQ action: ${action}`);
@@ -151,7 +192,7 @@ function parseArgs(argv) {
     if (arg === '--advance') options.advance = true;
     else if (arg === '--status') options.advance = false;
     else if (arg === '--replace-current') options.replaceCurrent = true;
-    else if (['--base-url', '--env-file', '--runtime-root', '--period-start', '--period-end'].includes(arg)) {
+    else if (['--base-url', '--env-file', '--runtime-root', '--period-start', '--period-end', '--master-table-id', '--weekly-table-id', '--operator-xlsx'].includes(arg)) {
       const value = argv[++index];
       if (!value || value.startsWith('--')) throw new Error(`${arg} requires a value`);
       options[arg.slice(2).replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase())] = value;

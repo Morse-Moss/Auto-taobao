@@ -1,180 +1,111 @@
 import assert from 'node:assert/strict';
-import path from 'node:path';
 import test from 'node:test';
 
+import { buildPublishPlan, canonicalDigest } from '../../../runtime/weekly-local-analysis.mjs';
 import { parseOptions, runPostAiWorkflow } from '../scripts/run-weekly-post-ai.mjs';
 
-const baseArgs = [
-  '--base-url', 'https://example.feishu.cn/base/appToken',
-  '--current-table-id', 'tblCurrent',
-  '--current-table-name', '关键词分析 V1（2026-08-21）',
-  '--previous-table-id', 'tblPrevious',
-  '--previous-table-name', '关键词分析 V1（修正版）',
-  '--verify-history-batch', '1',
-  '--expected-verified-batch-rows', '300',
-  '--history-table-id', 'tblHistory',
-  '--history-table-name', '关键词历史总表 V1',
-  '--current-batch-number', '4',
-  '--expected-current-rows', '300',
-  '--expected-history-rows', '1167',
-];
+const current = buildPublishPlan({
+  appToken: 'appToken',
+  currentTable: { tableId: 'tblCurrent', tableName: '关键词分析 V1（2026-08-21）' },
+  updates: [{ record_id: 'rec1', fields: { 内容热度: '中' } }],
+});
+const publishPlan = {
+  appToken: 'appToken',
+  tables: {
+    current,
+    history: {
+      tableId: 'tblHistory', tableName: '关键词历史总表 V1',
+      creates: [], updates: [{ record_id: 'hist1', fields: { 优先级: 'A候选' } }],
+    },
+    library: {
+      tableId: 'tblLibrary', tableName: '关键词编号库 V1',
+      creates: [],
+    },
+  },
+};
+const artifact = {
+  status: 'PUBLISH_READY',
+  artifactDigest: 'artifact-digest',
+  evidence: { source: { csvSha256: 'csv', xlsxSha256: 'xlsx' }, providerDigest: 'provider', promptDigest: 'prompt' },
+  publishPlan: { ...publishPlan, planDigest: canonicalDigest(publishPlan) },
+};
 
-test('post-AI orchestration is read-only by default and apply requires all exact confirmations', () => {
-  assert.equal(parseOptions(baseArgs).apply, false);
-  assert.throws(() => parseOptions([...baseArgs, '--apply']), /confirm-base/iu);
-  assert.throws(() => parseOptions([
-    ...baseArgs,
+function options(args = []) {
+  return parseOptions(['--publish-artifact', 'artifact.json', ...args], {
+    readArtifact: () => artifact,
+  });
+}
+
+test('post rejects obsolete READY_FOR_AI manifests', () => {
+  assert.throws(() => parseOptions(['--pre-ai-manifest', 'old.json'], {
+    readArtifact: () => ({ status: 'READY_FOR_AI' }),
+    readManifest: () => ({ status: 'READY_FOR_AI' }),
+  }), /obsolete|PUBLISH_READY/iu);
+});
+
+test('publish artifact requires exact confirmations in apply mode', () => {
+  assert.equal(options().apply, false);
+  assert.throws(() => options(['--apply']), /confirm-base/iu);
+  assert.throws(() => options(['--apply', '--confirm-base', 'appToken']), /confirm-current-table/iu);
+  assert.equal(options([
     '--apply', '--confirm-base', 'appToken', '--confirm-current-table', 'tblCurrent',
-  ]), /confirm-history-table/iu);
-  assert.equal(parseOptions([
-    ...baseArgs,
-    '--apply', '--confirm-base', 'appToken', '--confirm-current-table', 'tblCurrent',
-    '--confirm-history-table', 'tblHistory',
+    '--confirm-history-table', 'tblHistory', '--confirm-library-table', 'tblLibrary',
   ]).apply, true);
 });
 
-test('post-AI orchestration can resume from the exact context stored by the pre-AI manifest', () => {
-  const options = parseOptions(['--pre-ai-manifest', 'pre-ai-manifest.json'], {
-    readManifest: () => ({
-      status: 'READY_FOR_AI',
-      postAi: {
-        baseUrl: 'https://example.feishu.cn/base/appToken',
-        currentTableId: 'tblCurrent',
-        currentTableName: '关键词分析 V1（2026-08-21）',
-        previousTableId: 'tblPrevious',
-        previousTableName: '关键词分析 V1（修正版）',
-        verifyHistoryBatch: 1,
-        expectedVerifiedBatchRows: 300,
-        historyTableId: 'tblHistory',
-        historyTableName: '关键词历史总表 V1',
-        currentBatchNumber: 4,
-        expectedCurrentRows: 300,
-        expectedHistoryRows: 1167,
-        envFile: 'E:/小红书/.env.local',
-        proxy: 'http://127.0.0.1:3456',
+test('dry-run validates the frozen target and performs no mutation', async () => {
+  const calls = [];
+  const result = await runPostAiWorkflow(options(), {
+    readTarget: async () => ({
+      records: [{ record_id: 'rec1', fields: { 内容热度: '中' } }],
+      tables: {
+        history: { records: [{ record_id: 'hist1', fields: { 优先级: '旧值' } }] },
+        library: { records: [] },
       },
+      api: { batchUpdate: async () => calls.push('write') },
     }),
   });
-
-  assert.equal(options.currentTableId, 'tblCurrent');
-  assert.equal(options.historyTableId, 'tblHistory');
-  assert.equal(options.previousTableId, 'tblPrevious');
-  assert.equal(options.expectedHistoryRows, 1167);
-  assert.equal(options.preAiManifest, path.resolve('pre-ai-manifest.json'));
+  assert.equal(result.status, 'PUBLISH_DRY_RUN_READY');
+  assert.equal(result.planDigest, artifact.publishPlan.planDigest);
+  assert.deepEqual(result.tables, { current: { updates: 1 }, history: { creates: 0, updates: 1 }, library: { creates: 0 } });
+  assert.deepEqual(calls, []);
 });
 
-test('full apply runs formulas, Huitun, and history in guarded dry-run/apply order', async () => {
-  const options = parseOptions([
-    ...baseArgs,
-    '--apply', '--confirm-base', 'appToken', '--confirm-current-table', 'tblCurrent',
-    '--confirm-history-table', 'tblHistory',
-  ]);
+test('apply writes the frozen plan once and verifies by rereading', async () => {
   const calls = [];
-  const runProcess = async (script, args) => {
-    const name = path.basename(script);
-    calls.push({ kind: name, apply: args.includes('--apply'), args });
-    if (name === 'apply-weekly-decision-formulas.mjs') {
-      return args.includes('--apply')
-        ? { mode: 'APPLIED_AND_VERIFIED' }
-        : { mode: 'DRY_RUN_READY', schemaFieldsToRename: [], schemaFieldsToCreate: [], formulaFieldsToUpdate: ['对应产品方向'] };
-    }
-    if (name === 'sync-decision-history.mjs') {
-      return args.includes('--apply')
-        ? { mode: 'APPLIED_AND_VERIFIED' }
-        : { mode: 'DRY_RUN_READY', planned: { historyFieldsToCreate: 0, historySnapshotsToWrite: 300, currentCountsToWrite: 300 } };
-    }
-    throw new Error(`unexpected script ${name}`);
+  const api = {
+    batchUpdate: async (tableId, updates) => calls.push({ tableId, updates }),
+    batchCreate: async (tableId, creates) => calls.push({ tableId, creates }),
+    listRecords: async (tableId) => tableId === 'tblCurrent'
+      ? [{ record_id: 'rec1', fields: { 内容热度: '中' } }]
+      : tableId === 'tblHistory'
+        ? [{ record_id: 'hist1', fields: { 优先级: 'A候选' } }]
+        : [],
   };
-  const runHuitun = async (huitunOptions) => {
-    calls.push({ kind: 'huitun', apply: huitunOptions.apply, options: huitunOptions });
-    return huitunOptions.apply
-      ? { status: 'APPLIED_AND_VERIFIED', verification: { recordsWritten: 2 } }
-      : { status: 'DRY_RUN_READY', resultsPath: 'results.json', plannedRecordUpdates: 2 };
-  };
-
-  const result = await runPostAiWorkflow(options, {
-    runProcess,
-    runHuitun,
-    makeDirectory: () => {},
-    writeManifest: () => 'post-ai-manifest.json',
-  });
-
-  assert.equal(result.status, 'POST_AI_COMPLETED');
-  assert.deepEqual(calls.map((call) => `${call.kind}:${call.apply}`), [
-    'apply-weekly-decision-formulas.mjs:false',
-    'apply-weekly-decision-formulas.mjs:true',
-    'huitun:false',
-    'huitun:true',
-    'sync-decision-history.mjs:false',
-    'sync-decision-history.mjs:true',
-  ]);
-  assert.equal(calls[3].options.resultsPath, path.resolve('results.json'));
-  assert.equal(calls[5].args.includes('--confirm-history-table'), true);
-  assert.equal(calls[4].args.includes('--previous-table-id'), true);
-  assert.equal(calls[4].args.includes('--verify-history-batch'), true);
-});
-
-test('no Huitun candidates skips its apply and still synchronizes history', async () => {
-  const options = parseOptions([
-    ...baseArgs,
+  const result = await runPostAiWorkflow(options([
     '--apply', '--confirm-base', 'appToken', '--confirm-current-table', 'tblCurrent',
-    '--confirm-history-table', 'tblHistory',
-  ]);
-  const calls = [];
-  const result = await runPostAiWorkflow(options, {
-    runProcess: async (script, args) => {
-      const name = path.basename(script);
-      calls.push({ kind: name, apply: args.includes('--apply') });
-      if (name === 'apply-weekly-decision-formulas.mjs') {
-        return { mode: 'DRY_RUN_READY', schemaFieldsToRename: [], schemaFieldsToCreate: [], formulaFieldsToUpdate: [] };
-      }
-      return args.includes('--apply') ? { mode: 'APPLIED_AND_VERIFIED' } : { mode: 'DRY_RUN_READY', planned: {} };
-    },
-    runHuitun: async (huitunOptions) => {
-      calls.push({ kind: 'huitun', apply: huitunOptions.apply });
-      return { status: 'DONE_NO_CANDIDATES' };
-    },
-    makeDirectory: () => {},
-    writeManifest: () => 'post-ai-manifest.json',
-  });
-
-  assert.equal(result.status, 'POST_AI_COMPLETED');
-  assert.deepEqual(calls.map((call) => `${call.kind}:${call.apply}`), [
-    'apply-weekly-decision-formulas.mjs:false',
-    'huitun:false',
-    'sync-decision-history.mjs:false',
-    'sync-decision-history.mjs:true',
+    '--confirm-history-table', 'tblHistory', '--confirm-library-table', 'tblLibrary',
+  ]), { readTarget: async () => ({ api, records: [{ record_id: 'rec1', fields: { 内容热度: '中' } }], tables: {
+    history: { records: [{ record_id: 'hist1', fields: { 优先级: '旧值' } }] }, library: { records: [] },
+  } }) });
+  assert.equal(result.status, 'PUBLISHED_AND_VERIFIED');
+  assert.deepEqual(calls, [
+    { tableId: 'tblCurrent', updates: artifact.publishPlan.tables.current.updates },
+    { tableId: 'tblHistory', updates: artifact.publishPlan.tables.history.updates },
   ]);
 });
 
-test('dry-run stops before Huitun when formula migration is still pending', async () => {
-  const calls = [];
-  const result = await runPostAiWorkflow(parseOptions(baseArgs), {
-    runProcess: async (script) => {
-      calls.push(path.basename(script));
-      return { mode: 'DRY_RUN_READY', schemaFieldsToRename: [], schemaFieldsToCreate: ['近2周A级达标次数'], formulaFieldsToUpdate: [] };
-    },
-    runHuitun: async () => { throw new Error('Huitun must not run before formulas are current'); },
-    makeDirectory: () => {},
-    writeManifest: () => 'post-ai-manifest.json',
-  });
-
-  assert.equal(result.status, 'FORMULAS_DRY_RUN_READY');
-  assert.deepEqual(calls, ['apply-weekly-decision-formulas.mjs']);
-});
-
-test('Huitun dry-run with candidates stops before history when apply is absent', async () => {
-  const calls = [];
-  const result = await runPostAiWorkflow(parseOptions(baseArgs), {
-    runProcess: async (script) => {
-      calls.push(path.basename(script));
-      return { mode: 'DRY_RUN_READY', schemaFieldsToRename: [], schemaFieldsToCreate: [], formulaFieldsToUpdate: [] };
-    },
-    runHuitun: async () => ({ status: 'DRY_RUN_READY', resultsPath: 'results.json', plannedRecordUpdates: 1 }),
-    makeDirectory: () => {},
-    writeManifest: () => 'post-ai-manifest.json',
-  });
-
-  assert.equal(result.status, 'HUITUN_DRY_RUN_READY');
-  assert.deepEqual(calls, ['apply-weekly-decision-formulas.mjs']);
+test('publish stops before mutation when the target records drift', async () => {
+  let writes = 0;
+  await assert.rejects(runPostAiWorkflow(options([
+    '--apply', '--confirm-base', 'appToken', '--confirm-current-table', 'tblCurrent',
+    '--confirm-history-table', 'tblHistory', '--confirm-library-table', 'tblLibrary',
+  ]), {
+    readTarget: async () => ({
+      records: [{ record_id: 'different-record' }],
+      tables: { history: { records: [] }, library: { records: [] } },
+      api: { batchUpdate: async () => { writes += 1; } },
+    }),
+  }), /publish record mismatch/iu);
+  assert.equal(writes, 0);
 });

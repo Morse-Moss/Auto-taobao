@@ -37,7 +37,7 @@ test('an explicit CSV/XLSX pair is the only supported way to skip a fresh SYCM e
   assert.equal((await runWorkflow(options)).sourceMode, 'EXPLICIT_EXPORT_PAIR');
 });
 
-test('workflow dry-runs every remote write before apply and stops at READY_FOR_AI', async () => {
+test('workflow prepares a local input snapshot without any Feishu mutation', async () => {
   const options = parseOptions([
     ...baseArgs,
     '--source-csv', 'D:\\data\\week.csv',
@@ -45,17 +45,9 @@ test('workflow dry-runs every remote write before apply and stops at READY_FOR_A
     '--apply', '--confirm-base', 'appToken',
   ]);
   const calls = [];
-  const runProcess = async (script, args) => {
-    calls.push({ script, args });
-    if (script.endsWith('copy-weekly-table.mjs')) {
-      return { newTableId: 'tblCurrent', newTableName: options.newTableName, newTableUrl: 'https://example.feishu.cn/base/appToken?table=tblCurrent' };
-    }
-    if (script.endsWith('update-weekly-base.mjs')) {
-      return args.includes('--apply')
-        ? { mode: 'APPLIED_AND_VERIFIED', verified: { weeklyRows: 2, historyRows: 569 } }
-        : { mode: 'DRY_RUN_READY', weekly: { existingRows: 0 } };
-    }
-    throw new Error(`unexpected script ${script}`);
+  const runProcess = async (script) => {
+    calls.push(script);
+    throw new Error(`Feishu mutation must not run: ${script}`);
   };
   const result = await runWorkflow(options, {
     runProcess,
@@ -65,29 +57,19 @@ test('workflow dry-runs every remote write before apply and stops at READY_FOR_A
     ],
     verifySourcePair: async () => ({ period: '7天', startDate: '2026-08-15', endDate: '2026-08-21', dayCount: 7, rowCount: 2 }),
     makeDirectory: () => {},
+    writeFile: () => {},
     writeManifest: () => 'manifest.json',
   });
 
-  assert.equal(result.status, 'READY_FOR_AI');
-  assert.match(result.nextStage, /一次续跑公式、灰豚和历史同步/u);
-  assert.equal(result.postAi.currentTableId, 'tblCurrent');
-  assert.equal(result.postAi.currentTableName, options.newTableName);
+  assert.equal(result.status, 'LOCAL_INPUT_READY');
+  assert.match(result.nextStage, /PUBLISH_READY artifact/u);
+  assert.equal(result.target.newTableName, options.newTableName);
   assert.equal(result.postAi.currentBatchNumber, 3);
   assert.equal(result.postAi.expectedCurrentRows, 2);
   assert.equal(result.postAi.expectedHistoryRows, 569);
   assert.equal(result.postAi.historyTableId, 'tblHistory');
   assert.equal(result.postAi.previousTableId, 'tblPrevious');
-  assert.equal(result.postAi.previousTableName, '关键词分析 V1（2026-08-14）');
-  const copies = calls.filter((call) => call.script.endsWith('copy-weekly-table.mjs'));
-  assert.equal(copies.length, 2);
-  assert.equal(copies[0].args.includes('--apply'), false);
-  assert.equal(copies[1].args.includes('--apply'), true);
-  const updates = calls.filter((call) => call.script.endsWith('update-weekly-base.mjs'));
-  assert.equal(updates.length, 2);
-  assert.equal(updates[0].args.includes('--apply'), false);
-  assert.equal(updates[1].args.includes('--apply'), true);
-  assert.equal(updates[1].args.includes('tblCurrent'), true);
-  assert.equal(updates[1].args.includes('D:\\data\\week.xlsx'), true);
+  assert.equal(calls.length, 0);
 });
 
 test('an explicit artifact pair is rejected before any remote write when its proof is not seven days', async () => {
@@ -139,6 +121,7 @@ test('fresh weekly collection requires a verified seven-day SYCM receipt', async
     readSourceCsv: () => [{ 排名: '1', 搜索词: '浴缸' }],
     verifySourcePair: async () => ({ period: '7天', startDate: '2026-08-15', endDate: '2026-08-21', dayCount: 7, rowCount: 1 }),
     makeDirectory: () => {},
+    writeFile: () => {},
     writeManifest: () => 'manifest.json',
   });
 

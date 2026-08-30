@@ -89,6 +89,20 @@ test('known title evidence produces multi-value attributes and one highest-prior
   assert.equal(record.竞品分类, 'A-爆款竞品');
 });
 
+test('material analysis keeps only the first real material in title order', () => {
+  const record = buildCompetitorRecord(sourceRow({
+    商品标题: '铸铁陶瓷浴缸透明树脂',
+    是否有效竞品: '是',
+  }), { searchKeyword: '浴缸' });
+  assert.deepEqual(record.材质分类, ['铸铁']);
+
+  const humanMadeStone = buildCompetitorRecord(sourceRow({
+    商品标题: '透明树脂人造石浴缸纯亚克力',
+    是否有效竞品: '是',
+  }), { searchKeyword: '浴缸' });
+  assert.deepEqual(humanMadeStone.材质分类, ['人造石']);
+});
+
 test('approved material aliases normalize to human-made stone and C uses price only', () => {
   const record = buildCompetitorRecord(sourceRow({
     商品标题: 'PMMA高分子绮美石亚克力人造石异形浴缸',

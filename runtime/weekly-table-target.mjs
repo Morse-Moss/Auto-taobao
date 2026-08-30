@@ -1,4 +1,5 @@
 export const WEEKLY_NAME_PATTERN = /^(竞品周|SKU周|问题库)_(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/u;
+export const FAQ_MASTER_TABLE_NAME = '问题主库';
 
 export function weeklyTableName(kind, startDate, endDate) {
   if (!['竞品', 'SKU', '问题库'].includes(kind)) throw new Error(`Unsupported weekly table kind: ${kind}`);
@@ -23,7 +24,8 @@ export function latestWeeklyTable(tables, kind) {
 }
 
 export function requireWeeklyTable(tables, kind, name) {
-  const parsed = (tables ?? []).map(parseWeeklyTable).find((table) => table?.kind === kind && table.name === name);
-  if (!parsed) throw new Error(`Weekly ${kind} table not found: ${name}`);
-  return parsed;
+  const matches = (tables ?? []).map(parseWeeklyTable).filter((table) => table?.kind === kind && table.name === name);
+  if (matches.length > 1) throw new Error(`Multiple Weekly ${kind} tables found: ${name}`);
+  if (!matches[0]) throw new Error(`Weekly ${kind} table not found: ${name}`);
+  return matches[0];
 }

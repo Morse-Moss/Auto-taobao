@@ -1,57 +1,70 @@
-const TEXT = 1;
-const LINK = 21;
-const FORMULA = 20;
+import { FAQ_LABEL_CATALOG } from './faq-text-analysis.mjs';
 
-export const FAQ_ANALYSIS_VERSION = 'faq-text-rule-v1.0.0';
-export const FAQ_TOPIC_COUNT_FORMULA = 'COUNTA(关联分析记录)+COUNTA(关联分析记录补充)';
-export const FAQ_TOPIC_PRIMARY_LINK_LIMIT = 500;
+const TEXT = 1;
+const NUMBER = 2;
+const SINGLE_SELECT = 3;
+const MULTI_SELECT = 4;
 
 const field = (name, type = TEXT, property) => ({ name, type, ...(property ? { property } : {}) });
+const options = (names) => ({ options: names.map((name) => ({ name })) });
 
-export function buildTopicSummaryFields(analysisTableId) {
-  if (!analysisTableId) throw new Error('analysisTableId is required');
-  return [
-    field('高频问题或关键词'),
-    field('关联分析记录', LINK, { multiple: true, table_id: analysisTableId, back_field_name: '主题汇总' }),
-    field('出现次数', FORMULA, { formatter: '0', formula_expression: FAQ_TOPIC_COUNT_FORMULA }),
-    field('分析版本'),
-    field('统计范围'),
-    field('关联分析记录补充', LINK, { multiple: true, table_id: analysisTableId, back_field_name: '主题汇总补充' }),
-  ];
-}
+const COMPETITOR_OPTIONS = ['A-爆款竞品', 'B-高价值竞品', 'C-差异化竞品', 'D-价格流量型竞品'];
+const WEEKLY_COMPETITOR_OPTIONS = [...COMPETITOR_OPTIONS, '无分类', '不适用'];
+const SOURCE_OPTIONS = ['问大家', '评论'];
+const COLLECTION_OPTIONS = ['待采集', '已采集', '需人工核验'];
+const PAIN_OPTIONS = ['是', '否'];
 
-export const FAQ_TOPIC_SUMMARY_FIELDS = [
-  field('高频问题或关键词'),
-  field('关联分析记录', LINK, { multiple: true, table_id: '__ANALYSIS_TABLE_ID__', back_field_name: '主题汇总' }),
-  field('出现次数', FORMULA, { formatter: '0', formula_expression: FAQ_TOPIC_COUNT_FORMULA }),
-  field('分析版本'),
-  field('统计范围'),
+export const FAQ_MASTER_TABLE_NAME = '问题主库';
+export const FAQ_SCHEMA_VERSION = 'faq-feishu-summary-v2.0.0';
+
+export const FAQ_MASTER_FIELDS = [
+  field('分类标签'),
+  field('是否痛点', SINGLE_SELECT, options(PAIN_OPTIONS)),
+  field('出现次数', NUMBER, { formatter: '0' }),
+  field('占比', NUMBER, { formatter: '0.00%' }),
+  field('痛点描述'),
+  field('典型问题'),
+  field('典型用户原话'),
 ];
 
-function text(value) {
-  if (Array.isArray(value)) return value.map(text).filter(Boolean).join(',');
-  if (value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, 'text')) return text(value.text);
-  return String(value ?? '').trim();
+export const FAQ_WEEKLY_FIELDS = [
+  field('分类标签'),
+  field('是否痛点', SINGLE_SELECT, options(PAIN_OPTIONS)),
+  field('出现次数', NUMBER, { formatter: '0' }),
+  field('痛点描述'),
+  field('典型问题'),
+  field('典型用户原话'),
+];
+
+export function faqWeeklyTableName(period) {
+  if (!/^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/u.test(String(period ?? ''))) throw new Error('period must be YYYY-MM-DD_YYYY-MM-DD');
+  return `问题库_${period}`;
 }
 
-export function buildTopicSummaryRecords(detailRecords, period = '2026-08-23_2026-08-29') {
-  const grouped = new Map();
-  for (const record of detailRecords ?? []) {
-    const topic = text(record?.fields?.高频问题或关键词);
-    const recordId = text(record?.recordId ?? record?.record_id);
-    if (!topic || !recordId) throw new Error('Topic summary requires topic and detail record ID');
-    if (!grouped.has(topic)) grouped.set(topic, []);
-    grouped.get(topic).push(recordId);
-  }
-  return [...grouped.entries()].sort(([left], [right]) => left.localeCompare(right, 'zh-CN')).map(([topic, recordIds]) => ({
-    fields: {
-      高频问题或关键词: topic,
-      关联分析记录: recordIds.slice(0, FAQ_TOPIC_PRIMARY_LINK_LIMIT),
-      分析版本: FAQ_ANALYSIS_VERSION,
-      统计范围: period,
-      ...(recordIds.length > FAQ_TOPIC_PRIMARY_LINK_LIMIT
-        ? { 关联分析记录补充: recordIds.slice(FAQ_TOPIC_PRIMARY_LINK_LIMIT) }
-        : {}),
-    },
-  }));
+export function rowsForFeishu(summary, includeShare) {
+  const rows = summary?.rows ?? [];
+  const expected = new Set(FAQ_LABEL_CATALOG.map(({ label }) => label));
+  if (rows.length !== expected.size) throw new Error(`FAQ summary must contain exactly ${expected.size} rows`);
+  const seen = new Set();
+  return rows.map((row) => {
+    const label = String(row.分类标签 ?? '').trim();
+    if (!expected.has(label) || seen.has(label)) throw new Error(`FAQ summary contains invalid or duplicate label: ${label}`);
+    seen.add(label);
+    const count = Number(row.出现次数);
+    if (!Number.isInteger(count) || count < 0) throw new Error(`FAQ summary has invalid count for ${label}`);
+    const pain = String(row.是否痛点 ?? '').trim();
+    if (!PAIN_OPTIONS.includes(pain)) throw new Error(`FAQ summary has invalid pain flag for ${label}`);
+    if (!String(row.典型问题 ?? '').trim()) throw new Error(`FAQ summary has empty typical question for ${label}`);
+    const result = {
+      分类标签: label,
+      是否痛点: pain,
+      出现次数: count,
+      ...(includeShare ? { 占比: Number(row.占比) } : {}),
+      痛点描述: String(row.痛点描述 ?? '').trim(),
+      典型问题: String(row.典型问题 ?? '').trim(),
+      典型用户原话: String(row.典型用户原话 ?? '').trim(),
+    };
+    if (includeShare && !Number.isFinite(result.占比)) throw new Error(`FAQ summary has invalid share for ${label}`);
+    return result;
+  });
 }

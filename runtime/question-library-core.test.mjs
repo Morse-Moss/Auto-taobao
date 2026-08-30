@@ -7,6 +7,7 @@ import {
   normalizeExportRows,
   selectTopABCompetitors,
   sourceRecordKey,
+  crossWeekRecordIdentity,
 } from './question-library-core.mjs';
 
 function competitor({ id, monthly, rank, classification = 'A-爆款竞品', validity = '是' }) {
@@ -95,4 +96,11 @@ test('sourceRecordKey is stable and buildQuestionRecord leaves analysis fields e
   assert.equal(record.出现次数, '');
   assert.equal(record.采集状态, '已采集');
   assert.equal(record.来源记录唯一键, key);
+  assert.equal(record.dedupMethod, 'normalized-content-fallback');
+  assert.equal(record.crossWeekDedupKey, crossWeekRecordIdentity({ productId: 'p1', sourceType: '评论', rawContent: '物流很快' }).key);
+});
+
+test('cross-week identity prefers stable IDs and stable fields before text fallback', () => {
+  assert.deepEqual(crossWeekRecordIdentity({ productId: 'p1', sourceType: '评论', rawContent: 'x', stableSourceId: 'review-1' }), { key: 'id:review-1', method: 'stable-source-id' });
+  assert.deepEqual(crossWeekRecordIdentity({ productId: 'p1', sourceType: '评论', rawContent: 'x', buyerId: 'buyer-1', reviewTime: '2026-08-25' }), { key: 'fields:p1|评论|buyer-1|2026-08-25|', method: 'stable-field-combination' });
 });

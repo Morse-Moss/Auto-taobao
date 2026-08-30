@@ -8,9 +8,9 @@
 - `skills/xws-export-market-analysis`：从淘宝首页运行小旺神市场分析，监管慢速采集并校验 CSV/XLSX 竞品数据。
 - `skills/xws-to-feishu-base`：提取小旺神 XLSX 内嵌商品图，通过飞书 API 写入授权副本，并维护竞品分类、公式和 AI 提示词合同。
 - `skills/xws-sku-collection`：v1.2.0，从真实淘宝商品页点击小旺神 SKU 控件，原子读取 Windows 剪贴板、按商品独立维护 `batch-index.json` 并生成可复现 dry-run，在精确授权后写入飞书 `SKU明细` 与回读验收。
-- `skills/xws-faq-operator`：v1.1.0，面向运营的 FAQ 周更总入口，通过自然语言检查状态、断点续跑并安全发布固定 `问题库`。
-- `skills/xws-faq-raw-collection`：锁定最新竞品周 A/B TOP5，保存小旺神问大家与评论原始证据。
-- `skills/xws-question-library-collection`：将已验证原始证据幂等写入日期问题库表。
+- `skills/xws-faq-operator`：v2.0.0，面向运营的 FAQ 周更总入口，通过自然语言检查状态、断点续跑并发布 `问题主库` 与周期周表。
+- `skills/xws-faq-raw-collection`：锁定最新竞品周 A/B TOP5，保存小旺神问大家与评论原始证据到本地。
+- `skills/xws-question-library-collection`：兼容入口，将已验证原始证据生成本地 raw snapshot。
 - `skills/sycm-to-feishu-base`：飞书副本字段检查、TSV 构建、真实粘贴与导入验收。
 - `skills/huitun-to-feishu-keyword-heat`：读取飞书 `A候选` 队列，在灰豚红薯版采集完全同名话题浏览量，并只回填 `灰豚话题浏览量`；`内容热度`由上游流程提供。
 - `evidence/stability-20260804`：三轮 267 行稳定性验证文件。
@@ -36,9 +36,9 @@
 
 ## FAQ 周更
 
-运营只使用固定的 `问题库` 表，并通过自然语言让 Codex 执行 `xws-faq-operator`。内部按周期保留原始表、分析表和飞书公式汇总表，用于追溯和重跑。TOP5 固定从最新有效竞品周的 A-爆款竞品与 B-高价值竞品中，按月收货人数计算值降序、序号升序锁定。分类使用版本化确定性规则；出现次数来自飞书汇总公式回读，不调用飞书 AI。
+运营只使用 `xws-faq-operator`，飞书最终只保留累计主表 `问题主库` 和每周分类汇总表 `问题库_开始日期_结束日期`。原始证据、分类明细、跨周去重、周汇总和累计汇总全部保存在 `runtime/question-library-collection` 与 `runtime/faq-analysis`。TOP5 固定从最新有效竞品周的 A-爆款竞品与 B-高价值竞品中，按月收货人数计算值降序、序号升序锁定。分类使用运营固定目录的版本化多标签规则，出现次数和占比由本地确定性计算，不调用飞书 AI。
 
-统一入口为 `runtime/run-faq-operator.mjs`：`--status` 只读检查，`--advance` 每次只推进一个阶段；浏览器采集遇到登录、验证码、风控、额度或下载失败时停在当前商品并保留告警。固定 `问题库` 同内容重复发布必须为 `toCreate=0`；跨周替换只在运营明确要求更新时使用 `--replace-current`，并执行备份、替换、回读，失败时恢复上一版。
+统一入口为 `runtime/run-faq-operator.mjs`：`--status` 只读检查，`--advance` 每次只推进一个阶段；浏览器采集遇到登录、验证码、风控、额度或下载失败时停在当前商品并保留告警。发布前必须显式提供 `问题主库` 与当前周表的 table ID；内容不一致时必须使用 `--replace-current`，并执行双表备份、替换、回读和失败补偿。
 
 ## 周更边界
 
