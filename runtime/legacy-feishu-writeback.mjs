@@ -2,6 +2,13 @@ import fs from 'node:fs';
 
 export const WRITEBACK_FIELDS = Object.freeze(['标准归并词', '关键词分类', '细分标签', '用户意图', '内容热度']);
 
+export function normalizeContentHeat(value) {
+  const raw = text(value);
+  const normalized = raw.replace(/^AI预测-/u, '');
+  if (!['高', '中', '低'].includes(normalized)) throw new Error(`Invalid 内容热度: ${raw}`);
+  return normalized;
+}
+
 const CATEGORY_MAP = Object.freeze({
   '核心大词': '大词', '安装方式词': '款式词', '材质词': '材质词', '形状与风格词': '款式词',
   '功能与特点词': '功能词', '尺寸词': '尺寸词', '适用人群与场景词': '场景词', '品牌词': '品牌词',
@@ -74,8 +81,7 @@ export function mapLegacyResult(result, allowed) {
   const category = CATEGORY_MAP[text(fields.关键词分类)];
   const intent = INTENT_MAP[text(fields.用户意图)];
   if (!category || !intent) throw new Error(`Unmapped legacy enum for ${result?.record_id ?? result?.keywordId}`);
-  const heat = text(fields.内容热度);
-  if (!/^AI预测-(高|中|低)$/u.test(heat)) throw new Error(`Invalid 内容热度 for ${result?.record_id ?? result?.keywordId}`);
+  const heat = normalizeContentHeat(fields.内容热度);
   return {
     record_id: result.record_id,
     fields: {

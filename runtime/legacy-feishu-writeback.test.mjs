@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildLegacyWritebackPlan, mapLegacyResult } from './legacy-feishu-writeback.mjs';
+import { buildLegacyWritebackPlan, mapLegacyResult, normalizeContentHeat } from './legacy-feishu-writeback.mjs';
 
 const fieldDefinitions = [{ field_name: '细分标签', property: { options: [
   { name: '场景/家用' }, { name: '场景/小户型' }, { name: '品牌/TOTO' }, { name: '尺寸/70厘米' },
@@ -13,8 +13,15 @@ test('maps legacy enums and compatible labels to current Feishu options', () => 
     标准归并词: '浴缸', 关键词分类: '适用人群与场景词', 细分标签: '家用、小户型、按摩',
     用户意图: '购买决策型', 内容热度: 'AI预测-高',
   } }, new Set(fieldDefinitions[0].property.options.map((item) => item.name)));
-  assert.deepEqual(mapped.fields, { 标准归并词: '浴缸', 关键词分类: '场景词', 细分标签: ['场景/家用', '场景/小户型', '功能/按摩'], 用户意图: '购买型', 内容热度: 'AI预测-高' });
+  assert.deepEqual(mapped.fields, { 标准归并词: '浴缸', 关键词分类: '场景词', 细分标签: ['场景/家用', '场景/小户型', '功能/按摩'], 用户意图: '购买型', 内容热度: '高' });
   assert.deepEqual(mapped.unmappedLabels, []);
+});
+
+test('normalizes legacy content heat prefix to the current formula contract', () => {
+  assert.equal(normalizeContentHeat('AI预测-高'), '高');
+  assert.equal(normalizeContentHeat('中'), '中');
+  assert.equal(normalizeContentHeat('AI预测-低'), '低');
+  assert.throws(() => normalizeContentHeat('待核验'), /内容热度/u);
 });
 
 test('retains unmapped labels in audit output instead of silently inventing options', () => {
