@@ -124,5 +124,23 @@ export function buildLegacyWritebackPlan({ artifact, records, fieldDefinitions }
 }
 
 export function readArtifact(file) {
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
+  const artifact = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (artifact?.status === 'PUBLISH_READY' && Array.isArray(artifact.analysisValues)) {
+    return {
+      status: 'LOCAL_LEGACY_PROMPT_ANALYSIS_READY',
+      recordCount: artifact.analysisValues.length,
+      results: artifact.analysisValues.map((item) => ({
+        record_id: item.record_id,
+        keywordId: item.keywordId,
+        字段: {
+          标准归并词: item.fields?.标准归并词 ?? '',
+          关键词分类: item.fields?.关键词分类 ?? '',
+          细分标签: Array.isArray(item.fields?.细分标签) ? item.fields.细分标签.join('、') : (item.fields?.细分标签 ?? ''),
+          用户意图: item.fields?.用户意图 ?? '',
+          内容热度: item.fields?.内容热度 ?? '',
+        },
+      })),
+    };
+  }
+  return artifact;
 }

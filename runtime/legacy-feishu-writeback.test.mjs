@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 
-import { buildLegacyWritebackPlan, mapLegacyResult, normalizeContentHeat } from './legacy-feishu-writeback.mjs';
+import { buildLegacyWritebackPlan, mapLegacyResult, normalizeContentHeat, readArtifact } from './legacy-feishu-writeback.mjs';
 
 const fieldDefinitions = [{ field_name: '细分标签', property: { options: [
   { name: '场景/家用' }, { name: '场景/小户型' }, { name: '品牌/TOTO' }, { name: '尺寸/70厘米' },
@@ -42,4 +43,14 @@ test('builds updates only for blank writable fields and preserves populated valu
   assert.equal(plan.updates.length, 1);
   assert.equal(plan.updates[0].record_id, 'r1');
   assert.equal(plan.preservedExisting, 5);
+});
+
+test('adapts the prior PUBLISH_READY analysis artifact to the legacy writeback shape', () => {
+  const file = 'D:/Retire/sycm-automation/runtime/tmp-publish-ready-artifact.json';
+  fs.writeFileSync(file, JSON.stringify({ status: 'PUBLISH_READY', analysisValues: [{ record_id: 'r1', keywordId: 'KW000001', fields: { 标准归并词: '浴缸', 关键词分类: '大词', 细分标签: ['功能/深泡'], 用户意图: '了解型', 内容热度: '低' } }] }));
+  const adapted = readArtifact(file);
+  assert.equal(adapted.status, 'LOCAL_LEGACY_PROMPT_ANALYSIS_READY');
+  assert.equal(adapted.recordCount, 1);
+  assert.equal(adapted.results[0].字段.内容热度, '低');
+  fs.unlinkSync(file);
 });
