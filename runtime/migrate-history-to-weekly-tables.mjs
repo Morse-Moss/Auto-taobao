@@ -168,6 +168,7 @@ async function main() {
   const refreshed = await client.listTables();
   const refreshedById = new Map(refreshed.map((table) => [table.tableId, table]));
   for (const [id, name] of DELETE_TABLES) if (refreshedById.get(id)?.name !== name) throw new Error(`Delete target mismatch: ${id}`);
+  client.authorizeTableDeletion(DELETE_TABLES.map(([id]) => id));
   for (const [id] of DELETE_TABLES) await client.deleteTable(id);
   const finalTables = await client.listTables();
   const deletedIds = new Set(DELETE_TABLES.map(([id]) => id));

@@ -12,6 +12,7 @@ const API_ROOT = 'https://open.feishu.cn/open-apis';
 const WEEKLY_TABLE_NAME = /^(竞品周|SKU周|问题库)_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/u;
 const FAQ_WEEKLY_TABLE_NAME = /^问题库_\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/u;
 const ALLOWED_TABLES = new Set(['竞品主表', 'SKU明细', '竞品历史总表 V1']);
+const FAQ_CANDIDATE_TABLE_NAME = /^问题(?:主库|库)_candidate_[a-f0-9]{12}$/u;
 const ALLOWED_WRITE_TABLE_IDS = new Set(['tblJ9LHFN6pMVjPv', 'tblddWTrPeB4TKmR', 'tblRS5lo0nNN3DOJ']);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
@@ -102,6 +103,9 @@ export class CompetitorV2FeishuClient {
     this.mainTableId = null;
     this.faqTargetTableIds = new Set();
     this.faqTargetTableNames = new Map();
+    this.faqCandidateTableIds = new Set();
+    this.faqRenameTargets = new Map();
+    this.faqDeleteTableIds = new Set();
     this.historyTargetTableId = null;
   }
 
@@ -117,6 +121,21 @@ export class CompetitorV2FeishuClient {
     if (!names.has('问题主库') || [...names].filter((name) => FAQ_WEEKLY_TABLE_NAME.test(name)).length !== 1) throw new Error('FAQ target names must be 问题主库 and one dated 问题库 table');
     this.faqTargetTableIds = new Set(entries.map(([tableId]) => tableId));
     this.faqTargetTableNames = new Map(entries);
+  }
+
+  authorizeFaqReplacement({ candidates = {}, renames = {}, deletes = [] } = {}) {
+    const candidateEntries = Object.entries(candidates);
+    if (candidateEntries.length && (candidateEntries.length !== 2 || candidateEntries.some(([tableId, name]) => !tableId || !FAQ_CANDIDATE_TABLE_NAME.test(name)))) {
+      throw new Error('FAQ replacement requires exactly two authorized candidate table IDs and names');
+    }
+    this.faqCandidateTableIds = new Set(candidateEntries.map(([tableId]) => tableId));
+    this.faqRenameTargets = new Map(Object.entries(renames));
+    this.faqDeleteTableIds = new Set(deletes);
+  }
+
+  authorizeTableDeletion(tableIds) {
+    if (!Array.isArray(tableIds) || !tableIds.length || tableIds.some((tableId) => !tableId)) throw new Error('Table deletion authorization requires explicit table IDs');
+    this.faqDeleteTableIds = new Set(tableIds);
   }
 
   async authenticate() {
@@ -167,7 +186,7 @@ export class CompetitorV2FeishuClient {
   }
 
   async createTable(name, definitions) {
-    if (!ALLOWED_TABLES.has(name) && !WEEKLY_TABLE_NAME.test(name)) throw new Error(`Blocked table creation: ${name}`);
+    if (!ALLOWED_TABLES.has(name) && !WEEKLY_TABLE_NAME.test(name) && !FAQ_CANDIDATE_TABLE_NAME.test(name)) throw new Error(`Blocked table creation: ${name}`);
     const data = await this.request('POST', `/bitable/v1/apps/${this.appToken}/tables`, {
       table: {
         name,
@@ -186,6 +205,7 @@ export class CompetitorV2FeishuClient {
       this.weeklyTableIds ??= new Set();
       this.weeklyTableIds.add(id);
     }
+    if (FAQ_CANDIDATE_TABLE_NAME.test(name)) this.faqCandidateTableIds.add(id);
     return id;
   }
 
@@ -243,7 +263,7 @@ export class CompetitorV2FeishuClient {
   }
 
   #assertWritableTable(tableId) {
-    if (!ALLOWED_WRITE_TABLE_IDS.has(tableId) && tableId !== this.historyTargetTableId && !this.faqTargetTableIds?.has(tableId) && tableId !== this.mainTableId && !this.weeklyTableIds?.has(tableId)) {
+    if (!ALLOWED_WRITE_TABLE_IDS.has(tableId) && tableId !== this.historyTargetTableId && !this.faqTargetTableIds?.has(tableId) && !this.faqCandidateTableIds?.has(tableId) && tableId !== this.mainTableId && !this.weeklyTableIds?.has(tableId)) {
       throw new Error('Blocked record write outside authorized competitor tables');
     }
   }
@@ -279,8 +299,15 @@ export class CompetitorV2FeishuClient {
     return recordIds;
   }
 
+  async renameTable(tableId, name) {
+    const allowed = this.faqRenameTargets.get(tableId);
+    if (!allowed || allowed !== name) throw new Error(`Blocked table rename: ${tableId}/${name}`);
+    await this.request('PATCH', `/bitable/v1/apps/${this.appToken}/tables/${tableId}`, { name });
+  }
+
   async deleteTable(tableId) {
     if (!tableId) throw new Error('tableId is required');
+    if (!this.faqDeleteTableIds.has(tableId)) throw new Error(`Blocked table deletion: ${tableId}`);
     await this.request('DELETE', `/bitable/v1/apps/${this.appToken}/tables/${tableId}`);
   }
 }

@@ -5,9 +5,10 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
+import { FAQ_AI_PROMPT_VERSION, FAQ_AI_REVIEW_VERSION } from './faq-ai-review.mjs';
 import { FAQ_ANALYSIS_VERSION, FAQ_LABEL_CATALOG } from './faq-text-analysis.mjs';
 import { FAQ_DEDUP_VERSION, FAQ_OPERATOR_CONTENT_VERSION, FAQ_PAIN_DESCRIPTION_VERSION, FAQ_REPRESENTATIVE_SELECTION_VERSION, FAQ_SUMMARY_VERSION } from './faq-local-summary.mjs';
-import { FAQ_SCHEMA_VERSION } from './faq-topic-summary.mjs';
+import { FAQ_DETAIL_ENRICHMENT_VERSION } from './faq-detail-enrichment.mjs';
 import { determineFaqOperatorState } from './faq-operator-core.mjs';
 
 const DEFAULT_BASE_URL = 'https://rcndesfqro3x.feishu.cn/base/OWebbPUcBa7B8JseYLccQCy9nkf';
@@ -28,16 +29,35 @@ function hasAllLabels(rows) {
   return Array.isArray(labels) && labels.length === expected.size && new Set(labels).size === expected.size && labels.every((label) => expected.has(label));
 }
 
-function publicationVerified(receipt, period) {
-  return verified(receipt, period)
-    && receipt.version === 'faq-detail-enrichment-v1.0.0'
-    && receipt.master?.name === '问题主库'
-    && receipt.weekly?.name === `问题库_${period}`
-    && receipt.master?.records === 1692
-    && receipt.weekly?.records === 1692
-    && receipt.master?.updates >= 0
-    && receipt.weekly?.updates >= 0
-    && Number(receipt.feishuWrites) >= 0;
+export function publicationVerified(receipt, period) {
+  const oldIds = [receipt?.oldTables?.master?.tableId, receipt?.oldTables?.weekly?.tableId];
+  const deletedIds = receipt?.deletedOldTableIds;
+  return receipt?.mode === 'REPLACEMENT_APPLIED_AND_VERIFIED'
+    && receipt.period === period
+    && receipt.version === FAQ_DETAIL_ENRICHMENT_VERSION
+    && receipt.analysisVersion === FAQ_ANALYSIS_VERSION
+    && receipt.newTables?.master?.name === '问题主库'
+    && receipt.newTables?.weekly?.name === `问题库_${period}`
+    && Number.isInteger(receipt.newTables?.master?.rows)
+    && receipt.newTables.master.rows >= 0
+    && Number.isInteger(receipt.newTables?.weekly?.rows)
+    && receipt.newTables.weekly.rows >= 0
+    && Boolean(receipt.newTables.master.rowsHash)
+    && Boolean(receipt.newTables.weekly.rowsHash)
+    && Boolean(receipt.sourceTopicHash)
+    && Boolean(receipt.schemaHash)
+    && Number.isInteger(receipt.denominator)
+    && receipt.denominator > 0
+    && Boolean(receipt.statisticsHash)
+    && receipt.newTables.master.denominator === receipt.denominator
+    && receipt.newTables.weekly.denominator === receipt.denominator
+    && receipt.newTables.master.statisticsHash === receipt.statisticsHash
+    && receipt.newTables.weekly.statisticsHash === receipt.statisticsHash
+    && Boolean(receipt.candidateReceipt?.sha256)
+    && Boolean(receipt.backup?.sha256)
+    && Array.isArray(deletedIds)
+    && deletedIds.length === 2
+    && oldIds.every((tableId) => tableId && deletedIds.includes(tableId));
 }
 
 async function inspectEvidence(collectionDir, products) {
@@ -97,6 +117,27 @@ export async function inspectFaqOperatorStatus({ runtimeRoot = 'runtime', period
   const analysisVerified = verified(analysisReceipt, period)
     && analysisReceipt.analysisVersion === FAQ_ANALYSIS_VERSION
     && Number(analysisReceipt.classifiedRecords) >= 0;
+  const aiReviewReceipt = await readJson(resolve(analysisDir, 'ai-review', 'ai-review-receipt.json'));
+  const finalClassificationReceipt = await readJson(resolve(analysisDir, 'final-classification-receipt.json'));
+  const aiReviewComplete = aiReviewReceipt?.period === period
+    && aiReviewReceipt.analysisVersion === FAQ_ANALYSIS_VERSION
+    && aiReviewReceipt.aiReviewVersion === FAQ_AI_REVIEW_VERSION
+    && aiReviewReceipt.aiPromptVersion === FAQ_AI_PROMPT_VERSION
+    && aiReviewReceipt.taskCount === aiReviewReceipt.resultCount
+    && Number.isInteger(aiReviewReceipt.taskCount)
+    && Number.isInteger(aiReviewReceipt.resultCount)
+    && Number.isInteger(aiReviewReceipt.autoAccepted)
+    && Number.isInteger(aiReviewReceipt.needsHumanReview)
+    && aiReviewReceipt.autoAccepted + aiReviewReceipt.needsHumanReview === aiReviewReceipt.resultCount;
+  const finalHumanQueueCount = Number.isInteger(finalClassificationReceipt?.humanQueueCount)
+    ? finalClassificationReceipt.humanQueueCount
+    : aiReviewReceipt?.needsHumanReview;
+  const humanReviewComplete = aiReviewComplete
+    && finalClassificationReceipt?.period === period
+    && finalClassificationReceipt?.analysisVersion === FAQ_ANALYSIS_VERSION
+    && finalClassificationReceipt?.mode === 'FINAL_CLASSIFICATION_READY'
+    && finalClassificationReceipt?.publishable === true
+    && finalHumanQueueCount === 0;
   const summaryVerified = Boolean(verified(summaryReceipt, period)
     && summaryReceipt.analysisVersion === FAQ_ANALYSIS_VERSION
     && summaryReceipt.dedupVersion === FAQ_DEDUP_VERSION
@@ -118,8 +159,10 @@ export async function inspectFaqOperatorStatus({ runtimeRoot = 'runtime', period
     evidenceComplete: evidence.evidenceComplete,
     localSnapshotBuilt: rawSnapshotBuilt,
     localAnalysisVerified: analysisVerified,
-    localSummariesBuilt: summaryVerified,
-    summariesPublished,
+    aiReviewComplete,
+    humanReviewComplete,
+    localSummariesBuilt: humanReviewComplete && summaryVerified,
+    summariesPublished: humanReviewComplete && summaryVerified && summariesPublished,
   });
   return {
     period,
@@ -130,11 +173,19 @@ export async function inspectFaqOperatorStatus({ runtimeRoot = 'runtime', period
     evidenceComplete: evidence.evidenceComplete,
     localSnapshotBuilt: rawSnapshotBuilt,
     localAnalysisVerified: analysisVerified,
-    localSummariesBuilt: summaryVerified,
+    localSummariesBuilt: humanReviewComplete && summaryVerified,
+    aiReviewComplete,
+    humanReviewComplete,
+    aiReviewTaskCount: Number(aiReviewReceipt?.taskCount ?? 0),
+    aiReviewResultCount: Number(aiReviewReceipt?.resultCount ?? 0),
+    aiReviewAutoAccepted: Number(aiReviewReceipt?.autoAccepted ?? 0),
+    aiReviewNeedsHumanReview: finalHumanQueueCount ?? 0,
+    aiReviewProviderFailures: Array.isArray(aiReviewReceipt?.batchFailures) ? aiReviewReceipt.batchFailures.length : 0,
+    aiReviewBatchFailures: Array.isArray(aiReviewReceipt?.batchFailures) ? aiReviewReceipt.batchFailures : [],
     summariesPublished,
     rawRecords: Number(rawReceipt?.sourceRecords ?? 0),
     topicRecords: Number(summaryReceipt?.weekly?.rows ?? 0),
-    operatorRecords: Number(publishReceipt?.master?.records ?? 0),
+    operatorRecords: Number(publishReceipt?.newTables?.master?.rows ?? 0),
     summaryVersions: summaryVerified ? { analysisVersion: summaryReceipt.analysisVersion, dedupVersion: summaryReceipt.dedupVersion, summaryVersion: summaryReceipt.summaryVersion } : null,
     detailEnrichmentVersion: publishReceipt?.version ?? null,
   };
@@ -172,13 +223,15 @@ export function buildAdvanceCommand(action, options) {
     args: [...collectionArgs(options), '--evidence-root', resolve(options.runtimeRoot ?? 'runtime', 'question-library-collection', `${options.periodStart}_${options.periodEnd}`), '--output-dir', resolve(options.runtimeRoot ?? 'runtime', 'question-library-collection', `${options.periodStart}_${options.periodEnd}`), '--apply', ...confirm],
   };
   if (action === 'ANALYZE_LOCAL') return { script: 'runtime/run-faq-text-analysis.mjs', args: localArgs(options) };
+  if (action === 'RUN_AI_REVIEW') return { script: 'runtime/run-faq-ai-review.mjs', args: localArgs(options) };
+  if (action === 'REVIEW_AI_HUMAN_QUEUE') return null;
   if (action === 'BUILD_LOCAL_SUMMARIES') return { script: 'runtime/run-faq-topic-summary.mjs', args: summaryArgs(options) };
   if (action === 'PUBLISH_FEISHU_SUMMARIES') {
-    if (!options.masterTableId || !options.weeklyTableId) throw new Error('publishing FAQ detail enrichment requires --master-table-id and --weekly-table-id');
-    if (!options.operatorXlsx) throw new Error('publishing FAQ detail enrichment requires --operator-xlsx');
+    if (!options.masterTableId || !options.weeklyTableId) throw new Error('publishing FAQ detail replacement requires --master-table-id and --weekly-table-id');
+    if (!options.operatorXlsx) throw new Error('publishing FAQ detail replacement requires --operator-xlsx');
     return {
       script: 'runtime/publish-faq-detail-enrichment.mjs',
-      args: [...periodArgs(options), '--operator-xlsx', options.operatorXlsx, '--base-url', options.baseUrl, '--env-file', options.envFile, '--master-table-id', options.masterTableId, '--weekly-table-id', options.weeklyTableId, '--apply', ...confirm],
+      args: ['--phase', 'prepare', ...periodArgs(options), '--operator-xlsx', options.operatorXlsx, '--base-url', options.baseUrl, '--env-file', options.envFile, '--master-table-id', options.masterTableId, '--weekly-table-id', options.weeklyTableId],
     };
   }
   if (action === 'DONE') return null;
@@ -221,7 +274,10 @@ export async function main(argv = process.argv.slice(2)) {
   }
   const command = buildAdvanceCommand(status.nextAction, options);
   if (!command) {
-    console.log(JSON.stringify({ ...status, mode: 'BROWSER_ACTION_REQUIRED', message: '按 xws-faq-operator Skill 从首个未完成商品继续采集；不得伪造完成状态。' }, null, 2));
+    const message = status.nextAction === 'REVIEW_AI_HUMAN_QUEUE'
+      ? '请先处理 human-review-queue.jsonl 中的人工核验项；队列清零前不会执行飞书发布。'
+      : '按 xws-faq-operator Skill 从首个未完成商品继续采集；不得伪造完成状态。';
+    console.log(JSON.stringify({ ...status, mode: 'ACTION_REQUIRED', message }, null, 2));
     return;
   }
   const result = spawnSync(process.execPath, [command.script, ...command.args], { cwd: resolve('.'), encoding: 'utf8' });

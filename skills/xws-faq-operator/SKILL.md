@@ -2,7 +2,7 @@
 name: xws-faq-operator
 description: "面向非技术运营的一句话 FAQ 周更入口：采集小旺神原文、本地完成可复现分类与汇总，并安全更新问题主库和周表。"
 metadata:
-  version: "2.0.0"
+  version: "3.1.0"
 ---
 
 # FAQ 周更运营入口
@@ -40,11 +40,13 @@ node runtime/run-faq-operator.mjs --advance --period-start YYYY-MM-DD --period-e
 
 当下一步为 `COLLECT_EVIDENCE` 时，总控只返回 `BROWSER_ACTION_REQUIRED`。Codex 必须按本 Skill 的浏览器流程采集并保存真实证据；不得由脚本伪造浏览器完成状态。
 
-只有运营明确说“更新运营问题库”时，发布阶段才允许增加 `--replace-current`：
+只有运营明确说“更新运营问题库”时，才允许进入两阶段替换。总控只自动执行 `prepare` dry-run；候选表创建和最终切换必须分别执行并验证：
 
 ```powershell
-node runtime/run-faq-operator.mjs --advance --replace-current --master-table-id <问题主库-table-id> --weekly-table-id <问题库-周表-table-id> --period-start YYYY-MM-DD --period-end YYYY-MM-DD
+node runtime/publish-faq-detail-enrichment.mjs --phase prepare --period-start YYYY-MM-DD --period-end YYYY-MM-DD --operator-xlsx <运营-xlsx> --master-table-id <问题主库-table-id> --weekly-table-id <问题库-周表-table-id>
 ```
+
+`prepare --apply` 只创建、写入和回读两张候选表，不改名、不删除旧表。随后用 candidate receipt 的精确 SHA-256 和两张候选 table ID 执行 `switch` dry-run；验证通过后才允许独立执行 `switch --apply`。
 
 ## 固定流程
 
@@ -52,16 +54,20 @@ node runtime/run-faq-operator.mjs --advance --replace-current --master-table-id 
 2. 使用共享 `web-access` 浏览器和小旺神逐个获取问大家 CSV、评论原文 ZIP；遇到登录、验证、风控、额度或导出失败立即停在当前商品并记录告警。
 3. 通过 `runtime/run-question-library-collection.mjs` 校验证据并生成本地 `raw-records.jsonl` 与 `raw-snapshot-receipt.json`，原始内容不得改写。
 4. 通过 `runtime/run-faq-text-analysis.mjs` 生成本地 `classified-records.jsonl` 与 `classification-receipt.json`；规则版本必须写入记录，禁止调用飞书 AI 代替固定规则。
-5. 通过 `runtime/run-faq-topic-summary.mjs` 生成本地周汇总和全部有效周累计汇总；跨周去重、出现次数和占比均由本地确定性规则计算。
-6. 通过 `runtime/publish-faq-summaries.mjs` 将 21 个分类标签发布到 `问题主库` 与 `问题库_开始日期_结束日期`，两张表均完成 schema 校验、备份、替换和回读后才报告成功。
+5. 对规则层判为 `需人工核验` 的逐主题候选，使用固定版本 AI prompt 复核；AI 结果必须通过任务身份、连续原文证据、置信度和判断一致性质量门，未通过或 provider 失败的任务进入本地人工队列。
+6. 将 AI 结论与运营人工决议合并为最终分类快照；人工队列清零并生成可审计确认结果前，不得生成最终汇总或进入发布阶段。
+7. 通过 `runtime/run-faq-topic-summary.mjs` 从最终分类快照生成本地周汇总和全部有效周累计汇总；跨周去重、出现次数和占比均由本地确定性规则计算。随后通过 `runtime/publish-faq-detail-enrichment.mjs` 从最终 source-topic 快照全量生成候选问题主库和周期周表，完整验证后安全替换旧表。
 
-## 双表发布规则
+## 双表明细替换规则
 
-- 首次发布：目标表为空时创建 21 个固定分类行。
-- 重复发布：两张表内容完全一致时报告精确 NOOP，不重复写入。
-- 内容不一致：必须明确使用 `--replace-current`；脚本先保存两张表的本地备份，再删除旧记录、写入新记录并分别回读验证。
-- 周表成功而主表失败时，脚本恢复周表原内容；任一恢复失败都必须报告为阻断，不得宣称完成。
-- 本地 raw、classified、weekly、cumulative 文件和收据是唯一分析过程证据；新流程不写入旧的逐条 FAQ 表、分析表或公式汇总表。
+- 每个实际提及主题必须是独立的 `来源记录唯一键 + 分类标签` 正式行；明确正面提及的问题主题保留该行并判 `否`，未提及主题不得伪造 `否` 行，也不得生成来源×全部主题的笛卡尔积。
+- 本地最终分类快照必须绑定当前规则版本、完整 artifact SHA-256、source-topic 集合 SHA-256、遗留主题审计和零人工队列；任何不一致直接阻断。
+- `是否痛点` 是逐条主题判断，只允许 `是`、`否`、`需人工核验`；人工补充主题必须物化为正式分类行，不再使用 `补充主题` 文本代替。
+- 明细表按唯一 `来源记录唯一键` 计算分母；每个分类标签的 `出现次数` 是关联的唯一来源数，`占比=出现次数/唯一来源分母`。同主题每条明细重复写入该统计值，运营字段顺序固定为 `出现次数`、`痛点描述`、`典型问题`、`典型用户原话`、`占比`。
+- `prepare` 默认 dry-run；`prepare --apply` 只允许快照旧表、创建两张唯一候选表、写入和回读，产出绑定四个 table ID、schema、行内容和源 artifact 的 candidate receipt，绝不改名或删除旧表。
+- `switch` 必须接收 candidate receipt 的精确 SHA-256 和两张候选 table ID，再次验证候选内容后先完成双表改名和回读。只有两张新表均使用正式名称且内容哈希不变，才允许删除两个精确旧 table ID。
+- 改名阶段失败时按 table ID 恢复名称并停止；删除第一张旧表后第二张失败时停止并保留第二张 rollback 表，不伪造恢复。
+- operator 只有读取 `REPLACEMENT_APPLIED_AND_VERIFIED` 收据，并验证动态行数、内容哈希、唯一来源分母、主题统计哈希、备份、candidate receipt 及两个旧 ID 均已删除后，才进入 `DONE`。
 
 ## 状态和报告
 
@@ -72,7 +78,7 @@ node runtime/run-faq-operator.mjs --advance --replace-current --master-table-id 
 - 本地原始快照收据
 - 本地分类快照收据
 - 本地周汇总和累计汇总收据
-- 问题主库与周表发布收据
+- 候选表 prepare 收据、旧表备份和最终替换收据
 - 统一状态收据 `runtime/faq-analysis/<周期>/operator-status.json`
 
 对运营的最终报告只包含：周期、TOP5 数量、原始记录数、去重有效记录数、主库与周表行数、是否完成、阻断原因和下一步动作。

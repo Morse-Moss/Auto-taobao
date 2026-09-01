@@ -7,7 +7,7 @@ export const FAQ_DEDUP_VERSION = 'faq-dedup-v1.0.0';
 export const FAQ_SUMMARY_VERSION = 'faq-summary-v3.0.0';
 export const FAQ_REPRESENTATIVE_SELECTION_VERSION = 'faq-representative-v1.0.0';
 export { FAQ_OPERATOR_CONTENT_VERSION };
-export const FAQ_PAIN_DESCRIPTION_VERSION = 'faq-pain-description-v2.0.0';
+export const FAQ_PAIN_DESCRIPTION_VERSION = 'faq-pain-description-v2.1.0';
 
 const PAIN_DESCRIPTIONS = Object.freeze({
   '重量大/搬运困难': '用户反馈浴缸重量较大，搬运、上楼或安装过程存在困难。',
@@ -57,7 +57,9 @@ export function classifyAndDeduplicate(records) {
     });
     for (const label of classification.labels) {
       const dedupKey = `${dedup.key}|label:${label}`;
-      const classified = { ...input, labels: [label], painLabels: classification.painLabels.includes(label) ? [label] : [], isPain: classification.painLabels.includes(label), classificationVersion: FAQ_ANALYSIS_VERSION, crossWeekDedupKey: dedup.key, sourceDedupKey: dedup.key, dedupMethod: dedup.method };
+      const judgment = classification.judgmentByLabel[label] ?? '否';
+      const classifiedFields = { ...(input.fields ?? input), 分类标签: label, 是否痛点: judgment, 分析版本: FAQ_ANALYSIS_VERSION, 痛点判定依据: classification.evidenceByLabel[label] ?? '', 痛点判定置信度: classification.confidenceByLabel[label] ?? '低' };
+      const classified = { ...input, fields: classifiedFields, labels: [label], topicLabels: [label], painLabels: judgment === '是' ? [label] : [], painJudgment: judgment, painEvidence: classifiedFields.痛点判定依据, painConfidence: classifiedFields.痛点判定置信度, isPain: judgment === '是', classificationVersion: FAQ_ANALYSIS_VERSION, crossWeekDedupKey: dedup.key, sourceDedupKey: dedup.key, dedupMethod: dedup.method };
       if (seen.has(dedupKey)) {
         duplicates.push({ crossWeekDedupKey: dedup.key, duplicate: classified });
         continue;
@@ -118,13 +120,23 @@ function summaryRows(records, { denominator, includeShare, operatorContent }) {
       典型问题: operatorContent ? String(content.典型问题 ?? '').trim() : '',
       典型用户原话: operatorContent ? String(content.典型用户原话 ?? '').trim() : (representative?.raw ?? ''),
       ...(representative ? { representativeEvidence: { sourceKey: representative.sourceKey, rawHash: representative.rawHash, candidateCount: representative.candidateCount } } : {}),
+      judgmentCounts: records.filter((record) => {
+        const labels = record.labels ?? classifyFaqText(record.fields?.原始内容 ?? record.rawContent, { sourceType: record.fields?.来源类型 ?? record.sourceType }).labels;
+        return labels.includes(label);
+      }).reduce((result, record) => {
+        const judgment = record.painJudgment ?? record.fields?.是否痛点 ?? '需人工核验';
+        result[judgment] = (result[judgment] ?? 0) + 1;
+        return result;
+      }, { 是: 0, 否: 0, 需人工核验: 0 }),
     };
   });
 }
 
 export function buildSummary(records, { period = '', includeShare = false, scope = 'weekly', operatorContent } = {}) {
   const validRecords = (records ?? []).filter((record) => record.isValid !== false);
-  const denominator = validRecords.length;
+  const sourceKeys = validRecords.map((record) => record.sourceDedupKey ?? record.crossWeekDedupKey ?? record.fields?.来源记录唯一键 ?? record.sourceRecordKey);
+  if (sourceKeys.some((key) => !text(key))) throw new Error('FAQ summary records require a stable source identity');
+  const denominator = new Set(sourceKeys.map(text)).size;
   return {
     scope,
     period,
@@ -137,7 +149,8 @@ export function buildSummary(records, { period = '', includeShare = false, scope
     operatorContentSource: operatorContent?.source ?? null,
     denominator,
     sourceRecordCount: (records ?? []).length,
-    deduplicatedRecordCount: validRecords.length,
+    sourceTopicCount: validRecords.length,
+    deduplicatedRecordCount: denominator,
     rows: summaryRows(validRecords, { denominator, includeShare, operatorContent }),
   };
 }

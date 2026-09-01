@@ -5,7 +5,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { FAQ_ANALYSIS_VERSION, assertAnalysisRecord, buildAnalysisRecords } from './faq-text-analysis.mjs';
+import { FAQ_ANALYSIS_VERSION, assertAnalysisRecord, assertUniqueSourceTopics, buildAnalysisRecords } from './faq-text-analysis.mjs';
 
 function parseArgs(argv) {
   const options = { runtimeRoot: 'runtime' };
@@ -35,6 +35,7 @@ export async function main(argv = process.argv.slice(2)) {
   if (!rawRecords.length) throw new Error('Local raw snapshot is empty');
   const records = buildAnalysisRecords(rawRecords);
   records.forEach(assertAnalysisRecord);
+  assertUniqueSourceTopics(records);
   await mkdir(outputDir, { recursive: true });
   const classifiedText = `${records.map((record) => JSON.stringify(record)).join('\n')}\n`;
   const classifiedPath = resolve(outputDir, 'classified-records.jsonl');

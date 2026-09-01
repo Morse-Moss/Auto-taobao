@@ -75,6 +75,12 @@ export async function main(argv = process.argv.slice(2)) {
   });
   await client.authenticate();
   const tables = await client.listTables();
+  const deleteIds = options.tableNames.map((name) => {
+    const matches = tables.filter((table) => table.name === name);
+    if (matches.length !== 1) throw new Error(`Expected exactly one table named ${name}; found ${matches.length}`);
+    return matches[0].tableId ?? matches[0].table_id;
+  });
+  client.authorizeTableDeletion(deleteIds);
   const deleted = [];
   for (const name of options.tableNames) {
     const matches = tables.filter((table) => table.name === name);

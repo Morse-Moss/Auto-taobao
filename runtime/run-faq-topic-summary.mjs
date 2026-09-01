@@ -32,12 +32,12 @@ async function verifiedPeriods(runtimeRoot) {
   if (!existsSync(root)) return [];
   const periods = [];
   for (const period of await readdir(root)) {
-    const receiptPath = resolve(root, period, 'classification-receipt.json');
-    const classifiedPath = resolve(root, period, 'classified-records.jsonl');
+    const receiptPath = resolve(root, period, 'final-classification-receipt.json');
+    const classifiedPath = resolve(root, period, 'final-classified-records.jsonl');
     if (!existsSync(receiptPath) || !existsSync(classifiedPath)) continue;
     const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
     const classifiedText = await readFile(classifiedPath, 'utf8');
-    if (receipt.mode !== 'APPLIED_AND_VERIFIED' || receipt.period !== period || receipt.analysisVersion !== FAQ_ANALYSIS_VERSION || receipt.classifiedSnapshot?.sha256 !== hash(classifiedText)) continue;
+    if (receipt.mode !== 'FINAL_CLASSIFICATION_READY' || receipt.period !== period || receipt.analysisVersion !== FAQ_ANALYSIS_VERSION || receipt.publishable !== true || receipt.humanQueueCount !== 0 || receipt.classifiedRecords !== classifiedText.split(/\r?\n/u).filter(Boolean).length) continue;
     periods.push({ period, records: classifiedText.split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line)) });
   }
   return periods.sort((left, right) => left.period.localeCompare(right.period));
@@ -47,19 +47,19 @@ export async function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   if (!options.operatorXlsx) throw new Error('--operator-xlsx is required');
   const operatorContent = readOperatorContent(options.operatorXlsx, { python: options.python });
-  const classifiedPath = resolve(options.outputDir, 'classified-records.jsonl');
-  const classificationReceiptPath = resolve(options.outputDir, 'classification-receipt.json');
+  const finalClassifiedPath = resolve(options.outputDir, 'final-classified-records.jsonl');
+  const finalReceiptPath = resolve(options.outputDir, 'final-classification-receipt.json');
   const rawPath = resolve(options.runtimeRoot, 'question-library-collection', options.period, 'raw-records.jsonl');
-  if (!existsSync(classifiedPath) || !existsSync(classificationReceiptPath) || !existsSync(rawPath)) throw new Error('Missing verified FAQ classification artifacts');
-  const classifiedText = await readFile(classifiedPath, 'utf8');
+  if (!existsSync(finalClassifiedPath) || !existsSync(finalReceiptPath) || !existsSync(rawPath)) throw new Error('Missing final verified FAQ classification artifacts');
+  const classifiedText = await readFile(finalClassifiedPath, 'utf8');
   const rawText = await readFile(rawPath, 'utf8');
-  const classificationReceipt = JSON.parse(await readFile(classificationReceiptPath, 'utf8'));
-  if (classificationReceipt.mode !== 'APPLIED_AND_VERIFIED' || classificationReceipt.period !== options.period || classificationReceipt.analysisVersion !== FAQ_ANALYSIS_VERSION || classificationReceipt.rawSnapshot?.sha256 !== hash(rawText) || classificationReceipt.classifiedSnapshot?.sha256 !== hash(classifiedText)) throw new Error('FAQ classification evidence mismatch');
+  const finalReceipt = JSON.parse(await readFile(finalReceiptPath, 'utf8'));
+  if (finalReceipt.mode !== 'FINAL_CLASSIFICATION_READY' || finalReceipt.period !== options.period || finalReceipt.analysisVersion !== FAQ_ANALYSIS_VERSION || finalReceipt.publishable !== true || finalReceipt.humanQueueCount !== 0 || finalReceipt.classifiedRecords !== classifiedText.split(/\r?\n/u).filter(Boolean).length) throw new Error('FAQ final classification is not ready for summary');
   const classified = classifiedText.split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
   const weeklyDedup = classifyAndDeduplicate(classified);
   const weekly = buildSummary(weeklyDedup.records, { period: options.period, scope: 'weekly', includeShare: false, operatorContent });
   const periods = await verifiedPeriods(options.runtimeRoot);
-  if (!periods.some((entry) => entry.period === options.period)) throw new Error(`Current period classification receipt is not verified: ${options.period}`);
+  if (!periods.some((entry) => entry.period === options.period)) throw new Error(`Current period final classification is not ready: ${options.period}`);
   const cumulative = buildCumulativeSummary(periods, { operatorContent });
   const expectedLabels = new Set(FAQ_LABEL_CATALOG.map(({ label }) => label));
   const assertSummary = (summary, name) => {
@@ -84,7 +84,7 @@ export async function main(argv = process.argv.slice(2)) {
   const cumulativePath = resolve(options.outputDir, 'cumulative-summary.json');
   await writeFile(weeklyPath, weeklyText, 'utf8');
   await writeFile(cumulativePath, cumulativeText, 'utf8');
-  const receipt = { mode: 'APPLIED_AND_VERIFIED', period: options.period, analysisVersion: FAQ_ANALYSIS_VERSION, dedupVersion: FAQ_DEDUP_VERSION, summaryVersion: FAQ_SUMMARY_VERSION, representativeSelectionVersion: FAQ_REPRESENTATIVE_SELECTION_VERSION, painDescriptionVersion: FAQ_PAIN_DESCRIPTION_VERSION, operatorContentVersion: operatorContent.version, source: { rawSnapshot: { path: rawPath, sha256: hash(rawText) }, classifiedSnapshot: { path: classifiedPath, sha256: hash(classifiedText) }, operatorXlsx: operatorContent.source }, periods: periods.map((entry) => entry.period), weekly: { path: weeklyPath, sha256: hash(weeklyText), denominator: weekly.denominator, rows: weekly.rows.length, labels: weekly.rows.map((row) => row.分类标签) }, cumulative: { path: cumulativePath, sha256: hash(cumulativeText), denominator: cumulative.denominator, rows: cumulative.rows.length, labels: cumulative.rows.map((row) => row.分类标签) }, weeklyDuplicates: weeklyDedup.duplicates.length, feishuWrites: 0 };
+  const receipt = { mode: 'APPLIED_AND_VERIFIED', period: options.period, analysisVersion: FAQ_ANALYSIS_VERSION, dedupVersion: FAQ_DEDUP_VERSION, summaryVersion: FAQ_SUMMARY_VERSION, representativeSelectionVersion: FAQ_REPRESENTATIVE_SELECTION_VERSION, painDescriptionVersion: FAQ_PAIN_DESCRIPTION_VERSION, operatorContentVersion: operatorContent.version, source: { rawSnapshot: { path: rawPath, sha256: hash(rawText) }, finalClassifiedSnapshot: { path: finalClassifiedPath, sha256: hash(classifiedText) }, finalClassificationReceipt: { path: finalReceiptPath, sha256: hash(await readFile(finalReceiptPath, 'utf8')) }, operatorXlsx: operatorContent.source }, periods: periods.map((entry) => entry.period), weekly: { path: weeklyPath, sha256: hash(weeklyText), denominator: weekly.denominator, rows: weekly.rows.length, labels: weekly.rows.map((row) => row.分类标签) }, cumulative: { path: cumulativePath, sha256: hash(cumulativeText), denominator: cumulative.denominator, rows: cumulative.rows.length, labels: cumulative.rows.map((row) => row.分类标签) }, weeklyDuplicates: weeklyDedup.duplicates.length, feishuWrites: 0 };
   await writeFile(resolve(options.outputDir, 'aggregate-receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
   console.log(JSON.stringify(receipt, null, 2));
 }

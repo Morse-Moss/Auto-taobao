@@ -3,6 +3,8 @@ const ORDERED_STAGES = [
   ['evidenceComplete', 'COLLECT_EVIDENCE'],
   ['localSnapshotBuilt', 'BUILD_LOCAL_SNAPSHOT'],
   ['localAnalysisVerified', 'ANALYZE_LOCAL'],
+  ['aiReviewComplete', 'RUN_AI_REVIEW'],
+  ['humanReviewComplete', 'REVIEW_AI_HUMAN_QUEUE'],
   ['localSummariesBuilt', 'BUILD_LOCAL_SUMMARIES'],
   ['summariesPublished', 'PUBLISH_FEISHU_SUMMARIES'],
 ];
