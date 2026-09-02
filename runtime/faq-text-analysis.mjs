@@ -2,7 +2,7 @@ const TEXT = 1;
 const NUMBER = 2;
 const SINGLE_SELECT = 3;
 
-export const FAQ_ANALYSIS_VERSION = 'faq-ops-rule-v3.1.0';
+export const FAQ_ANALYSIS_VERSION = 'faq-ops-rule-v3.3.1';
 export const PAIN_JUDGMENT_OPTIONS = ['是', '否', '需人工核验'];
 
 export const FAQ_LABEL_CATALOG = [
@@ -39,9 +39,10 @@ const ISSUE_RULES = [
   {
     label: '重量大/搬运困难',
     topicKeywords: ['重量', '很重', '太重', '沉', '搬', '抬'],
-    painKeywords: ['很重很难搬', '太重难搬', '搬不动', '抬不动', '难抬', '难搬', '搬运困难', '费老大劲', '费了老大劲', '费很大劲', '费了很大劲', '费了九牛二虎之力', '两个人抬不了', '需要找5个人抬', '喊了五个人才搬', '好几个人抬上去', '三个快递小哥费了好半天力气', '四个小伙子费了九牛二虎之力', '要几个人抬', '需要自己付搬运费', '搬运费贵'],
+    painKeywords: ['很重很难搬', '太重难搬', '搬不动', '抬不动', '难抬', '难搬', '搬运困难', '费老大劲', '费了老大劲', '费很大劲', '费了很大劲', '费了九牛二虎之力', '两个人抬不了', '两个人也不好抬', '需要找5个人抬', '喊了五个人才搬', '好几个人抬上去', '三个人搬进来的', '找了三个师傅才抬进去', '请了四个搬运', '三个快递小哥费了好半天力气', '四个小伙子费了九牛二虎之力', '要几个人抬', '需要自己付搬运费', '搬运费贵'],
     positiveKeywords: ['重量不影响', '不重', '比较轻', '轻巧', '很轻', '搬运方便', '容易搬', '搬得动', '帮忙搬进家里', '帮忙搬上楼', '师傅就抬进去了', '搬运可以底下铺个毯子往前拉'],
-    neutralKeywords: ['很重', '重量很重', '重量也很重', '有重量', '有份量', '很沉', '沉重', '重量不轻', '特别沉', '巨沉', '有点重', '比较重', '光是搬运就知道质量超好'],
+    neutralKeywords: ['有重量', '有份量', '光是搬运就知道质量超好'],
+    omitTopicOnly: true,
   },
   {
     label: '不包安装/安装费贵',
@@ -49,11 +50,12 @@ const ISSUE_RULES = [
     painKeywords: ['不包安装', '不含安装', '不提供安装', '没有安装服务', '安装费贵', '安装费高', '安装收费', '额外支付安装费', '另外找安装', '自己找安装', '自己找的安装师傅', '自己安装', '自行安装', '只能自己安装', '需自己安装', '需要自己安装', '另找安装', '另请安装', '安装没人管', '安装无人处理'],
     positiveKeywords: ['免费安装', '安装包含', '安装方便', '安装师傅很到位', '安装专业到位', '安装到位', '安装顺利', '安装简单', '安装专业', '师傅很负责', '师傅服务好', '安装完毕', '安装好了', '安装好', '安装后', '安装位置合适', '安装尺寸刚好合适', '安装师傅也很尽责', '安装师傅也非常认真负责', '安装师傅也很专业', '上门安装也很快', '安装说明', '详细的说明', '安装上完全合适', '安装效果很满意', '安装也比较方便', '安装快递', '安装好非常漂亮', '最终算解决了', '积极处理妥当处理'],
     futureKeywords: ['尚未安装', '还没安装', '未安装', '安装后再反馈', '安装后反馈', '等安装后'],
+    omitTopicOnly: true,
   },
   {
     label: '异味问题',
-    topicKeywords: ['异味', '味道', '气味', '有味'],
-    painKeywords: ['有异味', '异味很大', '异味明显', '味道大', '味道很大', '味道难闻', '味道刺鼻', '有臭味', '臭味', '塑料味', '散不掉', '散味很久', '一直有味'],
+    topicKeywords: ['异味', '味道', '气味', '有味', '臭'],
+    painKeywords: ['有异味', '异味很大', '异味明显', '味道大', '味道很大', '味道难闻', '味道刺鼻', '味道很重', '异味很重', '有臭味', '臭味', '很臭', '塑料味', '散不掉', '散味很久', '一直有味'],
     positiveKeywords: ['没有异味', '无异味', '没异味', '没有味道', '没味道', '没有一点味道', '不臭', '没什么味道', '味道淡', '无明显气味'],
     futureKeywords: ['使用后再反馈', '还没使用', '尚未使用', '暂未使用', '暂时没用', '等使用后', '后续反馈'],
   },
@@ -62,12 +64,14 @@ const ISSUE_RULES = [
     topicKeywords: ['尺寸', '大小', '长度', '宽度', '高度', '空间'],
     painKeywords: ['尺寸有差距', '尺寸不符', '尺寸不合适', '尺寸不对', '太大', '太小', '放不下', '放不进去', '进不去', '门宽不够', '空间小', '不够长', '不够宽'],
     positiveKeywords: ['尺寸刚好', '尺寸刚刚好', '尺寸合适', '大小合适', '大小尺寸刚刚好', '长度合适', '放得下', '严丝合缝', '尺寸正好', '大小正好', '安装上完全合适', '刚刚好能进去卫生间门', '长度也还可以', '完全够用了'],
+    omitTopicOnly: true,
   },
   {
     label: '排水/漏水问题',
     topicKeywords: ['排水', '下水', '漏水', '积水'],
     painKeywords: ['漏水', '排水慢', '排得慢', '排不干净', '积水', '下水慢', '下水器漏', '管子脱落', '堵水'],
     positiveKeywords: ['排水顺畅', '给水与排水都很流畅', '下水快', '排水很顺畅', '下水没问题', '排水好用', '下水顺畅', '下水很快', '下水顺滑', '下水器很灵敏', '下水器也很漂亮', '直接插上排水'],
+    omitTopicOnly: true,
   },
   {
     label: '品质瑕疵(划痕/裂纹/破损)',
@@ -77,16 +81,16 @@ const ISSUE_RULES = [
   },
   {
     label: '物流/运输问题',
-    topicKeywords: ['物流', '运输', '配送', '送货', '快递', '搬运'],
+    topicKeywords: ['物流', '运输', '配送', '快递'],
     painKeywords: ['物流很差', '物流差', '物流问题', '不送上楼', '不送进门', '放在客厅', '运输问题', '配送慢', '送货慢', '搬运费', '物流破损', '运输破损'],
+    omitTopicOnly: true,
     positiveKeywords: ['物流快', '物流很快', '物流很给力', '物流迅速', '发货快', '发货速度快', '送货上门', '送货很快', '快递很快', '包装结实', '包装很结实', '包装严实', '包装非常稳妥', '木盒包装非常稳妥', '木箱防护严实完好', '包装特别好', '快递小哥很靠谱', '快递小哥人很好', '快递帮忙搬运', '快递小哥帮忙拆的外包装', '及时送到', '及时解决', '物流出了一些状况也能及时解决'],
-    neutralKeywords: ['送货'],
   },
   {
     label: '售后差/不处理',
     topicKeywords: ['售后', '客服', '处理', '解决', '沟通'],
     painKeywords: ['售后差', '售后问题', '不处理', '没人解决', '无人解决', '推诿', '扯皮', '催促好几次', '迟迟不处理', '闹心', '责任意识差', '太差劲', '服务是真的差', '客服态度差', '售后不管'],
-    positiveKeywords: ['售后很好', '服务非常好', '客服都很好', '客服耐心', '客服热情', '客服也耐心', '客服也很耐心', '客服耐心热情', '耐心热情', '客服服务好', '客服服务很到位', '客服服务周到', '客服态度也好', '客服态度很好', '客服很专业很耐心', '客服很有耐心', '商家服务也很好', '商家态度也好', '沟通顺畅', '及时解决', '问题总算解决了', '最终算解决了', '商家积极处理妥当处理', '售后放心', '服务很好', '服务也很好', '卖家也给很好的解决'],
+    positiveKeywords: ['售后很好', '服务非常好', '客服都很好', '客服耐心', '客服热情', '客服也耐心', '客服也很耐心', '客服耐心热情', '耐心热情', '客服服务好', '客服服务很到位', '客服服务周到', '客服态度也好', '客服态度很好', '客服态度也超好', '客服态度非常好', '客服服务态度也很好', '客服人员态度很好', '客服全程态度都巨好', '客服服务也很不错', '客服人员每问必答', '客服很专业很耐心', '客服很有耐心', '回答很有耐心', '有疑问及时解答', '回复的很及时', '响应也很及时', '认真负责', '商家服务也很好', '商家态度也好', '售后也好', '沟通顺畅', '沟通都很专业很棒', '及时解决', '妥善解决', '问题总算解决了', '最终算解决了', '商家积极处理妥当处理', '售后放心', '服务很好', '服务也很好', '服务态度也是非常好', '卖家也给很好的解决'],
   },
   {
     label: '价格/保价问题',
@@ -105,6 +109,7 @@ const ISSUE_RULES = [
     topicKeywords: ['深度', '太浅', '泡不到', '高度'],
     painKeywords: ['太浅', '深度不够', '不够深', '泡不到肩', '高度不够', '泡澡不舒服'],
     positiveKeywords: ['深度合适', '深度够', '泡澡舒服', '泡得舒服'],
+    omitTopicOnly: true,
   },
 ];
 
@@ -166,8 +171,20 @@ function firstIndependentMatch(content, keywords, coveredBy = []) {
     .sort((left, right) => left.index - right.index || right.keyword.length - left.keyword.length)[0] ?? null;
 }
 
+function isNegated(content, match) {
+  const prefix = content.slice(Math.max(0, match.index - 2), match.index);
+  return /(?:不|没|没有|无|未)$/u.test(prefix);
+}
+
+function firstNonNegatedMatch(content, keywords) {
+  return keywords
+    .map((keyword) => ({ keyword, index: content.indexOf(keyword) }))
+    .filter((match) => match.index >= 0 && !isNegated(content, match))
+    .sort((left, right) => left.index - right.index || right.keyword.length - left.keyword.length)[0] ?? null;
+}
+
 function judgmentForIssue(content, rule) {
-  const painEvidence = firstMatch(content, rule.painKeywords);
+  const painEvidence = firstNonNegatedMatch(content, rule.painKeywords);
   const positiveEvidence = firstIndependentMatch(content, rule.positiveKeywords, rule.painKeywords);
   const topicEvidence = firstMatch(content, rule.topicKeywords);
   const neutralEvidence = firstMatch(content, rule.neutralKeywords ?? []);
@@ -179,10 +196,10 @@ function judgmentForIssue(content, rule) {
     return { judgment: '需人工核验', evidence: `同时出现问题表达“${painEvidence.keyword}”和未来状态“${futureEvidence.keyword}”`, confidence: '低' };
   }
   if (painEvidence) return { judgment: '是', evidence: painEvidence.keyword, confidence: '高' };
-  if (positiveEvidence) return { judgment: '否', evidence: positiveEvidence.keyword, confidence: '高' };
-  if (neutralEvidence) return { judgment: '否', evidence: neutralEvidence.keyword, confidence: '高' };
+  if (positiveEvidence) return null;
+  if (neutralEvidence) return { judgment: '需人工核验', evidence: neutralEvidence.keyword, confidence: '低' };
   if (futureEvidence && topicEvidence) return { judgment: '否', evidence: `当前未完成体验：“${futureEvidence.keyword}”`, confidence: '高' };
-  if (topicEvidence) return { judgment: '需人工核验', evidence: topicEvidence.keyword, confidence: '低' };
+  if (topicEvidence && !rule.omitTopicOnly) return { judgment: '需人工核验', evidence: topicEvidence.keyword, confidence: '低' };
   return null;
 }
 
@@ -205,7 +222,18 @@ export function classifyFaqText(value, { sourceType = '' } = {}) {
   const content = normalizeFaqText(value);
   if (!content) return { labels: [], topicLabels: [], painLabels: [], isPain: false, isValid: false, judgmentByLabel: {}, evidenceByLabel: {}, confidenceByLabel: {}, classificationVersion: FAQ_ANALYSIS_VERSION };
   if (sourceType === '问大家' || /^问题：/u.test(content) || /^回答：/u.test(content)) {
-    return { labels: ['问答内容'], topicLabels: ['问答内容'], painLabels: [], isPain: false, isValid: true, judgmentByLabel: { 问答内容: '否' }, evidenceByLabel: { 问答内容: '来源为问大家' }, confidenceByLabel: { 问答内容: '高' }, classificationVersion: FAQ_ANALYSIS_VERSION };
+    const question = (content.split(/回答[:：]/u, 1)[0] || content).replace(/^问题[:：]/u, '').trim();
+    const questionLabels = ISSUE_RULES
+      .filter((rule) => firstMatch(question, rule.topicKeywords))
+      .map((rule) => [rule.label, firstMatch(question, rule.topicKeywords).keyword]);
+    if (questionLabels.length) {
+      const judgmentByLabel = Object.fromEntries(questionLabels.map(([label]) => [label, '是']));
+      const evidenceByLabel = Object.fromEntries(questionLabels.map(([label, evidence]) => [label, `提问本身表达用户疑虑：“${evidence}”`]));
+      const confidenceByLabel = Object.fromEntries(questionLabels.map(([label]) => [label, '高']));
+      const labels = questionLabels.map(([label]) => label);
+      return { labels, topicLabels: labels, painLabels: labels, isPain: true, isValid: true, judgmentByLabel, evidenceByLabel, confidenceByLabel, classificationVersion: FAQ_ANALYSIS_VERSION };
+    }
+    return { labels: ['问答内容'], topicLabels: ['问答内容'], painLabels: [], isPain: false, isValid: true, judgmentByLabel: { 问答内容: '否' }, evidenceByLabel: { 问答内容: '来源为问大家但未命中业务主题' }, confidenceByLabel: { 问答内容: '低' }, classificationVersion: FAQ_ANALYSIS_VERSION };
   }
   if (isExplicitDefaultReview(content)) {
     return { labels: ['系统默认/无内容'], topicLabels: ['系统默认/无内容'], painLabels: [], isPain: false, isValid: true, judgmentByLabel: { '系统默认/无内容': '否' }, evidenceByLabel: { '系统默认/无内容': '系统默认评价' }, confidenceByLabel: { '系统默认/无内容': '高' }, classificationVersion: FAQ_ANALYSIS_VERSION };

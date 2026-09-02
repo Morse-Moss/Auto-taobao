@@ -34,9 +34,9 @@ test('weekly summary counts each label once per deduplicated record', () => {
   ];
   const deduped = classifyAndDeduplicate(input);
   const summary = buildSummary(deduped.records, { period: 'w1', includeShare: false, operatorContent });
-  assert.equal(deduped.records.length, 6);
+  assert.equal(deduped.records.length, 4);
   assert.equal(deduped.duplicates.length, 2);
-  assert.equal(summary.sourceTopicCount, 6);
+  assert.equal(summary.sourceTopicCount, 4);
   assert.equal(summary.denominator, 2);
   assert.equal(summary.rows.length, FAQ_LABEL_CATALOG.length);
   assert.equal(summary.rows.find((row) => row.分类标签 === '重量大/搬运困难').出现次数, 1);

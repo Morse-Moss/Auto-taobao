@@ -17,19 +17,19 @@ test('classifyFaqText returns independent topic judgments', () => {
   assert.equal(result.isPain, true);
 });
 
-test('negative positive signals do not create false pain labels', () => {
+test('negative positive signals only create positive labels', () => {
   const result = classifyFaqText('没有一点味道，排水顺畅，好清洁，尺寸刚刚好');
-  assert.deepEqual(result.labels, ['异味问题', '尺寸不符/偏大偏小', '排水/漏水问题', '清洁困难', '好评-无异味', '好评-易清洁']);
-  assert.equal(result.judgmentByLabel['异味问题'], '否');
-  assert.equal(result.judgmentByLabel['排水/漏水问题'], '否');
-  assert.equal(result.judgmentByLabel['尺寸不符/偏大偏小'], '否');
+  assert.deepEqual(result.labels, ['好评-无异味', '好评-易清洁']);
+  assert.equal(result.judgmentByLabel['异味问题'], undefined);
+  assert.equal(result.judgmentByLabel['排水/漏水问题'], undefined);
+  assert.equal(result.judgmentByLabel['尺寸不符/偏大偏小'], undefined);
   assert.equal(result.isPain, false);
 });
 
 test('positive installation service does not create an installation pain label', () => {
   const result = classifyFaqText('外观材质：质感好，安装师傅很到位。');
-  assert.deepEqual(result.labels, ['不包安装/安装费贵', '好评-外观颜值', '好评-质感材质']);
-  assert.equal(result.judgmentByLabel['不包安装/安装费贵'], '否');
+  assert.deepEqual(result.labels, ['好评-外观颜值', '好评-质感材质']);
+  assert.equal(result.judgmentByLabel['不包安装/安装费贵'], undefined);
   assert.equal(result.painLabels.length, 0);
 });
 
@@ -38,7 +38,7 @@ test('confirmed installation and weight policy requires actual negative impact',
   assert.equal(selfInstalled.judgmentByLabel['不包安装/安装费贵'], '是');
 
   const weightOnly = classifyFaqText('浴缸很重，质量很好，安装后很漂亮。');
-  assert.equal(weightOnly.judgmentByLabel['重量大/搬运困难'], '否');
+  assert.equal(weightOnly.judgmentByLabel['重量大/搬运困难'], undefined);
 
   const difficultMove = classifyFaqText('浴缸很重，四位搬运师傅费了老大劲才搬进家里。');
   assert.equal(difficultMove.judgmentByLabel['重量大/搬运困难'], '是');
@@ -46,38 +46,48 @@ test('confirmed installation and weight policy requires actual negative impact',
 
 test('positive customer service in natural review wording is not ambiguous after-sales pain', () => {
   const result = classifyFaqText('收到了质量非常好客服也耐心热情 非常满意');
-  assert.deepEqual(result.labels, ['品质瑕疵(划痕/裂纹/破损)', '售后差/不处理', '好评-客服服务']);
-  assert.equal(result.judgmentByLabel['售后差/不处理'], '否');
+  assert.deepEqual(result.labels, ['好评-客服服务']);
+  assert.equal(result.judgmentByLabel['售后差/不处理'], undefined);
   assert.equal(result.judgmentByLabel['好评-客服服务'], '否');
+  const naturalPositive = classifyFaqText('客服服务态度也很好，客服人员态度很好，沟通起来很方便');
+  assert.deepEqual(naturalPositive.labels, ['好评-客服服务']);
+  assert.equal(naturalPositive.judgmentByLabel['售后差/不处理'], undefined);
 });
 
 test('explicit positive issue mentions materialize as non-pain source-topic rows', () => {
   const result = classifyFaqText('从买之前的咨询，到安装过程的沟通，客服都很好！浴缸选购的哑光白色，高级感满满！手感温润，给水与排水都很流畅。送货，安装师傅也很专业。很满意的一次家装网购，值得推荐！');
   for (const label of ['不包安装/安装费贵', '排水/漏水问题', '物流/运输问题', '售后差/不处理']) {
-    assert.equal(result.labels.includes(label), true);
-    assert.equal(result.judgmentByLabel[label], '否');
-    assert.equal(result.painLabels.includes(label), false);
+    assert.equal(result.judgmentByLabel[label], undefined);
   }
   const records = buildAnalysisRecords([{ recordId: 'positive', fields: { 来源记录唯一键: 'positive-1', 来源类型: '评论', 原始内容: '从买之前的咨询，到安装过程的沟通，客服都很好！浴缸选购的哑光白色，高级感满满！手感温润，给水与排水都很流畅。送货，安装师傅也很专业。很满意的一次家装网购，值得推荐！' } }]);
-  assert.equal(records.filter((record) => ['不包安装/安装费贵', '排水/漏水问题', '物流/运输问题', '售后差/不处理'].includes(record.fields.分类标签)).every((record) => record.fields.是否痛点 === '否'), true);
+  assert.equal(records.some((record) => ['不包安装/安装费贵', '排水/漏水问题', '物流/运输问题', '售后差/不处理'].includes(record.fields.分类标签)), false);
 });
 
 test('explicit positive review language does not enter unrelated manual pain queues', () => {
   const result = classifyFaqText('价格公道，客服服务周到，木箱防护严实完好，安装说明详细，验货完全无损。');
-  assert.equal(result.judgmentByLabel['价格/保价问题'], '否');
-  assert.equal(result.judgmentByLabel['售后差/不处理'], '否');
-  assert.equal(result.judgmentByLabel['物流/运输问题'], '否');
-  assert.equal(result.judgmentByLabel['不包安装/安装费贵'], '否');
-  assert.equal(result.judgmentByLabel['品质瑕疵(划痕/裂纹/破损)'], '否');
+  assert.equal(result.judgmentByLabel['价格/保价问题'], undefined);
+  assert.equal(result.judgmentByLabel['售后差/不处理'], undefined);
+  assert.equal(result.judgmentByLabel['物流/运输问题'], undefined);
+  assert.equal(result.judgmentByLabel['不包安装/安装费贵'], undefined);
+  assert.equal(result.judgmentByLabel['品质瑕疵(划痕/裂纹/破损)'], undefined);
   assert.equal(result.isPain, false);
 });
 
 test('neutral product names and advice do not become price or moving pain', () => {
   const result = classifyFaqText('贵妃缸包装很结实，搬运可以底下铺个毯子往前拉，这样省力。');
   assert.equal(result.judgmentByLabel['价格/保价问题'], undefined);
-  assert.equal(result.judgmentByLabel['重量大/搬运困难'], '否');
-  assert.equal(result.judgmentByLabel['物流/运输问题'], '否');
+  assert.equal(result.judgmentByLabel['重量大/搬运困难'], undefined);
+  assert.equal(result.judgmentByLabel['物流/运输问题'], undefined);
   assert.equal(result.isPain, false);
+});
+
+test('positive logistics and product details do not create unrelated pain topics', () => {
+  const result = classifyFaqText('物流超级给力很快收到货，搬上二楼请了四个搬运，下水开口有logo，调整好脚的高度很稳，客服态度好');
+  assert.equal(result.judgmentByLabel['物流/运输问题'], undefined);
+  assert.equal(result.judgmentByLabel['排水/漏水问题'], undefined);
+  assert.equal(result.judgmentByLabel['尺寸不符/偏大偏小'], undefined);
+  assert.equal(result.judgmentByLabel['深度不够/太浅'], undefined);
+  assert.equal(result.judgmentByLabel['重量大/搬运困难'], '是');
 });
 
 test('ambiguous topic mention requires manual review', () => {
@@ -85,11 +95,12 @@ test('ambiguous topic mention requires manual review', () => {
   assert.deepEqual(result.labels, ['异味问题']);
   assert.equal(result.judgmentByLabel['异味问题'], '需人工核验');
   assert.equal(result.confidenceByLabel['异味问题'], '低');
+  assert.equal(classifyFaqText('安装师傅很仔细').labels.includes('不包安装/安装费贵'), false);
 });
 
 test('future state without actual experience is not a current pain', () => {
   const result = classifyFaqText('还没安装，安装后再反馈，暂时没用');
-  assert.equal(result.judgmentByLabel['不包安装/安装费贵'], '否');
+  assert.equal(result.judgmentByLabel['不包安装/安装费贵'], undefined);
   assert.equal(result.judgmentByLabel['安装后再反馈'], undefined);
   assert.equal(result.judgmentByLabel['异味问题'], undefined);
   assert.equal(result.judgmentByLabel['好评-保温/舒适'], undefined);
@@ -99,6 +110,29 @@ test('future state with an actual pain stays for manual review', () => {
   const result = classifyFaqText('安装费贵，安装后再反馈');
   assert.equal(result.judgmentByLabel['不包安装/安装费贵'], '需人工核验');
   assert.equal(result.confidenceByLabel['不包安装/安装费贵'], '低');
+});
+
+test('strong weight impact and severe odor are pain points', () => {
+  const weight = classifyFaqText('做工还可以，很重很重，两个人也不好抬，安装好了效果不错');
+  assert.equal(weight.judgmentByLabel['重量大/搬运困难'], '是');
+  assert.equal(weight.evidenceByLabel['重量大/搬运困难'], '两个人也不好抬');
+  const odor = classifyFaqText('打开以后很臭，味道很重，散了几天也不行');
+  assert.equal(odor.judgmentByLabel['异味问题'], '是');
+  const noOdor = classifyFaqText('没有异味，也不臭');
+  assert.equal(noOdor.judgmentByLabel['异味问题'], undefined);
+  assert.equal(noOdor.labels.includes('好评-无异味'), true);
+});
+
+test('questions in 问大家 are pain points regardless of reassuring answers', () => {
+  const odor = classifyFaqText('问题：臭不臭 这个浴缸\n回答：西**味：不臭', { sourceType: '问大家' });
+  assert.deepEqual(odor.labels, ['异味问题']);
+  assert.equal(odor.judgmentByLabel['异味问题'], '是');
+  assert.match(odor.evidenceByLabel['异味问题'], /提问本身表达用户疑虑/u);
+  const drainage = classifyFaqText('问题：这种下水槽必须在正中间嘛？\n回答：找客服要预留图', { sourceType: '问大家' });
+  assert.deepEqual(drainage.labels, ['排水/漏水问题']);
+  assert.equal(drainage.judgmentByLabel['排水/漏水问题'], '是');
+  const generic = classifyFaqText('问题：大家觉得怎么样？\n回答：挺好的', { sourceType: '问大家' });
+  assert.deepEqual(generic.labels, ['问答内容']);
 });
 
 test('泡澡 alone does not imply insufficient depth', () => {
@@ -115,14 +149,14 @@ test('default review detection is explicit and blank content is invalid', () => 
 
 test('buildAnalysisRecords preserves raw fields and emits versioned labels', () => {
   const records = buildAnalysisRecords([
-    { recordId: 'rec1', fields: { 商品ID: 'p1', 原始内容: '长度尺寸正合适', 来源类型: '评论', 来源记录唯一键: 'k1' } },
+    { recordId: 'rec1', fields: { 商品ID: 'p1', 原始内容: '尺寸有差距', 来源类型: '评论', 来源记录唯一键: 'k1' } },
     { recordId: 'rec2', fields: { 商品ID: 'p2', 原始内容: '尺寸有差距，质量一般', 来源类型: '评论', 来源记录唯一键: 'k2' } },
   ]);
   assert.equal(records.length, 3);
-  assert.equal(records[0].fields.原始内容, '长度尺寸正合适');
+  assert.equal(records[0].fields.原始内容, '尺寸有差距');
   assert.equal(records[0].fields.分类标签, '尺寸不符/偏大偏小');
-  assert.equal(records[0].fields.是否痛点, '需人工核验');
-  assert.equal(records[0].fields.痛点判定置信度, '低');
+  assert.equal(records[0].fields.是否痛点, '是');
+  assert.equal(records[0].fields.痛点判定置信度, '高');
   assert.equal(records[0].fields.分析版本, FAQ_ANALYSIS_VERSION);
   assert.deepEqual(records.slice(1).map((record) => record.fields.分类标签), ['尺寸不符/偏大偏小', '品质瑕疵(划痕/裂纹/破损)']);
   assert.equal(records[1].fields.出现次数, undefined);

@@ -38,7 +38,15 @@ function writeText(file, value) { fs.mkdirSync(path.dirname(file), { recursive: 
 
 function parseAiProviderOutput(output) {
   const normalizedOutput = String(output).replace(/[​﻿]/gu, '').trim();
-  const parsed = JSON.parse(normalizedOutput);
+  let parsed;
+  try {
+    parsed = JSON.parse(normalizedOutput);
+  } catch {
+    const start = normalizedOutput.indexOf('[');
+    const end = normalizedOutput.lastIndexOf(']');
+    if (start < 0 || end <= start) throw new Error('Invalid AI provider output: expected a JSON array');
+    parsed = JSON.parse(normalizedOutput.slice(start, end + 1));
+  }
   if (Array.isArray(parsed)) return parsed;
   const result = parsed && typeof parsed === 'object' ? parsed.result : null;
   if (Array.isArray(result)) return result;
@@ -103,10 +111,21 @@ export async function main(argv = process.argv.slice(2), dependencies = {}) {
     const existing = readJson(artifactPath);
     const oldTasks = new Map((existing.tasks ?? []).map((task) => [task.taskId, task]));
     const oldResults = new Map((existing.results ?? []).map((result) => [result.taskId, result]));
+    const failedTaskIds = new Set();
+    const receiptFile = path.resolve(outputDir, 'ai-review-receipt.json');
+    const priorReceipt = fs.existsSync(receiptFile) ? readJson(receiptFile) : null;
+    const failedBatches = [...(existing.batchFailures ?? []), ...(priorReceipt?.batchFailures ?? [])];
+    for (const failure of failedBatches) {
+      const batchNumber = Number(failure.batch);
+      if (!Number.isInteger(batchNumber) || batchNumber < 1) continue;
+      const batchPath = path.resolve(outputDir, `batch-${String(batchNumber).padStart(3, '0')}.json`);
+      if (!fs.existsSync(batchPath)) continue;
+      for (const task of readJson(batchPath)) if (task?.taskId) failedTaskIds.add(task.taskId);
+    }
     migratedResults = tasks.flatMap((task) => {
       const oldTask = oldTasks.get(task.taskId);
       const oldResult = oldResults.get(task.taskId);
-      if (!oldTask || !oldResult) return [];
+      if (failedTaskIds.has(task.taskId) || !oldTask || !oldResult) return [];
       const compatible = oldTask.sourceKey === task.sourceKey
         && oldTask.label === task.label
         && oldTask.inputs?.rawContent === task.inputs.rawContent
@@ -156,7 +175,7 @@ export async function main(argv = process.argv.slice(2), dependencies = {}) {
     const batchFile = path.resolve(outputDir, `batch-${String(index + 1).padStart(3, '0')}.json`);
     const resultFile = path.resolve(outputDir, `batch-${String(index + 1).padStart(3, '0')}-results.json`);
     let batchResults = null;
-    if (fs.existsSync(resultFile)) {
+    if (fs.existsSync(resultFile) && !fs.existsSync(path.resolve(outputDir, `batch-${String(index + 1).padStart(3, '0')}-failure.json`))) {
       const stored = readJson(resultFile);
       const storedTaskIds = Array.isArray(stored) ? stored.map((item) => item.taskId) : [];
       const batchTaskIds = batch.map((task) => task.taskId);

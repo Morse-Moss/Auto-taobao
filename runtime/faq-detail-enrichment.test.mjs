@@ -20,6 +20,7 @@ const raw = {
     原始内容: '没有一点味道，排水顺畅，外观好看',
     来源记录唯一键: 'source-1',
     crossWeekDedupKey: 'text:source-1',
+    sourceDedupKey: 'source-1',
     采集状态: '已采集',
   },
 };
@@ -35,20 +36,21 @@ function content() {
   };
 }
 
-test('replacement plan materializes explicit non-pain source-topic rows', () => {
+test('replacement plan materializes independently evidenced positive source-topic rows', () => {
   const records = buildAnalysisRecords([raw]);
   const plan = buildDetailReplacementPlan({ finalRecords: records, operatorContent: content(), period });
   assert.equal(plan.master.rowCount, records.length);
   assert.equal(plan.weekly.rowCount, records.length);
   assert.equal(plan.fields, FAQ_DETAIL_FIELDS);
   assert.equal(plan.denominator, 1);
-  for (const label of ['异味问题', '排水/漏水问题']) {
+  for (const label of ['好评-外观颜值', '好评-无异味']) {
     const row = plan.weekly.rows.find((item) => item.分类标签 === label);
     assert.equal(row.是否痛点, '否');
     assert.equal(row.来源记录唯一键, 'source-1');
     assert.equal(row.出现次数, 1);
     assert.equal(row.占比, 1);
   }
+  assert.equal(plan.weekly.rows.some((item) => ['异味问题', '排水/漏水问题'].includes(item.分类标签)), false);
   assert.equal(plan.master.sourceTopicHash, sourceTopicSetHash(records));
   assert.equal(plan.master.rowsHash, detailRowsHash(plan.master.rows));
 });
@@ -63,8 +65,19 @@ test('detail schema places operator fields after occurrence count and formats sh
 });
 
 test('detail statistics count unique sources instead of source-topic rows', () => {
-  const first = buildAnalysisRecords([raw]);
-  const secondSmell = structuredClone(first.find((record) => record.fields.分类标签 === '异味问题'));
+  const first = buildAnalysisRecords([{
+    ...raw,
+    fields: { ...raw.fields, 原始内容: '打开以后很臭，排水漏水' },
+  }]);
+  const secondSmell = structuredClone(buildAnalysisRecords([{
+    recordId: 'raw-2',
+    fields: {
+      ...raw.fields,
+      原始内容: '打开以后很臭，味道很重',
+      来源记录唯一键: 'source-2',
+      crossWeekDedupKey: 'text:source-2',
+    },
+  }]).find((record) => record.fields.分类标签 === '异味问题'));
   secondSmell.recordId = 'raw-2-smell';
   secondSmell.fields.来源记录唯一键 = 'source-2';
   secondSmell.crossWeekDedupKey = 'text:source-2';
