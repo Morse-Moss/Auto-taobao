@@ -2,12 +2,12 @@
 name: xws-export-market-analysis
 description: Run Xiaowangshen (小旺神) Taobao market-analysis competitor exports from the logged-in Taobao home page, configure search/channel/sort/page/price/frequency settings, monitor slow collection with bounded progress checks, and validate the resulting CSV/XLSX files. Use for requests to collect competitor product data, price/sales/ranking tables, or repeat the Xiaowangshen export workflow. Do not use this skill to modify Feishu bases; hand a validated artifact to xws-to-feishu-base instead.
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
 ---
 
 # 小旺神市场分析导出
 
-Version: `2.0.0`
+Version: `2.1.0`
 
 Use the bundled runner to start at Taobao home, search the requested keyword, open Xiaowangshen market analysis, configure the requested contract, wait for the plugin's own collection to finish, export files, and validate them. Keep the browser session and the shared Proxy under the user's control.
 
@@ -37,6 +37,17 @@ Use the bundled runner to start at Taobao home, search the requested keyword, op
 2. Load `xlsx` before validating CSV/XLSX artifacts.
 3. Use the shared Proxy at `http://127.0.0.1:3456` and the user's logged-in Edge session. Do not open a second browser-level CDP WebSocket.
 4. Run from `D:\Retire\sycm-automation`; do not write to `E:\Revolution`.
+5. Adaptive runs require PostgreSQL through `XWS_DATABASE_URL`. Keep the connection string and database credentials outside the project; never copy them into source files, checkpoints, manifests, logs, or artifacts.
+
+## PostgreSQL Runtime Contract
+
+- PostgreSQL is authoritative for adaptive run identity, collection contract, progress, part metadata, final manifest metadata, and orchestration ownership. Local checkpoint JSON and lock files are not authoritative and must not be used for new adaptive runs.
+- Use a session-scoped PostgreSQL advisory lock keyed by the complete adaptive run identity. One dedicated connection must hold that lock from the initial fresh/resume decision through child execution, artifact validation, state commits, merge validation, and final state commit. Closing the connection or terminating the process releases ownership.
+- A fresh run creates a unique immutable run identity and must fail if that identity already exists. Resume must name an existing run and match its complete collection contract: keyword, requested pages, channel, sort, price, frequency, export modes, output directory, trial authorization, and stall policy.
+- Persist checkpoint, part, and manifest changes transactionally. Progress may advance only after the corresponding local artifact exists and its range, validation result, size, and SHA-256 have been verified. `completedEnd` is monotonic and must never move backward under concurrent or repeated writes.
+- CSV/XLSX files remain immutable local artifacts. PostgreSQL stores their paths, hashes, sizes, ranges, validation metadata, and source timestamps; do not store image binaries or other large media in PostgreSQL.
+- Before merge, independently re-read and hash every recorded artifact and verify contiguous page coverage. Do not trust database metadata alone. Publish final metadata only after the merged artifact passes the normal output contract.
+- The adaptive wrapper owns the full-lifecycle advisory lock. Child exporters launched by that wrapper must not compete for the same lock again.
 
 ## Safety Gate
 
@@ -85,11 +96,11 @@ parts are merged by product link and re-ranked before a final CSV/XLSX is publis
 node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\run-adaptive-export.mjs" `
   --keyword "浴缸" --pages 1-40 --frequency 30-45 --stall-seconds 300 `
   --channel all --sort sales --price 0-unlimited --export csv,xlsx-images `
-  --checkpoint "D:\Retire\sycm-automation\runtime\xws-bathtub-adaptive-checkpoint.json" `
+  --checkpoint "D:\Retire\sycm-automation\runtime\xws-bathtub-adaptive-20260903-checkpoint.json" `
   --output-dir "C:\Users\Administrator\Downloads" --allow-trial
 ```
 
-Re-running the same adaptive command reads the checkpoint and starts from its verified `completedEnd + 1`.
+A command without `--resume` is always a new adaptive task. Give it a new checkpoint path; it refuses to overwrite an existing checkpoint and starts at the requested first page. To continue a prior task, explicitly provide both `--resume` and `--checkpoint FILE`; the runner then starts from the verified `completedEnd + 1` after validating the collection contract.
 It never treats a no-progress stall, login wall, CAPTCHA, or security prompt as permission to skip pages.
 
 The older segmented runner remains available for compatibility with historical checkpoints. It writes one

@@ -1,0 +1,92 @@
+{
+  "scope_identity": {
+    "branch": "main",
+    "head": "e02516d0ad75c26003311dfca10e239bb0da2dba",
+    "diff_hash": "4483c7982500a7da171dfa33a7e5db5bfe03aed6",
+    "tracked_paths": [
+      "runtime/competitor-history-publish-core.mjs",
+      "runtime/competitor-history-publish-core.test.mjs",
+      "runtime/faq-detail-enrichment.mjs",
+      "runtime/faq-detail-enrichment.test.mjs",
+      "runtime/publish-competitor-visualization.mjs",
+      "runtime/publish-faq-detail-enrichment.mjs",
+      "skills/xws-export-market-analysis/SKILL.md",
+      "skills/xws-export-market-analysis/scripts/adaptive.mjs",
+      "skills/xws-export-market-analysis/scripts/export-market-analysis.mjs",
+      "skills/xws-export-market-analysis/scripts/run-adaptive-export.mjs",
+      "skills/xws-export-market-analysis/tests/adaptive.test.mjs",
+      "skills/xws-to-feishu-base/scripts/import-competitor-v2.mjs",
+      "skills/xws-to-feishu-base/tests/import-competitor-v2.test.mjs"
+    ],
+    "new_paths_in_scope": [
+      "package.json",
+      "package-lock.json",
+      "runtime/migrate-competitor-history-period-fields.mjs",
+      "runtime/migrate-competitor-history-period-fields.test.mjs",
+      "skills/xws-export-market-analysis/scripts/postgres-state.mjs",
+      "skills/xws-export-market-analysis/scripts/runtime-lock.mjs",
+      "skills/xws-export-market-analysis/tests/lock.test.mjs",
+      "skills/xws-export-market-analysis/tests/postgres-state.test.mjs"
+    ],
+    "unclassified_paths": [
+      "$d/",
+      ".codegraph/",
+      "checkpoint.json",
+      "tmp-faq-ops-xlsx/"
+    ]
+  },
+  "commands": [
+    {
+      "command": "node --test skills/xws-export-market-analysis/tests/*.test.mjs",
+      "exit_status": 0,
+      "tests": { "total": 65, "passed": 57, "failed": 0, "skipped": 8 },
+      "warnings": ["The 8 skipped tests are PostgreSQL integration tests; XWS_TEST_DATABASE_URL was not configured"]
+    },
+    {
+      "command": "node --test skills/xws-to-feishu-base/tests/*.test.mjs",
+      "exit_status": 0,
+      "tests": { "total": 76, "passed": 76, "failed": 0, "skipped": 0 },
+      "warnings": []
+    },
+    {
+      "command": "node --test runtime/*competitor*.test.mjs runtime/*faq*.test.mjs",
+      "exit_status": 0,
+      "tests": { "total": 98, "passed": 98, "failed": 0, "skipped": 0 },
+      "warnings": []
+    },
+    {
+      "command": "git diff --check",
+      "exit_status": 0,
+      "tests": null,
+      "warnings": ["Git reported LF-to-CRLF conversion warnings for modified files; no whitespace errors were found"]
+    }
+  ],
+  "observations": {
+    "code_review": "Independent read-only review found no confirmed correctness, concurrency, date-contract, checkpoint, or pagination defect.",
+    "adaptive": "Explicit resume reopens verified HUMAN_REQUIRED progress, checkpoint writes use temporary file plus atomic rename, and event parsing falls back from stderr to stdout when stderr has no JSON event.",
+    "external_provider": "No real Feishu API write, migration, or read-back was executed.",
+    "credentials": "E:\\小红书\\.env.local was not read or copied into the project.",
+    "git_delivery": "No commit and no push were performed."
+  },
+  "open_gaps": [
+    "Run PostgreSQL integration tests with an approved XWS_TEST_DATABASE_URL.",
+    "Connect PostgreSQL authoritative run, lock, part, manifest, and checkpoint projection state to the real adaptive runner.",
+    "Add the adaptive wrapper lifecycle lock before production execution.",
+    "Complete the adaptive resume contract for outputDir and allowTrial and add mixed-snapshot metadata coverage.",
+    "Validate Feishu DATE field millisecond values and read-back normalization against the authorized copy.",
+    "Validate the real Feishu fields pagination response and TEXT-to-DATE migration ordering with dry-run or approved execution.",
+    "Confirm Windows process start-time normalization and filesystem wx/rename atomicity in the production runtime.",
+    "Classify $d/, .codegraph/, checkpoint.json, and tmp-faq-ops-xlsx/ before deleting or including them; do not delete them without ownership confirmation."
+  ],
+  "invalidated_by": [
+    "Any edit to the listed source or test paths.",
+    "Any change to the working-tree status, HEAD, or diff represented by scope_identity.",
+    "New PostgreSQL, Feishu, migration, browser, or deployment evidence superseding the recorded environment boundary."
+  ],
+  "verdict": "PARTIAL",
+  "readiness": {
+    "local_code_scope": "LOCAL_READY",
+    "full_external_contract": "NOT_VERIFIED",
+    "reason": "All executed application and runtime tests passed, but PostgreSQL integration was skipped, the authoritative PostgreSQL state is not wired into the adaptive runner, and real Feishu behavior was not exercised."
+  }
+}

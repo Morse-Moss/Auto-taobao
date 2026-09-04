@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { buildAnalysisRecords } from './faq-text-analysis.mjs';
 import {
   FAQ_DETAIL_FIELDS,
+  FAQ_DETAIL_PERIOD_FIELDS,
   assertDetailReadBack,
   buildDetailReplacementPlan,
   detailRowsHash,
@@ -43,6 +44,12 @@ test('replacement plan materializes independently evidenced positive source-topi
   assert.equal(plan.weekly.rowCount, records.length);
   assert.equal(plan.fields, FAQ_DETAIL_FIELDS);
   assert.equal(plan.denominator, 1);
+  const expectedStart = Date.parse('2026-08-23T00:00:00+08:00');
+  const expectedEnd = Date.parse('2026-08-29T00:00:00+08:00');
+  for (const row of plan.weekly.rows) {
+    assert.equal(row.周期开始日期, expectedStart);
+    assert.equal(row.周期结束日期, expectedEnd);
+  }
   for (const label of ['好评-外观颜值', '好评-无异味']) {
     const row = plan.weekly.rows.find((item) => item.分类标签 === label);
     assert.equal(row.是否痛点, '否');
@@ -58,10 +65,20 @@ test('replacement plan materializes independently evidenced positive source-topi
 test('detail schema places operator fields after occurrence count and formats share', () => {
   const names = FAQ_DETAIL_FIELDS.map(({ name }) => name);
   const occurrenceIndex = names.indexOf('出现次数');
-  assert.deepEqual(names.slice(occurrenceIndex, occurrenceIndex + 5), [
-    '出现次数', '痛点描述', '典型问题', '典型用户原话', '占比',
+  assert.deepEqual(names.slice(occurrenceIndex, occurrenceIndex + 7), [
+    '出现次数', '痛点描述', '典型问题', '典型用户原话', '占比', '周期开始日期', '周期结束日期',
+  ]);
+  assert.deepEqual(FAQ_DETAIL_PERIOD_FIELDS, [
+    { name: '周期开始日期', type: 5 },
+    { name: '周期结束日期', type: 5 },
   ]);
   assert.equal(FAQ_DETAIL_FIELDS.find(({ name }) => name === '占比').property.formatter, '0.00%');
+});
+
+test('detail plan rejects invalid or reversed calendar periods', () => {
+  const records = buildAnalysisRecords([raw]);
+  assert.throws(() => buildDetailReplacementPlan({ finalRecords: records, operatorContent: content(), period: '2026-02-29_2026-03-01' }), /Invalid FAQ period/u);
+  assert.throws(() => buildDetailReplacementPlan({ finalRecords: records, operatorContent: content(), period: '2026-08-30_2026-08-29' }), /Invalid FAQ period/u);
 });
 
 test('detail statistics count unique sources instead of source-topic rows', () => {
@@ -125,11 +142,16 @@ test('read-back verification detects row mutation and count drift', () => {
   const plan = buildDetailReplacementPlan({ finalRecords: records, operatorContent: content(), period });
   const readBack = plan.weekly.rows.map((fields, index) => ({ recordId: `rec-${index}`, fields: structuredClone(fields) }));
   readBack[0].fields.占比 = Number((readBack[0].fields.占比 - 4e-16).toPrecision(15));
-  assert.equal(assertDetailReadBack({ records: readBack, expectedRows: plan.weekly.rows }).rowCount, records.length);
+  assert.equal(assertDetailReadBack({ records: readBack, expectedRows: plan.weekly.rows, expectedPeriod: period }).rowCount, records.length);
   readBack[0].fields.出现次数 += 1;
   assert.throws(() => assertDetailReadBack({ records: readBack, expectedRows: plan.weekly.rows }), /read-back mismatch/u);
   readBack[0].fields.出现次数 -= 1;
   readBack[0].fields.占比 = 0.5;
   assert.throws(() => assertDetailReadBack({ records: readBack, expectedRows: plan.weekly.rows }), /read-back mismatch/u);
+  readBack[0].fields.占比 = plan.weekly.rows[0].占比;
+  delete readBack[0].fields.周期开始日期;
+  assert.throws(() => assertDetailReadBack({ records: readBack, expectedRows: plan.weekly.rows, expectedPeriod: period }), /period fields are incomplete/u);
+  readBack[0].fields.周期开始日期 = plan.weekly.rows[0].周期开始日期 + 86400000;
+  assert.throws(() => assertDetailReadBack({ records: readBack, expectedRows: plan.weekly.rows, expectedPeriod: period }), /period fields mismatch/u);
   assert.throws(() => assertDetailReadBack({ records: readBack.slice(1), expectedRows: plan.weekly.rows }), /record count mismatch/u);
 });

@@ -40,6 +40,26 @@ test('numeric options reject zero, negative, and non-integer values', () => {
   assert.throws(() => parseCliArgs([...required, '--upload-concurrency', '1.5']), /positive integer/u);
 });
 
+test('competitor client lists all fields across paginated responses', async () => {
+  const requests = [];
+  const client = new CompetitorV2FeishuClient({ appId: 'id', appSecret: 'secret', appToken: 'app' });
+  client.request = async (_method, requestPath) => {
+    requests.push(requestPath);
+    if (!requestPath.includes('page_token=next-fields')) {
+      return { items: [{ field_id: 'field-1', field_name: '字段1', type: 1 }], has_more: true, page_token: 'next-fields' };
+    }
+    return { items: [{ field_id: 'field-2', field_name: '字段2', type: 1 }], has_more: false };
+  };
+  assert.deepEqual(await client.listFields('tblHistory'), [
+    { fieldId: 'field-1', fieldName: '字段1', type: 1, property: undefined },
+    { fieldId: 'field-2', fieldName: '字段2', type: 1, property: undefined },
+  ]);
+  assert.deepEqual(requests, [
+    '/bitable/v1/apps/app/tables/tblHistory/fields?page_size=100',
+    '/bitable/v1/apps/app/tables/tblHistory/fields?page_size=100&page_token=next-fields',
+  ]);
+});
+
 test('competitor client only permits the fixed visualization history table name', () => {
   const client = new CompetitorV2FeishuClient({ appId: 'id', appSecret: 'secret', appToken: 'app' });
   client.request = async () => ({ table_id: 'tblHistory' });

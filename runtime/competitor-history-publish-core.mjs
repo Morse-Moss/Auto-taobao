@@ -52,6 +52,15 @@ function dateText(value) {
   }).format(new Date(parsed));
 }
 
+function dateValue(value, name) {
+  const match = String(value ?? '').match(/^\d{4}-\d{2}-\d{2}$/u);
+  if (!match) throw new Error(`${name} must use YYYY-MM-DD`);
+  const timestamp = Date.parse(`${value}T00:00:00+08:00`);
+  const normalized = Number.isFinite(timestamp) ? new Date(timestamp + 8 * 60 * 60 * 1000).toISOString().slice(0, 10) : null;
+  if (normalized !== value) throw new Error(`${name} is invalid`);
+  return timestamp;
+}
+
 function identity(period, id) {
   return `${period.startDate}_${period.endDate}${id}`;
 }
@@ -89,9 +98,9 @@ function storeDisplayCategories(records) {
 }
 
 export function buildHistoryRows({ records, period, sourceTable, sourceHash = '', isCurrentPeriod = true }) {
-  if (!period || !/^\d{4}-\d{2}-\d{2}$/u.test(period.startDate) || !/^\d{4}-\d{2}-\d{2}$/u.test(period.endDate)) {
-    throw new Error('History period must use YYYY-MM-DD');
-  }
+  const periodStart = dateValue(period?.startDate, 'period.startDate');
+  const periodEnd = dateValue(period?.endDate, 'period.endDate');
+  if (periodEnd < periodStart) throw new Error('History period must use YYYY-MM-DD');
   if (!sourceTable) throw new Error('History source table is required');
   const seen = new Set();
   const storeCategory = storeDisplayCategories(records);
@@ -114,8 +123,8 @@ export function buildHistoryRows({ records, period, sourceTable, sourceHash = ''
       商品ID: id,
       商品周期唯一键: key,
       快照唯一键: text(source.快照唯一键) || key,
-      周期开始日期: period.startDate,
-      周期结束日期: period.endDate,
+      周期开始日期: periodStart,
+      周期结束日期: periodEnd,
       批次ID: text(source.批次ID),
       搜索关键词: text(source.搜索关键词),
       来源周表: sourceTable,

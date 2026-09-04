@@ -7,9 +7,11 @@ import { fileURLToPath } from "node:url";
 
 import {
   applyAdaptiveRun,
+  checkpointOptions,
+  lastJsonLine,
+  loadAdaptiveCheckpoint,
   nextAdaptiveRange,
   parseAdaptiveOptions,
-  readAdaptiveCheckpoint,
   writeAdaptiveCheckpoint,
 } from "./adaptive.mjs";
 
@@ -32,7 +34,8 @@ Options:
   --price MIN-unlimited|MIN-MAX
   --export csv,xlsx,xlsx-images (default: csv,xlsx-images)
   --output-dir DIR        Actual Edge download directory
-  --checkpoint FILE       Adaptive checkpoint JSON
+  --checkpoint FILE       Adaptive checkpoint JSON (new path unless --resume)
+  --resume                Resume only from the explicitly provided checkpoint
   --proxy URL             web-access Proxy
   --allow-trial           Permit the visible Xiaowangshen free-trial action
 `;
@@ -60,13 +63,6 @@ function runChild(args, env) {
     child.stderr.on("data", (chunk) => { stderr += chunk; process.stderr.write(chunk); });
     child.on("close", (code) => resolve({ code, stdout, stderr }));
   });
-}
-
-function lastJsonLine(text) {
-  for (const line of String(text || "").trim().split(/\r?\n/u).reverse()) {
-    try { return JSON.parse(line); } catch { /* event output is mixed with diagnostics */ }
-  }
-  return {};
 }
 
 async function readLatestManifest(root) {
@@ -154,27 +150,26 @@ async function main() {
   }
   const options = parseAdaptiveOptions(process.argv.slice(2));
   if (!options.exportModes.includes("csv")) throw new Error("adaptive export requires CSV for checkpoint and merge recovery");
+  if (options.resume && !options.checkpointExplicit) throw new Error("--resume requires an explicit --checkpoint path");
   const checkpointPath = path.resolve(options.checkpoint);
   const checkpointDir = path.dirname(checkpointPath);
-  const checkpoint = await readAdaptiveCheckpoint(checkpointPath, {
+  const expected = {
     keyword: options.keyword,
     pages: options.pages,
     frequency: options.frequency,
-  });
-  if (checkpoint.keyword && checkpoint.keyword !== options.keyword) throw new Error("checkpoint keyword does not match");
-  if (checkpoint.pages && (checkpoint.pages.start !== options.pages.start || checkpoint.pages.end !== options.pages.end)) {
-    throw new Error("checkpoint page range does not match");
-  }
-  checkpoint.keyword = options.keyword;
-  checkpoint.pages = options.pages;
-  checkpoint.frequency = options.frequency;
-  checkpoint.options = {
-    channel: options.channel,
-    sort: options.sort,
-    price: options.price,
-    exportModes: options.exportModes,
-    stallSeconds: options.stallSeconds,
+    options: checkpointOptions({
+      channel: options.channel,
+      sort: options.sort,
+      price: options.price,
+      exportModes: options.exportModes,
+      stallSeconds: options.stallSeconds,
+    }),
   };
+  const checkpoint = await loadAdaptiveCheckpoint(checkpointPath, {
+    resume: options.resume,
+    expected,
+  });
+  checkpoint.options = expected.options;
   checkpoint.parts ||= {};
   const stateRoot = path.join(checkpointDir, `${path.basename(checkpointPath, path.extname(checkpointPath))}-runs`);
   await mkdir(stateRoot, { recursive: true });
@@ -187,6 +182,10 @@ async function main() {
         checkpoint.final = await mergeCompletedParts(checkpoint, stateRoot, options);
         await writeAdaptiveCheckpoint(checkpointPath, checkpoint);
         console.log(JSON.stringify({ event: "ADAPTIVE_DONE", checkpoint: checkpointPath, final: checkpoint.final }));
+        return 0;
+      }
+      if (checkpoint.status === "DONE" && checkpoint.final) {
+        console.log(JSON.stringify({ event: "ADAPTIVE_DONE", checkpoint: checkpointPath, final: checkpoint.final, reused: true }));
         return 0;
       }
       const status = checkpoint.status || "STALLED";
@@ -212,7 +211,7 @@ async function main() {
     if (options.outputDir) args.push("--output-dir", options.outputDir);
     if (options.allowTrial) args.push("--allow-trial");
     const result = await runChild(args, { ...process.env, XWS_RUNTIME_DIR: attemptRoot });
-    const event = lastJsonLine(result.stderr) || lastJsonLine(result.stdout);
+    const event = lastJsonLine(result.stderr) ?? lastJsonLine(result.stdout);
     const located = await readLatestManifest(attemptRoot);
     const manifest = located.manifest;
     const progress = manifest?.progress || event.details?.progress || {};
@@ -247,9 +246,11 @@ async function main() {
   }
 }
 
-try {
-  process.exitCode = await main();
-} catch (error) {
-  console.error(JSON.stringify({ status: "FAILED", error: error.message }));
-  process.exitCode = 1;
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    process.exitCode = await main();
+  } catch (error) {
+    console.error(JSON.stringify({ status: "FAILED", error: error.message }));
+    process.exitCode = 1;
+  }
 }

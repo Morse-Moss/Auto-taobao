@@ -17,7 +17,7 @@ const NUMBER = 2;
 const DATE = 5;
 
 const HISTORY_FIELDS = [
-  ['商品周期唯一键', TEXT], ['快照唯一键', TEXT], ['周期开始日期', TEXT], ['周期结束日期', TEXT],
+  ['商品周期唯一键', TEXT], ['快照唯一键', TEXT], ['周期开始日期', DATE], ['周期结束日期', DATE],
   ['商品ID', TEXT], ['序号', TEXT], ['商品图片', 17], ['商品标题', TEXT], ['商品链接', TEXT], ['价格', NUMBER],
   ['月收货人数', TEXT], ['月收货人数计算值', NUMBER], ['计算口径', TEXT], ['月收货金额', NUMBER],
   ['类目', TEXT], ['同款数', TEXT], ['平台', TEXT], ['占位类型', TEXT], ['店铺名', TEXT], ['店铺旺旺', TEXT],

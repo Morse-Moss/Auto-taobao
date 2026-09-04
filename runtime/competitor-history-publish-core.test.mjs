@@ -44,6 +44,8 @@ test('builds one auditable historical row with stable identity and derived field
   });
 
   assert.equal(result.fields.商品周期唯一键, '2026-08-23_2026-08-291');
+  assert.equal(result.fields.周期开始日期, Date.parse('2026-08-23T00:00:00+08:00'));
+  assert.equal(result.fields.周期结束日期, Date.parse('2026-08-29T00:00:00+08:00'));
   assert.equal(result.fields.金额可计算标记, '是');
   assert.equal(result.fields.可视化资格, '是');
   assert.equal(result.fields.材质分类, '铸铁');
@@ -51,6 +53,11 @@ test('builds one auditable historical row with stable identity and derived field
   assert.equal(result.fields.店铺名, '甲店');
   assert.equal(result.fields.来源周表, '竞品周_2026-08-23_2026-08-29');
   assert.equal(result.fields.本期标记, '是');
+});
+
+test('rejects invalid and reversed history periods', () => {
+  assert.throws(() => buildHistoryRows({ records: [row()], period: { startDate: '2026-02-29', endDate: '2026-03-01' }, sourceTable: '竞品周_2026-08-23_2026-08-29' }), /period\.startDate is invalid/u);
+  assert.throws(() => buildHistoryRows({ records: [row()], period: { startDate: '2026-08-30', endDate: '2026-08-29' }, sourceTable: '竞品周_2026-08-23_2026-08-29' }), /History period must use YYYY-MM-DD/u);
 });
 
 test('keeps unknown money auditable but excludes it from visualization qualification', () => {

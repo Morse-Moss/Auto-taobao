@@ -1,4 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { access, readFile, rename, writeFile } from "node:fs/promises";
 
 import { parseOptions } from "./flow.mjs";
 
@@ -17,6 +18,39 @@ function normalizedPages(pages) {
   const end = pageNumber(pages?.end, "pages.end");
   if (end < start) throw new Error("pages.end must not be less than pages.start");
   return { start, end };
+}
+
+function normalizedFrequency(frequency) {
+  const min = Number(frequency?.min);
+  const max = Number(frequency?.max);
+  if (!Number.isFinite(min) || !Number.isFinite(max) || max < min) {
+    throw new Error("invalid frequency range");
+  }
+  return { min, max };
+}
+
+function normalizedOptions(options = {}) {
+  return {
+    channel: options.channel,
+    sort: options.sort,
+    price: {
+      min: Number(options.price?.min),
+      max: options.price?.max === null ? null : Number(options.price?.max),
+    },
+    exportModes: [...(options.exportModes || [])].sort(),
+    stallSeconds: Number(options.stallSeconds),
+  };
+}
+
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+export function lastJsonLine(text) {
+  for (const line of String(text || "").trim().split(/\r?\n/u).reverse()) {
+    try { return JSON.parse(line); } catch { /* event output is mixed with diagnostics */ }
+  }
+  return null;
 }
 
 function safeCompletedEnd(progress, start) {
@@ -110,24 +144,71 @@ export function applyAdaptiveRun(checkpoint, result) {
   return checkpoint;
 }
 
-export async function readAdaptiveCheckpoint(file, defaults) {
+export function checkpointOptions(options) {
+  return normalizedOptions(options);
+}
+
+export function validateAdaptiveCheckpoint(checkpoint, expected) {
+  if (!checkpoint || checkpoint.strategy !== "adaptive") throw new Error("checkpoint is not adaptive");
+  if (checkpoint.version !== 1) throw new Error("unsupported adaptive checkpoint version");
+  if (checkpoint.keyword !== expected.keyword) throw new Error("checkpoint keyword does not match");
+  if (!sameJson(normalizedPages(checkpoint.pages), normalizedPages(expected.pages))) {
+    throw new Error("checkpoint page range does not match");
+  }
+  if (!sameJson(normalizedFrequency(checkpoint.frequency), normalizedFrequency(expected.frequency))) {
+    throw new Error("checkpoint frequency range does not match");
+  }
+  if (!sameJson(normalizedOptions(checkpoint.options), normalizedOptions(expected.options))) {
+    throw new Error("checkpoint collection options do not match");
+  }
+  return checkpoint;
+}
+
+export async function readAdaptiveCheckpoint(file, defaults, { requireExisting = false } = {}) {
   try {
     const checkpoint = JSON.parse(await readFile(file, "utf8"));
     if (checkpoint.strategy !== "adaptive") throw new Error("checkpoint is not adaptive");
     return checkpoint;
   } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
+    if (error?.code !== "ENOENT" || requireExisting) throw error;
     return createAdaptiveCheckpoint(defaults);
   }
 }
 
-export async function writeAdaptiveCheckpoint(file, checkpoint) {
-  await writeFile(file, `${JSON.stringify(checkpoint, null, 2)}\n`, "utf8");
+export async function loadAdaptiveCheckpoint(file, { resume = false, expected } = {}) {
+  if (resume) {
+    if (!file) throw new Error("--resume requires --checkpoint");
+    const checkpoint = validateAdaptiveCheckpoint(
+      await readAdaptiveCheckpoint(file, {}, { requireExisting: true }),
+      expected,
+    );
+    if (checkpoint.status === "HUMAN_REQUIRED") {
+      checkpoint.status = "RUNNING";
+      for (const part of Object.values(checkpoint.parts || {})) {
+        if (part?.status === "HUMAN_REQUIRED" && part.completedEnd >= part.start) part.status = "STALLED";
+      }
+    }
+    return checkpoint;
+  }
+  try {
+    await access(file);
+  } catch (error) {
+    if (error?.code === "ENOENT") return createAdaptiveCheckpoint(expected);
+    throw error;
+  }
+  throw new Error(`checkpoint already exists; use a new path or --resume: ${file}`);
+}
+
+export async function writeAdaptiveCheckpoint(file, checkpoint, fsApi = { writeFile, rename }) {
+  const temporary = `${file}.tmp-${randomUUID()}`;
+  await fsApi.writeFile(temporary, `${JSON.stringify(checkpoint, null, 2)}\n`, "utf8");
+  await fsApi.rename(temporary, file);
 }
 
 export function parseAdaptiveOptions(argv, env = process.env) {
   const input = [...argv];
   let checkpoint = "";
+  let resume = false;
   const forwarded = [];
   for (let index = 0; index < input.length; index += 1) {
     const token = input[index];
@@ -135,6 +216,10 @@ export function parseAdaptiveOptions(argv, env = process.env) {
       const value = input[++index];
       if (!value || value.startsWith("--")) throw new Error("missing value for --checkpoint");
       checkpoint = value;
+      continue;
+    }
+    if (token === "--resume") {
+      resume = true;
       continue;
     }
     forwarded.push(token);
@@ -147,6 +232,8 @@ export function parseAdaptiveOptions(argv, env = process.env) {
     stallSeconds: base.stallMs / 1000,
     exportPartialOnStall: true,
     checkpoint: checkpoint || `xws-${base.keyword}-adaptive-checkpoint.json`,
+    checkpointExplicit: Boolean(checkpoint),
+    resume,
   };
 }
 

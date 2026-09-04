@@ -210,13 +210,21 @@ export class CompetitorV2FeishuClient {
   }
 
   async listFields(tableId) {
-    const data = await this.request('GET', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/fields?page_size=100`);
-    return (data.items ?? []).map((field) => ({
-      fieldId: field.field_id,
-      fieldName: field.field_name,
-      type: field.type,
-      property: field.property,
-    }));
+    const fields = [];
+    let pageToken;
+    do {
+      const query = new URLSearchParams({ page_size: '100' });
+      if (pageToken) query.set('page_token', pageToken);
+      const data = await this.request('GET', `/bitable/v1/apps/${this.appToken}/tables/${tableId}/fields?${query}`);
+      fields.push(...(data.items ?? []).map((field) => ({
+        fieldId: field.field_id,
+        fieldName: field.field_name,
+        type: field.type,
+        property: field.property,
+      })));
+      pageToken = data.has_more ? data.page_token : undefined;
+    } while (pageToken);
+    return fields;
   }
 
   async createField(tableId, definition) {

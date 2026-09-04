@@ -11,14 +11,20 @@ import {
 
 const TEXT = 1;
 const NUMBER = 2;
+const DATE = 5;
 
-export const FAQ_DETAIL_ENRICHMENT_VERSION = 'faq-detail-replacement-v3.1.0';
+export const FAQ_DETAIL_ENRICHMENT_VERSION = 'faq-detail-replacement-v3.2.0';
 export const FAQ_DETAIL_JUDGMENT_FIELD = '是否痛点';
+export const FAQ_DETAIL_PERIOD_FIELDS = [
+  { name: '周期开始日期', type: DATE },
+  { name: '周期结束日期', type: DATE },
+];
 export const FAQ_DETAIL_ENRICHMENT_FIELDS = [
   { name: '痛点描述', type: TEXT },
   { name: '典型问题', type: TEXT },
   { name: '典型用户原话', type: TEXT },
   { name: '占比', type: NUMBER, property: { formatter: '0.00%' } },
+  ...FAQ_DETAIL_PERIOD_FIELDS,
 ];
 const occurrenceIndex = FAQ_ANALYSIS_FIELDS.findIndex(({ name }) => name === '出现次数');
 if (occurrenceIndex < 0) throw new Error('FAQ analysis schema has no occurrence field');
@@ -42,6 +48,21 @@ function fieldsOf(record) {
   return record?.fields ?? record ?? {};
 }
 
+function periodDateValues(period) {
+  const match = String(period ?? '').match(/^(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/u);
+  if (!match) throw new Error('Invalid FAQ period');
+  const [, startDate, endDate] = match;
+  const parseDate = (date) => {
+    const value = Date.parse(`${date}T00:00:00+08:00`);
+    const normalized = Number.isFinite(value) ? new Date(value + 8 * 60 * 60 * 1000).toISOString().slice(0, 10) : null;
+    return normalized === date ? value : null;
+  };
+  const start = parseDate(startDate);
+  const end = parseDate(endDate);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) throw new Error('Invalid FAQ period');
+  return { start, end };
+}
+
 function operatorFields(record, operatorContent) {
   const fields = fieldsOf(record);
   const label = text(fields.分类标签);
@@ -61,7 +82,7 @@ function operatorFields(record, operatorContent) {
   };
 }
 
-export function detailRowForRecord(record, operatorContent, statistics) {
+export function detailRowForRecord(record, operatorContent, statistics, periodDates) {
   assertAnalysisRecord(record);
   const fields = fieldsOf(record);
   const judgment = text(fields.是否痛点);
@@ -77,6 +98,8 @@ export function detailRowForRecord(record, operatorContent, statistics) {
   row.出现次数 = statistics.count;
   Object.assign(row, operatorFields(record, operatorContent));
   row.占比 = statistics.share;
+  row.周期开始日期 = periodDates?.start;
+  row.周期结束日期 = periodDates?.end;
   row.分析版本 = FAQ_ANALYSIS_VERSION;
   return row;
 }
@@ -110,7 +133,7 @@ export function detailSchemaHash(fields = FAQ_DETAIL_FIELDS) {
 }
 
 export function buildDetailReplacementPlan({ finalRecords, operatorContent, period }) {
-  if (!/^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/u.test(String(period ?? ''))) throw new Error('Invalid FAQ period');
+  const periodDates = periodDateValues(period);
   assertUniqueSourceTopics(finalRecords, 'Final FAQ records');
   const sources = new Set();
   const topicSources = new Map();
@@ -129,7 +152,7 @@ export function buildDetailReplacementPlan({ finalRecords, operatorContent, peri
     .sort(([left], [right]) => left.localeCompare(right, 'zh-CN'))
     .map(([label, sourceKeys]) => [label, { count: sourceKeys.size, share: sourceKeys.size / denominator }]));
   const statisticsHash = hash(JSON.stringify(topicStatistics));
-  const rows = finalRecords.map((record) => detailRowForRecord(record, operatorContent, topicStatistics[text(fieldsOf(record).分类标签)]));
+  const rows = finalRecords.map((record) => detailRowForRecord(record, operatorContent, topicStatistics[text(fieldsOf(record).分类标签)], periodDates));
   const identities = finalRecords.map((record) => sourceTopicIdentity(record));
   if (new Set(identities).size !== rows.length) throw new Error('FAQ detail rows do not have unique source-topic identities');
   const rowsHash = detailRowsHash(rows);
@@ -149,9 +172,14 @@ export function buildDetailReplacementPlan({ finalRecords, operatorContent, peri
   };
 }
 
-export function assertDetailReadBack({ records, expectedRows, expectedFields = FAQ_DETAIL_FIELDS, label = 'FAQ detail table' }) {
+export function assertDetailReadBack({ records, expectedRows, expectedFields = FAQ_DETAIL_FIELDS, expectedPeriod, label = 'FAQ detail table' }) {
   const actualRows = (records ?? []).map((record) => record?.fields ?? record ?? {});
   if (actualRows.length !== expectedRows.length) throw new Error(`${label} record count mismatch`);
+  const expectedDates = expectedPeriod ? periodDateValues(expectedPeriod) : null;
+  for (const row of actualRows) {
+    if (!Number.isFinite(Number(row.周期开始日期)) || !Number.isFinite(Number(row.周期结束日期))) throw new Error(`${label} period fields are incomplete`);
+    if (expectedDates && (Number(row.周期开始日期) !== expectedDates.start || Number(row.周期结束日期) !== expectedDates.end)) throw new Error(`${label} period fields mismatch`);
+  }
   const actualHash = detailRowsHash(actualRows);
   const expectedHash = detailRowsHash(expectedRows);
   if (actualHash !== expectedHash) throw new Error(`${label} read-back mismatch`);

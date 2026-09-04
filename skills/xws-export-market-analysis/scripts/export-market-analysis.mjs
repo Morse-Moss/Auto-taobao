@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { appendFileSync } from "node:fs";
-import { mkdir, open, readdir, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -19,6 +19,7 @@ import {
 } from "./flow.mjs";
 import { classifyDiagnosticState, normalizeDiagnosticSnapshot } from "./diagnostics.mjs";
 import { buildSearchInputExpression } from "./search-input.mjs";
+import { acquireRuntimeLock } from "./runtime-lock.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, "..", "..", "..");
@@ -177,15 +178,25 @@ async function waitForReadyTarget(proxy, predicate, timeoutMs, description) {
   throw new Error(`Timed out waiting for ${description}`);
 }
 
+const ownedTargets = new Map();
+
 async function labelTarget(proxy, targetId, runMarker) {
-  await request(proxy, `/label?target=${encodeURIComponent(targetId)}&label=${encodeURIComponent(runMarker)}`);
+  if (!ownedTargets.has(runMarker)) ownedTargets.set(runMarker, new Set());
+  ownedTargets.get(runMarker).add(targetId);
+  try {
+    await request(proxy, `/label?target=${encodeURIComponent(targetId)}&label=${encodeURIComponent(runMarker)}`);
+  } catch (error) {
+    if (!String(error?.message ?? error).includes('未知端点')) throw error;
+  }
 }
 
 async function discoverLabeledTarget(proxy, predicate, runMarker, description) {
   const deadline = Date.now() + 5_000;
   while (Date.now() < deadline) {
     const targets = await listTargets(proxy);
-    const target = targets.find((candidate) => predicate(candidate) && candidate.automationLabel === runMarker);
+    const owned = ownedTargets.get(runMarker) || new Set();
+    const target = targets.find((candidate) => predicate(candidate)
+      && (candidate.automationLabel === runMarker || owned.has(candidate.targetId)));
     if (target) return target;
     await sleep(250);
   }
@@ -212,7 +223,8 @@ function ensureNoRisk(text, stage) {
 async function openTaobaoHome(proxy, runMarker, log) {
   const before = new Set((await listTargets(proxy)).map((target) => target.targetId));
   await request(proxy, `/new?url=${encodeURIComponent(TAOBAO_HOME)}&label=${encodeURIComponent(runMarker)}`);
-  await waitForReadyTarget(proxy, (candidate) => isHome(candidate) && !before.has(candidate.targetId) && candidate.automationLabel === runMarker, 30_000, "a new Taobao home tab to finish loading");
+  const freshHome = await waitForReadyTarget(proxy, (candidate) => isHome(candidate) && !before.has(candidate.targetId), 30_000, "a new Taobao home tab to finish loading");
+  await labelTarget(proxy, freshHome.targetId, runMarker);
   const deadline = Date.now() + 15_000;
   while (Date.now() < deadline) {
     const fresh = await discoverHome(proxy, runMarker);
@@ -271,7 +283,8 @@ async function searchKeyword(proxy, keyword, runMarker, log) {
       const currentHome = await discoverHome(proxy, runMarker);
       const searchUrl = `https://s.taobao.com/search?q=${encodeURIComponent(keyword)}&search_type=item&tab=all`;
       await request(proxy, `/navigate?target=${encodeURIComponent(currentHome.targetId)}&url=${encodeURIComponent(searchUrl)}`);
-      search = await waitForReadyTarget(proxy, (candidate) => isSearch(candidate, keyword) && candidate.automationLabel === runMarker, 30_000, "canonical Taobao search results to finish loading");
+      search = await waitForReadyTarget(proxy, (candidate) => isSearch(candidate, keyword)
+        && (candidate.automationLabel === runMarker || ownedTargets.get(runMarker)?.has(candidate.targetId)), 30_000, "canonical Taobao search results to finish loading");
     }
   }
   await labelTarget(proxy, search.targetId, runMarker);
@@ -1129,23 +1142,11 @@ async function run(options) {
   const runtimeRoot = process.env.XWS_RUNTIME_DIR || path.join(PROJECT_ROOT, "runtime", "xws-runs");
   await mkdir(runtimeRoot, { recursive: true });
   const lockPath = path.join(runtimeRoot, ".market-analysis.lock");
-  let lockHandle;
-  try {
-    lockHandle = await open(lockPath, "wx");
-    await lockHandle.writeFile(JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }), "utf8");
-  } catch (error) {
-    if (error?.code === "EEXIST") {
-      const busy = new Error("another Xiaowangshen market-analysis run is already active");
-      busy.code = "BUSY";
-      throw busy;
-    }
-    throw error;
-  }
+  const lock = await acquireRuntimeLock(lockPath);
   try {
     return await runUnlocked(options);
   } finally {
-    try { await lockHandle.close(); } catch {}
-    try { await unlink(lockPath); } catch {}
+    await lock.release();
   }
 }
 

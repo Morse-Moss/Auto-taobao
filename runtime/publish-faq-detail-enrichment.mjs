@@ -165,8 +165,8 @@ export async function prepareReplacement({ client, options, operatorContent, app
   await createRows(client, masterId, plan.master.rows);
   await createRows(client, weeklyId, plan.weekly.rows);
   const [masterRecords, weeklyRecords] = await Promise.all([client.listRecords(masterId), client.listRecords(weeklyId)]);
-  const masterReadBack = assertDetailReadBack({ records: masterRecords, expectedRows: plan.master.rows, label: names.master });
-  const weeklyReadBack = assertDetailReadBack({ records: weeklyRecords, expectedRows: plan.weekly.rows, label: names.weekly });
+  const masterReadBack = assertDetailReadBack({ records: masterRecords, expectedRows: plan.master.rows, expectedPeriod: options.period, label: names.master });
+  const weeklyReadBack = assertDetailReadBack({ records: weeklyRecords, expectedRows: plan.weekly.rows, expectedPeriod: options.period, label: names.weekly });
   const receipt = {
     mode: 'CANDIDATES_PREPARED_AND_VERIFIED', ...common,
     backup: { path: backupPath, sha256: hash(backupText) },
