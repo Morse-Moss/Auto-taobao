@@ -157,16 +157,17 @@ test("progress updates cannot move completedEnd backward", integration, async ()
 });
 
 test("a terminated PostgreSQL session releases its advisory lock", integration, async () => {
-  await withPool(async (pool) => {
+  await withPool(async () => {
     const identity = { keyword: `crash-test-${Date.now()}`, pagesStart: 1, pagesEnd: 1 };
     const ownerPool = await createStatePool(databaseUrl);
     const contenderPool = await createStatePool(databaseUrl);
     try {
-      await acquireAdaptiveLock(ownerPool, identity);
-      await ownerPool.end();
+      const owner = await acquireAdaptiveLock(ownerPool, identity);
+      owner.client.release(true);
       const contender = await acquireAdaptiveLock(contenderPool, identity);
       await contender.release();
     } finally {
+      await ownerPool.end();
       await contenderPool.end();
     }
   });

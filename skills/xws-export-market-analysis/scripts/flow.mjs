@@ -150,6 +150,8 @@ export function parseProgressText(text) {
   const requested = pageRange(source, "您搜索的页数：第");
   const completed = pageRange(source, "已成功获取：第");
   const count = source.match(/商品数量：\s*([0-9,]+)/u);
+  const waiting = source.match(/([0-9]+)\s*秒后获取：?\s*第\s*([0-9]+)\s*页/u);
+  const active = source.match(/正在获取\s*[：:]?\s*第\s*([0-9]+)\s*页/u);
   return {
     keyword: title?.[1]?.trim() || "",
     sortLabel: title?.[2]?.trim() || "",
@@ -158,8 +160,46 @@ export function parseProgressText(text) {
     completedStart: completed.start,
     completedEnd: completed.end,
     rowCount: count ? Number(count[1].replace(/,/gu, "")) : 0,
+    ...(waiting ? { waitSeconds: Number(waiting[1]), nextPage: Number(waiting[2]) } : {}),
+    ...(active ? { activePage: Number(active[1]) } : {}),
     complete: requested.end > 0 && completed.end >= requested.end,
   };
+}
+
+export function collectionActivitySignature(progress = {}, diagnostics = {}) {
+  const requests = Array.isArray(diagnostics.requests) ? diagnostics.requests : [];
+  const messages = Array.isArray(diagnostics.messages) ? diagnostics.messages : [];
+  const latestRequest = requests.at(-1) || {};
+  const latestMessage = messages.at(-1) || {};
+  return JSON.stringify({
+    completedEnd: Number(progress.completedEnd) || 0,
+    rowCount: Number(progress.rowCount) || 0,
+    complete: progress.complete === true,
+    waitSeconds: Number.isInteger(progress.waitSeconds) ? progress.waitSeconds : null,
+    nextPage: Number.isInteger(progress.nextPage) ? progress.nextPage : null,
+    activePage: Number.isInteger(progress.activePage) ? progress.activePage : null,
+    requestCount: requests.length,
+    requestPage: Number.isInteger(latestRequest.page) ? latestRequest.page : null,
+    requestPending: latestRequest.pending === true,
+    requestStatus: Number.isInteger(latestRequest.status) ? latestRequest.status : null,
+    messageCount: messages.length,
+    messageType: String(latestMessage.type || ""),
+  });
+}
+
+export function collectionStallReason({
+  idleMs,
+  elapsedMs,
+  stallMs,
+  deadlineMs,
+  diagnosticKind,
+  activePage = null,
+}) {
+  if (elapsedMs >= deadlineMs) return "deadline";
+  if (Number.isInteger(activePage)) return "";
+  if (["REQUEST_PENDING", "BACKGROUND_TAB"].includes(diagnosticKind)) return "";
+  if (idleMs >= stallMs) return "idle";
+  return "";
 }
 
 export function classifyCollection(snapshot) {

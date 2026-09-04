@@ -20,6 +20,7 @@ import { marketAnalysisLockPath, shouldAcquireRuntimeLock } from "../scripts/exp
 import { acquireMarketAnalysisLock, defaultLockPath } from "../scripts/runtime-lock.mjs";
 import {
   buildAdaptiveIdentity,
+  canAdvanceAttempt,
   chooseAttemptSnapshot,
   commitCheckpointMutation,
   openAuthoritativeRun,
@@ -523,25 +524,58 @@ test("keeps the authoritative checkpoint unchanged when a transactional part com
   assert.deepEqual(checkpoint.parts, {});
 });
 
+test("does not advance a stalled snapshot without a validated CSV artifact", () => {
+  assert.equal(canAdvanceAttempt("DONE", {
+    progress: { completedEnd: 40 },
+    artifacts: {},
+    validation: {},
+  }, { start: 1 }), true);
+  assert.equal(canAdvanceAttempt("STALLED", {
+    progress: { completedEnd: 3 },
+    artifacts: {},
+    validation: {},
+  }, { start: 1 }), false);
+  assert.equal(canAdvanceAttempt("STALLED", {
+    progress: { completedEnd: 3 },
+    artifacts: { csv: "part.csv" },
+    validation: { ok: true },
+  }, { start: 1 }), false);
+  assert.equal(canAdvanceAttempt("STALLED", {
+    progress: { completedEnd: 3 },
+    artifacts: { csv: "part.csv" },
+    validation: { ok: true, validation: { rows: 115 } },
+  }, { start: 1 }), true);
+});
+
 test("advances only from a validator-confirmed snapshot for the requested range", () => {
   assert.deepEqual(validateProgressSnapshot({
     status: "STALLED",
     progress: { completedStart: 1, completedEnd: 10, rowCount: 20 },
+    artifacts: { csv: "part.csv" },
     validation: { ok: true, validation: { rows: 20 } },
   }, { start: 1, end: 40 }), { completedStart: 1, completedEnd: 10, rowCount: 20 });
   assert.throws(() => validateProgressSnapshot({
+    status: "STALLED",
+    progress: { completedStart: 1, completedEnd: 3, rowCount: 115 },
+    artifacts: {},
+    validation: {},
+  }, { start: 1, end: 40 }), /validated artifact is missing/u);
+  assert.throws(() => validateProgressSnapshot({
     status: "DONE",
     progress: { completedStart: 1, completedEnd: 40, rowCount: 20 },
+    artifacts: { csv: "part.csv" },
     validation: {},
   }, { start: 1, end: 40 }), /validator confirmation is missing/u);
   assert.throws(() => validateProgressSnapshot({
     status: "STALLED",
     progress: { completedStart: 2, completedEnd: 10, rowCount: 20 },
+    artifacts: { csv: "part.csv" },
     validation: { ok: true, validation: { rows: 20 } },
   }, { start: 1, end: 40 }), /completed range does not start/u);
   assert.throws(() => validateProgressSnapshot({
     status: "DONE",
     progress: { completedStart: 1, completedEnd: 39, rowCount: 20 },
+    artifacts: { csv: "part.csv" },
     validation: { ok: true, validation: { rows: 20 } },
   }, { start: 1, end: 40 }), /completed range does not reach/u);
 });

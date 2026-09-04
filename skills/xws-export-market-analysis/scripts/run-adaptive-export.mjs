@@ -89,6 +89,7 @@ export function chooseAttemptSnapshot(located, event) {
 export function validateProgressSnapshot(snapshot, range) {
   const progress = snapshot?.progress || {};
   const validation = snapshot?.validation;
+  if (!snapshot?.artifacts?.csv) throw new Error("validated artifact is missing");
   if (validation?.ok !== true || !Number.isInteger(Number(validation?.validation?.rows))) {
     throw new Error("validator confirmation is missing");
   }
@@ -279,6 +280,15 @@ function childStatus(code, event) {
   return "FAILED";
 }
 
+export function canAdvanceAttempt(status, snapshot, range) {
+  if (status === "DONE") return true;
+  return status === "STALLED"
+    && Boolean(snapshot?.artifacts?.csv)
+    && snapshot?.validation?.ok === true
+    && Number(snapshot?.validation?.validation?.rows) >= 1
+    && Number(snapshot?.progress?.completedEnd) >= range.start;
+}
+
 function childExitCode(status) {
   return status === "HUMAN_REQUIRED" ? 2 : status === "STALLED" ? 3 : 1;
 }
@@ -432,7 +442,7 @@ async function executeAdaptiveRun({ pool, run, checkpointPath, stateRoot, option
     const copied = Object.keys(snapshot.artifacts).length
       ? await copyManifestArtifacts({ artifacts: snapshot.artifacts }, path.join(stateRoot, "parts", `${range.start}-${range.end}`))
       : {};
-    const canAdvance = status === "DONE" || (status === "STALLED" && Number(snapshot.progress.completedEnd) >= range.start);
+    const canAdvance = canAdvanceAttempt(status, snapshot, range);
     let artifactRecords = [];
     let verifiedProgress = snapshot.progress;
     if (canAdvance) {

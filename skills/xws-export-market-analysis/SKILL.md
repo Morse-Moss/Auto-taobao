@@ -27,7 +27,7 @@ Use the bundled runner to start at Taobao home, search the requested keyword, op
 ## Observed Runtime Rules
 
 - `开始分析` may need one bounded retry when the result dialog does not open; after the visible result dialog appears, continue with the same run rather than launching a duplicate collection.
-- A diagnostic request with HTTP `200` or a successful `*_FINISH` message is a completed request signal. `NO_REQUEST_SIGNAL` is reserved for a snapshot with no completed or pending request evidence; page progress and the stall threshold remain the completion authority.
+- A diagnostic request with HTTP `200` or a successful `*_FINISH` message is a completed request signal. `NO_REQUEST_SIGNAL` is reserved for a snapshot with no completed or pending request evidence. Changed page/row/completion state, a changing next-page countdown, and new request/message evidence reset the idle timer. A pending request or background tab defers only the idle stall; the page/frequency-derived overall deadline remains authoritative.
 - Export downloads can be slow. Keep one supervised process and wait for a new, stable file; do not create parallel export clicks or retry storms.
 - Login, CAPTCHA/slider, security, quota, or account-risk controls remain hard stops. Do not use detail-page browsing as a workaround for a missing image or field.
 
@@ -88,7 +88,8 @@ py -3 "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\valid
 
 For a full 1-40 collection, use the adaptive runner. It starts one `1-40` task, records each verified progress
 boundary, and when the plugin stalls it automatically starts only the remaining tail (`33-40`, then `36-40`,
-for example). It has no fixed total runtime limit: `--stall-seconds` is only the continuous no-progress threshold.
+for example). `--stall-seconds` is the continuous no-progress threshold; a page-count and frequency-derived
+overall deadline is also enforced so an indefinitely active page cannot run forever.
 Every stalled run must first produce a validated partial CSV; otherwise the cursor does not advance. Completed
 parts are merged by product link and re-ranked before a final CSV/XLSX is published.
 
@@ -155,7 +156,8 @@ The event log (`events.jsonl`) and manifest use these states/events:
 Risk markers transition to `HUMAN_REQUIRED`. A collection with no changed completed-page, row-count, or completion signature for the stall threshold transitions to `STALLED` and records a best-effort screenshot. Both are terminal for that run; do not silently retry.
 
 Defaults for a single run are an 8-second progress poll and a 120-second continuous no-progress threshold. The
-adaptive runner uses a conservative 300-second stall threshold and deliberately has no overall wall-clock cutoff.
+adaptive runner uses a conservative 300-second stall threshold and a page-count and frequency-derived overall
+wall-clock deadline.
 A slow Xiaowangshen response is supervised by one process, not by repeated browser clicks. Its checkpoint stores
 the requested range, each attempted tail, verified page progress, diagnostics, and validated partial artifacts.
 

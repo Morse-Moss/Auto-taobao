@@ -14,7 +14,7 @@ const validator = path.join(root, "scripts", "validate-output.py");
 const python = process.env.XWS_PYTHON || (process.platform === "win32" ? "py" : "python3");
 const pythonPrefix = process.env.XWS_PYTHON || process.platform !== "win32" ? [] : ["-3"];
 
-function startFakeProxy({ full = false, outputPath = "", staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, xlsxMenuMountsLate = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false } = {}) {
+function startFakeProxy({ full = false, outputPath = "", staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, xlsxMenuMountsLate = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false } = {}) {
   let homeCreated = false;
   let searchCreated = false;
   let started = false;
@@ -29,6 +29,7 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
   let searchInputSets = 0;
   let marketAnalysisClicks = 0;
   let startClicks = 0;
+  let startDomClicks = 0;
   let xlsxMenuProbes = 0;
   let trustedSortClicked = false;
   let radioReady = false;
@@ -88,7 +89,7 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
       if (body.includes("data-xws-config-sort")) trustedSortClicked = true;
       if (body.includes("data-xws-start")) {
         startClicks += 1;
-        started = !startClickMissesOnce || startClicks >= 2;
+        started = !startRequiresDomClick && (!startClickMissesOnce || startClicks >= 2);
       }
       if (full && body.includes("data-xws-export-csv")) {
         const csv = [
@@ -113,6 +114,14 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
           response.end(JSON.stringify({ error: fixture.stderr || fixture.stdout }));
           return;
         }
+      }
+      send({ clicked: true });
+      return;
+    }
+    if (url.pathname === "/click") {
+      if (body.includes("data-xws-start")) {
+        startDomClicks += 1;
+        started = true;
       }
       send({ clicked: true });
       return;
@@ -196,6 +205,7 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
       getTargetsCalls: () => targetsCalls,
       getMarketAnalysisClicks: () => marketAnalysisClicks,
       getStartClicks: () => startClicks,
+      getStartDomClicks: () => startDomClicks,
       getXlsxMenuProbes: () => xlsxMenuProbes,
     }));
   });
@@ -298,7 +308,47 @@ test("full flow retries a missed start click and validates the downloaded CSV", 
     assert.equal(manifest.status, "DONE");
     assert.equal(manifest.progress.rowCount, 2);
     assert.equal(manifest.validation.validation.rows, 2);
-    assert.equal(proxy.getStartClicks(), 2);
+    assert.equal(proxy.getStartClicks(), 1);
+    assert.equal(proxy.getStartDomClicks(), 1);
+  } finally {
+    await rm(output, { recursive: true, force: true });
+    await rm(runtime, { recursive: true, force: true });
+    await new Promise((resolve) => proxy.server.close(resolve));
+  }
+});
+
+test("full flow falls back to a DOM click when coordinate clicks do not start collection", async () => {
+  const output = await mkdtemp(path.join(os.tmpdir(), "xws-download-"));
+  const runtime = await mkdtemp(path.join(os.tmpdir(), "xws-runtime-"));
+  const proxy = await startFakeProxy({ full: true, outputPath: path.join(output, "result.csv"), startRequiresDomClick: true });
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        cli,
+        "--keyword",
+        "浴缸",
+        "--pages",
+        "1-1",
+        "--frequency",
+        "10-10",
+        "--export",
+        "csv",
+        "--output-dir",
+        output,
+        "--proxy",
+        `http://127.0.0.1:${proxy.port}`,
+      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk) => { stdout += chunk; });
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, stdout, stderr }));
+    });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /COLLECTION_START_DOM_FALLBACK/u);
+    assert.equal(proxy.getStartClicks(), 1);
+    assert.equal(proxy.getStartDomClicks(), 1);
   } finally {
     await rm(output, { recursive: true, force: true });
     await rm(runtime, { recursive: true, force: true });
@@ -336,6 +386,7 @@ test("full flow waits for a delayed XLSX export menu", async () => {
     });
     assert.equal(result.code, 0, result.stderr);
     assert.match(result.stdout, /"event":"DONE"/u);
+    assert.match(result.stdout, /"event":"EXPORT_STARTED","format":"csv","reason":"final"/u);
     assert.equal(proxy.getXlsxMenuProbes(), 2);
     const runDirs = await (await import("node:fs/promises")).readdir(runtime);
     const manifest = JSON.parse(await readFile(path.join(runtime, runDirs[0], "manifest.json"), "utf8"));

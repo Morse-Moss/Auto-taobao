@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
   REQUIRED_HEADERS,
+  collectionActivitySignature,
   collectionDeadlineMs,
+  collectionStallReason,
   classifyCollection,
   detectRiskMarkers,
   parseProgressText,
@@ -29,6 +31,17 @@ test("parses partial collection progress", () => {
     rowCount: 707,
     complete: false,
   });
+});
+
+test("parses the next-page countdown as collection activity", () => {
+  const progress = parseProgressText(`${resultText({ completed: 4, rows: 151 })}\n22 秒后获取：第 5 页`);
+  assert.equal(progress.nextPage, 5);
+  assert.equal(progress.waitSeconds, 22);
+});
+
+test("parses an in-flight page as collection activity", () => {
+  const progress = parseProgressText(`${resultText({ completed: 19, rows: 720 })}\n正在获取：第 20 页`);
+  assert.equal(progress.activePage, 20);
 });
 
 test("marks a collection complete only at the requested final page", () => {
@@ -85,6 +98,41 @@ test("validates the observed payment-count header variant", () => {
 test("rejects duplicate links instead of publishing an incomplete dataset", () => {
   const row = [1, "", "A", "https://item.taobao.com/item.htm?id=1", "100", "10", "c", "0", "\u6dd8\u5b9d", "\u81ea\u7136\u4f4d", "s", "w", "t", "a", "-", "-"];
   assert.throws(() => validateDataset(REQUIRED_HEADERS, [row, [2, ...row.slice(1)]]), /duplicate product links/u);
+});
+
+test("treats countdown and request changes as collection activity", () => {
+  const progress = { completedEnd: 4, rowCount: 151, complete: false, nextPage: 5, waitSeconds: 22 };
+  const diagnostics = { requests: [{ page: 4, status: 200 }], messages: [] };
+  assert.notEqual(
+    collectionActivitySignature(progress, diagnostics),
+    collectionActivitySignature({ ...progress, waitSeconds: 21 }, diagnostics),
+  );
+  assert.notEqual(
+    collectionActivitySignature(progress, diagnostics),
+    collectionActivitySignature(progress, { requests: [...diagnostics.requests, { page: 5, pending: true }], messages: [] }),
+  );
+});
+
+test("an in-flight page bypasses only the idle threshold", () => {
+  assert.equal(
+    collectionStallReason({
+      idleMs: 301_000,
+      elapsedMs: 600_000,
+      stallMs: 300_000,
+      deadlineMs: 1_700_000,
+      diagnosticKind: "REQUEST_COMPLETED",
+      activePage: 20,
+    }),
+    "",
+  );
+});
+
+test("pending and background collection bypass only the idle threshold", () => {
+  const base = { idleMs: 301_000, elapsedMs: 600_000, stallMs: 300_000, deadlineMs: 1_700_000 };
+  assert.equal(collectionStallReason({ ...base, diagnosticKind: "REQUEST_PENDING" }), "");
+  assert.equal(collectionStallReason({ ...base, diagnosticKind: "BACKGROUND_TAB" }), "");
+  assert.equal(collectionStallReason({ ...base, diagnosticKind: "REQUEST_COMPLETED" }), "idle");
+  assert.equal(collectionStallReason({ ...base, elapsedMs: 1_700_000, diagnosticKind: "REQUEST_PENDING" }), "deadline");
 });
 
 test("uses a bounded overall collection deadline", () => {

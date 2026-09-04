@@ -10,7 +10,9 @@ import { fileURLToPath } from "node:url";
 import {
   REQUIRED_HEADERS,
   classifyCollection,
+  collectionActivitySignature,
   collectionDeadlineMs,
+  collectionStallReason,
   detectRiskMarkers,
   parseOptions,
   parseProgressText,
@@ -704,7 +706,12 @@ async function startAnalysis(proxy, keyword, runMarker, log) {
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const target = await discoverSearch(proxy, keyword, runMarker);
-    await clickAt(proxy, target.targetId, "button[data-xws-start=\"1\"]");
+    if (attempt === 1) {
+      await clickAt(proxy, target.targetId, "button[data-xws-start=\"1\"]");
+    } else {
+      await clickDom(proxy, target.targetId, "button[data-xws-start=\"1\"]");
+      log("COLLECTION_START_DOM_FALLBACK", { attempt, bounded: true });
+    }
     const outcome = await waitForResult(attempt === 1 ? 2_000 : 15_000);
     if (outcome.ready) {
       log("COLLECTION_STARTED", { attempt });
@@ -854,7 +861,10 @@ async function readCollectionSnapshot(proxy, keyword, runMarker) {
 async function monitorCollection(proxy, options, runMarker, runDir, log) {
   let lastSignature = "";
   let lastDiagnosticSignature = "";
-  let lastProgressAt = Date.now();
+  const startedAt = Date.now();
+  let lastProgressAt = startedAt;
+  const pageCount = options.pages.end - options.pages.start + 1;
+  const deadlineMs = collectionDeadlineMs({ pageCount, frequencyMaxSeconds: options.frequency.max });
   while (true) {
     const snapshot = await readCollectionSnapshot(proxy, options.keyword, runMarker);
     const status = classifyCollection(snapshot);
@@ -870,12 +880,18 @@ async function monitorCollection(proxy, options, runMarker, runDir, log) {
         // Shared proxies without the optional foreground hook remain readable.
       }
     }
-    const signature = `${progress.completedEnd}:${progress.rowCount}:${progress.complete}`;
+    const signature = collectionActivitySignature(progress, diagnostics);
     const diagnosticSignature = `${diagnosticKind}:${diagnostics.visibility}:${diagnostics.requests.length}:${diagnostics.requests.at(-1)?.status ?? ""}:${diagnostics.messages.length}`;
     if (signature !== lastSignature) {
       lastSignature = signature;
       lastProgressAt = Date.now();
-      log("PROGRESS", { status, completedPage: progress.completedEnd, requestedPage: progress.requestedEnd, rows: progress.rowCount });
+      log("PROGRESS", {
+        status,
+        completedPage: progress.completedEnd,
+        requestedPage: progress.requestedEnd,
+        rows: progress.rowCount,
+        ...(Number.isInteger(progress.nextPage) ? { nextPage: progress.nextPage, waitSeconds: progress.waitSeconds } : {}),
+      });
     }
     if (diagnosticSignature !== lastDiagnosticSignature) {
       lastDiagnosticSignature = diagnosticSignature;
@@ -889,22 +905,38 @@ async function monitorCollection(proxy, options, runMarker, runDir, log) {
       });
     }
     if (status === "COMPLETE") return { progress, snapshot, diagnostics, diagnosticKind };
-    if (Date.now() - lastProgressAt >= options.stallMs) {
+    const now = Date.now();
+    const stallReason = collectionStallReason({
+      idleMs: now - lastProgressAt,
+      elapsedMs: now - startedAt,
+      stallMs: options.stallMs,
+      deadlineMs,
+      diagnosticKind: status === "COLLECTING" ? diagnosticKind : "NO_REQUEST_SIGNAL",
+      activePage: progress.activePage,
+    });
+    if (stallReason) {
       const shot = path.join(runDir, "stall.png");
       const diagnosticPath = path.join(runDir, "diagnostics.json");
       await screenshot(proxy, snapshot.targetId, shot).catch(() => {});
       await writeFile(diagnosticPath, JSON.stringify({
         capturedAt: new Date().toISOString(),
+        stallReason,
         diagnosticKind,
         progress,
         diagnostics,
       }, ensureJsonReplacer, 2), "utf8");
-      throw stalled("Xiaowangshen made no page progress before the stall threshold", {
-        progress,
-        diagnosticKind,
-        screenshot: shot,
-        diagnostics: diagnosticPath,
-      });
+      throw stalled(
+        stallReason === "deadline"
+          ? "Xiaowangshen exceeded the bounded collection deadline"
+          : "Xiaowangshen made no page progress before the stall threshold",
+        {
+          progress,
+          stallReason,
+          diagnosticKind,
+          screenshot: shot,
+          diagnostics: diagnosticPath,
+        },
+      );
     }
     await sleep(options.pollMs);
   }
@@ -943,7 +975,7 @@ async function waitForDownload(directory, before, extension, startedAt, timeoutM
   throw new Error(`Timed out waiting for ${extension} download`);
 }
 
-async function exportCsv(proxy, options, runMarker, directory, log) {
+async function exportCsv(proxy, options, runMarker, directory, log, reason = "final") {
   const before = new Set((await listFiles(directory)).map((file) => file.name));
   const target = await discoverSearch(proxy, options.keyword, runMarker);
   const expression = `(() => {
@@ -962,11 +994,11 @@ async function exportCsv(proxy, options, runMarker, directory, log) {
   if (!(await evaluate(proxy, target.targetId, expression))) throw new Error("CSV export button is missing");
   const fresh = await discoverSearch(proxy, options.keyword, runMarker);
   await clickAt(proxy, fresh.targetId, "button[data-xws-export-csv=\"1\"]");
-  log("EXPORT_STARTED", { format: "csv" });
+  log("EXPORT_STARTED", { format: "csv", reason });
   return waitForDownload(directory, before, ".csv", Date.now() - 2_000, 300_000, log);
 }
 
-async function exportXlsx(proxy, options, runMarker, directory, withImages, log) {
+async function exportXlsx(proxy, options, runMarker, directory, withImages, log, reason = "final") {
   const before = new Set((await listFiles(directory)).map((file) => file.name));
   let target = await discoverSearch(proxy, options.keyword, runMarker);
   const caret = await evaluate(proxy, target.targetId, `(() => {
@@ -1002,7 +1034,7 @@ async function exportXlsx(proxy, options, runMarker, directory, withImages, log)
   if (!menuReady) throw new Error(`XLSX menu item is missing: ${itemText}`);
   target = await discoverSearch(proxy, options.keyword, runMarker);
   await clickAt(proxy, target.targetId, ".el-dropdown-menu__item[data-xws-export-xlsx=\"1\"]");
-  log("EXPORT_STARTED", { format: withImages ? "xlsx-images" : "xlsx" });
+  log("EXPORT_STARTED", { format: withImages ? "xlsx-images" : "xlsx", reason });
   return waitForDownload(directory, before, ".xlsx", Date.now() - 2_000, 1_800_000, log);
 }
 
@@ -1024,11 +1056,11 @@ function runPythonValidation(options, csv, xlsx, requireImages) {
   return parsed;
 }
 
-async function exportArtifacts(proxy, options, runMarker, outputDir, log, progress = null) {
+async function exportArtifacts(proxy, options, runMarker, outputDir, log, progress = null, reason = "final") {
   const files = {};
-  if (options.exportModes.includes("csv")) files.csv = await exportCsv(proxy, options, runMarker, outputDir, log);
-  if (options.exportModes.includes("xlsx-images")) files.xlsx = await exportXlsx(proxy, options, runMarker, outputDir, true, log);
-  else if (options.exportModes.includes("xlsx")) files.xlsx = await exportXlsx(proxy, options, runMarker, outputDir, false, log);
+  if (options.exportModes.includes("csv")) files.csv = await exportCsv(proxy, options, runMarker, outputDir, log, reason);
+  if (options.exportModes.includes("xlsx-images")) files.xlsx = await exportXlsx(proxy, options, runMarker, outputDir, true, log, reason);
+  else if (options.exportModes.includes("xlsx")) files.xlsx = await exportXlsx(proxy, options, runMarker, outputDir, false, log, reason);
   const validation = runPythonValidation(options, files.csv, files.xlsx, options.exportModes.includes("xlsx-images"));
   if (progress && validation.validation.rows !== progress.rowCount) {
     throw new Error(`export row count ${validation.validation.rows} does not match live row count ${progress.rowCount}`);
@@ -1083,7 +1115,15 @@ async function runUnlocked(options) {
   } catch (error) {
     if (error.code === "STALLED" && options.exportPartialOnStall) {
       try {
-        const partial = await exportArtifacts(options.proxy, options, runId, outputDir, log, error.details?.progress || null);
+        const partial = await exportArtifacts(
+          options.proxy,
+          options,
+          runId,
+          outputDir,
+          log,
+          error.details?.progress || null,
+          "partial_on_stall",
+        );
         const partialManifest = {
           status: "STALLED",
           partial: true,
