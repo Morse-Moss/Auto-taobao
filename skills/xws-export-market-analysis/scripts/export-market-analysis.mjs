@@ -19,7 +19,9 @@ import {
 } from "./flow.mjs";
 import { classifyDiagnosticState, normalizeDiagnosticSnapshot } from "./diagnostics.mjs";
 import { buildSearchInputExpression } from "./search-input.mjs";
-import { acquireRuntimeLock } from "./runtime-lock.mjs";
+import { acquireMarketAnalysisLock, marketAnalysisLockPath } from "./runtime-lock.mjs";
+
+export { marketAnalysisLockPath };
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, "..", "..", "..");
@@ -1138,11 +1140,13 @@ async function runUnlocked(options) {
   return manifest;
 }
 
+export function shouldAcquireRuntimeLock(env = process.env) {
+  return env.XWS_ADAPTIVE_LOCK_OWNER !== "1";
+}
+
 async function run(options) {
-  const runtimeRoot = process.env.XWS_RUNTIME_DIR || path.join(PROJECT_ROOT, "runtime", "xws-runs");
-  await mkdir(runtimeRoot, { recursive: true });
-  const lockPath = path.join(runtimeRoot, ".market-analysis.lock");
-  const lock = await acquireRuntimeLock(lockPath);
+  if (!shouldAcquireRuntimeLock()) return runUnlocked(options);
+  const lock = await acquireMarketAnalysisLock();
   try {
     return await runUnlocked(options);
   } finally {

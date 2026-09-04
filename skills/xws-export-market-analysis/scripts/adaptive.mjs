@@ -38,6 +38,8 @@ function normalizedOptions(options = {}) {
       max: options.price?.max === null ? null : Number(options.price?.max),
     },
     exportModes: [...(options.exportModes || [])].sort(),
+    outputDir: String(options.outputDir || ""),
+    allowTrial: Boolean(options.allowTrial),
     stallSeconds: Number(options.stallSeconds),
   };
 }
@@ -131,8 +133,12 @@ export function applyAdaptiveRun(checkpoint, result) {
     completedEnd,
     rows: Number(progress.rowCount) || 0,
     ...(result.artifacts ? { artifacts: { ...result.artifacts } } : {}),
+    ...(result.artifactRecords ? { artifactRecords: structuredClone(result.artifactRecords) } : {}),
     ...(result.manifest ? { manifest: result.manifest } : {}),
+    ...(result.validation ? { validation: structuredClone(result.validation) } : {}),
     ...(result.diagnostics ? { diagnostics: result.diagnostics } : {}),
+    ...(result.sourceId ? { sourceId: result.sourceId } : {}),
+    ...(result.sourceAt ? { sourceAt: result.sourceAt } : {}),
     ...(result.error ? { error: String(result.error) } : {}),
     ...(result.at ? { at: result.at } : {}),
   };
@@ -175,20 +181,32 @@ export async function readAdaptiveCheckpoint(file, defaults, { requireExisting =
   }
 }
 
+export function resumeAdaptiveCheckpoint(checkpoint, expected) {
+  validateAdaptiveCheckpoint(checkpoint, expected);
+  const blocked = ["HUMAN_REQUIRED", "FAILED"].includes(checkpoint.status)
+    || orderedParts(checkpoint).some((part) => part.status === "STALLED" && part.completedEnd < part.start);
+  if (blocked) {
+    checkpoint.status = "RUNNING";
+    delete checkpoint.error;
+    for (const [id, part] of Object.entries(checkpoint.parts || {})) {
+      if (part?.status === "HUMAN_REQUIRED" && part.completedEnd >= part.start) part.status = "STALLED";
+      else if (["HUMAN_REQUIRED", "FAILED", "STALLED"].includes(part?.status) && part.completedEnd < part.start) {
+        delete checkpoint.parts[id];
+      }
+    }
+    checkpoint.completedEnd = contiguousCompletedEnd(checkpoint);
+    checkpoint.nextStart = checkpoint.completedEnd + 1;
+  }
+  return checkpoint;
+}
+
 export async function loadAdaptiveCheckpoint(file, { resume = false, expected } = {}) {
   if (resume) {
     if (!file) throw new Error("--resume requires --checkpoint");
-    const checkpoint = validateAdaptiveCheckpoint(
+    return resumeAdaptiveCheckpoint(
       await readAdaptiveCheckpoint(file, {}, { requireExisting: true }),
       expected,
     );
-    if (checkpoint.status === "HUMAN_REQUIRED") {
-      checkpoint.status = "RUNNING";
-      for (const part of Object.values(checkpoint.parts || {})) {
-        if (part?.status === "HUMAN_REQUIRED" && part.completedEnd >= part.start) part.status = "STALLED";
-      }
-    }
-    return checkpoint;
   }
   try {
     await access(file);
@@ -208,6 +226,7 @@ export async function writeAdaptiveCheckpoint(file, checkpoint, fsApi = { writeF
 export function parseAdaptiveOptions(argv, env = process.env) {
   const input = [...argv];
   let checkpoint = "";
+  let runId = "";
   let resume = false;
   const forwarded = [];
   for (let index = 0; index < input.length; index += 1) {
@@ -216,6 +235,12 @@ export function parseAdaptiveOptions(argv, env = process.env) {
       const value = input[++index];
       if (!value || value.startsWith("--")) throw new Error("missing value for --checkpoint");
       checkpoint = value;
+      continue;
+    }
+    if (token === "--run-id") {
+      const value = input[++index];
+      if (!value || value.startsWith("--")) throw new Error("missing value for --run-id");
+      runId = value;
       continue;
     }
     if (token === "--resume") {
@@ -233,6 +258,7 @@ export function parseAdaptiveOptions(argv, env = process.env) {
     exportPartialOnStall: true,
     checkpoint: checkpoint || `xws-${base.keyword}-adaptive-checkpoint.json`,
     checkpointExplicit: Boolean(checkpoint),
+    runId,
     resume,
   };
 }

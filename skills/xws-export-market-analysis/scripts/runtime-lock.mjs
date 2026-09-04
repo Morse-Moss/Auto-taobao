@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { open, readFile, rename, unlink } from "node:fs/promises";
+import { mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -248,4 +248,15 @@ export async function releaseRuntimeLock(lockPath, record, {
 
 export function defaultLockPath(runtimeRoot = path.join(os.tmpdir(), "xws-runs")) {
   return path.join(runtimeRoot, ".market-analysis.lock");
+}
+
+export function marketAnalysisLockPath(env = process.env) {
+  const configured = String(env.XWS_MARKET_ANALYSIS_LOCK || "").trim();
+  return configured ? path.resolve(configured) : defaultLockPath();
+}
+
+export async function acquireMarketAnalysisLock(env = process.env) {
+  const lockPath = marketAnalysisLockPath(env);
+  await mkdir(path.dirname(lockPath), { recursive: true });
+  return acquireRuntimeLock(lockPath);
 }

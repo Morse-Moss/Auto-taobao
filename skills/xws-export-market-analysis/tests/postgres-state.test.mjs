@@ -8,6 +8,8 @@ import {
   createStatePool,
   ensureStateSchema,
   getAdaptiveRun,
+  STATE_SCHEMA,
+  updateAdaptiveCheckpoint,
   updateAdaptiveProgress,
 } from "../scripts/postgres-state.mjs";
 
@@ -25,7 +27,63 @@ async function withPool(callback) {
   }
 }
 
-test("fresh adaptive identity cannot be created twice", integration, async () => {
+test("schema allows recurring fresh runs with the same identity", async () => {
+  assert.doesNotMatch(STATE_SCHEMA, /identity_hash text NOT NULL UNIQUE/u);
+  const calls = [];
+  await ensureStateSchema({ query: async (sql) => { calls.push(sql); } });
+  assert.ok(calls.some((sql) => /DROP CONSTRAINT IF EXISTS xws_adaptive_runs_identity_hash_key/u.test(sql)));
+});
+
+test("checkpoint updates reject stale PostgreSQL versions", async () => {
+  const calls = [];
+  const pool = {
+    query: async (sql, parameters) => {
+      calls.push({ sql, parameters });
+      return { rowCount: 0, rows: [] };
+    },
+  };
+
+  await assert.rejects(
+    updateAdaptiveCheckpoint(pool, "run-id", { completedEnd: 4, status: "RUNNING" }, 7),
+    (error) => error.code === "ADAPTIVE_VERSION_CONFLICT",
+  );
+  assert.match(calls[0].sql, /version = \$5/u);
+  assert.deepEqual(calls[0].parameters, ["run-id", 4, "RUNNING", JSON.stringify({ completedEnd: 4, status: "RUNNING" }), 7]);
+});
+
+test("part commits reject stale PostgreSQL versions before changing state", async () => {
+  const queries = [];
+  const client = {
+    query: async (sql, parameters) => {
+      queries.push({ sql, parameters });
+      if (String(sql).includes("SELECT version")) return { rowCount: 1, rows: [{ version: 4 }] };
+      return { rowCount: 0, rows: [] };
+    },
+    release() {},
+  };
+  const pool = { connect: async () => client };
+
+  await assert.rejects(
+    commitAdaptivePart(pool, "run-id", {
+      partId: "1-4",
+      startPage: 1,
+      endPage: 4,
+      completedEnd: 4,
+      status: "DONE",
+      metadata: {},
+      checkpoint: { completedEnd: 4, status: "DONE" },
+      expectedVersion: 3,
+    }),
+    (error) => error.code === "ADAPTIVE_VERSION_CONFLICT",
+  );
+  assert.deepEqual(queries.map(({ sql }) => String(sql).trim().split(/\s+/u).slice(0, 3).join(" ")), [
+    "BEGIN",
+    "SELECT version FROM",
+    "ROLLBACK",
+  ]);
+});
+
+test("fresh adaptive runs may repeat an immutable collection contract", integration, async () => {
   await withPool(async (pool) => {
     const identity = {
       keyword: `pg-test-${Date.now()}`,
@@ -41,11 +99,9 @@ test("fresh adaptive identity cannot be created twice", integration, async () =>
       stallSeconds: 300,
     };
     const first = await createAdaptiveRun(pool, identity);
-    await assert.rejects(
-      () => createAdaptiveRun(pool, identity),
-      (error) => error.code === "ADAPTIVE_RUN_EXISTS",
-    );
-    assert.equal((await getAdaptiveRun(pool, first.id)).id, first.id);
+    const second = await createAdaptiveRun(pool, identity);
+    assert.notEqual(first.id, second.id);
+    assert.deepEqual(first.identity, second.identity);
   });
 });
 
@@ -130,10 +186,8 @@ test("resume rejects a different collection contract", integration, async () => 
 test("identity hashing treats object key order as semantically irrelevant", integration, async () => {
   await withPool(async (pool) => {
     const first = await createAdaptiveRun(pool, { keyword: `canonical-test-${Date.now()}`, pagesStart: 1, pagesEnd: 1, options: { sort: "sales", channel: "all" } });
-    await assert.rejects(
-      () => createAdaptiveRun(pool, { options: { channel: "all", sort: "sales" }, pagesEnd: 1, pagesStart: 1, keyword: first.identity.keyword }),
-      (error) => error.code === "ADAPTIVE_RUN_EXISTS",
-    );
+    const second = await createAdaptiveRun(pool, { options: { channel: "all", sort: "sales" }, pagesEnd: 1, pagesStart: 1, keyword: first.identity.keyword });
+    assert.equal(first.identity.keyword, second.identity.keyword);
   });
 });
 
@@ -156,6 +210,7 @@ test("commits a verified part and checkpoint projection atomically", integration
         metadata: { valid: true },
       }],
       checkpoint: { completedEnd: 4, status: "DONE" },
+      expectedVersion: run.version,
     });
     assert.equal(committed.completedEnd, 4);
     const saved = await getAdaptiveRun(pool, run.id);

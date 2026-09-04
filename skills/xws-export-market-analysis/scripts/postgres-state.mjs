@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS xws_adaptive_runs (
   id uuid PRIMARY KEY,
   lock_key bigint NOT NULL,
   identity jsonb NOT NULL,
-  identity_hash text NOT NULL UNIQUE,
+  identity_hash text NOT NULL,
   pages_start integer NOT NULL,
   pages_end integer NOT NULL,
   completed_end integer NOT NULL,
@@ -78,6 +78,7 @@ function mapRun(row) {
     completedEnd: row.completed_end,
     status: row.status,
     version: Number(row.version),
+    checkpoint: row.checkpoint,
   };
 }
 
@@ -88,28 +89,32 @@ export function createStatePool(connectionString) {
 export async function ensureStateSchema(pool) {
   await pool.query(STATE_SCHEMA);
   await pool.query("ALTER TABLE xws_adaptive_runs ADD COLUMN IF NOT EXISTS checkpoint jsonb NOT NULL DEFAULT '{}'::jsonb");
+  await pool.query("ALTER TABLE xws_adaptive_runs DROP CONSTRAINT IF EXISTS xws_adaptive_runs_identity_hash_key");
 }
 
-export async function createAdaptiveRun(pool, identity) {
+export async function createAdaptiveRun(pool, identity, checkpoint = {}) {
   const hash = identityHash(identity);
   const key = lockKey(identity);
-  try {
-    const result = await pool.query(
-      `INSERT INTO xws_adaptive_runs
-        (id, lock_key, identity, identity_hash, pages_start, pages_end, completed_end)
-       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $5 - 1)
-       RETURNING *`,
-      [crypto.randomUUID(), key.toString(), JSON.stringify(identity), hash, identity.pagesStart ?? 1, identity.pagesEnd ?? identity.pagesStart ?? 1,]
-    );
-    return mapRun(result.rows[0]);
-  } catch (error) {
-    if (error?.code === "23505") {
-      const duplicate = new Error(`adaptive run identity already exists: ${hash}`);
-      duplicate.code = "ADAPTIVE_RUN_EXISTS";
-      throw duplicate;
-    }
-    throw error;
-  }
+  const id = crypto.randomUUID();
+  const initial = { ...structuredClone(checkpoint), runId: id };
+  const result = await pool.query(
+    `INSERT INTO xws_adaptive_runs
+      (id, lock_key, identity, identity_hash, pages_start, pages_end, completed_end, status, checkpoint)
+     VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9::jsonb)
+     RETURNING *`,
+    [
+      id,
+      key.toString(),
+      JSON.stringify(identity),
+      hash,
+      identity.pagesStart ?? 1,
+      identity.pagesEnd ?? identity.pagesStart ?? 1,
+      initial.completedEnd ?? (identity.pagesStart ?? 1) - 1,
+      initial.status || "RUNNING",
+      JSON.stringify(initial),
+    ],
+  );
+  return mapRun(result.rows[0]);
 }
 
 export async function getAdaptiveRun(pool, id, expectedIdentity) {
@@ -135,6 +140,29 @@ export async function updateAdaptiveProgress(pool, id, { completedEnd }) {
   return mapRun(result.rows[0]);
 }
 
+function versionConflict(id, expectedVersion) {
+  const error = new Error(`adaptive run version conflict: ${id} expected ${expectedVersion}`);
+  error.code = "ADAPTIVE_VERSION_CONFLICT";
+  return error;
+}
+
+export async function updateAdaptiveCheckpoint(pool, id, checkpoint, expectedVersion) {
+  if (!Number.isInteger(expectedVersion)) throw new Error("expected adaptive run version is required");
+  const result = await pool.query(
+    `UPDATE xws_adaptive_runs
+        SET completed_end = GREATEST(completed_end, $2),
+            status = $3,
+            checkpoint = $4::jsonb,
+            version = version + 1,
+            updated_at = now()
+      WHERE id = $1 AND version = $5
+      RETURNING *`,
+    [id, checkpoint.completedEnd, checkpoint.status, JSON.stringify(checkpoint), expectedVersion],
+  );
+  if (!result.rowCount) throw versionConflict(id, expectedVersion);
+  return mapRun(result.rows[0]);
+}
+
 export async function commitAdaptivePart(pool, runId, {
   partId,
   startPage,
@@ -144,10 +172,19 @@ export async function commitAdaptivePart(pool, runId, {
   metadata,
   artifacts = [],
   checkpoint,
+  expectedVersion,
 }) {
+  if (!Number.isInteger(expectedVersion)) throw new Error("expected adaptive run version is required");
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    const owner = await client.query(
+      "SELECT version FROM xws_adaptive_runs WHERE id = $1 FOR UPDATE",
+      [runId],
+    );
+    if (!owner.rowCount || Number(owner.rows[0].version) !== expectedVersion) {
+      throw versionConflict(runId, expectedVersion);
+    }
     await client.query(
       `INSERT INTO xws_adaptive_parts
         (run_id, part_id, start_page, end_page, completed_end, status, metadata)
@@ -180,11 +217,11 @@ export async function commitAdaptivePart(pool, runId, {
               checkpoint = $4::jsonb,
               version = version + 1,
               updated_at = now()
-        WHERE id = $1
+        WHERE id = $1 AND version = $5
         RETURNING *`,
-      [runId, completedEnd, status, JSON.stringify(checkpoint ?? {})],
+      [runId, completedEnd, status, JSON.stringify(checkpoint ?? {}), expectedVersion],
     );
-    if (!result.rowCount) throw new Error(`adaptive run not found: ${runId}`);
+    if (!result.rowCount) throw versionConflict(runId, expectedVersion);
     await client.query("COMMIT");
     return mapRun(result.rows[0]);
   } catch (error) {

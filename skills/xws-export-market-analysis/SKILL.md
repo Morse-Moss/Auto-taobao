@@ -43,7 +43,7 @@ Use the bundled runner to start at Taobao home, search the requested keyword, op
 
 - PostgreSQL is authoritative for adaptive run identity, collection contract, progress, part metadata, final manifest metadata, and orchestration ownership. Local checkpoint JSON and lock files are not authoritative and must not be used for new adaptive runs.
 - Use a session-scoped PostgreSQL advisory lock keyed by the complete adaptive run identity. One dedicated connection must hold that lock from the initial fresh/resume decision through child execution, artifact validation, state commits, merge validation, and final state commit. Closing the connection or terminating the process releases ownership.
-- A fresh run creates a unique immutable run identity and must fail if that identity already exists. Resume must name an existing run and match its complete collection contract: keyword, requested pages, channel, sort, price, frequency, export modes, output directory, trial authorization, and stall policy.
+- Each fresh run gets a unique run ID and an immutable collection identity. The same collection contract may be run again after the prior run releases ownership; concurrent runs with that identity are rejected by the advisory lock. Resume must name an existing run and match its complete collection contract: keyword, requested pages, channel, sort, price, frequency, export modes, output directory, trial authorization, and stall policy.
 - Persist checkpoint, part, and manifest changes transactionally. Progress may advance only after the corresponding local artifact exists and its range, validation result, size, and SHA-256 have been verified. `completedEnd` is monotonic and must never move backward under concurrent or repeated writes.
 - CSV/XLSX files remain immutable local artifacts. PostgreSQL stores their paths, hashes, sizes, ranges, validation metadata, and source timestamps; do not store image binaries or other large media in PostgreSQL.
 - Before merge, independently re-read and hash every recorded artifact and verify contiguous page coverage. Do not trust database metadata alone. Publish final metadata only after the merged artifact passes the normal output contract.
@@ -100,8 +100,20 @@ node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\run-ad
   --output-dir "C:\Users\Administrator\Downloads" --allow-trial
 ```
 
-A command without `--resume` is always a new adaptive task. Give it a new checkpoint path; it refuses to overwrite an existing checkpoint and starts at the requested first page. To continue a prior task, explicitly provide both `--resume` and `--checkpoint FILE`; the runner then starts from the verified `completedEnd + 1` after validating the collection contract.
-It never treats a no-progress stall, login wall, CAPTCHA, or security prompt as permission to skip pages.
+`XWS_DATABASE_URL` must be set before either command. A command without `--resume` creates a new authoritative PostgreSQL run and starts at the requested first page; `--checkpoint` is only a local projection path. A completed collection contract can be run again for a new snapshot, while the advisory lock prevents concurrent runs of the same contract.
+
+To continue a prior task, reuse the complete collection options and explicitly name its PostgreSQL run ID:
+
+```powershell
+node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\run-adaptive-export.mjs" `
+  --keyword "浴缸" --pages 1-40 --frequency 30-45 --stall-seconds 300 `
+  --channel all --sort sales --price 0-unlimited --export csv,xlsx-images `
+  --checkpoint "D:\Retire\sycm-automation\runtime\xws-bathtub-adaptive-20260903-checkpoint.json" `
+  --output-dir "C:\Users\Administrator\Downloads" --allow-trial `
+  --resume --run-id "RUN_UUID"
+```
+
+The runner resumes from PostgreSQL's verified `completedEnd + 1`; it does not use the local checkpoint to choose the cursor. It never treats a no-progress stall, login wall, CAPTCHA, or security prompt as permission to skip pages.
 
 The older segmented runner remains available for compatibility with historical checkpoints. It writes one
 checkpoint JSON and keeps completed segment artifacts, but it is not the default strategy for new full-range runs.

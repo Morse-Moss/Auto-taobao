@@ -1,33 +1,20 @@
 {
+  "generated_at": "2026-09-04T08:28:54.099Z",
   "scope_identity": {
     "branch": "main",
-    "head": "e02516d0ad75c26003311dfca10e239bb0da2dba",
-    "diff_hash": "4483c7982500a7da171dfa33a7e5db5bfe03aed6",
+    "head": "38febfc74d7a700419780af53642246421bcefed",
+    "diff_hash_excluding_receipt": "48745a457e36e3bf0f8f7026c1f89e292d1822fb",
     "tracked_paths": [
-      "runtime/competitor-history-publish-core.mjs",
-      "runtime/competitor-history-publish-core.test.mjs",
-      "runtime/faq-detail-enrichment.mjs",
-      "runtime/faq-detail-enrichment.test.mjs",
-      "runtime/publish-competitor-visualization.mjs",
-      "runtime/publish-faq-detail-enrichment.mjs",
       "skills/xws-export-market-analysis/SKILL.md",
       "skills/xws-export-market-analysis/scripts/adaptive.mjs",
       "skills/xws-export-market-analysis/scripts/export-market-analysis.mjs",
-      "skills/xws-export-market-analysis/scripts/run-adaptive-export.mjs",
-      "skills/xws-export-market-analysis/tests/adaptive.test.mjs",
-      "skills/xws-to-feishu-base/scripts/import-competitor-v2.mjs",
-      "skills/xws-to-feishu-base/tests/import-competitor-v2.test.mjs"
-    ],
-    "new_paths_in_scope": [
-      "package.json",
-      "package-lock.json",
-      "runtime/migrate-competitor-history-period-fields.mjs",
-      "runtime/migrate-competitor-history-period-fields.test.mjs",
       "skills/xws-export-market-analysis/scripts/postgres-state.mjs",
+      "skills/xws-export-market-analysis/scripts/run-adaptive-export.mjs",
       "skills/xws-export-market-analysis/scripts/runtime-lock.mjs",
-      "skills/xws-export-market-analysis/tests/lock.test.mjs",
+      "skills/xws-export-market-analysis/tests/adaptive.test.mjs",
       "skills/xws-export-market-analysis/tests/postgres-state.test.mjs"
     ],
+    "receipt_path": "evidence/verification-receipt-20260904.json",
     "unclassified_paths": [
       "$d/",
       ".codegraph/",
@@ -39,54 +26,57 @@
     {
       "command": "node --test skills/xws-export-market-analysis/tests/*.test.mjs",
       "exit_status": 0,
-      "tests": { "total": 65, "passed": 57, "failed": 0, "skipped": 8 },
-      "warnings": ["The 8 skipped tests are PostgreSQL integration tests; XWS_TEST_DATABASE_URL was not configured"]
+      "tests": {
+        "total": 85,
+        "passed": 77,
+        "failed": 0,
+        "skipped": 8
+      },
+      "warnings": [
+        "The 8 skipped tests require an approved XWS_TEST_DATABASE_URL and were not executed"
+      ]
     },
     {
-      "command": "node --test skills/xws-to-feishu-base/tests/*.test.mjs",
+      "command": "node --check skills/xws-export-market-analysis/scripts/adaptive.mjs && node --check skills/xws-export-market-analysis/scripts/export-market-analysis.mjs && node --check skills/xws-export-market-analysis/scripts/postgres-state.mjs && node --check skills/xws-export-market-analysis/scripts/run-adaptive-export.mjs && node --check skills/xws-export-market-analysis/scripts/runtime-lock.mjs",
       "exit_status": 0,
-      "tests": { "total": 76, "passed": 76, "failed": 0, "skipped": 0 },
-      "warnings": []
-    },
-    {
-      "command": "node --test runtime/*competitor*.test.mjs runtime/*faq*.test.mjs",
-      "exit_status": 0,
-      "tests": { "total": 98, "passed": 98, "failed": 0, "skipped": 0 },
+      "tests": null,
       "warnings": []
     },
     {
       "command": "git diff --check",
       "exit_status": 0,
       "tests": null,
-      "warnings": ["Git reported LF-to-CRLF conversion warnings for modified files; no whitespace errors were found"]
+      "warnings": [
+        "Git reported LF-to-CRLF conversion warnings for modified files; no whitespace errors were found"
+      ]
     }
   ],
   "observations": {
-    "code_review": "Independent read-only review found no confirmed correctness, concurrency, date-contract, checkpoint, or pagination defect.",
-    "adaptive": "Explicit resume reopens verified HUMAN_REQUIRED progress, checkpoint writes use temporary file plus atomic rename, and event parsing falls back from stderr to stdout when stderr has no JSON event.",
-    "external_provider": "No real Feishu API write, migration, or read-back was executed.",
-    "credentials": "E:\\小红书\\.env.local was not read or copied into the project.",
-    "git_delivery": "No commit and no push were performed."
+    "adaptive_state": "PostgreSQL is the authoritative fresh/resume source. Resume requires an explicit run ID and a matching immutable collection contract including output directory and trial authorization.",
+    "concurrency": "The adaptive wrapper holds one canonical runtime file lock and a session-scoped PostgreSQL advisory lock for the full lifecycle. PostgreSQL checkpoint and part writes use optimistic version checks so stale writers cannot replace the JSON projection.",
+    "recovery": "FAILED, HUMAN_REQUIRED, and no-progress STALLED checkpoints can be explicitly reopened without inventing progress. Verified partial progress is retained.",
+    "snapshot_integrity": "Each attempt uses either its manifest or its child event as one source. Copied part artifacts must match validator size and SHA-256 metadata; merge inputs and reused final artifacts are re-read and re-hashed.",
+    "recurrence": "Fresh runs receive unique run IDs and may repeat the same collection contract after prior ownership is released; explicit resume remains bound to the named run.",
+    "code_review": "Independent read-only reviews identified recovery, lock-path, artifact-integrity, final-reuse, stale-writer, and recurring-run defects. Each confirmed blocker was fixed and covered by a regression or contract test before the final suite.",
+    "external_actions": "No PostgreSQL instance, browser session, network collection, Feishu write, migration, read-back, or deployment was executed.",
+    "credentials": "E:\\小红书\\.env.local was not read, copied, or written.",
+    "git_delivery": "This receipt was generated before the requested scoped local commit. Commit success and SHA are recorded by closeout; no push was performed."
   },
   "open_gaps": [
-    "Run PostgreSQL integration tests with an approved XWS_TEST_DATABASE_URL.",
-    "Connect PostgreSQL authoritative run, lock, part, manifest, and checkpoint projection state to the real adaptive runner.",
-    "Add the adaptive wrapper lifecycle lock before production execution.",
-    "Complete the adaptive resume contract for outputDir and allowTrial and add mixed-snapshot metadata coverage.",
-    "Validate Feishu DATE field millisecond values and read-back normalization against the authorized copy.",
-    "Validate the real Feishu fields pagination response and TEXT-to-DATE migration ordering with dry-run or approved execution.",
-    "Confirm Windows process start-time normalization and filesystem wx/rename atomicity in the production runtime.",
+    "Run the 8 PostgreSQL integration tests with an approved XWS_TEST_DATABASE_URL.",
+    "Run one authorized end-to-end adaptive export against PostgreSQL and the logged-in browser, including a verified partial resume and final merge.",
+    "Confirm the idempotent removal of the legacy identity_hash unique constraint against the target PostgreSQL schema.",
     "Classify $d/, .codegraph/, checkpoint.json, and tmp-faq-ops-xlsx/ before deleting or including them; do not delete them without ownership confirmation."
   ],
   "invalidated_by": [
-    "Any edit to the listed source or test paths.",
-    "Any change to the working-tree status, HEAD, or diff represented by scope_identity.",
-    "New PostgreSQL, Feishu, migration, browser, or deployment evidence superseding the recorded environment boundary."
+    "Any source/test/documentation change beyond committing the exact non-receipt diff represented by scope_identity.diff_hash_excluding_receipt.",
+    "Any edit to the listed source, test, or documentation paths after this verification.",
+    "New PostgreSQL, browser, Feishu, deployment, or external-provider evidence superseding the recorded environment boundary."
   ],
   "verdict": "PARTIAL",
   "readiness": {
     "local_code_scope": "LOCAL_READY",
     "full_external_contract": "NOT_VERIFIED",
-    "reason": "All executed application and runtime tests passed, but PostgreSQL integration was skipped, the authoritative PostgreSQL state is not wired into the adaptive runner, and real Feishu behavior was not exercised."
+    "reason": "All executed local tests and static checks passed. Eight PostgreSQL integration tests were skipped, and no authorized database or browser end-to-end run was performed."
   }
 }
