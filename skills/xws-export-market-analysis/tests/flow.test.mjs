@@ -117,10 +117,10 @@ test("rejects duplicate links instead of publishing an incomplete dataset", () =
   assert.throws(() => validateDataset(REQUIRED_HEADERS, [row, [2, ...row.slice(1)]]), /duplicate product links/u);
 });
 
-test("treats countdown and request changes as collection activity", () => {
+test("ignores countdown ticks but tracks request changes as collection activity", () => {
   const progress = { completedEnd: 4, rowCount: 151, complete: false, nextPage: 5, waitSeconds: 22 };
   const diagnostics = { requests: [{ page: 4, status: 200 }], messages: [] };
-  assert.notEqual(
+  assert.equal(
     collectionActivitySignature(progress, diagnostics),
     collectionActivitySignature({ ...progress, waitSeconds: 21 }, diagnostics),
   );
@@ -144,10 +144,10 @@ test("an in-flight page bypasses only the idle threshold", () => {
   );
 });
 
-test("pending and background collection bypass only the idle threshold", () => {
+test("only an in-flight request bypasses the idle threshold", () => {
   const base = { idleMs: 301_000, elapsedMs: 600_000, stallMs: 300_000, deadlineMs: 1_700_000 };
   assert.equal(collectionStallReason({ ...base, diagnosticKind: "REQUEST_PENDING" }), "");
-  assert.equal(collectionStallReason({ ...base, diagnosticKind: "BACKGROUND_TAB" }), "");
+  assert.equal(collectionStallReason({ ...base, diagnosticKind: "BACKGROUND_TAB" }), "idle");
   assert.equal(collectionStallReason({ ...base, diagnosticKind: "REQUEST_COMPLETED" }), "idle");
   assert.equal(collectionStallReason({ ...base, elapsedMs: 1_700_000, diagnosticKind: "REQUEST_PENDING" }), "deadline");
 });

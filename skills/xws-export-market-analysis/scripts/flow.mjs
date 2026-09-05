@@ -186,7 +186,6 @@ export function collectionActivitySignature(progress = {}, diagnostics = {}) {
     completedEnd: Number(progress.completedEnd) || 0,
     rowCount: Number(progress.rowCount) || 0,
     complete: progress.complete === true,
-    waitSeconds: Number.isInteger(progress.waitSeconds) ? progress.waitSeconds : null,
     nextPage: Number.isInteger(progress.nextPage) ? progress.nextPage : null,
     activePage: Number.isInteger(progress.activePage) ? progress.activePage : null,
     requestCount: requests.length,
@@ -208,7 +207,7 @@ export function collectionStallReason({
 }) {
   if (elapsedMs >= deadlineMs) return "deadline";
   if (Number.isInteger(activePage)) return "";
-  if (["REQUEST_PENDING", "BACKGROUND_TAB"].includes(diagnosticKind)) return "";
+  if (diagnosticKind === "REQUEST_PENDING") return "";
   if (idleMs >= stallMs) return "idle";
   return "";
 }
