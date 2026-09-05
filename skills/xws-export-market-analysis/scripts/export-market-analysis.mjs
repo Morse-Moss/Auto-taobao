@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   REQUIRED_HEADERS,
+  assertProxyBrowserHealth,
   classifyCollection,
   collectionActivitySignature,
   collectionDeadlineMs,
@@ -1258,6 +1259,9 @@ async function runUnlocked(options) {
   };
 
   await log("START", { keyword: options.keyword, pages: options.pages, frequency: options.frequency });
+  const proxyHealth = await request(options.proxy, "/health");
+  assertProxyBrowserHealth(proxyHealth, "edge");
+  await log("PROXY_READY", { browser: proxyHealth.browser.id });
   await request(options.proxy, "/targets");
   await openTaobaoHome(options.proxy, runId, log);
   await searchKeyword(options.proxy, options.keyword, runId, log);

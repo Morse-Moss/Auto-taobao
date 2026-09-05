@@ -1,17 +1,14 @@
 {
-  "generated_at": "2026-09-05T04:02:27.0091589Z",
+  "generated_at": "2026-09-05T06:58:47.2191111Z",
   "scope_identity": {
     "branch": "main",
-    "head": "4e78357798ea72ca44e37b3160b4365163aad9cd",
-    "diff_hash_excluding_receipt": "9f886c164d2d6acd2cff30efe52b793f1dc796c68618d277475e29266c5c7128",
+    "head": "5f0b8e586eed0382592351050130c09c731e4d76",
+    "diff_hash_excluding_receipt": "728589f33471d52ab366913e7188f80686be5594d2d71e94e94355a80d5f8e20",
     "tracked_paths": [
       "skills/xws-export-market-analysis/SKILL.md",
       "skills/xws-export-market-analysis/scripts/export-market-analysis.mjs",
       "skills/xws-export-market-analysis/scripts/flow.mjs",
-      "skills/xws-export-market-analysis/scripts/run-adaptive-export.mjs",
-      "skills/xws-export-market-analysis/tests/adaptive.test.mjs",
       "skills/xws-export-market-analysis/tests/flow.test.mjs",
-      "skills/xws-export-market-analysis/tests/postgres-state.test.mjs",
       "skills/xws-export-market-analysis/tests/prepare-flow.test.mjs"
     ],
     "receipt_path": "evidence/verification-receipt-20260904.json",
@@ -24,14 +21,20 @@
   },
   "passed": [
     {
-      "check": "full_xws_test_suite_without_postgresql",
-      "command": "node --test skills/xws-export-market-analysis/tests/*.test.mjs",
+      "check": "full_xws_test_suite_with_postgresql",
+      "command": "XWS_TEST_DATABASE_URL=<process-only temporary test URL> node --test skills/xws-export-market-analysis/tests/*.test.mjs",
       "result": {
-        "total": 104,
-        "passed": 104,
+        "total": 107,
+        "passed": 107,
         "failed": 0,
         "skipped": 0,
-        "postgresql_integration_tests_skipped": 0
+        "postgresql_integration_tests_skipped": 0,
+        "edge_gate_coverage": [
+          "connected Edge accepted",
+          "browser-service rejected before target discovery",
+          "disconnected Edge rejected before target discovery",
+          "missing browser identity rejected"
+        ]
       }
     },
     {
@@ -57,10 +60,12 @@
       "check": "prepare_and_export_flow_regressions",
       "command": "node --test skills/xws-export-market-analysis/tests/prepare-flow.test.mjs",
       "result": {
-        "total": 6,
-        "passed": 6,
+        "total": 8,
+        "passed": 8,
         "failed": 0,
         "coverage": [
+          "non-Edge Proxy rejected before targets or new-tab actions",
+          "disconnected Edge Proxy rejected before target discovery",
           "normal CSV export",
           "normal XLSX-images export",
           "DOM collection-start fallback",
@@ -114,9 +119,20 @@
   "not_executed": [
     {
       "check": "controlled_real_membership_recovery",
-      "reason": "Not run in this local verification pass; browser and external plugin control remain outside the test harness."
+      "reason": "Not started because the shared Proxy reported browser.id=browser-service instead of the required Edge session. The hard preflight correctly blocked all target and browser actions."
     }
   ],
+  "edge_proxy_preflight_evidence": {
+    "observed_at": "2026-09-05T06:51:48.633Z",
+    "expected_browser_id": "edge",
+    "observed_browser_id": "browser-service",
+    "exit_code": 1,
+    "error": "Proxy browser mismatch: expected edge, received browser-service",
+    "targets_unchanged": true,
+    "new_tabs_created": 0,
+    "collection_started": false,
+    "verdict": "BLOCKED_SAFELY_REBIND_EDGE_REQUIRED"
+  },
   "runtime_evidence": {
     "run_id": "f57ed37d-a4ec-4592-8339-1a1767238a42",
     "mode": "explicit_resume",
@@ -156,17 +172,18 @@
     "browser_controls": "No CAPTCHA, login, access-control, security, or free-trial control was bypassed.",
     "external_writes": "No Feishu write, migration, read-back, deployment, pull request, or git push was performed."
   },
-  "verdict": "LOCAL_READY",
+  "verdict": "LOCAL_READY_EDGE_REBIND_REQUIRED",
   "readiness": {
     "local_code_scope": "LOCAL_READY",
-    "local_test_behavior": "VERIFIED",
-    "real_run_behavior": "VERIFIED_STALLED_SAFELY",
+    "local_test_behavior": "VERIFIED_107_OF_107",
+    "edge_proxy_gate": "VERIFIED_BLOCKED_WRONG_BROWSER_BEFORE_ACTIONS",
+    "real_run_behavior": "NOT_STARTED_WRONG_BROWSER_BINDING",
     "full_export_contract": "NOT_COMPLETED_ON_REAL_PLUGIN_RUN",
-    "reason": "Settlement, identity isolation, immutable intent options, failed-click rejection, artifact integrity rejection, XLSX recovery, cursor protection, advisory-lock ownership, CAS versioning, and transactional part commits are covered by passing local and PostgreSQL-backed tests. The prior real run remains safely STALLED and its late Top720 file is explicitly rejected for the current Top755 attempt."
+    "reason": "The leaf runner now requires a connected Edge identity before target discovery, so adaptive and segmented runs inherit the same gate. Settlement, identity isolation, cursor protection, advisory-lock ownership, CAS versioning, and transactional commits remain covered by the full passing suite. A real member run requires the shared Proxy to report browser.id=edge first."
   },
   "invalidated_by": [
     "Any source, test, or documentation change beyond committing the exact non-receipt diff represented by scope_identity.diff_hash_excluding_receipt.",
     "Any edit to the listed source, test, documentation, or receipt paths after this verification.",
-    "A later resume or fresh run that supersedes the recorded PostgreSQL and browser evidence."
+    "A later Edge-bound fresh run that supersedes the recorded browser preflight evidence."
   ]
 }

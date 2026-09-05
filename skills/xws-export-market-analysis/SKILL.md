@@ -2,12 +2,12 @@
 name: xws-export-market-analysis
 description: Run Xiaowangshen (小旺神) Taobao market-analysis competitor exports from the logged-in Taobao home page, configure search/channel/sort/page/price/frequency settings, monitor slow collection with bounded progress checks, and validate the resulting CSV/XLSX files. Use for requests to collect competitor product data, price/sales/ranking tables, or repeat the Xiaowangshen export workflow. Do not use this skill to modify Feishu bases; hand a validated artifact to xws-to-feishu-base instead.
 metadata:
-  version: "2.2.0"
+  version: "2.2.1"
 ---
 
 # 小旺神市场分析导出
 
-Version: `2.2.0`
+Version: `2.2.1`
 
 Use the bundled runner to start at Taobao home, search the requested keyword, open Xiaowangshen market analysis, configure the requested contract, wait for the plugin's own collection to finish, export files, and validate them. Keep the browser session and the shared Proxy under the user's control.
 
@@ -38,7 +38,7 @@ Use the bundled runner to start at Taobao home, search the requested keyword, op
 
 1. Load `web-access` before any browser or network action. Use its dependency check and risk notice.
 2. Load `xlsx` before validating CSV/XLSX artifacts.
-3. Use the shared Proxy at `http://127.0.0.1:3456` and the user's logged-in Edge session. Do not open a second browser-level CDP WebSocket.
+3. Use the shared Proxy at `http://127.0.0.1:3456` and the user's logged-in Edge session. Before `/targets` or any browser action, require `/health` to report `status=ok`, `connected=true`, and `browser.id=edge`. Any `browser-service`, Chrome/Chromium, missing identity, or disconnected response is a hard failure; do not open a second browser-level CDP WebSocket or continue with targets from the wrong browser.
 4. Run from `D:\Retire\sycm-automation`; do not write to `E:\Revolution`.
 5. Adaptive runs require PostgreSQL through `XWS_DATABASE_URL`. Keep the connection string and database credentials outside the project; never copy them into source files, checkpoints, manifests, logs, or artifacts.
 
@@ -54,7 +54,7 @@ Use the bundled runner to start at Taobao home, search the requested keyword, op
 
 ## Safety Gate
 
-- Discover fresh targets from `/targets` before every browser action. Never persist or reuse a target ID after navigation, reload, or a wait.
+- Verify the Proxy's Edge binding through `/health` before the first `/targets` request, then discover fresh targets from `/targets` before every browser action. Never persist or reuse a target ID after navigation, reload, or a wait.
 - Never read passwords, cookies, tokens, browser storage, password-manager data, or authentication headers.
 - Stop immediately with `HUMAN_REQUIRED` when login, CAPTCHA/slider, QR or SMS verification, account risk, security, permission, or access-control text appears. Leave the page unchanged and report the exact handoff.
 - Click the visible free-trial action only when the user has explicitly authorized it and the command includes `--allow-trial`. The runner permits one bounded DOM fallback if the first visible click is intercepted; it never loops or bypasses a control.
@@ -77,7 +77,7 @@ For an active Xiaowangshen membership, run the bounded export without `--allow-t
 node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\export-market-analysis.mjs" `
   --keyword "浴缸" --channel all --sort sales --pages 1-40 `
   --price 0-unlimited --frequency 10-15 --export csv,xlsx-images `
-  --allow-trial --output-dir "C:\Users\Administrator\Downloads"
+  --output-dir "C:\Users\Administrator\Downloads"
 ```
 
 `--output-dir` tells the runner which directory to scan for a new download; it does not change Edge's download preference. Set it to the actual Edge download directory. CSV is mandatory whenever XLSX is requested so cross-format fields can be compared.
@@ -185,6 +185,7 @@ The runner writes a per-run `runtime/xws-runs/<run-id>/events.jsonl` and `manife
 
 - `HUMAN_REQUIRED`: stop browser actions and name the page/control the user must resolve. Resume only after the user confirms it is cleared.
 - `STALLED`: preserve the run directory, screenshot, diagnostics, and validated partial artifact. The adaptive runner resumes from the next verified page; if no validated partial CSV exists, it stops without advancing the cursor. Settlement continues under the existing runtime and PostgreSQL ownership locks, but an intent alone never advances the cursor.
+- Proxy health failure, disconnection, or a browser identity other than exact `edge`: fail immediately before target discovery or browser actions. Rebind the shared Proxy to the user's Edge session before retrying; never wait for the toolbar or reuse targets from the wrong browser.
 - Missing target, toolbar, dialog, export button, or download: fail the run with its evidence; rediscover once at the next explicitly bounded step, never indefinitely. A failed export action is `REJECTED`; a successful action with a late download is `OPEN` until settlement expires.
 - Validation or artifact-integrity failure: mark the intent `REJECTED`, persist the candidate/error evidence, do not pass the file to Feishu, and report the first failing contract.
 

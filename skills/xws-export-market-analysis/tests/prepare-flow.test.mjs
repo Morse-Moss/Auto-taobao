@@ -14,11 +14,13 @@ const validator = path.join(root, "scripts", "validate-output.py");
 const python = process.env.XWS_PYTHON || (process.platform === "win32" ? "py" : "python3");
 const pythonPrefix = process.env.XWS_PYTHON || process.platform !== "win32" ? [] : ["-3"];
 
-function startFakeProxy({ full = false, outputPath = "", staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, xlsxMenuMountsLate = false, csvExportMissing = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false } = {}) {
+function startFakeProxy({ full = false, outputPath = "", staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, xlsxMenuMountsLate = false, csvExportMissing = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false, browserId = "edge", proxyConnected = true } = {}) {
   let homeCreated = false;
   let searchCreated = false;
   let started = false;
+  let healthCalls = 0;
   let targetsCalls = 0;
+  let newCalls = 0;
   let searchReady = !searchReloads;
   let searchReadyChecks = 0;
   let homeReady = !homeReloads;
@@ -50,6 +52,12 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
       response.setHeader("content-type", "application/json");
       response.end(JSON.stringify(value));
     };
+    if (url.pathname === "/health") {
+      healthCalls += 1;
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify({ status: "ok", connected: proxyConnected, browser: { id: browserId } }));
+      return;
+    }
     if (url.pathname === "/targets") {
       targetsCalls += 1;
       const targets = homeCreated ? [{ type: "page", targetId: "home", url: "https://www.taobao.com/", automationLabel: targetLabels.get("home") }] : [];
@@ -72,6 +80,7 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
       return;
     }
     if (url.pathname === "/new") {
+      newCalls += 1;
       homeCreated = true;
       if (url.searchParams.get("label")) targetLabels.set("home", url.searchParams.get("label"));
       send({ targetId: "home" });
@@ -204,7 +213,9 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
     server.listen(0, "127.0.0.1", () => resolve({
       server,
       port: server.address().port,
+      getHealthCalls: () => healthCalls,
       getTargetsCalls: () => targetsCalls,
+      getNewCalls: () => newCalls,
       getMarketAnalysisClicks: () => marketAnalysisClicks,
       getStartClicks: () => startClicks,
       getStartDomClicks: () => startDomClicks,
@@ -212,6 +223,66 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
     }));
   });
 }
+
+test("rejects a non-Edge Proxy before target discovery or browser actions", async () => {
+  const proxy = await startFakeProxy({ browserId: "browser-service" });
+  const runtime = await mkdtemp(path.join(os.tmpdir(), "xws-runtime-"));
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        cli,
+        "--keyword",
+        "浴缸",
+        "--prepare-only",
+        "--proxy",
+        `http://127.0.0.1:${proxy.port}`,
+      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime }, encoding: "utf8" });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk) => { stdout += chunk; });
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, stdout, stderr }));
+    });
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /browser mismatch.*edge.*browser-service/iu);
+    assert.equal(proxy.getHealthCalls(), 1);
+    assert.equal(proxy.getTargetsCalls(), 0);
+    assert.equal(proxy.getNewCalls(), 0);
+  } finally {
+    await rm(runtime, { recursive: true, force: true });
+    await new Promise((resolve) => proxy.server.close(resolve));
+  }
+});
+
+test("rejects a disconnected Edge Proxy before target discovery", async () => {
+  const proxy = await startFakeProxy({ proxyConnected: false });
+  const runtime = await mkdtemp(path.join(os.tmpdir(), "xws-runtime-"));
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        cli,
+        "--keyword",
+        "浴缸",
+        "--prepare-only",
+        "--proxy",
+        `http://127.0.0.1:${proxy.port}`,
+      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime }, encoding: "utf8" });
+      let stderr = "";
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, stderr }));
+    });
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /not connected to edge/iu);
+    assert.equal(proxy.getHealthCalls(), 1);
+    assert.equal(proxy.getTargetsCalls(), 0);
+    assert.equal(proxy.getNewCalls(), 0);
+  } finally {
+    await rm(runtime, { recursive: true, force: true });
+    await new Promise((resolve) => proxy.server.close(resolve));
+  }
+});
 
 test("prepare-only retries market analysis once when the first click opens no dialog", async () => {
   const proxy = await startFakeProxy({ marketAnalysisClickMissesOnce: true });

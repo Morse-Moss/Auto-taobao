@@ -19,6 +19,17 @@ export const REQUIRED_HEADERS = [
 
 const COUNT_HEADERS = new Set(["月收货人数", "付款人数"]);
 
+export function assertProxyBrowserHealth(health, expectedBrowserId = "edge") {
+  if (health?.status !== "ok" || health?.connected !== true) {
+    throw new Error(`Proxy is not connected to ${expectedBrowserId}`);
+  }
+  const actual = String(health.browser?.id || "").trim();
+  if (actual !== expectedBrowserId) {
+    throw new Error(`Proxy browser mismatch: expected ${expectedBrowserId}, received ${actual || "<missing>"}`);
+  }
+  return true;
+}
+
 function supportedHeaders(headers) {
   return Array.isArray(headers) && headers.length === REQUIRED_HEADERS.length
     && COUNT_HEADERS.has(String(headers[5] || "").trim())

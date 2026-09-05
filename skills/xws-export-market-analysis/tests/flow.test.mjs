@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   REQUIRED_HEADERS,
+  assertProxyBrowserHealth,
   collectionActivitySignature,
   collectionDeadlineMs,
   collectionStallReason,
@@ -19,6 +20,22 @@ const resultText = ({ completed = 20, rows = 707 } = {}) => [
   "\u60a8\u641c\u7d22\u7684\u9875\u6570\uff1a\u7b2c 1 ~ 40 \u9875\uff0c\u5df2\u6210\u529f\u83b7\u53d6\uff1a\u7b2c 1 ~ " + completed + " \u9875",
   "\u5546\u54c1\u6570\u91cf\uff1a" + rows,
 ].join("\n");
+
+test("proxy health must identify the bound Edge browser", () => {
+  assert.equal(assertProxyBrowserHealth({ status: "ok", connected: true, browser: { id: "edge" } }), true);
+  assert.throws(
+    () => assertProxyBrowserHealth({ status: "ok", connected: false, browser: { id: "edge" } }),
+    /not connected to edge/iu,
+  );
+  assert.throws(
+    () => assertProxyBrowserHealth({ status: "ok", connected: true, browser: { id: "browser-service" } }),
+    /browser mismatch.*edge.*browser-service/iu,
+  );
+  assert.throws(
+    () => assertProxyBrowserHealth({ status: "ok", connected: true, browser: {} }),
+    /browser mismatch.*<missing>/iu,
+  );
+});
 
 test("parses partial collection progress", () => {
   assert.deepEqual(parseProgressText(resultText()), {
