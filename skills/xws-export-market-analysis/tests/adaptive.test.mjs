@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -24,13 +24,30 @@ import {
   chooseAttemptSnapshot,
   commitCheckpointMutation,
   openAuthoritativeRun,
+  recoverAttemptSettlement,
   requireDatabaseUrl,
+  settleExportIntent,
   snapshotMetadata,
   validateProgressSnapshot,
   verifyArtifactSet,
   verifyRecordedArtifacts,
   withAdaptiveOwnership,
 } from "../scripts/run-adaptive-export.mjs";
+
+function csvValidation(rows, csv) {
+  const content = Buffer.from("validated csv");
+  return {
+    ok: true,
+    artifacts: {
+      csv: {
+        path: csv,
+        size_bytes: content.length,
+        sha256: createHash("sha256").update(content).digest("hex"),
+      },
+    },
+    validation: { rows, columns: 16, rank_range: `1-${rows}`, empty_links: 0, duplicate_links: 0 },
+  };
+}
 
 test("starts one adaptive run across the complete requested range", () => {
   const checkpoint = createAdaptiveCheckpoint({
@@ -545,6 +562,385 @@ test("does not advance a stalled snapshot without a validated CSV artifact", () 
     artifacts: { csv: "part.csv" },
     validation: { ok: true, validation: { rows: 115 } },
   }, { start: 1 }), true);
+});
+
+test("settles a unique CSV that arrives after the child exits", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "xws-settlement-"));
+  const intentPath = path.join(directory, "export-intent-csv.json");
+  const csv = path.join(directory, "late.csv");
+  await writeFile(csv, "validated csv", "utf8");
+  const requestedAtMs = Date.parse("2026-09-04T12:19:46.000Z");
+  await writeFile(intentPath, JSON.stringify({
+    version: 1,
+    intentId: "late-current-attempt",
+    status: "OPEN",
+    kind: "csv",
+    parentRunId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    outputDir: directory,
+    requestedAt: new Date(requestedAtMs).toISOString(),
+    deadlineAt: new Date(requestedAtMs + 3_600_000).toISOString(),
+    baseline: [],
+    expectedProgress: { completedStart: 1, completedEnd: 20, rowCount: 755 },
+  }));
+  let nowMs = requestedAtMs + 301_000;
+  let listed = 0;
+
+  const settled = await settleExportIntent(intentPath, {
+    now: () => nowMs,
+    sleep: async () => { nowMs += 1_000; },
+    listFiles: async () => {
+      listed += 1;
+      if (listed === 1) return [];
+      return [{ name: "late.csv", path: csv, size: 13, mtimeMs: requestedAtMs + 302_000 }];
+    },
+    statFile: async () => ({ isFile: () => true, size: 13, mtimeMs: requestedAtMs + 302_000 }),
+    validate: async () => csvValidation(755, csv),
+    pollMs: 1_000,
+    stablePolls: 2,
+  });
+
+  assert.equal(settled.status, "ACCEPTED");
+  assert.equal(settled.validation.validation.rows, 755);
+  assert.equal(settled.artifacts.csv.path, csv);
+});
+
+test("rejects a late Top720 CSV for a Top755 attempt", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "xws-settlement-"));
+  const intentPath = path.join(directory, "export-intent-csv.json");
+  const csv = path.join(directory, "old-result.csv");
+  await writeFile(csv, "validated csv", "utf8");
+  const requestedAtMs = Date.parse("2026-09-04T12:19:46.000Z");
+  await writeFile(intentPath, JSON.stringify({
+    version: 1,
+    intentId: "current-top755-attempt",
+    status: "OPEN",
+    kind: "csv",
+    parentRunId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    outputDir: directory,
+    requestedAt: new Date(requestedAtMs).toISOString(),
+    deadlineAt: new Date(requestedAtMs + 2_000).toISOString(),
+    baseline: [],
+    expectedProgress: { completedStart: 1, completedEnd: 20, rowCount: 755 },
+  }));
+  let nowMs = requestedAtMs;
+
+  const settled = await settleExportIntent(intentPath, {
+    now: () => nowMs,
+    sleep: async () => { nowMs += 1_000; },
+    listFiles: async () => [{ name: "old-result.csv", path: csv, size: 13, mtimeMs: requestedAtMs + 100 }],
+    statFile: async () => ({ isFile: () => true, size: 13, mtimeMs: requestedAtMs + 100 }),
+    validate: async () => csvValidation(720, csv),
+    pollMs: 1_000,
+    stablePolls: 2,
+  });
+
+  assert.equal(settled.status, "EXPIRED");
+  assert.ok(settled.rejections.some((rejection) => rejection.reason === "row_count_mismatch"));
+  assert.equal("artifacts" in settled, false);
+  assert.equal(settled.settlementEvidence.status, "EXPIRED");
+  const rejection = settled.settlementEvidence.rejections.at(-1);
+  assert.equal(rejection.candidate.size, 13);
+  assert.equal(rejection.candidate.mtimeMs, requestedAtMs + 100);
+  assert.equal(rejection.candidate.sha256, createHash("sha256").update("validated csv").digest("hex"));
+  assert.equal(rejection.validation.validation.rows, 720);
+});
+
+test("requires an XLSX-aware validator before settling an XLSX intent", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "xws-settlement-"));
+  const intentPath = path.join(directory, "export-intent-xlsx.json");
+  const requestedAtMs = Date.parse("2026-09-04T12:19:46.000Z");
+  await writeFile(intentPath, JSON.stringify({
+    version: 1,
+    intentId: "xlsx-without-validator",
+    status: "OPEN",
+    kind: "xlsx",
+    parentRunId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    outputDir: directory,
+    requestedAt: new Date(requestedAtMs).toISOString(),
+    deadlineAt: new Date(requestedAtMs + 3_600_000).toISOString(),
+    baseline: [],
+    expectedProgress: { completedStart: 1, completedEnd: 20, rowCount: 755 },
+    options: { exportModes: ["csv", "xlsx"] },
+  }));
+
+  const settled = await settleExportIntent(intentPath, {
+    now: () => requestedAtMs,
+    listFiles: async () => assert.fail("XLSX settlement must not scan without an XLSX-aware validator"),
+  });
+
+  assert.equal(settled.status, "EXPIRED");
+  assert.equal(settled.reason, "xlsx_validator_required");
+});
+
+test("never scans a rejected export intent", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "xws-settlement-"));
+  const intentPath = path.join(directory, "export-intent-csv.json");
+  const requestedAtMs = Date.parse("2026-09-04T12:19:46.000Z");
+  await writeFile(intentPath, JSON.stringify({
+    version: 1,
+    intentId: "rejected-attempt",
+    status: "REJECTED",
+    reason: "export_action_failed",
+    kind: "csv",
+    parentRunId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    outputDir: directory,
+    requestedAt: new Date(requestedAtMs).toISOString(),
+    deadlineAt: new Date(requestedAtMs + 3_600_000).toISOString(),
+    baseline: [],
+    expectedProgress: { completedStart: 1, completedEnd: 20, rowCount: 755 },
+  }));
+
+  const settled = await settleExportIntent(intentPath, {
+    now: () => requestedAtMs + 1_000,
+    listFiles: async () => assert.fail("rejected intents must not scan the download directory"),
+  });
+
+  assert.equal(settled.status, "REJECTED");
+  assert.equal(settled.reason, "export_action_failed");
+});
+
+test("never claims a file after an export intent expires", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "xws-settlement-"));
+  const intentPath = path.join(directory, "export-intent-csv.json");
+  const requestedAtMs = Date.parse("2026-09-04T12:19:46.000Z");
+  await writeFile(intentPath, JSON.stringify({
+    version: 1,
+    intentId: "expired-attempt",
+    status: "OPEN",
+    kind: "csv",
+    parentRunId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    outputDir: directory,
+    requestedAt: new Date(requestedAtMs).toISOString(),
+    deadlineAt: new Date(requestedAtMs + 1_000).toISOString(),
+    baseline: [],
+    expectedProgress: { completedStart: 1, completedEnd: 20, rowCount: 755 },
+  }));
+
+  const settled = await settleExportIntent(intentPath, {
+    now: () => requestedAtMs + 2_000,
+    listFiles: async () => assert.fail("expired intents must not scan the download directory"),
+  });
+
+  assert.equal(settled.status, "EXPIRED");
+  assert.equal(settled.reason, "settlement_deadline_exceeded");
+  const persisted = JSON.parse(await readFile(intentPath, "utf8"));
+  assert.equal(persisted.status, "EXPIRED");
+});
+
+test("rebuilds a stalled snapshot from an accepted intent after wrapper interruption", async () => {
+  const attemptRoot = await mkdtemp(path.join(os.tmpdir(), "xws-attempt-"));
+  const runDir = path.join(attemptRoot, "child-run");
+  await (await import("node:fs/promises")).mkdir(runDir);
+  const csv = path.join(attemptRoot, "late.csv");
+  await writeFile(csv, "validated csv", "utf8");
+  const validation = csvValidation(755, csv);
+  await writeFile(path.join(runDir, "export-intent-csv.json"), JSON.stringify({
+    version: 1,
+    intentId: "accepted-before-commit",
+    status: "ACCEPTED",
+    kind: "csv",
+    childRunId: "child-run",
+    parentRunId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    outputDir: attemptRoot,
+    options: { exportModes: ["csv"] },
+    expectedProgress: { completedStart: 1, completedEnd: 20, rowCount: 755 },
+    artifacts: { csv: { name: "late.csv", path: csv, size: 13, mtimeMs: Date.now() } },
+    validation,
+  }));
+
+  const recovered = await recoverAttemptSettlement(attemptRoot, {
+    runId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    exportModes: ["csv"],
+  }, {
+    validate: async () => validation,
+  });
+
+  assert.equal(recovered.status, "STALLED");
+  assert.equal(recovered.sourceId, "child-run");
+  assert.equal(recovered.progress.completedEnd, 20);
+  assert.equal(recovered.validation.validation.rows, 755);
+  assert.equal(recovered.artifacts.csv.path, csv);
+  assert.equal(canAdvanceAttempt("STALLED", recovered, { start: 1 }), true);
+});
+
+test("rejects an accepted intent when its artifact changed before resume", async () => {
+  const attemptRoot = await mkdtemp(path.join(os.tmpdir(), "xws-attempt-"));
+  const runDir = path.join(attemptRoot, "child-run");
+  await (await import("node:fs/promises")).mkdir(runDir);
+  const csv = path.join(attemptRoot, "late.csv");
+  await writeFile(csv, "changed artifact", "utf8");
+  const original = Buffer.from("validated csv");
+  await writeFile(path.join(runDir, "export-intent-csv.json"), JSON.stringify({
+    version: 1,
+    status: "ACCEPTED",
+    kind: "csv",
+    childRunId: "child-run",
+    parentRunId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    options: { exportModes: ["csv"] },
+    expectedProgress: { completedStart: 1, completedEnd: 20, rowCount: 755 },
+    artifacts: { csv: { path: csv, size: original.length } },
+    validation: {
+      ok: true,
+      artifacts: { csv: { size_bytes: original.length, sha256: createHash("sha256").update(original).digest("hex") } },
+      validation: { rows: 755 },
+    },
+  }));
+
+  assert.equal(await recoverAttemptSettlement(attemptRoot, {
+    runId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    exportModes: ["csv"],
+  }, {
+    validate: async () => assert.fail("changed artifact must be rejected before validator reuse"),
+  }), null);
+  const persisted = JSON.parse(await readFile(path.join(runDir, "export-intent-csv.json"), "utf8"));
+  assert.equal(persisted.status, "REJECTED");
+  assert.equal(persisted.reason, "artifact_integrity_failed");
+  assert.equal(persisted.settlementEvidence.events.at(-1).type, "ARTIFACT_REJECTED");
+});
+
+test("recovers an xlsx-images intent as an XLSX artifact", async () => {
+  const attemptRoot = await mkdtemp(path.join(os.tmpdir(), "xws-attempt-"));
+  const runDir = path.join(attemptRoot, "child-run");
+  await (await import("node:fs/promises")).mkdir(runDir);
+  const csv = path.join(attemptRoot, "late.csv");
+  const xlsx = path.join(attemptRoot, "late.xlsx");
+  await writeFile(csv, "validated csv", "utf8");
+  await writeFile(xlsx, "validated xlsx", "utf8");
+  const validation = {
+    ok: true,
+    artifacts: {
+      csv: { size_bytes: 13, sha256: createHash("sha256").update("validated csv").digest("hex") },
+      xlsx: { size_bytes: 14, sha256: createHash("sha256").update("validated xlsx").digest("hex") },
+    },
+    validation: { rows: 755 },
+  };
+  for (const [kind, file, artifact] of [["csv", csv, validation.artifacts.csv], ["xlsx", xlsx, validation.artifacts.xlsx]]) {
+    await writeFile(path.join(runDir, `export-intent-${kind}.json`), JSON.stringify({
+      version: 1,
+      status: "ACCEPTED",
+      intentId: `${kind}-accepted`,
+      kind,
+      childRunId: "child-run",
+      parentRunId: "adaptive-run",
+      range: { start: 1, end: 40 },
+      options: { exportModes: ["csv", "xlsx-images"] },
+      expectedProgress: { completedStart: 1, completedEnd: 20, rowCount: 755 },
+      artifacts: { [kind]: { name: path.basename(file), path: file, size: artifact.size_bytes } },
+      validation,
+    }));
+  }
+
+  const recovered = await recoverAttemptSettlement(attemptRoot, {
+    runId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    exportModes: ["csv", "xlsx-images"],
+  }, {
+    validate: async () => validation,
+  });
+
+  assert.equal(recovered.status, "STALLED");
+  assert.equal(recovered.artifacts.xlsx.path, xlsx);
+});
+
+test("rejects every complete child group when settlement recovery is ambiguous", async () => {
+  const attemptRoot = await mkdtemp(path.join(os.tmpdir(), "xws-attempt-"));
+  const validation = csvValidation(755, path.join(attemptRoot, "late.csv"));
+  const expected = {
+    runId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    exportModes: ["csv"],
+  };
+  for (const childRunId of ["child-one", "child-two"]) {
+    const runDir = path.join(attemptRoot, childRunId);
+    await (await import("node:fs/promises")).mkdir(runDir);
+    const csv = path.join(runDir, `${childRunId}.csv`);
+    await writeFile(csv, "validated csv", "utf8");
+    await writeFile(path.join(runDir, "export-intent-csv.json"), JSON.stringify({
+      version: 1,
+      status: "ACCEPTED",
+      intentId: `${childRunId}-accepted`,
+      kind: "csv",
+      childRunId,
+      parentRunId: "adaptive-run",
+      range: { start: 1, end: 40 },
+      outputDir: runDir,
+      options: { exportModes: ["csv"] },
+      expectedProgress: { completedStart: 1, completedEnd: 20, rowCount: 755 },
+      artifacts: { csv: { path: csv, size: 13 } },
+      validation: { ...validation, artifacts: { csv: { size_bytes: 13, sha256: createHash("sha256").update("validated csv").digest("hex") } } },
+    }));
+  }
+
+  assert.equal(await recoverAttemptSettlement(attemptRoot, expected), null);
+  for (const childRunId of ["child-one", "child-two"]) {
+    const persisted = JSON.parse(await readFile(path.join(attemptRoot, childRunId, "export-intent-csv.json"), "utf8"));
+    assert.equal(persisted.status, "REJECTED");
+    assert.equal(persisted.reason, "ambiguous_accepted_groups");
+    assert.equal(persisted.settlementEvidence.events.at(-1).type, "GROUP_REJECTED");
+  }
+});
+
+test("does not recover an accepted intent for another PostgreSQL run", async () => {
+  const attemptRoot = await mkdtemp(path.join(os.tmpdir(), "xws-attempt-"));
+  const runDir = path.join(attemptRoot, "child-run");
+  await (await import("node:fs/promises")).mkdir(runDir);
+  await writeFile(path.join(runDir, "export-intent-csv.json"), JSON.stringify({
+    version: 1,
+    status: "ACCEPTED",
+    kind: "csv",
+    childRunId: "child-run",
+    parentRunId: "other-run",
+    range: { start: 1, end: 40 },
+    expectedProgress: { completedStart: 1, completedEnd: 20, rowCount: 755 },
+    artifacts: { csv: { path: path.join(attemptRoot, "late.csv") } },
+    validation: { ok: true, validation: { rows: 755 } },
+  }));
+
+  assert.equal(await recoverAttemptSettlement(attemptRoot, {
+    runId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    exportModes: ["csv"],
+  }), null);
+});
+
+test("does not scan an open intent from another range", async () => {
+  const attemptRoot = await mkdtemp(path.join(os.tmpdir(), "xws-attempt-"));
+  const runDir = path.join(attemptRoot, "other-range-child");
+  await (await import("node:fs/promises")).mkdir(runDir);
+  const requestedAt = Date.now();
+  await writeFile(path.join(runDir, "export-intent-csv.json"), JSON.stringify({
+    version: 1,
+    status: "OPEN",
+    kind: "csv",
+    childRunId: "other-range-child",
+    parentRunId: "adaptive-run",
+    range: { start: 41, end: 80 },
+    outputDir: path.join(attemptRoot, "other-range-downloads"),
+    requestedAt: new Date(requestedAt).toISOString(),
+    deadlineAt: new Date(requestedAt + 3_600_000).toISOString(),
+    baseline: [],
+    expectedProgress: { completedStart: 41, completedEnd: 60, rowCount: 755 },
+    options: { exportModes: ["csv"] },
+  }));
+
+  assert.equal(await recoverAttemptSettlement(attemptRoot, {
+    runId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    exportModes: ["csv"],
+  }, {
+    listFiles: async () => assert.fail("a different range must not scan its output directory"),
+  }), null);
+  const persisted = JSON.parse(await readFile(path.join(runDir, "export-intent-csv.json"), "utf8"));
+  assert.equal(persisted.settlementEvidence.events.at(-1).type, "IDENTITY_IGNORED");
 });
 
 test("advances only from a validator-confirmed snapshot for the requested range", () => {

@@ -14,7 +14,7 @@ const validator = path.join(root, "scripts", "validate-output.py");
 const python = process.env.XWS_PYTHON || (process.platform === "win32" ? "py" : "python3");
 const pythonPrefix = process.env.XWS_PYTHON || process.platform !== "win32" ? [] : ["-3"];
 
-function startFakeProxy({ full = false, outputPath = "", staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, xlsxMenuMountsLate = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false } = {}) {
+function startFakeProxy({ full = false, outputPath = "", staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, xlsxMenuMountsLate = false, csvExportMissing = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false } = {}) {
   let homeCreated = false;
   let searchCreated = false;
   let started = false;
@@ -168,6 +168,8 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
       } else if (sortRequiresSettledDomClick && body.includes("label.click()")) {
         settledSortClicked = radioReady;
         send({ ok: settledSortClicked });
+      } else if (body.includes("data-xws-export-csv") && csvExportMissing) {
+        send(false);
       } else if (body.includes("data-xws-export-xlsx")) {
         xlsxMenuProbes += 1;
         send(!xlsxMenuMountsLate || xlsxMenuProbes >= 2);
@@ -308,8 +310,49 @@ test("full flow retries a missed start click and validates the downloaded CSV", 
     assert.equal(manifest.status, "DONE");
     assert.equal(manifest.progress.rowCount, 2);
     assert.equal(manifest.validation.validation.rows, 2);
+    const intent = JSON.parse(await readFile(path.join(runtime, runDirs[0], "export-intent-csv.json"), "utf8"));
+    assert.equal(intent.status, "ACCEPTED");
+    assert.equal(intent.expectedProgress.rowCount, 2);
+    assert.equal(intent.outputDir, path.resolve(output));
     assert.equal(proxy.getStartClicks(), 1);
     assert.equal(proxy.getStartDomClicks(), 1);
+  } finally {
+    await rm(output, { recursive: true, force: true });
+    await rm(runtime, { recursive: true, force: true });
+    await new Promise((resolve) => proxy.server.close(resolve));
+  }
+});
+
+test("rejects an export intent when the export action never starts", async () => {
+  const output = await mkdtemp(path.join(os.tmpdir(), "xws-download-"));
+  const runtime = await mkdtemp(path.join(os.tmpdir(), "xws-runtime-"));
+  const proxy = await startFakeProxy({ full: true, outputPath: path.join(output, "result.csv"), csvExportMissing: true });
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        cli,
+        "--keyword", "浴缸",
+        "--pages", "1-1",
+        "--frequency", "10-10",
+        "--export", "csv",
+        "--output-dir", output,
+        "--proxy", `http://127.0.0.1:${proxy.port}`,
+      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk) => { stdout += chunk; });
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, stdout, stderr }));
+    });
+    assert.equal(result.code, 1);
+    const runDirs = await (await import("node:fs/promises")).readdir(runtime);
+    const intent = JSON.parse(await readFile(path.join(runtime, runDirs[0], "export-intent-csv.json"), "utf8"));
+    assert.equal(intent.status, "REJECTED");
+    assert.equal(intent.reason, "export_action_failed");
+    assert.equal(intent.options.frequency.min, 10);
+    assert.equal(intent.options.stallSeconds, 120);
+    assert.equal(intent.options.allowTrial, false);
   } finally {
     await rm(output, { recursive: true, force: true });
     await rm(runtime, { recursive: true, force: true });

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
+import { randomUUID } from "node:crypto";
 import { appendFileSync } from "node:fs";
-import { mkdir, readdir, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -30,6 +31,7 @@ const PROJECT_ROOT = path.resolve(SCRIPT_DIR, "..", "..", "..");
 const DEFAULT_OUTPUT_DIR = path.join(os.homedir(), "Downloads");
 const TAOBAO_HOME = "https://www.taobao.com/";
 const SEARCH_ORIGIN = "https://s.taobao.com";
+const EXPORT_SETTLEMENT_MS = 60 * 60 * 1_000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -955,19 +957,116 @@ async function listFiles(directory) {
   return files;
 }
 
-async function waitForDownload(directory, before, extension, startedAt, timeoutMs, log) {
-  const deadline = Date.now() + timeoutMs;
+async function writeJsonAtomic(file, value) {
+  const temporary = `${file}.tmp-${randomUUID()}`;
+  await writeFile(temporary, JSON.stringify(value, ensureJsonReplacer, 2), "utf8");
+  try {
+    await rename(temporary, file);
+  } catch (error) {
+    if (error?.code !== "EPERM" && error?.code !== "EEXIST") throw error;
+    await unlink(file);
+    await rename(temporary, file);
+  }
+}
+
+async function openExportIntent({ runDir, runId, options, directory, kind, baseline, progress, reason }) {
+  const requestedAt = new Date();
+  const intent = {
+    version: 1,
+    intentId: randomUUID(),
+    status: "OPEN",
+    kind,
+    childRunId: runId,
+    parentRunId: String(process.env.XWS_ADAPTIVE_RUN_ID || ""),
+    range: {
+      start: Number(process.env.XWS_ADAPTIVE_RANGE_START || options.pages.start),
+      end: Number(process.env.XWS_ADAPTIVE_RANGE_END || options.pages.end),
+    },
+    keyword: options.keyword,
+    options: {
+      channel: options.channel,
+      sort: options.sort,
+      price: options.price,
+      frequency: options.frequency,
+      stallSeconds: Number(options.stallSeconds ?? options.stallMs / 1000),
+      allowTrial: options.allowTrial,
+      exportModes: options.exportModes,
+    },
+    outputDir: path.resolve(directory),
+    reason,
+    requestedAt: requestedAt.toISOString(),
+    deadlineAt: new Date(requestedAt.getTime() + EXPORT_SETTLEMENT_MS).toISOString(),
+    baseline,
+    expectedProgress: progress || null,
+  };
+  const intentPath = path.join(runDir, `export-intent-${kind}.json`);
+  await writeJsonAtomic(intentPath, intent);
+  return { intent, intentPath };
+}
+
+async function closeExportIntent(intentPath, intent, status, details = {}) {
+  const closed = { ...intent, status, ...details, updatedAt: new Date().toISOString() };
+  await writeJsonAtomic(intentPath, closed);
+  return closed;
+}
+
+async function recordExportCandidateRejected(intentPath, intent, details) {
+  const at = new Date().toISOString();
+  const rejection = { ...details, at };
+  const previous = intent.settlementEvidence || {};
+  const updated = {
+    ...intent,
+    rejections: [...(intent.rejections || []), rejection],
+    settlementEvidence: {
+      version: 1,
+      ...previous,
+      status: intent.status,
+      rejections: [...(previous.rejections || []), rejection],
+      events: [
+        ...(previous.events || []),
+        { type: "CANDIDATE_REJECTED", ...rejection },
+      ],
+      updatedAt: at,
+    },
+    updatedAt: at,
+  };
+  await writeJsonAtomic(intentPath, updated);
+  return updated;
+}
+
+function fileIdentity(file) {
+  return `${file.name}:${Number(file.size)}:${Number(file.mtimeMs)}`;
+}
+
+async function waitForDownload(directory, baseline, extension, startedAt, deadlineAt, log, acceptCandidate, onCandidateRejected) {
+  const deadline = Date.parse(deadlineAt);
+  const rejected = new Set();
   let lastNotice = 0;
   while (Date.now() < deadline) {
     const files = await listFiles(directory);
-    const candidate = files.filter((file) => file.mtimeMs >= startedAt && !before.has(file.name) && file.name.toLowerCase().endsWith(extension)).sort((a, b) => b.mtimeMs - a.mtimeMs)[0];
-    if (candidate && candidate.size > 0) {
+    const candidates = files
+      .filter((file) => file.mtimeMs >= startedAt
+        && !baseline.has(fileIdentity(file))
+        && !rejected.has(fileIdentity(file))
+        && file.name.toLowerCase().endsWith(extension))
+      .sort((a, b) => a.mtimeMs - b.mtimeMs);
+    for (const candidate of candidates) {
+      if (candidate.size < 1) continue;
       await sleep(5_000);
       const stable = await stat(candidate.path);
-      if (stable.size === candidate.size) return { ...candidate, size: stable.size };
+      if (stable.size !== candidate.size) continue;
+      try {
+        await acceptCandidate({ ...candidate, size: stable.size });
+        return { ...candidate, size: stable.size };
+      } catch (error) {
+        rejected.add(fileIdentity(candidate));
+        const details = { extension, path: candidate.path, error: error.message };
+        log("EXPORT_CANDIDATE_REJECTED", details);
+        await onCandidateRejected?.(details);
+      }
     }
     if (Date.now() - lastNotice >= 30_000) {
-      log("WAITING_FOR_DOWNLOAD", { extension });
+      log("WAITING_FOR_DOWNLOAD", { extension, deadlineAt });
       lastNotice = Date.now();
     }
     await sleep(1_000);
@@ -975,67 +1074,133 @@ async function waitForDownload(directory, before, extension, startedAt, timeoutM
   throw new Error(`Timed out waiting for ${extension} download`);
 }
 
-async function exportCsv(proxy, options, runMarker, directory, log, reason = "final") {
-  const before = new Set((await listFiles(directory)).map((file) => file.name));
-  const target = await discoverSearch(proxy, options.keyword, runMarker);
-  const expression = `(() => {
-    const visible = (element) => {
-      if (!element) return false;
-      const style = getComputedStyle(element);
-      const rect = element.getBoundingClientRect();
-      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
-    };
-    const buttons = [...document.querySelectorAll('button')];
-    const button = buttons.find((candidate) => visible(candidate) && (candidate.innerText || '').includes('导出csv表格'));
-    if (!button) return false;
-    button.setAttribute('data-xws-export-csv', '1');
-    return true;
-  })()`;
-  if (!(await evaluate(proxy, target.targetId, expression))) throw new Error("CSV export button is missing");
-  const fresh = await discoverSearch(proxy, options.keyword, runMarker);
-  await clickAt(proxy, fresh.targetId, "button[data-xws-export-csv=\"1\"]");
-  log("EXPORT_STARTED", { format: "csv", reason });
-  return waitForDownload(directory, before, ".csv", Date.now() - 2_000, 300_000, log);
+async function exportCsv(proxy, options, runMarker, runDir, directory, log, progress, reason = "final") {
+  const baseline = await listFiles(directory);
+  const before = new Set(baseline.map(fileIdentity));
+  let { intent, intentPath } = await openExportIntent({ runDir, runId: runMarker, options, directory, kind: "csv", baseline, progress, reason });
+  try {
+    const target = await discoverSearch(proxy, options.keyword, runMarker);
+    const expression = `(() => {
+      const visible = (element) => {
+        if (!element) return false;
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+      };
+      const buttons = [...document.querySelectorAll('button')];
+      const button = buttons.find((candidate) => visible(candidate) && (candidate.innerText || '').includes('导出csv表格'));
+      if (!button) return false;
+      button.setAttribute('data-xws-export-csv', '1');
+      return true;
+    })()`;
+    if (!(await evaluate(proxy, target.targetId, expression))) throw new Error("CSV export button is missing");
+    const fresh = await discoverSearch(proxy, options.keyword, runMarker);
+    await clickAt(proxy, fresh.targetId, "button[data-xws-export-csv=\"1\"]");
+  } catch (error) {
+    intent = await closeExportIntent(intentPath, intent, "REJECTED", {
+      reason: "export_action_failed",
+      lastError: error.message,
+    });
+    throw error;
+  }
+  log("EXPORT_STARTED", { format: "csv", reason, intent: intentPath, deadlineAt: intent.deadlineAt });
+  try {
+    const file = await waitForDownload(
+      directory,
+      before,
+      ".csv",
+      Date.parse(intent.requestedAt) - 2_000,
+      intent.deadlineAt,
+      log,
+      async (candidate) => {
+        const validation = runPythonValidation(options, candidate, null, false);
+        if (progress && validation.validation.rows !== progress.rowCount) {
+          throw new Error(`export row count ${validation.validation.rows} does not match live row count ${progress.rowCount}`);
+        }
+      },
+      async (details) => {
+        intent = await recordExportCandidateRejected(intentPath, intent, details);
+      },
+    );
+    intent = await closeExportIntent(intentPath, intent, "OBSERVED", { candidate: file });
+    return { ...file, intentPath, intent };
+  } catch (error) {
+    await closeExportIntent(intentPath, intent, "OPEN", { lastError: error.message });
+    throw error;
+  }
 }
 
-async function exportXlsx(proxy, options, runMarker, directory, withImages, log, reason = "final") {
-  const before = new Set((await listFiles(directory)).map((file) => file.name));
-  let target = await discoverSearch(proxy, options.keyword, runMarker);
-  const caret = await evaluate(proxy, target.targetId, `(() => {
-    const button = [...document.querySelectorAll('.el-button-group .el-dropdown__caret-button')].find((candidate) => {
-      const rect = candidate.getBoundingClientRect();
-      return getComputedStyle(candidate).display !== 'none' && rect.width > 0 && rect.height > 0;
-    });
-    if (!button) return false;
-    button.setAttribute('data-xws-export-caret', '1');
-    return true;
-  })()`);
-  if (!caret) throw new Error("XLSX export menu is missing");
-  target = await discoverSearch(proxy, options.keyword, runMarker);
-  await clickAt(proxy, target.targetId, ".el-button-group .el-dropdown__caret-button[data-xws-export-caret=\"1\"]");
-  const itemText = withImages ? "导出xlsx表格（带图片）" : "导出xlsx表格";
-  const menuDeadline = Date.now() + 5_000;
-  let menuReady = false;
-  while (Date.now() < menuDeadline) {
-    target = await discoverSearch(proxy, options.keyword, runMarker);
-    menuReady = await evaluate(proxy, target.targetId, `(() => {
-      const item = [...document.querySelectorAll('.el-dropdown-menu__item')].find((candidate) => {
+async function exportXlsx(proxy, options, runMarker, runDir, directory, withImages, log, progress, csv, reason = "final") {
+  const baseline = await listFiles(directory);
+  const before = new Set(baseline.map(fileIdentity));
+  let { intent, intentPath } = await openExportIntent({ runDir, runId: runMarker, options, directory, kind: "xlsx", baseline, progress, reason });
+  try {
+    let target = await discoverSearch(proxy, options.keyword, runMarker);
+    const caret = await evaluate(proxy, target.targetId, `(() => {
+      const button = [...document.querySelectorAll('.el-button-group .el-dropdown__caret-button')].find((candidate) => {
         const rect = candidate.getBoundingClientRect();
-        return getComputedStyle(candidate).display !== 'none' && rect.width > 0 && rect.height > 0
-          && (candidate.innerText || '').trim() === ${JSON.stringify(itemText)};
+        return getComputedStyle(candidate).display !== 'none' && rect.width > 0 && rect.height > 0;
       });
-      if (!item) return false;
-      item.setAttribute('data-xws-export-xlsx', '1');
+      if (!button) return false;
+      button.setAttribute('data-xws-export-caret', '1');
       return true;
     })()`);
-    if (menuReady) break;
-    await sleep(100);
+    if (!caret) throw new Error("XLSX export menu is missing");
+    target = await discoverSearch(proxy, options.keyword, runMarker);
+    await clickAt(proxy, target.targetId, ".el-button-group .el-dropdown__caret-button[data-xws-export-caret=\"1\"]");
+    const itemText = withImages ? "导出xlsx表格（带图片）" : "导出xlsx表格";
+    const menuDeadline = Date.now() + 5_000;
+    let menuReady = false;
+    while (Date.now() < menuDeadline) {
+      target = await discoverSearch(proxy, options.keyword, runMarker);
+      menuReady = await evaluate(proxy, target.targetId, `(() => {
+        const item = [...document.querySelectorAll('.el-dropdown-menu__item')].find((candidate) => {
+          const rect = candidate.getBoundingClientRect();
+          return getComputedStyle(candidate).display !== 'none' && rect.width > 0 && rect.height > 0
+            && (candidate.innerText || '').trim() === ${JSON.stringify(itemText)};
+        });
+        if (!item) return false;
+        item.setAttribute('data-xws-export-xlsx', '1');
+        return true;
+      })()`);
+      if (menuReady) break;
+      await sleep(100);
+    }
+    if (!menuReady) throw new Error(`XLSX menu item is missing: ${itemText}`);
+    target = await discoverSearch(proxy, options.keyword, runMarker);
+    await clickAt(proxy, target.targetId, ".el-dropdown-menu__item[data-xws-export-xlsx=\"1\"]");
+  } catch (error) {
+    intent = await closeExportIntent(intentPath, intent, "REJECTED", {
+      reason: "export_action_failed",
+      lastError: error.message,
+    });
+    throw error;
   }
-  if (!menuReady) throw new Error(`XLSX menu item is missing: ${itemText}`);
-  target = await discoverSearch(proxy, options.keyword, runMarker);
-  await clickAt(proxy, target.targetId, ".el-dropdown-menu__item[data-xws-export-xlsx=\"1\"]");
-  log("EXPORT_STARTED", { format: withImages ? "xlsx-images" : "xlsx", reason });
-  return waitForDownload(directory, before, ".xlsx", Date.now() - 2_000, 1_800_000, log);
+  log("EXPORT_STARTED", { format: withImages ? "xlsx-images" : "xlsx", reason, intent: intentPath, deadlineAt: intent.deadlineAt });
+  try {
+    const file = await waitForDownload(
+      directory,
+      before,
+      ".xlsx",
+      Date.parse(intent.requestedAt) - 2_000,
+      intent.deadlineAt,
+      log,
+      async (candidate) => {
+        const validation = runPythonValidation(options, csv, candidate, withImages);
+        if (progress && validation.validation.rows !== progress.rowCount) {
+          throw new Error(`export row count ${validation.validation.rows} does not match live row count ${progress.rowCount}`);
+        }
+      },
+      async (details) => {
+        intent = await recordExportCandidateRejected(intentPath, intent, details);
+      },
+    );
+    intent = await closeExportIntent(intentPath, intent, "OBSERVED", { candidate: file });
+    return { ...file, intentPath, intent };
+  } catch (error) {
+    await closeExportIntent(intentPath, intent, "OPEN", { lastError: error.message });
+    throw error;
+  }
 }
 
 function runPythonValidation(options, csv, xlsx, requireImages) {
@@ -1056,14 +1221,23 @@ function runPythonValidation(options, csv, xlsx, requireImages) {
   return parsed;
 }
 
-async function exportArtifacts(proxy, options, runMarker, outputDir, log, progress = null, reason = "final") {
+async function exportArtifacts(proxy, options, runMarker, runDir, outputDir, log, progress = null, reason = "final") {
   const files = {};
-  if (options.exportModes.includes("csv")) files.csv = await exportCsv(proxy, options, runMarker, outputDir, log, reason);
-  if (options.exportModes.includes("xlsx-images")) files.xlsx = await exportXlsx(proxy, options, runMarker, outputDir, true, log, reason);
-  else if (options.exportModes.includes("xlsx")) files.xlsx = await exportXlsx(proxy, options, runMarker, outputDir, false, log, reason);
+  if (options.exportModes.includes("csv")) files.csv = await exportCsv(proxy, options, runMarker, runDir, outputDir, log, progress, reason);
+  if (options.exportModes.includes("xlsx-images")) files.xlsx = await exportXlsx(proxy, options, runMarker, runDir, outputDir, true, log, progress, files.csv, reason);
+  else if (options.exportModes.includes("xlsx")) files.xlsx = await exportXlsx(proxy, options, runMarker, runDir, outputDir, false, log, progress, files.csv, reason);
   const validation = runPythonValidation(options, files.csv, files.xlsx, options.exportModes.includes("xlsx-images"));
   if (progress && validation.validation.rows !== progress.rowCount) {
     throw new Error(`export row count ${validation.validation.rows} does not match live row count ${progress.rowCount}`);
+  }
+  for (const file of Object.values(files)) {
+    await closeExportIntent(file.intentPath, file.intent, "ACCEPTED", {
+      candidate: { name: file.name, path: file.path, size: file.size, mtimeMs: file.mtimeMs },
+      validation,
+      acceptedAt: new Date().toISOString(),
+    });
+    delete file.intentPath;
+    delete file.intent;
   }
   const warnings = [];
   if (files.xlsx?.name.includes("价格从高到低") && options.sort === "sales") warnings.push("plugin filename says price-high while live sort is sales");
@@ -1119,6 +1293,7 @@ async function runUnlocked(options) {
           options.proxy,
           options,
           runId,
+          runDir,
           outputDir,
           log,
           error.details?.progress || null,
@@ -1160,7 +1335,7 @@ async function runUnlocked(options) {
   if (completed.progress.requestedStart !== options.pages.start || completed.progress.requestedEnd !== options.pages.end) {
     throw new Error("live result page range does not match the requested range");
   }
-  const exported = await exportArtifacts(options.proxy, options, runId, outputDir, log, completed.progress);
+  const exported = await exportArtifacts(options.proxy, options, runId, runDir, outputDir, log, completed.progress);
   const { files, validation, warnings } = exported;
   if (files.xlsx?.name.includes("价格从高到低") && options.sort === "sales") warnings.push("plugin filename says price-high while live sort is sales");
   const manifest = {

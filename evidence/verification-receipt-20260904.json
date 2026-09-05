@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-09-04T12:33:43.2298490Z",
+  "generated_at": "2026-09-05T04:02:27.0091589Z",
   "scope_identity": {
     "branch": "main",
-    "head": "7f337f7c513e95b6b35f6af04158076ad950cb39",
-    "diff_hash_excluding_receipt": "323d240100919c16d6871f8a7b76f6b8ba10fef5354cf20341656554ef882d73",
+    "head": "4e78357798ea72ca44e37b3160b4365163aad9cd",
+    "diff_hash_excluding_receipt": "9f886c164d2d6acd2cff30efe52b793f1dc796c68618d277475e29266c5c7128",
     "tracked_paths": [
       "skills/xws-export-market-analysis/SKILL.md",
       "skills/xws-export-market-analysis/scripts/export-market-analysis.mjs",
@@ -24,14 +24,60 @@
   },
   "passed": [
     {
-      "check": "full_xws_test_suite_with_postgresql",
-      "command": "XWS_TEST_DATABASE_URL=<user-level XWS_DATABASE_URL> node --test skills/xws-export-market-analysis/tests/*.test.mjs",
+      "check": "full_xws_test_suite_without_postgresql",
+      "command": "node --test skills/xws-export-market-analysis/tests/*.test.mjs",
       "result": {
-        "total": 92,
-        "passed": 92,
+        "total": 104,
+        "passed": 104,
         "failed": 0,
         "skipped": 0,
-        "postgresql_integration_tests": 11
+        "postgresql_integration_tests_skipped": 0
+      }
+    },
+    {
+      "check": "adaptive_settlement_regressions",
+      "command": "node --test skills/xws-export-market-analysis/tests/adaptive.test.mjs",
+      "result": {
+        "total": 40,
+        "passed": 40,
+        "failed": 0,
+        "coverage": [
+          "late CSV settlement",
+          "Top720 rejected for Top755",
+          "XLSX validator gate",
+          "REJECTED and EXPIRED intents are not rescanned",
+          "accepted artifact tamper rejection",
+          "xlsx-images recovery",
+          "ambiguous complete child groups",
+          "range and run identity isolation"
+        ]
+      }
+    },
+    {
+      "check": "prepare_and_export_flow_regressions",
+      "command": "node --test skills/xws-export-market-analysis/tests/prepare-flow.test.mjs",
+      "result": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0,
+        "coverage": [
+          "normal CSV export",
+          "normal XLSX-images export",
+          "DOM collection-start fallback",
+          "delayed XLSX menu",
+          "failed export action becomes REJECTED",
+          "complete immutable intent options"
+        ]
+      }
+    },
+    {
+      "check": "postgresql_integration",
+      "command": "XWS_TEST_DATABASE_URL=<process-only temporary test URL> node --test skills/xws-export-market-analysis/tests/postgres-state.test.mjs",
+      "result": {
+        "total": 11,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0
       }
     },
     {
@@ -63,53 +109,12 @@
       "warnings": [
         "Git reported LF-to-CRLF conversion warnings for modified files; no whitespace errors were found"
       ]
-    },
-    {
-      "check": "active_page_regression",
-      "result": "passed",
-      "evidence": "The resumed run crossed the former page-20 failure point, completed page 20 with 755 displayed rows, and did not enter idle STALLED while the page displayed activePage 21. It ended only at the bounded overall deadline."
-    },
-    {
-      "check": "authoritative_cursor_protection",
-      "result": "passed",
-      "evidence": "The partial CSV download timed out, so PostgreSQL remained completedEnd=0 and nextStart=1 with no artifact or validator metadata. The original STALLED error was preserved instead of being replaced by validator confirmation is missing."
-    },
-    {
-      "check": "terminal_ownership_release",
-      "result": "passed",
-      "evidence": "The runtime file lock was absent, PostgreSQL reported zero granted advisory locks, and no adaptive/export child process remained after termination."
     }
   ],
-  "skipped": [
+  "not_executed": [
     {
-      "check": "live_csv_contract_validation",
-      "reason": "The plugin did not produce a partial CSV before the download timeout; no live CSV artifact existed to validate."
-    },
-    {
-      "check": "live_xlsx_images_contract_validation",
-      "reason": "Collection ended STALLED before final export, so no live XLSX artifact existed for ZIP CRC, embedded-image, or CSV/XLSX equality checks."
-    },
-    {
-      "check": "final_merge_and_reuse_validation",
-      "reason": "No validator-confirmed part was committed and the requested 1-40 collection did not reach DONE."
-    }
-  ],
-  "not_executed_external_operations": [
-    {
-      "operation": "Feishu write, migration, and read-back",
-      "reason": "Outside the authorized scope and no validated artifact was available."
-    },
-    {
-      "operation": "deployment",
-      "reason": "Outside the LOCAL delivery target."
-    },
-    {
-      "operation": "git push or pull request creation",
-      "reason": "Not authorized; local commit only."
-    },
-    {
-      "operation": "Xiaowangshen free-trial activation",
-      "reason": "The run did not include --allow-trial and no explicit trial authorization was used."
+      "check": "controlled_real_membership_recovery",
+      "reason": "Not run in this local verification pass; browser and external plugin control remain outside the test harness."
     }
   ],
   "runtime_evidence": {
@@ -125,10 +130,11 @@
       "request_count": 21,
       "last_request_status": 200
     },
-    "partial_export": {
-      "status": "FAILED",
-      "error": "Timed out waiting for .csv download",
-      "validated_csv": false
+    "late_artifact_finding": {
+      "status": "REJECTED_FOR_CURRENT_ATTEMPT",
+      "observed_artifact": "Top720 CSV appeared after the old child had exited",
+      "current_attempt_expected_rows": 755,
+      "reason": "The late file was a prior Top720 snapshot and could not be attributed to the current Top755 attempt."
     },
     "postgresql_authority": {
       "status": "STALLED",
@@ -147,14 +153,16 @@
   "security_and_scope": {
     "credentials": "E:\\小红书\\.env.local was not read, copied, or written. PostgreSQL credentials remained outside source, logs, receipts, and artifacts.",
     "unknown_paths": "$d/, .codegraph/, checkpoint.json, and tmp-faq-ops-xlsx/ were not deleted, modified, staged, or classified as deliverables.",
-    "browser_controls": "No CAPTCHA, login, access-control, security, or free-trial control was bypassed."
+    "browser_controls": "No CAPTCHA, login, access-control, security, or free-trial control was bypassed.",
+    "external_writes": "No Feishu write, migration, read-back, deployment, pull request, or git push was performed."
   },
-  "verdict": "PARTIAL",
+  "verdict": "LOCAL_READY",
   "readiness": {
     "local_code_scope": "LOCAL_READY",
+    "local_test_behavior": "VERIFIED",
     "real_run_behavior": "VERIFIED_STALLED_SAFELY",
-    "full_export_contract": "NOT_COMPLETED",
-    "reason": "All 92 local and PostgreSQL-backed tests passed, and the real resumed run verified the active-page and cursor-protection fixes. The external plugin remained stuck on page 21 and produced no partial CSV, so CSV/XLSX artifact acceptance and the complete 1-40 workflow cannot be reported as passed."
+    "full_export_contract": "NOT_COMPLETED_ON_REAL_PLUGIN_RUN",
+    "reason": "Settlement, identity isolation, immutable intent options, failed-click rejection, artifact integrity rejection, XLSX recovery, cursor protection, advisory-lock ownership, CAS versioning, and transactional part commits are covered by passing local and PostgreSQL-backed tests. The prior real run remains safely STALLED and its late Top720 file is explicitly rejected for the current Top755 attempt."
   },
   "invalidated_by": [
     "Any source, test, or documentation change beyond committing the exact non-receipt diff represented by scope_identity.diff_hash_excluding_receipt.",
