@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   applyAdaptiveRun,
@@ -19,20 +21,30 @@ import {
 import { marketAnalysisLockPath, shouldAcquireRuntimeLock } from "../scripts/export-market-analysis.mjs";
 import { acquireMarketAnalysisLock, defaultLockPath } from "../scripts/runtime-lock.mjs";
 import {
+  adaptiveAttemptCount,
   buildAdaptiveIdentity,
   canAdvanceAttempt,
   chooseAttemptSnapshot,
   commitCheckpointMutation,
+  mergeCompletedParts,
   openAuthoritativeRun,
   recoverAttemptSettlement,
   requireDatabaseUrl,
+  runAdaptiveAttemptLoop,
   settleExportIntent,
+  shouldRetryAttempt,
   snapshotMetadata,
+  validateMergedOutput,
   validateProgressSnapshot,
   verifyArtifactSet,
   verifyRecordedArtifacts,
   withAdaptiveOwnership,
 } from "../scripts/run-adaptive-export.mjs";
+
+const testRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const validator = path.join(testRoot, "scripts", "validate-output.py");
+const python = process.env.XWS_PYTHON || (process.platform === "win32" ? "py" : "python3");
+const pythonPrefix = process.env.XWS_PYTHON || process.platform !== "win32" ? [] : ["-3"];
 
 function csvValidation(rows, csv) {
   const content = Buffer.from("validated csv");
@@ -46,6 +58,21 @@ function csvValidation(rows, csv) {
       },
     },
     validation: { rows, columns: 16, rank_range: `1-${rows}`, empty_links: 0, duplicate_links: 0 },
+  };
+}
+
+function verifiedArtifacts(rows, csv = "part.csv") {
+  const validation = csvValidation(rows, csv);
+  return {
+    artifacts: { csv },
+    validation,
+    artifactRecords: [{
+      kind: "csv",
+      path: csv,
+      sizeBytes: validation.artifacts.csv.size_bytes,
+      sha256: validation.artifacts.csv.sha256,
+      metadata: { validation },
+    }],
   };
 }
 
@@ -68,7 +95,7 @@ test("resumes immediately after the last verified page instead of restarting", (
     end: 40,
     status: "STALLED",
     progress: { completedStart: 1, completedEnd: 32, rowCount: 1224 },
-    artifacts: { csv: "part-1-32.csv", xlsx: "part-1-32.xlsx" },
+    ...verifiedArtifacts(1224, "part-1-32.csv"),
   });
   assert.deepEqual(nextAdaptiveRange(checkpoint), { start: 33, end: 40 });
   assert.equal(checkpoint.completedEnd, 32);
@@ -81,14 +108,14 @@ test("advances through multiple stall points and marks complete only at the targ
     end: 40,
     status: "STALLED",
     progress: { completedStart: 1, completedEnd: 32, rowCount: 1224 },
-    artifacts: { csv: "part-a.csv" },
+    ...verifiedArtifacts(1224, "part-a.csv"),
   });
   applyAdaptiveRun(checkpoint, {
     start: 33,
     end: 40,
     status: "STALLED",
     progress: { completedStart: 33, completedEnd: 35, rowCount: 96 },
-    artifacts: { csv: "part-b.csv" },
+    ...verifiedArtifacts(96, "part-b.csv"),
   });
   assert.deepEqual(nextAdaptiveRange(checkpoint), { start: 36, end: 40 });
   applyAdaptiveRun(checkpoint, {
@@ -96,11 +123,24 @@ test("advances through multiple stall points and marks complete only at the targ
     end: 40,
     status: "DONE",
     progress: { completedStart: 36, completedEnd: 40, rowCount: 160 },
-    artifacts: { csv: "part-c.csv" },
+    ...verifiedArtifacts(160, "part-c.csv"),
   });
   assert.equal(nextAdaptiveRange(checkpoint), null);
   assert.equal(checkpoint.status, "DONE");
   assert.equal(checkpoint.completedEnd, 40);
+});
+
+test("does not advance the checkpoint cursor from an unverified artifact path", () => {
+  const checkpoint = createAdaptiveCheckpoint({ keyword: "浴缸", pages: { start: 1, end: 40 } });
+  applyAdaptiveRun(checkpoint, {
+    start: 1,
+    end: 40,
+    status: "STALLED",
+    progress: { completedStart: 1, completedEnd: 16, rowCount: 720 },
+    artifacts: { csv: "unverified.csv" },
+  });
+  assert.equal(checkpoint.completedEnd, 0);
+  assert.equal(nextAdaptiveRange(checkpoint), null);
 });
 
 test("does not invent a resume page when a run stalled before any verified page", () => {
@@ -187,7 +227,7 @@ test("only explicit resume loads verified progress and rejects contract mismatch
     end: 40,
     status: "STALLED",
     progress: { completedStart: 1, completedEnd: 16, rowCount: 10 },
-    artifacts: { csv: "old.csv" },
+    ...verifiedArtifacts(10, "old.csv"),
   });
   await writeFile(file, JSON.stringify(checkpoint));
   const resumed = await loadAdaptiveCheckpoint(file, { resume: true, expected });
@@ -205,7 +245,30 @@ test("only explicit resume loads verified progress and rejects contract mismatch
   );
 });
 
-test("explicit resume reopens a FAILED checkpoint without inventing progress", async () => {
+test("rejects an unversioned RUNNING checkpoint with no attempt evidence", () => {
+  const expected = {
+    keyword: "浴缸",
+    pages: { start: 1, end: 40 },
+    frequency: { min: 30, max: 45 },
+    options: checkpointOptions({
+      channel: "all",
+      sort: "sales",
+      price: { min: 0, max: null },
+      exportModes: ["csv"],
+      stallSeconds: 300,
+    }),
+  };
+  const checkpoint = createAdaptiveCheckpoint(expected);
+  checkpoint.options = expected.options;
+  delete checkpoint.attempts;
+
+  assert.throws(
+    () => resumeAdaptiveCheckpoint(checkpoint, expected),
+    /RUNNING checkpoint has no persisted attempt evidence/u,
+  );
+});
+
+test("explicit resume rejects a FAILED checkpoint without persisted attempt evidence", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "xws-adaptive-"));
   const file = path.join(directory, "failed.json");
   const expected = {
@@ -230,10 +293,10 @@ test("explicit resume reopens a FAILED checkpoint without inventing progress", a
   });
   await writeFile(file, JSON.stringify(checkpoint));
 
-  const resumed = await loadAdaptiveCheckpoint(file, { resume: true, expected });
-
-  assert.equal(resumed.status, "RUNNING");
-  assert.deepEqual(nextAdaptiveRange(resumed), { start: 1, end: 40 });
+  await assert.rejects(
+    loadAdaptiveCheckpoint(file, { resume: true, expected }),
+    /no persisted attempt evidence for range 1-40/u,
+  );
 });
 
 test("explicit resume retries a no-progress STALLED checkpoint", () => {
@@ -257,10 +320,12 @@ test("explicit resume retries a no-progress STALLED checkpoint", () => {
     status: "STALLED",
     progress: { completedStart: 0, completedEnd: 0, rowCount: 0 },
   });
+  checkpoint.attempts["1-40"] = 1;
 
   const resumed = resumeAdaptiveCheckpoint(checkpoint, expected);
 
   assert.equal(resumed.status, "RUNNING");
+  assert.equal(resumed.attempts["1-40"], 1);
   assert.deepEqual(nextAdaptiveRange(resumed), { start: 1, end: 40 });
 });
 
@@ -286,7 +351,7 @@ test("explicit resume reopens a HUMAN_REQUIRED checkpoint after the control is c
     end: 40,
     status: "HUMAN_REQUIRED",
     progress: { completedStart: 1, completedEnd: 16, rowCount: 10 },
-    artifacts: { csv: "old.csv" },
+    ...verifiedArtifacts(10, "old.csv"),
   });
   await writeFile(file, JSON.stringify(checkpoint));
 
@@ -319,11 +384,10 @@ test("returns null for missing events so stdout can be used as a fallback", () =
   assert.deepEqual(lastJsonLine('diagnostic output\n{"status":"DONE"}'), { status: "DONE" });
 });
 
-test("includes output directory and trial authorization in the immutable run identity", () => {
+test("includes output directory in the immutable run identity", () => {
   const options = parseAdaptiveOptions([
     "--keyword", "浴缸",
     "--output-dir", "C:/Downloads/xws",
-    "--allow-trial",
   ]);
   assert.deepEqual(buildAdaptiveIdentity(options), {
     keyword: "浴缸",
@@ -335,9 +399,16 @@ test("includes output directory and trial authorization in the immutable run ide
     frequency: { min: 30, max: 45 },
     exportModes: ["csv", "xlsx-images"],
     outputDir: path.resolve("C:/Downloads/xws"),
-    allowTrial: true,
+    allowTrial: false,
     stallSeconds: 300,
   });
+});
+
+test("rejects trial authorization at the adaptive member entrypoint", () => {
+  assert.throws(
+    () => parseAdaptiveOptions(["--keyword", "浴缸", "--allow-trial"]),
+    /adaptive member workflow does not allow --allow-trial/u,
+  );
 });
 
 test("requires PostgreSQL state without exposing the connection string", () => {
@@ -428,6 +499,111 @@ test("creates a fresh PostgreSQL run with its initial checkpoint atomically", as
   assert.equal(fresh.checkpoint.runId, "fresh-run");
   assert.equal(calls.length, 1);
   assert.equal(calls[0].checkpoint.strategy, "adaptive");
+});
+
+test("validates final merged CSV and XLSX contents before recording artifacts", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "xws-final-validation-"));
+  try {
+    const fixtureScript = [
+      "import importlib.util,sys",
+      "from pathlib import Path",
+      "spec=importlib.util.spec_from_file_location('validator',sys.argv[1])",
+      "module=importlib.util.module_from_spec(spec)",
+      "spec.loader.exec_module(module)",
+      "module.make_self_test_fixture(Path(sys.argv[2]))",
+    ].join(";");
+    const fixture = spawnSync(python, [...pythonPrefix, "-c", fixtureScript, validator, directory], { encoding: "utf8" });
+    assert.equal(fixture.status, 0, fixture.stderr || fixture.stdout);
+    const csv = path.join(directory, "fixture.csv");
+    const xlsx = path.join(directory, "fixture.xlsx");
+    await writeFile(csv, (await readFile(csv, "utf8")).replace("100", "999"), "utf8");
+
+    await assert.rejects(
+      validateMergedOutput({ csv, xlsx }, ["csv", "xlsx-images"]),
+      /differ|validation failed/iu,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects a mutated XLSX before final merge", async () => {
+  const stateRoot = await mkdtemp(path.join(os.tmpdir(), "xws-merge-"));
+  try {
+    const csv = path.join(stateRoot, "part.csv");
+    const xlsx = path.join(stateRoot, "part.xlsx");
+    await writeFile(csv, "validated csv", "utf8");
+    await writeFile(xlsx, "validated xlsx", "utf8");
+    const csvContent = await readFile(csv);
+    const xlsxContent = await readFile(xlsx);
+    const checkpoint = {
+      parts: {
+        "1-1": {
+          id: "1-1",
+          start: 1,
+          end: 1,
+          completedEnd: 1,
+          status: "DONE",
+          artifacts: { csv, xlsx },
+          artifactRecords: [
+            { kind: "csv", path: csv, sizeBytes: csvContent.length, sha256: createHash("sha256").update(csvContent).digest("hex") },
+            { kind: "xlsx", path: xlsx, sizeBytes: xlsxContent.length, sha256: createHash("sha256").update(xlsxContent).digest("hex") },
+          ],
+        },
+      },
+    };
+    await writeFile(xlsx, "mutated xlsx", "utf8");
+
+    await assert.rejects(
+      mergeCompletedParts(checkpoint, stateRoot, { keyword: "浴缸", pages: { start: 1, end: 1 }, exportModes: ["csv", "xlsx-images"] }),
+      /artifact changed after verification/u,
+    );
+  } finally {
+    await rm(stateRoot, { recursive: true, force: true });
+  }
+});
+
+test("revalidates PostgreSQL part artifacts before advancing a resumed cursor", async () => {
+  const expected = {
+    keyword: "浴缸",
+    pages: { start: 1, end: 40 },
+    frequency: { min: 30, max: 45 },
+    options: checkpointOptions({
+      channel: "all",
+      sort: "sales",
+      price: { min: 0, max: null },
+      exportModes: ["csv"],
+      outputDir: "C:/Downloads",
+      allowTrial: false,
+      stallSeconds: 300,
+    }),
+  };
+  const saved = createAdaptiveCheckpoint(expected);
+  saved.options = expected.options;
+  applyAdaptiveRun(saved, {
+    start: 1,
+    end: 40,
+    status: "STALLED",
+    progress: { completedStart: 1, completedEnd: 7, rowCount: 100 },
+    ...verifiedArtifacts(100),
+  });
+  let updated = false;
+
+  await assert.rejects(
+    openAuthoritativeRun({
+      pool: {},
+      options: { resume: true, runId: "existing-run" },
+      identity: { keyword: "浴缸" },
+      expected,
+      state: {
+        getAdaptiveRun: async () => ({ id: "existing-run", checkpoint: saved, version: 3 }),
+        verifyRecordedParts: async () => { throw new Error("artifact changed after verification"); },
+        updateAdaptiveCheckpoint: async () => { updated = true; },
+      },
+    }),
+    /artifact changed after verification/u,
+  );
+  assert.equal(updated, false);
 });
 
 test("reads resume state only from PostgreSQL and rejects a missing run", async () => {
@@ -541,12 +717,163 @@ test("keeps the authoritative checkpoint unchanged when a transactional part com
   assert.deepEqual(checkpoint.parts, {});
 });
 
-test("does not advance a stalled snapshot without a validated CSV artifact", () => {
+test("retries only an uncommitted export-action failure for the same range", () => {
+  const range = { start: 22, end: 40 };
+  assert.equal(shouldRetryAttempt({
+    status: "STALLED",
+    snapshot: {
+      progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+      artifacts: {},
+      exportFailure: { reason: "export_action_failed", error: "target activation failed" },
+    },
+    range,
+    attempt: 1,
+  }), true);
+  assert.equal(shouldRetryAttempt({
+    status: "STALLED",
+    snapshot: {
+      progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+      artifacts: {},
+      exportFailure: { reason: "export_action_failed" },
+    },
+    range,
+    attempt: 2,
+  }), false);
+  assert.equal(shouldRetryAttempt({
+    status: "HUMAN_REQUIRED",
+    snapshot: { progress: {}, artifacts: {}, exportFailure: { reason: "export_action_failed" } },
+    range,
+    attempt: 1,
+  }), false);
+  assert.equal(shouldRetryAttempt({
+    status: "STALLED",
+    snapshot: {
+      progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+      artifacts: { csv: "verified.csv" },
+      exportFailure: { reason: "export_action_failed" },
+    },
+    range,
+    attempt: 1,
+  }), false);
+});
+
+test("retries the same adaptive range once after an export action failure", async () => {
+  const calls = [];
+  const range = { start: 22, end: 40 };
+  const outcome = await runAdaptiveAttemptLoop({
+    range,
+    runAttempt: async ({ range: attemptRange, attempt }) => {
+      calls.push({ ...attemptRange });
+      return {
+        result: { code: 3, stdout: "", stderr: "" },
+        status: "STALLED",
+        snapshot: {
+          progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+          artifacts: {},
+          exportFailure: { reason: "export_action_failed" },
+        },
+        attempt,
+      };
+    },
+  });
+
+  assert.deepEqual(calls, [range, range]);
+  assert.equal(outcome.attempt, 2);
+});
+
+test("reads a persisted attempt count for the exact adaptive range", () => {
+  const checkpoint = {
+    attempts: {
+      "1-40": 1,
+      "22-40": 2,
+    },
+  };
+  assert.equal(adaptiveAttemptCount(checkpoint, { start: 22, end: 40 }), 2);
+  assert.equal(adaptiveAttemptCount(checkpoint, { start: 25, end: 40 }), 0);
+});
+
+test("does not reset the retry budget when the same range resumes in another process", async () => {
+  const calls = [];
+  const range = { start: 22, end: 40 };
+  const outcome = await runAdaptiveAttemptLoop({
+    range,
+    initialAttempt: 1,
+    runAttempt: async ({ attempt }) => {
+      calls.push(attempt);
+      return {
+        result: { code: 3, stdout: "", stderr: "" },
+        status: "STALLED",
+        snapshot: {
+          progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+          artifacts: {},
+          exportFailure: { reason: "export_action_failed" },
+        },
+      };
+    },
+  });
+
+  assert.deepEqual(calls, [2]);
+  assert.equal(outcome.attempt, 2);
+});
+
+test("refuses to launch a third attempt for a persisted adaptive range", async () => {
+  let launched = false;
+  await assert.rejects(
+    runAdaptiveAttemptLoop({
+      range: { start: 22, end: 40 },
+      initialAttempt: 2,
+      runAttempt: async () => {
+        launched = true;
+        return {};
+      },
+    }),
+    /attempt budget exhausted/iu,
+  );
+  assert.equal(launched, false);
+});
+
+test("persists each adaptive attempt number before launching its child", async () => {
+  const events = [];
+  await runAdaptiveAttemptLoop({
+    range: { start: 22, end: 40 },
+    onAttemptStart: async ({ attempt }) => { events.push(`persist:${attempt}`); },
+    runAttempt: async ({ attempt }) => {
+      events.push(`launch:${attempt}`);
+      return {
+        status: "STALLED",
+        snapshot: {
+          progress: { completedEnd: 24 },
+          artifacts: {},
+          exportFailure: { reason: "export_action_failed" },
+        },
+      };
+    },
+  });
+  assert.deepEqual(events, ["persist:1", "launch:1", "persist:2", "launch:2"]);
+});
+
+test("keeps partial-export failure evidence from the child event", () => {
+  assert.deepEqual(chooseAttemptSnapshot({ path: "", manifest: null }, {
+    runId: "child-22-40",
+    status: "STALLED",
+    error: "no page progress",
+    details: {
+      progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+      partialExportFailure: { reason: "export_action_failed", error: "target activation failed" },
+    },
+  }).exportFailure, {
+    reason: "export_action_failed",
+    error: "target activation failed",
+  });
+});
+
+test("does not advance a snapshot without complete verification evidence", () => {
   assert.equal(canAdvanceAttempt("DONE", {
     progress: { completedEnd: 40 },
     artifacts: {},
     validation: {},
-  }, { start: 1 }), true);
+    artifactRecords: [],
+  }, { start: 1 }), false);
   assert.equal(canAdvanceAttempt("STALLED", {
     progress: { completedEnd: 3 },
     artifacts: {},
@@ -561,6 +888,15 @@ test("does not advance a stalled snapshot without a validated CSV artifact", () 
     progress: { completedEnd: 3 },
     artifacts: { csv: "part.csv" },
     validation: { ok: true, validation: { rows: 115 } },
+  }, { start: 1 }), false);
+  assert.equal(canAdvanceAttempt("DONE", {
+    progress: { completedEnd: 40 },
+    artifacts: { csv: "part.csv" },
+    validation: {
+      ok: true,
+      artifacts: { csv: { size_bytes: 13, sha256: "validated-sha256" } },
+      validation: { rows: 115 },
+    },
   }, { start: 1 }), true);
 });
 

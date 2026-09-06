@@ -68,7 +68,18 @@ function orderedParts(checkpoint) {
 }
 
 function canAdvance(part) {
-  return part.status === "DONE" || part.status === "STALLED";
+  const csv = part.artifacts?.csv;
+  const expected = part.validation?.artifacts?.csv;
+  const record = part.artifactRecords?.find((artifact) => artifact.kind === "csv");
+  return ["DONE", "STALLED"].includes(part.status)
+    && Boolean(csv)
+    && part.validation?.ok === true
+    && Number(part.validation?.validation?.rows) >= 1
+    && Boolean(expected?.sha256)
+    && Number(expected?.size_bytes) >= 1
+    && record?.path === csv
+    && record.sha256 === String(expected.sha256).toLowerCase()
+    && Number(record.sizeBytes) === Number(expected.size_bytes);
 }
 
 function contiguousCompletedEnd(checkpoint) {
@@ -95,6 +106,7 @@ export function createAdaptiveCheckpoint({ keyword, pages = { start: 1, end: 40 
     status: "RUNNING",
     completedEnd: normalized.start - 1,
     parts: {},
+    attempts: {},
   };
 }
 
@@ -183,12 +195,21 @@ export async function readAdaptiveCheckpoint(file, defaults, { requireExisting =
 
 export function resumeAdaptiveCheckpoint(checkpoint, expected) {
   validateAdaptiveCheckpoint(checkpoint, expected);
+  if (checkpoint.status === "RUNNING" && !checkpoint.attempts) {
+    throw new Error("RUNNING checkpoint has no persisted attempt evidence");
+  }
   const blocked = ["HUMAN_REQUIRED", "FAILED"].includes(checkpoint.status)
     || orderedParts(checkpoint).some((part) => part.status === "STALLED" && part.completedEnd < part.start);
   if (blocked) {
     checkpoint.status = "RUNNING";
     delete checkpoint.error;
+    checkpoint.attempts ||= {};
     for (const [id, part] of Object.entries(checkpoint.parts || {})) {
+      if (["HUMAN_REQUIRED", "FAILED", "STALLED"].includes(part?.status)
+        && part.completedEnd < part.start
+        && !Number.isInteger(checkpoint.attempts[id])) {
+        throw new Error(`checkpoint has no persisted attempt evidence for range ${id}`);
+      }
       if (part?.status === "HUMAN_REQUIRED" && part.completedEnd >= part.start) part.status = "STALLED";
       else if (["HUMAN_REQUIRED", "FAILED", "STALLED"].includes(part?.status) && part.completedEnd < part.start) {
         delete checkpoint.parts[id];
@@ -225,6 +246,9 @@ export async function writeAdaptiveCheckpoint(file, checkpoint, fsApi = { writeF
 
 export function parseAdaptiveOptions(argv, env = process.env) {
   const input = [...argv];
+  if (input.includes("--allow-trial")) {
+    throw new Error("adaptive member workflow does not allow --allow-trial");
+  }
   let checkpoint = "";
   let runId = "";
   let resume = false;

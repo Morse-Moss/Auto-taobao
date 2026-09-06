@@ -85,6 +85,7 @@ export function chooseAttemptSnapshot(located, event) {
     artifacts: details.artifacts || {},
     validation: details.validation || {},
     ...(event?.error ? { error: event.error } : {}),
+    ...(details.partialExportFailure ? { exportFailure: details.partialExportFailure } : {}),
     ...(event?.at || details.sourceAt ? { sourceAt: event?.at || details.sourceAt } : {}),
   };
 }
@@ -166,6 +167,7 @@ export async function openAuthoritativeRun({ pool, options, identity, expected, 
   const create = state.createAdaptiveRun || createAdaptiveRun;
   const get = state.getAdaptiveRun || getAdaptiveRun;
   const update = state.updateAdaptiveCheckpoint || updateAdaptiveCheckpoint;
+  const verifyParts = state.verifyRecordedParts || verifyRecordedParts;
   if (options.resume) {
     if (!options.runId) throw new Error("--resume requires --run-id");
     const run = await get(pool, options.runId, identity);
@@ -173,7 +175,11 @@ export async function openAuthoritativeRun({ pool, options, identity, expected, 
     if (!run.checkpoint || run.checkpoint.strategy !== "adaptive") {
       throw new Error(`adaptive run has no checkpoint projection: ${options.runId}`);
     }
-    const checkpoint = resumeAdaptiveCheckpoint(structuredClone(run.checkpoint), expected);
+    const saved = structuredClone(run.checkpoint);
+    const committed = Object.values(saved.parts || {})
+      .filter((part) => ["DONE", "STALLED"].includes(part?.status) && part.completedEnd >= part.start);
+    await verifyParts(committed, expected.options?.exportModes || []);
+    const checkpoint = resumeAdaptiveCheckpoint(saved, expected);
     checkpoint.runId = run.id;
     const updated = await update(pool, run.id, checkpoint, run.version);
     return { ...run, ...updated, checkpoint };
@@ -321,6 +327,16 @@ function runOutputValidation(csv, xlsx, requireImages) {
       resolve(result);
     });
   });
+}
+
+export async function validateMergedOutput(artifacts, exportModes) {
+  const csv = typeof artifacts?.csv === "string" ? { path: artifacts.csv } : artifacts?.csv;
+  const xlsxValue = artifacts?.xlsx;
+  const xlsx = typeof xlsxValue === "string" ? { path: xlsxValue } : xlsxValue;
+  const needsXlsx = exportModes.includes("xlsx") || exportModes.includes("xlsx-images");
+  if (!csv?.path) throw new Error("final merged CSV is missing");
+  if (needsXlsx && !xlsx?.path) throw new Error("final merged XLSX is missing");
+  return runOutputValidation(csv, needsXlsx ? xlsx : null, exportModes.includes("xlsx-images"));
 }
 
 function baselineIdentity(file) {
@@ -785,12 +801,49 @@ function childStatus(code, event) {
 }
 
 export function canAdvanceAttempt(status, snapshot, range) {
-  if (status === "DONE") return true;
-  return status === "STALLED"
+  const csv = snapshot?.validation?.artifacts?.csv;
+  return ["DONE", "STALLED"].includes(status)
     && Boolean(snapshot?.artifacts?.csv)
     && snapshot?.validation?.ok === true
     && Number(snapshot?.validation?.validation?.rows) >= 1
+    && Boolean(csv?.sha256)
+    && Number.isInteger(Number(csv?.size_bytes))
+    && Number(csv.size_bytes) >= 1
     && Number(snapshot?.progress?.completedEnd) >= range.start;
+}
+
+export function adaptiveAttemptCount(checkpoint, range) {
+  const count = Number(checkpoint?.attempts?.[`${range.start}-${range.end}`]);
+  return Number.isInteger(count) && count >= 0 ? count : 0;
+}
+
+export function shouldRetryAttempt({ status, snapshot, range, attempt }) {
+  return attempt === 1
+    && status === "STALLED"
+    && snapshot?.exportFailure?.reason === "export_action_failed"
+    && !snapshot?.artifacts?.csv
+    && Number(snapshot?.progress?.completedEnd) >= range.start;
+}
+
+export async function runAdaptiveAttemptLoop({ range, initialAttempt = 0, onAttemptStart = () => {}, runAttempt, onRetry = () => {} }) {
+  let attempt = Number(initialAttempt) || 0;
+  if (attempt >= 2) {
+    throw new Error(`adaptive attempt budget exhausted for range ${range.start}-${range.end}`);
+  }
+  while (true) {
+    attempt += 1;
+    await onAttemptStart({ range, attempt });
+    const outcome = await runAttempt({ range, attempt });
+    if (!shouldRetryAttempt({
+      status: outcome.status,
+      snapshot: outcome.snapshot,
+      range,
+      attempt,
+    })) {
+      return { ...outcome, attempt };
+    }
+    await onRetry({ ...outcome, range, attempt });
+  }
 }
 
 function childExitCode(status) {
@@ -820,16 +873,24 @@ export async function verifyRecordedArtifacts(records, owner) {
   }
 }
 
-async function verifyRecordedParts(parts) {
-  for (const part of parts) await verifyRecordedArtifacts(part.artifactRecords, `part ${part.id}`);
+export async function verifyRecordedParts(parts, exportModes = []) {
+  const requiredKinds = new Set(["csv"]);
+  if (exportModes.includes("xlsx") || exportModes.includes("xlsx-images")) requiredKinds.add("xlsx");
+  for (const part of parts) {
+    const kinds = new Set((part.artifactRecords || []).map((artifact) => artifact.kind));
+    for (const kind of requiredKinds) {
+      if (!kinds.has(kind)) throw new Error(`part ${part.id} is missing verified ${kind} artifact evidence`);
+    }
+    await verifyRecordedArtifacts(part.artifactRecords, `part ${part.id}`);
+  }
 }
 
-async function mergeCompletedParts(checkpoint, stateRoot, options) {
+export async function mergeCompletedParts(checkpoint, stateRoot, options) {
   const parts = Object.values(checkpoint.parts || {})
     .filter((part) => ["DONE", "STALLED"].includes(part.status) && part.artifacts?.csv)
     .sort((left, right) => left.start - right.start || left.end - right.end);
   if (!parts.length) throw new Error("no validated CSV parts are available for final merge");
-  await verifyRecordedParts(parts);
+  await verifyRecordedParts(parts, options.exportModes);
   let cursor = options.pages.start;
   for (const part of parts) {
     if (part.start > cursor || part.completedEnd < cursor) {
@@ -859,8 +920,13 @@ async function mergeCompletedParts(checkpoint, stateRoot, options) {
   if (result.code !== 0) throw new Error(`final merge failed: ${result.stderr || result.stdout}`.trim());
   const merged = lastJsonLine(result.stdout);
   if (!merged.ok) throw new Error(merged.error || "final merge failed");
+  const validation = await validateMergedOutput(
+    { csv: merged.csv, ...(merged.xlsx?.path ? { xlsx: merged.xlsx.path } : {}) },
+    options.exportModes,
+  );
   return {
     ...merged,
+    validation,
     parts: parts.map((part) => part.id),
     ...snapshotMetadata(parts),
   };
@@ -942,38 +1008,87 @@ async function executeAdaptiveRun({ pool, run, checkpointPath, stateRoot, option
     if (snapshot) {
       console.log(JSON.stringify({ event: "ADAPTIVE_SETTLEMENT_RECOVERED", runId: run.id, start: range.start, end: range.end, sourceId: snapshot.sourceId }));
     } else {
-      const attemptRoot = path.join(stateRoot, `attempt-${Date.now()}-${range.start}-${range.end}`);
-      await mkdir(attemptRoot, { recursive: true });
-      console.log(JSON.stringify({ event: "ADAPTIVE_RUN_STARTED", runId: run.id, start: range.start, end: range.end }));
-      const args = [
-        "--keyword", options.keyword,
-        "--pages", `${range.start}-${range.end}`,
-        "--frequency", `${options.frequency.min}-${options.frequency.max}`,
-        "--channel", options.channel,
-        "--sort", options.sort,
-        "--price", `${options.price.min}-${options.price.max === null ? "unlimited" : options.price.max}`,
-        "--export", options.exportModes.join(","),
-        "--stall-seconds", String(options.stallSeconds),
-        "--proxy", options.proxy,
-        "--export-partial-on-stall",
-      ];
-      if (options.outputDir) args.push("--output-dir", options.outputDir);
-      if (options.allowTrial) args.push("--allow-trial");
-      result = await runChild(args, {
-        ...process.env,
-        XWS_RUNTIME_DIR: attemptRoot,
-        XWS_ADAPTIVE_LOCK_OWNER: "1",
-        XWS_ADAPTIVE_RUN_ID: run.id,
-        XWS_ADAPTIVE_RANGE_START: String(range.start),
-        XWS_ADAPTIVE_RANGE_END: String(range.end),
+      const outcome = await runAdaptiveAttemptLoop({
+        range,
+        initialAttempt: adaptiveAttemptCount(checkpoint, range),
+        onAttemptStart: async ({ range: attemptRange, attempt }) => {
+          await commitCheckpointMutation({
+            checkpoint,
+            mutate: (draft) => {
+              draft.attempts ||= {};
+              draft.attempts[`${attemptRange.start}-${attemptRange.end}`] = attempt;
+            },
+            commit: async (draft) => {
+              const updated = await updateAdaptiveCheckpoint(
+                pool,
+                run.id,
+                draft,
+                run.version,
+              );
+              run.version = updated.version;
+            },
+          });
+          await writeAdaptiveCheckpoint(checkpointPath, checkpoint);
+        },
+        runAttempt: async ({ range: attemptRange, attempt }) => {
+          const attemptRoot = path.join(
+            stateRoot,
+            `attempt-${Date.now()}-${attemptRange.start}-${attemptRange.end}-${attempt}`,
+          );
+          await mkdir(attemptRoot, { recursive: true });
+          console.log(JSON.stringify({
+            event: "ADAPTIVE_RUN_STARTED",
+            runId: run.id,
+            start: attemptRange.start,
+            end: attemptRange.end,
+            attempt,
+          }));
+          const args = [
+            "--keyword", options.keyword,
+            "--pages", `${attemptRange.start}-${attemptRange.end}`,
+            "--frequency", `${options.frequency.min}-${options.frequency.max}`,
+            "--channel", options.channel,
+            "--sort", options.sort,
+            "--price", `${options.price.min}-${options.price.max === null ? "unlimited" : options.price.max}`,
+            "--export", options.exportModes.join(","),
+            "--stall-seconds", String(options.stallSeconds),
+            "--proxy", options.proxy,
+            "--export-partial-on-stall",
+          ];
+          if (options.outputDir) args.push("--output-dir", options.outputDir);
+          if (options.allowTrial) args.push("--allow-trial");
+          const attemptResult = await runChild(args, {
+            ...process.env,
+            XWS_RUNTIME_DIR: attemptRoot,
+            XWS_ADAPTIVE_LOCK_OWNER: "1",
+            XWS_ADAPTIVE_RUN_ID: run.id,
+            XWS_ADAPTIVE_RANGE_START: String(attemptRange.start),
+            XWS_ADAPTIVE_RANGE_END: String(attemptRange.end),
+          });
+          const event = lastJsonLine(attemptResult.stderr) ?? lastJsonLine(attemptResult.stdout);
+          const located = await readLatestManifest(attemptRoot);
+          let attemptSnapshot = chooseAttemptSnapshot(located, event);
+          if (!Object.keys(attemptSnapshot.artifacts).length) {
+            attemptSnapshot = await recoverAttemptSettlement(attemptRoot, recoveryExpected) || attemptSnapshot;
+          }
+          return {
+            result: attemptResult,
+            snapshot: attemptSnapshot,
+            status: childStatus(attemptResult.code, attemptSnapshot),
+          };
+        },
+        onRetry: ({ snapshot: failedSnapshot, attempt }) => {
+          console.log(JSON.stringify({
+            event: "ADAPTIVE_ATTEMPT_RETRY",
+            runId: run.id,
+            start: range.start,
+            end: range.end,
+            attempt,
+            reason: failedSnapshot.exportFailure.reason,
+          }));
+        },
       });
-      const event = lastJsonLine(result.stderr) ?? lastJsonLine(result.stdout);
-      const located = await readLatestManifest(attemptRoot);
-      snapshot = chooseAttemptSnapshot(located, event);
-      if (!Object.keys(snapshot.artifacts).length) {
-        snapshot = await recoverAttemptSettlement(attemptRoot, recoveryExpected) || snapshot;
-      }
-      status = childStatus(result.code, snapshot);
+      ({ result, snapshot, status } = outcome);
     }
     const copied = Object.keys(snapshot.artifacts).length
       ? await copyManifestArtifacts({ artifacts: snapshot.artifacts }, path.join(stateRoot, "parts", `${range.start}-${range.end}`))

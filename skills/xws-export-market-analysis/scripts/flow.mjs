@@ -177,6 +177,229 @@ export function parseProgressText(text) {
   };
 }
 
+export function selectExportResultDialog(dialogEntries, expectedProgress) {
+  const expected = expectedProgress || {};
+  const matches = (Array.isArray(dialogEntries) ? dialogEntries : [])
+    .map((entry, index) => ({
+      index,
+      text: typeof entry === "string" ? entry : entry?.text,
+      attemptMarker: typeof entry === "string" ? "" : entry?.attemptMarker,
+    }))
+    .map((entry) => ({ ...entry, progress: parseProgressText(entry.text) }))
+    .filter(({ progress, attemptMarker }) => (
+      !expected.attemptMarker || attemptMarker === expected.attemptMarker
+    )
+      && progress.keyword === String(expected.keyword || "").trim()
+      && progress.requestedStart === Number(expected.requestedStart)
+      && progress.requestedEnd === Number(expected.requestedEnd)
+      && progress.completedStart === Number(expected.completedStart)
+      && progress.completedEnd === Number(expected.completedEnd)
+      && progress.rowCount === Number(expected.rowCount));
+  if (matches.length !== 1) {
+    throw new Error(`Expected one matching result dialog; received ${matches.length}`);
+  }
+  return matches[0].index;
+}
+
+export function collectionResultSnapshot(text) {
+  const source = String(text || "");
+  const range = (label) => {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    const match = source.match(new RegExp(`${escaped}\\s*([0-9]+)(?:\\s*~\\s*([0-9]+))?\\s*页`, "u"));
+    return {
+      start: Number(match?.[1]) || 0,
+      end: Number(match?.[2] || match?.[1]) || 0,
+    };
+  };
+  const requested = range("您搜索的页数：第");
+  const completed = range("已成功获取：第");
+  const count = source.match(/商品数量：\s*([0-9,]+)/u);
+  return {
+    requestedStart: requested.start,
+    requestedEnd: requested.end,
+    completedStart: completed.start,
+    completedEnd: completed.end,
+    rowCount: count ? Number(count[1].replace(/,/gu, "")) : 0,
+  };
+}
+
+export function selectPendingRequest(requests) {
+  return (Array.isArray(requests) ? requests : []).find((request) => request?.pending);
+}
+
+export function isSuccessfulCollectionResponse(result) {
+  if (!result || typeof result !== "object" || result.error) return false;
+  if (result.retCode !== undefined && result.retCode !== null && result.retCode !== "") {
+    return Number.isFinite(Number(result.retCode)) && Number(result.retCode) === 0;
+  }
+  if (result.status !== undefined && result.status !== null && result.status !== "") {
+    const status = Number(result.status);
+    return Number.isFinite(status) && status >= 200 && status < 300;
+  }
+  return false;
+}
+
+export function createCollectionAttemptTracker(
+  range,
+  {
+    now = () => Date.now(),
+    clickWindowMs = 60_000,
+    resultWindowMs = 60_000,
+  } = {},
+) {
+  const expectedStart = Number(range?.start);
+  const expectedEnd = Number(range?.end);
+  const attempts = new Map();
+  const snapshot = (progress = {}) => ({
+    requestedStart: Number(progress.requestedStart) || 0,
+    requestedEnd: Number(progress.requestedEnd) || 0,
+    completedEnd: Number(progress.completedEnd) || 0,
+    rowCount: Number(progress.rowCount) || 0,
+  });
+  const sameSnapshot = (left, right) => (
+    left.requestedStart === right.requestedStart
+    && left.requestedEnd === right.requestedEnd
+    && left.completedEnd === right.completedEnd
+    && left.rowCount === right.rowCount
+  );
+  const current = (marker) => attempts.get(marker);
+  const withinClickWindow = (attempt) => (
+    Number.isFinite(attempt?.clickStartedAt)
+    && now() - attempt.clickStartedAt <= clickWindowMs
+  );
+
+  return {
+    arm(marker, baseline, resultBaselines = [], resultNodes = []) {
+      const existing = current(marker);
+      if (existing?.clickGeneration > 0) return;
+      attempts.set(marker, {
+        baselines: [snapshot(baseline), ...(Array.isArray(resultBaselines) ? resultBaselines.map(snapshot) : [])],
+        baselineNodes: Array.isArray(resultNodes) ? resultNodes : [],
+        clickGeneration: 0,
+        clickStartedAt: null,
+        requestGeneration: 0,
+        requestFailed: false,
+        responseGeneration: 0,
+        resultGeneration: 0,
+        pendingResultGeneration: 0,
+      });
+    },
+    retryClick(marker) {
+      const attempt = current(marker);
+      if (!attempt || attempt.clickGeneration === 0) return;
+      attempt.clickStartedAt = now();
+      attempt.clickEndedAt = null;
+    },
+    beginClick(marker) {
+      const attempt = current(marker);
+      if (!attempt) return;
+      attempt.clickGeneration += 1;
+      attempt.clickStartedAt = now();
+      attempt.requestGeneration = 0;
+      attempt.requestFailed = false;
+      attempt.responseGeneration = 0;
+      attempt.resultGeneration = 0;
+      attempt.pendingResultGeneration = 0;
+    },
+    endClick(marker) {
+      const attempt = current(marker);
+      if (attempt) attempt.clickEndedAt = now();
+    },
+    recordRequest(marker, request = {}) {
+      const attempt = current(marker);
+      const page = Number(request.page);
+      const flag = String(request.flag || "");
+      const hasPage = Number.isInteger(page) && page > 0;
+      const isPageRequest = request.apiKey === "request"
+        && /^XWS_PAGE_REQUEST_[0-9]+$/u.test(flag);
+      const matchesCollectionRequest = isPageRequest
+        && (!hasPage || page === expectedStart);
+      if (!withinClickWindow(attempt)
+        || !matchesCollectionRequest
+        || !flag
+        || attempt.requestGeneration !== 0) return false;
+      attempt.requestGeneration = attempt.clickGeneration;
+      attempt.requestStartedAt = now();
+      attempt.request = request;
+      request.attemptGeneration = attempt.clickGeneration;
+      return true;
+    },
+    recordResponse(marker, response = {}) {
+      const attempt = current(marker);
+      if (!attempt
+        || attempt.requestGeneration !== attempt.clickGeneration
+        || String(response.flag || "") !== String(attempt.request?.flag || "")) return false;
+      const hasRetCode = response.retCode !== undefined && response.retCode !== null && response.retCode !== "";
+      const hasStatus = response.status !== undefined && response.status !== null && response.status !== "";
+      const successful = !response.error && (
+        (hasRetCode && Number.isFinite(Number(response.retCode)) && Number(response.retCode) === 0)
+        || (!hasRetCode && hasStatus && Number.isFinite(Number(response.status))
+          && Number(response.status) >= 200 && Number(response.status) < 300)
+      );
+      if (!successful) {
+        attempt.requestFailed = true;
+        return false;
+      }
+      attempt.responseGeneration = attempt.clickGeneration;
+      attempt.responseObservedAt = now();
+      if (attempt.pendingResultGeneration === attempt.clickGeneration
+        && attempt.pendingResultAt - attempt.requestStartedAt <= resultWindowMs
+        && attempt.responseObservedAt - attempt.requestStartedAt <= resultWindowMs) {
+        attempt.resultGeneration = attempt.clickGeneration;
+      }
+      return true;
+    },
+    recordResult(marker, progress, nodeId = "") {
+      const attempt = current(marker);
+      if (!attempt) return false;
+      if (nodeId && attempt.baselineNodes.includes(nodeId)) return false;
+      const result = snapshot(progress);
+      if (result.requestedStart !== expectedStart
+        || result.requestedEnd !== expectedEnd
+        || attempt.baselines.some((baseline) => sameSnapshot(result, baseline))) return false;
+      const observedAt = now();
+      if (attempt.requestGeneration === attempt.clickGeneration
+        && attempt.responseGeneration === attempt.clickGeneration
+        && attempt.clickGeneration > 0) {
+        if (observedAt - attempt.requestStartedAt > resultWindowMs) return false;
+        attempt.resultGeneration = attempt.clickGeneration;
+        return true;
+      }
+      if (attempt.requestGeneration === attempt.clickGeneration
+        && observedAt - attempt.requestStartedAt > resultWindowMs) return false;
+      if (!withinClickWindow(attempt)
+        && attempt.requestGeneration !== attempt.clickGeneration) return false;
+      attempt.pendingResultGeneration = attempt.clickGeneration;
+      attempt.pendingResultAt = observedAt;
+      return true;
+    },
+    isClickObserved(marker) {
+      const attempt = current(marker);
+      return Boolean(attempt?.clickGeneration > 0);
+    },
+    isFailed(marker) {
+      return current(marker)?.requestFailed === true;
+    },
+    isStarted(marker) {
+      const attempt = current(marker);
+      return Boolean(
+        attempt?.clickGeneration > 0
+        && attempt.requestGeneration === attempt.clickGeneration
+        && !attempt.requestFailed
+      );
+    },
+    isOwned(marker) {
+      const attempt = current(marker);
+      return Boolean(
+        attempt?.clickGeneration > 0
+        && attempt.requestGeneration === attempt.clickGeneration
+        && attempt.responseGeneration === attempt.clickGeneration
+        && attempt.resultGeneration === attempt.clickGeneration,
+      );
+    },
+  };
+}
+
 export function collectionActivitySignature(progress = {}, diagnostics = {}) {
   const requests = Array.isArray(diagnostics.requests) ? diagnostics.requests : [];
   const messages = Array.isArray(diagnostics.messages) ? diagnostics.messages : [];
@@ -203,10 +426,8 @@ export function collectionStallReason({
   stallMs,
   deadlineMs,
   diagnosticKind,
-  activePage = null,
 }) {
   if (elapsedMs >= deadlineMs) return "deadline";
-  if (Number.isInteger(activePage)) return "";
   if (diagnosticKind === "REQUEST_PENDING") return "";
   if (idleMs >= stallMs) return "idle";
   return "";

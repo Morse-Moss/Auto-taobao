@@ -8,9 +8,14 @@ import {
   collectionDeadlineMs,
   collectionStallReason,
   classifyCollection,
+  collectionResultSnapshot,
+  createCollectionAttemptTracker,
+  isSuccessfulCollectionResponse,
   detectRiskMarkers,
   parseProgressText,
   parseOptions,
+  selectExportResultDialog,
+  selectPendingRequest,
   selectTaobaoSearchTarget,
   validateDataset,
 } from "../scripts/flow.mjs";
@@ -20,6 +25,67 @@ const resultText = ({ completed = 20, rows = 707 } = {}) => [
   "\u60a8\u641c\u7d22\u7684\u9875\u6570\uff1a\u7b2c 1 ~ 40 \u9875\uff0c\u5df2\u6210\u529f\u83b7\u53d6\uff1a\u7b2c 1 ~ " + completed + " \u9875",
   "\u5546\u54c1\u6570\u91cf\uff1a" + rows,
 ].join("\n");
+
+test("selects only the result dialog that matches the current export attempt", () => {
+  const current = "【 浴缸 】销量排序Top118 - 2026-09-05 17:27 - 市场数据分析\n您搜索的页数：第 22 ~ 40 页，已成功获取：第 22 ~ 24 页\n商品数量：118";
+  const stale = "【 浴缸 】销量排序Top921 - 2026-09-05 16:31 - 市场数据分析\n您搜索的页数：第 1 ~ 40 页，已成功获取：第 1 ~ 21 页\n商品数量：921";
+
+  assert.equal(selectExportResultDialog([stale, current], {
+    keyword: "浴缸",
+    requestedStart: 22,
+    requestedEnd: 40,
+    completedStart: 22,
+    completedEnd: 24,
+    rowCount: 118,
+  }), 1);
+  assert.throws(() => selectExportResultDialog([stale], {
+    keyword: "浴缸",
+    requestedStart: 22,
+    requestedEnd: 40,
+    completedStart: 22,
+    completedEnd: 24,
+    rowCount: 118,
+  }), /matching result dialog/iu);
+});
+
+test("rejects ambiguous result dialogs for the same export attempt", () => {
+  const current = "【 浴缸 】销量排序Top118 - 2026-09-05 17:27 - 市场数据分析\n您搜索的页数：第 22 ~ 40 页，已成功获取：第 22 ~ 24 页\n商品数量：118";
+  assert.throws(() => selectExportResultDialog([current, current], {
+    keyword: "浴缸",
+    requestedStart: 22,
+    requestedEnd: 40,
+    completedStart: 22,
+    completedEnd: 24,
+    rowCount: 118,
+  }), /received 2/iu);
+});
+
+test("selects the matching result dialog owned by the current attempt", () => {
+  const text = "【 浴缸 】销量排序Top118 - 2026-09-05 17:27 - 市场数据分析\n您搜索的页数：第 22 ~ 40 页，已成功获取：第 22 ~ 24 页\n商品数量：118";
+  assert.equal(selectExportResultDialog([
+    { text, attemptMarker: "historical-attempt" },
+    { text, attemptMarker: "current-attempt" },
+  ], {
+    keyword: "浴缸",
+    requestedStart: 22,
+    requestedEnd: 40,
+    completedStart: 22,
+    completedEnd: 24,
+    rowCount: 118,
+    attemptMarker: "current-attempt",
+  }), 1);
+  assert.throws(() => selectExportResultDialog([
+    { text, attemptMarker: "historical-attempt" },
+  ], {
+    keyword: "浴缸",
+    requestedStart: 22,
+    requestedEnd: 40,
+    completedStart: 22,
+    completedEnd: 24,
+    rowCount: 118,
+    attemptMarker: "current-attempt",
+  }), /received 0/iu);
+});
 
 test("proxy health must identify the bound Edge browser", () => {
   assert.equal(assertProxyBrowserHealth({ status: "ok", connected: true, browser: { id: "edge" } }), true);
@@ -35,6 +101,323 @@ test("proxy health must identify the bound Edge browser", () => {
     () => assertProxyBrowserHealth({ status: "ok", connected: true, browser: {} }),
     /browser mismatch.*<missing>/iu,
   );
+});
+
+test("result snapshot ignores decoration text outside structured collection progress", () => {
+  const progress = "您搜索的页数：第 22 ~ 40 页，已成功获取：第 22 页\n商品数量：45";
+  assert.deepEqual(
+    collectionResultSnapshot(`提示 A\n${progress}`),
+    collectionResultSnapshot(`提示 B\n${progress}`),
+  );
+});
+
+test("accepts only explicitly successful collection responses", () => {
+  assert.equal(isSuccessfulCollectionResponse({ retCode: 0 }), true);
+  assert.equal(isSuccessfulCollectionResponse({ status: 200 }), true);
+  assert.equal(isSuccessfulCollectionResponse({ retCode: 1 }), false);
+  assert.equal(isSuccessfulCollectionResponse({ status: 500 }), false);
+  assert.equal(isSuccessfulCollectionResponse({ error: "failed" }), false);
+  assert.equal(isSuccessfulCollectionResponse({ retCode: null }), false);
+  assert.equal(isSuccessfulCollectionResponse({ status: null }), false);
+  assert.equal(isSuccessfulCollectionResponse({}), false);
+});
+
+test("does not bind a request that starts outside the real start-click dispatch", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.recordRequest("attempt", { page: 22 });
+  tracker.beginClick("attempt");
+  tracker.endClick("attempt");
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+
+  assert.equal(tracker.isOwned("attempt"), false);
+});
+
+test("ignores unrelated requests during the real start-click dispatch", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { page: 1, flag: "UNRELATED_REQUEST" });
+  tracker.endClick("attempt");
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+
+  assert.equal(tracker.isOwned("attempt"), false);
+});
+
+test("rejects an unrelated API request that carries the expected page", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", {
+    apiKey: "analytics",
+    page: 22,
+    flag: "ANALYTICS_PAGE_22",
+  });
+  tracker.endClick("attempt");
+  tracker.recordResponse("attempt", { flag: "ANALYTICS_PAGE_22" });
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+
+  assert.equal(tracker.isOwned("attempt"), false);
+});
+
+test("binds a real collection request when the plugin omits its page parameter", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.endClick("attempt");
+  tracker.recordRequest("attempt", {
+    apiKey: "request",
+    flag: "XWS_PAGE_REQUEST_06272008929073556",
+  });
+  tracker.recordResponse("attempt", {
+    flag: "XWS_PAGE_REQUEST_06272008929073556",
+    retCode: 0,
+  });
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+
+  assert.equal(tracker.isOwned("attempt"), true);
+});
+
+test("rejects a page-less background request during the click window", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", {
+    apiKey: "analytics",
+    flag: "BACKGROUND_REQUEST",
+  });
+  tracker.endClick("attempt");
+  tracker.recordResponse("attempt", { flag: "BACKGROUND_REQUEST" });
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+
+  assert.equal(tracker.isOwned("attempt"), false);
+});
+
+test("binds an expected-page request deferred until after click dispatch", () => {
+  let currentTime = 10_000;
+  const tracker = createCollectionAttemptTracker(
+    { start: 22, end: 40 },
+    { now: () => currentTime, clickWindowMs: 2_000 },
+  );
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.endClick("attempt");
+  currentTime += 25;
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_22" });
+  currentTime += 25;
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", status: 200 });
+
+  assert.equal(tracker.isOwned("attempt"), true);
+});
+
+test("rejects a matching result generation long after the request response", () => {
+  let currentTime = 10_000;
+  const tracker = createCollectionAttemptTracker(
+    { start: 22, end: 40 },
+    { now: () => currentTime, resultWindowMs: 15_000 },
+  );
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_22" });
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", status: 200 });
+  currentTime += 15_001;
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+
+  assert.equal(tracker.isOwned("attempt"), false);
+});
+
+test("pairs duplicate collection flags with the first pending request", () => {
+  const first = { flag: "XWS_PAGE_REQUEST_22", pending: true, id: "first" };
+  const second = { flag: "XWS_PAGE_REQUEST_22", pending: true, id: "second" };
+  assert.equal(selectPendingRequest([first, second]).id, "first");
+  first.pending = false;
+  assert.equal(selectPendingRequest([first, second]).id, "second");
+});
+
+test("does not accept a collection finish without an explicit success code", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", flag: "XWS_PAGE_REQUEST_22" });
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22" });
+
+  assert.equal(tracker.isStarted("attempt"), false);
+  assert.equal(tracker.isFailed("attempt"), true);
+});
+
+test("does not report startup for a failed collection response", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", flag: "XWS_PAGE_REQUEST_22" });
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", retCode: 500, error: "failed" });
+
+  assert.equal(tracker.isStarted("attempt"), false);
+});
+
+test("does not own a result until the accepted request flag finishes", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_22" });
+  tracker.endClick("attempt");
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+
+  assert.equal(tracker.isStarted("attempt"), true);
+  assert.equal(tracker.isOwned("attempt"), false);
+  tracker.recordResponse("attempt", { flag: "BACKGROUND_REQUEST" });
+  assert.equal(tracker.isOwned("attempt"), false);
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", status: 200 });
+  assert.equal(tracker.isOwned("attempt"), true);
+});
+
+test("keeps a delayed collection running after startup evidence arrives", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", flag: "XWS_PAGE_REQUEST_22" });
+  tracker.endClick("attempt");
+
+  assert.equal(tracker.isStarted("attempt"), true);
+  assert.equal(tracker.isOwned("attempt"), false);
+});
+
+test("binds a collection request that arrives several seconds after the click", () => {
+  let currentTime = 10_000;
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 }, { now: () => currentTime });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.endClick("attempt");
+  currentTime += 5_000;
+  tracker.recordRequest("attempt", { apiKey: "request", flag: "XWS_PAGE_REQUEST_22" });
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", status: 200 });
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+
+  assert.equal(tracker.isOwned("attempt"), true);
+});
+
+test("rejects a result observed after a pending request exceeds the result window", () => {
+  let currentTime = 10_000;
+  const tracker = createCollectionAttemptTracker(
+    { start: 22, end: 40 },
+    { now: () => currentTime, resultWindowMs: 15_000 },
+  );
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_22" });
+  tracker.endClick("attempt");
+  currentTime += 15_001;
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+  currentTime += 1;
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", status: 200 });
+
+  assert.equal(tracker.isOwned("attempt"), false);
+});
+
+test("refreshes result baselines until the first start click", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  const initial = { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 };
+  const latest = { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 };
+  tracker.arm("attempt", initial);
+  tracker.arm("attempt", latest);
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_22" });
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", status: 200 });
+  tracker.recordResult("attempt", latest);
+
+  assert.equal(tracker.isOwned("attempt"), false);
+});
+
+test("keeps a late first-click request in the same logical start after DOM fallback", () => {
+  let currentTime = 0;
+  const tracker = createCollectionAttemptTracker(
+    { start: 22, end: 40 },
+    { now: () => currentTime, clickWindowMs: 10_000 },
+  );
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  currentTime = 11_000;
+  tracker.retryClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_22" });
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", status: 200 });
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+
+  assert.equal(tracker.isOwned("attempt"), true);
+});
+
+test("does not let a stale response settle a newer click generation", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_1" });
+  tracker.endClick("attempt");
+
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_2" });
+  tracker.endClick("attempt");
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_1", status: 200 });
+
+  assert.equal(tracker.isOwned("attempt"), false);
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_2", status: 200 });
+  assert.equal(tracker.isOwned("attempt"), true);
+});
+
+test("rejects an expected-page request after the click correlation window", () => {
+  let currentTime = 10_000;
+  const tracker = createCollectionAttemptTracker(
+    { start: 22, end: 40 },
+    { now: () => currentTime, clickWindowMs: 2_000 },
+  );
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.endClick("attempt");
+  currentTime += 2_001;
+  tracker.recordRequest("attempt", { page: 22, flag: "BACKGROUND_PAGE_REQUEST" });
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+
+  assert.equal(tracker.isOwned("attempt"), false);
+});
+
+test("expires click correlation even when click propagation never reaches the end listener", () => {
+  let currentTime = 10_000;
+  const tracker = createCollectionAttemptTracker(
+    { start: 22, end: 40 },
+    { now: () => currentTime, clickWindowMs: 2_000 },
+  );
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  currentTime += 2_001;
+  tracker.recordRequest("attempt", { page: 22, flag: "LATE_PAGE_REQUEST" });
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+
+  assert.equal(tracker.isOwned("attempt"), false);
+});
+
+test("ignores historical result text changes without structured progress change", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  const baseline = { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 };
+  tracker.arm("attempt", baseline);
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_22" });
+  tracker.endClick("attempt");
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", status: 200 });
+  tracker.recordResult("attempt", baseline);
+
+  assert.equal(tracker.isOwned("attempt"), false);
+});
+
+test("reconciles one structured result generation observed before its click-bound request", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordResult("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 22, rowCount: 45 });
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_22" });
+  tracker.endClick("attempt");
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", status: 200 });
+
+  assert.equal(tracker.isOwned("attempt"), true);
 });
 
 test("parses partial collection progress", () => {
@@ -130,7 +513,7 @@ test("ignores countdown ticks but tracks request changes as collection activity"
   );
 });
 
-test("an in-flight page bypasses only the idle threshold", () => {
+test("a stale active-page label does not bypass the idle threshold after the request completes", () => {
   assert.equal(
     collectionStallReason({
       idleMs: 301_000,
@@ -140,7 +523,7 @@ test("an in-flight page bypasses only the idle threshold", () => {
       diagnosticKind: "REQUEST_COMPLETED",
       activePage: 20,
     }),
-    "",
+    "idle",
   );
 });
 

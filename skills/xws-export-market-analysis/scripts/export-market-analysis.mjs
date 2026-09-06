@@ -14,10 +14,14 @@ import {
   classifyCollection,
   collectionActivitySignature,
   collectionDeadlineMs,
+  collectionResultSnapshot,
   collectionStallReason,
+  createCollectionAttemptTracker,
   detectRiskMarkers,
   parseOptions,
   parseProgressText,
+  selectExportResultDialog,
+  selectPendingRequest,
   selectTaobaoSearchTarget,
   validateDataset,
 } from "./flow.mjs";
@@ -107,14 +111,7 @@ async function evaluate(proxy, target, expression) {
 }
 
 async function clickAt(proxy, target, selector) {
-  // Background targets can keep document.visibilityState=hidden; Xiaowangshen
-  // ignores toolbar clicks in that state. Use the proxy's optional foreground
-  // hook when available, while preserving compatibility with the shared proxy.
-  try {
-    await request(proxy, `/bringToFront?target=${encodeURIComponent(target)}`);
-  } catch {
-    // Older shared proxies do not expose this endpoint.
-  }
+  await request(proxy, `/bringToFront?target=${encodeURIComponent(target)}`);
   return request(proxy, `/clickAt?target=${encodeURIComponent(target)}`, {
     method: "POST",
     headers: { "content-type": "text/plain; charset=utf-8" },
@@ -694,53 +691,180 @@ async function configureAnalysis(proxy, options, runMarker, log) {
   log("CONFIGURED", { keyword: options.keyword, channel: options.channel, sort: options.sort, pages: options.pages, frequency: options.frequency });
 }
 
-async function startAnalysis(proxy, keyword, runMarker, log) {
-  const waitForResult = async (timeoutMs) => {
+async function startAnalysis(proxy, keyword, runMarker, log, { resultWaitMs = 60_000 } = {}) {
+  const attemptMarker = randomUUID();
+  const initialTarget = await discoverSearch(proxy, keyword, runMarker);
+  const trackingInstalled = await evaluate(proxy, initialTarget.targetId, `(() => {
+    const visible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    };
+    const start = document.querySelector('button[data-xws-start="1"]');
+    const source = start?.closest('.el-dialog__wrapper');
+    const diagnostics = window.__xwsCollectionDiag;
+    if (!source || !visible(source) || diagnostics?.version !== 5) return false;
+    for (const element of document.querySelectorAll('[data-xws-result-attempt]')) {
+      element.removeAttribute('data-xws-result-attempt');
+    }
+    window.__xwsResultAttemptObserver?.disconnect();
+    window.__xwsResultStartClickCleanup?.();
+    const wrapperFor = (node) => node?.nodeType === Node.ELEMENT_NODE
+      ? (node.matches?.('.el-dialog__wrapper') ? node : node.closest?.('.el-dialog__wrapper'))
+      : node?.parentElement?.closest?.('.el-dialog__wrapper');
+    const mark = (node) => {
+      const wrapper = wrapperFor(node);
+      if (!wrapper) return;
+      const owned = diagnostics.isOwnedAttempt?.(${JSON.stringify(attemptMarker)}) === true;
+      if (!owned || !(wrapper.innerText || '').includes('商品数量')) return;
+      wrapper.setAttribute('data-xws-result-attempt', ${JSON.stringify(attemptMarker)});
+    };
+    const recordWrapper = (wrapper) => {
+      if (!wrapper) return;
+      diagnostics.recordResultMutation?.(${JSON.stringify(attemptMarker)}, wrapper);
+      mark(wrapper);
+    };
+    const startButton = (target) => target?.closest?.('button[data-xws-start="1"]');
+    const recordStartClick = (event) => {
+      const button = startButton(event.target);
+      if (!button || !source.contains(button)) return;
+      diagnostics.recordStartClick?.(${JSON.stringify(attemptMarker)}, source);
+    };
+    const recordEndClick = (event) => {
+      const button = startButton(event.target);
+      if (button && source.contains(button)) {
+        diagnostics.endStartClick?.(${JSON.stringify(attemptMarker)});
+      }
+    };
+    window.addEventListener('click', recordStartClick, true);
+    window.addEventListener('click', recordEndClick);
+    window.__xwsResultStartClickCleanup = () => {
+      window.removeEventListener('click', recordStartClick, true);
+      window.removeEventListener('click', recordEndClick);
+    };
+    const observationRoot = source.parentElement || document.body;
+    window.__xwsResultAttemptObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        const wrappers = [wrapperFor(mutation.target), ...[...(mutation.addedNodes || [])].map(wrapperFor)].filter(Boolean);
+        for (const wrapper of new Set(wrappers)) recordWrapper(wrapper);
+      }
+    });
+    window.__xwsResultAttemptObserver.observe(observationRoot, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    window.__xwsMarkResultAttempt = () => {
+      const wrappers = [...document.querySelectorAll('.el-dialog__wrapper')];
+      for (const wrapper of wrappers) recordWrapper(wrapper);
+      return wrappers.some((wrapper) => wrapper.getAttribute('data-xws-result-attempt') === ${JSON.stringify(attemptMarker)});
+    };
+    return true;
+  })()`);
+  if (!trackingInstalled) throw new Error("Could not bind collection attempt to its source dialog");
+
+  const waitForStartup = async (timeoutMs) => {
     const deadline = Date.now() + timeoutMs;
-    let state;
     while (Date.now() < deadline) {
-      state = await inspectDialogs(proxy, keyword, runMarker);
-      ensureNoRisk(state.visibleText, "Xiaowangshen collection");
-      if (state.result) return { ready: true, state };
+      const target = await discoverSearch(proxy, keyword, runMarker);
+      const state = await evaluate(proxy, target.targetId, `(() => {
+        const diagnostics = window.__xwsCollectionDiag;
+        return {
+          started: Boolean(
+            diagnostics
+            && typeof diagnostics.isStarted === 'function'
+            && diagnostics.isStarted(${JSON.stringify(attemptMarker)}),
+          ),
+          failed: Boolean(
+            diagnostics
+            && typeof diagnostics.isFailed === 'function'
+            && diagnostics.isFailed(${JSON.stringify(attemptMarker)}),
+          ),
+        };
+      })()`);
+      if (state?.failed) throw new Error("Xiaowangshen collection request failed");
+      if (state?.started) return true;
       await sleep(250);
     }
-    return { ready: false, state };
+    return false;
   };
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const target = await discoverSearch(proxy, keyword, runMarker);
+    const armed = await evaluate(proxy, target.targetId, `(() => {
+      const diagnostics = window.__xwsCollectionDiag;
+      const source = document.querySelector('button[data-xws-start="1"]')
+        ?.closest('.el-dialog__wrapper');
+      if (!source || diagnostics?.version !== 5 || typeof diagnostics.armAttempt !== 'function') return false;
+      diagnostics.armAttempt(${JSON.stringify(attemptMarker)}, source);
+      return true;
+    })()`);
+    if (!armed) throw new Error("Collection attempt diagnostics are unavailable");
     if (attempt === 1) {
       await clickAt(proxy, target.targetId, "button[data-xws-start=\"1\"]");
     } else {
       await clickDom(proxy, target.targetId, "button[data-xws-start=\"1\"]");
       log("COLLECTION_START_DOM_FALLBACK", { attempt, bounded: true });
     }
-    const outcome = await waitForResult(attempt === 1 ? 2_000 : 15_000);
-    if (outcome.ready) {
-      log("COLLECTION_STARTED", { attempt });
-      return;
-    }
-    if (attempt === 1 && outcome.state?.config) {
-      log("COLLECTION_START_RETRY", { reason: "result dialog did not open" });
-      continue;
-    }
-    if (attempt === 1) {
-      const delayed = await waitForResult(13_000);
-      if (delayed.ready) {
-        log("COLLECTION_STARTED", { attempt });
-        return;
+    const initialWaitMs = Math.min(resultWaitMs, 10_000);
+    let started = await waitForStartup(initialWaitMs);
+    if (!started && attempt === 1) {
+      const clickObserved = await evaluate(proxy, target.targetId, `(() => {
+        const diagnostics = window.__xwsCollectionDiag;
+        return Boolean(
+          diagnostics
+          && typeof diagnostics.isClickObserved === 'function'
+          && diagnostics.isClickObserved(${JSON.stringify(attemptMarker)}),
+        );
+      })()`);
+      if (clickObserved) {
+        started = await waitForStartup(Math.max(0, resultWaitMs - initialWaitMs));
+        if (!started) {
+          log("COLLECTION_START_RETRY", {
+            reason: "start click produced no collection request",
+          });
+          continue;
+        }
+      } else {
+        log("COLLECTION_START_RETRY", { reason: "start click was not observed" });
+        continue;
       }
     }
-    break;
+    if (started) {
+      log("COLLECTION_STARTED", { attempt });
+      return attemptMarker;
+    }
   }
   throw new Error("Xiaowangshen collection did not start");
 }
 
-async function installCollectionDiagnostics(proxy, keyword, runMarker, log) {
+async function installCollectionDiagnostics(proxy, keyword, runMarker, pages, log) {
   const target = await discoverSearch(proxy, keyword, runMarker);
   const installed = await evaluate(proxy, target.targetId, `(() => {
-    if (window.__xwsCollectionDiag?.installed) return { ok: true, reused: true };
-    const state = { installed: true, installedAt: new Date().toISOString(), requests: [], messages: [], byFlag: Object.create(null) };
+    const range = ${JSON.stringify(pages)};
+    if (window.__xwsCollectionDiag?.version === 5
+      && window.__xwsCollectionDiag?.range?.start === range.start
+      && window.__xwsCollectionDiag?.range?.end === range.end) {
+      return { ok: true, reused: true };
+    }
+    const collectionResultSnapshot = ${collectionResultSnapshot.toString()};
+    const selectPendingRequest = ${selectPendingRequest.toString()};
+    const createCollectionAttemptTracker = ${createCollectionAttemptTracker.toString()};
+    const attemptTracker = createCollectionAttemptTracker(range);
+    const resultNodeIds = new WeakMap();
+    let nextResultNodeId = 1;
+    const resultNodeId = (node) => {
+      if (!node || (typeof node !== 'object' && typeof node !== 'function')) return '';
+      let id = resultNodeIds.get(node);
+      if (!id) {
+        id = 'result-' + nextResultNodeId++;
+        resultNodeIds.set(node, id);
+      }
+      return id;
+    };
+    const resultWrappers = () => [...document.querySelectorAll('.el-dialog__wrapper')];
+    const state = { installed: true, installedAt: new Date().toISOString(), requests: [], messages: [], byFlag: Object.create(null), activeAttempt: '' };
     const resultSummary = (result) => {
       if (!result || typeof result !== 'object') return {};
       const resultKeys = Object.keys(result).slice(0, 40);
@@ -752,8 +876,8 @@ async function installCollectionDiagnostics(proxy, keyword, runMarker, log) {
       }
       return { resultKeys, ...(Number.isInteger(itemCount) ? { itemCount } : {}) };
     };
-    const originalPageRequest = window.xwsPageRequest;
-    if (typeof originalPageRequest === 'function' && !originalPageRequest.__xwsDiagWrapped) {
+    const originalPageRequest = window.xwsPageRequest?.__xwsDiagOriginal || window.xwsPageRequest;
+    if (typeof originalPageRequest === 'function') {
       const wrappedPageRequest = function(option, flag, bool = false) {
         const params = option?.params && typeof option.params === 'object' ? option.params : {};
         const pageValue = Number(params.page ?? params.pageNum ?? params.currentPage);
@@ -769,10 +893,19 @@ async function installCollectionDiagnostics(proxy, keyword, runMarker, log) {
         };
         state.requests.push(record);
         if (state.requests.length > 200) state.requests.shift();
-        if (record.flag) state.byFlag[record.flag] = record;
+        if (record.flag) {
+          const queue = state.byFlag[record.flag] || [];
+          queue.push(record);
+          state.byFlag[record.flag] = queue;
+        }
+        if (attemptTracker.recordRequest(state.activeAttempt, record)) {
+          record.attemptMarker = state.activeAttempt;
+        }
         return originalPageRequest.call(this, option, flag, bool);
       };
       wrappedPageRequest.__xwsDiagWrapped = true;
+      wrappedPageRequest.__xwsDiagVersion = 5;
+      wrappedPageRequest.__xwsDiagOriginal = originalPageRequest;
       window.xwsPageRequest = wrappedPageRequest;
     }
     const proto = XMLHttpRequest.prototype;
@@ -807,19 +940,71 @@ async function installCollectionDiagnostics(proxy, keyword, runMarker, log) {
       const error = result && typeof result === "object" ? result.error : "";
       const summary = resultSummary(result);
       const flag = type.replace(/_FINISH$/u, '');
-      const request = state.byFlag[flag];
+      const request = selectPendingRequest(state.byFlag[flag]);
       if (request) {
         request.pending = false;
         request.status = Number.isFinite(result?.retCode) ? Number(result.retCode) : 200;
         request.elapsedMs = Math.round(performance.now() - request.startedAt);
         Object.assign(request, summary);
         if (error) request.error = String(error).slice(0, 300);
+        if (request.attemptMarker) {
+          attemptTracker.recordResponse(
+            request.attemptMarker,
+            {
+              flag,
+              retCode: result?.retCode,
+              status: result?.status,
+              ...(error ? { error } : {}),
+            },
+          );
+        }
       }
       state.messages.push({ type, ...summary, ...(error ? { error: String(error).slice(0, 300) } : {}) });
       if (state.messages.length > 200) state.messages.shift();
     });
     window.__xwsCollectionDiag = {
       installed: true,
+      version: 5,
+      range,
+      armAttempt: (marker, source) => {
+        state.activeAttempt = marker;
+        const wrappers = resultWrappers();
+        attemptTracker.arm(
+          marker,
+          collectionResultSnapshot(source?.innerText || ''),
+          wrappers.map((wrapper) => collectionResultSnapshot(wrapper.innerText || '')),
+          wrappers.map(resultNodeId),
+        );
+      },
+      recordStartClick: (marker, source) => {
+        if (state.activeAttempt !== marker) return;
+        const wrappers = resultWrappers();
+        attemptTracker.arm(
+          marker,
+          collectionResultSnapshot(source?.innerText || ''),
+          wrappers.map((wrapper) => collectionResultSnapshot(wrapper.innerText || '')),
+          wrappers.map(resultNodeId),
+        );
+        if (attemptTracker.isClickObserved?.(marker)) {
+          attemptTracker.retryClick?.(marker);
+        } else {
+          attemptTracker.beginClick(marker);
+        }
+      },
+      endStartClick: (marker) => {
+        attemptTracker.endClick(marker);
+      },
+      recordResultMutation: (marker, source) => {
+        attemptTracker.recordResult(
+          marker,
+          collectionResultSnapshot(source?.innerText || ''),
+          resultNodeId(source),
+        );
+      },
+      isClickObserved: (marker) => attemptTracker.isClickObserved(marker),
+      isFailed: (marker) => attemptTracker.isFailed(marker),
+      isStarted: (marker) => attemptTracker.isStarted(marker),
+      isOwnedAttempt: (marker) => attemptTracker.isOwned(marker),
       snapshot: () => ({
         capturedAt: new Date().toISOString(),
         visibility: document.visibilityState,
@@ -837,7 +1022,7 @@ async function installCollectionDiagnostics(proxy, keyword, runMarker, log) {
   log("DIAGNOSTICS_INSTALLED", { reused: Boolean(installed.reused) });
 }
 
-async function readCollectionSnapshot(proxy, keyword, runMarker) {
+async function readCollectionSnapshot(proxy, keyword, runMarker, attemptMarker) {
   const target = await discoverSearch(proxy, keyword, runMarker);
   const state = await evaluate(proxy, target.targetId, `(() => {
     const visible = (element) => {
@@ -846,22 +1031,32 @@ async function readCollectionSnapshot(proxy, keyword, runMarker) {
       const rect = element.getBoundingClientRect();
       return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
     };
+    window.__xwsMarkResultAttempt?.();
     const wrappers = [...document.querySelectorAll('.el-dialog__wrapper')].filter(visible);
-    const result = wrappers.find((element) => (element.innerText || '').includes('商品数量'));
-    const text = result?.innerText || wrappers.map((element) => element.innerText || '').join('\\n');
-    const diagnostics = window.__xwsCollectionDiag?.snapshot?.() || {
+    const result = wrappers.find((element) =>
+      element.getAttribute('data-xws-result-attempt') === ${JSON.stringify(attemptMarker)});
+    const text = result?.innerText || '';
+    const visibleText = wrappers.map((element) => element.innerText || '').join('\\n');
+    const collectionDiagnostics = window.__xwsCollectionDiag;
+    const diagnostics = collectionDiagnostics?.snapshot?.() || {
       capturedAt: new Date().toISOString(),
       visibility: document.visibilityState,
       readyState: document.readyState,
       requests: [],
       messages: [],
     };
-    return { text: text.slice(0, 6000), title: document.title, diagnostics };
+    return {
+      text: text.slice(0, 6000),
+      visibleText: visibleText.slice(0, 6000),
+      title: document.title,
+      diagnostics,
+      attemptFailed: collectionDiagnostics?.isFailed?.(${JSON.stringify(attemptMarker)}) === true,
+    };
   })()`);
   return { ...state, diagnostics: normalizeDiagnosticSnapshot(state.diagnostics), targetId: target.targetId };
 }
 
-async function monitorCollection(proxy, options, runMarker, runDir, log) {
+async function monitorCollection(proxy, options, runMarker, attemptMarker, runDir, log) {
   let lastSignature = "";
   let lastDiagnosticSignature = "";
   const startedAt = Date.now();
@@ -869,9 +1064,9 @@ async function monitorCollection(proxy, options, runMarker, runDir, log) {
   const pageCount = options.pages.end - options.pages.start + 1;
   const deadlineMs = collectionDeadlineMs({ pageCount, frequencyMaxSeconds: options.frequency.max });
   while (true) {
-    const snapshot = await readCollectionSnapshot(proxy, options.keyword, runMarker);
+    const snapshot = await readCollectionSnapshot(proxy, options.keyword, runMarker, attemptMarker);
+    ensureNoRisk(snapshot.visibleText, "Xiaowangshen collection");
     const status = classifyCollection(snapshot);
-    ensureNoRisk(snapshot.text, "Xiaowangshen collection");
     const progress = parseProgressText(snapshot.text);
     const diagnostics = normalizeDiagnosticSnapshot(snapshot.diagnostics);
     const diagnosticKind = classifyDiagnosticState(diagnostics);
@@ -906,6 +1101,9 @@ async function monitorCollection(proxy, options, runMarker, runDir, log) {
         messageCount: diagnostics.messages.length,
         lastMessage: diagnostics.messages.at(-1) || null,
       });
+    }
+    if (snapshot.attemptFailed) {
+      throw new Error("Xiaowangshen collection request failed");
     }
     if (status === "COMPLETE") return { progress, snapshot, diagnostics, diagnosticKind };
     const now = Date.now();
@@ -1075,33 +1273,71 @@ async function waitForDownload(directory, baseline, extension, startedAt, deadli
   throw new Error(`Timed out waiting for ${extension} download`);
 }
 
-async function exportCsv(proxy, options, runMarker, runDir, directory, log, progress, reason = "final") {
+async function markResultDialogControl(proxy, targetId, options, progress, attemptMarker, { attribute, controlSelector, controlText = "" }) {
+  const dialogEntries = await evaluate(proxy, targetId, `(() => {
+    const visible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    };
+    return [...document.querySelectorAll('.el-dialog__wrapper')]
+      .filter((element) => visible(element) && (element.innerText || '').includes('商品数量'))
+      .map((element) => ({
+        text: element.innerText || '',
+        attemptMarker: element.getAttribute('data-xws-result-attempt') || '',
+      }));
+  })()`);
+  const index = selectExportResultDialog(dialogEntries, {
+    ...progress,
+    keyword: options.keyword,
+    attemptMarker,
+  });
+  const selectedText = dialogEntries[index].text;
+  const marker = randomUUID();
+  const marked = await evaluate(proxy, targetId, `(() => {
+    const visible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    };
+    const dialogs = [...document.querySelectorAll('.el-dialog__wrapper')]
+      .filter((element) => visible(element)
+        && element.getAttribute('data-xws-result-attempt') === ${JSON.stringify(attemptMarker)}
+        && (element.innerText || '') === ${JSON.stringify(selectedText)});
+    if (dialogs.length !== 1) return { ok: false, reason: 'result dialog changed', count: dialogs.length };
+    for (const element of document.querySelectorAll('[${attribute}]')) element.removeAttribute('${attribute}');
+    const controls = [...dialogs[0].querySelectorAll(${JSON.stringify(controlSelector)})]
+      .filter((element) => visible(element) && (!${JSON.stringify(controlText)} || (element.innerText || '').includes(${JSON.stringify(controlText)})));
+    if (controls.length !== 1) return { ok: false, reason: 'export control is ambiguous', count: controls.length };
+    controls[0].setAttribute(${JSON.stringify(attribute)}, ${JSON.stringify(marker)});
+    return { ok: true };
+  })()`);
+  if (!marked?.ok) throw new Error(`${marked?.reason || "export control is missing"}: received ${marked?.count ?? 0}`);
+  return `[${attribute}=${JSON.stringify(marker)}]`;
+}
+
+async function exportCsv(proxy, options, runMarker, attemptMarker, runDir, directory, log, progress, reason = "final") {
   const baseline = await listFiles(directory);
   const before = new Set(baseline.map(fileIdentity));
   let { intent, intentPath } = await openExportIntent({ runDir, runId: runMarker, options, directory, kind: "csv", baseline, progress, reason });
   try {
     const target = await discoverSearch(proxy, options.keyword, runMarker);
-    const expression = `(() => {
-      const visible = (element) => {
-        if (!element) return false;
-        const style = getComputedStyle(element);
-        const rect = element.getBoundingClientRect();
-        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
-      };
-      const buttons = [...document.querySelectorAll('button')];
-      const button = buttons.find((candidate) => visible(candidate) && (candidate.innerText || '').includes('导出csv表格'));
-      if (!button) return false;
-      button.setAttribute('data-xws-export-csv', '1');
-      return true;
-    })()`;
-    if (!(await evaluate(proxy, target.targetId, expression))) throw new Error("CSV export button is missing");
+    const selector = await markResultDialogControl(proxy, target.targetId, options, progress, attemptMarker, {
+      attribute: "data-xws-export-csv",
+      controlSelector: "button",
+      controlText: "导出csv表格",
+    });
     const fresh = await discoverSearch(proxy, options.keyword, runMarker);
-    await clickAt(proxy, fresh.targetId, "button[data-xws-export-csv=\"1\"]");
+    if (fresh.targetId !== target.targetId) throw new Error("export target identity changed before CSV activation");
+    await clickAt(proxy, fresh.targetId, selector);
   } catch (error) {
     intent = await closeExportIntent(intentPath, intent, "REJECTED", {
       reason: "export_action_failed",
       lastError: error.message,
     });
+    error.exportFailureReason = "export_action_failed";
     throw error;
   }
   log("EXPORT_STARTED", { format: "csv", reason, intent: intentPath, deadlineAt: intent.deadlineAt });
@@ -1131,50 +1367,129 @@ async function exportCsv(proxy, options, runMarker, runDir, directory, log, prog
   }
 }
 
-async function exportXlsx(proxy, options, runMarker, runDir, directory, withImages, log, progress, csv, reason = "final") {
+async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, directory, withImages, log, progress, csv, reason = "final") {
   const baseline = await listFiles(directory);
   const before = new Set(baseline.map(fileIdentity));
   let { intent, intentPath } = await openExportIntent({ runDir, runId: runMarker, options, directory, kind: "xlsx", baseline, progress, reason });
   try {
     let target = await discoverSearch(proxy, options.keyword, runMarker);
-    const caret = await evaluate(proxy, target.targetId, `(() => {
-      const button = [...document.querySelectorAll('.el-button-group .el-dropdown__caret-button')].find((candidate) => {
-        const rect = candidate.getBoundingClientRect();
-        return getComputedStyle(candidate).display !== 'none' && rect.width > 0 && rect.height > 0;
-      });
-      if (!button) return false;
-      button.setAttribute('data-xws-export-caret', '1');
-      return true;
-    })()`);
-    if (!caret) throw new Error("XLSX export menu is missing");
+    const targetId = target.targetId;
+    const caretSelector = await markResultDialogControl(proxy, targetId, options, progress, attemptMarker, {
+      attribute: "data-xws-export-caret",
+      controlSelector: ".el-button-group .el-dropdown__caret-button",
+    });
     target = await discoverSearch(proxy, options.keyword, runMarker);
-    await clickAt(proxy, target.targetId, ".el-button-group .el-dropdown__caret-button[data-xws-export-caret=\"1\"]");
+    if (target.targetId !== targetId) throw new Error("export target identity changed before XLSX menu activation");
     const itemText = withImages ? "导出xlsx表格（带图片）" : "导出xlsx表格";
+    const menuBaseline = randomUUID();
+    const menuBinding = await evaluate(proxy, targetId, `(() => {
+      const visible = (element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+      };
+      const caret = document.querySelector(${JSON.stringify(caretSelector)});
+      if (!caret) return { ok: false, menuIds: [] };
+      const menuIds = [
+        caret.getAttribute('aria-controls'),
+        caret.getAttribute('aria-owns'),
+      ].filter(Boolean).flatMap((value) => value.trim().split(/\s+/u));
+      let hadVisibleItem = false;
+      for (const element of document.querySelectorAll('.el-dropdown-menu__item')) {
+        const isVisible = visible(element);
+        const isTarget = (element.innerText || '').trim() === ${JSON.stringify(itemText)};
+        const menu = element.closest('.el-dropdown-menu');
+        const owned = menuIds.length === 0 || Boolean(menu?.id && menuIds.includes(menu.id));
+        if (isVisible && isTarget && owned) hadVisibleItem = true;
+        element.setAttribute('data-xws-export-menu-baseline', ${JSON.stringify(menuBaseline)});
+        element.setAttribute('data-xws-export-menu-was-visible', isVisible ? '1' : '0');
+      }
+      return { ok: true, menuIds: [...new Set(menuIds)], hadVisibleItem };
+    })()`);
+    if (!menuBinding?.ok) throw new Error("XLSX caret disappeared before menu activation");
+    if (menuBinding.hadVisibleItem) {
+      await clickAt(proxy, targetId, caretSelector);
+      const closeDeadline = Date.now() + 2_000;
+      let menuClosed = false;
+      while (Date.now() < closeDeadline) {
+        target = await discoverSearch(proxy, options.keyword, runMarker);
+        if (target.targetId !== targetId) throw new Error("export target identity changed while closing the existing XLSX menu");
+        menuClosed = await evaluate(proxy, targetId, `(() => {
+          const visible = (element) => {
+            const rect = element.getBoundingClientRect();
+            const style = getComputedStyle(element);
+            return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+          };
+          const menuIds = ${JSON.stringify(menuBinding.menuIds || [])};
+          const items = [...document.querySelectorAll('[data-xws-export-menu-baseline=${JSON.stringify(menuBaseline)}][data-xws-export-menu-was-visible="1"]')]
+            .filter((element) => {
+              const menu = element.closest('.el-dropdown-menu');
+              const owned = menuIds.length === 0 || Boolean(menu?.id && menuIds.includes(menu.id));
+              return owned && (element.innerText || '').trim() === ${JSON.stringify(itemText)};
+            });
+          return items.length > 0 && items.every((element) => !visible(element));
+        })()`);
+        if (menuClosed) break;
+        await sleep(100);
+      }
+      if (!menuClosed) throw new Error("existing XLSX menu did not close before activation");
+      await evaluate(proxy, targetId, `(() => {
+        for (const element of document.querySelectorAll('[data-xws-export-menu-baseline=${JSON.stringify(menuBaseline)}]')) {
+          element.setAttribute('data-xws-export-menu-was-visible', '0');
+        }
+        return true;
+      })()`);
+    }
+    await clickAt(proxy, targetId, caretSelector);
+    const marker = randomUUID();
     const menuDeadline = Date.now() + 5_000;
     let menuReady = false;
     while (Date.now() < menuDeadline) {
       target = await discoverSearch(proxy, options.keyword, runMarker);
-      menuReady = await evaluate(proxy, target.targetId, `(() => {
-        const item = [...document.querySelectorAll('.el-dropdown-menu__item')].find((candidate) => {
-          const rect = candidate.getBoundingClientRect();
-          return getComputedStyle(candidate).display !== 'none' && rect.width > 0 && rect.height > 0
+      if (target.targetId !== targetId) throw new Error("export target identity changed while opening XLSX menu");
+      menuReady = await evaluate(proxy, targetId, `(() => {
+        const visible = (element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        };
+        for (const element of document.querySelectorAll('[data-xws-export-xlsx]')) element.removeAttribute('data-xws-export-xlsx');
+        const caret = document.querySelector(${JSON.stringify(caretSelector)});
+        const currentMenuIds = [
+          caret?.getAttribute('aria-controls'),
+          caret?.getAttribute('aria-owns'),
+        ].filter(Boolean).flatMap((value) => value.trim().split(/\s+/u));
+        const items = [...document.querySelectorAll('.el-dropdown-menu__item')].filter((candidate) => {
+          const menu = candidate.closest('.el-dropdown-menu');
+          const existedBefore = candidate.getAttribute('data-xws-export-menu-baseline') === ${JSON.stringify(menuBaseline)};
+          const becameVisible = existedBefore
+            && candidate.getAttribute('data-xws-export-menu-was-visible') === '0';
+          const appearedForClick = !existedBefore || becameVisible;
+          const belongsToCaret = currentMenuIds.length > 0
+            ? Boolean(menu?.id && currentMenuIds.includes(menu.id))
+            : appearedForClick;
+          return visible(candidate)
+            && appearedForClick
+            && belongsToCaret
             && (candidate.innerText || '').trim() === ${JSON.stringify(itemText)};
         });
-        if (!item) return false;
-        item.setAttribute('data-xws-export-xlsx', '1');
+        if (items.length !== 1) return false;
+        items[0].setAttribute('data-xws-export-xlsx', ${JSON.stringify(marker)});
         return true;
       })()`);
       if (menuReady) break;
       await sleep(100);
     }
-    if (!menuReady) throw new Error(`XLSX menu item is missing: ${itemText}`);
+    if (!menuReady) throw new Error(`XLSX menu item is missing or ambiguous: ${itemText}`);
     target = await discoverSearch(proxy, options.keyword, runMarker);
-    await clickAt(proxy, target.targetId, ".el-dropdown-menu__item[data-xws-export-xlsx=\"1\"]");
+    if (target.targetId !== targetId) throw new Error("export target identity changed before XLSX activation");
+    await clickAt(proxy, targetId, `[data-xws-export-xlsx=${JSON.stringify(marker)}]`);
   } catch (error) {
     intent = await closeExportIntent(intentPath, intent, "REJECTED", {
       reason: "export_action_failed",
       lastError: error.message,
     });
+    error.exportFailureReason = "export_action_failed";
     throw error;
   }
   log("EXPORT_STARTED", { format: withImages ? "xlsx-images" : "xlsx", reason, intent: intentPath, deadlineAt: intent.deadlineAt });
@@ -1222,11 +1537,11 @@ function runPythonValidation(options, csv, xlsx, requireImages) {
   return parsed;
 }
 
-async function exportArtifacts(proxy, options, runMarker, runDir, outputDir, log, progress = null, reason = "final") {
+async function exportArtifacts(proxy, options, runMarker, attemptMarker, runDir, outputDir, log, progress = null, reason = "final") {
   const files = {};
-  if (options.exportModes.includes("csv")) files.csv = await exportCsv(proxy, options, runMarker, runDir, outputDir, log, progress, reason);
-  if (options.exportModes.includes("xlsx-images")) files.xlsx = await exportXlsx(proxy, options, runMarker, runDir, outputDir, true, log, progress, files.csv, reason);
-  else if (options.exportModes.includes("xlsx")) files.xlsx = await exportXlsx(proxy, options, runMarker, runDir, outputDir, false, log, progress, files.csv, reason);
+  if (options.exportModes.includes("csv")) files.csv = await exportCsv(proxy, options, runMarker, attemptMarker, runDir, outputDir, log, progress, reason);
+  if (options.exportModes.includes("xlsx-images")) files.xlsx = await exportXlsx(proxy, options, runMarker, attemptMarker, runDir, outputDir, true, log, progress, files.csv, reason);
+  else if (options.exportModes.includes("xlsx")) files.xlsx = await exportXlsx(proxy, options, runMarker, attemptMarker, runDir, outputDir, false, log, progress, files.csv, reason);
   const validation = runPythonValidation(options, files.csv, files.xlsx, options.exportModes.includes("xlsx-images"));
   if (progress && validation.validation.rows !== progress.rowCount) {
     throw new Error(`export row count ${validation.validation.rows} does not match live row count ${progress.rowCount}`);
@@ -1285,11 +1600,11 @@ async function runUnlocked(options) {
     return true;
   })()`);
   if (!marked) throw new Error("Xiaowangshen start button is missing after configuration");
-  await installCollectionDiagnostics(options.proxy, options.keyword, runId, log);
-  await startAnalysis(options.proxy, options.keyword, runId, log);
+  await installCollectionDiagnostics(options.proxy, options.keyword, runId, options.pages, log);
+  const attemptMarker = await startAnalysis(options.proxy, options.keyword, runId, log);
   let completed;
   try {
-    completed = await monitorCollection(options.proxy, options, runId, runDir, log);
+    completed = await monitorCollection(options.proxy, options, runId, attemptMarker, runDir, log);
   } catch (error) {
     if (error.code === "STALLED" && options.exportPartialOnStall) {
       try {
@@ -1297,6 +1612,7 @@ async function runUnlocked(options) {
           options.proxy,
           options,
           runId,
+          attemptMarker,
           runDir,
           outputDir,
           log,
@@ -1325,7 +1641,14 @@ async function runUnlocked(options) {
         error.details = { ...error.details, partialManifest: manifestPath, artifacts: partial.files, validation: partial.validation };
       } catch (partialError) {
         await log("PARTIAL_EXPORT_FAILED", { error: partialError.message, runDir });
-        error.details = { ...error.details, partialExportError: partialError.message };
+        error.details = {
+          ...error.details,
+          partialExportError: partialError.message,
+          partialExportFailure: {
+            reason: partialError.exportFailureReason || "artifact_settlement_failed",
+            error: partialError.message,
+          },
+        };
       }
     }
     throw error;
@@ -1339,7 +1662,7 @@ async function runUnlocked(options) {
   if (completed.progress.requestedStart !== options.pages.start || completed.progress.requestedEnd !== options.pages.end) {
     throw new Error("live result page range does not match the requested range");
   }
-  const exported = await exportArtifacts(options.proxy, options, runId, runDir, outputDir, log, completed.progress);
+  const exported = await exportArtifacts(options.proxy, options, runId, attemptMarker, runDir, outputDir, log, completed.progress);
   const { files, validation, warnings } = exported;
   if (files.xlsx?.name.includes("价格从高到低") && options.sort === "sales") warnings.push("plugin filename says price-high while live sort is sales");
   const manifest = {
