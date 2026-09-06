@@ -181,6 +181,7 @@ export async function openAuthoritativeRun({ pool, options, identity, expected, 
     await verifyParts(committed, expected.options?.exportModes || []);
     const checkpoint = resumeAdaptiveCheckpoint(saved, expected);
     checkpoint.runId = run.id;
+    if (options.adoptLiveResult) return { ...run, checkpoint };
     const updated = await update(pool, run.id, checkpoint, run.version);
     return { ...run, ...updated, checkpoint };
   }
@@ -793,11 +794,16 @@ export async function recoverAttemptSettlement(attemptRoot, expected, dependenci
   };
 }
 
-function childStatus(code, event) {
+export function childStatus(code, event) {
+  if (event?.status === "ADOPTION_REJECTED" || code === 4) return "ADOPTION_REJECTED";
   if (code === 0 && event?.status === "DONE") return "DONE";
   if (code === 2 || event?.status === "HUMAN_REQUIRED") return "HUMAN_REQUIRED";
   if (code === 3 || event?.status === "STALLED") return "STALLED";
   return "FAILED";
+}
+
+export function shouldPersistAdaptiveFailure(error) {
+  return error?.code !== "ADOPTION_REJECTED";
 }
 
 export function canAdvanceAttempt(status, snapshot, range) {
@@ -847,7 +853,10 @@ export async function runAdaptiveAttemptLoop({ range, initialAttempt = 0, onAtte
 }
 
 function childExitCode(status) {
-  return status === "HUMAN_REQUIRED" ? 2 : status === "STALLED" ? 3 : 1;
+  return status === "HUMAN_REQUIRED" ? 2
+    : status === "STALLED" ? 3
+      : status === "ADOPTION_REJECTED" ? 4
+        : 1;
 }
 
 async function runMerger(args) {
@@ -942,7 +951,7 @@ async function executeAdaptiveRun({ pool, run, checkpointPath, stateRoot, option
   const checkpoint = run.checkpoint;
   while (true) {
     const range = nextAdaptiveRange(checkpoint);
-    await persistCheckpoint(pool, run, checkpointPath);
+    if (!options.adoptLiveResult) await persistCheckpoint(pool, run, checkpointPath);
     if (!range) {
       if (checkpoint.status === "DONE" && !checkpoint.final) {
         const final = await mergeCompletedParts(checkpoint, stateRoot, options);
@@ -1005,7 +1014,52 @@ async function executeAdaptiveRun({ pool, run, checkpointPath, stateRoot, option
     };
     let snapshot = await recoverAttemptSettlement(stateRoot, recoveryExpected);
     let status = snapshot ? "STALLED" : "";
-    if (snapshot) {
+    if (options.adoptLiveResult && !snapshot) {
+      const adoptionRoot = path.join(stateRoot, `adoption-${range.start}-${range.end}`);
+      await mkdir(adoptionRoot, { recursive: true });
+      const args = [
+        "--keyword", options.keyword,
+        "--pages", `${range.start}-${range.end}`,
+        "--frequency", `${options.frequency.min}-${options.frequency.max}`,
+        "--channel", options.channel,
+        "--sort", options.sort,
+        "--price", `${options.price.min}-${options.price.max === null ? "unlimited" : options.price.max}`,
+        "--export", options.exportModes.join(","),
+        "--stall-seconds", String(options.stallSeconds),
+        "--proxy", options.proxy,
+        "--adopt-live-result",
+      ];
+      if (options.outputDir) args.push("--output-dir", options.outputDir);
+      const adoptionResult = await runChild(args, {
+        ...process.env,
+        XWS_RUNTIME_DIR: adoptionRoot,
+        XWS_ADAPTIVE_LOCK_OWNER: "1",
+        XWS_ADAPTIVE_RUN_ID: run.id,
+        XWS_ADAPTIVE_RANGE_START: String(range.start),
+        XWS_ADAPTIVE_RANGE_END: String(range.end),
+      });
+      const event = lastJsonLine(adoptionResult.stderr) ?? lastJsonLine(adoptionResult.stdout);
+      const located = await readLatestManifest(adoptionRoot);
+      snapshot = chooseAttemptSnapshot(located, event);
+      status = childStatus(adoptionResult.code, snapshot);
+      if (status === "ADOPTION_REJECTED") {
+        console.error(JSON.stringify({
+          status,
+          runId: run.id,
+          start: range.start,
+          end: range.end,
+          error: snapshot.error || "live-result adoption guard rejected",
+        }));
+        return childExitCode(status);
+      }
+      console.log(JSON.stringify({
+        event: "ADAPTIVE_LIVE_RESULT_ADOPTION",
+        runId: run.id,
+        start: range.start,
+        end: range.end,
+        status,
+      }));
+    } else if (snapshot) {
       console.log(JSON.stringify({ event: "ADAPTIVE_SETTLEMENT_RECOVERED", runId: run.id, start: range.start, end: range.end, sourceId: snapshot.sourceId }));
     } else {
       const outcome = await runAdaptiveAttemptLoop({
@@ -1202,7 +1256,7 @@ async function main() {
         try {
           return await executeAdaptiveRun({ pool, run, checkpointPath, stateRoot, options });
         } catch (error) {
-          if (error?.code === "ADAPTIVE_VERSION_CONFLICT") throw error;
+          if (error?.code === "ADAPTIVE_VERSION_CONFLICT" || !shouldPersistAdaptiveFailure(error)) throw error;
           run.checkpoint.status = "FAILED";
           run.checkpoint.error = String(error?.message || error);
           await persistCheckpoint(pool, run, checkpointPath);

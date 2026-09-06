@@ -15,6 +15,7 @@ import {
   parseProgressText,
   parseOptions,
   selectExportResultDialog,
+  selectObservedCollectionResult,
   selectPendingRequest,
   selectTaobaoSearchTarget,
   validateDataset,
@@ -85,6 +86,43 @@ test("selects the matching result dialog owned by the current attempt", () => {
     rowCount: 118,
     attemptMarker: "current-attempt",
   }), /received 0/iu);
+});
+
+test("observes the unique current result without requiring an attempt marker", () => {
+  const current = "【 浴缸 】销量排序Top572 - 2026-09-06 15:57 - 市场数据分析\n您搜索的页数：第 22 ~ 40 页，已成功获取：第 22 ~ 36 页\n商品数量：572";
+  const stale = "【 浴缸 】销量排序Top921 - 2026-09-05 16:31 - 市场数据分析\n您搜索的页数：第 1 ~ 40 页，已成功获取：第 1 ~ 21 页\n商品数量：921";
+
+  assert.deepEqual(selectObservedCollectionResult([
+    { text: stale, attemptMarker: "historical-attempt" },
+    { text: current, attemptMarker: "" },
+  ], {
+    keyword: "浴缸",
+    sortLabel: "销量排序",
+    requestedStart: 22,
+    requestedEnd: 40,
+  }), {
+    index: 1,
+    text: current,
+    attemptMarker: "",
+    progress: parseProgressText(current),
+  });
+});
+
+test("refuses historical or ambiguous unmarked results for observation", () => {
+  const stale = "【 浴缸 】销量排序Top921 - 2026-09-05 16:31 - 市场数据分析\n您搜索的页数：第 1 ~ 40 页，已成功获取：第 1 ~ 21 页\n商品数量：921";
+  const current = "【 浴缸 】销量排序Top572 - 2026-09-06 15:57 - 市场数据分析\n您搜索的页数：第 22 ~ 40 页，已成功获取：第 22 ~ 36 页\n商品数量：572";
+  const expected = {
+    keyword: "浴缸",
+    sortLabel: "销量排序",
+    requestedStart: 22,
+    requestedEnd: 40,
+  };
+
+  assert.equal(selectObservedCollectionResult([{ text: stale }], expected), null);
+  assert.throws(
+    () => selectObservedCollectionResult([{ text: current }, { text: current }], expected),
+    /ambiguous observed collection results/iu,
+  );
 });
 
 test("proxy health must identify the bound Edge browser", () => {

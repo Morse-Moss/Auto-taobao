@@ -252,6 +252,7 @@ export function parseAdaptiveOptions(argv, env = process.env) {
   let checkpoint = "";
   let runId = "";
   let resume = false;
+  let adoptLiveResult = false;
   const forwarded = [];
   for (let index = 0; index < input.length; index += 1) {
     const token = input[index];
@@ -271,13 +272,21 @@ export function parseAdaptiveOptions(argv, env = process.env) {
       resume = true;
       continue;
     }
+    if (token === "--adopt-live-result") {
+      adoptLiveResult = true;
+      continue;
+    }
     forwarded.push(token);
   }
   if (!forwarded.includes("--frequency")) forwarded.push("--frequency", "30-45");
   if (!forwarded.includes("--stall-seconds")) forwarded.push("--stall-seconds", "300");
   const base = parseOptions(forwarded, env);
+  if (adoptLiveResult && (!resume || !runId)) {
+    throw new Error("adopt-live-result requires --resume and --run-id");
+  }
   return {
     ...base,
+    adoptLiveResult,
     stallSeconds: base.stallMs / 1000,
     exportPartialOnStall: true,
     checkpoint: checkpoint || `xws-${base.keyword}-adaptive-checkpoint.json`,

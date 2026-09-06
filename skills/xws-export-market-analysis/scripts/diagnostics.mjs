@@ -25,6 +25,7 @@ export function normalizeDiagnosticSnapshot(raw = {}) {
   const messages = Array.isArray(raw.messages) ? raw.messages : [];
   return {
     capturedAt: safeText(raw.capturedAt, 40),
+    activeAttempt: safeText(raw.activeAttempt, 120),
     visibility: safeText(raw.visibility, 20),
     readyState: safeText(raw.readyState, 20),
     requests: requests.slice(-100).map((item) => ({

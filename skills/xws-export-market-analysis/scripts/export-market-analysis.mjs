@@ -21,8 +21,8 @@ import {
   parseOptions,
   parseProgressText,
   selectExportResultDialog,
+  selectObservedCollectionResult,
   selectPendingRequest,
-  selectTaobaoSearchTarget,
   validateDataset,
 } from "./flow.mjs";
 import { classifyDiagnosticState, normalizeDiagnosticSnapshot } from "./diagnostics.mjs";
@@ -76,6 +76,13 @@ function humanRequired(reason, details = {}) {
 function stalled(reason, details = {}) {
   const error = new Error(reason);
   error.code = "STALLED";
+  error.details = details;
+  return error;
+}
+
+function adoptionRejected(reason, details = {}) {
+  const error = new Error(reason);
+  error.code = "ADOPTION_REJECTED";
   error.details = details;
   return error;
 }
@@ -213,6 +220,23 @@ async function discoverHome(proxy, runMarker) {
 
 async function discoverSearch(proxy, keyword, runMarker) {
   return discoverLabeledTarget(proxy, (target) => isSearch(target, keyword), runMarker, `Taobao search for ${keyword}`);
+}
+
+async function discoverUniqueSearchForAdoption(proxy, keyword) {
+  const matches = (await listTargets(proxy)).filter((target) => isSearch(target, keyword));
+  if (matches.length !== 1) {
+    throw adoptionRejected(
+      matches.length ? "live-result adoption found ambiguous search targets" : "live-result adoption found no search target",
+      { targetCount: matches.length },
+    );
+  }
+  return matches[0];
+}
+
+async function discoverExportSearch(proxy, keyword, runMarker, adoptLiveResult) {
+  return adoptLiveResult
+    ? discoverUniqueSearchForAdoption(proxy, keyword)
+    : discoverSearch(proxy, keyword, runMarker);
 }
 
 async function visibleText(proxy, target) {
@@ -743,7 +767,7 @@ async function startAnalysis(proxy, keyword, runMarker, log, { resultWaitMs = 60
       window.removeEventListener('click', recordStartClick, true);
       window.removeEventListener('click', recordEndClick);
     };
-    const observationRoot = source.parentElement || document.body;
+    const observationRoot = document.body;
     window.__xwsResultAttemptObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         const wrappers = [wrapperFor(mutation.target), ...[...(mutation.addedNodes || [])].map(wrapperFor)].filter(Boolean);
@@ -1008,6 +1032,7 @@ async function installCollectionDiagnostics(proxy, keyword, runMarker, pages, lo
       isOwnedAttempt: (marker) => attemptTracker.isOwned(marker),
       snapshot: () => ({
         capturedAt: new Date().toISOString(),
+        activeAttempt: state.activeAttempt,
         visibility: document.visibilityState,
         readyState: document.readyState,
         requests: state.requests,
@@ -1023,9 +1048,11 @@ async function installCollectionDiagnostics(proxy, keyword, runMarker, pages, lo
   log("DIAGNOSTICS_INSTALLED", { reused: Boolean(installed.reused) });
 }
 
-async function readCollectionSnapshot(proxy, keyword, runMarker, attemptMarker) {
-  const target = await discoverSearch(proxy, keyword, runMarker);
+async function readCollectionSnapshot(proxy, options, runMarker, attemptMarker) {
+  const target = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
   const state = await evaluate(proxy, target.targetId, `(() => {
+    const parseProgressText = ${parseProgressText.toString()};
+    const selectObservedCollectionResult = ${selectObservedCollectionResult.toString()};
     const visible = (element) => {
       if (!element) return false;
       const style = getComputedStyle(element);
@@ -1034,11 +1061,31 @@ async function readCollectionSnapshot(proxy, keyword, runMarker, attemptMarker) 
     };
     window.__xwsMarkResultAttempt?.();
     const wrappers = [...document.querySelectorAll('.el-dialog__wrapper')].filter(visible);
-    const result = wrappers.find((element) =>
-      element.getAttribute('data-xws-result-attempt') === ${JSON.stringify(attemptMarker)});
-    const text = result?.innerText || '';
-    const visibleText = wrappers.map((element) => element.innerText || '').join('\\n');
+    const entries = wrappers.map((element) => ({
+      text: element.innerText || '',
+      attemptMarker: element.getAttribute('data-xws-result-attempt') || '',
+    }));
+    let observed = null;
+    try {
+      observed = selectObservedCollectionResult(entries, {
+        keyword: ${JSON.stringify(options.keyword)},
+        sortLabel: ${JSON.stringify(sortLabel(options.sort))},
+        requestedStart: ${Number(options.pages.start)},
+        requestedEnd: ${Number(options.pages.end)},
+      });
+    } catch (error) {
+      observed = { ambiguous: true, error: String(error?.message || error) };
+    }
     const collectionDiagnostics = window.__xwsCollectionDiag;
+    const trackerOwned = collectionDiagnostics?.isOwnedAttempt?.(${JSON.stringify(attemptMarker)}) === true;
+    if (trackerOwned && observed && !observed.ambiguous) {
+      wrappers[observed.index]?.setAttribute('data-xws-result-attempt', ${JSON.stringify(attemptMarker)});
+      entries[observed.index].attemptMarker = ${JSON.stringify(attemptMarker)};
+    }
+    const ownedIndex = entries.findIndex((entry) => entry.attemptMarker === ${JSON.stringify(attemptMarker)});
+    const owned = ownedIndex >= 0 ? entries[ownedIndex] : null;
+    const text = observed?.text || '';
+    const visibleText = wrappers.map((element) => element.innerText || '').join('\\n');
     const diagnostics = collectionDiagnostics?.snapshot?.() || {
       capturedAt: new Date().toISOString(),
       visibility: document.visibilityState,
@@ -1048,6 +1095,11 @@ async function readCollectionSnapshot(proxy, keyword, runMarker, attemptMarker) 
     };
     return {
       text: text.slice(0, 6000),
+      observedProgress: observed?.progress || parseProgressText(text),
+      observedAmbiguous: observed?.ambiguous === true,
+      ownedText: owned?.text?.slice(0, 6000) || '',
+      trackerOwned,
+      owned: ownedIndex >= 0 && trackerOwned,
       visibleText: visibleText.slice(0, 6000),
       title: document.title,
       diagnostics,
@@ -1055,6 +1107,104 @@ async function readCollectionSnapshot(proxy, keyword, runMarker, attemptMarker) 
     };
   })()`);
   return { ...state, diagnostics: normalizeDiagnosticSnapshot(state.diagnostics), targetId: target.targetId };
+}
+
+async function readLiveCollectionSnapshot(proxy, options, targetId) {
+  const state = await evaluate(proxy, targetId, `(() => {
+    const parseProgressText = ${parseProgressText.toString()};
+    const selectObservedCollectionResult = ${selectObservedCollectionResult.toString()};
+    const visible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    };
+    const collectionDiagnostics = window.__xwsCollectionDiag;
+    const wrappers = [...document.querySelectorAll('.el-dialog__wrapper')].filter(visible);
+    const entries = wrappers.map((element) => ({
+      text: element.innerText || '',
+      attemptMarker: element.getAttribute('data-xws-result-attempt') || '',
+    }));
+    let observed = null;
+    try {
+      observed = selectObservedCollectionResult(entries, {
+        keyword: ${JSON.stringify(options.keyword)},
+        sortLabel: ${JSON.stringify(sortLabel(options.sort))},
+        requestedStart: ${Number(options.pages.start)},
+        requestedEnd: ${Number(options.pages.end)},
+      });
+    } catch (error) {
+      observed = { ambiguous: true, error: String(error?.message || error) };
+    }
+    const diagnostics = collectionDiagnostics?.snapshot?.() || {};
+    const activeAttempt = String(diagnostics.activeAttempt || '');
+    const requestEvidence = (diagnostics.requests || []).some((request) => (
+      request.apiKey === 'request'
+      && /^XWS_PAGE_REQUEST_[0-9]+$/u.test(String(request.flag || ''))
+      && request.pending !== true
+      && Number.isInteger(request.status)
+      && request.status >= 200
+      && request.status < 300
+      && (!Number.isInteger(request.page) || request.page === ${Number(options.pages.start)})
+    ));
+    return {
+      text: observed?.text || '',
+      progress: observed?.progress || parseProgressText(observed?.text || ''),
+      ambiguous: observed?.ambiguous === true,
+      activeAttempt,
+      trackerOwned: Boolean(activeAttempt && collectionDiagnostics?.isOwnedAttempt?.(activeAttempt) === true),
+      requestEvidence,
+      collectionRange: collectionDiagnostics?.range || null,
+      visibleText: wrappers.map((element) => element.innerText || '').join('\\n'),
+      title: document.title,
+      diagnostics,
+    };
+  })()`);
+  return { ...state, diagnostics: normalizeDiagnosticSnapshot(state.diagnostics), targetId };
+}
+
+async function bindOwnedResultMarker(proxy, targetId, options, progress, attemptMarker) {
+  const bound = await evaluate(proxy, targetId, `(() => {
+    const parseProgressText = ${parseProgressText.toString()};
+    const selectObservedCollectionResult = ${selectObservedCollectionResult.toString()};
+    const visible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden'
+        && rect.width > 0 && rect.height > 0;
+    };
+    const collectionDiagnostics = window.__xwsCollectionDiag;
+    if (!collectionDiagnostics?.isOwnedAttempt?.(${JSON.stringify(attemptMarker)})) return { ok: false, reason: 'attempt ownership is unavailable' };
+    const entries = [...document.querySelectorAll('.el-dialog__wrapper')]
+      .filter(visible)
+      .map((element, index) => ({
+        index,
+        element,
+        text: element.innerText || '',
+        attemptMarker: element.getAttribute('data-xws-result-attempt') || '',
+      }));
+    let observed;
+    try {
+      observed = selectObservedCollectionResult(entries, {
+        keyword: ${JSON.stringify(options.keyword)},
+        sortLabel: ${JSON.stringify(sortLabel(options.sort))},
+        requestedStart: ${Number(options.pages.start)},
+        requestedEnd: ${Number(options.pages.end)},
+      });
+    } catch (error) {
+      return { ok: false, reason: String(error?.message || error) };
+    }
+    if (!observed || !observed.progress.complete || observed.progress.completedEnd !== ${Number(progress.completedEnd)}) {
+      return { ok: false, reason: 'live result changed before export' };
+    }
+    const wrapper = entries[observed.index]?.element;
+    if (!wrapper) return { ok: false, reason: 'live result dialog disappeared before export' };
+    for (const element of document.querySelectorAll('[data-xws-result-attempt]')) element.removeAttribute('data-xws-result-attempt');
+    wrapper.setAttribute('data-xws-result-attempt', ${JSON.stringify(attemptMarker)});
+    return { ok: true };
+  })()`);
+  if (!bound?.ok) throw adoptionRejected(bound?.reason || 'could not bind the owned live result');
 }
 
 async function monitorCollection(proxy, options, runMarker, attemptMarker, runDir, log) {
@@ -1065,10 +1215,11 @@ async function monitorCollection(proxy, options, runMarker, attemptMarker, runDi
   const pageCount = options.pages.end - options.pages.start + 1;
   const deadlineMs = collectionDeadlineMs({ pageCount, frequencyMaxSeconds: options.frequency.max });
   while (true) {
-    const snapshot = await readCollectionSnapshot(proxy, options.keyword, runMarker, attemptMarker);
+    const snapshot = await readCollectionSnapshot(proxy, options, runMarker, attemptMarker);
     ensureNoRisk(snapshot.visibleText, "Xiaowangshen collection");
-    const status = classifyCollection(snapshot);
-    const progress = parseProgressText(snapshot.text);
+    const progress = snapshot.observedProgress || parseProgressText(snapshot.text);
+    const observedStatus = classifyCollection({ text: snapshot.text });
+    const status = observedStatus === "COMPLETE" && !snapshot.trackerOwned ? "COLLECTING" : observedStatus;
     const diagnostics = normalizeDiagnosticSnapshot(snapshot.diagnostics);
     const diagnosticKind = classifyDiagnosticState(diagnostics);
     if (diagnosticKind === "BACKGROUND_TAB") {
@@ -1324,13 +1475,13 @@ async function exportCsv(proxy, options, runMarker, attemptMarker, runDir, direc
   const before = new Set(baseline.map(fileIdentity));
   let { intent, intentPath } = await openExportIntent({ runDir, runId: runMarker, options, directory, kind: "csv", baseline, progress, reason });
   try {
-    const target = await discoverSearch(proxy, options.keyword, runMarker);
+    const target = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
     const selector = await markResultDialogControl(proxy, target.targetId, options, progress, attemptMarker, {
       attribute: "data-xws-export-csv",
       controlSelector: "button",
       controlText: "导出csv表格",
     });
-    const fresh = await discoverSearch(proxy, options.keyword, runMarker);
+    const fresh = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
     if (fresh.targetId !== target.targetId) throw new Error("export target identity changed before CSV activation");
     await clickAt(proxy, fresh.targetId, selector);
   } catch (error) {
@@ -1373,13 +1524,13 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
   const before = new Set(baseline.map(fileIdentity));
   let { intent, intentPath } = await openExportIntent({ runDir, runId: runMarker, options, directory, kind: "xlsx", baseline, progress, reason });
   try {
-    let target = await discoverSearch(proxy, options.keyword, runMarker);
+    let target = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
     const targetId = target.targetId;
     const caretSelector = await markResultDialogControl(proxy, targetId, options, progress, attemptMarker, {
       attribute: "data-xws-export-caret",
       controlSelector: ".el-button-group .el-dropdown__caret-button",
     });
-    target = await discoverSearch(proxy, options.keyword, runMarker);
+    target = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
     if (target.targetId !== targetId) throw new Error("export target identity changed before XLSX menu activation");
     const itemText = withImages ? "导出xlsx表格（带图片）" : "导出xlsx表格";
     const menuBaseline = randomUUID();
@@ -1413,7 +1564,7 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
       const closeDeadline = Date.now() + 2_000;
       let menuClosed = false;
       while (Date.now() < closeDeadline) {
-        target = await discoverSearch(proxy, options.keyword, runMarker);
+        target = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
         if (target.targetId !== targetId) throw new Error("export target identity changed while closing the existing XLSX menu");
         menuClosed = await evaluate(proxy, targetId, `(() => {
           const visible = (element) => {
@@ -1446,7 +1597,7 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
     const menuDeadline = Date.now() + 5_000;
     let menuReady = false;
     while (Date.now() < menuDeadline) {
-      target = await discoverSearch(proxy, options.keyword, runMarker);
+      target = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
       if (target.targetId !== targetId) throw new Error("export target identity changed while opening XLSX menu");
       menuReady = await evaluate(proxy, targetId, `(() => {
         const visible = (element) => {
@@ -1482,7 +1633,7 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
       await sleep(100);
     }
     if (!menuReady) throw new Error(`XLSX menu item is missing or ambiguous: ${itemText}`);
-    target = await discoverSearch(proxy, options.keyword, runMarker);
+    target = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
     if (target.targetId !== targetId) throw new Error("export target identity changed before XLSX activation");
     await clickAt(proxy, targetId, `[data-xws-export-xlsx=${JSON.stringify(marker)}]`);
   } catch (error) {
@@ -1561,6 +1712,50 @@ async function exportArtifacts(proxy, options, runMarker, attemptMarker, runDir,
   return { files, validation, warnings };
 }
 
+async function adoptLiveResult(options, runId, runDir, outputDir, log) {
+  const target = await discoverUniqueSearchForAdoption(options.proxy, options.keyword);
+  const text = await visibleText(options.proxy, target.targetId);
+  ensureNoRisk(text, "Xiaowangshen live-result adoption");
+  const snapshot = await readLiveCollectionSnapshot(options.proxy, options, target.targetId);
+  if (snapshot.ambiguous) throw adoptionRejected("live-result adoption result is ambiguous");
+  if (snapshot.collectionRange?.start !== options.pages.start || snapshot.collectionRange?.end !== options.pages.end) {
+    throw adoptionRejected("live-result adoption diagnostics range does not match requested range", { range: snapshot.collectionRange });
+  }
+  if (!snapshot.activeAttempt || !snapshot.trackerOwned || !snapshot.requestEvidence) {
+    throw adoptionRejected("live-result adoption lacks successful collection ownership evidence", {
+      activeAttempt: Boolean(snapshot.activeAttempt),
+      trackerOwned: snapshot.trackerOwned,
+      requestEvidence: snapshot.requestEvidence,
+    });
+  }
+  if (snapshot.progress.keyword !== options.keyword
+    || snapshot.progress.sortLabel !== sortLabel(options.sort)
+    || snapshot.progress.requestedStart !== options.pages.start
+    || snapshot.progress.requestedEnd !== options.pages.end
+    || snapshot.progress.completedEnd !== options.pages.end
+    || snapshot.progress.rowCount < 1) {
+    throw adoptionRejected("live-result adoption progress does not match requested contract", { progress: snapshot.progress });
+  }
+  await bindOwnedResultMarker(options.proxy, target.targetId, options, snapshot.progress, snapshot.activeAttempt);
+  const exported = await exportArtifacts(options.proxy, options, runId, snapshot.activeAttempt, runDir, outputDir, log, snapshot.progress, "adopt_live_result");
+  const manifest = {
+    status: "DONE",
+    adopted: true,
+    runId,
+    sourceId: snapshot.activeAttempt,
+    options,
+    progress: snapshot.progress,
+    diagnostics: snapshot.diagnostics,
+    artifacts: exported.files,
+    validation: exported.validation,
+    warnings: exported.warnings,
+    runDir,
+  };
+  await writeFile(path.join(runDir, "manifest.json"), JSON.stringify(manifest, ensureJsonReplacer, 2), "utf8");
+  await log("LIVE_RESULT_ADOPTED", { runId, rows: snapshot.progress.rowCount, runDir });
+  return manifest;
+}
+
 async function runUnlocked(options) {
   const outputDir = path.resolve(options.outputDir || DEFAULT_OUTPUT_DIR);
   const runId = `${new Date().toISOString().replace(/[-:.TZ]/gu, "").slice(0, 14)}-${options.keyword.replace(/[^\w\u4e00-\u9fff]+/gu, "-")}`;
@@ -1578,6 +1773,9 @@ async function runUnlocked(options) {
   const proxyHealth = await request(options.proxy, "/health");
   assertProxyBrowserHealth(proxyHealth, "edge");
   await log("PROXY_READY", { browser: proxyHealth.browser.id });
+  if (options.adoptLiveResult) {
+    return adoptLiveResult(options, runId, runDir, outputDir, log);
+  }
   await request(options.proxy, "/targets");
   await openTaobaoHome(options.proxy, runId, log);
   await searchKeyword(options.proxy, options.keyword, runId, log);
@@ -1736,7 +1934,10 @@ async function main() {
     const code = error.code || "FAILED";
     const payload = { status: code, error: error.message, details: error.details || {} };
     console.error(JSON.stringify(payload, ensureJsonReplacer));
-    return code === "HUMAN_REQUIRED" ? 2 : code === "STALLED" ? 3 : 1;
+    return code === "HUMAN_REQUIRED" ? 2
+      : code === "STALLED" ? 3
+        : code === "ADOPTION_REJECTED" ? 4
+          : 1;
   }
 }
 

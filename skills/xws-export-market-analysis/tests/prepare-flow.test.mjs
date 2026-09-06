@@ -14,10 +14,10 @@ const validator = path.join(root, "scripts", "validate-output.py");
 const python = process.env.XWS_PYTHON || (process.platform === "win32" ? "py" : "python3");
 const pythonPrefix = process.env.XWS_PYTHON || process.platform !== "win32" ? [] : ["-3"];
 
-function startFakeProxy({ full = false, outputPath = "", staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, startClickWithoutRequestOnce = false, collectionFailsAfterStartup = false, delayedCollectionRequest = false, delayedCollectionResult = false, resultMutationPrecedesRequest = false, backgroundRequestBetweenArmAndClick = false, historicalResultRemountsAfterStart = false, historicalResultRemountsInSourceAfterStart = false, historicalResultPersistsInSourceAfterRequest = false, xlsxMenuMountsLate = false, staleXlsxMenuVisible = false, staleXlsxMenuVisibleOwned = false, staleXlsxMenuHidden = false, staleXlsxMenuHiddenWithoutAria = false, xlsxMenuAriaIdChanges = false, csvExportMissing = false, exportActivationFails = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false, browserId = "edge", proxyConnected = true } = {}) {
-  let homeCreated = false;
-  let searchCreated = false;
-  let started = false;
+function startFakeProxy({ full = false, outputPath = "", liveResult = false, staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, startClickWithoutRequestOnce = false, collectionFailsAfterStartup = false, delayedCollectionRequest = false, delayedCollectionResult = false, resultMutationPrecedesRequest = false, backgroundRequestBetweenArmAndClick = false, historicalResultRemountsAfterStart = false, historicalResultRemountsInSourceAfterStart = false, historicalResultPersistsInSourceAfterRequest = false, xlsxMenuMountsLate = false, staleXlsxMenuVisible = false, staleXlsxMenuVisibleOwned = false, staleXlsxMenuHidden = false, staleXlsxMenuHiddenWithoutAria = false, xlsxMenuAriaIdChanges = false, csvExportMissing = false, exportActivationFails = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false, browserId = "edge", proxyConnected = true } = {}) {
+  let homeCreated = liveResult;
+  let searchCreated = liveResult;
+  let started = liveResult;
   let healthCalls = 0;
   let targetsCalls = 0;
   let newCalls = 0;
@@ -35,12 +35,11 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
   let startClickObserved = false;
   let xlsxMenuProbes = 0;
   let xlsxCaretClicks = 0;
-  let currentAttemptMarker = "";
-  let resultAttemptMarked = false;
+  let currentAttemptMarker = liveResult ? "live-attempt" : "";
+  let resultAttemptMarked = liveResult;
   let resultAttemptChecks = 0;
   let startupChecks = 0;
   let requestStartedAfterClick = false;
-  let resultAttemptBoundToSource = false;
   let resultAttemptBoundToRequest = false;
   let resultAttemptBoundToRealClick = false;
   let resultAttemptBoundToResultGeneration = false;
@@ -221,7 +220,6 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
         send({ pluginReady: true, permission: false, config: dialogReady ? "搜索频率" : "", result: started ? "商品数量" : "", visibleText: "市场分析" });
       } else if (body.includes("__xwsResultAttemptObserver.observe")) {
         currentAttemptMarker = body.match(/setAttribute\('data-xws-result-attempt',\s*"([^"]+)"\)/u)?.[1] || "";
-        resultAttemptBoundToSource = body.includes("resultNodeId") || body.includes("source.parentElement");
         resultAttemptBoundToRequest = body.includes("isOwnedAttempt");
         resultAttemptBoundToRealClick = body.includes("isOwnedAttempt");
         resultAttemptBoundToResultGeneration = body.includes("isOwnedAttempt");
@@ -239,6 +237,35 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
         send(body.includes("started: Boolean")
           ? { started: started && requestStartedAfterClick, failed: false }
           : started && requestStartedAfterClick);
+      } else if (body.includes("const requestEvidence =")) {
+        send({
+          text: "【 浴缸 】销量排序Top2 - 2026-09-06 15:57 - 市场数据分析\\n您搜索的页数：第 22 ~ 40 页，已成功获取：第 22 ~ 40 页\\n商品数量：2",
+          progress: {
+            keyword: "浴缸",
+            sortLabel: "销量排序",
+            requestedStart: 22,
+            requestedEnd: 40,
+            completedStart: 22,
+            completedEnd: 40,
+            rowCount: 2,
+            complete: true,
+          },
+          ambiguous: false,
+          activeAttempt: "live-attempt",
+          trackerOwned: true,
+          requestEvidence: true,
+          collectionRange: { start: 22, end: 40 },
+          visibleText: "商品数量：572",
+          title: "浴缸_淘宝搜索",
+          diagnostics: {
+            activeAttempt: "live-attempt",
+            range: { start: 22, end: 40 },
+            visibility: "visible",
+            readyState: "complete",
+            requests: [{ apiKey: "request", flag: "XWS_PAGE_REQUEST_22", page: 22, status: 200, pending: false }],
+            messages: [],
+          },
+        });
       } else if (body.includes("const wrappers = [...document.querySelectorAll('.el-dialog__wrapper')].filter(visible)")) {
         resultAttemptChecks += 1;
         resultAttemptMarked = Boolean(
@@ -247,7 +274,7 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
           && requestStartedAfterClick
           && (!delayedCollectionResult || resultAttemptChecks >= 12)
           && (!backgroundRequestBetweenArmAndClick || !resultAttemptBoundToRealClick)
-          && (!historicalResultRemountsAfterStart || !resultAttemptBoundToSource)
+          && !historicalResultRemountsAfterStart
           && (!historicalResultRemountsInSourceAfterStart || !resultAttemptBoundToRequest)
           && (!historicalResultPersistsInSourceAfterRequest || !resultAttemptBoundToResultGeneration)
           && (!resultMutationPrecedesRequest || resultAttemptBoundToResultGeneration)
@@ -255,6 +282,7 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
         send({
           text: resultAttemptMarked ? "【 浴缸 】销量排序Top2 - 2026-08-05 15:46 - 市场数据分析\\n您搜索的页数：第 1 ~ 1 页，已成功获取：第 1 ~ 1 页\\n商品数量：2" : "",
           visibleText: resultAttemptMarked ? "商品数量：2" : "市场分析",
+          trackerOwned: resultAttemptMarked,
           title: "浴缸_淘宝搜索",
           diagnostics: {
             visibility: "visible",
@@ -266,6 +294,9 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
             ? { attemptFailed: collectionFailsAfterStartup }
             : {}),
         });
+      } else if (body.includes("wrapper.setAttribute('data-xws-result-attempt'")
+        && body.includes("return { ok: true }")) {
+        send({ ok: true });
       } else if (body.includes("__xwsMarkResultAttempt")) {
         resultAttemptChecks += 1;
         resultAttemptMarked = Boolean(
@@ -274,7 +305,7 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
           && requestStartedAfterClick
           && (!delayedCollectionResult || resultAttemptChecks >= 12)
           && (!backgroundRequestBetweenArmAndClick || !resultAttemptBoundToRealClick)
-          && (!historicalResultRemountsAfterStart || !resultAttemptBoundToSource)
+          && !historicalResultRemountsAfterStart
           && (!historicalResultRemountsInSourceAfterStart || !resultAttemptBoundToRequest)
           && (!historicalResultPersistsInSourceAfterRequest || !resultAttemptBoundToResultGeneration)
           && (!resultMutationPrecedesRequest || resultAttemptBoundToResultGeneration)
@@ -291,6 +322,13 @@ function startFakeProxy({ full = false, outputPath = "", staleTargets = false, s
       } else if (sortRequiresSettledDomClick && body.includes("label.click()")) {
         settledSortClicked = radioReady;
         send({ ok: settledSortClicked });
+      } else if (liveResult
+        && body.includes("return [...document.querySelectorAll('.el-dialog__wrapper')]")
+        && body.includes("attemptMarker")) {
+        send([{
+          text: "【 浴缸 】销量排序Top2 - 2026-09-06 15:57 - 市场数据分析\n您搜索的页数：第 22 ~ 40 页，已成功获取：第 22 ~ 40 页\n商品数量：2",
+          attemptMarker: "live-attempt",
+        }]);
       } else if (body.includes("return [...document.querySelectorAll('.el-dialog__wrapper')]")) {
         send([
           {
@@ -543,6 +581,45 @@ test("full flow retries a missed start click and validates the downloaded CSV", 
     assert.equal(intent.outputDir, path.resolve(output));
     assert.equal(proxy.getStartClicks(), 1);
     assert.equal(proxy.getStartDomClicks(), 1);
+  } finally {
+    await rm(output, { recursive: true, force: true });
+    await rm(runtime, { recursive: true, force: true });
+    await new Promise((resolve) => proxy.server.close(resolve));
+  }
+});
+
+test("adopts a complete live result without clicking start analysis", async () => {
+  const output = await mkdtemp(path.join(os.tmpdir(), "xws-download-"));
+  const runtime = await mkdtemp(path.join(os.tmpdir(), "xws-runtime-"));
+  const proxy = await startFakeProxy({
+    full: true,
+    liveResult: true,
+    outputPath: path.join(output, "result.csv"),
+  });
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        cli,
+        "--keyword", "浴缸",
+        "--pages", "22-40",
+        "--frequency", "30-45",
+        "--export", "csv",
+        "--output-dir", output,
+        "--proxy", `http://127.0.0.1:${proxy.port}`,
+        "--adopt-live-result",
+      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk) => { stdout += chunk; });
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, stdout, stderr }));
+    });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /"event":"LIVE_RESULT_ADOPTED"/u);
+    assert.equal(proxy.getStartClicks(), 0);
+    assert.equal(proxy.getStartDomClicks(), 0);
+    assert.equal(proxy.getMarketAnalysisClicks(), 0);
   } finally {
     await rm(output, { recursive: true, force: true });
     await rm(runtime, { recursive: true, force: true });

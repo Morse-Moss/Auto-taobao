@@ -24,7 +24,9 @@ import {
   adaptiveAttemptCount,
   buildAdaptiveIdentity,
   canAdvanceAttempt,
+  childStatus,
   chooseAttemptSnapshot,
+  shouldPersistAdaptiveFailure,
   commitCheckpointMutation,
   mergeCompletedParts,
   openAuthoritativeRun,
@@ -172,6 +174,29 @@ test("parses resume as an explicit mode without treating checkpoint as resume", 
   assert.equal(fresh.checkpointExplicit, true);
   assert.equal(resume.resume, true);
   assert.equal(resume.checkpointExplicit, true);
+});
+
+test("allows live-result adoption only for an explicit PostgreSQL resume", () => {
+  const adopted = parseAdaptiveOptions([
+    "--keyword", "浴缸",
+    "--resume",
+    "--run-id", "existing-run",
+    "--adopt-live-result",
+  ]);
+  assert.equal(adopted.adoptLiveResult, true);
+  assert.throws(
+    () => parseAdaptiveOptions(["--keyword", "浴缸", "--adopt-live-result"]),
+    /adopt-live-result requires --resume and --run-id/u,
+  );
+});
+
+test("preserves live-result adoption rejection as a distinct terminal state", () => {
+  assert.equal(childStatus(1, { status: "ADOPTION_REJECTED", error: "range mismatch" }), "ADOPTION_REJECTED");
+});
+
+test("does not persist an adaptive failure after live-result adoption rejection", () => {
+  assert.equal(shouldPersistAdaptiveFailure({ code: "ADOPTION_REJECTED" }), false);
+  assert.equal(shouldPersistAdaptiveFailure({ code: "FAILED" }), true);
 });
 
 test("fresh adaptive tasks ignore no history and refuse to overwrite an existing checkpoint", async () => {

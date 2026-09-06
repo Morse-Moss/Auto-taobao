@@ -83,6 +83,7 @@ export function parseOptions(argv, env = process.env) {
     fromTaobaoHome: true,
     allowTrial: false,
     exportPartialOnStall: false,
+    adoptLiveResult: false,
     prepareOnly: false,
     selfTest: false,
     help: false,
@@ -92,6 +93,7 @@ export function parseOptions(argv, env = process.env) {
     const token = argv[index];
     if (token === "--allow-trial") options.allowTrial = true;
     else if (token === "--export-partial-on-stall") options.exportPartialOnStall = true;
+    else if (token === "--adopt-live-result") options.adoptLiveResult = true;
     else if (token === "--prepare-only") options.prepareOnly = true;
     else if (token === "--from-taobao-home") options.fromTaobaoHome = true;
     else if (token === "--self-test") options.selfTest = true;
@@ -199,6 +201,28 @@ export function selectExportResultDialog(dialogEntries, expectedProgress) {
     throw new Error(`Expected one matching result dialog; received ${matches.length}`);
   }
   return matches[0].index;
+}
+
+export function selectObservedCollectionResult(dialogEntries, expectedProgress = {}) {
+  const expected = expectedProgress || {};
+  const matches = (Array.isArray(dialogEntries) ? dialogEntries : [])
+    .map((entry, index) => ({
+      index,
+      text: typeof entry === "string" ? entry : entry?.text,
+      attemptMarker: typeof entry === "string" ? "" : entry?.attemptMarker || "",
+    }))
+    .map((entry) => ({ ...entry, progress: parseProgressText(entry.text) }))
+    .filter(({ progress }) => (
+      progress.keyword === String(expected.keyword || "").trim()
+      && (!expected.sortLabel || progress.sortLabel === String(expected.sortLabel).trim())
+      && progress.requestedStart === Number(expected.requestedStart)
+      && progress.requestedEnd === Number(expected.requestedEnd)
+      && progress.completedStart >= Number(expected.requestedStart)
+      && progress.completedEnd <= Number(expected.requestedEnd)
+      && progress.rowCount > 0
+    ));
+  if (matches.length > 1) throw new Error("ambiguous observed collection results");
+  return matches[0] || null;
 }
 
 export function collectionResultSnapshot(text) {
