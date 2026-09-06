@@ -231,6 +231,9 @@ export function isSuccessfulCollectionResponse(result) {
   if (!result || typeof result !== "object" || result.error) return false;
   const code = result.retCode ?? result.ret;
   if (code !== undefined && code !== null && code !== "") {
+    if (Array.isArray(code)) {
+      return code.length > 0 && code.every((entry) => /^SUCCESS::/u.test(String(entry)));
+    }
     return Number.isFinite(Number(code)) && Number(code) === 0;
   }
   if (result.status !== undefined && result.status !== null && result.status !== "") {
@@ -330,14 +333,7 @@ export function createCollectionAttemptTracker(
       if (!attempt
         || attempt.requestGeneration !== attempt.clickGeneration
         || String(response.flag || "") !== String(attempt.request?.flag || "")) return false;
-      const code = response.retCode ?? response.ret;
-      const hasCode = code !== undefined && code !== null && code !== "";
-      const hasStatus = response.status !== undefined && response.status !== null && response.status !== "";
-      const successful = !response.error && (
-        (hasCode && Number.isFinite(Number(code)) && Number(code) === 0)
-        || (!hasCode && hasStatus && Number.isFinite(Number(response.status))
-          && Number(response.status) >= 200 && Number(response.status) < 300)
-      );
+      const successful = isSuccessfulCollectionResponse(response);
       if (!successful) {
         attempt.requestFailed = true;
         return false;
