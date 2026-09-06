@@ -953,6 +953,7 @@ async function installCollectionDiagnostics(proxy, keyword, runMarker, pages, lo
             {
               flag,
               retCode: result?.retCode,
+              ret: result?.ret,
               status: result?.status,
               ...(error ? { error } : {}),
             },

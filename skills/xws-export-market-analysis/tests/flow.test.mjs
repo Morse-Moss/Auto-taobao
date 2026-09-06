@@ -113,7 +113,9 @@ test("result snapshot ignores decoration text outside structured collection prog
 
 test("accepts only explicitly successful collection responses", () => {
   assert.equal(isSuccessfulCollectionResponse({ retCode: 0 }), true);
+  assert.equal(isSuccessfulCollectionResponse({ ret: 0, data: {} }), true);
   assert.equal(isSuccessfulCollectionResponse({ status: 200 }), true);
+  assert.equal(isSuccessfulCollectionResponse({ ret: 1, data: {} }), false);
   assert.equal(isSuccessfulCollectionResponse({ retCode: 1 }), false);
   assert.equal(isSuccessfulCollectionResponse({ status: 500 }), false);
   assert.equal(isSuccessfulCollectionResponse({ error: "failed" }), false);
@@ -244,6 +246,15 @@ test("does not accept a collection finish without an explicit success code", () 
 
   assert.equal(tracker.isStarted("attempt"), false);
   assert.equal(tracker.isFailed("attempt"), true);
+});
+
+test("accepts the plugin ret success code for request startup", () => {
+  const tracker = createCollectionAttemptTracker({ start: 22, end: 40 });
+  tracker.arm("attempt", { requestedStart: 22, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_22" });
+  assert.equal(tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", ret: 0 }), true);
+  assert.equal(tracker.isStarted("attempt"), true);
 });
 
 test("does not report startup for a failed collection response", () => {

@@ -229,8 +229,9 @@ export function selectPendingRequest(requests) {
 
 export function isSuccessfulCollectionResponse(result) {
   if (!result || typeof result !== "object" || result.error) return false;
-  if (result.retCode !== undefined && result.retCode !== null && result.retCode !== "") {
-    return Number.isFinite(Number(result.retCode)) && Number(result.retCode) === 0;
+  const code = result.retCode ?? result.ret;
+  if (code !== undefined && code !== null && code !== "") {
+    return Number.isFinite(Number(code)) && Number(code) === 0;
   }
   if (result.status !== undefined && result.status !== null && result.status !== "") {
     const status = Number(result.status);
@@ -329,11 +330,12 @@ export function createCollectionAttemptTracker(
       if (!attempt
         || attempt.requestGeneration !== attempt.clickGeneration
         || String(response.flag || "") !== String(attempt.request?.flag || "")) return false;
-      const hasRetCode = response.retCode !== undefined && response.retCode !== null && response.retCode !== "";
+      const code = response.retCode ?? response.ret;
+      const hasCode = code !== undefined && code !== null && code !== "";
       const hasStatus = response.status !== undefined && response.status !== null && response.status !== "";
       const successful = !response.error && (
-        (hasRetCode && Number.isFinite(Number(response.retCode)) && Number(response.retCode) === 0)
-        || (!hasRetCode && hasStatus && Number.isFinite(Number(response.status))
+        (hasCode && Number.isFinite(Number(code)) && Number(code) === 0)
+        || (!hasCode && hasStatus && Number.isFinite(Number(response.status))
           && Number(response.status) >= 200 && Number(response.status) < 300)
       );
       if (!successful) {
