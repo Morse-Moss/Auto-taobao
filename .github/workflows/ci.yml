@@ -1,0 +1,48 @@
+# Minimal offline CI gate for sycm-automation.
+#
+# Scope (deliberately narrow, matching docs/standards/README.md section 7):
+#   - L0 syntax / L1 offline self-tests / L2 unit tests only.
+#   - Real browser, Feishu and production PostgreSQL flows are NOT covered here.
+#     Integration tests are gated behind external systems by design; the unit
+#     suite excludes them (see scripts/run-test-suite.mjs EXCLUSIONS).
+#
+# Runner note: windows-latest is used because the project is Windows-native
+# (Edge-bound CDP proxy, PowerShell helpers, Windows clipboard contracts).
+# Running on Linux would silently skip exactly the behaviour we care about,
+# so a green Linux run would be false confidence.
+#
+# Expected duration: the xws-export-market-analysis suite alone takes about
+# 4-5 minutes; the whole unit layer is budgeted at ~10 minutes.
+
+name: offline-tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  offline-gate:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Offline self-tests (L1)
+        run: npm run test:offline
+
+      - name: Unit tests (L2)
+        run: npm run test:unit
+
+      # NOTE: `npm run test:integration` is intentionally NOT run here.
+      # It requires a live CDP proxy / Edge session and a PostgreSQL URL.
+      # When those become available in CI, add them as explicit, separately
+      # reported jobs - never fold them into this gate.
