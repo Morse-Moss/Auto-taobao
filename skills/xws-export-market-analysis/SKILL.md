@@ -28,8 +28,8 @@ Use the bundled runner to start at Taobao home, search the requested keyword, op
 
 - `开始分析` may need one bounded retry when the result dialog does not open; after the visible result dialog appears, continue with the same run rather than launching a duplicate collection.
 - A diagnostic request with HTTP `200` or a successful `*_FINISH` message is a completed request signal. `NO_REQUEST_SIGNAL` is reserved for a snapshot with no completed or pending request evidence. Changed page/row/completion state, a changing next-page countdown, and new request/message evidence reset the idle timer. A pending request or background tab defers only the idle stall; the page/frequency-derived overall deadline remains authoritative.
-- Export downloads can be slow. Keep one supervised process and wait for a new, stable file; do not create parallel export clicks or retry storms. Collection deadline and artifact settlement deadline are separate: a child can stop while a clicked export remains settleable for at most 60 minutes.
-- Persist an export intent before every export click. A click/action failure marks that intent `REJECTED` and it cannot be replayed; a successful click with a late file leaves an `OPEN` intent for bounded settlement.
+- Export downloads can be slow. Keep one supervised process and wait for a new, stable file; do not create parallel export clicks or retry storms. Collection deadline and artifact settlement deadline are separate: a final export may remain settleable for at most 60 minutes, while a partial-stall export uses a short bounded window so the child can return control to the supervisor.
+- Persist an export intent before every export click. A click/action failure marks that intent `REJECTED` and it cannot be replayed; a successful final click with a late file leaves an `OPEN` intent for bounded settlement. A partial-stall click that misses its short settlement window is marked `EXPIRED`, never reopened.
 - Resume settles only intents matching the PostgreSQL run, requested range, keyword, complete collection options, export modes, and normalized output directory. Mismatched intents do not scan the download directory and record `IDENTITY_IGNORED`.
 - A candidate is accepted only when it is unique, newer than the intent baseline, stable, validator-confirmed, row-count compatible, and its size and SHA-256 remain unchanged. Filename, mtime, or baseline alone never prove ownership. `REJECTED` and `EXPIRED` intents cannot be revived.
 - Login, CAPTCHA/slider, security, quota, or account-risk controls remain hard stops. Do not use detail-page browsing as a workaround for a missing image or field.
@@ -119,6 +119,27 @@ node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\run-ad
 
 The runner resumes from PostgreSQL's verified `completedEnd + 1`; it does not use the local checkpoint to choose the cursor. It never treats a no-progress stall, login wall, CAPTCHA, or security prompt as permission to skip pages.
 
+For a single task, the Agent must supervise the PostgreSQL run instead of launching the adaptive runner once. The supervisor keeps one runtime lock and one PostgreSQL advisory lock through each child lifetime, rereads the authoritative run after every child exit, and resumes only when the stored state is explicitly recoverable:
+
+For a new collection, the supervisor must create the authoritative run and start its first child under the same ownership locks:
+
+```powershell
+node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\supervise-adaptive-export.mjs" `
+  --new --keyword "浴缸" --pages 1-40 --frequency 30-45 --stall-seconds 300 `
+  --channel all --sort sales --price 0-unlimited --export csv,xlsx-images `
+  --checkpoint "D:\Retire\sycm-automation\runtime\xws-bathtub-adaptive-checkpoint.json" `
+  --output-dir "C:\Users\Administrator\Downloads" --watch --poll-seconds 5
+```
+
+To continue an existing recoverable run:
+
+```powershell
+node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\supervise-adaptive-export.mjs" `
+  --run-id "RUN_UUID" --watch --poll-seconds 5
+```
+
+`--new` refuses to create a PostgreSQL run while a matching browser attempt exists. `--watch` stops on `DONE`, `HUMAN_REQUIRED`, `FAILED`, `ADOPTION_REJECTED`, unrecoverable artifact errors, or missing evidence. PostgreSQL stores state; the supervisor is the process that starts the next runner. Do not start a second adaptive runner manually while the supervisor is active.
+
 The older segmented runner remains available for compatibility with historical checkpoints. It writes one
 checkpoint JSON and keeps completed segment artifacts, but it is not the default strategy for new full-range runs.
 
@@ -156,7 +177,7 @@ The event log (`events.jsonl`) and manifest use these states/events:
 
 `MARKET_ANALYSIS_RETRY` and `COLLECTION_START_RETRY` may appear once when the corresponding first click has no verified postcondition. They are bounded recovery events, not collection retries.
 
-Risk markers transition to `HUMAN_REQUIRED`. A collection with no changed completed-page, row-count, or completion signature for the stall threshold transitions to `STALLED` and records a best-effort screenshot. Both are terminal for that run; do not silently retry.
+Risk markers transition to `HUMAN_REQUIRED`. A collection with no changed completed-page, row-count, or completion signature for the stall threshold transitions to `STALLED` and records a best-effort screenshot. A current-range no-progress stall with persisted attempt evidence may be resumed by the adaptive supervisor; deadline, risk, artifact-settlement, and generic failure states remain terminal.
 
 Defaults for a single run are an 8-second progress poll and a 120-second continuous no-progress threshold. The
 adaptive runner uses a conservative 300-second stall threshold and a page-count and frequency-derived overall
@@ -184,7 +205,7 @@ The runner writes a per-run `runtime/xws-runs/<run-id>/events.jsonl` and `manife
 ## Failure Handling and Handoff
 
 - `HUMAN_REQUIRED`: stop browser actions and name the page/control the user must resolve. Resume only after the user confirms it is cleared.
-- `STALLED`: preserve the run directory, screenshot, diagnostics, and validated partial artifact. The adaptive runner resumes from the next verified page; if no validated partial CSV exists, it stops without advancing the cursor. Settlement continues under the existing runtime and PostgreSQL ownership locks, but an intent alone never advances the cursor.
+- `STALLED`: preserve the run directory, screenshot, diagnostics, and validated partial artifact. The adaptive runner resumes from the next verified page; if no validated partial CSV exists, it stops without advancing the cursor. Partial-stall settlement is short and bounded; when no unique validated artifact arrives, its intents are marked `EXPIRED` so the child returns control to the supervisor. An intent alone never advances the cursor.
 - Proxy health failure, disconnection, or a browser identity other than exact `edge`: fail immediately before target discovery or browser actions. Rebind the shared Proxy to the user's Edge session before retrying; never wait for the toolbar or reuse targets from the wrong browser.
 - Missing target, toolbar, dialog, export button, or download: fail the run with its evidence; rediscover once at the next explicitly bounded step, never indefinitely. A failed export action is `REJECTED`; a successful action with a late download is `OPEN` until settlement expires.
 - Validation or artifact-integrity failure: mark the intent `REJECTED`, persist the candidate/error evidence, do not pass the file to Feishu, and report the first failing contract.

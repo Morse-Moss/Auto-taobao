@@ -159,6 +159,11 @@ function pageRange(text, label) {
 
 export function parseProgressText(text) {
   const source = String(text || "");
+  const pageRange = (value, label) => {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    const match = value.match(new RegExp(`${escaped}\\s*([0-9]+)(?:\\s*~\\s*([0-9]+))?\\s*页`, "u"));
+    return { start: Number(match?.[1]) || 0, end: Number(match?.[2] || match?.[1]) || 0 };
+  };
   const title = source.match(/【\s*([^】]+?)\s*】\s*([^\n]*?排序)Top[0-9]+\s*-\s*[0-9]{4}-[0-9]{2}-[0-9]{2}/u);
   const requested = pageRange(source, "您搜索的页数：第");
   const completed = pageRange(source, "已成功获取：第");
@@ -223,6 +228,26 @@ export function selectObservedCollectionResult(dialogEntries, expectedProgress =
     ));
   if (matches.length > 1) throw new Error("ambiguous observed collection results");
   return matches[0] || null;
+}
+
+export function resolveOwnedExportProgress(snapshot = {}, expectedProgress = {}) {
+  if (snapshot.observedAmbiguous === true || snapshot.trackerOwned !== true || snapshot.owned !== true) {
+    const error = new Error("owned result is unavailable");
+    error.code = "OWNED_RESULT_UNAVAILABLE";
+    throw error;
+  }
+  const expected = expectedProgress || {};
+  const progress = snapshot.observedProgress || snapshot.progress || parseProgressText(snapshot.text || "");
+  if (progress.keyword !== String(expected.keyword || "").trim()
+    || (expected.sortLabel && progress.sortLabel !== String(expected.sortLabel).trim())
+    || progress.requestedStart !== Number(expected.requestedStart)
+    || progress.requestedEnd !== Number(expected.requestedEnd)
+    || progress.completedStart < Number(expected.requestedStart)
+    || progress.completedEnd > Number(expected.requestedEnd)
+    || progress.rowCount < 1) {
+    throw new Error("owned result progress does not match requested contract");
+  }
+  return progress;
 }
 
 export function collectionResultSnapshot(text) {
@@ -291,6 +316,12 @@ export function createCollectionAttemptTracker(
     && left.rowCount === right.rowCount
   );
   const current = (marker) => attempts.get(marker);
+  const markActivity = (attempt, kind) => {
+    if (!attempt || !["request", "response", "result"].includes(kind)) return false;
+    attempt.lastActivityAt = now();
+    attempt[`${kind}Count`] += 1;
+    return true;
+  };
   const withinClickWindow = (attempt) => (
     Number.isFinite(attempt?.clickStartedAt)
     && now() - attempt.clickStartedAt <= clickWindowMs
@@ -310,6 +341,13 @@ export function createCollectionAttemptTracker(
         responseGeneration: 0,
         resultGeneration: 0,
         pendingResultGeneration: 0,
+        activityResultGeneration: 0,
+        lastActivityAt: null,
+        requestCount: 0,
+        responseCount: 0,
+        resultCount: 0,
+        activityRequests: new Map(),
+        lastProgress: null,
       });
     },
     retryClick(marker) {
@@ -328,6 +366,7 @@ export function createCollectionAttemptTracker(
       attempt.responseGeneration = 0;
       attempt.resultGeneration = 0;
       attempt.pendingResultGeneration = 0;
+      attempt.activityResultGeneration = 0;
     },
     endClick(marker) {
       const attempt = current(marker);
@@ -342,26 +381,41 @@ export function createCollectionAttemptTracker(
         && /^XWS_PAGE_REQUEST_[0-9]+$/u.test(flag);
       const matchesCollectionRequest = isPageRequest
         && (!hasPage || page === expectedStart);
+      if (!attempt || !isPageRequest || !flag) return false;
+      if (attempt.clickGeneration > 0
+        && attempt.requestGeneration === attempt.clickGeneration
+        && (!hasPage || page >= expectedStart)) {
+        request.attemptGeneration = attempt.clickGeneration;
+        attempt.activityRequests.set(flag, request);
+        markActivity(attempt, "request");
+        return true;
+      }
       if (!withinClickWindow(attempt)
         || !matchesCollectionRequest
-        || !flag
         || attempt.requestGeneration !== 0) return false;
       attempt.requestGeneration = attempt.clickGeneration;
       attempt.requestStartedAt = now();
       attempt.request = request;
+      attempt.activityRequests.set(flag, request);
       request.attemptGeneration = attempt.clickGeneration;
+      markActivity(attempt, "request");
       return true;
     },
     recordResponse(marker, response = {}) {
       const attempt = current(marker);
-      if (!attempt
-        || attempt.requestGeneration !== attempt.clickGeneration
-        || String(response.flag || "") !== String(attempt.request?.flag || "")) return false;
+      if (!attempt) return false;
+      const flag = String(response.flag || "");
+      const isInitialRequest = attempt.requestGeneration === attempt.clickGeneration
+        && flag === String(attempt.request?.flag || "");
+      const activityRequest = attempt.activityRequests.get(flag);
+      if (!isInitialRequest && !activityRequest) return false;
       const successful = isSuccessfulCollectionResponse(response);
       if (!successful) {
-        attempt.requestFailed = true;
+        if (isInitialRequest) attempt.requestFailed = true;
         return false;
       }
+      markActivity(attempt, "response");
+      if (!isInitialRequest) return true;
       attempt.responseGeneration = attempt.clickGeneration;
       attempt.responseObservedAt = now();
       if (attempt.pendingResultGeneration === attempt.clickGeneration
@@ -369,6 +423,50 @@ export function createCollectionAttemptTracker(
         && attempt.responseObservedAt - attempt.requestStartedAt <= resultWindowMs) {
         attempt.resultGeneration = attempt.clickGeneration;
       }
+      return true;
+    },
+    recordActivity(marker, kind) {
+      return markActivity(current(marker), kind);
+    },
+    activity(marker) {
+      const attempt = current(marker);
+      if (!attempt) return null;
+      return {
+        lastActivityAt: attempt.lastActivityAt,
+        requestCount: attempt.requestCount,
+        responseCount: attempt.responseCount,
+        resultCount: attempt.resultCount,
+      };
+    },
+    recordPageRequestActivity(marker, request = {}) {
+      const attempt = current(marker);
+      const page = Number(request.page);
+      const flag = String(request.flag || "");
+      if (!attempt || request.apiKey !== "request"
+        || !/^XWS_PAGE_REQUEST_[0-9]+$/u.test(flag)
+        || !Number.isInteger(page) || page < expectedStart
+        || page > expectedEnd
+        || attempt.requestGeneration !== attempt.clickGeneration) return false;
+      request.attemptGeneration = attempt.clickGeneration;
+      attempt.activityRequests.set(flag, request);
+      return markActivity(attempt, "request");
+    },
+    recordResponseActivity(marker, response = {}) {
+      const attempt = current(marker);
+      const flag = String(response.flag || "");
+      if (!attempt || !attempt.activityRequests.has(flag)) return false;
+      if (!isSuccessfulCollectionResponse(response)) return false;
+      return markActivity(attempt, "response");
+    },
+    recordProgressActivity(marker, progress = {}) {
+      const attempt = current(marker);
+      const next = snapshot(progress);
+      if (!attempt || next.requestedStart !== expectedStart
+        || next.requestedEnd !== expectedEnd
+        || (attempt.lastProgress && sameSnapshot(attempt.lastProgress, next))) return false;
+      attempt.lastProgress = next;
+      attempt.resultCount += 1;
+      attempt.lastActivityAt = now();
       return true;
     },
     recordResult(marker, progress, nodeId = "") {
@@ -385,6 +483,7 @@ export function createCollectionAttemptTracker(
         && attempt.clickGeneration > 0) {
         if (observedAt - attempt.requestStartedAt > resultWindowMs) return false;
         attempt.resultGeneration = attempt.clickGeneration;
+        markActivity(attempt, "result");
         return true;
       }
       if (attempt.requestGeneration === attempt.clickGeneration
@@ -393,6 +492,7 @@ export function createCollectionAttemptTracker(
         && attempt.requestGeneration !== attempt.clickGeneration) return false;
       attempt.pendingResultGeneration = attempt.clickGeneration;
       attempt.pendingResultAt = observedAt;
+      markActivity(attempt, "result");
       return true;
     },
     isClickObserved(marker) {

@@ -14,6 +14,7 @@ import {
   detectRiskMarkers,
   parseProgressText,
   parseOptions,
+  resolveOwnedExportProgress,
   selectExportResultDialog,
   selectObservedCollectionResult,
   selectPendingRequest,
@@ -86,6 +87,44 @@ test("selects the matching result dialog owned by the current attempt", () => {
     rowCount: 118,
     attemptMarker: "current-attempt",
   }), /received 0/iu);
+});
+
+test("allows partial export only from a refreshed uniquely owned result", () => {
+  const progress = parseProgressText("【 浴缸 】销量排序Top88 - 2026-09-06 15:57 - 市场数据分析\\n您搜索的页数：第 1 ~ 40 页，已成功获取：第 1 ~ 2 页\\n商品数量：88");
+  assert.deepEqual(
+    resolveOwnedExportProgress({
+      observedProgress: progress,
+      observedAmbiguous: false,
+      trackerOwned: true,
+      owned: true,
+    }, {
+      keyword: "浴缸",
+      sortLabel: "销量排序",
+      requestedStart: 1,
+      requestedEnd: 40,
+    }),
+    progress,
+  );
+  let ownershipError;
+  assert.throws(() => {
+    try {
+      resolveOwnedExportProgress({ observedProgress: progress, trackerOwned: true, owned: false }, {
+        keyword: "浴缸",
+        sortLabel: "销量排序",
+        requestedStart: 1,
+        requestedEnd: 40,
+      });
+    } catch (error) {
+      ownershipError = error;
+      throw error;
+    }
+  }, /owned result is unavailable/iu);
+  assert.equal(ownershipError.code, "OWNED_RESULT_UNAVAILABLE");
+});
+
+test("serializes progress parsing without external helper dependencies", () => {
+  const serialized = Function(`return (${parseProgressText.toString()})`)();
+  assert.deepEqual(serialized("【 浴缸 】销量排序Top572 - 2026-09-06 15:57 - 市场数据分析\n您搜索的页数：第 22 ~ 40 页，已成功获取：第 22 ~ 36 页\n商品数量：572"), parseProgressText("【 浴缸 】销量排序Top572 - 2026-09-06 15:57 - 市场数据分析\n您搜索的页数：第 22 ~ 40 页，已成功获取：第 22 ~ 36 页\n商品数量：572"));
 });
 
 test("observes the unique current result without requiring an attempt marker", () => {
@@ -162,6 +201,50 @@ test("accepts only explicitly successful collection responses", () => {
   assert.equal(isSuccessfulCollectionResponse({ retCode: null }), false);
   assert.equal(isSuccessfulCollectionResponse({ status: null }), false);
   assert.equal(isSuccessfulCollectionResponse({}), false);
+});
+
+test("tracks freshness only for the current attempt activity", () => {
+  let currentTime = 10_000;
+  const tracker = createCollectionAttemptTracker(
+    { start: 22, end: 40 },
+    { now: () => currentTime },
+  );
+  tracker.arm("attempt", { requestedStart: 1, requestedEnd: 40, completedEnd: 21, rowCount: 921 });
+  tracker.beginClick("attempt");
+  tracker.recordRequest("attempt", { apiKey: "request", page: 22, flag: "XWS_PAGE_REQUEST_22" });
+  currentTime += 100;
+  tracker.recordResponse("attempt", { flag: "XWS_PAGE_REQUEST_22", status: 200 });
+  currentTime += 100;
+  assert.equal(tracker.recordPageRequestActivity("attempt", {
+    apiKey: "request",
+    page: 23,
+    flag: "XWS_PAGE_REQUEST_23",
+  }), true);
+  currentTime += 100;
+  assert.equal(tracker.recordResponseActivity("attempt", {
+    flag: "XWS_PAGE_REQUEST_23",
+    status: 200,
+  }), true);
+  currentTime += 100;
+  assert.equal(tracker.recordProgressActivity("attempt", {
+    requestedStart: 22,
+    requestedEnd: 40,
+    completedEnd: 23,
+    rowCount: 90,
+  }), true);
+
+  assert.deepEqual(tracker.activity("attempt"), {
+    lastActivityAt: currentTime,
+    requestCount: 2,
+    responseCount: 2,
+    resultCount: 1,
+  });
+  assert.equal(tracker.recordPageRequestActivity("historical", {
+    apiKey: "request",
+    page: 24,
+    flag: "XWS_PAGE_REQUEST_24",
+  }), false);
+  assert.equal(tracker.activity("historical"), null);
 });
 
 test("does not bind a request that starts outside the real start-click dispatch", () => {

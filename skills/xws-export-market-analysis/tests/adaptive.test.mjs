@@ -40,6 +40,7 @@ import {
   validateProgressSnapshot,
   verifyArtifactSet,
   verifyRecordedArtifacts,
+  verifyRecordedParts,
   withAdaptiveOwnership,
 } from "../scripts/run-adaptive-export.mjs";
 
@@ -155,6 +156,21 @@ test("does not invent a resume page when a run stalled before any verified page"
   });
   assert.equal(nextAdaptiveRange(checkpoint), null);
   assert.equal(checkpoint.status, "STALLED");
+});
+
+test("persists the explicit export failure reason for supervised recovery", () => {
+  const checkpoint = createAdaptiveCheckpoint({ keyword: "浴缸", pages: { start: 1, end: 40 } });
+  applyAdaptiveRun(checkpoint, {
+    start: 1,
+    end: 40,
+    status: "STALLED",
+    progress: { completedStart: 1, completedEnd: 24, rowCount: 118 },
+    exportFailure: { reason: "result_ownership_unavailable", error: "owned result disappeared" },
+  });
+  assert.deepEqual(checkpoint.parts["1-40"].exportFailure, {
+    reason: "result_ownership_unavailable",
+    error: "owned result disappeared",
+  });
 });
 
 test("parses adaptive options without a fixed total runtime or segment size", () => {
@@ -588,6 +604,69 @@ test("rejects a mutated XLSX before final merge", async () => {
   }
 });
 
+test("allows a verified CSV-only stalled part to resume while keeping XLSX pending", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "xws-part-"));
+  const csv = path.join(directory, "part-1-13.csv");
+  const content = Buffer.alloc(241766, "x");
+  await writeFile(csv, content);
+  const sha256 = createHash("sha256").update(content).digest("hex");
+  const part = {
+    id: "1-40",
+    start: 1,
+    end: 40,
+    completedEnd: 13,
+    status: "STALLED",
+    artifacts: { csv },
+    validation: {
+      ok: true,
+      validation: { rows: 572 },
+      artifacts: { csv: { sha256, size_bytes: content.length } },
+    },
+    artifactRecords: [{
+      kind: "csv",
+      path: csv,
+      sha256,
+      sizeBytes: content.length,
+    }],
+    mediaPending: ["xlsx"],
+  };
+
+  try {
+    await verifyRecordedParts([part], ["csv", "xlsx-images"], { allowMissingXlsx: true });
+    await assert.rejects(
+      verifyRecordedParts([part], ["csv", "xlsx-images"]),
+      /missing verified xlsx artifact evidence/u,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("advances the adaptive range after a CSV-only verified prefix", () => {
+  const checkpoint = createAdaptiveCheckpoint({ keyword: "浴缸", pages: { start: 1, end: 40 } });
+  applyAdaptiveRun(checkpoint, {
+    start: 1,
+    end: 40,
+    status: "STALLED",
+    progress: { completedStart: 1, completedEnd: 13, rowCount: 572 },
+    artifacts: { csv: "part-1-13.csv" },
+    validation: {
+      ok: true,
+      validation: { rows: 572 },
+      artifacts: { csv: { sha256: "csv-hash", size_bytes: 241766 } },
+    },
+    artifactRecords: [{
+      kind: "csv",
+      path: "part-1-13.csv",
+      sha256: "csv-hash",
+      sizeBytes: 241766,
+    }],
+    mediaPending: ["xlsx"],
+  });
+  assert.equal(checkpoint.completedEnd, 13);
+  assert.deepEqual(nextAdaptiveRange(checkpoint), { start: 14, end: 40 });
+});
+
 test("revalidates PostgreSQL part artifacts before advancing a resumed cursor", async () => {
   const expected = {
     keyword: "浴缸",
@@ -742,28 +821,57 @@ test("keeps the authoritative checkpoint unchanged when a transactional part com
   assert.deepEqual(checkpoint.parts, {});
 });
 
-test("retries only an uncommitted export-action failure for the same range", () => {
+test("stops recoverable attempts after the persisted retry budget", async () => {
+  const range = { start: 14, end: 40 };
+  const attempts = [];
+  const waits = [];
+  const result = await runAdaptiveAttemptLoop({
+    range,
+    initialAttempt: 2,
+    maxAttempts: 3,
+    onAttemptStart: ({ attempt }) => { attempts.push(attempt); },
+    runAttempt: async () => ({
+      status: "STALLED",
+      snapshot: {
+        progress: { completedStart: 14, completedEnd: 17, rowCount: 190 },
+        artifacts: {},
+        exportFailure: { reason: "artifact_settlement_failed" },
+        error: "Xiaowangshen made no page progress before the stall threshold",
+      },
+    }),
+    sleep: async (delay) => { waits.push(delay); },
+  });
+  assert.deepEqual(attempts, [3]);
+  assert.deepEqual(waits, []);
+  assert.equal(result.retryExhausted, true);
+  assert.equal(result.status, "FAILED");
+});
+
+test("rejects an invalid retry budget before starting an attempt", async () => {
+  await assert.rejects(
+    () => runAdaptiveAttemptLoop({
+      range: { start: 1, end: 2 },
+      maxAttempts: 0,
+      runAttempt: async () => ({ status: "FAILED", snapshot: {} }),
+    }),
+    /maxAttempts must be a positive integer/u,
+  );
+});
+
+test("retries an uncommitted export-action failure regardless of attempt number", () => {
   const range = { start: 22, end: 40 };
-  assert.equal(shouldRetryAttempt({
-    status: "STALLED",
-    snapshot: {
-      progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
-      artifacts: {},
-      exportFailure: { reason: "export_action_failed", error: "target activation failed" },
-    },
-    range,
-    attempt: 1,
-  }), true);
-  assert.equal(shouldRetryAttempt({
-    status: "STALLED",
-    snapshot: {
-      progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
-      artifacts: {},
-      exportFailure: { reason: "export_action_failed" },
-    },
-    range,
-    attempt: 2,
-  }), false);
+  for (const attempt of [1, 2, 99]) {
+    assert.equal(shouldRetryAttempt({
+      status: "STALLED",
+      snapshot: {
+        progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+        artifacts: {},
+        exportFailure: { reason: "export_action_failed", error: "target activation failed" },
+      },
+      range,
+      attempt,
+    }), true);
+  }
   assert.equal(shouldRetryAttempt({
     status: "HUMAN_REQUIRED",
     snapshot: { progress: {}, artifacts: {}, exportFailure: { reason: "export_action_failed" } },
@@ -771,39 +879,163 @@ test("retries only an uncommitted export-action failure for the same range", () 
     attempt: 1,
   }), false);
   assert.equal(shouldRetryAttempt({
-    status: "STALLED",
+    status: "FAILED",
     snapshot: {
       progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
-      artifacts: { csv: "verified.csv" },
+      artifacts: {},
       exportFailure: { reason: "export_action_failed" },
     },
     range,
     attempt: 1,
   }), false);
+  for (const snapshot of [
+    {
+      progress: { completedStart: 22, completedEnd: 21, rowCount: 118 },
+      artifacts: {},
+      exportFailure: { reason: "export_action_failed" },
+    },
+    {
+      progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+      artifacts: {},
+    },
+    {
+      progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+      artifacts: {},
+      exportFailure: { reason: "artifact_settlement_failed" },
+    },
+    {
+      progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+      artifacts: { csv: "verified.csv" },
+      exportFailure: { reason: "export_action_failed" },
+    },
+  ]) {
+    assert.equal(shouldRetryAttempt({ status: "STALLED", snapshot, range, attempt: 99 }), false);
+  }
+  assert.equal(shouldRetryAttempt({
+    status: "STALLED",
+    snapshot: {
+      progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+      artifacts: {},
+      exportFailure: { reason: "result_ownership_unavailable" },
+    },
+    range,
+    attempt: 99,
+  }), true);
+  assert.equal(shouldRetryAttempt({
+    status: "STALLED",
+    snapshot: {
+      progress: { completedStart: 0, completedEnd: 0, rowCount: 0 },
+      artifacts: {},
+      exportFailure: { reason: "result_ownership_unavailable" },
+    },
+    range: { start: 1, end: 40 },
+    attempt: 1,
+  }), true);
+  assert.equal(shouldRetryAttempt({
+    status: "STALLED",
+    snapshot: {
+      progress: { completedStart: 0, completedEnd: 0, rowCount: 0 },
+      artifacts: {},
+      exportFailure: { reason: "export_action_failed" },
+    },
+    range: { start: 1, end: 40 },
+    attempt: 1,
+  }), false);
+  assert.equal(shouldRetryAttempt({
+    status: "STALLED",
+    snapshot: {
+      progress: { completedStart: 0, completedEnd: 0, rowCount: 0 },
+      artifacts: {},
+      error: "Xiaowangshen made no page progress before the stall threshold",
+    },
+    range: { start: 1, end: 40 },
+    attempt: 99,
+  }), true);
 });
 
-test("retries the same adaptive range once after an export action failure", async () => {
-  const calls = [];
+test("keeps retrying the same adaptive range until a recoverable failure succeeds", async () => {
+  const attempts = [];
+  const waits = [];
   const range = { start: 22, end: 40 };
   const outcome = await runAdaptiveAttemptLoop({
     range,
-    runAttempt: async ({ range: attemptRange, attempt }) => {
-      calls.push({ ...attemptRange });
-      return {
-        result: { code: 3, stdout: "", stderr: "" },
-        status: "STALLED",
-        snapshot: {
-          progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
-          artifacts: {},
-          exportFailure: { reason: "export_action_failed" },
-        },
-        attempt,
-      };
+    runAttempt: async ({ attempt }) => {
+      attempts.push(attempt);
+      if (attempt < 4) {
+        return {
+          result: { code: 3, stdout: "", stderr: "" },
+          status: "STALLED",
+          snapshot: {
+            progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+            artifacts: {},
+            exportFailure: { reason: "export_action_failed" },
+          },
+        };
+      }
+      return { result: { code: 0, stdout: "", stderr: "" }, status: "DONE", snapshot: {} };
     },
+    sleep: async (delay) => { waits.push(delay); },
   });
 
-  assert.deepEqual(calls, [range, range]);
-  assert.equal(outcome.attempt, 2);
+  assert.deepEqual(attempts, [1, 2, 3, 4]);
+  assert.deepEqual(waits, [1000, 2000, 4000]);
+  assert.equal(outcome.attempt, 4);
+});
+
+test("retries a generic no-progress stall without an export failure reason", async () => {
+  const attempts = [];
+  const outcome = await runAdaptiveAttemptLoop({
+    range: { start: 1, end: 40 },
+    initialAttempt: 4,
+    runAttempt: async ({ attempt }) => {
+      attempts.push(attempt);
+      if (attempt === 5) {
+        return {
+          status: "STALLED",
+          snapshot: {
+            progress: { completedStart: 0, completedEnd: 0, rowCount: 0 },
+            artifacts: {},
+            error: "Xiaowangshen made no page progress before the stall threshold",
+          },
+        };
+      }
+      return { status: "DONE", snapshot: {} };
+    },
+    sleep: async () => {},
+  });
+
+  assert.deepEqual(attempts, [5, 6]);
+  assert.equal(outcome.attempt, 6);
+});
+
+test("caps exponential retry backoff without capping the attempt count", async () => {
+  const attempts = [];
+  const waits = [];
+  const outcome = await runAdaptiveAttemptLoop({
+    range: { start: 22, end: 40 },
+    initialAttempt: 98,
+    retryDelayMs: 1000,
+    maxRetryDelayMs: 3000,
+    runAttempt: async ({ attempt }) => {
+      attempts.push(attempt);
+      if (attempt < 104) {
+        return {
+          status: "STALLED",
+          snapshot: {
+            progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+            artifacts: {},
+            exportFailure: { reason: "export_action_failed" },
+          },
+        };
+      }
+      return { status: "DONE", snapshot: {} };
+    },
+    sleep: async (delay) => { waits.push(delay); },
+  });
+
+  assert.deepEqual(attempts, [99, 100, 101, 102, 103, 104]);
+  assert.deepEqual(waits, [1000, 2000, 3000, 3000, 3000]);
+  assert.equal(outcome.attempt, 104);
 });
 
 test("reads a persisted attempt count for the exact adaptive range", () => {
@@ -817,44 +1049,32 @@ test("reads a persisted attempt count for the exact adaptive range", () => {
   assert.equal(adaptiveAttemptCount(checkpoint, { start: 25, end: 40 }), 0);
 });
 
-test("does not reset the retry budget when the same range resumes in another process", async () => {
+test("continues from a persisted attempt count without resetting it", async () => {
   const calls = [];
   const range = { start: 22, end: 40 };
   const outcome = await runAdaptiveAttemptLoop({
     range,
-    initialAttempt: 1,
+    initialAttempt: 99,
     runAttempt: async ({ attempt }) => {
       calls.push(attempt);
-      return {
-        result: { code: 3, stdout: "", stderr: "" },
-        status: "STALLED",
-        snapshot: {
-          progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
-          artifacts: {},
-          exportFailure: { reason: "export_action_failed" },
-        },
-      };
+      if (attempt === 100) {
+        return {
+          result: { code: 3, stdout: "", stderr: "" },
+          status: "STALLED",
+          snapshot: {
+            progress: { completedStart: 22, completedEnd: 24, rowCount: 118 },
+            artifacts: {},
+            exportFailure: { reason: "export_action_failed" },
+          },
+        };
+      }
+      return { result: { code: 0, stdout: "", stderr: "" }, status: "DONE", snapshot: {} };
     },
+    sleep: async () => {},
   });
 
-  assert.deepEqual(calls, [2]);
-  assert.equal(outcome.attempt, 2);
-});
-
-test("refuses to launch a third attempt for a persisted adaptive range", async () => {
-  let launched = false;
-  await assert.rejects(
-    runAdaptiveAttemptLoop({
-      range: { start: 22, end: 40 },
-      initialAttempt: 2,
-      runAttempt: async () => {
-        launched = true;
-        return {};
-      },
-    }),
-    /attempt budget exhausted/iu,
-  );
-  assert.equal(launched, false);
+  assert.deepEqual(calls, [100, 101]);
+  assert.equal(outcome.attempt, 101);
 });
 
 test("persists each adaptive attempt number before launching its child", async () => {
@@ -864,15 +1084,19 @@ test("persists each adaptive attempt number before launching its child", async (
     onAttemptStart: async ({ attempt }) => { events.push(`persist:${attempt}`); },
     runAttempt: async ({ attempt }) => {
       events.push(`launch:${attempt}`);
-      return {
-        status: "STALLED",
-        snapshot: {
-          progress: { completedEnd: 24 },
-          artifacts: {},
-          exportFailure: { reason: "export_action_failed" },
-        },
-      };
+      if (attempt === 1) {
+        return {
+          status: "STALLED",
+          snapshot: {
+            progress: { completedEnd: 24 },
+            artifacts: {},
+            exportFailure: { reason: "export_action_failed" },
+          },
+        };
+      }
+      return { status: "DONE", snapshot: {} };
     },
+    sleep: async () => {},
   });
   assert.deepEqual(events, ["persist:1", "launch:1", "persist:2", "launch:2"]);
 });
@@ -890,6 +1114,19 @@ test("keeps partial-export failure evidence from the child event", () => {
     reason: "export_action_failed",
     error: "target activation failed",
   });
+});
+
+test("does not advance a complete-range snapshot when required XLSX evidence is missing", () => {
+  assert.equal(canAdvanceAttempt("STALLED", {
+    progress: { completedEnd: 40 },
+    artifacts: { csv: "part.csv" },
+    mediaPending: ["xlsx"],
+    validation: {
+      ok: true,
+      artifacts: { csv: { size_bytes: 13, sha256: "validated-sha256" } },
+      validation: { rows: 115 },
+    },
+  }, { start: 1, end: 40 }, ["csv", "xlsx-images"]), false);
 });
 
 test("does not advance a snapshot without complete verification evidence", () => {
@@ -1166,6 +1403,60 @@ test("rejects an accepted intent when its artifact changed before resume", async
   assert.equal(persisted.status, "REJECTED");
   assert.equal(persisted.reason, "artifact_integrity_failed");
   assert.equal(persisted.settlementEvidence.events.at(-1).type, "ARTIFACT_REJECTED");
+});
+
+test("recovers a verified CSV when the matching XLSX intent was rejected", async () => {
+  const attemptRoot = await mkdtemp(path.join(os.tmpdir(), "xws-attempt-"));
+  const runDir = path.join(attemptRoot, "child-run");
+  await (await import("node:fs/promises")).mkdir(runDir);
+  const csv = path.join(attemptRoot, "partial.csv");
+  await writeFile(csv, "validated csv", "utf8");
+  const validation = csvValidation(572, csv);
+  await writeFile(path.join(runDir, "export-intent-csv.json"), JSON.stringify({
+    version: 1,
+    status: "ACCEPTED",
+    intentId: "csv-accepted",
+    kind: "csv",
+    childRunId: "child-run",
+    parentRunId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    outputDir: attemptRoot,
+    options: { exportModes: ["csv", "xlsx-images"] },
+    expectedProgress: { completedStart: 1, completedEnd: 13, rowCount: 572 },
+    artifacts: { csv: { name: "partial.csv", path: csv, size: 13 } },
+    validation,
+  }));
+  await writeFile(path.join(runDir, "export-intent-xlsx.json"), JSON.stringify({
+    version: 1,
+    status: "REJECTED",
+    intentId: "xlsx-rejected",
+    kind: "xlsx",
+    childRunId: "child-run",
+    parentRunId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    outputDir: attemptRoot,
+    options: { exportModes: ["csv", "xlsx-images"] },
+    expectedProgress: { completedStart: 1, completedEnd: 13, rowCount: 572 },
+    reason: "export_action_failed",
+    lastError: "XLSX menu item is missing or ambiguous",
+  }));
+
+  const recovered = await recoverAttemptSettlement(attemptRoot, {
+    runId: "adaptive-run",
+    range: { start: 1, end: 40 },
+    exportModes: ["csv", "xlsx-images"],
+  }, {
+    validate: async () => validation,
+  });
+
+  assert.equal(recovered.status, "STALLED");
+  assert.equal(recovered.progress.completedEnd, 13);
+  assert.equal(recovered.artifacts.csv.path, csv);
+  assert.deepEqual(recovered.mediaPending, ["xlsx"]);
+  assert.equal(recovered.artifacts.xlsx, undefined);
+  assert.equal(canAdvanceAttempt("STALLED", recovered, { start: 1 }), true);
+  const xlsxIntent = JSON.parse(await readFile(path.join(runDir, "export-intent-xlsx.json"), "utf8"));
+  assert.equal(xlsxIntent.status, "REJECTED");
 });
 
 test("recovers an xlsx-images intent as an XLSX artifact", async () => {

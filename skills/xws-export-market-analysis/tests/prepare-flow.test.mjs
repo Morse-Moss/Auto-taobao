@@ -8,13 +8,169 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
+import {
+  buildPartialStallManifest,
+  cleanupOwnedTargets,
+  closeExportIntent,
+  configurationContractDiff,
+  openExportIntent,
+} from "../scripts/export-market-analysis.mjs";
+
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const cli = path.join(root, "scripts", "export-market-analysis.mjs");
 const validator = path.join(root, "scripts", "validate-output.py");
 const python = process.env.XWS_PYTHON || (process.platform === "win32" ? "py" : "python3");
 const pythonPrefix = process.env.XWS_PYTHON || process.platform !== "win32" ? [] : ["-3"];
 
-function startFakeProxy({ full = false, outputPath = "", liveResult = false, staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, startClickWithoutRequestOnce = false, collectionFailsAfterStartup = false, delayedCollectionRequest = false, delayedCollectionResult = false, resultMutationPrecedesRequest = false, backgroundRequestBetweenArmAndClick = false, historicalResultRemountsAfterStart = false, historicalResultRemountsInSourceAfterStart = false, historicalResultPersistsInSourceAfterRequest = false, xlsxMenuMountsLate = false, staleXlsxMenuVisible = false, staleXlsxMenuVisibleOwned = false, staleXlsxMenuHidden = false, staleXlsxMenuHiddenWithoutAria = false, xlsxMenuAriaIdChanges = false, csvExportMissing = false, exportActivationFails = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false, browserId = "edge", proxyConnected = true } = {}) {
+test("keeps sales sorting mapped to the Xiaowangshen config radio value", async () => {
+  const source = await readFile(cli, "utf8");
+  assert.match(source, /sales:\s*"_sale"/u);
+});
+
+test("reports the exact Xiaowangshen configuration fields that did not settle", () => {
+  const expected = {
+    keyword: "浴缸",
+    channel: true,
+    sort: true,
+    spinners: ["21", "40", "0", "", "30", "45"],
+    hasStart: true,
+  };
+  const actual = {
+    ok: true,
+    keyword: "浴缸",
+    channel: true,
+    sort: true,
+    spinners: ["1", "40", "0", "0", "10", "15"],
+    priceMaxUnlimited: true,
+    hasStart: true,
+  };
+
+  assert.deepEqual(configurationContractDiff(expected, actual), {
+    pageStart: { expected: "21", actual: "1" },
+    frequencyMin: { expected: "30", actual: "10" },
+    frequencyMax: { expected: "45", actual: "15" },
+  });
+});
+
+test("ignores an Element loading mask that is already leaving", async () => {
+  const source = await readFile(cli, "utf8");
+  assert.equal(source.includes("mask.classList.contains('el-loading-fade-leave')"), true);
+  assert.equal(source.includes("mask.classList.contains('el-loading-fade-leave-active')"), true);
+});
+
+test("browser diagnostics serialize the current response validator and wrapper version", async () => {
+  const source = await readFile(cli, "utf8");
+  assert.equal(source.includes("const isSuccessfulCollectionResponse = ${isSuccessfulCollectionResponse.toString()};"), true);
+  assert.equal(source.includes("wrappedPageRequest.__xwsDiagVersion = 6;"), true);
+  assert.equal(source.split("diagnostics?.version !== 6").length - 1, 2);
+  assert.equal(source.includes("collectionDiagnostics?.recordProgressActivity?."), true);
+});
+
+test("closes only targets owned by the terminal run marker", async () => {
+  const originalFetch = globalThis.fetch;
+  const closed = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === "/close") closed.push(parsed.searchParams.get("target"));
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
+  };
+  try {
+    const result = await cleanupOwnedTargets("http://127.0.0.1:3456", "run-1", ["owned-1", "owned-2"]);
+    assert.deepEqual(result, { closed: ["owned-1", "owned-2"], failed: [] });
+    assert.deepEqual(closed, ["owned-1", "owned-2"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("partial stall export intent uses a bounded settlement deadline", async () => {
+  const runDir = await mkdtemp(path.join(os.tmpdir(), "xws-partial-intent-"));
+  try {
+    const options = {
+      keyword: "浴缸",
+      pages: { start: 1, end: 40 },
+      channel: "all",
+      sort: "sales",
+      price: { min: 0, max: null },
+      frequency: { min: 30, max: 45 },
+      stallSeconds: 300,
+      allowTrial: false,
+      exportModes: ["csv", "xlsx-images"],
+    };
+    const startedAt = Date.now();
+    const { intent } = await openExportIntent({
+      runDir,
+      runId: "child-run",
+      options,
+      directory: runDir,
+      kind: "csv",
+      baseline: [],
+      progress: { completedStart: 1, completedEnd: 2, rowCount: 92 },
+      reason: "partial_on_stall",
+    });
+    const deadlineMs = Date.parse(intent.deadlineAt);
+    assert.ok(deadlineMs > startedAt);
+    assert.ok(deadlineMs - startedAt < 5 * 60 * 1_000);
+  } finally {
+    await rm(runDir, { recursive: true, force: true });
+  }
+});
+
+test("partial stall settlement timeout closes the intent instead of reopening it", async () => {
+  const runDir = await mkdtemp(path.join(os.tmpdir(), "xws-partial-intent-"));
+  try {
+    const intentPath = path.join(runDir, "export-intent-csv.json");
+    const intent = {
+      status: "OPEN",
+      kind: "csv",
+      deadlineAt: new Date(Date.now() + 1_000).toISOString(),
+    };
+    await writeFile(intentPath, JSON.stringify(intent), "utf8");
+    const closed = await closeExportIntent(intentPath, intent, "EXPIRED", {
+      reason: "partial_settlement_deadline_exceeded",
+    });
+    assert.equal(closed.status, "EXPIRED");
+    assert.equal(closed.reason, "partial_settlement_deadline_exceeded");
+    const persisted = JSON.parse(await readFile(intentPath, "utf8"));
+    assert.equal(persisted.status, "EXPIRED");
+  } finally {
+    await rm(runDir, { recursive: true, force: true });
+  }
+});
+
+test("partial stall manifest records the refreshed owned progress used for export", () => {
+  const stalledProgress = {
+    keyword: "浴缸",
+    sortLabel: "销量排序",
+    requestedStart: 1,
+    requestedEnd: 40,
+    completedStart: 1,
+    completedEnd: 20,
+    rowCount: 500,
+  };
+  const refreshedProgress = { ...stalledProgress, completedEnd: 22, rowCount: 550 };
+  const manifest = buildPartialStallManifest({
+    runId: "run-1",
+    options: { keyword: "浴缸" },
+    refreshedProgress,
+    stallDetails: { progress: stalledProgress },
+    partial: {
+      files: { csv: { path: "part.csv" } },
+      validation: { validation: { rows: 550 } },
+      warnings: [],
+      mediaPending: ["xlsx"],
+    },
+    runDir: "C:/runtime/run-1",
+  });
+
+  assert.deepEqual(manifest.progress, refreshedProgress);
+  assert.deepEqual(manifest.mediaPending, ["xlsx"]);
+  assert.deepEqual(manifest.artifacts, { csv: { path: "part.csv" } });
+  assert.equal(manifest.progress.completedEnd, 22);
+  assert.equal(manifest.progress.rowCount, 550);
+});
+
+function startFakeProxy({ full = false, outputPath = "", liveResult = false, staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, loginRequired = false, omitNewTargetId = false, newResponseFailsAfterCreate = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, startClickWithoutRequestOnce = false, collectionFailsAfterStartup = false, delayedCollectionRequest = false, delayedCollectionResult = false, resultMutationPrecedesRequest = false, backgroundRequestBetweenArmAndClick = false, historicalResultRemountsAfterStart = false, historicalResultRemountsInSourceAfterStart = false, historicalResultPersistsInSourceAfterRequest = false, resultMarkerLostBeforeExport = false, xlsxMenuMountsLate = false, staleXlsxMenuVisible = false, staleXlsxMenuVisibleOwned = false, staleXlsxMenuHidden = false, staleXlsxMenuHiddenWithoutAria = false, xlsxMenuAriaIdChanges = false, csvExportMissing = false, exportActivationFails = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, sortRadioMountsLate = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false, browserId = "edge", proxyConnected = true } = {}) {
   let homeCreated = liveResult;
   let searchCreated = liveResult;
   let started = liveResult;
@@ -46,7 +202,9 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
   let hiddenXlsxMenuBaselined = false;
   let trustedSortClicked = false;
   let radioReady = false;
+  let radioLabelProbes = 0;
   let settledSortClicked = false;
+  const closedTargets = [];
   const targetLabels = new Map();
   const server = http.createServer(async (request, response) => {
     const url = new URL(request.url, "http://127.0.0.1");
@@ -94,12 +252,22 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
       newCalls += 1;
       homeCreated = true;
       if (url.searchParams.get("label")) targetLabels.set("home", url.searchParams.get("label"));
-      send({ targetId: "home" });
+      if (newResponseFailsAfterCreate) {
+        response.statusCode = 500;
+        response.end(JSON.stringify({ error: "new target response failed after creation" }));
+        return;
+      }
+      send(omitNewTargetId ? {} : { targetId: "home" });
       return;
     }
     if (url.pathname === "/label") {
       targetLabels.set(url.searchParams.get("target"), url.searchParams.get("label"));
       send({ labeled: true });
+      return;
+    }
+    if (url.pathname === "/close") {
+      closedTargets.push(url.searchParams.get("target"));
+      send({ success: true });
       return;
     }
     if (url.pathname === "/bringToFront") {
@@ -202,7 +370,7 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
         send(!searchInputResets || searchInputSets >= 2);
       } else if (target === "home" && body.includes("document.body?.innerText")) {
         homeTextReads += 1;
-        send(homeHydrates && homeTextReads === 1 ? "淘宝" : "我的淘宝");
+        send(loginRequired ? "亲，请登录" : (homeHydrates && homeTextReads === 1 ? "淘宝" : "我的淘宝"));
       } else if (target === "home") {
         send({ ok: true });
       } else if (body.includes("pluginReady:") && pluginInitialError && pluginProbeErrors++ === 0) {
@@ -266,6 +434,31 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
             messages: [],
           },
         });
+      } else if (resultMarkerLostBeforeExport
+        && body.includes("const wrappers = [...document.querySelectorAll('.el-dialog__wrapper')].filter(visible)")) {
+        send({
+          text: "【 浴缸 】销量排序Top2 - 2026-08-05 15:46 - 市场数据分析\n您搜索的页数：第 1 ~ 1 页，已成功获取：第 1 ~ 1 页\n商品数量：2",
+          observedProgress: {
+            keyword: "浴缸",
+            sortLabel: "销量排序",
+            requestedStart: 1,
+            requestedEnd: 1,
+            completedStart: 1,
+            completedEnd: 1,
+            rowCount: 2,
+            complete: true,
+          },
+          visibleText: "商品数量：2",
+          trackerOwned: true,
+          owned: true,
+          title: "浴缸_淘宝搜索",
+          diagnostics: {
+            visibility: "visible",
+            readyState: "complete",
+            requests: [{ apiKey: "request", flag: "XWS_PAGE_REQUEST_1", status: 200, pending: false }],
+            messages: [],
+          },
+        });
       } else if (body.includes("const wrappers = [...document.querySelectorAll('.el-dialog__wrapper')].filter(visible)")) {
         resultAttemptChecks += 1;
         resultAttemptMarked = Boolean(
@@ -283,6 +476,7 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
           text: resultAttemptMarked ? "【 浴缸 】销量排序Top2 - 2026-08-05 15:46 - 市场数据分析\\n您搜索的页数：第 1 ~ 1 页，已成功获取：第 1 ~ 1 页\\n商品数量：2" : "",
           visibleText: resultAttemptMarked ? "商品数量：2" : "市场分析",
           trackerOwned: resultAttemptMarked,
+          owned: resultAttemptMarked,
           title: "浴缸_淘宝搜索",
           diagnostics: {
             visibility: "visible",
@@ -322,12 +516,38 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
       } else if (sortRequiresSettledDomClick && body.includes("label.click()")) {
         settledSortClicked = radioReady;
         send({ ok: settledSortClicked });
+      } else if (sortRadioMountsLate && body.includes("radio label missing")) {
+        radioLabelProbes += 1;
+        send(radioLabelProbes >= 2 ? { ok: true } : { ok: false, reason: "radio label missing" });
       } else if (liveResult
         && body.includes("return [...document.querySelectorAll('.el-dialog__wrapper')]")
         && body.includes("attemptMarker")) {
         send([{
           text: "【 浴缸 】销量排序Top2 - 2026-09-06 15:57 - 市场数据分析\n您搜索的页数：第 22 ~ 40 页，已成功获取：第 22 ~ 40 页\n商品数量：2",
           attemptMarker: "live-attempt",
+        }]);
+      } else if (resultMarkerLostBeforeExport
+        && body.includes("const wrappers = [...document.querySelectorAll('.el-dialog__wrapper')].filter(visible)")) {
+        send({
+          text: "【 浴缸 】销量排序Top2 - 2026-08-05 15:46 - 市场数据分析\n您搜索的页数：第 1 ~ 1 页，已成功获取：第 1 ~ 1 页\n商品数量：2",
+          visibleText: "商品数量：2",
+          trackerOwned: true,
+          owned: true,
+          title: "浴缸_淘宝搜索",
+          diagnostics: {
+            visibility: "visible",
+            readyState: "complete",
+            requests: [{ apiKey: "request", flag: "XWS_PAGE_REQUEST_1", status: 200, pending: false }],
+            messages: [],
+          },
+        });
+      } else if (resultMarkerLostBeforeExport
+        && body.includes("const dialogEntries")
+        && body.includes("return [...document.querySelectorAll('.el-dialog__wrapper')]")
+        && body.includes("attemptMarker")) {
+        send([{
+          text: "【 浴缸 】销量排序Top2 - 2026-08-05 15:46 - 市场数据分析\n您搜索的页数：第 1 ~ 1 页，已成功获取：第 1 ~ 1 页\n商品数量：2",
+          attemptMarker: "",
         }]);
       } else if (body.includes("return [...document.querySelectorAll('.el-dialog__wrapper')]")) {
         send([
@@ -414,9 +634,58 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
       getStartDomClicks: () => startDomClicks,
       getXlsxMenuProbes: () => xlsxMenuProbes,
       getXlsxCaretClicks: () => xlsxCaretClicks,
+      getClosedTargets: () => [...closedTargets],
     }));
   });
 }
+
+test("closes the automation home tab when login verification fails", async () => {
+  const proxy = await startFakeProxy({ loginRequired: true, omitNewTargetId: true });
+  const runtime = await mkdtemp(path.join(os.tmpdir(), "xws-runtime-"));
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        cli,
+        "--keyword", "浴缸",
+        "--prepare-only",
+        "--proxy", `http://127.0.0.1:${proxy.port}`,
+      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      let stderr = "";
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, stderr }));
+    });
+    assert.equal(result.code, 2, result.stderr);
+    assert.deepEqual(proxy.getClosedTargets(), ["home"]);
+  } finally {
+    await rm(runtime, { recursive: true, force: true });
+    await new Promise((resolve) => proxy.server.close(resolve));
+  }
+});
+
+test("closes a home tab when the new-tab response fails after creation", async () => {
+  const proxy = await startFakeProxy({ newResponseFailsAfterCreate: true });
+  const runtime = await mkdtemp(path.join(os.tmpdir(), "xws-runtime-"));
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        cli,
+        "--keyword", "浴缸",
+        "--prepare-only",
+        "--proxy", `http://127.0.0.1:${proxy.port}`,
+      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      let stderr = "";
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, stderr }));
+    });
+    assert.equal(result.code, 1, result.stderr);
+    assert.deepEqual(proxy.getClosedTargets(), ["home"]);
+  } finally {
+    await rm(runtime, { recursive: true, force: true });
+    await new Promise((resolve) => proxy.server.close(resolve));
+  }
+});
 
 test("rejects a non-Edge Proxy before target discovery or browser actions", async () => {
   const proxy = await startFakeProxy({ browserId: "browser-service" });
@@ -501,6 +770,29 @@ test("prepare-only retries market analysis once when the first click opens no di
     assert.equal(result.code, 0, result.stderr);
     assert.match(result.stdout, /READY_FOR_RECORDING/u);
     assert.equal(proxy.getMarketAnalysisClicks(), 2);
+  } finally {
+    await rm(runtime, { recursive: true, force: true });
+    await new Promise((resolve) => proxy.server.close(resolve));
+  }
+});
+
+test("prepare-only retries a transiently missing Xiaowangshen radio label", async () => {
+  const proxy = await startFakeProxy({ sortRadioMountsLate: true });
+  const runtime = await mkdtemp(path.join(os.tmpdir(), "xws-runtime-"));
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        cli,
+        "--keyword", "浴缸",
+        "--prepare-only",
+        "--proxy", `http://127.0.0.1:${proxy.port}`,
+      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime }, encoding: "utf8" });
+      let stderr = "";
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, stderr }));
+    });
+    assert.equal(result.code, 0, result.stderr);
   } finally {
     await rm(runtime, { recursive: true, force: true });
     await new Promise((resolve) => proxy.server.close(resolve));
@@ -967,6 +1259,39 @@ test("full flow keeps waiting after startup evidence before a delayed result dia
     assert.equal(result.code, 0, result.stderr);
     assert.equal(proxy.getStartClicks(), 1);
     assert.equal(proxy.getStartDomClicks(), 0);
+  } finally {
+    await rm(output, { recursive: true, force: true });
+    await rm(runtime, { recursive: true, force: true });
+    await new Promise((resolve) => proxy.server.close(resolve));
+  }
+});
+
+test("full flow rebinds a uniquely owned result after its marker is remounted away", async () => {
+  const output = await mkdtemp(path.join(os.tmpdir(), "xws-download-"));
+  const runtime = await mkdtemp(path.join(os.tmpdir(), "xws-runtime-"));
+  const proxy = await startFakeProxy({
+    full: true,
+    outputPath: path.join(output, "result.csv"),
+    resultMarkerLostBeforeExport: true,
+  });
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        cli,
+        "--keyword", "浴缸",
+        "--pages", "1-1",
+        "--frequency", "10-10",
+        "--export", "csv",
+        "--output-dir", output,
+        "--proxy", `http://127.0.0.1:${proxy.port}`,
+      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      let stderr = "";
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, stderr }));
+    });
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(proxy.getStartClicks(), 1);
   } finally {
     await rm(output, { recursive: true, force: true });
     await rm(runtime, { recursive: true, force: true });

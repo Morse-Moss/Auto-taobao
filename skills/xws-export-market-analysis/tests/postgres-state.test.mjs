@@ -192,6 +192,43 @@ test("identity hashing treats object key order as semantically irrelevant", inte
   });
 });
 
+test("replays a part commit through idempotent part and artifact upserts", async () => {
+  const queries = [];
+  let version = 0;
+  const client = {
+    query: async (sql, parameters) => {
+      const text = String(sql).trim();
+      queries.push({ text, parameters });
+      if (text === "BEGIN" || text === "COMMIT" || text === "ROLLBACK") return { rowCount: 0, rows: [] };
+      if (text.includes("SELECT version FROM")) return { rowCount: 1, rows: [{ version }] };
+      if (text.includes("UPDATE xws_adaptive_runs")) {
+        version += 1;
+        return { rowCount: 1, rows: [{ id: "run-id", version, completed_end: 4, status: "DONE", identity: {}, checkpoint: {} }] };
+      }
+      return { rowCount: 1, rows: [] };
+    },
+    release() {},
+  };
+  const pool = { connect: async () => client };
+  const input = {
+    partId: "1-4",
+    startPage: 1,
+    endPage: 4,
+    completedEnd: 4,
+    status: "DONE",
+    metadata: { rows: 12 },
+    artifacts: [{ kind: "csv", path: "C:/artifacts/part-1-4.csv", sha256: "abc", sizeBytes: 900 }],
+    checkpoint: { completedEnd: 4, status: "DONE" },
+    expectedVersion: 0,
+  };
+  await commitAdaptivePart(pool, "run-id", input);
+  await commitAdaptivePart(pool, "run-id", { ...input, expectedVersion: 1 });
+  assert.equal(queries.filter(({ text }) => text.includes("INSERT INTO xws_adaptive_parts")).length, 2);
+  assert.ok(queries.every(({ text }) => !text.includes("INSERT INTO xws_adaptive_parts") || text.includes("ON CONFLICT (run_id, part_id) DO UPDATE")));
+  assert.equal(queries.filter(({ text }) => text.includes("INSERT INTO xws_adaptive_manifests")).length, 2);
+  assert.ok(queries.every(({ text }) => !text.includes("INSERT INTO xws_adaptive_manifests") || text.includes("ON CONFLICT (run_id, artifact_kind, path) DO UPDATE")));
+});
+
 test("commits a verified part and checkpoint projection atomically", integration, async () => {
   await withPool(async (pool) => {
     const identity = { keyword: `part-test-${Date.now()}`, pagesStart: 1, pagesEnd: 4 };

@@ -18,8 +18,10 @@ import {
   collectionStallReason,
   createCollectionAttemptTracker,
   detectRiskMarkers,
+  isSuccessfulCollectionResponse,
   parseOptions,
   parseProgressText,
+  resolveOwnedExportProgress,
   selectExportResultDialog,
   selectObservedCollectionResult,
   selectPendingRequest,
@@ -37,6 +39,7 @@ const DEFAULT_OUTPUT_DIR = path.join(os.homedir(), "Downloads");
 const TAOBAO_HOME = "https://www.taobao.com/";
 const SEARCH_ORIGIN = "https://s.taobao.com";
 const EXPORT_SETTLEMENT_MS = 60 * 60 * 1_000;
+const PARTIAL_EXPORT_SETTLEMENT_MS = 30 * 1_000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -173,11 +176,12 @@ async function waitForTarget(proxy, predicate, timeoutMs, description) {
   throw new Error(`Timed out waiting for ${description}`);
 }
 
-async function waitForReadyTarget(proxy, predicate, timeoutMs, description) {
+async function waitForReadyTarget(proxy, predicate, timeoutMs, description, { onCandidate } = {}) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const targets = (await listTargets(proxy)).filter(predicate);
     for (const target of targets) {
+      onCandidate?.(target);
       try {
         if (await evaluate(proxy, target.targetId, "document.readyState") === "complete") return target;
       } catch {
@@ -191,9 +195,32 @@ async function waitForReadyTarget(proxy, predicate, timeoutMs, description) {
 
 const ownedTargets = new Map();
 
-async function labelTarget(proxy, targetId, runMarker) {
+function rememberOwnedTarget(runMarker, targetId) {
+  if (!targetId) return;
   if (!ownedTargets.has(runMarker)) ownedTargets.set(runMarker, new Set());
   ownedTargets.get(runMarker).add(targetId);
+}
+
+export async function cleanupOwnedTargets(proxy, runMarker, targetIds = ownedTargets.get(runMarker) || []) {
+  const closed = [];
+  const failed = [];
+  try {
+    for (const targetId of new Set(targetIds)) {
+      try {
+        await request(proxy, `/close?target=${encodeURIComponent(targetId)}`);
+        closed.push(targetId);
+      } catch (error) {
+        failed.push({ targetId, error: String(error?.message ?? error) });
+      }
+    }
+  } finally {
+    ownedTargets.delete(runMarker);
+  }
+  return { closed, failed };
+}
+
+async function labelTarget(proxy, targetId, runMarker) {
+  rememberOwnedTarget(runMarker, targetId);
   try {
     await request(proxy, `/label?target=${encodeURIComponent(targetId)}&label=${encodeURIComponent(runMarker)}`);
   } catch (error) {
@@ -250,8 +277,26 @@ function ensureNoRisk(text, stage) {
 
 async function openTaobaoHome(proxy, runMarker, log) {
   const before = new Set((await listTargets(proxy)).map((target) => target.targetId));
-  await request(proxy, `/new?url=${encodeURIComponent(TAOBAO_HOME)}&label=${encodeURIComponent(runMarker)}`);
-  const freshHome = await waitForReadyTarget(proxy, (candidate) => isHome(candidate) && !before.has(candidate.targetId), 30_000, "a new Taobao home tab to finish loading");
+  let created;
+  try {
+    created = await request(proxy, `/new?url=${encodeURIComponent(TAOBAO_HOME)}&label=${encodeURIComponent(runMarker)}`);
+  } catch (error) {
+    try {
+      const candidates = (await listTargets(proxy)).filter((candidate) => isHome(candidate) && !before.has(candidate.targetId));
+      if (candidates.length === 1) rememberOwnedTarget(runMarker, candidates[0].targetId);
+    } catch {
+      // Preserve the original /new failure when target enumeration also fails.
+    }
+    throw error;
+  }
+  rememberOwnedTarget(runMarker, created?.targetId || created?.value?.targetId);
+  const freshHome = await waitForReadyTarget(
+    proxy,
+    (candidate) => isHome(candidate) && !before.has(candidate.targetId),
+    30_000,
+    "a new Taobao home tab to finish loading",
+    { onCandidate: (candidate) => rememberOwnedTarget(runMarker, candidate.targetId) },
+  );
   await labelTarget(proxy, freshHome.targetId, runMarker);
   const deadline = Date.now() + 15_000;
   while (Date.now() < deadline) {
@@ -297,22 +342,40 @@ async function searchKeyword(proxy, keyword, runMarker, log) {
   let search;
   try {
     await clickDom(proxy, freshHome.targetId, "#J_TSearchForm button[type=submit]");
-    search = await waitForReadyTarget(proxy, (candidate) => isSearch(candidate, keyword) && !existingSearchTargets.has(candidate.targetId), 5_000, "new Taobao search results to finish loading");
+    search = await waitForReadyTarget(
+      proxy,
+      (candidate) => isSearch(candidate, keyword) && !existingSearchTargets.has(candidate.targetId),
+      5_000,
+      "new Taobao search results to finish loading",
+      { onCandidate: (candidate) => rememberOwnedTarget(runMarker, candidate.targetId) },
+    );
   } catch (error) {
     // A background tab or site handler can reject the DOM click. Use one
     // bounded coordinate fallback, then keep the same fresh-target checks.
     const fallbackHome = await discoverHome(proxy, runMarker);
     await clickAt(proxy, fallbackHome.targetId, "#J_TSearchForm button[type=submit]");
     try {
-      search = await waitForReadyTarget(proxy, (candidate) => isSearch(candidate, keyword) && !existingSearchTargets.has(candidate.targetId), 5_000, "new Taobao search results to finish loading");
+      search = await waitForReadyTarget(
+      proxy,
+      (candidate) => isSearch(candidate, keyword) && !existingSearchTargets.has(candidate.targetId),
+      5_000,
+      "new Taobao search results to finish loading",
+      { onCandidate: (candidate) => rememberOwnedTarget(runMarker, candidate.targetId) },
+    );
     } catch {
       // If Taobao's autocomplete handler wins both bounded clicks, navigate
       // the fresh, labeled home tab to the canonical search URL once.
       const currentHome = await discoverHome(proxy, runMarker);
       const searchUrl = `https://s.taobao.com/search?q=${encodeURIComponent(keyword)}&search_type=item&tab=all`;
       await request(proxy, `/navigate?target=${encodeURIComponent(currentHome.targetId)}&url=${encodeURIComponent(searchUrl)}`);
-      search = await waitForReadyTarget(proxy, (candidate) => isSearch(candidate, keyword)
-        && (candidate.automationLabel === runMarker || ownedTargets.get(runMarker)?.has(candidate.targetId)), 30_000, "canonical Taobao search results to finish loading");
+      search = await waitForReadyTarget(
+        proxy,
+        (candidate) => isSearch(candidate, keyword)
+          && (candidate.automationLabel === runMarker || ownedTargets.get(runMarker)?.has(candidate.targetId)),
+        30_000,
+        "canonical Taobao search results to finish loading",
+        { onCandidate: (candidate) => rememberOwnedTarget(runMarker, candidate.targetId) },
+      );
     }
   }
   await labelTarget(proxy, search.targetId, runMarker);
@@ -487,7 +550,7 @@ async function handlePermission(proxy, keyword, runMarker, allowTrial, log) {
   throw new Error("Trial dialog did not close after the authorized action");
 }
 
-function sortValue(sort) {
+export function sortValue(sort) {
   return {
     relevance: "_coefp",
     sales: "_sale",
@@ -509,6 +572,24 @@ function sortLabel(sort) {
 
 function channelValue(channel) {
   return { all: "all", taobao: "pc_taobao", tmall: "mall" }[channel];
+}
+
+export function configurationContractDiff(expected, actual) {
+  const differences = {};
+  const record = (name, expectedValue, actualValue) => {
+    if (actualValue !== expectedValue) differences[name] = { expected: expectedValue, actual: actualValue };
+  };
+  record("dialog", true, actual?.ok === true);
+  record("keyword", expected.keyword, actual?.keyword);
+  record("channel", expected.channel, actual?.channel);
+  record("sort", expected.sort, actual?.sort);
+  record("startButton", expected.hasStart, actual?.hasStart);
+  const names = ["pageStart", "pageEnd", "priceMin", "priceMax", "frequencyMin", "frequencyMax"];
+  names.forEach((name, index) => {
+    if (name === "priceMax" && expected.spinners[index] === "" && actual?.priceMaxUnlimited === true) return;
+    record(name, expected.spinners[index], actual?.spinners?.[index]);
+  });
+  return differences;
 }
 
 async function configureAnalysis(proxy, options, runMarker, log) {
@@ -597,6 +678,7 @@ async function configureAnalysis(proxy, options, runMarker, log) {
     if (!dialog) return { ok: false, ready: false, reason: 'config dialog missing' };
     const loadingMasks = [...dialog.querySelectorAll('.el-loading-mask')];
     const active = loadingMasks.some((mask) => {
+      if (mask.classList.contains('el-loading-fade-leave') || mask.classList.contains('el-loading-fade-leave-active')) return false;
       const style = getComputedStyle(mask);
       const rect = mask.getBoundingClientRect();
       return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0.01 && rect.width > 0 && rect.height > 0;
@@ -604,7 +686,7 @@ async function configureAnalysis(proxy, options, runMarker, log) {
     return { ok: true, ready: !active, loadingMasks: loadingMasks.length };
   })()`;
   const waitForDialogSettle = async () => {
-    const deadline = Date.now() + 10_000;
+    const deadline = Date.now() + 30_000;
     let stableAt = 0;
     while (Date.now() < deadline) {
       const current = await discoverSearch(proxy, options.keyword, runMarker);
@@ -620,25 +702,32 @@ async function configureAnalysis(proxy, options, runMarker, log) {
     throw new Error('Timed out waiting for Xiaowangshen filters to settle');
   };
   const clickRadio = async (value) => {
-    const current = await discoverSearch(proxy, options.keyword, runMarker);
-    const clicked = await evaluate(proxy, current.targetId, `(() => {
-      const visible = (element) => {
-        if (!element) return false;
-        const style = getComputedStyle(element);
-        const rect = element.getBoundingClientRect();
-        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
-      };
-      const dialog = [...document.querySelectorAll('.el-dialog__wrapper')].find((element) => visible(element) && (element.innerText || '').includes('搜索频率'));
-      if (!dialog) return { ok: false, reason: 'config dialog missing' };
-      const input = dialog.querySelector('input[type=radio][value="' + ${JSON.stringify(value)} + '"]');
-      const label = input?.closest('label');
-      if (!label) return { ok: false, reason: 'radio label missing' };
-      label.click();
-      return { ok: true };
-    })()`);
-    if (!clicked?.ok) throw new Error(`Could not select Xiaowangshen radio: ${clicked?.reason || value}`);
     const deadline = Date.now() + 3_000;
+    let lastReason = value;
     while (Date.now() < deadline) {
+      const current = await discoverSearch(proxy, options.keyword, runMarker);
+      const clicked = await evaluate(proxy, current.targetId, `(() => {
+        const visible = (element) => {
+          if (!element) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        };
+        const dialog = [...document.querySelectorAll('.el-dialog__wrapper')].find((element) => visible(element) && (element.innerText || '').includes('搜索频率'));
+        if (!dialog) return { ok: false, reason: 'config dialog missing' };
+        const input = dialog.querySelector('input[type=radio][value="' + ${JSON.stringify(value)} + '"]');
+        const label = input?.closest('label');
+        if (!label) return { ok: false, reason: 'radio label missing' };
+        label.click();
+        return { ok: true };
+      })()`);
+      if (clicked?.ok) break;
+      lastReason = clicked?.reason || value;
+      await sleep(100);
+    }
+    if (Date.now() >= deadline) throw new Error(`Could not select Xiaowangshen radio: ${lastReason}`);
+    const settleDeadline = Date.now() + 3_000;
+    while (Date.now() < settleDeadline) {
       const fresh = await discoverSearch(proxy, options.keyword, runMarker);
       const selected = await evaluate(proxy, fresh.targetId, `(() => {
         const input = [...document.querySelectorAll('.el-dialog__wrapper input[type=radio]')]
@@ -710,7 +799,15 @@ async function configureAnalysis(proxy, options, runMarker, log) {
     await sleep(100);
   }
   if (!matches(snapshot) || !stableAt || Date.now() - stableAt < 1_000) {
-    throw new Error("Xiaowangshen configuration did not match the requested contract");
+    const expected = {
+      keyword: options.keyword,
+      channel: true,
+      sort: true,
+      spinners: expectedSpinners,
+      hasStart: true,
+    };
+    const differences = configurationContractDiff(expected, snapshot);
+    throw new Error(`Xiaowangshen configuration did not match the requested contract: ${JSON.stringify(differences)}`);
   }
   log("CONFIGURED", { keyword: options.keyword, channel: options.channel, sort: options.sort, pages: options.pages, frequency: options.frequency });
 }
@@ -728,7 +825,7 @@ async function startAnalysis(proxy, keyword, runMarker, log, { resultWaitMs = 60
     const start = document.querySelector('button[data-xws-start="1"]');
     const source = start?.closest('.el-dialog__wrapper');
     const diagnostics = window.__xwsCollectionDiag;
-    if (!source || !visible(source) || diagnostics?.version !== 5) return false;
+    if (!source || !visible(source) || diagnostics?.version !== 6) return false;
     for (const element of document.querySelectorAll('[data-xws-result-attempt]')) {
       element.removeAttribute('data-xws-result-attempt');
     }
@@ -820,7 +917,7 @@ async function startAnalysis(proxy, keyword, runMarker, log, { resultWaitMs = 60
       const diagnostics = window.__xwsCollectionDiag;
       const source = document.querySelector('button[data-xws-start="1"]')
         ?.closest('.el-dialog__wrapper');
-      if (!source || diagnostics?.version !== 5 || typeof diagnostics.armAttempt !== 'function') return false;
+      if (!source || diagnostics?.version !== 6 || typeof diagnostics.armAttempt !== 'function') return false;
       diagnostics.armAttempt(${JSON.stringify(attemptMarker)}, source);
       return true;
     })()`);
@@ -867,13 +964,14 @@ async function installCollectionDiagnostics(proxy, keyword, runMarker, pages, lo
   const target = await discoverSearch(proxy, keyword, runMarker);
   const installed = await evaluate(proxy, target.targetId, `(() => {
     const range = ${JSON.stringify(pages)};
-    if (window.__xwsCollectionDiag?.version === 5
+    if (window.__xwsCollectionDiag?.version === 6
       && window.__xwsCollectionDiag?.range?.start === range.start
       && window.__xwsCollectionDiag?.range?.end === range.end) {
       return { ok: true, reused: true };
     }
     const collectionResultSnapshot = ${collectionResultSnapshot.toString()};
     const selectPendingRequest = ${selectPendingRequest.toString()};
+    const isSuccessfulCollectionResponse = ${isSuccessfulCollectionResponse.toString()};
     const createCollectionAttemptTracker = ${createCollectionAttemptTracker.toString()};
     const attemptTracker = createCollectionAttemptTracker(range);
     const resultNodeIds = new WeakMap();
@@ -928,7 +1026,7 @@ async function installCollectionDiagnostics(proxy, keyword, runMarker, pages, lo
         return originalPageRequest.call(this, option, flag, bool);
       };
       wrappedPageRequest.__xwsDiagWrapped = true;
-      wrappedPageRequest.__xwsDiagVersion = 5;
+      wrappedPageRequest.__xwsDiagVersion = 6;
       wrappedPageRequest.__xwsDiagOriginal = originalPageRequest;
       window.xwsPageRequest = wrappedPageRequest;
     }
@@ -989,7 +1087,7 @@ async function installCollectionDiagnostics(proxy, keyword, runMarker, pages, lo
     });
     window.__xwsCollectionDiag = {
       installed: true,
-      version: 5,
+      version: 6,
       range,
       armAttempt: (marker, source) => {
         state.activeAttempt = marker;
@@ -1037,6 +1135,7 @@ async function installCollectionDiagnostics(proxy, keyword, runMarker, pages, lo
         readyState: document.readyState,
         requests: state.requests,
         messages: state.messages,
+        activity: attemptTracker.activity(state.activeAttempt),
       }),
     };
     return { ok: true, reused: false };
@@ -1085,7 +1184,9 @@ async function readCollectionSnapshot(proxy, options, runMarker, attemptMarker) 
     const ownedIndex = entries.findIndex((entry) => entry.attemptMarker === ${JSON.stringify(attemptMarker)});
     const owned = ownedIndex >= 0 ? entries[ownedIndex] : null;
     const text = observed?.text || '';
+    const observedProgress = observed?.progress || parseProgressText(text);
     const visibleText = wrappers.map((element) => element.innerText || '').join('\\n');
+    collectionDiagnostics?.recordProgressActivity?.(${JSON.stringify(attemptMarker)}, observedProgress);
     const diagnostics = collectionDiagnostics?.snapshot?.() || {
       capturedAt: new Date().toISOString(),
       visibility: document.visibilityState,
@@ -1095,7 +1196,7 @@ async function readCollectionSnapshot(proxy, options, runMarker, attemptMarker) 
     };
     return {
       text: text.slice(0, 6000),
-      observedProgress: observed?.progress || parseProgressText(text),
+      observedProgress,
       observedAmbiguous: observed?.ambiguous === true,
       ownedText: owned?.text?.slice(0, 6000) || '',
       trackerOwned,
@@ -1205,6 +1306,53 @@ async function bindOwnedResultMarker(proxy, targetId, options, progress, attempt
     return { ok: true };
   })()`);
   if (!bound?.ok) throw adoptionRejected(bound?.reason || 'could not bind the owned live result');
+}
+
+async function refreshOwnedExportSnapshot(proxy, options, runMarker, attemptMarker) {
+  const snapshot = await readCollectionSnapshot(proxy, options, runMarker, attemptMarker);
+  ensureNoRisk(snapshot.visibleText, "Xiaowangshen export");
+  try {
+    const progress = resolveOwnedExportProgress(snapshot, {
+      keyword: options.keyword,
+      sortLabel: sortLabel(options.sort),
+      requestedStart: options.pages.start,
+      requestedEnd: options.pages.end,
+    });
+    return { ...snapshot, progress };
+  } catch (error) {
+    if (error?.code === "OWNED_RESULT_UNAVAILABLE") {
+      error.exportFailureReason = "result_ownership_unavailable";
+    }
+    throw error;
+  }
+}
+
+export function buildPartialStallManifest({
+  runId,
+  options,
+  refreshedProgress,
+  stallDetails = {},
+  partial,
+  runDir,
+}) {
+  return {
+    status: "STALLED",
+    partial: true,
+    runId,
+    options,
+    progress: refreshedProgress,
+    diagnosticKind: stallDetails.diagnosticKind || "UNKNOWN",
+    stallEvidence: {
+      screenshot: stallDetails.screenshot || "",
+      diagnostics: stallDetails.diagnostics || "",
+    },
+    artifacts: partial.files,
+    validation: partial.validation,
+    warnings: partial.warnings,
+    ...(partial.mediaPending ? { mediaPending: [...partial.mediaPending] } : {}),
+    ...(partial.exportFailure ? { exportFailure: { ...partial.exportFailure } } : {}),
+    runDir,
+  };
 }
 
 async function monitorCollection(proxy, options, runMarker, attemptMarker, runDir, log) {
@@ -1320,7 +1468,7 @@ async function writeJsonAtomic(file, value) {
   }
 }
 
-async function openExportIntent({ runDir, runId, options, directory, kind, baseline, progress, reason }) {
+export async function openExportIntent({ runDir, runId, options, directory, kind, baseline, progress, reason }) {
   const requestedAt = new Date();
   const intent = {
     version: 1,
@@ -1346,7 +1494,9 @@ async function openExportIntent({ runDir, runId, options, directory, kind, basel
     outputDir: path.resolve(directory),
     reason,
     requestedAt: requestedAt.toISOString(),
-    deadlineAt: new Date(requestedAt.getTime() + EXPORT_SETTLEMENT_MS).toISOString(),
+    deadlineAt: new Date(requestedAt.getTime() + (reason === "partial_on_stall"
+      ? PARTIAL_EXPORT_SETTLEMENT_MS
+      : EXPORT_SETTLEMENT_MS)).toISOString(),
     baseline,
     expectedProgress: progress || null,
   };
@@ -1355,7 +1505,7 @@ async function openExportIntent({ runDir, runId, options, directory, kind, basel
   return { intent, intentPath };
 }
 
-async function closeExportIntent(intentPath, intent, status, details = {}) {
+export async function closeExportIntent(intentPath, intent, status, details = {}) {
   const closed = { ...intent, status, ...details, updatedAt: new Date().toISOString() };
   await writeJsonAtomic(intentPath, closed);
   return closed;
@@ -1514,7 +1664,14 @@ async function exportCsv(proxy, options, runMarker, attemptMarker, runDir, direc
     intent = await closeExportIntent(intentPath, intent, "OBSERVED", { candidate: file });
     return { ...file, intentPath, intent };
   } catch (error) {
-    await closeExportIntent(intentPath, intent, "OPEN", { lastError: error.message });
+    if (reason === "partial_on_stall") {
+      intent = await closeExportIntent(intentPath, intent, "EXPIRED", {
+        reason: "partial_settlement_deadline_exceeded",
+        lastError: error.message,
+      });
+    } else {
+      await closeExportIntent(intentPath, intent, "OPEN", { lastError: error.message });
+    }
     throw error;
   }
 }
@@ -1666,7 +1823,14 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
     intent = await closeExportIntent(intentPath, intent, "OBSERVED", { candidate: file });
     return { ...file, intentPath, intent };
   } catch (error) {
-    await closeExportIntent(intentPath, intent, "OPEN", { lastError: error.message });
+    if (reason === "partial_on_stall") {
+      intent = await closeExportIntent(intentPath, intent, "EXPIRED", {
+        reason: "partial_settlement_deadline_exceeded",
+        lastError: error.message,
+      });
+    } else {
+      await closeExportIntent(intentPath, intent, "OPEN", { lastError: error.message });
+    }
     throw error;
   }
 }
@@ -1692,9 +1856,34 @@ function runPythonValidation(options, csv, xlsx, requireImages) {
 async function exportArtifacts(proxy, options, runMarker, attemptMarker, runDir, outputDir, log, progress = null, reason = "final") {
   const files = {};
   if (options.exportModes.includes("csv")) files.csv = await exportCsv(proxy, options, runMarker, attemptMarker, runDir, outputDir, log, progress, reason);
-  if (options.exportModes.includes("xlsx-images")) files.xlsx = await exportXlsx(proxy, options, runMarker, attemptMarker, runDir, outputDir, true, log, progress, files.csv, reason);
-  else if (options.exportModes.includes("xlsx")) files.xlsx = await exportXlsx(proxy, options, runMarker, attemptMarker, runDir, outputDir, false, log, progress, files.csv, reason);
-  const validation = runPythonValidation(options, files.csv, files.xlsx, options.exportModes.includes("xlsx-images"));
+  let exportFailure;
+  if (options.exportModes.includes("xlsx-images")) {
+    try {
+      files.xlsx = await exportXlsx(proxy, options, runMarker, attemptMarker, runDir, outputDir, true, log, progress, files.csv, reason);
+    } catch (error) {
+      if (reason !== "partial_on_stall") throw error;
+      exportFailure = {
+        reason: error.exportFailureReason || "export_action_failed",
+        error: error.message,
+      };
+    }
+  } else if (options.exportModes.includes("xlsx")) {
+    try {
+      files.xlsx = await exportXlsx(proxy, options, runMarker, attemptMarker, runDir, outputDir, false, log, progress, files.csv, reason);
+    } catch (error) {
+      if (reason !== "partial_on_stall") throw error;
+      exportFailure = {
+        reason: error.exportFailureReason || "export_action_failed",
+        error: error.message,
+      };
+    }
+  }
+  const validation = runPythonValidation(
+    options,
+    files.csv,
+    files.xlsx,
+    Boolean(files.xlsx) && options.exportModes.includes("xlsx-images"),
+  );
   if (progress && validation.validation.rows !== progress.rowCount) {
     throw new Error(`export row count ${validation.validation.rows} does not match live row count ${progress.rowCount}`);
   }
@@ -1709,7 +1898,12 @@ async function exportArtifacts(proxy, options, runMarker, attemptMarker, runDir,
   }
   const warnings = [];
   if (files.xlsx?.name.includes("价格从高到低") && options.sort === "sales") warnings.push("plugin filename says price-high while live sort is sales");
-  return { files, validation, warnings };
+  return {
+    files,
+    validation,
+    warnings,
+    ...(exportFailure ? { exportFailure, mediaPending: ["xlsx"] } : {}),
+  };
 }
 
 async function adoptLiveResult(options, runId, runDir, outputDir, log) {
@@ -1770,8 +1964,9 @@ async function runUnlocked(options) {
   };
 
   await log("START", { keyword: options.keyword, pages: options.pages, frequency: options.frequency });
-  const proxyHealth = await request(options.proxy, "/health");
-  assertProxyBrowserHealth(proxyHealth, "edge");
+  try {
+    const proxyHealth = await request(options.proxy, "/health");
+    assertProxyBrowserHealth(proxyHealth, process.env.XWS_BROWSER_ID || "edge");
   await log("PROXY_READY", { browser: proxyHealth.browser.id });
   if (options.adoptLiveResult) {
     return adoptLiveResult(options, runId, runDir, outputDir, log);
@@ -1807,6 +2002,7 @@ async function runUnlocked(options) {
   } catch (error) {
     if (error.code === "STALLED" && options.exportPartialOnStall) {
       try {
+        const refreshed = await refreshOwnedExportSnapshot(options.proxy, options, runId, attemptMarker);
         const partial = await exportArtifacts(
           options.proxy,
           options,
@@ -1815,29 +2011,28 @@ async function runUnlocked(options) {
           runDir,
           outputDir,
           log,
-          error.details?.progress || null,
+          refreshed.progress,
           "partial_on_stall",
         );
-        const partialManifest = {
-          status: "STALLED",
-          partial: true,
+        const partialManifest = buildPartialStallManifest({
           runId,
           options,
-          progress: error.details?.progress || {},
-          diagnosticKind: error.details?.diagnosticKind || "UNKNOWN",
-          stallEvidence: {
-            screenshot: error.details?.screenshot || "",
-            diagnostics: error.details?.diagnostics || "",
-          },
-          artifacts: partial.files,
-          validation: partial.validation,
-          warnings: partial.warnings,
+          refreshedProgress: refreshed.progress,
+          stallDetails: error.details,
+          partial,
           runDir,
-        };
+        });
         const manifestPath = path.join(runDir, "manifest.json");
         await writeFile(manifestPath, JSON.stringify(partialManifest, ensureJsonReplacer, 2), "utf8");
         await log("PARTIAL_EXPORTED", { rows: partial.validation.validation.rows, runDir, manifest: manifestPath });
-        error.details = { ...error.details, partialManifest: manifestPath, artifacts: partial.files, validation: partial.validation };
+        error.details = {
+          ...error.details,
+          partialManifest: manifestPath,
+          artifacts: partial.files,
+          validation: partial.validation,
+          ...(partial.mediaPending ? { mediaPending: [...partial.mediaPending] } : {}),
+          ...(partial.exportFailure ? { partialExportFailure: { ...partial.exportFailure } } : {}),
+        };
       } catch (partialError) {
         await log("PARTIAL_EXPORT_FAILED", { error: partialError.message, runDir });
         error.details = {
@@ -1861,7 +2056,8 @@ async function runUnlocked(options) {
   if (completed.progress.requestedStart !== options.pages.start || completed.progress.requestedEnd !== options.pages.end) {
     throw new Error("live result page range does not match the requested range");
   }
-  const exported = await exportArtifacts(options.proxy, options, runId, attemptMarker, runDir, outputDir, log, completed.progress);
+  const refreshed = await refreshOwnedExportSnapshot(options.proxy, options, runId, attemptMarker);
+  const exported = await exportArtifacts(options.proxy, options, runId, attemptMarker, runDir, outputDir, log, refreshed.progress);
   const { files, validation, warnings } = exported;
   if (files.xlsx?.name.includes("价格从高到低") && options.sort === "sales") warnings.push("plugin filename says price-high while live sort is sales");
   const manifest = {
@@ -1879,6 +2075,12 @@ async function runUnlocked(options) {
   await writeFile(path.join(runDir, "manifest.json"), JSON.stringify(manifest, ensureJsonReplacer, 2), "utf8");
   await log("DONE", { rows: completed.progress.rowCount, runDir, warnings });
   return manifest;
+  } finally {
+    const cleanup = await cleanupOwnedTargets(options.proxy, runId);
+    if (cleanup.closed.length || cleanup.failed.length) {
+      await log("TARGETS_CLEANED", cleanup);
+    }
+  }
 }
 
 export function shouldAcquireRuntimeLock(env = process.env) {

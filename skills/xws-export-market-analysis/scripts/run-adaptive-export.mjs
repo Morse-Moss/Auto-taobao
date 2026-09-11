@@ -35,6 +35,7 @@ const MERGER = path.join(SCRIPT_DIR, "merge-market-analysis.mjs");
 const VALIDATOR = path.join(SCRIPT_DIR, "validate-output.py");
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const NO_PROGRESS_STALL = "Xiaowangshen made no page progress before the stall threshold";
 
 export function requireDatabaseUrl(env = process.env) {
   const value = String(env.XWS_DATABASE_URL || "").trim();
@@ -70,7 +71,9 @@ export function chooseAttemptSnapshot(located, event) {
       diagnostics: manifest.diagnostics || manifest.stallEvidence || {},
       artifacts: manifest.artifacts || {},
       validation: manifest.validation || {},
+      ...(manifest.mediaPending ? { mediaPending: [...manifest.mediaPending] } : {}),
       ...(manifest.error ? { error: manifest.error } : {}),
+      ...(manifest.exportFailure ? { exportFailure: manifest.exportFailure } : {}),
       ...(manifest.sourceAt || located.sourceAt ? { sourceAt: manifest.sourceAt || located.sourceAt } : {}),
     };
   }
@@ -84,6 +87,7 @@ export function chooseAttemptSnapshot(located, event) {
     diagnostics: details.diagnostics || {},
     artifacts: details.artifacts || {},
     validation: details.validation || {},
+    ...(details.mediaPending ? { mediaPending: [...details.mediaPending] } : {}),
     ...(event?.error ? { error: event.error } : {}),
     ...(details.partialExportFailure ? { exportFailure: details.partialExportFailure } : {}),
     ...(event?.at || details.sourceAt ? { sourceAt: event?.at || details.sourceAt } : {}),
@@ -178,7 +182,7 @@ export async function openAuthoritativeRun({ pool, options, identity, expected, 
     const saved = structuredClone(run.checkpoint);
     const committed = Object.values(saved.parts || {})
       .filter((part) => ["DONE", "STALLED"].includes(part?.status) && part.completedEnd >= part.start);
-    await verifyParts(committed, expected.options?.exportModes || []);
+    await verifyParts(committed, expected.options?.exportModes || [], { allowMissingXlsx: true });
     const checkpoint = resumeAdaptiveCheckpoint(saved, expected);
     checkpoint.runId = run.id;
     if (options.adoptLiveResult) return { ...run, checkpoint };
@@ -200,6 +204,12 @@ export async function commitCheckpointMutation({ checkpoint, mutate, commit }) {
   for (const key of Object.keys(checkpoint)) delete checkpoint[key];
   Object.assign(checkpoint, draft);
   return checkpoint;
+}
+
+export function shouldUseSupervisorOwnership(options, env = process.env) {
+  return options?.resume === true
+    && env.XWS_ADAPTIVE_SUPERVISOR_OWNER === "1"
+    && String(env.XWS_ADAPTIVE_SUPERVISOR_RUN_ID || "") === String(options.runId || "");
 }
 
 export async function withAdaptiveOwnership({ acquireRuntime, acquireDatabase, work }) {
@@ -666,6 +676,7 @@ export async function recoverAttemptSettlement(attemptRoot, expected, dependenci
     unlink: dependencies.unlink || unlink,
   };
   const records = [];
+  const allIntents = [];
   const acceptedCsvByChild = new Map();
   intentPaths.sort((left, right) => Number(left.includes("xlsx")) - Number(right.includes("xlsx")));
   for (const intentPath of intentPaths) {
@@ -688,6 +699,7 @@ export async function recoverAttemptSettlement(attemptRoot, expected, dependenci
         : dependencies.validate;
       intent = await settleExportIntent(intentPath, { ...dependencies, ...(validate ? { validate } : {}) });
     }
+    allIntents.push({ intentPath, intent });
     if (intent.status === "ACCEPTED") {
       const record = { intentPath, intent };
       records.push(record);
@@ -702,24 +714,42 @@ export async function recoverAttemptSettlement(attemptRoot, expected, dependenci
     group.push(record);
     byChild.set(record.intent.childRunId, group);
   }
+  const intentsByChild = new Map();
+  for (const record of allIntents) {
+    const group = intentsByChild.get(record.intent.childRunId) || [];
+    group.push(record);
+    intentsByChild.set(record.intent.childRunId, group);
+  }
   const needsXlsx = expected.exportModes.includes("xlsx") || expected.exportModes.includes("xlsx-images");
-  const completeGroups = [...byChild.values()].filter((group) => group.some((record) => record.intent.kind === "csv")
-    && (!needsXlsx || group.some((record) => record.intent.kind === "xlsx")));
-  if (!completeGroups.length) return null;
-  if (completeGroups.length > 1) {
-    for (const group of completeGroups) {
-      await rejectIntentGroup(group, {
+  const candidateGroups = [...byChild.entries()]
+    .map(([childRunId, group]) => {
+      const csvRecord = group.find((record) => record.intent.kind === "csv");
+      const xlsxRecord = group.find((record) => record.intent.kind === "xlsx");
+      const xlsxIntent = intentsByChild.get(childRunId)?.find((record) => record.intent.kind === "xlsx")?.intent;
+      const failedXlsx = !xlsxRecord
+        && needsXlsx
+        && xlsxIntent
+        && ["REJECTED", "EXPIRED"].includes(xlsxIntent.status);
+      if (!csvRecord || (needsXlsx && !xlsxRecord && !failedXlsx)) return null;
+      return { group, csvRecord, xlsxRecord, xlsxIntent, partial: Boolean(needsXlsx && !xlsxRecord) };
+    })
+    .filter(Boolean);
+  if (!candidateGroups.length) return null;
+  if (candidateGroups.length > 1) {
+    for (const candidate of candidateGroups) {
+      await rejectIntentGroup(candidate.group, {
         reason: "ambiguous_accepted_groups",
         eventType: "GROUP_REJECTED",
-        details: { childRunIds: completeGroups.map((candidate) => candidate[0].intent.childRunId) },
+        details: { childRunIds: candidateGroups.map((entry) => entry.group[0].intent.childRunId) },
       }, dependencies);
     }
     return null;
   }
 
-  const group = completeGroups[0];
-  const csvRecord = group.find((record) => record.intent.kind === "csv");
-  const xlsxRecord = group.find((record) => record.intent.kind === "xlsx");
+  const selected = candidateGroups[0];
+  const group = selected.group;
+  const csvRecord = selected.csvRecord;
+  const xlsxRecord = selected.xlsxRecord;
   const csv = csvRecord.intent;
   const xlsx = xlsxRecord?.intent;
   const rows = Number(csv.validation?.validation?.rows);
@@ -744,7 +774,7 @@ export async function recoverAttemptSettlement(attemptRoot, expected, dependenci
   try {
     await verifyArtifactSet({
       artifacts,
-      exportModes: expected.exportModes,
+      exportModes: selected.partial ? ["csv"] : expected.exportModes,
       expectedArtifacts: (xlsx?.validation || csv.validation).artifacts,
       metadata: { recovery: true },
     });
@@ -761,7 +791,7 @@ export async function recoverAttemptSettlement(attemptRoot, expected, dependenci
     const validate = dependencies.validate || ((csvFile, xlsxFile) => runOutputValidation(
       csvFile,
       xlsxFile,
-      expected.exportModes.includes("xlsx-images"),
+      !selected.partial && expected.exportModes.includes("xlsx-images"),
     ));
     validation = await validate(artifacts.csv, artifacts.xlsx);
     if (validation?.ok !== true || Number(validation.validation?.rows) !== rows) {
@@ -783,7 +813,7 @@ export async function recoverAttemptSettlement(attemptRoot, expected, dependenci
     status: "STALLED",
     progress: csv.expectedProgress,
     diagnostics: {
-      settlement: group.map((record) => ({
+      settlement: (intentsByChild.get(csv.childRunId) || group).map((record) => ({
         intentId: record.intent.intentId,
         kind: record.intent.kind,
         status: record.intent.status,
@@ -791,6 +821,10 @@ export async function recoverAttemptSettlement(attemptRoot, expected, dependenci
     },
     artifacts,
     validation,
+    ...(selected.partial ? { mediaPending: ["xlsx"] } : {}),
+    ...(selected.partial && selected.xlsxIntent?.reason
+      ? { exportFailure: { reason: selected.xlsxIntent.reason, error: selected.xlsxIntent.lastError || "" } }
+      : {}),
   };
 }
 
@@ -806,15 +840,24 @@ export function shouldPersistAdaptiveFailure(error) {
   return error?.code !== "ADOPTION_REJECTED";
 }
 
-export function canAdvanceAttempt(status, snapshot, range) {
+export function canAdvanceAttempt(status, snapshot, range, exportModes = ["csv"]) {
   const csv = snapshot?.validation?.artifacts?.csv;
+  const requiresXlsx = exportModes.includes("xlsx") || exportModes.includes("xlsx-images");
+  const completeRange = Number(snapshot?.progress?.completedEnd) >= range.end;
+  const xlsx = snapshot?.validation?.artifacts?.xlsx;
   return ["DONE", "STALLED"].includes(status)
     && Boolean(snapshot?.artifacts?.csv)
+    && (!requiresXlsx || !completeRange || Boolean(snapshot?.artifacts?.xlsx))
     && snapshot?.validation?.ok === true
     && Number(snapshot?.validation?.validation?.rows) >= 1
     && Boolean(csv?.sha256)
     && Number.isInteger(Number(csv?.size_bytes))
     && Number(csv.size_bytes) >= 1
+    && (!requiresXlsx || !completeRange || (
+      Boolean(xlsx?.sha256)
+      && Number.isInteger(Number(xlsx?.size_bytes))
+      && Number(xlsx.size_bytes) >= 1
+    ))
     && Number(snapshot?.progress?.completedEnd) >= range.start;
 }
 
@@ -823,20 +866,39 @@ export function adaptiveAttemptCount(checkpoint, range) {
   return Number.isInteger(count) && count >= 0 ? count : 0;
 }
 
-export function shouldRetryAttempt({ status, snapshot, range, attempt }) {
-  return attempt === 1
-    && status === "STALLED"
-    && snapshot?.exportFailure?.reason === "export_action_failed"
+export function shouldRetryAttempt({ status, snapshot, range }) {
+  const reason = snapshot?.exportFailure?.reason;
+  const completedEnd = Number(snapshot?.progress?.completedEnd);
+  const hasVerifiedProgress = Number.isInteger(completedEnd) && completedEnd >= range.start;
+  const ownershipFailure = reason === "result_ownership_unavailable";
+  const noProgressStall = snapshot?.error === NO_PROGRESS_STALL;
+  return status === "STALLED"
+    && (reason === "export_action_failed"
+      || reason === "result_ownership_unavailable"
+      || noProgressStall)
     && !snapshot?.artifacts?.csv
-    && Number(snapshot?.progress?.completedEnd) >= range.start;
+    && (hasVerifiedProgress || ownershipFailure || noProgressStall);
 }
 
-export async function runAdaptiveAttemptLoop({ range, initialAttempt = 0, onAttemptStart = () => {}, runAttempt, onRetry = () => {} }) {
+export async function runAdaptiveAttemptLoop({
+  range,
+  initialAttempt = 0,
+  maxAttempts = Number.POSITIVE_INFINITY,
+  onAttemptStart = () => {},
+  runAttempt,
+  onRetry = () => {},
+  sleep: wait = sleep,
+  retryDelayMs = 1000,
+  maxRetryDelayMs = 30000,
+}) {
   let attempt = Number(initialAttempt) || 0;
-  if (attempt >= 2) {
-    throw new Error(`adaptive attempt budget exhausted for range ${range.start}-${range.end}`);
+  const limit = Number(maxAttempts);
+  if (limit !== Number.POSITIVE_INFINITY && (!Number.isInteger(limit) || limit < 1)) {
+    throw new Error("maxAttempts must be a positive integer");
   }
-  while (true) {
+  let retryDelay = Math.min(Math.max(0, Number(retryDelayMs) || 0), Math.max(0, Number(maxRetryDelayMs) || 0));
+  const maxDelay = Math.max(0, Number(maxRetryDelayMs) || 0);
+  while (attempt < limit) {
     attempt += 1;
     await onAttemptStart({ range, attempt });
     const outcome = await runAttempt({ range, attempt });
@@ -844,12 +906,26 @@ export async function runAdaptiveAttemptLoop({ range, initialAttempt = 0, onAtte
       status: outcome.status,
       snapshot: outcome.snapshot,
       range,
-      attempt,
     })) {
       return { ...outcome, attempt };
     }
+    if (attempt >= limit) {
+      return {
+        ...outcome,
+        status: "FAILED",
+        retryExhausted: true,
+        attempt,
+      };
+    }
     await onRetry({ ...outcome, range, attempt });
+    await wait(retryDelay);
+    retryDelay = Math.min(maxDelay, retryDelay * 2);
   }
+  return {
+    status: "FAILED",
+    retryExhausted: true,
+    attempt,
+  };
 }
 
 function childExitCode(status) {
@@ -882,15 +958,16 @@ export async function verifyRecordedArtifacts(records, owner) {
   }
 }
 
-export async function verifyRecordedParts(parts, exportModes = []) {
-  const requiredKinds = new Set(["csv"]);
-  if (exportModes.includes("xlsx") || exportModes.includes("xlsx-images")) requiredKinds.add("xlsx");
+export async function verifyRecordedParts(parts, exportModes = [], { allowMissingXlsx = false } = {}) {
+  const requiresXlsx = exportModes.includes("xlsx") || exportModes.includes("xlsx-images");
   for (const part of parts) {
-    const kinds = new Set((part.artifactRecords || []).map((artifact) => artifact.kind));
-    for (const kind of requiredKinds) {
-      if (!kinds.has(kind)) throw new Error(`part ${part.id} is missing verified ${kind} artifact evidence`);
+    const records = part.artifactRecords || [];
+    const kinds = new Set(records.map((artifact) => artifact.kind));
+    if (!kinds.has("csv")) throw new Error(`part ${part.id} is missing verified csv artifact evidence`);
+    if (requiresXlsx && !kinds.has("xlsx") && !allowMissingXlsx) {
+      throw new Error(`part ${part.id} is missing verified xlsx artifact evidence`);
     }
-    await verifyRecordedArtifacts(part.artifactRecords, `part ${part.id}`);
+    await verifyRecordedArtifacts(records, `part ${part.id}`);
   }
 }
 
@@ -1065,6 +1142,7 @@ async function executeAdaptiveRun({ pool, run, checkpointPath, stateRoot, option
       const outcome = await runAdaptiveAttemptLoop({
         range,
         initialAttempt: adaptiveAttemptCount(checkpoint, range),
+        maxAttempts: checkpoint.retryBudget?.maxAttempts ?? Number.POSITIVE_INFINITY,
         onAttemptStart: async ({ range: attemptRange, attempt }) => {
           await commitCheckpointMutation({
             checkpoint,
@@ -1138,7 +1216,7 @@ async function executeAdaptiveRun({ pool, run, checkpointPath, stateRoot, option
             start: range.start,
             end: range.end,
             attempt,
-            reason: failedSnapshot.exportFailure.reason,
+            reason: failedSnapshot.exportFailure?.reason || failedSnapshot.error || "recoverable_stall",
           }));
         },
       });
@@ -1147,14 +1225,17 @@ async function executeAdaptiveRun({ pool, run, checkpointPath, stateRoot, option
     const copied = Object.keys(snapshot.artifacts).length
       ? await copyManifestArtifacts({ artifacts: snapshot.artifacts }, path.join(stateRoot, "parts", `${range.start}-${range.end}`))
       : {};
-    const canAdvance = canAdvanceAttempt(status, snapshot, range);
+    const canAdvance = canAdvanceAttempt(status, snapshot, range, options.exportModes);
     let artifactRecords = [];
     let verifiedProgress = snapshot.progress;
     if (canAdvance) {
       verifiedProgress = validateProgressSnapshot({ ...snapshot, status }, range);
+      const checkpointExportModes = snapshot.mediaPending?.includes("xlsx")
+        ? ["csv"]
+        : options.exportModes;
       artifactRecords = await verifyArtifactSet({
         artifacts: copied,
-        exportModes: options.exportModes,
+        exportModes: checkpointExportModes,
         expectedArtifacts: snapshot.validation.artifacts,
         metadata: {
           source: snapshot.source,
@@ -1181,9 +1262,11 @@ async function executeAdaptiveRun({ pool, run, checkpointPath, stateRoot, option
         artifactRecords,
         manifest: snapshot.manifestPath,
         validation: snapshot.validation,
+        mediaPending: snapshot.mediaPending,
         diagnostics: snapshot.diagnostics,
         sourceId: snapshot.sourceId,
         sourceAt,
+        exportFailure: snapshot.exportFailure,
         error: snapshot.error || (status === "FAILED" ? result.stderr : ""),
         at: sourceAt,
       }),
@@ -1246,13 +1329,28 @@ async function main() {
   const pool = createStatePool(requireDatabaseUrl());
   try {
     await ensureStateSchema(pool);
+    const supervisorOwned = shouldUseSupervisorOwnership(options);
     return await withAdaptiveOwnership({
-      acquireRuntime: () => acquireMarketAnalysisLock(),
-      acquireDatabase: () => acquireAdaptiveLock(pool, identity),
+      acquireRuntime: supervisorOwned
+        ? async () => ({ release: async () => false })
+        : () => acquireMarketAnalysisLock(),
+      acquireDatabase: supervisorOwned
+        ? async () => ({ release: async () => false })
+        : () => acquireAdaptiveLock(pool, identity),
       work: async () => {
         const run = await openAuthoritativeRun({ pool, options, identity, expected });
         const stateRoot = path.join(checkpointDir, `${run.id}-runs`);
         await mkdir(stateRoot, { recursive: true });
+        const runtime = {
+          ...(run.checkpoint.runtime || {}),
+          checkpointPath,
+          stateRoot,
+          proxy: options.proxy,
+        };
+        if (JSON.stringify(run.checkpoint.runtime || {}) !== JSON.stringify(runtime)) {
+          run.checkpoint.runtime = runtime;
+          await persistCheckpoint(pool, run, checkpointPath);
+        }
         try {
           return await executeAdaptiveRun({ pool, run, checkpointPath, stateRoot, options });
         } catch (error) {
