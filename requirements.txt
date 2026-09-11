@@ -1,0 +1,28 @@
+# Python dependencies for the SYCM automation project.
+#
+# Scope: these are the third-party imports actually used by the .py scripts in
+# this repository (skills/*/scripts, runtime/*.py). Versions below are the
+# versions verified on the development machine on 2026-09-11.
+#
+# Install:
+#   py -3 -m pip install -r requirements.txt
+#
+# NOTE: the interpreter itself is not pinned here. The repository README uses
+# `py -3`; the verified interpreter was CPython 3.12.9 on Windows x64.
+
+openpyxl==3.1.5
+Pillow==11.3.0
+python-docx==1.2.0
+
+# ---------------------------------------------------------------------------
+# UNRESOLVED EXTERNAL DEPENDENCY - do not assume it is installable.
+#
+# `table_geometry` is imported by:
+#   - runtime/build-keyword-decision-brief.py
+#   - runtime/build-keyword-decision-report.py
+# It is NOT part of this repository and has no published package. Until its
+# ownership is decided (inline the implementation into runtime/, or declare a
+# local/Git source), those two scripts are NOT reproducible from a clean
+# checkout. This is tracked as debt item C1 in
+# PROJECT-TECH-DEBT-GOVERNANCE-PLAN.md.
+# ---------------------------------------------------------------------------
