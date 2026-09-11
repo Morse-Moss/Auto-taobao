@@ -443,7 +443,7 @@ test('copyable AI prompt reference stays synchronized with the executable prompt
   const reference = readFileSync(
     new URL('../references/competitor-v2-ai-prompts.md', import.meta.url),
     'utf8',
-  );
+  ).replace(/\r\n/gu, '\n');
   for (const [fieldName, prompt] of Object.entries(competitorCore.COMPETITOR_AI_PROMPTS)) {
     assert.match(reference, new RegExp(`## ${fieldName}`, 'u'));
     assert.ok(reference.includes(prompt), `${fieldName} prompt differs from the copyable reference`);

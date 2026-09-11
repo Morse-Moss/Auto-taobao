@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import path from 'node:path';
 import os from 'node:os';
+import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
@@ -255,7 +256,14 @@ test('CLI validates flow arguments and prints help', async () => {
   );
 });
 
-test('CLI dry-run against the real completed FAQ period reports DONE without spawning advances', async () => {
+test('CLI dry-run against the real completed FAQ period reports DONE without spawning advances', async (context) => {
+  // This is a local smoke test against untracked runtime receipts; on a clean
+  // checkout (CI) the receipts do not exist, so skip instead of failing.
+  const receiptsDir = path.resolve(path.dirname(RUNTIME_SCRIPT), 'faq-analysis', '2026-08-23_2026-08-29');
+  if (!existsSync(receiptsDir)) {
+    context.skip('local FAQ receipts for 2026-08-23_2026-08-29 are not present');
+    return;
+  }
   const originalCwd = process.cwd();
   const projectRoot = path.resolve(path.dirname(RUNTIME_SCRIPT), '..');
   let report;
