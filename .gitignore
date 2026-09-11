@@ -74,3 +74,12 @@ runtime/screenshot-response.txt
 *.tmp
 *.bak
 *.swp
+
+# Local tooling state and shell-accident artifacts (never commit)
+.codegraph/
+$d/
+tmp-*-xlsx/
+/checkpoint.json
+
+# Project-local agent memory (not part of the deliverable)
+.workbuddy/
