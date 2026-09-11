@@ -2,7 +2,24 @@
   "name": "sycm-automation",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test:offline": "node scripts/run-offline-self-tests.mjs",
+    "test:unit": "node scripts/run-test-suite.mjs unit",
+    "test:runtime": "node scripts/run-test-suite.mjs runtime",
+    "test:integration": "node scripts/run-test-suite.mjs integration",
+    "test:all": "npm run test:offline && npm run test:unit && npm run test:runtime",
+    "test:agent-runtime": "node --test agent-runtime/tests/*.test.mjs",
+    "run:agent-runtime-local": "node agent-runtime/run-local-task.mjs"
+  },
   "dependencies": {
+    "@temporalio/client": "^1.23.0",
+    "@temporalio/testing": "^1.23.0",
+    "@temporalio/worker": "^1.23.0",
+    "@temporalio/workflow": "^1.23.0",
+    "docx": "^9.7.1",
     "pg": "^8.23.0"
   }
 }
