@@ -42,6 +42,24 @@ node runtime/run-faq-operator.mjs --advance --period-start YYYY-MM-DD --period-e
 
 只有运营明确说“更新运营问题库”时，才允许进入两阶段替换。总控只自动执行 `prepare` dry-run；候选表创建和最终切换必须分别执行并验证：
 
+### 确定性调度器（可选的连续推进入口）
+
+当运营要求“连续推进到下一个停点”时，使用 `runtime/run-flow-orchestrator.mjs`，它是上面 `--status`/`--advance` 循环的确定性封装，不是另一个状态权威：
+
+```powershell
+node runtime/run-flow-orchestrator.mjs --flow faq --period-start YYYY-MM-DD --period-end YYYY-MM-DD [--dry-run]
+```
+
+调度器的硬边界与总控一致：
+
+- 每次只执行一个 `--advance`，执行后复读状态收据；连续两次推进后收据无变化则停止（`STOP_STUCK`），不空转。
+- `COLLECT_EVIDENCE` 和 `REVIEW_AI_HUMAN_QUEUE` 一律停止并交给浏览器流程或人工队列，绝不代做。
+- `PUBLISH_FEISHU_SUMMARIES` 需要显式 `--authorize-publish --master-table-id <ID> --weekly-table-id <ID> --operator-xlsx <文件>`；缺任一参数即停止（`STOP_AUTHORIZATION_REQUIRED`）。
+- 每次决策追加到 `runtime/orchestrator/faq-<周期>/events.jsonl`，最终只输出面向运营的报告字段。
+- 未知 `nextAction` 一律失败（fail-closed），不猜测。
+
+调度器停在哪，Codex 就从哪个停点接管：浏览器停点回到浏览器流程，人工停点报告运营，授权停点请求运营确认。
+
 ```powershell
 node runtime/publish-faq-detail-enrichment.mjs --phase prepare --period-start YYYY-MM-DD --period-end YYYY-MM-DD --operator-xlsx <运营-xlsx> --master-table-id <问题主库-table-id> --weekly-table-id <问题库-周表-table-id>
 ```

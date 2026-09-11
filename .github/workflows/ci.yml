@@ -6,11 +6,12 @@
 #     Integration tests are gated behind external systems by design; the unit
 #     suite excludes them (see scripts/run-test-suite.mjs EXCLUSIONS).
 #
-# Two parallel jobs instead of one, based on the measured duration of the
-# first run (2026-09-11): GitHub's Windows runners are several times slower
-# than the dev machine, and a single 30-minute job timed out inside the
-# skill-test half. Splitting gives fast feedback from the runtime layer while
-# the slower xws-export-market-analysis suite runs in its own job.
+# Three layers of parallel jobs instead of one, based on measured durations
+# (2026-09-11): GitHub's Windows runners are ~3x slower than the dev machine,
+# the full skill suite exceeded both a 30-minute and a 60-minute job, and the
+# xws-export-market-analysis prepare-flow file alone runs ~17 minutes locally.
+# Each skill now runs in its own matrix job; the heaviest skill gets a larger
+# budget. fast-gate still covers the runtime layer for quick feedback.
 #
 # Runner note: windows-latest is used because the project is Windows-native
 # (Edge-bound CDP proxy, PowerShell helpers, Windows clipboard contracts).
@@ -45,9 +46,31 @@ jobs:
       - name: Runtime tests (L2)
         run: npm run test:runtime
 
-  unit-skills:
+  skill-tests:
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Only skills that own test files under skills/<name>/{tests,scripts}.
+          # The FAQ/question/sku skills keep their tests in runtime/*.test.mjs,
+          # which fast-gate already covers.
+          #
+          # xws-export-market-analysis: prepare-flow.test.mjs alone runs ~17 min
+          # on the dev machine (real CLI children with retry backoff), so it
+          # gets a budget that survives the ~3x slower GitHub runner.
+          - skill: xws-export-market-analysis
+            timeout: 90
+          - skill: huitun-to-feishu-keyword-heat
+            timeout: 40
+          - skill: sycm-export-search-rank
+            timeout: 40
+          - skill: sycm-to-feishu-base
+            timeout: 40
+          - skill: xws-to-feishu-base
+            timeout: 40
+    name: skill-tests (${{ matrix.skill }})
     steps:
       - uses: actions/checkout@v4
 
@@ -59,8 +82,8 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Skill unit tests (L2)
-        run: npm run test:skills
+      - name: Skill unit tests (L2) - ${{ matrix.skill }}
+        run: node scripts/run-test-suite.mjs skills --skill=${{ matrix.skill }}
 
       # NOTE: `npm run test:integration` is intentionally NOT run here.
       # It requires a live CDP proxy / Edge session and a PostgreSQL URL.

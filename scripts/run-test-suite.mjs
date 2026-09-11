@@ -92,6 +92,7 @@ function runSuite(files, label, extraArgs = []) {
 const argv = process.argv.slice(2);
 const suite = argv.find((value) => !value.startsWith('--'));
 const concurrencyArg = argv.find((value) => value.startsWith('--concurrency='));
+const skillArg = argv.find((value) => value.startsWith('--skill='));
 const dryRun = argv.includes('--dry-run');
 const extraArgs = concurrencyArg ? [`--test-concurrency=${concurrencyArg.split('=')[1]}`] : [];
 if (concurrencyArg && !/^\d+$/.test(concurrencyArg.split('=')[1])) {
@@ -99,6 +100,17 @@ if (concurrencyArg && !/^\d+$/.test(concurrencyArg.split('=')[1])) {
   process.exit(2);
 }
 const skillTests = discoverSkillTests();
+if (skillArg) {
+  const skillName = skillArg.split('=')[1] || '';
+  const prefix = `skills/${skillName}/`;
+  const filtered = skillTests.filter((file) => file.startsWith(prefix));
+  if (!skillName || filtered.length === 0) {
+    console.error(`--skill: no offline test files found for "${skillName}"; pass a directory name under skills/`);
+    process.exit(2);
+  }
+  skillTests.length = 0;
+  skillTests.push(...filtered);
+}
 const runtimeTests = discoverRuntimeTests();
 const excluded = new Map(EXCLUSIONS.map((entry) => [entry.file, entry.reason]));
 
