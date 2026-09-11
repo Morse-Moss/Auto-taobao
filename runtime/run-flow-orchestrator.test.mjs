@@ -273,3 +273,35 @@ test('CLI dry-run against the real completed FAQ period reports DONE without spa
   assert.ok(report, 'dry-run should return a report');
   assert.equal(report.decision, 'DONE', 'the 2026-08-23_2026-08-29 period is complete, so the orchestrator must report DONE');
 });
+
+test('orchestrateXws parses the last JSON line when the supervisor streams child output first', async () => {
+  const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), 'orch-xws-'));
+  try {
+    const spawn = async () => ({
+      code: 0,
+      stdout: '{"event":"PROGRESS","page":3}\n{"event":"PROGRESS","page":4}\n{"action":"COMPLETED","runId":"R1","status":"DONE","code":0}\n',
+      stderr: '',
+    });
+    const report = await orchestrateXws({ runId: 'R1', runtimeRoot, spawn, sleep: async () => {} });
+    assert.equal(report.decision, 'DONE');
+    assert.equal(report.runId, 'R1');
+  } finally {
+    await rm(runtimeRoot, { recursive: true, force: true });
+  }
+});
+
+test('orchestrateXws falls back to stderr JSON when stdout has none', async () => {
+  const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), 'orch-xws-'));
+  try {
+    const spawn = async () => ({
+      code: 2,
+      stdout: 'progress line without json\nanother plain line\n',
+      stderr: '{"status":"STALLED","error":"Xiaowangshen made no page progress before the stall threshold","action":"STOPPED","runId":"R2"}\n',
+    });
+    const report = await orchestrateXws({ runId: 'R2', runtimeRoot, spawn, sleep: async () => {} });
+    assert.equal(report.decision, 'STOP_HUMAN');
+    assert.equal(report.status, 'STALLED');
+  } finally {
+    await rm(runtimeRoot, { recursive: true, force: true });
+  }
+});

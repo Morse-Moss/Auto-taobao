@@ -151,14 +151,19 @@ export async function spawnController(command, args, { cwd = PROJECT_ROOT, env =
 }
 
 function parseJsonOutput(text, label) {
-  const trimmed = String(text || '').trim();
-  const start = trimmed.indexOf('{');
-  if (start < 0) throw new Error(`${label} did not print JSON output`);
-  try {
-    return JSON.parse(trimmed.slice(start));
-  } catch (error) {
-    throw new Error(`${label} printed invalid JSON: ${error.message}`);
+  // Controllers may stream child output (progress lines) before their own
+  // final JSON result, and --status prints pretty-printed multi-line JSON.
+  // Scan every '{' from the end and return the first position whose slice
+  // parses as a complete JSON value.
+  const source = String(text || '');
+  for (let index = source.lastIndexOf('{'); index >= 0; index = source.lastIndexOf('{', index - 1)) {
+    try {
+      return JSON.parse(source.slice(index));
+    } catch {
+      // incomplete or trailing garbage after this brace; keep scanning back
+    }
   }
+  throw new Error(`${label} did not print a parseable JSON object`);
 }
 
 export async function orchestrateFaq({
@@ -250,8 +255,14 @@ export async function orchestrateXws({
     let result;
     try {
       result = parseJsonOutput(supervised.stdout, 'supervise-adaptive-export');
-    } catch (error) {
-      throw new Error(`${error.message}; exit=${supervised.code}; stderr=${String(supervised.stderr).slice(0, 500)}`);
+    } catch (stdoutError) {
+      // Single-shot supervisors print their result JSON on stderr when the
+      // child ended in a terminal state; try there before giving up.
+      try {
+        result = parseJsonOutput(supervised.stderr, 'supervise-adaptive-export (stderr)');
+      } catch {
+        throw new Error(`${stdoutError.message}; exit=${supervised.code}; stderr=${String(supervised.stderr).slice(0, 500)}`);
+      }
     }
     if (result.runId) currentRunId = result.runId;
     creating = false;
