@@ -12,6 +12,15 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 
+def _force_utf8_stdout() -> None:
+    # Windows consoles default to a legacy codepage (e.g. cp1252); the JSON
+    # result carries Chinese field names, so force UTF-8 or printing dies
+    # with UnicodeEncodeError on clean checkouts and CI runners.
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
+
 def write_workbook(payload_path: Path, output_path: Path) -> dict:
     payload = json.loads(payload_path.read_text(encoding="utf-8"))
     metadata = payload["metadata"]
@@ -94,6 +103,7 @@ def write_workbook(payload_path: Path, output_path: Path) -> dict:
 
 
 def main() -> int:
+    _force_utf8_stdout()
     if len(sys.argv) != 3:
         print("Usage: write-workbook.py PAYLOAD.json OUTPUT.xlsx", file=sys.stderr)
         return 2
