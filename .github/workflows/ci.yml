@@ -83,7 +83,9 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Install Python dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements.txt
+        run: |
+          py -3 -m pip install --disable-pip-version-check -r requirements.txt
+          python -m pip install --disable-pip-version-check -r requirements.txt
 
       - name: Skill unit tests (L2) - ${{ matrix.skill }}
         run: node scripts/run-test-suite.mjs skills --skill=${{ matrix.skill }}
