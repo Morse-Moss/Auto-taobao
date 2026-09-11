@@ -6,13 +6,16 @@
 #     Integration tests are gated behind external systems by design; the unit
 #     suite excludes them (see scripts/run-test-suite.mjs EXCLUSIONS).
 #
+# Two parallel jobs instead of one, based on the measured duration of the
+# first run (2026-09-11): GitHub's Windows runners are several times slower
+# than the dev machine, and a single 30-minute job timed out inside the
+# skill-test half. Splitting gives fast feedback from the runtime layer while
+# the slower xws-export-market-analysis suite runs in its own job.
+#
 # Runner note: windows-latest is used because the project is Windows-native
 # (Edge-bound CDP proxy, PowerShell helpers, Windows clipboard contracts).
 # Running on Linux would silently skip exactly the behaviour we care about,
 # so a green Linux run would be false confidence.
-#
-# Expected duration: the xws-export-market-analysis suite alone takes about
-# 4-5 minutes; the whole unit layer is budgeted at ~10 minutes.
 
 name: offline-tests
 
@@ -22,9 +25,9 @@ on:
   pull_request:
 
 jobs:
-  offline-gate:
+  fast-gate:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -39,8 +42,25 @@ jobs:
       - name: Offline self-tests (L1)
         run: npm run test:offline
 
-      - name: Unit tests (L2)
-        run: npm run test:unit
+      - name: Runtime tests (L2)
+        run: npm run test:runtime
+
+  unit-skills:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Skill unit tests (L2)
+        run: npm run test:skills
 
       # NOTE: `npm run test:integration` is intentionally NOT run here.
       # It requires a live CDP proxy / Edge session and a PostgreSQL URL.

@@ -8,6 +8,7 @@
   "scripts": {
     "test:offline": "node scripts/run-offline-self-tests.mjs",
     "test:unit": "node scripts/run-test-suite.mjs unit",
+    "test:skills": "node scripts/run-test-suite.mjs skills",
     "test:runtime": "node scripts/run-test-suite.mjs runtime",
     "test:integration": "node scripts/run-test-suite.mjs integration",
     "test:all": "npm run test:offline && npm run test:unit && npm run test:runtime",

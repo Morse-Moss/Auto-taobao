@@ -8,6 +8,7 @@
 //
 // Suites:
 //   unit        - all skill tests that need no browser, proxy, clipboard or DB
+//   skills      - the skill-test half of `unit` (used by CI to parallelise)
 //   runtime     - all runtime/*.test.mjs (verified offline-clean)
 //   integration - exactly the files excluded above, run in one place
 //
@@ -127,6 +128,8 @@ if (dryRun) {
   } else if (suite === 'unit') {
     printList('unit:skills', skills.offline);
     printList('unit:runtime', runtime.offline);
+  } else if (suite === 'skills') {
+    printList('skills', skills.offline);
   } else if (suite === 'runtime') {
     printList('runtime', runtime.offline);
   } else if (suite === 'integration') {
@@ -138,7 +141,9 @@ if (dryRun) {
   process.exit(status);
 }
 
-if (suite === 'unit') {
+if (suite === 'skills') {
+  status = runSuite(skills.offline, 'skills');
+} else if (suite === 'unit') {
   for (const [file, reason] of excluded) {
     console.log(`    excluded from offline suites: ${file} (${reason})`);
   }
@@ -152,8 +157,9 @@ if (suite === 'unit') {
   for (const file of gated) console.log(`      ${file} - ${excluded.get(file)}`);
   status = runSuite(gated, 'integration');
 } else {
-  console.error('usage: node scripts/run-test-suite.mjs <unit|runtime|integration>');
+  console.error('usage: node scripts/run-test-suite.mjs <unit|skills|runtime|integration>');
   console.error('  unit        - offline skill + runtime tests (no browser, proxy, clipboard or DB)');
+  console.error('  skills      - the skill-test half of unit only');
   console.error('  runtime     - runtime/*.test.mjs only');
   console.error('  integration - the gated files that offline suites exclude');
   process.exit(2);
