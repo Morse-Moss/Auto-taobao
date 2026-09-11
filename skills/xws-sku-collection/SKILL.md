@@ -2,12 +2,12 @@
 name: xws-sku-collection
 description: "Collect sellable SKUs for A/B competitors from real Taobao product pages through Xiaowangshen, build a deterministic dry-run, and write only explicitly authorized batches to Feishu with read-back verification."
 metadata:
-version: "1.9.0"
+  version: "1.9.0"
 ---
 
 # 小旺神 SKU 采集入库
 
-Version: `1.8.0`
+Version: `1.9.0`
 
 Use this skill when the user asks to collect SKU information for A/B competitors classified in a Feishu
 `竞品主表`, using the visible SKU copy control on the real Taobao product page, and then write the result to the

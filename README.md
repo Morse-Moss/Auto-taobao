@@ -7,15 +7,17 @@
 - `skills/sycm-export-search-rank`：生意参谋搜索排行采集、CSV/XLSX 输出与校验。
 - `skills/xws-export-market-analysis`：从淘宝首页运行小旺神市场分析，监管慢速采集并校验 CSV/XLSX 竞品数据。
 - `skills/xws-to-feishu-base`：提取小旺神 XLSX 内嵌商品图，通过飞书 API 写入授权副本，并维护竞品分类、公式和 AI 提示词合同。
-- `skills/xws-sku-collection`：v1.2.0，从真实淘宝商品页点击小旺神 SKU 控件，原子读取 Windows 剪贴板、按商品独立维护 `batch-index.json` 并生成可复现 dry-run，在精确授权后写入飞书 `SKU明细` 与回读验收。
-- `skills/xws-faq-operator`：v2.0.0，面向运营的 FAQ 周更总入口，通过自然语言检查状态、断点续跑并发布 `问题主库` 与周期周表。
+- `skills/xws-sku-collection`：v1.9.0，从真实淘宝商品页点击小旺神 SKU 控件，原子读取 Windows 剪贴板、按商品独立维护 `batch-index.json` 并生成可复现 dry-run，在精确授权后写入飞书 `SKU明细` 与回读验收。
+- `skills/xws-faq-operator`：v3.1.0，面向运营的 FAQ 周更总入口，通过自然语言检查状态、断点续跑并发布 `问题主库` 与周期周表。
 - `skills/xws-faq-raw-collection`：锁定最新竞品周 A/B TOP5，保存小旺神问大家与评论原始证据到本地。
 - `skills/xws-question-library-collection`：兼容入口，将已验证原始证据生成本地 raw snapshot。
 - `skills/sycm-to-feishu-base`：飞书副本字段检查、TSV 构建、真实粘贴与导入验收。
 - `skills/huitun-to-feishu-keyword-heat`：读取飞书 `A候选` 队列，在灰豚红薯版采集完全同名话题浏览量，并只回填 `灰豚话题浏览量`；`内容热度`由上游流程提供。
 - `evidence/stability-20260804`：三轮 267 行稳定性验证文件。
 - `runtime`：后续项目专用运行入口。
-- `docs/project-knowledge.md`：项目定位、真实能力、验证证据与对外表述边界。
+- `docs/architecture/README.md`：多租户运营任务执行平台的目标架构、分层边界、权威数据和迁移原则。
+- `docs/standards/README.md`：跨模块工程规范、状态与证据、测试、安全和交付边界。
+- `docs/project-knowledge.md`：当前已验证能力、验证证据与对外表述边界；目标架构以 `docs/architecture/README.md` 为准。
 - `docs/references/revolution-knowledge-patterns.md`：从 Revolution 知识库迁移并本地化的证据治理方法。
 
 ## 外部依赖
@@ -56,6 +58,19 @@ node "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\scripts\run-weekly-po
   --confirm-base <app-token> --confirm-current-table <current-table-id> `
   --confirm-history-table <history-table-id>
 ```
+
+## 最小离线验证
+
+Node 18 或更新版本可运行项目的最低离线 self-test 入口：
+
+```powershell
+npm ci --ignore-scripts
+npm run test:offline
+```
+
+该入口只运行三个确定性 `--self-test`，不发现测试文件，不访问真实浏览器/CDP Proxy、PostgreSQL、飞书、平台账号或外部凭据。它不是全仓库回归，也不证明 Python、外部环境或真实业务流程可用。
+
+完整业务流程仍依赖已登录 Edge、共享 CDP Proxy、PostgreSQL 和外部飞书凭据。两个 `runtime/generate-competitor-v2-*.cjs` 入口依赖未声明的 `docx`；Python 路径依赖 `openpyxl`、Pillow、`python-docx`，部分报告还依赖仓库外的 `table_geometry`。
 
 ## 验证
 
