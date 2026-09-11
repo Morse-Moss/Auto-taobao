@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { buildLegacyWritebackPlan, mapLegacyResult, normalizeContentHeat, readArtifact } from './legacy-feishu-writeback.mjs';
@@ -46,11 +48,15 @@ test('builds updates only for blank writable fields and preserves populated valu
 });
 
 test('adapts the prior PUBLISH_READY analysis artifact to the legacy writeback shape', () => {
-  const file = 'D:/Retire/sycm-automation/runtime/tmp-publish-ready-artifact.json';
-  fs.writeFileSync(file, JSON.stringify({ status: 'PUBLISH_READY', analysisValues: [{ record_id: 'r1', keywordId: 'KW000001', fields: { 标准归并词: '浴缸', 关键词分类: '大词', 细分标签: ['功能/深泡'], 用户意图: '了解型', 内容热度: '低' } }] }));
-  const adapted = readArtifact(file);
-  assert.equal(adapted.status, 'LOCAL_LEGACY_PROMPT_ANALYSIS_READY');
-  assert.equal(adapted.recordCount, 1);
-  assert.equal(adapted.results[0].字段.内容热度, '低');
-  fs.unlinkSync(file);
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'legacy-writeback-'));
+  const file = path.join(directory, 'tmp-publish-ready-artifact.json');
+  try {
+    fs.writeFileSync(file, JSON.stringify({ status: 'PUBLISH_READY', analysisValues: [{ record_id: 'r1', keywordId: 'KW000001', fields: { 标准归并词: '浴缸', 关键词分类: '大词', 细分标签: ['功能/深泡'], 用户意图: '了解型', 内容热度: '低' } }] }));
+    const adapted = readArtifact(file);
+    assert.equal(adapted.status, 'LOCAL_LEGACY_PROMPT_ANALYSIS_READY');
+    assert.equal(adapted.recordCount, 1);
+    assert.equal(adapted.results[0].字段.内容热度, '低');
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
