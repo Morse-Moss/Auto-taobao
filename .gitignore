@@ -83,3 +83,4 @@ tmp-*-xlsx/
 
 # Project-local agent memory (not part of the deliverable)
 .workbuddy/
+runtime/supervisor-agent/postmortems/
