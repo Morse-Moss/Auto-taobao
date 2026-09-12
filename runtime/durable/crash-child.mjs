@@ -1,0 +1,13 @@
+import { readFileSync } from 'node:fs';
+const url = "postgresql://xws_agent:d039cb1d0b0952b985c13528b4c4aab3d66a5a66af86b08c@127.0.0.1:5432/xws_automation";
+const { Pool } = await import('pg');
+const { DurableState } = await import("file:///d:/Retire/sycm-automation/runtime/durable/state.mjs");
+const pool = new Pool({ connectionString: url });
+const state = new DurableState(pool);
+const runId = "4ee83cef-cd17-4289-87a7-0fea5524bb20";
+await state.createRun({ runId, identity: { platform: 'xws' }, targetEnd: 40 });
+await state.claimLease({ runId, attemptId: 'crash-attempt', owner: 'doomed-worker' });
+await state.createCommit({ runId, attemptId: 'crash-attempt', from: 1, to: 10, artifactDigest: 'sha256:real-artifact' });
+await state.markCommit('4ee83cef-cd17-4289-87a7-0fea5524bb20:1:10', 'COMMITTING');
+await pool.end();
+process.exit(1);
