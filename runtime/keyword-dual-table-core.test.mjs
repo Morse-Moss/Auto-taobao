@@ -65,6 +65,10 @@ test('heat classifiers follow the approved operations thresholds', () => {
   assert.equal(classifyTradeHeat('2.5% ~ 5%'), '中');
   assert.equal(classifyTradeHeat('5% ~ 7.5%'), '高');
   assert.equal(classifyTradeHeat('40% ~ 45%'), '高');
+  assert.equal(classifyTradeHeat('35% ~ 40%'), '高');
+  assert.equal(classifyTradeHeat('45% ~ 50%'), '高');
+  assert.equal(classifyTradeHeat('90% ~ 95%'), '高');
+  assert.equal(classifyTradeHeat('95% ~ 100%'), '高');
 });
 
 test('formula contract has six active fields and trade heat ignores click rate', () => {

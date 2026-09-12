@@ -69,13 +69,19 @@ test('prepares an empty target, uploads every image, and verifies attachments', 
   ]);
 });
 
-test('rejects a workbook row without exactly one embedded image', async () => {
+test('allows rows without an embedded image but rejects multiple images per row', async () => {
+  const dry = await runImport({
+    manifest: { headers: XWS_HEADERS, rows: [row(1)], images: [] },
+    commit: false,
+  });
+  assert.equal(dry.sourceRows, 1);
+  assert.equal(dry.sourceImages, 0);
   await assert.rejects(
     () => runImport({
-      manifest: { headers: XWS_HEADERS, rows: [row(1)], images: [] },
+      manifest: { headers: XWS_HEADERS, rows: [row(1)], images: [{ row: 2, path: 'a.png' }, { row: 2, path: 'b.png' }] },
       commit: false,
     }),
-    /exactly one embedded image/i,
+    /at most one embedded image/i,
   );
 });
 

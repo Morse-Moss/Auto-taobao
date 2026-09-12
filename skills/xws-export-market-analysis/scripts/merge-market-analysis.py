@@ -94,7 +94,7 @@ def write_xlsx(csv_path, source_paths, output_path, require_images):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", required=True)
-    parser.add_argument("--source-xlsx", action="append", required=True)
+    parser.add_argument("--source-xlsx", action="append", default=[])
     parser.add_argument("--output-xlsx", required=True)
     parser.add_argument("--require-images", action="store_true")
     return parser.parse_args()

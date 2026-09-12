@@ -41,6 +41,7 @@ const VALUE_OPTIONS = new Set([
   'table-name',
   'env-file',
   'proxy',
+  'browser-id',
   'output-dir',
   'results',
   'confirm-table',
@@ -79,6 +80,7 @@ export function parseOptions(argv, env = process.env) {
   const options = {
     ...DEFAULT_TARGET,
     proxy: env.HUITUN_PROXY || 'http://127.0.0.1:3456',
+    browserId: env.HUITUN_BROWSER_ID || 'edge',
     outputDir: '',
     resultsPath: '',
     pollMs: 1_000,
@@ -111,6 +113,7 @@ export function parseOptions(argv, env = process.env) {
       else if (key === 'table-name') options.tableName = value;
       else if (key === 'env-file') options.envFile = value;
       else if (key === 'proxy') options.proxy = value.replace(/\/$/u, '');
+      else if (key === 'browser-id') options.browserId = value;
       else if (key === 'output-dir') options.outputDir = value;
       else if (key === 'results') options.resultsPath = value;
       else if (key === 'confirm-table') options.confirmTable = value;

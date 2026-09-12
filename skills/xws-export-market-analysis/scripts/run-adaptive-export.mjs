@@ -5,7 +5,7 @@ import { createReadStream } from "node:fs";
 import { copyFile, mkdir, readdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -843,17 +843,19 @@ export function shouldPersistAdaptiveFailure(error) {
 export function canAdvanceAttempt(status, snapshot, range, exportModes = ["csv"]) {
   const csv = snapshot?.validation?.artifacts?.csv;
   const requiresXlsx = exportModes.includes("xlsx") || exportModes.includes("xlsx-images");
+  const xlsxPending = Array.isArray(snapshot?.mediaPending) && snapshot.mediaPending.includes("xlsx");
+  const requiresXlsxNow = requiresXlsx && !xlsxPending;
   const completeRange = Number(snapshot?.progress?.completedEnd) >= range.end;
   const xlsx = snapshot?.validation?.artifacts?.xlsx;
   return ["DONE", "STALLED"].includes(status)
     && Boolean(snapshot?.artifacts?.csv)
-    && (!requiresXlsx || !completeRange || Boolean(snapshot?.artifacts?.xlsx))
+    && (!requiresXlsxNow || !completeRange || Boolean(snapshot?.artifacts?.xlsx))
     && snapshot?.validation?.ok === true
     && Number(snapshot?.validation?.validation?.rows) >= 1
     && Boolean(csv?.sha256)
     && Number.isInteger(Number(csv?.size_bytes))
     && Number(csv.size_bytes) >= 1
-    && (!requiresXlsx || !completeRange || (
+    && (!requiresXlsxNow || !completeRange || (
       Boolean(xlsx?.sha256)
       && Number.isInteger(Number(xlsx?.size_bytes))
       && Number(xlsx.size_bytes) >= 1
@@ -946,6 +948,20 @@ async function runMerger(args) {
   });
 }
 
+function buildMergedWorkbook(csvPath, xlsxPath, sourceXlsxFiles = []) {
+  const python = process.env.XWS_PYTHON || (process.platform === "win32" ? "py" : "python3");
+  const prefix = process.env.XWS_PYTHON || process.platform !== "win32" ? [] : ["-3"];
+  const args = [...prefix, path.join(SCRIPT_DIR, "merge-market-analysis.py"), "--csv", csvPath, "--output-xlsx", xlsxPath];
+  for (const file of sourceXlsxFiles) args.push("--source-xlsx", file);
+  const result = spawnSync(python, args, { encoding: "utf8", maxBuffer: 2 * 1024 * 1024, timeout: 300_000 });
+  if (result.error) throw new Error(`merged workbook builder failed to run: ${result.error.message}`);
+  const output = String(result.stdout || "").trim();
+  let parsed;
+  try { parsed = JSON.parse(output); } catch { throw new Error(`merged workbook builder returned invalid JSON: ${String(result.stderr || output).slice(0, 500)}`); }
+  if (result.status !== 0 || !parsed.ok) throw new Error(parsed.error || "merged workbook build failed");
+  return parsed;
+}
+
 export async function verifyRecordedArtifacts(records, owner) {
   if (!Array.isArray(records) || !records.length) {
     throw new Error(`${owner} has no verified artifact records`);
@@ -976,7 +992,7 @@ export async function mergeCompletedParts(checkpoint, stateRoot, options) {
     .filter((part) => ["DONE", "STALLED"].includes(part.status) && part.artifacts?.csv)
     .sort((left, right) => left.start - right.start || left.end - right.end);
   if (!parts.length) throw new Error("no validated CSV parts are available for final merge");
-  await verifyRecordedParts(parts, options.exportModes);
+  await verifyRecordedParts(parts, options.exportModes, { allowMissingXlsx: true });
   let cursor = options.pages.start;
   for (const part of parts) {
     if (part.start > cursor || part.completedEnd < cursor) {
@@ -987,9 +1003,7 @@ export async function mergeCompletedParts(checkpoint, stateRoot, options) {
   }
   if (cursor <= options.pages.end) throw new Error(`validated parts stop at page ${cursor - 1}, expected ${options.pages.end}`);
   const needsXlsx = options.exportModes.includes("xlsx") || options.exportModes.includes("xlsx-images");
-  if (needsXlsx && parts.some((part) => !part.artifacts?.xlsx)) {
-    throw new Error("a completed part is missing its XLSX artifact");
-  }
+  const missingXlsx = needsXlsx && parts.some((part) => !part.artifacts?.xlsx);
   const finalDir = path.join(stateRoot, "final");
   await mkdir(finalDir, { recursive: true });
   const safeKeyword = options.keyword.replace(/[^\w\u4e00-\u9fff]+/gu, "-");
@@ -997,7 +1011,7 @@ export async function mergeCompletedParts(checkpoint, stateRoot, options) {
   const outputXlsx = path.join(finalDir, `${safeKeyword}-adaptive-merged.xlsx`);
   const args = ["--output-csv", outputCsv];
   for (const part of parts) args.push("--csv", part.artifacts.csv);
-  if (needsXlsx) {
+  if (needsXlsx && !missingXlsx) {
     for (const part of parts) args.push("--xlsx", part.artifacts.xlsx);
     args.push("--output-xlsx", outputXlsx);
     if (options.exportModes.includes("xlsx-images")) args.push("--require-images");
@@ -1006,9 +1020,18 @@ export async function mergeCompletedParts(checkpoint, stateRoot, options) {
   if (result.code !== 0) throw new Error(`final merge failed: ${result.stderr || result.stdout}`.trim());
   const merged = lastJsonLine(result.stdout);
   if (!merged.ok) throw new Error(merged.error || "final merge failed");
+  if (needsXlsx && missingXlsx) {
+    // Some parts settled without an XLSX artifact: rebuild the merged workbook
+    // from the merged CSV, keeping images only from the parts that have one.
+    const sources = parts.filter((part) => part.artifacts?.xlsx).map((part) => part.artifacts.xlsx);
+    await buildMergedWorkbook(outputCsv, outputXlsx, sources);
+    merged.xlsx = { path: outputXlsx };
+  }
   const validation = await validateMergedOutput(
     { csv: merged.csv, ...(merged.xlsx?.path ? { xlsx: merged.xlsx.path } : {}) },
-    options.exportModes,
+    missingXlsx && options.exportModes.includes("xlsx-images")
+      ? ["csv", "xlsx"]
+      : options.exportModes,
   );
   return {
     ...merged,

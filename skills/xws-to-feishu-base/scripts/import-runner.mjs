@@ -17,10 +17,12 @@ function validateManifest(manifest) {
   const entries = manifest.rows.map((row, index) => {
     const worksheetRow = index + 2;
     const images = imagesByRow.get(worksheetRow) ?? [];
-    if (images.length !== 1) {
-      throw new Error(`Worksheet row ${worksheetRow} must have exactly one embedded image; found ${images.length}`);
+    if (images.length > 1) {
+      throw new Error(`Worksheet row ${worksheetRow} must have at most one embedded image; found ${images.length}`);
     }
-    return { row, image: images[0] };
+    // Rows without an embedded image are allowed (e.g. merged workbooks rebuilt
+    // from CSV after partial xlsx export failures); 商品图片 stays empty.
+    return { row, image: images[0] ?? null };
   });
   return { entries, headers: manifest.headers, countField };
 }
@@ -38,7 +40,7 @@ export async function runImport({
     return {
       dryRun: true,
       sourceRows: entries.length,
-      sourceImages: entries.length,
+      sourceImages: entries.filter((entry) => entry.image).length,
       numericTransform: countField === '付款人数'
         ? '付款人数 is preserved as the displayed source text'
         : `${countField} strips a trailing + for the numeric target field`,
@@ -57,26 +59,36 @@ export async function runImport({
   }
   validateTarget({ recordCount, fields, headers });
 
+  const fieldTypes = new Map(fields.map((field) => [field.fieldName, field.type]));
+
   const records = [];
   for (let index = 0; index < entries.length; index += 1) {
     const entry = entries[index];
-    const bytes = await readFile(entry.image.path);
-    const fileToken = await client.uploadFile({ name: basename(entry.image.path), bytes });
-    records.push(buildRecordFields(entry.row, fileToken, headers));
+    let imageToken = null;
+    if (entry.image) {
+      const bytes = await readFile(entry.image.path);
+      imageToken = await client.uploadFile({ name: basename(entry.image.path), bytes });
+    }
+    records.push(buildRecordFields(entry.row, imageToken, headers, fieldTypes));
     if (index + 1 < entries.length) await sleep(250);
   }
 
-  const recordIds = await client.batchCreateRecords(records);
+  const recordIds = [];
+  for (let start = 0; start < records.length; start += 500) {
+    recordIds.push(...await client.batchCreateRecords(records.slice(start, start + 500)));
+    if (start + 500 < records.length) await sleep(250);
+  }
   if (recordIds.length !== entries.length) {
     throw new Error(`Feishu created ${recordIds.length} records for ${entries.length} source rows`);
   }
+  const expectedAttachments = entries.filter((entry) => entry.image).length;
   const saved = await client.listRecords();
   const attachmentCount = saved.reduce((total, record) => {
     const value = record.fields?.商品图片;
     return total + (Array.isArray(value) ? value.length : 0);
   }, 0);
-  if (saved.length !== entries.length || attachmentCount !== entries.length) {
-    throw new Error(`Feishu verification failed: records=${saved.length}, attachments=${attachmentCount}, expected=${entries.length}`);
+  if (saved.length !== entries.length || attachmentCount !== expectedAttachments) {
+    throw new Error(`Feishu verification failed: records=${saved.length}, attachments=${attachmentCount}, expected=${expectedAttachments}`);
   }
   return {
     dryRun: false,

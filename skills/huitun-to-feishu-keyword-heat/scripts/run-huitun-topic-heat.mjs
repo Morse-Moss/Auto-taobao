@@ -46,6 +46,8 @@ Options:
   --table-name TEXT           Required exact weekly table name
   --env-file FILE             File containing FEISHU_APP_ID and FEISHU_APP_SECRET
   --proxy URL                 Shared web-access Proxy (default: http://127.0.0.1:3456)
+  --browser-id ID             Expected proxy browser id (default: edge; use edge-isolated
+                              when the proxy runs Edge in isolated mode)
   --output-dir DIR            Run evidence directory root
   --results FILE              Reuse a collected result file and skip browser collection
   --result-max-age-hours N    Reject reused results older than N hours (default: 24)
@@ -672,7 +674,7 @@ async function run(options) {
   };
 
   const proxyHealth = await proxyRequest(options.proxy, '/health');
-  assertProxyBrowserHealth(proxyHealth, 'edge');
+  assertProxyBrowserHealth(proxyHealth, options.browserId);
   log('PROXY_READY', { browser: proxyHealth.browser.id });
 
   log('START', { tableId: options.tableId, tableName: options.tableName, apply: options.apply });

@@ -49,6 +49,27 @@ test('buildCollectionPlan locks the latest weekly A top five to main records', (
   assert.equal(plan.products[0].weeklyRecordId, 'weekly-3');
 });
 
+test('buildCollectionPlan accepts an empty week instead of blocking the flow', () => {
+  const weeklyRecords = [
+    { ...weekly('1', 10, 1), fields: { ...weekly('1', 10, 1).fields, 竞品分类: 'C-差异化竞品' } },
+  ];
+  const plan = buildCollectionPlan({ weeklyRecords, mainRecords: [], period: '2026-08-30_2026-09-05' });
+  assert.deepEqual(plan.products, []);
+  assert.equal(plan.candidateCount, 0);
+  assert.equal(plan.outcome, 'NO_QUALIFIED_CANDIDATES');
+});
+
+test('buildCollectionPlan accepts a partial week below the limit', () => {
+  const weeklyRecords = [weekly('1', 100, 1)];
+  const plan = buildCollectionPlan({
+    weeklyRecords,
+    mainRecords: [{ recordId: 'main-1', fields: { 商品ID: '1' } }],
+    period: '2026-08-30_2026-09-05',
+  });
+  assert.equal(plan.products.length, 1);
+  assert.equal(plan.outcome, 'PARTIAL_CANDIDATES');
+});
+
 test('buildRecordsFromEvidence keeps raw data and leaves analysis fields blank', () => {
   const plan = buildCollectionPlan({
     weeklyRecords: [weekly('1', 100, 1)],

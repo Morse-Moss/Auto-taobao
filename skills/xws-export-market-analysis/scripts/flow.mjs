@@ -550,7 +550,13 @@ export function collectionStallReason({
   diagnosticKind,
 }) {
   if (elapsedMs >= deadlineMs) return "deadline";
-  if (diagnosticKind === "REQUEST_PENDING") return "";
+  if (diagnosticKind === "REQUEST_PENDING") {
+    // A healthy page request completes in well under a minute; one that stays
+    // pending past the stall threshold while page progress is frozen is a hung
+    // request channel. Waiting for the whole collection deadline wastes tens
+    // of minutes before the partial export can run.
+    return idleMs >= stallMs ? "pending" : "";
+  }
   if (idleMs >= stallMs) return "idle";
   return "";
 }

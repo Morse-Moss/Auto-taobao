@@ -165,6 +165,23 @@ export async function main(argv = process.argv.slice(2), dependencies = {}) {
   if (!batches.length) {
     const artifact = buildAiReviewArtifact({ period: options.period, classifiedSnapshot: snapshot, tasks, results: migratedResults, provider: null });
     writeJson(artifactPath, artifact);
+    // 空任务（本周无合格竞品）也必须落收据，否则 operator 永远等不到 aiReviewComplete。
+    writeJson(path.resolve(outputDir, 'ai-review-receipt.json'), {
+      mode: artifact.mode,
+      period: options.period,
+      analysisVersion: FAQ_ANALYSIS_VERSION,
+      aiReviewVersion: FAQ_AI_REVIEW_VERSION,
+      aiPromptVersion: FAQ_AI_PROMPT_VERSION,
+      provider: null,
+      source: snapshot,
+      taskCount: tasks.length,
+      resultCount: artifact.resultCount,
+      autoAccepted: artifact.autoAccepted,
+      needsHumanReview: artifact.needsHumanReview,
+      batchFailures: [],
+      artifactPath,
+      taskPath,
+    });
     console.log(JSON.stringify({ mode: artifact.mode, period: options.period, taskCount: tasks.length, resultCount: artifact.resultCount, autoAccepted: artifact.autoAccepted, needsHumanReview: artifact.needsHumanReview, artifactPath }, null, 2));
     return artifact;
   }

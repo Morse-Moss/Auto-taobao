@@ -35,17 +35,23 @@ function numericValue(value, fieldName, { allowPlus = false } = {}) {
   return Number(match[1]);
 }
 
-export function buildRecordFields(row, imageToken, headers = XWS_HEADERS) {
+export function buildRecordFields(row, imageToken, headers = XWS_HEADERS, fieldTypes = null) {
   const countField = validateSourceHeaders(headers);
   const fields = Object.fromEntries(headers
     .filter((name) => name !== '商品图片')
     .map((name) => [name, row[name] ?? '']));
   fields.序号 = String(row.序号 ?? '');
   fields.价格 = numericValue(row.价格, '价格');
-  fields[countField] = countField === '付款人数'
-    ? String(row[countField] ?? '')
-    : numericValue(row[countField], countField, { allowPlus: true });
-  fields.商品图片 = [{ file_token: imageToken }];
+  if (countField === '付款人数') {
+    fields[countField] = String(row[countField] ?? '');
+  } else {
+    const numeric = numericValue(row[countField], countField, { allowPlus: true });
+    const targetType = fieldTypes?.get(countField);
+    // Text (type 1) targets reject numbers with TextFieldConvFail (1254060),
+    // so stringify when the target field is a text field.
+    fields[countField] = targetType === 1 ? (numeric === null ? null : String(numeric)) : numeric;
+  }
+  fields.商品图片 = imageToken ? [{ file_token: imageToken }] : [];
   return fields;
 }
 

@@ -76,7 +76,11 @@ export function buildCollectionPlan({ weeklyRecords, mainRecords, period, limit 
   if (!/^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/u.test(period)) throw new Error('period must be YYYY-MM-DD_YYYY-MM-DD');
   const mainByProduct = new Map(mainRecords.map((record) => [productId(record.fields ?? {}), record]).filter(([id]) => id));
   const selected = selectTopABCompetitors(weeklyRecords, { limit });
-  if (selected.length !== limit) throw new Error(`Expected ${limit} valid A/B competitors with formula monthly values; received ${selected.length}`);
+  // 运营口径：高质量竞品不是每周都有。凑不满 5 个属正常空档，不得抛错阻断流程；
+  // 0 个则产出空清单，由下游按“本周无合格标的、不采集”处理。
+  if (selected.length > limit) {
+    throw new Error(`Expected at most ${limit} valid A/B competitors with formula monthly values; received ${selected.length}`);
+  }
   const products = selected.map((weekly) => {
     const fields = weekly.fields ?? {};
     const id = productId(fields);
@@ -95,7 +99,15 @@ export function buildCollectionPlan({ weeklyRecords, mainRecords, period, limit 
       competitor: { recordId: main.recordId, fields: { ...fields, 商品ID: id, 主表记录ID: main.recordId, 竞品周记录ID: weekly.recordId } },
     };
   });
-  return { period, limit, products };
+  return {
+    period,
+    limit,
+    products,
+    candidateCount: selected.length,
+    outcome: selected.length === 0
+      ? 'NO_QUALIFIED_CANDIDATES'
+      : selected.length < limit ? 'PARTIAL_CANDIDATES' : 'OK',
+  };
 }
 
 export function assertManifestMatches(manifest, plan) {

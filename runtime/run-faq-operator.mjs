@@ -94,7 +94,9 @@ async function inspectEvidence(collectionDir, products) {
       };
     }
   }
-  return { completedProducts, evidenceComplete: products.length === 5 && completedProducts === 5, blocker };
+  // 运营口径：高质量竞品不是每周都有。0 个（本周无合格标的）或不足 5 个均视为已锁定，
+  // 只按“实际清单全部采集完毕”判定，不再强求凑满 5 个。
+  return { completedProducts, evidenceComplete: products.length <= 5 && completedProducts === products.length, blocker };
 }
 
 export async function inspectFaqOperatorStatus({ runtimeRoot = 'runtime', period }) {
@@ -102,8 +104,14 @@ export async function inspectFaqOperatorStatus({ runtimeRoot = 'runtime', period
   const analysisDir = resolve(runtimeRoot, 'faq-analysis', period);
   const manifest = await readJson(resolve(collectionDir, 'top5-manifest.json'));
   const products = Array.isArray(manifest?.products) ? manifest.products : [];
-  const manifestLocked = manifest?.period === period && products.length === 5
-    && products.every((product) => String(product?.productId ?? '').trim());
+  const count = Array.isArray(products) ? products.length : -1;
+  const outcome = String(manifest?.outcome ?? '').trim();
+  // 允许 0 个（NO_QUALIFIED_CANDIDATES：本周无合格标的，按运营口径不采集）
+  // 与不足 5 个（PARTIAL_CANDIDATES）；旧清单缺 outcome 字段时仍要求满 5 个。
+  const manifestLocked = manifest?.period === period
+    && count >= 0 && count <= 5
+    && products.every((product) => String(product?.productId ?? '').trim())
+    && (count === 5 || outcome === 'NO_QUALIFIED_CANDIDATES' || outcome === 'PARTIAL_CANDIDATES');
   const evidence = manifestLocked
     ? await inspectEvidence(collectionDir, products)
     : { completedProducts: 0, evidenceComplete: false };
@@ -214,7 +222,7 @@ function appToken(baseUrl) {
   return token;
 }
 
-export function buildAdvanceCommand(action, options) {
+export function buildAdvanceCommand(action, options, status = null) {
   const confirm = ['--confirm-app-token', appToken(options.baseUrl)];
   if (action === 'COLLECT_EVIDENCE') return null;
   if (action === 'LOCK_TOP5') return { script: 'runtime/run-question-library-collection.mjs', args: collectionArgs(options) };
@@ -224,7 +232,13 @@ export function buildAdvanceCommand(action, options) {
   };
   if (action === 'ANALYZE_LOCAL') return { script: 'runtime/run-faq-text-analysis.mjs', args: localArgs(options) };
   if (action === 'RUN_AI_REVIEW') return { script: 'runtime/run-faq-ai-review.mjs', args: localArgs(options) };
-  if (action === 'REVIEW_AI_HUMAN_QUEUE') return null;
+  // 人工核验队列为空（本周无合格竞品）时无需人工介入，直接产出最终分类收据；
+  // 只要还有待核验项就保持为人工步骤，不自动放行。
+  if (action === 'REVIEW_AI_HUMAN_QUEUE') {
+    return status?.aiReviewNeedsHumanReview === 0
+      ? { script: 'runtime/run-faq-human-review.mjs', args: localArgs(options) }
+      : null;
+  }
   if (action === 'BUILD_LOCAL_SUMMARIES') return { script: 'runtime/run-faq-topic-summary.mjs', args: summaryArgs(options) };
   if (action === 'PUBLISH_FEISHU_SUMMARIES') {
     if (!options.masterTableId || !options.weeklyTableId) throw new Error('publishing FAQ detail replacement requires --master-table-id and --weekly-table-id');
@@ -272,7 +286,7 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(JSON.stringify(status, null, 2));
     return;
   }
-  const command = buildAdvanceCommand(status.nextAction, options);
+  const command = buildAdvanceCommand(status.nextAction, options, status);
   if (!command) {
     const message = status.nextAction === 'REVIEW_AI_HUMAN_QUEUE'
       ? '请先处理 human-review-queue.jsonl 中的人工核验项；队列清零前不会执行飞书发布。'

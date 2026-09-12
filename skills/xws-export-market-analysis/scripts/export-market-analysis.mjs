@@ -39,7 +39,10 @@ const DEFAULT_OUTPUT_DIR = path.join(os.homedir(), "Downloads");
 const TAOBAO_HOME = "https://www.taobao.com/";
 const SEARCH_ORIGIN = "https://s.taobao.com";
 const EXPORT_SETTLEMENT_MS = 60 * 60 * 1_000;
-const PARTIAL_EXPORT_SETTLEMENT_MS = 30 * 1_000;
+// Stall-triggered partial export must be given enough time for the plugin to
+// generate and settle the CSV; a 30s window reliably timed out, which voided
+// every partial part and forced full restarts from page 1.
+const PARTIAL_EXPORT_SETTLEMENT_MS = 5 * 60 * 1_000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -135,6 +138,25 @@ async function clickDom(proxy, target, selector) {
     headers: { "content-type": "text/plain; charset=utf-8" },
     body: selector,
   });
+}
+
+// Export controls sit behind the plugin's loading mask while a page fetch is
+// hung, so CDP coordinate clicks (clickAt) hit the mask and silently do
+// nothing. Synthetic element-targeted events bypass hit-testing; verified to
+// trigger the plugin's export even mid-collection.
+async function clickExportControl(proxy, target, selector) {
+  await request(proxy, `/bringToFront?target=${encodeURIComponent(target)}`);
+  return evaluate(proxy, target, `(() => {
+    const el = document.querySelector(${JSON.stringify(selector)});
+    if (!el) return { ok: false, reason: 'export control missing' };
+    el.scrollIntoView({ block: 'center' });
+    const rect = el.getBoundingClientRect();
+    const options = { bubbles: true, cancelable: true, view: window, clientX: rect.x + rect.width / 2, clientY: rect.y + rect.height / 2 };
+    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+      el.dispatchEvent(new MouseEvent(type, options));
+    }
+    return { ok: true, tag: el.tagName, text: (el.textContent || '').trim().slice(0, 60) };
+  })()`);
 }
 
 async function screenshot(proxy, target, file) {
@@ -290,10 +312,11 @@ async function openTaobaoHome(proxy, runMarker, log) {
     throw error;
   }
   rememberOwnedTarget(runMarker, created?.targetId || created?.value?.targetId);
+  // Cold-started browsers and slow networks regularly exceed 30s on first load.
   const freshHome = await waitForReadyTarget(
     proxy,
     (candidate) => isHome(candidate) && !before.has(candidate.targetId),
-    30_000,
+    75_000,
     "a new Taobao home tab to finish loading",
     { onCandidate: (candidate) => rememberOwnedTarget(runMarker, candidate.targetId) },
   );
@@ -1633,7 +1656,7 @@ async function exportCsv(proxy, options, runMarker, attemptMarker, runDir, direc
     });
     const fresh = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
     if (fresh.targetId !== target.targetId) throw new Error("export target identity changed before CSV activation");
-    await clickAt(proxy, fresh.targetId, selector);
+    await clickExportControl(proxy, fresh.targetId, selector);
   } catch (error) {
     intent = await closeExportIntent(intentPath, intent, "REJECTED", {
       reason: "export_action_failed",
@@ -1717,7 +1740,7 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
     })()`);
     if (!menuBinding?.ok) throw new Error("XLSX caret disappeared before menu activation");
     if (menuBinding.hadVisibleItem) {
-      await clickAt(proxy, targetId, caretSelector);
+      await clickExportControl(proxy, targetId, caretSelector);
       const closeDeadline = Date.now() + 2_000;
       let menuClosed = false;
       while (Date.now() < closeDeadline) {
@@ -1749,7 +1772,7 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
         return true;
       })()`);
     }
-    await clickAt(proxy, targetId, caretSelector);
+    await clickExportControl(proxy, targetId, caretSelector);
     const marker = randomUUID();
     const menuDeadline = Date.now() + 5_000;
     let menuReady = false;
@@ -1763,6 +1786,8 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
           return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
         };
         for (const element of document.querySelectorAll('[data-xws-export-xlsx]')) element.removeAttribute('data-xws-export-xlsx');
+        const wanted = ${JSON.stringify(itemText)};
+        const normalizeMenuText = (value) => String(value || '').replace(/\s+/gu, '').replace(/（/gu, '(').replace(/）/gu, ')');
         const caret = document.querySelector(${JSON.stringify(caretSelector)});
         const currentMenuIds = [
           caret?.getAttribute('aria-controls'),
@@ -1780,9 +1805,9 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
           return visible(candidate)
             && appearedForClick
             && belongsToCaret
-            && (candidate.innerText || '').trim() === ${JSON.stringify(itemText)};
+            && normalizeMenuText(candidate.innerText) === normalizeMenuText(wanted);
         });
-        if (items.length !== 1) return false;
+        if (items.length < 1) return false;
         items[0].setAttribute('data-xws-export-xlsx', ${JSON.stringify(marker)});
         return true;
       })()`);
@@ -1792,7 +1817,7 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
     if (!menuReady) throw new Error(`XLSX menu item is missing or ambiguous: ${itemText}`);
     target = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
     if (target.targetId !== targetId) throw new Error("export target identity changed before XLSX activation");
-    await clickAt(proxy, targetId, `[data-xws-export-xlsx=${JSON.stringify(marker)}]`);
+    await clickExportControl(proxy, targetId, `[data-xws-export-xlsx=${JSON.stringify(marker)}]`);
   } catch (error) {
     intent = await closeExportIntent(intentPath, intent, "REJECTED", {
       reason: "export_action_failed",
@@ -1841,7 +1866,8 @@ function runPythonValidation(options, csv, xlsx, requireImages) {
   const args = [...prefix, path.join(SCRIPT_DIR, "validate-output.py"), "--csv", csv.path];
   if (xlsx) args.push("--xlsx", xlsx.path);
   if (requireImages) args.push("--require-images");
-  const result = spawnSync(python, args, { encoding: "utf8", maxBuffer: 2 * 1024 * 1024 });
+  const result = spawnSync(python, args, { encoding: "utf8", maxBuffer: 2 * 1024 * 1024, timeout: 120_000 });
+  if (result.error) throw new Error(`output validator failed to run: ${result.error.message}`);
   const output = String(result.stdout || "").trim();
   let parsed;
   try {
@@ -1946,7 +1972,12 @@ async function adoptLiveResult(options, runId, runDir, outputDir, log) {
     runDir,
   };
   await writeFile(path.join(runDir, "manifest.json"), JSON.stringify(manifest, ensureJsonReplacer, 2), "utf8");
-  await log("LIVE_RESULT_ADOPTED", { runId, rows: snapshot.progress.rowCount, runDir });
+  await log("LIVE_RESULT_ADOPTED", {
+    runId,
+    rows: snapshot.progress.rowCount,
+    runDir,
+    ...(exported.validation.artifacts?.csv?.sha256 ? { artifactDigest: exported.validation.artifacts.csv.sha256 } : {}),
+  });
   return manifest;
 }
 
@@ -1957,8 +1988,21 @@ async function runUnlocked(options) {
   const runDir = path.join(runtimeRoot, runId);
   await mkdir(runDir, { recursive: true });
   const events = path.join(runDir, "events.jsonl");
+  // EVIDENCE-CONTRACT.md: every event carries runId/attemptId/seq. runId is the
+  // durable adaptive run id (env) when running under the adaptive supervisor;
+  // attemptId is this export invocation (the attempt that owns this events file).
+  const adaptiveRunId = String(process.env.XWS_ADAPTIVE_RUN_ID || "");
+  let eventSeq = 0;
   const log = (event, details = {}) => {
-    const record = { at: new Date().toISOString(), event, ...details };
+    eventSeq += 1;
+    const record = {
+      at: new Date().toISOString(),
+      event,
+      runId: adaptiveRunId || runId,
+      attemptId: runId,
+      seq: eventSeq,
+      ...details,
+    };
     console.log(JSON.stringify(record, ensureJsonReplacer));
     appendFileSync(events, `${JSON.stringify(record, ensureJsonReplacer)}\n`, { encoding: "utf8" });
   };
@@ -2024,7 +2068,12 @@ async function runUnlocked(options) {
         });
         const manifestPath = path.join(runDir, "manifest.json");
         await writeFile(manifestPath, JSON.stringify(partialManifest, ensureJsonReplacer, 2), "utf8");
-        await log("PARTIAL_EXPORTED", { rows: partial.validation.validation.rows, runDir, manifest: manifestPath });
+        await log("PARTIAL_EXPORTED", {
+          rows: partial.validation.validation.rows,
+          runDir,
+          manifest: manifestPath,
+          ...(partial.validation.artifacts?.csv?.sha256 ? { artifactDigest: partial.validation.artifacts.csv.sha256 } : {}),
+        });
         error.details = {
           ...error.details,
           partialManifest: manifestPath,

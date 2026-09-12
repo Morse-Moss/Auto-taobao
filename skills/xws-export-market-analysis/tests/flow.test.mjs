@@ -661,9 +661,10 @@ test("a stale active-page label does not bypass the idle threshold after the req
   );
 });
 
-test("only an in-flight request bypasses the idle threshold", () => {
+test("an in-flight request bypasses the idle threshold until it outlives the stall window", () => {
   const base = { idleMs: 301_000, elapsedMs: 600_000, stallMs: 300_000, deadlineMs: 1_700_000 };
-  assert.equal(collectionStallReason({ ...base, diagnosticKind: "REQUEST_PENDING" }), "");
+  assert.equal(collectionStallReason({ ...base, idleMs: 60_000, diagnosticKind: "REQUEST_PENDING" }), "");
+  assert.equal(collectionStallReason({ ...base, diagnosticKind: "REQUEST_PENDING" }), "pending");
   assert.equal(collectionStallReason({ ...base, diagnosticKind: "BACKGROUND_TAB" }), "idle");
   assert.equal(collectionStallReason({ ...base, diagnosticKind: "REQUEST_COMPLETED" }), "idle");
   assert.equal(collectionStallReason({ ...base, elapsedMs: 1_700_000, diagnosticKind: "REQUEST_PENDING" }), "deadline");

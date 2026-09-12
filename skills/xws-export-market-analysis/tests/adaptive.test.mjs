@@ -1116,11 +1116,20 @@ test("keeps partial-export failure evidence from the child event", () => {
   });
 });
 
-test("does not advance a complete-range snapshot when required XLSX evidence is missing", () => {
+test("advances a complete-range snapshot when XLSX is explicitly pending, but not otherwise", () => {
   assert.equal(canAdvanceAttempt("STALLED", {
     progress: { completedEnd: 40 },
     artifacts: { csv: "part.csv" },
     mediaPending: ["xlsx"],
+    validation: {
+      ok: true,
+      artifacts: { csv: { size_bytes: 13, sha256: "validated-sha256" } },
+      validation: { rows: 115 },
+    },
+  }, { start: 1, end: 40 }, ["csv", "xlsx-images"]), true);
+  assert.equal(canAdvanceAttempt("STALLED", {
+    progress: { completedEnd: 40 },
+    artifacts: { csv: "part.csv" },
     validation: {
       ok: true,
       artifacts: { csv: { size_bytes: 13, sha256: "validated-sha256" } },

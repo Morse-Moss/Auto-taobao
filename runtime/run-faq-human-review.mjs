@@ -76,6 +76,18 @@ function findLegacyBackup(analysisDir) {
 
 export function buildLegacySourceTopicAudit({ analysisDir, finalRecords }) {
   assertUniqueSourceTopics(finalRecords, 'Final FAQ records');
+  // 本周无合格竞品 → 无最终记录，遗留痛点审计是空集，不需要遗留明细备份。
+  if (!finalRecords.length) {
+    return {
+      version: 'faq-source-topic-audit-v1.0.0',
+      legacyBackup: null,
+      legacyPainRecordCount: 0,
+      counts: {},
+      unresolvedCount: 0,
+      entries: [],
+      skipped: 'NO_FINAL_RECORDS',
+    };
+  }
   const backupPath = findLegacyBackup(analysisDir);
   const backupText = readFileSync(backupPath, 'utf8');
   const backup = JSON.parse(backupText);
@@ -188,7 +200,11 @@ export async function main(argv = process.argv.slice(2)) {
   if (classificationReceipt.mode !== 'APPLIED_AND_VERIFIED' || classificationReceipt.period !== options.period || classificationReceipt.analysisVersion !== FAQ_ANALYSIS_VERSION || classificationReceipt.classifiedSnapshot?.sha256 !== hash(classified.text)) throw new Error('FAQ classification evidence mismatch');
   const artifact = readJson(paths.artifactPath);
   if (artifact.period !== options.period || artifact.analysisVersion !== FAQ_ANALYSIS_VERSION || artifact.taskCount !== artifact.tasks.length || artifact.resultCount !== artifact.results.length) throw new Error('FAQ AI review artifact is incomplete or mismatched');
-  const decisions = readJson(paths.decisionsPath);
+  // 无人核验项（本周无合格竞品）时允许没有人工决策文件；凡有 AI 结果一律 fail-closed。
+  let decisions = [];
+  if (existsSync(paths.decisionsPath)) decisions = readJson(paths.decisionsPath);
+  else if ((artifact.results?.length ?? 0) > 0) throw new Error(`Missing required FAQ review artifact: ${paths.decisionsPath}`);
+  else writeJson(paths.decisionsPath, []); // 空周留档，供最终收据哈希引用
   if (!Array.isArray(decisions)) throw new Error('Human review decisions must be an array');
   const merged = mergeFaqReviewResults({ classifiedRecords: classified.rows, tasks: artifact.tasks, results: artifact.results, decisions, period: options.period });
   const finalText = `${merged.records.map((record) => JSON.stringify(record)).join('\n')}\n`;

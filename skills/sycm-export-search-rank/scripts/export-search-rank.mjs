@@ -244,6 +244,7 @@ async function inspectPage(proxy, target) {
       arrows,
       periodOptions,
       rowCount: dataTable ? dataTable.querySelectorAll('tbody tr[data-row-key]').length : 0,
+      firstRank: dataTable ? dataTable.querySelector('tbody tr[data-row-key]')?.cells[0]?.innerText.trim() || '' : '',
       hasDataTable: Boolean(dataTable),
       dialogs,
       loginLike: /custom\\/login|账号登录|密码登录|扫码登录|请登录/u.test(location.href + '\\n' + body),
@@ -616,8 +617,14 @@ async function main() {
     console.error(`SYCM page ${payload.page ?? pageIndex + 1}: ${payload.rows.length} rows`);
     if (payload.nextDisabled) break;
     const beforePage = payload.page;
+    const beforeFirstRank = payload.rows[0]?.rankText || "";
     await click(proxy, target, '.ant-pagination-next:not(.ant-pagination-disabled)');
-    await waitFor(proxy, target, (next) => next.activePage !== beforePage && next.rowCount > 0, 15000, "next pagination page");
+    // The active page number updates before the table body refreshes; waiting
+    // only for the page number races the DOM update and re-reads the old page
+    // (duplicate ranks). Require the first row's rank to change as well.
+    await waitFor(proxy, target, (next) => next.activePage !== beforePage
+      && next.rowCount > 0
+      && (next.firstRank || "") !== beforeFirstRank, 15000, "next pagination page");
     await sleep(args.delayMs);
   }
   if (pagePayloads.length === args.maxPages && !pagePayloads.at(-1).nextDisabled) {

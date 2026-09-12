@@ -32,7 +32,13 @@ export async function main(argv = process.argv.slice(2)) {
   if (!existsSync(rawPath)) throw new Error(`Missing local raw snapshot: ${rawPath}`);
   const rawText = await readFile(rawPath, 'utf8');
   const rawRecords = rawText.split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
-  if (!rawRecords.length) throw new Error('Local raw snapshot is empty');
+  // 本周无合格竞品（TOP5 空清单）时快照本就为空，属正常空档不是故障；
+  // 仅当清单里确有商品却拿不到原始记录时才算失败。
+  const manifestPath = resolve(options.runtimeRoot, 'question-library-collection', options.period, 'top5-manifest.json');
+  const manifest = existsSync(manifestPath) ? JSON.parse(await readFile(manifestPath, 'utf8')) : null;
+  const noCandidates = manifest?.outcome === 'NO_QUALIFIED_CANDIDATES'
+    && Array.isArray(manifest.products) && manifest.products.length === 0;
+  if (!rawRecords.length && !noCandidates) throw new Error('Local raw snapshot is empty');
   const records = buildAnalysisRecords(rawRecords);
   records.forEach(assertAnalysisRecord);
   assertUniqueSourceTopics(records);
