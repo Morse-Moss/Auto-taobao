@@ -12,4 +12,6 @@
 
 生产方向的真实 Agent 提案切片在 `proposal/` 子目录（S2），监督处置闭环（S3）见 action-intent.mjs。
 
+持久化状态（2026-09-12）：DDL 001-supervisor-tables.sql 已获授权执行，5 张 supervisor_* 表已建于 xws_automation（owner xws_agent），ProposalStore postgres 后端冒烟验证通过（写入/读回/幂等键冲突保护）。经验与提案的权威存储已可切 PG；文件投影仅作审计。
+
 在任何 S1 验收（真实单分片耐久闭环）完成前，本目录任何代码不得在生产路径上自动执行业务动作。
