@@ -2,13 +2,15 @@
 import { readFileSync } from 'node:fs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
-const APP_TOKEN = 'N21Abkg0HakO6AsbCaDckvcwnVd';
-const TABLE_ID = 'tblHJpDjwAyuHrTK';
+const APP_TOKEN = process.env.LABEL_APP_TOKEN ?? 'N21Abkg0HakO6AsbCaDckvcwnVd';
+const TABLE_ID = process.env.LABEL_TABLE_ID ?? 'tblHJpDjwAyuHrTK';
 
-const NEW_OPTIONS = [
-  '品牌/赛高', '品牌/观博', '品牌/勒示', '品牌/杜菲尼', '品牌/Bette', '品牌/roca', '品牌/tw',
-  '功能/加厚', '材质/软体', '尺寸/60cm', '尺寸/70cm', '款式/自砌', '款式/泡澡桶',
-];
+const NEW_OPTIONS = (process.env.LABEL_NEW_OPTIONS
+  ? process.env.LABEL_NEW_OPTIONS.split(/[、,]/u).map((s) => s.trim()).filter(Boolean)
+  : [
+      '品牌/赛高', '品牌/观博', '品牌/勒示', '品牌/杜菲尼', '品牌/Bette', '品牌/roca', '品牌/tw',
+      '功能/加厚', '材质/软体', '尺寸/60cm', '尺寸/70cm', '款式/自砌', '款式/泡澡桶',
+    ]);
 
 function readEnv(file) {
   const env = {};

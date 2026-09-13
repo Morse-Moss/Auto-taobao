@@ -16,8 +16,9 @@ import { readFileSync } from 'node:fs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 const APP_TOKEN = 'N21Abkg0HakO6AsbCaDckvcwnVd';
-const SOURCE_TABLE = 'tblG5sd2WfunbpLq'; // 关键词分析 V1（2026-08-29）
-const NEW_TABLE_NAME = '关键词分析 V1（2026-09-11）';
+// 支持环境变量覆盖，默认保持批次 6 的值（向后兼容）。
+const SOURCE_TABLE = process.env.CLONE_SOURCE_TABLE || 'tblG5sd2WfunbpLq'; // 关键词分析 V1（2026-08-29）
+const NEW_TABLE_NAME = process.env.CLONE_NEW_TABLE_NAME || '关键词分析 V1（2026-09-11）';
 const APPLY = process.argv.includes('--apply');
 
 function readEnv(file) {

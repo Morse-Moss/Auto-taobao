@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const outputDir = path.resolve('runtime', 'weekly-local-analysis', '2026-09-11-batch-6-batched');
+const outputDir = path.resolve(process.env.MANUAL_ANALYSIS_DIR ?? path.join('runtime', 'weekly-local-analysis', '2026-09-11-batch-6-batched'));
 const CATEGORY = new Set(['大词', '材质词', '场景词', '痛点词', '款式词', '风格词', '尺寸词', '功能词', '无匹配类别']);
 const CLASSIFICATION = new Set(['核心大词', '安装方式词', '材质词', '形状与风格词', '功能与特点词', '尺寸词', '适用人群与场景词', '品牌词', '地域词', '颜色词', '通用词', '无匹配类别']);
 const INTENT = new Set(['了解型', '购买决策型', '对比选择型', '场景需求型', '问题解决型']);
@@ -18,7 +18,8 @@ const tasks = JSON.parse(fs.readFileSync(path.join(outputDir, 'tasks.json'), 'ut
 if (tasks.length !== 300) throw new Error(`expected 300 tasks, got ${tasks.length}`);
 const batches = [];
 for (let i = 0; i < tasks.length; i += BATCH_SIZE) batches.push(tasks.slice(i, i + BATCH_SIZE));
-const PENDING = batches.slice(17); // batch-018 .. batch-030
+const pendingFrom = Number(process.env.MANUAL_PENDING_FROM ?? 18); // 1-based batch index where manual analysis starts
+const PENDING = batches.slice(pendingFrom - 1);
 
 const mode = process.argv[2];
 if (mode === 'extract') {
@@ -36,7 +37,7 @@ if (mode === 'extract') {
   const byId = new Map(output.map((o) => [String(o.taskId), o]));
   let written = 0;
   for (let i = 0; i < PENDING.length; i++) {
-    const batchName = `batch-${String(i + 18).padStart(3, '0')}`;
+    const batchName = `batch-${String(i + pendingFrom).padStart(3, '0')}`;
     const batchDir = path.join(outputDir, batchName);
     fs.mkdirSync(batchDir, { recursive: true });
     const batchTasks = PENDING[i];
