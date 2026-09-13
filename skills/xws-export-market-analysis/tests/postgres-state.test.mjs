@@ -3,11 +3,13 @@ import test from "node:test";
 
 import {
   acquireAdaptiveLock,
+  buildStaleRunningReaperPlan,
   commitAdaptivePart,
   createAdaptiveRun,
   createStatePool,
   ensureStateSchema,
   getAdaptiveRun,
+  reapStaleRunningRuns,
   STATE_SCHEMA,
   updateAdaptiveCheckpoint,
   updateAdaptiveProgress,
@@ -259,4 +261,73 @@ test("commits a verified part and checkpoint projection atomically", integration
     const manifests = await pool.query("SELECT * FROM xws_adaptive_manifests WHERE run_id = $1", [run.id]);
     assert.equal(manifests.rowCount, 1);
   });
+});
+
+test("stale-running reaper plan separates orphans by updated_at threshold", () => {
+  const now = new Date("2026-09-13T01:00:00.000Z");
+  const rows = [
+    { id: "11111111-1111-4111-8111-111111111111", updated_at: new Date("2026-09-12T00:00:00.000Z") },
+    { id: "22222222-2222-4222-8222-222222222222", updated_at: "2026-09-13T00:30:00.000Z" },
+    { id: "33333333-3333-4333-8333-333333333333", updated_at: new Date("2026-09-12T01:00:00.000Z") },
+  ];
+  const plan = buildStaleRunningReaperPlan(rows, now, 24);
+  assert.deepEqual(plan, {
+    staleIds: ["11111111-1111-4111-8111-111111111111", "33333333-3333-4333-8333-333333333333"],
+    freshCount: 1,
+  });
+  assert.deepEqual(buildStaleRunningReaperPlan([], now, 24), { staleIds: [], freshCount: 0 });
+  assert.throws(() => buildStaleRunningReaperPlan([{ id: "x", updated_at: "not-a-date" }], now), /valid updated_at/u);
+  assert.throws(() => buildStaleRunningReaperPlan("rows", now), /must be an array/u);
+});
+
+test("reaper only flips RUNNING rows past the age threshold and leaves fresh ones", async () => {
+  const calls = [];
+  const staleId = "44444444-4444-4444-8444-444444444444";
+  const pool = {
+    query: async (sql, parameters) => {
+      calls.push({ sql, parameters });
+      if (sql.startsWith("SELECT id, updated_at")) {
+        return {
+          rows: [
+            { id: staleId, updated_at: new Date("2026-09-11T00:00:00.000Z") },
+            { id: "55555555-5555-4555-8555-555555555555", updated_at: new Date("2026-09-13T00:59:00.000Z") },
+          ],
+        };
+      }
+      return { rows: [{ id: staleId }], rowCount: 1 };
+    },
+  };
+  const result = await reapStaleRunningRuns(pool, { now: new Date("2026-09-13T01:00:00.000Z") });
+  assert.deepEqual(result, { reapedIds: [staleId], freshCount: 1 });
+  const updateCall = calls.find((call) => call.sql.startsWith("UPDATE xws_adaptive_runs"));
+  assert.match(updateCall.sql, /status = 'FAILED'/u);
+  assert.match(updateCall.sql, /AND status = 'RUNNING'/u);
+  assert.deepEqual(updateCall.parameters[0], [staleId]);
+});
+
+test("reaper is a no-op when every RUNNING run is fresh", async () => {
+  const calls = [];
+  const pool = {
+    query: async (sql, parameters) => {
+      calls.push({ sql, parameters });
+      return { rows: [{ id: "66666666-6666-4666-8666-666666666666", updated_at: new Date("2026-09-13T01:00:00.000Z") }] };
+    },
+  };
+  const result = await reapStaleRunningRuns(pool, { now: new Date("2026-09-13T01:00:00.000Z") });
+  assert.deepEqual(result, { reapedIds: [], freshCount: 1 });
+  assert.equal(calls.length, 1);
+});
+
+test("createAdaptiveRun reaps stale RUNNING runs before inserting", async () => {
+  const calls = [];
+  const pool = {
+    query: async (sql, parameters) => {
+      calls.push(sql);
+      if (sql.startsWith("SELECT id, updated_at")) return { rows: [] };
+      return { rows: [{ id: "77777777-7777-4777-8777-777777777777", lock_key: 1, identity: {}, identity_hash: "h", pages_start: 1, pages_end: 2, completed_end: 0, status: "RUNNING", version: 0, created_at: new Date(), updated_at: new Date(), checkpoint: {} }] };
+    },
+  };
+  await createAdaptiveRun(pool, { pagesStart: 1, pagesEnd: 2 }, {});
+  assert.equal(calls[0].startsWith("SELECT id, updated_at FROM xws_adaptive_runs"), true);
+  assert.ok(calls.some((sql) => sql.startsWith("INSERT INTO xws_adaptive_runs")));
 });

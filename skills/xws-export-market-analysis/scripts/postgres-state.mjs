@@ -86,6 +86,44 @@ export function createStatePool(connectionString) {
   return new Pool({ connectionString, max: 4 });
 }
 
+// 孤儿 run 收尾：进程被强杀（沙箱拦截、TaskStop 清进程树、崩溃）时 runner 来不及写终态，
+// 行会永远停在 RUNNING。终态写入依赖进程存活，且本表没有租约心跳，因此用
+// "RUNNING 且 updated_at 超过阈值"判定孤儿，在每次开新 run 前统一标记为 FAILED。
+// FAILED 仍可被 shouldResumeAdaptiveRun 的恢复规则（有已验证分段时）捡起，不丢已采数据。
+export const STALE_RUNNING_REAP_MAX_AGE_HOURS = 24;
+
+export function buildStaleRunningReaperPlan(rows, now = new Date(), maxAgeHours = STALE_RUNNING_REAP_MAX_AGE_HOURS) {
+  if (!Array.isArray(rows)) throw new Error("running rows must be an array");
+  const cutoff = now.getTime() - maxAgeHours * 60 * 60 * 1000;
+  const staleIds = [];
+  let freshCount = 0;
+  for (const row of rows) {
+    const updatedAt = row?.updated_at instanceof Date ? row.updated_at : new Date(row?.updated_at);
+    if (!(updatedAt instanceof Date) || Number.isNaN(updatedAt.getTime())) {
+      throw new Error(`stale-running reaper found a RUNNING row without valid updated_at: ${row?.id ?? "<missing id>"}`);
+    }
+    if (updatedAt.getTime() <= cutoff) staleIds.push(row.id);
+    else freshCount += 1;
+  }
+  return { staleIds, freshCount };
+}
+
+export async function reapStaleRunningRuns(pool, { maxAgeHours = STALE_RUNNING_REAP_MAX_AGE_HOURS, now = new Date() } = {}) {
+  const running = await pool.query(
+    "SELECT id, updated_at FROM xws_adaptive_runs WHERE status = 'RUNNING'",
+  );
+  const plan = buildStaleRunningReaperPlan(running.rows, now, maxAgeHours);
+  if (!plan.staleIds.length) return { reapedIds: [], freshCount: plan.freshCount };
+  const update = await pool.query(
+    `UPDATE xws_adaptive_runs
+        SET status = 'FAILED', version = version + 1, updated_at = now()
+      WHERE id = ANY($1::uuid[]) AND status = 'RUNNING'
+      RETURNING id`,
+    [plan.staleIds],
+  );
+  return { reapedIds: update.rows.map((row) => row.id), freshCount: plan.freshCount };
+}
+
 export async function ensureStateSchema(pool) {
   await pool.query(STATE_SCHEMA);
   await pool.query("ALTER TABLE xws_adaptive_runs ADD COLUMN IF NOT EXISTS checkpoint jsonb NOT NULL DEFAULT '{}'::jsonb");
@@ -93,6 +131,8 @@ export async function ensureStateSchema(pool) {
 }
 
 export async function createAdaptiveRun(pool, identity, checkpoint = {}) {
+  // 开新 run 前先收尸：把强杀残留的陈旧 RUNNING 标记为 FAILED，避免孤儿累积。
+  await reapStaleRunningRuns(pool);
   const hash = identityHash(identity);
   const key = lockKey(identity);
   const id = crypto.randomUUID();
