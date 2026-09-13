@@ -171,6 +171,7 @@ export async function inspectFaqOperatorStatus({ runtimeRoot = 'runtime', period
     humanReviewComplete,
     localSummariesBuilt: humanReviewComplete && summaryVerified,
     summariesPublished: humanReviewComplete && summaryVerified && summariesPublished,
+    rawRecords: Number(rawReceipt?.sourceRecords ?? 0),
   });
   return {
     period,

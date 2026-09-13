@@ -15,6 +15,11 @@ async function json(path, value) {
   await writeFile(path, JSON.stringify(value), 'utf8');
 }
 
+const zeroAiReceipt = (period) => ({
+  mode: 'AI_REVIEWED', period, analysisVersion: FAQ_ANALYSIS_VERSION,
+  aiReviewVersion: FAQ_AI_REVIEW_VERSION, aiPromptVersion: FAQ_AI_PROMPT_VERSION,
+  taskCount: 0, resultCount: 0, autoAccepted: 0, needsHumanReview: 0, batchFailures: [],
+});
 const labels = FAQ_LABEL_CATALOG.map(({ label }) => label);
 const summaryReceipt = (period) => ({
   mode: 'APPLIED_AND_VERIFIED', period, analysisVersion: FAQ_ANALYSIS_VERSION, dedupVersion: FAQ_DEDUP_VERSION,
@@ -71,6 +76,42 @@ test('verified downstream summary can recover a missing analysis receipt', async
   assert.equal(status.humanReviewComplete, true);
   assert.equal(status.aiReviewTaskCount, 10);
   assert.equal(status.nextAction, 'PUBLISH_FEISHU_SUMMARIES');
+});
+
+test('zero-record period with built summaries reaches DONE without publication', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'faq-operator-zero-records-'));
+  const period = '2026-08-30_2026-09-05';
+  const collection = join(root, 'question-library-collection', period);
+  const analysis = join(root, 'faq-analysis', period);
+  await json(join(collection, 'top5-manifest.json'), { period, products: [], outcome: 'NO_QUALIFIED_CANDIDATES' });
+  await json(join(collection, 'raw-snapshot-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, sourceRecords: 0, snapshot: { format: 'jsonl' } });
+  await json(join(analysis, 'classification-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, analysisVersion: FAQ_ANALYSIS_VERSION, classifiedRecords: 0 });
+  await json(join(analysis, 'aggregate-receipt.json'), summaryReceipt(period));
+  await json(join(analysis, 'ai-review', 'ai-review-receipt.json'), zeroAiReceipt(period));
+  await json(join(analysis, 'final-classification-receipt.json'), { mode: 'FINAL_CLASSIFICATION_READY', period, analysisVersion: FAQ_ANALYSIS_VERSION, publishable: true, humanQueueCount: 0 });
+  const status = await inspectFaqOperatorStatus({ runtimeRoot: root, period });
+  assert.equal(status.top5Count, 0);
+  assert.equal(status.rawRecords, 0);
+  assert.equal(status.localSummariesBuilt, true);
+  assert.equal(status.status, 'DONE');
+  assert.equal(status.nextAction, 'DONE');
+});
+
+test('zero-record period without built summaries stays before publication', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'faq-operator-zero-nosummary-'));
+  const period = '2026-08-30_2026-09-05';
+  const collection = join(root, 'question-library-collection', period);
+  const analysis = join(root, 'faq-analysis', period);
+  await json(join(collection, 'top5-manifest.json'), { period, products: [], outcome: 'NO_QUALIFIED_CANDIDATES' });
+  await json(join(collection, 'raw-snapshot-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, sourceRecords: 0, snapshot: { format: 'jsonl' } });
+  await json(join(analysis, 'classification-receipt.json'), { mode: 'APPLIED_AND_VERIFIED', period, analysisVersion: FAQ_ANALYSIS_VERSION, classifiedRecords: 0 });
+  await json(join(analysis, 'ai-review', 'ai-review-receipt.json'), zeroAiReceipt(period));
+  await json(join(analysis, 'final-classification-receipt.json'), { mode: 'FINAL_CLASSIFICATION_READY', period, analysisVersion: FAQ_ANALYSIS_VERSION, publishable: true, humanQueueCount: 0 });
+  const status = await inspectFaqOperatorStatus({ runtimeRoot: root, period });
+  assert.equal(status.rawRecords, 0);
+  assert.equal(status.localSummariesBuilt, false);
+  assert.equal(status.status, 'IN_PROGRESS');
+  assert.equal(status.nextAction, 'BUILD_LOCAL_SUMMARIES');
 });
 
 test('completed AI review with a non-empty human queue blocks publication', async () => {
