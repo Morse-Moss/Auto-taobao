@@ -33,12 +33,26 @@ export async function main(argv = process.argv.slice(2)) {
   const rawText = await readFile(rawPath, 'utf8');
   const rawRecords = rawText.split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
   // 本周无合格竞品（TOP5 空清单）时快照本就为空，属正常空档不是故障；
+  // 清单内商品全部下架（证据 receipt 均 EMPTY_SOURCE_ROWS 且注明原因）同理为空。
   // 仅当清单里确有商品却拿不到原始记录时才算失败。
   const manifestPath = resolve(options.runtimeRoot, 'question-library-collection', options.period, 'top5-manifest.json');
   const manifest = existsSync(manifestPath) ? JSON.parse(await readFile(manifestPath, 'utf8')) : null;
   const noCandidates = manifest?.outcome === 'NO_QUALIFIED_CANDIDATES'
     && Array.isArray(manifest.products) && manifest.products.length === 0;
-  if (!rawRecords.length && !noCandidates) throw new Error('Local raw snapshot is empty');
+  const allProductsUnavailable = Array.isArray(manifest?.products) && manifest.products.length > 0
+    && (await Promise.all(manifest.products.map(async (product) => {
+      const productDir = resolve(options.runtimeRoot, 'question-library-collection', options.period, String(product.productId));
+      const receipts = await Promise.all(['qa-receipt.json', 'reviews-receipt.json'].map((name) => {
+        const path = resolve(productDir, name);
+        return existsSync(path) ? readFile(path, 'utf8') : Promise.resolve(null);
+      }));
+      return receipts.every((body) => {
+        if (!body) return false;
+        const receipt = JSON.parse(body);
+        return receipt?.status === 'EMPTY_SOURCE_ROWS' && String(receipt?.unavailableReason ?? '').trim() !== '';
+      });
+    }))).every(Boolean);
+  if (!rawRecords.length && !noCandidates && !allProductsUnavailable) throw new Error('Local raw snapshot is empty');
   const records = buildAnalysisRecords(rawRecords);
   records.forEach(assertAnalysisRecord);
   assertUniqueSourceTopics(records);

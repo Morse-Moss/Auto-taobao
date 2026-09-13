@@ -79,7 +79,8 @@ async function inspectEvidence(collectionDir, products) {
       archiveValid = archive.length >= 2 && archive.subarray(0, 2).toString('ascii') === 'PK';
     }
     const reviewsComplete = String(reviews?.productId ?? product.productId) === String(product.productId)
-      && reviews?.status === 'COMPLETED'
+      && ['COMPLETED', 'EMPTY_SOURCE_ROWS'].includes(reviews?.status)
+      && (reviews?.status !== 'EMPTY_SOURCE_ROWS' || String(reviews?.unavailableReason ?? '').trim() !== '')
       && existsSync(resolve(directory, 'reviews.csv'))
       && archiveValid;
     const productComplete = qaComplete && reviewsComplete;

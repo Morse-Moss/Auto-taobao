@@ -142,7 +142,13 @@ export function buildRecordsFromEvidence({ plan, evidenceByProduct, collectedAt 
       }));
       productRecordCount += normalized.length;
     }
-    if (productRecordCount === 0) throw new Error(`No non-empty raw rows for product ${product.productId}`);
+    if (productRecordCount === 0) {
+      // 下架/页面不可用商品允许显式 0 行：两份 receipt 均须标记 EMPTY_SOURCE_ROWS
+      // 且写明不可采集原因，防止把普通空跑误标成完成（fail-closed 缺省仍是抛错）。
+      const vacuous = [evidence.qa, evidence.reviews].every((source) =>
+        text(source.receipt?.status) === 'EMPTY_SOURCE_ROWS' && text(source.receipt?.unavailableReason));
+      if (!vacuous) throw new Error(`No non-empty raw rows for product ${product.productId}`);
+    }
   }
   return records;
 }
@@ -202,7 +208,14 @@ export async function readEvidence(root, productId) {
   const qaRows = parseCsv(qaBytes.toString('utf8'));
   const reviewRows = parseCsv(reviewsBytes.toString('utf8'));
   if (qaRows.length === 0 && text(qaReceipt.status) !== 'EMPTY_SOURCE_ROWS') throw new Error(`Empty QA source is not explicitly verified: ${productId}`);
-  if (reviewRows.length === 0 || text(reviewsReceipt.status) !== 'COMPLETED') throw new Error(`Review source is not complete: ${productId}`);
+  if (reviewRows.length === 0) {
+    // 下架/页面不可用商品：0 行评论必须显式标记 EMPTY_SOURCE_ROWS 并写明原因。
+    if (text(reviewsReceipt.status) !== 'EMPTY_SOURCE_ROWS' || !text(reviewsReceipt.unavailableReason)) {
+      throw new Error(`Review source is not complete: ${productId}`);
+    }
+  } else if (text(reviewsReceipt.status) !== 'COMPLETED') {
+    throw new Error(`Review source is not complete: ${productId}`);
+  }
   return {
     qa: { sourceFile: 'qa.csv', sourceHash: qaHash, rows: qaRows, receipt: qaReceipt },
     reviews: {

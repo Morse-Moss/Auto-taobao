@@ -150,3 +150,69 @@ test('assertManifestMatches rejects a changed locked product set', () => {
   };
   assert.throws(() => assertManifestMatches(manifest, changedPlan), /manifest mismatch/);
 });
+
+test('buildRecordsFromEvidence allows a delisted product with explicit unavailable evidence on both sources', () => {
+  const plan = buildCollectionPlan({
+    weeklyRecords: [weekly('1', 100, 1)],
+    mainRecords: [{ recordId: 'main-1', fields: { 商品ID: '1' } }],
+    period: '2026-09-06_2026-09-12',
+    limit: 1,
+  });
+  const reason = '商品已下架，详情页 404，无问大家/评论内容可采';
+  const records = buildRecordsFromEvidence({
+    plan,
+    evidenceByProduct: {
+      '1': {
+        qa: { sourceHash: 'qa-hash', rows: [], receipt: { status: 'EMPTY_SOURCE_ROWS', unavailableReason: reason } },
+        reviews: { sourceHash: 'review-hash', rows: [], receipt: { status: 'EMPTY_SOURCE_ROWS', unavailableReason: reason } },
+      },
+    },
+    collectedAt: '2026-09-13T08:00:00.000Z',
+  });
+  assert.deepEqual(records, []);
+});
+
+test('buildRecordsFromEvidence still rejects a zero-row product without explicit unavailable reasons', () => {
+  const plan = buildCollectionPlan({
+    weeklyRecords: [weekly('1', 100, 1)],
+    mainRecords: [{ recordId: 'main-1', fields: { 商品ID: '1' } }],
+    period: '2026-09-06_2026-09-12',
+    limit: 1,
+  });
+  assert.throws(() => buildRecordsFromEvidence({
+    plan,
+    evidenceByProduct: {
+      '1': {
+        qa: { sourceHash: 'qa-hash', rows: [], receipt: { status: 'EMPTY_SOURCE_ROWS', unavailableReason: '页面不可用' } },
+        reviews: { sourceHash: 'review-hash', rows: [], receipt: { status: 'EMPTY_SOURCE_ROWS' } },
+      },
+    },
+    collectedAt: '2026-09-13T08:00:00.000Z',
+  }), /No non-empty raw rows/);
+});
+
+test('readEvidence accepts a zero-row review export when EMPTY_SOURCE_ROWS carries a reason', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'faq-evidence-delisted-'));
+  const directory = join(root, '1');
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, 'qa.csv'), '\uFEFF时间,问题,回答\n', 'utf8');
+  await writeFile(join(directory, 'reviews.csv'), '评论内容,来源文件序号,来源文件名\n', 'utf8');
+  await writeFile(join(directory, 'reviews-source.zip'), Buffer.from([0x50, 0x4b, 0x05, 0x06, ...new Array(18).fill(0)]));
+  await writeFile(join(directory, 'qa-receipt.json'), JSON.stringify({ productId: '1', sourceFile: 'qa.csv', status: 'EMPTY_SOURCE_ROWS', unavailableReason: '商品已下架' }));
+  await writeFile(join(directory, 'reviews-receipt.json'), JSON.stringify({ productId: '1', sourceFile: 'reviews-source.zip', normalizedFile: 'reviews.csv', status: 'EMPTY_SOURCE_ROWS', unavailableReason: '商品已下架，详情页 404' }));
+  const evidence = await readEvidence(root, '1');
+  assert.equal(evidence.qa.rows.length, 0);
+  assert.equal(evidence.reviews.rows.length, 0);
+});
+
+test('readEvidence still rejects a zero-row review export without EMPTY_SOURCE_ROWS status', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'faq-evidence-zero-reviews-'));
+  const directory = join(root, '1');
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, 'qa.csv'), '\uFEFF时间,问题,回答\n', 'utf8');
+  await writeFile(join(directory, 'reviews.csv'), '评论内容,来源文件序号,来源文件名\n', 'utf8');
+  await writeFile(join(directory, 'reviews-source.zip'), Buffer.from([0x50, 0x4b, 0x05, 0x06, ...new Array(18).fill(0)]));
+  await writeFile(join(directory, 'qa-receipt.json'), JSON.stringify({ productId: '1', sourceFile: 'qa.csv', status: 'EMPTY_SOURCE_ROWS', unavailableReason: '商品已下架' }));
+  await writeFile(join(directory, 'reviews-receipt.json'), JSON.stringify({ productId: '1', sourceFile: 'reviews-source.zip', normalizedFile: 'reviews.csv', status: 'COMPLETED' }));
+  await assert.rejects(() => readEvidence(root, '1'), /Review source is not complete/);
+});

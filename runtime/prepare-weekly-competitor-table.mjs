@@ -6,8 +6,8 @@ import { readFileSync } from 'node:fs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 const APP_TOKEN = 'OWebbPUcBa7B8JseYLccQCy9nkf';
-const LAST_WEEK = '竞品周_2026-08-23_2026-08-29';
-const NEW_WEEK = '竞品周_2026-08-30_2026-09-05';
+const LAST_WEEK = process.env.COMPETITOR_LAST_WEEK ?? '竞品周_2026-08-30_2026-09-05';
+const NEW_WEEK = process.env.COMPETITOR_NEW_WEEK ?? '竞品周_2026-09-06_2026-09-12';
 
 function loadEnv() {
   const text = readFileSync('E:/小红书/.env.local', 'utf8');

@@ -9,8 +9,8 @@ import { readFileSync } from 'node:fs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 const APP_TOKEN = 'OWebbPUcBa7B8JseYLccQCy9nkf';
-const OLD_TABLE = 'tblSS5bxyIeXgngI'; // 竞品周_2026-08-23_2026-08-29
-const NEW_TABLE = 'tblOIPXlFVk91laj'; // 竞品周_2026-08-30_2026-09-05
+const OLD_TABLE = process.env.COMPETITOR_OLD_TABLE_ID ?? 'tblOIPXlFVk91laj'; // 竞品周_2026-08-30_2026-09-05
+const NEW_TABLE = process.env.COMPETITOR_NEW_TABLE_ID ?? ''; // required when the new table differs from OLD_TABLE
 
 function loadEnv() {
   const text = readFileSync('E:/小红书/.env.local', 'utf8');
@@ -24,6 +24,7 @@ function loadEnv() {
 }
 
 async function main() {
+  if (!NEW_TABLE) throw new Error('COMPETITOR_NEW_TABLE_ID is required (the table whose formula fields to rebuild)');
   const env = loadEnv();
   const auth = await fetch(`${API_ROOT}/auth/v3/tenant_access_token/internal`, {
     method: 'POST',

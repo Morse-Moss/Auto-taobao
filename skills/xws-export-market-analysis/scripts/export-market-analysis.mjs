@@ -1776,9 +1776,11 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
     const marker = randomUUID();
     const menuDeadline = Date.now() + 5_000;
     let menuReady = false;
+    const menuStrictDeadline = Date.now() + 2_000; // 严格匹配（仅认本次点击新出现的菜单项）
     while (Date.now() < menuDeadline) {
       target = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
       if (target.targetId !== targetId) throw new Error("export target identity changed while opening XLSX menu");
+      const strictPhase = Date.now() < menuStrictDeadline;
       menuReady = await evaluate(proxy, targetId, `(() => {
         const visible = (element) => {
           const rect = element.getBoundingClientRect();
@@ -1793,6 +1795,7 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
           caret?.getAttribute('aria-controls'),
           caret?.getAttribute('aria-owns'),
         ].filter(Boolean).flatMap((value) => value.trim().split(/\s+/u));
+        const strictPhase = ${strictPhase ? "true" : "false"};
         const items = [...document.querySelectorAll('.el-dropdown-menu__item')].filter((candidate) => {
           const menu = candidate.closest('.el-dropdown-menu');
           const existedBefore = candidate.getAttribute('data-xws-export-menu-baseline') === ${JSON.stringify(menuBaseline)};
@@ -1802,8 +1805,11 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
           const belongsToCaret = currentMenuIds.length > 0
             ? Boolean(menu?.id && currentMenuIds.includes(menu.id))
             : appearedForClick;
+          // 严格阶段：仅认本次点击新出现的菜单项；兜底阶段（2 秒后）：可见、属于该按钮、
+          // 文本精确匹配即接受——可见且文本精确匹配的项只可能是导出菜单项本身。
+          const eligibility = strictPhase ? appearedForClick : true;
           return visible(candidate)
-            && appearedForClick
+            && eligibility
             && belongsToCaret
             && normalizeMenuText(candidate.innerText) === normalizeMenuText(wanted);
         });
