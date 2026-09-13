@@ -116,6 +116,9 @@ export function buildHistoryRows({ records, period, sourceTable, sourceHash = ''
     const store = text(source.店铺名) || '店铺未知';
     const valid = text(source.是否有效竞品) === '是' && text(source.批次有效性 || '有效') === '有效';
     const fields = Object.fromEntries(ORIGINAL_FIELDS.map((name) => [name, source[name] ?? '']));
+    // 飞书 batch_create 不接受跨表拷贝的附件对象（1254069 AttachFieldConvFail），
+    // 附件字段连空字符串都视为非法值，必须整键省略；历史表 商品图片 与 08-23 基线一致保持为空。
+    delete fields.商品图片;
     if (price === null) delete fields.价格;
     else fields.价格 = price;
     if (!text(source.来源时间)) delete fields.来源时间;

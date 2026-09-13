@@ -98,3 +98,42 @@ test('dry-run accepts and reports the observed payment-count field', async () =>
   });
   assert.match(result.numericTransform, /付款人数/u);
 });
+
+test('stamps period date fields when the target table has them, and fails closed without a period', async () => {
+  const targetFields = [
+    ...XWS_HEADERS.map((fieldName) => ({ fieldId: `field-${fieldName}`, fieldName, type: fieldName === '商品图片' ? 17 : 1 })),
+    { fieldId: 'field-数据开始日期', fieldName: '数据开始日期', type: 5 },
+    { fieldId: 'field-数据结束日期', fieldName: '数据结束日期', type: 5 },
+    { fieldId: 'field-采集时间', fieldName: '采集时间', type: 5 },
+  ];
+  const created = [];
+  const client = {
+    getRecordCount: async () => 0,
+    listFields: async () => targetFields,
+    uploadFile: async () => null,
+    batchCreateRecords: async (items) => {
+      created.push(...items);
+      return items.map((_, index) => `record-${created.length - items.length + index + 1}`);
+    },
+    listRecords: async () => created.map((record, index) => ({ record_id: `record-${index + 1}`, fields: record })),
+  };
+  const manifest = { headers: XWS_HEADERS, rows: [row(1)], images: [] };
+
+  await assert.rejects(
+    () => runImport({ manifest, client, commit: true }),
+    /refusing to create an undated period table/u,
+  );
+
+  const result = await runImport({
+    manifest,
+    client,
+    commit: true,
+    period: { startDate: '2026-09-06', endDate: '2026-09-12' },
+    sleep: async () => {},
+  });
+  assert.equal(created.length, 1);
+  assert.equal(created[0].数据开始日期, Date.parse('2026-09-06T00:00:00+08:00'));
+  assert.equal(created[0].数据结束日期, Date.parse('2026-09-12T00:00:00+08:00'));
+  assert.ok(Number.isFinite(created[0].采集时间));
+  assert.equal(result.periodStamped.startDate, '2026-09-06');
+});

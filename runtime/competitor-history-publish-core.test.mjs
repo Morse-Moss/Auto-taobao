@@ -118,7 +118,7 @@ test('read-back accepts Feishu scalar normalization while rejecting changed busi
   });
   const actual = {
     ...desired.fields,
-    商品图片: [{ file_token: 'file-1' }],
+    商品图片: [],
     价格: '2000',
     批次ID: null,
     月收货人数计算值: '10',
@@ -127,6 +127,7 @@ test('read-back accepts Feishu scalar normalization while rejecting changed busi
     来源时间: null,
   };
   assert.equal(readBackMatches([{ fields: actual }], [desired]), true);
+  assert.equal(desired.fields.商品图片, undefined, '附件不允许跨表拷贝，历史行必须省略商品图片');
   assert.equal(readBackMatches([{ fields: { ...actual, 月收货金额: '20000.0000000001' } }], [desired]), true);
   assert.equal(readBackMatches([{ fields: { ...actual, 月收货金额: '1' } }], [desired]), false);
 });

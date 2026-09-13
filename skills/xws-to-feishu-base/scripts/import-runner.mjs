@@ -3,6 +3,16 @@ import { readFile as readFileDefault } from 'node:fs/promises';
 
 import { buildRecordFields, validateSourceHeaders, validateTarget } from './import-core.mjs';
 
+function shanghaiMidnight(dateText) {
+  const value = Date.parse(`${dateText}T00:00:00+08:00`);
+  if (!Number.isFinite(value)) throw new Error(`Invalid date (expected YYYY-MM-DD): ${dateText}`);
+  return value;
+}
+
+function todayShanghai() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date());
+}
+
 function validateManifest(manifest) {
   const countField = validateSourceHeaders(manifest.headers);
   if (!Array.isArray(manifest.rows) || manifest.rows.length === 0) {
@@ -32,6 +42,7 @@ export async function runImport({
   client,
   commit = false,
   prepareTarget = false,
+  period = null,
   readFile = readFileDefault,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 }) {
@@ -61,6 +72,21 @@ export async function runImport({
 
   const fieldTypes = new Map(fields.map((field) => [field.fieldName, field.type]));
 
+  // 周表固有的三个日期字段：目标表存在就必须盖戳（仪表盘"竞品周期"筛选依赖它们）。
+  // 缺周期参数直接失败（fail-closed），不允许再产出无日期的周期表。
+  const periodDateFields = ['数据开始日期', '数据结束日期', '采集时间'].filter((name) => fieldTypes.get(name) === 5);
+  let periodStamp = null;
+  if (periodDateFields.length > 0) {
+    if (!period?.startDate || !period?.endDate) {
+      throw new Error(`Target table has date fields (${periodDateFields.join(', ')}) but no --period-start/--period-end given; refusing to create an undated period table`);
+    }
+    periodStamp = {
+      数据开始日期: shanghaiMidnight(period.startDate),
+      数据结束日期: shanghaiMidnight(period.endDate),
+      采集时间: shanghaiMidnight(period.collectedAt ?? todayShanghai()),
+    };
+  }
+
   const records = [];
   for (let index = 0; index < entries.length; index += 1) {
     const entry = entries[index];
@@ -70,6 +96,7 @@ export async function runImport({
       imageToken = await client.uploadFile({ name: basename(entry.image.path), bytes });
     }
     records.push(buildRecordFields(entry.row, imageToken, headers, fieldTypes));
+    if (periodStamp) Object.assign(records[records.length - 1], periodStamp);
     if (index + 1 < entries.length) await sleep(250);
   }
 
@@ -95,6 +122,7 @@ export async function runImport({
     sourceRows: entries.length,
     importedRows: saved.length,
     attachmentCount,
+    periodStamped: periodStamp ? { startDate: period.startDate, endDate: period.endDate, collectedAt: period.collectedAt ?? todayShanghai() } : null,
     recordIds,
   };
 }

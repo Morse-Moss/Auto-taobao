@@ -17,7 +17,7 @@ export function parseCliArgs(argv) {
     const arg = argv[index];
     if (arg === '--commit') options.commit = true;
     else if (arg === '--prepare-target') options.prepareTarget = true;
-    else if (['--xlsx', '--base-url', '--env-file', '--work-dir', '--python'].includes(arg)) {
+    else if (['--xlsx', '--base-url', '--env-file', '--work-dir', '--python', '--period-start', '--period-end'].includes(arg)) {
       const value = argv[index + 1];
       if (!value || value.startsWith('--')) throw new Error(`${arg} requires a value`);
       options[arg.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = value;
@@ -30,6 +30,14 @@ export function parseCliArgs(argv) {
   if (!options.baseUrl) throw new Error('--base-url is required');
   if (options.commit && !options.envFile) throw new Error('--env-file is required with --commit');
   if (options.prepareTarget && !options.commit) throw new Error('--prepare-target requires --commit');
+  if (Boolean(options.periodStart) !== Boolean(options.periodEnd)) {
+    throw new Error('--period-start and --period-end must be given together');
+  }
+  for (const name of ['periodStart', 'periodEnd']) {
+    if (options[name] && !/^\d{4}-\d{2}-\d{2}$/u.test(options[name])) {
+      throw new Error(`--${name.replace(/[A-Z]/gu, (c) => `-${c.toLowerCase()}`)} must be YYYY-MM-DD`);
+    }
+  }
   return options;
 }
 
@@ -91,6 +99,7 @@ export async function main(argv = process.argv.slice(2)) {
     client,
     commit: options.commit,
     prepareTarget: options.prepareTarget,
+    period: options.periodStart ? { startDate: options.periodStart, endDate: options.periodEnd } : null,
   });
   const report = {
     source: xlsx,
