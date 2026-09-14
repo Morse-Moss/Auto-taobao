@@ -4,7 +4,7 @@
 
 日期：2026-09-13
 项目：sycm-automation
-数据库：Portretag 当前使用的 PostgreSQL
+数据库：本项目业务库 PostgreSQL（xws_automation，容器 xws-adaptive-postgres，PG 17，127.0.0.1:5432）
 作用域：SYCM、XWS、FAQ、灰豚、飞书及后续同类 SOP
 
 本文是给实现同事使用的零上下文 Spec。它细化 docs/architecture/README.md 已批准的分层，并吸收 SUPERVISOR-AGENT-DESIGN.md、PROJECT-SYSTEM-DESIGN-ANALYSIS.md 与 PROJECT-HANDOVER-ANALYSIS.md 的结论。它不替代 AGENTS.md、docs/standards/README.md 或各 Skill 合同；发生冲突时，以更高层级规则为准。
@@ -335,7 +335,7 @@ Agent 允许的工具只能是 bounded read：运行摘要、最近事件、诊�
 | 数据 | 权威存储 |
 | --- | --- |
 | Workflow history、timer、retry、signal | Durable Workflow 层（当前仍在 POC/演进） |
-| Run、Attempt、verified cursor、Lease、Approval、Proposal、Intent、CommitRecord、审计索引 | Portretag PostgreSQL |
+| Run、Attempt、verified cursor、Lease、Approval、Proposal、Intent、CommitRecord、审计索引 | 本项目业务库（xws_automation @ 127.0.0.1:5432） |
 | CSV/XLSX/JSONL/图片/截图/trace 等不可变原始工件 | 当前本地工件；未来可接 Object Storage |
 | Feishu 表和视图 | 运营工作台/发布投影 |
 | 本地 JSON 和 events.jsonl | 诊断或缓存投影 |

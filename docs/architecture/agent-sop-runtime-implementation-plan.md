@@ -2,7 +2,7 @@
 
 状态：交接执行计划；不代表未完成阶段已经实现。
 日期：2026-09-13
-适用数据库：Portretag 当前 PostgreSQL
+适用数据库：本项目业务库 PostgreSQL（xws_automation，容器 xws-adaptive-postgres，PG 17，127.0.0.1:5432）
 前置阅读：AGENTS.md、docs/architecture/README.md、docs/standards/README.md、agent-sop-runtime-spec.md、SUPERVISOR-AGENT-DESIGN.md
 
 ## 1. 交付目标
@@ -254,7 +254,7 @@ Agent Runtime 只读取 bounded evidence 并生成 proposal。
 ### 阶段 0
 
 - [ ] 阅读并遵守 AGENTS.md 与 docs/standards/README.md。
-- [ ] 确认 Portretag 当前连接是 PostgreSQL，沿用 db/migrations 命名和 apply 方式。
+- [ ] 确认目标库是本项目业务库 xws_automation（容器 xws-adaptive-postgres，PG 17，127.0.0.1:5432），沿用 db/migrations 命名和 apply 方式；不要连其他项目的库。
 - [ ] 审阅 db/migrations/004-architecture-catalog.sql 与 004-rollback.sql。
 - [ ] 先在授权环境执行 migration dry-run/事务校验；未授权不要 apply。
 - [ ] 检查 architecture 表、约束、索引、种子数据和 Spec 一致。

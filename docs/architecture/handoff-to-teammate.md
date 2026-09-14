@@ -6,9 +6,18 @@
 
 本交接包不等于生产多 Agent 系统。当前 agent-runtime/temporal/ 仍是 fake-adapter POC，必须保持 prototype 表述，直到真实故障注入验收通过。
 
+## 目标数据库（2026-09-14 实测更正）
+
+本文件原先多处写「Portretag PostgreSQL」，那是**未经核实的假设**——写架构时没有实际检查过本机的 PostgreSQL。实测结论如下，后续一律以本节为准：
+
+- 目标环境就是**本项目自己的业务库**：容器 `xws-adaptive-postgres`（postgres:17，17.10-1.pgdg13+1），映射 127.0.0.1:5432，库名 `xws_automation`，数据在命名卷 `xws-adaptive-postgres-data` 上。001/002/003 已 apply，`durable_*` 仍为 0 行。
+- 本机不存在名为 Portretag 的实例。若外部确有该环境，需要由知道它的人给出并确认；在确认之前**不对外部环境做任何操作**。
+- 本机另有其它项目的 PostgreSQL（`xws-postgres-test` PG16/55432、`sub2api-postgres` PG18、`maps-crawler-postgres` PG17/5434）。**禁止把任何其它项目的数据库当成目标库**，包括测试实例——跨项目写库会污染别人的数据，且 PG16 与业务库 PG17 大版本不同，验证结论不可迁移。
+- 角色注意：库内 `xws_agent`（无 superuser、无 createdb）与 `xws_runner`（容器超级用户）并存。项目配置文件用的是 `xws_agent`，它**无法创建隔离库**；隔离验证需要用有 CREATEDB 的角色。
+
 ## 交接硬边界
 
-- 尚未连接 Portretag、执行 004 migration、实现运行时模块或部署。
+- 尚未在本项目业务库执行 004 migration、实现运行时模块或部署。
 - 可开始单 Agent、确定性 Worker、Validator、Commit/Reconcile 和简单 SOP；暂不可宣称多 Agent 生产编排或高并发能力。
 - `architecture.*` 仅保存架构审查快照和设计目录，不是运行时状态、Skill Registry、Evidence Store 或业务事实表。
 - Agent Runtime 只能输出结构化 proposal；Workflow Controller 是运行状态唯一拥有者；外部副作用必须经过确定性 Worker、Validator 和 Commit/Reconcile。
@@ -33,7 +42,7 @@
 
 ## 004 migration 执行前检查
 
-在 Portretag PostgreSQL 执行前，确认 001、002、003 已按顺序完成；核对目标数据库、角色、`architecture` schema 及 7 张表的列、约束、外键和索引。记录 004 文件 checksum，并先在隔离库执行。
+在本项目业务库（见「目标数据库」一节）执行前，确认 001、002、003 已按顺序完成；核对目标数据库、角色、`architecture` schema 及 7 张表的列、约束、外键和索引。记录 004 文件 checksum，并先在隔离库执行。
 
 预期 seed 数量：`reviews=1`、`capabilities=5`、`modules=15`、`gaps=9`、`phases=7`、`decisions=7`、`evidence_refs=8`。重复执行不得产生重复数据；rollback 只能影响本轮新增表。`review_version=1` 是不可覆盖快照，后续修订必须新增版本。证据引用只允许项目相对路径，禁止写入凭据、cookie、`.env.local` 或用户目录。
 
@@ -41,13 +50,13 @@
 
 - docs/architecture/agent-sop-runtime-spec.md：目标分层、Context、Memory、Compression、Skill Registry、Proposal、Adapter、Validator、Commit 和并发契约。
 - docs/architecture/agent-sop-runtime-implementation-plan.md：当前到目标的差距、模块变更、阶段计划、验收、风险和迁移顺序。
-- db/migrations/004-architecture-catalog.sql：Portretag PostgreSQL 的 architecture schema、架构元数据表、索引和 review version 1 种子数据。
+- db/migrations/004-architecture-catalog.sql：本项目业务库的 architecture schema、架构元数据表、索引和 review version 1 种子数据。
 - db/migrations/004-rollback.sql：只回滚 004 创建的架构目录表，不使用 DROP SCHEMA CASCADE。
 
 ## 需要同事执行的动作
 
 1. 阅读 AGENTS.md、docs/standards/README.md、docs/architecture/README.md 和上述两份 Spec。
-2. 按项目现有迁移规范在授权的 Portretag PostgreSQL 环境对 004 migration 做事务内 dry-run/语法校验。
+2. 按项目现有迁移规范在授权的本项目业务库环境对 004 migration 做事务内 dry-run/语法校验。
 3. 确认 migration 不修改现有 supervisor_proposals、supervisor_commit_records、durable_runs、durable_attempts 或业务表。
 4. 由有权限的操作者决定是否 apply；本交接包本身不授权数据库 apply。
 5. apply 后查询 architecture.reviews、architecture.capabilities、architecture.modules、architecture.gaps、architecture.phases、architecture.decisions、architecture.evidence_refs。
@@ -57,7 +66,7 @@
 
 ## Apply 后验证查询
 
-在授权的 Portretag PostgreSQL 连接中执行以下只读查询：
+在授权的本项目业务库连接中执行以下只读查询：
 
 ~~~sql
 SELECT table_name
@@ -140,7 +149,7 @@ modularity: 部分具备 / P1
 状态：READY / BLOCKED / APPLIED / VERIFIED
 迁移文件：...
 迁移版本：...
-数据库：Portretag PostgreSQL（不回报连接串或秘密）
+数据库：本项目业务库 xws_automation（容器 xws-adaptive-postgres / PostgreSQL 17；不回报连接串或秘密）
 Schema/Table：...
 种子记录：reviews=?, capabilities=?, modules=?, gaps=?, phases=?, decisions=?, evidence_refs=?
 验证：命令 + 结果

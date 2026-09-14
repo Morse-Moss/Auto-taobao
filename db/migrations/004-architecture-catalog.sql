@@ -1,10 +1,10 @@
 -- 004-architecture-catalog.sql
--- Agent SOP Runtime 架构目录（Portretag PostgreSQL）
+-- Agent SOP Runtime 架构目录（本项目业务库 PostgreSQL：xws_automation @ 127.0.0.1:5432）
 --
 -- Scope: 架构审查、目标模块、缺口、实施阶段、决策和证据引用。
 -- This migration does not replace durable_runs, supervisor_commit_records,
 -- supervisor_proposals, business tables, or runtime evidence.
--- Apply: only in the authorized Portretag PostgreSQL environment.
+-- Apply: only in the authorized project business DB (xws_automation, container xws-adaptive-postgres).
 -- Rollback: db/migrations/004-rollback.sql
 
 CREATE SCHEMA IF NOT EXISTS architecture;

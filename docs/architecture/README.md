@@ -8,7 +8,7 @@
 
 - [Agent SOP Runtime Spec](agent-sop-runtime-spec.md)：Context、状态轴、Memory、压缩、Skill Registry、Proposal、Adapter、Validator 和 Commit 契约。
 - [Agent SOP Runtime 实施计划](agent-sop-runtime-implementation-plan.md)：当前到目标的差距、模块改造、阶段优先级、风险和退出标准。
-- [同事交接说明](handoff-to-teammate.md)：Portretag PostgreSQL 迁移、验证、范围边界和回报格式。
+- [同事交接说明](handoff-to-teammate.md)：本项目业务库（xws_automation）迁移、验证、范围边界和回报格式。
 - `db/migrations/004-architecture-catalog.sql`：架构元数据 schema 与 review version 1 种子数据；只提供迁移文件，不在本轮自动 apply。
 
 ## 1. 定位
