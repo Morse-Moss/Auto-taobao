@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "skill-manifest-v1",
+  "name": "xws.feishu.import",
+  "version": "1.0.0",
+  "kind": "capability",
+  "description": "把小旺神 XLSX 导入授权飞书多维表格副本，保留 16 字段合同并写入真实商品图片附件",
+  "entry": "scripts/import-xws-to-feishu.mjs",
+  "inputs": [
+    { "name": "xlsx_path", "type": "path", "required": true },
+    { "name": "target_table", "type": "string", "required": true },
+    { "name": "period_start", "type": "string", "required": true },
+    { "name": "period_end", "type": "string", "required": true },
+    { "name": "expected_rows", "type": "number", "required": true }
+  ],
+  "outputs": [
+    { "name": "receipt", "type": "receipt" },
+    { "name": "record_set", "type": "record_set" }
+  ],
+  "preconditions": ["feishu_app_access", "authorized_target", "empty_target_table"],
+  "permissions": ["filesystem.read", "filesystem.write", "network.external", "feishu.api"],
+  "sideEffects": ["local_parse", "feishu_write"],
+  "dependencies": ["adapter.feishu@^1.0.0"],
+  "validation": ["structure", "row_count", "digest", "readback", "publication"],
+  "recovery": { "supported": true, "resumeFrom": "idempotent_commit" },
+  "owner": "sycm-automation",
+  "tags": ["xws", "feishu", "import", "weekly-sop"]
+}

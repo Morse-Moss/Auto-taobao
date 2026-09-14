@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "skill-manifest-v1",
+  "name": "xws.market-analysis.collect",
+  "version": "1.0.0",
+  "kind": "capability",
+  "description": "采集小旺神市场分析分片，产出可校验的 CSV/XLSX 工件（浴缸竞品周更第 1 步）",
+  "entry": "scripts/run-adaptive-export.mjs",
+  "inputs": [
+    { "name": "report_window", "type": "date_range", "required": true },
+    { "name": "search_keyword", "type": "string", "required": true },
+    { "name": "browser_profile_id", "type": "string", "required": true },
+    { "name": "run_id", "type": "string", "required": true }
+  ],
+  "outputs": [
+    { "name": "artifact", "type": "artifact_ref" },
+    { "name": "receipt", "type": "receipt" }
+  ],
+  "preconditions": ["logged_in_taobao", "edge_proxy_health"],
+  "permissions": ["browser.read", "filesystem.write"],
+  "sideEffects": ["browser_read", "local_artifact"],
+  "dependencies": ["adapter.xws@^1.0.0", "adapter.browser@^1.0.0"],
+  "validation": ["source_identity", "contiguous_prefix", "artifact_integrity", "row_count"],
+  "recovery": { "supported": true, "resumeFrom": "verified_cursor" },
+  "owner": "sycm-automation",
+  "tags": ["xws", "collect", "weekly-sop"]
+}

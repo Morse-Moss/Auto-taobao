@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "skill-manifest-v1",
+  "name": "sycm.search-rank.export",
+  "version": "1.0.0",
+  "kind": "capability",
+  "description": "导出已登录生意参谋搜索排行全部分页，产出经校验的 CSV/XLSX（七天报告窗口）",
+  "entry": "scripts/export-search-rank.mjs",
+  "inputs": [
+    { "name": "report_window", "type": "date_range", "required": true },
+    { "name": "browser_profile_id", "type": "string", "required": true },
+    { "name": "run_id", "type": "string", "required": true }
+  ],
+  "outputs": [
+    { "name": "artifact", "type": "artifact_ref" },
+    { "name": "receipt", "type": "receipt" }
+  ],
+  "preconditions": ["logged_in_taobao", "edge_proxy_health"],
+  "permissions": ["browser.read", "filesystem.write"],
+  "sideEffects": ["browser_read", "local_artifact"],
+  "dependencies": ["adapter.browser@^1.0.0"],
+  "validation": ["source_identity", "contiguous_prefix", "row_count", "structure"],
+  "recovery": { "supported": true, "resumeFrom": "verified_cursor" },
+  "owner": "sycm-automation",
+  "tags": ["sycm", "collect", "weekly-sop"]
+}

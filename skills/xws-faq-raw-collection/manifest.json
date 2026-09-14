@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "skill-manifest-v1",
+  "name": "xws.faq.raw-collect",
+  "version": "1.0.0",
+  "kind": "capability",
+  "description": "从达标淘宝竞品采集可复现的周度 FAQ 原文快照：问大家、评论与商品级本地证据",
+  "entry": "scripts/append-faq-event.mjs",
+  "inputs": [
+    { "name": "period_start", "type": "string", "required": true },
+    { "name": "period_end", "type": "string", "required": true },
+    { "name": "competitor_scope", "type": "enum", "required": true },
+    { "name": "browser_profile_id", "type": "string", "required": true }
+  ],
+  "outputs": [
+    { "name": "artifact", "type": "artifact_ref" },
+    { "name": "receipt", "type": "receipt" }
+  ],
+  "preconditions": ["logged_in_buyer", "edge_proxy_health"],
+  "permissions": ["browser.read", "filesystem.write"],
+  "sideEffects": ["browser_read", "local_artifact"],
+  "dependencies": ["adapter.browser@^1.0.0"],
+  "validation": ["source_identity", "structure", "completeness", "artifact_integrity"],
+  "recovery": { "supported": true, "resumeFrom": "verified_cursor" },
+  "owner": "sycm-automation",
+  "tags": ["xws", "faq", "collect", "weekly-sop"]
+}

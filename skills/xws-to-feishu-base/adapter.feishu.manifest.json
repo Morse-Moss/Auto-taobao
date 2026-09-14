@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "skill-manifest-v1",
+  "name": "adapter.feishu",
+  "version": "1.0.0",
+  "kind": "adapter",
+  "description": "飞书多维表格 API 适配层：租户令牌、字段读取、批量写入与附件上传回读",
+  "entry": "scripts/feishu-client.mjs",
+  "inputs": [],
+  "outputs": [],
+  "preconditions": ["feishu_app_access"],
+  "permissions": ["network.external", "feishu.api"],
+  "sideEffects": ["feishu_write"],
+  "dependencies": [],
+  "validation": [],
+  "recovery": { "supported": true, "resumeFrom": "idempotent_commit" },
+  "owner": "sycm-automation",
+  "tags": ["feishu", "adapter"]
+}

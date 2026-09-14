@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "skill-manifest-v1",
+  "name": "adapter.xws",
+  "version": "1.0.0",
+  "kind": "adapter",
+  "description": "小旺神市场分析导出的平台适配层：分片配置、慢采集有界进度监控与产物落盘",
+  "entry": "scripts/adaptive.mjs",
+  "inputs": [],
+  "outputs": [],
+  "preconditions": ["edge_proxy_health"],
+  "permissions": ["browser.read", "filesystem.write"],
+  "sideEffects": ["browser_read", "local_artifact"],
+  "dependencies": [],
+  "validation": [],
+  "recovery": { "supported": true, "resumeFrom": "verified_cursor" },
+  "owner": "sycm-automation",
+  "tags": ["xws", "adapter"]
+}

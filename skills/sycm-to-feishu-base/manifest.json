@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "skill-manifest-v1",
+  "name": "sycm.feishu.weekly",
+  "version": "1.0.0",
+  "kind": "capability",
+  "description": "生意参谋周更流水线：克隆上周纯字段周表、导入本周数据、停机等飞书 AI、再同步灰豚决策历史",
+  "entry": "scripts/run-weekly-pre-ai.mjs",
+  "inputs": [
+    { "name": "base_url", "type": "string", "required": true },
+    { "name": "period_start", "type": "string", "required": true },
+    { "name": "period_end", "type": "string", "required": true },
+    { "name": "last_week_table_id", "type": "string", "required": true }
+  ],
+  "outputs": [
+    { "name": "receipt", "type": "receipt" },
+    { "name": "report", "type": "report" }
+  ],
+  "preconditions": ["feishu_app_access", "authorized_target"],
+  "permissions": ["browser.read", "filesystem.read", "filesystem.write", "feishu.api"],
+  "sideEffects": ["browser_read", "local_parse", "feishu_write"],
+  "dependencies": ["adapter.feishu@^1.0.0", "adapter.browser@^1.0.0"],
+  "validation": ["structure", "row_count", "relations", "readback", "publication"],
+  "recovery": { "supported": true, "resumeFrom": "idempotent_commit" },
+  "owner": "sycm-automation",
+  "tags": ["sycm", "feishu", "weekly-sop"]
+}

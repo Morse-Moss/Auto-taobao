@@ -5,7 +5,8 @@ export const RISK_CLASS = Object.freeze(['LOW', 'MEDIUM', 'HIGH', 'HUMAN_REQUIRE
 export const POLICY_DECISION = Object.freeze(['ALLOW', 'ALLOW_WITH_APPROVAL', 'DENY']);
 
 // 副作用风险权重：写外部系统的动作默认需要人工或至少回读验收。
-const SIDE_EFFECT_RISK = Object.freeze({
+// 导出为副作用类的唯一事实来源：Skill manifest 的 sideEffects 必须取自这里的 key。
+export const SIDE_EFFECT_RISK = Object.freeze({
   local_artifact: 'LOW',
   local_parse: 'LOW',
   browser_read: 'LOW',
