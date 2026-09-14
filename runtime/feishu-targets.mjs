@@ -36,8 +36,9 @@ export const PROFILES = Object.freeze({
     envFile: 'E:/小红书/.env.feishu-kcne.local',
     competitorBase: 'OUMqbkYwVaQxQNsv2EDc1DV7nDf',
     keywordBase: 'N21Abkg0HakO6AsbCaDckvcwnVd',
-    // 2026-09-14 状态：读通（11 表可见）、写 403 91403（应用尚未被加为该 base 的可编辑协作者）
-    writeVerified: false,
+    // 2026-09-14 实测：建表/建字段/DELETE 均 200，且两段式 xws.feishu.import --commit
+    // 在本 base 上跑出 VERIFIED + 游标 1→3（见 TENANT-MIGRATION-MAP §5.3）。
+    writeVerified: true,
     tables: Object.freeze({
       competitorMain: 'tbl94WyAsVNdMkJf',
       skuDetail: 'tbltI9UufhunLc3u',
@@ -59,7 +60,9 @@ export const PROFILE_ALIASES = Object.freeze({
 });
 
 // 切换租户时改这一行（同时 .workbuddy/memory/MEMORY.md 与 docs/ops/TENANT-MIGRATION-MAP.md 一起改）。
-export const DEFAULT_PROFILE = 'legacy';
+// 2026-09-14 已切到 kcne：旧租户废弃，新租户的读/写双向验证均通过（见 TENANT-MIGRATION-MAP §5.3）。
+// 回滚 = 把这一行改回 'legacy'，不需要动任何业务脚本。
+export const DEFAULT_PROFILE = 'kcne';
 
 export const PROFILE_ENV_VAR = 'SYCM_FEISHU_PROFILE';
 

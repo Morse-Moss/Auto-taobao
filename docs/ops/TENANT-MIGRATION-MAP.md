@@ -1,7 +1,7 @@
 # 竞品数据搬迁到新租户：映射表与影响面
 
-状态：2026-09-14 第 1、2、3、4 步全部完成（代码改造 + 只读验证 + 新 base 写验证均通过）。
-只剩第 5 步正式切换（改一行 `DEFAULT_PROFILE`）未执行，等用户下令。另记一条失败分类缺陷（§6）。
+状态：2026-09-14 **六步全部完成**（旧租户废弃，默认目标已切到新租户）。
+另记一条失败分类缺陷（§6）与一处词库 base 归属更正（§0 第 2 条）。
 适用范围：竞品周更 SOP（base `OWebbPUcBa7B8JseYLccQCy9nkf` → 副本 `OUMqbkYwVaQxQNsv2EDc1DV7nDf`）。
 
 ## 0. 侦察结论
@@ -83,8 +83,9 @@ base 级：`OWebbPUcBa7B8JseYLccQCy9nkf` → `OUMqbkYwVaQxQNsv2EDc1DV7nDf`。
 2. **空值不是名字**。`SYCM_FEISHU_PROFILE=`（shell 里很常见的写法）会得到空串而不是
    `undefined`，`?? DEFAULT` 挡不住；`resolveProfileName` 显式判 `null`/`undefined`/空串后回落默认值，
    否则每个脚本都会在启动时炸掉。
-3. **默认仍指向 `legacy`**。代码先就位、后切换；切换只需改 `DEFAULT_PROFILE` 一行或设环境变量，
-   回滚同理，不需要改任何业务脚本。
+3. **默认值一行控制**。代码先就位、后切换：2026-09-14 先落代码（默认仍 `legacy`），
+   读写验证都通过之后同一天把 `DEFAULT_PROFILE` 改成 `kcne`。回滚 = 改回 `legacy`，不动业务脚本。
+   测试里有一条「默认 profile 是当前生产租户」的断言，默认值被改而没人同步文档时它会失败。
 
 `runtime/feishu-targets.test.mjs` 11 条用例覆盖：两个 profile 覆盖同一批逻辑名、
 table id 互不相同且形状合法、base 与 baseUrl 自洽、profile 冻结、别名解析与未知名抛错、
@@ -131,8 +132,17 @@ table id 互不相同且形状合法、base 与 baseUrl 自洽、profile 冻结�
 3. **只读验证**：✅ 已完成 —— 见 §5.1 / §5.2。
 4. **写验证**：✅ 已完成 —— 见 §5.3。在新 base 建一次性演练表 `_演练_kcne_20260914` 跑
    两段式 `xws.feishu.import --commit`，得到 `publicationStatus=VERIFIED` + 游标 1→3，然后删表。
-5. **正式切换**：未开始。切换动作 = `DEFAULT_PROFILE=kcne`（或设 `SYCM_FEISHU_PROFILE=kcne`），
-   跑一轮真实周更（或等下一个周期）。
+5. **正式切换**：✅ 已完成（2026-09-14）。用户确认旧租户废弃、以后在新租户上开发，
+   于是把 `DEFAULT_PROFILE` 由 `legacy` 改为 `kcne`，并把 kcne 的 `writeVerified` 声明翻真。
+   实测（不设任何环境变量）：`activeProfileName()` → `kcne`，`envFilePath` →
+   `E:/小红书/.env.feishu-kcne.local`，`competitorBaseToken` → `OUMqbkYwVaQxQNsv2EDc1DV7nDf`；
+   `runtime/tally-weekly-classification.mjs` 直接跑出
+   `resolved weekly table: 竞品周_2026-09-06_2026-09-12 (tblH56IUDG9l96V8)`，
+   统计结果与旧租户逐字节相同。
+   切换时被回归抓出 2 条失败：`runtime/apply-xws-sku-manifest.test.mjs` 两个用例
+   把旧 base token 手抄进夹具（`--confirm-app-token OWebbPUc…`），而 `TARGET` 在导入时按默认
+   profile 定型 → 报 `confirm-app-token mismatch`。已改为从 `feishu-targets` **派生**期望值
+   （那两条用例测的是「确认参数与当前目标是否一致」，不是「目标是哪个租户」）。
 6. **回滚**：旧 base 原样保留；把 `DEFAULT_PROFILE` 切回 `legacy` 即可，不需要改代码。
 
 ## 5. 只读验证证据（2026-09-14）
@@ -234,6 +244,29 @@ node runtime/sop-runtime/run-feishu-import-two-stage.mjs \
 `sideEffectRefs` 为空、游标 `1 → 0`（未变）、零写入。这是 2026-09-14 上午加的「周表目标含日期字段必须盖周期戳」
 防线按设计生效。**但它的失败分类有问题，见 §6 缺陷记录。**
 
+### 5.4 公式 / lookup 字段的跨表引用检查（补做，2026-09-14 晚）
+
+原本列在「待验证」里的「历史总表 V1 的公式(type 20)与 lookup(type 19)字段是否还指向旧表」，
+用一条新判据关掉了：**表达式里出现的表 id 必须都属于同一个 base**。
+
+做法：字段接口返回的 `property` 里，公式/lookup 的表达式把表 id 写死在字符串里；
+把每个字段的 `property` 序列化后抽出所有 `tbl…` 形 token，与本 base 的表 id 集合比对，
+不属其中的即**悬空引用**（复制 base 时最典型的事故——类型照样是 20/19，光比字段名与类型发现不了）。
+实现为 `runtime/verify-feishu-profile.mjs` 的 `danglingTableRefs()`，悬空即计入该 profile 的 errors，
+并在渲染里逐条列出「字段名 → 引用的表 id」。
+
+实测结果：
+
+```
+── legacy：悬空表引用 0
+── kcne  ：悬空表引用 0
+```
+
+即副本的公式/lookup 表达式**只引用本 base 内的表**，复制时引用被一起改写了。这条风险关闭。
+
+（该检查同时解释了「协作者接口」那一行为什么是参考信息：列成员需要更宽的 drive 权限，
+新应用在被共享的 base 上会被拒 `1063004`，但这不影响读写——所以它不计入 errors。）
+
 ## 6. 缺陷记录：fail-closed 闸门的失败分类被归成 BUG
 
 第一次尝试的收据里：
@@ -275,15 +308,19 @@ node runtime/sop-runtime/run-feishu-import-two-stage.mjs \
 
 ## 7. 待验证 / 待确认
 
-- **公式字段的表达式**是否已指向新表：类型抽查一致，但历史总表 V1 的 44 个字段里含公式
-  （type 20）与 lookup（type 19），需抽查若干行的计算值在新旧 base 是否相同。
-- **仪表盘 / 视图**：用户已确认仪表盘随副本复制过来了；仍需在浏览器里确认它指向的是新表。
-- **关键词库 base 是否单独再搬一次**：它仍在旧租户（见 §0 第 2 条）。新应用靠跨租户共享能读，
-  所以**不阻塞**；但如果旧租户要停用，必须单独搬。若用户已在新租户复制过一份，请提供链接以便核对。
+- ~~公式字段的表达式是否已指向新表~~：✅ 已关闭，见 §5.4（两侧悬空引用均为 0）。
+- ~~仪表盘 / 视图是否随副本复制~~：用户已确认仪表盘随副本复制过来了。
+  仍需在浏览器里确认它指向的是新表（应用侧看不到仪表盘对象）。
+- **关键词库 base 是否单独再搬一次**（**唯一剩下的实质风险**）：它仍在旧租户（见 §0 第 2 条）。
+  新应用靠跨租户共享能读，所以**只要旧租户还存在就不阻塞**；
+  但旧租户既然是「废弃」，必须确认它不会被解散/回收，否则要单独再搬一次。
+  若用户已在新租户复制过一份，需要提供链接以便核对（应用侧枚举不出来）。
 - **`数据表` `tblg6lkg6431QulJ` 的 5 行**是否保留（导入需要空表）。
-- **新旧 base 的协作者归属**：新应用目前同时是旧生产 base、副本 base、词库 base 的协作者；
-  哪几个该保留需用户确认（旧生产 base 上的可编辑权限建议撤掉，只留可阅读）。
-- **§6 的失败分类缺陷**修不修、按 A 还是 B。
+- **协作者归属**：新应用目前同时是旧生产 base、副本 base、词库 base 的协作者；
+  建议旧生产 base 上只留可阅读（旧租户已废弃，可编辑权限没必要留）。
+- **§6 的失败分类缺陷**修不修、按 A（推荐）还是 B。
+- **两个应用都缺 `tenant:tenant:readonly`**，所以 API 拿不到租户真名，
+  只能用域名前缀（`kcne618basvj` / `rcndesfqro3x`）作标识。想拿到租户名需补该 scope。
 
 ## 8. 相关文档
 

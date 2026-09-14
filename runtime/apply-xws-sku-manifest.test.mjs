@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { activeProfileName, competitorBaseToken, tableId } from './feishu-targets.mjs';
+
+// 期望值必须从目标配置**派生**，不能手抄：这两条用例测的是「确认参数与当前目标是否一致」，
+// 手抄旧租户的 token 会让它们在切换租户时失败——而在测的其实不是租户，是比对逻辑。
+const PROFILE = activeProfileName();
+const AUTHORIZED_BASE = competitorBaseToken(PROFILE);
+const AUTHORIZED_SKU_TABLE = tableId('skuDetail', PROFILE);
+
 let buildApplyReceipt;
 let classifyPostWriteVerification;
 let isRecoverableWriteError;
@@ -43,8 +51,8 @@ test('requires the exact authorized Base, SKU table, and record count', () => {
   ]), /confirm-app-token mismatch/u);
   assert.throws(() => parseApplyArgs([
     ...base,
-    '--confirm-app-token', 'OWebbPUcBa7B8JseYLccQCy9nkf',
-    '--confirm-sku-table-id', 'tblddWTrPeB4TKmR',
+    '--confirm-app-token', AUTHORIZED_BASE,
+    '--confirm-sku-table-id', AUTHORIZED_SKU_TABLE,
     '--confirm-record-count', '0',
   ]), /positive integer/u);
 });
@@ -54,8 +62,8 @@ test('accepts the exact authorized count for an independent product batch', () =
     '--manifest', 'D:/runtime/manifest.json',
     '--env-file', 'E:/小红书/.env.local',
     '--apply',
-    '--confirm-app-token', 'OWebbPUcBa7B8JseYLccQCy9nkf',
-    '--confirm-sku-table-id', 'tblddWTrPeB4TKmR',
+    '--confirm-app-token', AUTHORIZED_BASE,
+    '--confirm-sku-table-id', AUTHORIZED_SKU_TABLE,
     '--confirm-record-count', '6',
     '--payload-file', 'D:/evidence/payload.txt',
     '--capture-receipt', 'D:/evidence/capture.json',
@@ -74,8 +82,8 @@ test('requires an independent evidence set even when the manifest flag is presen
     '--manifest', 'D:/runtime/manifest.json',
     '--env-file', 'E:/小红书/.env.local',
     '--apply',
-    '--confirm-app-token', 'OWebbPUcBa7B8JseYLccQCy9nkf',
-    '--confirm-sku-table-id', 'tblddWTrPeB4TKmR',
+    '--confirm-app-token', AUTHORIZED_BASE,
+    '--confirm-sku-table-id', AUTHORIZED_SKU_TABLE,
     '--confirm-record-count', '2',
     '--output-directory', 'D:/evidence',
   ]), /payload-file is required for every guarded apply/u);

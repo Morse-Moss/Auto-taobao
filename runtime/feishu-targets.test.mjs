@@ -73,11 +73,15 @@ test('环境变量切换生效，且不改变默认值', () => {
   assert.throws(() => activeProfileName({ [PROFILE_ENV_VAR]: 'zzz' }), /Unknown Feishu profile/u);
 });
 
-// 默认值是「当前生产租户」。新租户写入验证通过后把 DEFAULT_PROFILE 改成 kcne，
-// 这一条会跟着失败——提醒同时更新 docs/ops/TENANT-MIGRATION-MAP.md 与项目记忆。
-test('默认 profile 仍是旧租户（切换前）', () => {
-  assert.equal(DEFAULT_PROFILE, 'legacy');
-  assert.equal(getProfile(undefined).envFile, 'E:/小红书/.env.local');
+// 默认值是「当前生产租户」。2026-09-14 已从 legacy 切到 kcne（旧租户废弃）。
+// 这条断言的作用是：默认值一旦被改动而没人同步文档/记忆，它会当场失败。
+test('默认 profile 是当前生产租户（kcne），且旧租户仍可显式选择', () => {
+  assert.equal(DEFAULT_PROFILE, 'kcne');
+  assert.equal(getProfile(undefined).envFile, 'E:/小红书/.env.feishu-kcne.local');
+  assert.equal(getProfile(undefined).competitorBase, 'OUMqbkYwVaQxQNsv2EDc1DV7nDf');
+  // 回滚路径必须一直可用：显式选 legacy 仍拿得到旧租户的目标
+  assert.equal(getProfile('legacy').envFile, 'E:/小红书/.env.local');
+  assert.equal(getProfile('legacy').competitorBase, 'OWebbPUcBa7B8JseYLccQCy9nkf');
 });
 
 test('tableId 命中逻辑名，未知逻辑名抛错', () => {
@@ -93,7 +97,8 @@ test('凭据文件路径与 baseUrl 按 profile 分开', () => {
   const targets = profileTargets('kcne');
   assert.equal(targets.envFile, 'E:/小红书/.env.feishu-kcne.local');
   assert.match(targets.baseUrl, /^https:\/\/kcne618basvj\.feishu\.cn\/base\/OUMqbkYw/u);
-  assert.equal(targets.writeVerified, false);
+  // 写验证已通过（2026-09-14），声明值应随之翻真
+  assert.equal(targets.writeVerified, true);
 });
 
 test('parseEnvFile 处理注释、空行、引号与等号后的空格', () => {

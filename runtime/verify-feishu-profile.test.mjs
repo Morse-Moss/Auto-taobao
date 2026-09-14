@@ -4,6 +4,7 @@ import test from 'node:test';
 import { STABLE_TABLE_KEYS } from './feishu-targets.mjs';
 import {
   compareStructures,
+  danglingTableRefs,
   fieldSignature,
   recordCountFrom,
   render,
@@ -52,6 +53,39 @@ test('recordCountFrom：读不到 total 返回 null，绝不塌成 0', () => {
 
 test('recordCountFrom：正常行数原样返回', () => {
   assert.equal(recordCountFrom({ data: { total: 4346 } }), 4346);
+});
+
+test('danglingTableRefs：表达式引用本 base 的表不算悬空', () => {
+  const fields = [
+    { field_name: '月收货金额', type: 20, property: { formula_expression: 'SUM(CurrentValue.[价格],tblSS5bxyIeXgngI)' } },
+    { field_name: '竞品分类', type: 20, property: { formula_expression: 'IF(OR(tblOIPXlFVk91laj,tblSS5bxyIeXgngI),"A","D")' } },
+    { field_name: '商品标题', type: 1 },
+  ];
+  assert.deepEqual(danglingTableRefs(fields, ['tblSS5bxyIeXgngI', 'tblOIPXlFVk91laj']), []);
+});
+
+test('danglingTableRefs：引用别处的表就报悬空（复制 base 后最常见的事故）', () => {
+  const fields = [
+    { field_name: '月收货金额', type: 20, property: { formula_expression: 'SUM(tblOldBaseTable1)' } },
+    { field_name: '商品标题', type: 1 },
+  ];
+  const dangling = danglingTableRefs(fields, ['tblNewBaseTable1']);
+  assert.equal(dangling.length, 1);
+  assert.deepEqual(dangling[0], { field: '月收货金额', type: 20, ref: 'tblOldBaseTable1' });
+});
+
+test('danglingTableRefs：同一字段重复引用只报一次，且不误报 field_id', () => {
+  const fields = [
+    { field_id: 'fldAbcDefGhi', field_name: '同款数', type: 19, property: { table_id: 'tblGhost0001', link: ['tblGhost0001'], back: 'tblGhost0001' } },
+  ];
+  const dangling = danglingTableRefs(fields, ['tblReal00001']);
+  assert.equal(dangling.length, 1);
+  assert.equal(dangling[0].ref, 'tblGhost0001');
+});
+
+test('danglingTableRefs：没有 property 的字段不参与判定', () => {
+  assert.deepEqual(danglingTableRefs([{ field_name: '文本', type: 1 }, { field_name: 'x', type: 20, property: null }], []), []);
+  assert.deepEqual(danglingTableRefs(undefined, ['tblA']), []);
 });
 
 function stableTable(overrides = {}) {

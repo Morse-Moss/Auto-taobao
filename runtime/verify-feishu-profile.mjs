@@ -48,6 +48,26 @@ export function recordCountFrom(body) {
   return total === null || total === undefined ? null : total;
 }
 
+const TABLE_ID_PATTERN = /tbl[A-Za-z0-9]{8,}/gu;
+
+// 公式(type 20)/lookup(type 19) 字段的表达式把表 id 写死在 property 里。
+// 复制 base 时这些引用**未必**被一起改写——若仍指向另一个 base 的表，字段会算出空值/报错，
+// 而单看「字段名与类型是否一致」是发现不了的（类型照样是 20/19）。
+// 判据：表达式里出现的表 id 必须都属于**同一个 base**；不在其中的就是悬空引用。
+export function danglingTableRefs(fieldItems, knownTableIds) {
+  const known = new Set(knownTableIds ?? []);
+  const dangling = [];
+  for (const field of fieldItems ?? []) {
+    const property = field?.property;
+    if (property === null || property === undefined) continue;
+    const refs = [...new Set(String(JSON.stringify(property)).match(TABLE_ID_PATTERN) ?? [])];
+    for (const ref of refs) {
+      if (!known.has(ref)) dangling.push({ field: field.field_name, type: field.type, ref });
+    }
+  }
+  return dangling;
+}
+
 async function getJson(headers, path) {
   const response = await fetch(`${API_ROOT}${path}`, { headers });
   const body = await response.json().catch(() => ({}));
@@ -71,7 +91,7 @@ async function listTables(headers, baseToken) {
   return (body.data?.items ?? []).map((table) => ({ tableId: table.table_id, name: table.name }));
 }
 
-async function inspectTable(headers, baseToken, tableId) {
+async function inspectTable(headers, baseToken, tableId, knownTableIds) {
   const [fields, records] = await Promise.all([
     getJson(headers, `/bitable/v1/apps/${baseToken}/tables/${tableId}/fields?page_size=200`),
     getJson(headers, `/bitable/v1/apps/${baseToken}/tables/${tableId}/records?page_size=1`),
@@ -80,10 +100,16 @@ async function inspectTable(headers, baseToken, tableId) {
     fields.body?.code !== 0 ? `fields ${fields.body.code} ${fields.body.msg}` : null,
     records.body?.code !== 0 ? `records ${records.body.code} ${records.body.msg}` : null,
   ].filter(Boolean);
+  const items = fields.body?.data?.items ?? [];
+  const dangling = danglingTableRefs(items, knownTableIds);
+  if (dangling.length) {
+    errors.push(`dangling table refs: ${dangling.map((d) => `${d.field}→${d.ref}`).join(', ')}`);
+  }
   return {
     ok: errors.length === 0,
-    ...fieldSignature(fields.body?.data?.items),
+    ...fieldSignature(items),
     recordCount: recordCountFrom(records.body),
+    danglingRefs: dangling,
     errors,
   };
 }
@@ -135,13 +161,16 @@ async function inspectProfile(profileName) {
   result.tableNames = tables.map((table) => table.name);
 
   result.stableTables = {};
+  const knownTableIds = tables.map((table) => table.tableId);
   for (const key of STABLE_TABLE_KEYS) {
     const tableId = profile.tables[key];
     const tableName = tables.find((table) => table.tableId === tableId)?.name ?? null;
-    const info = await inspectTable(headers, profile.competitorBase, tableId);
+    const info = await inspectTable(headers, profile.competitorBase, tableId, knownTableIds);
     result.stableTables[key] = { tableId, tableName, ...info };
     if (!info.ok) result.errors.push(`${key}(${tableId}): ${info.errors.join('; ')}`);
   }
+  result.danglingRefCount = Object.values(result.stableTables)
+    .reduce((sum, table) => sum + (table.danglingRefs?.length ?? 0), 0);
 
   result.weeklyTables = {
     竞品: latestWeeklyTable(tables, '竞品')?.name ?? null,
@@ -201,7 +230,11 @@ export function render(report) {
         `   · ${String(key).padEnd(15)} ${table.tableId ?? '-'}  ${table.tableName ?? '(该 id 不在表清单里)'}`
         + `  字段 ${table.fieldCount ?? '-'}  记录 ${table.recordCount ?? '-'}  sig ${table.signature ?? '-'}`,
       );
+      for (const dangling of table.danglingRefs ?? []) {
+        lines.push(`       悬空引用: 字段「${dangling.field}」(type=${dangling.type}) → ${dangling.ref}（不属于本 base）`);
+      }
     }
+    lines.push(`   悬空表引用     ${info.danglingRefCount ?? 0}`);
     lines.push(`   最新周表       竞品 ${info.weeklyTables?.竞品 ?? '-'} | SKU ${info.weeklyTables?.SKU ?? '-'} | 问题库 ${info.weeklyTables?.问题库 ?? '-'}`);
     lines.push(`   周表数量       ${info.weeklyTableCount ?? '-'}`);
     lines.push(`   问题主库       ${info.faqMasterTable ?? '-'}`);
@@ -211,7 +244,7 @@ export function render(report) {
         ? members.error
           ? `拒绝 ${members.error}`
           : `OK（${members.count} 个成员）`
-        : '-'}`,
+        : '-'}   [仅供参考：列成员需要更宽的 drive 权限，被拒不影响读写]`,
     );
     lines.push(`   结论           ${info.ok ? 'OK' : `有错误 → ${info.errors.join(' | ')}`}`);
     lines.push('');
