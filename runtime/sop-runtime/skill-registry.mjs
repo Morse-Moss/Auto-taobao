@@ -36,7 +36,7 @@ function toRecord(input) {
   return { manifest: input, skillDir: null, sourcePath: null };
 }
 
-export function createRegistry({ externalAllowlist = [] } = {}) {
+export function createRegistry({ externalAllowlist = [], knownValidators = null } = {}) {
   const records = []; // 全部登记输入（含非法项），finalize 的唯一来源
   const byName = new Map(); // name -> [{ manifest, raw, skillDir, sourcePath, digest }]
   let errors = [];
@@ -107,6 +107,21 @@ export function createRegistry({ externalAllowlist = [] } = {}) {
       for (const warning of check.warnings) warnings.push({ ...warning, source });
 
       const normalized = normalizeManifest(record.manifest);
+
+      // manifest/实现一致：声明的验证器必须有实现（由调用方注入已知验证器名单）。
+      if (knownValidators) {
+        const unknown = normalized.validation.filter((name) => !knownValidators.includes(name));
+        if (unknown.length) {
+          errors.push({
+            code: 'VALIDATION_NOT_IMPLEMENTED',
+            field: 'validation',
+            detail: `${normalized.name}@${normalized.version} declares validators with no implementation: ${unknown.join(', ')}`,
+            source,
+            phase: 'manifest',
+          });
+        }
+      }
+
       const versions = byName.get(normalized.name) ?? [];
       if (versions.some((entry) => entry.manifest.version === normalized.version)) {
         errors.push({
@@ -337,8 +352,8 @@ export function createRegistry({ externalAllowlist = [] } = {}) {
 }
 
 // 便捷入口：addAll + finalize；strict=true 时直接抛错（错误带在 error.errors 上）。
-export function buildRegistry({ manifests = [], externalAllowlist = [], strict = false } = {}) {
-  const registry = createRegistry({ externalAllowlist });
+export function buildRegistry({ manifests = [], externalAllowlist = [], knownValidators = null, strict = false } = {}) {
+  const registry = createRegistry({ externalAllowlist, knownValidators });
   registry.addAll(manifests);
   const result = registry.finalize();
   if (strict && !result.ok) {

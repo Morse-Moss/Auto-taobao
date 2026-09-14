@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { discoverSkillManifests, DEFAULT_SKILLS_ROOT } from './skill-discovery.mjs';
 import { createRegistry } from './skill-registry.mjs';
 import { createLoader } from './skill-loader.mjs';
+import { listValidatorNames, VALIDATOR_IMPLS } from './validation-registry.mjs';
 
 // 共享浏览器代理（web-access CDP）不在仓库内，作为显式外部依赖登记。
 const EXTERNAL_ALLOWLIST = ['adapter.browser'];
@@ -33,7 +34,7 @@ function parseArgs(argv) {
 
 export async function buildRegistryFromDisk({ skillsRoot = DEFAULT_SKILLS_ROOT } = {}) {
   const discovery = await discoverSkillManifests({ skillsRoot });
-  const registry = createRegistry({ externalAllowlist: EXTERNAL_ALLOWLIST });
+  const registry = createRegistry({ externalAllowlist: EXTERNAL_ALLOWLIST, knownValidators: listValidatorNames() });
   for (const item of discovery.found) {
     registry.add({ manifest: item.manifest, skillDir: item.skillDir, sourcePath: item.sourcePath });
   }
@@ -81,6 +82,10 @@ async function main() {
   for (const name of registry.names()) {
     process.stdout.write(`  ${name}@${registry.versionsOf(name).join(',')}${implementationDigests[name] ? '' : '  [无实现摘要]'}\n`);
   }
+
+  const collectStage = Object.entries(VALIDATOR_IMPLS).filter(([, impl]) => impl.stage === 'COLLECT').map(([name]) => name);
+  const publicationStage = Object.entries(VALIDATOR_IMPLS).filter(([, impl]) => impl.stage === 'PUBLICATION').map(([name]) => name);
+  process.stdout.write(`验证器实现 ${listValidatorNames().length} 个：采集期 ${collectStage.length}（${collectStage.join(', ')}），发布期 ${publicationStage.length}（${publicationStage.join(', ')}）\n`);
 
   if (result.warnings.length) {
     process.stdout.write(`告警 ${result.warnings.length} 项：\n`);

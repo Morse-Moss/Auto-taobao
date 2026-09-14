@@ -2,6 +2,7 @@
 export const VALIDATOR_CODES = Object.freeze([
   'IDENTITY_MISMATCH', 'SCOPE_MISMATCH', 'STRUCTURE_INVALID',
   'INCOMPLETE_RANGE', 'DIGEST_MISMATCH', 'RELATION_INVALID', 'PUBLICATION_UNVERIFIED',
+  'ARTIFACT_INCOMPLETE',
 ]);
 
 function result(ok, code, details = {}) {
@@ -74,6 +75,34 @@ export function validatePublication(receipt, expected = {}) {
     return result(false, 'PUBLICATION_UNVERIFIED', { reason: 'read-back digest mismatch', receipt, expected });
   }
   if (!receipt.verifiedAt) return result(false, 'PUBLICATION_UNVERIFIED', { reason: 'receipt not verified' });
+  return result(true);
+}
+
+// 工件完整性：必须有摘要，且必须能落到具体字节或文件路径；声明行数时不得为 0。
+// 只判断"工件是否可被独立复验"，不判断业务内容对错。
+export function validateArtifactIntegrity(artifact) {
+  if (!artifact) return result(false, 'ARTIFACT_INCOMPLETE', { reason: 'no artifact' });
+  const problems = [];
+  if (!/^[0-9a-f]{64}$/.test(String(artifact.sha256 ?? ''))) problems.push('missing sha256 digest');
+  const hasBytes = artifact.bytes !== undefined && artifact.bytes !== null;
+  const hasPath = typeof artifact.path === 'string' && artifact.path.length > 0;
+  if (!hasBytes && !hasPath) problems.push('missing bytes or path');
+  if (artifact.rowCount !== undefined && artifact.rowCount !== null && Number(artifact.rowCount) <= 0) problems.push('rowCount must be positive');
+  return problems.length ? result(false, 'ARTIFACT_INCOMPLETE', { problems }) : result(true);
+}
+
+// 连续前缀：分片范围必须紧接已验证游标，且 end 不小于 start。
+// 与 validateScope 的差别：这里要求 range 必须存在（连续采集不允许隐式空范围）。
+export function validateContiguousPrefix(context, artifact) {
+  const range = artifact?.range;
+  if (!range) return result(false, 'SCOPE_MISMATCH', { reason: 'contiguous prefix requires an explicit range' });
+  const cursorEnd = Number(context?.verifiedCursor?.end ?? 0);
+  if (Number(range.start) !== cursorEnd + 1) {
+    return result(false, 'SCOPE_MISMATCH', { reason: 'range must start immediately after the verified cursor', cursorEnd, range });
+  }
+  if (Number(range.end) < Number(range.start)) {
+    return result(false, 'SCOPE_MISMATCH', { reason: 'range end must not precede range start', range });
+  }
   return result(true);
 }
 

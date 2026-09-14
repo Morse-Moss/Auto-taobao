@@ -1,6 +1,7 @@
 // Worker / Adapter：确定性执行契约（Spec 11.1）。平台细节只在 Adapter 内。
 // Worker 不拥有运行状态，只按 Controller 指派的 attempt 执行一次；不扫描或关闭未知资源。
 import { runValidators, validateIdentity, validateScope, validateStructure, validateCompleteness, validateDigest } from './validator.mjs';
+import { runManifestValidation, VALIDATION_STAGE } from './validation-registry.mjs';
 
 export const CAPABILITY_CONTRACT = Object.freeze([
   'checkSession', 'prepare', 'start', 'observe', 'collectArtifact', 'validate', 'release',
@@ -18,6 +19,7 @@ export function assertAdapter(adapter) {
 
 function failureClassOf(error) {
   if (error?.failureClass) return error.failureClass;
+  if (error?.code === 'VALIDATION_NOT_IMPLEMENTED' || error?.code === 'ADAPTER_CONTRACT_VIOLATION') return 'CAPABILITY_DEGRADED';
   const message = String(error?.message ?? error);
   if (/login|captcha|风控|risk/i.test(message)) return 'HUMAN_REQUIRED';
   if (/timeout|network|ECONN|ETIMEDOUT|5\d\d/i.test(message)) return 'TRANSIENT_EXTERNAL';
@@ -32,6 +34,7 @@ export function createDeterministicWorker({
   evidenceStore = null,
   contract = {},
   heartbeatMs = 0,
+  manifest = null,
 } = {}) {
   assertAdapter(adapter);
 
@@ -52,15 +55,16 @@ export function createDeterministicWorker({
         const started = await adapter.start(input, context);
         const observation = await adapter.observe({ attemptId, context, started });
 
-        const identity = await runValidators([{ name: 'identity', fn: validateIdentity, args: [context, observation] }]);
+        // 身份校验是硬不变量，与 manifest 声明无关，永远先跑。
+        const identity = await runValidators([{ name: 'source_identity', fn: () => validateIdentity(context, observation) }]);
         if (!identity.ok) {
           throw Object.assign(new Error(`identity validation failed: ${identity.codes.join(',')}`), { failureClass: 'EVIDENCE_INVALID' });
         }
 
         const artifact = await adapter.collectArtifact({ attemptId, context, observation });
-        let manifest = null;
+        let evidenceManifest = null;
         if (evidenceStore && artifact?.artifactId) {
-          manifest = await evidenceStore.writeManifest({
+          evidenceManifest = await evidenceStore.writeManifest({
             runId, attemptId,
             artifactId: artifact.artifactId,
             artifactKind: artifact.artifactKind ?? 'unknown',
@@ -68,18 +72,11 @@ export function createDeterministicWorker({
             bytes: artifact.bytes ?? null,
             range: artifact.range ?? null,
             rowCount: artifact.rowCount ?? null,
-            extra: manifestMeta,
+            extra: { ...manifestMeta, capability: manifest?.name ?? null, capabilityVersion: manifest?.version ?? null },
           });
         }
 
-        const scope = context.verifiedCursor ? validateScope(context, { range: artifact?.range }) : { ok: true };
-        const validation = await runValidators([
-          { name: 'scope', fn: () => scope },
-          { name: 'structure', fn: validateStructure, args: [artifact, contract] },
-          { name: 'completeness', fn: validateCompleteness, args: [artifact, contract.expectedRange ?? {}] },
-          { name: 'digest', fn: validateDigest, args: [{ sha256: artifact?.sha256 ?? manifest?.sha256 }, manifest ?? {}] },
-          { name: 'adapter', fn: adapter.validate, args: [artifact, context] },
-        ]);
+        const validation = await assembleCollectValidation({ manifest, adapter, context, artifact, contract, observation, evidenceManifest });
 
         if (!validation.ok) {
           await adapter.release({ attemptId, context }, 'EVIDENCE_INVALID');
@@ -90,11 +87,11 @@ export function createDeterministicWorker({
         await adapter.release({ attemptId, context }, 'SUCCESS');
         const updated = await controller.completeAttempt(runId, {
           attemptId,
-          artifactRefs: manifest ? [{ artifactId: manifest.artifactId, kind: manifest.artifactKind, sha256: manifest.sha256, path: manifest.path }] : [],
-          evidenceRefs: manifest ? [{ evidenceId: manifest.artifactId, digest: `sha256:${manifest.sha256}` }] : [],
+          artifactRefs: evidenceManifest ? [{ artifactId: evidenceManifest.artifactId, kind: evidenceManifest.artifactKind, sha256: evidenceManifest.sha256, path: evidenceManifest.path }] : [],
+          evidenceRefs: evidenceManifest ? [{ evidenceId: evidenceManifest.artifactId, digest: `sha256:${evidenceManifest.sha256}` }] : [],
           nextAction: 'COMMIT',
         });
-        return { ok: true, attemptId, manifest, validation, context: updated };
+        return { ok: true, attemptId, manifest: evidenceManifest, validation, context: updated };
       } catch (error) {
         const failureClass = failureClassOf(error);
         try { await adapter.release({ attemptId, context }, failureClass); } catch { /* release 失败不影响主失败路径 */ }
@@ -104,5 +101,72 @@ export function createDeterministicWorker({
         if (timer) clearInterval(timer);
       }
     },
+  };
+}
+
+// 采集期验证装配：
+//  - 有 manifest：按 manifest 声明的 COLLECT 阶段验证器执行（manifest 是唯一事实来源）；
+//  - 无 manifest（兼容旧入口）：退回默认最小集合 identity/scope/structure/completeness/digest；
+//  - adapter.validate 是能力自检，两种情况都作为最后一道。
+async function assembleCollectValidation({ manifest, adapter, context, artifact, contract, observation, evidenceManifest }) {
+  const adapterCheck = await runValidators([{ name: 'adapter', fn: () => adapter.validate(artifact, context) }]);
+
+  let declared = { ok: true, results: [], failures: [], codes: [] };
+  if (manifest) {
+    declared = await runManifestValidation(manifest, { context, artifact, contract, observation, evidenceManifest }, { stage: VALIDATION_STAGE.COLLECT });
+  } else {
+    const scope = context.verifiedCursor ? validateScope(context, { range: artifact?.range }) : { ok: true };
+    declared = await runValidators([
+      { name: 'scope_match', fn: () => scope },
+      { name: 'structure', fn: () => validateStructure(artifact, contract) },
+      { name: 'completeness', fn: () => validateCompleteness(artifact, contract.expectedRange ?? {}) },
+      { name: 'digest', fn: () => validateDigest({ sha256: artifact?.sha256 ?? evidenceManifest?.sha256 }, evidenceManifest ?? {}) },
+    ]);
+  }
+
+  return {
+    ok: declared.ok && adapterCheck.ok,
+    results: [...declared.results, ...adapterCheck.results],
+    failures: [...declared.failures, ...adapterCheck.failures],
+    codes: [...new Set([...declared.codes, ...adapterCheck.codes])],
+    source: manifest ? `manifest:${manifest.name}@${manifest.version}` : 'default-set',
+  };
+}
+
+// 按能力 ID 装配 Worker：Registry 解析版本与前置条件，Loader 装载实现，
+// manifest 决定验证器集合，副作用闸门由 Registry 提供。
+// 这是 Controller「按能力 ID 调用」的接线点；旧 CLI 入口不受影响。
+export async function createCapabilityWorker({
+  registry,
+  loader,
+  controller,
+  evidenceStore = null,
+  capabilityId,
+  version = '*',
+  contract = {},
+  heartbeatMs = 0,
+  preconditions = [],
+} = {}) {
+  if (!registry || typeof registry.require !== 'function') {
+    throw Object.assign(new Error('registry with require() is required'), { code: 'REGISTRY_REQUIRED' });
+  }
+  if (!loader || typeof loader.loadAdapter !== 'function') {
+    throw Object.assign(new Error('loader with loadAdapter() is required'), { code: 'LOADER_REQUIRED' });
+  }
+  const entry = registry.require(capabilityId, { version, preconditions });
+  const loaded = await loader.loadAdapter(capabilityId, { version });
+  const adapter = loaded.adapter;
+
+  const worker = createDeterministicWorker({ adapter, controller, evidenceStore, contract, heartbeatMs, manifest: entry.manifest });
+
+  return {
+    worker,
+    adapter,
+    manifest: entry.manifest,
+    manifestDigest: entry.digest,
+    sourcePath: loaded.sourcePath,
+    // 外部副作用必须先在该能力 manifest 里声明，才能在提交路径上落地。
+    assertEffect: (effectClass) => registry.assertSideEffectDeclared(capabilityId, effectClass, { version }),
+    assertPermission: (permission) => registry.assertPermissionDeclared(capabilityId, permission, { version }),
   };
 }

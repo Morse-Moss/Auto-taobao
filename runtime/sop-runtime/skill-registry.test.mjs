@@ -145,6 +145,22 @@ test('副作用/权限闸门：未声明即拒绝', () => {
   assert.throws(() => registry.assertPermissionDeclared('a.b.c', 'feishu.api'), (e) => e.code === 'PERMISSION_UNDECLARED');
 });
 
+test('knownValidators 注入后，声明未实现验证器的 manifest 被拒绝', () => {
+  // 不注入验证器名单时只做名称枚举校验（枚举内即可）
+  const lenient = buildRegistry({ manifests: [cap('a.b.c', { validation: ['structure', 'row_count'] })] });
+  assert.equal(lenient.ok, true, JSON.stringify(lenient.errors));
+
+  // 注入后，枚举内但无实现的名字必须被拒
+  const strict = buildRegistry({
+    manifests: [cap('a.b.c', { validation: ['structure'] }), cap('d.e.f', { validation: ['row_count'] })],
+    knownValidators: ['structure'],
+  });
+  assert.equal(strict.ok, false);
+  const error = strict.errors.find((e) => e.code === 'VALIDATION_NOT_IMPLEMENTED');
+  assert.ok(error);
+  assert.match(error.detail, /row_count/);
+});
+
 test('assertRegistry 对非法注册表抛错', () => {
   const registry = createRegistry();
   registry.addAll([cap('a.b.c', { dependencies: ['adapter.ghost@^1.0.0'] })]);
