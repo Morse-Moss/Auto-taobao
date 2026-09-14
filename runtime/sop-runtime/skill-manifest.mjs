@@ -3,6 +3,8 @@
 // 校验是纯函数、fail-closed：任何未知枚举、路径逃逸、未声明副作用都在装载前失败。
 import { SIDE_EFFECT_RISK } from './policy.mjs';
 import { isValidVersion, isValidRange } from './semver.mjs';
+// 发布期验证器的判定必须与 Validator 实现表同源，否则「哪个名字属于发布期」会出现两套答案。
+import { VALIDATION_STAGE, validationStageOf } from './validation-registry.mjs';
 
 export const MANIFEST_SCHEMA_VERSION = 'skill-manifest-v1';
 export const MANIFEST_FILE_NAMES = Object.freeze(['manifest.json', 'manifest.mjs']);
@@ -35,6 +37,12 @@ export const VALIDATION_NAMES = Object.freeze([
   'digest', 'artifact_integrity', 'relations', 'publication', 'contiguous_prefix', 'readback',
 ]);
 export const RECOVERY_RESUME_FROM = Object.freeze(['verified_cursor', 'idempotent_commit', 'checkpoint', 'none']);
+
+// 发布期验证器名单：由 Validator 实现表的 stage 派生，不在这里重复维护。
+// 有外部写副作用的能力必须声明其中至少一个，否则提交后无法自证「发布已生效」。
+export const PUBLICATION_VALIDATION_NAMES = Object.freeze(
+  VALIDATION_NAMES.filter((name) => validationStageOf(name) === VALIDATION_STAGE.PUBLICATION),
+);
 
 const NAME_RE = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
 const EXTERNAL_EFFECTS = Object.freeze(['feishu_write', 'external_publish', 'paid_provider_call', 'postgres_write']);
@@ -137,6 +145,19 @@ export function validateManifest(manifest) {
   const external = sideEffects.filter((effect) => EXTERNAL_EFFECTS.includes(effect));
   if (external.length && manifest.recovery?.supported !== true) {
     entryError(errors, 'RECOVERY_NOT_RESUMABLE', 'recovery', `external side effects ${external.join(', ')} require recovery.supported=true`);
+  }
+
+  // 发布期验收义务：能力声明了外部写副作用，就必须声明至少一个发布期验证器。
+  // 否则「提交成功」永远只是本地假设，回读阶段没有可执行的判定依据，游标会在未验收的发布上推进。
+  // 只约束 kind=capability：adapter 是低层合同，发布验收责任在能力层。
+  // 反向不约束（只声明发布期验证器却不写外部）是无害的冗余，不报错。
+  if (manifest.kind === 'capability' && external.length) {
+    const declaredValidation = Array.isArray(manifest.validation) ? manifest.validation : [];
+    const hasPublication = declaredValidation.some((name) => PUBLICATION_VALIDATION_NAMES.includes(name));
+    if (!hasPublication) {
+      entryError(errors, 'PUBLICATION_VALIDATOR_MISSING', 'validation',
+        `capability declaring ${external.join(', ')} must also declare at least one of: ${PUBLICATION_VALIDATION_NAMES.join(', ')}`);
+    }
   }
 
   const known = new Set([

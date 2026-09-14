@@ -48,8 +48,18 @@ export function createSideEffectLedger({ store, nowIso = () => new Date().toISOS
       } catch (error) {
         // 区分确定性拒绝与结果未知：handler 抛 unknown 标记时进 UNKNOWN，否则 FAILED
         const status = error?.unknown ? 'UNKNOWN' : 'FAILED';
-        const updated = await store.updateCommit(commitKey, { status });
-        return { status, record: updated, error: String(error?.message ?? error), requiresReconcile: status === 'UNKNOWN' };
+        const updated = await store.updateCommit(commitKey, {
+          status,
+          error: String(error?.message ?? error),
+          failureClass: error?.failureClass ?? null,
+        });
+        return {
+          status,
+          record: updated,
+          error: String(error?.message ?? error),
+          failureClass: error?.failureClass ?? null,
+          requiresReconcile: status === 'UNKNOWN',
+        };
       }
     },
 

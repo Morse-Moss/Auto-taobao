@@ -83,7 +83,7 @@ node runtime/sop-runtime/build-skill-registry.mjs --check
 
 - 发布期验证器（publication/readback）已实现并单测覆盖，但**尚未接入发布/提交路径**；接线属阶段 4b。
 - Controller 目前仍是「提供 `createCapabilityWorker` 这个接线点」，真正的业务 SOP（竞品周更、FAQ）还没有改成走能力 ID 调用；迁移按实施计划「先兼容旧 CLI，再切换 Controller」分批做。
-- 数据库迁移仍**未执行**：004 未 apply、005 仍草案；阻塞原因未变（角色 xws_agent 无 CREATEDB，隔离库验证无环境）。本阶段不涉及数据库。
+- 数据库迁移仍**未执行**：004 未 apply、005 未 apply。原记录的阻塞原因（角色 `xws_agent` 无 CREATEDB、隔离库验证无环境）**已在 2026-09-14 被推翻**：实际连接角色是 `xws_runner`（superuser=true、createdb=true），隔离库验证已可执行，见下文更正与阶段 4b 报告第 5 节。
 - xws-sku-collection / xws-faq-operator 仍未登记 manifest（目录内无 .mjs 实现，须先迁 Adapter/Workflow 契约）。
 
 ## 7. 下一步建议
@@ -91,3 +91,12 @@ node runtime/sop-runtime/build-skill-registry.mjs --check
 1. 阶段 4b：把发布期验证器接到提交/发布路径，让「提交后回读校验」也由 manifest 声明驱动。
 2. 用一个真实业务 SOP（建议先做 XWS 单分片采集）走一遍：admit → createCapabilityWorker → runOnce → 提交 → 回读 → 游标推进，产出前后对照收据。
 3. 解除数据库阻塞后 apply 004/005，再用 pg-store 重跑垂直切片与真实跨进程故障注入。
+
+## 8. 事后更正（2026-09-14 追记）
+
+第 6 节原写「角色 xws_agent 无 CREATEDB，隔离库验证无环境」。该结论基于文档转述，实测不成立：
+
+- 实际连接角色是 `xws_runner`，superuser=true、createdb=true，隔离库可以创建。
+- 004 首次隔离验证**发现真实缺陷**：`architecture.phases` 的 7 行种子数据把 `risks`/`exit_criteria` 两个 jsonb 列写成了纯文本，执行到第 18640 字节处报 `invalid input syntax for type json`。已修正为 JSON 数组字面量。
+- 修正后隔离验证 **17/17 通过**（语法、幂等、CHECK 约束、默认值、rollback、rollback 后重放）。
+- 仍未对任何真实环境 apply；004 的 apply 仍需目标环境确认。

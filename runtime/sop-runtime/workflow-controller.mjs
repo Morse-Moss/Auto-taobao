@@ -126,6 +126,105 @@ export function createController({
       return write(next, context.contextVersion);
     },
 
+    // ── 发布轴：外部写入的提交与回读验收（Spec 6.3 / ADR-004）───────────────
+    // 取值固定为 NOT_REQUESTED/READY/COMMITTED/VERIFIED/UNKNOWN（005 的 CHECK 约束），
+    // 因此确定性拒绝不新增状态：效果确定未发生时应回到「未提交」，而不是伪装成 UNKNOWN。
+    // 只有 VERIFIED 或 NOT_REQUESTED 才允许推进游标（见 advanceCursor）。
+
+    // 只声明「即将提交」，不代表任何外部效果已经发生。
+    async markPublicationReady(runId, { commitKey = null } = {}) {
+      const context = await read(runId);
+      if (context.publicationStatus !== 'NOT_REQUESTED' && context.publicationStatus !== 'READY') {
+        throw new ControllerError(`publication must be NOT_REQUESTED or READY to prepare, got ${context.publicationStatus}`, { code: 'PUBLICATION_STATE' });
+      }
+      const next = advance(context, {
+        publicationStatus: 'READY',
+        nextAction: 'COMMIT',
+        decisions: [...(context.decisions ?? []), { kind: 'PUBLICATION', status: 'READY', commitKey, at: nowIso() }],
+      }, { nowIso: nowIso() });
+      return write(next, context.contextVersion);
+    },
+
+    // 提交已发出（幂等键已登记）；此时仍不能假设效果生效。
+    async markPublicationCommitted(runId, { commitKey = null } = {}) {
+      const context = await read(runId);
+      if (context.publicationStatus !== 'READY' && context.publicationStatus !== 'COMMITTED') {
+        throw new ControllerError(`publication must be READY or COMMITTED to settle as committed, got ${context.publicationStatus}`, { code: 'PUBLICATION_STATE' });
+      }
+      const next = advance(context, {
+        publicationStatus: 'COMMITTED',
+        nextAction: 'READBACK',
+        decisions: [...(context.decisions ?? []), { kind: 'PUBLICATION', status: 'COMMITTED', commitKey, at: nowIso() }],
+      }, { nowIso: nowIso() });
+      return write(next, context.contextVersion);
+    },
+
+    // 结算发布：verdict 只能是 VERIFIED / UNKNOWN / REJECTED（由回读收据 + manifest 发布期验证器判定）。
+    // 三个分支各自校验前置状态，非法转移直接抛错，不做「尽力而为」的隐式纠正。
+    async settlePublication(runId, { verdict, commitKey = null, receipt = null, failureClass = 'BUG', detail = '' } = {}) {
+      const context = await read(runId);
+      const current = context.publicationStatus;
+
+      if (verdict === 'VERIFIED') {
+        if (current !== 'COMMITTED') {
+          throw new ControllerError(`publication must be COMMITTED before VERIFIED, got ${current}`, { code: 'PUBLICATION_STATE' });
+        }
+        const next = advance(context, {
+          publicationStatus: 'VERIFIED',
+          nextAction: 'ADVANCE_CURSOR',
+          decisions: [...(context.decisions ?? []), {
+            kind: 'PUBLICATION', status: 'VERIFIED', commitKey, at: nowIso(),
+            receiptRows: receipt?.rows ?? null, receiptDigest: receipt?.digest ?? null, detail: String(detail ?? ''),
+          }],
+        }, { nowIso: nowIso() });
+        return write(next, context.contextVersion);
+      }
+
+      if (verdict === 'UNKNOWN') {
+        if (current !== 'READY' && current !== 'COMMITTED' && current !== 'UNKNOWN') {
+          throw new ControllerError(`publication cannot become UNKNOWN from ${current}`, { code: 'PUBLICATION_STATE' });
+        }
+        const bumped = advance(context, {
+          publicationStatus: 'UNKNOWN',
+          nextAction: 'RECONCILE_COMMIT',
+          decisions: [...(context.decisions ?? []), { kind: 'PUBLICATION', status: 'UNKNOWN', commitKey, at: nowIso(), detail: String(detail ?? '') }],
+        }, { nowIso: nowIso() });
+        return write(setBlocker(bumped, 'COMMIT_UNKNOWN', detail || 'publication unverified, reconcile required', { nowIso: nowIso() }), context.contextVersion);
+      }
+
+      if (verdict === 'REJECTED') {
+        if (current !== 'READY' && current !== 'COMMITTED') {
+          throw new ControllerError(`publication cannot be rejected from ${current}`, { code: 'PUBLICATION_STATE' });
+        }
+        // 效果确定未发生：publicationStatus 保持 READY（未提交即未发布），
+        // 执行轴按策略映射重试/回队列/人工/终止，与 failAttempt 保持同一套映射。
+        const used = context.retryUsed?.transientExternal ?? 0;
+        const budget = context.retryBudget?.transientExternal ?? 3;
+        const { action, reason } = actionForFailure(failureClass, { retryUsed: used, retryBudget: budget });
+        const patch = {
+          leaseStatus: 'RELEASED',
+          decisions: [...(context.decisions ?? []), { kind: 'PUBLICATION', status: 'REJECTED', commitKey, at: nowIso(), detail: String(detail ?? '') }],
+        };
+        if (action === 'RETRY') {
+          Object.assign(patch, {
+            executionStatus: 'RETRY_WAIT',
+            retryUsed: { ...(context.retryUsed ?? {}), transientExternal: used + 1 },
+            nextAction: 'RETRY',
+          });
+        } else if (action === 'REQUEUE') {
+          Object.assign(patch, { executionStatus: 'QUEUED', nextAction: 'REQUEUE' });
+        } else if (action === 'WAIT_HUMAN') {
+          Object.assign(patch, { executionStatus: 'PAUSED', humanGateStatus: 'WAITING_HUMAN', nextAction: 'WAIT_HUMAN' });
+        } else {
+          Object.assign(patch, { executionStatus: 'FAILED', nextAction: 'TERMINAL' });
+        }
+        const bumped = advance(context, patch, { nowIso: nowIso() });
+        return write(setBlocker(bumped, failureClass, `${reason}: ${detail}`, { nowIso: nowIso() }), context.contextVersion);
+      }
+
+      throw new ControllerError(`unknown publication verdict: ${verdict}`, { code: 'PUBLICATION_VERDICT', details: { allowed: ['VERIFIED', 'UNKNOWN', 'REJECTED'] } });
+    },
+
     // 失败：按失败分类决定重试/回队列/人工/终止
     async failAttempt(runId, { attemptId, failureClass, detail = '' } = {}) {
       const context = await read(runId);

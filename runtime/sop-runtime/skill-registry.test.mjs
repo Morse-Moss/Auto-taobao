@@ -117,6 +117,8 @@ test('list 可按 kind/前置条件/输入类型/副作用筛选', () => {
         inputs: [{ name: 'p', type: 'path' }],
         permissions: ['filesystem.read', 'feishu.api'],
         sideEffects: ['local_parse', 'feishu_write'],
+        // 写外部的能力按契约必须声明发布期验证器，否则 manifest 校验直接拒绝。
+        validation: ['structure', 'readback'],
         recovery: { supported: true, resumeFrom: 'idempotent_commit' },
       }),
       adp('adapter.xws'),
@@ -159,6 +161,31 @@ test('knownValidators 注入后，声明未实现验证器的 manifest 被拒绝
   const error = strict.errors.find((e) => e.code === 'VALIDATION_NOT_IMPLEMENTED');
   assert.ok(error);
   assert.match(error.detail, /row_count/);
+});
+
+test('写外部但不声明发布期验证器的能力被 Registry 拒绝', () => {
+  const registry = buildRegistry({
+    manifests: [cap('a.b.c', {
+      permissions: ['filesystem.write', 'feishu.api'],
+      sideEffects: ['local_parse', 'feishu_write'],
+      validation: ['structure'],
+    })],
+  });
+  assert.equal(registry.ok, false);
+  const error = registry.errors.find((e) => e.code === 'PUBLICATION_VALIDATOR_MISSING');
+  assert.ok(error, JSON.stringify(registry.errors));
+  assert.equal(error.source, 'a.b.c');
+  assert.match(error.detail, /readback|publication/u);
+
+  // 补上发布期验证器即通过：证伪「只是看到 feishu_write 就一律拒绝」
+  const fixed = buildRegistry({
+    manifests: [cap('a.b.c', {
+      permissions: ['filesystem.write', 'feishu.api'],
+      sideEffects: ['local_parse', 'feishu_write'],
+      validation: ['structure', 'readback'],
+    })],
+  });
+  assert.equal(fixed.ok, true, JSON.stringify(fixed.errors));
 });
 
 test('assertRegistry 对非法注册表抛错', () => {
