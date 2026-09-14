@@ -34,6 +34,20 @@ export function capabilityLane(identity, capability) {
   return `${laneKey(identity)}/${capability ?? 'unknown-capability'}`;
 }
 
+// 写操作的 lane 额外带上「写目标」：同一个外部写入目标（例如同一张飞书表）
+// 无论由哪个能力、哪次运行发起，都必须串行，避免对同一目标双写。
+// 计划里的 resource_lease 用这个持久化 lane 键实现（不用新的租约表、不用进程内租约），
+// 代价是租约粒度等于「写目标」而不是任意资源名——需要更细粒度时再单独设计。
+export function writeLane(identity, capability, target) {
+  const base = capabilityLane(identity, capability);
+  return target ? `${base}@${target}` : base;
+}
+
+// 统一入口：调用方不需要自己判断该用哪种 lane。
+export function laneFor({ identity, capability, target = null, write = false }) {
+  return write ? writeLane(identity, capability, target) : capabilityLane(identity, capability);
+}
+
 export function classifyRisk({ sideEffects = [], target = null } = {}) {
   if (sideEffects.some((effect) => HUMAN_ONLY_EFFECTS.has(effect))) return 'HUMAN_REQUIRED';
   let risk = 'LOW';

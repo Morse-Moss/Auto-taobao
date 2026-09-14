@@ -2,6 +2,7 @@
 export * from './context-schema.mjs';
 export * from './policy.mjs';
 export * from './task-admission.mjs';
+export * from './task-queue.mjs';
 export * from './workflow-controller.mjs';
 export * from './validator.mjs';
 export * from './validation-registry.mjs';

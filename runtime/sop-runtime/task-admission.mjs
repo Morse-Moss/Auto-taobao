@@ -1,6 +1,6 @@
 // Task Admission：校验任务范围、身份、能力和配额，创建 run_id（不执行任何外部动作）
 import { createContext, validateContext, advance } from './context-schema.mjs';
-import { evaluatePolicy, laneKey, capabilityLane, classifyRisk } from './policy.mjs';
+import { evaluatePolicy, laneKey, capabilityLane, laneFor, classifyRisk } from './policy.mjs';
 
 const REQUIRED_SPEC = ['taskId', 'workflow', 'capability', 'identity'];
 
@@ -43,14 +43,16 @@ export async function admitTask({
     };
   }
 
-  const lane = capabilityLane(spec.identity, spec.capability);
+  // 写任务把「写目标」并入 lane，保证同一外部目标不被两个运行同时写。
+  const isWrite = Boolean(spec.write);
+  const lane = laneFor({ identity: spec.identity, capability: spec.capability, target: spec.target ?? null, write: isWrite });
   const activeInLane = await store.countActiveInLane(lane);
   const policy = evaluatePolicy({
     identity: spec.identity,
     capability: spec.capability,
     sideEffects: spec.sideEffects ?? [],
     target: spec.target ?? null,
-    write: Boolean(spec.write),
+    write: isWrite,
     activeInLane,
     registeredCapabilities,
   });
@@ -83,6 +85,11 @@ export async function admitTask({
     nextAction: policy.humanGate ? 'WAIT_APPROVAL' : 'START',
     humanGateStatus: policy.humanGate ? 'WAITING_HUMAN' : 'NONE',
     executionStatus: policy.humanGate ? 'PAUSED' : 'QUEUED',
+    // lane 落到上下文里，成为权威值：执行期直接用它，不再重新推算，
+    // 避免「准入时算一种 lane、开 attempt 时算成另一种」的静默漂移。
+    lane,
+    isWrite,
+    queue: { ...(base.queue ?? {}), enqueuedAt: nowIso, priority: Number(spec.priority ?? 0), deadlineAt: spec.deadlineAt ?? null },
     updatedAt: nowIso,
   }, { nowIso });
 

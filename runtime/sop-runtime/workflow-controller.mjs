@@ -1,7 +1,7 @@
 // Workflow Controller：Run/Step/Attempt 状态唯一拥有者（Spec 5.1 / 6.3）
 // 只允许确定性状态转移；外部副作用必须走 Worker + Validator + Commit/Reconcile。
 import { advance, setBlocker, validateContext, isTerminal } from './context-schema.mjs';
-import { actionForFailure, capabilityLane, laneLimit } from './policy.mjs';
+import { actionForFailure, laneFor, laneLimit } from './policy.mjs';
 import { CasConflictError, LANE_EXECUTING_STATUSES } from './store-port.mjs';
 
 export class ControllerError extends Error {
@@ -70,7 +70,9 @@ export function createController({
       }
       // lane 闸门：同一 lane 的其它活跃运行数达到上限就拒绝开新 attempt。
       // 这是「同一账号/profile/写目标不发生双写」在执行层的落点；默认上限 1，写操作恒为 1。
-      const lane = capabilityLane(context.identity ?? {}, context.capability);
+      // lane 优先取上下文里的权威值（准入时写入），缺失时才按规则重算，避免两边算不一致。
+      const lane = context.lane
+        ?? laneFor({ identity: context.identity ?? {}, capability: context.capability, target: context.target ?? null, write: isWrite });
       const limit = laneLimit({ lane, write: isWrite, limits: laneLimits });
       const activeOthers = await store.countActiveInLane(lane, { excludeRunId: runId, statuses: LANE_EXECUTING_STATUSES });
       if (activeOthers >= limit) {

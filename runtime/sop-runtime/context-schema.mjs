@@ -61,6 +61,15 @@ export function createContext({
     decisions: [],
     blocker: null,
     nextAction: 'ADMIT',
+    // 队列元数据随上下文一起持久化（durable_runs.context 是 jsonb），
+    // 因此队列优先级/等待时间/截止时间不需要新增表或新增列，也不依赖进程内状态。
+    queue: {
+      priority: 0,
+      notBefore: null,
+      deadlineAt: null,
+      enqueuedAt: null,
+      attempts: 0,
+    },
     contextVersion: 1,
     updatedAt: null,
   };
