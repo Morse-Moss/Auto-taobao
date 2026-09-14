@@ -470,7 +470,8 @@ node runtime/sop-runtime/two-stage-runner.mjs \
 
 | 缺口 | 性质 | 为什么还没做 |
 | --- | --- | --- |
-| 发布段从未对**真实 base** 执行过 `--commit` | 能力缺口（**已部分关闭**） | 2026-09-14 已补做 `xws.feishu.import`：用户授权的一次性演练表（应用自有 base 内新建 `_演练_xws_import_20260914`，16 字段合同、演练后 DELETE），真实提交得 `verdict=VERIFIED` / `commitKey=e4c775a0…` / 回读 rows 3 + attachments 3 / 游标 1→3，独立回读三行内容一致，见 MIGRATION-8 §8。**仍未真实跑过的是 `sycm.feishu.weekly`（见下面两行与 §13.4）、`xws.sku.collection` 与 `huitun.keyword-heat.collect` 的发布段**（这三条各自还差一次同类演练）。注意：用户原本指定的表在租户 `kcne618basvj`，与本应用所属租户 `rcndesfqro3x` 跨租户，飞书自建应用不能被跨租户加为协作者，因此换到应用自己的租户演练 |
+| 发布段从未对**真实 base** 执行过 `--commit` | 能力缺口（**已部分关闭**） | 2026-09-14 已补做 `xws.feishu.import`：用户授权的一次性演练表（应用自有 base 内新建 `_演练_xws_import_20260914`，16 字段合同、演练后 DELETE），真实提交得 `verdict=VERIFIED` / `commitKey=e4c775a0…` / 回读 rows 3 + attachments 3 / 游标 1→3，独立回读三行内容一致，见 MIGRATION-8 §8。**仍未真实跑过的是 `sycm.feishu.weekly`（见下面两行与 §13.4）、`xws.sku.collection` 与 `huitun.keyword-heat.collect` 的发布段**（这三条各自还差一次同类演练）。注意：用户原本指定的表在租户 `kcne618basvj`，与本应用所属租户 `rcndesfqro3x` 跨租户，飞书自建应用不能被跨租户加为协作者，因此换到应用自己的租户演练。**2026-09-14 晚续**：为 `sycm.feishu.weekly` 搭好「应用自持沙盒 base」（§13.5.1）后真跑，**先撞到一条更靠前的代码侧缺陷**——库约束不接受 `FAILED`，失败路径连收据都写不出来（§13.5.2），已修并验证（§13.5.3）；但该条能力的发布段**仍未跑成**，卡在两个彼此独立的前置上（§13.5.4） |
+| `supervisor_commit_records.status` 词表与运行时 `COMMIT_STATUS` 不一致 | **已修（DDL 待 apply）** | 001 的 CHECK 缺 `FAILED`，运行时账本失败时会写它 → 真实 PG 上抛约束异常、失败路径丢收据。已新增 `db/migrations/006-commit-record-status-vocabulary.sql`（+ fail-closed 回滚）与仓库级守卫 `commit-status-vocabulary.test.mjs`，隔离库 26/26、故障注入 17/17 通过；**006 尚未 apply 到业务库**，属关键 DDL 变更，待授权（§13.5.4） |
 | `xws.sku.collection` **写前新鲜度重算**缺失（D7.25） | 能力缺口 | 运维 CLI（`apply-xws-sku-manifest.mjs`）写入前会重跑一次 dry-run 并 `assertFreshPlanMatchesManifest`；运行时路径离线不可用，只有「写前哈希绑定 + 写后回读收敛」。补法是在 COLLECT 里加一次需要 Feishu 只读凭据的新鲜度重算，或把 CLI 的 fresh-dry-run 提升为可复用的只读能力。本轮不做：会引入第二条 Feishu 读路径，而收益（拦截「工件已过期但表状态未变」的窗口）需要先在真实写入中被观测到 |
 | `xws.sku.collection` **不复算**解析结论（D7.17） | 刻意取舍 | 能力复算的是「这批证据 ↔ 这份计划」的一致性，不是 `SKU名称/规格/尺寸/适用空间` 的解释结果。解释结果由 `sha256(parserFile) === manifest.parser.sha256` 绑定版本，而不是被重新推导。审查者若要质疑某行的解析是否正确，必须回到 dry-run 环节，而不是指望适配器 |
 | `sycm.search-rank.export` 未被**真实浏览器**驱动过 | 能力缺口 | 迁移 4 只把它接到了运行时并用夹具流程端到端驱动（真 registry/loader/adapter/证据库/Controller）。真实跑需要 Edge 调试实例上的生意参谋登录态；本轮没有重新登录 |
@@ -546,7 +547,7 @@ node runtime/sop-runtime/two-stage-runner.mjs \
 
 
 架构文档：`agent-sop-runtime-spec.md`（不变量与契约）、`agent-sop-runtime-implementation-plan.md`（阶段与验收）、`README.md`、`handoff-to-teammate.md`、本文、`MIGRATION-2-SYCM-WEEKLY-REPORT.md`、`MIGRATION-3-FAQ-FANOUT-REPORT.md`、`MIGRATION-4-SYCM-SEARCH-RANK-REPORT.md`、`MIGRATION-5-XWS-SKU-REPORT.md`、`MIGRATION-6-HUITUN-WEEKLY-REPORT.md`、`MIGRATION-7-AGENT-PLANNER-REVIEWER-REPORT.md`、`MIGRATION-8-QUEUE-SCHEDULER-REPORT.md`。
-迁移：`db/migrations/001-005`（各带 rollback），全量已 apply 到本项目库 `xws_automation`（容器 `xws-adaptive-postgres`，PG 17，127.0.0.1:5432）。
+迁移：`db/migrations/001-006`（各带 rollback），**001-005 已 apply** 到本项目库 `xws_automation`（容器 `xws-adaptive-postgres`，PG 17，127.0.0.1:5432）；`006-commit-record-status-vocabulary.sql` 已在隔离库验证 26/26，**尚未 apply**（关键 DDL 变更待授权，见 §13.5.4）。
 运行时：`runtime/sop-runtime/` 共 **32 个模块**（不含 22 个 `.test.mjs`）。模块数在迁移 4/5/6 三轮**零增长**，迁移 7 +2（`agent-review.mjs`、`agent-planned-run.mjs`，都在 Agent 层），迁移 8 +3（`capability-scheduler.mjs`、`runtime-bootstrap.mjs` 两个新模块 + 1 个测试文件；`runtime-bootstrap.mjs` 是从 `two-stage-runner.mjs` 抽出的共用装配）。测试文件数 20 → 22。
 **2026-09-14 对账更正（见 §12.4 第 4 条）**：上面这行里的「22 个 `.test.mjs`」与「测试文件数 →22」是**多写了一个**——实测该目录下 `.test.mjs` 为 **21 个**（`git log --diff-filter=D` 无删除记录）。模块数 32 是对的：该目录下 `.mjs` 共 33 个，其中 `recovery-fault-injection.mjs` 是故障注入脚本、不算运行时模块。
 `two-stage-runner.mjs` 在迁移 8 首次改动（装配抽出 + `parseCliArgs` 新增 `profile` 选项，均为纯提取/向后兼容，`run` profile 行为不变）；**迁移 8 之前它自迁移 2 起一直未改**——这条记录要保留，因为「新能力不改核心」是这套底座的核心卖点，任何一次改动都该被记下来并解释。
@@ -566,7 +567,7 @@ node runtime/sop-runtime/two-stage-runner.mjs \
 
 | 阶段 | 结论 | 证据（可复核） | 未做 / 打折的部分 |
 | --- | --- | --- | --- |
-| 0 架构基线与迁移落地 | **完成** | `db/migrations/001-005` 全带 rollback 且已 apply 到 `xws_automation`；`architecture` schema 7 表回读计数（reviews 1 / capabilities 5 / modules 15 / gaps 9 / phases 7 / decisions 7 / evidence_refs 8）；004 幂等与 rollback 后重放在临时库 17/17 | — |
+| 0 架构基线与迁移落地 | **完成（006 待 apply）** | `db/migrations/001-006` 全带 rollback；001-005 已 apply 到 `xws_automation`；`architecture` schema 7 表回读计数（reviews 1 / capabilities 5 / modules 15 / gaps 9 / phases 7 / decisions 7 / evidence_refs 8）；004 幂等与 rollback 后重放在临时库 17/17；006 隔离库 26/26 通过、待授权 apply | — |
 | 1 Context / Checkpoint / 恢复 | **完成** | `context-schema.mjs`（sop-context-v1 五条状态轴）+ pg-store CAS；`recovery-fault-injection.mjs` 跨进程故障注入 **15/15**（子进程被杀→另一进程收回过期 lease→从游标 10 续跑到 20；重复 commit_key 不产生第二行） | — |
 | 2 Side Effect Ledger / 幂等 / 对账 | **完成（覆盖到已接线的能力）** | 复用 `supervisor_commit_records`（未新增同义表）；commit→verify→settle 全链；`reconcileUnknown` 只对账不重试 | 计划写「所有上传、写入、付费调用统一登记」——目前真实外部写只覆盖周更族；FAQ 周期级发布段仍走旧 CLI（§9） |
 | 3 Manifest / Registry / Loader | **完成** | 10 manifest（能力 8 + 适配器 2）；`build-skill-registry.mjs --check` 退出码 0/1/2；坏 manifest 在执行前失败（6 类错误码）；entry 限目录内相对 `.mjs` | — |
@@ -730,3 +731,115 @@ store 走本项目库 `xws_automation` 的 PG `pg-store`。收据落在
 因此本轮的真实运行**只到采集段为止**，并且收据里明确写着 `publish: NOT_ATTEMPTED` ——
 这是刻意的：让「没发布」和「发布并验收了」在收据上长得不一样。
 待用户决定发布段的跑法（真实生产写入 / 另备一次性演练表 / 先不跑）后再补这一步。
+
+### 13.5 真实跑发布段（续）：先撞到一个「发布段根本写不出收据」的缺陷
+
+用户随后授权「现在就跑一次性演练表」+「允许新开飞书标签」，于是把刻意留白的发布段补上。
+结果是：**真实跑一次立刻抓到一条代码侧缺陷**，它和「浏览器没登录」是两个独立原因，
+而且它在链路上更靠前——发布段压根没走到飞书那一步。
+
+#### 13.5.1 场地：为什么必须在另一张 base 上跑
+
+把「用一次性演练表替代生产表」这条路逐条试完，才知道它走不通，原因是三条硬约束叠在一起：
+
+| 约束 | 实测 |
+| --- | --- |
+| `assertTable(tables, id, expectedName)` 按 id 取表、按**名字**断言，且 history / library 的名字在 `update-weekly-base.mjs` 里是**硬编码**的 `关键词历史总表 V1` / `关键词编号库 V1` | 演练表必须恰好叫这两个名字 |
+| 飞书**不允许重名表** | 在旧词库 base 建重名表 → `1254013 TableNameDuplicated`；只在建表瞬间多出一张都不行 |
+| 新应用在**新租户词库 base** 上没有建表权 | `POST /tables` → `91403 Forbidden`（应用在竞品 base 上有，在词库 base 上没有） |
+
+于是「一次性演练表」只能落在**另一张 base** 上。可选的第三条路（新建 base + 只建需要的表）也不行：
+周表的字段合同里含 8 个公式字段，`awaitFormulaFields` 要求它们全部结算出非 `#` 值，
+而公式/引用字段无法靠 API 从零复刻（跨表引用要重写 tableId）。**必须是一张词库 base 的完整副本。**
+
+最终做法：用 Drive 复制接口让**应用自己**复制新租户词库 base（`POST /drive/v1/files/<token>/copy?type=bitable`，
+`folder_token` 取自应用云空间根目录），得到**应用自持**的沙盒 base
+`G32Lb4s4lauMjnsWP3Oc6TBjneg`（8 张表、历史 2067 行、编号库 475 行，结构与源逐表相同）。
+应用自持这一点是关键：跨租户不能把自建应用加为协作者（§9 已有记录），**应用自己复制的 base 不需要任何协作者授权**。
+
+沙盒上的两处整备（全部只动沙盒，生产表零改动）：
+
+1. `assertCollectionDateAvailable` 会按设计拦下「采集日期已被别的批次占用」——手上唯一合法的真实导出对
+   endDate 是 2026-08-26，而它在历史表里属于批次 3（300 行）。处理办法是把**沙盒里**那 300 行的
+   `采集日期` 清空（不动批次号、不动行数，历史仍是 2067 行），生产表一行未碰。
+2. 链接分享对齐成 `tenant_editable`（与用户已有的竞品 base 同设置），让浏览器里的用户账号能驱动「复制数据表」。
+
+**离线预演**（真实 CLI、真实导出对、不写任何外部）先过了才敢提交：
+
+```
+node skills/sycm-to-feishu-base/scripts/update-weekly-base.mjs --base-url https://kcne618basvj.feishu.cn/base/G32Lb4s4lauMjnsWP3Oc6TBjneg \
+  --source-csv runtime/weekly-runs/2026-08-26/ordinary-bathtub-week-20260826.csv \
+  --source-xlsx runtime/weekly-runs/2026-08-26/ordinary-bathtub-week-20260826.xlsx \
+  --weekly-table-id tbllwOVjo0wH1lvY --weekly-table-name '关键词分析 V1（2026-09-12）' \
+  --history-table-id tblCtygZpg3ixZ4X --library-table-id tblhk8iP2KbjuLKW \
+  --protected-table-id tblg096m3inDQP98 --protected-table-name '关键词分析 V1（2026-08-29）' \
+  --collection-date 2026-08-26 --batch-number 8 --expected-source-rows 300 --expected-history-before 2067 \
+  --category 浴缸 --env-file E:/小红书/.env.feishu-kcne.local
+# EXIT=0  mode=DRY_RUN_READY
+# proof: 7天 / 2026-08-20 ~ 2026-08-26 / 1-300 / csvSha256=E7D2249D6765…
+# history: priorRows=2067  currentBatchRows=0  expectedAfter=2367
+# keywordLibrary: existingRows=475  missingRows=0   ← 本次不会新增任何编号
+# plannedPreviousBatchUpdates=0  batchValidity.fieldsToCreate=0
+```
+
+#### 13.5.2 真实 `--commit` 撞到的缺陷：库约束不接受 `FAILED`，失败路径写不出收据
+
+`two-stage-runner.mjs` 带上 `--commit --operator … --publish-input '{"dryRun":false,…}'` 一跑，
+**没有走到飞书**，先炸在记账上：
+
+```
+error: new row for relation "supervisor_commit_records" violates check constraint
+       "supervisor_commit_records_status_check"
+    at stores/pg-store.mjs:275 (updateCommit)
+    at side-effect-ledger.mjs:54  (commit 的 catch 分支)
+    at publication.mjs:140        (ledger.commit)
+    at two-stage-runner.mjs:215   (runTwoStage)
+# exit=4，且 two-stage-receipt.json 根本没生成
+```
+
+根因是一处**词表漂移**：`001-supervisor-tables.sql` 给 status 的 CHECK 是 6 个值
+（`NOT_REQUESTED/READY/COMMITTING/COMMITTED/VERIFIED/UNKNOWN`），
+而运行时 `side-effect-ledger.mjs` 的 `COMMIT_STATUS` 也是 6 个值但**含 `FAILED`、不含 `NOT_REQUESTED`**。
+handler 确定性失败时账本写 `status='FAILED'` → 库拒绝 → 异常穿出 `ledger.commit`。
+
+后果比「少记一条日志」严重得多：**失败路径连收据都写不出来**（`two-stage-receipt.json` 未生成），
+而 I11 / 收据全量原则要求的正是「失败也要给出可读的结算」。
+
+为什么一直没被发现，三个原因缺一不可：
+
+1. 所有离线测试都用**内存 store**，它的 `updateCommit` 是 `Object.assign(patch)`，对值域不做任何校验；
+2. `COMMIT_STATUS` 这个导出**全仓库无人使用、无任何测试盯**（本次是第一次有测试读它）；
+3. 已有的真实提交演练（`xws.feishu.import`）走的是**成功路径**（`COMMITTING → COMMITTED → VERIFIED` 都在词表内），
+   失败路径从未在 PG 上被走过。
+
+**这也是「发布段从未对真实 base 执行过 `--commit`」的代码侧原因**，与 §13.4 记的外部前置（浏览器无飞书登录态）
+是两个彼此独立的原因——修好外部前置也不会有用，因为链路上更靠前的那一层先把异常抛了。
+
+#### 13.5.3 修法与验证
+
+| 动作 | 落点 | 证据 |
+| --- | --- | --- |
+| 补齐词表（唯一必要的 DDL 变更） | `db/migrations/006-commit-record-status-vocabulary.sql`（+ `006-rollback.sql`） | 只 DROP/ADD `supervisor_commit_records_status_check`，把 `FAILED` 加进词表；不触碰任何数据行 |
+| 回滚**刻意 fail-closed** | `006-rollback.sql` | 表里还有 `FAILED` 行时回滚**整体失败**（多语句简单查询按隐式事务回滚，不会留下「已 DROP 未 ADD」的中间态）；该性质已被断言 |
+| 仓库级守卫：运行时词表 ⊆ 库约束 | `runtime/sop-runtime/commit-status-vocabulary.test.mjs`（新增，4 用例） | 从 `db/migrations/*.sql` 推导「最终生效」的约束定义并与 `COMMIT_STATUS` 对账；另用内存 store 驱动 `ledger.commit` 断言失败态确实是库接受的那个 |
+| 隔离预演 | `runtime/verify-migrations-isolated.mjs` 新增 `[5]` 段 | **26/26 通过**（临时库，角色 xws_runner）。含反例：006 之前 `insert status='FAILED'` 被拒；006 之后可写、非法值仍被拒、重复执行幂等、rollback fail-closed、rollback 后重放 |
+| 真实 PG 上的失败路径用例 | `runtime/sop-runtime/recovery-fault-injection.mjs` 新增 `[5]` 段 + 迁移清单补 006 | **17/17 通过**。断言：确定性失败在真实 Postgres 上记为 `FAILED` 且 `failureClass=POLICY_DENIED`，库里 `FAILED` 与 `UNKNOWN` 是两个可区分状态 |
+
+**守卫第一次运行就抓到一条自己的口径错误**，记在这里当教训：`006-commit-….sql` 与 `006-rollback.sql`
+按**字典序**排是 rollback 在后，于是「取最后一个 ADD CONSTRAINT」把「回滚后的 6 值」误判成现状。
+修法是显式排除 `*-rollback.sql`（回滚脚本是人工撤销入口，不在正向序列里）。
+——「文件名顺序 ≠ 应用顺序」这条，之前在迁移 apply 流程里吃过一次，这次在**推导**里又吃了一次。
+
+回归：`sop-runtime` **265/265**（261 + 4 新增，fail 0）；`runtime` **397/397**（fail 0）。
+`skills` 本轮未改动，未重跑。
+
+#### 13.5.4 两个仍未关闭的前置（彼此独立，都需要用户侧动作）
+
+1. **006 尚未 apply 到业务库 `xws_automation`**。DDL 属关键变更，按项目约定需要明确授权后再走
+   「只读核查 → 隔离预演（已做，26/26）→ pg_dump → 一文件一事务 → 回读核对」。
+   在它 apply 之前，任何一次**失败的**发布仍会写不出收据（成功路径不受影响）。
+2. **共享 CDP 浏览器没有飞书登录态**。`copy-weekly-table.mjs` 是浏览器驱动的（经飞书前端 `window.bitableStore`
+   点「复制数据表」），而实测该浏览器打开 `kcne618basvj.feishu.cn` 直接跳到 `accounts.feishu.cn` 的**扫码登录页**。
+   本机 6 个 CDP 端点全部查过（`netstat` 全量扫描 + 逐个探 `/targets`），其余 5 个是本机其他项目的爬虫浏览器，
+   都没有飞书会话。扫码登录只能由人完成，脚本侧已按设计抛 `HUMAN_REQUIRED`（exit 2）。
+

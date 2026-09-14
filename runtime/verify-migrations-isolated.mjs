@@ -261,7 +261,65 @@ async function main() {
     verify.constraints = (await conQuery(client)).rows.length;
     verify.indexes = (await idxQuery(client)).rows.length;
 
-    console.log('\n[5] 收尾');
+    // --- 006 ---
+    console.log('\n[5] 006 提交状态词表补齐（FAILED）');
+    const commitStatusDef = async (c) => String((await c.query(
+      `select pg_get_constraintdef(oid) as def from pg_constraint
+       where conname = 'supervisor_commit_records_status_check'`)).rows[0]?.def ?? '');
+    const tryInsertCommit = async (c, status) => {
+      try {
+        await c.query(
+          `insert into supervisor_commit_records (commit_key, run_id, target, status)
+           values ($1, '33333333-3333-4333-8333-333333333333', 'drill', $2)`,
+          [`drill-${status}`, status],
+        );
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    // 反例先行：这条断言复现的就是真实运行踩到的缺陷（发布段 handler 一失败就写不出收据）。
+    record('006 前置：旧约束下 FAILED 被拒（复现真实缺陷）',
+      (await tryInsertCommit(client, 'FAILED')) === false, '未迁移前 insert status=FAILED 被 CHECK 拒绝');
+
+    await applyFile(client, '006-commit-record-status-vocabulary.sql');
+    const vocabAfter006 = await commitStatusDef(client);
+    record('006 首次执行', vocabAfter006.includes('FAILED'), vocabAfter006 || '（取不到约束定义）');
+    record('006 后 FAILED 可写入（运行时的失败路径从此能落库）',
+      await tryInsertCommit(client, 'FAILED'), 'insert status=FAILED 成功');
+    record('006 后非法值仍被拒（是补齐词表，不是拆掉约束）',
+      (await tryInsertCommit(client, 'NOT_A_STATUS')) === false, 'insert status=NOT_A_STATUS 被拒绝');
+
+    await applyFile(client, '006-commit-record-status-vocabulary.sql');
+    record('006 重复执行幂等', (await commitStatusDef(client)) === vocabAfter006, '二次执行后约束定义逐字不变');
+
+    // 回滚 fail-closed：表里还有 FAILED 行时，回滚必须整体失败，且不能把约束留在「已 DROP 未 ADD」的中间态。
+    let rollbackBlocked = false;
+    let rollbackError = '';
+    try {
+      await applyFile(client, '006-rollback.sql');
+    } catch (error) {
+      rollbackBlocked = true;
+      rollbackError = String(error.message).split('\n')[0];
+    }
+    record('006 rollback 在存在 FAILED 行时按预期失败（fail-closed）', rollbackBlocked,
+      rollbackError || '竟然回滚成功了，说明约束没有真正生效');
+    record('006 失败的回滚不留下半执行状态', (await commitStatusDef(client)) === vocabAfter006,
+      '多语句简单查询按隐式事务整体回滚，约束定义未被改动');
+
+    await client.query("delete from supervisor_commit_records where status = 'FAILED'");
+    await applyFile(client, '006-rollback.sql');
+    const vocabAfterRollback = await commitStatusDef(client);
+    record('006 rollback 清除 FAILED（回到 001 的 6 值）',
+      !vocabAfterRollback.includes('FAILED') && (await tryInsertCommit(client, 'FAILED')) === false,
+      vocabAfterRollback || '（取不到约束定义）');
+
+    await applyFile(client, '006-commit-record-status-vocabulary.sql');
+    record('006 rollback 后重放', (await commitStatusDef(client)).includes('FAILED'), '约束重新含 FAILED');
+    verify.commitStatusVocab = await commitStatusDef(client);
+
+    console.log('\n[6] 收尾');
   } catch (error) {
     const full = String(error?.message ?? error);
     record('执行异常', false, full);

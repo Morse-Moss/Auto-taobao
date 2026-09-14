@@ -23,6 +23,7 @@ import pg from 'pg';
 import { createPgStore } from './stores/pg-store.mjs';
 import { createController } from './workflow-controller.mjs';
 import { createContext } from './context-schema.mjs';
+import { createSideEffectLedger } from './side-effect-ledger.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
@@ -38,9 +39,13 @@ const IDENTITY = Object.freeze({
   tenantId: 't-fault', storeId: 's-fault', platform: 'xws',
   accountId: 'a-fault', browserProfileId: 'edge-isolated', contractVersion: '1.0.0',
 });
+// 临时库要跑到与业务库同一套结构：漏掉一个迁移，故障注入就会在一个「业务库不会有的旧约束」上出结论。
+// 006 必须在这里：它把 supervisor_commit_records.status 的词表补齐到含 FAILED，
+// 而故障注入会走 ledger.commit 的失败路径（写 FAILED），缺 006 就会在临时库里复现一个已修掉的缺陷。
 const MIGRATIONS = [
   '001-supervisor-tables.sql', '002-durable-run-tables.sql', '003-durable-attempt-heartbeat.sql',
   '004-architecture-catalog.sql', '005-sop-runtime-context.sql',
+  '006-commit-record-status-vocabulary.sql',
 ];
 
 function parseArgs(argv) {
@@ -187,7 +192,7 @@ async function main() {
     await client.connect();
     for (const f of MIGRATIONS) await client.query(fs.readFileSync(path.join(MIG_DIR, f), 'utf8'));
     await client.end();
-    record('迁移 001-005 应用到临时库', true, `${MIGRATIONS.length} 个文件`);
+    record('迁移 001-006 应用到临时库', true, `${MIGRATIONS.length} 个文件`);
 
     store = await createPgStore(withDatabase(baseUrl, tempDb));
     const controller = createController({ store, leaseTtlMs: LEASE_TTL_MS, workerId: 'worker-main' });
@@ -261,6 +266,38 @@ async function main() {
       && ledger.length === 2 && ledger.every((row) => row.n === 1),
       `ledger=${ledger.map((r) => `${r.status}:${r.n}`).join(',')}`,
     );
+
+    console.log('\n[5] 账本失败路径在真实 PG 上落库（006：status 词表必须含 FAILED）');
+    // 为什么必须在这一层验：内存 store 的 updateCommit 是 Object.assign(patch)，对值域不做任何校验，
+    // 所以「账本写 FAILED、库约束不收」这类漂移**所有离线测试都照不到**。
+    // 而它炸的位置是 handler 失败之后的记账那一步——异常穿出 ledger.commit，失败路径连收据都写不出来。
+    // （2026-09-14 真实跑 sycm.feishu.weekly 发布段时踩到，见 db/migrations/006-*.sql。）
+    const failLedger = createSideEffectLedger({ store });
+    const { commitKey: failKey } = await failLedger.prepare({
+      runId, target: 'feishu:base/table', businessKey: 'shard-fail-drill',
+    });
+    const failResult = await failLedger.commit({
+      commitKey: failKey,
+      businessKey: 'shard-fail-drill',
+      handler: async () => {
+        const error = new Error('确定性拒绝：调用方没备好目标');
+        error.failureClass = 'POLICY_DENIED';
+        throw error;
+      },
+    });
+    record('确定性失败的提交在真实 PG 上记为 FAILED（不再抛约束异常）',
+      failResult.status === 'FAILED' && failResult.failureClass === 'POLICY_DENIED',
+      `status=${failResult.status} class=${failResult.failureClass}`);
+
+    const failProbe = new pg.Client({ connectionString: withDatabase(baseUrl, tempDb) });
+    await failProbe.connect();
+    const failRow = (await failProbe.query(
+      'select status from supervisor_commit_records where commit_key = $1', [failKey])).rows[0];
+    const failAsUnknown = (await failProbe.query(
+      "select count(*)::int as n from supervisor_commit_records where commit_key = $1 and status = 'UNKNOWN'", [failKey])).rows[0].n;
+    await failProbe.end();
+    record('FAILED 与 UNKNOWN 在库里是两个可区分的状态（重试与对账分得开）',
+      failRow?.status === 'FAILED' && failAsUnknown === 0, `库里 status=${failRow?.status ?? '<none>'}`);
   } finally {
     if (hold && hold.child.exitCode === null && hold.child.signalCode === null) hold.child.kill('SIGKILL');
     if (store) await store.close().catch(() => {});

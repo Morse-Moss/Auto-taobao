@@ -67,6 +67,9 @@ runtime/*-dry-run*/
 runtime/*-live*/
 runtime/*.remote.js
 runtime/*.remote.backup.js
+runtime/sop-runtime/two-stage-*/
+runtime/sop-runtime/weekly-*-20*/
+/*-runs/
 runtime/prompt-panel-inspect-copy.txt
 runtime/screenshot-response.txt
 
@@ -80,6 +83,8 @@ runtime/screenshot-response.txt
 $d/
 tmp-*-xlsx/
 /checkpoint.json
+/*-checkpoint.json
+runtime/_*.txt
 
 # Project-local agent memory (not part of the deliverable)
 .workbuddy/
