@@ -73,6 +73,28 @@ export function requiresApproval(riskClass) {
 // 只要带写副作用，无论 limits 怎么写都恒为 1（写目标永远串行）。
 export const DEFAULT_LANE_LIMIT = 1;
 
+// ── 执行槽占用判据 ──────────────────────────────────────────────────────────
+// 什么才算「占用了这条 lane 的执行槽」？答案是：**有一次 attempt 正在飞行中**。
+//
+// 早先这里用 run 的执行状态来判定（RUNNING / RETRY_WAIT / PAUSED），那是错的，
+// 并且会真实地把系统锁死。两个已经实测到的死锁：
+//   1) completeAttempt 只把 nextAction 置为 COMMIT，executionStatus **仍然是 RUNNING**。
+//      于是一个「采集已完成、正等提交」的 run 永久占着 lane，同一 lane 的下一个事项
+//      在 beginAttempt 处被拒为 LANE_SATURATED —— 商品级 fan-out 整批卡在第一个子项之后。
+//   2) 失败并进入人工等待的 run 是 PAUSED。于是一个商品采集失败会让**其余商品全部排不进去**，
+//      恰好就是「单商品失败隔离」要消灭的那种整批停摆。
+//
+// 正确判据用 lease：beginAttempt 申请 HELD lease，completeAttempt/failAttempt 释放（RELEASED）。
+// 所以「RUNNING 且 HELD」才等价于「有一次 attempt 正在运行」，这才是真正互斥的资源。
+// 等待态（RETRY_WAIT / PAUSED / QUEUED）不占槽——这也与 D7.1 的结论一致：
+// 准入负责排队，占用是执行期的事。
+export const LANE_OCCUPYING_LEASE_STATES = Object.freeze(['HELD']);
+
+export function occupiesLane(context = {}) {
+  return context.executionStatus === 'RUNNING'
+    && LANE_OCCUPYING_LEASE_STATES.includes(context.leaseStatus);
+}
+
 export function laneLimit({ lane, write = false, limits = null } = {}) {
   if (write) return 1;
   if (limits) {
@@ -102,7 +124,8 @@ export function evaluatePolicy({
   // lane 占用**不在这里**判定，这是对早先「准入即占位」的一次修正。
   // 准入回答的是「这件事项能不能进入队列」；队列按定义必须能容纳同一 lane 的多个事项，
   // 否则商品级 fan-out（同一账号下的多件商品）根本无法入队——把「并发约束」错用成了「重复约束」。
-  // 同一 lane 同时只能有一个在执行，由 Controller.beginAttempt 用 LANE_EXECUTING_STATUSES 把关。
+  // 同一 lane 同时只能有一个 attempt 在跑，由 Controller.beginAttempt 用
+  // occupiesLane()（RUNNING + lease HELD）把关——不按 run 状态把关，理由见该函数上方注释。
   // 真正的重复由 admitTask 用 idempotencyKey 挡（按业务范围去重，比按 lane 去重精确：
   // 同一账号下的两件不同商品不是重复，同一件事项被提交两次才是）。
   if (riskClass === 'HUMAN_REQUIRED') {

@@ -9,9 +9,17 @@
 //    「这次不选它」，不会把它标记成失败或完成。
 //  - 限流器与熔断器的状态是进程内的（没有落库），重启即复位。如实标注为 best-effort，
 //    绝不宣称 durable；跨进程的硬约束由 lane（落库在 durable_runs.lane）承担。
-import { LANE_EXECUTING_STATUSES } from './store-port.mjs';
-import { laneLimit, laneFor } from './policy.mjs';
+import { laneLimit, laneFor, occupiesLane } from './policy.mjs';
 import { admitTask } from './task-admission.mjs';
+
+// lane 上「正在飞行中的 attempt」数（不含指定 run 自己）。
+// 用 occupiesLane（RUNNING + lease HELD）而不是 run 状态集合：等提交 / 等人工 / 等退避都不占执行槽，
+// 否则一个卡住的 run 会让同 lane 的后续任务永远选不出来。与 Controller.beginAttempt 同一判据，
+// 避免「出队时算能跑、开 attempt 时被拒」的自相矛盾。
+async function laneOccupancy(store, lane, excludeRunId = null) {
+  const runs = await store.listActiveRuns({ lane });
+  return runs.filter((run) => run.runId !== excludeRunId && occupiesLane(run.context ?? {})).length;
+}
 
 // 入队被拒的确定性原因。与 FAILURE_CLASS 分开：这是「队列层拒绝」，不是执行层失败。
 //  - BACKPRESSURE：容量满了（全局或单 lane）——「现在不该接活」，稍后再试。
@@ -221,7 +229,7 @@ export function createTaskQueue({
       const lane = laneOf(run);
       const isWrite = isWriteOf(run);
       const limit = laneLimit({ lane, write: isWrite, limits: laneLimits });
-      const executing = await store.countActiveInLane(lane, { excludeRunId: run.runId, statuses: LANE_EXECUTING_STATUSES });
+      const executing = await laneOccupancy(store, lane, run.runId);
       if (executing < limit) return { runId: run.runId, lane, isWrite, limit, executing };
     }
     return null;

@@ -129,3 +129,53 @@ test('已终止的 run 不再占用 lane', async () => {
   const allowed = await controller.beginAttempt(runB, { stage: 'COLLECT' });
   assert.equal(allowed.executionStatus, 'RUNNING');
 });
+
+// 回归：执行槽占用的判据是「RUNNING + lease HELD」，不是 run 状态集合。
+// 用 run 状态判定会让「跑完一次 attempt、正在等提交」的 run（completeAttempt 之后仍是 RUNNING）
+// 和「失败等人工」的 run（PAUSED）把 lane 永久占死——同 lane 的后续事项再也开不了 attempt。
+// 在真实的 FAQ 商品级 fan-out 上，这就是「一个商品失败 → 其余商品全部排不进去」的整批停摆。
+test('等提交（RUNNING+RELEASED）与等人工（PAUSED）的 run 不占执行槽，同 lane 可继续开 attempt', async () => {
+  const store = createMemoryStore();
+  const controller = makeController(store);
+  const runA = '11111111-1111-4111-8111-111111111111';
+  const runB = '22222222-2222-4222-8222-222222222222';
+
+  await makeRun(store, { runId: runA });
+  await makeRun(store, { runId: runB });
+
+  // A 跑完一次 attempt：lease 被释放，但 executionStatus 仍是 RUNNING（等 COMMIT）。
+  const first = await controller.beginAttempt(runA, { stage: 'COLLECT' });
+  await controller.completeAttempt(runA, { attemptId: first.attemptId, nextAction: 'COMMIT' });
+  const contextA = await controller.getContext(runA);
+  assert.equal(contextA.executionStatus, 'RUNNING', 'completeAttempt 不改变执行轴');
+  assert.equal(contextA.leaseStatus, 'RELEASED');
+
+  const allowed = await controller.beginAttempt(runB, { stage: 'COLLECT' });
+  assert.equal(allowed.executionStatus, 'RUNNING');
+  // B 真正持有 lane 时，A 仍然进不来——放宽的只是"等待态"，不是"正在执行"。
+  await assert.rejects(
+    () => controller.beginAttempt(runA, { stage: 'COLLECT' }),
+    (error) => error.code === 'LANE_SATURATED',
+    '有一次 attempt 正在飞行中时，lane 依然互斥',
+  );
+  await controller.completeAttempt(runB, { attemptId: allowed.attemptId, nextAction: 'COMMIT' });
+
+  // 证据被拒（EVIDENCE_INVALID → REJECT_EVIDENCE）：lease 释放、执行轴仍是 RUNNING。
+  const second = await controller.beginAttempt(runA, { stage: 'COLLECT' });
+  const rejected = await controller.failAttempt(runA, { attemptId: second.attemptId, failureClass: 'EVIDENCE_INVALID', detail: 'bad evidence' });
+  assert.equal(rejected.evidenceStatus, 'REJECTED');
+  assert.equal(rejected.leaseStatus, 'RELEASED');
+  assert.equal(rejected.executionStatus, 'RUNNING');
+
+  // 需要人工的失败（HUMAN_REQUIRED → WAIT_HUMAN）：执行轴落 PAUSED。
+  const third = await controller.beginAttempt(runA, { stage: 'COLLECT' });
+  const paused = await controller.failAttempt(runA, { attemptId: third.attemptId, failureClass: 'HUMAN_REQUIRED', detail: 'needs a human' });
+  assert.equal(paused.executionStatus, 'PAUSED', 'HUMAN_REQUIRED 走 WAIT_HUMAN，落 PAUSED');
+  assert.equal(paused.leaseStatus, 'RELEASED');
+
+  // 这两种「等待态」都不占执行槽：同 lane 的其它事项必须能继续开 attempt。
+  const runC = '33333333-3333-4333-8333-333333333333';
+  await makeRun(store, { runId: runC });
+  const fourth = await controller.beginAttempt(runC, { stage: 'COLLECT' });
+  assert.equal(fourth.executionStatus, 'RUNNING', '被拒/等人工的 run 不能拦住同 lane 的其它事项');
+});

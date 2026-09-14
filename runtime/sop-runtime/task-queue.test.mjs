@@ -62,7 +62,7 @@ async function makeHarness({ limits = {} } = {}) {
 }
 
 // 直接落一条 run，绕过准入：用于构造「队列里已有历史 run」的场景（例如缺 lane 的老记录）。
-async function seedRun(store, { runId, capability = 'cap.a', identity = IDENTITY, lane = null, queue = {}, executionStatus = 'QUEUED', isWrite = false }) {
+async function seedRun(store, { runId, capability = 'cap.a', identity = IDENTITY, lane = null, queue = {}, executionStatus = 'QUEUED', isWrite = false, leaseStatus = null }) {
   const laneValue = lane ?? laneFor({ identity, capability, target: null, write: isWrite });
   const base = createContext({
     taskId: `task-${runId}`, runId, workflow: 'wf-under-test', capability, identity,
@@ -72,6 +72,10 @@ async function seedRun(store, { runId, capability = 'cap.a', identity = IDENTITY
     executionStatus,
     lane: laneValue,
     isWrite,
+    // 执行槽占用判据是 RUNNING + lease HELD（见 policy.occupiesLane）：
+    // 要表达「这个 run 真的在跑」，就必须同时给出 HELD lease；
+    // 只设 RUNNING 而不给 HELD 现在表示「采集已完成、在等提交」，反而**不**占槽。
+    ...(leaseStatus ? { leaseStatus } : {}),
     queue: { priority: 0, notBefore: null, deadlineAt: null, enqueuedAt: null, attempts: 0, ...queue },
   }, { nowIso: new Date(T0).toISOString() });
   await store.createRun({ runId, identity, context, targetEnd: 10, lane: laneValue });
@@ -369,8 +373,9 @@ test('出队闸门：lane 容量用完时同 lane 的排队任务不出队，释
   const runA = '11111111-1111-4111-8111-111111111111';
   const runB = '22222222-2222-4222-8222-222222222222';
   const lane = laneFor({ identity: IDENTITY, capability: 'cap.a' });
-  // 同 lane 两条：A 正在跑，B 在排队（绕过准入直接落库，用于验证队列容量闸门本身）
-  await seedRun(store, { runId: runA, capability: 'cap.a', lane, executionStatus: 'RUNNING' });
+  // 同 lane 两条：A 正在跑（RUNNING + HELD lease 才叫"正在跑"），B 在排队
+  // （绕过准入直接落库，用于验证队列容量闸门本身）
+  await seedRun(store, { runId: runA, capability: 'cap.a', lane, executionStatus: 'RUNNING', leaseStatus: 'HELD' });
   await seedRun(store, { runId: runB, capability: 'cap.a', lane, executionStatus: 'QUEUED' });
 
   assert.equal(await queue.nextCandidate(), null, 'lane 已满，B 不能出队');
@@ -383,6 +388,26 @@ test('出队闸门：lane 容量用完时同 lane 的排队任务不出队，释
   await store.saveContext(runA, { ...ctxA, executionStatus: 'SUCCEEDED', contextVersion: ctxA.contextVersion + 1 }, ctxA.contextVersion);
   const picked = await queue.nextCandidate();
   assert.equal(picked.runId, runB, 'lane 释放后 B 可以出队');
+});
+
+// 回归：这两个场景曾经把 lane 永久占死，导致同一 lane 的后续事项永远选不出来。
+// 实际后果是 FAQ 商品级 fan-out 整批卡在第一个子项之后（一个商品失败 = 其余商品全排不进去）。
+test('出队闸门：等提交（RUNNING+RELEASED）与等人工（PAUSED）都不占用执行槽', async () => {
+  const { queue, store } = await makeHarness();
+  const lane = laneFor({ identity: IDENTITY, capability: 'cap.a' });
+  const waitingCommit = '11111111-1111-4111-8111-111111111111';
+  const waitingHuman = '22222222-2222-4222-8222-222222222222';
+  const queued = '33333333-3333-4333-8333-333333333333';
+
+  // 采集已完成、lease 已释放、正在等 COMMIT：completeAttempt 之后就是这个样子。
+  await seedRun(store, { runId: waitingCommit, capability: 'cap.a', lane, executionStatus: 'RUNNING', leaseStatus: 'RELEASED' });
+  // 失败后进入人工等待（failAttempt 对需要人工的失败会把执行轴置为 PAUSED）。
+  await seedRun(store, { runId: waitingHuman, capability: 'cap.a', lane, executionStatus: 'PAUSED', leaseStatus: 'RELEASED' });
+  await seedRun(store, { runId: queued, capability: 'cap.a', lane, executionStatus: 'QUEUED' });
+
+  const picked = await queue.nextCandidate();
+  assert.equal(picked?.runId, queued, '等待中的 run 不该拦住同 lane 的排队任务');
+  assert.equal(picked.executing, 0, '占用计数必须为 0：没有 attempt 在飞行中');
 });
 
 test('认领：只做一次状态转移，产出 attempt 与 lease', async () => {

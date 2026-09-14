@@ -1,8 +1,8 @@
 // Workflow Controller：Run/Step/Attempt 状态唯一拥有者（Spec 5.1 / 6.3）
 // 只允许确定性状态转移；外部副作用必须走 Worker + Validator + Commit/Reconcile。
 import { advance, setBlocker, validateContext, isTerminal } from './context-schema.mjs';
-import { actionForFailure, laneFor, laneLimit } from './policy.mjs';
-import { CasConflictError, LANE_EXECUTING_STATUSES } from './store-port.mjs';
+import { actionForFailure, laneFor, laneLimit, occupiesLane } from './policy.mjs';
+import { CasConflictError } from './store-port.mjs';
 
 export class ControllerError extends Error {
   constructor(message, { code = 'CONTROLLER_ERROR', details = {} } = {}) {
@@ -68,13 +68,19 @@ export function createController({
       if (context.humanGateStatus === 'WAITING_HUMAN') {
         throw new ControllerError(`run ${runId} is waiting for human approval`, { code: 'HUMAN_GATE_OPEN' });
       }
-      // lane 闸门：同一 lane 的其它活跃运行数达到上限就拒绝开新 attempt。
+      // lane 闸门：同一 lane 里「正在飞行中」的 attempt 数达到上限就拒绝开新 attempt。
       // 这是「同一账号/profile/写目标不发生双写」在执行层的落点；默认上限 1，写操作恒为 1。
       // lane 优先取上下文里的权威值（准入时写入），缺失时才按规则重算，避免两边算不一致。
+      //
+      // 占用判据是 occupiesLane()（RUNNING + lease HELD），**不是** run 状态集合：
+      // 等提交的 RUNNING、等人工的 PAUSED、等退避的 RETRY_WAIT 都不占执行槽。
+      // 用 run 状态判定会让「采集完成等提交」和「失败等人工」把 lane 占死，
+      // 同一 lane 的后续事项永远进不来（商品级 fan-out 会整批卡死）。
       const lane = context.lane
         ?? laneFor({ identity: context.identity ?? {}, capability: context.capability, target: context.target ?? null, write: isWrite });
       const limit = laneLimit({ lane, write: isWrite, limits: laneLimits });
-      const activeOthers = await store.countActiveInLane(lane, { excludeRunId: runId, statuses: LANE_EXECUTING_STATUSES });
+      const laneRuns = await store.listActiveRuns({ lane });
+      const activeOthers = laneRuns.filter((run) => run.runId !== runId && occupiesLane(run.context ?? {})).length;
       if (activeOthers >= limit) {
         throw new ControllerError(`lane saturated: ${lane}`, {
           code: 'LANE_SATURATED',

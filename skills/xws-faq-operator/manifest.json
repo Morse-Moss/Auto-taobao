@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "skill-manifest-v1",
+  "name": "xws.faq.product-collect",
+  "version": "1.0.0",
+  "kind": "capability",
+  "description": "把单个竞品商品的 FAQ 本地证据（问大家 + 评论原文快照）读成一份可独立复验的工件；是商品级 fan-out 的最小执行与隔离单元",
+  "entry": "scripts/adapter.faq-product.mjs",
+  "inputs": [
+    { "name": "period_start", "type": "string", "required": true },
+    { "name": "period_end", "type": "string", "required": true },
+    { "name": "product_id", "type": "string", "required": true },
+    { "name": "evidence_root", "type": "path", "required": true }
+  ],
+  "outputs": [
+    { "name": "artifact", "type": "artifact_ref" },
+    { "name": "receipt", "type": "receipt" }
+  ],
+  "preconditions": [],
+  "permissions": ["filesystem.read"],
+  "sideEffects": [],
+  "dependencies": [],
+  "validation": ["source_identity", "structure", "digest"],
+  "recovery": { "supported": true, "resumeFrom": "checkpoint" },
+  "owner": "sycm-automation",
+  "tags": ["xws", "faq", "product", "fan-out", "weekly-sop"]
+}

@@ -185,6 +185,7 @@ export async function runTwoStage({
   // C. 发布段。
   let publish = null;
   let cursor = null;
+  let settled = null;
   const shouldPublish = commit && writesExternally;
   if (!shouldPublish) {
     publish = {
@@ -194,6 +195,13 @@ export async function runTwoStage({
         : '采集段完成；发布段需要 --commit（真实外部写入）与人工授权，本次未执行。',
       note: 'publicationStatus 保持 NOT_REQUESTED，游标不推进——收据只证明采集段，不冒充发布已验收。',
     };
+    // **终结本次运行**。这不是可有可无的收尾：
+    // completeAttempt 只把 nextAction 置为 COMMIT，executionStatus 仍是 RUNNING，
+    // 这条 run 会一直算「活跃」（占用队列深度、旧口径下还占着 lane），而且永远没有终态。
+    // 本次调用该做的都做完了（产出已验证工件 + 明确未发布），因此正确的终态是 Controller 既有的
+    // succeed()（SUCCEEDED + TERMINAL + 释放 lease）。它不推进游标，所以不会把"采集成功"
+    // 冒充成"发布已验收"；后续 --commit 是一次新的运行，不会与这条 run 抢资源。
+    settled = await controller.succeed(runId);
   } else {
     if (!evidence?.path || !existsSync(evidence.path)) {
       throw new TwoStageError(`evidence artifact file missing at publish time: ${evidence?.path ?? 'null'}`, 'EVIDENCE_FILE_MISSING', { evidence });
@@ -224,7 +232,10 @@ export async function runTwoStage({
         end: expectedRows ?? evidence.rowCount,
         commitRefs: [{ commitKey: publish.commitKey, capability: capabilityId }],
       });
+      settled = await controller.succeed(runId);
     }
+    // 发布未被验证时**不终结**：要么等对账（UNKNOWN），要么等人工（REJECTED 后的重试/终止判断），
+    // 把一条尚未结算外部写入的 run 标成 SUCCEEDED 才是真正的谎报。
   }
 
   const finalContext = await controller.getContext(runId);
@@ -248,6 +259,10 @@ export async function runTwoStage({
     },
     publish,
     publicationStatus: finalContext.publicationStatus,
+    // 运行终态：succeed() 之后是 SUCCEEDED。发布未验证时保持 RUNNING（等对账/人工），
+    // 此时 executionStatus=null 表示"本次调用没有把它结算掉"。
+    executionStatus: settled?.executionStatus ?? null,
+    nextAction: settled?.nextAction ?? finalContext.nextAction,
     cursorAdvanced: Boolean(cursor),
     verifiedCursor: cursor?.verifiedCursor ?? finalContext.verifiedCursor ?? null,
   };

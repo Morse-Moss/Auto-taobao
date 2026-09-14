@@ -28,6 +28,8 @@
 | I7 | Agent 只出提案：不得拿写工具、不得改状态轴或身份、断言必须带证据 | `agent-proposal.mjs` |
 | I8 | 两段之间只通过工件字节传递数据，不通过进程内内存 | `two-stage-runner.mjs` |
 | I9 | 采集期与发布期验证器不混跑 | `validation-registry.mjs` 的 `VALIDATION_STAGE` |
+| I10 | 执行槽占用 = **有一次 attempt 正在飞行中**（RUNNING + lease HELD），不是 run 处于某个状态 | `policy.occupiesLane`、`Controller.beginAttempt` |
+| I11 | 一次调用做完事就必须把 run 结算到终态；外部写入未结算时**不得**终结 | `two-stage-runner`、`run-faq-fanout` |
 
 ## 2. 阶段 0：架构目录与迁移隔离验证
 
@@ -63,7 +65,7 @@
 
 内容：跨进程恢复故障注入实证（15/15）、Memory 与 Compression 两个新模块、lane 并发闸门真实化、任务队列（限流/背压/熔断/退避/超时/取消/结果合并）。
 关键决策（编号沿用深报告）：
-- **D6.1** lane 计数两种口径必须显式区分：`LANE_ACTIVE_STATUSES` 与 `LANE_EXECUTING_STATUSES`。**此项在本次已被修正，见 D7.1。**
+- **D6.1** lane 计数两种口径必须显式区分：`LANE_ACTIVE_STATUSES` 与 `LANE_EXECUTING_STATUSES`。**本项已被 D7.1 与 D7.4 两次修正：`LANE_EXECUTING_STATUSES` 已删除，执行槽占用改由 `policy.occupiesLane` 判定。**
 - **D6.2** 队列元数据落 `durable_runs.context.queue`（jsonb），不新增表、不新增列。
 - **D6.3** 限流器与熔断器是**进程内** best-effort，重启即复位；代码与报告都如实标注，绝不宣称 durable。跨进程硬约束由 lane 承担。
 - **D6.4** 同一个 key 出现两个不同值时记为冲突并要求人工，不静默择一。
@@ -90,7 +92,7 @@
 修正：
 
 - 准入不再判定 lane 占用。`evaluatePolicy` 只回答「能否进队列」，并把 `lane` 与 `laneLimit` 一起返回，供执行期使用。
-- lane 占用**只在执行期**判定：`Controller.beginAttempt` 用 `LANE_EXECUTING_STATUSES`（RUNNING/RETRY_WAIT/PAUSED）把关，行为与之前完全一致。
+- lane 占用**只在执行期**判定：`Controller.beginAttempt` 把关。（判据本身在 D7.4 被进一步修正为「有一次 attempt 正在飞行中」，见下。）
 - 真正的重复改由 **`idempotencyKey`** 在准入期挡（`buildIdempotencyKey({taskId, identity, capability, scope})`）。按业务范围去重比按 lane 去重**更精确**：同一账号的两件不同商品不重复，同一件事项提交两次才重复。
 - 新增拒绝原因 `DUPLICATE_TASK`（`failureClass=POLICY_DENIED`，且只有它带 `duplicateOf`），与 `BACKPRESSURE` 明确区分。
 - 去重查询走 `store.listActiveRuns` 过滤 `context.idempotencyKey`，**不新增 store 端口方法**，代价是 O(活动运行数) 扫描，已在代码注释里写明量级假设。
@@ -101,7 +103,7 @@
 - `task-queue.test.mjs` 原「同一 lane 已被占位视为背压」→ 改为「同一 lane 的多个不同任务都能入队；重复任务 DUPLICATE_TASK」。
 - `task-queue.test.mjs` 的 refund 用例改用「重复提交」触发准入拒绝（原来依赖 lane 占位）。
 
-**未放宽的部分**：`beginAttempt` 的 lane 闸门一个字没改；写操作 lane 上限恒为 1；`LANE_EXECUTING_STATUSES` 口径未变。所以「同一账号/profile/写目标不会双写」这条安全属性仍然成立，且现在有单测同时覆盖「能排队」与「执行串行」。
+**未放宽的部分**：`beginAttempt` 的 lane 闸门一个字没改（判据在 D7.4 才被修正）；写操作 lane 上限恒为 1。所以「同一账号/profile/写目标不会双写」这条安全属性仍然成立，且现在有单测同时覆盖「能排队」与「执行串行」。
 
 ### 7.2 关键决策 D7.2：Agent 只出提案
 
@@ -124,20 +126,81 @@
 - `assertNoDuplicateBusinessKeys`：同批内 `businessKey` 必须唯一（重复即意味着会写出重复外部效果）。
 - `fanoutLaneLimits`：并发放大必须建立在显式容量证据上，无证据不放大；写操作恒为 1。
 
+### 7.4 迁移 3：FAQ 商品级 fan-out 落地（含两处死锁修正）
+
+落点：`skills/xws-faq-operator/scripts/adapter.faq-product.mjs`（能力 `xws.faq.product-collect@1.0.0`）、`runtime/sop-runtime/run-faq-fanout.mjs`、`skills/xws-faq-operator/manifest.json`。
+
+**要解决的问题**：原 `run-faq-operator.mjs` 把整个周期当一个执行单元，`inspectEvidence` 只保留**第一个**未解决告警作为 blocker，于是「1 个商品采集失败」阻塞另外 4 个已完成的商品。这正是计划里「单商品失败隔离」要消灭的东西。
+
+**D7.4：执行槽占用判据修正（修掉两个真实死锁）**
+
+原判据是 run 状态集合 `LANE_EXECUTING_STATUSES = [RUNNING, RETRY_WAIT, PAUSED]`。它在真实 fan-out 上**必然把整批锁死**，测试当场失败（3 个子项只跑完第 1 个，第 2 个 `LANE_SATURATED`）：
+
+1. `completeAttempt` 只把 `nextAction` 置为 `COMMIT`，`executionStatus` **仍然是 RUNNING**。于是「采集已完成、等提交」的 run 永久占着 lane。
+2. 失败进入人工等待的 run 是 PAUSED。于是「一个商品失败 ⇒ 其余商品全部排不进去」——恰好是要消灭的整批停摆。
+
+修正：占用判据改为 `policy.occupiesLane(context)` = `executionStatus === 'RUNNING' && leaseStatus === 'HELD'`。
+理由：只有 lease 能表达「有一次 attempt 正在飞行中」（`beginAttempt` 取 HELD，`completeAttempt`/`failAttempt` 释放 RELEASED）。等待态（QUEUED/RETRY_WAIT/PAUSED）与「跑完等下一步」都不占槽。
+连带：`LANE_EXECUTING_STATUSES` 已删除（不再有第二个口径）；`task-queue.nextCandidate` 与 `Controller.beginAttempt` 使用同一判据，消除「出队时算能跑、开 attempt 时被拒」的自相矛盾。`LANE_ACTIVE_STATUSES` 保留，但只用于队列深度/背压。
+**安全性未放宽**：正在飞行的 attempt 仍严格互斥（有测试：B 持 lease 时 A 开 attempt 仍被拒），写操作 lane 上限恒为 1。
+
+**D7.5：运行终结（修掉「run 永远不终态」）**
+
+两条已迁移路径（专用运行器与通用两段式运行器）**都从不调用 `controller.succeed()`**，因此每次执行结束后 run 永远停在 RUNNING。后果：run 永远算「活跃」（占队列深度，旧口径下还占 lane），且没有任何东西能说「这条 run 结束了」。
+
+修正：
+- 一次调用做完该做的事 → `controller.succeed(runId)`（SUCCEEDED + TERMINAL + 释放 lease）。
+- 通用两段式运行器：未发布（dry-run / 只读能力）→ 结算；发布 VERIFIED + 游标推进 → 结算；**发布未 VERIFIED → 不结算**（等对账或人工）。把尚未结算外部写入的 run 标成 SUCCEEDED 才是真正的谎报。
+- 收据新增 `executionStatus` / `nextAction`，`null` 表示「本次调用没有结算它」。
+
+**D7.6：FAQ 商品级能力刻意不声明三个通用验证器**
+
+`xws.faq.product-collect` 的 manifest 只声明 `source_identity`/`structure`/`digest`，**刻意不声明** `completeness`/`row_count`/`artifact_integrity`。
+理由：三者都会把**合法的 0 行证据**判成不完整（`completeness` 与 `artifact_integrity` 都拒绝 `rowCount <= 0`）。而下架商品就是 0 行，且必须被视为**合法**——这不是假设：真实周期 `2026-09-06_2026-09-12` 的唯一候选商品 `678598686014` 就是下架商品（qa/reviews 均 `EMPTY_SOURCE_ROWS` + 详细 `unavailableReason`），2026-09-14 实测该商品在本驱动下 `evidenceStatus=VALIDATED`、`executionStatus=SUCCEEDED`、整批 `publishable=true`。若声明了那三个验证器，这个真实商品会被判成 `EVIDENCE_INVALID` 而阻塞整批。
+0 行的合法性只能由**能力自检按收据语义**判定（`EMPTY_SOURCE_ROWS` 且 `unavailableReason` 非空），通用行数验证器无法区分「空且已声明」与「空且漏采」。这条取舍写在 `collectContract().omittedValidators` 里，随 manifest 一起被审查。
+
+**D7.7：fan-out 驱动器只准入、不再次准入**
+
+`runTwoStage` 内部会自己 `admitTask`。如果 fan-out 先把子项准入、又调 `runTwoStage` 跑它，同一商品会有**两条 run**（taskId 不同 → `idempotencyKey` 不同 → 两条都会被准入），直接违反「重复消费无重复副作用」。
+因此驱动器只负责准入（queue），执行直接走 Worker（`createCapabilityWorker` + `runOnce`，与 `runTwoStage` 的采集段是同一段代码路径）。驱动器里有一段注释专门锁住这条约束。
+
+**D7.8：`complete` 与 `publishable` 必须分开**
+
+- `complete` = 每个子项都拿到了自己的结论（无论成功失败）。回答「这批跑完了没有」。
+- `publishable` = 全部成功且无冲突。回答「能不能进入周期级汇总」。
+把两者合成一个布尔值，就会让「4 成功 1 失败」被读成「整批失败」（原 FAQ 的毛病）或「整批成功」（更危险）。
+
+**D7.9：空批次既不是失败，也不等于采集完成**
+
+清单已锁定且 `outcome=NO_QUALIFIED_CANDIDATES` 时 0 个商品是**合法**状态（运营口径：高质量竞品不是每周都有）。驱动器返回 `empty:true` + `complete:false`，并附 note 指明周期级完成判定归 xws-faq-operator 的空周期旁路。用 `complete:true` 表示它会让人误以为「本周已采集完毕」。
+
+**未纳入本驱动器的范围（如实标注）**：周期级的飞书发布（问题主库/问题库替换）是一次外部写入，仍由 `runtime/publish-faq-detail-enrichment.mjs` 承担，**尚未迁移**。因此本次迁移覆盖的是「商品级采集与隔离」，不是「FAQ 全链路」。
+
+**同义实现与防漂移**：适配器不 import `runtime/`（实施计划风险表：「Skill 导入 runtime 新模块」= 反向依赖扩大），代价是收据契约判定在 `runtime/run-question-library-collection.mjs` 的 `readEvidence` 里有一份同义实现。防漂移手段是**交叉验证测试**：11 组夹具（含合法空证据）同时喂给两份实现，必须给出完全一致的接受/拒绝结论。`parseCsv` 也逐条对齐（引号只在单元格为空时开引、`\r`/`\n`/`\r\n` 都算行尾、整行全空丢弃）。
+
 ## 8. 验证证据（可复现命令与结果）
 
 ```
 node --test runtime/sop-runtime/*.test.mjs
-# tests 201  pass 201  fail 0
-#   其中：task-queue 22、two-stage-runner 15、agent-proposal 13、fanout 12、
-#        compression 12、memory 11、lane-concurrency 7，其余为既有模块
+# tests 215  pass 215  fail 0
+#   其中：task-queue 23、two-stage-runner 15、agent-proposal 13、fanout 12、faq-fanout 12、
+#        compression 12、memory 11、lane-concurrency 8，其余为既有模块
 
-node --test skills/xws-to-feishu-base/tests/*.test.mjs skills/sycm-to-feishu-base/tests/*.test.mjs
-# tests 155  pass 155  fail 0   （xws 84 + sycm 71）
+node --test skills/xws-to-feishu-base/tests/*.test.mjs \
+           skills/sycm-to-feishu-base/tests/*.test.mjs \
+           skills/xws-faq-operator/tests/*.test.mjs
+# tests 171  pass 171  fail 0   （xws 84 + sycm 71 + faq-product 16）
 
 node runtime/sop-runtime/build-skill-registry.mjs --check --write
-# 8 manifest 通过（能力 6 + 适配器 2）
-# registryDigest=sha256:18bc50e9c6784d51029a38f1a6e5fff709cdfa9f08b670277091ad2df4004cf6
+# 9 manifest 通过（能力 7 + 适配器 2）
+# registryDigest=sha256:223ea5af1362506e9adad3826ab7d4c2d9fa6bac98044f99bbab7b8c67b2aa9c
+# 告警 5 项，全部是 adapter.browser 显式外部依赖（共享 CDP 代理不在仓库内）
+
+node runtime/sop-runtime/run-faq-fanout.mjs --period-start 2026-09-06 --period-end 2026-09-12 \
+  --identity '{"tenantId":"sycm","storeId":"bathtub-flagship","platform":"xws","accountId":"operator","browserProfileId":"local","contractVersion":"xws-16f-v1"}' --no-write
+# 真实证据实测：1 个商品（678598686014，已下架、0 行证据）
+# → total 1 / dispatched 1 / collected 1 / complete true / publishable true / requiresHuman false
+# → evidenceStatus=VALIDATED  executionStatus=SUCCEEDED（0 行证据被正确判定为合法）
 
 node runtime/sop-runtime/recovery-fault-injection.mjs
 # 15/15 通过（需 CREATEDB 身份；临时库 sop_fault_*，跑完即删）
@@ -150,7 +213,9 @@ node runtime/sop-runtime/recovery-fault-injection.mjs
 | 缺口 | 性质 | 为什么还没做 |
 | --- | --- | --- |
 | 发布段从未对**真实 base** 执行过 `--commit` | 能力缺口 | `VERIFIED` + 游标推进这条链只有单测覆盖。需要单独授权 + 一个可写的目标表 + 可回滚的空表准备。**这是全项目唯一一个「代码已就绪但从未真实跑过」的关键路径。** |
-| 迁移顺序第 2/3/4/6/7 项未开始（FAQ 完整迁移、XWS SKU、SYCM 搜索排行、灰豚周度） | 范围缺口 | 其中 FAQ 的**调度层**（fan-out + 失败隔离）已落地并有测试（7.3），但 FAQ 能力本身尚未改成两段式适配器 |
+| 迁移顺序第 3/4/6/7 项未开始（XWS SKU、SYCM 搜索排行、灰豚周度、Agent Planner/Reviewer） | 范围缺口 | 第 2 项（FAQ 商品级 fan-out）已完成，见 7.4 |
+| FAQ 的**周期级发布段**未迁移 | 能力缺口 | 商品级采集与隔离已落地，但「问题主库/问题库替换」仍由 `publish-faq-detail-enrichment.mjs` 这条旧 CLI 承担；把它接入两段式需要真实可写目标表与单独授权 |
+| FAQ 的周期级完成判定仍由 `run-faq-operator.mjs` 负责 | 有意保留 | fan-out 只回答「商品级是否全部结算」；周期级阶段机未改，避免一次改动同时动两套语义 |
 | 限流/熔断不 durable | 刻意取舍 | 见 D6.3；跨进程一致的限流需要落库或外置，属独立设计 |
 | `advanceCursor` 前置条件尚未收紧 | 有意延后 | 计划要求在第三个能力迁完后收紧（现在 2 个） |
 | pg-store 的 `context.queue` 不能单独索引 | 刻意取舍 | 见 D6.2；按队列维度查询只能全表扫描，量级上去需另设计 |
@@ -169,12 +234,16 @@ node runtime/sop-runtime/recovery-fault-injection.mjs
 7. **`collectContract().requiredFields` 声明的键不在被校验对象上** —— `structure` 验证器空转通过。
 8. **准入把「并发约束」当「重复约束」用** —— 见 D7.1，商品级 fan-out 无法实现。
 9. **`memory-store` 跨层自动退役** —— 用「删掉历史」冒充「当前优先」，已改为只在同层内退役。
+10. **执行槽占用按 run 状态判定** —— `LANE_EXECUTING_STATUSES` 含 RUNNING/RETRY_WAIT/PAUSED，于是「跑完一次 attempt、正等 COMMIT」的 run（`completeAttempt` 后仍是 RUNNING）和「失败等人工」的 run（PAUSED）会把 lane 永久占死。在真实商品级 fan-out 上表现为**整批卡在第一个子项之后**（3 个子项只跑完第 1 个，第 2 个 `LANE_SATURATED`），也表现为「一个商品失败 ⇒ 其余商品全部排不进去」。改为 `occupiesLane`（RUNNING + lease HELD），见 D7.4。
+11. **run 永远不终态** —— 两条已迁移路径都不调 `controller.succeed()`，`completeAttempt` 之后 `executionStatus` 一直是 RUNNING。后果是 run 永远算活跃（占队列深度、旧口径下占 lane），且没有任何东西能回答「这条 run 结束了没有」。见 D7.5。
+12. **`skills/xws-export-market-analysis/tests/prepare-flow.test.mjs` 的「bounded settlement deadline」断言自 `4fd523b` 引入起从未通过过** —— 它用测试自己的时钟 `startedAt` 作基线，而 `deadlineAt = requestedAt + 5min` 且 `requestedAt >= startedAt`（通常差数毫秒），因此差值恒 > 5 分钟。改为用意图自身持久化的 `requestedAt` 计算，并保留「有界」「远短于最终 60 分钟窗口」两条安全断言。**这条比它本身更值得注意：它说明该 skill 的长测（单文件上千行、上百用例）容易被漏跑，缺陷可以静默存活数月。**
 
-另有三处是**测试期望写错、实现未改**，一并列出以免被误认为实现缺陷：manifest 声明未实现验证器应归 `CAPABILITY_DEGRADED`（能力定义坏了）而非 `EVIDENCE_INVALID`（证据不合格）；队列单测把「已被取走的令牌」当成还有；用容量 1 的限流器测 refund 路径（走不到准入就已被限流挡住）。
+另有三处是**测试期望写错、实现未改**，一并列出以免被误认为实现缺陷：manifest 声明未实现验证器应归 `CAPABILITY_DEGRADED`（能力定义坏了）而非 `EVIDENCE_INVALID`（证据不合格）；队列单测把「已被取走的令牌」当成还有；用容量 1 的限流器测 refund 路径（走不到准入就已被限流挡住）。另外 `lane-concurrency` 里「等提交/等人工不占槽」的新回归测试最初把 `EVIDENCE_INVALID` 的落态写成 PAUSED（实际是 `evidenceStatus=REJECTED`、执行轴仍 RUNNING），也是测试期望写错。
 
 ## 11. 交付物清单
 
 架构文档：`agent-sop-runtime-spec.md`（不变量与契约）、`agent-sop-runtime-implementation-plan.md`（阶段与验收）、`README.md`、`handoff-to-teammate.md`、本文、`MIGRATION-2-SYCM-WEEKLY-REPORT.md`。
 迁移：`db/migrations/001-005`（各带 rollback），全量已 apply 到本项目库 `xws_automation`（容器 `xws-adaptive-postgres`，PG 17，127.0.0.1:5432）。
-运行时：`runtime/sop-runtime/` 共 26 个模块（不含测试）。
-能力：8 个 manifest 已登记（能力 6 + 适配器 2），其中 2 个（`xws.feishu.import`、`sycm.feishu.weekly`）已完成两段式迁移。
+运行时：`runtime/sop-runtime/` 共 27 个模块（不含测试）。
+能力：9 个 manifest 已登记（能力 7 + 适配器 2），其中 2 个（`xws.feishu.import`、`sycm.feishu.weekly`）完成两段式迁移，1 个（`xws.faq.product-collect`）为商品级 fan-out 的执行单元。
+尚未登记（不伪造）：`xws-question-library-collection`（FAQ 采集兼容入口）、`xws-sku-collection`、`xws-faq-operator` 的周期级发布段（目录内无 `.mjs`，实现在 `runtime/`）。

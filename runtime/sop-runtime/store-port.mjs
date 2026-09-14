@@ -16,12 +16,14 @@ export function assertStore(store) {
 
 export const CAS_CONFLICT = 'CAS_CONFLICT';
 
-// lane 计数的两种口径，必须显式区分，不能混用：
-//  - ACTIVE：含 QUEUED。用于「任务准入」——准入即占位，同一 lane 不重复准入同账号/profile/写目标。
-//  - EXECUTING：只含真正占用执行槽的状态。用于「开 attempt」——队列里排队的 run 不算占资源，
-//    否则同一 lane 连排队都排不进去。
+// lane 口径（**只有一种**，2026-09-14 修正）：
+//  - ACTIVE（含 QUEUED）只用于「队列深度/背压」：回答「这条 lane 上排了多少活」。
+//  - 执行槽占用**不再用 run 状态集合**判定，改用 policy.occupiesLane()（RUNNING + lease HELD）。
+//    早先的 EXECUTING＝RUNNING/RETRY_WAIT/PAUSED 会把「采集完成等提交」（仍是 RUNNING）和
+//    「失败等人工」（PAUSED）当成正在执行，从而把 lane 永久占死、同一 lane 的后续事项再也进不来。
+//    这在实际的 FAQ 商品级 fan-out 上表现为整批卡在第一个子项之后（详见 occupiesLane 注释）。
+// 注意：准入**不**判定 lane 占用（D7.1）——准入只排队，重复由 idempotencyKey 挡，占用是执行期的事。
 export const LANE_ACTIVE_STATUSES = Object.freeze(['QUEUED', 'RUNNING', 'RETRY_WAIT', 'PAUSED']);
-export const LANE_EXECUTING_STATUSES = Object.freeze(['RUNNING', 'RETRY_WAIT', 'PAUSED']);
 
 export class CasConflictError extends Error {
   constructor(message, details = {}) {

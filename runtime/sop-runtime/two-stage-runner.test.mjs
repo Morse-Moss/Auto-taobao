@@ -171,9 +171,14 @@ test('dry-run：只跑采集段，不动发布轴、不推进游标；即使 man
   assert.equal(receipt.publish.verdict, 'NOT_ATTEMPTED');
   assert.equal(receipt.publicationStatus, 'NOT_REQUESTED', '没跑发布就绝不能变成 COMMITTED/VERIFIED');
   assert.equal(receipt.cursorAdvanced, false);
+  // 回归：本次调用结束后运行必须终结。completeAttempt 只改 nextAction，执行轴仍是 RUNNING，
+  // 不显式 succeed() 的话这条 run 永远算活跃（占队列深度，旧口径下还占 lane）。
+  assert.equal(receipt.executionStatus, 'SUCCEEDED', '本次调用该做的都做完了，运行必须终结');
+  assert.equal(receipt.nextAction, 'TERMINAL');
 
   const context = await harness.controller.getContext(receipt.runId);
   assert.equal(context.evidenceStatus, 'VALIDATED');
+  assert.equal(context.executionStatus, 'SUCCEEDED');
   assert.equal(context.verifiedCursor.end, 0, '游标不动');
   assert.equal(summarize(context).stage, 'COLLECT');
 });
@@ -283,7 +288,10 @@ test('回读不符预期时结算为 UNKNOWN 而非 VERIFIED，游标不推进',
   assert.equal(receipt.publish.requiresReconcile, true);
   assert.equal(receipt.publicationStatus, 'UNKNOWN');
   assert.equal(receipt.cursorAdvanced, false);
+  // 发布未被验证时**不得**把运行标成 SUCCEEDED：外部写入尚未结算，谎报终结会掩盖待对账的提交。
+  assert.equal(receipt.executionStatus, null, '未结算的运行不能被终结');
   const context = await harness.controller.getContext(receipt.runId);
+  assert.equal(context.executionStatus, 'RUNNING');
   assert.equal(context.blocker.class, 'COMMIT_UNKNOWN');
   assert.match(context.nextAction, /RECONCILE/);
 });
