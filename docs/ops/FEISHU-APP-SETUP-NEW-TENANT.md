@@ -58,12 +58,35 @@
 
 | 码 | 含义 | 处理 |
 | --- | --- | --- |
-| `403 91403 Forbidden` | 应用未被该 base 授权（跨租户、未加协作者、版本未发布） | 见第 1、2 节 |
-| `99991672` | 缺少所需权限范围 | 权限管理里补 scope 并重新发布版本 |
+| `403 91403 Forbidden` | 应用在该文档上没有足够权限（未加协作者 / 只给了「可阅读」/ 跨租户） | 把应用加为该 base 的协作者并给「可编辑」/「可管理」 |
+| `99991672`（HTTP 400） | **应用缺 scope**，返回体里会列出需要哪些 scope | 权限管理里补 scope 并**重新发布版本** |
 | `1254060 TextFieldConvFail` | 目标字段是文本却写数字 | 字段类型需与合同一致（`价格` 用数字、`月收货人数` 用文本） |
 | `1254069 AttachFieldConvFail` | 附件字段写入非法 | 附件字段连空串都非法，必须整键删除 |
 
-## 5. 参考：本环境的既有事实
+**两个 403 类错误要分清**：`99991672` 是"应用根本没开这个 API 的权限"，返回体自带 scope 清单，
+照着开通即可；`403 91403` 是"scope 有了，但这份文档不让你动"——只读协作者、或者没被加为协作者。
+只读能力正常、写操作 91403，就是后者。
+
+## 5. 诊断实录：新租户 `kcne618basvj`（2026-09-14，应用 `cli_a96ee8749078dbcf`）
+
+| 调用 | 结果 |
+| --- | --- |
+| `POST /auth/v3/tenant_access_token/internal` | 200，token 正常 |
+| `GET .../apps/OUMqbkYwVaQxQNsv2EDc1DV7nDf/tables` | 200，**11 张表全部可见** |
+| `GET .../tables/tblg6lkg6431QulJ/fields`、`records` | 200 |
+| `POST .../tables`（建表） | **403 91403** |
+| `POST .../tables/tblg6lkg6431QulJ/fields`（建字段） | **403 91403**（不是 99991672） |
+
+**结论：读通、写不通**——应用在该 base 上目前是只读身份。要能写，两件事必须同时满足：
+① 开放平台补 `bitable:app`（注意不是 `bitable:app:readonly`）与 `drive:drive` 并重新发布版本；
+② 在该 base 里把应用加为协作者、权限给「可编辑」。
+
+**副本事实**：该 base 的 10 张生产表与现用 base `OWebbPUcBa7B8JseYLccQCy9nkf`
+**逐表行数完全相同**（2004/734/4346/2023/1461/734/2023/1423/0/1462），表 ID 不同，
+另多一张默认「数据表」`tblg6lkg6431QulJ`（1 字段 / 5 行）——即原 base 的完整副本。
+若要把周更 SOP 切到新租户，所有 base token 与 table ID 都要换一遍。
+
+## 6. 参考：本环境的既有事实
 
 - 应用 `cli_aa93e98aeef81cef` 属租户 `rcndesfqro3x`；凭据在 `E:/小红书/.env.local`。
 - 该租户内可见：竞品 base `OWebbPUcBa7B8JseYLccQCy9nkf`（10 表）、
