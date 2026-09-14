@@ -1,26 +1,103 @@
 {
   "schemaVersion": "skill-manifest-v1",
   "name": "sycm.feishu.weekly",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "kind": "capability",
-  "description": "生意参谋周更流水线：克隆上周纯字段周表、导入本周数据、停机等飞书 AI、再同步灰豚决策历史",
-  "entry": "scripts/run-weekly-pre-ai.mjs",
+  "description": "生意参谋周更流水线（第一发布单元）：SYCM 导出并验证源文件对，克隆上周周表、导入本周行并回读验收。依赖飞书 AI 结算的决策历史同步是第二个发布单元，不在本次提交内。",
+  "entry": "scripts/adapter.feishu-weekly.mjs",
   "inputs": [
-    { "name": "base_url", "type": "string", "required": true },
-    { "name": "period_start", "type": "string", "required": true },
-    { "name": "period_end", "type": "string", "required": true },
-    { "name": "last_week_table_id", "type": "string", "required": true }
+    {
+      "name": "collection_date",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "batch_number",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "expected_history_before",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "base_url",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "source_table_id",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "history_table_id",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "library_table_id",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "protected_table_id",
+      "type": "string",
+      "required": true
+    }
   ],
   "outputs": [
-    { "name": "receipt", "type": "receipt" },
-    { "name": "report", "type": "report" }
+    {
+      "name": "receipt",
+      "type": "receipt"
+    },
+    {
+      "name": "source_artifact",
+      "type": "artifact_ref"
+    }
   ],
-  "preconditions": ["feishu_app_access", "authorized_target"],
-  "permissions": ["browser.read", "filesystem.read", "filesystem.write", "feishu.api"],
-  "sideEffects": ["browser_read", "local_parse", "feishu_write"],
-  "dependencies": ["adapter.feishu@^1.0.0", "adapter.browser@^1.0.0"],
-  "validation": ["structure", "row_count", "relations", "readback", "publication"],
-  "recovery": { "supported": true, "resumeFrom": "idempotent_commit" },
+  "preconditions": [
+    "feishu_app_access",
+    "authorized_target",
+    "logged_in_seller"
+  ],
+  "permissions": [
+    "browser.read",
+    "filesystem.read",
+    "filesystem.write",
+    "network.external",
+    "feishu.api"
+  ],
+  "sideEffects": [
+    "browser_read",
+    "local_parse",
+    "local_artifact",
+    "feishu_write"
+  ],
+  "dependencies": [
+    "adapter.feishu@^1.0.0",
+    "adapter.browser@^1.0.0"
+  ],
+  "validation": [
+    "source_identity",
+    "scope_match",
+    "structure",
+    "row_count",
+    "digest",
+    "contiguous_prefix",
+    "artifact_integrity",
+    "readback",
+    "publication"
+  ],
+  "recovery": {
+    "supported": true,
+    "resumeFrom": "idempotent_commit"
+  },
   "owner": "sycm-automation",
-  "tags": ["sycm", "feishu", "weekly-sop"]
+  "tags": [
+    "sycm",
+    "feishu",
+    "weekly-sop"
+  ]
 }

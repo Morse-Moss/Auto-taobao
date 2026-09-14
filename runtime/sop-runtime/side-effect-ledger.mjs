@@ -95,7 +95,9 @@ export function createSideEffectLedger({ store, nowIso = () => new Date().toISOS
       const outcomes = [];
       for (const record of unknowns) {
         if (!readBack) {
-          outcomes.push({ commitKey: record.commit_key, status: 'UNKNOWN', action: 'REQUIRES_HUMAN' });
+          // 必须走 keyOf：端口契约是 camelCase，直接读 record.commit_key 会得到 undefined，
+          // 让「需要人工对账」的收据丢掉唯一的定位键（内存 store 上实测踩到）。
+          outcomes.push({ commitKey: keyOf(record), status: 'UNKNOWN', action: 'REQUIRES_HUMAN' });
           continue;
         }
         const result = await this.verify({ commitKey: keyOf(record), readBack, expected });
