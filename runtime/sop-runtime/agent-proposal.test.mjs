@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 
 import {
   AGENT_MANIFEST_SCHEMA_VERSION, PROPOSAL_SCHEMA_VERSION, PROPOSAL_KINDS, READ_ONLY_TOOLS,
-  AGENT_REJECTION, AgentContractError,
+  AGENT_REJECTION, AGENT_ROLES, REVIEW_VERDICTS, AgentContractError,
   validateAgentManifest, assertAgentManifest, validateProposal, toDecision,
   createAgentPort, assertAgentRemovable,
 } from './agent-proposal.mjs';
@@ -250,11 +250,15 @@ test('拒绝原因枚举与实现一致；提案种类全部是「读 + 生成�
   assert.deepEqual([...AGENT_REJECTION], [
     'MANIFEST_INVALID', 'WRITE_EFFECT_FORBIDDEN', 'TOOL_NOT_READ_ONLY', 'PROPOSAL_INVALID',
     'STATE_MUTATION_FORBIDDEN', 'CLAIM_WITHOUT_EVIDENCE', 'EVIDENCE_REF_UNKNOWN',
-    'KIND_NOT_ALLOWED', 'FALLBACK_MISSING', 'AGENT_FAILED',
+    'KIND_NOT_ALLOWED', 'FALLBACK_MISSING', 'AGENT_FAILED', 'ROLE_INVALID',
   ]);
   // 提案种类只允许「生成判断」，不允许出现要求 Agent 去执行外部动作的种类。
   // 注意 SUMMARY 不是合法种类（合法的是 SUMMARIZE），这里顺带把这个约定钉住。
   assert.deepEqual([...PROPOSAL_KINDS], ['CLASSIFY', 'PARSE', 'SUMMARIZE', 'PLAN', 'RECOMMEND']);
   assert.ok(!PROPOSAL_KINDS.includes('SUMMARY'));
   assert.ok(!PROPOSAL_KINDS.some((kind) => /EXECUTE|WRITE|PUBLISH|COMMIT/.test(kind)));
+  // ROLE_INVALID 是迁移 7 引入的：planner 端口不得接 reviewer 的 manifest（反之亦然），
+  // 否则「谁提案、谁复核」这条分离会静默失效。
+  assert.deepEqual([...AGENT_ROLES], ['planner', 'reviewer']);
+  assert.deepEqual([...REVIEW_VERDICTS], ['ACCEPT', 'REJECT', 'ESCALATE']);
 });

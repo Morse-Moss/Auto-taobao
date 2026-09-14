@@ -184,6 +184,20 @@ test("partial stall manifest records the refreshed owned progress used for expor
   assert.equal(manifest.progress.rowCount, 550);
 });
 
+// 两条导出激活路径必须产出同一份下载产物：
+//   1) 坐标点击（/clickAt，data-xws-export-caret / data-xws-export-csv 标记）
+//   2) 页面内合成 MouseEvent 派发（/eval，clickExportControl）
+// 真实页面里 El 的 loading mask 会吞掉 CDP 坐标点击，所以运行器改走路径 2；
+// 假代理若只实现路径 1，clickExportControl 会静默变成空操作，waitForDownload
+// 会一直轮询到 60 分钟的 final deadline 才失败（用例看似"挂死"）。
+function csvFixture() {
+  return [
+    "序号,商品图片,商品标题,商品链接,价格,月收货人数,类目,同款数,平台,占位类型,店铺名,店铺旺旺,店铺类型,地址,收藏人数,卖点",
+    "1,,A,https://item.taobao.com/item.htm?id=1,100,10,c,0,淘宝,自然位,s,w,t,a,-,-",
+    "2,,B,https://item.taobao.com/item.htm?id=2,200,100+,c,-,天猫,广告位,s,w,t,a,-,-",
+  ].join("\n");
+}
+
 function startFakeProxy({ full = false, outputPath = "", liveResult = false, staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, loginRequired = false, omitNewTargetId = false, newResponseFailsAfterCreate = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, startClickWithoutRequestOnce = false, collectionFailsAfterStartup = false, delayedCollectionRequest = false, delayedCollectionResult = false, resultMutationPrecedesRequest = false, backgroundRequestBetweenArmAndClick = false, historicalResultRemountsAfterStart = false, historicalResultRemountsInSourceAfterStart = false, historicalResultPersistsInSourceAfterRequest = false, resultMarkerLostBeforeExport = false, xlsxMenuMountsLate = false, staleXlsxMenuVisible = false, staleXlsxMenuVisibleOwned = false, staleXlsxMenuHidden = false, staleXlsxMenuHiddenWithoutAria = false, xlsxMenuAriaIdChanges = false, csvExportMissing = false, exportActivationFails = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, sortRadioMountsLate = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false, browserId = "edge", proxyConnected = true } = {}) {
   let homeCreated = liveResult;
   let searchCreated = liveResult;
@@ -319,12 +333,7 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
       }
       if (body.includes("data-xws-export-caret")) xlsxCaretClicks += 1;
       if (full && body.includes("data-xws-export-csv")) {
-        const csv = [
-          "序号,商品图片,商品标题,商品链接,价格,月收货人数,类目,同款数,平台,占位类型,店铺名,店铺旺旺,店铺类型,地址,收藏人数,卖点",
-          "1,,A,https://item.taobao.com/item.htm?id=1,100,10,c,0,淘宝,自然位,s,w,t,a,-,-",
-          "2,,B,https://item.taobao.com/item.htm?id=2,200,100+,c,-,天猫,广告位,s,w,t,a,-,-",
-        ].join("\n");
-        await writeFile(outputPath, csv, "utf8");
+        await writeFile(outputPath, csvFixture(), "utf8");
       }
       if (full && body.includes("data-xws-export-xlsx")) {
         const fixtureScript = [
@@ -576,6 +585,11 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
         ]);
       } else if (body.includes("data-xws-export-csv") && csvExportMissing) {
         send({ ok: false, reason: "export control is missing", count: 0 });
+      } else if (full && body.includes("data-xws-export-csv") && body.includes("dispatchEvent")) {
+        // clickExportControl：页面内合成 pointerdown/mousedown/pointerup/mouseup/click。
+        // 标记阶段的 /eval 不含 dispatchEvent，因此不会误入本分支。
+        await writeFile(outputPath, csvFixture(), "utf8");
+        send({ ok: true, tag: "BUTTON", text: "导出csv表格" });
       } else if (body.includes("result dialog changed") && body.includes("export control is ambiguous")) {
         send({ ok: true });
       } else if (body.includes("element.setAttribute('data-xws-export-menu-baseline'")) {
@@ -591,6 +605,34 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
         && body.includes("items.length > 0")
         && body.includes("items.every")) {
         send(!staleXlsxMenuVisibleOwned || xlsxCaretClicks >= 1);
+      } else if (body.includes("data-xws-export-caret") && body.includes("dispatchEvent")) {
+        // caret 按钮的激活自 db4e1c5 起同样走 clickExportControl（/eval + dispatchEvent），
+        // 不再经过 /clickAt；而 xlsxCaretClicks 原来只在 /clickAt 分支自增，于是恒为 0。
+        // 这会让三处「菜单是否已关闭／是否已重新打开」的模拟判定永远为假（例如
+        // `send(!staleXlsxMenuVisibleOwned || xlsxCaretClicks >= 1)`），表现为整条
+        // full flow 报 "existing XLSX menu did not close before activation"。
+        // 标记阶段的 /eval 只调 setAttribute、不含 dispatchEvent，因此不会误入本分支。
+        xlsxCaretClicks += 1;
+        send({ ok: true, tag: "BUTTON", text: "导出" });
+      } else if (full && body.includes("data-xws-export-xlsx") && body.includes("dispatchEvent")) {
+        // xlsx 菜单项激活同样走 clickExportControl（/eval + dispatchEvent）。菜单探测脚本
+        // 不含 dispatchEvent，因此不会误入本分支；若这里不产出下载，waitForDownload 会
+        // 一直轮询到 60 分钟 deadline（与 CSV 同一类脱钩缺陷）。
+        const fixtureScript = [
+          "import importlib.util,sys",
+          "from pathlib import Path",
+          "spec=importlib.util.spec_from_file_location('validator',sys.argv[1])",
+          "module=importlib.util.module_from_spec(spec)",
+          "spec.loader.exec_module(module)",
+          "module.make_self_test_fixture(Path(sys.argv[2]))",
+        ].join(";");
+        const fixture = spawnSync(python, [...pythonPrefix, "-c", fixtureScript, validator, path.dirname(outputPath)], { encoding: "utf8" });
+        if (fixture.status !== 0) {
+          response.statusCode = 500;
+          response.end(JSON.stringify({ error: fixture.stderr || fixture.stdout }));
+          return;
+        }
+        send({ ok: true, tag: "LI", text: "导出xlsx表格" });
       } else if (body.includes("data-xws-export-xlsx")) {
         xlsxMenuProbes += 1;
         if (staleXlsxMenuVisibleOwned && body.includes("currentMenuIds")) {
@@ -1582,7 +1624,10 @@ test("full flow waits for a delayed XLSX export menu", async () => {
     });
     assert.equal(result.code, 0, result.stderr);
     assert.match(result.stdout, /"event":"DONE"/u);
-    assert.match(result.stdout, /"event":"EXPORT_STARTED","format":"csv","reason":"final"/u);
+    // 事件记录自 EVIDENCE-CONTRACT.md 起统一携带 runId/attemptId/seq，event 与
+    // format/reason 之间已插入其他字段；原先要求三键相邻的正则永远匹配不上，
+    // 只会把「形状变了」误报成「事件没发生」。改为只要求同一行内出现这三对键值。
+    assert.match(result.stdout, /"event":"EXPORT_STARTED"[^\n]*"format":"csv"[^\n]*"reason":"final"/u);
     assert.equal(proxy.getXlsxMenuProbes(), 2);
     const runDirs = await (await import("node:fs/promises")).readdir(runtime);
     const manifest = JSON.parse(await readFile(path.join(runtime, runDirs[0], "manifest.json"), "utf8"));

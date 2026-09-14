@@ -1,12 +1,13 @@
 {
   "schemaVersion": "skill-manifest-v1",
   "name": "huitun.keyword-heat.collect",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "kind": "capability",
-  "description": "从灰豚数据红薯版采集 A 候选关键词的精确话题浏览量，并在回读校验通过后受控回填飞书",
-  "entry": "scripts/run-huitun-topic-heat.mjs",
+  "description": "从灰豚数据红薯版采集 A 候选关键词的精确话题浏览量，并在回读（含优先级公式结算）通过后受控回填飞书",
+  "entry": "scripts/adapter.huitun-keyword-heat.mjs",
   "inputs": [
-    { "name": "keyword_batch", "type": "artifact_ref", "required": true },
+    { "name": "results_file", "type": "artifact_ref", "required": true },
+    { "name": "queue_snapshot", "type": "object", "required": true },
     { "name": "target_table", "type": "string", "required": true },
     { "name": "browser_profile_id", "type": "string", "required": true }
   ],
@@ -15,10 +16,10 @@
     { "name": "receipt", "type": "receipt" }
   ],
   "preconditions": ["logged_in_buyer", "edge_proxy_health", "feishu_app_access", "authorized_target"],
-  "permissions": ["browser.read", "filesystem.write", "network.external", "feishu.api"],
+  "permissions": ["browser.read", "filesystem.read", "filesystem.write", "network.external", "feishu.api"],
   "sideEffects": ["browser_read", "local_artifact", "feishu_write"],
   "dependencies": ["adapter.feishu@^1.0.0", "adapter.browser@^1.0.0"],
-  "validation": ["source_identity", "digest", "row_count", "readback"],
+  "validation": ["source_identity", "structure", "row_count", "publication", "readback"],
   "recovery": { "supported": true, "resumeFrom": "idempotent_commit" },
   "owner": "sycm-automation",
   "tags": ["huitun", "collect", "feishu"]

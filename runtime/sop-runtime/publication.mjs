@@ -11,13 +11,15 @@
 // 与采集期的区别：采集期验证器跑在 Worker 里（拿到工件即可判定）；
 // 发布期验证器必须等到提交之后才有收据，所以单独走这里，不在 Worker 里提前跑。
 import { runManifestValidation, VALIDATION_STAGE, validationStageOf } from './validation-registry.mjs';
-import { classifyRisk, requiresApproval } from './policy.mjs';
+import { EXTERNAL_WRITE_EFFECTS, classifyRisk, requiresApproval } from './policy.mjs';
 
 // 结算结论：VERIFIED 已验收 / UNKNOWN 无法判定（只对账） / REJECTED 确定未发生（可重试）
 export const PUBLICATION_VERDICT = Object.freeze(['VERIFIED', 'UNKNOWN', 'REJECTED']);
 
-// 外部写副作用类：与 skill-manifest 的 EXTERNAL_EFFECTS 同语义（那边是常量，这里允许调用方覆盖）。
-export const EXTERNAL_WRITE_EFFECTS = Object.freeze(['feishu_write', 'external_publish', 'paid_provider_call', 'postgres_write']);
+// 外部写副作用类：**不是**这里的第二份定义，而是 policy 的同一份清单（原先这里是拷贝，已改为同源）。
+// 名字保留 `EXTERNAL_WRITE_EFFECTS` 是因为发布段调用方用它，并且 `createCapabilityPublisher`
+// 允许调用方显式覆盖（`externalEffects`）——覆盖是刻意的逃生门，默认值必须与 policy 一致。
+export { EXTERNAL_WRITE_EFFECTS };
 
 function publisherError(message, code, details = {}) {
   return Object.assign(new Error(`${code}: ${message}`), { name: 'PublicationError', code, details });

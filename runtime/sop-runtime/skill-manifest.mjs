@@ -1,7 +1,7 @@
 // Skill Manifest：机器可读能力契约（Spec 8.1）
 // 单一事实来源：每个 Skill 目录下的 manifest.json / manifest.mjs 都由这里校验。
 // 校验是纯函数、fail-closed：任何未知枚举、路径逃逸、未声明副作用都在装载前失败。
-import { SIDE_EFFECT_RISK } from './policy.mjs';
+import { EXTERNAL_WRITE_EFFECTS, SIDE_EFFECT_RISK } from './policy.mjs';
 import { isValidVersion, isValidRange } from './semver.mjs';
 // 发布期验证器的判定必须与 Validator 实现表同源，否则「哪个名字属于发布期」会出现两套答案。
 import { VALIDATION_STAGE, validationStageOf } from './validation-registry.mjs';
@@ -45,7 +45,8 @@ export const PUBLICATION_VALIDATION_NAMES = Object.freeze(
 );
 
 const NAME_RE = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
-const EXTERNAL_EFFECTS = Object.freeze(['feishu_write', 'external_publish', 'paid_provider_call', 'postgres_write']);
+// 外部写副作用清单来自 policy 的唯一事实来源（原先这里是第二份拷贝，已删）。
+const EXTERNAL_EFFECTS = EXTERNAL_WRITE_EFFECTS;
 
 // 副作用 -> 必须同时声明的权限（未声明权限 = 隐性扩大写范围）。
 const EFFECT_REQUIRES_PERMISSION = Object.freeze({

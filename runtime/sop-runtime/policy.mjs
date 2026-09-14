@@ -18,6 +18,19 @@ export const SIDE_EFFECT_RISK = Object.freeze({
   captcha_or_risk_control: 'HUMAN_REQUIRED',
 });
 
+// 「外部写副作用」的唯一清单：写出去就回不来、必须走发布段验收与回读的那几类。
+// 它**不是**从 SIDE_EFFECT_RISK 的等级推出来的（等级回答的是「要不要人工」，
+// 这份清单回答的是「要不要走发布段」），但两者必须自洽：清单里的每一项都必须在风险表里、
+// 且不得是 LOW。这条自洽关系由单测锁住，避免三处各写一份枚举后静默分叉。
+// 依赖方向：policy 是叶子模块（只 import context-schema），Controller / skill-manifest /
+// publication 都从**这里**取这份清单。
+export const EXTERNAL_WRITE_EFFECTS = Object.freeze([
+  'feishu_write',
+  'external_publish',
+  'paid_provider_call',
+  'postgres_write',
+]);
+
 const HUMAN_ONLY_EFFECTS = new Set(['account_login', 'captcha_or_risk_control']);
 
 export function laneKey(identity) {

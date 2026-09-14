@@ -142,6 +142,61 @@ test('游标只能前进，且只能在 VALIDATED 证据上推进', async () => 
   await assert.rejects(() => controller.advanceCursor(runId, { end: 5 }), /CURSOR_REGRESSION/u);
 });
 
+test('声称要写外部的运行：发布未请求时游标不得推进（只读运行不受影响）', async () => {
+  // 迁移 7 收紧项。判据取自**上下文里准入时声明的副作用**（sideEffects），
+  // 因此不依赖 manifest，也不依赖调用方是否老实。
+  const store = createMemoryStore();
+  const controller = createController({ store });
+
+  const writeRun = await admitTask({
+    store,
+    // 用 postgres_write（MEDIUM）而不是 feishu_write（HIGH）：本用例要验的是游标闸门，
+    // 不是人工闸门（后者另有用例）。这里必须绕开审批才能走到 advanceCursor。
+    spec: { ...spec, taskId: 'sop-write', sideEffects: ['postgres_write'], write: true },
+    idFactory: () => 'run-write',
+  });
+  assert.equal(writeRun.context.humanGateStatus, 'NONE', 'MEDIUM 风险不触发人工闸门，避免本用例串测到闸门逻辑');
+  const writeAttempt = await controller.beginAttempt(writeRun.runId, { stage: 'COLLECT', write: true });
+  await controller.completeAttempt(writeRun.runId, { attemptId: writeAttempt.attemptId });
+  await controller.markEvidenceValidated(writeRun.runId);
+  await assert.rejects(
+    () => controller.advanceCursor(writeRun.runId, { end: 10 }),
+    (error) => error.code === 'PUBLICATION_NOT_REQUESTED' && /postgres_write/u.test(error.details.declaredWrites.join(',')),
+  );
+
+  // 只读运行（未声明外部写）仍然可以按原口径推进：收紧的只是「声明了写却没发布」这一种。
+  const readRun = await admitTask({
+    store,
+    spec: { ...spec, taskId: 'sop-read', sideEffects: ['browser_read', 'local_artifact'] },
+    idFactory: () => 'run-read',
+  });
+  const readAttempt = await controller.beginAttempt(readRun.runId, { stage: 'COLLECT' });
+  await controller.completeAttempt(readRun.runId, { attemptId: readAttempt.attemptId });
+  await controller.markEvidenceValidated(readRun.runId);
+  const advanced = await controller.advanceCursor(readRun.runId, { end: 3 });
+  assert.equal(advanced.verifiedCursor.end, 3);
+});
+
+test('decisions 追加：唯一审计入口，拒绝夹带状态轴、拒绝空写入、终态拒绝追加', async () => {
+  const { controller, runId } = await boot();
+  const before = await controller.getContext(runId);
+  const updated = await controller.recordDecisions(runId, [{ kind: 'AGENT_PROPOSAL', proposalKind: 'PLAN' }]);
+  assert.equal(updated.decisions.length, 1);
+  assert.equal(updated.decisions[0].kind, 'AGENT_PROPOSAL');
+  assert.equal(updated.contextVersion, before.contextVersion + 1, '追加审计也走 CAS 版本推进');
+
+  // 审计记录不得夹带状态轴字段：decisions 不是状态的第二入口。
+  await assert.rejects(
+    () => controller.recordDecisions(runId, [{ kind: 'AGENT_REVIEW', executionStatus: 'SUCCEEDED' }]),
+    (error) => error.code === 'DECISION_STATE_MUTATION_FORBIDDEN' && error.details.leaked.includes('executionStatus'),
+  );
+  await assert.rejects(() => controller.recordDecisions(runId, []), /DECISION_REQUIRED/u);
+  await assert.rejects(() => controller.recordDecisions(runId, [{ note: 'no kind' }]), /DECISION_INVALID/u);
+
+  await controller.succeed(runId);
+  await assert.rejects(() => controller.recordDecisions(runId, [{ kind: 'AGENT_REVIEW' }]), /terminal/u);
+});
+
 test('终态拒绝再次转移；CAS 冲突可被检测', async () => {
   const { controller, runId, store } = await boot();
   await controller.succeed(runId);

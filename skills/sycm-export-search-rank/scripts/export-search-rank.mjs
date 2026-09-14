@@ -30,8 +30,11 @@ const TOP_RANK_ASSETS = new Map([
 ]);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function parseArgs(argv) {
-  const args = {
+// 默认参数集中在这里：CLI 与 adapter 必须用**同一份**默认值。
+// 若 adapter 自己维护一份副本，两边会随改动漂移，出现「CLI 跑的是普通浴缸、
+// 运行时跑的是另一个默认类目」这类只在真实运行中才暴露的分叉。
+export function defaultExportArgs() {
+  return {
     proxy: process.env.SYCM_PROXY || PROXY_DEFAULT,
     target: "",
     period: "7d",
@@ -45,6 +48,28 @@ function parseArgs(argv) {
     fromHome: false,
     selfTest: false,
   };
+}
+
+// 把外部传入的部分参数（adapter 的 collectInput）规范成 runSearchRankExport 需要的完整参数对象，
+// 并施加与 CLI 完全相同的取值校验。校验失败一律抛错，不做静默兜底。
+export function resolveExportArgs(partial = {}) {
+  const args = { ...defaultExportArgs(), ...partial };
+  args.proxy = String(args.proxy).replace(/\/$/u, "");
+  args.delayMs = Number(args.delayMs);
+  args.maxPages = Number(args.maxPages);
+  args.fromHome = Boolean(args.fromHome);
+  if (!args.proxy) throw new Error("proxy is required");
+  if (!Number.isFinite(args.delayMs) || args.delayMs < 800) throw new Error("delayMs must be at least 800");
+  if (!Number.isInteger(args.maxPages) || args.maxPages < 1) throw new Error("maxPages must be a positive integer");
+  if (args.period !== "7d") throw new Error("period currently supports only 7d");
+  if (!args.cateId) throw new Error("cateId is required");
+  if (!args.category) throw new Error("category is required");
+  if (!args.outputDir) throw new Error("outputDir is required");
+  return args;
+}
+
+function parseArgs(argv) {
+  const args = defaultExportArgs();
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === "--help" || token === "-h") {
@@ -76,10 +101,7 @@ function parseArgs(argv) {
     else if (key === "max-pages") args.maxPages = Number(value);
     else throw new Error(`Unknown argument: --${key}`);
   }
-  if (!Number.isFinite(args.delayMs) || args.delayMs < 800) throw new Error("--delay-ms must be at least 800");
-  if (!Number.isInteger(args.maxPages) || args.maxPages < 1) throw new Error("--max-pages must be a positive integer");
-  if (args.period !== "7d") throw new Error("--period currently supports only 7d");
-  return args;
+  return resolveExportArgs(args);
 }
 
 function printHelp() {
@@ -564,10 +586,15 @@ async function selfTest() {
   console.log(JSON.stringify({ ok: true, ...result.validation }, null, 2));
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help) return printHelp();
-  if (args.selfTest) return selfTest();
+// 程序化入口：把「已解析的参数对象」跑成一次导出，返回结构化结果。
+//
+// 为什么必须把它从 main() 里拆出来：capability 的 adapter（scripts/adapter.search-rank.mjs）
+// 是运行时入口，它需要**函数调用**而不是子进程。原来这段逻辑只存在于 main() 里，
+// 读取的是 process.argv，外部无法复用；子进程复用会丢掉失败分类（HUMAN_REQUIRED 等）
+// 和结构化收据，恢复/重试都无从判断。
+//
+// 语义完全不变：CLI（main）仍是同一条路径，只是多了返回值。
+export async function runSearchRankExport(args, { log = defaultLog } = {}) {
   const proxy = args.proxy;
   const target = await discoverTarget(proxy, args.target, args.fromHome);
   if (args.fromHome) {
@@ -614,7 +641,7 @@ async function main() {
     const payload = await extractPage(proxy, target);
     if (!payload.rows.length) throw new Error(`Page ${payload.page ?? pageIndex + 1} has no rows`);
     pagePayloads.push(payload);
-    console.error(`SYCM page ${payload.page ?? pageIndex + 1}: ${payload.rows.length} rows`);
+    log(`SYCM page ${payload.page ?? pageIndex + 1}: ${payload.rows.length} rows`);
     if (payload.nextDisabled) break;
     const beforePage = payload.page;
     const beforeFirstRank = payload.rows[0]?.rankText || "";
@@ -659,12 +686,29 @@ async function main() {
     writeXlsx: (file) => writeXlsx(metadata, checked.rows, file),
     verifyOutputs: (csv, xlsx) => verifyExportPair({ csv, xlsx, expectedEndDate: reporting.endDate }),
   });
+  return { metadata, csvFile, xlsxFile, proof };
+}
+
+function defaultLog(message) {
+  console.error(message);
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  if (args.help) return printHelp();
+  if (args.selfTest) return selfTest();
+  const { metadata, csvFile, xlsxFile, proof } = await runSearchRankExport(args);
   console.log(JSON.stringify({ ok: true, metadata, csv: csvFile, xlsx: xlsxFile, proof }, null, 2));
 }
 
-main().catch((error) => {
-  const payload = { ok: false, code: error.code || "ERROR", message: error.message };
-  if (error.details) payload.details = error.details;
-  console.error(JSON.stringify(payload, null, 2));
-  process.exitCode = error.code === "HUMAN_REQUIRED" ? 2 : 1;
-});
+// 只有当本文件被当作可执行入口时才跑 main()。
+// 不加这道闸门，任何 `import` 本模块的代码（例如 adapter）都会顺带真实导出一遍 SYCM。
+const isMain = Boolean(process.argv[1]) && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+if (isMain) {
+  main().catch((error) => {
+    const payload = { ok: false, code: error.code || "ERROR", message: error.message };
+    if (error.details) payload.details = error.details;
+    console.error(JSON.stringify(payload, null, 2));
+    process.exitCode = error.code === "HUMAN_REQUIRED" ? 2 : 1;
+  });
+}

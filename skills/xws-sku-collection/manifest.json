@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "skill-manifest-v1",
+  "name": "xws.sku.collection",
+  "version": "1.0.0",
+  "kind": "capability",
+  "description": "把一个小旺神 SKU 采集批次的本地证据（payload/采集收据/页面拓扑/拓扑收据）与已审批的 dry-run 计划复验成可自证工件，并在人工授权后写入飞书 SKU明细 并回读验收",
+  "entry": "scripts/adapter.sku-collection.mjs",
+  "inputs": [
+    { "name": "evidence_dir", "type": "path", "required": true },
+    { "name": "payload_file", "type": "path", "required": true },
+    { "name": "capture_receipt", "type": "path", "required": true },
+    { "name": "topology_file", "type": "path", "required": true },
+    { "name": "topology_receipt", "type": "path", "required": true },
+    { "name": "manifest_file", "type": "path", "required": true },
+    { "name": "parser_file", "type": "path", "required": true },
+    { "name": "env_file", "type": "credential_ref", "required": false }
+  ],
+  "outputs": [
+    { "name": "artifact", "type": "artifact_ref" },
+    { "name": "record_set", "type": "record_set" },
+    { "name": "receipt", "type": "receipt" }
+  ],
+  "preconditions": ["authorized_target", "feishu_app_access"],
+  "permissions": ["filesystem.read", "feishu.api"],
+  "sideEffects": ["local_parse", "feishu_write"],
+  "dependencies": ["adapter.feishu@^1.0.0"],
+  "validation": ["source_identity", "contiguous_prefix", "row_count", "structure", "publication", "readback"],
+  "recovery": { "supported": true, "resumeFrom": "idempotent_commit" },
+  "owner": "sycm-automation",
+  "tags": ["xws", "sku", "publish", "weekly-sop"]
+}

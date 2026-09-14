@@ -4,6 +4,8 @@ export * from './policy.mjs';
 export * from './task-admission.mjs';
 export * from './task-queue.mjs';
 export * from './agent-proposal.mjs';
+export * from './agent-review.mjs';
+export * from './agent-planned-run.mjs';
 export * from './workflow-controller.mjs';
 export * from './validator.mjs';
 export * from './validation-registry.mjs';

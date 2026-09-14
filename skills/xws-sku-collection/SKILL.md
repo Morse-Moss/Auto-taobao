@@ -209,6 +209,36 @@ node "D:\Retire\sycm-automation\runtime\capture-xws-sku-payload.mjs" `
   --copy-feedback "<visible-copy-confirmation>"
 ```
 
+## 运行时入口（Agent SOP Runtime）
+
+除上面的人工 CLI 链之外，本 Skill 还登记了一条确定性能力 `xws.sku.collection@1.0.0`
+（`manifest.json` / `scripts/adapter.sku-collection.mjs` / `tests/adapter-sku-collection.test.mjs`）。
+它把「复验 + 授权写入 + 回读验收」接进通用两段式运行器：
+
+- 采集段读**六份本地输入**（`--payload-file`、`--capture-receipt`、`--topology-file`、
+  `--topology-receipt`、`--manifest-file`、`--parser-file`），独立复验三方哈希、来源身份、
+  来源资格（`是否有效竞品=是` 且分类 A/B）、解析器摘要与逐行契约（唯一键 / 关联 / 空间），
+  产出可自证工件；**不发起任何浏览器动作**。
+- 发布段只读工件字节，按 `SKU唯一键` 先对账再 `batch_create`（幂等，重跑不产生重复行），
+  随后由飞书真实回读验收。目标必须与**已审批工件**携带的一致，否则拒绝写入。
+- 采集段与发布段之间不通过进程内状态传递数据，因此可以从落盘工件跨进程恢复。
+
+```powershell
+node runtime/sop-runtime/two-stage-runner.mjs `
+  --capability xws.sku.collection `
+  --identity '{"tenantId":"sycm","storeId":"bathtub","platform":"taobao","accountId":"buyer-1","browserProfileId":"edge-isolated","contractVersion":"sop-context-v1"}' `
+  --business-key "xws-sku-<product-id>-<capture-id>" `
+  --expected-rows <parsed-sku-count> `
+  --collect-input '{"evidenceDir":"<dir>","payloadFile":"<dir>\\xws-sku-payload-<capture>.txt","captureReceipt":"<dir>\\xws-sku-capture-<capture>.json","topologyFile":"<dir>\\xws-sku-topology-<product-id>.json","topologyReceipt":"<dir>\\xws-sku-topology-receipt-<product-id>.json","manifestFile":"<dir>\\xws-sku-dry-run-manifest-<run>.json","parserFile":"<repo>\\runtime\\xws-sku-payload-parser.mjs"}' `
+  --work-dir "<dir>\.sop"
+```
+
+省略 `--commit` 时只跑采集段：复验通过则 `publicationStatus` 保持 `NOT_REQUESTED`、游标不推进。
+真实写入必须补 `--commit --env-file "E:\小红书\.env.local" --operator "<审批人>"`
+（人工闸门由此被记录，而不是靠一个命令行开关）；写入后由回读收据结算
+`VERIFIED` 或 `UNKNOWN`（对账后才能重试）。运行器与能力的详细决策见
+`docs/architecture/MIGRATION-5-XWS-SKU-REPORT.md`。
+
 ## Commands
 
 Dry-run (pass all four files from one product directory):

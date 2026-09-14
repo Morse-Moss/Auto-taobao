@@ -19,6 +19,16 @@ export const FAILURE_CLASS = Object.freeze([
 // STALLED 只能描述阶段/分片诊断，不是完成态，因此不在 EXECUTION_STATUS 内。
 export const DIAGNOSTIC_STATUS = Object.freeze(['OK', 'STALLED']);
 
+// 上下文的**状态轴字段名**（不是取值）。凡是「谁能改运行状态」的问题都以此为准：
+// Workflow Controller 是唯一拥有者；Agent 提案、decisions 记录、外部提交载荷都不得出现这些键。
+// 独立导出的理由：Controller（核心模块）需要它来拒绝夹带状态轴的 decisions，
+// 而核心模块**不允许** import Agent 层（见 agent-proposal.assertAgentRemovable）——
+// 因此这份清单必须住在双方都能依赖的 context-schema 里，而不是在 Agent 层。
+export const CONTEXT_STATE_AXIS_FIELDS = Object.freeze([
+  'executionStatus', 'evidenceStatus', 'humanGateStatus', 'leaseStatus', 'publicationStatus',
+  'verifiedCursor', 'cursorVersion', 'blocker', 'nextAction',
+]);
+
 const REQUIRED_IDENTITY = ['tenantId', 'storeId', 'platform', 'accountId', 'browserProfileId', 'contractVersion'];
 
 export function createContext({
@@ -55,6 +65,10 @@ export function createContext({
     humanGateStatus: 'NONE',
     leaseStatus: 'WAITING',
     publicationStatus: 'NOT_REQUESTED',
+    // 准入期声明的副作用集合（dry-run 与 --commit 会声明不同的集合，见 task-admission）。
+    // 它落进上下文是有作用的，不是留档：Controller 用它回答「这次运行声明过外部写入吗」，
+    // 从而在**不依赖 manifest**的前提下收紧游标推进（见 workflow-controller.advanceCursor）。
+    sideEffects: [],
     verifiedCursor,
     retryBudget,
     retryUsed: { transientExternal: 0 },
@@ -98,6 +112,7 @@ export function validateContext(context) {
   if (!LEASE_STATUS.includes(context.leaseStatus)) errors.push(`invalid leaseStatus: ${context.leaseStatus}`);
   if (!PUBLICATION_STATUS.includes(context.publicationStatus)) errors.push(`invalid publicationStatus: ${context.publicationStatus}`);
   if (!Number.isInteger(context.contextVersion) || context.contextVersion < 1) errors.push('contextVersion must be a positive integer');
+  if (context.sideEffects !== undefined && !Array.isArray(context.sideEffects)) errors.push('sideEffects must be an array when present');
   if (context.blocker && !FAILURE_CLASS.includes(context.blocker.class)) errors.push(`invalid blocker.class: ${context.blocker?.class}`);
   return { ok: errors.length === 0, errors };
 }

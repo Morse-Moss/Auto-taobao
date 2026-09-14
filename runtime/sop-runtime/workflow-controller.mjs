@@ -1,7 +1,7 @@
 // Workflow Controller：Run/Step/Attempt 状态唯一拥有者（Spec 5.1 / 6.3）
 // 只允许确定性状态转移；外部副作用必须走 Worker + Validator + Commit/Reconcile。
-import { advance, setBlocker, validateContext, isTerminal } from './context-schema.mjs';
-import { actionForFailure, laneFor, laneLimit, occupiesLane } from './policy.mjs';
+import { advance, setBlocker, validateContext, isTerminal, CONTEXT_STATE_AXIS_FIELDS } from './context-schema.mjs';
+import { EXTERNAL_WRITE_EFFECTS, actionForFailure, laneFor, laneLimit, occupiesLane } from './policy.mjs';
 import { CasConflictError } from './store-port.mjs';
 
 export class ControllerError extends Error {
@@ -315,11 +315,55 @@ export function createController({
       return transition(runId, { executionStatus: 'FAILED', nextAction: 'TERMINAL', blocker: { class: 'POLICY_DENIED', detail: 'cancelled', at: nowIso() } });
     },
 
+    // 审计记录的**唯一**落点（Agent 提案、复核结论等只允许走这里）。
+    // 刻意不接受任意 patch：签名里根本没有可写状态轴的位置，
+    // 因此「Agent 改运行状态」不是靠纪律约束，而是在接口上不可能发生。
+    // 另外，记录自身也不得夹带状态轴字段——decisions 是审计，不是状态的第二入口。
+    async recordDecisions(runId, records = []) {
+      const list = Array.isArray(records) ? records.filter((record) => record !== null && record !== undefined) : [];
+      if (list.length === 0) {
+        throw new ControllerError('recordDecisions requires at least one decision record', { code: 'DECISION_REQUIRED' });
+      }
+      for (const record of list) {
+        if (typeof record !== 'object' || Array.isArray(record)) {
+          throw new ControllerError('every decision record must be an object', { code: 'DECISION_INVALID' });
+        }
+        if (typeof record.kind !== 'string' || !record.kind) {
+          throw new ControllerError('every decision record needs a string kind', { code: 'DECISION_INVALID' });
+        }
+        const leaked = CONTEXT_STATE_AXIS_FIELDS.filter((field) => field in record);
+        if (leaked.length) {
+          throw new ControllerError(`decision record must not carry state-axis fields: ${leaked.join(', ')}`, {
+            code: 'DECISION_STATE_MUTATION_FORBIDDEN',
+            details: { leaked },
+          });
+        }
+      }
+      const context = await read(runId);
+      if (isTerminal(context)) {
+        throw new ControllerError(`run ${runId} is terminal (${context.executionStatus}); refusing decision append`, { code: 'TERMINAL_RUN' });
+      }
+      const next = advance(context, { decisions: [...(context.decisions ?? []), ...list] }, { nowIso: nowIso() });
+      return write(next, context.contextVersion);
+    },
+
     // 游标推进：必须与已验证且已提交的边界一致，CAS 保护
     async advanceCursor(runId, { end, commitRefs = [] }) {
       const context = await read(runId);
       if (context.evidenceStatus !== 'VALIDATED') {
         throw new ControllerError('cursor can only advance on VALIDATED evidence', { code: 'EVIDENCE_NOT_VALIDATED' });
+      }
+      // 「这次运行声明过外部写入」时，NOT_REQUESTED 不再是合法前置。
+      // 准入期已经把 manifest 声明的副作用记进上下文（sideEffects），因此在**不依赖 manifest**的前提下
+      // 也能回答这个问题：声明要写外部的运行，游标只能在发布被验收（VERIFIED）之后推进。
+      // 只读能力不受影响（它们的 sideEffects 里没有写外部那一类），dry-run 采集路径也不受影响
+      // （它根本不调 advanceCursor，而是走 succeed()）。
+      const declaredWrites = (context.sideEffects ?? []).filter((effect) => EXTERNAL_WRITE_EFFECTS.includes(effect));
+      if (declaredWrites.length && context.publicationStatus === 'NOT_REQUESTED') {
+        throw new ControllerError(
+          `cursor cannot advance on a run that declared external writes (${declaredWrites.join(', ')}) while publication is NOT_REQUESTED`,
+          { code: 'PUBLICATION_NOT_REQUESTED', details: { declaredWrites, publicationStatus: context.publicationStatus } },
+        );
       }
       if (context.publicationStatus !== 'VERIFIED' && context.publicationStatus !== 'NOT_REQUESTED') {
         throw new ControllerError(`publication must be VERIFIED or NOT_REQUESTED before cursor advance, got ${context.publicationStatus}`, { code: 'PUBLICATION_NOT_SETTLED' });

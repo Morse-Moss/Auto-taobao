@@ -1,14 +1,19 @@
 {
   "schemaVersion": "skill-manifest-v1",
   "name": "sycm.search-rank.export",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "kind": "capability",
-  "description": "导出已登录生意参谋搜索排行全部分页，产出经校验的 CSV/XLSX（七天报告窗口）",
-  "entry": "scripts/export-search-rank.mjs",
+  "description": "导出已登录生意参谋搜索排行全部分页，产出经校验的 CSV/XLSX（七天报告窗口），并生成可独立复验的证据 manifest",
+  "entry": "scripts/adapter.search-rank.mjs",
   "inputs": [
+    { "name": "proxy", "type": "string", "required": true },
+    { "name": "cate_id", "type": "string", "required": true },
+    { "name": "category", "type": "string", "required": true },
     { "name": "report_window", "type": "date_range", "required": true },
+    { "name": "output_dir", "type": "path", "required": true },
     { "name": "browser_profile_id", "type": "string", "required": true },
-    { "name": "run_id", "type": "string", "required": true }
+    { "name": "run_id", "type": "string", "required": true },
+    { "name": "max_pages", "type": "number", "required": false }
   ],
   "outputs": [
     { "name": "artifact", "type": "artifact_ref" },

@@ -49,6 +49,21 @@ export class FeishuClient {
     }));
   }
 
+  // 列出 Base 下的表。目的是让调用方能证明「我读写的 tableId 就是它自称的那张表」，
+  // 而不是只信调用方传进来的名字。只读，无副作用。
+  async listTables() {
+    const tables = [];
+    let pageToken;
+    do {
+      const query = new URLSearchParams({ page_size: '100' });
+      if (pageToken) query.set('page_token', pageToken);
+      const data = await this.#request(`/bitable/v1/apps/${this.appToken}/tables?${query}`);
+      tables.push(...(data.items ?? []).map((item) => ({ tableId: item.table_id, name: item.name })));
+      pageToken = data.has_more ? data.page_token : undefined;
+    } while (pageToken);
+    return tables;
+  }
+
   async getRecordCount() {
     const data = await this.#request(`/bitable/v1/apps/${this.appToken}/tables/${this.tableId}/records?page_size=1`);
     return data.total ?? data.items?.length ?? 0;
@@ -81,6 +96,21 @@ export class FeishuClient {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ records: fieldsList.map((fields) => ({ fields })) }),
+    });
+    return (data.records ?? []).map((record) => record.record_id);
+  }
+
+  // 批量更新既有记录。入参沿用飞书原生形状（[{ record_id, fields }]），
+  // 因为调用方必须能在写之前把它拿去和「已审批的写入计划」做逐字段等值比对——
+  // 把计划改写成别处定义的中间结构会让那次比对失去意义。
+  async batchUpdateRecords(records) {
+    if (records.length === 0 || records.length > 500) {
+      throw new Error(`Batch size must be between 1 and 500; received ${records.length}`);
+    }
+    const data = await this.#request(`/bitable/v1/apps/${this.appToken}/tables/${this.tableId}/records/batch_update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ records }),
     });
     return (data.records ?? []).map((record) => record.record_id);
   }

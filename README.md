@@ -12,7 +12,7 @@
 - `skills/xws-faq-raw-collection`：锁定最新竞品周 A/B TOP5，保存小旺神问大家与评论原始证据到本地。
 - `skills/xws-question-library-collection`：兼容入口，将已验证原始证据生成本地 raw snapshot。
 - `skills/sycm-to-feishu-base`：飞书副本字段检查、TSV 构建、真实粘贴与导入验收。
-- `skills/huitun-to-feishu-keyword-heat`：读取飞书 `A候选` 队列，在灰豚红薯版采集完全同名话题浏览量，并只回填 `灰豚话题浏览量`；`内容热度`由上游流程提供。
+- `skills/huitun-to-feishu-keyword-heat`：读取飞书 `A候选` 队列，在灰豚红薯版采集完全同名话题浏览量，并只回填 `灰豚话题浏览量`；`内容热度`由上游流程提供。已登记运行时能力 `huitun.keyword-heat.collect@1.1.0`（采集段独立复验 `results.json` 与队列绑定，发布段对账式写入并由含 `优先级` 公式结算的回读收场）。
 - `evidence/stability-20260804`：三轮 267 行稳定性验证文件。
 - `runtime`：后续项目专用运行入口。
 - `docs/architecture/README.md`：多租户运营任务执行平台的目标架构、分层边界、权威数据和迁移原则。
@@ -78,17 +78,32 @@ npm run test:offline
 node "D:\Retire\sycm-automation\skills\sycm-export-search-rank\scripts\export-search-rank.mjs" --self-test
 node --test "D:\Retire\sycm-automation\skills\sycm-export-search-rank\scripts\full-flow.test.mjs" "D:\Retire\sycm-automation\skills\sycm-export-search-rank\scripts\output-publish.test.mjs"
 node --test "D:\Retire\sycm-automation\skills\sycm-export-search-rank\scripts\source-period-proof.test.mjs"
+node --test "D:\Retire\sycm-automation\skills\sycm-export-search-rank\scripts\adapter.search-rank.test.mjs"
+node --test "D:\Retire\sycm-automation\skills\xws-sku-collection\tests\adapter-sku-collection.test.mjs"
 node "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\build-paste-tsv.test.mjs"
 node "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\inspect-fields.test.mjs"
 node --test "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\copy-weekly-table.test.mjs" "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\update-weekly-base.test.mjs"
 node --test "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\sync-decision-history.test.mjs" "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\run-weekly-pre-ai.test.mjs"
 node --test "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\run-weekly-post-ai.test.mjs"
 node --test "D:\Retire\sycm-automation\runtime\keyword-decision-formulas.test.mjs" "D:\Retire\sycm-automation\runtime\apply-weekly-decision-formulas.test.mjs"
+node --test "D:\Retire\sycm-automation\runtime\sop-runtime\*.test.mjs"
+node "D:\Retire\sycm-automation\runtime\sop-runtime\build-skill-registry.mjs" --check
 node --test "D:\Retire\sycm-automation\skills\xws-export-market-analysis\tests\flow.test.mjs" "D:\Retire\sycm-automation\skills\xws-export-market-analysis\tests\cli.test.mjs" "D:\Retire\sycm-automation\skills\xws-export-market-analysis\tests\validate-output.test.mjs" "D:\Retire\sycm-automation\skills\xws-export-market-analysis\tests\prepare-flow.test.mjs"
 node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\export-market-analysis.mjs" --self-test
 py -3 "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\validate-output.py" --self-test
 node --test "D:\Retire\sycm-automation\skills\xws-to-feishu-base\tests\*.test.mjs"
 py -3 -m unittest "D:\Retire\sycm-automation\skills\xws-to-feishu-base\tests\extract_xws_xlsx_test.py"
+node --test "D:\Retire\sycm-automation\skills\huitun-to-feishu-keyword-heat\tests\adapter-huitun-keyword-heat.test.mjs"
 node --test "D:\Retire\sycm-automation\skills\huitun-to-feishu-keyword-heat\tests\*.test.mjs"
 node "D:\Retire\sycm-automation\skills\huitun-to-feishu-keyword-heat\scripts\run-huitun-topic-heat.mjs" --self-test
 ```
+
+上面是逐条的入口。全仓回归用目录发现的套件运行器（新测试自动纳入，不需要改文件列表）：
+
+```powershell
+node "D:\Retire\sycm-automation\scripts\run-test-suite.mjs" unit --concurrency=1
+node "D:\Retire\sycm-automation\scripts\run-test-suite.mjs" skills --concurrency=1
+node "D:\Retire\sycm-automation\scripts\run-test-suite.mjs" runtime --concurrency=1
+```
+
+`--concurrency=1` 不是可选项：`xws-export-market-analysis` 的用例会拉起真实 CLI 打假代理，并含 stall/deadline 计时断言，机器有负载时会假失败。`--dry-run` 打印各套件解析出的文件清单，用于核对离线/集成分区。

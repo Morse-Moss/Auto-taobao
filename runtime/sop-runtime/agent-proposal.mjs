@@ -8,11 +8,21 @@
 // 与 Controller 的分工：Controller 是唯一状态拥有者。Agent 的产物经本模块校验后，
 // 只被转成 `decisions`（审计记录）交给 Controller 追加，**不产生任何状态转移**。
 // 因此「把 Agent 拿掉」只是少了一条 decisions，确定性流程照跑。
-import { EVIDENCE_STATUS, EXECUTION_STATUS, HUMAN_GATE_STATUS, LEASE_STATUS, PUBLICATION_STATUS } from './context-schema.mjs';
+import { CONTEXT_STATE_AXIS_FIELDS, EVIDENCE_STATUS, EXECUTION_STATUS, HUMAN_GATE_STATUS, LEASE_STATUS, PUBLICATION_STATUS } from './context-schema.mjs';
 import { RISK_CLASS } from './policy.mjs';
 
 export const AGENT_MANIFEST_SCHEMA_VERSION = 'agent-capability-v1';
 export const PROPOSAL_SCHEMA_VERSION = 'agent-proposal-v1';
+
+// Agent 的角色。两个角色都不是「执行者」：
+//  - planner：出提案（本文件）；
+//  - reviewer：对提案做对抗性复核（agent-review.mjs）。
+// 角色分开的硬理由：同一条链上的复核不能由产出提案的那个 Agent 自己做。
+export const AGENT_ROLES = Object.freeze(['planner', 'reviewer']);
+
+// 复核结论（reviewer 的取值域）。刻意与状态轴无关：它是不是状态轴由 Controller 决定，
+// Agent 只能给出「我认为可以 / 不可以 / 需要人看」三种意见。
+export const REVIEW_VERDICTS = Object.freeze(['ACCEPT', 'REJECT', 'ESCALATE']);
 
 // 允许的提案种类：全部是「读 + 生成文本/标签」性质，没有一种是「执行」。
 export const PROPOSAL_KINDS = Object.freeze(['CLASSIFY', 'PARSE', 'SUMMARIZE', 'PLAN', 'RECOMMEND']);
@@ -30,16 +40,17 @@ export const READ_ONLY_TOOLS = Object.freeze([
 // 禁止出现在提案里的字段：命中即拒。这些是状态轴的键名与身份字段名。
 // 用「字段名黑名单」而不是「值比对」，是为了在 Agent 试图写入时就拦住，
 // 而不是等它写完之后再判断值合不合法（那时候副作用可能已经发生）。
+// 状态轴字段名来自 context-schema 的唯一清单（原先这里是第二份手抄枚举）；
+// 后半部分是 Agent 层额外要守的（身份、闸门、风险等级不在状态轴里，但同样不许 Agent 碰）。
 export const FORBIDDEN_PROPOSAL_FIELDS = Object.freeze([
-  'executionStatus', 'evidenceStatus', 'humanGateStatus', 'leaseStatus', 'publicationStatus',
-  'verifiedCursor', 'cursorVersion', 'blocker', 'nextAction', 'identity',
-  'sideEffectRefs', 'humanGate', 'riskClass',
+  ...CONTEXT_STATE_AXIS_FIELDS,
+  'identity', 'sideEffectRefs', 'humanGate', 'riskClass',
 ]);
 
 export const AGENT_REJECTION = Object.freeze([
   'MANIFEST_INVALID', 'WRITE_EFFECT_FORBIDDEN', 'TOOL_NOT_READ_ONLY', 'PROPOSAL_INVALID',
   'STATE_MUTATION_FORBIDDEN', 'CLAIM_WITHOUT_EVIDENCE', 'EVIDENCE_REF_UNKNOWN',
-  'KIND_NOT_ALLOWED', 'FALLBACK_MISSING', 'AGENT_FAILED',
+  'KIND_NOT_ALLOWED', 'FALLBACK_MISSING', 'AGENT_FAILED', 'ROLE_INVALID',
 ]);
 
 export class AgentContractError extends Error {
@@ -63,6 +74,10 @@ export function validateAgentManifest(manifest) {
   if (manifest.kind !== 'agent') errors.push('kind must be "agent"');
   if (!manifest.name || !manifest.version) errors.push('name and version are required');
 
+  // role 缺省是 planner（既有 manifest 不带这个字段，行为必须保持不变）。
+  const role = manifest.role ?? 'planner';
+  if (!AGENT_ROLES.includes(role)) errors.push(`role must be one of ${AGENT_ROLES.join('/')}, got ${JSON.stringify(manifest.role)}`);
+
   const tools = manifest.tools ?? [];
   if (!Array.isArray(tools) || tools.length === 0) errors.push('tools must be a non-empty array (an agent with no tools cannot read evidence)');
   const badTools = tools.filter((tool) => !READ_ONLY_TOOLS.includes(tool));
@@ -72,14 +87,25 @@ export function validateAgentManifest(manifest) {
   const writeEffects = (manifest.sideEffects ?? []).filter((effect) => effect !== 'local_artifact' && effect !== 'local_parse' && effect !== 'browser_read');
   if (writeEffects.length) errors.push(`agent must not declare write side effects: ${writeEffects.join(', ')}`);
 
-  if (!manifest.proposalKinds?.length) errors.push('proposalKinds must be declared');
-  const badKinds = (manifest.proposalKinds ?? []).filter((kind) => !PROPOSAL_KINDS.includes(kind));
-  if (badKinds.length) errors.push(`proposalKinds must come from ${PROPOSAL_KINDS.join('/')}; unknown: ${badKinds.join(', ')}`);
+  // 角色决定「它必须声明什么能力」：
+  //  - planner 要声明它能出哪些种类的提案；
+  //  - reviewer 要声明它能给哪些复核结论（且必须给得出至少一种，否则这个 reviewer 无法表达意见）。
+  // 两者都不允许声明「执行」性质的东西，因为它们连工具面都是只读的。
+  if (role === 'planner' && !manifest.proposalKinds?.length) errors.push('proposalKinds must be declared');
+  if (manifest.proposalKinds !== undefined) {
+    const badKinds = (manifest.proposalKinds ?? []).filter((kind) => !PROPOSAL_KINDS.includes(kind));
+    if (badKinds.length) errors.push(`proposalKinds must come from ${PROPOSAL_KINDS.join('/')}; unknown: ${badKinds.join(', ')}`);
+  }
+  if (role === 'reviewer') {
+    if (!manifest.reviewVerdicts?.length) errors.push('reviewVerdicts must be declared for a reviewer');
+    const badVerdicts = (manifest.reviewVerdicts ?? []).filter((verdict) => !REVIEW_VERDICTS.includes(verdict));
+    if (badVerdicts.length) errors.push(`reviewVerdicts must come from ${REVIEW_VERDICTS.join('/')}; unknown: ${badVerdicts.join(', ')}`);
+  }
 
   // 「Agent 移除后确定性流程仍可运行」不是口号，必须显式声明兜底路径。
   if (!manifest.deterministicFallback) errors.push('deterministicFallback is required (the acceptance criterion: the deterministic path must run with the agent removed)');
 
-  return { ok: errors.length === 0, errors, code: errors.length ? 'MANIFEST_INVALID' : null };
+  return { ok: errors.length === 0, errors, code: errors.length ? 'MANIFEST_INVALID' : null, role };
 }
 
 export function assertAgentManifest(manifest) {
@@ -89,11 +115,13 @@ export function assertAgentManifest(manifest) {
 }
 
 // ── 2. 提案校验（运行期）──────────────────────────────────────────────────
-function hasForbiddenField(node, path = '') {
+// 导出（而不是私有）：复核层（agent-review.mjs）必须用**同一份**禁止字段与状态轴泄漏判定，
+// 否则「提案不许夹带状态轴」与「复核结论不许夹带状态轴」会变成两套口径。
+export function findForbiddenField(node, path = '') {
   if (!node || typeof node !== 'object') return null;
   for (const [key, value] of Object.entries(node)) {
     if (FORBIDDEN_PROPOSAL_FIELDS.includes(key)) return `${path}${key}`;
-    const nested = hasForbiddenField(value, `${path}${key}.`);
+    const nested = findForbiddenField(value, `${path}${key}.`);
     if (nested) return nested;
   }
   return null;
@@ -104,20 +132,20 @@ function hasForbiddenField(node, path = '') {
 // 而误杀会让 Agent 层看起来「总是坏的」，最终被绕过——比挡住少数情况更危险。
 const STATE_LIKE_KEYS = /^(status|state|axis|phase|nextAction)$/i;
 
-function stateAxisLeak(node, path = '') {
+export function findStateAxisLeak(node, path = '') {
   if (!node || typeof node !== 'object') return null;
   for (const [key, value] of Object.entries(node)) {
     if (STATE_LIKE_KEYS.test(key) && typeof value === 'string' && STATE_AXIS_VALUES.includes(value)) {
       return { field: `${path}${key}`, value };
     }
-    const nested = stateAxisLeak(value, `${path}${key}.`);
+    const nested = findStateAxisLeak(value, `${path}${key}.`);
     if (nested) return nested;
   }
   return null;
 }
 
 // evidenceRefs 允许的形状：'sha256:...'、artifactId、或 { evidenceId, digest }。
-function evidenceKeysOf(evidenceRefs = []) {
+export function evidenceKeysOf(evidenceRefs = []) {
   const keys = new Set();
   for (const ref of evidenceRefs) {
     if (!ref) continue;
@@ -150,11 +178,11 @@ export function validateProposal(proposal, { agentManifest = null, context = nul
   }
 
   // 最重要的一条：Agent 不得写状态轴或身份。
-  const forbidden = hasForbiddenField(proposal);
+  const forbidden = findForbiddenField(proposal);
   if (forbidden) return reject('STATE_MUTATION_FORBIDDEN', `proposal must not contain state/identity field: ${forbidden}`, { field: forbidden });
 
   // 状态轴取值出现在「像状态的键」上也拒绝（例如 output.status = 'SUCCEEDED'）。
-  const leak = stateAxisLeak(proposal.output ?? {});
+  const leak = findStateAxisLeak(proposal.output ?? {});
   if (leak) return reject('STATE_MUTATION_FORBIDDEN', `proposal output must not carry state-axis values (${leak.field} = ${leak.value})`, leak);
 
   const claims = proposal.output?.claims;
@@ -210,6 +238,15 @@ export function toDecision(proposal) {
 // 校验提案、把失败降级为「走确定性兜底」而不是抛给调用方。
 export function createAgentPort({ agentManifest, runAgent } = {}) {
   assertAgentManifest(agentManifest);
+  // 角色闸门：提案端口只接 planner。把 reviewer 的 manifest 挂到这里（或反过来）会
+  // 让「谁在提案、谁在复核」这条分离静默失效，因此在这个唯一入口上直接拒绝。
+  if ((agentManifest.role ?? 'planner') !== 'planner') {
+    throw new AgentContractError(
+      `agent ${agentManifest.name} declares role ${agentManifest.role}; the proposal port requires a planner`,
+      'ROLE_INVALID',
+      { role: agentManifest.role },
+    );
+  }
   if (typeof runAgent !== 'function') throw new AgentContractError('runAgent is required', 'MANIFEST_INVALID');
 
   return {

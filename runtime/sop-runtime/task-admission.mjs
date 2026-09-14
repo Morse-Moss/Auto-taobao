@@ -104,6 +104,9 @@ export async function admitTask({
     nextAction: policy.humanGate ? 'WAIT_APPROVAL' : 'START',
     humanGateStatus: policy.humanGate ? 'WAITING_HUMAN' : 'NONE',
     executionStatus: policy.humanGate ? 'PAUSED' : 'QUEUED',
+    // 把准入时**声明**的副作用写进上下文。它不是留档：Controller 靠它判断
+    // 「这次运行声明过外部写入吗」，从而在游标推进处独立于 manifest 地收紧闸门。
+    sideEffects: [...(spec.sideEffects ?? [])],
     // lane 落到上下文里，成为权威值：执行期直接用它，不再重新推算，
     // 避免「准入时算一种 lane、开 attempt 时算成另一种」的静默漂移。
     lane,
