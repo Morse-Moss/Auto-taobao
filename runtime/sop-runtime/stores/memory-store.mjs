@@ -1,5 +1,5 @@
 // 内存 Store：用于单元测试与本地 dry-run。不具跨进程恢复能力，不得用于生产。
-import { CasConflictError } from '../store-port.mjs';
+import { CasConflictError, LANE_ACTIVE_STATUSES } from '../store-port.mjs';
 
 function clone(value) {
   return value === undefined ? value : JSON.parse(JSON.stringify(value));
@@ -44,8 +44,11 @@ export function createMemoryStore() {
         .map(clone);
     },
 
-    async countActiveInLane(lane) {
-      return [...runs.values()].filter((row) => row.lane === lane && activeStatuses.has(row.executionStatus)).length;
+    async countActiveInLane(lane, { excludeRunId = null, statuses = LANE_ACTIVE_STATUSES } = {}) {
+      const wanted = new Set(statuses);
+      return [...runs.values()]
+        .filter((row) => row.lane === lane && wanted.has(row.executionStatus) && row.runId !== excludeRunId)
+        .length;
     },
 
     async loadContext(runId) {

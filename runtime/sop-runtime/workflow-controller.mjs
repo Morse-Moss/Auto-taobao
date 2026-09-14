@@ -1,8 +1,8 @@
 // Workflow Controller：Run/Step/Attempt 状态唯一拥有者（Spec 5.1 / 6.3）
 // 只允许确定性状态转移；外部副作用必须走 Worker + Validator + Commit/Reconcile。
 import { advance, setBlocker, validateContext, isTerminal } from './context-schema.mjs';
-import { actionForFailure } from './policy.mjs';
-import { CasConflictError } from './store-port.mjs';
+import { actionForFailure, capabilityLane, laneLimit } from './policy.mjs';
+import { CasConflictError, LANE_EXECUTING_STATUSES } from './store-port.mjs';
 
 export class ControllerError extends Error {
   constructor(message, { code = 'CONTROLLER_ERROR', details = {} } = {}) {
@@ -60,12 +60,24 @@ export function createController({
       return read(runId);
     },
 
-    // 开始一次确定性尝试：申请 lease，登记 attempt
-    async beginAttempt(runId, { stage = 'RUN', stepId = null } = {}) {
+    // 开始一次确定性尝试：先过 lane 并发闸门，再申请 lease、登记 attempt
+    // 注意：选项名是 write，这里必须改名绑定，否则会遮蔽下面用于 CAS 落库的 write() 函数。
+    async beginAttempt(runId, { stage = 'RUN', stepId = null, laneLimits = null, write: isWrite = false } = {}) {
       const context = await read(runId);
       if (isTerminal(context)) throw new ControllerError(`run ${runId} is terminal`, { code: 'TERMINAL_RUN' });
       if (context.humanGateStatus === 'WAITING_HUMAN') {
         throw new ControllerError(`run ${runId} is waiting for human approval`, { code: 'HUMAN_GATE_OPEN' });
+      }
+      // lane 闸门：同一 lane 的其它活跃运行数达到上限就拒绝开新 attempt。
+      // 这是「同一账号/profile/写目标不发生双写」在执行层的落点；默认上限 1，写操作恒为 1。
+      const lane = capabilityLane(context.identity ?? {}, context.capability);
+      const limit = laneLimit({ lane, write: isWrite, limits: laneLimits });
+      const activeOthers = await store.countActiveInLane(lane, { excludeRunId: runId, statuses: LANE_EXECUTING_STATUSES });
+      if (activeOthers >= limit) {
+        throw new ControllerError(`lane saturated: ${lane}`, {
+          code: 'LANE_SATURATED',
+          details: { lane, limit, activeInLane: activeOthers + 1, failureClass: 'RESOURCE_BUSY' },
+        });
       }
       const attempts = await store.listAttempts(runId);
       const attemptNo = attempts.length + 1;

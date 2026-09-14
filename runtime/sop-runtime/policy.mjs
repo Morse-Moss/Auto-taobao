@@ -53,10 +53,20 @@ export function requiresApproval(riskClass) {
   return riskClass === 'HIGH' || riskClass === 'HUMAN_REQUIRED';
 }
 
-// 并发上限：同一账号/profile 默认 1；同一店铺写操作串行。
-export function laneLimit({ lane, write = false } = {}) {
-  if (lane.endsWith('/unknown-capability')) return 1;
-  return write ? 1 : 1;
+// 并发上限：lane 的默认并发是 1——同一 tenant/store/platform/account/browserProfile/capability
+// 组合下不并行，这是保证「同一账号/profile/写目标不发生双写」的安全默认值。
+// 只有「只读、且已用资源容量证据证明可以并行」的能力才允许通过 limits 显式放宽；
+// 只要带写副作用，无论 limits 怎么写都恒为 1（写目标永远串行）。
+export const DEFAULT_LANE_LIMIT = 1;
+
+export function laneLimit({ lane, write = false, limits = null } = {}) {
+  if (write) return 1;
+  if (limits) {
+    const exact = limits[lane];
+    if (Number.isFinite(exact) && exact >= 1) return Math.floor(exact);
+    if (Number.isFinite(limits.default) && limits.default >= 1) return Math.floor(limits.default);
+  }
+  return DEFAULT_LANE_LIMIT;
 }
 
 export function evaluatePolicy({

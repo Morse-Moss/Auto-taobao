@@ -8,6 +8,8 @@ export * from './validation-registry.mjs';
 export * from './side-effect-ledger.mjs';
 export * from './publication.mjs';
 export * from './evidence-store.mjs';
+export * from './compression-service.mjs';
+export * from './memory-store.mjs';
 export * from './worker-adapter.mjs';
 export * from './store-port.mjs';
 export * from './semver.mjs';

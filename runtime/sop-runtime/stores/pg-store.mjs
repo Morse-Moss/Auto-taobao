@@ -2,7 +2,7 @@
 // 依赖 005-sop-runtime-context.sql 的增量列；缺列直接抛 REQUIRES_MIGRATION_005，绝不静默降级。
 import pg from 'pg';
 
-import { CasConflictError } from '../store-port.mjs';
+import { CasConflictError, LANE_ACTIVE_STATUSES } from '../store-port.mjs';
 
 const REQUIRED_RUN_COLUMNS = [
   'task_id', 'workflow', 'capability', 'stage', 'step_id', 'lane',
@@ -29,9 +29,68 @@ async function columnsOf(pool, table) {
   return new Set(rows.map((row) => row.column_name));
 }
 
+// store 端口契约是 camelCase（见 stores/memory-store.mjs 与 store-port.mjs），
+// 而 PG 默认返回 snake_case 列名。这里统一归一化——否则会出现「内存 store 测试全绿、
+// 换到 PG 上 Controller/Ledger 读到一堆 undefined」的静默错误（故障注入实测踩到过）。
+function mapRun(row) {
+  if (!row) return null;
+  return {
+    runId: row.run_id,
+    identity: row.identity,
+    executionStatus: row.execution_status,
+    verifiedCursor: Number(row.verified_cursor ?? 0),
+    cursorVersion: Number(row.cursor_version ?? 0),
+    targetEnd: row.target_end,
+    lane: row.lane ?? null,
+    context: row.context,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapAttempt(row) {
+  if (!row) return null;
+  return {
+    attemptId: row.attempt_id,
+    runId: row.run_id,
+    attemptNo: row.attempt_no,
+    leaseOwner: row.lease_owner,
+    leaseState: row.lease_state,
+    leaseExpiresAt: row.lease_expires_at,
+    status: row.status,
+    stage: row.stage ?? null,
+    stepId: row.step_id ?? null,
+    failureClass: row.failure_class ?? null,
+    result: row.result ?? null,
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    lastHeartbeatAt: row.last_heartbeat_at,
+  };
+}
+
+function mapCommit(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    commitKey: row.commit_key,
+    runId: row.run_id,
+    attemptId: row.attempt_id,
+    target: row.target,
+    status: row.status,
+    artifactDigest: row.artifact_digest,
+    businessKey: row.business_key ?? null,
+    verifiedAt: row.verified_at,
+    createdAt: row.created_at,
+  };
+}
+
 export async function createPgStore(connectionString, { pool: injected } = {}) {
   const pool = injected ?? new pg.Pool({ connectionString });
   const ownsPool = !injected;
+  // 空闲连接被服务端中断（重启、DROP DATABASE 等）时 pg 会在 Pool 上抛 'error'。
+  // 没有监听器就会直接终止进程——这里记录而不是静默吞掉，便于诊断，同时不让运行器崩。
+  const poolErrors = [];
+  if (ownsPool) pool.on('error', (error) => { poolErrors.push(String(error?.message ?? error)); });
 
   const runCols = await columnsOf(pool, 'durable_runs');
   const attemptCols = await columnsOf(pool, 'durable_attempts');
@@ -64,12 +123,12 @@ export async function createPgStore(connectionString, { pool: injected } = {}) {
           context.blocker ?? null, context.nextAction, context.retryUsed ?? {},
         ],
       );
-      return rows[0] ?? null;
+      return mapRun(rows[0]);
     },
 
     async loadRun(runId) {
       const { rows } = await pool.query('select * from durable_runs where run_id = $1', [runId]);
-      return rows[0] ?? null;
+      return mapRun(rows[0]);
     },
 
     async listActiveRuns({ lane = null } = {}) {
@@ -80,14 +139,17 @@ export async function createPgStore(connectionString, { pool: injected } = {}) {
          order by created_at`,
         [lane],
       );
-      return rows;
+      return rows.map(mapRun);
     },
 
-    async countActiveInLane(lane) {
+    async countActiveInLane(lane, { excludeRunId = null, statuses = LANE_ACTIVE_STATUSES } = {}) {
+      // statuses 由调用方决定口径：准入用 ACTIVE（含 QUEUED，准入即占位），
+      // 开 attempt 用 EXECUTING（只看真正在跑的）。两种口径不能混用。
       const { rows } = await pool.query(
         `select count(*)::int as n from durable_runs
-         where lane = $1 and execution_status in ('QUEUED','RUNNING','RETRY_WAIT','PAUSED')`,
-        [lane],
+         where lane = $1 and execution_status = any($3::text[])
+           and ($2::uuid is null or run_id <> $2::uuid)`,
+        [lane, excludeRunId, statuses],
       );
       return rows[0].n;
     },
@@ -133,25 +195,39 @@ export async function createPgStore(connectionString, { pool: injected } = {}) {
          returning *`,
         [attemptId, runId, attemptNo, leaseOwner, leaseState, leaseExpiresAt, stage, stepId],
       );
-      return rows[0] ?? null;
+      return mapAttempt(rows[0]);
     },
 
     async updateAttempt(attemptId, patch) {
-      const allowed = ['status', 'lease_state', 'lease_owner', 'lease_expires_at', 'ended_at', 'failure_class', 'result', 'stage', 'step_id'];
-      const keys = Object.keys(patch).filter((key) => allowed.includes(key));
-      if (!keys.length) return store.loadAttempt(attemptId);
-      const setSql = keys.map((key, index) => `${key} = $${index + 2}`).join(', ');
-      const values = keys.map((key) => (typeof patch[key] === 'object' && patch[key] !== null ? JSON.stringify(patch[key]) : patch[key]));
+      // 端口契约传的是 camelCase（见 store-port / memory-store），这里翻译成列名。
+      // 只认 snake_case 会把 leaseState/endedAt/failureClass 静默丢掉——故障注入实测踩到过：
+      // 恢复时「被杀 attempt 标记为 FAILED + lease EXPIRED」因此没有落库。
+      const columnOf = {
+        status: 'status',
+        leaseState: 'lease_state',
+        leaseOwner: 'lease_owner',
+        leaseExpiresAt: 'lease_expires_at',
+        endedAt: 'ended_at',
+        failureClass: 'failure_class',
+        result: 'result',
+        stage: 'stage',
+        stepId: 'step_id',
+        lastHeartbeatAt: 'last_heartbeat_at',
+      };
+      const entries = Object.entries(patch).filter(([key]) => columnOf[key]);
+      if (!entries.length) return store.loadAttempt(attemptId);
+      const setSql = entries.map(([key], index) => `${columnOf[key]} = $${index + 2}`).join(', ');
+      const values = entries.map(([, value]) => (typeof value === 'object' && value !== null ? JSON.stringify(value) : value));
       const { rows } = await pool.query(
         `update durable_attempts set ${setSql} where attempt_id = $1 returning *`,
         [attemptId, ...values],
       );
-      return rows[0] ?? null;
+      return mapAttempt(rows[0]);
     },
 
     async loadAttempt(attemptId) {
       const { rows } = await pool.query('select * from durable_attempts where attempt_id = $1', [attemptId]);
-      return rows[0] ?? null;
+      return mapAttempt(rows[0]);
     },
 
     async heartbeat(attemptId) {
@@ -159,12 +235,12 @@ export async function createPgStore(connectionString, { pool: injected } = {}) {
         'update durable_attempts set last_heartbeat_at = now() where attempt_id = $1 returning *',
         [attemptId],
       );
-      return rows[0] ?? null;
+      return mapAttempt(rows[0]);
     },
 
     async listAttempts(runId) {
       const { rows } = await pool.query('select * from durable_attempts where run_id = $1 order by attempt_no', [runId]);
-      return rows;
+      return rows.map(mapAttempt);
     },
 
     // 提交账本复用 supervisor_commit_records：commit_key 唯一即幂等键
@@ -178,7 +254,7 @@ export async function createPgStore(connectionString, { pool: injected } = {}) {
            returning *`,
           [commitKey, runId, attemptId, target, status, artifactDigest, businessKey],
         );
-        return rows[0] ?? await store.loadCommit(commitKey);
+        return mapCommit(rows[0]) ?? await store.loadCommit(commitKey);
       }
       const { rows } = await pool.query(
         `insert into supervisor_commit_records (commit_key, run_id, attempt_id, target, status, artifact_digest)
@@ -187,12 +263,12 @@ export async function createPgStore(connectionString, { pool: injected } = {}) {
          returning *`,
         [commitKey, runId, attemptId, target, status, artifactDigest],
       );
-      return rows[0] ?? await store.loadCommit(commitKey);
+      return mapCommit(rows[0]) ?? await store.loadCommit(commitKey);
     },
 
     async loadCommit(commitKey) {
       const { rows } = await pool.query('select * from supervisor_commit_records where commit_key = $1', [commitKey]);
-      return rows[0] ?? null;
+      return mapCommit(rows[0]);
     },
 
     async updateCommit(commitKey, { status, verifiedAt = null }) {
@@ -201,16 +277,21 @@ export async function createPgStore(connectionString, { pool: injected } = {}) {
          where commit_key = $1 returning *`,
         [commitKey, status, verifiedAt],
       );
-      return rows[0] ?? null;
+      return mapCommit(rows[0]);
     },
 
     async listUnknownCommits() {
       const { rows } = await pool.query("select * from supervisor_commit_records where status = 'UNKNOWN'");
-      return rows;
+      return rows.map(mapCommit);
     },
 
     async close() {
       if (ownsPool) await pool.end();
+    },
+
+    // 诊断用：连接池侧被记录下来的错误（不中断运行）
+    get poolErrors() {
+      return [...poolErrors];
     },
   };
 
