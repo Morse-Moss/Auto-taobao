@@ -385,3 +385,33 @@ rows = 3  has_more = false
 `xws.feishu.import` 已经关闭：采集 → 准入（高风险开闸）→ 人工审批留痕 → 提交 →
 外部回读 → 游标推进，全链在真实 base 上走通，且收据与独立回读完全一致。
 仍未真实跑过的只剩 `xws.sku.collection` 与 `huitun.keyword-heat.collect` 的发布段。
+
+### 8.1 补做二：在新租户（搬迁目标 base）上的同类演练（2026-09-14 晚）
+
+§8 的演练跑在**应用自有租户**（跨越租户不可达的替代场地）。用户在新租户
+`kcne618basvj` 里补好 `bitable:app` + `drive:drive` 并**把应用加为副本 base 的可编辑协作者**，
+同时决定整体搬迁到该租户（见 `docs/ops/TENANT-MIGRATION-MAP.md`）。于是同一套两段式在
+**搬迁目标 base** 上又跑了一遍——这一次目标就是将来的生产 base：
+
+| 项 | 值 |
+| --- | --- |
+| 演练 base | `OUMqbkYwVaQxQNsv2EDc1DV7nDf`（副本 base，租户 `kcne618basvj`） |
+| 演练表 | `_演练_kcne_20260914` / `tblBEhDouarnVkG5`（演练后 DELETE → 200，base 回到 11 张表） |
+| 字段合同 | **从真实周表 `竞品周_2026-09-06_2026-09-12` 克隆** 28 个可克隆字段（7 个 type=20 公式字段按设计延后）；核对 `价格 type=2 / 月收货人数 type=1 / 商品图片 type=17` |
+| 凭据 | `E:/小红书/.env.feishu-kcne.local`（`cli_a96ee8749078dbcf`） |
+| 结果 | `verdict=VERIFIED`、`commitKey=1014593893a5d8c17639a6ad98453476`、回读 `rows:3/attachments:3/digest:a67f43f3…`、`publicationStatus=VERIFIED`、游标 `1→3`、退出码 0 |
+| 独立回读 | `total=3` `has_more=false`；价格 `612 / 2198.27 / 2098.14`；每条 1 附件；三个日期字段已盖周期戳（2026-09-06 / 2026-09-12） |
+
+**第一次尝试被 fail-closed 正确拦下**（缺 `--period-start/--period-end`，而克隆来的表含三个日期字段）：
+`sideEffectRefs` 为空、游标 `1 → 0`、零写入。这是 2026-09-14 上午加的
+「周表目标含日期字段必须盖周期戳」防线按设计生效——**闸门是对的**。
+
+但它同时暴露出一个**失败分类缺陷**：该次收据的 `blocker.class` 是 `BUG`
+（`nextAction=TERMINAL`，理由「bug suspected, stop automation」），而真实原因是**调用方漏了参数**。
+链路已定位到行：`import-runner.mjs:81` 抛裸 `Error`（不带 `code`/`failureClass`）
+→ `side-effect-ledger.mjs:53` 回落 `classifyExternalFailure`
+→ `policy.mjs:159` 无状态码、消息不含关键词 → 落到 `return 'BUG'` → `STOP_AND_ALERT`。
+这与 `policy.mjs:156-158` 自述的意图相反；另外三个适配器都已有 `FAILURE_CLASS_BY_CODE`
+这类确定性映射，只有 `adapter.feishu-import` 没有。
+行为影响有限（两种分类对该 run 都是终止），影响在**给运维的结论**：会把人引向排查代码而不是补参数。
+细节与两个修复方案见 `docs/ops/TENANT-MIGRATION-MAP.md` §6。

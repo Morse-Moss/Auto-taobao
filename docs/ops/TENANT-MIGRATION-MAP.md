@@ -1,6 +1,7 @@
 # 竞品数据搬迁到新租户：映射表与影响面
 
-状态：2026-09-14 代码改造（第 2 步）与只读验证（第 3 步）已完成并通过；第 4 步（新 base 写验证）被用户侧协作者权限阻塞。
+状态：2026-09-14 第 1、2、3、4 步全部完成（代码改造 + 只读验证 + 新 base 写验证均通过）。
+只剩第 5 步正式切换（改一行 `DEFAULT_PROFILE`）未执行，等用户下令。另记一条失败分类缺陷（§6）。
 适用范围：竞品周更 SOP（base `OWebbPUcBa7B8JseYLccQCy9nkf` → 副本 `OUMqbkYwVaQxQNsv2EDc1DV7nDf`）。
 
 ## 0. 侦察结论
@@ -9,7 +10,14 @@
    - 10 张生产表**逐表行数完全相同**（2004 / 734 / 4346 / 2023 / 1461 / 734 / 2023 / 1423 / 0 / 1462）；
    - 抽查 5 张关键表的**字段名与字段类型逐字一致**：竞品主表 36、历史总表 V1 44、SKU明细 17、问题主库 23、周表_09-06 35；
    - 表 ID 全部不同，另多一张默认「数据表」`tblg6lkg6431QulJ`（1 字段 / 5 行）。
-2. 关键词库 base `N21Abkg0HakO6AsbCaDckvcwnVd` **没有副本**，但新应用可以直接读它 → 继续用同一个 token。
+2. 关键词库 base `N21Abkg0HakO6AsbCaDckvcwnVd`（名字就叫「词库 最新 副本」）**仍在旧租户 `rcndesfqro3x`**，
+   实测 URL 为 `https://rcndesfqro3x.feishu.cn/base/N21Abkg0HakO6AsbCaDckvcwnVd`，**没有随竞品 base 一起复制**：
+   复制一张 base 只会复制那张 base 自己，词库是**另一张独立的 base**，不属于竞品 base。
+   新应用能读到它靠的是**跨租户共享**（外部协作者），不是因为它在新区。
+   → 只要旧租户还在，读没问题；**若将来停用旧租户，这张 base 必须单独再搬一次**。
+
+   注意：`/drive/v1/files`（应用云空间根目录）对新应用返回空列表，因此**无法从应用侧枚举**新租户里是否
+   另有一份词库副本；要确认只能由人在浏览器里看。
 3. 新应用 `cli_a96ee8749078dbcf` 能读：竞品 base、竞品 base 副本、关键词库 base；
    **写不通**（在副本上建表 / 建字段均 `403 91403`，不是 `99991672`）。
 4. 旧应用 `cli_aa93e98aeef81cef` 读不到副本（`91403`），读得到另外三个 base。
@@ -114,15 +122,17 @@ table id 互不相同且形状合法、base 与 baseUrl 自洽、profile 冻结�
 
 ## 4. 实施顺序与进度
 
-1. **用户侧前置**（部分完成）：开放平台补 `bitable:app` + `drive:drive` 并重新发布版本 —— 已完成
-   （`/drive/v1/permissions/.../public` 返回 200，`99991672` 消失）。**仍缺**：把应用
-   `cli_a96ee8749078dbcf` 加为**副本 base** 的「可编辑」协作者（当前仍 `403 91403`）。
-   注意：实测发现应用被加成了**旧生产 base** 的协作者（详见 §6），需确认是否本意。
-2. **代码侧**：✅ 已完成 —— 见 §3.1 / §3.2。回归：`runtime` 套件 372/372 全绿（59 → 60 文件）。
-3. **只读验证**：✅ 已完成 —— 见 §5。
-4. **写验证**：⛔ 被阻塞 —— 需要第 1 步的协作者权限。计划：在新 base 建一次性演练表，
-   跑两段式 `xws.feishu.import --commit`，确认 `publicationStatus=VERIFIED` + 游标推进，然后删表。
-5. **正式切换**：未开始。env 文件指向新应用 + `DEFAULT_PROFILE=kcne`，跑一轮真实周更（或等下一个周期）。
+1. **用户侧前置**：✅ 已完成（2026-09-14 复测通过）。
+   开放平台补 `bitable:app` + `drive:drive` 并重新发布版本 —— 已完成（`99991672` 消失）；
+   把应用 `cli_a96ee8749078dbcf` 加为**副本 base** 的「可编辑」协作者 —— 已完成（复测见 §5.3）。
+   注意：应用同时还是**旧生产 base** `OWebbPUcBa7B8JseYLccQCy9nkf` 与词库 base 的协作者（跨租户共享），
+   这两处是否保留需要用户确认。
+2. **代码侧**：✅ 已完成 —— 见 §3.1 / §3.2。回归：`runtime` 套件 385/385 全绿（59 → 60 文件）。
+3. **只读验证**：✅ 已完成 —— 见 §5.1 / §5.2。
+4. **写验证**：✅ 已完成 —— 见 §5.3。在新 base 建一次性演练表 `_演练_kcne_20260914` 跑
+   两段式 `xws.feishu.import --commit`，得到 `publicationStatus=VERIFIED` + 游标 1→3，然后删表。
+5. **正式切换**：未开始。切换动作 = `DEFAULT_PROFILE=kcne`（或设 `SYCM_FEISHU_PROFILE=kcne`），
+   跑一轮真实周更（或等下一个周期）。
 6. **回滚**：旧 base 原样保留；把 `DEFAULT_PROFILE` 切回 `legacy` 即可，不需要改代码。
 
 ## 5. 只读验证证据（2026-09-14）
@@ -169,24 +179,118 @@ grep 源码只能证明字面量长什么样。换 `DEFAULT_PROFILE` 之后同�
 2. **副本是行级忠实的**：`tally` 两边连样例记录 id（`recvv59xzccKmD`）都相同；
    `publish-competitor-visualization` 两边的 `sourceHash` 完全相同。
 3. **周表按名字解析在新租户可用**：kcne 侧 id 完全不同，仍能正确定位到 `竞品周_2026-09-06_2026-09-12`。
-4. **写路径仍未打通**：kcne 侧 `协作者接口` 返回 `1063004 User has no share permission`，
-   与建表 `403 91403` 一致 —— 应用能读全库但不具备编辑权。
+4. **写路径当时仍未打通**：kcne 侧 `协作者接口` 返回 `1063004 User has no share permission`，
+   与建表 `403 91403` 一致 —— 应用能读全库但不具备编辑权。（用户补权限后已解除，见 §5.3。）
 
-## 6. 待验证 / 待确认
+### 5.3 写验证：新 base 上的两段式真实提交（2026-09-14，用户授权）
+
+前置复测（用户补协作者权限后）：
+
+```
+create table: status=200 code=0 success id=tblhm4nNWZOaKzpS
+create field: status=200 code=0 success
+readback fields: code=0 names=文本:1, 价格:2
+delete table: status=200 code=0 success
+after: code=0 tables=11
+```
+
+演练场地：在副本 base `OUMqbkYwVaQxQNsv2EDc1DV7nDf` 新建一次性表 `_演练_kcne_20260914`
+（`tblBEhDouarnVkG5`）。字段不是手写的，而是**从真实周表 `竞品周_2026-09-06_2026-09-12` 克隆**
+28 个可克隆字段（7 个公式字段 type=20 按设计延后，等第二遍重建）；
+合同核对 `价格 type=2 / 月收货人数 type=1 / 商品图片 type=17`。
+
+命令：
+
+```
+node runtime/sop-runtime/run-feishu-import-two-stage.mjs \
+  --xlsx runtime/xws-bathtub-top3-with-images.xlsx \
+  --base-url "https://kcne618basvj.feishu.cn/base/OUMqbkYwVaQxQNsv2EDc1DV7nDf?table=tblBEhDouarnVkG5" \
+  --commit --env-file "E:/小红书/.env.feishu-kcne.local" \
+  --operator user-approved-2026-09-14 \
+  --period-start 2026-09-06 --period-end 2026-09-12 --expected-rows 3 --json
+```
+
+结果：
+
+| 项 | 值 |
+| --- | --- |
+| `gate` | `APPROVED` / `ALLOW_WITH_APPROVAL` / `HIGH` |
+| 采集段验证器 | `structure:ok` `row_count:ok` `digest:ok` `adapter:ok`，rowCount 3 |
+| `publish.verdict` | **`VERIFIED`** |
+| `commitKey` | `1014593893a5d8c17639a6ad98453476` |
+| 回读收据 | `rows:3` `attachments:3` `digest:a67f43f365f077fb…` |
+| `publicationStatus` | `VERIFIED` |
+| `cursorAdvanced` | `true`，`verifiedCursor` `1 → 3`（version 1） |
+| 决策轨迹 | `APPROVAL → PUBLICATION/READY → COMMITTED → VERIFIED` |
+| 退出码 | 0 |
+
+独立回读（不复用运行器代码，直接 `GET /bitable/v1/apps/:base/tables/:id/records`）：
+`total=3`、`has_more=false`，价格 `612 / 2198.27 / 2098.14`，月收货人数 `"100"`（文本字段落字符串），
+每条 1 张附件；三个日期字段已盖周期戳（`1788624000000` / `1789142400000` = 2026-09-06 / 2026-09-12）。
+
+收尾：`DELETE` 演练表 → 200，base 回到原 11 张表，`drill table gone: true`。
+
+**第一次尝试被 fail-closed 正确拦下**（缺 `--period-start/--period-end`，而目标表含三个日期字段）：
+`sideEffectRefs` 为空、游标 `1 → 0`（未变）、零写入。这是 2026-09-14 上午加的「周表目标含日期字段必须盖周期戳」
+防线按设计生效。**但它的失败分类有问题，见 §6 缺陷记录。**
+
+## 6. 缺陷记录：fail-closed 闸门的失败分类被归成 BUG
+
+第一次尝试的收据里：
+
+```
+"blocker": { "class": "BUG", "detail": "bug suspected, stop automation: Target table has date fields … refusing to create an undated period table" }
+"nextAction": "TERMINAL"
+```
+
+判定为**分类不准**，而不是闸门本身有问题：写入被正确拒绝，但原因被说成「疑似代码 bug，停止自动化」。
+
+根因链（已定位到行）：
+
+1. 守卫在 `skills/xws-to-feishu-base/scripts/import-runner.mjs:81` 抛的是**裸 `Error`**，
+   不带 `code` / `failureClass`；
+2. `runtime/sop-runtime/side-effect-ledger.mjs:53` 走
+   `error?.failureClass ?? classifyExternalFailure(error)`；
+3. `runtime/sop-runtime/policy.mjs:159` 的 `classifyExternalFailure` 没有状态码、
+   消息也不含 `forbidden|permission|invalid|…` 任一关键词 → 落到 `return 'BUG'`；
+4. `actionForFailure('BUG')` → `STOP_AND_ALERT`「bug suspected, stop automation」。
+
+这与 `policy.mjs:156-158` 自己写的意图相反（"不能一律归 BUG——BUG 会触发 STOP_AND_ALERT，
+把一次可修复的目标配置错误升级成停线"）。另外三个适配器
+（`adapter.sku-collection` / `adapter.search-rank` / `adapter.huitun-keyword-heat`）
+都已经有 `FAILURE_CLASS_BY_CODE` 这类**确定性 code → 分类**映射，只有 `adapter.feishu-import` 没有。
+
+实际影响有限：`POLICY_DENIED`（`FAIL`）与 `BUG`（`STOP_AND_ALERT`）对该 run 都是终止，
+区别只在**给运维的结论**——一个说「策略拒绝/配置不对」，另一个说「代码有 bug，停线」。
+后者会把人引向排查代码而不是补参数。
+
+修复方案（二选一，需用户拍板，本轮未擅自改动）：
+
+- 方案 A（跟随既有约定）：让守卫抛带稳定 `code`（如 `PERIOD_REQUIRED`）的错误，
+  在 `adapter.feishu-import.mjs` 里加 `FAILURE_CLASS_BY_CODE`，映射到 `POLICY_DENIED`。
+- 方案 B：更保守，把「调用方参数缺失」一类归 `HUMAN_REQUIRED`（`WAIT_HUMAN`）——
+  但 CLI 是一次性进程，`WAIT_HUMAN` 对 CLI 语义不太贴。
+
+推荐 A。
+
+## 7. 待验证 / 待确认
 
 - **公式字段的表达式**是否已指向新表：类型抽查一致，但历史总表 V1 的 44 个字段里含公式
   （type 20）与 lookup（type 19），需抽查若干行的计算值在新旧 base 是否相同。
-- **仪表盘 / 视图**：`publish-competitor-visualization.mjs` 发布的历史总表是仪表盘唯一数据源；
-  副本里的仪表盘是否也复制过来、是否指向新表，需要在浏览器里确认。
-- **关键词库 base 是否也要在新租户建副本**（用户未要求，暂不动；新应用已可直接读）。
+- **仪表盘 / 视图**：用户已确认仪表盘随副本复制过来了；仍需在浏览器里确认它指向的是新表。
+- **关键词库 base 是否单独再搬一次**：它仍在旧租户（见 §0 第 2 条）。新应用靠跨租户共享能读，
+  所以**不阻塞**；但如果旧租户要停用，必须单独搬。若用户已在新租户复制过一份，请提供链接以便核对。
 - **`数据表` `tblg6lkg6431QulJ` 的 5 行**是否保留（导入需要空表）。
-- **新应用对旧 base 可写**（2026-09-14 写探针实测：`POST /tables` 返回 200，探针表已即时删除）——
-  这意味着应用被加成协作者的是**旧生产 base** 而不是副本。需用户确认是否有意为之。
+- **新旧 base 的协作者归属**：新应用目前同时是旧生产 base、副本 base、词库 base 的协作者；
+  哪几个该保留需用户确认（旧生产 base 上的可编辑权限建议撤掉，只留可阅读）。
+- **§6 的失败分类缺陷**修不修、按 A 还是 B。
 
-## 7. 相关文档
+## 8. 相关文档
 
 - 新租户应用的权限设置与诊断：`docs/ops/FEISHU-APP-SETUP-NEW-TENANT.md`
-- 两段式真实演练记录：`docs/architecture/MIGRATION-8-QUEUE-SCHEDULER-REPORT.md` §8
+- 两段式真实演练记录（首次跑通，App 自有租户）：`docs/architecture/MIGRATION-8-QUEUE-SCHEDULER-REPORT.md` §8
 - 单点目标配置模块：`runtime/feishu-targets.mjs`（+ `runtime/feishu-targets.test.mjs`）
 - 只读验证工具：`runtime/verify-feishu-profile.mjs`（+ `runtime/verify-feishu-profile.test.mjs`）
 - 周表按名字解析：`runtime/weekly-table-target.mjs`
+- 本次写验证的运行收据：`runtime/sop-runtime/two-stage-mu110brg/receipt.json`（成功）
+  与 `runtime/sop-runtime/two-stage-mu10zyr2/receipt.json`（被 fail-closed 拦下）
