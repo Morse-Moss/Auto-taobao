@@ -5,6 +5,19 @@ import { classifyExternalFailure } from './policy.mjs';
 
 export const COMMIT_STATUS = Object.freeze(['READY', 'COMMITTING', 'COMMITTED', 'VERIFIED', 'UNKNOWN', 'FAILED']);
 
+// 「可能已经把效果写到外部系统过」的提交记录状态。
+// 为什么要单独一个常量：两个地方要问这个问题，而且答案必须一致——
+//   1) 回收安全判定（run-liveness.assessReclaimSafety）：可能写过 → 不许回收（换个 commitKey 就是重复写）；
+//   2) 对账收敛的 ABSENT 闸门（controller.reconcilePublication）：可能写过 → 不许声明「没发生」。
+// 刻意**不含** READY（登记了意图、从未交付 handler）与 FAILED（handler 确定性拒绝）。
+// COMMITTING 必须在内：进程死在 handler 执行中时记录停在这里，而那正是「可能已经写进去了」。
+export const COMMIT_HANDED_OFF = Object.freeze(['COMMITTING', 'COMMITTED', 'UNKNOWN', 'VERIFIED']);
+
+// 从上面那份唯一清单**推导**出补集，而不是再抄一份 ['READY','FAILED']。
+export const COMMIT_NOT_HANDED_OFF = Object.freeze(
+  COMMIT_STATUS.filter((status) => !COMMIT_HANDED_OFF.includes(status)),
+);
+
 export function buildCommitKey({ runId, target, businessKey }) {
   if (!businessKey) throw new Error('businessKey is required for idempotent commit');
   return createHash('sha256').update(`${runId}:${target}:${businessKey}`).digest('hex').slice(0, 32);

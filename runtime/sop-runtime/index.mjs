@@ -16,6 +16,7 @@ export * from './compression-service.mjs';
 export * from './memory-store.mjs';
 export * from './worker-adapter.mjs';
 export * from './store-port.mjs';
+export * from './run-liveness.mjs';
 export * from './semver.mjs';
 export * from './skill-manifest.mjs';
 export * from './skill-registry.mjs';

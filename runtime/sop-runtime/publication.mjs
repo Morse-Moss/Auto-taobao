@@ -16,6 +16,16 @@ import { EXTERNAL_WRITE_EFFECTS, classifyRisk, requiresApproval } from './policy
 // 结算结论：VERIFIED 已验收 / UNKNOWN 无法判定（只对账） / REJECTED 确定未发生（可重试）
 export const PUBLICATION_VERDICT = Object.freeze(['VERIFIED', 'UNKNOWN', 'REJECTED']);
 
+// 发布轴上允许走「对账收敛」（controller.reconcilePublication）的前置状态。
+//  - UNKNOWN：提交结果未知（`ledger.commit` 抛了 unknown、或回读对不上）—— 最典型的一格。
+//  - READY：提交记录**可能已经交付过 handler**、但运行没能推进（进程死在 handler 执行中，
+//    或死在 verify 之后、markPublicationCommitted 之前）。这一格同样没有别的出口：
+//    回收会拒绝它（可能写过 → 换 commitKey 就是重复写），settlePublication 也不收它。
+//    这两种**都**必须由「先对账账本、再收敛运行」这条路径出去，所以放在同一个入口里。
+// 刻意不含 COMMITTED（正路是 settlePublication(VERIFIED)）、NOT_REQUESTED（不该进对账）、VERIFIED（已收敛）。
+// 判定的真正闸门不是这张表，而是提交记录的一致性（见 controller.reconcilePublication）。
+export const RECONCILABLE_PUBLICATION = Object.freeze(['UNKNOWN', 'READY']);
+
 // 外部写副作用类：**不是**这里的第二份定义，而是 policy 的同一份清单（原先这里是拷贝，已改为同源）。
 // 名字保留 `EXTERNAL_WRITE_EFFECTS` 是因为发布段调用方用它，并且 `createCapabilityPublisher`
 // 允许调用方显式覆盖（`externalEffects`）——覆盖是刻意的逃生门，默认值必须与 policy 一致。

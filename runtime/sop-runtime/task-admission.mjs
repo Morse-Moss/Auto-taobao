@@ -1,6 +1,7 @@
 // Task Admission：校验任务范围、身份、能力和配额，创建 run_id（不执行任何外部动作）
 import { createContext, validateContext, advance } from './context-schema.mjs';
 import { evaluatePolicy, laneKey, capabilityLane, laneFor, classifyRisk } from './policy.mjs';
+import { assessRunLiveness } from './run-liveness.mjs';
 
 const REQUIRED_SPEC = ['taskId', 'workflow', 'capability', 'identity'];
 
@@ -31,6 +32,13 @@ export async function admitTask({
   registeredCapabilities = null,
   nowIso = new Date().toISOString(),
   idFactory = () => crypto.randomUUID(),
+  // 崩溃遗留的运行会永久占住幂等键（缺口 B）。下面两个参数是**显式可选**的逃生门：
+  // 只有调用方同时给出 reclaimStale=true 与一个 reclaim 回调时，准入才会去尝试回收一条 stale 运行。
+  // 刻意不做成默认行为——「悄悄终结一条运行」不该是准入的副作用。
+  reclaimStale = false,
+  reclaim = null,
+  abandonedAfterMs = null,
+  nowMs = Date.now(),
 } = {}) {
   const validation = validateTaskSpec(spec);
   if (!validation.ok) {
@@ -73,14 +81,60 @@ export async function admitTask({
   // 按 lane 去重会把前者一起挡掉，商品级 fan-out 因此无法入队。
   const idempotencyKey = spec.idempotencyKey
     ?? buildIdempotencyKey({ taskId: spec.taskId, identity: spec.identity, capability: spec.capability, scope: spec.scope ?? null });
-  const duplicate = await findActiveByIdempotencyKey(store, idempotencyKey);
+  let duplicate = await findActiveByIdempotencyKey(store, idempotencyKey);
+  let reclaimAttempt = null;
+
+  // 可选的一轮确定性回收：发现重复 → 先判定「这条运行是不是死了」→ 只有调用方给了回收回调
+  // 才去真的回收 → 回收成功后**重查一次**幂等键。回收被拒不是错误，是判定结果：
+  // 记进 reclaimAttempt 一并返回，让调用方拿到「下一步该做什么」，而不是只知道「被挡了」。
+  if (duplicate && reclaimStale && typeof reclaim === 'function') {
+    try {
+      const result = await reclaim(duplicate.runId, {
+        idempotencyKey, taskId: spec.taskId, capability: spec.capability, abandonedAfterMs,
+      });
+      reclaimAttempt = {
+        runId: duplicate.runId,
+        reclaimed: Boolean(result?.reclaimed),
+        reason: result?.reason ?? null,
+        code: null,
+        guidance: null,
+      };
+    } catch (error) {
+      reclaimAttempt = {
+        runId: duplicate.runId,
+        reclaimed: false,
+        code: error?.code ?? 'RECLAIM_ERROR',
+        reason: String(error?.message ?? error),
+        guidance: error?.details?.guidance ?? null,
+      };
+    }
+    duplicate = await findActiveByIdempotencyKey(store, idempotencyKey);
+  }
+
   if (duplicate) {
+    // 报告这条重复运行的**现状**，别让调用方只能靠猜：
+    // publicationStatus 决定「能不能回收」，而 UNKNOWN/COMMITTED 只能对账
+    // （见 controller.reconcilePublication）——换个 commitKey 重跑就是重复外部写入。
+    const status = duplicate.context ?? duplicate;
+    const attempts = typeof store.listAttempts === 'function' ? await store.listAttempts(duplicate.runId) : [];
+    const liveness = assessRunLiveness({ run: duplicate, attempts, nowMs, abandonedAfterMs });
     return {
       admitted: false,
       rejectionReasons: [`duplicate task already active: ${idempotencyKey} (run ${duplicate.runId})`],
       failureClass: 'POLICY_DENIED',
       riskClass: policy.riskClass,
       duplicateOf: duplicate.runId,
+      duplicateStatus: {
+        executionStatus: status.executionStatus ?? null,
+        publicationStatus: status.publicationStatus ?? null,
+      },
+      /** 这条重复运行是否已被判定为「死了」（可以回收）。false 时 reason 说明它在等什么。 */
+      reclaimable: liveness.reclaimable,
+      reclaimReason: liveness.reason,
+      reclaimAttempt,
+      hint: liveness.reclaimable
+        ? 'duplicate run looks stale: reclaim it (controller.reclaimStale) or let the runner auto-reclaim, then retry'
+        : 'duplicate run looks alive or legitimately waiting; if it is a crash leftover, check its publication status before reclaiming (UNKNOWN can only be reconciled, never re-run)',
       idempotencyKey,
       runId: null,
       context: null,

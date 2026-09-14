@@ -24,8 +24,13 @@
 `publicationStatus=VERIFIED`、`cursorAdvanced=true`（游标 1→300）。过程中又抓到一条**凭据接线缺陷**
 （运行器的发布钩子工厂从不传 `env`，而本能力的 `readBack` 只认 `env` → 外部写入成功、自动回读却拿不到凭据，
 发布段被判 `UNKNOWN`）；已对齐同族能力改读 `publishInput.envFile` 并补回归用例。
-同时暴露两条**未修的运行时缺口**（属设计决定）：①运行的发布轴没有 `UNKNOWN` 出口（提交记录对账成 `VERIFIED` 也不行）；
+同时暴露两条**运行时缺口**：①运行的发布轴没有 `UNKNOWN` 出口（提交记录对账成 `VERIFIED` 也不行）；
 ②任何未终结的运行会永久占住它的幂等键，且没有 stale 回收 / resume 通道（本次两度靠 `controller.cancel` 手动释放）。
+收口的第四部分（§13.7，2026-09-14 深夜用户答复「都修」）：**两条缺口均已修**，只补出口、不放宽任何准入——
+①新增 `controller.reconcilePublication`（前置 `UNKNOWN`/`READY`；`VERIFIED` 要真实回读收据 **且** 该运行所有提交记录已 `VERIFIED`，强制「先对账账本、再收敛运行」；`ABSENT` 要具名操作者且无记录处于「可能已交付」状态）；
+②新增 `run-liveness.mjs`（**死活看租约、回收安全性看提交记录，两个判据分开**）、`assessRun` / `reclaimStale` / `reclaimStaleRuns`、store 端口 `listCommitsByRun`（缺则 fail-closed）与准入可选自动回收。
+修的过程中在真实库上发现**同源的第三格** `READY + COMMITTING`（崩溃遗留的 `b4e7e120`）——它同样没有任何出口，已一并纳入。
+验证：sop-runtime **24 文件 / 300 通过 / 0 失败**（基线 265，+35 个新用例），runtime 套件 **397/61 文件**不变，故障注入 **17/17** 无回归，skills **532/44 文件**（另见 §13.7.3 末尾的既有失败说明）。
 `xws.sku.collection` 与 `huitun.keyword-heat.collect` 两条的发布段仍未真实跑过。
 004/005 迁移已在本项目库 apply（2026-09-14，经用户授权），上面第 12 行「不在本轮自动 apply」是交接时的原始状态。
 

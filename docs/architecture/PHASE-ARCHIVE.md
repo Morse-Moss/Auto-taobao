@@ -488,8 +488,27 @@ node runtime/sop-runtime/two-stage-runner.mjs \
 node scripts/run-test-suite.mjs skills --concurrency=1
 # ==> skills: 44 file(s)
 # tests 532  pass 532  fail 0  cancelled 0  skipped 0   EXIT=0
-#   本轮 +1（adapter-feishu-weekly 的凭据接线回归用例，22 → 23）；§13 收口前记录的基线为 511/43 文件
-# 本轮未触及 runtime/ 与 sop-runtime，故 265 / 397 / 26 / 17 四组数字不变
+#   §13 收口时 +1（adapter-feishu-weekly 的凭据接线回归用例，22 → 23）；§13 收口前记录的基线为 511/43 文件
+
+# sop-runtime 全量（24 个 .test.mjs）。注意两件事：
+#   1) 套件运行器只发现 runtime/*.test.mjs，**不递归** runtime/sop-runtime；
+#   2) 本项目约定「显式文件列表优于 shell 通配」（docs/standards/README.md），
+#      所以这一步是把那 24 个路径显式传给 node --test。
+node --test <runtime/sop-runtime 下 24 个 .test.mjs 的显式列表>
+# ==> 24 file(s)
+# tests 299  pass 299  fail 0  cancelled 0  skipped 0
+#   基线 265；§13.7 新增 run-liveness.test.mjs（16）+ recovery-unresolved.test.mjs（18）= +34
+
+node scripts/run-test-suite.mjs runtime --concurrency=1
+# ==> runtime: 61 file(s)
+# tests 397  pass 397  fail 0  cancelled 0  skipped 0   EXIT=0
+
+# 真实库只读探针（只有 select；未写入业务库）：验证新增 store 端口 listCommitsByRun
+# 一次性脚本（跑完即删，故不随仓库提交）；下面是它的输出原文
+node .tmp-probe-listcommits.mjs
+# unknownRun: []                     （未知 runId 返回空数组，不抛错）
+# byRun: commitKey/runId/status/businessKey 映射正确
+# statusDistribution: { COMMITTING: 1, VERIFIED: 2 }   ← 那个 COMMITTING 就是 b4e7e120（§13.7.1 的真实样本）
 ```
 
 注意：`node --test runtime/sop-runtime`（传目录）在 Node 22 会报 `MODULE_NOT_FOUND`，必须传通配展开后的文件列表。
@@ -501,8 +520,8 @@ node scripts/run-test-suite.mjs skills --concurrency=1
 | --- | --- | --- |
 | 发布段从未对**真实 base** 执行过 `--commit` | 能力缺口（**已部分关闭**） | 2026-09-14 已补做 `xws.feishu.import`：用户授权的一次性演练表（应用自有 base 内新建 `_演练_xws_import_20260914`，16 字段合同、演练后 DELETE），真实提交得 `verdict=VERIFIED` / `commitKey=e4c775a0…` / 回读 rows 3 + attachments 3 / 游标 1→3，独立回读三行内容一致，见 MIGRATION-8 §8。**仍未真实跑过的是 `sycm.feishu.weekly`（见下面两行与 §13.4）、`xws.sku.collection` 与 `huitun.keyword-heat.collect` 的发布段**（这三条各自还差一次同类演练）。注意：用户原本指定的表在租户 `kcne618basvj`，与本应用所属租户 `rcndesfqro3x` 跨租户，飞书自建应用不能被跨租户加为协作者，因此换到应用自己的租户演练。**2026-09-14 晚续**：为 `sycm.feishu.weekly` 搭好「应用自持沙盒 base」（§13.5.1）后真跑，**先撞到一条更靠前的代码侧缺陷**——库约束不接受 `FAILED`，失败路径连收据都写不出来（§13.5.2），已修并验证（§13.5.3）；但该条能力的发布段**仍未跑成**，卡在两个彼此独立的前置上（§13.5.4）。**2026-09-14 深夜续**：两个前置都已清零（006 已 apply、用户在共享浏览器完成飞书登录），`--commit` 真实跑通并要求验收：`verdict=VERIFIED`、回读 `rows=300 / historyRows=2367`、`publicationStatus=VERIFIED`、`cursorAdvanced=true`（游标 1→300）——过程里又抓到一条凭据接线缺陷（§13.6），现已可关闭**本行**；`xws.sku.collection` 与 `huitun.keyword-heat.collect` 两条的发布段仍未真实跑过 |
 | `supervisor_commit_records.status` 词表与运行时 `COMMIT_STATUS` 不一致 | **已修并已 apply** | 001 的 CHECK 缺 `FAILED`，运行时账本失败时会写它 → 真实 PG 上抛约束异常、失败路径丢收据。已新增 `db/migrations/006-commit-record-status-vocabulary.sql`（+ fail-closed 回滚）与仓库级守卫 `commit-status-vocabulary.test.mjs`，隔离库 26/26、故障注入 17/17 通过；**2026-09-14 晚经用户授权 apply 到业务库**（备份 `db/backups/pre-006-20260914-225707.sql`，回读：7 值、写 `FAILED` 成功、非法值仍被拒、复跑幂等、数据未动）。见 §13.6.1 |
-| 运行的**发布轴没有 `UNKNOWN` 出口** | 运行时缺口（**新发现**） | `settlePublication(VERIFIED)` 要求 `current === 'COMMITTED'`、`markPublicationCommitted` 只收 `READY \| COMMITTED` → `UNKNOWN` 落在运行上就再也到不了 `VERIFIED`，即使提交记录已通过对账变成 `VERIFIED`（§13.6.5 缺口 A，实测抛 `PUBLICATION_STATE`）。`reconcileUnknown` 只回写提交记录、从不回写运行，缺的正是半截 |
-| **未终结的运行永久占住幂等键** | 运行时缺口（**新发现**） | 准入去重走 `listActiveRuns`，`LANE_ACTIVE_STATUSES` 含 `RUNNING`，无 stale 回收；`duplicateOf` 全仓库无人消费（无 resume 通道）。同一幂等键被挡两次（`b4e7e120` 崩溃遗留、`3dae7ad4` 判 UNKNOWN 后），两次都靠 `controller.cancel(runId)` 手动释放，而它的 blocker 语义是 `POLICY_DENIED/cancelled`，与「崩溃/结果未定」都不贴切。缺一条「放弃/终结」迁移 + reaper（§13.6.5 缺口 B）|
+| 运行的**发布轴没有 `UNKNOWN` 出口** | **已修（§13.7.1）** | `settlePublication(VERIFIED)` 要求 `current === 'COMMITTED'`、`markPublicationCommitted` 只收 `READY \| COMMITTED` → `UNKNOWN` 落在运行上就再也到不了 `VERIFIED`，即使提交记录已通过对账变成 `VERIFIED`（§13.6.5 缺口 A，实测抛 `PUBLICATION_STATE`）。`reconcileUnknown` 只回写提交记录、从不回写运行，缺的正是半截。**2026-09-14 深夜用户答复「都修」后补齐**：新增 `controller.reconcilePublication`，前置状态 `UNKNOWN \| READY`；`verdict='VERIFIED'` 要求真实回读收据 **且** 该运行所有提交记录已 `VERIFIED`（强制「先对账账本、再收敛运行」），`verdict='ABSENT'` 要求具名操作者且无任何提交记录处于「可能已交付」状态。修的过程中在真实库上发现**同源的第三格** `READY + COMMITTING`（崩溃遗留的 `b4e7e120`）——它同样没有任何出口，已一并纳入。见 §13.7 |
+| **未终结的运行永久占住幂等键** | **已修（§13.7.2）** | 准入去重走 `listActiveRuns`，`LANE_ACTIVE_STATUSES` 含 `RUNNING`，无 stale 回收；`duplicateOf` 全仓库无人消费（无 resume 通道）。同一幂等键被挡两次（`b4e7e120` 崩溃遗留、`3dae7ad4` 判 UNKNOWN 后），两次都靠 `controller.cancel(runId)` 手动释放，而它的 blocker 语义是 `POLICY_DENIED/cancelled`，与「崩溃/结果未定」都不贴切。**2026-09-14 深夜用户答复「都修」后补齐**：新增 `run-liveness.mjs`（**死活看租约、回收安全性看提交记录，两个判据分开**）、`controller.assessRun` / `reclaimStale` / `reclaimStaleRuns`、store 端口 `listCommitsByRun`（缺则 fail-closed），以及准入可选自动回收（两段式运行器默认开启）。回收被拒不是错误，而是带回 code 的判定结果。见 §13.7 |
 | `xws.sku.collection` **写前新鲜度重算**缺失（D7.25） | 能力缺口 | 运维 CLI（`apply-xws-sku-manifest.mjs`）写入前会重跑一次 dry-run 并 `assertFreshPlanMatchesManifest`；运行时路径离线不可用，只有「写前哈希绑定 + 写后回读收敛」。补法是在 COLLECT 里加一次需要 Feishu 只读凭据的新鲜度重算，或把 CLI 的 fresh-dry-run 提升为可复用的只读能力。本轮不做：会引入第二条 Feishu 读路径，而收益（拦截「工件已过期但表状态未变」的窗口）需要先在真实写入中被观测到 |
 | `xws.sku.collection` **不复算**解析结论（D7.17） | 刻意取舍 | 能力复算的是「这批证据 ↔ 这份计划」的一致性，不是 `SKU名称/规格/尺寸/适用空间` 的解释结果。解释结果由 `sha256(parserFile) === manifest.parser.sha256` 绑定版本，而不是被重新推导。审查者若要质疑某行的解析是否正确，必须回到 dry-run 环节，而不是指望适配器 |
 | `sycm.search-rank.export` 未被**真实浏览器**驱动过 | 能力缺口 | 迁移 4 只把它接到了运行时并用夹具流程端到端驱动（真 registry/loader/adapter/证据库/Controller）。真实跑需要 Edge 调试实例上的生意参谋登录态；本轮没有重新登录 |
@@ -967,5 +986,117 @@ final: publicationStatus=VERIFIED  executionStatus=SUCCEEDED  nextAction=TERMINA
 
 两条都属于运行时语义变更，需要先定策略（UNKNOWN 是否允许在提交记录 VERIFIED 后把运行推成 VERIFIED）；
 本轮只把事实、复现路径与证据记在这里，不动状态机。
+
+**2026-09-14 深夜：用户答复「都修」，两条已修，见 §13.7。**
+
+### 13.7 收口：两条运行时缺口已修（2026-09-14 深夜，用户「都修」）
+
+修的边界先说清：**只补出口，不放宽任何准入**。两条缺口都是「状态机缺一条合法迁移」，
+不是「判定太严」。所以这次改动里，凡是新加的分支都带**更强的**证据要求，
+凡是原本会炸的地方都只是多了一个**必须拿出证据**的出口。
+
+### 13.7.1 缺口 A 的出口：`controller.reconcilePublication`
+
+前置状态是 `UNKNOWN` **与** `READY`（`publication.RECONCILABLE_PUBLICATION`）。
+
+`READY` 这一格是**修的过程中在真实库上发现的第三格**：`b4e7e120`（§13.5 崩溃遗留）的
+`publicationStatus=READY`、提交记录停在 `COMMITTING` —— 回收会（正确地）拒绝它，
+`settlePublication` 也不收它，于是它和 `UNKNOWN` 一样没有任何出口。把它漏掉就等于只修了半截，
+所以两个前置状态走同一个入口。
+
+两个出口，**都必须由调用方拿出证据**，都在 `decisions` 里留 `via: 'RECONCILE'` 的痕迹：
+
+- `verdict='VERIFIED'` —— 必须带真实回读收据（`receipt.verifiedAt`），**且**该运行的**所有**提交记录都已 `VERIFIED`。
+  后半条是硬闸门：账本与运行是两个权威，顺序只能是「**先对账账本、再收敛运行**」；
+  否则运行会声称 VERIFIED 而账本还停在 `COMMITTING/UNKNOWN`，那就是两处真相打架。
+  缺收据同样拒绝 —— 否则 `UNKNOWN` 就成了「免回读」的后门，等于偷偷放宽 VERIFIED 的准入条件。
+- `verdict='ABSENT'` —— 操作者**具名**确认「外部效果确实没发生」：发布轴回 `READY`（未提交即未发布），
+  本次运行终结以释放幂等键，让重试能开一条新运行。闸门是「**没有任何**提交记录处于可能交付过的状态」
+  （`COMMIT_HANDED_OFF`）——记录停在 `COMMITTING/COMMITTED` 时，人也不能声明它没发生。
+
+错误码：`PUBLICATION_STATE` / `RECEIPT_REQUIRED` / `COMMIT_NOT_CONVERGED` / `OPERATOR_REQUIRED` /
+`COMMIT_HANDED_OFF` / `COMMIT_RECORDS_UNAVAILABLE` / `PUBLICATION_VERDICT`。
+
+### 13.7.2 缺口 B 的出口：存活判定 + stale 回收 + 准入自动释放
+
+新模块 `runtime/sop-runtime/run-liveness.mjs`（纯函数、无 IO）：`assessRunLiveness` /
+`assessReclaimSafety` / `reclaimGuidance`。**两个判据必须分开**，这是这条修复的核心：
+
+- **死活看租约，不看运行状态。** 运行状态描述「它在等什么」（`RETRY_WAIT` 等退避、`PAUSED` 等人工），
+  不描述「有没有人在跑它」。把 `PAUSED` 当死运行回收，等于把一条**正在等审批**的运行悄悄杀掉；
+  而用「多久没动」判死活会把一次真实的长抓取误杀。判据只能是租约。
+- **安全性看外部写入有没有在飞行中。** 回收会释放幂等键，让一个 `runId` 不同的新运行接手；
+  而提交键是 `runId:target:businessKey`，新运行拿到的是**新的 commitKey** —— 也就是**再外部写一次**。
+  所以「效果可能已经发生」的运行绝不能回收，只能对账。
+
+配套：
+
+- `controller.assessRun`（只读汇报）/ `reclaimStale`（终结并释放幂等键）/ `reclaimStaleRuns`（批量 reaper，
+  单条被拒不中断扫描）。
+- 新 store 端口 `listCommitsByRun`：**唯一**用途是把 `READY`（已登记意图、从未交付 handler）与
+  `COMMITTING`（可能已经写进去了）分开。缺这个端口时 fail-closed（`READY` 判不安全）——
+  猜错的代价是一次真实的重复写入，比多要一次人工对账贵得多。
+- 准入：`admitTask({ reclaimStale, reclaim, abandonedAfterMs })`，**显式可选**——
+  「悄悄终结一条运行」不该是准入的副作用。回收被拒**不是错误**，而是带回 code 的判定结果
+  （`reclaimAttempt`），并且无论成败都一并返回 `duplicateOf / duplicateStatus / reclaimable /
+  reclaimReason / hint`，让调用方不必靠猜运行状态。两段式运行器默认开启；
+  `ADMISSION_STALE_AFTER_MS = 30min` 只用于**没有开放 attempt** 的 `QUEUED`。
+- 唯一清单去重：`COMMIT_HANDED_OFF` 住在 `side-effect-ledger.mjs`（账本拥有提交状态词表），
+  回收安全判定与 `ABSENT` 闸门**都从它推导**（`COMMIT_NOT_HANDED_OFF` 是它的补集），
+  不再各抄一份 `['READY','FAILED']` —— 那正是这次修复要消灭的第二份真相。
+
+### 13.7.3 验收
+
+```
+# 新增两组用例（真 Controller / Ledger / admission，只有 store 在内存）
+node --test runtime/sop-runtime/run-liveness.test.mjs runtime/sop-runtime/recovery-unresolved.test.mjs
+# tests 35  pass 35  fail 0        （run-liveness 16 + recovery-unresolved 19）
+
+# sop-runtime 全量（24 个 .test.mjs；套件运行器不递归 runtime/sop-runtime，必须显式给文件列表）
+# tests 300  pass 300  fail 0      （基线 265 + 35）
+
+# runtime 套件（runtime/*.test.mjs，61 文件）
+# tests 397  pass 397  fail 0
+
+# 故障注入（本轮改了它加载的 pg-store.mjs，故复跑；隔离临时库，业务库零写入）
+node runtime/sop-runtime/recovery-fault-injection.mjs
+# === 结果：17/17 通过 ===
+```
+
+`sop-runtime` 全量是**显式 24 文件列表**跑的（`scripts/run-test-suite.mjs` 的发现器只扫
+`runtime/*.test.mjs`，不递归 `runtime/sop-runtime/`；这也是为什么 34→35 个新用例
+不会体现在 runtime 套件的 397 里）。
+
+**真实库只读探针**（`.tmp-probe-listcommits.mjs`，只有 `select`，未写入业务库）：
+`listCommitsByRun` 对未知 runId 返回 `[]`、对真实 run 返回字段映射正确的记录（`commitKey/runId/status/businessKey`）；
+顺带读出全仓提交记录状态分布 `{COMMITTING: 1, VERIFIED: 2}` ——
+那个 `COMMITTING` 就是 `b4e7e120`，正好是 §13.7.1 里 `READY` 那一格的**真实样本**：
+说明这条修复不是为假想场景写的。
+
+**修的过程中新增的第 4 条验收口径**（写给下一个改状态机的人）：
+凡「只在真实入口才走到的分支」，都要有一条走真实入口的用例。本轮的对应物是
+「先 `ledger.verify` 把提交记录推成 `VERIFIED`、再收敛运行」这条**顺序**——
+它由 §13.7.1 的 `READY + COMMITTING` 用例端到端锁住，而不是靠单元层注入一个假账本。
+
+**本轮复跑 skills 套件时观察到的一项既有失败**（与本轮改动无因果，记录在此以免下次误判为回归）：
+
+```
+node scripts/run-test-suite.mjs skills
+# tests 532  pass 524  fail 8        （历史上同套件曾记 532/0）
+```
+
+8 条失败全部集中在 `skills/xws-export-market-analysis/tests/prepare-flow.test.mjs` 的浏览器流程用例
+（`closes the automation home tab when login verification fails`、`rejects a non-Edge Proxy before target discovery or browser actions`、
+`full flow ... XLSX menu ...` 等）。断言形态是**子进程退出码或 stderr 文案不符**
+（`expected 2 actual 1` / `expected 0 actual 1` / stderr 未匹配 `/browser mismatch.*edge.*browser-service/iu`），
+**不是**连接类错误（无 `ECONNREFUSED`）。
+
+为什么可以判定与 §13.7 无关（依赖链，不是印象）：该测试只 `import ../scripts/export-market-analysis.mjs`，
+递归展开其本地 import 闭包共 4 个模块，**没有一个触及 `runtime/sop-runtime/`**；而本轮改动 100% 落在后者。
+另外这些用例用 `spawn(process.execPath, [...], { env: { ...process.env, XWS_RUNTIME_DIR } })`
+**全量继承会话环境**，且单跑该文件耗时远超整套（整套 44 文件约 9.5 分钟，单跑此文件 12 分钟仍在跑），
+指向「某些分支在等超时」——怀疑与本机是否存在可用 Edge / CDP Proxy 状态有关，属**待单独排查项**，
+不影响本轮改动自身的验证结论。
+
 
 

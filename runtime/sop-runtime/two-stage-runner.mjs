@@ -32,6 +32,12 @@ import { summarize } from './context-schema.mjs';
 // 发布段钩子工厂的约定导出名。能力模块导出 createPublisher(context) -> { handler, readBack }。
 export const PUBLISH_HOOK_FACTORY = 'createPublisher';
 
+// 准入期「入队后就没人管了」的默认阈值：只用于**没有开放 attempt** 的 QUEUED 运行
+// （例如进程刚建了 run 就被打断、连 attempt 都没开）。有这个默认值，这类残骸也不必再人工清理；
+// 有租约的运行不看时间，只看租约（见 run-liveness.mjs）——这是刻意的：
+// 一次真实抓取可能跑很久，用「多久没动」判死活会把活着的运行误杀。
+export const ADMISSION_STALE_AFTER_MS = 30 * 60 * 1000;
+
 export class TwoStageError extends Error {
   constructor(message, code, details = {}) {
     super(`${code}: ${message}`);
@@ -98,6 +104,10 @@ export async function runTwoStage({
   effectClass = null,
   taskId = null,
   workDir = null,
+  // 准入前尝试回收同幂等键上的崩溃遗留运行（缺口 B）。默认开启：这是「重跑一次」这条路
+  // 从「必须先人工 recover+cancel」变成「直接能跑」的关键一步。
+  reclaimStale = true,
+  staleAfterMs = ADMISSION_STALE_AFTER_MS,
 } = {}) {
   if (!businessKey) throw new TwoStageError('businessKey is required for idempotent publish', 'BUSINESS_KEY_REQUIRED');
 
@@ -108,6 +118,8 @@ export async function runTwoStage({
   // A. 准入。采集段与发布段用不同的副作用集合准入：
   //    默认模式（只跑采集）绝不声明外部写入，因此不会触达人工闸门；
   //    --commit 模式按 manifest 声明的完整副作用准入，高风险 → 开闸 → 必须有 --operator。
+  // 回收回调把「动运行状态」这件事留在 Controller 手里：准入只提出请求，判定与落库都在 Controller，
+  // 回收被拒（RUN_NOT_STALE / PUBLICATION_UNRESOLVED）会原样带回来，而不是被悄悄吞掉。
   const admission = await admitTask({
     store,
     spec: {
@@ -122,9 +134,26 @@ export async function runTwoStage({
       verifiedCursor: expectedRows === null ? null : { start: 1, end: 0, version: 0 },
     },
     registeredCapabilities: registry.names(),
+    reclaimStale,
+    abandonedAfterMs: staleAfterMs,
+    reclaim: reclaimStale ? (runId) => controller.reclaimStale(runId, {
+      operator: operator ?? 'two-stage-runner',
+      note: 'auto reclaim on admission (stale run, external write provably not handed off)',
+      abandonedAfterMs: staleAfterMs,
+    }) : null,
   });
   if (!admission.admitted) {
-    return { ok: false, admitted: false, capabilityId, reasons: admission.rejectionReasons, failureClass: admission.failureClass };
+    return {
+      ok: false, admitted: false, capabilityId,
+      reasons: admission.rejectionReasons,
+      failureClass: admission.failureClass,
+      // 把「为什么被挡 / 下一步做什么」原样交给调用方：这两个字段让运维不必再去猜运行状态。
+      duplicateOf: admission.duplicateOf ?? null,
+      duplicateStatus: admission.duplicateStatus ?? null,
+      reclaimAttempt: admission.reclaimAttempt ?? null,
+      reclaimable: admission.reclaimable ?? null,
+      hint: admission.hint ?? null,
+    };
   }
   const runId = admission.runId;
 

@@ -123,6 +123,11 @@ export function createMemoryStore() {
       return [...commits.values()].filter((row) => row.status === 'UNKNOWN').map(clone);
     },
 
+    // 按 run 反查提交记录（缺口 B 的回收安全判定用它区分 READY 与 COMMITTING）。
+    async listCommitsByRun(runId) {
+      return [...commits.values()].filter((row) => row.runId === runId).map(clone);
+    },
+
     // 测试辅助：故障注入用
     _state: { runs, attempts, commits },
   };

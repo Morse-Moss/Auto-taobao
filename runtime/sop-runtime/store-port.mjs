@@ -6,6 +6,9 @@ export const STORE_PORT = Object.freeze([
   'saveContext', 'loadContext',
   'createAttempt', 'updateAttempt', 'heartbeat', 'listAttempts',
   'upsertCommit', 'loadCommit', 'listUnknownCommits',
+  // 按 run 反查提交记录。**唯一**用途是「stale 回收前回答：这条运行把提交交付给 handler 过吗」——
+  // 只有它能让 READY 与 COMMITTED/COMMITTING 分开，而这两者一个可以回收、一个回收就是重复外部写入。
+  'listCommitsByRun',
 ]);
 
 export function assertStore(store) {

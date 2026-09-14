@@ -285,6 +285,15 @@ export async function createPgStore(connectionString, { pool: injected } = {}) {
       return rows.map(mapCommit);
     },
 
+    // 按 run 反查提交记录（缺口 B 的回收安全判定用它区分 READY 与 COMMITTING）。
+    async listCommitsByRun(runId) {
+      const { rows } = await pool.query(
+        'select * from supervisor_commit_records where run_id = $1::uuid order by created_at',
+        [runId],
+      );
+      return rows.map(mapCommit);
+    },
+
     async close() {
       if (ownsPool) await pool.end();
     },
