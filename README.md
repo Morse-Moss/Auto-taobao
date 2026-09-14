@@ -14,7 +14,7 @@
 - `skills/sycm-to-feishu-base`：飞书副本字段检查、TSV 构建、真实粘贴与导入验收。
 - `skills/huitun-to-feishu-keyword-heat`：读取飞书 `A候选` 队列，在灰豚红薯版采集完全同名话题浏览量，并只回填 `灰豚话题浏览量`；`内容热度`由上游流程提供。已登记运行时能力 `huitun.keyword-heat.collect@1.1.0`（采集段独立复验 `results.json` 与队列绑定，发布段对账式写入并由含 `优先级` 公式结算的回读收场）。
 - `evidence/stability-20260804`：三轮 267 行稳定性验证文件。
-- `runtime`：后续项目专用运行入口。
+- `runtime`：后续项目专用运行入口。`runtime/sop-runtime/` 是确定性运行底座（Controller 唯一拥有状态、两段式采集/发布、Agent 判决层、调度侧队列探测），入口见 `runtime/sop-runtime/index.mjs`，阶段档案见 `docs/architecture/PHASE-ARCHIVE.md`。
 - `docs/architecture/README.md`：多租户运营任务执行平台的目标架构、分层边界、权威数据和迁移原则。
 - `docs/standards/README.md`：跨模块工程规范、状态与证据、测试、安全和交付边界。
 - `docs/project-knowledge.md`：当前已验证能力、验证证据与对外表述边界；目标架构以 `docs/architecture/README.md` 为准。
@@ -107,3 +107,17 @@ node "D:\Retire\sycm-automation\scripts\run-test-suite.mjs" runtime --concurrenc
 ```
 
 `--concurrency=1` 不是可选项：`xws-export-market-analysis` 的用例会拉起真实 CLI 打假代理，并含 stall/deadline 计时断言，机器有负载时会假失败。`--dry-run` 打印各套件解析出的文件清单，用于核对离线/集成分区。
+
+调度侧入口（只读探测，不创建运行）：
+
+```powershell
+node "D:\Retire\sycm-automation\runtime\sop-runtime\capability-scheduler.mjs" `
+  --capability huitun.keyword-heat.collect --probe-only `
+  --collect-input '{"envFile":"E:\\小红书\\.env.local","appToken":"<app-token>","tableId":"<table-id>","tableName":"<table-name>"}'
+```
+
+去掉 `--probe-only` 并补上 `--identity` / `--business-key` 即为完整调度：队列为空时跳过且
+**不创建任何运行**（退出码 0），因此「本周没有要补的词」不会被记成一条失败。退出码约定：
+`0` 完成/无可做之事、`2` 运行未通过、`3` 需要人工（含等上游结算）、`4` 调用方缺陷。
+探测只读、不要求 `results.json`、不做策略判决；探测失败一律照常发起（宁可多做一次会失败的运行，
+也不静默漏做）。详见 `docs/architecture/MIGRATION-8-QUEUE-SCHEDULER-REPORT.md`。

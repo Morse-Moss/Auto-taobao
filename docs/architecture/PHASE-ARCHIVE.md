@@ -352,26 +352,69 @@ Feishu 客户端来自**已登记**的 `adapter.feishu@1.0.0`，做法与 `adapt
 
 **本轮抓到的真实缺陷（3 条 + 1 处文档不符）**：① `createReviewerPort` 的失败返回路径缺 `humanRequired`，让「明确不需要人」与「这条路径忘了设置」无法区分（返回契约不完整）；② `reviewed.error ?? (…) || '…'` 是 `??` 与 `||` 混用的 SyntaxError（我新写的代码路径，`node --check` 才发现）；③ 测试夹具手抄了 `READ_ONLY_TOOLS` 且顺序写错，而端口把内部断言失败降级成了业务结论（`AGENT_FAILED`），把测试错误伪装成实现错误。见第 10 节第 16 条。
 
+### 7.9 迁移 8：调度侧队列探测（「没有活」不是「失败」）
+
+落点：新增 `runtime/sop-runtime/capability-scheduler.mjs`、`runtime-bootstrap.mjs`、`capability-scheduler.test.mjs`(16)；改 `two-stage-runner.mjs`（装配抽出 + `parseCliArgs({profile})`）、`index.mjs`（具名导出）；`skills/huitun-to-feishu-keyword-heat/scripts/adapter.huitun-keyword-heat.mjs` 新增探测段 + 新增 `tests/queue-probe.test.mjs`(11)。深报告见 `MIGRATION-8-QUEUE-SCHEDULER-REPORT.md`。
+
+**要解决的问题**：第 9 节原先记着「灰豚空队列没有驱动器」。灰豚采集段对 0 候选确定性拒绝 `NO_CANDIDATES`，而它的实现里写明「**由驱动器负责『空队列就不要再发起本能力』**」——但当时没有驱动器。于是调度侧只有两个选择：「照常发起」（每周空队列留一条失败 run，把「本周没有要补的词」写成故障，且与真正的策略拒绝无法区分）或「人工跳过」（跳过没有任何可审计载体）。本轮把「有没有活」做成一等公民：**先探测（只读、不建运行）→ 只有确认有活才发起**。
+
+**D8.1 探测是能力自描述的入口**（`export probeQueue({ collectInput })`），与 `collectContract` / `createPublisher` 同构，**不占 manifest 字段**：探测没有副作用也不扩权，写进 manifest 只会白白移动 `registryDigest`，而那个摘要的变化意味着「能力面变了」，需要重新解释一遍。
+
+**D8.2 五条出口 + 恒等收据**：`RAN` / `PROBED_ONLY` / `SKIPPED_EMPTY_QUEUE` / `PAUSED_FOR_HUMAN` / `PROCEEDED_WITHOUT_PROBE`，全部由**同一个工厂函数**产出，键集合来自 `SCHEDULE_RECEIPT_FIELDS`，工厂自带「漏字段即抛」自检。「字段恒等」因此是结构性成立的，不靠维护者记得补齐。
+
+**D8.3 只在有确定结论时跳过，其余一律照常发起（全模块唯一一处 fail-open）**：`EMPTY` 跳过；`WAITING_HUMAN` 暂停等人工；`UNAVAILABLE`（探测器抛异常/加载失败/返回怪值）与 `NOT_PROBED`（能力没实现探测）**照常发起**。理由是失败方向不同：「多做一次本来会失败的运行」可见，「少做一次本来该做的活」不可见。跳过要求 `probe.probed === true` **且**状态属于 `SKIPPABLE_QUEUE_STATES`（只有 `EMPTY`/`WAITING_HUMAN`，有单测锁住不许扩容）。
+
+**D8.4 探测不做策略判决**：表名、字段类型、队列规模、记录身份全部**原样抛出**，交给真实运行按既有分类判。在探测里复制一份的后果不是更安全，而是**假矛盾**（探测说有活、采集段却拒绝）。真实数据上的证据：一张缺 `内容热度` 的真实表探测得到 `UNAVAILABLE / FIELD_MISSING`（「我没探出来」），而不是「队列为空」。
+
+**D8.5 能力只回三种正向状态**（`READY`/`EMPTY`/`WAITING_HUMAN`）；`UNAVAILABLE` 与 `NOT_PROBED` 是调度器的词。能力不需要回答「我探测失败了吗」。
+
+**D8.6 状态白名单是「能不能跳过」的唯一闸门**：归一化（`normalizeProbeResult`）是**必然**步骤（注入的探测器同样要过），且必须**幂等**（默认实现已归一化过一次）——不幂等会让 `detail` 越套越深，把能力自带的细节（灰豚的 `pendingCount`/`sampleKeywords`/`recordCount`）埋进越来越深的一层里。幂等分支**不放松**判据：状态仍须属于 `QUEUE_STATES`，跳过仍要求 `probed === true`。
+
+**D8.7 `null` 不是 `0`（同类缺陷第 4 次出现）**：`Number(raw.candidateCount)` 会把「未结算、候选数未知」变成「0 个候选」——正好是「假装知道」。修法是把 `null`/`undefined`/`''` 显式挑出来。
+
+**D8.8 探测不要求 `resultsFile`**：探测发生在浏览器采集之前，那时结果文件还不存在；沿用采集段的 `REQUIRED_INPUT_KEYS` 会让探测永远探不出 `READY`，并以「总是 UNAVAILABLE」的形式安静地失败。探测有自己的 `PROBE_REQUIRED_INPUT_KEYS`，单测锁住「不含 resultsFile」。
+
+**D8.10 装配收敛到 `runtime-bootstrap.mjs`（`two-stage-runner.mjs` 自迁移 2 以来首次改动）**：动机不是顺手重构，而是装配里藏着一个**必须两处一致**的默认值——store 是内存还是权威 PG。两个 CLI 各维护一份，早晚出现「一个跑在内存 store、另一个跑在权威库」的静默分叉，而恢复语义（游标/租约/账本/对账）失效时**看起来还是绿的**。同时给 `parseCliArgs` 加 `{profile:'probe'}`：探测不建运行，强制要三件套只会逼调用方传假值。两处都是纯提取/向后兼容，`run` profile 行为一字未改。
+
+**D8.11 CLI 布尔开关必须在调度器层剥掉**：`parseCliArgs` 对任何 `--x` 都要求跟一个值，`--probe-only`/`--force-run` 是布尔开关，直接交给它以「缺值」报错。修法是 `parseSchedulerArgs()` 先剥两个开关再委托。**这条是跑真实 CLI 时才发现的**（单测全绿）。
+
+**D8.13 探测不消除竞态**：探测通过后队列仍可能被清空，真实运行始终是权威。因此收据里两层都在：`queueState`（探测当时说的）与 `run.failureClass`（运行实际判的）。
+
+**真实数据证据（只读）**：对真实关键词库 base 跑三次 `--probe-only`，三张真实表全部 `EMPTY / NO_CANDIDATES`（300~301 行记录、0 个 A 候选）；一张缺字段的真实表 → `UNAVAILABLE / FIELD_MISSING`；错表名 → `UNAVAILABLE / TABLE_MISMATCH`。再跑一次**完整调度**：`outcome=SKIPPED_EMPTY_QUEUE`、`scheduled=false`、`ok=true`、`exit=0`、work-dir 下**没有生成任何运行收据**——即本周真实数据上，「队列为空」从「一条失败的运行」变成了「一条说明为什么没跑的收据 + 退出码 0」。
+
+**本轮抓到的真实缺陷（4 条）**：① `candidateCount` 把 `null` 当 `0`（D8.7，第 4 次同型）；② 归一化不幂等导致 `detail` 被套第二层（真实 CLI 输出里可见）；③ 测试用 `idFactory` 计数冒充「有没有建运行」——`idFactory` 造的是 **attempt id**，断言测的对象与它声称的结论不是一回事，属测试自己制造的假绿候选；④ CLI 布尔开关漏给下游解析器（D8.11）。见第 10 节第 17 条。
+
 ## 8. 验证证据（可复现命令与结果）
 
 ```
 node --test "runtime/sop-runtime/*.test.mjs"
-# tests 244  pass 244  fail 0  cancelled 0  skipped 0   EXIT=0
-#   其中：task-queue 23、two-stage-runner 15、agent-planned-run 14、agent-review 13、
-#        agent-proposal 13、workflow-controller 13、fanout 12、faq-fanout 12、
+# tests 261  pass 261  fail 0  cancelled 0  skipped 0   EXIT=0
+#   其中：task-queue 23、capability-scheduler 16、two-stage-runner 16、agent-planned-run 14、
+#        agent-review 13、agent-proposal 13、workflow-controller 13、fanout 12、faq-fanout 12、
 #        compression 12、memory 11、lane-concurrency 8，其余为既有模块
-#   迁移 7 之前基线 215 → 之后 244（+29：agent-review 13 + agent-planned-run 14 +
-#   workflow-controller 11→13）
+#   迁移 7 基线 244 → 迁移 8 之后 261（+16 调度器、+1 运行器 CLI profile）
 
 node scripts/run-test-suite.mjs skills --concurrency=1
-# ==> skills: 42 file(s)
-# tests 500  pass 500  fail 0  cancelled 0  skipped 0   EXIT=0
-#   迁移 6 基线同为 500/42 —— 迁移 7 未改动 skills/ 下任何文件，这是「没有回归」的证据
+# ==> skills: 43 file(s)（迁移 7 为 42：新增 huitun tests/queue-probe.test.mjs）
+# tests 511  pass 511  fail 0  cancelled 0  skipped 0   EXIT=0
+#   迁移 7 基线 500/42；本轮 +11（灰豚探测 8 + 调度集成 3），其余 500 与基线完全一致 = 无回归
 
 node scripts/run-test-suite.mjs runtime --concurrency=1
 # ==> runtime: 59 file(s)
 # tests 361  pass 361  fail 0  cancelled 0  skipped 0   EXIT=0
-#   覆盖整个 runtime/（含 sop-runtime 的 244），新测试由目录发现自动纳入，不需要改文件列表
+#   覆盖整个 runtime/（sop-runtime 的测试不在这个发现规则内，单独跑，见上面第一条）
+
+# 调度器 CLI 对真实飞书表跑只读探测（不需要授权写，也不建运行）
+node runtime/sop-runtime/capability-scheduler.mjs --capability huitun.keyword-heat.collect --probe-only \
+  --collect-input '{"envFile":"E:/小红书/.env.local","appToken":"N21Abkg0HakO6AsbCaDckvcwnVd","tableId":"tblN1uT1LpzyqqWx","tableName":"关键词分析 V1（修正版）"}'
+# outcome=PROBED_ONLY  queueState=EMPTY  queueCode=NO_CANDIDATES  candidateCount=0  exit=0
+# detail: recordCount=301 / fieldCount=26 / candidateMode=A_ONLY（能力自己给的事实，未被信封再套一层）
+# 另外三张真实表：09-12 / 09-11 两张同为 EMPTY（300 行）；关键词历史总表 V1 → UNAVAILABLE/FIELD_MISSING（缺 内容热度）
+# 错表名 → UNAVAILABLE/TABLE_MISMATCH（「探不出来」，不是「队列为空」）
+
+# 同一条命令去掉 --probe-only（真实表 + 真实身份 + 真实业务键）
+# outcome=SKIPPED_EMPTY_QUEUE  scheduled=false  ok=true  humanRequired=false  run=null  exit=0
+# work-dir 下没有生成任何运行收据 —— 这就是本轮要买的东西
 
 node --test skills/xws-export-market-analysis/tests/prepare-flow.test.mjs
 # tests 36  pass 36  fail 0
@@ -389,7 +432,8 @@ node runtime/sop-runtime/build-skill-registry.mjs --check --write
 # 10 manifest 通过（能力 8 + 适配器 2）
 # registryDigest=sha256:34936b1f01b559be304ba756781e942904c7690f62ea3a9a6c4d838eddd53e48
 # 告警 5 项，全部是 adapter.browser 显式外部依赖（共享 CDP 代理不在仓库内）
-# ↑ 迁移 7 前后此摘要完全相同：本轮没有新增/修改任何 skill manifest（只加判决层）
+# ↑ 迁移 7 / 迁移 8 前后此摘要完全相同：两轮都没有新增/修改任何 skill manifest
+#   （迁移 8 的探测是能力自描述的入口，既无副作用也不扩权，因此不占 manifest 字段）
 
 node runtime/sop-runtime/run-faq-fanout.mjs --period-start 2026-09-06 --period-end 2026-09-12 \
   --identity '{"tenantId":"sycm","storeId":"bathtub-flagship","platform":"xws","accountId":"operator","browserProfileId":"local","contractVersion":"xws-16f-v1"}' --no-write
@@ -419,7 +463,10 @@ node runtime/sop-runtime/recovery-fault-injection.mjs
 | `AGENT_REJECTION` 里三个码**无抛出点** | 声明性残留 | `WRITE_EFFECT_FORBIDDEN` / `TOOL_NOT_READ_ONLY` / `FALLBACK_MISSING` 全被 `validateAgentManifest` 折进 `MANIFEST_INVALID`（具体文本只在 `errors[]`），运行期拿不到这三个码。已核对全仓库只有枚举声明与枚举断言引用它们。不是缺陷（注册期拒绝理由本就该收敛），但按码分支会匹配不到，审查者可据此决定删还是让其在运行期生效 |
 | `assertAgentRemovable` 的依赖检查是**文本级**的 | 技术债 | 用正则匹配 `agent-(proposal\|port\|runner)`，换文件名即可绕过。真正可靠的做法是解析 import 图；本轮没做，因为注册表构建不跑这个检查（它只在测试里作为静态证明使用） |
 | `recordDecisions` 只做**顶层**状态轴检查，不递归 | 刻意取舍 | decisions 是**追加**进 `context.decisions`，不会被应用到上下文上，所以嵌套轴名无论如何改不了状态；顶层检查的实际作用是「不许审计记录*长得像*一个状态载体」。可辩护，但不是「不可能」 |
-| `huitun.keyword-heat.collect` 的**空队列调度**没有驱动器 | 能力缺口 | 采集段对 0 候选确定性拒绝 `NO_CANDIDATES`（D7.31），但运行时侧**还没有**一个「先读队列、空则不发起本能力」的驱动器：目前只能由操作者看 `POLICY_DENIED` 收据后决定。补法是在周更驱动器里加一次「队列预读」，或把 `NO_CANDIDATES` 显式登记为「能力未被调度」而非「能力拒绝」。本轮不做：会引入第二条飞书读路径 + 一个跨能力的调度语义，收益要先在真实周更里被观测到 |
+| `huitun.keyword-heat.collect` 的**空队列调度**（原记：没有驱动器） | **已关闭（迁移 8）** | **D8.1~D8.13**：`capability-scheduler.mjs` 先读队列、确认有活才发起；`EMPTY` 跳过（`ok:true`、退出码 0、不留运行记录）、`WAITING_HUMAN` 暂停等人工，其余一律照常发起。真实表实测：三张真实关键词表全部 `EMPTY` → `SKIPPED_EMPTY_QUEUE` + work-dir 无运行收据。原先担心「会引入第二条飞书读路径」确实发生了，但那条读路径**是能力自己的**（`probeQueue` 复用采集段同一套只读面），且它不做任何策略判决，因此没有长出第二个策略引擎。余下的取舍见下面三行 |
+| 调度器**只支持单能力**，没有多能力编排 | 范围缺口 | 本模块是「一问一答一跑」的单能力驱动器。遍历所有已登记能力、按优先级排产属于上层编排；现在做只能凭空设计一个没有使用者的调度器 |
+| 探测结果**没有缓存 / TTL** | 刻意取舍 | 每次探测是一次真实飞书只读（约 300~3000 行）。周更频率下不构成成本；若变成高频调度，缓存与退避**必须一起做**，否则「缓存失效」会成为新的静默漏做来源 |
+| 探测与 `task-queue` 的队列语义**没有打通** | 刻意取舍 | `task-queue` 管「运行时自己的任务队列有多深」，探测管「外部业务队列有没有活」。混在一起会让「没活」与「拥堵」变成同一个信号 |
 | `huitun.keyword-heat.collect` 的浏览器采集段不在运行时路径上 | 有意保留 | 采集仍由 `run-huitun-topic-heat.mjs`（CLI）承担，运行时入口不发起任何浏览器动作（D7.26）。代价是「采集」与「回填审批」之间的断点仍靠操作者对 `results.json` 的处置，而不是靠运行时状态 |
 | FAQ 的**周期级发布段**未迁移 | 能力缺口 | 商品级采集与隔离已落地，但「问题主库/问题库替换」仍由 `publish-faq-detail-enrichment.mjs` 这条旧 CLI 承担；把它接入两段式需要真实可写目标表与单独授权 |
 | FAQ 的周期级完成判定仍由 `run-faq-operator.mjs` 负责 | 有意保留 | fan-out 只回答「商品级是否全部结算」；周期级阶段机未改，避免一次改动同时动两套语义 |
@@ -466,14 +513,21 @@ node runtime/sop-runtime/recovery-fault-injection.mjs
 16. **返回收据「少一个字段」被当成契约成立（迁移 7）** —— `createReviewerPort().review()` 的成功路径返回 `humanRequired: verdict === 'ESCALATE'`，而两条失败路径（`AGENT_FAILED`、复核非法）**根本没有这个字段**。代码读起来完全正常：`undefined` 是假值，「失败 ⇒ 不需要人」的语义恰好成立，测试也不会有任何失败信号——除非有人去问「这个字段到底有没有被设计出来」。它真正的代价是**调用方没法区分「明确地不需要人」与「这条路径忘了设置」**，而这两者在将来（比如加一条「复核超时也算需要人」的规则）会导出不同的行为。修法是让返回契约**全量**：每条路径都显式给出 `humanRequired`（失败恒 `false`），`planNextStep` 的 `emptyPlan` 默认形状同样补齐，并把用例改成断言 `Object.hasOwn(result, 'humanRequired')` 而不是 `=== false`。
     同一轮里另外两条同源表现，形态都是「静态读起来没问题」：① `reviewed.error ?? (…).join('; ') || '…'` 是 `??` 与 `||` 混用无括号的 **SyntaxError**——新写的错误消息路径，`node --check` 一眼可见，但整份套件只报「某文件加载失败 + 3 条用例全挂」，失败信号指向别处；② 测试夹具手抄了一份 `READ_ONLY_TOOLS` 且顺序与源不一致，断言在 `runReviewer` 内部抛出后**被端口自己的 catch 收成 `AGENT_FAILED`**——于是「测试写错了」在报告里长得像「合法复核被判失败」。②这条最值得记：**一个把内部异常降级成业务结论的边界，会把测试错误伪装成实现错误**，排查方向会被系统性带偏。
 
+17. **调度收据的三处「读起来没问题」（迁移 8）** —— 三条同源表现，都是**新增了判决层/收据之后**才出现的形态：
+    ① `candidateCount` 用 `Number(raw.candidateCount)` 归一化，而 `Number(null) === 0`：能力在「等上游 AI 结算」时明确回 `candidateCount: null`（候选数未知），收据里却变成「0 个候选」。与它相邻的语义是「`EMPTY` 也回 0」，于是**两种完全不同的实况在收据上长得一模一样**。这是项目内第 4 次同型缺陷（validator、ledger 两处 + 迁移 5 的 `rowCount`），修法是把 `null`/`undefined`/`''` 显式挑出来。**结论：「空值不是零」要当成跨模块的默认怀疑对象，每次新增一个会写数字的字段都要重新问一遍。**
+    ② 归一化不幂等：`runScheduled` 会对「默认实现已经归一化过的收据」再归一化一次，于是 `detail` 从「能力给的原始事实」变成「上一次的归一化收据」，`pendingCount`/`sampleKeywords`/`recordCount` 被推深一层——真实 CLI 输出里肉眼可见 `detail.detail.*`。修法是加幂等分支（已归一化的信封原样返回，且**不放松**白名单判据）。
+    ③ **测试用 `idFactory` 计数冒充「有没有建运行」**：我拿 `createController({ idFactory })` 的计数器来断言「空队列没建运行」，而 `idFactory` 造的是 **attempt id**——断言实际测的对象（跑没跑过 attempt）与它声称的结论（建没建过 run）不是一回事。**这是测试自己制造的假绿候选：断言的措辞比它实际测的东西更强。** 修法是包一层 store 的 `createRun` 直接数创建动作。
+    另有一条同轮实现缺陷：`--probe-only` / `--force-run` 是**布尔**开关，而下游的 `parseCliArgs` 对任何 `--x` 都要求跟一个值，于是真实 CLI 一跑就报「`--probe-only` 缺值」。单测全绿、CLI 直接不可用——第 12/13/14 条讲的是「测试不产生失败信号」，这条讲的是「**测试不覆盖真实入口**」。写入档时先跑一次真实入口，成本几乎为零。
+
 ## 11. 交付物清单
 
-架构文档：`agent-sop-runtime-spec.md`（不变量与契约）、`agent-sop-runtime-implementation-plan.md`（阶段与验收）、`README.md`、`handoff-to-teammate.md`、本文、`MIGRATION-2-SYCM-WEEKLY-REPORT.md`、`MIGRATION-3-FAQ-FANOUT-REPORT.md`、`MIGRATION-4-SYCM-SEARCH-RANK-REPORT.md`、`MIGRATION-5-XWS-SKU-REPORT.md`、`MIGRATION-6-HUITUN-WEEKLY-REPORT.md`、`MIGRATION-7-AGENT-PLANNER-REVIEWER-REPORT.md`。
+
+架构文档：`agent-sop-runtime-spec.md`（不变量与契约）、`agent-sop-runtime-implementation-plan.md`（阶段与验收）、`README.md`、`handoff-to-teammate.md`、本文、`MIGRATION-2-SYCM-WEEKLY-REPORT.md`、`MIGRATION-3-FAQ-FANOUT-REPORT.md`、`MIGRATION-4-SYCM-SEARCH-RANK-REPORT.md`、`MIGRATION-5-XWS-SKU-REPORT.md`、`MIGRATION-6-HUITUN-WEEKLY-REPORT.md`、`MIGRATION-7-AGENT-PLANNER-REVIEWER-REPORT.md`、`MIGRATION-8-QUEUE-SCHEDULER-REPORT.md`。
 迁移：`db/migrations/001-005`（各带 rollback），全量已 apply 到本项目库 `xws_automation`（容器 `xws-adaptive-postgres`，PG 17，127.0.0.1:5432）。
-运行时：`runtime/sop-runtime/` 共 **29 个模块**（不含 20 个 `.test.mjs`）。模块数在迁移 4/5/6 三轮**零增长**，到迁移 7 才 +2（`agent-review.mjs`、`agent-planned-run.mjs`）——而且这 2 个都住在**Agent 层**，核心模块一个没动：迁移 7 加的是判决层，不是新特化。`two-stage-runner.mjs` 自迁移 2 起至今未改。测试文件数 18 → 20。
-能力：**10 个 manifest 已登记（能力 8 + 适配器 2）**，`registryDigest=sha256:34936b1f01b559be304ba756781e942904c7690f62ea3a9a6c4d838eddd53e48`（迁移 7 前后未变）。已完成接入运行时的（6 个）：`xws.feishu.import`（两段式带发布）、`sycm.feishu.weekly`（两段式带发布）、`xws.faq.product-collect`（商品级 fan-out 执行单元，只读）、`sycm.search-rank.export@1.1.0`（只读采集，零发布义务）、`xws.sku.collection@1.0.0`（两段式带发布，对账式幂等写入 + 回读）、`huitun.keyword-heat.collect@1.1.0`（两段式带发布，能力级队列 + 对账式写入 + 含公式结算的回读）。
+运行时：`runtime/sop-runtime/` 共 **32 个模块**（不含 22 个 `.test.mjs`）。模块数在迁移 4/5/6 三轮**零增长**，迁移 7 +2（`agent-review.mjs`、`agent-planned-run.mjs`，都在 Agent 层），迁移 8 +3（`capability-scheduler.mjs`、`runtime-bootstrap.mjs` 两个新模块 + 1 个测试文件；`runtime-bootstrap.mjs` 是从 `two-stage-runner.mjs` 抽出的共用装配）。测试文件数 20 → 22。
+`two-stage-runner.mjs` 在迁移 8 首次改动（装配抽出 + `parseCliArgs` 新增 `profile` 选项，均为纯提取/向后兼容，`run` profile 行为不变）；**迁移 8 之前它自迁移 2 起一直未改**——这条记录要保留，因为「新能力不改核心」是这套底座的核心卖点，任何一次改动都该被记下来并解释。
+能力：**10 个 manifest 已登记（能力 8 + 适配器 2）**，`registryDigest=sha256:34936b1f01b559be304ba756781e942904c7690f62ea3a9a6c4d838eddd53e48`（迁移 7 / 8 前后均未变）。已完成接入运行时的（6 个）：`xws.feishu.import`（两段式带发布）、`sycm.feishu.weekly`（两段式带发布）、`xws.faq.product-collect`（商品级 fan-out 执行单元，只读）、`sycm.search-rank.export@1.1.0`（只读采集，零发布义务）、`xws.sku.collection@1.0.0`（两段式带发布，对账式幂等写入 + 回读）、`huitun.keyword-heat.collect@1.1.0`（两段式带发布，能力级队列 + 对账式写入 + 含公式结算的回读）。
 尚未登记（不伪造）：`xws-question-library-collection`（FAQ 采集兼容入口）、`xws-faq-operator` 的周期级发布段（目录内无 `.mjs`，实现在 `runtime/`）。`xws-sku-collection` 已在迁移 5 登记，但目录内仍只有适配器，采集 CLI 留在 `runtime/`（见第 9 节技术债）。`huitun-to-feishu-keyword-heat` 的浏览器采集 CLI 同理留在原处，`manifest.entry` 已指向适配器（D7.26）。
 **Agent 层（迁移 7）**：`agent-proposal.mjs`（契约）、`agent-review.mjs`（复核）、`agent-planned-run.mjs`（边界与四步流水）。三者构成一个可整体移除的层：核心模块（`workflow-controller` / `two-stage-runner` / `task-queue` / `validator` / `side-effect-ledger` / `fanout` / `policy` / `context-schema` / `task-admission` / `publication` / `skill-*` / `stores/*`）**没有任何一个 import 它们**（已逐个核对），`assertAgentRemovable` 把这个方向当成静态检查（文本级，见第 9 节）。
 唯一 re-export Agent 层的是 `index.mjs`——它是统一出口（barrel），不是核心模块，且删掉那三行 `export *` 不会影响任何核心模块的运行。这是刻意的：调用方需要一个统一入口，而「核心不依赖 Agent」这条不变量针对的是**逻辑依赖**而不是聚合导出。审查者若要更严的口径，可把 Agent 层从 `index.mjs` 挪到独立出口。
-能力：**10 个 manifest 已登记（能力 8 + 适配器 2）**，`registryDigest=sha256:34936b1f01b559be304ba756781e942904c7690f62ea3a9a6c4d838eddd53e48`。已完成接入运行时的（6 个）：`xws.feishu.import`（两段式带发布）、`sycm.feishu.weekly`（两段式带发布）、`xws.faq.product-collect`（商品级 fan-out 执行单元，只读）、`sycm.search-rank.export@1.1.0`（只读采集，零发布义务）、`xws.sku.collection@1.0.0`（两段式带发布，对账式幂等写入 + 回读）、`huitun.keyword-heat.collect@1.1.0`（两段式带发布，能力级队列 + 对账式写入 + 含公式结算的回读）。
-尚未登记（不伪造）：`xws-question-library-collection`（FAQ 采集兼容入口）、`xws-faq-operator` 的周期级发布段（目录内无 `.mjs`，实现在 `runtime/`）。`xws-sku-collection` 已在迁移 5 登记，但目录内仍只有适配器，采集 CLI 留在 `runtime/`（见第 9 节技术债）。`huitun-to-feishu-keyword-heat` 的浏览器采集 CLI 同理留在原处，`manifest.entry` 已指向适配器（D7.26）。
+**调度层（迁移 8）**：`capability-scheduler.mjs`（探测契约 + 归一化 + 调度决策 + CLI）、`runtime-bootstrap.mjs`（运行器装配的唯一一处）。调度层与 Agent 层**互不知情**：调度器不 import 任何 `agent-*`，Agent 判决层也不 import 调度器。`index.mjs` 里这两个模块用**具名导出**（不是 `export *`）——两者的 CLI 都各自导出了 `main`，而 barrel 里出现一个 `main` 对任何 `import * as sop` 的调用方都是个意外入口。

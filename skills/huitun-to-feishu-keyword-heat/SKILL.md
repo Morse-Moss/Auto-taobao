@@ -69,6 +69,26 @@ node runtime/sop-runtime/two-stage-runner.mjs `
 「工件携带计划而非结果文档」「队列指纹只在有待写行时才拦」等取舍，见
 `docs/architecture/MIGRATION-6-HUITUN-WEEKLY-REPORT.md`。
 
+### 调度侧入口（空队列不要发起这条能力）
+
+本能力导出 `probeQueue({ collectInput })`，让调度侧可以在**发起运行之前**只读地问一句「现在有没有活」：
+
+```powershell
+node runtime/sop-runtime/capability-scheduler.mjs `
+  --capability huitun.keyword-heat.collect --probe-only `
+  --collect-input '{"envFile":"E:\\小红书\\.env.local","appToken":"<app-token>","tableId":"<table-id>","tableName":"<table-name>"}'
+```
+
+结论有三种：`READY`（有 A 候选 → 交给真实运行）、`EMPTY`（队列为空 → 跳过，`ok:true`）、
+`WAITING_HUMAN`（仍有内容行没结算完 → 等人工）。去掉 `--probe-only` 并补上 `--identity` /
+`--business-key` 即为完整调度：队列为空时**跳过且不创建任何运行**（退出码 0），
+因此「本周没有要补的词」不会在运行历史里被记成一条失败。
+
+探测**只读**（表名 / 字段类型 / 记录），**不要求 `results.json`**（它发生在浏览器采集之前），
+也**不做策略判决**（表名/字段类型/队列规模仍由采集段拒绝，避免出现「探测说有活、采集段却拒绝」的假矛盾）。
+探测本身坏掉时一律照常发起（宁可多做一次会失败的运行，也不静默漏做）。详见
+`docs/architecture/MIGRATION-8-QUEUE-SCHEDULER-REPORT.md`。
+
 ## Workflow contract
 
 1. Authenticate to Feishu and verify the exact table name, field definitions, and complete record count. Before candidate selection, stop with `AI_REQUIRED` if any populated `搜索词` row has a blank `优先级` or still has `优先级=待数据`; completely blank Feishu placeholder rows do not count. Only after this gate passes, read every record whose `优先级` is exactly `A候选`; fail if any such record has an empty `搜索词`, then require uniqueness. Refuse a queue larger than `--max-candidates` unless the user explicitly raises the bound. Create a queue fingerprint from the table identity and `(record_id, 搜索词)` pairs; do not persist the app token itself.
@@ -112,6 +132,8 @@ For the verified DOM selectors and observed table shape, read [page-contract.md]
 ```powershell
 node --test "D:\Retire\sycm-automation\skills\huitun-to-feishu-keyword-heat\tests\*.test.mjs"
 node --test "D:\Retire\sycm-automation\skills\huitun-to-feishu-keyword-heat\tests\adapter-huitun-keyword-heat.test.mjs"
+node --test "D:\Retire\sycm-automation\skills\huitun-to-feishu-keyword-heat\tests\queue-probe.test.mjs"
+node --test "D:\Retire\sycm-automation\runtime\sop-runtime\capability-scheduler.test.mjs"
 node "D:\Retire\sycm-automation\runtime\sop-runtime\build-skill-registry.mjs" --check
 node "D:\Retire\sycm-automation\skills\huitun-to-feishu-keyword-heat\scripts\run-huitun-topic-heat.mjs" --self-test
 py -3 "D:\codex\skills\.system\skill-creator\scripts\quick_validate.py" "D:\Retire\sycm-automation\skills\huitun-to-feishu-keyword-heat"

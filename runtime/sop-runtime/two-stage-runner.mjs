@@ -20,17 +20,11 @@
 //  - 采集段与发布段之间只通过**工件字节**传递数据，不通过进程内内存——
 //    这是跨进程恢复能成立的前提。
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { buildRegistryFromDisk } from './build-skill-registry.mjs';
-import { createLoader } from './skill-loader.mjs';
-import { createMemoryStore } from './stores/memory-store.mjs';
+import { createRuntimeContext } from './runtime-bootstrap.mjs';
 import { admitTask } from './task-admission.mjs';
-import { createController } from './workflow-controller.mjs';
-import { createSideEffectLedger } from './side-effect-ledger.mjs';
-import { createEvidenceStore } from './evidence-store.mjs';
 import { createCapabilityWorker } from './worker-adapter.mjs';
 import { createCapabilityPublisher, EXTERNAL_WRITE_EFFECTS } from './publication.mjs';
 import { summarize } from './context-schema.mjs';
@@ -279,7 +273,11 @@ export async function runTwoStage({
 //     [--collect-input <json>] [--period-start D --period-end D] [--expected-rows N] \
 //     [--work-dir <path>] [--database-url <pg-url>] \
 //     [--commit --operator <name>]
-export function parseCliArgs(argv) {
+//
+// profile='probe' 供「只探测、不发起」的调用方复用同一份词法解析：它只保留 --capability 这条必填，
+// 不再要求 --identity/--business-key/--commit 三件套——那些是**发起一次运行**的前提，
+// 探测不建运行，强求它们只会逼调用方传假值。语法解析只有一份，语义校验按 profile 分档。
+export function parseCliArgs(argv, { profile = 'run' } = {}) {
   const args = { commit: false, json: false };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -294,6 +292,7 @@ export function parseCliArgs(argv) {
   }
   if (args.help) return args;
   if (!args.capability) throw new Error('--capability is required');
+  if (profile === 'probe') return args;
   if (!args.identity) throw new Error('--identity is required (JSON with tenantId/storeId/platform/accountId/browserProfileId/contractVersion)');
   if (!args.businessKey) throw new Error('--business-key is required');
   if (args.commit && !args.operator) throw new Error('--operator is required with --commit (records who approved the human gate)');
@@ -323,25 +322,14 @@ export async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  const { registry, result } = await buildRegistryFromDisk();
-  if (!result.ok) throw new Error(`registry invalid: ${JSON.stringify(result.errors)}`);
-  const loader = createLoader({ registry });
-
-  // 默认内存 store（dry-run 不需要持久化）；--database-url 时用真实 PG，
-  // 这样「恢复/游标」跑在权威库上，而不是只在内存里好看。
-  let store;
-  if (args.databaseUrl) {
-    const { createPgStore } = await import('./stores/pg-store.mjs');
-    store = await createPgStore(args.databaseUrl);
-  } else {
-    store = createMemoryStore();
-  }
-
-  const controller = createController({ store, idFactory: () => `run-${Date.now().toString(36)}` });
-  const ledger = createSideEffectLedger({ store });
-  const workDir = resolve(args.workDir ?? `runtime/sop-runtime/two-stage-${Date.now().toString(36)}`);
-  await mkdir(workDir, { recursive: true });
-  const evidenceStore = createEvidenceStore({ root: resolve(workDir, 'evidence') });
+  // 装配收敛在 runtime-bootstrap.mjs：两段式运行器与调度器必须跑在**同一套** store / Controller
+  // 上——「dry-run 用内存、真实运行用权威 PG」这个默认值一旦在两处漂移，恢复语义
+  // （游标 / 租约 / 提交账本 / UNKNOWN 对账）会静默失效，而且看起来还是绿的。
+  const { registry, loader, store, controller, ledger, evidenceStore, workDir } = await createRuntimeContext({
+    databaseUrl: args.databaseUrl ?? null,
+    workDir: args.workDir ?? null,
+    workDirPrefix: 'two-stage',
+  });
 
   const collectInput = args.collectInput ? JSON.parse(args.collectInput) : {};
   if (args.envFile) collectInput.envFile = resolve(args.envFile);

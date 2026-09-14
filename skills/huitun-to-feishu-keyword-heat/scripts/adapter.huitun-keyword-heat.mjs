@@ -95,6 +95,9 @@ export const ARTIFACT_SURFACE_FIELDS = Object.freeze([
 // 而这条链的原因文案大多是中文（「拒绝覆盖」「队列已变化」），必须逐条显式映射。
 export const FAILURE_CLASS_BY_CODE = Object.freeze({
   RESULTS_MISSING: 'EVIDENCE_INVALID',
+  // 探测专属：调用方没给全探测输入（与采集段的 TARGET_REQUIRED 同类：都是「这次调用没准备好」）。
+  // 它永远到不了运行时的失败分类——探测的异常由调度器收成「结论未知、照常发起」。
+  PROBE_INPUT_MISSING: 'POLICY_DENIED',
   RESULTS_INCOMPLETE: 'EVIDENCE_INVALID',
   RESULTS_HASH_MISMATCH: 'EVIDENCE_INVALID',
   RESULT_STALE: 'EVIDENCE_INVALID',
@@ -352,10 +355,9 @@ export async function readHuitunBatch(input = {}, { createClient = null } = {}) 
     tableId: input.tableId,
     tableName: input.tableName,
   });
-  const candidateMode = asText(input.candidateMode) || 'A_ONLY';
-  if (!['A_ONLY', 'B_FALLBACK'].includes(candidateMode)) {
-    throw new HuitunEvidenceError(`unsupported candidate mode: ${candidateMode}`, 'UNSUPPORTED_MODE', { candidateMode });
-  }
+  // 候选模式的词表只有一处（candidateModeOf）：探测段与采集段必须对「哪些模式合法」
+  // 给出同一个答案，否则会出现「探测说有活、采集段却拒绝这个模式」的假矛盾。
+  const candidateMode = candidateModeOf(input);
   const maxCandidates = Number.isFinite(Number(input.maxCandidates)) && Number(input.maxCandidates) > 0
     ? Math.floor(Number(input.maxCandidates))
     : 50;
@@ -512,6 +514,113 @@ export async function readHuitunBatch(input = {}, { createClient = null } = {}) 
     collectedAt: asText(resultDocument?.source?.collected_at),
     resultSource: resultDocument?.source ?? {},
   };
+}
+
+// ── 调度侧探测（只读、不建运行） ────────────────────────────────────────────
+// 契约（由 runtime/sop-runtime/capability-scheduler.mjs 的 QUEUE_PROBE_EXPORT 固定）：
+//   probeQueue({ collectInput }) → { state, code, reason, candidateCount, ... }
+// 只在**确定的运营状态**上下结论，不做策略判决：
+//   READY         队列里有可采的候选 → 交给真实运行；
+//   EMPTY         A 候选队列为空 → 本周没有要补的词（正常运营状态，不是失败）；
+//   WAITING_HUMAN 仍有内容行没结算完（优先级为空或 待数据）→ 等上游 AI，不是失败。
+// 其余一切（表名/字段不符、队列过大、记录身份坏掉……）**原样抛出**：那是真实运行的判决，
+// 在这里复制一份只会长出第二个策略引擎，两份判决早晚不一致。
+//
+// 与采集段的两处**刻意的**差别：
+//  1. **不要求 resultsFile**。探测发生在浏览器采集之前，那时 results.json 还不存在；
+//     把它设成前置条件等于永远探不出 READY，探测就退化成一个恒返回「未知」的装饰品。
+//  2. **不读 results 文件、不写任何本地文件**。探测只读飞书，因此可以放心让调度侧高频调用。
+export const PROBE_REQUIRED_INPUT_KEYS = Object.freeze(['envFile', 'appToken', 'tableId', 'tableName']);
+export const QUEUE_PROBE_SCHEMA_VERSION = 'huitun-queue-probe-v1';
+export const QUEUE_PROBE_STATES = Object.freeze(['READY', 'EMPTY', 'WAITING_HUMAN']);
+
+function requireProbeInputText(input, key) {
+  const value = asText(input?.[key]);
+  if (!value) throw new HuitunEvidenceError(`${key} is required to probe the queue`, 'PROBE_INPUT_MISSING', { key });
+  return value;
+}
+
+function candidateModeOf(input) {
+  const mode = asText(input?.candidateMode) || 'A_ONLY';
+  if (!['A_ONLY', 'B_FALLBACK'].includes(mode)) {
+    throw new HuitunEvidenceError(`unsupported candidate mode: ${mode}`, 'UNSUPPORTED_MODE', { candidateMode: mode });
+  }
+  return mode;
+}
+
+export async function probeHuitunQueue(input = {}, { createClient = null } = {}) {
+  for (const key of PROBE_REQUIRED_INPUT_KEYS) requireProbeInputText(input, key);
+  const target = requestTarget({
+    appToken: input.appToken,
+    tableId: input.tableId,
+    tableName: input.tableName,
+  });
+  const candidateMode = candidateModeOf(input);
+
+  const credentials = await readCredentials(requireProbeInputText(input, 'envFile'));
+  const create = createClient ?? deps.createClient ?? defaultCreateClient;
+  const client = await create({
+    appId: credentials.appId,
+    appSecret: credentials.appSecret,
+    appToken: target.appToken,
+    tableId: target.tableId,
+  });
+
+  // 只会读，且只读三样：表名、字段类型、记录。探测不建运行，因此也不留任何运行痕迹。
+  const tables = await client.listTables();
+  const fields = await client.listFields();
+  assertTableShape({ tables, fields, tableId: target.tableId, tableName: target.tableName });
+  const records = await client.listRecords();
+
+  const shared = {
+    schemaVersion: QUEUE_PROBE_SCHEMA_VERSION,
+    capabilityId,
+    capabilityVersion: manifestVersion,
+    candidateMode,
+    recordCount: records.length,
+    fieldCount: fields.length,
+    tableId: target.tableId,
+    tableName: target.tableName,
+    probedAt: new Date().toISOString(),
+  };
+
+  let candidates = null;
+  try {
+    candidates = await guarded(() => selectCandidates(records, { mode: candidateMode }));
+  } catch (error) {
+    // AI_REQUIRED 是一条确定性运营状态（上游 AI 没结算完），不是失败，因此在这里就地下结论，
+    // 让调度侧能把它报成「等人工」而不是「故障」。
+    if (error?.code === 'AI_REQUIRED') {
+      const pendingCount = Number(error.details?.pendingCount);
+      return {
+        ...shared,
+        state: 'WAITING_HUMAN',
+        code: 'AI_REQUIRED',
+        reason: `${Number.isSafeInteger(pendingCount) ? pendingCount : 'some'} populated row(s) are still awaiting Feishu AI settlement`,
+        candidateCount: null,
+        pendingCount: Number.isSafeInteger(pendingCount) ? pendingCount : null,
+        sampleKeywords: error.details?.sampleKeywords ?? [],
+      };
+    }
+    throw error;
+  }
+
+  const empty = candidates.length === 0;
+  return {
+    ...shared,
+    state: empty ? 'EMPTY' : 'READY',
+    code: empty ? 'NO_CANDIDATES' : 'CANDIDATES_READY',
+    reason: empty
+      ? `the ${candidateMode} candidate queue is empty; nothing to collect this period`
+      : `${candidates.length} candidate keyword(s) are queued for collection`,
+    candidateCount: candidates.length,
+  };
+}
+
+// 调度侧契约的固定导出名（capability-scheduler.mjs 的 QUEUE_PROBE_EXPORT）。
+// 只传 collectInput：探测的输入面与采集段相同，多一层参数包装只会多一处漂移。
+export async function probeQueue({ collectInput = {} } = {}) {
+  return probeHuitunQueue(collectInput);
 }
 
 // ── 适配器（Worker 7 方法契约） ─────────────────────────────────────────────

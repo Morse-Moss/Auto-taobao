@@ -148,6 +148,17 @@ test('CLI 参数校验：必填项与 --commit 的人工授权要求', () => {
   assert.equal(parsed.commit, false);
 });
 
+test('CLI 参数校验：probe profile 只要求 --capability（探测不建运行，不逼调用方传假身份）', () => {
+  assert.throws(() => parseCliArgs(['--identity', '{}'], { profile: 'probe' }), /--capability is required/);
+  const parsed = parseCliArgs(['--capability', 'a', '--collect-input', '{"x":1}'], { profile: 'probe' });
+  assert.equal(parsed.capability, 'a');
+  assert.equal(parsed.identity, undefined);
+  assert.equal(parsed.businessKey, undefined);
+  // run profile 一字不改：三件套与人工授权要求照旧。
+  assert.throws(() => parseCliArgs(['--capability', 'a'], { profile: 'run' }), /--identity is required/);
+  assert.equal(parseCliArgs(['--capability', 'a', '--identity', '{}', '--business-key', 'k']).commit, false);
+});
+
 test('parseEnvFile 解析键值、跳过注释并去掉成对引号', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'env-'));
   const file = path.join(dir, '.env');
