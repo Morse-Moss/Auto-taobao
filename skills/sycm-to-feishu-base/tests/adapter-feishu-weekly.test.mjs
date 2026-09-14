@@ -357,6 +357,53 @@ test('发布段回读：缺 weeklyTableId 即失败（不允许用「其他表�
   resetDependenciesForTest();
 });
 
+// ── 凭据来源：readBack 必须能自己从 publishInput.envFile 拿到凭据 ──────────────
+// 锁的是一条只有真实 --commit 才暴露的缺陷（2026-09-14）：
+// 运行器的发布钩子工厂只传 artifactBytes/evidence/period/target/collectInput/publishInput/manifest，
+// **从来不传 `env`**；而 readBack 走 OpenAPI 要 FEISHU_APP_ID/SECRET。
+// 只认注入 `env` 的后果：外部写入真的成功了、回读验收却永远拿不到凭据 →
+// 发布段被判 UNKNOWN（合法结论但不是事实），并凭空制造一次人工对账。
+// 离线测试照不到，是因为这条路径只在「真实网络客户端」里——其余回读用例统一注入 deps.readRecords，
+// 而 readRecords 是在凭据解析**之后**才被用上的那一环。deps.createReadApi 就是补上的那道缝。
+test('发布段回读：凭据从 publishInput.envFile 读，不依赖运行器不传的 env 参数', async () => {
+  const dir = tempDir();
+  const envFile = path.join(dir, '.env');
+  writeFileSync(envFile, 'FEISHU_APP_ID=cli_test\nFEISHU_APP_SECRET=secret_test\n', 'utf8');
+  await withRealParser();
+  const csv = writeSourceCsv(dir, VALID_ROWS);
+  setDependenciesForTest({
+    runProcess: () => ({ ok: true, csv, xlsx: path.join(dir, 'x.xlsx'), metadata: { period: '7天', dayCount: 7, endDate: '2026-09-13' } }),
+    verifyPair: ({ expectedEndDate }) => ({ status: 'success', rowCount: 2, endDate: expectedEndDate }),
+  });
+  const input = baseInput({ outputDir: dir });
+  await adapter.prepare(input);
+  await adapter.start(input);
+  const artifact = await adapter.collectArtifact({ context: { identity: {} }, observation: {} });
+
+  const seen = [];
+  setDependenciesForTest({
+    createReadApi: ({ appId, appSecret, appToken, envFile: used }) => {
+      seen.push({ appId, appSecret, appToken, envFile: used });
+      return { listRecords: async (tableId) => (tableId === 'tblNew' ? [{ fields: { 搜索词: '浴缸' } }] : []) };
+    },
+  });
+
+  // 刻意不传 env —— 与运行器真实调用形态一致。
+  const hooks = createPublisher({ artifactBytes: artifact.bytes, publishInput: { weeklyTableId: 'tblNew', envFile } });
+  const receipt = await hooks.readBack();
+  assert.deepEqual(seen, [{ appId: 'cli_test', appSecret: 'secret_test', appToken: 'appTokenAbc123', envFile }]);
+  assert.equal(receipt.rows, 1);
+  assert.equal(receipt.weeklyTableId, 'tblNew');
+
+  // env 文件不存在时给确定性拒绝码，而不是让 ENOENT 直接冒出去。
+  const missing = createPublisher({ artifactBytes: artifact.bytes, publishInput: { weeklyTableId: 'tblNew', envFile: path.join(dir, 'nope.env') } });
+  const error = await missing.readBack().then(() => null, (thrown) => thrown);
+  assert.equal(error.code, 'INPUT_REQUIRED');
+  assert.equal(error.failureClass, 'POLICY_DENIED');
+  assert.match(error.message, /env file not found/u);
+  resetDependenciesForTest();
+});
+
 test('工件字节可独立复验：摘要随内容变化，内容不变则摘要不变', async () => {
   const dir = tempDir();
   await withRealParser();

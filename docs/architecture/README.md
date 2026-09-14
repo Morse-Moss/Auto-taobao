@@ -19,7 +19,14 @@
 收口的第二部分（§13.5）：为发布段搭好「应用自持沙盒 base」后真跑，**先撞到一条更靠前的代码侧缺陷**——
 `supervisor_commit_records.status` 的 CHECK 不接受运行时会写的 `FAILED`，导致**失败路径连收据都写不出来**（成功路径不受影响，所以此前的成功演练照不出来）。
 已加 `db/migrations/006-commit-record-status-vocabulary.sql`（+ fail-closed 回滚）与仓库级守卫 `commit-status-vocabulary.test.mjs`；隔离库 26/26、故障注入 17/17 通过。
-发布段仍卡在两个独立前置上：**006 尚未 apply 到业务库**（关键 DDL 待授权）与**共享浏览器无飞书登录态**（需人工扫码），见 §13.5.4。
+收口的第三部分（§13.6，2026-09-14 深夜）：两个前置清零后（**006 已 apply 到业务库**、用户在共享浏览器完成飞书登录），
+`sycm.feishu.weekly` 的发布段**真实跑通并验收**：`verdict=VERIFIED`、回读 `rows=300 / historyRows=2367`、
+`publicationStatus=VERIFIED`、`cursorAdvanced=true`（游标 1→300）。过程中又抓到一条**凭据接线缺陷**
+（运行器的发布钩子工厂从不传 `env`，而本能力的 `readBack` 只认 `env` → 外部写入成功、自动回读却拿不到凭据，
+发布段被判 `UNKNOWN`）；已对齐同族能力改读 `publishInput.envFile` 并补回归用例。
+同时暴露两条**未修的运行时缺口**（属设计决定）：①运行的发布轴没有 `UNKNOWN` 出口（提交记录对账成 `VERIFIED` 也不行）；
+②任何未终结的运行会永久占住它的幂等键，且没有 stale 回收 / resume 通道（本次两度靠 `controller.cancel` 手动释放）。
+`xws.sku.collection` 与 `huitun.keyword-heat.collect` 两条的发布段仍未真实跑过。
 004/005 迁移已在本项目库 apply（2026-09-14，经用户授权），上面第 12 行「不在本轮自动 apply」是交接时的原始状态。
 
 ## 1. 定位

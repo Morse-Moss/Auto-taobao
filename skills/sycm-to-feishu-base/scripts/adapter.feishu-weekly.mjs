@@ -391,6 +391,24 @@ export function createPublisher({ artifactBytes, evidence = null, period = null,
   const proxy = publishInput.proxy ?? 'http://127.0.0.1:3456';
   const dryRun = publishInput.dryRun !== false;
 
+  // 凭据来源必须从 envFile 自己取，不能只认注入的 `env`。
+  // 为什么（2026-09-14 真实 --commit 跑出来）：运行器的发布钩子工厂只传
+  // artifactBytes / evidence / period / target / collectInput / publishInput / manifest，
+  // **从来不传 `env`**；而 readBack 走 OpenAPI 要 FEISHU_APP_ID/SECRET。
+  // 只认 `env` 的后果是「外部写入真的成功了、回读验收却永远拿不到凭据」——
+  // 发布段被判 UNKNOWN（合法结论，但不是事实：写入是成功的），并制造一次本可避免的人工对账。
+  // 同族能力（xws.sku.collection / xws.feishu.import）一直是读 publishInput.envFile 的，
+  // 这里对齐：注入的 env 优先（测试与同进程复用），否则从 envFile 读。
+  // 刻意做成惰性：工厂保持纯函数（不在装配期碰文件系统），缺文件在回读时给出确定性拒绝码。
+  const resolveReadEnv = () => {
+    if (env) return env;
+    if (!envFile) return null;
+    if (!existsSync(envFile)) {
+      throw fatalError('INPUT_REQUIRED', `readBack env file not found: ${envFile}`, { field: 'envFile', path: envFile });
+    }
+    return { ...readEnvValues(envFile), envFile, appToken: weekly.appToken };
+  };
+
   // 发布段要回读「刚克隆出来的新表」，而那个 table id 是 handler 在**运行期**产生的，
   // 运行前不可能知道；账本调 readBack 时也不会把 handler 的返回值传进来
   // （side-effect-ledger.verify 只传 businessKey/commitKey/target）。
@@ -451,7 +469,7 @@ export function createPublisher({ artifactBytes, evidence = null, period = null,
           { dryRun },
         );
       }
-      const readRecords = deps.readRecords ?? await defaultReadRecords(env);
+      const readRecords = deps.readRecords ?? await defaultReadRecords(resolveReadEnv());
       const weeklyRecords = await readRecords({ tableId: weeklyTableId });
       const historyRecords = await readRecords({ tableId: weekly.historyTableId });
       const digest = createHash('sha256')
@@ -468,6 +486,23 @@ export function createPublisher({ artifactBytes, evidence = null, period = null,
   };
 }
 
+// 只读 env 文件的键值对。刻意不 import runtime/ 下的 parseEnvFile：
+// 能力不得依赖运行时内部模块（同族适配器各自带一份，见 xws.sku.collection）。
+// 凭据只进内存，不落工件、不进日志。
+function readEnvValues(file) {
+  const values = {};
+  for (const rawLine of readFileSync(file, 'utf8').split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const separator = line.indexOf('=');
+    if (separator < 1) continue;
+    let value = line.slice(separator + 1).trim();
+    if (/^".*"$/u.test(value) || /^'.*'$/u.test(value)) value = value.slice(1, -1);
+    values[line.slice(0, separator).trim()] = value;
+  }
+  return values;
+}
+
 async function defaultReadRecords(env) {
   const appId = env?.FEISHU_APP_ID;
   const appSecret = env?.FEISHU_APP_SECRET;
@@ -475,13 +510,20 @@ async function defaultReadRecords(env) {
   if (!appId || !appSecret) {
     throw fatalError('INPUT_REQUIRED', 'readBack requires FEISHU_APP_ID and FEISHU_APP_SECRET', {
       missing: !appId ? ['FEISHU_APP_ID'] : ['FEISHU_APP_SECRET'],
+      envFile: env?.envFile ?? null,
     });
   }
-  const { FeishuApi, assertDecisionHistoryMutation } = await import('./sync-decision-history.mjs');
   const appToken = env.appToken;
   if (!appToken) {
     throw fatalError('INPUT_REQUIRED', 'readBack requires the base app token', { missing: ['appToken'] });
   }
+  // deps.createReadApi 是测试缝：让「凭据真的从 envFile 读到、并交给了客户端」可断言，
+  // 而不是只能在真实网络上验证（这条路径正是 2026-09-14 真实跑才暴露出来的那条）。
+  if (deps.createReadApi) {
+    const api = deps.createReadApi({ appId, appSecret, appToken, envFile: env.envFile ?? null });
+    return ({ tableId }) => api.listRecords(tableId);
+  }
+  const { FeishuApi, assertDecisionHistoryMutation } = await import('./sync-decision-history.mjs');
   const api = new FeishuApi({
     appId, appSecret, appToken,
     mutationGuard: (mutation) => assertDecisionHistoryMutation(mutation, { appToken }),

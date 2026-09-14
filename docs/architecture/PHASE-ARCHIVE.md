@@ -461,6 +461,35 @@ node runtime/sop-runtime/two-stage-runner.mjs \
 # publish: NOT_ATTEMPTED（采集段完成；发布段需要 --commit 与人工授权）
 # final:  publicationStatus=NOT_REQUESTED  executionStatus=SUCCEEDED  nextAction=TERMINAL
 #         cursorAdvanced=false（收据只证明采集段，不冒充发布已验收）
+
+# 真实跑一遍发布段（--commit = 真实外部写入；场地=应用自持沙盒 base，见 §13.6）
+node runtime/sop-runtime/two-stage-runner.mjs \
+  --capability sycm.feishu.weekly \
+  --identity '{"tenantId":"sycm","storeId":"bathtub-flagship","platform":"sycm","accountId":"operator","browserProfileId":"local","contractVersion":"sycm-weekly-v1"}' \
+  --target 'https://kcne618basvj.feishu.cn/base/G32Lb4s4lauMjnsWP3Oc6TBjneg?table=tbllwOVjo0wH1lvY' \
+  --business-key sycm-weekly-publish-drill-20260826 --expected-rows 300 \
+  --work-dir runtime/sop-runtime/weekly-publish-drill-20260914c \
+  --database-url postgresql://xws_agent:<pw>@127.0.0.1:5432/xws_automation \
+  --collect-input '<见 §13.6.2：outputDir/sourceCsv/sourceXlsx/collectionDate=2026-08-26/batchNumber=8/expectedHistoryBefore=2067/category=浴缸/target(沙盒)>' \
+  --commit --env-file E:/小红书/.env.feishu-kcne.local --operator user-approved-2026-09-14 \
+  --publish-input '{"dryRun":false,"envFile":"E:/小红书/.env.feishu-kcne.local"}' --json
+# ok=true  runId=e21c96c9-8fe1-4aa6-bd11-4d3e17c4e2b6  mode=commit  exit=0
+# gate:    APPROVED / ALLOW_WITH_APPROVAL / HIGH
+# collect: 8 验证器全 ok  sha256=c22591eb17bfec4c8341eb061d7af28c98ab3944a6261dbe627783265317097e  rowCount=300
+# publish: verdict=VERIFIED  commitKey=568f8fe8509212295dd8ccd7da936326
+#          receipt rows=300  historyRows=2367  weeklyTableId=tbl2lZoEyTfxEfoB
+#                  digest=d3d5e59abfcc845f3a04d447cac8c0a18fc1221f7dcd02f91a28ffffc4aafaf6
+#          validation: readback:ok  publication:ok（0 失败码）
+# final:   publicationStatus=VERIFIED  executionStatus=SUCCEEDED  nextAction=TERMINAL
+#          cursorAdvanced=true  verifiedCursor 1 → 300
+# 修前同一条命令：verdict=UNKNOWN（外部写入成功、自动回读拿不到凭据），见 §13.6.2
+# 独立回读沙盒（不用运行时的客户端）：新周表 300 行 / 历史 2367（批次 8 = 300）/ 编号库 475
+
+node scripts/run-test-suite.mjs skills --concurrency=1
+# ==> skills: 44 file(s)
+# tests 532  pass 532  fail 0  cancelled 0  skipped 0   EXIT=0
+#   本轮 +1（adapter-feishu-weekly 的凭据接线回归用例，22 → 23）；§13 收口前记录的基线为 511/43 文件
+# 本轮未触及 runtime/ 与 sop-runtime，故 265 / 397 / 26 / 17 四组数字不变
 ```
 
 注意：`node --test runtime/sop-runtime`（传目录）在 Node 22 会报 `MODULE_NOT_FOUND`，必须传通配展开后的文件列表。
@@ -470,8 +499,10 @@ node runtime/sop-runtime/two-stage-runner.mjs \
 
 | 缺口 | 性质 | 为什么还没做 |
 | --- | --- | --- |
-| 发布段从未对**真实 base** 执行过 `--commit` | 能力缺口（**已部分关闭**） | 2026-09-14 已补做 `xws.feishu.import`：用户授权的一次性演练表（应用自有 base 内新建 `_演练_xws_import_20260914`，16 字段合同、演练后 DELETE），真实提交得 `verdict=VERIFIED` / `commitKey=e4c775a0…` / 回读 rows 3 + attachments 3 / 游标 1→3，独立回读三行内容一致，见 MIGRATION-8 §8。**仍未真实跑过的是 `sycm.feishu.weekly`（见下面两行与 §13.4）、`xws.sku.collection` 与 `huitun.keyword-heat.collect` 的发布段**（这三条各自还差一次同类演练）。注意：用户原本指定的表在租户 `kcne618basvj`，与本应用所属租户 `rcndesfqro3x` 跨租户，飞书自建应用不能被跨租户加为协作者，因此换到应用自己的租户演练。**2026-09-14 晚续**：为 `sycm.feishu.weekly` 搭好「应用自持沙盒 base」（§13.5.1）后真跑，**先撞到一条更靠前的代码侧缺陷**——库约束不接受 `FAILED`，失败路径连收据都写不出来（§13.5.2），已修并验证（§13.5.3）；但该条能力的发布段**仍未跑成**，卡在两个彼此独立的前置上（§13.5.4） |
-| `supervisor_commit_records.status` 词表与运行时 `COMMIT_STATUS` 不一致 | **已修（DDL 待 apply）** | 001 的 CHECK 缺 `FAILED`，运行时账本失败时会写它 → 真实 PG 上抛约束异常、失败路径丢收据。已新增 `db/migrations/006-commit-record-status-vocabulary.sql`（+ fail-closed 回滚）与仓库级守卫 `commit-status-vocabulary.test.mjs`，隔离库 26/26、故障注入 17/17 通过；**006 尚未 apply 到业务库**，属关键 DDL 变更，待授权（§13.5.4） |
+| 发布段从未对**真实 base** 执行过 `--commit` | 能力缺口（**已部分关闭**） | 2026-09-14 已补做 `xws.feishu.import`：用户授权的一次性演练表（应用自有 base 内新建 `_演练_xws_import_20260914`，16 字段合同、演练后 DELETE），真实提交得 `verdict=VERIFIED` / `commitKey=e4c775a0…` / 回读 rows 3 + attachments 3 / 游标 1→3，独立回读三行内容一致，见 MIGRATION-8 §8。**仍未真实跑过的是 `sycm.feishu.weekly`（见下面两行与 §13.4）、`xws.sku.collection` 与 `huitun.keyword-heat.collect` 的发布段**（这三条各自还差一次同类演练）。注意：用户原本指定的表在租户 `kcne618basvj`，与本应用所属租户 `rcndesfqro3x` 跨租户，飞书自建应用不能被跨租户加为协作者，因此换到应用自己的租户演练。**2026-09-14 晚续**：为 `sycm.feishu.weekly` 搭好「应用自持沙盒 base」（§13.5.1）后真跑，**先撞到一条更靠前的代码侧缺陷**——库约束不接受 `FAILED`，失败路径连收据都写不出来（§13.5.2），已修并验证（§13.5.3）；但该条能力的发布段**仍未跑成**，卡在两个彼此独立的前置上（§13.5.4）。**2026-09-14 深夜续**：两个前置都已清零（006 已 apply、用户在共享浏览器完成飞书登录），`--commit` 真实跑通并要求验收：`verdict=VERIFIED`、回读 `rows=300 / historyRows=2367`、`publicationStatus=VERIFIED`、`cursorAdvanced=true`（游标 1→300）——过程里又抓到一条凭据接线缺陷（§13.6），现已可关闭**本行**；`xws.sku.collection` 与 `huitun.keyword-heat.collect` 两条的发布段仍未真实跑过 |
+| `supervisor_commit_records.status` 词表与运行时 `COMMIT_STATUS` 不一致 | **已修并已 apply** | 001 的 CHECK 缺 `FAILED`，运行时账本失败时会写它 → 真实 PG 上抛约束异常、失败路径丢收据。已新增 `db/migrations/006-commit-record-status-vocabulary.sql`（+ fail-closed 回滚）与仓库级守卫 `commit-status-vocabulary.test.mjs`，隔离库 26/26、故障注入 17/17 通过；**2026-09-14 晚经用户授权 apply 到业务库**（备份 `db/backups/pre-006-20260914-225707.sql`，回读：7 值、写 `FAILED` 成功、非法值仍被拒、复跑幂等、数据未动）。见 §13.6.1 |
+| 运行的**发布轴没有 `UNKNOWN` 出口** | 运行时缺口（**新发现**） | `settlePublication(VERIFIED)` 要求 `current === 'COMMITTED'`、`markPublicationCommitted` 只收 `READY \| COMMITTED` → `UNKNOWN` 落在运行上就再也到不了 `VERIFIED`，即使提交记录已通过对账变成 `VERIFIED`（§13.6.5 缺口 A，实测抛 `PUBLICATION_STATE`）。`reconcileUnknown` 只回写提交记录、从不回写运行，缺的正是半截 |
+| **未终结的运行永久占住幂等键** | 运行时缺口（**新发现**） | 准入去重走 `listActiveRuns`，`LANE_ACTIVE_STATUSES` 含 `RUNNING`，无 stale 回收；`duplicateOf` 全仓库无人消费（无 resume 通道）。同一幂等键被挡两次（`b4e7e120` 崩溃遗留、`3dae7ad4` 判 UNKNOWN 后），两次都靠 `controller.cancel(runId)` 手动释放，而它的 blocker 语义是 `POLICY_DENIED/cancelled`，与「崩溃/结果未定」都不贴切。缺一条「放弃/终结」迁移 + reaper（§13.6.5 缺口 B）|
 | `xws.sku.collection` **写前新鲜度重算**缺失（D7.25） | 能力缺口 | 运维 CLI（`apply-xws-sku-manifest.mjs`）写入前会重跑一次 dry-run 并 `assertFreshPlanMatchesManifest`；运行时路径离线不可用，只有「写前哈希绑定 + 写后回读收敛」。补法是在 COLLECT 里加一次需要 Feishu 只读凭据的新鲜度重算，或把 CLI 的 fresh-dry-run 提升为可复用的只读能力。本轮不做：会引入第二条 Feishu 读路径，而收益（拦截「工件已过期但表状态未变」的窗口）需要先在真实写入中被观测到 |
 | `xws.sku.collection` **不复算**解析结论（D7.17） | 刻意取舍 | 能力复算的是「这批证据 ↔ 这份计划」的一致性，不是 `SKU名称/规格/尺寸/适用空间` 的解释结果。解释结果由 `sha256(parserFile) === manifest.parser.sha256` 绑定版本，而不是被重新推导。审查者若要质疑某行的解析是否正确，必须回到 dry-run 环节，而不是指望适配器 |
 | `sycm.search-rank.export` 未被**真实浏览器**驱动过 | 能力缺口 | 迁移 4 只把它接到了运行时并用夹具流程端到端驱动（真 registry/loader/adapter/证据库/Controller）。真实跑需要 Edge 调试实例上的生意参谋登录态；本轮没有重新登录 |
@@ -842,4 +873,99 @@ handler 确定性失败时账本写 `status='FAILED'` → 库拒绝 → 异常�
    点「复制数据表」），而实测该浏览器打开 `kcne618basvj.feishu.cn` 直接跳到 `accounts.feishu.cn` 的**扫码登录页**。
    本机 6 个 CDP 端点全部查过（`netstat` 全量扫描 + 逐个探 `/targets`），其余 5 个是本机其他项目的爬虫浏览器，
    都没有飞书会话。扫码登录只能由人完成，脚本侧已按设计抛 `HUMAN_REQUIRED`（exit 2）。
+
+### 13.6 发布段真实跑通：修掉「凭据接线」，并暴露一条更深的运行时缺口
+
+#### 13.6.1 两个前置清零
+
+| 前置 | 处理 | 证据 |
+| --- | --- | --- |
+| 006 未 apply | 用户授权后应用到业务库（`--single-transaction -v ON_ERROR_STOP=1`），应用前 `pg_dump` 全库备份 | `db/backups/pre-006-20260914-225707.sql`（325KB）。回读：约束 7 值含 `FAILED`；事务内 `update status='FAILED'` → `UPDATE 1`；`'BOGUS'` 仍被 CHECK 拒；复跑幂等；数据未被触碰（仍 1 行 `COMMITTING` = 上次演练遗留） |
+| 共享浏览器无飞书登录态 | 用户在共享 CDP 浏览器（`127.0.0.1:3456`）完成扫码登录；先跑 `copy-weekly-table.mjs` 的 dry-run 探测 | dry-run 直接读出源表 `sourceRecordCount=300 / sourceFieldCount=29`、`existingCopyCount=0` —— 说明会话可用、新表名可用。另：全机扫一遍确认**没有**任何残留飞书标签（否则先清掉再开） |
+
+#### 13.6.2 第一次真实 `--commit`：外部写入**成功**，自动回读**失败**
+
+闸门 `APPROVED / ALLOW_WITH_APPROVAL / HIGH`，采集段 8 个验证器全 ok（`sha256=c22591eb…`），
+`decisions` 依次记下 `PUBLICATION READY` → `PUBLICATION COMMITTED (commitKey=8507ec71f84e7711f9de92ae69f94a1c)`
+→ `PUBLICATION UNKNOWN`，收据 `verdict=UNKNOWN / requiresReconcile=true / nextAction=RECONCILE_COMMIT`。
+
+UNKNOWN 的唯一内容是这一句：
+
+```
+read-back not verified: readBack requires FEISHU_APP_ID and FEISHU_APP_SECRET
+```
+
+**独立回读沙盒证明写入本身是对的**（发布段真的生效了，只是没被自动验收）：
+
+| 写入点 | 期望 | 实测 |
+| --- | --- | --- |
+| 新周表（克隆产物） | 300 行、字段结构随克隆保留 | `关键词分析 V1（2026-08-26）` = `tbluj7NGF0NfdN8r`，300 行，29 字段（含 `关键词编号`/`优先级`/`上一有效周*`）|
+| `关键词历史总表 V1` | 2067 → 2367，新增批次 8 = 300 行、采集日期 2026-08-26 | 2367 行；批次分布 `1:300,2:267,3:300,4:300,5:300,6:300,7:300,8:300`；批次 8 首行采集日期 = `1787673600000`（= 2026-08-26 CST）|
+| `关键词编号库 V1` | 不变（预演已算 `missingRows=0`） | 475 行 |
+
+**根因：发布钩子的凭据接线断在框架与能力之间。**
+`two-stage-runner.mjs` 的 `resolvePublishHooks` 调工厂时只传
+`{ artifactBytes, evidence, period, target, collectInput, publishInput, manifest }` —— **没有 `env`**；
+而本能力的 `readBack` 只认注入的 `env`（`defaultReadRecords(env)` 读 `env.FEISHU_APP_ID/SECRET`）。
+同族两条能力（`xws.sku.collection`、`xws.feishu.import`）一直是读 `publishInput.envFile` 的，本能力没有对齐。
+
+**为什么离线测试照不到**：唯一会走这条路径的是「真实网络客户端」。
+其余回读用例统一注入 `deps.readRecords`，而 `readRecords` 是在**凭据解析之后**才被用上的那一环——
+缝正好开在缺陷的后面。这与 §13.5 的 `FAILED` 词表漂移是同一类：**没有被真实入口走过的分支，等于没有测试。**
+
+#### 13.6.3 修法（能力内，不碰框架）
+
+| 动作 | 落点 |
+| --- | --- |
+| 凭据来源对齐：注入 `env` 优先，否则从 `publishInput.envFile` 读（文件不存在给 `INPUT_REQUIRED`）；**惰性求值**，工厂保持纯函数（不在装配期碰文件系统） | `skills/sycm-to-feishu-base/scripts/adapter.feishu-weekly.mjs` 的 `createPublisher` 内 `resolveReadEnv()` + 本地 `readEnvValues()`（刻意不 import `runtime/` 下的 `parseEnvFile`：能力不得依赖运行时内部模块）|
+| 补一道缝让这条路径可断言：`deps.createReadApi` | 同上（参考实现：一次构造客户端、复用给两次读，与生产路径同形）|
+| 回归用例（22 → 23） | `tests/adapter-feishu-weekly.test.mjs`：刻意**不传 `env`**、只给 `publishInput.envFile`，断言凭据被读到并原样交给客户端；断 `envFile` 不存在时给确定性拒绝码而不是让 ENOENT 冒出去 |
+| 真实数据上对账 | 用修好的 `readBack` 对 `commitKey=8507ec71…` 走 `ledger.verify` → **`VERIFIED`**（`rows=300 / historyRows=2367 / weeklyTableId=tbluj7NGF0NfdN8r / digest=d3d5e59a…`）。这一步刻意**不重跑**：批次 8 已进历史表，盲重试会被 `assertCollectionDateAvailable` 拒——这正是账本要求「UNKNOWN 只对账」的原因 |
+
+顺带把「重新发起一次干净演练」的前置也补掉：新周表删除、批次 8 的 300 行 `batch_delete`，
+历史表回 2067（分布与演练前逐字相同），沙盒表数回 7。
+
+#### 13.6.4 修后正向重跑：`VERIFIED` + 游标推进
+
+`run e21c96c9-8fe1-4aa6-bd11-4d3e17c4e2b6`（同一 business key、同一场地、修好的代码）：
+
+```
+ok=true  runId=e21c96c9-…  mode=commit  exit=0
+gate: APPROVED / ALLOW_WITH_APPROVAL / HIGH
+collect: 8 验证器 ok  sha256=c22591eb…  rowCount=300
+publish: verdict=VERIFIED  commitKey=568f8fe8509212295dd8ccd7da936326
+         receipt: rows=300  historyRows=2367  weeklyTableId=tbl2lZoEyTfxEfoB
+                  digest=d3d5e59abfcc845f3a04d447cac8c0a18fc1221f7dcd02f91a28ffffc4aafaf6
+         validation: readback ok / publication ok（0 失败码）
+         decisions: READY → COMMITTED → VERIFIED
+final: publicationStatus=VERIFIED  executionStatus=SUCCEEDED  nextAction=TERMINAL
+       cursorAdvanced=true  verifiedCursor 1 → 300
+```
+
+**确定性交叉证据**：本次正向写入的 `digest`（`d3d5e59a…`）与 13.6.2 那次（另一张表 id、另一条 run）
+**逐字相同**。两次独立运行、两张不同的新表，落到同一份内容摘要 —— 这是「同一源行对 → 同一写入内容」的直接证据，
+不是靠单元测试声称的。
+
+至此 `sycm.feishu.weekly` 的发布段**对真实 base 跑通并验收**（§9 那行可以关了）。
+
+#### 13.6.5 顺带暴露的两条运行时缺口（**未修**，属设计决定）
+
+**缺口 A：运行的发布轴没有 `UNKNOWN` 出口。**
+`settlePublication(verdict='VERIFIED')` 要求 `current === 'COMMITTED'`；`markPublicationCommitted` 只收
+`READY | COMMITTED`。于是 `UNKNOWN` 一旦落在**运行**上就再也到不了 `VERIFIED` —— 哪怕提交记录已经通过对账变成
+`VERIFIED`（本次实测：`ledger.verify` 成功、`settlePublication(VERIFIED)` 抛
+`PUBLICATION_STATE: publication must be COMMITTED before VERIFIED, got UNKNOWN`）。
+结果是「**写入是真的、提交记录也被验收了，但运行永远停在 UNKNOWN / nextAction=RECONCILE_COMMIT**」。
+这不是本次引入的：`reconcileUnknown` 只回写提交记录，从不回写运行，所以这条路径本来就缺半截。
+
+**缺口 B：任何未终结的运行会永久占住它的幂等键。**
+准入去重走 `store.listActiveRuns`，而 `LANE_ACTIVE_STATUSES` 含 `RUNNING`，且**没有任何 stale 回收**；
+`duplicateOf` 这个字段全仓库**无人消费**（即没有 resume 通道）。本次在同一个幂等键上两度被挡：
+①`b4e7e120`（§13.5 崩溃遗留）② `3dae7ad4`（本轮判 UNKNOWN 后留下）。
+两次都只能用 `controller.cancel(runId)` 手动释放，而 `cancel` 写下的 blocker 是
+`POLICY_DENIED / cancelled` —— 与「进程崩了」「结果未定」都不贴切：**缺一条正经的「放弃/终结」迁移与一个 reaper。**
+
+两条都属于运行时语义变更，需要先定策略（UNKNOWN 是否允许在提交记录 VERIFIED 后把运行推成 VERIFIED）；
+本轮只把事实、复现路径与证据记在这里，不动状态机。
+
 
