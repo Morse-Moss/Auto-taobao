@@ -84,10 +84,16 @@ node runtime/sop-runtime/build-skill-registry.mjs --check
 
 ## 5. 顺带查实的环境事实（与本阶段无关，但阻塞了下一步）
 
-阶段 4a 报告写的「角色 xws_agent 无 CREATEDB、无法做隔离库验证」经实测不成立：
+阶段 4a 报告写的「角色 xws_agent 无 CREATEDB、无法做隔离库验证」经实测**只对了一半**，需要更精确的表述（2026-09-14 二次核验）：
 
-- 实际连接角色是 **`xws_runner`**，`superuser=true`、`createdb=true`。
-- 004 在隔离库首次执行**暴露了真实缺陷**：`architecture.phases` 的 7 行种子把 `risks`/`exit_criteria`（jsonb）写成纯文本，报 `invalid input syntax for type json`。已修正为 JSON 数组。
+- 本机 PostgreSQL 跑在 Docker 容器 `xws-adaptive-postgres`（postgres:17，映射 127.0.0.1:5432），库内存在**两个角色**：
+  - `xws_agent`：rolsuper=false、rolcreatedb=false —— 项目配置文件 `E:/小红书/.env.local` 用的就是它。
+  - `xws_runner`：rolsuper=true、rolcreatedb=true —— 容器的 `POSTGRES_USER`，即超级用户。
+- 隔离验证之所以能跑通，是因为**本次会话的进程环境变量里导出了 `xws_runner` 的连接串**；脚本用 `{ ...envFile, ...process.env }`，进程环境覆盖了文件。换句话说：用项目配置文件从干净 shell 跑，会因为 `xws_agent` 无 CREATEDB 直接失败。
+- 已据此加固 `runtime/verify-migrations-isolated.mjs`：先打印实际生效角色、superuser/createdb 与「角色来源（进程环境变量 / env 文件）」，权限不足时给出明确错误而不是含糊报错。实测两条路径：
+  - 有会话特权串 → `实际生效角色: xws_runner superuser=true createdb=true`，17/17 通过；
+  - 清掉会话变量、只用 env 文件 → `实际生效角色: xws_agent superuser=false createdb=false`，明确失败并提示改用有 CREATEDB 的角色。
+- 004 首次隔离执行**暴露过真实缺陷**：`architecture.phases` 的 7 行种子把 `risks`/`exit_criteria`（jsonb）写成纯文本，报 `invalid input syntax for type json`。已修正为 JSON 数组。
 - 修正后隔离验证 **17/17 通过**（语法 / 幂等 / CHECK 约束 / 默认值 / rollback / rollback 后重放），临时库 `sop_verify_*`，业务库 `xws_automation` 全程未被写入。
 - 仍未对任何真实环境 apply。
 

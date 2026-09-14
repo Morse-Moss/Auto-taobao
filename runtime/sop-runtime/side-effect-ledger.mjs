@@ -1,6 +1,7 @@
 // Side Effect Ledger：复用 supervisor_commit_records，不新建同义提交表。
 // 生命周期 READY -> COMMITTING -> COMMITTED -> VERIFIED / UNKNOWN；UNKNOWN 只能对账，禁止盲目重试。
 import { createHash } from 'node:crypto';
+import { classifyExternalFailure } from './policy.mjs';
 
 export const COMMIT_STATUS = Object.freeze(['READY', 'COMMITTING', 'COMMITTED', 'VERIFIED', 'UNKNOWN', 'FAILED']);
 
@@ -46,18 +47,20 @@ export function createSideEffectLedger({ store, nowIso = () => new Date().toISOS
         const updated = await store.updateCommit(commitKey, { status });
         return { status, record: updated, effect: effect ?? null, requiresReconcile: status === 'UNKNOWN' };
       } catch (error) {
-        // 区分确定性拒绝与结果未知：handler 抛 unknown 标记时进 UNKNOWN，否则 FAILED
+        // 区分确定性拒绝与结果未知：handler 抛 unknown 标记时进 UNKNOWN，否则 FAILED。
+        // FAILED 时给出失败分类（结构化状态码优先），供执行轴决定重试还是终止。
         const status = error?.unknown ? 'UNKNOWN' : 'FAILED';
+        const failureClass = error?.failureClass ?? (status === 'FAILED' ? classifyExternalFailure(error) : 'COMMIT_UNKNOWN');
         const updated = await store.updateCommit(commitKey, {
           status,
           error: String(error?.message ?? error),
-          failureClass: error?.failureClass ?? null,
+          failureClass,
         });
         return {
           status,
           record: updated,
           error: String(error?.message ?? error),
-          failureClass: error?.failureClass ?? null,
+          failureClass,
           requiresReconcile: status === 'UNKNOWN',
         };
       }
@@ -75,9 +78,12 @@ export function createSideEffectLedger({ store, nowIso = () => new Date().toISOS
         await store.updateCommit(commitKey, { status: 'UNKNOWN' });
         return { status: 'UNKNOWN', record, error: String(error?.message ?? error), requiresReconcile: true };
       }
+      // null 与 undefined 同样表示「未声明该预期值」；把 null 当 0 会把正常回读判成不符。
+      const expectRows = expected.rows !== undefined && expected.rows !== null;
+      const expectDigest = expected.digest !== undefined && expected.digest !== null;
       const ok = receipt && receipt.verifiedAt
-        && (expected.rows === undefined || Number(receipt.rows) === Number(expected.rows))
-        && (expected.digest === undefined || receipt.digest === expected.digest);
+        && (!expectRows || Number(receipt.rows) === Number(expected.rows))
+        && (!expectDigest || receipt.digest === expected.digest);
       const status = ok ? 'VERIFIED' : 'UNKNOWN';
       const updated = await store.updateCommit(commitKey, { status, verifiedAt: ok ? nowIso() : null });
       return { status, record: updated, receipt, requiresReconcile: !ok };

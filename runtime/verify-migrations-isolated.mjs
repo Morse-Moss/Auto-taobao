@@ -75,6 +75,21 @@ async function main() {
   const admin = new pg.Client({ connectionString: withDatabase(url, 'postgres') });
   await admin.connect();
 
+  // 谁在跑、能不能建库，必须在结果里写清楚：
+  // 本脚本用 process.env 覆盖 env 文件，因此「项目配置里的受限角色」和「会话里导出的特权角色」
+  // 可能不是同一个身份。不打印这一行，就无法判断这次验证到底是用什么权限做的。
+  const me = (await admin.query(
+    `select current_user as role, r.rolsuper as superuser, r.rolcreatedb as createdb
+     from pg_roles r where r.rolname = current_user`)).rows[0];
+  console.log(`实际生效角色: ${me.role}  superuser=${me.superuser}  createdb=${me.createdb}`);
+  console.log(`角色来源: ${process.env.XWS_DATABASE_URL || process.env.PG_URL ? '进程环境变量（覆盖 env 文件）' : `env 文件 ${args.envFile}`}`);
+  if (!me.createdb && !me.superuser) {
+    throw new Error(
+      `角色 ${me.role} 没有 CREATEDB 权限，无法创建隔离库。` +
+      '请改用有 CREATEDB 的角色，或由有权限者先建好隔离库再用 --db 指定。',
+    );
+  }
+
   const sql = (name) => fs.readFileSync(path.join(MIG_DIR, name), 'utf8');
   const verify = { tables: null, seed: null, columns: null, constraints: null, indexes: null };
 

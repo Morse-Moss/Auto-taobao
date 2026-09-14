@@ -40,7 +40,10 @@ function makeManifest({
 
 const OK_RECEIPT = (rows = 10) => ({ verifiedAt: new Date().toISOString(), rows, digest: 'sha256:receipt-digest' });
 
-async function boot({ validation, sideEffects, permissions, contract = {}, markEvidenceValidatedFirst = false } = {}) {
+async function boot({
+  validation, sideEffects, permissions, contract = {},
+  markEvidenceValidatedFirst = false, autoApprove = true, specSideEffects = null,
+} = {}) {
   const manifest = makeManifest({ validation, sideEffects, permissions });
   const registry = buildRegistry({ manifests: [{ manifest, skillDir: null }], knownValidators: listValidatorNames() });
   assert.equal(registry.ok, true, JSON.stringify(registry.errors));
@@ -57,10 +60,17 @@ async function boot({ validation, sideEffects, permissions, contract = {}, markE
       identity,
       targetEnd: 10,
       verifiedCursor: { start: 1, end: 0, version: 0 },
+      // 准入用的副作用声明可以与 manifest 不同——这正是要防的绕过路径。
+      sideEffects: specSideEffects ?? [...(manifest.sideEffects ?? [])],
+      write: true,
     },
     idFactory: () => 'run-pub',
   });
   const runId = admission.runId;
+
+  // 写外部的高风险能力准入即进人工闸门；要跑后续阶段必须先记录审批。
+  const gateOpened = admission.context?.humanGateStatus === 'WAITING_HUMAN';
+  if (gateOpened && autoApprove) await controller.approve(runId, { operator: 'test-operator' });
 
   let attemptId = null;
   if (markEvidenceValidatedFirst) {
@@ -71,7 +81,7 @@ async function boot({ validation, sideEffects, permissions, contract = {}, markE
   }
 
   const publisher = createCapabilityPublisher({ registry, controller, ledger, capabilityId: 'demo.publish', contract });
-  return { publisher, manifest, registry, controller, ledger, store, runId, attemptId };
+  return { publisher, manifest, registry, controller, ledger, store, runId, attemptId, gateOpened, admission };
 }
 
 test('发布期验证器名单由 Validator 实现表的 stage 派生', () => {
@@ -133,6 +143,44 @@ test('运行时兜底：绕过注册期校验也不会静默放行', async () =>
     () => publisher.publish({ runId: 'run-stub', businessKey: 'k', handler: async () => ({}), readBack: async () => OK_RECEIPT() }),
     (e) => e.code === 'PUBLICATION_VALIDATOR_MISSING',
   );
+});
+
+test('未审批时拒绝提交：人工闸门在提交路径上再守一道', async () => {
+  const { publisher, runId, gateOpened, controller } = await boot({ autoApprove: false });
+  assert.equal(gateOpened, true, '写外部的能力准入即应开闸');
+  assert.equal(publisher.riskClass, 'HIGH');
+  assert.equal(publisher.approvalRequired, true);
+  assert.equal((await controller.getContext(runId)).humanGateStatus, 'WAITING_HUMAN');
+
+  let handlerCalls = 0;
+  await assert.rejects(
+    () => publisher.publish({
+      runId, businessKey: 'biz-gate', handler: async () => { handlerCalls += 1; return {}; },
+      readBack: async () => OK_RECEIPT(),
+    }),
+    (e) => e.code === 'HUMAN_APPROVAL_REQUIRED',
+  );
+  assert.equal(handlerCalls, 0, '闸门未过时不得产生任何外部效果');
+  assert.equal((await controller.getContext(runId)).publicationStatus, 'NOT_REQUESTED');
+});
+
+test('按只读副作用准入也无法绕过人工闸门（风险取自 manifest 而不是准入参数）', async () => {
+  // 准入时只声明 local_parse → 风险判 LOW → 不开闸；但 manifest 声明了 feishu_write，
+  // 提交路径必须按 manifest 重新判定风险，否则这就是一条绕过闸门的路。
+  const { publisher, admission, runId, controller } = await boot({ autoApprove: false, specSideEffects: ['local_parse'] });
+  assert.equal(admission.context.humanGateStatus, 'NONE', '准入阶段确实没开闸');
+  assert.equal(publisher.riskClass, 'HIGH', '提交阶段按 manifest 重判为高风险');
+
+  let handlerCalls = 0;
+  await assert.rejects(
+    () => publisher.publish({
+      runId, businessKey: 'biz-bypass', handler: async () => { handlerCalls += 1; return {}; },
+      readBack: async () => OK_RECEIPT(),
+    }),
+    (e) => e.code === 'HUMAN_APPROVAL_REQUIRED',
+  );
+  assert.equal(handlerCalls, 0);
+  assert.equal((await controller.getContext(runId)).publicationStatus, 'NOT_REQUESTED');
 });
 
 test('提交 + 真实回读 + 发布期验证器全过：publicationStatus=VERIFIED 且游标可推进', async () => {
@@ -206,6 +254,31 @@ test('不声明 readback 时同一份收据被放行（证明是 manifest 在拦
   assert.equal(result.verdict, 'VERIFIED', JSON.stringify(result));
   assert.deepEqual(result.validation.results.map((r) => r.name), ['publication']);
   assert.equal((await controller.getContext(runId)).publicationStatus, 'VERIFIED');
+});
+
+test('提交失败按结构化状态码归类：4xx 判策略拒绝，5xx 判瞬时（不一律当 BUG 停线）', async () => {
+  const a = await boot();
+  const r1 = await a.publisher.publish({
+    runId: a.runId, businessKey: 'biz-4xx',
+    handler: async () => { const error = new Error('Feishu API failed: delete target'); error.status = 403; throw error; },
+    readBack: async () => OK_RECEIPT(),
+  });
+  assert.equal(r1.verdict, 'REJECTED');
+  const ctx1 = await a.controller.getContext(a.runId);
+  assert.equal(ctx1.blocker.class, 'POLICY_DENIED', '4xx 是策略/配置类拒绝，不是 BUG');
+  assert.equal(ctx1.executionStatus, 'FAILED');
+
+  const b = await boot();
+  const r2 = await b.publisher.publish({
+    runId: b.runId, businessKey: 'biz-5xx',
+    handler: async () => { const error = new Error('upstream unavailable'); error.status = 503; throw error; },
+    readBack: async () => OK_RECEIPT(),
+  });
+  assert.equal(r2.verdict, 'REJECTED');
+  const ctx2 = await b.controller.getContext(b.runId);
+  assert.equal(ctx2.blocker.class, 'TRANSIENT_EXTERNAL');
+  assert.equal(ctx2.executionStatus, 'RETRY_WAIT');
+  assert.equal(ctx2.retryUsed.transientExternal, 1);
 });
 
 test('提交结果未知：UNKNOWN，且不做回读、不重试', async () => {

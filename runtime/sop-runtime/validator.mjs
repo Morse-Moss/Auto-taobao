@@ -42,7 +42,9 @@ export function validateCompleteness(artifact, expectedRange = {}) {
   const rows = artifact?.rowCount;
   if (rows === undefined || rows === null) return result(true);
   const expected = expectedRange.expectedRows;
-  if (expected !== undefined && Number(rows) !== Number(expected)) {
+  // null 与 undefined 同样表示「调用方没有声明预期行数」。
+  // 若把 null 当成 0，任何非空工件都会被判成不完整——这是调用方传 null 时最容易踩的坑。
+  if (expected !== undefined && expected !== null && Number(rows) !== Number(expected)) {
     return result(false, 'INCOMPLETE_RANGE', { rows, expected });
   }
   if (Number(rows) <= 0) return result(false, 'INCOMPLETE_RANGE', { rows, reason: 'empty artifact' });
@@ -68,10 +70,13 @@ export function validateRelations(artifact, contract = {}) {
 
 export function validatePublication(receipt, expected = {}) {
   if (!receipt) return result(false, 'PUBLICATION_UNVERIFIED', { reason: 'no receipt' });
-  if (expected.rows !== undefined && Number(receipt.rows) !== Number(expected.rows)) {
+  // null 与 undefined 同样表示「未声明该预期值」，不能当成 0 或空串比较。
+  const hasRows = expected.rows !== undefined && expected.rows !== null;
+  if (hasRows && Number(receipt.rows) !== Number(expected.rows)) {
     return result(false, 'PUBLICATION_UNVERIFIED', { reason: 'read-back row mismatch', receipt, expected });
   }
-  if (expected.digest !== undefined && receipt.digest !== expected.digest) {
+  const hasDigest = expected.digest !== undefined && expected.digest !== null;
+  if (hasDigest && receipt.digest !== expected.digest) {
     return result(false, 'PUBLICATION_UNVERIFIED', { reason: 'read-back digest mismatch', receipt, expected });
   }
   if (!receipt.verifiedAt) return result(false, 'PUBLICATION_UNVERIFIED', { reason: 'receipt not verified' });

@@ -91,6 +91,24 @@ export function evaluatePolicy({
   return { decision: 'ALLOW', riskClass, reasons, humanGate: false };
 }
 
+// 外部调用失败的确定性归类：优先看结构化状态码，再看消息里的状态码，最后才归 BUG。
+// 提交账本用它区分「确定未发生、可修正后重试」与「结果未知、只能对账」，
+// 因此不能一律归 BUG——BUG 会触发 STOP_AND_ALERT，把一次可修复的目标配置错误升级成停线。
+export function classifyExternalFailure(error) {
+  const status = Number(error?.status ?? error?.statusCode);
+  if (Number.isFinite(status) && status >= 400) {
+    if (status === 408 || status === 429 || status >= 500) return 'TRANSIENT_EXTERNAL';
+    return 'POLICY_DENIED';
+  }
+  const message = String(error?.message ?? error);
+  const code = /\b([45]\d{2})\b/.exec(message);
+  if (code) return Number(code[1]) >= 500 ? 'TRANSIENT_EXTERNAL' : 'POLICY_DENIED';
+  if (/timeout|ECONN|ETIMEDOUT|socket hang up|network/i.test(message)) return 'TRANSIENT_EXTERNAL';
+  if (/busy|lock|lease/i.test(message)) return 'RESOURCE_BUSY';
+  if (/forbidden|unauthori[sz]ed|permission|not exist|nonexist|invalid/i.test(message)) return 'POLICY_DENIED';
+  return 'BUG';
+}
+
 // 失败分类到下一步动作的确定性映射（Spec 第 10 节）
 export function actionForFailure(failureClass, { retryUsed = 0, retryBudget = 3 } = {}) {
   if (!FAILURE_CLASS.includes(failureClass)) return { action: 'ESCALATE_HUMAN', reason: `unknown failure class: ${failureClass}` };

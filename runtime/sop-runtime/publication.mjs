@@ -11,6 +11,7 @@
 // 与采集期的区别：采集期验证器跑在 Worker 里（拿到工件即可判定）；
 // 发布期验证器必须等到提交之后才有收据，所以单独走这里，不在 Worker 里提前跑。
 import { runManifestValidation, VALIDATION_STAGE, validationStageOf } from './validation-registry.mjs';
+import { classifyRisk, requiresApproval } from './policy.mjs';
 
 // 结算结论：VERIFIED 已验收 / UNKNOWN 无法判定（只对账） / REJECTED 确定未发生（可重试）
 export const PUBLICATION_VERDICT = Object.freeze(['VERIFIED', 'UNKNOWN', 'REJECTED']);
@@ -60,6 +61,11 @@ export function createCapabilityPublisher({
   const declaredValidators = publicationValidatorsOf(manifest);
   const required = writesExternally(manifest, externalEffects);
 
+  // 风险等级取自 manifest 声明的副作用，而不是调用方传进来的 spec——
+  // 否则「按只读副作用准入、却真的去写外部」就能绕过人工闸门。
+  const riskClass = classifyRisk({ sideEffects: [...(manifest.sideEffects ?? [])] });
+  const approvalRequired = requiresApproval(riskClass);
+
   // 写外部却在 manifest 里没有发布期验证器 → 提交路径不允许启动（fail-closed）。
   // 与 skill-manifest 的 PUBLICATION_VALIDATOR_MISSING 是同一义务的运行时兜底：
   // manifest 校验发生在注册期，这里保证「即使绕过了注册期校验也不会静默放行」。
@@ -74,12 +80,30 @@ export function createCapabilityPublisher({
     return true;
   }
 
+  // 人工闸门：写外部的高风险能力必须处于 APPROVED 才能提交，
+  // WAITING_HUMAN 一律拒绝（提交前的最后一道，不依赖调度层是否守规矩）。
+  async function assertHumanGateApproved(runId) {
+    if (!approvalRequired) return true;
+    const context = await controller.getContext(runId);
+    if (context?.humanGateStatus !== 'APPROVED') {
+      throw publisherError(
+        `${manifest.name}@${manifest.version} risk ${riskClass} requires human approval before any external write; humanGateStatus=${context?.humanGateStatus}`,
+        'HUMAN_APPROVAL_REQUIRED',
+        { riskClass, humanGateStatus: context?.humanGateStatus ?? null },
+      );
+    }
+    return true;
+  }
+
   return {
     manifest,
     manifestDigest: entry.digest ?? null,
     publicationValidators: declaredValidators,
     writesExternally: required,
+    riskClass,
+    approvalRequired,
     assertPublicationDeclared,
+    assertHumanGateApproved,
 
     async publish({
       runId,
@@ -101,6 +125,7 @@ export function createCapabilityPublisher({
         return { verdict: 'NOT_REQUESTED', capability: manifest.name, reason: 'capability declares no external write effect' };
       }
       assertPublicationDeclared();
+      await assertHumanGateApproved(runId);
       if (typeof handler !== 'function') throw publisherError('handler is required', 'HANDLER_REQUIRED');
       if (typeof readBack !== 'function') throw publisherError('readBack is required to verify publication', 'READBACK_REQUIRED');
 

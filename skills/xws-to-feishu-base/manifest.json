@@ -1,10 +1,10 @@
 {
   "schemaVersion": "skill-manifest-v1",
   "name": "xws.feishu.import",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "kind": "capability",
   "description": "把小旺神 XLSX 导入授权飞书多维表格副本，保留 16 字段合同并写入真实商品图片附件",
-  "entry": "scripts/import-xws-to-feishu.mjs",
+  "entry": "scripts/adapter.feishu-import.mjs",
   "inputs": [
     { "name": "xlsx_path", "type": "path", "required": true },
     { "name": "target_table", "type": "string", "required": true },

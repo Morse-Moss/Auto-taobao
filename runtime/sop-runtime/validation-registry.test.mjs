@@ -124,3 +124,28 @@ test('VALIDATOR_IMPLS 每个实现都声明了合法阶段', () => {
     assert.equal(typeof impl.validate, 'function', `${name} 缺 validate`);
   }
 });
+
+// 回归：调用方把「未声明的预期值」写成 null（而不是省略键）时，
+// 不能把 null 当 0 比较——否则任何非空工件/正常回读都会被误判为失败。
+test('row_count：expectedRows 为 null 视为未声明，不误判', async () => {
+  const artifact = goodArtifact({ rowCount: 3 });
+  const asNull = await runManifestValidation({ name: 'a.b.c', validation: ['row_count'] }, { artifact, contract: { expectedRows: null } });
+  assert.equal(asNull.ok, true, JSON.stringify(asNull.failures));
+
+  const omitted = await runManifestValidation({ name: 'a.b.c', validation: ['row_count'] }, { artifact, contract: {} });
+  assert.equal(omitted.ok, true);
+
+  const declared = await runManifestValidation({ name: 'a.b.c', validation: ['row_count'] }, { artifact, contract: { expectedRows: 4 } });
+  assert.equal(declared.ok, false);
+  assert.deepEqual(declared.codes, ['INCOMPLETE_RANGE']);
+});
+
+test('publication：expected.rows 为 null 视为未声明，不误判', async () => {
+  const receipt = { verifiedAt: new Date().toISOString(), rows: 10, digest: 'sha256:x' };
+  const asNull = await runManifestValidation({ name: 'a.b.c', validation: ['publication'] }, { receipt, contract: { publication: { rows: null } } }, { stage: VALIDATION_STAGE.PUBLICATION });
+  assert.equal(asNull.ok, true, JSON.stringify(asNull.failures));
+
+  const mismatched = await runManifestValidation({ name: 'a.b.c', validation: ['publication'] }, { receipt, contract: { publication: { rows: 7 } } }, { stage: VALIDATION_STAGE.PUBLICATION });
+  assert.equal(mismatched.ok, false);
+  assert.deepEqual(mismatched.codes, ['PUBLICATION_UNVERIFIED']);
+});
