@@ -49,6 +49,8 @@ runtime/competitor-weekly-schema-migration/
 runtime/competitor-v2-sku-collection/
 runtime/keyword-analysis-backups/
 runtime/keyword-analysis-receipts/
+# FAQ operator 的周期状态目录（skills/xws-faq-operator 的权威工作区，勿删勿提交）
+runtime/faq-analysis/
 runtime/keyword-ops-review-render*/
 runtime/keyword-dual-table-docx-render*/
 runtime/keyword-decision-report*/
