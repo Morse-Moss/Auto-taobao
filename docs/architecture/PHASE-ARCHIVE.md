@@ -443,6 +443,24 @@ node runtime/sop-runtime/run-faq-fanout.mjs --period-start 2026-09-06 --period-e
 
 node runtime/sop-runtime/recovery-fault-injection.mjs
 # 15/15 通过（需 CREATEDB 身份；临时库 sop_fault_*，跑完即删）
+
+# 真实入口跑一遍 sycm.feishu.weekly 的采集段（真实 300 行导出对 + 真实 PG store，不写外部）
+node runtime/sop-runtime/two-stage-runner.mjs \
+  --capability sycm.feishu.weekly \
+  --identity '{"tenantId":"sycm","storeId":"bathtub-flagship","platform":"sycm","accountId":"operator","browserProfileId":"local","contractVersion":"sycm-weekly-v1"}' \
+  --target 'https://kcne618basvj.feishu.cn/base/HdBhbttB5aScbasWJAMc0gXnpe?table=tblrX0GM7HkVhF85' \
+  --business-key sycm-weekly-rehearsal-20260826 --expected-rows 300 \
+  --work-dir runtime/sop-runtime/weekly-rehearsal-20260914 \
+  --database-url postgresql://xws_agent:<pw>@127.0.0.1:5432/xws_automation \
+  --collect-input '<见 §13.4 的完整入参>' --json
+# ok=true  runId=5857b2e2-5d47-4282-876b-8d5bc9287c4c  mode=dry-run  exit=0
+# collect: 8 个采集期验证器全 ok（source_identity/scope_match/structure/row_count/digest/
+#          contiguous_prefix/artifact_integrity/adapter）
+#          sha256=501e4dd66c06dcca4d9c22b46d10cac1fb340ba676b7191622dcb6b7316e7da9
+#          rowCount=300  artifact=sycm-weekly-source
+# publish: NOT_ATTEMPTED（采集段完成；发布段需要 --commit 与人工授权）
+# final:  publicationStatus=NOT_REQUESTED  executionStatus=SUCCEEDED  nextAction=TERMINAL
+#         cursorAdvanced=false（收据只证明采集段，不冒充发布已验收）
 ```
 
 注意：`node --test runtime/sop-runtime`（传目录）在 Node 22 会报 `MODULE_NOT_FOUND`，必须传通配展开后的文件列表。
@@ -452,7 +470,7 @@ node runtime/sop-runtime/recovery-fault-injection.mjs
 
 | 缺口 | 性质 | 为什么还没做 |
 | --- | --- | --- |
-| 发布段从未对**真实 base** 执行过 `--commit` | 能力缺口（**已部分关闭**） | 2026-09-14 已补做 `xws.feishu.import`：用户授权的一次性演练表（应用自有 base 内新建 `_演练_xws_import_20260914`，16 字段合同、演练后 DELETE），真实提交得 `verdict=VERIFIED` / `commitKey=e4c775a0…` / 回读 rows 3 + attachments 3 / 游标 1→3，独立回读三行内容一致，见 MIGRATION-8 §8。**仍未真实跑过的是 `xws.sku.collection` 与 `huitun.keyword-heat.collect` 的发布段**（这两条各自还差一次同类演练）。注意：用户原本指定的表在租户 `kcne618basvj`，与本应用所属租户 `rcndesfqro3x` 跨租户，飞书自建应用不能被跨租户加为协作者，因此换到应用自己的租户演练 |
+| 发布段从未对**真实 base** 执行过 `--commit` | 能力缺口（**已部分关闭**） | 2026-09-14 已补做 `xws.feishu.import`：用户授权的一次性演练表（应用自有 base 内新建 `_演练_xws_import_20260914`，16 字段合同、演练后 DELETE），真实提交得 `verdict=VERIFIED` / `commitKey=e4c775a0…` / 回读 rows 3 + attachments 3 / 游标 1→3，独立回读三行内容一致，见 MIGRATION-8 §8。**仍未真实跑过的是 `sycm.feishu.weekly`（见下面两行与 §13.4）、`xws.sku.collection` 与 `huitun.keyword-heat.collect` 的发布段**（这三条各自还差一次同类演练）。注意：用户原本指定的表在租户 `kcne618basvj`，与本应用所属租户 `rcndesfqro3x` 跨租户，飞书自建应用不能被跨租户加为协作者，因此换到应用自己的租户演练 |
 | `xws.sku.collection` **写前新鲜度重算**缺失（D7.25） | 能力缺口 | 运维 CLI（`apply-xws-sku-manifest.mjs`）写入前会重跑一次 dry-run 并 `assertFreshPlanMatchesManifest`；运行时路径离线不可用，只有「写前哈希绑定 + 写后回读收敛」。补法是在 COLLECT 里加一次需要 Feishu 只读凭据的新鲜度重算，或把 CLI 的 fresh-dry-run 提升为可复用的只读能力。本轮不做：会引入第二条 Feishu 读路径，而收益（拦截「工件已过期但表状态未变」的窗口）需要先在真实写入中被观测到 |
 | `xws.sku.collection` **不复算**解析结论（D7.17） | 刻意取舍 | 能力复算的是「这批证据 ↔ 这份计划」的一致性，不是 `SKU名称/规格/尺寸/适用空间` 的解释结果。解释结果由 `sha256(parserFile) === manifest.parser.sha256` 绑定版本，而不是被重新推导。审查者若要质疑某行的解析是否正确，必须回到 dry-run 环节，而不是指望适配器 |
 | `sycm.search-rank.export` 未被**真实浏览器**驱动过 | 能力缺口 | 迁移 4 只把它接到了运行时并用夹具流程端到端驱动（真 registry/loader/adapter/证据库/Controller）。真实跑需要 Edge 调试实例上的生意参谋登录态；本轮没有重新登录 |
@@ -475,7 +493,9 @@ node runtime/sop-runtime/recovery-fault-injection.mjs
 | pg-store 的 `context.queue` 不能单独索引 | 刻意取舍 | 见 D6.2；按队列维度查询只能全表扫描，量级上去需另设计 |
 | 迁移 1 的专用运行器未改用通用运行器 | 技术债 | 保留为人工入口（`run-feishu-import-two-stage.mjs`）；迁移 5 已实证通用运行器能承载外部写能力，改用属低风险重构，未排入本轮 |
 | **两条能力已登记但未接入运行时**（实施计划阶段 4 的「优先迁移一条 XWS 市场分析流程」未做） | 范围缺口（§12.4 第 1 条补记） | 实测入口：`xws.market-analysis.collect@1.0.0` 的 `entry` = `scripts/run-adaptive-export.mjs`、`xws.faq.raw-collect@1.0.0` 的 `entry` = `scripts/append-faq-event.mjs`，都是旧 CLI 而不是 Worker 契约适配器。10 个 manifest 里 6 个已接线、2 个未接线、2 个是适配器 manifest。未做的原因：这两条是周更 SOP 的**采集前置**，迁移它们不会减少任何外部写风险，收益低于当时在做的外部写与调度侧 |
-| **两条已接线能力的失败分类仍是「零散内联」**（`sycm.feishu.weekly` 4 处、`xws.faq.product-collect` 1 处，只有 `failureClass:` 赋值、无确定性码表） | 范围缺口（§12.4 第 2 条补记） | 按实施计划阶段 4「统一错误分类」的口径，只有 4/6 达标（`xws.feishu.import` / `xws.sku.collection` / `huitun.keyword-heat.collect` / `sycm.search-rank.export` 有码表）。这两条一旦抛未挂 `failureClass` 的守卫错误，仍会退回框架关键词分类器 → 就是 2026-09-14 修掉的那类误判（漏参数被说成疑似 bug 停线）。未被触发所以未被发现。补法可直接套 `xws.feishu.import` 的做法（词表放能力自己的叶子模块、适配器 re-export），复用用户级 skill `capability-owned-failure-codes` |
+| **`sycm.feishu.weekly` 仍有裸 `throw new Error(...)`**（阶段 4「统一错误分类」的唯一真缺口；其余 5 条能力都有确定性码表或 error class） | **已关闭（§13.1）** | 原记「8 处」实测为 10 处（源码守卫抓出 `defaultReadRecords` 漏掉的两处）。修法：词表 + `fatalError()` 放能力自己的模块、适配器内两段共用；`policy.mjs` 一行未改。见 §13.1 |
+| **`sycm.feishu.weekly` 发布段的 `readBack` 拿不到 handler 造出来的新表 id** | **已关闭（§13.2）** | `side-effect-ledger.mjs:76` 不把 handler 返回值交给 `readBack`。修法：能力内部用闭包把「handler 运行期产生的值」带过去，缺失时抛 `PUBLISH_TARGET_UNKNOWN`；跨进程对账仍要求调用方显式给 `publishInput.weeklyTableId`（写在报错里，不静默降级）。回归由收据层用例锁住，见 §13.3 |
+| **`sycm.feishu.weekly` 的发布段仍未对真实目标执行过 `--commit`**（且不是「没入口」，是缺外部前置） | 能力缺口（§13.4） | 两个前置本轮都不具备：① 克隆周表这一步**是浏览器驱动的**（`copy-weekly-table.mjs` 经共享 CDP Proxy 操作飞书前端，不调 OpenAPI），要动用户正在用的浏览器；② 发布段按设计会写 `关键词历史总表 V1`（2067 行 / 批次 1-7）与 `关键词编号库 V1`（475 行）——拿演练写生产表会把假批次 8 灌进真实历史。**先由用户定跑法**（真实生产写入 / 另备一次性演练表 / 先不跑） |
 | Temporal 去留**无书面结论** | 记账缺口（§12.4 第 4 条） | S1 故障注入已用 PG 路径完成（15/15），按 spec 本该据此给出保留/弃用结论；实际是「默认由 PostgreSQL 承担、POC 原样留在 `agent-runtime/temporal/`」。README §11 仍列在待决策 |
 
 注：原先记在这里的「`advanceCursor` 前置条件尚未收紧（有意延后）」已在迁移 7 由 **D7.35** 关闭——判据取自上下文里的准入声明（`sideEffects`），而不是 manifest 或调用方参数。
@@ -574,12 +594,36 @@ node runtime/sop-runtime/recovery-fault-injection.mjs
 
 后续阶段五项：先更新 Spec/contract 再实现（D 系列决策均先落在报告里）、状态/证据/权限/幂等/外部写入的改动都补失败路径与验收、真实浏览器·Feishu·PG 调用单独记录环境与回执（见 MIGRATION-8 §8 与 TENANT-MIGRATION-MAP §5.3/§6.6）、未过故障注入前不宣称 durable/生产级/高并发、不新增第二套同义 Context/Memory/Commit/状态表（队列元数据落 `durable_runs.context.queue`，提交账本复用 `supervisor_commit_records`）——**全部满足**。
 
-### 12.4 对账时新发现的四处记账问题（本轮补记）
+### 12.4 对账时新发现的五处记账问题（本轮补记；其中第 2 条是本轮自己先写错、又复核纠正的）
 
 1. **阶段 4 的第二条优先级迁移（XWS 市场分析）没做，也没进 §9 缺口表。** 实测 manifest 入口：`xws.market-analysis.collect@1.0.0` 的 `entry` = `scripts/run-adaptive-export.mjs`（旧 CLI），不是 Worker 契约适配器；`xws.faq.raw-collect@1.0.0` 同样（`entry` = `scripts/append-faq-event.mjs`）。即 **10 个 manifest 里 6 个已接入运行时、2 个已登记但未接线**（另 2 个是适配器 manifest，本就不存在「接线」一说）。这 2 条应当补进 §9。
-2. **「统一错误分类」（阶段 4）实际覆盖 4/6，不是 6/6。** 有确定性码表的：`xws.feishu.import`（`import-core.mjs` 17 码 + `fatalError`）、`xws.sku.collection`、`huitun.keyword-heat.collect`、`sycm.search-rank.export`。**只有零散内联 `failureClass` 赋值的**：`sycm.feishu.weekly`（4 处）、`xws.faq.product-collect`（1 处）——这两条一旦抛出未挂 `failureClass` 的守卫错误，仍会退回框架的关键词分类器，也就是 2026-09-14 修掉的那类误判风险**在它们身上仍然存在**，只是尚未被真实触发。按 §6 已确立的原则，补法是把词表放到各自能力的叶子模块、适配器 re-export（可直接复用用户级 skill `capability-owned-failure-codes`）。
+2. **「统一错误分类」（阶段 4）实际是 5/6，只有 `sycm.feishu.weekly` 还有裸 `throw`。**
+   （本节初稿写「4/6」并把 `xws.faq.product-collect` 也算作不达标，**是错的，同日复核后更正**：
+   它虽然没有码表常量，但所有 `throw` 都走 `ProductEvidenceError`，构造函数里固定写
+   `this.failureClass = 'EVIDENCE_INVALID'` —— **确定性分类是有的**；只是分组口径与 xws 那边不一致，
+   `PRODUCT_ID_REQUIRED` 与「缺 `evidenceDir`/`evidenceRoot`」这两类属「调用方没备好」，
+   按 xws 的分组应是 `POLICY_DENIED` 而不是 `EVIDENCE_INVALID`。
+   教训：用 `grep failureClass` 的**次数**判断达标与否会漏掉「error class 统一赋值」这种写法。）
+   有确定性码表的：`xws.feishu.import`（`import-core.mjs` 17 码 + `fatalError`）、
+   `xws.sku.collection`、`huitun.keyword-heat.collect`、`sycm.search-rank.export`；
+   有确定性分类（error class 固定赋值）的：`xws.faq.product-collect`。
+   **真正的缺口是 `sycm.feishu.weekly`：8 处裸 `throw new Error(...)`**
+   （`parseBaseUrl` / `requirePositiveInteger` / `requireDate` / `parseTarget` / `prepare` /
+   `observe` / `collectArtifact` / `createPublisher`）→ 一旦抛出就退回框架的关键词分类器，
+   即 2026-09-14 修掉的那类误判（漏参数被说成疑似 bug 停线）在它身上仍然存在，只是尚未被真实触发。
+   补法：词表放能力自己的模块、单点构造入口（可直接复用用户级 skill `capability-owned-failure-codes`）。
+   本轮已按此修掉（见 §13）。
 3. **`sycm.feishu.weekly` 的发布段在哪**要说明：它的 `entry` 已是 `scripts/adapter.feishu-weekly.mjs`（已接线），但与 `xws.feishu.import` 不同，它没有专用运行器，只能经通用 `two-stage-runner.mjs` 驱动；「发布段未真实跑过」这条缺口指的是「从未对真实可写目标表执行过 `--commit`」，不是「没有入口」。
 4. **Temporal 去留仍无书面结论，且 §11 的计数与实际不符。** Temporal POC 仍在 `agent-runtime/temporal/`（`activities.mjs` / `workflows.mjs`，未改动），README §11 仍把它列在「待决策」；S1 故障注入已用 PG 路径完成（15/15），按 spec 本该据此给出保留/弃用结论，实际是「默认由 PostgreSQL 承担、POC 原样留着」——建议要么补一句结论，要么把 POC 标注为已废弃。另：实测 `runtime/sop-runtime/` 为 **33 个 `.mjs`（其中 `recovery-fault-injection.mjs` 是故障注入脚本、不属运行时模块 → 运行时模块 32，与 §11 一致）**，但**测试文件实际 21 个，§11 写 22**（`git log --diff-filter=D -- 'runtime/sop-runtime/*.test.mjs'` 无删除记录，可确认是计数写多了一个）。
+5. **`sycm.feishu.weekly` 的发布段在通用运行器下无法完成「写入 + 验收」——这是接线缺陷，不是「还没跑」。**
+   实测 `side-effect-ledger.mjs:76` 调 `readBack({ businessKey, commitKey, target })`，
+   **不把 handler 的返回值交给它**；而该能力的 `readBack()` 第一件事就是
+   `if (!publishInput.weeklyTableId) throw ...`，那个 id 恰恰是 **handler 里 `copy-weekly-table`
+   克隆出来的新表 id**、运行前不可能知道。于是真实执行只会有两种结果：默认 `dryRun`（不写、
+   什么也没验收），或 `publishInput.dryRun=false`（**真的写进去了，但 readBack 立刻抛错 → 只能落 UNKNOWN**）。
+   前几轮把它记成「发布段未真实跑过」，掩盖了「按当前接线跑不通」这个更严重的事实。
+   对照：`xws.sku.collection` 与 `huitun.keyword-heat.collect` 的 `readBack()` 全部从**工件**派生
+   （`expectedTarget` 来自已审批工件 + `publishInput.target`），不依赖 handler 产物，因此没有这个问题。
 
 ### 12.5 一句话结论
 
@@ -587,5 +631,102 @@ node runtime/sop-runtime/recovery-fault-injection.mjs
 未开始的是「多 Agent 并发」。首批 7 条流程迁移全部落地，第 7 项只到判决层。
 未完成项集中在两类：**真实环境验证**（另外 3 条能力的发布段、
 `sycm.search-rank.export` 的真实浏览器、`xws.sku.collection` 的真实飞书）与**范围项**
-（多 Agent 并发、FAQ 周期级发布段、XWS 市场分析接线、两条能力的失败码表）。
+（多 Agent 并发、FAQ 周期级发布段、XWS 市场分析接线）。
 这些全部已在 §9 或本节 12.4 记账，没有「做了但没记」或「记了但说法过强」的项。
+§12.4 的第 2 条（失败码表）与第 5 条（`readBack` 接线）已于同日收口，见 §13；
+`sycm.feishu.weekly` 的发布段真实 `--commit` 仍缺外部前置（浏览器 + 可写目标），见 §13.4 与 §9。
+
+## 13. 收口（2026-09-14 晚，用户授权「开始收口吧，然后去真实跑一遍」）
+
+本轮把 §12.4 第 2 条（失败码表）与第 5 条（`readBack` 接线）这两笔欠账补掉，
+并用**真实数据 + 真实入口 + 真实 PG** 跑了一遍采集段；发布段的真实 `--commit` 卡在一个外部前置上（见 13.4）。
+
+### 13.1 给 `sycm.feishu.weekly` 补确定性失败码表（关闭 §12.4 第 2 条）
+
+- 落点：`skills/sycm-to-feishu-base/scripts/adapter.feishu-weekly.mjs`。
+  这条能力的采集段与发布段**都在同一个文件里**（不像 `xws.feishu.import` 拆 `import-core.mjs` + 适配器），
+  所以词表不需要第二个叶子模块；同族拒绝在 `prepare`/`start` 与 `createPublisher` 两处抛出，共用一份词表
+  才保证「同一种拒绝得到同一个 code 与同一个分类」。
+- 新增 `export const FAILURE_CLASS_BY_CODE`（12 个 code、四组）与唯一构造入口 `export function fatalError(code, message, details)`；
+  **未登记的 code 立刻抛**（`unregistered failure code: ...`），不许悄悄退回框架分类器。
+
+  | 分组 | code | 语义 |
+  | --- | --- | --- |
+  | `POLICY_DENIED` | `INPUT_REQUIRED` / `SOURCE_NOT_FOUND` / `PERIOD_INVALID` / `NUMBER_INVALID` / `BASE_URL_INVALID` / `TARGET_INCOMPLETE` / `PUBLISH_TARGET_UNKNOWN` | 调用方或目标没准备好；补参数即可重跑，**不是**代码缺陷 |
+  | `EVIDENCE_INVALID` | `EXPORT_UNVERIFIED` / `SOURCE_PROOF_MISMATCH` | 证据不符合合同；重跑同一份输入没有意义，要换输入 |
+  | `CAPABILITY_DEGRADED` | `STAGE_FAILED` / `COPY_NO_TABLE_ID` | 子进程阶段失败 / 克隆没返回新表 id |
+  | `BUG` | `STAGE_ORDER` | 进程内调用顺序被破坏，真 bug |
+
+- 替换掉全部裸 `throw`。**原记账写「8 处」，实测是 10 处**——源码守卫当场抓出 `defaultReadRecords` 里漏掉的两处
+  （缺 `FEISHU_APP_ID`/`FEISHU_APP_SECRET`、缺 base app token）。这正是 §12.4 第 2 条的教训复用：
+  **靠人眼/grep 数个数会漏，所以判据必须是源码守卫，而不是「数出来的个数」**。
+- `policy.mjs` 一行未改：框架只按 `failureClass` 决定下一步。
+
+### 13.2 修 `readBack` 接线（关闭 §12.4 第 5 条）
+
+`side-effect-ledger.mjs:76` 的调用形状是固定的 `readBack({ businessKey, commitKey, target })`，
+而本能力的 `readBack` 需要「handler 运行期才产生的值」（`copy-weekly-table` 克隆出的新表 id）。
+修法：**在能力内部把这份值从 handler 带到 readBack**——`createPublisher` 里建闭包共享状态
+`created.tableId`（初值取 `publishInput.weeklyTableId`），handler 克隆成功后就地写入，`readBack()` 读它；
+缺失时抛 `PUBLISH_TARGET_UNKNOWN`。两点必须写清，否则会被误读：
+
+- 同一进程内 `write → readback` 是主路径，靠闭包成立；
+- **跨进程对账（`reconcileUnknown`）没有这份内存**，必须由调用方用 `publishInput.weeklyTableId` 显式给出。
+  这一点写在报错文本里，**不允许静默降级成「以调用方给的 id 为准」**——那会把「没验收」伪装成「验收了」。
+- 账本侧一行未改：`readBack` 的入参形状是运行时契约，不是本能力的私有约定，不能为了迁就一条能力去改它。
+
+### 13.3 三层测试（`skills/sycm-to-feishu-base/tests/adapter-feishu-weekly.test.mjs`，13 → 22 个用例）
+
+| 层 | 断言什么 | 本轮新增 |
+| --- | --- | --- |
+| 单元层 | **同一句守卫消息**，裸 `Error` 经 `classifyExternalFailure` 归 `BUG`/`STOP_AND_ALERT`；挂上 `fatalError` → `POLICY_DENIED`/`FAIL`。这既是缺陷的复现，也是修复的证据 | 5 个 |
+| 真入口层 | 逐个走 `adapter.prepare` / `adapter.start`，断言每类拒绝各自带 code（含 `defaultReadRecords` 的凭据缺失） | 1 个 |
+| 收据层 | 真 registry（`buildRegistryFromDisk`）+ 真 Controller + 真账本 + 真 `createCapabilityPublisher`；断言 `verdict=REJECTED`、`blocker.class=POLICY_DENIED`（**不是** `BUG`）、发布轴停在 `READY` | 1 个 |
+| 收据层（接线回归） | **刻意不传** `publishInput.weeklyTableId`，走「同进程 write → readback」主路径，断言发布轴走到 `VERIFIED` 且 `receipt.weeklyTableId` = handler 克隆出的那个 id。这条一红就说明接线又断了 | 1 个 |
+| 源码守卫 | 非注释行里含 `\bthrow\b` 的每一行都必须走 `fatalError(`；唯一例外是 `fatalError` 自己那条「code 漏登记」 | 1 个 |
+
+第三个「收据层」用例是**唯一能在 CI 里证明接线修复的观测面**：它跑的是真账本 + 真发布轴，只有 `readBack` 与
+`handler` 来自能力本身。前两个收据层用例证明的是分类，第三个证明的是接线，缺一个好话就说不到点上。
+
+本轮实测（改动后重跑，全绿）：
+
+```
+node scripts/run-test-suite.mjs skills    # ==> skills: 44 file(s)   # tests 531  pass 531  fail 0
+node scripts/run-test-suite.mjs runtime   # ==> runtime: 61 file(s)  # tests 397  pass 397  fail 0
+node --test skills/sycm-to-feishu-base/tests/adapter-feishu-weekly.test.mjs   # tests 22  pass 22  fail 0
+```
+
+注意口径：§8 里记的 `skills 43 file(s) / 511` 与 `runtime 59~60 file(s)` 是各自当时的快照，
+本轮实测已是 44/531 与 61/397（差额来自同日早前新增的 `skills/xws-to-feishu-base/tests/import-failures.test.mjs`（+11）
+与本轮新增的 9 个用例，以及 runtime 侧同日新增的测试文件）；**关键是 `fail 0`，不是绝对数**。
+
+### 13.4 真实跑一遍：采集段跑通，发布段卡在外部前置上
+
+**跑通的（真实数据、真实入口、真实 PG）**：`two-stage-runner.mjs` 驱动 `sycm.feishu.weekly@1.1.0`，
+源数据用 2026-08-26 那次真实导出的 300 行（`ordinary-bathtub-week-20260826.csv/.xlsx`，
+源文件对证明 `7天 / 2026-08-20 ~ 2026-08-26 / 1-300 / csvSha256=E7D2249D…` 与历史收据逐字一致），
+store 走本项目库 `xws_automation` 的 PG `pg-store`。收据落在
+`runtime/sop-runtime/weekly-rehearsal-20260914/two-stage-receipt.json`，命令与逐行结果见 §8。
+
+- `ok=true`、`runId=5857b2e2-…`、退出码 0；
+- 8 个采集期验证器全部 ok，工件 `sha256=501e4dd6…`、`rowCount=300`；
+- `executionStatus=SUCCEEDED` / `nextAction=TERMINAL` / `cursorAdvanced=false`。
+
+**没跑成的一步，以及为什么**：发布段（`--commit`）需要两个外部前置，本轮都不具备：
+
+1. **克隆周表这一步是浏览器驱动的。** `copy-weekly-table.mjs` 不调飞书 OpenAPI，
+   而是经共享 CDP Proxy（`http://127.0.0.1:3456`）在飞书前端的 `window.bitableStore` 上
+   点「复制数据表」、填表名、勾「仅数据表结构」。当前该 Proxy 上挂着的是**卖家账号**的一批标签页
+   （生意参谋 / 天猫卖家 / 本机 8080 控制台），没有飞书 base 标签；而这条能力要靠手动操作
+   在用户正在使用的浏览器里开飞书标签，属于会打扰用户现场的操作，未获明确同意不做。
+2. **写入目标是生产表。** 这条能力的发布段按设计会写三处：新周表（克隆产物）、
+   `关键词历史总表 V1`（追加本批次）、`关键词编号库 V1`（补新词的编号）。
+   新租户关键词 base 当前 `关键词历史总表 V1` = 2067 行 / 批次 1-7、
+   `关键词编号库 V1` = 475 行。拿一次演练去写这三处，等于把**假批次 8**灌进真实历史表并污染编号库；
+   而「用一次性演练表替代」这条路要求临时表**恰好叫** `关键词历史总表 V1` / `关键词编号库 V1`
+   （`update-weekly-base.mjs` 按 id 取表但按名字断言），并且要有 ≥1 个批次才能过
+   `expectedHistoryBefore ≥ 1`，构造这份「看起来合法」的夹具本身就是一件需要单独设计与授权的事。
+
+因此本轮的真实运行**只到采集段为止**，并且收据里明确写着 `publish: NOT_ATTEMPTED` ——
+这是刻意的：让「没发布」和「发布并验收了」在收据上长得不一样。
+待用户决定发布段的跑法（真实生产写入 / 另备一次性演练表 / 先不跑）后再补这一步。

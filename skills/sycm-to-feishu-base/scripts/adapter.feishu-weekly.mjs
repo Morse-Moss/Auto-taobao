@@ -35,6 +35,47 @@ const EXPORT_SCRIPT = path.join(PROJECT_ROOT, 'skills', 'sycm-export-search-rank
 const COPY_SCRIPT = path.join(SCRIPT_DIR, 'copy-weekly-table.mjs');
 const UPDATE_SCRIPT = path.join(SCRIPT_DIR, 'update-weekly-base.mjs');
 
+// ── 确定性拒绝码 → 运行时失败分类 ────────────────────────────────────────────
+// 为什么放在本模块：这条能力的采集段与发布段**都在这个文件里**（不像 xws.feishu.import 拆成
+// import-core + adapter），所以词表不需要第二个模块；同族拒绝在 prepare/start 与 createPublisher
+// 两处分别抛出，共用这一份才保证「同一种拒绝得到同一个 code 与同一个分类」。
+//
+// 为什么必须有：运行时的默认分类器（policy.classifyExternalFailure）只认 HTTP 状态码与**英文**关键词，
+// 本能力自有的守卫消息两者都没有 → 「调用方漏了参数」会被归成 BUG（actionForFailure → STOP_AND_ALERT，
+// 理由「疑似代码 bug，停线」），把运维引向排查代码而不是补参数。
+// 词表完整性由 tests/adapter-feishu-weekly.test.mjs 的源码守卫锁住。
+export const FAILURE_CLASS_BY_CODE = Object.freeze({
+  // 调用方/目标没准备好：修正参数后本可以重跑，**不是**代码缺陷。
+  INPUT_REQUIRED: 'POLICY_DENIED',
+  SOURCE_NOT_FOUND: 'POLICY_DENIED',
+  PERIOD_INVALID: 'POLICY_DENIED',
+  NUMBER_INVALID: 'POLICY_DENIED',
+  BASE_URL_INVALID: 'POLICY_DENIED',
+  TARGET_INCOMPLETE: 'POLICY_DENIED',
+  // 回读要知道「刚克隆出来的新表 id」；dryRun 下它不存在，属于发布前置没准备好。
+  PUBLISH_TARGET_UNKNOWN: 'POLICY_DENIED',
+  // 源/证据不符合合同：重跑同一份输入没有意义，要换输入。
+  EXPORT_UNVERIFIED: 'EVIDENCE_INVALID',
+  SOURCE_PROOF_MISMATCH: 'EVIDENCE_INVALID',
+  // 采集能力本身跑不动（子进程阶段失败、克隆没返回新表 id）。
+  STAGE_FAILED: 'CAPABILITY_DEGRADED',
+  COPY_NO_TABLE_ID: 'CAPABILITY_DEGRADED',
+  // 进程内调用顺序被破坏：这是真 bug。
+  STAGE_ORDER: 'BUG',
+});
+
+// 唯一构造入口。词表漏登记时**立刻抛**（开发期错误），
+// 不让它悄悄退回默认分类器、把「调用方漏参」说成「疑似代码 bug」。
+export function fatalError(code, message, details = {}) {
+  const failureClass = FAILURE_CLASS_BY_CODE[code];
+  if (!failureClass) throw new Error(`unregistered failure code: ${code}`);
+  const error = new Error(message);
+  error.code = code;
+  error.failureClass = failureClass;
+  if (Object.keys(details).length > 0) error.details = details;
+  return error;
+}
+
 // 稳定序列化：键排序，保证同一份解析结果每次得到同一摘要（否则 digest 校验会随机失败）。
 export function stableJson(value) {
   if (value === null || value === undefined) return 'null';
@@ -51,8 +92,8 @@ function defaultRunProcess(script, args) {
   });
   if (result.status !== 0) {
     const message = (result.stderr || result.stdout || '').trim();
-    throw Object.assign(new Error(`Stage failed (${path.basename(script)}, exit ${result.status}): ${message}`), {
-      failureClass: 'CAPABILITY_DEGRADED',
+    throw fatalError('STAGE_FAILED', `Stage failed (${path.basename(script)}, exit ${result.status}): ${message}`, {
+      script: path.basename(script), status: result.status ?? null,
     });
   }
   return JSON.parse(result.stdout.trim());
@@ -93,23 +134,29 @@ export function resetStateForTest() {
 }
 
 function parseBaseUrl(baseUrl) {
-  const parsed = new URL(String(baseUrl ?? ''));
+  let parsed;
+  try {
+    parsed = new URL(String(baseUrl ?? ''));
+  } catch {
+    // 原来这里是 `new URL('')` 抛的 TypeError：既没有状态码也没有关键词，同样会被归成 BUG。
+    throw fatalError('BASE_URL_INVALID', `baseUrl must be an https://*.feishu.cn/base/<app-token> URL, got: ${JSON.stringify(baseUrl)}`);
+  }
   const match = parsed.pathname.match(/^\/base\/([^/]+)$/u);
   if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.feishu.cn') || !match) {
-    throw new Error('baseUrl must be an https://*.feishu.cn/base/<app-token> URL');
+    throw fatalError('BASE_URL_INVALID', `baseUrl must be an https://*.feishu.cn/base/<app-token> URL, got: ${JSON.stringify(baseUrl)}`);
   }
   return { appToken: match[1], tableId: parsed.searchParams.get('table') ?? null };
 }
 
 function requirePositiveInteger(value, name) {
   const number = Number(value);
-  if (!Number.isInteger(number) || number < 1) throw new Error(`${name} must be a positive integer`);
+  if (!Number.isInteger(number) || number < 1) throw fatalError('NUMBER_INVALID', `${name} must be a positive integer`, { field: name, value: value ?? null });
   return number;
 }
 
 function requireDate(value, name) {
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(String(value ?? '')) || !Number.isFinite(Date.parse(`${value}T00:00:00+08:00`))) {
-    throw new Error(`${name} must be a valid YYYY-MM-DD date`);
+    throw fatalError('PERIOD_INVALID', `${name} must be a valid YYYY-MM-DD date`, { field: name, value: value ?? null });
   }
   return value;
 }
@@ -117,8 +164,9 @@ function requireDate(value, name) {
 function parseTarget(target) {
   const { appToken } = parseBaseUrl(target.baseUrl);
   const required = ['sourceTableId', 'sourceTableName', 'historyTableId', 'libraryTableId', 'protectedTableId', 'protectedTableName'];
-  for (const key of required) {
-    if (!target[key]) throw new Error(`target.${key} is required`);
+  const missing = required.filter((key) => !target[key]);
+  if (missing.length > 0) {
+    throw fatalError('TARGET_INCOMPLETE', `target is missing required keys: ${missing.join(', ')}`, { missing });
   }
   return {
     baseUrl: target.baseUrl,
@@ -153,15 +201,15 @@ export const adapter = {
   },
 
   async prepare(input = {}) {
-    if (!input.outputDir) throw new Error('outputDir is required for the SYCM export stage');
+    if (!input.outputDir) throw fatalError('INPUT_REQUIRED', 'outputDir is required for the SYCM export stage');
     const hasPair = Boolean(input.sourceCsv) && Boolean(input.sourceXlsx);
     if (Boolean(input.sourceCsv) !== Boolean(input.sourceXlsx)) {
-      throw new Error('explicit reuse requires both sourceCsv and sourceXlsx');
+      throw fatalError('INPUT_REQUIRED', 'explicit reuse requires both sourceCsv and sourceXlsx');
     }
     requireDate(input.collectionDate, 'collectionDate');
-    if (!hasPair && !input.cateId) throw new Error('cateId is required when no sourceCsv/sourceXlsx pair is supplied');
+    if (!hasPair && !input.cateId) throw fatalError('INPUT_REQUIRED', 'cateId is required when no sourceCsv/sourceXlsx pair is supplied');
     for (const key of ['sourceCsv', 'sourceXlsx']) {
-      if (input[key] && !existsSync(input[key])) throw new Error(`${key} not found: ${input[key]}`);
+      if (input[key] && !existsSync(input[key])) throw fatalError('SOURCE_NOT_FOUND', `${key} not found: ${input[key]}`, { field: key, path: input[key] });
     }
     // 目标地址在采集期只做格式校验，不发起任何网络请求。
     parseTarget({ ...(input.target ?? {}), collectionDate: input.collectionDate });
@@ -184,12 +232,12 @@ export const adapter = {
         '--prefix', input.prefix ?? `ordinary-bathtub-week-${input.collectionDate.replaceAll('-', '')}`,
       ]);
       if (!exportReceipt?.ok || !exportReceipt.csv || !exportReceipt.xlsx) {
-        throw Object.assign(new Error('SYCM export did not return validated CSV and XLSX paths'), { failureClass: 'EVIDENCE_INVALID' });
+        throw fatalError('EXPORT_UNVERIFIED', 'SYCM export did not return validated CSV and XLSX paths');
       }
       const reporting = exportReceipt.metadata;
       if (reporting?.period !== '7天' || reporting?.dayCount !== 7 || reporting?.endDate !== input.collectionDate) {
-        throw Object.assign(new Error('SYCM export did not prove a verified 7-day reporting window ending on the collection date'), {
-          failureClass: 'EVIDENCE_INVALID',
+        throw fatalError('EXPORT_UNVERIFIED', 'SYCM export did not prove a verified 7-day reporting window ending on the collection date', {
+          period: reporting?.period ?? null, dayCount: reporting?.dayCount ?? null, endDate: reporting?.endDate ?? null,
         });
       }
       sourceCsv = exportReceipt.csv;
@@ -199,8 +247,8 @@ export const adapter = {
     const proof = await verifyPair({ csv: sourceCsv, xlsx: sourceXlsx, expectedEndDate: input.collectionDate });
     const rows = deps.parseSourceCsv(readFileSync(sourceCsv, 'utf8'));
     if (Number(proof.rowCount) !== rows.length) {
-      throw Object.assign(new Error(`source proof expected ${proof.rowCount} rows; CSV contains ${rows.length}`), {
-        failureClass: 'EVIDENCE_INVALID',
+      throw fatalError('SOURCE_PROOF_MISMATCH', `source proof expected ${proof.rowCount} rows; CSV contains ${rows.length}`, {
+        proofRowCount: Number(proof.rowCount) || 0, csvRows: rows.length,
       });
     }
 
@@ -222,7 +270,7 @@ export const adapter = {
   },
 
   async observe({ context, started } = {}) {
-    if (!state.rows) throw new Error('no source rows; start() must run first');
+    if (!state.rows) throw fatalError('STAGE_ORDER', 'no source rows; start() must run first');
     return {
       identity: context.identity,
       rows: state.rows.length,
@@ -235,7 +283,7 @@ export const adapter = {
   },
 
   async collectArtifact() {
-    if (!state.rows) throw new Error('no source rows; start() must run first');
+    if (!state.rows) throw fatalError('STAGE_ORDER', 'no source rows; start() must run first');
     const payload = {
       schemaVersion: ARTIFACT_SCHEMA_VERSION,
       capability: capabilityId,
@@ -336,12 +384,20 @@ export function collectContract() {
 // 因此发布段不依赖采集段的内存状态（跨进程恢复时从证据库读回即可）。
 export function createPublisher({ artifactBytes, evidence = null, period = null, target = null, publishInput = {}, env = null } = {}) {
   const payload = artifactBytes ? JSON.parse(artifactBytes.toString('utf8')) : null;
-  if (!payload) throw new Error('artifactBytes is required for the publish stage');
+  if (!payload) throw fatalError('INPUT_REQUIRED', 'artifactBytes is required for the publish stage');
   const weekly = payload.target;
   const expected = payload.expected;
   const envFile = publishInput.envFile ?? env?.envFile ?? null;
   const proxy = publishInput.proxy ?? 'http://127.0.0.1:3456';
   const dryRun = publishInput.dryRun !== false;
+
+  // 发布段要回读「刚克隆出来的新表」，而那个 table id 是 handler 在**运行期**产生的，
+  // 运行前不可能知道；账本调 readBack 时也不会把 handler 的返回值传进来
+  // （side-effect-ledger.verify 只传 businessKey/commitKey/target）。
+  // 所以由这个闭包把 handler 的产物带过去——同一进程内 write → readback 这条主路径据此可用。
+  // 跨进程对账（reconcileUnknown）没有这份内存，必须由调用方用 publishInput.weeklyTableId 显式给出；
+  // 这一点写在下面 readBack 的报错里，不允许静默降级成「以调用方给的 id 为准」。
+  const created = { tableId: (publishInput.weeklyTableId ?? null) || null };
 
   return {
     async handler() {
@@ -357,7 +413,11 @@ export function createPublisher({ artifactBytes, evidence = null, period = null,
       ]);
       written.push({ stage: 'copy-weekly-table', receipt: copy });
       const newTableId = copy?.newTableId ?? copy?.tableId ?? null;
-      if (!dryRun && !newTableId) throw new Error('copy-weekly-table did not return the new table id');
+      if (!dryRun && !newTableId) throw fatalError('COPY_NO_TABLE_ID', 'copy-weekly-table did not return the new table id', {
+        stage: 'copy-weekly-table',
+      });
+      // 关键：把新表 id 带给同一次 publish 的 readBack（见 createPublisher 顶部说明）。
+      if (newTableId) created.tableId = newTableId;
 
       // 2) 把本周源行写入新周表（CLI 会自行重验源文件对与字段合同）
       const update = deps.runProcess(UPDATE_SCRIPT, [
@@ -383,8 +443,14 @@ export function createPublisher({ artifactBytes, evidence = null, period = null,
     },
 
     async readBack() {
-      const weeklyTableId = publishInput.weeklyTableId ?? null;
-      if (!weeklyTableId) throw new Error('readBack requires publishInput.weeklyTableId (the table created by copy-weekly-table)');
+      const weeklyTableId = created.tableId;
+      if (!weeklyTableId) {
+        throw fatalError(
+          'PUBLISH_TARGET_UNKNOWN',
+          'readBack needs the new weekly table id: the publish handler must have cloned it in this process, or publishInput.weeklyTableId must be supplied when reconciling a commit from another process',
+          { dryRun },
+        );
+      }
       const readRecords = deps.readRecords ?? await defaultReadRecords(env);
       const weeklyRecords = await readRecords({ tableId: weeklyTableId });
       const historyRecords = await readRecords({ tableId: weekly.historyTableId });
@@ -405,10 +471,17 @@ export function createPublisher({ artifactBytes, evidence = null, period = null,
 async function defaultReadRecords(env) {
   const appId = env?.FEISHU_APP_ID;
   const appSecret = env?.FEISHU_APP_SECRET;
-  if (!appId || !appSecret) throw new Error('readBack requires FEISHU_APP_ID and FEISHU_APP_SECRET');
+  // 缺凭据属于「调用方没备好」，不是代码缺陷：补上 env 就能重跑。
+  if (!appId || !appSecret) {
+    throw fatalError('INPUT_REQUIRED', 'readBack requires FEISHU_APP_ID and FEISHU_APP_SECRET', {
+      missing: !appId ? ['FEISHU_APP_ID'] : ['FEISHU_APP_SECRET'],
+    });
+  }
   const { FeishuApi, assertDecisionHistoryMutation } = await import('./sync-decision-history.mjs');
   const appToken = env.appToken;
-  if (!appToken) throw new Error('readBack requires the base app token');
+  if (!appToken) {
+    throw fatalError('INPUT_REQUIRED', 'readBack requires the base app token', { missing: ['appToken'] });
+  }
   const api = new FeishuApi({
     appId, appSecret, appToken,
     mutationGuard: (mutation) => assertDecisionHistoryMutation(mutation, { appToken }),
