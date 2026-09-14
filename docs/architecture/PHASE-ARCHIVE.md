@@ -474,6 +474,9 @@ node runtime/sop-runtime/recovery-fault-injection.mjs
 | 限流/熔断不 durable | 刻意取舍 | 见 D6.3；跨进程一致的限流需要落库或外置，属独立设计 |
 | pg-store 的 `context.queue` 不能单独索引 | 刻意取舍 | 见 D6.2；按队列维度查询只能全表扫描，量级上去需另设计 |
 | 迁移 1 的专用运行器未改用通用运行器 | 技术债 | 保留为人工入口（`run-feishu-import-two-stage.mjs`）；迁移 5 已实证通用运行器能承载外部写能力，改用属低风险重构，未排入本轮 |
+| **两条能力已登记但未接入运行时**（实施计划阶段 4 的「优先迁移一条 XWS 市场分析流程」未做） | 范围缺口（§12.4 第 1 条补记） | 实测入口：`xws.market-analysis.collect@1.0.0` 的 `entry` = `scripts/run-adaptive-export.mjs`、`xws.faq.raw-collect@1.0.0` 的 `entry` = `scripts/append-faq-event.mjs`，都是旧 CLI 而不是 Worker 契约适配器。10 个 manifest 里 6 个已接线、2 个未接线、2 个是适配器 manifest。未做的原因：这两条是周更 SOP 的**采集前置**，迁移它们不会减少任何外部写风险，收益低于当时在做的外部写与调度侧 |
+| **两条已接线能力的失败分类仍是「零散内联」**（`sycm.feishu.weekly` 4 处、`xws.faq.product-collect` 1 处，只有 `failureClass:` 赋值、无确定性码表） | 范围缺口（§12.4 第 2 条补记） | 按实施计划阶段 4「统一错误分类」的口径，只有 4/6 达标（`xws.feishu.import` / `xws.sku.collection` / `huitun.keyword-heat.collect` / `sycm.search-rank.export` 有码表）。这两条一旦抛未挂 `failureClass` 的守卫错误，仍会退回框架关键词分类器 → 就是 2026-09-14 修掉的那类误判（漏参数被说成疑似 bug 停线）。未被触发所以未被发现。补法可直接套 `xws.feishu.import` 的做法（词表放能力自己的叶子模块、适配器 re-export），复用用户级 skill `capability-owned-failure-codes` |
+| Temporal 去留**无书面结论** | 记账缺口（§12.4 第 4 条） | S1 故障注入已用 PG 路径完成（15/15），按 spec 本该据此给出保留/弃用结论；实际是「默认由 PostgreSQL 承担、POC 原样留在 `agent-runtime/temporal/`」。README §11 仍列在待决策 |
 
 注：原先记在这里的「`advanceCursor` 前置条件尚未收紧（有意延后）」已在迁移 7 由 **D7.35** 关闭——判据取自上下文里的准入声明（`sideEffects`），而不是 manifest 或调用方参数。
 
@@ -525,9 +528,64 @@ node runtime/sop-runtime/recovery-fault-injection.mjs
 架构文档：`agent-sop-runtime-spec.md`（不变量与契约）、`agent-sop-runtime-implementation-plan.md`（阶段与验收）、`README.md`、`handoff-to-teammate.md`、本文、`MIGRATION-2-SYCM-WEEKLY-REPORT.md`、`MIGRATION-3-FAQ-FANOUT-REPORT.md`、`MIGRATION-4-SYCM-SEARCH-RANK-REPORT.md`、`MIGRATION-5-XWS-SKU-REPORT.md`、`MIGRATION-6-HUITUN-WEEKLY-REPORT.md`、`MIGRATION-7-AGENT-PLANNER-REVIEWER-REPORT.md`、`MIGRATION-8-QUEUE-SCHEDULER-REPORT.md`。
 迁移：`db/migrations/001-005`（各带 rollback），全量已 apply 到本项目库 `xws_automation`（容器 `xws-adaptive-postgres`，PG 17，127.0.0.1:5432）。
 运行时：`runtime/sop-runtime/` 共 **32 个模块**（不含 22 个 `.test.mjs`）。模块数在迁移 4/5/6 三轮**零增长**，迁移 7 +2（`agent-review.mjs`、`agent-planned-run.mjs`，都在 Agent 层），迁移 8 +3（`capability-scheduler.mjs`、`runtime-bootstrap.mjs` 两个新模块 + 1 个测试文件；`runtime-bootstrap.mjs` 是从 `two-stage-runner.mjs` 抽出的共用装配）。测试文件数 20 → 22。
+**2026-09-14 对账更正（见 §12.4 第 4 条）**：上面这行里的「22 个 `.test.mjs`」与「测试文件数 →22」是**多写了一个**——实测该目录下 `.test.mjs` 为 **21 个**（`git log --diff-filter=D` 无删除记录）。模块数 32 是对的：该目录下 `.mjs` 共 33 个，其中 `recovery-fault-injection.mjs` 是故障注入脚本、不算运行时模块。
 `two-stage-runner.mjs` 在迁移 8 首次改动（装配抽出 + `parseCliArgs` 新增 `profile` 选项，均为纯提取/向后兼容，`run` profile 行为不变）；**迁移 8 之前它自迁移 2 起一直未改**——这条记录要保留，因为「新能力不改核心」是这套底座的核心卖点，任何一次改动都该被记下来并解释。
 能力：**10 个 manifest 已登记（能力 8 + 适配器 2）**，`registryDigest=sha256:34936b1f01b559be304ba756781e942904c7690f62ea3a9a6c4d838eddd53e48`（迁移 7 / 8 前后均未变）。已完成接入运行时的（6 个）：`xws.feishu.import`（两段式带发布）、`sycm.feishu.weekly`（两段式带发布）、`xws.faq.product-collect`（商品级 fan-out 执行单元，只读）、`sycm.search-rank.export@1.1.0`（只读采集，零发布义务）、`xws.sku.collection@1.0.0`（两段式带发布，对账式幂等写入 + 回读）、`huitun.keyword-heat.collect@1.1.0`（两段式带发布，能力级队列 + 对账式写入 + 含公式结算的回读）。
 尚未登记（不伪造）：`xws-question-library-collection`（FAQ 采集兼容入口）、`xws-faq-operator` 的周期级发布段（目录内无 `.mjs`，实现在 `runtime/`）。`xws-sku-collection` 已在迁移 5 登记，但目录内仍只有适配器，采集 CLI 留在 `runtime/`（见第 9 节技术债）。`huitun-to-feishu-keyword-heat` 的浏览器采集 CLI 同理留在原处，`manifest.entry` 已指向适配器（D7.26）。
 **Agent 层（迁移 7）**：`agent-proposal.mjs`（契约）、`agent-review.mjs`（复核）、`agent-planned-run.mjs`（边界与四步流水）。三者构成一个可整体移除的层：核心模块（`workflow-controller` / `two-stage-runner` / `task-queue` / `validator` / `side-effect-ledger` / `fanout` / `policy` / `context-schema` / `task-admission` / `publication` / `skill-*` / `stores/*`）**没有任何一个 import 它们**（已逐个核对），`assertAgentRemovable` 把这个方向当成静态检查（文本级，见第 9 节）。
 唯一 re-export Agent 层的是 `index.mjs`——它是统一出口（barrel），不是核心模块，且删掉那三行 `export *` 不会影响任何核心模块的运行。这是刻意的：调用方需要一个统一入口，而「核心不依赖 Agent」这条不变量针对的是**逻辑依赖**而不是聚合导出。审查者若要更严的口径，可把 Agent 层从 `index.mjs` 挪到独立出口。
 **调度层（迁移 8）**：`capability-scheduler.mjs`（探测契约 + 归一化 + 调度决策 + CLI）、`runtime-bootstrap.mjs`（运行器装配的唯一一处）。调度层与 Agent 层**互不知情**：调度器不 import 任何 `agent-*`，Agent 判决层也不 import 调度器。`index.mjs` 里这两个模块用**具名导出**（不是 `export *`）——两者的 CLI 都各自导出了 `main`，而 barrel 里出现一个 `main` 对任何 `import * as sop` 的调用方都是个意外入口。
+
+## 12. 实施计划完成度对账（2026-09-14 晚，逐项实测后记）
+
+对账对象：`agent-sop-runtime-implementation-plan.md` 第 4 节（阶段 0-6）、第 5 节（首批 7 条流程迁移）、第 7 节（交付检查表）。
+本节的结论**不是复述报告**，而是逐项回到仓库里查了文件、manifest 入口与测试计数之后写的；
+凡「未做」都指到第 9 节，或指到本节 12.4 新记的条目。
+
+### 12.1 阶段 0-6
+
+| 阶段 | 结论 | 证据（可复核） | 未做 / 打折的部分 |
+| --- | --- | --- | --- |
+| 0 架构基线与迁移落地 | **完成** | `db/migrations/001-005` 全带 rollback 且已 apply 到 `xws_automation`；`architecture` schema 7 表回读计数（reviews 1 / capabilities 5 / modules 15 / gaps 9 / phases 7 / decisions 7 / evidence_refs 8）；004 幂等与 rollback 后重放在临时库 17/17 | — |
+| 1 Context / Checkpoint / 恢复 | **完成** | `context-schema.mjs`（sop-context-v1 五条状态轴）+ pg-store CAS；`recovery-fault-injection.mjs` 跨进程故障注入 **15/15**（子进程被杀→另一进程收回过期 lease→从游标 10 续跑到 20；重复 commit_key 不产生第二行） | — |
+| 2 Side Effect Ledger / 幂等 / 对账 | **完成（覆盖到已接线的能力）** | 复用 `supervisor_commit_records`（未新增同义表）；commit→verify→settle 全链；`reconcileUnknown` 只对账不重试 | 计划写「所有上传、写入、付费调用统一登记」——目前真实外部写只覆盖周更族；FAQ 周期级发布段仍走旧 CLI（§9） |
+| 3 Manifest / Registry / Loader | **完成** | 10 manifest（能力 8 + 适配器 2）；`build-skill-registry.mjs --check` 退出码 0/1/2；坏 manifest 在执行前失败（6 类错误码）；entry 限目录内相对 `.mjs` | — |
+| 4 Validator / Adapter 收敛 | **主体完成，一条优先级迁移未做** | 11 个验证器（采集期 9 + 发布期 2）；`adapter.*` 建立；迁移前后业务验收一致（`tally-weekly-classification` 双 profile 输出逐字节相同、viz dry-run `sourceHash` 相同） | 计划写「优先迁移**一条 SYCM 导出和一条 XWS 市场分析**流程」→ 只做了 SYCM 导出（迁移 4）；`xws.market-analysis.collect` 有 manifest 但 `entry` 仍是旧 CLI（§12.4 第 1 条）。另「统一错误分类」实际覆盖 4/6，见 §12.4 第 2 条 |
+| 5 Memory / Context Compression | **完成** | `compression-service.mjs`（sop-summary-v1，缺关键字段 fail-closed，`assertSummaryMatchesRun` 防污染）+ `memory-store.mjs`（五层记忆、作用域/置信度/有效期/退役/冲突判定，当前证据恒优先） | — |
+| 6 有限多 Agent 与高并发 | **部分完成** | Agent 侧：`agent-proposal` / `agent-review` / `agent-planned-run` + 四条降级出口 + 五条边界；并发侧：`task-queue.mjs`（限流/背压/熔断/退避/超时清扫/取消/结果合并）、lane 闸门、FAQ 商品级 fan-out 失败隔离；`assertAgentRemovable` 保证 Agent 可整体移除 | **「多 Agent 并发（高并发）」未开始**（§9）。「用故障注入决定是否保留 Temporal」——故障注入做了（走 PG 路径），但**没有把结论写下来**，POC 仍留在 `agent-runtime/temporal/`（§12.4 第 4 条） |
+
+### 12.2 首批 7 条流程迁移（计划第 5 节）
+
+7 项全部落地，逐项对应关系与状态：
+
+| # | 计划项 | 落地位置 | 状态 |
+| --- | --- | --- | --- |
+| 1 | XWS 单分片：采集→验证→EvidenceManifest→幂等提交→恢复 | 迁移 1 / PHASE5 | 完成（发布段已对真实 base 跑通，2026-09-14） |
+| 2 | FAQ 商品级 fan-out | 迁移 3 | 完成（商品级）；周期级发布段未迁移（§9） |
+| 3 | XWS SKU：拓扑/关系/dry-run/授权提交/回读 | 迁移 5 | 完成；未被真实飞书驱动过（§9） |
+| 4 | SYCM 搜索排行 | 迁移 4 | 完成；未被真实浏览器驱动过（§9） |
+| 5 | SYCM → Feishu | 迁移 2 | 完成；发布段未真实跑过（§9） |
+| 6 | 灰豚关键词热度与周报发布 | 迁移 6 | 完成；发布段未真实跑过（§9） |
+| 7 | Agent Planner / Reviewer | 迁移 7 | **只有判决层**：四条出口与四条边界做完了，但没有一条真实 SOP 走进去，`planNextStep` 入参只由测试构造（§9） |
+
+### 12.3 交付检查表（计划第 7 节）
+
+阶段 0 六项：目标库确认（本项目库 `xws_automation`）、审阅 004/004-rollback、授权前先在隔离库预演、核对 architecture 表/约束/索引/种子与 Spec 一致、只提交本轮范围内的文件——**全部满足**。004 在预演时暴露并修掉了真实缺陷（`risks`/`exit_criteria` 被写成纯文本导致 `invalid input syntax for type json`）。
+
+后续阶段五项：先更新 Spec/contract 再实现（D 系列决策均先落在报告里）、状态/证据/权限/幂等/外部写入的改动都补失败路径与验收、真实浏览器·Feishu·PG 调用单独记录环境与回执（见 MIGRATION-8 §8 与 TENANT-MIGRATION-MAP §5.3/§6.6）、未过故障注入前不宣称 durable/生产级/高并发、不新增第二套同义 Context/Memory/Commit/状态表（队列元数据落 `durable_runs.context.queue`，提交账本复用 `supervisor_commit_records`）——**全部满足**。
+
+### 12.4 对账时新发现的四处记账问题（本轮补记）
+
+1. **阶段 4 的第二条优先级迁移（XWS 市场分析）没做，也没进 §9 缺口表。** 实测 manifest 入口：`xws.market-analysis.collect@1.0.0` 的 `entry` = `scripts/run-adaptive-export.mjs`（旧 CLI），不是 Worker 契约适配器；`xws.faq.raw-collect@1.0.0` 同样（`entry` = `scripts/append-faq-event.mjs`）。即 **10 个 manifest 里 6 个已接入运行时、2 个已登记但未接线**（另 2 个是适配器 manifest，本就不存在「接线」一说）。这 2 条应当补进 §9。
+2. **「统一错误分类」（阶段 4）实际覆盖 4/6，不是 6/6。** 有确定性码表的：`xws.feishu.import`（`import-core.mjs` 17 码 + `fatalError`）、`xws.sku.collection`、`huitun.keyword-heat.collect`、`sycm.search-rank.export`。**只有零散内联 `failureClass` 赋值的**：`sycm.feishu.weekly`（4 处）、`xws.faq.product-collect`（1 处）——这两条一旦抛出未挂 `failureClass` 的守卫错误，仍会退回框架的关键词分类器，也就是 2026-09-14 修掉的那类误判风险**在它们身上仍然存在**，只是尚未被真实触发。按 §6 已确立的原则，补法是把词表放到各自能力的叶子模块、适配器 re-export（可直接复用用户级 skill `capability-owned-failure-codes`）。
+3. **`sycm.feishu.weekly` 的发布段在哪**要说明：它的 `entry` 已是 `scripts/adapter.feishu-weekly.mjs`（已接线），但与 `xws.feishu.import` 不同，它没有专用运行器，只能经通用 `two-stage-runner.mjs` 驱动；「发布段未真实跑过」这条缺口指的是「从未对真实可写目标表执行过 `--commit`」，不是「没有入口」。
+4. **Temporal 去留仍无书面结论，且 §11 的计数与实际不符。** Temporal POC 仍在 `agent-runtime/temporal/`（`activities.mjs` / `workflows.mjs`，未改动），README §11 仍把它列在「待决策」；S1 故障注入已用 PG 路径完成（15/15），按 spec 本该据此给出保留/弃用结论，实际是「默认由 PostgreSQL 承担、POC 原样留着」——建议要么补一句结论，要么把 POC 标注为已废弃。另：实测 `runtime/sop-runtime/` 为 **33 个 `.mjs`（其中 `recovery-fault-injection.mjs` 是故障注入脚本、不属运行时模块 → 运行时模块 32，与 §11 一致）**，但**测试文件实际 21 个，§11 写 22**（`git log --diff-filter=D -- 'runtime/sop-runtime/*.test.mjs'` 无删除记录，可确认是计数写多了一个）。
+
+### 12.5 一句话结论
+
+**P0（阶段 0-3）与 P1（阶段 4-5）完成；P2（阶段 6）完成了一半**——Agent 分权与队列/并发骨架已就绪，
+未开始的是「多 Agent 并发」。首批 7 条流程迁移全部落地，第 7 项只到判决层。
+未完成项集中在两类：**真实环境验证**（另外 3 条能力的发布段、
+`sycm.search-rank.export` 的真实浏览器、`xws.sku.collection` 的真实飞书）与**范围项**
+（多 Agent 并发、FAQ 周期级发布段、XWS 市场分析接线、两条能力的失败码表）。
+这些全部已在 §9 或本节 12.4 记账，没有「做了但没记」或「记了但说法过强」的项。
