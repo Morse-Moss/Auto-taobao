@@ -61,14 +61,19 @@ test('风险分级：本地低、飞书高、登录人工、未登记副作用�
   assert.equal(classifyRisk({ sideEffects: ['something_new'] }), 'HIGH');
 });
 
-test('lane 与并发上限：同账号/profile 为 1，饱和返回 RESOURCE_BUSY', () => {
+test('lane 与并发上限：策略只给 lane 与上限，占用判定不在准入期做', () => {
   assert.equal(laneKey(identity), 't-1/s-1/taobao/a-1/p-1');
   assert.equal(capabilityLane(identity, 'cap'), 't-1/s-1/taobao/a-1/p-1/cap');
-  const saturated = evaluatePolicy({ identity, capability: 'cap', sideEffects: [], activeInLane: 1 });
-  assert.equal(saturated.decision, 'DENY');
-  assert.equal(saturated.failureClass, 'RESOURCE_BUSY');
+  // 准入回答「能否进队列」：同一 lane 已有占用不影响准入结论（否则商品级 fan-out 无法入队）。
+  // lane 上限随结论一起返回，由 Controller.beginAttempt 在执行期执行它。
+  const occupied = evaluatePolicy({ identity, capability: 'cap', sideEffects: [], activeInLane: 1 });
+  assert.equal(occupied.decision, 'ALLOW');
+  assert.equal(occupied.lane, 't-1/s-1/taobao/a-1/p-1/cap');
+  assert.equal(occupied.laneLimit, 1);
+  assert.match(occupied.reasons.join(' '), /enforced at attempt time/);
   const ok = evaluatePolicy({ identity, capability: 'cap', sideEffects: ['local_artifact'], activeInLane: 0 });
   assert.equal(ok.decision, 'ALLOW');
+  assert.equal(ok.laneLimit, 1);
 });
 
 test('未注册能力被拒绝', () => {

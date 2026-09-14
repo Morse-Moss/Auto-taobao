@@ -110,7 +110,21 @@ test("partial stall export intent uses a bounded settlement deadline", async () 
     });
     const deadlineMs = Date.parse(intent.deadlineAt);
     assert.ok(deadlineMs > startedAt);
-    assert.ok(deadlineMs - startedAt < 5 * 60 * 1_000);
+    // 部分停滞的结算窗口必须有界：上限 5 分钟，且显著短于最终产物的 60 分钟窗口。
+    // 窗口必须用意图自身的 requestedAt 计算，不能用本测试的 startedAt：
+    // deadlineAt = requestedAt + 5min，而 requestedAt >= startedAt 且通常相差数毫秒，
+    // 用 startedAt 作基线会让差值恒 > 5 分钟（原断言因此从未通过）。
+    const requestedAtMs = Date.parse(intent.requestedAt);
+    assert.ok(Number.isFinite(requestedAtMs), "the intent must persist its own requestedAt");
+    const settlementWindowMs = deadlineMs - requestedAtMs;
+    assert.ok(
+      settlementWindowMs > 0 && settlementWindowMs <= 5 * 60 * 1_000,
+      `partial stall settlement window must be bounded at 5 minutes, got ${settlementWindowMs}ms`,
+    );
+    assert.ok(
+      settlementWindowMs < 60 * 60 * 1_000,
+      "partial stall settlement window must be shorter than the final settlement window",
+    );
   } finally {
     await rm(runDir, { recursive: true, force: true });
   }

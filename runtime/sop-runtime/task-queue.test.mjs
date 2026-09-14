@@ -236,7 +236,7 @@ test('入队：限流预算耗尽拒收（RATE_LIMITED），且准入被拒时�
   assert.equal(second.failureClass, 'RESOURCE_BUSY');
 
   // 归还路径：另起一个容量为 2 的队列——第一个任务用掉 1 个令牌并成功入队，
-  // 第二个任务通过限流闸门后因 lane 占位被准入拒绝，令牌必须归还；
+  // 第二个任务通过限流闸门后被**准入**拒绝（同一事项重复提交），令牌必须归还；
   // 否则一次「没接成的活」会永久吃掉配额（容量为 1 时根本走不到准入，故用 2）。
   const store2 = createMemoryStore();
   const clock2 = makeClock();
@@ -251,25 +251,31 @@ test('入队：限流预算耗尽拒收（RATE_LIMITED），且准入被拒时�
   assert.equal(first2.admitted, true);
   assert.equal(queue2.rateLimiter.snapshot().find((e) => e.key === 'xws').tokens, 1, '扣掉 1 个');
 
-  const denied = await queue2.enqueue({ spec: specOf({ taskId: 't-b' }) }); // 同 lane 已被占位
+  const denied = await queue2.enqueue({ spec: specOf({ taskId: 't-a' }) }); // 同一事项重复提交
   assert.equal(denied.admitted, false);
-  assert.equal(denied.reason, 'BACKPRESSURE');
+  assert.equal(denied.reason, 'DUPLICATE_TASK');
   assert.equal(queue2.rateLimiter.snapshot().find((e) => e.key === 'xws').tokens, 1, '准入被拒后令牌已归还');
 });
 
-test('入队：同一 lane 已被占位视为背压（BACKPRESSURE），不是执行失败', async () => {
+test('入队：同一 lane 的多个不同任务都能入队（lane 占用是执行期约束，不是准入约束）', async () => {
   const { queue, store } = await makeHarness();
   const first = await queue.enqueue({ spec: specOf({ taskId: 't1' }) });
   assert.equal(first.admitted, true);
 
+  // 同一账号/profile/能力下的第二件**不同**工作必须能排队；否则商品级 fan-out 无从实现。
   const second = await queue.enqueue({ spec: specOf({ taskId: 't2' }) });
-  assert.equal(second.admitted, false);
-  assert.equal(second.reason, 'BACKPRESSURE', 'lane 占位对调用方就是背压');
-  assert.equal(second.failureClass, 'RESOURCE_BUSY');
-  assert.ok(second.rejectionReasons.some((r) => r.includes('lane saturated')));
-  assert.equal((await store.listActiveRuns({})).length, 1, '未接活的任务不落 run');
+  assert.equal(second.admitted, true, '不同业务的同 lane 任务是队列项，不是重复');
+  assert.equal((await store.listActiveRuns({})).length, 2);
+  assert.equal((await queue.depth()).byLane[0].count, 2);
 
-  // lane 互不影响：换 capability 即换 lane
+  // 但真正重复的同一件事项会被去重挡下（按 idempotencyKey，不按 lane）。
+  const duplicate = await queue.enqueue({ spec: specOf({ taskId: 't1' }) });
+  assert.equal(duplicate.admitted, false);
+  assert.equal(duplicate.reason, 'DUPLICATE_TASK');
+  assert.equal(duplicate.failureClass, 'POLICY_DENIED');
+  assert.equal((await store.listActiveRuns({})).length, 2, '重复任务不落 run');
+
+  // 换 capability 即换 lane，互不影响。
   const other = await queue.enqueue({ spec: specOf({ taskId: 't3', capability: 'cap.b' }) });
   assert.equal(other.admitted, true);
 });
@@ -285,8 +291,7 @@ test('入队：全局队列深度达到上限触发背压', async () => {
 });
 
 test('入队：单 lane 队列深度达到上限触发背压', async () => {
-  // 单 lane 深度上限设 1；但准入本身同 lane 只接一个，因此用 lane 深度统计验证闸门存在。
-  const { queue, clock } = await makeHarness({ limits: { maxQueueDepthPerLane: 1, maxQueueDepth: 100 } });
+  const { queue } = await makeHarness({ limits: { maxQueueDepthPerLane: 1, maxQueueDepth: 100 } });
   assert.equal((await queue.enqueue({ spec: specOf({ taskId: 't1', capability: 'cap.a' }) })).admitted, true);
   const depth = await queue.depth();
   assert.equal(depth.total, 1);
@@ -294,8 +299,9 @@ test('入队：单 lane 队列深度达到上限触发背压', async () => {
 
   const second = await queue.enqueue({ spec: specOf({ taskId: 't2', capability: 'cap.a' }) });
   assert.equal(second.admitted, false);
-  assert.equal(second.reason, 'BACKPRESSURE', '同 lane 第二个仍被挡（lane 占位先命中）');
-  clock.advance(1_000);
+  assert.equal(second.reason, 'BACKPRESSURE', '单 lane 深度上限先于准入命中');
+  assert.match(second.detail, /lane depth 1\/1/);
+  assert.equal((await queue.depth()).total, 1, '被挡下的任务不占队列深度');
 });
 
 test('入队：规格不合法归 INVALID_SPEC，重试无用', async () => {
@@ -460,5 +466,5 @@ test('深度统计：按 lane 分组且顺序稳定', async () => {
 });
 
 test('队列拒绝原因的枚举与实现一致', () => {
-  assert.deepEqual([...QUEUE_REJECTION], ['BACKPRESSURE', 'RATE_LIMITED', 'CIRCUIT_OPEN', 'DEADLINE_PASSED', 'INVALID_SPEC']);
+  assert.deepEqual([...QUEUE_REJECTION], ['BACKPRESSURE', 'DUPLICATE_TASK', 'RATE_LIMITED', 'CIRCUIT_OPEN', 'DEADLINE_PASSED', 'INVALID_SPEC']);
 });

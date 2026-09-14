@@ -14,13 +14,14 @@ import { laneLimit, laneFor } from './policy.mjs';
 import { admitTask } from './task-admission.mjs';
 
 // 入队被拒的确定性原因。与 FAILURE_CLASS 分开：这是「队列层拒绝」，不是执行层失败。
-//  - BACKPRESSURE：容量满了（全局或单 lane），或 lane 已被占位——都是「现在不该接活」，稍后再试。
+//  - BACKPRESSURE：容量满了（全局或单 lane）——「现在不该接活」，稍后再试。
+//  - DUPLICATE_TASK：同一业务范围的任务已在活动队列里，重复提交（去重按 idempotencyKey，不按 lane）。
 //  - RATE_LIMITED：外部平台限流预算用完，稍后再试。
 //  - CIRCUIT_OPEN：目标平台连续失败，冷却期内不再派发。
 //  - DEADLINE_PASSED：任务已过截止时间，不再受理。
 //  - INVALID_SPEC：任务规格本身不合法，重试无用。
 export const QUEUE_REJECTION = Object.freeze([
-  'BACKPRESSURE', 'RATE_LIMITED', 'CIRCUIT_OPEN', 'DEADLINE_PASSED', 'INVALID_SPEC',
+  'BACKPRESSURE', 'DUPLICATE_TASK', 'RATE_LIMITED', 'CIRCUIT_OPEN', 'DEADLINE_PASSED', 'INVALID_SPEC',
 ]);
 
 export const BACKOFF_BASE_MS = 1_000;
@@ -227,10 +228,10 @@ export function createTaskQueue({
   }
 
   // 准入拒绝 -> 队列拒绝原因的确定性映射。
-  // lane 占位（RESOURCE_BUSY）对调用方就是「背压」，不是错误：同一个 lane 同一时刻只接一个，
-  // 排不上的任务本就该稍后再试，而不是被记成执行失败。
+  // 「排不上队」和「不许做」是两件完全不同的事：前者稍后再试即可，后者重试无用。
   function reasonForRejection(admission) {
     const reasons = admission?.rejectionReasons ?? [];
+    if (reasons.some((reason) => /^duplicate task already active/.test(String(reason)))) return 'DUPLICATE_TASK';
     if (reasons.some((reason) => /^(taskSpec|identity)\./.test(String(reason)))) return 'INVALID_SPEC';
     const failureClass = admission?.failureClass ?? null;
     if (failureClass === 'RESOURCE_BUSY') return 'BACKPRESSURE';

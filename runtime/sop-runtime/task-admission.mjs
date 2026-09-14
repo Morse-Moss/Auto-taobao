@@ -68,6 +68,25 @@ export async function admitTask({
     };
   }
 
+  // 去重按**业务范围**（idempotencyKey）而不是 lane 占用。
+  // 同一账号下的两件不同商品不是重复，同一件事项被提交两次才是；
+  // 按 lane 去重会把前者一起挡掉，商品级 fan-out 因此无法入队。
+  const idempotencyKey = spec.idempotencyKey
+    ?? buildIdempotencyKey({ taskId: spec.taskId, identity: spec.identity, capability: spec.capability, scope: spec.scope ?? null });
+  const duplicate = await findActiveByIdempotencyKey(store, idempotencyKey);
+  if (duplicate) {
+    return {
+      admitted: false,
+      rejectionReasons: [`duplicate task already active: ${idempotencyKey} (run ${duplicate.runId})`],
+      failureClass: 'POLICY_DENIED',
+      riskClass: policy.riskClass,
+      duplicateOf: duplicate.runId,
+      idempotencyKey,
+      runId: null,
+      context: null,
+    };
+  }
+
   const runId = idFactory();
   const base = createContext({
     taskId: spec.taskId,
@@ -89,7 +108,14 @@ export async function admitTask({
     // 避免「准入时算一种 lane、开 attempt 时算成另一种」的静默漂移。
     lane,
     isWrite,
-    queue: { ...(base.queue ?? {}), enqueuedAt: nowIso, priority: Number(spec.priority ?? 0), deadlineAt: spec.deadlineAt ?? null },
+    idempotencyKey,
+    parentRunId: spec.parentRunId ?? null,
+    queue: {
+      ...(base.queue ?? {}),
+      enqueuedAt: nowIso,
+      priority: Number(spec.priority ?? 0),
+      deadlineAt: spec.deadlineAt ?? null,
+    },
     updatedAt: nowIso,
   }, { nowIso });
 
@@ -110,9 +136,19 @@ export async function admitTask({
     admitted: true,
     runId,
     context,
+    idempotencyKey,
     policy: { decision: policy.decision, riskClass: policy.riskClass, reasons: policy.reasons, lane, laneKey: laneKey(spec.identity) },
     rejectionReasons: [],
   };
+}
+
+// 活动运行里是否已有同一 idempotencyKey。
+// 走 listActiveRuns 而不是新增 store 端口：不引入新表、不要求每个 store 实现新方法，
+// 代价是 O(活动运行数) 的扫描——当前量级可接受，量级上去再考虑加索引列。
+async function findActiveByIdempotencyKey(store, idempotencyKey) {
+  if (!idempotencyKey) return null;
+  const runs = await store.listActiveRuns({});
+  return runs.find((run) => run?.context?.idempotencyKey === idempotencyKey) ?? null;
 }
 
 export { classifyRisk };

@@ -40,6 +40,9 @@ export function createContext({
     taskId: taskId ?? null,
     runId: runId ?? null,
     parentRunId,
+    // 业务去重键（准入时写入）。重复判定按它做，不按 lane 占用做——
+    // 同一账号下的两件不同商品不是重复，同一件事项被提交两次才是。
+    idempotencyKey: null,
     workflow: workflow ?? null,
     capability: capability ?? null,
     identity: identity ?? {},

@@ -59,12 +59,31 @@ test('高风险副作用准入后进入人工闸门，不能直接开始', async
   assert.equal(approved.executionStatus, 'QUEUED');
 });
 
-test('同一 lane 并发准入：第二条被拒且失败分类为 RESOURCE_BUSY', async () => {
+test('同一事项重复准入被拒（按 idempotencyKey 去重，而非按 lane 占用）', async () => {
   const store = createMemoryStore();
   await admitTask({ store, spec, idFactory: () => 'run-1' });
   const second = await admitTask({ store, spec, idFactory: () => 'run-2' });
   assert.equal(second.admitted, false);
-  assert.equal(second.failureClass, 'RESOURCE_BUSY');
+  assert.equal(second.failureClass, 'POLICY_DENIED');
+  assert.equal(second.duplicateOf, 'run-1');
+  assert.match(second.rejectionReasons[0], /duplicate task already active/);
+});
+
+test('同一 lane 的不同事项都能准入，但执行期仍然串行（并发约束留在 beginAttempt）', async () => {
+  const store = createMemoryStore();
+  const other = { ...spec, taskId: 'task-2', scope: 'part-2' };
+  const first = await admitTask({ store, spec, idFactory: () => 'run-1' });
+  const second = await admitTask({ store, spec: other, idFactory: () => 'run-2' });
+  assert.equal(first.admitted, true);
+  assert.equal(second.admitted, true, '同一 lane 的不同工作是队列项，不是重复');
+  assert.equal(first.policy.lane, second.policy.lane, '两者确实同 lane');
+
+  const controller = createController({ store, workerId: 'w-test', idFactory: () => 'att-1' });
+  await controller.beginAttempt(first.runId, { stage: 'COLLECT' });
+  await assert.rejects(
+    () => controller.beginAttempt(second.runId, { stage: 'COLLECT' }),
+    (error) => error.code === 'LANE_SATURATED' && error.details.failureClass === 'RESOURCE_BUSY',
+  );
 });
 
 test('beginAttempt 持有 lease 并推进 RUNNING', async () => {

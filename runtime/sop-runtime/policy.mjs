@@ -99,20 +99,22 @@ export function evaluatePolicy({
   const riskClass = classifyRisk({ sideEffects, target });
   const lane = capabilityLane(identity, capability);
   const limit = laneLimit({ lane, write });
-  if (activeInLane >= limit) {
-    reasons.push(`lane saturated: ${lane} (${activeInLane}/${limit})`);
-    return { decision: 'DENY', riskClass, reasons, failureClass: 'RESOURCE_BUSY' };
-  }
+  // lane 占用**不在这里**判定，这是对早先「准入即占位」的一次修正。
+  // 准入回答的是「这件事项能不能进入队列」；队列按定义必须能容纳同一 lane 的多个事项，
+  // 否则商品级 fan-out（同一账号下的多件商品）根本无法入队——把「并发约束」错用成了「重复约束」。
+  // 同一 lane 同时只能有一个在执行，由 Controller.beginAttempt 用 LANE_EXECUTING_STATUSES 把关。
+  // 真正的重复由 admitTask 用 idempotencyKey 挡（按业务范围去重，比按 lane 去重精确：
+  // 同一账号下的两件不同商品不是重复，同一件事项被提交两次才是）。
   if (riskClass === 'HUMAN_REQUIRED') {
     reasons.push('effect requires human gate');
-    return { decision: 'ALLOW_WITH_APPROVAL', riskClass, reasons, humanGate: true };
+    return { decision: 'ALLOW_WITH_APPROVAL', riskClass, reasons, humanGate: true, lane, laneLimit: limit };
   }
   if (requiresApproval(riskClass)) {
     reasons.push(`risk ${riskClass} requires approval`);
-    return { decision: 'ALLOW_WITH_APPROVAL', riskClass, reasons, humanGate: true };
+    return { decision: 'ALLOW_WITH_APPROVAL', riskClass, reasons, humanGate: true, lane, laneLimit: limit };
   }
-  reasons.push(`risk ${riskClass}, lane ${lane}`);
-  return { decision: 'ALLOW', riskClass, reasons, humanGate: false };
+  reasons.push(`risk ${riskClass}, lane ${lane} (limit ${limit} enforced at attempt time${activeInLane ? `, currently ${activeInLane} occupying` : ''})`);
+  return { decision: 'ALLOW', riskClass, reasons, humanGate: false, lane, laneLimit: limit };
 }
 
 // 外部调用失败的确定性归类：优先看结构化状态码，再看消息里的状态码，最后才归 BUG。
