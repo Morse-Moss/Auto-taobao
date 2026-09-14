@@ -121,7 +121,13 @@ test('stamps period date fields when the target table has them, and fails closed
 
   await assert.rejects(
     () => runImport({ manifest, client, commit: true }),
-    /refusing to create an undated period table/u,
+    (error) => {
+      // fail-closed 之外还要「归对类」：漏参数是策略拒绝，不是疑似代码 bug（见 import-failures.test.mjs）。
+      assert.equal(error.code, 'PERIOD_REQUIRED');
+      assert.equal(error.failureClass, 'POLICY_DENIED');
+      assert.match(error.message, /refusing to create an undated period table/u);
+      return true;
+    },
   );
 
   const result = await runImport({

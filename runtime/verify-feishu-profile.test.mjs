@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { STABLE_TABLE_KEYS } from './feishu-targets.mjs';
 import {
+  compareKeywordBases,
   compareStructures,
   danglingTableRefs,
   fieldSignature,
@@ -123,6 +124,59 @@ function inspection(overrides = {}) {
   };
 }
 
+// 词库副本的检查结果形状（8 张表在真实 base 里，这里只要形状对即可）。
+function keywordTables(overrides = {}) {
+  return {
+    baseToken: 'kwBase',
+    baseName: '词库 最新 副本',
+    tableCount: 2,
+    danglingRefCount: 0,
+    errors: [],
+    tables: [
+      { tableId: 'tblKw1', name: '关键词历史总表 V1', fieldCount: 27, fieldNames: ['a'], signature: 'kw-1', recordCount: 2067, errors: [], ok: true, danglingRefs: [] },
+      { tableId: 'tblKw2', name: '关键词编号库 V1', fieldCount: 5, fieldNames: ['a'], signature: 'kw-2', recordCount: 475, errors: [], ok: true, danglingRefs: [] },
+    ],
+    ...overrides,
+  };
+}
+
+test('compareKeywordBases：不足两个 profile 时不做对比', () => {
+  assert.deepEqual(compareKeywordBases({ legacy: inspection() }), []);
+  assert.deepEqual(compareKeywordBases(undefined), []);
+});
+
+test('compareKeywordBases：逐表签名相同（行数不同不算差异）', () => {
+  const legacy = inspection({ keywordTables: keywordTables() });
+  const kcne = inspection({
+    keywordTables: keywordTables({
+      tables: keywordTables().tables.map((table) => ({ ...table, recordCount: table.recordCount + 5 })),
+    }),
+  });
+  assert.deepEqual(compareKeywordBases({ legacy, kcne }), []);
+});
+
+test('compareKeywordBases：一侧缺表就报 ONLY_ONE_SIDE，不当作一致', () => {
+  const legacy = inspection({ keywordTables: keywordTables() });
+  const kcne = inspection({ keywordTables: keywordTables({ tables: [keywordTables().tables[0]] }) });
+  const diffs = compareKeywordBases({ legacy, kcne });
+  assert.equal(diffs.length, 1);
+  assert.equal(diffs[0].name, '关键词编号库 V1');
+  assert.equal(diffs[0].verdict, 'ONLY_ONE_SIDE');
+});
+
+test('compareKeywordBases：签名不同时给出双方签名与独有字段', () => {
+  const legacy = inspection({ keywordTables: keywordTables() });
+  const shrunk = keywordTables().tables.map((table) => (table.name === '关键词编号库 V1'
+    ? { ...table, signature: 'kw-2b', fieldNames: ['a', 'b'], fieldCount: 6 }
+    : table));
+  const kcne = inspection({ keywordTables: keywordTables({ tables: shrunk }) });
+  const diffs = compareKeywordBases({ legacy, kcne });
+  assert.equal(diffs.length, 1);
+  assert.equal(diffs[0].verdict, 'DIFFERENT');
+  assert.deepEqual(diffs[0].onlyRight, ['b']);
+  assert.deepEqual(diffs[0].onlyLeft, []);
+});
+
 test('compareStructures：不足两个 profile 时不做对比', () => {
   assert.deepEqual(compareStructures({ legacy: inspection() }), []);
   assert.deepEqual(compareStructures(undefined), []);
@@ -193,5 +247,62 @@ test('render：两个 profile 无差异时明确说字段签名相同', () => {
   };
   const text = render(report);
   assert.match(text, /4 张稳定表的字段签名逐一相同/u);
-  assert.doesNotMatch(text, /跳过/u);
+  // 只断言「竞品侧」没跳过：词库侧这次确实没数据，它会如实说跳过（见下一条用例）。
+  assert.doesNotMatch(text, /结构对比：跳过/u);
+});
+
+test('render：没查词库时不冒称「词库两侧一致」', () => {
+  const report = {
+    mode: 'READ_ONLY',
+    note: 'n',
+    activeProfile: 'kcne',
+    defaultProfile: 'legacy',
+    profiles: { legacy: inspection(), kcne: inspection() },
+    structuralDiffs: [],
+    keywordDiffs: [],
+  };
+  const text = render(report);
+  assert.match(text, /词库对比：跳过（至少一侧没查到词库的表）/u);
+  assert.doesNotMatch(text, /词库对比：两侧副本逐表字段签名相同/u);
+});
+
+test('render：词库查到表且两侧一致时才说相同', () => {
+  const report = {
+    mode: 'READ_ONLY',
+    note: 'n',
+    activeProfile: 'kcne',
+    defaultProfile: 'legacy',
+    profiles: {
+      legacy: inspection({ keywordTables: keywordTables() }),
+      kcne: inspection({ keywordTables: keywordTables() }),
+    },
+    structuralDiffs: [],
+    keywordDiffs: [],
+  };
+  const text = render(report);
+  assert.match(text, /词库对比：两侧副本逐表字段签名相同（各 2 张表）/u);
+  assert.match(text, /keyword base   kwBase   词库 最新 副本   2 张表/u);
+  assert.match(text, /· 词库 关键词历史总表 V1/u);
+  assert.match(text, /记录 2067/u);
+});
+
+test('render：词库悬空引用逐条列出来', () => {
+  const withDangling = keywordTables({
+    danglingRefCount: 1,
+    tables: [{
+      ...keywordTables().tables[0],
+      danglingRefs: [{ field: '浏览量排名', type: 20, ref: 'tblGhost0001' }],
+    }, keywordTables().tables[1]],
+  });
+  const report = {
+    mode: 'READ_ONLY',
+    note: 'n',
+    activeProfile: null,
+    defaultProfile: 'kcne',
+    profiles: { legacy: inspection({ keywordTables: withDangling }) },
+    structuralDiffs: [],
+  };
+  const text = render(report);
+  assert.match(text, /词库悬空引用   1/u);
+  assert.match(text, /悬空引用: 字段「浏览量排名」\(type=20\) → tblGhost0001/u);
 });

@@ -1,11 +1,13 @@
 import { basename } from 'node:path';
 import { readFile as readFileDefault } from 'node:fs/promises';
 
-import { buildRecordFields, validateSourceHeaders, validateTarget } from './import-core.mjs';
+import { buildRecordFields, fatalError, validateSourceHeaders, validateTarget } from './import-core.mjs';
 
+// 只用于周期戳（三个日期字段）；调用方给出的 --period-* 不合法属于策略拒绝，
+// 不是「解析器有 bug」，所以带上稳定 code。
 function shanghaiMidnight(dateText) {
   const value = Date.parse(`${dateText}T00:00:00+08:00`);
-  if (!Number.isFinite(value)) throw new Error(`Invalid date (expected YYYY-MM-DD): ${dateText}`);
+  if (!Number.isFinite(value)) throw fatalError('PERIOD_INVALID', `Invalid date (expected YYYY-MM-DD): ${dateText}`, { dateText });
   return value;
 }
 
@@ -16,7 +18,7 @@ function todayShanghai() {
 function validateManifest(manifest) {
   const countField = validateSourceHeaders(manifest.headers);
   if (!Array.isArray(manifest.rows) || manifest.rows.length === 0) {
-    throw new Error('XLSX contains no data rows');
+    throw fatalError('SOURCE_EMPTY', 'XLSX contains no data rows');
   }
   const imagesByRow = new Map();
   for (const image of manifest.images ?? []) {
@@ -28,7 +30,11 @@ function validateManifest(manifest) {
     const worksheetRow = index + 2;
     const images = imagesByRow.get(worksheetRow) ?? [];
     if (images.length > 1) {
-      throw new Error(`Worksheet row ${worksheetRow} must have at most one embedded image; found ${images.length}`);
+      throw fatalError(
+        'SOURCE_IMAGE_AMBIGUOUS',
+        `Worksheet row ${worksheetRow} must have at most one embedded image; found ${images.length}`,
+        { row: worksheetRow, count: images.length },
+      );
     }
     // Rows without an embedded image are allowed (e.g. merged workbooks rebuilt
     // from CSV after partial xlsx export failures); 商品图片 stays empty.
@@ -57,14 +63,14 @@ export async function runImport({
         : `${countField} strips a trailing + for the numeric target field`,
     };
   }
-  if (!client) throw new Error('A Feishu client is required for commit mode');
+  if (!client) throw fatalError('CLIENT_REQUIRED', 'A Feishu client is required for commit mode');
 
   const recordCount = await client.getRecordCount();
   let fields = await client.listFields();
   const imageField = fields.find((field) => field.fieldName === '商品图片');
   if (imageField?.type !== 17 && prepareTarget) {
-    if (recordCount !== 0) throw new Error(`Target table must be empty; found ${recordCount} records`);
-    if (!imageField) throw new Error('Target table is missing 商品图片');
+    if (recordCount !== 0) throw fatalError('TARGET_NOT_EMPTY', `Target table must be empty; found ${recordCount} records`, { recordCount });
+    if (!imageField) throw fatalError('TARGET_IMAGE_FIELD', 'Target table is missing 商品图片');
     await client.updateFieldType(imageField.fieldId, 17);
     fields = await client.listFields();
   }
@@ -78,7 +84,11 @@ export async function runImport({
   let periodStamp = null;
   if (periodDateFields.length > 0) {
     if (!period?.startDate || !period?.endDate) {
-      throw new Error(`Target table has date fields (${periodDateFields.join(', ')}) but no --period-start/--period-end given; refusing to create an undated period table`);
+      throw fatalError(
+        'PERIOD_REQUIRED',
+        `Target table has date fields (${periodDateFields.join(', ')}) but no --period-start/--period-end given; refusing to create an undated period table`,
+        { dateFields: periodDateFields },
+      );
     }
     periodStamp = {
       数据开始日期: shanghaiMidnight(period.startDate),
@@ -106,7 +116,11 @@ export async function runImport({
     if (start + 500 < records.length) await sleep(250);
   }
   if (recordIds.length !== entries.length) {
-    throw new Error(`Feishu created ${recordIds.length} records for ${entries.length} source rows`);
+    throw fatalError(
+      'POST_WRITE_COUNT_MISMATCH',
+      `Feishu created ${recordIds.length} records for ${entries.length} source rows`,
+      { created: recordIds.length, source: entries.length },
+    );
   }
   const expectedAttachments = entries.filter((entry) => entry.image).length;
   const saved = await client.listRecords();
@@ -115,7 +129,11 @@ export async function runImport({
     return total + (Array.isArray(value) ? value.length : 0);
   }, 0);
   if (saved.length !== entries.length || attachmentCount !== expectedAttachments) {
-    throw new Error(`Feishu verification failed: records=${saved.length}, attachments=${attachmentCount}, expected=${expectedAttachments}`);
+    throw fatalError(
+      'POST_WRITE_VERIFY_MISMATCH',
+      `Feishu verification failed: records=${saved.length}, attachments=${attachmentCount}, expected=${expectedAttachments}`,
+      { records: saved.length, attachments: attachmentCount, expected: expectedAttachments },
+    );
   }
   return {
     dryRun: false,

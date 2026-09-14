@@ -35,7 +35,8 @@ export const PROFILES = Object.freeze({
     host: 'kcne618basvj.feishu.cn',
     envFile: 'E:/小红书/.env.feishu-kcne.local',
     competitorBase: 'OUMqbkYwVaQxQNsv2EDc1DV7nDf',
-    keywordBase: 'N21Abkg0HakO6AsbCaDckvcwnVd',
+    // 关键词库也搬了：旧租户那张的副本，2026-09-14 核对 8 张表字段签名与行数逐表相同
+    keywordBase: 'HdBhbttB5aScbasWJAMc0gGXnpe',
     // 2026-09-14 实测：建表/建字段/DELETE 均 200，且两段式 xws.feishu.import --commit
     // 在本 base 上跑出 VERIFIED + 游标 1→3（见 TENANT-MIGRATION-MAP §5.3）。
     writeVerified: true,
@@ -105,6 +106,11 @@ export function profileTargets(name) {
 
 export function competitorBaseToken(name) {
   return getProfile(name).competitorBase;
+}
+
+// 关键词库是另一张独立 base（复制竞品 base 不会带上它），所以有独立访问器。
+export function keywordBaseToken(name) {
+  return getProfile(name).keywordBase;
 }
 
 export function tableId(logicalName, name) {

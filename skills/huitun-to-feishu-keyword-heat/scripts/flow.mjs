@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 
+import { activeProfileName, envFilePath, keywordBaseToken } from '../../../runtime/feishu-targets.mjs';
+
 export const A_THRESHOLD = 10_000_000;
 export const DEFAULT_RESULT_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
 export const HUITUN_RESULT_SCHEMA_VERSION = 1;
@@ -25,11 +27,16 @@ export function hasConfirmedAccount(value) {
   return /(?:^|\s)(?:ID|DY)[：:\s]*\d+/iu.test(plain(value));
 }
 
+// 关键词库 base 与凭据文件同样按 SYCM_FEISHU_PROFILE 走单点配置，不在这里写死：
+// 2026-09-14 整批搬到新租户后，关键词库是**另一张独立 base**（复制竞品 base 不会带上它），
+// 它的副本 token 单独在 feishu-targets.mjs 里维护。
+const PROFILE = activeProfileName();
+
 export const DEFAULT_TARGET = Object.freeze({
-  appToken: 'N21Abkg0HakO6AsbCaDckvcwnVd',
+  appToken: keywordBaseToken(PROFILE),
   tableId: '',
   tableName: '',
-  envFile: 'E:/小红书/.env.local',
+  envFile: envFilePath(PROFILE),
 });
 
 // 内容热度由上游内容平台/AI流程提供；灰豚只负责补充原始浏览量证据。

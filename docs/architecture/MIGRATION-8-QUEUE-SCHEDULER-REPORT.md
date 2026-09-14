@@ -408,10 +408,28 @@ rows = 3  has_more = false
 
 但它同时暴露出一个**失败分类缺陷**：该次收据的 `blocker.class` 是 `BUG`
 （`nextAction=TERMINAL`，理由「bug suspected, stop automation」），而真实原因是**调用方漏了参数**。
-链路已定位到行：`import-runner.mjs:81` 抛裸 `Error`（不带 `code`/`failureClass`）
+链路已定位到行：`import-runner.mjs` 抛裸 `Error`（不带 `code`/`failureClass`）
 → `side-effect-ledger.mjs:53` 回落 `classifyExternalFailure`
 → `policy.mjs:159` 无状态码、消息不含关键词 → 落到 `return 'BUG'` → `STOP_AND_ALERT`。
 这与 `policy.mjs:156-158` 自述的意图相反；另外三个适配器都已有 `FAILURE_CLASS_BY_CODE`
 这类确定性映射，只有 `adapter.feishu-import` 没有。
 行为影响有限（两种分类对该 run 都是终止），影响在**给运维的结论**：会把人引向排查代码而不是补参数。
-细节与两个修复方案见 `docs/ops/TENANT-MIGRATION-MAP.md` §6。
+
+**已修（2026-09-14，方案 A；细节与完整证据见 `docs/ops/TENANT-MIGRATION-MAP.md` §6.4/§6.6）。**
+能力侧现在自己给出确定性 code 与分类：`import-core.mjs` 里的 `FAILURE_CLASS_BY_CODE`（17 个 code）
++ 唯一构造入口 `fatalError()`，运行时路径上的三个模块（`import-core` / `import-runner` /
+`adapter.feishu-import`）每个 `throw` 都走它，适配器只 re-export 不复制。
+同一个守卫现在得到 `code=PERIOD_REQUIRED`、`failureClass=POLICY_DENIED`，
+收据落成 `blocker.class=POLICY_DENIED`（`FAIL`/`TERMINAL`，理由 `policy denied`），不再是 `BUG`。
+修法**不是**往框架的关键词分类器里加业务词——那会让框架替能力背业务词汇；
+方向是反的：能力给 code，框架只按分类决定下一步。
+
+两条**刻意没改**：写后数量/附件不符仍归 `BUG`（停线交人工，不冒充「确定未发生」去重试；
+是否改判 `COMMIT_UNKNOWN` 另议）；`feishu-client.mjs` 的失败消息带 HTTP 状态码，
+默认分类器本来就能归对，不在范围内。
+
+证据（全部离线可复跑）：新增 `skills/xws-to-feishu-base/tests/import-failures.test.mjs`
+（11 个用例，含「同一条消息挂不挂 code 结论不同」的缺陷复现、真账本、
+以及**真 registry + 真 Controller + 真发布段**的收据级断言）；
+`skills --skill=xws-to-feishu-base` **95/95**、`runtime` **390/390**；
+真实入口复跑：CLI dry-run 与两段式 runner（只采集段）均正常。

@@ -11,6 +11,7 @@ import {
   competitorBaseToken,
   envFilePath,
   getProfile,
+  keywordBaseToken,
   loadFeishuCredentials,
   parseEnvFile,
   profileTargets,
@@ -99,6 +100,18 @@ test('凭据文件路径与 baseUrl 按 profile 分开', () => {
   assert.match(targets.baseUrl, /^https:\/\/kcne618basvj\.feishu\.cn\/base\/OUMqbkYw/u);
   // 写验证已通过（2026-09-14），声明值应随之翻真
   assert.equal(targets.writeVerified, true);
+});
+
+// 关键词库是**另一张独立 base**（复制竞品 base 不会带上它），所以它的 token 单独维护、
+// 也单独跟着租户切换——这条断言就是「两张 base 不能混搭」的守门人。
+test('关键词库 base 独立于竞品 base，各自随 profile 切换', () => {
+  assert.equal(keywordBaseToken('legacy'), 'N21Abkg0HakO6AsbCaDckvcwnVd');
+  assert.equal(keywordBaseToken('kcne'), 'HdBhbttB5aScbasWJAMc0gGXnpe');
+  assert.notEqual(keywordBaseToken('legacy'), keywordBaseToken('kcne'));
+  assert.notEqual(keywordBaseToken('kcne'), competitorBaseToken('kcne'));
+  assert.equal(keywordBaseToken('new'), keywordBaseToken('kcne')); // 别名同源
+  assert.equal(profileTargets('kcne').keywordBase, keywordBaseToken('kcne'));
+  assert.throws(() => keywordBaseToken('nope'), /Unknown Feishu profile/u);
 });
 
 test('parseEnvFile 处理注释、空行、引号与等号后的空格', () => {

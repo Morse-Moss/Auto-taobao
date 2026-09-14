@@ -14,7 +14,7 @@ import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { XWS_HEADERS, parseBaseUrl, validateSourceHeaders } from './import-core.mjs';
+import { FAILURE_CLASS_BY_CODE, XWS_HEADERS, fatalError, parseBaseUrl, validateSourceHeaders } from './import-core.mjs';
 
 export const capabilityId = 'xws.feishu.import';
 export const manifestVersion = '1.1.0';
@@ -43,9 +43,10 @@ export function extractXwsWorkbook({ xlsxPath, outputDir, python = null }) {
   ];
   const result = spawnSync(command, args, { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 });
   if (result.status !== 0) {
-    throw Object.assign(
-      new Error(`XLSX extraction failed: ${(result.stderr || result.stdout || '').trim()}`),
-      { failureClass: 'CAPABILITY_DEGRADED' },
+    throw fatalError(
+      'EXTRACTION_FAILED',
+      `XLSX extraction failed: ${(result.stderr || result.stdout || '').trim()}`,
+      { status: result.status ?? null },
     );
   }
   return JSON.parse(result.stdout);
@@ -75,18 +76,19 @@ export const adapter = {
   },
 
   async prepare(input = {}) {
-    if (!input.xlsxPath) throw new Error('xlsxPath is required');
-    if (!existsSync(input.xlsxPath)) throw new Error(`XLSX file not found: ${input.xlsxPath}`);
-    if (!input.outputDir) throw new Error('outputDir is required for embedded image extraction');
+    if (!input.xlsxPath) throw fatalError('INPUT_REQUIRED', 'xlsxPath is required');
+    if (!existsSync(input.xlsxPath)) throw fatalError('INPUT_NOT_FOUND', `XLSX file not found: ${input.xlsxPath}`, { path: input.xlsxPath });
+    if (!input.outputDir) throw fatalError('INPUT_REQUIRED', 'outputDir is required for embedded image extraction');
     // 目标地址在采集期只做格式校验，不发起任何网络请求。
-    parseBaseUrl(input.baseUrl ?? '');
+    if (!input.baseUrl) throw fatalError('INPUT_REQUIRED', 'baseUrl is required to bind the artifact to its target');
+    parseBaseUrl(input.baseUrl);
   },
 
   async start(input = {}) {
     const manifest = extractImpl({ xlsxPath: input.xlsxPath, outputDir: input.outputDir, python: input.python ?? null });
     const countField = validateSourceHeaders(manifest.headers);
     if (!Array.isArray(manifest.rows) || manifest.rows.length === 0) {
-      throw Object.assign(new Error('XLSX contains no data rows'), { failureClass: 'EVIDENCE_INVALID' });
+      throw fatalError('SOURCE_EMPTY', 'XLSX contains no data rows');
     }
     state.manifest = manifest;
     state.artifact = null;
@@ -94,7 +96,7 @@ export const adapter = {
   },
 
   async observe({ context, started } = {}) {
-    if (!state.manifest) throw new Error('no extraction result; start() must run first');
+    if (!state.manifest) throw fatalError('STAGE_ORDER', 'no extraction result; start() must run first');
     return {
       identity: context.identity,
       rows: state.manifest.rows.length,
@@ -105,7 +107,7 @@ export const adapter = {
   },
 
   async collectArtifact() {
-    if (!state.manifest) throw new Error('no extraction result; start() must run first');
+    if (!state.manifest) throw fatalError('STAGE_ORDER', 'no extraction result; start() must run first');
     const bytes = Buffer.from(stableJson(state.manifest), 'utf8');
     const rowCount = state.manifest.rows.length;
     state.artifact = {
@@ -148,7 +150,7 @@ export function resetStateForTest() {
 // 因此发布段不依赖采集段的内存状态（跨进程恢复时从证据库读回即可）。
 export function createFeishuImportPublisher({ client, artifactBytes, period = null, prepareTarget = false }) {
   const manifest = artifactBytes ? JSON.parse(artifactBytes.toString('utf8')) : null;
-  if (!manifest) throw new Error('artifactBytes is required for the publish stage');
+  if (!manifest) throw fatalError('INPUT_REQUIRED', 'artifactBytes is required for the publish stage');
 
   return {
     async handler() {
@@ -167,4 +169,7 @@ export function createFeishuImportPublisher({ client, artifactBytes, period = nu
   };
 }
 
-export { XWS_HEADERS };
+// 能力的失败码词表从适配器这里也可见：另三个适配器（sku-collection / search-rank /
+// huitun-keyword-heat）都把 FAILURE_CLASS_BY_CODE 放在适配器模块上，运维排查时先看适配器。
+// 词表本身定义在 import-core（采集段与发布段共用同一份），这里只做 re-export，不复制。
+export { FAILURE_CLASS_BY_CODE, XWS_HEADERS };

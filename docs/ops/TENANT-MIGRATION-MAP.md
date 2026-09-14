@@ -1,7 +1,7 @@
 # 竞品数据搬迁到新租户：映射表与影响面
 
 状态：2026-09-14 **六步全部完成**（旧租户废弃，默认目标已切到新租户）。
-另记一条失败分类缺陷（§6）与一处词库 base 归属更正（§0 第 2 条）。
+同日晚补完两件事：**失败分类缺陷已按方案 A 修掉**（§6）、**关键词库 base 的副本已建好并改指**（§0 第 2 条）。
 适用范围：竞品周更 SOP（base `OWebbPUcBa7B8JseYLccQCy9nkf` → 副本 `OUMqbkYwVaQxQNsv2EDc1DV7nDf`）。
 
 ## 0. 侦察结论
@@ -14,12 +14,25 @@
    实测 URL 为 `https://rcndesfqro3x.feishu.cn/base/N21Abkg0HakO6AsbCaDckvcwnVd`，**没有随竞品 base 一起复制**：
    复制一张 base 只会复制那张 base 自己，词库是**另一张独立的 base**，不属于竞品 base。
    新应用能读到它靠的是**跨租户共享**（外部协作者），不是因为它在新区。
-   → 只要旧租户还在，读没问题；**若将来停用旧租户，这张 base 必须单独再搬一次**。
 
    注意：`/drive/v1/files`（应用云空间根目录）对新应用返回空列表，因此**无法从应用侧枚举**新租户里是否
    另有一份词库副本；要确认只能由人在浏览器里看。
-3. 新应用 `cli_a96ee8749078dbcf` 能读：竞品 base、竞品 base 副本、关键词库 base；
-   **写不通**（在副本上建表 / 建字段均 `403 91403`，不是 `99991672`）。
+
+   **后续（同日）**：用户在浏览器里复制了一份到新租户，
+   token `HdBhbttB5aScbasWJAMc0gGXnpe`（名字「词库 最新 副本 副本」），
+   `table=blkzxLvtVkhhqgfK` 是**仪表盘 block id**（不是表 id）。
+   逐表核对结果：**8 张表的字段签名与行数全部一致**——
+   关键词历史总表 V1（27 字段 / 2067 行）、关键词分析 V1（修正版）（26 / 301）、
+   关键词分析 V1 各期（29 / 300）、关键词编号库 V1（5 / 475）。
+   代码已改指这一份（见 §3.1）：`runtime/feishu-targets.mjs` 的 `kcne.keywordBase`
+   + 新增的 `keywordBaseToken()` 访问器；`skills/huitun-to-feishu-keyword-heat/scripts/flow.mjs`
+   的 `DEFAULT_TARGET` 从单点配置派生。旧 token 仍留在 `legacy` profile 里作为回滚路径。
+   → 「词库会不会因为旧租户停用而断」这条风险就此关闭。
+3. 新应用 `cli_a96ee8749078dbcf` 能读：竞品 base、竞品 base 副本、关键词库 base。
+   ~~**写不通**（在副本上建表 / 建字段均 `403 91403`）~~ —— **当日复测已更正：写通了**
+   （`POST /tables` 200、`POST /fields` 200、`DELETE` 200），详见 §5.3 与
+   `docs/ops/FEISHU-APP-SETUP-NEW-TENANT.md` §5.3。原来的 `91403` 是「应用还不是协作者」，
+   与权限 scope 缺失（`99991672`）是两回事。
 4. 旧应用 `cli_aa93e98aeef81cef` 读不到副本（`91403`），读得到另外三个 base。
 
 ## 1. base 与 table 映射（按名字）
@@ -39,7 +52,8 @@
 | 数据表（副本新增，默认空壳） | — | `tblg6lkg6431QulJ` |
 
 base 级：`OWebbPUcBa7B8JseYLccQCy9nkf` → `OUMqbkYwVaQxQNsv2EDc1DV7nDf`。
-关键词库 base：`N21Abkg0HakO6AsbCaDckvcwnVd` **不变**。
+关键词库 base：`N21Abkg0HakO6AsbCaDckvcwnVd`（旧租户）→ 副本
+`HdBhbttB5aScbasWJAMc0gGXnpe`（新租户，代码已改指；旧 token 保留在 `legacy` profile）。
 
 ## 2. 应用与凭据
 
@@ -57,7 +71,7 @@ base 级：`OWebbPUcBa7B8JseYLccQCy9nkf` → `OUMqbkYwVaQxQNsv2EDc1DV7nDf`。
 | 目标 | 出现文件数（含产物/备份） | 说明 |
 | --- | --- | --- |
 | 竞品 base `OWebbPUc…` | 47 | 活跃代码约 20 个 `runtime/*.mjs` + FAQ 发布脚本 + 测试 |
-| 关键词库 base `N21Abkg…` | 26 | 名称不变，无需改 |
+| 关键词库 base `N21Abkg…` | 26 | 已改为按 profile 单点配置（`keywordBaseToken()`），默认指向新租户副本 |
 | 竞品主表 `tblJ9LHFN6pMVjPv` | 166 | 大量是 runs/backup 产物，**不动** |
 | SKU明细 `tblddWTrPeB4TKmR` | 140 | 同上 |
 | 历史总表 `tblH0bmmOuogxDHi` | 8 | 活跃代码 + receipts |
@@ -86,13 +100,20 @@ base 级：`OWebbPUcBa7B8JseYLccQCy9nkf` → `OUMqbkYwVaQxQNsv2EDc1DV7nDf`。
 3. **默认值一行控制**。代码先就位、后切换：2026-09-14 先落代码（默认仍 `legacy`），
    读写验证都通过之后同一天把 `DEFAULT_PROFILE` 改成 `kcne`。回滚 = 改回 `legacy`，不动业务脚本。
    测试里有一条「默认 profile 是当前生产租户」的断言，默认值被改而没人同步文档时它会失败。
+4. **关键词库 base 有独立访问器**（`keywordBaseToken(logicalName)`）。
+   它是**另一张独立的 base**，复制竞品 base 不会带上它，所以它的 token 必须单独维护；
+   但它与竞品 base **同属一个 profile**（同一套凭据、同一个租户），
+   所以不进 `tables`（那是竞品 base 内的逻辑表名 → table id），而是平级的 `keywordBase` 字段。
+   两件事分开：**同一个 profile 里的两张 base**，不是两个 profile。
 
-`runtime/feishu-targets.test.mjs` 11 条用例覆盖：两个 profile 覆盖同一批逻辑名、
-table id 互不相同且形状合法、base 与 baseUrl 自洽、profile 冻结、别名解析与未知名抛错、
-环境变量切换（含空串回落）、**默认 profile 仍是 legacy**（切换后该断言会失败，用来提醒同步文档）、
-`tableId` 命中与未知名抛错、凭据路径分租户、`parseEnvFile` 处理注释/空行/引号、`loadFeishuCredentials` 只认两个键。
+`runtime/feishu-targets.test.mjs` 覆盖：两个 profile 覆盖同一批逻辑名、table id 互不相同且形状合法、
+base 与 baseUrl 自洽、profile 冻结、别名解析与未知名抛错、环境变量切换（含空串回落）、
+**默认 profile 是 kcne 且旧租户仍可显式选择**、`tableId` 命中与未知名抛错、
+凭据路径分租户、`parseEnvFile` 处理注释/空行/引号、`loadFeishuCredentials` 只认两个键，
+以及**关键词库 base 与竞品 base 各自随 profile 切换、不得混搭**（这是「两张 base 指向不同租户」
+的唯一守门人——写错一个字面量就会被它拦下）。
 
-### 3.2 已改造的活跃脚本（11 个文件，38 处）
+### 3.2 已改造的活跃脚本（11 个文件，38 处 + 词库改指）
 
 | 文件 | 替换处数 | 改了什么 |
 | --- | --- | --- |
@@ -107,6 +128,11 @@ table id 互不相同且形状合法、base 与 baseUrl 自洽、profile 冻结�
 | `runtime/summarize-xws-sku-queue.mjs` | 3 | 同上 |
 | `runtime/sync-weekly-sku-history.mjs` | 4 | 同上 |
 | `runtime/sync-latest-ab-to-main.mjs` | 4 | 同上 |
+
+词库 base 那一路（**另一次改指**，2026-09-14 晚）：`runtime/feishu-targets.mjs` 的
+`kcne.keywordBase` 换成新租户副本 token，并在该模块新增 `keywordBaseToken()`；
+`skills/huitun-to-feishu-keyword-heat/scripts/flow.mjs` 的 `DEFAULT_TARGET` 由写死的
+token 改为从单点配置派生（实测 `{"appToken":"HdBhbttB5aScbasWJAMc0gGXnpe",…,"envFile":"E:/小红书/.env.feishu-kcne.local"}`）。
 
 改造方式：用「精确字面量 + 期望出现次数」的临时脚本替换（次数不符即整体失败），
 不做模糊正则——避免误伤 `runs/`、`*-backups/`、`evidence/` 里的历史证据。
@@ -126,8 +152,9 @@ table id 互不相同且形状合法、base 与 baseUrl 自洽、profile 冻结�
 1. **用户侧前置**：✅ 已完成（2026-09-14 复测通过）。
    开放平台补 `bitable:app` + `drive:drive` 并重新发布版本 —— 已完成（`99991672` 消失）；
    把应用 `cli_a96ee8749078dbcf` 加为**副本 base** 的「可编辑」协作者 —— 已完成（复测见 §5.3）。
-   注意：应用同时还是**旧生产 base** `OWebbPUcBa7B8JseYLccQCy9nkf` 与词库 base 的协作者（跨租户共享），
-   这两处是否保留需要用户确认。
+   注意：应用同时还是**旧生产 base** `OWebbPUcBa7B8JseYLccQCy9nkf`
+   与**旧租户的词库 base** `N21Abkg…` 的协作者（跨租户共享），
+   这两处是否保留需要用户确认（词库已在新租户有副本，旧的那份可以撤共享）。
 2. **代码侧**：✅ 已完成 —— 见 §3.1 / §3.2。回归：`runtime` 套件 385/385 全绿（59 → 60 文件）。
 3. **只读验证**：✅ 已完成 —— 见 §5.1 / §5.2。
 4. **写验证**：✅ 已完成 —— 见 §5.3。在新 base 建一次性演练表 `_演练_kcne_20260914` 跑
@@ -255,19 +282,31 @@ node runtime/sop-runtime/run-feishu-import-two-stage.mjs \
 实现为 `runtime/verify-feishu-profile.mjs` 的 `danglingTableRefs()`，悬空即计入该 profile 的 errors，
 并在渲染里逐条列出「字段名 → 引用的表 id」。
 
-实测结果：
+同日扩展（关键词库 base 也纳入只读核查）：`inspectProfile` 之外新增 `inspectKeywordBase()`，
+按 `profile.keywordBase` 独立读一张 base 的名称与表清单、逐表做同一套字段检查（含悬空引用），
+错误前缀 `keyword …` 以便与竞品侧区分；并新增导出 `compareKeywordBases()`，按**表名**配对比字段签名
+（刻意不比行数——行数随时间增长，不是结构不变量），一侧缺表则报 `ONLY_ONE_SIDE`。
+
+实测结果（2026-09-14 晚，两个 profile 各查两张 base）：
 
 ```
-── legacy：悬空表引用 0
-── kcne  ：悬空表引用 0
+── legacy：悬空表引用 0（竞品 base）+ 0（关键词库 base）
+── kcne  ：悬空表引用 0（竞品 base）+ 0（关键词库 base）
+结论 OK / 结论 OK
+结构对比：4 张稳定表的字段签名逐一相同。
+词库对比：两侧副本逐表字段签名相同（各 8 张表）。
 ```
 
-即副本的公式/lookup 表达式**只引用本 base 内的表**，复制时引用被一起改写了。这条风险关闭。
+即副本的公式/lookup 表达式**只引用本 base 内的表**，复制时引用被一起改写了；
+关键词库副本 `HdBhbttB5aScbasWJAMc0gGXnpe`（名「词库 最新 副本 副本」）8 张表逐表签名与旧侧完全一致。
+这两条风险关闭。
 
 （该检查同时解释了「协作者接口」那一行为什么是参考信息：列成员需要更宽的 drive 权限，
 新应用在被共享的 base 上会被拒 `1063004`，但这不影响读写——所以它不计入 errors。）
 
-## 6. 缺陷记录：fail-closed 闸门的失败分类被归成 BUG
+## 6. 缺陷记录与修复：fail-closed 闸门的失败分类被归成 BUG（2026-09-14 已修，方案 A）
+
+### 6.1 现象
 
 第一次尝试的收据里：
 
@@ -278,14 +317,14 @@ node runtime/sop-runtime/run-feishu-import-two-stage.mjs \
 
 判定为**分类不准**，而不是闸门本身有问题：写入被正确拒绝，但原因被说成「疑似代码 bug，停止自动化」。
 
-根因链（已定位到行）：
+### 6.2 根因链（已定位到行）
 
-1. 守卫在 `skills/xws-to-feishu-base/scripts/import-runner.mjs:81` 抛的是**裸 `Error`**，
+1. 守卫在 `skills/xws-to-feishu-base/scripts/import-runner.mjs` 抛的是**裸 `Error`**，
    不带 `code` / `failureClass`；
 2. `runtime/sop-runtime/side-effect-ledger.mjs:53` 走
    `error?.failureClass ?? classifyExternalFailure(error)`；
-3. `runtime/sop-runtime/policy.mjs:159` 的 `classifyExternalFailure` 没有状态码、
-   消息也不含 `forbidden|permission|invalid|…` 任一关键词 → 落到 `return 'BUG'`；
+3. `runtime/sop-runtime/policy.mjs:159` 的 `classifyExternalFailure` 只认 HTTP 状态码与
+   英文关键词，本能力的守卫消息两样都没有 → 落到 `return 'BUG'`；
 4. `actionForFailure('BUG')` → `STOP_AND_ALERT`「bug suspected, stop automation」。
 
 这与 `policy.mjs:156-158` 自己写的意图相反（"不能一律归 BUG——BUG 会触发 STOP_AND_ALERT，
@@ -297,28 +336,113 @@ node runtime/sop-runtime/run-feishu-import-two-stage.mjs \
 区别只在**给运维的结论**——一个说「策略拒绝/配置不对」，另一个说「代码有 bug，停线」。
 后者会把人引向排查代码而不是补参数。
 
-修复方案（二选一，需用户拍板，本轮未擅自改动）：
+### 6.3 为什么不是一个「就地补关键词」的小补丁
 
-- 方案 A（跟随既有约定）：让守卫抛带稳定 `code`（如 `PERIOD_REQUIRED`）的错误，
-  在 `adapter.feishu-import.mjs` 里加 `FAILURE_CLASS_BY_CODE`，映射到 `POLICY_DENIED`。
-- 方案 B：更保守，把「调用方参数缺失」一类归 `HUMAN_REQUIRED`（`WAIT_HUMAN`）——
-  但 CLI 是一次性进程，`WAIT_HUMAN` 对 CLI 语义不太贴。
+朴素修法（在 `classifyExternalFailure` 里加一条 `period|date field` 关键词）被否掉，因为它把
+**能力的业务词汇塞进框架的策略模块**：框架从此要知道「周期表」「16 字段合同」这些概念，
+下一个能力加一条，框架就成了一张关键词拼盘。正确的方向是反过来的——
+**由能力自己给出确定性 code 与分类，框架只负责按分类决定下一步**。这也正是另外三个适配器
+已经在走的路（`adapter.huitun-keyword-heat` 明确写着「默认的 failureClassOf 只按英文关键词猜，
+而这条链的原因文案大多是中文，必须逐条显式映射」）。
 
-推荐 A。
+原始记录里给过的两个方案：
+
+- 方案 A（推荐，已采纳）：守卫抛带稳定 `code`（如 `PERIOD_REQUIRED`）的错误，
+  能力侧维护 `FAILURE_CLASS_BY_CODE`，把它映射到 `POLICY_DENIED`。
+- 方案 B（不采纳）：把「调用方参数缺失」一类归 `HUMAN_REQUIRED`（`WAIT_HUMAN`）。
+  否决理由：CLI 是一次性进程，`WAIT_HUMAN` 对一个已经退出的进程没有语义；
+  而且「等人工」会让人以为配置改好自动就会继续，实际不会。
+
+### 6.4 已实施的修复
+
+**唯一事实来源**：`skills/xws-to-feishu-base/scripts/import-core.mjs`
+（`FAILURE_CLASS_BY_CODE` 在 :17，唯一构造入口 `fatalError()` 在 :46）。
+
+选择 `import-core` 而不是适配器，是因为**同一族拒绝会在采集段与发布段分别抛出**：
+`validateTarget` 的「目标表非空」在 `import-core` 里，同一个检查在 `import-runner` 里也有一份
+（`prepareTarget` 的前置）；两个模块抛的必须是同一个 code 与同一个分类，否则分类就取决于
+「这次是哪个模块先抛的」。这个模块本来就是该能力的共享叶子（`import-runner` / 适配器 /
+CLI / 两个 runtime 脚本都 import 它），没有新增模块、没有新增依赖边。
+
+机制：
+
+1. 每个确定性拒绝都换成 `throw fatalError(code, message, details)`；`fatalError` 同时挂上
+   `code` 与 `failureClass`，并且**code 漏登记时立刻抛**（开发期错误），
+   不允许它悄悄退回默认分类器把原因说错。
+2. 覆盖面是「运行时路径上的全部三个模块」：`import-core.mjs`（7 处）、
+   `import-runner.mjs`（8 处）、`adapter.feishu-import.mjs`（8 处）。
+   其余未改的 `throw new Error(...)` 都只存在于 CLI 与独立迁移脚本里，不经过运行时分类。
+3. 适配器 `export { FAILURE_CLASS_BY_CODE, XWS_HEADERS }`（:175）——只做 re-export，
+   不复制词表。另三个适配器都把这个词表挂在适配器模块上，运维排查时先看适配器，
+   位置保持一致。
+
+词表（17 个 code，三组）：
+
+| 组 | code | 分类 | 理由 |
+| --- | --- | --- | --- |
+| 源/证据不合合同 | `SOURCE_HEADERS` `SOURCE_EMPTY` `SOURCE_IMAGE_AMBIGUOUS` `SOURCE_VALUE_INVALID` | `EVIDENCE_INVALID` | 重跑同一份输入没有意义，要换输入 |
+| 采集能力跑不动 | `EXTRACTION_FAILED` | `CAPABILITY_DEGRADED` | 抽取器起不来，是本版本能力的问题 |
+| 调用方/目标没准备好 | `BASE_URL_INVALID` `INPUT_REQUIRED` `INPUT_NOT_FOUND` `CLIENT_REQUIRED` `TARGET_NOT_EMPTY` `TARGET_IMAGE_FIELD` `TARGET_FIELDS_MISSING` `PERIOD_REQUIRED` `PERIOD_INVALID` | `POLICY_DENIED` | 修正参数后本可以重跑，**不是**代码缺陷 |
+| 写后外部行为不符（刻意保留 BUG） | `POST_WRITE_COUNT_MISMATCH` `POST_WRITE_VERIFY_MISMATCH` | `BUG` | 见下 |
+| 进程内调用顺序被破坏 | `STAGE_ORDER` | `BUG` | 真 bug（例如没跑 `start()` 就取工件） |
+
+顺带修掉的两条同类问题（同一个根因，不是顺手改别的）：
+
+- `parseBaseUrl('')` 原来抛的是 `new URL('')` 的 **`TypeError: Invalid URL`**，
+  同样会被归成 BUG。现在包成 `BASE_URL_INVALID`。
+- 适配器 `prepare()` 原来对缺 `baseUrl` 的输入也会走到同一个 `TypeError`，现在显式报
+  `INPUT_REQUIRED: baseUrl is required to bind the artifact to its target`
+  （`baseUrl` 本来就是 manifest 声明必填的 `target_table`）。
+
+### 6.5 刻意**没有**改的两条，与范围边界
+
+- `POST_WRITE_COUNT_MISMATCH` / `POST_WRITE_VERIFY_MISMATCH`（`import-runner.mjs:119/:132`）
+  **仍然归 BUG（停线交人工）**。语义上最贴的其实是 `COMMIT_UNKNOWN`（→ `RECONCILE_COMMIT`：
+  先对账再谈重试），但那会把「写后数量不符」从「停线」改成「回对账」，
+  属于**写路径语义变更**，不在本次授权范围内。这里的取舍是：宁可停线交人工，
+  也不冒充「确定未发生」去重试。要不要改判 `COMMIT_UNKNOWN` 是另一个决策。
+- `feishu-client.mjs` 不在范围内：它的失败消息带 HTTP 状态码
+  （`Feishu API failed: 4xx/5xx …`），默认分类器本来就能归对——这正是 `classifyExternalFailure`
+  存在的原因。缺陷恰恰出在**不带状态码的自有守卫**上。
+- CLI（`import-xws-to-feishu.mjs`）与独立迁移脚本的参数校验也不改：它们不经过
+  Side Effect Ledger / Worker，错了只是打印一行退出，没有「分类」这个观测面。
+
+### 6.6 验证证据
+
+| 层次 | 证据 | 结果 |
+| --- | --- | --- |
+| 缺陷与修复同框（单元） | 「同一条消息，裸 `Error` 归 `BUG`/`STOP_AND_ALERT`；挂上 code 归 `POLICY_DENIED`/`FAIL`」 | 通过 |
+| 词表自洽 | 每个分类都 ∈ `FAILURE_CLASS`，且都能映射出下一步动作 | 通过 |
+| 真入口 + 真账本 | `runImport` 抛出的守卫错误经真 `createSideEffectLedger().commit()` | `status=FAILED`、`failureClass=POLICY_DENIED`、持久化记录同值 |
+| 生产路径上的 handler | `createFeishuImportPublisher().handler()`（`run-feishu-import-two-stage.mjs:199` 交给发布段的就是它） | 原样交出 `code`/`failureClass` |
+| **收据级**（真 registry + 真 Controller + 真账本 + 真发布段） | 断言那次演练写错的那个字段 | `verdict=REJECTED`、`publicationStatus=READY`、`blocker.class=POLICY_DENIED`、`detail` 含 `policy denied`、**不含** `bug suspected`、`nextAction=TERMINAL` |
+| 回归守卫（源码级） | 三个运行时模块里「非注释行出现 `throw` 就必须走 `fatalError`」 | 通过（唯一例外是 `fatalError` 自己那条漏登记喊停） |
+| 套件 | `skills --skill=xws-to-feishu-base` / `runtime` | **95/95**、**390/390** |
+| 真实入口 | CLI `--xlsx … --base-url …`（dry-run）、两段式 runner（默认只采集段） | 两者都正常：3 行 / 3 图；采集段四个验证器 `structure,row_count,digest,adapter` 全 ok，`sideEffectRefCount=0` |
+
+**未做的一项验证**（需要用户另外授权）：拿一个**真**表跑一次 commit 模式，看真实收据里的
+`blocker.class`。要这么做就得先在新 base 建一张一次性演练表（真外部写），
+所以没有自作主张——上一节 §5.3 的那次演练已经留下了「修之前」的现场。
+
+新增测试文件：`skills/xws-to-feishu-base/tests/import-failures.test.mjs`（11 个用例，
+含上面「缺陷与修复同框」「收据级」「源码守卫」三条）。
 
 ## 7. 待验证 / 待确认
 
 - ~~公式字段的表达式是否已指向新表~~：✅ 已关闭，见 §5.4（两侧悬空引用均为 0）。
 - ~~仪表盘 / 视图是否随副本复制~~：用户已确认仪表盘随副本复制过来了。
   仍需在浏览器里确认它指向的是新表（应用侧看不到仪表盘对象）。
-- **关键词库 base 是否单独再搬一次**（**唯一剩下的实质风险**）：它仍在旧租户（见 §0 第 2 条）。
-  新应用靠跨租户共享能读，所以**只要旧租户还存在就不阻塞**；
-  但旧租户既然是「废弃」，必须确认它不会被解散/回收，否则要单独再搬一次。
-  若用户已在新租户复制过一份，需要提供链接以便核对（应用侧枚举不出来）。
-- **`数据表` `tblg6lkg6431QulJ` 的 5 行**是否保留（导入需要空表）。
-- **协作者归属**：新应用目前同时是旧生产 base、副本 base、词库 base 的协作者；
-  建议旧生产 base 上只留可阅读（旧租户已废弃，可编辑权限没必要留）。
-- **§6 的失败分类缺陷**修不修、按 A（推荐）还是 B。
+- ~~关键词库 base 是否单独再搬一次~~：✅ **已关闭**。用户在新租户复制了一份
+  `HdBhbttB5aScbasWJAMc0gGXnpe`，逐表比对 8 张表的字段签名与行数全部一致，
+  代码已改指（见 §0 第 2 条 / §3.1）。旧租户那份现在只是回滚路径（`legacy` profile）。
+  连带可做但未做：撤销新应用对旧词库 base 的跨租户共享。
+- **`数据表` `tblg6lkg6431QulJ` 的 5 行**：✅ 已按用户要求清空（回读 `total=0`，base 仍 11 表）。
+- **协作者归属**：新应用目前是 4 处 base 的协作者——旧生产 base、副本 base、
+  旧租户词库 base、新租户词库副本。
+  建议旧生产 base 上只留可阅读（旧租户已废弃，可编辑权限没必要留），
+  旧词库 base 可以整个撤掉共享。
+- ~~§6 的失败分类缺陷修不修、按 A 还是 B~~：✅ 已按方案 A 修完，见 §6.4。
+  剩余待决：§6.5 那两条写后异常要不要改判 `COMMIT_UNKNOWN`（对账）。
 - **两个应用都缺 `tenant:tenant:readonly`**，所以 API 拿不到租户真名，
   只能用域名前缀（`kcne618basvj` / `rcndesfqro3x`）作标识。想拿到租户名需补该 scope。
 
@@ -329,5 +453,8 @@ node runtime/sop-runtime/run-feishu-import-two-stage.mjs \
 - 单点目标配置模块：`runtime/feishu-targets.mjs`（+ `runtime/feishu-targets.test.mjs`）
 - 只读验证工具：`runtime/verify-feishu-profile.mjs`（+ `runtime/verify-feishu-profile.test.mjs`）
 - 周表按名字解析：`runtime/weekly-table-target.mjs`
+- §6 修复的测试：`skills/xws-to-feishu-base/tests/import-failures.test.mjs`
+  （词表 / 缺陷复现 / 真账本 / 收据级 / 源码守卫）；失败码词表与 `fatalError` 在
+  `skills/xws-to-feishu-base/scripts/import-core.mjs`
 - 本次写验证的运行收据：`runtime/sop-runtime/two-stage-mu110brg/receipt.json`（成功）
   与 `runtime/sop-runtime/two-stage-mu10zyr2/receipt.json`（被 fail-closed 拦下）

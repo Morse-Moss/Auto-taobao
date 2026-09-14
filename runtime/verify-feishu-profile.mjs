@@ -122,6 +122,7 @@ async function inspectProfile(profileName) {
     host: profile.host,
     envFile: profile.envFile,
     baseToken: profile.competitorBase,
+    keywordBaseToken: profile.keywordBase,
     writeVerified: profile.writeVerified,
     ok: false,
     errors: [],
@@ -180,6 +181,11 @@ async function inspectProfile(profileName) {
   result.weeklyTableCount = tables.map(parseWeeklyTable).filter(Boolean).length;
   result.faqMasterTable = tables.find((table) => table.name === FAQ_MASTER_TABLE_NAME)?.tableId ?? null;
 
+  result.keywordTables = await inspectKeywordBase(profile, headers);
+  if (result.keywordTables.errors.length) {
+    result.errors.push(`keyword base: ${result.keywordTables.errors.join('; ')}`);
+  }
+
   // 应用对 base 的协作者身份：决定它能不能写（91403 的根因通常落在这里）。
   const members = await getJson(headers, `/drive/v1/permissions/${profile.competitorBase}/members?type=bitable`);
   result.shareMembers = members.body?.code === 0
@@ -188,6 +194,69 @@ async function inspectProfile(profileName) {
 
   result.ok = result.errors.length === 0;
   return result;
+}
+
+// 关键词库是**另一张独立的 base**（复制竞品 base 不会带上它），所以它有独立的 token，
+// 也必须独立查：竞品 base 全绿完全不能证明词库那一串 token 指的是对的那张表。
+// 判据与竞品 base 同一套：能读到名字、表数量、每张表的字段签名、行数，以及
+// 公式/lookup 的跨表引用是否悬空（词库的分析表大量用公式引用同 base 内的表）。
+async function inspectKeywordBase(profile, headers) {
+  const baseToken = profile.keywordBase;
+  const info = { baseToken, baseName: null, tableCount: 0, tables: [], danglingRefCount: 0, errors: [] };
+  if (!baseToken) {
+    info.errors.push('no keywordBase configured for this profile');
+    return info;
+  }
+
+  const app = await getJson(headers, `/bitable/v1/apps/${baseToken}`);
+  if (app.body?.code !== 0) info.errors.push(`keyword base ${app.body?.code} ${app.body?.msg}`);
+  info.baseName = app.body?.data?.app?.name ?? null;
+
+  let tables = [];
+  try {
+    tables = await listTables(headers, baseToken);
+  } catch (error) {
+    info.errors.push(`keyword tables: ${error.message}`);
+  }
+  info.tableCount = tables.length;
+  const knownTableIds = tables.map((table) => table.tableId);
+  for (const table of tables) {
+    const tableInfo = await inspectTable(headers, baseToken, table.tableId, knownTableIds);
+    info.tables.push({ tableId: table.tableId, name: table.name, ...tableInfo });
+    info.danglingRefCount += tableInfo.danglingRefs?.length ?? 0;
+    if (!tableInfo.ok) info.errors.push(`keyword ${table.name}(${table.tableId}): ${tableInfo.errors.join('; ')}`);
+  }
+  return info;
+}
+
+// 两个租户的词库副本逐表比字段签名（按表名配对，不比行数——行数随时间增长，
+// 不是结构不变量；结构才是「副本有没有缩水」的判据）。
+export function compareKeywordBases(profiles) {
+  const names = Object.keys(profiles ?? {});
+  if (names.length < 2) return [];
+  const [leftName, rightName] = names;
+  const byName = (side) => new Map((profiles?.[side]?.keywordTables?.tables ?? []).map((table) => [table.name, table]));
+  const left = byName(leftName);
+  const right = byName(rightName);
+  const diffs = [];
+  for (const name of [...new Set([...left.keys(), ...right.keys()])].sort()) {
+    const leftTable = left.get(name);
+    const rightTable = right.get(name);
+    if (!leftTable || !rightTable) {
+      diffs.push({ name, verdict: 'ONLY_ONE_SIDE', [leftTable ? rightName : leftName]: 'missing' });
+      continue;
+    }
+    if (leftTable.signature === rightTable.signature) continue;
+    diffs.push({
+      name,
+      verdict: 'DIFFERENT',
+      [leftName]: leftTable.signature,
+      [rightName]: rightTable.signature,
+      onlyLeft: leftTable.fieldNames.filter((field) => !rightTable.fieldNames.includes(field)),
+      onlyRight: rightTable.fieldNames.filter((field) => !leftTable.fieldNames.includes(field)),
+    });
+  }
+  return diffs;
 }
 
 export function compareStructures(profiles) {
@@ -235,6 +304,20 @@ export function render(report) {
       }
     }
     lines.push(`   悬空表引用     ${info.danglingRefCount ?? 0}`);
+    const keyword = info.keywordTables;
+    if (keyword) {
+      lines.push(`   keyword base   ${keyword.baseToken ?? '-'}   ${keyword.baseName ?? '(读不到名称)'}   ${keyword.tableCount ?? '-'} 张表`);
+      for (const table of keyword.tables ?? []) {
+        lines.push(
+          `   · 词库 ${String(table.name ?? '-').padEnd(22)} ${table.tableId ?? '-'}`
+          + `  字段 ${table.fieldCount ?? '-'}  记录 ${table.recordCount ?? '-'}  sig ${table.signature ?? '-'}`,
+        );
+        for (const dangling of table.danglingRefs ?? []) {
+          lines.push(`       悬空引用: 字段「${dangling.field}」(type=${dangling.type}) → ${dangling.ref}（不属于本 base）`);
+        }
+      }
+      lines.push(`   词库悬空引用   ${keyword.danglingRefCount ?? 0}`);
+    }
     lines.push(`   最新周表       竞品 ${info.weeklyTables?.竞品 ?? '-'} | SKU ${info.weeklyTables?.SKU ?? '-'} | 问题库 ${info.weeklyTables?.问题库 ?? '-'}`);
     lines.push(`   周表数量       ${info.weeklyTableCount ?? '-'}`);
     lines.push(`   问题主库       ${info.faqMasterTable ?? '-'}`);
@@ -258,6 +341,20 @@ export function render(report) {
         lines.push(`结构对比：${diff.key} ${diff.verdict} ${JSON.stringify(diff)}`);
       }
     }
+    // 词库是另一张 base，单独给一行结论：竞品侧一致不代表词库侧一致。
+    // 「没查到表」与「查到了且一致」必须分开说——空结果不等于相同结论。
+    const keywordDiffs = report.keywordDiffs ?? [];
+    const withKeyword = Object.values(report.profiles).filter((info) => info.keywordTables);
+    const tableCounts = withKeyword.map((info) => (info.keywordTables.tables ?? []).length);
+    if (withKeyword.length < Object.keys(report.profiles).length || tableCounts.some((count) => count === 0)) {
+      lines.push('词库对比：跳过（至少一侧没查到词库的表）。');
+    } else if (keywordDiffs.length === 0) {
+      lines.push(`词库对比：两侧副本逐表字段签名相同（各 ${tableCounts[0]} 张表）。`);
+    } else {
+      for (const diff of keywordDiffs) {
+        lines.push(`词库对比：${diff.name} ${diff.verdict} ${JSON.stringify(diff)}`);
+      }
+    }
   } else {
     lines.push('结构对比：跳过（只查了一个 profile）。');
   }
@@ -279,6 +376,7 @@ export async function verifyFeishuProfiles({ profiles = null, env = process.env 
     defaultProfile: DEFAULT_PROFILE,
     profiles: inspected,
     structuralDiffs: compareStructures(inspected),
+    keywordDiffs: compareKeywordBases(inspected),
   };
 }
 
