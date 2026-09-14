@@ -1061,6 +1061,10 @@ node --test runtime/sop-runtime/run-liveness.test.mjs runtime/sop-runtime/recove
 # 故障注入（本轮改了它加载的 pg-store.mjs，故复跑；隔离临时库，业务库零写入）
 node runtime/sop-runtime/recovery-fault-injection.mjs
 # === 结果：17/17 通过 ===
+
+# 隔离迁移验证（迁移侧本轮未改，为保基线完整一并复跑）
+node runtime/verify-migrations-isolated.mjs
+# === 结果：26/26 通过 ===
 ```
 
 `sop-runtime` 全量是**显式 24 文件列表**跑的（`scripts/run-test-suite.mjs` 的发现器只扫
