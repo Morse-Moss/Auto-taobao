@@ -10,9 +10,11 @@ import { FAQ_ANALYSIS_VERSION, FAQ_LABEL_CATALOG } from './faq-text-analysis.mjs
 import { FAQ_DEDUP_VERSION, FAQ_OPERATOR_CONTENT_VERSION, FAQ_PAIN_DESCRIPTION_VERSION, FAQ_REPRESENTATIVE_SELECTION_VERSION, FAQ_SUMMARY_VERSION } from './faq-local-summary.mjs';
 import { FAQ_DETAIL_ENRICHMENT_VERSION } from './faq-detail-enrichment.mjs';
 import { determineFaqOperatorState } from './faq-operator-core.mjs';
+import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
 
-const DEFAULT_BASE_URL = 'https://rcndesfqro3x.feishu.cn/base/OWebbPUcBa7B8JseYLccQCy9nkf';
-const DEFAULT_ENV_FILE = 'E:/小红书/.env.local';
+const PROFILE = activeProfileName();
+const DEFAULT_BASE_URL = baseUrl(PROFILE);
+const DEFAULT_ENV_FILE = envFilePath(PROFILE);
 
 async function readJson(path) {
   if (!existsSync(path)) return null;

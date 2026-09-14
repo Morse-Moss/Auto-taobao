@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 
 import { CompetitorV2FeishuClient } from '../skills/xws-to-feishu-base/scripts/import-competitor-v2.mjs';
 import { readOperatorContent } from './faq-operator-content.mjs';
+import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
 import { FAQ_ANALYSIS_VERSION, assertAnalysisRecord, sourceTopicIdentity } from './faq-text-analysis.mjs';
 import {
   FAQ_DETAIL_FIELDS,
@@ -17,8 +18,9 @@ import {
   sourceTopicSetHash,
 } from './faq-detail-enrichment.mjs';
 
-const DEFAULT_ENV_FILE = 'E:/小红书/.env.local';
-const DEFAULT_BASE_URL = 'https://rcndesfqro3x.feishu.cn/base/OWebbPUcBa7B8JseYLccQCy9nkf';
+const PROFILE = activeProfileName();
+const DEFAULT_ENV_FILE = envFilePath(PROFILE);
+const DEFAULT_BASE_URL = baseUrl(PROFILE);
 const BASE_URL_PATTERN = /\/base\/([^?/#]+)/u;
 const MASTER_NAME = '问题主库';
 const MASTER_TABLE_ID = 'tblRS5lo0nNN3DOJ';

@@ -5,6 +5,8 @@
 //   node runtime/backfill-weekly-date-fields.mjs --commit   # 写入
 import fs from 'node:fs';
 
+import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
+
 function loadEnv(file) {
   const out = {};
   for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
@@ -16,15 +18,16 @@ function loadEnv(file) {
   }
   return out;
 }
-const env = { ...loadEnv(process.env.FEISHU_ENV_FILE || 'E:/小红书/.env.local'), ...process.env };
+const PROFILE = activeProfileName();
+const env = { ...loadEnv(process.env.FEISHU_ENV_FILE || envFilePath(PROFILE)), ...process.env };
 const COMMIT = process.argv.includes('--commit');
-const APP = process.env.FEISHU_APP_TOKEN || 'OWebbPUcBa7B8JseYLccQCy9nkf';
+const APP = process.env.FEISHU_APP_TOKEN || competitorBaseToken(PROFILE);
 const ROOT = 'https://open.feishu.cn/open-apis';
 
 // 每期回填值（时间戳 = 当日 00:00 +08:00），采集时间取实际采集日（有产物 mtime 佐证）
 const PLANS = [
   {
-    tableId: process.env.WEEKLY_TABLE_ID || 'tblOIPXlFVk91laj',
+    tableId: process.env.WEEKLY_TABLE_ID || null,
     name: '竞品周_2026-08-30_2026-09-05',
     values: {
       数据开始日期: Date.parse('2026-08-30T00:00:00+08:00'),
@@ -33,7 +36,7 @@ const PLANS = [
     },
   },
   {
-    tableId: 'tbld2LVUhXBuIEwD',
+    tableId: null,
     name: '竞品周_2026-09-06_2026-09-12',
     values: {
       数据开始日期: Date.parse('2026-09-06T00:00:00+08:00'),
@@ -73,6 +76,15 @@ async function allRecords(tableId) {
     pt = d.has_more ? d.page_token : undefined;
   } while (pt);
   return out;
+}
+
+// 表 id 不硬编码：按 PLANS 里已有的表名在目标 base 内解析（跨租户后旧 id 必然失效）
+const tableList = await req('GET', `/bitable/v1/apps/${APP}/tables?page_size=100`);
+const idByName = new Map((tableList.items || []).map((t) => [t.name, t.table_id]));
+for (const plan of PLANS) {
+  if (!plan.tableId) plan.tableId = idByName.get(plan.name) ?? null;
+  if (!plan.tableId) throw new Error(`table not found in base: ${plan.name}`);
+  console.log(`resolved ${plan.name} -> ${plan.tableId}`);
 }
 
 const summary = [];

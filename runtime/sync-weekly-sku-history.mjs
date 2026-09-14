@@ -5,10 +5,12 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CompetitorV2FeishuClient } from '../skills/xws-to-feishu-base/scripts/import-competitor-v2.mjs';
 import { latestWeeklyTable, weeklyTableName } from './weekly-table-target.mjs';
+import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
 
+const PROFILE = activeProfileName();
 const TARGET = {
-  appToken: 'OWebbPUcBa7B8JseYLccQCy9nkf',
-  skuTableId: 'tblddWTrPeB4TKmR',
+  appToken: competitorBaseToken(PROFILE),
+  skuTableId: tableId('skuDetail', PROFILE),
 };
 
 const HISTORY_FIELDS = [
@@ -147,7 +149,7 @@ function arg(argv, name, required = true) {
   return value;
 }
 
-export async function syncWeeklySkuHistory({ envFile = 'E:/小红书/.env.local', startDate, endDate, collectedAt, evidenceHash = '', targetTableId, apply = false } = {}) {
+export async function syncWeeklySkuHistory({ envFile = envFilePath(PROFILE), startDate, endDate, collectedAt, evidenceHash = '', targetTableId, apply = false } = {}) {
   if (!startDate || !endDate) throw new Error('startDate and endDate are required');
   const envPath = resolve(envFile);
   if (!existsSync(envPath)) throw new Error('Feishu environment file is unavailable');
@@ -177,7 +179,7 @@ export async function syncWeeklySkuHistory({ envFile = 'E:/小红书/.env.local'
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   const argv = process.argv.slice(2);
   syncWeeklySkuHistory({
-    envFile: arg(argv, '--env-file', false) ?? 'E:/小红书/.env.local',
+    envFile: arg(argv, '--env-file', false) ?? envFilePath(PROFILE),
     startDate: arg(argv, '--start-date'), endDate: arg(argv, '--end-date'),
     collectedAt: arg(argv, '--collected-at', false), evidenceHash: arg(argv, '--evidence-hash', false) ?? '', targetTableId: arg(argv, '--target-table-id', false), apply: argv.includes('--apply'),
   }).then((result) => console.log(JSON.stringify(result, null, 2))).catch((error) => { console.error(error.message); process.exitCode = 1; });

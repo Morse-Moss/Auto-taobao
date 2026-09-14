@@ -7,6 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { CompetitorV2FeishuClient } from '../skills/xws-to-feishu-base/scripts/import-competitor-v2.mjs';
+import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
 
 import {
   assertFreshPlanMatchesManifest,
@@ -18,11 +19,12 @@ import { updateSkuBatchIndex } from './xws-sku-batch-index.mjs';
 const RUNTIME_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const COLLECTION_DIRECTORY = resolve(RUNTIME_DIRECTORY, 'competitor-v2-sku-collection');
 const DRY_RUN_SCRIPT = resolve(RUNTIME_DIRECTORY, 'run-xws-sku-dry-run.mjs');
+const PROFILE = activeProfileName();
 const TARGET = {
-  appToken: 'OWebbPUcBa7B8JseYLccQCy9nkf',
-  mainTableId: 'tblJ9LHFN6pMVjPv',
+  appToken: competitorBaseToken(PROFILE),
+  mainTableId: tableId('competitorMain', PROFILE),
   mainTableName: '竞品主表',
-  skuTableId: 'tblddWTrPeB4TKmR',
+  skuTableId: tableId('skuDetail', PROFILE),
   skuTableName: 'SKU明细',
 };
 

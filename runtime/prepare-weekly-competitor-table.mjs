@@ -4,13 +4,17 @@
 // cloned from last week's field schema.
 import { readFileSync } from 'node:fs';
 
+import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
+
 const API_ROOT = 'https://open.feishu.cn/open-apis';
-const APP_TOKEN = 'OWebbPUcBa7B8JseYLccQCy9nkf';
+// 租户目标集中来自 feishu-targets.mjs（SYCM_FEISHU_PROFILE 可切换）
+const PROFILE = activeProfileName();
+const APP_TOKEN = competitorBaseToken(PROFILE);
 const LAST_WEEK = process.env.COMPETITOR_LAST_WEEK ?? '竞品周_2026-08-30_2026-09-05';
 const NEW_WEEK = process.env.COMPETITOR_NEW_WEEK ?? '竞品周_2026-09-06_2026-09-12';
 
 function loadEnv() {
-  const text = readFileSync('E:/小红书/.env.local', 'utf8');
+  const text = readFileSync(envFilePath(PROFILE), 'utf8');
   const env = {};
   for (const line of text.split(/\r?\n/)) {
     const match = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.+?)\s*$/u);

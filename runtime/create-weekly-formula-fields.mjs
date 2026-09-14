@@ -7,13 +7,16 @@
 // competitor-v2 enrichment) are deferred — rerun this script after enrichment.
 import { readFileSync } from 'node:fs';
 
+import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
+
 const API_ROOT = 'https://open.feishu.cn/open-apis';
-const APP_TOKEN = 'OWebbPUcBa7B8JseYLccQCy9nkf';
-const OLD_TABLE = process.env.COMPETITOR_OLD_TABLE_ID ?? 'tblOIPXlFVk91laj'; // 竞品周_2026-08-30_2026-09-05
+const PROFILE = activeProfileName();
+const APP_TOKEN = competitorBaseToken(PROFILE);
+const OLD_TABLE = process.env.COMPETITOR_OLD_TABLE_ID ?? ''; // 表达式来源表；不得再留历史 id 默认值（跨租户后必然失效）
 const NEW_TABLE = process.env.COMPETITOR_NEW_TABLE_ID ?? ''; // required when the new table differs from OLD_TABLE
 
 function loadEnv() {
-  const text = readFileSync('E:/小红书/.env.local', 'utf8');
+  const text = readFileSync(envFilePath(PROFILE), 'utf8');
   const env = {};
   for (const line of text.split(/\r?\n/)) {
     const match = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.+?)\s*$/u);
@@ -24,6 +27,7 @@ function loadEnv() {
 }
 
 async function main() {
+  if (!OLD_TABLE) throw new Error('COMPETITOR_OLD_TABLE_ID is required (the table whose formula expressions are the source)');
   if (!NEW_TABLE) throw new Error('COMPETITOR_NEW_TABLE_ID is required (the table whose formula fields to rebuild)');
   const env = loadEnv();
   const auth = await fetch(`${API_ROOT}/auth/v3/tenant_access_token/internal`, {

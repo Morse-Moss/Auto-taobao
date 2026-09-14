@@ -2,12 +2,17 @@
 // Read-only: tally 竞品分类 distribution in a weekly competitor table.
 import { readFileSync } from 'node:fs';
 
+import { latestWeeklyTable } from './weekly-table-target.mjs';
+import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
+
 const API_ROOT = 'https://open.feishu.cn/open-apis';
-const APP_TOKEN = 'OWebbPUcBa7B8JseYLccQCy9nkf';
-const TABLE_ID = process.env.WEEKLY_TABLE_ID ?? 'tbld2LVUhXBuIEwD';
+const PROFILE = activeProfileName();
+const APP_TOKEN = competitorBaseToken(PROFILE);
+// 周表 id 每周都会变，不做硬编码：未显式给 WEEKLY_TABLE_ID 时按表名取最新一期
+let TABLE_ID = process.env.WEEKLY_TABLE_ID ?? null;
 
 function loadEnv() {
-  const text = readFileSync('E:/小红书/.env.local', 'utf8');
+  const text = readFileSync(envFilePath(PROFILE), 'utf8');
   const env = {};
   for (const line of text.split(/\r?\n/)) {
     const match = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.+?)\s*$/u);
@@ -26,6 +31,15 @@ async function main() {
   }).then((r) => r.json());
   if (auth.code !== 0) throw new Error(`auth failed: ${auth.code} ${auth.msg}`);
   const headers = { Authorization: `Bearer ${auth.tenant_access_token}`, 'Content-Type': 'application/json' };
+
+  if (!TABLE_ID) {
+    const listed = await fetch(`${API_ROOT}/bitable/v1/apps/${APP_TOKEN}/tables?page_size=100`, { headers }).then((r) => r.json());
+    if (listed.code !== 0) throw new Error(`list tables failed: ${listed.code} ${listed.msg}`);
+    const latest = latestWeeklyTable((listed.data?.items ?? []).map((t) => ({ tableId: t.table_id, name: t.name })), '竞品');
+    if (!latest) throw new Error('no weekly competitor table found in this base');
+    TABLE_ID = latest.tableId;
+    console.log(`resolved weekly table: ${latest.name} (${TABLE_ID})`);
+  }
 
   const items = [];
   let pageToken;

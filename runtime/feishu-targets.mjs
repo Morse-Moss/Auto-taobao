@@ -1,0 +1,148 @@
+// 飞书目标单一事实来源：逻辑名 → base / table id / 凭据文件。
+//
+// 背景：搬迁到新租户（kcne618basvj）后，竞品 base 与四张稳定表的 id 全变了。
+// 活跃脚本不应各自硬编码 id，也不应各自硬编码 env 文件路径——两边漂移会让
+// 「跑的是哪个租户」变成需要靠记忆判断的事（迁移 8 的 D8.10 已经把同类问题
+// 在运行器装配上收过一次，这里是同一原则在飞书目标上的应用）。
+//
+// 选择租户：环境变量 SYCM_FEISHU_PROFILE，接受 profile 名或别名；
+// 不设时用 DEFAULT_PROFILE。
+//
+// 注意：`weekly` 表（竞品周 / SKU周 / 问题库）**不在本文件里**——它们每周新建，
+// id 天然会过期。按名字在运行时解析（见 weekly-table-target.mjs）。
+import { readFileSync } from 'node:fs';
+
+const STABLE_TABLE_KEYS = ['competitorMain', 'skuDetail', 'history', 'questionMaster'];
+
+export const PROFILES = Object.freeze({
+  legacy: Object.freeze({
+    label: '旧租户 rcndesfqro3x',
+    host: 'rcndesfqro3x.feishu.cn',
+    envFile: 'E:/小红书/.env.local',
+    competitorBase: 'OWebbPUcBa7B8JseYLccQCy9nkf',
+    keywordBase: 'N21Abkg0HakO6AsbCaDckvcwnVd',
+    // 2026-09-14 实测：新应用在旧 base 上可建表（写权限已验证）
+    writeVerified: true,
+    tables: Object.freeze({
+      competitorMain: 'tblJ9LHFN6pMVjPv',
+      skuDetail: 'tblddWTrPeB4TKmR',
+      history: 'tblH0bmmOuogxDHi',
+      questionMaster: 'tblCrsUpiVlpWjVw',
+    }),
+  }),
+  kcne: Object.freeze({
+    label: '新租户 kcne618basvj',
+    host: 'kcne618basvj.feishu.cn',
+    envFile: 'E:/小红书/.env.feishu-kcne.local',
+    competitorBase: 'OUMqbkYwVaQxQNsv2EDc1DV7nDf',
+    keywordBase: 'N21Abkg0HakO6AsbCaDckvcwnVd',
+    // 2026-09-14 状态：读通（11 表可见）、写 403 91403（应用尚未被加为该 base 的可编辑协作者）
+    writeVerified: false,
+    tables: Object.freeze({
+      competitorMain: 'tbl94WyAsVNdMkJf',
+      skuDetail: 'tbltI9UufhunLc3u',
+      history: 'tblktwxWKt8sjpXL',
+      questionMaster: 'tbl37PRcIXQCtfYk',
+    }),
+    // 副本自带的一张默认空壳表（导入演练用）
+    scratchTable: 'tblg6lkg6431QulJ',
+  }),
+});
+
+export const PROFILE_ALIASES = Object.freeze({
+  legacy: 'legacy',
+  old: 'legacy',
+  rcndesfqro3x: 'legacy',
+  kcne: 'kcne',
+  new: 'kcne',
+  kcne618basvj: 'kcne',
+});
+
+// 切换租户时改这一行（同时 .workbuddy/memory/MEMORY.md 与 docs/ops/TENANT-MIGRATION-MAP.md 一起改）。
+export const DEFAULT_PROFILE = 'legacy';
+
+export const PROFILE_ENV_VAR = 'SYCM_FEISHU_PROFILE';
+
+export { STABLE_TABLE_KEYS };
+
+export function resolveProfileName(name) {
+  // 空值（含空串）不是「一个名字」：shell 里 `SYCM_FEISHU_PROFILE=` 这种写法很常见，
+  // 让它回落默认值，而不是让每个脚本都在启动时炸掉。
+  const raw = name === null || name === undefined || String(name).trim() === '' ? DEFAULT_PROFILE : name;
+  const resolved = PROFILE_ALIASES[String(raw).trim()];
+  if (!resolved) {
+    throw new Error(`Unknown Feishu profile: ${raw} (known: ${Object.keys(PROFILE_ALIASES).join(', ')})`);
+  }
+  return resolved;
+}
+
+export function activeProfileName(env = process.env) {
+  return resolveProfileName(env?.[PROFILE_ENV_VAR] ?? DEFAULT_PROFILE);
+}
+
+export function getProfile(name) {
+  return PROFILES[resolveProfileName(name)];
+}
+
+// 精简视图：脚本多数只关心这几个值，给一个不再需要二次解引用的形状。
+export function profileTargets(name) {
+  const profile = getProfile(name);
+  return Object.freeze({
+    name: resolveProfileName(name),
+    label: profile.label,
+    host: profile.host,
+    envFile: profile.envFile,
+    baseToken: profile.competitorBase,
+    baseUrl: `https://${profile.host}/base/${profile.competitorBase}`,
+    keywordBase: profile.keywordBase,
+    writeVerified: profile.writeVerified,
+    tables: profile.tables,
+  });
+}
+
+export function competitorBaseToken(name) {
+  return getProfile(name).competitorBase;
+}
+
+export function tableId(logicalName, name) {
+  const tables = getProfile(name).tables;
+  if (!Object.hasOwn(tables, logicalName)) {
+    const known = Object.keys(tables).join(', ');
+    throw new Error(`Unknown Feishu table logical name: ${logicalName} (known: ${known})`);
+  }
+  return tables[logicalName];
+}
+
+export function envFilePath(name) {
+  return getProfile(name).envFile;
+}
+
+export function baseUrl(name) {
+  const profile = getProfile(name);
+  return `https://${profile.host}/base/${profile.competitorBase}`;
+}
+
+export function parseEnvFile(text) {
+  const values = {};
+  for (const rawLine of String(text ?? '').split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const separator = line.indexOf('=');
+    if (separator < 1) continue;
+    let value = line.slice(separator + 1).trim();
+    if (/^".*"$/u.test(value) || /^'.*'$/u.test(value)) value = value.slice(1, -1);
+    values[line.slice(0, separator).trim()] = value;
+  }
+  return values;
+}
+
+export function loadFeishuCredentials(name, { read = readFileSync } = {}) {
+  const file = envFilePath(name);
+  const values = parseEnvFile(read(file, 'utf8'));
+  const appId = values.FEISHU_APP_ID;
+  const appSecret = values.FEISHU_APP_SECRET;
+  if (!appId || !appSecret) {
+    throw new Error(`env file ${file} must define FEISHU_APP_ID and FEISHU_APP_SECRET`);
+  }
+  return { appId, appSecret, file, values };
+}

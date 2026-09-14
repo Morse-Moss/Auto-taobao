@@ -8,8 +8,14 @@ import { CompetitorV2FeishuClient } from '../skills/xws-to-feishu-base/scripts/i
 import { buildCompetitorVisualization } from './competitor-visualization-core.mjs';
 import { assessCompetitorWeeklyGate, buildHistoryPlan, buildHistoryRows } from './competitor-history-publish-core.mjs';
 import { requireWeeklyTable } from './weekly-table-target.mjs';
+import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
 
-const DEFAULT_ENV_FILE = 'E:/小红书/.env.local';
+const PROFILE = activeProfileName();
+const DEFAULT_ENV_FILE = envFilePath(PROFILE);
+// base / 历史总表 id 也按 profile 兜底：切换租户后不应还要人肉记住两个新 id 才跑得起来。
+// 调用方仍可用 --base-url / --history-table-id 覆盖（跨租户手动发布时仍需要）。
+const DEFAULT_BASE_URL = baseUrl(PROFILE);
+const DEFAULT_HISTORY_TABLE_ID = tableId('history', PROFILE);
 const HISTORY_TABLE_NAME = '竞品历史总表 V1';
 const PERIOD_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const TEXT = 1;
@@ -47,7 +53,13 @@ function text(value) {
 }
 
 function parseArgs(argv) {
-  const options = { envFile: DEFAULT_ENV_FILE, outputDir: 'runtime/competitor-visualization-runs', apply: false };
+  const options = {
+    envFile: DEFAULT_ENV_FILE,
+    baseUrl: DEFAULT_BASE_URL,
+    historyTableId: DEFAULT_HISTORY_TABLE_ID,
+    outputDir: 'runtime/competitor-visualization-runs',
+    apply: false,
+  };
   const valueOptions = new Map([
     ['--base-url', 'baseUrl'], ['--env-file', 'envFile'], ['--period-start', 'periodStart'],
     ['--period-end', 'periodEnd'], ['--expected-rows', 'expectedRows'], ['--output-dir', 'outputDir'],
@@ -63,8 +75,7 @@ function parseArgs(argv) {
     } else throw new Error(`Unknown argument: ${arg}`);
   }
   for (const name of ['periodStart', 'periodEnd']) if (!PERIOD_PATTERN.test(String(options[name] ?? ''))) throw new Error(`--${name} must be YYYY-MM-DD`);
-  if (!options.baseUrl) throw new Error('--base-url is required');
-  if (!options.historyTableId) throw new Error('--history-table-id is required');
+  // base-url / history-table-id 不再强制：默认取当前 profile，调用方按需覆盖。
   if (!options.expectedRows || !/^\d+$/u.test(String(options.expectedRows))) throw new Error('--expected-rows is required');
   const appToken = new URL(options.baseUrl).pathname.match(/^\/base\/([^/]+)/u)?.[1];
   if (!appToken) throw new Error('--base-url must be a Feishu /base/ URL');

@@ -7,10 +7,12 @@ import { pathToFileURL } from 'node:url';
 import { CompetitorV2FeishuClient } from '../skills/xws-to-feishu-base/scripts/import-competitor-v2.mjs';
 import { buildMainUpsertPlan } from './sync-latest-ab-to-main-core.mjs';
 import { latestWeeklyTable } from './weekly-table-target.mjs';
+import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
 
+const PROFILE = activeProfileName();
 const TARGET = {
-  appToken: 'OWebbPUcBa7B8JseYLccQCy9nkf',
-  mainTableId: 'tblJ9LHFN6pMVjPv',
+  appToken: competitorBaseToken(PROFILE),
+  mainTableId: tableId('competitorMain', PROFILE),
   mainTableName: '竞品主表',
 };
 
@@ -102,7 +104,7 @@ async function verifyWithSettling(client, plan, historyTableId) {
   throw lastError ?? new Error('Latest competitor formula verification did not settle');
 }
 
-export async function syncLatestAbToMain({ envFile = 'E:/小红书/.env.local', historyTableId, apply = false } = {}) {
+export async function syncLatestAbToMain({ envFile = envFilePath(PROFILE), historyTableId, apply = false } = {}) {
   const client = await readClient(envFile);
   const before = await readState(client, historyTableId);
   const plan = buildMainUpsertPlan({ historyRecords: before.historyRecords, mainRecords: before.mainRecords });
@@ -127,7 +129,7 @@ export async function syncLatestAbToMain({ envFile = 'E:/小红书/.env.local', 
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   const argv = process.argv.slice(2);
-  syncLatestAbToMain({ envFile: arg(argv, '--env-file', false) ?? 'E:/小红书/.env.local', historyTableId: arg(argv, '--history-table-id', false), apply: argv.includes('--apply') })
+  syncLatestAbToMain({ envFile: arg(argv, '--env-file', false) ?? envFilePath(PROFILE), historyTableId: arg(argv, '--history-table-id', false), apply: argv.includes('--apply') })
     .then((result) => console.log(JSON.stringify(result, null, 2)))
     .catch((error) => { console.error(error.message); process.exitCode = 1; });
 }

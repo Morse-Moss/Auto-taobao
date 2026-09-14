@@ -3,9 +3,11 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { CompetitorV2FeishuClient } from '../skills/xws-to-feishu-base/scripts/import-competitor-v2.mjs';
+import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
 
-const TARGET={appToken:'OWebbPUcBa7B8JseYLccQCy9nkf',mainTableId:'tblJ9LHFN6pMVjPv',skuTableId:'tblddWTrPeB4TKmR'};
-const ENV='E:/小红书/.env.local';
+const PROFILE = activeProfileName();
+const TARGET={appToken:competitorBaseToken(PROFILE),mainTableId:tableId('competitorMain', PROFILE),skuTableId:tableId('skuDetail', PROFILE)};
+const ENV=envFilePath(PROFILE);
 function env(text){const out={};for(const raw of text.split(/\r?\n/u)){const line=raw.trim();if(!line||line.startsWith('#'))continue;const i=line.indexOf('=');if(i<1)continue;let v=line.slice(i+1).trim();if((v.startsWith('\"')&&v.endsWith('\"'))||(v.startsWith("'")&&v.endsWith("'")))v=v.slice(1,-1);out[line.slice(0,i).trim()]=v;}return out;}
 function text(v){if(v==null)return '';if(Array.isArray(v))return v.map(text).join('').trim();if(typeof v==='object')return String(v.text??v.name??v.value??'').trim();return String(v).trim();}
 function ids(v){const out=new Set();const visit=x=>{if(x==null)return;if(Array.isArray(x))return x.forEach(visit);if(typeof x==='string'){if(/^rec[A-Za-z0-9]+$/u.test(x))out.add(x);return;}if(typeof x==='object'){for(const k of ['record_id','recordId','record_ids','recordIds','value'])visit(x[k]);}};visit(v);return [...out];}
