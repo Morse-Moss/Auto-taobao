@@ -431,5 +431,19 @@ rows = 3  has_more = false
 证据（全部离线可复跑）：新增 `skills/xws-to-feishu-base/tests/import-failures.test.mjs`
 （11 个用例，含「同一条消息挂不挂 code 结论不同」的缺陷复现、真账本、
 以及**真 registry + 真 Controller + 真发布段**的收据级断言）；
-`skills --skill=xws-to-feishu-base` **95/95**、`runtime` **390/390**；
+`skills --skill=xws-to-feishu-base` **95/95**、`runtime` **397/397**；
 真实入口复跑：CLI dry-run 与两段式 runner（只采集段）均正常。
+
+**收据级真实复现（2026-09-14 晚补完，用户授权）**：在新租户 base 里建一次性演练表
+`tbl9iqZ1bDVn2fZp`（19 字段：16 字段导入合同 + 三个日期字段，用完 `DELETE`、base 回到原 11 张表）。
+同一入口、同一条守卫消息，两次真实 `--commit` 对照：
+
+- 故意不给 `--period-start/--period-end` → `verdict=REJECTED`、`commitKey=46997dd02a9a5f6a18222855fcae2b02`、
+  **`blocker.class=POLICY_DENIED`**、`detail` 含 `policy denied` 且不含 `bug suspected`、
+  `publicationStatus=READY`、游标未推进、**独立回读 0 行（零写入）**、退出码 2。
+  修之前这条消息落 `BUG` / `bug suspected, stop automation`。
+- 补齐周期参数 → `verdict=VERIFIED`、`commitKey=1b02520a159026625a5e08f1c16a10a0`、
+  回读 `rows:3/attachments:3`、发布期验证器 `readback,publication` 全 ok、`blocker=null`、
+  `publicationStatus=VERIFIED`、游标 `1→3`、退出码 0；独立回读 3 行 / 3 附件 / 三个日期字段已盖戳。
+
+即 §8.1 那条缺陷的记录到现在有了**同一现场的修前/修后收据对照**，不再只是单元层结论。

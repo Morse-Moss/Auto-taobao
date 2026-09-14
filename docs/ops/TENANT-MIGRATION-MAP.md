@@ -1,7 +1,8 @@
 # 竞品数据搬迁到新租户：映射表与影响面
 
 状态：2026-09-14 **六步全部完成**（旧租户废弃，默认目标已切到新租户）。
-同日晚补完两件事：**失败分类缺陷已按方案 A 修掉**（§6）、**关键词库 base 的副本已建好并改指**（§0 第 2 条）。
+同日晚补完三件事：**失败分类缺陷已按方案 A 修掉**（§6）、**关键词库 base 的副本已建好并改指**（§0 第 2 条）、
+**修后用真实 base 跑通收据级复现**（§6.6 后两行：同一条消息的修前/修后收据对照）。
 适用范围：竞品周更 SOP（base `OWebbPUcBa7B8JseYLccQCy9nkf` → 副本 `OUMqbkYwVaQxQNsv2EDc1DV7nDf`）。
 
 ## 0. 侦察结论
@@ -417,12 +418,17 @@ CLI / 两个 runtime 脚本都 import 它），没有新增模块、没有新增
 | 生产路径上的 handler | `createFeishuImportPublisher().handler()`（`run-feishu-import-two-stage.mjs:199` 交给发布段的就是它） | 原样交出 `code`/`failureClass` |
 | **收据级**（真 registry + 真 Controller + 真账本 + 真发布段） | 断言那次演练写错的那个字段 | `verdict=REJECTED`、`publicationStatus=READY`、`blocker.class=POLICY_DENIED`、`detail` 含 `policy denied`、**不含** `bug suspected`、`nextAction=TERMINAL` |
 | 回归守卫（源码级） | 三个运行时模块里「非注释行出现 `throw` 就必须走 `fatalError`」 | 通过（唯一例外是 `fatalError` 自己那条漏登记喊停） |
-| 套件 | `skills --skill=xws-to-feishu-base` / `runtime` | **95/95**、**390/390** |
-| 真实入口 | CLI `--xlsx … --base-url …`（dry-run）、两段式 runner（默认只采集段） | 两者都正常：3 行 / 3 图；采集段四个验证器 `structure,row_count,digest,adapter` 全 ok，`sideEffectRefCount=0` |
+| 套件 | `skills --skill=xws-to-feishu-base` / `runtime` | **95/95**、**397/397** |
+| 真实入口（dry-run） | CLI `--xlsx … --base-url …`（dry-run）、两段式 runner（默认只采集段） | 两者都正常：3 行 / 3 图；采集段四个验证器 `structure,row_count,digest,adapter` 全 ok，`sideEffectRefCount=0` |
+| **真实 commit 收据（缺陷现场复现）** | 新租户 base 里一次性演练表 `tbl9iqZ1bDVn2fZp`，两段式 runner `--commit` 但**故意不给** `--period-start/--period-end` | `verdict=REJECTED`、`commitKey=46997dd02a9a5f6a18222855fcae2b02`、**`blocker.class=POLICY_DENIED`**（修之前是同一条消息归 `BUG`）、`detail` 含 `policy denied` 且**不含** `bug suspected`、`publicationStatus=READY`、游标未推进（`{start:1,end:0,version:0}`）、退出码 2；**独立回读确认 0 行（零写入）** |
+| 真实 commit 收据（成功路径无回归） | 同一张演练表，补齐 `--period-start 2026-09-06 --period-end 2026-09-12` | `verdict=VERIFIED`、`commitKey=1b02520a159026625a5e08f1c16a10a0`、回读 `rows:3/attachments:3`、发布期验证器 `readback,publication` 全 ok、`blocker=null`、`publicationStatus=VERIFIED`、游标 `1→3`（version 1）、退出码 0；独立回读 3 行、价格 `612 / 2198.27 / 2098.14`、月收货人数 `"100"`、每条 1 附件、三个日期字段盖戳 |
 
-**未做的一项验证**（需要用户另外授权）：拿一个**真**表跑一次 commit 模式，看真实收据里的
-`blocker.class`。要这么做就得先在新 base 建一张一次性演练表（真外部写），
-所以没有自作主张——上一节 §5.3 的那次演练已经留下了「修之前」的现场。
+**收尾**：演练表 `DELETE` → 200，base 回到原 11 张表。
+
+「未做的一项验证」到这里已经补完——上一节 §5.3 留下的是「修之前」的现场，
+本节两行是「修之后」同一现场、同一入口、同一条消息的收据对照。
+唯一仍未被真实跑过的是另外三条能力（`sycm.feishu.weekly`、`xws.sku.collection`、
+`huitun.keyword-heat.collect`）的发布段，与本次修复无关。
 
 新增测试文件：`skills/xws-to-feishu-base/tests/import-failures.test.mjs`（11 个用例，
 含上面「缺陷与修复同框」「收据级」「源码守卫」三条）。
@@ -438,11 +444,12 @@ CLI / 两个 runtime 脚本都 import 它），没有新增模块、没有新增
   连带可做但未做：撤销新应用对旧词库 base 的跨租户共享。
 - **`数据表` `tblg6lkg6431QulJ` 的 5 行**：✅ 已按用户要求清空（回读 `total=0`，base 仍 11 表）。
 - **协作者归属**：新应用目前是 4 处 base 的协作者——旧生产 base、副本 base、
-  旧租户词库 base、新租户词库副本。
-  建议旧生产 base 上只留可阅读（旧租户已废弃，可编辑权限没必要留），
-  旧词库 base 可以整个撤掉共享。
+  旧租户词库 base、新租户词库副本。**用户已明确：旧 base 的所有者已不是他，不必再管**
+  （2026-09-14），故旧的几处共享不主动撤销；此处只留档。
 - ~~§6 的失败分类缺陷修不修、按 A 还是 B~~：✅ 已按方案 A 修完，见 §6.4。
-  剩余待决：§6.5 那两条写后异常要不要改判 `COMMIT_UNKNOWN`（对账）。
+  剩余待决：§6.5 那两条写后异常要不要改判 `COMMIT_UNKNOWN`（对账）——用户「先不改」。
+- ~~拿真表跑一次 commit 看真实收据 `blocker.class`~~：✅ **已关闭**，见 §6.6 后两行
+  （同一入口、同一条消息的修前/修后收据对照，含零写入与独立回读）。
 - **两个应用都缺 `tenant:tenant:readonly`**，所以 API 拿不到租户真名，
   只能用域名前缀（`kcne618basvj` / `rcndesfqro3x`）作标识。想拿到租户名需补该 scope。
 
@@ -458,3 +465,6 @@ CLI / 两个 runtime 脚本都 import 它），没有新增模块、没有新增
   `skills/xws-to-feishu-base/scripts/import-core.mjs`
 - 本次写验证的运行收据：`runtime/sop-runtime/two-stage-mu110brg/receipt.json`（成功）
   与 `runtime/sop-runtime/two-stage-mu10zyr2/receipt.json`（被 fail-closed 拦下）
+- §6.6 收据级真实复现的运行收据：`runtime/sop-runtime/two-stage-mu16kph9/receipt.json`
+  （修之后仍被拦下，`blocker.class=POLICY_DENIED`）与
+  `runtime/sop-runtime/two-stage-mu16l30w/receipt.json`（补齐周期后 VERIFIED）
