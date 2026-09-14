@@ -4,6 +4,13 @@
 
 本文件是 `docs/architecture/` 的唯一入口。该目录只保存稳定的目标架构、已批准的架构决策和跨流程契约；不保存单次运行回执、临时调查、实现教程或平台页面快照。新增决策或契约前，必须先更新本文件的边界，再按约定新增文件。当前不预建空的专题目录；未来只有在决策正式批准后才新增 `decisions/NNNN-short-title.md`，跨流程契约具备可执行 schema 后才新增 `contracts/`。
 
+本项目当前的架构落地交接包：
+
+- [Agent SOP Runtime Spec](agent-sop-runtime-spec.md)：Context、状态轴、Memory、压缩、Skill Registry、Proposal、Adapter、Validator 和 Commit 契约。
+- [Agent SOP Runtime 实施计划](agent-sop-runtime-implementation-plan.md)：当前到目标的差距、模块改造、阶段优先级、风险和退出标准。
+- [同事交接说明](handoff-to-teammate.md)：Portretag PostgreSQL 迁移、验证、范围边界和回报格式。
+- `db/migrations/004-architecture-catalog.sql`：架构元数据 schema 与 review version 1 种子数据；只提供迁移文件，不在本轮自动 apply。
+
 ## 1. 定位
 
 本项目的长期目标是面向多个租户、店铺、平台账号和运营任务的任务执行平台。它包含 Agent 能力，但不是 Agent 聊天系统，也不是自由演化的 Agent swarm。
