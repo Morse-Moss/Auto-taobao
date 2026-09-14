@@ -294,8 +294,10 @@ exit=0   work-dir 下没有生成任何运行收据
 3. **没有与 `task-queue` 的候选选择打通**。`task-queue` 管的是"运行时自己的任务队列有多深"，
    这里是"外部业务队列有没有活"——两件事，混在一起会让"没活"和"拥堵"变成同一个信号。
 4. **没有接真模型**（Agent Planner/Reviewer 仍是"可移除件"）。影响评估见 §7。
-5. **发布段仍未对真实 base 跑过**。这是迁移 1 起就存在的、全项目唯一的
-   「代码已就绪但从未真实跑过」的关键路径，与本轮无关，但仍然是交付前必须补的一课。
+5. ~~发布段仍未对真实 base 跑过。~~ **已于 2026-09-14 补做**（用户授权的一次性演练表，
+   用完即删，见 §8）：`xws.feishu.import` 的「采集→准入→人工闸门→提交→回读→游标推进」
+   全链已在真实 base 上走通。仍待补的是 `xws.sku.collection` 与
+   `huitun.keyword-heat.collect` 的发布段。
 
 ## 7. 影响评估（对应"这两个有没有影响"）
 
@@ -334,3 +336,52 @@ codex-desktop-rollback.zip                       3.6 KB
 
 **结论：不动。** 如果哪天宿主文档说明这些标记可以安全移除，再一次性清掉；
 现在动手是"为了整洁去冒一个不必要的风险"。
+
+## 8. 补做：真实 `--commit` 演练（`xws.feishu.import` 的发布段首次对真实 base 执行）
+
+**为什么换目标表。** 用户给的实操表在租户 `kcne618basvj`，而应用
+`cli_aa93e98aeef81cef` 建在租户 `rcndesfqro3x`（同一应用读该租户的竞品 base 10 张表
+/ 36 字段全部正常）。飞书自建应用是**租户级实体**，不能被另一个租户的文档加为协作者，
+只读调用 4 次复检均为 `403 91403`。因此改为在**应用自己的租户**里开一张一次性演练表，
+演练结束后删除——不触碰任何生产表。
+
+**场地与数据**
+
+| 项 | 值 |
+| --- | --- |
+| 演练 base | `Hohobp2UDaq698sXAQSc6SRXn3f`（应用自有「小红书内容分析总表」） |
+| 演练表 | `_演练_xws_import_20260914` / `tblgyQGmzTQZOuYS`（本次新建，演练后 DELETE） |
+| 字段合同 | 16 列，刻意与生产周表目标同型：`价格` type 2、`月收货人数` type 1、`商品图片` type 17、其余 type 1 |
+| 源数据 | `runtime/xws-bathtub-top3-with-images.xlsx`（3 行，每条 1 张图片附件） |
+| 收尾 | `DELETE .../tables/tblgyQGmzTQZOuYS` → 200；base 回到原 2 张表，环境干净 |
+
+**采集段（先跑，证明不写）**
+
+```
+mode=dry-run  rowCount=3  validators=[structure:ok, row_count:ok, digest:ok, adapter:ok]
+publicationStatus=NOT_REQUESTED  cursorAdvanced=false  nextAction=PREPARE_COMMIT
+```
+
+**提交段（真实写飞书 + 回读）**
+
+```
+gate: riskClass=HIGH  decision=ALLOW_WITH_APPROVAL  status=WAITING_HUMAN → APPROVED(operator 落进 decisions)
+publish: verdict=VERIFIED  commitKey=e4c775a05678b05e0729b1fde8affedd
+         receipt={ rows:3, attachments:3, digest:67a6d80260afbd985dc2cf08eef228ca1a02992c74bdb88433d973af9eea19b7 }
+publicationStatus=VERIFIED  cursor: 1→3 (version 1)  cursorAdvanced=true
+decisions: APPROVAL → PUBLICATION/READY → PUBLICATION/COMMITTED → PUBLICATION/VERIFIED
+```
+
+**独立回读（不复用运行器的回读代码，直接打 `/records`）**
+
+```
+rows = 3  has_more = false
+[1] 新品浴缸…欧式浴盆        价格="612"     月收货人数="100"  图片=1  店铺=陈强卫浴工厂店
+[2] 古伦比亚…一体浴池        价格="2198.27" 月收货人数="100"  图片=1  店铺=古伦比亚旗舰店
+[3] 古伦比亚…成人泡澡        价格="2098.14" 月收货人数="100"  图片=1  店铺=古伦比亚旗舰店
+```
+
+**结论。** 「代码已就绪但从未真实跑过」这条自迁移 1 起挂着的关键路径，对
+`xws.feishu.import` 已经关闭：采集 → 准入（高风险开闸）→ 人工审批留痕 → 提交 →
+外部回读 → 游标推进，全链在真实 base 上走通，且收据与独立回读完全一致。
+仍未真实跑过的只剩 `xws.sku.collection` 与 `huitun.keyword-heat.collect` 的发布段。
