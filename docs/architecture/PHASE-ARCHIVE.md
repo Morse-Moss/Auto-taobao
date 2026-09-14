@@ -1078,25 +1078,32 @@ node runtime/sop-runtime/recovery-fault-injection.mjs
 「先 `ledger.verify` 把提交记录推成 `VERIFIED`、再收敛运行」这条**顺序**——
 它由 §13.7.1 的 `READY + COMMITTING` 用例端到端锁住，而不是靠单元层注入一个假账本。
 
-**本轮复跑 skills 套件时观察到的一项既有失败**（与本轮改动无因果，记录在此以免下次误判为回归）：
+**本轮复跑 skills 套件时观察到的一项并发抖动**（与本轮改动无因果，记录在此以免下次误判为回归）：
 
 ```
 node scripts/run-test-suite.mjs skills
 # tests 532  pass 524  fail 8        （历史上同套件曾记 532/0）
+
+# 定点复现同一文件（无并发）—— 全绿
+node --test skills/xws-export-market-analysis/tests/prepare-flow.test.mjs
+# tests 36  pass 36  fail 0          （耗时 826s ≈ 13.8 分钟）
 ```
 
 8 条失败全部集中在 `skills/xws-export-market-analysis/tests/prepare-flow.test.mjs` 的浏览器流程用例
 （`closes the automation home tab when login verification fails`、`rejects a non-Edge Proxy before target discovery or browser actions`、
 `full flow ... XLSX menu ...` 等）。断言形态是**子进程退出码或 stderr 文案不符**
 （`expected 2 actual 1` / `expected 0 actual 1` / stderr 未匹配 `/browser mismatch.*edge.*browser-service/iu`），
-**不是**连接类错误（无 `ECONNREFUSED`）。
+**不是**连接类错误（无 `ECONNREFUSED`）；而且**单跑同一文件 36/36 全绿**。
+
+结论：这是**套件并发下的资源竞争/超时抖动（flaky）**，不是代码缺陷。这些用例每条都
+`spawn(process.execPath, [...], { env: { ...process.env, XWS_RUNTIME_DIR } })` 起子进程、并起一个 fake CDP proxy server；
+44 个文件并发时它们抢 CPU 与 127.0.0.1 端口，子进程落在超时边缘退出，断言到的退出码/stderr 就与期望不符。
+旁证：整套 44 文件 573s，而单跑这一个文件就要 826s —— 并发把每条用例可用的 CPU 摊薄，恰好把「等超时」的用例推过边界。
 
 为什么可以判定与 §13.7 无关（依赖链，不是印象）：该测试只 `import ../scripts/export-market-analysis.mjs`，
-递归展开其本地 import 闭包共 4 个模块，**没有一个触及 `runtime/sop-runtime/`**；而本轮改动 100% 落在后者。
-另外这些用例用 `spawn(process.execPath, [...], { env: { ...process.env, XWS_RUNTIME_DIR } })`
-**全量继承会话环境**，且单跑该文件耗时远超整套（整套 44 文件约 9.5 分钟，单跑此文件 12 分钟仍在跑），
-指向「某些分支在等超时」——怀疑与本机是否存在可用 Edge / CDP Proxy 状态有关，属**待单独排查项**，
-不影响本轮改动自身的验证结论。
+递归展开其本地 import 闭包共 4 个模块，**没有一个触及 `runtime/sop-runtime/`**；本轮改动 100% 落在后者。
+下次再遇到这 8 条，先**单跑该文件**复现，再考虑是否是并发参数（`--test-concurrency`）太激进，
+不要先怀疑刚改过的运行时模块。
 
 
 
