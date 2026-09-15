@@ -60,7 +60,7 @@ const DEFAULTS = {
   notify: false,
 };
 
-const NOTIFY_BOOL = new Set(['--notify', '--dry-run']);
+const NOTIFY_BOOL = new Set(['--notify', '--dry-run', '--quiet-completed']);
 
 function parseArgs(argv) {
   const options = { ...DEFAULTS };
@@ -86,6 +86,7 @@ function parseArgs(argv) {
     const a = argv[i];
     if (a === '--notify') { options.notify = true; continue; }
     if (a === '--dry-run') { options.notify = false; continue; }
+    if (a === '--quiet-completed') { options.quietCompleted = true; continue; }
     if (NOTIFY_BOOL.has(a)) continue;
     const key = map.get(a);
     if (!key) throw new Error(`Unknown argument: ${a}`);
@@ -214,6 +215,9 @@ async function main() {
     '--interval', String(options.interval),
     '--label', options.label,
     ...(options.notify ? [] : ['--dry-run']),
+    // 分段跑十几段时，每段一条「已完成」就是告警轰炸；分段完成由周级驱动汇总成一条。
+    // 只有显式传了才静默（静默必须显式声明）。
+    ...(options.quietCompleted ? ['--quiet-completed'] : []),
   ];
   const superviseFd = openSync(HOST_LOG, 'a');
   const supervisor = spawn(process.execPath, superviseArgs, {

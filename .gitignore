@@ -98,3 +98,11 @@ runtime/supervisor-agent/postmortems/
 # 会话内的临时脚本/临时输出（探针、启动器副本）；用完即删，不纳入版本管理
 runtime/tmp-*.mjs
 runtime/tmp-*.txt
+runtime/tmp-*.py
+
+# 采集宿主的临时状态（子进程 pid / 退出码 / 心跳）。是运行态，不是产物；
+# 不忽略它们会让每次 git status 都带 4 个噪音项。
+runtime/.collect-child-pid
+runtime/.collect-exit-code
+runtime/.collection-host-heartbeat
+runtime/.collection-host.pid

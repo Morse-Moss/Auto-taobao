@@ -14,6 +14,7 @@ import {
   readExitCode,
   readLatestEvent,
   readTerminalMarker,
+  shouldDeliver,
 } from './supervise-collection.mjs';
 
 const eventInfo = (name, mtimeMs, extra = {}) => ({
@@ -252,4 +253,21 @@ test('progressKey: 只认 PROGRESS，且必须至少有一个数字字段', () =
   assert.equal(progressKey({ event: 'PROGRESS' }), null);
   assert.equal(progressKey({ event: 'DIAGNOSTIC', completedPage: 3, rows: 138 }), null);
   assert.equal(progressKey(null), null);
+});
+
+test('shouldDeliver: 静默必须显式声明，默认什么都不静默', () => {
+  // RUNNING 是基线不是事件，任何情况下都不投。
+  assert.equal(shouldDeliver('RUNNING'), false);
+  assert.equal(shouldDeliver('RUNNING', { quietCompleted: true }), false);
+
+  // 异常默认一律投 —— 这是 fail-closed 的方向。
+  for (const status of ['FAILED', 'SUSPECT_STALLED', 'UNKNOWN']) {
+    assert.equal(shouldDeliver(status), true);
+    assert.equal(shouldDeliver(status, { quietCompleted: true }), true);
+  }
+
+  // COMPLETED 默认要投；只有显式声明才静默（分段跑十几段时靠它避免告警轰炸）。
+  assert.equal(shouldDeliver('COMPLETED'), true);
+  assert.equal(shouldDeliver('COMPLETED', { quietCompleted: false }), true);
+  assert.equal(shouldDeliver('COMPLETED', { quietCompleted: true }), false);
 });

@@ -16,11 +16,14 @@
 //                    既不写 OK 也不写 FAILED
 // 同一状态只投一次；只有状态变化才重新投递（避免告警轰炸）。
 // RUNNING 默认**不投递**（首轮把 RUNNING 当基线），要开机通知就显式给 --announce-running。
+// COMPLETED 默认**要投**；分段跑十几段时用 --quiet-completed 把它压掉，改由上级汇总成一条
+// （静默一律显式声明，见 shouldDeliver）。
 //
 // 用法：
 //   node runtime/supervise-collection.mjs --run-dir <p> [--pid <n>] [--exit-code-file <p>]
 //        [--stdout-file <p>] [--stale-seconds 420] [--progress-budget-seconds 240]
-//        [--interval 15] [--since-minutes N] [--once] [--dry-run] [--announce-running] [--label "..."]
+//        [--interval 15] [--since-minutes N] [--once] [--dry-run] [--announce-running]
+//        [--quiet-completed] [--label "..."]
 //
 // 为什么需要 --exit-code-file / --stdout-file：ADAPTIVE_DONE 只由 run-adaptive-export.mjs
 // 打到 stdout，**不会**写进 events.jsonl（events.jsonl 的末事件是 DONE）。所以"成功"这件事必须
@@ -66,6 +69,7 @@ function parseArgs(argv) {
     once: false,
     dryRun: false,
     announceRunning: false,
+    quietCompleted: false,
     label: '浴缸竞品周采集',
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -73,6 +77,7 @@ function parseArgs(argv) {
     if (a === '--once') { options.once = true; continue; }
     if (a === '--dry-run') { options.dryRun = true; continue; }
     if (a === '--announce-running') { options.announceRunning = true; continue; }
+    if (a === '--quiet-completed') { options.quietCompleted = true; continue; }
     const next = argv[i + 1];
     if (a === '--pid') { options.pid = Number(next); i += 1; continue; }
     if (a === '--run-dir') { options.runDir = next; i += 1; continue; }
@@ -270,6 +275,16 @@ export function classify({
   return { status: 'COMPLETED', detail: `退出码 0（末事件 ${eventName}）`, event };
 }
 
+// 该不该把这一次状态变化投出去。**静默必须显式声明**（与 round-notify-policy 同一条规矩）：
+// 默认什么都不静默；只有调用方给了 --quiet-completed 才压掉 COMPLETED。
+// 为什么需要它：周级采集要跑十几段，每段都推一条「采集已完成」就是告警轰炸，
+// 而轰炸的代价是真出事时没人看。分段的 COMPLETED 由周级驱动汇总成一条。
+export function shouldDeliver(status, { quietCompleted = false } = {}) {
+  if (status === 'RUNNING') return false; // RUNNING 是基线，不是事件
+  if (status === 'COMPLETED' && quietCompleted) return false;
+  return true;
+}
+
 function buildAlert({ status, detail, options, eventInfo }) {
   const severity = status === 'COMPLETED' || status === 'RUNNING' ? 'INFO' : 'ERROR';
   const titles = {
@@ -377,10 +392,14 @@ async function main() {
       } catch { /* 心跳写不了不影响判定 */ }
     }
     if (changed) {
-      const alert = buildAlert({ status, detail: verdict.detail, options, eventInfo });
-      alert.evidence.exitCode = verdict.exitCode ?? null;
-      alert.evidence.terminalMarker = verdict.terminalMarker ?? null;
-      deliver(alert, options.dryRun);
+      if (shouldDeliver(status, { quietCompleted: options.quietCompleted })) {
+        const alert = buildAlert({ status, detail: verdict.detail, options, eventInfo });
+        alert.evidence.exitCode = verdict.exitCode ?? null;
+        alert.evidence.terminalMarker = verdict.terminalMarker ?? null;
+        deliver(alert, options.dryRun);
+      } else {
+        console.log(`[supervise] ${status} 按 --quiet-completed 静默（只记状态，不投递）`);
+      }
       if (stateFile) {
         try { writeFileSync(stateFile, JSON.stringify({ status, at: new Date().toISOString(), detail: verdict.detail }, null, 2)); } catch { /* 状态文件写不了不影响判定 */ }
       }
