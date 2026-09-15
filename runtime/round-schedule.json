@@ -7,7 +7,9 @@
     "改完先看计划（只读，不跑）：node runtime/sop-runtime/round-runner.mjs --schedule-file runtime/round-schedule.json --show-plan",
     "确认无误再把 enabled 改成 true。注意：**没启用的条目也必须合法**（不合法会直接报出来），免得启用那天才发现。",
     "when：daily / weekly / monthly；at 是本机时间。period：跑哪个周期（TODAY / YESTERDAY / PREVIOUS_WEEK_SUN_SAT / CURRENT_WEEK_SUN_SAT / PREVIOUS_MONTH）。",
-    "businessKey 默认是「能力/周期」，由排期自动算出来——不需要你填，也不该手填（手填的键不会随周期变，那等于只跑一次）。",
+    "业务幂等键默认是「能力/周期」，由排期自动算出来——不需要你填，也不该手填（手填的键不会随周期变，那等于只跑一次）。",
+    "注意：target **不是一个 URL**。URL 只是「授权目标」这个身份；能力真正要的入参（源周表、历史总表、编号库、受保护表、采集日、批次号、克隆前历史行数）走 collectInput/publishInput，其中有一部分**每周都会变**。",
+    "所以「周表 id」不该写进这份文件：周表每周新建，id 天然会过期；按名字在运行时解析（见 runtime/weekly-table-target.mjs 与 feishu-targets.mjs 顶部说明）。",
     "到期口径：只算触发日当天。周一的排期，周一 09:00 之后才算到期；周二再开机**不会自动补跑**（--show-plan 里的 hoursSinceTriggerAt 会告诉你上一次过去多久了）。要补跑就显式加 --force。",
     "这条口径是刻意的：如果改成「错过了就补」，周一没开机就会在周二悄悄跑出一份迟了一天的数据，而看数据的人不知道它迟了。宁可漏跑（漏了在计划里看得见），不要偷跑。"
   ],
@@ -26,12 +28,12 @@
         "browserProfileId": "local",
         "contractVersion": "sycm-weekly-v1"
       },
-      "envFile": "E:/小红书/.env.local",
-      "target": "<飞书周表直链，含 ?table=>",
+      "envFile": "E:/小红书/.env.feishu-kcne.local",
+      "target": null,
       "commit": false,
       "expectedRows": 300,
       "source": { "targetLabel": "专用部署机", "shopName": null },
-      "notes": "当前两套 SOP 都没有店铺维度，storeId 只是身份契约里的占位值；等运营日报阶段再按店铺拆成多条排期。commit 默认 false（先只采不发），确认稳定后再开。启用前必须先填 target：现在它还是占位串，改了 enabled 而没填 target 只会在到点那天失败一次。"
+      "notes": "当前两套 SOP 都没有店铺维度，storeId 只是身份契约里的占位值；等运营日报阶段再按店铺拆成多条排期。commit 默认 false（先只采不发），确认稳定后再开。target 是 null 而不是占位串：URL 只表示「授权目标」，能力要的入参另走 collectInput/publishInput，且其中源周表与批次号每周都变——在「每周入参解析」做出来之前，这条排期就算填了 URL 也跑不起来，所以宁可留空失败（fail-closed），不留一个看起来能跑的假值。"
     }
   ]
 }
