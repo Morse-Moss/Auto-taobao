@@ -41,6 +41,7 @@ const VALUE_OPTIONS = new Map([
   ['--proxy', 'proxy'],
   ['--label', 'label'],
   ['--pages-total', 'pagesTotal'],
+  ['--frequency', 'frequency'],
 ]);
 
 export function parseRanges(spec) {
@@ -100,8 +101,13 @@ function runHost(range, options) {
       '--output-dir', options.outputDir,
       '--checkpoint', checkpoint,
       '--proxy', options.proxy,
+      // 页间等待由调用方决定：默认沿用采集器的 30-45s，用户要求更快时传 10-15s。
+      // 注意 10-15s 更快但更容易触发平台节流 → 层一到层三的监督环就是用来盯这件事的。
+      ...(options.frequency ? ['--frequency', options.frequency] : []),
       '--label', `${options.label} 第 ${range.id} 页段`,
-      ...(options.notify ? ['--notify'] : ['--dry-run']),
+      // 分段的「已完成」不单独推：十几段就是十几条轰炸，真出事时反而没人看。
+      // 段级只推异常，周级由本驱动汇总一条。
+      ...(options.notify ? ['--notify', '--quiet-completed'] : ['--dry-run']),
     ];
     const child = spawn(process.execPath, args, { cwd: PROJECT_ROOT, stdio: ['ignore', 'ignore', 'ignore'], detached: true });
     child.on('close', (code) => resolve(code ?? 1));

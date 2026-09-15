@@ -190,8 +190,23 @@ def validate(csv_path, xlsx_path=None, require_images=False):
         validation["difference_samples"] = differences[:5]
         if differences:
             raise ValueError("CSV and XLSX non-image fields differ")
-        if require_images and workbook_validation["embedded_media"] != len(csv_rows):
-            raise ValueError("embedded image count does not match the data row count")
+        # 图片缺口判据（2026-09-15 放宽，有真实运行证据）：
+        #   历史缺陷是「整本导出没有图」（embedded_media == 0），那个必须继续拒收。
+        #   但要求「完全相等」会把**单张图抓取失败**放大成「整段作废 + 空等 60 分钟」——
+        #   2026-09-15 实测：166 行 / 165 图被拒，白等 40 分钟，后面所有段全被堵住。
+        #   所以：0 张 → 拒收；缺口超过 2%（至少容 1 张）→ 拒收；其余接受，
+        #   并把缺几张**如实写进 validation**，一路传到合并收据（missingImages）与导入结果，
+        #   不许静默吞掉。用整数运算凑 2%，避免为此引入 math。
+        if require_images and len(csv_rows) > 0:
+            embedded = workbook_validation["embedded_media"]
+            missing_images = len(csv_rows) - embedded
+            tolerance = max(1, (len(csv_rows) + 49) // 50)
+            if embedded == 0 or missing_images > tolerance:
+                raise ValueError(
+                    "embedded image count does not match the data row count: "
+                    f"rows={len(csv_rows)} images={embedded} tolerance={tolerance}"
+                )
+            validation["missing_images"] = missing_images
         if workbook_validation["bad_images"]:
             raise ValueError("workbook contains unreadable embedded images")
         if not workbook_validation["zip_crc_ok"]:
@@ -204,7 +219,7 @@ def validate(csv_path, xlsx_path=None, require_images=False):
     return {"ok": True, "artifacts": artifacts, "validation": validation}
 
 
-def make_self_test_fixture(directory):
+def make_self_test_fixture(directory, image_count=2):
     rows = [
         [1, "", "A", "https://item.taobao.com/item.htm?id=1", 100, "10", "c", "0", "淘宝", "自然位", "s", "w", "t", "a", "-", "-"],
         [2, "", "B", "https://item.taobao.com/item.htm?id=2", 200, "100+", "c", "-", "天猫", "广告位", "s", "w", "t", "a", "-", "-"],
@@ -221,7 +236,7 @@ def make_self_test_fixture(directory):
     sheet.append(HEADERS)
     for row in rows:
         sheet.append(row)
-    for index in range(2):
+    for index in range(image_count):
         image_path = directory / f"image-{index}.png"
         Image.new("RGB", (2, 2), color=(index * 50, 100, 150)).save(image_path)
         sheet.add_image(WorksheetImage(image_path), f"B{index + 2}")
@@ -244,8 +259,33 @@ def main():
     try:
         if args.self_test:
             with tempfile.TemporaryDirectory(prefix="xws-validator-") as temp:
-                csv_path, xlsx_path = make_self_test_fixture(Path(temp))
+                root = Path(temp)
+                # 1) 完好：2 行 2 图 → 通过，缺口 0
+                csv_path, xlsx_path = make_self_test_fixture(root)
                 result = validate(csv_path, xlsx_path, require_images=True)
+                assert result["validation"]["missing_images"] == 0, result["validation"].get("missing_images")
+
+                # 2) 少 1 张：2 行 1 图 → 落在容差内，通过但**如实报缺口**
+                #    这是 2026-09-15 实测的场景（166 行 / 165 图），当时因为要求严格相等
+                #    整段作废、白等 40 分钟，后面所有段被堵住。
+                sparse = root / "sparse"
+                sparse.mkdir()
+                csv_sparse, xlsx_sparse = make_self_test_fixture(sparse, image_count=1)
+                sparse_result = validate(csv_sparse, xlsx_sparse, require_images=True)
+                assert sparse_result["validation"]["missing_images"] == 1, sparse_result["validation"].get("missing_images")
+
+                # 3) 一张都没有 → 仍然必须拒收（历史缺陷就是这个样子，这条不能松）
+                blank = root / "blank"
+                blank.mkdir()
+                csv_blank, xlsx_blank = make_self_test_fixture(blank, image_count=0)
+                try:
+                    validate(csv_blank, xlsx_blank, require_images=True)
+                except ValueError as error:
+                    assert "embedded image count" in str(error), str(error)
+                else:
+                    raise AssertionError("a workbook with zero embedded images must be rejected")
+
+                result["self_test"] = {"cases": ["full", "one_missing_within_tolerance", "zero_images_rejected"]}
         else:
             if not args.csv:
                 raise ValueError("--csv is required")
