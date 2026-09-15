@@ -99,9 +99,11 @@ test('凭据文件路径与 baseUrl 按 profile 分开', () => {
   const targets = profileTargets('kcne');
   assert.equal(targets.envFile, 'E:/小红书/.env.feishu-kcne.local');
   assert.match(targets.baseUrl, /^https:\/\/kcne618basvj\.feishu\.cn\/base\/QcnhbEzYp/u);
-  // 2026-09-15 换 base 之后写权限**尚未重新验证**，所以声明值必须是 false。
-  // 这条断言防的是「把在别的 base 上验证过的结论，搬到现在这个 base 上」。
-  assert.equal(targets.writeVerified, false);
+  // 2026-09-15：用户把应用加为正式 base 的可编辑协作者后，幂等写探针从 403/91403 变成
+  // HTTP 200 / code 0 —— 这是「这个 base 已验证可写」的证据，所以声明值翻回 true。
+  // 这条断言防的仍然是「把在别的 base 上验证过的结论，搬到现在这个 base 上」：
+  // 下次换 base 时它必须跟着翻成 false，直到在新 base 上重新实测。
+  assert.equal(targets.writeVerified, true);
 });
 
 // 关键词库是**另一张独立 base**（复制竞品 base 不会带上它），所以它的 token 单独维护、

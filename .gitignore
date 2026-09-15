@@ -95,3 +95,6 @@ runtime/_*.txt
 # Project-local agent memory (not part of the deliverable)
 .workbuddy/
 runtime/supervisor-agent/postmortems/
+# 会话内的临时脚本/临时输出（探针、启动器副本）；用完即删，不纳入版本管理
+runtime/tmp-*.mjs
+runtime/tmp-*.txt
