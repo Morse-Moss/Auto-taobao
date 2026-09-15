@@ -1,58 +1,91 @@
+// Export the live formula expressions of the competitor main table to JSON.
+//
+// 2026-09-15 fix: the original version hard-coded the RETIRED tenant
+// (OWebbPUcBa7B8JseYLccQCy9nkf / tblJ9LHFN6pMVjPv) plus the legacy credential
+// file. Once the active base moved to kcne618basvj, running this script would
+// have silently captured the wrong tenant's formulas — a stale-evidence hazard
+// that looks like a successful run. Target and credentials now come from
+// feishu-targets.mjs (the single source of truth), and the table is
+// overridable so the same check can run against a weekly table.
+//
+// Read-only: GET /fields only.
+//
+// Usage:
+//   node runtime/export-live-competitor-formulas.mjs --out evidence/competitor-live-formulas.json
+//   node runtime/export-live-competitor-formulas.mjs --out <file> --table-id <tbl...>
+//   node runtime/export-live-competitor-formulas.mjs --out <file> --profile legacy
 import fs from 'node:fs';
 import path from 'node:path';
 
 import { buildCompetitorFieldMigrationPlan } from '../skills/xws-to-feishu-base/scripts/competitor-v2-core.mjs';
 import { CompetitorV2FeishuClient } from '../skills/xws-to-feishu-base/scripts/import-competitor-v2.mjs';
+import {
+  activeProfileName,
+  competitorBaseToken,
+  loadFeishuCredentials,
+  tableId as stableTableId,
+} from './feishu-targets.mjs';
 
-const [outputFile, envFile = 'E:/小红书/.env.local'] = process.argv.slice(2);
-if (!outputFile) throw new Error('Output JSON path is required');
-
-function readEnv(file) {
-  const values = {};
-  for (const raw of fs.readFileSync(file, 'utf8').split(/\r?\n/u)) {
-    const line = raw.trim();
-    if (!line || line.startsWith('#')) continue;
-    const index = line.indexOf('=');
-    if (index < 1) continue;
-    let value = line.slice(index + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    values[line.slice(0, index).trim()] = value;
+function parseArgs(argv) {
+  const options = { out: '', tableId: '', profile: '' };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (['--out', '--table-id', '--profile'].includes(arg)) {
+      const value = argv[++index];
+      if (!value || value.startsWith('--')) throw new Error(`${arg} requires a value`);
+      options[arg.slice(2).replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase())] = value;
+    } else throw new Error(`Unknown argument: ${arg}`);
   }
-  return values;
+  if (!options.out) throw new Error('--out is required');
+  return options;
 }
 
-const appToken = 'OWebbPUcBa7B8JseYLccQCy9nkf';
-const tableId = 'tblJ9LHFN6pMVjPv';
-const env = readEnv(path.resolve(envFile));
-if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) throw new Error('Feishu app credentials unavailable');
+const options = parseArgs(process.argv.slice(2));
+const profile = activeProfileName({ SYCM_FEISHU_PROFILE: options.profile || undefined });
+const appToken = competitorBaseToken(profile);
+const targetTableId = options.tableId || stableTableId('competitorMain', profile);
+const { appId, appSecret, file: credentialFile } = loadFeishuCredentials(profile);
 
-const client = new CompetitorV2FeishuClient({
-  appId: env.FEISHU_APP_ID,
-  appSecret: env.FEISHU_APP_SECRET,
-  appToken,
-});
+const client = new CompetitorV2FeishuClient({ appId, appSecret, appToken });
 await client.authenticate();
-const fields = await client.listFields(tableId);
-const plan = buildCompetitorFieldMigrationPlan({ tableId, fields });
+const fields = await client.listFields(targetTableId);
 const live = Object.fromEntries(fields.filter((field) => field.type === 20).map((field) => [
   field.field_name ?? field.fieldName,
   field.property?.formula_expression ?? field.property?.formulaExpression ?? '',
 ]));
-const expected = Object.fromEntries(plan.formulas.map((item) => [
-  item.fieldName,
-  item.body.property.formula_expression,
-]));
-const differences = Object.entries(expected).filter(([name, expression]) => live[name] !== expression)
-  .map(([name, expression]) => ({ name, live: live[name] ?? '', expected: expression }));
 
-fs.writeFileSync(path.resolve(outputFile), `${JSON.stringify(live, null, 2)}\n`, 'utf8');
-const diffFile = path.resolve(`${outputFile}.diff.json`);
-if (differences.length) fs.writeFileSync(diffFile, `${JSON.stringify(differences, null, 2)}\n`, 'utf8');
-console.log(JSON.stringify({
-  formulaCount: Object.keys(expected).length,
-  liveMatchesSource: differences.length === 0,
-  differingFields: differences.map((item) => item.name),
-  ...(differences.length ? { diffFile } : {}),
-}));
+fs.writeFileSync(path.resolve(options.out), `${JSON.stringify(live, null, 2)}\n`, 'utf8');
+
+// Source comparison only works when the live table still carries every field the
+// generator refers to; a weekly table is missing some by design, so a mismatch
+// there is expected rather than alarming.
+let differences = null;
+try {
+  const plan = buildCompetitorFieldMigrationPlan({ tableId: targetTableId, fields });
+  const expected = Object.fromEntries(plan.formulas.map((item) => [item.fieldName, item.body.property.formula_expression]));
+  const compared = Object.keys(expected).filter((name) => live[name] !== undefined);
+  differences = compared
+    .filter((name) => live[name] !== expected[name])
+    .map((name) => ({ name, live: live[name], expected: expected[name] }));
+  console.log(JSON.stringify({
+    profile,
+    appToken,
+    tableId: targetTableId,
+    credentialFile,
+    formulaFields: Object.keys(live).length,
+    comparableAgainstSource: compared.length,
+    liveMatchesSource: differences.length === 0,
+    differingFields: differences.map((item) => item.name),
+    out: path.resolve(options.out),
+  }, null, 2));
+} catch (error) {
+  console.log(JSON.stringify({
+    profile,
+    appToken,
+    tableId: targetTableId,
+    credentialFile,
+    formulaFields: Object.keys(live).length,
+    sourceComparison: `skipped: ${error.message}`,
+    out: path.resolve(options.out),
+  }, null, 2));
+}

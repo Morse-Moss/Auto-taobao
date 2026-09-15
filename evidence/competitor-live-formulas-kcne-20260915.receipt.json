@@ -1,0 +1,9 @@
+{
+  "profile": "kcne",
+  "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+  "tableId": "tblkYcczxBnW4v5G",
+  "credentialFile": "E:/小红书/.env.feishu-kcne.local",
+  "formulaFields": 9,
+  "sourceComparison": "skipped: Unsupported AI field type for 尺寸: 19",
+  "out": "D:\\Retire\\sycm-automation\\evidence\\competitor-live-formulas-kcne-20260915.json"
+}

@@ -1,0 +1,54 @@
+profile = kcne (新租户 kcne618basvj)
+appToken = QcnhbEzYpacGvUskCbVcrcm3nFd
+tables = 11
+  竞品主表 (tblkYcczxBnW4v5G) — 36 字段 [文本×22 附件×1 数字×1 公式×9 Lookup×2 双向关联×1]
+  SKU明细 (tbl3N48H4znz304T) — 17 字段 [文本×11 单选×4 多选×1 双向关联×1]
+  竞品历史总表 V1 (tbln7qqA6XopiL4Q) — 44 字段 [文本×36 日期×3 附件×1 数字×4]
+  问题主库 (tblbJ9F91NiN8IfO) — 23 字段 [文本×15 单选×4 数字×2 日期×2]
+  竞品周_2026-08-23_2026-08-29 (tblDpoBCxUJmNBR7) — 39 字段 [文本×23 附件×1 数字×1 公式×9 Lookup×2 日期×3]
+  SKU周_2026-08-23_2026-08-29 (tblTgQo1OtQMDA4X) — 23 字段 [文本×15 单选×4 多选×1 日期×3]
+  问题库_2026-08-23_2026-08-29 (tbli5dtqFnFmvfYM) — 23 字段 [文本×15 单选×4 数字×2 日期×2]
+  竞品周_2026-08-30_2026-09-05 (tblGayj9pTYY0Fb7) — 35 字段 [文本×23 附件×1 数字×1 日期×3 公式×7]
+  问题库_2026-08-30_2026-09-05 (tbleYYe9dqnf0QGM) — 23 字段 [文本×15 单选×4 数字×2 日期×2]
+  竞品周_2026-09-06_2026-09-12 (tblosvuwE6xqYn6r) — 35 字段 [文本×23 附件×1 数字×1 日期×3 公式×7]
+  竞品周_2026-09-13_2026-09-19 (tbllWI45sK0DfHpr) — 35 字段 [文本×23 附件×1 数字×1 日期×3 公式×7]
+
+竞品主表 逐字段：
+  序号　　　　　　　　　　 type= 1 文本　　　 
+  商品图片　　　　　　　　 type=17 附件　　　 
+  商品标题　　　　　　　　 type= 1 文本　　　 
+  商品链接　　　　　　　　 type= 1 文本　　　 
+  价格　　　　　　　　　　 type= 2 数字　　　 
+  月收货人数　　　　　　　 type= 1 文本　　　 
+  类目　　　　　　　　　　 type= 1 文本　　　 
+  同款数　　　　　　　　　 type= 1 文本　　　 
+  平台　　　　　　　　　　 type= 1 文本　　　 
+  占位类型　　　　　　　　 type= 1 文本　　　 
+  店铺名　　　　　　　　　 type= 1 文本　　　 
+  店铺旺旺　　　　　　　　 type= 1 文本　　　 
+  店铺类型　　　　　　　　 type= 1 文本　　　 
+  地址　　　　　　　　　　 type= 1 文本　　　 
+  收藏人数　　　　　　　　 type= 1 文本　　　 
+  卖点　　　　　　　　　　 type= 1 文本　　　 
+  搜索关键词　　　　　　　 type= 1 文本　　　 
+  月收货人数计算值　　　　 type=20 公式　　　 formula 3441 字符
+  计算口径　　　　　　　　 type=20 公式　　　 formula 3522 字符
+  月收货金额　　　　　　　 type=20 公式　　　 formula 3578 字符
+  客单价带分类　　　　　　 type=20 公式　　　 formula 3718 字符
+  材质分类　　　　　　　　 type= 1 文本　　　 
+  外形　　　　　　　　　　 type= 1 文本　　　 
+  安装方式　　　　　　　　 type= 1 文本　　　 
+  功能　　　　　　　　　　 type= 1 文本　　　 
+  风格　　　　　　　　　　 type= 1 文本　　　 
+  竞品分类　　　　　　　　 type=20 公式　　　 formula 3852 字符
+  尺寸　　　　　　　　　　 type=19 Lookup property: filter_info,formatter,formula,roll_up,target_field
+  适用空间　　　　　　　　 type=19 Lookup property: filter_info,formatter,formula,roll_up,target_field
+  数据状态　　　　　　　　 type=20 公式　　　 formula 3422 字符
+  待补数据项　　　　　　　 type=20 公式　　　 formula 8176 字符
+  是否有效竞品　　　　　　 type=20 公式　　　 formula 3096 字符
+  排除原因　　　　　　　　 type=20 公式　　　 formula 2549 字符
+  SKU采集明细　　　　　 type=21 双向关联　 property: back_field_id,back_field_name,multiple,table_id,table_name
+  商品ID　　　　　　　　 type= 1 文本　　　 
+  当前周状态　　　　　　　 type= 1 文本　　　 
+
+snapshot -> D:\Retire\sycm-automation\evidence\competitor-field-schema-20260915.json

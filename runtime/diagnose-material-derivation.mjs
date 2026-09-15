@@ -45,10 +45,31 @@ async function load(tableId) {
   return items;
 }
 
-const TABLES = [
-  { label: '竞品周_2026-08-23_2026-08-29', id: 'tblDpoBCxUJmNBR7' },
-  { label: '竞品周_2026-09-13_2026-09-19', id: 'tbllWI45sK0DfHpr' },
-];
+// Default pair: the one week that carries real stored values (整表迁移) and the
+// current week. `--table-id` (repeatable) overrides them so this probe stays
+// usable next week instead of decaying into a hard-coded snapshot.
+const DEFAULT_TABLE_IDS = ['tblDpoBCxUJmNBR7', 'tbllWI45sK0DfHpr'];
+const requested = [];
+const argv = process.argv.slice(2);
+for (let index = 0; index < argv.length; index += 1) {
+  const arg = argv[index];
+  if (arg === '--table-id') {
+    const value = argv[index + 1];
+    if (!value || value.startsWith('--')) throw new Error('--table-id requires a value');
+    requested.push(value);
+    index += 1;
+  } else if (arg.startsWith('--table-id=')) {
+    requested.push(arg.slice('--table-id='.length));
+  } else {
+    throw new Error(`Unknown argument: ${arg}`);
+  }
+}
+const targetIds = requested.length ? requested : DEFAULT_TABLE_IDS;
+const catalog = await fetch(`${API_ROOT}/bitable/v1/apps/${APP_TOKEN}/tables?page_size=100`, { headers })
+  .then((r) => r.json());
+if (catalog.code !== 0) throw new Error(`list tables failed: ${catalog.code} ${catalog.msg}`);
+const nameOf = (id) => (catalog.data.items ?? []).find((t) => t.table_id === id)?.name ?? id;
+const TABLES = targetIds.map((id) => ({ label: nameOf(id), id }));
 
 for (const t of TABLES) {
   const items = await load(t.id);

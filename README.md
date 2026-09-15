@@ -19,6 +19,7 @@
 - `docs/standards/README.md`：跨模块工程规范、状态与证据、测试、安全和交付边界。
 - `docs/project-knowledge.md`：当前已验证能力、验证证据与对外表述边界；目标架构以 `docs/architecture/README.md` 为准。
 - `docs/references/revolution-knowledge-patterns.md`：从 Revolution 知识库迁移并本地化的证据治理方法。
+- `docs/references/COMPETITOR-FIELD-REFERENCE.md`：竞品分析表**全表头字段参考手册**（每个字段的线上下类型、来源、参考公式或 AI 提示词、周表是否有），附「外形/安装方式/功能/风格为什么是 AI 推的、周表为什么缺 4 个字段」的实测结论。
 - `docs/ops/CLIENT-DESKTOP-DELIVERY-PLAN.md`：面向「单机单店铺、客户自助操作」的交付评估与改造方案（登录体检与扫码登录、飞书提醒、傻瓜修复的三档边界、P0-P2 优先级）。
 - `docs/ops/UNATTENDED-AGENT-RUNTIME-PLAN.md`：无人值守运行方案（定时调度落地方式、一轮运行的生命周期、「出故障才提醒」的判据表、自愈的能做什么与做不到什么、飞书消息通道选型）。
 - `docs/ops/LOGIN-STATE-MANAGEMENT.md`：登录态管理设计（失效机制清单、身份/环境/会话/端到端四层检查、判据分级与话术、参考 `E:\小红书` 的实现取舍、与现有预检代码的接线点）。
