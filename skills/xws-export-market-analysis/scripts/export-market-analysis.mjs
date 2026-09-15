@@ -159,6 +159,40 @@ async function clickExportControl(proxy, target, selector) {
   })()`);
 }
 
+// 2026-09-15 实测：小旺神导出下拉是 Element Plus 的 hover 触发（trigger="hover"），
+// caret 只对 mouseenter 有反应，合成 click 序列不会展开菜单。用 click 展开时，
+// menuReady 恒为 false，最终抛 "XLSX menu item is missing or ambiguous: 导出xlsx表格（带图片）"——
+// 09-13 与 09-15 两期采集的每一次 attempt 都栽在这里，带图 XLSX 从未成功过。
+// 另一个必须记住的点：mouseenter 不冒泡，所以父容器 .el-dropdown 与 caret 都要显式派发。
+async function hoverExportControl(proxy, target, selector) {
+  await request(proxy, `/bringToFront?target=${encodeURIComponent(target)}`);
+  return evaluate(proxy, target, `(() => {
+    const el = document.querySelector(${JSON.stringify(selector)});
+    if (!el) return { ok: false, reason: 'export control missing' };
+    el.scrollIntoView({ block: 'center' });
+    const dropdown = el.closest('.el-dropdown') || el;
+    for (const node of [dropdown, el]) {
+      node.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: window }));
+      node.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false, cancelable: true, view: window }));
+    }
+    return { ok: true, tag: el.tagName };
+  })()`);
+}
+
+// hover 展开的菜单要靠 mouseleave 收起（click 对 hover 触发的下拉无效）。
+async function unhoverExportControl(proxy, target, selector) {
+  return evaluate(proxy, target, `(() => {
+    const el = document.querySelector(${JSON.stringify(selector)});
+    if (!el) return { ok: false, reason: 'export control missing' };
+    const dropdown = el.closest('.el-dropdown') || el;
+    for (const node of [dropdown, el]) {
+      node.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, cancelable: true, view: window }));
+      node.dispatchEvent(new MouseEvent('mouseleave', { bubbles: false, cancelable: true, view: window }));
+    }
+    return { ok: true };
+  })()`);
+}
+
 async function screenshot(proxy, target, file) {
   return request(proxy, `/screenshot?target=${encodeURIComponent(target)}&file=${encodeURIComponent(file)}`);
 }
@@ -181,7 +215,18 @@ function isSearch(target, keyword) {
   if (!isPage(target)) return false;
   try {
     const url = new URL(target.url);
-    return url.origin === SEARCH_ORIGIN && url.pathname === "/search" && url.searchParams.get("q") === keyword;
+    if (url.origin !== SEARCH_ORIGIN || url.pathname !== "/search") return false;
+    const raw = url.searchParams.get("q");
+    if (raw === keyword) return true;
+    // 2026-09-15 实测：淘宝在部分进入路径上会把「已编码的搜索词」再编码一次，
+    // 于是地址栏是 `q=%25E6%25B5%25B4...`、searchParams 解出来是 `%E6%B5%B4%E7%BC%B8`
+    // 而不是 `浴缸`。只比一次会让脚本把「已经到了搜索结果页」误判成「还没到」，
+    // 一直等到超时。这里补一次解码再比，判据仍然是精确相等，不放宽成模糊匹配。
+    try {
+      return decodeURIComponent(raw) === keyword;
+    } catch {
+      return false;
+    }
   } catch {
     return false;
   }
@@ -368,7 +413,7 @@ async function searchKeyword(proxy, keyword, runMarker, log) {
     search = await waitForReadyTarget(
       proxy,
       (candidate) => isSearch(candidate, keyword) && !existingSearchTargets.has(candidate.targetId),
-      5_000,
+      20_000,
       "new Taobao search results to finish loading",
       { onCandidate: (candidate) => rememberOwnedTarget(runMarker, candidate.targetId) },
     );
@@ -381,7 +426,7 @@ async function searchKeyword(proxy, keyword, runMarker, log) {
       search = await waitForReadyTarget(
       proxy,
       (candidate) => isSearch(candidate, keyword) && !existingSearchTargets.has(candidate.targetId),
-      5_000,
+      20_000,
       "new Taobao search results to finish loading",
       { onCandidate: (candidate) => rememberOwnedTarget(runMarker, candidate.targetId) },
     );
@@ -690,7 +735,16 @@ async function configureAnalysis(proxy, options, runMarker, log) {
     })()`);
     await sleep(350);
   }
-  const loadingExpression = `(() => {
+  // 2026-09-15 现场实测（run 495d2091 / 6824e397）：Element Plus 的 .el-loading-mask 会在
+  // 「搜索频率」表单**早已完整可用**之后长期停在 display:block / opacity:1 —— 表单上的
+  // v-loading 标志未被复位（掩码父节点是 form.xws-market-analyse-form，宽 1160 高 150）。
+  // 同一时刻表单里关键词、渠道/排序单选、6 个数字框、开始分析按钮、剩余配额、记录表全都
+  // 已渲染。把掩码当作"未就绪"依据会 100% 超时；同名失败在 09-07 / 09-13 / 09-15 多期
+  // checkpoint 里都出现过。
+  // 因此判据改为语义判据：控件齐全 + 开始分析按钮可用 + 表单状态签名稳定。掩码只作为诊断计数
+  // 上报，不参与判定。配置正确性由随后的 configurationContractDiff 契约核对兜底（值被插件
+  // 异步改写会以字段级差异直接报错，不会静默带错往下走）。
+  const settleExpression = `(() => {
     const visible = (element) => {
       if (!element) return false;
       const style = getComputedStyle(element);
@@ -698,31 +752,50 @@ async function configureAnalysis(proxy, options, runMarker, log) {
       return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
     };
     const dialog = [...document.querySelectorAll('.el-dialog__wrapper')].find((element) => visible(element) && (element.innerText || '').includes('搜索频率'));
-    if (!dialog) return { ok: false, ready: false, reason: 'config dialog missing' };
-    const loadingMasks = [...dialog.querySelectorAll('.el-loading-mask')];
-    const active = loadingMasks.some((mask) => {
-      if (mask.classList.contains('el-loading-fade-leave') || mask.classList.contains('el-loading-fade-leave-active')) return false;
+    if (!dialog) return { ok: false, complete: false, reason: 'config dialog missing' };
+    const keywordInput = dialog.querySelector('input.el-input__inner:not([role=spinbutton]):not([readonly])');
+    const spinners = [...dialog.querySelectorAll('input[role=spinbutton]')];
+    const radios = [...dialog.querySelectorAll('input[type=radio]')];
+    const start = [...dialog.querySelectorAll('button')].find((button) => (button.innerText || '').trim() === '开始分析');
+    const loadingMasks = [...dialog.querySelectorAll('.el-loading-mask')].filter((mask) => {
       const style = getComputedStyle(mask);
       const rect = mask.getBoundingClientRect();
       return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0.01 && rect.width > 0 && rect.height > 0;
-    });
-    return { ok: true, ready: !active, loadingMasks: loadingMasks.length };
+    }).length;
+    // 阈值对应"下一步真正需要什么"：6 个数字框是下面 expectedSpinners 契约要比对的全部字段；
+    // 至少 2 个单选是 channel + sort 各一个（clickRadio 自己还会按 value 精确找并回读 checked）。
+    const complete = Boolean(keywordInput) && spinners.length >= 6 && radios.length >= 2 && Boolean(start) && start.disabled !== true;
+    // 签名只覆盖"我方配置能够改变的量"，用于判断插件的异步校验是否还在改写表单。
+    const signature = complete
+      ? [keywordInput.value, spinners.map((input) => input.value).join(','), radios.filter((radio) => radio.checked).map((radio) => radio.value).sort().join(',')].join('|')
+      : null;
+    return { ok: true, complete, ready: complete, signature, loadingMasks,
+      startDisabled: start ? start.disabled === true : null,
+      spinnerCount: spinners.length, radioCount: radios.length };
   })()`;
+  let settleEvidence = null;
   const waitForDialogSettle = async () => {
     const deadline = Date.now() + 30_000;
+    let lastSignature = null;
     let stableAt = 0;
+    let lastState = null;
     while (Date.now() < deadline) {
       const current = await discoverSearch(proxy, options.keyword, runMarker);
-      const state = await evaluate(proxy, current.targetId, loadingExpression);
-      if (state?.ready) {
+      const state = await evaluate(proxy, current.targetId, settleExpression);
+      lastState = state;
+      if (state?.ok && state.complete && state.signature !== null && state.signature === lastSignature) {
         if (!stableAt) stableAt = Date.now();
-        if (Date.now() - stableAt >= 300) return;
+        if (Date.now() - stableAt >= 400) {
+          settleEvidence = state;
+          return;
+        }
       } else {
         stableAt = 0;
+        lastSignature = state?.ok && state.complete ? state.signature : null;
       }
       await sleep(100);
     }
-    throw new Error('Timed out waiting for Xiaowangshen filters to settle');
+    throw new Error(`Timed out waiting for Xiaowangshen filters to settle: ${JSON.stringify(lastState)}`);
   };
   const clickRadio = async (value) => {
     const deadline = Date.now() + 3_000;
@@ -832,7 +905,17 @@ async function configureAnalysis(proxy, options, runMarker, log) {
     const differences = configurationContractDiff(expected, snapshot);
     throw new Error(`Xiaowangshen configuration did not match the requested contract: ${JSON.stringify(differences)}`);
   }
-  log("CONFIGURED", { keyword: options.keyword, channel: options.channel, sort: options.sort, pages: options.pages, frequency: options.frequency });
+  // loadingMasks/startDisabled 是"settle 判据不再看掩码"这件事的可审计证据：掩码长期为 1
+  // 也照样往下走，前提是开始分析按钮可用。见 waitForDialogSettle 的注释。
+  log("CONFIGURED", {
+    keyword: options.keyword,
+    channel: options.channel,
+    sort: options.sort,
+    pages: options.pages,
+    frequency: options.frequency,
+    loadingMasksAtSettle: settleEvidence?.loadingMasks ?? null,
+    startDisabledAtSettle: settleEvidence?.startDisabled ?? null,
+  });
 }
 
 async function startAnalysis(proxy, keyword, runMarker, log, { resultWaitMs = 60_000 } = {}) {
@@ -1566,6 +1649,16 @@ async function waitForDownload(directory, baseline, extension, startedAt, deadli
   const deadline = Date.parse(deadlineAt);
   const rejected = new Set();
   let lastNotice = 0;
+  // 2026-09-15 实测：`--output-dir` 传成一个空目录时，baseline 为空、浏览器其实把文件下到了别处，
+  // 这里会**安静地**等到 60 分钟 deadline 才抛 "Timed out waiting for .csv download"，没有任何线索。
+  // 空 baseline 是强信号（真下载目录不会恰好一个文件都没有），先落一条诊断事件再照常等。
+  if (baseline.size === 0) {
+    log("EXPORT_BASELINE_EMPTY", {
+      directory,
+      extension,
+      hint: "下载目录里一个文件都没有：确认 --output-dir 就是浏览器的下载目录（本项目为 C:/Users/Administrator/Downloads）",
+    });
+  }
   while (Date.now() < deadline) {
     const files = await listFiles(directory);
     const candidates = files
@@ -1740,7 +1833,7 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
     })()`);
     if (!menuBinding?.ok) throw new Error("XLSX caret disappeared before menu activation");
     if (menuBinding.hadVisibleItem) {
-      await clickExportControl(proxy, targetId, caretSelector);
+      await unhoverExportControl(proxy, targetId, caretSelector);
       const closeDeadline = Date.now() + 2_000;
       let menuClosed = false;
       while (Date.now() < closeDeadline) {
@@ -1772,11 +1865,12 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
         return true;
       })()`);
     }
-    await clickExportControl(proxy, targetId, caretSelector);
+    await hoverExportControl(proxy, targetId, caretSelector);
     const marker = randomUUID();
     const menuDeadline = Date.now() + 5_000;
     let menuReady = false;
-    const menuStrictDeadline = Date.now() + 2_000; // 严格匹配（仅认本次点击新出现的菜单项）
+    const menuStrictDeadline = Date.now() + 2_000; // 严格匹配（仅认本次 hover 新出现的菜单项）
+    let clickFallbackUsed = false;
     while (Date.now() < menuDeadline) {
       target = await discoverExportSearch(proxy, options.keyword, runMarker, options.adoptLiveResult);
       if (target.targetId !== targetId) throw new Error("export target identity changed while opening XLSX menu");
@@ -1805,7 +1899,7 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
           const belongsToCaret = currentMenuIds.length > 0
             ? Boolean(menu?.id && currentMenuIds.includes(menu.id))
             : appearedForClick;
-          // 严格阶段：仅认本次点击新出现的菜单项；兜底阶段（2 秒后）：可见、属于该按钮、
+          // 严格阶段：仅认本次 hover 新出现的菜单项；兜底阶段（2 秒后）：可见、属于该按钮、
           // 文本精确匹配即接受——可见且文本精确匹配的项只可能是导出菜单项本身。
           const eligibility = strictPhase ? appearedForClick : true;
           return visible(candidate)
@@ -1818,6 +1912,11 @@ async function exportXlsx(proxy, options, runMarker, attemptMarker, runDir, dire
         return true;
       })()`);
       if (menuReady) break;
+      // hover 未生效时的兜底：历史版本里这个下拉可能是 click 触发的。
+      if (!clickFallbackUsed && Date.now() >= menuStrictDeadline) {
+        clickFallbackUsed = true;
+        await clickExportControl(proxy, targetId, caretSelector);
+      }
       await sleep(100);
     }
     if (!menuReady) throw new Error(`XLSX menu item is missing or ambiguous: ${itemText}`);

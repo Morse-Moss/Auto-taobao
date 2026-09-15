@@ -52,10 +52,20 @@ test("reports the exact Xiaowangshen configuration fields that did not settle", 
   });
 });
 
-test("ignores an Element loading mask that is already leaving", async () => {
+test("settles on the Xiaowangshen form state instead of an Element loading mask", async () => {
   const source = await readFile(cli, "utf8");
-  assert.equal(source.includes("mask.classList.contains('el-loading-fade-leave')"), true);
-  assert.equal(source.includes("mask.classList.contains('el-loading-fade-leave-active')"), true);
+  // 2026-09-15 现场实测：本项目的 .el-loading-mask 会在「搜索频率」表单早已完整可用之后长期停在
+  // display:block / opacity:1（表单上的 v-loading 标志未复位）。旧判据把它当作"未就绪"，
+  // 于是必然超时（09-07 / 09-13 / 09-15 多期 checkpoint 同名失败）。判据改为
+  // "控件齐全 + 开始分析按钮可用 + 状态签名稳定"，掩码只保留为诊断计数。
+  assert.equal(source.includes("el-loading-fade-leave"), false);
+  assert.equal(source.includes("const active = loadingMasks.some"), false);
+  assert.match(source, /const settleExpression = `/u);
+  assert.match(source, /const complete = Boolean\(keywordInput\) && spinners\.length >= 6 && radios\.length >= 2 && Boolean\(start\) && start\.disabled !== true;/u);
+  assert.match(source, /state\.signature === lastSignature/u);
+  assert.match(source, /Date\.now\(\) - stableAt >= 400/u);
+  assert.equal(source.includes("loadingMasksAtSettle: settleEvidence?.loadingMasks ?? null"), true);
+  assert.equal(source.includes("startDisabledAtSettle: settleEvidence?.startDisabled ?? null"), true);
 });
 
 test("browser diagnostics serialize the current response validator and wrapper version", async () => {
@@ -198,7 +208,7 @@ function csvFixture() {
   ].join("\n");
 }
 
-function startFakeProxy({ full = false, outputPath = "", liveResult = false, staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, loginRequired = false, omitNewTargetId = false, newResponseFailsAfterCreate = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, startClickWithoutRequestOnce = false, collectionFailsAfterStartup = false, delayedCollectionRequest = false, delayedCollectionResult = false, resultMutationPrecedesRequest = false, backgroundRequestBetweenArmAndClick = false, historicalResultRemountsAfterStart = false, historicalResultRemountsInSourceAfterStart = false, historicalResultPersistsInSourceAfterRequest = false, resultMarkerLostBeforeExport = false, xlsxMenuMountsLate = false, staleXlsxMenuVisible = false, staleXlsxMenuVisibleOwned = false, staleXlsxMenuHidden = false, staleXlsxMenuHiddenWithoutAria = false, xlsxMenuAriaIdChanges = false, csvExportMissing = false, exportActivationFails = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, sortRadioMountsLate = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false, browserId = "edge", proxyConnected = true } = {}) {
+function startFakeProxy({ full = false, outputPath = "", liveResult = false, staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, loginRequired = false, omitNewTargetId = false, newResponseFailsAfterCreate = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, startClickWithoutRequestOnce = false, collectionFailsAfterStartup = false, delayedCollectionRequest = false, delayedCollectionResult = false, resultMutationPrecedesRequest = false, backgroundRequestBetweenArmAndClick = false, historicalResultRemountsAfterStart = false, historicalResultRemountsInSourceAfterStart = false, historicalResultPersistsInSourceAfterRequest = false, resultMarkerLostBeforeExport = false, xlsxMenuMountsLate = false, staleXlsxMenuVisible = false, staleXlsxMenuVisibleOwned = false, staleXlsxMenuHidden = false, staleXlsxMenuHiddenWithoutAria = false, xlsxMenuAriaIdChanges = false, csvExportMissing = false, exportActivationFails = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, stubbornLoadingMask = false, sortRadioMountsLate = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false, browserId = "edge", proxyConnected = true } = {}) {
   let homeCreated = liveResult;
   let searchCreated = liveResult;
   let started = liveResult;
@@ -535,7 +545,9 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
           : { ready: false, count: 0 });
       } else if (body.includes("loadingMasks")) {
         if (sortRequiresSettledDomClick) radioReady = true;
-        send({ ok: true, ready: true });
+        // 2026-09-15：settle 判据不再看 .el-loading-mask，改为"控件齐全 + 签名稳定"。
+        // stubbornLoadingMask 场景模拟真实的"掩码长期在但表单可用"，此时也必须继续往下走。
+        send({ ok: true, complete: true, ready: true, signature: "xws-settle-signature", loadingMasks: stubbornLoadingMask ? 1 : 0, startDisabled: false });
       } else if (sortRequiresSettledDomClick && body.includes("label.click()")) {
         settledSortClicked = radioReady;
         send({ ok: settledSortClicked });
@@ -882,6 +894,38 @@ test("prepare-only runs from Taobao home without touching a live browser", async
     assert.equal(runDirs.length, 1);
     const manifest = JSON.parse(await readFile(path.join(runtime, runDirs[0], "manifest.json"), "utf8"));
     assert.equal(manifest.status, "READY_FOR_RECORDING");
+  } finally {
+    await rm(runtime, { recursive: true, force: true });
+    await new Promise((resolve) => proxy.server.close(resolve));
+  }
+});
+
+test("prepare-only does not wait for a stubborn Element loading mask over the config form", async () => {
+  // 回归：2026-09-15 真实采集里，.el-loading-mask 在表单早已完整可用后仍长期停在
+  // display:block / opacity:1，旧判据因此 100% 超时（Timed out waiting for Xiaowangshen
+  // filters to settle）。掩码必须只作为诊断，不再参与"是否就绪"的判定。
+  const proxy = await startFakeProxy({ stubbornLoadingMask: true, labelSettles: true });
+  const runtime = await mkdtemp(path.join(os.tmpdir(), "xws-runtime-"));
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [
+        cli,
+        "--keyword",
+        "浴缸",
+        "--prepare-only",
+        "--proxy",
+        `http://127.0.0.1:${proxy.port}`,
+      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime }, encoding: "utf8" });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk) => { stdout += chunk; });
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("close", (code) => resolve({ code, stdout, stderr }));
+    });
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /READY_FOR_RECORDING/u);
+    assert.equal(result.stderr.includes("filters to settle"), false, result.stderr);
   } finally {
     await rm(runtime, { recursive: true, force: true });
     await new Promise((resolve) => proxy.server.close(resolve));
