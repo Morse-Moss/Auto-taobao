@@ -469,7 +469,7 @@ CLI / 两个 runtime 脚本都 import 它），没有新增模块、没有新增
   （修之后仍被拦下，`blocker.class=POLICY_DENIED`）与
   `runtime/sop-runtime/two-stage-mu16l30w/receipt.json`（补齐周期后 VERIFIED）
 
-## 7. 同租户内换 base：kcne 的竞品目标切到正式 base（2026-09-15）
+## 9. 同租户内换 base：kcne 的竞品目标切到正式 base（2026-09-15）
 
 这次不是换租户，是**同一个租户（kcne618basvj）内换竞品 base**，所以流程比 §1-§6 短：
 单点配置改一处 + 只读验证 + 写权限重新验证（后者**尚未做**）。
@@ -482,8 +482,8 @@ CLI / 两个 runtime 脚本都 import 它），没有新增模块、没有新增
 | skuDetail | `tbltI9UufhunLc3u` | `tbl3N48H4znz304T` |
 | history | `tblktwxWKt8sjpXL` | `tbln7qqA6XopiL4Q` |
 | questionMaster | `tbl37PRcIXQCtfYk` | `tblbJ9F91NiN8IfO` |
-| 默认空壳表 | `tblg6lkg6431QulJ`（0 行） | `tbl7V2FuLlFXCZSi`（**自带 5 行，不是空白演练场**） |
-| writeVerified | true（2026-09-14 实测建表/建字段/DELETE + 两段式 import VERIFIED） | **false（尚未验证）** |
+| 默认空壳表 | `tblg6lkg6431QulJ`（「数据表」，行已清空，表仍在） | **没有**（正式 base 只读列举 10 张表，无「数据表」）→ `scratchTable: null` |
+| writeVerified | true（2026-09-14 实测建表/建字段/DELETE + 两段式 import VERIFIED） | **false**（2026-09-15 实测写入被拒，见下） |
 
 **为什么这次不是数据迁移**：两个 base 的登记行数逐表相同（竞品主表 2004 / SKU明细 734 /
 竞品历史总表 V1 4346 / 问题主库 2023 / 竞品周_2026-09-06_2026-09-12 1462），即测试副本是正式 base 的
@@ -499,5 +499,29 @@ kcne 的 base 与 history 表 id，所以「改了配置忘了同步」会当场
 协作者接口被拒（`1063004 User has no share permission`）——列表成员需要更宽的 drive 权限，
 与读写无关，不影响结论。
 
-**未验证项（下一步必须做）**：新 base 的**写权限**。`writeVerified` 已诚实置 false，
-不要在没实测前翻真；验证方式沿用 §5.3 的成例（建表/建字段/DELETE 均 200 + 一次两段式 import 到 VERIFIED）。
+**换 base 时漏改一处（已修）**：`scratchTable` 曾留在上一个 base 的值 `tbl7V2FuLlFXCZSi`，
+而这张表现在**两个 base 里都不存在**（正式 base 根本没有「数据表」）→ 悬空引用。
+已改 `scratchTable: null`（`feishu-targets.test.mjs` 12/12 通过）。
+教训与 §5 的 `writeVerified` 同一条：**换 base 要逐字段过一遍这个文件，不能只改四个稳定表 id**。
+
+**写权限：实测被拒（2026-09-15）**。用真实入口做了一次 `--apply`：
+
+| 项 | 结果 |
+| --- | --- |
+| 命令 | `publish-competitor-visualization.mjs --period-start 2026-09-06 --period-end 2026-09-12 --expected-rows 1462 --apply --confirm-app-token QcnhbEzYpacGvUskCbVcrcm3nFd` |
+| 结果 | 收据 `mode=BLOCKED`，`error.reasonCode=FEISHU_PERMISSION_REQUIRED` |
+| 原始错误 | 独立幂等写探针（把 `平台` 写成它当前的值）→ **HTTP 403 / code 91403 / Forbidden** |
+| 零写入证据 | 失败后立刻重跑 dry-run：`updates` 仍是 `1462/1462`、`sourceHash` 不变 → 没有一行被改写 |
+| 收据留档 | `evidence/publish-blocked-permission-20260915.json` |
+
+所以 `writeVerified` 现在不是「未验证」而是「**已验证 = 不可写**」。
+要解开需要在飞书里把应用（App ID `cli_a96ee8749078dbcf`）加为
+「浴缸竞品分析」(`QcnhbEzYpacGvUskCbVcrcm3nFd`) 的**可编辑协作者**——
+与 §4 观察 4 是同一个 `91403`：当年补的权限补在**测试副本**上，正式 base 没补。
+
+**正式 base 的表清单（只读列举，2026-09-15）**：四张稳定表 + 竞品周 08-23 / 08-30 / 09-06 +
+SKU周 08-23 + 问题库 08-23 / 08-30，共 10 张。缺 `SKU周_2026-09-06_2026-09-12` 与
+`问题库_2026-09-06_2026-09-12`（后者按 FAQ 状态机是「本周无合格竞品 → 发布为空操作」，属设计内）。
+
+**未验证项（下一步必须做）**：新 base 的**写权限**。
+验证方式沿用 §5.3 的成例（建表/建字段/DELETE 均 200 + 一次两段式 import 到 VERIFIED）。

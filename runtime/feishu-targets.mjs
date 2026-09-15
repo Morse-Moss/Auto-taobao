@@ -57,8 +57,10 @@ export const PROFILES = Object.freeze({
       history: 'tbln7qqA6XopiL4Q',
       questionMaster: 'tblbJ9F91NiN8IfO',
     }),
-    // 正式 base 没有「默认空壳表」：这张「数据表」自带 5 行，**不是空白演练场，别拿它当 scratch**。
-    scratchTable: 'tbl7V2FuLlFXCZSi',
+    // 2026-09-15 修正：switch 到正式 base 时这里漏改，留下了上一个 base 的「数据表」id，
+    // 而正式 base「浴缸竞品分析」根本没有这张表（只读列举 10 张表，无「数据表」）→ 悬空引用。
+    // 正式 base 不做演练写入：要空表就往周表体系里新建带名字的表，别指望有个通用 scratch。
+    scratchTable: null,
   }),
 });
 
