@@ -1,0 +1,16 @@
+{
+  "version": "feishu-notify-receipt-v1",
+  "status": "SENT",
+  "channel": "app",
+  "alertId": "sycm-channel-check-20260915T114500",
+  "sentAt": "2026-09-15T03:58:29.406Z",
+  "attempts": [
+    {
+      "channel": "app",
+      "ok": true,
+      "target": "ou_e254f8d7d91a042b31fcd59299a1a4a9",
+      "messageId": "om_x100b65b868aea4b4df3122e7bb6a2b1"
+    }
+  ],
+  "_note": "首次真实发送的原始收据（2026-09-15 11:58 本机时区），由 `node runtime/notify-feishu.mjs --alert-file evidence/notify-channel-check-20260915.json` 产出，退出码 0。authorizedBy=用户明确指令「发吧」。派生发送，不重放、不重试。"
+}
