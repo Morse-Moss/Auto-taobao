@@ -2,6 +2,7 @@
 export * from './context-schema.mjs';
 export * from './policy.mjs';
 export * from './round-notify-policy.mjs';
+export * from './round-schedule.mjs';
 export * from './task-admission.mjs';
 export * from './task-queue.mjs';
 export * from './agent-proposal.mjs';
@@ -50,12 +51,14 @@ export {
   ROUND_RECEIPT_FIELDS,
   DEFAULT_MAX_ATTEMPTS_PER_DAY,
   SCHEDULER_OUTCOMES_WITHIN_ROUND,
+  PLAN_REPORT_FIELDS,
   AUTO_RETRY_REASONS,
   RoundError,
   localDayKey,
   createMemoryRoundState,
   createFileRoundState,
   escalationReasonFor,
+  buildPlanReport,
   runRound,
   exitCodeForRound,
   parseRoundArgs,

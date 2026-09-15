@@ -14,7 +14,7 @@
 - `skills/sycm-to-feishu-base`：飞书副本字段检查、TSV 构建、真实粘贴与导入验收。
 - `skills/huitun-to-feishu-keyword-heat`：读取飞书 `A候选` 队列，在灰豚红薯版采集完全同名话题浏览量，并只回填 `灰豚话题浏览量`；`内容热度`由上游流程提供。已登记运行时能力 `huitun.keyword-heat.collect@1.1.0`（采集段独立复验 `results.json` 与队列绑定，发布段对账式写入并由含 `优先级` 公式结算的回读收场）。
 - `evidence/stability-20260804`：三轮 267 行稳定性验证文件。
-- `runtime`：后续项目专用运行入口。`runtime/sop-runtime/` 是确定性运行底座（Controller 唯一拥有状态、两段式采集/发布、Agent 判决层、调度侧队列探测、一轮运行的生命周期），入口见 `runtime/sop-runtime/index.mjs`，阶段档案见 `docs/architecture/PHASE-ARCHIVE.md`。`runtime/notify-feishu.mjs`（+ `notify-feishu-core.mjs`）是无人值守方案的告警投递出口：stdin 进告警 JSON、stdout 出投递收据，主通道自建应用消息、群机器人兜底，未送达一律非零退出。`runtime/sop-runtime/round-runner.mjs`（+ `round-notify-policy.mjs`）把「体检 → 探队列 → 两段式执行 → 收尾 → 自愈 → 通知」串成一轮：判定表决定「该不该打扰人」（默认安静、未登记的理由一律按通知处理），去重与恢复成对，同一业务幂等键当天不重复跑。
+- `runtime`：后续项目专用运行入口。`runtime/sop-runtime/` 是确定性运行底座（Controller 唯一拥有状态、两段式采集/发布、Agent 判决层、调度侧队列探测、一轮运行的生命周期），入口见 `runtime/sop-runtime/index.mjs`，阶段档案见 `docs/architecture/PHASE-ARCHIVE.md`。`runtime/notify-feishu.mjs`（+ `notify-feishu-core.mjs`）是无人值守方案的告警投递出口：stdin 进告警 JSON、stdout 出投递收据，主通道自建应用消息、群机器人兜底，未送达一律非零退出。`runtime/sop-runtime/round-runner.mjs`（+ `round-notify-policy.mjs`）把「体检 → 探队列 → 两段式执行 → 收尾 → 自愈 → 通知」串成一轮：判定表决定「该不该打扰人」（默认安静、未登记的理由一律按通知处理），去重与恢复成对，同一业务幂等键当天不重复跑。`runtime/sop-runtime/round-schedule.mjs`（+ `runtime/round-schedule.json`）回答「什么时候跑、跑哪个周期」：排期是配置文件、不是某一台机器上的触发器，宿主（常驻 `--serve` / 外部定时器 / 人工点击）只负责叫醒，「该不该跑」始终由配置判定；到期口径是「只有触发日当天」，不跨天自动补跑，要补跑用 `--force`。
 - `docs/architecture/README.md`：多租户运营任务执行平台的目标架构、分层边界、权威数据和迁移原则。
 - `docs/standards/README.md`：跨模块工程规范、状态与证据、测试、安全和交付边界。
 - `docs/project-knowledge.md`：当前已验证能力、验证证据与对外表述边界；目标架构以 `docs/architecture/README.md` 为准。
@@ -126,6 +126,26 @@ node "D:\Retire\sycm-automation\runtime\sop-runtime\capability-scheduler.mjs" `
   --capability huitun.keyword-heat.collect --probe-only `
   --collect-input '{"envFile":"E:\\小红书\\.env.local","appToken":"<app-token>","tableId":"<table-id>","tableName":"<table-name>"}'
 ```
+
+排期入口（「什么时候跑、跑哪个周期」写在配置文件里，改配置不用改代码）：
+
+```powershell
+# 1) 先看计划：只读，不碰数据库，不创建任何运行
+node "D:\Retire\sycm-automation\runtime\sop-runtime\round-runner.mjs" `
+  --schedule-file "D:\Retire\sycm-automation\runtime\round-schedule.json" --show-plan
+
+# 2) 手工跑一条（已到点才跑；没到点会原样跳过并说明下一次什么时候）
+node "D:\Retire\sycm-automation\runtime\sop-runtime\round-runner.mjs" `
+  --schedule-file "D:\Retire\sycm-automation\runtime\round-schedule.json" --round weekly-competitor
+
+# 3) 常驻叫醒（机器基本不关时用）；外部定时器（任务计划程序 / WorkBuddy 定时任务）跑第 2 条命令即可，等价
+node "D:\Retire\sycm-automation\runtime\sop-runtime\round-runner.mjs" `
+  --schedule-file "D:\Retire\sycm-automation\runtime\round-schedule.json" --serve --interval-seconds 60
+```
+
+`--show-plan` 会同时给出 `triggerAt` / `isLastTriggerToday` / `hoursSinceTriggerAt` / `nextTriggerAt`。
+为什么必须显示这几个：到期口径是「只算触发日当天」，所以**周一没开机就真的不会自动补跑**——
+不显示出来，「漏了」在计划里看不出来，而「漏跑可见」正是选这个口径的前提。补跑是显式动作：加 `--force`。
 
 去掉 `--probe-only` 并补上 `--identity` / `--business-key` 即为完整调度：队列为空时跳过且
 **不创建任何运行**（退出码 0），因此「本周没有要补的词」不会被记成一条失败。退出码约定：

@@ -25,6 +25,13 @@ import { createRuntimeContext } from './runtime-bootstrap.mjs';
 import { runScheduled } from './capability-scheduler.mjs';
 import { parseCliArgs } from './two-stage-runner.mjs';
 import {
+  evaluateSchedule,
+  findRound,
+  parseScheduleJson,
+  planSchedule,
+  serveRounds,
+} from './round-schedule.mjs';
+import {
   ROUND_NOTIFY_RULES,
   NO_AUTO_RETRY_REASONS,
   decideNotification,
@@ -631,12 +638,38 @@ export function exitCodeForRound(receipt) {
   return receipt.ok === true ? 0 : 2;
 }
 
+const BOOLEAN_FLAGS = Object.freeze({
+  '--force': 'force',
+  '--serve': 'serve',
+  '--show-plan': 'showPlan',
+  '--help': 'help',
+  '-h': 'help',
+});
+
+// 解析参数。两种模式：
+//  1. **手动模式**（现状）：调用方把 capability / identity / business-key 全带上，跑一轮。
+//  2. **排期模式**：给了 `--schedule-file`，这些就从排期文件里读——因此**不能**再走
+//     `parseCliArgs`（它对 run profile 强制要求 capability/identity/business-key 三件套），
+//     否则「排期里已经写好的东西」会被逼着在命令行再抄一遍，抄漏一个就是启动即炸。
 export function parseRoundArgs(argv = []) {
-  const flags = { force: false };
+  const flags = { force: false, serve: false, showPlan: false, help: false };
   const rest = [];
   for (const token of argv) {
-    if (token === '--force') { flags.force = true; continue; }
+    const mapped = BOOLEAN_FLAGS[token];
+    if (mapped) { flags[mapped] = true; continue; }
     rest.push(token);
+  }
+  if (rest.includes('--schedule-file')) {
+    const values = {};
+    for (let index = 0; index < rest.length; index += 1) {
+      const token = rest[index];
+      if (!token.startsWith('--')) throw new Error(`Unknown argument: ${token}`);
+      const value = rest[index + 1];
+      if (!value || value.startsWith('--')) throw new Error(`${token} requires a value`);
+      values[token.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = value;
+      index += 1;
+    }
+    return { ...flags, ...values, scheduleMode: true };
   }
   const args = parseCliArgs(rest, { profile: 'run' });
   return { ...args, ...flags };
@@ -680,15 +713,113 @@ async function createFeishuNotify({
 }
 
 // 用法：
+//   ── 手动模式（跑一轮，参数全在命令行上）──
 //   node runtime/sop-runtime/round-runner.mjs --capability <id> --identity <json> \
 //     --business-key <key> [--collect-input <json>] [--target <url>] \
 //     [--period-start D --period-end D] [--work-dir <p>] [--database-url <pg>] \
 //     [--commit --env-file <p> --operator <name>] [--force]
+//   ── 排期模式（「什么时候跑、周期多少」写在配置文件里，见 runtime/round-schedule.json）──
+//   node runtime/sop-runtime/round-runner.mjs --schedule-file <p> --show-plan
+//   node runtime/sop-runtime/round-runner.mjs --schedule-file <p> --round <name> [--force]
+//   node runtime/sop-runtime/round-runner.mjs --schedule-file <p> --serve [--interval-seconds 60]
 // 退出码：0 完成/无需动作；2 运行失败；3 需要人工；4 调用方或编排缺陷。
+const USAGE = [
+  'usage: round-runner.mjs --capability <id> --identity <json> --business-key <key>',
+  '         [--collect-input <json>] [--target <url>] [--expected-rows N]',
+  '         [--period-start D --period-end D] [--work-dir <p>] [--database-url <pg>]',
+  '         [--commit --env-file <p> --operator <name>] [--force]',
+  '   or: round-runner.mjs --schedule-file <p> --show-plan',
+  '   or: round-runner.mjs --schedule-file <p> --round <name> [--force]',
+  '   or: round-runner.mjs --schedule-file <p> --serve [--interval-seconds 60]',
+  '',
+].join('\n');
+
+function readScheduleFile(file) {
+  const path = resolve(file);
+  const { schedule, ok, errors } = parseScheduleJson(readFileSync(path, 'utf8'));
+  return { path, schedule, ok, errors };
+}
+
+// 排期条目 -> 一次运行的选项。命令行参数可以盖掉条目里的值（人工临时跑用），但**不反过来**：
+// 配置文件是运营日常改的地方，命令行是临时干预，临时的不该被持久的那份悄悄覆盖。
+function optionsFromEntry(entry, args = {}, decision = null) {
+  const collectInput = { ...(entry.collectInput ?? {}) };
+  if (args.collectInput) Object.assign(collectInput, JSON.parse(args.collectInput));
+  const envFile = args.envFile ?? entry.envFile ?? null;
+  if (envFile) collectInput.envFile = resolve(envFile);
+  const period = decision?.period
+    ? { startDate: decision.period.startDate, endDate: decision.period.endDate }
+    : (entry.periodStart && entry.periodEnd ? { startDate: entry.periodStart, endDate: entry.periodEnd } : null);
+  return {
+    capabilityId: entry.capability,
+    identity: args.identity ? JSON.parse(args.identity) : entry.identity,
+    target: args.target ?? entry.target ?? null,
+    expectedRows: entry.expectedRows === undefined ? null : Number(entry.expectedRows),
+    businessKey: args.businessKey ?? decision?.businessKey ?? entry.businessKey ?? null,
+    commit: entry.commit === true,
+    operator: args.operator ?? entry.operator ?? null,
+    collectInput,
+    collectStepId: entry.collectStepId ?? null,
+    period,
+    publishInput: entry.publishInput ?? {},
+    source: {
+      targetLabel: entry.source?.targetLabel ?? null,
+      shopName: entry.source?.shopName ?? null,
+      period: period ? `${period.startDate}~${period.endDate}` : null,
+      capability: entry.capability,
+    },
+  };
+}
+
+// --show-plan 的输出形状。抽成纯函数只为一件事：**让「字段有没有少」可测**。
+// 少一个 `hoursSinceTriggerAt`，「漏跑在计划里看得见」这句话就不成立了，而这种缺失不会报错。
+export const PLAN_REPORT_FIELDS = Object.freeze([
+  'name', 'capability', 'when', 'enabled', 'due',
+  'triggerAt', 'isLastTriggerToday', 'hoursSinceTriggerAt',
+  'windowKey', 'businessKey', 'nextTriggerAt',
+]);
+
+export function buildPlanReport({ scheduleFile, now, plan }) {
+  return {
+    scheduleFile,
+    ok: true,
+    now: new Date(now).toISOString(),
+    rounds: plan.rows.map((row) => ({
+      name: row.name,
+      capability: row.capability,
+      when: row.label,
+      enabled: row.enabled,
+      due: row.due,
+      // 「上次触发是什么时候、过去多久」必须摆出来：到期口径是「只算触发日当天」，
+      // 所以周一没开机就真的不会自动补跑。不显示这两个字段的话，「漏了」在计划里看不出来，
+      // 而「漏跑可见」正是选这个口径的前提条件。
+      triggerAt: row.triggerAt,
+      isLastTriggerToday: row.isLastTriggerToday,
+      hoursSinceTriggerAt: row.hoursSinceTriggerAt,
+      windowKey: row.windowKey,
+      businessKey: row.businessKey,
+      nextTriggerAt: row.nextTriggerAt,
+    })),
+  };
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const args = parseRoundArgs(argv);
   if (args.help) {
-    process.stdout.write('usage: round-runner.mjs --capability <id> --identity <json> --business-key <key> [--collect-input <json>] [--target <url>] [--expected-rows N] [--period-start D --period-end D] [--work-dir <p>] [--database-url <pg>] [--commit --env-file <p> --operator <name>] [--force]\n');
+    process.stdout.write(USAGE);
+    return 0;
+  }
+
+  // --show-plan 只读配置、不碰数据库：运营问「下次什么时候跑」不该需要数据库在线。
+  if (args.showPlan) {
+    if (!args.scheduleFile) throw new Error('--show-plan requires --schedule-file');
+    const { path, schedule, ok, errors } = readScheduleFile(args.scheduleFile);
+    if (!ok) {
+      process.stdout.write(`${JSON.stringify({ scheduleFile: path, ok: false, errors }, null, 2)}\n`);
+      return 4;
+    }
+    const plan = planSchedule(schedule, Date.now());
+    process.stdout.write(`${JSON.stringify(buildPlanReport({ scheduleFile: path, now: Date.now(), plan }), null, 2)}\n`);
     return 0;
   }
 
@@ -699,48 +830,121 @@ export async function main(argv = process.argv.slice(2)) {
   });
   const { registry, loader, store, controller, ledger, evidenceStore, workDir } = context;
 
-  const collectInput = args.collectInput ? JSON.parse(args.collectInput) : {};
-  if (args.envFile) collectInput.envFile = resolve(args.envFile);
-
   const stateFile = resolve(workDir, 'round-state.json');
   const roundState = createFileRoundState(stateFile);
+  // 通知端口建一次就复用：它内部持有 token 缓存（常驻循环下每秒新建一个 provider 会让 2 小时过期
+  // 这条防线失效——每次都是新缓存，永远撞不上「用旧 token 发」的窗口，也就永远测不出缓存逻辑）。
+  const notify = await createFeishuNotify();
 
-  const schedule = (roundArgs) => runScheduled({
-    registry, loader, store, controller, ledger, evidenceStore,
-    capabilityId: args.capability,
-    identity: args.identity ? JSON.parse(args.identity) : null,
-    target: args.target ?? null,
-    expectedRows: args.expectedRows === undefined ? null : Number(args.expectedRows),
-    businessKey: roundArgs.businessKey,
-    commit: args.commit,
-    operator: args.operator ?? null,
-    collectInput,
-    collectStepId: args.collectStepId ?? null,
-    period: args.periodStart ? { startDate: args.periodStart, endDate: args.periodEnd } : null,
-    publishInput: args.publishInput ? JSON.parse(args.publishInput) : {},
-    workDir,
-    probeOnly: false,
-    forceRun: args.force,
+  // 一次运行的装配：manual 与 schedule 两条路径共用，避免「两条路各接一半」。
+  const buildRound = (opts, { dueDecision = null, force = false } = {}) => ({
+    businessKey: opts.businessKey,
+    capabilityId: opts.capabilityId,
+    source: opts.source,
+    // 排期模式已经判过「该不该跑」，这里把结论原样交给编排层；它自己那份
+    // 「同一幂等键跑过没有 / 今天是否收工」仍然独立生效（两道闸门，不互相代替）。
+    due: dueDecision ? async () => ({ due: dueDecision.due, source: 'SCHEDULE' }) : null,
+    schedule: (roundArgs) => runScheduled({
+      registry, loader, store, controller, ledger, evidenceStore,
+      capabilityId: opts.capabilityId,
+      identity: opts.identity,
+      target: opts.target,
+      expectedRows: opts.expectedRows,
+      businessKey: roundArgs.businessKey,
+      commit: opts.commit,
+      operator: opts.operator,
+      collectInput: opts.collectInput,
+      collectStepId: opts.collectStepId,
+      period: opts.period,
+      publishInput: opts.publishInput,
+      workDir,
+      probeOnly: false,
+      forceRun: force,
+    }),
+    // 体检层与自愈执行器分别是实施计划第 4 步 / 第 3 步；在那之前**不假装它们存在**。
+    healthCheck: null,
+    heal: null,
+    notify,
+    state: roundState,
+    force,
   });
 
   try {
-    const receipt = await runRound({
-      businessKey: args.businessKey,
-      capabilityId: args.capability,
-      source: {
-        targetLabel: args.targetLabel ?? null,
-        shopName: args.shopName ?? null,
-        period: args.periodStart ? `${args.periodStart}~${args.periodEnd}` : null,
+    if (args.serve) {
+      if (!args.scheduleFile) throw new Error('--serve requires --schedule-file');
+      const { path, schedule, ok, errors } = readScheduleFile(args.scheduleFile);
+      if (!ok) {
+        // 配置不合法就**不开跑**：坏配置最坏的形态不是报错，而是「看起来在跑」。
+        process.stdout.write(`${JSON.stringify({ scheduleFile: path, ok: false, errors }, null, 2)}\n`);
+        return 4;
+      }
+      const intervalSeconds = Number(args.intervalSeconds ?? 60);
+      if (!Number.isFinite(intervalSeconds) || intervalSeconds < 5) throw new Error('--interval-seconds must be a number >= 5');
+      const maxTicks = args.maxTicks === undefined ? Number.POSITIVE_INFINITY : Number(args.maxTicks);
+      process.stdout.write(`serving ${schedule.rounds.length} round(s) from ${path}; every ${intervalSeconds}s\n`);
+      const { ticks, tickLog } = await serveRounds({
+        schedule,
+        intervalMs: intervalSeconds * 1000,
+        maxTicks,
+        runRoundOnce: async (entry, decision) => {
+          const receipt = await runRound(buildRound(optionsFromEntry(entry, args, decision), { dueDecision: decision }));
+          process.stdout.write(`[round] ${entry.name} → ${receipt.outcome} (key ${receipt.businessKey}, notify ${receipt.notification.status})\n`);
+          return receipt;
+        },
+        onTick: async ({ at, results }) => {
+          const due = results.filter((item) => item.decision.due).length;
+          const quiet = results.length - due;
+          process.stdout.write(`[tick] ${new Date(at).toISOString()} due=${due} waiting=${quiet} state=${stateFile}\n`);
+        },
+      });
+      process.stdout.write(`${JSON.stringify({
+        ticks,
+        lastTick: tickLog.length ? { at: tickLog[tickLog.length - 1].at, rounds: tickLog[tickLog.length - 1].results.map((item) => ({ name: item.name, due: item.decision.due, outcome: item.receipt?.outcome ?? null })) } : null,
+      }, null, 2)}\n`);
+      return 0;
+    }
+
+    if (args.scheduleMode) {
+      const { path, schedule, ok, errors } = readScheduleFile(args.scheduleFile);
+      if (!ok) {
+        process.stdout.write(`${JSON.stringify({ scheduleFile: path, ok: false, errors }, null, 2)}\n`);
+        return 4;
+      }
+      const targets = args.round ? [findRound(schedule, args.round)].filter(Boolean) : schedule.rounds;
+      if (args.round && targets.length === 0) throw new Error(`no round named ${args.round} in ${path}`);
+      const receipts = [];
+      for (const entry of targets) {
+        const decision = evaluateSchedule(entry, Number(Date.now()));
+        if (!decision.due && args.force !== true) {
+          receipts.push({ name: decision.name, skipped: true, reason: decision.reason, nextTriggerAt: decision.nextTriggerAt, businessKey: decision.businessKey });
+          continue;
+        }
+        const receipt = await runRound(buildRound(optionsFromEntry(entry, args, decision), { dueDecision: decision, force: args.force === true }));
+        receipts.push({ name: decision.name, skipped: false, receipt });
+      }
+      process.stdout.write(`${JSON.stringify({ scheduleFile: path, rounds: receipts }, null, 2)}\n`);
+      const worst = receipts.reduce((code, item) => Math.max(code, item.skipped ? 0 : exitCodeForRound(item.receipt)), 0);
+      return worst;
+    }
+
+    const opts = optionsFromEntry(
+      {
         capability: args.capability,
+        identity: args.identity ? JSON.parse(args.identity) : null,
+        target: args.target ?? null,
+        commit: args.commit === true,
+        operator: args.operator ?? null,
+        collectInput: {},
+        source: { targetLabel: args.targetLabel ?? null, shopName: args.shopName ?? null },
+        periodStart: args.periodStart ?? null,
+        periodEnd: args.periodEnd ?? null,
       },
-      schedule,
-      // 体检层与自愈执行器分别是实施计划第 4 步 / 第 3 步；在那之前**不假装它们存在**。
-      healthCheck: null,
-      heal: null,
-      notify: await createFeishuNotify(),
-      state: roundState,
-      force: args.force,
-    });
+      args,
+      args.periodStart && args.periodEnd ? { period: { startDate: args.periodStart, endDate: args.periodEnd, label: `${args.periodStart}~${args.periodEnd}` }, businessKey: args.businessKey } : { businessKey: args.businessKey },
+    );
+    opts.businessKey = args.businessKey;
+    opts.capabilityId = args.capability;
+    const receipt = await runRound(buildRound(opts, { force: args.force === true }));
     process.stdout.write(`${JSON.stringify(receipt, null, 2)}\n`);
     return exitCodeForRound(receipt);
   } finally {

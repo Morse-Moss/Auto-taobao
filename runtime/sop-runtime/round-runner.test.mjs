@@ -29,8 +29,10 @@ import {
 } from './round-notify-policy.mjs';
 import {
   AUTO_RETRY_REASONS,
+  PLAN_REPORT_FIELDS,
   ROUND_RECEIPT_FIELDS,
   SCHEDULER_OUTCOMES_WITHIN_ROUND,
+  buildPlanReport,
   createMemoryRoundState,
   escalationReasonFor,
   exitCodeForRound,
@@ -38,6 +40,7 @@ import {
   parseRoundArgs,
   runRound,
 } from './round-runner.mjs';
+import { planSchedule, ROUND_SCHEDULE_VERSION } from './round-schedule.mjs';
 
 const NOW_ISO = '2026-09-15T09:00:00+08:00';
 const at = (iso) => () => new Date(iso).valueOf();
@@ -559,4 +562,42 @@ test('the round CLI parser handles its own boolean flag', () => {
   assert.equal(args.businessKey, BUSINESS_KEY);
   // 布尔开关不能漏给下游解析器（它要求任何 --x 都跟一个值）。
   assert.throws(() => parseRoundArgs(['--capability', 'x', '--force', '--identity', '{}', '--business-key', 'k', '--nope']));
+});
+
+test('计划报告全量给出字段，尤其是「上一次触发过去多久」', () => {
+  // 到期口径是「只算触发日当天」，所以「漏了」在计划里必须看得见——这是选那个口径的前提。
+  // 少一个字段不会报错，只会让「漏跑可见」变成一句空话，所以这里按**全量字段**钉住。
+  const entry = {
+    name: 'weekly-competitor',
+    enabled: true,
+    capability: 'sycm.feishu.weekly',
+    when: { kind: 'weekly', weekday: 'MO', at: '09:00' },
+    period: { kind: 'PREVIOUS_WEEK_SUN_SAT' },
+    identity: {
+      tenantId: 'sycm', storeId: 'bathtub-industry', platform: 'sycm',
+      accountId: 'operator', browserProfileId: 'local', contractVersion: 'sycm-weekly-v1',
+    },
+  };
+  const schedule = { version: ROUND_SCHEDULE_VERSION, rounds: [entry] };
+  const now = new Date('2026-09-15T12:00:00+08:00').valueOf();
+  const report = buildPlanReport({ scheduleFile: 'runtime/round-schedule.json', now, plan: planSchedule(schedule, now) });
+
+  assert.equal(report.ok, true);
+  assert.equal(report.scheduleFile, 'runtime/round-schedule.json');
+  assert.equal(report.now, new Date(now).toISOString());
+  assert.equal(report.rounds.length, 1);
+  const row = report.rounds[0];
+  assert.deepEqual(Object.keys(row).sort(), [...PLAN_REPORT_FIELDS].sort());
+  for (const field of PLAN_REPORT_FIELDS) {
+    assert.ok(Object.hasOwn(row, field), `plan row must carry ${field}`);
+  }
+  // 周二 12:00 看周一 09:00 那次：不到期，但必须看得见它已经过去 27 小时。
+  assert.equal(row.due, false);
+  assert.equal(row.isLastTriggerToday, false);
+  assert.equal(row.hoursSinceTriggerAt, 27);
+  assert.equal(row.triggerAt, new Date('2026-09-14T09:00:00+08:00').toISOString());
+  assert.equal(row.nextTriggerAt, new Date('2026-09-21T09:00:00+08:00').toISOString());
+  // 计划里**不许**出现「跑没跑过」的结论字段：那是运行账本的事，排期层没资格说。
+  assert.equal(Object.hasOwn(row, 'ran'), false);
+  assert.equal(Object.hasOwn(row, 'missed'), false);
 });

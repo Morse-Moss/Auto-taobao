@@ -41,6 +41,10 @@ runtime/**/*.csv
 runtime/**/*.tsv
 runtime/**/*.zip
 
+# 出厂排期配置**要交付**：运营要改的就是它，不是生成物。上面那条 runtime/**/*.json 会连它一起吞掉，
+# 被吞的后果是新机器上根本没有这份配置，而「没有配置」会被读成「不用跑」——一个安静的、永久的漏跑。
+!runtime/round-schedule.json
+
 # Local browser/runtime sessions and historical run artifacts
 runtime/edge-isolated-*/
 runtime/isolated-proxy/

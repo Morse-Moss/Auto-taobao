@@ -1,0 +1,37 @@
+{
+  "version": "round-schedule-v1",
+  "_readme": [
+    "这是「什么时候跑、跑哪个周期」的唯一配置：改它不需要改代码，也不需要懂代码。",
+    "宿主只负责把系统叫醒——常驻（round-runner.mjs --serve）、外部定时器（WorkBuddy 的定时任务 / Windows 计划任务）、或人工点一下。",
+    "「该不该跑」始终由这份配置判定，所以换宿主不会改变节奏；也不存在「绑在某一台机器上」的问题。",
+    "改完先看计划（只读，不跑）：node runtime/sop-runtime/round-runner.mjs --schedule-file runtime/round-schedule.json --show-plan",
+    "确认无误再把 enabled 改成 true。注意：**没启用的条目也必须合法**（不合法会直接报出来），免得启用那天才发现。",
+    "when：daily / weekly / monthly；at 是本机时间。period：跑哪个周期（TODAY / YESTERDAY / PREVIOUS_WEEK_SUN_SAT / CURRENT_WEEK_SUN_SAT / PREVIOUS_MONTH）。",
+    "businessKey 默认是「能力/周期」，由排期自动算出来——不需要你填，也不该手填（手填的键不会随周期变，那等于只跑一次）。",
+    "到期口径：只算触发日当天。周一的排期，周一 09:00 之后才算到期；周二再开机**不会自动补跑**（--show-plan 里的 hoursSinceTriggerAt 会告诉你上一次过去多久了）。要补跑就显式加 --force。",
+    "这条口径是刻意的：如果改成「错过了就补」，周一没开机就会在周二悄悄跑出一份迟了一天的数据，而看数据的人不知道它迟了。宁可漏跑（漏了在计划里看得见），不要偷跑。"
+  ],
+  "rounds": [
+    {
+      "name": "weekly-competitor",
+      "enabled": false,
+      "capability": "sycm.feishu.weekly",
+      "when": { "kind": "weekly", "weekday": "MO", "at": "09:00" },
+      "period": { "kind": "PREVIOUS_WEEK_SUN_SAT" },
+      "identity": {
+        "tenantId": "sycm",
+        "storeId": "bathtub-industry",
+        "platform": "sycm",
+        "accountId": "operator",
+        "browserProfileId": "local",
+        "contractVersion": "sycm-weekly-v1"
+      },
+      "envFile": "E:/小红书/.env.local",
+      "target": "<飞书周表直链，含 ?table=>",
+      "commit": false,
+      "expectedRows": 300,
+      "source": { "targetLabel": "专用部署机", "shopName": null },
+      "notes": "当前两套 SOP 都没有店铺维度，storeId 只是身份契约里的占位值；等运营日报阶段再按店铺拆成多条排期。commit 默认 false（先只采不发），确认稳定后再开。启用前必须先填 target：现在它还是占位串，改了 enabled 而没填 target 只会在到点那天失败一次。"
+    }
+  ]
+}
