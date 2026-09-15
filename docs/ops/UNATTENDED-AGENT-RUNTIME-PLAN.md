@@ -157,8 +157,10 @@
 第 1、2 跳同通道、同接口，只是 `receive_id_type` 不同；第 3 跳才是真正的跨通道冗余。
 第 2 跳与主收件人相同时不会重发（只留一条 `skipped: SAME_AS_PRIMARY`，避免收据把话说过头）。
 
-**已验证范围**（2026-09-15）：第 1 跳已真实发送成功；第 2 跳因第 1 跳成功而短路、**未验证**；
-第 3 跳（webhook）当天没有配置。**上表描述的是能力，不是已验证范围。**
+**已验证范围**（2026-09-15）：第 1 跳已真实发送成功；第 2 跳已用「故意让第 1 跳失败」的方式
+真实验证（主收件人指向不存在的 `open_id` → 400/99992351 → 降到群，收据 `channel=app_fallback`，
+见 `FEISHU-APP-SETUP-NEW-TENANT.md` §7.1 第三步）；第 3 跳（webhook）**代码有、部署无**，未验证。
+**上表描述的是能力，不是已验证范围。**
 
 **两个必须处理的实现细节**（都是「常驻进程 vs 一次性 CLI」的差异，容易踩）：
 
@@ -226,7 +228,7 @@
 | 步 | 交付物 | 状态 | 验收方式 |
 | --- | --- | --- | --- |
 | 0 | 决策记录 + 登录态设计（本文 §9/§10 与 `LOGIN-STATE-MANAGEMENT.md`） | **已完成** | 文档交叉引用齐全、相对链接有效 |
-| 1 | 通知出口：`runtime/notify-feishu-core.mjs` + `runtime/notify-feishu.mjs` + `runtime/notify-feishu.test.mjs`（三跳投递链 + token 过期缓存 + 凭据遮盖） | **已完成** | 30 例全绿；干跑真实入口验证渲染；2026-09-15 11:58 经用户授权完成一次真实发送（`status=SENT`、`channel=app`、`messageId=om_x100b65b868aea4b4df3122e7bb6a2b1`、退出码 0；收据 `evidence/notify-channel-check-20260915.receipt.json`，结论见 `FEISHU-APP-SETUP-NEW-TENANT.md` §7.1）。**但第二跳（群 `chat_id`）没有被走到——主收件人成功即短路，仍未验证** |
+| 1 | 通知出口：`runtime/notify-feishu-core.mjs` + `runtime/notify-feishu.mjs` + `runtime/notify-feishu.test.mjs`（三跳投递链 + token 过期缓存 + 凭据遮盖） | **已完成** | 30 例全绿；干跑真实入口验证渲染；**第 1 跳**：2026-09-15 11:58 真实发送 `status=SENT`/`channel=app`/`messageId=om_x100b65b868aea4b4df3122e7bb6a2b1`（收据 `evidence/notify-channel-check-20260915.receipt.json`）；**第 2 跳**：同日 12:02 故意让主收件人不可达后真实验证降级，`channel=app_fallback`/`messageId=om_x100b65b878531d04deb73310895c294`（收据 `evidence/notify-channel-check-group-20260915.receipt.json`）。两次退出码均为 0，结论见 `FEISHU-APP-SETUP-NEW-TENANT.md` §7.1。**第 3 跳（webhook）代码有、部署无，未验证** |
 | 2 | 常驻调度器：一轮运行生命周期（体检 → 探队列 → 两段式 → 收尾 → 自愈 → 通知） | 待做 | 离线用例覆盖 §4 静默判据表的**双向**（该响要响、该静默要静默） |
 | 3 | 自愈执行器：把 `diagnose.actions` 的 5 个动作接上真实实现 | 待做 | 动作幂等；预算上限不改默认值 |
 | 4 | 体检前置与登录会话对象：从 `xws-sku-auth-preflight.mjs` 推广成四层体检 | 待做 | 先补 `LOGIN-STATE-MANAGEMENT.md` §7 第 1 条（实测采集判据） |
@@ -240,6 +242,7 @@
 2. **投递失败必须非零退出**：否则调用方会把没送达的告警记成送达。收据 JSON 从 stdout 出，供上层留证据。
 3. **时间要按本机时区渲染**：ISO 的 `2026-09-15T03:45:00.000Z` 会被运营读成凌晨 3 点（实际 11:45）。
    这条同样是干跑真实入口时发现的——通知的读者是人，不是日志解析器。
-4. **没被走到的那一跳不算验证过**：2026-09-15 的真实发送只走了第一跳（个人），第二跳（群）
-   因为第一跳成功而短路，第三跳（webhook）当天根本没配。§6 的投递链表描述的是**能力**，
-   不是**已验证范围**；后续若要宣称「群兜底可用」，得单独制造一次第一跳失败的真实发送。
+4. **没被走到的那一跳不算验证过，要验证它就得人为制造失败**：2026-09-15 的第一次真实发送只走了
+   第一跳（个人），第二跳（群）因第一跳成功而短路。后来**故意把主收件人指向不存在的 `open_id`**
+   才把第二跳真实走到（收据 `channel=app_fallback`）。所以 §6 的投递链表描述的是**能力**，
+   不是**已验证范围**；第三跳（webhook）至今**代码有、部署无**，要验得先在群里加一个自定义机器人。

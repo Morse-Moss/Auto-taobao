@@ -171,9 +171,27 @@ node runtime/notify-feishu.mjs --alert-file evidence/notify-channel-check-202609
 
 **结论：发消息权限已开通且已验证。** 原始收据存 `evidence/notify-channel-check-20260915.receipt.json`。
 
-仍然没有验证的是**第二跳（群 `chat_id`）**：主收件人发送成功后投递立刻短路，兜底那跳当天
-根本没被走到。要单独验证它，只能把主收件人临时指成一个不可达地址再跑一次（并接受它是一次
-真实发送）。**别把「三跳都配好了」读成「三跳都验证过了」。**
+第三步：群兜底（第二跳）验证（2026-09-15 12:02，用户指令「群也一起做了」）：
+
+第一步只走了第一跳——主收件人成功即短路，兜底那跳根本没被走到。所以这次**故意把主收件人指向一个
+不存在的 `open_id`**，制造一次真实失败，看投递会不会顺链降到群：
+
+```
+node runtime/notify-feishu.mjs --alert-file evidence/notify-channel-check-group-20260915.json \
+  --recipient ou_00000000000000000000000000000000 --recipient-type open_id
+→ status=SENT  channel=app_fallback  alertId=sycm-channel-check-group-20260915T120200
+  attempt[0] app          ok=false http=400 code=99992351 retryable=false   （不存在的 open_id）
+  attempt[1] app_fallback ok=true  target=oc_fdb7d2502f41761a764ed761642af178
+            messageId=om_x100b65b878531d04deb73310895c294
+  退出码 0
+```
+
+收据存 `evidence/notify-channel-check-group-20260915.receipt.json`。这次同时验到三件事：
+①降级是真的会走（不是纸面设计）；②应用消息发到群 `chat_id` 可行；③主收件人失败时收据**如实记录
+失败码与 `retryable=false`**，不会为了好看把失败那跳抹掉。
+
+至此**第一跳、第二跳都已真实验证**；剩下的只有第三跳（群自定义机器人 webhook）——它需要你在群里
+加一个自定义机器人拿到 hook URL 才能验，当前 `SYCM_NOTIFY_WEBHOOK` 仍是空的（代码有、部署无）。
 
 ### 7.2 投递层怎么配、怎么干跑
 
@@ -200,8 +218,8 @@ SYCM_NOTIFY_WEBHOOK=https://open.feishu.cn/open-apis/bot/v2/hook/xxxx   # 可选
 
 **本机当前实际配置**（2026-09-15 写入 `E:/小红书/.env.feishu-kcne.local`）：
 群「奈何妨」（1 人 + 机器人）承担兜底，主收件人的 `open_id` 由该群成员列表取得。
-当日已按用户指令完成一次真实发送（证据见 §7.1），**但走的是第一跳**；第二跳（群）
-只有等第一跳失败才会被走到，尚未验证。
+第一跳（个人）与第二跳（群）当日都已完成真实发送（证据见 §7.1 第二步 / 第三步）；
+第三跳（webhook）未配置。
 
 干跑（只渲染不发送，用来在开通知前先看文案）：
 
