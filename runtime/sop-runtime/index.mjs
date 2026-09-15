@@ -1,6 +1,7 @@
 // sop-runtime：确定性运行底座统一出口
 export * from './context-schema.mjs';
 export * from './policy.mjs';
+export * from './round-notify-policy.mjs';
 export * from './task-admission.mjs';
 export * from './task-queue.mjs';
 export * from './agent-proposal.mjs';
@@ -40,3 +41,22 @@ export {
   parseSchedulerArgs,
   exitCodeFor,
 } from './capability-scheduler.mjs';
+// 一轮运行的生命周期（无人值守运行内核）：同样用具名导出，理由与上面一致。`main` 不导出。
+export {
+  ROUND_CONTRACT_VERSION,
+  ROUND_STATE_VERSION,
+  ROUND_STEPS,
+  ROUND_OUTCOMES,
+  ROUND_RECEIPT_FIELDS,
+  DEFAULT_MAX_ATTEMPTS_PER_DAY,
+  SCHEDULER_OUTCOMES_WITHIN_ROUND,
+  AUTO_RETRY_REASONS,
+  RoundError,
+  localDayKey,
+  createMemoryRoundState,
+  createFileRoundState,
+  escalationReasonFor,
+  runRound,
+  exitCodeForRound,
+  parseRoundArgs,
+} from './round-runner.mjs';

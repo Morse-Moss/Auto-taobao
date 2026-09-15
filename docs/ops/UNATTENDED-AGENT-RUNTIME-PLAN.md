@@ -229,7 +229,7 @@
 | --- | --- | --- | --- |
 | 0 | 决策记录 + 登录态设计（本文 §9/§10 与 `LOGIN-STATE-MANAGEMENT.md`） | **已完成** | 文档交叉引用齐全、相对链接有效 |
 | 1 | 通知出口：`runtime/notify-feishu-core.mjs` + `runtime/notify-feishu.mjs` + `runtime/notify-feishu.test.mjs`（三跳投递链 + token 过期缓存 + 凭据遮盖） | **已完成** | 30 例全绿；干跑真实入口验证渲染；**第 1 跳**：2026-09-15 11:58 真实发送 `status=SENT`/`channel=app`/`messageId=om_x100b65b868aea4b4df3122e7bb6a2b1`（收据 `evidence/notify-channel-check-20260915.receipt.json`）；**第 2 跳**：同日 12:02 故意让主收件人不可达后真实验证降级，`channel=app_fallback`/`messageId=om_x100b65b878531d04deb73310895c294`（收据 `evidence/notify-channel-check-group-20260915.receipt.json`）。两次退出码均为 0，结论见 `FEISHU-APP-SETUP-NEW-TENANT.md` §7.1。**第 3 跳（webhook）代码有、部署无，未验证** |
-| 2 | 常驻调度器：一轮运行生命周期（体检 → 探队列 → 两段式 → 收尾 → 自愈 → 通知） | 待做 | 离线用例覆盖 §4 静默判据表的**双向**（该响要响、该静默要静默） |
+| 2 | 常驻调度器：一轮运行生命周期（体检 → 探队列 → 两段式 → 收尾 → 自愈 → 通知） | **已完成（编排层）** | `runtime/sop-runtime/round-runner.mjs` + `round-notify-policy.mjs`，35 例离线用例覆盖 §4 判据表的**双向**（该响要响、该静默要静默），套件基线 `runtime` 427 + sop-runtime 335 全绿 |
 | 3 | 自愈执行器：把 `diagnose.actions` 的 5 个动作接上真实实现 | 待做 | 动作幂等；预算上限不改默认值 |
 | 4 | 体检前置与登录会话对象：从 `xws-sku-auth-preflight.mjs` 推广成四层体检 | 待做 | 先补 `LOGIN-STATE-MANAGEMENT.md` §7 第 1 条（实测采集判据） |
 
@@ -246,3 +246,30 @@
    第一跳（个人），第二跳（群）因第一跳成功而短路。后来**故意把主收件人指向不存在的 `open_id`**
    才把第二跳真实走到（收据 `channel=app_fallback`）。所以 §6 的投递链表描述的是**能力**，
    不是**已验证范围**；第三跳（webhook）至今**代码有、部署无**，要验得先在群里加一个自定义机器人。
+
+### 11.1 第 2 步的落地说明（2026-09-15）
+
+`runtime/sop-runtime/round-runner.mjs`（编排）+ `runtime/sop-runtime/round-notify-policy.mjs`（判据表）
++ `round-runner.test.mjs`（35 例）。四条设计决定：
+
+1. **判据表是唯一清单，静默是显式声明。** 每个理由（8 个失败分类 + 7 个诊断分类 + 10 个编排/升级理由）
+   都在表里写明「通知 / 静默」，两个方向由同一张表派生；**表里查不到的理由一律按通知处理**
+   （fail-closed），并在收据里标 `unmapped`。反过来做（没列出来就静默）会让「新增一个失败分类」
+   悄悄变成「这个故障不再通知」。
+2. **「要不要通知」与「该不该自动重试」是两个轴**，同一张表里逐条表态。登录失效要通知人，
+   但它恰恰是「人修完就该自动继续」的典型，所以它是「通知 + 自动重试」；而配置错、疑似缺陷、
+   写入结果未知（明确禁止静默重试）是「通知 + 不再自动重试，当天收工」。
+3. **去重与恢复成对，且「能不能证明恢复」逐条声明。** 同一理由不重复打扰；恢复时补一条「已恢复」。
+   关键：**空队列不证明登录修好了**（探测只读队列、不碰浏览器），所以 `EMPTY_QUEUE` 不许收掉
+   一条登录告警——只有 `SUCCESS` / `AUTO_HEALED` 才允许。
+4. **未处理的失败一律升级，不许静默收尾。** `TRANSIENT_EXTERNAL` / `RESOURCE_BUSY` 本身是静默类，
+   但那只在「自愈已处理掉」时成立；没处理掉就把它们当结论上报，等于把一次真实失败吞掉。
+   编排因此强制：未治愈 → 升级理由（`ESCALATED_HUMAN` / 具体分类 / `BUDGET_EXHAUSTED`）。
+
+**两处 fail-open，方向一致**（`capability-scheduler` 的探测，与这里的体检）：探测/体检**没给出结论**时
+照常发起——「多做一次本来会失败的运行」是可见的，「少做一次本来该做的活」是不可见的。
+但收据里必须写成 `UNKNOWN` / `NOT_IMPLEMENTED`，**不许写 OK**：没做过的检查不能报成做过了。
+
+**尚未接线、且刻意不假装存在的两处**：体检层（第 4 步）当前写 `NOT_IMPLEMENTED`，
+自愈执行器（第 3 步）当前写 `NO_HEALER_CONFIGURED`。也就是说第 2 步交付的是「到点自己跑 + 出故障叫人」，
+但**登录态失效还不能被提前挡住**，得靠第 4 步的体检前置。

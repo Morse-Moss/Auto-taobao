@@ -14,7 +14,7 @@
 - `skills/sycm-to-feishu-base`：飞书副本字段检查、TSV 构建、真实粘贴与导入验收。
 - `skills/huitun-to-feishu-keyword-heat`：读取飞书 `A候选` 队列，在灰豚红薯版采集完全同名话题浏览量，并只回填 `灰豚话题浏览量`；`内容热度`由上游流程提供。已登记运行时能力 `huitun.keyword-heat.collect@1.1.0`（采集段独立复验 `results.json` 与队列绑定，发布段对账式写入并由含 `优先级` 公式结算的回读收场）。
 - `evidence/stability-20260804`：三轮 267 行稳定性验证文件。
-- `runtime`：后续项目专用运行入口。`runtime/sop-runtime/` 是确定性运行底座（Controller 唯一拥有状态、两段式采集/发布、Agent 判决层、调度侧队列探测），入口见 `runtime/sop-runtime/index.mjs`，阶段档案见 `docs/architecture/PHASE-ARCHIVE.md`。`runtime/notify-feishu.mjs`（+ `notify-feishu-core.mjs`）是无人值守方案的告警投递出口：stdin 进告警 JSON、stdout 出投递收据，主通道自建应用消息、群机器人兜底，未送达一律非零退出。
+- `runtime`：后续项目专用运行入口。`runtime/sop-runtime/` 是确定性运行底座（Controller 唯一拥有状态、两段式采集/发布、Agent 判决层、调度侧队列探测、一轮运行的生命周期），入口见 `runtime/sop-runtime/index.mjs`，阶段档案见 `docs/architecture/PHASE-ARCHIVE.md`。`runtime/notify-feishu.mjs`（+ `notify-feishu-core.mjs`）是无人值守方案的告警投递出口：stdin 进告警 JSON、stdout 出投递收据，主通道自建应用消息、群机器人兜底，未送达一律非零退出。`runtime/sop-runtime/round-runner.mjs`（+ `round-notify-policy.mjs`）把「体检 → 探队列 → 两段式执行 → 收尾 → 自愈 → 通知」串成一轮：判定表决定「该不该打扰人」（默认安静、未登记的理由一律按通知处理），去重与恢复成对，同一业务幂等键当天不重复跑。
 - `docs/architecture/README.md`：多租户运营任务执行平台的目标架构、分层边界、权威数据和迁移原则。
 - `docs/standards/README.md`：跨模块工程规范、状态与证据、测试、安全和交付边界。
 - `docs/project-knowledge.md`：当前已验证能力、验证证据与对外表述边界；目标架构以 `docs/architecture/README.md` 为准。
@@ -111,6 +111,13 @@ node "D:\Retire\sycm-automation\scripts\run-test-suite.mjs" runtime --concurrenc
 ```
 
 `--concurrency=1` 不是可选项：`xws-export-market-analysis` 的用例会拉起真实 CLI 打假代理，并含 stall/deadline 计时断言，机器有负载时会假失败。`--dry-run` 打印各套件解析出的文件清单，用于核对离线/集成分区。
+
+**套件运行器的发现是非递归的**（runtime 只发现 `runtime/*.test.mjs`、skills 只发现 `skills/*/{tests,scripts}`），
+所以 `runtime/sop-runtime/` 下的用例不在上面 `runtime` 那一套里，必须单独跑一遍——漏跑一次就是 300+ 条用例无声地不进回归：
+
+```powershell
+node --test "D:\Retire\sycm-automation\runtime\sop-runtime\*.test.mjs"
+```
 
 调度侧入口（只读探测，不创建运行）：
 
