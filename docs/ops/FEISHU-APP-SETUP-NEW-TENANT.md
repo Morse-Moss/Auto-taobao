@@ -143,3 +143,49 @@ base，不属于竞品 base，所以复制竞品 base 时不会带上它。
 1. **发布版本**：「版本管理与发布 → 创建版本 → 发布」。权限变更不发布版本不生效
    （本项目 2026-09-14 已在多维表格权限上踩过同一个坑）。
 2. **可用范围**：若应用设了「可见范围」，要把运营加进可见范围，否则消息发不出去。
+
+### 7.1 开通状态与只读核验证据（2026-09-15）
+
+用户已开通该权限。以下是当天用只读手段核验的结果（**没有向任何人发过消息**）：
+
+| 探测 | 结果 | 说明 |
+| --- | --- | --- |
+| `POST /auth/v3/tenant_access_token/internal` | `200 code=0 expire=7199` | 凭据有效，token 有效期约 2 小时 |
+| `GET /im/v1/chats?page_size=5` | `200 code=0`，`chat_count=0` | 消息类接口可调；机器人当前不在任何群里 |
+| `POST /im/v1/messages` 收件人故意用不存在的地址 | `400 code=230001 invalid receive_id` | **不是** `99991672`（缺 scope）→ 说明权限校验已放行，失败在参数上 |
+
+**这条证据的效力边界**（不要说得比它更强）：参数校验与权限校验的先后顺序官方没有承诺，
+所以「没报缺 scope」不能 100% 等价于「scope 已生效」。**最终以一次真实发送为准**；
+在真实发送完成前，本项按「已开通、未验证」记录。
+
+### 7.2 投递层怎么配、怎么干跑
+
+投递实现见 `runtime/notify-feishu-core.mjs`（逻辑）与 `runtime/notify-feishu.mjs`（CLI），
+设计与验收见 `UNATTENDED-AGENT-RUNTIME-PLAN.md` §11。配置写在同一个 env 文件里即可：
+
+```
+FEISHU_APP_ID=cli_xxxxxxxxxxxx
+FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SYCM_NOTIFY_RECIPIENT=ops@example.com      # 收件人标识（默认按邮箱）
+SYCM_NOTIFY_RECIPIENT_TYPE=email           # 可改 open_id / user_id / chat_id
+SYCM_NOTIFY_WEBHOOK=https://open.feishu.cn/open-apis/bot/v2/hook/xxxx   # 可选，投递兜底
+```
+
+干跑（只渲染不发送，用来在开通知前先看文案）：
+
+```
+node runtime/notify-feishu.mjs --dry-run --alert-file <alert.json>
+```
+
+2026-09-15 实际干跑输出（真实入口实测）：
+
+```
+【需要处理】小旺神登录已失效
+商品ID：678598686014
+主表记录：recSAMPLE
+原因：Xiaowangshen login is required
+下一步：请在同一个 Edge 用户配置中登录小旺神，登录完成后重新运行采集预检。
+证据：xws-sku-auth-status-1.json
+时间：2026-09-15T03:00:00.000Z
+告警编号：xws-login-678598686014-20260915T030000
+```

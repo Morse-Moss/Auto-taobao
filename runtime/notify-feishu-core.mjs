@@ -1,0 +1,309 @@
+// 飞书告警投递核心：只回答一件事——「这条告警发出去了没有」。
+//
+// 为什么单独一层：判定（哪些故障该响、哪些该静默）属于运行内核，属于离线用例能覆盖的纯逻辑；
+// 投递（拿凭据、调接口、失败降级）属于外部副作用，属于必须注入假 fetch 才能覆盖的一层。
+// 把两者分开，是为了让「该安静的时候安静」和「该响的时候响」都能被单独验证。
+//
+// 投递策略（见 docs/ops/UNATTENDED-AGENT-RUNTIME-PLAN.md §6）：
+//   主通道 = 自建应用消息（唯一能发给**个人**、且零新增凭据的路径）
+//   兜底   = 群自定义机器人 webhook（发不到个人，但成本极低）
+//   主通道失败 → 降级兜底；两者都失败 → FAILED（绝不假装成功）
+//
+// 本模块不做的事（都属于调用方的职责，别往上加）：
+//   - 不判断哪类故障该通知（那是静默判据表的职责）
+//   - 不按轮次聚合去重、不记恢复通知（那是运行内核的职责）
+//   - 不重试业务失败（只处理「token 过期」这一类可自愈的认证失败，且只重试一次）
+
+export const NOTIFY_RECEIPT_VERSION = 'feishu-notify-receipt-v1';
+
+const DEFAULT_TOKEN_ENDPOINT =
+  'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal';
+const DEFAULT_MESSAGE_ENDPOINT = 'https://open.feishu.cn/open-apis/im/v1/messages';
+
+// token 提前 5 分钟视为过期。常驻进程里「恰好卡在过期瞬间发」是最难查的一类失败，
+// 用一点提前量换掉它，比事后查 401 便宜得多。
+const TOKEN_SAFETY_MARGIN_MS = 5 * 60 * 1000;
+const MIN_TOKEN_TTL_MS = 60 * 1000;
+
+// 认证/授权类错误码。99991663 = token 无效，99991668 = token 过期，
+// 99991664 = tenant token 不合法。这三类清缓存重取一次有意义。
+const AUTH_RETRY_CODES = new Set([99991663, 99991664, 99991668]);
+// 99991672 = 应用缺少 scope。重试无意义，但必须给出「去哪开、开完要重新发布版本」的指引——
+// 本项目 2026-09-14 与 2026-09-15 两次都在这条上花过时间。
+const MISSING_SCOPE_CODE = 99991672;
+const MISSING_SCOPE_HINT =
+  '应用缺少 im:message:send_as_bot（控制台名称：以应用的身份发消息）；开通后必须「版本管理与发布 → 创建版本 → 发布」才生效';
+
+const TITLE_BY_TYPE = Object.freeze({
+  XWS_LOGIN_REQUIRED: '小旺神登录已失效',
+  XWS_LOGIN_RESOLVED: '小旺神登录已恢复',
+  LOGIN_REQUIRED: '平台登录已失效',
+  ACCOUNT_MISMATCH: '登录的账号不对',
+  RISK_BLOCKED: '遇到验证码或风控页，需要人工处理',
+  COMMIT_UNKNOWN: '外部写入结果未知，需要人工对账（不要重跑）',
+  BUG: '疑似系统自身缺陷，自动化已停止',
+  BUDGET_EXHAUSTED: '自动重试次数已用尽',
+});
+
+const READABLE_SOURCE_KEYS = Object.freeze([
+  ['targetLabel', '对象'],
+  ['productId', '商品ID'],
+  ['shopName', '店铺'],
+  ['mainRecordId', '主表记录'],
+  ['period', '数据周期'],
+  ['capability', '任务'],
+]);
+
+function text(value) {
+  return String(value ?? '').trim();
+}
+
+// 空值不是零：缺字段就整行不输出，而不是渲染成 "undefined" / "（空）" 让人误判。
+function line(label, value) {
+  const normalized = text(value);
+  return normalized ? `${label}：${normalized}\n` : '';
+}
+
+// 凭据不外泄：告警文本可能被日志、通知、诊断包三处复制，
+// 所以在最靠近出口的地方做一次遮盖（应用 ID、Bearer、32 位以上连续令牌）。
+//
+// 遮盖范围要**窄**：令牌是不含分隔符的长串，而我们自己的编号（alertId 形如
+// xws-login-678598686014-20260915T030000）是**带连字符**的。把连字符也纳入字符集，
+// 会把告警编号一起吞掉——而编号正是运营和服务方对账时唯一能引用的东西。
+// 这条是干跑真实入口时发现的，离线用例当时没覆盖。
+export function redactSensitive(value) {
+  return String(value ?? '')
+    .replace(/Bearer\s+[A-Za-z0-9._~+/-]+=*/gu, 'Bearer [redacted]')
+    .replace(/\bcli_[A-Za-z0-9]{8,}\b/gu, '[redacted-app-id]')
+    .replace(/\b[A-Za-z0-9]{32,}\b/gu, '[redacted-token]');
+}
+
+export function resolveAlertTitle(alert) {
+  const explicit = text(alert?.title);
+  if (explicit) return explicit;
+  const type = text(alert?.type);
+  if (type && TITLE_BY_TYPE[type]) return TITLE_BY_TYPE[type];
+  if (type) return type;
+  return '系统告警';
+}
+
+export function renderAlertText(alert) {
+  const severity = text(alert?.severity).toUpperCase();
+  const head = severity === 'INFO' ? '【提示】' : '【需要处理】';
+  const source = alert?.source ?? alert?.target ?? {};
+  let body = '';
+  for (const [key, label] of READABLE_SOURCE_KEYS) {
+    body += line(label, source?.[key]);
+  }
+  body += line('原因', alert?.reason ?? alert?.message ?? alert?.detail);
+  body += line('下一步', alert?.action ?? alert?.nextAction);
+  const evidence = alert?.evidence;
+  if (evidence && typeof evidence === 'object') {
+    const artifacts = Object.values(evidence).map(text).filter(Boolean);
+    if (artifacts.length) body += line('证据', artifacts.join('、'));
+  }
+  body += line('时间', alert?.createdAt);
+  body += line('告警编号', alert?.alertId);
+  return redactSensitive(`${head}${resolveAlertTitle(alert)}\n${body}`.trimEnd());
+}
+
+async function parseJsonResponse(response) {
+  const raw = await response.text();
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return { code: 'NON_JSON', msg: raw.slice(0, 200) };
+  }
+}
+
+export function createTokenProvider({
+  fetchImpl,
+  appId,
+  appSecret,
+  now = () => Date.now(),
+  endpoint = DEFAULT_TOKEN_ENDPOINT,
+} = {}) {
+  if (typeof fetchImpl !== 'function') throw new Error('createTokenProvider requires fetchImpl');
+  if (!text(appId) || !text(appSecret)) throw new Error('createTokenProvider requires appId and appSecret');
+  let cached = null;
+  return {
+    invalidate() {
+      cached = null;
+    },
+    isCached() {
+      return cached !== null;
+    },
+    async get() {
+      const nowMs = now();
+      if (cached && cached.expiresAt > nowMs) return cached.token;
+      const response = await fetchImpl(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({ app_id: appId, app_secret: appSecret }),
+      });
+      const body = await parseJsonResponse(response);
+      if (!response.ok || body?.code !== 0 || !text(body?.tenant_access_token)) {
+        throw new Error(
+          `tenant_access_token 获取失败：http=${response.status} code=${body?.code ?? 'n/a'} msg=${body?.msg ?? ''}`,
+        );
+      }
+      const expiresInSeconds = Number(body.expire);
+      const ttl = Number.isFinite(expiresInSeconds) && expiresInSeconds > 0
+        ? expiresInSeconds * 1000 - TOKEN_SAFETY_MARGIN_MS
+        : MIN_TOKEN_TTL_MS;
+      cached = { token: body.tenant_access_token, expiresAt: nowMs + Math.max(ttl, MIN_TOKEN_TTL_MS) };
+      return cached.token;
+    },
+  };
+}
+
+async function attemptAppMessage({
+  fetchImpl,
+  tokenProvider,
+  recipient,
+  recipientType,
+  message,
+  messageEndpoint,
+}) {
+  try {
+    const token = await tokenProvider.get();
+    const response = await fetchImpl(
+      `${messageEndpoint}?receive_id_type=${encodeURIComponent(recipientType)}`,
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({
+          receive_id: recipient,
+          msg_type: 'text',
+          content: JSON.stringify({ text: message }),
+        }),
+      },
+    );
+    const body = await parseJsonResponse(response);
+    if (response.ok && body?.code === 0) {
+      return { channel: 'app', ok: true, messageId: text(body?.data?.message_id) || null };
+    }
+    const code = Number(body?.code);
+    return {
+      channel: 'app',
+      ok: false,
+      http: response.status,
+      code: body?.code ?? null,
+      msg: text(body?.msg) || 'unknown',
+      retryable: response.status === 401 || AUTH_RETRY_CODES.has(code),
+      ...(code === MISSING_SCOPE_CODE ? { hint: MISSING_SCOPE_HINT } : {}),
+    };
+  } catch (error) {
+    // 网络层失败也返回收据，不抛出——投递失败必须变成一条可记录的结论，
+    // 而不是一个让调用方崩掉的异常（通知失败不能影响主流程）。
+    return { channel: 'app', ok: false, error: text(error?.message ?? error), retryable: false };
+  }
+}
+
+async function attemptWebhook({ fetchImpl, webhookUrl, message }) {
+  try {
+    const response = await fetchImpl(webhookUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ msg_type: 'text', content: { text: message } }),
+    });
+    const body = await parseJsonResponse(response);
+    // 群机器人成功时返回 {"code":0} 或 {"StatusCode":0}（历史字段），两者都认。
+    const code = body?.code ?? body?.StatusCode;
+    if (response.ok && (code === 0 || code === undefined)) {
+      return { channel: 'webhook', ok: true };
+    }
+    return { channel: 'webhook', ok: false, http: response.status, code: code ?? null, msg: text(body?.msg ?? body?.StatusMessage) || 'unknown' };
+  } catch (error) {
+    return { channel: 'webhook', ok: false, error: text(error?.message ?? error) };
+  }
+}
+
+function buildReceipt({ status, channel, alertId, attempts, sentAt }) {
+  const failed = attempts.filter((attempt) => !attempt.ok && !attempt.skipped);
+  const receipt = {
+    version: NOTIFY_RECEIPT_VERSION,
+    status,
+    channel: channel ?? null,
+    alertId: alertId ?? null,
+    sentAt,
+    attempts,
+  };
+  if (status === 'FAILED' || (status === 'NOT_CONFIGURED' && failed.length)) {
+    receipt.error = failed
+      .map((attempt) => {
+        const detail = attempt.error ?? `http=${attempt.http ?? 'n/a'} code=${attempt.code ?? 'n/a'} ${attempt.msg ?? ''}`.trim();
+        return `${attempt.channel}: ${detail}${attempt.hint ? ` | ${attempt.hint}` : ''}`;
+      })
+      .join(' ; ')
+      .slice(0, 500);
+  }
+  return receipt;
+}
+
+// 投递入口。除了「token 过期」这一类可自愈的认证失败会清缓存重试一次，
+// 其余失败一律直接进兜底通道，不做业务重试。
+export async function deliverAlert({
+  alert,
+  fetchImpl,
+  tokenProvider = null,
+  recipient = null,
+  recipientType = 'email',
+  webhookUrl = null,
+  now = () => Date.now(),
+  messageEndpoint = DEFAULT_MESSAGE_ENDPOINT,
+} = {}) {
+  if (typeof fetchImpl !== 'function') throw new Error('deliverAlert requires fetchImpl');
+  const message = renderAlertText(alert);
+  const alertId = text(alert?.alertId) || null;
+  const sentAt = new Date(now()).toISOString();
+  const attempts = [];
+
+  const hasRecipient = Boolean(text(recipient));
+  const hasWebhook = Boolean(text(webhookUrl));
+
+  if (hasRecipient) {
+    if (!tokenProvider) throw new Error('deliverAlert requires tokenProvider when a recipient is configured');
+    const first = await attemptAppMessage({
+      fetchImpl,
+      tokenProvider,
+      recipient,
+      recipientType,
+      message,
+      messageEndpoint,
+    });
+    attempts.push(first);
+    if (!first.ok && first.retryable) {
+      tokenProvider.invalidate();
+      attempts.push(
+        await attemptAppMessage({ fetchImpl, tokenProvider, recipient, recipientType, message, messageEndpoint }),
+      );
+    }
+    if (attempts[attempts.length - 1].ok) {
+      return buildReceipt({
+        status: 'SENT',
+        channel: 'app',
+        alertId,
+        attempts,
+        sentAt,
+      });
+    }
+  } else {
+    attempts.push({ channel: 'app', ok: false, skipped: 'NO_RECIPIENT' });
+  }
+
+  if (hasWebhook) {
+    const webhookAttempt = await attemptWebhook({ fetchImpl, webhookUrl, message });
+    attempts.push(webhookAttempt);
+    if (webhookAttempt.ok) {
+      return buildReceipt({ status: 'SENT', channel: 'webhook', alertId, attempts, sentAt });
+    }
+  } else {
+    attempts.push({ channel: 'webhook', ok: false, skipped: 'NO_WEBHOOK' });
+  }
+
+  if (!hasRecipient && !hasWebhook) {
+    return buildReceipt({ status: 'NOT_CONFIGURED', channel: null, alertId, attempts, sentAt });
+  }
+  return buildReceipt({ status: 'FAILED', channel: null, alertId, attempts, sentAt });
+}
