@@ -74,12 +74,13 @@ test('环境变量切换生效，且不改变默认值', () => {
   assert.throws(() => activeProfileName({ [PROFILE_ENV_VAR]: 'zzz' }), /Unknown Feishu profile/u);
 });
 
-// 默认值是「当前生产租户」。2026-09-14 已从 legacy 切到 kcne（旧租户废弃）。
+// 默认值是「当前生产目标」。2026-09-14 从 legacy 切到 kcne（旧租户废弃）；
+// 2026-09-15 又把 kcne 的竞品 base 从迁移期测试副本切到用户指定的正式 base。
 // 这条断言的作用是：默认值一旦被改动而没人同步文档/记忆，它会当场失败。
 test('默认 profile 是当前生产租户（kcne），且旧租户仍可显式选择', () => {
   assert.equal(DEFAULT_PROFILE, 'kcne');
   assert.equal(getProfile(undefined).envFile, 'E:/小红书/.env.feishu-kcne.local');
-  assert.equal(getProfile(undefined).competitorBase, 'OUMqbkYwVaQxQNsv2EDc1DV7nDf');
+  assert.equal(getProfile(undefined).competitorBase, 'QcnhbEzYpacGvUskCbVcrcm3nFd');
   // 回滚路径必须一直可用：显式选 legacy 仍拿得到旧租户的目标
   assert.equal(getProfile('legacy').envFile, 'E:/小红书/.env.local');
   assert.equal(getProfile('legacy').competitorBase, 'OWebbPUcBa7B8JseYLccQCy9nkf');
@@ -87,7 +88,7 @@ test('默认 profile 是当前生产租户（kcne），且旧租户仍可显式�
 
 test('tableId 命中逻辑名，未知逻辑名抛错', () => {
   assert.equal(tableId('history', 'legacy'), 'tblH0bmmOuogxDHi');
-  assert.equal(tableId('history', 'kcne'), 'tblktwxWKt8sjpXL');
+  assert.equal(tableId('history', 'kcne'), 'tbln7qqA6XopiL4Q');
   assert.notEqual(tableId('competitorMain', 'legacy'), tableId('competitorMain', 'kcne'));
   assert.throws(() => tableId('historyV2'), /Unknown Feishu table logical name/u);
   assert.throws(() => tableId('history', 'nope'), /Unknown Feishu profile/u);
@@ -97,9 +98,10 @@ test('凭据文件路径与 baseUrl 按 profile 分开', () => {
   assert.notEqual(envFilePath('legacy'), envFilePath('kcne'));
   const targets = profileTargets('kcne');
   assert.equal(targets.envFile, 'E:/小红书/.env.feishu-kcne.local');
-  assert.match(targets.baseUrl, /^https:\/\/kcne618basvj\.feishu\.cn\/base\/OUMqbkYw/u);
-  // 写验证已通过（2026-09-14），声明值应随之翻真
-  assert.equal(targets.writeVerified, true);
+  assert.match(targets.baseUrl, /^https:\/\/kcne618basvj\.feishu\.cn\/base\/QcnhbEzYp/u);
+  // 2026-09-15 换 base 之后写权限**尚未重新验证**，所以声明值必须是 false。
+  // 这条断言防的是「把在别的 base 上验证过的结论，搬到现在这个 base 上」。
+  assert.equal(targets.writeVerified, false);
 });
 
 // 关键词库是**另一张独立 base**（复制竞品 base 不会带上它），所以它的 token 单独维护、

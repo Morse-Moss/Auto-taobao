@@ -34,20 +34,31 @@ export const PROFILES = Object.freeze({
     label: '新租户 kcne618basvj',
     host: 'kcne618basvj.feishu.cn',
     envFile: 'E:/小红书/.env.feishu-kcne.local',
-    competitorBase: 'OUMqbkYwVaQxQNsv2EDc1DV7nDf',
+    // 2026-09-15 切到用户指定的正式 base「浴缸竞品分析」。
+    // 切换前指向的是迁移期测试副本 OUMqbkYwVaQxQNsv2EDc1DV7nDf（「浴缸竞品分析 V2（测试） 副本」）。
+    // 两者登记行数逐表相同（竞品主表 2004 / SKU明细 734 / 历史总表 4346 / 问题主库 2023 /
+    // 竞品周_2026-09-06_2026-09-12 1462），所以这次不是数据迁移，而是「指向 + 写权限复验」。
+    // 回滚 = 把 competitorBase 与下面四个表 id 换回：
+    //   OUMqbkYwVaQxQNsv2EDc1DV7nDf
+    //   competitorMain tbl94WyAsVNdMkJf / skuDetail tbltI9UufhunLc3u
+    //   history tblktwxWKt8sjpXL / questionMaster tbl37PRcIXQCtfYk
+    competitorBase: 'QcnhbEzYpacGvUskCbVcrcm3nFd',
     // 关键词库也搬了：旧租户那张的副本，2026-09-14 核对 8 张表字段签名与行数逐表相同
     keywordBase: 'HdBhbttB5aScbasWJAMc0gGXnpe',
     // 2026-09-14 实测：建表/建字段/DELETE 均 200，且两段式 xws.feishu.import --commit
-    // 在本 base 上跑出 VERIFIED + 游标 1→3（见 TENANT-MIGRATION-MAP §5.3）。
-    writeVerified: true,
+    // 在本 base 上跑出 VERIFIED + 游标 1→3（见 TENANT-MIGRATION-MAP §5.3）——
+    // 但那是在**旧指向**（测试副本）上测的。2026-09-15 切到正式 base 后尚未重新验证写权限，
+    // 所以这里诚实置 false，等验证器/首次真实写入跑通再翻真。
+    // 「在别的 base 上验证过」不能写成「这个 base 已验证」。
+    writeVerified: false,
     tables: Object.freeze({
-      competitorMain: 'tbl94WyAsVNdMkJf',
-      skuDetail: 'tbltI9UufhunLc3u',
-      history: 'tblktwxWKt8sjpXL',
-      questionMaster: 'tbl37PRcIXQCtfYk',
+      competitorMain: 'tblkYcczxBnW4v5G',
+      skuDetail: 'tbl3N48H4znz304T',
+      history: 'tbln7qqA6XopiL4Q',
+      questionMaster: 'tblbJ9F91NiN8IfO',
     }),
-    // 副本自带的一张默认空壳表（导入演练用）
-    scratchTable: 'tblg6lkg6431QulJ',
+    // 正式 base 没有「默认空壳表」：这张「数据表」自带 5 行，**不是空白演练场，别拿它当 scratch**。
+    scratchTable: 'tbl7V2FuLlFXCZSi',
   }),
 });
 

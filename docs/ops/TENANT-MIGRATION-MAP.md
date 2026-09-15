@@ -468,3 +468,36 @@ CLI / 两个 runtime 脚本都 import 它），没有新增模块、没有新增
 - §6.6 收据级真实复现的运行收据：`runtime/sop-runtime/two-stage-mu16kph9/receipt.json`
   （修之后仍被拦下，`blocker.class=POLICY_DENIED`）与
   `runtime/sop-runtime/two-stage-mu16l30w/receipt.json`（补齐周期后 VERIFIED）
+
+## 7. 同租户内换 base：kcne 的竞品目标切到正式 base（2026-09-15）
+
+这次不是换租户，是**同一个租户（kcne618basvj）内换竞品 base**，所以流程比 §1-§6 短：
+单点配置改一处 + 只读验证 + 写权限重新验证（后者**尚未做**）。
+
+| 项 | 切换前（迁移期测试副本） | 切换后（正式） |
+| --- | --- | --- |
+| base 名 | 浴缸竞品分析 V2（测试） 副本 | 浴缸竞品分析 |
+| base token | `OUMqbkYwVaQxQNsv2EDc1DV7nDf` | `QcnhbEzYpacGvUskCbVcrcm3nFd` |
+| competitorMain | `tbl94WyAsVNdMkJf` | `tblkYcczxBnW4v5G` |
+| skuDetail | `tbltI9UufhunLc3u` | `tbl3N48H4znz304T` |
+| history | `tblktwxWKt8sjpXL` | `tbln7qqA6XopiL4Q` |
+| questionMaster | `tbl37PRcIXQCtfYk` | `tblbJ9F91NiN8IfO` |
+| 默认空壳表 | `tblg6lkg6431QulJ`（0 行） | `tbl7V2FuLlFXCZSi`（**自带 5 行，不是空白演练场**） |
+| writeVerified | true（2026-09-14 实测建表/建字段/DELETE + 两段式 import VERIFIED） | **false（尚未验证）** |
+
+**为什么这次不是数据迁移**：两个 base 的登记行数逐表相同（竞品主表 2004 / SKU明细 734 /
+竞品历史总表 V1 4346 / 问题主库 2023 / 竞品周_2026-09-06_2026-09-12 1462），即测试副本是正式 base 的
+**镜像**。所以切换只涉及「指向 + 表 id 映射 + 写权限复验」，不涉及搬数据。
+
+**回滚**：改回 `runtime/feishu-targets.mjs` 里 kcne 的 `competitorBase` 与四个表 id
+（旧值已写在同处注释里），跑 `node --test runtime/feishu-targets.test.mjs` 与
+`node runtime/verify-feishu-profile.mjs --profile kcne` 复核。测试里有一条断言钉死了
+kcne 的 base 与 history 表 id，所以「改了配置忘了同步」会当场失败。
+
+**只读验证结果（2026-09-15 实测）**：`verify-feishu-profile.mjs --profile kcne` → 结论 OK；
+四张稳定表字段数/记录数（36/2004、17/734、44/4346、23/2023）与迁移记录一致；悬空表引用 0。
+协作者接口被拒（`1063004 User has no share permission`）——列表成员需要更宽的 drive 权限，
+与读写无关，不影响结论。
+
+**未验证项（下一步必须做）**：新 base 的**写权限**。`writeVerified` 已诚实置 false，
+不要在没实测前翻真；验证方式沿用 §5.3 的成例（建表/建字段/DELETE 均 200 + 一次两段式 import 到 VERIFIED）。
