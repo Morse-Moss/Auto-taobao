@@ -19,6 +19,8 @@
 - `docs/standards/README.md`：跨模块工程规范、状态与证据、测试、安全和交付边界。
 - `docs/project-knowledge.md`：当前已验证能力、验证证据与对外表述边界；目标架构以 `docs/architecture/README.md` 为准。
 - `docs/references/revolution-knowledge-patterns.md`：从 Revolution 知识库迁移并本地化的证据治理方法。
+- `docs/ops/CLIENT-DESKTOP-DELIVERY-PLAN.md`：面向「单机单店铺、客户自助操作」的交付评估与改造方案（登录体检与扫码登录、飞书提醒、傻瓜修复的三档边界、P0-P2 优先级）。
+- `docs/architecture/PRODUCTION-READINESS.md`：生产准入评估（四条阻塞线 + README §10 十一条架构验收的逐条实测状态）。
 
 ## 外部依赖
 
