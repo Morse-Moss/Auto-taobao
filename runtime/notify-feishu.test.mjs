@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   createTokenProvider,
   deliverAlert,
+  formatLocalTime,
   redactSensitive,
   renderAlertText,
 } from './notify-feishu-core.mjs';
@@ -114,6 +115,14 @@ test('redactSensitive 不能吞掉我们自己的告警编号（带连字符的�
   assert.match(renderAlertText({ ...sampleAlert, alertId, createdAt: undefined }), new RegExp(`${alertId}`, 'u'));
 });
 
+test('时间渲染成本机人读形式，而不是容易被读成凌晨的 ISO Z 形式', () => {
+  const rendered = renderAlertText(sampleAlert);
+  assert.doesNotMatch(rendered, /T03:00:00\.000Z/u);
+  assert.match(rendered, /时间：\d{4}-\d{2}-\d{2} \d{2}:\d{2}/u);
+  assert.equal(formatLocalTime(''), '', '空值不编时间');
+  assert.equal(formatLocalTime('不是日期'), '不是日期', '解析不出来就原样返回');
+});
+
 // ---------------------------------------------------------------------------
 // token：常驻进程下必须带过期时间
 // ---------------------------------------------------------------------------
@@ -159,6 +168,12 @@ const baseArgs = {
   recipient: 'ops@example.com',
   recipientType: 'email',
 };
+
+// 收据里会带 skipped 的通道记录（「没配」而不是「试过又失败」），
+// 断言「重试了几次」「试了几条路」时只数真的打出去的那些。
+function attempted(receipt) {
+  return receipt.attempts.filter((attempt) => !attempt.skipped);
+}
 
 test('主通道成功 → SENT/app，且请求体带 receive_id_type 与文本消息', async () => {
   const fetchImpl = scriptedFetch([tokenOk(), messageOk('om_42')]);
@@ -210,8 +225,7 @@ test('缺 scope（99991672）不重试，并指出「开权限 + 重新发布版
   assert.equal(receipt.status, 'FAILED');
   // 断言只针对「真的打出去的尝试」：收据里还会带一条 skipped 的兜底通道记录，
   // 那条是「没配」而不是「试过又失败」，混进计数里会把断言说得比实际更强。
-  const attempted = receipt.attempts.filter((attempt) => !attempt.skipped);
-  assert.equal(attempted.length, 1, '缺 scope 重试没有意义，不应重试');
+  assert.equal(attempted(receipt).length, 1, '缺 scope 重试没有意义，不应重试');
   assert.equal(receipt.attempts.some((attempt) => attempt.skipped === 'NO_WEBHOOK'), true);
   assert.match(receipt.attempts[0].hint, /im:message:send_as_bot/u);
   assert.match(receipt.attempts[0].hint, /发布/u);
@@ -232,9 +246,8 @@ test('主通道失败 → 降级群机器人，收据保留主通道的失败原
   });
   assert.equal(receipt.status, 'SENT');
   assert.equal(receipt.channel, 'webhook');
-  assert.equal(receipt.attempts.length, 2);
-  assert.equal(receipt.attempts[0].ok, false);
-  assert.equal(receipt.attempts[1].ok, true);
+  assert.deepEqual(attempted(receipt).map((attempt) => attempt.ok), [false, true]);
+  assert.equal(receipt.attempts.some((attempt) => attempt.skipped === 'NO_FALLBACK_RECIPIENT'), true);
 });
 
 test('群机器人历史字段 StatusCode 也认', async () => {
@@ -248,6 +261,67 @@ test('群机器人历史字段 StatusCode 也认', async () => {
   });
   assert.equal(receipt.status, 'SENT');
   assert.equal(receipt.channel, 'webhook');
+});
+
+// ---------------------------------------------------------------------------
+// 投递链第二跳：同一通道内的兜底收件人（个人失败 → 群）
+// ---------------------------------------------------------------------------
+
+test('主收件人失败 → 兜底收件人成功，收据标 app_fallback', async () => {
+  const fetchImpl = scriptedFetch([
+    tokenOk(),
+    () => jsonResponse(400, { code: 230002, msg: 'user not in app scope' }),
+    () => jsonResponse(200, { code: 0, msg: 'success', data: { message_id: 'om_group' } }),
+  ]);
+  const receipt = await deliverAlert({
+    ...baseArgs,
+    fallbackRecipient: 'oc_group_id',
+    fallbackRecipientType: 'chat_id',
+    fetchImpl,
+    tokenProvider: providerOf(fetchImpl),
+  });
+  assert.equal(receipt.status, 'SENT');
+  assert.equal(receipt.channel, 'app_fallback');
+  assert.deepEqual(attempted(receipt).map((attempt) => [attempt.channel, attempt.ok]), [
+    ['app', false],
+    ['app_fallback', true],
+  ]);
+  assert.match(fetchImpl.calls[2].url, /receive_id_type=chat_id/u);
+});
+
+test('兜底收件人与主收件人相同 → 不重复发（只留下一条 skipped 说明）', async () => {
+  const fetchImpl = scriptedFetch([
+    tokenOk(),
+    () => jsonResponse(400, { code: 230002, msg: 'nope' }),
+  ]);
+  const receipt = await deliverAlert({
+    ...baseArgs,
+    fallbackRecipient: baseArgs.recipient,
+    fetchImpl,
+    tokenProvider: providerOf(fetchImpl),
+  });
+  assert.equal(receipt.status, 'FAILED');
+  assert.equal(receipt.attempts.some((attempt) => attempt.skipped === 'SAME_AS_PRIMARY'), true);
+  assert.equal(fetchImpl.calls.length, 2, '相同收件人不该再发一次');
+});
+
+test('主收件人与兜底收件人都失败 → 再走 webhook', async () => {
+  const fetchImpl = scriptedFetch([
+    tokenOk(),
+    () => jsonResponse(400, { code: 230002, msg: 'user unreachable' }),
+    () => jsonResponse(400, { code: 230002, msg: 'chat unreachable' }),
+    () => jsonResponse(200, { code: 0, msg: 'success' }),
+  ]);
+  const receipt = await deliverAlert({
+    ...baseArgs,
+    fallbackRecipient: 'oc_group_id',
+    webhookUrl: 'https://open.feishu.cn/open-apis/bot/v2/hook/xxx',
+    fetchImpl,
+    tokenProvider: providerOf(fetchImpl),
+  });
+  assert.equal(receipt.status, 'SENT');
+  assert.equal(receipt.channel, 'webhook');
+  assert.deepEqual(attempted(receipt).map((attempt) => attempt.ok), [false, false, true]);
 });
 
 test('两个通道都失败 → FAILED，并把两条原因都写进 error', async () => {
@@ -274,7 +348,7 @@ test('都没配置 → NOT_CONFIGURED，而不是 FAILED', async () => {
   assert.equal(fetchImpl.calls.length, 0);
   assert.deepEqual(
     receipt.attempts.map((attempt) => attempt.skipped),
-    ['NO_RECIPIENT', 'NO_WEBHOOK'],
+    ['NO_RECIPIENT', 'NO_FALLBACK_RECIPIENT', 'NO_WEBHOOK'],
   );
 });
 
@@ -321,13 +395,24 @@ test('parseNotifyArgs 支持 --dry-run 与取值参数，未知参数报错', ()
 test('resolveNotifyConfig 优先级：命令行 > env 文件 > 进程环境', () => {
   const config = resolveNotifyConfig({
     options: { recipient: 'cli@x.com' },
-    values: { SYCM_NOTIFY_RECIPIENT: 'file@x.com', SYCM_NOTIFY_RECIPIENT_TYPE: 'open_id' },
-    env: { SYCM_NOTIFY_RECIPIENT: 'env@x.com', SYCM_NOTIFY_WEBHOOK: 'https://hook/env' },
+    values: {
+      SYCM_NOTIFY_RECIPIENT: 'file@x.com',
+      SYCM_NOTIFY_RECIPIENT_TYPE: 'open_id',
+      SYCM_NOTIFY_FALLBACK_RECIPIENT: 'oc_from_file',
+    },
+    env: {
+      SYCM_NOTIFY_RECIPIENT: 'env@x.com',
+      SYCM_NOTIFY_WEBHOOK: 'https://hook/env',
+      SYCM_NOTIFY_FALLBACK_RECIPIENT: 'oc_from_env',
+    },
   });
   assert.equal(config.recipient, 'cli@x.com');
   assert.equal(config.recipientType, 'open_id');
+  assert.equal(config.fallbackRecipient, 'oc_from_file');
   assert.equal(config.webhook, 'https://hook/env');
-  assert.equal(resolveNotifyConfig({}).recipientType, 'email', '缺省收件人类型是邮箱');
+  const defaults = resolveNotifyConfig({});
+  assert.equal(defaults.recipientType, 'email', '缺省主收件人类型是邮箱');
+  assert.equal(defaults.fallbackRecipientType, 'chat_id', '缺省兜底收件人类型是群');
 });
 
 test('parseAlertJson 拒绝空值、数组与非法 JSON', () => {

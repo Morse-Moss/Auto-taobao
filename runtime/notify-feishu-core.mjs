@@ -4,10 +4,11 @@
 // 投递（拿凭据、调接口、失败降级）属于外部副作用，属于必须注入假 fetch 才能覆盖的一层。
 // 把两者分开，是为了让「该安静的时候安静」和「该响的时候响」都能被单独验证。
 //
-// 投递策略（见 docs/ops/UNATTENDED-AGENT-RUNTIME-PLAN.md §6）：
-//   主通道 = 自建应用消息（唯一能发给**个人**、且零新增凭据的路径）
-//   兜底   = 群自定义机器人 webhook（发不到个人，但成本极低）
-//   主通道失败 → 降级兜底；两者都失败 → FAILED（绝不假装成功）
+// 投递链（见 docs/ops/UNATTENDED-AGENT-RUNTIME-PLAN.md §6/§9）：
+//   1) 自建应用消息 → 主收件人（唯一能发给**个人**、且零新增凭据的路径）
+//   2) 自建应用消息 → 兜底收件人（通常是群；同一通道内的第二次尝试，覆盖「个人收件人不可达」）
+//   3) 群自定义机器人 webhook（**换了认证路径**的兜底，能覆盖整个应用通道挂掉的情况）
+//   全链失败 → FAILED，绝不假装成功。
 //
 // 本模块不做的事（都属于调用方的职责，别往上加）：
 //   - 不判断哪类故障该通知（那是静默判据表的职责）
@@ -58,6 +59,19 @@ function text(value) {
   return String(value ?? '').trim();
 }
 
+// 时间要给运营看的，不是给机器看的。ISO 的 `2026-09-15T03:45:00.000Z`
+// 会被读成凌晨 3 点（实际是本机上午 11:45），所以按本机时区渲染成 `2026-09-15 11:45`。
+// 解析不出来时原样返回——不猜、不编一个时间出来。
+export function formatLocalTime(value) {
+  const raw = text(value);
+  if (!raw) return '';
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.valueOf())) return raw;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())} `
+    + `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
+}
+
 // 空值不是零：缺字段就整行不输出，而不是渲染成 "undefined" / "（空）" 让人误判。
 function line(label, value) {
   const normalized = text(value);
@@ -102,7 +116,7 @@ export function renderAlertText(alert) {
     const artifacts = Object.values(evidence).map(text).filter(Boolean);
     if (artifacts.length) body += line('证据', artifacts.join('、'));
   }
-  body += line('时间', alert?.createdAt);
+  body += line('时间', formatLocalTime(alert?.createdAt));
   body += line('告警编号', alert?.alertId);
   return redactSensitive(`${head}${resolveAlertTitle(alert)}\n${body}`.trimEnd());
 }
@@ -164,6 +178,7 @@ async function attemptAppMessage({
   recipientType,
   message,
   messageEndpoint,
+  channel = 'app',
 }) {
   try {
     const token = await tokenProvider.get();
@@ -181,12 +196,13 @@ async function attemptAppMessage({
     );
     const body = await parseJsonResponse(response);
     if (response.ok && body?.code === 0) {
-      return { channel: 'app', ok: true, messageId: text(body?.data?.message_id) || null };
+      return { channel, ok: true, target: recipient, messageId: text(body?.data?.message_id) || null };
     }
     const code = Number(body?.code);
     return {
-      channel: 'app',
+      channel,
       ok: false,
+      target: recipient,
       http: response.status,
       code: body?.code ?? null,
       msg: text(body?.msg) || 'unknown',
@@ -196,7 +212,7 @@ async function attemptAppMessage({
   } catch (error) {
     // 网络层失败也返回收据，不抛出——投递失败必须变成一条可记录的结论，
     // 而不是一个让调用方崩掉的异常（通知失败不能影响主流程）。
-    return { channel: 'app', ok: false, error: text(error?.message ?? error), retryable: false };
+    return { channel, ok: false, target: recipient, error: text(error?.message ?? error), retryable: false };
   }
 }
 
@@ -213,7 +229,13 @@ async function attemptWebhook({ fetchImpl, webhookUrl, message }) {
     if (response.ok && (code === 0 || code === undefined)) {
       return { channel: 'webhook', ok: true };
     }
-    return { channel: 'webhook', ok: false, http: response.status, code: code ?? null, msg: text(body?.msg ?? body?.StatusMessage) || 'unknown' };
+    return {
+      channel: 'webhook',
+      ok: false,
+      http: response.status,
+      code: code ?? null,
+      msg: text(body?.msg ?? body?.StatusMessage) || 'unknown',
+    };
   } catch (error) {
     return { channel: 'webhook', ok: false, error: text(error?.message ?? error) };
   }
@@ -242,13 +264,15 @@ function buildReceipt({ status, channel, alertId, attempts, sentAt }) {
 }
 
 // 投递入口。除了「token 过期」这一类可自愈的认证失败会清缓存重试一次，
-// 其余失败一律直接进兜底通道，不做业务重试。
+// 其余失败一律顺链降级，不做业务重试。
 export async function deliverAlert({
   alert,
   fetchImpl,
   tokenProvider = null,
   recipient = null,
   recipientType = 'email',
+  fallbackRecipient = null,
+  fallbackRecipientType = 'chat_id',
   webhookUrl = null,
   now = () => Date.now(),
   messageEndpoint = DEFAULT_MESSAGE_ENDPOINT,
@@ -259,38 +283,60 @@ export async function deliverAlert({
   const sentAt = new Date(now()).toISOString();
   const attempts = [];
 
-  const hasRecipient = Boolean(text(recipient));
+  const primary = text(recipient);
+  const fallback = text(fallbackRecipient);
   const hasWebhook = Boolean(text(webhookUrl));
 
-  if (hasRecipient) {
-    if (!tokenProvider) throw new Error('deliverAlert requires tokenProvider when a recipient is configured');
+  const sendToRecipient = async (channel, target, targetType) => {
     const first = await attemptAppMessage({
       fetchImpl,
       tokenProvider,
-      recipient,
-      recipientType,
+      recipient: target,
+      recipientType: targetType,
       message,
       messageEndpoint,
+      channel,
     });
     attempts.push(first);
     if (!first.ok && first.retryable) {
       tokenProvider.invalidate();
       attempts.push(
-        await attemptAppMessage({ fetchImpl, tokenProvider, recipient, recipientType, message, messageEndpoint }),
+        await attemptAppMessage({
+          fetchImpl,
+          tokenProvider,
+          recipient: target,
+          recipientType: targetType,
+          message,
+          messageEndpoint,
+          channel,
+        }),
       );
     }
-    if (attempts[attempts.length - 1].ok) {
-      return buildReceipt({
-        status: 'SENT',
-        channel: 'app',
-        alertId,
-        attempts,
-        sentAt,
-      });
-    }
+    return attempts[attempts.length - 1].ok;
+  };
+
+  let sentChannel = null;
+  if (primary) {
+    if (!tokenProvider) throw new Error('deliverAlert requires tokenProvider when a recipient is configured');
+    if (await sendToRecipient('app', primary, recipientType)) sentChannel = 'app';
   } else {
     attempts.push({ channel: 'app', ok: false, skipped: 'NO_RECIPIENT' });
   }
+
+  if (!sentChannel) {
+    if (!fallback) {
+      attempts.push({ channel: 'app_fallback', ok: false, skipped: 'NO_FALLBACK_RECIPIENT' });
+    } else if (fallback === primary) {
+      // 主收件人与兜底收件人相同时不再发一次：那只是重复打扰，
+      // 而且会让收据看起来「试过兜底」，把话说过头。
+      attempts.push({ channel: 'app_fallback', ok: false, skipped: 'SAME_AS_PRIMARY' });
+    } else {
+      if (!tokenProvider) throw new Error('deliverAlert requires tokenProvider when a fallback recipient is configured');
+      if (await sendToRecipient('app_fallback', fallback, fallbackRecipientType)) sentChannel = 'app_fallback';
+    }
+  }
+
+  if (sentChannel) return buildReceipt({ status: 'SENT', channel: sentChannel, alertId, attempts, sentAt });
 
   if (hasWebhook) {
     const webhookAttempt = await attemptWebhook({ fetchImpl, webhookUrl, message });
@@ -302,7 +348,7 @@ export async function deliverAlert({
     attempts.push({ channel: 'webhook', ok: false, skipped: 'NO_WEBHOOK' });
   }
 
-  if (!hasRecipient && !hasWebhook) {
+  if (!primary && !fallback && !hasWebhook) {
     return buildReceipt({ status: 'NOT_CONFIGURED', channel: null, alertId, attempts, sentAt });
   }
   return buildReceipt({ status: 'FAILED', channel: null, alertId, attempts, sentAt });

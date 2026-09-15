@@ -166,10 +166,24 @@ base，不属于竞品 base，所以复制竞品 base 时不会带上它。
 ```
 FEISHU_APP_ID=cli_xxxxxxxxxxxx
 FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-SYCM_NOTIFY_RECIPIENT=ops@example.com      # 收件人标识（默认按邮箱）
-SYCM_NOTIFY_RECIPIENT_TYPE=email           # 可改 open_id / user_id / chat_id
-SYCM_NOTIFY_WEBHOOK=https://open.feishu.cn/open-apis/bot/v2/hook/xxxx   # 可选，投递兜底
+SYCM_NOTIFY_RECIPIENT=ou_xxxxxxxxxxxx              # 主收件人（个人 open_id）
+SYCM_NOTIFY_RECIPIENT_TYPE=open_id                 # 可改 email / user_id / chat_id
+SYCM_NOTIFY_FALLBACK_RECIPIENT=oc_xxxxxxxxxxxx     # 兜底收件人（群 chat_id），同一通道第二次尝试
+SYCM_NOTIFY_FALLBACK_RECIPIENT_TYPE=chat_id
+SYCM_NOTIFY_WEBHOOK=https://open.feishu.cn/open-apis/bot/v2/hook/xxxx   # 可选，换认证路径的兜底
 ```
+
+投递链是三跳，逐跳收窄失败面：①应用消息 → 主收件人（个人）→ ②应用消息 → 兜底收件人（群）
+→ ③群自定义机器人 webhook（换了认证路径，能覆盖整个应用通道挂掉）。全链失败返回 `FAILED`
+且进程非零退出。
+
+**怎么零额外权限拿到个人 `open_id`**（2026-09-15 实测可行）：把机器人拉进任意一个群里，
+再 `GET /im/v1/chats/:chat_id/members?member_id_type=open_id`，成员列表直接带 `open_id`。
+不需要 `contact:user.id:readonly`，也不需要问任何人要邮箱。
+
+**本机当前实际配置**（2026-09-15 写入 `E:/小红书/.env.feishu-kcne.local`）：
+群「奈何妨」（1 人 + 机器人）承担兜底，主收件人的 `open_id` 由该群成员列表取得。
+真实发送**尚未执行**，因此 §7.1 的结论仍是「已开通、未验证」。
 
 干跑（只渲染不发送，用来在开通知前先看文案）：
 
@@ -177,15 +191,16 @@ SYCM_NOTIFY_WEBHOOK=https://open.feishu.cn/open-apis/bot/v2/hook/xxxx   # 可选
 node runtime/notify-feishu.mjs --dry-run --alert-file <alert.json>
 ```
 
-2026-09-15 实际干跑输出（真实入口实测）：
+2026-09-15 实际干跑输出（真实入口实测，注意时间已按本机时区渲染成人读形式）：
 
 ```
-【需要处理】小旺神登录已失效
-商品ID：678598686014
-主表记录：recSAMPLE
-原因：Xiaowangshen login is required
-下一步：请在同一个 Edge 用户配置中登录小旺神，登录完成后重新运行采集预检。
-证据：xws-sku-auth-status-1.json
-时间：2026-09-15T03:00:00.000Z
-告警编号：xws-login-678598686014-20260915T030000
+【提示】通道验证：自动化系统的飞书提醒已接通
+对象：专用部署机
+任务：通道自检
+原因：这是一条测试消息，用于确认告警可以真实送达。系统当前没有检测到任何故障。
+下一步：无需处理。收到这条说明以后系统真出问题时你能在同一位置收到提醒。
+时间：2026-09-15 11:45
+告警编号：sycm-channel-check-20260915T114500
 ```
+
+（真实故障时的形态与此同构，只是标题变成「小旺神登录已失效」这类，并带上商品与记录标识。）

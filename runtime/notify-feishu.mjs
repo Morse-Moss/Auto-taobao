@@ -25,6 +25,8 @@ const VALUE_OPTIONS = new Map([
   ['--env-file', 'envFile'],
   ['--recipient', 'recipient'],
   ['--recipient-type', 'recipientType'],
+  ['--fallback-recipient', 'fallbackRecipient'],
+  ['--fallback-recipient-type', 'fallbackRecipientType'],
   ['--webhook', 'webhook'],
   ['--alert-file', 'alertFile'],
 ]);
@@ -63,6 +65,17 @@ export function resolveNotifyConfig({ options = {}, values = {}, env = {} } = {}
       values.SYCM_NOTIFY_RECIPIENT_TYPE,
       env.SYCM_NOTIFY_RECIPIENT_TYPE,
       'email',
+    ),
+    fallbackRecipient: pick(
+      options.fallbackRecipient,
+      values.SYCM_NOTIFY_FALLBACK_RECIPIENT,
+      env.SYCM_NOTIFY_FALLBACK_RECIPIENT,
+    ),
+    fallbackRecipientType: pick(
+      options.fallbackRecipientType,
+      values.SYCM_NOTIFY_FALLBACK_RECIPIENT_TYPE,
+      env.SYCM_NOTIFY_FALLBACK_RECIPIENT_TYPE,
+      'chat_id',
     ),
     webhook: pick(options.webhook, values.SYCM_NOTIFY_WEBHOOK, env.SYCM_NOTIFY_WEBHOOK),
   };
@@ -131,11 +144,13 @@ export async function main(
   const receipt = await deliverAlert({
     alert,
     fetchImpl,
-    tokenProvider: config.recipient
+    tokenProvider: config.recipient || config.fallbackRecipient
       ? createTokenProvider({ fetchImpl, appId, appSecret })
       : null,
     recipient: config.recipient,
     recipientType: config.recipientType,
+    fallbackRecipient: config.fallbackRecipient,
+    fallbackRecipientType: config.fallbackRecipientType,
     webhookUrl: config.webhook,
   });
   write(JSON.stringify(receipt, null, 2));

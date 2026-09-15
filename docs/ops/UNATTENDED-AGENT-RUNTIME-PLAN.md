@@ -146,6 +146,17 @@
 - 群机器人成本极低（一个 URL），作为**投递兜底**：「主通道发送失败 → 降级到群」，
   保证「故障一定有人知道」。通知这件事上，冗余比优雅重要。
 
+**实际落地的投递链是三跳**（`runtime/notify-feishu-core.mjs`）：
+
+| 跳 | 通道 | 收件人 | 覆盖的失败面 |
+| --- | --- | --- | --- |
+| 1 | 应用消息 | 主收件人（个人 `open_id`） | 正常路径 |
+| 2 | 应用消息 | 兜底收件人（群 `chat_id`） | 「个人收件人不可达」（不在可用范围、未与机器人产生会话等） |
+| 3 | 群机器人 webhook | 群 | **整个应用通道挂掉**（scope 被回收、token 拿不到）——因为换了认证路径 |
+
+第 1、2 跳同通道、同接口，只是 `receive_id_type` 不同；第 3 跳才是真正的跨通道冗余。
+第 2 跳与主收件人相同时不会重发（只留一条 `skipped: SAME_AS_PRIMARY`，避免收据把话说过头）。
+
 **两个必须处理的实现细节**（都是「常驻进程 vs 一次性 CLI」的差异，容易踩）：
 
 1. **token 过期**：现在 `FeishuClient.#token` 是进程内永久缓存。CLI 跑几分钟没事，
@@ -207,20 +218,22 @@
 
 ## 11. 实施计划（落地顺序与验收）
 
-`run-test-suite.mjs runtime` 基线：**62 文件 / 423 用例全绿**（2026-09-15，含新增的投递层 26 例）。
+`run-test-suite.mjs runtime` 基线：**62 文件 / 427 用例全绿**（2026-09-15，含投递层 30 例）。
 
 | 步 | 交付物 | 状态 | 验收方式 |
 | --- | --- | --- | --- |
 | 0 | 决策记录 + 登录态设计（本文 §9/§10 与 `LOGIN-STATE-MANAGEMENT.md`） | **已完成** | 文档交叉引用齐全、相对链接有效 |
-| 1 | 通知出口：`runtime/notify-feishu-core.mjs` + `runtime/notify-feishu.mjs` + `runtime/notify-feishu.test.mjs` | **已完成（离线）** | 26 例全绿；干跑真实入口验证渲染；**真实发送待收件人** |
+| 1 | 通知出口：`runtime/notify-feishu-core.mjs` + `runtime/notify-feishu.mjs` + `runtime/notify-feishu.test.mjs`（三跳投递链 + token 过期缓存 + 凭据遮盖） | **已完成（离线）** | 30 例全绿；干跑真实入口验证渲染；**真实发送待授权** |
 | 2 | 常驻调度器：一轮运行生命周期（体检 → 探队列 → 两段式 → 收尾 → 自愈 → 通知） | 待做 | 离线用例覆盖 §4 静默判据表的**双向**（该响要响、该静默要静默） |
 | 3 | 自愈执行器：把 `diagnose.actions` 的 5 个动作接上真实实现 | 待做 | 动作幂等；预算上限不改默认值 |
 | 4 | 体检前置与登录会话对象：从 `xws-sku-auth-preflight.mjs` 推广成四层体检 | 待做 | 先补 `LOGIN-STATE-MANAGEMENT.md` §7 第 1 条（实测采集判据） |
 
-第 1 步里两件必须注意的事：
+第 1 步里三件必须注意的事：
 
 1. **零参数调用**：现有 `notifyOperator` 用 `spawn(command, [], { shell: false })` 调用，
    传不了参数，所以 `notify-feishu.mjs` 的全部配置必须能从 env 文件读到
-   （`SYCM_NOTIFY_RECIPIENT` / `SYCM_NOTIFY_RECIPIENT_TYPE` / `SYCM_NOTIFY_WEBHOOK`）。
+   （`SYCM_NOTIFY_RECIPIENT` / `_TYPE` / `SYCM_NOTIFY_FALLBACK_RECIPIENT` / `_TYPE` / `SYCM_NOTIFY_WEBHOOK`）。
    若把 `.mjs` 直接当 `--notify-command`，Windows 上还需要一个 `.cmd` 包装（或用 `node` + 参数数组调用）。
 2. **投递失败必须非零退出**：否则调用方会把没送达的告警记成送达。收据 JSON 从 stdout 出，供上层留证据。
+3. **时间要按本机时区渲染**：ISO 的 `2026-09-15T03:45:00.000Z` 会被运营读成凌晨 3 点（实际 11:45）。
+   这条同样是干跑真实入口时发现的——通知的读者是人，不是日志解析器。

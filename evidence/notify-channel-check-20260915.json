@@ -1,0 +1,12 @@
+{
+  "version": "sycm-channel-check-v1",
+  "purpose": "通道自检：确认告警可以真实送达飞书。这不是故障，收到后无需处理。",
+  "alertId": "sycm-channel-check-20260915T114500",
+  "status": "OPEN",
+  "severity": "INFO",
+  "title": "通道验证：自动化系统的飞书提醒已接通",
+  "createdAt": "2026-09-15T03:45:00.000Z",
+  "source": { "targetLabel": "专用部署机", "capability": "通道自检" },
+  "reason": "这是一条测试消息，用于确认告警可以真实送达。系统当前没有检测到任何故障。",
+  "action": "无需处理。收到这条说明以后系统真出问题时你能在同一位置收到提醒。"
+}
