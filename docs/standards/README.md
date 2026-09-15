@@ -154,25 +154,27 @@ tenant / store / platform / account / browserProfile / capability
 | 外部写入 | dry-run、显式目标和授权、字段白名单、写前备份、幂等提交、回读验收 |
 | 状态/恢复/基础设施 | Worker 被杀、浏览器断开、重复回调、partial artifact、retry 耗尽、租约释放和 `COMMIT_UNKNOWN` 对账 |
 
-真实浏览器、飞书和生产 PostgreSQL 操作不进入普通离线测试；需要真实系统时，必须单独记录环境、授权、目标和回执。没有 CI 时，不得把人工命令列表表述为自动化门禁。
+真实浏览器、飞书和生产 PostgreSQL 操作不进入普通离线测试；需要真实系统时，必须单独记录环境、授权、目标和回执。CI 现已存在（`.github/workflows/ci.yml`）但**只覆盖离线层**（见 §8），因此不得把「CI 绿」当成「真实流程已验证」，也不得把人工命令列表表述为自动化门禁。
 
-当前仓库测试使用 Node 内置 `node:test` 和 Python `unittest`，主要采用 `<implementation>.test.mjs` 与少量 `*_test.py` 命名；没有统一 package-level test command。PowerShell 中使用通配符测试前必须确认命令实际展开方式，优先显式列出文件或使用已验证的脚本入口。
+当前仓库测试使用 Node 内置 `node:test` 和 Python `unittest`，主要采用 `<implementation>.test.mjs` 与少量 `*_test.py` 命名；统一入口是 `package.json` 的 `test:*` 系列（`test:integration` 需外部系统，未置绿）。PowerShell 中使用通配符测试前必须确认命令实际展开方式，优先显式列出文件或使用已验证的脚本入口。
 
 ## 8. 可复现性现状与缺口
 
 以下是当前已知事实，不是本规范的假设：
 
-- `package.json` 声明 Node `>=18`，并提供 `test:offline` 作为最小 package-level self-test 入口；没有 lint 或 build 定义。
-- 没有项目级 Python 依赖清单、版本锁定、CI、部署清单或环境 bootstrap。
-- 部分 Python 脚本依赖未声明的 `openpyxl`、`Pillow` 和 `python-docx`；部分 Node 文档脚本依赖未声明的 `docx`。
-- 部分运行脚本依赖外部或未跟踪的 `table_geometry` 模块。
-- `pg` 只代表客户端依赖；PostgreSQL 服务、连接变量、schema 和迁移机制尚未形成项目级合同。
-- Object Storage、durable workflow、Browser Broker 和系统化故障注入 POC 尚未落地。
+- `package.json` 声明 Node `>=18`，并提供 `test:offline` / `test:unit` / `test:runtime` / `test:skills` / `test:integration` 分层入口（集成层需外部系统，未置绿）；**仍没有** lint 或 build 定义。
+- 已有 `requirements.txt`（锁定 `openpyxl==3.1.5` / `Pillow==11.3.0` / `python-docx==1.2.0`）与 `.github/workflows/ci.yml`（离线闸门：L0 语法 / L1 self-test / L2 单测，`windows-latest`，按 skill 分矩阵）；`docx` 已声明进 `package.json`。**仍缺**解释器版本声明（README 用 `py -3`，实测 CPython 3.12.9）、部署清单与环境 bootstrap。
+- 此前记的「部分 Python 脚本依赖**未声明**的 `openpyxl`/`Pillow`/`python-docx`」与「Node 文档脚本依赖**未声明**的 `docx`」**已过时**——三者现均随清单或 `package.json` 声明。
+- `table_geometry` 仍依赖仓库外模块且无发布包，涉及 `runtime/build-keyword-decision-brief.py` 与 `runtime/build-keyword-decision-report.py`，故这两个脚本**不能**从干净 checkout 复现（技术债 C1）。
+- PostgreSQL 侧**已形成项目级合同**：`db/migrations/001-006`（每份带 rollback）+ `runtime/verify-migrations-isolated.mjs` 隔离预演（26/26）+ 仓库级词表守卫（`commit-status-vocabulary.test.mjs` 从迁移推导现状）；**仍缺**服务本身、连接变量与凭据注入方式的合同，`pg` 仍只是客户端依赖。
+- durable 语义与确定性运行时**已落地**：PostgreSQL 承担 `runtime/sop-runtime/` 的状态权威，跨进程故障注入（`recovery-fault-injection.mjs`）17/17。**未落地**的是 Object Storage、Browser Broker 与多租户隔离。
 - 当前真实运行依赖外部已登录 Edge、共享 CDP Proxy、平台状态和外部凭据文件。
 
 `test:offline` 只运行三个固定的确定性 self-test，不发现或执行测试文件，因此不会触发真实 CDP、PostgreSQL、Python 或外部凭据；它不是完整 test gate。已知的 adaptive retry-budget 长时间失败不属于本阶段修复或验收范围。
 
-因此当前只能承诺已由对应 Skill、测试和运行证据证明的能力，不能承诺干净环境一键复现、完整 CI、生产级恢复或多租户并发。Python 依赖锁定、`docx` 版本选型、解释器 bootstrap 和 `table_geometry` 归属仍未解决。后续补齐每项缺口时，必须同时补版本声明、安装方式、失败模式和验证命令。
+因此当前只能承诺已由对应 Skill、测试和运行证据证明的能力，不能承诺干净环境一键复现、完整 CI、生产级恢复或多租户并发。仍未解决的是：解释器 bootstrap、`table_geometry` 归属、部署清单，以及运维面（监控、告警、备份与恢复演练）。后续补齐每项缺口时，必须同时补版本声明、安装方式、失败模式和验证命令。
+
+生产准入的完整评估（四条阻塞线、README §10 十一条架构验收的逐条实测状态、通往生产的最小路径）见 `docs/architecture/PRODUCTION-READINESS.md`。
 
 ## 9. 安全与数据治理
 
