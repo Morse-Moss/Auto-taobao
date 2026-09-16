@@ -18,6 +18,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+
 const SITE_TIME_ZONE = 'Asia/Shanghai';
 const ALIMAMA_BASE = 'https://one.alimama.com/index.html#!/report/account';
 // 场景编码：onebpSearch=关键词推广、onebpDisplay=人群推广。
@@ -535,7 +537,7 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
 // ---------------------------------------------------------------- CLI
 
 function parseArgs(argv) {
-  const args = { mode: 'auto', proxy: process.env.CDP_PROXY || 'http://127.0.0.1:3458', dryRun: false };
+  const args = { mode: 'auto', proxy: process.env.CDP_PROXY || `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`, dryRun: false };
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
     if (key === '--dry-run') args.dryRun = true;

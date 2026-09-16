@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { PROJECT_PORTS } from './browser-ports.mjs';
+
 import {
   buildAuthStatus,
   buildOperatorAlert,
@@ -95,9 +97,11 @@ test('requires source identity and output directory', () => {
     '--output-directory', 'D:/tmp/batch',
   ]);
   assert.equal(options.productId, '1');
-  // 本项目专用 CDP 代理是 3457（AGENTS.md / docs/ops/PROJECT-BROWSER-AND-PORTS.md）；
+  // 本项目专用 CDP 代理端口来自 runtime/browser-ports.mjs；断言对着登记表而不是写死的数字，
+  // 否则改端口时测试会把旧常量固化下来（坑 34）。
   // 3456 属于另一个项目且未装小旺神，默认值不得落在那里。
-  assert.equal(options.proxy, 'http://127.0.0.1:3457');
+  assert.equal(options.proxy, `http://127.0.0.1:${PROJECT_PORTS.competitorProxy}`);
+  assert.notEqual(options.proxy, 'http://127.0.0.1:3456');
 });
 
 test('writes and deduplicates an AUTH_REQUIRED operator alert without external notification', async () => {

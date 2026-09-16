@@ -9,8 +9,10 @@ Use the dedicated daily-report Edge profile and proxy. This workflow is specific
 
 ## Runtime Contract
 
-- Browser: Edge debug port `9223`, profile `D:/Retire/edge-daily-report-profile`.
-- CDP proxy: `http://127.0.0.1:3458`, browser id `edge-daily-report`.
+- Browser: Edge debug port `19022`, profile `D:/Retire/edge-daily-report-profile`.
+- CDP proxy: `http://127.0.0.1:19023`, browser id `edge-daily-report`.
+- Ports and profile paths come from `runtime/browser-ports.mjs` (single source of truth); the launchers read them, and scripts must not hardcode a second copy. Override with `PROJECT_BROWSER_PORT` / `CDP_PROXY_PORT` / `CDP_BROWSER_PORT` when a machine needs different values.
+- Why two browsers are mandatory, not a convenience: SYCM / Alimama / Feishu require the merchant account, while the Xiaowangshen extension only works on the buyer account. One browser profile cannot hold both, so the daily-report chain and the competitor chain each need their own instance, debug port, and proxy port. Merging them fails silently: clicks and navigation succeed, but on the other account's browser.
 - Feishu targets: resolve the source table/view and `各店铺数据日报` table through `runtime/feishu-targets.mjs`.
 - Credentials: resolve the active kcne credential file through `runtime/feishu-targets.mjs`; never copy its values into this skill or evidence.
 - Stop at login, CAPTCHA, QR/SMS, account-risk, permission, or other security controls.

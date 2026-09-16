@@ -7,13 +7,15 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { dailyReportTargets, loadFeishuCredentials } from '../../../runtime/feishu-targets.mjs';
+import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import { buildCombinedFields, reportDateEpoch, valuesEqual } from './daily-report-core.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
 const TARGET = dailyReportTargets('kcne');
 const DEFAULTS = Object.freeze({
-  proxy: 'http://127.0.0.1:3458',
+  // 端口来自 runtime/browser-ports.mjs（唯一来源）；这里是日报链的商家号代理。
+  proxy: `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`,
   appToken: TARGET.baseToken,
   tableId: TARGET.sourceTable,
   viewId: TARGET.sourceView,
