@@ -20,6 +20,8 @@ node runtime/start-daily-report-proxy.mjs
 
 交付客户前要确认两个登录态分别在位：商家号登在 `D:/Retire/edge-daily-report-profile`（这条链），买家号登在 `D:/Retire/edge-debug-profile`（竞品链、里面装着小旺神）。不要把商家号登进别的配置，也不要把买家号登进日报配置。
 
+这条链属于**商家浏览器**（乙）。三条业务路线各归哪个浏览器，权威表在 `runtime/browser-ports.mjs` 的 `ROUTES`，可读版在 `docs/ops/PROJECT-BROWSER-AND-PORTS.md` §1.3：买家浏览器走竞品链（小旺神），商家浏览器走「关键词·搜索排行 ＋ 本日报 ＋ 周表粘贴飞书 ＋ 千牛/卖家工作台（预留）」。
+
 这两个进程不常驻：跑完一轮后它们会随宿主一起退出，下一轮重新启动即可；启动本身不改变任何远端状态。启动器在起之前会先看端口上是谁：若端口已被**另一个 profile** 的浏览器占用，它会拒绝启动并打印对方的 profile（继续起只会把调试端点接到别人身上）。
 
 ## 2. 日期落位（先做这一步，再做任何采集）

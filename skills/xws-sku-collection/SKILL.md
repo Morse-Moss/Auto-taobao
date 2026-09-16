@@ -73,8 +73,12 @@ stop before writing; do not create an unlinked SKU row and do not silently point
 
 ## Required Access
 
-1. Load `web-access` before any browser or network action. Use the shared Proxy at
-   `http://127.0.0.1:3456` and the user's existing Edge session.
+1. Load `web-access` before any browser or network action. Use **this project's competitor-chain
+   Proxy** — the value in `runtime/browser-ports.mjs` (`PROJECT_PORTS.competitorProxy`, currently
+   `http://127.0.0.1:3457`, browser id `edge-isolated`) — pointed at the debug Edge profile that
+   has the 小旺神 extension. Do not borrow another project's shared proxy (`3456`): that browser is
+   logged in with the merchant account and has no 小旺神, so collection silently degrades instead of
+   failing. See `docs/ops/PROJECT-BROWSER-AND-PORTS.md` §1.1/§1.3.
 2. Use the project runtime under `D:\Retire\sycm-automation\runtime` for parsing, manifests, and Feishu API
    operations. Do not copy credentials into the project. Pass the existing env-file path only to the runtime
    command; never print its values.

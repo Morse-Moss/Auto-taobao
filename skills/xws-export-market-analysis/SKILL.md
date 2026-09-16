@@ -38,7 +38,8 @@ Use the bundled runner to start at Taobao home, search the requested keyword, op
 
 1. Load `web-access` before any browser or network action. Use its dependency check and risk notice.
 2. Load `xlsx` before validating CSV/XLSX artifacts.
-3. Use the shared Proxy at `http://127.0.0.1:3456` and the user's logged-in Edge session. Before `/targets` or any browser action, require `/health` to report `status=ok`, `connected=true`, and `browser.id=edge`. Any `browser-service`, Chrome/Chromium, missing identity, or disconnected response is a hard failure; do not open a second browser-level CDP WebSocket or continue with targets from the wrong browser.
+3. Use **this project's competitor-chain Proxy** — the value in `runtime/browser-ports.mjs` (`PROJECT_PORTS.competitorProxy`, currently `http://127.0.0.1:3457`, browser id `edge-isolated`) — pointed at the debug Edge profile that has the 小旺神 extension. Before `/targets` or any browser action, require `/health` to report `status=ok`, `connected=true`, and `browser.id=edge-isolated`. Any `browser-service`, Chrome/Chromium, missing identity, or disconnected response is a hard failure; do not open a second browser-level CDP WebSocket or continue with targets from the wrong browser.
+   Do **not** borrow another project's shared proxy (`3456`): that browser is logged in with the merchant (seller) account and has no 小旺神 extension, and every step still looks successful while the market data is unreadable. The two chains must stay on separate browsers — see `docs/ops/PROJECT-BROWSER-AND-PORTS.md` §1.1/§1.3.
 4. Run from `D:\Retire\sycm-automation`; do not write to `E:\Revolution`.
 5. Adaptive runs require PostgreSQL through `XWS_DATABASE_URL`. Keep the connection string and database credentials outside the project; never copy them into source files, checkpoints, manifests, logs, or artifacts.
 

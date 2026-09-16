@@ -1,20 +1,29 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  ACCOUNT_KINDS,
+  BROWSER_ACCOUNT,
   BROWSER_IDS,
   BROWSER_LABELS,
   BROWSER_PROFILES,
+  FOREIGN_PORTS,
+  FOREIGN_PROXY_DEFAULT_FILES,
+  FOREIGN_PROXY_URL_PATTERN,
   PROJECT_PORTS,
+  ROUTES,
+  SITE_ACCOUNT,
   classifyPortUsage,
+  describeBrowserRoutes,
   describeOccupant,
   extractProfileFromCommandLine,
   inspectPort,
   normalizeProfile,
   resolvePort,
+  routesOnBrowser,
 } from './browser-ports.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -169,4 +178,91 @@ test('生产代码里不得再写死项目端口 —— 只能从登记表取', 
     if (hits.length > 0) offenders.push(`${path.relative(REPO_ROOT, file)} -> ${hits.join(', ')}`);
   }
   assert.deepEqual(offenders, [], '这些文件把端口写死了；改成从 runtime/browser-ports.mjs 取');
+});
+
+// --- 三条路线 × 两个浏览器 ----------------------------------------------------
+// 表格本身不是文档，是判据：下面四条测试分别盯住「路线指向的浏览器存在吗」
+// 「账号边界串了吗」「路线表和 skills/ 目录还对得上吗」「别的项目的代理还缠着几个地方」。
+
+const logins = Object.values(SITE_ACCOUNT);
+const KNOWN_BROWSERS = Object.keys(BROWSER_ACCOUNT);
+
+test('路线表：每条路线要么有浏览器、要么显式标成待定或不需要，二者必居其一', () => {
+  for (const [name, route] of Object.entries(ROUTES)) {
+    if (route.browser === null) {
+      const pending = route.browserPending === true && typeof route.pendingReason === 'string' && route.pendingReason.length > 10;
+      const notNeeded = route.noBrowser === true && typeof route.noBrowserReason === 'string' && route.noBrowserReason.length > 10;
+      assert.ok(pending || notNeeded, `路线 ${name} 没有浏览器，就必须写清是「待定」还是「不需要」，否则这种空白会一点点变成「没人记得」`);
+      assert.ok(!(pending && notNeeded), `路线 ${name} 不能既说待定又说不需要`);
+    } else {
+      assert.ok(KNOWN_BROWSERS.includes(route.browser), `路线 ${name} 指向未知浏览器 ${route.browser}`);
+      assert.equal(route.browserPending, undefined, `路线 ${name} 已经定下浏览器了，不该再挂 pending 标记`);
+      assert.equal(route.noBrowser, undefined, `路线 ${name} 已经定下浏览器了，不该再挂 noBrowser 标记`);
+    }
+    assert.ok(logins.includes(route.account), `路线 ${name} 的 account=${route.account} 不是已知账号类型`);
+    assert.ok(Array.isArray(route.skills), `路线 ${name} 的 skills 必须是数组（没有调用方就写空数组）`);
+    assert.ok(route.sites.length > 0, `路线 ${name} 至少要写一个站点，否则无法核对账号边界`);
+  }
+});
+
+test('账号边界：买家链里不许有商家站点，商家链里不许有买家站点', () => {
+  const forbidden = { [ACCOUNT_KINDS.buyer]: ACCOUNT_KINDS.merchant, [ACCOUNT_KINDS.merchant]: ACCOUNT_KINDS.buyer };
+  for (const [name, route] of Object.entries(ROUTES)) {
+    for (const site of route.sites) {
+      const required = SITE_ACCOUNT[site];
+      // fail-closed：站点没登记就失败，而不是「没人知道它属于哪一边」而放过。
+      assert.ok(required, `站点 ${site}（路线 ${name}）没有登记在 SITE_ACCOUNT 里`);
+      if (route.browser === null) continue;
+      const browserKind = BROWSER_ACCOUNT[route.browser];
+      assert.notEqual(
+        required,
+        forbidden[browserKind],
+        `路线 ${name} 把 ${site}（要 ${required} 账号）放进了 ${route.browser} 浏览器（${browserKind} 账号）——卖家版账号用不了小旺神，这条正是要规避的风险`,
+      );
+    }
+  }
+});
+
+test('两个浏览器承载的路线各自分明，且 9222 那条是唯一带小旺神的', () => {
+  assert.deepEqual(routesOnBrowser('competitor').sort(), ['competitor']);
+  assert.deepEqual(routesOnBrowser('dailyReport').sort(), ['dailyReport', 'keywordRank', 'sellerWorkbench', 'weeklyPaste']);
+  assert.equal(ROUTES.competitor.needsExtension, '小旺神');
+  for (const name of routesOnBrowser('dailyReport')) {
+    assert.equal(ROUTES[name].needsExtension, null, `商家浏览器上的路线 ${name} 不该依赖小旺神插件`);
+  }
+  assert.match(describeBrowserRoutes('competitor'), /账号=buyer/);
+  assert.match(describeBrowserRoutes('competitor'), /小旺神/);
+  assert.match(describeBrowserRoutes('dailyReport'), /账号=merchant/);
+});
+
+test('路线表与 skills/ 目录双向一致 —— 改名会让这张表静默说谎（坑 37）', () => {
+  const declared = new Set(Object.values(ROUTES).flatMap((route) => route.skills));
+  const onDisk = readdirSync(path.join(REPO_ROOT, 'skills'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+  assert.deepEqual(onDisk.filter((name) => !declared.has(name)).sort(), [], '这些 skill 没被任何路线认领：给它指定浏览器与账号类型，或说明它不需要浏览器');
+  assert.deepEqual([...declared].filter((name) => !onDisk.includes(name)).sort(), [], '路线表里提到的 skill 在 skills/ 下不存在（被改名或删了）');
+  for (const name of declared) {
+    assert.ok(existsSync(path.join(REPO_ROOT, 'skills', name, 'SKILL.md')), `skills/${name}/SKILL.md 不存在`);
+  }
+});
+
+test('别的项目共享代理 3456 的欠债清单必须与现实逐字一致', () => {
+  assert.notEqual(PROJECT_PORTS.dailyReportProxy, FOREIGN_PORTS.sharedProxy);
+  assert.notEqual(PROJECT_PORTS.competitorProxy, FOREIGN_PORTS.sharedProxy);
+  const files = [...sourceFiles(path.join(REPO_ROOT, 'runtime')), ...sourceFiles(path.join(REPO_ROOT, 'skills')), ...sourceFiles(path.join(REPO_ROOT, 'scripts'))];
+  const skillDocs = [];
+  for (const name of readdirSync(path.join(REPO_ROOT, 'skills'), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)) {
+    const doc = path.join(REPO_ROOT, 'skills', name, 'SKILL.md');
+    if (existsSync(doc)) skillDocs.push(doc);
+  }
+  const actual = [...files, ...skillDocs]
+    .filter((file) => FOREIGN_PROXY_URL_PATTERN.test(readFileSync(file, 'utf8')))
+    .map((file) => path.relative(REPO_ROOT, file).replaceAll('\\', '/'))
+    .sort();
+  assert.deepEqual(
+    actual,
+    [...FOREIGN_PROXY_DEFAULT_FILES].sort(),
+    '清单与现实对不上了：修好一处就删一行、新写一处就加一行。这些地方能跑只是碰巧别的项目的代理活着',
+  );
 });

@@ -10,6 +10,7 @@ Use this Skill for the bounded follow-up stage after the upstream AI/content ana
 ## Required setup
 
 1. Load `web-access` before any browser or network action. Run its dependency check for Edge and use the shared Proxy at `http://127.0.0.1:3456`; do not open another browser-level CDP WebSocket.
+   **2026-09-16 待定**：`3456` 是**另一个项目**的共享代理（挂在使用者日常 Edge 上），本链借用它属于已知欠债 —— 别的项目一关代理，这条链就断。灰豚是独立第三方平台，跟买家链/商家链都不冲突，所以归属还不能由代码决定，等拍板后再改：见 `docs/ops/PROJECT-BROWSER-AND-PORTS.md` §1.4。
    The runner also verifies `/health` reports `connected=true` and `browser.id=edge` before reading or opening any Huitun target. A Proxy connected to another browser is a hard stop.
 2. Use the existing Feishu app credential file through `--env-file`. The file must define `FEISHU_APP_ID` and `FEISHU_APP_SECRET`; never print, copy, or inspect credential values beyond authentication.
 3. Start with an authorized Feishu copy/table. Always pass the current weekly `--table-id` and `--table-name`; the CLI intentionally has no fixed table default because each batch uses a new table.

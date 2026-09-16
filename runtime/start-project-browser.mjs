@@ -24,11 +24,15 @@
 
 import { spawn } from 'node:child_process';
 import {
+  ACCOUNT_KINDS,
+  BROWSER_ACCOUNT,
   BROWSER_PROFILES,
   PROJECT_PORTS,
   classifyPortUsage,
+  describeBrowserRoutes,
   describeOccupant,
   inspectPort,
+  normalizeProfile,
   resolvePort,
 } from './browser-ports.mjs';
 
@@ -36,6 +40,24 @@ const EDGE = process.env.PROJECT_BROWSER_EXE || 'C:/Program Files (x86)/Microsof
 const PROFILE = process.env.PROJECT_BROWSER_PROFILE || BROWSER_PROFILES.competitor;
 const PORT = resolvePort('PROJECT_BROWSER_PORT', PROJECT_PORTS.competitorBrowser);
 const START_URL = process.env.PROJECT_BROWSER_URL || 'about:blank';
+
+// 这个 profile 是登记表里的哪个浏览器？认不出来就说明是自定义 profile，
+// 那就不该硬套某条路线的账号要求 —— 宁可让人自己确认，也不要给一句想当然的提示。
+const BROWSER_KEY = Object.entries(BROWSER_PROFILES)
+  .find(([, value]) => normalizeProfile(value) === normalizeProfile(PROFILE))?.[0] ?? null;
+
+// 启动时把「这个端口该登哪种账号」念一遍。这不是文档复读：账号登错了不会报错，
+// 只会让下游数据静默变形（买家链登了商家号 ⇒ 小旺神读不出市场数据）。
+function describeExpectedLogin() {
+  if (!BROWSER_KEY) {
+    return `[browser] profile=${PROFILE} 不在登记表的两个浏览器里 —— 账号要求无从核对，请自行确认登的是哪一类账号。`;
+  }
+  const account = BROWSER_ACCOUNT[BROWSER_KEY];
+  const hint = account === ACCOUNT_KINDS.buyer
+    ? '这个 profile 必须是**买家**账号：商家号看不到别家商品详情页，小旺神会静默读不出数据。'
+    : '这个 profile 必须是**商家**账号（生意参谋 / 千牛 / 阿里妈妈后台）：不要把买家号登到这里。反过来说，卖家版账号用不了小旺神，所以两条链不能合并成一个浏览器。';
+  return `[browser] 承载路线：${describeBrowserRoutes(BROWSER_KEY)}；${hint}`;
+}
 
 async function waitForDevTools(timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
@@ -61,6 +83,8 @@ function keepAlive() {
 // 两个账号连的是不同的人，接错了不会报错，只会把数据写到错的地方。
 const inspection = await inspectPort(PORT);
 const usage = classifyPortUsage(inspection, { expectedProfile: PROFILE });
+
+console.log(describeExpectedLogin());
 
 if (usage.verdict === 'ours') {
   console.log(`[browser] REUSE ${describeOccupant(inspection)} port=${PORT}（profile 与期望一致，无需重复启动）`);
