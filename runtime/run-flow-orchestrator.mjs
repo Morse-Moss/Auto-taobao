@@ -177,11 +177,23 @@ export async function orchestrateFaq({
   spawn = spawnController,
   now = () => new Date().toISOString(),
 }) {
-  const baseArgs = ['--period-start', periodStart, '--period-end', periodEnd];
-  const eventsPath = orchestratorEventStream(runtimeRoot, 'faq', `${periodStart}_${periodEnd}`);
+  // 子进程必须收到**绝对**的 runtime root。
+  // 它不只是「本调度器放 events 的地方」——FAQ 的全部收据（top5-manifest、各阶段收据、
+  // operator-status.json）都以它为根。此前这里只把它用在自己的 events 流上，两次 spawn
+  // 都没带 --runtime-root，于是 `--runtime-root /tmp/x` 看起来隔离了、实际子进程依旧在
+  // 仓库的 runtime/ 里读写：调度器每轮轮询都会改写运营可见的 checkedAt，
+  // 测试探一次真实周期就把生产收据真写一遍（2026-09-16 实录 §5）。
+  // 绝对化还顺手挡掉另一类坑：相对路径会分别按「调度器的 cwd」与「子进程的 cwd」解析成两个地方。
+  const runtimeRootAbs = path.resolve(runtimeRoot);
+  const baseArgs = ['--period-start', periodStart, '--period-end', periodEnd, '--runtime-root', runtimeRootAbs];
+  const eventsPath = orchestratorEventStream(runtimeRootAbs, 'faq', `${periodStart}_${periodEnd}`);
   let previousFingerprint = '';
   for (let stage = 1; stage <= maxStages; stage += 1) {
-    const inspected = await spawn(FAQ_OPERATOR, ['--status', ...baseArgs]);
+    // 状态探测是**只读**探测：带上 --no-persist，别让「看一眼」变成「改运营可见状态」。
+    // 真正的推进仍然会写（下面的 --advance 不带这个开关），所以运营台看到的
+    // checkedAt 含义是「运营侧最后一次真的检查/推进」，而不是「调度器第 N 次轮询」。
+    // 每轮的决策都落在 events.jsonl 里，追溯不受影响。
+    const inspected = await spawn(FAQ_OPERATOR, ['--status', ...baseArgs, '--no-persist']);
     if (inspected.code !== 0) {
       throw new Error(inspected.stderr || inspected.stdout || `FAQ status check failed with code ${inspected.code}`);
     }
@@ -239,7 +251,10 @@ export async function orchestrateXws({
   sleep: wait = sleep,
   now = () => new Date().toISOString(),
 }) {
-  const eventsPath = orchestratorEventStream(runtimeRoot, 'xws', runId || 'new');
+  // 与 FAQ 流的区别：xws 的真相在 PostgreSQL（run 表）与 checkpoint 文件里，
+  // `supervise-adaptive-export.mjs` 也没有 runtime-root 这个参数，所以这里的 runtimeRoot
+  // **只决定 events 流写在哪**。这一点必须说清，否则又会变成「选项承诺了隔离但没隔离」。
+  const eventsPath = orchestratorEventStream(path.resolve(runtimeRoot), 'xws', runId || 'new');
   let currentRunId = runId;
   let creating = create;
   for (let cycle = 1; cycle <= maxCycles; cycle += 1) {
@@ -358,6 +373,10 @@ XWS flow (delegates to supervise-adaptive-export.mjs):
 
 Shared:
   --dry-run        Print the next command without executing it
+  --runtime-root   FAQ flow: where the stage receipts live AND where the events stream
+                   goes; it is forwarded (absolutely) to every child, so pointing it at a
+                   temp dir really does isolate the run. XWS flow: the events stream only —
+                   that flow's truth is the PostgreSQL run row plus the checkpoint file.
   --help           Show this text
 `;
 }

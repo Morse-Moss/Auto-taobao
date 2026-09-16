@@ -3,7 +3,7 @@ import test from 'node:test';
 import path from 'node:path';
 import os from 'node:os';
 import { existsSync } from 'node:fs';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -14,8 +14,25 @@ import {
   orchestratorEventStream,
   main,
 } from './run-flow-orchestrator.mjs';
+import { inspectFaqOperatorStatus } from './run-faq-operator.mjs';
 
 const RUNTIME_SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'run-flow-orchestrator.mjs');
+const REPO_RUNTIME = path.dirname(RUNTIME_SCRIPT);
+
+// 「这个文件有没有被动过」用 (存在性, 字节数, mtime) 三元组表示。
+// 只比 mtime 会漏掉「同一毫秒内改写」；只比内容会漏掉「同一内容重写」。
+async function snapshot(paths) {
+  const entries = [];
+  for (const target of paths) {
+    try {
+      const info = await stat(target);
+      entries.push(`${path.basename(target)}:${info.size}:${info.mtimeMs}`);
+    } catch {
+      entries.push(`${path.basename(target)}:ABSENT`);
+    }
+  }
+  return entries.join('|');
+}
 
 function faqStatus(overrides = {}) {
   return {
@@ -256,30 +273,86 @@ test('CLI validates flow arguments and prints help', async () => {
   );
 });
 
-test('CLI dry-run against the real completed FAQ period reports DONE without spawning advances', async (context) => {
-  // This is a local smoke test against untracked runtime receipts; on a clean
-  // checkout (CI) the receipts do not exist, so skip instead of failing.
-  const receiptsDir = path.resolve(path.dirname(RUNTIME_SCRIPT), 'faq-analysis', '2026-08-23_2026-08-29');
-  if (!existsSync(receiptsDir)) {
-    context.skip('local FAQ receipts for 2026-08-23_2026-08-29 are not present');
-    return;
-  }
-  const originalCwd = process.cwd();
-  const projectRoot = path.resolve(path.dirname(RUNTIME_SCRIPT), '..');
-  let report;
+// 这三条替换掉了原先那条「CLI dry-run against the real completed FAQ period」的用例。
+// 那条用例的写法把两件事一起干坏了：它探的是仓库里的真实收据，而 `--status` 会写
+// operator-status.json —— 于是每跑一次测试，运营台上的「上次检查」就被顶成刚刚
+// （2026-09-16 实录 §5）。现在拆成「隔离」「真读」「不留痕」三条，且都不写生产。
+test('orchestrateFaq forwards an absolute --runtime-root to every child and keeps the status probe read-only', async () => {
+  const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), 'orch-faq-'));
   try {
-    process.chdir(projectRoot);
-    report = await main([
+    const seen = [];
+    const spawn = async (script, args) => {
+      seen.push(args);
+      return { code: 0, stdout: `${JSON.stringify(faqStatus({ nextAction: 'DONE' }))}\n`, stderr: '' };
+    };
+    await orchestrateFaq({ periodStart: '2026-09-01', periodEnd: '2026-09-07', runtimeRoot, spawn });
+    assert.equal(seen.length, 1, 'DONE 只探一次，不该再推进');
+    const [probe] = seen;
+    assert.equal(probe[0], '--status');
+    const rootIndex = probe.indexOf('--runtime-root');
+    assert.notEqual(rootIndex, -1, '子进程必须收到 runtime root，否则 --runtime-root 只是调度器自己的事');
+    assert.equal(probe[rootIndex + 1], path.resolve(runtimeRoot), '必须是绝对路径，否则会按两个不同的 cwd 解析成两个地方');
+    assert.equal(probe.includes('--no-persist'), true, '状态探测是只读探测，不许改运营可见状态');
+    assert.equal(probe.includes('--advance'), false);
+
+    // 推进那一跳也必须带根目录，而且**不**带 --no-persist：推进就要留下收据。
+    const advanceSeen = [];
+    const advancingSpawn = async (script, args) => {
+      advanceSeen.push(args);
+      const nextAction = args[0] === '--status' ? 'ANALYZE_LOCAL' : 'COLLECT_EVIDENCE';
+      return { code: 0, stdout: `${JSON.stringify(faqStatus({ nextAction }))}\n`, stderr: '' };
+    };
+    await orchestrateFaq({ periodStart: '2026-09-01', periodEnd: '2026-09-07', runtimeRoot, spawn: advancingSpawn });
+    const advanceCall = advanceSeen.find((args) => args[0] === '--advance');
+    assert.ok(advanceCall, '应该真的推进过一次');
+    assert.equal(advanceCall[advanceCall.indexOf('--runtime-root') + 1], path.resolve(runtimeRoot));
+    assert.equal(advanceCall.includes('--no-persist'), false);
+  } finally {
+    await rm(runtimeRoot, { recursive: true, force: true });
+  }
+});
+
+test('CLI dry-run pointed at a temp root reports from that root and leaves the repo receipts untouched', async () => {
+  const period = '2026-08-23_2026-08-29';
+  const watched = [
+    path.join(REPO_RUNTIME, 'faq-analysis', period, 'operator-status.json'),
+    orchestratorEventStream(REPO_RUNTIME, 'faq', period),
+  ];
+  const before = await snapshot(watched);
+  const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), 'orch-faq-isolated-'));
+  try {
+    const report = await main([
       '--flow', 'faq',
       '--period-start', '2026-08-23',
       '--period-end', '2026-08-29',
       '--dry-run',
+      '--runtime-root', runtimeRoot,
     ]);
+    // 空根目录里没有任何收据 ⇒ 只能判到 LOCK_TOP5，于是干跑给出 DRY_RUN。
+    // 如果子进程偷用了仓库的 runtime/，这里会变成 DONE —— 这条断言就是隔离的判据。
+    assert.equal(report.decision, 'DRY_RUN', '临时根目录应当是空的，判定必须来自它而不是仓库收据');
+    assert.equal(report.period, period);
+    assert.equal(existsSync(orchestratorEventStream(runtimeRoot, 'faq', period)), true, '事件流应该落在临时根目录里');
+    assert.equal(await snapshot(watched), before, '仓库里的收据与事件流都不许被动过');
   } finally {
-    process.chdir(originalCwd);
+    await rm(runtimeRoot, { recursive: true, force: true });
   }
-  assert.ok(report, 'dry-run should return a report');
-  assert.equal(report.decision, 'DONE', 'the 2026-08-23_2026-08-29 period is complete, so the orchestrator must report DONE');
+});
+
+test('the real completed FAQ period still reads as DONE — via the pure reader, with zero writes', async (context) => {
+  // 保留「对真实已完成周期报 DONE」这条覆盖，但改用纯读函数：它一个字节都不写。
+  // 本地核对用；干净检出（CI）没有这些收据，跳过而不是失败。
+  const period = '2026-08-23_2026-08-29';
+  const receiptPath = path.join(REPO_RUNTIME, 'faq-analysis', period);
+  if (!existsSync(receiptPath)) {
+    context.skip('local FAQ receipts for 2026-08-23_2026-08-29 are not present');
+    return;
+  }
+  const watched = [path.join(receiptPath, 'operator-status.json')];
+  const before = await snapshot(watched);
+  const status = await inspectFaqOperatorStatus({ runtimeRoot: REPO_RUNTIME, period });
+  assert.equal(status.nextAction, 'DONE', '该周期已完成，判定必须是 DONE');
+  assert.equal(await snapshot(watched), before, '只读判定不许改运营可见的 checkedAt');
 });
 
 test('orchestrateXws parses the last JSON line when the supervisor streams child output first', async () => {

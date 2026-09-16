@@ -1,14 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 
 import { FAQ_AI_PROMPT_VERSION, FAQ_AI_REVIEW_VERSION } from './faq-ai-review.mjs';
 import { FAQ_ANALYSIS_VERSION, FAQ_LABEL_CATALOG } from './faq-text-analysis.mjs';
 import { FAQ_DEDUP_VERSION, FAQ_OPERATOR_CONTENT_VERSION, FAQ_PAIN_DESCRIPTION_VERSION, FAQ_REPRESENTATIVE_SELECTION_VERSION, FAQ_SUMMARY_VERSION } from './faq-local-summary.mjs';
 import { FAQ_DETAIL_ENRICHMENT_VERSION, FAQ_LEGACY_REPLACEMENT_VERSION, FAQ_PUBLISH_MODE } from './faq-detail-enrichment.mjs';
-import { buildAdvanceCommand, inspectFaqOperatorStatus, publicationVerified } from './run-faq-operator.mjs';
+import { buildAdvanceCommand, inspectFaqOperatorStatus, parseArgs, publicationVerified } from './run-faq-operator.mjs';
+
+const run = promisify(execFile);
+const OPERATOR_SCRIPT = resolve(fileURLToPath(import.meta.url), '..', 'run-faq-operator.mjs');
 
 async function json(path, value) {
   await mkdir(join(path, '..'), { recursive: true });
@@ -276,4 +282,28 @@ test('corrupt evidence files do not count as a completed product', async () => {
   assert.equal(status.evidenceComplete, false);
   assert.equal(status.completedProducts, 4);
   assert.equal(status.nextAction, 'COLLECT_EVIDENCE');
+});
+
+// --no-persist 是给「看一眼」的调用方用的（调度器轮询、测试）。
+// 为什么必须成对拒绝 --advance：推进阶段却不落收据 = 真动了数据又不留证据。
+test('--no-persist is opt-in and pairing it with --advance is refused outright', () => {
+  const base = ['--period-start', '2026-08-23', '--period-end', '2026-08-29'];
+  assert.equal(parseArgs(base).persist, true, '默认必须落盘：运营台靠它显示「上次检查」');
+  assert.equal(parseArgs([...base, '--no-persist']).persist, false);
+  assert.throws(() => parseArgs([...base, '--no-persist', '--advance']), /--no-persist cannot be combined with --advance/u);
+  assert.throws(() => parseArgs([...base, '--advance', '--no-persist']), /--no-persist cannot be combined with --advance/u);
+});
+
+test('the CLI writes operator-status.json by default and skips it under --no-persist', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'faq-operator-persist-'));
+  const period = '2026-08-23_2026-08-29';
+  const statusPath = join(root, 'faq-analysis', period, 'operator-status.json');
+  const args = ['--status', '--period-start', '2026-08-23', '--period-end', '2026-08-29', '--runtime-root', root];
+  const readOnly = await run(process.execPath, [OPERATOR_SCRIPT, ...args, '--no-persist']);
+  assert.equal(JSON.parse(readOnly.stdout).nextAction, 'LOCK_TOP5', '空根目录只能判到第一阶段');
+  await assert.rejects(() => stat(statusPath), /ENOENT/u, '只读探测不许落盘');
+
+  await run(process.execPath, [OPERATOR_SCRIPT, ...args]);
+  const info = await stat(statusPath);
+  assert.ok(info.size > 0, '默认仍然要落盘，运营台的「上次检查」靠它');
 });

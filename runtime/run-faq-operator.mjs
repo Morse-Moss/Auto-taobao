@@ -295,12 +295,16 @@ export function buildAdvanceCommand(action, options, status = null) {
   throw new Error(`Unsupported FAQ action: ${action}`);
 }
 
-function parseArgs(argv) {
-  const options = { baseUrl: DEFAULT_BASE_URL, envFile: DEFAULT_ENV_FILE, runtimeRoot: 'runtime', advance: false, replaceCurrent: false };
+export function parseArgs(argv) {
+  const options = { baseUrl: DEFAULT_BASE_URL, envFile: DEFAULT_ENV_FILE, runtimeRoot: 'runtime', advance: false, replaceCurrent: false, persist: true };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--advance') options.advance = true;
     else if (arg === '--status') options.advance = false;
+    // 只读探测开关：默认 --status 会写 operator-status.json（运营台读它显示「上次检查」），
+    // 但调度器/测试这类「看一眼」的调用方不该改运营可见状态。为什么必须成对拒 --advance：
+    // 推进阶段带着「不落盘」跑，会真的动数据却不留收据——那是最坏的一种组合，直接拒掉。
+    else if (arg === '--no-persist') options.persist = false;
     else if (arg === '--replace-current') options.replaceCurrent = true;
     else if (['--base-url', '--env-file', '--runtime-root', '--period-start', '--period-end', '--master-table-id', '--weekly-table-id', '--operator-xlsx'].includes(arg)) {
       const value = argv[++index];
@@ -310,6 +314,9 @@ function parseArgs(argv) {
   }
   for (const name of ['periodStart', 'periodEnd']) {
     if (!/^\d{4}-\d{2}-\d{2}$/u.test(String(options[name] ?? ''))) throw new Error(`--${name === 'periodStart' ? 'period-start' : 'period-end'} must be YYYY-MM-DD`);
+  }
+  if (options.advance && options.persist === false) {
+    throw new Error('--no-persist cannot be combined with --advance: advancing a stage without writing its receipt would move data and leave no evidence');
   }
   options.period = `${options.periodStart}_${options.periodEnd}`;
   return options;
@@ -324,7 +331,7 @@ async function persistStatus(options, status) {
 export async function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   let status = await inspectFaqOperatorStatus(options);
-  await persistStatus(options, status);
+  if (options.persist) await persistStatus(options, status);
   if (!options.advance || status.nextAction === 'DONE') {
     console.log(JSON.stringify(status, null, 2));
     return;
