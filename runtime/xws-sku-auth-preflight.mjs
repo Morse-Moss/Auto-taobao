@@ -111,6 +111,10 @@ export function parsePreflightArgs(argv = []) {
     ['--target-label', 'targetLabel'],
     ['--notify-command', 'notifyCommand'],
     ['--checked-at', 'checkedAt'],
+    // 身份判据（可选，但必须成对给）：声明「期望账号」+「从页面哪儿读账号」。
+    // 不给就是没做身份核对 —— 不会被当成通过，状态里会如实写 identity.verdict。
+    ['--expected-account', 'expectedAccount'],
+    ['--account-selector', 'accountSelector'],
   ]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -133,10 +137,23 @@ export function parsePreflightArgs(argv = []) {
   }
   options.proxy = required(options.proxy, '--proxy');
   options.targetLabel = clean(options.targetLabel);
+  options.expectedAccount = clean(options.expectedAccount);
+  options.accountSelector = clean(options.accountSelector);
+  // 身份判据必须成对：只给一个就是「要比对但没给读法」或「给了读法但没给期望值」，
+  // 静默接受半个等于悄悄跳过核对，所以直接拒。
+  if (Boolean(options.expectedAccount) !== Boolean(options.accountSelector)) {
+    throw new Error('--expected-account and --account-selector must be supplied together');
+  }
   return options;
 }
 
-const PAGE_EXPRESSION = `(() => {
+// 身份判据的选择器由**调用方给出**，不在这里猜平台 DOM：
+// 关键选择器必须先在真实环境实测一次再写进配置（见 docs/ops/LOGIN-STATE-MANAGEMENT.md §7 第 1 条），
+// 猜错的后果是「读不到」被当成「没问题」——那正是要避免的假绿。
+function pageExpression(accountSelector = null) {
+  const selectorLiteral = accountSelector ? JSON.stringify(accountSelector) : 'null';
+  return `(() => {
+  const accountSelector = ${selectorLiteral};
   const visible = (element) => {
     if (!element) return false;
     const style = getComputedStyle(element);
@@ -155,32 +172,93 @@ const PAGE_EXPRESSION = `(() => {
   if (/(?:当前浏览器不支持弹窗登录|即将往小旺神官网进行登录)/iu.test(combinedText)) {
     loginMarkers.push('XWS_LOGIN_REDIRECT');
   }
+  let accountId = '';
+  let accountReadError = null;
+  if (accountSelector) {
+    try {
+      const node = document.querySelector(accountSelector);
+      if (node) accountId = text(node.innerText || node.textContent);
+      else accountReadError = 'SELECTOR_NOT_FOUND';
+    } catch {
+      accountReadError = 'SELECTOR_INVALID';
+    }
+  }
   return {
     pageProductId: new URL(location.href).searchParams.get('id') || '',
     pluginPresent: Boolean(root),
     skuControlPresent: Boolean(root?.querySelector('.xws-sku-preview')),
     loginMarkers,
     visibleLoginDialog: visibleDialogs.some((value) => /登录|验证码|安全验证|风控/iu.test(value)),
+    accountId,
+    accountReadError,
   };
 })()`;
+}
+// 探测完整性的判据：这三个字段是分类器必需的输入。读不到它们时**不许**继续往下判 ——
+// 否则「探测什么都没拿到」会被判成 SOURCE_MISMATCH（页面商品不对），
+// 把运营送到错的方向去修（改 URL、换商品），而真问题是页面/代理没就绪。
+const REQUIRED_SNAPSHOT_FIELDS = ['pageProductId', 'pluginPresent', 'skuControlPresent'];
 
-export function classifyAuthSnapshot(snapshot, expectedProductId) {
-  const pageProductId = String(snapshot?.pageProductId ?? '').trim();
+function unreadableSnapshotFields(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return [...REQUIRED_SNAPSHOT_FIELDS];
+  return REQUIRED_SNAPSHOT_FIELDS.filter((field) => (
+    field === 'pageProductId' ? typeof snapshot[field] !== 'string' : typeof snapshot[field] !== 'boolean'
+  ));
+}
+
+// `identity` 只在调用方声明了期望账号时才有判据（`--expected-account`）。
+// 没声明＝没核对，不当成通过；声明了却读不到观察值＝AUTH_UNKNOWN（fail-closed，不放行）。
+export function classifyAuthSnapshot(snapshot, expectedProductId, identity = {}) {
+  const unreadable = unreadableSnapshotFields(snapshot);
+  if (unreadable.length > 0) {
+    return {
+      status: 'AUTH_UNKNOWN',
+      reason: `Preflight probe returned no usable reading (missing: ${unreadable.join(', ')})`,
+      unreadable,
+    };
+  }
+  const pageProductId = String(snapshot.pageProductId).trim();
   const expected = String(expectedProductId ?? '').trim();
   if (!expected || pageProductId !== expected) {
     return { status: 'SOURCE_MISMATCH', reason: 'Product page ID differs from the selected source' };
   }
-  const loginMarkers = Array.isArray(snapshot?.loginMarkers) ? snapshot.loginMarkers.filter(Boolean) : [];
-  if (loginMarkers.length > 0 || snapshot?.visibleLoginDialog === true) {
+  const loginMarkers = Array.isArray(snapshot.loginMarkers) ? snapshot.loginMarkers.filter(Boolean) : [];
+  if (loginMarkers.length > 0 || snapshot.visibleLoginDialog === true) {
     return { status: 'AUTH_REQUIRED', reason: 'Xiaowangshen login is required', loginMarkers };
   }
-  if (snapshot?.pluginPresent !== true) {
+  const expectedAccount = String(identity.expectedAccount ?? '').trim();
+  if (expectedAccount) {
+    const observedAccount = String(snapshot.accountId ?? '').trim();
+    if (!observedAccount) {
+      return {
+        status: 'AUTH_UNKNOWN',
+        reason: snapshot.accountReadError
+          ? `Account identity is unreadable (${snapshot.accountReadError}); the configured selector must be measured again`
+          : 'Account identity is unreadable; the configured selector matched nothing',
+        identity: { expected: expectedAccount, observed: null, verdict: 'UNREADABLE' },
+      };
+    }
+    if (observedAccount !== expectedAccount) {
+      return {
+        status: 'ACCOUNT_MISMATCH',
+        reason: `Logged-in account is "${observedAccount}", but this source needs "${expectedAccount}"`,
+        identity: { expected: expectedAccount, observed: observedAccount, verdict: 'MISMATCH' },
+      };
+    }
+  }
+  if (snapshot.pluginPresent !== true) {
     return { status: 'PLUGIN_UNAVAILABLE', reason: 'Xiaowangshen toolbar is unavailable' };
   }
-  if (snapshot?.skuControlPresent !== true) {
+  if (snapshot.skuControlPresent !== true) {
     return { status: 'PLUGIN_NOT_READY', reason: 'Xiaowangshen SKU control is unavailable' };
   }
-  return { status: 'AUTH_READY', reason: 'No Xiaowangshen login wall was observed' };
+  return {
+    status: 'AUTH_READY',
+    reason: 'No Xiaowangshen login wall was observed',
+    ...(expectedAccount
+      ? { identity: { expected: expectedAccount, observed: String(snapshot.accountId ?? '').trim(), verdict: 'MATCH' } }
+      : {}),
+  };
 }
 
 export function buildAuthStatus({ checkedAt, source, targetUrl, snapshot, classification } = {}) {
@@ -198,22 +276,56 @@ export function buildAuthStatus({ checkedAt, source, targetUrl, snapshot, classi
     status,
     reason: classification?.reason ?? 'Unknown preflight result',
     ...(classification?.loginMarkers?.length ? { loginMarkers: [...classification.loginMarkers] } : {}),
+    ...(classification?.identity ? { identity: { ...classification.identity } } : {}),
+    ...(classification?.unreadable?.length ? { unreadable: [...classification.unreadable] } : {}),
   };
 }
 
-export function buildOperatorAlert({ checkedAt, source, statusPath, reason, status = 'OPEN' } = {}) {
+// 「通知必须带下一步做什么」（docs/ops/LOGIN-STATE-MANAGEMENT.md §4 硬规则 2）：
+// 每个状态一个 type（去重与恢复都按 type 成对）+ 一句人话。只报状态码等于没说话。
+const ALERT_BY_STATUS = Object.freeze({
+  AUTH_REQUIRED: {
+    type: 'XWS_LOGIN_REQUIRED',
+    action: '请在同一个 Edge 用户配置中登录小旺神，登录完成后重新运行采集预检。',
+  },
+  ACCOUNT_MISMATCH: {
+    type: 'XWS_ACCOUNT_MISMATCH',
+    action: '当前登录的不是这次采集要用的账号：在这个 Edge 用户配置里换成正确账号'
+      + '（卖家版账号用不了小旺神，这条链必须是买家账号），再重新运行采集预检。',
+  },
+  AUTH_UNKNOWN: {
+    type: 'XWS_AUTH_UNKNOWN',
+    action: '这次预检读不到确定结论，系统按「不放行」处理：先确认商品页已打开并加载完成，'
+      + '再重新运行预检；连续几轮都读不到，说明平台改版了，判据需要更新（这不是重试能解决的）。',
+  },
+  PLUGIN_UNAVAILABLE: {
+    type: 'XWS_PLUGIN_NOT_READY',
+    action: '小旺神插件没有加载：在这个 Edge 用户配置里重开一次浏览器，确认插件图标出现，再重新运行采集预检。',
+  },
+  PLUGIN_NOT_READY: {
+    type: 'XWS_PLUGIN_NOT_READY',
+    action: '小旺神插件在、但 SKU 控件还没就绪：等商品页加载完再重试一次预检；仍然失败就重开浏览器。',
+  },
+  SOURCE_MISMATCH: {
+    type: 'XWS_SOURCE_MISMATCH',
+    action: '当前页面不是要采集的那个商品：打开正确的商品页后重新运行预检。',
+  },
+});
+
+export function buildOperatorAlert({ checkedAt, source, statusPath, reason, status = 'OPEN', classificationStatus = null } = {}) {
   const normalizedStatus = String(status).trim() || 'OPEN';
+  const byStatus = ALERT_BY_STATUS[String(classificationStatus ?? '').trim()] ?? ALERT_BY_STATUS.AUTH_REQUIRED;
   return {
     version: ALERT_VERSION,
     alertId: `xws-login-${String(source?.productId ?? 'unknown')}-${timestampId(checkedAt)}`,
     status: normalizedStatus,
     severity: normalizedStatus === 'OPEN' ? 'HIGH' : 'INFO',
-    type: normalizedStatus === 'OPEN' ? 'XWS_LOGIN_REQUIRED' : 'XWS_LOGIN_RESOLVED',
+    type: normalizedStatus === 'OPEN' ? byStatus.type : 'XWS_LOGIN_RESOLVED',
     createdAt: new Date(checkedAt ?? Date.now()).toISOString(),
     source: safeSource(source),
     reason: String(reason ?? 'Xiaowangshen login is required').trim(),
     action: normalizedStatus === 'OPEN'
-      ? '请在同一个 Edge 用户配置中登录小旺神，登录完成后重新运行采集预检。'
+      ? byStatus.action
       : '小旺神登录预检已恢复通过，可以继续 SKU 采集。',
     evidence: { authStatusFile: basename(String(statusPath ?? '')) },
     delivery: { status: 'NOT_CONFIGURED' },
@@ -257,24 +369,26 @@ async function discoverTarget(proxy, options) {
   return target;
 }
 
-async function evaluateTarget(proxy, targetId) {
+async function evaluateTarget(proxy, targetId, accountSelector = null) {
   const response = await requestJson(`${proxy}/eval?target=${encodeURIComponent(targetId)}`, {
     method: 'POST',
     headers: { 'content-type': 'text/plain; charset=utf-8' },
-    body: PAGE_EXPRESSION,
+    body: pageExpression(accountSelector),
   });
   return response.value ?? response;
 }
 
-async function persistAlert({ outputDirectory, source, statusPath, checkedAt, reason, notifyCommand }) {
+async function persistAlert({ outputDirectory, source, statusPath, checkedAt, reason, notifyCommand, classificationStatus = null }) {
   const alertPath = resolve(outputDirectory, 'xws-sku-operator-alert.json');
-  const alert = buildOperatorAlert({ checkedAt, source, statusPath, reason });
+  const alert = buildOperatorAlert({ checkedAt, source, statusPath, reason, classificationStatus });
   let previous;
   if (existsSync(alertPath)) {
     try { previous = JSON.parse(await readFile(alertPath, 'utf8')); } catch { /* replace invalid alert evidence */ }
   }
+  // 去重按「同一个 type + 同一个来源 + 同一句原因」成对判定：type 由状态决定，
+  // 所以 AUTH_REQUIRED 与 ACCOUNT_MISMATCH 不会互相顶掉（前者解决不了后者，反之亦然）。
   const duplicateOpenAlert = previous?.status === 'OPEN'
-    && previous?.type === 'XWS_LOGIN_REQUIRED'
+    && previous?.type === alert.type
     && previous?.source?.productId === alert.source.productId
     && previous?.source?.mainRecordId === alert.source.mainRecordId
     && previous?.reason === alert.reason;
@@ -314,6 +428,16 @@ async function resolveAlert({ outputDirectory, source, statusPath, checkedAt, no
   return { alertPath, alert };
 }
 
+// 哪些状态要写告警（即「需要人动手」）。与 docs/ops/LOGIN-STATE-MANAGEMENT.md §4 的表一致：
+// SOURCE_MISMATCH 不通知（属流程参数问题，记证据即可），AUTH_READY 不通知（只在恢复时补一条）。
+const ALERTING_STATUSES = Object.freeze([
+  'AUTH_REQUIRED',
+  'ACCOUNT_MISMATCH',
+  'AUTH_UNKNOWN',
+  'PLUGIN_UNAVAILABLE',
+  'PLUGIN_NOT_READY',
+]);
+
 export async function runAuthPreflight(options) {
   const checkedAt = new Date(options.checkedAt ?? Date.now()).toISOString();
   const source = {
@@ -325,8 +449,10 @@ export async function runAuthPreflight(options) {
   };
   const outputDirectory = resolve(options.outputDirectory);
   const target = await discoverTarget(options.proxy, options);
-  const snapshot = await evaluateTarget(options.proxy, target.targetId);
-  const classification = classifyAuthSnapshot(snapshot, options.productId);
+  const snapshot = await evaluateTarget(options.proxy, target.targetId, options.accountSelector);
+  const classification = classifyAuthSnapshot(snapshot, options.productId, {
+    expectedAccount: options.expectedAccount,
+  });
   const status = buildAuthStatus({
     checkedAt,
     source,
@@ -342,7 +468,7 @@ export async function runAuthPreflight(options) {
   );
   const artifacts = { authStatus: statusPath };
   let alert;
-  if (classification.status === 'AUTH_REQUIRED') {
+  if (ALERTING_STATUSES.includes(classification.status)) {
     alert = await persistAlert({
       outputDirectory,
       source,
@@ -350,6 +476,7 @@ export async function runAuthPreflight(options) {
       checkedAt,
       reason: classification.reason,
       notifyCommand: options.notifyCommand,
+      classificationStatus: classification.status,
     });
     artifacts.operatorAlert = alert.alertPath;
   } else if (classification.status === 'AUTH_READY') {
@@ -374,14 +501,22 @@ export async function runAuthPreflight(options) {
     reason: classification.reason,
     source: safeSource(source),
     authStatusPath: basename(statusPath),
+    // 把「下一步做什么」一起带出来：界面（运营台）渲染一张账号卡需要的原因与动作都在这里，
+    // 不必再去打开 alert 文件（没有告警的状态就没有动作，本来就是无事可做）。
+    ...(classification.identity ? { identity: { ...classification.identity } } : {}),
     ...(alert ? {
       operatorAlertPath: basename(alert.alertPath),
       notification: alert.alert.delivery,
+      action: alert.alert.action,
+      alertType: alert.alert.type,
     } : {}),
     batchIndexPath: basename(batchIndexPath),
   };
   if (classification.status === 'AUTH_REQUIRED') {
     throw humanRequired('HUMAN_REQUIRED: Xiaowangshen login is required', result);
+  }
+  if (classification.status === 'ACCOUNT_MISMATCH') {
+    throw humanRequired(`HUMAN_REQUIRED: ${classification.reason}`, result);
   }
   if (classification.status !== 'AUTH_READY') {
     throw stalled(`Xiaowangshen preflight did not pass: ${classification.status}`, result);
