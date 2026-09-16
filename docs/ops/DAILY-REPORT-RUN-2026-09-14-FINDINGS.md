@@ -3,6 +3,9 @@
 - 日期：2026-09-16
 - 范围：`skills/sycm-alimama-daily-report/`（同事提交 `5f1e9ed` 交付的新 SOP/skill）
 - 环境：日报专用 Edge `9223`（profile `D:/Retire/edge-daily-report-profile`）＋ CDP 代理 `3458`（browser id `edge-daily-report`）
+  - 2026-09-16 更新：日报链已从 `9223` / `3458` 挪到 `19022` / `19023`（这两个旧端口太通用，其他项目也会占用）。
+    本文档以下的 `9223` / `3458` 是**当时那次运行的事实**，保持原样不改；现役端口以
+    `runtime/browser-ports.mjs` 为准，见 `docs/ops/PROJECT-BROWSER-AND-PORTS.md` §1。
 - 目标：按 `references/sop.md` 真实复现，并采集 **2026-09-14** 的日报数据
 
 ## 0. 结论摘要
