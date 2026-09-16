@@ -88,9 +88,10 @@ export const BROWSER_ACCOUNT = Object.freeze({
   dailyReport: ACCOUNT_KINDS.merchant,
 });
 
-// 路线表。`browser: null` ＝ 这条链不需要浏览器（纯 API），或归属尚未定（那时必须带
+// 路线表。`browser: null` ＝ 这条链不需要浏览器（纯接口），或归属尚未定 —— 那时必须显式带
 // `browserPending: true` + `pendingReason`，把「待决」本身变成一个可被测试盯住的事实，
-// 而不是一句口口相传的待办）。
+// 而不是一句口口相传的待办。当前 7 条路线里没人走「待定」这一支（灰豚 2026-09-16 已定归乙），
+// 但机制留着：将来再加一条归属未明的链，测试会逼着它把话说清楚。
 export const ROUTES = Object.freeze({
   competitor: Object.freeze({
     label: '竞品（小旺神市场分析 / SKU / FAQ / 词库采集）',
@@ -126,13 +127,16 @@ export const ROUTES = Object.freeze({
   }),
   keywordHeat: Object.freeze({
     label: '关键词·灰豚话题热度（小红书）',
-    browser: null,
+    // 2026-09-16：归属已定 —— 归乙。因为它的代码默认值（proxy + browserId）已经
+    // 落在乙上（见 skills/huitun-to-feishu-keyword-heat/scripts/flow.mjs），
+    // 这里再写 browser: null 就是「代码说乙、登记表说待定」的自相矛盾。
+    browser: 'dailyReport',
+    // 灰豚是第三方平台，用它自己的账号，与淘宝身份无关 —— 放乙是决定而非必然，
+    // 所以如实写 independent，不写成 merchant 冒充必然性。
     account: ACCOUNT_KINDS.independent,
     sites: Object.freeze(['xhs.huitun.com', 'dy.huitun.com']),
     needsExtension: null,
     skills: Object.freeze(['huitun-to-feishu-keyword-heat']),
-    browserPending: true,
-    pendingReason: '灰豚是第三方平台，两边都不冲突；现状走别的项目的共享代理 3456，归属待用户拍板（见 docs/ops/PROJECT-BROWSER-AND-PORTS.md §1.4）。',
   }),
   dailyReport: Object.freeze({
     label: '日报（生意参谋 + 万相台/阿里妈妈 + 飞书）',
@@ -186,58 +190,19 @@ export const FOREIGN_PORTS = Object.freeze({
   sharedProxy: 3456,
 });
 
-// 已知欠债：仍然把**代理默认值**指向 FOREIGN_PORTS.sharedProxy 的文件。
-// 判据是「出现了 http://<host>:3456 这样的 URL 字面量」—— 注释里提到这个端口不算，
-// 文档里写清「不要碰它」更不算（那种提到是好事，不该被守卫逼着删掉）。
-//
-// 为什么这算债：这些文件能跑，只是因为**恰好**别的项目的代理在跑、且那个浏览器里
-// 恰好是我们要的账号。失败不会发生在自己代码里，而会在别人关掉代理的那一刻到来
-// （坑 35 默认值即目标 ＋ 坑 38 能力删在生产者、故障显在消费者）。
-//
-// 清单必须与现实逐字一致（双向）：修好一处就删一行，新写一处测试会失败。
-// 分两桶只是为了读懂「债在哪一类代码里」：
-//   A 生产链路（skills/）—— 跑一次真实业务就会走到的地方。
-//   B runtime/ 人工维护探针 —— 改飞书表结构、排查页面时手工敲的脚本。
-// 两组指向同一件事：**飞书网页登录态现在挂在用户日常 Edge（3456）上**，
-// 而不是本项目的商家浏览器（19023）—— 这是 §1.4 待决项的根因。
-export const FOREIGN_PROXY_DEFAULT_FILES = Object.freeze([
-  // --- A 生产链路 -----------------------------------------------------------
-  'skills/huitun-to-feishu-keyword-heat/SKILL.md',
-  'skills/huitun-to-feishu-keyword-heat/scripts/flow.mjs',
-  'skills/huitun-to-feishu-keyword-heat/scripts/run-huitun-topic-heat.mjs',
-  'skills/sycm-export-search-rank/scripts/export-search-rank.mjs',
-  'skills/sycm-to-feishu-base/scripts/adapter.feishu-weekly.mjs',
-  'skills/sycm-to-feishu-base/scripts/copy-weekly-table.mjs',
-  'skills/sycm-to-feishu-base/scripts/inspect-feishu-fields.mjs',
-  'skills/sycm-to-feishu-base/scripts/run-weekly-pre-ai.mjs',
-  'skills/xws-export-market-analysis/scripts/export-market-analysis.mjs',
-  'skills/xws-export-market-analysis/scripts/flow.mjs',
-  'skills/xws-export-market-analysis/scripts/segments.mjs',
-  // --- B runtime/ 人工维护探针 ----------------------------------------------
-  'runtime/eval-feishu-expression.mjs',
-  'runtime/feishu-ui-add-fields.mjs',
-  'runtime/feishu-ui-eval-once.mjs',
-  'runtime/feishu-ui-field-menu.mjs',
-  'runtime/feishu-ui-find-text.mjs',
-  'runtime/feishu-ui-menu-action.mjs',
-  'runtime/feishu-ui-open-add.mjs',
-  'runtime/feishu-ui-preflight.mjs',
-  'runtime/feishu-ui-probe.mjs',
-  'runtime/get-feishu-state.mjs',
-  'runtime/inspect-ai-editor.mjs',
-  'runtime/inspect-feishu-field-config-ui.mjs',
-  'runtime/inspect-field-containers.mjs',
-  'runtime/inspect-popovers.mjs',
-  'runtime/inspect-visible-text.mjs',
-  'runtime/paste-history-import.mjs',
-  'runtime/repair-history-types-v2.mjs',
-  'runtime/repair-history-types.mjs',
-  'runtime/set-history-types.mjs',
-  'runtime/tmp-inspect-feishu-ui.mjs',
-]);
-
-// 判据与清单一起导出，免得测试再抄一份（两份判据迟早会漂）。
+// 「生产代码里不得出现别的项目的代理地址」这条守卫的判据。
+// 只认**带 scheme 的 URL 字面量**（http(s)://<host>:3456）：
+//   - 注释里写清「别碰 3456」要放过 —— 那种提到是好事，不该被守卫逼着删掉；
+//     （调用方先对 .mjs 去注释再匹配，见 runtime/browser-ports.test.mjs）
+//   - `127.0.0.1:3456` 这种不带 scheme 的说明性文字也放过。
 export const FOREIGN_PROXY_URL_PATTERN = /https?:\/\/(?:127\.0\.0\.1|localhost):3456/;
+
+// 例外清单：允许保留这个 URL 字面量的文件（**2026-09-16 起为 0**）。
+// 2026-09-16 那轮把 31 处默认值全部迁到本登记表：灰豚与飞书网页登录态归乙（dailyReportProxy），
+// 生意参谋搜索排行与周表粘贴归乙，竞品导出归甲（competitorProxy）。
+// 清单必须与实际逐字一致（双向）：写死一处就会让测试红，而不是等到别人关掉代理才炸
+// （坑 35 默认值即目标 ＋ 坑 38 能力删在生产者、故障显在消费者）。
+export const FOREIGN_PROXY_ALLOWED_FILES = Object.freeze([]);
 
 // 显式传了环境变量就用显式的，否则回落到登记表；非法值直接抛错而不是静默取默认
 // （「静默回落」正是坑 35 的成因）。

@@ -20,6 +20,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseSourceCsv } from './update-weekly-base.mjs';
+import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+
+// 周更链的浏览器全是**乙（商家浏览器）**：生意参谋导出与飞书网页都是商家侧。
+// 端口只从 runtime/browser-ports.mjs 取 —— 原先写死的那个是别的项目的共享代理。
+const WEEKLY_PROXY_DEFAULT = `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
 
 export const capabilityId = 'sycm.feishu.weekly';
 export const manifestVersion = '1.1.0';
@@ -228,7 +233,7 @@ export const adapter = {
       exportReceipt = deps.runProcess(EXPORT_SCRIPT, [
         '--from-home', '--period', '7d', '--date', input.collectionDate,
         '--cate-id', input.cateId, '--category', input.sycmCategory ?? '普通浴缸',
-        '--proxy', input.proxy ?? 'http://127.0.0.1:3456', '--output-dir', input.outputDir,
+        '--proxy', input.proxy ?? WEEKLY_PROXY_DEFAULT, '--output-dir', input.outputDir,
         '--prefix', input.prefix ?? `ordinary-bathtub-week-${input.collectionDate.replaceAll('-', '')}`,
       ]);
       if (!exportReceipt?.ok || !exportReceipt.csv || !exportReceipt.xlsx) {
@@ -388,7 +393,7 @@ export function createPublisher({ artifactBytes, evidence = null, period = null,
   const weekly = payload.target;
   const expected = payload.expected;
   const envFile = publishInput.envFile ?? env?.envFile ?? null;
-  const proxy = publishInput.proxy ?? 'http://127.0.0.1:3456';
+  const proxy = publishInput.proxy ?? WEEKLY_PROXY_DEFAULT;
   const dryRun = publishInput.dryRun !== false;
 
   // 凭据来源必须从 envFile 自己取，不能只认注入的 `env`。

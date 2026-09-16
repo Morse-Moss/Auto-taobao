@@ -4,7 +4,11 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const base = 'http://127.0.0.1:3456';
+import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+
+// 集成测试：直连**本项目乙（商家浏览器）**的 CDP 代理，动真实剪贴板与真实浏览器标签。
+// 端口从登记表取 —— 原先写死的是别的项目的共享代理（别人的浏览器 + 别人的登录态）。
+const base = `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
 
 function setClipboard(text) {
   const script = String.raw`

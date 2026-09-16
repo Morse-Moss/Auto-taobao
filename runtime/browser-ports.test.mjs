@@ -11,7 +11,7 @@ import {
   BROWSER_LABELS,
   BROWSER_PROFILES,
   FOREIGN_PORTS,
-  FOREIGN_PROXY_DEFAULT_FILES,
+  FOREIGN_PROXY_ALLOWED_FILES,
   FOREIGN_PROXY_URL_PATTERN,
   PROJECT_PORTS,
   ROUTES,
@@ -225,7 +225,7 @@ test('账号边界：买家链里不许有商家站点，商家链里不许有�
 
 test('两个浏览器承载的路线各自分明，且 9222 那条是唯一带小旺神的', () => {
   assert.deepEqual(routesOnBrowser('competitor').sort(), ['competitor']);
-  assert.deepEqual(routesOnBrowser('dailyReport').sort(), ['dailyReport', 'keywordRank', 'sellerWorkbench', 'weeklyPaste']);
+  assert.deepEqual(routesOnBrowser('dailyReport').sort(), ['dailyReport', 'keywordHeat', 'keywordRank', 'sellerWorkbench', 'weeklyPaste']);
   assert.equal(ROUTES.competitor.needsExtension, '小旺神');
   for (const name of routesOnBrowser('dailyReport')) {
     assert.equal(ROUTES[name].needsExtension, null, `商家浏览器上的路线 ${name} 不该依赖小旺神插件`);
@@ -233,6 +233,31 @@ test('两个浏览器承载的路线各自分明，且 9222 那条是唯一带�
   assert.match(describeBrowserRoutes('competitor'), /账号=buyer/);
   assert.match(describeBrowserRoutes('competitor'), /小旺神/);
   assert.match(describeBrowserRoutes('dailyReport'), /账号=merchant/);
+});
+
+test('路线声明哪个浏览器，它名下的脚本就只能指向那个浏览器', () => {
+  // 2026-09-16 的教训：灰豚链的代码默认值先迁到了乙（dailyReportProxy），
+  // 登记表里那条路线却还写着「归属待定」——两个说法都在跑、测试全绿，事实已经漂了。
+  // 这条判据把「表里写的」和「脚本里引用的」钉在一起：接错链是静默失败，
+  // 点击、导航、导出全都成功，只是拿回的是另一个账号的数据。
+  const proxyByBrowser = { competitor: PROJECT_PORTS.competitorProxy, dailyReport: PROJECT_PORTS.dailyReportProxy };
+  const offenders = [];
+  for (const [name, route] of Object.entries(ROUTES)) {
+    if (route.browser === null) continue;
+    for (const skill of route.skills) {
+      // sourceFiles 已排除 .test.mjs：测试里允许为了断言而提到另一条链。
+      for (const file of sourceFiles(path.join(REPO_ROOT, 'skills', skill, 'scripts'))) {
+        const body = stripComments(readFileSync(file, 'utf8'));
+        const where = `${skill}/${path.basename(file)}`;
+        for (const [browser, port] of Object.entries(proxyByBrowser)) {
+          if (browser === route.browser) continue;
+          if (new RegExp(`\\b${port}\\b`).test(body)) offenders.push(`${where} 引用了 ${browser} 的代理端口 ${port}（路线 ${name} 在 ${route.browser} 上）`);
+          if (body.includes(`BROWSER_IDS.${browser}`)) offenders.push(`${where} 引用了 ${browser} 的浏览器身份（路线 ${name} 在 ${route.browser} 上）`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], '这些脚本把路线指向了另一条链的浏览器');
 });
 
 test('路线表与 skills/ 目录双向一致 —— 改名会让这张表静默说谎（坑 37）', () => {
@@ -247,22 +272,29 @@ test('路线表与 skills/ 目录双向一致 —— 改名会让这张表静默
   }
 });
 
-test('别的项目共享代理 3456 的欠债清单必须与现实逐字一致', () => {
+test('生产代码里不得再出现别的项目的代理地址 —— 注释里提到不算，当默认值用就算', () => {
   assert.notEqual(PROJECT_PORTS.dailyReportProxy, FOREIGN_PORTS.sharedProxy);
   assert.notEqual(PROJECT_PORTS.competitorProxy, FOREIGN_PORTS.sharedProxy);
-  const files = [...sourceFiles(path.join(REPO_ROOT, 'runtime')), ...sourceFiles(path.join(REPO_ROOT, 'skills')), ...sourceFiles(path.join(REPO_ROOT, 'scripts'))];
+
+  const codeFiles = [...sourceFiles(path.join(REPO_ROOT, 'runtime')), ...sourceFiles(path.join(REPO_ROOT, 'skills')), ...sourceFiles(path.join(REPO_ROOT, 'scripts'))];
   const skillDocs = [];
   for (const name of readdirSync(path.join(REPO_ROOT, 'skills'), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)) {
     const doc = path.join(REPO_ROOT, 'skills', name, 'SKILL.md');
     if (existsSync(doc)) skillDocs.push(doc);
   }
-  const actual = [...files, ...skillDocs]
-    .filter((file) => FOREIGN_PROXY_URL_PATTERN.test(readFileSync(file, 'utf8')))
+
+  // .mjs 先去注释：`// …原先写的是 http://127.0.0.1:3456…` 这种「解释为什么别碰它」的注释要放过，
+  // 否则守卫会逼着人删掉最有价值的那行说明。.md 不处理：散文里出现它就是口径没改干净。
+  const codeHits = codeFiles
+    .filter((file) => FOREIGN_PROXY_URL_PATTERN.test(stripComments(readFileSync(file, 'utf8'))));
+  const docHits = skillDocs.filter((file) => FOREIGN_PROXY_URL_PATTERN.test(readFileSync(file, 'utf8')));
+  const actual = [...codeHits, ...docHits]
     .map((file) => path.relative(REPO_ROOT, file).replaceAll('\\', '/'))
     .sort();
+
   assert.deepEqual(
     actual,
-    [...FOREIGN_PROXY_DEFAULT_FILES].sort(),
-    '清单与现实对不上了：修好一处就删一行、新写一处就加一行。这些地方能跑只是碰巧别的项目的代理活着',
+    [...FOREIGN_PROXY_ALLOWED_FILES].sort(),
+    '这些文件把代理指向了别的项目的服务：改成从 runtime/browser-ports.mjs 取（清单非必要不许加例外）',
   );
 });

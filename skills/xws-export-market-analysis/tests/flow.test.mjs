@@ -21,6 +21,8 @@ import {
   selectTaobaoSearchTarget,
   validateDataset,
 } from "../scripts/flow.mjs";
+// 身份断言对着登记表走：写死字面量会把「生产默认值已经换人」这件事盖住（坑 34）。
+import { BROWSER_IDS } from "../../../runtime/browser-ports.mjs";
 
 const resultText = ({ completed = 20, rows = 707 } = {}) => [
   "\u3010 \u6d74\u7f38 \u3011\u9500\u91cf\u6392\u5e8fTop" + rows + " - 2026-08-05 15:46 - \u5e02\u573a\u6570\u636e\u5206\u6790",
@@ -165,14 +167,16 @@ test("refuses historical or ambiguous unmarked results for observation", () => {
 });
 
 test("proxy health must identify the bound Edge browser", () => {
-  assert.equal(assertProxyBrowserHealth({ status: "ok", connected: true, browser: { id: "edge" } }), true);
+  // 题名不改：runtime/_skills-suite.log 等收据按这个字面量记账（坑 37）。
+  // 不传第二个参数就是**生产默认值**：它必须等于登记表里的竞品链身份。
+  assert.equal(assertProxyBrowserHealth({ status: "ok", connected: true, browser: { id: BROWSER_IDS.competitor } }), true);
   assert.throws(
-    () => assertProxyBrowserHealth({ status: "ok", connected: false, browser: { id: "edge" } }),
-    /not connected to edge/iu,
+    () => assertProxyBrowserHealth({ status: "ok", connected: false, browser: { id: BROWSER_IDS.competitor } }),
+    new RegExp(`not connected to ${BROWSER_IDS.competitor}`, "iu"),
   );
   assert.throws(
     () => assertProxyBrowserHealth({ status: "ok", connected: true, browser: { id: "browser-service" } }),
-    /browser mismatch.*edge.*browser-service/iu,
+    /browser mismatch.*browser-service/iu,
   );
   assert.throws(
     () => assertProxyBrowserHealth({ status: "ok", connected: true, browser: {} }),

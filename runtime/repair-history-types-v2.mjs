@@ -1,4 +1,9 @@
-const t='D4D3F0E3C4C1E962C3E4C8732D8E39CD', p='http://localhost:3456', table='tbl7u5CUYiRei7AQ';
+import { PROJECT_PORTS } from './browser-ports.mjs';
+// 飞书网页登录态挂在**商家浏览器（乙）**上；端口来自 runtime/browser-ports.mjs。
+// 2026-09-16：原先写死的 http://127.0.0.1:3456 是**别的项目**的共享代理 ——
+// 那样能不能跑取决于别人的代理是否活着、以及那个浏览器里登的是谁。
+const FEISHU_PROXY = `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
+const t='D4D3F0E3C4C1E962C3E4C8732D8E39CD', p=FEISHU_PROXY, table='tbl7u5CUYiRei7AQ';
 const sleep=m=>new Promise(r=>setTimeout(r,m));
 async function post(u,b){const r=await fetch(p+u,{method:'POST',body:b});return r.json()}
 async function ev(c){const r=await post('/eval?target='+t,c);if(r.error)throw Error(r.error);return r.value}

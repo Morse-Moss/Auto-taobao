@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+
 const modulePromise = import('../scripts/copy-weekly-table.mjs').catch(() => ({}));
 
 const baseArgs = [
@@ -20,7 +22,8 @@ test('same-base copy CLI requires explicit identities and defaults to read-only'
   assert.equal(options.sourceTableId, 'tblSource');
   assert.equal(options.sourceTableName, '关键词分析 V1（修正版）');
   assert.equal(options.newTableName, '普通浴缸关键词周采集 2026-08-20');
-  assert.equal(options.proxy, 'http://127.0.0.1:3456');
+  // 对着登记表断言（写死数字会把旧默认值固化成测试 —— 坑 34）。
+  assert.equal(options.proxy, `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`);
   assert.equal(options.apply, false);
 });
 

@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 
 import { activeProfileName, envFilePath, keywordBaseToken } from '../../../runtime/feishu-targets.mjs';
+import { BROWSER_IDS, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 
 export const A_THRESHOLD = 10_000_000;
 export const DEFAULT_RESULT_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
@@ -12,7 +13,8 @@ export const HUITUN_RESULT_SOURCE = Object.freeze({
   match_rule: '去除话题首尾#后与搜索词完全一致；不累加相近话题',
 });
 
-export function assertProxyBrowserHealth(health, expectedBrowserId = 'edge') {
+// 期望的浏览器身份默认取登记表（乙 / edge-daily-report），不再写死 "edge"。
+export function assertProxyBrowserHealth(health, expectedBrowserId = BROWSER_IDS.dailyReport) {
   if (health?.status !== 'ok' || health?.connected !== true) {
     throw new Error(`Proxy is not connected to ${expectedBrowserId}`);
   }
@@ -86,8 +88,12 @@ function numericOption(value, name, minimum) {
 export function parseOptions(argv, env = process.env) {
   const options = {
     ...DEFAULT_TARGET,
-    proxy: env.HUITUN_PROXY || 'http://127.0.0.1:3456',
-    browserId: env.HUITUN_BROWSER_ID || 'edge',
+    // 灰豚是第三方平台，但这条链的浏览器归属已定为**乙（商家浏览器）**：
+    // 关键词这条路线两半（生意参谋搜索排行 + 灰豚）都在乙上，跑关键词只开一个浏览器。
+    // 端口来自 runtime/browser-ports.mjs；原先默认写的是**别的项目**的共享代理，
+    // 能不能跑取决于别人的代理是否活着（2026-09-16 用户拍板迁走）。
+    proxy: env.HUITUN_PROXY || `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`,
+    browserId: env.HUITUN_BROWSER_ID || BROWSER_IDS.dailyReport,
     outputDir: '',
     resultsPath: '',
     pollMs: 1_000,

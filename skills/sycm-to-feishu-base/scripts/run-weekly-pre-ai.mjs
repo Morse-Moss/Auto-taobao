@@ -9,6 +9,11 @@ import crypto from 'node:crypto';
 
 import { parseSourceCsv } from './update-weekly-base.mjs';
 import { verifyExportPair } from '../../sycm-export-search-rank/scripts/source-period-proof.mjs';
+import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+
+// 周更的浏览器全是**乙（商家浏览器）**：生意参谋导出 + 飞书网页。
+// 端口只从 runtime/browser-ports.mjs 取（原先写死的是别的项目的共享代理）。
+const WEEKLY_PROXY_DEFAULT = `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '..', '..', '..');
@@ -26,7 +31,7 @@ export function parseOptions(argv) {
     category: '浴缸',
     sycmCategory: '普通浴缸',
     cateId: '50002411',
-    proxy: 'http://127.0.0.1:3456',
+    proxy: WEEKLY_PROXY_DEFAULT,
     envFile: 'E:/小红书/.env.local',
     runRoot: path.join(PROJECT_ROOT, 'runtime', 'weekly-runs'),
     historyTableName: '关键词历史总表 V1',

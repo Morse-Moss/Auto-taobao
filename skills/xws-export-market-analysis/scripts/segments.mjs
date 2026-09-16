@@ -1,6 +1,12 @@
 import { normalizeDiagnosticSnapshot } from "./diagnostics.mjs";
 import { readFile, writeFile } from "node:fs/promises";
 
+import { PROJECT_PORTS } from "../../../runtime/browser-ports.mjs";
+
+// 竞品链在**甲（买家浏览器，装着小旺神）**上；端口只从登记表取
+// （原先默认写的是别的项目的共享代理，那里没装小旺神、还登着商家号）。
+const DEFAULT_PROXY = `http://127.0.0.1:${PROJECT_PORTS.competitorProxy}`;
+
 function integer(value, name) {
   const number = Number(value);
   if (!Number.isInteger(number) || number < 1) throw new Error(`${name} must be a positive integer`);
@@ -39,7 +45,7 @@ export function parseSegmentOptions(argv, env = process.env) {
     exportModes: ["csv", "xlsx-images"],
     outputDir: "",
     checkpoint: "",
-    proxy: env.XWS_PROXY || "http://127.0.0.1:3456",
+    proxy: env.XWS_PROXY || DEFAULT_PROXY,
     allowTrial: false,
   };
   const valueOptions = new Set(["keyword", "pages", "segment-size", "frequency", "channel", "sort", "price", "export", "output-dir", "checkpoint", "proxy", "stall-seconds"]);

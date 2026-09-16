@@ -15,6 +15,14 @@ import {
   configurationContractDiff,
   openExportIntent,
 } from "../scripts/export-market-analysis.mjs";
+// 假代理报的浏览器身份必须来自登记表：写死成 "edge" 是**共享代理时代**的残留，
+// 一旦生产的期望值换成登记表里的真身份（edge-isolated），这些用例就会因为
+// 「假代理答的是另一个身份」而整片红 —— 而那正是坑 34（测试把错误常量固化）。
+import { BROWSER_IDS } from "../../../runtime/browser-ports.mjs";
+
+// 这些用例把 CLI 当子进程跑、并继承 process.env。若不钉住身份，结果就取决于
+// 操作者 shell 里有没有 XWS_BROWSER_ID —— 假代理答登记表身份、真期望值也得是它。
+process.env.XWS_BROWSER_ID = BROWSER_IDS.competitor;
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const cli = path.join(root, "scripts", "export-market-analysis.mjs");
@@ -208,7 +216,7 @@ function csvFixture() {
   ].join("\n");
 }
 
-function startFakeProxy({ full = false, outputPath = "", liveResult = false, staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, loginRequired = false, omitNewTargetId = false, newResponseFailsAfterCreate = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, startClickWithoutRequestOnce = false, collectionFailsAfterStartup = false, delayedCollectionRequest = false, delayedCollectionResult = false, resultMutationPrecedesRequest = false, backgroundRequestBetweenArmAndClick = false, historicalResultRemountsAfterStart = false, historicalResultRemountsInSourceAfterStart = false, historicalResultPersistsInSourceAfterRequest = false, resultMarkerLostBeforeExport = false, xlsxMenuMountsLate = false, staleXlsxMenuVisible = false, staleXlsxMenuVisibleOwned = false, staleXlsxMenuHidden = false, staleXlsxMenuHiddenWithoutAria = false, xlsxMenuAriaIdChanges = false, csvExportMissing = false, exportActivationFails = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, stubbornLoadingMask = false, sortRadioMountsLate = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false, browserId = "edge", proxyConnected = true } = {}) {
+function startFakeProxy({ full = false, outputPath = "", liveResult = false, staleTargets = false, searchReloads = false, homeReloads = false, homeHydrates = false, loginRequired = false, omitNewTargetId = false, newResponseFailsAfterCreate = false, labelSettles = false, pluginInitialError = false, searchInputResets = false, marketAnalysisClickMissesOnce = false, startClickMissesOnce = false, startRequiresDomClick = false, startClickWithoutRequestOnce = false, collectionFailsAfterStartup = false, delayedCollectionRequest = false, delayedCollectionResult = false, resultMutationPrecedesRequest = false, backgroundRequestBetweenArmAndClick = false, historicalResultRemountsAfterStart = false, historicalResultRemountsInSourceAfterStart = false, historicalResultPersistsInSourceAfterRequest = false, resultMarkerLostBeforeExport = false, xlsxMenuMountsLate = false, staleXlsxMenuVisible = false, staleXlsxMenuVisibleOwned = false, staleXlsxMenuHidden = false, staleXlsxMenuHiddenWithoutAria = false, xlsxMenuAriaIdChanges = false, csvExportMissing = false, exportActivationFails = false, sortRadioNeedsLabel = false, sortRequiresClickAt = false, sortRequiresSettledDomClick = false, stubbornLoadingMask = false, sortRadioMountsLate = false, radioMarkerNeedsVisible = false, unlimitedPriceAsZero = false, browserId = BROWSER_IDS.competitor, proxyConnected = true } = {}) {
   let homeCreated = liveResult;
   let searchCreated = liveResult;
   let started = liveResult;
@@ -776,7 +784,7 @@ test("rejects a non-Edge Proxy before target discovery or browser actions", asyn
       child.on("close", (code) => resolve({ code, stdout, stderr }));
     });
     assert.equal(result.code, 1);
-    assert.match(result.stderr, /browser mismatch.*edge.*browser-service/iu);
+    assert.match(result.stderr, new RegExp(`browser mismatch.*${BROWSER_IDS.competitor}.*browser-service`, "iu"));
     assert.equal(proxy.getHealthCalls(), 1);
     assert.equal(proxy.getTargetsCalls(), 0);
     assert.equal(proxy.getNewCalls(), 0);

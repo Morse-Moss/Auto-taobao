@@ -3,7 +3,10 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const DEFAULT_PROXY = 'http://127.0.0.1:3456';
+import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+
+// 飞书网页在**乙（商家浏览器）**上；端口只从登记表取（原先写死的是别的项目的共享代理）。
+const DEFAULT_PROXY = `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
 const VALUE_OPTIONS = new Set([
   'base-url',
   'source-table-id',

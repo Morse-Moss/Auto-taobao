@@ -39,7 +39,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const EXCLUSIONS = [
   {
     file: 'skills/sycm-to-feishu-base/tests/paste-endpoint.test.mjs',
-    reason: 'integration: drives the live web-access CDP proxy (127.0.0.1:3456), the real Windows clipboard, and real browser tabs',
+    reason: 'integration: drives the live merchant-chain CDP proxy (see runtime/browser-ports.mjs), the real Windows clipboard, and real browser tabs',
   },
   {
     file: 'skills/xws-export-market-analysis/tests/postgres-state.test.mjs',

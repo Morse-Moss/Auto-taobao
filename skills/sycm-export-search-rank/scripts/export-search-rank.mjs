@@ -20,8 +20,11 @@ import {
 } from "./full-flow.mjs";
 import { publishValidatedOutputs } from "./output-publish.mjs";
 import { verifyExportPair } from "./source-period-proof.mjs";
+import { PROJECT_PORTS } from "../../../runtime/browser-ports.mjs";
 
-const PROXY_DEFAULT = "http://127.0.0.1:3456";
+// 搜索排行在生意参谋（商家后台）里，属于**乙（商家浏览器）**。
+// 端口只从登记表取：原先写死的那个是别的项目的共享代理，能不能跑取决于别人的代理是否活着。
+const PROXY_DEFAULT = `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
 const REQUIRED_HEADERS = ["排名", "搜索词", "搜索人气", "点击率", "支付转化率"];
 const TOP_RANK_ASSETS = new Map([
   ["O1CN01DXTKWC1J3gIsNwyQH_", 1],
@@ -118,7 +121,7 @@ Options:
   --max-pages N             Pagination safety limit (default: 20)
   --from-home               Navigate visibly from the SYCM home page before export
   --target ID               Optional one-run target override; never persisted
-  --proxy URL               CDP proxy URL (default: http://127.0.0.1:3456)
+  --proxy URL               CDP proxy URL (default: ${PROXY_DEFAULT})
   --self-test               Run rank validation without a browser or network
   --help                    Show this help
 `);

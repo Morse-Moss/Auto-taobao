@@ -3,6 +3,11 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+
+// 飞书网页在**乙（商家浏览器）**上；端口只从登记表取（原先写死的是别的项目的共享代理）。
+const FEISHU_PROXY_DEFAULT = `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
+
 const TYPE_NAMES = new Map([
   [1, 'text'],
   [2, 'number'],
@@ -39,7 +44,7 @@ export function mapVisibleFields(fields, visibleFieldIds) {
 }
 
 function parseArgs(argv) {
-  const args = { proxy: 'http://127.0.0.1:3456' };
+  const args = { proxy: FEISHU_PROXY_DEFAULT };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     if (key === '--target') args.target = argv[++i];

@@ -29,6 +29,7 @@ import {
 } from "./flow.mjs";
 import { classifyDiagnosticState, normalizeDiagnosticSnapshot } from "./diagnostics.mjs";
 import { buildSearchInputExpression } from "./search-input.mjs";
+import { BROWSER_IDS } from "../../../runtime/browser-ports.mjs";
 import { acquireMarketAnalysisLock, marketAnalysisLockPath } from "./runtime-lock.mjs";
 
 export { marketAnalysisLockPath };
@@ -66,7 +67,8 @@ Options:
   --prepare-only          Configure the task and stop before starting collection
   --poll-seconds N        Progress polling interval, minimum 2 (default: 8)
   --stall-seconds N       No-progress threshold, minimum 60 (default: 120)
-  --proxy URL             Shared web-access Proxy (default: http://127.0.0.1:3456)
+  --proxy URL             CDP proxy URL (default: this project's competitor-chain Proxy in
+                          runtime/browser-ports.mjs)
   --self-test             Run network-free checks
   --help                  Show this help
 `;
@@ -2115,7 +2117,9 @@ async function runUnlocked(options) {
   await log("START", { keyword: options.keyword, pages: options.pages, frequency: options.frequency });
   try {
     const proxyHealth = await request(options.proxy, "/health");
-    assertProxyBrowserHealth(proxyHealth, process.env.XWS_BROWSER_ID || "edge");
+    // 期望的浏览器身份也来自登记表：默认 "edge" 是**共享代理时代**的残留，
+    // 而竞品链（甲）的代理自报 `edge-isolated` —— 裸跑时那个默认值会让健康检查硬失败。
+    assertProxyBrowserHealth(proxyHealth, process.env.XWS_BROWSER_ID || BROWSER_IDS.competitor);
   await log("PROXY_READY", { browser: proxyHealth.browser.id });
   if (options.adoptLiveResult) {
     return adoptLiveResult(options, runId, runDir, outputDir, log);

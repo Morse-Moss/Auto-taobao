@@ -1,3 +1,10 @@
+import { BROWSER_IDS, PROJECT_PORTS } from "../../../runtime/browser-ports.mjs";
+
+// 竞品链在**甲（买家浏览器，装着小旺神）**上。端口只从登记表取：
+// 原先默认写的是别的项目的共享代理，而那个浏览器登着商家号且没有小旺神 ——
+// 默认值落在那里不会报错，只会「每步都成功、数据读不出来」（坑 35 默认值即目标）。
+const DEFAULT_PROXY = `http://127.0.0.1:${PROJECT_PORTS.competitorProxy}`;
+
 export const REQUIRED_HEADERS = [
   "序号",
   "商品图片",
@@ -19,7 +26,9 @@ export const REQUIRED_HEADERS = [
 
 const COUNT_HEADERS = new Set(["月收货人数", "付款人数"]);
 
-export function assertProxyBrowserHealth(health, expectedBrowserId = "edge") {
+// 期望的浏览器身份也必须来自登记表：默认值原先写死成 "edge"（共享代理时代的占位符），
+// 那等于「只要对方自称 edge 就放行」——而本项目竞品链的身份是 edge-isolated。
+export function assertProxyBrowserHealth(health, expectedBrowserId = BROWSER_IDS.competitor) {
   if (health?.status !== "ok" || health?.connected !== true) {
     throw new Error(`Proxy is not connected to ${expectedBrowserId}`);
   }
@@ -69,7 +78,7 @@ function integerRange(value, name, minimum) {
 
 export function parseOptions(argv, env = process.env) {
   const options = {
-    proxy: env.XWS_PROXY || "http://127.0.0.1:3456",
+    proxy: env.XWS_PROXY || DEFAULT_PROXY,
     keyword: "",
     channel: "all",
     sort: "sales",

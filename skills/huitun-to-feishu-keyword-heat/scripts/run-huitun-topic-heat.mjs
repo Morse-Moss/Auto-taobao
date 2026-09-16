@@ -45,9 +45,9 @@ Options:
   --table-id ID               Required weekly Feishu table ID
   --table-name TEXT           Required exact weekly table name
   --env-file FILE             File containing FEISHU_APP_ID and FEISHU_APP_SECRET
-  --proxy URL                 Shared web-access Proxy (default: http://127.0.0.1:3456)
-  --browser-id ID             Expected proxy browser id (default: edge; use edge-isolated
-                              when the proxy runs Edge in isolated mode)
+  --proxy URL                 CDP proxy URL (default: this project's merchant-chain Proxy in
+                              runtime/browser-ports.mjs; do not borrow another project's proxy)
+  --browser-id ID             Expected proxy browser id (default: edge-daily-report)
   --output-dir DIR            Run evidence directory root
   --results FILE              Reuse a collected result file and skip browser collection
   --result-max-age-hours N    Reject reused results older than N hours (default: 24)

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { BROWSER_IDS, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+
 let flow = {};
 try {
   flow = await import('../scripts/flow.mjs');
@@ -205,7 +207,10 @@ test('CLI defaults to dry-run and requires an exact table confirmation for write
   assert.throws(() => parseOptions([]), /table-id, table-name/iu);
   const options = parseOptions(target);
   assert.equal(options.apply, false);
-  assert.equal(options.proxy, 'http://127.0.0.1:3456');
+  // 端口与浏览器 id 对着登记表断言，不写死数字：写死就变成把旧默认值固化成测试（坑 34）。
+  assert.equal(options.proxy, `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`);
+  assert.equal(options.browserId, BROWSER_IDS.dailyReport);
+  assert.notEqual(options.proxy, 'http://127.0.0.1:3456');
   assert.equal(options.tableId, 'tblCurrent');
   assert.equal(options.resultMaxAgeMs, 24 * 60 * 60 * 1_000);
   assert.equal(options.candidateMode, 'A_ONLY');
