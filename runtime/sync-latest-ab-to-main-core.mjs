@@ -17,6 +17,12 @@ function productId(value) {
   return source.match(/[?&]id=(\d+)/u)?.[1] ?? '';
 }
 
+// 周期起始日必须按北京时间打印：Feishu 的日期字段是当日 00:00(+08:00) 的毫秒戳，
+// 直接 toISOString() 取到的是 UTC 日，会整体早一天（2026-09-13 → 2026-09-12）。
+function shanghaiDate(timestamp) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date(timestamp));
+}
+
 function numberOrText(value) {
   const source = text(value);
   if (!source || source === '-') return source;
@@ -122,7 +128,7 @@ export function buildMainUpsertPlan({ historyRecords, mainRecords }) {
     return { productId: source.productId, action: 'unchanged', mainRecordId: existing.record_id ?? existing.recordId };
   });
   return {
-    period: { startTimestamp: selected.startTimestamp, startDate: new Date(selected.startTimestamp).toISOString().slice(0, 10) },
+    period: { startTimestamp: selected.startTimestamp, startDate: shanghaiDate(selected.startTimestamp) },
     items,
     creates,
     updates,

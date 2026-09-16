@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { FAQ_AI_PROMPT_VERSION, FAQ_AI_REVIEW_VERSION } from './faq-ai-review.mjs';
 import { FAQ_ANALYSIS_VERSION, FAQ_LABEL_CATALOG } from './faq-text-analysis.mjs';
 import { FAQ_DEDUP_VERSION, FAQ_OPERATOR_CONTENT_VERSION, FAQ_PAIN_DESCRIPTION_VERSION, FAQ_REPRESENTATIVE_SELECTION_VERSION, FAQ_SUMMARY_VERSION } from './faq-local-summary.mjs';
-import { FAQ_DETAIL_ENRICHMENT_VERSION } from './faq-detail-enrichment.mjs';
+import { FAQ_DETAIL_ENRICHMENT_VERSION, FAQ_LEGACY_REPLACEMENT_VERSION, FAQ_PUBLISH_MODE } from './faq-detail-enrichment.mjs';
 import { determineFaqOperatorState } from './faq-operator-core.mjs';
 import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
 
@@ -31,14 +31,45 @@ function hasAllLabels(rows) {
   return Array.isArray(labels) && labels.length === expected.size && new Set(labels).size === expected.size && labels.every((label) => expected.has(label));
 }
 
+// 发布验收分两种模式：
+//   WEEKLY_PUBLISHED_MASTER_APPENDED_AND_VERIFIED（现役）：周表补齐/替换 + 总表**只新增**。
+//     关键不变量是全表**零删除**——总表（问题主库）行数必须恰为「发布前 + 本次新增」，
+//     这条必须在验收里显式成立，否则「只新增」就只是一句注释。
+//   REPLACEMENT_APPLIED_AND_VERIFIED（历史，2026-09-03 前产生）：两张表整体替换。
+//     保留可读，避免历史周期的收据被判成未发布；但现役代码不再产生这种收据。
 export function publicationVerified(receipt, period) {
+  if (receipt?.period !== period
+    || receipt.analysisVersion !== FAQ_ANALYSIS_VERSION) return false;
+
+  if (receipt.mode === FAQ_PUBLISH_MODE) {
+    if (receipt.version !== FAQ_DETAIL_ENRICHMENT_VERSION) return false;
+    const { master, weekly } = receipt;
+    return master?.name === '问题主库'
+      && Boolean(master.tableId)
+      && Number.isInteger(master.recordsBefore) && master.recordsBefore > 0
+      && Number.isInteger(master.appended) && master.appended >= 0
+      && Number.isInteger(master.recordsAfter) && master.recordsAfter === master.recordsBefore + master.appended
+      && Number.isInteger(master.conflicts) && master.conflicts >= 0
+      && master.deletes === 0
+      && Boolean(master.appendsHash)
+      && Array.isArray(master.appendedRecordIds) && master.appendedRecordIds.length === master.appended
+      && weekly?.name === `问题库_${period}`
+      && Boolean(weekly.tableId)
+      && Number.isInteger(weekly.rows) && weekly.rows >= 0
+      && Boolean(weekly.rowsHash)
+      && Number.isInteger(receipt.denominator) && receipt.denominator > 0
+      && Boolean(receipt.statisticsHash) && Boolean(receipt.sourceTopicHash) && Boolean(receipt.schemaHash)
+      && Boolean(receipt.backup?.sha256)
+      && Boolean(receipt.backup?.path);
+  }
+
+  if (receipt.mode !== 'REPLACEMENT_APPLIED_AND_VERIFIED') return false;
+  // 历史线用它自己那个版本号（v3.2.0）校验，不能拿现行版本号去比——否则 08-23 那期
+  // 已经发到线上 base 的收据会被判成「未发布」。
+  if (receipt.version !== FAQ_LEGACY_REPLACEMENT_VERSION) return false;
   const oldIds = [receipt?.oldTables?.master?.tableId, receipt?.oldTables?.weekly?.tableId];
   const deletedIds = receipt?.deletedOldTableIds;
-  return receipt?.mode === 'REPLACEMENT_APPLIED_AND_VERIFIED'
-    && receipt.period === period
-    && receipt.version === FAQ_DETAIL_ENRICHMENT_VERSION
-    && receipt.analysisVersion === FAQ_ANALYSIS_VERSION
-    && receipt.newTables?.master?.name === '问题主库'
+  return receipt.newTables?.master?.name === '问题主库'
     && receipt.newTables?.weekly?.name === `问题库_${period}`
     && Number.isInteger(receipt.newTables?.master?.rows)
     && receipt.newTables.master.rows >= 0
@@ -197,7 +228,7 @@ export async function inspectFaqOperatorStatus({ runtimeRoot = 'runtime', period
     summariesPublished,
     rawRecords: Number(rawReceipt?.sourceRecords ?? 0),
     topicRecords: Number(summaryReceipt?.weekly?.rows ?? 0),
-    operatorRecords: Number(publishReceipt?.newTables?.master?.rows ?? 0),
+    operatorRecords: Number(publishReceipt?.master?.recordsAfter ?? publishReceipt?.newTables?.master?.rows ?? 0),
     summaryVersions: summaryVerified ? { analysisVersion: summaryReceipt.analysisVersion, dedupVersion: summaryReceipt.dedupVersion, summaryVersion: summaryReceipt.summaryVersion } : null,
     detailEnrichmentVersion: publishReceipt?.version ?? null,
   };
@@ -245,11 +276,19 @@ export function buildAdvanceCommand(action, options, status = null) {
   }
   if (action === 'BUILD_LOCAL_SUMMARIES') return { script: 'runtime/run-faq-topic-summary.mjs', args: summaryArgs(options) };
   if (action === 'PUBLISH_FEISHU_SUMMARIES') {
-    if (!options.masterTableId || !options.weeklyTableId) throw new Error('publishing FAQ detail replacement requires --master-table-id and --weekly-table-id');
     if (!options.operatorXlsx) throw new Error('publishing FAQ detail replacement requires --operator-xlsx');
+    // 两个表 id 都不再要求显式传入：总表默认取 feishu-targets.mjs 的 questionMaster，
+    // 周表由发布脚本按 `问题库_<周期>` 名字发现、缺失时补建（历史 ensureQuestionTable
+    // 语义）。传了就以传的为准，发布脚本仍然 fail-closed 校验。
+    // 默认不带 --apply：这一步只产出 dry-run 门禁报告，真正的写入要人工加 --apply。
     return {
       script: 'runtime/publish-faq-detail-enrichment.mjs',
-      args: ['--phase', 'prepare', ...periodArgs(options), '--operator-xlsx', options.operatorXlsx, '--base-url', options.baseUrl, '--env-file', options.envFile, '--master-table-id', options.masterTableId, '--weekly-table-id', options.weeklyTableId],
+      args: [
+        '--phase', 'publish', ...periodArgs(options), '--operator-xlsx', options.operatorXlsx,
+        '--base-url', options.baseUrl, '--env-file', options.envFile,
+        ...(options.masterTableId ? ['--master-table-id', options.masterTableId] : []),
+        ...(options.weeklyTableId ? ['--weekly-table-id', options.weeklyTableId] : []),
+      ],
     };
   }
   if (action === 'DONE') return null;

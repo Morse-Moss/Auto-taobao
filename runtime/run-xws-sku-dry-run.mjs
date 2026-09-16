@@ -11,16 +11,18 @@ import { buildSkuEvidence } from './build-xws-sku-dry-run-manifest.mjs';
 import { buildSkuDryRunPlan } from './xws-sku-dry-run-core.mjs';
 import { parseXwsSkuPayload } from './xws-sku-payload-parser.mjs';
 import { updateSkuBatchIndex } from './xws-sku-batch-index.mjs';
+import { activeProfileName, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
 
 const RUNTIME_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const COLLECTION_DIRECTORY = resolve(RUNTIME_DIRECTORY, 'competitor-v2-sku-collection');
 const PARSER_PATH = resolve(RUNTIME_DIRECTORY, 'xws-sku-payload-parser.mjs');
-const DEFAULT_ENV_FILE = 'E:/小红书/.env.local';
+const PROFILE = activeProfileName();
+const DEFAULT_ENV_FILE = envFilePath(PROFILE);
 const TARGET = {
-  appToken: 'OWebbPUcBa7B8JseYLccQCy9nkf',
-  mainTableId: 'tblJ9LHFN6pMVjPv',
+  appToken: competitorBaseToken(PROFILE),
+  mainTableId: tableId('competitorMain', PROFILE),
   mainTableName: '竞品主表',
-  skuTableId: 'tblddWTrPeB4TKmR',
+  skuTableId: tableId('skuDetail', PROFILE),
   skuTableName: 'SKU明细',
 };
 

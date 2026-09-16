@@ -1,19 +1,37 @@
 #!/usr/bin/env node
-// One-off: recreate the formula (type 20) fields of the new competitor-week table
-// with expressions rewritten from last week's table ids/field ids to the new table.
-// Formula fields reference each other (月收货金额 → 月收货人数计算值 → …), so the
-// script runs delete-and-recreate rounds until the dependency chain converges.
-// Fields that still reference 尺寸/适用空间 (lookup fields arriving with
-// competitor-v2 enrichment) are deferred — rerun this script after enrichment.
+// 在新一周的竞品周表上重建「派生字段」：19 查找引用（Lookup）+ 20 公式。
+//
+// 为什么必须单独一趟：这两类字段的 property 里内嵌了具体的表/字段 id
+// （形如 `bitable::$table[<表>].$field[<字段>]`），照抄上一周的表就会指向旧表。
+// 所以建表脚本只复制普通字段，把这两类留到这里、**按字段名字**重写引用。
+//
+// 默认只出计划（dry-run），加 --apply 才真的写。引用来源表默认＝竞品主表
+// （字段定义的唯一基准），可用 COMPETITOR_OLD_TABLE_ID 覆盖；目标周表用
+// COMPETITOR_NEW_TABLE_ID 指定。
+//
+// 顺序不可颠倒：先建 Lookup，再建公式——`数据状态`/`待补数据项` 的表达式引用
+// `尺寸`/`适用空间`，两者不存在时它们会被判为「引用未映射」而跳过。
 import { readFileSync } from 'node:fs';
 
-import { activeProfileName, baseUrl, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
+import { activeProfileName, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 const PROFILE = activeProfileName();
 const APP_TOKEN = competitorBaseToken(PROFILE);
-const OLD_TABLE = process.env.COMPETITOR_OLD_TABLE_ID ?? ''; // 表达式来源表；不得再留历史 id 默认值（跨租户后必然失效）
-const NEW_TABLE = process.env.COMPETITOR_NEW_TABLE_ID ?? ''; // required when the new table differs from OLD_TABLE
+const SOURCE_TABLE = process.env.COMPETITOR_OLD_TABLE_ID ?? tableId('competitorMain', PROFILE);
+const TARGET_TABLE = process.env.COMPETITOR_NEW_TABLE_ID ?? '';
+const LOOKUP = 19;
+const FORMULA = 20;
+const TEXT = 1;
+const MAX_ROUNDS = 6;
+
+// 这 4 个字段在**主表**上是 Lookup/公式，但周表上不该照抄：
+//   1. 开放 API 建不了 Lookup(19)（三变体实测全 99992402 field validation failed）；
+//   2. `数据状态`/`待补数据项` 的公式表达式引用 `尺寸`/`适用空间`，上游建不起来就永久 DEFERRED。
+// 于是这里改成「文本 + 规则回填」：schema 由本脚本建 Text(1)，值由
+// runtime/fill-weekly-attribute-labels.mjs 写入，口径与主表公式同源
+// （skills/xws-to-feishu-base/scripts/competitor-v2-core.mjs buildCompetitorRecord）。
+const RULE_FILLED_TEXT = ['尺寸', '适用空间', '数据状态', '待补数据项'];
 
 function loadEnv() {
   const text = readFileSync(envFilePath(PROFILE), 'utf8');
@@ -26,9 +44,25 @@ function loadEnv() {
   return env;
 }
 
+function lookupBody(field, formula) {
+  const property = { formula, formatter: field.property?.formatter ?? '' };
+  for (const key of ['filter_info', 'roll_up', 'target_field']) {
+    if (field.property?.[key] !== undefined) property[key] = field.property[key];
+  }
+  return { field_name: field.field_name, type: LOOKUP, property };
+}
+
+function formulaBody(field, expression) {
+  return {
+    field_name: field.field_name,
+    type: FORMULA,
+    property: { formatter: field.property?.formatter ?? '', formula_expression: expression },
+  };
+}
+
 async function main() {
-  if (!OLD_TABLE) throw new Error('COMPETITOR_OLD_TABLE_ID is required (the table whose formula expressions are the source)');
-  if (!NEW_TABLE) throw new Error('COMPETITOR_NEW_TABLE_ID is required (the table whose formula fields to rebuild)');
+  const apply = process.argv.includes('--apply');
+  if (!TARGET_TABLE) throw new Error('COMPETITOR_NEW_TABLE_ID is required (the table whose derived fields to rebuild)');
   const env = loadEnv();
   const auth = await fetch(`${API_ROOT}/auth/v3/tenant_access_token/internal`, {
     method: 'POST',
@@ -43,66 +77,134 @@ async function main() {
     if (!response.ok || payload.code !== 0) throw new Error(`API ${path} failed: ${response.status} ${payload.code} ${payload.msg}`);
     return payload.data ?? {};
   };
+  const fieldsOf = (id) => call(`/bitable/v1/apps/${APP_TOKEN}/tables/${id}/fields?page_size=100`).then((data) => data.items ?? []);
+  const fieldRoot = `/bitable/v1/apps/${APP_TOKEN}/tables/${TARGET_TABLE}/fields`;
 
-  const oldFieldsData = await call(`/bitable/v1/apps/${APP_TOKEN}/tables/${OLD_TABLE}/fields?page_size=100`);
-  const oldFields = oldFieldsData.items ?? [];
-  const formulaFields = oldFields.filter((f) => f.type === 20 && f.property?.formula_expression);
+  const sourceFields = await fieldsOf(SOURCE_TABLE);
+  const lookupFields = sourceFields.filter((f) => f.type === LOOKUP && f.property?.formula
+    && !RULE_FILLED_TEXT.includes(f.field_name));
+  const formulaFields = sourceFields.filter((f) => f.type === FORMULA && f.property?.formula_expression
+    && !RULE_FILLED_TEXT.includes(f.field_name));
+  console.log(`source ${SOURCE_TABLE}: ${lookupFields.length} lookup + ${formulaFields.length} formula fields -> target ${TARGET_TABLE}`);
+  console.log(`rule-filled text columns: ${RULE_FILLED_TEXT.join(', ')}`);
+  if (!apply) console.log('DRY RUN (pass --apply to write)');
 
-  // Rewrite: references to the old weekly table point at the new table, and
-  // field ids belonging to the old weekly table are remapped by field name.
-  // Feishu stores field refs as bitable::$table[TBL].$field[FLD] (dot form).
-  const rewrite = (expression, nameMap) => {
-    return expression.replace(/(bitable::\$table\[)([A-Za-z0-9]+)(\]\.\$field\[|\]\[)([A-Za-z0-9]+)(\])/gu, (match, prefix, tableId, mid, fldId, suffix) => {
-      if (tableId !== OLD_TABLE) return match; // references to other tables stay untouched
-      const name = oldFields.find((f) => f.field_id === fldId)?.field_name;
+  // Rewrite: references to the source table point at the target table; source
+  // field ids are remapped by field name. Feishu stores refs in the dot form
+  // `bitable::$table[TBL].$field[FLD]`; other tables' refs are left untouched.
+  const rewrite = (expression, nameMap) => expression.replace(
+    /(bitable::\$table\[)([A-Za-z0-9]+)(\]\.\$field\[|\]\[)([A-Za-z0-9]+)(\])/gu,
+    (match, prefix, tableId, mid, fldId, suffix) => {
+      if (tableId !== SOURCE_TABLE) return match;
+      const name = sourceFields.find((f) => f.field_id === fldId)?.field_name;
       if (!name) return match;
       const newFld = nameMap.get(name);
       if (!newFld) return match;
-      return `${prefix}${NEW_TABLE}${mid}${newFld}${suffix}`;
-    });
-  };
+      return `${prefix}${TARGET_TABLE}${mid}${newFld}${suffix}`;
+    },
+  );
 
-  for (let round = 1; round <= 6; round += 1) {
-    const newFields = await call(`/bitable/v1/apps/${APP_TOKEN}/tables/${NEW_TABLE}/fields?page_size=100`);
-    const existing = new Set((newFields.items ?? []).map((f) => f.field_name));
+  const blocked = [];
+  let created = 0;
+
+  // Pass 0 — rule-filled text columns. 必须最先建：Pass 2 的公式会引用它们。
+  for (const name of RULE_FILLED_TEXT) {
+    const current = (await fieldsOf(TARGET_TABLE)).find((f) => f.field_name === name);
+    if (current && current.type === TEXT) {
+      console.log(`rule-text: ${name} already present (${current.field_id})`);
+      continue;
+    }
+    if (current) {
+      blocked.push(`${name}: a ${current.type} field already occupies the name`);
+      continue;
+    }
+    if (!apply) {
+      console.log(`rule-text: WOULD CREATE ${name} type=${TEXT}`);
+      continue;
+    }
+    await call(fieldRoot, { method: 'POST', body: JSON.stringify({ field_name: name, type: TEXT }) });
+    const readBack = (await fieldsOf(TARGET_TABLE)).find((f) => f.field_name === name);
+    if (readBack?.type !== TEXT) throw new Error(`rule-text ${name} did not settle: ${JSON.stringify(readBack)}`);
+    console.log(`rule-text: CREATED ${name} (${readBack.field_id})`);
+    created += 1;
+  }
+
+  // Pass 1 — lookups. Formulas below reference them, so they must exist first.
+  for (const field of lookupFields) {
+    const current = (await fieldsOf(TARGET_TABLE)).find((f) => f.field_name === field.field_name);
+    if (current && current.type === LOOKUP) {
+      console.log(`lookup: ${field.field_name} already present (${current.field_id})`);
+      continue;
+    }
+    if (current) {
+      blocked.push(`${field.field_name}: a ${current.type} field already occupies the name`);
+      continue;
+    }
+    const nameMap = new Map((await fieldsOf(TARGET_TABLE)).map((f) => [f.field_name, f.field_id]));
+    const expression = rewrite(field.property.formula, nameMap);
+    if (expression.includes(SOURCE_TABLE)) {
+      blocked.push(`${field.field_name}: unmapped refs remain after rewrite`);
+      continue;
+    }
+    const body = lookupBody(field, expression);
+    if (!apply) {
+      console.log(`lookup: WOULD CREATE ${field.field_name} type=${LOOKUP}`);
+      console.log(`  property=${JSON.stringify(body.property)}`);
+      continue;
+    }
+    await call(fieldRoot, { method: 'POST', body: JSON.stringify(body) });
+    const readBack = (await fieldsOf(TARGET_TABLE)).find((f) => f.field_name === field.field_name);
+    if (readBack?.type !== LOOKUP || readBack.property?.formula !== expression) {
+      throw new Error(`lookup ${field.field_name} did not settle: ${JSON.stringify(readBack?.property)}`);
+    }
+    console.log(`lookup: CREATED ${field.field_name} (${readBack.field_id})`);
+    created += 1;
+  }
+
+  // Pass 2..N — formulas, delete-and-recreate until the dependency chain settles.
+  for (let round = 1; round <= MAX_ROUNDS; round += 1) {
+    const newFields = await fieldsOf(TARGET_TABLE);
+    const existing = new Set(newFields.map((f) => f.field_name));
     const missing = formulaFields.filter((f) => !existing.has(f.field_name));
-    const stale = (newFields.items ?? []).filter((f) => f.type === 20 && (f.property?.formula_expression ?? '').includes(OLD_TABLE));
+    const stale = newFields.filter((f) => f.type === FORMULA && (f.property?.formula_expression ?? '').includes(SOURCE_TABLE));
     if (!missing.length && !stale.length) {
       console.log(`round ${round}: converged, nothing to do`);
       break;
     }
     console.log(`round ${round}: missing=[${missing.map((f) => f.field_name).join(', ')}] stale=[${stale.map((f) => f.field_name).join(', ')}]`);
+    if (!apply) continue;
 
     for (const field of stale) {
-      await call(`/bitable/v1/apps/${APP_TOKEN}/tables/${NEW_TABLE}/fields/${field.field_id}`, { method: 'DELETE' });
+      await call(`${fieldRoot}/${field.field_id}`, { method: 'DELETE' });
       console.log(`round ${round}: DELETED stale formula field: ${field.field_name}`);
     }
 
-    const afterDelete = await call(`/bitable/v1/apps/${APP_TOKEN}/tables/${NEW_TABLE}/fields?page_size=100`);
-    const nameMap = new Map((afterDelete.items ?? []).map((f) => [f.field_name, f.field_id]));
+    const nameMap = new Map((await fieldsOf(TARGET_TABLE)).map((f) => [f.field_name, f.field_id]));
     for (const field of missing) {
-      const rewritten = rewrite(field.property.formula_expression, nameMap);
-      if (rewritten.includes(OLD_TABLE)) {
-        // Still references fields that don't exist yet in the new table
-        // (尺寸/适用空间 arrive with competitor-v2 enrichment). Park it.
+      const expression = rewrite(field.property.formula_expression, nameMap);
+      if (expression.includes(SOURCE_TABLE)) {
+        // 仍然引用了目标表里还不存在的字段（例如上游 Lookup 没建起来）。停在这里
+        // 而不是硬写一个会悬空的公式。
+        blocked.push(`${field.field_name}: unmapped refs remain`);
         console.log(`round ${round}: DEFERRED ${field.field_name} (unmapped refs remain)`);
         continue;
       }
-      try {
-        await call(`/bitable/v1/apps/${APP_TOKEN}/tables/${NEW_TABLE}/fields`, {
-          method: 'POST',
-          body: JSON.stringify({
-            field_name: field.field_name,
-            type: 20,
-            property: { formatter: field.property?.formatter ?? '', formula_expression: rewritten },
-          }),
-        });
-        console.log(`round ${round}: CREATED ${field.field_name}`);
-      } catch (error) {
-        console.log(`round ${round}: FAILED ${field.field_name}: ${error.message}`);
-      }
+      await call(fieldRoot, { method: 'POST', body: JSON.stringify(formulaBody(field, expression)) });
+      console.log(`round ${round}: CREATED ${field.field_name}`);
+      created += 1;
     }
   }
+
+  const finalNames = new Set((await fieldsOf(TARGET_TABLE)).map((f) => f.field_name));
+  const stillMissing = [...lookupFields, ...formulaFields]
+    .map((f) => f.field_name)
+    .filter((name) => !finalNames.has(name));
+  console.log(`\ncreated=${created} fieldCount=${finalNames.size}`);
+  const ruleTextMissing = RULE_FILLED_TEXT.filter((name) => !finalNames.has(name));
+  if (ruleTextMissing.length) console.log(`RULE-TEXT STILL MISSING (${ruleTextMissing.length}): ${ruleTextMissing.join(', ')}`);
+  if (stillMissing.length) console.log(`STILL MISSING (${stillMissing.length}): ${stillMissing.join(', ')}`);
+  if (blocked.length) console.log(`BLOCKED (${blocked.length}): ${blocked.join('; ')}`);
+  if (stillMissing.length || blocked.length) process.exitCode = 1;
 }
 
 main().catch((error) => {

@@ -65,13 +65,15 @@ function sourceFingerprint(record) {
   return [productIdFor(fields), normalizeFaqText(fields.来源类型), normalizeFaqText(fields.原始内容)].join('\n');
 }
 
+// 历史 FAQ 明细快照的文件名换过一次：2026-09-01 起发布侧写的是 detail-replacement-backup-*，
+// 旧名是 detail-enrichment-backup-*。只认旧名的读者在新周期上永远找不到文件——这不是「本周缺数据」，
+// 是「生产者改了名、消费者没跟着改」。两个名字都认；都没有时由调用方按「无可审计对象」具名记档。
 function findLegacyBackup(analysisDir) {
   const candidates = readdirSync(analysisDir)
-    .filter((name) => /^detail-enrichment-backup-.*\.json$/u.test(name))
+    .filter((name) => /^(?:detail-enrichment|detail-replacement)-backup-.*\.json$/u.test(name))
     .sort()
     .map((name) => resolve(analysisDir, name));
-  if (!candidates.length) throw new Error(`Missing legacy FAQ detail backup for source-topic audit: ${analysisDir}`);
-  return candidates.at(-1);
+  return candidates.at(-1) ?? null;
 }
 
 export function buildLegacySourceTopicAudit({ analysisDir, finalRecords }) {
@@ -89,6 +91,21 @@ export function buildLegacySourceTopicAudit({ analysisDir, finalRecords }) {
     };
   }
   const backupPath = findLegacyBackup(analysisDir);
+  if (!backupPath) {
+    // 「没有可审计的历史快照」要写成具名状态，不能只让 unresolvedCount 取 0 了事：
+    // 后者会让读者把「没审计过」读成「审计通过」。历史快照是发布阶段写进本目录的，
+    // 因此周期首跑时必然还不存在——这是预期状态，不是失败，也不是通过。
+    return {
+      version: 'faq-source-topic-audit-v1.0.0',
+      legacyBackup: null,
+      legacyPainRecordCount: 0,
+      counts: {},
+      unresolvedCount: 0,
+      entries: [],
+      skipped: 'NO_LEGACY_BACKUP',
+      skippedReason: '本周期目录尚无历史 FAQ 明细快照（由发布阶段写入）。本次不构成痛点保留性审计：无可审计对象，既不判保留也不判丢失。',
+    };
+  }
   const backupText = readFileSync(backupPath, 'utf8');
   const backup = JSON.parse(backupText);
   const legacyRecords = [...(backup.weekly ?? []), ...(backup.master ?? [])];
@@ -182,7 +199,7 @@ export function buildFinalClassificationReceipt({ options, paths, classifiedText
     sourceRecords: new Set(merged.records.map((record) => record.fields.来源记录唯一键)).size,
     classifiedRecords: merged.records.length,
     sourceTopicCount: merged.records.length,
-    legacyAudit: { unresolvedCount: audit.unresolvedCount, counts: audit.counts },
+    legacyAudit: { unresolvedCount: audit.unresolvedCount, counts: audit.counts, skipped: audit.skipped ?? null, skippedReason: audit.skippedReason ?? null },
     aiTaskCount: merged.taskCount,
     humanDecisionCount: merged.decisionCount,
     humanQueueCount: merged.humanQueueCount,
@@ -200,11 +217,29 @@ export async function main(argv = process.argv.slice(2)) {
   if (classificationReceipt.mode !== 'APPLIED_AND_VERIFIED' || classificationReceipt.period !== options.period || classificationReceipt.analysisVersion !== FAQ_ANALYSIS_VERSION || classificationReceipt.classifiedSnapshot?.sha256 !== hash(classified.text)) throw new Error('FAQ classification evidence mismatch');
   const artifact = readJson(paths.artifactPath);
   if (artifact.period !== options.period || artifact.analysisVersion !== FAQ_ANALYSIS_VERSION || artifact.taskCount !== artifact.tasks.length || artifact.resultCount !== artifact.results.length) throw new Error('FAQ AI review artifact is incomplete or mismatched');
-  // 无人核验项（本周无合格竞品）时允许没有人工决策文件；凡有 AI 结果一律 fail-closed。
+  // 无人工决策文件时放行，但必须由 AI 复核收据「显式声明本周 0 项需人工」，并自证数字自洽：
+  //   needsHumanReview === 0 且 autoAccepted + needsHumanReview === resultCount === 本工件结果数。
+  // 为什么不能直接放行：一个「文件不在就算通过」的判据无法区分「不需要人工」和「跳过了人工」，
+  // 这类空门禁会把漏做洗成绿灯。反过来，只认手写的空 [] 也不行——手写数组不携带任何可核验来源。
+  // 所以这里要的是「具名处置」：由上游收据说明为什么没有决策，而不是由缺失本身说明。
   let decisions = [];
-  if (existsSync(paths.decisionsPath)) decisions = readJson(paths.decisionsPath);
-  else if ((artifact.results?.length ?? 0) > 0) throw new Error(`Missing required FAQ review artifact: ${paths.decisionsPath}`);
-  else writeJson(paths.decisionsPath, []); // 空周留档，供最终收据哈希引用
+  if (existsSync(paths.decisionsPath)) {
+    decisions = readJson(paths.decisionsPath);
+  } else {
+    const aiReceiptPath = resolve(paths.reviewDir, 'ai-review-receipt.json');
+    const aiReceipt = readJson(aiReceiptPath);
+    const declaredNeedsReview = aiReceipt?.needsHumanReview;
+    const declaredResults = aiReceipt?.resultCount;
+    const declaredAccepted = aiReceipt?.autoAccepted;
+    const zeroReviewDeclared = aiReceipt?.period === options.period
+      && Number.isInteger(declaredNeedsReview) && declaredNeedsReview === 0
+      && Number.isInteger(declaredResults) && declaredResults === artifact.results.length
+      && Number.isInteger(declaredAccepted) && declaredAccepted + declaredNeedsReview === declaredResults;
+    if (!zeroReviewDeclared) {
+      throw new Error(`Missing required FAQ review artifact: ${paths.decisionsPath}`);
+    }
+    writeJson(paths.decisionsPath, []); // 人工核验项为 0 时留档空决策，供最终收据哈希引用
+  }
   if (!Array.isArray(decisions)) throw new Error('Human review decisions must be an array');
   const merged = mergeFaqReviewResults({ classifiedRecords: classified.rows, tasks: artifact.tasks, results: artifact.results, decisions, period: options.period });
   const finalText = `${merged.records.map((record) => JSON.stringify(record)).join('\n')}\n`;

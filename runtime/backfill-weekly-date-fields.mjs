@@ -44,6 +44,17 @@ const PLANS = [
       采集时间: Date.parse('2026-09-13T00:00:00+08:00'),
     },
   },
+  {
+    // 2026-09-16 补：本期此前不在 PLANS 里，而它的日期列同样是空的（仪表盘四个图表因此无数据）。
+    // 采集时间取实际采集日：runtime/.weekly-collection-receipt.json 的 at = 2026-09-15T10:49Z（北京 09-15 18:49）。
+    tableId: null,
+    name: '竞品周_2026-09-13_2026-09-19',
+    values: {
+      数据开始日期: Date.parse('2026-09-13T00:00:00+08:00'),
+      数据结束日期: Date.parse('2026-09-19T00:00:00+08:00'),
+      采集时间: Date.parse('2026-09-15T00:00:00+08:00'),
+    },
+  },
 ];
 
 const a = await fetch(`${ROOT}/auth/v3/tenant_access_token/internal`, {

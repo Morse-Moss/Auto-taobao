@@ -11,6 +11,8 @@ import {
   buildCompetitorFieldMigrationPlan,
   classifyCompetitorValidity,
   classifyPriceBand,
+  COMPETITOR_AI_FIELD_NAMES,
+  describeCompetitorAnalysisFields,
   equivalentFeishuFieldValue,
   equivalentFeishuMoney,
   parseMonthlyReceived,
@@ -143,7 +145,7 @@ function verifyAiSentinels(before, after, expectedUpdates) {
     const beforeFields = beforeById.get(id);
     if (!beforeFields) throw new Error(`Record ${id} disappeared during AI sentinel write`);
     const updates = expected.get(id) ?? {};
-    for (const name of ['材质分类', '外形', '安装方式', '功能', '风格', '尺寸', '适用空间']) {
+    for (const name of COMPETITOR_AI_FIELD_NAMES) {
       const beforeValue = beforeFields[name];
       const afterValue = record.fields?.[name];
       if (Object.prototype.hasOwnProperty.call(updates, name)) {
@@ -157,12 +159,12 @@ function verifyAiSentinels(before, after, expectedUpdates) {
   }
 }
 
-function verifyRecords(before, after, expectedUpdates) {
+function verifyRecords(before, after, expectedUpdates, analysisFields) {
   const ignored = new Set([
     '是否有效竞品', '排除原因',
     '月收货人数计算值', '计算口径', '月收货金额', '客单价带分类',
     '竞品分类', '数据状态', '待补数据项',
-    '材质分类', '外形', '安装方式', '功能', '风格', '尺寸', '适用空间',
+    ...COMPETITOR_AI_FIELD_NAMES,
   ]);
   if (before.length !== after.length || !same(unaffectedRecords(before, ignored), unaffectedRecords(after, ignored))) {
     throw new Error('Migration changed unrelated record data');
@@ -218,7 +220,7 @@ function verifyRecords(before, after, expectedUpdates) {
     if (normalizedClass !== classPrefix) {
       throw new Error(`Record ${id} competitor class formula is unsettled`);
     }
-    const pendingItems = pendingCompetitorAnalysisItems(fields, actualValidity);
+    const pendingItems = pendingCompetitorAnalysisItems(fields, actualValidity, analysisFields);
     const pendingText = plainFeishuFormulaValue(fields.待补数据项);
     if (pendingText !== pendingItems.join('、')) {
       throw new Error(`Record ${id} pending items formula is unsettled`);
@@ -231,6 +233,9 @@ function verifyRecords(before, after, expectedUpdates) {
 }
 
 async function waitForVerification(client, options, beforeFields, beforeRecords, expectedUpdates, plan) {
+  // 缺项判据取自「计划生成时的那份 schema」：公式与本地复核必须用同一套谓词，
+  // 否则回读校验会正好在 待补数据项 上挂死——那是最难定位的一类失败。
+  const analysisFields = describeCompetitorAnalysisFields(beforeFields);
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const [fields, records] = await Promise.all([
       client.listFields(options.tableId),
@@ -258,7 +263,7 @@ async function waitForVerification(client, options, beforeFields, beforeRecords,
       for (const name of ['是否有效竞品', '排除原因']) {
         if (!fields.some((field) => fieldName(field) === name)) throw new Error(`${name} is missing`);
       }
-      verifyRecords(beforeRecords, records, expectedUpdates);
+      verifyRecords(beforeRecords, records, expectedUpdates, analysisFields);
       return { fields, records };
     } catch (error) {
       if (attempt === 59) throw error;
@@ -313,9 +318,11 @@ async function main() {
     formulaFieldsToUpdate: formulaUpdates.map((item) => item.fieldName),
     optionFieldsToUpdate: optionChange ? plan.optionUpdates.map((item) => item.fieldName) : [],
     formulaRecordUpdates: 0,
-    aiSentinelFields: [
-      '材质分类', '外形', '安装方式', '功能', '风格', '尺寸', '适用空间',
-    ],
+    aiSentinelFields: [...COMPETITOR_AI_FIELD_NAMES],
+    // 线上 尺寸/适用空间 是查找引用：只被公式引用，永远不进写入计划。
+    aiReadOnlyFields: describeCompetitorAnalysisFields(beforeFields)
+      .filter((descriptor) => !descriptor.writable)
+      .map((descriptor) => descriptor.name),
     aiAnalysisRecordsToUpdate: currentAiAnalysisUpdates.length,
     aiSentinelWriteDeferredUntilFormulaReadback: formulaUpdates.length > 0,
     competitorClassesBefore: distribution(beforeRecords, '竞品分类', { formula: true }),

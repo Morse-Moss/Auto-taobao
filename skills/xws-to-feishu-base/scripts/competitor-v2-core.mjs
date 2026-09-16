@@ -5,6 +5,11 @@ const MULTI_SELECT = 4;
 const ATTACHMENT = 17;
 const BIDIRECTIONAL_LINK = 21;
 const FORMULA = 20;
+// 查找引用。线上「尺寸」「适用空间」实际就是这个类型：它们用跨表 FILTER
+// （SKU明细.商品标题 = 本表.商品标题）聚合出 SKU 侧的证据，因此**只读**——
+// 公式可以引用它们，记录写入永远会被飞书拒绝。计划生成器必须把「可读」
+// 与「可写」分开，不能像对待文本/多选那样往它们身上写哨兵值。
+const LOOKUP = 19;
 
 export { COMPETITOR_AI_PROMPTS } from './competitor-v2-prompts.mjs';
 
@@ -450,12 +455,64 @@ function migrationFieldType(field) {
   return Number(field.type);
 }
 
+/**
+ * The seven analysis attributes are declared as TEXT/MULTI_SELECT below, but the
+ * live tables have drifted: the five attribute columns are TEXT, and
+ * 尺寸/适用空间 became Lookups over SKU明细. A Lookup is still a *readable*
+ * analysis field — formulas may reference it — it is simply not writable.
+ * Anything else (date / number / person) stays a hard contract violation.
+ */
 function assertSupportedAnalysisFieldType(field) {
   const type = migrationFieldType(field);
-  if (![TEXT, MULTI_SELECT].includes(type)) {
+  if (![TEXT, MULTI_SELECT, LOOKUP].includes(type)) {
     throw new Error(`Unsupported AI field type for ${fieldName(field)}: ${field.type}`);
   }
   return type;
+}
+
+function resolvedAnalysisField(name, declaredType, target) {
+  const type = target ? assertSupportedAnalysisFieldType(target) : declaredType;
+  return {
+    name,
+    field: target,
+    declaredType,
+    type,
+    isLookup: type === LOOKUP,
+    // A lookup is computed by Feishu from the linked table; writing it is
+    // rejected, so it must never appear in a record-write plan.
+    writable: type !== LOOKUP,
+  };
+}
+
+/**
+ * Resolve the seven analysis attributes against a live field list. Callers that
+ * hold only record values (no schema) fall back to the declared types, which
+ * keeps the historical text/multi-select behaviour byte-for-byte identical.
+ */
+export function describeCompetitorAnalysisFields(fields = []) {
+  return COMPETITOR_AI_ATTRIBUTE_FIELDS.map(({ name, type: declaredType }) => {
+    const matches = (fields ?? []).filter((item) => fieldName(item) === name);
+    if (matches.length > 1) throw new Error(`Expected at most one field named ${name}; received ${matches.length}`);
+    return resolvedAnalysisField(name, declaredType, matches[0]);
+  });
+}
+
+// 「缺项」判据的唯一来源。公式串与本地复核谓词必须成对维护在这里：分开写两份
+// 两份必然漂移，而漂移的表现是迁移脚本在回读校验处挂死，很难定位。
+function analysisMissingFormula(reference, { type, isLookup } = {}) {
+  // A lookup never carries the 无注明/不适用 sentinel text: blank is the only
+  // evidence gap it can express.
+  if (isLookup) return `ISBLANK(${reference})`;
+  if (type === MULTI_SELECT) {
+    return `OR(ISBLANK(${reference}),CONTAIN(${reference},"无注明"),CONTAIN(${reference},"不适用"))`;
+  }
+  return `OR(ISBLANK(${reference}),${reference}="无注明",${reference}="不适用")`;
+}
+
+function analysisValueIsMissing(value, { isLookup } = {}) {
+  const normalized = text(plainFeishuFormulaValue(value));
+  if (isLookup) return normalized === '';
+  return normalized === '' || normalized.includes('无注明') || normalized.includes('不适用');
 }
 
 function formulaReference(tableId, fieldId) {
@@ -646,49 +703,44 @@ export function buildCompetitorFieldMigrationPlan({ tableId, fields }) {
   const amountReference = formulaReference(tableId, migrationFieldId(amount));
   const band = migrationField(fields, '客单价带分类');
   const classField = migrationField(fields, '竞品分类');
-  const analysisFields = new Map(COMPETITOR_AI_ATTRIBUTE_FIELDS.map(({ name }) => {
+  // 线上类型才是契约，声明里的 TEXT/MULTI_SELECT 只是缺表时的回落值。
+  // 这里的描述符同时决定了「公式怎么引用」和「能不能写」两件事。
+  const analysisFields = new Map();
+  const analysisDescriptors = [];
+  for (const { name, type: declaredType } of COMPETITOR_AI_ATTRIBUTE_FIELDS) {
     const target = migrationField(fields, name);
-    assertSupportedAnalysisFieldType(target);
-    return [name, target];
-  }));
+    analysisDescriptors.push(resolvedAnalysisField(name, declaredType, target));
+    analysisFields.set(name, target);
+  }
   const materialField = analysisFields.get('材质分类');
   const material = formulaReference(tableId, migrationFieldId(materialField));
   const materialMatch = migrationFieldType(materialField) === MULTI_SELECT
     ? `CONTAIN(${material},"人造石")`
     : `FIND("人造石",${material})>0`;
-  const shape = formulaReference(tableId, migrationFieldId(analysisFields.get('外形')));
-  const installation = formulaReference(tableId, migrationFieldId(analysisFields.get('安装方式')));
-  const productFunction = formulaReference(tableId, migrationFieldId(analysisFields.get('功能')));
-  const style = formulaReference(tableId, migrationFieldId(analysisFields.get('风格')));
-  const size = formulaReference(tableId, migrationFieldId(analysisFields.get('尺寸')));
-  const space = formulaReference(tableId, migrationFieldId(analysisFields.get('适用空间')));
   const dataStatus = migrationField(fields, '数据状态');
   const pending = migrationField(fields, '待补数据项');
   const pendingReference = formulaReference(tableId, migrationFieldId(pending));
   const missingParts = [
-    [monthly, '月收货人数精确值', false],
-    [material, '材质分类', migrationFieldType(materialField) === MULTI_SELECT],
-    [shape, '外形', migrationFieldType(analysisFields.get('外形')) === MULTI_SELECT],
-    [installation, '安装方式', migrationFieldType(analysisFields.get('安装方式')) === MULTI_SELECT],
-    [productFunction, '功能', migrationFieldType(analysisFields.get('功能')) === MULTI_SELECT],
-    [style, '风格', migrationFieldType(analysisFields.get('风格')) === MULTI_SELECT],
-    [size, '尺寸', migrationFieldType(analysisFields.get('尺寸')) === MULTI_SELECT],
-    [space, '适用空间', migrationFieldType(analysisFields.get('适用空间')) === MULTI_SELECT],
+    [monthly, '月收货人数精确值', { type: NUMBER }],
+    ...analysisDescriptors.map((descriptor) => [
+      formulaReference(tableId, migrationFieldId(descriptor.field)),
+      descriptor.name,
+      descriptor,
+    ]),
   ];
-  const missingText = `CONCATENATE(${missingParts.map(([reference, label, multiSelect]) => {
-    const missing = multiSelect
-      ? `OR(ISBLANK(${reference}),CONTAIN(${reference},"无注明"),CONTAIN(${reference},"不适用"))`
-      : `OR(ISBLANK(${reference}),${reference}="无注明",${reference}="不适用")`;
-    return `IF(${missing},"${label}、","")`;
-  }).join(',')})`;
+  const missingText = `CONCATENATE(${missingParts.map(([reference, label, descriptor]) => (
+    `IF(${analysisMissingFormula(reference, descriptor)},"${label}、","")`
+  )).join(',')})`;
   const pendingExpression = `IF(${invalidGate},"",IF(${missingText}="","",LEFT(${missingText},LEN(${missingText})-1)))`;
-  const optionUpdates = COMPETITOR_AI_ATTRIBUTE_FIELDS.flatMap(({ name }) => {
-    const target = analysisFields.get(name);
-    if (migrationFieldType(target) !== MULTI_SELECT) return [];
-    const additions = name === '安装方式'
+  const optionUpdates = analysisDescriptors.flatMap((descriptor) => {
+    // Only a genuine multi-select can take new options. A lookup owns no option
+    // list of its own, so 尺寸/适用空间 fall out here by construction.
+    if (descriptor.type !== MULTI_SELECT) return [];
+    // 「台上/搁置」是业务确认保留的一档（2026-09-15），只补在 安装方式 上。
+    const additions = descriptor.name === '安装方式'
       ? ['台上/搁置', ...ANALYSIS_NOTES]
       : ANALYSIS_NOTES;
-    const update = optionUpdate(migrationField(fields, name), additions);
+    const update = optionUpdate(descriptor.field, additions);
     return update ? [update] : [];
   });
   return {
@@ -790,19 +842,26 @@ export function buildCompetitorFieldMigrationPlan({ tableId, fields }) {
   };
 }
 
+// Strict variant for plans that already hold the live schema: every one of the
+// seven attributes must exist exactly once, otherwise the plan is not settleable.
+function strictAnalysisFields(fields) {
+  return COMPETITOR_AI_ATTRIBUTE_FIELDS.map(({ name, type: declaredType }) => (
+    resolvedAnalysisField(name, declaredType, migrationField(fields, name))
+  ));
+}
+
 export function buildCompetitorRecordMigrationPlan({ records, fields = [], searchKeyword }) {
   void searchKeyword;
-  const actualTypes = new Map(COMPETITOR_AI_ATTRIBUTE_FIELDS.map(({ name, type }) => {
-    const target = fields.find((field) => fieldName(field) === name);
-    return [name, target ? assertSupportedAnalysisFieldType(target) : type];
-  }));
+  const analysisFields = describeCompetitorAnalysisFields(fields ?? []);
   return records.flatMap((record) => {
     const recordFields = record.fields ?? {};
     const validity = text(plainFeishuFormulaValue(recordFields.是否有效竞品))
       || classifyCompetitorValidity(recordFields).validity;
-    const fieldsToUpdate = Object.fromEntries(COMPETITOR_AI_ATTRIBUTE_FIELDS.flatMap(({ name }) => {
+    const fieldsToUpdate = Object.fromEntries(analysisFields.flatMap((descriptor) => {
+      // A lookup is computed from the linked SKU table; Feishu rejects writes.
+      if (!descriptor.writable) return [];
+      const { name, type } = descriptor;
       const current = recordFields[name];
-      const type = actualTypes.get(name);
       const sentinel = validity === '是' ? '无注明' : '不适用';
       if (validity !== '是') {
         return [[name, type === MULTI_SELECT ? [sentinel] : sentinel]];
@@ -828,10 +887,7 @@ export function buildCompetitorAISentinelPlan({ records, fields }) {
   if (migrationFieldType(validityField) !== FORMULA) {
     throw new Error('validity formula is unsettled');
   }
-  const actualTypes = new Map(COMPETITOR_AI_ATTRIBUTE_FIELDS.map(({ name }) => {
-    const target = migrationField(fields ?? [], name);
-    return [name, assertSupportedAnalysisFieldType(target)];
-  }));
+  const analysisFields = strictAnalysisFields(fields ?? []);
   return (records ?? []).flatMap((record) => {
     const recordIdValue = record.record_id ?? record.recordId;
     if (!recordIdValue) throw new Error('AI sentinel record id is required');
@@ -841,9 +897,9 @@ export function buildCompetitorAISentinelPlan({ records, fields }) {
       throw new Error(`Record ${recordIdValue} validity formula is unsettled`);
     }
     const sentinel = validity === '是' ? '无注明' : '不适用';
-    const fieldsToUpdate = Object.fromEntries(COMPETITOR_AI_ATTRIBUTE_FIELDS.flatMap(({ name }) => {
-      if (!analysisValueIsBlank(recordFields[name])) return [];
-      const type = actualTypes.get(name);
+    const fieldsToUpdate = Object.fromEntries(analysisFields.flatMap((descriptor) => {
+      const { name, type } = descriptor;
+      if (!descriptor.writable || !analysisValueIsBlank(recordFields[name])) return [];
       return [[name, type === MULTI_SELECT ? [sentinel] : sentinel]];
     }));
     return Object.keys(fieldsToUpdate).length > 0
@@ -856,10 +912,7 @@ export function buildCompetitorAISentinelPlan({ records, fields }) {
 export function buildCompetitorAIAnalysisPlan({ records, fields, searchKeyword = '浴缸' }) {
   const validityField = migrationField(fields ?? [], '是否有效竞品');
   if (migrationFieldType(validityField) !== FORMULA) throw new Error('validity formula is unsettled');
-  const actualTypes = new Map(COMPETITOR_AI_ATTRIBUTE_FIELDS.map(({ name }) => {
-    const target = migrationField(fields ?? [], name);
-    return [name, assertSupportedAnalysisFieldType(target)];
-  }));
+  const analysisFields = strictAnalysisFields(fields ?? []);
   return (records ?? []).flatMap((record) => {
     const recordIdValue = record.record_id ?? record.recordId;
     const source = record.fields ?? {};
@@ -868,9 +921,9 @@ export function buildCompetitorAIAnalysisPlan({ records, fields, searchKeyword =
       throw new Error(`Record ${recordIdValue} validity formula is unsettled`);
     }
     const analyzed = buildCompetitorRecord({ ...source, 是否有效竞品: validity }, { searchKeyword });
-    const fieldsToUpdate = Object.fromEntries(COMPETITOR_AI_ATTRIBUTE_FIELDS.flatMap(({ name }) => {
-      if (!analysisValueIsBlank(source[name])) return [];
-      const type = actualTypes.get(name);
+    const fieldsToUpdate = Object.fromEntries(analysisFields.flatMap((descriptor) => {
+      const { name, type } = descriptor;
+      if (!descriptor.writable || !analysisValueIsBlank(source[name])) return [];
       const value = analyzed[name] ?? (validity === '是' ? '无注明' : '不适用');
       return [[name, type === MULTI_SELECT
         ? (Array.isArray(value) ? value : [value])
@@ -981,13 +1034,21 @@ export function analysisValueIsBlank(value) {
   return normalized === '';
 }
 
-export function pendingCompetitorAnalysisItems(fields, validity = text(plainFeishuFormulaValue(fields.是否有效竞品))) {
+/**
+ * Local mirror of the 待补数据项 formula. Pass the schema-derived descriptors so
+ * the two predicates cannot drift apart; without them the declared types are
+ * used, which keeps the historical text/multi-select behaviour unchanged.
+ */
+export function pendingCompetitorAnalysisItems(
+  fields,
+  validity = text(plainFeishuFormulaValue(fields.是否有效竞品)),
+  analysisFields = describeCompetitorAnalysisFields([]),
+) {
   if (validity !== '是') return [];
   const pending = [];
   if (analysisValueIsBlank(fields.月收货人数计算值)) pending.push('月收货人数精确值');
-  for (const { name } of COMPETITOR_AI_ATTRIBUTE_FIELDS) {
-    const value = text(plainFeishuFormulaValue(fields[name]));
-    if (!value || value.includes('无注明') || value.includes('不适用')) pending.push(name);
+  for (const descriptor of analysisFields) {
+    if (analysisValueIsMissing(fields[descriptor.name], descriptor)) pending.push(descriptor.name);
   }
   return pending;
 }

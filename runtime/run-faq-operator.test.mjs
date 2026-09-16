@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { FAQ_AI_PROMPT_VERSION, FAQ_AI_REVIEW_VERSION } from './faq-ai-review.mjs';
 import { FAQ_ANALYSIS_VERSION, FAQ_LABEL_CATALOG } from './faq-text-analysis.mjs';
 import { FAQ_DEDUP_VERSION, FAQ_OPERATOR_CONTENT_VERSION, FAQ_PAIN_DESCRIPTION_VERSION, FAQ_REPRESENTATIVE_SELECTION_VERSION, FAQ_SUMMARY_VERSION } from './faq-local-summary.mjs';
-import { FAQ_DETAIL_ENRICHMENT_VERSION } from './faq-detail-enrichment.mjs';
+import { FAQ_DETAIL_ENRICHMENT_VERSION, FAQ_LEGACY_REPLACEMENT_VERSION, FAQ_PUBLISH_MODE } from './faq-detail-enrichment.mjs';
 import { buildAdvanceCommand, inspectFaqOperatorStatus, publicationVerified } from './run-faq-operator.mjs';
 
 async function json(path, value) {
@@ -143,29 +143,60 @@ test('completed AI review with a non-empty human queue blocks publication', asyn
   assert.equal(status.nextAction, 'REVIEW_AI_HUMAN_QUEUE');
 });
 
-test('advance command stops at replacement prepare dry-run', () => {
+test('advance command emits a publish dry-run that never writes by itself', () => {
   const common = { periodStart: '2026-08-23', periodEnd: '2026-08-29', baseUrl: 'https://tenant.feishu.cn/base/appToken', envFile: 'D:/secret.env', runtimeRoot: 'D:/runtime', operatorXlsx: 'D:/operator.xlsx' };
   assert.deepEqual(buildAdvanceCommand('ANALYZE_LOCAL', common), {
     script: 'runtime/run-faq-text-analysis.mjs',
     args: ['--runtime-root', common.runtimeRoot, '--period-start', common.periodStart, '--period-end', common.periodEnd],
   });
-  assert.throws(() => buildAdvanceCommand('PUBLISH_FEISHU_SUMMARIES', common), /master-table-id and --weekly-table-id/u);
-  const publish = buildAdvanceCommand('PUBLISH_FEISHU_SUMMARIES', { ...common, masterTableId: 'tbl-master', weeklyTableId: 'tbl-weekly' });
+  // 发布不再强制要求两个表 id：总表默认取 feishu-targets.mjs，周表按 `问题库_<周期>`
+  // 名字发现、缺失时补建。显式传入时原样透传，由发布脚本 fail-closed 校验。
+  const publish = buildAdvanceCommand('PUBLISH_FEISHU_SUMMARIES', common);
   assert.equal(publish.script, 'runtime/publish-faq-detail-enrichment.mjs');
-  assert.equal(publish.args.includes('--master-table-id'), true);
-  assert.equal(publish.args.includes('--weekly-table-id'), true);
+  assert.equal(publish.args.includes('--master-table-id'), false);
+  assert.equal(publish.args.includes('--weekly-table-id'), false);
   assert.equal(publish.args.includes('--phase'), true);
-  assert.equal(publish.args.includes('prepare'), true);
+  assert.equal(publish.args.includes('publish'), true);
   assert.equal(publish.args.includes('--apply'), false);
   assert.equal(publish.args.includes('--confirm-app-token'), false);
+  const pinned = buildAdvanceCommand('PUBLISH_FEISHU_SUMMARIES', { ...common, masterTableId: 'tbl-master', weeklyTableId: 'tbl-weekly' });
+  assert.equal(pinned.args.includes('--master-table-id'), true);
+  assert.equal(pinned.args.includes('--weekly-table-id'), true);
+  assert.throws(() => buildAdvanceCommand('PUBLISH_FEISHU_SUMMARIES', { ...common, operatorXlsx: undefined }), /requires --operator-xlsx/u);
   assert.equal(buildAdvanceCommand('COLLECT_EVIDENCE', common), null);
 });
 
-test('replacement publication accepts verified dynamic row counts and rejects legacy receipts', () => {
-  const period = '2026-08-23_2026-08-29';
-  const receipt = {
-    mode: 'REPLACEMENT_APPLIED_AND_VERIFIED', period,
+test('publication verification accepts the append-only receipt and still rejects legacy shapes', () => {
+  const period = '2026-09-13_2026-09-19';
+  const appended = {
+    mode: FAQ_PUBLISH_MODE, period,
     version: FAQ_DETAIL_ENRICHMENT_VERSION, analysisVersion: FAQ_ANALYSIS_VERSION,
+    master: {
+      tableId: 'tbl-master', name: '问题主库',
+      recordsBefore: 2023, recordsAfter: 2073, appended: 50, overlap: 0, conflicts: 0,
+      appendsHash: 'appends-hash', appendedRecordIds: Array.from({ length: 50 }, (_value, index) => `rec-${index}`), deletes: 0,
+    },
+    weekly: { tableId: 'tbl-weekly', name: `问题库_${period}`, created: true, rows: 50, rowsHash: 'weekly-hash', previousRows: 0, planning: 'CREATE_THEN_WRITE' },
+    backup: { path: 'D:/runtime/faq-analysis/x/detail-append-backup.json', sha256: 'backup-hash' },
+    sourceTopicHash: 'source-topic-hash', schemaHash: 'schema-hash', denominator: 26, statisticsHash: 'statistics-hash',
+  };
+  assert.equal(publicationVerified(appended, period), true);
+  // 「总表只新增」必须被验收咬住：行数对不上、或声称删过行，都不算发布成功
+  assert.equal(publicationVerified({ ...appended, master: { ...appended.master, recordsAfter: 2024 } }, period), false);
+  assert.equal(publicationVerified({ ...appended, master: { ...appended.master, deletes: 1 } }, period), false);
+  assert.equal(publicationVerified({ ...appended, master: { ...appended.master, appendedRecordIds: [] } }, period), false);
+  assert.equal(publicationVerified({ ...appended, weekly: { ...appended.weekly, rowsHash: '' } }, period), false);
+  assert.equal(publicationVerified({ ...appended, backup: {} }, period), false);
+
+  // 版本号是按模式各自的：现役收据不许挂退役线的版本号，反之亦然。
+  // 2026-08-23 那期线上 base 是按整体替换发的，它的收据必须继续被判成「已发布」。
+  assert.equal(publicationVerified({ ...appended, version: FAQ_LEGACY_REPLACEMENT_VERSION }, period), false);
+  assert.equal(FAQ_LEGACY_REPLACEMENT_VERSION === FAQ_DETAIL_ENRICHMENT_VERSION, false);
+
+  // 历史整体替换收据仍可读（避免旧周期被误判成未发布），但缺少必要哈希时照样拒绝
+  const legacy = {
+    mode: 'REPLACEMENT_APPLIED_AND_VERIFIED', period,
+    version: FAQ_LEGACY_REPLACEMENT_VERSION, analysisVersion: FAQ_ANALYSIS_VERSION,
     oldTables: { master: { tableId: 'old-master' }, weekly: { tableId: 'old-weekly' } },
     newTables: {
       master: { name: '问题主库', rows: 2703, rowsHash: 'master-hash', denominator: 1007, statisticsHash: 'statistics-hash' },
@@ -176,11 +207,12 @@ test('replacement publication accepts verified dynamic row counts and rejects le
     backup: { sha256: 'backup-hash' },
     sourceTopicHash: 'source-topic-hash', schemaHash: 'schema-hash', denominator: 1007, statisticsHash: 'statistics-hash',
   };
-  assert.equal(publicationVerified(receipt, period), true);
-  assert.equal(publicationVerified({ ...receipt, mode: 'APPLIED_AND_VERIFIED' }, period), false);
-  assert.equal(publicationVerified({ ...receipt, statisticsHash: '' }, period), false);
-  assert.equal(publicationVerified({ ...receipt, denominator: 2703 }, period), false);
-  assert.equal(publicationVerified({ ...receipt, deletedOldTableIds: ['old-master'] }, period), false);
+  assert.equal(publicationVerified(legacy, period), true);
+  assert.equal(publicationVerified({ ...legacy, version: FAQ_DETAIL_ENRICHMENT_VERSION }, period), false);
+  assert.equal(publicationVerified({ ...legacy, mode: 'APPLIED_AND_VERIFIED' }, period), false);
+  assert.equal(publicationVerified({ ...legacy, statisticsHash: '' }, period), false);
+  assert.equal(publicationVerified({ ...legacy, denominator: 2703 }, period), false);
+  assert.equal(publicationVerified({ ...legacy, deletedOldTableIds: ['old-master'] }, period), false);
 });
 
 test('a publication receipt from another period does not complete the current period', async () => {

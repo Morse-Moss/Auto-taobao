@@ -7,7 +7,9 @@ import { pathToFileURL } from 'node:url';
 import { buildXwsSkuTopology } from './xws-sku-topology-core.mjs';
 import { updateSkuBatchIndex } from './xws-sku-batch-index.mjs';
 
-const DEFAULT_PROXY = 'http://127.0.0.1:3456';
+// 本项目专用 CDP 代理是 3457（见 docs/ops/PROJECT-BROWSER-AND-PORTS.md 与 AGENTS.md）。
+// 3456 属于另一个项目、挂在用户的日常 Edge 上且**没有小旺神**——默认值写成它会静默指向错目标。
+const DEFAULT_PROXY = 'http://127.0.0.1:3457';
 
 function sha256(value) {
   return createHash('sha256').update(String(value ?? ''), 'utf8').digest('hex');

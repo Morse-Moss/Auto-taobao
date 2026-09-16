@@ -54,7 +54,7 @@ SKU 链：`xws-sku-auth-preflight`、`xws-sku-batch-index`、`xws-sku-dry-run-co
 
 Python：`build-keyword-decision-brief.py`、`build-keyword-decision-report.py`（依赖仓库外 `table_geometry`，当前不可复现，见 requirements.txt 说明）、`build-keyword-ops-review-docx.py`、`generate-weekly-analysis-doc.py`、`append-formulas-and-prompt.py`、`read-faq-operator-xlsx.py`
 Node：`build-keyword-dual-tables.mjs`、`generate-weekly-analysis-doc.mjs`、`publish-competitor-visualization.mjs`
-依赖 `docx`（v9.7.1 已声明并验证 CJS 导出完整）：`generate-competitor-v2-business-docx.cjs`、`generate-competitor-v2-archive-docx.cjs`（注意：前者默认输出路径硬编码到 `C:/Users/Administrator/Desktop/`，治理 B3 登记）
+依赖 `docx`（v9.7.1 已声明并验证 CJS 导出完整）：`generate-competitor-v2-business-docx.cjs`、`generate-competitor-v2-archive-docx.cjs`、`generate-competitor-field-reference-docx.cjs`（把 `docs/references/COMPETITOR-FIELD-REFERENCE-CLIENT.md` 渲染成交付版 docx，`--src`/`--out` 可覆盖）（注意：`generate-competitor-v2-business-docx.cjs` 默认输出路径硬编码到 `C:/Users/Administrator/Desktop/`，治理 B3 登记）
 
 ## G. 合同与决策文档（14 个 .md，git 已跟踪，治理归属待定）
 

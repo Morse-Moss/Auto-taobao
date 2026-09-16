@@ -95,7 +95,9 @@ test('requires source identity and output directory', () => {
     '--output-directory', 'D:/tmp/batch',
   ]);
   assert.equal(options.productId, '1');
-  assert.equal(options.proxy, 'http://127.0.0.1:3456');
+  // 本项目专用 CDP 代理是 3457（AGENTS.md / docs/ops/PROJECT-BROWSER-AND-PORTS.md）；
+  // 3456 属于另一个项目且未装小旺神，默认值不得落在那里。
+  assert.equal(options.proxy, 'http://127.0.0.1:3457');
 });
 
 test('writes and deduplicates an AUTH_REQUIRED operator alert without external notification', async () => {

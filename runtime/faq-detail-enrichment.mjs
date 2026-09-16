@@ -13,7 +13,15 @@ const TEXT = 1;
 const NUMBER = 2;
 const DATE = 5;
 
-export const FAQ_DETAIL_ENRICHMENT_VERSION = 'faq-detail-replacement-v3.2.0';
+// 版本号随语义改名：v3.2.0 是「整体替换」时代的编号，现役语义是「周表 + 总表只新增」，
+// 继续沿用 replacement 字样会让收据上的 mode 与 version 自相矛盾。
+export const FAQ_DETAIL_ENRICHMENT_VERSION = 'faq-detail-append-v3.3.0';
+// 退役线（整体替换）的版本号必须原样保留：2026-08-23 那期线上 base 就是这么发布的，
+// 收据还得能读。否则旧周期会被状态机判成「未发布」，下一轮会去重跑并动已发布的数据。
+export const FAQ_LEGACY_REPLACEMENT_VERSION = 'faq-detail-replacement-v3.2.0';
+// 发布收据模式：周表补齐/替换 + 总表只新增。契约常量放在领域模块里，发布脚本与
+// 状态机（run-faq-operator.mjs 的 publicationVerified）共用同一个字面量，避免各写一份。
+export const FAQ_PUBLISH_MODE = 'WEEKLY_PUBLISHED_MASTER_APPENDED_AND_VERIFIED';
 export const FAQ_DETAIL_JUDGMENT_FIELD = '是否痛点';
 export const FAQ_DETAIL_PERIOD_FIELDS = [
   { name: '周期开始日期', type: DATE },
@@ -190,3 +198,65 @@ export function assertDetailReadBack({ records, expectedRows, expectedFields = F
 export function enrichmentFieldsForRecord(record, operatorContent) {
   return operatorFields(record, operatorContent);
 }
+
+// ── 总表「只新增」────────────────────────────────────────────────────────────
+// 运营口径（2026-09-16）：`问题主库` 是总表、长期沉淀，**不能替换**；跟词库/竞品库一样
+// 分「周表 + 总表」，总表现阶段**只新增**。与竞品历史总表同约定——见
+// competitor-history-publish-core.mjs 的 buildHistoryPlan 返回 { creates, updates, deletes: [] }。
+//
+// 判重键＝sourceTopicIdentity = `来源记录唯一键` + `分类标签`（同一原始记录可命中多个标签，
+// 故是「源 × 话题」二元组，与周表行的唯一性断言同一把尺）。
+// 契约：deletes 恒为空数组；已存在的身份**绝不修改、绝不删除**；内容有差异只记 conflicts 供人看，
+// 不写库（覆盖历史事实不是「只新增」）。
+export function buildDetailAppendPlan({ desiredRows, existingRecords, label = '问题主库' }) {
+  const existing = new Map();
+  for (const record of existingRecords ?? []) {
+    const fields = fieldsOf(record);
+    const key = sourceTopicIdentity(fields);
+    if (existing.has(key)) throw new Error(`${label} has duplicate existing source-topic identity: ${key.replace('\n', ' / ')}`);
+    existing.set(key, { recordId: record?.recordId ?? record?.record_id ?? null, fields });
+  }
+  const seen = new Set();
+  const creates = [];
+  const conflicts = [];
+  for (const row of desiredRows ?? []) {
+    const key = sourceTopicIdentity(row);
+    if (seen.has(key)) throw new Error(`${label} has duplicate desired source-topic identity: ${key.replace('\n', ' / ')}`);
+    seen.add(key);
+    const prior = existing.get(key);
+    if (!prior) {
+      creates.push(row);
+      continue;
+    }
+    const priorFields = comparableRow(prior.fields);
+    const desiredFields = comparableRow(row);
+    const changedFields = FAQ_DETAIL_FIELDS
+      .map(({ name }) => name)
+      .filter((name) => priorFields[name] !== desiredFields[name]);
+    if (changedFields.length) conflicts.push({ identity: key.replace('\n', ' / '), changedFields });
+  }
+  return {
+    creates,
+    conflicts,
+    deletes: [],
+    existingCount: existing.size,
+    desiredCount: seen.size,
+    overlapCount: seen.size - creates.length,
+  };
+}
+
+// 追加后的回读断言：总表行数必须恰为「追加前行数 + 本次新增数」，且每条新增身份都能读到。
+// 不做「少一行也算过」的宽容——总表只新增，行数对不上就说明有别的写入方在动这张表。
+export function assertAppendReadBack({ records, appended, expectedCountBefore, label = '问题主库' }) {
+  const keys = new Set((records ?? []).map((record) => sourceTopicIdentity(fieldsOf(record))));
+  if (keys.size !== (records ?? []).length) throw new Error(`${label} has duplicate source-topic identity after append`);
+  if (records.length !== expectedCountBefore + appended.length) {
+    throw new Error(`${label} record count mismatch after append: ${records.length} != ${expectedCountBefore} + ${appended.length}`);
+  }
+  for (const row of appended) {
+    const key = sourceTopicIdentity(row);
+    if (!keys.has(key)) throw new Error(`${label} missing appended identity: ${key.replace('\n', ' / ')}`);
+  }
+  return { recordCount: records.length, appendedCount: appended.length };
+}
+

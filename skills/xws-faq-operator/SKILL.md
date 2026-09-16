@@ -7,7 +7,7 @@ metadata:
 
 # FAQ 周更运营入口
 
-这是运营唯一需要使用的 FAQ Skill。运营不需要知道脚本路径或公式；只有发布阶段需要确认 `问题主库` 和当前周表的 table ID。原始证据、分类明细和汇总过程由 Skill 保存在本地，运营最终验收 `问题主库` 与周期周表。
+这是运营唯一需要使用的 FAQ Skill。运营不需要知道脚本路径或公式；发布阶段也不需要提供任何 table ID（总表由 `runtime/feishu-targets.mjs` 的唯一来源决定，周表按 `问题库_<周期>` 发现、缺失即建）。原始证据、分类明细和汇总过程由 Skill 保存在本地，运营最终验收 `问题主库` 与周期周表。
 
 ## 自然语言入口
 
@@ -54,17 +54,19 @@ node runtime/run-flow-orchestrator.mjs --flow faq --period-start YYYY-MM-DD --pe
 
 - 每次只执行一个 `--advance`，执行后复读状态收据；连续两次推进后收据无变化则停止（`STOP_STUCK`），不空转。
 - `COLLECT_EVIDENCE` 和 `REVIEW_AI_HUMAN_QUEUE` 一律停止并交给浏览器流程或人工队列，绝不代做。
-- `PUBLISH_FEISHU_SUMMARIES` 需要显式 `--authorize-publish --master-table-id <ID> --weekly-table-id <ID> --operator-xlsx <文件>`；缺任一参数即停止（`STOP_AUTHORIZATION_REQUIRED`）。
+- `PUBLISH_FEISHU_SUMMARIES` 需要显式 `--operator-xlsx <文件>`；表 id 不必再传（总表默认取 `runtime/feishu-targets.mjs` 的 `questionMaster`，周表按 `问题库_<周期>` 名字发现、缺失即补建）。缺 `--operator-xlsx` 即停止（`STOP_AUTHORIZATION_REQUIRED`）。
 - 每次决策追加到 `runtime/orchestrator/faq-<周期>/events.jsonl`，最终只输出面向运营的报告字段。
 - 未知 `nextAction` 一律失败（fail-closed），不猜测。
 
 调度器停在哪，Codex 就从哪个停点接管：浏览器停点回到浏览器流程，人工停点报告运营，授权停点请求运营确认。
 
 ```powershell
-node runtime/publish-faq-detail-enrichment.mjs --phase prepare --period-start YYYY-MM-DD --period-end YYYY-MM-DD --operator-xlsx <运营-xlsx> --master-table-id <问题主库-table-id> --weekly-table-id <问题库-周表-table-id>
+node runtime/publish-faq-detail-enrichment.mjs --phase publish --period-start YYYY-MM-DD --period-end YYYY-MM-DD --operator-xlsx <运营-xlsx>
 ```
 
-`prepare --apply` 只创建、写入和回读两张候选表，不改名、不删除旧表。随后用 candidate receipt 的精确 SHA-256 和两张候选 table ID 执行 `switch` dry-run；验证通过后才允许独立执行 `switch --apply`。
+不加 `--apply` 只产出 dry-run 门禁报告（`feishuWrites: 0`）；真正写库要另加 `--apply --confirm-app-token <base-token>`。单阶段，没有 candidate/switch 两步。
+
+周表已有历史行且与本期不一致时，脚本会拒绝并提示加 `--replace-weekly`（避免误覆盖）。
 
 ## 固定流程
 
@@ -74,9 +76,16 @@ node runtime/publish-faq-detail-enrichment.mjs --phase prepare --period-start YY
 4. 通过 `runtime/run-faq-text-analysis.mjs` 生成本地 `classified-records.jsonl` 与 `classification-receipt.json`；规则版本必须写入记录，禁止调用飞书 AI 代替固定规则。
 5. 对规则层判为 `需人工核验` 的逐主题候选，使用固定版本 AI prompt 复核；AI 结果必须通过任务身份、连续原文证据、置信度和判断一致性质量门，未通过或 provider 失败的任务进入本地人工队列。
 6. 将 AI 结论与运营人工决议合并为最终分类快照；人工队列清零并生成可审计确认结果前，不得生成最终汇总或进入发布阶段。
-7. 通过 `runtime/run-faq-topic-summary.mjs` 从最终分类快照生成本地周汇总和全部有效周累计汇总；跨周去重、出现次数和占比均由本地确定性规则计算。随后通过 `runtime/publish-faq-detail-enrichment.mjs` 从最终 source-topic 快照全量生成候选问题主库和周期周表，完整验证后安全替换旧表。
+7. 通过 `runtime/run-faq-topic-summary.mjs` 从最终分类快照生成本地周汇总和全部有效周累计汇总；跨周去重、出现次数和占比均由本地确定性规则计算。随后通过 `runtime/publish-faq-detail-enrichment.mjs` 发布：**周表**（`问题库_<周期>`）缺表就建、按本期明细写入；**总表**（`问题主库`）**只新增**，已存在的 `来源记录唯一键 + 分类标签` 一律不改不删。
 
-## 双表明细替换规则
+## 周表 + 总表（只新增）
+
+- **周表** `问题库_<周期>`：本周期的明细行，按周期独立存在。本期缺表时**自动建表**（历史 `ensureQuestionTable` 语义，迁移 3 曾把这个能力连带删掉）。已有历史行且与本期不一致时必须显式 `--replace-weekly` 才覆盖。
+- **总表** `问题主库`：长期沉淀，**只新增**。判重键＝`来源记录唯一键 + 分类标签`；命中即跳过，内容有差异只记 `conflicts` 供人看、**不写库**；`deletes` 恒为 `0`。与竞品历史总表同约定（`competitor-history-publish-core.mjs` 的 `buildHistoryPlan`）。
+- 发布收据 `detail-enrichment-receipt.json` 的 `mode = WEEKLY_PUBLISHED_MASTER_APPENDED_AND_VERIFIED`，状态机（`run-faq-operator.mjs` 的 `publicationVerified`）会咬住 `recordsAfter === recordsBefore + appended` 与 `deletes === 0`：总表少一行都不算发布成功。
+- 回滚：`detail-append-backup-<时间戳>.json` 记录周表旧行与本次追加的身份集合；失败时自动撤回本次追加的行、还原周表（自建周表则删除）。
+
+## 明细行唯一性规则
 
 - 每个实际提及主题必须是独立的 `来源记录唯一键 + 分类标签` 正式行；明确正面提及的问题主题保留该行并判 `否`，未提及主题不得伪造 `否` 行，也不得生成来源×全部主题的笛卡尔积。
 - 本地最终分类快照必须绑定当前规则版本、完整 artifact SHA-256、source-topic 集合 SHA-256、遗留主题审计和零人工队列；任何不一致直接阻断。
@@ -96,7 +105,7 @@ node runtime/publish-faq-detail-enrichment.mjs --phase prepare --period-start YY
 - 本地原始快照收据
 - 本地分类快照收据
 - 本地周汇总和累计汇总收据
-- 候选表 prepare 收据、旧表备份和最终替换收据
+- 发布收据 `detail-enrichment-receipt.json`（`mode = WEEKLY_PUBLISHED_MASTER_APPENDED_AND_VERIFIED`）与 `detail-append-backup-<时间戳>.json` 回滚备份
 - 统一状态收据 `runtime/faq-analysis/<周期>/operator-status.json`
 
 对运营的最终报告只包含：周期、TOP5 数量、原始记录数、去重有效记录数、主库与周表行数、是否完成、阻断原因和下一步动作。
