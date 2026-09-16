@@ -1,0 +1,387 @@
+{
+  "generatedAt": "2026-09-16T13:23:13.539Z",
+  "defaultPeriod": "2026-09-13_2026-09-19",
+  "availableChains": [
+    {
+      "key": "faq",
+      "label": "FAQ 分析链",
+      "stageList": true,
+      "statusFiles": "runtime/faq-analysis/<周期>/operator-status.json"
+    }
+  ],
+  "missingChains": [
+    {
+      "key": "dailyReport",
+      "label": "日报链",
+      "reason": "还没有 operator CLI（G6），也完全没有登录态判定（G2）"
+    },
+    {
+      "key": "weekly",
+      "label": "周更链",
+      "reason": "没有 operator CLI 与阶段表（G6/G5）"
+    },
+    {
+      "key": "competitor",
+      "label": "竞品导出链",
+      "reason": "没有 operator CLI 与阶段表（G6/G5）"
+    }
+  ],
+  "runs": [
+    {
+      "period": "2026-09-13_2026-09-19",
+      "available": true,
+      "statusSource": "runtime/faq-analysis",
+      "sourcePath": "runtime/faq-analysis/2026-09-13_2026-09-19/operator-status.json",
+      "status": "DONE",
+      "nextAction": "DONE",
+      "blocker": null,
+      "checkedAt": "2026-09-16T04:11:19.298Z",
+      "ageMs": 33114240,
+      "stale": false,
+      "stageCounts": {
+        "done": 8,
+        "total": 8,
+        "current": 0
+      },
+      "stages": [
+        {
+          "field": "manifestLocked",
+          "name": "LOCK_TOP5",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "evidenceComplete",
+          "name": "COLLECT_EVIDENCE",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localSnapshotBuilt",
+          "name": "BUILD_LOCAL_SNAPSHOT",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localAnalysisVerified",
+          "name": "ANALYZE_LOCAL",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "aiReviewComplete",
+          "name": "RUN_AI_REVIEW",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "humanReviewComplete",
+          "name": "REVIEW_AI_HUMAN_QUEUE",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localSummariesBuilt",
+          "name": "BUILD_LOCAL_SUMMARIES",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "summariesPublished",
+          "name": "PUBLISH_FEISHU_SUMMARIES",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        }
+      ],
+      "evidence": {
+        "rawRecords": 27,
+        "topicRecords": 21,
+        "operatorRecords": 2073,
+        "top5Count": 1
+      }
+    },
+    {
+      "period": "2026-09-06_2026-09-12",
+      "available": true,
+      "statusSource": "runtime/faq-analysis",
+      "sourcePath": "runtime/faq-analysis/2026-09-06_2026-09-12/operator-status.json",
+      "status": "DONE",
+      "nextAction": "DONE",
+      "blocker": null,
+      "checkedAt": "2026-09-15T06:06:19.775Z",
+      "ageMs": 112613763,
+      "stale": false,
+      "stageCounts": {
+        "done": 8,
+        "total": 8,
+        "current": 0
+      },
+      "stages": [
+        {
+          "field": "manifestLocked",
+          "name": "LOCK_TOP5",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "evidenceComplete",
+          "name": "COLLECT_EVIDENCE",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localSnapshotBuilt",
+          "name": "BUILD_LOCAL_SNAPSHOT",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localAnalysisVerified",
+          "name": "ANALYZE_LOCAL",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "aiReviewComplete",
+          "name": "RUN_AI_REVIEW",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "humanReviewComplete",
+          "name": "REVIEW_AI_HUMAN_QUEUE",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localSummariesBuilt",
+          "name": "BUILD_LOCAL_SUMMARIES",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "summariesPublished",
+          "name": "PUBLISH_FEISHU_SUMMARIES",
+          "complete": true,
+          "skipped": true,
+          "reason": "本周 0 条源记录：汇总已完成，发布是空操作",
+          "current": false
+        }
+      ],
+      "evidence": {
+        "rawRecords": 0,
+        "topicRecords": 21,
+        "operatorRecords": 0,
+        "top5Count": 1
+      }
+    },
+    {
+      "period": "2026-08-30_2026-09-05",
+      "available": true,
+      "statusSource": "runtime/faq-analysis",
+      "sourcePath": "runtime/faq-analysis/2026-08-30_2026-09-05/operator-status.json",
+      "status": "DONE",
+      "nextAction": "DONE",
+      "blocker": null,
+      "checkedAt": "2026-09-13T03:43:17.802Z",
+      "ageMs": 293995736,
+      "stale": false,
+      "stageCounts": {
+        "done": 8,
+        "total": 8,
+        "current": 0
+      },
+      "stages": [
+        {
+          "field": "manifestLocked",
+          "name": "LOCK_TOP5",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "evidenceComplete",
+          "name": "COLLECT_EVIDENCE",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localSnapshotBuilt",
+          "name": "BUILD_LOCAL_SNAPSHOT",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localAnalysisVerified",
+          "name": "ANALYZE_LOCAL",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "aiReviewComplete",
+          "name": "RUN_AI_REVIEW",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "humanReviewComplete",
+          "name": "REVIEW_AI_HUMAN_QUEUE",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localSummariesBuilt",
+          "name": "BUILD_LOCAL_SUMMARIES",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "summariesPublished",
+          "name": "PUBLISH_FEISHU_SUMMARIES",
+          "complete": true,
+          "skipped": true,
+          "reason": "本周 0 条源记录：汇总已完成，发布是空操作",
+          "current": false
+        }
+      ],
+      "evidence": {
+        "rawRecords": 0,
+        "topicRecords": 21,
+        "operatorRecords": 0,
+        "top5Count": 0
+      }
+    },
+    {
+      "period": "2026-08-23_2026-08-29",
+      "available": true,
+      "statusSource": "runtime/faq-analysis",
+      "sourcePath": "runtime/faq-analysis/2026-08-23_2026-08-29/operator-status.json",
+      "status": "DONE",
+      "nextAction": "DONE",
+      "blocker": null,
+      "checkedAt": "2026-09-16T13:06:24.313Z",
+      "ageMs": 1009225,
+      "stale": false,
+      "stageCounts": {
+        "done": 8,
+        "total": 8,
+        "current": 0
+      },
+      "stages": [
+        {
+          "field": "manifestLocked",
+          "name": "LOCK_TOP5",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "evidenceComplete",
+          "name": "COLLECT_EVIDENCE",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localSnapshotBuilt",
+          "name": "BUILD_LOCAL_SNAPSHOT",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localAnalysisVerified",
+          "name": "ANALYZE_LOCAL",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "aiReviewComplete",
+          "name": "RUN_AI_REVIEW",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "humanReviewComplete",
+          "name": "REVIEW_AI_HUMAN_QUEUE",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "localSummariesBuilt",
+          "name": "BUILD_LOCAL_SUMMARIES",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        },
+        {
+          "field": "summariesPublished",
+          "name": "PUBLISH_FEISHU_SUMMARIES",
+          "complete": true,
+          "skipped": false,
+          "reason": null,
+          "current": false
+        }
+      ],
+      "evidence": {
+        "rawRecords": 1415,
+        "topicRecords": 21,
+        "operatorRecords": 2023,
+        "top5Count": 5
+      }
+    }
+  ]
+}

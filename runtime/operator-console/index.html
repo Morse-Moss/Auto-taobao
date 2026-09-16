@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>运营台 · sycm-automation</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <h1>运营台</h1>
+    <span class="sub">sycm-automation · 本机控制台 · 127.0.0.1</span>
+  </div>
+  <div class="topbar-meta" id="topbar-meta"><span>正在读取…</span></div>
+</header>
+
+<div class="banner banner-info" id="banner-summary">正在从本机读取状态…</div>
+
+<main>
+  <!-- ① 今天 -->
+  <section class="block" id="block-today">
+    <header>
+      <span class="idx">1</span><h2>今天</h2>
+      <span class="hint">该做什么 · 上次跑完是什么时候 · 结果在哪</span>
+    </header>
+    <div class="block-body" id="today-body"><div class="empty">读取中…</div></div>
+  </section>
+
+  <!-- ② 账号体检 -->
+  <section class="block" id="block-accounts">
+    <header>
+      <span class="idx">2</span><h2>账号体检</h2>
+      <span class="hint">按浏览器 profile 分组：甲＝买家号（小旺神）· 乙＝商家号（生意参谋/千牛/阿里妈妈）</span>
+    </header>
+    <div id="accounts-notice"></div>
+    <div class="block-body flush">
+      <div class="columns" id="accounts-columns"><div class="empty" style="padding:14px">读取中…</div></div>
+    </div>
+    <div class="block-body" id="accounts-footer"></div>
+  </section>
+
+  <!-- ③ 启动 -->
+  <section class="block" id="block-launch">
+    <header>
+      <span class="idx">3</span><h2>启动</h2>
+      <span class="hint">路线 · 周期 · 预览这次会做什么 · 开始</span>
+    </header>
+    <div class="block-body" id="launch-body"><div class="empty">读取中…</div></div>
+  </section>
+
+  <!-- ④ 进度 -->
+  <section class="block" id="block-progress">
+    <header>
+      <span class="idx">4</span><h2>进度</h2>
+      <span class="hint">阶段清单（不是百分比）· 每个状态都指着一个文件</span>
+    </header>
+    <div class="block-body" id="progress-body"><div class="empty">读取中…</div></div>
+  </section>
+
+  <!-- ⑤ 需要你做的事 -->
+  <section class="block" id="block-todo" hidden>
+    <header>
+      <span class="idx">5</span><h2>需要你做的事</h2>
+      <span class="hint">系统自动修不了的，才列在这里</span>
+    </header>
+    <div class="block-body"><div class="todo" id="todo-list"></div></div>
+  </section>
+</main>
+
+<footer class="footnote" id="foot"></footer>
+
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+{
+  "generatedAt": "2026-09-16T13:23:19.258Z",
+  "base": "http://127.0.0.1:19024",
+  "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "passed": 25,
+  "failed": 0,
+  "total": 25,
+  "notCovered": [
+    "「甲列登出后乙列不受影响」需要真实体检接线（G1/G2），一期账号灯是示例数据，无法验证",
+    "「登录后自动续跑」需要 loginSession 与 operator CLI（G3/G4），未实现",
+    "「探队列三种脸」需要队列探针的生产调用方（G4），未实现"
+  ],
+  "results": [
+    {
+      "name": "控制台在运行且只读",
+      "ok": true,
+      "detail": "{\"host\":\"127.0.0.1\",\"port\":19024,\"readonly\":true}"
+    },
+    {
+      "name": "GET /api/env 返回 200",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "GET /api/accounts 返回 200",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "GET /api/runs 返回 200",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "页面渲染完成（body[data-render-state=rendered]）",
+      "ok": true,
+      "detail": "需要 virtual-time-budget 放完异步请求"
+    },
+    {
+      "name": "页面没有落到错误态",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "进度块渲染的是接口给的那个周期",
+      "ok": true,
+      "detail": "周期 2026-09-13_2026-09-19"
+    },
+    {
+      "name": "阶段清单与接口逐条一致",
+      "ok": true,
+      "detail": "页面 8 个 / 接口 8 个"
+    },
+    {
+      "name": "「进行中」的阶段最多一个",
+      "ok": true,
+      "detail": "current=0"
+    },
+    {
+      "name": "阶段外观都在 {done,current,pending,skipped} 内",
+      "ok": true,
+      "detail": "done"
+    },
+    {
+      "name": "账号体检按浏览器 profile 分成两列",
+      "ok": true,
+      "detail": "列=competitor,dailyReport / 登记表=competitor,dailyReport"
+    },
+    {
+      "name": "账号卡与接口逐张一致",
+      "ok": true,
+      "detail": "6 张"
+    },
+    {
+      "name": "示例数据横幅存在",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "每张账号卡都标了 sample",
+      "ok": true,
+      "detail": "6/6"
+    },
+    {
+      "name": "预留的千牛卡是灰灯，不是绿灯",
+      "ok": true,
+      "detail": "lamp=grey"
+    },
+    {
+      "name": "五块都渲染出来了",
+      "ok": true,
+      "detail": "block-today,block-accounts,block-launch,block-progress,block-todo"
+    },
+    {
+      "name": "需要你做的事：有内容时不隐藏，且条数与接口一致",
+      "ok": true,
+      "detail": "hidden=false items=1"
+    },
+    {
+      "name": "页面上没有可点的按钮（一期只读）",
+      "ok": true,
+      "detail": "可点按钮 0 个"
+    },
+    {
+      "name": "截图 wide（1600,3400）",
+      "ok": true,
+      "detail": "D:\\Retire\\sycm-automation\\evidence\\operator-console-2026-09-16\\console-wide.png"
+    },
+    {
+      "name": "截图 narrow（900,3600）",
+      "ok": true,
+      "detail": "D:\\Retire\\sycm-automation\\evidence\\operator-console-2026-09-16\\console-narrow.png"
+    },
+    {
+      "name": "取不到状态时渲染出灰块",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "进度块的灰块理由是「有周期目录但没有状态文件」",
+      "ok": true,
+      "detail": "SCHEDULER_NOT_WIRED,QUEUE_PROBE_NOT_WIRED,NO_STATUS_FILE_IN_PERIOD_DIR,NO_STAGE_LIST_FOR_OTHER_CHAINS"
+    },
+    {
+      "name": "取不到时不渲染任何阶段（不许假绿）",
+      "ok": true,
+      "detail": "阶段数 0"
+    },
+    {
+      "name": "灰块写明了「读的是 / 应该读哪个文件」",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "截图 灰灯分支",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

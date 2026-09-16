@@ -1,0 +1,20 @@
+chrome: C:/Program Files/Google/Chrome/Application/chrome.exe
+console: http://127.0.0.1:19024
+PASS  控制台在运行且只读 → {"host":"127.0.0.1","port":19024,"readonly":true}
+PASS  GET /api/env 返回 200 → HTTP 200
+PASS  GET /api/accounts 返回 200 → HTTP 200
+PASS  GET /api/runs 返回 200 → HTTP 200
+PASS  页面渲染完成（body[data-render-state=rendered]） → 需要 virtual-time-budget 放完异步请求
+PASS  页面没有落到错误态
+PASS  进度块渲染的是接口给的那个周期 → 周期 2026-09-13_2026-09-19
+PASS  阶段清单与接口逐条一致 → 页面 8 个 / 接口 8 个
+PASS  「进行中」的阶段最多一个 → current=0
+PASS  阶段外观都在 {done,current,pending,skipped} 内 → done
+PASS  账号体检按浏览器 profile 分成两列 → 列=competitor,dailyReport / 登记表=competitor,dailyReport
+PASS  账号卡与接口逐张一致 → 6 张
+PASS  示例数据横幅存在
+PASS  每张账号卡都标了 sample → 6/6
+PASS  预留的千牛卡是灰灯，不是绿灯 → lamp=grey
+PASS  页面上没有可点的按钮（一期只读） → 可点按钮 0 个
+PASS  截图 wide（1600,2400） → D:\Retire\sycm-automation\evidence\operator-console-2026-09-16\console-wide.png
+PASS  截图 narrow（900,2600） → D:\Retire\sycm-automation\evidence\operator-console-2026-09-16\console-narrow.png

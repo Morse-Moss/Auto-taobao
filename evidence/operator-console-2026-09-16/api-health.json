@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "console": {
+    "host": "127.0.0.1",
+    "port": 19024,
+    "readonly": true
+  },
+  "runtimeRoot": "D:\\Retire\\sycm-automation\\runtime",
+  "repoRoot": "D:\\Retire\\sycm-automation",
+  "now": "2026-09-16T13:23:13.559Z"
+}

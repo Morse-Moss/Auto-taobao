@@ -1,0 +1,194 @@
+{
+  "generatedAt": "2026-09-16T13:23:13.513Z",
+  "console": {
+    "port": 19024,
+    "portKey": "operatorConsole",
+    "host": "127.0.0.1",
+    "source": "runtime/browser-ports.mjs#PROJECT_PORTS.operatorConsole"
+  },
+  "routes": [
+    {
+      "key": "competitor",
+      "label": "竞品（小旺神市场分析 / SKU / FAQ / 词库采集）",
+      "browser": "competitor",
+      "noBrowser": false,
+      "noBrowserReason": null,
+      "account": "buyer",
+      "needsExtension": "小旺神",
+      "sites": [
+        "s.taobao.com",
+        "item.taobao.com",
+        "detail.tmall.com"
+      ],
+      "skills": [
+        "xws-export-market-analysis",
+        "xws-sku-collection",
+        "xws-faq-operator",
+        "xws-faq-raw-collection",
+        "xws-question-library-collection"
+      ]
+    },
+    {
+      "key": "competitorImport",
+      "label": "竞品入库（小旺神导出 → 飞书 API）",
+      "browser": null,
+      "noBrowser": true,
+      "noBrowserReason": "上传走飞书开放接口，不开浏览器、不读登录态；照片附件也走接口。",
+      "account": "independent",
+      "needsExtension": null,
+      "sites": [
+        "feishu.cn"
+      ],
+      "skills": [
+        "xws-to-feishu-base"
+      ]
+    },
+    {
+      "key": "keywordRank",
+      "label": "关键词·搜索排行（生意参谋）",
+      "browser": "dailyReport",
+      "noBrowser": false,
+      "noBrowserReason": null,
+      "account": "merchant",
+      "needsExtension": null,
+      "sites": [
+        "sycm.taobao.com"
+      ],
+      "skills": [
+        "sycm-export-search-rank"
+      ]
+    },
+    {
+      "key": "keywordHeat",
+      "label": "关键词·灰豚话题热度（小红书）",
+      "browser": "dailyReport",
+      "noBrowser": false,
+      "noBrowserReason": null,
+      "account": "independent",
+      "needsExtension": null,
+      "sites": [
+        "xhs.huitun.com",
+        "dy.huitun.com"
+      ],
+      "skills": [
+        "huitun-to-feishu-keyword-heat"
+      ]
+    },
+    {
+      "key": "dailyReport",
+      "label": "日报（生意参谋 + 万相台/阿里妈妈 + 飞书）",
+      "browser": "dailyReport",
+      "noBrowser": false,
+      "noBrowserReason": null,
+      "account": "merchant",
+      "needsExtension": null,
+      "sites": [
+        "sycm.taobao.com",
+        "one.alimama.com",
+        "feishu.cn"
+      ],
+      "skills": [
+        "sycm-alimama-daily-report"
+      ]
+    },
+    {
+      "key": "weeklyPaste",
+      "label": "周表粘贴（周表 → 飞书网页）",
+      "browser": "dailyReport",
+      "noBrowser": false,
+      "noBrowserReason": null,
+      "account": "independent",
+      "needsExtension": null,
+      "sites": [
+        "feishu.cn"
+      ],
+      "skills": [
+        "sycm-to-feishu-base"
+      ]
+    },
+    {
+      "key": "sellerWorkbench",
+      "label": "千牛 / 卖家工作台（预留：仓库内暂无调用方）",
+      "browser": "dailyReport",
+      "noBrowser": false,
+      "noBrowserReason": null,
+      "account": "merchant",
+      "needsExtension": null,
+      "sites": [
+        "myseller.taobao.com",
+        "qianniu.taobao.com"
+      ],
+      "skills": []
+    }
+  ],
+  "browsers": [
+    {
+      "key": "competitor",
+      "label": "Microsoft Edge (isolated)",
+      "account": "buyer",
+      "profile": "D:/Retire/edge-debug-profile",
+      "routesSummary": "账号=buyer 插件=小旺神 路线=competitor",
+      "routes": [
+        "competitor"
+      ],
+      "lights": {
+        "browser": {
+          "port": 9222,
+          "portKey": "competitorBrowser",
+          "verdict": "free",
+          "lamp": "grey",
+          "text": "没在运行",
+          "occupant": null
+        },
+        "proxy": {
+          "port": 3457,
+          "portKey": "competitorProxy",
+          "status": "free",
+          "lamp": "grey",
+          "text": "没在运行"
+        },
+        "config": {
+          "path": "D:/Retire/edge-debug-profile",
+          "lamp": "green",
+          "text": "配置目录在"
+        }
+      }
+    },
+    {
+      "key": "dailyReport",
+      "label": "Microsoft Edge (daily report)",
+      "account": "merchant",
+      "profile": "D:/Retire/edge-daily-report-profile",
+      "routesSummary": "账号=merchant/independent 路线=keywordRank, keywordHeat, dailyReport, weeklyPaste, sellerWorkbench",
+      "routes": [
+        "keywordRank",
+        "keywordHeat",
+        "dailyReport",
+        "weeklyPaste",
+        "sellerWorkbench"
+      ],
+      "lights": {
+        "browser": {
+          "port": 19022,
+          "portKey": "dailyReportBrowser",
+          "verdict": "free",
+          "lamp": "grey",
+          "text": "没在运行",
+          "occupant": null
+        },
+        "proxy": {
+          "port": 19023,
+          "portKey": "dailyReportProxy",
+          "status": "free",
+          "lamp": "grey",
+          "text": "没在运行"
+        },
+        "config": {
+          "path": "D:/Retire/edge-daily-report-profile",
+          "lamp": "green",
+          "text": "配置目录在"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "generatedAt": "2026-09-16T13:23:13.515Z",
+  "probed": false,
+  "statusSource": "SAMPLE_NOT_PROBED",
+  "notice": "账号灯是示例数据，尚未接真实体检（体检目前只覆盖小旺神/竞品链，见 G1/G2）。界面上的按钮是样子，点了不会有动作。",
+  "notYetEmittedStatuses": [
+    "AUTH_EXPIRING",
+    "RISK_BLOCKED"
+  ],
+  "groups": [
+    {
+      "key": "competitor",
+      "label": "Microsoft Edge (isolated)",
+      "account": "buyer",
+      "profile": "D:/Retire/edge-debug-profile",
+      "routesSummary": "账号=buyer 插件=小旺神 路线=competitor",
+      "cards": [
+        {
+          "accountKey": "competitor:taobaoBuyer",
+          "platform": "taobaoBuyer",
+          "title": "淘宝买家号",
+          "note": "小旺神插件只有买家号能用",
+          "profileKey": "competitor",
+          "reserved": false,
+          "status": "AUTH_READY",
+          "lamp": "green",
+          "statusLabel": "已登录",
+          "reason": "样例：这次检查没看到登录墙（不是真实检查结果）",
+          "action": null,
+          "checkedAt": null,
+          "evidencePath": null,
+          "buttons": [],
+          "notYetEmitted": false,
+          "sample": true
+        }
+      ]
+    },
+    {
+      "key": "dailyReport",
+      "label": "Microsoft Edge (daily report)",
+      "account": "merchant",
+      "profile": "D:/Retire/edge-daily-report-profile",
+      "routesSummary": "账号=merchant/independent 路线=keywordRank, keywordHeat, dailyReport, weeklyPaste, sellerWorkbench",
+      "cards": [
+        {
+          "accountKey": "dailyReport:sycm",
+          "platform": "sycm",
+          "title": "生意参谋",
+          "note": null,
+          "profileKey": "dailyReport",
+          "reserved": false,
+          "status": "AUTH_READY",
+          "lamp": "green",
+          "statusLabel": "已登录",
+          "reason": "样例：这次检查没看到登录墙（不是真实检查结果）",
+          "action": null,
+          "checkedAt": null,
+          "evidencePath": null,
+          "buttons": [],
+          "notYetEmitted": false,
+          "sample": true
+        },
+        {
+          "accountKey": "dailyReport:huitun",
+          "platform": "huitun",
+          "title": "灰豚",
+          "note": "用它自己的账号，扫码 + 拼图验证",
+          "profileKey": "dailyReport",
+          "reserved": false,
+          "status": "AUTH_REQUIRED",
+          "lamp": "red",
+          "statusLabel": "需要登录",
+          "reason": "样例：页面出现了「登录小旺神」弹窗（不是真实检查结果）",
+          "action": null,
+          "checkedAt": null,
+          "evidencePath": null,
+          "buttons": [
+            {
+              "id": "open-login",
+              "text": "打开登录窗口"
+            }
+          ],
+          "notYetEmitted": false,
+          "sample": true
+        },
+        {
+          "accountKey": "dailyReport:alimama",
+          "platform": "alimama",
+          "title": "阿里妈妈 / 万相台",
+          "note": null,
+          "profileKey": "dailyReport",
+          "reserved": false,
+          "status": "AUTH_UNKNOWN",
+          "lamp": "grey",
+          "statusLabel": "读不到结论",
+          "reason": "样例：探测读不到确定结论，按不放行处理（不是真实检查结果）",
+          "action": null,
+          "checkedAt": null,
+          "evidencePath": null,
+          "buttons": [
+            {
+              "id": "recheck",
+              "text": "重新检查"
+            }
+          ],
+          "notYetEmitted": false,
+          "sample": true
+        },
+        {
+          "accountKey": "dailyReport:feishu",
+          "platform": "feishu",
+          "title": "飞书网页",
+          "note": "用它自己的账号，与淘宝身份无关",
+          "profileKey": "dailyReport",
+          "reserved": false,
+          "status": "AUTH_READY",
+          "lamp": "green",
+          "statusLabel": "已登录",
+          "reason": "样例：这次检查没看到登录墙（不是真实检查结果）",
+          "action": null,
+          "checkedAt": null,
+          "evidencePath": null,
+          "buttons": [],
+          "notYetEmitted": false,
+          "sample": true
+        },
+        {
+          "accountKey": "dailyReport:qianniu",
+          "platform": "qianniu",
+          "title": "千牛 / 卖家工作台",
+          "note": "预留：仓库内暂无调用方",
+          "profileKey": "dailyReport",
+          "reserved": true,
+          "status": null,
+          "lamp": "grey",
+          "statusLabel": "预留",
+          "reason": "预留：仓库内暂无调用方，不参与体检",
+          "action": null,
+          "checkedAt": null,
+          "evidencePath": null,
+          "buttons": [],
+          "notYetEmitted": false,
+          "sample": true
+        }
+      ]
+    }
+  ]
+}

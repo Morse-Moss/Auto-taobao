@@ -29,8 +29,9 @@
 //     system is unavailable, so the suite never fakes a green result.
 
 import { spawnSync } from 'node:child_process';
-import { readdirSync } from 'node:fs';
 import path from 'node:path';
+
+import { discoverRuntimeTests, discoverSkillTests } from './test-suite-discovery.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 
@@ -47,33 +48,9 @@ const EXCLUSIONS = [
   },
 ];
 
-function listTestFiles(relativeDir) {
-  const absolute = path.join(root, relativeDir);
-  let entries;
-  try {
-    entries = readdirSync(absolute);
-  } catch {
-    return [];
-  }
-  return entries
-    .filter((name) => name.endsWith('.test.mjs'))
-    .map((name) => path.join(relativeDir, name).replaceAll('\\', '/'));
-}
-
-function discoverSkillTests() {
-  const files = [];
-  for (const skill of readdirSync(path.join(root, 'skills'))) {
-    for (const subdir of ['tests', 'scripts']) {
-      files.push(...listTestFiles(path.join('skills', skill, subdir)));
-    }
-  }
-  return files.sort();
-}
-
-function discoverRuntimeTests() {
-  return listTestFiles('runtime').sort();
-}
-
+// 测试发现与「哪个目录归哪个套件」现在住在 scripts/test-suite-discovery.mjs ——
+// 抽出去是为了让 runtime 测试能断言它（见 runtime/test-suite-discovery.test.mjs）。
+// 那边的登记表必须恰好覆盖 runtime/ 下所有含测试的子目录；漏一个会红，而不是静默不跑。
 function runSuite(files, label, extraArgs = []) {
   if (files.length === 0) {
     console.log(`==> ${label}: no test files`);
