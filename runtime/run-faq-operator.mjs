@@ -296,7 +296,7 @@ export function buildAdvanceCommand(action, options, status = null) {
 }
 
 export function parseArgs(argv) {
-  const options = { baseUrl: DEFAULT_BASE_URL, envFile: DEFAULT_ENV_FILE, runtimeRoot: 'runtime', advance: false, replaceCurrent: false, persist: true };
+  const options = { baseUrl: DEFAULT_BASE_URL, envFile: DEFAULT_ENV_FILE, runtimeRoot: 'runtime', advance: false, persist: true };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--advance') options.advance = true;
@@ -305,7 +305,11 @@ export function parseArgs(argv) {
     // 但调度器/测试这类「看一眼」的调用方不该改运营可见状态。为什么必须成对拒 --advance：
     // 推进阶段带着「不落盘」跑，会真的动数据却不留收据——那是最坏的一种组合，直接拒掉。
     else if (arg === '--no-persist') options.persist = false;
-    else if (arg === '--replace-current') options.replaceCurrent = true;
+    // 这里曾经解析过一个 --replace-current，但解析后没有任何下游读取，是死开关。
+    // 现役发布线是明细线 runtime/publish-faq-detail-enrichment.mjs --phase publish：
+    // 语义是「总表只追加」，周表要覆盖用 --replace-weekly，明细线根本没有替换语义。
+    // 保留一个什么都不做的开关比报错更危险（运营以为替换了，其实没替换），故删除：
+    // 现在传它会被下面的 Unknown argument 直接拒掉。
     else if (['--base-url', '--env-file', '--runtime-root', '--period-start', '--period-end', '--master-table-id', '--weekly-table-id', '--operator-xlsx'].includes(arg)) {
       const value = argv[++index];
       if (!value || value.startsWith('--')) throw new Error(`${arg} requires a value`);

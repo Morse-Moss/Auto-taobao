@@ -294,6 +294,15 @@ test('--no-persist is opt-in and pairing it with --advance is refused outright',
   assert.throws(() => parseArgs([...base, '--advance', '--no-persist']), /--no-persist cannot be combined with --advance/u);
 });
 
+// --replace-current 曾经在这里被解析，但解析后没有任何下游读取：运营以为替换了，其实什么都没发生。
+// 现役发布线是明细线（总表只追加、周表覆盖用 --replace-weekly），所以这个开关已从参数表删除。
+// 这条断言把它钉住：再有人「顺手加回来」会立刻红。
+test('--replace-current is gone: it is rejected as an unknown argument, not silently accepted', () => {
+  const base = ['--period-start', '2026-08-23', '--period-end', '2026-08-29'];
+  assert.throws(() => parseArgs([...base, '--replace-current']), /Unknown argument: --replace-current/u);
+  assert.equal(Object.hasOwn(parseArgs(base), 'replaceCurrent'), false, '选项对象里不许再有 replaceCurrent 这个死字段');
+});
+
 test('the CLI writes operator-status.json by default and skips it under --no-persist', async () => {
   const root = await mkdtemp(join(tmpdir(), 'faq-operator-persist-'));
   const period = '2026-08-23_2026-08-29';

@@ -400,5 +400,9 @@ FAQ 链已经有 8 个有序阶段（`faq-operator-core.mjs:1-10`）：`LOCK_TOP
 - **不把界面做成第二个配置入口**：路线、端口、表 id 一律从 `runtime/browser-ports.mjs` /
   `runtime/feishu-targets.mjs` 读，页面上不许出现可编辑的这类值（默认值即目标，坑 35）。
 - **不为「未来可能的多店铺」提前抽象**：单机单店铺，车道恒 1。
-- **暴露 `run-faq-operator.mjs --replace-current`** —— 它解析后没有任何下游读取，是死开关。
-  要么先实现，要么从帮助文本里删掉，别让运营点一个没反应的键。
+- **~~暴露 `run-faq-operator.mjs --replace-current`~~（同日已按后者处理）** —— 它解析后没有任何下游读取，
+  是死开关；`README.md` 还写着「内容不一致时必须使用」，会把运营引到一个什么都不做的空动作上。
+  处理：从 `runtime/run-faq-operator.mjs` 的参数表里删掉（现在传它直接被 `Unknown argument` 拒掉），
+  并改写 `README.md` 那段为现役明细线的真实语义（总表只追加、周表覆盖用 `--replace-weekly`）。
+  汇总线 `runtime/publish-faq-summaries.mjs` 的同名开关是**活开关**（`replaceTable` 的防误覆盖保险），
+  退役线只读保留，不动。

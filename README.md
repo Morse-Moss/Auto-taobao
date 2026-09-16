@@ -46,7 +46,7 @@
 
 运营只使用 `xws-faq-operator`，飞书最终只保留累计主表 `问题主库` 和每周分类汇总表 `问题库_开始日期_结束日期`。原始证据、分类明细、跨周去重、周汇总和累计汇总全部保存在 `runtime/question-library-collection` 与 `runtime/faq-analysis`。TOP5 固定从最新有效竞品周的 A-爆款竞品与 B-高价值竞品中，按月收货人数计算值降序、序号升序锁定。分类使用运营固定目录的版本化多标签规则，出现次数和占比由本地确定性计算，不调用飞书 AI。
 
-统一入口为 `runtime/run-faq-operator.mjs`：`--status` 只读检查，`--advance` 每次只推进一个阶段；浏览器采集遇到登录、验证码、风控、额度或下载失败时停在当前商品并保留告警。发布前必须显式提供 `问题主库` 与当前周表的 table ID；内容不一致时必须使用 `--replace-current`，并执行双表备份、替换、回读和失败补偿。
+统一入口为 `runtime/run-faq-operator.mjs`：`--status` 只读检查（默认写 `operator-status.json`，调度器这类「看一眼」的调用方加 `--no-persist`），`--advance` 每次只推进一个阶段；浏览器采集遇到登录、验证码、风控、额度或下载失败时停在当前商品并保留告警。发布前必须显式提供 `问题主库` 与当前周表的 table ID。发布语义是**总表只追加**：明细线 `runtime/publish-faq-detail-enrichment.mjs --phase publish` 按 `来源记录唯一键＋分类标签` 增量追加，`deletes` 恒为 0；只有当前周表需要整体覆盖时才用 `--replace-weekly` 显式声明，并执行备份、替换、回读和失败补偿。明细线没有「替换总表」这一动作。
 
 ## 周更边界
 
