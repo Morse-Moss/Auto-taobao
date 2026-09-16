@@ -60,7 +60,7 @@ function stripComments(text) {
 test('端口登记表：两条链不重号，日报链已从通用值挪开', () => {
   assert.ok(Object.isFrozen(PROJECT_PORTS));
   const values = Object.values(PROJECT_PORTS);
-  assert.equal(new Set(values).size, values.length, '四个端口必须互不重复');
+  assert.equal(new Set(values).size, values.length, '这几个端口必须互不重复（含运营台那个非浏览器端口）');
   for (const value of values) {
     assert.ok(Number.isInteger(value) && value > 1023 && value < 49152, `${value} 必须是 1024-49151 之间的固定端口`);
   }

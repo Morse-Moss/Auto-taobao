@@ -27,6 +27,10 @@ export const PROJECT_PORTS = Object.freeze({
   // 日报链：商家号（生意参谋 / 阿里妈妈 / 飞书）
   dailyReportBrowser: 19022,
   dailyReportProxy: 19023,
+  // 运营台（本地控制台，2026-09-16 加）。它不是浏览器端口，但遵循同一条原则：
+  // 本项目的每个固定端口只在这里写一次，否则又会变成「默认值即目标」（坑 35）。
+  // 只监听 127.0.0.1，不绑 0.0.0.0 —— 它渲染的是登录态与运行状态，不该出本机。
+  operatorConsole: 19024,
 });
 
 export const BROWSER_IDS = Object.freeze({
