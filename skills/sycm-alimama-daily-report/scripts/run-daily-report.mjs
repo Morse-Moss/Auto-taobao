@@ -1,0 +1,228 @@
+#!/usr/bin/env node
+
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { dailyReportTargets, loadFeishuCredentials } from '../../../runtime/feishu-targets.mjs';
+import { buildCombinedFields, reportDateEpoch, valuesEqual } from './daily-report-core.mjs';
+
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
+const TARGET = dailyReportTargets('kcne');
+const DEFAULTS = Object.freeze({
+  proxy: 'http://127.0.0.1:3458',
+  appToken: TARGET.baseToken,
+  tableId: TARGET.sourceTable,
+  viewId: TARGET.sourceView,
+});
+
+function parseArgs(argv) {
+  const args = { ...DEFAULTS, commit: false, verifyExisting: false };
+  for (let index = 0; index < argv.length; index += 1) {
+    const key = argv[index];
+    if (key === '--commit') args.commit = true;
+    else if (key === '--verify-existing') args.verifyExisting = true;
+    else if (key === '--expected-before-count') args.expectedBeforeCount = Number(argv[++index]);
+    else if (key === '--shop-xlsx') args.shopXlsx = argv[++index];
+    else if (key === '--promotion-zip') args.promotionZip = argv[++index];
+    else if (key === '--date') args.reportDate = argv[++index];
+    else if (key === '--proxy') args.proxy = argv[++index];
+    else if (key === '--app-token') args.appToken = argv[++index];
+    else if (key === '--table-id') args.tableId = argv[++index];
+    else if (key === '--view-id') args.viewId = argv[++index];
+    else if (key === '--output-dir') args.outputDir = argv[++index];
+    else throw new Error(`unknown argument: ${key}`);
+  }
+  for (const required of ['shopXlsx', 'promotionZip', 'reportDate']) {
+    if (!args[required]) throw new Error(`missing required argument: ${required}`);
+  }
+  args.shopXlsx = path.resolve(args.shopXlsx);
+  args.promotionZip = path.resolve(args.promotionZip);
+  if (!existsSync(args.shopXlsx)) throw new Error(`shop workbook not found: ${args.shopXlsx}`);
+  if (!existsSync(args.promotionZip)) throw new Error(`promotion ZIP not found: ${args.promotionZip}`);
+  args.outputDir = path.resolve(args.outputDir || path.join(REPO_ROOT, 'evidence', `daily-report-${args.reportDate}`));
+  if (args.commit && args.verifyExisting) throw new Error('--commit and --verify-existing are mutually exclusive');
+  if (args.verifyExisting && !Number.isInteger(args.expectedBeforeCount)) {
+    throw new Error('--verify-existing requires --expected-before-count');
+  }
+  return args;
+}
+
+async function inspectTarget(args) {
+  const targets = await fetch(`${args.proxy}/targets`).then(response => response.json());
+  const matches = targets.filter(target => target.type === 'page' && target.url.includes(`/base/${args.appToken}`));
+  if (matches.length !== 1) throw new Error(`expected one Feishu page for target base, got ${matches.length}`);
+  const page = matches[0];
+  const url = new URL(page.url);
+  if (url.searchParams.get('table') !== args.tableId || url.searchParams.get('view') !== args.viewId) {
+    throw new Error(`Feishu page is not on authorized table/view: ${page.url}`);
+  }
+  const expression = `(() => {
+    const base = window.bitableStore?.modelOperator?.base;
+    if (!base) throw new Error('Feishu bitable model is not ready');
+    const table = Object.values(base.tables || {}).find(item => item?.id === ${JSON.stringify(args.tableId)});
+    const view = Object.values(table?.views || {}).find(item => item?.id === ${JSON.stringify(args.viewId)});
+    if (!table || !view) throw new Error('authorized table/view is not loaded');
+    const fields = Object.fromEntries(Object.values(table.fields || {}).filter(Boolean).map(field => [field.id, {
+      id: field.id, name: field.name, type: field.type
+    }]));
+    const visibleIds = view._visibleFieldIds || view.property?.fields || [];
+    return JSON.stringify({baseName: base.name, tableName: table.name, recordsNum: table.recordsNum,
+      fields: visibleIds.map(id => fields[id])});
+  })()`;
+  const response = await fetch(`${args.proxy}/eval?target=${encodeURIComponent(page.targetId)}`, {
+    method: 'POST', body: expression,
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || `Feishu schema eval failed: HTTP ${response.status}`);
+  const target = JSON.parse(payload.value);
+  if (target.baseName.replaceAll(' ', '') !== '各店铺日报副本' || target.tableName !== '总数据来源底单') {
+    throw new Error(`unexpected Feishu target identity: ${target.baseName} / ${target.tableName}`);
+  }
+  return target;
+}
+
+function extractSources(args) {
+  const python = process.env.SYCM_PYTHON || 'py';
+  const pythonArgs = path.basename(python).toLowerCase() === 'py' ? ['-3'] : [];
+  pythonArgs.push(path.join(SCRIPT_DIR, 'extract-sources.py'), '--shop-xlsx', args.shopXlsx,
+    '--promotion-zip', args.promotionZip, '--date', args.reportDate);
+  const result = spawnSync(python, pythonArgs, {
+    encoding: 'utf8',
+    windowsHide: true,
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+  });
+  if (result.status !== 0) throw new Error(`source extraction failed: ${result.stderr || result.stdout}`.trim());
+  return JSON.parse(result.stdout);
+}
+
+function sha256(file) {
+  return createHash('sha256').update(readFileSync(file)).digest('hex');
+}
+
+function buildPlan(args, target, source, fields) {
+  return {
+    mode: args.commit ? 'api-commit' : args.verifyExisting ? 'verify-existing' : 'dry-run',
+    reportDate: args.reportDate,
+    target: { appToken: args.appToken, tableId: args.tableId, viewId: args.viewId,
+      baseName: target.baseName, tableName: target.tableName },
+    source: {
+      shopFile: args.shopXlsx, shopSha256: sha256(args.shopXlsx), shopWorkbookRows: source.shop.workbookRows,
+      promotionFile: args.promotionZip, promotionSha256: sha256(args.promotionZip),
+      promotionCsv: source.promotion.csvName,
+    },
+    checks: {
+      visibleFields: target.fields.length,
+      shopColumns: source.shop.headers.length,
+      promotionColumns: source.promotion.headers.length,
+      promotionRows: source.promotion.rows.length,
+      payloadFields: Object.keys(fields).length,
+      shopName: fields['店铺名称'],
+      keywordSceneId: fields['场景ID'],
+      audienceSceneId: fields['场景ID (1)'],
+      dateEpoch: reportDateEpoch(args.reportDate),
+      targetOnlyPromotionFieldsBlank: ['原二级场景ID', '原二级场景名字', '原二级场景ID (1)', '原二级场景名字 (1)']
+        .every(name => !Object.hasOwn(fields, name)),
+    },
+    fields,
+  };
+}
+
+function verifyCreatedRecord(created, fields, target) {
+  const fieldsByName = new Map(target.fields.map(field => [field.name, field]));
+  const mismatches = Object.entries(fields).filter(([name, expected]) =>
+    !valuesEqual(expected, created.fields?.[name], fieldsByName.get(name)));
+  if (mismatches.length) {
+    throw new Error(`readback mismatch in fields: ${mismatches.slice(0, 10).map(([name]) => name).join(', ')}`);
+  }
+  const blankPromotionFields = ['原二级场景ID', '原二级场景名字', '原二级场景ID (1)', '原二级场景名字 (1)'];
+  if (blankPromotionFields.some(name => created.fields?.[name] !== null && created.fields?.[name] !== undefined)) {
+    throw new Error('target-only promotion fields did not remain blank');
+  }
+  if (!Array.isArray(created.fields?.['店铺']) || created.fields['店铺'].length !== 1) {
+    throw new Error('derived shop field was not populated');
+  }
+  return Object.keys(fields).length;
+}
+
+function buildPasteTsv(fields, visibleFields, reportDate) {
+  const cells = visibleFields.map((field) => {
+    if (!Object.hasOwn(fields, field.name)) return '';
+    const value = field.type === 5 ? reportDate : String(fields[field.name]);
+    if (/[\t\r\n]/u.test(value)) throw new Error(`field cannot be represented in TSV: ${field.name}`);
+    return value;
+  });
+  if (cells.length !== 265) throw new Error(`paste row must contain 265 cells, got ${cells.length}`);
+  return `${cells.join('\t')}\n`;
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const target = await inspectTarget(args);
+  const source = extractSources(args);
+  const fields = buildCombinedFields(source, target.fields, args.reportDate);
+  const plan = buildPlan(args, target, source, fields);
+  mkdirSync(args.outputDir, { recursive: true });
+  const planPath = path.join(args.outputDir, 'plan.json');
+  writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
+  const tsvPath = path.join(args.outputDir, 'paste.tsv');
+  writeFileSync(tsvPath, buildPasteTsv(fields, target.fields, args.reportDate), 'utf8');
+
+  const clientModule = await import(pathToFileURL(path.join(REPO_ROOT, 'skills', 'xws-to-feishu-base', 'scripts', 'feishu-client.mjs')));
+  const credentials = loadFeishuCredentials('kcne');
+  const client = new clientModule.FeishuClient({ appId: credentials.appId, appSecret: credentials.appSecret,
+    appToken: args.appToken, tableId: args.tableId });
+  const tables = await client.listTables();
+  if (!tables.some(table => table.tableId === args.tableId && table.name === '总数据来源底单')) {
+    throw new Error('Feishu API target identity check failed');
+  }
+  const before = await client.listRecords();
+  const epoch = reportDateEpoch(args.reportDate);
+  const duplicates = before.filter(record => Number(record.fields?.['统计日期']) === epoch
+    && record.fields?.['店铺名称'] === fields['店铺名称']);
+  if (args.verifyExisting) {
+    if (before.length !== args.expectedBeforeCount + 1) {
+      throw new Error(`record count mismatch for UI import: expected ${args.expectedBeforeCount + 1}, got ${before.length}`);
+    }
+    if (duplicates.length !== 1) throw new Error(`expected one imported row, got ${duplicates.length}`);
+    const created = duplicates[0];
+    const verifiedFields = verifyCreatedRecord(created, fields, target);
+    const receipt = { ...plan, status: 'UI_COMMITTED_AND_VERIFIED', recordId: created.record_id,
+      recordCountBefore: args.expectedBeforeCount, recordCountAfter: before.length, verifiedFields,
+      derivedShop: created.fields['店铺'] };
+    const receiptPath = path.join(args.outputDir, 'receipt.json');
+    writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+    console.log(JSON.stringify({ status: receipt.status, recordId: created.record_id, receiptPath,
+      recordCountBefore: args.expectedBeforeCount, recordCountAfter: before.length, verifiedFields,
+      checks: plan.checks }, null, 2));
+    return;
+  }
+  if (duplicates.length) throw new Error(`duplicate daily report row exists: ${duplicates.map(item => item.record_id).join(', ')}`);
+
+  if (!args.commit) {
+    console.log(JSON.stringify({ status: 'DRY_RUN_READY', planPath, tsvPath, recordCount: before.length, checks: plan.checks }, null, 2));
+    return;
+  }
+
+  const [recordId] = await client.batchCreateRecords([fields]);
+  const after = await client.listRecords();
+  if (after.length !== before.length + 1) throw new Error(`record count mismatch after create: ${before.length} -> ${after.length}`);
+  const created = after.find(record => record.record_id === recordId);
+  if (!created) throw new Error(`created record not found on reread: ${recordId}`);
+  const verifiedFields = verifyCreatedRecord(created, fields, target);
+  const receipt = { ...plan, status: 'COMMITTED_AND_VERIFIED', recordId,
+    recordCountBefore: before.length, recordCountAfter: after.length, verifiedFields,
+    derivedShop: created.fields['店铺'] };
+  const receiptPath = path.join(args.outputDir, 'receipt.json');
+  writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+  console.log(JSON.stringify({ status: receipt.status, recordId, receiptPath,
+    recordCountBefore: before.length, recordCountAfter: after.length, checks: plan.checks }, null, 2));
+}
+
+main().catch(error => {
+  console.error(error.stack || error.message);
+  process.exitCode = 1;
+});

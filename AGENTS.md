@@ -11,7 +11,7 @@
 
 ## Operating Rules
 
-- Browser work uses the project's own debug Edge on port `9222` (`--user-data-dir=D:\Retire\edge-debug-profile`, which has the 小旺神 extension) plus the project CDP proxy on `3457`. Exports must pass `XWS_PROXY=http://127.0.0.1:3457` and `XWS_BROWSER_ID=edge-isolated`. Do not use the shared proxy on `3456` — it belongs to another project and never carries the extension.
+- Xiaowangshen browser work uses the project's debug Edge on port `9222` (`--user-data-dir=D:\Retire\edge-debug-profile`, which has the 小旺神 extension) plus CDP proxy `3457`; exports pass `XWS_PROXY=http://127.0.0.1:3457` and `XWS_BROWSER_ID=edge-isolated`. The SYCM/Alimama daily-report workflow uses its separate merchant Edge on `9223` (`D:\Retire\edge-daily-report-profile`) plus proxy `3458` and browser id `edge-daily-report`. Do not use the shared proxy on `3456`.
 - Rediscover page targets before each browser action; never persist target IDs.
 - Stop for login, CAPTCHA, QR/SMS, account-risk, security, permission, or other platform controls. Do not dismiss or bypass them.
 - Modify only authorized Feishu copies, never the original template.
@@ -23,4 +23,5 @@
 - SYCM export: ranks contiguous and unique, source fields present, and CSV/XLSX validated.
 - Feishu import: exact source-row count, first/last rank match, five source fields in order, no duplicate rows, and copied views/tables remain present.
 - Xiaowangshen API import: authorized target table starts empty, all 16 fields exist, `商品图片` is attachment type `17`, and API verification reports equal source-row, imported-row, and attachment counts.
+- Daily inquiry backfill: source shop/date/column and target date/shop match exactly, both inquiry fields match on reread, and unrelated target fields are unchanged.
 - A stable session is evidence for the current run only; it does not guarantee future login persistence.

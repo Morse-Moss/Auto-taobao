@@ -45,6 +45,12 @@ export const PROFILES = Object.freeze({
     competitorBase: 'QcnhbEzYpacGvUskCbVcrcm3nFd',
     // 关键词库也搬了：旧租户那张的副本，2026-09-14 核对 8 张表字段签名与行数逐表相同
     keywordBase: 'HdBhbttB5aScbasWJAMc0gGXnpe',
+    dailyReport: Object.freeze({
+      baseToken: 'X02Xb7fHba7mU9sr8uIcRlExn6b',
+      sourceTable: 'tbl84ZGwLQKyLxV3',
+      sourceView: 'vewwg0rhjo',
+      inquiryTable: 'tblm9Hx7R9A1YoLC',
+    }),
     // 2026-09-15 实测：用户把应用加为「浴缸竞品分析」的可编辑协作者后，
     // 幂等写探针（把历史总表的「平台」写成它当前的值）由 403/91403 变成 **HTTP 200 / code 0**。
     // 这就是「这个 base 的写权限已验证」的证据，所以置 true。
@@ -123,6 +129,12 @@ export function competitorBaseToken(name) {
 // 关键词库是另一张独立 base（复制竞品 base 不会带上它），所以有独立访问器。
 export function keywordBaseToken(name) {
   return getProfile(name).keywordBase;
+}
+
+export function dailyReportTargets(name) {
+  const target = getProfile(name).dailyReport;
+  if (!target) throw new Error(`Daily-report target is not configured for profile: ${resolveProfileName(name)}`);
+  return target;
 }
 
 export function tableId(logicalName, name) {

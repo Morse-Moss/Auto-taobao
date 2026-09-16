@@ -1,0 +1,3 @@
+interface:
+  display_name: "运营日报采集"
+  short_description: "采集生意参谋与阿里妈妈数据并校验回填飞书"
