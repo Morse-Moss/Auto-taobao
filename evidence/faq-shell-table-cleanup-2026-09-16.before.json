@@ -1,0 +1,50 @@
+{
+  "mode": "BEFORE_DELETE",
+  "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+  "table": {
+    "tableId": "tbleYYe9dqnf0QGM",
+    "name": "问题库_2026-08-30_2026-09-05",
+    "fieldCount": 23,
+    "fieldNames": [
+      "商品ID(1)",
+      "主表记录ID(1)",
+      "竞品周记录ID(1)",
+      "商品链接(1)",
+      "商品标题(1)",
+      "竞品分类(3)",
+      "来源类型(3)",
+      "原始内容(1)",
+      "分类标签(1)",
+      "是否痛点(3)",
+      "出现次数(2)",
+      "痛点描述(1)",
+      "典型问题(1)",
+      "典型用户原话(1)",
+      "占比(2)",
+      "周期开始日期(5)",
+      "周期结束日期(5)",
+      "采集状态(3)",
+      "来源记录唯一键(1)",
+      "采集时间(1)",
+      "分析版本(1)",
+      "痛点判定依据(1)",
+      "痛点判定置信度(1)"
+    ],
+    "records": 0
+  },
+  "tablesBefore": [
+    "竞品主表\ttblkYcczxBnW4v5G\t",
+    "SKU明细\ttbl3N48H4znz304T\t",
+    "竞品历史总表 V1\ttbln7qqA6XopiL4Q\t",
+    "问题主库\ttblbJ9F91NiN8IfO\t",
+    "竞品周_2026-08-23_2026-08-29\ttblDpoBCxUJmNBR7\t",
+    "SKU周_2026-08-23_2026-08-29\ttblTgQo1OtQMDA4X\t",
+    "问题库_2026-08-23_2026-08-29\ttbli5dtqFnFmvfYM\t",
+    "竞品周_2026-08-30_2026-09-05\ttblGayj9pTYY0Fb7\t",
+    "问题库_2026-08-30_2026-09-05\ttbleYYe9dqnf0QGM\t",
+    "竞品周_2026-09-06_2026-09-12\ttblosvuwE6xqYn6r\t",
+    "竞品周_2026-09-13_2026-09-19\ttbllWI45sK0DfHpr\t",
+    "问题库_2026-09-13_2026-09-19\ttblQeUSb8WQWN2dF\t"
+  ],
+  "recordedAt": "2026-09-16T06:45:33.789Z"
+}

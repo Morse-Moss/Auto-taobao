@@ -1,0 +1,48 @@
+{
+  "zip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260916_150325.zip",
+  "exists": true,
+  "members": [
+    "营销场景报表_20260916_150325.csv"
+  ],
+  "csv_count": 1,
+  "bytes": 1431,
+  "encoding": "gb18030",
+  "rows": 3,
+  "cols": [
+    71,
+    71,
+    71
+  ],
+  "header_head": [
+    "日期",
+    "场景ID",
+    "场景名字",
+    "展现量",
+    "点击量",
+    "花费",
+    "点击率",
+    "平均点击花费"
+  ],
+  "header_tail": [
+    "自然流量转化金额",
+    "自然流量曝光量",
+    "平台补贴金额",
+    "补贴引导成交金额",
+    "发券补贴商品个数",
+    "补贴引导成交人数"
+  ],
+  "scene_id_col": "场景ID",
+  "scene_name_col": "场景名字",
+  "data": [
+    {
+      "sceneId": "371",
+      "sceneName": "关键词推广",
+      "firstCell": "2026-09-14"
+    },
+    {
+      "sceneId": "372",
+      "sceneName": "人群推广",
+      "firstCell": "2026-09-14"
+    }
+  ]
+}

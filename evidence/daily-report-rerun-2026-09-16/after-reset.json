@@ -1,0 +1,17 @@
+{
+  "capturedAt": "2026-09-16T09:16:44.534Z",
+  "sourceTable": {
+    "recordCount": 4,
+    "remainingTargetRows": []
+  },
+  "inquiryTable": {
+    "recordCount": 2197,
+    "rows": [
+      {
+        "recordId": "recvtXev8H5G4H",
+        "询单量": null,
+        "同层同行询单量": null
+      }
+    ]
+  }
+}

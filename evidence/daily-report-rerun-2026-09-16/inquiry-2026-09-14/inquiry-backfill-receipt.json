@@ -1,0 +1,44 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-09-14",
+  "shop": "盖文天猫",
+  "target": {
+    "appToken": "X02Xb7fHba7mU9sr8uIcRlExn6b",
+    "tableId": "tblm9Hx7R9A1YoLC",
+    "tableName": "各店铺数据日报",
+    "recordId": "recvtXetRZKQJE"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "shop": "盖文旗舰店",
+    "column": "当日询单人数",
+    "dateRow": "2026-09-14",
+    "benchmarkRow": null,
+    "peerBenchmark": "PEER_UNAVAILABLE",
+    "rows": 3
+  },
+  "degraded": {
+    "code": "PEER_UNAVAILABLE",
+    "reason": "SYCM 自定义日期模式下表格不含「同行同层均值」行（预设「1天」才有）",
+    "omittedFields": [
+      "同层同行询单量"
+    ],
+    "sourceRowCount": 3
+  },
+  "values": {
+    "询单量": 10
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "recvtXetRZKQJE",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 10
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "mode": "dry-run",
+  "reportDate": "2026-09-15",
+  "shop": "盖文天猫",
+  "target": {
+    "appToken": "X02Xb7fHba7mU9sr8uIcRlExn6b",
+    "tableId": "tblm9Hx7R9A1YoLC",
+    "tableName": "各店铺数据日报",
+    "recordId": "recvtXev8H5G4H"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "shop": "盖文旗舰店",
+    "column": "当日询单人数",
+    "dateRow": "2026-09-15",
+    "benchmarkRow": "同行同层均值",
+    "peerBenchmark": "PEER_AVAILABLE",
+    "rows": 7
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 14,
+    "同层同行询单量": 36
+  },
+  "prewrite": {
+    "disposition": "ALREADY_VERIFIED",
+    "询单量": "14",
+    "同层同行询单量": "36"
+  }
+}

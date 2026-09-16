@@ -1,0 +1,425 @@
+{
+  "baseToken": "X02Xb7fHba7mU9sr8uIcRlExn6b",
+  "sourceTable": {
+    "tableId": "tbl84ZGwLQKyLxV3",
+    "tableName": "总数据来源底单",
+    "count": 6,
+    "rows": [
+      {
+        "recordId": "recvtVyQ33clAW",
+        "reportDate": "2026-08-31",
+        "keywordDate": "2026-08-31",
+        "audienceDate": "2026-08-31",
+        "shopName": "盖文旗舰店",
+        "shopField": [
+          "optIYzOzu2"
+        ],
+        "keywordSceneId": "371",
+        "audienceSceneId": "372"
+      },
+      {
+        "recordId": "recvu1pNpASpU7",
+        "reportDate": "2026-09-01",
+        "keywordDate": "2026-09-01",
+        "audienceDate": "2026-09-01",
+        "shopName": "盖文旗舰店",
+        "shopField": [
+          "optIYzOzu2"
+        ],
+        "keywordSceneId": "371",
+        "audienceSceneId": "372"
+      },
+      {
+        "recordId": "recvu7gv6T0ewt",
+        "reportDate": "2026-09-02",
+        "keywordDate": "2026-09-02",
+        "audienceDate": "2026-09-02",
+        "shopName": "盖文旗舰店",
+        "shopField": [
+          "optIYzOzu2"
+        ],
+        "keywordSceneId": "371",
+        "audienceSceneId": "372"
+      },
+      {
+        "recordId": "recvud6lJRJGve",
+        "reportDate": "2026-09-03",
+        "keywordDate": "2026-09-03",
+        "audienceDate": "2026-09-03",
+        "shopName": "盖文旗舰店",
+        "shopField": [
+          "optIYzOzu2"
+        ],
+        "keywordSceneId": "371",
+        "audienceSceneId": "372"
+      },
+      {
+        "recordId": "recvvnkcL1DPUo",
+        "reportDate": "2026-09-14",
+        "keywordDate": "2026-09-14",
+        "audienceDate": "2026-09-14",
+        "shopName": "盖文旗舰店",
+        "shopField": [
+          "optIYzOzu2"
+        ],
+        "keywordSceneId": "371",
+        "audienceSceneId": "372"
+      },
+      {
+        "recordId": "recvvnjYo7bMpv",
+        "reportDate": "2026-09-15",
+        "keywordDate": "2026-09-15",
+        "audienceDate": "2026-09-15",
+        "shopName": "盖文旗舰店",
+        "shopField": [
+          "optIYzOzu2"
+        ],
+        "keywordSceneId": "371",
+        "audienceSceneId": "372"
+      }
+    ]
+  },
+  "inquiryTable": {
+    "tableId": "tblm9Hx7R9A1YoLC",
+    "tableName": "各店铺数据日报",
+    "count": 2197,
+    "recentRows": [
+      {
+        "recordId": "recvtXeszltopy",
+        "reportDate": "2026-09-13",
+        "shop": "盖文天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXetRZKQJE",
+        "reportDate": "2026-09-14",
+        "shop": "盖文天猫",
+        "inquiry": "10",
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXev8H5G4H",
+        "reportDate": "2026-09-15",
+        "shop": "盖文天猫",
+        "inquiry": "14",
+        "peerInquiry": "36"
+      },
+      {
+        "recordId": "recvtXewerrrN2",
+        "reportDate": "2026-09-16",
+        "shop": "盖文天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf2kbWgld",
+        "reportDate": "2026-09-13",
+        "shop": "里可林淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf2kbx2X0",
+        "reportDate": "2026-09-13",
+        "shop": "里可林天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf2kbbi8T",
+        "reportDate": "2026-09-13",
+        "shop": "网林天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf2kb0348",
+        "reportDate": "2026-09-13",
+        "shop": "盖文淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf2kbSee9",
+        "reportDate": "2026-09-13",
+        "shop": "网林淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf2kby9I3",
+        "reportDate": "2026-09-13",
+        "shop": "科塔淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf2kbMjjj",
+        "reportDate": "2026-09-13",
+        "shop": "保拉淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf2kbLrsG",
+        "reportDate": "2026-09-13",
+        "shop": "保拉天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf2kbyzJq",
+        "reportDate": "2026-09-13",
+        "shop": "安比龙头店",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf2kbqxTc",
+        "reportDate": "2026-09-13",
+        "shop": "科塔龙头店",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf2kb87jF",
+        "reportDate": "2026-09-13",
+        "shop": "安比淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3xwZqjq",
+        "reportDate": "2026-09-14",
+        "shop": "里可林淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3xwDW0W",
+        "reportDate": "2026-09-14",
+        "shop": "里可林天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3xwjJ2h",
+        "reportDate": "2026-09-14",
+        "shop": "网林天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3xwz2to",
+        "reportDate": "2026-09-14",
+        "shop": "盖文淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3xwynXY",
+        "reportDate": "2026-09-14",
+        "shop": "网林淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3xwdFMN",
+        "reportDate": "2026-09-14",
+        "shop": "科塔淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3xwyNj5",
+        "reportDate": "2026-09-14",
+        "shop": "保拉淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3xwrZOJ",
+        "reportDate": "2026-09-14",
+        "shop": "保拉天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3xw8dC1",
+        "reportDate": "2026-09-14",
+        "shop": "安比龙头店",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3xwNlFE",
+        "reportDate": "2026-09-14",
+        "shop": "科塔龙头店",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3xwdR4u",
+        "reportDate": "2026-09-14",
+        "shop": "安比淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf3VfMS2d",
+        "reportDate": "2026-09-15",
+        "shop": "里可林淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf4vdyG24",
+        "reportDate": "2026-09-15",
+        "shop": "里可林天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf4vdicXm",
+        "reportDate": "2026-09-15",
+        "shop": "网林天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf4vdWRAQ",
+        "reportDate": "2026-09-15",
+        "shop": "盖文淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf4vdSnvO",
+        "reportDate": "2026-09-15",
+        "shop": "网林淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf4vdwyuR",
+        "reportDate": "2026-09-15",
+        "shop": "科塔淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf4vd9RP0",
+        "reportDate": "2026-09-15",
+        "shop": "保拉淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf4vdXsnH",
+        "reportDate": "2026-09-15",
+        "shop": "保拉天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf4vdWb7Z",
+        "reportDate": "2026-09-15",
+        "shop": "安比龙头店",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf4vd7mSr",
+        "reportDate": "2026-09-15",
+        "shop": "科塔龙头店",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf4vd3xkz",
+        "reportDate": "2026-09-15",
+        "shop": "安比淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf5iGJ75g",
+        "reportDate": "2026-09-16",
+        "shop": "里可林淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf5iGx0nP",
+        "reportDate": "2026-09-16",
+        "shop": "里可林天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf5iG1tt0",
+        "reportDate": "2026-09-16",
+        "shop": "网林天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf5iGRLCI",
+        "reportDate": "2026-09-16",
+        "shop": "盖文淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf5iGQskE",
+        "reportDate": "2026-09-16",
+        "shop": "网林淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf5iGwNzY",
+        "reportDate": "2026-09-16",
+        "shop": "科塔淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf5iGcHhb",
+        "reportDate": "2026-09-16",
+        "shop": "保拉淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf5iGWw91",
+        "reportDate": "2026-09-16",
+        "shop": "保拉天猫",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf5iGf6TO",
+        "reportDate": "2026-09-16",
+        "shop": "安比龙头店",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf5iGJEb5",
+        "reportDate": "2026-09-16",
+        "shop": "科塔龙头店",
+        "inquiry": null,
+        "peerInquiry": null
+      },
+      {
+        "recordId": "recvtXf5iGG8dX",
+        "reportDate": "2026-09-16",
+        "shop": "安比淘宝",
+        "inquiry": null,
+        "peerInquiry": null
+      }
+    ]
+  }
+}

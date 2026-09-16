@@ -1,0 +1,25 @@
+{
+  "mode": "SHELL_TABLE_DELETED",
+  "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+  "deleted": {
+    "tableId": "tbleYYe9dqnf0QGM",
+    "name": "问题库_2026-08-30_2026-09-05",
+    "records": 0,
+    "fieldCount": 23
+  },
+  "tablesAfter": [
+    "竞品主表",
+    "SKU明细",
+    "竞品历史总表 V1",
+    "问题主库",
+    "竞品周_2026-08-23_2026-08-29",
+    "SKU周_2026-08-23_2026-08-29",
+    "问题库_2026-08-23_2026-08-29",
+    "竞品周_2026-08-30_2026-09-05",
+    "竞品周_2026-09-06_2026-09-12",
+    "竞品周_2026-09-13_2026-09-19",
+    "问题库_2026-09-13_2026-09-19"
+  ],
+  "beforeReceipt": "faq-shell-table-cleanup-2026-09-16.before.json",
+  "completedAt": "2026-09-16T06:45:35.253Z"
+}
