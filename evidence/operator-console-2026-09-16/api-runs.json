@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-16T13:23:13.539Z",
+  "generatedAt": "2026-09-16T15:08:52.502Z",
   "defaultPeriod": "2026-09-13_2026-09-19",
   "availableChains": [
     {
@@ -36,7 +36,7 @@
       "nextAction": "DONE",
       "blocker": null,
       "checkedAt": "2026-09-16T04:11:19.298Z",
-      "ageMs": 33114240,
+      "ageMs": 39453197,
       "stale": false,
       "stageCounts": {
         "done": 8,
@@ -125,7 +125,7 @@
       "nextAction": "DONE",
       "blocker": null,
       "checkedAt": "2026-09-15T06:06:19.775Z",
-      "ageMs": 112613763,
+      "ageMs": 118952720,
       "stale": false,
       "stageCounts": {
         "done": 8,
@@ -214,7 +214,7 @@
       "nextAction": "DONE",
       "blocker": null,
       "checkedAt": "2026-09-13T03:43:17.802Z",
-      "ageMs": 293995736,
+      "ageMs": 300334693,
       "stale": false,
       "stageCounts": {
         "done": 8,
@@ -302,8 +302,8 @@
       "status": "DONE",
       "nextAction": "DONE",
       "blocker": null,
-      "checkedAt": "2026-09-16T13:06:24.313Z",
-      "ageMs": 1009225,
+      "checkedAt": "2026-09-16T13:23:29.896Z",
+      "ageMs": 6322599,
       "stale": false,
       "stageCounts": {
         "done": 8,

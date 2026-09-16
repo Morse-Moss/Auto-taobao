@@ -2,10 +2,40 @@
   "ok": true,
   "console": {
     "host": "127.0.0.1",
-    "port": 19024,
-    "readonly": true
+    "port": 19026,
+    "registryPort": 19024,
+    "reads": [
+      "GET /api/health",
+      "GET /api/env",
+      "GET /api/accounts",
+      "GET /api/runs"
+    ],
+    "actions": [
+      {
+        "name": "preview-faq",
+        "label": "预览这次会做什么",
+        "mutating": false,
+        "requiresConfirm": false,
+        "needsPeriod": true
+      },
+      {
+        "name": "refresh-faq-status",
+        "label": "重新检查（重跑状态检查）",
+        "mutating": true,
+        "requiresConfirm": false,
+        "needsPeriod": true
+      },
+      {
+        "name": "advance-faq",
+        "label": "推进一个阶段",
+        "mutating": true,
+        "requiresConfirm": true,
+        "needsPeriod": true
+      }
+    ],
+    "auditLog": "D:\\Retire\\sycm-automation\\runtime\\operator-console\\actions.jsonl"
   },
   "runtimeRoot": "D:\\Retire\\sycm-automation\\runtime",
   "repoRoot": "D:\\Retire\\sycm-automation",
-  "now": "2026-09-16T13:23:13.559Z"
+  "now": "2026-09-16T15:08:52.517Z"
 }

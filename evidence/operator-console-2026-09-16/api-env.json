@@ -1,7 +1,8 @@
 {
-  "generatedAt": "2026-09-16T13:23:13.513Z",
+  "generatedAt": "2026-09-16T15:08:52.466Z",
   "console": {
-    "port": 19024,
+    "port": 19026,
+    "registryPort": 19024,
     "portKey": "operatorConsole",
     "host": "127.0.0.1",
     "source": "runtime/browser-ports.mjs#PROJECT_PORTS.operatorConsole"

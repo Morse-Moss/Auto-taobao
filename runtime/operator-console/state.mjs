@@ -110,7 +110,10 @@ export async function buildEnvPayload(options = {}) {
   return {
     generatedAt: new Date().toISOString(),
     console: {
-      port: PROJECT_PORTS.operatorConsole,
+      // port = **实际监听的端口**（由服务端在 listen 后传入）。登记表里的值另列在 registryPort：
+      // 只报默认值会在换端口启动时对运营说一个假端口（2026-09-16 在 19025 起实例时踩到）。
+      port: options.port ?? PROJECT_PORTS.operatorConsole,
+      registryPort: PROJECT_PORTS.operatorConsole,
       portKey: 'operatorConsole',
       host: '127.0.0.1',
       source: 'runtime/browser-ports.mjs#PROJECT_PORTS.operatorConsole',

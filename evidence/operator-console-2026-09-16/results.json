@@ -1,20 +1,28 @@
 {
-  "generatedAt": "2026-09-16T13:23:19.258Z",
-  "base": "http://127.0.0.1:19024",
+  "generatedAt": "2026-09-16T15:08:58.659Z",
+  "base": "http://127.0.0.1:19026",
   "chrome": "C:/Program Files/Google/Chrome/Application/chrome.exe",
-  "passed": 25,
+  "passed": 33,
   "failed": 0,
-  "total": 25,
+  "total": 33,
   "notCovered": [
     "「甲列登出后乙列不受影响」需要真实体检接线（G1/G2），一期账号灯是示例数据，无法验证",
     "「登录后自动续跑」需要 loginSession 与 operator CLI（G3/G4），未实现",
-    "「探队列三种脸」需要队列探针的生产调用方（G4），未实现"
+    "「探队列三种脸」需要队列探针的生产调用方（G4），未实现",
+    "「点确认之后真的推进一格」不在验收里跑：它会真的执行阶段脚本（可能动数据库/浏览器）。这一条由 server.test.mjs 的临时根用例覆盖（断言子进程真的跑了、并落了审计）；验收里只验到「不带确认一定被拒、且什么都没发生」。",
+    "「点击」这个动作本身没有模拟：headless dump-dom 不做交互。两步确认验的是服务端契约（requiresConfirm 声明 + 不带 confirm 必被拒），不是鼠标事件。",
+    "浏览器采集（COLLECT_EVIDENCE）与飞书发布（PUBLISH_FEISHU_SUMMARIES）被运营台拒绝，这两条的拒绝理由由 server.test.mjs 用夹具覆盖；验收里没有造这两份夹具。"
   ],
   "results": [
     {
-      "name": "控制台在运行且只读",
+      "name": "控制台在跑、只绑回环、且把读与动作分开声明",
       "ok": true,
-      "detail": "{\"host\":\"127.0.0.1\",\"port\":19024,\"readonly\":true}"
+      "detail": "{\"host\":\"127.0.0.1\",\"actions\":[\"preview-faq\",\"refresh-faq-status\",\"advance-faq\"]}"
+    },
+    {
+      "name": "服务自报的端口与实际监听端口一致",
+      "ok": true,
+      "detail": "自报 19026 / 实际 19026 / 登记表 19024"
     },
     {
       "name": "GET /api/env 返回 200",
@@ -97,9 +105,19 @@
       "detail": "hidden=false items=1"
     },
     {
-      "name": "页面上没有可点的按钮（一期只读）",
+      "name": "每个可点按钮都指向一个服务端登记过的动作",
       "ok": true,
-      "detail": "可点按钮 0 个"
+      "detail": "可点 4 个 / 带动作名 4 个 / 登记 3 个"
+    },
+    {
+      "name": "剩下的按钮是明确的灰按钮（disabled + 有理由），不是「点了没反应」",
+      "ok": true,
+      "detail": "可点 4 / 灰 3"
+    },
+    {
+      "name": "推进阶段在服务端被标为「需要确认」",
+      "ok": true,
+      "detail": "requiresConfirm=true"
     },
     {
       "name": "截图 wide（1600,3400）",
@@ -135,6 +153,31 @@
       "name": "截图 灰灯分支",
       "ok": true,
       "detail": ""
+    },
+    {
+      "name": "POST 预览：真的跑了一次只读干跑（判定来自临时根，不是仓库收据）",
+      "ok": true,
+      "detail": "HTTP 200 decision=DRY_RUN"
+    },
+    {
+      "name": "POST 推进但没确认：被拒，并把将要执行的命令原文交回来",
+      "ok": true,
+      "detail": "HTTP 400 CONFIRM_REQUIRED nextAction=LOCK_TOP5"
+    },
+    {
+      "name": "没确认就没发生任何事（连状态文件都不该出现）",
+      "ok": true,
+      "detail": "推进前的探测带 --no-persist，只读探测不许改运营可见状态"
+    },
+    {
+      "name": "动作端点不接受 GET（写动作不许藏在读里）",
+      "ok": true,
+      "detail": "HTTP 405"
+    },
+    {
+      "name": "未登记的动作名被拒，并列出可用的动作",
+      "ok": true,
+      "detail": "HTTP 404"
     }
   ]
 }

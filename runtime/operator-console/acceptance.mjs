@@ -153,7 +153,14 @@ export async function main(argv = process.argv.slice(2)) {
 
   // ---- 0. 目标控制台必须已经在跑 ----
   const health = await waitForHealth(options.base);
-  check('控制台在运行且只读', health.console.readonly === true && health.console.host === '127.0.0.1', JSON.stringify(health.console));
+  check('控制台在跑、只绑回环、且把读与动作分开声明',
+    health.console.host === '127.0.0.1' && Array.isArray(health.console.actions) && health.console.actions.length > 0,
+    JSON.stringify({ host: health.console.host, actions: health.console.actions.map((a) => a.name) }));
+  // 服务自报的端口必须就是它实际在跑的那个 —— 只报登记表默认值会在换端口时骗人（本次踩过）。
+  const actualPort = new URL(options.base).port;
+  check('服务自报的端口与实际监听端口一致',
+    String(health.console.port) === actualPort,
+    `自报 ${health.console.port} / 实际 ${actualPort} / 登记表 ${health.console.registryPort}`);
 
   // ---- 1. 四个接口的真响应留档 ----
   const payloads = {};
@@ -217,9 +224,24 @@ export async function main(argv = process.argv.slice(2)) {
   check('需要你做的事：有内容时不隐藏，且条数与接口一致',
     !todoHidden && todoItems > 0, `hidden=${todoHidden} items=${todoItems}`);
 
-  // ---- 6. 一期只读：所有按钮都是 disabled ----
-  const enabledButtons = attr(mainHtml, /<button(?![^>]*\sdisabled)[^>]*>/gu);
-  check('页面上没有可点的按钮（一期只读）', enabledButtons.length === 0, `可点按钮 ${enabledButtons.length} 个`);
+  // ---- 6. 按钮：能点的必须都对应一个服务端登记过的动作，不能点的必须是灰的 ----
+  // 判据不是「有几个按钮」，而是「有没有一个按钮会让运营以为有事发生、其实什么也不会发生」。
+  const clickable = attr(mainHtml, /<button(?![^>]*\sdisabled)[^>]*>/gu);
+  const clickableActions = attr(mainHtml, /<button(?![^>]*\sdisabled)[^>]*data-action="([a-z-]+)"/gu);
+  const declaredActions = health.console.actions.map((action) => action.name);
+  check('每个可点按钮都指向一个服务端登记过的动作',
+    clickable.length > 0 && clickableActions.length === clickable.length
+      && clickableActions.every((name) => declaredActions.includes(name)),
+    `可点 ${clickable.length} 个 / 带动作名 ${clickableActions.length} 个 / 登记 ${declaredActions.length} 个`);
+  const stubCount = (mainHtml.match(/data-testid="stub-button"/gu) ?? []).length;
+  check('剩下的按钮是明确的灰按钮（disabled + 有理由），不是「点了没反应」',
+    clickable.length + stubCount > 0 && !/<button(?![^>]*\sdisabled)(?![^>]*data-action)[^>]*>/u.test(mainHtml),
+    `可点 ${clickable.length} / 灰 ${stubCount}`);
+  // 「推进」这一刻意必须是两步：页面只负责把动作名报上来，是否要确认由服务端说了算。
+  const advanceDeclared = health.console.actions.find((action) => action.name === 'advance-faq');
+  check('推进阶段在服务端被标为「需要确认」',
+    advanceDeclared?.requiresConfirm === true && mainHtml.includes('data-action="advance-faq"'),
+    `requiresConfirm=${advanceDeclared?.requiresConfirm}`);
 
   // ---- 7. 截图 ----
   // 截图高度要一次装下整页（含第 ⑤ 块）—— headless 的 --screenshot 只截视口，
@@ -256,6 +278,35 @@ export async function main(argv = process.argv.slice(2)) {
     check('灰块写明了「读的是 / 应该读哪个文件」', /读的是：|应该读：/u.test(greyHtml));
     // 灰灯截图要装到第 ④ 块，否则图里看不到那个灰块 —— 而这张图的全部意义就是它。
     check('截图 灰灯分支', await screenshot(chrome, `${greyBase}/`, userDataDir, resolve(options.out, 'console-grey.png'), '1600,3400'));
+
+    // ---- 8b. 动作层：只在**临时实例**上发动作，绝不对生产实例发 ----
+    // 这里刻意只做两件没有副作用的事：只读干跑、以及不带确认的推进（服务端会拒）。
+    // 「确认之后真的推进」不在这里跑 —— 它会真的执行阶段脚本。那一条由 server.test.mjs
+    // 的临时根用例覆盖（断言命令真的被执行了、并落了审计）。
+    const actionBody = JSON.stringify({ periodStart: '2026-01-01', periodEnd: '2026-01-07' });
+    const actionHeaders = { 'content-type': 'application/json' };
+    const previewResponse = await fetch(`${greyBase}/api/actions/preview-faq`, { method: 'POST', headers: actionHeaders, body: actionBody });
+    const previewPayload = await previewResponse.json();
+    writeFileSync(resolve(options.out, 'action-preview.json'), `${JSON.stringify(previewPayload, null, 2)}\n`);
+    check('POST 预览：真的跑了一次只读干跑（判定来自临时根，不是仓库收据）',
+      previewResponse.status === 200 && previewPayload.decision === 'DRY_RUN',
+      `HTTP ${previewResponse.status} decision=${previewPayload.decision}`);
+
+    const unconfirmedResponse = await fetch(`${greyBase}/api/actions/advance-faq`, { method: 'POST', headers: actionHeaders, body: actionBody });
+    const unconfirmedPayload = await unconfirmedResponse.json();
+    check('POST 推进但没确认：被拒，并把将要执行的命令原文交回来',
+      unconfirmedResponse.status === 400 && unconfirmedPayload.error === 'CONFIRM_REQUIRED'
+        && /--advance/u.test(String(unconfirmedPayload.willRun)),
+      `HTTP ${unconfirmedResponse.status} ${unconfirmedPayload.error} nextAction=${unconfirmedPayload.nextAction}`);
+    check('没确认就没发生任何事（连状态文件都不该出现）',
+      !existsSync(resolve(greyRoot, 'runtime', 'faq-analysis', '2026-01-01_2026-01-07', 'operator-status.json')),
+      '推进前的探测带 --no-persist，只读探测不许改运营可见状态');
+
+    const getOnAction = await fetch(`${greyBase}/api/actions/preview-faq`);
+    check('动作端点不接受 GET（写动作不许藏在读里）', getOnAction.status === 405, `HTTP ${getOnAction.status}`);
+    const unknownAction = await fetch(`${greyBase}/api/actions/nope`, { method: 'POST', headers: actionHeaders, body: '{}' });
+    check('未登记的动作名被拒，并列出可用的动作',
+      unknownAction.status === 404 && (await unknownAction.json()).error === 'UNKNOWN_ACTION', `HTTP ${unknownAction.status}`);
   } finally {
     // 必须先掐掉空闲连接再 close：`server.close()` 只等「已有连接自然结束」，
     // 而我自己 fetch 过的 keep-alive 连接会一直挂在池子里 → close 的回调永不触发，
@@ -278,6 +329,13 @@ export async function main(argv = process.argv.slice(2)) {
       '「甲列登出后乙列不受影响」需要真实体检接线（G1/G2），一期账号灯是示例数据，无法验证',
       '「登录后自动续跑」需要 loginSession 与 operator CLI（G3/G4），未实现',
       '「探队列三种脸」需要队列探针的生产调用方（G4），未实现',
+      '「点确认之后真的推进一格」不在验收里跑：它会真的执行阶段脚本（可能动数据库/浏览器）。'
+        + '这一条由 server.test.mjs 的临时根用例覆盖（断言子进程真的跑了、并落了审计）；'
+        + '验收里只验到「不带确认一定被拒、且什么都没发生」。',
+      '「点击」这个动作本身没有模拟：headless dump-dom 不做交互。两步确认验的是服务端契约'
+        + '（requiresConfirm 声明 + 不带 confirm 必被拒），不是鼠标事件。',
+      '浏览器采集（COLLECT_EVIDENCE）与飞书发布（PUBLISH_FEISHU_SUMMARIES）被运营台拒绝，'
+        + '这两条的拒绝理由由 server.test.mjs 用夹具覆盖；验收里没有造这两份夹具。',
     ],
     results,
   };

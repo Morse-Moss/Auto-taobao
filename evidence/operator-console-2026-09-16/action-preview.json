@@ -1,0 +1,14 @@
+{
+  "action": "preview-faq",
+  "period": "2026-01-01_2026-01-07",
+  "decision": "DRY_RUN",
+  "reason": "将执行: D:\\Retire\\sycm-automation\\runtime\\run-faq-operator.mjs --advance --period-start 2026-01-01 --period-end 2026-01-07 --runtime-root C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\opconsole-grey-y5Q7uy\\runtime",
+  "nextAction": "LOCK_TOP5",
+  "stages": 0,
+  "exitCode": 0,
+  "durationMs": 466,
+  "timedOut": false,
+  "willRun": "只读干跑：runtime/run-flow-orchestrator.mjs --flow faq --dry-run --period-start 2026-01-01 --period-end 2026-01-07 --runtime-root <本控制台的 runtimeRoot>",
+  "stderr": "",
+  "auditPath": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\opconsole-grey-y5Q7uy\\runtime\\operator-console\\actions.jsonl"
+}
