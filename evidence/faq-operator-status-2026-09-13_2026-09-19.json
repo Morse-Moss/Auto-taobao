@@ -1,0 +1,30 @@
+{
+  "period": "2026-09-13_2026-09-19",
+  "status": "DONE",
+  "nextAction": "DONE",
+  "top5Count": 1,
+  "completedProducts": 1,
+  "manifestLocked": true,
+  "evidenceComplete": true,
+  "localSnapshotBuilt": true,
+  "localAnalysisVerified": true,
+  "localSummariesBuilt": true,
+  "aiReviewComplete": true,
+  "humanReviewComplete": true,
+  "aiReviewTaskCount": 9,
+  "aiReviewResultCount": 9,
+  "aiReviewAutoAccepted": 9,
+  "aiReviewNeedsHumanReview": 0,
+  "aiReviewProviderFailures": 0,
+  "aiReviewBatchFailures": [],
+  "summariesPublished": true,
+  "rawRecords": 27,
+  "topicRecords": 21,
+  "operatorRecords": 2073,
+  "summaryVersions": {
+    "analysisVersion": "faq-ops-rule-v3.3.1",
+    "dedupVersion": "faq-dedup-v1.0.0",
+    "summaryVersion": "faq-summary-v3.0.0"
+  },
+  "detailEnrichmentVersion": "faq-detail-append-v3.3.0"
+}

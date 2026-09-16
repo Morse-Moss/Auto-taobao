@@ -8,8 +8,12 @@
 | --- | --- | --- |
 | 项目专用调试 Edge | **9222** | `node runtime/start-project-browser.mjs` |
 | 项目专用 CDP 代理 | **3457** | `CDP_PROXY_PORT=3457 CDP_BROWSER_PORT=9222 node runtime/isolated-proxy/cdp-proxy.mjs` |
+| 运营日报商家 Edge | **9223** | `node runtime/start-daily-report-browser.mjs` |
+| 运营日报 CDP 代理 | **3458** | `node runtime/start-daily-report-proxy.mjs` |
 
 浏览器配置目录：`D:/Retire/edge-debug-profile`（**里面装了小旺神**，`DevToolsActivePort` 记录的就是 9222）。
+
+运营日报使用独立配置目录 `D:/Retire/edge-daily-report-profile`，只承载生意参谋、阿里妈妈和飞书的商家登录态；不要在这里登录小旺神买家号，也不要把商家号登录进 `edge-debug-profile`。日报代理 `/health` 必须报告 `browser.id=edge-daily-report`。
 
 代理起来后 `/health` 应报：
 

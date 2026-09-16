@@ -1,0 +1,32 @@
+{
+  "mode": "DRY_RUN_READY",
+  "target": {
+    "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+    "mainTableId": "tblkYcczxBnW4v5G",
+    "skuTableId": "tbl3N48H4znz304T"
+  },
+  "source": {
+    "mainRecordId": "recvticyHkhtcR",
+    "productId": "921092099640",
+    "payloadSha256": "1ada52eeb0d931f6ed216a714e9101173503f77c85eb98016eac14282d3f7ba4",
+    "topologySha256": "ad50bbe497d293a4546efd5641c1d9bcd1a0ef87001d6d686dd7188fcf4ebfdd"
+  },
+  "verification": {
+    "propertyCount": 2,
+    "validCombinationCount": 96,
+    "mainRecordCount": 2004,
+    "skuRecordCount": 734
+  },
+  "plan": {
+    "parsedRows": 96,
+    "toCreate": 96,
+    "alreadyPresent": 0,
+    "conflict": 0,
+    "duplicateExistingKeys": 0,
+    "writeReady": true
+  },
+  "manifestPath": "d:\\Retire\\sycm-automation\\evidence\\sku-2026-09-13_2026-09-19\\xws-sku-dry-run-manifest-20260916T030255485Z-37b3cba5-1b11-4730-ae57-63f8dcd811d8.json",
+  "manifestSha256": "447a1c9d31a392aa74fe23bf150bea3d44dbf567752c84ba63a4117d08d6db79",
+  "receiptPath": "d:\\Retire\\sycm-automation\\evidence\\sku-2026-09-13_2026-09-19\\xws-sku-dry-run-receipt-20260916T030255485Z-37b3cba5-1b11-4730-ae57-63f8dcd811d8.json",
+  "batchIndexPath": "d:\\Retire\\sycm-automation\\evidence\\sku-2026-09-13_2026-09-19\\batch-index.json"
+}

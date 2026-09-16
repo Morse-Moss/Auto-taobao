@@ -1,0 +1,15 @@
+{
+  "fieldCount": 23,
+  "recordCount": 2073,
+  "keyCoverage": {
+    "来源记录唯一键": 2073,
+    "分类标签": 2073,
+    "both": 2073,
+    "只有来源键": 0,
+    "只有标签": 0,
+    "都没有": 0
+  },
+  "distinctIdentities": 2073,
+  "duplicateCount": 0,
+  "labelCount": 41
+}

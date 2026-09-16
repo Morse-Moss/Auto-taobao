@@ -1,0 +1,109 @@
+{
+  "mode": "WEEKLY_PUBLISHED_MASTER_APPENDED_AND_VERIFIED",
+  "period": "2026-09-13_2026-09-19",
+  "version": "faq-detail-append-v3.3.0",
+  "analysisVersion": "faq-ops-rule-v3.3.1",
+  "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+  "planHash": "8141d7d0c79ebc3d6f1ba158b67d1e1ae74485e8fa88cf8b9a00c91b472e57f0",
+  "schemaHash": "710525e548d84d17b01757211368746105a0bdc703f40e34f17d793805e5ee1f",
+  "sourceTopicHash": "60b4ea256de1e0daf2dc0e74b270d3b1f3f63e8956bdaff981530bb5c7a4618d",
+  "denominator": 26,
+  "statisticsHash": "c7c4b5eb47cd9fc2064e03516022a1dcebb025cc2b793ec376b319bef7336014",
+  "source": {
+    "finalClassifiedSnapshot": {
+      "path": "d:\\Retire\\sycm-automation\\runtime\\faq-analysis\\2026-09-13_2026-09-19\\final-classified-records.jsonl",
+      "sha256": "e8b024ed8ad2fbd31b1e61ef07c8b156cbb3e3d739123f304654ec1a14476cc4"
+    },
+    "finalClassificationReceipt": {
+      "path": "d:\\Retire\\sycm-automation\\runtime\\faq-analysis\\2026-09-13_2026-09-19\\final-classification-receipt.json",
+      "sha256": "cf421690bac30e76836d65eaffb6fad4960068d5db3262d8f094f3f313b1ca2e"
+    },
+    "legacySourceTopicAudit": {
+      "path": "d:\\Retire\\sycm-automation\\runtime\\faq-analysis\\2026-09-13_2026-09-19\\ai-review\\source-topic-audit.json",
+      "sha256": "5cd817cab444bc115bac0f3a7813694a6877c5e6b753732e3e29a57dbdf59679"
+    },
+    "operatorXlsx": {
+      "path": "D:\\xwechat_files\\wxid_f5wbs91qiiya22_d969\\msg\\file\\2026-08\\高价值竞品浴缸评价分类统计0826.xlsx",
+      "sha256": "64b2dca5b8ac269eed52585e4c5dbdc183913ec07b190d3c2d32ee10724e87b2"
+    }
+  },
+  "master": {
+    "tableId": "tblbJ9F91NiN8IfO",
+    "name": "问题主库",
+    "recordsBefore": 2023,
+    "appends": 50,
+    "overlap": 0,
+    "conflicts": 0,
+    "appendsHash": "931f0d19ece87f81f4f947a2a2d55270a96c6070ee0f243ccd76575f52f16212",
+    "deletes": 0,
+    "recordsAfter": 2073,
+    "appended": 50,
+    "appendedRecordIds": [
+      "recvvlWX5LJoXL",
+      "recvvlWX5LnZlb",
+      "recvvlWX5LFdFw",
+      "recvvlWX5L11pb",
+      "recvvlWX5LTWAF",
+      "recvvlWX5LyQoF",
+      "recvvlWX5LsEY3",
+      "recvvlWX5Lc7fO",
+      "recvvlWX5LHyBD",
+      "recvvlWX5LTZVr",
+      "recvvlWX5LqF3N",
+      "recvvlWX5LgNsw",
+      "recvvlWX5Lra5f",
+      "recvvlWX5LMfrk",
+      "recvvlWX5LsfJR",
+      "recvvlWX5LUdxq",
+      "recvvlWX5LbfVx",
+      "recvvlWX5Li4OD",
+      "recvvlWX5LLmol",
+      "recvvlWX5L3saP",
+      "recvvlWX5Lzv7i",
+      "recvvlWX5LbnXw",
+      "recvvlWX5LMUD1",
+      "recvvlWX5LleQY",
+      "recvvlWX5L664A",
+      "recvvlWX5LSwYq",
+      "recvvlWX5L49xk",
+      "recvvlWX5LStJB",
+      "recvvlWX5LqNpI",
+      "recvvlWX5LgBEj",
+      "recvvlWX5LXvWB",
+      "recvvlWX5LaxS2",
+      "recvvlWX5LYjEQ",
+      "recvvlWX5LyjgO",
+      "recvvlWX5LbTV4",
+      "recvvlWX5Lwalh",
+      "recvvlWX5LNary",
+      "recvvlWX5LwYm4",
+      "recvvlWX5LH94k",
+      "recvvlWX5Ljonz",
+      "recvvlWX5LQnqQ",
+      "recvvlWX5L8PHb",
+      "recvvlWX5LIGnD",
+      "recvvlWX5LSo71",
+      "recvvlWX5LwQYq",
+      "recvvlWX5LneB7",
+      "recvvlWX5LwmUM",
+      "recvvlWX5L1x0m",
+      "recvvlWX5L9gmd",
+      "recvvlWX5Lr4Mj"
+    ]
+  },
+  "weekly": {
+    "tableId": "tblQeUSb8WQWN2dF",
+    "name": "问题库_2026-09-13_2026-09-19",
+    "existed": false,
+    "created": true,
+    "planning": "FILL_EMPTY",
+    "previousRows": 0,
+    "rows": 50,
+    "rowsHash": "931f0d19ece87f81f4f947a2a2d55270a96c6070ee0f243ccd76575f52f16212"
+  },
+  "backup": {
+    "path": "d:\\Retire\\sycm-automation\\runtime\\faq-analysis\\2026-09-13_2026-09-19\\detail-append-backup-20260916T040929159Z.json",
+    "sha256": "4e46664c3135e91538b5d9fdd48befd6bb6947efd5cd574363460c9639250d8a"
+  },
+  "feishuWrites": 3
+}

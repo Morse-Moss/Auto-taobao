@@ -1,0 +1,19 @@
+{
+  "version": "xws-sku-auth-preflight-v1",
+  "checkedAt": "2026-09-16T02:44:40.917Z",
+  "source": {
+    "mainRecordId": "recvvhOyFCtNA1",
+    "productId": "921092099640",
+    "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "classification": "B-高价值竞品",
+    "validity": "是"
+  },
+  "page": {
+    "url": "https://item.taobao.com/item.htm?id=921092099640",
+    "productId": "921092099640",
+    "pluginPresent": true,
+    "skuControlPresent": true
+  },
+  "status": "AUTH_READY",
+  "reason": "No Xiaowangshen login wall was observed"
+}

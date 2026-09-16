@@ -1,0 +1,67 @@
+{
+  "profile": "kcne",
+  "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+  "tableCount": 12,
+  "tables": [
+    {
+      "tableId": "tblkYcczxBnW4v5G",
+      "name": "竞品主表",
+      "records": 2004
+    },
+    {
+      "tableId": "tbl3N48H4znz304T",
+      "name": "SKU明细",
+      "records": 830
+    },
+    {
+      "tableId": "tbln7qqA6XopiL4Q",
+      "name": "竞品历史总表 V1",
+      "records": 5763
+    },
+    {
+      "tableId": "tblbJ9F91NiN8IfO",
+      "name": "问题主库",
+      "records": 2073
+    },
+    {
+      "tableId": "tblDpoBCxUJmNBR7",
+      "name": "竞品周_2026-08-23_2026-08-29",
+      "records": 1461
+    },
+    {
+      "tableId": "tblTgQo1OtQMDA4X",
+      "name": "SKU周_2026-08-23_2026-08-29",
+      "records": 734
+    },
+    {
+      "tableId": "tbli5dtqFnFmvfYM",
+      "name": "问题库_2026-08-23_2026-08-29",
+      "records": 2023
+    },
+    {
+      "tableId": "tblGayj9pTYY0Fb7",
+      "name": "竞品周_2026-08-30_2026-09-05",
+      "records": 1423
+    },
+    {
+      "tableId": "tbleYYe9dqnf0QGM",
+      "name": "问题库_2026-08-30_2026-09-05",
+      "records": 0
+    },
+    {
+      "tableId": "tblosvuwE6xqYn6r",
+      "name": "竞品周_2026-09-06_2026-09-12",
+      "records": 1462
+    },
+    {
+      "tableId": "tbllWI45sK0DfHpr",
+      "name": "竞品周_2026-09-13_2026-09-19",
+      "records": 1417
+    },
+    {
+      "tableId": "tblQeUSb8WQWN2dF",
+      "name": "问题库_2026-09-13_2026-09-19",
+      "records": 50
+    }
+  ]
+}

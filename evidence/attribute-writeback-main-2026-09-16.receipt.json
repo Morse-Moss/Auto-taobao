@@ -1,0 +1,66 @@
+{
+  "version": "weekly-attribute-writeback-v1",
+  "mode": "APPLIED",
+  "at": "2026-09-16T02:50:53.078Z",
+  "profile": "kcne",
+  "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+  "table": {
+    "name": "竞品主表",
+    "tableId": "tblkYcczxBnW4v5G"
+  },
+  "rows": 2004,
+  "plannedRows": 671,
+  "written": 671,
+  "perAttribute": {
+    "材质分类": {
+      "filled": 539,
+      "none": 122,
+      "na": 9
+    },
+    "外形": {
+      "filled": 211,
+      "none": 451,
+      "na": 9
+    },
+    "安装方式": {
+      "filled": 499,
+      "none": 163,
+      "na": 9
+    },
+    "功能": {
+      "filled": 159,
+      "none": 503,
+      "na": 9
+    },
+    "风格": {
+      "filled": 165,
+      "none": 497,
+      "na": 9
+    }
+  },
+  "alreadyFilled": {
+    "材质分类": 1334,
+    "外形": 1333,
+    "安装方式": 1333,
+    "功能": 1333,
+    "风格": 1333
+  },
+  "expectedClassAfter": {
+    "B-高价值竞品": 1,
+    "无分类": 469,
+    "D-价格/流量型竞品": 163,
+    "C-差异化竞品": 29,
+    "不适用": 9
+  },
+  "rule": "buildCompetitorRecord(标题/卖点/价格/人数/是否有效竞品) — 与飞书评级公式同源；Text 多值逗号连接；只填空不覆盖",
+  "readBack": {
+    "rows": 2004,
+    "stillBlank": {
+      "材质分类": 0,
+      "外形": 0,
+      "安装方式": 0,
+      "功能": 0,
+      "风格": 0
+    }
+  }
+}

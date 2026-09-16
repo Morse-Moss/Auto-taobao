@@ -118,8 +118,8 @@ base 与 baseUrl 自洽、profile 冻结、别名解析与未知名抛错、环�
 
 | 文件 | 替换处数 | 改了什么 |
 | --- | --- | --- |
-| `runtime/prepare-weekly-competitor-table.mjs` | 3 | base token、env 路径 |
-| `runtime/create-weekly-formula-fields.mjs` | 5 | base token、env 路径、`OLD_TABLE` 默认值改为必填（跨租户后旧 id 失效） |
+| `runtime/prepare-weekly-competitor-table.mjs` | 3 | base token、env 路径；2026-09-15 起**基准表由「上一周周表」改为「竞品主表」**（旧做法会把任何一次缺字段一路继承下去），并新增 `--apply-missing` 给已有周表补普通字段 |
+| `runtime/create-weekly-formula-fields.mjs` | 5 | base token、env 路径、`OLD_TABLE` 默认值改为必填（跨租户后旧 id 失效）；2026-09-15 起默认＝竞品主表（可被 `COMPETITOR_OLD_TABLE_ID` 覆盖）、增加 19 查找引用的重建、默认 dry-run（`--apply` 才写） |
 | `runtime/tally-weekly-classification.mjs` | 4 | base token、env 路径，新增「未给 `WEEKLY_TABLE_ID` 时按名字取最新竞品周表」 |
 | `runtime/backfill-weekly-date-fields.mjs` | 6 | 各 PLAN 的 table id 改 `null` + 按名字在目标 base 内解析 |
 | `runtime/run-faq-operator.mjs` | 2 | `DEFAULT_BASE_URL`、`DEFAULT_ENV_FILE` |
