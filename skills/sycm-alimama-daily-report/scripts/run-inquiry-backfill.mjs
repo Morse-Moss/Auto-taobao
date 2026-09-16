@@ -20,10 +20,11 @@ const DEFAULTS = Object.freeze({
 const WRITTEN_FIELDS = Object.freeze(['询单量', '同层同行询单量']);
 
 function parseArgs(argv) {
-  const args = { ...DEFAULTS, commit: false };
+  const args = { ...DEFAULTS, commit: false, allowMissingPeer: false };
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
     if (key === '--commit') args.commit = true;
+    else if (key === '--allow-missing-peer') args.allowMissingPeer = true;
     else if (key === '--date') args.reportDate = argv[++index];
     else if (key === '--source-shop') args.sourceShop = argv[++index];
     else if (key === '--shop') args.shop = argv[++index];
@@ -89,7 +90,8 @@ async function main() {
   if (source.sourceShop !== args.sourceShop) {
     throw new Error(`unexpected SYCM shop: expected ${args.sourceShop}, got ${source.sourceShop}`);
   }
-  const metrics = extractInquiryMetrics(source, args.reportDate);
+  const metrics = extractInquiryMetrics(source, args.reportDate,
+    { peerBenchmarkRequired: !args.allowMissingPeer });
 
   const clientModule = await import(pathToFileURL(path.join(REPO_ROOT,
     'skills', 'xws-to-feishu-base', 'scripts', 'feishu-client.mjs')));
@@ -109,12 +111,24 @@ async function main() {
   const epoch = reportDateEpoch(args.reportDate);
   const before = selectDailyStoreRecord(beforeRecords, epoch, args.shop);
   const disposition = classifyInquiryWrite(before.fields, metrics);
+  // 降级时只写「询单量」，不碰「同层同行询单量」——让那一格保持空白，而不是写 0 或占位值。
+  const values = metrics.peerBenchmark === 'PEER_UNAVAILABLE'
+    ? { 询单量: metrics.inquiry }
+    : { 询单量: metrics.inquiry, 同层同行询单量: metrics.peerInquiry };
   const plan = {
     mode: args.commit ? 'commit' : 'dry-run', reportDate: args.reportDate, shop: args.shop,
     target: { appToken: args.appToken, tableId: args.tableId, tableName: table.name, recordId: before.record_id },
     source: { url: source.url, shop: source.sourceShop, column: '当日询单人数',
-      dateRow: args.reportDate, benchmarkRow: '同行同层均值' },
-    values: { 询单量: metrics.inquiry, 同层同行询单量: metrics.peerInquiry },
+      dateRow: args.reportDate, benchmarkRow: metrics.peerBenchmark === 'PEER_UNAVAILABLE' ? null : '同行同层均值',
+      peerBenchmark: metrics.peerBenchmark, rows: (source.rows ?? []).length },
+    degraded: metrics.peerBenchmark === 'PEER_UNAVAILABLE'
+      // 历史日（自定义日期）实测只剩 3 行，数据源不返回同行同层对比行。
+      // 这是显式降级：单据里写清缺什么、为什么缺，而不是静默留空或写 0。
+      ? { code: 'PEER_UNAVAILABLE',
+        reason: 'SYCM 自定义日期模式下表格不含「同行同层均值」行（预设「1天」才有）',
+        omittedFields: ['同层同行询单量'], sourceRowCount: (source.rows ?? []).length }
+      : null,
+    values,
     prewrite: { disposition, 询单量: before.fields?.['询单量'] ?? null,
       同层同行询单量: before.fields?.['同层同行询单量'] ?? null },
   };
@@ -123,7 +137,8 @@ async function main() {
 
   if (!args.commit) {
     const status = disposition === 'WRITE_REQUIRED' ? 'DRY_RUN_READY' : 'ALREADY_VERIFIED';
-    console.log(JSON.stringify({ status, planPath, recordId: before.record_id, values: plan.values }, null, 2));
+    console.log(JSON.stringify({ status, planPath, recordId: before.record_id, values: plan.values,
+      degraded: plan.degraded }, null, 2));
     return;
   }
 

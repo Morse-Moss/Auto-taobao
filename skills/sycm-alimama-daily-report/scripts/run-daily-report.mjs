@@ -131,7 +131,16 @@ function buildPlan(args, target, source, fields) {
   };
 }
 
-function verifyCreatedRecord(created, fields, target) {
+// 「店铺」是飞书侧的派生字段，写入后由服务端异步算出来：
+// 紧随创建的 listRecords 可能还读不到它（实测：记录已创建且 265 个字段全对，但 店铺 仍是 []）。
+// 这属于「写入成功、回读太快」，不该当成写入失败，所以这里给一个有界重试；
+// 但预算耗尽后仍然如实报错——不是「重试到成功为止」（那等于把断言变成恒真）。
+const DERIVED_FIELD = '店铺';
+const DERIVED_READBACK = Object.freeze({ attempts: 6, delayMs: 1500 });
+
+function delay(ms) { return new Promise((resolve) => { setTimeout(resolve, ms); }); }
+
+function verifyRecordFields(created, fields, target) {
   const fieldsByName = new Map(target.fields.map(field => [field.name, field]));
   const mismatches = Object.entries(fields).filter(([name, expected]) =>
     !valuesEqual(expected, created.fields?.[name], fieldsByName.get(name)));
@@ -142,10 +151,29 @@ function verifyCreatedRecord(created, fields, target) {
   if (blankPromotionFields.some(name => created.fields?.[name] !== null && created.fields?.[name] !== undefined)) {
     throw new Error('target-only promotion fields did not remain blank');
   }
-  if (!Array.isArray(created.fields?.['店铺']) || created.fields['店铺'].length !== 1) {
-    throw new Error('derived shop field was not populated');
-  }
   return Object.keys(fields).length;
+}
+
+// 只重读「店铺」这一个派生字段，其余字段以最后一次读到的快照为准。
+async function rereadUntilDerivedShop(client, recordId, options = {}) {
+  const attempts = options.attempts ?? DERIVED_READBACK.attempts;
+  const delayMs = options.delayMs ?? DERIVED_READBACK.delayMs;
+  const trace = [];
+  let last = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const records = await client.listRecords();
+    const created = records.find(record => record.record_id === recordId);
+    if (!created) throw new Error(`created record not found on reread: ${recordId}`);
+    last = created;
+    const derived = created.fields?.[DERIVED_FIELD];
+    if (Array.isArray(derived) && derived.length === 1) return { created, attempts: attempt, trace, records };
+    trace.push({ attempt, derived: derived ?? null });
+    if (attempt < attempts) await delay(delayMs);
+  }
+  const error = new Error(`derived field ${DERIVED_FIELD} was not populated after ${attempts} rereads `
+    + `(last=${JSON.stringify(last?.fields?.[DERIVED_FIELD] ?? null)}); the record itself exists: ${recordId}`);
+  error.trace = trace;
+  throw error;
 }
 
 function buildPasteTsv(fields, visibleFields, reportDate) {
@@ -188,16 +216,18 @@ async function main() {
       throw new Error(`record count mismatch for UI import: expected ${args.expectedBeforeCount + 1}, got ${before.length}`);
     }
     if (duplicates.length !== 1) throw new Error(`expected one imported row, got ${duplicates.length}`);
-    const created = duplicates[0];
-    const verifiedFields = verifyCreatedRecord(created, fields, target);
+    const settled = await rereadUntilDerivedShop(client, duplicates[0].record_id);
+    const created = settled.created;
+    const verifiedFields = verifyRecordFields(created, fields, target);
     const receipt = { ...plan, status: 'UI_COMMITTED_AND_VERIFIED', recordId: created.record_id,
       recordCountBefore: args.expectedBeforeCount, recordCountAfter: before.length, verifiedFields,
-      derivedShop: created.fields['店铺'] };
+      derivedShop: created.fields[DERIVED_FIELD], derivedReadbackAttempts: settled.attempts,
+      derivedReadbackTrace: settled.trace };
     const receiptPath = path.join(args.outputDir, 'receipt.json');
     writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
     console.log(JSON.stringify({ status: receipt.status, recordId: created.record_id, receiptPath,
       recordCountBefore: args.expectedBeforeCount, recordCountAfter: before.length, verifiedFields,
-      checks: plan.checks }, null, 2));
+      derivedReadbackAttempts: settled.attempts, checks: plan.checks }, null, 2));
     return;
   }
   if (duplicates.length) throw new Error(`duplicate daily report row exists: ${duplicates.map(item => item.record_id).join(', ')}`);
@@ -208,18 +238,20 @@ async function main() {
   }
 
   const [recordId] = await client.batchCreateRecords([fields]);
-  const after = await client.listRecords();
+  const settled = await rereadUntilDerivedShop(client, recordId);
+  const after = settled.records;
   if (after.length !== before.length + 1) throw new Error(`record count mismatch after create: ${before.length} -> ${after.length}`);
-  const created = after.find(record => record.record_id === recordId);
-  if (!created) throw new Error(`created record not found on reread: ${recordId}`);
-  const verifiedFields = verifyCreatedRecord(created, fields, target);
+  const created = settled.created;
+  const verifiedFields = verifyRecordFields(created, fields, target);
   const receipt = { ...plan, status: 'COMMITTED_AND_VERIFIED', recordId,
     recordCountBefore: before.length, recordCountAfter: after.length, verifiedFields,
-    derivedShop: created.fields['店铺'] };
+    derivedShop: created.fields[DERIVED_FIELD], derivedReadbackAttempts: settled.attempts,
+    derivedReadbackTrace: settled.trace };
   const receiptPath = path.join(args.outputDir, 'receipt.json');
   writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
   console.log(JSON.stringify({ status: receipt.status, recordId, receiptPath,
-    recordCountBefore: before.length, recordCountAfter: after.length, checks: plan.checks }, null, 2));
+    recordCountBefore: before.length, recordCountAfter: after.length, verifiedFields,
+    derivedReadbackAttempts: settled.attempts, checks: plan.checks }, null, 2));
 }
 
 main().catch(error => {

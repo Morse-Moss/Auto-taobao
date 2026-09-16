@@ -17,6 +17,20 @@ Use the dedicated daily-report Edge profile and proxy. This workflow is specific
 
 Read [references/sop.md](references/sop.md) when collecting fresh source files or diagnosing page drift. If both downloads already exist, start with the deterministic runner.
 
+## Date Placement
+
+Set the reporting date on both sites before collecting anything. Never rely on the page's remembered state.
+
+```powershell
+node skills/sycm-alimama-daily-report/scripts/date-picker.mjs --site alimama --date 2026-09-15
+node skills/sycm-alimama-daily-report/scripts/date-picker.mjs --site sycm --date 2026-09-15
+```
+
+- Mode is derived, not guessed: the requested date equal to the site's yesterday uses the `1天` preset; any other date uses an explicit selection. `--mode preset|explicit` forces one.
+- Alimama encodes every filter in the URL hash, so the date, both scenes, the 30-day cycle, and the daily granularity are applied by navigation alone — no calendar clicks. The script then rereads the filter bar and asserts all of them.
+- Sycm needs the `询单到付款` tab first; the date control under `汇总分析` is a different widget. The script switches the tab, applies the date, and asserts the tab is still active afterwards.
+- A refused assertion prints the step trace, so a failure is diagnosable without re-running by hand.
+
 ## Deterministic Import
 
 The runner is dry-run by default. It rejects a schema mismatch, missing scene, mismatched dates, an existing same-day shop row, an unexpected Feishu target, or a value incompatible with the target field type.
@@ -42,7 +56,9 @@ node skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs `
 
 ## Inquiry Backfill
 
-In the same logged-in SYCM browser, open `服务 -> 店铺绩效 -> 业绩分析 -> 询单到付款`, select `日`, and set the requested date. The inquiry runner reads the `当日询单人数` column from the requested date row and the `同行同层均值` row. It maps them to `询单量` and `同层同行询单量` respectively.
+In the same logged-in SYCM browser, open `服务 -> 店铺绩效 -> 业绩分析 -> 询单到付款`, select `日`, and set the requested date through the date-placement step above. The inquiry runner reads the `当日询单人数` column from the requested date row and, when present, the `同行同层均值` row. It maps them to `询单量` and `同层同行询单量` respectively.
+
+The `同行同层均值` row only exists in the `1天` preset. A custom date returns three rows without it, so `同层同行询单量` is unavailable from the source. That is fail-closed by default; pass `--allow-missing-peer` to degrade explicitly to writing only `询单量`. The plan and receipt then carry `degraded.code = PEER_UNAVAILABLE` and the peer field is left blank rather than zeroed.
 
 Dry-run first, then commit the reviewed plan:
 
@@ -52,9 +68,13 @@ node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs `
 
 node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs `
   --date 2026-09-15 --source-shop 盖文旗舰店 --shop 盖文天猫 --commit
+
+# historical date: only 询单量 is obtainable
+node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs `
+  --date 2026-09-14 --source-shop 盖文旗舰店 --shop 盖文天猫 --allow-missing-peer --commit
 ```
 
-The runner requires the live SYCM shop identity to match `--source-shop`, one exact SYCM table, one exact date row, one exact benchmark row, and one exact Feishu row matched by date and `--shop`. Both target fields must be blank, or both must already equal the source values. It updates only those two fields and compares every other field before and after the write.
+The runner requires the live SYCM shop identity to match `--source-shop`, one exact SYCM table, one exact date row, one exact Feishu row matched by date and `--shop`, and — unless the peer benchmark is explicitly degraded — one exact `同行同层均值` row. Both target fields must be blank, or both must already equal the source values; under degradation only `询单量` is judged and the peer field must stay blank, so a rerun still returns `ALREADY_VERIFIED`. It updates only those fields and compares every other field before and after the write.
 
 ## Data Contract
 
@@ -68,6 +88,6 @@ The runner requires the live SYCM shop identity to match `--source-shop`, one ex
 
 ## Acceptance
 
-Accept a committed run only when the table record count increases by exactly one, the returned record id exists on reread, all written fields match after Feishu type normalization, both scene ids are correct, all three dates match, and target-only promotion fields remain blank.
+Accept a committed run only when the table record count increases by exactly one, the returned record id exists on reread, all written fields match after Feishu type normalization, both scene ids are correct, all three dates match, target-only promotion fields remain blank, and the derived `店铺` field resolved to exactly one value. `店铺` is computed asynchronously by Feishu, so that one field is reread with a bounded retry; exhausting the budget is still a failure, reported together with the record id that does exist.
 
-Accept an inquiry backfill only when the source page is on the requested date, the two numeric values come from the named column and rows, the Feishu target row is unique, both written values match on reread, and all unrelated fields are unchanged.
+Accept an inquiry backfill only when the source page is on the requested date, the numeric values come from the named column and rows, the Feishu target row is unique, the written values match on reread, and all unrelated fields are unchanged. Under `PEER_UNAVAILABLE` degradation, accept only `询单量` and require `同层同行询单量` to be blank.
