@@ -210,3 +210,63 @@ Q1–Q4 已按建议执行，Q5 按建议保留现状；执行结果与验证见
    建议：把 `runtime/isolated-proxy/` 从 ignore 里拿出来（它已不是上游原样，是被本项目改过的工具链）。**要不要动，需要拍板。**
 2. **`cdp-proxy` 的 `--browser` 契约是死的**（坑 38 的又一例）：`discoverChromePort` 处理 `result.kind === 'mismatch'`、`result.source === 'override'`、`findFallbackPort()` 兜底三条分支，而 `browser-discovery.selectBrowser` 是**无参**、且永远返回 `{kind:'ok', source:'isolated-runtime'}` ⇒ 那三条分支（含「连不上时给 Agent 的处理顺序」提示、「pin 之后不许 fallback」的保护）**永远不会执行**；`--browser <名>` 传了也不起作用。未修（超出批准范围）。
 3. **`isolated-proxy` 的测试不在离线套件里，理由已经不准**：`scripts/test-suite-discovery.mjs:30-31` 写的理由是「探的是本机 CDP 代理/浏览器端口；本机没开那两个端口时它的结论没有意义」，但 `browser-discovery.test.mjs` 全程 mock `fetch`、不碰真实端口（今天新加的三条同样）。并进套件会改动基线数字，需要拍板。
+
+## 8. 「飞书数据顺序乱了」的定位（2026-09-17，用户贴截图追问）
+
+用户看到的是底单 `tbl84ZGwLQKyLxV3`（视图 `vewwg0rhjo`「表格」）的第 5/6/7 行：
+
+| 行号 | 店铺 | 统计日期 | 店铺名称 |
+| --- | --- | --- | --- |
+| 5 | 盖文天猫 | 2026/09/15 | 盖文旗舰店 |
+| 6 | 盖文天猫 | 2026/09/14 | 盖文旗舰店 |
+| 7 | 盖文天猫 | 2026/09/16 | 盖文旗舰店 |
+
+**结论：不是数据错位，是「行序 = 记录创建顺序」，而 09-15 比 09-14 先进表。**
+
+### 8.1 证据（全部来自既有收据，可逐条复核）
+
+`receipt.json` 里的 `recordCountBefore/After` 就是该记录被追加时的**落位下标**，把它们按时间排开，与屏幕上看到的行号逐一对应：
+
+| 收据 | reportDate | recordId | before → after | 落位 |
+| --- | --- | --- | --- | --- |
+| （历史种子） | 08-31 / 09-01 / 09-02 / 09-03 | recvtVyQ33clAW … recvud6lJRJGve | — | 1–4 |
+| `daily-report-2026-09-15` | 09-15 | recvvm3aVD7u1I | 4 → 5 | **5** |
+| `daily-report-2026-09-14` | 09-14 | recvvmYaNKfac0 | 5 → 6 | **6** |
+| `daily-report-rerun-2026-09-16/import-2026-09-15` | 09-15 | recvvnjYo7bMpv | 4 → 5 | **5** |
+| `daily-report-rerun-2026-09-16/import-2026-09-14` | 09-14 | recvvnkcL1DPUo | 5 → 6 | **6** |
+| `daily-report-2026-09-16` | 09-16 | recvvqPBEP0cMe | 6 → 7 | **7** |
+
+两代记录（重跑前 `recvvm*`、重跑后 `recvvn*`）的落位完全一致：**每一次都是 09-15 先进、09-14 后进**。原因是日期口径 —— 09-16 当天先按「昨日」预设跑 09-15，再回填 09-14；回填的日期越老，越晚落位。
+
+重跑那次的下载时间戳也独立佐证了这个先后：09-15 用 `营销场景报表_20260916_121308.zip`，09-14 用 `…_150325.zip`。
+
+### 8.2 视图配置（2026-09-17 现场只读读到的）
+
+对 `19023` 的 `/eval` 读 `view.property`：
+
+```
+viewName = 表格
+group    = [{ field: 店铺, desc: false }]      ← 按「店铺」分组（单选/Lookup，fldsPXWgqt）
+sortInfo = []                                  ← 没有任何排序
+recordCount = 7
+```
+
+即：**组内没有任何排序规则 ⇒ 飞书按记录创建顺序排列**。这不是缺陷，是当前视图配置的必然结果。
+
+### 8.3 「本地有没有数据库保存」的确切边界
+
+| | 有 / 无 | 说明 |
+| --- | --- | --- |
+| 本项目 PG `xws_automation`（PG17，127.0.0.1:5432，迁移 001–006） | 有，但**与日报链无关** | 它服务 sop-runtime / 竞品采集链（运行、attempt、账本、durable_*）。`db/` 下没有任何日报相关表。 |
+| 日报链读 PG | **无** | 在 `skills/sycm-alimama-daily-report/` 里 grep `postgres\|Pool\|xws_automation` 零命中。 |
+| 日报链的本地落地 | 只有过程文件 | 源文件在 `C:\Users\Administrator\Downloads`（xlsx / zip）；产物在 `evidence/daily-report-*/{plan.json,paste.tsv,receipt.json}`。 |
+| 「某天推过没有」的判据 | 问飞书，不是问本地 | 链上靠 `listRecords` 查「统计日期 + 店铺名称」是否已存在（`duplicates`），没有本地台账。 |
+
+所以现状是：**飞书底单是唯一的数据落地处；本地只有收据，没有数据副本、也没有已推送索引。** 底单表 id 在本仓库只出现在 `runtime/feishu-targets.mjs` 与收据/计划文件里，没有任何脚本回读它 —— 下游（月份数据表、仪表盘）都是飞书原生公式/引用。
+
+### 8.4 建议（按代价排序）
+
+1. **只改视图排序**（零代码、不动数据）：在底单视图加一条排序「统计日期 升序」。视图属性，与记录本身、与下游公式/引用无关。**属于在用户 base 上的可见改动，未擅自执行。**
+2. **回填写入按日期升序提交**（小改）：回填多天时先补最老的。只在「连续补一段更早的日期」时有效，补中间空缺依旧会落在末尾，治标。
+3. **给日报链加本地台账**（需要拍板，涉及新迁移）：在 `xws_automation` 建一张 `daily_report_push`（日期 + 店铺 + recordId + 源文件 sha256 + 推送时刻 + 环境），收益是「不查飞书就知道哪天推过」「重推/覆盖有审计」，代价是多一份要与飞书对账的状态（多一个可能失同步的权威）。
+   真正的顺序问题，方案 1 就解决；方案 3 解决的是另一个问题（本地可追溯），不要为了治顺序去建库。
