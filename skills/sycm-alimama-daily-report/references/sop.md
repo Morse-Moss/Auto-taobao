@@ -108,6 +108,15 @@ https://one.alimama.com/index.html#!/report/account?rptType=account
 - 顶层菜单 `自助分析` → `https://sycm.taobao.com/adm/v3/micro/auto_analysis/my_space`；
 - iframe 自身地址可直接开：`https://sycm.taobao.com/lyone/auto_analysis/my_space?insertType=sycm&layoutHide=1&useDebug=false`（同源，去掉外壳后探针不必穿透 iframe）。左栏切 `公共空间`（URL 追加 `&activeKey=common`）。
 
+**但别从门户首页直接跳这条 iframe 地址**（2026-09-17 实测）：页面停在 `sycm.taobao.com/portal/home.htm` 时导航过去，
+12 秒后它自己跳回门户（跟随器日志：`11:18:27 跟随 → …/lyone/auto_analysis/my_space` → `11:18:39 跟随 → …/portal/home.htm`）。
+地址没错，是当时页面不在应用内、没有外壳上下文。采集路径必须先落到任一个应用内页
+（本 SOP 用 `qos/service/frame/shop/performance/new#/shop`），再跳公共空间。两条入口各自都能稳定停住
+（18 秒复读 URL 不变），差别只是外壳页把内容装在 iframe 里（探针要读 `contentDocument`），直连页的元素就在主文档里。
+
+**这类页面不要用固定 sleep 等元素**：出现时间随会话状态变。可靠做法是轮询等目标元素出现（每 2.5s、上限 ~25s），
+点击前再用 `elementFromPoint` 按矩形中心复核命中（元素可能在视口外或被别的层盖住）。
+
 公共空间的报表列表里 `日报` 那一行右侧是 `预览`；点进预览页后 URL 形如
 `/lyone/auto_analysis/datafetch/report_generation?...&reportId=4300764&type=preview`，页面底部按钮依次是 `下载报表` / `加入我的报表` / `加入在线表格`。
 
