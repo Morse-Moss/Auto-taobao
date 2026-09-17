@@ -6,7 +6,7 @@
     "appToken": "X02Xb7fHba7mU9sr8uIcRlExn6b",
     "tableId": "tblm9Hx7R9A1YoLC",
     "tableName": "各店铺数据日报",
-    "recordId": "recvtXewerrrN2"
+    "recordId": "recvvrDlSdc26b"
   },
   "source": {
     "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
@@ -26,14 +26,5 @@
     "disposition": "WRITE_REQUIRED",
     "询单量": null,
     "同层同行询单量": null
-  },
-  "status": "COMMITTED_AND_VERIFIED",
-  "verified": {
-    "recordId": "recvtXewerrrN2",
-    "unchangedOtherFields": true,
-    "values": {
-      "询单量": 13,
-      "同层同行询单量": 39
-    }
   }
 }

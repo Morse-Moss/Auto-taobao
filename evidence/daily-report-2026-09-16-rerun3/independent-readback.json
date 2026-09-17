@@ -1,0 +1,112 @@
+{
+  "at": "2026-09-17T03:31:19.031Z",
+  "sourceTable": {
+    "recordsNum": 7,
+    "loaded": 7,
+    "onDateCount": 1,
+    "rows": [
+      {
+        "rid": "recvvrCU04G5RN",
+        "epoch": 1789488000000,
+        "shop": "盖文旗舰店",
+        "q": null,
+        "peer": null
+      }
+    ]
+  },
+  "inquiryTable": {
+    "recordsNum": 2197,
+    "loaded": 2197,
+    "onDateCount": 12,
+    "rows": [
+      {
+        "rid": "recvvrDlSdMUCo",
+        "epoch": 1789488000000,
+        "shop": "optldTjNbD",
+        "q": null,
+        "peer": null
+      },
+      {
+        "rid": "recvvrDlSdT4mH",
+        "epoch": 1789488000000,
+        "shop": "optllhAK2o",
+        "q": null,
+        "peer": null
+      },
+      {
+        "rid": "recvvrDlSd1BGt",
+        "epoch": 1789488000000,
+        "shop": "optMNT1l94",
+        "q": null,
+        "peer": null
+      },
+      {
+        "rid": "recvvrDlSdc26b",
+        "epoch": 1789488000000,
+        "shop": "optIYzOzu2",
+        "q": 13,
+        "peer": 39
+      },
+      {
+        "rid": "recvvrDlSddUmH",
+        "epoch": 1789488000000,
+        "shop": "optnIqwuUN",
+        "q": null,
+        "peer": null
+      },
+      {
+        "rid": "recvvrDlSdcnKM",
+        "epoch": 1789488000000,
+        "shop": "optFFaXJeh",
+        "q": null,
+        "peer": null
+      },
+      {
+        "rid": "recvvrDlSdMvWx",
+        "epoch": 1789488000000,
+        "shop": "optU1M49NJ",
+        "q": null,
+        "peer": null
+      },
+      {
+        "rid": "recvvrDlSdwA9z",
+        "epoch": 1789488000000,
+        "shop": "optd3cotzq",
+        "q": null,
+        "peer": null
+      },
+      {
+        "rid": "recvvrDlSdhaE9",
+        "epoch": 1789488000000,
+        "shop": "optUI2OU6r",
+        "q": null,
+        "peer": null
+      },
+      {
+        "rid": "recvvrDlSd1oxO",
+        "epoch": 1789488000000,
+        "shop": "optUKhpHUN",
+        "q": null,
+        "peer": null
+      },
+      {
+        "rid": "recvvrDlSdIHMq",
+        "epoch": 1789488000000,
+        "shop": "optRry7sLK",
+        "q": null,
+        "peer": null
+      },
+      {
+        "rid": "recvvrDlSd43uq",
+        "epoch": 1789488000000,
+        "shop": "optnF3h5i7",
+        "q": null,
+        "peer": null
+      }
+    ]
+  },
+  "shots": [
+    "feishu-source-table-after-push.png",
+    "feishu-inquiry-table-after-backfill.png"
+  ]
+}

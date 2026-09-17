@@ -10,6 +10,7 @@ import { dailyReportTargets, loadFeishuCredentials } from '../../../runtime/feis
 import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import { appendAudit, describeAuditRow } from '../../../runtime/daily-report-audit.mjs';
 import { buildCombinedFields, reportDateEpoch, summarizeSourceDates, valuesEqual } from './daily-report-core.mjs';
+import { buildEnvironment, dirHasEntries, resolveEvidenceDir } from './daily-report-runtime.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -46,12 +47,20 @@ function parseArgs(argv) {
   args.promotionZip = path.resolve(args.promotionZip);
   if (!existsSync(args.shopXlsx)) throw new Error(`shop workbook not found: ${args.shopXlsx}`);
   if (!existsSync(args.promotionZip)) throw new Error(`promotion ZIP not found: ${args.promotionZip}`);
-  args.outputDir = path.resolve(args.outputDir || path.join(REPO_ROOT, 'evidence', `daily-report-${args.reportDate}`));
+  // 证据目录的**代次**不在这里决定（要等知道上一次跑过没有）；这里只记「调用方有没有明说」。
+  args.outputDir = args.outputDir ? path.resolve(args.outputDir) : null;
   if (args.commit && args.verifyExisting) throw new Error('--commit and --verify-existing are mutually exclusive');
   if (args.verifyExisting && !Number.isInteger(args.expectedBeforeCount)) {
     throw new Error('--verify-existing requires --expected-before-count');
   }
   return args;
+}
+
+// 产物落哪一代（同一天重跑不再覆盖上一轮）：判据与实现都在 daily-report-runtime.mjs，
+// 询单回填用的是同一个「目录里有没有东西」，不许有两份实现。
+function resolveOutputDir(args) {
+  const baseDir = path.join(REPO_ROOT, 'evidence', `daily-report-${args.reportDate}`);
+  return resolveEvidenceDir({ baseDir, explicit: args.outputDir, isOccupied: dirHasEntries });
 }
 
 async function inspectTarget(args) {
@@ -106,44 +115,15 @@ function sha256(file) {
   return createHash('sha256').update(readFileSync(file)).digest('hex');
 }
 
-// 「这次是在什么环境里跑的」——收据里原先一个字都没有。
-//
-// 为什么要记（2026-09-17 实测的代价）：本轮日报浏览器实际跑在**退役端口 9223** 上
-// （登记表写的是 19022，遗留实例没退），可就因为收据不含环境字段，这件事**无法从任何产物
-// 自证** —— 只能靠口头交接；下一个复盘的人看到的收据是干净的，会以为一切按登记表跑。
-//
-// 这里只观测、不裁决：值不是合法端口就如实记成 env-invalid，而不是抛错。
-// 这些端口是浏览器链在用，runner 自己并不读它们；让一次数据导入因为一个无关的环境变量
-// 而失败，是把两件事绑在一起了。真正要用它的地方（start-project-browser）才该 fail-closed。
-function describeObservedPort(envName, registryDefault) {
-  const raw = process.env[envName];
-  if (raw === undefined || raw.trim() === '') {
-    return { port: registryDefault, source: 'registry-default', registryDefault };
-  }
-  const parsed = Number(raw);
-  const valid = Number.isInteger(parsed) && parsed > 0 && parsed <= 65535;
-  return valid
-    ? { port: parsed, source: 'env', registryDefault }
-    : { port: null, source: 'env-invalid', raw, registryDefault };
-}
-
-function describeObservedIdentity(envName, registryDefault) {
-  const raw = process.env[envName];
-  return raw === undefined || raw.trim() === ''
-    ? { id: registryDefault, source: 'registry-default' }
-    : { id: raw, source: 'env' };
-}
-
-function buildEnvironment(args) {
-  return {
-    computedAt: new Date().toISOString(),
-    node: process.version,
+// 「这次是在什么环境里跑的」原先只在本文件实现，收据里一个字都没有 —— 后来的代价见
+// ./daily-report-runtime.mjs 的说明（浏览器实际跑在退役端口上，却无法从任何产物自证）。
+// 现在这份实现搬进了那个模块：询单回填是同一条链的第二个写入方，它对同一件事必须给同一个答案。
+function buildRunEnvironment(args) {
+  return buildEnvironment({
     proxyUrl: args.proxy,
-    browserPort: describeObservedPort('CDP_BROWSER_PORT', PROJECT_PORTS.dailyReportBrowser),
-    proxyPort: describeObservedPort('CDP_PROXY_PORT', PROJECT_PORTS.dailyReportProxy),
-    browserId: describeObservedIdentity('CDP_BROWSER_ID', BROWSER_IDS.dailyReport),
-    browserLabel: describeObservedIdentity('CDP_BROWSER_LABEL', BROWSER_LABELS.dailyReport),
-  };
+    ports: { browser: PROJECT_PORTS.dailyReportBrowser, proxy: PROJECT_PORTS.dailyReportProxy },
+    identities: { id: BROWSER_IDS.dailyReport, label: BROWSER_LABELS.dailyReport },
+  });
 }
 
 // 下载后置自证：数据不是目标日那天的，就不进这条链。
@@ -163,11 +143,13 @@ function assertSourceDates(source, args) {
   return selfCheck;
 }
 
-function buildPlan(args, target, source, fields, sourceSelfChecks) {
+function buildPlan(args, target, source, fields, sourceSelfChecks, evidence) {
   return {
     mode: args.commit ? 'api-commit' : args.verifyExisting ? 'verify-existing' : 'dry-run',
     reportDate: args.reportDate,
-    environment: buildEnvironment(args),
+    environment: buildRunEnvironment(args),
+    // 产物落在哪一代：同一天重跑不再覆盖上一轮，收据自己说得出这一点。
+    evidence,
     sourceSelfChecks,
     target: { appToken: args.appToken, tableId: args.tableId, viewId: args.viewId,
       baseName: target.baseName, tableName: target.tableName },
@@ -264,11 +246,15 @@ async function recordAudit(entry) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  // 先定产物落哪一代，再动任何东西：同一天第二次跑会顺延到 -rerun2，而不是覆盖上一轮。
+  const resolved = resolveOutputDir(args);
+  args.outputDir = resolved.dir;
   const target = await inspectTarget(args);
   const source = extractSources(args);
   const sourceSelfChecks = assertSourceDates(source, args);
   const fields = buildCombinedFields(source, target.fields, args.reportDate);
-  const plan = buildPlan(args, target, source, fields, sourceSelfChecks);
+  const evidence = { outputDir: args.outputDir, generation: resolved.generation, reason: resolved.reason };
+  const plan = buildPlan(args, target, source, fields, sourceSelfChecks, evidence);
   mkdirSync(args.outputDir, { recursive: true });
   const planPath = path.join(args.outputDir, 'plan.json');
   writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
@@ -321,6 +307,7 @@ async function main() {
       recordCountBefore: args.expectedBeforeCount, recordCountAfter: before.length, verifiedFields, receiptPath,
       detail: { status: receipt.status, derivedReadbackAttempts: settled.attempts } });
     console.log(JSON.stringify({ status: receipt.status, recordId: created.record_id, receiptPath,
+      outputDir: args.outputDir, evidenceGeneration: resolved.generation,
       recordCountBefore: args.expectedBeforeCount, recordCountAfter: before.length, verifiedFields,
       derivedReadbackAttempts: settled.attempts, checks: plan.checks }, null, 2));
     return;
@@ -328,7 +315,9 @@ async function main() {
   if (duplicates.length) throw new Error(`duplicate daily report row exists: ${duplicates.map(item => item.record_id).join(', ')}`);
 
   if (!args.commit) {
-    console.log(JSON.stringify({ status: 'DRY_RUN_READY', planPath, tsvPath, recordCount: before.length, checks: plan.checks }, null, 2));
+    console.log(JSON.stringify({ status: 'DRY_RUN_READY', planPath, tsvPath,
+      outputDir: args.outputDir, evidenceGeneration: resolved.generation,
+      recordCount: before.length, checks: plan.checks }, null, 2));
     return;
   }
 
@@ -348,6 +337,7 @@ async function main() {
     recordCountAfter: after.length, verifiedFields, receiptPath,
     detail: { status: receipt.status, derivedReadbackAttempts: settled.attempts } });
   console.log(JSON.stringify({ status: receipt.status, recordId, receiptPath,
+    outputDir: args.outputDir, evidenceGeneration: resolved.generation,
     recordCountBefore: before.length, recordCountAfter: after.length, verifiedFields,
     derivedReadbackAttempts: settled.attempts, checks: plan.checks }, null, 2));
 }

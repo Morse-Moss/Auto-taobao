@@ -1,0 +1,113 @@
+{
+  "at": "2026-09-17T03:42:47.670Z",
+  "question": "同一个目标日（2026-09-16）在两代运行里导出，数值一致吗？",
+  "conclusion": "店铺块（生意参谋侧）119 个字段逐字段完全相同；差异全部落在推广块（阿里妈妈侧）。两次推广导出相隔约 3 小时 18 分（08:04 → 11:22），8 个指标由 0 变为非 0，另有 4 个字段由「空（未写入）」变为有值 ⇒ 阿里妈妈侧当日上午存在数据未回补完的窗口。",
+  "scopeProvenBy": {
+    "dateEpoch": {
+      "rerun2": 1789488000000,
+      "rerun3": 1789488000000,
+      "same": true
+    },
+    "sceneIds": {
+      "rerun2": [
+        371,
+        372
+      ],
+      "rerun3": [
+        371,
+        372
+      ],
+      "same": true
+    },
+    "promotionObservedDates": {
+      "rerun2": [
+        "2026-09-16"
+      ],
+      "rerun3": [
+        "2026-09-16"
+      ]
+    },
+    "shopBlockFieldDiffCount": 0
+  },
+  "source": {
+    "rerun2": {
+      "shopFile": "C:\\Users\\Administrator\\Downloads\\日报_20260917_adc987ef8d0897700e42dcf1427605b3.xlsx",
+      "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260917_080428.zip",
+      "promotionCsv": "营销场景报表_20260917_080428.csv",
+      "promotionSha256": "78a9ed4cf2c383215d33d6555085d3e22dfdae1aff529a5b36ffa9b9a207b75f"
+    },
+    "rerun3": {
+      "shopFile": "C:\\Users\\Administrator\\Downloads\\日报_20260917_adc987ef8d0897700e42dcf1427605b3 (2).xlsx",
+      "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260917_112258.zip",
+      "promotionCsv": "营销场景报表_20260917_112258.csv",
+      "promotionSha256": "9f0e64190e0c01db6bb962d31bc8501b45e6f15db54dc5e29c70d7ca887d033a"
+    }
+  },
+  "fieldsOnlyInRerun3": [
+    {
+      "name": "引导访问潜客占比",
+      "value": 0.888
+    },
+    {
+      "name": "平均访问页面数",
+      "value": 3
+    },
+    {
+      "name": "引导访问潜客占比 (1)",
+      "value": 0.66929
+    },
+    {
+      "name": "平均访问页面数 (1)",
+      "value": 3
+    }
+  ],
+  "fieldsChanged": [
+    {
+      "name": "优惠券领取量",
+      "rerun2": 0,
+      "rerun3": 6
+    },
+    {
+      "name": "关键词推广旺旺咨询量",
+      "rerun2": 0,
+      "rerun3": 7
+    },
+    {
+      "name": "引导访问人数",
+      "rerun2": 0,
+      "rerun3": 125
+    },
+    {
+      "name": "引导访问潜客数",
+      "rerun2": 0,
+      "rerun3": 111
+    },
+    {
+      "name": "优惠券领取量 (1)",
+      "rerun2": 0,
+      "rerun3": 2
+    },
+    {
+      "name": "人群推广旺旺咨询量",
+      "rerun2": 0,
+      "rerun3": 1
+    },
+    {
+      "name": "引导访问人数 (1)",
+      "rerun2": 0,
+      "rerun3": 127
+    },
+    {
+      "name": "引导访问潜客数 (1)",
+      "rerun2": 0,
+      "rerun3": 85
+    }
+  ],
+  "counts": {
+    "rerun2Fields": 239,
+    "rerun3Fields": 243,
+    "changed": 8,
+    "onlyInRerun3": 4
+  },
+  "operationalConsequence": "底单查重键是「同一天＋同店铺」，所以早跑写进去的偏低数据**不能被同日重推修正**（会被 duplicates 拦下），只能先删掉那一天再重推。⇒ 日更不要赶早，等阿里妈妈侧回补完再跑。"
+}

@@ -6,8 +6,10 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { dailyReportTargets, loadFeishuCredentials } from '../../../runtime/feishu-targets.mjs';
-import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+import { appendAudit, describeAuditRow } from '../../../runtime/daily-report-audit.mjs';
 import { reportDateEpoch } from './daily-report-core.mjs';
+import { buildEnvironment, dirHasEntries, resolveEvidenceDir } from './daily-report-runtime.mjs';
 import { classifyInquiryWrite, extractInquiryMetrics, selectDailyStoreRecord } from './inquiry-core.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -37,7 +39,9 @@ function parseArgs(argv) {
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(args.reportDate ?? '')) throw new Error('missing or invalid --date');
   if (!args.sourceShop) throw new Error('missing --source-shop');
   if (!args.shop) throw new Error('missing --shop');
-  args.outputDir = path.resolve(args.outputDir || path.join(REPO_ROOT, 'evidence', `daily-report-${args.reportDate}`));
+  // 产物落哪一代：这里用 'latest' —— 回填是**同一次运行的第二阶段**，必须并入
+  // run-daily-report 刚建好的那一代；按 'fresh' 走就会把它和 plan/receipt 拆到两个目录。
+  args.outputDir = args.outputDir ? path.resolve(args.outputDir) : null;
   return args;
 }
 
@@ -85,8 +89,29 @@ function withoutInquiryFields(fields) {
   return Object.fromEntries(Object.entries(fields ?? {}).filter(([name]) => !WRITTEN_FIELDS.includes(name)));
 }
 
+// 审计：**这是补上的缺口**（2026-09-17 复盘）。
+//
+// 007 的 CHECK 早就允许 `push | ui-verify | inquiry-backfill` 三个动作，可 appendAudit 只被
+// run-daily-report.mjs 调用（push / ui-verify 两条路），而 run-inquiry-backfill.mjs 根本没接线
+// ⇒ 询单回填**从来没有留下过审计行**。这是本项目反复出现的「词表/文档比代码乐观」形态
+// （同族：登录态 AUTH_EXPIRING 只写在文档里）。词表里有这个值、却没人写，等于把缺口伪装成已完成。
+//
+// 两条纪律照搬 run-daily-report.mjs：只有真的走到对外动作那一步才建立上下文（dry-run 什么都没发生，
+// 不记）；写审计失败**绝不能**让回填链失败 —— 数据已经进飞书了，本地旁证写不进去不该把成功判成失败。
+let auditContext = null;
+
+async function recordAudit(entry) {
+  const row = describeAuditRow(entry);
+  const result = await appendAudit(row);
+  if (result.written) console.log(`[audit] 已记 ${row.action}/${row.outcome} id=${result.id}`);
+  else console.error(`[audit] 未写入（不影响本次结论）：${result.reason}`);
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  const baseDir = path.join(REPO_ROOT, 'evidence', `daily-report-${args.reportDate}`);
+  const resolved = resolveEvidenceDir({ baseDir, explicit: args.outputDir, isOccupied: dirHasEntries, policy: 'latest' });
+  args.outputDir = resolved.dir;
   mkdirSync(args.outputDir, { recursive: true });
   const source = await readSycmTable(args);
   if (source.sourceShop !== args.sourceShop) {
@@ -119,6 +144,12 @@ async function main() {
     : { 询单量: metrics.inquiry, 同层同行询单量: metrics.peerInquiry };
   const plan = {
     mode: args.commit ? 'commit' : 'dry-run', reportDate: args.reportDate, shop: args.shop,
+    environment: buildEnvironment({
+      proxyUrl: args.proxy,
+      ports: { browser: PROJECT_PORTS.dailyReportBrowser, proxy: PROJECT_PORTS.dailyReportProxy },
+      identities: { id: BROWSER_IDS.dailyReport, label: BROWSER_LABELS.dailyReport },
+    }),
+    evidence: { outputDir: args.outputDir, generation: resolved.generation, reason: resolved.reason },
     target: { appToken: args.appToken, tableId: args.tableId, tableName: table.name, recordId: before.record_id },
     source: { url: source.url, shop: source.sourceShop, column: '当日询单人数',
       dateRow: args.reportDate, benchmarkRow: metrics.peerBenchmark === 'PEER_UNAVAILABLE' ? null : '同行同层均值',
@@ -144,6 +175,15 @@ async function main() {
     return;
   }
 
+  // 走到这里就意味着「一定会碰一次远端表」：写回填值，或至少回读一次做结论。
+  // 所以审计上下文从这里开始有意义，而 dry-run 那条分支已经 return 掉了。
+  auditContext = {
+    action: 'inquiry-backfill', reportDate: args.reportDate, shopName: args.shop,
+    mode: plan.mode, environment: plan.environment,
+    detail: { sourceShop: source.sourceShop, sourceUrl: source.url, disposition,
+      values: plan.values, peerBenchmark: metrics.peerBenchmark, evidenceGeneration: resolved.generation },
+  };
+
   let writeResponseError;
   const attemptPath = path.join(args.outputDir, `inquiry-attempt-${Date.now()}.json`);
   if (disposition === 'WRITE_REQUIRED') {
@@ -162,7 +202,10 @@ async function main() {
   assert.deepEqual(withoutInquiryFields(after.fields), withoutInquiryFields(before.fields));
 
   if (disposition === 'ALREADY_VERIFIED') {
-    console.log(JSON.stringify({ status: disposition, recordId: after.record_id,
+    // 没写值，但**回读过了**——也是「我做过的动作」的一种，照记（重复本身是事实）。
+    await recordAudit({ ...auditContext, outcome: 'ok', recordId: after.record_id,
+      detail: { ...auditContext.detail, status: disposition, wrote: false, unchangedOtherFields: true } });
+    console.log(JSON.stringify({ status: disposition, recordId: after.record_id, outputDir: args.outputDir,
       values: plan.values, unchangedOtherFields: true }, null, 2));
     return;
   }
@@ -172,11 +215,19 @@ async function main() {
   const receiptPath = path.join(args.outputDir, 'inquiry-backfill-receipt.json');
   writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
   writeFileSync(attemptPath, `${JSON.stringify({ ...receipt, before, source }, null, 2)}\n`, 'utf8');
+  await recordAudit({ ...auditContext, outcome: 'ok', recordId: after.record_id, receiptPath,
+    detail: { ...auditContext.detail, status: receipt.status, wrote: true, unchangedOtherFields: true } });
   console.log(JSON.stringify({ status: receipt.status, receiptPath, recordId: after.record_id,
-    values: plan.values, unchangedOtherFields: true }, null, 2));
+    outputDir: args.outputDir, values: plan.values, unchangedOtherFields: true }, null, 2));
 }
 
-main().catch(error => {
+main().catch(async (error) => {
   console.error(error.stack || error.message);
+  // 失败同样是一次「我做过的动作」，而且是最需要留下痕迹的那种。
+  // 只在已经建立上下文（真的走到过对外动作那一步）时才记。
+  if (auditContext) {
+    await recordAudit({ ...auditContext, outcome: 'failed',
+      detail: { ...auditContext.detail, error: String(error?.message ?? error).slice(0, 2000) } });
+  }
   process.exitCode = 1;
 });

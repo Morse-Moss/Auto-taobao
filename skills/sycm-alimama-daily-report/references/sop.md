@@ -187,6 +187,10 @@ node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs `
 
 先跑干跑计划；脚本会先校验页头店铺身份。确认目标记录唯一、且两个字段（或降级时的那一个字段）为空后，追加 `--commit`。脚本只更新这两个字段，写后回读并验证其他字段未变化；相同来源值再次运行时应返回 `ALREADY_VERIFIED`。
 
+一次只填**一个店**：`--source-shop` 是生意参谋侧的店铺名（`页头` 里那个 `XX 主店`），`--shop` 是飞书询单表里那一行的店铺选项名。SOP 只覆盖盖文天猫那一家，其余 11 家的行保持空白 —— 这是现状而不是故障，别把「11 行为空」当成回填失败。
+
+`--commit` 会往 `daily_report_push_audit` 写 `action='inquiry-backfill'` 的行（见 §6.2）；`plan.json` / `inquiry-backfill-plan.json` 里也带 `environment` 与 `evidence` 两块，和主链一个形状。
+
 ## 6. 合并与回填
 
 先运行 Skill 入口脚本生成 dry-run `plan.json` 和 `paste.tsv`，核对请求日期、店铺名、目标 base/table、字段数和场景。API 有写权限时用同一命令追加 `--commit`。若 API 返回 `403 / 91403`，停止 API 重试，在飞书网格中新建一行、选中首列，通过代理 `POST /paste` 发送真实 `Ctrl+V`。随后用 `--verify-existing --expected-before-count N` 回读验收，其中 `N` 是粘贴前已确认的行数。
@@ -241,7 +245,9 @@ node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs `
 
 因此**它允许与飞书不一致** —— 不一致正是它要暴露的现象，不是要消除的噪声。日报链的事实只有一个来源：飞书底单里有没有那一行。
 
-写入时机：`run-daily-report.mjs` 只在**真的动了外部系统**的两条路径写行（`--commit` → `action='push'`，`--verify-existing` → `action='ui-verify'`），失败也会写一行（`outcome='failed'`）；dry-run 什么都不写。**写审计失败不会让日报失败** —— 只打印一行 `[audit] 未写入（不影响本次结论）：…`。
+写入时机：`run-daily-report.mjs` 只在**真的动了外部系统**的两条路径写行（`--commit` → `action='push'`，`--verify-existing` → `action='ui-verify'`）；`run-inquiry-backfill.mjs` 在 `--commit` 路径写 `action='inquiry-backfill'`（写入成功与「回读后确认已一致」各记一行，`detail.status` 区分）；失败也会写一行（`outcome='failed'`）；dry-run 什么都不写。**写审计失败不会让日报失败** —— 只打印一行 `[audit] 未写入（不影响本次结论）：…`。
+
+`inquiry-backfill` 这个词原先只存在于 007 的 CHECK 与本文档里，`appendAudit` 却只被 `run-daily-report.mjs` 调用 ⇒ **询单回填从来没留下过审计行**（2026-09-17 复盘发现的缺口，已接线）。这是本项目反复出现的「词表/文档比代码乐观」形态 —— 词表里有、但没人写，等于把缺口伪装成已完成；再遇到「某个值只在词表和文档里出现」时，先去代码里确认有没有写入方。
 
 怎么查（只在本地库 `xws_automation`，无需浏览器）：
 
@@ -258,6 +264,60 @@ from daily_report_push_audit order by at desc limit 20;
 
 落库与回滚：`db/migrations/007-daily-report-push-audit.sql`（2026-09-17 已 apply 到业务库，回读 22 列 / 3 索引 / 2 CHECK）；
 回滚 `007-rollback.sql` 刻意 **fail-closed**（表里还有行就拒绝删）。隔离预演见 `runtime/verify-migrations-isolated.mjs`。
+
+### 6.3 证据目录的代次：同一天重跑不许覆盖上一轮（2026-09-17 起）
+
+默认证据目录原先只按 `reportDate` 取名（`evidence/daily-report-2026-09-16`），于是**同一天跑第二遍会静默覆盖第一遍的 `plan/paste/receipt`**。2026-09-17 真的发生过，而且后果是隐性的：那个目录里的 `plan.json` 属于后一次跑，`before/after-import-readback.json` 却属于清理前的那一次 —— 一个目录里装着两代产物、描述的不是同一批记录，事后从文件名上完全看不出来。
+
+现在的规则（确定性，不问人）：
+
+| 情形 | 落点 |
+| --- | --- |
+| 调用方显式给了 `--output-dir` | 原样用（那是他的选择，脚本不替他改名） |
+| 默认，`evidence/daily-report-<date>` 里**已有内容** | 顺延 `-rerun2`、`-rerun3`… |
+| 默认，目录空/不存在 | `evidence/daily-report-<date>`（第 1 代） |
+| `run-inquiry-backfill.mjs` / `readback-daily-report.mjs` | **并入当前最新一代**（`policy: 'latest'`） |
+
+两条要记住的：
+
+- 判据是「目录里**有没有东西**」，不是「几个已知文件名在不在」—— 只按文件名判的话，截图与探针这类额外产物会绕过它，而那恰恰是最该保住的证据。
+- 回填与回读必须用 `latest`：它们是**同一次运行的后两个阶段**，产物要和 plan/receipt 落在同一个目录里；若也按「另开一代」走，第一天的第二次跑就会把一次运行的产物拆到三个目录，那「这是哪一代」就没有答案了。两个写入方共用 `daily-report-runtime.mjs` 的 `resolveEvidenceDir`（不许各自拼目录，有测试盯着）。
+
+`plan.json` / `receipt.json` 里新增 `evidence` 块（`outputDir` / `generation` / `reason`），stdout 也会打 `outputDir` 与 `evidenceGeneration` —— 收到收据就知道它属于第几代、和哪一批源文件是一对。
+
+历史目录已按同一条规则对齐过（2026-09-17）：`daily-report-2026-09-16` = 第 1 代（08:03-08:14，清理前那次），`-rerun2` = 第 2 代（10:17，重推），`-rerun3` = 第 3 代（11:27，给客户演示那次）。**移动产物会让审计表里历史行的 `receipt_path` 变成旧路径** —— 这是可接受的：审计表是「只追加的动作日志」，它允许与当前事实不一致，那正是它要暴露的现象。
+
+### 6.4 独立回读与截图（脚本化，2026-09-17 起）
+
+```bash
+node skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs --date 2026-09-16
+```
+
+它走**另一条完全不同的通路**读同一个事实：CDP → 飞书页面的 bitable 内存模型（`window.bitableStore.modelOperator.base`），既不过 runner 的断言，也不过飞书 OpenAPI。写入方自证没法排除「写入方和读者一起错了」，所以这一步是收据那两个数字的旁证。产出 `independent-readback.json` 与两张截图（`feishu-source-table-after-*.png` / `feishu-inquiry-table-after-*.png`，后缀 `--shot-suffix` 可改）。
+
+两条实测注意：
+
+- **页面模型存的是 SingleSelect 的选项 id，OpenAPI 存的是选项名字**。不映射就会把 `optIYzOzu2` 当成店名印进证据里（读证据的人得自己猜这是哪家店），而且它看起来完全像一个正常的值。映射实现放在 `daily-report-runtime.mjs` 的 `resolveOptionToken`，表达式里用 `.toString()` 注入，保证「测过的那份」和「真的在跑的那份」是同一份；映射不出来或同一个 id 在不同字段指向不同名字时，如实标 `resolvedBy` 并保留原始 id。
+- 导航到目标表本身就是一次重新加载，顺手解决页面的陈旧问题（老标签页里的 `table.recordsNum` 是打开那一刻的值，实测与别的页读到的差过 12）。所以脚本先导航再等模型就绪，且**轮询**等（每 2s、上限 30s），不用固定 sleep。JSON 里那个字段特意叫 `recordsNumFromPageModel`，就是提醒它可能落后于服务端 —— 它是旁证，不是权威。
+
+### 6.5 同一目标日、不同时刻导出，阿里妈妈侧会不一样（2026-09-17 实测，影响「什么时候跑」）
+
+拿两代运行对同一个目标日（2026-09-16）逐字段比了一次：
+
+| 侧 | 结果 |
+| --- | --- |
+| 店铺块（生意参谋，119 字段） | **逐字段完全相同** |
+| 推广块（阿里妈妈，两次导出相隔约 3 小时 18 分：08:04 → 11:22） | **8 个指标由 `0` 变为非 0**，另有 **4 个字段由「空（未写入）」变为有值** |
+| 日期 / 场景 id / epoch | 两次完全一致（不是选错日期或场景） |
+
+变化的例子：`引导访问人数` 0 → 125、`引导访问潜客数` 0 → 111、`优惠券领取量` 0 → 6、`关键词推广旺旺咨询量` 0 → 7；新出现的是 `引导访问潜客占比` / `平均访问页面数`（两个场景各一份）。
+
+⇒ **阿里妈妈侧当日上午有数据未回补完的窗口：导出得越晚越准，早上的导出会给你一份偏低的推广数据。**
+
+后果比「数字不准」更麻烦：底单的查重键是「同一天＋同店铺」，所以早跑写进去的那份偏低数据**没法靠同日重推修正** —— 重推会被 `duplicate daily report row exists` 拦下，只能先按 §9.3 把那天删掉再重跑。
+
+⇒ 纪律：**日更不要赶早**，等阿里妈妈侧回补完再跑（实务上过午再跑）。这条不是脚本能兜住的，脚本没法判断「平台今天补完没有」；要加自动判定，得先找到平台侧那个「数据已完整」的信号。
+证据：`evidence/daily-report-2026-09-16-rerun3/payload-diff-vs-rerun2.json`。
 
 ## 7. 本轮实测基线
 
@@ -325,8 +385,10 @@ from daily_report_push_audit order by at desc limit 20;
    **重推会生成新的 `recordId`**（旧记录不会回来）；行数是「前 → 前＋1」，因为那一行确实已被删掉。
 6. **询单回填**：干跑会告诉你两个字段现在是不是空的（用户可能把它们也清了）。
    `WRITE_REQUIRED` ⇒ 会写；`ALREADY_VERIFIED` ⇒ 无需写。写完 `unchangedOtherFields: true` 才算过。
-7. **独立回读 + 截图**：别只用 runner 自己的断言。截图前必须 `POST /bringToFront`，
-   否则 `Page.captureScreenshot` 会报 `CDP 命令超时`（后台 tab 被节流）。
+7. **独立回读 + 截图**：别只用 runner 自己的断言 —— 换成一条完全不同的通路再读一次同一个事实：
+   `node skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs --date <目标日>`（见 §6.4）。
+   脚本自己会 `POST /bringToFront` 再截图（否则 `Page.captureScreenshot` 会报 `CDP 命令超时`，后台 tab 被节流），
+   并把「页面模型里的记录数」与「目标日命中几条」写进 `independent-readback.json`。
 
 ### 9.2 本次重推的基线（同一批源文件，两个 sha256 与首轮一致）
 
@@ -345,11 +407,14 @@ from daily_report_push_audit order by at desc limit 20;
 **审计表**（§6.2）本次留下第一条生产行：`id=2, push / ok, 2026-09-16, recvvrlGsi7Js6, 6 → 7, 239, api-commit, 19022 / 19023`
 （`id=1` 是建表当天的冒烟行，写完即删；序列不回退，所以第一条生产行是 2）。
 
-**已知缺口**：`inquiry-backfill` 在 007 的 CHECK 词表里，但 `appendAudit` 目前只被 `run-daily-report.mjs` 调用
-⇒ 第 6 步**不会**留下审计行。要补齐得给小工具接线，**尚未做**。
+**已知缺口（2026-09-17 当日下午已补）**：`inquiry-backfill` 原先只在 007 的 CHECK 词表与本文档里，
+`appendAudit` 却只被 `run-daily-report.mjs` 调用 ⇒ 第 6 步**不会**留下审计行。现已接线
+（`run-inquiry-backfill.mjs` 的 `--commit` 路径写 `action='inquiry-backfill'`，写入与「回读后已一致」各一行）。
+注意本文档 §9.2 这张基线表记的是**接线之前**那一轮，所以它没有对应的审计行。
 
 完整实录与两个缺口：`docs/ops/DAILY-REPORT-RUN-2026-09-17-FINDINGS.md` §9。
 证据：`evidence/daily-report-2026-09-16-rerun2/`（含 `independent-readback.json` 与只读探针副本）。
+目录代次见 §6.3：`daily-report-2026-09-16` = 第 1 代（08:0x）、`-rerun2` = 第 2 代（10:2x）、`-rerun3` = 第 3 代（11:2x 演示）。
 
 ### 9.3 反过来：怎么安全地把某一天清掉（2026-09-17 实做了一遍）
 
