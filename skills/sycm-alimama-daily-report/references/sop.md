@@ -314,14 +314,26 @@ from daily_report_push_audit order by at desc limit 20;
 
 ```bash
 node skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs --date 2026-09-16
+# 可选：--output-dir <目录>（显式指定，参与代次规则）｜--shot-suffix <后缀>｜--skip-screenshots
+#       --leave-on source|inquiry（收尾把页面停在哪张表，默认 source）
 ```
 
 它走**另一条完全不同的通路**读同一个事实：CDP → 飞书页面的 bitable 内存模型（`window.bitableStore.modelOperator.base`），既不过 runner 的断言，也不过飞书 OpenAPI。写入方自证没法排除「写入方和读者一起错了」，所以这一步是收据那两个数字的旁证。产出 `independent-readback.json` 与两张截图（`feishu-source-table-after-*.png` / `feishu-inquiry-table-after-*.png`，后缀 `--shot-suffix` 可改）。
 
-两条实测注意：
+七条实测注意（前五条是 2026-09-17 一天之内连着踩出来的）：
 
-- **页面模型存的是 SingleSelect 的选项 id，OpenAPI 存的是选项名字**。不映射就会把 `optIYzOzu2` 当成店名印进证据里（读证据的人得自己猜这是哪家店），而且它看起来完全像一个正常的值。映射实现放在 `daily-report-runtime.mjs` 的 `resolveOptionToken`，表达式里用 `.toString()` 注入，保证「测过的那份」和「真的在跑的那份」是同一份；映射不出来或同一个 id 在不同字段指向不同名字时，如实标 `resolvedBy` 并保留原始 id。
-- 导航到目标表本身就是一次重新加载，顺手解决页面的陈旧问题（老标签页里的 `table.recordsNum` 是打开那一刻的值，实测与别的页读到的差过 12）。所以脚本先导航再等模型就绪，且**轮询**等（每 2s、上限 30s），不用固定 sleep。JSON 里那个字段特意叫 `recordsNumFromPageModel`，就是提醒它可能落后于服务端 —— 它是旁证，不是权威。
+1. **页面模型存 SingleSelect 的选项 id，OpenAPI 存选项名字**。不映射就会把 `optIYzOzu2` 当店名印进证据（读证据的人得自己猜是哪家店），而它看起来完全像一个正常的值。映射是 `daily-report-runtime.mjs` 的 `resolveFieldValue`，表达式里以**源码**注入，保证「测过的那份」和「真的在跑的那份」是同一份。
+2. **解析必须分层，顺序就是优先级**：① 单元格**所属字段自己的**选项表 → ② 指定的权威店铺表（询单表的「店铺」）→ ③ 全 base 扫描（带歧义标记）。理由：同一个 opt id 在询单表叫「盖文淘宝」、在月度表里只写「盖文」，只做第 ③ 层会把 12 家店里的 5 家判成歧义、退回原始 id。每层命中都记 `resolvedBy`。
+3. **每张表先导航再读**：老标签页里的记录集是打开那一刻的快照（实测同一张表两个页面差过 12 条）。导航本身即一次重新加载，顺手消掉陈旧，也不用开第二个页签。JSON 里那个字段特意叫 `recordsNumFromPageModel` —— 它是旁证，不是权威。
+4. **行集可能是「按需物化」的**：`recordsNum` 报 2197 时 `records` 里可能只有 200 条，没物化的部分在模型里**根本不存在**。此时「当天命中 0 条」有两种含义（真的没有 / 目标行还没物化），所以先有界等行集齐，等不齐就写 `rowsComplete:false` + `onDateCountIsLowerBound:true` + 一句 `caveat`。**不许把下界当结论。**
+5. **收尾把页面留在底单**（`--leave-on`，默认即底单）：runner 要求飞书页停在 `table=<底单>&view=<视图>`，回读若把页留在询单表，紧接着的重跑会被 `expected one Feishu page for target base` 拦下。
+6. **「读不到」必须和「没有这一列」分开写**（本轮补的缺口）。回读只关心几个字段，取不到就 `continue`，于是「这一格是空的」与「这个字段根本读不到」在产物里长得一模一样。实测底单的「店铺」是 type 19 的 Lookup 派生字段，265 个字段里**正好缺它这一个** —— `record.fields` 里连键都没有。现在由 `classifyFieldCoverage` 分三类落进 `absentFields` / `fieldsNotInTable`：
+   - 派生字段 + 键不存在 ⇒ `Lookup-key-absent-from-page-model`，并指向同表可读替身（底单的「店铺名称」= 盖文旗舰店）；
+   - 普通字段 + 键在值空 ⇒ `null-in-page-model`（这是「这格就是空的」这个业务事实）；
+   - 表里没这个字段 ⇒ 只记名字，不当异常。
+   统计口径写进 `fieldsCoverageScope`：给了 `--date` 就只统计**目标日那几行**（整表里绝大多数行是别的日期，全表报出来那条会盖过真正要看的那条 —— 实测「324/2197 行没有值」就是这么来的）。
+7. **注入页面的代码必须自洽**。`fn.toString()` 只带函数体，函数里引用的**模块级常量不会跟着走** —— `classifyFieldCoverage` 用了 `DERIVED_FIELD_TYPES`，注入后现场直接 `ReferenceError: DERIVED_FIELD_TYPES is not defined`。**离线测试当时是绿的**，因为它 import 的是模块里那份、作用域是全的。现在的规矩：依赖的常量一并由 `injectedHelpersSource()` 注入；判据是**在只有这段代码的环境里真的调用一次**（测试里用 `new Function` 沙箱），字符串比对永远看不见「这个名字在页面里根本不存在」。
+
 
 ### 6.5 同一目标日、不同时刻导出，阿里妈妈侧会不一样（2026-09-17 实测，影响「什么时候跑」）
 

@@ -89,6 +89,20 @@ node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs `
 
 The runner requires the live SYCM shop identity to match `--source-shop`, one exact SYCM table, one exact date row, one exact Feishu row matched by date and `--shop`, and — unless the peer benchmark is explicitly degraded — one exact `同行同层均值` row. Both target fields must be blank, or both must already equal the source values; under degradation only `询单量` is judged and the peer field must stay blank, so a rerun still returns `ALREADY_VERIFIED`. It updates only those fields and compares every other field before and after the write.
 
+## Independent Readback
+
+```powershell
+node skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs --date 2026-09-15
+# optional: --output-dir <dir> | --shot-suffix <suffix> | --skip-screenshots | --leave-on source|inquiry
+```
+
+The writer proving itself cannot rule out the writer and the reader being wrong together, so this reads the same facts through a completely different path — CDP into the Feishu page's bitable in-memory model — and saves `independent-readback.json` plus two screenshots. It is a corroborating witness, never the authority. Four limits are **recorded** in the output rather than silently dropped:
+
+- The page model stores SingleSelect **option ids** while the OpenAPI stores **names**. Option ids are resolved in three ordered layers — the cell's own field, then the canonical shop table, then a whole-base scan flagged `ambiguous-option-id` — because a single global scan mis-reads 5 of 12 shops whose short names collide across tables.
+- Every table is navigated to before it is read: a stale tab's record set is a snapshot from when it was opened (measured 12 records apart).
+- `recordsNumFromPageModel` is an upper bound. Missing rows are recorded as `rowsComplete:false` + `onDateCountIsLowerBound:true` + a `caveat`; a count from a partially materialized table is a lower bound, never a conclusion.
+- It does not carry derived values at all. The source table's `店铺` is a Lookup (type 19) and has **no key** in `record.fields` (exactly one field missing out of 265), so it is listed in `absentFields` as `Lookup-key-absent-from-page-model` with a pointer to the readable `店铺名称`. That asymmetry is why the derived `店铺` acceptance check above stays on the OpenAPI path, reread by record id, and must not be moved here. Field coverage is scoped to `--date` (`fieldsCoverageScope`), since whole-table counts are dominated by other days.
+
 ## Data Contract
 
 - Shop data contributes 119 columns in exact workbook order.

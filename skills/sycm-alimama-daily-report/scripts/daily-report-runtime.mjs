@@ -91,22 +91,112 @@ export function describeObservedIdentity(envName, registryDefault, env = process
 // 的逻辑。2026-09-17 的实例 —— 回读结果里「店铺」那一列印的是 `optIYzOzu2`（选项 id），
 // 读证据的人得自己去猜这是哪家店，而它看起来完全像一个正常的值。
 //
-// 根因是两套表示：**页面模型存 SingleSelect 的选项 id，OpenAPI 存选项的名字**。
-// 所以从页面读回来的东西必须显式映射一次；映射不出来就如实标出来，不许把 id 冒充成名字。
-// 同一个 id 在不同字段里指向不同名字时（optionAmbiguous）也要标出来 —— 那种情况下的
-// 「映射成功」是假的，宁可让人看见原始 id。
-export function resolveOptionToken(token, optionName = {}, optionAmbiguous = {}) {
+// 根因是两套表示：**页面模型存 SingleSelect 的选项 id，OpenAPI 存选项的名字**，
+// 所以从页面读回来的东西必须显式映射。但「有一张 id→名字 的表」还不够 ——
+// 2026-09-17 第二次踩到：同一个 opt id 在询单表叫「盖文淘宝」、在月度表里只写「盖文」，
+// 于是「全 base 扫一遍」会把 12 家店里的 5 家判成歧义、退回原始 id。
+// 正确做法是**分层**，顺序就是优先级，每层都要在结果里写明用了哪一层：
+//
+//   1. 单元格**所属字段自己的**选项表 —— 精确，不可能有歧义（询单表的「店铺」走这层）；
+//   2. 指定的权威表（询单表的「店铺」字段）—— 给派生/Lookup 字段用，它们自己没有选项，
+//      值是从别处取来的 id（底单的「店铺」走这层）；
+//   3. 全 base 扫描 —— 只剩这种情况才用；同名 id 指向不同名字就标 `ambiguous-option-id`
+//      并**保留原始 id**，宁可让人看见 id，也不要给一个假的「映射成功」。
+export function resolveFieldValue(token, options = {}) {
   if (token === null || token === undefined) return null;
-  if (typeof token === 'string' && Object.hasOwn(optionName, token)) {
-    return optionAmbiguous[token]
-      ? { value: token, display: token, resolvedBy: 'ambiguous-option-id' }
-      : { value: token, display: optionName[token] ?? token, resolvedBy: 'option-id' };
+  const { type, optionLayers = [] } = options;
+
+  // 日期字段（type 5）在页面模型里是 epoch 毫秒；按 +08:00 换算，
+  // 否则凌晨那几个小时会被读成前一天（本项目坑 42）。
+  if (type === 5 && Number.isFinite(Number(token))) {
+    const ms = Number(token);
+    return { value: ms, display: new Date(ms + 8 * 3600 * 1000).toISOString().slice(0, 10),
+      resolvedBy: 'epoch+08:00' };
   }
+
+  if (typeof token === 'string') {
+    for (const layer of optionLayers) {
+      const map = layer?.map;
+      if (!map || !Object.hasOwn(map, token)) continue;
+      if (layer.ambiguous && layer.ambiguous[token]) {
+        return { value: token, display: token, resolvedBy: 'ambiguous-option-id' };
+      }
+      return { value: token, display: map[token] ?? token, resolvedBy: layer.source ?? null };
+    }
+  }
+
   if (typeof token === 'object') {
     const inner = token.text ?? token.name ?? token.value ?? null;
     return inner === null ? null : { value: inner, display: inner, resolvedBy: null };
   }
   return { value: token, display: token, resolvedBy: null };
+}
+
+// --- 四、哪些字段「该有值却没读到」------------------------------------------
+//
+// 为什么必须有这一段（2026-09-17，本文件里第三个「安静地出错」的形状）：
+// 回读只关心 FIELDS_OF_INTEREST 里的几个字段，取不到就 `continue` —— 于是**没有值**与
+// **这个字段根本读不到**在产物里长得一模一样（都是「这一列不在」）。读者会把它读成
+// 「当天没写进去」，而真实原因可能是页面模型压根不携带它。
+//
+// 实测（2026-09-17）：底单的「店铺」是 type 19 的 Lookup 派生字段，265 个字段里**正好缺它这一个**
+// —— `record.fields` 里连键都没有（`fldsPXWgqt` 不在任何一条记录的键集里）。
+// 也就是说这不是「值空了」，是「这条通路读不到派生值」，两者必须分开写：
+//   - 派生字段 + 键不存在 ⇒ 结构性不可读，如实标注，并指向同表的可读替身（`店铺名称`）；
+//   - 普通字段 + 键存在但值为空 ⇒ 那才是「这一格就是空的」这个业务事实。
+// 判据做成纯函数（而不是写在注入的表达式里），是因为这种「错了不抛错」的逻辑只有能离线
+// 单测才谈得上可靠 —— 和 resolveFieldValue 同一个理由。
+export const DERIVED_FIELD_TYPES = Object.freeze({
+  19: 'Lookup', 20: 'Formula', 21: 'Link',
+  1001: 'CreatedTime', 1002: 'ModifiedTime', 1003: 'CreatedUser', 1004: 'ModifiedUser', 1005: 'AutoNumber',
+});
+
+export function classifyFieldCoverage(options = {}) {
+  const { rows = [], fieldMeta = {}, sampleKeys = [], fieldsOfInterest = [], readableFallback = [] } = options;
+  // 统计口径必须写进产物（`scope`）：整张表的「324/2197 行没有值」和目标日的
+  // 「12 行里几行有值」是两件事。2026-09-17 实测：按整表报出来那条会盖过真正该看的那条
+  // —— 询单表 2197 行里绝大多数是别的日期，它们没有值本来就不是问题。
+  const scope = options.scope ?? null;
+  const notInTable = [];
+  const absentFields = [];
+  for (const name of fieldsOfInterest) {
+    const field = fieldMeta[name];
+    if (!field) { notInTable.push(name); continue; }
+    // 一行都没有就无从统计「多少行没有值」，只能标 evaluated=false，不许当成「都读到了」。
+    if (rows.length === 0) continue;
+    const rowsWithoutValue = rows.filter((row) => !row?.values?.[name]).length;
+    if (rowsWithoutValue === 0) continue;
+    const keyPresentInRecordFields = sampleKeys.includes(field.id);
+    const derived = DERIVED_FIELD_TYPES[field.type];
+    const reason = derived && !keyPresentInRecordFields ? `${derived}-key-absent-from-page-model`
+      : derived ? `${derived}-value-null-in-page-model`
+        : keyPresentInRecordFields ? 'null-in-page-model' : 'field-key-absent-from-page-model';
+    const entry = { name, fieldId: field.id, type: field.type, rowsWithoutValue, rowsObserved: rows.length,
+      scope, keyPresentInRecordFields, reason };
+    if (derived && !keyPresentInRecordFields) {
+      entry.note = `页面模型在 record.fields 里根本不带这个派生字段（${derived} / type ${field.type}）`
+        + '⇒ 该列在回读里必然为空，不能读成「当天没写进去」'
+        + (readableFallback.length ? `；权威可读值见同表的「${readableFallback.join('、')}」` : '');
+    }
+    absentFields.push(entry);
+  }
+  return { fieldsCoverageEvaluated: rows.length > 0, fieldsCoverageScope: scope, absentFields, fieldsNotInTable: notInTable };
+}
+
+// 把要注入页面的那几个纯函数拼成一段**自洽**的代码 —— 「自洽」在这里是硬要求。
+//
+// 教训（2026-09-17，现场跑才抓到）：`fn.toString()` 只带函数体，函数里引用的模块级常量
+// 不会跟着走。classifyFieldCoverage 用到 DERIVED_FIELD_TYPES，于是注入到页面里立刻
+// `ReferenceError: DERIVED_FIELD_TYPES is not defined`。**离线测试当时是绿的** ——
+// 因为它 import 的是模块里的那一份，模块作用域是全的，看不见这个洞。
+// 所以：① 依赖的常量必须一并注入；② 测试要在「只有这段代码」的环境里真的调用一次
+// （见 daily-report-runtime.test.mjs 里的 new Function 沙箱），不能只做字符串比对。
+export function injectedHelpersSource() {
+  return [
+    `const DERIVED_FIELD_TYPES = ${JSON.stringify(DERIVED_FIELD_TYPES)};`,
+    `const resolveFieldValue = ${resolveFieldValue.toString()};`,
+    `const classifyFieldCoverage = ${classifyFieldCoverage.toString()};`,
+  ].join('\n    ');
 }
 
 // 端口与身份都从 runtime/browser-ports.mjs 取默认值（唯一来源）；

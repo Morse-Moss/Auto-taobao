@@ -19,7 +19,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { dailyReportTargets } from '../../../runtime/feishu-targets.mjs';
 import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
-import { buildEnvironment, dirHasEntries, resolveEvidenceDir, resolveOptionToken } from './daily-report-runtime.mjs';
+// resolveFieldValue / classifyFieldCoverage 不在这里直接用：它们是以**源码**形式注入到页面里跑的，
+// 取源码这件事本身收在 injectedHelpersSource() 里（顺带把依赖的常量一起带上）。
+import {
+  buildEnvironment, dirHasEntries, injectedHelpersSource, resolveEvidenceDir,
+} from './daily-report-runtime.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -33,19 +37,33 @@ const SOURCE_TABLE = Object.freeze({ key: 'source', tableId: TARGET.sourceTable,
   label: '底单', shotSuffix: 'push' });
 const INQUIRY_TABLE = Object.freeze({ key: 'inquiry', tableId: TARGET.inquiryTable, viewId: null,
   label: '询单表', shotSuffix: 'backfill' });
+// 店铺 id -> 店名的**权威表**：询单表那张「店铺」字段。派生/Lookup 字段（底单的「店铺」）
+// 自身没有选项表，它的值是从别处取来的 id，得有个指定的地方去查 —— 不指定就只能全 base 扫，
+// 而全 base 扫会被月度表里那份被截短的名字（「盖文」vs「盖文淘宝」）判成歧义。
+const CANONICAL_SHOP_TABLE_ID = TARGET.inquiryTable;
+const CANONICAL_SHOP_FIELD = '店铺';
 // 两张表关心的字段并集；哪张表有哪个就记哪个，没有的不出现（不做「补 null」，
 // 免得读者以为「这个字段读到了但值空」）。
+//
+// **但「没有」有两种，必须分开**（2026-09-17 修的正是这个缺口）：这张表没有这个字段（正常），
+// 还是要了这个字段却读不到（要显式记下来）。后者原先被同一个 `continue` 吞掉，
+// 产物里看起来和前者一模一样 —— 实测底单的「店铺」是 Lookup(type 19)，
+// `record.fields` 里连键都没有。现在交给 classifyFieldCoverage 分三类写清楚。
 const FIELDS_OF_INTEREST = Object.freeze([
   '统计日期', '日期', '店铺名称', '店铺', '询单量', '同层同行询单量',
 ]);
+// 派生「店铺」读不到时，同表里哪个字段是它的可读替身（实测底单有「店铺名称」= 盖文旗舰店）。
+// 只作提示用：这些名字该表没有就自动不出现。
+const READABLE_FALLBACKS = Object.freeze(['店铺名称']);
 
 function parseArgs(argv) {
-  const args = { ...DEFAULTS, screenshots: true, timeoutMs: 30000 };
+  const args = { ...DEFAULTS, screenshots: true, timeoutMs: 30000, rowsTimeoutMs: 24000 };
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
     if (key === '--date') args.reportDate = argv[++index];
     else if (key === '--output-dir') args.outputDir = argv[++index];
     else if (key === '--shot-suffix') args.shotSuffix = argv[++index];
+    else if (key === '--leave-on') args.leaveOn = argv[++index];
     else if (key === '--proxy') args.proxy = argv[++index];
     else if (key === '--skip-screenshots') args.screenshots = false;
     else throw new Error(`unknown argument: ${key}`);
@@ -54,6 +72,9 @@ function parseArgs(argv) {
   args.outputDir = args.outputDir ? path.resolve(args.outputDir) : null;
   if (args.shotSuffix !== undefined && !/^[a-z0-9-]+$/u.test(args.shotSuffix)) {
     throw new Error('--shot-suffix must be lowercase letters/digits/dashes');
+  }
+  if (args.leaveOn !== undefined && !['source', 'inquiry'].includes(args.leaveOn)) {
+    throw new Error('--leave-on must be source or inquiry');
   }
   return args;
 }
@@ -76,15 +97,21 @@ async function discoverFeishuPage(args) {
   return matches[0];
 }
 
-// 页面模型要等 bitable 初始化完（导航后立刻读会拿到 undefined）。
-// 这里**轮询**而不是 sleep 固定秒数 —— 固定 sleep 快一点就落空、慢一点就白等。
-async function waitForModel(args, targetId) {
+// 页面模型要等 bitable 初始化完。判据必须落在**目标表**上，不能只等 `base.tables` 存在：
+// 2026-09-17 实测，导航后 `base.tables` 已经是个真对象，可里面还没有那张表的键 ——
+// 这时去读会炸 `table not loaded: tbl84...`（是竞态，同一脚本有时过有时不过，最坏的一种）。
+// 这里**轮询**等目标表出现，不用固定 sleep：固定 sleep 快一点就落空、慢一点就白等。
+async function waitForModel(args, targetId, tableId) {
   const deadline = Date.now() + args.timeoutMs;
   let last = null;
   while (Date.now() < deadline) {
     try {
       const ready = await proxyEval(args, targetId,
-        'Boolean(window.bitableStore?.modelOperator?.base?.tables)');
+        `(() => {
+          const base = window.bitableStore?.modelOperator?.base;
+          if (!base) return false;
+          return Object.values(base.tables || {}).some(item => item && item.id === ${JSON.stringify(tableId)});
+        })()`);
       if (ready === true) return true;
       last = ready;
     } catch (error) {
@@ -92,35 +119,91 @@ async function waitForModel(args, targetId) {
     }
     await delay(2000);
   }
-  throw new Error(`Feishu bitable model did not become ready within ${args.timeoutMs}ms (last=${JSON.stringify(last)})`);
+  throw new Error(`Feishu table ${tableId} did not load within ${args.timeoutMs}ms (last=${JSON.stringify(last)})`);
+}
+
+// 只数行数，用来判断「这张表的记录集齐了没有」——比整表读一遍便宜得多。
+function rowCountExpression(tableId) {
+  return `(() => {
+    const base = window.bitableStore?.modelOperator?.base;
+    const table = Object.values(base?.tables || {}).find(item => item && item.id === ${JSON.stringify(tableId)});
+    if (!table) return JSON.stringify({ recordsNum: null, loaded: 0 });
+    return JSON.stringify({
+      recordsNum: table.recordsNum ?? null,
+      loaded: Object.values(table.records || {}).filter(Boolean).length,
+    });
+  })()`;
+}
+
+// 记录集**齐了没有**，是这份证据能不能当结论用的前提。
+//
+// 2026-09-17 实测：`recordsNum` 报 2197，可 `records` 里只有 200 条 —— 页面是按需物化的，
+// 没物化到的那部分在模型里根本不存在。此时「当天命中 0 条」有两种可能：真的没有，
+// 或者**目标行还没被物化**。两者不能混为一谈，所以先**有界地等**行集齐；
+// 等不齐就如实标 incomplete，让人知道这个计数是下界而不是结论。
+async function waitForRows(args, targetId, tableId) {
+  const deadline = Date.now() + args.rowsTimeoutMs;
+  let last = { recordsNum: null, loaded: 0 };
+  while (Date.now() < deadline) {
+    last = JSON.parse(await proxyEval(args, targetId, rowCountExpression(tableId)));
+    if (last.recordsNum !== null && last.loaded >= last.recordsNum) return { ...last, complete: true };
+    await delay(2000);
+  }
+  return { ...last, complete: false };
 }
 
 // 导出给测试用：这段表达式是「页面里真的会跑的那份逻辑」，只有在离线时能拼出来、
 // 才谈得上验证它确实注入了选项映射（否则测试只能去正则匹配源码，验不到行为）。
-export function readTableExpression(table) {
+// `reportDate` 可选：给了就把「哪些字段没读到」的统计口径收到**目标日那几行**，
+// 没给就按全表报（口径写在产物的 fieldsCoverageScope 里，不许含糊）。
+export function readTableExpression(table, options = {}) {
+  const reportDate = options.reportDate ?? null;
   return `(() => {
-    const resolveOptionToken = ${resolveOptionToken.toString()};
+    ${injectedHelpersSource()}
     const base = window.bitableStore?.modelOperator?.base;
     if (!base) throw new Error('Feishu bitable model is not ready');
     const all = Object.values(base.tables || {}).filter(Boolean);
     const table = all.find(item => item.id === ${JSON.stringify(table.tableId)});
     if (!table) throw new Error('table not loaded: ' + ${JSON.stringify(table.tableId)});
 
-    // 全 base 的 SingleSelect 选项表：optXXXX -> 人读的名字。
-    // 页面模型存选项 id，OpenAPI 存名字；不映射就会把 optIYzOzu2 当成店名印进证据里。
-    const optionName = Object.create(null);
-    const optionAmbiguous = Object.create(null);
+    const optionsOf = (field) => {
+      const map = Object.create(null);
+      for (const option of (field?.property?.options || [])) {
+        if (option && option.id) map[option.id] = option.name ?? null;
+      }
+      return map;
+    };
+
+    // 全 base 的选项扫描：**只作最后一层兜底**，并且记住哪些 id 名不同名（那才是真歧义）。
+    const globalMap = Object.create(null);
+    const globalAmbiguous = Object.create(null);
     for (const item of all) {
       for (const field of Object.values(item.fields || {})) {
         for (const option of (field?.property?.options || [])) {
           if (!option || !option.id) continue;
           const name = option.name ?? null;
-          if (optionName[option.id] === undefined) optionName[option.id] = name;
-          else if (optionName[option.id] !== name) optionAmbiguous[option.id] = true;
+          if (globalMap[option.id] === undefined) globalMap[option.id] = name;
+          else if (globalMap[option.id] !== name) globalAmbiguous[option.id] = true;
         }
       }
     }
 
+    const canonicalField = Object.values(
+      all.find(item => item.id === ${JSON.stringify(CANONICAL_SHOP_TABLE_ID)})?.fields || {},
+    ).find(field => field && field.name === ${JSON.stringify(CANONICAL_SHOP_FIELD)});
+    const canonicalShop = optionsOf(canonicalField);
+
+    const fieldMeta = Object.fromEntries(Object.values(table.fields || {})
+      .filter(field => field && field.name).map(field => [field.name, { id: field.id, type: field.type }]));
+    const ownOptions = Object.create(null);
+    for (const field of Object.values(table.fields || {})) {
+      if (!field || !field.id) continue;
+      const map = optionsOf(field);
+      if (Object.keys(map).length) ownOptions[field.id] = map;
+    }
+
+    // 分层顺序见 daily-report-runtime.mjs 的 resolveFieldValue：字段自己的选项 → 权威店铺表 → 全 base。
+    // 分层的必要性是实测出来的：只做最后一层会把 12 家店里的 5 家判成歧义、退回原始 id。
     const unwrap = (cell) => {
       if (cell === null || cell === undefined) return null;
       const value = (typeof cell === 'object' && 'value' in cell) ? cell.value : cell;
@@ -128,41 +211,59 @@ export function readTableExpression(table) {
       if (value && typeof value === 'object') return value.text ?? value.name ?? value.value ?? null;
       return value;
     };
-    // 选项映射的实现从 daily-report-runtime.mjs 注入（.toString()），不在这里再抄一份：
-    // 抄一份就会出现「测过的那份」和「真的在跑的那份」两个版本。
-    const describe = (cell) => {
-      const token = unwrap(cell);
-      return token === null ? null : resolveOptionToken(token, optionName, optionAmbiguous);
-    };
 
-    const fieldIds = Object.fromEntries(Object.values(table.fields || {})
-      .filter(field => field && field.name).map(field => [field.name, field.id]));
+    const describe = (cell, field) => resolveFieldValue(unwrap(cell), {
+      type: field.type,
+      optionLayers: [
+        { map: ownOptions[field.id] || {}, source: 'field-option-id' },
+        { map: canonicalShop, source: 'canonical-shop-option-id' },
+        { map: globalMap, source: 'global-option-id', ambiguous: globalAmbiguous },
+      ],
+    });
+
     const rows = Object.entries(table.records || {})
       .filter(([, record]) => record)
       .map(([recordId, record]) => {
         const cells = record.fields || record;
         const values = {};
         for (const name of ${JSON.stringify(FIELDS_OF_INTEREST)}) {
-          const id = fieldIds[name];
-          if (!id) continue;
-          const described = describe(cells[id]);
+          const field = fieldMeta[name];
+          if (!field) continue;
+          const described = describe(cells[field.id], field);
           if (described) values[name] = described;
         }
-        // 日期列在页面模型里是 epoch 毫秒；转成日期字符串要显式按 Asia/Shanghai 算，
-        // 否则凌晨那几个小时会被读成前一天（本项目坑 42）。
-        const dateCell = values['统计日期'] ?? values['日期'] ?? null;
-        const ms = dateCell ? Number(dateCell.value) : NaN;
-        const date = Number.isFinite(ms)
-          ? new Date(ms + 8 * 3600 * 1000).toISOString().slice(0, 10) : null;
-        if (date) values.reportDate = { value: ms, display: date, resolvedBy: 'epoch+08:00' };
+        // reportDate 是给调用方做「当天命中几条」过滤用的便利键：取日期字段自己的 display。
+        const dateName = ['统计日期', '日期'].find(name => values[name]);
+        if (dateName) values.reportDate = values[dateName];
         return { recordId, values };
       });
+
+    // 「哪些字段该有值却没读到」——见 daily-report-runtime.mjs 的 classifyFieldCoverage。
+    // 派生字段（底单的「店铺」是 Lookup）在 record.fields 里连键都没有，这不是值空，
+    // 必须如实写出来，否则这一列会静默消失、被读成「当天没写进去」。
+    //
+    // 口径：给了 reportDate 就只统计**目标日那几行**（那才是要交付的口径；整张表里绝大多数
+    // 行是别的日期，它们没有值本来就不算问题），当天一行都没有时退回全表并如实标出 scope。
+    const sampleRecord = (Object.values(table.records || {}).filter(Boolean)[0] || {});
+    const reportDate = ${JSON.stringify(reportDate)};
+    const scopedRows = reportDate
+      ? rows.filter(row => row.values.reportDate?.display === reportDate)
+      : rows;
+    const coverage = classifyFieldCoverage({
+      rows: scopedRows.length ? scopedRows : rows,
+      scope: scopedRows.length ? \`reportDate=\${reportDate}\` : (reportDate ? \`entire-table (当天没有命中行)\` : null),
+      fieldMeta,
+      sampleKeys: Object.keys(sampleRecord.fields || sampleRecord),
+      fieldsOfInterest: ${JSON.stringify(FIELDS_OF_INTEREST)},
+      readableFallback: ${JSON.stringify(READABLE_FALLBACKS)}.filter(name => Object.hasOwn(fieldMeta, name)),
+    });
 
     return JSON.stringify({
       tableId: table.id, tableName: table.name,
       recordsNumFromPageModel: table.recordsNum ?? null,
       loadedRows: rows.length,
       rows,
+      ...coverage,
     });
   })()`;
 }
@@ -196,11 +297,6 @@ async function main() {
   const tableUrl = (table) => `${origin}/base/${args.appToken}?table=${table.tableId}`
     + (table.viewId ? `&view=${table.viewId}` : '');
 
-  // 先落到第一张表上：导航本身就是一次「重新加载」，顺手解决页面上 recordsNum 的陈旧问题
-  //（老标签页里的 table.recordsNum 是打开那一刻的值，实测比新开页少/多过）。
-  await navigate(args, page, tableUrl(SOURCE_TABLE));
-  await waitForModel(args, page.targetId);
-
   const result = {
     at: new Date().toISOString(),
     reportDate: args.reportDate,
@@ -212,28 +308,38 @@ async function main() {
     evidence: { outputDir: args.outputDir, generation: resolved.generation, reason: resolved.reason },
     path: 'CDP → 页面 bitable 内存模型（不经过 runner 的断言，也不经过飞书 OpenAPI）',
     proxy: args.proxy,
-    page: { targetId: page.targetId, url: page.url, reloadedTo: tableUrl(SOURCE_TABLE) },
+    page: { targetId: page.targetId, url: page.url, leftOn: null, navigations: [] },
     tables: {},
     screenshots: {},
   };
 
+  // 读每一张表之前都**先导航到那张表**，不在一张表的页面上顺手读另一张。
+  // 2026-09-17 的教训：老标签页里的记录集是打开那一刻的快照，跨表读到的记录数会与
+  // 真实值差一截（实测同一张表两个页面报过 12 之差）；导航本身即一次重新加载，
+  // 顺手把这个问题消掉，也不用再开第二个页签。
   for (const table of [SOURCE_TABLE, INQUIRY_TABLE]) {
-    const raw = await proxyEval(args, page.targetId, readTableExpression(table));
+    const url = tableUrl(table);
+    await navigate(args, page, url);
+    result.page.navigations.push(url);
+    await waitForModel(args, page.targetId, table.tableId);
+    const rowState = await waitForRows(args, page.targetId, table.tableId);
+    const raw = await proxyEval(args, page.targetId, readTableExpression(table, { reportDate: args.reportDate }));
     const parsed = JSON.parse(raw);
     const onDate = parsed.rows.filter(row => row.values.reportDate?.display === args.reportDate);
     result.tables[table.key] = {
       table: table.label, ...parsed,
+      rowsComplete: rowState.complete,
+      // 行集不齐时，命中数只是**下界**，不许当成结论。
+      onDateCountIsLowerBound: !rowState.complete,
       onDateCount: onDate.length,
       onDateRows: onDate,
+      ...(rowState.complete ? {} : {
+        caveat: `页面只物化了 ${rowState.loaded} / ${rowState.recordsNum ?? '?'} 条记录，`
+          + `未物化的部分在模型里不存在 ⇒ onDateCount=${onDate.length} 是下界，不能据此断言「当天没有」；`
+          + '权威判据仍以写入链的 API 路径（selectDailyStoreRecord）为准。',
+      }),
     };
-  }
-
-  if (args.screenshots) {
-    for (const table of [SOURCE_TABLE, INQUIRY_TABLE]) {
-      if (table.key !== SOURCE_TABLE.key) {
-        await navigate(args, page, tableUrl(table));
-        await waitForModel(args, page.targetId);
-      }
+    if (args.screenshots) {
       await fetch(`${args.proxy}/bringToFront?target=${encodeURIComponent(page.targetId)}`).catch(() => {});
       await delay(1500);
       const file = path.join(args.outputDir,
@@ -242,19 +348,40 @@ async function main() {
     }
   }
 
+  // 收尾把页面留在**底单**上：底单是这条链的默认工作面，runner 也要求飞书页停在
+  // `table=<底单>&view=<视图>`。回读是运行的最后一步，别把一个「页面停在别处」的状态
+  // 留给下一个人（2026-09-17 实测踩过：回读把页留在询单表，紧接着的重跑被
+  // `expected one Feishu page for target base` 拦下）。
+  const leaveOn = args.leaveOn ?? SOURCE_TABLE.key;
+  const leaveTable = leaveOn === INQUIRY_TABLE.key ? INQUIRY_TABLE : SOURCE_TABLE;
+  await navigate(args, page, tableUrl(leaveTable));
+  await waitForModel(args, page.targetId, leaveTable.tableId);
+  result.page.leftOn = tableUrl(leaveTable);
+
   const readbackPath = path.join(args.outputDir, 'independent-readback.json');
   writeFileSync(readbackPath, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
 
   const show = (entry) => `${entry.table}: recordsNum=${entry.recordsNumFromPageModel}`
-    + `（页面模型值，可能落后于服务端） loaded=${entry.loadedRows} 命中 ${args.reportDate}=${entry.onDateCount}`;
+    + `（这是**页面模型**里的值，可能落后于服务端） loaded=${entry.loadedRows} 命中 ${args.reportDate}=${entry.onDateCount}`
+    + (entry.rowsComplete ? '' : `  ⚠️ 行集未齐（只物化 ${entry.loadedRows}/${entry.recordsNumFromPageModel}）⇒ 命中数是下界，不能据此断言「当天没有」`);
   console.log(`readbackPath = ${readbackPath}`);
   console.log(show(result.tables.source));
   console.log(show(result.tables.inquiry));
+  // 「读不到的字段」必须打印出来：它原先和「这个字段不属于这张表」长得一样，
+  // 于是「派生字段读不到」会被读成「那格本来就是空的」。
+  for (const entry of [result.tables.source, result.tables.inquiry]) {
+    for (const field of entry.absentFields ?? []) {
+      console.log(`  ⚠️ ${entry.table}「${field.name}」${field.rowsWithoutValue}/${field.rowsObserved} 行没有值`
+        + `（口径 ${field.scope ?? '全表'}）`
+        + ` — ${field.reason}${field.note ? `｜${field.note}` : ''}`);
+    }
+  }
   for (const row of result.tables.inquiry.onDateRows) {
     const v = (name) => row.values[name]?.display ?? '—';
     console.log(`  ${v('reportDate')} | ${v('店铺')} | ${row.recordId} | 询单量=${v('询单量')} | 同层同行=${v('同层同行询单量')}`);
   }
   for (const [key, file] of Object.entries(result.screenshots)) console.log(`  screenshot(${key}) → ${file}`);
+  console.log(`页面已留在：${result.page.leftOn}`);
 }
 
 // 只有被直接当命令跑时才执行 main；被 import（离线测试拼表达式）时不许产生副作用。
