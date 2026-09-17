@@ -1,0 +1,67 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-09-16",
+  "shop": "盖文天猫",
+  "environment": {
+    "computedAt": "2026-09-17T06:46:55.728Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19023",
+    "browserPort": {
+      "port": 19022,
+      "source": "registry-default",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19023,
+      "source": "registry-default",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-daily-report",
+      "source": "registry-default"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (daily report)",
+      "source": "registry-default"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-16-rerun5",
+    "generation": 5,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "X02Xb7fHba7mU9sr8uIcRlExn6b",
+    "tableId": "tblm9Hx7R9A1YoLC",
+    "tableName": "各店铺数据日报",
+    "recordId": "recvvrDlSdc26b"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "shop": "盖文旗舰店",
+    "column": "当日询单人数",
+    "dateRow": "2026-09-16",
+    "benchmarkRow": "同行同层均值",
+    "peerBenchmark": "PEER_AVAILABLE",
+    "rows": 7
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 13,
+    "同层同行询单量": 39
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "recvvrDlSdc26b",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 13,
+      "同层同行询单量": 39
+    }
+  }
+}
