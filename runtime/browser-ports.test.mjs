@@ -14,9 +14,11 @@ import {
   FOREIGN_PROXY_ALLOWED_FILES,
   FOREIGN_PROXY_URL_PATTERN,
   PROJECT_PORTS,
+  RETIRED_PORTS,
   ROUTES,
   SITE_ACCOUNT,
   classifyPortUsage,
+  retiredPortNumbers,
   describeBrowserRoutes,
   describeOccupant,
   extractProfileFromCommandLine,
@@ -28,9 +30,13 @@ import {
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// --- 静态守卫的取材范围：本项目自己写的 .mjs，不含 vendored 的 isolated-proxy、
-// --- 浏览器 profile、运行产物，也不含测试（测试里允许写期望值）。
-const SKIP_DIRS = new Set(['node_modules', '.git', 'isolated-proxy', 'edge-debug-profile', 'edge-daily-report-profile']);
+// --- 静态守卫的取材范围：本项目自己写的 .mjs，不含浏览器 profile、运行产物，也不含测试
+// --- （测试里允许写期望值）。
+// 2026-09-17 起 `isolated-proxy/` **也纳入**扫描：它已经不是一个原样 vendored 的目录了
+// （cdp-proxy 被本项目改过：/clickPoint、/clickRightPoint、/clickText、focus emulation、
+// 端口探测拦截都是我们加的），而「跳过它」正是坑 52 藏身的地方 ——
+// browser-discovery 的默认端口 9223 就在被跳过的目录里活了下来。
+const SKIP_DIRS = new Set(['node_modules', '.git', 'edge-debug-profile', 'edge-daily-report-profile']);
 
 function sourceFiles(dir, acc = []) {
   let entries;
@@ -178,6 +184,40 @@ test('生产代码里不得再写死项目端口 —— 只能从登记表取', 
     if (hits.length > 0) offenders.push(`${path.relative(REPO_ROOT, file)} -> ${hits.join(', ')}`);
   }
   assert.deepEqual(offenders, [], '这些文件把端口写死了；改成从 runtime/browser-ports.mjs 取');
+});
+
+// 坑 52：只扫「现值」是不够的。退役值不在 Object.values(PROJECT_PORTS) 里，
+// 于是它可以继续以默认值的形态活着，而且看起来一切正常。
+// 2026-09-17 的实例：browser-discovery.mjs 默认端口 9223（日报链退役值）
+// ＋ 自报身份 edge-isolated（竞品买家链）⇒ 裸跑代理「自称买家、实连商家」。
+test('退役端口与外来端口都不得出现在本项目代码的默认值里', () => {
+  const forbidden = [...retiredPortNumbers(), ...Object.values(FOREIGN_PORTS)];
+  const files = [...sourceFiles(path.join(REPO_ROOT, 'runtime')), ...sourceFiles(path.join(REPO_ROOT, 'skills')), ...sourceFiles(path.join(REPO_ROOT, 'scripts'))];
+  const offenders = [];
+  for (const file of files) {
+    if (path.basename(file) === 'browser-ports.mjs') continue;
+    const body = stripComments(readFileSync(file, 'utf8'));
+    const hits = forbidden.filter((port) => new RegExp(`\\b${port}\\b`).test(body));
+    if (hits.length > 0) offenders.push(`${path.relative(REPO_ROOT, file)} -> ${hits.join(', ')}`);
+  }
+  assert.deepEqual(offenders, [], '这些文件把退役/外来端口当默认值用了；改成从 runtime/browser-ports.mjs 取');
+});
+
+test('退役端口留档：每条都要说清被谁替代、为什么退', () => {
+  assert.ok(RETIRED_PORTS.length > 0, '留档为空等于没留 —— 退役值必须点名');
+  for (const entry of RETIRED_PORTS) {
+    assert.ok(Number.isInteger(entry.port), `${entry.port} 必须是整数端口`);
+    assert.ok(Object.hasOwn(PROJECT_PORTS, entry.replacedBy),
+      `replacedBy=${entry.replacedBy} 不是 PROJECT_PORTS 的键；用键名而不是端口值，原值改了才不会漂移`);
+    assert.notEqual(PROJECT_PORTS[entry.replacedBy], entry.port, `${entry.port} 不该又是现行的 ${entry.replacedBy}`);
+    assert.match(entry.retiredAt, /^\d{4}-\d{2}-\d{2}$/u, `${entry.port} 缺退役日期`);
+    assert.ok(entry.reason.length > 10, `${entry.port} 要写清为什么退`);
+  }
+  // 退役值与现行值不能撞车，否则「退役」就变成了「换个名字继续用」。
+  const current = new Set(Object.values(PROJECT_PORTS));
+  for (const port of retiredPortNumbers()) {
+    assert.equal(current.has(port), false, `退役端口 ${port} 又出现在现行端口里了`);
+  }
 });
 
 // --- 三条路线 × 两个浏览器 ----------------------------------------------------

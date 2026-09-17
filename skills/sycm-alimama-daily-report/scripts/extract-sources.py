@@ -47,8 +47,20 @@ def main():
         raise ValueError('promotion CSV contains a row with an unexpected column count')
 
     print(json.dumps({
-        'shop': {'headers': list(rows[0]), 'values': list(matches[0]), 'workbookRows': len(rows)},
-        'promotion': {'headers': promotion_rows[0], 'rows': promotion_rows[1:], 'csvName': names[0]},
+        'shop': {
+            'headers': list(rows[0]),
+            'values': list(matches[0]),
+            'workbookRows': len(rows),
+            # 整列日期都带出来：收据要能自证「这份工作簿覆盖哪几天、目标日出现几次」。
+            # 光记文件哈希只能证明「是这个文件」，证明不了「是这个文件里的一天」。
+            'dates': [as_date(row[0]) for row in rows[1:]],
+        },
+        'promotion': {
+            'headers': promotion_rows[0],
+            'rows': promotion_rows[1:],
+            'csvName': names[0],
+            'dates': [row[0] for row in promotion_rows[1:]],
+        },
     }, ensure_ascii=False, default=as_date))
 
 

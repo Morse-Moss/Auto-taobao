@@ -46,6 +46,11 @@ node skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs `
 
 Inspect the generated `plan.json`. Add `--commit` only when the target and reporting date are authorized. A committed run must create exactly one record and generate `receipt.json` after rereading that record.
 
+Two blocks in `plan.json` / `receipt.json` exist so the run can be audited afterwards:
+
+- `environment` — `computedAt`, `node`, `proxyUrl`, and the browser/proxy ports, ids and labels, each with a `source` (`env` / `registry-default` / `env-invalid`) and its `registryDefault`. It answers "did this run deviate from the port registry?" in one line, e.g. `browserPort: {"port":9223,"source":"env","registryDefault":19022}`. It only observes: an invalid env value is recorded as `env-invalid` rather than failing a data import (the runner does not read those ports itself).
+- `sourceSelfChecks` — whether both source files really are the reporting date: per-source `targetRowCount`, `matchedRowDate` / `observedDates`, and an overall `allMatchDate`. When it fails the run stops **before** field mapping and names both files, instead of the older `unexpected <scene> identity/date` message that named neither.
+
 If the Feishu app returns `403 / 91403`, do not retry the API. Use the logged-in Feishu grid: select the first cell of one newly created row and paste the generated `paste.tsv` through the proxy's real `POST /paste` endpoint. Then verify the exact row and the observed pre-write count:
 
 ```powershell

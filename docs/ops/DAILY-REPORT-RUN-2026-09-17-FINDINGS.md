@@ -52,6 +52,10 @@
 
 ### 4.1 D1 固化两个只读校验器 —— 准确的说法是「缺时效校验」
 
+> **本节有一处已被纠正**：下面说的「推广 ZIP 完全不校验内部日期」是**错的** ——
+> `daily-report-core.mjs` 的 `buildPromotionFields` 就在校验它。真实缺口是「报错不点文件名」＋
+> 「证据不进收据」。纠正过程与依据见 §7.1。保留原文是为了留下「我当时的判断错在哪」。
+
 - 指什么：本轮跑完，我临时写了两个只读脚本 —— 一个打开阿里妈妈下载的 ZIP、读里面那份 CSV 的「日期」列；一个打开店铺 xlsx、读「统计日期」列与目标日行数。用完都删了。
 - 已经覆盖的（结构层）：`skills/sycm-alimama-daily-report/scripts/extract-sources.py` 对**结构**有硬断言 —— 店铺表必须只有 `['data']` 一个 sheet、首行必须 119 列、目标日必须**恰好 1 行**；推广 ZIP 必须只含 1 个 CSV、首行 71 列、每行列数一致。不符即抛错。
 - 现在缺什么（时效层）：**推广 ZIP 侧完全不校验内部日期**。列数 71 对、日期不对，解析器不会报。
@@ -149,3 +153,60 @@
 | Q6 | 收据加 `environment` + `sourceSelfChecks`（I3/I4） | 加 / 不加 | 加 |
 | Q7 | 登录态体检（I2，缺口 G2） | 本轮做 / 排后续 | 排后续 |
 | Q8 | 固化 `runtime/cdp-probe.mjs`（I6） | 做 / 不做 | 做 |
+
+Q1–Q4 已按建议执行，Q5 按建议保留现状；执行结果与验证见 §7。
+
+## 7. 执行结果（同日，用户回「按你推荐的改吧」之后）
+
+### 7.1 一处自我修正：D1 的前提说错了一半
+
+我原来写「推广 ZIP 完全不校验内部日期」——**这是错的**。核代码后：
+
+- `daily-report-core.mjs` 的 `buildPromotionFields` 第一件事就是 `if (row[0] !== reportDate || …) throw`，两行（371/372）都要过这道；
+- 店铺侧日期由 `extract-sources.py`（目标日**恰好 1 行**）＋ `toFeishuValue`（date 字段等值断言）双重锁定。
+
+所以「下载到前一天的包会被静默写成今天」这个后果**不成立** —— 链上一直是 fail-closed 的。我把「临时脚本做了一次人工核对」误读成了「链上没人核对」。
+
+真实缺口是另外两件事：
+
+1. **报错不点文件名**：拦截发生在字段映射那层，消息是 `unexpected 关键词推广 identity/date: …`，不说是哪个源文件；
+2. **证据不进收据**：`source.shopSha256 / promotionSha256` 只是**文件字节哈希** —— 能证明「是这个文件」，证明不了「这个文件是这一天的」；而文件名里的哈希随报表定义走、不随内容变（09-16 与 09-17 两次下载同名同哈希）。
+
+所以 D1 落地的形态是「**下载后置自证 ＋ 进收据**」，不是再补一道重复校验。
+
+### 7.2 已做（Q1–Q4）
+
+| 项 | 改了什么 | 验证 |
+| --- | --- | --- |
+| Q1a | `runtime/isolated-proxy/browser-discovery.mjs`：三个默认值改为从登记表取（competitor 买家链，与它自报的 `edge-isolated` 同链），端口走 `resolvePort`（非法值抛错而不是静默回落成 NaN） | §7.3 |
+| Q1b | `runtime/browser-ports.mjs` 新增 `RETIRED_PORTS`（9223→`dailyReportBrowser`、3458→`dailyReportProxy`，带退役日期与原因）＋ `retiredPortNumbers()` | 新增「退役端口留档」测试 |
+| Q1c | `runtime/isolated-proxy/cdp-proxy.mjs`：监听端口默认值从**外来端口** `3456` 改为 `PROJECT_PORTS.competitorProxy`；「未开启远程调试」那段提示不再教人写死 `9222`，改为指向本项目的两个启动器 | §7.3 |
+| Q1d | `runtime/browser-ports.test.mjs`：`SKIP_DIRS` 移除 `isolated-proxy`（它已不是原样 vendored）；新增「退役端口与外来端口都不得出现在本项目代码的默认值里」 | **突变验证**：临时放一个含 `9223` 的文件 → 守卫变红并点名 `runtime\tmp-mutation-check.mjs -> 9223`（已删） |
+| Q2 | `runtime/start-project-browser.mjs`：起浏览器之前先找「同 profile 但在别的端口上」的实例，找到就拒绝启动并说清原因与两种处置；端口始终没起来且子进程 `code=0` 时补印同一句 | §7.3（真实入口 1） |
+| Q3 | `daily-report-core.mjs` 新增 `summarizeSourceDates()`；`extract-sources.py` 输出两侧日期列；`run-daily-report.mjs` 在 **`buildCombinedFields` 之前**跑 `assertSourceDates()`，不通过即停并点名两个文件 | 4 条新单测（含 3 条反例）＋ 真实入口 4 |
+| Q4 | 收据新增 `environment`（`computedAt` / `node` / `proxyUrl` / 浏览器与代理的端口、id、label，各带 `source: env \| registry-default \| env-invalid`）与 `sourceSelfChecks` | 真实入口 2/3 |
+
+未做（按批准保留）：Q5 的 9223 / 3458 两个遗留实例仍未退，**全程没有停任何进程**。
+
+### 7.3 验证方式（都是真跑的）
+
+| 验证 | 命令 / 入口 | 结果 |
+| --- | --- | --- |
+| 单元 | `node --test runtime/browser-ports.test.mjs runtime/isolated-proxy/browser-discovery.test.mjs` | 20 / 20 |
+| 套件 | `scripts/run-test-suite.mjs runtime` | **532 / 0 失败**（69 文件） |
+| 套件 | `scripts/run-test-suite.mjs skills --skill=sycm-alimama-daily-report` | 28 / 0 失败 |
+| 真实入口 1 | `node runtime/start-daily-report-browser.mjs` | EXIT=1，自己说出「同一个 profile 已经有一个实例在跑，它在端口 9223」＋两种处置；**没有启动任何进程** |
+| 真实入口 2 | dry-run（`--date 2026-09-16` ＋ 09-16 的两个源文件） | 走到重复行检查被拦（底单已有 09-16，属预期）；拦之前已写出 `plan.json`，内含 `environment` 与 `sourceSelfChecks`，`visibleFields 265 / payloadFields 239` 与上次一致 |
+| 真实入口 3 | 同上但 `CDP_BROWSER_PORT=9223` | `environment.browserPort = {"port":9223,"source":"env","registryDefault":19022}` —— 本轮那条**一直无法自证**的环境偏离，现在收据自己会说了 |
+| 真实入口 4 | `--date 2026-09-15` ＋ 09-16 的两个源文件 | 新闸门报错，点名两个文件与两侧观察到的日期（`observedDates:["2026-09-16"]`）；堆栈落在 `assertSourceDates` ⇒ 证明它在字段映射**之前** |
+| 整合路径 | 真实文件 → `extract-sources.py` → `summarizeSourceDates` | 正确日 `allMatchDate:true`（工作簿覆盖 09-16…08-18 共 30 天、推广 2 行同日）；错误日 `allMatchDate:false`；Python 的 `dates` 两侧都在 |
+
+为跑通真实入口 2/3/4，在日报浏览器里打开了飞书底单页（`https://kcne618basvj.feishu.cn/base/X02Xb7fHba7mU9sr8uIcRlExn6b?table=tbl84ZGwLQKyLxV3&view=vewwg0rhjo`，域名取自既有收据，不是猜的）。只读页面，代理会在闲置 15 分钟后自动关掉这个受管 tab；期间没有停任何进程。
+
+### 7.4 执行过程中另行发现的三件事（都未擅自处理）
+
+1. **`runtime/isolated-proxy/` 整个目录被 gitignore**（`.gitignore:50`，与 `runtime/edge-isolated-*/` 等运行产物归在同一组注释下）。
+   后果：本次对 `cdp-proxy.mjs` / `browser-discovery.mjs` 的修复**进不了版本库**，只活在这台机器上；新机器上那四个文件根本不存在，而守卫测试对不存在的目录是**静默通过**的 —— 正是本仓库 `.gitignore:44-46` 自己写过的那个坑（「被吞的后果是新机器上根本没有这份配置，而『没有配置』会被读成『不用跑』」）。
+   建议：把 `runtime/isolated-proxy/` 从 ignore 里拿出来（它已不是上游原样，是被本项目改过的工具链）。**要不要动，需要拍板。**
+2. **`cdp-proxy` 的 `--browser` 契约是死的**（坑 38 的又一例）：`discoverChromePort` 处理 `result.kind === 'mismatch'`、`result.source === 'override'`、`findFallbackPort()` 兜底三条分支，而 `browser-discovery.selectBrowser` 是**无参**、且永远返回 `{kind:'ok', source:'isolated-runtime'}` ⇒ 那三条分支（含「连不上时给 Agent 的处理顺序」提示、「pin 之后不许 fallback」的保护）**永远不会执行**；`--browser <名>` 传了也不起作用。未修（超出批准范围）。
+3. **`isolated-proxy` 的测试不在离线套件里，理由已经不准**：`scripts/test-suite-discovery.mjs:30-31` 写的理由是「探的是本机 CDP 代理/浏览器端口；本机没开那两个端口时它的结论没有意义」，但 `browser-discovery.test.mjs` 全程 mock `fetch`、不碰真实端口（今天新加的三条同样）。并进套件会改动基线数字，需要拍板。

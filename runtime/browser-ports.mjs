@@ -6,6 +6,8 @@
 //   1) `runtime/isolated-proxy/browser-discovery.mjs` 的默认浏览器端口是 9223，
 //      而 9223 是**日报用的商家浏览器**；裸跑 cdp-proxy 会把自己标成 `edge-isolated`
 //      却挂在商家号上（两个账号连的是不同的人）。
+//      2026-09-17 已修：三个默认值全部改为本登记表取值（身份=competitor 买家链，与自报的
+//      `edge-isolated` 对齐），并把 `isolated-proxy/` 从守卫的跳过名单里移出（见 RETIRED_PORTS 与测试）。
 //   2) 日报侧原来用 9223 / 3458：9222/9223 是 Chrome/Edge 远程调试的常见取值，
 //      3456/3457/3458 是本机其他项目也在用的一段 —— 撞号后表现为
 //      「点击/导航都成功，但操作的是别人的浏览器」。
@@ -32,6 +34,38 @@ export const PROJECT_PORTS = Object.freeze({
   // 只监听 127.0.0.1，不绑 0.0.0.0 —— 它渲染的是登录态与运行状态，不该出本机。
   operatorConsole: 19024,
 });
+
+// 退役端口：本项目自己换掉的旧值。
+//
+// 为什么必须留档（2026-09-17 实测到一例，坑 52）：
+//   光把 PROJECT_PORTS 换成新值，并不能让旧值消失 —— 它会以「默认值」的形态继续活着。
+//   实测：`runtime/isolated-proxy/browser-discovery.mjs` 的默认浏览器端口仍是 9223（日报链
+//   迁移前的值），而同一行自报的身份是 `edge-isolated`（**竞品买家**浏览器）。于是裸跑
+//   cdp-proxy 会「自称买家、实连商家」；更麻烦的是导出侧的安全校验是「XWS_BROWSER_ID 与
+//   /health 的 browser.id 一致」，两边都来自同一个默认值 ⇒ **校验会过**。
+//   而且它躲得过原守卫：`browser-ports.test.mjs` 的「不得写死端口」只扫 PROJECT_PORTS 的
+//   现值，9223/3458 不在其中。
+//
+// 留档 + 让同一个守卫扫它，才能把「退役」从文档里的一句话变成一条可执行的判据。
+// `replacedBy` 是 PROJECT_PORTS 的键名（不是端口值），这样原值改了也不会让文档漂移。
+export const RETIRED_PORTS = Object.freeze([
+  Object.freeze({
+    port: 9223,
+    replacedBy: 'dailyReportBrowser',
+    retiredAt: '2026-09-16',
+    reason: '9222/9223 是 Chrome/Edge 远程调试的常见取值，别的项目会顺手占掉；日报链改用 19022。',
+  }),
+  Object.freeze({
+    port: 3458,
+    replacedBy: 'dailyReportProxy',
+    retiredAt: '2026-09-16',
+    reason: '3456/3457/3458 是本机其他项目也在用的一段；日报链代理改用 19023。',
+  }),
+]);
+
+export function retiredPortNumbers() {
+  return RETIRED_PORTS.map((entry) => entry.port);
+}
 
 export const BROWSER_IDS = Object.freeze({
   competitor: 'edge-isolated',

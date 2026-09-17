@@ -34,6 +34,7 @@ import {
   inspectPort,
   normalizeProfile,
   resolvePort,
+  retiredPortNumbers,
 } from './browser-ports.mjs';
 
 const EDGE = process.env.PROJECT_BROWSER_EXE || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
@@ -78,11 +79,58 @@ function keepAlive() {
   setInterval(() => {}, 60000);
 }
 
+// 同一个 profile 是否已经在**另一个端口**上跑着？返回找到的端口（可能不止一个）。
+//
+// 为什么需要它（2026-09-17 实测，坑 52 的邻居）：Edge 按 `--user-data-dir` 单例。
+// 已有实例在 9223、我们要 19022 时，19022 是空闲的 ⇒ 走下面的 spawn 分支 ⇒ 新进程把请求
+// 交给已有实例后**立即退出**，于是输出只剩两行：
+//     [browser] msedge exited code=0
+//     [browser] 调试端口 19022 在 30000ms 内没有就绪（最后错误：ECONNREFUSED）
+// 单看任一行都像「端口没起来」，真实原因是「profile 已被占用」。这条提示就是补上这句真话。
+//
+// 判据为什么不是 profile 目录里的 `DevToolsActivePort`：2026-09-17 实测它**两个方向都不可靠** ——
+//   9222 端口空闲、文件却还在（残留）；9223 活着、文件却不存在。
+// Windows 上也没有 `SingletonLock` 可看（Chromium 在 Windows 用命名互斥体，不落文件）。
+// 所以改成只做「能自证的事」：在登记表已知的那几个端口里探一遍，用 profile 自证身份。
+// 端口集合来自登记表（含退役值），所以这里不会出现写死的端口字面量。
+async function findSiblingInstance() {
+  const candidates = [...new Set([...Object.values(PROJECT_PORTS), ...retiredPortNumbers()])]
+    .filter((port) => Number.isInteger(port) && port !== PORT);
+  const found = [];
+  for (const port of candidates) {
+    const inspection = await inspectPort(port, { timeoutMs: 700 });
+    if (classifyPortUsage(inspection, { expectedProfile: PROFILE }).verdict === 'ours') found.push(port);
+  }
+  return found;
+}
+
+function describeSibling(ports, { handedOff } = {}) {
+  const lines = [];
+  if (handedOff) {
+    lines.push('[browser] 端口没起来，而且子进程是以 **code 0** 退出的 —— 这是 Edge 把请求交给');
+    lines.push('[browser] 已有实例的典型样子（真启动失败不会 code 0）。');
+  }
+  if (ports.length > 0) {
+    lines.push(`[browser] 同一个 profile 已经有一个实例在跑，它在端口 ${ports.join(' / ')}（profile 与期望一致）。`);
+  } else {
+    lines.push('[browser] 没能在登记表已知的端口上找到它 —— 它可能挂在别的端口上（例如手工起的时候另指了端口）。');
+  }
+  lines.push('[browser] 处置（二选一，都不需要杀浏览器）：');
+  if (ports.length > 0) {
+    lines.push(`[browser]   a) 复用它：起代理时带 CDP_BROWSER_PORT=${ports[0]}（脚本只认代理端口，这一跳是内部的）`);
+  }
+  lines.push('[browser]   b) 换一个 profile：PROJECT_BROWSER_PROFILE=<另一个目录>');
+  lines.push('[browser]   顺带一提：Edge 的单例是按 profile 目录判的，所以「换端口」并不能起出第二个实例。');
+  return lines.join('\n');
+}
+
 // 起之前先确认端口上是谁。坑 35 的形态之一就是「端口被另一个 profile 占着，
 // 新起的 msedge 只是并入那个实例，调试端点仍然是别人的浏览器」——
 // 两个账号连的是不同的人，接错了不会报错，只会把数据写到错的地方。
 const inspection = await inspectPort(PORT);
 const usage = classifyPortUsage(inspection, { expectedProfile: PROFILE });
+// 端口是空闲的，但 profile 可能已经在别的端口上跑着 —— 那种情况上面那次端口探测看不出来。
+const siblings = usage.verdict === 'ours' ? [] : await findSiblingInstance();
 
 console.log(describeExpectedLogin());
 
@@ -96,11 +144,17 @@ if (usage.verdict === 'ours') {
   console.error('[browser] 商家号与买家号不能共用同一个浏览器实例，继续启动只会把调试端点接到别人身上。');
   console.error('[browser] 处置：先停掉占用者，或用 PROJECT_BROWSER_PORT 换一个空闲端口。');
   process.exitCode = 1;
+} else if (siblings.length > 0) {
+  console.error(describeSibling(siblings));
+  process.exitCode = 1;
 } else {
   if (usage.verdict === 'unknown') {
     console.warn(`[browser] 警告：端口 ${PORT} 在监听但身份无法确认（${describeOccupant(inspection)}），按空闲处理。`);
   }
 
+  // exit code 0 ＝ 子进程把手头的事交给已有实例后正常退出（Edge 单例的默认行为）；
+  // 真启动失败不是 0，或者进程会一直活着。所以这个值本身就是要报给操作者的证据。
+  let childExitCode = null;
   const child = spawn(EDGE, [
     `--user-data-dir=${PROFILE}`,
     `--remote-debugging-port=${PORT}`,
@@ -110,13 +164,22 @@ if (usage.verdict === 'ours') {
   ], { stdio: 'ignore' });
 
   console.log(`[browser] msedge pid=${child.pid} profile=${PROFILE} port=${PORT}`);
-  child.on('exit', (code) => console.log(`[browser] msedge exited code=${code}`));
+  child.on('exit', (code) => {
+    childExitCode = code;
+    console.log(`[browser] msedge exited code=${code}`);
+  });
 
   try {
     const v = await waitForDevTools();
     console.log(`[browser] READY ${v.Browser} on ${PORT}`);
   } catch (error) {
     console.error(`[browser] ${error.message}`);
+    // 端口始终没起来时把真正的原因补上：同 profile 的另一个实例把请求接管了。
+    // 那一刻的 `msedge exited code=0` 很不起眼，所以这里要主动说清。
+    const lateSiblings = await findSiblingInstance();
+    if (childExitCode === 0 || lateSiblings.length > 0) {
+      console.error(describeSibling(lateSiblings, { handedOff: childExitCode === 0 }));
+    }
     process.exitCode = 1;
   }
 

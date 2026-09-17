@@ -3,7 +3,82 @@ import test from 'node:test';
 
 import {
   SCENES, buildPromotionFields, buildShopFields, canonicalPromotionTargetName, reportDateEpoch,
+  summarizeSourceDates,
 } from './daily-report-core.mjs';
+
+const REPORT_DATE = '2026-09-16';
+
+// 造一份最小但形状正确的 source（店铺 119 列、推广 71 列都不是这个函数关心的，
+// 它只看日期列与取用的那一行 —— 所以这里只用真实列名，不假装有整行数据）。
+function makeSource({ shopDates, matchedDate = REPORT_DATE, promotionDates, csvName = '营销场景报表.csv' }) {
+  return {
+    shop: {
+      headers: ['统计日期', ...Array.from({ length: 118 }, (_, index) => `店铺字段${index}`)],
+      values: [matchedDate, '盖文旗舰店', ...Array.from({ length: 117 }, (_, index) => String(index))],
+      workbookRows: shopDates.length + 1,
+      dates: shopDates,
+    },
+    promotion: {
+      headers: ['日期', '场景ID', '场景名字'],
+      rows: promotionDates.map((value, index) => [value, String(371 + index), index === 0 ? '关键词推广' : '人群推广']),
+      csvName,
+      dates: promotionDates,
+    },
+  };
+}
+
+test('自证：两侧都是目标日时通过，并留下「观察到哪几天」的证据', () => {
+  const source = makeSource({
+    shopDates: ['2026-09-16', '2026-09-15', '2026-09-14'],
+    promotionDates: [REPORT_DATE, REPORT_DATE],
+  });
+  const selfCheck = summarizeSourceDates(source, REPORT_DATE);
+  assert.equal(selfCheck.allMatchDate, true);
+  assert.equal(selfCheck.shop.targetRowCount, 1);
+  assert.equal(selfCheck.shop.matchedRowDate, REPORT_DATE);
+  assert.equal(selfCheck.shop.uniqueDates, 3);
+  assert.equal(selfCheck.shop.firstRowDate, '2026-09-16');
+  assert.equal(selfCheck.shop.lastRowDate, '2026-09-14');
+  assert.deepEqual(selfCheck.promotion.observedDates, [REPORT_DATE]);
+  assert.equal(selfCheck.promotion.rowCount, 2);
+  assert.equal(selfCheck.promotion.csvName, '营销场景报表.csv');
+});
+
+test('自证：推广 ZIP 是前一天的就判不通过（下载错文件的主要形态）', () => {
+  const source = makeSource({
+    shopDates: ['2026-09-16', '2026-09-15'],
+    promotionDates: ['2026-09-15', '2026-09-15'],
+  });
+  const selfCheck = summarizeSourceDates(source, REPORT_DATE);
+  assert.equal(selfCheck.promotion.matches, false);
+  assert.equal(selfCheck.promotion.targetRowCount, 0);
+  assert.deepEqual(selfCheck.promotion.observedDates, ['2026-09-15']);
+  assert.equal(selfCheck.allMatchDate, false, '推广侧不对时整体必须判不通过');
+  assert.equal(selfCheck.shop.matches, true, '店铺侧仍然是对的，证据要分别保留');
+});
+
+test('自证：店铺工作簿里目标日出现两次也判不通过', () => {
+  const source = makeSource({
+    shopDates: ['2026-09-16', '2026-09-16', '2026-09-15'],
+    promotionDates: [REPORT_DATE, REPORT_DATE],
+  });
+  const selfCheck = summarizeSourceDates(source, REPORT_DATE);
+  assert.equal(selfCheck.shop.targetRowCount, 2);
+  assert.equal(selfCheck.shop.matches, false);
+  assert.equal(selfCheck.allMatchDate, false);
+});
+
+test('自证：取用的那一行不是目标日时判不通过（防止「列里有一行对」就放行）', () => {
+  const source = makeSource({
+    shopDates: ['2026-09-16', '2026-09-15'],
+    matchedDate: '2026-09-15',
+    promotionDates: [REPORT_DATE, REPORT_DATE],
+  });
+  const selfCheck = summarizeSourceDates(source, REPORT_DATE);
+  assert.equal(selfCheck.shop.targetRowCount, 1, '列里确实有一行是目标日');
+  assert.equal(selfCheck.shop.matches, false, '但被取用的那一行不是它，所以不能通过');
+  assert.equal(selfCheck.allMatchDate, false);
+});
 
 test('maps all 119 shop columns by exact header and converts live types', () => {
   const headers = Array.from({ length: 119 }, (_, index) => `字段${index}`);

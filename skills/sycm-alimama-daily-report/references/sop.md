@@ -26,15 +26,24 @@ node runtime/start-daily-report-proxy.mjs
 
 ### 1.1 起不来先看「同 profile 是否已有实例在跑」
 
-实测失败形态（2026-09-17）：启动器打印 `msedge pid=… ` 紧接着 `msedge exited code=0`，然后报 `调试端口 19022 在 30000ms 内没有就绪（ECONNREFUSED）`。
+**启动器现在会自己说这件事**（2026-09-17 起）：同一个 profile 已经有实例跑在**别的端口**上时，它拒绝启动，并直接打印那个端口与两种处置。所以先读它那几行，不要一上来就人工枚举进程。
+
+它给出的失败形态（改之前只会打印这些，两行单看都像「端口没起来」）：
+
+```text
+[browser] msedge exited code=0
+[browser] 调试端口 19022 在 30000ms 内没有就绪（最后错误：ECONNREFUSED）
+```
 
 原因不是端口被外人占，而是**同一个 profile 已经有一个实例在跑**（比如上一次遗留的、跑在旧端口上的那个）：Edge 按 user-data-dir 单例，新进程把请求交给已有实例后立即退出，于是新端口上永远不会有调试端点。
 
 处置顺序：
 
-1. 先枚举 `msedge` 进程，按 `--user-data-dir` 过滤出本 profile 的实例，看它用的 `--remote-debugging-port` 是哪个（`Get-CimInstance Win32_Process`，注意 PowerShell 工具在本机不回显 stdout，要写文件再读）。
-2. 那个端口上如果确实是本 profile（`/json/version` 能连、`SystemInfo.getInfo` 的 commandLine 里 profile 对得上），**可以直接复用它**：代理按登记表起在 `19023`，只把内部那一跳用 `CDP_BROWSER_PORT=<实际端口>` 指过去。脚本侧无感，因为它们只认 `19023`。
-3. 不要为了「统一端口」去杀那个浏览器。它可能是别人正在用的窗口；本项目的纪律是**未经许可不动任何进程**。
+1. 看启动器那行结论；它的判据是在**登记表已知的端口**上探一遍、用 profile 自证，所以点名是可信的。
+2. 那个端口上如果确实是本 profile，**直接复用它**：代理按登记表起在 `19023`，只把内部那一跳用 `CDP_BROWSER_PORT=<实际端口>` 指过去。脚本侧无感，因为它们只认 `19023`。
+3. 只有当启动器说「没能在登记表已知的端口上找到它」时才人工枚举：`Get-CimInstance Win32_Process` 按 `--user-data-dir` 过滤 `msedge`，看它的 `--remote-debugging-port`（注意 PowerShell 工具在本机不回显 stdout，要写文件再读）。
+4. 不要为了「统一端口」去杀那个浏览器。它可能是别人正在用的窗口；本项目的纪律是**未经许可不动任何进程**。
+5. **不要**改用 profile 目录里的 `DevToolsActivePort` 来判断：2026-09-17 实测它两个方向都不可靠（9222 端口空闲、文件还在；9223 活着、文件不存在），Windows 上也没有 `SingletonLock` 可看（Chromium 在 Windows 用命名互斥体，不落文件）。
 
 ## 2. 日期落位（先做这一步，再做任何采集）
 
@@ -176,6 +185,16 @@ node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs `
 目标行顺序为：119 个店铺字段、69 个关键词推广字段、69 个人群推广字段。目标表前两列和末六列不在写入 payload 中。
 
 `店铺` 是飞书侧异步算出来的派生字段，紧随创建的第一次回读可能读到空数组。这不代表写入失败，脚本会对这一格做有界重试；预算耗尽仍会如实报错并说明记录已存在。
+
+收据里有两块专门用来**事后自证**的内容（2026-09-17 起），出问题时先看它们：
+
+- `environment`：这次是在什么环境里跑的 —— `computedAt`（真实时钟）、`node`、`proxyUrl`，以及浏览器/代理的端口、id、label；每一项都带 `source`（`env` / `registry-default` / `env-invalid`）与 `registryDefault`。
+  一眼就能回答「有没有偏离登记表」：例如 `browserPort: {"port":9223,"source":"env","registryDefault":19022}` 就是「登记表写 19022、实际用的是 9223」。
+  它只观测、不裁决：环境变量不合法会记成 `env-invalid`，而不是让一次数据导入失败（这些端口是浏览器链在用，runner 自己并不读它们）。
+- `sourceSelfChecks`：这次用的两份源数据**是不是目标日那一天**。逐项列出店铺侧的 `targetRowCount` / `matchedRowDate` / `firstRowDate`..`lastRowDate`，与推广侧 CSV 的 `observedDates` / `csvName`，最后给 `allMatchDate`。
+  不通过时脚本在**字段映射之前**就停（`assertSourceDates`）并点名两个文件名 —— 比原来那句 `unexpected 关键词推广 identity/date: …` 多了「哪个文件、观察到哪几天」。
+
+顺带一条别踩的：文件名里的哈希（`日报_20260917_adc987ef….xlsx`）**随报表定义走、不随内容变**，两次下载可能同名同哈希。判「是不是新数据」只能读内部的日期列，也就是上面这个 `sourceSelfChecks`。
 
 ## 7. 本轮实测基线
 
