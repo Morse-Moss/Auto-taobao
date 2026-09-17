@@ -617,7 +617,7 @@ node .tmp-probe-listcommits.mjs
 
 | 阶段 | 结论 | 证据（可复核） | 未做 / 打折的部分 |
 | --- | --- | --- | --- |
-| 0 架构基线与迁移落地 | **完成（006 待 apply）** | `db/migrations/001-006` 全带 rollback；001-005 已 apply 到 `xws_automation`；`architecture` schema 7 表回读计数（reviews 1 / capabilities 5 / modules 15 / gaps 9 / phases 7 / decisions 7 / evidence_refs 8）；004 幂等与 rollback 后重放在临时库 17/17；006 隔离库 26/26 通过、待授权 apply | — |
+| 0 架构基线与迁移落地 | **完成（成文时 006 待 apply；2026-09-17 已全部 apply）** | `db/migrations/001-007` 全带 rollback；001-007 已 apply 到 `xws_automation`；`architecture` schema 7 表回读计数（reviews 1 / capabilities 5 / modules 15 / gaps 9 / phases 7 / decisions 7 / evidence_refs 8）；004 幂等与 rollback 后重放在临时库 17/17；006 隔离库 26/26；007 隔离库反例先行 13 条 ⇒ 合并套件 39/39 | — |
 | 1 Context / Checkpoint / 恢复 | **完成** | `context-schema.mjs`（sop-context-v1 五条状态轴）+ pg-store CAS；`recovery-fault-injection.mjs` 跨进程故障注入 **15/15**（子进程被杀→另一进程收回过期 lease→从游标 10 续跑到 20；重复 commit_key 不产生第二行） | — |
 | 2 Side Effect Ledger / 幂等 / 对账 | **完成（覆盖到已接线的能力）** | 复用 `supervisor_commit_records`（未新增同义表）；commit→verify→settle 全链；`reconcileUnknown` 只对账不重试 | 计划写「所有上传、写入、付费调用统一登记」——目前真实外部写只覆盖周更族；FAQ 周期级发布段仍走旧 CLI（§9） |
 | 3 Manifest / Registry / Loader | **完成** | 10 manifest（能力 8 + 适配器 2）；`build-skill-registry.mjs --check` 退出码 0/1/2；坏 manifest 在执行前失败（6 类错误码）；entry 限目录内相对 `.mjs` | — |

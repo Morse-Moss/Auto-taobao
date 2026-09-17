@@ -311,12 +311,12 @@ recordCount = 7
 
 | | 有 / 无 | 说明 |
 | --- | --- | --- |
-| 本项目 PG `xws_automation`（PG17，127.0.0.1:5432，迁移 001–006） | 有，但**与日报链无关** | 它服务 sop-runtime / 竞品采集链（运行、attempt、账本、durable_*）。`db/` 下没有任何日报相关表。 |
-| 日报链读 PG | **无** | 在 `skills/sycm-alimama-daily-report/` 里 grep `postgres\|Pool\|xws_automation` 零命中。 |
-| 日报链的本地落地 | 只有过程文件 | 源文件在 `C:\Users\Administrator\Downloads`（xlsx / zip）；产物在 `evidence/daily-report-*/{plan.json,paste.tsv,receipt.json}`。 |
-| 「某天推过没有」的判据 | 问飞书，不是问本地 | 链上靠 `listRecords` 查「统计日期 + 店铺名称」是否已存在（`duplicates`），没有本地台账。 |
+| 本项目 PG `xws_automation`（PG17，127.0.0.1:5432，迁移 001–007） | 有，但**日报链起初与它无关**；09-17 后多了一条只读审计 | 原状：它服务 sop-runtime / 竞品采集链（运行、attempt、账本、durable_*）。09-17 新增 007 `daily_report_push_audit`（只追加审计，**不是台账、无读接口、无业务唯一键**，见 §7 与 `sop.md` §6.2）—— 它记「做过什么动作」，不记「现在事实是什么」，事实仍只认飞书。 |
+| 日报链读 PG | **无（现在是「只写不读」）** | 生产脚本内 grep `postgres\|new pg\.Pool\|from 'pg'` 零命中（`runtime/daily-report-audit.mjs` 用动态 `import('pg')`，只在写审计行时用到）；即便 09-17 新增了审计表，读接口在写入方模块里被**刻意禁止导出**，并有单测盯着。 |
+| 日报链的本地落地 | 过程文件 + 审计行 | 源文件在 `C:\Users\Administrator\Downloads`（xlsx / zip）；产物在 `evidence/daily-report-*/{plan.json,paste.tsv,receipt.json}`；成功/失败各记一行 `daily_report_push_audit`（best-effort，写不进去也**不影响**本次结论）。 |
+| 「某天推过没有」的判据 | 问飞书，不是问本地 | 链上靠 `listRecords` 查「统计日期 + 店铺名称」是否已存在（`duplicates`）；审计表**刻意无业务唯一键、不参与判重**，它允许与飞书不一致——不一致正是它要暴露的现象。 |
 
-所以现状是：**飞书底单是唯一的数据落地处；本地只有收据，没有数据副本、也没有已推送索引。** 底单表 id 在本仓库只出现在 `runtime/feishu-targets.mjs` 与收据/计划文件里，没有任何脚本回读它 —— 下游（月份数据表、仪表盘）都是飞书原生公式/引用。
+所以现状是：**飞书底单仍是唯一的数据落地处与唯一权威；本地只有收据与只追加的审计行，没有数据副本、也没有已推送索引。** 底单表 id 在本仓库只出现在 `runtime/feishu-targets.mjs` 与收据/计划文件里，没有任何脚本回读它 —— 下游（月份数据表、仪表盘）都是飞书原生公式/引用。
 
 ### 8.4 建议（按代价排序）
 

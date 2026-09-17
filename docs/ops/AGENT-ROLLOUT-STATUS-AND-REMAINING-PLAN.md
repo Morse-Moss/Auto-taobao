@@ -67,7 +67,7 @@ S1 故障注入**已经用 PostgreSQL 路径跑完（15/15）**，按设计文�
 
 | 项 | 状态 | 证据 |
 | --- | --- | --- |
-| 阶段 0 架构基线与迁移 | 完成 | `db/migrations/001-006` 全带 rollback，**001-006 已全部 apply**；`architecture` schema 7 表（reviews 1 / capabilities 5 / modules 15 / gaps 9 / phases 7 / decisions 7 / evidence_refs 8）；隔离库预演 26/26 |
+| 阶段 0 架构基线与迁移 | 完成 | `db/migrations/001-007` 全带 rollback，**001-007 已全部 apply**（007＝日报链只追加审计表 `daily_report_push_audit`，2026-09-17）；`architecture` schema 7 表（reviews 1 / capabilities 5 / modules 15 / gaps 9 / phases 7 / decisions 7 / evidence_refs 8）；隔离库预演 **39/39** |
 | 阶段 1 Context / Checkpoint / 恢复 | 完成 | `context-schema.mjs` 五条状态轴 + pg-store CAS；跨进程故障注入 **15/15**（子进程被杀 → 另一进程收回过期 lease → 从游标 10 续跑到 20；重复 commit_key 不产生第二行） |
 | 阶段 2 Side Effect Ledger / 幂等 / 对账 | 完成（覆盖已接线能力） | 复用 `supervisor_commit_records`，未新增同义表；commit→verify→settle 全链；`reconcileUnknown` **只对账不重试** |
 | 阶段 3 Manifest / Registry / Loader | 完成 | 10 个 manifest（能力 8 + 适配器 2）；`registryDigest=sha256:34936b1f01b559be304ba756781e942904c7690f62ea3a9a6c4d838eddd53e48`；坏 manifest 在执行前失败 |
