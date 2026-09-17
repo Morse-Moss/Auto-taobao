@@ -306,4 +306,11 @@ test('两个写入方都把证据目录交给 resolveEvidenceDir，回填用 lat
   assert.equal(/args\.outputDir\s*\|\|/u.test('const d = args.outputDir ? path.resolve(args.outputDir) : null'), false);
   assert.match(backfill, /policy: 'latest'/u, '回填必须并入当前最新一代');
   assert.match(report, /baseDir, explicit: args\.outputDir, isOccupied: dirHasEntries/u);
+  // 干跑与 `--commit` 是同一次运行的两阶段：提交必须并入干跑建的那一代。
+  // 2026-09-17 实测过反例：commit 走默认 'fresh' ⇒ 干跑落 `-rerun4`、提交顺延 `-rerun5`，一次运行被拆成两代。
+  assert.match(report, /policy: args\.commit \? 'latest' : 'fresh'/u,
+    '提交必须并入最新一代，否则同一次运行的干跑与收据会被拆到两个目录');
+  // 反向自证：判据真的在判东西 —— 把 policy 写成常量就该判红。
+  assert.equal(/policy: args\.commit \? 'latest' : 'fresh'/u.test("resolveEvidenceDir({ baseDir, explicit, isOccupied, policy: 'fresh' })"),
+    false, 'policy 判据本身失效了');
 });

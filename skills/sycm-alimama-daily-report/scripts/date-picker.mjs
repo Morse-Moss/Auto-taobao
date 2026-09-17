@@ -311,6 +311,10 @@ const SITES = Object.freeze({
   sycm: {
     label: '生意参谋 / 店铺绩效',
     urlFragment: 'sycm.taobao.com/qos/service/frame/shop/performance',
+    // 回位地址：采集店铺报表会把**同一个页签**导航到报表预览页（`lyone/auto_analysis/datafetch/…`），
+    // 那时这个片段就认不出页面了（实测报 `expected one sycm page …, got 0`）。只把页面挪回去还不够 ——
+    // 重新导航会把页签与日期一起重置（实测 `alreadyActive:false`），所以回位之后**照样要把日期重落一遍**。
+    entryUrl: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop',
     route: 'preset-or-calendar',
     defaultExpectTab: '询单到付款',
   },
@@ -356,12 +360,26 @@ async function navigate(proxy, targetId, url) {
 
 function delay(ms) { return new Promise((resolve) => { setTimeout(resolve, ms); }); }
 
-export async function resolveTarget({ proxy, site }) {
+export async function resolveTarget({ proxy, site, onRecover } = {}) {
   const adapter = siteAdapter(site);
+  const matchOf = (list) => list.filter((target) => target.type === 'page' && String(target.url).includes(adapter.urlFragment));
   const targets = await proxyJson(`${proxy}/targets`);
-  const matches = targets.filter((target) => target.type === 'page' && String(target.url).includes(adapter.urlFragment));
-  if (matches.length !== 1) throw new Error(`expected one ${site} page on ${proxy}, got ${matches.length}`);
-  return matches[0].targetId;
+  const matches = matchOf(targets);
+  if (matches.length === 1) return matches[0].targetId;
+  // 站点页被「同页签导航」带走了（实测：采集店铺报表把生意参谋留在报表预览页上）⇒ 按登记的回位地址送回去再认一次。
+  // 只在「同一主机下恰好一个页面」时才动手 —— 页面多了说明现场不是我以为的样子，宁可报错也别乱导航。
+  if (adapter.entryUrl && matches.length === 0) {
+    const host = adapter.urlFragment.split('/')[0];
+    const siblings = targets.filter((target) => target.type === 'page' && String(target.url).includes(host));
+    if (siblings.length === 1) {
+      onRecover?.({ targetId: siblings[0].targetId, from: siblings[0].url, entryUrl: adapter.entryUrl });
+      await navigate(proxy, siblings[0].targetId, adapter.entryUrl);
+      await delay(3000);
+      const found = matchOf(await proxyJson(`${proxy}/targets`));
+      if (found.length === 1) return found[0].targetId;
+    }
+  }
+  throw new Error(`expected one ${site} page on ${proxy}, got ${matches.length}`);
 }
 
 export async function readSiteState({ proxy, site, targetId }) {
@@ -390,8 +408,10 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
   const resolved = resolveDateMode({ requested, now });
   const mode = requestedMode === 'auto' ? resolved.mode : requestedMode;
   if (!['preset', 'explicit'].includes(mode)) throw new Error(`invalid mode: ${requestedMode}`);
-  const page = targetId ?? await resolveTarget({ proxy, site });
   const say = (step, extra = {}) => trace.push({ step, ...extra });
+  // 认页面时若发现它被同页签导航带走了，就按站点的回位地址送回去（并把这一步记进 trace）；
+  // 回位之后下面的页签与日期流程照跑，等于把「回位 + 重落位」合成一条命令。
+  const page = targetId ?? await resolveTarget({ proxy, site, onRecover: (info) => say('recover-entry', info) });
   // 「动作前读取」只是信息性的（用于报告 before 与判断 REAPPLIED）：
   // 页面还没渲染完时不该在真正动手之前就失败，所以这里容忍读不到。
   const before = await readSiteState({ proxy, site, targetId: page })

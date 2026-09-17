@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import {
   assertAlimamaState, buildAlimamaUrl, extractIsoDates, isSingleDaySelection,
-  resolveAppliedDate, resolveDateMode, selectDayHits, shiftIso, shiftMonth, siteAdapter,
+  resolveAppliedDate, resolveDateMode, resolveTarget, selectDayHits, shiftIso, shiftMonth, siteAdapter,
 } from './date-picker.mjs';
 
 // 落位的 stdout 是要给人看的（客户演示时甚至会被录进视频），所以「设计上允许」与「真的出错」
@@ -158,4 +158,65 @@ test('isSingleDaySelection 只认「X 至 X」', () => {
   assert.equal(isSingleDaySelection('已选择：2026-09-14 至 2026-09-15', '2026-09-14'), false);
   assert.equal(isSingleDaySelection('已选择：2026-09-14', '2026-09-14'), false);
   assert.equal(isSingleDaySelection(null, '2026-09-14'), false);
+});
+
+// 站点页会被「同页签导航」带走：采集店铺报表把生意参谋留在报表预览页上，回填前重跑落位就会
+// 报 `expected one sycm page …, got 0`（2026-09-17 实跑）。回位必须是落位自己的事，
+// 但也不能乱导航 —— 只在「同一主机下恰好一个页面」时才动它。
+test('落位认不出页面时按 entryUrl 回位，且只动同一主机下那一个页面', async () => {
+  const run = async (initial) => {
+    const calls = [];
+    let current = initial;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (url) => {
+      calls.push(String(url));
+      const body = String(url).includes('/navigate')
+        ? (() => { current = [
+          { type: 'page', targetId: 'sycm-page', url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop' },
+          { type: 'page', targetId: 'alimama-page', url: 'https://one.alimama.com/index.html' },
+        ]; return { frameId: 'sycm-page' }; })()
+        : current;
+      const text = JSON.stringify(body);
+      return { ok: true, text: async () => text, json: async () => body };
+    };
+    try {
+      const recovered = [];
+      const targetId = await resolveTarget({ proxy: 'http://127.0.0.1:1', site: 'sycm', onRecover: (info) => recovered.push(info) });
+      return { targetId, recovered, calls };
+    } finally { globalThis.fetch = realFetch; }
+  };
+
+  const preview = { type: 'page', targetId: 'sycm-page', url: 'https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?reportId=1' };
+  const alimama = { type: 'page', targetId: 'alimama-page', url: 'https://one.alimama.com/index.html#!/report/download-list' };
+
+  const ok = await run([preview, alimama]);
+  assert.equal(ok.targetId, 'sycm-page', '回位之后要认回应用内页');
+  assert.equal(ok.recovered.length, 1, '回位这一步必须留下痕迹（会进 trace）');
+  assert.match(ok.recovered[0].entryUrl, /performance\/new#\/shop/u);
+  const navs = ok.calls.filter((call) => call.includes('/navigate'));
+  assert.equal(navs.length, 1, '只许动一个页面');
+  assert.ok(navs[0].includes('sycm-page'), '动的是生意参谋那一页，不是阿里妈妈');
+  assert.ok(navs[0].includes(encodeURIComponent('https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop')),
+    '必须按登记的回位地址导航');
+
+  // 同一主机下出现两个页面 ⇒ 现场不是我以为的样子，宁可报错也别乱导航。
+  const calls = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    calls.push(String(url));
+    const body = [preview, { ...preview, targetId: 'other' }, alimama];
+    const text = JSON.stringify(body);
+    return { ok: true, text: async () => text, json: async () => body };
+  };
+  try {
+    await assert.rejects(() => resolveTarget({ proxy: 'http://127.0.0.1:1', site: 'sycm' }),
+      /expected one sycm page on .* got 0/u);
+  } finally { globalThis.fetch = realFetch; }
+  assert.equal(calls.filter((call) => call.includes('/navigate')).length, 0, '不明确时一次导航都不许发');
+});
+
+// 阿里妈妈没有回位地址（它本来就在自己的页面上，靠 URL hash 认）—— 别给它编一个。
+test('只有生意参谋登记了回位地址', () => {
+  assert.match(siteAdapter('sycm').entryUrl, /sycm\.taobao\.com/u);
+  assert.equal(siteAdapter('alimama').entryUrl, undefined);
 });

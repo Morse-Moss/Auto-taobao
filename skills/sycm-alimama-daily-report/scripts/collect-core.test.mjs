@@ -155,14 +155,69 @@ test('阿里妈妈取件：必须先选中目标任务行并回读 checked，才
   assert.ok(selectAt > 0, 'fetch 段必须先用 targetRowExpression 定位目标任务行');
   assert.ok(entryAt > 0, 'fetch 段必须用 downloadEntryExpression 定位入口');
   assert.ok(selectAt < entryAt, '选行必须早于找入口 —— 顺序反了入口永远不显形');
+  assert.match(fetchBody, /selectTargetRow\(args, targetId, wanted, row\)/u, '选行要收成一个可复用的过程');
   // 点了复选框要**回读**：clickPoint 的返回值恒为 clicked:true，它证明不了任何事。
-  assert.match(fetchBody, /confirmed\.checked/u, '勾选后必须回读该行的 checked');
-  assert.match(fetchBody, /勾选 .* 失败/u, '回读没通过必须停下，不许继续往下点');
+  // 「点之前先确认那一点真的是它」与「点完回读」都在 selectTargetRow 里（2026-09-17 被浮层坑过之后）。
+  const selectBody = promo.slice(promo.indexOf('async function selectTargetRow'), promo.indexOf('async function main'));
+  assert.ok(selectBody.length > 0, '选行必须收成一个独立过程，否则重试逻辑会散落在主流程里');
+  assert.match(selectBody, /checkboxHit === false/u, '被别的东西挡住时不许硬点，要等它自己收起来再量一次');
+  assert.match(selectBody, /after\.checked/u, '点完必须回读该行的 checked');
+  assert.match(selectBody, /勾选 .* 失败/u, '重试完还是没勾上就必须停下，不许继续往下点');
   // 「量到点」之间页面会动，差一行（41px）就点空 —— 所以点之前当场重新量，且禁止零尺寸坐标。
   assert.match(promo, /拒绝点击可疑坐标/u, '零尺寸矩形算出的 (0,0) 会点到页面左上角，必须挡住');
   assert.match(fetchBody, /滚动后重新定位|滚动后入口不再可定位/u, '滚动会改变显隐状态，滚完必须重新定位');
   // 「那一行找到了」不等于「那一行现在能取件」：还在生成中时点了不落盘，和「点错了」现场长得一样。
   assert.match(fetchBody, /还不是「生成成功」/u, '任务没生成成功就得停，否则只能靠 30 秒超时去猜');
+});
+
+// 「量到坐标」不等于「点得到」：2026-09-17 实测有个 z-index 999999 的浮层正压住第一行，
+// 中心点命中的是浮层里的 TD，真实点击落在浮层上、复选框纹丝不动，而这一页「点错不报错」。
+// 所以表达式必须在点之前就把「那一点是谁」带出来。
+test('目标行表达式在沙箱里真的能算遮挡：命中自己=可点，命中别人=报出是谁', () => {
+  const TASK = '营销场景报表_20260917_123456';
+  const build = ({ blocked }) => {
+    const box = {
+      tagName: 'INPUT', className: 'ant-checkbox-input', checked: false,
+      getBoundingClientRect: () => ({ x: 136, y: 334, width: 14, height: 14 }),
+      contains(other) { return other === box; },
+    };
+    // 挡路物也要有 contains：真实 DOM 元素都有，表达式正是靠它判断「命中的是它自己还是它的祖先」。
+    const blocker = {
+      tagName: 'TD', className: 'asiYysqquv',
+      contains(other) { return other === blocker; },
+    };
+    // 第三个沙箱：命中的东西连 contains 都没有（在别人家页面里 eval，不能假定原型完整）。
+    const bare = { tagName: 'DIV', className: 'no-contains' };
+    const tr = { tagName: 'TR', innerText: TASK, children: [], querySelector: (sel) => (sel === 'input[type=checkbox]' ? box : null) };
+    const taskLeaf = {
+      tagName: 'SPAN', children: [], textContent: TASK, innerText: TASK,
+      getBoundingClientRect: () => ({ x: 120, y: 330, width: 180, height: 20 }),
+      closest: () => tr,
+    };
+    return {
+      document: {
+        querySelectorAll: (sel) => (sel === 'tr' ? [tr] : [taskLeaf]),
+        elementFromPoint: () => (blocked === 'bare' ? bare : (blocked ? blocker : box)),
+      },
+    };
+  };
+  const run = (blocked) => JSON.parse(new Function('document',
+    `return ${targetRowExpression(TASK)};`)(build({ blocked }).document));
+
+  const clear = run(false);
+  assert.equal(clear.found, true);
+  assert.deepEqual(clear.checkboxCenter, [143, 341]);
+  assert.equal(clear.checkboxHit, true, '中心命中的就是它 ⇒ 可以点');
+  assert.equal(clear.checkboxHitTag, 'INPUT');
+
+  const covered = run(true);
+  assert.equal(covered.checkboxHit, false, '中心命中的是别人 ⇒ 不许点，先等');
+  assert.equal(covered.checkboxHitTag, 'TD', '要说清挡路的是谁，否则只能回去手工复现');
+  assert.equal(covered.checkboxHitClass, 'asiYysqquv');
+
+  const foreign = run('bare');
+  assert.equal(foreign.checkboxHit, false, '命中的东西没有 contains ⇒ 按「不是它」处理，走重试');
+  assert.equal(foreign.checkboxHitTag, 'DIV', '没 contains 也要把 tag 带出来，方便复现');
 });
 
 // 真的把它跑一次：字符串比对看不见「这个名字在页面里根本不存在」，也看不见分支走错。

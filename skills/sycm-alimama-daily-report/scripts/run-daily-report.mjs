@@ -60,7 +60,11 @@ function parseArgs(argv) {
 // 询单回填用的是同一个「目录里有没有东西」，不许有两份实现。
 function resolveOutputDir(args) {
   const baseDir = path.join(REPO_ROOT, 'evidence', `daily-report-${args.reportDate}`);
-  return resolveEvidenceDir({ baseDir, explicit: args.outputDir, isOccupied: dirHasEntries });
+  // 干跑与 `--commit` 是**同一次运行的两个阶段**：干跑建了哪一代，提交就并进哪一代。
+  // 用默认的 'fresh' 会把一次运行的 plan/paste 与 receipt 拆到两个目录（2026-09-17 实测：
+  // 干跑落 `-rerun4`、提交又顺延到 `-rerun5`），也和回填/回读用 'latest' 的规矩不一致。
+  return resolveEvidenceDir({ baseDir, explicit: args.outputDir, isOccupied: dirHasEntries,
+    policy: args.commit ? 'latest' : 'fresh' });
 }
 
 async function inspectTarget(args) {

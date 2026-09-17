@@ -191,13 +191,26 @@ export function targetRowExpression(taskName) {
     if (!tr) return JSON.stringify({ found: false, reason: 'no-row' });
     const box = tr.querySelector('input[type=checkbox]');
     const r = box ? box.getBoundingClientRect() : null;
+    const center = r ? [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)] : null;
+    // 「量到坐标」不等于「点得到」（2026-09-17 实测）：页面上有个 z-index 999999 的浮层正好压住第一行，
+    // 中心点命中的是浮层里的 TD，真实点击落在浮层上、复选框纹丝不动 —— 而这一页「点错不报错」。
+    // 所以顺手把「那一点到底是谁」带出来；同一次往返内算完，不给激活态衰减留时间。
+    const canHit = typeof document.elementFromPoint === 'function';
+    const hit = (canHit && center) ? document.elementFromPoint(center[0], center[1]) : null;
+    // contains 存在性也要判：真实元素都有，但这一步是在**别人家的页面**里 eval 的，
+    // 万一拿到个没有 contains 的东西，宁可判成「不是它」（⇒ 走重试，不硬点），也不要让整步炸掉。
+    const owns = (a, b) => !!a && typeof a.contains === 'function' && a.contains(b);
+    const boxHit = (box && hit) ? (hit === box || owns(box, hit) || owns(hit, box)) : null;
     return JSON.stringify({
       found: true,
       trIndex: rows.indexOf(tr),
       hasCheckbox: !!box,
       checked: box ? box.checked : null,
       checkboxRect: r ? [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] : null,
-      checkboxCenter: r ? [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)] : null,
+      checkboxCenter: center,
+      checkboxHit: boxHit,
+      checkboxHitTag: hit ? hit.tagName : null,
+      checkboxHitClass: hit ? String(hit.className || '').slice(0, 48) : null,
       rowText: tr.innerText.replace(/\\s+/g, ' ').trim().slice(0, 120),
     });
   })()`;
@@ -309,7 +322,10 @@ export function describeHitPass(hit) {
 // 采集段的参数解析。两个脚本共用，差别只在有没有 `--phase`。
 export function parseCollectArgs(argv, options = {}) {
   const args = { date: null, downloads: null, proxy: null, task: null, phase: null,
-    timeoutMs: options.timeoutMs ?? 30000, reportId: options.reportId ?? null };
+    timeoutMs: options.timeoutMs ?? 30000, reportId: options.reportId ?? null,
+    // 勾选目标任务行的重试次数：留给「被浮层挡一下」这类可自愈的遮挡
+    // （2026-09-17 实测：z-index 999999 的浮层压住第一行，浮层自己收起后重试即过）。
+    selectAttempts: options.selectAttempts ?? 6 };
   const allowed = new Set(options.flags ?? []);
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];

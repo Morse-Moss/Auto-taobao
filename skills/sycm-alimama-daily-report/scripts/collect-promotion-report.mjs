@@ -198,16 +198,7 @@ async function phaseFetch(args, targetId) {
   if (row.checked) {
     console.log('[fetch] 该行本就是选中态，跳过点击');
   } else {
-    console.log(`[fetch] 真实鼠标点它的复选框 (${row.checkboxCenter.join(',')}) → `
-      + `${(await clickPoint(args, targetId, row.checkboxCenter)).slice(0, 80)}`);
-    await delay(1500);
-    const confirmed = await evalOn(args, targetId, targetRowExpression(wanted));
-    if (!confirmed.checked) {
-      throw new Error(`勾选 ${wanted} 失败（回读 checked=${JSON.stringify(confirmed.checked)}）`
-        + '—— 它的操作行不会显形，取件必然落空，停在这里比继续更省事');
-    }
-    const now = await evalOn(args, targetId, checkboxStateExpression());
-    console.log(`[fetch] 回读 checked=true，当前勾选 = ${JSON.stringify(now.checked)}`);
+    await selectTargetRow(args, targetId, wanted, row);
   }
 
   // 入口：只认**目标任务行的下一行**（它的操作行）里那个可见的「下载」。
@@ -270,6 +261,42 @@ async function phaseFetch(args, targetId) {
     console.log(`[fetch] 等待下载… ${Math.round((args.timeoutMs - (deadline - Date.now())) / 1000)}s`);
   }
   throw new Error(`${args.timeoutMs}ms 内没等到新 zip：判据取文件系统，页面说「生成成功」不算数`);
+}
+
+// 勾选目标任务行：**点之前先确认那一点真的是这个复选框**。
+// 2026-09-17 实测踩到：页面上一个 z-index 999999 的浮层正好压住第一行，`elementFromPoint` 命中的是
+// 浮层里的 TD —— 真实点击落在浮层上、复选框纹丝不动，而这一页**点错不报错**（只表现为 30 秒空等）。
+// 浮层会自己收起来，所以「等一会儿、重新量、再点」就过了；把它做成显式重试，而不是让调用方去猜。
+async function selectTargetRow(args, targetId, taskName, firstRow) {
+  const attempts = args.selectAttempts;
+  const described = (row) => `${row.checkboxHitTag ?? '?'}`
+    + `${row.checkboxHitClass ? `.${row.checkboxHitClass}` : ''}`;
+  let row = firstRow;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    if (row.checkboxHit === false) {
+      console.log(`[fetch] 第 ${attempt}/${attempts} 次：复选框中心被 ${described(row)} 挡住，`
+        + '等一会儿重试（不硬点 —— 这一页点错不报错）');
+    } else {
+      console.log(`[fetch] 真实鼠标点它的复选框 (${row.checkboxCenter.join(',')}) → `
+        + `${(await clickPoint(args, targetId, row.checkboxCenter)).slice(0, 80)}`);
+      await delay(1500);
+      const after = await evalOn(args, targetId, targetRowExpression(taskName));
+      if (after.checked) {
+        const now = await evalOn(args, targetId, checkboxStateExpression());
+        console.log(`[fetch] 回读 checked=true，当前勾选 = ${JSON.stringify(now.checked)}`);
+        return after;
+      }
+      row = after;
+      console.log(`[fetch] 第 ${attempt}/${attempts} 次点击没生效（回读 checked=false）`);
+    }
+    if (attempt < attempts) {
+      await delay(1200);
+      row = await evalOn(args, targetId, targetRowExpression(taskName));
+      if (!row.found) throw new Error(`重试勾选时找不到 ${taskName} 那一行（${row.reason}）`);
+    }
+  }
+  throw new Error(`勾选 ${taskName} 失败（试了 ${attempts} 次都回读 checked=false；`
+    + `最后一次中心命中 ${described(row)}）—— 它的操作行不会显形，取件必然落空，停在这里比继续更省事`);
 }
 
 async function main() {

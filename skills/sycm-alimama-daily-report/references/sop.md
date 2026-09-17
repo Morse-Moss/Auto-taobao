@@ -340,12 +340,15 @@ from daily_report_push_audit order by at desc limit 20;
 | 调用方显式给了 `--output-dir` | 原样用（那是他的选择，脚本不替他改名） |
 | 默认，`evidence/daily-report-<date>` 里**已有内容** | 顺延 `-rerun2`、`-rerun3`… |
 | 默认，目录空/不存在 | `evidence/daily-report-<date>`（第 1 代） |
+| `run-daily-report.mjs` 干跑 | 与上同（没内容就是 base，已有内容才顺延 `-rerunN`） |
+| `run-daily-report.mjs --commit` | **并入最新一代**（同一次运行的第二个阶段，不许另开一代） |
 | `run-inquiry-backfill.mjs` / `readback-daily-report.mjs` | **并入当前最新一代**（`policy: 'latest'`） |
 
 两条要记住的：
 
 - 判据是「目录里**有没有东西**」，不是「几个已知文件名在不在」—— 只按文件名判的话，截图与探针这类额外产物会绕过它，而那恰恰是最该保住的证据。
 - 回填与回读必须用 `latest`：它们是**同一次运行的后两个阶段**，产物要和 plan/receipt 落在同一个目录里；若也按「另开一代」走，第一天的第二次跑就会把一次运行的产物拆到三个目录，那「这是哪一代」就没有答案了。两个写入方共用 `daily-report-runtime.mjs` 的 `resolveEvidenceDir`（不许各自拼目录，有测试盯着）。
+- **`--commit` 也必须用 `latest`**（2026-09-17 实测踩到）：干跑与提交本来就是同一次运行的两步，commit 若走默认的 `fresh`，干跑落 `-rerun4`、提交就顺延成 `-rerun5` —— `plan.json` 与 `receipt.json` 被拆进两个目录，正是这套代次规则本想消灭的那种「一个目录说不清是哪一代」。判据现钉在测试里（`policy: args.commit ? 'latest' : 'fresh'`）。
 
 `plan.json` / `receipt.json` 里新增 `evidence` 块（`outputDir` / `generation` / `reason`），stdout 也会打 `outputDir` 与 `evidenceGeneration` —— 收到收据就知道它属于第几代、和哪一批源文件是一对。
 
