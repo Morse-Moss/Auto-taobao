@@ -12,8 +12,8 @@ import path from 'node:path';
 
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
-  SHOP_REPORT_PATTERN, dateWithinRange, defaultDownloadsDir, listDownloads, newEntries,
-  parseCollectArgs, pickNewest,
+  SHOP_REPORT_PATTERN, dateWithinRange, defaultDownloadsDir, describeHitMiss, describeHitPass,
+  hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest, scrollIntoViewExpression,
 } from './collect-core.mjs';
 
 // 已验证的报表定义 id（SOP §3）；它进文件名哈希，变了就说明取的不是同一份报表。
@@ -59,32 +59,26 @@ async function findSycmPage(args) {
   return matches[0].targetId;
 }
 
-// 只做「命中复核」，不点击 —— 给 --locate-only 排练用。
+// 只做「命中复核」，不点击 —— 给 --locate-only 排练与 clickVerified 共用。
+// 判据在 collect-core 的 hitCheckExpression 里（矩形内是否存在「视口内且命中自己」的采样点）。
 async function hitCheckOnly(args, targetId, selector) {
-  return evalOn(args, targetId, `(() => {
-    const el = document.querySelector(${JSON.stringify(selector)});
-    if (!el) return JSON.stringify({ ok: false, reason: 'element-missing' });
-    const r = el.getBoundingClientRect();
-    const point = document.elementFromPoint(Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2));
-    const hitOk = !!point && (point === el || el.contains(point) || point.contains(el));
-    return JSON.stringify({ ok: hitOk, y: Math.round(r.y),
-      inViewport: r.y >= 0 && r.y < window.innerHeight, reason: hitOk ? null : 'not-hit' });
-  })()`);
+  return evalOn(args, targetId, hitCheckExpression(selector));
 }
 
 // 预览行必须真的能点到：按钮可能在视口外（实测过 x=1035 而视口宽 1031），
-// 那样「点了」会静默落空且不报错 —— 所以点击前一律 elementFromPoint 复核。
+// 那样「点了」会静默落空且不报错 —— 所以点击前一律复核。
+// 2026-09-17 补：滚动必须**两个方向**都居中。只写 block:'center' 时，元素整个落在
+// 视口右边界之外的情况不会被带回来，复核会误判成「点不到」（阿里妈妈侧就是这样中过一次）。
 async function clickVerified(args, targetId, { selector, label, scroll }) {
   if (scroll) {
-    await evalOn(args, targetId, `(() => { const el = document.querySelector(${JSON.stringify(selector)});
-      if (el) el.scrollIntoView({ block: 'center' }); return JSON.stringify({ ok: !!el }); })()`);
+    await evalOn(args, targetId, scrollIntoViewExpression(selector));
   }
   await delay(1200);
   const hit = await hitCheckOnly(args, targetId, selector);
   if (!hit.ok) {
-    throw new Error(`${label} 复核未通过（${hit.reason ?? 'not-hit'}，y=${hit.y}，视口内=${hit.inViewport}）`);
+    throw new Error(`${label} 复核未通过（${describeHitMiss(hit)}）`);
   }
-  return `${hit.y}px → ${(await click(args, targetId, selector)).slice(0, 80)}`;
+  return `${describeHitPass(hit)} → ${(await click(args, targetId, selector)).slice(0, 80)}`;
 }
 
 async function main() {
@@ -107,6 +101,8 @@ async function main() {
   await navigate(args, targetId, SYCM_SPACE_URL);
 
   const findPreview = `(() => {
+    document.querySelectorAll('[data-collect-preview]')
+      .forEach((el) => el.removeAttribute('data-collect-preview'));
     const leaves = [...document.querySelectorAll('*')].filter((el) => el.children.length === 0
       && el.textContent.trim() === '预览');
     const info = leaves.map((el, i) => {
@@ -138,11 +134,13 @@ async function main() {
   for (let round = 1; round <= 8; round += 1) {
     await delay(3000);
     preview = await evalOn(args, targetId, `(() => {
+      document.querySelectorAll('[data-collect-download]')
+        .forEach((el) => el.removeAttribute('data-collect-download'));
       const text = (document.body.innerText || '').replace(/\\s+/g, ' ');
       const range = text.match(/统计日期[：:]\\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\\s*[～~]\\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/);
       const button = [...document.querySelectorAll('button,a,div,span')]
         .filter((el) => el.children.length === 0 && el.textContent.trim() === '下载报表')[0];
-      if (button) { button.scrollIntoView({ block: 'center' }); button.setAttribute('data-collect-download', '1'); }
+      if (button) { button.scrollIntoView({ block: 'center', inline: 'center' }); button.setAttribute('data-collect-download', '1'); }
       return JSON.stringify({ href: location.href, range: range ? [range[1], range[2]] : null, downloadButton: !!button });
     })()`);
     console.log(`[3/4] ${round * 3}s：统计区间=${JSON.stringify(preview.range)}｜下载按钮=${preview.downloadButton}`);
@@ -158,8 +156,12 @@ async function main() {
   // 排练开关：把「找得到 + 点得到 + 区间含目标日」全验一遍，但不真的点下载。
   // 有它才能在不动任何东西的前提下先证明定位逻辑是对的（这正是最容易出纰漏的部分）。
   if (args.locateOnly) {
+    // 排练也要真走一次「滚动 + 复核」，否则会排练通过、真跑失败 —— 那正是最容易出纰漏的地方。
+    await evalOn(args, targetId, scrollIntoViewExpression('[data-collect-download="1"]'));
+    await delay(1200);
     const hit = await hitCheckOnly(args, targetId, '[data-collect-download="1"]');
-    console.log(`[4/4] --locate-only：定位与复核都通过（y=${hit.y}，视口内=${hit.inViewport}），未点击`);
+    if (!hit.ok) throw new Error(`下载报表按钮 复核未通过（${describeHitMiss(hit)}）`);
+    console.log(`[4/4] --locate-only：定位与复核都通过（${describeHitPass(hit)}），未点击`);
     return;
   }
 
