@@ -1,0 +1,48 @@
+{
+  "deletedAt": "2026-09-17T02:45:00.000Z（首次执行；文件后被一次幂等复核重跑覆盖，本文件已按首次执行的实测数据还原）",
+  "reportDate": "2026-09-16",
+  "requestedBy": "用户指令「把那些数据给清了」，选定范围为「09-16 全清」",
+  "method": "Feishu OpenAPI 单条 DELETE /bitable/v1/apps/{app}/tables/{t}/records/{record_id}",
+  "methodNote": "batch_delete 在这张 base 上返回 code=1254043 RecordIdNotFound（13 条全部如此），而单条端点正常（code=0, deleted=true）。批量失败不是 id 错，换单条即可。",
+  "sourceTable": {
+    "name": "总数据来源底单",
+    "tableId": "tbl84ZGwLQKyLxV3",
+    "before": 7,
+    "after": 6,
+    "deleted": ["recvvrlGsi7Js6"],
+    "remainingOnDate": []
+  },
+  "inquiryTable": {
+    "name": "各店铺数据日报",
+    "tableId": "tblm9Hx7R9A1YoLC",
+    "before": 2197,
+    "after": 2185,
+    "deleted": [
+      { "recordId": "recvtXewerrrN2", "shop": "盖文天猫" },
+      { "recordId": "recvtXf5iGJ75g", "shop": "里可林淘宝" },
+      { "recordId": "recvtXf5iGx0nP", "shop": "里可林天猫" },
+      { "recordId": "recvtXf5iG1tt0", "shop": "网林天猫" },
+      { "recordId": "recvtXf5iGRLCI", "shop": "盖文淘宝" },
+      { "recordId": "recvtXf5iGQskE", "shop": "网林淘宝" },
+      { "recordId": "recvtXf5iGwNzY", "shop": "科塔淘宝" },
+      { "recordId": "recvtXf5iGcHhb", "shop": "保拉淘宝" },
+      { "recordId": "recvtXf5iGWw91", "shop": "保拉天猫" },
+      { "recordId": "recvtXf5iGf6TO", "shop": "安比龙头店" },
+      { "recordId": "recvtXf5iGJEb5", "shop": "科塔龙头店" },
+      { "recordId": "recvtXf5iGG8dX", "shop": "安比淘宝" }
+    ],
+    "remainingOnDate": [],
+    "failed": []
+  },
+  "whyNoHandwrittenDataLost": {
+    "source": "删前枚举：底单那行的「非派生列有值」＝ 237 个，就是导入进去的数据本身，删它正是本次目的。",
+    "inquiry": "删前枚举：12 行的「手写列非空」全部为 0。该表 33 个字段里 28 个是派生列（type 19 Lookup / 20 Formula），仅 询单量、同层同行询单量 两列是手写列（本次由本链写入）。整张表实质是底单的派生视图，删行不伤人手录的数据。",
+    "evidence": "pre-delete-snapshot.json"
+  },
+  "independentVerification": {
+    "pageSide": "飞书页面侧独立回读（不经 API）：recordsNum = 6，行 = 08-31 / 09-01 / 09-02 / 09-03 / 09-14 / 09-15，sortInfo 仍为 []",
+    "screenshot": "feishu-source-table-after-clear.png（页面底部显示「6 条记录」）"
+  },
+  "auditTableUntouched": "daily_report_push_audit 的 id=2 仍记着那次 push（append-only，刻意不回改）。它现在指向一个已被删除的 record_id —— 这正是「审计允许与飞书不一致」要暴露的现象，不要去删审计行来「对齐」。",
+  "idempotency": "清理脚本重跑一次：目标日 0 条、不发任何删除请求、失败 0 条。注意它会覆盖本文件，所以复核跑要在事后按首次实测数据还原。"
+}
