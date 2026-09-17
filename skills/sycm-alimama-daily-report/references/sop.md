@@ -1,5 +1,8 @@
 # 运营日报采集 SOP
 
+要**真的跑一遍完整链**（客户演示/日更）时，直接照 §10 的操作单走：它把八个步骤的命令、预期与兜底列成一张表，
+起跑前该确认哪几项也在那里。本文件其余各节是每一步的细节与实测依据。
+
 ## 1. 启动独立浏览器
 
 ```powershell
@@ -101,6 +104,16 @@ https://one.alimama.com/index.html#!/report/account?rptType=account
 
 这份工作簿与日期无关（一次导出含多天），09-14 与 09-15 两次运行用的是同一个文件、同一个 SHA256。
 
+这一步**有脚本**（2026-09-17 起，之前只是操作步骤）：
+
+```powershell
+node skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs --date 2026-09-16
+# 先排练：把「找得到 + 点得到 + 区间含目标日」验一遍但**不点下载**（不动任何东西，可反复跑）
+node skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs --date 2026-09-16 --locate-only
+```
+
+它自己会：从应用内页进公共空间 → 轮询等「日报」这一行 → 点 `预览` → **断言统计区间含目标日**（不含就停，这份工作簿用不了）→ 点 `下载报表`（点击前 `elementFromPoint` 复核）→ 等**文件系统**里出现新的 `日报_*.xlsx`，打印 `shopXlsxPath`。报表定义 id 不是 `4300764` 会直接拒绝。
+
 ### 3.1 2026-09-17 实测的可靠路径
 
 外层是企业门户壳，真正的应用在 iframe 里，每一步都会换 URL，逐级点击容易走偏。实测可用的两条捷径：
@@ -134,7 +147,24 @@ https://one.alimama.com/index.html#!/report/account?rptType=account
 
 ## 4. 推广数据
 
-日期与三个筛选条件由 §2 的 URL 落位保证；剩下的下载动作：
+日期与三个筛选条件由 §2 的 URL 落位保证；剩下的下载动作**有脚本**（2026-09-17 起，分两阶段）：
+
+```powershell
+# 阶段一：报表页滚到底 → 点「下载报表」→ 弹窗点「确定」（提交一个下载任务）
+node skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs --phase submit --date 2026-09-16
+
+# 阶段二：下载任务管理 → 认出新任务那一行的「下载」→ 点它 → 等文件落到磁盘
+node skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs --phase fetch --date 2026-09-16
+# 指定任务（列表里认不准时用）：--task 营销场景报表_20260917_112258
+# 排练（只定位、只复核、不点）：任一阶段加 --locate-only
+```
+
+为什么分两阶段而不合并：平台提示「数据量大时最长 10 分钟」，提交完要等它生成；分成两条命令，
+中间那段等待就可以拿去干别的（演示里正好用来做 §3 店铺报表），而不是把一段死等塞在流程中间。
+`fetch` 不带 `--task` 时取**列表里时间戳最大的**那个（刻意不按「今天」过滤：任务名里的日期是导出日、
+不是目标日，跨零点跑时两者不同，而时间戳本身可比较）。
+
+手工做的话就是这三步（脚本里的定位逻辑与它们一致）：
 
 1. 滚动到报表底部，点击 `下载报表 -> 确定`。
 2. 打开 `下载任务管理`，等待任务显示 `生成成功`。
@@ -480,3 +510,54 @@ node skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs --date 2
    （它扫的是字符串内容，不是只看代码 —— 真要命的「第二读者」恰恰是把表名写进 SQL 字符串的那种）。
    本次第一版证据脚本在 `note` 里原样写了表名，提交前被守卫抓红一次；改成「本地审计表」即可，
    证据价值不减。**不要为了让证据脚本能过而去放宽守卫白名单**，守卫原样保留是最省的。
+
+## 10. 真实跑操作单（客户演示用；2026-09-17 起）
+
+一份**真的写入**的完整顺序（不是干跑）。目标日以 `2026-09-16` 为例；换日期只改 `--date`。
+
+### 10.0 起跑前逐项确认（缺一项就别开录）
+
+| 项 | 判据 | 怎么查 |
+| --- | --- | --- |
+| 浏览器 / 代理 | `/health` 里 `connected:true`，`chromePort` = 登记表里的日报端口 | 只读探一次 |
+| 三个页面**各恰好一个** | 阿里妈妈页、生意参谋应用内页、飞书底单页 | `date-picker` 的 `resolveTarget` 就要求恰好一个，多了少了直接抛错 |
+| 两个站点登录态 | 页面能读到 `盖文旗舰店`（商家号），没有登录表单 | 只读读页面文字 |
+| 飞书底单 | 目标日**命中 0 行** | 底单有该日行 ⇒ `duplicate daily report row exists`，必须先按 §9.3 删 |
+| 飞书询单表 | 目标日的 12 行都在、`询单量`/`同层同行询单量` **都是空** | 行不在就没得回填；字段非空会被要求「已一致」 |
+| 时间 | **过午再跑**（§6.5：阿里妈妈侧上午有未回补窗口） | 看钟点 |
+| 画面跟随器（可选） | 能跟着 URL 自动切前台 | 演示用，真实部署不需要 |
+
+### 10.1 顺序（照做，中间不要插别的）
+
+| # | 命令 | 预期 |
+| --- | --- | --- |
+| 1 | `date-picker.mjs --site alimama --date <日>` | `status=APPLIED`，回显「昨日」或目标日，四个筛选都在 |
+| 2 | `collect-promotion-report.mjs --phase submit --date <日>` | 弹窗点「确定」后有提交提示（任务开始生成） |
+| 3 | `date-picker.mjs --site sycm --date <日>` | `status` 为 APPLIED/REAPPLIED，活动页签 = `询单到付款` |
+| 4 | `collect-shop-report.mjs --date <日>` | 打印 `shopXlsxPath = …`（统计区间已断言含目标日） |
+| 5 | `collect-promotion-report.mjs --phase fetch --date <日>` | 打印 `promotionZipPath = …`（**新** zip 才算成功） |
+| 6 | `run-daily-report.mjs --shop-xlsx <4> --promotion-zip <5> --date <日>` | 先看 `plan.json`：日期、店铺、目标 base/table、字段数、场景、`sourceSelfChecks.allMatchDate` |
+| 7 | 上一条加 `--commit` | 底单行数 **+1**（新 `recordId`），回读字段全一致，派生 `店铺` 有界重试后就位 |
+| 8 | `run-inquiry-backfill.mjs --date <日> --source-shop 盖文旗舰店 --shop 盖文天猫` | 干跑：两个值都能取到（预设模式才有同行基准） |
+| 9 | 上一条加 `--commit` | 两个字段写后回读一致；审计表多一行 `inquiry-backfill/ok` |
+| 10 | `readback-daily-report.mjs --date <日>` | 底单/询单表 `recordsNum`、当天命中行、`absentFields`、两张截图；页面留在底单 |
+
+第 2 步与第 5 步之间可以隔很久（平台说最长 10 分钟）—— 所以顺序把等待夹在中间，
+用第 3/4 步把它填掉，不要把一段死等摆在镜头前。
+
+### 10.2 兜底
+
+| 出问题 | 兜底 |
+| --- | --- |
+| 阿里妈妈弹窗 / 按钮点空 | 脚本已先 `scrollIntoView` 再 `elementFromPoint` 复核；报错时把 `y` 与「视口内」一起打出来，先看这两个数 |
+| 任务已「生成成功」但等不到文件 | 先确认 `下载` 按钮不在文件名那一行（§4.2），**别加大轮询时长** |
+| 生意参谋页签切错 | 三层结构，`汇总分析` 与 `询单到付款` 各有日期控件；脚本会断言页签 |
+| 飞书写入 `403 / 91403` | 停 API，走网页粘贴 `paste.tsv`（`--verify-existing --expected-before-count N`） |
+| 目标日已有行 | 硬重复停止，**不覆盖不追加**；按 §9.3 先删那天再重跑 |
+| 中途弹登录 / 验证码 | 立即停，不硬闯 |
+| 采集脚本想看它到底点哪里 | 加 `--locate-only`：定位与复核全走一遍但不点，可反复跑、不动任何东西 |
+
+### 10.3 收尾
+
+底单 +1 行、询单两个字段就位、两张截图、`independent-readback.json`；本地审计表两条（`push` / `inquiry-backfill`）。
+证据落在 `evidence/daily-report-<目标日>[-rerunN]/`（代次规则见 §6.3）。

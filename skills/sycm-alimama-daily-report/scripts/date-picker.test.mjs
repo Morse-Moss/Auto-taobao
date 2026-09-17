@@ -1,10 +1,26 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
   assertAlimamaState, buildAlimamaUrl, extractIsoDates, isSingleDaySelection,
   resolveAppliedDate, resolveDateMode, selectDayHits, shiftIso, shiftMonth, siteAdapter,
 } from './date-picker.mjs';
+
+// 落位的 stdout 是要给人看的（客户演示时甚至会被录进视频），所以「设计上允许」与「真的出错」
+// 在措辞上必须分得开：这一步读不到是允许的，真正判据是随后的回读断言。
+// 原来记成 `read-before-failed` 并把 `HTTP 400 …` 打出来，看着像脚本报错，而 status 其实是 APPLIED。
+test('落位 trace：动作前读不到写成「可缺省」，不许用 failed 的措辞', () => {
+  const source = readFileSync(path.join(import.meta.dirname, 'date-picker.mjs'), 'utf8');
+  assert.match(source, /say\('read-before-skipped', \{\s*\n\s*tolerated: true/u, '要显式标出这一步是可容忍的');
+  assert.match(source, /detail: String\(before\.unreadable\)/u, '原始文本收进 detail 备查即可');
+  // 只判**代码形态**：注释里必然要写清「原先叫什么、为什么改」，那种出现是应该保留的。
+  // （源码级守卫被自己的注释绊倒过一次，与端口守卫「注释里解释为什么别写死」是同一类。）
+  assert.equal(/say\('read-before-failed'/u.test(source), false, '别再用 failed 描述一个设计上允许的缺省');
+  assert.ok(/say\('read-before-failed'/.test("  say('read-before-failed', { error });"),
+    '判据本身失效了（拿真的违规写法都测不出来）');
+});
 
 test('resolveDateMode 只在目标日等于站点时区昨日时走预设', () => {
   const now = new Date('2026-09-16T09:00:00+08:00');

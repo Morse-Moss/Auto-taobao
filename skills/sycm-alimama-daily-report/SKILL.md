@@ -17,7 +17,22 @@ Use the dedicated daily-report Edge profile and proxy. This workflow is specific
 - Credentials: resolve the active kcne credential file through `runtime/feishu-targets.mjs`; never copy its values into this skill or evidence.
 - Stop at login, CAPTCHA, QR/SMS, account-risk, permission, or other security controls.
 
-Read [references/sop.md](references/sop.md) when collecting fresh source files or diagnosing page drift. If both downloads already exist, start with the deterministic runner.
+Read [references/sop.md](references/sop.md) when collecting fresh source files or diagnosing page drift. **To run the whole chain for real (daily operation or a customer demo), follow sop.md §10**: it is a single table of the eight commands, what each one should print, the fallbacks, and the pre-flight checks that must pass before you start. If both downloads already exist, start with the deterministic runner.
+
+## Collection
+
+Both source-file downloads are scripted. Each locates its own page (it refuses unless exactly one matching page exists), verifies the hit with `elementFromPoint` before clicking, and judges success by the **filesystem** — a new file appearing — never by what the page claims.
+
+```powershell
+node skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs --date 2026-09-15
+node skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs --phase submit --date 2026-09-15
+node skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs --phase fetch  --date 2026-09-15
+```
+
+- Shop report: enters 公共空间, opens the `日报` preview, and **asserts the preview's 统计日期 range contains the requested date** before downloading; it also refuses if the report definition id changed. It prints `shopXlsxPath`.
+- Promotion report is two phases because the platform may take up to ten minutes to generate the file: `submit` clicks `下载报表 → 确定`, `fetch` goes to 下载任务管理 and clicks the task's `下载`. The run order keeps that wait behind other steps instead of idling in front of it.
+- Add `--locate-only` to either script to run every lookup and hit-check **without clicking anything** — safe to repeat, and the way to prove the selectors still match before a real run.
+- `fetch` takes the newest task in the list (never filtered by "today": the date inside a task name is the export date, not the reporting date). Pass `--task <name>` when the list is ambiguous.
 
 ## Date Placement
 

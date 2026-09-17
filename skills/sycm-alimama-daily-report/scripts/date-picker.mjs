@@ -396,7 +396,16 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
   // 页面还没渲染完时不该在真正动手之前就失败，所以这里容忍读不到。
   const before = await readSiteState({ proxy, site, targetId: page })
     .catch((error) => ({ applied: null, unreadable: error.message, targetId: page }));
-  if (before.unreadable) say('read-before-failed', { error: before.unreadable });
+  // 措辞要如实（2026-09-17）：这一步读不到是**设计上允许的**，不是故障。
+  // 原先记成 `read-before-failed` 并在 stdout 里带出 `HTTP 400 …`，客户演示时看着像脚本报错 ——
+  // 而它下面的 status 其实是 APPLIED。所以名字与字段都按「可缺省」写，原始文本收在 detail 里备查。
+  if (before.unreadable) {
+    say('read-before-skipped', {
+      tolerated: true,
+      reason: '动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）',
+      detail: String(before.unreadable).split('\n')[0].slice(0, 160),
+    });
+  }
 
   const settle = async (label) => {
     let last = null;
