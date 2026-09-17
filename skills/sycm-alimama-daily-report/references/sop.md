@@ -291,3 +291,53 @@ from daily_report_push_audit order by at desc limit 20;
 本轮新增的三条可复用结论（已写进 §2 / §3.1 / §4.1）：侧栏文案带 iconfont 私有区字符、侧栏是固定高度的独立滚动容器、ZIP 压缩长度要读中央目录。
 
 环境偏离（必须交代）：本轮日报浏览器是**上一次留下的实例**，跑在迁移前的旧端口 `9223`（profile 正确、账号正确；Edge 同 profile 单例，新起 19022 只会并入旧实例并退出）。为不中断任何进程，CDP 代理按登记表起在 `19023`，仅内部那一跳用 `CDP_BROWSER_PORT=9223` 指到活着的浏览器。下次干净重启后 `19022/19023` 才是一致的默认组合。
+
+## 9. 重推：用户清掉某天数据后重跑同一天（2026-09-17 实测一遍）
+
+触发场景：运营发现某天数据不对，直接在飞书里删掉那一行（或清掉几个字段），让你重跑。
+**重推不是重新采集**：源文件通常还在 Downloads，比对 sha256 与上次收据一致即可复用。
+
+### 9.1 七个步骤（顺序照做）
+
+1. **只读确认现状**：先读飞书，确认目标日那行真的没了、现在还剩几行。判据不是「用户说删了」，
+   而是回读结果（本次：7 → 6 行，首轮那行 `recvvqPBEP0cMe` 确实不在）。
+2. **比对源文件 sha256**：与上一轮收据里的 `source.shopSha256` / `promotionSha256` 逐字节比对。
+   一致 ⇒ 同输入重跑，结论可与首轮对照；不一致 ⇒ 先查清为什么，别急着写。
+3. **确认飞书页在浏览器里开着**：runner 的 `inspectTarget` 要求**恰好一个**页面，且 URL 必须带
+   `table=` 与 `view=` 且等于授权目标。报 `expected one Feishu page for target base, got 0` 就是没开 ——
+   用代理开一个：`GET /new?url=<encodeURIComponent(底单 URL，含 table 与 view)>`，再 `POST /bringToFront?target=…`。
+   ⚠️ 同时开两个该 base 的页会让 `matches.length === 2` 失败，读完记得 `GET /close?target=…`。
+4. **把生意参谋页导航到店铺绩效**：`date-picker` 是按 **URL 片段**找页面的
+   （`sycm.taobao.com/qos/service/frame/shop/performance`），停在 `portal/home.htm` 会报 `got 0`。
+   先导航到 `https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop`，再跑
+   `date-picker.mjs --site sycm --date <目标日>`。目标日＝昨日时会自动走 `1天` 预设——
+   这是生意参谋侧拿到同行基准的唯一模式。
+5. **导入**：先干跑看 `recordCount` 与 239 字段，再 `--commit`。
+   **重推会生成新的 `recordId`**（旧记录不会回来）；行数是「前 → 前＋1」，因为那一行确实已被删掉。
+6. **询单回填**：干跑会告诉你两个字段现在是不是空的（用户可能把它们也清了）。
+   `WRITE_REQUIRED` ⇒ 会写；`ALREADY_VERIFIED` ⇒ 无需写。写完 `unchangedOtherFields: true` 才算过。
+7. **独立回读 + 截图**：别只用 runner 自己的断言。截图前必须 `POST /bringToFront`，
+   否则 `Page.captureScreenshot` 会报 `CDP 命令超时`（后台 tab 被节流）。
+
+### 9.2 本次重推的基线（同一批源文件，两个 sha256 与首轮一致）
+
+| 项 | 首轮 08:08 | 重推 10:2x |
+| --- | --- | --- |
+| 底单记录 id | `recvvqPBEP0cMe` | `recvvrlGsi7Js6` |
+| 行数 | 6 → 7 | 6 → 7 |
+| 回读字段 | 239 | 239 |
+| 派生「店铺」就位次数 | 3 | 2 |
+| 询单回填 | 13 / 39 | 13 / 39 |
+| 收据 `environment` | （该版收据还没有这一块） | 四项全 `registry-default`（19022 / 19023 / `edge-daily-report`） |
+
+**落位再次印证 §6.1**：重推的 09-16 追加在**第 7 行**，屏幕顺序 …09/15、09/14、09/16…——
+这是 append-only ＋ 视图无排序的必然结果，不是数据错位。
+
+**审计表**（§6.2）本次留下第一条生产行：`id=2, push / ok, 2026-09-16, recvvrlGsi7Js6, 6 → 7, 239, api-commit, 19022 / 19023`
+（`id=1` 是建表当天的冒烟行，写完即删；序列不回退，所以第一条生产行是 2）。
+
+**已知缺口**：`inquiry-backfill` 在 007 的 CHECK 词表里，但 `appendAudit` 目前只被 `run-daily-report.mjs` 调用
+⇒ 第 6 步**不会**留下审计行。要补齐得给小工具接线，**尚未做**。
+
+完整实录与两个缺口：`docs/ops/DAILY-REPORT-RUN-2026-09-17-FINDINGS.md` §9。
+证据：`evidence/daily-report-2026-09-16-rerun2/`（含 `independent-readback.json` 与只读探针副本）。
