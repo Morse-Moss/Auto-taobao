@@ -1,0 +1,78 @@
+{
+  "tableId": "tbl84ZGwLQKyLxV3",
+  "recordCount": 6,
+  "rows": [
+    {
+      "recordId": "recvtVyQ33clAW",
+      "date": "2026-08-31",
+      "shop": "盖文旗舰店",
+      "derivedShop": [
+        "optIYzOzu2"
+      ],
+      "sceneIds": [
+        "371",
+        "372"
+      ]
+    },
+    {
+      "recordId": "recvu1pNpASpU7",
+      "date": "2026-09-01",
+      "shop": "盖文旗舰店",
+      "derivedShop": [
+        "optIYzOzu2"
+      ],
+      "sceneIds": [
+        "371",
+        "372"
+      ]
+    },
+    {
+      "recordId": "recvu7gv6T0ewt",
+      "date": "2026-09-02",
+      "shop": "盖文旗舰店",
+      "derivedShop": [
+        "optIYzOzu2"
+      ],
+      "sceneIds": [
+        "371",
+        "372"
+      ]
+    },
+    {
+      "recordId": "recvud6lJRJGve",
+      "date": "2026-09-03",
+      "shop": "盖文旗舰店",
+      "derivedShop": [
+        "optIYzOzu2"
+      ],
+      "sceneIds": [
+        "371",
+        "372"
+      ]
+    },
+    {
+      "recordId": "recvvnkcL1DPUo",
+      "date": "2026-09-14",
+      "shop": "盖文旗舰店",
+      "derivedShop": [
+        "optIYzOzu2"
+      ],
+      "sceneIds": [
+        "371",
+        "372"
+      ]
+    },
+    {
+      "recordId": "recvvnjYo7bMpv",
+      "date": "2026-09-15",
+      "shop": "盖文旗舰店",
+      "derivedShop": [
+        "optIYzOzu2"
+      ],
+      "sceneIds": [
+        "371",
+        "372"
+      ]
+    }
+  ]
+}

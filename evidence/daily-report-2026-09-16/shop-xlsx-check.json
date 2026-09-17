@@ -1,0 +1,28 @@
+{
+  "file": "C:/Users/Administrator/Downloads/日报_20260917_adc987ef8d0897700e42dcf1427605b3.xlsx",
+  "sheets": [
+    "data"
+  ],
+  "requestedDate": "2026-09-16",
+  "headerColumns": 119,
+  "headerHead": [
+    "统计日期",
+    "店铺名称",
+    "访客数",
+    "直播间访客数",
+    "短视频访客数",
+    "图文访客数"
+  ],
+  "dateColumnIndex": 0,
+  "dataRows": 30,
+  "firstDate": "2026-09-16",
+  "lastDate": "2026-08-18",
+  "uniqueDates": 30,
+  "targetRowCount": 1,
+  "targetRow": {
+    "统计日期": "2026-09-16",
+    "店铺名称": "盖文旗舰店",
+    "访客数": "431",
+    "浏览量": "1,855"
+  }
+}
