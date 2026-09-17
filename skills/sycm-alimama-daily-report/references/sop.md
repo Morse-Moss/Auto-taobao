@@ -570,7 +570,7 @@ zip 哈希不同、**CSV 逐字节相同** —— 差异只来自条目名里的
 | 2 | `collect-promotion-report.mjs --phase submit --date <日>` | 弹窗点「确定」后有提交提示（任务开始生成） |
 | 3 | `date-picker.mjs --site sycm --date <日>` | `status` 为 APPLIED/REAPPLIED，活动页签 = `询单到付款` |
 | 4 | `collect-shop-report.mjs --date <日>` | 打印 `shopXlsxPath = …`（统计区间已断言含目标日） |
-| 5 | `collect-promotion-report.mjs --phase fetch --date <日>` | 依次打印：目标任务行 → **真实点复选框 + 回读 `checked=true`** → `入口 = 第 N 行（正是该任务行的操作行）` + `rect` → 复核通过 → **新** `promotionZipPath`（§4.2 五条规律） |
+| 5 | `collect-promotion-report.mjs --phase fetch --date <日>` | 依次打印：目标任务行（**先断言该行是「生成成功」，不是就当场停**）→ **真实点复选框 + 回读 `checked=true`** → `入口 = 第 N 行（正是该任务行的操作行）` + `rect` → 复核通过 → **新** `promotionZipPath`（§4.2 五条规律） |
 | 6 | `run-daily-report.mjs --shop-xlsx <4> --promotion-zip <5> --date <日>` | 先看 `plan.json`：日期、店铺、目标 base/table、字段数、场景、`sourceSelfChecks.allMatchDate` |
 | 7 | 上一条加 `--commit` | 底单行数 **+1**（新 `recordId`），回读字段全一致，派生 `店铺` 有界重试后就位 |
 | 8 | `run-inquiry-backfill.mjs --date <日> --source-shop 盖文旗舰店 --shop 盖文天猫` | 干跑：两个值都能取到（预设模式才有同行基准） |
@@ -586,6 +586,7 @@ zip 哈希不同、**CSV 逐字节相同** —— 差异只来自条目名里的
 | --- | --- |
 | 阿里妈妈弹窗 / 按钮点空 | 脚本已先 `scrollIntoView` 再 `elementFromPoint` 复核；报错时把 `y` 与「视口内」一起打出来，先看这两个数 |
 | 取件报 `action-row-hidden` / 勾选回读不是 `true` | 目标任务行的操作行没显形。先看回读到的 `checked` —— 选行这一步没成，后面全是空跑；停在这里比继续省事（§4.2） |
+| 取件报「还不是『生成成功』」 | 任务还在生成中，不是脚本的错。等列表里那一行变成「生成成功」再跑 `--phase fetch`；**别加大轮询时长** |
 | 任务已「生成成功」但等不到文件 | 先确认**目标任务行已选中**（它的操作行才会显形）、且复核点的是**当场量出来**的那个矩形中心；**别加大轮询时长** |
 | 复核报 `not-hit` / `outside-viewport` | 看打印出来的 `rect` / `视口` / `遮挡物`；页面右侧有常驻浮层，判据已按采样点退让，真报错说明元素确实不在可点位置 |
 | 生意参谋页签切错 | 三层结构，`汇总分析` 与 `询单到付款` 各有日期控件；脚本会断言页签 |
@@ -602,6 +603,8 @@ zip 哈希不同、**CSV 逐字节相同** —— 差异只来自条目名里的
 ### 10.4 镜头顺序（录制演示用）
 
 画面跟随器**只认 URL 变化**，而有两步不会改 URL（飞书的写入、询单回填），所以要在它们前后显式把页面切到前台（`POST /bringToFront`，不改 URL，不会和跟随器打架）：
+
+> 仓库里**没有**跟随器脚本（它一直是临时探针，没入库；采集脚本自己在关键步调 `bringToFront`：`collect-shop-report.mjs`、`collect-promotion-report.mjs`、`readback-daily-report.mjs`）。没跟随器时，手动 `POST /bringToFront?target=<targetId>` 完全等价 —— 需要手切的就**两步**：第 7 步（`--commit`）之后切飞书底单、第 8 步之前切生意参谋。别去找那个脚本。
 
 | 步骤 | 画面应当停在哪 | 为什么 |
 | --- | --- | --- |

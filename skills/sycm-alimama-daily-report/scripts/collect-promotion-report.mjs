@@ -188,6 +188,13 @@ async function phaseFetch(args, targetId) {
   if (!row.found) throw new Error(`下载任务列表里找不到 ${wanted} 那一行（${row.reason}）`);
   if (!row.hasCheckbox) throw new Error(`${wanted} 那一行没有复选框，无法激活它的操作行`);
   console.log(`[fetch] 目标任务行 = 第 ${row.trIndex} 行｜${String(row.rowText).slice(0, 80)}`);
+  // 「找到了那一行」不等于「那一行现在能取件」。任务还在生成中时，它的入口点了也不落盘，
+  // 现场表现是 30 秒空等 —— 和「点错了」长得一模一样。先把状态判掉，别留给超时去猜。
+  if (!/生成成功/u.test(String(row.rowText))) {
+    throw new Error(`目标任务 ${wanted} 还不是「生成成功」（行文本 `
+      + `${JSON.stringify(String(row.rowText).slice(0, 80))}）⇒ 现在取件只会空等；`
+      + '等列表里这一行显示生成成功再来跑 --phase fetch');
+  }
   if (row.checked) {
     console.log('[fetch] 该行本就是选中态，跳过点击');
   } else {
