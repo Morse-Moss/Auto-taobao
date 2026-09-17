@@ -1,0 +1,39 @@
+{
+  "note": "独立第三方回读（不走 runner 的校验路径，直接读飞书 bitable 页面模型）。时机：2026-09-17 10:2x，用户清理 09-16 数据后重推。",
+  "method": "CDP 代理 19023 → /eval 在已登录的飞书页里读 window.bitableStore.modelOperator.base",
+  "sourceTable": {
+    "appToken": "X02Xb7fHba7mU9sr8uIcRlExn6b",
+    "tableId": "tbl84ZGwLQKyLxV3",
+    "tableName": "总数据来源底单",
+    "viewId": "vewwg0rhjo",
+    "recordsBeforeRepush": 6,
+    "recordsAfterRepush": 7,
+    "viewSortInfo": [],
+    "rows": [
+      { "date": "2026-08-31", "shop": "盖文旗舰店", "recordId": "recvtVyQ33clAW" },
+      { "date": "2026-09-01", "shop": "盖文旗舰店", "recordId": "recvu1pNpASpU7" },
+      { "date": "2026-09-02", "shop": "盖文旗舰店", "recordId": "recvu7gv6T0ewt" },
+      { "date": "2026-09-03", "shop": "盖文旗舰店", "recordId": "recvud6lJRJGve" },
+      { "date": "2026-09-14", "shop": "盖文旗舰店", "recordId": "recvvnkcL1DPUo" },
+      { "date": "2026-09-15", "shop": "盖文旗舰店", "recordId": "recvvnjYo7bMpv" },
+      { "date": "2026-09-16", "shop": "盖文旗舰店", "recordId": "recvvrlGsi7Js6" }
+    ]
+  },
+  "inquiryTable": {
+    "tableId": "tblm9Hx7R9A1YoLC",
+    "tableName": "各店铺数据日报",
+    "recordsNum": 2197,
+    "rowsForDate": 12,
+    "target": {
+      "recordId": "recvtXewerrrN2",
+      "shopOptionId": "optIYzOzu2",
+      "询单量": 13,
+      "同层同行询单量": 39
+    },
+    "otherShops": "同日其余 11 家店铺的这两个字段均为空（本次只回填盖文天猫）"
+  },
+  "screenshots": [
+    "feishu-source-table-after-repush.png（底单 7 行，09/16 在第 7 行）",
+    "feishu-inquiry-table-identity-2197-records.png（询单表身份与总行数；它停在 2026/04/01，**不是** 09-16 行的证据——09-16 行本身以本文件的 inquiryTable 字段与 runner 回执为准）"
+  ]
+}

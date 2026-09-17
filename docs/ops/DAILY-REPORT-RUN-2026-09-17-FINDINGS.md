@@ -358,3 +358,65 @@ recordCount = 7
 
 注意 `view.sort.localEditable = false` 这个字段：它的字面意思正是「本地可编辑、不落库」，与实测吻合 —— 但我没能在飞书文档里找到它的定义，所以只当线索，不当结论。
 
+## 9. 用户清理 09-16 后重推（2026-09-17 10:15 起）
+
+用户指令：「我把飞书的16号数据清理了，你现在重新跑一遍日报流程」。
+
+### 9.1 前置确认（只读）
+
+- 独立回读底单：**6 行**（08-31 / 09-01 / 09-02 / 09-03 / 09-14 / 09-15）。
+  首轮推的那行 `recvvqPBEP0cMe` **确实已不在**；`sortInfo` 仍是 `[]`（无排序，与 §8 一致）。
+- 源文件**复用首轮同一批**，两个 sha256 与首轮逐字节相同 ⇒ 这是一次「同输入重跑」，不是重新采集：
+  - 店铺 `日报_20260917_adc987ef8d0897700e42dcf1427605b3.xlsx` = `320d3d79f020…`
+  - 推广 `营销场景报表_20260917_080428.zip` = `78a9ed4cf2c3…`
+- 干跑：`DRY_RUN_READY`，`recordCount = 6`，239 字段，`sourceSelfChecks.allMatchDate = true`
+  （店铺侧目标行 1、推广侧目标行 2，两侧都只观察到 2026-09-16）。
+
+### 9.2 写入结果
+
+| | 首轮（08:08） | 本次重推（10:2x） |
+| --- | --- | --- |
+| 底单记录 id | `recvvqPBEP0cMe` | **`recvvrlGsi7Js6`** |
+| 行数 | 6 → 7 | 6 → 7 |
+| 回读字段 | 239 | 239 |
+| 派生「店铺」就位次数 | 3 | 2 |
+| 询单回填 | 13 / 39 | 13 / 39（`unchangedOtherFields: true`） |
+
+- 询单侧干跑给的是 `WRITE_REQUIRED`（两个目标字段在飞书侧是空的）⇒ 用户清理时把询单表那一行的
+  `询单量` / `同层同行询单量` **也清了**；行本身还在（同一个 `recvtXewerrrN2`，没有重建）。
+- **环境无偏离**：本次收据的 `environment` 四项全是 `registry-default`
+  （browserPort 19022 / proxyPort 19023 / id `edge-daily-report` / label），没有 `env` 覆盖。
+
+### 9.3 独立第三方回读（不走 runner 的校验路径）
+
+直接读飞书页面的 bitable 模型（`window.bitableStore.modelOperator.base`），而不是复用 runner 的断言：
+
+- 底单：7 行，09-16 落在**第 7 行**（追加在末尾）⇒ 再次印证「行序＝记录创建顺序」是 append-only 的必然结果，
+  与「数据错位」无关。屏幕顺序是 …09/15、09/14、09/16…（回填过的 14 在前、后推的 16 在后）。
+- 询单表 `tblm9Hx7R9A1YoLC`：当天共 **12 行**（每家店一行）。盖文天猫那行 `recvtXewerrrN2` = **13 / 39**；
+  其余 11 家店铺的这两个字段**都为空**（本次只回填盖文天猫，未越界）。
+- 审计表出现**第一条生产行**：`id=2, action=push, outcome=ok, report_date=2026-09-16,
+  record_id=recvvrlGsi7Js6, 6 → 7, verified_fields=239, mode=api-commit,
+  browser_port=19022, proxy_port=19023, source_shop_sha256=320d3d79f020…`。
+  （`id=1` 是昨天那次建表冒烟，写完即删，序列不回退，所以第一条生产行是 2。）
+
+证据目录：`evidence/daily-report-2026-09-16-rerun2/`
+（`plan.json` / `paste.tsv` / `receipt.json` / `inquiry-backfill-{plan,receipt}.json` / `independent-readback.json` /
+两张截图 / 三个只读探针脚本副本）。
+
+### 9.4 顺手发现的两个缺口
+
+**缺口 1：`inquiry-backfill` 这个词表里有、写入方没有。**
+007 的 CHECK 允许 `push | ui-verify | inquiry-backfill`，但 `appendAudit` 目前只被 `run-daily-report.mjs`
+调用（`push` 与 `ui-verify` 两条路），`run-inquiry-backfill.mjs` **没有接线**
+⇒ 本次询单回填**没有留下审计行**。这是本项目反复出现的「词表/文档比代码乐观」形态（同族：登录态 `AUTH_EXPIRING` 只在文档里）。
+修法很小（一个 import ＋ 两次调用 ＋ 现有词表测试不用改），但需要一轮测试与提交，**本次未擅自做**。
+
+**缺口 2（本次已修）：审计表白名单漏了隔离预演脚本 —— 上一轮提交 `ce14392` 里其实带着一条红用例。**
+守卫「全仓库只有写入方与迁移提到这张表」的允许集当时只有「写入方 / 迁移 / 回滚 / 本测试」，
+而 `runtime/verify-migrations-isolated.mjs` 作为预演脚本必然要念出表名（它要在临时库里建表、写行、回滚）。
+根因是我**在改完预演脚本之后没有重跑这一套件**，所以当时报的「38/0」是改动之前的数 —— 守卫本身没错。
+本次已把 `runtime/verify-migrations-isolated.mjs` 加进允许集（并注明它不是第二个读者/写者：只对 throwaway 库跑、
+从不碰业务库、没有生产调用方），并补了**突变验证**：临时在 `runtime/` 放一个只含表名的探针 → 守卫红且点名它 →
+删除 → 复跑 38/38。（这是本项目「新守卫必须做突变验证」纪律的第 N 次生效：全绿不等于判据有效。）
+

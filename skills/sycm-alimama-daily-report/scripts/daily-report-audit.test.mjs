@@ -18,6 +18,11 @@ const MIGRATION = 'db/migrations/007-daily-report-push-audit.sql';
 const ROLLBACK = 'db/migrations/007-rollback.sql';
 const RUNTIME_MODULE = 'runtime/daily-report-audit.mjs';
 const THIS_TEST = 'skills/sycm-alimama-daily-report/scripts/daily-report-audit.test.mjs';
+// 隔离预演脚本也必然要念出表名（它要在临时库里建表、写一行、再回滚）。
+// 它**不是**第二个读者/写者：它只对 throwaway 库跑，从不碰业务库，也没有被生产链路调用。
+// 实测教训：这条白名单一开始漏了它，而我又是在「改完预演脚本之后忘了重跑本套件」，
+// 于是 ce14392 提交里带着一条红用例 —— 守卫本身没错，是白名单不全 ＋ 我没重跑。
+const ISOLATED_PREVIEW = 'runtime/verify-migrations-isolated.mjs';
 
 // 收据里 environment 的真实形状（见 run-daily-report.mjs 的 buildEnvironment）：
 // 端口与身份都包了一层 {port|id, source, registryDefault}。这里用真的形状，
@@ -157,9 +162,9 @@ test('写入方模块不许导出任何读接口（它只能是审计，不能�
   assert.ok(!forbidden.test('appendAudit'), 'appendAudit 是写接口，不该被误判');
 });
 
-// 表名只许出现在「写入方 / 迁移 / 回滚 / 本测试」四处。多一处就说明有人在别处读它或写它。
+// 表名只许出现在「写入方 / 迁移 / 回滚 / 隔离预演 / 本测试」五处。多一处就说明有人在别处读它或写它。
 test('全仓库只有写入方与迁移提到这张表（没有第二个读者或写者）', () => {
-  const allowed = new Set([RUNTIME_MODULE, MIGRATION, ROLLBACK, THIS_TEST]);
+  const allowed = new Set([RUNTIME_MODULE, MIGRATION, ROLLBACK, ISOLATED_PREVIEW, THIS_TEST]);
   // 扫的是「工作区里真实存在的代码」＝ 已跟踪 ＋ 未跟踪但未被 .gitignore 忽略。
   // 只用 `git ls-files`（默认仅已跟踪）会让**新写的文件不受守卫约束** ——
   // 而「新加一个读者」恰恰是这条守卫最该在发生的时刻发现的事。
