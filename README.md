@@ -1,6 +1,7 @@
 # 生意参谋到飞书自动化
 
-项目根目录：`D:\Retire\sycm-automation`
+项目根目录：本仓库根。**下文所有命令都在仓库根目录下执行，路径一律相对仓库根书写。**
+（早先这里写的是本机绝对路径 `D:\Retire\sycm-automation\...`，换一台机器就整段失效 —— 已改掉。）
 
 ## 目录
 
@@ -60,7 +61,7 @@
 当前授权 Base 的两周依据为批次 `[1,3]`：`关键词分析 V1（修正版）`对应批次 1，`关键词分析 V1（2026-08-15）`对应批次 3；批次 2 是已确认的单日周期错误数据，只保留审计并排除。旧批次有效性为空时不得自行纳入；只有显式给出上一周表、目标批次与预期行数，并通过永久关键词编号集合完全一致校验后，才允许把该批次受控提升为`有效`。
 
 ```powershell
-node "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\scripts\run-weekly-post-ai.mjs" `
+node "skills\sycm-to-feishu-base\scripts\run-weekly-post-ai.mjs" `
   --pre-ai-manifest "<pre-ai-manifest.json>" --apply `
   --confirm-base <app-token> --confirm-current-table <current-table-id> `
   --confirm-history-table <history-table-id>
@@ -83,36 +84,38 @@ npm run test:offline
 
 ## 验证
 
+（以下命令同样在仓库根目录下执行 —— 换机器后不用改任何一行。）
+
 ```powershell
-node "D:\Retire\sycm-automation\skills\sycm-export-search-rank\scripts\export-search-rank.mjs" --self-test
-node --test "D:\Retire\sycm-automation\skills\sycm-export-search-rank\scripts\full-flow.test.mjs" "D:\Retire\sycm-automation\skills\sycm-export-search-rank\scripts\output-publish.test.mjs"
-node --test "D:\Retire\sycm-automation\skills\sycm-export-search-rank\scripts\source-period-proof.test.mjs"
-node --test "D:\Retire\sycm-automation\skills\sycm-export-search-rank\scripts\adapter.search-rank.test.mjs"
-node --test "D:\Retire\sycm-automation\skills\xws-sku-collection\tests\adapter-sku-collection.test.mjs"
-node "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\build-paste-tsv.test.mjs"
-node "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\inspect-fields.test.mjs"
-node --test "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\copy-weekly-table.test.mjs" "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\update-weekly-base.test.mjs"
-node --test "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\sync-decision-history.test.mjs" "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\run-weekly-pre-ai.test.mjs"
-node --test "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\tests\run-weekly-post-ai.test.mjs"
-node --test "D:\Retire\sycm-automation\runtime\keyword-decision-formulas.test.mjs" "D:\Retire\sycm-automation\runtime\apply-weekly-decision-formulas.test.mjs"
-node --test "D:\Retire\sycm-automation\runtime\sop-runtime\*.test.mjs"
-node "D:\Retire\sycm-automation\runtime\sop-runtime\build-skill-registry.mjs" --check
-node --test "D:\Retire\sycm-automation\skills\xws-export-market-analysis\tests\flow.test.mjs" "D:\Retire\sycm-automation\skills\xws-export-market-analysis\tests\cli.test.mjs" "D:\Retire\sycm-automation\skills\xws-export-market-analysis\tests\validate-output.test.mjs" "D:\Retire\sycm-automation\skills\xws-export-market-analysis\tests\prepare-flow.test.mjs"
-node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\export-market-analysis.mjs" --self-test
-py -3 "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\validate-output.py" --self-test
-node --test "D:\Retire\sycm-automation\skills\xws-to-feishu-base\tests\*.test.mjs"
-py -3 -m unittest "D:\Retire\sycm-automation\skills\xws-to-feishu-base\tests\extract_xws_xlsx_test.py"
-node --test "D:\Retire\sycm-automation\skills\huitun-to-feishu-keyword-heat\tests\adapter-huitun-keyword-heat.test.mjs"
-node --test "D:\Retire\sycm-automation\skills\huitun-to-feishu-keyword-heat\tests\*.test.mjs"
-node "D:\Retire\sycm-automation\skills\huitun-to-feishu-keyword-heat\scripts\run-huitun-topic-heat.mjs" --self-test
+node "skills\sycm-export-search-rank\scripts\export-search-rank.mjs" --self-test
+node --test "skills\sycm-export-search-rank\scripts\full-flow.test.mjs" "skills\sycm-export-search-rank\scripts\output-publish.test.mjs"
+node --test "skills\sycm-export-search-rank\scripts\source-period-proof.test.mjs"
+node --test "skills\sycm-export-search-rank\scripts\adapter.search-rank.test.mjs"
+node --test "skills\xws-sku-collection\tests\adapter-sku-collection.test.mjs"
+node "skills\sycm-to-feishu-base\tests\build-paste-tsv.test.mjs"
+node "skills\sycm-to-feishu-base\tests\inspect-fields.test.mjs"
+node --test "skills\sycm-to-feishu-base\tests\copy-weekly-table.test.mjs" "skills\sycm-to-feishu-base\tests\update-weekly-base.test.mjs"
+node --test "skills\sycm-to-feishu-base\tests\sync-decision-history.test.mjs" "skills\sycm-to-feishu-base\tests\run-weekly-pre-ai.test.mjs"
+node --test "skills\sycm-to-feishu-base\tests\run-weekly-post-ai.test.mjs"
+node --test "runtime\keyword-decision-formulas.test.mjs" "runtime\apply-weekly-decision-formulas.test.mjs"
+node --test "runtime\sop-runtime\*.test.mjs"
+node "runtime\sop-runtime\build-skill-registry.mjs" --check
+node --test "skills\xws-export-market-analysis\tests\flow.test.mjs" "skills\xws-export-market-analysis\tests\cli.test.mjs" "skills\xws-export-market-analysis\tests\validate-output.test.mjs" "skills\xws-export-market-analysis\tests\prepare-flow.test.mjs"
+node "skills\xws-export-market-analysis\scripts\export-market-analysis.mjs" --self-test
+py -3 "skills\xws-export-market-analysis\scripts\validate-output.py" --self-test
+node --test "skills\xws-to-feishu-base\tests\*.test.mjs"
+py -3 -m unittest "skills\xws-to-feishu-base\tests\extract_xws_xlsx_test.py"
+node --test "skills\huitun-to-feishu-keyword-heat\tests\adapter-huitun-keyword-heat.test.mjs"
+node --test "skills\huitun-to-feishu-keyword-heat\tests\*.test.mjs"
+node "skills\huitun-to-feishu-keyword-heat\scripts\run-huitun-topic-heat.mjs" --self-test
 ```
 
 上面是逐条的入口。全仓回归用目录发现的套件运行器（新测试自动纳入，不需要改文件列表）：
 
 ```powershell
-node "D:\Retire\sycm-automation\scripts\run-test-suite.mjs" unit --concurrency=1
-node "D:\Retire\sycm-automation\scripts\run-test-suite.mjs" skills --concurrency=1
-node "D:\Retire\sycm-automation\scripts\run-test-suite.mjs" runtime --concurrency=1
+node "scripts\run-test-suite.mjs" unit --concurrency=1
+node "scripts\run-test-suite.mjs" skills --concurrency=1
+node "scripts\run-test-suite.mjs" runtime --concurrency=1
 ```
 
 `--concurrency=1` 不是可选项：`xws-export-market-analysis` 的用例会拉起真实 CLI 打假代理，并含 stall/deadline 计时断言，机器有负载时会假失败。`--dry-run` 打印各套件解析出的文件清单，用于核对离线/集成分区。
@@ -121,13 +124,13 @@ node "D:\Retire\sycm-automation\scripts\run-test-suite.mjs" runtime --concurrenc
 所以 `runtime/sop-runtime/` 下的用例不在上面 `runtime` 那一套里，必须单独跑一遍——漏跑一次就是 300+ 条用例无声地不进回归：
 
 ```powershell
-node --test "D:\Retire\sycm-automation\runtime\sop-runtime\*.test.mjs"
+node --test "runtime\sop-runtime\*.test.mjs"
 ```
 
 调度侧入口（只读探测，不创建运行）：
 
 ```powershell
-node "D:\Retire\sycm-automation\runtime\sop-runtime\capability-scheduler.mjs" `
+node "runtime\sop-runtime\capability-scheduler.mjs" `
   --capability huitun.keyword-heat.collect --probe-only `
   --collect-input '{"envFile":"E:\\小红书\\.env.local","appToken":"<app-token>","tableId":"<table-id>","tableName":"<table-name>"}'
 ```
@@ -136,16 +139,16 @@ node "D:\Retire\sycm-automation\runtime\sop-runtime\capability-scheduler.mjs" `
 
 ```powershell
 # 1) 先看计划：只读，不碰数据库，不创建任何运行
-node "D:\Retire\sycm-automation\runtime\sop-runtime\round-runner.mjs" `
-  --schedule-file "D:\Retire\sycm-automation\runtime\round-schedule.json" --show-plan
+node "runtime\sop-runtime\round-runner.mjs" `
+  --schedule-file "runtime\round-schedule.json" --show-plan
 
 # 2) 手工跑一条（已到点才跑；没到点会原样跳过并说明下一次什么时候）
-node "D:\Retire\sycm-automation\runtime\sop-runtime\round-runner.mjs" `
-  --schedule-file "D:\Retire\sycm-automation\runtime\round-schedule.json" --round weekly-competitor
+node "runtime\sop-runtime\round-runner.mjs" `
+  --schedule-file "runtime\round-schedule.json" --round weekly-competitor
 
 # 3) 常驻叫醒（机器基本不关时用）；外部定时器（任务计划程序 / WorkBuddy 定时任务）跑第 2 条命令即可，等价
-node "D:\Retire\sycm-automation\runtime\sop-runtime\round-runner.mjs" `
-  --schedule-file "D:\Retire\sycm-automation\runtime\round-schedule.json" --serve --interval-seconds 60
+node "runtime\sop-runtime\round-runner.mjs" `
+  --schedule-file "runtime\round-schedule.json" --serve --interval-seconds 60
 ```
 
 `--show-plan` 会同时给出 `triggerAt` / `isLastTriggerToday` / `hoursSinceTriggerAt` / `nextTriggerAt`。
