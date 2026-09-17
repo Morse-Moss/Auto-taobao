@@ -4,9 +4,15 @@
 // 没法被测试直接断言。把发现逻辑放在这里之后，runtime 测试就能检查它 ——
 // 于是「新加一个带测试的子目录、结果没有任何套件跑它」会变成一次红灯，而不是一次静默遗漏。
 //
-// 现状（2026-09-16）：listTestFiles 是**平铺**的（只扫一层）。runtime/ 下有 5 个自带测试的
-// 子目录，其中 4 个有自己的调用方式、1 个（operator-console）纳入 runtime 套件。
+// 现状（2026-09-17）：listTestFiles 是**平铺**的（只扫一层）。runtime/ 下有 5 个自带测试的
+// 子目录，其中 3 个有自己的调用方式、2 个（operator-console、isolated-proxy）纳入 runtime 套件。
 // 下面三张表合起来必须恰好覆盖「runtime/ 下所有含 .test.mjs 的目录」，否则测试会红。
+//
+// 2026-09-17 变更：isolated-proxy 从「自己的调用方式」挪进 runtime 套件。原 reason 写的是
+// 「探的是本机 CDP 代理/浏览器端口；本机没开那两个端口时它的结论没有意义」—— 这条早已失准：
+// 它的 browser-discovery.test.mjs 全程 mock globalThis.fetch，不碰任何真实端口，纯离线。
+// 一个失准的 reason 会让下一个加测试的人照着它抄（这条 reason 本身就是坑 38 的产物：
+// 能力在生产者侧被删掉之后，理由文本还留在消费者侧）。
 
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
@@ -17,6 +23,7 @@ export const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 // 判据：纯离线（不碰 DB、不碰真实浏览器端口、不起外部进程）。
 export const RUNTIME_EXTRA_DIRS = Object.freeze([
   'runtime/operator-console',
+  'runtime/isolated-proxy',
 ]);
 
 // 有自己的调用方式、因此不并入 runtime 平铺套件的子目录。
@@ -25,10 +32,6 @@ export const RUNTIME_OWN_INVOCATION_DIRS = Object.freeze([
   {
     dir: 'runtime/durable',
     reason: '需要 Postgres 与子进程（集成层）；放进离线套件会让套件在没库的机器上变红',
-  },
-  {
-    dir: 'runtime/isolated-proxy',
-    reason: '探的是本机 CDP 代理/浏览器端口；本机没开那两个端口时它的结论没有意义',
   },
   {
     dir: 'runtime/sop-runtime',

@@ -204,7 +204,18 @@ node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs `
 
 后果：先跑「昨日」、再回填更早的日期，回填那行就落在后面。实测两代数据都一样 —— 09-15 先落位第 5 行、09-14 后落位第 6 行，屏幕上于是显示「…15、14…」。这不是数据错位，收据里的 `recordCountBefore/After` 就是落位下标，可逐条复核。
 
-要按日期看，在视图上加一条排序「统计日期 升序」即可 —— 那是视图属性，不改记录，也不影响下游月份数据表/仪表盘的字段引用。
+要按日期看，直觉做法是在视图上加一条排序「统计日期 升序」—— 那是视图属性，不改记录，也不影响下游月份数据表/仪表盘的字段引用。
+
+**但 2026-09-17 实测这张视图的排序落不了库**，别以为「加上就好了」：
+
+- 用 CDP 在排序面板里设了「统计日期 升序」，面板当时回读 `sortInfo:[{fieldId:"fldkIuNvnY",desc:false}]`、渲染顺序也真的变成升序 —— **但整页刷新后 `sortInfo` 回到 `[]`**；
+- 面板里那个「自动排序」开关（默认开）关掉也一样；
+- 抓包显示「加排序」这个动作**零网络请求**；
+- 服务端独立判据：同一视图带 / 不带 `view_id` 各拉一次记录，返回顺序完全相同（= 创建顺序）⇒ 服务端确实没存；
+- 权限上查不出「不许存」的理由（`records: []`、`isLock:false`、`view.sort={visible:true,editable:true,localEditable:false}`）；
+- 同 base 的 `tblm9Hx7R9A1YoLC` 视图**是存得住 `sortInfo` 的**，所以不是整个 base 的问题。
+
+⇒ 结论：**不要把「视图排序」写进 SOP 当作可靠手段**。要按日期读，请用收据里的 `recordCountBefore/After` 还原落位，或改用「另存为新视图」再在新视图上排序。完整证据见 `docs/ops/DAILY-REPORT-RUN-2026-09-17-FINDINGS.md` §8.5。
 
 数据本身不会串行：同一行的 `统计日期`、`关键词推广日期`、`人群推广日期` 必须相等，这由 `buildCombinedFields` 的等值断言与 `assertSourceDates` 两道闸门分别保证。
 

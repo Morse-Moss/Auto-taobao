@@ -99,7 +99,8 @@
    守卫抓不到它：`runtime/browser-ports.test.mjs:170-181` 那条「生产代码不得写死端口」只扫 `Object.values(PROJECT_PORTS)` ＝ 9222/3457/19022/19023/19024；**9223 是退役值、不在表里**，因此不在扫描范围内（坑 35 的变体：退役值不在守卫视野内）。
 
 - 三个选项：a) 停掉 9223 / 3458（需用户点头，且 9223 那个窗口可能用户自己在用）；b) 不停，先修 `browser-discovery.mjs` 让它从登记表取，并把**退役端口**纳入守卫；c) 不停也不修，只登记（雷还在）。
-- 倾向：**b 立即做**（不动进程），a 等用户明确说停。
+- 当时的倾向：**b 立即做**（不动进程），a 等用户明确说停。
+- 实际结果：b 当天做了（§7.2 Q1a/Q1d），a 于 2026-09-17 09:42 按用户指令执行（§7.4）。
 
 ## 5. 改进分析（按价值排序）
 
@@ -149,7 +150,7 @@
 | Q2 | 退役端口守卫（I7） | 加 `RETIRED_PORTS` 并扫 / 不加 | 加 |
 | Q3 | 启动器读 `DevToolsActivePort`（D2） | 做 / 不做 | 做 |
 | Q4 | 链路加「下载后置时效校验」（D1/I1） | 加 / 不加 | 加 |
-| Q5 | 9223 / 3458 两个遗留实例 | 停 / 保留 | 先保留，等明确指令 |
+| Q5 | 9223 / 3458 两个遗留实例 | 停 / 保留 | **已于 2026-09-17 09:42 停掉**，见 §7.4 |
 | Q6 | 收据加 `environment` + `sourceSelfChecks`（I3/I4） | 加 / 不加 | 加 |
 | Q7 | 登录态体检（I2，缺口 G2） | 本轮做 / 排后续 | 排后续 |
 | Q8 | 固化 `runtime/cdp-probe.mjs`（I6） | 做 / 不做 | 做 |
@@ -186,7 +187,7 @@ Q1–Q4 已按建议执行，Q5 按建议保留现状；执行结果与验证见
 | Q3 | `daily-report-core.mjs` 新增 `summarizeSourceDates()`；`extract-sources.py` 输出两侧日期列；`run-daily-report.mjs` 在 **`buildCombinedFields` 之前**跑 `assertSourceDates()`，不通过即停并点名两个文件 | 4 条新单测（含 3 条反例）＋ 真实入口 4 |
 | Q4 | 收据新增 `environment`（`computedAt` / `node` / `proxyUrl` / 浏览器与代理的端口、id、label，各带 `source: env \| registry-default \| env-invalid`）与 `sourceSelfChecks` | 真实入口 2/3 |
 
-未做（按批准保留）：Q5 的 9223 / 3458 两个遗留实例仍未退，**全程没有停任何进程**。
+未做（按批准保留）：Q5 的 9223 / 3458 两个遗留实例当时仍未退，那一次**全程没有停任何进程**。2026-09-17 09:42 用户明确说「遗留的就删了」后已停掉，见 §7.4。
 
 ### 7.3 验证方式（都是真跑的）
 
@@ -211,7 +212,60 @@ Q1–Q4 已按建议执行，Q5 按建议保留现状；执行结果与验证见
 2. **`cdp-proxy` 的 `--browser` 契约是死的**（坑 38 的又一例）：`discoverChromePort` 处理 `result.kind === 'mismatch'`、`result.source === 'override'`、`findFallbackPort()` 兜底三条分支，而 `browser-discovery.selectBrowser` 是**无参**、且永远返回 `{kind:'ok', source:'isolated-runtime'}` ⇒ 那三条分支（含「连不上时给 Agent 的处理顺序」提示、「pin 之后不许 fallback」的保护）**永远不会执行**；`--browser <名>` 传了也不起作用。未修（超出批准范围）。
 3. **`isolated-proxy` 的测试不在离线套件里，理由已经不准**：`scripts/test-suite-discovery.mjs:30-31` 写的理由是「探的是本机 CDP 代理/浏览器端口；本机没开那两个端口时它的结论没有意义」，但 `browser-discovery.test.mjs` 全程 mock `fetch`、不碰真实端口（今天新加的三条同样）。并进套件会改动基线数字，需要拍板。
 
-## 8. 「飞书数据顺序乱了」的定位（2026-09-17，用户贴截图追问）
+### 7.5 §7.4 那三件事的处置（2026-09-17 09:30–09:45，用户「按你推荐的来」）
+
+| 项 | 处置 | 落地 |
+| --- | --- | --- |
+| 1 `isolated-proxy` 被 gitignore | **拿出来纳入版本管理** | `.gitignore:50` 那条移除并留了理由注释（含「守卫对不存在的目录是静默通过的」这句自证）；`runtime/isolated-proxy/` 的 4 个文件首次入库 |
+| 2 `--browser` 与三条死分支 | **删** | `cdp-proxy.mjs` 删掉 `parseBrowserArg()` / `BROWSER_OVERRIDE` / `pinnedBrowserId` / `kind==='mismatch'` / `source==='override'` / `findFallbackPort()` 兜底，以及 `connect()` 里到不了的 `if (!discovered) throw`；`browser-discovery.mjs` 的 `findFallbackPort()` 改成只读的 `describeIsolatedTarget()`，**原有那两句「请用启动器起浏览器」的提示搬进 `discoverChromePort` 的 `catch`**（原先挂在死分支上，等于永远不显示） |
+| 3 `isolated-proxy` 测试不在套件里 | **并进 runtime 离线套件** | `scripts/test-suite-discovery.mjs`：`runtime/isolated-proxy` 从 `RUNTIME_OWN_INVOCATION_DIRS` 移到 `RUNTIME_EXTRA_DIRS`，并删掉那条已失准的理由（它全程 mock `fetch`，不碰真实端口） |
+
+验证：
+
+| 验证 | 命令 | 结果 |
+| --- | --- | --- |
+| 语法 | `node --check` 两个改过的文件 | 通过 |
+| 残留引用 | grep `pinnedBrowserId\|BROWSER_OVERRIDE\|findFallbackPort\|parseBrowserArg\|kind === 'mismatch'` | 只剩 3 处注释里的历史说明，无活代码 |
+| 套件 | `scripts/run-test-suite.mjs runtime` | **535 / 0 失败（70 文件）** —— 基线从 532/69 上移 3 条、1 个文件 |
+
+**基线数字要改口径**：本节 §7.3 记的 `532 / 69 文件` 是并进套件**之前**的数；现在是 `535 / 70`。
+
+### 7.6 Q5 的执行：遗留实例已退，浏览器回到登记表端口（2026-09-17 09:42）
+
+用户指令：「浏览器这次给我完全按照之前规划的端口来，遗留的就删了」。
+
+停掉的（明确授权范围内，其余一律未碰）：
+
+| PID | 进程 | 端口 | 归属 |
+| --- | --- | --- | --- |
+| 49500 | `msedge.exe --user-data-dir=D:/Retire/edge-daily-report-profile --remote-debugging-port=9223` | 9223 | 遗留的日报浏览器（09-16 17:44:58 起） |
+| 49644 | `node runtime/start-daily-report-proxy.mjs` | 3458 | 遗留的日报代理（09-16 17:45:03 起，日志里还带着旧版模块的 `[config.env 偏好]` 字样） |
+
+未碰：pid 90004（`D:\codex\skills\web-access\scripts\cdp-proxy.mjs`，**别的项目**的 3456）、pid 52100（19023 代理）、81984 / 24520 / 86632（运营台 19024 / 19025 / 19026）。
+
+停之前先只读确认 9223 上是什么页面（防误杀用户窗口）：
+
+```
+飞书云文档「各店铺日报 副本」 base X02Xb7fHba7mU9sr8uIcRlExn6b / tbl84ZGwLQKyLxV3 / view vewwg0rhjo
+生意参谋 portal/home.htm 与 adm/v3/micro/auto_analysis/datafetch/create
+```
+
+⇒ 全是日报自动化自己的页面，无个人浏览。
+
+然后按登记表把浏览器起到规划端口：
+
+```
+node runtime/start-daily-report-browser.mjs
+[browser] 承载路线：账号=merchant/independent 路线=keywordRank, keywordHeat, dailyReport, weeklyPaste, sellerWorkbench；……
+[browser] msedge pid=64636 profile=D:/Retire/edge-daily-report-profile port=19022
+[browser] READY Edg/150.0.4078.65 on 19022
+```
+
+独立复核（不经启动器自述）：`19022/json/version` → `Edg/150.0.4078.65`；页面 URL `sycm.taobao.com/portal/home.htm`，`loginFormVisible:false`、`loginWallText:false`，页面正文抬头是「生意参谋 盖文旗舰店 主店 惠商 我的 帮助 退出」⇒ **profile 里的商家登录态还在**。
+
+**仍不一致的一处（未擅自处理）**：19023 上的代理 pid 52100（09-17 08:01 起）内部那一跳是 `CDP_BROWSER_PORT=9223`。`cdp-proxy.mjs` 的浏览器端口在 **import 期**从环境变量解析进常量，运行时改不了 ⇒ 9223 一停，它的 `/health` 就变成 `connected:null, chromePort:null`（实测），必须**重启**才能指向 19022。它占着登记表端口、所以再起一个代理会因端口被占直接退出。是否重启需用户点头（属「停/重启运行中进程」）。
+
+
 
 用户看到的是底单 `tbl84ZGwLQKyLxV3`（视图 `vewwg0rhjo`「表格」）的第 5/6/7 行：
 
@@ -266,7 +320,41 @@ recordCount = 7
 
 ### 8.4 建议（按代价排序）
 
-1. **只改视图排序**（零代码、不动数据）：在底单视图加一条排序「统计日期 升序」。视图属性，与记录本身、与下游公式/引用无关。**属于在用户 base 上的可见改动，未擅自执行。**
+1. **只改视图排序**（零代码、不动数据）：在底单视图加一条排序「统计日期 升序」。视图属性，与记录本身、与下游公式/引用无关。已在 09-17 现场执行 —— **但服务端不落库**，见 §8.5。
 2. **回填写入按日期升序提交**（小改）：回填多天时先补最老的。只在「连续补一段更早的日期」时有效，补中间空缺依旧会落在末尾，治标。
 3. **给日报链加本地台账**（需要拍板，涉及新迁移）：在 `xws_automation` 建一张 `daily_report_push`（日期 + 店铺 + recordId + 源文件 sha256 + 推送时刻 + 环境），收益是「不查飞书就知道哪天推过」「重推/覆盖有审计」，代价是多一份要与飞书对账的状态（多一个可能失同步的权威）。
    真正的顺序问题，方案 1 就解决；方案 3 解决的是另一个问题（本地可追溯），不要为了治顺序去建库。
+
+### 8.5 「加排序」的实际结果：面板能设，服务端不存（2026-09-17）
+
+按 §8.4 方案 1 用 CDP 在视图 `vewwg0rhjo` 上设了「统计日期 升序」，结果**刷新即失效**，反复验证过：
+
+| 环节 | 做法 | 结果 |
+| --- | --- | --- |
+| 设 | 打开排序面板 → 选择条件「统计日期」→ 升序 | 面板回读 `sortInfo:[{fieldId:"fldkIuNvnY",desc:false}]`，渲染顺序变成 08-31→09-16（**乐观回填是成功的**） |
+| 关面板 | ✕ / Esc / 点面板外，三种都试过 | 都关得掉 |
+| 刷新 | 整页 `nav` 重载 | `sortInfo` 回到 `[]`，顺序回到创建顺序 |
+
+途中发现的一个开关值得记下：排序面板里有「**自动排序**」（`.b-switch-trigger.bitable-group--switch`，默认**开**）。实测把它关掉再关面板，仍然不落库。抓包还显示「加排序」这个动作**零网络请求**（`total: 0`）。
+
+**用服务端独立判据钉死**（不依赖页面上看到的东西）：
+
+```
+同一张表同一视图，list records 带 view_id 与不带 view_id 各请求一次
+→ 两次返回顺序完全相同（08-30 / 08-31 / 09-01 / 09-02 / 09-14 / 09-13 / 09-15 = 创建顺序）
+⇒ 服务端确实没有存任何排序
+```
+
+**权限上没有「不许存」的线索**：`view.property.records = []`（该视图没有「仅显示指定记录」限制）、`store.isLock = false`、`base.editable = true`、`view.sort = {visible:true, editable:true, localEditable:false}`。
+
+**同 base 的对照**：`tblm9Hx7R9A1YoLC`（各店铺数据日报）的视图**有 `sortInfo`**（`fldFIFCMOW` 升序，主表还同时用它分组）⇒ 这个 base 的视图规则是能存下来的。所以「底单存不住」不是「我不会点」，但也不是「这个 base 不支持」。
+
+证据截图：`evidence/daily-report-view-sort-2026-09-17/`（9 张，含设完/关自动排序/刷新后三个状态）。
+
+**待用户处置（三选一）**：
+- a) 你自己在页面上手点一遍（可能我点在了错的入口，比如那个面板是「本地排序」预览而非视图排序）；
+- b) 我改走「另存为新视图」（面板里有这个入口）——新视图带排序，代价是底单多一个视图；
+- c) 接受「视图这条不生效」，改用 §8.4 方案 2（回填按日期升序提交）。
+
+注意 `view.sort.localEditable = false` 这个字段：它的字面意思正是「本地可编辑、不落库」，与实测吻合 —— 但我没能在飞书文档里找到它的定义，所以只当线索，不当结论。
+

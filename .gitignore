@@ -47,7 +47,10 @@ runtime/**/*.zip
 
 # Local browser/runtime sessions and historical run artifacts
 runtime/edge-isolated-*/
-runtime/isolated-proxy/
+# `runtime/isolated-proxy/` 曾在这张表里，2026-09-17 起**纳入版本管理**：它已不是上游原样 vendored，
+# 而是被本项目改过的工具链（浏览器身份/端口的默认值、代理监听端口都取自 runtime/browser-ports.mjs）。
+# 忽略它 = 本机修复进不了版本库、新机器上连文件都没有，而守卫测试对不存在的目录是静默通过的
+# —— 正是本文件 44-46 行记的那个坑换了个位置出现。
 runtime/competitor-v2-*/
 runtime/competitor-weekly-schema-migration/
 runtime/competitor-v2-sku-collection/

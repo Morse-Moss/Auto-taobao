@@ -150,6 +150,9 @@ XWS_BROWSER_ID=edge-isolated
   所以「注释里解释为什么别碰它」可以保留）。详见 §1.4。**别去抢这个端口，也别借它当兜底。**
 - **9223 / 3458**：2026-09-16 起**已不是本项目在用**的端口（日报链挪到 19022 / 19023）。
   它们是「常见值 ＋ 1」，别的项目会顺手占用，看到它们被占不要去抢。
+  2026-09-17 已把仍挂在上面的两个遗留实例停掉（pid 49500 的 `msedge`、pid 49644 的旧日报代理），
+  并按登记表把日报浏览器重新起到 **19022**（`node runtime/start-daily-report-browser.mjs`）。
+  当时的处置记录见 `DAILY-REPORT-RUN-2026-09-17-FINDINGS.md` §7.6。
 - `E:\Two\runtime\edge-debug-profile`：另一个项目的调试配置，**没有小旺神**。
 - `C:\Users\Administrator\AppData\Local\Microsoft\Edge\User`（注意**不是** `Edge\User Data`）
   和 Chrome 的 `User Data` 里**也有**小旺神，但那不是本项目在用的配置，别混。
