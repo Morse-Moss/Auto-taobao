@@ -1,14 +1,16 @@
 # runtime/ 入口索引
 
 状态：初步分类（P0 产物）。分类依据是命名角色与已知调用关系，**尚未逐一确认生命周期**——这是 P2.3 的工作。在此之前，把本文件当作导航，不要当作权威合同。
-权威边界提醒：`docs/standards/README.md` 把 `runtime/` 定位为"运行入口、阶段指针和单次运行状态；不是架构事实源"。但本目录实际含 14 个合同/决策文档与 168 个 git 跟踪入口，这个矛盾在治理方案 A2 中登记，尚未解决。
+权威边界提醒：`docs/standards/README.md` 把 `runtime/` 定位为"运行入口、阶段指针和单次运行状态；不是架构事实源"。但本目录实际含 **15 个** `.md`（含本文件共 16 个）与 **253 个** git 跟踪的顶层条目，其中 14 个是合同/决策文档、1 个是运行实录（`daily-report-2026-09-13.md`），这个矛盾在治理方案 A2 中登记，尚未解决。
+
+**计数复核（2026-09-17，脚本实数的，不是估的）**：git 跟踪的顶层条目 **253**（原记 168）；顶层 `.md` **16**（原记 14）；顶层文件 **597**（原记 468，含被 `.gitignore` 排除的运行产物）；顶层非测试 `.mjs` **159**、`.test.mjs` **67**（那 67 个正好是 `runtime` 套件的发现面）。所以「168」「468」「14」这三个数都已过时——**改动本文件时请连数字一起更新，否则它又会变成第二个坑 35**。
 
 ## 使用前必读
 
 1. 冻结运行面（治理期间对外契约不变）：`run-faq-operator.mjs`、`run-weekly-local-analysis.mjs` 及 skills 侧的 `run-weekly-pre-ai.mjs` / `run-weekly-post-ai.mjs`。
 2. 本机路径含中文（如 `E:\小红书\.env.local`），批量操作会触发安全删除守卫，逐个显式路径操作。
 3. `D:\codex\skills\sycm-*`、`xws-*`、`huitun-*` 是指向本项目 skills 的目录联接，存在项目外消费者；搬移任何文件前先确认调用面。
-4. `runtime/` 顶层有 468 个文件、3.8G 运行产物（多数被 .gitignore 排除）；`find`/`ls -R` 在此目录会超时，用 `find runtime -maxdepth 1` 限定深度。
+4. `runtime/` 顶层有 **597 个文件**（2026-09-17 实数）与数 GB 运行产物（多数被 `.gitignore` 排除）；`find`/`ls -R` 在此目录会超时，用 `find runtime -maxdepth 1` 限定深度。
 
 ## A. 长期编排入口（受冻结运行面保护）
 
@@ -56,7 +58,9 @@ Python：`build-keyword-decision-brief.py`、`build-keyword-decision-report.py`�
 Node：`build-keyword-dual-tables.mjs`、`generate-weekly-analysis-doc.mjs`、`publish-competitor-visualization.mjs`
 依赖 `docx`（v9.7.1 已声明并验证 CJS 导出完整）：`generate-competitor-v2-business-docx.cjs`、`generate-competitor-v2-archive-docx.cjs`、`generate-competitor-field-reference-docx.cjs`（把 `docs/references/COMPETITOR-FIELD-REFERENCE-CLIENT.md` 渲染成交付版 docx，`--src`/`--out` 可覆盖）（注意：`generate-competitor-v2-business-docx.cjs` 默认输出路径硬编码到 `C:/Users/Administrator/Desktop/`，治理 B3 登记）
 
-## G. 合同与决策文档（14 个 .md，git 已跟踪，治理归属待定）
+## G. 合同与决策文档（14 个，git 已跟踪，治理归属待定）
+
+（本目录顶层实际有 16 个 `.md`：下面 14 个 + 本文件 `INDEX.md` + 运行实录 `daily-report-2026-09-13.md`。）
 
 `competitor-v2-sku-collection-stage-pointer.md`、`competitor-v2-sku-schema-stage-pointer.md`、`competitor-v2-stage-pointer.md`、`huitun-candidate-contract.md`、`keyword-analysis-stage-pointer.md`、`keyword-analysis-v2-contract-20260811.md`、`keyword-field-contract-20260809.md`、`keyword-formula-ai-config-active.md`、`keyword-formula-ai-verification-20260809.md`、`keyword-formulas-ai-prompts-20260809.md`、`keyword-front-fields-ops-review-v1-20260811.md`、`sku-weekly-storage-decision-20260825.md`、`xws-three-rounds-20260806.md`、`xws-three-rounds-active.md`
 其中 `*-contract.md` 与 `*-decision-*.md` 按其内容属于架构/合同事实，与 standards 对本目录的定位冲突；P2.3 应决定迁往 `docs/` 或修订 standards 的定义。

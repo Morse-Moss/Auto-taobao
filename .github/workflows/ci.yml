@@ -53,13 +53,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Only skills that own test files under skills/<name>/{tests,scripts}.
-          # The FAQ/question/sku skills keep their tests in runtime/*.test.mjs,
-          # which fast-gate already covers.
+          # Every skill that owns test files under skills/<name>/{tests,scripts}.
+          # Keep this list in sync with what `run-test-suite.mjs skills` discovers:
+          # 2026-09-17 audit found three skills missing from this matrix
+          # (sycm-alimama-daily-report / xws-faq-operator / xws-sku-collection),
+          # i.e. eight test files were running nowhere in CI.
+          #
+          # The previous comment here claimed the FAQ/question/sku skills "keep
+          # their tests in runtime/*.test.mjs, which fast-gate already covers".
+          # That is only half true: some FAQ cases do live in runtime/, but those
+          # skills also own tests in their own directories, which fast-gate never
+          # runs (it only discovers runtime/*.test.mjs, non-recursively).
           #
           # xws-export-market-analysis: prepare-flow.test.mjs alone runs ~17 min
           # on the dev machine (real CLI children with retry backoff), so it
           # gets a budget that survives the ~3x slower GitHub runner.
+          # Measured locally 2026-09-17 (dev machine, `--skill=<name>`):
+          #   xws-export-market-analysis  ~17 min
+          #   sycm-alimama-daily-report   4.3 s   (70 tests)
+          #   xws-faq-operator            1.7 s   (16 tests)
+          #   xws-sku-collection          1.7 s   (26 tests)
           - skill: xws-export-market-analysis
             timeout: 90
           - skill: huitun-to-feishu-keyword-heat
@@ -69,6 +82,12 @@ jobs:
           - skill: sycm-to-feishu-base
             timeout: 40
           - skill: xws-to-feishu-base
+            timeout: 40
+          - skill: sycm-alimama-daily-report
+            timeout: 40
+          - skill: xws-faq-operator
+            timeout: 40
+          - skill: xws-sku-collection
             timeout: 40
     name: skill-tests (${{ matrix.skill }})
     steps:

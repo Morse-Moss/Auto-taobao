@@ -68,7 +68,9 @@ node "D:\Retire\sycm-automation\skills\sycm-to-feishu-base\scripts\run-weekly-po
 
 ## 最小离线验证
 
-Node 18 或更新版本可运行项目的最低离线 self-test 入口：
+Node **22** 或更新版本。`package.json` 的 `engines.node` 现在是 `>=22`（CDP 代理 `runtime/isolated-proxy/cdp-proxy.mjs` 用原生 `WebSocket`，Node 22 起才稳定可用），所以 `npm ci` 在更低版本上会以 `EBADENGINE` 拒绝安装。
+
+最低离线 self-test 入口：
 
 ```powershell
 npm ci --ignore-scripts
