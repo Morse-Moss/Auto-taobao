@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { dailyReportTargets, loadFeishuCredentials } from '../../../runtime/feishu-targets.mjs';
 import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+import { appendAudit, describeAuditRow } from '../../../runtime/daily-report-audit.mjs';
 import { buildCombinedFields, reportDateEpoch, summarizeSourceDates, valuesEqual } from './daily-report-core.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -248,6 +249,19 @@ function buildPasteTsv(fields, visibleFields, reportDate) {
   return `${cells.join('\t')}\n`;
 }
 
+// 审计上下文：只有「真的动了外部系统」的路径才建立（dry-run 什么都不记 —— 它没发生）。
+// 模块级是为了让顶层 catch 也能把失败记下来：失败同样是一次「我做过的动作」。
+let auditContext = null;
+
+// 写审计。**只打印、不改变结果**：数据已经进飞书了，本地旁证写不进去不该把成功判成失败。
+// 表结构与语义边界见 db/migrations/007-daily-report-push-audit.sql。
+async function recordAudit(entry) {
+  const row = describeAuditRow(entry);
+  const result = await appendAudit(row);
+  if (result.written) console.log(`[audit] 已记 ${row.action}/${row.outcome} id=${result.id}`);
+  else console.error(`[audit] 未写入（不影响本次结论）：${result.reason}`);
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const target = await inspectTarget(args);
@@ -260,6 +274,22 @@ async function main() {
   writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
   const tsvPath = path.join(args.outputDir, 'paste.tsv');
   writeFileSync(tsvPath, buildPasteTsv(fields, target.fields, args.reportDate), 'utf8');
+
+  // 审计上下文（dry-run 为 null：没有对外动作，没什么可记的）。放在这里是因为
+  // 到这一步才有 reportDate/店铺/源文件哈希/环境这四样东西。
+  const auditBase = {
+    reportDate: args.reportDate,
+    shopName: fields['店铺名称'],
+    mode: plan.mode,
+    source: {
+      shopFile: plan.source.shopFile, shopSha256: plan.source.shopSha256,
+      promotionFile: plan.source.promotionFile, promotionSha256: plan.source.promotionSha256,
+    },
+    environment: plan.environment,
+  };
+  auditContext = args.verifyExisting ? { ...auditBase, action: 'ui-verify' }
+    : args.commit ? { ...auditBase, action: 'push' }
+      : null;
 
   const clientModule = await import(pathToFileURL(path.join(REPO_ROOT, 'skills', 'xws-to-feishu-base', 'scripts', 'feishu-client.mjs')));
   const credentials = loadFeishuCredentials('kcne');
@@ -287,6 +317,9 @@ async function main() {
       derivedReadbackTrace: settled.trace };
     const receiptPath = path.join(args.outputDir, 'receipt.json');
     writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+    await recordAudit({ ...auditContext, outcome: 'ok', recordId: created.record_id,
+      recordCountBefore: args.expectedBeforeCount, recordCountAfter: before.length, verifiedFields, receiptPath,
+      detail: { status: receipt.status, derivedReadbackAttempts: settled.attempts } });
     console.log(JSON.stringify({ status: receipt.status, recordId: created.record_id, receiptPath,
       recordCountBefore: args.expectedBeforeCount, recordCountAfter: before.length, verifiedFields,
       derivedReadbackAttempts: settled.attempts, checks: plan.checks }, null, 2));
@@ -311,12 +344,21 @@ async function main() {
     derivedReadbackTrace: settled.trace };
   const receiptPath = path.join(args.outputDir, 'receipt.json');
   writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+  await recordAudit({ ...auditContext, outcome: 'ok', recordId, recordCountBefore: before.length,
+    recordCountAfter: after.length, verifiedFields, receiptPath,
+    detail: { status: receipt.status, derivedReadbackAttempts: settled.attempts } });
   console.log(JSON.stringify({ status: receipt.status, recordId, receiptPath,
     recordCountBefore: before.length, recordCountAfter: after.length, verifiedFields,
     derivedReadbackAttempts: settled.attempts, checks: plan.checks }, null, 2));
 }
 
-main().catch(error => {
+main().catch(async (error) => {
   console.error(error.stack || error.message);
+  // 失败也是一次「我做过的动作」——而且是最需要留下痕迹的那种。
+  // 只有在已经建立上下文（即真的走到过对外动作那一步）时才记。
+  if (auditContext) {
+    await recordAudit({ ...auditContext, outcome: 'failed',
+      detail: { error: String(error?.message ?? error).slice(0, 2000) } });
+  }
   process.exitCode = 1;
 });

@@ -319,7 +319,87 @@ async function main() {
     record('006 rollback 后重放', (await commitStatusDef(client)).includes('FAILED'), '约束重新含 FAILED');
     verify.commitStatusVocab = await commitStatusDef(client);
 
-    console.log('\n[6] 收尾');
+    // --- 007 日报链审计表 ---
+    console.log('\n[6] 007 日报链只追加审计表');
+    const AUDIT = 'daily_report_push_audit';
+    const auditTableCount = async (c) => Number((await c.query(
+      `select count(*)::int as n from information_schema.tables
+       where table_schema='public' and table_name='${AUDIT}'`)).rows[0].n);
+    const auditColumns = async (c) => (await c.query(
+      `select column_name from information_schema.columns
+       where table_schema='public' and table_name='${AUDIT}' order by column_name`)).rows.map((r) => r.column_name);
+    const auditIndexes = async (c) => (await c.query(
+      `select indexname from pg_indexes where schemaname='public' and tablename='${AUDIT}'`)).rows.map((r) => r.indexname);
+    // 注意：id 是 bigserial，node-pg 把它当 **字符串** 返回（实测 '3' 而不是 3）。
+    // 断言写成「拿得到且两个 id 不同」，不要写成 typeof === 'number' —— 那是被测对象的错形状。
+    const auditInsert = async (c, action, outcome, reportDate = '2026-09-16', shop = '盖文天猫') => {
+      try {
+        const { rows } = await c.query(
+          `insert into ${AUDIT} (action, outcome, report_date, shop_name) values ($1,$2,$3,$4) returning id`,
+          [action, outcome, reportDate, shop],
+        );
+        return rows[0].id;
+      } catch {
+        return null;
+      }
+    };
+
+    // 反例先行：迁移前这张表不该存在（否则说明它对环境有隐性前置）。
+    record('007 前置：迁移前审计表不存在', (await auditTableCount(client)) === 0, '表未创建');
+
+    await applyFile(client, '007-daily-report-push-audit.sql');
+    record('007 首次执行建表', (await auditTableCount(client)) === 1, AUDIT);
+    const cols007 = await auditColumns(client);
+    const EXPECTED_COLS = ['action', 'at', 'browser_id', 'browser_port', 'computed_at', 'detail', 'id', 'mode',
+      'node_version', 'outcome', 'proxy_port', 'receipt_path', 'record_count_after', 'record_count_before',
+      'record_id', 'report_date', 'shop_name', 'source_promotion_file', 'source_promotion_sha256',
+      'source_shop_file', 'source_shop_sha256', 'verified_fields'];
+    record('007 列集合与写入方一致', JSON.stringify(cols007) === JSON.stringify(EXPECTED_COLS),
+      `${cols007.length} 列（期望 ${EXPECTED_COLS.length}）`);
+    const AUDIT_INDEXES = ['idx_daily_report_push_audit_date_shop', 'idx_daily_report_push_audit_at'];
+    const hasAuditIndexes = async (c) => {
+      const names = await auditIndexes(c);
+      return AUDIT_INDEXES.every((name) => names.includes(name));
+    };
+    record('007 索引建成', await hasAuditIndexes(client), (await auditIndexes(client)).join(', '));
+
+    // 词表约束真的生效（写入方也有一份同样的词表，两边漂移会在这里红）。
+    record('007 词表外的 action 被拒', (await auditInsert(client, 'dry-run', 'ok')) === null, "action='dry-run'");
+    record('007 词表外的 outcome 被拒', (await auditInsert(client, 'push', 'maybe')) === null, "outcome='maybe'");
+    const firstId = await auditInsert(client, 'push', 'ok');
+    record('007 合法行可写入', firstId !== null, `id=${firstId}（bigserial，node-pg 返回字符串）`);
+
+    // 这张表**不能有业务唯一键**：同一天同一店推十次就是要写十行（重复本身是待记录的事实）。
+    const secondId = await auditInsert(client, 'push', 'ok');
+    record('007 同日同店重复写入被允许（刻意无唯一键）',
+      secondId !== null && secondId !== firstId, `两行 id=${firstId} / ${secondId}`);
+
+    await applyFile(client, '007-daily-report-push-audit.sql');
+    record('007 重复执行幂等',
+      (await auditTableCount(client)) === 1 && (await hasAuditIndexes(client))
+      && (await auditColumns(client)).length === EXPECTED_COLS.length, '二次执行后表/索引/列不变');
+
+    // 回滚 fail-closed：表里还有审计行时拒绝删除，且不留半执行状态。
+    let auditRollbackBlocked = false;
+    let auditRollbackError = '';
+    try {
+      await applyFile(client, '007-rollback.sql');
+    } catch (error) {
+      auditRollbackBlocked = true;
+      auditRollbackError = String(error.message).split('\n')[0];
+    }
+    record('007 rollback 在存在审计行时按预期失败（fail-closed）', auditRollbackBlocked,
+      auditRollbackError || '竟然回滚成功了，说明 fail-closed 没生效');
+    record('007 失败的回滚不留下半执行状态', (await auditTableCount(client)) === 1, '表仍在');
+
+    await client.query(`delete from ${AUDIT}`);
+    await applyFile(client, '007-rollback.sql');
+    record('007 rollback 清空后删除表', (await auditTableCount(client)) === 0, '表已删除');
+    await applyFile(client, '007-daily-report-push-audit.sql');
+    record('007 rollback 后重放', (await auditTableCount(client)) === 1, '表重建');
+    verify.auditColumns = cols007.length;
+
+    console.log('\n[7] 收尾');
   } catch (error) {
     const full = String(error?.message ?? error);
     record('执行异常', false, full);

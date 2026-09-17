@@ -24,7 +24,7 @@ node runtime/start-daily-report-proxy.mjs
 
 这两个进程不常驻：跑完一轮后它们会随宿主一起退出，下一轮重新启动即可；启动本身不改变任何远端状态。启动器在起之前会先看端口上是谁：若端口已被**另一个 profile** 的浏览器占用，它会拒绝启动并打印对方的 profile（继续起只会把调试端点接到别人身上）。
 
-### 1.1 起不来先看「同 profile 是否已有实例在跑」
+### 1.2 起不来先看「同 profile 是否已有实例在跑」
 
 **启动器现在会自己说这件事**（2026-09-17 起）：同一个 profile 已经有实例跑在**别的端口**上时，它拒绝启动，并直接打印那个端口与两种处置。所以先读它那几行，不要一上来就人工枚举进程。
 
@@ -218,6 +218,37 @@ node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs `
 ⇒ 结论：**不要把「视图排序」写进 SOP 当作可靠手段**。要按日期读，请用收据里的 `recordCountBefore/After` 还原落位，或改用「另存为新视图」再在新视图上排序。完整证据见 `docs/ops/DAILY-REPORT-RUN-2026-09-17-FINDINGS.md` §8.5。
 
 数据本身不会串行：同一行的 `统计日期`、`关键词推广日期`、`人群推广日期` 必须相等，这由 `buildCombinedFields` 的等值断言与 `assertSourceDates` 两道闸门分别保证。
+
+### 6.2 本地审计日志 `daily_report_push_audit`（2026-09-17 建）—— 是审计，不是台账
+
+**它的作用**：回答「本地能不能查『某天推过没有、用的哪个源文件、推了几次、跑在哪个端口上』」。
+在此之前这些信息只散在 `evidence/daily-report-*/receipt.json` 里，得一个个目录翻；飞书那边查不了 SQL（外部租户）。
+
+**它明确不是**台账、不是权威，边界由三件事守死：
+
+1. **没有读接口** —— 写入方 `runtime/daily-report-audit.mjs` 只导出写函数。单测里有一条守卫盯着「不许导出任何读语义的名字」。
+2. **没有业务唯一键** —— 同一天同一店推十次就写十行；「重复」本身就是要被记录的事实。
+3. **查重、判重、幂等一律仍然只问飞书**（`run-daily-report.mjs` 的 `duplicates` 逻辑）。
+
+因此**它允许与飞书不一致** —— 不一致正是它要暴露的现象，不是要消除的噪声。日报链的事实只有一个来源：飞书底单里有没有那一行。
+
+写入时机：`run-daily-report.mjs` 只在**真的动了外部系统**的两条路径写行（`--commit` → `action='push'`，`--verify-existing` → `action='ui-verify'`），失败也会写一行（`outcome='failed'`）；dry-run 什么都不写。**写审计失败不会让日报失败** —— 只打印一行 `[audit] 未写入（不影响本次结论）：…`。
+
+怎么查（只在本地库 `xws_automation`，无需浏览器）：
+
+```sql
+-- 某天发生过什么
+select at, action, outcome, shop_name, record_count_before, record_count_after,
+       browser_port, source_promotion_file, receipt_path
+from daily_report_push_audit where report_date = '2026-09-16' order by at;
+
+-- 最近发生过什么
+select at, action, outcome, report_date, shop_name, detail->>'error' as err
+from daily_report_push_audit order by at desc limit 20;
+```
+
+落库与回滚：`db/migrations/007-daily-report-push-audit.sql`（2026-09-17 已 apply 到业务库，回读 22 列 / 3 索引 / 2 CHECK）；
+回滚 `007-rollback.sql` 刻意 **fail-closed**（表里还有行就拒绝删）。隔离预演见 `runtime/verify-migrations-isolated.mjs`。
 
 ## 7. 本轮实测基线
 
