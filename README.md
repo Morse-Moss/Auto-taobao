@@ -25,6 +25,7 @@
 - `docs/ops/UNATTENDED-AGENT-RUNTIME-PLAN.md`：无人值守运行方案（定时调度落地方式、一轮运行的生命周期、「出故障才提醒」的判据表、自愈的能做什么与做不到什么、飞书消息通道选型）。
 - `docs/ops/LOGIN-STATE-MANAGEMENT.md`：登录态管理设计（失效机制清单、身份/环境/会话/端到端四层检查、判据分级与话术、参考 `E:\小红书` 的实现取舍、与现有预检代码的接线点）。
 - `docs/architecture/PRODUCTION-READINESS.md`：生产准入评估（四条阻塞线 + README §10 十一条架构验收的逐条实测状态）。
+- `docs/ops/SYSTEM-OVERVIEW-AND-DEPLOYMENT.md`：**全系统总览与部署方案**（架构组成、依赖关系、运行环境与部署条件、风险与待完善项、三种部署形态的执行步骤与验收判据）。要「把这套东西装到另一台机器上」先看这一份；只交付日报链另见 `DAILY-REPORT-STANDALONE-DEPLOYMENT.md`。
 
 ## 外部依赖
 
