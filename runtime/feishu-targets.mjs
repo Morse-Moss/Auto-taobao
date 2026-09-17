@@ -12,6 +12,12 @@
 // id 天然会过期。按名字在运行时解析（见 weekly-table-target.mjs）。
 import { readFileSync } from 'node:fs';
 
+import {
+  loadCustomerConfig,
+  overlayProfile,
+  validateFeishuOverrides,
+} from './customer-config.mjs';
+
 const STABLE_TABLE_KEYS = ['competitorMain', 'skuDetail', 'history', 'questionMaster'];
 
 export const PROFILES = Object.freeze({
@@ -102,8 +108,34 @@ export function activeProfileName(env = process.env) {
   return resolveProfileName(env?.[PROFILE_ENV_VAR] ?? DEFAULT_PROFILE);
 }
 
-export function getProfile(name) {
-  return PROFILES[resolveProfileName(name)];
+// 客户配置的进程内缓存。
+// 为什么缓存而不是每次都读文件：getProfile() 被 tableId / baseUrl / envFilePath 这类
+// 访问器反复调用（逐行解析时常见的是每行一次）。
+// 为什么仍留一个重置入口：运维改了配置想让常驻进程生效时不必重启；
+// 测试改了环境变量后也能拿到干净状态，而不是依赖「测试执行顺序恰好合适」。
+let cachedCustomerConfig;
+export function resetCustomerConfigCache() {
+  cachedCustomerConfig = undefined;
+}
+
+function activeCustomerConfig() {
+  if (cachedCustomerConfig === undefined) {
+    const { present, config, file } = loadCustomerConfig();
+    // 配置写错要在**第一次访问时就炸**，而不是等某条链跑到一半才发现。
+    if (present) validateFeishuOverrides(config, { knownProfiles: Object.keys(PROFILES), file });
+    cachedCustomerConfig = config;
+  }
+  return cachedCustomerConfig;
+}
+
+// 这是客户配置层**唯一**的接入点：所有访问器（profileTargets / tableId / envFilePath /
+// competitorBaseToken / keywordBaseToken / dailyReportTargets / baseUrl / loadFeishuCredentials）
+// 都经过它，所以「把凭据路径与 base/表 id 从代码里挪出来」只改了这一个函数。
+//
+// 无客户配置时 overlayProfile 原样返回 PROFILES[key] —— 默认行为逐字不变。
+export function getProfile(name, { config = activeCustomerConfig() } = {}) {
+  const key = resolveProfileName(name);
+  return overlayProfile(PROFILES[key], config?.feishu?.[key], { where: `客户配置 feishu.${key}` });
 }
 
 // 精简视图：脚本多数只关心这几个值，给一个不再需要二次解引用的形状。

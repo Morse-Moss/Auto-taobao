@@ -1,0 +1,24 @@
+{
+  "feishu": {
+    "kcne": {
+      "label": "（示例）客户自己的租户",
+      "host": "your-tenant.feishu.cn",
+      "envFile": "C:/xws-config/.env.feishu.local",
+      "competitorBase": "REPLACE_WITH_COMPETITOR_BASE_TOKEN",
+      "keywordBase": "REPLACE_WITH_KEYWORD_BASE_TOKEN",
+      "writeVerified": false,
+      "tables": {
+        "competitorMain": "REPLACE_WITH_tblID",
+        "skuDetail": "REPLACE_WITH_tblID",
+        "history": "REPLACE_WITH_tblID",
+        "questionMaster": "REPLACE_WITH_tblID"
+      },
+      "dailyReport": {
+        "baseToken": "REPLACE_WITH_DAILY_REPORT_BASE_TOKEN",
+        "sourceTable": "REPLACE_WITH_tblID",
+        "sourceView": "REPLACE_WITH_vewID",
+        "inquiryTable": "REPLACE_WITH_tblID"
+      }
+    }
+  }
+}

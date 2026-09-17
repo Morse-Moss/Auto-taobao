@@ -189,10 +189,11 @@
 | 配置 | 现状 | 换机器时的动作 |
 | --- | --- | --- |
 | 端口 / browser id / label | `runtime/browser-ports.mjs` 唯一来源 ＋ env 覆盖 | 一般不用改 |
-| profile 目录 | 同上 ＋ `PROJECT_BROWSER_PROFILE` | 新机没有 D 盘则要改 |
-| Edge 可执行文件 | env `PROJECT_BROWSER_EXE` | **x64 机器必改**（默认是 x86 路径） |
-| **飞书凭据文件路径** | 写死在 `feishu-targets.mjs` 的 profile 里 | **必须改代码** |
-| **飞书 base / 表 id** | 写死在 `feishu-targets.mjs:45-63` | **换客户必须改代码** |
+| profile 目录 | env `PROJECT_BROWSER_PROFILE`（**两个启动器都认**，2026-09-17 实测） | 新机没有 D 盘则**设这个变量**，不必改代码 |
+| Edge 可执行文件 | env `PROJECT_BROWSER_EXE` | **x64 机器必设**（默认是 x86 路径） |
+| 飞书凭据文件路径 | **已外置**（P0-1, 2026-09-17）：`config/customer.json` 的 `feishu.<profile>.envFile` | **改配置，不改代码** |
+| 飞书 base / 表 id | **已外置**（P0-1, 2026-09-17）：同上 `competitorBase` / `keywordBase` / `tables` / `dailyReport` | **改配置，不改代码** |
+| 客户配置本身 | `config/customer.json`（**不进版本库**），路径可用 `SYCM_CUSTOMER_CONFIG` 覆盖；模板 `config/customer.example.json`，字段说明 `config/README.md` | 复制模板，改 4 项 |
 | 店铺名 | 从 xlsx 读出来（`checks.shopName`），回填靠 `--source-shop` / `--shop` 参数 | 不用改代码，但要知道填什么 |
 | Python 解释器 | `SYCM_PYTHON` / `XWS_PYTHON` | 客户机上 `py` 不是 3.x 时要设 |
 | 排期（什么时候跑） | `runtime/round-schedule.json`（配置文件，**不是触发器**；宿主只负责叫醒） | 按客户作息改这一份 |
@@ -214,15 +215,29 @@
 
 | 套件 | 结果 | 文件数 | 备注 |
 | --- | --- | --- | --- |
-| `node scripts/run-test-suite.mjs runtime --concurrency=1` | **535 通过 / 0 失败** | 70 | 发现规则**非递归** |
-| `node scripts/run-test-suite.mjs skills --concurrency=1` | **609 通过 / 0 失败** | 51 | 含约 17 分钟的 `xws-export-market-analysis` prepare-flow |
+| `node scripts/run-test-suite.mjs runtime --concurrency=1` | **546 通过 / 0 失败** | 73 | 发现规则**非递归** |
+| `node scripts/run-test-suite.mjs skills --concurrency=1` | **609 通过 / 0 失败** | 51（实跑；发现 53） | 含约 17 分钟的 `xws-export-market-analysis` prepare-flow |
 | `node --test runtime/sop-runtime/*.test.mjs` | **355 通过 / 0 失败** | 26 | **不在上面两套里**，必须单独跑 |
 
-合计 **1499 条用例全绿**。但注意：**这三套的运行时长差一个数量级**——runtime 与 sop-runtime 各几秒，skills 一套 20 分钟（`xws-export-market-analysis` 的 `prepare-flow` 一个文件就占了大头，它拉起真实 CLI 子进程并有 retry backoff）。所以「快速回归」与「完整回归」是两件事，交付时不要在客户机上默认跑全套。
+合计 **1510** 条用例全绿。但注意：**这三套的运行时长差一个数量级**——runtime 与 sop-runtime 各几秒，skills 一套 20 分钟（`xws-export-market-analysis` 的 `prepare-flow` 一个文件就占了大头，它拉起真实 CLI 子进程并有 retry backoff）。所以「快速回归」与「完整回归」是两件事，交付时不要在客户机上默认跑全套。
+
+**「实跑 51」与「发现 53」不是矛盾**（原先这里只写了 51，没写口径，容易被读成另一个数）：
+`discoverSkillTests()` 发现 53 个，其中 2 个被 `run-test-suite.mjs` 的 `EXCLUSIONS` 划给 `integration` 套件
+（`skills/sycm-to-feishu-base/tests/paste-endpoint.test.mjs`、`skills/xws-export-market-analysis/tests/postgres-state.test.mjs`）。51 是离线套件的实跑数，53 是发现数。
 
 #### 4.4.1 关于 skills 那 609 条
 
-`skills` 套件是**唯一会跑到 Python 测试**的一层（`run-test-suite.mjs skills` 的发现规则覆盖 `skills/<name>/{tests,scripts}`，包含 `*_test.py`）。这意味着它对外部环境比另外两套敏感：Python 缺失或 openpyxl 版本不符时，这一套会红，而 runtime / sop-runtime 照旧全绿。
+`skills` 套件对外部环境比另外两套敏感 —— 但**原因不是「它会跑 Python 测试文件」**（2026-09-17 更正）。
+
+原先这里写的是「发现规则覆盖 `skills/<name>/{tests,scripts}`，包含 `*_test.py`」。实测不成立：
+`scripts/test-suite-discovery.mjs` 的 `listTestFiles()` **只收 `.test.mjs`**。skills 下确实有 1 个
+Python 测试（`skills/xws-to-feishu-base/tests/extract_xws_xlsx_test.py`），但它**不被任何套件认领**，
+只能按 `SKILL.md` / README 里那条 `py -3 -m unittest …` 手工跑。
+
+真实的敏感来源是：`skills/xws-export-market-analysis` 的 **4 个 `.test.mjs`** 会 spawn `py` / `python3`
+子进程（可用 `XWS_PYTHON` 覆盖解释器路径）。所以「Python 缺失或 openpyxl 版本不符时这一套会红」这个
+**结论是对的，理由要换成这条** —— 部署时的动作也跟着不同：装 Python 不是为了「让套件能发现 `.py` 测试」，
+而是因为这些测试与生产脚本真的会调用它。
 
 日报链单跑（用来快速验证这条链的改动）：
 `node scripts/run-test-suite.mjs skills --skill=sycm-alimama-daily-report` ⇒ **70/70**。
@@ -230,15 +245,21 @@
 
 `--concurrency=1` 不是可选项：`xws-export-market-analysis` 的用例会拉起真实 CLI 打假代理并含 stall/deadline 计时断言，机器有负载时会假失败。
 
-套件运行器的发现是**非递归**的（runtime 只发现 `runtime/*.test.mjs`，skills 只发现 `skills/*/{tests,scripts}`）。`runtime/sop-runtime/` 下 24 个测试文件不在 `runtime` 那一套里——**漏跑一次就是 355 条用例无声地不进回归**。这是部署与 CI 都要知道的坑。
+套件运行器的发现是**非递归**的（runtime 只发现 `runtime/*.test.mjs`，skills 只发现 `skills/*/{tests,scripts}`）。`runtime/sop-runtime/` 下 **26** 个测试文件不在 `runtime` 那一套里——**漏跑一次就是 355 条用例无声地不进回归**。这是部署与 CI 都要知道的坑。
 
 CI 现状（`.github/workflows/ci.yml`）：`windows-latest`，三层（L0 语法 / L1 离线 self-test / L2 单测），按 skill 分矩阵。**只覆盖离线层**，真实浏览器/飞书/生产库按设计不进 CI。
 
-**CI 矩阵漏了三个 skill。** 实测 10 个 skill 里有 **8 个**自带测试（`huitun 5 / daily-report 6 / search-rank 4 / sycm-to-feishu 10 / market-analysis 12 / faq-operator 1 / sku-collection 1 / xws-to-feishu 14`），而矩阵只列了 5 个：xws-export-market-analysis、huitun-to-feishu-keyword-heat、sycm-export-search-rank、sycm-to-feishu-base、xws-to-feishu-base。
+**CI 矩阵曾漏了三个 skill —— 2026-09-17 已修（M2）。**
 
-**没进矩阵的**：`sycm-alimama-daily-report`（6 个测试文件）、`xws-faq-operator`（1）、`xws-sku-collection`（1）——共 **8 个测试文件在 CI 上是零覆盖**，其中日报链单跑是 70/70。
+当时的实测：10 个 skill 里有 **8 个**自带测试（`huitun 5 / daily-report 6 / search-rank 4 / sycm-to-feishu 10 / market-analysis 12 / faq-operator 1 / sku-collection 1 / xws-to-feishu 14`，合计 53 个文件），
+而矩阵只列了 5 个，于是 `sycm-alimama-daily-report`（6 个测试文件）、`xws-faq-operator`（1）、`xws-sku-collection`（1）
+—— 共 **8 个测试文件在 CI 上零覆盖**（其中日报链单跑是 70/70）。
 
-矩阵那条注释「The FAQ/question/sku skills keep their tests in runtime/*.test.mjs, which fast-gate already covers」对 FAQ 与 SKU 两个 skill **不成立**：它们确实在自己的 `tests/` 目录下留着测试文件，`fast-gate` 不会跑到。这是注释与事实的偏差，不是设计。
+修法是两步：矩阵补齐到 8 个 skill；并新增 `runtime/ci-matrix-coverage.test.mjs` 把这件事守住
+—— 判据从 `discoverSkillTests()` 推导，不抄第二份名单，突变验证过（删掉矩阵里任一条目 → 守卫红并点名那个 skill）。
+
+那条与事实不符的注释「The FAQ/question/sku skills keep their tests in runtime/*.test.mjs, which fast-gate already covers」
+也一并删掉了：FAQ 与 SKU 确实在自己的 `tests/` 目录下留着测试文件，`fast-gate` 不会跑到。那是注释与事实的偏差，不是设计。
 
 ## 5. 风险与待完善项
 
@@ -284,16 +305,18 @@ CI 现状（`.github/workflows/ci.yml`）：`windows-latest`，三层（L0 语�
 | R-8 | **Python/openpyxl 缺失的失败点很靠后** | 解析发生在干跑那一阶段，前面采集都成功了才炸；体检要前置检查 |
 | R-9 | **审计库可有可无，但不是故障** | 没配库时会打印「未写入（不影响本次结论）」，这是设计；要写进交付说明 |
 | R-10 | **证据目录写在安装目录里** | 每个目标日一代（`evidence/daily-report-<日期>[-rerunN]/`），跑一年会积累不少；要有归档/清理策略 |
-| R-11 | **`.env.example` 仍以 3456 举例** | 该端口是别的项目的共享代理、本项目明令避开。注释形态躲过了守卫，但对新人是误导（见 §5.4） |
+| R-11 | `.env.example` 曾以 3456 举例 | 该端口是别的项目的共享代理、本项目明令避开。**2026-09-17 已修**（见 §5.4）。顺带更正一条先前的说法：它并不在端口守卫的扫描面内（守卫只收 `.mjs`），所以是「根本没人看着」，而不是「靠注释躲过了守卫」 |
 | R-12 | **中英文路径与安全删除守卫** | 本机对含中文路径的批量删除 fail-closed（`E:\小红书\...`）；部署脚本不要做批量删除 |
 | R-13 | **沙箱端口可见性** | agent 会话只能连「会话前就在监听、或本会话自己起的」端口。换机器时若由外部启动服务，注意这条在本机工具链里的表现 |
 
 ### 5.4 顺手记下的小项（都是「不会炸但会误导人」）
 
-1. `.env.example` 里 `CDP_PROXY_PORT=3456` / `SYCM_PROXY=http://127.0.0.1:3456` 作为示例仍保留（注释掉了，所以没触发守卫）。应改成登记表的值。
-2. `package.json` 声明 `node >=18`，实际需要 22+。
-3. `runtime/INDEX.md` 自述「初步分类……尚未逐一确认生命周期」，且条目数（168）与现状（253）已经对不上。
-4. README §验证 的命令清单与 `scripts/run-test-suite.mjs` 并存，两套入口容易只跑一套。
+**2026-09-17：四条已全部处理完（M0/M2 那两轮）。逐条记下做了什么 —— 结论留在正文里比打勾有用。**
+
+1. `.env.example` 里把 3456（**别的项目**的共享代理）当示例端口，共四处。**已改**：删掉这四处，改成指向唯一来源 `runtime/browser-ports.mjs`，并写明两个浏览器各自的账号归属。
+2. `package.json` 声明 `node >=18`，实际需要 22+。**已改**：`package.json`、`package-lock.json` 顶层 `engines`、README 三处一起改成 `>=22`。
+3. `runtime/INDEX.md` 条目数与现状对不上。**已改**：用脚本实数后写回（顶层跟踪条目 253、顶层文件 597、顶层 `.md` 16），并加了一行提醒「改动本文件时请连数字一起更新」。
+4. README §验证 的命令清单与套件运行器并存。**已处理**：清单保留（它按功能分组，有信息量），但把 26 行硬编码的本机绝对路径 `D:\Retire\sycm-automation\...` 全改成相对仓库根 —— 换机器时那一段原本会整段失效。两套入口的关系在 README 里已写明（逐条入口 vs 全仓回归）。
 
 ## 6. 部署方案
 
@@ -339,7 +362,8 @@ CI 现状（`.github/workflows/ci.yml`）：`windows-latest`，三层（L0 语�
 **阶段 2：配置与凭据**
 
 10. 落凭据文件到目标机的约定目录，内容含 `FEISHU_APP_ID` / `FEISHU_APP_SECRET`。
-    改 `runtime/feishu-targets.mjs` 的 `envFile` 指向实际路径（**这一步必须改代码**）。
+    在 `config/customer.json` 的 `feishu.<profile>.envFile` 里写它的路径 —— **不需要改代码**（P0-1, 2026-09-17）。
+    起手：`copy config\customer.example.json config\customer.json`，字段说明见 `config/README.md`。
     判据：`node -e "import('./runtime/feishu-targets.mjs').then(m=>console.log(m.loadFeishuCredentials('kcne').appId.slice(0,6)))"` 能打出前 6 位。
 11. 核对/登记飞书 base 与表 id（`feishu-targets.mjs` 的 `competitorBase` / `keywordBase` / `tables` / `dailyReport`）。
     验收：读回来的 id 与飞书地址栏**逐字符一致**。沿用同一 base 则跳过。
@@ -348,7 +372,8 @@ CI 现状（`.github/workflows/ci.yml`）：`windows-latest`，三层（L0 语�
 
 **阶段 3：浏览器与代理（常驻）**
 
-13. 改 profile 路径（目标机没有 D 盘时改 `browser-ports.mjs:83-84`），或用 `PROJECT_BROWSER_PROFILE` 覆盖。
+13. 设 `PROJECT_BROWSER_PROFILE` 指向目标机的 profile 目录（**不需要改代码** —— 两个启动器都认这个变量，2026-09-17 实测）。
+    内置默认值是本机的 `D:/Retire/edge-debug-profile` 与 `D:/Retire/edge-daily-report-profile`，目标机没有 D 盘就会指到不存在的地方。
 14. 起**甲**（买家链，仅竞品/FAQ 需要）：
     `PROJECT_BROWSER_EXE=<目标机 msedge> node runtime/start-project-browser.mjs`
     判据：打印 `[browser] READY ... on 9222`；且启动器念的账号要求是「必须是**买家**账号」。
@@ -430,18 +455,23 @@ P2：P2-1 自动更新与回滚（页面改版时唯一出路）；P2-2 远程�
 
 ## 7. 执行顺序与里程碑
 
-| 阶段 | 做什么 | 完成标志 | 前置 |
-| --- | --- | --- | --- |
-| **M0** | 冻结当前基线：记录本次测试结果（runtime 535/0、sop-runtime 355/0、skills 见 §4.4.1）＋ HEAD 记入部署单 | 部署单有可对照的基线数字 | 无 |
-| **M1** | 变体 A 在目标机跑通（工程师旁站，不改代码） | 至少一条链产出可回读的真实结果；环境类风险全部具名 | M0 |
-| **M2** | 顺手项：`.env.example` 改掉 3456、`package.json` engines 改 22、`INDEX.md` 条目数对齐、CI 矩阵补 `sycm-alimama-daily-report` | 四项各自可机械校验 | 无（不与 M1 冲突） |
-| **M3** | P0-1 配置外置 ＋ P0-2 一条命令 | 「迁移」这件事从此不再需要工程师 | M1 |
-| **M4** | P0-3 登录体检 ＋ P0-5 通知 | 最高频故障（登录失效）能自己恢复且会主动叫人 | M3 |
-| **M5** | P0-4 常驻定时 ＋ P0-6 诊断包 ＋ P1-1 界面 | 客户能不看命令行使用 | M4 |
-| **M6** | 边界收敛（技术债 P2：抽 `lib/feishu-client` 把 53 处收敛、解 `skills→runtime` 反向依赖、`runtime/` 生命周期分类） | 反向依赖 ＝ 0；飞书鉴权实现 ＝ 1 | M2 的 CI 门禁真的在跑 |
-| **M7** | 补齐三条能力的真实发布段（B-1） | 各有一份真实 `--commit` 回执 | 外部前置 |
+| 阶段 | 做什么 | 完成标志 | 前置 | 状态（2026-09-17） |
+| --- | --- | --- | --- | --- |
+| **M0** | 冻结当前基线：三套实测 ＋ HEAD 记入部署单 | 部署单有可对照的基线数字 | 无 | **已完成**（`54c93ed` → `docs/ops/DEPLOYMENT-RUNBOOK.md`） |
+| **M1** | 变体 A 在目标机跑通（工程师旁站，不改代码） | 至少一条链产出可回读的真实结果；环境类风险全部具名 | M0 | **未开始 —— 缺目标机**。本机跑通不算数，它证明不了「换机器会怎样」 |
+| **M2** | 顺手项：`.env.example` 改掉 3456、`package.json` engines 改 22、`INDEX.md` 条目数对齐、CI 矩阵补三个 skill | 四项各自可机械校验 | 无（不与 M1 冲突） | **已完成**（`6fbf64f`，额外加了 CI 矩阵守卫） |
+| **M3** | P0-1 配置外置 ＋ P0-2 一条命令 | 「迁移」这件事从此不再需要工程师 | M1 | **P0-1 已完成**（`config/customer.json` ＋ `runtime/customer-config.mjs`）；**P0-2 未做** |
+| **M4** | P0-3 登录体检 ＋ P0-5 通知 | 最高频故障（登录失效）能自己恢复且会主动叫人 | M3 | 未开始 |
+| **M5** | P0-4 常驻定时 ＋ P0-6 诊断包 ＋ P1-1 界面 | 客户能不看命令行使用 | M4 | 未开始 |
+| **M6** | 边界收敛（抽 `lib/feishu-client` 把散落的飞书鉴权收敛掉 —— §5.2 实测 **52 个文件**含 `tenant_access_token`；解 `skills→runtime` 反向依赖 —— 实测 **31 个文件**；`runtime/` 生命周期分类） | 反向依赖 ＝ 0；飞书鉴权实现 ＝ 1 | M2 的 CI 门禁真的在跑 | 未开始（本轮按推荐**不排**） |
+| **M7** | 补齐三条能力的真实发布段（B-1） | 各有一份真实 `--commit` 回执 | 外部前置 | 未开始 |
 
-**M0 与 M2 现在就能做，零业务风险。** M1 是本次最该先做的一步——它把「环境类风险」从纸面变成实测。M6 风险最高（动结构），必须在 M2 之后、且每批 ≤10 文件。
+**与里程碑顺序的一处偏差（如实记）**：M3 的前置写的是「M1」，但 P0-1（配置外置）不依赖目标机，
+而它要解决的正是「到了目标机上必须改代码」这件事，所以先做了。P0-2 留在原处 ——
+它的规格来自 SOP 操作单，等 M1 把手工流程真跑通一次，再固化成一条命令更稳。
+
+**下一步最该做的是 M1** —— 它把「环境类风险」从纸面变成实测。剩下的活里 M6 风险最高（动结构），
+必须在 M2 之后、且每批 ≤10 文件。
 
 ## 8. 待拍板（每项都有推荐默认值，不说就按推荐值）
 

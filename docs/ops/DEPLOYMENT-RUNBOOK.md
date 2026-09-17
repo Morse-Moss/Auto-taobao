@@ -112,7 +112,7 @@ node scripts/run-test-suite.mjs skills --skill=sycm-alimama-daily-report   # →
 
 | 步 | 要什么 | 期望 / 判据 | 目标机实测 |
 | --- | --- | --- | --- |
-| 10 | 凭据落位 | `loadFeishuCredentials('kcne').appId` 能打出前 6 位。**这步目前必须改代码**（`feishu-targets.mjs` 的 `envFile`） | |
+| 10 | 凭据落位 | 在 `config/customer.json` 的 `feishu.<profile>.envFile` 里写目标机的凭据文件路径（字段说明见 `config/README.md`），**不需要改代码**。判据同 §6.1 第 10 步：能打出 appId 前 6 位、能读回 base 与表 id | |
 | 11 | base / 表 id 核对 | 读回来的 id 与飞书地址栏**逐字符一致** | |
 | 12 | 写权限复验 | 幂等写探针 → HTTP 200 / code 0（403 或 91403 ⇒ 停下，去飞书加协作者） | |
 
@@ -120,7 +120,7 @@ node scripts/run-test-suite.mjs skills --skill=sycm-alimama-daily-report   # →
 
 | 步 | 要什么 | 期望 / 判据 | 目标机实测 |
 | --- | --- | --- | --- |
-| 13 | profile 路径 | 目标机无 D 盘时改 `browser-ports.mjs` 的 profile 行，或用环境变量覆盖 | |
+| 13 | profile 路径 | 用 `PROJECT_BROWSER_PROFILE` 指向目标机的 profile 目录，**不必改代码**（内置默认值是本机的 `D:` 盘路径，目标机没有 D 盘就会指空） | |
 | 14 | 起**甲**（买家链） | 打印 `[browser] READY … on 9222` | |
 | 15 | 起**乙**（商家链） | 打印 `READY … on 19022`。**两个启动器进程要一直活着**（父进程退会把浏览器一起带走） | |
 | 16 | 起两个代理 | 3457 `/health` → `connected:true` 且 `browser.id=edge-isolated`；19023 → `edge-daily-report`。**两份都要对** | |
@@ -194,7 +194,7 @@ node scripts/run-test-suite.mjs skills --skill=sycm-alimama-daily-report   # →
 | --- | --- | --- | --- |
 | O-1 | **没有目标机** | **待提供** | M1 必须在客户机/另一台机器上做。本机跑通了不算数 —— 它证明不了「换机器会怎样」 |
 | O-2 | README 的验证命令**硬编码本机绝对路径** | **已修（2026-09-17）** | 原来约 26 行形如 `node "D:\Retire\sycm-automation\..."`，已全部改为相对仓库根书写，M1 现场可直接抄 |
-| O-3 | 「换机器要改代码」的两处 | **未做（P0-1）** | 实测区分：`runtime/feishu-targets.mjs` 的**凭据文件路径**与 **base / 表 id 没有任何 env 覆盖路径**，必须改代码；而浏览器 **profile 目录与 Edge 路径已经支持** `PROJECT_BROWSER_PROFILE` / `PROJECT_BROWSER_EXE`，不需要改代码。另有 6 个 `SKILL.md` 里也留着本机绝对路径（与 O-2 同类，一并归 P0-1） |
+| O-3 | 「换机器要改代码」的两处 | **已修（P0-1，2026-09-17）** | 飞书**凭据文件路径**与 **base / 表 id** 已外置到 `config/customer.json`（模板 `config/customer.example.json`，字段说明 `config/README.md`，不进版本库）。浏览器 **profile 目录与 Edge 路径本来就由** `PROJECT_BROWSER_PROFILE` / `PROJECT_BROWSER_EXE` 覆盖，不需要改代码。唯一残留：6 个 `SKILL.md` 的示例命令仍写着本机绝对路径（不影响执行，只影响照抄） |
 | O-4 | 一条命令跑完全链 | **未做（P0-2）** | `run-daily-report-chain.mjs` 就绪前，步骤 20 要手工按 SOP §10 操作单走（八步顺序 + 中间等待） |
 | O-5 | 全局 skill 目录联接 | 见阶段 1 注 | 26 步之外，本单补充 |
 

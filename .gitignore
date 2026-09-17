@@ -95,6 +95,12 @@ tmp-*-xlsx/
 /*-checkpoint.json
 runtime/_*.txt
 
+# 客户配置**不进版本库**：里面是这一台机器的凭据文件路径与它那个租户的 base/表 id，
+# 属于部署产物，跟 .env 同类 —— 跟着客户机器走，不跟着 git 走。
+# 把 A 客户的配置提交上去，就会被 B 客户 checkout 到，然后「跑的是谁的租户」变成靠记忆判断。
+# 模板 config/customer.example.json **要提交**（客户照它抄）。
+config/customer.json
+
 # Project-local agent memory (not part of the deliverable)
 .workbuddy/
 runtime/supervisor-agent/postmortems/
