@@ -21,6 +21,24 @@
 //   profile 目录与 Edge 路径**不在这里**。它们已经由
 //   `PROJECT_BROWSER_PROFILE` / `PROJECT_BROWSER_EXE` 覆盖（见 runtime/browser-ports.mjs
 //   与两个 start-*-browser.mjs）。把已经能配的东西再包一层，只会多一条会漂移的路径。
+//   例外：多店铺需要**每店一个 profile**，而那两个环境变量一次只能表达一个。
+//   `stores[].profileDir` 就是为这条预留的（按店铺逐个读取，而不是全局一个）。
+//
+// ---------------------------------------------------------------------------
+// `stores` 段（2026-09-17 加）：多店铺的「跨平台店名映射」
+// ---------------------------------------------------------------------------
+// 它**不是**店铺清单的真相源。口径由用户给定：「飞书多维表有多少店铺就有多少」——
+// 清单来自飞书，这里只回答「同一家店，在三个地方分别叫什么、用哪个 storeId」：
+//   内部 storeId（进业务幂等键）↔ 飞书「店铺名称」↔ 生意参谋显示名 ↔ 阿里妈妈显示名
+// 为什么必须有它：日报的查重键是「同一天 + 同店铺」，而「店铺」是个字符串，
+// 它在两个平台上的显示并不一致（实测：阿里妈妈显示「盖文旗舰店:阿彦 ID 2995200080」，
+// 生意参谋显示「盖文旗舰店 主店」，飞书底单里的「店铺」还是派生 Lookup，读不到）。
+// 没有对照表，13 家店迟早会写成 13 个不同的名字，或者两家撞成一行。
+//
+// **诚实标注：这一段目前没有读方。** 排期生成器（按店铺拆多条排期）还没做，
+// 所以此刻它只被校验、不被使用。写在这里是因为它属于「配置外置」这件事的同一批，
+// 且现在只有一家店、映射表只有一行——等 13 家都跑起来再补，就得逐店去三处比对显示名。
+// 不给它造一个临时的打印脚本：本项目的规矩是「建了没接的东西要显式说出来」，而不是先造个壳假装接上了。
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -68,7 +86,7 @@ export function loadCustomerConfig({ env = process.env, read = readFileSync, roo
     throw new Error(`客户配置 ${file} 的顶层必须是 JSON 对象`);
   }
 
-  const KNOWN_SECTIONS = ['feishu'];
+  const KNOWN_SECTIONS = ['feishu', 'stores'];
   for (const key of Object.keys(parsed)) {
     if (!KNOWN_SECTIONS.includes(key)) {
       throw new Error(
@@ -76,7 +94,74 @@ export function loadCustomerConfig({ env = process.env, read = readFileSync, roo
       );
     }
   }
+  validateStores(parsed, { file });
   return { present: true, file, config: parsed };
+}
+
+// 店铺标识的字符集：只允许小写字母/数字/短横线，且以字母或数字开头。
+// 为什么必须限：storeId 会被拼进业务幂等键，而键的模板字符集是 `[A-Za-z0-9._~{}/-]`
+//（见 runtime/sop-runtime/round-schedule.mjs 的模板校验）。
+// 写成中文店名会渲染出一个带中文的键——模板校验只看模板、不看渲染结果，**它不会拦**，
+// 所以这条字符集限制只能落在「id 是在哪里被声明的」这一层。
+export const STORE_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+
+const STORE_REQUIRED_FIELDS = Object.freeze(['id', 'feishuName']);
+const STORE_OPTIONAL_FIELDS = Object.freeze(['sycmDisplay', 'alimamaDisplay', 'profileDir', 'credentialRef']);
+
+// 校验 stores 段。逐条 fail-closed：重名、未知字段、空值、非法 id 一律报错——
+// 这里的每一条都对应一个「不报错就会静默写错数据」的场景（见文件头 stores 段说明）。
+export function validateStores(config, { file = '客户配置' } = {}) {
+  const section = config?.stores;
+  if (section === undefined) return;
+  if (!Array.isArray(section)) throw new Error(`${file} 的 stores 段必须是数组`);
+  if (section.length === 0) {
+    throw new Error(`${file} 的 stores 段是空数组 —— 要么整段不写（＝还没配店铺），要么至少写一家`);
+  }
+
+  const allowed = [...STORE_REQUIRED_FIELDS, ...STORE_OPTIONAL_FIELDS];
+  const seenIds = new Map();
+  const seenNames = new Map();
+
+  section.forEach((entry, index) => {
+    const where = `${file} 的 stores[${index}]`;
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new Error(`${where} 必须是对象`);
+    }
+    for (const key of Object.keys(entry)) {
+      if (!allowed.includes(key)) {
+        throw new Error(`${where} 里有未知字段 "${key}"（可用：${allowed.join(', ')}）`);
+      }
+    }
+    for (const field of STORE_REQUIRED_FIELDS) {
+      if (typeof entry[field] !== 'string' || entry[field].trim() === '') {
+        throw new Error(`${where} 缺 ${field}（必须是非空字符串）`);
+      }
+    }
+    if (!STORE_ID_PATTERN.test(entry.id)) {
+      throw new Error(
+        `${where} 的 id ${JSON.stringify(entry.id)} 只能用小写字母/数字/短横线，且以字母或数字开头`
+          + ' —— 它会被拼进业务幂等键，键里不允许出现这几个字符之外的东西',
+      );
+    }
+    for (const field of STORE_OPTIONAL_FIELDS) {
+      const value = entry[field];
+      if (value === undefined) continue;
+      if (typeof value !== 'string' || value.trim() === '') {
+        throw new Error(`${where} 的 ${field} 若写了就必须是非空字符串，收到 ${JSON.stringify(value)}`);
+      }
+    }
+    if (seenIds.has(entry.id)) {
+      throw new Error(`${where} 的 id "${entry.id}" 与 stores[${seenIds.get(entry.id)}] 重复`);
+    }
+    seenIds.set(entry.id, index);
+    if (seenNames.has(entry.feishuName)) {
+      throw new Error(
+        `${where} 的 feishuName "${entry.feishuName}" 与 stores[${seenNames.get(entry.feishuName)}] 重复`
+          + ' —— 飞书店名就是查重键，重名会让两家的数据撞进同一行',
+      );
+    }
+    seenNames.set(entry.feishuName, index);
+  });
 }
 
 // 叶子覆盖：类型必须与内置值一致。

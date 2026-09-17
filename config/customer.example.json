@@ -1,4 +1,14 @@
 {
+  "stores": [
+    {
+      "id": "example-shop",
+      "feishuName": "（示例）改成飞书表里的店铺名称",
+      "sycmDisplay": "（示例）生意参谋里的显示名",
+      "alimamaDisplay": "（示例）阿里妈妈里的显示名",
+      "profileDir": "C:/xws-config/edge-profiles/example-shop",
+      "credentialRef": "SYCM_CRED_EXAMPLE_SHOP"
+    }
+  ],
   "feishu": {
     "kcne": {
       "label": "（示例）客户自己的租户",

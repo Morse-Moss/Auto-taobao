@@ -37,7 +37,21 @@ export const REQUIRED_IDENTITY_FIELDS = Object.freeze([
   'tenantId', 'storeId', 'platform', 'accountId', 'browserProfileId', 'contractVersion',
 ]);
 
-const DEFAULT_BUSINESS_KEY_TEMPLATE = '{capability}/{windowKey}';
+// 默认业务幂等键模板。
+//
+// **为什么默认值里必须有 storeId（2026-09-17 改，原先只有 `{capability}/{windowKey}`）**：
+//   同一个能力会被多家店铺各跑一遍（运营日报 13 家店，每店一条排期）。缺了店铺维度，
+//   13 条排期会算出**同一个业务键**；而业务键同时是「该不该跑」的判定、告警去重与恢复的锚
+//   （`openAlert.businessKey`）以及收据的主键 —— 结果是 13 家在同一个键上互相覆盖、互相压制。
+//   它不报错、不失败，只是安静地少干活，正是无人值守最怕的形态（与「到期判据单调为真」同族）。
+//
+// 为什么不只是「加一条校验」：默认值即目标（坑 35）。默认模板长什么样，别人就照抄什么样；
+// 排期里出现第二条店铺时，默认形状本身就应该是对的。校验是第二道闸（见 validateSchedule）。
+//
+// 为什么现在改是安全的：`runtime/round-schedule.json` 出厂 `enabled:false`，
+//   且「还没有在任何一台机器上接上叫醒者」（UNATTENDED-AGENT-RUNTIME-PLAN.md §11.2 末尾），
+//   即没有任何一个已产出的生产业务键会因这次改名而对不上。
+const DEFAULT_BUSINESS_KEY_TEMPLATE = '{capability}/{storeId}/{windowKey}';
 
 const asText = (value) => (value === undefined || value === null ? '' : String(value).trim());
 
@@ -237,6 +251,48 @@ export function validateSchedule(schedule) {
     }
     if (entry?.commit !== undefined && typeof entry.commit !== 'boolean') errors.push(`${where}: commit must be a boolean when present`);
   });
+
+  // 第二道闸：**同一个能力排了多条时，业务键必须能区分它们**（2026-09-17 补）。
+  //
+  // 判据选 storeId 而不是「两两算出键不相等」：键里随周期变化的那部分会掩盖冲突
+  //（只有同一个窗口下才是真的撞），而店铺维度是唯一稳定、且语义正确的区分项。
+  // 这条闸对应的真实场景就是「同一能力 × 多家店铺」：漏了它，配置能通过校验、能跑起来、
+  // 能报成功，只是安静地少跑 12 家。**当前默认模板已经带 storeId，这道闸是防手写模板绕过它。**
+  const byCapability = new Map();
+  raw.rounds.forEach((entry, index) => {
+    const capability = asText(entry?.capability);
+    if (!capability) return; // 上面已经报过 capability is required
+    if (!byCapability.has(capability)) byCapability.set(capability, []);
+    byCapability.get(capability).push({ index, entry });
+  });
+  for (const [capability, group] of byCapability) {
+    if (group.length < 2) continue;
+    const label = (item) => `rounds[${item.index}]${asText(item.entry?.name) ? `(${item.entry.name})` : ''}`;
+    const names = group.map((item) => asText(item.entry?.name) || label(item)).join(', ');
+    const seenStores = new Map();
+    for (const item of group) {
+      const templateLine = item.entry?.businessKeyTemplate;
+      const template = asText(templateLine) || DEFAULT_BUSINESS_KEY_TEMPLATE;
+      if (!/\{storeId\}/u.test(template)) {
+        errors.push(
+          `${label(item)}: capability "${capability}" is scheduled ${group.length} times (${names}) `
+            + 'but businessKeyTemplate has no {storeId} —— these rounds would share one business key '
+            + 'and silently suppress each other',
+        );
+      }
+      // 同一能力下两家店写成同一个 storeId，等价于没写店铺维度。
+      const storeId = asText(item.entry?.identity?.storeId);
+      if (!storeId) continue; // 上面已经报过 identity.storeId is required
+      if (seenStores.has(storeId)) {
+        errors.push(
+          `${label(item)}: capability "${capability}" already has a round for storeId "${storeId}" `
+            + `(${label(seenStores.get(storeId))}) —— two rounds for one store still collide on the business key`,
+        );
+      } else {
+        seenStores.set(storeId, item);
+      }
+    }
+  }
   return { ok: errors.length === 0, errors };
 }
 

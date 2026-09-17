@@ -173,10 +173,73 @@ test('a disabled round still reports its window and next trigger, but is never d
 test('the derived business key changes with the window, so later weeks really do run', () => {
   const week1 = evaluateSchedule(entry(), at('2026-09-14T09:00:00+08:00'));
   const week2 = evaluateSchedule(entry(), at('2026-09-21T09:00:00+08:00'));
-  assert.equal(week1.businessKey, 'sycm.feishu.weekly/2026-09-06~2026-09-12');
-  assert.equal(week2.businessKey, 'sycm.feishu.weekly/2026-09-13~2026-09-19');
+  assert.equal(week1.businessKey, 'sycm.feishu.weekly/bathtub-industry/2026-09-06~2026-09-12');
+  assert.equal(week2.businessKey, 'sycm.feishu.weekly/bathtub-industry/2026-09-13~2026-09-19');
   assert.notEqual(week1.businessKey, week2.businessKey);
   assert.equal(renderBusinessKey(entry({ businessKeyTemplate: 'r/{name}/{periodStart}/{storeId}' }), week1), 'r/weekly-competitor/2026-09-06/bathtub-industry');
+});
+
+// ── 多店铺：同一能力 × 多个 storeId（2026-09-17 补）──────────────────────────
+//
+// 背景：运营日报一共 13 家店，每店一条排期、跑同一个能力。
+// 缺了店铺维度，13 条会算出**同一个业务键** → 在同一把键上互相覆盖、互相压制，
+// 表现是「配置合法、跑得起来、报成功，只是安静地少跑 12 家」。
+// 这一组同时钉两件事：默认模板的形状，以及「手写模板绕过默认值」时那道校验闸。
+
+test('the default business key carries the store, so one capability can run for many shops', () => {
+  const first = evaluateSchedule(entry(), at('2026-09-14T09:00:00+08:00'));
+  assert.equal(first.businessKey, 'sycm.feishu.weekly/bathtub-industry/2026-09-06~2026-09-12');
+
+  const second = evaluateSchedule(
+    entry({ name: 'weekly-shop-2', identity: { ...BASE_IDENTITY, storeId: 'bathtub-flagship' } }),
+    at('2026-09-14T09:00:00+08:00'),
+  );
+  assert.notEqual(second.businessKey, first.businessKey);
+  assert.equal(second.businessKey, 'sycm.feishu.weekly/bathtub-flagship/2026-09-06~2026-09-12');
+});
+
+test('多家店铺共用同一个能力是合法的：三条排期三个键，一个都不许被压掉', () => {
+  const schedule = scheduleOf([
+    entry(),
+    entry({ name: 'weekly-shop-2', identity: { ...BASE_IDENTITY, storeId: 'bathtub-flagship' } }),
+    entry({ name: 'weekly-shop-3', identity: { ...BASE_IDENTITY, storeId: 'bathtub-tmall' } }),
+  ]);
+  const validation = validateSchedule(schedule);
+  assert.equal(validation.ok, true, validation.errors.join('\n'));
+
+  const keys = planSchedule(schedule, at('2026-09-15T12:00:00+08:00')).rows.map((row) => row.businessKey);
+  assert.equal(keys.length, 3);
+  assert.equal(new Set(keys).size, 3);
+});
+
+test('手写模板漏掉 {storeId} 而同一能力排了多条 → 拒绝开跑，并点名是哪几条', () => {
+  const schedule = scheduleOf([
+    entry({ businessKeyTemplate: '{capability}/{windowKey}' }),
+    entry({
+      name: 'weekly-shop-2',
+      businessKeyTemplate: '{capability}/{windowKey}',
+      identity: { ...BASE_IDENTITY, storeId: 'bathtub-flagship' },
+    }),
+  ]);
+  const validation = validateSchedule(schedule);
+  assert.equal(validation.ok, false);
+  const joined = validation.errors.join('\n');
+  assert.match(joined, /has no \{storeId\}/);
+  assert.match(joined, /weekly-competitor/);
+  assert.match(joined, /weekly-shop-2/);
+});
+
+test('同一能力下两家店写成同一个 storeId → 拒绝（键照样会撞）', () => {
+  const validation = validateSchedule(scheduleOf([entry(), entry({ name: 'weekly-shop-2' })]));
+  assert.equal(validation.ok, false);
+  assert.match(validation.errors.join('\n'), /already has a round for storeId "bathtub-industry"/);
+});
+
+test('只有一条排期时，不带 {storeId} 的自定义模板仍然接受（不误伤既有配置）', () => {
+  const validation = validateSchedule(
+    scheduleOf([entry({ businessKeyTemplate: 'r/{capability}/{windowKey}' })]),
+  );
+  assert.equal(validation.ok, true, validation.errors.join('\n'));
 });
 
 test('the human-readable description says when and which period', () => {
@@ -246,10 +309,16 @@ test('the shipped config file is valid and its period matches the real SOP week'
 
 test('a tick runs only the due rounds and records the waiting ones', async () => {
   const fired = [];
+  // 三条排期跑同一个能力 ⇒ 必须分属三家店（一家店一个 storeId）。
+  // 这不是为了迁就校验：多店铺就是本仓库的原定路线，同一能力下两条排期**只能**靠 storeId 区分。
   const schedule = scheduleOf([
     entry({ name: 'due-one' }),
-    entry({ name: 'waiting-one', when: { kind: 'weekly', weekday: 'FR', at: '09:00' } }),
-    entry({ name: 'off-one', enabled: false }),
+    entry({
+      name: 'waiting-one',
+      when: { kind: 'weekly', weekday: 'FR', at: '09:00' },
+      identity: { ...BASE_IDENTITY, storeId: 'shop-fr' },
+    }),
+    entry({ name: 'off-one', enabled: false, identity: { ...BASE_IDENTITY, storeId: 'shop-off' } }),
   ]);
   const results = await tickRounds({
     schedule,
@@ -283,7 +352,11 @@ test('the scheduler itself does not dedupe: the same due round is offered every 
     runRoundOnce: async (item, decision) => { fired.push(decision.businessKey); return {}; },
   });
   assert.equal(ticks, 2); // 3 ticks = 跑 3 次 + 睡眠 2 次
-  assert.deepEqual(fired, ['sycm.feishu.weekly/2026-09-06~2026-09-12', 'sycm.feishu.weekly/2026-09-06~2026-09-12', 'sycm.feishu.weekly/2026-09-06~2026-09-12']);
+  assert.deepEqual(fired, [
+    'sycm.feishu.weekly/bathtub-industry/2026-09-06~2026-09-12',
+    'sycm.feishu.weekly/bathtub-industry/2026-09-06~2026-09-12',
+    'sycm.feishu.weekly/bathtub-industry/2026-09-06~2026-09-12',
+  ]);
   assert.equal(new Set(fired).size, 1); // 同一周期同一个键 → 下游靠它去重
 });
 
@@ -304,12 +377,18 @@ test('the serve loop wakes on the configured interval and reports each tick', as
 });
 
 test('the plan lists every round with its next trigger and derived key', () => {
-  const plan = planSchedule(scheduleOf([entry(), entry({ name: 'off', enabled: false })]), at('2026-09-15T12:00:00+08:00'));
+  const plan = planSchedule(
+    scheduleOf([
+      entry(),
+      entry({ name: 'off', enabled: false, identity: { ...BASE_IDENTITY, storeId: 'shop-off' } }),
+    ]),
+    at('2026-09-15T12:00:00+08:00'),
+  );
   assert.equal(plan.ok, true);
   assert.equal(plan.rows.length, 2);
   assert.equal(plan.rows[0].due, false); // 周一上午 9:00 已过、下一次是下周一
   assert.equal(dateKey(new Date(plan.rows[0].nextTriggerAt)), '2026-09-21');
-  assert.equal(plan.rows[0].businessKey, 'sycm.feishu.weekly/2026-09-06~2026-09-12');
+  assert.equal(plan.rows[0].businessKey, 'sycm.feishu.weekly/bathtub-industry/2026-09-06~2026-09-12');
 
   const invalid = planSchedule(scheduleOf([entry({ capability: null })]), Date.now());
   assert.equal(invalid.ok, false);

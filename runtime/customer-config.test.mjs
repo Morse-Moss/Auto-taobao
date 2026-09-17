@@ -2,17 +2,19 @@
 // runtime/feishu-targets.mjs 被 31 个文件反向 import，默认值漂移会让生产静默变样。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync, writeFileSync } from 'node:fs';
+import { rmSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 import {
   CONFIG_PATH_ENV,
   DEFAULT_CONFIG_RELATIVE_PATH,
+  STORE_ID_PATTERN,
   configFilePath,
   loadCustomerConfig,
   overlayProfile,
   validateFeishuOverrides,
+  validateStores,
 } from './customer-config.mjs';
 
 import {
@@ -163,4 +165,74 @@ test('配置文件在、内容错 ⇒ 访问时立刻抛错（而不是等某条
     resetCustomerConfigCache();
     rmSync(file, { force: true });
   }
+});
+
+// ── stores 段：多店铺的跨平台店名映射（2026-09-17 加）─────────────────────────
+//
+// 这一段没有「能生效」可测（还没有读方），所以这里测的全部是**拒绝**：
+// 每一类错误都对应一个「不报错就会静默写错数据」的场景。
+// 尤其是重名——飞书店名就是查重键，两家同名会让数据撞进同一行。
+
+const STORE = (overrides = {}) => ({
+  id: 'bathtub-flagship',
+  feishuName: '盖文旗舰店',
+  sycmDisplay: '盖文旗舰店 主店',
+  alimamaDisplay: '盖文旗舰店:阿彦',
+  profileDir: 'D:/Retire/edge-profiles/bathtub-flagship',
+  ...overrides,
+});
+
+test('stores 段：只写 id + feishuName 就够，可选字段可省', () => {
+  assert.doesNotThrow(() => validateStores({ stores: [{ id: 'shop-a', feishuName: 'A 店' }] }));
+  assert.doesNotThrow(() => validateStores({ stores: [STORE()] }));
+  assert.doesNotThrow(() => validateStores({}), '整段不写＝还没配店铺，不是错误');
+});
+
+test('stores 段：形状不对就报错（不是数组 / 空数组 / 元素不是对象）', () => {
+  assert.throws(() => validateStores({ stores: {} }), /stores 段必须是数组/u);
+  assert.throws(() => validateStores({ stores: [] }), /空数组/u);
+  assert.throws(() => validateStores({ stores: ['shop-a'] }), /stores\[0\] 必须是对象/u);
+  assert.throws(() => validateStores({ stores: [null] }), /stores\[0\] 必须是对象/u);
+});
+
+test('stores 段：缺必填、字段拼错、可选项写空串，都报错', () => {
+  assert.throws(() => validateStores({ stores: [{ id: 'shop-a' }] }), /缺 feishuName/u);
+  assert.throws(() => validateStores({ stores: [{ feishuName: 'A 店' }] }), /缺 id/u);
+  assert.throws(() => validateStores({ stores: [STORE({ feishuName: '   ' })] }), /缺 feishuName/u);
+  assert.throws(() => validateStores({ stores: [STORE({ feishu_nam: 'A 店' })] }), /未知字段 "feishu_nam"/u);
+  assert.throws(() => validateStores({ stores: [STORE({ sycmDisplay: '' })] }), /sycmDisplay 若写了就必须是非空字符串/u);
+});
+
+// storeId 会被拼进业务幂等键，而键的字符集是 [A-Za-z0-9._~{}/-]。
+// 模板校验只看模板、不看渲染结果 ⇒ 中文或大写的 id 拦不住，所以这条必须落在声明处。
+test('stores 段：id 只能用「小写字母/数字/短横线」，因为它是幂等键的一段', () => {
+  assert.equal(STORE_ID_PATTERN.test('bathtub-flagship'), true);
+  assert.equal(STORE_ID_PATTERN.test('shop2'), true);
+
+  assert.throws(() => validateStores({ stores: [STORE({ id: '盖文旗舰店' })] }), /只能用小写字母\/数字\/短横线/u);
+  assert.throws(() => validateStores({ stores: [STORE({ id: 'Bathtub_Flagship' })] }), /只能用小写字母\/数字\/短横线/u);
+  assert.throws(() => validateStores({ stores: [STORE({ id: '-leading' })] }), /只能用小写字母\/数字\/短横线/u);
+});
+
+test('stores 段：重名必须报错 —— 飞书店名就是查重键，同名会让两家撞进同一行', () => {
+  const duplicated = { stores: [STORE(), STORE({ id: 'shop-b' })] };
+  assert.throws(() => validateStores(duplicated), /feishuName "盖文旗舰店" 与 stores\[0\] 重复/u);
+
+  const sameId = { stores: [STORE(), STORE({ feishuName: '另一家店' })] };
+  assert.throws(() => validateStores(sameId), /id "bathtub-flagship" 与 stores\[0\] 重复/u);
+});
+
+// 模板文件是交付物：客户是照着它改的。它自己要是一份非法配置，
+// 客户第一步就撞墙（而「copy 之后报错」看起来像软件坏了，不像模板写错了）。
+test('模板 config/customer.example.json 自己必须是合法配置', () => {
+  const file = path.resolve(import.meta.dirname, '..', 'config', 'customer.example.json');
+  const text = readFileSync(file, 'utf8');
+  const result = loadCustomerConfig({ env: {}, read: () => text });
+  assert.equal(result.present, true);
+  assert.equal(Array.isArray(result.config.stores), true);
+  assert.equal(result.config.stores.length > 0, true);
+  for (const store of result.config.stores) {
+    assert.match(store.id, STORE_ID_PATTERN);
+  }
+  assert.doesNotThrow(() => validateFeishuOverrides(result.config, { knownProfiles: Object.keys(PROFILES) }));
 });
