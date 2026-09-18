@@ -14,6 +14,7 @@ import {
   BROWSER_PROFILES,
   PROJECT_PORTS,
   ROUTES,
+  SHOP_BROWSERS,
 } from './browser-ports.mjs';
 import {
   HEALTH_CODES,
@@ -300,6 +301,35 @@ test('探针自己抛错 ⇒ 不停线（体检崩了不等于环境坏了）', 
 
 test('浏览器键写错在**创建时**就抛，不留到体检跑起来才变成「体检自己崩了」', () => {
   assert.throws(() => createPlatformHealthCheck({ browserKey: 'nope' }), /unknown browser key/u);
+});
+
+test('浏览器键也认**店铺实例**（运营叫法）：不认它们，体检只覆盖推送那台，采集那几台失明', async () => {
+  const shop = SHOP_BROWSERS['里可林淘宝'];
+  const seen = {};
+  const health = await createPlatformHealthCheck({
+    browserKey: '里可林淘宝',
+    expectedPages: [{ name: '生意参谋工作页', urlFragment: 'sycm.taobao.com' }],
+    inspectPortImpl: async (port) => { seen.browserPort = port; return { status: 'occupied', profile: shop.profile }; },
+    readTargetsImpl: async (url) => { seen.proxyUrl = url; return []; },
+    probeTcpImpl: async () => true,
+  })({ now: Date.now() });
+
+  // 端口与代理都取自**这一家店那一行**，不是日报链的 19022/19023。
+  assert.equal(seen.browserPort, shop.browserPort);
+  assert.equal(seen.proxyUrl, `http://127.0.0.1:${shop.proxyPort}`);
+  // profile 期望值同样取自店铺那一行 ⇒ 对得上就不产生 finding（错的那一侧由下一条用例守）。
+  assert.equal(health.findings.some((finding) => finding.code === HEALTH_CODES.BROWSER_PROFILE_FOREIGN), false);
+  // 页面清单非空而页面为 0 ⇒ 这一支真的在数页面（不是「给了清单也不检查」）。
+  assert.equal(health.blocking[0].code, HEALTH_CODES.TARGET_PAGE_MISSING);
+});
+
+test('店铺键写错仍在创建时抛，且错误里同时点名两条链与店铺实例两种合法来源', () => {
+  assert.throws(() => createPlatformHealthCheck({ browserKey: '没这家店' }), (error) => {
+    assert.match(error.message, /unknown browser key/u);
+    assert.match(error.message, /dailyReport/u);
+    assert.match(error.message, /里可林淘宝/u);
+    return true;
+  });
 });
 
 test('给了探测地址就走真代理请求（不再只看端口开没开）', async () => {

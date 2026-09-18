@@ -34,7 +34,10 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
+import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
+import { dailyReportTargets } from '../../../runtime/feishu-targets.mjs';
+import { createPlatformHealthCheck } from '../../../runtime/xws-platform-health-preflight.mjs';
+import { siteAdapter } from './date-picker.mjs';
 import { describeIdentity, expectArgs, formatArgv, shopIdentity } from './shop-identities.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -53,9 +56,31 @@ export const MODES = Object.freeze(['rehearse', 'verify', 'commit']);
 // 「静默落空」形态，因此在解析期就把它钉死。常量与 buildShopStages 的真实产出由函数内
 // 一条断言互锁（两处漂移会当场抛错，而不是让 `--only` 的合法值清单慢慢腐化）。
 export const STAGE_NAMES = Object.freeze([
-  'alimama-date', 'promotion-submit', 'sycm-date', 'shop-report', 'promotion-fetch',
+  'health-check', 'alimama-date', 'promotion-submit', 'sycm-date', 'shop-report', 'promotion-fetch',
   'push', 'sycm-reset', 'sycm-date-again', 'backfill', 'readback',
 ]);
+
+// 体检要「恰好各一个」的页面。**片段取自唯一权威**（date-picker 的 SITES、飞书目标登记表），
+// 不在这里另抄一份 —— 抄一份就是等着它和落位判据漂移（坑 37）。
+//
+// 为什么不用体检模块的 `--route=dailyReport`：那是**宿主级**片段（`sycm.taobao.com`），
+// 而店家浏览器上天然有两个 sycm 页面（门户首页 + 工作页）⇒ 必然报「不唯一」；
+// 且多店铺下阿里妈妈页在**各店自己的**浏览器上，商家浏览器根本没有它 ⇒ 必然报「不在」。
+// 2026-09-18 晚实测：`--route=dailyReport` 对 19023 报 2 项 blocking，两条都是判据与现场不匹配
+// （假红）。假红比不检查更坏：它训练人去忽略这个信号。
+export function expectedPagesForShop() {
+  return [
+    { name: '生意参谋工作页', urlFragment: siteAdapter('sycm').urlFragment },
+    { name: '阿里妈妈报表页', urlFragment: siteAdapter('alimama').urlFragment },
+  ];
+}
+
+export function expectedPagesForDailyBrowser() {
+  return [
+    { name: '生意参谋工作页', urlFragment: siteAdapter('sycm').urlFragment },
+    { name: '飞书底单页', urlFragment: `feishu.cn/base/${dailyReportTargets().baseToken}` },
+  ];
+}
 
 export const parseArgs = (argv) => {
   const args = { date: null, shops: null, commit: false, verifyExisting: null, keepGoing: false,
@@ -135,7 +160,13 @@ export function buildShopStages(shopKey, options) {
     CDP_BROWSER_ID: BROWSER_IDS.dailyReport, CDP_BROWSER_LABEL: BROWSER_LABELS.dailyReport,
   };
   const stages = [];
-  const add = (stage, script, argv, env, note) => stages.push({ stage, script, argv, env, note });
+  const add = (stage, script, argv, env, note, ownAction = null) =>
+    stages.push({ stage, script, argv, env, note, ownAction });
+
+  // 体检排在最前面（SOP §10.0 的「起跑前逐项确认」落成代码）。它不采任何数据，
+  // 只回答「现在能不能跑」；结论有 blocking 项就停这一家（见 runHealthCheck）。
+  add('health-check', null, [], shopEnv,
+    '体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个', 'health');
 
   add('alimama-date', 'date-picker.mjs',
     ['--site', 'alimama', '--date', date, '--proxy', shopProxy], shopEnv,
@@ -166,7 +197,7 @@ export function buildShopStages(shopKey, options) {
         : '推送干跑（落 plan.json，不写）');
 
   add('sycm-reset', null, [], shopEnv,
-    '生意参谋回位：把被第 4 步带走的那个页签送回 qos/.../shop/performance（驱动自己导航）');
+    '生意参谋回位：把被第 4 步带走的那个页签送回 qos/.../shop/performance（驱动自己导航）', 'reset');
   add('sycm-date-again', 'date-picker.mjs',
     ['--site', 'sycm', '--date', date, '--proxy', shopProxy], shopEnv,
     '回位会重置页签与日期 ⇒ 必须重跑落位，否则回填报 expected one 当日询单人数 table, got 0');
@@ -319,7 +350,36 @@ async function main() {
   if (mode === 'rehearse') console.log('[驱动] 排练模式：采集是真的，两个写入方都是干跑，不写飞书。');
   for (const key of shops) console.log(`[驱动]   ${describeIdentity(key)}`);
 
-  const summary = { date: args.date, mode, startedAt: new Date().toISOString(), shops: {} };
+  const summary = { date: args.date, mode, startedAt: new Date().toISOString(), round: {}, shops: {} };
+
+  // 一轮一次：商家浏览器的体检。推送段与回读段都跑在它上面，而飞书底单页只在那一个浏览器里
+  // （采集段在别处 ⇒ 它们各自的体检在各店自己的阶段里）。它不通过就整轮都不必跑，
+  // 所以这一条**与 --keep-going 无关**：换哪家店都缺同一个前提。
+  // browserKey 取自路线表（`ROUTES.dailyReport.browser`），不写死键名。
+  mkdirSync(logRoot, { recursive: true });
+  const roundHealth = await runHealthCheck({
+    shopKey: null,
+    stage: { stage: 'health-check-daily', index: 0 },
+    logDir: logRoot,
+    repoRoot: REPO_ROOT,
+    browserKey: ROUTES.dailyReport.browser,
+    expectedPages: expectedPagesForDailyBrowser(),
+  });
+  summary.round.healthCheckDaily = {
+    status: roundHealth.status,
+    logPath: roundHealth.logPath,
+    ok: roundHealth.detail?.ok ?? null,
+    blocking: roundHealth.detail?.blocking?.map((f) => f.code) ?? null,
+  };
+  if (roundHealth.status !== 0) {
+    console.error('[驱动] 商家浏览器体检未通过 ⇒ 整轮不跑（推送段与回读段都要用它）。'
+      + `详见 ${roundHealth.logPath}`);
+    summary.finishedAt = new Date().toISOString();
+    writeFileSync(path.join(logRoot, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
+    process.exitCode = 1;
+    return;
+  }
+
   for (const key of shops) {
     const shopLogDir = path.join(logRoot, key);
     mkdirSync(shopLogDir, { recursive: true });
@@ -334,9 +394,14 @@ async function main() {
         return { status: 0, skipped: true, stdout: '', logPath: null };
       }
       console.log(`[${key}] ${index}. ${stage.stage} —— ${stage.note}`);
-      const result = withIndex.script === null
-        ? await runReset(key, withIndex, { logDir: shopLogDir, repoRoot: REPO_ROOT })
-        : runStage(key, withIndex, { repoRoot: REPO_ROOT, logDir: shopLogDir });
+      let result;
+      if (withIndex.ownAction === 'health') {
+        result = await runHealthCheck({ shopKey: key, stage: withIndex, logDir: shopLogDir, repoRoot: REPO_ROOT });
+      } else if (withIndex.ownAction === 'reset') {
+        result = await runReset(key, withIndex, { logDir: shopLogDir, repoRoot: REPO_ROOT });
+      } else {
+        result = runStage(key, withIndex, { repoRoot: REPO_ROOT, logDir: shopLogDir });
+      }
       record.stages.push({ stage: stage.stage, status: result.status, skipped: Boolean(result.skipped),
         logPath: result.logPath ?? null, argv: stage.argv });
       return result;
@@ -399,6 +464,54 @@ async function main() {
   }
   console.log(`[驱动] 明细 ${path.relative(REPO_ROOT, summaryPath)}`);
   if (Object.values(summary.shops).some((r) => r.status !== 'ok')) process.exitCode = 1;
+}
+
+// 体检也是驱动自己做的：它要按**浏览器实例**参数化，而且没有现成脚本。
+//
+// 判据：有 blocking 项就停这一家（fail-closed）。这与「探针没读到不停线」不冲突 ——
+// 「没读到」在体检模块内部已经被降级成非 blocking（`AUTH_UNKNOWN`），
+// 能走到这里的 blocking 都是「读到了，而且不对」。
+/**
+ * 体检结论 → 阶段退出码。**读不出来也不算通过**（返回 3）。
+ *
+ * 这是 fail-closed 的另一半：只有明确 `ok: true` 才放行。写成 `result.ok ? 0 : 2` 也「看起来对」，
+ * 但那样 `undefined` / 少了 `ok` 字段的返回值会落进 2 或 0，取决于怎么写 —— 而体检模块与驱动
+ * 是两个文件，它的返回形状将来变了，这里**不会**报错，只会安静地换个结论。
+ * 抽成纯函数是为了让它能被离线断言：`null` 与 `{}` 必须也是「不放行」。
+ */
+export function healthStageStatus(result) {
+  if (!result || typeof result.ok !== 'boolean') return 3;
+  return result.ok ? 0 : 2;
+}
+
+async function runHealthCheck({ shopKey, stage, logDir, repoRoot, browserKey = null, expectedPages = null }) {
+  const label = shopKey ?? '一轮';
+  const outPath = path.join(logDir, `${String(stage.index).padStart(2, '0')}-${stage.stage}.txt`);
+  const lines = [];
+  const log = (line) => { lines.push(line); console.log(`[${label}]   ${line}`); };
+  let status = 0;
+  let result = null;
+  try {
+    const check = createPlatformHealthCheck({
+      browserKey: browserKey ?? shopKey,
+      expectedPages: expectedPages ?? expectedPagesForShop(),
+    });
+    result = await check({});
+    const warnings = result.findings.filter((finding) => !finding.blocking);
+    log(`体检${result.ok ? '通过' : '未通过'}：阻断 ${result.blocking.length} 项，告警 ${warnings.length} 项`);
+    for (const finding of result.blocking) log(`  [阻断] ${finding.code}：${finding.detail}`);
+    for (const finding of warnings) log(`  [告警] ${finding.code}：${finding.detail}`);
+    log(`  ${result.note}`);
+    status = healthStageStatus(result);
+  } catch (error) {
+    // 体检自己出错（模块加载/参数问题）⇒ 记非零，不静默当成通过。
+    lines.push(`ERROR ${error.message}`);
+    status = 3;
+  }
+  lines.push('');
+  lines.push(JSON.stringify(result, null, 2));
+  writeFileSync(outPath, `${lines.join('\n')}\n`, 'utf8');
+  return { status, stdout: lines.join('\n'), detail: result, logPath: path.relative(repoRoot, outPath) };
 }
 
 // 回位是驱动自己做的（没有现成脚本），日志格式与别的阶段一致，便于按同一套办法看。

@@ -903,10 +903,10 @@ node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date <YYY
 `--verify-existing` 的 `N` 是**推送前底单的总条数**，判据是 `before.length === N + 1`。
 底单当前条数可在只读探针里读（本机 `D:/Retire/probe-live/21-feishu-ledger-now.mjs` 就是干这个的）。
 
-`--only <阶段名>`（可逗号分隔多个）认的就是上面那十个名字，按顺序：
+`--only <阶段名>`（可逗号分隔多个）认的就是上面那**十一个**名字，按顺序：
 
 ```
-alimama-date / promotion-submit / sycm-date / shop-report / promotion-fetch /
+health-check / alimama-date / promotion-submit / sycm-date / shop-report / promotion-fetch /
 push / sycm-reset / sycm-date-again / backfill / readback
 ```
 
@@ -930,7 +930,9 @@ push / sycm-reset / sycm-date-again / backfill / readback
 
 **2026-09-18 晚实测（这一轮就是它跑出来的）**：目标日 2026-09-17，四家店
 （里可林淘宝 / 网林天猫 / 盖文淘宝 / 科塔淘宝）串行、只读核对模式，
-**10 阶段 × 4 家全部 ok，8 分 44 秒，零人工干预**。逐环节的下游印证：
+**10 阶段 × 4 家全部 ok，8 分 44 秒，零人工干预**。
+（当时驱动是 10 阶段；`health-check` 是那之后接进 `§12.8` 的，所以现在复跑会是 11 阶段。）
+逐环节的下游印证：
 
 - 采集段报出的两条路径都被驱动抓到（`shopXlsxPath`，以及带 `[fetch] ` 前缀的 `promotionZipPath`）；
 - 推送段当场自证店铺键：`[shop-key] 里可林淘宝 ↔ 源产物店名 里可林家居 一致（证据目录 daily-report-2026-09-17-里可林淘宝）`；
@@ -964,4 +966,43 @@ push / sycm-reset / sycm-date-again / backfill / readback
 
 **下次遇到同类问题先问两句**：判据是窄的还是宽的？现场有几个同类页面？
 （宽判据的症状是 `got 2`，窄判据的症状是 `got 0`，两者的处置完全不同。）
+
+### 12.8 体检阶段（`health-check`，2026-09-18 晚接进驱动）
+
+**它把 §10.0 那张「起跑前逐项确认」表里能自动判的那半张，落成了驱动的第 1 个阶段。**
+模块是 `runtime/xws-platform-health-preflight.mjs`，驱动侧由 `runHealthCheck()` 调用。
+
+**一轮一次 vs 每店各一次 —— 这是两个不同的体检，不是同一个跑两遍：**
+
+| 体检 | 盯哪台浏览器 | 什么时候跑 | 不通过会怎样 |
+| --- | --- | --- | --- |
+| 商家浏览器（`00-health-check-daily.txt`，落在日志根） | 路线表 `ROUTES.dailyReport.browser`（19022/19023） | 每家店开跑**之前**，整轮只跑一次 | **整轮不跑**。而且**与 `--keep-going` 无关** —— 换哪家店都缺同一个前提（推送段与回读段都跑在它上面，飞书底单页只在那一个浏览器里） |
+| 店铺浏览器（`<店铺>/01-health-check.txt`） | 这家店自己的代理（19041…） | 每家店的第 1 个阶段 | 停这一家；有 `--keep-going` 就接着跑下一家 |
+
+**期望页面必须是「路径级片段」且与权威同源。** 体检模块自带的 `--route=dailyReport` 用的是
+**宿主级**片段（`sycm.taobao.com`），2026-09-18 晚对 19023 实跑报了 **2 项 blocking，两条都是假的**：
+
+- `TARGET_PAGE_AMBIGUOUS`：`sycm.taobao.com` 找到 2 个（门户首页 + 工作页，§12.7 同一个根因）；
+- `TARGET_PAGE_MISSING`：`one.alimama.com` 找到 0 个 —— 多店铺改造后阿里妈妈页在**各店自己的**
+  浏览器上（19041…），商家浏览器 19022 上本来就没有它。
+
+所以驱动自己注入期望页面（`expectedPagesForShop()` / `expectedPagesForDailyBrowser()`），
+片段取自 `date-picker.mjs` 的 `siteAdapter()` 与 `feishu-targets.mjs` 的 `baseToken` —— **不另抄一份**。
+抄一份就等着它与落位判据漂移，而漂移的症状是「体检放行、落位那一步才炸」，中间隔了一整轮采集。
+**假红比不检查更坏**：它训练人去忽略这个信号。
+
+**结论的读法**：只有明确 `ok: true` 才放行（`healthStageStatus()`，纯函数、有离线判据）。
+`null` / 少了 `ok` 字段 / `ok` 不是布尔值一律记 3（不放行）—— 体检模块与驱动是两个文件，
+它的返回形状将来变了，这里不该安静地换个结论。
+
+**四层里只实现了 L1**：L0 IDENTITY 与 L2 SESSION、L3 END_TO_END 都还没有判据。
+`NOT_IMPLEMENTED`（没有判据）与 `AUTH_UNKNOWN`（有判据、这次没读出来）必须分开写在结论里 ——
+前者是「还没做」，后者是「读了但读不到」，**两者都不许静默当成通过**。
+口径与 §10.2 一致：**「没读到」不停线，读到且不对才停线**（登录态是 §10.0 那一行，
+仍归 `login-merchant.mjs`，不在体检里判）。
+
+**体检模块按浏览器键参数化**：键取自两条链（`competitorBrowser` / `dailyReportBrowser`）与
+`SHOP_BROWSERS` 里的四家店。键写错会当场抛错并**同时点名**两条链与店铺实例，
+不会回落成某台机器的默认端口 —— 那样体检会去查另一台机器，而它同样「能找到生意参谋页」，
+**照样报通过**。
 

@@ -28,7 +28,7 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { BROWSER_PROFILES, ROUTES, classifyPortUsage, inspectPort, PROJECT_PORTS } from './browser-ports.mjs';
+import { BROWSER_PROFILES, ROUTES, SHOP_BROWSERS, classifyPortUsage, inspectPort, PROJECT_PORTS } from './browser-ports.mjs';
 
 export const HEALTH_CONTRACT_VERSION = 'xws-platform-health-preflight-v1';
 
@@ -294,23 +294,40 @@ function buildNote({ findings, layersRun }) {
 
 // ---------------------------------------------------------------- IO（全部可注入，便于离线用例）
 
-function proxyUrlFor(browserKey) {
-  const name = `${browserKey}Proxy`;
-  const port = PROJECT_PORTS[name];
+// 浏览器键的**两种来源**（2026-09-18 晚补的，根因见下）：
+//   ① PROJECT_PORTS 的 `<键>Browser` / `<键>Proxy` —— 两条链（competitor / dailyReport）；
+//   ② SHOP_BROWSERS 的**运营叫法**（`里可林淘宝` 这种）—— 按店铺隔离出来的实例。
+// 为什么必须认第二种：多店铺改造后采集段跑在各店自己的浏览器上，而 19031-19034 只在
+// SHOP_BROWSERS 里、不在 PROJECT_PORTS 里 ⇒ 不认它们，体检就对「一轮里真正在采数据的那几台」
+// 完全失明，却只体检得到 19022（推送与回读用的那台）。这是「按店铺实例化」落地后，
+// 最后一处只认旧键的地方。
+function browserKeys() {
+  const chains = Object.keys(PROJECT_PORTS)
+    .filter((name) => name.endsWith('Browser'))
+    .map((name) => name.slice(0, -'Browser'.length));
+  return [...chains, ...Object.keys(SHOP_BROWSERS)];
+}
+
+function browserPortFor(browserKey) {
+  const port = PROJECT_PORTS[`${browserKey}Browser`] ?? SHOP_BROWSERS[browserKey]?.browserPort;
   // 未登记的浏览器键 ⇒ 直接抛，不要退回某个默认端口 —— 退回去就是静默指向别人的浏览器。
   if (!Number.isInteger(port)) {
-    throw new Error(`unknown browser key for health check: ${browserKey} (expected one of ${Object.keys(PROJECT_PORTS).join(' | ')})`);
+    throw new Error(`unknown browser key for health check: ${browserKey} (expected one of ${browserKeys().join(' | ')})`);
+  }
+  return port;
+}
+
+function proxyUrlFor(browserKey) {
+  const port = PROJECT_PORTS[`${browserKey}Proxy`] ?? SHOP_BROWSERS[browserKey]?.proxyPort;
+  if (!Number.isInteger(port)) {
+    throw new Error(`unknown browser key for health check: ${browserKey} (expected one of ${browserKeys().join(' | ')})`);
   }
   return `http://127.0.0.1:${port}`;
 }
 
-function browserPortFor(browserKey) {
-  const name = `${browserKey}Browser`;
-  const port = PROJECT_PORTS[name];
-  if (!Number.isInteger(port)) {
-    throw new Error(`unknown browser key for health check: ${browserKey} (expected one of ${Object.keys(PROJECT_PORTS).join(' | ')})`);
-  }
-  return port;
+/** 期望的 profile：两条链在 BROWSER_PROFILES，店铺实例在 SHOP_BROWSERS。读不到就返回 null（只警告）。 */
+function profileFor(browserKey) {
+  return BROWSER_PROFILES[browserKey] ?? SHOP_BROWSERS[browserKey]?.profile ?? null;
 }
 
 async function probeTcp({ host, port, timeoutMs = 1500 }) {
@@ -446,7 +463,7 @@ export function createPlatformHealthCheck(options = {}) {
 
   const declared = typeof egressProxy === 'string' ? parseEgressProxy(egressProxy) : egressProxy;
   // profile 身份的期望值取自登记表（唯一来源）；调用方可以覆盖，但要显式给。
-  const profile = expectedProfile ?? BROWSER_PROFILES[browserKey] ?? null;
+  const profile = expectedProfile ?? profileFor(browserKey);
 
   return async function healthCheck(args = {}) {
     const findings = [];

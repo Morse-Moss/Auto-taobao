@@ -4,20 +4,21 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { BROWSER_IDS, PROJECT_PORTS, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
+import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
-import { MODES, STAGE_NAMES, buildShopStages, findPath, parseArgs, withSourcePaths } from './run-multi-shop-day.mjs';
+import { MODES, STAGE_NAMES, buildShopStages, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, parseArgs, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
 const DATE = '2026-09-17';
 const SHOP = '里可林淘宝';
 
-// 顺序是**规格**（SOP §10.1），所以期望值写成字面量 —— 从实现推导出来的顺序永远等于实现，
-// 那种测试不可能红。
-const EXPECTED_ORDER = ['alimama-date', 'promotion-submit', 'sycm-date', 'shop-report', 'promotion-fetch',
-  'push', 'sycm-reset', 'sycm-date-again', 'backfill', 'readback'];
-const SHOP_STAGES = ['alimama-date', 'promotion-submit', 'sycm-date', 'shop-report', 'promotion-fetch',
-  'sycm-reset', 'sycm-date-again', 'backfill'];
+// 顺序是**规格**（SOP §10.0 的起跑前体检 + §10.1 的十步），所以期望值写成字面量 ——
+// 从实现推导出来的顺序永远等于实现，那种测试不可能红。
+const EXPECTED_ORDER = ['health-check', 'alimama-date', 'promotion-submit', 'sycm-date', 'shop-report',
+  'promotion-fetch', 'push', 'sycm-reset', 'sycm-date-again', 'backfill', 'readback'];
+const SHOP_STAGES = ['health-check', 'alimama-date', 'promotion-submit', 'sycm-date', 'shop-report',
+  'promotion-fetch', 'sycm-reset', 'sycm-date-again', 'backfill'];
 const DAILY_STAGES = ['push', 'readback'];
 const WRITERS = ['push', 'backfill', 'readback'];
 const COLLECTORS = ['promotion-submit', 'shop-report', 'promotion-fetch'];
@@ -38,16 +39,22 @@ test('驱动：阶段顺序与 SOP §10.1 逐字一致（回位在第 4 步之�
   assert.deepEqual(stagesOf().map((stage) => stage.stage), EXPECTED_ORDER);
 });
 
-test('驱动：除回位外每一阶段都有脚本；回位是驱动自己导航（script 为 null、argv 为空）', () => {
+test('驱动：有脚本的带脚本；没脚本的必须声明自己那一支（否则阶段会报 ok 却什么也没做）', () => {
   for (const stage of stagesOf()) {
-    if (stage.stage === 'sycm-reset') {
-      assert.equal(stage.script, null);
-      assert.deepEqual(stage.argv, []);
+    if (stage.script === null) {
+      // 这是 2026-09-18 晚加体检阶段时补的：主流程按 `ownAction` 分派，
+      // 一个 `script: null` 又没声明分支的阶段**不会报错**，只会静默什么都不做 ——
+      // 而它的日志文件照样生成、状态照样是 0。
+      assert.ok(stage.ownAction, `${stage.stage} 没有脚本，却没声明 ownAction —— 主流程没有分支会执行它`);
+      assert.deepEqual(stage.argv, [], `${stage.stage} 没有脚本，参数就该是空的`);
       continue;
     }
-    assert.ok(stage.script, `${stage.stage} 缺脚本`);
+    assert.equal(stage.ownAction, null, `${stage.stage} 有脚本，不该再声明 ownAction`);
     assert.equal(path.basename(stage.script), stage.script, `${stage.stage} 的 script 应是文件名而不是路径`);
   }
+  // 两支自办阶段各自是谁，逐字钉住：名字换了而主流程的分支没跟着换，这条会红。
+  assert.deepEqual(stagesOf().filter((stage) => stage.ownAction)
+    .map((stage) => `${stage.stage}:${stage.ownAction}`), ['health-check:health', 'sycm-reset:reset']);
 });
 
 test('驱动：每个带脚本的阶段都自带 --date 与 --proxy（不靠调用方 shell 里恰好有什么）', () => {
@@ -63,12 +70,13 @@ test('驱动：采集/回填/回位打这家店自己的代理，推送/回读�
   const stages = byStage(stagesOf());
   for (const name of SHOP_STAGES) {
     const stage = stages[name];
-    // 回位没有脚本（驱动自己导航）⇒ 它没有 `--proxy` 参数，代理是 runReset 从
-    // `env.CDP_PROXY_PORT` 读的。这条断言守的就是那次读：读错了会在**商家浏览器**上导航，
-    // 而那也会「成功」（那个窗口里同样有生意参谋页）—— 静默打错浏览器。
+    // 自办阶段（体检、回位）没有脚本，也就没有 `--proxy` 参数：它们连哪台浏览器是靠
+    // `env.CDP_PROXY_PORT` 读的。这条断言守的就是那次读 —— 读错了它们会在**商家浏览器**上干活
+    // （体检去查错机器、回位在错窗口里导航），而那**也会「成功」**（那个窗口里同样有生意参谋页）
+    // ⇒ 静默打错浏览器。
     if (stage.script === null) {
-      assert.deepEqual(stage.argv, [], '回位不该有参数（它没有脚本）');
-      assert.equal(stage.env.CDP_PROXY_PORT, String(shop.proxyPort), '回位读的代理端口');
+      assert.deepEqual(stage.argv, [], `${name} 没有脚本，不该有参数`);
+      assert.equal(stage.env.CDP_PROXY_PORT, String(shop.proxyPort), `${name} 读的代理端口`);
       continue;
     }
     assert.equal(flagValue(stage.argv, '--proxy'), `http://127.0.0.1:${shop.proxyPort}`, `${name} 的代理`);
@@ -169,6 +177,36 @@ test('驱动：四家已登记的店铺都能构造出完整阶段（没有哪�
   for (const key of shopBrowserKeys()) {
     assert.equal(buildShopStages(key, { date: DATE, mode: 'rehearse' }).length, EXPECTED_ORDER.length, key);
   }
+});
+
+test('驱动：体检的期望页面用**路径级**片段，且与落位脚本的 SITES 同源', () => {
+  // 为什么必须路径级：宿主级片段 `sycm.taobao.com` 在这两个浏览器上都命中 2 个页面
+  // （门户首页 + 工作页）⇒ 体检会**永远**报「不唯一」。2026-09-18 晚实测过这套假红
+  // （`--route=dailyReport` 对 19023 报 2 项 blocking，两条都是判据与现场不匹配）。
+  // 为什么必须同源：片段抄一份就等着它与落位判据漂移 —— 而漂移的症状是体检放行、
+  // 落位那一步才炸，中间隔了一整轮采集。
+  const sycmFragment = siteAdapter('sycm').urlFragment;
+  assert.ok(sycmFragment.includes('/'), `sycm 的片段必须是路径级（含 /），实际 ${sycmFragment}`);
+  assert.notEqual(sycmFragment, 'sycm.taobao.com', 'sycm 的片段不许退回主机名');
+  assert.deepEqual(expectedPagesForShop().map((page) => page.urlFragment),
+    [sycmFragment, siteAdapter('alimama').urlFragment]);
+  const daily = expectedPagesForDailyBrowser().map((page) => page.urlFragment);
+  assert.equal(daily[0], sycmFragment);
+  // 飞书那一页要带 base token：只写 `feishu.cn/base/` 的话，用户随手多开一个 base 页
+  // 就会让推送与回读同时报「不唯一」，而它们其实该认的是**底单那一个**。
+  assert.match(daily[1], /^feishu\.cn\/base\/\S+$/u, `飞书那一页要带 base token，实际 ${daily[1]}`);
+});
+
+test('驱动：体检结论只有「明确 ok:true」才放行，读不出来算不放行', () => {
+  // 体检阶段是 fail-closed 的第一道闸：它的结论直接决定这家店（或整轮）跑不跑。
+  // 所以「读不出来」必须落在不放行那一侧 —— 把 undefined 当通过，这道闸就是装饰品。
+  assert.equal(healthStageStatus({ ok: true }), 0);
+  assert.equal(healthStageStatus({ ok: false }), 2);
+  assert.equal(healthStageStatus(null), 3, '没拿到结论 ≠ 通过');
+  assert.equal(healthStageStatus(undefined), 3);
+  assert.equal(healthStageStatus({}), 3, '少了 ok 字段 ≠ 通过');
+  assert.equal(healthStageStatus({ ok: 'yes' }), 3, 'ok 不是布尔值 ≠ 通过');
+  assert.equal(healthStageStatus({ ok: 1 }), 3);
 });
 
 test('驱动：从采集脚本的 stdout 里抓得到两条产物路径（含 [fetch] 那种带前缀的行）', () => {
