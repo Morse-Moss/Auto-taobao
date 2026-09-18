@@ -179,6 +179,12 @@ tenant / store / platform / account / browserProfile / capability
 ## 9. 安全与数据治理
 
 - 不读取、记录、复制或提交密码、Cookie、Token、浏览器存储、认证头和凭据值。
+  **边界的两种情形要分清**（2026-09-18 按已实现的设计补，非放宽）：
+  ① **允许**：只读**存在性与长度**（例如 `Login Data` 的 `COUNT(*)`、输入框 `value.length` 是否非零），
+  以及**驱动浏览器自己的密码管理器去填充**（值不经过我们的代码与日志）——
+  见 `LOGIN-STATE-MANAGEMENT.md` §8 第一条与 `MULTI-SHOP-AND-INTERACTION-DECISION.md` §5.2.4；
+  ② **仍然禁止**：读取、解密、复制凭据**值**（包括 `password_value` 的解密路径），
+  以及把账密从我们这侧写进表单并提交。
 - 登录、验证码、QR/SMS、风控、账号风险、权限、额度或安全提示必须进入 `HUMAN_REQUIRED`，不得绕过或伪装处理。
 - 不添加 stealth、指纹伪装、反检测或绕过平台控制逻辑。
 - 外部写入遵循最小权限、显式目标、授权范围、字段白名单和回读验证。

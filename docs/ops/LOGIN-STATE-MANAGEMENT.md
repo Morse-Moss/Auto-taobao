@@ -291,11 +291,15 @@ PLUGIN_NOT_READY / SOURCE_MISMATCH` 基础上扩，**只加不删**）：
    实测证据见 [`UNATTENDED-AGENT-RUNTIME-PLAN.md`](UNATTENDED-AGENT-RUNTIME-PLAN.md) §11 第 4 行。
    仍未做的：L0 身份层与 L2 会话层 —— 也就是说，**「未登录」这件事今天还不能被提前查出**，
    只能靠采集链撞到登录墙后 fail-loud 上报（既有理由 `FLOW_HUMAN_GATE` / `LOGIN_REQUIRED`）。
-6. **每店一个专用 profile**（§10.3 的口径）：已批准、未开工。
+6. **每店一个专用 profile**（§10.3 的口径）：**已开班**——2026-09-18 已按实测配方建好四个店铺 profile
+   （`D:/Retire/edge-profiles/<storeId>`，端口 19031–19034，首次启动带 `--disable-sync`），
+   配方与 A/B 实测见 [`MULTI-SHOP-AND-INTERACTION-DECISION.md`](MULTI-SHOP-AND-INTERACTION-DECISION.md) §5.3.1。
    落地时必须带上本轮实测到的一个反直觉前提：**「新建 profile」不等于「干净 profile」** ——
-   本机 Edge 对新建 profile 会自动登录微软账号并开同步（实测 `sync.passwords=true`、
-   `sync.autofill=true`、`account_info.email=1074083863@qq.com`），把个人密码库同步进来，
-   另带策略安装的扩展。做交付专用 profile 时要把这三样一起关掉/确认，否则「专用」只是名字。
+   本机 Edge 对新建 profile 会**自动登录微软账号**（实测 `account_info.email=1074083863@qq.com`），
+   并在同步打开时把个人密码库（47 条）**连同当时在旧 profile 里存的别家店凭据**一起同步进来。
+   **有效的拦法是启动开关 `--disable-sync`**（预置 `signin.allowed=false` 保留但拦不住自动登录）；
+   实测：不带开关 47 条、带开关 0 条。**仍未做的**：登记表支持「按店铺实例化」，
+   现在这四个端口是启动时用环境变量给的，守卫覆盖不到（见 MULTI-SHOP §4.2）。
 7. §10.4 的两个待核事实：① 子账号名下多店时的**店铺名比对判据**（L0 生意参谋那一行）；
    ② 四家店里两家没存下凭据的原因、以及 `j873522735:阿彦` 提交后停登录页（`NOT_CONFIRMED`）
    到底是「被拦但没报」还是「表单没提交成功」。**两者都只做了只读取证，未做任何重试。**
