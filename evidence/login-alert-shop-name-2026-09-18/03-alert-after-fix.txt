@@ -1,0 +1,37 @@
+================ 盖文淘宝 / NO_SAVED_CREDENTIAL ================
+【需要处理】盖文淘宝 需要你登录一次
+对象：生意参谋 / 阿里妈妈
+店铺：盖文淘宝
+打开这个链接：https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+机器：DESKTOP-XXXX
+浏览器配置：D:/Retire/edge-profiles/suixin-custom
+原因：这个浏览器里没有存这家店的账号密码，系统没法自动填。 登录时请点浏览器提示里的「保存密码」，这样下次系统就能自己填了。
+下一步：在标题写着「盖文淘宝」的那个浏览器窗口（任务栏里就能看到）里人工登录一次，登录时点「保存密码」，下次就不用再来了。
+时间：2026-09-18 19:30
+告警编号：sycm-login-盖文淘宝-sycm-alimama-20260918
+
+================ 科塔淘宝 / PARTIAL ================
+【需要处理】科塔淘宝 需要你登录一次
+对象：生意参谋 / 阿里妈妈
+店铺：科塔淘宝
+打开这个链接：https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+机器：DESKTOP-XXXX
+浏览器配置：D:/Retire/edge-profiles/shop-j873522735
+原因：账号密码提交成功了，但两个后台里还有没进去的。 没进去的是「阿里妈妈」。
+下一步：在标题写着「科塔淘宝」的那个浏览器窗口（任务栏里就能看到）里，把没进去的那个后台登一次。
+时间：2026-09-18 19:30
+告警编号：sycm-login-科塔淘宝-sycm-alimama-20260918
+
+================ 四家店的 alertId 与浏览器配置 ================
+里可林淘宝
+  alertId = sycm-login-里可林淘宝-sycm-alimama-20260918
+  浏览器配置 = D:/Retire/edge-profiles/likelin-home
+网林天猫
+  alertId = sycm-login-网林天猫-sycm-alimama-20260918
+  浏览器配置 = D:/Retire/edge-profiles/wanglin-flagship
+盖文淘宝
+  alertId = sycm-login-盖文淘宝-sycm-alimama-20260918
+  浏览器配置 = D:/Retire/edge-profiles/suixin-custom
+科塔淘宝
+  alertId = sycm-login-科塔淘宝-sycm-alimama-20260918
+  浏览器配置 = D:/Retire/edge-profiles/shop-j873522735

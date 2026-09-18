@@ -77,15 +77,19 @@ export const LOGIN_TARGETS = Object.freeze(['sycm', 'alimama', 'both']);
 //   - `off` 完全闭嘴。
 export const NOTIFY_MODES = Object.freeze(['auto', 'send', 'dry', 'off']);
 
-export function parseArgs(argv, { defaultProxy } = {}) {
+export function parseArgs(argv, { defaultProxy, shops = null } = {}) {
   const opts = {
     target: 'both', commit: false, proxy: defaultProxy, shots: null, notify: 'auto', help: false,
+    // `--shop` 是**运营叫法**（＝登记表 SHOP_BROWSERS 的键，如「盖文淘宝」）。
+    // 它唯一的用途是让告警**点名是哪一家店** —— 2026-09-18 用户原话：
+    // 「我不知道是哪一个店铺的浏览器需要登录」。缺了它，五家店发出的告警逐字相同。
+    shop: null,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === '--commit') { opts.commit = true; continue; }
     if (token === '--help' || token === '-h') { opts.help = true; continue; }
-    const valueFlags = ['--target', '--proxy', '--shots', '--notify'];
+    const valueFlags = ['--target', '--proxy', '--shots', '--notify', '--shop'];
     if (!valueFlags.includes(token)) throw new Error(`Unknown argument: ${token}`);
     const value = argv[i + 1];
     // 先认名字再看值：否则 `--nope` 会被报成「需要一个值」，把「参数拼错」伪装成「忘了给值」。
@@ -94,6 +98,7 @@ export function parseArgs(argv, { defaultProxy } = {}) {
     if (token === '--proxy') opts.proxy = value;
     if (token === '--shots') opts.shots = value;
     if (token === '--notify') opts.notify = value;
+    if (token === '--shop') opts.shop = value;
     i += 1;
   }
   if (!LOGIN_TARGETS.includes(opts.target)) {
@@ -101,6 +106,12 @@ export function parseArgs(argv, { defaultProxy } = {}) {
   }
   if (!NOTIFY_MODES.includes(opts.notify)) {
     throw new Error(`Unknown --notify ${opts.notify} (known: ${NOTIFY_MODES.join(', ')})`);
+  }
+  // 店名拼错必须当场抛错并列出合法值：否则告警会带着一个**看起来像店名、实际不存在**的名字发出去，
+  // 而收信人会拿着一个不存在的店名去浏览器里找窗口 —— 这比不写店名更坏。
+  // 调用方传 `shops` 时才校验（离线用例可以不传，保持这条函数的既有用法不变）。
+  if (opts.shop !== null && Array.isArray(shops) && !shops.includes(opts.shop)) {
+    throw new Error(`Unknown --shop ${opts.shop} (known: ${shops.join(' / ')})`);
   }
   opts.sites = opts.target === 'both' ? ['sycm', 'alimama'] : [opts.target];
   return opts;
@@ -168,24 +179,44 @@ export function shouldNotify({ verdict, commit = false, mode = 'auto' } = {}) {
 // 「下一步」必须是**一个人照着做就能做完**的一句话。只写「登录已失效」等于把
 // 「去哪台机器、动哪个配置、做完之后干嘛」留给收信人自己猜 —— 而登录恰恰是唯一
 // 无法远程代劳的事，收信人看完还得先找机器。
+// 「下一步」必须是**一个人照着做就能做完**的一句话，而且必须能定位到**哪一个**窗口。
+//
+// 2026-09-18 用户原话：「我不知道是哪一个店铺的浏览器需要登录」。原来这里写的是
+// 「在上面那个浏览器窗口里」—— 而告警里根本没有「上面那个窗口」这个东西：
+// 四台浏览器长得一模一样，收信人到了机器前仍然要猜。所以改成用**店名**定位，
+// 而店名能被用来定位的前提是：那个窗口的标题里真的写着店名
+// （见 `runtime/shop-window-label.mjs`，SOP 第 1 步起浏览器时会挂上）。
+//
+// `{窗口}` 是占位符，由 buildLoginAlert 按有没有店名替换；没有店名时退化成不承诺标题的说法，
+// 而不是留一个空括号或直接写「标题写着「null」」。
 const ACTION_BY_VERDICT = Object.freeze({
-  NO_SAVED_CREDENTIAL:
-    '在上面那个浏览器窗口里人工登录一次，登录时点「保存密码」，下次就不用再来了。',
-  CAPTCHA_REQUIRED:
-    '在上面那个浏览器窗口里把滑块/短信验证做完即可 —— 账号密码已经在页面上了。',
-  LOGIN_NOT_CONFIRMED:
-    '在上面那个浏览器窗口里打开登录页看它的提示：要求验证就验证，提示密码不对就先改密码。'
+  NO_SAVED_CREDENTIAL: '在{窗口}里人工登录一次，登录时点「保存密码」，下次就不用再来了。',
+  CAPTCHA_REQUIRED: '在{窗口}里把滑块/短信验证做完即可 —— 账号密码已经在页面上了。',
+  LOGIN_NOT_CONFIRMED: '在{窗口}里打开登录页看它的提示：要求验证就验证，提示密码不对就先改密码。'
     + '系统不会自己再试一遍（连着试会把账号锁住）。',
-  PARTIAL: '在上面那个浏览器窗口里，把没进去的那个后台登一次。',
-  STOP_AND_ALERT: '照「原因」那一条处理（系统已经停手，没有留下半成品）。',
+  PARTIAL: '在{窗口}里，把没进去的那个后台登一次。',
+  STOP_AND_ALERT: '在{窗口}里照「原因」那一条处理（系统已经停手，没有留下半成品）。',
 });
 
-// 「原因」用一句人话，不写结论代号。detail 由调用方补细节，拼在后面。
-const REASON_BY_VERDICT = Object.freeze({
+// 把 `{窗口}` 换成收信人真的能在机器上认出来的说法。
+export function resolveAction(verdict, shopName = null) {
+  const template = ACTION_BY_VERDICT[verdict] ?? '人工处理后再跑这一轮。';
+  const where = shopName
+    ? `标题写着「${shopName}」的那个浏览器窗口（任务栏里就能看到）`
+    : '那台电脑的浏览器窗口';
+  return template.replace('{窗口}', where);
+}
+
+// 「原因」用一句人话，不写结论代号。`detail` 由调用方补细节，**补的必须是增量信息**，
+// 不能把上面这句再说一遍 —— 2026-09-18 渲染出来发现「原因」是同一句话读两遍：
+//     「这个浏览器里没有存这家店的账号密码，系统没法自动填。 这台浏览器里没有存这家店的账号密码，系统没法自动填。…」
+// 静态原因只交代「出了什么事」，detail 只交代「这一次具体是什么情况」。
+// 导出是为了让用例能真的比对「主脚本补的 detail」有没有把这里再说一遍（那是渲染出来才发现的缺陷）。
+export const REASON_BY_VERDICT = Object.freeze({
   NO_SAVED_CREDENTIAL: '这个浏览器里没有存这家店的账号密码，系统没法自动填。',
   CAPTCHA_REQUIRED: '登录时平台要求滑块或短信验证，这一步只能由人来完成。',
   LOGIN_NOT_CONFIRMED: '账号密码填了、登录按钮也点了，页面却还停在登录页。',
-  PARTIAL: '两个后台里有一个没登进去。',
+  PARTIAL: '账号密码提交成功了，但两个后台里还有没进去的。',
   STOP_AND_ALERT: '系统在动手之前停住了。',
 });
 
@@ -230,11 +261,21 @@ export function buildLoginAlert({
     // 标题自带店名：收信人扫一眼就知道「哪家店要我干什么」，不必点开正文找。
     // 这也让 `TITLE_BY_TYPE` 那张通用表只在「没给 title」的旧来源上继续生效。
     title: shopName ? `${shopName} 需要你登录一次` : '需要你登录一次',
-    // 同一站点同一天只叫一次：alertId 是可被调用方拿去去重的锚（同日重复失败不会刷屏）。
-    alertId: `sycm-login-${sites.join('-') || 'unknown'}-${localDateStamp(when)}`,
+    // 同一家店同一天只叫一次：alertId 是可被调用方拿去去重的锚（同日重复失败不会刷屏）。
+    //
+    // **店名必须进这个锚**（2026-09-18 修）：原先只含站点，于是五家店同一天共用
+    // `sycm-login-sycm-alimama-20260918` 一条 —— 任何按 alertId 去重的调用方
+    // 会把后四家当成「重复」直接吞掉，现场表现就是「五家店只叫了一家」。
+    // 缺店名时不加前缀，对没给店名的旧来源渲染结果逐字不变。
+    alertId: [
+      'sycm-login',
+      ...(shopName ? [shopName] : []),
+      sites.join('-') || 'unknown',
+      localDateStamp(when),
+    ].join('-'),
     createdAt: when.toISOString(),
     reason: detail ? `${plainReason} ${detail}` : plainReason,
-    action: ACTION_BY_VERDICT[verdict] ?? '人工处理后再跑这一轮。',
+    action: resolveAction(verdict, shopName),
     source: {
       targetLabel: labels.join(' / ') || null,
       shopName,
@@ -244,4 +285,58 @@ export function buildLoginAlert({
       browserProfile,
     },
   };
+}
+
+// 「这家店用哪个浏览器 profile」——**必须是选出来的，不是回落出来的**。
+//
+// 为什么单独一个函数（2026-09-18 实测缺陷）：原先主脚本恒写
+// `process.env.PROJECT_BROWSER_PROFILE || BROWSER_PROFILES.dailyReport`，
+// 于是四家店发出的告警都写着同一个 `edge-daily-report-profile`；
+// 收信人照着这个路径去机器上找，四个窗口长得一模一样，等于没给。
+//
+// 两条 fail-closed 都刻意选了「抛错」而不是「回落」：
+//   - 给了店名却没给登记表 ⇒ 抛错。回落的话，一次「忘了传参」就会静默退回那个
+//     全体共用的日报 profile —— 那正是要消灭的现象，而它**不会报错**。
+//   - 店名不在登记表里 ⇒ 抛错，并把已登记的都列出来。
+// 只有「压根没给店名」时才回落到 `fallback`：那是 `--shop` 出现之前的老用法，行为必须不变。
+export function profileForShop({ shop = null, shops = null, fallback = null } = {}) {
+  if (!shop) return fallback;
+  if (!shops || typeof shops !== 'object') {
+    throw new Error(`给了店铺「${shop}」却拿不到店铺登记表 ⇒ 无法确定该用哪个浏览器配置（不回落成共用 profile）`);
+  }
+  const found = shops[shop];
+  if (!found || !found.profile) {
+    throw new Error(`未登记的店铺实例「${shop}」；已登记：${Object.keys(shops).join(' / ')}`);
+  }
+  return found.profile;
+}
+
+// 「这次运行该不该叫人、叫人的话是谁」——把**从命令行参数到告警对象**这一段收进纯函数。
+//
+// 为什么非收不可（2026-09-18 的真实缺陷）：`buildLoginAlert` 早就支持并渲染 `shopName`，
+// 离线用例也一直在测「给了店名 ⇒ 标题带店名」；但**主脚本调用它时没把店名传进去**，
+// 于是发出去的告警逐字是「需要你登录一次」+「浏览器配置：D:\Retire\edge-daily-report-profile」，
+// 五家店一模一样，收信人无从知道该去哪台机器。契约齐、测试绿、接线没接上 —— 这类缺陷
+// 是「在 IO 脚本里写装配逻辑」的直接后果：IO 脚本离线测不到，所以没人守得住它。
+// 收进这里之后，「接线接对了没有」变成一条可以直接断言的纯函数行为。
+export function alertForRun({
+  args = {},
+  receipt = {},
+  machine = null,
+  shops = null,
+  fallbackProfile = null,
+  now = () => new Date(),
+} = {}) {
+  const verdict = receipt?.verdict ?? null;
+  const mode = args?.notify ?? 'auto';
+  if (!shouldNotify({ verdict, commit: args?.commit === true, mode })) return null;
+  return buildLoginAlert({
+    verdict,
+    detail: receipt?.detail ?? null,
+    sites: args?.sites ?? [],
+    machine,
+    browserProfile: profileForShop({ shop: args?.shop ?? null, shops, fallback: fallbackProfile }),
+    shopName: args?.shop ?? null,
+    now,
+  });
 }

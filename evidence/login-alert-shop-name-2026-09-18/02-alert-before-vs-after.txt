@@ -1,0 +1,30 @@
+================ A. 现在实际发出去的（未传 shopName）================
+【需要处理】需要你登录一次
+对象：生意参谋 / 阿里妈妈
+打开这个链接：https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+机器：DESKTOP-XXXX
+浏览器配置：D:\Retire\edge-daily-report-profile
+原因：这个浏览器里没有存这家店的账号密码，系统没法自动填。 这个 profile 的密码库里没有该站点的凭据（:autofill 为 false）⇒ 只能人工登录一次并让浏览器记住密码；脚本不猜账号密码。
+下一步：在那台电脑的浏览器窗口里人工登录一次，登录时点「保存密码」，下次就不用再来了。
+时间：2026-09-18 11:02
+告警编号：sycm-login-sycm-alimama-20260918
+
+================ B. 传了 shopName 之后 ================
+【需要处理】盖文淘宝 需要你登录一次
+对象：生意参谋 / 阿里妈妈
+店铺：盖文淘宝
+打开这个链接：https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+机器：DESKTOP-XXXX
+浏览器配置：D:\Retire\edge-profiles\suixin-custom
+原因：这个浏览器里没有存这家店的账号密码，系统没法自动填。 这个 profile 的密码库里没有该站点的凭据（:autofill 为 false）⇒ 只能人工登录一次并让浏览器记住密码；脚本不猜账号密码。
+下一步：在标题写着「盖文淘宝」的那个浏览器窗口（任务栏里就能看到）里人工登录一次，登录时点「保存密码」，下次就不用再来了。
+时间：2026-09-18 11:02
+告警编号：sycm-login-盖文淘宝-sycm-alimama-20260918
+
+================ 结构差异 ================
+A.title = 需要你登录一次
+B.title = 盖文淘宝 需要你登录一次
+A.source 有 shopName 键 = true → 值 null
+B.source 有 shopName 键 = true → 值 "盖文淘宝"
+A.alertId = sycm-login-sycm-alimama-20260918
+B.alertId = sycm-login-盖文淘宝-sycm-alimama-20260918

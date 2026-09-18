@@ -1,7 +1,7 @@
 {
-  "takenAt": "2026-09-18T11:42:05.906Z",
+  "takenAt": "2026-09-18T12:52:04.459Z",
   "reportDate": "2026-09-17",
-  "apply": false,
+  "apply": true,
   "note": "删除前的枚举快照。派生列（Lookup/Formula）的值来自底单，随底单行一起归零属于预期。",
   "source": {
     "total": 1880,

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>本窗口是哪家店</title>
+<style>
+  html,body{height:100%;margin:0}
+  body{display:flex;flex-direction:column;align-items:center;justify-content:center;
+       background:#111;color:#fff;font-family:"Microsoft YaHei",sans-serif;text-align:center}
+  .k{font-size:20px;color:#888}
+  .v{font-size:64px;font-weight:700;margin:18px 0;color:#ffd400;word-break:break-all}
+  .n{font-size:18px;color:#9ad}
+  .s{font-size:22px;font-weight:700;margin-top:14px}
+  .s.ok{color:#5ddc7f}
+  .s.bad{color:#ff6b6b}
+  .w{font-size:16px;color:#f66;margin-top:26px;line-height:1.75;max-width:760px}
+  .w b{color:#ffd400}
+</style>
+</head>
+<body>
+<div class="k">这个浏览器窗口是给这家店用的</div>
+<div class="v" id="shop"></div>
+<div class="n" id="port"></div>
+<div class="s" id="state"></div>
+<div class="w">
+  请在<b>本窗口</b>（不是别的窗口）里登录上面这家店的账号，<br>
+  登录页就在本标签页右边那一个里。<br>
+  登完请点浏览器提示里的「保存」把密码存下来 —— 存过之后系统下次就能自己登。
+</div>
+<script>
+  // 为什么标题必须拼进店名（2026-09-18）：窗口标题就是**任务栏和窗口列表里显示的那一行**，
+  // 而飞书告警只能告诉收信人店名，没法替他点开某个窗口。四台浏览器如果标题一样，
+  // 收信人到了机器前仍然要一个一个猜。标题带店名，告警里那句「找标题写着「盖文淘宝」的窗口」
+  // 才有落点。所以这一行是这套东西里唯一真正起作用的部分，不能省。
+  const q = new URLSearchParams(location.search);
+  const shop = q.get('shop') || '(未命名)';
+  const port = q.get('port') || '';
+  document.title = shop + ' · 日报采集窗口';
+  document.getElementById('shop').textContent = shop;
+  document.getElementById('port').textContent = port ? '调试端口 ' + port : '';
+
+  // 登录状态是可选的：脚本量到了就带过来，量不到就整行不显示（不写「未知」去占位，
+  // 那会让人以为量过了）。不在这里凭空猜 —— file:// 页面读不到调试接口。
+  const state = q.get('state') || '';
+  if (state) {
+    const el = document.getElementById('state');
+    el.textContent = state;
+    el.className = 's ' + (q.get('ok') === '1' ? 'ok' : 'bad');
+  }
+</script>
+</body>
+</html>

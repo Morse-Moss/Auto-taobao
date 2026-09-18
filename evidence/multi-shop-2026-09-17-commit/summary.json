@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-17",
+  "mode": "commit",
+  "startedAt": "2026-09-18T12:53:04.188Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 2,
+      "logPath": "evidence\\multi-shop-2026-09-17-commit\\00-health-check-daily.txt",
+      "ok": false,
+      "blocking": [
+        "CDP_ENDPOINT_MISSING"
+      ]
+    }
+  },
+  "shops": {},
+  "finishedAt": "2026-09-18T12:53:04.216Z"
+}

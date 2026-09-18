@@ -1,0 +1,76 @@
+{
+ "commit": false,
+ "shops": {
+  "里可林淘宝": {
+   "browserPort": 19031,
+   "proxyPort": 19041,
+   "windowTitle": "里可林淘宝 · 日报采集窗口",
+   "labelTabs": 0,
+   "needsLabelTab": true,
+   "tabs": [
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "空白页（残留）  about:blank",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "千牛工作台（预留槽位，日报链不读）  https://loginmyseller.taobao.com/?from=&f=top&style=&sub=true&redirect_url=https%3A%2F%2Fmyseller.taobao.com%2Fhome.htm%2FQnworkbenchHome%2F"
+   ],
+   "leftover": [
+    "空白页（残留）  about:blank",
+    "千牛工作台（预留槽位，日报链不读）  https://loginmyseller.taobao.com/?from=&f=top&style=&sub=true&redirect_url=https%3A%2F%2Fmyseller.taobao.com%2Fhome.htm%2FQnworkbenchHome%2F"
+   ]
+  },
+  "网林天猫": {
+   "browserPort": 19032,
+   "proxyPort": 19042,
+   "windowTitle": "网林天猫 · 日报采集窗口",
+   "labelTabs": 1,
+   "needsLabelTab": false,
+   "tabs": [
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/edge-profiles/_window-label.html?shop=%E7%BD%91%E6%9E%97%E5%AE%B6%E5%B1%85%E6%97%97%E8%88%B0%E5%BA%97%3A%E9%98%BF%E5%BD%A6&port=19032",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "空白页（残留）  about:blank",
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "千牛工作台（预留槽位，日报链不读）  https://loginmyseller.taobao.com/?from=&f=top&style=&sub=true&redirect_url=https%3A%2F%2Fmyseller.taobao.com%2Fhome.htm%2FQnworkbenchHome%2F"
+   ],
+   "leftover": [
+    "空白页（残留）  about:blank",
+    "千牛工作台（预留槽位，日报链不读）  https://loginmyseller.taobao.com/?from=&f=top&style=&sub=true&redirect_url=https%3A%2F%2Fmyseller.taobao.com%2Fhome.htm%2FQnworkbenchHome%2F"
+   ]
+  },
+  "盖文淘宝": {
+   "browserPort": 19033,
+   "proxyPort": 19043,
+   "windowTitle": "盖文淘宝 · 日报采集窗口",
+   "labelTabs": 1,
+   "needsLabelTab": false,
+   "tabs": [
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/edge-profiles/_window-label.html?shop=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E9%98%BF%E5%BD%A6&port=19033",
+    "千牛工作台（预留槽位，日报链不读）  https://loginmyseller.taobao.com/?from=&f=top&style=&sub=true&redirect_url=https%3A%2F%2Fmyseller.taobao.com%2Fhome.htm%2FQnworkbenchHome%2F",
+    "空白页（残留）  about:blank",
+    "工作页（链路要用）  https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/login/index"
+   ],
+   "leftover": [
+    "千牛工作台（预留槽位，日报链不读）  https://loginmyseller.taobao.com/?from=&f=top&style=&sub=true&redirect_url=https%3A%2F%2Fmyseller.taobao.com%2Fhome.htm%2FQnworkbenchHome%2F",
+    "空白页（残留）  about:blank"
+   ]
+  },
+  "科塔淘宝": {
+   "browserPort": 19034,
+   "proxyPort": 19044,
+   "windowTitle": "科塔淘宝 · 日报采集窗口",
+   "labelTabs": 0,
+   "needsLabelTab": true,
+   "tabs": [
+    "千牛工作台（预留槽位，日报链不读）  https://loginmyseller.taobao.com/?from=&f=top&style=&sub=true&redirect_url=https%3A%2F%2Fmyseller.taobao.com%2Fhome.htm%2FQnworkbenchHome%2F",
+    "空白页（残留）  about:blank",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/login/index",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+   ],
+   "leftover": [
+    "千牛工作台（预留槽位，日报链不读）  https://loginmyseller.taobao.com/?from=&f=top&style=&sub=true&redirect_url=https%3A%2F%2Fmyseller.taobao.com%2Fhome.htm%2FQnworkbenchHome%2F",
+    "空白页（残留）  about:blank"
+   ]
+  }
+ },
+ "failed": 0
+}

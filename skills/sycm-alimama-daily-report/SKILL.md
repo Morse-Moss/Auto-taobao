@@ -128,6 +128,28 @@ node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date 2026
 
 `--shops a,b` narrows the round, `--only <stage>` runs a single stage (an unknown stage name throws at parse time with the full legal list — silently skipping the whole round with exit code 0 was the old failure shape), `--keep-going` continues past a failed shop. In `--verify-existing`, `N` is the target's total record count **before** the push and the predicate is `before.length === N + 1` (2026-09-17: `N = 1879`). Rehearse **cannot** run on a date that was already written — the dry run hits the same hard duplicate stop by design. Per-stage stdout/stderr plus the argv each stage actually received land in `evidence/multi-shop-<date>/<shop>/NN-<stage>.txt`, the once-per-round preflight in `evidence/multi-shop-<date>/00-health-check-daily.txt`, and the roll-up in `summary.json`. `references/sop.md` §12.6 holds the mode table and the measured 2026-09-18 run (four shops × ten stages, no manual intervention; the round is eleven stages since the preflight was wired in — see §12.8).
 
+## Login Recovery
+
+Login is the one step no automation can take over, so when it fails the system has to hand it to a human **who can act on the message without guessing**. Two things make that true, and they are two halves of one leg:
+
+```powershell
+# attempt the login; on a human-required verdict it alerts by itself (--notify auto, only when --commit)
+node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --shop 盖文淘宝
+
+# render the alert text without sending it
+node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --shop 盖文淘宝 --notify dry
+
+# make each shop's browser window identifiable (title = shop name) — this is what the alert points at
+node runtime/shop-window-label.mjs                                            # read-only: what tabs each window has
+node runtime/shop-window-label.mjs --commit --only 盖文淘宝
+```
+
+`--shop` takes the **operating name** (a `SHOP_BROWSERS` key: 里可林淘宝 / 网林天猫 / 盖文淘宝 / 科塔淘宝), the same name operations sees in Feishu — not the SYCM page-header name and not the Alimama member name. A misspelling throws at parse time listing the legal values, because an alert carrying a shop name that does not exist is worse than one carrying none. The name drives three fields: the title (`<shop> 需要你登录一次`), the `店铺` line, and the `alertId` (`sycm-login-<shop>-<sites>-<YYYYMMDD>`). That last one matters: without the shop dimension all five shops share one dedup anchor and any caller deduping by `alertId` swallows four of them **silently**.
+
+The alert's `下一步` locates the window by name — `在标题写着「盖文淘宝」的那个浏览器窗口（任务栏里就能看到）里人工登录一次`. That sentence is only true when the window title actually carries the shop name, which is `runtime/shop-window-label.mjs`'s whole job; a cross-module test binds the two together. `--shop` also selects the alert's `浏览器配置`: each shop has its own isolated profile, and hardcoding the shared daily-report profile made four shops' alerts identical.
+
+The verdict-to-prose mapping, the "should this alert fire at all" decision, and the assembly from CLI args to alert object all live in `login-merchant-core.mjs` as pure functions (`shouldNotify`, `alertForRun`, `profileForShop`, `resolveAction`), because they are the parts that were silently wrong while the tests were green: `buildLoginAlert` always supported `shopName` and was always tested with it — the main script just never passed it. Guards now assert the main script must **not** build alerts itself (`buildLoginAlert` absent from its code, `alertForRun` present, `shops: SHOP_BROWSERS` handed over), and `profileForShop` fails closed rather than falling back to the shared profile.
+
 ## Independent Readback
 
 ```powershell

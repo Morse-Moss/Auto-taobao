@@ -1,0 +1,133 @@
+{
+  "deletedAt": "2026-09-18T12:52:55.729Z",
+  "reportDate": "2026-09-17",
+  "source": {
+    "before": 1880,
+    "after": 1876,
+    "onDayAfter": 1,
+    "remainingShops": [
+      "盖文旗舰店"
+    ]
+  },
+  "inquiry": {
+    "before": 2197,
+    "after": 2197,
+    "onDayAfter": 12,
+    "fieldsAfter": [
+      {
+        "shop": "盖文天猫",
+        "inquiry": "13",
+        "peer": "36"
+      },
+      {
+        "shop": "里可林淘宝",
+        "inquiry": null,
+        "peer": null
+      },
+      {
+        "shop": "里可林天猫",
+        "inquiry": null,
+        "peer": null
+      },
+      {
+        "shop": "网林天猫",
+        "inquiry": null,
+        "peer": null
+      },
+      {
+        "shop": "盖文淘宝",
+        "inquiry": null,
+        "peer": null
+      },
+      {
+        "shop": "网林淘宝",
+        "inquiry": null,
+        "peer": null
+      },
+      {
+        "shop": "科塔淘宝",
+        "inquiry": null,
+        "peer": null
+      },
+      {
+        "shop": "保拉淘宝",
+        "inquiry": null,
+        "peer": null
+      },
+      {
+        "shop": "保拉天猫",
+        "inquiry": null,
+        "peer": null
+      },
+      {
+        "shop": "安比龙头店",
+        "inquiry": null,
+        "peer": null
+      },
+      {
+        "shop": "科塔龙头店",
+        "inquiry": null,
+        "peer": null
+      },
+      {
+        "shop": "安比淘宝",
+        "inquiry": null,
+        "peer": null
+      }
+    ]
+  },
+  "deleted": [
+    {
+      "recordId": "recvvyR2ueWnn8",
+      "shop": "里可林家居",
+      "nonDerivedFilled": 239
+    },
+    {
+      "recordId": "recvvyRBZ74juL",
+      "shop": "网林家居旗舰店",
+      "nonDerivedFilled": 238
+    },
+    {
+      "recordId": "recvvyS3CjfdVy",
+      "shop": "盖文全卫定制",
+      "nonDerivedFilled": 238
+    },
+    {
+      "recordId": "recvvySuZ5zUpB",
+      "shop": "科塔全卫定制",
+      "nonDerivedFilled": 239
+    }
+  ],
+  "cleared": [
+    {
+      "recordId": "recvtXf5OikETg",
+      "shop": "里可林淘宝",
+      "inquiry": "3",
+      "peer": "6",
+      "strangers": []
+    },
+    {
+      "recordId": "recvtXf5OixAca",
+      "shop": "网林天猫",
+      "inquiry": "4",
+      "peer": "13",
+      "strangers": []
+    },
+    {
+      "recordId": "recvtXf5OinIxX",
+      "shop": "盖文淘宝",
+      "inquiry": "4",
+      "peer": "6",
+      "strangers": []
+    },
+    {
+      "recordId": "recvtXf5OiXSb1",
+      "shop": "科塔淘宝",
+      "inquiry": "5",
+      "peer": "6",
+      "strangers": []
+    }
+  ],
+  "failures": [],
+  "note": "删除走 OpenAPI 单条 DELETE（batch_delete 在这张 base 上报 1254043）。本地审计表刻意不回改（append-only）—— 它现在还指向已被删掉的 record_id，这正是「审计允许与飞书不一致」要暴露的现象。（表名故意不在此处复写：全仓库只许写入方与迁移提到它。）"
+}

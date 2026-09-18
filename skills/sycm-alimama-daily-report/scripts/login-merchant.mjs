@@ -40,11 +40,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { BROWSER_PROFILES, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+import { BROWSER_PROFILES, PROJECT_PORTS, SHOP_BROWSERS, shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
 // 判据与纯逻辑都在 core 里（可离线测）；这里只留 IO。
 import {
-  FORM_STATE_EXPRESSION, SITES, TAOBAO_LOGIN_URL, buildLoginAlert, captchaVisible, centerOf, needsHuman,
-  parseArgs, shouldNotify, sitesNeedingLogin,
+  FORM_STATE_EXPRESSION, SITES, TAOBAO_LOGIN_URL, alertForRun, captchaVisible, centerOf, needsHuman,
+  parseArgs, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 
 const delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -116,11 +116,11 @@ async function ensureLoginPage(args) {
 // 飞书提醒（IO 侧）
 // ---------------------------------------------------------------------------
 //
-// 「该不该发」在 core 的 shouldNotify / needsHuman 里（离线测过）；这里只负责把告警交给 CLI。
+// 「该不该发」在 core 的 shouldNotify / alertForRun 里（离线测过）；这里只负责把告警交给 CLI。
 // 三条不许破的纪律：
 //   1. 通知的结果**只写进 receipt.notify**，绝不改变 verdict 与退出码 ——
 //      「通知失败」不能变成「这次登录失败」，也不能反过来把失败说成成功；
-//   2. 凭据绝不进告警（buildLoginAlert 只吃本脚本自己产出的说明文字）；
+//   2. 凭据绝不进告警（core 那边的拼装只吃本脚本自己产出的说明文字）；
 //   3. 有超时。CLI 卡住时不能把整个日报链一起挂住 —— 杀掉的是我们自己刚起的子进程。
 function runNotifyCli(cliArgs, payload) {
   return new Promise((resolve) => {
@@ -147,11 +147,26 @@ function runNotifyCli(cliArgs, payload) {
   });
 }
 
+// 告警里那条「浏览器配置」该指向哪个 profile：
+//   给了 `--shop` ⇒ core 的 profileForShop 去**店铺登记表**里取那家店自己的隔离实例
+//   （每店一个 profile，见 SHOP_BROWSERS）；没给 ⇒ 回落到日报那个（`--shop` 之前的老用法，行为不变）。
+//
+// 「哪家店 → 哪个 profile」这一步刻意留在 core（可离线测）：原先它写在这个 IO 脚本里，
+// 于是「接线接对了没有」没有任何判据 —— 实测到的后果就是四家店的告警都写着同一个
+// `edge-daily-report-profile`，收信人照着这个路径去找，四个窗口长得一模一样。
 async function deliverAlert(args, receipt) {
   const verdict = receipt?.verdict ?? null;
   const mode = args?.notify ?? 'auto';
-  const commit = args?.commit === true;
-  if (!shouldNotify({ verdict, commit, mode })) {
+  // 「该不该叫人」与「叫人的话是哪家店、哪个配置」都在 core 的 alertForRun 里（离线可测）。
+  // 返回 null 就等于「这次不该叫人」—— 判定不再散落在这个 IO 脚本里。
+  const alert = alertForRun({
+    args,
+    receipt,
+    machine: os.hostname(),
+    shops: SHOP_BROWSERS,
+    fallbackProfile: process.env.PROJECT_BROWSER_PROFILE || BROWSER_PROFILES.dailyReport,
+  });
+  if (!alert) {
     receipt.notify = {
       mode,
       status: 'SKIPPED',
@@ -159,14 +174,6 @@ async function deliverAlert(args, receipt) {
     };
     return;
   }
-  const alert = buildLoginAlert({
-    verdict,
-    detail: receipt.detail ?? null,
-    sites: args.sites,
-    machine: os.hostname(),
-    // 这个脚本连的是日报链的浏览器（端口来自登记表），所以配置就是日报那个 profile。
-    browserProfile: process.env.PROJECT_BROWSER_PROFILE || BROWSER_PROFILES.dailyReport,
-  });
   const cliArgs = [NOTIFY_CLI, ...(mode === 'dry' ? ['--dry-run'] : [])];
   const result = await runNotifyCli(cliArgs, alert);
   let delivered = null;
@@ -232,13 +239,13 @@ async function attempt() {
     if (state.id?.autofill !== true) {
       receipt.login.shots = await shot(args, targetId, 'login-no-autofill');
       receipt.verdict = 'NO_SAVED_CREDENTIAL';
-      receipt.detail = '这个 profile 的密码库里没有该站点的凭据（:autofill 为 false）⇒ 只能人工登录一次并让浏览器记住密码；脚本不猜账号密码。';
+      receipt.detail = '登录时请点浏览器提示里的「保存密码」，这样下次系统就能自己填了。';
       return finish(receipt, 2);
     }
     const point = centerOf(state, 'id');
     if (!point) {
       receipt.verdict = 'STOP_AND_ALERT';
-      receipt.detail = '账号输入框没有可点坐标（rect 为零或缺失）⇒ 不点可疑坐标';
+      receipt.detail = '页面上找不到账号输入框的位置，系统没有乱点。请人工登录一次。';
       return finish(receipt, 2);
     }
     receipt.login.gesturePoint = point;
@@ -257,7 +264,7 @@ async function attempt() {
   if ((state.id?.valueLen ?? 0) === 0 || (state.password?.valueLen ?? 0) === 0) {
     receipt.login.shots = await shot(args, targetId, 'login-values-not-landed');
     receipt.verdict = 'NO_SAVED_CREDENTIAL';
-    receipt.detail = '补了可信手势之后账号/密码仍然是空的 ⇒ 浏览器没把凭据写进 DOM，不硬填。';
+    receipt.detail = '浏览器把账号画在了页面上，但页面上其实是空的 —— 人工登录一次，并在登录时点浏览器提示里的「保存密码」。';
     return finish(receipt, 2);
   }
 
@@ -267,7 +274,7 @@ async function attempt() {
   if (captcha) {
     receipt.login.shots = await shot(args, targetId, 'login-captcha');
     receipt.verdict = 'CAPTCHA_REQUIRED';
-    receipt.detail = '出现滑块/图片验证码 ⇒ 需要人到这台机器上完成一次；账号密码已经填好，不用重输。';
+    receipt.detail = '出现滑块或图片验证码了 —— 请在这台机器上把验证做完，账号密码已经填好了，不用重输。';
     return finish(receipt, 2);
   }
 
@@ -286,7 +293,7 @@ async function attempt() {
   const submitPoint = centerOf(state, 'submit');
   if (!submitPoint) {
     receipt.verdict = 'STOP_AND_ALERT';
-    receipt.detail = '登录按钮没有可点坐标';
+    receipt.detail = '页面上找不到「登录」按钮的位置，系统没有乱点。请人工登录一次。';
     return finish(receipt, 2);
   }
   await clickPoint(args, targetId, submitPoint[0], submitPoint[1]);
@@ -299,7 +306,7 @@ async function attempt() {
   receipt.login.shots = await shot(args, targetId, 'login-after-submit');
   if (hrefAfter && /login\.taobao\.com\/.*login/u.test(String(hrefAfter))) {
     receipt.verdict = 'LOGIN_NOT_CONFIRMED';
-    receipt.detail = '提交后仍停在登录页 —— 可能密码不对、可能要求验证码，如实报「没成」，不假装成功。';
+    receipt.detail = '页面还停在登录页 —— 可能是密码不对，也可能是平台要求额外验证。系统没有再试一遍（连着试会把账号锁住）。';
     return finish(receipt, 2);
   }
   for (const key of args.sites) {
@@ -309,7 +316,14 @@ async function attempt() {
   }
   const allIn = args.sites.every((k) => receipt.sites[k].loggedInAfter === true);
   receipt.verdict = allIn ? 'LOGGED_IN' : 'PARTIAL';
-  if (!allIn) receipt.detail = '提交后离开了登录页，但仍有站点验不到登录态 —— 按顺序先看截图再重跑。';
+  if (!allIn) {
+    // 点名**哪一个**后台没进去：只说「有一个没进去」，收信人还得自己去两个后台各试一遍。
+    // 也不要写「先看截图」—— 截图落在**这台机器**的证据目录里，收信人在飞书里根本看不到它。
+    const missing = args.sites
+      .filter((k) => receipt.sites[k].loggedInAfter !== true)
+      .map((k) => SITES[k].label);
+    receipt.detail = `没进去的是「${missing.join('、')}」。`;
+  }
   return finish(receipt, allIn ? 0 : 2);
 }
 
@@ -321,7 +335,11 @@ function printHeader() {
 
 async function main() {
   try {
-    args = parseArgs(process.argv.slice(2), { defaultProxy: `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}` });
+    args = parseArgs(process.argv.slice(2), {
+      defaultProxy: `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`,
+      // 合法店名来自登记表（单一来源），不在这里另抄一份。
+      shops: shopBrowserKeys(),
+    });
     if (args.help) { printHeader(); return; }
     await attempt();
   } catch (error) {
