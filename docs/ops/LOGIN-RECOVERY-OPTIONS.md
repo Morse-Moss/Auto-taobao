@@ -90,7 +90,9 @@ F9 的后果，必须说清楚：
    现状（已核对代码）：运行账本 `round-state.json` 只记
    `completed` / `days[dayKey].{attempts, closed, lastOutcome, lastAt}` / `openAlert`，
    **不记理由** —— 也就是说能看出「那天失败了」，但**分不出**「等人工结算」和「登录失效」和「网络抖动」。
-   `--serve` / `--round` 会打印收据（`reasons` 在里面），但那是 stdout，不落盘、不可统计。
+   `--serve` / `--round` 会打印收据（`reasons` 在里面），但那是 stdout，不落盘、不可统计；
+   而且 `--serve` 每个轮次只打**一行摘要**（outcome / key / 通知状态），根本不含 reasons ——
+   常驻模式下"到底为什么需要人"在日志里是看不见的。
    ⇒ B-1 的第一件工程活是**给「需要人」加一个追加式落点**（reason + 时间 + 店 + 机器），
    有先例可循：日报链的 `daily_report_push_audit` 就是同形状的只追加审计表。
    **没有落点，第 5 步那句「一周几次」永远只能靠回忆。**
