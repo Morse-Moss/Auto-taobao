@@ -21,10 +21,11 @@ import path from 'node:path';
 
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
-  PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN, TASK_DOWNLOAD_MARK, checkboxStateExpression,
-  defaultDownloadsDir, describeEntryMiss, describeHitMiss, describeHitPass, downloadEntryExpression,
-  hitCheckExpression, listDownloads, newEntries, newestTaskName, parseCollectArgs, pickNewest,
-  restoreCheckboxesExpression, scrollIntoViewExpression, targetRowExpression,
+  PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN, TASK_DOWNLOAD_MARK, alimamaIdentityExpression,
+  assertMemberIdentity, checkboxStateExpression, defaultDownloadsDir, describeEntryMiss,
+  describeHitMiss, describeHitPass, downloadEntryExpression, hitCheckExpression, listDownloads,
+  newEntries, newestTaskName, parseCollectArgs, pickNewest, restoreCheckboxesExpression,
+  scrollIntoViewExpression, targetRowExpression,
 } from './collect-core.mjs';
 
 const ALIMAMA_LIST_URL = 'https://one.alimama.com/index.html#!/report/download-list';
@@ -84,6 +85,26 @@ async function findAlimamaPage(args) {
     && String(target.url).includes('one.alimama.com'));
   if (matches.length !== 1) throw new Error(`expected one alimama page on ${args.proxy}, got ${matches.length}`);
   return matches[0].targetId;
+}
+
+// 动手之前先认这一屏是哪个登录（2026-09-18 加）。
+// 用户原话：「肯定是要是同一家店铺的数据的，绝对不能串数据」。
+// **这一页不显示店铺名**（实测只有「会员名 + 会员ID」，如「随心品质定制:阿彦 ID：887360146」），
+// 所以这一侧的判据只能是会员名/会员ID；两个都要对上才算同一个登录（会员名可改、ID 不可改）。
+// 为什么必须在这里拦：营销场景报表的 CSV **一个店铺身份字段都没有**（69 列全是场景与指标），
+// 取错窗口不会报错 —— 文件照样落盘、数字照样进飞书，事后从产物里查不出来。
+async function assertAlimamaIdentity(args, targetId) {
+  const identity = await evalOn(args, targetId, alimamaIdentityExpression());
+  const check = assertMemberIdentity({
+    expectedName: args.expectMember, expectedId: args.expectMemberId, observed: identity,
+  });
+  console.log(`[身份] 阿里妈妈会员 = ${JSON.stringify(identity.memberName)}`
+    + ` ID=${JSON.stringify(identity.memberId)}（这一页不显示店铺名，只有会员名）`
+    + (check.checked
+      ? `｜期望 ${JSON.stringify(args.expectMember ?? '')}`
+        + `${args.expectMemberId ? ` / ${args.expectMemberId}` : ''} ✓`
+      : '｜未给 --expect-member：只记录，不拦'));
+  return identity;
 }
 
 // 点击前一律复核：按钮常在视口外（实测文档坐标 y≈1462），真实鼠标点击会静默落空且不报错
@@ -307,6 +328,8 @@ async function main() {
   const targetId = await findAlimamaPage(args);
   await bringToFront(args, targetId);
   console.log(`[0/2] 阿里妈妈页 ${targetId}｜phase=${args.phase}｜目标日 ${args.date}`);
+  // 身份核对必须在任何点击/导航之前：两个阶段都从它开始。
+  await assertAlimamaIdentity(args, targetId);
   if (args.phase === 'submit') await phaseSubmit(args, targetId);
   else await phaseFetch(args, targetId);
 }

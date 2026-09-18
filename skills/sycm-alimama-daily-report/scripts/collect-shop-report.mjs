@@ -12,8 +12,9 @@ import path from 'node:path';
 
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
-  SHOP_REPORT_PATTERN, dateWithinRange, defaultDownloadsDir, describeHitMiss, describeHitPass,
-  hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest, scrollIntoViewExpression,
+  SHOP_REPORT_PATTERN, assertShopIdentity, dateWithinRange, defaultDownloadsDir, describeHitMiss,
+  describeHitPass, hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest,
+  scrollIntoViewExpression, sycmShopIdentityExpression,
 } from './collect-core.mjs';
 
 // 已验证的报表定义 id（SOP §3）；它进文件名哈希，变了就说明取的不是同一份报表。
@@ -91,8 +92,25 @@ async function main() {
 
   const targetId = await findSycmPage(args);
   await bringToFront(args, targetId);
+
+  // 动手之前先认这一屏是哪家店（2026-09-18 加）。
+  // 用户原话：「肯定是要是同一家店铺的数据的，绝对不能串数据」。
+  // 生意参谋页头写的是**店铺名**（如「盖文全卫定制 主店」），这里把它读出来：
+  // 给了 `--expect-shop` 就必须一致，不一致当场停 —— 因为这一屏点下去的下载，
+  // 文件名里**只有日期和哈希、没有店名**，落盘之后再也回推不出它是谁家的。
+  const identity = await evalOn(args, targetId, sycmShopIdentityExpression());
+  const identityCheck = assertShopIdentity({
+    expected: args.expectShop, observed: identity.shopName, label: '生意参谋店铺',
+  });
+  console.log(`[身份] 生意参谋店铺名 = ${JSON.stringify(identity.shopName)}`
+    + `（${identity.nodeType ?? '读不到'}）`
+    + (args.expectShop
+      ? `｜期望 ${JSON.stringify(args.expectShop)} ✓`
+      : '｜未给 --expect-shop：只记录，不拦'));
+
   const before = listDownloads(args.downloads, SHOP_REPORT_PATTERN).map((entry) => entry.name);
-  console.log(`[0/4] 生意参谋页 ${targetId}｜已有日报 xlsx ${before.length} 个｜下载目录 ${args.downloads}`);
+  console.log(`[0/4] 生意参谋页 ${targetId}｜已有日报 xlsx ${before.length} 个｜下载目录 ${args.downloads}`
+    + `｜身份核对=${identityCheck.checked ? '已做' : '未做（没有期望值）'}`);
 
   // 从门户直跳应用内地址会被弹回门户（SOP §3.1），所以先落到应用内页再进公共空间。
   console.log('[1/4] 先落到应用内页，再进 自助分析 · 公共空间');

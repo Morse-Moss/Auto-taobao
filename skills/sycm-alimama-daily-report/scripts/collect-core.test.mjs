@@ -6,9 +6,11 @@ import test from 'node:test';
 
 import {
   SHOP_REPORT_PATTERN, PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN,
-  checkboxStateExpression, dateWithinRange, defaultDownloadsDir, describeEntryMiss, describeHitMiss,
+  alimamaIdentityExpression, assertMemberIdentity, assertShopIdentity, checkboxStateExpression,
+  dateWithinRange, defaultDownloadsDir, describeEntryMiss, describeHitMiss,
   describeHitPass, downloadEntryExpression, hitCheckExpression, listDownloads, newEntries, newestTaskName,
-  parseCollectArgs, pickNewest, restoreCheckboxesExpression, scrollIntoViewExpression, targetRowExpression,
+  parseCollectArgs, pickNewest, restoreCheckboxesExpression, scrollIntoViewExpression,
+  sycmShopIdentityExpression, targetRowExpression,
 } from './collect-core.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
@@ -466,4 +468,152 @@ test('采集脚本：失败要给非零退出码并说清原因，端口从登�
     assert.equal(/127\.0\.0\.1:\d{4}/u.test(source), false, `${name} 里出现了写死的端口`);
     assert.match(source, /expected one \w+ page/u, `${name} 必须自己确认页面恰好一个`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// 「这一屏是哪家店」的身份判据（2026-09-18 加）
+// ---------------------------------------------------------------------------
+// 这一族测试的由来：用户质问「为什么万象台跟生意参谋不一样，绝对不能串数据」。
+// 查清的机制是 —— 阿里妈妈页头只显示**会员名 + 会员ID**（从不显示店铺名），
+// 生意参谋页头显示**店铺名 + 主店/子店**；两者本来就可以不同名。
+// 而当时两个采集脚本**一次身份都没核对过**，两个产物里只有一个带身份
+// （生意参谋 xlsx 有「店铺名称」列；阿里妈妈 CSV 一个店铺字段都没有），
+// 所以「取错窗口」在推广那一步是静默的：文件照样落盘、数字照样进飞书。
+test('身份表达式在沙箱里真的能跑：店铺名去掉「主店」，会员名不会被时间串顶替', () => {
+  const el = (innerText) => ({ innerText });
+  const run = (expression, env) => JSON.parse(new Function('document', 'location',
+    `return ${expression};`)(env.document, { href: 'https://example.invalid/x' }));
+
+  // 生意参谋：外层容器带前缀 ⇒ 不能选它；页头那一块取「最短的那段」，再去掉尾部主店/子店。
+  const sycm = run(sycmShopIdentityExpression(), {
+    document: {
+      querySelectorAll: () => [
+        el('生意参谋 盖文全卫定制 主店 惠商 我的 帮助 退出'), // 不以 主店 结尾 ⇒ 不该入选
+        el('盖文全卫定制 主店'),
+        el('主店'), // 单独的节点标记 ⇒ 不该入选（前面没有店名）
+      ],
+    },
+  });
+  assert.equal(sycm.shopName, '盖文全卫定制');
+  assert.equal(sycm.nodeType, '主店');
+  assert.deepEqual(sycm.candidates, ['盖文全卫定制 主店']);
+
+  // 读不到时必须是 null，不许编一个名字出来（调用方要用 null 判「身份未知」）。
+  const none = run(sycmShopIdentityExpression(), { document: { querySelectorAll: () => [] } });
+  assert.equal(none.shopName, null);
+  assert.equal(none.nodeType, null);
+
+  // 子店也要认（同一个页面结构，只是节点标记不同）。
+  const sub = run(sycmShopIdentityExpression(), { document: { querySelectorAll: () => [el('科塔全卫定制 子店')] } });
+  assert.equal(sub.shopName, '科塔全卫定制');
+  assert.equal(sub.nodeType, '子店');
+
+  // 阿里妈妈：页面上有 00:00/01:00 这类时间串，只认 `xx:yy` 会把身份读成时间 ⇒
+  // 必须「会员名 + ID：数字」连在一起认。
+  const alimama = run(alimamaIdentityExpression(), {
+    document: {
+      body: { innerText: '首页 推广 报表 00:00 01:00 02:00 随心品质定制:阿彦 ID：887360146 投放中' },
+    },
+  });
+  assert.equal(alimama.memberName, '随心品质定制:阿彦');
+  assert.equal(alimama.memberId, '887360146');
+  // 反向自证：只认 `xx:yy` 的写法会命中时间串 —— 这条断言就是用来钉住「不许退回那种写法」。
+  assert.equal(/([\u4e00-\u9fa5A-Za-z0-9_]{2,20}):([\u4e00-\u9fa5A-Za-z0-9_]{1,20})/u
+    .exec('首页 00:00 随心品质定制:阿彦')[1], '00', '前置条件变了：时间串不再先于会员名出现');
+
+  const noId = run(alimamaIdentityExpression(), { document: { body: { innerText: '随心品质定制:阿彦' } } });
+  assert.equal(noId.memberName, null, '没有 ID 就不算认出了身份（否则可能拿到别处的 xx:yy）');
+});
+
+test('身份核对：对不上要停、读不到要停、没给期望值只记录不拦', () => {
+  // 没给期望值 ⇒ 不拦（但要把读到的带出来，好让日志里看得出「这是记录、不是核对」）。
+  const loose = assertShopIdentity({ expected: null, observed: '盖文全卫定制' });
+  assert.equal(loose.checked, false);
+  assert.equal(loose.observed, '盖文全卫定制');
+
+  // 给对了 ⇒ 通过。
+  const ok = assertShopIdentity({ expected: '盖文全卫定制', observed: '盖文全卫定制 ' });
+  assert.equal(ok.checked, true);
+
+  // 给错了 ⇒ 停，且两边名字都要出现在报错里（否则只能回去手工复现）。
+  assert.throws(() => assertShopIdentity({ expected: '盖文全卫定制', observed: '科塔全卫定制' }),
+    /期望「盖文全卫定制」，页面实际「科塔全卫定制」/u);
+  // 「读不到」也停：身份未知就等于没核对过，继续点下载是碰运气。
+  assert.throws(() => assertShopIdentity({ expected: '盖文全卫定制', observed: null }), /身份读不到/u);
+  assert.throws(() => assertShopIdentity({ expected: '   ', observed: '盖文全卫定制' }), /空白/u);
+
+  // 阿里妈妈侧：会员名与 ID **都要**对（会员名可以改，ID 不会）。
+  assert.equal(assertMemberIdentity({ expectedName: '随心品质定制:阿彦', expectedId: '887360146',
+    observed: { memberName: '随心品质定制:阿彦', memberId: '887360146' } }).checked, true);
+  assert.throws(() => assertMemberIdentity({ expectedName: null, expectedId: '887360146',
+    observed: { memberName: '随心品质定制:阿彦', memberId: '2995200080' } }), /会员 ID 对不上/u);
+  assert.throws(() => assertMemberIdentity({ expectedName: '盖文旗舰店:阿彦', expectedId: null,
+    observed: { memberName: '随心品质定制:阿彦', memberId: '887360146' } }), /阿里妈妈会员名/u);
+  assert.throws(() => assertMemberIdentity({ expectedId: 'abc', observed: {} }), /6 位以上数字/u);
+  assert.equal(assertMemberIdentity({ observed: { memberName: 'x:y' } }).checked, false);
+});
+
+test('两个采集脚本都必须核对身份，而且必须在点下载之前；判据不许写死带哈希的类名', () => {
+  const shop = readScript('collect-shop-report.mjs');
+  assert.match(shop, /sycmShopIdentityExpression/u, '店铺脚本必须读生意参谋身份');
+  assert.match(shop, /assertShopIdentity\(/u, '店铺脚本必须拿读到的身份去比对');
+  // 光「调了那个函数」不算接线：期望值必须真的从参数传进去。
+  // （这正是最容易出现的假接线：函数调了、期望值恒为 null ⇒ 核对永远不拦，日志里却看着像核过。）
+  assert.match(shop, /expected: args\.expectShop/u, '店铺脚本没把 --expect-shop 传给核对函数（等于没核对）');
+  assert.match(shop, /observed: identity\.shopName/u, '店铺脚本没把读到的店铺名传给核对函数');
+  // 位置关系：身份核对必须早于「点下载报表」—— 点完再核对，文件已经落盘了。
+  const identityAt = shop.indexOf('await evalOn(args, targetId, sycmShopIdentityExpression())');
+  const downloadClickAt = shop.indexOf('clickVerified(args, targetId,\n    { selector: \'[data-collect-download="1"]\'');
+  assert.ok(identityAt > 0, '店铺脚本里找不到身份读取处（判据失效了）');
+  assert.ok(downloadClickAt > 0, '店铺脚本里找不到下载点击处（判据失效了）');
+  assert.ok(identityAt < downloadClickAt, '身份核对必须早于点击下载，否则拦不住已经落盘的文件');
+  // `--locate-only` 排练也要能核（排练的语义是「定位全走一遍」，身份属于定位的一部分）。
+
+  const promo = readScript('collect-promotion-report.mjs');
+  assert.match(promo, /alimamaIdentityExpression/u, '阿里妈妈脚本必须读会员身份');
+  assert.match(promo, /assertMemberIdentity\(/u, '阿里妈妈脚本必须拿会员名/ID 去比对');
+  assert.match(promo, /expectedName: args\.expectMember/u,
+    '阿里妈妈脚本没把 --expect-member 传给核对函数（等于没核对）');
+  assert.match(promo, /expectedId: args\.expectMemberId/u,
+    '阿里妈妈脚本没把 --expect-member-id 传给核对函数（等于没核对）');
+  const promoIdentityAt = promo.indexOf('await assertAlimamaIdentity(args, targetId)');
+  const phaseDispatchAt = promo.indexOf("if (args.phase === 'submit')");
+  assert.ok(promoIdentityAt > 0, '阿里妈妈脚本里找不到身份核对调用处（判据失效了）');
+  assert.ok(phaseDispatchAt > 0, '阿里妈妈脚本里找不到阶段分发处（判据失效了）');
+  assert.ok(promoIdentityAt < phaseDispatchAt,
+    '身份核对必须早于两个阶段的点击 —— 两个阶段都要过这一关');
+  // 反面：这一页**不显示店铺名**，所以不许把「店铺名」当成阿里妈妈侧的判据来读。
+  const alimamaExpr = alimamaIdentityExpression();
+  assert.equal(/主店|旗舰店/u.test(alimamaExpr), false,
+    '阿里妈妈页没有店铺名，不许在那里按店铺名取身份');
+
+  // 判据必须按文本形状取，不写死带哈希的类名（实测类名形如
+  // `src-opEbase-redux-layouts-Frame-module-title-1n_Ad`，前端一发版就变）。
+  for (const expression of [sycmShopIdentityExpression(), alimamaIdentityExpression()]) {
+    assert.equal(/ebase-frame|shopTextIcon|module-title/u.test(expression), false,
+      '身份判据写死了带哈希的类名，前端发版即失效');
+  }
+  assert.match(sycmShopIdentityExpression(), /主店\|子店/u, '店铺名的形态必须显式写在判据里');
+});
+
+test('身份期望值参数：两个站点各一个名字（不合成一个），写错在解析期就炸', () => {
+  const base = ['--date', '2026-09-18'];
+  // 默认三件套都是 null ⇒ 不带参数的行为与从前逐字相同（不核对、只记录）。
+  const bare = parseCollectArgs(base);
+  assert.equal(bare.expectShop, null);
+  assert.equal(bare.expectMember, null);
+  assert.equal(bare.expectMemberId, null);
+
+  const given = parseCollectArgs([...base, '--expect-shop', '盖文全卫定制',
+    '--expect-member', '随心品质定制:阿彦', '--expect-member-id', '887360146']);
+  assert.equal(given.expectShop, '盖文全卫定制');
+  assert.equal(given.expectMember, '随心品质定制:阿彦');
+  assert.equal(given.expectMemberId, '887360146');
+
+  // 写错要在**解析期**炸：等看清了页面、点完下载才炸，坑已经踩了。
+  assert.throws(() => parseCollectArgs([...base, '--expect-shop', '   ']), /--expect-shop must not be blank/u);
+  assert.throws(() => parseCollectArgs([...base, '--expect-member', '']), /--expect-member must not be blank/u);
+  assert.throws(() => parseCollectArgs([...base, '--expect-member-id', '88736']), /6\+ digits/u);
+  assert.throws(() => parseCollectArgs([...base, '--expect-member-id', 'abc123456']), /6\+ digits/u);
+  assert.throws(() => parseCollectArgs([...base, '--expect-shop']), /requires a value/u);
 });

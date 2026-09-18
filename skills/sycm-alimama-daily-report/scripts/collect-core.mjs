@@ -159,6 +159,108 @@ export function hitCheckExpression(selector) {
 }
 
 // ---------------------------------------------------------------------------
+// 「这一屏到底是哪家店」——采集段的两道身份判据（2026-09-18 加）
+// ---------------------------------------------------------------------------
+// 为什么必须加：用户 2026-09-18 质问「为什么万象台跟生意参谋不一样，绝对不能串数据」。
+// 查清的结果是**两个站点显示的本来就不是同一种东西**：
+//   · 阿里妈妈页头只显示**登录会员名 + 会员ID**（实测「随心品质定制:阿彦 ID：887360146」），
+//     从头到尾**不显示店铺名**；
+//   · 生意参谋页头显示**店铺名 + 主店/子店**（实测「盖文全卫定制 主店」）。
+// 会员名与店铺名本来就可以不同名，所以「两边不一样」不构成串店 —— 但也因此，
+// **只看页面文字无法证明这两屏属于同一家店**。所以身份必须逐站点各自取、各自与期望值比对。
+//
+// 而当时的两个采集脚本**一次身份都没核对过**（只有询单回填那一步核对了店铺名），
+// 两个产物里还只有一个带身份：生意参谋的日报 xlsx 有「店铺名称」列，
+// 阿里妈妈的营销场景报表 CSV **一个店铺身份字段都没有**。
+// 于是「取错窗口」在推广这一步是**静默的**：文件照样落盘、数字照样进飞书。
+// 这两道判据就是把那个静默口子堵上：给定期望值时，页面身份对不上就停手。
+//
+// 表达式只读、不点任何控件。取法都按**文本形状**取，不写死带哈希的类名（发版就会变）：
+//   · 生意参谋：取「以 主店/子店 结尾、且最短」的那段文本（最短 = 最内层，避免把外层容器
+//     连「生意参谋 惠商 我的 帮助 退出」一起吃进来）；店铺名 = 去掉尾部的主店/子店。
+//   · 阿里妈妈：必须把「`主账号:子账号` + ID：数字」**连在一起**认。只认 `xx:yy` 会命中
+//     页面上的时间串（实测 memberHits 里出现过 00:00、01:00 这种），那会把身份读成时间。
+export function sycmShopIdentityExpression() {
+  return `(() => {
+    const clean = (value) => String(value == null ? '' : value).replace(/\\s+/g, ' ').trim();
+    const matches = [...document.querySelectorAll('a,div,span')]
+      .map((el) => clean(el.innerText))
+      .filter((text) => /^.{1,30}?(?:主店|子店)$/.test(text));
+    // 取最短的那段：外层容器会带上前缀（「生意参谋 xxx 主店」），最短的才是页头那一块。
+    const text = matches.slice().sort((a, b) => a.length - b.length)[0] ?? null;
+    const parsed = text ? text.match(/^(.*?)\\s*(主店|子店)$/) : null;
+    return JSON.stringify({
+      href: location.href,
+      raw: text,
+      candidates: matches.slice(0, 6),
+      shopName: parsed ? parsed[1] : null,
+      nodeType: parsed ? parsed[2] : null,
+    });
+  })()`;
+}
+
+export function alimamaIdentityExpression() {
+  return `(() => {
+    const body = document.body.innerText.replace(/\\s+/g, ' ');
+    const parsed = body.match(/([\\u4e00-\\u9fa5A-Za-z0-9_]{2,20}):([\\u4e00-\\u9fa5A-Za-z0-9_]{1,20})\\s*ID\\s*[:：]\\s*(\\d{6,})/);
+    return JSON.stringify({
+      href: location.href,
+      memberName: parsed ? parsed[1] + ':' + parsed[2] : null,
+      memberId: parsed ? parsed[3] : null,
+      raw: parsed ? parsed[0] : null,
+    });
+  })()`;
+}
+
+export function normalizeShopName(value) {
+  return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+// 身份核对：**fail-closed**。expected 为空 = 调用方没给期望值 ⇒ 不拦（脚本仍会打印实际读到什么，
+// 因为「记录但不拦」和「看起来核对了」是两件事，日志里必须看得出是哪一种）。
+// 读不到身份**也算失败**：身份未知就等于没核对过，继续点下载就是碰运气。
+export function assertShopIdentity({ expected, observed, label = '店铺' } = {}) {
+  const got = normalizeShopName(observed);
+  if (!expected) return { checked: false, observed: got };
+  const want = normalizeShopName(expected);
+  if (!want) throw new Error(`${label}期望值只给了空白字符，等于没给`);
+  if (!got) {
+    throw new Error(`${label}身份读不到（期望「${want}」）：拒绝在身份未知的页面上继续`
+      + ' —— 读到的原文在上面那行日志里，先确认窗口/代理对不对再说');
+  }
+  if (got !== want) {
+    throw new Error(`${label}身份对不上：期望「${want}」，页面实际「${got}」`
+      + ' —— 这就是一次串店，已停手。别在这个页面上点下载：文件会照样落盘、数字会照样进飞书，'
+      + '而且（推广报表那一侧）产物里连店铺身份字段都没有，事后查不出来。');
+  }
+  return { checked: true, expected: want, observed: got };
+}
+
+// 阿里妈妈侧的核对对象是**会员名（＋会员ID）**，不是店铺名 —— 那一页根本没有店铺名。
+// 这两件事必须分开做：把会员名当店名比对，正是这次被用户问住的那个混淆。
+export function assertMemberIdentity({ expectedName, expectedId, observed } = {}) {
+  if (!expectedName && !expectedId) {
+    return { checked: false, observedName: normalizeShopName(observed?.memberName) };
+  }
+  const results = [];
+  if (expectedName) {
+    results.push(assertShopIdentity({ expected: expectedName, observed: observed?.memberName,
+      label: '阿里妈妈会员名' }));
+  }
+  if (expectedId) {
+    const wantId = String(expectedId).trim();
+    if (!/^\d{6,}$/u.test(wantId)) throw new Error(`会员 ID 期望值必须是 6 位以上数字，收到 ${JSON.stringify(expectedId)}`);
+    const gotId = String(observed?.memberId ?? '').trim();
+    if (gotId !== wantId) {
+      throw new Error(`阿里妈妈会员 ID 对不上：期望 ${wantId}，页面实际 ${gotId || '（读不到）'}`
+        + ' —— 会员名可能被改过，ID 不会；两者都对上才算同一个登录。');
+    }
+    results.push({ checked: true, expected: wantId, observed: gotId });
+  }
+  return { checked: true, results };
+}
+
+// ---------------------------------------------------------------------------
 // 阿里妈妈「下载任务管理」取件的三段表达式（2026-09-17 改；此前那版模型是错的）
 // ---------------------------------------------------------------------------
 // 这一页的真实结构，逐条实测得来，别再按直觉推：
@@ -320,8 +422,17 @@ export function describeHitPass(hit) {
 }
 
 // 采集段的参数解析。两个脚本共用，差别只在有没有 `--phase`。
+//
+// 2026-09-18 加三个**身份期望值**参数（都可不给）：
+//   `--expect-shop`      生意参谋页头的店铺名（如「盖文全卫定制」）
+//   `--expect-member`    阿里妈妈页头的会员名（如「随心品质定制:阿彦」）
+//   `--expect-member-id` 阿里妈妈页头的会员数字 ID（如 887360146）
+// 为什么是两个参数而不是一个「店名」：这两个名字**本来就不是同一种东西**（会员名 vs 店铺名），
+// 而且阿里妈妈那一页压根不显示店铺名。合成一个参数就会逼着调用方去猜哪个站点该填哪个名字，
+// 猜错的形态正是用户这次问到的那件事。
 export function parseCollectArgs(argv, options = {}) {
   const args = { date: null, downloads: null, proxy: null, task: null, phase: null,
+    expectShop: null, expectMember: null, expectMemberId: null,
     timeoutMs: options.timeoutMs ?? 30000, reportId: options.reportId ?? null,
     // 勾选目标任务行的重试次数：留给「被浮层挡一下」这类可自愈的遮挡
     // （2026-09-17 实测：z-index 999999 的浮层压住第一行，浮层自己收起后重试即过）。
@@ -341,6 +452,9 @@ export function parseCollectArgs(argv, options = {}) {
     else if (key === '--phase') args.phase = next();
     else if (key === '--timeout-ms') args.timeoutMs = Number(next());
     else if (key === '--report-id') args.reportId = next();
+    else if (key === '--expect-shop') args.expectShop = next();
+    else if (key === '--expect-member') args.expectMember = next();
+    else if (key === '--expect-member-id') args.expectMemberId = next();
     // 布尔开关：`--locate-only` → args.locateOnly。带横线的名字一律转小驼峰，
     // 免得调用方去猜 `args['locate-only']` 还是 `args.locate_only`。
     else if (allowed.has(key)) {
@@ -350,6 +464,16 @@ export function parseCollectArgs(argv, options = {}) {
   }
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(args.date ?? '')) throw new Error('missing or invalid --date (expected YYYY-MM-DD)');
   if (!Number.isInteger(args.timeoutMs) || args.timeoutMs <= 0) throw new Error('--timeout-ms must be a positive integer');
+  // 身份期望值写错要**在这里**就炸，而不是等看清了页面、点完下载才炸 —— 那时候坑已经踩了。
+  if (args.expectShop !== null && !normalizeShopName(args.expectShop)) {
+    throw new Error('--expect-shop must not be blank');
+  }
+  if (args.expectMember !== null && !normalizeShopName(args.expectMember)) {
+    throw new Error('--expect-member must not be blank');
+  }
+  if (args.expectMemberId !== null && !/^\d{6,}$/u.test(String(args.expectMemberId).trim())) {
+    throw new Error('--expect-member-id must be 6+ digits (e.g. 887360146)');
+  }
   if (options.phases) {
     if (!options.phases.includes(args.phase)) {
       throw new Error(`--phase must be one of ${options.phases.join('|')} (got ${JSON.stringify(args.phase)})`);
