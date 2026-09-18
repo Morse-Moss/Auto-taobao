@@ -10,6 +10,8 @@
   .k{font-size:20px;color:#888}
   .v{font-size:64px;font-weight:700;margin:18px 0;color:#ffd400;word-break:break-all}
   .n{font-size:18px;color:#9ad}
+  /* 会员名：`量到才显示` —— 空的 div 不该在版面上占位（`:empty` 让整行连外边距一起消失）。 */
+  .m:not(:empty){font-size:20px;color:#9ad;margin-top:10px}
   .s{font-size:22px;font-weight:700;margin-top:14px}
   .s.ok{color:#5ddc7f}
   .s.bad{color:#ff6b6b}
@@ -20,13 +22,10 @@
 <body>
 <div class="k">这个浏览器窗口是给这家店用的</div>
 <div class="v" id="shop"></div>
+<div class="m" id="member"></div>
 <div class="n" id="port"></div>
 <div class="s" id="state"></div>
-<div class="w">
-  请在<b>本窗口</b>（不是别的窗口）里登录上面这家店的账号，<br>
-  登录页就在本标签页右边那一个里。<br>
-  登完请点浏览器提示里的「保存」把密码存下来 —— 存过之后系统下次就能自己登。
-</div>
+<div class="w" id="hint"></div>
 <script>
   // 为什么标题必须拼进店名（2026-09-18）：窗口标题就是**任务栏和窗口列表里显示的那一行**，
   // 而飞书告警只能告诉收信人店名，没法替他点开某个窗口。四台浏览器如果标题一样，
@@ -39,6 +38,15 @@
   document.getElementById('shop').textContent = shop;
   document.getElementById('port').textContent = port ? '调试端口 ' + port : '';
 
+  // 会员名（2026-09-18 深夜，用户原话「没有科塔啊，五个店铺哪里有科塔」）：
+  // 窗口上写的是**运营叫法**（`科塔淘宝`），而运营同事发给他的账号是**阿里妈妈会员名**
+  // （`j873522735:阿彦`）—— 科塔的会员名字面上根本没有「科塔」二字，两套名字对不上，
+  // 于是站在机器前找不出「哪一组账号是哪一家」。把会员名写在店名下面，两边当场对上。
+  // 与状态行同一口径：量不到就整行不显示（不写「未知」占位，那会让人以为量过了）。
+  // **只放会员名，绝不放密码**：这个 URL 会留在浏览历史里，凭据一律不进这里。
+  const member = q.get('member') || '';
+  if (member) document.getElementById('member').textContent = '会员名 ' + member;
+
   // 登录状态是可选的：脚本量到了就带过来，量不到就整行不显示（不写「未知」去占位，
   // 那会让人以为量过了）。不在这里凭空猜 —— file:// 页面读不到调试接口。
   const state = q.get('state') || '';
@@ -47,6 +55,17 @@
     el.textContent = state;
     el.className = 's ' + (q.get('ok') === '1' ? 'ok' : 'bad');
   }
+
+  // 底部提示随登录状态变。**已登录的窗口里没有登录页** —— 无条件写「登录页就在右边那一个里」，
+  // 会让人照着去找一个不存在的页面（四台窗口写同一句话时的症状就是这个）。
+  // 只有量到「需要登录」时才指路；没量到时给的是「如果被要求登录，就…」，不替浏览器下结论。
+  document.getElementById('hint').innerHTML = state
+    ? '请在<b>本窗口</b>（不是别的窗口）里登录上面这家店的账号，'
+      + '<br>登录页就在本标签页右边那一个里。'
+      + '<br>登完请点浏览器提示里的「保存」把密码存下来 —— 存过之后系统下次就能自己登。'
+    : '这个窗口如果被要求登录，请在<b>本窗口</b>（不是别的窗口）里登录上面这家店的账号，'
+      + '<br>登完请点浏览器提示里的「保存」把密码存下来 —— 存过之后系统下次就能自己登。'
+      + '<br>没被要求登录就不用管它。';
 </script>
 </body>
 </html>

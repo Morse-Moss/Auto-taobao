@@ -139,10 +139,12 @@ node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --shop
 # render the alert text without sending it
 node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --shop 盖文淘宝 --notify dry
 
-# make each shop's browser window identifiable (title = shop name) — this is what the alert points at
-node runtime/shop-window-label.mjs                                            # read-only: what tabs each window has + which shop is sitting on a login page
+# make each shop's browser window identifiable — this is what the alert points at.
+# title + big text carry the OPERATING name (a SHOP_BROWSERS key); the small line carries the Alimama MEMBER name
+node runtime/shop-window-label.mjs                                            # read-only: tabs, each shop's member name, who is sitting on a login page
 node runtime/shop-window-label.mjs --commit --only 盖文淘宝
 node runtime/shop-window-label.mjs --commit --front                           # also bring the label tab to front
+node runtime/shop-window-label.mjs --commit --member "j873522735:阿彦"         # override the member name; otherwise read from the registry
 
 # tidy up leftover tabs — OFF by default, and an intent of its own
 node runtime/shop-window-label.mjs --prune                                    # dry run: what would be closed
@@ -154,6 +156,10 @@ node runtime/shop-window-label.mjs --prune --commit                           # 
 Closing tabs is why two rules exist. Duplicate tabs for the same backend are not cosmetic: the chain's predicate is "exactly one page for this backend", so a duplicate fails it and stops the whole shop at step one. But `edge://nurturing/`, which Edge opens by itself alongside a new tab, **cannot be closed** — `/close` returns `{"success":true}` and the same target id is still there 3 seconds later. It is therefore excluded from the close plan and reported as "the script cannot close this, ignore it"; listing it produced a fake action every run. And `pruneTabsOn` never trusts the `/close` return code: it re-reads `/targets` afterwards and puts anything still present into `failed`.
 
 Login state is read from the tab URLs, so the read-only report answers "which shop still needs a human" without any extra step: a backend page whose URL is `sycm.taobao.com/custom/login.htm` or `one.alimama.com/index.html#!/login/index` **is** a login page. Those pages stay classified as `work` — reclassifying them as `loginPage` would make the two backends share one group key and collapse them to a single kept tab, which breaks the same "exactly one page per backend" rule from the other side. When no login page is seen the state line is simply absent: **"not seeing a login page" never becomes "logged in"**, because a URL that is not a login page says nothing about whether the session is still valid.
+
+The state line is a **snapshot taken when the label was placed**, not a live reading. A window can keep showing `需要登录` after the shop has actually logged in (measured on 19033: the stale `state=需要登录` stayed in the tab URL while the backend page was no longer a login page). Re-running `--commit` rewrites it against the facts at that moment — which is how that stale line got cleared. So treat a state line as "true as of the last labelling", and note the other direction too: no state line after a re-label still does not mean "logged in".
+
+Two names belong on the label, because two different people read different ones. Operations hands out accounts **by Alimama member name** (`j873522735:阿彦`), while the alert and Feishu use the **operating name** (`科塔淘宝`). For 科塔 the member name is a bare number carrying no trace of the shop name, so the two sets have no overlap at all — the 2026-09-18 question "没有科塔啊，五个店铺哪里有科塔" is precisely that gap. A member-only label is meaningless to operations (that was the first version's defect), so the member name sits as a small line under the operating name, sourced from the single registry (`shop-identities.mjs`) and never re-typed here.
 
 Cleaning tabs does **not** save memory (measured: 6,297 MB before, 6,726 MB after, with one new label tab added per window in the same step; a real page costs 200-300 MB while a blank page costs almost nothing). Its value is removing predicate interference and human confusion. Memory scales with how many browser instances are open at once, not with tabs per window — see `docs/ops/CLIENT-MACHINE-CAPACITY.md` §3.
 

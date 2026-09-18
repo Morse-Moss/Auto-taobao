@@ -18,6 +18,8 @@
 //      裸 CDP 端口在 2026-09-18 实测「页面上什么都有，脚本一个也连不上」。
 //   3) **默认不动任何东西**：CLI 不带 `--commit` 时只打印「哪台缺标签页 / 现在有哪些页签」。
 import { SHOP_BROWSERS, shopBrowserKeys } from './browser-ports.mjs';
+// 会员名从「店铺身份登记表」读 —— 那是唯一来源（逐字抄自运营的店铺底单，见 shop-identities.mjs）。
+import { SHOP_IDENTITIES } from '../skills/sycm-alimama-daily-report/scripts/shop-identities.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,13 +37,48 @@ export function windowTitleFor(shop) {
   return `${name}${WINDOW_TITLE_SUFFIX}`;
 }
 
-// 标签页的 URL。`state` 是可选的：量到登录状态就带过来，量不到就**整个参数不带**，
+/**
+ * 这家店的**阿里妈妈会员名**（形如 `j873522735:阿彦`）。
+ *
+ * 为什么这个要出现在窗口上（2026-09-18 深夜，用户原话「没有科塔啊，五个店铺哪里有科塔」）：
+ * 他手里是运营同事按**会员名**给的账号（`里可林家居:阿彦` / `网林家居旗舰店:阿彦` /
+ * `随心品质定制:阿彦` / `j873522735:阿彦`），而窗口标题写的是**运营叫法**（里可林淘宝／网林天猫／
+ * 盖文淘宝／科塔淘宝）。两套名字对不上，于是他看不出「科塔」是哪一组账号 ——
+ * 其中科塔的会员名干脆是一串数字（`j873522735`），字面上完全没有「科塔」二字。
+ * 会员名放在窗口上，人一到机器前就能把两边对上。
+ *
+ * 口径：
+ *   - 来源是登记表（`shop-identities.mjs`），**不许在这里另抄一份**；
+ *   - 读不到（这家店没登记 / 没实测过）就返回 `null`，页面上那一行整个不显示 ——
+ *     与登录状态同一口径（不写占位）；
+ *   - **只放会员名，绝不放密码**（凭据不进任何仓库内的东西，这是硬纪律）；
+ *   - `identities` 形状不对时**抛错**，不回落成 `null`。
+ *
+ * 最后那条是踩出来的（2026-09-18 深夜，本函数第一版）：登记表是**数组**（每行 `{ key, ... }`），
+ * 我写成了对象下标 `identities[name]` ⇒ 它永远返回 `null`，页面上那一行永远空着，
+ * 而且**没有任何报错** —— 症状与「这家店确实没登记」一模一样。是刚写的判据当场把它抓出来的。
+ * 「找不到」与「传错了形状」后果完全不同，不能混成一个 null。
+ */
+export function memberNameFor(shop, identities = SHOP_IDENTITIES) {
+  const name = String(shop ?? '').trim();
+  if (!name) return null;
+  if (!Array.isArray(identities)) {
+    throw new TypeError('memberNameFor 的 identities 必须是登记表的数组形状（SHOP_IDENTITIES）');
+  }
+  return identities.find((row) => row?.key === name)?.alimamaMemberName ?? null;
+}
+
+// 标签页的 URL。`state` 与 `member` 都是可选的：量到就带上，量不到就**整个参数不带**，
 // 页面上那一行也就不显示 —— 不写「未知」去占位，那会让人以为量过了。
-export function labelPageUrlFor({ shop, port = null, state = null, ok = null, pagePath = LABEL_PAGE_PATH } = {}) {
+export function labelPageUrlFor({
+  shop, port = null, state = null, ok = null, member = null, pagePath = LABEL_PAGE_PATH,
+} = {}) {
   const name = String(shop ?? '').trim();
   if (!name) throw new Error('labelPageUrlFor 需要一个店名');
   const query = new URLSearchParams({ shop: name });
   if (port !== null && port !== undefined && port !== '') query.set('port', String(port));
+  const memberText = String(member ?? '').trim();
+  if (memberText) query.set('member', memberText);
   const text = String(state ?? '').trim();
   if (text) {
     query.set('state', text);
@@ -246,12 +283,13 @@ export async function ensureLabelTabOn({
   port = null,
   state = null,
   ok = null,
+  member = null,
   fetchImpl = fetch,
 } = {}) {
   const targets = await readTargets(proxyUrl, fetchImpl);
   const classified = classifyShopTabs(targets);
   const labels = classified.filter((t) => t.kind === 'label');
-  const url = labelPageUrlFor({ shop, port, state, ok });
+  const url = labelPageUrlFor({ shop, port, state, ok, member });
 
   if (labels.length > 1) {
     // 堆了多个标签页时按纪律停手：navigate 哪个都不对，关掉哪个都是替人做决定。
@@ -329,7 +367,8 @@ export async function pruneTabsOn({ proxyUrl, dryRun = true, fetchImpl = fetch }
 
 export function parseCli(argv) {
   const opts = {
-    commit: false, prune: false, label: null, front: false, only: null, state: null, ok: null, help: false,
+    commit: false, prune: false, label: null, front: false,
+    only: null, state: null, ok: null, member: null, help: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -339,12 +378,13 @@ export function parseCli(argv) {
     if (token === '--label') { opts.label = true; continue; }
     if (token === '--front') { opts.front = true; continue; }
     if (token === '--help' || token === '-h') { opts.help = true; continue; }
-    const flags = ['--only', '--state', '--ok'];
+    const flags = ['--only', '--state', '--ok', '--member'];
     if (!flags.includes(token)) throw new Error(`Unknown argument: ${token}`);
     const value = argv[i + 1];
     if (value === undefined || value.startsWith('--')) throw new Error(`${token} requires a value`);
     if (token === '--only') opts.only = value;
     if (token === '--state') opts.state = value;
+    if (token === '--member') opts.member = value;
     if (token === '--ok') opts.ok = value === '1' || value === 'true';
     i += 1;
   }
@@ -385,6 +425,9 @@ async function main() {
         browserPort: entry.browserPort,
         proxyPort: entry.proxyPort,
         windowTitle: windowTitleFor(shop),
+        // 核对用：这一行把「窗口标题上的运营叫法」与「运营同事手里那个会员名」摆在一起。
+        // 只读报告就有，不需要 `--commit` —— 因为「哪一组账号是哪一家」是随时会问的问题。
+        memberName: memberNameFor(shop),
         labelTabs: labels.length,
         tabs: classified.map(describeTab),
         leftover: leftoverTabs(classified).map(describeTab),
@@ -411,8 +454,10 @@ async function main() {
         const explicit = opts.state !== null;
         const state = opts.state ?? hint?.state ?? null;
         const ok = opts.ok !== null ? opts.ok : (hint ? hint.ok : null);
+        // 会员名从登记表读 —— 它存在的理由就是「让人把窗口和手里的账号对上」。
+        const member = opts.member ?? memberNameFor(shop);
         const result = await ensureLabelTabOn({
-          proxyUrl, shop, port: entry.browserPort, state, ok,
+          proxyUrl, shop, port: entry.browserPort, state, ok, member,
         });
         row.labelTab = result.ok
           ? { ok: true, reused: result.reused, targetId: result.targetId }
@@ -420,6 +465,9 @@ async function main() {
         row.labelState = state === null
           ? '没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）'
           : `${state}（来源：${explicit ? '--state 参数' : '从页签 URL 读出来'}）`;
+        row.labelMember = member === null
+          ? '登记表里没有这家店的会员名 ⇒ 标签页上不显示这一行'
+          : member;
         if (!result.ok) failed += 1;
         if (result.ok && opts.front && result.targetId) {
           await fetch(`${proxyUrl}/bringToFront?target=${encodeURIComponent(result.targetId)}`, { method: 'POST' })

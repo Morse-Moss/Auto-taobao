@@ -7,9 +7,10 @@ import { test } from 'node:test';
 import {
   LABEL_PAGE_NAME, LABEL_PAGE_PATH, LOGIN_PAGE_PATTERNS, PRUNE_POLICY, TAB_KINDS, WINDOW_TITLE_SUFFIX,
   classifyShopTabs, describeTab, ensureLabelTabOn, isLabelTab, labelPageUrlFor, leftoverTabs, loginStateHint,
-  looksLikeLoginPage, parseCli, prunePlan, pruneTabsOn, tabKindOf, windowTitleFor,
+  looksLikeLoginPage, memberNameFor, parseCli, prunePlan, pruneTabsOn, tabKindOf, windowTitleFor,
 } from './shop-window-label.mjs';
 import { SHOP_BROWSERS } from './browser-ports.mjs';
+import { SHOP_IDENTITIES } from '../skills/sycm-alimama-daily-report/scripts/shop-identities.mjs';
 
 // 真实页签清单：逐字取自 evidence/multi-shop-run-2026-09-18/15-identity-recheck.txt（2026-09-18 实测）。
 // 用实测值而不是编的 URL，是为了让分类判据真的对着现场。
@@ -213,7 +214,7 @@ test('标签页 URL 的参数名必须与页面读的参数名一一对得上', 
   const read = new Set([...html.matchAll(/\.get\('([A-Za-z]+)'\)/gu)].map((m) => m[1]));
   // 用「状态齐全」的那一份 URL 来算脚本会写哪些键（`ok` 只在 true 时才写，所以要用 ok:true 取样）
   const written = new Set(new URL(labelPageUrlFor({
-    shop: '盖文淘宝', port: 19033, state: '需要登录', ok: true,
+    shop: '盖文淘宝', port: 19033, state: '需要登录', ok: true, member: '随心品质定制:阿彦',
   })).searchParams.keys());
 
   for (const key of written) {
@@ -222,7 +223,7 @@ test('标签页 URL 的参数名必须与页面读的参数名一一对得上', 
   for (const key of read) {
     assert.ok(written.has(key), `页面里读了 ?${key}= 但脚本从不写它 ⇒ 页面拿到的是 null`);
   }
-  assert.deepEqual([...read].sort(), ['ok', 'port', 'shop', 'state'].sort());
+  assert.deepEqual([...read].sort(), ['member', 'ok', 'port', 'shop', 'state'].sort());
 });
 
 test('登录状态必须真的落到页面元素上，且是「量到才显示」', () => {
@@ -235,6 +236,111 @@ test('登录状态必须真的落到页面元素上，且是「量到才显示�
   // 反例：无条件显示会让四台窗口上出现一行空白状态，等于又回到「看不出来」
   assert.equal(/class="s[^"]*"[^>]*>\s*需要登录/u.test(html), false,
     '状态不许写死在 HTML 里 —— 那是「四台都写着需要登录」，比不写更坏');
+});
+
+// ---------------------------------------------------------------------------
+// 会员名上窗口：一套「运营叫法」对不上另一套「会员名」时，人站在机器前认不出这是哪家
+// ---------------------------------------------------------------------------
+// 2026-09-18 深夜，用户贴出运营给他的四组账号（里可林家居:阿彦 / 网林家居旗舰店:阿彦 /
+// 随心品质定制:阿彦 / j873522735:阿彦）并问「没有科塔啊，五个店铺哪里有科塔」——
+// 窗口标题写的是登记表与飞书「店铺」列里的**运营叫法**（科塔淘宝），而他手里是**阿里妈妈会员名**；
+// 科塔的会员名干脆是一串数字（`j873522735`），字面上没有「科塔」二字。
+// 两套名字都存在且都合法，对不上的是「人」—— 所以把会员名也写到窗口上。
+
+test('会员名从登记表读，不在标签页这一层另抄一份（另抄的那份会慢慢和登记表对不上）', () => {
+  const fromRegistry = (shop) => SHOP_IDENTITIES.find((row) => row.key === shop)?.alimamaMemberName ?? null;
+  for (const shop of Object.keys(SHOP_BROWSERS)) {
+    assert.ok(fromRegistry(shop), `${shop} 在登记表里没有会员名 —— 那这一格本来就该是空的，先补实测值`);
+    assert.equal(memberNameFor(shop), fromRegistry(shop),
+      `${shop} 的会员名与登记表不一致 —— 那就成了第二份真相`);
+  }
+  // 登记表是**数组**。这里守的是本轮真栽的那一跤（见 shop-window-label.mjs 的 memberNameFor 注释）：
+  // 写成对象下标 `identities[name]` 会永远返回 null，页面上那一行永远空着且不报错，
+  // 症状与「这家店确实没登记」完全一样。
+  assert.ok(Array.isArray(SHOP_IDENTITIES), '登记表的形状变了，取值的写法要跟着改');
+  assert.throws(() => memberNameFor('盖文淘宝', { 盖文淘宝: { alimamaMemberName: 'x' } }), /数组形状/u,
+    '形状不对必须炸：静默返回 null 会让「会员名那一行永远空着」看起来像正常结果');
+  // 用户手里那四组账号必须逐字能对上（这是这条修复存在的唯一理由）
+  const held = ['里可林家居:阿彦', '网林家居旗舰店:阿彦', '随心品质定制:阿彦', 'j873522735:阿彦'];
+  const shown = Object.keys(SHOP_BROWSERS).map((shop) => memberNameFor(shop));
+  for (const account of held) {
+    assert.ok(shown.includes(account),
+      `运营给的账号「${account}」在四台窗口上找不到对应 —— 用户又会问「哪里有我手里这个」`);
+  }
+  assert.equal(shown.length, new Set(shown).size, '两个窗口挂同一个会员名 ⇒ 又分不出是哪家');
+  assert.equal(memberNameFor('科塔淘宝'), 'j873522735:阿彦',
+    '科塔的会员名是一串数字，它正是用户看不出「哪里有科塔」的原因');
+  // 读不到就是 null，页面上整行不显示（不写占位 —— 那会让人以为量过了）
+  assert.equal(memberNameFor('不存在的店'), null);
+  assert.equal(memberNameFor(''), null);
+  assert.equal(memberNameFor(null), null);
+  // CLI 口子：显式覆盖可用，没给时为 null（由 main 从登记表取）
+  assert.equal(parseCli([]).member, null);
+  assert.equal(parseCli(['--member', 'j873522735:阿彦']).member, 'j873522735:阿彦');
+  assert.throws(() => parseCli(['--member']), /--member requires a value/u);
+  assert.throws(() => parseCli(['--member', '--commit']), /--member requires a value/u);
+});
+
+test('会员名必须真的落到页面元素上，且是「量到才显示」', () => {
+  const html = readFileSync(LABEL_PAGE_PATH, 'utf8');
+  assert.ok(html.includes('id="member"'), '页面上没有显示会员名的地方');
+  assert.match(html, /getElementById\('member'\)[\s\S]{0,200}textContent/u,
+    '会员名没有写进页面元素 ⇒ 窗口上还是对不上「哪一组账号是哪一家」');
+  assert.match(html, /if\s*\(member\)/u,
+    '会员名必须是有条件的：没量到就整行不显示（不能显示空行或占位）');
+  assert.equal(/id="member"[^>]*>[^<]*:阿彦/u.test(html), false,
+    '会员名不许写死在 HTML 里 —— 那会把某一家店的账号贴到四台窗口上');
+});
+
+test('挂标签页时把会员名一起带上（不透传的话页面上那一行永远是空的）', async () => {
+  const calls = [];
+  await ensureLabelTabOn({
+    proxyUrl: 'http://127.0.0.1:19043',
+    shop: '盖文淘宝',
+    port: 19033,
+    member: memberNameFor('盖文淘宝'),
+    fetchImpl: fakeProxy({ targets: REAL_SUI_XIN, calls }),
+  });
+  const created = calls.find((c) => c.url.includes('/new'));
+  assert.ok(created, '这一台当时没有标签页，必须新建');
+  assert.equal(new URL(targetUrlOf(created)).searchParams.get('member'), '随心品质定制:阿彦',
+    'ensureLabelTabOn 没有把 member 透传给 labelPageUrlFor ⇒ 页面上那一行永远空着');
+});
+
+test('标签页 URL 里只许出现账号名，绝不许出现密码（这个 URL 会进浏览历史）', () => {
+  const url = labelPageUrlFor({
+    shop: '科塔淘宝', port: 19034, state: '需要登录', ok: true, member: 'j873522735:阿彦',
+  });
+  const keys = [...new URL(url).searchParams.keys()].sort();
+  assert.deepEqual(keys, ['member', 'ok', 'port', 'shop', 'state'],
+    '标签页 URL 的键集合是封闭的：多一个键就等于多一个可能漏凭据的口子');
+  const suspicious = /pass|pwd|secret|token|credential|cookie/iu;
+  for (const key of keys) assert.equal(suspicious.test(key), false, `键名可疑：${key}`);
+  // 页面上也不许有读密码的入口
+  const html = readFileSync(LABEL_PAGE_PATH, 'utf8');
+  for (const key of new Set([...html.matchAll(/\.get\('([A-Za-z]+)'\)/gu)].map((m) => m[1]))) {
+    assert.equal(suspicious.test(key), false, `页面在读可疑参数：${key}`);
+  }
+  assert.equal(/type\s*=\s*["']password/iu.test(html), false, '标签页里不该有任何密码输入框');
+});
+
+test('底部提示必须随登录态变：没量到登录态时不许说「右边那个就是登录页」', () => {
+  // 已登录的窗口里**没有**登录页。四台窗口写同一句「登录页就在本标签页右边那一个里」，
+  // 会让人照着去找一个不存在的页面。这里守的是「这句指路必须挂在 state 上」。
+  const html = readFileSync(LABEL_PAGE_PATH, 'utf8');
+  const parts = html.split(/innerHTML\s*=\s*state\s*\?/u);
+  assert.equal(parts.length, 2, '底部提示没有按登录态分叉 ⇒ 已登录的窗口会指着一个不存在的登录页');
+  const tail = parts[1];
+  const altIndex = tail.search(/:\s*'/u);
+  assert.ok(altIndex > 0, '底部提示没有「另一支」文案');
+  assert.ok(tail.slice(0, altIndex).includes('登录页就在本标签页右边那一个里'),
+    '量到「需要登录」时要指路 —— 不指路等于又让人自己找');
+  const conditional = tail.slice(altIndex);
+  assert.equal(conditional.includes('登录页就在本标签页右边那一个里'), false,
+    '没量到登录态时不能说一个不存在的登录页');
+  assert.ok(conditional.includes('如果'), '没量到时给的是条件句，不替浏览器下结论');
+  assert.equal([...html.matchAll(/登录页就在本标签页右边那一个里/gu)].length, 1,
+    '这句只能出现一次（出现在无条件的位置就等于对四台窗口都成立）');
 });
 
 // ---------------------------------------------------------------------------
