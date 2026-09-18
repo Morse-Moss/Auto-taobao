@@ -1,0 +1,33 @@
+四个窗口的标签页 URL 逐字回读（2026-09-18 深夜，`--commit` 挂完之后）
+
+口径：店名一律用**运营叫法**（SHOP_BROWSERS 的键）；`state` 只在**读到登录页**时才带，
+读不到就整条不带（页面上那一行不显示）；`ok=1` 只在明确量到「已登录」时才写，所以四台都没有。
+
+窗口 里可林淘宝
+  店名参数 = 里可林淘宝
+  端口参数 = 19031
+  状态行   = （没有这一行 —— 因为没读到登录页，不写占位）
+  ok 参数  = （没有 —— ok 只有为 true 时才写）
+  原始 URL = file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031
+
+窗口 网林天猫
+  店名参数 = 网林天猫
+  端口参数 = 19032
+  状态行   = （没有这一行 —— 因为没读到登录页，不写占位）
+  ok 参数  = （没有 —— ok 只有为 true 时才写）
+  原始 URL = file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032
+
+窗口 盖文淘宝
+  店名参数 = 盖文淘宝
+  端口参数 = 19033
+  状态行   = 需要登录
+  ok 参数  = （没有 —— ok 只有为 true 时才写）
+  原始 URL = file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&state=%E9%9C%80%E8%A6%81%E7%99%BB%E5%BD%95
+
+窗口 科塔淘宝
+  店名参数 = 科塔淘宝
+  端口参数 = 19034
+  状态行   = 需要登录
+  ok 参数  = （没有 —— ok 只有为 true 时才写）
+  原始 URL = file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%A7%91%E5%A1%94%E6%B7%98%E5%AE%9D&port=19034&state=%E9%9C%80%E8%A6%81%E7%99%BB%E5%BD%95
+

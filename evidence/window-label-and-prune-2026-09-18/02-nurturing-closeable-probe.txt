@@ -1,0 +1,10 @@
+关前：共 5 个页面，其中 edge:// 的 1 个
+  · C38B81432F4978E8AFF30595A0608BD2  edge://nurturing/
+  /close C38B81432F4978E8AFF30595A0608BD2 ⇒ HTTP 200 {"success":true}
+
+关闭后立刻读：edge:// 页面 1 个
+  · C38B81432F4978E8AFF30595A0608BD2  edge://nurturing/   （同一个 target，说明压根没关掉）
+3 秒后再读：edge:// 页面 1 个
+  · C38B81432F4978E8AFF30595A0608BD2  edge://nurturing/
+
+结论：同一个 target 仍在 ⇒ /close 对它是无效的（假动作）

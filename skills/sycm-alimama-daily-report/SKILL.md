@@ -140,9 +140,22 @@ node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --shop
 node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --shop 盖文淘宝 --notify dry
 
 # make each shop's browser window identifiable (title = shop name) — this is what the alert points at
-node runtime/shop-window-label.mjs                                            # read-only: what tabs each window has
+node runtime/shop-window-label.mjs                                            # read-only: what tabs each window has + which shop is sitting on a login page
 node runtime/shop-window-label.mjs --commit --only 盖文淘宝
+node runtime/shop-window-label.mjs --commit --front                           # also bring the label tab to front
+
+# tidy up leftover tabs — OFF by default, and an intent of its own
+node runtime/shop-window-label.mjs --prune                                    # dry run: what would be closed
+node runtime/shop-window-label.mjs --prune --commit                           # close them (explicit, never implied)
 ```
+
+`--prune` is an **exclusive intent**: `--commit` alone only labels windows, and `--prune --commit` only closes tabs. Doing both requires writing `--label --prune --commit`. This is not style — the first version had one global `--commit` firing both actions, which merged a planned "clean, measure, then label" sequence into one step and contaminated the memory reading in between.
+
+Closing tabs is why two rules exist. Duplicate tabs for the same backend are not cosmetic: the chain's predicate is "exactly one page for this backend", so a duplicate fails it and stops the whole shop at step one. But `edge://nurturing/`, which Edge opens by itself alongside a new tab, **cannot be closed** — `/close` returns `{"success":true}` and the same target id is still there 3 seconds later. It is therefore excluded from the close plan and reported as "the script cannot close this, ignore it"; listing it produced a fake action every run. And `pruneTabsOn` never trusts the `/close` return code: it re-reads `/targets` afterwards and puts anything still present into `failed`.
+
+Login state is read from the tab URLs, so the read-only report answers "which shop still needs a human" without any extra step: a backend page whose URL is `sycm.taobao.com/custom/login.htm` or `one.alimama.com/index.html#!/login/index` **is** a login page. Those pages stay classified as `work` — reclassifying them as `loginPage` would make the two backends share one group key and collapse them to a single kept tab, which breaks the same "exactly one page per backend" rule from the other side. When no login page is seen the state line is simply absent: **"not seeing a login page" never becomes "logged in"**, because a URL that is not a login page says nothing about whether the session is still valid.
+
+Cleaning tabs does **not** save memory (measured: 6,297 MB before, 6,726 MB after, with one new label tab added per window in the same step; a real page costs 200-300 MB while a blank page costs almost nothing). Its value is removing predicate interference and human confusion. Memory scales with how many browser instances are open at once, not with tabs per window — see `docs/ops/CLIENT-MACHINE-CAPACITY.md` §3.
 
 `--shop` takes the **operating name** (a `SHOP_BROWSERS` key: 里可林淘宝 / 网林天猫 / 盖文淘宝 / 科塔淘宝), the same name operations sees in Feishu — not the SYCM page-header name and not the Alimama member name. A misspelling throws at parse time listing the legal values, because an alert carrying a shop name that does not exist is worse than one carrying none. The name drives three fields: the title (`<shop> 需要你登录一次`), the `店铺` line, and the `alertId` (`sycm-login-<shop>-<sites>-<YYYYMMDD>`). That last one matters: without the shop dimension all five shops share one dedup anchor and any caller deduping by `alertId` swallows four of them **silently**.
 
