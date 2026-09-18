@@ -13,11 +13,12 @@ Use the dedicated daily-report Edge profile and proxy. This workflow is specific
 - CDP proxy: `http://127.0.0.1:19023`, browser id `edge-daily-report`.
 - Ports and profile paths come from `runtime/browser-ports.mjs` (single source of truth); the launchers read them, and scripts must not hardcode a second copy. Override with `PROJECT_BROWSER_PORT` / `CDP_PROXY_PORT` / `CDP_BROWSER_PORT` when a machine needs different values.
 - Why two browsers are mandatory, not a convenience: SYCM / Alimama / Feishu require the merchant account, while the Xiaowangshen extension only works on the buyer account. One browser profile cannot hold both, so the daily-report chain and the competitor chain each need their own instance, debug port, and proxy port. Merging them fails silently: clicks and navigation succeed, but on the other account's browser.
+- A multi-shop round spans **three** things, and the collection stages are the ones that move: each shop's SYCM / Alimama work runs on **that shop's own** browser + proxy (19031/19041 里可林淘宝, 19032/19042 网林天猫, 19033/19043 盖文淘宝, 19034/19044 科塔淘宝 — `SHOP_BROWSERS` in `runtime/browser-ports.mjs`), while the push stage and the readback stage stay on this chain's `19022`/`19023`, because they read the Feishu base page and that page only exists in that browser. Every shop needs its own proxy: the collection scripts speak only the proxy API (`/targets` `/eval` `/navigate` `/click` `/clickPoint`), whereas bare CDP offers `/json/list` alone. The driver sets each stage's four audit variables (`CDP_BROWSER_PORT` / `CDP_PROXY_PORT` / `CDP_BROWSER_ID` / `CDP_BROWSER_LABEL`) explicitly — leave them unset and every shop's audit row is recorded on this chain's ports, and the run still reports success.
 - Feishu targets: resolve the source table/view and `各店铺数据日报` table through `runtime/feishu-targets.mjs`.
 - Credentials: resolve the active kcne credential file through `runtime/feishu-targets.mjs`; never copy its values into this skill or evidence.
 - Stop at login, CAPTCHA, QR/SMS, account-risk, permission, or other security controls.
 
-Read [references/sop.md](references/sop.md) when collecting fresh source files or diagnosing page drift. **To run the whole chain for real (daily operation or a customer demo), follow sop.md §10**: it is a single table of the eight commands, what each one should print, the fallbacks, and the pre-flight checks that must pass before you start. If both downloads already exist, start with the deterministic runner.
+Read [references/sop.md](references/sop.md) when collecting fresh source files or diagnosing page drift. **To run the whole chain for real (daily operation or a customer demo), follow sop.md §10**: one numbered table of the whole write path — what each step should print, the fallbacks, and the pre-flight checks that must pass before you start. If both downloads already exist, start with the deterministic runner. **For more than one shop in one pass, use `scripts/run-multi-shop-day.mjs` (see Multi-Shop Round below) instead of walking §10 by hand** — that order carries three coupled invariants which a hand-run breaks silently (§12.6). If a SYCM step reports `got 0` or `got 2` pages, read §12.7 before touching a selector: the "working page" predicate must be a path fragment, never the host name.
 
 ## Collection
 
@@ -103,6 +104,27 @@ node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs `
 ```
 
 The runner requires the live SYCM shop identity to match `--source-shop`, one exact SYCM table, one exact date row, one exact Feishu row matched by date and `--shop`, and — unless the peer benchmark is explicitly degraded — one exact `同行同层均值` row. Both target fields must be blank, or both must already equal the source values; under degradation only `询单量` is judged and the peer field must stay blank, so a rerun still returns `ALREADY_VERIFIED`. It updates only those fields and compares every other field before and after the write.
+
+## Multi-Shop Round
+
+One date, N shops, in one pass. **Do not hand-roll the order.** The numbered steps of §10.1 carry three coupled invariants that drift apart the moment a human drives them:
+
+- the date placement must be **redone after** the shop-report download, because opening the `日报` preview navigates that same tab away — skip it and the backfill stops at `expected one 当日询单人数 table, got 0`;
+- all three writers (`run-daily-report.mjs`, `run-inquiry-backfill.mjs`, `readback-daily-report.mjs`) must carry the **same** `--shop-key`; different values silently merge one shop's evidence into another shop's generation;
+- the push stage's `--shop-xlsx` / `--promotion-zip` are **required**, and only the collection stage knows them — so collection and push cannot be handed to different people. A hand-typed path is the "default value is the target" failure shape, and the filenames alone cannot tell you.
+
+```powershell
+# rehearse (default): place dates, collect, dry-run — writes nothing to Feishu
+node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date 2026-09-17
+
+# reread-only: each shop's row on that date must still say what we pushed
+node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date 2026-09-17 --verify-existing <N>
+
+# real write; a same-shop same-date row is a hard duplicate stop (clear the day first, §9.3)
+node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date 2026-09-17 --commit
+```
+
+`--shops a,b` narrows the round, `--only <stage>` runs a single stage, `--keep-going` continues past a failed stage. In `--verify-existing`, `N` is the target's total record count **before** the push and the predicate is `before.length === N + 1` (2026-09-17: `N = 1879`). Rehearse **cannot** run on a date that was already written — the dry run hits the same hard duplicate stop by design. Per-stage stdout/stderr plus the argv each stage actually received land in `evidence/multi-shop-<date>/<shop>/NN-<stage>.txt` and `summary.json`. `references/sop.md` §12.6 holds the mode table and the measured 2026-09-18 run (four shops × ten stages, no manual intervention).
 
 ## Independent Readback
 

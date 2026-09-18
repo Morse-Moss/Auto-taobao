@@ -1,0 +1,34 @@
+
+===== 2026-09-18T10:54:36.513Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe d:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-09-17 --proxy http://127.0.0.1:19023 --shop-key 科塔淘宝 --verify-existing --expected-before-count 1879 --shop-xlsx "C:\Users\Administrator\Downloads\日报_20260918_aefdcd0599626688507142b7bbed7e84 (1).xlsx" --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20260918_185355.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 科塔淘宝 ↔ 源产物店名 科塔全卫定制 一致（证据目录 daily-report-2026-09-17-科塔淘宝）
+[audit] 已记 ui-verify/ok id=24
+{
+  "status": "UI_COMMITTED_AND_VERIFIED",
+  "recordId": "recvvySuZ5zUpB",
+  "receiptPath": "d:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-科塔淘宝\\receipt.json",
+  "outputDir": "d:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-科塔淘宝",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 1879,
+  "recordCountAfter": 1880,
+  "verifiedFields": 241,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 241,
+    "shopName": "科塔全卫定制",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1789574400000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---
+[留空] UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）
+[留空] 无线端UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）

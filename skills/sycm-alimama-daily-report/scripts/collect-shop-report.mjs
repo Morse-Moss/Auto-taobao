@@ -23,6 +23,20 @@ const SYCM_APP_URL = 'https://sycm.taobao.com/qos/service/frame/shop/performance
 const SYCM_SPACE_URL = 'https://sycm.taobao.com/lyone/auto_analysis/my_space'
   + '?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common';
 
+// 「哪个页面才算生意参谋那个**工作页**」—— 与 date-picker.mjs 的
+// `siteAdapter('sycm').urlFragment`、run-inquiry-backfill.mjs 的 discoverSycmTarget 逐字相同
+// （三方一致由 collect-core.test.mjs 的一条守卫扫，改一处就红）。
+//
+// 2026-09-18 修：这里原先写的是 `String(target.url).includes('sycm.taobao.com')` —— 只要同主机就算。
+// 两个后果，一个当场炸、另一个更安静：
+//   · 同主机下有两个页面时（工作页 + `portal/home.htm` 门户首页）⇒ 报
+//     `expected one sycm page on …, got 2`，第 4 步直接停（2026-09-18 实跑就是这一条）；
+//   · 同主机下只剩门户首页时 ⇒ 判据会**选中首页**并往上导航，而 SOP §3 实测过
+//     「从门户首页跳这道 iframe 地址，12 秒后它自己跳回门户」（11:18:27 → 11:18:39）⇒
+//     后面每一步都在错页面上做，全是静默失败。
+// 它要的是那个能点开「日报 → 预览 → 下载报表」的工作页，不是「任意一个生意参谋页面」。
+const SYCM_PAGE_FRAGMENT = 'sycm.taobao.com/qos/service/frame/shop/performance';
+
 const delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
 async function proxyJson(url, init) {
@@ -55,7 +69,7 @@ async function click(args, targetId, selector) {
 async function findSycmPage(args) {
   const targets = JSON.parse(await proxyJson(`${args.proxy}/targets`));
   const matches = targets.filter((target) => target.type === 'page'
-    && String(target.url).includes('sycm.taobao.com'));
+    && String(target.url).includes(SYCM_PAGE_FRAGMENT));
   if (matches.length !== 1) throw new Error(`expected one sycm page on ${args.proxy}, got ${matches.length}`);
   return matches[0].targetId;
 }

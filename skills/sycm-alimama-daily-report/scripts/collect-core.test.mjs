@@ -605,6 +605,35 @@ test('两个采集脚本都必须核对身份，而且必须在点下载之前�
   assert.match(sycmShopIdentityExpression(), /主店\|子店/u, '店铺名的形态必须显式写在判据里');
 });
 
+// 「哪个页面才算生意参谋那个工作页」不许各写一份口径。
+// 2026-09-18 实跑撞到的后果：collect-shop-report 原先只按**主机**匹配
+// （`includes('sycm.taobao.com')`），而店铺浏览器里同主机下有两个页面
+// （工作页 + `portal/home.htm` 门户首页）⇒ 第 4 步报 `expected one sycm page, got 2`。
+// 更安静的后果是「同主机只剩门户首页时选中它并导航过去」，而 SOP §3 实测过：
+// 从门户首页跳那道 iframe 地址，12 秒后它自己会跳回门户 —— 后面每一步都在错页面上做。
+test('站点工作页片段：三个读页面的脚本用逐字相同的口径（各写一份就会认错页面）', () => {
+  const patterns = {
+    'collect-shop-report.mjs': /const SYCM_PAGE_FRAGMENT = '([^']+)'/u,
+    'run-inquiry-backfill.mjs': /includes\('([^']*sycm\.taobao\.com[^']*)'\)/u,
+    'date-picker.mjs': /urlFragment: '([^']*sycm\.taobao\.com[^']*)'/u,
+  };
+  const found = {};
+  for (const [file, pattern] of Object.entries(patterns)) {
+    const match = pattern.exec(readScript(file));
+    assert.ok(match, `${file}：找不到生意参谋工作页的片段（写法变了就要同步改这条守卫，别让它静默失效）`);
+    found[file] = match[1];
+  }
+  const unique = new Set(Object.values(found));
+  assert.equal(unique.size, 1, `三个文件对「生意参谋工作页」的口径不一致：${JSON.stringify(found)}`);
+
+  // 反证：片段必须窄到能区分工作页与门户首页 —— 只写主机名等于没有判据。
+  const [fragment] = [...unique];
+  assert.ok(fragment.includes('/qos/service/frame/shop/performance'), `片段不含工作页路径：${fragment}`);
+  const matches = (url) => url.includes(fragment);
+  assert.equal(matches('https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop'), true);
+  assert.equal(matches('https://sycm.taobao.com/portal/home.htm'), false, '门户首页不能被当成工作页');
+});
+
 test('身份期望值参数：两个站点各一个名字（不合成一个），写错在解析期就炸', () => {
   const base = ['--date', '2026-09-18'];
   // 默认三件套都是 null ⇒ 不带参数的行为与从前逐字相同（不核对、只记录）。

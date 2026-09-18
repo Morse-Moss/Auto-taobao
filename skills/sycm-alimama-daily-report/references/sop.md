@@ -872,3 +872,96 @@ node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --noti
 里 `evidence.outputDir`，或者看 stdout 那行 `[shop-key] 里可林淘宝 ↔ 源产物店名 里可林家居 一致`。
 
 证据：`evidence/shop-key-dimension-2026-09-18/`（套件 113/113、五条突变、七条真命令行的接线）。
+
+**2026-09-18 晚已真跑验通**（见 §12.6）：那个「仍然只能真跑验的一条」不再是开放的 ——
+推送方的真实落点就是 `evidence/daily-report-2026-09-17-里可林淘宝/`，收据在 `receipt.json`。
+
+### 12.6 一轮多店铺的驱动（`scripts/run-multi-shop-day.mjs`，2026-09-18 晚建并跑通）
+
+**它解决的不是「省几条命令」，而是「顺序与一致性只能有一种走法」。** 单店那十个步骤早就脚本化了，
+但把它们串起来原先靠的是人手 —— 每家店一份口头顺序，而顺序里有三处错一步就静默变形：
+
+1. 落位要做两次（第 4 步点开日报预览会把页签带走 ⇒ 回填前必须回位 + 重跑落位）；
+2. 三个写入方的 `--shop-key` 必须同值（不同值 = 回填并进另一家店那一代证据目录）；
+3. 推送段的 `--shop-xlsx` / `--promotion-zip` 是**必填**，而这两个路径只有采集段知道
+   ⇒ 采集与推送必须在同一轮里，中间不能换人接手（换手就成了手填路径 = 「默认值即目标」的形态）。
+
+用法与三种模式：
+
+```
+node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date <YYYY-MM-DD>
+     [--shops 里可林淘宝,网林天猫] [--only <阶段名>] [--keep-going] [--logs <目录>]
+     [--verify-existing <N> | --commit] [--shop-xlsx <路径> --promotion-zip <路径>]
+```
+
+| 模式 | 它做什么 |
+| --- | --- |
+| 默认（排练） | 落位 + 采集 + 干跑，**一个字节都不写飞书**。真跑前的自检用 |
+| `--verify-existing N` | 推送段走只读核对：核那家店那一天**那一行**还在、字段还对（不新增不覆盖） |
+| `--commit` | 真写（推送 + 回填都加 `--commit`）。**目标日已有「同店同日」的行会硬重复停止**，先按 §9.3 删 |
+
+`--verify-existing` 的 `N` 是**推送前底单的总条数**，判据是 `before.length === N + 1`。
+底单当前条数可在只读探针里读（本机 `D:/Retire/probe-live/21-feishu-ledger-now.mjs` 就是干这个的）。
+
+`--only <阶段名>`（可逗号分隔多个）认的就是上面那十个名字，按顺序：
+
+```
+alimama-date / promotion-submit / sycm-date / shop-report / promotion-fetch /
+push / sycm-reset / sycm-date-again / backfill / readback
+```
+
+**写错名字会在解析期当场抛错，并把这份清单打在错误里**（2026-09-18 晚补的守卫）。
+为什么必须这样：`--only` 原本的实现是「不点名就跳过」，于是拼错一个名字的后果**不是报错**，
+而是十个阶段全被跳过 —— 整轮「跑完」、退出码 0、一步没做，而这两者在 stdout 上长得一样。
+那份合法值清单与真实阶段表之间另有一条互锁断言（`STAGE_NAMES` vs `buildShopStages` 的产出，
+逐字比），否则清单自己会先腐化，再造出一个同样的静默通道。
+
+三条容易踩的：
+
+- **排练模式在「目标日已经写过」时跑不通** —— 干跑也会撞上 `duplicate daily report row exists`。
+  这不是 bug，是那条硬重复停止在起作用：要复验已写过的那一天用 `--verify-existing`，要重写先按 §9.3 删。
+- **源产物路径必须成对给**（`--shop-xlsx` 与 `--promotion-zip` 要么都给、要么都不给）。
+  只给一半意味着「一半手填、一半来自采集段」—— 两份真相当中有一份是假的，而文件名上看不出来。
+- **`--only` 跳过采集段时推送段拿不到路径**，那时必须显式给上面那一对。
+
+排错的抓手：每一家店每个阶段的完整 stdout/stderr 落在
+`evidence/multi-shop-<日期>/<店铺>/NN-<阶段>.txt`，汇总在同目录 `summary.json`
+（含每阶段的 argv）—— 「当时到底传了什么参数」不用靠回忆。
+
+**2026-09-18 晚实测（这一轮就是它跑出来的）**：目标日 2026-09-17，四家店
+（里可林淘宝 / 网林天猫 / 盖文淘宝 / 科塔淘宝）串行、只读核对模式，
+**10 阶段 × 4 家全部 ok，8 分 44 秒，零人工干预**。逐环节的下游印证：
+
+- 采集段报出的两条路径都被驱动抓到（`shopXlsxPath`，以及带 `[fetch] ` 前缀的 `promotionZipPath`）；
+- 推送段当场自证店铺键：`[shop-key] 里可林淘宝 ↔ 源产物店名 里可林家居 一致（证据目录 daily-report-2026-09-17-里可林淘宝）`；
+- `receipt.json` 落在 `evidence/daily-report-2026-09-17-<运营叫法>/`：`status=UI_COMMITTED_AND_VERIFIED`、
+  `recordId` 与底单里那一行一致、`verifiedFields=241`、双端自证 `sourceSelfChecks.allMatchDate=true`
+  （店铺工作簿 31 行里命中目标日 1 行；推广 CSV 只有目标日一个日期）；
+- 回填干跑判出 `ALREADY_VERIFIED`（询单量=3 / 同层同行=6），**与独立回读通路看到的数一致**；
+- **飞书底单前后都是 1880 条、2026-09-17 仍是那 5 行、字段值逐字未变** ⇒ 只读核对确实一个字节都没写。
+
+日志与产物：`evidence/multi-shop-2026-09-17/`。
+
+### 12.7 生意参谋「工作页」的判据不许只写主机名（2026-09-18 晚修）
+
+**症状**：第 4 步采集店铺报表时报 `采集失败：expected one sycm page on http://127.0.0.1:19041, got 2`。
+
+**根因**：`collect-shop-report.mjs` 的 `findSycmPage` 原先按**主机**匹配
+（`url.includes('sycm.taobao.com')`），而店铺浏览器里同主机下有两个页面：
+工作页 `qos/service/frame/shop/performance` 与门户首页 `portal/home.htm`。
+仓库里另外两处（`date-picker.mjs` 的 `siteAdapter('sycm').urlFragment`、
+`run-inquiry-backfill.mjs` 的 `discoverSycmTarget`）用的都是**带路径的窄判据** ——
+「三份口径」里只有这一处是宽的。
+
+**为什么宽判据比报错更危险**：报 `got 2` 只是当场停（这次就是，代价是一轮白跑）。
+但同主机下**只剩门户首页**时，宽判据会**选中首页**并往上导航，而 §3 实测过
+「从门户首页跳那道 iframe 地址，12 秒后它自己跳回门户」（11:18:27 → 11:18:39）
+⇒ 后面每一步都在错页面上做，全是静默失败。
+
+**现在**：三处统一成同一个片段 `sycm.taobao.com/qos/service/frame/shop/performance`，
+并由 `collect-core.test.mjs` 的一条守卫扫这三个文件 —— 改一处就红，
+且带「门户首页不能被当成工作页」这条反证。
+
+**下次遇到同类问题先问两句**：判据是窄的还是宽的？现场有几个同类页面？
+（宽判据的症状是 `got 2`，窄判据的症状是 `got 0`，两者的处置完全不同。）
+
