@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // 四层体检（`UNATTENDED-AGENT-RUNTIME-PLAN.md` 第 4 步）的落地模块。
 //
 // 设计依据：`docs/ops/LOGIN-STATE-MANAGEMENT.md` §3（四层判据）与 §4（状态词表）。
@@ -20,7 +21,14 @@
 //    并且**不许**把它的缺席写成 OK。
 // 3. **发出的每个理由都必须已在通知判据表里表态。** 表里查不到的理由会被 fail-closed 成
 //    `HEALTH_BLOCKED`，运营收到的是「本轮体检未通过」这种没法处理的话。单测守住这条对齐。
-import { BROWSER_PROFILES, classifyPortUsage, inspectPort, PROJECT_PORTS } from './browser-ports.mjs';
+//
+// **shebang 必须在第 1 行**（哪怕上面还有注释块）：ESM 只允许第 1 行是 `#!`，写在注释块之后
+// 会让整个文件语法错误、import 直接失败。2026-09-18 实测踩过（探针一跑就报
+// `SyntaxError: Invalid or unexpected token`，行号指向注释块末尾那一行）。
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+import { BROWSER_PROFILES, ROUTES, classifyPortUsage, inspectPort, PROJECT_PORTS } from './browser-ports.mjs';
 
 export const HEALTH_CONTRACT_VERSION = 'xws-platform-health-preflight-v1';
 
@@ -377,6 +385,28 @@ export function parseEgressProxy(value) {
 
 // ---------------------------------------------------------------- 体检入口
 
+// 路线键 → 「这条链该有哪几页」。
+//
+// 片段取自 `browser-ports.ROUTES[<route>].sites`（**已有的唯一来源**），不是另抄一份页面清单。
+// 口径是**宿主级**（`sycm.taobao.com` 这种），比 `date-picker.resolveTarget` 的路径级判据松：
+// 路径级判据留在原地不动（它是那条链的落位判据），这里只回答「页面的**数量**对不对」——
+// 也就是 SOP 里「起跑前查三页各恰好一个」那一步。
+//
+// **为什么是「按路线」而不是「按浏览器」**（2026-09-18 定，原先写成按浏览器取并集，是错的）：
+//   1. `dailyReport` 这个浏览器上挂着 5 条路线（日报 / 搜索排行 / 灰豚 / 周表粘贴 / 千牛），
+//      按浏览器取并集会要求同时存在 7 个页面 —— 而日报链的 SOP 只关心其中 3 个。
+//      于是每一次体检都会报出 4 个不存在的页面，体检很快就没人看了。
+//   2. 「页面**恰好一个**」这条口径本身**不是通用的**：竞品链要同时开很多商品详情页
+//      （`item.taobao.com` 一个竞品一个），对那条链数「恰好一个」会把正常状态判成停线。
+//      所以页数检查是**按路线显式开启**的（默认不查），不是所有链都默认套用。
+export function expectedPagesForRoute(routeKey) {
+  const route = ROUTES[routeKey];
+  if (!route) {
+    throw new Error(`unknown route key for health check: ${routeKey} (expected one of ${Object.keys(ROUTES).join(' | ')})`);
+  }
+  return route.sites.map((site) => ({ name: site, urlFragment: site }));
+}
+
 const DEFAULT_BROWSER_KEY = 'dailyReport';
 
 // 生成给 `round-runner.runRound` 的 `healthCheck` 端口。
@@ -385,7 +415,12 @@ const DEFAULT_BROWSER_KEY = 'dailyReport';
 export function createPlatformHealthCheck(options = {}) {
   const {
     browserKey = DEFAULT_BROWSER_KEY,
-    expectedPages = [],
+    // 「这条链要哪几页」必须由调用方回答：直接给 `expectedPages`（已算好的清单），
+    // 或者给 `routeKey`（去登记表查这条路线该有哪几页）。**刻意不设隐式默认** ——
+    // 默认按浏览器取并集会逼一条链去检查它根本用不到的页面（见 expectedPagesForRoute 的注释）。
+    // 两个都不给 = 不检查页面数量，这件事会在收据的 note 里以「没跑这一小项」的形态可见。
+    expectedPages = null,
+    routeKey = null,
     egressProxy = process.env.PROJECT_EGRESS_PROXY ?? null,
     // 给了它才算「真的证明过一次出网」；不给就只探端口，并如实报「未证明」。
     egressProbeUrl = process.env.PROJECT_EGRESS_PROBE_URL ?? null,
@@ -397,10 +432,17 @@ export function createPlatformHealthCheck(options = {}) {
     timeoutMs = 1500,
   } = options;
 
+  if (expectedPages !== null && !Array.isArray(expectedPages)) {
+    // 写错形状就抛，别静默退回「不检查」——退回去就是一个永远不会报错的检查。
+    throw new Error(`expectedPages must be an array when given (got ${JSON.stringify(expectedPages)})`);
+  }
   // 浏览器键写错要**立刻**抛，不能等体检跑起来才抛：那时 round-runner 会把它当成
   // 「体检自己崩了」（状态 UNKNOWN，照常发起），一个配置笔误就变成「体检长期没在工作」。
   browserPortFor(browserKey);
   proxyUrlFor(browserKey);
+  const pages = Array.isArray(expectedPages)
+    ? expectedPages
+    : (typeof routeKey === 'string' && routeKey.trim() ? expectedPagesForRoute(routeKey) : []);
 
   const declared = typeof egressProxy === 'string' ? parseEgressProxy(egressProxy) : egressProxy;
   // profile 身份的期望值取自登记表（唯一来源）；调用方可以覆盖，但要显式给。
@@ -430,12 +472,12 @@ export function createPlatformHealthCheck(options = {}) {
     layersRun.push(`${HEALTH_LAYERS.ENVIRONMENT}:port`);
 
     // ── L1-② 目标页面恰好一个 ───────────────────────────────────────────────
-    if (expectedPages.length > 0) {
+    if (pages.length > 0) {
       try {
         const targets = await readTargetsImpl(proxyUrl, timeoutMs);
-        findings.push(...classifyExpectedPages({ targets, expectedPages, readable: true }));
+        findings.push(...classifyExpectedPages({ targets, expectedPages: pages, readable: true }));
       } catch {
-        findings.push(...classifyExpectedPages({ targets: [], expectedPages, readable: false }));
+        findings.push(...classifyExpectedPages({ targets: [], expectedPages: pages, readable: false }));
       }
       layersRun.push(`${HEALTH_LAYERS.ENVIRONMENT}:pages`);
     }
@@ -474,4 +516,92 @@ export function createPlatformHealthCheck(options = {}) {
       checkedAt: new Date(Number(args.now ?? Date.now())).toISOString(),
     };
   };
+}
+
+// ---------------------------------------------------------------- 独立入口
+
+// 独立入口的意义：体检既要在编排层（`round-runner` 的 `healthCheck` 端口）跑，
+// 也要能被单独调用一次 —— SOP 的「起跑前检查」和宿主（定时器/人工）都需要一个不依赖编排的入口。
+// 退出码沿用既有 preflight 的约定：0=通过，2=有阻断项（需要人），3=体检自身出错。
+export const HEALTH_USAGE = [
+  '用法: node runtime/xws-platform-health-preflight.mjs [选项]',
+  '',
+  '  --browser=<键>          查哪台浏览器（默认 dailyReport；见 runtime/browser-ports.mjs 的 BROWSER_PROFILES）',
+  '  --route=<键>            数这条路线的页面是否「恰好各一个」（不写就**不数**；见 ROUTES 的键）',
+  '  --no-pages              明确表示不数页面（与不写 --route 同效，写出来更显眼）',
+  '  --egress-proxy=<host:port>  出网代理（不写则读 PROJECT_EGRESS_PROXY）',
+  '  --egress-probe-url=<url>    用它真发一次代理请求（不写则只探端口，并如实报「未证明」）',
+  '  --json                  输出完整体检结果 JSON',
+  '',
+  '退出码: 0=通过  2=有阻断项（需要人处理）  3=体检自身出错',
+].join('\n');
+
+export function parseHealthArgs(argv = []) {
+  const args = {
+    browserKey: DEFAULT_BROWSER_KEY,
+    routeKey: null,
+    egressProxy: null,
+    egressProbeUrl: null,
+    json: false,
+    help: false,
+  };
+  for (const raw of argv) {
+    const item = String(raw);
+    if (item === '--help' || item === '-h') args.help = true;
+    else if (item === '--json') args.json = true;
+    // 显式写出来的「不数页面」，可读性用：与不写 --route 的效果一样。
+    else if (item === '--no-pages') args.routeKey = null;
+    else if (item.startsWith('--route=')) args.routeKey = item.slice('--route='.length).trim();
+    else if (item.startsWith('--browser=')) args.browserKey = item.slice('--browser='.length).trim();
+    else if (item.startsWith('--egress-proxy=')) args.egressProxy = item.slice('--egress-proxy='.length).trim();
+    else if (item.startsWith('--egress-probe-url=')) args.egressProbeUrl = item.slice('--egress-probe-url='.length).trim();
+    else throw new Error(`unknown argument: ${item}\n\n${HEALTH_USAGE}`);
+  }
+  if (!args.browserKey) throw new Error('--browser must not be empty');
+  return args;
+}
+
+const HEALTH_EXIT_OK = 0;
+const HEALTH_EXIT_BLOCKED = 2;
+const HEALTH_EXIT_ERROR = 3;
+
+export async function main(argv = process.argv.slice(2), options = {}) {
+  const write = options.write ?? ((text) => process.stdout.write(text));
+  let args;
+  try {
+    args = parseHealthArgs(argv);
+  } catch (error) {
+    write(`${String(error?.message ?? error)}\n`);
+    return HEALTH_EXIT_ERROR;
+  }
+  if (args.help) {
+    write(`${HEALTH_USAGE}\n`);
+    return HEALTH_EXIT_OK;
+  }
+  try {
+    const check = createPlatformHealthCheck({
+      browserKey: args.browserKey,
+      ...(args.routeKey ? { routeKey: args.routeKey } : {}),
+      ...(args.egressProxy ? { egressProxy: args.egressProxy } : {}),
+      ...(args.egressProbeUrl ? { egressProbeUrl: args.egressProbeUrl } : {}),
+      // 只给用例用：让 CLI 的退出码分支可以在没有浏览器、没有代理的机器上被完整测一遍。
+      ...(options.overrides ?? {}),
+    });
+    const health = await check({ businessKey: `health-cli/${args.browserKey}`, now: Date.now(), dayKey: new Date().toISOString().slice(0, 10) });
+    write(JSON.stringify(health, null, 2) + '\n');
+    if (!health.ok) {
+      // 人话放在最后一行：操作者看的是这一行，不是那段 JSON。
+      write(`体检未通过：${health.blocking.map((finding) => finding.code).join(', ')}；${health.note}\n`);
+      return HEALTH_EXIT_BLOCKED;
+    }
+    return HEALTH_EXIT_OK;
+  } catch (error) {
+    write(`体检自身出错：${String(error?.message ?? error)}\n`);
+    return HEALTH_EXIT_ERROR;
+  }
+}
+
+const entryUrl = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : '';
+if (entryUrl === import.meta.url) {
+  process.exitCode = await main();
 }

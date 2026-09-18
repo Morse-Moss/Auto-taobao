@@ -37,6 +37,13 @@ export const REQUIRED_IDENTITY_FIELDS = Object.freeze([
   'tenantId', 'storeId', 'platform', 'accountId', 'browserProfileId', 'contractVersion',
 ]);
 
+// 体检开关的允许键名（实施计划第 4 步的接线）。
+//
+// 为什么放在这里而不是 round-runner：**校验必须在解析配置时就跑**（`--show-plan` 只读配置、
+// 不碰数据库，也一样要能报出笔误），所以键名清单归排期层；编排层反向引用它。
+// 反过来（round-runner 定义、这里 import）会形成循环依赖 —— 本文件头已经写明那条约束。
+export const HEALTH_CHECK_KEYS = Object.freeze(['browser', 'pages']);
+
 // 默认业务幂等键模板。
 //
 // **为什么默认值里必须有 storeId（2026-09-17 改，原先只有 `{capability}/{windowKey}`）**：
@@ -250,6 +257,30 @@ export function validateSchedule(schedule) {
       errors.push(`${where}: operator is required when commit is true`);
     }
     if (entry?.commit !== undefined && typeof entry.commit !== 'boolean') errors.push(`${where}: commit must be a boolean when present`);
+
+    // 体检开关（第 4 步接线）。默认不写 = 不体检，所以**只在写了的时候**校验形状：
+    // 写坏了要在这里被拦住，而不是等到那一轮跑起来才抛（那时表现为「体检长期没在工作」）。
+    const healthCheck = entry?.healthCheck;
+    if (healthCheck !== undefined) {
+      if (typeof healthCheck === 'boolean') {
+        // true / false 都合法。
+      } else if (healthCheck === null) {
+        // null 视为「不体检」，与不写同义（JSON 里没法写 undefined，显式 null 是常见写法）。
+      } else if (typeof healthCheck !== 'object' || Array.isArray(healthCheck)) {
+        errors.push(`${where}: healthCheck must be true/false or an object with ${HEALTH_CHECK_KEYS.join('/')}`);
+      } else {
+        const unknown = Object.keys(healthCheck).filter((key) => !HEALTH_CHECK_KEYS.includes(key));
+        if (unknown.length > 0) {
+          errors.push(`${where}: healthCheck has unknown key(s) ${unknown.join(', ')} (allowed: ${HEALTH_CHECK_KEYS.join(', ')})`);
+        }
+        if (healthCheck.browser !== undefined && !asText(healthCheck.browser)) {
+          errors.push(`${where}: healthCheck.browser must be a non-empty string when present`);
+        }
+        if (healthCheck.pages !== undefined && typeof healthCheck.pages !== 'boolean') {
+          errors.push(`${where}: healthCheck.pages must be a boolean when present`);
+        }
+      }
+    }
   });
 
   // 第二道闸：**同一个能力排了多条时，业务键必须能区分它们**（2026-09-17 补）。

@@ -9,6 +9,7 @@
 // capability-scheduler.test.mjs 负责），这样本轮判定的每一条分支都能被单独构造出来。
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { FAILURE_CLASS } from './context-schema.mjs';
 import { renderAlertText, redactSensitive } from '../notify-feishu-core.mjs';
@@ -34,8 +35,10 @@ import {
   SCHEDULER_OUTCOMES_WITHIN_ROUND,
   buildPlanReport,
   createMemoryRoundState,
+  deriveBrowserForCapability,
   escalationReasonFor,
   exitCodeForRound,
+  healthCheckFromEntry,
   localDayKey,
   parseRoundArgs,
   runRound,
@@ -600,4 +603,113 @@ test('计划报告全量给出字段，尤其是「上一次触发过去多久�
   // 计划里**不许**出现「跑没跑过」的结论字段：那是运行账本的事，排期层没资格说。
   assert.equal(Object.hasOwn(row, 'ran'), false);
   assert.equal(Object.hasOwn(row, 'missed'), false);
+});
+
+// ── 体检接线（实施计划第 4 步）───────────────────────────────────────────────
+//
+// 这一组守三件事，都是「错了不会报错、只会让体检停止工作或开始撒谎」的那一类：
+//   1. 不写 healthCheck ⇒ 与接线前**逐字相同**（不体检，收据里 NOT_IMPLEMENTED）；
+//   2. 体检自己写的「哪几层没检查过」必须进收据（否则 L0/L2/L3 的缺席会被读成通过）；
+//   3. 声明的浏览器与路线矛盾 ⇒ **启动时**报错（否则体检会在另一台浏览器上跑出漂亮的绿灯，
+//      而这一轮要用的那台根本没被看过 —— 假绿灯比红灯危害大）。
+
+// 假注册表：只回答 skillDir。技能名一律用**真实登记表里的名字**（`xws-sku-collection` 在竞品链上），
+// 这样这一段读的是登记表的真实内容，而不是我另编的一张小表。
+const fakeRegistry = (skillDir) => ({ entryFor: () => ({ skillDir }) });
+const SKU_SKILL = 'D:\\Retire\\sycm-automation\\skills\\xws-sku-collection';
+
+test('体检默认关闭：不写 healthCheck 就与接线前逐字相同', async () => {
+  assert.equal(healthCheckFromEntry({ capability: 'fake.cap' }, { registry: fakeRegistry(SKU_SKILL) }), null);
+  assert.equal(healthCheckFromEntry({ capability: 'fake.cap', healthCheck: false }, {}), null);
+  // JSON 里写不出 undefined，显式 null 是常见写法，必须与「不写」同义。
+  assert.equal(healthCheckFromEntry({ capability: 'fake.cap', healthCheck: null }, {}), null);
+
+  const receipt = await runOnce({ schedule: scheduleRan() });
+  assert.equal(receipt.health.status, 'NOT_IMPLEMENTED');
+  assert.equal(receipt.health.ok, null);
+  assert.equal(receipt.health.layers, null);
+});
+
+test('写了 healthCheck: true ⇒ 按能力推导出浏览器，不用运维手填', () => {
+  const derived = deriveBrowserForCapability({ capabilityId: 'xws.sku.collection', registry: fakeRegistry(SKU_SKILL) });
+  assert.equal(derived.browser, 'competitor');
+  assert.equal(derived.route, 'competitor');
+  assert.equal(typeof healthCheckFromEntry({ capability: 'xws.sku.collection', healthCheck: true }, { registry: fakeRegistry(SKU_SKILL) }), 'function');
+});
+
+test('能力未注册又没写浏览器 ⇒ 报错停跑，不猜一个默认浏览器', () => {
+  assert.throws(
+    () => healthCheckFromEntry({ capability: 'sycm.daily-report', healthCheck: true }, { registry: fakeRegistry('') }),
+    (error) => error.code === 'HEALTH_BROWSER_UNDETERMINED',
+  );
+});
+
+test('声明的浏览器与能力所属路线矛盾 ⇒ 报错（这条闸门堵的就是假绿灯）', () => {
+  assert.throws(
+    () => healthCheckFromEntry({ capability: 'xws.sku.collection', healthCheck: { browser: 'dailyReport' } }, { registry: fakeRegistry(SKU_SKILL) }),
+    (error) => error.code === 'HEALTH_BROWSER_MISMATCH',
+  );
+});
+
+test('浏览器键根本不存在 ⇒ 与「矛盾」分开报（打错字不该被说成路线冲突，排查方向会偏）', () => {
+  assert.throws(
+    () => healthCheckFromEntry({ capability: 'xws.sku.collection', healthCheck: { browser: 'nope' } }, { registry: fakeRegistry(SKU_SKILL) }),
+    (error) => error.code === 'HEALTH_BROWSER_UNKNOWN',
+  );
+});
+
+test('能力走的路线不开浏览器 ⇒ 报错要说清是「没有浏览器可查」', () => {
+  const derived = deriveBrowserForCapability({
+    capabilityId: 'xws.feishu.import',
+    registry: fakeRegistry('D:\\Retire\\sycm-automation\\skills\\xws-to-feishu-base'),
+  });
+  assert.equal(derived.browser, null);
+  assert.match(derived.reason, /do not open a browser/u);
+});
+
+test('开了 pages 却判不出是哪条路线 ⇒ 报错（不许随便挑一条路线的页面来数）', () => {
+  // 真实例子：日报链的能力此刻还没注册进清单，所以它开 pages 会被拒 —— 这是对的，
+  // 它逼着我们先把能力登记进 manifest（那里才是「这条链要什么前置条件」的权威之处）。
+  assert.throws(
+    () => healthCheckFromEntry(
+      { capability: 'sycm.daily-report', healthCheck: { browser: 'dailyReport', pages: true } },
+      { registry: fakeRegistry('') },
+    ),
+    (error) => error.code === 'HEALTH_PAGES_UNDETERMINED',
+  );
+});
+
+test('排期条目里写的 healthCheck 会一路走到收据（含体检自己的 note 与逐层状态）', async () => {
+  const receipt = await runOnce({
+    healthCheck: async () => ({
+      ok: true,
+      findings: [],
+      layers: { IDENTITY: 'NOT_IMPLEMENTED', ENVIRONMENT: 'CHECKED' },
+      note: '已跑 ENVIRONMENT；未实现的层：IDENTITY/SESSION/END_TO_END（这几层没有检查过，不表示通过）',
+    }),
+    schedule: scheduleRan(),
+  });
+  assert.equal(receipt.health.status, 'OK');
+  // 这一步在接线前会红：`normalizeHealthResult` 曾把 note 丢掉（写死 note: null），
+  // 于是「没做过的检查」在收据里只剩一个 OK —— 正是实施计划第 4 步禁止的假绿。
+  // 先断言「note 没丢」，再说它写了什么：只留后面那条 match，丢了 note 时的报错是
+  // 「match 收到 null」，看不出是谁的错。
+  assert.equal(typeof receipt.health.note, 'string', '体检自己写的 note 被丢掉了');
+  assert.match(receipt.health.note, /未实现的层/u);
+  assert.equal(receipt.health.layers.IDENTITY, 'NOT_IMPLEMENTED');
+  // 运营/运维看的是步骤那一行，note 必须出现在那里，而不是只藏在 JSON 深处。
+  const step = receipt.steps.find((item) => item.step === 'HEALTH');
+  assert.match(step.detail, /未实现的层/u);
+});
+
+test('buildRound 要把体检端口转交给 runRound（源码级检查，补行为用例够不到的那一环）', () => {
+  // 为什么这里看源码：`buildRound` 是 `main()` 里的闭包，离线用例构造不出来。
+  // 而它写错的后果是**静默**的 —— 比如把 `opts.healthCheck` 打成别的键，
+  // 体检就永远不跑，收据里落成 NOT_IMPLEMENTED，和「这条排期没开体检」长得一模一样。
+  // 源码级检查弱于行为检查（一次合法重构就可能要跟着改），但它比「没人看这一行」强，
+  // 所以只钉住一件事：这个键被转交。格式允许变（不匹配空白），匹配的是语义不是排版。
+  const source = readFileSync(new URL('./round-runner.mjs', import.meta.url), 'utf8');
+  assert.match(source, /healthCheck:\s*opts\.healthCheck/u);
+  // 反向断言：不许再退回硬写 null（那等于接线只接了半条 —— 配置开了也不生效）。
+  assert.doesNotMatch(source, /healthCheck:\s*null,\s*\n\s*heal:/u);
 });

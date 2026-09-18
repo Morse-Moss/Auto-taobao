@@ -13,19 +13,24 @@ import test from 'node:test';
 import {
   BROWSER_PROFILES,
   PROJECT_PORTS,
+  ROUTES,
 } from './browser-ports.mjs';
 import {
   HEALTH_CODES,
   HEALTH_LAYERS,
   HEALTH_REASONS,
   HEALTH_STATES,
+  HEALTH_USAGE,
   LAYER_IMPLEMENTATION,
   buildHealthResult,
   classifyBrowserPort,
   classifyEgress,
   classifyExpectedPages,
   createPlatformHealthCheck,
+  expectedPagesForRoute,
+  main,
   parseEgressProxy,
+  parseHealthArgs,
 } from './xws-platform-health-preflight.mjs';
 import {
   NO_AUTO_RETRY_REASONS,
@@ -39,6 +44,8 @@ const OUR_PORT = PROJECT_PORTS.dailyReportBrowser;
 // 用例必须与**跑测试的那台机器**无关：下面有几条断言的是「没给探测地址时走端口探测」这条路径，
 // 若这台机器恰好设了 PROJECT_EGRESS_PROBE_URL，它们就会去走真代理请求而变成随机红绿。
 process.env.PROJECT_EGRESS_PROBE_URL = '';
+// 同上：CLI 的退出码用例要断言「全绿 = 0」，若这台机器声明了一个不可达的出网代理，就会变成 2。
+process.env.PROJECT_EGRESS_PROXY = '';
 
 // ---------------------------------------------------------------- 词表
 
@@ -354,4 +361,99 @@ test('体检的两个新理由都允许自动重试（人修完就该继续，�
 
 test('复用的既有理由 BROWSER_DEBUG_PORT 也在表里（复用也要表过态）', () => {
   assert.equal(resolveNotifyRule(HEALTH_REASONS.BROWSER_DEBUG_PORT)?.plan, 'NOTIFY');
+});
+
+// ---------------------------------------------------------------- 页面清单的来源与 CLI
+
+test('期望页面按**路线**取，不按浏览器取并集（否则一条链会被要求检查它用不到的页面）', () => {
+  const pages = expectedPagesForRoute('dailyReport');
+  assert.deepEqual(pages.map((page) => page.urlFragment), ['sycm.taobao.com', 'one.alimama.com', 'feishu.cn']);
+  // 反向断言：dailyReport 这台浏览器上还挂着灰豚 / 千牛 / 搜索排行 / 周表粘贴四条路线，
+  // 按浏览器取并集会要求这 7 个页面同时存在 —— 而日报链的 SOP 只关心上面那 3 个。
+  // 于是每次体检都会报出 4 个不存在的页面，体检很快就没人看了。
+  const browserWide = new Set(
+    Object.values(ROUTES).filter((route) => route.browser === 'dailyReport').flatMap((route) => route.sites),
+  );
+  assert.ok(browserWide.size > pages.length, '前提变了：这个浏览器上应当挂着多条路线');
+  for (const site of ['xhs.huitun.com', 'dy.huitun.com', 'qianniu.taobao.com']) {
+    assert.equal(pages.some((page) => page.urlFragment === site), false, `${site} 不属于日报这条路线`);
+  }
+});
+
+test('路线键写错 ⇒ 直接抛（不静默退回「不检查页面」）', () => {
+  assert.throws(() => expectedPagesForRoute('nope'), /unknown route key/u);
+});
+
+test('两个来源都不给 ⇒ 不检查页面，且收据里看得出这一小项没跑', async () => {
+  let targetsRead = 0;
+  const health = await createPlatformHealthCheck({
+    inspectPortImpl: stubPort(),
+    readTargetsImpl: async () => { targetsRead += 1; return []; },
+    probeTcpImpl: async () => true,
+  })({ businessKey: 'k', now: Date.now(), dayKey: '2026-09-18' });
+
+  assert.equal(targetsRead, 0, '没声明要查哪几页就不该去读 /targets');
+  assert.equal(health.ok, true);
+  // 没跑的那一小项必须可见：note 里不会出现 pages 这一段「已跑」记录。
+  assert.equal(health.note.includes('pages'), false);
+});
+
+test('给了 routeKey ⇒ 按该路线数页面', async () => {
+  const pages = expectedPagesForRoute('dailyReport');
+  const health = await createPlatformHealthCheck({
+    inspectPortImpl: stubPort(),
+    readTargetsImpl: async () => pages.map((page) => ({ type: 'page', url: `https://${page.urlFragment}/x` })),
+    probeTcpImpl: async () => true,
+    routeKey: 'dailyReport',
+  })({ businessKey: 'k', now: Date.now(), dayKey: '2026-09-18' });
+
+  assert.equal(health.ok, true, JSON.stringify(health.blocking));
+  assert.equal(health.note.includes('pages'), true);
+});
+
+test('expectedPages 给了但不是数组 ⇒ 创建时抛（退回去就是一个永远不报错的检查）', () => {
+  assert.throws(() => createPlatformHealthCheck({ expectedPages: 'sycm.taobao.com' }), /must be an array/u);
+});
+
+test('CLI：--help 打用法并成功退出；未知参数以「体检自身出错」退出', async () => {
+  const out = [];
+  assert.equal(await main(['--help'], { write: (text) => out.push(text) }), 0);
+  assert.equal(out.join(''), `${HEALTH_USAGE}\n`);
+
+  const bad = [];
+  assert.equal(await main(['--nope'], { write: (text) => bad.push(text) }), 3);
+  assert.match(bad.join(''), /unknown argument/u);
+});
+
+test('CLI：路线键写错以「体检自身出错」退出（3），不是「不通过」（2）', async () => {
+  const out = [];
+  const code = await main(['--route=nope'], { write: (text) => out.push(text) });
+  // 区分这两个退出码是有意义的：3 是「我们自己的配置错了」，2 是「环境真的不对，需要人」。
+  assert.equal(code, 3);
+  assert.match(out.join(''), /unknown route key/u);
+});
+
+test('CLI：环境有问题退出 2 并给出人话；全绿退出 0', async () => {
+  const blocked = [];
+  const blockedCode = await main(['--browser=dailyReport'], {
+    write: (text) => blocked.push(text),
+    overrides: { inspectPortImpl: async () => ({ status: 'free' }), probeTcpImpl: async () => true },
+  });
+  assert.equal(blockedCode, 2);
+  assert.match(blocked[blocked.length - 1], /体检未通过/u);
+  assert.match(blocked[blocked.length - 1], new RegExp(HEALTH_CODES.CDP_ENDPOINT_MISSING, 'u'));
+
+  const ok = [];
+  const okCode = await main(['--browser=dailyReport', '--json'], {
+    write: (text) => ok.push(text),
+    overrides: {
+      inspectPortImpl: async () => ({ status: 'occupied', profile: OUR_PROFILE }),
+      probeTcpImpl: async () => true,
+    },
+  });
+  assert.equal(okCode, 0);
+  const payload = JSON.parse(ok[0]);
+  assert.equal(payload.ok, true);
+  // 即使全绿，也必须点名「哪几层没检查过」。
+  assert.match(payload.note, /未实现的层/u);
 });

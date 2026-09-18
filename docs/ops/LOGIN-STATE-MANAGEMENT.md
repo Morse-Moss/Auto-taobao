@@ -267,4 +267,15 @@ PLUGIN_NOT_READY / SOURCE_MISMATCH` 基础上扩，**只加不删**）：
    （`runtime/xws-platform-health-preflight.mjs` 的 L1 环境层）。实现时改了口径，见 §3 的 L1 小节：
    读注册表那条路走不通（本机 `reg.exe` 被安全策略拉黑且禁止等价绕过，无法验证它的实现），
    改成「出网代理**由调用方显式声明**，声明了就探可达性，没声明就把这个缺口本身报出来」。
-   仍待做的：把 L1 接进 `round-runner` 的 `healthCheck`（现在是 `null`）。
+5. ~~把 L1 接进 `round-runner` 的 `healthCheck`~~ → **2026-09-18 已接线**。
+   形状：排期条目加一个**默认关闭**的 `healthCheck` 开关（`runtime/round-schedule.json` 的 `_readme`
+   有面向运营的写法说明），由 `round-runner.optionsFromEntry` 建成体检端口。
+   两处刻意不猜：①「这条能力走哪个浏览器」由 `registry.entryFor(capability).skillDir` +
+   `ROUTES[].skills` **推导**，不让运维手填（手填了会校验：与推导矛盾即报错停跑，
+   因为那会让体检在另一台浏览器上跑出一个假绿灯）；②推不出来时要显式写 `{ "browser": "..." }`，
+   不退回某个默认浏览器。
+   默认关闭这条是验收条件之一：出厂配置**没有** `healthCheck` 键，
+   `runRound` 收到的仍是 `null`，收据照旧落 `NOT_IMPLEMENTED`（既有用例继续守着）。
+   实测证据见 [`UNATTENDED-AGENT-RUNTIME-PLAN.md`](UNATTENDED-AGENT-RUNTIME-PLAN.md) §11 第 4 行。
+   仍未做的：L0 身份层与 L2 会话层 —— 也就是说，**「未登录」这件事今天还不能被提前查出**，
+   只能靠采集链撞到登录墙后 fail-loud 上报（既有理由 `FLOW_HUMAN_GATE` / `LOGIN_REQUIRED`）。

@@ -11,6 +11,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  HEALTH_CHECK_KEYS,
   PERIOD_KINDS,
   ROUND_SCHEDULE_VERSION,
   WHEN_KINDS,
@@ -394,4 +395,45 @@ test('the plan lists every round with its next trigger and derived key', () => {
   assert.equal(invalid.ok, false);
   assert.equal(invalid.rows.length, 0);
   assert.ok(invalid.errors.length > 0);
+});
+
+// ── 体检开关的配置校验（实施计划第 4 步接线）─────────────────────────────────
+//
+// 为什么要在这里拦：`healthCheck` 写坏的后果不是「报错」，而是**这一轮静默地不做体检**
+// （配置层没拦住 → 编排层按「没开」处理）。而「体检没跑」与「体检通过」在收据里长得像。
+// 所以形状必须在解析配置时就判掉，且 `--show-plan`（只读、不碰数据库）也要能报出来。
+
+test('healthCheck 不写 / false / null 一律合法，且等于「不体检」', () => {
+  for (const value of [undefined, false, null]) {
+    const result = validateSchedule(scheduleOf([value === undefined ? entry() : entry({ healthCheck: value })]));
+    assert.equal(result.ok, true, `${String(value)} 应当合法：${result.errors.join('; ')}`);
+  }
+});
+
+test('healthCheck 的合法写法：true / {} / { browser } / { pages } / 两者都给', () => {
+  for (const value of [true, {}, { browser: 'dailyReport' }, { pages: true }, { browser: 'dailyReport', pages: true }]) {
+    const result = validateSchedule(scheduleOf([entry({ healthCheck: value })]));
+    assert.equal(result.ok, true, `${JSON.stringify(value)} 应当合法：${result.errors.join('; ')}`);
+  }
+});
+
+test('healthCheck 写坏了要在配置解析时就报出来（否则表现为「体检长期静默地没开」）', () => {
+  const cases = [
+    ['字符串', 'yes', /must be true\/false or an object/u],
+    ['数组', [], /must be true\/false or an object/u],
+    ['未知键（打错字）', { browsr: 'dailyReport' }, /unknown key/u],
+    ['pages 不是布尔', { pages: 'yes' }, /pages must be a boolean/u],
+    ['browser 是空串', { browser: '   ' }, /browser must be a non-empty string/u],
+  ];
+  for (const [label, value, pattern] of cases) {
+    const result = validateSchedule(scheduleOf([entry({ healthCheck: value })]));
+    assert.equal(result.ok, false, `${label} 应当被拒`);
+    assert.match(result.errors.join('; '), pattern, label);
+  }
+});
+
+test('允许的键名清单只有一处来源（排期层），编排层引用它而不是另抄一份', () => {
+  // 这条是防「两处键名清单各自漂移」：加一个键却只改了一边，会出现
+  // 「校验放过、接线不认」的静默组合。清单本身归排期层（校验在这里跑）。
+  assert.deepEqual([...HEALTH_CHECK_KEYS], ['browser', 'pages']);
 });

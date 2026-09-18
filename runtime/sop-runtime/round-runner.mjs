@@ -18,13 +18,19 @@
 //   2. **体检没给出结论时照常发起**（与探测同方向的 fail-open：多做一次本来会失败的运行，
 //      好过少做一次本来该做的活），但收据里 health.status 必须写 UNKNOWN，**不许写 OK**。
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+// 体检层的真实实现（`runtime/` 顶层）。**只有本文件（编排层的 CLI 装配处）import 它**：
+// 编排内核 `runRound` 拿到的只是注入的函数，所以它仍然可以在没有浏览器、没有网络的机器上被完整测一遍。
+import { createPlatformHealthCheck } from '../xws-platform-health-preflight.mjs';
+// 「这条能力走哪个浏览器」取自登记表，不另写一份：能力自身的技能目录 -> ROUTES[].skills -> browser。
+import { BROWSER_PROFILES, ROUTES } from '../browser-ports.mjs';
 import { createRuntimeContext } from './runtime-bootstrap.mjs';
 import { runScheduled } from './capability-scheduler.mjs';
 import { parseCliArgs } from './two-stage-runner.mjs';
 import {
+  HEALTH_CHECK_KEYS,
   evaluateSchedule,
   findRound,
   parseScheduleJson,
@@ -235,11 +241,12 @@ function normalizeFinding(finding) {
 
 function normalizeHealthResult(raw) {
   if (raw === null || raw === undefined) {
-    // 体检层还没实现（第 4 步）：**不许**写成 OK，只许写成 NOT_IMPLEMENTED。
+    // 体检层还没接线（第 4 步）：**不许**写成 OK，只许写成 NOT_IMPLEMENTED。
     return {
       status: 'NOT_IMPLEMENTED',
       ok: null,
       findings: [],
+      layers: null,
       note: '体检层尚未接线（实施计划第 4 步）：本轮没有做登录态/环境/会话检查。',
     };
   }
@@ -250,7 +257,12 @@ function normalizeHealthResult(raw) {
     ok: raw.ok !== false,
     findings,
     blocking,
-    note: null,
+    // 体检自己写的那句话必须原样带进收据。它里面点着「哪些层**没有**检查过」（第 4 步落地时是
+    // L0/L2/L3 三层）。丢掉它，收据就只剩一个「通过」，而「没做过的检查」会被读成「检查没问题」
+    // ——正是 LOGIN-STATE-MANAGEMENT.md §7 禁止的假绿。调用方没给仍是 null（默认行为逐字不变）。
+    note: asText(raw?.note) || null,
+    // 逐层状态一并带过来：这是**结构化**的缺口，比一句话更难被忽略（页面/看板可以据此标灰）。
+    layers: raw?.layers && typeof raw.layers === 'object' ? { ...raw.layers } : null,
   };
 }
 
@@ -265,6 +277,7 @@ async function safeHealthCheck(healthCheck, args) {
       status: 'UNKNOWN',
       ok: null,
       findings: [],
+      layers: null,
       error: messageOf(error).slice(0, 300),
       note: '体检本身出错，未拿到结论；本轮照常发起，但没有做登录态检查。',
     };
@@ -740,9 +753,137 @@ function readScheduleFile(file) {
   return { path, schedule, ok, errors };
 }
 
+// ── 体检层接线（实施计划第 4 步）─────────────────────────────────────────────
+//
+// 接线的形状由三条既有事实决定，不是新设计：
+//   1. 默认关闭。`runtime/round-schedule.json` 出厂 `enabled:false`，条目里也没有 `healthCheck` 键；
+//      「没写」必须与今天**逐字相同**地等于「不体检」，否则接线本身就改变了默认行为。
+//   2. 「这条能力走哪个浏览器」不新写一份。`registry.entryFor(capability).skillDir` 给出技能目录名，
+//      `ROUTES[].skills` 指出它属于哪条路线，路线的 `browser` 就是答案 —— 全链复用既有的
+//      单一来源（`runtime/browser-ports.mjs`）。
+//   3. 查不出来时**不许猜**。查不出（能力没注册 / 技能不在任何路线里 / 落在多个浏览器上）
+//      就让配置显式写 `{ "browser": "..." }`；写不出来就报错停跑。猜一个默认值正是坑 35
+//      （默认值即目标）：它会安静地给**别的**浏览器发绿灯，而这一轮的页面根本不在那台上。
+//
+// `{ "browser": "..." }` 与推导结果**不一致时直接报错**：这一条专门用来堵「体检通过、但这轮
+// 连的其实是另一个浏览器」这种假绿。没写 browser 时用推导值；推导不出来又没写就报错。
+export function deriveBrowserForCapability({ capabilityId, registry = null } = {}) {
+  const none = (reason) => ({ browser: null, route: null, source: null, reason });
+  const name = asText(capabilityId);
+  if (!name) return none('no capability');
+  if (!registry || typeof registry.entryFor !== 'function') return none('registry unavailable');
+  let entry = null;
+  try {
+    entry = registry.entryFor(name);
+  } catch {
+    return none(`capability not registered: ${name}`);
+  }
+  const skillDir = asText(entry?.skillDir);
+  if (!skillDir) return none(`no skill dir for ${name}`);
+  // 技能目录名（末段），不是整条路径：ROUTES 里登记的就是这个名字。
+  const skill = basename(skillDir.replaceAll('\\', '/'));
+  // 只认**有浏览器**的路线：`competitorImport` 这类 `browser: null` 的路线（纯接口，不开浏览器）
+  // 不该参与判断 —— 把它算进来会让同一个技能看起来落在两台浏览器上。
+  const owners = Object.entries(ROUTES)
+    .filter(([, route]) => asText(route?.browser) && (route.skills ?? []).includes(skill))
+    .map(([routeName, route]) => ({ routeName, browser: route.browser }));
+  const browsers = [...new Set(owners.map((item) => item.browser))];
+  if (browsers.length === 0) {
+    // 区分两种「没有浏览器」：这条能力**本来就不开浏览器**（走接口），还是它的技能压根没登记。
+    // 这两种情况运维要做的事完全不同（前者不用体检，后者要改登记表），不能共用一句话。
+    const onAnyRoute = Object.values(ROUTES).some((route) => (route.skills ?? []).includes(skill));
+    return none(onAnyRoute
+      ? `capability "${name}" runs over routes that do not open a browser (no browser to check)`
+      : `skill "${skill}" is not registered on any route`);
+  }
+  if (browsers.length > 1) {
+    return none(`skill "${skill}" is on several browsers (${browsers.join(', ')})`);
+  }
+  // 同一个浏览器上挂多条路线时，浏览器是确定的，但「要哪几页」不确定 ⇒ route 留 null，
+  // 于是 `pages: true` 会被拒绝（见 healthCheckFromEntry），而不是随便挑一条路线的页面。
+  const route = owners.length === 1 ? owners[0].routeName : null;
+  return { browser: browsers[0], route, source: `ROUTES(/${skill})`, reason: null };
+}
+
+// 排期条目 -> 体检端口（`null` = 不体检）。
+//
+// 只认这几种写法，别的都报错（配置写坏一律停跑，不静默回退）：
+//   "healthCheck": false / 不写 / null   -> null（与今天逐字相同：不体检，收据落成 NOT_IMPLEMENTED）
+//   "healthCheck": true                  -> 按能力推导浏览器；推不出来就报错
+//   "healthCheck": { "pages": true }     -> 同上，并且数**这条能力所属路线**的页面是否恰好各一个
+//   "healthCheck": { "browser": "dailyReport", "pages": true }
+//                                        -> 显式指定浏览器；与推导结果不一致就报错
+//
+// 页面计数**默认不开**：`pages` 只认 `true` 才开。理由见 `expectedPagesForRoute` 的注释 ——
+// 「页面恰好一个」是日报链的口径，对竞品链（一个竞品一个商品页）是错的判据，
+// 所以它必须是这条排期显式说出来的意图，而不是一个所有链都默认套用的规则。
+// 键名清单定义在 round-schedule（校验要在那里跑），这里只引用，不另写一份。
+export function healthCheckFromEntry(entry, { registry = null } = {}) {
+  const spec = entry?.healthCheck;
+  if (spec === undefined || spec === null || spec === false) return null;
+  if (spec !== true && (typeof spec !== 'object' || Array.isArray(spec))) {
+    throw new RoundError(
+      `healthCheck must be true/false or an object with ${HEALTH_CHECK_KEYS.join('/')}; got ${JSON.stringify(spec)}`,
+      'ROUND_INPUT_REQUIRED',
+    );
+  }
+
+  const explicit = typeof spec === 'object' && spec.browser !== undefined ? asText(spec.browser) : '';
+  const derived = deriveBrowserForCapability({ capabilityId: entry?.capability, registry });
+
+  // 先认「这个键存不存在」，再谈「与路线矛不矛盾」：两者要说的话不一样。
+  // 合并成一句会让「打错字」看起来像「这条链真的该用另一台浏览器」，排查方向就偏了。
+  const knownBrowsers = Object.keys(BROWSER_PROFILES);
+  if (explicit && !knownBrowsers.includes(explicit)) {
+    throw new RoundError(
+      `healthCheck.browser "${explicit}" is not a registered browser (expected one of ${knownBrowsers.join(' | ')})`,
+      'HEALTH_BROWSER_UNKNOWN',
+    );
+  }
+
+  if (explicit && derived.browser && explicit !== derived.browser) {
+    // **这条就是假绿闸门**：写错浏览器时体检会在别的浏览器上跑出一个漂亮的绿灯，
+    // 而这一轮要用的那个浏览器根本没被看过。报错优于放行。
+    throw new RoundError(
+      `healthCheck.browser "${explicit}" contradicts the capability's route (${derived.source} → "${derived.browser}")`,
+      'HEALTH_BROWSER_MISMATCH',
+      { declared: explicit, derived: derived.browser, source: derived.source },
+    );
+  }
+
+  const browserKey = explicit || derived.browser;
+  if (!browserKey) {
+    throw new RoundError(
+      `cannot tell which browser capability "${asText(entry?.capability)}" uses: ${derived.reason}. `
+        + `Either write it explicitly as "healthCheck": { "browser": "<${knownBrowsers.join('|')}>" }, `
+        + 'or drop healthCheck from this round — 不体检如实写成 NOT_IMPLEMENTED，好过假装检查过。',
+      'HEALTH_BROWSER_UNDETERMINED',
+    );
+  }
+
+  // 「数页面」是**显式开启**的（默认不数）：页面「恰好一个」不是通用口径 ——
+  // 竞品链要同时开很多商品详情页，对它按「恰好一个」判会把正常状态判成停线。
+  const wantsPages = typeof spec === 'object' && spec.pages === true;
+  if (wantsPages && !derived.route) {
+    throw new RoundError(
+      `healthCheck.pages was requested but this round's route cannot be determined `
+        + `(${derived.reason ?? `skill is on several routes of ${browserKey}`}) — so "which pages" is unknown`,
+      'HEALTH_PAGES_UNDETERMINED',
+    );
+  }
+
+  // 浏览器键写错（不在登记表里）会在**创建时**抛：不能等到体检跑起来才炸 ——
+  // 那时 round-runner 会把它当成「体检自己崩了」（状态 UNKNOWN，照常发起），
+  // 于是一个配置笔误变成「体检长期没在工作」。
+  return createPlatformHealthCheck({
+    browserKey,
+    ...(wantsPages ? { routeKey: derived.route } : {}),
+  });
+}
+
 // 排期条目 -> 一次运行的选项。命令行参数可以盖掉条目里的值（人工临时跑用），但**不反过来**：
 // 配置文件是运营日常改的地方，命令行是临时干预，临时的不该被持久的那份悄悄覆盖。
-function optionsFromEntry(entry, args = {}, decision = null) {
+function optionsFromEntry(entry, args = {}, decision = null, { registry = null } = {}) {
   const collectInput = { ...(entry.collectInput ?? {}) };
   if (args.collectInput) Object.assign(collectInput, JSON.parse(args.collectInput));
   const envFile = args.envFile ?? entry.envFile ?? null;
@@ -762,6 +903,8 @@ function optionsFromEntry(entry, args = {}, decision = null) {
     collectStepId: entry.collectStepId ?? null,
     period,
     publishInput: entry.publishInput ?? {},
+    // 体检按条目开启（默认关闭）。**在这里建**是为了让浏览器键写错在「本轮开跑之前」就报出来。
+    healthCheck: healthCheckFromEntry(entry, { registry }),
     source: {
       targetLabel: entry.source?.targetLabel ?? null,
       shopName: entry.source?.shopName ?? null,
@@ -861,8 +1004,10 @@ export async function main(argv = process.argv.slice(2)) {
       probeOnly: false,
       forceRun: force,
     }),
-    // 体检层与自愈执行器分别是实施计划第 4 步 / 第 3 步；在那之前**不假装它们存在**。
-    healthCheck: null,
+    // 体检层由排期条目显式开启（实施计划第 4 步）；自愈执行器是第 3 步。
+    // 没开启时**如实写 null**（收据里落成 NOT_IMPLEMENTED），不假装它在工作；
+    // 也不会因为「今天接线了」就顺手打开——默认关闭是这条接线的验收条件之一。
+    healthCheck: opts.healthCheck ?? null,
     heal: null,
     notify,
     state: roundState,
@@ -887,7 +1032,7 @@ export async function main(argv = process.argv.slice(2)) {
         intervalMs: intervalSeconds * 1000,
         maxTicks,
         runRoundOnce: async (entry, decision) => {
-          const receipt = await runRound(buildRound(optionsFromEntry(entry, args, decision), { dueDecision: decision }));
+          const receipt = await runRound(buildRound(optionsFromEntry(entry, args, decision, { registry }), { dueDecision: decision }));
           process.stdout.write(`[round] ${entry.name} → ${receipt.outcome} (key ${receipt.businessKey}, notify ${receipt.notification.status})\n`);
           return receipt;
         },
@@ -919,7 +1064,7 @@ export async function main(argv = process.argv.slice(2)) {
           receipts.push({ name: decision.name, skipped: true, reason: decision.reason, nextTriggerAt: decision.nextTriggerAt, businessKey: decision.businessKey });
           continue;
         }
-        const receipt = await runRound(buildRound(optionsFromEntry(entry, args, decision), { dueDecision: decision, force: args.force === true }));
+        const receipt = await runRound(buildRound(optionsFromEntry(entry, args, decision, { registry }), { dueDecision: decision, force: args.force === true }));
         receipts.push({ name: decision.name, skipped: false, receipt });
       }
       process.stdout.write(`${JSON.stringify({ scheduleFile: path, rounds: receipts }, null, 2)}\n`);
@@ -941,6 +1086,9 @@ export async function main(argv = process.argv.slice(2)) {
       },
       args,
       args.periodStart && args.periodEnd ? { period: { startDate: args.periodStart, endDate: args.periodEnd, label: `${args.periodStart}~${args.periodEnd}` }, businessKey: args.businessKey } : { businessKey: args.businessKey },
+      // 手工单跑没有排期条目，也就没有「要不要体检」的声明 ⇒ 不体检（收据里落成 NOT_IMPLEMENTED）。
+      // 要临时确认环境，用体检自己的入口：node runtime/xws-platform-health-preflight.mjs --json
+      { registry },
     );
     opts.businessKey = args.businessKey;
     opts.capabilityId = args.capability;
