@@ -862,6 +862,35 @@ node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --noti
 `--notify` 三档：`auto`（默认）＝**真的试过了**（带 `--commit`）并且没成才叫人；`send`/`dry` ＝显式要求（演练、验文案）；
 `off` ＝彻底不发。**不带 `--commit` 的只读排练撞到登录墙不惊动人** —— 排练不是一次尝试。
 
+**按店铺检测登录态必须显式给 `--proxy`（2026-09-19 凌晨踩到，症状是静默「假测四台」）。**
+`--shop` 的唯一用途是让**告警点名哪家店**（`login-merchant-core.mjs` 的注释把这一点写死了），
+它**不改变探测目标** —— 探测永远打默认的 `--proxy`（`19023`，商家共用浏览器）。
+于是下面这两条会**逐字输出同一个结果**，看着像「四家都查过了」，其实四家查的都是同一台机器：
+
+```powershell
+# ✗ 四份输出逐字相同（都打 19023）—— 这就是「假测四台」的症状
+node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --shop 里可林淘宝
+node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --shop 网林天猫
+
+# ✓ 按店铺实例检测：把这家店自己的代理带上（端口取自 SHOP_BROWSERS，别另抄）
+node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --shop 里可林淘宝 --proxy http://127.0.0.1:19041
+node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --shop 网林天猫   --proxy http://127.0.0.1:19042
+node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --shop 盖文淘宝   --proxy http://127.0.0.1:19043
+node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --shop 科塔淘宝   --proxy http://127.0.0.1:19044
+```
+
+**判据：四份输出的 `proxy` 字段必须各是各的店。** 若四份逐字相同，先停下来 —— 那是没接上，
+不是「四家都健康」。这个坑之所以危险，正因为它的表现是**全绿**。
+
+**另一条已知的假阴性（同一次实测发现，尚未修）**：当淘宝主站会话有效但阿里妈妈未登录时，
+脚本第二步会去开顶层登录页，而淘宝会把已登录的请求**重定向到千牛工作台**
+（`myseller.taobao.com/home.htm/QnworkbenchHome/`，§11.3 第 1 条记过这个形态）。
+于是它在千牛页上当然找不到账号输入框，报成 `NO_SAVED_CREDENTIAL`（「没存密码」）——
+**这个结论不可信**，它既不能说「密码库里没有凭据」，也不能说「需要人去存密码」。
+判别方法：看 `login.urlBefore` 与 `login.shots` 里那一页**是不是千牛**（是千牛就是踩到这条）。
+真实结论要看 `sites.alimama.loggedIn`（那条走的是「导航 → 等 5 秒 → 回读 `location.href`」，
+路径不同、可信）。
+
 ### 11.1 三条判据（都是实测，不是文档抄来的）
 
 1. **跨站 iframe 里的登录表单，Chrome 不会自动填充；顶层表单才会。** 同 profile / 同账号 / 同一时刻的对照：阿里妈妈页内嵌的 `login.taobao.com/member/login.jhtml?…style=mini` 与生意参谋页的 `havanalogin.taobao.com/mini_login.htm`（跨域，主文档连 input 都数不到）都填不进去；**顶层的 `login.taobao.com/havanaone/login/login.htm?bizName=taobao`** 上 `#fm-login-id` 与 `#fm-login-password` 的 `matches(':autofill')` 为 true。
