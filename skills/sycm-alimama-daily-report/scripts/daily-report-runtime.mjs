@@ -5,6 +5,7 @@
 // 同一天跑两遍就覆盖上一遍。两个写入方必须对这两件事给出同一个答案，
 // 所以答案只能有一份（这条纪律与 runtime/browser-ports.mjs 的存在理由是同一个）。
 import { readdirSync } from 'node:fs';
+import path from 'node:path';
 
 // --- 一、证据目录的代次 -----------------------------------------------------
 //
@@ -29,6 +30,49 @@ export function dirHasEntries(dir) {
   } catch {
     return false;
   }
+}
+
+// --- 一之二、目录名里带不带「店铺」这一维 -----------------------------------
+//
+// 为什么（2026-09-18 一轮多店铺实测）：这套产物目录原先**只按报告日取名**，没有店铺维度，
+// 而 `--commit` 与回填都用 policy:'latest'（并入当前最新一代）⇒ 四家店串行跑时，后一家的
+// `plan.json` / `paste.tsv` / `receipt.json` 会**覆盖**前一家的同名文件，
+// 一个目录里最后只剩最后一家。那一轮因此真实丢了 5 个文件的本地副本
+// （业务事实一件没丢：stdout 台账、审计表、两条独立回读都在）。
+//
+// 这是同一个缺口的第三次出现：`PROJECT_PORTS` 缺店铺维 → 查询键缺店铺维 → 现在是产物路径。
+//
+// **默认行为逐字不变**：不给 shopKey 时返回的仍然是 `daily-report-<日期>`——
+// 单店跑与所有历史目录一个字都不用改，多店铺显式给 `--shop-key` 才拿到店铺维度。
+// 这跟「新能力默认关闭地接进已经在跑的编排器」是同一条纪律：
+// 装上它不该改变任何既有调用方的行为，否则「接错」会伪装成「升级」。
+//
+// 三个写入方（push / 回填 / 独立回读）原先各自拼了一遍同样的字符串，也正是「同一个答案只能有一份」
+// 这条纪律要消掉的东西 —— 现在它们共用这一个函数。
+export const SHOP_KEY_PATTERN = /^[\p{L}\p{N}_.-]+$/u;
+
+export function evidenceBaseDir(options = {}) {
+  const { evidenceRoot, reportDate, shopKey = null } = options;
+  if (typeof evidenceRoot !== 'string' || evidenceRoot === '') {
+    throw new Error('evidenceBaseDir requires an evidenceRoot');
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(String(reportDate ?? ''))) {
+    throw new Error(`invalid report date for evidence dir: ${JSON.stringify(reportDate)}`);
+  }
+  const dated = `daily-report-${reportDate}`;
+  if (shopKey === null || shopKey === undefined || String(shopKey).trim() === '') {
+    return path.join(evidenceRoot, dated);
+  }
+  // 这个键会进**目录名**，所以字符集要收窄：它一次堵掉两件事 ——
+  // ① `..`／路径分隔符这类「写到别的目录去」的入口；
+  // ② 一堆看不见的字符（空格、控制符、引号）进目录名之后在各处工具里表现不一致。
+  // 「两家店填了同一个键」这另一种撞车它堵不住，那一半由 `assertShopKeyMatchesSource`
+  // （键必须与源产物里的店名一致）来堵。
+  const key = String(shopKey).trim();
+  if (!SHOP_KEY_PATTERN.test(key) || key === '.' || key === '..') {
+    throw new Error(`invalid shop key for evidence dir: ${JSON.stringify(shopKey)}`);
+  }
+  return path.join(evidenceRoot, `${dated}-${key}`);
 }
 
 export function resolveEvidenceDir(options = {}) {

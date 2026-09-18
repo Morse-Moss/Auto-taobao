@@ -18,7 +18,8 @@ import test from 'node:test';
 import { assertMemberIdentity, assertShopIdentity } from './collect-core.mjs';
 import {
   ISOLATED_PROFILES, MAPPING_SOURCE, RAW_MAPPING_ROWS, SHOP_IDENTITIES,
-  describeIdentity, expectArgs, formatArgv, platformOf, shopIdentity, shopIdentityByHeader, shopKeys,
+  assertEvidenceShopKey, describeIdentity, expectArgs, formatArgv, platformOf, shopIdentity,
+  shopIdentityByHeader, shopKeys,
 } from './shop-identities.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
@@ -271,4 +272,35 @@ test('登记表与文档里的四处名字对不上的坑：会员名与店名�
   assert.ok(code.includes('export const SHOP_IDENTITIES'), '去注释后代码主体不见了 —— 剥离实现有问题');
   assert.ok(!code.includes('分开存而不是派生成'), '去注释没生效：说明文字还在，这条守卫会假红');
   assert.doesNotMatch(code, /`\$\{[^}]*key[^}]*\}:阿彦`/u);
+});
+
+// 证据目录的店铺键（2026-09-18 一轮多店铺实测）。
+// 加这一维是为了让四家店不再互相覆盖，但这样一来目录名本身成了一个**断言**：
+// 一个叫 `…-网林天猫` 的目录里如果是里可林的数据，下一个复盘的人会得出完全错误的结论。
+// 所以键必须与能观察到的源产物名字对齐，对不上就停手（错标签比不贴标签更糟）。
+test('证据目录的店铺键：与源产物店名一致才放行，一致就返回登记行', () => {
+  const row = assertEvidenceShopKey('科塔淘宝', { fullName: '科塔全卫定制' });
+  assert.equal(row.key, '科塔淘宝');
+  assert.equal(row.fullName, '科塔全卫定制');
+  // 回填方只能观察到 `--shop`（飞书选项名），那就只核这一面 —— 而它的值应等于运营叫法。
+  assert.equal(assertEvidenceShopKey('盖文天猫', { shopKey: '盖文天猫' }).key, '盖文天猫');
+  // 什么都不给 ⇒ 只做「必须是已登记的键」这一件事，不假装核过。
+  assert.equal(assertEvidenceShopKey('里可林淘宝').key, '里可林淘宝');
+});
+
+test('证据目录的店铺键：错标签一律抛错并点名两边（原样比，不做相似度猜）', () => {
+  // ① 源产物店名对不上：把科塔的目录键配上网林的源产物。
+  assert.throws(() => assertEvidenceShopKey('科塔淘宝', { fullName: '网林家居旗舰店' }),
+    /源产物里的店名 "网林家居旗舰店" ≠ 登记的平台店铺全称 "科塔全卫定制"/u);
+  // ② 同一命令里两处叫法不一致：`--shop-key 科塔淘宝` 配 `--shop 盖文天猫`。
+  assert.throws(() => assertEvidenceShopKey('科塔淘宝', { shopKey: '盖文天猫' }),
+    /另一处给的店铺叫法 "盖文天猫" ≠ "科塔淘宝"/u);
+  // ③ 未登记的键：不回落成「不核对」，直接停（否则随便一个字符串都能当目录后缀）。
+  assert.throws(() => assertEvidenceShopKey('盖文旗舰店', { fullName: '盖文旗舰店' }), /未登记的店铺/u);
+  assert.throws(() => assertEvidenceShopKey('', {}), /未登记的店铺/u);
+  // ④ 「差一点就对」的形态也一律拒：短名、带空格、大小写都算另一家店。
+  assert.throws(() => assertEvidenceShopKey('科塔淘宝', { fullName: '科塔' }), /对不上/u);
+  assert.throws(() => assertEvidenceShopKey('保拉淘宝', { fullName: 'Paola Lenti保拉伦蒂 ' }), /对不上/u);
+  // 反向自证：正确的组合不许被误伤（否则上面全是「一律抛错」也能全绿）。
+  assert.doesNotThrow(() => assertEvidenceShopKey('保拉淘宝', { fullName: 'Paola Lenti保拉伦蒂' }));
 });

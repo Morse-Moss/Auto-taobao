@@ -9,7 +9,8 @@ import { dailyReportTargets, loadFeishuCredentials } from '../../../runtime/feis
 import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import { appendAudit, describeAuditRow } from '../../../runtime/daily-report-audit.mjs';
 import { reportDateEpoch } from './daily-report-core.mjs';
-import { buildEnvironment, dirHasEntries, resolveEvidenceDir } from './daily-report-runtime.mjs';
+import { buildEnvironment, dirHasEntries, evidenceBaseDir, resolveEvidenceDir } from './daily-report-runtime.mjs';
+import { assertEvidenceShopKey } from './shop-identities.mjs';
 import { classifyInquiryWrite, extractInquiryMetrics, selectDailyStoreRecord } from './inquiry-core.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -24,7 +25,7 @@ const DEFAULTS = Object.freeze({
 const WRITTEN_FIELDS = Object.freeze(['询单量', '同层同行询单量']);
 
 function parseArgs(argv) {
-  const args = { ...DEFAULTS, commit: false, allowMissingPeer: false };
+  const args = { ...DEFAULTS, commit: false, allowMissingPeer: false, shopKey: null };
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
     if (key === '--commit') args.commit = true;
@@ -32,6 +33,9 @@ function parseArgs(argv) {
     else if (key === '--date') args.reportDate = argv[++index];
     else if (key === '--source-shop') args.sourceShop = argv[++index];
     else if (key === '--shop') args.shop = argv[++index];
+    // 证据目录的店铺维度（运营叫法）。**不给时行为逐字不变**；多店铺必须给，
+    // 而且必须与 push 那一步给同一个值 —— 否则回填会并入另一代的目录里（拆分产物）。
+    else if (key === '--shop-key') args.shopKey = argv[++index];
     else if (key === '--proxy') args.proxy = argv[++index];
     else if (key === '--output-dir') args.outputDir = argv[++index];
     else throw new Error(`unknown argument: ${key}`);
@@ -109,7 +113,8 @@ async function recordAudit(entry) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const baseDir = path.join(REPO_ROOT, 'evidence', `daily-report-${args.reportDate}`);
+  const baseDir = evidenceBaseDir({ evidenceRoot: path.join(REPO_ROOT, 'evidence'),
+    reportDate: args.reportDate, shopKey: args.shopKey });
   const resolved = resolveEvidenceDir({ baseDir, explicit: args.outputDir, isOccupied: dirHasEntries, policy: 'latest' });
   args.outputDir = resolved.dir;
   mkdirSync(args.outputDir, { recursive: true });
@@ -117,6 +122,9 @@ async function main() {
   if (source.sourceShop !== args.sourceShop) {
     throw new Error(`unexpected SYCM shop: expected ${args.sourceShop}, got ${source.sourceShop}`);
   }
+  // 目录名里的店铺键必须与飞书那一行的店铺叫法一致（两者都是运营叫法，本来就该同一个值）。
+  // 不核的话会出现「目录叫 A 店、写进去的是 B 店那一行」——从文件名上完全看不出来。
+  if (args.shopKey) assertEvidenceShopKey(args.shopKey, { shopKey: args.shop });
   const metrics = extractInquiryMetrics(source, args.reportDate,
     { peerBenchmarkRequired: !args.allowMissingPeer });
 

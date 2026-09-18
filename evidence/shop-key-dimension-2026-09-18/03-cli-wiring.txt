@@ -1,0 +1,59 @@
+
+[A 回读 · 不给键（期望：目录名与旧形状逐字相同）]
+  命令：node skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs --date 2026-01-01 --proxy http://127.0.0.1:19999 --skip-screenshots
+  退出码：1（非零是预期的：代理 19999 没人监听）
+  第一条原因：TypeError: fetch failed
+  新出现的目录：daily-report-2026-01-01
+  期望：出现 daily-report-2026-01-01 —— 符合
+
+[B 回读 · 带键（期望：日期后接店铺）]
+  命令：node skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs --date 2026-01-02 --shop-key 里可林淘宝 --proxy http://127.0.0.1:19999 --skip-screenshots
+  退出码：1（非零是预期的：代理 19999 没人监听）
+  第一条原因：TypeError: fetch failed
+  新出现的目录：daily-report-2026-01-02-里可林淘宝
+  期望：出现 daily-report-2026-01-02-里可林淘宝 —— 符合
+
+[C 回填 · 不给键]
+  命令：node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs --date 2026-01-03 --shop 科塔淘宝 --source-shop 科塔全卫定制 --proxy http://127.0.0.1:19999
+  退出码：1（非零是预期的：代理 19999 没人监听）
+  第一条原因：TypeError: fetch failed
+  新出现的目录：daily-report-2026-01-03
+  期望：出现 daily-report-2026-01-03 —— 符合
+
+[D 回填 · 带键（键与 --shop 是同一个值）]
+  命令：node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs --date 2026-01-04 --shop 科塔淘宝 --source-shop 科塔全卫定制 --shop-key 科塔淘宝 --proxy http://127.0.0.1:19999
+  退出码：1（非零是预期的：代理 19999 没人监听）
+  第一条原因：TypeError: fetch failed
+  新出现的目录：daily-report-2026-01-04-科塔淘宝
+  期望：出现 daily-report-2026-01-04-科塔淘宝 —— 符合
+
+[E 推送 · 带键但代理是死的（期望：参数被接受；目录**不**出现，因为 mkdir 在认页面之后）]
+  命令：node skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs --date 2026-01-05 --shop-key 里可林淘宝 --shop-xlsx D:\Retire\sycm-automation\runtime\browser-ports.mjs --promotion-zip D:\Retire\sycm-automation\runtime\browser-ports.mjs --proxy http://127.0.0.1:19999
+  退出码：1（非零是预期的：代理 19999 没人监听）
+  第一条原因：TypeError: fetch failed
+  新出现的目录：（没有）
+  期望：不建目录 —— 符合
+
+[F 回读 · 键用了页头店名（不是运营叫法）⇒ 期望在 mkdir 之前就停，一个目录都不建]
+  命令：node skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs --date 2026-01-06 --shop-key 盖文旗舰店 --proxy http://127.0.0.1:19999 --skip-screenshots
+  退出码：1（非零是预期的：代理 19999 没人监听）
+  第一条原因：Error: 未登记的店铺「盖文旗舰店」；已登记：科塔淘宝 / 盖文淘宝 / 盖文天猫 / 保拉淘宝 / 保拉天猫 / 网林淘宝 / 网林天猫 / 里可林淘宝 / 里可林天猫 / 安比龙头店 / 科塔龙头店 / 安比淘宝
+  新出现的目录：（没有）
+  期望：不建目录 —— 符合
+  期望报错匹配 /未登记的店铺/u：符合
+
+[G 回填 · 键里带路径穿越 ⇒ 期望被字符集判据挡住，不建目录也不写到别处]
+  命令：node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs --date 2026-01-07 --shop 科塔淘宝 --source-shop 科塔全卫定制 --shop-key ../../etc --proxy http://127.0.0.1:19999
+  退出码：1（非零是预期的：代理 19999 没人监听）
+  第一条原因：Error: invalid shop key for evidence dir: "../../etc"
+  新出现的目录：（没有）
+  期望：不建目录 —— 符合
+  期望报错匹配 /invalid shop key/u：符合
+
+[收尾：清掉本次探针建的空目录]
+  daily-report-2026-01-01 —— 空目录，已删除；仍存在？false
+  daily-report-2026-01-02-里可林淘宝 —— 空目录，已删除；仍存在？false
+  daily-report-2026-01-03 —— 空目录，已删除；仍存在？false
+  daily-report-2026-01-04-科塔淘宝 —— 空目录，已删除；仍存在？false
+
+结论：两个写入方的接线都符合期望；推送方只能真跑验。

@@ -7,6 +7,7 @@ import {
   buildEnvironment,
   classifyFieldCoverage,
   dirHasEntries,
+  evidenceBaseDir,
   injectedHelpersSource,
   resolveEvidenceDir,
   resolveFieldValue,
@@ -61,6 +62,71 @@ test('证据目录：策略写错或没给 baseDir 一律抛错（不许静默�
 test('dirHasEntries：目录不存在或读不到只算「没内容」，不抛错', () => {
   assert.equal(dirHasEntries(path.join(SCRIPTS_DIR, '__definitely_not_here__')), false);
   assert.equal(dirHasEntries(SCRIPTS_DIR), true);
+});
+
+// 证据目录的店铺维度（2026-09-18 一轮多店铺实测暴露的 P1）。
+// 缺口长这样：四家店串行跑同一天，`--commit` 走 latest 并入同一代 ⇒
+// 后跑的店把先跑的店的 receipt/plan/paste 覆盖掉，而目录名上看不出这是四家店还是随机的最后一家。
+// 修法是给目录加一维，但**默认行为必须逐字不变**（单店跑法与所有旧收据路径都不能变）。
+test('证据目录的店铺维度：不给键时逐字不变，给了键就加一维', () => {
+  const root = 'D:/Retire/sycm-automation/evidence';
+  // ① 不给键（含空串、纯空白）⇒ 与 2026-09-14 起的旧形状逐字相同。
+  for (const shopKey of [undefined, null, '', '   ']) {
+    assert.equal(evidenceBaseDir({ evidenceRoot: root, reportDate: '2026-09-17', shopKey }),
+      path.join(root, 'daily-report-2026-09-17'));
+  }
+  // ② 给了键 ⇒ 日期后面接键；四家店因此各占一个目录，互不覆盖。
+  assert.equal(evidenceBaseDir({ evidenceRoot: root, reportDate: '2026-09-17', shopKey: '里可林淘宝' }),
+    path.join(root, 'daily-report-2026-09-17-里可林淘宝'));
+  // 同一家店同一天两次跑仍落在同一个基础目录上：加维度不改变「代次」语义（rerunN 还是 resolveEvidenceDir 的事）。
+  assert.equal(path.basename(evidenceBaseDir({ evidenceRoot: root, reportDate: '2026-09-17', shopKey: '里可林淘宝' })),
+    'daily-report-2026-09-17-里可林淘宝');
+});
+
+test('证据目录的店铺键：非法键一律抛错，不许被拼进路径', () => {
+  const root = 'D:/Retire/sycm-automation/evidence';
+  const bad = ['../../etc', 'a/b', 'a\\b', '.', '..', 'a b', 'a\u200bb', 'a:b', 'a*b'];
+  for (const shopKey of bad) {
+    assert.throws(() => evidenceBaseDir({ evidenceRoot: root, reportDate: '2026-09-17', shopKey }),
+      /invalid shop key/u, `这个键本该被拒：${JSON.stringify(shopKey)}`);
+  }
+  // 反向自证：判据真的在判东西 —— 合法键不许被误伤。
+  for (const shopKey of ['里可林淘宝', 'Paola_Lenti', 'A-1.2']) {
+    assert.doesNotThrow(() => evidenceBaseDir({ evidenceRoot: root, reportDate: '2026-09-17', shopKey }));
+  }
+  // 根与日期的守卫照旧：少一个都不许静默拼出一个相对目录。
+  assert.throws(() => evidenceBaseDir({ reportDate: '2026-09-17' }), /requires an evidenceRoot/u);
+  assert.throws(() => evidenceBaseDir({ evidenceRoot: root }), /invalid report date/u);
+  assert.throws(() => evidenceBaseDir({ evidenceRoot: root, reportDate: '2026-9-7' }), /invalid report date/u);
+});
+
+test('三个写入方都按同一维拼证据目录，并且都把店铺键交给了它', () => {
+  const files = ['run-daily-report.mjs', 'run-inquiry-backfill.mjs', 'readback-daily-report.mjs'];
+  for (const name of files) {
+    const source = readFileSync(path.join(SCRIPTS_DIR, name), 'utf8');
+    // ① 都不再自己拼 `daily-report-${date}`（那是缺口本身）。
+    assert.equal(/`daily-report-\$\{/u.test(source), false,
+      `${name} 又自己拼证据目录名了：多店铺串行会互相覆盖`);
+    // ② 都走 evidenceBaseDir，并且把 --shop-key 传了下去。
+    assert.ok(source.includes('evidenceBaseDir('), `${name} 没有走 evidenceBaseDir`);
+    assert.match(source, /shopKey: args\.shopKey/u, `${name} 没有把 --shop-key 传进 evidenceBaseDir`);
+    assert.match(source, /--shop-key/u, `${name} 没有解析 --shop-key`);
+  }
+  // 反向自证：把拼接形状喂给判据，必须判红。
+  assert.ok(/`daily-report-\$\{/u.test('const d = `daily-report-${reportDate}`'), '判据本身失效了');
+  assert.match(readFileSync(path.join(SCRIPTS_DIR, 'run-daily-report.mjs'), 'utf8'),
+    /assertEvidenceShopKey\(args\.shopKey, \{ fullName: fields\['店铺名称'\] \}\)/u,
+    '推送方必须把源产物里的店名与键核对（错标签比不贴标签更糟）');
+  assert.match(readFileSync(path.join(SCRIPTS_DIR, 'run-inquiry-backfill.mjs'), 'utf8'),
+    /assertEvidenceShopKey\(args\.shopKey, \{ shopKey: args\.shop \}\)/u,
+    '回填方必须把同一命令里的 --shop 与键核对');
+  // 回读方没有源产物可核（它读的是飞书页面模型），所以只核「键是已登记的运营叫法」这一半，
+  // 但这一半也必须在 mkdir 之前 —— 否则错标签的目录已经被建出来了，事后拦不住。
+  const readback = readFileSync(path.join(SCRIPTS_DIR, 'readback-daily-report.mjs'), 'utf8');
+  assert.match(readback, /if \(args\.shopKey\) assertEvidenceShopKey\(args\.shopKey\);/u,
+    '回读方必须把键限制在已登记的运营叫法上');
+  assert.ok(readback.indexOf('assertEvidenceShopKey(args.shopKey);')
+    < readback.indexOf('mkdirSync(args.outputDir'), '键的核对必须在建目录之前');
 });
 
 test('环境旁证：默认值标 registry-default，环境变量优先，非法值如实记 env-invalid', () => {

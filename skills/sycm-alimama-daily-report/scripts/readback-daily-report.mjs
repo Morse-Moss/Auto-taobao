@@ -19,10 +19,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { dailyReportTargets } from '../../../runtime/feishu-targets.mjs';
 import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+import { assertEvidenceShopKey } from './shop-identities.mjs';
 // resolveFieldValue / classifyFieldCoverage 不在这里直接用：它们是以**源码**形式注入到页面里跑的，
 // 取源码这件事本身收在 injectedHelpersSource() 里（顺带把依赖的常量一起带上）。
 import {
-  buildEnvironment, dirHasEntries, injectedHelpersSource, resolveEvidenceDir,
+  buildEnvironment, dirHasEntries, evidenceBaseDir, injectedHelpersSource, resolveEvidenceDir,
 } from './daily-report-runtime.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -57,13 +58,16 @@ const FIELDS_OF_INTEREST = Object.freeze([
 const READABLE_FALLBACKS = Object.freeze(['店铺名称']);
 
 function parseArgs(argv) {
-  const args = { ...DEFAULTS, screenshots: true, timeoutMs: 30000, rowsTimeoutMs: 24000 };
+  const args = { ...DEFAULTS, screenshots: true, timeoutMs: 30000, rowsTimeoutMs: 24000, shopKey: null };
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
     if (key === '--date') args.reportDate = argv[++index];
     else if (key === '--output-dir') args.outputDir = argv[++index];
     else if (key === '--shot-suffix') args.shotSuffix = argv[++index];
     else if (key === '--leave-on') args.leaveOn = argv[++index];
+    // 证据目录的店铺维度（运营叫法）。**不给时行为逐字不变**；
+    // 多店铺串行回读时必须给同一个值，否则它会并入另一家店的那一代目录里。
+    else if (key === '--shop-key') args.shopKey = argv[++index];
     else if (key === '--proxy') args.proxy = argv[++index];
     else if (key === '--skip-screenshots') args.screenshots = false;
     else throw new Error(`unknown argument: ${key}`);
@@ -286,7 +290,12 @@ async function navigate(args, target, url) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const baseDir = path.join(REPO_ROOT, 'evidence', `daily-report-${args.reportDate}`);
+  // 回读**没有源产物可核**（它读的是飞书页面模型），所以只做能做的那一半：
+  // 键必须是**已登记**的运营叫法，不许拿页头店名/随便一个字符串当目录后缀。
+  // 放在 mkdir 之前，这样「贴错标签的目录」根本不会被建出来。
+  if (args.shopKey) assertEvidenceShopKey(args.shopKey);
+  const baseDir = evidenceBaseDir({ evidenceRoot: path.join(REPO_ROOT, 'evidence'),
+    reportDate: args.reportDate, shopKey: args.shopKey });
   // 回读是**同一次运行的最后一步**：并入当前最新一代，而不是另开一代。
   const resolved = resolveEvidenceDir({ baseDir, explicit: args.outputDir, isOccupied: dirHasEntries, policy: 'latest' });
   args.outputDir = resolved.dir;

@@ -10,7 +10,8 @@ import { dailyReportTargets, loadFeishuCredentials } from '../../../runtime/feis
 import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import { appendAudit, describeAuditRow } from '../../../runtime/daily-report-audit.mjs';
 import { buildCombinedFields, reportDateEpoch, summarizeSourceDates, valuesEqual } from './daily-report-core.mjs';
-import { buildEnvironment, dirHasEntries, resolveEvidenceDir } from './daily-report-runtime.mjs';
+import { buildEnvironment, dirHasEntries, evidenceBaseDir, resolveEvidenceDir } from './daily-report-runtime.mjs';
+import { assertEvidenceShopKey } from './shop-identities.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -27,7 +28,7 @@ const DEFAULTS = Object.freeze({
 });
 
 function parseArgs(argv) {
-  const args = { ...DEFAULTS, commit: false, verifyExisting: false };
+  const args = { ...DEFAULTS, commit: false, verifyExisting: false, shopKey: null };
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
     if (key === '--commit') args.commit = true;
@@ -37,6 +38,9 @@ function parseArgs(argv) {
     else if (key === '--promotion-zip') args.promotionZip = argv[++index];
     else if (key === '--date') args.reportDate = argv[++index];
     else if (key === '--proxy') args.proxy = argv[++index];
+    // 证据目录的店铺维度（运营叫法）。**不给时行为逐字不变**（仍落 daily-report-<日期>）；
+    // 多店铺必须给 —— 否则四家串行会互相覆盖，见 daily-report-runtime.mjs 的 evidenceBaseDir。
+    else if (key === '--shop-key') args.shopKey = argv[++index];
     else if (key === '--app-token') args.appToken = argv[++index];
     else if (key === '--table-id') args.tableId = argv[++index];
     else if (key === '--view-id') args.viewId = argv[++index];
@@ -62,7 +66,8 @@ function parseArgs(argv) {
 // 产物落哪一代（同一天重跑不再覆盖上一轮）：判据与实现都在 daily-report-runtime.mjs，
 // 询单回填用的是同一个「目录里有没有东西」，不许有两份实现。
 function resolveOutputDir(args) {
-  const baseDir = path.join(REPO_ROOT, 'evidence', `daily-report-${args.reportDate}`);
+  const baseDir = evidenceBaseDir({ evidenceRoot: path.join(REPO_ROOT, 'evidence'),
+    reportDate: args.reportDate, shopKey: args.shopKey });
   // 干跑与 `--commit` 是**同一次运行的两个阶段**：干跑建了哪一代，提交就并进哪一代。
   // 用默认的 'fresh' 会把一次运行的 plan/paste 与 receipt 拆到两个目录（2026-09-17 实测：
   // 干跑落 `-rerun4`、提交又顺延到 `-rerun5`），也和回填/回读用 'latest' 的规矩不一致。
@@ -272,6 +277,13 @@ async function main() {
   const source = extractSources(args);
   const sourceSelfChecks = assertSourceDates(source, args);
   const fields = buildCombinedFields(source, target.fields, args.reportDate);
+  // 目录名带店铺维度之后，**贴错标签比不贴标签更糟** ⇒ 动手之前先核一次：
+  // 键必须是已登记的运营叫法，且必须与源 xlsx「店铺名称」列（＝本链唯一可靠的店铺身份来源）一致。
+  // 放在这里是因为它是第一个「既拿到 fields、又还没建目录、也没碰远端」的位置。
+  if (args.shopKey) {
+    const row = assertEvidenceShopKey(args.shopKey, { fullName: fields['店铺名称'] });
+    console.log(`[shop-key] ${row.key} ↔ 源产物店名 ${row.fullName} 一致（证据目录 ${path.basename(args.outputDir)}）`);
+  }
   const evidence = { outputDir: args.outputDir, generation: resolved.generation, reason: resolved.reason };
   const plan = buildPlan(args, target, source, fields, sourceSelfChecks, evidence);
   mkdirSync(args.outputDir, { recursive: true });

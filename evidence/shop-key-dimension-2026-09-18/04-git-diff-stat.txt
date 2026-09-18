@@ -1,0 +1,21 @@
+warning: in the working copy of 'docs/ops/MULTI-SHOP-AND-INTERACTION-DECISION.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'evidence/multi-shop-run-2026-09-18/RUN-LOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'skills/sycm-alimama-daily-report/references/sop.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'skills/sycm-alimama-daily-report/scripts/daily-report-runtime.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'skills/sycm-alimama-daily-report/scripts/daily-report-runtime.test.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'skills/sycm-alimama-daily-report/scripts/shop-identities.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'skills/sycm-alimama-daily-report/scripts/shop-identities.test.mjs', LF will be replaced by CRLF the next time Git touches it
+ docs/ops/MULTI-SHOP-AND-INTERACTION-DECISION.md    | 41 ++++++++++++--
+ evidence/multi-shop-run-2026-09-18/RUN-LOG.md      |  3 +
+ skills/sycm-alimama-daily-report/references/sop.md | 41 +++++++++++---
+ .../scripts/daily-report-runtime.mjs               | 44 +++++++++++++++
+ .../scripts/daily-report-runtime.test.mjs          | 66 ++++++++++++++++++++++
+ .../scripts/readback-daily-report.mjs              | 15 ++++-
+ .../scripts/run-daily-report.mjs                   | 18 +++++-
+ .../scripts/run-inquiry-backfill.mjs               | 14 ++++-
+ .../scripts/shop-identities.mjs                    | 31 ++++++++++
+ .../scripts/shop-identities.test.mjs               | 34 ++++++++++-
+ 10 files changed, 285 insertions(+), 22 deletions(-)

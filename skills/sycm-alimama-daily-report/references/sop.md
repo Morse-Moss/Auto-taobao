@@ -390,6 +390,9 @@ from daily_report_push_audit order by at desc limit 20;
 | `run-daily-report.mjs --commit` | **并入最新一代**（同一次运行的第二个阶段，不许另开一代） |
 | `run-inquiry-backfill.mjs` / `readback-daily-report.mjs` | **并入当前最新一代**（`policy: 'latest'`） |
 
+目录的**base 名**由 `evidenceBaseDir()` 定（2026-09-18 起多一个可选的店铺维度，见 §12.5）：
+不给 `--shop-key` 时仍是 `daily-report-<日期>`，**逐字不变**；多店铺串行才加 `-<运营叫法>`。
+
 两条要记住的：
 
 - 判据是「目录里**有没有东西**」，不是「几个已知文件名在不在」—— 只按文件名判的话，截图与探针这类额外产物会绕过它，而那恰恰是最该保住的证据。
@@ -406,6 +409,7 @@ from daily_report_push_audit order by at desc limit 20;
 node skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs --date 2026-09-16
 # 可选：--output-dir <目录>（显式指定，参与代次规则）｜--shot-suffix <后缀>｜--skip-screenshots
 #       --leave-on source|inquiry（收尾把页面停在哪张表，默认 source）
+#       --shop-key <运营叫法>（多店铺串行必须给，且与推送/回填用同一个值；见 §12.5）
 ```
 
 它走**另一条完全不同的通路**读同一个事实：CDP → 飞书页面的 bitable 内存模型（`window.bitableStore.modelOperator.base`），既不过 runner 的断言，也不过飞书 OpenAPI。写入方自证没法排除「写入方和读者一起错了」，所以这一步是收据那两个数字的旁证。产出 `independent-readback.json` 与两张截图（`feishu-source-table-after-*.png` / `feishu-inquiry-table-after-*.png`，后缀 `--shot-suffix` 可改）。
@@ -836,12 +840,35 @@ node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --noti
 
 底单是「统计日期」，询单表是「**日期**」。用错的表现是「当天 0 行」，看着像没写过。
 
-### 12.5 已知缺口：证据代次目录没有店铺维度
+### 12.5 证据代次目录的店铺维度（「缺店铺维」这一族的第三次，2026-09-18 晚已修）
 
-`evidence/daily-report-<日期>[-rerunN]/` 只按日期取名。四家店串行时 `--commit`（policy=latest）
-与回填会把后一家的 `plan.json` / `paste.tsv` / `receipt.json` 覆盖掉前一家的，
-**一个目录里最后只剩最后一家**。本轮因此真实丢了 5 个文件的本地副本
+**缺口长什么样**：`evidence/daily-report-<日期>[-rerunN]/` 原先只按日期取名。四家店串行时
+`--commit`（policy=latest）与回填会把后一家的 `plan.json` / `paste.tsv` / `receipt.json`
+**覆盖**掉前一家的，一个目录里最后只剩最后一家。本轮因此真实丢了 5 个文件的本地副本
 （事实本身没丢：stdout、审计表、两条独立回读都在）。
-在这条修好之前，多店铺跑要**每跑完一家就把它那几件按店铺抄一份**，
-而且**抽哪几件要显式指定**（`--commit` 之后代次目录里的 `receipt.json` 永远是最后一家的）。
-修法与再犯风险见 `evidence/multi-shop-run-2026-09-18/RUN-LOG.md` 发现 1。
+
+**现在的形状**：三个写入方（推送 / 回填 / 独立回读）都走 `daily-report-runtime.mjs` 的
+`evidenceBaseDir({ evidenceRoot, reportDate, shopKey })`：
+
+| 调用 | 落点 |
+| --- | --- |
+| 不给 `--shop-key` | `evidence/daily-report-<日期>` —— **与 2026-09-14 起的旧形状逐字相同** |
+| 给 `--shop-key 里可林淘宝` | `evidence/daily-report-<日期>-里可林淘宝` |
+
+代次规则不变：店铺维度只是把「哪家店」加进 base 名，`-rerunN` 仍由 `resolveEvidenceDir` 决定。
+**多店铺串行必须三家都给同一个值**（同一个运营叫法），否则回填会并入另一家店的那一代。
+
+**键是断言，不是标签**，所以有两道守卫（都有用例 + 突变验证）：
+
+- `assertEvidenceShopKey(key, observed)`：键必须是**已登记**的运营叫法（未登记直接抛）；
+  凡是调用方能观察到的店名都要与登记表对上 —— 推送方比源 xlsx 的「店铺名称」列，
+  回填方比同一命令里的 `--shop`。**不核的后果是「目录叫 A 店、里面装的是 B 店」，
+  从文件名上完全看不出来**，而错标签比不贴标签更糟。
+- 键的字符集收窄到 `/^[\p{L}\p{N}_.-]+$/u`（挡住 `../`、斜杠、空格、不可见字符）；
+  路径穿越在拼路径之前就被拒。
+
+**仍然只能真跑验的一条**：`run-daily-report.mjs` 是「先认飞书页、再建目录」，
+所以死代理下它**不会**建目录 —— 推送方带键的真实落点要看下一次真跑的 `plan.json`
+里 `evidence.outputDir`，或者看 stdout 那行 `[shop-key] 里可林淘宝 ↔ 源产物店名 里可林家居 一致`。
+
+证据：`evidence/shop-key-dimension-2026-09-18/`（套件 113/113、五条突变、七条真命令行的接线）。

@@ -314,6 +314,37 @@ export function expectArgs(key, { require = [] } = {}) {
   return { args, missing: unknown };
 }
 
+/**
+ * 「证据目录的店铺键（＝运营叫法）对得上源产物吗」。
+ *
+ * 为什么要有这条判据（2026-09-18 一轮多店铺实测）：一旦目录名里带店铺维度，
+ * **贴错标签比不贴标签更糟** —— 一个叫 `daily-report-2026-09-17-网林天猫` 的目录里装着里可林的数据，
+ * 下一个复盘的人会拿着它得出完全错误的结论，而且从文件名上看不出来。
+ *
+ * 所以：键必须是**已登记**的运营叫法（未登记一律抛错，不回落成「不核对」），
+ * 并且凡是调用方能观察到的店名都要与登记表对上。`observed` 里给什么就核什么，
+ * 不给就不核 —— 三个写入方能观察到的面不一样（见各自调用处）。
+ *
+ *   源产物（xlsx 的「店铺名称」列） → 与 fullName 比
+ *   回填的 `--shop`（飞书选项名）   → 与 key 比
+ */
+export function assertEvidenceShopKey(key, observed = {}) {
+  const row = shopIdentity(key);
+  const mismatches = [];
+  if (observed.fullName !== undefined && observed.fullName !== row.fullName) {
+    mismatches.push(`源产物里的店名 ${JSON.stringify(observed.fullName)}`
+      + ` ≠ 登记的平台店铺全称 ${JSON.stringify(row.fullName)}`);
+  }
+  if (observed.shopKey !== undefined && observed.shopKey !== row.key) {
+    mismatches.push(`同一命令里另一处给的店铺叫法 ${JSON.stringify(observed.shopKey)} ≠ ${JSON.stringify(row.key)}`);
+  }
+  if (mismatches.length > 0) {
+    throw new Error(`证据目录的店铺键 ${JSON.stringify(key)} 对不上：${mismatches.join('；')}`
+      + ' —— 这会把一个错标签贴在目录上（比不贴标签更糟），停手');
+  }
+  return row;
+}
+
 /** 人看的一行摘要（写日志/文档时用，避免各处自己拼措辞）。 */
 export function describeIdentity(key) {
   const row = shopIdentity(key);
