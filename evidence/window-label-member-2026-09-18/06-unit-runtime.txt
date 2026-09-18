@@ -1,0 +1,3819 @@
+==> runtime: 75 file(s)
+TAP version 13
+# Subtest: creates only the three admitted numeric fields after 采集日期
+ok 1 - creates only the three admitted numeric fields after 采集日期
+  ---
+  duration_ms: 1.2368
+  type: 'test'
+  ...
+# Subtest: resumes without writes when all three helper fields already exist in order
+ok 2 - resumes without writes when all three helper fields already exist in order
+  ---
+  duration_ms: 0.1643
+  type: 'test'
+  ...
+# Subtest: refuses to append when another field already follows 采集日期
+ok 3 - refuses to append when another field already follows 采集日期
+  ---
+  duration_ms: 0.4416
+  type: 'test'
+  ...
+# Subtest: mutation guard permits only the admitted field-create endpoints
+ok 4 - mutation guard permits only the admitted field-create endpoints
+  ---
+  duration_ms: 1.0542
+  type: 'test'
+  ...
+# Subtest: verification rejects any existing-field or record mutation
+ok 5 - verification rejects any existing-field or record mutation
+  ---
+  duration_ms: 0.6222
+  type: 'test'
+  ...
+# Subtest: verification accepts Feishu projecting newly created fields onto every record
+ok 6 - verification accepts Feishu projecting newly created fields onto every record
+  ---
+  duration_ms: 0.7938
+  type: 'test'
+  ...
+# Subtest: difference summary reports changed field names without exposing cell values
+ok 7 - difference summary reports changed field names without exposing cell values
+  ---
+  duration_ms: 0.5004
+  type: 'test'
+  ...
+# Subtest: manifest 合规：只读工具、无外部写、声明兜底，且满足可移除性
+ok 8 - manifest 合规：只读工具、无外部写、声明兜底，且满足可移除性
+  ---
+  duration_ms: 0.6449
+  type: 'test'
+  ...
+# Subtest: 模型输出经端口校验后成为 decisions，且证据引用被真实映射
+ok 9 - 模型输出经端口校验后成为 decisions，且证据引用被真实映射
+  ---
+  duration_ms: 2.0977
+  type: 'test'
+  ...
+# Subtest: 第二个证据位（对象形 evidenceId）也能按序号引用
+ok 10 - 第二个证据位（对象形 evidenceId）也能按序号引用
+  ---
+  duration_ms: 0.2378
+  type: 'test'
+  ...
+# Subtest: 越界证据序号不得被兜底成「全量证据」，应触发 CLAIM_WITHOUT_EVIDENCE
+ok 11 - 越界证据序号不得被兜底成「全量证据」，应触发 CLAIM_WITHOUT_EVIDENCE
+  ---
+  duration_ms: 0.1739
+  type: 'test'
+  ...
+# Subtest: 模型进程失败：降级为兜底，不把异常抛给编排层
+ok 12 - 模型进程失败：降级为兜底，不把异常抛给编排层
+  ---
+  duration_ms: 0.202
+  type: 'test'
+  ...
+# Subtest: 模型输出不是 JSON：同样降级，不抛异常
+ok 13 - 模型输出不是 JSON：同样降级，不抛异常
+  ---
+  duration_ms: 0.1139
+  type: 'test'
+  ...
+# Subtest: 提案夹带状态轴字段会被状态轴泄漏判定拦住
+ok 14 - 提案夹带状态轴字段会被状态轴泄漏判定拦住
+  ---
+  duration_ms: 0.2266
+  type: 'test'
+  ...
+# Subtest: extractJson 能吃下三种包裹：裸 JSON、围栏、cc 的 result 字段
+ok 15 - extractJson 能吃下三种包裹：裸 JSON、围栏、cc 的 result 字段
+  ---
+  duration_ms: 0.3686
+  type: 'test'
+  ...
+# Subtest: 未知 provider 直接报错（配置错误不该被静默吞掉）
+ok 16 - 未知 provider 直接报错（配置错误不该被静默吞掉）
+  ---
+  duration_ms: 0.2711
+  type: 'test'
+  ...
+# Subtest: parses Huitun display units without losing the displayed value
+ok 17 - parses Huitun display units without losing the displayed value
+  ---
+  duration_ms: 0.8637
+  type: 'test'
+  ...
+# Subtest: keeps the legacy 1000w helper diagnostic-only
+ok 18 - keeps the legacy 1000w helper diagnostic-only
+  ---
+  duration_ms: 0.0945
+  type: 'test'
+  ...
+# Subtest: normalizes exact and no-result Huitun evidence
+ok 19 - normalizes exact and no-result Huitun evidence
+  ---
+  duration_ms: 1.652
+  type: 'test'
+  ...
+# Subtest: builds topic-view updates only for the complete live A candidate queue
+ok 20 - builds topic-view updates only for the complete live A candidate queue
+  ---
+  duration_ms: 0.5197
+  type: 'test'
+  ...
+# Subtest: mutation guard accepts only the exact topic-view plan
+ok 21 - mutation guard accepts only the exact topic-view plan
+  ---
+  duration_ms: 0.2958
+  type: 'test'
+  ...
+# Subtest: verification allows formula settlement but rejects unrelated changes
+ok 22 - verification allows formula settlement but rejects unrelated changes
+  ---
+  duration_ms: 7.4415
+  type: 'test'
+  ...
+# Subtest: write mode requires exact base and table confirmations
+ok 23 - write mode requires exact base and table confirmations
+  ---
+  duration_ms: 1.006
+  type: 'test'
+  ...
+# Subtest: field contract requires exact writable types and controlled options
+ok 24 - field contract requires exact writable types and controlled options
+  ---
+  duration_ms: 0.4038
+  type: 'test'
+  ...
+# Subtest: field contract accepts the live formula-backed source keyword field
+ok 25 - field contract accepts the live formula-backed source keyword field
+  ---
+  duration_ms: 0.0877
+  type: 'test'
+  ...
+# Subtest: field contract accepts the live AI-backed standard merge field
+ok 26 - field contract accepts the live AI-backed standard merge field
+  ---
+  duration_ms: 0.0678
+  type: 'test'
+  ...
+# Subtest: formula migration CLI is dry-run by default and requires exact Base and table confirmations
+ok 27 - formula migration CLI is dry-run by default and requires exact Base and table confirmations
+  ---
+  duration_ms: 3.0496
+  type: 'test'
+  ...
+# Subtest: direction replacement preserves the old text field until the new formula field is ready
+ok 28 - direction replacement preserves the old text field until the new formula field is ready
+  ---
+  duration_ms: 0.9619
+  type: 'test'
+  ...
+# Subtest: AI product direction replacement creates and verifies a temporary formula before deleting the AI field
+ok 29 - AI product direction replacement creates and verifies a temporary formula before deleting the AI field
+  ---
+  duration_ms: 0.4176
+  type: 'test'
+  ...
+# Subtest: decision apply plan separates a text product direction field from normal formula updates
+ok 30 - decision apply plan separates a text product direction field from normal formula updates
+  ---
+  duration_ms: 0.6018
+  type: 'test'
+  ...
+# Subtest: search-heat-only mode skips product-direction preparation for history tables
+ok 31 - search-heat-only mode skips product-direction preparation for history tables
+  ---
+  duration_ms: 0.0933
+  type: 'test'
+  ...
+# Subtest: search-heat-only settlement does not require decision fields
+ok 32 - search-heat-only settlement does not require decision fields
+  ---
+  duration_ms: 0.1464
+  type: 'test'
+  ...
+# Subtest: search-heat-only schema stage verifies zero changes without decision helper fields
+ok 33 - search-heat-only schema stage verifies zero changes without decision helper fields
+  ---
+  duration_ms: 6.6452
+  type: 'test'
+  ...
+# Subtest: decision apply verification accepts one proven product direction replacement
+ok 34 - decision apply verification accepts one proven product direction replacement
+  ---
+  duration_ms: 0.6184
+  type: 'test'
+  ...
+# Subtest: mutation guard permits only exact planned formula field updates
+ok 35 - mutation guard permits only exact planned formula field updates
+  ---
+  duration_ms: 0.3978
+  type: 'test'
+  ...
+# Subtest: combined mutation guard permits the exact schema and formula plans only
+ok 36 - combined mutation guard permits the exact schema and formula plans only
+  ---
+  duration_ms: 0.6512
+  type: 'test'
+  ...
+# Subtest: repair plan permits all eight approved formula fields and rejects unrelated fields
+ok 37 - repair plan permits all eight approved formula fields and rejects unrelated fields
+  ---
+  duration_ms: 1.8278
+  type: 'test'
+  ...
+# Subtest: repair plan explicitly permits the two heat formulas
+ok 38 - repair plan explicitly permits the two heat formulas
+  ---
+  duration_ms: 1.5633
+  type: 'test'
+  ...
+# Subtest: verification allows only the planned formula definition and its calculated values to change
+ok 39 - verification allows only the planned formula definition and its calculated values to change
+  ---
+  duration_ms: 1.1596
+  type: 'test'
+  ...
+# Subtest: verification treats Feishu projected nulls as unchanged blank fields
+ok 40 - verification treats Feishu projected nulls as unchanged blank fields
+  ---
+  duration_ms: 0.2746
+  type: 'test'
+  ...
+# Subtest: constructs one exact SKU batch-create request from a ready manifest
+ok 41 - constructs one exact SKU batch-create request from a ready manifest
+  ---
+  duration_ms: 0.9327
+  type: 'test'
+  ...
+# Subtest: refuses a manifest that carries the retired large-space value
+ok 42 - refuses a manifest that carries the retired large-space value
+  ---
+  duration_ms: 0.2845
+  type: 'test'
+  ...
+# Subtest: refuses a fresh plan whose write fields differ from the approved manifest
+ok 43 - refuses a fresh plan whose write fields differ from the approved manifest
+  ---
+  duration_ms: 6.1506
+  type: 'test'
+  ...
+# Subtest: accepts post-write verification only when every SKU is read back as already present
+ok 44 - accepts post-write verification only when every SKU is read back as already present
+  ---
+  duration_ms: 0.2286
+  type: 'test'
+  ...
+# Subtest: collects a successful child-process result before parsing the fresh dry-run receipt
+ok 45 - collects a successful child-process result before parsing the fresh dry-run receipt
+  ---
+  duration_ms: 306.0266
+  type: 'test'
+  ...
+# Subtest: requires the exact authorized Base, SKU table, and record count
+ok 46 - requires the exact authorized Base, SKU table, and record count
+  ---
+  duration_ms: 0.6321
+  type: 'test'
+  ...
+# Subtest: accepts the exact authorized count for an independent product batch
+ok 47 - accepts the exact authorized count for an independent product batch
+  ---
+  duration_ms: 0.1571
+  type: 'test'
+  ...
+# Subtest: requires an independent evidence set even when the manifest flag is present
+ok 48 - requires an independent evidence set even when the manifest flag is present
+  ---
+  duration_ms: 0.1036
+  type: 'test'
+  ...
+# Subtest: builds a post-write receipt without exposing SKU field values
+ok 49 - builds a post-write receipt without exposing SKU field values
+  ---
+  duration_ms: 0.1678
+  type: 'test'
+  ...
+# Subtest: only treats transient or server write failures as readback-recoverable
+ok 50 - only treats transient or server write failures as readback-recoverable
+  ---
+  duration_ms: 0.4144
+  type: 'test'
+  ...
+# Subtest: retries only unsettled read-back or transport failures, never a deterministic conflict
+ok 51 - retries only unsettled read-back or transport failures, never a deterministic conflict
+  ---
+  duration_ms: 0.1822
+  type: 'test'
+  ...
+# Subtest: separates API-confirmed records from records verified by read-back
+ok 52 - separates API-confirmed records from records verified by read-back
+  ---
+  duration_ms: 0.077
+  type: 'test'
+  ...
+# Subtest: 端口登记表：两条链不重号，日报链已从通用值挪开
+ok 53 - 端口登记表：两条链不重号，日报链已从通用值挪开
+  ---
+  duration_ms: 0.6219
+  type: 'test'
+  ...
+# Subtest: 浏览器身份与 profile：商家链与买家链各自独立，不能共用
+ok 54 - 浏览器身份与 profile：商家链与买家链各自独立，不能共用
+  ---
+  duration_ms: 0.0748
+  type: 'test'
+  ...
+# Subtest: 店铺实例：端口与 profile 各自唯一，且不与既有链撞号
+ok 55 - 店铺实例：端口与 profile 各自唯一，且不与既有链撞号
+  ---
+  duration_ms: 1.1178
+  type: 'test'
+  ...
+# Subtest: 店铺实例：browserId/label 唯一，且 shopInstance 对未登记店铺 fail-closed
+ok 56 - 店铺实例：browserId/label 唯一，且 shopInstance 对未登记店铺 fail-closed
+  ---
+  duration_ms: 0.4783
+  type: 'test'
+  ...
+# Subtest: 店铺实例的 profile 必须与店铺身份登记表逐键一致 —— 两边不许各说各话
+ok 57 - 店铺实例的 profile 必须与店铺身份登记表逐键一致 —— 两边不许各说各话
+  ---
+  duration_ms: 1.0287
+  type: 'test'
+  ...
+# Subtest: resolvePort：显式环境变量优先，非法值抛错而不是静默回落
+ok 58 - resolvePort：显式环境变量优先，非法值抛错而不是静默回落
+  ---
+  duration_ms: 0.4078
+  type: 'test'
+  ...
+# Subtest: profile 归一化：反斜杠、引号、大小写、尾斜杠都不影响比对
+ok 59 - profile 归一化：反斜杠、引号、大小写、尾斜杠都不影响比对
+  ---
+  duration_ms: 0.2703
+  type: 'test'
+  ...
+# Subtest: classifyPortUsage 只对读得出 profile 的冲突下判决
+ok 60 - classifyPortUsage 只对读得出 profile 的冲突下判决
+  ---
+  duration_ms: 0.1146
+  type: 'test'
+  ...
+# Subtest: inspectPort 读出 Browser 与 profile —— 这是唯一能证明端口属于谁的证据
+ok 61 - inspectPort 读出 Browser 与 profile —— 这是唯一能证明端口属于谁的证据
+  ---
+  duration_ms: 0.8393
+  type: 'test'
+  ...
+# Subtest: inspectPort 区分「没人监听」与「在监听但不是 CDP 端点」
+ok 62 - inspectPort 区分「没人监听」与「在监听但不是 CDP 端点」
+  ---
+  duration_ms: 0.3204
+  type: 'test'
+  ...
+# Subtest: describeOccupant 必须说清是谁占了端口，读不出来时也如实讲
+ok 63 - describeOccupant 必须说清是谁占了端口，读不出来时也如实讲
+  ---
+  duration_ms: 0.1816
+  type: 'test'
+  ...
+# Subtest: 生产代码里不得再写死项目端口 —— 只能从登记表取（含每个店铺实例的两个端口）
+ok 64 - 生产代码里不得再写死项目端口 —— 只能从登记表取（含每个店铺实例的两个端口）
+  ---
+  duration_ms: 71.0574
+  type: 'test'
+  ...
+# Subtest: 退役端口与外来端口都不得出现在本项目代码的默认值里
+ok 65 - 退役端口与外来端口都不得出现在本项目代码的默认值里
+  ---
+  duration_ms: 66.4056
+  type: 'test'
+  ...
+# Subtest: 退役端口留档：每条都要说清被谁替代、为什么退
+ok 66 - 退役端口留档：每条都要说清被谁替代、为什么退
+  ---
+  duration_ms: 0.2722
+  type: 'test'
+  ...
+# Subtest: 路线表：每条路线要么有浏览器、要么显式标成待定或不需要，二者必居其一
+ok 67 - 路线表：每条路线要么有浏览器、要么显式标成待定或不需要，二者必居其一
+  ---
+  duration_ms: 0.1197
+  type: 'test'
+  ...
+# Subtest: 账号边界：买家链里不许有商家站点，商家链里不许有买家站点
+ok 68 - 账号边界：买家链里不许有商家站点，商家链里不许有买家站点
+  ---
+  duration_ms: 0.1444
+  type: 'test'
+  ...
+# Subtest: 两个浏览器承载的路线各自分明，且 9222 那条是唯一带小旺神的
+ok 69 - 两个浏览器承载的路线各自分明，且 9222 那条是唯一带小旺神的
+  ---
+  duration_ms: 0.1755
+  type: 'test'
+  ...
+# Subtest: 路线声明哪个浏览器，它名下的脚本就只能指向那个浏览器
+ok 70 - 路线声明哪个浏览器，它名下的脚本就只能指向那个浏览器
+  ---
+  duration_ms: 7.5643
+  type: 'test'
+  ...
+# Subtest: 路线表与 skills/ 目录双向一致 —— 改名会让这张表静默说谎（坑 37）
+ok 71 - 路线表与 skills/ 目录双向一致 —— 改名会让这张表静默说谎（坑 37）
+  ---
+  duration_ms: 0.4441
+  type: 'test'
+  ...
+# Subtest: 生产代码里不得再出现别的项目的代理地址 —— 注释里提到不算，当默认值用就算
+ok 72 - 生产代码里不得再出现别的项目的代理地址 —— 注释里提到不算，当默认值用就算
+  ---
+  duration_ms: 74.6328
+  type: 'test'
+  ...
+# Subtest: builds a sanitized evidence descriptor only when the captured hashes agree
+ok 73 - builds a sanitized evidence descriptor only when the captured hashes agree
+  ---
+  duration_ms: 1.5964
+  type: 'test'
+  ...
+# Subtest: rejects evidence when the topology receipt no longer matches the exact topology file
+ok 74 - rejects evidence when the topology receipt no longer matches the exact topology file
+  ---
+  duration_ms: 3.9325
+  type: 'test'
+  ...
+# Subtest: requests UTF-8 output from Windows PowerShell before reading the clipboard
+ok 75 - requests UTF-8 output from Windows PowerShell before reading the clipboard
+  ---
+  duration_ms: 0.6654
+  type: 'test'
+  ...
+# Subtest: stores the copied SKU payload separately from its safe receipt
+ok 76 - stores the copied SKU payload separately from its safe receipt
+  ---
+  duration_ms: 14.807
+  type: 'test'
+  ...
+# Subtest: rejects an empty clipboard payload
+ok 77 - rejects an empty clipboard payload
+  ---
+  duration_ms: 0.5424
+  type: 'test'
+  ...
+# Subtest: captures the clipboard once, validates source metadata, and persists a hash-bound batch index
+ok 78 - captures the clipboard once, validates source metadata, and persists a hash-bound batch index
+  ---
+  duration_ms: 31.7183
+  type: 'test'
+  ...
+# Subtest: rejects clipboard capture without the copy confirmation or source identity
+ok 79 - rejects clipboard capture without the copy confirmation or source identity
+  ---
+  duration_ms: 28.9974
+  type: 'test'
+  ...
+# Subtest: rejects clipboard capture when the preflight source is missing or not ready
+ok 80 - rejects clipboard capture when the preflight source is missing or not ready
+  ---
+  duration_ms: 1.5214
+  type: 'test'
+  ...
+# Subtest: rejects a stale auth preflight before reading the clipboard
+ok 81 - rejects a stale auth preflight before reading the clipboard
+  ---
+  duration_ms: 4.6218
+  type: 'test'
+  ...
+# Subtest: CI 矩阵里的 skill 名单与「自带测试的 skill」完全一致
+ok 82 - CI 矩阵里的 skill 名单与「自带测试的 skill」完全一致
+  ---
+  duration_ms: 3.5109
+  type: 'test'
+  ...
+# Subtest: cleanup plan contains only exact approved table identities and row counts
+ok 83 - cleanup plan contains only exact approved table identities and row counts
+  ---
+  duration_ms: 0.677
+  type: 'test'
+  ...
+# Subtest: cleanup plan rejects name and row-count drift
+ok 84 - cleanup plan rejects name and row-count drift
+  ---
+  duration_ms: 0.4393
+  type: 'test'
+  ...
+# Subtest: apply requires exact app token and complete ordered target set
+ok 85 - apply requires exact app token and complete ordered target set
+  ---
+  duration_ms: 0.3072
+  type: 'test'
+  ...
+# Subtest: mutation guard permits only DELETE requests for approved tables
+ok 86 - mutation guard permits only DELETE requests for approved tables
+  ---
+  duration_ms: 0.5732
+  type: 'test'
+  ...
+# Subtest: post-delete verification requires every protected table and no delete target
+ok 87 - post-delete verification requires every protected table and no delete target
+  ---
+  duration_ms: 0.5195
+  type: 'test'
+  ...
+# Subtest: accepts an independent product, evidence directory, and target label
+ok 88 - accepts an independent product, evidence directory, and target label
+  ---
+  duration_ms: 0.6825
+  type: 'test'
+  ...
+# Subtest: requires a product id and payload file before any browser action
+ok 89 - requires a product id and payload file before any browser action
+  ---
+  duration_ms: 0.2668
+  type: 'test'
+  ...
+# Subtest: builds one auditable historical row with stable identity and derived fields
+ok 90 - builds one auditable historical row with stable identity and derived fields
+  ---
+  duration_ms: 3.5877
+  type: 'test'
+  ...
+# Subtest: rejects invalid and reversed history periods
+ok 91 - rejects invalid and reversed history periods
+  ---
+  duration_ms: 0.4095
+  type: 'test'
+  ...
+# Subtest: keeps unknown money auditable but excludes it from visualization qualification
+ok 92 - keeps unknown money auditable but excludes it from visualization qualification
+  ---
+  duration_ms: 0.215
+  type: 'test'
+  ...
+# Subtest: omits unknown numeric values from Feishu writes while preserving unknown money status
+ok 93 - omits unknown numeric values from Feishu writes while preserving unknown money status
+  ---
+  duration_ms: 0.1743
+  type: 'test'
+  ...
+# Subtest: serializes price as a number for Feishu while omitting an unknown price
+ok 94 - serializes price as a number for Feishu while omitting an unknown price
+  ---
+  duration_ms: 0.2154
+  type: 'test'
+  ...
+# Subtest: omits an empty source date from Feishu Date fields
+ok 95 - omits an empty source date from Feishu Date fields
+  ---
+  duration_ms: 0.4011
+  type: 'test'
+  ...
+# Subtest: read-back accepts Feishu scalar normalization while rejecting changed business values
+ok 96 - read-back accepts Feishu scalar normalization while rejecting changed business values
+  ---
+  duration_ms: 1.4301
+  type: 'test'
+  ...
+# Subtest: quality gate rejects incomplete or mixed snapshots and accepts a complete valid week
+ok 97 - quality gate rejects incomplete or mixed snapshots and accepts a complete valid week
+  ---
+  duration_ms: 0.2501
+  type: 'test'
+  ...
+# Subtest: plans creates and updates idempotently by 商品周期唯一键 without deleting existing rows
+ok 98 - plans creates and updates idempotently by 商品周期唯一键 without deleting existing rows
+  ---
+  duration_ms: 3.5821
+  type: 'test'
+  ...
+# Subtest: uses the client recordId shape when planning idempotent updates
+ok 99 - uses the client recordId shape when planning idempotent updates
+  ---
+  duration_ms: 0.6424
+  type: 'test'
+  ...
+# Subtest: writes a readable store display category with top five and other
+ok 100 - writes a readable store display category with top five and other
+  ---
+  duration_ms: 0.7968
+  type: 'test'
+  ...
+# Subtest: excludes invalid competitor rows from store display ranking
+ok 101 - excludes invalid competitor rows from store display ranking
+  ---
+  duration_ms: 0.2181
+  type: 'test'
+  ...
+# Subtest: selects the first real material from the original title and excludes transparent
+ok 102 - selects the first real material from the original title and excludes transparent
+  ---
+  duration_ms: 0.5804
+  type: 'test'
+  ...
+# Subtest: builds four current-period visualization aggregates with stable money semantics
+ok 103 - builds four current-period visualization aggregates with stable money semantics
+  ---
+  duration_ms: 13.5208
+  type: 'test'
+  ...
+# Subtest: recomputes visualization money from price and calculated monthly receipts
+ok 104 - recomputes visualization money from price and calculated monthly receipts
+  ---
+  duration_ms: 0.3974
+  type: 'test'
+  ...
+# Subtest: builds a readable presentation with top stores, other, summary, and ranked B items
+ok 105 - builds a readable presentation with top stores, other, summary, and ranked B items
+  ---
+  duration_ms: 0.6832
+  type: 'test'
+  ...
+# Subtest: plans the three immutable weekly competitor tables with required fields
+ok 106 - plans the three immutable weekly competitor tables with required fields
+  ---
+  duration_ms: 1.3909
+  type: 'test'
+  ...
+# Subtest: rerun is a no-op when approved tables already have the contract fields
+ok 107 - rerun is a no-op when approved tables already have the contract fields
+  ---
+  duration_ms: 0.496
+  type: 'test'
+  ...
+# Subtest: blocks writes outside the exact schema plan
+ok 108 - blocks writes outside the exact schema plan
+  ---
+  duration_ms: 0.9968
+  type: 'test'
+  ...
+# Subtest: 没有配置文件是「不存在」，不是错误
+ok 109 - 没有配置文件是「不存在」，不是错误
+  ---
+  duration_ms: 0.7613
+  type: 'test'
+  ...
+# Subtest: 配置路径：默认在仓库根 config/ 下，相对路径按仓库根解析
+ok 110 - 配置路径：默认在仓库根 config/ 下，相对路径按仓库根解析
+  ---
+  duration_ms: 0.1086
+  type: 'test'
+  ...
+# Subtest: 配置内容坏了就报错，绝不退回内置值
+ok 111 - 配置内容坏了就报错，绝不退回内置值
+  ---
+  duration_ms: 0.3286
+  type: 'test'
+  ...
+# Subtest: 未知 profile 名报错，已知的放过
+ok 112 - 未知 profile 名报错，已知的放过
+  ---
+  duration_ms: 0.1731
+  type: 'test'
+  ...
+# Subtest: 未知字段与类型不符都报错
+ok 113 - 未知字段与类型不符都报错
+  ---
+  duration_ms: 0.3986
+  type: 'test'
+  ...
+# Subtest: 覆盖不修改内置登记表，且结果仍冻结
+ok 114 - 覆盖不修改内置登记表，且结果仍冻结
+  ---
+  duration_ms: 0.1579
+  type: 'test'
+  ...
+# Subtest: 无客户配置时 getProfile 逐字段等于内置登记表（且是同一份引用）
+ok 115 - 无客户配置时 getProfile 逐字段等于内置登记表（且是同一份引用）
+  ---
+  duration_ms: 0.2987
+  type: 'test'
+  ...
+# Subtest: 设了 SYCM_CUSTOMER_CONFIG 后所有访问器都跟着客户配置走
+ok 116 - 设了 SYCM_CUSTOMER_CONFIG 后所有访问器都跟着客户配置走
+  ---
+  duration_ms: 9.5796
+  type: 'test'
+  ...
+# Subtest: 配置文件在、内容错 ⇒ 访问时立刻抛错（而不是等某条链跑到一半）
+ok 117 - 配置文件在、内容错 ⇒ 访问时立刻抛错（而不是等某条链跑到一半）
+  ---
+  duration_ms: 2.7435
+  type: 'test'
+  ...
+# Subtest: stores 段：只写 id + feishuName 就够，可选字段可省
+ok 118 - stores 段：只写 id + feishuName 就够，可选字段可省
+  ---
+  duration_ms: 0.483
+  type: 'test'
+  ...
+# Subtest: stores 段：形状不对就报错（不是数组 / 空数组 / 元素不是对象）
+ok 119 - stores 段：形状不对就报错（不是数组 / 空数组 / 元素不是对象）
+  ---
+  duration_ms: 0.8437
+  type: 'test'
+  ...
+# Subtest: stores 段：缺必填、字段拼错、可选项写空串，都报错
+ok 120 - stores 段：缺必填、字段拼错、可选项写空串，都报错
+  ---
+  duration_ms: 0.193
+  type: 'test'
+  ...
+# Subtest: stores 段：id 只能用「小写字母/数字/短横线」，因为它是幂等键的一段
+ok 121 - stores 段：id 只能用「小写字母/数字/短横线」，因为它是幂等键的一段
+  ---
+  duration_ms: 0.2094
+  type: 'test'
+  ...
+# Subtest: stores 段：重名必须报错 —— 飞书店名就是查重键，同名会让两家撞进同一行
+ok 122 - stores 段：重名必须报错 —— 飞书店名就是查重键，同名会让两家撞进同一行
+  ---
+  duration_ms: 0.0879
+  type: 'test'
+  ...
+# Subtest: 模板 config/customer.example.json 自己必须是合法配置
+ok 123 - 模板 config/customer.example.json 自己必须是合法配置
+  ---
+  duration_ms: 0.297
+  type: 'test'
+  ...
+# Subtest: 部署单引用的仓库内文件都还存在
+ok 124 - 部署单引用的仓库内文件都还存在
+  ---
+  duration_ms: 1.1008
+  type: 'test'
+  ...
+# Subtest: AI tasks preserve one candidate topic and full review context
+ok 125 - AI tasks preserve one candidate topic and full review context
+  ---
+  duration_ms: 1.3833
+  type: 'test'
+  ...
+# Subtest: AI result requires exact identity and raw evidence
+ok 126 - AI result requires exact identity and raw evidence
+  ---
+  duration_ms: 1.9867
+  type: 'test'
+  ...
+# Subtest: low confidence and unresolved judgment enter human queue
+ok 127 - low confidence and unresolved judgment enter human queue
+  ---
+  duration_ms: 0.5281
+  type: 'test'
+  ...
+# Subtest: invalid AI evidence is downgraded to manual review without aborting the batch
+ok 128 - invalid AI evidence is downgraded to manual review without aborting the batch
+  ---
+  duration_ms: 0.2091
+  type: 'test'
+  ...
+# Subtest: replacement plan materializes independently evidenced positive source-topic rows
+ok 129 - replacement plan materializes independently evidenced positive source-topic rows
+  ---
+  duration_ms: 9.506
+  type: 'test'
+  ...
+# Subtest: detail schema places operator fields after occurrence count and formats share
+ok 130 - detail schema places operator fields after occurrence count and formats share
+  ---
+  duration_ms: 0.4426
+  type: 'test'
+  ...
+# Subtest: detail plan rejects invalid or reversed calendar periods
+ok 131 - detail plan rejects invalid or reversed calendar periods
+  ---
+  duration_ms: 0.6185
+  type: 'test'
+  ...
+# Subtest: detail statistics count unique sources instead of source-topic rows
+ok 132 - detail statistics count unique sources instead of source-topic rows
+  ---
+  duration_ms: 0.8571
+  type: 'test'
+  ...
+# Subtest: reviewed supplemental labels use human evidence when operator catalog has no entry
+ok 133 - reviewed supplemental labels use human evidence when operator catalog has no entry
+  ---
+  duration_ms: 0.6133
+  type: 'test'
+  ...
+# Subtest: replacement plan rejects duplicate source-topic identity
+ok 134 - replacement plan rejects duplicate source-topic identity
+  ---
+  duration_ms: 4.1603
+  type: 'test'
+  ...
+# Subtest: read-back verification detects row mutation and count drift
+ok 135 - read-back verification detects row mutation and count drift
+  ---
+  duration_ms: 0.9096
+  type: 'test'
+  ...
+# Subtest: human decisions validate identity and raw evidence
+ok 136 - human decisions validate identity and raw evidence
+  ---
+  duration_ms: 1.0542
+  type: 'test'
+  ...
+# Subtest: merge preserves original fields and records reviewed supplemental topics
+ok 137 - merge preserves original fields and records reviewed supplemental topics
+  ---
+  duration_ms: 0.6411
+  type: 'test'
+  ...
+# Subtest: unresolved supplemental topics block publication as formal source-topic rows
+ok 138 - unresolved supplemental topics block publication as formal source-topic rows
+  ---
+  duration_ms: 0.2461
+  type: 'test'
+  ...
+# Subtest: auto accepted result is merged without requiring a decision
+ok 139 - auto accepted result is merged without requiring a decision
+  ---
+  duration_ms: 0.3531
+  type: 'test'
+  ...
+# Subtest: reviewed supplemental topics survive when rules no longer expand the source label
+ok 140 - reviewed supplemental topics survive when rules no longer expand the source label
+  ---
+  duration_ms: 0.2363
+  type: 'test'
+  ...
+# Subtest: batchDeleteRecords uses the authorized operator table and string record IDs
+ok 141 - batchDeleteRecords uses the authorized operator table and string record IDs
+  ---
+  duration_ms: 13.6008
+  type: 'test'
+  ...
+# Subtest: batchDeleteRecords rejects an unauthorized table
+ok 142 - batchDeleteRecords rejects an unauthorized table
+  ---
+  duration_ms: 0.3603
+  type: 'test'
+  ...
+# Subtest: operator state exposes exactly one next action
+ok 143 - operator state exposes exactly one next action
+  ---
+  duration_ms: 0.7754
+  type: 'test'
+  ...
+# Subtest: operator state reports a recorded blocker before advancing
+ok 144 - operator state reports a recorded blocker before advancing
+  ---
+  duration_ms: 0.6802
+  type: 'test'
+  ...
+# Subtest: operator state rejects impossible stage ordering
+ok 145 - operator state rejects impossible stage ordering
+  ---
+  duration_ms: 0.9899
+  type: 'test'
+  ...
+# Subtest: stage breakdown marks exactly the stage the operator state calls next
+ok 146 - stage breakdown marks exactly the stage the operator state calls next
+  ---
+  duration_ms: 6.7963
+  type: 'test'
+  ...
+# Subtest: vacuous publish is rendered as a completed (and labelled) final stage
+ok 147 - vacuous publish is rendered as a completed (and labelled) final stage
+  ---
+  duration_ms: 0.3587
+  type: 'test'
+  ...
+# Subtest: vacuous publish exemption does not apply when the period has source records
+ok 148 - vacuous publish exemption does not apply when the period has source records
+  ---
+  duration_ms: 0.1189
+  type: 'test'
+  ...
+# Subtest: classifyFaqText returns independent topic judgments
+ok 149 - classifyFaqText returns independent topic judgments
+  ---
+  duration_ms: 2.2913
+  type: 'test'
+  ...
+# Subtest: negative positive signals only create positive labels
+ok 150 - negative positive signals only create positive labels
+  ---
+  duration_ms: 0.828
+  type: 'test'
+  ...
+# Subtest: positive installation service does not create an installation pain label
+ok 151 - positive installation service does not create an installation pain label
+  ---
+  duration_ms: 0.2349
+  type: 'test'
+  ...
+# Subtest: confirmed installation and weight policy requires actual negative impact
+ok 152 - confirmed installation and weight policy requires actual negative impact
+  ---
+  duration_ms: 0.279
+  type: 'test'
+  ...
+# Subtest: positive customer service in natural review wording is not ambiguous after-sales pain
+ok 153 - positive customer service in natural review wording is not ambiguous after-sales pain
+  ---
+  duration_ms: 0.4946
+  type: 'test'
+  ...
+# Subtest: explicit positive issue mentions materialize as non-pain source-topic rows
+ok 154 - explicit positive issue mentions materialize as non-pain source-topic rows
+  ---
+  duration_ms: 2.9758
+  type: 'test'
+  ...
+# Subtest: explicit positive review language does not enter unrelated manual pain queues
+ok 155 - explicit positive review language does not enter unrelated manual pain queues
+  ---
+  duration_ms: 0.3432
+  type: 'test'
+  ...
+# Subtest: neutral product names and advice do not become price or moving pain
+ok 156 - neutral product names and advice do not become price or moving pain
+  ---
+  duration_ms: 0.2366
+  type: 'test'
+  ...
+# Subtest: positive logistics and product details do not create unrelated pain topics
+ok 157 - positive logistics and product details do not create unrelated pain topics
+  ---
+  duration_ms: 0.3744
+  type: 'test'
+  ...
+# Subtest: ambiguous topic mention requires manual review
+ok 158 - ambiguous topic mention requires manual review
+  ---
+  duration_ms: 0.5374
+  type: 'test'
+  ...
+# Subtest: future state without actual experience is not a current pain
+ok 159 - future state without actual experience is not a current pain
+  ---
+  duration_ms: 0.226
+  type: 'test'
+  ...
+# Subtest: future state with an actual pain stays for manual review
+ok 160 - future state with an actual pain stays for manual review
+  ---
+  duration_ms: 0.1692
+  type: 'test'
+  ...
+# Subtest: strong weight impact and severe odor are pain points
+ok 161 - strong weight impact and severe odor are pain points
+  ---
+  duration_ms: 0.3168
+  type: 'test'
+  ...
+# Subtest: questions in 问大家 are pain points regardless of reassuring answers
+ok 162 - questions in 问大家 are pain points regardless of reassuring answers
+  ---
+  duration_ms: 0.3294
+  type: 'test'
+  ...
+# Subtest: 泡澡 alone does not imply insufficient depth
+ok 163 - 泡澡 alone does not imply insufficient depth
+  ---
+  duration_ms: 0.1578
+  type: 'test'
+  ...
+# Subtest: default review detection is explicit and blank content is invalid
+ok 164 - default review detection is explicit and blank content is invalid
+  ---
+  duration_ms: 0.0888
+  type: 'test'
+  ...
+# Subtest: buildAnalysisRecords preserves raw fields and emits versioned labels
+ok 165 - buildAnalysisRecords preserves raw fields and emits versioned labels
+  ---
+  duration_ms: 0.4133
+  type: 'test'
+  ...
+# Subtest: FAQ target schemas match the master and weekly contracts
+ok 166 - FAQ target schemas match the master and weekly contracts
+  ---
+  duration_ms: 0.8031
+  type: 'test'
+  ...
+# Subtest: fallback dedup is stable per product and source type
+ok 167 - fallback dedup is stable per product and source type
+  ---
+  duration_ms: 0.4725
+  type: 'test'
+  ...
+# Subtest: weekly summary counts each label once per deduplicated record
+ok 168 - weekly summary counts each label once per deduplicated record
+  ---
+  duration_ms: 2.536
+  type: 'test'
+  ...
+# Subtest: cumulative summary deduplicates across weeks and share uses record denominator
+ok 169 - cumulative summary deduplicates across weeks and share uses record denominator
+  ---
+  duration_ms: 7.6251
+  type: 'test'
+  ...
+# Subtest: representative quote selection is stable when input order changes
+ok 170 - representative quote selection is stable when input order changes
+  ---
+  duration_ms: 6.345
+  type: 'test'
+  ...
+# Subtest: 两个 profile 覆盖同一批稳定表逻辑名
+ok 171 - 两个 profile 覆盖同一批稳定表逻辑名
+  ---
+  duration_ms: 0.8641
+  type: 'test'
+  ...
+# Subtest: 所有 table id 互不相同且形状合法
+ok 172 - 所有 table id 互不相同且形状合法
+  ---
+  duration_ms: 0.2129
+  type: 'test'
+  ...
+# Subtest: 每个 profile 的 base 与 baseUrl 自洽
+ok 173 - 每个 profile 的 base 与 baseUrl 自洽
+  ---
+  duration_ms: 0.4347
+  type: 'test'
+  ...
+# Subtest: profile 是冻结的（运行时改不动目标）
+ok 174 - profile 是冻结的（运行时改不动目标）
+  ---
+  duration_ms: 0.8222
+  type: 'test'
+  ...
+# Subtest: 别名解析，未知名字抛错
+ok 175 - 别名解析，未知名字抛错
+  ---
+  duration_ms: 0.1665
+  type: 'test'
+  ...
+# Subtest: 环境变量切换生效，且不改变默认值
+ok 176 - 环境变量切换生效，且不改变默认值
+  ---
+  duration_ms: 0.0985
+  type: 'test'
+  ...
+# Subtest: 默认 profile 是当前生产租户（kcne），且旧租户仍可显式选择
+ok 177 - 默认 profile 是当前生产租户（kcne），且旧租户仍可显式选择
+  ---
+  duration_ms: 0.099
+  type: 'test'
+  ...
+# Subtest: tableId 命中逻辑名，未知逻辑名抛错
+ok 178 - tableId 命中逻辑名，未知逻辑名抛错
+  ---
+  duration_ms: 0.1233
+  type: 'test'
+  ...
+# Subtest: 凭据文件路径与 baseUrl 按 profile 分开
+ok 179 - 凭据文件路径与 baseUrl 按 profile 分开
+  ---
+  duration_ms: 0.2445
+  type: 'test'
+  ...
+# Subtest: 关键词库 base 独立于竞品 base，各自随 profile 切换
+ok 180 - 关键词库 base 独立于竞品 base，各自随 profile 切换
+  ---
+  duration_ms: 0.2427
+  type: 'test'
+  ...
+# Subtest: parseEnvFile 处理注释、空行、引号与等号后的空格
+ok 181 - parseEnvFile 处理注释、空行、引号与等号后的空格
+  ---
+  duration_ms: 0.2164
+  type: 'test'
+  ...
+# Subtest: loadFeishuCredentials 只认 FEISHU_APP_ID / FEISHU_APP_SECRET
+ok 182 - loadFeishuCredentials 只认 FEISHU_APP_ID / FEISHU_APP_SECRET
+  ---
+  duration_ms: 0.2002
+  type: 'test'
+  ...
+# Subtest: 日报目标指向正主 base「各店铺日报」，不再是同名副本
+ok 183 - 日报目标指向正主 base「各店铺日报」，不再是同名副本
+  ---
+  duration_ms: 0.0868
+  type: 'test'
+  ...
+# Subtest: 日报脚本不许写死 base 名，期望值只能从配置层取
+ok 184 - 日报脚本不许写死 base 名，期望值只能从配置层取
+  ---
+  duration_ms: 1.2422
+  type: 'test'
+  ...
+# Subtest: selects exactly one labeled target for the authorized Base table
+ok 185 - selects exactly one labeled target for the authorized Base table
+  ---
+  duration_ms: 1.6326
+  type: 'test'
+  ...
+# Subtest: classifies the automated session login wall as a blocking login requirement
+ok 186 - classifies the automated session login wall as a blocking login requirement
+  ---
+  duration_ms: 0.7821
+  type: 'test'
+  ...
+# Subtest: classifies disabled dashboard editing controls as a permission block
+ok 187 - classifies disabled dashboard editing controls as a permission block
+  ---
+  duration_ms: 0.2676
+  type: 'test'
+  ...
+# Subtest: accepts an exact target when the base selector is unavailable but the dashboard is usable
+ok 188 - accepts an exact target when the base selector is unavailable but the dashboard is usable
+  ---
+  duration_ms: 0.1292
+  type: 'test'
+  ...
+# Subtest: does not confuse the user browser permission with the automation browser context
+ok 189 - does not confuse the user browser permission with the automation browser context
+  ---
+  duration_ms: 0.2619
+  type: 'test'
+  ...
+# Subtest: builds sanitized preflight evidence without credentials or page dumps
+ok 190 - builds sanitized preflight evidence without credentials or page dumps
+  ---
+  duration_ms: 1.1252
+  type: 'test'
+  ...
+# Subtest: resume rediscoveries and refreshes without reusing the old target id
+ok 191 - resume rediscoveries and refreshes without reusing the old target id
+  ---
+  duration_ms: 0.5418
+  type: 'test'
+  ...
+# Subtest: renderer consumes every special-looking line instead of stalling
+ok 192 - renderer consumes every special-looking line instead of stalling
+  ---
+  duration_ms: 439.7638
+  type: 'test'
+  ...
+# Subtest: client reference markdown renders end to end
+ok 193 - client reference markdown renders end to end
+  ---
+  duration_ms: 429.4164
+  type: 'test'
+  ...
+# Subtest: document model binds the executable registry and publish artifact
+ok 194 - document model binds the executable registry and publish artifact
+  ---
+  duration_ms: 2.4652
+  type: 'test'
+  ...
+# Subtest: 显式环境变量优先于登记表默认值
+ok 195 - 显式环境变量优先于登记表默认值
+  ---
+  duration_ms: 2.2621
+  type: 'test'
+  ...
+# Subtest: 默认值来自登记表，且身份与目标同链（不许再自称买家、实连商家）
+ok 196 - 默认值来自登记表，且身份与目标同链（不许再自称买家、实连商家）
+  ---
+  duration_ms: 0.8401
+  type: 'test'
+  ...
+# Subtest: 端口是非法值时抛错，而不是静默回落到默认值
+ok 197 - 端口是非法值时抛错，而不是静默回落到默认值
+  ---
+  duration_ms: 1.0733
+  type: 'test'
+  ...
+# Subtest: V2 schema reuses the original analysis columns without adding fields
+ok 198 - V2 schema reuses the original analysis columns without adding fields
+  ---
+  duration_ms: 1.3213
+  type: 'test'
+  ...
+# Subtest: V2 formulas retain raw ranges without adding batch or collection-date fields
+ok 199 - V2 formulas retain raw ranges without adding batch or collection-date fields
+  ---
+  duration_ms: 0.4259
+  type: 'test'
+  ...
+# Subtest: main classification contract has nine mutually exclusive values
+ok 200 - main classification contract has nine mutually exclusive values
+  ---
+  duration_ms: 0.07
+  type: 'test'
+  ...
+# Subtest: brand dictionary extracts canonical names without treating them as labels
+ok 201 - brand dictionary extracts canonical names without treating them as labels
+  ---
+  duration_ms: 0.2804
+  type: 'test'
+  ...
+# Subtest: controlled labels accept dictionary values and explicit numeric dimensions
+ok 202 - controlled labels accept dictionary values and explicit numeric dimensions
+  ---
+  duration_ms: 0.3058
+  type: 'test'
+  ...
+# Subtest: controlled labels reject category words, free segmentation, and inferred labels
+ok 203 - controlled labels reject category words, free segmentation, and inferred labels
+  ---
+  duration_ms: 0.1435
+  type: 'test'
+  ...
+# Subtest: standard merge preserves demand-changing information and falls back to source
+ok 204 - standard merge preserves demand-changing information and falls back to source
+  ---
+  duration_ms: 0.7237
+  type: 'test'
+  ...
+# Subtest: intent signals use fixed precedence and retain the matched basis
+ok 205 - intent signals use fixed precedence and retain the matched basis
+  ---
+  duration_ms: 0.1981
+  type: 'test'
+  ...
+# Subtest: prompts encode the approved boundaries instead of the retired behavior
+ok 206 - prompts encode the approved boundaries instead of the retired behavior
+  ---
+  duration_ms: 0.8619
+  type: 'test'
+  ...
+# Subtest: field plan reuses the existing schema and creates no fields
+ok 207 - field plan reuses the existing schema and creates no fields
+  ---
+  duration_ms: 2.3842
+  type: 'test'
+  ...
+# Subtest: field plan never creates fields on resume
+ok 208 - field plan never creates fields on resume
+  ---
+  duration_ms: 0.1997
+  type: 'test'
+  ...
+# Subtest: mutation guard blocks records, deletes, other tables, and unknown fields
+ok 209 - mutation guard blocks records, deletes, other tables, and unknown fields
+  ---
+  duration_ms: 0.4691
+  type: 'test'
+  ...
+# Subtest: runner applies admitted field updates without creating fields
+ok 210 - runner applies admitted field updates without creating fields
+  ---
+  duration_ms: 0.9327
+  type: 'test'
+  ...
+# Subtest: verification accepts the repaired empty test table and rejects stale options
+ok 211 - verification accepts the repaired empty test table and rejects stale options
+  ---
+  duration_ms: 0.549
+  type: 'test'
+  ...
+# Subtest: formal plan changes only four existing fields and creates no fields
+ok 212 - formal plan changes only four existing fields and creates no fields
+  ---
+  duration_ms: 1.0815
+  type: 'test'
+  ...
+# Subtest: formal plan preserves option ids, adds required values, and retains legacy labels
+ok 213 - formal plan preserves option ids, adds required values, and retains legacy labels
+  ---
+  duration_ms: 0.2052
+  type: 'test'
+  ...
+# Subtest: formal plan refuses to remove an intent option that is still used
+ok 214 - formal plan refuses to remove an intent option that is still used
+  ---
+  duration_ms: 0.3035
+  type: 'test'
+  ...
+# Subtest: formal mutation guard blocks records, creates, deletes, other tables, and unknown fields
+ok 215 - formal mutation guard blocks records, creates, deletes, other tables, and unknown fields
+  ---
+  duration_ms: 0.225
+  type: 'test'
+  ...
+# Subtest: formal verification requires the exact table identity and baseline dimensions
+ok 216 - formal verification requires the exact table identity and baseline dimensions
+  ---
+  duration_ms: 0.1236
+  type: 'test'
+  ...
+# Subtest: record comparison is order-independent and detects any cell mutation
+ok 217 - record comparison is order-independent and detects any cell mutation
+  ---
+  duration_ms: 5.9669
+  type: 'test'
+  ...
+# Subtest: platform ranges compare only exact known intervals
+ok 218 - platform ranges compare only exact known intervals
+  ---
+  duration_ms: 1.1003
+  type: 'test'
+  ...
+# Subtest: weekly grouping follows Asia/Shanghai rather than UTC day boundaries
+ok 219 - weekly grouping follows Asia/Shanghai rather than UTC day boundaries
+  ---
+  duration_ms: 1.0285
+  type: 'test'
+  ...
+# Subtest: fewer than eight valid weekly batches keeps key-word status observing
+ok 220 - fewer than eight valid weekly batches keeps key-word status observing
+  ---
+  duration_ms: 0.5387
+  type: 'test'
+  ...
+# Subtest: eight-week window marks six appearances as key and five as non-key
+ok 221 - eight-week window marks six appearances as key and five as non-key
+  ---
+  duration_ms: 0.3079
+  type: 'test'
+  ...
+# Subtest: duplicates in the same week count once for long-term frequency
+ok 222 - duplicates in the same week count once for long-term frequency
+  ---
+  duration_ms: 0.2469
+  type: 'test'
+  ...
+# Subtest: first batch uses current high search and trade to assign B only
+ok 223 - first batch uses current high search and trade to assign B only
+  ---
+  duration_ms: 0.4295
+  type: 'test'
+  ...
+# Subtest: second batch can trigger A when conversion and another signal rise without decline
+ok 224 - second batch can trigger A when conversion and another signal rise without decline
+  ---
+  duration_ms: 0.1538
+  type: 'test'
+  ...
+# Subtest: rank and search rising cannot exceed B when trade is incomparable
+ok 225 - rank and search rising cannot exceed B when trade is incomparable
+  ---
+  duration_ms: 0.0885
+  type: 'test'
+  ...
+# Subtest: a new or returning top-100 word with medium trade is A
+ok 226 - a new or returning top-100 word with medium trade is A
+  ---
+  duration_ms: 0.1973
+  type: 'test'
+  ...
+# Subtest: diverging comparable signals are B and non-rising ordinary signals are C
+ok 227 - diverging comparable signals are B and non-rising ordinary signals are C
+  ---
+  duration_ms: 0.2582
+  type: 'test'
+  ...
+# Subtest: one comparable stable or declining signal stays observing even when current heat is high
+ok 228 - one comparable stable or declining signal stays observing even when current heat is high
+  ---
+  duration_ms: 0.1211
+  type: 'test'
+  ...
+# Subtest: blank rows are ignored and non-empty decisions are conflicts, never overwritten
+ok 229 - blank rows are ignored and non-empty decisions are conflicts, never overwritten
+  ---
+  duration_ms: 0.0743
+  type: 'test'
+  ...
+# Subtest: product direction prompt uses the four approved fields and rejects invented attributes
+ok 230 - product direction prompt uses the four approved fields and rejects invented attributes
+  ---
+  duration_ms: 0.7805
+  type: 'test'
+  ...
+# Subtest: mutation guard permits only current-table decisions and product-direction field config
+ok 231 - mutation guard permits only current-table decisions and product-direction field config
+  ---
+  duration_ms: 0.345
+  type: 'test'
+  ...
+# Subtest: builds formulas from the latest operating criteria
+ok 232 - builds formulas from the latest operating criteria
+  ---
+  duration_ms: 2.0313
+  type: 'test'
+  ...
+# Subtest: builds a search-heat-only plan for history tables without AI decision fields
+ok 233 - builds a search-heat-only plan for history tables without AI decision fields
+  ---
+  duration_ms: 0.1549
+  type: 'test'
+  ...
+# Subtest: selects the Huitun queue from the A-candidate workflow state
+ok 234 - selects the Huitun queue from the A-candidate workflow state
+  ---
+  duration_ms: 0.1294
+  type: 'test'
+  ...
+# Subtest: verification accepts only the intended formula field replacements
+ok 235 - verification accepts only the intended formula field replacements
+  ---
+  duration_ms: 0.482
+  type: 'test'
+  ...
+# Subtest: verification accepts a priority-only formula replacement
+ok 236 - verification accepts a priority-only formula replacement
+  ---
+  duration_ms: 0.2795
+  type: 'test'
+  ...
+# Subtest: filters an already-current formula out of the mutation plan
+ok 237 - filters an already-current formula out of the mutation plan
+  ---
+  duration_ms: 0.6125
+  type: 'test'
+  ...
+# Subtest: normalizes table-specific field references for cross-table formula verification
+ok 238 - normalizes table-specific field references for cross-table formula verification
+  ---
+  duration_ms: 0.208
+  type: 'test'
+  ...
+# Subtest: plans the content-name normalization and the admitted helper fields
+ok 239 - plans the content-name normalization and the admitted helper fields
+  ---
+  duration_ms: 1.1803
+  type: 'test'
+  ...
+# Subtest: adds the three previous-valid-week snapshots without repurposing current count values
+ok 240 - adds the three previous-valid-week snapshots without repurposing current count values
+  ---
+  duration_ms: 0.1143
+  type: 'test'
+  ...
+# Subtest: refuses to repurpose the old helper field when it contains data
+ok 241 - refuses to repurpose the old helper field when it contains data
+  ---
+  duration_ms: 0.774
+  type: 'test'
+  ...
+# Subtest: mutation guard permits only the planned field rename and creation
+ok 242 - mutation guard permits only the planned field rename and creation
+  ---
+  duration_ms: 0.3624
+  type: 'test'
+  ...
+# Subtest: is idempotent after both new fields exist
+ok 243 - is idempotent after both new fields exist
+  ---
+  duration_ms: 0.1008
+  type: 'test'
+  ...
+# Subtest: verification permits only the approved schema delta and no business-record change
+ok 244 - verification permits only the approved schema delta and no business-record change
+  ---
+  duration_ms: 0.4985
+  type: 'test'
+  ...
+# Subtest: analysis table keeps both keyword columns and puts collection date last
+ok 245 - analysis table keeps both keyword columns and puts collection date last
+  ---
+  duration_ms: 1.2548
+  type: 'test'
+  ...
+# Subtest: history table owns the five trend fields and puts collection date last
+ok 246 - history table owns the five trend fields and puts collection date last
+  ---
+  duration_ms: 0.1216
+  type: 'test'
+  ...
+# Subtest: keyword library uses a six-digit permanent auto-number field
+ok 247 - keyword library uses a six-digit permanent auto-number field
+  ---
+  duration_ms: 0.0949
+  type: 'test'
+  ...
+# Subtest: heat classifiers follow the approved operations thresholds
+ok 248 - heat classifiers follow the approved operations thresholds
+  ---
+  duration_ms: 0.0793
+  type: 'test'
+  ...
+# Subtest: formula contract has six active fields and trade heat ignores click rate
+ok 249 - formula contract has six active fields and trade heat ignores click rate
+  ---
+  duration_ms: 0.3034
+  type: 'test'
+  ...
+# Subtest: seed records preserve the five source facts without inventing a date
+ok 250 - seed records preserve the five source facts without inventing a date
+  ---
+  duration_ms: 0.1982
+  type: 'test'
+  ...
+# Subtest: distribution comparison ignores object key insertion order
+ok 251 - distribution comparison ignores object key insertion order
+  ---
+  duration_ms: 0.0849
+  type: 'test'
+  ...
+# Subtest: keyword normalization applies NFKC, trims, collapses spaces, and lowercases latin text
+ok 252 - keyword normalization applies NFKC, trims, collapses spaces, and lowercases latin text
+  ---
+  duration_ms: 0.1298
+  type: 'test'
+  ...
+# Subtest: keyword identity reuses one key within a category and isolates different categories
+ok 253 - keyword identity reuses one key within a category and isolates different categories
+  ---
+  duration_ms: 0.2052
+  type: 'test'
+  ...
+# Subtest: keyword number map accepts permanent KW numbers and rejects duplicate identities or numbers
+ok 254 - keyword number map accepts permanent KW numbers and rejects duplicate identities or numbers
+  ---
+  duration_ms: 0.6055
+  type: 'test'
+  ...
+# Subtest: keyword number comparison reports zero only when both business tables share the same mapping
+ok 255 - keyword number comparison reports zero only when both business tables share the same mapping
+  ---
+  duration_ms: 0.2097
+  type: 'test'
+  ...
+# Subtest: required tables fail closed while an optional retired table may be absent
+ok 256 - required tables fail closed while an optional retired table may be absent
+  ---
+  duration_ms: 0.1345
+  type: 'test'
+  ...
+# Subtest: number-only mutation policy rejects formula, business-data, and destructive writes
+ok 257 - number-only mutation policy rejects formula, business-data, and destructive writes
+  ---
+  duration_ms: 1.4835
+  type: 'test'
+  ...
+# Subtest: extracts all seven approved Feishu prompts from the archived artifact
+ok 258 - extracts all seven approved Feishu prompts from the archived artifact
+  ---
+  duration_ms: 4.7934
+  type: 'test'
+  ...
+# Subtest: builds one local task per record with placeholders resolved
+ok 259 - builds one local task per record with placeholders resolved
+  ---
+  duration_ms: 0.9322
+  type: 'test'
+  ...
+# Subtest: validates aggregate provider results against task ids and output contracts
+ok 260 - validates aggregate provider results against task ids and output contracts
+  ---
+  duration_ms: 2.3878
+  type: 'test'
+  ...
+# Subtest: builds a compact provider envelope with prompts shared once
+ok 261 - builds a compact provider envelope with prompts shared once
+  ---
+  duration_ms: 0.645
+  type: 'test'
+  ...
+# Subtest: splits tasks into deterministic batches with complete non-overlapping coverage
+ok 262 - splits tasks into deterministic batches with complete non-overlapping coverage
+  ---
+  duration_ms: 0.2414
+  type: 'test'
+  ...
+# Subtest: aggregates only complete validated batch results and rejects gaps or duplicates
+ok 263 - aggregates only complete validated batch results and rejects gaps or duplicates
+  ---
+  duration_ms: 0.2156
+  type: 'test'
+  ...
+# Subtest: supports an explicit canary limit without claiming full completion
+ok 264 - supports an explicit canary limit without claiming full completion
+  ---
+  duration_ms: 0.1296
+  type: 'test'
+  ...
+# Subtest: maps legacy enums and compatible labels to current Feishu options
+ok 265 - maps legacy enums and compatible labels to current Feishu options
+  ---
+  duration_ms: 1.3128
+  type: 'test'
+  ...
+# Subtest: normalizes legacy content heat prefix to the current formula contract
+ok 266 - normalizes legacy content heat prefix to the current formula contract
+  ---
+  duration_ms: 0.2756
+  type: 'test'
+  ...
+# Subtest: retains unmapped labels in audit output instead of silently inventing options
+ok 267 - retains unmapped labels in audit output instead of silently inventing options
+  ---
+  duration_ms: 0.1095
+  type: 'test'
+  ...
+# Subtest: builds updates only for blank writable fields and preserves populated values
+ok 268 - builds updates only for blank writable fields and preserves populated values
+  ---
+  duration_ms: 0.2605
+  type: 'test'
+  ...
+# Subtest: adapts the prior PUBLISH_READY analysis artifact to the legacy writeback shape
+ok 269 - adapts the prior PUBLISH_READY analysis artifact to the legacy writeback shape
+  ---
+  duration_ms: 4.3552
+  type: 'test'
+  ...
+# Subtest: local analysis follows the approved merge, category, label, and intent contract
+ok 270 - local analysis follows the approved merge, category, label, and intent contract
+  ---
+  duration_ms: 3.0825
+  type: 'test'
+  ...
+# Subtest: local analysis uses only explicit controlled labels and permits no label
+ok 271 - local analysis uses only explicit controlled labels and permits no label
+  ---
+  duration_ms: 1.2636
+  type: 'test'
+  ...
+# Subtest: local labels preserve the previous batch controlled brand vocabulary
+ok 272 - local labels preserve the previous batch controlled brand vocabulary
+  ---
+  duration_ms: 0.2759
+  type: 'test'
+  ...
+# Subtest: local analysis normalizes only approved strict equivalents
+ok 273 - local analysis normalizes only approved strict equivalents
+  ---
+  duration_ms: 0.1765
+  type: 'test'
+  ...
+# Subtest: standard merge follows the current Feishu seven-bucket priority exactly
+ok 274 - standard merge follows the current Feishu seven-bucket priority exactly
+  ---
+  duration_ms: 0.4668
+  type: 'test'
+  ...
+# Subtest: local classification recognizes explicit attributes beyond the controlled label dictionary
+ok 275 - local classification recognizes explicit attributes beyond the controlled label dictionary
+  ---
+  duration_ms: 0.2265
+  type: 'test'
+  ...
+# Subtest: local labels normalize explicit equivalent forms without adding inferred attributes
+ok 276 - local labels normalize explicit equivalent forms without adding inferred attributes
+  ---
+  duration_ms: 0.7917
+  type: 'test'
+  ...
+# Subtest: local labels follow the current Feishu exact mappings and vocabulary
+ok 277 - local labels follow the current Feishu exact mappings and vocabulary
+  ---
+  duration_ms: 0.9522
+  type: 'test'
+  ...
+# Subtest: local labels do not create substring-derived duplicate attributes
+ok 278 - local labels do not create substring-derived duplicate attributes
+  ---
+  duration_ms: 0.3271
+  type: 'test'
+  ...
+# Subtest: local labels cover explicit extended attributes already supported by the table
+ok 279 - local labels cover explicit extended attributes already supported by the table
+  ---
+  duration_ms: 1.1754
+  type: 'test'
+  ...
+# Subtest: local labels retain explicit table-supported demand, channel, region, and appearance signals
+ok 280 - local labels retain explicit table-supported demand, channel, region, and appearance signals
+  ---
+  duration_ms: 0.2827
+  type: 'test'
+  ...
+# Subtest: local intent uses Taobao product-search context without overriding explicit intent signals
+ok 281 - local intent uses Taobao product-search context without overriding explicit intent signals
+  ---
+  duration_ms: 0.1443
+  type: 'test'
+  ...
+# Subtest: local intent follows the current Feishu priority and explicit examples
+ok 282 - local intent follows the current Feishu priority and explicit examples
+  ---
+  duration_ms: 0.0977
+  type: 'test'
+  ...
+# Subtest: local intent uses the attributes extracted by the current Feishu prompt
+ok 283 - local intent uses the attributes extracted by the current Feishu prompt
+  ---
+  duration_ms: 0.2564
+  type: 'test'
+  ...
+# Subtest: classification recognizes explicit current-table signals even without a controlled label
+ok 284 - classification recognizes explicit current-table signals even without a controlled label
+  ---
+  duration_ms: 0.0886
+  type: 'test'
+  ...
+# Subtest: plan fills only blank target fields and reports existing values as preserved
+ok 285 - plan fills only blank target fields and reports existing values as preserved
+  ---
+  duration_ms: 0.3859
+  type: 'test'
+  ...
+# Subtest: plan can replace only an explicitly named field while preserving other existing values
+ok 286 - plan can replace only an explicitly named field while preserving other existing values
+  ---
+  duration_ms: 0.1703
+  type: 'test'
+  ...
+# Subtest: plan partitions AI field type 25 away from API-writable values
+ok 287 - plan partitions AI field type 25 away from API-writable values
+  ---
+  duration_ms: 0.1815
+  type: 'test'
+  ...
+# Subtest: mutation guard allows only target-field updates on the confirmed table
+ok 288 - mutation guard allows only target-field updates on the confirmed table
+  ---
+  duration_ms: 0.4882
+  type: 'test'
+  ...
+# Subtest: verification rejects unrelated changes and verifies planned blank fills
+ok 289 - verification rejects unrelated changes and verifies planned blank fills
+  ---
+  duration_ms: 0.2575
+  type: 'test'
+  ...
+# Subtest: provider command is explicit and reads the task prompt from stdin
+ok 290 - provider command is explicit and reads the task prompt from stdin
+  ---
+  duration_ms: 1.0075
+  type: 'test'
+  ...
+# Subtest: provider output must be a JSON array
+ok 291 - provider output must be a JSON array
+  ---
+  duration_ms: 1.5645
+  type: 'test'
+  ...
+# Subtest: runner delegates to injected process without provider fallback
+ok 292 - runner delegates to injected process without provider fallback
+  ---
+  duration_ms: 1.1246
+  type: 'test'
+  ...
+# Subtest: plans history period type and value migration without changing business fields
+ok 293 - plans history period type and value migration without changing business fields
+  ---
+  duration_ms: 2.2609
+  type: 'test'
+  ...
+# Subtest: treats migrated date values as idempotent
+ok 294 - treats migrated date values as idempotent
+  ---
+  duration_ms: 9.6904
+  type: 'test'
+  ...
+# Subtest: rejects invalid, reversed, mismatched, and unexpected history periods
+ok 295 - rejects invalid, reversed, mismatched, and unexpected history periods
+  ---
+  duration_ms: 0.5133
+  type: 'test'
+  ...
+# Subtest: does not declare verified when a non-period field changes after the write
+ok 296 - does not declare verified when a non-period field changes after the write
+  ---
+  duration_ms: 20.0158
+  type: 'test'
+  ...
+# Subtest: leaves a machine-readable partial receipt when a write stage fails
+ok 297 - leaves a machine-readable partial receipt when a write stage fails
+  ---
+  duration_ms: 13.0297
+  type: 'test'
+  ...
+# Subtest: does not overwrite an existing migration backup
+ok 298 - does not overwrite an existing migration backup
+  ---
+  duration_ms: 8.5152
+  type: 'test'
+  ...
+# Subtest: rejects a batch response that does not confirm the requested record IDs
+ok 299 - rejects a batch response that does not confirm the requested record IDs
+  ---
+  duration_ms: 10.525
+  type: 'test'
+  ...
+# Subtest: records a partial receipt when read-back verification fails
+ok 300 - records a partial receipt when read-back verification fails
+  ---
+  duration_ms: 15.0214
+  type: 'test'
+  ...
+# Subtest: schema migration plan targets the new FAQ summary contracts
+ok 301 - schema migration plan targets the new FAQ summary contracts
+  ---
+  duration_ms: 6.7347
+  type: 'test'
+  ...
+# Subtest: schema migration plan hash changes when live schema changes
+ok 302 - schema migration plan hash changes when live schema changes
+  ---
+  duration_ms: 0.2579
+  type: 'test'
+  ...
+# Subtest: renderAlertText 把已知类型翻成人话，并带上「下一步」
+ok 303 - renderAlertText 把已知类型翻成人话，并带上「下一步」
+  ---
+  duration_ms: 1.4751
+  type: 'test'
+  ...
+# Subtest: renderAlertText 对缺失字段整行不输出，而不是渲染成 undefined
+ok 304 - renderAlertText 对缺失字段整行不输出，而不是渲染成 undefined
+  ---
+  duration_ms: 0.178
+  type: 'test'
+  ...
+# Subtest: renderAlertText 不把未知字段透传出去（避免把内部结构抄进通知）
+ok 305 - renderAlertText 不把未知字段透传出去（避免把内部结构抄进通知）
+  ---
+  duration_ms: 1.0249
+  type: 'test'
+  ...
+# Subtest: renderAlertText 对 INFO 用「提示」而不是「需要处理」
+ok 306 - renderAlertText 对 INFO 用「提示」而不是「需要处理」
+  ---
+  duration_ms: 0.1105
+  type: 'test'
+  ...
+# Subtest: redactSensitive 遮住应用 ID、Bearer 与长令牌
+ok 307 - redactSensitive 遮住应用 ID、Bearer 与长令牌
+  ---
+  duration_ms: 0.191
+  type: 'test'
+  ...
+# Subtest: redactSensitive 不能吞掉我们自己的告警编号（带连字符的标识要留着）
+ok 308 - redactSensitive 不能吞掉我们自己的告警编号（带连字符的标识要留着）
+  ---
+  duration_ms: 0.0798
+  type: 'test'
+  ...
+# Subtest: 时间渲染成本机人读形式，而不是容易被读成凌晨的 ISO Z 形式
+ok 309 - 时间渲染成本机人读形式，而不是容易被读成凌晨的 ISO Z 形式
+  ---
+  duration_ms: 0.1721
+  type: 'test'
+  ...
+# Subtest: token 在有效期内复用，不再请求
+ok 310 - token 在有效期内复用，不再请求
+  ---
+  duration_ms: 0.2735
+  type: 'test'
+  ...
+# Subtest: token 过期后重新获取
+ok 311 - token 过期后重新获取
+  ---
+  duration_ms: 0.2474
+  type: 'test'
+  ...
+# Subtest: 取 token 失败时抛出可读错误，且错误里不含 secret
+ok 312 - 取 token 失败时抛出可读错误，且错误里不含 secret
+  ---
+  duration_ms: 0.7849
+  type: 'test'
+  ...
+# Subtest: 主通道成功 → SENT/app，且请求体带 receive_id_type 与文本消息
+ok 313 - 主通道成功 → SENT/app，且请求体带 receive_id_type 与文本消息
+  ---
+  duration_ms: 1.3008
+  type: 'test'
+  ...
+# Subtest: token 过期（401）会清缓存重取一次，第二次成功
+ok 314 - token 过期（401）会清缓存重取一次，第二次成功
+  ---
+  duration_ms: 0.3204
+  type: 'test'
+  ...
+# Subtest: 缺 scope（99991672）不重试，并指出「开权限 + 重新发布版本」
+ok 315 - 缺 scope（99991672）不重试，并指出「开权限 + 重新发布版本」
+  ---
+  duration_ms: 0.6619
+  type: 'test'
+  ...
+# Subtest: 主通道失败 → 降级群机器人，收据保留主通道的失败原因
+ok 316 - 主通道失败 → 降级群机器人，收据保留主通道的失败原因
+  ---
+  duration_ms: 0.625
+  type: 'test'
+  ...
+# Subtest: 群机器人历史字段 StatusCode 也认
+ok 317 - 群机器人历史字段 StatusCode 也认
+  ---
+  duration_ms: 0.1604
+  type: 'test'
+  ...
+# Subtest: 主收件人失败 → 兜底收件人成功，收据标 app_fallback
+ok 318 - 主收件人失败 → 兜底收件人成功，收据标 app_fallback
+  ---
+  duration_ms: 0.1741
+  type: 'test'
+  ...
+# Subtest: 兜底收件人与主收件人相同 → 不重复发（只留下一条 skipped 说明）
+ok 319 - 兜底收件人与主收件人相同 → 不重复发（只留下一条 skipped 说明）
+  ---
+  duration_ms: 0.1799
+  type: 'test'
+  ...
+# Subtest: 主收件人与兜底收件人都失败 → 再走 webhook
+ok 320 - 主收件人与兜底收件人都失败 → 再走 webhook
+  ---
+  duration_ms: 0.1957
+  type: 'test'
+  ...
+# Subtest: 两个通道都失败 → FAILED，并把两条原因都写进 error
+ok 321 - 两个通道都失败 → FAILED，并把两条原因都写进 error
+  ---
+  duration_ms: 0.2043
+  type: 'test'
+  ...
+# Subtest: 都没配置 → NOT_CONFIGURED，而不是 FAILED
+ok 322 - 都没配置 → NOT_CONFIGURED，而不是 FAILED
+  ---
+  duration_ms: 0.1523
+  type: 'test'
+  ...
+# Subtest: 网络异常不抛出，变成一条 FAILED 收据（通知失败不能影响主流程）
+ok 323 - 网络异常不抛出，变成一条 FAILED 收据（通知失败不能影响主流程）
+  ---
+  duration_ms: 0.1495
+  type: 'test'
+  ...
+# Subtest: 收据里不出现 app secret 与 token 明文
+ok 324 - 收据里不出现 app secret 与 token 明文
+  ---
+  duration_ms: 0.1023
+  type: 'test'
+  ...
+# Subtest: parseNotifyArgs 支持 --dry-run 与取值参数，未知参数报错
+ok 325 - parseNotifyArgs 支持 --dry-run 与取值参数，未知参数报错
+  ---
+  duration_ms: 0.1446
+  type: 'test'
+  ...
+# Subtest: resolveNotifyConfig 优先级：命令行 > env 文件 > 进程环境
+ok 326 - resolveNotifyConfig 优先级：命令行 > env 文件 > 进程环境
+  ---
+  duration_ms: 0.1016
+  type: 'test'
+  ...
+# Subtest: parseAlertJson 拒绝空值、数组与非法 JSON
+ok 327 - parseAlertJson 拒绝空值、数组与非法 JSON
+  ---
+  duration_ms: 0.5327
+  type: 'test'
+  ...
+# Subtest: CLI dry-run 只渲染不发送，且不请求任何接口
+ok 328 - CLI dry-run 只渲染不发送，且不请求任何接口
+  ---
+  duration_ms: 1.1326
+  type: 'test'
+  ...
+# Subtest: CLI 未配置收件人 → NOT_CONFIGURED 并入 error 分支（非零退出）
+ok 329 - CLI 未配置收件人 → NOT_CONFIGURED 并入 error 分支（非零退出）
+  ---
+  duration_ms: 2.1224
+  type: 'test'
+  ...
+# Subtest: CLI 走 env 文件里的收件人完成一次真实投递（注入假 fetch）
+ok 330 - CLI 走 env 文件里的收件人完成一次真实投递（注入假 fetch）
+  ---
+  duration_ms: 0.2143
+  type: 'test'
+  ...
+# Subtest: CLI 在 env 文件缺凭据时直接报错，不静默降级
+ok 331 - CLI 在 env 文件缺凭据时直接报错，不静默降级
+  ---
+  duration_ms: 4.6514
+  type: 'test'
+  ...
+# Subtest: CLI 的 token 请求打到真实的租户令牌端点（接口路径不能写错）
+ok 332 - CLI 的 token 请求打到真实的租户令牌端点（接口路径不能写错）
+  ---
+  duration_ms: 0.2868
+  type: 'test'
+  ...
+# Subtest: the console binds to loopback only and declares its read/action split
+ok 333 - the console binds to loopback only and declares its read/action split
+  ---
+  duration_ms: 48.2879
+  type: 'test'
+  ...
+# Subtest: reads accept GET only and actions accept POST only
+ok 334 - reads accept GET only and actions accept POST only
+  ---
+  duration_ms: 21.2929
+  type: 'test'
+  ...
+# Subtest: page and assets are served from a fixed allow-list
+ok 335 - page and assets are served from a fixed allow-list
+  ---
+  duration_ms: 64.922
+  type: 'test'
+  ...
+# Subtest: path traversal variants never reach a file outside the allow-list
+ok 336 - path traversal variants never reach a file outside the allow-list
+  ---
+  duration_ms: 7.392
+  type: 'test'
+  ...
+# Subtest: the api endpoints answer with the shapes the page renders
+ok 337 - the api endpoints answer with the shapes the page renders
+  ---
+  duration_ms: 22.0795
+  type: 'test'
+  ...
+# Subtest: the server reports the port it actually listens on, not the registry default
+ok 338 - the server reports the port it actually listens on, not the registry default
+  ---
+  duration_ms: 10.5561
+  type: 'test'
+  ...
+# Subtest: the port comes from the registry and a bad override is rejected, not silently ignored
+ok 339 - the port comes from the registry and a bad override is rejected, not silently ignored
+  ---
+  duration_ms: 0.4696
+  type: 'test'
+  ...
+# Subtest: an unknown action, a bad body and a wrong content-type are refused with reasons
+ok 340 - an unknown action, a bad body and a wrong content-type are refused with reasons
+  ---
+  duration_ms: 9.3855
+  type: 'test'
+  ...
+# Subtest: preview-faq is a real read-only dry run against the injected root
+ok 341 - preview-faq is a real read-only dry run against the injected root
+  ---
+  duration_ms: 754.9061
+  type: 'test'
+  ...
+# Subtest: refresh-faq-status rewrites the status receipt in the injected root
+ok 342 - refresh-faq-status rewrites the status receipt in the injected root
+  ---
+  duration_ms: 427.0031
+  type: 'test'
+  ...
+# Subtest: advance-faq refuses to run before anything is confirmed, and hands back the exact command
+ok 343 - advance-faq refuses to run before anything is confirmed, and hands back the exact command
+  ---
+  duration_ms: 325.2872
+  type: 'test'
+  ...
+# Subtest: advance-faq refuses the human-collection stage outright
+ok 344 - advance-faq refuses the human-collection stage outright
+  ---
+  duration_ms: 341.2981
+  type: 'test'
+  ...
+# Subtest: advance-faq can never publish to Feishu, even with confirm:true
+ok 345 - advance-faq can never publish to Feishu, even with confirm:true
+  ---
+  duration_ms: 361.2787
+  type: 'test'
+  ...
+# Subtest: a confirmed advance really spawns the stage runner and lands in the audit log
+ok 346 - a confirmed advance really spawns the stage runner and lands in the audit log
+  ---
+  duration_ms: 894.6392
+  type: 'test'
+  ...
+# Subtest: every site declared in the route registry maps to an account card
+ok 347 - every site declared in the route registry maps to an account card
+  ---
+  duration_ms: 0.9079
+  type: 'test'
+  ...
+# Subtest: site-to-platform map has no entries for sites nobody uses
+ok 348 - site-to-platform map has no entries for sites nobody uses
+  ---
+  duration_ms: 0.1049
+  type: 'test'
+  ...
+# Subtest: every browser has registered ports and every registered port name is real
+ok 349 - every browser has registered ports and every registered port name is real
+  ---
+  duration_ms: 0.1869
+  type: 'test'
+  ...
+# Subtest: account groups are derived from the registry, keyed by browser profile
+ok 350 - account groups are derived from the registry, keyed by browser profile
+  ---
+  duration_ms: 0.38
+  type: 'test'
+  ...
+# Subtest: accounts payload never claims to be probed while it is still sample data
+ok 351 - accounts payload never claims to be probed while it is still sample data
+  ---
+  duration_ms: 1.1153
+  type: 'test'
+  ...
+# Subtest: the reserved platform is grey and carries a reason, never a green light
+ok 352 - the reserved platform is grey and carries a reason, never a green light
+  ---
+  duration_ms: 0.601
+  type: 'test'
+  ...
+# Subtest: every vocabulary status has a presentation and every presentation is in the vocabulary
+ok 353 - every vocabulary status has a presentation and every presentation is in the vocabulary
+  ---
+  duration_ms: 0.1387
+  type: 'test'
+  ...
+# Subtest: needing-human states are not all mapped to the same button
+ok 354 - needing-human states are not all mapped to the same button
+  ---
+  duration_ms: 0.0656
+  type: 'test'
+  ...
+# Subtest: statuses that the preflight cannot emit yet are declared, not silently shown as live
+ok 355 - statuses that the preflight cannot emit yet are declared, not silently shown as live
+  ---
+  duration_ms: 0.1975
+  type: 'test'
+  ...
+# Subtest: env payload probes both browsers and keeps the registry as the only source
+ok 356 - env payload probes both browsers and keeps the registry as the only source
+  ---
+  duration_ms: 0.6259
+  type: 'test'
+  ...
+# Subtest: the launch dropdown is fed by the registry, not by a copy inside the page
+ok 357 - the launch dropdown is fed by the registry, not by a copy inside the page
+  ---
+  duration_ms: 0.2703
+  type: 'test'
+  ...
+# Subtest: browser port lamps distinguish ours / foreign / unknown / free
+ok 358 - browser port lamps distinguish ours / foreign / unknown / free
+  ---
+  duration_ms: 0.0653
+  type: 'test'
+  ...
+# Subtest: progress reads the live operator status file and renders its stage list
+ok 359 - progress reads the live operator status file and renders its stage list
+  ---
+  duration_ms: 14.3967
+  type: 'test'
+  ...
+# Subtest: progress falls back to the evidence snapshot and says so
+ok 360 - progress falls back to the evidence snapshot and says so
+  ---
+  duration_ms: 6.0794
+  type: 'test'
+  ...
+# Subtest: live status wins over the archived evidence snapshot for the same period
+ok 361 - live status wins over the archived evidence snapshot for the same period
+  ---
+  duration_ms: 7.2875
+  type: 'test'
+  ...
+# Subtest: an unreadable or missing snapshot becomes a grey block with a reason code
+ok 362 - an unreadable or missing snapshot becomes a grey block with a reason code
+  ---
+  duration_ms: 5.3182
+  type: 'test'
+  ...
+# Subtest: a self-contradicting snapshot is reported instead of crashing the console
+ok 363 - a self-contradicting snapshot is reported instead of crashing the console
+  ---
+  duration_ms: 8.4683
+  type: 'test'
+  ...
+# Subtest: a completed period is never flagged as a stale snapshot
+ok 364 - a completed period is never flagged as a stale snapshot
+  ---
+  duration_ms: 12.3008
+  type: 'test'
+  ...
+# Subtest: an unfinished run whose snapshot is old is flagged stale
+ok 365 - an unfinished run whose snapshot is old is flagged stale
+  ---
+  duration_ms: 8.3526
+  type: 'test'
+  ...
+# Subtest: payload declares which chains have a stage list and which do not
+ok 366 - payload declares which chains have a stage list and which do not
+  ---
+  duration_ms: 0.8498
+  type: 'test'
+  ...
+# Subtest: classifies an authenticated exact Base and history target as ready
+ok 367 - classifies an authenticated exact Base and history target as ready
+  ---
+  duration_ms: 0.9624
+  type: 'test'
+  ...
+# Subtest: classifies a missing exact history target as a blocking target error
+ok 368 - classifies a missing exact history target as a blocking target error
+  ---
+  duration_ms: 0.0865
+  type: 'test'
+  ...
+# Subtest: stops before any write when API authentication fails and writes a blocking receipt
+ok 369 - stops before any write when API authentication fails and writes a blocking receipt
+  ---
+  duration_ms: 33.8528
+  type: 'test'
+  ...
+# Subtest: stops before any write when the weekly quality gate fails
+ok 370 - stops before any write when the weekly quality gate fails
+  ---
+  duration_ms: 4.5783
+  type: 'test'
+  ...
+# Subtest: publishes in create-then-update order and verifies the read-back
+ok 371 - publishes in create-then-update order and verifies the read-back
+  ---
+  duration_ms: 1.0571
+  type: 'test'
+  ...
+# Subtest: converts an unauthorized write target into a stable blocking error
+ok 372 - converts an unauthorized write target into a stable blocking error
+  ---
+  duration_ms: 0.6282
+  type: 'test'
+  ...
+# Subtest: converts read-back mismatch into a stable blocking error
+ok 373 - converts read-back mismatch into a stable blocking error
+  ---
+  duration_ms: 0.4145
+  type: 'test'
+  ...
+# Subtest: blocks before any write when the exact weekly target is missing
+ok 374 - blocks before any write when the exact weekly target is missing
+  ---
+  duration_ms: 4.5915
+  type: 'test'
+  ...
+# Subtest: stops before any write when the confirmed history target does not match
+ok 375 - stops before any write when the confirmed history target does not match
+  ---
+  duration_ms: 9.8462
+  type: 'test'
+  ...
+# Subtest: buildDetailAppendPlan 只新增：重合身份不写、差异只记 conflicts、deletes 恒空
+ok 376 - buildDetailAppendPlan 只新增：重合身份不写、差异只记 conflicts、deletes 恒空
+  ---
+  duration_ms: 2.7716
+  type: 'test'
+  ...
+# Subtest: buildDetailAppendPlan 只把新身份放进 creates，且对总表内重复身份 fail-closed
+ok 377 - buildDetailAppendPlan 只把新身份放进 creates，且对总表内重复身份 fail-closed
+  ---
+  duration_ms: 1.1718
+  type: 'test'
+  ...
+# Subtest: dry-run 报出「建周表 + 总表追加 N 行」且零写入
+ok 378 - dry-run 报出「建周表 + 总表追加 N 行」且零写入
+  ---
+  duration_ms: 40.9652
+  type: 'test'
+  ...
+# Subtest: 最终分类工件被改动时在读飞书写入前就拒绝
+ok 379 - 最终分类工件被改动时在读飞书写入前就拒绝
+  ---
+  duration_ms: 7.8939
+  type: 'test'
+  ...
+# Subtest: 总表 schema 漂移时拒绝发布
+ok 380 - 总表 schema 漂移时拒绝发布
+  ---
+  duration_ms: 7.6458
+  type: 'test'
+  ...
+# Subtest: 显式传了 --weekly-table-id 却查不到 → fail-closed
+ok 381 - 显式传了 --weekly-table-id 却查不到 → fail-closed
+  ---
+  duration_ms: 9.0013
+  type: 'test'
+  ...
+# Subtest: apply 建周表 + 总表只追加，全程零删除
+ok 382 - apply 建周表 + 总表只追加，全程零删除
+  ---
+  duration_ms: 8.2357
+  type: 'test'
+  ...
+# Subtest: 重跑：周表已一致时不动，总表追加 0 行，零写入
+ok 383 - 重跑：周表已一致时不动，总表追加 0 行，零写入
+  ---
+  duration_ms: 13.4446
+  type: 'test'
+  ...
+# Subtest: 周表已有历史行且与本期不一致 → 要求 --replace-weekly，否则不动库
+ok 384 - 周表已有历史行且与本期不一致 → 要求 --replace-weekly，否则不动库
+  ---
+  duration_ms: 6.4239
+  type: 'test'
+  ...
+# Subtest: 加了 --replace-weekly 才覆盖周表，总表仍只追加
+ok 385 - 加了 --replace-weekly 才覆盖周表，总表仍只追加
+  ---
+  duration_ms: 9.7302
+  type: 'test'
+  ...
+# Subtest: 追加后回读对不上 → 撤回本次追加、删掉自建周表
+ok 386 - 追加后回读对不上 → 撤回本次追加、删掉自建周表
+  ---
+  duration_ms: 9.6959
+  type: 'test'
+  ...
+# Subtest: summary replacement rejects original detail tables
+ok 387 - summary replacement rejects original detail tables
+  ---
+  duration_ms: 0.6108
+  type: 'test'
+  ...
+# Subtest: exact content is a NOOP and does not create a backup
+ok 388 - exact content is a NOOP and does not create a backup
+  ---
+  duration_ms: 55.7589
+  type: 'test'
+  ...
+# Subtest: non-empty differing table requires explicit replacement
+ok 389 - non-empty differing table requires explicit replacement
+  ---
+  duration_ms: 3.7619
+  type: 'test'
+  ...
+# Subtest: replacement normalizes number fields returned as strings
+ok 390 - replacement normalizes number fields returned as strings
+  ---
+  duration_ms: 13.2601
+  type: 'test'
+  ...
+# Subtest: master failure restores a successfully replaced weekly table
+ok 391 - master failure restores a successfully replaced weekly table
+  ---
+  duration_ms: 3.7255
+  type: 'test'
+  ...
+# Subtest: read-back failure restores the original rows
+ok 392 - read-back failure restores the original rows
+  ---
+  duration_ms: 1.9123
+  type: 'test'
+  ...
+# Subtest: weekly schema contains stable product, source, raw-content, and idempotency fields
+ok 393 - weekly schema contains stable product, source, raw-content, and idempotency fields
+  ---
+  duration_ms: 0.7765
+  type: 'test'
+  ...
+# Subtest: selectTopABCompetitors uses formula monthly value and rank as deterministic tie-breaker
+ok 394 - selectTopABCompetitors uses formula monthly value and rank as deterministic tie-breaker
+  ---
+  duration_ms: 0.2223
+  type: 'test'
+  ...
+# Subtest: selectTopACompetitors unwraps Feishu select/formula display values
+ok 395 - selectTopACompetitors unwraps Feishu select/formula display values
+  ---
+  duration_ms: 0.1336
+  type: 'test'
+  ...
+# Subtest: normalizeExportRows preserves each question and answer as one raw record
+ok 396 - normalizeExportRows preserves each question and answer as one raw record
+  ---
+  duration_ms: 0.1786
+  type: 'test'
+  ...
+# Subtest: normalizeExportRows preserves review raw text and ignores blank rows
+ok 397 - normalizeExportRows preserves review raw text and ignores blank rows
+  ---
+  duration_ms: 0.1404
+  type: 'test'
+  ...
+# Subtest: sourceRecordKey is stable and buildQuestionRecord leaves analysis fields empty
+ok 398 - sourceRecordKey is stable and buildQuestionRecord leaves analysis fields empty
+  ---
+  duration_ms: 0.5433
+  type: 'test'
+  ...
+# Subtest: cross-week identity prefers stable IDs and stable fields before text fallback
+ok 399 - cross-week identity prefers stable IDs and stable fields before text fallback
+  ---
+  duration_ms: 0.1231
+  type: 'test'
+  ...
+# Subtest: retired fixed-table Huitun writer fails before results, credentials, or network are used
+ok 400 - retired fixed-table Huitun writer fails before results, credentials, or network are used
+  ---
+  duration_ms: 1.0978
+  type: 'test'
+  ...
+# Subtest: retired direct writer fails before credentials or network can be used
+ok 401 - retired direct writer fails before credentials or network can be used
+  ---
+  duration_ms: 1.0602
+  type: 'test'
+  ...
+# Subtest: status advances one stage at a time and never treats missing evidence as imported
+ok 402 - status advances one stage at a time and never treats missing evidence as imported
+  ---
+  duration_ms: 31.8376
+  type: 'test'
+  ...
+# Subtest: verified downstream summary can recover a missing analysis receipt
+ok 403 - verified downstream summary can recover a missing analysis receipt
+  ---
+  duration_ms: 95.1974
+  type: 'test'
+  ...
+# Subtest: zero-record period with built summaries reaches DONE without publication
+ok 404 - zero-record period with built summaries reaches DONE without publication
+  ---
+  duration_ms: 17.4875
+  type: 'test'
+  ...
+# Subtest: zero-record period without built summaries stays before publication
+ok 405 - zero-record period without built summaries stays before publication
+  ---
+  duration_ms: 17.4157
+  type: 'test'
+  ...
+# Subtest: completed AI review with a non-empty human queue blocks publication
+ok 406 - completed AI review with a non-empty human queue blocks publication
+  ---
+  duration_ms: 82.51
+  type: 'test'
+  ...
+# Subtest: advance command emits a publish dry-run that never writes by itself
+ok 407 - advance command emits a publish dry-run that never writes by itself
+  ---
+  duration_ms: 1.3191
+  type: 'test'
+  ...
+# Subtest: publication verification accepts the append-only receipt and still rejects legacy shapes
+ok 408 - publication verification accepts the append-only receipt and still rejects legacy shapes
+  ---
+  duration_ms: 0.255
+  type: 'test'
+  ...
+# Subtest: a publication receipt from another period does not complete the current period
+ok 409 - a publication receipt from another period does not complete the current period
+  ---
+  duration_ms: 179.4663
+  type: 'test'
+  ...
+# Subtest: an unresolved product alert blocks collection progress
+ok 410 - an unresolved product alert blocks collection progress
+  ---
+  duration_ms: 20.3422
+  type: 'test'
+  ...
+# Subtest: corrupt evidence files do not count as a completed product
+ok 411 - corrupt evidence files do not count as a completed product
+  ---
+  duration_ms: 115.2792
+  type: 'test'
+  ...
+# Subtest: --no-persist is opt-in and pairing it with --advance is refused outright
+ok 412 - --no-persist is opt-in and pairing it with --advance is refused outright
+  ---
+  duration_ms: 0.5109
+  type: 'test'
+  ...
+# Subtest: --replace-current is gone: it is rejected as an unknown argument, not silently accepted
+ok 413 - --replace-current is gone: it is rejected as an unknown argument, not silently accepted
+  ---
+  duration_ms: 0.0917
+  type: 'test'
+  ...
+# Subtest: the CLI writes operator-status.json by default and skips it under --no-persist
+ok 414 - the CLI writes operator-status.json by default and skips it under --no-persist
+  ---
+  duration_ms: 550.6047
+  type: 'test'
+  ...
+# Subtest: decideFaqStep advances safe deterministic stages
+ok 415 - decideFaqStep advances safe deterministic stages
+  ---
+  duration_ms: 0.7752
+  type: 'test'
+  ...
+# Subtest: decideFaqStep stops for browser collection and human queue
+ok 416 - decideFaqStep stops for browser collection and human queue
+  ---
+  duration_ms: 0.1233
+  type: 'test'
+  ...
+# Subtest: decideFaqStep refuses publication without explicit authorization
+ok 417 - decideFaqStep refuses publication without explicit authorization
+  ---
+  duration_ms: 0.0563
+  type: 'test'
+  ...
+# Subtest: decideFaqStep recognizes DONE and fails closed on unknown actions
+ok 418 - decideFaqStep recognizes DONE and fails closed on unknown actions
+  ---
+  duration_ms: 0.1304
+  type: 'test'
+  ...
+# Subtest: decideXwsStep maps supervisor outcomes
+ok 419 - decideXwsStep maps supervisor outcomes
+  ---
+  duration_ms: 0.1239
+  type: 'test'
+  ...
+# Subtest: orchestrateFaq advances deterministic stages and stops at browser gate
+ok 420 - orchestrateFaq advances deterministic stages and stops at browser gate
+  ---
+  duration_ms: 39.9666
+  type: 'test'
+  ...
+# Subtest: orchestrateFaq refuses publish without authorization and honors dry-run
+ok 421 - orchestrateFaq refuses publish without authorization and honors dry-run
+  ---
+  duration_ms: 20.5861
+  type: 'test'
+  ...
+# Subtest: orchestrateFaq detects a stuck receipt and stops before burning the budget
+ok 422 - orchestrateFaq detects a stuck receipt and stops before burning the budget
+  ---
+  duration_ms: 13.271
+  type: 'test'
+  ...
+# Subtest: orchestrateFaq fails loudly when the controller exits nonzero
+ok 423 - orchestrateFaq fails loudly when the controller exits nonzero
+  ---
+  duration_ms: 0.6781
+  type: 'test'
+  ...
+# Subtest: orchestrateXws delegates to the supervisor and stops at human gates
+ok 424 - orchestrateXws delegates to the supervisor and stops at human gates
+  ---
+  duration_ms: 15.0545
+  type: 'test'
+  ...
+# Subtest: orchestrateXws forwards --new collection options once and completes
+ok 425 - orchestrateXws forwards --new collection options once and completes
+  ---
+  duration_ms: 20.0072
+  type: 'test'
+  ...
+# Subtest: orchestrateXws honors no-wait-busy and retry-exhausted terminal
+ok 426 - orchestrateXws honors no-wait-busy and retry-exhausted terminal
+  ---
+  duration_ms: 14.6008
+  type: 'test'
+  ...
+# Subtest: CLI validates flow arguments and prints help
+ok 427 - CLI validates flow arguments and prints help
+  ---
+  duration_ms: 0.5771
+  type: 'test'
+  ...
+# Subtest: orchestrateFaq forwards an absolute --runtime-root to every child and keeps the status probe read-only
+ok 428 - orchestrateFaq forwards an absolute --runtime-root to every child and keeps the status probe read-only
+  ---
+  duration_ms: 52.0028
+  type: 'test'
+  ...
+# {
+#   "flow": "faq",
+#   "period": "2026-08-23_2026-08-29",
+#   "status": "IN_PROGRESS",
+#   "nextAction": "LOCK_TOP5",
+#   "top5Count": 0,
+#   "completedProducts": 0,
+#   "rawRecords": 0,
+#   "topicRecords": 0,
+#   "operatorRecords": 0,
+#   "summariesPublished": false,
+#   "decision": "DRY_RUN",
+#   "reason": "将执行: d:\\\\Retire\\\\sycm-automation\\\\runtime\\\\run-faq-operator.mjs --advance --period-start 2026-08-23 --period-end 2026-08-29 --runtime-root C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\orch-faq-isolated-LSoUOm",
+#   "eventsPath": "C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\orch-faq-isolated-LSoUOm\\\\orchestrator\\\\faq-2026-08-23_2026-08-29\\\\events.jsonl",
+#   "stages": 0
+# }
+# Subtest: CLI dry-run pointed at a temp root reports from that root and leaves the repo receipts untouched
+ok 429 - CLI dry-run pointed at a temp root reports from that root and leaves the repo receipts untouched
+  ---
+  duration_ms: 429.7991
+  type: 'test'
+  ...
+# Subtest: the real completed FAQ period still reads as DONE — via the pure reader, with zero writes
+ok 430 - the real completed FAQ period still reads as DONE — via the pure reader, with zero writes
+  ---
+  duration_ms: 1110.9004
+  type: 'test'
+  ...
+# Subtest: orchestrateXws parses the last JSON line when the supervisor streams child output first
+ok 431 - orchestrateXws parses the last JSON line when the supervisor streams child output first
+  ---
+  duration_ms: 13.6136
+  type: 'test'
+  ...
+# Subtest: orchestrateXws falls back to stderr JSON when stdout has none
+ok 432 - orchestrateXws falls back to stderr JSON when stdout has none
+  ---
+  duration_ms: 14.1001
+  type: 'test'
+  ...
+# Subtest: parseCsv handles quoted commas and newlines
+ok 433 - parseCsv handles quoted commas and newlines
+  ---
+  duration_ms: 0.9504
+  type: 'test'
+  ...
+# Subtest: buildCollectionPlan locks the latest weekly A top five to main records
+ok 434 - buildCollectionPlan locks the latest weekly A top five to main records
+  ---
+  duration_ms: 0.4332
+  type: 'test'
+  ...
+# Subtest: buildCollectionPlan accepts an empty week instead of blocking the flow
+ok 435 - buildCollectionPlan accepts an empty week instead of blocking the flow
+  ---
+  duration_ms: 0.1067
+  type: 'test'
+  ...
+# Subtest: buildCollectionPlan accepts a partial week below the limit
+ok 436 - buildCollectionPlan accepts a partial week below the limit
+  ---
+  duration_ms: 0.0682
+  type: 'test'
+  ...
+# Subtest: buildRecordsFromEvidence keeps raw data and leaves analysis fields blank
+ok 437 - buildRecordsFromEvidence keeps raw data and leaves analysis fields blank
+  ---
+  duration_ms: 1.0521
+  type: 'test'
+  ...
+# Subtest: buildRecordsFromEvidence allows an empty QA export when reviews contain raw rows
+ok 438 - buildRecordsFromEvidence allows an empty QA export when reviews contain raw rows
+  ---
+  duration_ms: 0.2034
+  type: 'test'
+  ...
+# Subtest: readEvidence uses the raw review archive hash for idempotency
+ok 439 - readEvidence uses the raw review archive hash for idempotency
+  ---
+  duration_ms: 36.833
+  type: 'test'
+  ...
+# Subtest: readEvidence rejects review CSV evidence without the raw archive
+ok 440 - readEvidence rejects review CSV evidence without the raw archive
+  ---
+  duration_ms: 20.3427
+  type: 'test'
+  ...
+# Subtest: assertManifestMatches rejects a changed locked product set
+ok 441 - assertManifestMatches rejects a changed locked product set
+  ---
+  duration_ms: 0.5274
+  type: 'test'
+  ...
+# Subtest: buildRecordsFromEvidence allows a delisted product with explicit unavailable evidence on both sources
+ok 442 - buildRecordsFromEvidence allows a delisted product with explicit unavailable evidence on both sources
+  ---
+  duration_ms: 0.6465
+  type: 'test'
+  ...
+# Subtest: buildRecordsFromEvidence still rejects a zero-row product without explicit unavailable reasons
+ok 443 - buildRecordsFromEvidence still rejects a zero-row product without explicit unavailable reasons
+  ---
+  duration_ms: 0.2387
+  type: 'test'
+  ...
+# Subtest: readEvidence accepts a zero-row review export when EMPTY_SOURCE_ROWS carries a reason
+ok 444 - readEvidence accepts a zero-row review export when EMPTY_SOURCE_ROWS carries a reason
+  ---
+  duration_ms: 21.8488
+  type: 'test'
+  ...
+# Subtest: readEvidence still rejects a zero-row review export without EMPTY_SOURCE_ROWS status
+ok 445 - readEvidence still rejects a zero-row review export without EMPTY_SOURCE_ROWS status
+  ---
+  duration_ms: 24.912
+  type: 'test'
+  ...
+# Subtest: CLI entry comparison handles Windows file URLs
+ok 446 - CLI entry comparison handles Windows file URLs
+  ---
+  duration_ms: 0.4815
+  type: 'test'
+  ...
+# Subtest: local runner writes tasks and artifact without remote dependencies
+ok 447 - local runner writes tasks and artifact without remote dependencies
+  ---
+  duration_ms: 3.9155
+  type: 'test'
+  ...
+# Subtest: local runner requires an explicit provider
+ok 448 - local runner requires an explicit provider
+  ---
+  duration_ms: 0.3297
+  type: 'test'
+  ...
+# Subtest: accepts independent evidence files for a new SKU batch
+ok 449 - accepts independent evidence files for a new SKU batch
+  ---
+  duration_ms: 0.4569
+  type: 'test'
+  ...
+# Subtest: rejects a partial evidence set before reading Feishu
+ok 450 - rejects a partial evidence set before reading Feishu
+  ---
+  duration_ms: 0.2296
+  type: 'test'
+  ...
+# Subtest: does not fall back to the retired shared evidence directory
+ok 451 - does not fall back to the retired shared evidence directory
+  ---
+  duration_ms: 0.1522
+  type: 'test'
+  ...
+# Subtest: accepts a non-empty main table without a historical row-count baseline
+ok 452 - accepts a non-empty main table without a historical row-count baseline
+  ---
+  duration_ms: 0.6516
+  type: 'test'
+  ...
+# Subtest: builds a summary receipt without exposing parsed SKU fields
+ok 453 - builds a summary receipt without exposing parsed SKU fields
+  ---
+  duration_ms: 0.1432
+  type: 'test'
+  ...
+# Subtest: 窗口标题必须带店名：四家店的标题互不相同（否则收信人到了机器前还是要猜）
+ok 454 - 窗口标题必须带店名：四家店的标题互不相同（否则收信人到了机器前还是要猜）
+  ---
+  duration_ms: 1.7365
+  type: 'test'
+  ...
+# Subtest: 没有店名的标题一律抛错，不给一个「看起来标过了」的默认标题
+ok 455 - 没有店名的标题一律抛错，不给一个「看起来标过了」的默认标题
+  ---
+  duration_ms: 0.6648
+  type: 'test'
+  ...
+# Subtest: 标签页 URL：中文店名要编码、端口带上、没量到状态就整条不带 state
+ok 456 - 标签页 URL：中文店名要编码、端口带上、没量到状态就整条不带 state
+  ---
+  duration_ms: 0.4321
+  type: 'test'
+  ...
+# Subtest: 标签页 URL：量到状态才带 state，并且只有 ok===true 才带 ok=1
+ok 457 - 标签页 URL：量到状态才带 state，并且只有 ok===true 才带 ok=1
+  ---
+  duration_ms: 0.1591
+  type: 'test'
+  ...
+# Subtest: 页签分类：对着 2026-09-18 实测的两种窗口，必需/残留分得开
+ok 458 - 页签分类：对着 2026-09-18 实测的两种窗口，必需/残留分得开
+  ---
+  duration_ms: 1.1657
+  type: 'test'
+  ...
+# Subtest: 页签分类：工作页与标签页永远不算残留（否则整理页签会把链路要用的关掉）
+ok 459 - 页签分类：工作页与标签页永远不算残留（否则整理页签会把链路要用的关掉）
+  ---
+  duration_ms: 0.7548
+  type: 'test'
+  ...
+# Subtest: isLabelTab：认仓库内那份，也认机器上遗留的旧文件名（不把它们当成两个不同标签页）
+ok 460 - isLabelTab：认仓库内那份，也认机器上遗留的旧文件名（不把它们当成两个不同标签页）
+  ---
+  duration_ms: 0.1781
+  type: 'test'
+  ...
+# Subtest: 挂标签页是幂等的：已经有一个就导航它，绝不新建第二个（否则每次都多一个页签）
+ok 461 - 挂标签页是幂等的：已经有一个就导航它，绝不新建第二个（否则每次都多一个页签）
+  ---
+  duration_ms: 0.7666
+  type: 'test'
+  ...
+# Subtest: 没有标签页时才新建一个，且建出来的是这家店的标签页
+ok 462 - 没有标签页时才新建一个，且建出来的是这家店的标签页
+  ---
+  duration_ms: 0.4997
+  type: 'test'
+  ...
+# Subtest: 堆了多个标签页就停手：既不导航也不新建（关哪一个都是替人做决定）
+ok 463 - 堆了多个标签页就停手：既不导航也不新建（关哪一个都是替人做决定）
+  ---
+  duration_ms: 0.5033
+  type: 'test'
+  ...
+# Subtest: 仓库里那份标签页真的把店名写进了 window.title（这是它唯一真正起作用的地方）
+ok 464 - 仓库里那份标签页真的把店名写进了 window.title（这是它唯一真正起作用的地方）
+  ---
+  duration_ms: 0.4198
+  type: 'test'
+  ...
+# Subtest: 标签页 URL 的参数名必须与页面读的参数名一一对得上
+ok 465 - 标签页 URL 的参数名必须与页面读的参数名一一对得上
+  ---
+  duration_ms: 0.434
+  type: 'test'
+  ...
+# Subtest: 登录状态必须真的落到页面元素上，且是「量到才显示」
+ok 466 - 登录状态必须真的落到页面元素上，且是「量到才显示」
+  ---
+  duration_ms: 0.278
+  type: 'test'
+  ...
+# Subtest: 会员名从登记表读，不在标签页这一层另抄一份（另抄的那份会慢慢和登记表对不上）
+ok 467 - 会员名从登记表读，不在标签页这一层另抄一份（另抄的那份会慢慢和登记表对不上）
+  ---
+  duration_ms: 0.3919
+  type: 'test'
+  ...
+# Subtest: 会员名必须真的落到页面元素上，且是「量到才显示」
+ok 468 - 会员名必须真的落到页面元素上，且是「量到才显示」
+  ---
+  duration_ms: 0.4936
+  type: 'test'
+  ...
+# Subtest: 挂标签页时把会员名一起带上（不透传的话页面上那一行永远是空的）
+ok 469 - 挂标签页时把会员名一起带上（不透传的话页面上那一行永远是空的）
+  ---
+  duration_ms: 0.3
+  type: 'test'
+  ...
+# Subtest: 标签页 URL 里只许出现账号名，绝不许出现密码（这个 URL 会进浏览历史）
+ok 470 - 标签页 URL 里只许出现账号名，绝不许出现密码（这个 URL 会进浏览历史）
+  ---
+  duration_ms: 2.1556
+  type: 'test'
+  ...
+# Subtest: 底部提示必须随登录态变：没量到登录态时不许说「右边那个就是登录页」
+ok 471 - 底部提示必须随登录态变：没量到登录态时不许说「右边那个就是登录页」
+  ---
+  duration_ms: 0.3671
+  type: 'test'
+  ...
+# Subtest: 清理计划：19034 那台实测清单 —— 关掉多余千牛与空白页，工作页一个不动
+ok 472 - 清理计划：19034 那台实测清单 —— 关掉多余千牛与空白页，工作页一个不动
+  ---
+  duration_ms: 0.3694
+  type: 'test'
+  ...
+# Subtest: 清理计划：19032 那台（已有标签页）——标签页只留一个，不被当成重复清掉
+ok 473 - 清理计划：19032 那台（已有标签页）——标签页只留一个，不被当成重复清掉
+  ---
+  duration_ms: 0.1323
+  type: 'test'
+  ...
+# Subtest: 清理计划：同一个后台的两个页面都要关掉一个 —— 那不是「看着乱」，是会让判据直接失败
+ok 474 - 清理计划：同一个后台的两个页面都要关掉一个 —— 那不是「看着乱」，是会让判据直接失败
+  ---
+  duration_ms: 0.2229
+  type: 'test'
+  ...
+# Subtest: 清理计划的安全阀：任何「必须保留一个」的类只要存在，就至少留一个（永不把某类清空）
+ok 475 - 清理计划的安全阀：任何「必须保留一个」的类只要存在，就至少留一个（永不把某类清空）
+  ---
+  duration_ms: 0.1963
+  type: 'test'
+  ...
+# Subtest: 清理默认不开：不带 --prune 时它就不该存在这个动作
+ok 476 - 清理默认不开：不带 --prune 时它就不该存在这个动作
+  ---
+  duration_ms: 0.1167
+  type: 'test'
+  ...
+# Subtest: pruneTabsOn 默认是干跑：一次 /close 都不发
+ok 477 - pruneTabsOn 默认是干跑：一次 /close 都不发
+  ---
+  duration_ms: 0.2451
+  type: 'test'
+  ...
+# Subtest: pruneTabsOn 真跑：只关计划里的那三个，工作页一个都不碰
+ok 478 - pruneTabsOn 真跑：只关计划里的那三个，工作页一个都不碰
+  ---
+  duration_ms: 1.424
+  type: 'test'
+  ...
+# Subtest: --prune 是独占意图：带它就只清页签，不会顺手把标签页也挂了
+ok 479 - --prune 是独占意图：带它就只清页签，不会顺手把标签页也挂了
+  ---
+  duration_ms: 0.1332
+  type: 'test'
+  ...
+# Subtest: 登录页识别：对着实测的两种登录页 URL 为真，正常工作页为假
+ok 480 - 登录页识别：对着实测的两种登录页 URL 为真，正常工作页为假
+  ---
+  duration_ms: 0.0764
+  type: 'test'
+  ...
+# Subtest: 停在登录页的后台页面仍然是 work —— 改成 loginPage 会让窗口少一个后台页面
+ok 481 - 停在登录页的后台页面仍然是 work —— 改成 loginPage 会让窗口少一个后台页面
+  ---
+  duration_ms: 0.1245
+  type: 'test'
+  ...
+# Subtest: 这家店没登录这件事必须落在人看的那一行上，而不是只挂在对象字段里
+ok 482 - 这家店没登录这件事必须落在人看的那一行上，而不是只挂在对象字段里
+  ---
+  duration_ms: 0.0758
+  type: 'test'
+  ...
+# Subtest: 没证据时不许说「已登录」：URL 不是登录页 ≠ 会话有效
+ok 483 - 没证据时不许说「已登录」：URL 不是登录页 ≠ 会话有效
+  ---
+  duration_ms: 0.2508
+  type: 'test'
+  ...
+# Subtest: 浏览器自带的页面单列一类（不塞进「其它页面」，那等于没说），且不进关闭计划
+ok 484 - 浏览器自带的页面单列一类（不塞进「其它页面」，那等于没说），且不进关闭计划
+  ---
+  duration_ms: 0.2813
+  type: 'test'
+  ...
+# Subtest: 关完必须回读：/close 报成功但页面还在 ⇒ 进 failed，不许当成功
+ok 485 - 关完必须回读：/close 报成功但页面还在 ⇒ 进 failed，不许当成功
+  ---
+  duration_ms: 0.2325
+  type: 'test'
+  ...
+# Subtest: 回读校验不能把真关掉的也判成失败（否则 cleaned 永远为空，等于没清理）
+ok 486 - 回读校验不能把真关掉的也判成失败（否则 cleaned 永远为空，等于没清理）
+  ---
+  duration_ms: 0.2112
+  type: 'test'
+  ...
+# Subtest: 「是否停在登录页」只影响提示，不影响清理处置（改提示不该有副作用）
+ok 487 - 「是否停在登录页」只影响提示，不影响清理处置（改提示不该有副作用）
+  ---
+  duration_ms: 0.0819
+  type: 'test'
+  ...
+# Subtest: classify: 读不到事件文件时只写 UNKNOWN
+ok 488 - classify: 读不到事件文件时只写 UNKNOWN
+  ---
+  duration_ms: 0.6578
+  type: 'test'
+  ...
+# Subtest: classify: 进程活着且末事件够新是 RUNNING
+ok 489 - classify: 进程活着且末事件够新是 RUNNING
+  ---
+  duration_ms: 0.9703
+  type: 'test'
+  ...
+# Subtest: classify: 进程活着但末事件超过阈值是 SUSPECT_STALLED
+ok 490 - classify: 进程活着但末事件超过阈值是 SUSPECT_STALLED
+  ---
+  duration_ms: 0.1647
+  type: 'test'
+  ...
+# Subtest: classify: 进程已退出、退出码 0 才是 COMPLETED
+ok 491 - classify: 进程已退出、退出码 0 才是 COMPLETED
+  ---
+  duration_ms: 0.223
+  type: 'test'
+  ...
+# Subtest: classify: 末事件是 DONE 但没有退出码证据时不许判成功
+ok 492 - classify: 末事件是 DONE 但没有退出码证据时不许判成功
+  ---
+  duration_ms: 0.1625
+  type: 'test'
+  ...
+# Subtest: classify: 退出码非零是 FAILED
+ok 493 - classify: 退出码非零是 FAILED
+  ---
+  duration_ms: 0.0671
+  type: 'test'
+  ...
+# Subtest: classify: 给了 stdout 文件就以终端标记为准，退出码文件缺失也能判成功
+ok 494 - classify: 给了 stdout 文件就以终端标记为准，退出码文件缺失也能判成功
+  ---
+  duration_ms: 0.1343
+  type: 'test'
+  ...
+# Subtest: discoverRunDir: 只靠一份日志就能认出运行目录
+ok 495 - discoverRunDir: 只靠一份日志就能认出运行目录
+  ---
+  duration_ms: 0.1754
+  type: 'test'
+  ...
+# Subtest: readExitCode: 缺文件或非法内容一律 null，不冒充 0
+ok 496 - readExitCode: 缺文件或非法内容一律 null，不冒充 0
+  ---
+  duration_ms: 12.5547
+  type: 'test'
+  ...
+# Subtest: readTerminalMarker: 取最后一条 ADAPTIVE_DONE，没有就是 null
+ok 497 - readTerminalMarker: 取最后一条 ADAPTIVE_DONE，没有就是 null
+  ---
+  duration_ms: 8.5432
+  type: 'test'
+  ...
+# Subtest: readLatestEvent: 取嵌套 attempt 里最新的 events.jsonl，并按窗口排除历史 run
+ok 498 - readLatestEvent: 取嵌套 attempt 里最新的 events.jsonl，并按窗口排除历史 run
+  ---
+  duration_ms: 33.1201
+  type: 'test'
+  ...
+# Subtest: isProcessAlive: 当前进程活着，明显不存在的 pid 不算活着
+ok 499 - isProcessAlive: 当前进程活着，明显不存在的 pid 不算活着
+  ---
+  duration_ms: 0.223
+  type: 'test'
+  ...
+# Subtest: phaseBudget: 已知阶段用自己的预算，未知阶段回落到 staleSeconds
+ok 500 - phaseBudget: 已知阶段用自己的预算，未知阶段回落到 staleSeconds
+  ---
+  duration_ms: 0.0631
+  type: 'test'
+  ...
+# Subtest: classify: 进程活着但停在某阶段超过该阶段预算就报疑似卡死
+ok 501 - classify: 进程活着但停在某阶段超过该阶段预算就报疑似卡死
+  ---
+  duration_ms: 0.1148
+  type: 'test'
+  ...
+# Subtest: classify: 采集进度不推进时，即使事件流一直在写也报疑似卡死
+ok 502 - classify: 采集进度不推进时，即使事件流一直在写也报疑似卡死
+  ---
+  duration_ms: 0.1343
+  type: 'test'
+  ...
+# Subtest: classify: 没有 PROGRESS 事件时只用阶段预算，不受进度维度影响
+ok 503 - classify: 没有 PROGRESS 事件时只用阶段预算，不受进度维度影响
+  ---
+  duration_ms: 0.0525
+  type: 'test'
+  ...
+# Subtest: progressKey: 只认 PROGRESS，且必须至少有一个数字字段
+ok 504 - progressKey: 只认 PROGRESS，且必须至少有一个数字字段
+  ---
+  duration_ms: 0.0696
+  type: 'test'
+  ...
+# Subtest: shouldDeliver: 静默必须显式声明，默认什么都不静默
+ok 505 - shouldDeliver: 静默必须显式声明，默认什么都不静默
+  ---
+  duration_ms: 0.0737
+  type: 'test'
+  ...
+# Subtest: upserts latest A/B products by stable product ID and does not copy formula fields
+ok 506 - upserts latest A/B products by stable product ID and does not copy formula fields
+  ---
+  duration_ms: 16.76
+  type: 'test'
+  ...
+# Subtest: ignores non-A/B rows from the latest period
+ok 507 - ignores non-A/B rows from the latest period
+  ---
+  duration_ms: 0.3506
+  type: 'test'
+  ...
+# Subtest: rejects duplicate latest product IDs
+ok 508 - rejects duplicate latest product IDs
+  ---
+  duration_ms: 0.4586
+  type: 'test'
+  ...
+# Subtest: requires the weekly source keyword instead of silently defaulting to bathtub
+ok 509 - requires the weekly source keyword instead of silently defaulting to bathtub
+  ---
+  duration_ms: 0.2024
+  type: 'test'
+  ...
+# Subtest: legacy FAQ template synchronization is disabled
+ok 510 - legacy FAQ template synchronization is disabled
+  ---
+  duration_ms: 0.4138
+  type: 'test'
+  ...
+# Subtest: uses SKU唯一键 plus week start as an idempotent snapshot key
+ok 511 - uses SKU唯一键 plus week start as an idempotent snapshot key
+  ---
+  duration_ms: 2.3282
+  type: 'test'
+  ...
+# Subtest: treats Feishu null and an empty multi-select as the same snapshot value
+ok 512 - treats Feishu null and an empty multi-select as the same snapshot value
+  ---
+  duration_ms: 0.1637
+  type: 'test'
+  ...
+# Subtest: does not turn a same-week replay into an update only because collection time changed
+ok 513 - does not turn a same-week replay into an update only because collection time changed
+  ---
+  duration_ms: 0.159
+  type: 'test'
+  ...
+# Subtest: updates the same-week snapshot but creates a new row for a new week
+ok 514 - updates the same-week snapshot but creates a new row for a new week
+  ---
+  duration_ms: 2.6695
+  type: 'test'
+  ...
+# Subtest: blocks duplicate historical keys before any write
+ok 515 - blocks duplicate historical keys before any write
+  ---
+  duration_ms: 0.7558
+  type: 'test'
+  ...
+# Subtest: every runtime subdirectory that holds tests is claimed by some suite
+ok 516 - every runtime subdirectory that holds tests is claimed by some suite
+  ---
+  duration_ms: 89.6941
+  type: 'test'
+  ...
+# Subtest: directories kept out of the flat suite carry a reason
+ok 517 - directories kept out of the flat suite carry a reason
+  ---
+  duration_ms: 0.2449
+  type: 'test'
+  ...
+# Subtest: extra directories actually exist and contribute tests
+ok 518 - extra directories actually exist and contribute tests
+  ---
+  duration_ms: 1.0095
+  type: 'test'
+  ...
+# Subtest: the suite dry-run reports the same file list the discovery returns
+ok 519 - the suite dry-run reports the same file list the discovery returns
+  ---
+  duration_ms: 237.4885
+  type: 'test'
+  ...
+# Subtest: fieldSignature 与字段顺序无关
+ok 520 - fieldSignature 与字段顺序无关
+  ---
+  duration_ms: 1.5752
+  type: 'test'
+  ...
+# Subtest: fieldSignature 捕捉字段增删
+ok 521 - fieldSignature 捕捉字段增删
+  ---
+  duration_ms: 0.1191
+  type: 'test'
+  ...
+# Subtest: fieldSignature 捕捉同名改类型（副本缩水的常见形态）
+ok 522 - fieldSignature 捕捉同名改类型（副本缩水的常见形态）
+  ---
+  duration_ms: 0.0578
+  type: 'test'
+  ...
+# Subtest: fieldSignature 对空输入与 undefined 都给得出摘要
+ok 523 - fieldSignature 对空输入与 undefined 都给得出摘要
+  ---
+  duration_ms: 0.1595
+  type: 'test'
+  ...
+# Subtest: recordCountFrom：真实的 0 行读成 0，不是「未知」
+ok 524 - recordCountFrom：真实的 0 行读成 0，不是「未知」
+  ---
+  duration_ms: 0.0692
+  type: 'test'
+  ...
+# Subtest: recordCountFrom：读不到 total 返回 null，绝不塌成 0
+ok 525 - recordCountFrom：读不到 total 返回 null，绝不塌成 0
+  ---
+  duration_ms: 0.0469
+  type: 'test'
+  ...
+# Subtest: recordCountFrom：正常行数原样返回
+ok 526 - recordCountFrom：正常行数原样返回
+  ---
+  duration_ms: 0.0371
+  type: 'test'
+  ...
+# Subtest: danglingTableRefs：表达式引用本 base 的表不算悬空
+ok 527 - danglingTableRefs：表达式引用本 base 的表不算悬空
+  ---
+  duration_ms: 0.1794
+  type: 'test'
+  ...
+# Subtest: danglingTableRefs：引用别处的表就报悬空（复制 base 后最常见的事故）
+ok 528 - danglingTableRefs：引用别处的表就报悬空（复制 base 后最常见的事故）
+  ---
+  duration_ms: 0.2006
+  type: 'test'
+  ...
+# Subtest: danglingTableRefs：同一字段重复引用只报一次，且不误报 field_id
+ok 529 - danglingTableRefs：同一字段重复引用只报一次，且不误报 field_id
+  ---
+  duration_ms: 0.2339
+  type: 'test'
+  ...
+# Subtest: danglingTableRefs：没有 property 的字段不参与判定
+ok 530 - danglingTableRefs：没有 property 的字段不参与判定
+  ---
+  duration_ms: 0.1011
+  type: 'test'
+  ...
+# Subtest: compareKeywordBases：不足两个 profile 时不做对比
+ok 531 - compareKeywordBases：不足两个 profile 时不做对比
+  ---
+  duration_ms: 0.1764
+  type: 'test'
+  ...
+# Subtest: compareKeywordBases：逐表签名相同（行数不同不算差异）
+ok 532 - compareKeywordBases：逐表签名相同（行数不同不算差异）
+  ---
+  duration_ms: 0.1319
+  type: 'test'
+  ...
+# Subtest: compareKeywordBases：一侧缺表就报 ONLY_ONE_SIDE，不当作一致
+ok 533 - compareKeywordBases：一侧缺表就报 ONLY_ONE_SIDE，不当作一致
+  ---
+  duration_ms: 0.0615
+  type: 'test'
+  ...
+# Subtest: compareKeywordBases：签名不同时给出双方签名与独有字段
+ok 534 - compareKeywordBases：签名不同时给出双方签名与独有字段
+  ---
+  duration_ms: 0.1412
+  type: 'test'
+  ...
+# Subtest: compareStructures：不足两个 profile 时不做对比
+ok 535 - compareStructures：不足两个 profile 时不做对比
+  ---
+  duration_ms: 0.0889
+  type: 'test'
+  ...
+# Subtest: compareStructures：字段签名一致时给出空差异
+ok 536 - compareStructures：字段签名一致时给出空差异
+  ---
+  duration_ms: 0.0497
+  type: 'test'
+  ...
+# Subtest: compareStructures：签名不同时逐表报差异与独有字段
+ok 537 - compareStructures：签名不同时逐表报差异与独有字段
+  ---
+  duration_ms: 0.0695
+  type: 'test'
+  ...
+# Subtest: compareStructures：一侧没查到该表时标 NOT_INSPECTED，而不是当作一致
+ok 538 - compareStructures：一侧没查到该表时标 NOT_INSPECTED，而不是当作一致
+  ---
+  duration_ms: 0.0964
+  type: 'test'
+  ...
+# Subtest: render：未知行数显示为 "-"，不冒充 0 行
+ok 539 - render：未知行数显示为 "-"，不冒充 0 行
+  ---
+  duration_ms: 0.3838
+  type: 'test'
+  ...
+# Subtest: render：两个 profile 无差异时明确说字段签名相同
+ok 540 - render：两个 profile 无差异时明确说字段签名相同
+  ---
+  duration_ms: 0.0894
+  type: 'test'
+  ...
+# Subtest: render：没查词库时不冒称「词库两侧一致」
+ok 541 - render：没查词库时不冒称「词库两侧一致」
+  ---
+  duration_ms: 0.2055
+  type: 'test'
+  ...
+# Subtest: render：词库查到表且两侧一致时才说相同
+ok 542 - render：词库查到表且两侧一致时才说相同
+  ---
+  duration_ms: 0.1208
+  type: 'test'
+  ...
+# Subtest: render：词库悬空引用逐条列出来
+ok 543 - render：词库悬空引用逐条列出来
+  ---
+  duration_ms: 0.0707
+  type: 'test'
+  ...
+# Subtest: validation fixture covers live two-week decisions and unknown evidence
+ok 544 - validation fixture covers live two-week decisions and unknown evidence
+  ---
+  duration_ms: 1.079
+  type: 'test'
+  ...
+# Subtest: validation mutation guard permits only the isolated table and approved test rows
+ok 545 - validation mutation guard permits only the isolated table and approved test rows
+  ---
+  duration_ms: 0.8571
+  type: 'test'
+  ...
+# Subtest: live result verification rejects missing, wrong, and formula-error outputs
+ok 546 - live result verification rejects missing, wrong, and formula-error outputs
+  ---
+  duration_ms: 0.4913
+  type: 'test'
+  ...
+# Subtest: registry declares owners and prompts from one source
+ok 547 - registry declares owners and prompts from one source
+  ---
+  duration_ms: 0.6082
+  type: 'test'
+  ...
+# Subtest: local analysis creates provider tasks without any Feishu mutation
+ok 548 - local analysis creates provider tasks without any Feishu mutation
+  ---
+  duration_ms: 0.5325
+  type: 'test'
+  ...
+# Subtest: provider aggregates use local short task identities and map to real records
+ok 549 - provider aggregates use local short task identities and map to real records
+  ---
+  duration_ms: 1.0798
+  type: 'test'
+  ...
+# Subtest: provider results require exact record identity and validated fields
+ok 550 - provider results require exact record identity and validated fields
+  ---
+  duration_ms: 0.3734
+  type: 'test'
+  ...
+# Subtest: provider results normalize Codex record aggregates only for known tasks
+ok 551 - provider results normalize Codex record aggregates only for known tasks
+  ---
+  duration_ms: 0.415
+  type: 'test'
+  ...
+# Subtest: artifact refuses to finalize without complete local AI evidence
+ok 552 - artifact refuses to finalize without complete local AI evidence
+  ---
+  duration_ms: 0.527
+  type: 'test'
+  ...
+# Subtest: artifact rejects a three-table publish plan without frozen history and library snapshots
+ok 553 - artifact rejects a three-table publish plan without frozen history and library snapshots
+  ---
+  duration_ms: 0.3286
+  type: 'test'
+  ...
+# Subtest: artifact includes history and library plans when snapshots are frozen
+ok 554 - artifact includes history and library plans when snapshots are frozen
+  ---
+  duration_ms: 3.0111
+  type: 'test'
+  ...
+# Subtest: history plan updates incomplete existing records without overwriting settled values
+ok 555 - history plan updates incomplete existing records without overwriting settled values
+  ---
+  duration_ms: 2.4826
+  type: 'test'
+  ...
+# Subtest: artifact stores final values and publish plan without formulas
+ok 556 - artifact stores final values and publish plan without formulas
+  ---
+  duration_ms: 0.7071
+  type: 'test'
+  ...
+# Subtest: publish plan rejects identity or digest drift
+ok 557 - publish plan rejects identity or digest drift
+  ---
+  duration_ms: 0.4353
+  type: 'test'
+  ...
+# Subtest: builds and parses dated weekly table names
+ok 558 - builds and parses dated weekly table names
+  ---
+  duration_ms: 1.2108
+  type: 'test'
+  ...
+# Subtest: selects the newest weekly table by start date
+ok 559 - selects the newest weekly table by start date
+  ---
+  duration_ms: 5.6978
+  type: 'test'
+  ...
+# Subtest: 状态词表包含 LOGIN-STATE-MANAGEMENT §4 的每一个值，且只加不删
+ok 560 - 状态词表包含 LOGIN-STATE-MANAGEMENT §4 的每一个值，且只加不删
+  ---
+  duration_ms: 0.7696
+  type: 'test'
+  ...
+# Subtest: NOT_IMPLEMENTED 与 AUTH_UNKNOWN 必须是两个值
+ok 561 - NOT_IMPLEMENTED 与 AUTH_UNKNOWN 必须是两个值
+  ---
+  duration_ms: 0.0815
+  type: 'test'
+  ...
+# Subtest: 未实现的层必须写清卡在哪，不许留空
+ok 562 - 未实现的层必须写清卡在哪，不许留空
+  ---
+  duration_ms: 0.1367
+  type: 'test'
+  ...
+# Subtest: L1 环境层已实现；L0/L2/L3 尚未（本轮的事实，不许被顺手改成已实现）
+ok 563 - L1 环境层已实现；L0/L2/L3 尚未（本轮的事实，不许被顺手改成已实现）
+  ---
+  duration_ms: 0.0506
+  type: 'test'
+  ...
+# Subtest: profile 对得上 ⇒ 这一项没有结论（返回 null，不产生 finding）
+ok 564 - profile 对得上 ⇒ 这一项没有结论（返回 null，不产生 finding）
+  ---
+  duration_ms: 0.1884
+  type: 'test'
+  ...
+# Subtest: 端口没人监听 ⇒ 停线，理由是「调试端口不可用」
+ok 565 - 端口没人监听 ⇒ 停线，理由是「调试端口不可用」
+  ---
+  duration_ms: 0.0719
+  type: 'test'
+  ...
+# Subtest: 端口被别的东西占着（在监听但不是 CDP）⇒ 停线
+ok 566 - 端口被别的东西占着（在监听但不是 CDP）⇒ 停线
+  ---
+  duration_ms: 0.0506
+  type: 'test'
+  ...
+# Subtest: 读出来是**别人的** profile ⇒ 停线（这是正面证据，不是猜的）
+ok 567 - 读出来是**别人的** profile ⇒ 停线（这是正面证据，不是猜的）
+  ---
+  duration_ms: 0.05
+  type: 'test'
+  ...
+# Subtest: CDP 连得上但读不出 profile ⇒ **不停线**（读不到不等于有问题）
+ok 568 - CDP 连得上但读不出 profile ⇒ **不停线**（读不到不等于有问题）
+  ---
+  duration_ms: 0.1682
+  type: 'test'
+  ...
+# Subtest: 目标页面恰好一个 ⇒ 通过
+ok 569 - 目标页面恰好一个 ⇒ 通过
+  ---
+  duration_ms: 0.595
+  type: 'test'
+  ...
+# Subtest: 目标页面不在 ⇒ 停线
+ok 570 - 目标页面不在 ⇒ 停线
+  ---
+  duration_ms: 0.1542
+  type: 'test'
+  ...
+# Subtest: 目标页面多于一个 ⇒ 停线（认页面靠的是「恰好一个」）
+ok 571 - 目标页面多于一个 ⇒ 停线（认页面靠的是「恰好一个」）
+  ---
+  duration_ms: 0.1179
+  type: 'test'
+  ...
+# Subtest: 读不到页面清单 ≠ 页面不在（两件事的处置不同，不能合并）
+ok 572 - 读不到页面清单 ≠ 页面不在（两件事的处置不同，不能合并）
+  ---
+  duration_ms: 0.0529
+  type: 'test'
+  ...
+# Subtest: 没声明期望页面就不产生结论（不假装检查过）
+ok 573 - 没声明期望页面就不产生结论（不假装检查过）
+  ---
+  duration_ms: 0.036
+  type: 'test'
+  ...
+# Subtest: 声明了出网代理且连得上 ⇒ 通过
+ok 574 - 声明了出网代理且连得上 ⇒ 通过
+  ---
+  duration_ms: 0.0759
+  type: 'test'
+  ...
+# Subtest: 端口能连、但没拿它真发过一次代理请求 ⇒ 报「未证明」，不停线
+ok 575 - 端口能连、但没拿它真发过一次代理请求 ⇒ 报「未证明」，不停线
+  ---
+  duration_ms: 0.0936
+  type: 'test'
+  ...
+# Subtest: 拿它真的发过一次代理请求并读到状态行 ⇒ 才是通过
+ok 576 - 拿它真的发过一次代理请求并读到状态行 ⇒ 才是通过
+  ---
+  duration_ms: 0.0282
+  type: 'test'
+  ...
+# Subtest: 声明了出网代理但连不上 ⇒ 停线，且理由能直接落到判定表
+ok 577 - 声明了出网代理但连不上 ⇒ 停线，且理由能直接落到判定表
+  ---
+  duration_ms: 0.0437
+  type: 'test'
+  ...
+# Subtest: 没声明出网代理 ⇒ 报缺口但不停线（缺口本身要可见，不能静默）
+ok 578 - 没声明出网代理 ⇒ 报缺口但不停线（缺口本身要可见，不能静默）
+  ---
+  duration_ms: 0.0271
+  type: 'test'
+  ...
+# Subtest: 探针自身出错 ⇒ 不停线，但结论是「没拿到」而不是「通」
+ok 579 - 探针自身出错 ⇒ 不停线，但结论是「没拿到」而不是「通」
+  ---
+  duration_ms: 0.0292
+  type: 'test'
+  ...
+# Subtest: 出网代理的声明解析：只认 host:port，认不出来就当没声明（不猜端口）
+ok 580 - 出网代理的声明解析：只认 host:port，认不出来就当没声明（不猜端口）
+  ---
+  duration_ms: 0.184
+  type: 'test'
+  ...
+# Subtest: ok 的判据是「有没有 blocking」，不是「findings 是不是空」
+ok 581 - ok 的判据是「有没有 blocking」，不是「findings 是不是空」
+  ---
+  duration_ms: 0.0798
+  type: 'test'
+  ...
+# Subtest: 全绿时仍要点名「哪几层没检查过」，不得让人以为四层都过了
+ok 582 - 全绿时仍要点名「哪几层没检查过」，不得让人以为四层都过了
+  ---
+  duration_ms: 1.1123
+  type: 'test'
+  ...
+# Subtest: 出网代理连不上时，blocking 里的第一条理由就是判定表能认的那条
+ok 583 - 出网代理连不上时，blocking 里的第一条理由就是判定表能认的那条
+  ---
+  duration_ms: 0.1701
+  type: 'test'
+  ...
+# Subtest: 探针自己抛错 ⇒ 不停线（体检崩了不等于环境坏了）
+ok 584 - 探针自己抛错 ⇒ 不停线（体检崩了不等于环境坏了）
+  ---
+  duration_ms: 0.1546
+  type: 'test'
+  ...
+# Subtest: 浏览器键写错在**创建时**就抛，不留到体检跑起来才变成「体检自己崩了」
+ok 585 - 浏览器键写错在**创建时**就抛，不留到体检跑起来才变成「体检自己崩了」
+  ---
+  duration_ms: 0.2592
+  type: 'test'
+  ...
+# Subtest: 浏览器键也认**店铺实例**（运营叫法）：不认它们，体检只覆盖推送那台，采集那几台失明
+ok 586 - 浏览器键也认**店铺实例**（运营叫法）：不认它们，体检只覆盖推送那台，采集那几台失明
+  ---
+  duration_ms: 0.2194
+  type: 'test'
+  ...
+# Subtest: 店铺键写错仍在创建时抛，且错误里同时点名两条链与店铺实例两种合法来源
+ok 587 - 店铺键写错仍在创建时抛，且错误里同时点名两条链与店铺实例两种合法来源
+  ---
+  duration_ms: 0.0862
+  type: 'test'
+  ...
+# Subtest: 给了探测地址就走真代理请求（不再只看端口开没开）
+ok 588 - 给了探测地址就走真代理请求（不再只看端口开没开）
+  ---
+  duration_ms: 1.9407
+  type: 'test'
+  ...
+# Subtest: 代理按协议应答 ⇒ 通过；没给探测地址 ⇒ 只报「未证明」且不停线
+ok 589 - 代理按协议应答 ⇒ 通过；没给探测地址 ⇒ 只报「未证明」且不停线
+  ---
+  duration_ms: 0.2743
+  type: 'test'
+  ...
+# Subtest: 体检会发出的每个理由都已在判定表里表态
+ok 590 - 体检会发出的每个理由都已在判定表里表态
+  ---
+  duration_ms: 2.6587
+  type: 'test'
+  ...
+# Subtest: 体检的两个新理由都允许自动重试（人修完就该继续，不该等人再点一次）
+ok 591 - 体检的两个新理由都允许自动重试（人修完就该继续，不该等人再点一次）
+  ---
+  duration_ms: 0.0767
+  type: 'test'
+  ...
+# Subtest: 复用的既有理由 BROWSER_DEBUG_PORT 也在表里（复用也要表过态）
+ok 592 - 复用的既有理由 BROWSER_DEBUG_PORT 也在表里（复用也要表过态）
+  ---
+  duration_ms: 0.0301
+  type: 'test'
+  ...
+# Subtest: 期望页面按**路线**取，不按浏览器取并集（否则一条链会被要求检查它用不到的页面）
+ok 593 - 期望页面按**路线**取，不按浏览器取并集（否则一条链会被要求检查它用不到的页面）
+  ---
+  duration_ms: 0.1078
+  type: 'test'
+  ...
+# Subtest: 路线键写错 ⇒ 直接抛（不静默退回「不检查页面」）
+ok 594 - 路线键写错 ⇒ 直接抛（不静默退回「不检查页面」）
+  ---
+  duration_ms: 0.0919
+  type: 'test'
+  ...
+# Subtest: 两个来源都不给 ⇒ 不检查页面，且收据里看得出这一小项没跑
+ok 595 - 两个来源都不给 ⇒ 不检查页面，且收据里看得出这一小项没跑
+  ---
+  duration_ms: 0.1182
+  type: 'test'
+  ...
+# Subtest: 给了 routeKey ⇒ 按该路线数页面
+ok 596 - 给了 routeKey ⇒ 按该路线数页面
+  ---
+  duration_ms: 0.2308
+  type: 'test'
+  ...
+# Subtest: expectedPages 给了但不是数组 ⇒ 创建时抛（退回去就是一个永远不报错的检查）
+ok 597 - expectedPages 给了但不是数组 ⇒ 创建时抛（退回去就是一个永远不报错的检查）
+  ---
+  duration_ms: 0.0892
+  type: 'test'
+  ...
+# Subtest: CLI：--help 打用法并成功退出；未知参数以「体检自身出错」退出
+ok 598 - CLI：--help 打用法并成功退出；未知参数以「体检自身出错」退出
+  ---
+  duration_ms: 0.2132
+  type: 'test'
+  ...
+# Subtest: CLI：路线键写错以「体检自身出错」退出（3），不是「不通过」（2）
+ok 599 - CLI：路线键写错以「体检自身出错」退出（3），不是「不通过」（2）
+  ---
+  duration_ms: 0.0847
+  type: 'test'
+  ...
+# Subtest: CLI：环境有问题退出 2 并给出人话；全绿退出 0
+ok 600 - CLI：环境有问题退出 2 并给出人话；全绿退出 0
+  ---
+  duration_ms: 0.3959
+  type: 'test'
+  ...
+# Subtest: classifies the observed Xiaowangshen login wall before any click
+ok 601 - classifies the observed Xiaowangshen login wall before any click
+  ---
+  duration_ms: 1.2686
+  type: 'test'
+  ...
+# Subtest: classifies a product page with the plugin control and no login wall as ready
+ok 602 - classifies a product page with the plugin control and no login wall as ready
+  ---
+  duration_ms: 0.0806
+  type: 'test'
+  ...
+# Subtest: does not treat another product page as an authenticated source
+ok 603 - does not treat another product page as an authenticated source
+  ---
+  duration_ms: 0.0526
+  type: 'test'
+  ...
+# Subtest: builds sanitized status and operator alert artifacts
+ok 604 - builds sanitized status and operator alert artifacts
+  ---
+  duration_ms: 5.832
+  type: 'test'
+  ...
+# Subtest: requires source identity and output directory
+ok 605 - requires source identity and output directory
+  ---
+  duration_ms: 0.444
+  type: 'test'
+  ...
+# Subtest: writes and deduplicates an AUTH_REQUIRED operator alert without external notification
+ok 606 - writes and deduplicates an AUTH_REQUIRED operator alert without external notification
+  ---
+  duration_ms: 68.302
+  type: 'test'
+  ...
+# Subtest: 探测读不到东西时判 AUTH_UNKNOWN，而不是怪到「页面商品不对」头上
+ok 607 - 探测读不到东西时判 AUTH_UNKNOWN，而不是怪到「页面商品不对」头上
+  ---
+  duration_ms: 0.2404
+  type: 'test'
+  ...
+# Subtest: 声明了期望账号才核对身份：不同判 ACCOUNT_MISMATCH，读不到判 AUTH_UNKNOWN
+ok 608 - 声明了期望账号才核对身份：不同判 ACCOUNT_MISMATCH，读不到判 AUTH_UNKNOWN
+  ---
+  duration_ms: 0.3333
+  type: 'test'
+  ...
+# Subtest: 身份判据必须成对声明，只给半个直接拒
+ok 609 - 身份判据必须成对声明，只给半个直接拒
+  ---
+  duration_ms: 0.3298
+  type: 'test'
+  ...
+# Subtest: 每个需要人的状态都有自己的 type 与一句「下一步做什么」
+ok 610 - 每个需要人的状态都有自己的 type 与一句「下一步做什么」
+  ---
+  duration_ms: 2.2571
+  type: 'test'
+  ...
+# Subtest: 状态工件带上身份判据与「读不到什么」的清单
+ok 611 - 状态工件带上身份判据与「读不到什么」的清单
+  ---
+  duration_ms: 0.1581
+  type: 'test'
+  ...
+# Subtest: updates one sanitized index while preserving the product identity and artifact basenames
+ok 612 - updates one sanitized index while preserving the product identity and artifact basenames
+  ---
+  duration_ms: 31.9431
+  type: 'test'
+  ...
+# Subtest: separates absent, identical, and conflicting SKU unique keys without overwriting data
+ok 613 - separates absent, identical, and conflicting SKU unique keys without overwriting data
+  ---
+  duration_ms: 2.271
+  type: 'test'
+  ...
+# Subtest: rejects a SKU schema that reintroduces the retired large-space option
+ok 614 - rejects a SKU schema that reintroduces the retired large-space option
+  ---
+  duration_ms: 0.8134
+  type: 'test'
+  ...
+# Subtest: rejects source data when the current Feishu formula is no longer an A or B competitor
+ok 615 - rejects source data when the current Feishu formula is no longer an A or B competitor
+  ---
+  duration_ms: 0.4108
+  type: 'test'
+  ...
+# Subtest: validates the selected product when Feishu represents its link as a hyperlink object
+ok 616 - validates the selected product when Feishu represents its link as a hyperlink object
+  ---
+  duration_ms: 0.272
+  type: 'test'
+  ...
+# Subtest: does not make a write plan ready while the SKU table contains duplicate unique keys
+ok 617 - does not make a write plan ready while the SKU table contains duplicate unique keys
+  ---
+  duration_ms: 0.1772
+  type: 'test'
+  ...
+# Subtest: expands verified valid combinations instead of pairing payload lines by position
+ok 618 - expands verified valid combinations instead of pairing payload lines by position
+  ---
+  duration_ms: 2.5362
+  type: 'test'
+  ...
+# Subtest: rejects a topology that includes a page-marked empty option in a valid SKU
+ok 619 - rejects a topology that includes a page-marked empty option in a valid SKU
+  ---
+  duration_ms: 1.5251
+  type: 'test'
+  ...
+# Subtest: rejects a payload that no longer matches the captured topology hash
+ok 620 - rejects a payload that no longer matches the captured topology hash
+  ---
+  duration_ms: 0.7427
+  type: 'test'
+  ...
+# Subtest: parses plus-separated specification options without losing the SKU name
+ok 621 - parses plus-separated specification options without losing the SKU name
+  ---
+  duration_ms: 0.2544
+  type: 'test'
+  ...
+# Subtest: preserves the SKU name for each combination when a product has multiple names
+ok 622 - preserves the SKU name for each combination when a product has multiple names
+  ---
+  duration_ms: 0.2572
+  type: 'test'
+  ...
+# Subtest: preserves a plain specification value as both name and specification
+ok 623 - preserves a plain specification value as both name and specification
+  ---
+  duration_ms: 0.1431
+  type: 'test'
+  ...
+# Subtest: builds valid SKU combinations from page prop paths and excludes page-marked empty variants
+ok 624 - builds valid SKU combinations from page prop paths and excludes page-marked empty variants
+  ---
+  duration_ms: 9.7061
+  type: 'test'
+  ...
+# Subtest: rejects a nonempty page combination without a current price representation
+ok 625 - rejects a nonempty page combination without a current price representation
+  ---
+  duration_ms: 0.5256
+  type: 'test'
+  ...
+# Subtest: rejects a payload line not accounted for by the page property values
+ok 626 - rejects a payload line not accounted for by the page property values
+  ---
+  duration_ms: 0.2562
+  type: 'test'
+  ...
+# Subtest: supports plus-separated specification options with varying segment counts
+ok 627 - supports plus-separated specification options with varying segment counts
+  ---
+  duration_ms: 0.3476
+  type: 'test'
+  ...
+# Subtest: uses the stable hyphen separator when a specification value contains an internal plus sign
+ok 628 - uses the stable hyphen separator when a specification value contains an internal plus sign
+  ---
+  duration_ms: 0.2243
+  type: 'test'
+  ...
+# Subtest: prefers hyphen when both separators produce the same observed segment count
+ok 629 - prefers hyphen when both separators produce the same observed segment count
+  ---
+  duration_ms: 0.2307
+  type: 'test'
+  ...
+# Subtest: accepts mixed plain and plus-separated specification values
+ok 630 - accepts mixed plain and plus-separated specification values
+  ---
+  duration_ms: 0.6581
+  type: 'test'
+  ...
+# Subtest: accepts a current price object when a page SKU has no subPrice field
+ok 631 - accepts a current price object when a page SKU has no subPrice field
+  ---
+  duration_ms: 0.1347
+  type: 'test'
+  ...
+# Subtest: supports plain specification values when the page exposes no stable separator
+ok 632 - supports plain specification values when the page exposes no stable separator
+  ---
+  duration_ms: 0.2918
+  type: 'test'
+  ...
+1..632
+# tests 632
+# suites 0
+# pass 632
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 7067.5876
