@@ -85,6 +85,84 @@ export const BROWSER_PROFILES = Object.freeze({
 });
 
 // ---------------------------------------------------------------------------
+// 店铺隔离实例（2026-09-18 加）：「按店铺实例化」的端口与 profile 来源。
+// ---------------------------------------------------------------------------
+// 为什么需要：日报链原先只有**一个**商家浏览器（dailyReportBrowser 19022），
+// 一台机器上只能登一家店；而运营要的是**一轮采五家店**（2026-09-18）。
+//
+// 三个「不能省」都是实测得来：
+//   1) profile 不能共用。一个浏览器 profile 只能是一个淘宝身份（见 BROWSER_ACCOUNT）。
+//      这四个 profile 是 2026-09-18 专门为「实人验证一次、长期保活」建的
+//      （D:/Retire/edge-profiles/<名>，首次启动带 --disable-sync）。
+//   2) 调试端口不能共用。一个浏览器一个调试端口，端口是它的门牌号。
+//   3) 代理端口不能共用，而且**必须有**：cdp-proxy「连哪个浏览器」是 **import 期常量**
+//      （browser-discovery.mjs 的 ISOLATED_PORT）⇒ 换浏览器要重启进程。
+//      而采集脚本（collect-shop-report / collect-promotion-report / readback-daily-report）
+//      走的是代理的 /targets /eval /navigate /click /screenshot；裸 CDP 端口只有 /json/list
+//      ⇒ 2026-09-18 实测：四个店铺窗口「页面上什么都有，脚本一个也连不上」。
+//
+// 端口段 19041-19049：与日报链（19022/19023）、运营台（19024）、
+// 以及这四个浏览器自己的调试端口（19031-19034）都不重叠。
+//
+// 键 = 运营叫法（与 skills/sycm-alimama-daily-report/scripts/shop-identities.mjs 的
+// `key` 同源；`browser-ports.test.mjs` 会交叉核对两边，改名会让测试红而不是静默漂移）。
+export const SHOP_BROWSERS = Object.freeze({
+  里可林淘宝: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/likelin-home',
+    browserPort: 19031,
+    proxyPort: 19041,
+    browserId: 'edge-shop-likelin-home',
+    label: 'Microsoft Edge (shop likelin-home)',
+  }),
+  网林天猫: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/wanglin-flagship',
+    browserPort: 19032,
+    proxyPort: 19042,
+    browserId: 'edge-shop-wanglin-flagship',
+    label: 'Microsoft Edge (shop wanglin-flagship)',
+  }),
+  盖文淘宝: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/suixin-custom',
+    browserPort: 19033,
+    proxyPort: 19043,
+    browserId: 'edge-shop-suixin-custom',
+    label: 'Microsoft Edge (shop suixin-custom)',
+  }),
+  科塔淘宝: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/shop-j873522735',
+    browserPort: 19034,
+    proxyPort: 19044,
+    browserId: 'edge-shop-j873522735',
+    label: 'Microsoft Edge (shop j873522735)',
+  }),
+});
+
+export function shopBrowserKeys() {
+  return Object.keys(SHOP_BROWSERS);
+}
+
+/** 按运营叫法取店铺实例。**未登记一律抛错**（fail-closed），不回落成「随便连一个」。 */
+export function shopInstance(key) {
+  const found = SHOP_BROWSERS[key];
+  if (!found) {
+    throw new Error(`未登记的店铺实例「${key}」；已登记：${shopBrowserKeys().join(' / ')}`);
+  }
+  return found;
+}
+
+/**
+ * 本项目声明的**全部**固定端口（两个链 + 运营台 + 每个店铺实例的两个端口）。
+ * 「生产代码里不得写死端口」那条守卫要扫的就是这一份 —— 只扫 PROJECT_PORTS 的话，
+ * 店铺端口会成为新的法外之地（正是坑 52 的形态：换个名字继续写死）。
+ */
+export function allDeclaredPorts() {
+  return [
+    ...Object.values(PROJECT_PORTS),
+    ...Object.values(SHOP_BROWSERS).flatMap((entry) => [entry.browserPort, entry.proxyPort]),
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // 三条业务路线（关键词 / 竞品 / 日报）× 两个浏览器的归属，2026-09-16 定。
 // ---------------------------------------------------------------------------
 // 分线的判据不是「哪个 skill 顺手」，而是**站点要哪种账号**：

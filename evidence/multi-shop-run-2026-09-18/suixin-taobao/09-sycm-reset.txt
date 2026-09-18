@@ -1,0 +1,12 @@
+
+===== 2026-09-18T09:14:20.683Z =====
+$ C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe sycm-reset.mjs 19043 盖文全卫定制
+exit=0 signal= error=none
+--- stdout ---
+sycm 页 1 个（要求恰好 1 个）：
+  CD1DF77EA6BBFC96CED2409C22BCF745  https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=comm
+navigate → https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop ：HTTP 200
+回位后读到： {"href":"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","raw":"盖文全卫定制 主店","candidates":["盖文全卫定制 主店","盖文全卫定制 主店","盖文全卫定制 主店"],"shopName":"盖文全卫定制","nodeType":"主店"}
+身份核对：期望 "盖文全卫定制"，实际 "盖文全卫定制" —— 一致 ✓
+--- stderr ---
+

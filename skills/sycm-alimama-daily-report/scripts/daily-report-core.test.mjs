@@ -95,6 +95,43 @@ test('maps all 119 shop columns by exact header and converts live types', () => 
     '2026-09-15'), /shop header mismatch/u);
 });
 
+// 2026-09-18 实亏：09-17 的四家店（里可林家居/网林家居旗舰店/盖文全卫定制/科塔全卫定制）
+// 当天无成交，数据源对 `UV价值`/`无线端UV价值` 给的是**文本标记 NULL**，而飞书这两列是**数字**字段。
+// 原实现直接抛错 ⇒ 四家店同时推不动。处置定为「留空 + 留痕」，这条测试就是盯住它：
+// 既不许悄悄写 0（造假事实、污染同比环比），也不许退回抛错（链推不动），还不许不留痕。
+test('数字字段遇到数据源的文本标记 ⇒ 留空并留痕（不写 0，也不抛错）', () => {
+  const headers = Array.from({ length: 119 }, (_, index) => `字段${index}`);
+  headers[0] = 'UV价值';
+  headers[1] = '无线端UV价值';
+  headers[2] = 'PC端UV价值';
+  headers[3] = '某数字字段';
+  const values = Array.from({ length: 119 }, (_, index) => String(index));
+  values[0] = 'NULL';
+  values[1] = 'null'; // 大小写都要拦：数据源两种写法都出现过
+  values[2] = 'NULL'; // 文本字段：能原样存，这是底单里已经落库的实况
+  values[3] = '-';    // 同一语义的另一种标记写法
+  const targets = headers.map((name, index) => ({ name, type: index === 2 ? 1 : 2 }));
+
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (message) => warnings.push(String(message));
+  let fields;
+  try {
+    fields = buildShopFields({ headers, values }, targets, '2026-09-17');
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(Object.hasOwn(fields, 'UV价值'), false, '数字字段里存不下标记 ⇒ 该列不进 payload');
+  assert.notEqual(fields['UV价值'], 0, '绝不能把「无数据」写成 0');
+  assert.equal(Object.hasOwn(fields, '无线端UV价值'), false, '标记大小写不敏感');
+  assert.equal(Object.hasOwn(fields, '某数字字段'), false, "'-' 与 NULL 同语义，同样留空");
+  assert.equal(fields['PC端UV价值'], 'NULL', '文本字段能原样存标记（实测底单里就是字符串 NULL）');
+  assert.equal(fields['字段4'], 4, '其余数字列照常转换');
+  assert.equal(warnings.length, 3, '有几个格子被留空就必须有几行 warn —— 留空是静默的，不写日志事后分不出「无数据」与「漏采集」');
+  assert.match(warnings[0], /UV价值/u);
+});
+
 test('maps promotion columns, leaves secondary scene fields blank, and drops subsidy columns', () => {
   const headers = ['日期', '场景ID', '场景名字', ...Array.from({ length: 64 }, (_, index) => `指标${index}`),
     '平台补贴金额', '补贴引导成交金额', '发券补贴商品个数', '补贴引导成交人数'];

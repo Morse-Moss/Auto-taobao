@@ -1,0 +1,17 @@
+
+===== 2026-09-18T09:16:24.519Z =====
+$ C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs --date 2026-09-17 --source-shop 网林家居旗舰店 --shop 网林天猫 --proxy http://127.0.0.1:19042
+exit=0 signal= error=none
+--- stdout ---
+{
+  "status": "DRY_RUN_READY",
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-rerun6\\inquiry-backfill-plan.json",
+  "recordId": "recvtXf5OixAca",
+  "values": {
+    "询单量": 4,
+    "同层同行询单量": 13
+  },
+  "degraded": null
+}
+--- stderr ---
+

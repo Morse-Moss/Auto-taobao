@@ -98,6 +98,25 @@ async function main() {
   // 生意参谋页头写的是**店铺名**（如「盖文全卫定制 主店」），这里把它读出来：
   // 给了 `--expect-shop` 就必须一致，不一致当场停 —— 因为这一屏点下去的下载，
   // 文件名里**只有日期和哈希、没有店名**，落盘之后再也回推不出它是谁家的。
+  // 先回位、再认身份（2026-09-18 修，实亏两次）。
+  // 为什么顺序必须是这样：`--locate-only` 排练会点「预览」，把**同一个页签**导到
+  // 日报预览页（lyone/…/report_generation），那一页没有页头「xxx 主店」。
+  // 而原来的次序是「先认身份、再 navigate 回位」⇒「排练通过 → 立刻真跑」必然读不到身份，
+  // 报出来的却是「店铺身份读不到（期望…）」—— 看起来像窗口坏了或串店，实际只是次序问题；
+  // 更糟的是**任何一次失败之后的正常重跑**都会踩它（第一次跑失败时也会把页留在预览页）。
+  // 回位本身无害（只导航、不碰任何数据），所以挪到身份核对之前是安全的：
+  // 「恰好一个 sycm 页」的判据仍在 findSycmPage 里，代理连错浏览器照样当场停。
+  //
+  // 从门户直跳应用内地址会被弹回门户（SOP §3.1），所以先落到应用内页再进公共空间。
+  console.log('[0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）');
+  await navigate(args, targetId, SYCM_APP_URL);
+  await delay(6000);
+
+  // 动手之前先认这一屏是哪家店（2026-09-18 加）。
+  // 用户原话：「肯定是要是同一家店铺的数据的，绝对不能串数据」。
+  // 生意参谋页头写的是**店铺名**（如「盖文全卫定制 主店」），这里把它读出来：
+  // 给了 `--expect-shop` 就必须一致，不一致当场停 —— 因为这一屏点下去的下载，
+  // 文件名里**只有日期和哈希、没有店名**，落盘之后再也回推不出它是谁家的。
   const identity = await evalOn(args, targetId, sycmShopIdentityExpression());
   const identityCheck = assertShopIdentity({
     expected: args.expectShop, observed: identity.shopName, label: '生意参谋店铺',
@@ -109,13 +128,10 @@ async function main() {
       : '｜未给 --expect-shop：只记录，不拦'));
 
   const before = listDownloads(args.downloads, SHOP_REPORT_PATTERN).map((entry) => entry.name);
-  console.log(`[0/4] 生意参谋页 ${targetId}｜已有日报 xlsx ${before.length} 个｜下载目录 ${args.downloads}`
+  console.log(`      → 生意参谋页 ${targetId}｜已有日报 xlsx ${before.length} 个｜下载目录 ${args.downloads}`
     + `｜身份核对=${identityCheck.checked ? '已做' : '未做（没有期望值）'}`);
 
-  // 从门户直跳应用内地址会被弹回门户（SOP §3.1），所以先落到应用内页再进公共空间。
-  console.log('[1/4] 先落到应用内页，再进 自助分析 · 公共空间');
-  await navigate(args, targetId, SYCM_APP_URL);
-  await delay(6000);
+  console.log('[1/4] 再进 自助分析 · 公共空间');
   await navigate(args, targetId, SYCM_SPACE_URL);
 
   const findPreview = `(() => {

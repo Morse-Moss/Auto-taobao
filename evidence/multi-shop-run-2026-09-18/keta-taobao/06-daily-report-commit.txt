@@ -1,0 +1,32 @@
+
+===== 2026-09-18T09:12:39.327Z =====
+$ C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs --date 2026-09-17 --shop-xlsx C:/Users/Administrator/Downloads/日报_20260918_aefdcd0599626688507142b7bbed7e84.xlsx --promotion-zip C:/Users/Administrator/Downloads/营销场景报表_20260918_165441.zip --commit
+exit=0 signal= error=none
+--- stdout ---
+[audit] 已记 push/ok id=16
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "recvvySuZ5zUpB",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-rerun6\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-rerun6",
+  "evidenceGeneration": 6,
+  "recordCountBefore": 1879,
+  "recordCountAfter": 1880,
+  "verifiedFields": 241,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 241,
+    "shopName": "科塔全卫定制",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1789574400000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+--- stderr ---
+[留空] UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）
+[留空] 无线端UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）

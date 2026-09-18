@@ -1,0 +1,12 @@
+
+===== 2026-09-18T09:14:20.680Z =====
+$ C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe sycm-reset.mjs 19041 里可林家居
+exit=0 signal= error=none
+--- stdout ---
+sycm 页 1 个（要求恰好 1 个）：
+  6EAE659E9322265BFF06754FEE35221D  https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=comm
+navigate → https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop ：HTTP 200
+回位后读到： {"href":"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","raw":"里可林家居 主店","candidates":["里可林家居 主店","里可林家居 主店","里可林家居 主店"],"shopName":"里可林家居","nodeType":"主店"}
+身份核对：期望 "里可林家居"，实际 "里可林家居" —— 一致 ✓
+--- stderr ---
+

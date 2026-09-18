@@ -16,7 +16,11 @@ import {
   PROJECT_PORTS,
   RETIRED_PORTS,
   ROUTES,
+  SHOP_BROWSERS,
   SITE_ACCOUNT,
+  allDeclaredPorts,
+  shopBrowserKeys,
+  shopInstance,
   classifyPortUsage,
   retiredPortNumbers,
   describeBrowserRoutes,
@@ -87,6 +91,56 @@ test('浏览器身份与 profile：商家链与买家链各自独立，不能共
   assert.notEqual(BROWSER_IDS.competitor, BROWSER_IDS.dailyReport);
   assert.notEqual(BROWSER_LABELS.competitor, BROWSER_LABELS.dailyReport);
   assert.notEqual(BROWSER_PROFILES.competitor, BROWSER_PROFILES.dailyReport);
+});
+
+// --- 店铺隔离实例（2026-09-18，「按店铺实例化」）--------------------------------
+// 这件事本身是配置，但配置里最容易出的三种错是结构性的，所以让测试盯住：
+// ① 两家店共用端口或 profile（复制粘贴事故）；② 与既有链撞号；③ 与店铺身份登记表漂移。
+test('店铺实例：端口与 profile 各自唯一，且不与既有链撞号', () => {
+  const keys = shopBrowserKeys();
+  assert.ok(keys.length >= 1, '店铺实例表不该是空的');
+
+  const browserPorts = keys.map((key) => SHOP_BROWSERS[key].browserPort);
+  const proxyPorts = keys.map((key) => SHOP_BROWSERS[key].proxyPort);
+  assert.equal(new Set(browserPorts).size, browserPorts.length, '两家店不能共用调试端口');
+  assert.equal(new Set(proxyPorts).size, proxyPorts.length, '两家店不能共用代理端口');
+
+  const profiles = keys.map((key) => SHOP_BROWSERS[key].profile);
+  assert.equal(new Set(profiles).size, profiles.length, '两家店不能共用 profile —— 一个 profile 只能是一个淘宝身份');
+
+  const taken = new Set(Object.values(PROJECT_PORTS));
+  for (const port of [...browserPorts, ...proxyPorts]) {
+    assert.ok(Number.isInteger(port) && port > 1023 && port < 49152, `${port} 必须是 1024-49151 之间的固定端口`);
+    assert.equal(taken.has(port), false, `${port} 与 PROJECT_PORTS 里的端口撞号了`);
+    assert.equal(retiredPortNumbers().includes(port), false, `退役端口 ${port} 不该被回收再利用`);
+  }
+  // allDeclaredPorts 必须真的把它们都算进去，否则「不得写死端口」那条守卫会漏掉一整段。
+  const declared = allDeclaredPorts();
+  for (const port of [...Object.values(PROJECT_PORTS), ...browserPorts, ...proxyPorts]) {
+    assert.ok(declared.includes(port), `allDeclaredPorts() 漏了 ${port} —— 守卫会看不见它`);
+  }
+});
+
+test('店铺实例：browserId/label 唯一，且 shopInstance 对未登记店铺 fail-closed', () => {
+  const keys = shopBrowserKeys();
+  for (const field of ['browserId', 'label']) {
+    const values = keys.map((key) => SHOP_BROWSERS[key][field]);
+    assert.equal(new Set(values).size, values.length, `${field} 必须每家店一个，否则 /health 里认不出是哪一家`);
+    assert.ok(values.every((value) => typeof value === 'string' && value.length > 0), `${field} 不能为空`);
+  }
+  assert.deepEqual(shopInstance(keys[0]), SHOP_BROWSERS[keys[0]]);
+  assert.throws(() => shopInstance('不存在的店'), /未登记的店铺实例/u);
+});
+
+test('店铺实例的 profile 必须与店铺身份登记表逐键一致 —— 两边不许各说各话', async () => {
+  // 为什么交叉核对：profile↔店铺 的对应关系写在两处（这里＝端口/配置，shop-identities.mjs
+  // ＝实测证据）。两边漂移的形态是「照证据去查，查到的却是另一家店」，而两处单独看都自洽。
+  const { ISOLATED_PROFILES } = await import('../skills/sycm-alimama-daily-report/scripts/shop-identities.mjs');
+  const byKey = Object.fromEntries(
+    shopBrowserKeys().map((key) => [key, SHOP_BROWSERS[key].profile.split('/').at(-1)]),
+  );
+  assert.deepEqual(byKey, { ...ISOLATED_PROFILES },
+    'browser-ports.mjs 的 SHOP_BROWSERS 与 shop-identities.mjs 的 ISOLATED_PROFILES 必须逐键一致');
 });
 
 test('resolvePort：显式环境变量优先，非法值抛错而不是静默回落', () => {
@@ -173,8 +227,11 @@ test('describeOccupant 必须说清是谁占了端口，读不出来时也如实
   assert.match(unknown, /不是可读的 CDP 端点/);
 });
 
-test('生产代码里不得再写死项目端口 —— 只能从登记表取', () => {
-  const literals = Object.values(PROJECT_PORTS);
+test('生产代码里不得再写死项目端口 —— 只能从登记表取（含每个店铺实例的两个端口）', () => {
+  // 2026-09-18：取材范围从 PROJECT_PORTS 扩到 allDeclaredPorts()。
+  // 只扫 PROJECT_PORTS 的话，新加的店铺端口（19031-19034 调试 / 19041-19044 代理）
+  // 会成为新的法外之地 —— 那正是坑 52 的形态：换一组数字继续写死，而且看起来一切正常。
+  const literals = allDeclaredPorts();
   const offenders = [];
   const files = [...sourceFiles(path.join(REPO_ROOT, 'runtime')), ...sourceFiles(path.join(REPO_ROOT, 'skills')), ...sourceFiles(path.join(REPO_ROOT, 'scripts'))];
   for (const file of files) {

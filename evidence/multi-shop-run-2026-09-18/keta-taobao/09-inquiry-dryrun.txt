@@ -1,0 +1,17 @@
+
+===== 2026-09-18T09:19:12.098Z =====
+$ C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs --date 2026-09-17 --source-shop 科塔全卫定制 --shop 科塔淘宝 --proxy http://127.0.0.1:19044
+exit=0 signal= error=none
+--- stdout ---
+{
+  "status": "DRY_RUN_READY",
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-rerun6\\inquiry-backfill-plan.json",
+  "recordId": "recvtXf5OiXSb1",
+  "values": {
+    "询单量": 5,
+    "同层同行询单量": 6
+  },
+  "degraded": null
+}
+--- stderr ---
+

@@ -1,0 +1,12 @@
+
+===== 2026-09-18T09:14:34.704Z =====
+$ C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs --date 2026-09-17 --source-shop 里可林家居 --shop 里可林淘宝 --proxy http://127.0.0.1:19041
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: Error: expected one 当日询单人数 table, got 0     at <anonymous>:8:36     at <anonymous>:17:5
+    at proxyJson (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:51:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async readSycmTable (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:82:19)
+    at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:116:18)

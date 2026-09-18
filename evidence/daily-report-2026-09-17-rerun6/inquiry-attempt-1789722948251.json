@@ -1,0 +1,223 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-09-17",
+  "shop": "里可林淘宝",
+  "environment": {
+    "computedAt": "2026-09-18T09:15:48.248Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19041",
+    "browserPort": {
+      "port": 19022,
+      "source": "registry-default",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19023,
+      "source": "registry-default",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-daily-report",
+      "source": "registry-default"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (daily report)",
+      "source": "registry-default"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-rerun6",
+    "generation": 6,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "PTfHbPt9EaIzddsfL8Jcj238nrb",
+    "tableId": "tblUnwn05vl8Wik9",
+    "tableName": "各店铺数据日报",
+    "recordId": "recvtXf5OikETg"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "sourceShop": "里可林家居",
+    "headers": [
+      "日期",
+      "延 询单人数",
+      "当日询单人数",
+      "当日付款人数",
+      "当日付款金额",
+      "延 最终付款人数",
+      "延 最终付款金额",
+      "询单当日付款转化率",
+      "延 询单最终付款转化率"
+    ],
+    "rows": [
+      [
+        "2026-09-17",
+        "延迟统计",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "汇总值",
+        "延迟统计",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "平均值",
+        "延迟统计",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "全店汇总值",
+        "延迟统计",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "全店平均值",
+        "延迟统计",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "同行同层优秀",
+        "延迟统计",
+        "13",
+        "4",
+        "1,511.80",
+        "延迟统计",
+        "延迟统计",
+        "50.00%",
+        "延迟统计"
+      ],
+      [
+        "同行同层均值",
+        "延迟统计",
+        "6",
+        "1",
+        "208.00",
+        "延迟统计",
+        "延迟统计",
+        "20.00%",
+        "延迟统计"
+      ]
+    ]
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 3,
+    "同层同行询单量": 6
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "recvtXf5OikETg",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 3,
+      "同层同行询单量": 6
+    }
+  },
+  "before": {
+    "fields": {
+      "人群PPC": 1.76589285714286,
+      "人群ROI": 0,
+      "人群加购成本": 19.778,
+      "人群加购数": [
+        5
+      ],
+      "人群成交金额": [
+        0
+      ],
+      "人群收加率": 0.142857142857143,
+      "人群收藏数": [
+        3
+      ],
+      "人群点击量": [
+        56
+      ],
+      "人群花费": [
+        98.89
+      ],
+      "人群询单量": [
+        1
+      ],
+      "关键词PPC": 0.972248062015504,
+      "关键词ROI": 0,
+      "关键词加购人数": [
+        4
+      ],
+      "关键词加购成本": 31.355,
+      "关键词成交金额": [
+        0
+      ],
+      "关键词收加率": 0.0465116279069767,
+      "关键词收藏人数": [
+        2
+      ],
+      "关键词点击量": [
+        129
+      ],
+      "关键词花费": [
+        125.42
+      ],
+      "关键词询单量": [
+        1
+      ],
+      "同层同行询单量": null,
+      "实际支付金额": 0,
+      "店铺": "里可林淘宝",
+      "店铺加购人数": [
+        12
+      ],
+      "店铺收加率": 0.08,
+      "店铺收藏人数": [
+        8
+      ],
+      "推广花费合计": 224.31,
+      "支付金额": [
+        0
+      ],
+      "数据月份": 9,
+      "日期": 1789574400000,
+      "补单金额": null,
+      "访客数": [
+        250
+      ],
+      "询单量": null
+    },
+    "id": "recvtXf5OikETg",
+    "record_id": "recvtXf5OikETg"
+  }
+}

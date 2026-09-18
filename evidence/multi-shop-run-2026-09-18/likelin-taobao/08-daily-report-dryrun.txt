@@ -1,0 +1,16 @@
+
+===== 2026-09-18T08:59:26.575Z =====
+$ C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs --date 2026-09-17 --shop-xlsx C:/Users/Administrator/Downloads/日报_20260918_b3de46ced2634ef20c9372b4caf00736.xlsx --promotion-zip C:/Users/Administrator/Downloads/营销场景报表_20260918_165415.zip
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: cannot preserve text marker NULL in numeric field UV价值
+    at toFeishuValue (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/daily-report-core.mjs:35:13)
+    at assign (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/daily-report-core.mjs:46:21)
+    at file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/daily-report-core.mjs:59:42
+    at Array.forEach (<anonymous>)
+    at buildShopFields (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/daily-report-core.mjs:59:16)
+    at buildCombinedFields (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/daily-report-core.mjs:108:8)
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:274:18)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

@@ -31,8 +31,25 @@ export function toFeishuValue(value, field, reportDate) {
   }
   if (field.type === 2) {
     const raw = String(value).trim();
+    // 数据源用**文本标记**表示「无此项数据」。2026-09-18 实测：09-17 的里可林家居 / 网林家居旗舰店 /
+    // 盖文全卫定制 / 科塔全卫定制 四家，`UV价值` 与 `无线端UV价值` 两列都是 "NULL"（当天无成交⇒算不出）。
+    //
+    // 数字字段存不下这个标记，两个替代都不保真：
+    //   · 写 0 —— 把「当天无成交」变成「价值为 0」这种**假事实**，还会污染同比/环比；
+    //   · 写空 —— 丢掉「这是数据源的显式标记」这层信息。
+    // 这里选**留空**。理由不是「留空更保真」，而是飞书这两列**本来就是数字类型**
+    // ——「保真」在这个目标上根本做不到（原实现直接抛错，后果是整条链推不动，
+    // 2026-09-18 四家店同时撞上）。而 0 是会骗人的那个选项。
+    //
+    // 留空的代价是「无数据」与「漏采集」在页面上分不出来，所以**必须留痕**：
+    // 打一行 warn（run-daily-report 的调用方会把 stdout 落进台账），并让测试盯住这条路的形态。
+    //
+    // 同一张表的 `PC端UV价值` / `全站推广花费` 是**文本**字段，那两个能把 "NULL" 原样存进去
+    // （实测底单里就是字符串 "NULL"）——「同一个数据源标记、在两列里落地形态不同」是既成事实，
+    // 所以不要试图把这条判据统一到两种字段上。
     if (raw === '-' || raw.toUpperCase() === 'NULL') {
-      throw new Error(`cannot preserve text marker ${raw} in numeric field ${field.name}`);
+      console.warn(`[留空] ${field.name}：数据源给的是文本标记 ${raw}，数字字段存不下 ⇒ 该格留空（不是 0）`);
+      return OMIT;
     }
     const number = Number(raw.replaceAll(',', ''));
     if (!Number.isFinite(number)) throw new Error(`invalid number for ${field.name}: ${value}`);

@@ -1,0 +1,21 @@
+
+===== 2026-09-18T09:24:34.469Z =====
+$ E:/AI/Docker/resources/bin/docker exec xws-adaptive-postgres psql -U xws_runner -d xws_automation -c "SELECT id, to_char(at,'MM-DD HH24:MI') AS at_cst, shop_name, action, outcome, record_id, record_count_before AS cnt_before, record_count_after AS cnt_after, verified_fields, browser_port, browser_id, proxy_port, source_shop_file FROM daily_report_push_audit WHERE report_date = DATE '2026-09-17' ORDER BY id;"
+exit=0 signal= error=none
+--- stdout ---
+ id |   at_cst    |   shop_name    |      action      | outcome |   record_id    | cnt_before | cnt_after | verified_fields | browser_port |    browser_id     | proxy_port |                                   source_shop_file                                    
+----+-------------+----------------+------------------+---------+----------------+------------+-----------+-----------------+--------------+-------------------+------------+---------------------------------------------------------------------------------------
+  8 | 09-18 03:24 | 盖文旗舰店     | push             | ok      | recvvxsGEeVN4X |          7 |         8 |             244 |        19022 | edge-daily-report |      19023 | C:\Users\Administrator\Downloads\日报_20260918_adc987ef8d0897700e42dcf1427605b3.xlsx
+  9 | 09-18 03:26 | 盖文天猫       | inquiry-backfill | ok      | recvtXexe8hCB4 |            |           |                 |        19022 | edge-daily-report |      19023 | 
+ 12 | 09-18 07:38 | 盖文旗舰店     | push             | ok      | recvvyuoVc9nXi |       1875 |      1876 |             244 |        19022 | edge-daily-report |      19023 | C:\Users\Administrator\Downloads\日报_20260918_adc987ef8d0897700e42dcf1427605b3.xlsx
+ 13 | 09-18 09:08 | 里可林家居     | push             | ok      | recvvyR2ueWnn8 |       1876 |      1877 |             241 |        19022 | edge-daily-report |      19023 | C:\Users\Administrator\Downloads\日报_20260918_b3de46ced2634ef20c9372b4caf00736.xlsx
+ 14 | 09-18 09:10 | 网林家居旗舰店 | push             | ok      | recvvyRBZ74juL |       1877 |      1878 |             240 |        19022 | edge-daily-report |      19023 | C:\Users\Administrator\Downloads\日报_20260918_80bec2d747ebb68cb870a4272d0d52c1.xlsx
+ 15 | 09-18 09:12 | 盖文全卫定制   | push             | ok      | recvvyS3CjfdVy |       1878 |      1879 |             240 |        19022 | edge-daily-report |      19023 | C:\Users\Administrator\Downloads\日报2_20260918_90f3f449b92531c0823d97ec6d6bb86b.xlsx
+ 16 | 09-18 09:13 | 科塔全卫定制   | push             | ok      | recvvySuZ5zUpB |       1879 |      1880 |             241 |        19022 | edge-daily-report |      19023 | C:\Users\Administrator\Downloads\日报_20260918_aefdcd0599626688507142b7bbed7e84.xlsx
+ 17 | 09-18 09:16 | 里可林淘宝     | inquiry-backfill | ok      | recvtXf5OikETg |            |           |                 |        19022 | edge-daily-report |      19023 | 
+ 18 | 09-18 09:17 | 网林天猫       | inquiry-backfill | ok      | recvtXf5OixAca |            |           |                 |        19022 | edge-daily-report |      19023 | 
+ 19 | 09-18 09:19 | 盖文淘宝       | inquiry-backfill | ok      | recvtXf5OinIxX |            |           |                 |        19022 | edge-daily-report |      19023 | 
+ 20 | 09-18 09:20 | 科塔淘宝       | inquiry-backfill | ok      | recvtXf5OiXSb1 |            |           |                 |        19022 | edge-daily-report |      19023 | 
+(11 rows)
+--- stderr ---
+

@@ -1,0 +1,9 @@
+
+===== 2026-09-18T08:51:15.184Z =====
+$ C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs --date 2026-09-17 --proxy http://127.0.0.1:19043 --expect-shop 盖文全卫定制
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+
+采集失败：生意参谋店铺身份读不到（期望「盖文全卫定制」）：拒绝在身份未知的页面上继续 —— 读到的原文在上面那行日志里，先确认窗口/代理对不对再说

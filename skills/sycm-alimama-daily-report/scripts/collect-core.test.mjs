@@ -30,6 +30,8 @@ test('下载目录扫描：只认形状对的文件，大小与 mtime 一起带�
   const dir = fixture({
     '日报_20260917_adc987ef8d0897700e42dcf1427605b3.xlsx': 'x'.repeat(20),
     '日报_20260917_adc987ef8d0897700e42dcf1427605b3 (2).xlsx': 'x'.repeat(24),
+    // 2026-09-18 实例：同一轮采集里，「盖文淘宝」那一份落盘叫 `日报2_…`（报表名每店不同）。
+    '日报2_20260918_90f3f449b92531c0823d97ec6d6bb86b.xlsx': 'x'.repeat(28),
     '日报_20260916_othername.xlsx': 'x',
     '营销场景报表_20260917_112258.zip': 'zip',
     '~$日报_20260917_adc987ef8d0897700e42dcf1427605b3.xlsx': 'lock',
@@ -38,7 +40,8 @@ test('下载目录扫描：只认形状对的文件，大小与 mtime 一起带�
   const shops = listDownloads(dir, SHOP_REPORT_PATTERN);
   // 关键：Excel 的锁文件 `~$…` 与不含哈希的旧名都不算候选 —— 它们是「看起来像」的那一类。
   assert.deepEqual(shops.map((entry) => entry.name).sort(),
-    ['日报_20260917_adc987ef8d0897700e42dcf1427605b3 (2).xlsx',
+    ['日报2_20260918_90f3f449b92531c0823d97ec6d6bb86b.xlsx',
+      '日报_20260917_adc987ef8d0897700e42dcf1427605b3 (2).xlsx',
       '日报_20260917_adc987ef8d0897700e42dcf1427605b3.xlsx']);
   assert.equal(shops.find((entry) => entry.name.endsWith('(2).xlsx')).size, 24);
   assert.ok(shops.every((entry) => Number.isFinite(entry.mtimeMs)));
@@ -47,6 +50,12 @@ test('下载目录扫描：只认形状对的文件，大小与 mtime 一起带�
     ['营销场景报表_20260917_112258.zip']);
   assert.equal(SHOP_REPORT_PATTERN.test('日报_20260916_othername.xlsx'), false,
     '哈希段缺失的文件不该被当成店铺报表');
+  // 判据太窄的失败方向是「安全但归因跑偏」：下载成功却报「没等到新文件」，
+  // 看起来像站点没响应，实际是本地正则不认（2026-09-18 实亏一次）。
+  assert.equal(SHOP_REPORT_PATTERN.test('日报2_20260918_90f3f449b92531c0823d97ec6d6bb86b.xlsx'), true,
+    '带数字后缀的报表名（日报2）也是本链的产物，不许漏');
+  assert.equal(SHOP_REPORT_PATTERN.test('日报2_20260918_90f3f449b92531c0823d97ec6d6bb86b (1).xlsx'), true,
+    '数字后缀与 Windows 的重名后缀可以同时出现');
   // 目录不存在要抛出可读错误，不许静默当成「目录里是空的」。
   assert.throws(() => listDownloads(path.join(dir, '__not_here__'), SHOP_REPORT_PATTERN), /cannot read downloads directory/u);
 });

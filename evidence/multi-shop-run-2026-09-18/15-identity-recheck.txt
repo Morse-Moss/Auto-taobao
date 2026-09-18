@@ -1,0 +1,56 @@
+
+===== 2026-09-18T09:23:41.850Z =====
+$ C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe 01-identity.mjs
+exit=0 signal= error=none
+--- stdout ---
+
+================ 商家浏览器(19022) —— 上周用来采盖文天猫的那个 ================
+  [feishu-base] https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+  [sycm] https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  -> sycm 页 1 个 / alimama 页 0 个
+  生意参谋身份: {"ok":true,"parsed":{"href":"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","raw":"里可林家居 主店","candidates":["里可林家居 主店","里可林家居 主店","里可林家居 主店"],"shopName":"里可林家居","nodeType":"主店"}}
+
+================ likelin-home(19031) ================
+  [sycm] https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [alimama] https://one.alimama.com/index.html#!/report/download-list
+  [qianniu] https://myseller.taobao.com/home.htm/QnworkbenchHome/
+  -> sycm 页 1 个 / alimama 页 1 个
+  生意参谋身份: {"ok":true,"parsed":{"href":"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","raw":"里可林家居 主店","candidates":["里可林家居 主店","里可林家居 主店","里可林家居 主店"],"shopName":"里可林家居","nodeType":"主店"}}
+  阿里妈妈身份: {"ok":true,"parsed":{"href":"https://one.alimama.com/index.html#!/report/download-list","memberName":"里可林家居:阿彦","memberId":"2350600069","raw":"里可林家居:阿彦 ID：2350600069"}}
+
+================ wanglin-flagship(19032) ================
+  [sycm] https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [alimama] https://one.alimama.com/index.html#!/report/download-list
+  [file] file:///D:/Retire/edge-profiles/_window-label.html?shop=%E7%BD%91%E6%9E%97%E5%AE%B6%E5%B1%85%E6%97%97%E8%88%B0%E5%BA%97%3A%E9%98%BF%E5%BD%A6&port=1903
+  [qianniu] https://myseller.taobao.com/home.htm/QnworkbenchHome/
+  -> sycm 页 1 个 / alimama 页 1 个
+  生意参谋身份: {"ok":true,"parsed":{"href":"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","raw":"网林家居旗舰店 主店","candidates":["网林家居旗舰店 主店","网林家居旗舰店 主店","网林家居旗舰店 主店"],"shopName":"网林家居旗舰店","nodeType":"主店"}}
+  阿里妈妈身份: {"ok":true,"parsed":{"href":"https://one.alimama.com/index.html#!/report/download-list","memberName":"网林家居旗舰店:阿彦","memberId":"7314426323","raw":"网林家居旗舰店:阿彦 ID：7314426323"}}
+
+================ suixin-custom(19033) ================
+  [sycm] https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [alimama] https://one.alimama.com/index.html#!/report/download-list
+  [qianniu] https://myseller.taobao.com/home.htm/QnworkbenchHome/
+  [file] file:///D:/Retire/edge-profiles/_window-label.html?shop=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E9%98%BF%E5%BD%A6&port=19033
+  -> sycm 页 1 个 / alimama 页 1 个
+  生意参谋身份: {"ok":true,"parsed":{"href":"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","raw":"盖文全卫定制 主店","candidates":["盖文全卫定制 主店","盖文全卫定制 主店","盖文全卫定制 主店"],"shopName":"盖文全卫定制","nodeType":"主店"}}
+  阿里妈妈身份: {"ok":true,"parsed":{"href":"https://one.alimama.com/index.html#!/report/download-list","memberName":"随心品质定制:阿彦","memberId":"887360146","raw":"随心品质定制:阿彦 ID：887360146"}}
+
+================ shop-j873522735(19034) ================
+  [sycm] https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [alimama] https://one.alimama.com/index.html#!/report/download-list
+  [qianniu] https://myseller.taobao.com/home.htm/QnworkbenchHome/
+  -> sycm 页 1 个 / alimama 页 1 个
+  生意参谋身份: {"ok":true,"parsed":{"href":"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","raw":"科塔全卫定制 主店","candidates":["科塔全卫定制 主店","科塔全卫定制 主店","科塔全卫定制 主店"],"shopName":"科塔全卫定制","nodeType":"主店"}}
+  阿里妈妈身份: {"ok":true,"parsed":{"href":"https://one.alimama.com/index.html#!/report/download-list","memberName":"j873522735:阿彦","memberId":"412070158","raw":"j873522735:阿彦 ID：412070158"}}
+
+wrote D:/Retire/probe-live/01-identity.json
+
+================ 汇总 ================
+19022  生意参谋=里可林家居  阿里妈妈=(读不到)   sycm页=1
+19031  生意参谋=里可林家居  阿里妈妈=里可林家居:阿彦 2350600069  sycm页=1
+19032  生意参谋=网林家居旗舰店  阿里妈妈=网林家居旗舰店:阿彦 7314426323  sycm页=1
+19033  生意参谋=盖文全卫定制  阿里妈妈=随心品质定制:阿彦 887360146  sycm页=1
+19034  生意参谋=科塔全卫定制  阿里妈妈=j873522735:阿彦 412070158  sycm页=1
+--- stderr ---
+

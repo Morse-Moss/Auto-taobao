@@ -1,0 +1,11 @@
+
+===== 2026-09-18T08:53:18.907Z =====
+$ C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs --date 2026-09-17 --phase submit --proxy http://127.0.0.1:19041 --expect-member 里可林家居:阿彦 --expect-member-id 2350600069 --locate-only
+exit=1 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 E3A9B05A063544E6C67F6BC1A6C67EB9｜phase=submit｜目标日 2026-09-17
+[身份] 阿里妈妈会员 = "里可林家居:阿彦" ID="2350600069"（这一页不显示店铺名，只有会员名）｜期望 "里可林家居:阿彦" / 2350600069 ✓
+[submit] 页面 = https://one.alimama.com/index.html
+--- stderr ---
+
+采集失败：页面上找不到「下载报表」按钮（页面没落位到报表页？）
