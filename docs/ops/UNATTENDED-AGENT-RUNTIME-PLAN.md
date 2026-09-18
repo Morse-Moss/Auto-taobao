@@ -239,7 +239,7 @@
 | 2 | 常驻调度器：一轮运行生命周期（体检 → 探队列 → 两段式 → 收尾 → 自愈 → 通知） | **已完成（编排层）** | `runtime/sop-runtime/round-runner.mjs` + `round-notify-policy.mjs`，35 例离线用例覆盖 §4 判据表的**双向**（该响要响、该静默要静默），套件基线 `runtime` 427 + sop-runtime 335 全绿 |
 | 2b | 排期：**「什么时候跑、周期多少」由用户自己设**，写在配置文件里（`runtime/round-schedule.json`） | **已完成** | `round-schedule.mjs` + `round-schedule.test.mjs`（19 例）+ CLI 三模式（`--show-plan` / `--round` / `--serve`）；真实入口实测见 §11.2。sop-runtime 基线随之 335 → **355**，`runtime` 套件 427 无回归 |
 | 3 | 自愈执行器：把 `diagnose.actions` 的 5 个动作接上真实实现 | 待做 | 动作幂等；预算上限不改默认值 |
-| 4 | 体检前置与登录会话对象：从 `xws-sku-auth-preflight.mjs` 推广成四层体检 | **进行中**：验收条件「先补 `LOGIN-STATE-MANAGEMENT.md` §7 第 1 条」**只完成一半** | 已采到 L1 判据与 L2 键名/到期语义（含「`AUTH_EXPIRING` 对淘宝系不可实现」的实测结论）；**L0 账号标识选择器四个平台全缺**，模块**尚未开写**。记录见 `LOGIN-CRITERIA-MEASUREMENT-2026-09-18.md` |
+| 4 | 体检前置与登录会话对象：从 `xws-sku-auth-preflight.mjs` 推广成四层体检 | **进行中**：L1 环境层已落地并有 27 条用例；**验收条件「先补 `LOGIN-STATE-MANAGEMENT.md` §7 第 1 条」仍未完成**（L0 账号标识选择器四个平台全缺，L2 判据只在失效库上取过差） | 新增 `runtime/xws-platform-health-preflight.mjs`（L1 三项判据 + 状态词表 + 未实现层必须写明卡在哪）；L0/L2/L3 如实标 `NOT_IMPLEMENTED` 并在收据 `note` 里点名；判定表新增两条理由（`EGRESS_PROXY_UNREACHABLE` / `TARGET_PAGE_MISSING`）。**尚未接线** `round-runner` 的 `healthCheck`（仍是 `null`） |
 
 第 1 步里四件必须注意的事：
 

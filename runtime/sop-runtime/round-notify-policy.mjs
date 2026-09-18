@@ -78,6 +78,28 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     title: '本轮体检未通过，已跳过执行',
     nextAction: '按下面的具体原因处理后，系统会在下一个 15 分钟节点自动重试；本轮不会浪费一次采集。',
   },
+  // 以下两条来自体检层（runtime/xws-platform-health-preflight.mjs）。为什么不让 HEALTH_BLOCKED
+  // 兜着：这两件事的**下一步动作完全不同**（去启动代理软件 vs 去重开页面），而「通知必须带
+  // 下一步做什么」，标题写错等于让运营做错事。理由的完整性由体检层自己的用例反向守住。
+  {
+    key: 'EGRESS_PROXY_UNREACHABLE',
+    kind: 'round',
+    plan: 'NOTIFY',
+    severity: 'HIGH',
+    title: '出网代理连不上，浏览器打不开任何页面',
+    nextAction: '在那台机器上启动出网代理软件（或改用直连并重启自动化浏览器）。'
+      + '注意这类故障的报错指向站点（ERR_PROXY_CONNECTION_FAILED）而不指向代理，容易被误判成平台挂了。',
+    retryAutomatically: true,
+  },
+  {
+    key: 'TARGET_PAGE_MISSING',
+    kind: 'round',
+    plan: 'NOTIFY',
+    severity: 'HIGH',
+    title: '目标页面不在，或多于一个',
+    nextAction: '按 SOP 重开目标页面（每个站点必须**恰好一个**标签页），系统会自动继续。',
+    retryAutomatically: true,
+  },
   {
     key: 'BUDGET_EXHAUSTED',
     kind: 'escalation',
@@ -287,7 +309,9 @@ export const DIAGNOSE_FAILURE_CLASSES = Object.freeze([
 export function requiredPolicyKeys() {
   return [...FAILURE_CLASS, ...DIAGNOSE_FAILURE_CLASSES,
     'NOT_DUE', 'ALREADY_DONE', 'EMPTY_QUEUE', 'SUCCESS', 'AUTO_HEALED', 'WAITING_HUMAN',
-    'HEALTH_BLOCKED', 'BUDGET_EXHAUSTED', 'ESCALATED_HUMAN', 'ROUND_ERROR'];
+    'HEALTH_BLOCKED', 'BUDGET_EXHAUSTED', 'ESCALATED_HUMAN', 'ROUND_ERROR',
+    // 体检层会发出的理由（见文件末尾注释）：漏一条就会 fail-closed 成「未登记的故障理由」。
+    'EGRESS_PROXY_UNREACHABLE', 'TARGET_PAGE_MISSING'];
 }
 
 function text(value) {
