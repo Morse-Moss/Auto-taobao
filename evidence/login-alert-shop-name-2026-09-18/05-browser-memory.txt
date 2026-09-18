@@ -1,0 +1,9 @@
+实例                  进程   合计MB   （按进程类型）
+商家（日报链）　　　　　　　　　　　　　   16     1528   browser×1 renderer×9 GPU×1 network.mojom.NetworkService×1 storage.mojom.StorageService×1 audio.mojom.AudioService×1 video_capture.mojom.VideoCaptureService×1 edge_search_indexer.mojom.SearchIndexerInterfaceBroker×1
+里可林淘宝　　　　　　　　　　　　　　　   15     2314   browser×1 renderer×8 GPU×1 network.mojom.NetworkService×1 storage.mojom.StorageService×1 audio.mojom.AudioService×1 video_capture.mojom.VideoCaptureService×1 edge_search_indexer.mojom.SearchIndexerInterfaceBroker×1
+网林天猫　　　　　　　　　　　　　　　　   16     2150   browser×1 renderer×9 GPU×1 network.mojom.NetworkService×1 storage.mojom.StorageService×1 audio.mojom.AudioService×1 video_capture.mojom.VideoCaptureService×1 edge_search_indexer.mojom.SearchIndexerInterfaceBroker×1
+盖文淘宝　　　　　　　　　　　　　　　　   15     1134   browser×1 renderer×8 GPU×1 network.mojom.NetworkService×1 storage.mojom.StorageService×1 audio.mojom.AudioService×1 video_capture.mojom.VideoCaptureService×1 edge_search_indexer.mojom.SearchIndexerInterfaceBroker×1
+科塔淘宝　　　　　　　　　　　　　　　　   15     1230   browser×1 renderer×8 GPU×1 network.mojom.NetworkService×1 storage.mojom.StorageService×1 audio.mojom.AudioService×1 video_capture.mojom.VideoCaptureService×1 edge_search_indexer.mojom.SearchIndexerInterfaceBroker×1
+
+五个实例合计：进程 77，内存 8357 MB
+（机器上全部进程合计约 30369 MB；msedge 相关都在上面这五个实例里）
