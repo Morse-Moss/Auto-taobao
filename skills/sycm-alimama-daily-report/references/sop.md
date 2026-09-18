@@ -124,6 +124,24 @@ node skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs --date 202
 脚本在任何点击之前先读页头，对不上就停。为什么不给这个参数也能跑、但必须给：**这份 xlsx 的文件名里只有日期和一个随报表定义走的哈希，没有店名**
 （`日报_20260918_adc987ef8d0897700e42dcf1427605b3.xlsx`），落盘之后再想回推「这是谁家的数据」已经不可能了 —— 唯一的身份就在工作簿内部的 `店铺名称` 列（这一列确实有，值如 `盖文旗舰店`，`run-daily-report` 会把它记进 `plan.checks.shopName`），那是**事后**的旁证，拦不住已经点下去的那一下。
 
+**别手敲这个值 —— 从登记表取**（2026-09-18 建，12 家店，来源是运营那张「店铺底单」）：
+
+```powershell
+# 12 家一览（* ＝该店两侧身份都已实测；未实测的会显式标出来）
+node skills/sycm-alimama-daily-report/scripts/show-shop-identity.mjs
+# 打印这一家要用的参数（可直接粘贴到上一条命令后面）
+node skills/sycm-alimama-daily-report/scripts/show-shop-identity.mjs 里可林淘宝
+#   → --expect-shop 里可林家居 --expect-member 里可林家居:阿彦 --expect-member-id 2350600069
+# 缺值就非零退出（退出码 2），可以当闸门用：这家还没实测就别开跑
+node skills/sycm-alimama-daily-report/scripts/show-shop-identity.mjs 安比淘宝 --require shop,member
+```
+
+登记表本体：`scripts/shop-identities.mjs`。**已实测 5 家**（里可林淘宝 / 网林天猫 / 盖文淘宝 /
+科塔淘宝 / 盖文天猫），其余 7 家（保拉淘宝 / 保拉天猫 / 网林淘宝 / 里可林天猫 / 安比龙头店 /
+科塔龙头店 / 安比淘宝）的身份字段**是 null，不是空字符串** —— 不填推测值。
+`--require shop,member` 时缺哪个字段就报哪个（带证据说明），**绝不「悄悄少给一个参数」**：
+少给一个参数等于那道判据没开，而调用方会以为自己开着守卫。
+
 ### 3.1 2026-09-17 实测的可靠路径
 
 外层是企业门户壳，真正的应用在 iframe 里，每一步都会换 URL，逐级点击容易走偏。实测可用的两条捷径：
@@ -177,6 +195,11 @@ node skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs --pha
 两者本来就可以不同名 —— 会员名注册后固定、店铺名随时可改，所以「两边名字不一样」**不构成串店**；
 但也正因为如此，**跨站点比名字是没有意义的**，必须逐站点各取各的身份、各自与期望值比对。
 两个名字都要填的理由：会员名可以改，会员数字 ID 不会（它才是那个稳定的锚点）。
+
+**这两个值也从登记表取，别手抄**（§3 里那条 `show-shop-identity.mjs` 一次把三样都印出来：
+`--expect-shop` 给店铺报表那一步、`--expect-member`/`--expect-member-id` 给这一步）。
+抄错的后果在这一侧更重：名字抄错会在**正确的窗口上拦人**（假警报，人会开始习惯性绕过它），
+而抄成别家店的值会在**错误的窗口上放行** —— 后者是静默的，这一节的最后一段解释了为什么。
 
 **为什么这一步的核对比店铺报表那一侧更要紧**：营销场景报表的 CSV（69 列）里**一个店铺身份字段都没有**
 （列名只有日期/场景/各项指标），所以取错窗口**不会报错**：文件照样落盘、数字照样进飞书，事后从产物里查不出来。
