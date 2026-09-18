@@ -1,0 +1,75 @@
+{
+  "at": "2026-09-18T08:29:55.537Z",
+  "commit": true,
+  "parts": {
+    "inquiryCells": {
+      "shop": "盖文天猫",
+      "dates": [
+        "2026-09-14",
+        "2026-09-15",
+        "2026-09-16",
+        "2026-09-17"
+      ],
+      "detail": [
+        {
+          "day": "2026-09-14",
+          "sourceRecord": "recvtXetRZKQJE",
+          "targetRecord": "recvtXetRZKQJE",
+          "fields": {
+            "询单量": 10
+          }
+        },
+        {
+          "day": "2026-09-15",
+          "sourceRecord": "recvtXev8H5G4H",
+          "targetRecord": "recvtXev8H5G4H",
+          "fields": {
+            "询单量": 14,
+            "同层同行询单量": 36
+          }
+        },
+        {
+          "day": "2026-09-16",
+          "sourceRecord": "recvvrDlSdc26b",
+          "targetRecord": "recvtXewerrrN2",
+          "fields": {
+            "询单量": 13,
+            "同层同行询单量": 39
+          }
+        },
+        {
+          "day": "2026-09-17",
+          "sourceRecord": "recvtXexe8hCB4",
+          "targetRecord": "recvtXexe8hCB4",
+          "fields": {
+            "询单量": 13,
+            "同层同行询单量": 36
+          }
+        }
+      ],
+      "updateCount": 4,
+      "verified": [
+        {
+          "day": "2026-09-14",
+          "询单量": "10",
+          "同层同行询单量": null
+        },
+        {
+          "day": "2026-09-15",
+          "询单量": "14",
+          "同层同行询单量": "36"
+        },
+        {
+          "day": "2026-09-16",
+          "询单量": "13",
+          "同层同行询单量": "39"
+        },
+        {
+          "day": "2026-09-17",
+          "询单量": "13",
+          "同层同行询单量": "36"
+        }
+      ]
+    }
+  }
+}
