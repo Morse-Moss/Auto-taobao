@@ -22,21 +22,36 @@
 //   - 图片验证码 / 滑块显形（rect 非零）⇒ 报 CAPTCHA_REQUIRED 停下，**不硬闯**（这是 SOP §10.2 的纪律）；
 //   - 点了登录但页面没离开登录页 ⇒ 报 LOGIN_NOT_CONFIRMED，如实说没成，不假装成功。
 //
+// 需要人处理时会**发飞书提醒**（2026-09-18 接）：复用既有的三跳链
+// `runtime/notify-feishu.mjs`，告警里写清「哪台机器、哪个浏览器配置、下一步做什么」。
+// 口径是 `--notify auto`（默认）：**只有真的试过了**（带 --commit）且没成，才叫人 ——
+// 不带 --commit 的只读排练撞到登录墙不惊动人。通知失败**不改变**登录结论与退出码。
+//
 // 用法：
 //   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs                 # 只检测，不点任何东西
-//   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit        # 真的走登录
+//   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit        # 真的走登录，失败会发飞书
 //   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --target sycm   # 只处理其中一个站点
+//   ... --notify dry                                                                  # 只渲染告警文案，不发
+//   ... --notify off                                                                  # 彻底不发
 // 说明：不带 --commit 时是**只读排练**（量坐标、回读状态、截图），可以用来判断「现在到底要不要登录」。
+import { spawn } from 'node:child_process';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+import { BROWSER_PROFILES, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 // 判据与纯逻辑都在 core 里（可离线测）；这里只留 IO。
 import {
-  FORM_STATE_EXPRESSION, SITES, TAOBAO_LOGIN_URL, captchaVisible, centerOf, parseArgs, sitesNeedingLogin,
+  FORM_STATE_EXPRESSION, SITES, TAOBAO_LOGIN_URL, buildLoginAlert, captchaVisible, centerOf, needsHuman,
+  parseArgs, shouldNotify, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 
 const delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+// 通知出口：复用既有 CLI，不新造一条投递链（不另写一份 app_id/secret 的读法）。
+const NOTIFY_CLI = fileURLToPath(new URL('../../../runtime/notify-feishu.mjs', import.meta.url));
+const NOTIFY_TIMEOUT_MS = 30000;
 
 async function proxyText(url, init) {
   const response = await fetch(url, init);
@@ -97,14 +112,98 @@ async function ensureLoginPage(args) {
   return { targetId: created.targetId, opened: true };
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2), { defaultProxy: `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}` });
-  if (args.help) {
-    console.log(readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(0, 22).join('\n'));
+// ---------------------------------------------------------------------------
+// 飞书提醒（IO 侧）
+// ---------------------------------------------------------------------------
+//
+// 「该不该发」在 core 的 shouldNotify / needsHuman 里（离线测过）；这里只负责把告警交给 CLI。
+// 三条不许破的纪律：
+//   1. 通知的结果**只写进 receipt.notify**，绝不改变 verdict 与退出码 ——
+//      「通知失败」不能变成「这次登录失败」，也不能反过来把失败说成成功；
+//   2. 凭据绝不进告警（buildLoginAlert 只吃本脚本自己产出的说明文字）；
+//   3. 有超时。CLI 卡住时不能把整个日报链一起挂住 —— 杀掉的是我们自己刚起的子进程。
+function runNotifyCli(cliArgs, payload) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (value) => { if (!settled) { settled = true; resolve(value); } };
+    let child;
+    try {
+      child = spawn(process.execPath, cliArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
+    } catch (error) {
+      done({ code: null, out: '', err: `spawn failed: ${String(error?.message ?? error)}`, timedOut: false });
+      return;
+    }
+    let out = '';
+    let err = '';
+    child.stdout.on('data', (chunk) => { out += chunk; });
+    child.stderr.on('data', (chunk) => { err += chunk; });
+    child.on('error', (error) => done({ code: null, out, err: String(error?.message ?? error), timedOut: false }));
+    const timer = setTimeout(() => {
+      try { child.kill(); } catch { /* 已经退了 */ }
+      done({ code: null, out, err: `${err}\nnotify CLI 超时（${NOTIFY_TIMEOUT_MS}ms），已终止` , timedOut: true });
+    }, NOTIFY_TIMEOUT_MS);
+    child.on('close', (code) => { clearTimeout(timer); done({ code, out, err, timedOut: false }); });
+    child.stdin.end(JSON.stringify(payload));
+  });
+}
+
+async function deliverAlert(args, receipt) {
+  const verdict = receipt?.verdict ?? null;
+  const mode = args?.notify ?? 'auto';
+  const commit = args?.commit === true;
+  if (!shouldNotify({ verdict, commit, mode })) {
+    receipt.notify = {
+      mode,
+      status: 'SKIPPED',
+      reason: needsHuman(verdict) ? 'mode_or_not_attempted' : 'verdict_needs_no_human',
+    };
     return;
   }
+  const alert = buildLoginAlert({
+    verdict,
+    detail: receipt.detail ?? null,
+    sites: args.sites,
+    machine: os.hostname(),
+    // 这个脚本连的是日报链的浏览器（端口来自登记表），所以配置就是日报那个 profile。
+    browserProfile: process.env.PROJECT_BROWSER_PROFILE || BROWSER_PROFILES.dailyReport,
+  });
+  const cliArgs = [NOTIFY_CLI, ...(mode === 'dry' ? ['--dry-run'] : [])];
+  const result = await runNotifyCli(cliArgs, alert);
+  let delivered = null;
+  try {
+    delivered = result.out ? JSON.parse(result.out) : null;
+  } catch {
+    delivered = null; // CLI 会写人类可读的错误，那就只留 status
+  }
+  receipt.notify = {
+    mode,
+    alertId: alert.alertId,
+    // 交付状态是 CLI 报的（SENT / DRY_RUN / NOT_CONFIGURED / FAILED），这里不替它下结论。
+    status: delivered?.status ?? (result.code === 0 ? 'UNKNOWN' : 'FAILED'),
+    exitCode: result.code,
+    ...(mode === 'dry' && typeof delivered?.text === 'string' ? { text: delivered.text } : {}),
+    ...(result.code === 0 || result.timedOut ? {} : { error: result.err.trim().slice(0, 400) }),
+  };
+}
 
-  const receipt = { proxy: args.proxy, commit: args.commit, sites: {}, login: null };
+// ---------------------------------------------------------------------------
+// 主流程
+// ---------------------------------------------------------------------------
+//
+// 所有出口都过 finish()：它只记账不打印 —— 因为告警要在**打印之前**发出去，
+// 好让「通知成没成」和登录结论出现在同一份收据里（一次运行一个 JSON，不追加第二行）。
+let args = null;
+let finalReceipt = null;
+let finalExitCode = 0;
+
+function finish(receipt, code = 0) {
+  finalReceipt = receipt;
+  if (code) finalExitCode = code;
+  return receipt;
+}
+
+async function attempt() {
+  const receipt = { proxy: args.proxy, commit: args.commit, notify: args.notify, sites: {}, login: null };
 
   // 第一步：先看两个站点是不是已经登录了。已登录就什么都不做 —— 登录是最该少做的事。
   for (const key of args.sites) {
@@ -115,13 +214,12 @@ async function main() {
   const needLogin = sitesNeedingLogin(receipt.sites);
   if (needLogin.length === 0) {
     receipt.verdict = 'ALREADY_LOGGED_IN';
-    console.log(JSON.stringify(receipt, null, 1));
-    return;
+    return finish(receipt);
   }
 
   // 第二步：打开（或复用）顶层淘宝登录页。
   const page = await ensureLoginPage(args);
-  if (page.error) { receipt.verdict = 'STOP_AND_ALERT'; receipt.detail = page.error; console.log(JSON.stringify(receipt, null, 1)); process.exitCode = 2; return; }
+  if (page.error) { receipt.verdict = 'STOP_AND_ALERT'; receipt.detail = page.error; return finish(receipt, 2); }
   const targetId = page.targetId;
   if (args.shots) await proxyText(`${args.proxy}/bringToFront?target=${encodeURIComponent(targetId)}`).catch(() => {});
   await delay(2500);
@@ -135,25 +233,20 @@ async function main() {
       receipt.login.shots = await shot(args, targetId, 'login-no-autofill');
       receipt.verdict = 'NO_SAVED_CREDENTIAL';
       receipt.detail = '这个 profile 的密码库里没有该站点的凭据（:autofill 为 false）⇒ 只能人工登录一次并让浏览器记住密码；脚本不猜账号密码。';
-      console.log(JSON.stringify(receipt, null, 1));
-      process.exitCode = 2;
-      return;
+      return finish(receipt, 2);
     }
     const point = centerOf(state, 'id');
     if (!point) {
       receipt.verdict = 'STOP_AND_ALERT';
       receipt.detail = '账号输入框没有可点坐标（rect 为零或缺失）⇒ 不点可疑坐标';
-      console.log(JSON.stringify(receipt, null, 1));
-      process.exitCode = 2;
-      return;
+      return finish(receipt, 2);
     }
     receipt.login.gesturePoint = point;
     if (!args.commit) {
       receipt.verdict = 'READY_TO_GESTURE';
       receipt.detail = '检测到浏览器填充预览态；加 --commit 才会补可信手势并提交。';
       receipt.login.shots = await shot(args, targetId, 'login-before-commit');
-      console.log(JSON.stringify(receipt, null, 1));
-      return;
+      return finish(receipt);
     }
     await clickPoint(args, targetId, point[0], point[1]);
     await delay(2000);
@@ -165,9 +258,7 @@ async function main() {
     receipt.login.shots = await shot(args, targetId, 'login-values-not-landed');
     receipt.verdict = 'NO_SAVED_CREDENTIAL';
     receipt.detail = '补了可信手势之后账号/密码仍然是空的 ⇒ 浏览器没把凭据写进 DOM，不硬填。';
-    console.log(JSON.stringify(receipt, null, 1));
-    process.exitCode = 2;
-    return;
+    return finish(receipt, 2);
   }
 
   // 第四步：验证码/滑块显形就停手（SOP §10.2：中途弹登录/验证码立即停，不硬闯）。
@@ -177,16 +268,13 @@ async function main() {
     receipt.login.shots = await shot(args, targetId, 'login-captcha');
     receipt.verdict = 'CAPTCHA_REQUIRED';
     receipt.detail = '出现滑块/图片验证码 ⇒ 需要人到这台机器上完成一次；账号密码已经填好，不用重输。';
-    console.log(JSON.stringify(receipt, null, 1));
-    process.exitCode = 2;
-    return;
+    return finish(receipt, 2);
   }
 
   if (!args.commit) {
     receipt.verdict = 'READY_TO_SUBMIT';
     receipt.login.shots = await shot(args, targetId, 'login-ready');
-    console.log(JSON.stringify(receipt, null, 1));
-    return;
+    return finish(receipt);
   }
 
   // 第五步：勾协议（默认未勾）→ 点登录。
@@ -199,9 +287,7 @@ async function main() {
   if (!submitPoint) {
     receipt.verdict = 'STOP_AND_ALERT';
     receipt.detail = '登录按钮没有可点坐标';
-    console.log(JSON.stringify(receipt, null, 1));
-    process.exitCode = 2;
-    return;
+    return finish(receipt, 2);
   }
   await clickPoint(args, targetId, submitPoint[0], submitPoint[1]);
   receipt.login.submitPoint = submitPoint;
@@ -214,9 +300,7 @@ async function main() {
   if (hrefAfter && /login\.taobao\.com\/.*login/u.test(String(hrefAfter))) {
     receipt.verdict = 'LOGIN_NOT_CONFIRMED';
     receipt.detail = '提交后仍停在登录页 —— 可能密码不对、可能要求验证码，如实报「没成」，不假装成功。';
-    console.log(JSON.stringify(receipt, null, 1));
-    process.exitCode = 2;
-    return;
+    return finish(receipt, 2);
   }
   for (const key of args.sites) {
     const site = SITES[key];
@@ -225,13 +309,34 @@ async function main() {
   }
   const allIn = args.sites.every((k) => receipt.sites[k].loggedInAfter === true);
   receipt.verdict = allIn ? 'LOGGED_IN' : 'PARTIAL';
-  console.log(JSON.stringify(receipt, null, 1));
-  if (!allIn) process.exitCode = 2;
+  if (!allIn) receipt.detail = '提交后离开了登录页，但仍有站点验不到登录态 —— 按顺序先看截图再重跑。';
+  return finish(receipt, allIn ? 0 : 2);
 }
 
-try {
-  await main();
-} catch (error) {
-  console.log(JSON.stringify({ verdict: 'STOP_AND_ALERT', detail: String(error?.message ?? error) }, null, 1));
-  process.exitCode = 3;
+function printHeader() {
+  const source = readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n');
+  const cut = source.findIndex((line) => line.startsWith('import '));
+  console.log(source.slice(0, cut === -1 ? 30 : cut).join('\n'));
 }
+
+async function main() {
+  try {
+    args = parseArgs(process.argv.slice(2), { defaultProxy: `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}` });
+    if (args.help) { printHeader(); return; }
+    await attempt();
+  } catch (error) {
+    // 参数拼错也走这里。args 为 null 时 deliverAlert 不会发（判定缺输入，不猜）。
+    finalReceipt = { verdict: 'STOP_AND_ALERT', detail: String(error?.message ?? error) };
+    finalExitCode = 3;
+  }
+  if (!finalReceipt) return;
+  try {
+    await deliverAlert(args, finalReceipt);
+  } catch (error) {
+    finalReceipt.notify = { status: 'FAILED', error: String(error?.message ?? error).slice(0, 400) };
+  }
+  console.log(JSON.stringify(finalReceipt, null, 1));
+  if (finalExitCode) process.exitCode = finalExitCode;
+}
+
+await main();

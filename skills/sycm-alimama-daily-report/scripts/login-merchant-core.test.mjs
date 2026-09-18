@@ -5,9 +5,12 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  FORM_STATE_EXPRESSION, LOGIN_TARGETS, SITES, VERDICTS,
-  captchaVisible, centerOf, parseArgs, sitesNeedingLogin,
+  FORM_STATE_EXPRESSION, LOGIN_TARGETS, NOTIFY_MODES, SITES, VERDICTS, VERDICTS_NEEDING_HUMAN,
+  buildLoginAlert, captchaVisible, centerOf, needsHuman, parseArgs, shouldNotify, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
+// 用**真的那份渲染器**去验告警文案：白名单是 notify-feishu-core 的，
+// 键名写错时字段会被静默丢掉（告警照发，收信人看不到「哪台机器」）—— 那条只有真渲染才测得出来。
+import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 
 const DEFAULTS = { defaultProxy: 'http://127.0.0.1:19023' };
 
@@ -101,4 +104,104 @@ test('主脚本用到的结论词都在 VERDICTS 里（拼错一个词就是一�
   // 反向：词表里有、主脚本从不产生的，多半是残留
   const dead = VERDICTS.filter((v) => !used.has(v));
   assert.ok(dead.length <= 3, `词表里有 ${dead.length} 个从不出现在的词：${dead.join(', ')}`);
+});
+
+// ---------------------------------------------------------------------------
+// 飞书提醒：哪些结论要叫人
+// ---------------------------------------------------------------------------
+
+test('「需要人」的结论词都在 VERDICTS 里，且恰好是那五个失败结论', () => {
+  for (const word of VERDICTS_NEEDING_HUMAN) {
+    assert.ok(VERDICTS.includes(word), `VERDICTS_NEEDING_HUMAN 里的 ${word} 不在 VERDICTS —— 拼错就是「永远不叫人」`);
+  }
+  // 反向钉死：成功的、排练的结论**一个都不许**进「需要人」——
+  // 多进去一个的症状是「每跑一轮都发一条飞书」，那正是通知疲劳的成因。
+  const quiet = VERDICTS.filter((v) => !VERDICTS_NEEDING_HUMAN.includes(v));
+  assert.deepEqual([...quiet].sort(), [
+    'ALREADY_LOGGED_IN', 'LOGGED_IN', 'READY_TO_GESTURE', 'READY_TO_SUBMIT',
+  ]);
+});
+
+test('shouldNotify：只有「真的试过了并且没成」才默认叫人', () => {
+  // 默认 auto：没带 --commit 的只读排练撞到登录墙**不惊动人**（排练不是一次尝试）
+  assert.equal(shouldNotify({ verdict: 'NO_SAVED_CREDENTIAL', commit: false, mode: 'auto' }), false);
+  assert.equal(shouldNotify({ verdict: 'NO_SAVED_CREDENTIAL', commit: true, mode: 'auto' }), true);
+  // 成功与排练结论：任何模式都不发
+  for (const mode of NOTIFY_MODES) {
+    assert.equal(shouldNotify({ verdict: 'LOGGED_IN', commit: true, mode }), false, `${mode} 不该为 LOGGED_IN 发`);
+    assert.equal(shouldNotify({ verdict: 'READY_TO_SUBMIT', commit: true, mode }), false, `${mode} 不该为 READY_TO_SUBMIT 发`);
+  }
+  // 显式要求：演练时要能发出去（哪怕没带 --commit）
+  assert.equal(shouldNotify({ verdict: 'CAPTCHA_REQUIRED', commit: false, mode: 'send' }), true);
+  assert.equal(shouldNotify({ verdict: 'CAPTCHA_REQUIRED', commit: false, mode: 'dry' }), true);
+  // off 是彻底的闭嘴
+  assert.equal(shouldNotify({ verdict: 'CAPTCHA_REQUIRED', commit: true, mode: 'off' }), false);
+  // 未登记的结论词一律不发（fail-closed：宁可少叫，不可乱叫）
+  assert.equal(shouldNotify({ verdict: 'TYPO_VERDICT', commit: true, mode: 'auto' }), false);
+});
+
+test('parseArgs：--notify 默认 auto，取值受词表约束', () => {
+  assert.equal(parseArgs([], DEFAULTS).notify, 'auto');
+  assert.equal(parseArgs(['--notify', 'dry'], DEFAULTS).notify, 'dry');
+  assert.throws(() => parseArgs(['--notify', 'yes'], DEFAULTS), /Unknown --notify yes/u);
+  assert.throws(() => parseArgs(['--notify'], DEFAULTS), /--notify requires a value/u);
+  assert.deepEqual([...NOTIFY_MODES].sort(), ['auto', 'dry', 'off', 'send']);
+});
+
+test('buildLoginAlert：拿到「不需要人」的结论就抛，不生成一条不该有的告警', () => {
+  assert.throws(() => buildLoginAlert({ verdict: 'LOGGED_IN' }), /不需要人处理/u);
+  assert.throws(() => buildLoginAlert({ verdict: 'ALREADY_LOGGED_IN' }), /不需要人处理/u);
+});
+
+test('告警真渲染一遍：机器、浏览器配置、下一步都在（键名写错会被白名单静默丢掉）', () => {
+  const alert = buildLoginAlert({
+    verdict: 'NO_SAVED_CREDENTIAL',
+    detail: '这个 profile 的密码库里没有该站点的凭据',
+    sites: ['sycm', 'alimama'],
+    machine: 'DEPLOY-01',
+    browserProfile: 'D:/Retire/edge-daily-report-profile',
+    now: () => new Date('2026-09-18T14:30:00+08:00'),
+  });
+  const rendered = renderAlertText(alert);
+  assert.match(rendered, /【需要处理】/u, 'severity=ERROR 必须渲染成「需要处理」而不是「提示」');
+  assert.match(rendered, /平台登录已失效/u, 'LOGIN_REQUIRED 的中文标题来自 notify 通道的标题表');
+  assert.match(rendered, /机器：DEPLOY-01/u, '缺了「哪台机器」，收信人还得先找机器');
+  assert.match(rendered, /浏览器配置：D:\/Retire\/edge-daily-report-profile/u, '缺了「哪个配置」，人不知道该动哪个浏览器');
+  assert.match(rendered, /对象：生意参谋 \/ 阿里妈妈/u, '站点没渲染出来');
+  assert.match(rendered, /任务：sycm\.alimama\.daily/u);
+  assert.match(rendered, /下一步：.+人工登录一次/u, '「下一步」必须是一句能照着做的事');
+  assert.match(rendered, /原因：这个 profile 的密码库里没有该站点的凭据/u);
+});
+
+test('告警里不含任何凭据面：没有密码/账号字段，也没有登录表单的状态', () => {
+  const alert = buildLoginAlert({
+    verdict: 'CAPTCHA_REQUIRED', detail: '出现滑块', sites: ['sycm'], machine: 'M', browserProfile: 'P',
+  });
+  const flat = JSON.stringify(alert);
+  for (const forbidden of ['password', 'fm-login', 'credential', 'autofill', 'valueLen', 'idLen']) {
+    assert.equal(flat.includes(forbidden), false, `告警里出现了 ${forbidden} —— 凭据面不许进通知`);
+  }
+  // 只允许白名单里的 source 键（多出来的会被渲染器丢掉，等于白填）
+  assert.deepEqual(Object.keys(alert.source).sort(),
+    ['browserProfile', 'capability', 'machine', 'shopName', 'targetLabel']);
+});
+
+test('alertId 是「同站点同一天一条」——它是去重的锚，不能每次都变', () => {
+  const at = (iso) => buildLoginAlert({
+    verdict: 'CAPTCHA_REQUIRED', sites: ['sycm'], now: () => new Date(iso),
+  }).alertId;
+  assert.equal(at('2026-09-18T09:00:00+08:00'), at('2026-09-18T23:59:00+08:00'));
+  assert.notEqual(at('2026-09-18T23:59:00+08:00'), at('2026-09-19T00:01:00+08:00'));
+  assert.equal(at('2026-09-18T09:00:00+08:00'), 'sycm-login-sycm-20260918');
+});
+
+test('主脚本确实把通知接到了失败路径上（不是只写了两个导出函数）', () => {
+  const source = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
+  assert.ok(source.includes('shouldNotify'), '主脚本没调 shouldNotify ⇒ 判定会退化成「每次都发」或「从不发」');
+  assert.ok(source.includes('buildLoginAlert'), '主脚本没拼告警');
+  assert.ok(source.includes('notify-feishu.mjs'), '主脚本没走既有的通知出口（不该另造投递链）');
+  // 通知必须发生在打印之前，否则收据里看不到「发没发出去」
+  const notifyAt = source.indexOf('await deliverAlert(args, finalReceipt)');
+  const printAt = source.indexOf('console.log(JSON.stringify(finalReceipt, null, 1))');
+  assert.ok(notifyAt > 0 && printAt > notifyAt, '通知必须在打印收据之前完成');
 });

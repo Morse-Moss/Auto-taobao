@@ -71,13 +71,21 @@ export const FORM_STATE_EXPRESSION = `(() => {
 
 export const LOGIN_TARGETS = Object.freeze(['sycm', 'alimama', 'both']);
 
+// 通知模式。默认 `auto` 的口径是「**真的试过了**并且没成，才叫人」：
+//   - 不带 --commit 是只读排练，没试过 ⇒ 不叫人（排练撞到登录墙不该惊动人）；
+//   - `send`/`dry` 是显式要求（跑演练、验证文案时用），仍只在「需要人」的结论上生效；
+//   - `off` 完全闭嘴。
+export const NOTIFY_MODES = Object.freeze(['auto', 'send', 'dry', 'off']);
+
 export function parseArgs(argv, { defaultProxy } = {}) {
-  const opts = { target: 'both', commit: false, proxy: defaultProxy, shots: null, help: false };
+  const opts = {
+    target: 'both', commit: false, proxy: defaultProxy, shots: null, notify: 'auto', help: false,
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === '--commit') { opts.commit = true; continue; }
     if (token === '--help' || token === '-h') { opts.help = true; continue; }
-    const valueFlags = ['--target', '--proxy', '--shots'];
+    const valueFlags = ['--target', '--proxy', '--shots', '--notify'];
     if (!valueFlags.includes(token)) throw new Error(`Unknown argument: ${token}`);
     const value = argv[i + 1];
     // 先认名字再看值：否则 `--nope` 会被报成「需要一个值」，把「参数拼错」伪装成「忘了给值」。
@@ -85,10 +93,14 @@ export function parseArgs(argv, { defaultProxy } = {}) {
     if (token === '--target') opts.target = value;
     if (token === '--proxy') opts.proxy = value;
     if (token === '--shots') opts.shots = value;
+    if (token === '--notify') opts.notify = value;
     i += 1;
   }
   if (!LOGIN_TARGETS.includes(opts.target)) {
     throw new Error(`Unknown --target ${opts.target} (known: ${LOGIN_TARGETS.join(', ')})`);
+  }
+  if (!NOTIFY_MODES.includes(opts.notify)) {
+    throw new Error(`Unknown --notify ${opts.notify} (known: ${NOTIFY_MODES.join(', ')})`);
   }
   opts.sites = opts.target === 'both' ? ['sycm', 'alimama'] : [opts.target];
   return opts;
@@ -117,4 +129,89 @@ export function sitesNeedingLogin(siteStates) {
 // 验证码/滑块是否显形（三种载体任一可见即为真）。
 export function captchaVisible(state) {
   return Boolean(state?.sliderVisible || state?.captchaInputVisible || state?.checkcode?.visible);
+}
+
+// ---------------------------------------------------------------------------
+// 飞书提醒：哪些结论要叫人、叫人的话怎么说
+// ---------------------------------------------------------------------------
+//
+// 为什么要在这里定「哪些结论要叫人」：通知的**判定**属于离线可测的纯逻辑，
+// **投递**属于外部副作用（`runtime/notify-feishu.mjs` 三跳链）。这条分界与
+// `notify-feishu-core.mjs` 文件头写的是同一条 —— 不能把判定散进 IO 里。
+//
+// 词表而不是内联判断：漏一个词的症状是「有一类失败永远不叫人」，
+// 那是最难发现的一类静默（页面不报错、脚本也退出码非 0，但没人被通知）。
+export const VERDICTS_NEEDING_HUMAN = Object.freeze([
+  'NO_SAVED_CREDENTIAL',  // 密码库里没有凭据 / 补了手势值也不落地 ⇒ 只能人来一次
+  'CAPTCHA_REQUIRED',     // 滑块或验证码 ⇒ 人的动作，脚本按纪律不硬闯
+  'LOGIN_NOT_CONFIRMED',  // 提交了但没离开登录页 ⇒ 可能密码不对，也可能是风控
+  'PARTIAL',              // 提交了，但有站点没进去
+  'STOP_AND_ALERT',       // fail-closed 停手（坐标可疑、页面堆叠等）
+]);
+
+export function needsHuman(verdict) {
+  return VERDICTS_NEEDING_HUMAN.includes(verdict);
+}
+
+export function shouldNotify({ verdict, commit = false, mode = 'auto' } = {}) {
+  if (mode === 'off') return false;
+  if (!needsHuman(verdict)) return false;
+  if (mode === 'auto') return commit === true;
+  return true; // send / dry：显式要求，且结论确实需要人
+}
+
+// 「下一步」必须是**一个人照着做就能做完**的一句话。只写「登录已失效」等于把
+// 「去哪台机器、动哪个配置、做完之后干嘛」留给收信人自己猜 —— 而登录恰恰是唯一
+// 无法远程代劳的事，收信人看完还得先找机器（这是 §2.2 第 2 条的原话）。
+const ACTION_BY_VERDICT = Object.freeze({
+  NO_SAVED_CREDENTIAL:
+    '到这台机器上打开这个浏览器配置，人工登录一次并让浏览器记住密码（脚本不会去猜账号密码）。',
+  CAPTCHA_REQUIRED:
+    '账号密码已经填好且留在页面上，人只需要到这台机器上完成滑块/验证码那一步。',
+  LOGIN_NOT_CONFIRMED:
+    '人工登录一次核对：账号密码是否已被平台要求二次验证（脚本不重试，重试是风控的加速器）。',
+  PARTIAL: '人工把没进去的那个站点登一次，然后重跑这一轮。',
+  STOP_AND_ALERT: '按「原因」里写的那一条处理（脚本已 fail-closed 停手，没有留下半成品）。',
+});
+
+function localDateStamp(date) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
+}
+
+// 拼一条告警对象。字段名必须落在 `runtime/notify-feishu-core.mjs` 的
+// `READABLE_SOURCE_KEYS` 白名单里，否则渲染时会被静默丢掉（告警还能发出去，
+// 但收信人看不到最关键的「哪台机器、哪个配置」）。
+//
+// 这里**永远不接收也不渲染凭据**：reason 只允许是本脚本自己产出的说明文字。
+export function buildLoginAlert({
+  verdict,
+  detail = null,
+  sites = [],
+  machine = null,
+  browserProfile = null,
+  shopName = null,
+  now = () => new Date(),
+} = {}) {
+  if (!needsHuman(verdict)) {
+    throw new Error(`${verdict} 不需要人处理，不该生成告警（这是调用方的判定错误）`);
+  }
+  const when = now();
+  const labels = sites.map((key) => SITES[key]?.label).filter(Boolean);
+  return {
+    type: 'LOGIN_REQUIRED',
+    severity: 'ERROR',
+    // 同一站点同一天只叫一次：alertId 是可被调用方拿去去重的锚（同日重复失败不会刷屏）。
+    alertId: `sycm-login-${sites.join('-') || 'unknown'}-${localDateStamp(when)}`,
+    createdAt: when.toISOString(),
+    reason: detail ?? verdict,
+    action: ACTION_BY_VERDICT[verdict] ?? '人工处理后再跑这一轮。',
+    source: {
+      capability: 'sycm.alimama.daily',
+      targetLabel: labels.join(' / ') || null,
+      shopName,
+      machine,
+      browserProfile,
+    },
+  };
 }

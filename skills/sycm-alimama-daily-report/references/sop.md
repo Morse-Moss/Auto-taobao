@@ -560,7 +560,7 @@ zip 哈希不同、**CSV 逐字节相同** —— 差异只来自条目名里的
 | --- | --- | --- |
 | 浏览器 / 代理 | `/health` 里 `connected:true`，`chromePort` = 登记表里的日报端口 | 只读探一次 |
 | 三个页面**各恰好一个** | 阿里妈妈页、生意参谋应用内页、飞书底单页 | `date-picker` 的 `resolveTarget` 就要求恰好一个，多了少了直接抛错 |
-| 两个站点登录态 | 页面能读到 `盖文旗舰店`（商家号），没有登录表单 | 跑 `login-merchant.mjs`（**不带 `--commit` 是只读检测**，它自己会导航去验，并告诉你该走哪一步）；见 §11 |
+| 两个站点登录态 | 页面能读到 `盖文旗舰店`（商家号），没有登录表单 | 跑 `login-merchant.mjs`（**不带 `--commit` 是只读检测**，它自己会导航去验，并告诉你该走哪一步）；见 §11。没登录就加 `--commit` 让它自己登——**失败会自动发飞书**（§11.4），这一步不需要另外请示（2026-09-18 并入本项授权） |
 | 飞书底单 | 目标日**命中 0 行** | 底单有该日行 ⇒ `duplicate daily report row exists`，必须先按 §9.3 删 |
 | 飞书询单表 | 目标日的 12 行都在、`询单量`/`同层同行询单量` **都是空** | 行不在就没得回填；字段非空会被要求「已一致」 |
 | 推广数据已回补完 | 同一目标日**再导一份**，**解出的 CSV** sha256 与已有一份**相同**（比 `promotionSha256` 会误判，见 §6.6） | 隔一阵各导一次对比；无从比较时就遵守「过午再跑」。**重推同一天**时有更省的一条：比本轮与上一代 `plan.json` 的 `fields`（§9.1 第 2 条） |
@@ -638,11 +638,17 @@ zip 哈希不同、**CSV 逐字节相同** —— 差异只来自条目名里的
 ```powershell
 # 只读检测（默认）：它会去两个站点各导航一次验登录态，然后告诉你结论；不点任何东西
 node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs
-# 真的走登录
+# 真的走登录（失败了会自动发飞书，见 §11.4）
 node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit
 # 只处理一个站点 / 留截图
 node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --target sycm --shots evidence/login-shots
+# 只渲染告警文案不发（演练用）／彻底不发
+node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --notify dry
+node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --notify off
 ```
+
+`--notify` 三档：`auto`（默认）＝**真的试过了**（带 `--commit`）并且没成才叫人；`send`/`dry` ＝显式要求（演练、验文案）；
+`off` ＝彻底不发。**不带 `--commit` 的只读排练撞到登录墙不惊动人** —— 排练不是一次尝试。
 
 ### 11.1 三条判据（都是实测，不是文档抄来的）
 
@@ -662,10 +668,46 @@ node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --targ
 | `CAPTCHA_REQUIRED` | 滑块/图片验证码显形 | 人到机器上完成一次（账号密码已经填好，不用重输）；SOP §10.2 的纪律 |
 | `LOGIN_NOT_CONFIRMED` | 提交后仍停在登录页 | 可能密码不对/要求验证，如实报“没成”，别当成功 |
 | `PARTIAL` | 提交了但有站点没进去 | 看 `sites[*].loggedInAfter` |
+| `STOP_AND_ALERT` | fail-closed 停手（坐标可疑、登录页堆了多个、脚本自身出错） | 看 `detail`；这一条**不会**自己重试 |
+
+后五个（`NO_SAVED_CREDENTIAL` / `CAPTCHA_REQUIRED` / `LOGIN_NOT_CONFIRMED` / `PARTIAL` / `STOP_AND_ALERT`）
+是「需要人」的结论，会自动走飞书提醒（§11.4）。前四个永远不会触发通知 ——
+**多一个进去的症状就是「每跑一轮都响一次」**，那正是通知疲劳的成因（有用例双向钉住这份名单）。
 
 ### 11.3 边界（必须交代给客户）
 
 - **登录成功之后那个 tab 会自己跳到千牛工作台**（`myseller.taobao.com/home.htm/…`），**要关掉**，否则 §10.0 第 2 项「三个页面各恰好一个」不成立。
 - 真实账号**首次**登录没撞验证码（2026-09-18 实测 `#fm-login-checkcode` 的 rect 恒为 0x0），但**这不等于风控不会来**；所以“验证码显形即停手”是代码里的硬判据，不是建议。
 - 与 `LOGIN-STATE-MANAGEMENT.md` §8 第一条非目标的关系：该非目标禁的是“账密代登”。本脚本**不持有、不传递账密**，只驱动浏览器对自有密码库的填充，因此不越这条线；但“脚本去点登录按钮”这件事本身仍需用户对本次运行明确点头。
+  **2026-09-18 用户答复：不再每次单独问 —— 并入「跑日报」那一次授权**（说“跑今天的日报”就等于同意先做这一步登录）。§10.0 第 3 项因此不是一次额外请示，而是起跑确认表里的一项。
 - **验证状态**（如实）：`ALREADY_LOGGED_IN` 分支已在真实环境验过；“从掉登录走到登录成功”这条分支是 2026-09-18 用**同一套步骤**在真实账号上端到端跑通一次之后固化进来的，**脚本版尚未再跑一次**（当前是登录态，没法复现）——下次真掉登录时它才是第一次真跑，务必盯着。
+
+### 11.4 失败后自动发飞书（2026-09-18 接）
+
+结论落在 §11.2 的「需要人」那五个上、且这次**真的试过了**，就自动发一条飞书提醒。走的是既有三跳链
+（`runtime/notify-feishu.mjs`，自建应用个人消息 → 兜底收件人 → 群 webhook），**没有另造投递链**。
+
+告警长这样（`--notify dry` 渲染出来的真实文案，收据里的 `notify.text` 就是它）：
+
+```
+【需要处理】平台登录已失效
+对象：生意参谋 / 阿里妈妈
+任务：sycm.alimama.daily
+机器：DESKTOP-KJP4RA5
+浏览器配置：D:/Retire/edge-daily-report-profile
+原因：<本次的 detail>
+下一步：<按结论给的一句能照着做的事>
+时间：2026-09-18 12:08
+告警编号：sycm-login-sycm-alimama-20260918
+```
+
+四条口径（都不是随手写的）：
+
+1. **「哪台机器、哪个配置、下一步做什么」必须齐。** 登录是唯一无法远程代劳的事，只说“登录失效”的话，
+   收信人看完还得先找机器 —— 这正是 `LOGIN-RECOVERY-OPTIONS.md` §2.2 第 2 条点名的缺口。
+2. **`alertId` 是「同站点同一天一条」**（`sycm-login-<站点>-<YYYYMMDD>`），拿去当去重的锚用；
+   同一天重复失败不会刷屏。
+3. **通知失败不改结论、不改退出码。** 发没发出去只写进收据的 `notify` 字段（`SENT`/`DRY_RUN`/`NOT_CONFIGURED`/`FAILED`）；
+   反过来也一样，登录成功的收据里永远是 `notify.status = SKIPPED`。有 30 秒超时，CLI 卡住不会把整条链挂住。
+4. **凭据面一律不进通知**：告警只吃脚本自己产出的说明文字，`reason` 之外没有任何来自页面的字段。
+   有用例扫「告警里不许出现 `password`/`fm-login`/`autofill`/`valueLen`」。
