@@ -6,7 +6,7 @@ import { test } from 'node:test';
 
 import {
   FORM_STATE_EXPRESSION, LOGIN_TARGETS, NOTIFY_MODES, SITES, VERDICTS, VERDICTS_NEEDING_HUMAN,
-  buildLoginAlert, captchaVisible, centerOf, needsHuman, parseArgs, shouldNotify, sitesNeedingLogin,
+  buildLoginAlert, captchaVisible, centerOf, loginUrlFor, needsHuman, parseArgs, shouldNotify, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 // 用**真的那份渲染器**去验告警文案：白名单是 notify-feishu-core 的，
 // 键名写错时字段会被静默丢掉（告警照发，收信人看不到「哪台机器」）—— 那条只有真渲染才测得出来。
@@ -153,24 +153,57 @@ test('buildLoginAlert：拿到「不需要人」的结论就抛，不生成一�
   assert.throws(() => buildLoginAlert({ verdict: 'ALREADY_LOGGED_IN' }), /不需要人处理/u);
 });
 
-test('告警真渲染一遍：机器、浏览器配置、下一步都在（键名写错会被白名单静默丢掉）', () => {
+test('告警真渲染一遍：链接、机器、浏览器配置、下一步都在（键名写错会被白名单静默丢掉）', () => {
   const alert = buildLoginAlert({
     verdict: 'NO_SAVED_CREDENTIAL',
-    detail: '这个 profile 的密码库里没有该站点的凭据',
+    detail: '这个窗口的密码库里没有这家店的密码',
     sites: ['sycm', 'alimama'],
+    shopName: '里可林家居:阿彦',
     machine: 'DEPLOY-01',
-    browserProfile: 'D:/Retire/edge-daily-report-profile',
+    browserProfile: 'D:/Retire/edge-profiles/likelin-home',
     now: () => new Date('2026-09-18T14:30:00+08:00'),
   });
   const rendered = renderAlertText(alert);
   assert.match(rendered, /【需要处理】/u, 'severity=ERROR 必须渲染成「需要处理」而不是「提示」');
-  assert.match(rendered, /平台登录已失效/u, 'LOGIN_REQUIRED 的中文标题来自 notify 通道的标题表');
-  assert.match(rendered, /机器：DEPLOY-01/u, '缺了「哪台机器」，收信人还得先找机器');
-  assert.match(rendered, /浏览器配置：D:\/Retire\/edge-daily-report-profile/u, '缺了「哪个配置」，人不知道该动哪个浏览器');
+  // 2026-09-18：标题改成自带店名的人话（用户反馈「太笼统」），不再借用通用标题表的「平台登录已失效」
+  assert.match(rendered, /【需要处理】里可林家居:阿彦 需要你登录一次/u);
+  assert.match(rendered, /打开这个链接：https:\/\/login\.taobao\.com\//u,
+    '必须给出可点的登录入口 —— 只说「登录已失效」，收信人还得先自己找入口');
   assert.match(rendered, /对象：生意参谋 \/ 阿里妈妈/u, '站点没渲染出来');
-  assert.match(rendered, /任务：sycm\.alimama\.daily/u);
+  assert.match(rendered, /机器：DEPLOY-01/u, '缺了「哪台机器」，收信人还得先找机器');
+  assert.match(rendered, /浏览器配置：D:\/Retire\/edge-profiles\/likelin-home/u, '缺了「哪个配置」，人不知道该动哪个浏览器');
+  assert.match(rendered, /原因：这个浏览器里没有存这家店的账号密码/u, '「原因」要写人话，不是结论代号');
   assert.match(rendered, /下一步：.+人工登录一次/u, '「下一步」必须是一句能照着做的事');
-  assert.match(rendered, /原因：这个 profile 的密码库里没有该站点的凭据/u);
+});
+
+test('告警文案里不许出现结论代号与内部术语（用户 2026-09-18：「不要讲一堆术语」）', () => {
+  const jargon = ['会话', '判据', '风控', '幂等', 'fail-closed', 'capability', 'sycm.alimama.daily'];
+  for (const verdict of VERDICTS_NEEDING_HUMAN) {
+    const rendered = renderAlertText(buildLoginAlert({
+      verdict, sites: ['sycm', 'alimama'], shopName: '某店:阿彦', machine: 'M', browserProfile: 'P',
+    }));
+    assert.equal(rendered.includes(verdict), false, `${verdict} 这个结论代号不该出现在收信人看得到的文案里`);
+    for (const word of jargon) {
+      assert.equal(rendered.includes(word), false, `${verdict} 的文案里出现了内部术语「${word}」`);
+    }
+    assert.match(rendered, /https:\/\//u, `${verdict} 的文案里没有可点的链接`);
+  }
+});
+
+test('每个「要叫人」的结论都必须有自己的原因和下一步——漏一个就会悄悄退化成兜底文案', () => {
+  for (const verdict of VERDICTS_NEEDING_HUMAN) {
+    const alert = buildLoginAlert({ verdict, sites: ['sycm'] });
+    assert.notEqual(alert.reason, '这一步需要人来做。', `${verdict} 没有专属的「原因」文案`);
+    assert.notEqual(alert.action, '人工处理后再跑这一轮。', `${verdict} 没有专属的「下一步」文案`);
+  }
+});
+
+test('loginUrlFor：只缺一个站点时给那个后台，两个都缺时给淘宝登录页', () => {
+  assert.match(loginUrlFor(['sycm']), /sycm\.taobao\.com/u);
+  assert.match(loginUrlFor(['alimama']), /one\.alimama\.com/u);
+  assert.match(loginUrlFor(['sycm', 'alimama']), /login\.taobao\.com/u);
+  assert.match(loginUrlFor([]), /login\.taobao\.com/u, '认不出站点时退到「一次登录管两个」的那个入口');
+  assert.match(loginUrlFor(['不认识']), /login\.taobao\.com/u);
 });
 
 test('告警里不含任何凭据面：没有密码/账号字段，也没有登录表单的状态', () => {
@@ -183,7 +216,7 @@ test('告警里不含任何凭据面：没有密码/账号字段，也没有登�
   }
   // 只允许白名单里的 source 键（多出来的会被渲染器丢掉，等于白填）
   assert.deepEqual(Object.keys(alert.source).sort(),
-    ['browserProfile', 'capability', 'machine', 'shopName', 'targetLabel']);
+    ['browserProfile', 'loginUrl', 'machine', 'shopName', 'targetLabel']);
 });
 
 test('alertId 是「同站点同一天一条」——它是去重的锚，不能每次都变', () => {

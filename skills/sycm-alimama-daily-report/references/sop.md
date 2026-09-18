@@ -690,16 +690,34 @@ node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit --noti
 告警长这样（`--notify dry` 渲染出来的真实文案，收据里的 `notify.text` 就是它）：
 
 ```
-【需要处理】平台登录已失效
+【需要处理】里可林家居:阿彦 需要你登录一次
 对象：生意参谋 / 阿里妈妈
-任务：sycm.alimama.daily
+店铺：里可林家居:阿彦
+打开这个链接：https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
 机器：DESKTOP-KJP4RA5
-浏览器配置：D:/Retire/edge-daily-report-profile
-原因：<本次的 detail>
-下一步：<按结论给的一句能照着做的事>
-时间：2026-09-18 12:08
+浏览器配置：D:/Retire/edge-profiles/likelin-home
+原因：这个浏览器里没有存这家店的账号密码，系统没法自动填。<本次的 detail>
+下一步：在上面那个浏览器窗口里人工登录一次，登录时点「保存密码」，下次就不用再来了。
+时间：2026-09-18 13:16
 告警编号：sycm-login-sycm-alimama-20260918
 ```
+
+**2026-09-18 按用户反馈重写过一次**（原话：「提醒太笼统，要把操作的链接和内容提出，而不是讲一堆术语」）。
+改了三处，都被用例钉住：
+
+1. **标题自带店名**（`<店铺> 需要你登录一次`），不再借用通用标题表的「平台登录已失效」——
+   收信人扫一眼就知道是哪家店要他干什么。`type` 仍是 `LOGIN_REQUIRED`，策略映射不变。
+2. **多了一行「打开这个链接」**（`source.loginUrl`）：只缺一个站点给那个后台的地址，
+   两个都缺给淘宝登录页（一次登录同时管生意参谋与阿里妈妈）。**这是「照着做」的入口**，
+   原来只说「登录已失效」，收信人还得先自己找入口。
+3. **「原因」「下一步」全部改成一句人话**，并删掉 `source.capability`（原来渲染成
+   `任务：sycm.alimama.daily`，纯属术语）。用例里的反向断言：五个「要叫人」的结论，
+   它们的文案里都不能出现结论代号本身，也不能出现「会话/判据/风控/幂等/capability」这类内部词。
+
+**真发过两次**（都是人工自检，内容里写明「这是自检、不需要处理」）：第 1 跳 app 即 `SENT`，
+`messageId` 分别是 `om_x100b65f8746928b4b1b31b23af88ccc`（旧文案）与
+`om_x100b65f8dc89a4a0b323a567d85a3fe`（新文案）。**通知 CLI 不做去重**（去重在 round 内核），
+所以自检不会把当天真实告警挤掉。
 
 四条口径（都不是随手写的）：
 

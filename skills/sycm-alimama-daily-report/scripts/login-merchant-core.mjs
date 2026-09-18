@@ -160,19 +160,44 @@ export function shouldNotify({ verdict, commit = false, mode = 'auto' } = {}) {
   return true; // send / dry：显式要求，且结论确实需要人
 }
 
+// 2026-09-18 用户反馈「提醒太笼统、讲一堆术语，要给出操作链接和内容」⇒ 这一节的文案重写：
+//   1. **先说人该做什么**，再说为什么；
+//   2. **必须带一条可点的链接**（`loginUrl`）——只说「登录已失效」，收信人还得先找入口；
+//   3. 不出现结论代号（`NO_SAVED_CREDENTIAL` 之类）、不出现内部术语（会话/判据/风控/幂等）。
+//
 // 「下一步」必须是**一个人照着做就能做完**的一句话。只写「登录已失效」等于把
 // 「去哪台机器、动哪个配置、做完之后干嘛」留给收信人自己猜 —— 而登录恰恰是唯一
-// 无法远程代劳的事，收信人看完还得先找机器（这是 §2.2 第 2 条的原话）。
+// 无法远程代劳的事，收信人看完还得先找机器。
 const ACTION_BY_VERDICT = Object.freeze({
   NO_SAVED_CREDENTIAL:
-    '到这台机器上打开这个浏览器配置，人工登录一次并让浏览器记住密码（脚本不会去猜账号密码）。',
+    '在上面那个浏览器窗口里人工登录一次，登录时点「保存密码」，下次就不用再来了。',
   CAPTCHA_REQUIRED:
-    '账号密码已经填好且留在页面上，人只需要到这台机器上完成滑块/验证码那一步。',
+    '在上面那个浏览器窗口里把滑块/短信验证做完即可 —— 账号密码已经在页面上了。',
   LOGIN_NOT_CONFIRMED:
-    '人工登录一次核对：账号密码是否已被平台要求二次验证（脚本不重试，重试是风控的加速器）。',
-  PARTIAL: '人工把没进去的那个站点登一次，然后重跑这一轮。',
-  STOP_AND_ALERT: '按「原因」里写的那一条处理（脚本已 fail-closed 停手，没有留下半成品）。',
+    '在上面那个浏览器窗口里打开登录页看它的提示：要求验证就验证，提示密码不对就先改密码。'
+    + '系统不会自己再试一遍（连着试会把账号锁住）。',
+  PARTIAL: '在上面那个浏览器窗口里，把没进去的那个后台登一次。',
+  STOP_AND_ALERT: '照「原因」那一条处理（系统已经停手，没有留下半成品）。',
 });
+
+// 「原因」用一句人话，不写结论代号。detail 由调用方补细节，拼在后面。
+const REASON_BY_VERDICT = Object.freeze({
+  NO_SAVED_CREDENTIAL: '这个浏览器里没有存这家店的账号密码，系统没法自动填。',
+  CAPTCHA_REQUIRED: '登录时平台要求滑块或短信验证，这一步只能由人来完成。',
+  LOGIN_NOT_CONFIRMED: '账号密码填了、登录按钮也点了，页面却还停在登录页。',
+  PARTIAL: '两个后台里有一个没登进去。',
+  STOP_AND_ALERT: '系统在动手之前停住了。',
+});
+
+// 收信人该点开哪个链接：
+//   - 只缺一个站点 ⇒ 点那个业务后台，它自己会把人带到登录页（最少一步）；
+//   - 两个都缺（或认不出来）⇒ 点淘宝登录页：一次登录同时管生意参谋与阿里妈妈。
+export function loginUrlFor(sites = []) {
+  const known = sites.filter((key) => SITES[key]);
+  if (known.length === 1) return SITES[known[0]].probeUrl;
+  return TAOBAO_LOGIN_URL;
+}
+
 
 function localDateStamp(date) {
   const pad = (n) => String(n).padStart(2, '0');
@@ -198,18 +223,23 @@ export function buildLoginAlert({
   }
   const when = now();
   const labels = sites.map((key) => SITES[key]?.label).filter(Boolean);
+  const plainReason = REASON_BY_VERDICT[verdict] ?? '这一步需要人来做。';
   return {
     type: 'LOGIN_REQUIRED',
     severity: 'ERROR',
+    // 标题自带店名：收信人扫一眼就知道「哪家店要我干什么」，不必点开正文找。
+    // 这也让 `TITLE_BY_TYPE` 那张通用表只在「没给 title」的旧来源上继续生效。
+    title: shopName ? `${shopName} 需要你登录一次` : '需要你登录一次',
     // 同一站点同一天只叫一次：alertId 是可被调用方拿去去重的锚（同日重复失败不会刷屏）。
     alertId: `sycm-login-${sites.join('-') || 'unknown'}-${localDateStamp(when)}`,
     createdAt: when.toISOString(),
-    reason: detail ?? verdict,
+    reason: detail ? `${plainReason} ${detail}` : plainReason,
     action: ACTION_BY_VERDICT[verdict] ?? '人工处理后再跑这一轮。',
     source: {
-      capability: 'sycm.alimama.daily',
       targetLabel: labels.join(' / ') || null,
       shopName,
+      // 必须可点：这是「照着做」的入口，不是参考资料。
+      loginUrl: loginUrlFor(sites),
       machine,
       browserProfile,
     },
