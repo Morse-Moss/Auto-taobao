@@ -25,6 +25,7 @@
       },
       "dailyReport": {
         "baseToken": "REPLACE_WITH_DAILY_REPORT_BASE_TOKEN",
+        "sourceBaseName": "REPLACE_WITH_DAILY_REPORT_BASE_NAME（日报 base 在飞书里的名字，用于写前自证不是写错了 base）",
         "sourceTable": "REPLACE_WITH_tblID",
         "sourceView": "REPLACE_WITH_vewID",
         "inquiryTable": "REPLACE_WITH_tblID"

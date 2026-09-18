@@ -51,11 +51,27 @@ export const PROFILES = Object.freeze({
     competitorBase: 'QcnhbEzYpacGvUskCbVcrcm3nFd',
     // 关键词库也搬了：旧租户那张的副本，2026-09-14 核对 8 张表字段签名与行数逐表相同
     keywordBase: 'HdBhbttB5aScbasWJAMc0gGXnpe',
+    // 2026-09-18 切到用户指定的正主 base「各店铺日报」。
+    // 切换前指向的 X02Xb7fHba7mU9sr8uIcRlExn6b 接口读回的名字是「各店铺日报  副本」——
+    // 两张 base 的 7 张表同名、其中 6 张逐表行数与字段签名完全相同，肉眼分辨不出；
+    // 唯一的分水岭是「总数据来源底单」：副本只有 8 行（全是盖文旗舰店 + 我们推的
+    // 09-14/15/16/17），正主有 1873 行（04-01…09-03 每天 12 家店）。
+    // 名字里多个「副本」两个字是唯一线索，靠人看是看不出来的，所以这条要写在这里。
+    // 回滚 = 把 baseToken / sourceTable / inquiryTable 换回：
+    //   X02Xb7fHba7mU9sr8uIcRlExn6b / tbl84ZGwLQKyLxV3 / tblm9Hx7R9A1YoLC
+    // 同时必须把 run-daily-report.mjs 里那条 base 名断言一起换回（它写死的是名字，不是 id）。
+    // sourceBaseName 是 base 名的**第二因子**：run-daily-report.mjs 会在浏览器里读回页面所属
+    // base 的名字，跟这里的值比对 —— id 抄对了而名字对不上（或反过来）都当场炸，而不是等写进去
+    // 才发现写错了 base。名字与 id 存在同一个对象里，就是为了让它们不可能各自漂移。
+    // 存的是**去空格后**的形式：接口读回的正主名是「各店铺日报 」带一个尾随空格，
+    // 副本名是「各店铺日报  副本」带中间空格 —— 比较时两边都去空格，免得这种看不见的字符
+    // 再坑一次（这一条就是被「多两个字看不出来」坑出来的）。
     dailyReport: Object.freeze({
-      baseToken: 'X02Xb7fHba7mU9sr8uIcRlExn6b',
-      sourceTable: 'tbl84ZGwLQKyLxV3',
+      baseToken: 'PTfHbPt9EaIzddsfL8Jcj238nrb',
+      sourceBaseName: '各店铺日报',
+      sourceTable: 'tblkY3W8tnPWPcnh',
       sourceView: 'vewwg0rhjo',
-      inquiryTable: 'tblm9Hx7R9A1YoLC',
+      inquiryTable: 'tblUnwn05vl8Wik9',
     }),
     // 2026-09-15 实测：用户把应用加为「浴缸竞品分析」的可编辑协作者后，
     // 幂等写探针（把历史总表的「平台」写成它当前的值）由 403/91403 变成 **HTTP 200 / code 0**。

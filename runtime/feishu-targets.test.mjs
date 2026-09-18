@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import {
   DEFAULT_PROFILE,
@@ -9,6 +11,7 @@ import {
   activeProfileName,
   baseUrl,
   competitorBaseToken,
+  dailyReportTargets,
   envFilePath,
   getProfile,
   keywordBaseToken,
@@ -138,4 +141,56 @@ test('loadFeishuCredentials 只认 FEISHU_APP_ID / FEISHU_APP_SECRET', () => {
     () => loadFeishuCredentials('kcne', { read: () => { throw new Error('ENOENT'); } }),
     /ENOENT/u,
   );
+});
+
+// 2026-09-18：日报链从「各店铺日报  副本」（X02Xb7fHba…）切到用户指定的正主「各店铺日报 」（PTfHbPt9Ea…）。
+//
+// 为什么这条要单独钉：两张 base 有 7 张同名表，其中 6 张逐表行数与字段签名**完全相同**，
+// 唯一肉眼可见的差别是底单行数（副本 8 行 / 正主 1873 行）和名字里多出来的「副本」两个字。
+// 也就是说，配置被改回副本时**不会有任何东西报错**——链照跑、数据照写，只是写进了一个
+// 运营不看的 base 里。这正是「默认值即目标」（坑 35）的形状，所以默认值必须被断言钉住，
+// 而不是靠人记得。名字与 id 一起断言，是因为只改一个的话两边会互相矛盾。
+test('日报目标指向正主 base「各店铺日报」，不再是同名副本', () => {
+  const target = dailyReportTargets('kcne');
+  assert.equal(target.baseToken, 'PTfHbPt9EaIzddsfL8Jcj238nrb');
+  assert.equal(target.sourceTable, 'tblkY3W8tnPWPcnh');
+  assert.equal(target.sourceView, 'vewwg0rhjo');
+  assert.equal(target.inquiryTable, 'tblUnwn05vl8Wik9');
+  // 名字按「去空格」比较：接口读回的正主名带一个尾随空格，副本名带中间空格，
+  // 这种看不见的字符不能决定写的是哪一张 base（脚本里的比较用的是同一条规则）。
+  const stripSpaces = value => String(value ?? '').replaceAll(' ', '');
+  assert.equal(stripSpaces(target.sourceBaseName), '各店铺日报');
+  assert.notEqual(stripSpaces(target.sourceBaseName), '各店铺日报副本');
+  // 切换前的副本 id：留在测试里当反例，免得下次有人「看着眼熟」把它配回来。
+  assert.notEqual(target.baseToken, 'X02Xb7fHba7mU9sr8uIcRlExn6b');
+  assert.notEqual(target.sourceTable, 'tbl84ZGwLQKyLxV3');
+  assert.notEqual(target.inquiryTable, 'tblm9Hx7R9A1YoLC');
+  // 五个键一个都不能少：少一个就意味着有人把名字或某个 id 从配置层挪走了。
+  // 刻意不写成与 PROFILES.kcne.dailyReport 的 deepEqual —— 那份是**内置值**，
+  // 而客户机上 config/customer.json 会让 dailyReportTargets 返回覆盖后的对象，
+  // 那种写法会在客户机上红，属于「测试依赖了不该依赖的环境状态」。
+  assert.deepEqual(Object.keys(target).sort(),
+    ['baseToken', 'inquiryTable', 'sourceBaseName', 'sourceTable', 'sourceView']);
+});
+
+// 配套的静态守卫：脚本自己**不许**再写死任何一张 base 的名字。
+// 写死过的代价就在眼前 —— run-daily-report.mjs 里那句 `!== '各店铺日报副本'` 是「当时那条结论的
+// 快照」，它不随配置一起改，于是切 base 时它是第一个炸的地方，而且是在浏览器里炸。
+// 这条守卫横着读另一个 skill 的文件，是因为它守的正是本文件导出值的唯一性：
+// 「活跃脚本不应各自硬编码目标」这句写在 feishu-targets.mjs 的文件头，这里就是它的执行者。
+test('日报脚本不许写死 base 名，期望值只能从配置层取', () => {
+  const scriptPath = path.join(import.meta.dirname,
+    '..', 'skills', 'sycm-alimama-daily-report', 'scripts', 'run-daily-report.mjs');
+  const source = readFileSync(scriptPath, 'utf8');
+  // 先去注释再判：脚本里**正好在讲**这个坑的注释中会提到那两个名字，
+  // 连着注释一起匹配就会把说明本身当成违规（一次假红）。
+  const code = source
+    .replace(/\/\*[\s\S]*?\*\//gu, '')
+    .replace(/(^|[^:])\/\/[^\n]*/gu, '$1');
+  // 去注释必须自证「剥掉的确实只是注释」，否则一个把整份文件剥空的实现会让这条守卫永远为绿。
+  assert.ok(code.includes('function inspectTarget'), '去注释后代码主体不见了 —— 剥离实现有问题');
+  assert.match(code, /expectedBaseName: TARGET\.sourceBaseName/u, '期望 base 名必须来自配置层');
+  assert.doesNotMatch(code, /各店铺日报/u, '脚本里不许出现任何 base 名字面量（含正主名）');
+  assert.doesNotMatch(code, /X02Xb7fHba7mU9sr8uIcRlExn6b|PTfHbPt9EaIzddsfL8Jcj238nrb/u,
+    '脚本里不许出现 base token 字面量');
 });

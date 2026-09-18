@@ -21,6 +21,9 @@ const DEFAULTS = Object.freeze({
   appToken: TARGET.baseToken,
   tableId: TARGET.sourceTable,
   viewId: TARGET.sourceView,
+  // 期望的 base 名。**刻意不提供 --base-name 覆盖口**：这个值的用途正是「防手填参数造成假绿灯」，
+  // 再给它一个命令行入口就等于把守卫自己拆了。要换 base 就改 config/feishu 配置层那一个地方。
+  expectedBaseName: TARGET.sourceBaseName,
 });
 
 function parseArgs(argv) {
@@ -95,8 +98,20 @@ async function inspectTarget(args) {
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || `Feishu schema eval failed: HTTP ${response.status}`);
   const target = JSON.parse(payload.value);
-  if (target.baseName.replaceAll(' ', '') !== '各店铺日报副本' || target.tableName !== '总数据来源底单') {
-    throw new Error(`unexpected Feishu target identity: ${target.baseName} / ${target.tableName}`);
+  // base 名的第二因子断言。原先这里写死的是 '各店铺日报副本' —— 那正是 2026-09-18 查出来的坑：
+  // 配置指向的是副本 base，而运营的 12 家店历史在另一个同名的「各店铺日报」里，两边同名表 6 张
+  // 逐表行数与字段签名完全一样，肉眼分辨不出来。写死的名字只是「当时那条结论的快照」，
+  // 它不会随配置一起被改，换 base 时它才是第一个炸的地方（而且是在浏览器里炸）。
+  // 现在期望值来自配置层同一个对象 —— id 与名字要错一起错，不可能只改一个。
+  //
+  // 去空格再比：接口读回的名字有尾随空格（「各店铺日报 」）和中间空格（「各店铺日报  副本」），
+  // 这种看不见的东西不该决定写入的是哪一张 base。
+  const normalizeBaseName = value => String(value ?? '').replaceAll(' ', '');
+  if (normalizeBaseName(target.baseName) !== normalizeBaseName(args.expectedBaseName)
+    || target.tableName !== '总数据来源底单') {
+    throw new Error('unexpected Feishu target identity: '
+      + `${JSON.stringify(target.baseName)} / ${target.tableName}`
+      + `（期望 base 名 ${JSON.stringify(args.expectedBaseName)}／表名 总数据来源底单）`);
   }
   return target;
 }
