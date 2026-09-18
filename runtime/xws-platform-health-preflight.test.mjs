@@ -36,6 +36,10 @@ import {
 const OUR_PROFILE = BROWSER_PROFILES.dailyReport;
 const OUR_PORT = PROJECT_PORTS.dailyReportBrowser;
 
+// 用例必须与**跑测试的那台机器**无关：下面有几条断言的是「没给探测地址时走端口探测」这条路径，
+// 若这台机器恰好设了 PROJECT_EGRESS_PROBE_URL，它们就会去走真代理请求而变成随机红绿。
+process.env.PROJECT_EGRESS_PROBE_URL = '';
+
 // ---------------------------------------------------------------- 词表
 
 test('状态词表包含 LOGIN-STATE-MANAGEMENT §4 的每一个值，且只加不删', () => {
@@ -173,6 +177,27 @@ test('声明了出网代理且连得上 ⇒ 通过', () => {
   assert.equal(classifyEgress({ declaration: { host: '127.0.0.1', port: 7897 }, reachable: true }), null);
 });
 
+test('端口能连、但没拿它真发过一次代理请求 ⇒ 报「未证明」，不停线', () => {
+  // 绿必须能被证明：任何服务占着那个端口都会让 TCP 探测通过。这条要显式不阻断，
+  // 但缺口必须可见 —— 否则「检查过了」这句话没有依据。
+  const finding = classifyEgress({
+    declaration: { host: '127.0.0.1', port: 7897 },
+    reachable: true,
+    verified: false,
+  });
+  assert.equal(finding.code, HEALTH_CODES.EGRESS_PROXY_UNVERIFIED);
+  assert.equal(finding.blocking, false);
+  assert.match(finding.detail, /没有被证明/);
+});
+
+test('拿它真的发过一次代理请求并读到状态行 ⇒ 才是通过', () => {
+  assert.equal(classifyEgress({
+    declaration: { host: '127.0.0.1', port: 7897 },
+    reachable: true,
+    verified: true,
+  }), null);
+});
+
 test('声明了出网代理但连不上 ⇒ 停线，且理由能直接落到判定表', () => {
   const finding = classifyEgress({ declaration: { host: '127.0.0.1', port: 7897 }, reachable: false });
   assert.equal(finding.code, HEALTH_CODES.EGRESS_PROXY_UNREACHABLE);
@@ -268,6 +293,45 @@ test('探针自己抛错 ⇒ 不停线（体检崩了不等于环境坏了）', 
 
 test('浏览器键写错在**创建时**就抛，不留到体检跑起来才变成「体检自己崩了」', () => {
   assert.throws(() => createPlatformHealthCheck({ browserKey: 'nope' }), /unknown browser key/u);
+});
+
+test('给了探测地址就走真代理请求（不再只看端口开没开）', async () => {
+  let sawUrl = null;
+  let tcpCalled = false;
+  const health = await createPlatformHealthCheck({
+    inspectPortImpl: stubPort(),
+    readTargetsImpl: async () => [],
+    probeTcpImpl: async () => { tcpCalled = true; return true; },
+    probeEgressProxyImpl: async ({ url }) => { sawUrl = url; return false; },
+    egressProxy: '127.0.0.1:7897',
+    egressProbeUrl: 'http://probe.invalid/generate_204',
+  })({ businessKey: 'k', now: Date.now(), dayKey: '2026-09-18' });
+
+  assert.equal(sawUrl, 'http://probe.invalid/generate_204');
+  assert.equal(tcpCalled, false, '两条探测路径不该同时走');
+  assert.equal(health.ok, false);
+  assert.equal(health.blocking[0].code, HEALTH_CODES.EGRESS_PROXY_UNREACHABLE);
+});
+
+test('代理按协议应答 ⇒ 通过；没给探测地址 ⇒ 只报「未证明」且不停线', async () => {
+  const base = {
+    inspectPortImpl: stubPort(),
+    readTargetsImpl: async () => [],
+    egressProxy: '127.0.0.1:7897',
+  };
+  const verified = await createPlatformHealthCheck({
+    ...base,
+    probeEgressProxyImpl: async () => true,
+    egressProbeUrl: 'http://probe.invalid/x',
+  })({ businessKey: 'k', now: Date.now(), dayKey: '2026-09-18' });
+  assert.equal(verified.ok, true);
+  assert.equal(verified.findings.some((f) => f.code === HEALTH_CODES.EGRESS_PROXY_UNVERIFIED), false);
+
+  const unverified = await createPlatformHealthCheck({ ...base, probeTcpImpl: async () => true })(
+    { businessKey: 'k', now: Date.now(), dayKey: '2026-09-18' },
+  );
+  assert.equal(unverified.ok, true);
+  assert.equal(unverified.findings.some((f) => f.code === HEALTH_CODES.EGRESS_PROXY_UNVERIFIED), true);
 });
 
 // ---------------------------------------------------------------- 与通知判据表的对齐

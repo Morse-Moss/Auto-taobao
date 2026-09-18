@@ -67,6 +67,7 @@ export const HEALTH_CODES = Object.freeze({
   EGRESS_PROXY_NOT_DECLARED: 'EGRESS_PROXY_NOT_DECLARED',
   EGRESS_PROXY_UNREACHABLE: 'EGRESS_PROXY_UNREACHABLE',
   EGRESS_PROXY_UNREADABLE: 'EGRESS_PROXY_UNREADABLE',
+  EGRESS_PROXY_UNVERIFIED: 'EGRESS_PROXY_UNVERIFIED',
   TARGET_PAGE_MISSING: 'TARGET_PAGE_MISSING',
   TARGET_PAGE_AMBIGUOUS: 'TARGET_PAGE_AMBIGUOUS',
   TARGET_PAGE_UNREADABLE: 'TARGET_PAGE_UNREADABLE',
@@ -199,7 +200,11 @@ export function classifyExpectedPages({ targets, expectedPages, readable = true 
 // 我无法把那条实现端到端验证一遍 —— 按本项目纪律，不发布没验证过的判据。
 // 于是改成：出网代理由调用方**显式声明**（配置层/环境变量），声明了就探它的可达性；
 // 没声明就如实说「判不出出网路径」，并把这个缺口本身报出来（它正是那次全站打不开的成因）。
-export function classifyEgress({ declaration, reachable = null } = {}) {
+// `verified: false` 表达的是「端口能连，但我们没拿它真的发过一次代理请求」。
+// 这不是吹毛求疵：2026-09-18 现场核对时，7897 端口上确实是一个能用的 HTTP 代理（手写
+// 代理请求拿到 204），但**端口开着这件事本身证明不了它是个代理** —— 任何服务占着那个端口
+// 都会让 TCP 探测通过。绿灯必须能被证明，所以这种情况只报不阻断（缺口可见，但不停线）。
+export function classifyEgress({ declaration, reachable = null, verified = true } = {}) {
   if (!declaration || !declaration.host) {
     return {
       layer: HEALTH_LAYERS.ENVIRONMENT,
@@ -223,7 +228,19 @@ export function classifyEgress({ declaration, reachable = null } = {}) {
       blocking: false,
     };
   }
-  if (reachable) return null;
+  if (reachable) {
+    if (verified) return null;
+    return {
+      layer: HEALTH_LAYERS.ENVIRONMENT,
+      code: HEALTH_CODES.EGRESS_PROXY_UNVERIFIED,
+      state: HEALTH_STATES.AUTH_UNKNOWN,
+      reason: null,
+      detail: `${declaration.host}:${declaration.port} 的端口能连上，但本次**没有**拿它真的发过一次`
+        + '代理请求，所以「能出网」这件事还没有被证明（任何服务占着那个端口都会让探测通过）。'
+        + '声明一个探测地址（PROJECT_EGRESS_PROBE_URL）就能把它变成一次真实证明。',
+      blocking: false,
+    };
+  }
   return {
     layer: HEALTH_LAYERS.ENVIRONMENT,
     code: HEALTH_CODES.EGRESS_PROXY_UNREACHABLE,
@@ -305,6 +322,40 @@ async function probeTcp({ host, port, timeoutMs = 1500 }) {
   });
 }
 
+// 拿声明的代理**真的**发一次代理请求，只读回状态行、不读正文：
+// 要判的是「它是不是个能用的代理」，不是「目标站返回了什么」。
+async function probeEgressProxy({ host, port, url, timeoutMs = 3000 }) {
+  const net = await import('node:net');
+  const target = new URL(url);
+  return new Promise((resolve) => {
+    const socket = net.connect({ host, port });
+    let buffer = '';
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(value);
+    };
+    socket.setTimeout(timeoutMs, () => finish(hasStatusLine(buffer)));
+    socket.once('error', () => finish(false));
+    socket.once('connect', () => {
+      socket.write(`GET ${url} HTTP/1.1\r\nHost: ${target.host}\r\nUser-Agent: sycm-health-check\r\nConnection: close\r\n\r\n`);
+    });
+    socket.on('data', (chunk) => {
+      buffer += chunk.toString('latin1');
+      if (hasStatusLine(buffer)) finish(true);
+    });
+    socket.on('end', () => finish(hasStatusLine(buffer)));
+  });
+}
+
+// 代理能回一行 HTTP 状态行 ⇒ 它在按代理协议工作（上游是 200 还是 502 是另一个问题，
+// 不在这里判：那是 L3 只读探针的事）。
+function hasStatusLine(buffer) {
+  return /^HTTP\/\d\.\d \d{3}/u.test(buffer);
+}
+
 async function readTargets(proxyUrl, timeoutMs) {
   const response = await fetch(`${proxyUrl}/targets`, { signal: AbortSignal.timeout(timeoutMs) });
   if (!response.ok) throw new Error(`GET /targets → HTTP ${response.status}`);
@@ -336,9 +387,12 @@ export function createPlatformHealthCheck(options = {}) {
     browserKey = DEFAULT_BROWSER_KEY,
     expectedPages = [],
     egressProxy = process.env.PROJECT_EGRESS_PROXY ?? null,
+    // 给了它才算「真的证明过一次出网」；不给就只探端口，并如实报「未证明」。
+    egressProbeUrl = process.env.PROJECT_EGRESS_PROBE_URL ?? null,
     inspectPortImpl = inspectPort,
     readTargetsImpl = readTargets,
     probeTcpImpl = probeTcp,
+    probeEgressProxyImpl = probeEgressProxy,
     expectedProfile = null,
     timeoutMs = 1500,
   } = options;
@@ -388,14 +442,22 @@ export function createPlatformHealthCheck(options = {}) {
 
     // ── L1-③ 出网路径 ──────────────────────────────────────────────────────
     let reachable = null;
+    let verified = false;
     if (declared) {
       try {
-        reachable = await probeTcpImpl({ host: declared.host, port: declared.port, timeoutMs });
+        if (egressProbeUrl) {
+          reachable = await probeEgressProxyImpl({
+            host: declared.host, port: declared.port, url: egressProbeUrl, timeoutMs,
+          });
+          verified = reachable === true;
+        } else {
+          reachable = await probeTcpImpl({ host: declared.host, port: declared.port, timeoutMs });
+        }
       } catch {
         reachable = null;
       }
     }
-    findings.push(classifyEgress({ declaration: declared, reachable }));
+    findings.push(classifyEgress({ declaration: declared, reachable, verified }));
     layersRun.push(`${HEALTH_LAYERS.ENVIRONMENT}:egress`);
 
     const { ok, findings: kept, blocking } = buildHealthResult(findings);
