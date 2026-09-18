@@ -1,0 +1,403 @@
+{
+  "version": "login-criteria-measurement-v1",
+  "measuredAt": "2026-09-18T01:34:13.901Z",
+  "purpose": "LOGIN-STATE-MANAGEMENT.md §7 第 1 条：实测采集判据，禁止照抄文档或记忆。",
+  "method": {
+    "merchantProfile": {
+      "dir": "D:/Retire/edge-daily-report-profile",
+      "port": 19022,
+      "cookies": 158
+    },
+    "anonymousBaseline": {
+      "dir": "(全新一次性临时 profile，测后已删除)",
+      "port": 19192,
+      "cookies": 20
+    },
+    "rule": "判据 = 「登录态有、匿名没有」的键。两边都有的键不能当判据。",
+    "caveat": "本次实测时该 profile 对淘宝系已是未登录状态（淘宝首页显示「亲，请登录」），因此淘宝/天猫两族的「登录态独有键」是在**会话已失效**的库上取差得到的，只说明「这些键与登录态相关」，不代表它们此刻有效。飞书为已登录态。"
+  },
+  "platforms": {
+    "taobao.com": {
+      "loggedInOnlyCount": 13,
+      "sharedWithAnonymousCount": 9,
+      "criterionCandidates": [
+        {
+          "name": "_3dtid",
+          "domain": ".taobao.com",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-03-17T01:27:23.000Z"
+        },
+        {
+          "name": "_bl_uid",
+          "domain": "havanalogin.taobao.com",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-03-15T04:02:41.955Z"
+        },
+        {
+          "name": "_cc_",
+          "domain": ".taobao.com",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T12:03:43.120Z"
+        },
+        {
+          "name": "_samesite_flag_",
+          "domain": ".taobao.com",
+          "httpOnly": true,
+          "sessionScoped": true,
+          "expiresAt": null
+        },
+        {
+          "name": "_tb_token_",
+          "domain": ".taobao.com",
+          "httpOnly": false,
+          "sessionScoped": true,
+          "expiresAt": null
+        },
+        {
+          "name": "cookie2",
+          "domain": ".taobao.com",
+          "httpOnly": true,
+          "sessionScoped": true,
+          "expiresAt": null
+        },
+        {
+          "name": "DI_T_",
+          "domain": "sycm.taobao.com",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T05:44:57.279Z"
+        },
+        {
+          "name": "JSESSIONID",
+          "domain": "sycm.taobao.com",
+          "httpOnly": true,
+          "sessionScoped": true,
+          "expiresAt": null
+        },
+        {
+          "name": "last_cc",
+          "domain": "havanalogin.taobao.com",
+          "httpOnly": true,
+          "sessionScoped": false,
+          "expiresAt": "2026-10-16T12:03:43.120Z"
+        },
+        {
+          "name": "last_u_taobao_sycm_new",
+          "domain": "havanalogin.taobao.com",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-09-26T12:03:43.120Z"
+        },
+        {
+          "name": "lid",
+          "domain": ".login.taobao.com",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T12:03:37.462Z"
+        },
+        {
+          "name": "sgcookie",
+          "domain": ".taobao.com",
+          "httpOnly": true,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T12:03:43.120Z"
+        },
+        {
+          "name": "XSRF-TOKEN",
+          "domain": "havanalogin.taobao.com",
+          "httpOnly": true,
+          "sessionScoped": true,
+          "expiresAt": null
+        }
+      ],
+      "notUsableAsCriterion": [
+        "3PcFlag",
+        "_uab_collina",
+        "arms_uid",
+        "arms_uid",
+        "arms_uid",
+        "cna",
+        "t",
+        "tfstk",
+        "xlly_s"
+      ]
+    },
+    "alimama.com": {
+      "loggedInOnlyCount": 2,
+      "sharedWithAnonymousCount": 3,
+      "criterionCandidates": [
+        {
+          "name": "lid",
+          "domain": ".alimama.com",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T12:03:38.863Z"
+        },
+        {
+          "name": "p_h5_u",
+          "domain": "one.alimama.com",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-10-22T04:51:32.587Z"
+        }
+      ],
+      "notUsableAsCriterion": [
+        "cna",
+        "tfstk",
+        "xlly_s"
+      ]
+    },
+    "tmall.com": {
+      "loggedInOnlyCount": 2,
+      "sharedWithAnonymousCount": 4,
+      "criterionCandidates": [
+        {
+          "name": "3rdPartyCookie",
+          "domain": "main.m.tmall.com",
+          "httpOnly": false,
+          "sessionScoped": true,
+          "expiresAt": null
+        },
+        {
+          "name": "lid",
+          "domain": ".tmall.com",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T12:03:43.535Z"
+        }
+      ],
+      "notUsableAsCriterion": [
+        "cna",
+        "isg",
+        "tfstk",
+        "xlly_s"
+      ]
+    },
+    "feishu.cn": {
+      "loggedInOnlyCount": 27,
+      "sharedWithAnonymousCount": 0,
+      "criterionCandidates": [
+        {
+          "name": "__tea__ug__uid",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-12-15T04:03:08.243Z"
+        },
+        {
+          "name": "_csrf_token",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-10-16T04:03:04.330Z"
+        },
+        {
+          "name": "_ga",
+          "domain": ".accounts.feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-10-21T04:02:40.487Z"
+        },
+        {
+          "name": "_ga",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-10-21T04:02:40.022Z"
+        },
+        {
+          "name": "_ga_VPYRHN104D",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-10-21T04:03:03.171Z"
+        },
+        {
+          "name": "_gcl_au",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-12-15T04:02:39.000Z"
+        },
+        {
+          "name": "_tea_utm_cache_323044",
+          "domain": ".kcne618basvj.feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-09-23T04:03:20.000Z"
+        },
+        {
+          "name": "_tea_utm_cache_8608",
+          "domain": ".kcne618basvj.feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-09-23T04:03:20.000Z"
+        },
+        {
+          "name": "bitable_tableId_viewId_history",
+          "domain": "kcne618basvj.feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-17T07:13:45.000Z"
+        },
+        {
+          "name": "ccm_cdn_host",
+          "domain": "kcne618basvj.feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-09-24T07:13:56.000Z"
+        },
+        {
+          "name": "et",
+          "domain": "kcne618basvj.feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T04:03:16.000Z"
+        },
+        {
+          "name": "i18n_locale",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-10-21T04:03:04.134Z"
+        },
+        {
+          "name": "is_anonymous_session",
+          "domain": ".feishu.cn",
+          "httpOnly": true,
+          "sessionScoped": false,
+          "expiresAt": "2026-10-17T07:13:54.954Z"
+        },
+        {
+          "name": "js_version",
+          "domain": "kcne618basvj.feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-09-24T07:13:48.000Z"
+        },
+        {
+          "name": "landing_url",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-12-15T04:02:39.000Z"
+        },
+        {
+          "name": "lang",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-10-21T04:03:04.134Z"
+        },
+        {
+          "name": "locale",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-17T07:13:50.000Z"
+        },
+        {
+          "name": "msToken",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-09-23T04:03:03.286Z"
+        },
+        {
+          "name": "passport_trace_id",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T04:02:34.977Z"
+        },
+        {
+          "name": "passport_web_did",
+          "domain": ".feishu.cn",
+          "httpOnly": true,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T04:02:34.977Z"
+        },
+        {
+          "name": "QXV0aHpDb250ZXh0",
+          "domain": ".feishu.cn",
+          "httpOnly": true,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T04:02:34.977Z"
+        },
+        {
+          "name": "s_v_web_id",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-11-15T04:02:39.000Z"
+        },
+        {
+          "name": "session",
+          "domain": ".feishu.cn",
+          "httpOnly": true,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T04:03:02.575Z"
+        },
+        {
+          "name": "session_list",
+          "domain": ".feishu.cn",
+          "httpOnly": true,
+          "sessionScoped": false,
+          "expiresAt": "2027-09-16T04:03:02.575Z"
+        },
+        {
+          "name": "ssrLocalKey",
+          "domain": "kcne618basvj.feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-10-01T07:13:45.291Z"
+        },
+        {
+          "name": "swp_csrf_token",
+          "domain": ".feishu.cn",
+          "httpOnly": false,
+          "sessionScoped": false,
+          "expiresAt": "2026-10-02T07:13:51.827Z"
+        },
+        {
+          "name": "t_beda37",
+          "domain": ".feishu.cn",
+          "httpOnly": true,
+          "sessionScoped": false,
+          "expiresAt": "2026-10-02T07:13:51.827Z"
+        }
+      ],
+      "notUsableAsCriterion": []
+    }
+  },
+  "pageSignals": {
+    "taobao": {
+      "requestedUrl": "https://www.taobao.com/",
+      "landedUrl": "https://www.taobao.com/",
+      "title": "淘宝",
+      "loginWall": false,
+      "hasPasswordInput": false,
+      "riskNodes": 0
+    },
+    "feishu": {
+      "requestedUrl": "https://kcne618basvj.feishu.cn/",
+      "landedUrl": "https://kcne618basvj.feishu.cn/drive/home/",
+      "title": "主页 - 飞书云文档",
+      "loginWall": false,
+      "hasPasswordInput": false,
+      "riskNodes": 0
+    }
+  },
+  "environmentFindings": {
+    "systemProxy": {
+      "winInetProxyEnable": 1,
+      "winInetProxyServer": "127.0.0.1:7897",
+      "reachable": false,
+      "symptom": "浏览器所有页面报 ERR_PROXY_CONNECTION_FAILED；加 --no-proxy-server 后页面正常",
+      "note": "profile 自身没有任何代理配置（Preferences/Local State 的 proxy 均为 null），所以是**机器级**设置，不是本项目配置。"
+    }
+  }
+}

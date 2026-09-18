@@ -157,7 +157,7 @@ XWS_BROWSER_ID=edge-isolated
 - `C:\Users\Administrator\AppData\Local\Microsoft\Edge\User`（注意**不是** `Edge\User Data`）
   和 Chrome 的 `User Data` 里**也有**小旺神，但那不是本项目在用的配置，别混。
 
-## 4 开跑前的四条判据
+## 4 开跑前的五条判据
 
 1. 启动器没有报 `拒绝启动`（端口上不是另一个 profile 的浏览器）。若它打了 `REUSE`，
    说明这个 profile 的实例已经在跑，直接用即可。
@@ -167,8 +167,17 @@ XWS_BROWSER_ID=edge-isolated
    （本项目专用配置当前是 **`tb452480340`**）——商家号登录会看不到别家商品详情页；
    **乙（商家链）**必须能直接打开生意参谋后台。两条链登错的形态都是**静默**的：
    不报错，只是拿回来的是错账号下的数据。
+5. **机器级系统代理可达**（2026-09-18 实测新增）。Edge 默认走 Windows 的系统代理设置，
+   而本项目两个 profile **自己都没有代理配置**（`Preferences`/`Local State` 的 `proxy` 都是 `null`）。
+   实测到的那次：系统代理 `ProxyEnable=1` 指向 `127.0.0.1:7897`，而那个端口
+   `ECONNREFUSED`（代理软件没开）⇒ 浏览器**所有**页面报 `ERR_PROXY_CONNECTION_FAILED`，
+   页面标题只剩一个域名 —— 症状离原因很远，很像「站点挂了」或「登录失效」。
+   排查顺序：先看 `HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings`
+   的 `ProxyEnable`/`ProxyServer`，再探那个端口通不通。
+   处置二选一：把代理软件开起来，或者用直连起浏览器（`--no-proxy-server`，已实测可用）。
+   **注意出口 IP 变化本身会让平台会话失效**，所以这条不是随时可以改的设置。
 
-四条任一不过就停下等人，不要靠重试硬闯（会加速风控）。
+五条任一不过就停下等人，不要靠重试硬闯（会加速风控）。
 
 ## 5 配套环境事实
 
