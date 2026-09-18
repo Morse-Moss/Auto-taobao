@@ -15,6 +15,7 @@ import { FAILURE_CLASS } from './context-schema.mjs';
 import { renderAlertText, redactSensitive } from '../notify-feishu-core.mjs';
 import {
   DIAGNOSE_FAILURE_CLASSES,
+  NEEDS_KINDS,
   NOTIFY_REASON_KEYS,
   NO_AUTO_RETRY_REASONS,
   RECOVERY_PROVING_REASONS,
@@ -24,6 +25,8 @@ import {
   buildRoundAlert,
   decideNotification,
   missingPolicyKeys,
+  needsAxisErrors,
+  needsOf,
   requiredPolicyKeys,
   resolveNotifyRule,
   roundAlertId,
@@ -43,6 +46,7 @@ import {
   parseRoundArgs,
   runRound,
 } from './round-runner.mjs';
+import { createMemoryRoundHistory, shouldRecord } from './round-history.mjs';
 import { planSchedule, ROUND_SCHEDULE_VERSION } from './round-schedule.mjs';
 
 const NOW_ISO = '2026-09-15T09:00:00+08:00';
@@ -712,4 +716,119 @@ test('buildRound 要把体检端口转交给 runRound（源码级检查，补行
   assert.match(source, /healthCheck:\s*opts\.healthCheck/u);
   // 反向断言：不许再退回硬写 null（那等于接线只接了半条 —— 配置开了也不生效）。
   assert.doesNotMatch(source, /healthCheck:\s*null,\s*\n\s*heal:/u);
+});
+
+// ── needs 轴：这条麻烦「要谁去办」────────────────────────────────────────────
+//
+// 这个轴存在的唯一理由是让「需要人到现场」有一个**不随挑选者变化**的口径（见 round-notify-policy
+// 里 NEEDS_KINDS 的注释：它要拿来决定做不做浏览器自动登录）。所以这里既查表自身完整，也查它
+// 不许退化成「事后从标题猜」。
+
+test('每个会打扰人的理由都表态了「要谁去办」；静默的理由不许带非空 needs', () => {
+  const errors = needsAxisErrors();
+  assert.deepEqual(errors, [], `needs 轴有问题：${errors.join('; ')}`);
+
+  // 直接断言事实，不只依赖上面那个自查函数（自查函数写错时，它自己会绿）。
+  for (const rule of ROUND_NOTIFY_RULES.filter((item) => item.plan === 'NOTIFY')) {
+    assert.ok(Object.hasOwn(rule, 'needs'), `${rule.key} 没声明 needs`);
+    assert.ok(
+      rule.needs === null || NEEDS_KINDS.includes(rule.needs),
+      `${rule.key} 的 needs=${rule.needs} 不在取值表里`,
+    );
+  }
+  for (const rule of ROUND_NOTIFY_RULES.filter((item) => item.plan === 'SILENT')) {
+    assert.ok(rule.needs === undefined || rule.needs === null, `${rule.key} 是静默的，不该带 needs`);
+  }
+  // null 是有含义的取值（未细分），不许混进取值表 —— 混进去之后「未细分」与「某个真实分类」
+  // 就分不开了，而未细分正是要去补的那一类。
+  assert.ok(!NEEDS_KINDS.includes(null));
+});
+
+test('「需要人到现场」这一桶钉住登录相关的那两条（改口径必须是一次显式改动）', () => {
+  const onsite = ROUND_NOTIFY_RULES.filter((rule) => rule.needs === 'ONSITE').map((rule) => rule.key);
+  for (const key of ['LOGIN_REQUIRED', 'HUMAN_REQUIRED', 'PLATFORM_CONTROL', 'EGRESS_PROXY_UNREACHABLE']) {
+    assert.ok(onsite.includes(key), `${key} 应从「需要人到现场」这一桶里`);
+  }
+  // 静默的理由一律不进任何桶：它们从不打扰人。
+  for (const key of SILENT_REASON_KEYS) {
+    assert.equal(needsOf(key).needs, null, key);
+  }
+  // 未登记的理由必须**显式**表现为「不知道」，不许安静地落进「未细分」。
+  assert.equal(needsOf('A_KEY_THAT_NOBODY_REGISTERED').known, false);
+  assert.equal(needsOf('BUDGET_EXHAUSTED').known, true);
+  assert.equal(needsOf('BUDGET_EXHAUSTED').needs, null, '「升级」这个动作本身不含施为对象，是未细分而不是未知');
+});
+
+// ── 轮次历史：接线 ──────────────────────────────────────────────────────────
+
+test('没配历史端口时收据如实写 NOT_CONFIGURED（默认行为与接线前逐字相同）', async () => {
+  const receipt = await runOnce({ schedule: scheduleRan() });
+  assert.deepEqual(receipt.history, { status: 'NOT_CONFIGURED', file: null, error: null });
+  assert.deepEqual(hasAllFields(receipt), [], '收据字段一个都不能少');
+});
+
+test('配了历史端口：过了到期闸门的轮次记一条，未到期的写 SKIPPED 且不进账本', async () => {
+  const history = createMemoryRoundHistory();
+  const done = await runOnce({ schedule: scheduleRan(), history });
+  assert.equal(done.history.status, 'RECORDED');
+  assert.equal(history.written.length, 1);
+  assert.equal(history.written[0].outcome, 'COMPLETED');
+  assert.equal(history.written[0].reason, 'SUCCESS');
+  assert.equal(history.written[0].businessKey, BUSINESS_KEY);
+  assert.equal(history.written[0].dayKey, localDayKey(new Date(NOW_ISO).valueOf()));
+
+  const notDue = await runOnce({
+    schedule: scheduleRan(),
+    due: async () => ({ due: false, source: 'DUE_PORT' }),
+    history,
+  });
+  assert.equal(notDue.outcome, 'SKIPPED_NOT_DUE');
+  assert.equal(notDue.history.status, 'SKIPPED');
+  // 「未到期」是定时指纹每 15 分钟醒一次的常态，记下来只会把账本灌满噪声。
+  assert.equal(history.written.length, 1, '未到期的轮次不该进账本');
+  assert.equal(shouldRecord({ outcome: 'SKIPPED_ALREADY_DONE' }), false);
+  assert.equal(shouldRecord({ outcome: 'BLOCKED_BY_HEALTH' }), true, '体检拦下的轮次必须进账本：它是最典型的「需要人」');
+});
+
+test('登录失效那类失败会带着「要人到现场」的结论进账本（这就是频率统计的分子）', async () => {
+  const history = createMemoryRoundHistory();
+  const notify = recordingNotify();
+  const receipt = await runOnce({
+    schedule: scheduleRan({ ok: false, failureClass: 'HUMAN_REQUIRED', run: { ok: false }, reasons: ['requires Xiaowangshen login'] }),
+    notify,
+    history,
+  });
+  assert.equal(receipt.outcome, 'FAILED');
+  assert.equal(receipt.humanRequired, true);
+  assert.equal(history.written.length, 1);
+  const line = history.written[0];
+  assert.equal(line.reason, 'HUMAN_REQUIRED');
+  assert.equal(line.needs, 'ONSITE');
+  assert.equal(line.needsKnown, true);
+  assert.equal(line.notifyStatus, 'SENT');
+  // 账本要与告警对得上号：运营拿告警编号去查，必须能查到这一条。
+  assert.equal(line.alertId, notify.calls[0].alert.alertId);
+});
+
+test('账本写失败不改变业务结果，但收据里必须写 FAILED（不许静默）', async () => {
+  const history = {
+    file: 'C:/nope/history.jsonl',
+    async append() { throw new Error('disk on fire'); },
+  };
+  const receipt = await runOnce({ schedule: scheduleRan(), history });
+  assert.equal(receipt.outcome, 'COMPLETED', '旁路账本失败不该改变这一轮的业务结果');
+  assert.equal(receipt.ok, true);
+  assert.equal(receipt.history.status, 'FAILED');
+  assert.match(receipt.history.error, /disk on fire/u);
+});
+
+test('buildRound / optionsFromEntry 的三处转交（源码级检查，补行为用例够不到的那一环）', () => {
+  // 同样只能看源码：这三处都在 `main()` 的闭包里。
+  // 写错的后果都是**静默**的：账本永远收不到数据（统计恒为 0），或告警里永远没有「去哪台机器登录」。
+  const source = readFileSync(new URL('./round-runner.mjs', import.meta.url), 'utf8');
+  assert.match(source, /history:\s*roundHistory/u, 'buildRound 没把历史端口转交出去');
+  assert.match(source, /const historyFile = resolve\(args\.historyFile \?\? DEFAULT_HISTORY_FILE\)/u,
+    '历史文件必须落在稳定路径上，不能落在每个进程都在换的 workDir 里');
+  assert.match(source, /machine:\s*machineName\(\)/u, '告警/账本里的机器名被去掉了');
+  assert.match(source, /browserProfile:\s*identity\?\.browserProfileId/u, '告警里的「哪个浏览器配置要登录」被去掉了');
 });

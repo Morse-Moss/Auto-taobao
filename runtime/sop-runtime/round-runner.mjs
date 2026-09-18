@@ -18,6 +18,7 @@
 //   2. **体检没给出结论时照常发起**（与探测同方向的 fail-open：多做一次本来会失败的运行，
 //      好过少做一次本来该做的活），但收据里 health.status 必须写 UNKNOWN，**不许写 OK**。
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import os from 'node:os';
 import { basename, dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -45,6 +46,9 @@ import {
   buildResolvedAlert,
   resolveNotifyRule,
 } from './round-notify-policy.mjs';
+// 轮次历史（只追加）。它是**旁路**：没有任何判定读它，写失败也不许影响这一轮的业务结果
+// （见本文件 finish() 里那段：失败记进收据的 history.error，不抛）。
+import { buildHistoryEntry, shouldRecord, createFileRoundHistory, DEFAULT_HISTORY_FILE } from './round-history.mjs';
 
 export const ROUND_CONTRACT_VERSION = 'agent-round-v1';
 export const ROUND_STATE_VERSION = 'agent-round-state-v1';
@@ -80,6 +84,9 @@ export const ROUND_RECEIPT_FIELDS = Object.freeze([
   'run',
   'heal',
   'notification',
+  // 这一轮有没有被写进历史（旁路账本）。写失败不影响业务结果，但**必须留下痕迹**——
+  // 否则「历史里没有」会被读成「这一轮没出问题」，而那正是旁路账本最危险的失效形态。
+  'history',
   'state',
   'steps',
 ]);
@@ -203,6 +210,11 @@ function receiptOf({ businessKey, outcome, overrides = {} }) {
       channel: null,
       error: null,
     },
+    // 历史账本的写入结果。三态刻意分开：
+    //   NOT_CONFIGURED = 这一轮根本没配账本（离线用例、或还没接线的宿主）
+    //   SKIPPED        = 配了，但这一轮没过到期闸门，按口径不该记（不是失败）
+    //   FAILED         = 该记却没记上 —— 只有这一种要人去查
+    history: { status: 'NOT_CONFIGURED', file: null, error: null },
     state: { attemptsToday: null, maxAttemptsPerDay: null, closed: false, closedReason: null, completed: false },
     steps: [],
   };
@@ -295,6 +307,8 @@ export async function runRound(options = {}) {
     schedule,
     heal = null,
     notify = null,
+    // 轮次历史端口（旁路，默认关闭）。默认 null ⇒ 「没配就不记」，行为与接线前逐字相同。
+    history = null,
     state,
     now = () => Date.now(),
     maxAttemptsPerDay = DEFAULT_MAX_ATTEMPTS_PER_DAY,
@@ -391,6 +405,38 @@ export async function runRound(options = {}) {
       completed: Boolean(nextState.completed[key]),
     };
 
+    // ── 轮次历史（旁路账本）────────────────────────────────────────────────
+    // 写在这里、而不是散到十个出口上：出口逐个补必然漏一个，而漏掉的那个出口的后果是
+    // 「历史里没有这条」——它不报错、不告警，只让「需要人多久来一次」这个数字**偏低**。
+    // 这正是这个模块存在的唯一目的，所以宁可把判定收在一处。
+    let historyReceipt = { status: 'NOT_CONFIGURED', file: null, error: null };
+    if (typeof history?.append === 'function') {
+      historyReceipt = { status: 'SKIPPED', file: history.file ?? null, error: null };
+      if (shouldRecord({ outcome })) {
+        try {
+          await history.append(buildHistoryEntry({
+            at: startedAt,
+            dayKey,
+            outcome,
+            reason: decision.key ?? null,
+            businessKey: key,
+            capability: capabilityId,
+            source,
+            notification,
+            // health 走 overrides 而不是直接引用那个 const：finish 在 ②体检**之前**就会被调用
+            // （未到期、已完成两个出口），直接引用会踩暂时性死区。收据本身也是同一条路。
+            health: overrides.health ?? null,
+          }));
+          historyReceipt.status = 'RECORDED';
+        } catch (error) {
+          // 账本写不进去不能改变这一轮的业务结果（结果已经落盘了），但必须留下痕迹：
+          // 静默吞掉的后果与「漏一个出口」完全一样，只是更隐蔽。
+          historyReceipt.status = 'FAILED';
+          historyReceipt.error = messageOf(error).slice(0, 300);
+        }
+      }
+    }
+
     return receiptOf({
       businessKey: key,
       outcome,
@@ -402,6 +448,7 @@ export async function runRound(options = {}) {
         humanRequired: decision.action === 'SEND' || decision.action === 'DEDUPED' ? decision.plan === 'NOTIFY' : false,
         ok: !['FAILED', 'ERROR', 'PAUSED_FOR_HUMAN', 'BLOCKED_BY_HEALTH'].includes(outcome),
         notification,
+        history: historyReceipt,
         state: receiptState,
         steps,
         ...overrides,
@@ -745,6 +792,10 @@ const USAGE = [
   '   or: round-runner.mjs --schedule-file <p> --round <name> [--force]',
   '   or: round-runner.mjs --schedule-file <p> --serve [--interval-seconds 60]',
   '',
+  `--history-file <p>  轮次历史（只追加）写到哪里，默认 ${DEFAULT_HISTORY_FILE}。`,
+  '                    它是旁路账本，写失败不影响这一轮的业务结果（收据里 history.status 会写 FAILED）。',
+  '                    读回来：node runtime/sop-runtime/round-history-report.mjs --days 30',
+  '',
 ].join('\n');
 
 function readScheduleFile(file) {
@@ -881,6 +932,17 @@ export function healthCheckFromEntry(entry, { registry = null } = {}) {
   });
 }
 
+// 「这台机器叫什么」。为什么告警里要带它：多店铺/多机器部署下，运营收到「平台登录已失效」
+// 最先要回答的问题就是「去哪台机器上登录」，而配置里的 targetLabel 是人工标签、可能没填。
+// 取不到就如实 null（渲染层对空值整行不输出），**不编一个主机名出来**。
+function machineName() {
+  try {
+    return os.hostname() || null;
+  } catch {
+    return null;
+  }
+}
+
 // 排期条目 -> 一次运行的选项。命令行参数可以盖掉条目里的值（人工临时跑用），但**不反过来**：
 // 配置文件是运营日常改的地方，命令行是临时干预，临时的不该被持久的那份悄悄覆盖。
 function optionsFromEntry(entry, args = {}, decision = null, { registry = null } = {}) {
@@ -891,9 +953,10 @@ function optionsFromEntry(entry, args = {}, decision = null, { registry = null }
   const period = decision?.period
     ? { startDate: decision.period.startDate, endDate: decision.period.endDate }
     : (entry.periodStart && entry.periodEnd ? { startDate: entry.periodStart, endDate: entry.periodEnd } : null);
+  const identity = args.identity ? JSON.parse(args.identity) : entry.identity;
   return {
     capabilityId: entry.capability,
-    identity: args.identity ? JSON.parse(args.identity) : entry.identity,
+    identity,
     target: args.target ?? entry.target ?? null,
     expectedRows: entry.expectedRows === undefined ? null : Number(entry.expectedRows),
     businessKey: args.businessKey ?? decision?.businessKey ?? entry.businessKey ?? null,
@@ -905,11 +968,19 @@ function optionsFromEntry(entry, args = {}, decision = null, { registry = null }
     publishInput: entry.publishInput ?? {},
     // 体检按条目开启（默认关闭）。**在这里建**是为了让浏览器键写错在「本轮开跑之前」就报出来。
     healthCheck: healthCheckFromEntry(entry, { registry }),
+    // source 同时喂给两个下游：①告警文案（只渲染 READABLE_SOURCE_KEYS 里那几个键）
+    // ②轮次历史。所以这里只放「人话与统计各自要用的标识」，不放凭据、不放原始报文。
+    //   machine / browserProfile 是 2026-09-18 加的：原来告警只说「平台登录已失效」，
+    //   没说**哪个浏览器配置**要重新登录 —— 而登录正好是唯一无法远程代劳的那件事。
     source: {
       targetLabel: entry.source?.targetLabel ?? null,
       shopName: entry.source?.shopName ?? null,
+      // storeId 只给统计用（不在渲染白名单里）：shopName 是可改名的人话，storeId 才是稳定维度。
+      storeId: identity?.storeId ?? null,
       period: period ? `${period.startDate}~${period.endDate}` : null,
       capability: entry.capability,
+      machine: machineName(),
+      browserProfile: identity?.browserProfileId ?? null,
     },
   };
 }
@@ -975,6 +1046,11 @@ export async function main(argv = process.argv.slice(2)) {
 
   const stateFile = resolve(workDir, 'round-state.json');
   const roundState = createFileRoundState(stateFile);
+  // 轮次历史**不放在 workDir 里**：workDir 默认是 `runtime/sop-runtime/round-<时间戳>`，
+  // 每次起进程都是一个新目录（见 runtime-bootstrap.mjs）。历史写在那里会随重启清零，
+  // 而「这种麻烦多久来一次」恰恰要跨重启、跨周才答得出来。默认路径是稳定的那个。
+  const historyFile = resolve(args.historyFile ?? DEFAULT_HISTORY_FILE);
+  const roundHistory = createFileRoundHistory(historyFile);
   // 通知端口建一次就复用：它内部持有 token 缓存（常驻循环下每秒新建一个 provider 会让 2 小时过期
   // 这条防线失效——每次都是新缓存，永远撞不上「用旧 token 发」的窗口，也就永远测不出缓存逻辑）。
   const notify = await createFeishuNotify();
@@ -1010,6 +1086,8 @@ export async function main(argv = process.argv.slice(2)) {
     healthCheck: opts.healthCheck ?? null,
     heal: null,
     notify,
+    // 历史账本（旁路）。配了才写；不配时收据里落 NOT_CONFIGURED，不假装记过。
+    history: roundHistory,
     state: roundState,
     force,
   });

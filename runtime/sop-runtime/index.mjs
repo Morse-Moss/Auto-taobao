@@ -63,3 +63,18 @@ export {
   exitCodeForRound,
   parseRoundArgs,
 } from './round-runner.mjs';
+// 轮次历史（只追加账本，回答「这种麻烦多久来一次」）。同样具名导出，理由与上面一致。
+// 读取端 `round-history-report.mjs` 自己导出 `main`，所以它整个模块都不从这里出去。
+export {
+  ROUND_HISTORY_VERSION,
+  ROUND_HISTORY_FIELDS,
+  HISTORY_SKIP_OUTCOMES,
+  DEFAULT_HISTORY_FILE,
+  shouldRecord,
+  buildHistoryEntry,
+  createFileRoundHistory,
+  createMemoryRoundHistory,
+  parseHistoryText,
+  summarizeHistory,
+  renderHistoryReport,
+} from './round-history.mjs';

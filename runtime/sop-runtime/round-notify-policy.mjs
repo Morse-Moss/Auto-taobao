@@ -18,6 +18,29 @@ import { FAILURE_CLASS } from './context-schema.mjs';
 
 export const ROUND_NOTIFY_CONTRACT_VERSION = 'round-notify-policy-v1';
 
+// 「这一条要谁去办」——与 plan（要不要打扰）**正交**的第二个轴。
+//
+// 为什么必须逐条表态、而不是在统计脚本里另挑一份理由清单：
+//   「需要人多久来一次」这个数字要拿来决定一件真事——「要不要给浏览器做自动登录（A2）」
+//   （见 docs/ops/LOGIN-RECOVERY-OPTIONS.md §3/§5）。口径若靠人事后挑理由，数字就会随挑选者变化，
+//   而两方拿不同口径去论证同一个决策，是最贵的返工形态。所以按本表的既有规矩办：
+//   **每个理由的意见都写在这张表里**，统计层只做派生。
+//
+// 取值：
+//   ONSITE    人要**到那台机器上动手**：登录、过验证码、启动出网代理、重开页面、人工门确认。
+//             A2（自动登录）影响的正是这一类 —— 频率统计要盯的分母就是它。
+//   UPSTREAM  人（或上游系统）去把**业务数据**结掉，这不是故障（队列里有等结算的行）。
+//   CONFIG    人改配置或补授权。
+//   RECONCILE 人去看外部数据现状并做判断（写入结果未知那一类）。
+//   VENDOR    交给服务方（能力过期、疑似缺陷、类别未能识别）。
+//   null      该条**本身不指定经手人**：要么是静默结论，要么是「升级」这个动作本身
+//             （BUDGET_EXHAUSTED / ESCALATED_HUMAN —— 人具体做什么取决于被升级的那个原因）。
+//             null 只允许出现在 plan==='SILENT' 或上面这两个「动作型」理由上，由用例守住。
+export const NEEDS_KINDS = Object.freeze(['ONSITE', 'UPSTREAM', 'CONFIG', 'RECONCILE', 'VENDOR']);
+
+// null 是有含义的取值（未细分），不是缺省——所以不计入 NEEDS_KINDS。
+export const NEEDS_UNSPECIFIED = null;
+
 // 一张表说清「什么情况打扰人」。kind 只用于说明这条理由从哪来（便于核对完整性），不参与判定。
 //   round         —— 编排层自己的结论（是否到期、队列状态、自愈结果…）
 //   failure_class —— sop-runtime 的失败分类（context-schema.FAILURE_CLASS）
@@ -66,6 +89,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'WAITING_HUMAN',
     kind: 'round',
     plan: 'NOTIFY',
+    needs: 'UPSTREAM',
     severity: 'HIGH',
     title: '队列里有等人工处理的行',
     nextAction: '去上游把这批行结掉（结算/确认）后，系统会在下一个 15 分钟节点自动继续。',
@@ -74,6 +98,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'HEALTH_BLOCKED',
     kind: 'round',
     plan: 'NOTIFY',
+    needs: 'ONSITE',
     severity: 'HIGH',
     title: '本轮体检未通过，已跳过执行',
     nextAction: '按下面的具体原因处理后，系统会在下一个 15 分钟节点自动重试；本轮不会浪费一次采集。',
@@ -85,6 +110,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'EGRESS_PROXY_UNREACHABLE',
     kind: 'round',
     plan: 'NOTIFY',
+    needs: 'ONSITE',
     severity: 'HIGH',
     title: '出网代理连不上，浏览器打不开任何页面',
     nextAction: '在那台机器上启动出网代理软件（或改用直连并重启自动化浏览器）。'
@@ -95,6 +121,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'TARGET_PAGE_MISSING',
     kind: 'round',
     plan: 'NOTIFY',
+    needs: 'ONSITE',
     severity: 'HIGH',
     title: '目标页面不在，或多于一个',
     nextAction: '按 SOP 重开目标页面（每个站点必须**恰好一个**标签页），系统会自动继续。',
@@ -104,6 +131,9 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'BUDGET_EXHAUSTED',
     kind: 'escalation',
     plan: 'NOTIFY',
+    // 未细分：要人，但「人具体做什么」取决于被升级的那个原因（本条只说明次数用尽）。
+    // 显式写 null 而不是省略——省略会让这条静默落进「静默理由」那一桶，口径就错了。
+    needs: null,
     severity: 'HIGH',
     title: '已尝试多次仍失败',
     nextAction: '看下面最后一次的原因；需要人工介入后再让它继续。',
@@ -112,6 +142,8 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'ESCALATED_HUMAN',
     kind: 'escalation',
     plan: 'NOTIFY',
+    // 同上：这是「升级」这个动作本身，不含具体施为对象。
+    needs: null,
     severity: 'HIGH',
     title: '需要人工处理',
     nextAction: '按下面的原因处理；处理完系统会在下一个 15 分钟节点自动继续。',
@@ -120,6 +152,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'ROUND_ERROR',
     kind: 'escalation',
     plan: 'NOTIFY',
+    needs: 'VENDOR',
     severity: 'HIGH',
     title: '运行编排自身出错',
     nextAction: '把这条连同诊断包交给服务方；确认前不要重启自动化。',
@@ -147,6 +180,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'HUMAN_REQUIRED',
     kind: 'failure_class',
     plan: 'NOTIFY',
+    needs: 'ONSITE',
     severity: 'HIGH',
     title: '平台登录已失效',
     nextAction: '在那台机器上打开浏览器完成登录（系统不会也不应代做凭据），登录后会自动继续。',
@@ -158,6 +192,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'CAPABILITY_DEGRADED',
     kind: 'failure_class',
     plan: 'NOTIFY',
+    needs: 'VENDOR',
     severity: 'HIGH',
     title: '该能力需要更新',
     nextAction: '联系服务方更新该能力；诊断包已就绪。',
@@ -167,6 +202,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'EVIDENCE_INVALID',
     kind: 'failure_class',
     plan: 'NOTIFY',
+    needs: 'CONFIG',
     severity: 'HIGH',
     title: '采集结果不合合同，已拒绝',
     nextAction: '检查目标与周期参数后重跑。系统不会重试同一份不合合同的证据。',
@@ -176,6 +212,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'POLICY_DENIED',
     kind: 'failure_class',
     plan: 'NOTIFY',
+    needs: 'CONFIG',
     severity: 'HIGH',
     title: '配置或授权不对，已拒绝执行',
     nextAction: '按下面的原因补齐配置/授权（缺什么会写在原因里）。',
@@ -185,6 +222,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'COMMIT_UNKNOWN',
     kind: 'failure_class',
     plan: 'NOTIFY',
+    needs: 'RECONCILE',
     severity: 'HIGH',
     title: '外部写入结果未知，需要人工对账',
     nextAction: '先对账确认外部数据现状，再决定要不要重跑。**系统不会静默重试。**',
@@ -195,6 +233,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'BUG',
     kind: 'failure_class',
     plan: 'NOTIFY',
+    needs: 'VENDOR',
     severity: 'HIGH',
     title: '疑似系统自身缺陷，自动化已停止',
     nextAction: '把这条连同诊断包交给服务方；确认前不要重启自动化。',
@@ -206,6 +245,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'LOGIN_REQUIRED',
     kind: 'diagnose',
     plan: 'NOTIFY',
+    needs: 'ONSITE',
     severity: 'HIGH',
     title: '插件或平台登录已失效',
     nextAction: '在同一个浏览器配置里重新登录（系统不会代做凭据），登录后自动继续。',
@@ -215,6 +255,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'PLATFORM_CONTROL',
     kind: 'diagnose',
     plan: 'NOTIFY',
+    needs: 'ONSITE',
     severity: 'HIGH',
     title: '遇到验证码或风控页，需要人工在浏览器完成',
     nextAction: '人工在可见的浏览器窗口里完成验证。**系统不会尝试绕过风控。**',
@@ -224,6 +265,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'STALL_PAGE_REQUEST',
     kind: 'diagnose',
     plan: 'NOTIFY',
+    needs: 'ONSITE',
     severity: 'HIGH',
     title: '页面长时间无响应',
     nextAction: '若自愈不可用或已用尽预算，需要人工确认网络/限流情况后重跑。',
@@ -233,6 +275,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'EXPORT_DOWNLOAD_TIMEOUT',
     kind: 'diagnose',
     plan: 'NOTIFY',
+    needs: 'ONSITE',
     severity: 'HIGH',
     title: '导出文件等待超时',
     nextAction: '若自愈不可用或已用尽预算，需要人工确认插件导出通道后重跑。',
@@ -242,6 +285,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'BROWSER_DEBUG_PORT',
     kind: 'diagnose',
     plan: 'NOTIFY',
+    needs: 'ONSITE',
     severity: 'HIGH',
     title: '浏览器调试端口不可用',
     nextAction: '确认浏览器已按调试模式启动（被关掉或被占端口都算）；修好后系统会自动继续。',
@@ -251,6 +295,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'FLOW_HUMAN_GATE',
     kind: 'diagnose',
     plan: 'NOTIFY',
+    needs: 'ONSITE',
     severity: 'HIGH',
     title: '流程按设计停在人工门',
     nextAction: '这是设计内行为（发布授权/内容审核），人工确认后继续。',
@@ -260,6 +305,7 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     key: 'UNKNOWN',
     kind: 'diagnose',
     plan: 'NOTIFY',
+    needs: 'VENDOR',
     severity: 'HIGH',
     title: '故障类别未能识别',
     nextAction: '把这条连同诊断包交给服务方。',
@@ -285,6 +331,35 @@ export const RETRY_AUTOMATICALLY_REASONS = Object.freeze(
 export const NO_AUTO_RETRY_REASONS = Object.freeze(
   ROUND_NOTIFY_RULES.filter((rule) => rule.retryAutomatically === false).map((rule) => rule.key),
 );
+
+// needs 轴的派生与自查。
+//
+// 只对 plan==='NOTIFY' 逐条要求：静默的理由从不打扰人，「不需要人经手」是**逻辑蕴含**，
+// 不是省略；给它们也补一个 `needs: null` 只会让表变长而不增加信息。
+export function needsOf(reason) {
+  const rule = resolveNotifyRule(reason);
+  if (!rule) return { needs: null, known: false, key: text(reason) || null };
+  return { needs: rule.needs ?? null, known: true, key: rule.key, title: rule.title ?? null };
+}
+
+// 表自身的完整性：返回问题描述清单（空 = 合格）。由用例调用，
+// 让「加了新理由却忘了表态」在离线就炸，而不是等统计出来一个偏低的数字。
+export function needsAxisErrors() {
+  const errors = [];
+  for (const rule of ROUND_NOTIFY_RULES) {
+    const declared = Object.hasOwn(rule, 'needs');
+    if (rule.plan === 'NOTIFY') {
+      if (!declared) {
+        errors.push(`${rule.key}: plan=NOTIFY 必须声明 needs（要谁去办）`);
+      } else if (rule.needs !== null && !NEEDS_KINDS.includes(rule.needs)) {
+        errors.push(`${rule.key}: needs="${rule.needs}" 不在 ${NEEDS_KINDS.join(' | ')} 之内`);
+      }
+    } else if (declared && rule.needs !== null) {
+      errors.push(`${rule.key}: plan=${rule.plan} 不该声明一个非空的 needs（静默理由不打扰人）`);
+    }
+  }
+  return errors;
+}
 
 export function resolveNotifyRule(reason) {
   const key = String(reason ?? '').trim();

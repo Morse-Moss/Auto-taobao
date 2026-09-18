@@ -258,6 +258,18 @@ README §5 把该层的权威职责定为「执行历史、**定时器、重试*
 这**违反 README §5 自己那一行**：「本地 JSON 是缓存或投影，**不得决定业务恢复位置或业务完成状态**」。
 `createFileRoundState` 的注释也已经预见到风险：「状态文件坏了……那会让『今天已经跑过』的记忆消失，于是同一轮重复写一次」——但它选择的是抛错，而不是把权威挪走。
 
+**2026-09-18 补一条更硬的事实：这份「权威」还不在一个稳定路径上。**
+`runtime-bootstrap.mjs:46` 的默认值是 `resolve(workDir ?? 'runtime/sop-runtime/${workDirPrefix}-${Date.now().toString(36)}')`
+—— 即 `workDir` **每次起进程都是一个新目录**（实证：`runtime/sop-runtime/round-mu6bq6d8/` 是空的，
+来自一次在建状态之前就退出的运行；同类的 `two-stage-*` 有十几个）。部署文档 §6.1 的三条命令都**没有传**
+`--work-dir`，所以这就是生产路径上的形状。⇒ 后果（**由代码推出的，未端到端实测**）：
+机器重启 / 任务计划程序重新拉起之后，`completed` 与 `openAlert` 都从零开始，
+于是①同一周期会被重新判一次「该跑」（幂等最终由 DB 的 `businessKey` 准入兜，这一条也**未验证**）；
+②**还没收掉的那条告警会被重新通知一次**（去重锚 `openAlert` 没了）——
+这正好落在 `LOGIN-RECOVERY-OPTIONS.md` §2.4 点名的那个风险「通知疲劳」上。
+本轮新增的轮次账本（`UNATTENDED-AGENT-RUNTIME-PLAN.md` §11.3）**刻意没有跟着这个形状走**：
+它的默认路径是 `runtime/.round-history.jsonl`，与进程生命周期无关。
+
 **3. 另有一条已经记账的同类缺口。**
 `PHASE-ARCHIVE.md` §9：「限流/熔断不 durable｜刻意取舍｜跨进程一致的限流需要落库或外置，属独立设计」。
 实测 `runtime/sop-runtime/task-queue.mjs:47` 的 `createCircuitBreaker` 用进程内 Map + `Date.now()`。

@@ -46,6 +46,13 @@ const TITLE_BY_TYPE = Object.freeze({
   BUDGET_EXHAUSTED: '自动重试次数已用尽',
 });
 
+// 只渲染白名单里的键。**白名单而不是黑名单**：source 是调用方填的自由对象，
+// 黑名单意味着「以后谁往里塞一个键，它就会出现在告警里」——而告警会被复制到群、邮件、诊断包。
+//
+// 末两行是 2026-09-18 加的（见 docs/ops/LOGIN-RECOVERY-OPTIONS.md 的 B 项）：
+// 「平台登录已失效」这类告警原来只说「登录失效」，没说**哪台机器、哪个浏览器配置**——
+// 而登录恰恰是唯一无法远程代劳的事，运营看完还得先找到底该去哪台机器。缺值的键整行不输出，
+// 所以对没填这两项的旧来源，渲染结果与加它们之前逐字相同。
 const READABLE_SOURCE_KEYS = Object.freeze([
   ['targetLabel', '对象'],
   ['productId', '商品ID'],
@@ -53,6 +60,8 @@ const READABLE_SOURCE_KEYS = Object.freeze([
   ['mainRecordId', '主表记录'],
   ['period', '数据周期'],
   ['capability', '任务'],
+  ['machine', '机器'],
+  ['browserProfile', '浏览器配置'],
 ]);
 
 function text(value) {

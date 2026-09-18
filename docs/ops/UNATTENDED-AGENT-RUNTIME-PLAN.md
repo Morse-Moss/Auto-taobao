@@ -344,3 +344,59 @@ YESTERDAY / PREVIOUS_WEEK_SUN_SAT / CURRENT_WEEK_SUN_SAT / PREVIOUS_MONTH）」�
 **本步没做的事**：还没有在任何一台机器上接上「叫醒者」；`runtime/round-schedule.json` 出厂
 `enabled:false`，且 `target` 仍是占位串（`<飞书周表直链，含 ?table=>`）。**要先填 target 再改 enabled**。
 
+### 11.3 轮次历史：把「多久需要人一次」变成可查的数字（2026-09-18）
+
+**为什么加它**：这套方案把「该安静的时候安静」做到了（§4 的双向判据表 + 用例），但有一个问题
+**当时任何地方都答不了**：「需要人到现场这件事，到底多久来一次」。没有这个数字，
+「要不要给浏览器做自动登录」就只能凭印象决定，而印象总是偏向最近一次踩坑。
+（分析见 `LOGIN-RECOVERY-OPTIONS.md`；这一节只记落地形状。）
+
+**为什么既有落点都不够**（逐处核对过代码，不是推测）：
+
+| 落点 | 为什么不够 |
+| --- | --- |
+| `round-state.json` | 只有 `days[dayKey].lastOutcome` 与一个 `openAlert` 槽 —— 一天里两次不同的事只留得下最后一次 |
+| `durable_runs.blocker` / `human_gate_status` | 运行行上的**可变列**（`context.blocker` 写一次覆盖一次），且只在建了 run 时才有行 |
+| `durable_attempts.failure_class` | 同上：**体检拦下（`BLOCKED_BY_HEALTH`）与队列等人工（`PAUSED_FOR_HUMAN`）刻意不创建运行**，所以最常需要人的那两类连一行都没有 |
+| 收据 | 不落盘：`--serve` 每轮只往 stdout 打一行摘要（不含 `reasons`），进程一退就没了 |
+
+⇒ 需要一个**追加式**落点，且它必须能记下「没建 run 的那些轮次」。
+
+**四条设计决定**
+
+1. **落点是 JSONL 文件，不是数据库表**：`runtime/.round-history.jsonl`。
+   建表要动生产库（迁移 + 授权），而这个问题**根本不需要数据库**。
+   路径也是刻意的：点号前缀与既有运行态（`runtime/.collect-child-pid`）同类，且被
+   `.gitignore` 的 `runtime/**/*.jsonl` 覆盖。**不落在 `workDir` 里** —— `workDir` 默认是
+   `runtime/sop-runtime/round-<时间戳>`，**每次起进程都换一个新目录**，写在那里会随重启清零。
+2. **只写不读来决策**：没有任何判定读这个文件（不是第二份状态真相）。
+3. **只记「过了到期闸门」的轮次**（`SKIPPED_NOT_DUE` / `SKIPPED_ALREADY_DONE` 不记）。
+   通知口径只记非静默的，历史口径要的是**分母**，两者**刻意不同**：
+   体检拦下、队列为空这些必须进账本，否则比例的分母会偏。
+4. **判定表新增 `needs` 轴（谁去办）**，逐条写在 `round-notify-policy.mjs` 里，由
+   `needsAxisErrors()` 自查完整性。不这么做的后果：统计脚本里另挑一份「需要人」的理由清单，
+   口径会随挑选者变化，而两方拿不同口径论证同一个决策是最贵的返工形态。
+
+**三个口径陷阱**（写错会得出相反的结论）：`DEDUPED`（同一问题持续中）单列，
+不许算进频率（一次登录失效拖三天会被数成几十次）；分母是「过了闸门的轮次」而不是「每 15 分钟醒一次的次数」；
+`UNSPECIFIED`（表里写了 null 的「动作型」理由）与 `UNCLASSIFIED`（表里没这条理由）必须分桶，
+后者非 0 说明漏登记。
+
+**顺带补的告警文案**：`source.machine`（本机主机名）+ `source.browserProfile` 加进
+`READABLE_SOURCE_KEYS` 白名单 —— 原来「平台登录已失效」没说**哪台机器、哪个浏览器配置**，
+而登录恰恰是唯一无法远程代劳的事。缺值的键整行不输出，旧来源渲染结果**逐字不变**。
+
+**验收与回归**
+
+- 新模块 `runtime/sop-runtime/round-history.mjs` + 读取端 `round-history-report.mjs`
+  （`--days` / `--file` / `--json`，退出码 0 / 1 有坏行 / 2 参数错）。
+- 当前基线：`runtime` **591 用例 / 0 失败**（无回归）；`sop-runtime` **373 → 398 用例 / 0 失败**（+25）。
+- 三处突变验证（账本漏记体检拦下的轮次 / 登录失效错分经手人 / 转交历史端口退化为 `null`）
+  各自让点名正确的用例变红，全部还原后复跑全绿，`MUTATION-PROBE` 无残留。
+- **实跑发现并修掉两个缺陷**：`parseHistoryText` 曾把 `[1,2]` 这样的 JSON 数组当成一条记录
+  （数组也是 object）；`--nope` 曾报成「需要值」而不是「未知参数」。
+
+**它答不了什么**：无法回填（账本从落地那刻开始写，之前发生的没有机器可读痕迹）；
+「一周几次」要跑满一段时间才有第一个可信读数，**装置 ≠ 结论**。
+
+
