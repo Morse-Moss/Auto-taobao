@@ -1,0 +1,187 @@
+{
+ "at": "2026-09-19T15:34:09.574Z",
+ "declared": 7,
+ "counts": {
+  "ready": 6,
+  "proxy-missing": 0,
+  "browser-missing": 0,
+  "missing": 1,
+  "foreign": 0,
+  "unconfirmed": 0
+ },
+ "allReady": false,
+ "instances": [
+  {
+   "who": "竞品链（买家号 ＋ 小旺神）",
+   "kind": "competitor",
+   "key": "competitor",
+   "browserPort": 9222,
+   "proxyPort": 3457,
+   "judgement": "missing",
+   "status": "free",
+   "verdict": "free",
+   "actualProfile": null,
+   "occupiedBy": "product=(未识别) profile=(未识别)",
+   "proxyReachable": false,
+   "proxyHealth": null
+  },
+  {
+   "who": "商家浏览器（日报/周表/灰豚）",
+   "kind": "dailyReport",
+   "key": "dailyReport",
+   "browserPort": 19022,
+   "proxyPort": 19023,
+   "judgement": "ready",
+   "status": "occupied",
+   "verdict": "ours",
+   "actualProfile": "D:/Retire/edge-daily-report-profile",
+   "occupiedBy": "product=Edg/150.0.4078.65 profile=D:/Retire/edge-daily-report-profile",
+   "proxyReachable": true,
+   "proxyHealth": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-daily-report",
+     "label": "Microsoft Edge (daily report)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 1,
+    "managedTabs": 0,
+    "pinnedTabs": 0,
+    "chromePort": 19022
+   }
+  },
+  {
+   "who": "里可林淘宝",
+   "kind": "shop",
+   "key": "里可林淘宝",
+   "browserPort": 19031,
+   "proxyPort": 19041,
+   "judgement": "ready",
+   "status": "occupied",
+   "verdict": "ours",
+   "actualProfile": "D:/Retire/edge-profiles/likelin-home",
+   "occupiedBy": "product=Edg/150.0.4078.65 profile=D:/Retire/edge-profiles/likelin-home",
+   "proxyReachable": true,
+   "proxyHealth": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-shop-likelin-home",
+     "label": "Microsoft Edge (shop likelin-home)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 1,
+    "managedTabs": 1,
+    "pinnedTabs": 1,
+    "chromePort": 19031
+   }
+  },
+  {
+   "who": "网林天猫",
+   "kind": "shop",
+   "key": "网林天猫",
+   "browserPort": 19032,
+   "proxyPort": 19042,
+   "judgement": "ready",
+   "status": "occupied",
+   "verdict": "ours",
+   "actualProfile": "D:/Retire/edge-profiles/wanglin-flagship",
+   "occupiedBy": "product=Edg/150.0.4078.65 profile=D:/Retire/edge-profiles/wanglin-flagship",
+   "proxyReachable": true,
+   "proxyHealth": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-shop-wanglin-flagship",
+     "label": "Microsoft Edge (shop wanglin-flagship)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 1,
+    "managedTabs": 1,
+    "pinnedTabs": 1,
+    "chromePort": 19032
+   }
+  },
+  {
+   "who": "盖文淘宝",
+   "kind": "shop",
+   "key": "盖文淘宝",
+   "browserPort": 19033,
+   "proxyPort": 19043,
+   "judgement": "ready",
+   "status": "occupied",
+   "verdict": "ours",
+   "actualProfile": "D:/Retire/edge-profiles/suixin-custom",
+   "occupiedBy": "product=Edg/150.0.4078.65 profile=D:/Retire/edge-profiles/suixin-custom",
+   "proxyReachable": true,
+   "proxyHealth": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-shop-suixin-custom",
+     "label": "Microsoft Edge (shop suixin-custom)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 2,
+    "managedTabs": 1,
+    "pinnedTabs": 1,
+    "chromePort": 19033
+   }
+  },
+  {
+   "who": "盖文天猫",
+   "kind": "shop",
+   "key": "盖文天猫",
+   "browserPort": 19035,
+   "proxyPort": 19045,
+   "judgement": "ready",
+   "status": "occupied",
+   "verdict": "ours",
+   "actualProfile": "D:/Retire/edge-profiles/gaiwen-flagship",
+   "occupiedBy": "product=Edg/150.0.4078.65 profile=D:/Retire/edge-profiles/gaiwen-flagship",
+   "proxyReachable": true,
+   "proxyHealth": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-shop-gaiwen-flagship",
+     "label": "Microsoft Edge (shop gaiwen-flagship)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 2,
+    "managedTabs": 1,
+    "pinnedTabs": 1,
+    "chromePort": 19035
+   }
+  },
+  {
+   "who": "科塔淘宝",
+   "kind": "shop",
+   "key": "科塔淘宝",
+   "browserPort": 19034,
+   "proxyPort": 19044,
+   "judgement": "ready",
+   "status": "occupied",
+   "verdict": "ours",
+   "actualProfile": "D:/Retire/edge-profiles/shop-j873522735",
+   "occupiedBy": "product=Edg/150.0.4078.65 profile=D:/Retire/edge-profiles/shop-j873522735",
+   "proxyReachable": true,
+   "proxyHealth": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-shop-j873522735",
+     "label": "Microsoft Edge (shop j873522735)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 1,
+    "managedTabs": 1,
+    "pinnedTabs": 1,
+    "chromePort": 19034
+   }
+  }
+ ]
+}
+
+(exit 1)

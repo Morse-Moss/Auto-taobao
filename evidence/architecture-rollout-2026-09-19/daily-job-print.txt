@@ -1,0 +1,7 @@
+[定时] 目标日字面量：yesterday（由驱动按 Asia/Shanghai 解析，这里不自己算）
+[定时] 实际会解析成：2026-09-18  ← 只用来给你看一眼；真跑时由驱动在那一刻重新解析（跨零点不漂）
+  ensure-instances: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs
+     把声明实例起齐（幂等：已就位的不碰）
+* chain: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --commit --notify-print
+     全链：体检 → 采集 → 推送 → 回填 → 回读
+[定时] 只打印模式：没有起任何进程、也没有跑链。

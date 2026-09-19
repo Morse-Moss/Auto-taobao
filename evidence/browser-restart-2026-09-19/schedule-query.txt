@@ -1,0 +1,9 @@
+无法执行 schtasks.exe（C:\WINDOWS\System32\schtasks.exe）—— 本机安全策略把它列进了禁止启动的程序清单。
+这既不是「挂了」也不是「没挂」，是**读不出来**。三条可行路径（任选一条）：
+  1) 在「安全中心 → 命令安全 → 程序黑名单」里把 schtasks.exe 移出，再回来跑本脚本；
+  2) 用任务计划程序界面手工挂：taskschd.msc → 创建基本任务 → 每日 → 时刻填 11:40 →
+     操作选「启动程序」，程序或脚本填下面第一段（node 的完整路径），
+     添加参数填下面第二段（脚本路径）：
+       C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-daily-job.mjs
+  3) 用平台的定时任务（WorkBuddy 定时任务）每天到点跑同一条命令 ——
+     定位是兜底：它每天要起一次完整会话，而这条链要的是「确定性地跑同一套动作」。

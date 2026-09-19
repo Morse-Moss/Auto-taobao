@@ -1,0 +1,10 @@
+[定时注册] 只打印模式（要真挂请加 --install）。
+
+任务名：sycm-daily-round    触发器：每天 11:40
+将执行：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-daily-job.mjs
+
+等价的 schtasks 调用（/TR 已由脚本拼好，不要手抄这一段 —— 计划任务的解析器与 shell 不是一回事）：
+  schtasks /Create /TN sycm-daily-round /SC DAILY /ST 11:40 /TR "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-daily-job.mjs" /F
+
+挂之前建议先干验证一次（只读、不写、不投递）：
+  node scripts/run-daily-job.mjs --print

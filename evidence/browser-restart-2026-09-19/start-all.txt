@@ -1,0 +1,31 @@
+[起齐] 目标 7 个实例（来源：runtime/browser-ports.mjs）
+  · 竞品链（买家号 ＋ 小旺神）  起前:missing  两样都没有，起一整套
+      已起 browser pid=6940  日志 runtime/start-stop-logs/2026-09-19T15-48-26/competitor-browser.log
+      已起 proxy pid=38520  日志 runtime/start-stop-logs/2026-09-19T15-48-26/competitor-proxy.log
+      起后:ready
+  · 商家浏览器（日报/周表/灰豚）  起前:missing  两样都没有，起一整套
+      已起 browser pid=42496  日志 runtime/start-stop-logs/2026-09-19T15-48-26/dailyReport-browser.log
+      已起 proxy pid=39608  日志 runtime/start-stop-logs/2026-09-19T15-48-26/dailyReport-proxy.log
+      起后:ready
+  · 里可林淘宝  起前:missing  两样都没有，起一整套
+      已起 browser pid=34472  日志 runtime/start-stop-logs/2026-09-19T15-48-26/里可林淘宝-browser.log
+      已起 proxy pid=36732  日志 runtime/start-stop-logs/2026-09-19T15-48-26/里可林淘宝-proxy.log
+      起后:ready
+  · 网林天猫  起前:missing  两样都没有，起一整套
+      已起 browser pid=42728  日志 runtime/start-stop-logs/2026-09-19T15-48-26/网林天猫-browser.log
+      已起 proxy pid=27604  日志 runtime/start-stop-logs/2026-09-19T15-48-26/网林天猫-proxy.log
+      起后:ready
+  · 盖文淘宝  起前:missing  两样都没有，起一整套
+      已起 browser pid=8824  日志 runtime/start-stop-logs/2026-09-19T15-48-26/盖文淘宝-browser.log
+      已起 proxy pid=44428  日志 runtime/start-stop-logs/2026-09-19T15-48-26/盖文淘宝-proxy.log
+      起后:ready
+  · 盖文天猫  起前:missing  两样都没有，起一整套
+      已起 browser pid=28584  日志 runtime/start-stop-logs/2026-09-19T15-48-26/盖文天猫-browser.log
+      已起 proxy pid=43448  日志 runtime/start-stop-logs/2026-09-19T15-48-26/盖文天猫-proxy.log
+      起后:ready
+  · 科塔淘宝  起前:missing  两样都没有，起一整套
+      已起 browser pid=30712  日志 runtime/start-stop-logs/2026-09-19T15-48-26/科塔淘宝-browser.log
+      已起 proxy pid=21912  日志 runtime/start-stop-logs/2026-09-19T15-48-26/科塔淘宝-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs

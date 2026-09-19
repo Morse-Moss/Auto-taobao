@@ -2,7 +2,20 @@
 
 2026-09-15 定，2026-09-16 改为「登记表驱动」。目的：把「跑采集时要连哪个浏览器、哪个端口」从靠记忆变成靠命令。
 
-## 1 固定下来的四个端口
+> **本文件是说明，不是状态。** 下表是**摘要**，会滞后；**权威值是 `runtime/browser-ports.mjs`**，
+> 而**现状**（此刻谁活着、谁缺、谁被谁的 profile 占着）要跑命令看：
+>
+> ```
+> node runtime/browser-inventory.mjs --listen   # 7 个声明实例：就位 / 缺浏览器 / 缺代理 / 外来 / 读不出来
+> node scripts/start-all.mjs                    # 起齐（幂等；已就位的一个都不碰）
+> node scripts/stop-all.mjs                     # 停（默认只打印，--yes 才真停）
+> ```
+>
+> 2026-09-19 加这一段的直接原因：本表**当时已经漏了 5 个店铺实例**（19031~19035 / 19041~19045），
+> 而它是「新人上手第一份会读的端口资料」。凡是**能由命令打印出来的事实，就不该只写在文档里** ——
+> 文档会漂，守卫不会替它把关。
+
+## 1 端口一览（摘要，权威值见上）
 
 权威值在 `runtime/browser-ports.mjs`（唯一来源）。启动器、代理启动器、skill 脚本都从这里取；
 代码里不得再写第二份端口字面量，`runtime/browser-ports.test.mjs` 有一条静态守卫盯着这件事
@@ -11,11 +24,20 @@
 | 角色 | 端口 | 命令 |
 | --- | --- | --- |
 | 项目专用调试 Edge（买家号 ＋ 小旺神） | **9222** | `node runtime/start-project-browser.mjs` |
-| 项目专用 CDP 代理 | **3457** | `CDP_PROXY_PORT=3457 CDP_BROWSER_PORT=9222 node runtime/isolated-proxy/cdp-proxy.mjs` |
+| 项目专用 CDP 代理 | **3457** | `node runtime/start-competitor-proxy.mjs` |
 | 运营日报商家 Edge（商家号） | **19022** | `node runtime/start-daily-report-browser.mjs` |
 | 运营日报 CDP 代理 | **19023** | `node runtime/start-daily-report-proxy.mjs` |
+| 五家店各自的 Edge（19031~19035） | 一店一个 | 设 `PROJECT_BROWSER_PORT` 与 `PROJECT_BROWSER_PROFILE` 后跑 `node runtime/start-project-browser.mjs` |
+| 五家店各自的 CDP 代理（19041~19045） | 一店一个 | `node runtime/start-shop-proxy.mjs <运营叫法>` |
+
+上面两行的**具体数字与 profile 一律不在这里复述**（一复述就会漂）：看
+`runtime/browser-ports.mjs` 的 `SHOP_BROWSERS`，或跑 `node runtime/browser-inventory.mjs` 看现状。
+**竞品链的代理启动器 2026-09-19 才有**（此前只能照注释手打 `CDP_PROXY_PORT=… CDP_BROWSER_PORT=…`，
+端口靠人抄 ⇒ 抄错是静默串店）。
 
 需要换端口时设 `PROJECT_BROWSER_PORT` / `CDP_PROXY_PORT` / `CDP_BROWSER_PORT`，不要改代码。
+注意：`scripts/start-all.mjs` 起子进程时会**先把这些变量从继承的环境里清掉**再按登记表赋值 ——
+shell 里残留一个值会让「一键起齐」把每一家店都指向同一个端口，而它表现出来是**全绿**。
 
 为什么日报链从 9223 / 3458 挪到 19022 / 19023：9222/9223 是 Chrome/Edge 远程调试的常见取值，
 3456/3457/3458 是本机其他项目也在用的一段 —— 撞号后的表现是「点击和导航都成功，

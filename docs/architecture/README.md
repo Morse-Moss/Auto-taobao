@@ -4,12 +4,15 @@
 
 本文件是 `docs/architecture/` 的唯一入口。该目录只保存稳定的目标架构、已批准的架构决策和跨流程契约；不保存单次运行回执、临时调查、实现教程或平台页面快照。新增决策或契约前，必须先更新本文件的边界，再按约定新增文件。当前不预建空的专题目录；未来只有在决策正式批准后才新增 `decisions/NNNN-short-title.md`，跨流程契约具备可执行 schema 后才新增 `contracts/`。
 
+该目录允许存在**提案类文件**（文件名带 `-PROPOSAL`，首段以「状态：提案（PROPOSAL）」开头）：它们是稳定目标架构的补充或待批决策的草稿，**可以在本目录里被阅读和引用，但不得被当作已批准决策**。引用时必须带上状态。提案被批准后，把其中的决策拆成 `decisions/NNNN-*.md`，提案本身降级为背景材料或删除。当前已有一份：[可扩展性与部署灵活性：架构提案](EXTENSIBILITY-AND-DEPLOYMENT-PROPOSAL.md)（2026-09-19，待批）。
+
 本项目当前的架构落地交接包：
 
 - [Agent SOP Runtime Spec](agent-sop-runtime-spec.md)：Context、状态轴、Memory、压缩、Skill Registry、Proposal、Adapter、Validator 和 Commit 契约。
 - [Agent SOP Runtime 实施计划](agent-sop-runtime-implementation-plan.md)：当前到目标的差距、模块改造、阶段优先级、风险和退出标准。
 - [同事交接说明](handoff-to-teammate.md)：本项目业务库（xws_automation）迁移、验证、范围边界和回报格式。
 - `db/migrations/004-architecture-catalog.sql`：架构元数据 schema 与 review version 1 种子数据；只提供迁移文件，不在本轮自动 apply。
+- [可扩展性与部署灵活性：架构提案](EXTENSIBILITY-AND-DEPLOYMENT-PROPOSAL.md)（**提案，待批**）：七条架构决策（含 Browser Broker 的最小切片与边界、单点真相的封杀规则、配置层「无配置即逐字不变」的不变量、三档部署形态与容器化的真实边界），以及九阶段落地顺序与「判据从变体 A 搬到编排器」的逐条对账表。**它不是已批准决策**；要拍板的五条在该文件 §11。
 
 **当前完成度对账**（审查者先看这里，再看上面三份文档）：
 [`PHASE-ARCHIVE.md`](PHASE-ARCHIVE.md) §12 按实施计划的阶段 0-6、首批 7 条流程迁移、交付检查表逐项给出结论与可复核证据，
