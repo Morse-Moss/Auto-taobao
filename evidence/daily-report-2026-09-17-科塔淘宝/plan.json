@@ -1,8 +1,8 @@
 {
-  "mode": "verify-existing",
+  "mode": "api-commit",
   "reportDate": "2026-09-17",
   "environment": {
-    "computedAt": "2026-09-18T10:54:37.135Z",
+    "computedAt": "2026-09-19T01:35:57.023Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19023",
     "browserPort": {
@@ -25,9 +25,9 @@
     }
   },
   "evidence": {
-    "outputDir": "d:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-科塔淘宝",
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-科塔淘宝",
     "generation": 1,
-    "reason": "base-empty"
+    "reason": "latest"
   },
   "sourceSelfChecks": {
     "expectedDate": "2026-09-17",
@@ -36,14 +36,14 @@
       "matchedRowDate": "2026-09-17",
       "workbookRows": 31,
       "uniqueDates": 30,
-      "firstRowDate": "2026-09-17",
-      "lastRowDate": "2026-08-19",
+      "firstRowDate": "2026-09-18",
+      "lastRowDate": "2026-08-20",
       "targetRowCount": 1,
       "matches": true
     },
     "promotion": {
       "column": "日期",
-      "csvName": "营销场景报表_20260918_185355.csv",
+      "csvName": "营销场景报表_20260919_093514.csv",
       "observedDates": [
         "2026-09-17"
       ],
@@ -61,12 +61,12 @@
     "tableName": "总数据来源底单"
   },
   "source": {
-    "shopFile": "C:\\Users\\Administrator\\Downloads\\日报_20260918_aefdcd0599626688507142b7bbed7e84 (1).xlsx",
-    "shopSha256": "7e5c01b6dd7e4c4579be535d9dcc0262f18dab409e80133992e54141ada95508",
+    "shopFile": "C:\\Users\\Administrator\\Downloads\\日报_20260919_aefdcd0599626688507142b7bbed7e84.xlsx",
+    "shopSha256": "31701e83a079e1b279252118a4d46e63643389d15bc32b7b957ec5e47525ea3d",
     "shopWorkbookRows": 31,
-    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260918_185355.zip",
-    "promotionSha256": "0f3c9ffec7d204587ab687d0f1cc9580a414fe2b334ec786e694f2a3d64396a5",
-    "promotionCsv": "营销场景报表_20260918_185355.csv"
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_093514.zip",
+    "promotionSha256": "ac920dd6217401166d1760480f87e9dd33b38aadfccbc61e2461b60869bd291b",
+    "promotionCsv": "营销场景报表_20260919_093514.csv"
   },
   "checks": {
     "visibleFields": 265,
@@ -305,14 +305,14 @@
     "优惠券领取量 (1)": 0,
     "购物金充值笔数 (1)": 0,
     "购物金充值金额 (1)": 0,
-    "人群推广旺旺咨询量": 1,
-    "引导访问量 (1)": 117,
+    "人群推广旺旺咨询量": 2,
+    "引导访问量 (1)": 118,
     "引导访问人数 (1)": 54,
     "引导访问潜客数 (1)": 27,
     "引导访问潜客占比 (1)": 0.5,
     "入会率 (1)": 0,
     "入会量 (1)": 0,
-    "引导访问率 (1)": 0.14216,
+    "引导访问率 (1)": 0.14338,
     "深度访问量 (1)": 53,
     "平均访问页面数 (1)": 2,
     "成交新客数 (1)": 0,

@@ -1,8 +1,8 @@
 {
-  "mode": "verify-existing",
+  "mode": "api-commit",
   "reportDate": "2026-09-17",
   "environment": {
-    "computedAt": "2026-09-18T10:47:42.773Z",
+    "computedAt": "2026-09-19T01:32:18.232Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19023",
     "browserPort": {
@@ -25,9 +25,9 @@
     }
   },
   "evidence": {
-    "outputDir": "d:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-里可林淘宝",
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-里可林淘宝",
     "generation": 1,
-    "reason": "base-empty"
+    "reason": "latest"
   },
   "sourceSelfChecks": {
     "expectedDate": "2026-09-17",
@@ -36,14 +36,14 @@
       "matchedRowDate": "2026-09-17",
       "workbookRows": 31,
       "uniqueDates": 30,
-      "firstRowDate": "2026-09-17",
-      "lastRowDate": "2026-08-19",
+      "firstRowDate": "2026-09-18",
+      "lastRowDate": "2026-08-20",
       "targetRowCount": 1,
       "matches": true
     },
     "promotion": {
       "column": "日期",
-      "csvName": "营销场景报表_20260918_184704.csv",
+      "csvName": "营销场景报表_20260919_093134.csv",
       "observedDates": [
         "2026-09-17"
       ],
@@ -61,12 +61,12 @@
     "tableName": "总数据来源底单"
   },
   "source": {
-    "shopFile": "C:\\Users\\Administrator\\Downloads\\日报_20260918_b3de46ced2634ef20c9372b4caf00736 (1).xlsx",
-    "shopSha256": "9a7dfe0133c4b73551c221270bb015bf45975a1af3f55d97a730b7056ba6887f",
+    "shopFile": "C:\\Users\\Administrator\\Downloads\\日报_20260919_b3de46ced2634ef20c9372b4caf00736.xlsx",
+    "shopSha256": "570ca181933eef42a0ed3d3e2033337cd0634e2b60fe73fdc510d0880379fef2",
     "shopWorkbookRows": 31,
-    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260918_184704.zip",
-    "promotionSha256": "830bc0ce356ec387e752c2dd321afa77ae615384e4f59e637d074dd963f7ac8d",
-    "promotionCsv": "营销场景报表_20260918_184704.csv"
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_093134.zip",
+    "promotionSha256": "342839140bd31248b5a3316ded99180361464b73582e38640e5a2eccaf44444b",
+    "promotionCsv": "营销场景报表_20260919_093134.csv"
   },
   "checks": {
     "visibleFields": 265,

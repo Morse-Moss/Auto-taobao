@@ -1,32 +1,32 @@
 {
-  "mode": "dry-run",
+  "mode": "commit",
   "reportDate": "2026-09-17",
   "shop": "里可林淘宝",
   "environment": {
-    "computedAt": "2026-09-18T10:49:12.548Z",
+    "computedAt": "2026-09-19T01:39:44.148Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19041",
     "browserPort": {
-      "port": 19031,
-      "source": "env",
+      "port": 19022,
+      "source": "registry-default",
       "registryDefault": 19022
     },
     "proxyPort": {
-      "port": 19041,
-      "source": "env",
+      "port": 19023,
+      "source": "registry-default",
       "registryDefault": 19023
     },
     "browserId": {
-      "id": "edge-shop-likelin-home",
-      "source": "env"
+      "id": "edge-daily-report",
+      "source": "registry-default"
     },
     "browserLabel": {
-      "id": "Microsoft Edge (shop likelin-home)",
-      "source": "env"
+      "id": "Microsoft Edge (daily report)",
+      "source": "registry-default"
     }
   },
   "evidence": {
-    "outputDir": "d:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-里可林淘宝",
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-里可林淘宝",
     "generation": 1,
     "reason": "latest"
   },
@@ -41,18 +41,24 @@
     "shop": "里可林家居",
     "column": "当日询单人数",
     "dateRow": "2026-09-17",
-    "benchmarkRow": "同行同层均值",
-    "peerBenchmark": "PEER_AVAILABLE",
-    "rows": 7
+    "benchmarkRow": null,
+    "peerBenchmark": "PEER_UNAVAILABLE",
+    "rows": 3
   },
-  "degraded": null,
+  "degraded": {
+    "code": "PEER_UNAVAILABLE",
+    "reason": "SYCM 自定义日期模式下表格不含「同行同层均值」行（预设「1天」才有）",
+    "omittedFields": [
+      "同层同行询单量"
+    ],
+    "sourceRowCount": 3
+  },
   "values": {
-    "询单量": 3,
-    "同层同行询单量": 6
+    "询单量": 3
   },
   "prewrite": {
-    "disposition": "ALREADY_VERIFIED",
-    "询单量": "3",
-    "同层同行询单量": "6"
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
   }
 }

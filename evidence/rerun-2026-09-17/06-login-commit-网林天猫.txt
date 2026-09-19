@@ -1,0 +1,53 @@
+{
+ "proxy": "http://127.0.0.1:19042",
+ "commit": true,
+ "notify": {
+  "mode": "auto",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": false,
+   "href": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null,
+   "loggedInAfter": true,
+   "hrefAfter": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+  },
+  "alimama": {
+   "label": "阿里妈妈",
+   "loggedIn": false,
+   "href": "https://one.alimama.com/index.html#!/login/index",
+   "reason": null,
+   "loggedInAfter": true,
+   "hrefAfter": "https://one.alimama.com/index.html"
+  }
+ },
+ "login": {
+  "targetId": "FBAFB811D7D3AB68612596DC8FFBEBC8",
+  "opened": false,
+  "urlBefore": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+  "autofill": {
+   "id": true,
+   "password": true
+  },
+  "gesturePoint": [
+   929,
+   321
+  ],
+  "afterGesture": {
+   "idLen": 10,
+   "passwordLen": 9
+  },
+  "captcha": false,
+  "agreementChecked": true,
+  "submitPoint": [
+   929,
+   489
+  ],
+  "urlAfter": "https://myseller.taobao.com/home.htm/QnworkbenchHome/",
+  "shots": "evidence\\rerun-2026-09-17\\shots\\login-after-submit.png"
+ },
+ "verdict": "LOGGED_IN"
+}

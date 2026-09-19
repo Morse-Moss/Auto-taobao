@@ -1,0 +1,33 @@
+{
+  "date": "2026-09-17",
+  "mode": "rehearse",
+  "startedAt": "2026-09-19T01:31:10.664Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 0,
+      "logPath": "evidence\\rerun-2026-09-17\\health2\\00-health-check-daily.txt",
+      "ok": true,
+      "blocking": []
+    }
+  },
+  "shops": {
+    "里可林淘宝": {
+      "status": "pending",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\rerun-2026-09-17\\health2\\里可林淘宝\\01-health-check.txt",
+          "argv": []
+        }
+      ],
+      "source": {
+        "shopXlsx": null,
+        "promotionZip": null
+      },
+      "error": "没有拿到 shopXlsxPath / promotionZipPath：push 的这两个参数是必填，不猜路径。要么让采集段（shop-report / promotion-fetch）在本轮里跑过，要么用 --shop-xlsx + --promotion-zip 显式给一对（单独重跑推送段时）。"
+    }
+  },
+  "finishedAt": "2026-09-19T01:31:10.726Z"
+}

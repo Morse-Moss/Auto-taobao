@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-17",
+  "mode": "rehearse",
+  "startedAt": "2026-09-19T01:30:17.612Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 2,
+      "logPath": "evidence\\rerun-2026-09-17\\health\\00-health-check-daily.txt",
+      "ok": false,
+      "blocking": [
+        "TARGET_PAGE_AMBIGUOUS"
+      ]
+    }
+  },
+  "shops": {},
+  "finishedAt": "2026-09-19T01:30:17.655Z"
+}

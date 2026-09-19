@@ -1,8 +1,8 @@
 {
-  "mode": "verify-existing",
+  "mode": "api-commit",
   "reportDate": "2026-09-17",
   "environment": {
-    "computedAt": "2026-09-18T10:50:10.524Z",
+    "computedAt": "2026-09-19T01:34:20.047Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19023",
     "browserPort": {
@@ -25,9 +25,9 @@
     }
   },
   "evidence": {
-    "outputDir": "d:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-网林天猫",
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-网林天猫",
     "generation": 1,
-    "reason": "base-empty"
+    "reason": "latest"
   },
   "sourceSelfChecks": {
     "expectedDate": "2026-09-17",
@@ -36,14 +36,14 @@
       "matchedRowDate": "2026-09-17",
       "workbookRows": 31,
       "uniqueDates": 30,
-      "firstRowDate": "2026-09-17",
-      "lastRowDate": "2026-08-19",
+      "firstRowDate": "2026-09-18",
+      "lastRowDate": "2026-08-20",
       "targetRowCount": 1,
       "matches": true
     },
     "promotion": {
       "column": "日期",
-      "csvName": "营销场景报表_20260918_184931.csv",
+      "csvName": "营销场景报表_20260919_093337.csv",
       "observedDates": [
         "2026-09-17"
       ],
@@ -61,19 +61,19 @@
     "tableName": "总数据来源底单"
   },
   "source": {
-    "shopFile": "C:\\Users\\Administrator\\Downloads\\日报_20260918_80bec2d747ebb68cb870a4272d0d52c1 (1).xlsx",
-    "shopSha256": "19d5155e33814909adbd770a41fc877c29a8a150bd3fc1d9c73dc58af680aeac",
+    "shopFile": "C:\\Users\\Administrator\\Downloads\\日报_20260919_80bec2d747ebb68cb870a4272d0d52c1.xlsx",
+    "shopSha256": "171200a5ebc3ad75b9cf4735823e0e4d083cf0e9ba0ff87a6b388d8980d9617e",
     "shopWorkbookRows": 31,
-    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260918_184931.zip",
-    "promotionSha256": "ae6641df4c07faa574c949b56694e7268bf03048c064a68f53142ea738d85127",
-    "promotionCsv": "营销场景报表_20260918_184931.csv"
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_093337.zip",
+    "promotionSha256": "fff229482c6f63a5bb0fcf405c83012d53b78658cac1a22772ae0cfda36ef5cd",
+    "promotionCsv": "营销场景报表_20260919_093337.csv"
   },
   "checks": {
     "visibleFields": 265,
     "shopColumns": 119,
     "promotionColumns": 71,
     "promotionRows": 2,
-    "payloadFields": 240,
+    "payloadFields": 241,
     "shopName": "网林家居旗舰店",
     "keywordSceneId": 371,
     "audienceSceneId": 372,
@@ -213,15 +213,16 @@
     "直接预售成交笔数": 0,
     "间接预售成交金额": 0,
     "间接预售成交笔数": 0,
-    "直接成交金额": 0,
+    "直接成交金额": 4558,
     "间接成交金额": 0,
-    "关键词推广总成交金额": 0,
-    "总成交笔数": 0,
-    "直接成交笔数": 0,
+    "关键词推广总成交金额": 4558,
+    "总成交笔数": 1,
+    "直接成交笔数": 1,
     "间接成交笔数": 0,
-    "关键词推广点击转化率": 0,
-    "关键词推广投入产出比": 0,
-    "含预售投产比": 0,
+    "关键词推广点击转化率": 0.02,
+    "关键词推广投入产出比": 91.16,
+    "含预售投产比": 91.16,
+    "关键词推广总成交成本": "50.00",
     "关键词推广总购物车数": 2,
     "直接购物车数": 2,
     "间接购物车数": 0,
@@ -236,21 +237,21 @@
     "宝贝收藏成本": 12.5,
     "宝贝收藏率": 0.08,
     "加购成本": 25,
-    "拍下订单笔数": 0,
-    "拍下订单金额": 0,
+    "拍下订单笔数": 1,
+    "拍下订单金额": 10360,
     "直接收藏宝贝数": 2,
     "间接收藏宝贝数": 2,
     "优惠券领取量": 0,
     "购物金充值笔数": 0,
     "购物金充值金额": 0,
-    "关键词推广旺旺咨询量": 2,
-    "引导访问量": 142,
+    "关键词推广旺旺咨询量": 3,
+    "引导访问量": 145,
     "引导访问人数": 38,
     "引导访问潜客数": 37,
     "引导访问潜客占比": 0.97368,
     "入会率": 0,
     "入会量": 0,
-    "引导访问率": 0.12147,
+    "引导访问率": 0.12404,
     "深度访问量": 83,
     "平均访问页面数": 4,
     "成交新客数": 0,

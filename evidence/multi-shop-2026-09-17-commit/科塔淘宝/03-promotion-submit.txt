@@ -1,0 +1,15 @@
+
+===== 2026-09-19T01:35:12.218Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase submit --date 2026-09-17 --proxy http://127.0.0.1:19044 --expect-shop 科塔全卫定制 --expect-member j873522735:阿彦 --expect-member-id 412070158
+exit=0 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 36D85AB4B11483B4F9D51FC79FDF751A｜phase=submit｜目标日 2026-09-17
+[身份] 阿里妈妈会员 = "j873522735:阿彦" ID="412070158"（这一页不显示店铺名，只有会员名）｜期望 "j873522735:阿彦" / 412070158 ✓
+[submit] 页面 = https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-09-17&endTime=2026-09-17&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day&isRequestedQztDefaultSet=1
+[submit] 候选 1 个，取文档序第一个（SPAN，其可点祖先是 BUTTON，点击靠冒泡触发）
+[submit] 滚动后复核通过（y=340（中心点命中））→ 点击 → {"clicked":true,"tag":"SPAN","text":"下载报表"}
+[submit] 点「确定」(#0) → {"clicked":true,"tag":"SPAN","text":"确定"}
+[submit] 提交后提示 = ""
+[submit] 下一步：等它「生成成功」后跑 --phase fetch（提示语里说数据量大时最长 10 分钟）
+
+--- stderr ---

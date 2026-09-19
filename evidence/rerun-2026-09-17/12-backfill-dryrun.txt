@@ -1,0 +1,54 @@
+===== 里可林淘宝 =====
+{
+  "status": "DRY_RUN_READY",
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-里可林淘宝\\inquiry-backfill-plan.json",
+  "recordId": "recvtXf5OikETg",
+  "values": {
+    "询单量": 3
+  },
+  "degraded": {
+    "code": "PEER_UNAVAILABLE",
+    "reason": "SYCM 自定义日期模式下表格不含「同行同层均值」行（预设「1天」才有）",
+    "omittedFields": [
+      "同层同行询单量"
+    ],
+    "sourceRowCount": 3
+  }
+}
+exit=0
+===== 网林天猫 =====
+{
+  "status": "DRY_RUN_READY",
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-网林天猫\\inquiry-backfill-plan.json",
+  "recordId": "recvtXf5OixAca",
+  "values": {
+    "询单量": 4
+  },
+  "degraded": {
+    "code": "PEER_UNAVAILABLE",
+    "reason": "SYCM 自定义日期模式下表格不含「同行同层均值」行（预设「1天」才有）",
+    "omittedFields": [
+      "同层同行询单量"
+    ],
+    "sourceRowCount": 3
+  }
+}
+exit=0
+===== 科塔淘宝 =====
+{
+  "status": "DRY_RUN_READY",
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-科塔淘宝\\inquiry-backfill-plan.json",
+  "recordId": "recvtXf5OiXSb1",
+  "values": {
+    "询单量": 5
+  },
+  "degraded": {
+    "code": "PEER_UNAVAILABLE",
+    "reason": "SYCM 自定义日期模式下表格不含「同行同层均值」行（预设「1天」才有）",
+    "omittedFields": [
+      "同层同行询单量"
+    ],
+    "sourceRowCount": 3
+  }
+}
+exit=0

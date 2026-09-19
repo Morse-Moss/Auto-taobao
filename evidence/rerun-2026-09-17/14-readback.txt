@@ -1,0 +1,69 @@
+===== 里可林淘宝 =====
+readbackPath = D:\Retire\sycm-automation\evidence\daily-report-2026-09-17-里可林淘宝\independent-readback.json
+底单: recordsNum=1879（这是**页面模型**里的值，可能落后于服务端） loaded=1879 命中 2026-09-17=4
+询单表: recordsNum=2197（这是**页面模型**里的值，可能落后于服务端） loaded=2197 命中 2026-09-17=12
+  ⚠️ 底单「店铺」4/4 行没有值（口径 reportDate=2026-09-17） — Lookup-key-absent-from-page-model｜页面模型在 record.fields 里根本不带这个派生字段（Lookup / type 19）⇒ 该列在回读里必然为空，不能读成「当天没写进去」；权威可读值见同表的「店铺名称」
+  ⚠️ 询单表「询单量」8/12 行没有值（口径 reportDate=2026-09-17） — null-in-page-model
+  ⚠️ 询单表「同层同行询单量」11/12 行没有值（口径 reportDate=2026-09-17） — null-in-page-model
+  2026-09-17 | 里可林天猫 | recvtXf5Oi3QPq | 询单量=— | 同层同行=—
+  2026-09-17 | 盖文天猫 | recvtXexe8hCB4 | 询单量=13 | 同层同行=36
+  2026-09-17 | 盖文淘宝 | recvtXf5OinIxX | 询单量=— | 同层同行=—
+  2026-09-17 | 网林淘宝 | recvtXf5OizRzm | 询单量=— | 同层同行=—
+  2026-09-17 | 保拉淘宝 | recvtXf5Oi41NO | 询单量=— | 同层同行=—
+  2026-09-17 | 网林天猫 | recvtXf5OixAca | 询单量=4 | 同层同行=—
+  2026-09-17 | 安比龙头店 | recvtXf5Oi6t1o | 询单量=— | 同层同行=—
+  2026-09-17 | 安比淘宝 | recvtXf5Oi2s3E | 询单量=— | 同层同行=—
+  2026-09-17 | 科塔淘宝 | recvtXf5OiXSb1 | 询单量=5 | 同层同行=—
+  2026-09-17 | 里可林淘宝 | recvtXf5OikETg | 询单量=3 | 同层同行=—
+  2026-09-17 | 保拉天猫 | recvtXf5Oii2kJ | 询单量=— | 同层同行=—
+  2026-09-17 | 科塔龙头店 | recvtXf5OiOFna | 询单量=— | 同层同行=—
+  screenshot(source) → D:\Retire\sycm-automation\evidence\daily-report-2026-09-17-里可林淘宝\feishu-source-table-after-push.png
+  screenshot(inquiry) → D:\Retire\sycm-automation\evidence\daily-report-2026-09-17-里可林淘宝\feishu-inquiry-table-after-backfill.png
+页面已留在：https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+exit=0
+===== 网林天猫 =====
+readbackPath = D:\Retire\sycm-automation\evidence\daily-report-2026-09-17-网林天猫\independent-readback.json
+底单: recordsNum=1879（这是**页面模型**里的值，可能落后于服务端） loaded=1879 命中 2026-09-17=4
+询单表: recordsNum=2197（这是**页面模型**里的值，可能落后于服务端） loaded=2197 命中 2026-09-17=12
+  ⚠️ 底单「店铺」4/4 行没有值（口径 reportDate=2026-09-17） — Lookup-key-absent-from-page-model｜页面模型在 record.fields 里根本不带这个派生字段（Lookup / type 19）⇒ 该列在回读里必然为空，不能读成「当天没写进去」；权威可读值见同表的「店铺名称」
+  ⚠️ 询单表「询单量」8/12 行没有值（口径 reportDate=2026-09-17） — null-in-page-model
+  ⚠️ 询单表「同层同行询单量」11/12 行没有值（口径 reportDate=2026-09-17） — null-in-page-model
+  2026-09-17 | 保拉淘宝 | recvtXf5Oi41NO | 询单量=— | 同层同行=—
+  2026-09-17 | 科塔淘宝 | recvtXf5OiXSb1 | 询单量=5 | 同层同行=—
+  2026-09-17 | 网林淘宝 | recvtXf5OizRzm | 询单量=— | 同层同行=—
+  2026-09-17 | 安比龙头店 | recvtXf5Oi6t1o | 询单量=— | 同层同行=—
+  2026-09-17 | 里可林淘宝 | recvtXf5OikETg | 询单量=3 | 同层同行=—
+  2026-09-17 | 科塔龙头店 | recvtXf5OiOFna | 询单量=— | 同层同行=—
+  2026-09-17 | 盖文天猫 | recvtXexe8hCB4 | 询单量=13 | 同层同行=36
+  2026-09-17 | 保拉天猫 | recvtXf5Oii2kJ | 询单量=— | 同层同行=—
+  2026-09-17 | 里可林天猫 | recvtXf5Oi3QPq | 询单量=— | 同层同行=—
+  2026-09-17 | 盖文淘宝 | recvtXf5OinIxX | 询单量=— | 同层同行=—
+  2026-09-17 | 网林天猫 | recvtXf5OixAca | 询单量=4 | 同层同行=—
+  2026-09-17 | 安比淘宝 | recvtXf5Oi2s3E | 询单量=— | 同层同行=—
+  screenshot(source) → D:\Retire\sycm-automation\evidence\daily-report-2026-09-17-网林天猫\feishu-source-table-after-push.png
+  screenshot(inquiry) → D:\Retire\sycm-automation\evidence\daily-report-2026-09-17-网林天猫\feishu-inquiry-table-after-backfill.png
+页面已留在：https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+exit=0
+===== 科塔淘宝 =====
+readbackPath = D:\Retire\sycm-automation\evidence\daily-report-2026-09-17-科塔淘宝\independent-readback.json
+底单: recordsNum=1879（这是**页面模型**里的值，可能落后于服务端） loaded=1879 命中 2026-09-17=4
+询单表: recordsNum=2197（这是**页面模型**里的值，可能落后于服务端） loaded=2197 命中 2026-09-17=12
+  ⚠️ 底单「店铺」4/4 行没有值（口径 reportDate=2026-09-17） — Lookup-key-absent-from-page-model｜页面模型在 record.fields 里根本不带这个派生字段（Lookup / type 19）⇒ 该列在回读里必然为空，不能读成「当天没写进去」；权威可读值见同表的「店铺名称」
+  ⚠️ 询单表「询单量」8/12 行没有值（口径 reportDate=2026-09-17） — null-in-page-model
+  ⚠️ 询单表「同层同行询单量」11/12 行没有值（口径 reportDate=2026-09-17） — null-in-page-model
+  2026-09-17 | 里可林淘宝 | recvtXf5OikETg | 询单量=3 | 同层同行=—
+  2026-09-17 | 安比龙头店 | recvtXf5Oi6t1o | 询单量=— | 同层同行=—
+  2026-09-17 | 网林天猫 | recvtXf5OixAca | 询单量=4 | 同层同行=—
+  2026-09-17 | 盖文淘宝 | recvtXf5OinIxX | 询单量=— | 同层同行=—
+  2026-09-17 | 网林淘宝 | recvtXf5OizRzm | 询单量=— | 同层同行=—
+  2026-09-17 | 保拉淘宝 | recvtXf5Oi41NO | 询单量=— | 同层同行=—
+  2026-09-17 | 保拉天猫 | recvtXf5Oii2kJ | 询单量=— | 同层同行=—
+  2026-09-17 | 科塔龙头店 | recvtXf5OiOFna | 询单量=— | 同层同行=—
+  2026-09-17 | 科塔淘宝 | recvtXf5OiXSb1 | 询单量=5 | 同层同行=—
+  2026-09-17 | 盖文天猫 | recvtXexe8hCB4 | 询单量=13 | 同层同行=36
+  2026-09-17 | 安比淘宝 | recvtXf5Oi2s3E | 询单量=— | 同层同行=—
+  2026-09-17 | 里可林天猫 | recvtXf5Oi3QPq | 询单量=— | 同层同行=—
+  screenshot(source) → D:\Retire\sycm-automation\evidence\daily-report-2026-09-17-科塔淘宝\feishu-source-table-after-push.png
+  screenshot(inquiry) → D:\Retire\sycm-automation\evidence\daily-report-2026-09-17-科塔淘宝\feishu-inquiry-table-after-backfill.png
+页面已留在：https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+exit=0

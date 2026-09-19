@@ -1,0 +1,39 @@
+{
+ "proxy": "http://127.0.0.1:19044",
+ "commit": false,
+ "notify": {
+  "mode": "auto",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": false,
+   "href": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  },
+  "alimama": {
+   "label": "阿里妈妈",
+   "loggedIn": false,
+   "href": "https://one.alimama.com/index.html#!/login/index",
+   "reason": null
+  }
+ },
+ "login": {
+  "targetId": "1C2D730B9B9461AD347D4C3BE10C26DB",
+  "opened": true,
+  "urlBefore": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+  "autofill": {
+   "id": true,
+   "password": true
+  },
+  "gesturePoint": [
+   929,
+   321
+  ],
+  "shots": null
+ },
+ "verdict": "READY_TO_GESTURE",
+ "detail": "检测到浏览器填充预览态；加 --commit 才会补可信手势并提交。"
+}

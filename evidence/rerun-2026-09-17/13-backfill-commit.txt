@@ -1,0 +1,39 @@
+===== 里可林淘宝 =====
+[audit] 已记 inquiry-backfill/ok id=28
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-里可林淘宝\\inquiry-backfill-receipt.json",
+  "recordId": "recvtXf5OikETg",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-里可林淘宝",
+  "values": {
+    "询单量": 3
+  },
+  "unchangedOtherFields": true
+}
+exit=0
+===== 网林天猫 =====
+[audit] 已记 inquiry-backfill/ok id=29
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-网林天猫\\inquiry-backfill-receipt.json",
+  "recordId": "recvtXf5OixAca",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-网林天猫",
+  "values": {
+    "询单量": 4
+  },
+  "unchangedOtherFields": true
+}
+exit=0
+===== 科塔淘宝 =====
+[audit] 已记 inquiry-backfill/ok id=30
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-科塔淘宝\\inquiry-backfill-receipt.json",
+  "recordId": "recvtXf5OiXSb1",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-科塔淘宝",
+  "values": {
+    "询单量": 5
+  },
+  "unchangedOtherFields": true
+}
+exit=0

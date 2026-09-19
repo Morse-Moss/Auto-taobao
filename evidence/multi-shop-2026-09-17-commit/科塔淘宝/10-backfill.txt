@@ -1,0 +1,11 @@
+
+===== 2026-09-19T01:36:50.987Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-inquiry-backfill.mjs --date 2026-09-17 --proxy http://127.0.0.1:19044 --source-shop 科塔全卫定制 --shop 科塔淘宝 --shop-key 科塔淘宝 --commit
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: expected one benchmark row 同行同层均值, got 0
+    at extractInquiryMetrics (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/inquiry-core.mjs:40:11)
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:128:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

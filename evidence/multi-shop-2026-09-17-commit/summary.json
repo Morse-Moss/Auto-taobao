@@ -1,17 +1,554 @@
 {
   "date": "2026-09-17",
   "mode": "commit",
-  "startedAt": "2026-09-18T12:53:04.188Z",
+  "startedAt": "2026-09-19T01:31:31.231Z",
   "round": {
     "healthCheckDaily": {
-      "status": 2,
+      "status": 0,
       "logPath": "evidence\\multi-shop-2026-09-17-commit\\00-health-check-daily.txt",
-      "ok": false,
-      "blocking": [
-        "CDP_ENDPOINT_MISSING"
-      ]
+      "ok": true,
+      "blocking": []
     }
   },
-  "shops": {},
-  "finishedAt": "2026-09-18T12:53:04.216Z"
+  "shops": {
+    "里可林淘宝": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\里可林淘宝\\01-health-check.txt",
+          "argv": []
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\里可林淘宝\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19041"
+          ]
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\里可林淘宝\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19041",
+            "--expect-shop",
+            "里可林家居",
+            "--expect-member",
+            "里可林家居:阿彦",
+            "--expect-member-id",
+            "2350600069"
+          ]
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\里可林淘宝\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19041"
+          ]
+        },
+        {
+          "stage": "shop-report",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\里可林淘宝\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19041",
+            "--expect-shop",
+            "里可林家居",
+            "--expect-member",
+            "里可林家居:阿彦",
+            "--expect-member-id",
+            "2350600069"
+          ]
+        },
+        {
+          "stage": "promotion-fetch",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\里可林淘宝\\06-promotion-fetch.txt",
+          "argv": [
+            "--phase",
+            "fetch",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19041",
+            "--expect-shop",
+            "里可林家居",
+            "--expect-member",
+            "里可林家居:阿彦",
+            "--expect-member-id",
+            "2350600069"
+          ]
+        },
+        {
+          "stage": "push",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\里可林淘宝\\07-push.txt",
+          "argv": [
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "里可林淘宝",
+            "--commit",
+            "--shop-xlsx",
+            "C:\\Users\\Administrator\\Downloads\\日报_20260919_b3de46ced2634ef20c9372b4caf00736.xlsx",
+            "--promotion-zip",
+            "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_093134.zip"
+          ]
+        },
+        {
+          "stage": "sycm-reset",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\里可林淘宝\\08-sycm-reset.txt",
+          "argv": []
+        },
+        {
+          "stage": "sycm-date-again",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\里可林淘宝\\09-sycm-date-again.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19041"
+          ]
+        },
+        {
+          "stage": "backfill",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\里可林淘宝\\10-backfill.txt",
+          "argv": [
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19041",
+            "--source-shop",
+            "里可林家居",
+            "--shop",
+            "里可林淘宝",
+            "--shop-key",
+            "里可林淘宝",
+            "--commit"
+          ]
+        }
+      ],
+      "source": {
+        "shopXlsx": "C:\\Users\\Administrator\\Downloads\\日报_20260919_b3de46ced2634ef20c9372b4caf00736.xlsx",
+        "promotionZip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_093134.zip"
+      },
+      "failedStage": "backfill",
+      "error": "阶段 backfill 失败（exit 1）"
+    },
+    "网林天猫": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\网林天猫\\01-health-check.txt",
+          "argv": []
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\网林天猫\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19042"
+          ]
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\网林天猫\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--expect-shop",
+            "网林家居旗舰店",
+            "--expect-member",
+            "网林家居旗舰店:阿彦",
+            "--expect-member-id",
+            "7314426323"
+          ]
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\网林天猫\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19042"
+          ]
+        },
+        {
+          "stage": "shop-report",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\网林天猫\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--expect-shop",
+            "网林家居旗舰店",
+            "--expect-member",
+            "网林家居旗舰店:阿彦",
+            "--expect-member-id",
+            "7314426323"
+          ]
+        },
+        {
+          "stage": "promotion-fetch",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\网林天猫\\06-promotion-fetch.txt",
+          "argv": [
+            "--phase",
+            "fetch",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--expect-shop",
+            "网林家居旗舰店",
+            "--expect-member",
+            "网林家居旗舰店:阿彦",
+            "--expect-member-id",
+            "7314426323"
+          ]
+        },
+        {
+          "stage": "push",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\网林天猫\\07-push.txt",
+          "argv": [
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "网林天猫",
+            "--commit",
+            "--shop-xlsx",
+            "C:\\Users\\Administrator\\Downloads\\日报_20260919_80bec2d747ebb68cb870a4272d0d52c1.xlsx",
+            "--promotion-zip",
+            "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_093337.zip"
+          ]
+        },
+        {
+          "stage": "sycm-reset",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\网林天猫\\08-sycm-reset.txt",
+          "argv": []
+        },
+        {
+          "stage": "sycm-date-again",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\网林天猫\\09-sycm-date-again.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19042"
+          ]
+        },
+        {
+          "stage": "backfill",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\网林天猫\\10-backfill.txt",
+          "argv": [
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--source-shop",
+            "网林家居旗舰店",
+            "--shop",
+            "网林天猫",
+            "--shop-key",
+            "网林天猫",
+            "--commit"
+          ]
+        }
+      ],
+      "source": {
+        "shopXlsx": "C:\\Users\\Administrator\\Downloads\\日报_20260919_80bec2d747ebb68cb870a4272d0d52c1.xlsx",
+        "promotionZip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_093337.zip"
+      },
+      "failedStage": "backfill",
+      "error": "阶段 backfill 失败（exit 1）"
+    },
+    "盖文淘宝": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\盖文淘宝\\01-health-check.txt",
+          "argv": []
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\盖文淘宝\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19043"
+          ]
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\盖文淘宝\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19043",
+            "--expect-shop",
+            "盖文全卫定制",
+            "--expect-member",
+            "随心品质定制:阿彦",
+            "--expect-member-id",
+            "887360146"
+          ]
+        }
+      ],
+      "source": {},
+      "failedStage": "promotion-submit",
+      "error": "阶段 promotion-submit 失败（exit 1）"
+    },
+    "科塔淘宝": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\科塔淘宝\\01-health-check.txt",
+          "argv": []
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\科塔淘宝\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19044"
+          ]
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\科塔淘宝\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--expect-shop",
+            "科塔全卫定制",
+            "--expect-member",
+            "j873522735:阿彦",
+            "--expect-member-id",
+            "412070158"
+          ]
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\科塔淘宝\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19044"
+          ]
+        },
+        {
+          "stage": "shop-report",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\科塔淘宝\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--expect-shop",
+            "科塔全卫定制",
+            "--expect-member",
+            "j873522735:阿彦",
+            "--expect-member-id",
+            "412070158"
+          ]
+        },
+        {
+          "stage": "promotion-fetch",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\科塔淘宝\\06-promotion-fetch.txt",
+          "argv": [
+            "--phase",
+            "fetch",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--expect-shop",
+            "科塔全卫定制",
+            "--expect-member",
+            "j873522735:阿彦",
+            "--expect-member-id",
+            "412070158"
+          ]
+        },
+        {
+          "stage": "push",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\科塔淘宝\\07-push.txt",
+          "argv": [
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "科塔淘宝",
+            "--commit",
+            "--shop-xlsx",
+            "C:\\Users\\Administrator\\Downloads\\日报_20260919_aefdcd0599626688507142b7bbed7e84.xlsx",
+            "--promotion-zip",
+            "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_093514.zip"
+          ]
+        },
+        {
+          "stage": "sycm-reset",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\科塔淘宝\\08-sycm-reset.txt",
+          "argv": []
+        },
+        {
+          "stage": "sycm-date-again",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\科塔淘宝\\09-sycm-date-again.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19044"
+          ]
+        },
+        {
+          "stage": "backfill",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-17-commit\\科塔淘宝\\10-backfill.txt",
+          "argv": [
+            "--date",
+            "2026-09-17",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--source-shop",
+            "科塔全卫定制",
+            "--shop",
+            "科塔淘宝",
+            "--shop-key",
+            "科塔淘宝",
+            "--commit"
+          ]
+        }
+      ],
+      "source": {
+        "shopXlsx": "C:\\Users\\Administrator\\Downloads\\日报_20260919_aefdcd0599626688507142b7bbed7e84.xlsx",
+        "promotionZip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_093514.zip"
+      },
+      "failedStage": "backfill",
+      "error": "阶段 backfill 失败（exit 1）"
+    }
+  },
+  "finishedAt": "2026-09-19T01:36:51.287Z"
 }
