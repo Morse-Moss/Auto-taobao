@@ -224,6 +224,17 @@ Error: Feishu page is not on authorized table/view: …?table=tblUnwn05vl8Wik9&v
 正确值只有一个来源：`feishu-targets.mjs` 的 `dailyReportTargets()`。
 （`run-daily-report.mjs` 的 `inspectTarget` 就是拿它两个字段跟页面 URL 逐字比的。）
 
+⚠️ **`dailyReportTargets()` 的字段名就叫 `sourceTable` / `sourceView`（还有 `inquiryTable`）——
+不是 `tableId` / `viewId`。** 2026-09-19 下午补页时按常理猜成后者，建出来的页是
+`?table=undefined&view=undefined`（飞书把它重定向到了另一张表），**而且不报错**；
+是回读判据 `table=tblkY3W8tnPWPcnh view=vewwg0rhjo` 对不上才发现的。
+同族坑：包装层的 `fieldName` vs 裸 OpenAPI 的 `field_name`（§12.4 附近）—— **飞书侧的字段名一律不猜**。
+
+⚠️ **「页面会丢」不是新 profile 的专利**：2026-09-19 下午实测，**商家浏览器**（19022/19023）
+也曾经只剩一个 `sycm.taobao.com/portal/home.htm`（生意参谋工作页与飞书底单页都不在）。
+所以 §10.0 那次「起跑前逐项确认」**每一轮都要做**，不能只在「刚起浏览器」时做。
+补页只动「同一主机下唯一的那一页」导航回工作页；同主机多于一页时**不动**（重复页要人来决定）。
+
 开页探针在仓库外：`D:/Retire/probe-live/86-open-shop-pages.mjs`（`--dry-run` 先看要开什么，
 不带参数才真开；只开**缺的**那些，已有的不动）。归位飞书页：`90-fix-feishu-page.mjs`。
 两个都放仓库外，因为仓库内的临时探针会被端口守卫扫到。

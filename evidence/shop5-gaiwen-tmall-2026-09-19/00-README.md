@@ -64,3 +64,14 @@ PROJECT_BROWSER_PORT=19035 PROJECT_BROWSER_PROFILE=D:/Retire/edge-profiles/gaiwe
   node runtime/start-project-browser.mjs          # 会打印「额外开关：--disable-sync」
 node runtime/start-shop-proxy.mjs gaiwen-flagship # 一家店一个代理进程
 ```
+
+## 2026-09-19 下午更新（本文件上面「还没做」三条已全部做完）
+
+用户当天 13:40 回「登录了」⇒ 三件事当天做完，证据在别处（本目录只保留「建实例」那一轮的现场）：
+
+1. 两侧身份用采集脚本那两个表达式各读一次 ⇒ 登记表升 `expression`（提交 `eadad75`）；
+2. 09-18 那一家补采完成（底单 1883→1884、询单 12/35）——`evidence/multi-shop-2026-09-18/00-README.md`（提交 `13400a1`）；
+3. 独立回读 + 提交前后逐行 diff + 审计表第 39/40 行，证明没串店（同上）。
+
+⇒ 上面第 27 行的「两个工作页都停在登录页」与第 54-58 行的「还没做」是**当时**的事实，
+现在以 `evidence/multi-shop-2026-09-18/` 为准。
