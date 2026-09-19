@@ -1,0 +1,184 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-09-17",
+  "shop": "盖文淘宝",
+  "environment": {
+    "computedAt": "2026-09-19T06:34:15.117Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19043",
+    "browserPort": {
+      "port": 19033,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19043,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-suixin-custom",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop suixin-custom)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "d:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-盖文淘宝",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "PTfHbPt9EaIzddsfL8Jcj238nrb",
+    "tableId": "tblUnwn05vl8Wik9",
+    "tableName": "各店铺数据日报",
+    "recordId": "recvtXf5OinIxX"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "sourceShop": "盖文全卫定制",
+    "headers": [
+      "日期",
+      "延 询单人数",
+      "当日询单人数",
+      "当日付款人数",
+      "当日付款金额",
+      "延 最终付款人数",
+      "延 最终付款金额",
+      "询单当日付款转化率",
+      "延 询单最终付款转化率"
+    ],
+    "rows": [
+      [
+        "2026-09-17",
+        "4",
+        "4",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "汇总值",
+        "4",
+        "4",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "平均值",
+        "4",
+        "4",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ]
+    ]
+  },
+  "degraded": {
+    "code": "PEER_UNAVAILABLE",
+    "reason": "SYCM 自定义日期模式下表格不含「同行同层均值」行（预设「1天」才有）",
+    "omittedFields": [
+      "同层同行询单量"
+    ],
+    "sourceRowCount": 3
+  },
+  "values": {
+    "询单量": 4
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "recvtXf5OinIxX",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 4
+    }
+  },
+  "before": {
+    "fields": {
+      "人群PPC": 1.69220338983051,
+      "人群ROI": 0,
+      "人群加购成本": 14.2628571428571,
+      "人群加购数": [
+        7
+      ],
+      "人群成交金额": [
+        0
+      ],
+      "人群收加率": 0.135593220338983,
+      "人群收藏数": [
+        1
+      ],
+      "人群点击量": [
+        59
+      ],
+      "人群花费": [
+        99.84
+      ],
+      "人群询单量": [
+        2
+      ],
+      "关键词PPC": 0.930961538461538,
+      "关键词ROI": 0,
+      "关键词加购人数": [
+        6
+      ],
+      "关键词加购成本": 8.06833333333333,
+      "关键词成交金额": [
+        0
+      ],
+      "关键词收加率": 0.115384615384615,
+      "关键词收藏人数": [
+        0
+      ],
+      "关键词点击量": [
+        52
+      ],
+      "关键词花费": [
+        48.41
+      ],
+      "关键词询单量": [
+        0
+      ],
+      "同层同行询单量": null,
+      "实际支付金额": 0,
+      "店铺": "盖文淘宝",
+      "店铺加购人数": [
+        14
+      ],
+      "店铺收加率": 0.0116561437591064,
+      "店铺收藏人数": [
+        10
+      ],
+      "推广花费合计": 148.25,
+      "支付金额": [
+        0
+      ],
+      "数据月份": 9,
+      "日期": 1789574400000,
+      "补单金额": null,
+      "访客数": [
+        2059
+      ],
+      "询单量": null
+    },
+    "id": "recvtXf5OinIxX",
+    "record_id": "recvtXf5OinIxX"
+  }
+}

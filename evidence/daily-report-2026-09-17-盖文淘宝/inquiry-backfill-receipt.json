@@ -60,5 +60,13 @@
     "disposition": "WRITE_REQUIRED",
     "询单量": null,
     "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "recvtXf5OinIxX",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 4
+    }
   }
 }

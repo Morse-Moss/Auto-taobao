@@ -1,8 +1,8 @@
 {
-  "mode": "verify-existing",
+  "mode": "api-commit",
   "reportDate": "2026-09-17",
   "environment": {
-    "computedAt": "2026-09-18T10:52:38.148Z",
+    "computedAt": "2026-09-19T06:33:10.375Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19023",
     "browserPort": {
@@ -27,7 +27,7 @@
   "evidence": {
     "outputDir": "d:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-17-盖文淘宝",
     "generation": 1,
-    "reason": "base-empty"
+    "reason": "latest"
   },
   "sourceSelfChecks": {
     "expectedDate": "2026-09-17",
@@ -36,14 +36,14 @@
       "matchedRowDate": "2026-09-17",
       "workbookRows": 31,
       "uniqueDates": 30,
-      "firstRowDate": "2026-09-17",
-      "lastRowDate": "2026-08-19",
+      "firstRowDate": "2026-09-18",
+      "lastRowDate": "2026-08-20",
       "targetRowCount": 1,
       "matches": true
     },
     "promotion": {
       "column": "日期",
-      "csvName": "营销场景报表_20260918_185159.csv",
+      "csvName": "营销场景报表_20260919_143227.csv",
       "observedDates": [
         "2026-09-17"
       ],
@@ -61,12 +61,12 @@
     "tableName": "总数据来源底单"
   },
   "source": {
-    "shopFile": "C:\\Users\\Administrator\\Downloads\\日报2_20260918_90f3f449b92531c0823d97ec6d6bb86b (2).xlsx",
-    "shopSha256": "650f5cc981b638b8fdc1d269c5fdfd53817c0a6ac3bc5ac032e8408fa313eac8",
+    "shopFile": "C:\\Users\\Administrator\\Downloads\\日报2_20260919_90f3f449b92531c0823d97ec6d6bb86b (1).xlsx",
+    "shopSha256": "f036185190466906106c46dc64de7ef916428ace1f41ff94aa9fa962b13f53a9",
     "shopWorkbookRows": 31,
-    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260918_185159.zip",
-    "promotionSha256": "4e8bb0f3dcd1251e4c6417724b70c21324e213f74aaa6379486c81f735cc3512",
-    "promotionCsv": "营销场景报表_20260918_185159.csv"
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_143227.zip",
+    "promotionSha256": "714444d05dde3da3f817f887f78bebf63c91f66cd5d37c4d85145630168cb15b",
+    "promotionCsv": "营销场景报表_20260919_143227.csv"
   },
   "checks": {
     "visibleFields": 265,
@@ -258,7 +258,7 @@
     "会员成交笔数": 0,
     "成交人数": 0,
     "自然流量转化金额": 0,
-    "自然流量曝光量": 147,
+    "自然流量曝光量": 163,
     "人群推广日期": 1789574400000,
     "场景ID (1)": 372,
     "场景名字 (1)": "人群推广",
@@ -320,12 +320,12 @@
     "会员成交笔数 (1)": 0,
     "成交人数 (1)": 0,
     "自然流量转化金额 (1)": 0,
-    "自然流量曝光量 (1)": 338
+    "自然流量曝光量 (1)": 379
   },
-  "status": "UI_COMMITTED_AND_VERIFIED",
-  "recordId": "recvvyS3CjfdVy",
-  "recordCountBefore": 1879,
-  "recordCountAfter": 1880,
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "recvvE4MrW0uJI",
+  "recordCountBefore": 1884,
+  "recordCountAfter": 1885,
   "verifiedFields": 240,
   "derivedShop": [
     "optFFaXJeh"
