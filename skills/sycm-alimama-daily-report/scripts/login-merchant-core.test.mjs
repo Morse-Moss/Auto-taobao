@@ -6,8 +6,8 @@ import { test } from 'node:test';
 
 import {
   FORM_STATE_EXPRESSION, LOGIN_TARGETS, NOTIFY_MODES, REASON_BY_VERDICT, SITES, VERDICTS,
-  VERDICTS_NEEDING_HUMAN, alertForRun, buildLoginAlert, captchaVisible, centerOf, loginUrlFor, needsHuman,
-  parseArgs, profileForShop, resolveAction, shouldNotify, sitesNeedingLogin,
+  VERDICTS_NEEDING_HUMAN, alertForRun, buildLoginAlert, captchaVisible, centerOf, detectLoginDetour,
+  isTaobaoLoginUrl, needsHuman, parseArgs, profileForShop, resolveAction, shouldNotify, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 // 用**真的那份登记表**（不是测试自己造的假表）来验「哪家店 → 哪个 profile」：
 // 造一张假表只能证明这个函数会查表，证明不了四家店各自指向自己的 profile。
@@ -83,10 +83,20 @@ test('centerOf：零尺寸矩形算出来的中心是 (0,0) ⇒ 必须 fail-clos
   assert.deepEqual(centerOf({ submit: { visible: true, rect: [744, 465, 370, 48] } }, 'submit'), [929, 489]);
 });
 
-test('sitesNeedingLogin：读不出来（null）不等于要登录 —— 宁可少动，不可乱动', () => {
+test('sitesNeedingLogin：只有「确认已登录」才算通过 —— 读不出来（null）一样要去处理', () => {
+  // 2026-09-19 改的性质：这条用例原先断言 `{ sycm: null, alimama: true }` ⇒ []（什么都不用做），
+  // 注释写的是「宁可少动，不可乱动」。现场后果是一个只剩 about:blank 的窗口
+  // （刚起浏览器、两个后台的页面都还没开）被判成 ALREADY_LOGGED_IN：
+  // 不叫人、不做事，连 `--commit` 都什么都不做 —— 而它的输出长得像「一切正常」。
   assert.deepEqual(sitesNeedingLogin({ sycm: { loggedIn: false }, alimama: { loggedIn: false } }), ['sycm', 'alimama']);
   assert.deepEqual(sitesNeedingLogin({ sycm: { loggedIn: true }, alimama: { loggedIn: false } }), ['alimama']);
-  assert.deepEqual(sitesNeedingLogin({ sycm: { loggedIn: null }, alimama: { loggedIn: true } }), []);
+  assert.deepEqual(sitesNeedingLogin({ sycm: { loggedIn: null }, alimama: { loggedIn: true } }), ['sycm'],
+    '读不到 ≠ 已登录：要去看一眼（登录流程第一步本来就是打开页面，无害）');
+  assert.deepEqual(sitesNeedingLogin({ sycm: { loggedIn: null }, alimama: { loggedIn: null } }), ['sycm', 'alimama'],
+    '空窗口绝不能被判成「已登录」');
+  assert.deepEqual(sitesNeedingLogin({ sycm: { loggedIn: undefined }, alimama: { loggedIn: true } }), ['sycm'],
+    '缺字段同理：少一个字段不该等于「已登录」');
+  assert.deepEqual(sitesNeedingLogin({ sycm: { loggedIn: true }, alimama: { loggedIn: true } }), []);
   assert.deepEqual(sitesNeedingLogin({}), []);
 });
 
@@ -121,12 +131,14 @@ test('主脚本用到的结论词都在 VERDICTS 里（拼错一个词就是一�
 // 飞书提醒：哪些结论要叫人
 // ---------------------------------------------------------------------------
 
-test('「需要人」的结论词都在 VERDICTS 里，且恰好是那五个失败结论', () => {
+test('「需要人」的结论词都在 VERDICTS 里，且成功/排练的结论一个都不在里面', () => {
   for (const word of VERDICTS_NEEDING_HUMAN) {
     assert.ok(VERDICTS.includes(word), `VERDICTS_NEEDING_HUMAN 里的 ${word} 不在 VERDICTS —— 拼错就是「永远不叫人」`);
   }
   // 反向钉死：成功的、排练的结论**一个都不许**进「需要人」——
   // 多进去一个的症状是「每跑一轮都发一条飞书」，那正是通知疲劳的成因。
+  // （这里断言的是**补集**，所以新增一个「要叫人」的失败结论不需要改这一行；
+  //   测试名也刻意不再写死个数 —— 写死个数的话，加一个结论就要改一次名字，改着改着就没人看了。）
   const quiet = VERDICTS.filter((v) => !VERDICTS_NEEDING_HUMAN.includes(v));
   assert.deepEqual([...quiet].sort(), [
     'ALREADY_LOGGED_IN', 'LOGGED_IN', 'READY_TO_GESTURE', 'READY_TO_SUBMIT',
@@ -164,7 +176,7 @@ test('buildLoginAlert：拿到「不需要人」的结论就抛，不生成一�
   assert.throws(() => buildLoginAlert({ verdict: 'ALREADY_LOGGED_IN' }), /不需要人处理/u);
 });
 
-test('告警真渲染一遍：链接、机器、浏览器配置、下一步都在（键名写错会被白名单静默丢掉）', () => {
+test('告警真渲染一遍：指路、机器、浏览器配置、下一步都在（键名写错会被白名单静默丢掉）', () => {
   const alert = buildLoginAlert({
     verdict: 'NO_SAVED_CREDENTIAL',
     detail: '这个窗口的密码库里没有这家店的密码',
@@ -178,8 +190,11 @@ test('告警真渲染一遍：链接、机器、浏览器配置、下一步都�
   assert.match(rendered, /【需要处理】/u, 'severity=ERROR 必须渲染成「需要处理」而不是「提示」');
   // 2026-09-18：标题改成自带店名的人话（用户反馈「太笼统」），不再借用通用标题表的「平台登录已失效」
   assert.match(rendered, /【需要处理】里可林家居:阿彦 需要你登录一次/u);
-  assert.match(rendered, /打开这个链接：https:\/\/login\.taobao\.com\//u,
-    '必须给出可点的登录入口 —— 只说「登录已失效」，收信人还得先自己找入口');
+  // 2026-09-19：这里原先是「必须给出可点的登录入口」。那条规范被实测证伪，所以改成断言它的反面。
+  assert.equal(/https?:\/\//u.test(rendered), false,
+    '正文里不该再有链接：点 http 链接会跳到系统默认浏览器，到不了这个窗口');
+  assert.match(rendered, /下一步：登录页已经开在标题写着「里可林家居:阿彦」的那个浏览器窗口/u,
+    '入口改由脚本自己开 ⇒ 正文必须说清登录页开在哪个窗口、去那里做什么');
   assert.match(rendered, /对象：生意参谋 \/ 阿里妈妈/u, '站点没渲染出来');
   assert.match(rendered, /机器：DEPLOY-01/u, '缺了「哪台机器」，收信人还得先找机器');
   assert.match(rendered, /浏览器配置：D:\/Retire\/edge-profiles\/likelin-home/u, '缺了「哪个配置」，人不知道该动哪个浏览器');
@@ -197,7 +212,31 @@ test('告警文案里不许出现结论代号与内部术语（用户 2026-09-18
     for (const word of jargon) {
       assert.equal(rendered.includes(word), false, `${verdict} 的文案里出现了内部术语「${word}」`);
     }
-    assert.match(rendered, /https:\/\//u, `${verdict} 的文案里没有可点的链接`);
+    // 2026-09-19：**文案里不许再出现链接**。
+    // 这里原先断言的是「必须有 https://」——那条规范被实测证伪。用户原话：
+    // 「我点了你发的链接直接跳到我的默认浏览器（QQ 浏览器）而不是目标浏览器」。
+    // 点 http 链接走系统默认浏览器是 OS 行为，永远到不了目标 profile 的 Edge 实例；
+    // 那条链接不但没用，还把人送进一个没有登录态的浏览器里。
+    // 入口改由脚本自己开（登录页开在目标窗口并置前），正文只负责说清「去哪个窗口、做什么」。
+    assert.equal(/https?:\/\//u.test(rendered), false,
+      `${verdict} 的文案里又出现链接了 —— 点它会跳到默认浏览器，到不了目标窗口`);
+    assert.match(rendered, /那个浏览器窗口/u,
+      `${verdict} 的文案没告诉收信人去哪个窗口（用户：「你要让业务人员知道要干什么」）`);
+  }
+});
+
+test('前三条结论必须承诺「登录页已经开在窗口里了」——入口由脚本开，不是让人自己找', () => {
+  // 依据：这三条都是在登录流程里判出来的 ⇒ 登录页此刻一定还停在那一步（见 ensureLoginPage）。
+  // 承诺错了会很糟：收信人跑过去发现没有登录页，下一次就不信这条提醒了。
+  for (const verdict of ['NO_SAVED_CREDENTIAL', 'CAPTCHA_REQUIRED', 'LOGIN_NOT_CONFIRMED']) {
+    assert.match(resolveAction(verdict, '盖文淘宝'), /登录页已经开在标题写着「盖文淘宝」的那个浏览器窗口/u,
+      `${verdict} 没承诺「登录页已经开好」，收信人还得自己找入口`);
+  }
+  // 这几条不承诺：PARTIAL 是提交后已经跳走、STOP_AND_ALERT 可能停在打开页面那一步，
+  // MAIN_SESSION_ONLY 恰恰是「登录页被送走了」判出来的 —— 承诺「登录页开着」会当场自相矛盾。
+  for (const verdict of ['PARTIAL', 'STOP_AND_ALERT', 'MAIN_SESSION_ONLY']) {
+    assert.equal(resolveAction(verdict, '盖文淘宝').includes('登录页已经开在'), false,
+      `${verdict} 不该承诺登录页开着 —— 它会把人骗到一台没有登录页的窗口前`);
   }
 });
 
@@ -209,12 +248,17 @@ test('每个「要叫人」的结论都必须有自己的原因和下一步—�
   }
 });
 
-test('loginUrlFor：只缺一个站点时给那个后台，两个都缺时给淘宝登录页', () => {
-  assert.match(loginUrlFor(['sycm']), /sycm\.taobao\.com/u);
-  assert.match(loginUrlFor(['alimama']), /one\.alimama\.com/u);
-  assert.match(loginUrlFor(['sycm', 'alimama']), /login\.taobao\.com/u);
-  assert.match(loginUrlFor([]), /login\.taobao\.com/u, '认不出站点时退到「一次登录管两个」的那个入口');
-  assert.match(loginUrlFor(['不认识']), /login\.taobao\.com/u);
+test('告警对象里不许再带 loginUrl —— 那条链接只会把人带到默认浏览器', () => {
+  // 2026-09-19 改。原先这条用例断言的是 `loginUrlFor` 的取值（只缺一个站点给哪个后台、
+  // 两个都缺退到淘宝登录页）。它证明了「链接拼得对」，却**证明不了链接有用** ——
+  // 实测发现点它到不了目标 Edge 实例（走的是系统默认浏览器），所以函数与字段一起删了。
+  // 现在改成正向的反回退判据：这个字段一旦被加回来就红。
+  const alert = buildLoginAlert({
+    verdict: 'CAPTCHA_REQUIRED', sites: ['sycm', 'alimama'], machine: 'M', browserProfile: 'P',
+  });
+  assert.equal('loginUrl' in alert.source, false, '告警 source 里又出现了 loginUrl');
+  assert.equal(JSON.stringify(alert).includes('loginUrl'), false, '告警里又出现了 loginUrl');
+  assert.equal(JSON.stringify(alert).includes('http'), false, '告警里又出现了 URL —— 链接在这个场景下只会帮倒忙');
 });
 
 test('告警里不含任何凭据面：没有密码/账号字段，也没有登录表单的状态', () => {
@@ -226,8 +270,9 @@ test('告警里不含任何凭据面：没有密码/账号字段，也没有登�
     assert.equal(flat.includes(forbidden), false, `告警里出现了 ${forbidden} —— 凭据面不许进通知`);
   }
   // 只允许白名单里的 source 键（多出来的会被渲染器丢掉，等于白填）
+  // 2026-09-19：`loginUrl` 已从这条契约里去掉（点链接到不了目标窗口，见上面那条用例）。
   assert.deepEqual(Object.keys(alert.source).sort(),
-    ['browserProfile', 'loginUrl', 'machine', 'shopName', 'targetLabel']);
+    ['browserProfile', 'machine', 'shopName', 'targetLabel']);
 });
 
 test('alertId 是「同站点同一天一条」——它是去重的锚，不能每次都变', () => {
@@ -257,6 +302,27 @@ test('主脚本确实把通知接到了失败路径上（不是只写了两个�
   const notifyAt = code.indexOf('await deliverAlert(args, finalReceipt)');
   const printAt = code.indexOf('console.log(JSON.stringify(finalReceipt, null, 1))');
   assert.ok(notifyAt > 0 && printAt > notifyAt, '通知必须在打印收据之前完成');
+});
+
+// ---------------------------------------------------------------------------
+// 「窗口必须被置前」—— 2026-09-19 用户反馈「你要让业务人员知道要干什么」
+// ---------------------------------------------------------------------------
+// 告警正文承诺「登录页已经开在标题写着 X 的那个窗口里了」。这句话要成立，必须同时满足两件事：
+//   ① 登录页真的开在那个窗口里（登录流程本来就会开）；
+//   ② 那个窗口在**前台** —— 否则人在任务栏里翻半天，等于没告诉他。
+// ② 原先被 `if (args.shots)` 挡着：多店铺驱动不传 --shots ⇒ 从来没置过前。
+// 这条只能读源码（IO 部分没法离线跑），所以按「剥注释再匹配」的老规矩来。
+test('主脚本必须无条件把登录窗口置前（不是只在 --shots 时才前置）', () => {
+  const source = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
+  const code = source.replace(/^\s*\/\/.*$/gmu, '');
+  assert.ok(code.includes('bringToFront'),
+    '主脚本根本没置前 ⇒ 告警说的「去那个窗口」全靠人自己翻任务栏');
+  assert.equal(/if \(args\.shots\)[^\n]*bringToFront/u.test(code), false,
+    'bringToFront 又被 --shots 包起来了 ⇒ 多店铺驱动不传 --shots，失败交人时窗口还留在后台');
+  // 置前必须发生在打开/复用登录页之后 —— 那时候才拿得到 targetId
+  const openedAt = code.indexOf('ensureLoginPage');
+  const frontAt = code.indexOf('bringToFront');
+  assert.ok(openedAt > 0 && frontAt > openedAt, '置前必须在拿到登录页 target 之后');
 });
 
 // ---------------------------------------------------------------------------
@@ -402,4 +468,61 @@ test('parseArgs：--shop 是运营叫法，拼错当场抛错并列出全部合�
     /Unknown --shop 盖文天猫 \(known: 里可林淘宝 \/ 网林天猫 \/ 盖文淘宝 \/ 科塔淘宝\)/u,
     '店名拼错必须当场抛错 —— 发一条带「不存在的店名」的告警，比不发更坏');
   assert.throws(() => parseArgs(['--shop'], DEFAULTS), /--shop requires a value/u);
+});
+
+// ---------------------------------------------------------------------------
+// 「登录页被送走」这一种（2026-09-19 加）
+//
+// 起因是 19033 上实测出来的一个**假事实**：淘宝主站会话还有效时，打开顶层登录页会被直接
+// 送去卖家后台（落到 myseller.taobao.com/home.htm/QnworkbenchHome/），页面上没有输入框
+// ⇒ 原先那句「拿不到 :autofill」把它判成 NO_SAVED_CREDENTIAL，而告警让人去点浏览器提示里的
+// 「保存密码」。密码库里凭据是有的，缺的是这两个后台自己的会话 —— 收信人照着做，问题不会好。
+// 报错文案是收信人唯一看到的解释，说错解释比不说更贵。
+// ---------------------------------------------------------------------------
+
+test('isTaobaoLoginUrl：对着实测的登录页与被送走后的落点各判一次', () => {
+  // 实测：ensureLoginPage 用的就是这条 URL；被送走后落到千牛工作台。
+  assert.equal(isTaobaoLoginUrl('https://login.taobao.com/havanaone/login/login.htm?bizName=taobao'), true);
+  assert.equal(isTaobaoLoginUrl('https://login.taobao.com/member/login.jhtml?style=mini'), true);
+  assert.equal(isTaobaoLoginUrl('https://myseller.taobao.com/home.htm/QnworkbenchHome/'), false,
+    '落到千牛工作台就是「被送走了」 —— 这一条不成立的话，新判据永远不触发');
+  assert.equal(isTaobaoLoginUrl('https://one.alimama.com/index.html'), false);
+  assert.equal(isTaobaoLoginUrl(null), false, '读不到地址不能算「还在登录页上」——那会让真失败被当成正常');
+  assert.equal(isTaobaoLoginUrl(undefined), false);
+});
+
+test('登录页被送走必须单独成一类：动作是「去打开那两个后台」，不是「去点保存密码」', () => {
+  assert.ok(VERDICTS.includes('MAIN_SESSION_ONLY'));
+  assert.equal(needsHuman('MAIN_SESSION_ONLY'), true, '这一类只能人来做，不叫人就等于停在这里没人知道');
+  const action = resolveAction('MAIN_SESSION_ONLY', '盖文淘宝');
+  assert.match(action, /生意参谋/u, '要说清是哪一个后台要登（只说「后台」收信人还得自己试两个）');
+  assert.match(action, /阿里妈妈/u);
+  assert.match(action, /标题写着「盖文淘宝」的那个浏览器窗口/u, '仍然要用店名定位窗口');
+  assert.equal(action.includes('保存密码'), true, '「保存密码」这一步仍然要做（下次才能自动填）');
+  const reason = REASON_BY_VERDICT.MAIN_SESSION_ONLY;
+  assert.match(reason, /主站/u, '原因要交代「为什么登录页没进来」');
+  assert.equal(reason.includes('没有存'), false, '原因里不许再写「没存账号密码」——那正是被证伪的旧解释');
+});
+
+test('detectLoginDetour：还在登录页 ⇒ 不绕路；被送去卖家后台 ⇒ 报这一类', () => {
+  assert.equal(detectLoginDetour('https://login.taobao.com/havanaone/login/login.htm?bizName=taobao'), null,
+    '还停在登录页上就不该报「被送走」—— 误报会让本来能自动填的流程停下来等人');
+  const detour = detectLoginDetour('https://myseller.taobao.com/home.htm/QnworkbenchHome/');
+  assert.equal(detour?.verdict, 'MAIN_SESSION_ONLY');
+  assert.equal(detour?.host, 'myseller.taobao.com', '详情要能说出「落到哪儿了」，那是收信人唯一能核对的证据');
+  // 反向：读不到地址**不下结论**（缺证据不是证据）—— 顺手判成「主站会话还在」就是又一个假事实。
+  for (const empty of [null, undefined, '', '   ']) {
+    assert.equal(detectLoginDetour(empty), null, `href=${JSON.stringify(empty)} 时不该下结论`);
+  }
+});
+
+test('主脚本必须真的会用新判据，且「还在不在登录页」只有一个解释点', () => {
+  const source = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
+  const code = source.replace(/^\s*\/\/.*$/gmu, '');
+  assert.ok(code.includes('detectLoginDetour('),
+    '判定只写在 core 里、主脚本不调它 ⇒ 这一类永远不触发（判据齐全但没人用，是最难发现的一种空转）');
+  assert.ok(code.includes('isTaobaoLoginUrl('), '「提交后有没有离开登录页」也必须用 core 那份');
+  // 反回退：主脚本里不许再内联一份「是不是淘宝登录页」的正则。
+  assert.equal(/\/login\\\.taobao\\\.com/u.test(code), false,
+    '主脚本又内联了一份登录页正则 —— 两处口径迟早各自漂移，而漂移的表现是同一现场两个结论');
 });

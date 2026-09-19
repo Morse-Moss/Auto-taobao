@@ -43,8 +43,8 @@ import { fileURLToPath } from 'node:url';
 import { BROWSER_PROFILES, PROJECT_PORTS, SHOP_BROWSERS, shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
 // 判据与纯逻辑都在 core 里（可离线测）；这里只留 IO。
 import {
-  FORM_STATE_EXPRESSION, SITES, TAOBAO_LOGIN_URL, alertForRun, captchaVisible, centerOf, needsHuman,
-  parseArgs, sitesNeedingLogin,
+  FORM_STATE_EXPRESSION, SITES, TAOBAO_LOGIN_URL, alertForRun, captchaVisible, centerOf, detectLoginDetour,
+  isTaobaoLoginUrl, needsHuman, parseArgs, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 
 const delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -218,6 +218,10 @@ async function attempt() {
     const state = await siteLoggedIn(args, site);
     receipt.sites[key] = { label: site.label, loggedIn: state.loggedIn, href: state.href, reason: state.reason ?? null };
   }
+  // 只有**两个站点都确认已登录**才会走到这里（见 sitesNeedingLogin 的新语义）。
+  // 读不到（null，例如窗口里根本没有这个后台的页面）会落进 needLogin ⇒ 进登录流程 ⇒
+  // 顺便把页面打开。这里绝不能再对 null 网开一面 —— 那正是 2026-09-19 那次静默的入口：
+  // 空窗口被判成 ALREADY_LOGGED_IN，于是不叫人、不做事，`--commit` 也什么都不做。
   const needLogin = sitesNeedingLogin(receipt.sites);
   if (needLogin.length === 0) {
     receipt.verdict = 'ALREADY_LOGGED_IN';
@@ -228,11 +232,34 @@ async function attempt() {
   const page = await ensureLoginPage(args);
   if (page.error) { receipt.verdict = 'STOP_AND_ALERT'; receipt.detail = page.error; return finish(receipt, 2); }
   const targetId = page.targetId;
-  if (args.shots) await proxyText(`${args.proxy}/bringToFront?target=${encodeURIComponent(targetId)}`).catch(() => {});
+  // 无条件前置（2026-09-19 改）。原先这里挂着 `if (args.shots)` —— 只有带 --shots 的跑法才前置，
+  // 而多店铺驱动（run-multi-shop-day.mjs）不传 --shots ⇒ 失败交人时窗口还留在后台，
+  // 人在任务栏里翻不出是哪一个，告警正文那句「去那个窗口」就成了一句空话。
+  // 对坐标点击来说这本来也是前提：窗口不在前台时，clickPoint 的坐标会落到别的窗口上。
+  await proxyText(`${args.proxy}/bringToFront?target=${encodeURIComponent(targetId)}`).catch(() => {});
   await delay(2500);
 
   let state = JSON.parse(await evalOn(args, targetId, FORM_STATE));
   receipt.login = { targetId, opened: page.opened, urlBefore: state.href, autofill: { id: state.id?.autofill ?? null, password: state.password?.autofill ?? null } };
+
+  // 第三步之前先判一件事：这一页**还是不是登录页**。
+  //
+  // 2026-09-19 实测出来的假事实：淘宝**主站**会话还有效时，打开顶层登录页会被直接送去
+  // 卖家后台（19033 实测落到 myseller.taobao.com/home.htm/QnworkbenchHome/），
+  // 页面上没有任何输入框 ⇒ 下面那句「拿不到 :autofill」就把它误判成 NO_SAVED_CREDENTIAL，
+  // 而告警让人去点浏览器提示里的「保存密码」。密码库里凭据是有的，缺的是这两个后台
+  // **自己的**会话 —— 收信人照着那句做，问题不会好。
+  //
+  // 口径：报错文案是收信人唯一看到的解释，**说错解释比不说更贵**。
+  // 判定本身在 core 的 detectLoginDetour（离线可测；写在这里就没有测试碰得到）。
+  const detour = detectLoginDetour(state.href);
+  if (detour) {
+    receipt.verdict = detour.verdict;
+    receipt.detail = detour.host
+      ? `打开登录页后，页面落到了 ${detour.host} —— 说明淘宝主站的会话还在。`
+      : '打开登录页后，页面没有停在登录页上。';
+    return finish(receipt, 2);
+  }
 
   // 第三步：值已经在 DOM 里就直接用；否则补一次可信手势把浏览器的填充「敲实」。
   if ((state.id?.valueLen ?? 0) === 0) {
@@ -304,7 +331,9 @@ async function attempt() {
   const hrefAfter = await evalOn(args, targetId, 'location.href').catch(() => null);
   receipt.login.urlAfter = hrefAfter ?? null;
   receipt.login.shots = await shot(args, targetId, 'login-after-submit');
-  if (hrefAfter && /login\.taobao\.com\/.*login/u.test(String(hrefAfter))) {
+  // 「还在不在登录页上」只由 core 的 isTaobaoLoginUrl 解释（这里原先内联了一份同样的正则，
+  // 而这次新增的 MAIN_SESSION_ONLY 判断也要用 —— 两份口径迟早会各自漂移，漂移的表现是结论错）。
+  if (hrefAfter && isTaobaoLoginUrl(hrefAfter)) {
     receipt.verdict = 'LOGIN_NOT_CONFIRMED';
     receipt.detail = '页面还停在登录页 —— 可能是密码不对，也可能是平台要求额外验证。系统没有再试一遍（连着试会把账号锁住）。';
     return finish(receipt, 2);
