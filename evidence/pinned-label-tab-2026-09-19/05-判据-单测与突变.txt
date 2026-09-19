@@ -1,0 +1,31 @@
+=== runtime 套件（--concurrency=1）
+==> runtime: 76 file(s)
+# tests 642
+# pass 642
+# fail 0
+# duration_ms 7099.0417
+
+=== 突变验证（70-mutate-managed-tabs.mjs，覆盖回收判定与标签页钉住）
+CAUGHT M1 isPinned 只认严格 true（写侧写回字符串就静默失效）
+  首条失败：钉住的页到期也不关 —— 三种写法都算钉住
+CAUGHT M2 闲置回收丢掉 pinned 豁免（原样退回被回收的老行为）
+  首条失败：钉住的页到期也不关 —— 三种写法都算钉住
+CAUGHT M3 代理退出丢掉 pinned 豁免（每次重启标签页都消失）
+  首条失败：代理退出：非钉住的全关，钉住的留下
+CAUGHT M4 读不到访问时间就当成「早就过期」（往不可逆那侧猜）
+  首条失败：读不到访问时间的页不关 —— 没证据不是证据
+CAUGHT M5 代理主程序把判定抄回内联（判定出现第二处解释点）
+  首条失败：代理主程序不许自己解释 pinned —— 判定只能有一处
+CAUGHT M6 复用分支不再补钉（老版本挂的标签页照旧 15 分钟后消失）
+  首条失败：复用已有标签页时也要钉一次：老版本挂的标签页照样会被 15 分钟收走
+CAUGHT M7 新建分支不再显式钉（只留 pinned=1，旧版代理会把它吞掉）
+  首条失败：新建标签页时既带 pinned=1、也显式钉一次（旧版代理会把 pinned=1 当无关参数吞掉）
+CAUGHT M8 代理 /new 不认 pinned=1（「新建即钉住」那半条路变空）
+  首条失败：代理侧必须真的提供 /pin 与 pinned=1（否则标签页这边发了也没人听）
+CAUGHT M9 代理删掉 /pin 端点（客户端发出去永远 404，失败被吞成「不抛错」）
+  首条失败：代理侧必须真的提供 /pin 与 pinned=1（否则标签页这边发了也没人听）
+RESTORED D:/Retire/sycm-automation/runtime/isolated-proxy/managed-tabs.mjs 2ba1220c134e
+RESTORED D:/Retire/sycm-automation/runtime/isolated-proxy/cdp-proxy.mjs cc5d202463dd
+RESTORED D:/Retire/sycm-automation/runtime/shop-window-label.mjs 43750bb3992b
+
+突变 9 个，未被抓住 0 个，还原逐字节一致：true

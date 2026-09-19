@@ -1,0 +1,33 @@
+[
+  {
+    "targetId": "FC99B7012C7EB80AEBECAD49436AEC13",
+    "type": "page",
+    "title": "盖文淘宝 · 日报采集窗口",
+    "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&member=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E9%98%BF%E5%BD%A6",
+    "attached": true,
+    "canAccessOpener": false,
+    "browserContextId": "5B1BCF84CB39B27CE6FB7F2C4A3E61CD",
+    "pid": 7796,
+    "automationLabel": "window-label"
+  },
+  {
+    "targetId": "84A8B3C06315C5772AD35E5090163770",
+    "type": "page",
+    "title": "about:blank",
+    "url": "about:blank",
+    "attached": false,
+    "canAccessOpener": false,
+    "browserContextId": "5B1BCF84CB39B27CE6FB7F2C4A3E61CD",
+    "pid": 0
+  },
+  {
+    "targetId": "1B140B11F425CEA971B456EA7621D26F",
+    "type": "page",
+    "title": "天猫商家中心",
+    "url": "https://myseller.taobao.com/home.htm/QnworkbenchHome/",
+    "attached": false,
+    "canAccessOpener": false,
+    "browserContextId": "5B1BCF84CB39B27CE6FB7F2C4A3E61CD",
+    "pid": 37148
+  }
+]

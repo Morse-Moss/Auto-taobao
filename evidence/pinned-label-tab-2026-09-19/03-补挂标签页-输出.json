@@ -1,0 +1,33 @@
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "盖文淘宝": {
+   "browserPort": 19033,
+   "proxyPort": 19043,
+   "windowTitle": "盖文淘宝 · 日报采集窗口",
+   "memberName": "随心品质定制:阿彦",
+   "labelTabs": 1,
+   "tabs": [
+    "空白页（残留）  about:blank",
+    "千牛工作台（预留槽位，日报链不读）  https://myseller.taobao.com/home.htm/QnworkbenchHome/",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&member=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E9%98%BF%E5%BD%A6"
+   ],
+   "leftover": [
+    "空白页（残留）  about:blank",
+    "千牛工作台（预留槽位，日报链不读）  https://myseller.taobao.com/home.htm/QnworkbenchHome/"
+   ],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "FC99B7012C7EB80AEBECAD49436AEC13",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "随心品质定制:阿彦",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}

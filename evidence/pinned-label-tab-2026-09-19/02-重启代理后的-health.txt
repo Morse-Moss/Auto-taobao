@@ -1,0 +1,1 @@
+{"status":"ok","connected":true,"browser":{"id":"edge-shop-suixin-custom","label":"Microsoft Edge (shop suixin-custom)","source":"isolated-runtime"},"sessions":1,"managedTabs":1,"pinnedTabs":1,"chromePort":19033}

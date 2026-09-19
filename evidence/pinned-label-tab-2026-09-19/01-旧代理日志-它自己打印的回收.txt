@@ -1,0 +1,14 @@
+来源：本会话捕获的后台任务输出（PID 37212，start-shop-proxy.mjs suixin-custom，启动于被杀前约 33 分钟）
+时间：2026-09-19 上午（本机时钟）
+
+[shop-proxy] 盖文淘宝 → 浏览器 :19033（suixin-custom），代理 :19043
+[CDP Proxy] 运行在 http://localhost:19043
+[CDP Proxy] 选用 Microsoft Edge (shop suixin-custom) (端口 19033，带 wsPath)  [登记表/环境变量]
+[CDP Proxy] 已连接浏览器 (端口 19033)
+[CDP Proxy] Auto-closed idle tab: 218E64BF8862033DAF5F37412DA09A7F
+[CDP Proxy] Auto-closed idle tab: 2134D5D832B18F400559F86F373D9069
+
+→ 这两行就是根因在日志里的样子：代理按「谁建的」认领，凡是从 /new 建出来的页，
+   闲置 15 分钟（CDP_TAB_IDLE_TIMEOUT 默认 900000）就被它自己关掉。
+   店名标签页也是 /new 建的 ⇒ 一起被收走，且**没有任何一处报错**。
+   修复前 19033 窗口里只剩 about:blank + 千牛工作台，标签页已不见。
