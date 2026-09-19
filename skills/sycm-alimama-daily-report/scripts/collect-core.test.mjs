@@ -6,11 +6,12 @@ import test from 'node:test';
 
 import {
   SHOP_REPORT_PATTERN, PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN,
-  alimamaIdentityExpression, assertMemberIdentity, assertShopIdentity, checkboxStateExpression,
-  dateWithinRange, defaultDownloadsDir, describeEntryMiss, describeHitMiss,
-  describeHitPass, downloadEntryExpression, hitCheckExpression, listDownloads, newEntries, newestTaskName,
-  parseCollectArgs, pickNewest, restoreCheckboxesExpression, scrollIntoViewExpression,
-  sycmShopIdentityExpression, targetRowExpression,
+  OVERLAY_DISMISS_DANGER, alimamaIdentityExpression, assertMemberIdentity, assertShopIdentity,
+  checkboxStateExpression, createOverlayDismisser, dateWithinRange, defaultDownloadsDir,
+  describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, describeOverlayScan,
+  downloadEntryExpression, hitCheckExpression, listDownloads, newEntries, newestTaskName,
+  overlayAfterExpression, overlayScanExpression, parseCollectArgs, pickNewest, pickOverlayCloseCandidate,
+  restoreCheckboxesExpression, scrollIntoViewExpression, sycmShopIdentityExpression, targetRowExpression,
 } from './collect-core.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
@@ -654,4 +655,289 @@ test('身份期望值参数：两个站点各一个名字（不合成一个）�
   assert.throws(() => parseCollectArgs([...base, '--expect-member-id', '88736']), /6\+ digits/u);
   assert.throws(() => parseCollectArgs([...base, '--expect-member-id', 'abc123456']), /6\+ digits/u);
   assert.throws(() => parseCollectArgs([...base, '--expect-shop']), /requires a value/u);
+});
+
+// ---------------------------------------------------------------------------
+// 平台自己的全屏弹窗：识别 + 安全选点 + 关遮挡的编排（2026-09-19 加）
+// ---------------------------------------------------------------------------
+// 为什么必须有这一组：用户 2026-09-19 的目标是**无人值守定时跑**，而这个弹窗一天之内让
+// 「盖文淘宝」的补采死了两次，每次都得靠人在仓库外手工点掉再重跑 —— 定时任务里没有「人」这一步。
+// 修法必须能被**离线证明**：不能用「下次真跑看看会不会好」当验收。
+//
+// 两个真实形态（都是实测抄下来的，不是构造出来的理想形状）：
+//   925：`#wrapper_dlg_925`（data-owner-id=app），底部并排「立即报名」与「关闭」，右上角一组图标；
+//   982：`#wrapper_dlg_982`（data-owner-id=universalBP_tool_auto_dlg），层里只有个 16×16 的图标按钮。
+const OVERLAY_925 = {
+  blocked: true, viewport: [1528, 732], layerCount: 2, candidateTotal: 4,
+  layer: { tag: 'DIV', id: 'wrapper_dlg_925', ownerId: 'app', cls: '', z: 99999, rect: [0, 0, 1528, 732] },
+  candidates: [
+    { tag: 'SPAN', id: 'mx_928', cls: ' asiYysqqgx  mxgc-btn-link', text: '', label: '',
+      cx: 1059, cy: 98, w: 16, h: 16, atTopRight: true },
+    { tag: 'I', id: null, cls: 'mx-iconfont', text: '', label: '', cx: 1059, cy: 98, w: 14, h: 14,
+      atTopRight: true },
+    { tag: 'SPAN', id: null, cls: 'asiYysqqaU ', text: '立即报名', label: '',
+      cx: 492, cy: 634, w: 48, h: 12, atTopRight: false },
+    { tag: 'SPAN', id: null, cls: 'asiYysqqaU ', text: '关闭', label: '',
+      cx: 569, cy: 634, w: 24, h: 12, atTopRight: false },
+  ],
+};
+const OVERLAY_982 = {
+  blocked: true, viewport: [1528, 732], layerCount: 2, candidateTotal: 2,
+  layer: { tag: 'DIV', id: 'wrapper_dlg_982', ownerId: 'universalBP_tool_auto_dlg', cls: '',
+    z: 99999, rect: [0, 0, 1528, 732] },
+  candidates: [
+    { tag: 'BUTTON', id: null, cls: 'asiYysqqbq', text: '', label: '', cx: 1478, cy: 40, w: 16, h: 16,
+      atTopRight: true },
+    { tag: 'I', id: null, cls: 'mx-iconfont', text: '', label: '', cx: 1478, cy: 40, w: 14, h: 14,
+      atTopRight: true },
+  ],
+};
+
+test('全屏弹窗选点：优先「关闭」语义，有对外副作用的候选永不入选', () => {
+  const picked = pickOverlayCloseCandidate(OVERLAY_925);
+  assert.ok(picked, '925 形态里有个写着「关闭」的按钮，必须选中它');
+  assert.equal(picked.pick.text, '关闭');
+  assert.deepEqual([picked.pick.cx, picked.pick.cy], [569, 634]);
+  // 这条是整组测试里最要紧的一条：层里那个「立即报名」也是「中心点命中自己的小控件」，
+  // 盲点坐标的代价是**产生一次对外动作**（报名/下单那一类不可撤销的事）。
+  assert.deepEqual(picked.excluded, ['立即报名'], '「立即报名」必须被黑名单挡在候选之外');
+  assert.equal(OVERLAY_DISMISS_DANGER.test('立即报名'), true);
+  assert.equal(OVERLAY_DISMISS_DANGER.test('关闭'), false);
+  // 措辞也要能自证判据做了事：日志里得看得出「没点那个『立即报名』是黑名单挡的，不是碰巧」。
+  const text = describeOverlayScan(OVERLAY_925, picked);
+  assert.match(text, /wrapper_dlg_925/u);
+  assert.match(text, /z=99999/u);
+  assert.match(text, /已按黑名单排除 \["立即报名"\]/u);
+  assert.match(text, /选中 SPAN「关闭」于 \(569,634\)/u);
+});
+
+test('关遮挡的回读表达式在沙箱里真的能跑：层还在就点名报出来，层没了就是空数组', () => {
+  const rect = (x, y, width, height) => ({ x, y, width, height });
+  const node = ({ tag, id = null, box, style = {}, children = [], text = '' }) => ({
+    tagName: tag, id, className: '', children, textContent: text,
+    getAttribute: () => null, setAttribute: () => {}, removeAttribute: () => {},
+    getBoundingClientRect: () => box,
+    contains(other) { return other === this || children.some((child) => child.contains?.(other) === true); },
+    querySelectorAll: () => children,
+    _style: { position: 'static', display: 'block', visibility: 'visible', opacity: '1', zIndex: 'auto', ...style },
+  });
+  const run = (nodes, target) => {
+    const document = {
+      querySelectorAll: (sel) => (sel === 'body *' ? nodes : (target ? [target] : [])),
+      elementFromPoint: () => target ?? null,
+    };
+    return JSON.parse(new Function('document', 'window', 'getComputedStyle',
+      `return ${overlayAfterExpression('[data-x]')};`)(
+      document, { innerWidth: 1528, innerHeight: 732 }, (el) => el._style));
+  };
+  const layer = node({ tag: 'DIV', id: 'wrapper_dlg_925', box: rect(0, 0, 1528, 732),
+    style: { position: 'fixed', zIndex: '99999' } });
+  const target = node({ tag: 'SPAN', box: rect(1421, 360, 48, 12) });
+
+  // 还没关掉：层被点名报出来（不是一句笼统的「失败」）。
+  const stillThere = run([layer], target);
+  assert.deepEqual(stillThere.remainingLayers, ['DIV#wrapper_dlg_925 z=99999']);
+  assert.equal(stillThere.targetHit, true, '层还在，但「下载报表」这一点的命中判定仍要如实算出来');
+  // 关掉了：空数组。这就是编排里判 dismissed 的唯一依据。
+  assert.deepEqual(run([], target).remainingLayers, []);
+});
+
+test('全屏弹窗选点：没有文字语义时退到「层右上角」的图标按钮', () => {
+  const picked = pickOverlayCloseCandidate(OVERLAY_982);
+  assert.ok(picked, '982 形态只有图标按钮，关要靠它的位置判');
+  assert.equal(picked.pick.tag, 'BUTTON');
+  assert.equal(picked.pick.atTopRight, true);
+});
+
+test('全屏弹窗选点：只剩危险候选时返回 null（宁可停手交给人都不要盲点）', () => {
+  const onlyDanger = {
+    blocked: true, viewport: [1528, 732], layer: OVERLAY_925.layer, candidateTotal: 2,
+    candidates: [
+      { tag: 'SPAN', id: null, cls: 'x', text: '立即报名', label: '', cx: 492, cy: 634, w: 48, h: 12, atTopRight: false },
+      { tag: 'SPAN', id: null, cls: 'y', text: '开通', label: '', cx: 512, cy: 634, w: 48, h: 12, atTopRight: false },
+    ],
+  };
+  assert.equal(pickOverlayCloseCandidate(onlyDanger), null, '没有安全的候选就不点 —— 停手比点错好');
+  // 「不是全屏遮挡」也要给 null：右侧那条常驻浮层不是这一类，不能拿它当弹窗关。
+  assert.equal(pickOverlayCloseCandidate({ blocked: false }), null);
+  assert.equal(pickOverlayCloseCandidate(null), null);
+});
+
+// 真的把它跑一次：字符串比对看不见「这条判据在页面里根本算不出东西」。
+test('遮挡扫描表达式在沙箱里真的能跑：认最上层那个盖住视口的层，不认右侧常驻浮层', () => {
+  const rect = (x, y, width, height) => ({ x, y, width, height });
+  const makeNode = ({ tag, id = null, cls = '', text = '', box, children = [], style = {} }) => {
+    const node = {
+      tagName: tag, id, className: cls, children, textContent: text,
+      _attrs: new Map(),
+      getAttribute(name) { return this._attrs.get(name) ?? null; },
+      setAttribute(name, value) { this._attrs.set(name, value); },
+      removeAttribute(name) { this._attrs.delete(name); },
+      getBoundingClientRect: () => box,
+      contains(other) {
+        return other === node || children.some((child) => child.contains?.(other) === true);
+      },
+      querySelectorAll: () => children,
+      _style: { position: 'static', display: 'block', visibility: 'visible', opacity: '1', zIndex: 'auto', ...style },
+    };
+    return node;
+  };
+  const scanIn = (nodes, { vw = 1528, vh = 732 } = {}) => {
+    const document = {
+      querySelectorAll: () => nodes,
+      elementFromPoint: (x, y) => nodes.find((node) => {
+        const box = node.getBoundingClientRect();
+        return x >= box.x && x < box.x + box.width && y >= box.y && y < box.y + box.height;
+      }) ?? null,
+    };
+    const window = { innerWidth: vw, innerHeight: vh };
+    const getComputedStyle = (el) => el._style;
+    return JSON.parse(new Function('document', 'window', 'getComputedStyle',
+      `return ${overlayScanExpression()};`)(document, window, getComputedStyle));
+  };
+
+  // 形态一：925（全屏层 + 里面 4 个「中心点命中自己」的小控件）
+  const closeSpan = makeNode({ tag: 'SPAN', cls: 'asiYysqqaU', text: '关闭', box: rect(557, 628, 24, 12) });
+  const signupSpan = makeNode({ tag: 'SPAN', cls: 'asiYysqqaU', text: '立即报名', box: rect(468, 628, 48, 12) });
+  const iconLeaf = makeNode({ tag: 'I', cls: 'mx-iconfont', text: '', box: rect(1052, 90, 14, 14) });
+  const iconSpan = makeNode({ tag: 'SPAN', id: 'mx_928', cls: 'mxgc-btn-link', text: '',
+    box: rect(1051, 90, 16, 16) });
+  const layer925 = makeNode({ tag: 'DIV', id: 'wrapper_dlg_925', box: rect(0, 0, 1528, 732),
+    style: { position: 'fixed', zIndex: '99999' },
+    children: [iconSpan, iconLeaf, signupSpan, closeSpan] });
+
+  const scan = scanIn([layer925, iconSpan, iconLeaf, signupSpan, closeSpan]);
+  assert.equal(scan.blocked, true);
+  assert.equal(scan.layer.id, 'wrapper_dlg_925');
+  assert.equal(scan.layer.ownerId, null, '没写 data-owner-id 就是 null，不能编一个出来');
+  assert.equal(scan.layer.z, 99999);
+  assert.equal(scan.candidates.length, 4, '4 个候选都要如实带出来（选点是纯函数的事）');
+  const picked = pickOverlayCloseCandidate(scan);
+  assert.equal(picked.pick.text, '关闭');
+  assert.deepEqual(picked.excluded, ['立即报名']);
+
+  // 形态二：右侧那条常驻浮层（60×322、z-index 也是五位数）——**不许**被当成全屏弹窗。
+  // 这一条是回归闸：它确定「等一会儿会自己收起的浮层」不会走进「主动关掉」这条路径。
+  const sideBar = makeNode({ tag: 'DIV', id: null, box: rect(1258, 286, 60, 322),
+    style: { position: 'fixed', zIndex: '99999' }, children: [] });
+  const sideScan = scanIn([sideBar]);
+  assert.equal(sideScan.blocked, false, '60×322 的浮层盖不住视口，不是这一类遮挡');
+  assert.equal(pickOverlayCloseCandidate(sideScan), null);
+});
+
+test('关遮挡的编排：不是这一类遮挡就不点；点完以**回读**为准，不信接口返回值', async () => {
+  const scripted = (returns) => {
+    const queue = returns.slice();
+    return async () => {
+      if (!queue.length) throw new Error('假 evalOn 被调用次数超出脚本（说明编排多跑了一步）');
+      return queue.shift();
+    };
+  };
+  const build = (scans) => {
+    const clicks = [];
+    return {
+      clicks,
+      dismisser: createOverlayDismisser({
+        evalOn: scripted(scans),
+        clickPoint: async (_args, _targetId, point) => { clicks.push(point); return '{"clicked":true}'; },
+        delay: async () => {},
+        log: () => {},
+      }),
+    };
+  };
+  const args = { proxy: 'http://127.0.0.1:19043' };
+
+  // ① 根本没检出这一类遮挡 ⇒ 一次都不点，且如实回报「不是它」。
+  const none = build([{ blocked: false, viewport: [1528, 732], layerCount: 0 }]);
+  const noneResult = await none.dismisser(args, 'T', '[sel]');
+  assert.equal(noneResult.attempted, false);
+  assert.equal(none.clicks.length, 0, '不是这一类遮挡时不该有任何点击');
+  assert.match(describeOverlayAttempt(noneResult), /与全屏弹窗无关/u);
+
+  // ② 检出了但只有危险候选 ⇒ 也不点（这是「宁可不点」那条约束在执行层的样子）。
+  const danger = build([{
+    blocked: true, viewport: [1528, 732], layer: OVERLAY_925.layer, candidateTotal: 1,
+    candidates: [{ tag: 'SPAN', cls: 'z', text: '立即报名', label: '', cx: 492, cy: 634, w: 48, h: 12, atTopRight: false }],
+  }]);
+  const dangerResult = await danger.dismisser(args, 'T', '[sel]');
+  assert.equal(dangerResult.dismissed, false);
+  assert.equal(dangerResult.reason, 'no-safe-candidate');
+  assert.equal(danger.clicks.length, 0);
+  assert.match(describeOverlayAttempt(dangerResult), /没能关掉/u);
+
+  // ③ 正常路径：点的坐标必须是**黑名单筛过之后**选出来的那个。
+  const ok = build([OVERLAY_925, { remainingLayers: [], targetHit: true }]);
+  const okResult = await ok.dismisser(args, 'T', '[sel]');
+  assert.deepEqual(ok.clicks, [[569, 634]], '点的是「关闭」，不是「立即报名」');
+  assert.equal(okResult.dismissed, true);
+  assert.match(describeOverlayAttempt(okResult), /已关掉/u);
+
+  // ④ 接口返回成功、但**回读说层还在** ⇒ 必须判没关掉（HTTP 200 证明不了任何事）。
+  const still = build([OVERLAY_925, { remainingLayers: ['DIV#wrapper_dlg_925 z=99999'], targetHit: false }]);
+  const stillResult = await still.dismisser(args, 'T', '[sel]');
+  assert.equal(stillResult.dismissed, false, '回读层还在就是没关掉 —— 不许因为点了就当成功');
+  assert.deepEqual(stillResult.remainingLayers, ['DIV#wrapper_dlg_925 z=99999']);
+
+  // ⑤ 连点击都失败了（网络/代理异常）⇒ 不把异常抛出去污染主流程，仍以回读下结论。
+  const throwing = createOverlayDismisser({
+    evalOn: scripted([OVERLAY_925, { remainingLayers: [], targetHit: true }]),
+    clickPoint: async () => { throw new Error('proxy down'); },
+    delay: async () => {},
+  });
+  const thrownResult = await throwing(args, 'T', '[sel]');
+  assert.equal(thrownResult.dismissed, true, '点这一步的异常不该把整轮带走，回读说关掉了就是关掉了');
+
+  // ⑥ 注入不全要在**构造时**就炸，而不是等到真跑那一天。
+  assert.throws(() => createOverlayDismisser({ evalOn: async () => ({}) }), /缺少注入实现：clickPoint/u);
+});
+
+// 接线守卫：漏接任何一个采集脚本，那个脚本对应的阶段就是定时任务半夜挂掉的地方。
+test('两个采集脚本都接上了关遮挡，且报错里说清「关遮挡试出了什么」', () => {
+  const promotion = readScript('collect-promotion-report.mjs');
+  const shop = readScript('collect-shop-report.mjs');
+
+  for (const [name, body] of [['collect-promotion-report.mjs', promotion], ['collect-shop-report.mjs', shop]]) {
+    assert.match(body, /createOverlayDismisser\(/u, `${name} 必须接上关遮挡（注入工厂）`);
+    assert.match(body, /describeOverlayAttempt\(/u, `${name} 的复核失败报错里要说清关遮挡试出了什么`);
+  }
+
+  // 阿里妈妈侧：每个「复核未通过」都要跟着一句「关遮挡试出了什么」——
+  // 否则下次看到 not-hit 又要靠人回头猜「是不是又是那个弹窗」。
+  const misses = (promotion.match(/复核未通过/gu) ?? []).length;
+  assert.equal(misses, 2, '阿里妈妈侧应当只有 submit / fetch 两处复核报错（改了这里，也要回来改断言）');
+  assert.equal((promotion.match(/describeOverlayAttempt\(hit\.overlayAttempt\)/gu) ?? []).length, misses,
+    '两处复核失败都要带上关遮挡的结论');
+
+  // 生意参谋侧：复核失败必须经过 dismissBlockingOverlay 再重试，而不是直接抛。
+  assert.match(shop, /dismissBlockingOverlay\(args, targetId, selector\)/u);
+  assert.match(shop, /async function clickPoint\(/u, '关遮挡要真实鼠标点击，这个脚本也得有这个原语');
+
+  // 再卡一次「直接调用点的**总数**」：漏接的形态是「某个阶段悄悄换回 hitCheck / hitCheckOnly」，
+  // 报错文案一个字都不会少，所以上面那些「必须出现」的断言全看不见它
+  // （133 号突变验证的 M7 就是这么漏过去的，这条判据是专门为它补的）。
+  // 数字是**已知的合法直调点**，改代码要回来一起改：
+  //   阿里妈妈 2 处 = hitCheckDismissingOverlay 里「先复核一次」+「关掉后再复核一次」；
+  //   生意参谋 4 处 = clickVerified 2 处 + locateOnly 排练 2 处（同样是复核 / 关掉后再复核）。
+  assert.equal((promotion.match(/await hitCheck\(/gu) ?? []).length, 2,
+    '阿里妈妈侧的直接复核只允许出现在 hitCheckDismissingOverlay 里（多一处就是漏接）');
+  assert.equal((shop.match(/await hitCheckOnly\(/gu) ?? []).length, 4,
+    '生意参谋侧的直接复核只允许出现在 clickVerified 与 locateOnly 那两段里（多一处就是漏接）');
+});
+
+// 2026-09-19：回填原先自己写了一份身份读取（硬编码类名 `.ebase-frame-header-root a`，且只认「 主店」），
+// 与 collect-core 那份「按文本形状取、以 主店/子店 结尾且最短」是同一件事的两份实现。
+// 代价不是「多几行」，是**页面一改版就一个坏一个不坏**，而两处读到的店名还要各自去比同一个期望值。
+// 实测过两份在真实页面上读到的是同一个值（见 134 号探针）⇒ 统一不会改变读到的结果，只是去掉重复。
+test('回填也用采集段那一份身份读取（同一件事不许有两份实现）', () => {
+  const backfill = readScript('run-inquiry-backfill.mjs');
+  // 源码判据必须先剥注释：这份改动自己的注释里就写着那个旧类名（不剥就会自己把自己判红）。
+  const code = backfill
+    .replace(/\/\*[\s\S]*?\*\//gu, '')
+    .split('\n').filter((line) => !/^\s*\/\//u.test(line)).join('\n');
+  assert.match(code, /sycmShopIdentityExpression\(\)/u, '回填的身份读取要复用 collect-core 那份');
+  assert.match(code, /assertShopIdentity\(/u, '断言也要用同一个（措辞与失败方向才一致）');
+  assert.doesNotMatch(code, /ebase-frame-header-root/u,
+    '硬编码类名那份实现必须消失 —— 留着就是「同一件事两份实现」');
+  assert.doesNotMatch(code, /unexpected SYCM shop/u,
+    '自造的报错措辞也要消失：读不到身份时的表现必须与采集段一模一样');
 });

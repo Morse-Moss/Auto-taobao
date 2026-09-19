@@ -22,10 +22,10 @@ import path from 'node:path';
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
   PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN, TASK_DOWNLOAD_MARK, alimamaIdentityExpression,
-  assertMemberIdentity, checkboxStateExpression, defaultDownloadsDir, describeEntryMiss,
-  describeHitMiss, describeHitPass, downloadEntryExpression, hitCheckExpression, listDownloads,
-  newEntries, newestTaskName, parseCollectArgs, pickNewest, restoreCheckboxesExpression,
-  scrollIntoViewExpression, targetRowExpression,
+  assertMemberIdentity, checkboxStateExpression, createOverlayDismisser, defaultDownloadsDir,
+  describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, downloadEntryExpression,
+  hitCheckExpression, listDownloads, newEntries, newestTaskName, parseCollectArgs, pickNewest,
+  restoreCheckboxesExpression, scrollIntoViewExpression, targetRowExpression,
 } from './collect-core.mjs';
 
 const ALIMAMA_LIST_URL = 'https://one.alimama.com/index.html#!/report/download-list';
@@ -115,6 +115,33 @@ async function hitCheck(args, targetId, selector) {
   return evalOn(args, targetId, hitCheckExpression(selector));
 }
 
+// 平台自己的全屏弹窗压住整页时，**主动关掉再重试复核**（2026-09-19 加）。
+// 为什么不并进「等一会儿重试」那一族：那套只对会自己收起的浮层成立，
+// 而这一类（全屏 fixed + 五位数 z-index）**稳定复现、等多久都不好** —— 判据见 collect-core 上方长注释。
+// 「扫→选→点→回读」的编排、以及「关不掉时不许改变主流程失败方向」那条约束，都在 collect-core 的
+// `createOverlayDismisser` 里（用注入的假实现离线测过）；这里只把它接到本脚本的 evalOn/clickPoint 上。
+const dismissBlockingOverlay = createOverlayDismisser({
+  evalOn: (args, targetId, expression) => evalOn(args, targetId, expression),
+  clickPoint: (args, targetId, point) => clickPoint(args, targetId, point),
+  delay,
+  log: (...parts) => console.log(...parts),
+});
+
+// 复核 +「被全屏弹窗挡住就关掉再来一次」。**所有** hitCheck 调用点都走它 ——
+// 漏掉某一个阶段，那个阶段就是定时任务半夜挂掉的地方。
+// `reLocate` 可选：取件段的入口依赖「该行处于激活态」，而激活态会衰减（实测 15 秒）；
+// 关弹窗要花掉一两秒 ⇒ 关完必须**重新定位**再复核，不能拿关之前的坐标直接点。
+async function hitCheckDismissingOverlay(args, targetId, selector, reLocate) {
+  let hit = await hitCheck(args, targetId, selector);
+  if (hit.ok) return hit;
+  const attempt = await dismissBlockingOverlay(args, targetId, selector);
+  if (!attempt.dismissed) return { ...hit, overlayAttempt: attempt };
+  if (reLocate) await reLocate(attempt);
+  return { ...(await hitCheck(args, targetId, selector)), overlayAttempt: attempt };
+}
+
+// describeOverlayAttempt 在 collect-core 里 —— 两个采集脚本共用同一份措辞，免得越写越不一样。
+
 async function phaseSubmit(args, targetId) {
   console.log(`[submit] 页面 = ${await evalOn(args, targetId, 'location.href')}`);
   const located = await evalOn(args, targetId, `(() => {
@@ -137,8 +164,11 @@ async function phaseSubmit(args, targetId) {
   // 两个方向都要居中：只写 block 时窄窗口下按钮会落在视口右边界之外（2026-09-17 实测）。
   await evalOn(args, targetId, scrollIntoViewExpression('[data-collect-alimama-download="1"]'));
   await delay(1500);
-  const hit = await hitCheck(args, targetId, '[data-collect-alimama-download="1"]');
-  if (!hit.ok) throw new Error(`「下载报表」复核未通过（${describeHitMiss(hit)}）`);
+  const hit = await hitCheckDismissingOverlay(args, targetId, '[data-collect-alimama-download="1"]');
+  if (!hit.ok) {
+    throw new Error(`「下载报表」复核未通过（${describeHitMiss(hit)}）`
+      + describeOverlayAttempt(hit.overlayAttempt));
+  }
   // 排练开关：定位与复核都走一遍，但不点 —— 这样能在不动任何东西的前提下先证明选择器是对的。
   if (args.locateOnly) {
     console.log(`[submit] --locate-only：找到「下载报表」并复核通过（${describeHitPass(hit)}），未点击`);
@@ -246,8 +276,17 @@ async function phaseFetch(args, targetId) {
   }
 
   // 复核与点击之间只隔一次往返：这一页「量到点」之间页面会动，差一行（41px）就点空。
-  const hit = await hitCheck(args, targetId, entrySelector);
-  if (!hit.ok) throw new Error(`「下载」复核未通过（${describeHitMiss(hit)}）`);
+  // 被平台自己的全屏弹窗挡住时先关掉再复核；关完必须重新定位（激活态会衰减，见上面 reLocate 的注释）。
+  const hit = await hitCheckDismissingOverlay(args, targetId, entrySelector, async () => {
+    const again = await evalOn(args, targetId, downloadEntryExpression(wanted));
+    if (!again.ok) throw new Error(`关掉遮挡层后入口不再可定位（${describeEntryMiss(again)}）`);
+    console.log(`[遮挡] 关掉后重新定位入口：rect=${JSON.stringify(again.rect)}`
+      + `，center=${JSON.stringify(again.center)}`);
+  });
+  if (!hit.ok) {
+    throw new Error(`「下载」复核未通过（${describeHitMiss(hit)}）`
+      + describeOverlayAttempt(hit.overlayAttempt));
+  }
   // 排练开关：选行 + 定位 + 复核都走一遍，但不点下载。
   // 选行是排练的**必要**步骤（不然操作行不显形，排练会「通过」而真跑失败），
   // 所以排练结束要把勾选状态恢复原样 —— 排练的语义是「只读」，不能留下状态改动。
@@ -293,10 +332,25 @@ async function selectTargetRow(args, targetId, taskName, firstRow) {
   const described = (row) => `${row.checkboxHitTag ?? '?'}`
     + `${row.checkboxHitClass ? `.${row.checkboxHitClass}` : ''}`;
   let row = firstRow;
+  // 只主动关一次：这一页也可能被**平台自己的全屏弹窗**压住，而那种等不好（与会自收的浮层相反）。
+  // 六次重试若全是「等一会儿」，等于把一次当场能修好的失败拖成 45 秒后才报错。
+  let overlayTried = false;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     if (row.checkboxHit === false) {
       console.log(`[fetch] 第 ${attempt}/${attempts} 次：复选框中心被 ${described(row)} 挡住，`
         + '等一会儿重试（不硬点 —— 这一页点错不报错）');
+      if (!overlayTried) {
+        overlayTried = true;
+        const attemptOverlay = await dismissBlockingOverlay(args, targetId, null);
+        if (attemptOverlay.dismissed) {
+          await delay(600);
+          row = await evalOn(args, targetId, targetRowExpression(taskName));
+          if (!row.found) throw new Error(`关掉遮挡层后找不到 ${taskName} 那一行（${row.reason}）`);
+          console.log(`[fetch] 遮挡层已关掉，重新量到复选框中心 ${JSON.stringify(row.checkboxCenter)}`
+            + `（命中自己=${row.checkboxHit}）`);
+          continue;
+        }
+      }
     } else {
       console.log(`[fetch] 真实鼠标点它的复选框 (${row.checkboxCenter.join(',')}) → `
         + `${(await clickPoint(args, targetId, row.checkboxCenter)).slice(0, 80)}`);

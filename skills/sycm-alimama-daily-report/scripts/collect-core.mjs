@@ -171,6 +171,211 @@ export function hitCheckExpression(selector) {
 }
 
 // ---------------------------------------------------------------------------
+// 平台自己的全屏弹窗会盖住整页：识别 + 选「关」（2026-09-19 加）
+// ---------------------------------------------------------------------------
+// 症状：点击前复核报 `not-hit`、`命中自己=0`、`遮挡物={"tag":"DIV","cls":""}`。
+// 这不是「选择器选错了」，是**平台自己的推广引导弹窗压住了整页**，而且它**稳定复现、等不好** ——
+// 与「右侧那条会自己收起的常驻浮层」是两回事（后者等一会儿重跑就过，前者等多久都没用）。
+//
+// 为什么必须内建、不能再靠人手工关：用户 2026-09-19 的目标是**无人值守定时跑**。
+// 这个弹窗在 09-19 一天之内让盖文淘宝的补采死了两次（09:31 那次死在身份、13:xx 那次死在它），
+// 每次都只能靠仓库外的临时探针手工点掉再重跑 —— 定时任务里没有「人」这一步。
+//
+// 两条实测教训（决定了下面为什么不写死 id、为什么要有黑名单）：
+//   ① **它的 id 会变**。同一台机器、同一站点、相隔几小时：`#wrapper_dlg_982`
+//      （`data-owner-id=universalBP_tool_auto_dlg`「优质计划防停投」）→ `#wrapper_dlg_925`
+//      （`data-owner-id=app`）。按硬编码 id 写的探针会报「没有弹窗」然后正常退出，
+//      把「点不到」的真相藏起来（本机真踩过，差点当成「已确认无遮挡」而放过）。
+//      所以这里按**几何**认层：谁盖住了视口、谁在最上面。
+//   ② **层里的按钮不是都该点**。925 那个层底部并排着「立即报名」和「关闭」——
+//      盲点一个坐标有真实代价（报名是有对外副作用的动作）。所以候选要过**危险词黑名单**，
+//      只认「关闭 / close / 取消」，其次才是右上角那个 16×16 的图标按钮。
+//
+// 分工：**页面表达式只负责如实采集**（层、候选、坐标），**选点在 Node 侧做纯函数**
+// （`pickOverlayCloseCandidate`）—— 这样选点逻辑能被离线单测与突变验证覆盖，
+// 而不是埋在 `eval` 的字符串里只能靠真跑碰运气。
+export const OVERLAY_DISMISS_DANGER = /报名|开通|购买|支付|确认|提交|领取|升级|续费|立即/u;
+export const OVERLAY_MIN_COVERAGE = 0.85;
+export const OVERLAY_CANDIDATE_MAX_SIZE = 48;
+
+// 采集：最上面那个盖住视口的层 + 层内「中心点命中自己」的小控件候选（可点性当场算完）。
+export function overlayScanExpression(options = {}) {
+  const coverage = options.coverage ?? OVERLAY_MIN_COVERAGE;
+  const maxSize = options.maxSize ?? OVERLAY_CANDIDATE_MAX_SIZE;
+  return `(() => {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const visible = (el) => {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    };
+    const layers = [];
+    for (const el of document.querySelectorAll('body *')) {
+      const cs = getComputedStyle(el);
+      if (cs.position !== 'fixed' && cs.position !== 'absolute') continue;
+      if (!visible(el)) continue;
+      const r = el.getBoundingClientRect();
+      // 「盖住视口」按面积比例判，不按 class —— 平台发版改类名不会影响这条判据。
+      if (r.width < vw * ${coverage} || r.height < vh * ${coverage}) continue;
+      layers.push({ el, z: cs.zIndex === 'auto' ? 0 : (parseInt(cs.zIndex, 10) || 0) });
+    }
+    layers.sort((a, b) => b.z - a.z);
+    const top = layers[0];
+    if (!top) return JSON.stringify({ blocked: false, viewport: [vw, vh], layerCount: 0 });
+    const owns = (a, b) => !!a && typeof a.contains === 'function' && a.contains(b);
+    const seen = new Set();
+    const candidates = [];
+    for (const el of top.el.querySelectorAll('button,a,div,span,i,svg,img')) {
+      if (!visible(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width > ${maxSize} || r.height > ${maxSize}) continue;
+      const cx = Math.round(r.x + r.width / 2), cy = Math.round(r.y + r.height / 2);
+      if (cx < 0 || cx >= vw || cy < 0 || cy >= vh) continue;
+      const hit = document.elementFromPoint(cx, cy);
+      if (!hit || !(hit === el || owns(el, hit) || owns(hit, el))) continue;
+      // 同一个关闭控件外面套着好几层（实测一组 4 个嵌套元素落在同一坐标）⇒ 按坐标去重，
+      // 否则「候选数」会被同一枚按钮灌水，选点日志也读不出重点。
+      const key = [cx, cy, Math.round(r.width), Math.round(r.height)].join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      candidates.push({
+        tag: el.tagName, id: el.id || null,
+        cls: String(el.className || '').slice(0, 60),
+        text: String(el.textContent || '').trim().slice(0, 12),
+        label: String(el.getAttribute('aria-label') || el.getAttribute('title') || '').slice(0, 24),
+        cx, cy, w: Math.round(r.width), h: Math.round(r.height),
+        atTopRight: cx > vw * 0.66 && cy < vh * 0.28,
+      });
+    }
+    return JSON.stringify({
+      blocked: true, viewport: [vw, vh], layerCount: layers.length,
+      layer: {
+        tag: top.el.tagName, id: top.el.id || null,
+        ownerId: top.el.getAttribute('data-owner-id'),
+        cls: String(top.el.className || '').slice(0, 60), z: top.z,
+        rect: (() => { const r = top.el.getBoundingClientRect();
+          return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)]; })(),
+      },
+      candidates: candidates.slice(0, 24), candidateTotal: candidates.length,
+    });
+  })()`;
+}
+
+// 选「关」：纯函数，离线可测。
+// **不给兜底**：只在「语义上是关闭」或「位于层右上角」里选；两者都没有就返回 null（不盲点）。
+// 宁可报「没找到可点的关闭控件」让人来看，也不要落到某个语义不明的小控件上 ——
+// 层里那个「立即报名」就长成一个小控件。
+export function pickOverlayCloseCandidate(scan, options = {}) {
+  const danger = options.danger ?? OVERLAY_DISMISS_DANGER;
+  if (!scan || scan.blocked !== true || !Array.isArray(scan.candidates)) return null;
+  const safe = scan.candidates.filter((c) => !danger.test(`${c.text || ''} ${c.label || ''} ${c.cls || ''}`));
+  const named = safe.filter((c) => /关闭|close|取消/iu.test(`${c.text || ''} ${c.label || ''}`));
+  const icon = safe.filter((c) => c.atTopRight === true).sort((a, b) => (a.cy - b.cy) || (b.cx - a.cx));
+  const pick = named[0] ?? icon[0] ?? null;
+  if (!pick) return null;
+  return {
+    pick,
+    // 把「排除了谁」一起带回去：日志里要能看出「没点那个『立即报名』是判据做的，不是碰巧」。
+    excluded: scan.candidates.filter((c) => danger.test(`${c.text || ''} ${c.label || ''} ${c.cls || ''}`))
+      .map((c) => c.text || c.label || c.cls),
+    namedCount: named.length,
+  };
+}
+
+// 关完**回读**（HTTP 200 / `clicked:true` 都证明不了任何事）：全屏层还在不在 + 目标还能不能点到。
+export function overlayAfterExpression(selector = null) {
+  return `(() => {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const remainingLayers = [];
+    for (const el of document.querySelectorAll('body *')) {
+      const cs = getComputedStyle(el);
+      if (cs.position !== 'fixed' && cs.position !== 'absolute') continue;
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < vw * ${OVERLAY_MIN_COVERAGE} || r.height < vh * ${OVERLAY_MIN_COVERAGE}) continue;
+      remainingLayers.push(el.tagName + (el.id ? '#' + el.id : '') + ' z=' + cs.zIndex);
+    }
+    const selector = ${JSON.stringify(selector)};
+    let targetHit = null;
+    if (selector) {
+      const isVisible = (node) => { const r = node.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+      const matches = [...document.querySelectorAll(selector)];
+      const el = matches.find(isVisible) || matches[0] || null;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const owns = (a, b) => !!a && typeof a.contains === 'function' && a.contains(b);
+        const hit = document.elementFromPoint(Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2));
+        targetHit = !!hit && (hit === el || owns(el, hit) || owns(hit, el));
+      }
+    }
+    return JSON.stringify({ remainingLayers, targetHit });
+  })()`;
+}
+
+// 关遮挡这一步的措辞：成功与失败都要能自答「检出的是哪一层、候选几个、排除了谁」，
+// 否则下次还得手工复现一遍才知道卡在哪。
+export function describeOverlayScan(scan, picked) {
+  if (!scan || scan.blocked !== true) return '没有检出盖住整页的全屏层（遮挡物不是这一类）';
+  const layer = scan.layer ?? {};
+  const parts = [`全屏层 ${layer.tag}${layer.id ? `#${layer.id}` : ''}`
+    + `${layer.ownerId ? `(data-owner-id=${layer.ownerId})` : ''} z=${layer.z}`];
+  if (layer.rect) parts.push(`rect=${JSON.stringify(layer.rect)}`);
+  parts.push(`层内可点小控件 ${scan.candidates?.length ?? 0}/${scan.candidateTotal ?? 0} 个`);
+  if (picked) {
+    const target = picked.pick;
+    parts.push(`选中 ${target.tag}${target.id ? `#${target.id}` : ''}`
+      + `「${target.text || target.label || target.cls}」于 (${target.cx},${target.cy})`);
+    if (picked.excluded?.length) parts.push(`已按黑名单排除 ${JSON.stringify(picked.excluded)}`);
+  } else {
+    parts.push('没找到可安全点击的关闭控件（不盲点，交给人处理）');
+  }
+  return parts.join('，');
+}
+
+// 把「扫 → 选 → 点 → 回读」串成一步，**依赖注入**（`evalOn` / `clickPoint` / `delay` / `log`）。
+// 为什么做成工厂而不是在各脚本里各写一遍：两个采集脚本（生意参谋侧、阿里妈妈侧）都要用它，
+// 而且「关不掉时不许改变主流程的失败方向」这条编排约束必须**离线可测** —— 注入以后就能用假实现
+// 直接断言这条约束，不必等真跑到一次遮挡。
+// 注入函数的形状统一是 `(args, targetId, payload)`；返回的 dismisser 形状是 `(args, targetId, selector)`。
+export function createOverlayDismisser({ evalOn, clickPoint, delay, log = () => {}, settleMs = 2500 } = {}) {
+  for (const [name, fn] of Object.entries({ evalOn, clickPoint, delay })) {
+    if (typeof fn !== 'function') throw new Error(`createOverlayDismisser 缺少注入实现：${name}`);
+  }
+  return async function dismissBlockingOverlay(args, targetId, selector = null) {
+    const scan = await evalOn(args, targetId, overlayScanExpression());
+    // 没检出这一类遮挡就**原样返回 false**：调用方照旧按原来的措辞报错，
+    // 不能因为多了这一步就把「点不到」错报成「弹窗导致的」。
+    if (!scan || scan.blocked !== true) return { attempted: false, reason: 'not-a-fullscreen-overlay' };
+    const picked = pickOverlayCloseCandidate(scan);
+    log(`[遮挡] ${describeOverlayScan(scan, picked)}`);
+    if (!picked) return { attempted: true, dismissed: false, reason: 'no-safe-candidate', scan, picked: null };
+    // 真实鼠标点击（这一族页面 JS 点击常无效）。点这一步自身失败也不该把整轮带走 ⇒ 吞掉异常，
+    // 让下面的**回读**去下结论（回读说没关掉就是没关掉）。
+    await clickPoint(args, targetId, [picked.pick.cx, picked.pick.cy]).catch(() => '');
+    await delay(settleMs);
+    const after = await evalOn(args, targetId, overlayAfterExpression(selector));
+    const dismissed = after.remainingLayers.length === 0;
+    log(`[遮挡] 关后回读：全屏层剩 ${after.remainingLayers.length} 个`
+      + `${after.remainingLayers.length ? `（${JSON.stringify(after.remainingLayers)}）` : ''}`
+      + `｜目标可点=${after.targetHit} ⇒ ${dismissed ? '已关掉' : '没关掉'}`);
+    return { attempted: true, dismissed, remainingLayers: after.remainingLayers,
+      targetHit: after.targetHit, scan, picked };
+  };
+}
+
+// 把「关遮挡那一步试出了什么」变成报错里的一句人话（两个脚本共用）。
+// 没试过（`attempted !== true`）时说清「这次失败与全屏弹窗无关」——
+// 免得下一次看到同类报错时，把「其实是选择器/坐标问题」误判成「又是弹窗」。
+export function describeOverlayAttempt(attempt) {
+  if (!attempt || attempt.attempted !== true) return '（复核失败与全屏弹窗无关）';
+  const detail = describeOverlayScan(attempt.scan, attempt.picked);
+  return attempt.dismissed
+    ? `（遮挡层已关掉：${detail}；但复核仍不过，说明这次不是它挡的）`
+    : `（检出了全屏遮挡层但没能关掉：${detail}）`;
+}
+
+// ---------------------------------------------------------------------------
 // 「这一屏到底是哪家店」——采集段的两道身份判据（2026-09-18 加）
 // ---------------------------------------------------------------------------
 // 为什么必须加：用户 2026-09-18 质问「为什么万象台跟生意参谋不一样，绝对不能串数据」。

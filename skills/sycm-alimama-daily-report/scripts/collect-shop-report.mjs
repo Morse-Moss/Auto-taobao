@@ -12,9 +12,9 @@ import path from 'node:path';
 
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
-  SHOP_REPORT_PATTERN, assertShopIdentity, dateWithinRange, defaultDownloadsDir, describeHitMiss,
-  describeHitPass, hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest,
-  scrollIntoViewExpression, sycmShopIdentityExpression,
+  SHOP_REPORT_PATTERN, assertShopIdentity, createOverlayDismisser, dateWithinRange, defaultDownloadsDir,
+  describeHitMiss, describeHitPass, describeOverlayAttempt, hitCheckExpression, listDownloads, newEntries,
+  parseCollectArgs, pickNewest, scrollIntoViewExpression, sycmShopIdentityExpression,
 } from './collect-core.mjs';
 
 // 已验证的报表定义 id（SOP §3）；它进文件名哈希，变了就说明取的不是同一份报表。
@@ -66,6 +66,22 @@ async function click(args, targetId, selector) {
   return proxyJson(`${args.proxy}/click?target=${encodeURIComponent(targetId)}`, { method: 'POST', body: selector });
 }
 
+// 关遮挡层那一步必须走**真实鼠标点击**（这一族页面上 JS 点击常常无效 —— 阿里妈妈侧做过干净对照：
+// 同一元素 `el.click()` 等 15 秒无反应、真实鼠标点中心 3 秒见效），所以本脚本也要有这个原语。
+async function clickPoint(args, targetId, point) {
+  return proxyJson(`${args.proxy}/clickPoint?target=${encodeURIComponent(targetId)}`,
+    { method: 'POST', body: JSON.stringify({ x: point[0], y: point[1] }) });
+}
+
+// 生意参谋这一侧同样会被**平台自己的全屏弹窗**盖住（新手引导/活动弹窗那一族），
+// 而定时任务里没人去手点它 ⇒ 接上「主动关掉再复核」。编排在 collect-core（见那里的长注释）。
+const dismissBlockingOverlay = createOverlayDismisser({
+  evalOn: (args, targetId, expression) => evalOn(args, targetId, expression),
+  clickPoint: (args, targetId, point) => clickPoint(args, targetId, point),
+  delay,
+  log: (...parts) => console.log(...parts),
+});
+
 async function findSycmPage(args) {
   const targets = JSON.parse(await proxyJson(`${args.proxy}/targets`));
   const matches = targets.filter((target) => target.type === 'page'
@@ -89,9 +105,19 @@ async function clickVerified(args, targetId, { selector, label, scroll }) {
     await evalOn(args, targetId, scrollIntoViewExpression(selector));
   }
   await delay(1200);
-  const hit = await hitCheckOnly(args, targetId, selector);
+  let hit = await hitCheckOnly(args, targetId, selector);
   if (!hit.ok) {
-    throw new Error(`${label} 复核未通过（${describeHitMiss(hit)}）`);
+    // 平台自己的全屏弹窗挡住整页时**等不好**（与右侧会自收的浮层相反）⇒ 主动关掉再复核一次。
+    // 关不掉、或本来就不是这一类遮挡：仍按原措辞报错（失败方向不变），只把「试过什么」补进去。
+    const attempt = await dismissBlockingOverlay(args, targetId, selector);
+    if (!attempt.dismissed) {
+      throw new Error(`${label} 复核未通过（${describeHitMiss(hit)}）${describeOverlayAttempt(attempt)}`);
+    }
+    hit = await hitCheckOnly(args, targetId, selector);
+  }
+  if (!hit.ok) {
+    throw new Error(`${label} 复核未通过（${describeHitMiss(hit)}）`
+      + '（全屏遮挡层已关掉，这次不是它挡的）');
   }
   return `${describeHitPass(hit)} → ${(await click(args, targetId, selector)).slice(0, 80)}`;
 }
@@ -205,10 +231,19 @@ async function main() {
   // 有它才能在不动任何东西的前提下先证明定位逻辑是对的（这正是最容易出纰漏的部分）。
   if (args.locateOnly) {
     // 排练也要真走一次「滚动 + 复核」，否则会排练通过、真跑失败 —— 那正是最容易出纰漏的地方。
+    // 同样接上关遮挡：排练撞上全屏弹窗也得自己过得去，否则「排练红」会被人当成「选择器坏了」，
+    // 而真正的原因只是有个弹窗盖着 —— 那种误判会浪费一整个下午。
     await evalOn(args, targetId, scrollIntoViewExpression('[data-collect-download="1"]'));
     await delay(1200);
-    const hit = await hitCheckOnly(args, targetId, '[data-collect-download="1"]');
-    if (!hit.ok) throw new Error(`下载报表按钮 复核未通过（${describeHitMiss(hit)}）`);
+    let hit = await hitCheckOnly(args, targetId, '[data-collect-download="1"]');
+    if (!hit.ok) {
+      const attempt = await dismissBlockingOverlay(args, targetId, '[data-collect-download="1"]');
+      if (attempt.dismissed) hit = await hitCheckOnly(args, targetId, '[data-collect-download="1"]');
+      if (!hit.ok) {
+        throw new Error(`下载报表按钮 复核未通过（${describeHitMiss(hit)}）`
+          + describeOverlayAttempt(attempt));
+      }
+    }
     console.log(`[4/4] --locate-only：定位与复核都通过（${describeHitPass(hit)}），未点击`);
     return;
   }

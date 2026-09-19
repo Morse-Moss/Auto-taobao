@@ -11,6 +11,7 @@ import { appendAudit, describeAuditRow } from '../../../runtime/daily-report-aud
 import { reportDateEpoch } from './daily-report-core.mjs';
 import { buildEnvironment, dirHasEntries, evidenceBaseDir, resolveEvidenceDir } from './daily-report-runtime.mjs';
 import { assertEvidenceShopKey } from './shop-identities.mjs';
+import { assertShopIdentity, sycmShopIdentityExpression } from './collect-core.mjs';
 import { classifyInquiryWrite, extractInquiryMetrics, selectDailyStoreRecord } from './inquiry-core.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -66,18 +67,24 @@ async function discoverSycmTarget(args) {
 
 async function readSycmTable(args) {
   const target = await discoverSycmTarget(args);
+  // 身份读取**复用采集段那一份**（collect-core 的 `sycmShopIdentityExpression`）。
+  // 2026-09-19 改：这里原先自己写了一份 —— 硬编码类名 `.ebase-frame-header-root a`、而且只认
+  // 「 主店」。那是同一件事的第二份实现，代价是「页面一改版就一个坏一个不坏」，
+  // 而两处读到的店名还要拿去和同一个期望值比对（口径不同、结论却看起来一样）。
+  // core 那份按**文本形状**取（以「主店/子店」结尾且最短），既抗改版也支持子店账号。
+  // 内嵌成一段（而不是分两次 eval）是为了让「店名」与「表格」在同一时刻读到，中间不留窗口。
   const expression = `(() => {
+    const identity = JSON.parse(${sycmShopIdentityExpression()});
     const clean = value => String(value ?? '').trim().replace(/\\s+/g, ' ');
-    const account = [...document.querySelectorAll('.ebase-frame-header-root a')]
-      .map(anchor => clean(anchor.innerText)).find(text => text.endsWith(' 主店'));
-    if (!account) throw new Error('current SYCM shop identity is unavailable');
     const tables = [...document.querySelectorAll('table')].filter(table =>
       [...table.querySelectorAll('thead th')].some(th => clean(th.innerText) === '当日询单人数'));
     if (tables.length !== 1) throw new Error('expected one 当日询单人数 table, got ' + tables.length);
     const table = tables[0];
     return JSON.stringify({
       url: location.href,
-      sourceShop: account.replace(/ 主店$/u, ''),
+      sourceShop: identity.shopName,
+      identityRaw: identity.raw,
+      identityCandidates: identity.candidates,
       headers: [...table.querySelectorAll('thead th')].map(th => clean(th.innerText)),
       rows: [...table.querySelectorAll('tbody tr:not(.ant-table-measure-row), tfoot tr')]
         .map(row => [...row.querySelectorAll('th,td')].map(td => clean(td.innerText))),
@@ -119,9 +126,14 @@ async function main() {
   args.outputDir = resolved.dir;
   mkdirSync(args.outputDir, { recursive: true });
   const source = await readSycmTable(args);
-  if (source.sourceShop !== args.sourceShop) {
-    throw new Error(`unexpected SYCM shop: expected ${args.sourceShop}, got ${source.sourceShop}`);
-  }
+  // 身份判据：**fail-closed**，并与采集段共用同一套措辞与理由（`assertShopIdentity`）。
+  // 「读不到」也算失败 —— 身份未知就等于没核对过。原先这里自己抛一句
+  // `unexpected SYCM shop: …`，读不到时的表现与采集段不一样，排查时得多想一层。
+  const identityCheck = assertShopIdentity({ expected: args.sourceShop, observed: source.sourceShop,
+    label: '生意参谋店铺' });
+  console.log(`[身份] 生意参谋页头 = ${JSON.stringify(source.sourceShop)}`
+    + `（原始 ${JSON.stringify(source.identityRaw)}）｜期望 ${JSON.stringify(args.sourceShop)}`
+    + `${identityCheck.checked ? ' ✓' : '（未核对）'}`);
   // 目录名里的店铺键必须与飞书那一行的店铺叫法一致（两者都是运营叫法，本来就该同一个值）。
   // 不核的话会出现「目录叫 A 店、写进去的是 B 店那一行」——从文件名上完全看不出来。
   if (args.shopKey) assertEvidenceShopKey(args.shopKey, { shopKey: args.shop });
