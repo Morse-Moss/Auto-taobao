@@ -31,20 +31,47 @@
 // 一条链跨两个浏览器（这是本文件里唯一「不同阶段用不同代理」的原因）：
 //   采集段与询单读取跑在**这家店自己的**代理（19041~19044）——采集脚本只认代理，裸 CDP 端口连不上；
 //   推送段与回读段跑在**商家浏览器**的代理（19023）——它们要读飞书 base 页，而那页只在那一个浏览器里。
+//
+// ---------------------------- 定时（无人值守）怎么用 ----------------------------
+//
+// 定时器只做一件事：到点敲一条命令。判据、叫人都在命令里（见
+// docs/ops/MULTI-SHOP-AND-INTERACTION-DECISION.md §5.4 的三层划分）：
+//
+//   node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs \
+//        --date yesterday --commit --notify            （Windows 计划任务里写成一行）
+//
+// 为什么日期要写成字面量 `yesterday` 而不是让调度器去算：调度器算日期就是把
+// 「Asia/Shanghai 的昨日」这条口径抄到命令之外，抄一份就是等着它与落位脚本漂移。
+// 这里用**落位脚本同一个函数**（shanghaiToday/shiftIso）解析，且只认这一个字面量 ——
+// 写错（如 `yestoday`）会当场报错，不会静默落成「今天」。
+//
+// 为什么定时跑的那一天**必须**是「昨天」：SYCM「询单到付款」表格里那行「同行同层均值」
+// 只有预设「1天」（＝昨日）才有（2026-09-19 实测）⇒ 补跑任何历史日都拿不到基准。
+// 定时任务天然落在这一档上，因此不需要 `--allow-missing-peer`（那是补历史日才用的降级开关）。
+//
+// `--notify`：**只有出错才发**（成功一声不响），且只在 `--commit` 那一档发 ——
+// 排练/只读核对失败是「你正在看屏幕时的事」，发到飞书只会训练人忽略这个信号。
+// 想看文案但不想真的发：`--notify-print`（用同一个渲染器打印，不投递）。
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { hostname } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { dailyReportTargets } from '../../../runtime/feishu-targets.mjs';
+import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { createPlatformHealthCheck } from '../../../runtime/xws-platform-health-preflight.mjs';
-import { siteAdapter } from './date-picker.mjs';
+import { shiftIso, shanghaiToday, siteAdapter } from './date-picker.mjs';
 import { describeIdentity, expectArgs, formatArgv, shopIdentity } from './shop-identities.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
 const NODE = process.execPath;
+// 叫人走**既有的投递出口**（零参数 CLI，配置从飞书 profile 读）。这里不另写一条 HTTP：
+// 那条链已经带着「没送达必然非零退出码」的性质，自己再写一遍就多出一个「以为发了、其实没人收到」的形态。
+const NOTIFY_CLI = path.join(REPO_ROOT, 'runtime/notify-feishu.mjs');
+const MACHINE = process.env.COMPUTERNAME || process.env.HOSTNAME || hostname();
 const SITE_SYCM_ENTRY = 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop';
 const SYCM_FRAGMENT = 'sycm.taobao.com/qos/service/frame/shop/performance';
 
@@ -84,13 +111,212 @@ export function expectedPagesForDailyBrowser() {
   ];
 }
 
-export const parseArgs = (argv) => {
-  const args = { date: null, shops: null, commit: false, verifyExisting: null, keepGoing: false,
+// ---------------------------------------------------------------- 目标日：只有一个来源
+
+// 允许的字面量是**闭集**：写错一个字母必须当场报错，不能静默落成别的日子
+// （`--date today` 这类「差不多能用」的取值一律不要 —— 每多一个，就多一种
+// 「调度器以为它算的是另一天」的可能，而日报链对日期是最敏感的）。
+export const TARGET_DATE_LITERALS = Object.freeze(['yesterday']);
+
+/**
+ * 把 `--date` 的取值解析成 ISO 日期。**纯函数**（`now` 由调用方冻结一次，
+ * 执行过程中不再取时间 —— 跨零点时「昨天」会漂到另一天，那是相对日期的最大风险）。
+ */
+export function resolveTargetDate(raw, now = new Date()) {
+  const value = String(raw ?? '').trim();
+  if (TARGET_DATE_LITERALS.includes(value)) return shiftIso(shanghaiToday(now), -1);
+  if (/^\d{4}-\d{2}-\d{2}$/u.test(value)) return value;
+  const options = `YYYY-MM-DD 或 ${TARGET_DATE_LITERALS.join(' / ')}`;
+  if (!value) throw new Error(`missing --date：要给 ${options}（定时任务写 --date yesterday）`);
+  throw new Error(`invalid --date ${JSON.stringify(raw)}：要给 ${options}`);
+}
+
+// 阶段名 → 收信人看得懂的中文名。措辞**只在这一处决定**：告警正文里不许出现英文阶段名
+// （那是我们内部的叫法，收信人对着它不知道去点什么）。与 STAGE_NAMES 的完整性由用例双向互锁。
+export const STAGE_LABELS = Object.freeze({
+  'health-check': '起跑前体检',
+  'alimama-date': '阿里妈妈切到那一天',
+  'promotion-submit': '提交推广报表生成',
+  'sycm-date': '生意参谋切到那一天',
+  'shop-report': '下载店铺日报',
+  'promotion-fetch': '取推广报表压缩包',
+  push: '写进飞书',
+  'sycm-reset': '生意参谋页回位',
+  'sycm-date-again': '再切一次那一天',
+  backfill: '回填询单数据',
+  readback: '回读核对',
+});
+
+export function stageLabelOf(stage) {
+  const label = STAGE_LABELS[stage];
+  if (!label) throw new Error(`阶段 ${stage} 没有面向人的中文名（新增阶段时忘了补 STAGE_LABELS？）`);
+  return label;
+}
+
+/** 阶段在这家店的第几步（从 1 数，与日志文件名上的编号一致）。认不出来返回 null，不猜。 */
+export function stageNumber(key, stage) {
+  const at = buildShopStages(key, { date: '1970-01-01', mode: 'rehearse' })
+    .findIndex((item) => item.stage === stage);
+  return at === -1 ? null : at + 1;
+}
+
+// ---------------------------------------------------------------- 出错了怎么叫人
+
+/**
+ * 结论的闭集。分类函数、原因表、下一步表必须覆盖**同一个**集合 —— 漏一条的症状是
+ * 「这个结论悄悄退化成兜底文案」，而告警照发不误、看起来一切正常。
+ */
+export const FAILURE_CAUSES = Object.freeze(['ROUND_BLOCKED', 'SHOP_BLOCKED', 'DUPLICATE_TARGET', 'STAGE_FAILED']);
+
+/**
+ * 一家店的失败是哪一类。
+ *
+ * **成因不同、要做的事不同，就必须分开**：收信人照着一条对不上现场的建议去做，
+ * 比不通知更糟（2026-09-19 那条「点保存密码」的登录告警就是这么被判错的）。
+ *
+ * `DUPLICATE_TARGET` 单独一类，因为它的下一步与别的**相反** —— 不用做任何事
+ * （那一天的数据已经在飞书里了）。把它并进「失败」就是每天喊一次狼来了。
+ */
+export function shopFailureCause(record = {}) {
+  if (record.failedStage === 'health-check') return 'SHOP_BLOCKED';
+  if (record.failedStage === 'push'
+    && /duplicate daily report row exists/u.test(String(record.failureOutput ?? ''))) return 'DUPLICATE_TARGET';
+  return 'STAGE_FAILED';
+}
+
+/** 一轮的失败视图（纯函数；`summary` 就是落盘的 summary.json 的形状）。 */
+export function roundFailureSummary(summary = {}) {
+  const entries = Object.entries(summary?.shops ?? {});
+  const failed = entries.filter(([, record]) => record?.status !== 'ok')
+    .map(([key, record]) => ({ key, record, cause: shopFailureCause(record) }));
+  const ok = entries.filter(([, record]) => record?.status === 'ok').map(([key]) => key);
+  const roundBlocked = summary?.round?.healthCheckDaily?.ok === false;
+  return { failed, ok, roundBlocked, roundBlockedDetails: summary?.round?.healthCheckDaily?.blockingDetails ?? null,
+    any: roundBlocked || failed.length > 0, total: entries.length };
+}
+
+// 收信人在这里看到的每一个词都要是「他明天还会看到的东西」：窗口标题（`运营叫法 · 日报采集窗口`）、
+// 飞书里那张表、生意参谋/阿里妈妈两个后台的中文页名。**不写**英文阶段名、不写我们的结论代号、
+// 不写「重试/自愈」这类没实现的行为（承诺兑现不了比不说更糟）。
+const REASON_BY_CAUSE = Object.freeze({
+  ROUND_BLOCKED: '整轮没开跑：那个开着飞书「各店铺日报」的浏览器窗口里，页面不齐。',
+  SHOP_BLOCKED: '这家店的专用窗口里页面不齐，所以这家店一步都没跑。',
+  DUPLICATE_TARGET: '这一天飞书里已经有数据了，脚本按「不许写第二遍」停住了。',
+  STAGE_FAILED: '跑到一半停住了，停在哪一步见上面那行。',
+});
+
+const ACTION_BY_CAUSE = Object.freeze({
+  ROUND_BLOCKED: () => '打开那个开着飞书「各店铺日报」的浏览器窗口，把这两页各开一个（只留一个，多开同样会报错）：'
+    + '生意参谋的「店铺」工作页、飞书「各店铺日报」底单页。开好后再跑一次。',
+  SHOP_BLOCKED: (ctx) => `打开这几家店各自的日报采集窗口（窗口标题里写着店名，例如「${ctx.shops[0] ?? '店名'} · 日报采集窗口」），`
+    + '把缺的页面补上：生意参谋的工作页、阿里妈妈报表页各一个（多开同样会报错）。补好后按下面的命令补跑这一天。',
+  DUPLICATE_TARGET: (ctx) => `不用处理：${ctx.date} 的数据已经在飞书里了。`
+    + '只有确实要重写时才需要先删掉那一天的记录再跑。',
+  STAGE_FAILED: (ctx) => `先打开 ${ctx.logDir ?? '运行日志目录'} 里那几家店各自的文件，看最后一步报了什么；`
+    + '最常见的是那个窗口的登录掉了 —— 就在标题写着店名（例如「' + `${ctx.shops[0] ?? '店名'} · 日报采集窗口」` + '）的窗口里人工登录一次'
+    + '（登录时勾上「保存密码」），然后按下面的命令补跑这一天。',
+});
+
+const RERUN_HINT = (date) => '补跑这一天的命令（在那台机器的项目目录里执行一行）：'
+  + `node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date ${date} --commit --notify`;
+
+// 三张表互锁（**加载期**就查）：新增一个结论却忘了给它原因/下一步，模块直接起不来。
+// 放到运行期才发现的写法（比如只在告警里兜底）会让收信人收到一条对不上现场的消息，
+// 而那条消息看起来完全正常。
+for (const [tableName, table] of [['REASON_BY_CAUSE', REASON_BY_CAUSE], ['ACTION_BY_CAUSE', ACTION_BY_CAUSE]]) {
+  const absent = FAILURE_CAUSES.filter((cause) => !table[cause]);
+  if (absent.length) {
+    throw new Error(`${tableName} 少了这些结论：${absent.join(' / ')}（收信人会看到一句对不上现场的兜底文案）`);
+  }
+}
+
+/** 收信人看到的「哪家店、停在哪一步」。店名后面带上**他在浏览器里能看到的登录名**，方便对上窗口。 */
+export function describeShopFailure(key, record) {
+  const cause = shopFailureCause(record);
+  const login = shopIdentity(key).alimamaMemberName;
+  const at = record?.failedStage ? stageNumber(key, record.failedStage) : null;
+  const where = record?.failedStage
+    ? `停在第 ${at ?? '?'} 步（${stageLabelOf(record.failedStage)}）`
+    : '没跑完，但记录里没写停在哪一步';
+  // 体检拦下来的那几条明细直接给出来：只说「体检没过」等于让收信人自己去翻日志。
+  const specifics = (record?.blockingDetails ?? []).filter(Boolean).slice(0, 3);
+  return `· ${key}${login ? `（浏览器里显示的登录名：${login}）` : ''}—— ${where}。${REASON_BY_CAUSE[cause]}`
+    + (specifics.length ? `\n  ${specifics.join('\n  ')}` : '');
+}
+
+/**
+ * 一条告警说清「哪几家收完了、哪几家没有、下一步做什么」。
+ *
+ * 字段名必须落在 `runtime/notify-feishu-core.mjs` 的 `READABLE_SOURCE_KEYS` 白名单里，
+ * 否则渲染时会被静默丢掉（告警照发，收信人看不到「哪台机器」那一行）。
+ */
+export function buildRoundFailureAlert({ date, summary, logDir = null, machine = null, shopCount = null, now = () => new Date() }) {
+  const view = roundFailureSummary(summary);
+  if (!view.any) throw new Error('这一轮没有失败却要生成告警（调用方的判定错误）—— 成功时不许叫人');
+  const when = now();
+  // 家数要**由调用方给**（配置里这轮该跑几家），不能从 summary.shops 数 ——
+  // 整轮没跑起来时那里是空的，数出来就是「0 家店」，而收信人会以为今天根本没排店
+  // （2026-09-19 干验证时渲染出来才发现，离线用例当时也没覆盖这一条）。
+  const total = shopCount ?? view.total;
+  const failedNames = view.failed.map((item) => item.key);
+  const subject = view.roundBlocked ? '全部店铺' : failedNames.length === 1 ? failedNames[0] : `${failedNames.length} 家店`;
+  const causes = [...new Set([...(view.roundBlocked ? ['ROUND_BLOCKED'] : []), ...view.failed.map((item) => item.cause)])];
+
+  const reason = [
+    view.roundBlocked ? REASON_BY_CAUSE.ROUND_BLOCKED : null,
+    ...(view.roundBlocked ? (view.roundBlockedDetails ?? []).filter(Boolean).slice(0, 3).map((line) => `  ${line}`) : []),
+    view.failed.length ? `没跑完 ${view.failed.length} 家：\n${view.failed.map((item) => describeShopFailure(item.key, item.record)).join('\n')}` : null,
+    view.ok.length ? `已收完 ${view.ok.length} 家：${view.ok.join('、')}` : null,
+  ].filter(Boolean).join('\n');
+
+  const actions = causes.map((cause) => ACTION_BY_CAUSE[cause]({ date, logDir, shops: failedNames }));
+  // 「不用处理」这一类不给补跑命令 —— 给了就等于叫人重跑一天已经写好的数据。
+  if (causes.some((cause) => cause !== 'DUPLICATE_TARGET')) actions.push(RERUN_HINT(date));
+
+  return {
+    type: 'DAILY_ROUND_FAILED',
+    severity: 'ERROR',
+    title: view.roundBlocked
+      ? `全部店铺的日报都没跑起来（统计日 ${date}）`
+      : `${subject}的日报没收完（统计日 ${date}）`,
+    // 同一天同一轮共用一条锚：同一天重复失败不重复轰炸（投递链本身不去重，这里给的是给调用方用的锚）。
+    alertId: `daily-round-${date.replace(/-/gu, '')}`,
+    createdAt: when.toISOString(),
+    reason,
+    action: [...new Set(actions)].join('\n'),
+    source: {
+      targetLabel: `日报一轮 · ${total} 家店`,
+      period: `统计日 ${date}`,
+      capability: '各店铺日报',
+      machine,
+      shopName: failedNames.length ? failedNames.join('、') : null,
+    },
+    evidence: logDir ? { 运行日志目录: logDir } : null,
+  };
+}
+
+/**
+ * 这次失败该不该往外发。**纯函数**，因为「什么时候安静」和「什么时候叫人」一样重要：
+ * 排练失败的提醒发到飞书，只会训练人忽略这个信号（而它是唯一会叫你动手的通道）。
+ */
+export function resolveAlertDispatch({ notify = false, notifyPrint = false, mode }) {
+  if (!notify && !notifyPrint) return { action: 'off', why: '没有 --notify（默认安静：只在屏幕上报错）' };
+  if (notifyPrint) return { action: 'print', why: '--notify-print：只打印不投递' };
+  if (mode !== 'commit') return { action: 'off', why: `--${mode === 'verify' ? 'verify-existing' : '排练'}模式不投递（失败就在屏幕前）` };
+  return { action: 'send', why: '--notify 且 --commit' };
+}
+
+export const parseArgs = (argv, { now = new Date() } = {}) => {
+  const args = { date: null, dateInput: null, shops: null, commit: false, verifyExisting: null, keepGoing: false,
     only: null, logs: null, downloads: null, shopXlsx: null, promotionZip: null,
-    allowMissingPeer: false };
+    allowMissingPeer: false, notify: false, notifyPrint: false };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
-    if (key === '--date') args.date = argv[++i];
+    // 原样收下，出了循环再解析（`--date yesterday` 要用「这一刻」的时钟算，只算一次）。
+    if (key === '--date') args.dateInput = argv[++i];
+    // 出错时才发飞书（成功一声不响）；`--notify-print` 只打印不投递，用来看文案。
+    else if (key === '--notify') args.notify = true;
+    else if (key === '--notify-print') args.notifyPrint = true;
     // 历史日（不是「昨日」）的回填降级开关。**默认关**，见 buildShopStages 里 backfill 那段。
     else if (key === '--allow-missing-peer') args.allowMissingPeer = true;
     else if (key === '--shops') args.shops = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
@@ -106,7 +332,8 @@ export const parseArgs = (argv) => {
     else if (key === '--promotion-zip') args.promotionZip = argv[++i];
     else throw new Error(`unknown argument: ${key}`);
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/u.test(args.date ?? '')) throw new Error('missing or invalid --date (YYYY-MM-DD)');
+  // 目标日在这里冻结（`now` 只取一次）⇒ `--date yesterday` 在执行过程中不会漂。
+  args.date = resolveTargetDate(args.dateInput, now);
   if (args.commit && args.verifyExisting !== null) {
     throw new Error('--commit 与 --verify-existing 互斥：一个是写，一个是只读核对');
   }
@@ -116,6 +343,9 @@ export const parseArgs = (argv) => {
   if ((args.shopXlsx === null) !== (args.promotionZip === null)) {
     throw new Error('--shop-xlsx 与 --promotion-zip 必须成对给（少给一个就会退回采集段，两种来源混着用）');
   }
+  // 0 家店不能当「都收完了」：那会让 `--shops "里可林淘宝,,网林天猫"` 这种输入跑出一个
+  // 退出码 0、什么也没做的「成功」（静默落空的老形态）。
+  if (args.shops && args.shops.length === 0) throw new Error('--shops 解析出来 0 家店（是不是多写了逗号？）');
   if (args.only) {
     const unknown = args.only.filter((name) => !STAGE_NAMES.includes(name));
     if (unknown.length) {
@@ -316,6 +546,31 @@ async function resetSycmPage({ proxy, log }) {
     + sycmPages.map((t) => `  · ${t.url}`).join('\n'));
 }
 
+/**
+ * 把告警交给既有的投递出口，并把它的结论如实打出来。
+ *
+ * 文案用**真渲染器**（`renderAlertText`）而不是自己拼一遍 —— 自己拼的那份会和收信人
+ * 实际看到的东西漂移，而漂移的症状是「本地看着对、飞书里少一行」（白名单会静默吞字段）。
+ */
+export function dispatchRoundAlert({ alert, dispatch, logDir = null, spawn = spawnSync, log = console.log }) {
+  const text = renderAlertText(alert);
+  if (dispatch.action === 'print') {
+    log(`[驱动] 告警文案（--notify-print：只打印、不投递）：\n${text}`);
+    return { delivered: false, printed: true };
+  }
+  const result = spawn(NODE, [NOTIFY_CLI], {
+    input: JSON.stringify(alert), cwd: REPO_ROOT, encoding: 'utf8', timeout: 60_000,
+  });
+  const receipt = String(result.stdout || result.stderr || '').trim().slice(0, 300);
+  log(`[驱动] 告警投递退出码=${result.status}：${receipt}`);
+  if (result.status !== 0) {
+    // 这条比失败本身更要紧：**失败已经有记录，但没人知道**。
+    console.error('[驱动] 告警没送出去 —— 现在只有屏幕知道这一轮失败了，必须有人接手（见上面的投递收据）。'
+      + `${logDir ? `日志在 ${logDir}` : ''}`);
+  }
+  return { delivered: result.status === 0, printed: false };
+}
+
 function runStage(shopKey, stage, { repoRoot, logDir }) {
   const log = (line) => console.log(`[${shopKey}] ${line}`);
   const outPath = path.join(logDir, `${String(stage.index).padStart(2, '0')}-${stage.stage}.txt`);
@@ -361,12 +616,18 @@ async function main() {
   const logRoot = path.resolve(args.logs ?? path.join(REPO_ROOT, 'evidence', `multi-shop-${args.date}`));
   const downloads = args.downloads ?? null;
   const explicitSources = { shopXlsx: args.shopXlsx, promotionZip: args.promotionZip };
+  // 失败的告警在**两个**失败出口都要能发（整轮没跑起来 / 某家店停在半路），所以算一次、用两次。
+  const alertDispatch = resolveAlertDispatch({ notify: args.notify, notifyPrint: args.notifyPrint, mode });
 
   console.log(`[驱动] 目标日 ${args.date}｜模式 ${mode}｜店铺 ${shops.length} 家：${shops.join(' / ')}`);
+  // 字面量被解析过就要说清楚解析成了哪天 —— 定时跑出来的日志里，这一行是唯一的对账依据
+  // （事后没人能从 `--date yesterday` 反推出它当时算的是哪一天）。
+  if (args.dateInput !== args.date) console.log(`[驱动] （--date ${args.dateInput} 按 Asia/Shanghai 解析成 ${args.date}）`);
   console.log(`[驱动] 日志根 ${logRoot}`);
   if (mode === 'commit') console.log('[驱动] --commit：会真的写飞书。目标日已有行会硬重复停止（先按 §9.3 删那天）。');
   if (mode === 'verify') console.log(`[驱动] 只读核对模式：--expected-before-count ${args.verifyExisting}（不写飞书）`);
   if (mode === 'rehearse') console.log('[驱动] 排练模式：采集是真的，两个写入方都是干跑，不写飞书。');
+  if (args.notify || args.notifyPrint) console.log(`[驱动] 出错时：${alertDispatch.why}`);
   for (const key of shops) console.log(`[驱动]   ${describeIdentity(key)}`);
 
   const summary = { date: args.date, mode, startedAt: new Date().toISOString(), round: {}, shops: {} };
@@ -389,6 +650,8 @@ async function main() {
     logPath: roundHealth.logPath,
     ok: roundHealth.detail?.ok ?? null,
     blocking: roundHealth.detail?.blocking?.map((f) => f.code) ?? null,
+    // 告警里要写清「哪一页不齐」，所以明细也得留下来（只留 code 的话告警只能说「体检没过」）。
+    blockingDetails: roundHealth.detail?.blocking?.map((f) => f.detail) ?? null,
   };
   if (roundHealth.status !== 0) {
     console.error('[驱动] 商家浏览器体检未通过 ⇒ 整轮不跑（推送段与回读段都要用它）。'
@@ -396,6 +659,12 @@ async function main() {
     summary.finishedAt = new Date().toISOString();
     writeFileSync(path.join(logRoot, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
     process.exitCode = 1;
+    if (alertDispatch.action !== 'off') {
+      dispatchRoundAlert({
+        alert: buildRoundFailureAlert({ date: args.date, summary, logDir: path.relative(REPO_ROOT, logRoot), machine: MACHINE, shopCount: shops.length }),
+        dispatch: alertDispatch, logDir: path.relative(REPO_ROOT, logRoot),
+      });
+    }
     return;
   }
 
@@ -422,7 +691,10 @@ async function main() {
         result = runStage(key, withIndex, { repoRoot: REPO_ROOT, logDir: shopLogDir });
       }
       record.stages.push({ stage: stage.stage, status: result.status, skipped: Boolean(result.skipped),
-        logPath: result.logPath ?? null, argv: stage.argv });
+        logPath: result.logPath ?? null, argv: stage.argv,
+        // 体检到底拦在哪一条，要跟着收据一起留下来：告警里那句「哪一页不齐」就是从这儿来的。
+        // 不记的话，收信人只能看到「体检没过」，还得自己去翻日志（＝太笼统）。
+        blockingDetails: result.detail?.blocking?.map((finding) => finding.detail) ?? null });
       return result;
     };
 
@@ -450,6 +722,12 @@ async function main() {
         if (result.status !== 0) {
           record.status = 'failed';
           record.failedStage = stage.stage;
+          // 告警要用的两份证据，**必须在抛错之前留下**（抛出去之后就没了）：
+          // ① 子进程最后那几行 —— 「这一天已经写过了」那句就藏在这里（靠它才分得出
+          //    「不用处理」和「要人去登录」两种完全不同的下一步）；
+          // ② 体检的阻断明细 —— 告警里「哪一页不齐」那句就是从这儿来的。
+          record.failureOutput = `${result.stdout ?? ''}\n${result.stderr ?? ''}`.slice(-4000);
+          record.blockingDetails = result.detail?.blocking?.map((finding) => finding.detail) ?? null;
           const tail = String(result.stderr ?? '').trim().split(/\r?\n/u).slice(-12).filter(Boolean);
           if (tail.length) console.error(`[${key}]   stderr 尾部：\n${tail.map((l) => `      ${l}`).join('\n')}`);
           throw new Error(`阶段 ${stage.stage} 失败（exit ${result.status ?? result.signal}）`);
@@ -483,7 +761,21 @@ async function main() {
       + `${record.error ? ` —— ${record.error}` : ''}`);
   }
   console.log(`[驱动] 明细 ${path.relative(REPO_ROOT, summaryPath)}`);
-  if (Object.values(summary.shops).some((r) => r.status !== 'ok')) process.exitCode = 1;
+  const anyFailed = Object.values(summary.shops).some((r) => r.status !== 'ok');
+  if (anyFailed) {
+    process.exitCode = 1;
+    if (alertDispatch.action !== 'off') {
+      dispatchRoundAlert({
+        alert: buildRoundFailureAlert({ date: args.date, summary, logDir: path.relative(REPO_ROOT, logRoot), machine: MACHINE, shopCount: shops.length }),
+        dispatch: alertDispatch, logDir: path.relative(REPO_ROOT, logRoot),
+      });
+    } else if (args.notify || args.notifyPrint) {
+      console.log(`[驱动] 没发提醒：${alertDispatch.why}`);
+    }
+  } else if (args.notify || args.notifyPrint) {
+    // 成功要留一行「没发提醒」：否则「没收到消息」与「消息没发出去」在事后看起来一模一样。
+    console.log(`[驱动] ${shops.length} 家店都收完了，没发提醒（--notify 只在出错时叫人）。`);
+  }
 }
 
 // 体检也是驱动自己做的：它要按**浏览器实例**参数化，而且没有现成脚本。

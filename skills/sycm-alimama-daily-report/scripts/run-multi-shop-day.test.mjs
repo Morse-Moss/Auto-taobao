@@ -4,9 +4,10 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { BROWSER_IDS, PROJECT_PORTS, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
+import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
-import { MODES, STAGE_NAMES, buildShopStages, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, parseArgs, withSourcePaths } from './run-multi-shop-day.mjs';
+import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, buildRoundFailureAlert, buildShopStages, describeShopFailure, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, parseArgs, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -317,4 +318,224 @@ test('驱动：STAGE_NAMES 与真实的阶段表逐字一致（否则合法值�
   // 互锁断言只比「常量 vs 产出」，如果两边一起改坏（比如把 readback 从两处同时删掉），
   // 它不会红 —— 那条规格由上面这句对 SOP §10.1 字面量的比对来守。
   assert.throws(() => buildShopStages('没有这家店', { date: DATE, mode: 'rehearse' }), /未登记|不存在|unknown|没有/u);
+});
+
+// ================================================================ 定时：目标日与告警
+//
+// 这一段守的是「明天起无人值守」的两件必需品：① 定时命令不必自己算日期；
+// ② 出了错要有一条**收信人照着能做**的飞书提醒（而不是只有退出码）。
+//
+// 冻结的「现在」：本机 2026-09-20 07:30（= 2026-09-19T23:30Z）。所有与日期有关的断言都用
+// 固定时刻 —— 相对日期的最大风险就是跨零点漂一天，拿真实时钟测不出来。
+
+const NOW = new Date('2026-09-19T23:30:00Z');
+const ALERT_DATE = '2026-09-19';
+const ALERT_LOG_DIR = 'evidence/multi-shop-2026-09-19';
+const alertNow = () => new Date('2026-09-20T00:10:00Z');
+
+const okRecord = () => ({ status: 'ok', stages: [] });
+const failedAt = (stage, failureOutput = '') => ({ status: 'failed', failedStage: stage, failureOutput, stages: [] });
+
+// 一轮的真实形状：一家收完、一家停在采集、一家撞上「这一天已经写过」。
+const mixedSummary = () => ({
+  date: ALERT_DATE,
+  mode: 'commit',
+  round: { healthCheckDaily: { ok: true, blocking: [], blockingDetails: [] } },
+  shops: {
+    里可林淘宝: okRecord(),
+    网林天猫: failedAt('shop-report', 'Error: expected one download button, got 0\n'),
+    科塔淘宝: failedAt('push', 'Error: duplicate daily report row exists: recAbc123\n'),
+  },
+});
+
+const buildAlert = (summary, overrides = {}) => buildRoundFailureAlert({
+  date: ALERT_DATE, summary, logDir: ALERT_LOG_DIR, machine: 'DEPLOY-01', now: alertNow, ...overrides,
+});
+const renderedAlert = (summary, overrides = {}) => renderAlertText(buildAlert(summary, overrides));
+
+test('驱动：--date 认字面量 yesterday，按 Asia/Shanghai 解析（跨零点不漂）', () => {
+  assert.equal(resolveTargetDate('yesterday', NOW), '2026-09-19');
+  assert.equal(resolveTargetDate('yesterday', new Date('2026-09-20T00:00:00Z')), '2026-09-19',
+    '本机 08:00 与 07:30 必须是同一天：口径按本机/站点时区算，不按 UTC');
+  assert.equal(resolveTargetDate('2026-09-01', NOW), '2026-09-01', '显式日期原样通过');
+  // 认不出来的取值必须当场报错，并把允许的写法列出来 —— 静默落成「今天」会让整整一天的数据错位
+  for (const bad of ['today', 'YESTERDAY', 'yestoday', '2026-9-1', '前天', '', null, undefined]) {
+    assert.throws(() => resolveTargetDate(bad, NOW), (err) => {
+      assert.match(err.message, /YYYY-MM-DD/u);
+      assert.match(err.message, /yesterday/u, '报错要顺手告诉人正确写法');
+      return true;
+    }, `${JSON.stringify(bad)} 不该被接受`);
+  }
+  assert.deepEqual([...TARGET_DATE_LITERALS], ['yesterday'],
+    '相对日期的字面量只留 yesterday：多一个就多一种「调度器以为它算的是另一天」的可能');
+});
+
+test('驱动 CLI：--date 走同一条解析，缺了就抛（默认不放宽）', () => {
+  const parsed = parseArgs(['--date', 'yesterday'], { now: NOW });
+  assert.equal(parsed.date, '2026-09-19');
+  assert.equal(parsed.dateInput, 'yesterday', '原始取值要留着：日志里要能看出它被解析成了哪天');
+  assert.equal(parseArgs(['--date', DATE], { now: NOW }).date, DATE);
+  assert.equal(parseArgs(['--date', DATE], { now: NOW }).dateInput, DATE);
+  assert.throws(() => parseArgs([], { now: NOW }), /--date/u, '不给日期仍然必须抛错（定时命令写错就当场停）');
+  assert.equal(parseArgs(['--date', DATE], { now: NOW }).notify, false, '--notify 默认关');
+  // 0 家店不能当「都收完了」：那会跑出一个退出码 0、什么也没做的「成功」
+  assert.throws(() => parseArgs(['--date', DATE, '--shops', ','], { now: NOW }), /0 家店/u);
+});
+
+test('驱动：每个阶段都有面向人的中文名（告警正文里不许出现英文阶段名）', () => {
+  assert.deepEqual(Object.keys(STAGE_LABELS), [...STAGE_NAMES], '阶段与中文名必须一一对应（新增阶段忘了补就会红）');
+  for (const stage of STAGE_NAMES) {
+    const label = stageLabelOf(stage);
+    assert.ok(label, `${stage} 没有中文名`);
+    assert.equal(/[A-Za-z_]/u.test(label), false, `${stage} 的中文名里不该出现英文或下划线：${label}`);
+  }
+  assert.throws(() => stageLabelOf('new-stage'), /没有面向人的中文名/u);
+});
+
+test('驱动：告警说的「第 N 步」与日志文件上的编号对得上', () => {
+  assert.equal(stageNumber(SHOP, 'health-check'), 1);
+  assert.equal(stageNumber(SHOP, 'shop-report'), 5);
+  assert.equal(stageNumber(SHOP, 'push'), 7);
+  assert.equal(stageNumber(SHOP, 'readback'), 11);
+  assert.equal(stageNumber(SHOP, '不存在'), null, '认不出步号时返回 null，由文案写成「?」而不是编一个数字');
+});
+
+test('驱动的失败分类：体检拦住 / 重跑撞上已有行 / 阶段报错，三类必须分开', () => {
+  assert.equal(shopFailureCause({ failedStage: 'health-check' }), 'SHOP_BLOCKED');
+  assert.equal(shopFailureCause({ failedStage: 'push', failureOutput: 'x duplicate daily report row exists: r1' }), 'DUPLICATE_TARGET');
+  // 别的阶段说同一句话不算「已经写过」：那只是某个脚本的措辞，不能拿来当结论
+  assert.equal(shopFailureCause({ failedStage: 'backfill', failureOutput: 'duplicate daily report row exists' }), 'STAGE_FAILED');
+  assert.equal(shopFailureCause({ failedStage: 'sycm-date' }), 'STAGE_FAILED');
+  assert.equal(shopFailureCause({}), 'STAGE_FAILED', '没写停在哪一步也要有结论（不能静默变成「没问题」）');
+  const view = roundFailureSummary(mixedSummary());
+  assert.equal(view.failed.length, 2);
+  assert.deepEqual(view.ok, ['里可林淘宝']);
+  assert.equal(view.any, true);
+  assert.equal(roundFailureSummary({ shops: { 里可林淘宝: okRecord() } }).any, false, '全绿时不许认为有失败');
+  assert.equal(roundFailureSummary({ round: { healthCheckDaily: { ok: false } }, shops: {} }).roundBlocked, true);
+});
+
+test('告警：标题自带主体名，正文说清哪几家没跑完、停在哪一步、哪几家已收完', () => {
+  const text = renderedAlert(mixedSummary());
+  assert.match(text, /【需要处理】/u, '有失败必须是「需要处理」，不是「提示」');
+  assert.match(text, /【需要处理】2 家店的日报没收完（统计日 2026-09-19）/u, '标题要自带主体名与是哪一天');
+  assert.match(text, /没跑完 2 家：/u);
+  assert.match(text, /网林天猫（浏览器里显示的登录名：网林家居旗舰店:阿彦）—— 停在第 5 步（下载店铺日报）/u,
+    '店名后面要带他在浏览器里能看到的登录名（否则「同店四名」会让人找不到窗口）');
+  assert.match(text, /科塔淘宝.*停在第 7 步（写进飞书）/u);
+  assert.match(text, /已收完 1 家：里可林淘宝/u, '收信人也要知道哪几家已经好了（不用重复跑）');
+  assert.match(text, /机器：DEPLOY-01/u);
+  assert.match(text, /证据：evidence\/multi-shop-2026-09-19/u);
+  assert.match(text, /告警编号：daily-round-20260919/u, '事后对账只有编号与时间能引用，不能省');
+
+  // 整轮没跑起来是另一种情形：主语是「全部店铺」，而且要说清是哪一页不齐。
+  // 这一条是 2026-09-19 真机干验证渲染出来才发现的：那时 shops 是空的，
+  // 「对象」被数成了「日报一轮 · 0 家店」—— 收信人会以为今天根本没排店。
+  const blocked = renderedAlert({
+    round: { healthCheckDaily: { ok: false, blockingDetails: ['目标页面「飞书底单页」不在这个浏览器里（找到 0 个）；采集会从落位那一步就失败。'] } },
+    shops: {},
+  }, { shopCount: 5 });
+  assert.match(blocked, /全部店铺的日报都没跑起来（统计日 2026-09-19）/u);
+  assert.match(blocked, /对象：日报一轮 · 5 家店/u, '家数要来自配置（这一轮该跑几家），不是从记录条数数出来的');
+  assert.match(blocked, /目标页面「飞书底单页」不在这个浏览器里/u, '要指名道姓说缺哪一页，不能只说「体检没过」');
+  assert.match(blocked, /飞书「各店铺日报」底单页/u, '下一步要说清去哪开、开哪两页');
+});
+
+test('告警：每条结论都有自己的「原因 + 下一步」，下一步说清在哪儿做、怎么算做完', () => {
+  const text = renderedAlert(mixedSummary());
+  assert.match(text, /下一步：/u);
+  assert.match(text, /日报采集窗口/u, '要告诉收信人进哪个窗口（他明天在屏幕上看到的就是这个标题）');
+  assert.match(text, /人工登录一次/u);
+  assert.match(text, /勾上「保存密码」/u);
+  assert.match(text, /补跑这一天的命令/u);
+  assert.match(text, /--date 2026-09-19 --commit --notify/u, '补跑命令要带上那一天，否则「昨天」会被理解成另一天');
+
+  // 「已经写过了」这一类**不许**给补跑命令 —— 那等于叫人重跑一天已经写好的数据
+  const dup = renderedAlert({ round: { healthCheckDaily: { ok: true } }, shops: { 网林天猫: failedAt('push', 'duplicate daily report row exists: r1') } });
+  assert.match(dup, /不用处理/u);
+  assert.equal(dup.includes('补跑这一天的命令'), false, '「不用处理」不该带补跑命令');
+  assert.equal(dup.includes('人工登录'), false, '「不用处理」不该叫人去登录（那是另一类现场要做的事）');
+});
+
+test('告警：文案里不许出现英文阶段名、结论代号、内部术语，也不许出现链接', () => {
+  const jargon = ['判据', '幂等', 'fail-closed', 'capability', '会话', '风控'];
+  const cases = {
+    ROUND_BLOCKED: { round: { healthCheckDaily: { ok: false, blockingDetails: ['目标页面「飞书底单页」不在这个浏览器里（按片段 feishu.cn/base/xx 找到 0 个）；采集会从落位那一步就失败。'] } }, shops: {} },
+    SHOP_BLOCKED: { round: { healthCheckDaily: { ok: true } }, shops: { 盖文淘宝: { status: 'failed', failedStage: 'health-check', blockingDetails: ['目标页面「阿里妈妈报表页」不在这个浏览器里（按片段 one.alimama.com/index.html 找到 0 个）；采集会从落位那一步就失败。'], stages: [] } } },
+    DUPLICATE_TARGET: { round: { healthCheckDaily: { ok: true } }, shops: { 科塔淘宝: failedAt('push', 'duplicate daily report row exists: r1') } },
+    STAGE_FAILED: { round: { healthCheckDaily: { ok: true } }, shops: { 里可林淘宝: failedAt('promotion-fetch', 'Error: expected one 生成成功 row, got 0') } },
+  };
+  assert.deepEqual(Object.keys(cases).sort(), [...FAILURE_CAUSES].sort(),
+    '每一条结论都要在这里被渲染一次（漏一条 = 新一类术语味告警没人守）');
+  for (const [cause, summary] of Object.entries(cases)) {
+    const text = renderedAlert(summary);
+    assert.equal(text.includes(cause), false, `${cause} 这个结论代号不该出现在收信人看得到的文案里`);
+    for (const stage of STAGE_NAMES) {
+      assert.equal(text.includes(stage), false, `${cause} 的文案里出现了英文阶段名「${stage}」`);
+    }
+    for (const word of jargon) {
+      assert.equal(text.includes(word), false, `${cause} 的文案里出现了内部术语「${word}」`);
+    }
+    // 点 http 链接会走系统默认浏览器，到不了目标 profile 的实例（2026-09-19 实测）⇒ 文案里不许有链接
+    assert.equal(/https?:\/\//u.test(text), false, `${cause} 的文案里出现了链接`);
+    assert.match(text, /统计日 2026-09-19/u, `${cause} 的文案没说是哪一天的数据`);
+  }
+});
+
+test('告警：全绿时生成告警要当场抛错（成功时不许叫人）', () => {
+  assert.throws(() => buildAlert({ round: { healthCheckDaily: { ok: true } }, shops: { 里可林淘宝: okRecord() } }),
+    /成功时不许叫人/u);
+  assert.throws(() => buildAlert({ shops: {} }), /成功时不许叫人/u, '一轮没跑任何店也不算「有失败」');
+});
+
+test('驱动：--notify 只在 --commit 那一档投递；排练/只读核对的失败不进飞书', () => {
+  assert.equal(resolveAlertDispatch({ notify: true, mode: 'commit' }).action, 'send');
+  // 排练失败的提醒发到飞书会训练人忽略这个通道 —— 而它是唯一会叫人动手的通道
+  assert.equal(resolveAlertDispatch({ notify: true, mode: 'rehearse' }).action, 'off');
+  assert.equal(resolveAlertDispatch({ notify: true, mode: 'verify' }).action, 'off');
+  assert.equal(resolveAlertDispatch({ mode: 'commit' }).action, 'off', '不给 --notify 就默认安静');
+  assert.equal(resolveAlertDispatch({ notifyPrint: true, mode: 'commit' }).action, 'print');
+  assert.equal(resolveAlertDispatch({ notifyPrint: true, mode: 'rehearse' }).action, 'print', '--notify-print 是「只想看文案」，与模式无关');
+  assert.equal(resolveAlertDispatch({ notify: true, notifyPrint: true, mode: 'commit' }).action, 'print',
+    '两个都给时以「不投递」为准（宁可少发一条，不可多发一条）');
+  for (const input of [{ notify: true, mode: 'commit' }, { notify: true, mode: 'rehearse' }, { mode: 'rehearse' }]) {
+    assert.ok(resolveAlertDispatch(input).why, '每种情形都要有一句人看得懂的原因（安静也要说清为什么安静）');
+  }
+});
+
+test('驱动：打印路径一次投递都不发生，且打印的是真渲染器的输出', () => {
+  let calls = 0;
+  const lines = [];
+  const result = dispatchRoundAlert({
+    alert: buildAlert(mixedSummary()),
+    dispatch: { action: 'print', why: '--notify-print：只打印不投递' },
+    spawn: () => { calls += 1; return { status: 0 }; },
+    log: (line) => lines.push(line),
+  });
+  assert.equal(calls, 0, '--notify-print 绝不许真的投递');
+  assert.deepEqual(result, { delivered: false, printed: true });
+  const printed = lines.join('\n');
+  assert.ok(printed.includes('【需要处理】2 家店的日报没收完'), '打印的必须是真渲染器的输出，不是自己拼的一份');
+  assert.ok(printed.includes('daily-round-20260919'));
+});
+
+test('驱动：真正投递时走既有的通知出口，且「没送达」要被当回事', () => {
+  const alert = buildAlert(mixedSummary());
+  const seen = {};
+  const delivered = dispatchRoundAlert({
+    alert, dispatch: { action: 'send', why: 'x' }, log: () => {},
+    spawn: (cmd, argv, options) => { Object.assign(seen, { cmd, argv, options }); return { status: 0, stdout: '{"status":"SENT","messageId":"om_x"}' }; },
+  });
+  assert.deepEqual(delivered, { delivered: true, printed: false });
+  assert.equal(seen.cmd, process.execPath);
+  assert.match(seen.argv[0], /runtime[\\/]notify-feishu\.mjs$/u,
+    '告警必须走这个仓库既有的投递出口，不许另造一条（另造的那条没有「没送达就非零退出码」的性质）');
+  assert.equal(JSON.parse(seen.options.input).alertId, 'daily-round-20260919', '喂进去的必须是这条告警的 JSON');
+  assert.equal(JSON.parse(seen.options.input).type, 'DAILY_ROUND_FAILED');
+
+  const notDelivered = dispatchRoundAlert({
+    alert, dispatch: { action: 'send', why: 'x' }, logDir: ALERT_LOG_DIR, log: () => {},
+    spawn: () => ({ status: 1, stderr: 'NOT_CONFIGURED' }),
+  });
+  assert.equal(notDelivered.delivered, false, '投递失败不许记成送达');
 });
