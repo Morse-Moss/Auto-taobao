@@ -11,6 +11,19 @@
 | 盖文淘宝 | 盖文全卫定制 | 6 | 6 |
 | 科塔淘宝 | 科塔全卫定制 | 5 | 6 |
 
+底单计数是**逐家累加**上去的（各家 `receipt.json` 的 `recordCountBefore/After`）：
+
+```
+网林天猫 1879 → 1880   科塔淘宝 1880 → 1881
+里可林淘宝 1881 → 1882  盖文淘宝 1882 → 1883     ⇒ 合计 1879 → 1883（+4）
+```
+
+四家的 `inquiry-backfill-receipt.json` 都是 `status: COMMITTED_AND_VERIFIED`、
+`verified.unchangedOtherFields: true`、`peerBenchmark: PEER_AVAILABLE`（本轮没有降级格）；
+每一份的 `environment.proxyUrl` 各是各家的代理（19041/19042/19043/19044），
+`target.appToken` 都是正主 `PTfHbPt9EaIzddsfL8Jcj238nrb`，
+`source.shop` 分别是 `里可林家居 / 网林家居旗舰店 / 盖文全卫定制 / 科塔全卫定制`（取自源产物，不是猜的）。
+
 每家的 11 个阶段（`health-check` … `readback`）逐条落在 `<店铺>/NN-<阶段>.txt`：
 
 ```
@@ -19,9 +32,17 @@
 00-health-check-daily.txt      ← 商家浏览器那一份（整轮一次）
 ```
 
-**注意这里是「合三份读」才能得出「全通」**：首轮 `summary.json` 记的是
+**注意这里是「合着读」才能得出「全通」**：首轮 `summary.json` 记的是
 `里可林淘宝 failed / 网林天猫 ok / 盖文淘宝 failed / 科塔淘宝 ok` ——
-两家失败，各补跑一次之后才成。**`summary.json` 不会因为后来补跑成功而回写。**
+两家失败，各补跑一次之后才成。
+
+**而这个目录里现在躺着的 `summary.json` 已经不是那一轮的了**：它是**每轮覆盖**写的，
+最后一次写入是「盖文淘宝」那次补跑（`startedAt 04:44:25Z / finishedAt 04:46:37Z`），
+所以里面**只有 `盖文淘宝: ok` 一家**（实测 `Object.keys(summary.shops).length === 1`）。
+⇒ **判「四家跑完没」不能读这个文件**，要看两处：
+
+- 四家各自的 `NN-<阶段>.txt`（每阶段 `status: 0`），
+- 四家的 `inquiry-backfill-receipt.json`（见下表 `before → after` 与 `COMMITTED_AND_VERIFIED`）。
 
 ## 中途两次失败（都不是链本身的问题）
 
