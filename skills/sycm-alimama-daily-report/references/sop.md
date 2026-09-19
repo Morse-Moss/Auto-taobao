@@ -321,6 +321,35 @@ M9「关完不回读」、M10/M11「关不掉的页面又回到关闭计划」�
 
 ---
 
+### 1.5 第五家「盖文天猫」的实例与「店铺 profile 卫生开关」（2026-09-19 加）
+
+用户当天的口径（原话）：「盖文旗舰店，和盖文全卫定制是两家店……全卫就是盖文淘宝，另一个是天猫」
+「**没有专用浏览器就新增一个**」。这家店此前靠唯一那台商家浏览器（19022）登着它的号来采
+（09-14/15/16 的日报就是它），那台一登别家就采不到它 —— 这就是「五家」长期缺一角的根因。
+
+- 五家店的端口对照（唯一来源 `runtime/browser-ports.mjs` 的 `SHOP_BROWSERS`）：
+  里可林淘宝 19031/19041｜网林天猫 19032/19042｜盖文淘宝 19033/19043｜**盖文天猫 19035/19045**｜科塔淘宝 19034/19044。
+- 起法（一店一台浏览器 ＋ 一店一个代理进程，两个都要起）：
+  ```
+  PROJECT_BROWSER_PORT=19035 PROJECT_BROWSER_PROFILE=D:/Retire/edge-profiles/gaiwen-flagship \
+    node runtime/start-project-browser.mjs
+  node runtime/start-shop-proxy.mjs gaiwen-flagship      # 也接受运营叫法「盖文天猫」
+  ```
+  启动日志里应看到 `额外开关：--disable-sync（来自登记表，不是临时加的）`。
+- **`--disable-sync` 不是可选项**：不带它，新建 profile 会把个人密码库（实测 47 条，还含当时存在于
+  旧 profile 里的**别家店凭据**）同步进来 —— 于是「在里可林家的窗口里自动填出盖文家的账号」。
+  实测配方见 `docs/ops/MULTI-SHOP-AND-INTERACTION-DECISION.md` §5.3.1。
+  本仓库已把它做成登记表里的 `SHOP_BROWSER_EXTRA_ARGS`（**每次启动都带**，不是「首次记得带」），
+  且**两个老浏览器（竞品／商家）的 argv 逐字不变** —— 这条有判据，突变验证过。
+- **新实例建好 ≠ 能采**：profile 是空白的，必须**有人登一次账号**（本链不接触明文，只驱动浏览器自己的
+  密码库 + 一次可信手势）。窗口标题写着店名（`盖文天猫 · 日报采集窗口`），没登录时两个工作页停在
+  `sycm.taobao.com/custom/login.htm` 与 `one.alimama.com/index.html#!/login/index` —— 标签页会把这句
+  直接印出来（`这家店还没登录：看到登录页的是 …`）。登录后要把这家的身份用采集那两个表达式各读一次、
+  把登记表升到 `expression`（`shop-identities.test.mjs` 里有一张**显式**的「谁还没验到表达式级」清单）。
+- **新增一家时的连带改动清单**（漏一个要么红、要么漂）：① `SHOP_BROWSERS` ↔ `ISOLATED_PROFILES` 两边同加
+  （逐键互核的判据会自己抓）；② `shop-identities.test.mjs` 里硬编码的条数与那张清单；
+  ③ `run-multi-shop-day.test.mjs` 里拿「在登记表里但没有窗口的店」当反例的两条断言。
+
 ## 2. 日期落位（先做这一步，再做任何采集）
 
 两个站点的落位方式不同，这是实测结论，不是设计偏好。用同一个脚本：
