@@ -795,6 +795,26 @@ zip 哈希不同、**CSV 逐字节相同** —— 差异只来自条目名里的
 | 9 | 上一条加 `--commit` | 两个字段写后回读一致；审计表多一行 `inquiry-backfill/ok` |
 | 10 | `readback-daily-report.mjs --date <日>` | 底单/询单表 `recordsNum`、当天命中行、`absentFields`、两张截图；页面留在底单 |
 
+**补跑历史日（目标日不是「昨日」）必须给回填加 `--allow-missing-peer`**（2026-09-19 实跑才知道，四家店全栽在这）。
+SYCM「询单到付款」表格在**自定义日期**下只有 3 行（日期行 ＋ 汇总值 ＋ 平均值），而**预设「1天」（＝昨日）**才有同行对比行
+（7 行）⇒ 昨天跑得到同行基准、今天补跑同一天就取不到。默认 fail-closed（这是刻意的：
+默认降级会掩盖「本该有基准却没有」的真故障），所以补历史日要显式降级：
+
+```powershell
+# 单店：只写「询单量」，「同层同行询单量」留空，并在 plan 里记 degraded.code=PEER_UNAVAILABLE
+node skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs --date 2026-09-17 `
+  --proxy http://127.0.0.1:19041 --source-shop 里可林家居 --shop 里可林淘宝 --shop-key 里可林淘宝 `
+  --allow-missing-peer --commit
+
+# 多店铺驱动：同名开关透传给每一家的回填（**默认关**，不传时参数表与从前逐字相同）
+node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date 2026-09-17 `
+  --commit --keep-going --allow-missing-peer --logs evidence/multi-shop-2026-09-17-commit
+```
+
+`--allow-missing-peer` 只作用于回填；push / readback 的参数表不受它影响（真跑时那也会是
+`unknown argument` —— 那两个脚本不认这个参数）。判据在
+`run-multi-shop-day.test.mjs`（三条：默认关、显式才传且只传一次、不污染别的阶段）。
+
 第 2 步与第 5 步之间可以隔很久（平台说最长 10 分钟）—— 所以顺序把等待夹在中间，
 用第 3/4 步把它填掉，不要把一段死等摆在镜头前。
 

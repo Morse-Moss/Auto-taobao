@@ -16,6 +16,8 @@
 //   --verify-existing N  推送段走只读核对（`--verify-existing --expected-before-count N`）：
 //                        核对「目标日那一天那一行还在、字段还对」，不新增不覆盖。
 //   --commit             真写（推送 + 回填都加 `--commit`）。**目标日已被写过会硬重复停止**，先按 SOP §9.3 删那天。
+//   --allow-missing-peer 补跑**历史日**时给回填开的降级开关（默认关，见 backfill 那段的长注释）：
+//                        历史日的 SYCM 表格取不到「同行同层均值」行，不打开它，第 10 步必定 fail-closed 停下。
 //
 // 每台店各走一遍的十个阶段（顺序即 SOP §10.1；第 7/8 步的顺序是实测结论，不是偏好）：
 //   1 alimama-date   2 promotion-submit   3 sycm-date       4 shop-report   5 promotion-fetch
@@ -84,10 +86,13 @@ export function expectedPagesForDailyBrowser() {
 
 export const parseArgs = (argv) => {
   const args = { date: null, shops: null, commit: false, verifyExisting: null, keepGoing: false,
-    only: null, logs: null, downloads: null, shopXlsx: null, promotionZip: null };
+    only: null, logs: null, downloads: null, shopXlsx: null, promotionZip: null,
+    allowMissingPeer: false };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     if (key === '--date') args.date = argv[++i];
+    // 历史日（不是「昨日」）的回填降级开关。**默认关**，见 buildShopStages 里 backfill 那段。
+    else if (key === '--allow-missing-peer') args.allowMissingPeer = true;
     else if (key === '--shops') args.shops = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
     else if (key === '--commit') args.commit = true;
     else if (key === '--verify-existing') args.verifyExisting = Number(argv[++i]);
@@ -129,7 +134,8 @@ export const parseArgs = (argv) => {
  * （只有 sycm-reset 一项，它是一次导航，没有现成脚本）。
  */
 export function buildShopStages(shopKey, options) {
-  const { date, mode, shopXlsx = null, promotionZip = null, expectedBeforeCount = null, downloads = null } = options;
+  const { date, mode, shopXlsx = null, promotionZip = null, expectedBeforeCount = null,
+    downloads = null, allowMissingPeer = false } = options;
   if (!MODES.includes(mode)) {
     throw new Error(`未知模式 ${JSON.stringify(mode)}：只认 ${MODES.join(' / ')}`
       + ' —— 不能默默当排练跑（那样会「以为在提交、其实只是干跑」）');
@@ -205,6 +211,19 @@ export function buildShopStages(shopKey, options) {
   const backfillArgs = ['--date', date, '--proxy', shopProxy, '--source-shop', identity.fullName,
     '--shop', shopKey, '--shop-key', shopKey];
   if (mode === 'commit') backfillArgs.push('--commit');
+  // 历史日的同行基准降级开关（2026-09-19 接）。
+  //
+  // 为什么必须能被显式打开：`run-inquiry-backfill.mjs` 的 `--allow-missing-peer` 把
+  // 「同行同层均值」缺失从 fail-closed 降级成「只写询单量、那一格留空并记账」，
+  // 而**驱动从来没接过这根线** ⇒ 补跑任何历史日，第 10 步必定以
+  // `expected one benchmark row 同行同层均值, got 0` 收场（四家店全停在那里）。
+  // 实测口径（2026-09-19，真页面）：SYCM「询单到付款」表格在**自定义日期**下只有 3 行
+  // （日期行 + 汇总值 + 平均值），同行对比行只有预设「1天」（＝昨日）才有 ⇒
+  // 任何历史日都拿不到基准，这不是解析失败，是数据源不给。
+  //
+  // 为什么**默认仍然关**：默认降级会掩盖「本该有基准却没有」的真故障。所以口径是
+  // 「调用方知道自己跑的是历史日，才显式打开」——不给这个参数时，参数表与从前逐字相同。
+  if (allowMissingPeer) backfillArgs.push('--allow-missing-peer');
   add('backfill', 'run-inquiry-backfill.mjs', backfillArgs, shopEnv,
     mode === 'commit' ? '询单回填（写两个字段）' : '询单回填干跑（取数 + 判处置，不写）');
 
@@ -408,7 +427,8 @@ async function main() {
     };
 
     try {
-      for (const stage of buildShopStages(key, { date: args.date, mode, expectedBeforeCount: args.verifyExisting, downloads })) {
+      for (const stage of buildShopStages(key, { date: args.date, mode, expectedBeforeCount: args.verifyExisting, downloads,
+        allowMissingPeer: args.allowMissingPeer })) {
         // 采集段产出的两条路径要在 push 之前填进参数。**三种模式都要填**：
         // `--shop-xlsx` / `--promotion-zip` 在 run-daily-report.mjs 里是必填参数，
         // 「只读核对就不给源文件」会让 push 直接 missing required argument —— 那就不是只读，

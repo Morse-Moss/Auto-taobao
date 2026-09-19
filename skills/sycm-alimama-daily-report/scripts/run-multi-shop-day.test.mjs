@@ -163,6 +163,32 @@ test('驱动：三种模式的写入口径（排练两个写入方都干跑；ve
   }
 });
 
+test('驱动：历史日回填降级开关默认关、只在显式打开时透传，且不污染别的阶段', () => {
+  // 为什么这三条都要断言（2026-09-19 实测）：`run-inquiry-backfill.mjs` 早就支持
+  // `--allow-missing-peer`，但驱动没接 ⇒ 四家店补跑 09-17 时**全部**停在第 10 步
+  // （`expected one benchmark row 同行同层均值, got 0`）。接线本身要能被断言，
+  // 否则「开关存在」与「开关被用上」是两件事，现象完全一样（都是停在回填）。
+  //
+  // 但默认必须是关的：默认降级会掩盖「本该有基准却没有」的真故障。
+  // 所以第一条断言守的是「不传时，参数表与从前逐字相同」。
+  for (const mode of MODES) {
+    const argv = byStage(stagesOf(SHOP, { mode, expectedBeforeCount: 1879 })).backfill.argv;
+    assert.equal(countFlag(argv, '--allow-missing-peer'), 0, `${mode} 模式默认不该降级`);
+  }
+
+  const stages = byStage(stagesOf(SHOP, { mode: 'commit', allowMissingPeer: true }));
+  assert.equal(countFlag(stages.backfill.argv, '--allow-missing-peer'), 1, '显式打开时要传且只传一次');
+  assert.equal(countFlag(stages.backfill.argv, '--commit'), 1, '降级开关不该顶掉 --commit');
+  // 只影响回填。若它漏到 push/readback，就会把「写飞书那一侧」也变成降级路径 ——
+  // 而那两个脚本根本不认这个参数（会 unknown argument）。
+  for (const name of ['push', 'readback']) {
+    assert.equal(countFlag(stages[name].argv, '--allow-missing-peer'), 0, `${name} 被降级开关污染了`);
+  }
+
+  assert.equal(parseArgs(['--date', DATE, '--allow-missing-peer']).allowMissingPeer, true);
+  assert.equal(parseArgs(['--date', DATE]).allowMissingPeer, false);
+});
+
 test('驱动：未知模式 / 错日期 / verify 缺 expectedBeforeCount / 未登记的店，一律抛错不静默', () => {
   assert.throws(() => stagesOf(SHOP, { mode: 'dry' }), /未知模式/u);
   assert.throws(() => stagesOf(SHOP, { mode: undefined }), /未知模式/u);
