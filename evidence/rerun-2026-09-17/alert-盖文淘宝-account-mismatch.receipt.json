@@ -1,0 +1,18 @@
+{
+  "version": "feishu-notify-receipt-v1",
+  "status": "SENT",
+  "channel": "app",
+  "alertId": "sycm-account-mismatch-盖文淘宝-20260919",
+  "sentAt": "2026-09-19T01:49:16.214Z",
+  "sentAtLocal": "2026-09-19 09:49",
+  "attempts": [
+    {
+      "channel": "app",
+      "ok": true,
+      "target": "ou_e254f8d7d91a042b31fcd59299a1a4a9",
+      "targetKind": "open_id（私聊，非群）",
+      "messageId": "om_x100b65eaef05a8a0b2a0b5df6b359d7"
+    }
+  ],
+  "note": "接收者只有这一个 open_id，是私聊不是群聊 ⇒ 投递面等于用户本人，无第三方可见。"
+}
