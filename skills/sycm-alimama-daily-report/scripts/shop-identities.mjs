@@ -130,13 +130,15 @@ export const SHOP_IDENTITIES = Object.freeze([
     fullName: '盖文旗舰店',
     platform: 'tmall',
     sycmHeader: '盖文旗舰店',
-    // 只在页面正文里读到「生意参谋 盖文旗舰店 主店 惠商 …」，没走那两个表达式 ⇒ 如实降级
-    sycmHeaderVerified: 'text',
+    sycmHeaderVerified: 'expression',
     alimamaMemberName: '盖文旗舰店:阿彦',
     alimamaMemberId: '2995200080',
-    // 生产那个窗口当时连不上（探针 fetch failed），这个 ID 是人工从页面上抄下来的 ⇒ 如实标
-    alimamaVerified: 'human-record',
-    evidence: '2026-09-17 生意参谋页头正文（独立探针）；会员 ID 记于 docs/ops/MULTI-SHOP-AND-INTERACTION-DECISION.md §5.3.2',
+    alimamaVerified: 'expression',
+    // 2026-09-19 用户登录了这台专用窗口（19035/19045），随即用 lib 里那两个表达式各读一次：
+    // 生意参谋页头「盖文旗舰店 主店」、阿里妈妈「盖文旗舰店:阿彦 ID：2995200080」。
+    // **与 2026-09-17 人工抄下来的那两个值逐字一致** —— 人工记录这次被证明是对的，
+    // 但在此之前它只能是 `human-record`，不能当判据用（判据必须来自可复现的读法）。
+    evidence: '2026-09-19 实测：隔离 profile gaiwen-flagship 的窗口，两个表达式各读一次（此前 2026-09-17 只有页面正文/人工抄录）',
   }),
   Object.freeze({
     key: '保拉淘宝',
