@@ -1,0 +1,10 @@
+# runtime 段套件（scripts/run-test-suite.mjs runtime --concurrency=1）
+# 基线是 642（本轮之前），本次 643 —— 多出来的 1 条就是本轮的「两套名字是同一家店」
+
+# tests 643
+# pass 643
+# fail 0
+# cancelled 0
+# skipped 0
+# duration_ms 5587.6094
+# not ok 行数：0

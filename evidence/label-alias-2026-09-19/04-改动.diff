@@ -1,0 +1,7 @@
+fb9e7706b499845fe2cd39ddc7194eeadcdf04be
+Sat Sep 19 11:00:47 2026 +0800
+窗口标签页上明说「同一个店的两个名字」
+
+ runtime/shop-window-label.html     | 17 +++++++++++++++++
+ runtime/shop-window-label.test.mjs | 34 ++++++++++++++++++++++++++++++++++
+ 2 files changed, 51 insertions(+)

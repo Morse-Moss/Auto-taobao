@@ -1,0 +1,54 @@
+{
+  "total": 5,
+  "caught": 5,
+  "allRestored": true,
+  "originalSha": "677312f1df82fee553e4267114c9ee60c8246a35a9920a5e43efcbbe939880b8",
+  "currentSha": "677312f1df82fee553e4267114c9ee60c8246a35a9920a5e43efcbbe939880b8",
+  "results": [
+    {
+      "id": "M1",
+      "what": "把显示那一行整个删掉（页面回到「两行并排、自己推」的状态）",
+      "ok": true,
+      "red": true,
+      "named": true,
+      "restored": true,
+      "note": "抓到"
+    },
+    {
+      "id": "M2",
+      "what": "只放一个空 div、不往里写东西（占着位置但页面上什么都没有）",
+      "ok": true,
+      "red": true,
+      "named": true,
+      "restored": true,
+      "note": "抓到"
+    },
+    {
+      "id": "M3",
+      "what": "把两套名字的关系那句去掉，只并排写两个名字（等于没解释）",
+      "ok": true,
+      "red": true,
+      "named": true,
+      "restored": true,
+      "note": "抓到"
+    },
+    {
+      "id": "M4",
+      "what": "只量到店名就显示（写半句：有飞书叫法、没有会员名）",
+      "ok": true,
+      "red": true,
+      "named": true,
+      "restored": true,
+      "note": "抓到"
+    },
+    {
+      "id": "M5",
+      "what": "这一行里混进凭据面（这个 URL 会进浏览历史）",
+      "ok": true,
+      "red": true,
+      "named": true,
+      "restored": true,
+      "note": "抓到"
+    }
+  ]
+}
