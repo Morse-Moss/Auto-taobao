@@ -184,6 +184,57 @@ node runtime/shop-window-label.mjs --prune --commit                        # 真
 仍然匹配得上（源码判据要先剥注释，这是本仓库该条的第二次发作）。剥注释后复跑 5/5 全抓住。
 证据 `evidence/label-alias-2026-09-19/`。
 
+### 1.4 新起的浏览器是空的：工作页要显式开一次（2026-09-19 实跑才知道）
+
+**症状**：`date-picker` 报 `expected one alimama page on http://127.0.0.1:19041, got 0`；
+或者体检阶段就 blocking（`TARGET_PAGE_MISSING`）⇒ 整轮不跑。
+
+**根因**：浏览器起来时 profile 里**只有登录态、没有页面**（新建的 profile 或者上次关掉时没留页）。
+而 `date-picker.resolveTarget` 只在**已有页**里找，它不会新建；体检也一样（只查不见即报缺）。
+`resolveTarget` 的「回位」只对**生意参谋**有效（它有 `entryUrl`），阿里妈妈没有 ⇒ 必须已经开着。
+
+**要开的页**（每台店浏览器两页、商家浏览器两页）：
+
+| 浏览器 | 页 | URL |
+|---|---|---|
+| 每台店浏览器 | 生意参谋工作页 | `https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop` |
+| 每台店浏览器 | 阿里妈妈页 | `https://one.alimama.com/index.html` |
+| 商家浏览器 | 生意参谋工作页 | 同上 |
+| 商家浏览器 | **飞书底单页** | 见下方那条坑 |
+
+生意参谋**必须写完整路径**（体检与落位用的都是 `sycm.taobao.com/qos/service/frame/shop/performance`
+这个路径级片段）—— 只写 `sycm.taobao.com` 会开到门户首页，那不但不算工作页，
+还会让宽判据选错页（§12.7）。
+
+⚠️ **飞书底单页必须带 `?table=&view=`，而且必须用脚本期望的那两个值**：
+
+```
+https://<host>/base/<baseToken>?table=<dailyReportTargets().sourceTable>&view=<dailyReportTargets().sourceView>
+（本机现值 → table=tblkY3W8tnPWPcnh  view=vewwg0rhjo，即**底单表**与它的视图）
+```
+
+裸开 `https://<host>/base/<baseToken>`（不带 table/view）时，飞书会默认停在**另一张表**上
+（本机实测停在询单表 `tblUnwn05vl8Wik9` + `vewHgmRhGR`），于是 push 阶段直接停：
+
+```
+Error: Feishu page is not on authorized table/view: …?table=tblUnwn05vl8Wik9&view=vewHgmRhGR
+```
+
+**别抄那行报错里的 table/view** —— 那是「页面实际停在哪」，不是「脚本要哪」。
+正确值只有一个来源：`feishu-targets.mjs` 的 `dailyReportTargets()`。
+（`run-daily-report.mjs` 的 `inspectTarget` 就是拿它两个字段跟页面 URL 逐字比的。）
+
+开页探针在仓库外：`D:/Retire/probe-live/86-open-shop-pages.mjs`（`--dry-run` 先看要开什么，
+不带参数才真开；只开**缺的**那些，已有的不动）。归位飞书页：`90-fix-feishu-page.mjs`。
+两个都放仓库外，因为仓库内的临时探针会被端口守卫扫到。
+
+**开完必须验两件事**（顺序别倒）：
+
+1. `node runtime/shop-window-label.mjs`（只读）—— 每台是不是「两个工作页 + 一个标签页」；
+2. 身份逐字对一次（`87-identity-all.mjs`，四台一起读）：生意参谋页头 + 阿里妈妈会员名要
+   **与 `shop-identities.mjs` 完全一致**。**新起的浏览器登录态通常还在**（2026-09-19 实测四台全在），
+   但这是现场事实、不是保证 —— 没验过就不能当它在。
+
 ⚠️ 这条路上本轮踩过一次：`memberNameFor` 第一版写成了对象下标 `identities[name]`，
 而登记表是**数组** ⇒ 永远返回 `null` ⇒ 页面上那一行永远空着**且不报错**
 （症状与「这家店确实没登记」一模一样）。修法是让**形状错误抛错**、只有「找不到这家店」才返回
@@ -889,6 +940,7 @@ node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date 2026
 | 出问题 | 兜底 |
 | --- | --- |
 | 阿里妈妈弹窗 / 按钮点空 | 脚本已先 `scrollIntoView` 再 `elementFromPoint` 复核；报错时把 `y` 与「视口内」一起打出来，先看这两个数 |
+| 复核报 `not-hit`，且 `遮挡物` 是个**全屏** div | 那是**平台自己的推广弹窗压住了整页**，不是选择器选错。判据：遮挡物 `position:fixed`、`width/height:100%`、`z-index` 五位数。2026-09-19 实测（盖文淘宝）：阿里妈妈「优质计划防停投」引导弹窗 `#wrapper_dlg_982`（`data-owner-id=universalBP_tool_auto_dlg`，z-index 99999）盖住全页 ⇒ 「下载报表」`命中自己=0`。**它稳定复现**（同一坐标连测两次一模一样），所以**上面那条「等一会儿重跑」不适用** —— 等多久都不会好。关掉它再重跑：`node D:/Retire/probe-live/93-close-blocker.mjs`（探针会先复核「关闭按钮中心点命中它自己」再真点，点完**回读弹窗是否消失**并顺手回读「下载报表」能不能点到了）。**别去猜按钮坐标**：那个弹窗的关闭按钮是它里面 16×16 的那个 `button`，位置随弹窗尺寸变 |
 | 取件报 `action-row-hidden` / 勾选回读不是 `true` | 目标任务行的操作行没显形。先看回读到的 `checked` —— 选行这一步没成，后面全是空跑；停在这里比继续省事（§4.2） |
 | 勾选回读 `checked=false`（点了却不生效） | 实测一次是**页面被 z-index 999999 的浮层盖住了第一行**（`elementFromPoint` 命中的是浮层里的 `TD`，不是复选框）。浮层会自己收起 ⇒ **等一会儿重跑**即可，第二次就过了。这种「点错不报错」的页面别加大轮询时长，先确认那一点到底命中谁 |
 | 回填报 `expected one SYCM shop-performance page, got 0` | 第 4 步把生意参谋留在预览页了 ⇒ 先做「生意参谋回位」并**重跑第 3 步**（见 §10.1 表下那段） |

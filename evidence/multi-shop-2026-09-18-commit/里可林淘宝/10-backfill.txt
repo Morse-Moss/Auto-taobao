@@ -1,0 +1,19 @@
+
+===== 2026-09-19T04:41:26.961Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-inquiry-backfill.mjs --date 2026-09-18 --proxy http://127.0.0.1:19041 --source-shop 里可林家居 --shop 里可林淘宝 --shop-key 里可林淘宝 --commit
+exit=0 signal= error=none
+--- stdout ---
+[audit] 已记 inquiry-backfill/ok id=36
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-18-里可林淘宝\\inquiry-backfill-receipt.json",
+  "recordId": "recvtXf7hjwpgV",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-18-里可林淘宝",
+  "values": {
+    "询单量": 4,
+    "同层同行询单量": 6
+  },
+  "unchangedOtherFields": true
+}
+
+--- stderr ---
