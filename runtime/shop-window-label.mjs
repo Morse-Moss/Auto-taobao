@@ -272,6 +272,35 @@ async function readTargets(proxyUrl, fetchImpl) {
 }
 
 /**
+ * 把店名标签页**钉住**。
+ *
+ * 为什么必须有这一步（2026-09-19 实测出来的，不是设想）：
+ * 代理 (`runtime/isolated-proxy/cdp-proxy.mjs`) 有一张 managedTabs 表，
+ * `/new` 建的所有页都在里面，**空闲 15 分钟（CDP_TAB_IDLE_TIMEOUT）就被自动关掉**，
+ * 代理退出时还会再关一轮。店名标签页也是 `/new` 建的 ⇒ 一样会被收走。
+ * 症状就是本项目反复见到的「页面自己消失了」：客户打开窗口，标签页没了，
+ * 四个窗口又长得一模一样 —— 而「让人知道哪个窗口是哪家店」恰恰是它存在的唯一理由。
+ * 代理那边加了 `pinned` 语义（闲置不回收、退出也不关），这里负责把标记打上。
+ *
+ * 钉不住**不抛错**：那只是退回「会过期」的旧行为，不该让挂标签页这件事整个失败；
+ * 但要把结果如实返回，让调用方看得见（假绿灯比红灯危害大）。
+ */
+export async function pinLabelTab(proxyUrl, targetId, fetchImpl = fetch) {
+  if (!targetId) return { pinned: false, reason: '没有 targetId' };
+  try {
+    const response = await fetchImpl(`${proxyUrl}/pin?target=${encodeURIComponent(targetId)}`,
+      { method: 'POST', signal: AbortSignal.timeout(10000) });
+    if (!response.ok) {
+      return { pinned: false, reason: `代理回 HTTP ${response.status}（旧版代理没有 /pin？那就先重启代理）` };
+    }
+    const payload = JSON.parse(await response.text());
+    return { pinned: payload?.pinned === true, reason: null };
+  } catch (error) {
+    return { pinned: false, reason: String(error?.message ?? error).slice(0, 140) };
+  }
+}
+
+/**
  * 让这家店的窗口里恰好有一个窗口标签页，且它写的是这家店、以及（可选）当前登录状态。
  *
  * 幂等：已存在就导航它（不会越堆越多），不存在才新建。
@@ -298,13 +327,20 @@ export async function ensureLabelTabOn({
   if (labels.length === 1) {
     await fetchImpl(`${proxyUrl}/navigate?target=${encodeURIComponent(labels[0].targetId)}&url=${encodeURIComponent(url)}`,
       { method: 'POST', signal: AbortSignal.timeout(15000) });
-    return { ok: true, shop, reused: true, targetId: labels[0].targetId, url, classified };
+    // 复用**也要钉一次**：这个标签页可能是「还没有 pinned 语义的那版」挂的，
+    // 不钉的话它照样会在 15 分钟后被收走 —— 而那种失效要等一刻钟才显形。
+    const pinned = await pinLabelTab(proxyUrl, labels[0].targetId, fetchImpl);
+    return { ok: true, shop, reused: true, targetId: labels[0].targetId, url, classified, pinned };
   }
   const created = JSON.parse(await fetchImpl(
-    `${proxyUrl}/new?url=${encodeURIComponent(url)}&label=window-label`,
+    `${proxyUrl}/new?url=${encodeURIComponent(url)}&label=window-label&pinned=1`,
     { method: 'POST', signal: AbortSignal.timeout(15000) },
   ).then((r) => r.text()));
-  return { ok: true, shop, reused: false, targetId: created?.targetId ?? null, url, classified };
+  const targetId = created?.targetId ?? null;
+  // 新建分支也显式钉一次：`pinned=1` 只对认这个参数的代理有效，
+  // 旧版代理会把它当无关参数忽略掉 —— 那一步的失败要看得见，而不是让人以为钉住了。
+  const pinned = await pinLabelTab(proxyUrl, targetId, fetchImpl);
+  return { ok: true, shop, reused: false, targetId, url, classified, pinned };
 }
 
 /**
@@ -460,7 +496,16 @@ async function main() {
           proxyUrl, shop, port: entry.browserPort, state, ok, member,
         });
         row.labelTab = result.ok
-          ? { ok: true, reused: result.reused, targetId: result.targetId }
+          ? {
+            ok: true,
+            reused: result.reused,
+            targetId: result.targetId,
+            // 钉住的结果必须如实报出来：钉不住（例如代理还是旧版、没有 /pin）时，
+            // 标签页会在 15 分钟后被代理收走 —— 那是**延迟出现**的失效，
+            // 不写进输出就等于没有人会知道。
+            pinned: result.pinned?.pinned === true,
+            ...(result.pinned?.pinned === true ? {} : { pinReason: result.pinned?.reason ?? '未知' }),
+          }
           : { ok: false, error: result.error };
         row.labelState = state === null
           ? '没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）'

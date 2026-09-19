@@ -11,6 +11,7 @@ import os from 'node:os';
 import net from 'node:net';
 import { selectBrowser, describeIsolatedTarget } from './browser-discovery.mjs';
 import { waitForDocumentReady } from './wait-for-load.mjs';
+import { selectIdleTabs, selectShutdownTabs, countPinned } from './managed-tabs.mjs';
 import { PROJECT_PORTS, resolvePort } from '../browser-ports.mjs';
 
 // 2026-09-17 删掉两处死代码（坑 38）：
@@ -250,6 +251,22 @@ async function enablePortGuard(sessionId) {
 }
 
 // --- 闲置 Tab 自动清理 ---
+//
+// **「钉住的标签页」不参与清理**（2026-09-19 加，起因是一次实测，不是设想）：
+// 店名标签页（`runtime/shop-window-label.mjs` 挂的那个 —— 客户靠它认「这个窗口是哪家店」）
+// 也是用 `/new` 建的 ⇒ 一样进 managedTabs ⇒ **空闲 15 分钟就被这里关掉**，
+// 而且代理退出时还会被 closeAllManagedTabs 一并关掉。
+// 现场症状正是本项目反复见过的「页面自己消失了」：客户打开窗口，标签页没了，
+// 四个窗口又长得一模一样 —— 而「让客户知道哪个窗口是哪家店」恰恰是它存在的唯一理由。
+//
+// 所以钉住的页要**两头都豁免**：闲置不关、代理退出也不关。
+// （代理重启是常事 —— 起跑前重起代理是 SOP 的一部分，标签页跟着消失就等于没挂。）
+// 不钉的页保持原行为：采集工作页本来就该被回收，那个「清页签省内存」的口径不变。
+//
+// 判定本身**不在这里**：`isPinned` / `selectIdleTabs` / `selectShutdownTabs` 住在
+// `./managed-tabs.mjs`（纯函数，有单测）。这段之所以要搬出去，是因为本模块 import 就起
+// 服务器 ⇒ 内联在这里的判定**没有测试碰得到**，而「测试碰不到」在这个仓库里等于
+// 「下次改坏了没人知道」。这里只负责：拿到要关的 id 列表，交给 Target.closeTarget。
 function touchTab(targetId) {
   const entry = managedTabs.get(targetId);
   if (entry) entry.lastAccessed = Date.now();
@@ -257,9 +274,7 @@ function touchTab(targetId) {
 
 async function cleanupIdleTabs() {
   if (!ws || (ws.readyState !== WS.OPEN && ws.readyState !== 1)) return;
-  const now = Date.now();
-  for (const [targetId, info] of managedTabs) {
-    if (now - info.lastAccessed < TAB_IDLE_TIMEOUT) continue;
+  for (const targetId of selectIdleTabs(managedTabs, { now: Date.now(), idleTimeoutMs: TAB_IDLE_TIMEOUT })) {
     try { await sendCDP('Target.closeTarget', { targetId }); } catch { /* tab may already be closed */ }
     sessions.delete(targetId);
     managedTabs.delete(targetId);
@@ -270,14 +285,16 @@ async function cleanupIdleTabs() {
 
 async function closeAllManagedTabs() {
   if (!ws || (ws.readyState !== WS.OPEN && ws.readyState !== 1)) return;
-  const targets = [...managedTabs.keys()];
-  for (const targetId of targets) {
+  const closable = selectShutdownTabs(managedTabs);
+  const kept = countPinned(managedTabs);
+  for (const targetId of closable) {
     try { await sendCDP('Target.closeTarget', { targetId }); } catch { /* ignore */ }
     sessions.delete(targetId);
     managedTabs.delete(targetId);
     targetLabels.delete(targetId);
   }
-  if (targets.length) console.log(`[CDP Proxy] Shutdown: closed ${targets.length} managed tab(s)`);
+  if (closable.length) console.log(`[CDP Proxy] Shutdown: closed ${closable.length} managed tab(s)`);
+  if (kept > 0) console.log(`[CDP Proxy] Shutdown: 留下 ${kept} 个钉住的标签页（店名标签页这类，客户要一直看得到）`);
 }
 
 // --- 等待页面加载 ---
@@ -332,6 +349,9 @@ const server = http.createServer(async (req, res) => {
         browser: connectedBrowser,
         sessions: sessions.size,
         managedTabs: managedTabs.size,
+        // 钉住的页数单独报出来（2026-09-19）：店名标签页是否真的被钉住，
+        // 原本只能靠「过 15 分钟再来看还在不在」，现在起手一句 /health 就能核。
+        pinnedTabs: countPinned(managedTabs),
         chromePort,
       }));
       return;
@@ -360,12 +380,14 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(pages, null, 2));
     }
 
-    // GET /new?url=xxx - 创建新后台 tab
+    // GET /new?url=xxx[&label=yyy][&pinned=1] - 创建新后台 tab
+    // `pinned=1` ⇒ 这个页不参与闲置回收、代理退出也不关（见上面「钉住的标签页」那段）。
+    // 不传就与从前逐字相同 —— 采集工作页要靠回收把内存还回去。
     else if (pathname === '/new') {
       const targetUrl = q.url || 'about:blank';
       const resp = await sendCDP('Target.createTarget', { url: targetUrl, background: true });
       const targetId = resp.result.targetId;
-      managedTabs.set(targetId, { lastAccessed: Date.now() });
+      managedTabs.set(targetId, { lastAccessed: Date.now(), pinned: q.pinned === '1' });
       if (q.label) targetLabels.set(targetId, q.label.slice(0, 200));
 
       // 等待页面加载
@@ -396,6 +418,21 @@ const server = http.createServer(async (req, res) => {
       }
       targetLabels.set(q.target, label);
       res.end(JSON.stringify({ labeled: true, label }));
+    }
+
+    // GET /pin?target=xxx - 把某个页钉住：闲置不回收、代理退出也不关
+    // 用在店名标签页上（客户靠它认窗口）。**已经存在的页也能钉** —— 否则「标签页是旧版本挂的」
+    // 就只能靠先关再建，而关掉客户正在看的页是另一件要人同意的事。
+    else if (pathname === '/pin') {
+      const targets = await sendCDP('Target.getTargets');
+      const exists = targets.result?.targetInfos?.some(t => t.targetId === q.target && t.type === 'page');
+      if (!exists) {
+        res.statusCode = 400;
+        res.end(JSON.stringify({ error: 'target must be an existing page target' }));
+        return;
+      }
+      managedTabs.set(q.target, { lastAccessed: Date.now(), pinned: true });
+      res.end(JSON.stringify({ pinned: true, targetId: q.target }));
     }
 
     // GET /close?target=xxx - 关闭 tab

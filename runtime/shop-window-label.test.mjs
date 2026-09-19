@@ -112,6 +112,12 @@ function fakeProxy({ targets, calls }) {
     if (href.includes('/new')) {
       return { ok: true, status: 200, json: async () => ({}), text: async () => '{"targetId":"new-1"}' };
     }
+    if (href.includes('/pin')) {
+      // 真代理回 `{"pinned":true,"targetId":...}`（见 cdp-proxy.mjs 的 /pin 端点）。
+      // 假代理这里必须也认这个地址：不认的话 pinLabelTab 会走到它的 catch 分支，
+      // 于是「有没有钉住」这件事在离线用例里被静默吞掉 —— 见下面那条专门断言它的用例。
+      return { ok: true, status: 200, json: async () => ({ pinned: true }), text: async () => '{"pinned":true}' };
+    }
     if (href.includes('/close')) {
       closed.add(new URL(href).searchParams.get('target'));
       return { ok: true, status: 200, json: async () => ({}), text: async () => '{"ok":true}' };
@@ -579,3 +585,81 @@ test('「是否停在登录页」只影响提示，不影响清理处置（改�
     '登录与否不该改变清理计划 —— 否则「只是加了个提示」会静默改掉处置');
   assert.deepEqual(b.keep.map((t) => t.targetId), a.keep.map((t) => t.targetId));
 });
+
+// ---------------------------------------------------------------------------
+// 钉住标签页（2026-09-19）
+//
+// 这一段的由来：店名标签页是「让客户知道哪个窗口是哪家店」的唯一落点，而它也是用 `/new`
+// 建的 ⇒ 进代理的 managedTabs ⇒ **闲置 15 分钟被自动回收、代理退出再关一轮**。
+// 现场表现是「页面自己消失了」，而没有任何一处报错。修法是 `/pin`。
+// 判定本身在 isolated-proxy/managed-tabs.test.mjs；这里守的是「标签页这一侧真的把针扎下去了没」。
+
+const pinCalls = (calls) => calls.filter((c) => c.url.includes('/pin'));
+const pinTargetOf = (call) => new URL(call.url).searchParams.get('target');
+
+test('复用已有标签页时也要钉一次：老版本挂的标签页照样会被 15 分钟收走', async () => {
+  const calls = [];
+  const result = await ensureLabelTabOn({
+    proxyUrl: 'http://127.0.0.1:19041',
+    shop: '里可林淘宝',
+    port: 19031,
+    fetchImpl: fakeProxy({ targets: REAL_WANG_LIN, calls }),
+  });
+  assert.equal(result.reused, true);
+  const pins = pinCalls(calls);
+  assert.equal(pins.length, 1, '复用分支必须补一次 /pin —— 不补的话它会在 15 分钟后消失，而那种失效要等一刻钟才显形');
+  assert.equal(pinTargetOf(pins[0]), result.targetId, '钉的必须是这个标签页本身');
+  assert.equal(result.pinned.pinned, true, '钉住了就要如实报 true');
+});
+
+test('新建标签页时既带 pinned=1、也显式钉一次（旧版代理会把 pinned=1 当无关参数吞掉）', async () => {
+  const calls = [];
+  const result = await ensureLabelTabOn({
+    proxyUrl: 'http://127.0.0.1:19041',
+    shop: '里可林淘宝',
+    port: 19031,
+    fetchImpl: fakeProxy({ targets: [], calls }),
+  });
+  assert.equal(result.reused, false);
+  assert.equal(result.targetId, 'new-1');
+  const created = calls.find((c) => c.url.includes('/new'));
+  assert.ok(created.url.includes('pinned=1'), '新建时就该把意图带上（新代理一步到位）');
+  const pins = pinCalls(calls);
+  assert.equal(pins.length, 1, '还要显式钉一次：那一刻的代理可能还不认 pinned=1，不补就静默失效');
+  assert.equal(pinTargetOf(pins[0]), 'new-1');
+});
+
+test('钉不住不抛错，但必须如实报出来 —— 挂标签页不该因为这一步整个失败', async () => {
+  const calls = [];
+  const notImplemented = async (url, init = {}) => {
+    calls.push({ url: String(url), method: init.method ?? 'GET' });
+    if (String(url).endsWith('/targets')) {
+      return { ok: true, status: 200, json: async () => REAL_WANG_LIN, text: async () => JSON.stringify(REAL_WANG_LIN) };
+    }
+    if (String(url).includes('/navigate')) {
+      return { ok: true, status: 200, json: async () => ({}), text: async () => '{"ok":true}' };
+    }
+    // 旧版代理：没有 /pin 这个端点（升级前就是这样）。
+    return { ok: false, status: 404, json: async () => ({}), text: async () => '{"error":"Not found"}' };
+  };
+  const result = await ensureLabelTabOn({
+    proxyUrl: 'http://127.0.0.1:19041',
+    shop: '里可林淘宝',
+    port: 19031,
+    fetchImpl: notImplemented,
+  });
+  assert.equal(result.ok, true, '标签页已经挂好了，不该因为钉不住而报整件事失败');
+  assert.equal(result.pinned.pinned, false);
+  assert.match(result.pinned.reason, /404/u, '原因要带上 HTTP 码，否则「钉住了吗」只能靠猜');
+  assert.match(result.pinned.reason, /重启代理/u, '要说清下一步动作 —— 这正是客户看得懂的那句话');
+});
+
+test('代理侧必须真的提供 /pin 与 pinned=1（否则标签页这边发了也没人听）', () => {
+  const source = readFileSync(new URL('./isolated-proxy/cdp-proxy.mjs', import.meta.url), 'utf8');
+  const code = source.replace(/^\s*\/\/.*$/gmu, '');
+  assert.ok(code.includes("pathname === '/pin'"),
+    '代理没有 /pin 端点 ⇒ 标签页那侧的钉住请求永远 404，而失败被吞成「不抛错」⇒ 静默退回被回收的老行为');
+  assert.ok(code.includes("q.pinned === '1'"),
+    '/new 要认 pinned=1；不认的话「新建即钉住」这半条路是空的');
+});
+
