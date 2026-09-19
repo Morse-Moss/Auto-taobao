@@ -12,6 +12,9 @@
   .n{font-size:18px;color:#9ad}
   /* 会员名：`量到才显示` —— 空的 div 不该在版面上占位（`:empty` 让整行连外边距一起消失）。 */
   .m:not(:empty){font-size:20px;color:#9ad;margin-top:10px}
+  /* 「同一个店的两套名字」那一行（2026-09-19 加）：同样量到才显示。 */
+  .a:not(:empty){font-size:16px;color:#777;margin-top:8px;max-width:900px;line-height:1.6}
+  .a b{color:#bbb;font-weight:400}
   .s{font-size:22px;font-weight:700;margin-top:14px}
   .s.ok{color:#5ddc7f}
   .s.bad{color:#ff6b6b}
@@ -23,6 +26,7 @@
 <div class="k">这个浏览器窗口是给这家店用的</div>
 <div class="v" id="shop"></div>
 <div class="m" id="member"></div>
+<div class="a" id="alias"></div>
 <div class="n" id="port"></div>
 <div class="s" id="state"></div>
 <div class="w" id="hint"></div>
@@ -46,6 +50,19 @@
   // **只放会员名，绝不放密码**：这个 URL 会留在浏览历史里，凭据一律不进这里。
   const member = q.get('member') || '';
   if (member) document.getElementById('member').textContent = '会员名 ' + member;
+
+  // 为什么还要再加一行「同一家店的两个名字」（2026-09-19 加，用户原话：
+  // 「这个浏览器不是给随心定制的吗」）：
+  // 大标题写的是**飞书里的叫法**（`盖文淘宝`），下面那行写的是**阿里妈妈会员名**
+  // （`随心品质定制:阿彦`）—— 两套名字字面上毫无关系，于是站在机器前的人会以为
+  // 这本该是另一家店的窗口（这是「同店四名」这个坑在界面侧的第三次发作）。
+  // 单靠把两行并排放，仍然要人自己推「它们是不是同一个店」；这里直接把那句话写出来。
+  // 与上面两行同一口径：**两个名字都量到才显示**，缺一个就整行不显示（不写半句）。
+  const alias = document.getElementById('alias');
+  if (shop && member && shop !== '(未命名)') {
+    alias.innerHTML = '同一个店的两个名字：飞书里叫「<b>' + shop + '</b>」，'
+      + '这个窗口登的会员名是「<b>' + member + '</b>」。';
+  }
 
   // 登录状态是可选的：脚本量到了就带过来，量不到就整行不显示（不写「未知」去占位，
   // 那会让人以为量过了）。不在这里凭空猜 —— file:// 页面读不到调试接口。
