@@ -235,9 +235,24 @@ Error: Feishu page is not on authorized table/view: …?table=tblUnwn05vl8Wik9&v
 所以 §10.0 那次「起跑前逐项确认」**每一轮都要做**，不能只在「刚起浏览器」时做。
 补页只动「同一主机下唯一的那一页」导航回工作页；同主机多于一页时**不动**（重复页要人来决定）。
 
-开页探针在仓库外：`D:/Retire/probe-live/86-open-shop-pages.mjs`（`--dry-run` 先看要开什么，
-不带参数才真开；只开**缺的**那些，已有的不动）。归位飞书页：`90-fix-feishu-page.mjs`。
-两个都放仓库外，因为仓库内的临时探针会被端口守卫扫到。
+开页探针在仓库外：`D:/Retire/probe-live/86-open-shop-pages.mjs`（`--dry-run` 先看要开什么、
+不发写请求；不带才真开；只开**缺的**那些，已有的不动，同一后台多于一页时**只报不动**）。
+归位飞书页：`90-fix-feishu-page.mjs`。两个都放仓库外，因为仓库内的临时探针会被端口守卫扫到。
+
+⚠️ **新建页一律要 `pinned=1`**（`GET /new?url=…&label=…&pinned=1`），这不是可选项：
+不带的页进代理的 `managedTabs`，**闲置 15 分钟**就被 `cleanupIdleTabs()` 关掉（§1.3.1）
+⇒「今晚补好、明早没了」，而且**全程不报错**。跑批期间页在被不断使用、看不出来；
+跑批前那十几个小时的空档才是它发作的时候。
+
+**2026-09-19 晚重写（旧版三处都错，别再退回）**：旧版
+① 飞书页写死 `https://feishu.cn/base/<token>`、**不带 `?table=&view=`**（本节开头那个坑）；
+② `/new` 不带 `pinned=1`（上一条，最致命）；
+③ 店铺与端口手抄成清单（上一轮就因为探针自己的端口表里没有 19035，把「表里没有」读成了「这家店不在了」）。
+新版这三样全部**从仓库权威取**：期望页面清单来自 `run-multi-shop-day.mjs` 的
+`expectedPagesForDailyBrowser` / `expectedPagesForShop`，开页 URL 来自 `date-picker` 的 `entryUrl`、
+`login-merchant-core` 的 `probeUrl`、`feishu-targets` 的 `sourceTable`/`sourceView`，
+端口与店铺来自 `browser-ports`。期望页面与开页 URL 之间有一条**覆盖断言**：
+新增期望页面而没给「怎么开它」，探针当场抛错而不是静默少开一个。
 
 **开完必须验两件事**（顺序别倒）：
 
@@ -1474,8 +1489,18 @@ node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date yest
 | 登录态 | 各窗口里两个后台都在登录态 | 采集段失败并告警（登录要人做，见 §11） |
 
 工作页**不会自己回来**：新起的浏览器是空的（§1.4），页面被关掉也不会自动重开。
-只读盘点用仓库外探针 `D:/Retire/probe-live/135-expected-pages-inventory.mjs`
-（只 GET `/targets`，报每家店「该有的页面各恰好一个」是不是成立）。
+**驱动也不会替你补页**（体检只查不见即报缺，所以缺页＝整轮不跑＋一条告警）。
+补页是**独立的一步**，两个仓库外探针：
+
+```
+node D:/Retire/probe-live/135-expected-pages-inventory.mjs --allow-missing   # 只读盘点：每家店缺哪一页
+node D:/Retire/probe-live/86-open-shop-pages.mjs --dry-run                   # 先看要开什么（不发写请求）
+node D:/Retire/probe-live/86-open-shop-pages.mjs                             # 真开（只开缺的，一律钉住）
+```
+
+补页口径三条（都在 §1.4）：**只开缺的**、**同一后台多于一页就只报不动**（关哪一个是人的决定）、
+**新建一律 `pinned=1`** —— 不带 `pinned` 的页闲置 15 分钟就被代理回收，表现为「今晚补好、明早没了」
+且不报错。补完用 `135` 复核一遍，再跑上面的干验证命令。
 
 **挂到 Windows 任务计划**（触发层只负责叫醒，判据在命令里）：
 
@@ -1498,4 +1523,7 @@ schtasks /Create /TN "sycm-daily-round" /SC DAILY /ST 11:40 /TR "<见下>"
 这一层还不成立，现在挂的就是直接跑这一条命令）；体检层只实现 L1（§12.8）；
 定时器不在 WorkBuddy 会话里，**浏览器进程得由别的东西保活** —— 本项目进程绑会话、会话结束可能被回收，
 所以机器重启或回收之后任务会先栽在体检上并发告警（这是**预期内的失败方向**：它叫人，而不是假装成功）。
+**缺页也不会自愈**：补页是独立的一步（上面那两个探针），驱动只查不补 ⇒ 页不在就到点发告警、
+等有人补完再重跑。**所以严格说现在这一档是「一条命令跑完全链」，不是「没人管也能跑」** ——
+真无人值守还差三件：进程保活、缺页自愈、体检层往上做（L2/L3）。
 
