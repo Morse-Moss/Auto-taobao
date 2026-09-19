@@ -101,11 +101,25 @@ export const BROWSER_PROFILES = Object.freeze({
 //      走的是代理的 /targets /eval /navigate /click /screenshot；裸 CDP 端口只有 /json/list
 //      ⇒ 2026-09-18 实测：四个店铺窗口「页面上什么都有，脚本一个也连不上」。
 //
-// 端口段 19041-19049：与日报链（19022/19023）、运营台（19024）、
-// 以及这四个浏览器自己的调试端口（19031-19034）都不重叠。
+// 端口段 19031-19039（调试）/ 19041-19049（代理）：与日报链（19022/19023）、运营台（19024）
+// 都不重叠。2026-09-19 起五家店用掉 19031-19035 与 19041-19045。
+//
+// 店铺 profile 的「卫生开关」（2026-09-18 的 A/B 实测，见
+// docs/ops/MULTI-SHOP-AND-INTERACTION-DECISION.md §5.3.1）：新 profile **首次启动必须带
+// `--disable-sync`** —— 不带的话 Edge 会自动登录微软账号并把个人密码库（实测 47 条，
+// 还包含当时存在旧 profile 里的**别家店凭据**）同步进来；预置 `signin.allowed=false` 拦不住。
+// 这里做成**每次启动都带**而不是「首次记得带」：一次性动作没人记得住，而代价是静默的串号风险。
+// 它只作用于声明了它的店铺 profile，两个老浏览器（competitor / dailyReport）argv **逐字不变**
+// —— 这条由 browser-ports.test.mjs 断言。
+export const SHOP_BROWSER_EXTRA_ARGS = Object.freeze(['--disable-sync']);
 //
 // 键 = 运营叫法（与 skills/sycm-alimama-daily-report/scripts/shop-identities.mjs 的
 // `key` 同源；`browser-ports.test.mjs` 会交叉核对两边，改名会让测试红而不是静默漂移）。
+//
+// **2026-09-19 加第五家「盖文天猫」**。用户当日原话：「盖文旗舰店，和盖文全卫定制是两家店……
+// 全卫就是盖文淘宝，另一个是天猫……没有专用浏览器就新增一个」。
+// 这家店一直有人在采（09-14/15/16 的日报就是它，靠商家浏览器 19022 登着它的商家号），
+// 但一登别家就采不到 ⇒ 它需要自己的实例，与另外四家同规格。
 export const SHOP_BROWSERS = Object.freeze({
   里可林淘宝: Object.freeze({
     profile: 'D:/Retire/edge-profiles/likelin-home',
@@ -113,6 +127,7 @@ export const SHOP_BROWSERS = Object.freeze({
     proxyPort: 19041,
     browserId: 'edge-shop-likelin-home',
     label: 'Microsoft Edge (shop likelin-home)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
   }),
   网林天猫: Object.freeze({
     profile: 'D:/Retire/edge-profiles/wanglin-flagship',
@@ -120,6 +135,7 @@ export const SHOP_BROWSERS = Object.freeze({
     proxyPort: 19042,
     browserId: 'edge-shop-wanglin-flagship',
     label: 'Microsoft Edge (shop wanglin-flagship)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
   }),
   盖文淘宝: Object.freeze({
     profile: 'D:/Retire/edge-profiles/suixin-custom',
@@ -127,6 +143,15 @@ export const SHOP_BROWSERS = Object.freeze({
     proxyPort: 19043,
     browserId: 'edge-shop-suixin-custom',
     label: 'Microsoft Edge (shop suixin-custom)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
+  }),
+  盖文天猫: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/gaiwen-flagship',
+    browserPort: 19035,
+    proxyPort: 19045,
+    browserId: 'edge-shop-gaiwen-flagship',
+    label: 'Microsoft Edge (shop gaiwen-flagship)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
   }),
   科塔淘宝: Object.freeze({
     profile: 'D:/Retire/edge-profiles/shop-j873522735',
@@ -134,6 +159,7 @@ export const SHOP_BROWSERS = Object.freeze({
     proxyPort: 19044,
     browserId: 'edge-shop-j873522735',
     label: 'Microsoft Edge (shop j873522735)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
   }),
 });
 
@@ -148,6 +174,36 @@ export function shopInstance(key) {
     throw new Error(`未登记的店铺实例「${key}」；已登记：${shopBrowserKeys().join(' / ')}`);
   }
   return found;
+}
+
+/**
+ * 这个 profile 启动时该额外带哪些 Chromium 开关。
+ *
+ * 只有登记在 SHOP_BROWSERS 里的店铺 profile 会拿到（当前＝`--disable-sync`）。
+ * 空数组 = 与历史行为**逐字相同** —— 两个老浏览器（competitor / dailyReport）
+ * 既不在 BROWSER_PROFILES 的店铺表里、也不在 SHOP_BROWSERS 里，所以它们一个额外参数都不会多。
+ * 认不出 profile（比如手工起的临时目录）时也返回空数组，不猜。
+ */
+export function extraArgsForProfile(profile) {
+  const target = normalizeProfile(profile);
+  if (target === null) return [];
+  const hit = Object.values(SHOP_BROWSERS).find((entry) => normalizeProfile(entry.profile) === target);
+  return hit?.extraArgs ? [...hit.extraArgs] : [];
+}
+
+/**
+ * 启动器的 argv。抽成纯函数只为一件事：让「新开关不许外溢到别的浏览器」这条约束
+ * 能被离线断言（启动脚本本身一 import 就会起浏览器，测不了）。
+ */
+export function buildBrowserLaunchArgs({ profile, port, startUrl = 'about:blank' }) {
+  return [
+    `--user-data-dir=${profile}`,
+    `--remote-debugging-port=${port}`,
+    '--no-first-run',
+    '--no-default-browser-check',
+    ...extraArgsForProfile(profile),
+    startUrl,
+  ];
 }
 
 /**

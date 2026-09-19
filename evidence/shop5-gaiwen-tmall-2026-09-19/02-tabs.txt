@@ -1,0 +1,31 @@
+===== 里可林淘宝 | proxy 19041 | browserPort 19031 | profile undefined
+  /health: {"managedTabs":3,"pinnedTabs":1,"sessions":3}
+  [page] https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [page] about:blank
+  [page] file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port
+  [page] https://one.alimama.com/index.html
+===== 网林天猫 | proxy 19042 | browserPort 19032 | profile undefined
+  /health: {"managedTabs":3,"pinnedTabs":1,"sessions":3}
+  [page] about:blank
+  [page] https://one.alimama.com/index.html
+  [page] https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [page] file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032&me
+===== 盖文淘宝 | proxy 19043 | browserPort 19033 | profile undefined
+  /health: {"managedTabs":3,"pinnedTabs":1,"sessions":3}
+  [page] https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [page] https://one.alimama.com/index.html
+  [page] file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&me
+  [page] about:blank
+  [page] https://myseller.taobao.com/home.htm/QnworkbenchHome/
+===== 盖文天猫 | proxy 19045 | browserPort 19035 | profile undefined
+  /health: {"managedTabs":3,"pinnedTabs":1,"sessions":3}
+  [page] https://one.alimama.com/index.html#!/login/index
+  [page] about:blank
+  [page] https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [page] file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035&me
+===== 科塔淘宝 | proxy 19044 | browserPort 19034 | profile undefined
+  /health: {"managedTabs":3,"pinnedTabs":1,"sessions":3}
+  [page] about:blank
+  [page] https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [page] https://one.alimama.com/index.html
+  [page] file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%A7%91%E5%A1%94%E6%B7%98%E5%AE%9D&port=19034&me

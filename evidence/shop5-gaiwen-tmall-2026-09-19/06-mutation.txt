@@ -1,0 +1,47 @@
+{
+ "mutations": [
+  {
+   "name": "M1 把店铺卫生开关从登记表里删掉（--disable-sync → 空）",
+   "verdict": "RED_AS_EXPECTED",
+   "fail": "1",
+   "pass": "20",
+   "namedExpectedText": true,
+   "red": [
+    "not ok 6 - 店铺 profile 一定带 --disable-sync；两个老浏览器的 argv 逐字不变"
+   ],
+   "assertSnippet": "not ok 6 - 店铺 profile 一定带 --disable-sync；两个老浏览器的 argv 逐字不变\n  ---\n  duration_ms: 0.4103\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\runtime\\\\browser-ports.test.mjs:153:1'\n  failureType: 'testCodeFailure'\n  error: '店铺「里可林淘宝」的 profile 没带 --disable-sync —— 新 profile 会把个人密码库同步进来'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: true\n  actual: false\n  operator: '=='\n  stack: |-\n    TestContext.<anonymous> (file:///D:/Retire/sycm-automation/runtime/browser-ports.test.mjs:156:12)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:744:18)\n    Test.postRun (node:internal/test_runner/test:1173:19)\n    Test.run (node:internal/test_runner/test:1101:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)\n  ...\n# Subtest: resolvePort：显式环境变量优先，非法值抛错而不是静默回落\nok 7 - resolvePort：显式环境变量优先，非法值抛错而不是静默回落\n  ---\n  duration_ms: 0.3166\n  type: 'test'"
+  },
+  {
+   "name": "M2 extraArgsForProfile 忘了按 profile 匹配（所有浏览器都加上）",
+   "verdict": "UNEXPECTED",
+   "fail": "1",
+   "pass": "20",
+   "namedExpectedText": false,
+   "red": [
+    "not ok 6 - 店铺 profile 一定带 --disable-sync；两个老浏览器的 argv 逐字不变"
+   ],
+   "assertSnippet": "not ok 6 - 店铺 profile 一定带 --disable-sync；两个老浏览器的 argv 逐字不变\n  ---\n  duration_ms: 0.9116\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\runtime\\\\browser-ports.test.mjs:153:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly deep-equal:\n    + actual - expected\n    \n    + [\n    +   '--disable-sync'\n    + ]\n    - []\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected:\n  actual:\n    0: '--disable-sync'\n  operator: 'deepStrictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///D:/Retire/sycm-automation/runtime/browser-ports.test.mjs:161:10)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:744:18)"
+  },
+  {
+   "name": "M3 把额外开关排到 startUrl 之后（Chromium 不认）",
+   "verdict": "RED_AS_EXPECTED",
+   "fail": "1",
+   "pass": "20",
+   "namedExpectedText": true,
+   "red": [
+    "not ok 6 - 店铺 profile 一定带 --disable-sync；两个老浏览器的 argv 逐字不变"
+   ],
+   "assertSnippet": "not ok 6 - 店铺 profile 一定带 --disable-sync；两个老浏览器的 argv 逐字不变\n  ---\n  duration_ms: 0.6899\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\runtime\\\\browser-ports.test.mjs:153:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    + actual - expected\n    \n    + '--disable-sync'\n    - 'about:blank'\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 'about:blank'\n  actual: '--disable-sync'\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///D:/Retire/sycm-automation/runtime/browser-ports.test.mjs:180:10)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:744:18)\n    Test.postRun (node:internal/test_runner/test:1173:19)\n    Test.run (node:internal/test_runner/test:1101:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)"
+  }
+ ],
+ "restore": {
+  "identical": true,
+  "before": "af2ab67ded04f9d860c17bbf046dfe72864bbb876d488d37570e5ee397a90049",
+  "after": "af2ab67ded04f9d860c17bbf046dfe72864bbb876d488d37570e5ee397a90049"
+ },
+ "afterRestoreTest": {
+  "exit": 0,
+  "pass": "21",
+  "fail": "0"
+ }
+}

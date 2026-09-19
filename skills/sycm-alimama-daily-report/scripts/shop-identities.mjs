@@ -245,18 +245,21 @@ export function shopKeys() {
 
 /**
  * 「哪家店在哪个专用 profile 里被实测过」—— 2026-09-18 建立的四个店铺专用 profile
- * （`D:/Retire/edge-profiles/<名>`，首次启动带 `--disable-sync`、`Login Data` 0 条，见 docs §5.3.1）。
+ * （`D:/Retire/edge-profiles/<名>`，首次启动带 `--disable-sync`、`Login Data` 0 条，见 docs §5.3.1）；
+ * **2026-09-19 补上第五家「盖文天猫」**（`gaiwen-flagship`，端口 19035/19045）——
+ * 用户当日口径：盖文旗舰店与盖文全卫定制是两家店，全卫＝盖文淘宝，旗舰店＝盖文天猫，
+ * 「没有专用浏览器就新增一个」。它与 `runtime/browser-ports.mjs` 的 `SHOP_BROWSERS` 逐键互核
+ * （见 `runtime/browser-ports.test.mjs`），两边漂移会当场红。
  *
  * 为什么要单独一张表：这张表的键是**被实测过**的证据指针，不是配置。
  * 它现在的用途有两个：① 说明登记表里那 5 行实测值是从哪来的；② 让「两个店铺共用一个 profile」
  * 这种复制粘贴事故当场变红（键唯一、且键必须是已登记店铺）。
- * 端口**不在这里**：端口只有一个来源 `runtime/browser-ports.mjs`，而「按店铺实例化」还没做（docs §4.2）
- * —— 现在这四个窗口的端口是启动时用环境变量给的，登记表里查不到它们。这条缺口已如实写在 docs 里。
  */
 export const ISOLATED_PROFILES = Object.freeze({
   里可林淘宝: 'likelin-home',
   网林天猫: 'wanglin-flagship',
   盖文淘宝: 'suixin-custom',
+  盖文天猫: 'gaiwen-flagship',
   科塔淘宝: 'shop-j873522735',
 });
 

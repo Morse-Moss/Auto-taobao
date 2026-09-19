@@ -1,0 +1,135 @@
+{
+ "now": "2026-09-19T05:09:04.549Z",
+ "活着": [
+  "3456 外来（别碰）",
+  "19022 商家链浏览器 A（日报/飞书）",
+  "19023 商家链浏览器 B（日报/飞书）",
+  "19031 店浏览器 里可林淘宝",
+  "19032 店浏览器 网林天猫",
+  "19033 店浏览器 盖文淘宝",
+  "19034 店浏览器 科塔淘宝",
+  "19041 代理 里可林淘宝",
+  "19042 代理 网林天猫",
+  "19043 代理 盖文淘宝",
+  "19044 代理 科塔淘宝"
+ ],
+ "不在了": [
+  "3457 买家链代理",
+  "9222 买家链浏览器",
+  "19024 运营台"
+ ],
+ "detail": [
+  {
+   "port": 3456,
+   "who": "外来（别碰）",
+   "alive": true,
+   "proxy": {
+    "browser": "edge",
+    "sessions": 0,
+    "managedTabs": 0,
+    "chromePort": 56320
+   },
+   "browser": null
+  },
+  {
+   "port": 19022,
+   "who": "商家链浏览器 A（日报/飞书）",
+   "alive": true,
+   "proxy": null,
+   "browser": "Edg/150.0.4078.65"
+  },
+  {
+   "port": 19023,
+   "who": "商家链浏览器 B（日报/飞书）",
+   "alive": true,
+   "proxy": {
+    "browser": "edge-daily-report",
+    "sessions": 2,
+    "managedTabs": 2,
+    "pinnedTabs": 0,
+    "chromePort": 19022
+   },
+   "browser": null
+  },
+  {
+   "port": 19031,
+   "who": "店浏览器 里可林淘宝",
+   "alive": true,
+   "proxy": null,
+   "browser": "Edg/150.0.4078.65"
+  },
+  {
+   "port": 19032,
+   "who": "店浏览器 网林天猫",
+   "alive": true,
+   "proxy": null,
+   "browser": "Edg/150.0.4078.65"
+  },
+  {
+   "port": 19033,
+   "who": "店浏览器 盖文淘宝",
+   "alive": true,
+   "proxy": null,
+   "browser": "Edg/150.0.4078.65"
+  },
+  {
+   "port": 19034,
+   "who": "店浏览器 科塔淘宝",
+   "alive": true,
+   "proxy": null,
+   "browser": "Edg/150.0.4078.65"
+  },
+  {
+   "port": 19041,
+   "who": "代理 里可林淘宝",
+   "alive": true,
+   "proxy": {
+    "browser": "edge-shop-likelin-home",
+    "sessions": 3,
+    "managedTabs": 3,
+    "pinnedTabs": 1,
+    "chromePort": 19031
+   },
+   "browser": null
+  },
+  {
+   "port": 19042,
+   "who": "代理 网林天猫",
+   "alive": true,
+   "proxy": {
+    "browser": "edge-shop-wanglin-flagship",
+    "sessions": 3,
+    "managedTabs": 3,
+    "pinnedTabs": 1,
+    "chromePort": 19032
+   },
+   "browser": null
+  },
+  {
+   "port": 19043,
+   "who": "代理 盖文淘宝",
+   "alive": true,
+   "proxy": {
+    "browser": "edge-shop-suixin-custom",
+    "sessions": 3,
+    "managedTabs": 3,
+    "pinnedTabs": 1,
+    "chromePort": 19033
+   },
+   "browser": null
+  },
+  {
+   "port": 19044,
+   "who": "代理 科塔淘宝",
+   "alive": true,
+   "proxy": {
+    "browser": "edge-shop-j873522735",
+    "sessions": 3,
+    "managedTabs": 3,
+    "pinnedTabs": 1,
+    "chromePort": 19034
+   },
+   "browser": null
+  }
+ ]
+}

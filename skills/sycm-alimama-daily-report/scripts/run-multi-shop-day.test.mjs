@@ -194,12 +194,13 @@ test('驱动：未知模式 / 错日期 / verify 缺 expectedBeforeCount / 未�
   assert.throws(() => stagesOf(SHOP, { mode: undefined }), /未知模式/u);
   assert.throws(() => stagesOf(SHOP, { date: '2026/09/17' }), /YYYY-MM-DD/u);
   assert.throws(() => stagesOf(SHOP, { mode: 'verify' }), /expectedBeforeCount/u);
-  // 保拉淘宝 / 盖文天猫 在登记表里，但没有隔离 profile ⇒ 没有浏览器可连，必须当场拒绝。
+  // 保拉淘宝 / 里可林天猫 在身份登记表里，但没有隔离 profile ⇒ 没有浏览器可连，必须当场拒绝。
+  // （2026-09-19 之前这里举的第二家是「盖文天猫」；那天它有了专用窗口，就不再是反例了。）
   assert.throws(() => buildShopStages('保拉淘宝', { date: DATE, mode: 'rehearse' }), /未登记的店铺实例/u);
-  assert.throws(() => buildShopStages('盖文天猫', { date: DATE, mode: 'rehearse' }), /未登记的店铺实例/u);
+  assert.throws(() => buildShopStages('里可林天猫', { date: DATE, mode: 'rehearse' }), /未登记的店铺实例/u);
 });
 
-test('驱动：四家已登记的店铺都能构造出完整阶段（没有哪家要到真跑时才因身份缺失而炸）', () => {
+test('驱动：已登记的店铺都能构造出完整阶段（没有哪家要到真跑时才因身份缺失而炸）', () => {
   for (const key of shopBrowserKeys()) {
     assert.equal(buildShopStages(key, { date: DATE, mode: 'rehearse' }).length, EXPECTED_ORDER.length, key);
   }

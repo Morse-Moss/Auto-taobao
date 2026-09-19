@@ -16,8 +16,12 @@
 // 用法（要放在后台任务里跑，它会一直活着）：
 //   node runtime/start-project-browser.mjs
 //   PROJECT_BROWSER_PORT=9222 PROJECT_BROWSER_PROFILE=D:/Retire/edge-debug-profile node runtime/start-project-browser.mjs
+//   # 店铺实例（一家店一个 profile + 一个调试端口；端口与 profile 取自 runtime/browser-ports.mjs）：
+//   PROJECT_BROWSER_PORT=19035 PROJECT_BROWSER_PROFILE=D:/Retire/edge-profiles/gaiwen-flagship \
+//     node runtime/start-project-browser.mjs
+//   # 配套代理（一店一个）：node runtime/start-shop-proxy.mjs 盖文天猫
 //
-// 起来之后配套的代理：
+// 起来之后配套的代理（老链）：
 //   CDP_PROXY_PORT=3457 CDP_BROWSER_PORT=9222 node runtime/isolated-proxy/cdp-proxy.mjs
 // 跑导出时还要带：
 //   XWS_PROXY=http://127.0.0.1:3457  XWS_BROWSER_ID=edge-isolated
@@ -28,9 +32,11 @@ import {
   BROWSER_ACCOUNT,
   BROWSER_PROFILES,
   PROJECT_PORTS,
+  buildBrowserLaunchArgs,
   classifyPortUsage,
   describeBrowserRoutes,
   describeOccupant,
+  extraArgsForProfile,
   inspectPort,
   normalizeProfile,
   resolvePort,
@@ -155,13 +161,12 @@ if (usage.verdict === 'ours') {
   // exit code 0 ＝ 子进程把手头的事交给已有实例后正常退出（Edge 单例的默认行为）；
   // 真启动失败不是 0，或者进程会一直活着。所以这个值本身就是要报给操作者的证据。
   let childExitCode = null;
-  const child = spawn(EDGE, [
-    `--user-data-dir=${PROFILE}`,
-    `--remote-debugging-port=${PORT}`,
-    '--no-first-run',
-    '--no-default-browser-check',
-    START_URL,
-  ], { stdio: 'ignore' });
+  // argv 由登记表的纯函数拼（`buildBrowserLaunchArgs`）：店铺 profile 会带上 `--disable-sync`
+  // 这类卫生开关，两个老浏览器的 argv 则**逐字不变** —— 那条约束由 browser-ports.test.mjs 断言。
+  const launchArgs = buildBrowserLaunchArgs({ profile: PROFILE, port: PORT, startUrl: START_URL });
+  const extra = extraArgsForProfile(PROFILE);
+  if (extra.length > 0) console.log(`[browser] 额外开关：${extra.join(' ')}（来自登记表，不是临时加的）`);
+  const child = spawn(EDGE, launchArgs, { stdio: 'ignore' });
 
   console.log(`[browser] msedge pid=${child.pid} profile=${PROFILE} port=${PORT}`);
   child.on('exit', (code) => {

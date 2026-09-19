@@ -19,6 +19,8 @@ import {
   SHOP_BROWSERS,
   SITE_ACCOUNT,
   allDeclaredPorts,
+  buildBrowserLaunchArgs,
+  extraArgsForProfile,
   shopBrowserKeys,
   shopInstance,
   classifyPortUsage,
@@ -141,6 +143,44 @@ test('店铺实例的 profile 必须与店铺身份登记表逐键一致 —— 
   );
   assert.deepEqual(byKey, { ...ISOLATED_PROFILES },
     'browser-ports.mjs 的 SHOP_BROWSERS 与 shop-identities.mjs 的 ISOLATED_PROFILES 必须逐键一致');
+});
+
+// --- 启动参数（2026-09-19 加，为第五家「盖文天猫」）------------------------------------
+// 背景：新建店铺 profile **必须**带 `--disable-sync`（A/B 实测：不带则 Edge 自动登录微软账号、
+// 把个人密码库连同别家店凭据一起同步进来，实测 47 条）。这条开关加在登记表里，
+// 于是有了一个新的风险面：**它会不会顺手加到两个老浏览器上**（那会改变既有链的启动行为）。
+// 所以两件事都要断言：① 店铺 profile 一定带上；② 老浏览器 argv 逐字不变。
+test('店铺 profile 一定带 --disable-sync；两个老浏览器的 argv 逐字不变', () => {
+  for (const key of shopBrowserKeys()) {
+    const args = extraArgsForProfile(SHOP_BROWSERS[key].profile);
+    assert.ok(args.includes('--disable-sync'),
+      `店铺「${key}」的 profile 没带 --disable-sync —— 新 profile 会把个人密码库同步进来`);
+  }
+
+  // 认不出的目录：不猜、不加
+  assert.deepEqual(extraArgsForProfile('D:/some/other/profile'), []);
+  assert.deepEqual(extraArgsForProfile(null), []);
+
+  // 老链逐字不变（这两行就是 2026-09-15 起跑了一路的那组参数，改动不许碰到它们）
+  assert.deepEqual(
+    buildBrowserLaunchArgs({ profile: BROWSER_PROFILES.competitor, port: PROJECT_PORTS.competitorBrowser }),
+    ['--user-data-dir=D:/Retire/edge-debug-profile', '--remote-debugging-port=9222',
+      '--no-first-run', '--no-default-browser-check', 'about:blank'],
+  );
+  assert.deepEqual(
+    buildBrowserLaunchArgs({ profile: BROWSER_PROFILES.dailyReport, port: PROJECT_PORTS.dailyReportBrowser }),
+    ['--user-data-dir=D:/Retire/edge-daily-report-profile', '--remote-debugging-port=19022',
+      '--no-first-run', '--no-default-browser-check', 'about:blank'],
+  );
+
+  // 店铺 profile：开关必须在 startUrl **之前**（Chromium 只把开关认在 URL 前面）
+  const shopArgs = buildBrowserLaunchArgs({
+    profile: SHOP_BROWSERS.盖文天猫.profile, port: SHOP_BROWSERS.盖文天猫.browserPort,
+  });
+  assert.equal(shopArgs.at(-1), 'about:blank');
+  assert.ok(shopArgs.indexOf('--disable-sync') < shopArgs.indexOf('about:blank'));
+  assert.ok(shopArgs.includes(`--user-data-dir=${SHOP_BROWSERS.盖文天猫.profile}`));
+  assert.ok(shopArgs.includes(`--remote-debugging-port=${SHOP_BROWSERS.盖文天猫.browserPort}`));
 });
 
 test('resolvePort：显式环境变量优先，非法值抛错而不是静默回落', () => {

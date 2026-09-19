@@ -104,7 +104,9 @@ test('诚实性：已实测的行字段齐全，未实测的行整行为 null', 
 
 test('隔离 profile：键唯一、值唯一、必须是已登记店铺、且该店两侧身份都已实测', () => {
   const entries = Object.entries(ISOLATED_PROFILES);
-  assert.equal(entries.length, 4);
+  // 2026-09-19：四家 → 五家（加盖文天猫）。用户当日口径：盖文旗舰店与盖文全卫定制是两家店，
+  // 全卫＝盖文淘宝、旗舰店＝盖文天猫，「没有专用浏览器就新增一个」。
+  assert.equal(entries.length, 5);
   assert.equal(new Set(entries.map(([, profile]) => profile)).size, entries.length,
     '两个店铺共用一个 profile 是复制粘贴事故的高发形态');
   for (const [key, profile] of entries) {
@@ -113,6 +115,19 @@ test('隔离 profile：键唯一、值唯一、必须是已登记店铺、且该
       `${key} 被标成有专用 profile，但身份没实测齐 —— 这条记录会误导下一个人`);
     assert.match(profile, /^[a-z0-9-]+$/u);
   }
+
+  // 「验到表达式级」这张清单是**显式的**，不是隐式豁免：新加一家时它会当场红，逼着人要么去实测、
+  // 要么把它写在这里当成一条记账（写下来就是一个能被复审的决定，而不是一个静默的洞）。
+  // 2026-09-19 的历史状态：盖文天猫当天刚分配窗口、账号还没登录过，两侧身份是 2026-09-17
+  // 从生产窗口读到/人工抄下来的（`text` / `human-record`）；那台窗口登录后应升到 `expression` 并清空这里。
+  const notExpressionVerified = entries
+    .filter(([key]) => {
+      const row = shopIdentity(key);
+      return row.sycmHeaderVerified !== 'expression' || row.alimamaVerified !== 'expression';
+    })
+    .map(([key]) => key);
+  assert.deepEqual(notExpressionVerified, ['盖文天猫'],
+    '有专用窗口的店应在登录后把身份验到表达式级；这张清单只该有「刚建窗口、还没登录」的那一家');
 });
 
 test('未登记的店铺一律抛错（fail-closed），不回落成「不核对」', () => {

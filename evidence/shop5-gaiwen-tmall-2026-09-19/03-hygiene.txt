@@ -1,0 +1,12 @@
+页签：
+   https://one.alimama.com/index.html#!/login/index
+   about:blank
+   https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+   file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035&member=%E7%9
+bringToFront 生意参谋: 200 {"ok":true}
+bringToFront 阿里妈妈: 200 {"ok":true}
+Preferences: sync.passwords = null | account_info = [{"access_point":17,"account_id":"e1ab0b4c44b7d959","accountcapabilities":{"accountcapabilities/g42tslldmfya":-1,"accountcapabilities/g44tilldmfya":-1,"accountcapabilities/ge2dinbnmnqxa":-1,"accountcapabilities/ge2tknznmnqxa":-1,"accountcapabilities/ge4tenznmnqxa":-1,"accountcapabilities/ge4tgnznmnqxa":-1,"accountcapabilities/geytcnbnmnqxa":-1,"accountcapabilities/gezdcnbnmnqxa":-1,"accountcapabilities/gezdsmbnmnqxa":-1,"accountcapabilities/geztenjnmnqxa":-1,"accountcapabilities/gi2tklldmfya":-1,"accountcapabilities/giytmnrnmnqxa":-1,"accountcapabilities/gizdqmrnmnqxa":-1,"accountcapabilities/gu2dqlldmfya":-1,"accountcapabilities/guydolldmfya":-1,"accountcapabilities/guzdslldmfya":-1,"accountcapabilities/haytqlldmfya":-1,"accountcapabilities/he4tolldmfya":-1},"edge_account_age_group":3,"edge_account_cid":"e1ab0b4c44b7d959","edge_account_environment":2,"edge_account_environment_string":"login.microsoftonline.com","edge_account_first_name":"彦","edge_account_is_test_on_premises_profile":false,"edge_account_last_name":"陈","edge_account_location":"CN","edge_account_oid":"","edge_account_phone_number":"","edge_account_puid":"00034001FF8F6A8F","edge_account_sovereignty":2,"edge_account_tenant_id":"9188040d-6c67-4c5b-b112-36a304b66dad","edge_account_type":1,"edge_tenant_supports_msa_linking":false,"edge_wam_aad_for_app_account_type":0,"email":"1074083863@qq.com","full_name":"","gaia":"e1ab0b4c44b7d959","given_name":"","hd":"","is_supervised_child":-1,"is_under_advanced_protection":false,"last_downloaded_image_url_with_size":"","locale":"","picture_url":""}]
+Login Data 存在，字节数 = 51200
+logins 条数读不到（node:sqlite 不可用或表不存在）： database is locked
+(node:45236) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
