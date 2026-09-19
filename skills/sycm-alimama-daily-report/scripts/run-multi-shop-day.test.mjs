@@ -7,7 +7,7 @@ import { BROWSER_IDS, PROJECT_PORTS, shopBrowserKeys, shopInstance } from '../..
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
-import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, buildRoundFailureAlert, buildShopStages, describeShopFailure, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, parseArgs, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
+import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, buildRoundFailureAlert, buildShopStages, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, parseArgs, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
