@@ -1,0 +1,19 @@
+
+===== 2026-09-19T05:49:05.849Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-inquiry-backfill.mjs --date 2026-09-18 --proxy http://127.0.0.1:19045 --source-shop 盖文旗舰店 --shop 盖文天猫 --shop-key 盖文天猫 --commit --allow-missing-peer
+exit=0 signal= error=none
+--- stdout ---
+[audit] 已记 inquiry-backfill/ok id=40
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-18-盖文天猫\\inquiry-backfill-receipt.json",
+  "recordId": "recvtXeynRd8yM",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-18-盖文天猫",
+  "values": {
+    "询单量": 12,
+    "同层同行询单量": 35
+  },
+  "unchangedOtherFields": true
+}
+
+--- stderr ---

@@ -1,0 +1,192 @@
+{
+  "date": "2026-09-18",
+  "mode": "commit",
+  "startedAt": "2026-09-19T05:47:30.221Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 0,
+      "logPath": "evidence\\multi-shop-2026-09-18\\00-health-check-daily.txt",
+      "ok": true,
+      "blocking": []
+    }
+  },
+  "shops": {
+    "盖文天猫": {
+      "status": "ok",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-18\\盖文天猫\\01-health-check.txt",
+          "argv": []
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-18\\盖文天猫\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-18",
+            "--proxy",
+            "http://127.0.0.1:19045"
+          ]
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-18\\盖文天猫\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-18",
+            "--proxy",
+            "http://127.0.0.1:19045",
+            "--expect-shop",
+            "盖文旗舰店",
+            "--expect-member",
+            "盖文旗舰店:阿彦",
+            "--expect-member-id",
+            "2995200080"
+          ]
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-18\\盖文天猫\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-18",
+            "--proxy",
+            "http://127.0.0.1:19045"
+          ]
+        },
+        {
+          "stage": "shop-report",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-18\\盖文天猫\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-09-18",
+            "--proxy",
+            "http://127.0.0.1:19045",
+            "--expect-shop",
+            "盖文旗舰店",
+            "--expect-member",
+            "盖文旗舰店:阿彦",
+            "--expect-member-id",
+            "2995200080"
+          ]
+        },
+        {
+          "stage": "promotion-fetch",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-18\\盖文天猫\\06-promotion-fetch.txt",
+          "argv": [
+            "--phase",
+            "fetch",
+            "--date",
+            "2026-09-18",
+            "--proxy",
+            "http://127.0.0.1:19045",
+            "--expect-shop",
+            "盖文旗舰店",
+            "--expect-member",
+            "盖文旗舰店:阿彦",
+            "--expect-member-id",
+            "2995200080"
+          ]
+        },
+        {
+          "stage": "push",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-18\\盖文天猫\\07-push.txt",
+          "argv": [
+            "--date",
+            "2026-09-18",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "盖文天猫",
+            "--commit",
+            "--shop-xlsx",
+            "C:\\Users\\Administrator\\Downloads\\日报_20260919_adc987ef8d0897700e42dcf1427605b3 (1).xlsx",
+            "--promotion-zip",
+            "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_134733.zip"
+          ]
+        },
+        {
+          "stage": "sycm-reset",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-18\\盖文天猫\\08-sycm-reset.txt",
+          "argv": []
+        },
+        {
+          "stage": "sycm-date-again",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-18\\盖文天猫\\09-sycm-date-again.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-18",
+            "--proxy",
+            "http://127.0.0.1:19045"
+          ]
+        },
+        {
+          "stage": "backfill",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-18\\盖文天猫\\10-backfill.txt",
+          "argv": [
+            "--date",
+            "2026-09-18",
+            "--proxy",
+            "http://127.0.0.1:19045",
+            "--source-shop",
+            "盖文旗舰店",
+            "--shop",
+            "盖文天猫",
+            "--shop-key",
+            "盖文天猫",
+            "--commit",
+            "--allow-missing-peer"
+          ]
+        },
+        {
+          "stage": "readback",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-18\\盖文天猫\\11-readback.txt",
+          "argv": [
+            "--date",
+            "2026-09-18",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "盖文天猫"
+          ]
+        }
+      ],
+      "source": {
+        "shopXlsx": "C:\\Users\\Administrator\\Downloads\\日报_20260919_adc987ef8d0897700e42dcf1427605b3 (1).xlsx",
+        "promotionZip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260919_134733.zip"
+      }
+    }
+  },
+  "finishedAt": "2026-09-19T05:49:51.708Z"
+}
