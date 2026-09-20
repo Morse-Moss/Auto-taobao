@@ -18,6 +18,7 @@
 //   ③ 点击前**必须当场重新量矩形**：量到点之间页面会动，差一行（41px）就会点到别的任务的单元格上，
 //      `clicked:true` 却什么都不发生，而且不报错。零尺寸矩形一律 fail-closed。
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
@@ -27,6 +28,9 @@ import {
   hitCheckExpression, listDownloads, newEntries, newestTaskName, parseCollectArgs, pickNewest,
   restoreCheckboxesExpression, scrollIntoViewExpression, targetRowExpression,
 } from './collect-core.mjs';
+// 报表页 URL 形状只有 date-picker 那份实现（含场景编码与归因参数）。路由复位要重新导航到
+// 同一个报表页，所以这里**取它**而不是再抄一份 —— 抄一份就会在下次改 URL 时漂移。
+import { buildAlimamaUrl } from './date-picker.mjs';
 
 const ALIMAMA_LIST_URL = 'https://one.alimama.com/index.html#!/report/download-list';
 
@@ -142,21 +146,207 @@ async function hitCheckDismissingOverlay(args, targetId, selector, reLocate) {
 
 // describeOverlayAttempt 在 collect-core 里 —— 两个采集脚本共用同一份措辞，免得越写越不一样。
 
+// ---------------------------------------------------------------- submit 定位与等待
+
+// 定位「下载报表」按钮（叶子节点、文字完全相等），并把文档序第一个标上 data- 属性。
+// 抽成函数是为了能被调用两次（正常一次、路由复位后再一次），而不是把同一段表达式抄两遍。
+// 导出是给离线用例「真的跑一次」用的 —— 代码即字符串，只做字面比对会漏掉「算不出来」。
+export const LOCATE_DOWNLOAD_REPORT_EXPRESSION = `(() => {
+  // 同样是 hash 路由：不重载页面，上一轮标过的元素会留在 DOM 里，先清掉。
+  document.querySelectorAll('[data-collect-alimama-download]')
+    .forEach((el) => el.removeAttribute('data-collect-alimama-download'));
+  const candidates = [...document.querySelectorAll('button,a,div,span')]
+    .filter((el) => el.children.length === 0 && el.textContent.trim() === '下载报表');
+  if (!candidates.length) return JSON.stringify({ found: 0 });
+  candidates[0].setAttribute('data-collect-alimama-download', '1');
+  const clickable = candidates[0].closest('button,a,[role=button]');
+  return JSON.stringify({ found: candidates.length, tag: candidates[0].tagName,
+    clickableAncestor: clickable && clickable !== candidates[0] ? clickable.tagName : null });
+})()`;
+
+// 弹窗里的候选按钮：文案只认这四个，逐个量矩形并复核「中心点命中自己」。
+//
+// rect / centerY / viewport 一起报，是 2026-09-20 补的：判据是「中心点落在视口内」，
+// 于是「为什么点不着」的唯一可读答案就是这几个数的比较（实测 y=505 而视口高 500）。
+// 少了它们，失败信息只剩 visible/hitOk 两个布尔，想还原现场只能另写一个外部探针。
+export const DIALOG_BUTTONS_EXPRESSION = `(() => {
+  const buttons = [...document.querySelectorAll('button,a,div,span')]
+    .filter((el) => el.children.length === 0 && /^(确定|确认|取消|关闭)$/.test(el.textContent.trim()));
+  const info = buttons.map((el, i) => {
+    el.setAttribute('data-collect-dialog', String(i));
+    const r = el.getBoundingClientRect();
+    const point = document.elementFromPoint(Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2));
+    return { i, text: el.textContent.trim(),
+      rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)],
+      centerY: Math.round(r.y + r.height / 2),
+      visible: r.width > 0 && r.height > 0 && r.y >= 0 && r.y < window.innerHeight,
+      hitOk: !!point && (point === el || el.contains(point) || point.contains(el)) };
+  });
+  return JSON.stringify({ buttons: info, viewport: [window.innerWidth, window.innerHeight] });
+})()`;
+
+/** 视口与候选的**单行**摘要，给日志和报错共用，免得两处措辞漂移。 */
+export function describeDialogCandidates(buttons = [], viewport = null) {
+  const shape = buttons.map((button) => `${button.text}@${JSON.stringify(button.rect)}`
+    + `${button.hitOk ? '可点' : button.visible ? '点不着' : '不在视口内'}`);
+  return `视口 ${viewport ? JSON.stringify(viewport) : '?'}｜${shape.length ? shape.join(' ') : '（没有候选）'}`;
+}
+
+async function locateDownloadReport(args, targetId) {
+  return evalOn(args, targetId, LOCATE_DOWNLOAD_REPORT_EXPRESSION);
+}
+
+/**
+ * 从弹窗候选里挑出可点的「确定」。
+ *
+ * 挑两个条件都要：文案恰好是「确定」，且**中心点命中自己**（被浮层盖住的按钮点不动，
+ * 而页面不会报错，只表现为点了没反应）。抽成纯函数是为了它可被单独测 —— 这条判据以前
+ * 只有一行内联代码，没有任何用例盖住它。
+ */
+export function pickConfirmButton(buttons = []) {
+  return buttons.find((button) => button.text === '确定' && button.hitOk) ?? null;
+}
+
+/**
+ * 等「确定」出现，最多 attempts 次、每次间隔 intervalMs。
+ *
+ * 为什么不是「等一个固定秒数再读一次」（2026-09-20 实测，本机五家店 4 家栽在这）：
+ * 点「下载报表」→ 弹窗渲染是一段异步过程，冷启动/平台忙时超过 3 秒很常见。当时写的是
+ * `await delay(3000)` 后读**一次**，读到空就报「弹窗里没有可点的确定」，而 10 分钟后再看时
+ * 那两个弹窗正开着、确定按钮就在 `[259,469,24,12]` —— **判据没问题，是「只等一次」不对**。
+ *
+ * 第二轮（同日更晚）又栽在同一处：判据仍是「可点」，但「可点」要求**中心点落在视口内**，
+ * 而弹窗底栏会落到折叠线以下。所以这一轮的动作是「点不着就把它滚进视口，下一轮按原判据重判」。
+ *
+ * 导出只为可测：原来这条注释写着「轮询本身没法离线测」——现在可以了。把 evalOn 指向一个假代理、
+ * 用它区分「读候选」与「滚进视口」两种请求，就能把「先滚、再重判」整条路径跑一次。
+ */
+export async function waitForConfirmButton(args, targetId, { attempts = 30, intervalMs = 1000 } = {}) {
+  let buttons = [];
+  let viewport = null;
+  let scrolls = 0;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const dialog = await evalOn(args, targetId, DIALOG_BUTTONS_EXPRESSION);
+    buttons = dialog?.buttons ?? [];
+    viewport = dialog?.viewport ?? viewport;
+    const confirm = pickConfirmButton(buttons);
+    if (confirm) return { confirm, buttons, viewport, attempts: attempt, intervalMs, scrolls };
+    // 文案对、却点不着 —— 2026-09-20 实测的唯一成因是**中心点落在视口外**：弹窗的固定层是
+    // `top:0 height:494 overflow:auto`，而弹窗从 `top:107` 往下长且**没有 clamp**，底栏于是会落到
+    // 折叠线以下（实测「确定」rect=[257,505,24,12] 而视口高 500；同一弹窗在另一家店是 y=469 就过得去）。
+    // 这里判据没错、按钮也真的在，缺的只是「把它送进视口」这一步 —— 所以先滚，下一轮按**原判据**重判。
+    // 不滚就等，只会把「点不着」等成 30 秒超时（这正是那一轮四家店栽的地方）。
+    const wanted = buttons.find((button) => button.text === '确定');
+    if (wanted) {
+      await evalOn(args, targetId, scrollIntoViewExpression(`[data-collect-dialog="${wanted.i}"]`));
+      scrolls += 1;
+    }
+    await delay(intervalMs);
+  }
+  return { confirm: null, buttons, viewport, attempts, intervalMs, scrolls };
+}
+
+/**
+ * 弹窗里那个「取消 / 关闭」。
+ *
+ * 用途不是「放弃提交」（那由抛错决定），而是**清掉上一轮留下的弹窗**：2026-09-20 实测，
+ * submit 失败时弹窗会留在页面上（`probe-live/pages-now.txt` 里盖文淘宝/科塔淘宝两页各挂着一个），
+ * 而阿里妈妈是 hash 路由 ⇒「再导航到同一个报表 URL」不重载页面、弹窗一直在。
+ * 点它没有任何对外副作用（就是取消这次下载弹窗），所以放在「动手之前」是安全的。
+ *
+ * 关于「残留弹窗到底会坏掉什么」——只写**核对过**的，别把它写成结论：
+ * 已核：弹窗体（`dialog-body`）里带一个自己的「日期范围 昨日」，于是同页会出现**两个**「昨日」
+ *       （实测 rect=[347,206,246,30] 那个在弹窗内、命中自己=true）。
+ * 未核：它是否真能让 `date-picker --site alimama` 判 `date trigger ambiguous` 而停。读侧只认
+ *       `.mx-trigger`，我没有证据证明弹窗里那个「昨日」是 `.mx-trigger`；而且
+ *       `evidence/` 全目录里 `alimama date trigger ambiguous` 与 `state did not settle` **零命中**
+ *       —— 2026-09-20 五家店的 date 阶段全部 exit=0 / APPLIED，从没因它停过。
+ *       ⇒ 不删这个清理动作（代价低、无副作用），但也别拿它当已知故障的原因。
+ */
+export function pickCancelButton(buttons = []) {
+  return buttons.find((button) => (button.text === '取消' || button.text === '关闭') && button.hitOk) ?? null;
+}
+
+/** 开跑前把上一轮留下的弹窗关掉。没有弹窗就是一次空操作（不打印、不改状态）。 */
+async function clearLeftoverDialog(args, targetId) {
+  const buttons = (await evalOn(args, targetId, DIALOG_BUTTONS_EXPRESSION))?.buttons ?? [];
+  const cancel = pickCancelButton(buttons);
+  if (!cancel) return { cleared: false, buttons };
+  console.log(`[submit] 页面上有上一轮留下的弹窗（候选 ${JSON.stringify(buttons.map((b) => b.text))}）`
+    + ` → 先点「${cancel.text}」关掉它，再走正常流程`);
+  await click(args, targetId, `[data-collect-dialog="${cancel.i}"]`);
+  await delay(1500);
+  return { cleared: true, buttons };
+}
+
+/**
+ * 路由复位：先回首页、再进目标报表 URL。
+ *
+ * 2026-09-20 实测（网林天猫）：SPA 会停在「没有下载报表」的降级视图上（正文 1828 字符），
+ * 把同一个报表 URL 再导航一遍也不恢复 —— 实测 40 秒都不出按钮；而「回首页 → 再进报表 URL」
+ * 2 秒内就正常了（正文 1828 → 5314 → 2408 字符）。
+ * ⇒ 「找不到按钮」有两种成因：页面还没渲染完（等即可），以及路由停在了别处（等没用）。
+ * 复位 URL 由 date-picker 的 buildAlimamaUrl 生成，不在这里另抄一份 URL 形状。
+ */
+async function resetReportRoute(args, targetId) {
+  await navigateTo(args, targetId, 'https://one.alimama.com/index.html');
+  await delay(2500);
+  await navigateTo(args, targetId, buildAlimamaUrl({ requested: args.date }));
+  await delay(2500);
+}
+
+async function navigateTo(args, targetId, url) {
+  return proxyJson(`${args.proxy}/navigate?target=${encodeURIComponent(targetId)}&url=${encodeURIComponent(url)}`,
+    { method: 'POST', body: '' });
+}
+
+/**
+ * 诊断用：当前页的 URL 与正文长度。
+ *
+ * 正文长度是区分两种「找不到下载报表」的**当场证据**（2026-09-20 实测本机五家店）：
+ * 降级视图只有 ~1828 字符（页框在、正文是空的），正常报表页 ~2408，回首页后 ~5314。
+ * 只报 URL 不够 —— 降级视图的 URL 与正常页**一模一样**（同一个 hash 路由，参数都在）。
+ */
+async function reportPageState(args, targetId) {
+  return evalOn(args, targetId, `(() => JSON.stringify({
+    href: location.href,
+    textLen: (document.body.innerText || '').length,
+  }))()`);
+}
+
+/**
+ * 找「下载报表」；找不到就复位路由重来，最多 attempts 轮。
+ *
+ * 「找不到」有两种成因，代价完全不同：①页面还没渲染完 —— 原地再找一次就有；
+ * ②路由停在了降级视图 —— 等多久都没有（实测 40 秒），只有「回首页 → 再进报表 URL」能救
+ * （见 resetReportRoute 注释）。所以先试便宜的（再找一次），不行才付复位的代价（约 5 秒）。
+ * 这里刻意**不**加「原地等 N 秒」：实测等不出结果，而每轮复位都会重新导航并落位。
+ */
+async function locateDownloadReportReady(args, targetId, { attempts = 3 } = {}) {
+  let located = await locateDownloadReport(args, targetId);
+  for (let attempt = 1; attempt <= attempts && !located.found; attempt += 1) {
+    const state = await reportPageState(args, targetId);
+    console.log(`[submit] 第 ${attempt}/${attempts} 轮找不到「下载报表」｜正文 ${state.textLen} 字符`
+      + `｜${state.href} → 复位路由（回首页 → 再进报表 URL）后重找`);
+    await resetReportRoute(args, targetId);
+    located = await locateDownloadReport(args, targetId);
+  }
+  return located;
+}
+
 async function phaseSubmit(args, targetId) {
-  console.log(`[submit] 页面 = ${await evalOn(args, targetId, 'location.href')}`);
-  const located = await evalOn(args, targetId, `(() => {
-    // 同样是 hash 路由：不重载页面，上一轮标过的元素会留在 DOM 里，先清掉。
-    document.querySelectorAll('[data-collect-alimama-download]')
-      .forEach((el) => el.removeAttribute('data-collect-alimama-download'));
-    const candidates = [...document.querySelectorAll('button,a,div,span')]
-      .filter((el) => el.children.length === 0 && el.textContent.trim() === '下载报表');
-    if (!candidates.length) return JSON.stringify({ found: 0 });
-    candidates[0].setAttribute('data-collect-alimama-download', '1');
-    const clickable = candidates[0].closest('button,a,[role=button]');
-    return JSON.stringify({ found: candidates.length, tag: candidates[0].tagName,
-      clickableAncestor: clickable && clickable !== candidates[0] ? clickable.tagName : null });
-  })()`);
-  if (!located.found) throw new Error('页面上找不到「下载报表」按钮（页面没落位到报表页？）');
+  const state0 = await reportPageState(args, targetId);
+  console.log(`[submit] 页面 = ${state0.href}｜正文 ${state0.textLen} 字符`);
+  // 先清掉上一轮留下的弹窗，再谈定位（理由见 clearLeftoverDialog 上方）。
+  await clearLeftoverDialog(args, targetId);
+  // 定位表达式抽成了常量（见上方 LOCATE_DOWNLOAD_REPORT_EXPRESSION），所以这里只调用；
+  // 「找不到」不再直接抛 —— 先复位路由重试，原因见 locateDownloadReportReady。
+  const located = await locateDownloadReportReady(args, targetId);
+  if (!located.found) {
+    const state = await reportPageState(args, targetId);
+    throw new Error(`页面上找不到「下载报表」按钮（复位路由重试后仍没有；`
+      + `正文 ${state.textLen} 字符、${state.href}）⇒ 页面没落位到报表页`);
+  }
   // 报出「取的是哪个元素」：文档序第一个常常是按钮内部的文字 span 而不是 button 本身，
   // 点它靠的是事件冒泡 —— 这一点在录像里也值得说清，免得看的人以为选择器选错了。
   console.log(`[submit] 候选 ${located.found} 个，取文档序第一个（${located.tag}`
@@ -177,25 +367,22 @@ async function phaseSubmit(args, targetId) {
   console.log(`[submit] 滚动后复核通过（${describeHitPass(hit)}）→ 点击 → `
     + `${(await click(args, targetId, '[data-collect-alimama-download="1"]')).slice(0, 80)}`);
 
-  await delay(3000);
-  const dialog = await evalOn(args, targetId, `(() => {
-    const buttons = [...document.querySelectorAll('button,a,div,span')]
-      .filter((el) => el.children.length === 0 && /^(确定|确认|取消|关闭)$/.test(el.textContent.trim()));
-    const info = buttons.map((el, i) => {
-      el.setAttribute('data-collect-dialog', String(i));
-      const r = el.getBoundingClientRect();
-      const point = document.elementFromPoint(Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2));
-      return { i, text: el.textContent.trim(),
-        visible: r.width > 0 && r.height > 0 && r.y >= 0 && r.y < window.innerHeight,
-        hitOk: !!point && (point === el || el.contains(point) || point.contains(el)) };
-    });
-    return JSON.stringify({ buttons: info });
-  })()`);
-  const confirm = (dialog.buttons || []).find((button) => button.text === '确定' && button.hitOk);
-  if (!confirm) {
-    throw new Error(`弹窗里没有可点的「确定」（候选 ${JSON.stringify(dialog.buttons)}）⇒ 任务未提交`);
+  // 弹窗是**异步渲染**的：写死一个秒数再读一次，会把「还没渲染完」误判成「弹窗里没有确定」。
+  // 2026-09-20 实测本机五家店有 4 家栽在这上面 —— 报错时弹窗其实正开着、确定就在 [259,469,24,12]。
+  // 判据（文案=「确定」且中心点命中自己）一个字没改。改的只有两件事：
+  //   ① 「只等一次」→「轮询到出现为止」；
+  //   ② 轮询期间若「确定」已经在了但点不着（中心点在视口外），先把它滚进视口再按原判据重判。
+  const waited = await waitForConfirmButton(args, targetId);
+  if (!waited.confirm) {
+    // 报错必须自带现场：视口、每个候选的 rect 与「可点/点不着/不在视口内」。
+    // 没有这几项就只剩两个布尔，还原现场得另写外部探针（2026-09-20 就是这么绕了一大圈）。
+    throw new Error(`等了 ${waited.attempts} 次（每次 ${waited.intervalMs}ms、期间滚动 ${waited.scrolls} 次）`
+      + `仍没有可点的「确定」｜${describeDialogCandidates(waited.buttons, waited.viewport)}⇒ 任务未提交`);
   }
-  console.log(`[submit] 点「确定」(#${confirm.i}) → `
+  const confirm = waited.confirm;
+  console.log(`[submit] 等到「确定」(#${confirm.i})，第 ${waited.attempts} 次轮询命中`
+    + `${waited.scrolls ? `（先滚动 ${waited.scrolls} 次才落进视口）` : ''}`
+    + `｜${describeDialogCandidates(waited.buttons, waited.viewport)} → `
     + `${(await click(args, targetId, `[data-collect-dialog="${confirm.i}"]`)).slice(0, 80)}`);
   await delay(3500);
   const hint = await evalOn(args, targetId, `(() => {
@@ -388,7 +575,13 @@ async function main() {
   else await phaseFetch(args, targetId);
 }
 
-main().catch((error) => {
-  console.error(`\n采集失败：${error.message}`);
-  process.exitCode = 1;
-});
+// 被 import 时不执行 CLI（同 readback-daily-report.mjs 的写法）。
+// 为什么需要它：`pickConfirmButton` 与下方两条定位表达式都是「代码即字符串」，
+// 必须能在离线用例里被真正跑一次 —— 只比源码字面，看不见「这段字符串在页面上根本算不出来」。
+const invokedDirectly = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly) {
+  main().catch((error) => {
+    console.error(`\n采集失败：${error.message}`);
+    process.exitCode = 1;
+  });
+}

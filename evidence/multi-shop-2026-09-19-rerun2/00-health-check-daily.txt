@@ -1,0 +1,62 @@
+体检未通过：阻断 2 项，告警 1 项
+  [阻断] TARGET_PAGE_MISSING：目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。
+  [阻断] TARGET_PAGE_MISSING：目标页面「飞书底单页」不在这个浏览器里（按片段 feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb 找到 0 个）；采集会从落位那一步就失败。
+  [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+  已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；未通过 2 项：TARGET_PAGE_MISSING, TARGET_PAGE_MISSING；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+
+{
+  "version": "xws-platform-health-preflight-v1",
+  "ok": false,
+  "findings": [
+    {
+      "layer": "ENVIRONMENT",
+      "code": "TARGET_PAGE_MISSING",
+      "state": "AUTH_UNKNOWN",
+      "reason": "TARGET_PAGE_MISSING",
+      "detail": "目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。",
+      "blocking": true
+    },
+    {
+      "layer": "ENVIRONMENT",
+      "code": "TARGET_PAGE_MISSING",
+      "state": "AUTH_UNKNOWN",
+      "reason": "TARGET_PAGE_MISSING",
+      "detail": "目标页面「飞书底单页」不在这个浏览器里（按片段 feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb 找到 0 个）；采集会从落位那一步就失败。",
+      "blocking": true
+    },
+    {
+      "layer": "ENVIRONMENT",
+      "code": "EGRESS_PROXY_NOT_DECLARED",
+      "state": "AUTH_UNKNOWN",
+      "reason": null,
+      "detail": "没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。",
+      "blocking": false
+    }
+  ],
+  "blocking": [
+    {
+      "layer": "ENVIRONMENT",
+      "code": "TARGET_PAGE_MISSING",
+      "state": "AUTH_UNKNOWN",
+      "reason": "TARGET_PAGE_MISSING",
+      "detail": "目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。",
+      "blocking": true
+    },
+    {
+      "layer": "ENVIRONMENT",
+      "code": "TARGET_PAGE_MISSING",
+      "state": "AUTH_UNKNOWN",
+      "reason": "TARGET_PAGE_MISSING",
+      "detail": "目标页面「飞书底单页」不在这个浏览器里（按片段 feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb 找到 0 个）；采集会从落位那一步就失败。",
+      "blocking": true
+    }
+  ],
+  "note": "已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；未通过 2 项：TARGET_PAGE_MISSING, TARGET_PAGE_MISSING；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）",
+  "layers": {
+    "IDENTITY": "NOT_IMPLEMENTED",
+    "ENVIRONMENT": "CHECKED",
+    "SESSION": "NOT_IMPLEMENTED",
+    "END_TO_END": "NOT_IMPLEMENTED"
+  },
+  "checkedAt": "2026-09-20T08:08:51.661Z"
+}

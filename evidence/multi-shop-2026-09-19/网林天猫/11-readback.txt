@@ -1,0 +1,10 @@
+
+===== 2026-09-20T06:04:01.032Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\readback-daily-report.mjs --date 2026-09-19 --proxy http://127.0.0.1:19023 --shop-key 网林天猫
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: Feishu table tblUnwn05vl8Wik9 did not load within 30000ms (last=false)
+    at waitForModel (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs:126:9)
+    at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs:333:5)

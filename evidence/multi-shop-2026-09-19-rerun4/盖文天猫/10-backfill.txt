@@ -1,0 +1,18 @@
+
+===== 2026-09-20T08:36:53.956Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-inquiry-backfill.mjs --date 2026-09-19 --proxy http://127.0.0.1:19045 --source-shop 盖文旗舰店 --shop 盖文天猫 --shop-key 盖文天猫
+exit=0 signal= error=none
+--- stdout ---
+[身份] 生意参谋页头 = "盖文旗舰店"（原始 "盖文旗舰店 主店"）｜期望 "盖文旗舰店" ✓
+{
+  "status": "DRY_RUN_READY",
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-19-盖文天猫\\inquiry-backfill-plan.json",
+  "recordId": "recvtXezpvqgJk",
+  "values": {
+    "询单量": 10,
+    "同层同行询单量": 35
+  },
+  "degraded": null
+}
+
+--- stderr ---

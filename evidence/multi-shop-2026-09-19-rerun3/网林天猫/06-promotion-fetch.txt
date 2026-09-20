@@ -1,0 +1,18 @@
+
+===== 2026-09-20T08:13:13.382Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase fetch --date 2026-09-19 --proxy http://127.0.0.1:19042 --expect-shop 网林家居旗舰店 --expect-member 网林家居旗舰店:阿彦 --expect-member-id 7314426323
+exit=0 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 D7F5CB38DCECA6569A76AD47B49A04CC｜phase=fetch｜目标日 2026-09-19
+[身份] 阿里妈妈会员 = "网林家居旗舰店:阿彦" ID="7314426323"（这一页不显示店铺名，只有会员名）｜期望 "网林家居旗舰店:阿彦" / 7314426323 ✓
+[fetch] 下载任务管理｜已有 zip 39 个｜目录 C:\Users\Administrator\Downloads
+[fetch] 目标任务 = 营销场景报表_20260920_161245（列表里最新，候选 7 个）
+[fetch] 目标任务行 = 第 1 行｜生成成功 营销场景报表_20260920_161245 30天累计数据 2026-09-19至2026-09-19 2026-09-20
+[fetch] 真实鼠标点它的复选框 (143,342) → {"clicked":true,"target":"D7F5CB38DCECA6569A76AD47B49A04CC","x":143,"y":342}
+[fetch] 回读 checked=true，当前勾选 = [1]
+[fetch] 入口 = 第 2 行（正是该任务行的操作行）｜rect=[136,370,50,24]，center=[161,382]｜操作行内叶子 1 个
+[fetch] 复核通过（y=370（中心点命中））→ 真实鼠标点击 (161,382) → {"clicked":true,"target":"D7F5CB38DCECA6569A76AD47B49A04CC","x":161,"y":382}
+[fetch] 新文件：营销场景报表_20260920_161245.zip（774 bytes）
+[fetch] promotionZipPath = C:\Users\Administrator\Downloads\营销场景报表_20260920_161245.zip
+
+--- stderr ---

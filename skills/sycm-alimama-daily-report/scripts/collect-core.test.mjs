@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -13,6 +14,13 @@ import {
   overlayAfterExpression, overlayScanExpression, parseCollectArgs, pickNewest, pickOverlayCloseCandidate,
   restoreCheckboxesExpression, scrollIntoViewExpression, sycmShopIdentityExpression, targetRowExpression,
 } from './collect-core.mjs';
+
+// 两条定位表达式与「确定按钮」的挑选住在采集脚本里（代码即字符串），要能被离线跑一次。
+// 该脚本带 invokedDirectly 守卫，import 时不会执行 CLI。
+import {
+  DIALOG_BUTTONS_EXPRESSION, LOCATE_DOWNLOAD_REPORT_EXPRESSION, describeDialogCandidates,
+  pickCancelButton, pickConfirmButton, waitForConfirmButton,
+} from './collect-promotion-report.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const readScript = (name) => readFileSync(path.join(SCRIPTS_DIR, name), 'utf8');
@@ -478,6 +486,202 @@ test('采集脚本：失败要给非零退出码并说清原因，端口从登�
     assert.equal(/127\.0\.0\.1:\d{4}/u.test(source), false, `${name} 里出现了写死的端口`);
     assert.match(source, /expected one \w+ page/u, `${name} 必须自己确认页面恰好一个`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// 「点下载 → 等弹窗 → 点确定」这条链的两条判据（2026-09-20 加）
+// ---------------------------------------------------------------------------
+// 由来：本机五家店有一轮 4 家全栽在同一处 —— 报「弹窗里没有可点的确定」，而报错时弹窗正开着、
+// 确定按钮就在 [259,469,24,12]。根因不是判据错，是「写死 3 秒再读一次」把「还没渲染完」当成了「没有」。
+// 修法是轮询，但轮询本身没法离线测；能离线测、且**本来就该被测**的是两件事：
+// ①确定按钮的挑选逻辑（以前是一行内联代码，零覆盖）；②两条定位表达式真的能在 DOM 上算一次。
+test('弹窗按钮表达式在沙箱里真的能跑：认得四个文案，命中自己才算可点', () => {
+  const make = (text, rect) => ({
+    tagName: 'SPAN', textContent: text, children: [], rect,
+    getBoundingClientRect() { return this.rect; },
+    setAttribute(name, value) { this[name] = value; },
+    contains(node) { return node === this; },
+  });
+  const dialogButtons = (specs, pointAt) => {
+    const els = specs.map(([text, rect]) => make(text, rect));
+    return JSON.parse(new Function('document', 'window', `return ${DIALOG_BUTTONS_EXPRESSION};`)(
+      { querySelectorAll: () => els, elementFromPoint: pointAt(els) },
+      { innerWidth: 1203, innerHeight: 612 }));
+  };
+  const okRect = { x: 259, y: 469, width: 24, height: 12 };
+  const cancelRect = { x: 300, y: 469, width: 24, height: 12 };
+
+  // 正常形态：弹窗里「确定」「取消」都在，逐个量矩形并复核命中。
+  const buttons = dialogButtons([['确定', okRect], ['取消', cancelRect]],
+    (els) => (x) => (x < 300 ? els[0] : els[1])).buttons;
+  assert.deepEqual(buttons.map((b) => b.text), ['确定', '取消']);
+  assert.deepEqual(buttons.map((b) => b.i), [0, 1], '要给每个候选编号，点的时候按编号取');
+  assert.equal(buttons[0].visible, true);
+  assert.equal(buttons[0].hitOk, true);
+
+  // 被浮层盖住：elementFromPoint 命中的是别人 ⇒ hitOk=false。这正是「点了没反应」的来源。
+  const covered = dialogButtons([['确定', okRect]],
+    () => () => ({ tagName: 'DIV', contains: () => false })).buttons;
+  assert.equal(covered[0].hitOk, false);
+
+  // 视口外 / 零尺寸要如实判不可见，不许当成可点。
+  const offscreen = dialogButtons([['确定', { x: 259, y: 900, width: 24, height: 12 }]],
+    (els) => () => els[0]).buttons;
+  assert.equal(offscreen[0].visible, false);
+
+  // 2026-09-20 加：判据是「中心点落在视口内」，所以 rect / centerY / 视口必须一起报出来。
+  // 少了它们，失败信息只剩两个布尔 —— 那一轮要还原「y=505 而视口高 500」只能另写外部探针。
+  assert.deepEqual(buttons[0].rect, [259, 469, 24, 12]);
+  assert.equal(buttons[0].centerY, 475, '中心点要单独报，它才是「可点」的判据');
+  assert.deepEqual(dialogButtons([['确定', okRect]], (els) => () => els[0]).viewport, [1203, 612]);
+  assert.equal(offscreen[0].centerY, 906, '在视口外也要报出它的中心点，才能看出超了多少');
+
+  // pickConfirmButton：文案与命中两个条件都要，缺一不可。
+  assert.equal(pickConfirmButton(buttons).text, '确定');
+  assert.equal(pickConfirmButton(covered), null, '被盖住的「确定」不许入选');
+  assert.equal(pickConfirmButton([{ text: '取消', hitOk: true }]), null, '只有「取消」时不许拿它当「确定」');
+  assert.equal(pickConfirmButton([{ text: '确认', hitOk: true }]), null,
+    '这一页实测文案是「确定」，不许顺手把「确认」也认了（认错会点到别的按钮上）');
+  assert.equal(pickConfirmButton([]), null);
+  assert.equal(pickConfirmButton(), null, '没给候选时要返回 null，不是抛错');
+
+  // pickCancelButton：只用来清「上一轮留下的弹窗」。三个条件缺一不可 ——
+  // 文案是取消/关闭、能点、而且**不能**把「确定」当成取消（那是把提交当关闭，方向完全相反）。
+  assert.equal(pickCancelButton(buttons).text, '取消');
+  assert.equal(pickCancelButton([{ text: '确定', hitOk: true }]), null, '「确定」不是取消');
+  assert.equal(pickCancelButton([{ text: '取消', hitOk: false }]), null, '点不动的「取消」不算（点了也静默落空）');
+  assert.equal(pickCancelButton([{ text: '关闭', hitOk: true }]).text, '关闭', '关闭语义同样可用');
+  assert.equal(pickCancelButton([]), null);
+  assert.equal(pickCancelButton(), null);
+});
+
+// A1/A3（2026-09-20 第二轮）：把「等确定」这条轮询路径也变成可离线跑的。
+// 这条测试上方原本写着「轮询本身没法离线测」——那是因为当时没把 evalOn 的出口留出来。
+// 现在用一个假代理区分「读候选」与「滚进视口」两种 /eval 请求，整条路径可以真跑一遍。
+test('弹窗候选摘要：视口与每个候选的 rect 一起报，三档状态不许混', () => {
+  const summary = describeDialogCandidates([
+    { text: '确定', rect: [257, 505, 24, 12], hitOk: false, visible: true },
+    { text: '确定', rect: [257, 469, 24, 12], hitOk: true, visible: true },
+    { text: '取消', rect: [300, 900, 24, 12], hitOk: false, visible: false },
+  ], [1032, 500]);
+  assert.match(summary, /视口 \[1032,500\]/u);
+  assert.match(summary, /确定@\[257,505,24,12\]点不着/u, '在视口内但点不着 —— 就是盖文天猫那一台');
+  assert.match(summary, /确定@\[257,469,24,12\]可点/u);
+  assert.match(summary, /取消@\[300,900,24,12\]不在视口内/u);
+  assert.match(describeDialogCandidates([], [1032, 500]), /（没有候选）/u);
+  assert.match(describeDialogCandidates([], null), /视口 \?/u, '视口没读到时要说「不知道」，不许编一个');
+});
+
+test('等「确定」：点不着时先把它滚进视口，滚完按原判据重判（不是干等）', async () => {
+  const blocked = { viewport: [1032, 500],
+    buttons: [{ i: 0, text: '确定', rect: [257, 505, 24, 12], centerY: 511, visible: true, hitOk: false }] };
+  const reachable = { viewport: [1032, 500],
+    buttons: [{ i: 0, text: '确定', rect: [257, 469, 24, 12], centerY: 475, visible: true, hitOk: true }] };
+
+  // 假代理是个状态机：**滚动之前永远只给不可点的那份**。于是「最终拿到可点的确定」这件事本身
+  // 就证明了「滚动发生在重判之前」—— 顺序不靠读代码，靠结果。
+  const runCase = async (after) => {
+    let scrolled = false;
+    const bodies = [];
+    const server = createServer((request, response) => {
+      let body = '';
+      request.on('data', (chunk) => { body += chunk; });
+      request.on('end', () => {
+        bodies.push(body);
+        response.setHeader('content-type', 'application/json');
+        if (body.includes('scrollIntoView')) {
+          scrolled = true;
+          response.end(JSON.stringify({ value: true }));
+          return;
+        }
+        response.end(JSON.stringify({ value: JSON.stringify(scrolled ? after : blocked) }));
+      });
+    });
+    await new Promise((resolve) => { server.listen(0, '127.0.0.1', resolve); });
+    try {
+      const waited = await waitForConfirmButton({ proxy: `http://127.0.0.1:${server.address().port}` },
+        'page-1', { attempts: 4, intervalMs: 1 });
+      return { waited, bodies };
+    } finally {
+      await new Promise((resolve) => { server.close(resolve); });
+    }
+  };
+
+  const reachableRun = await runCase(reachable);
+  assert.equal(reachableRun.waited.confirm?.text, '确定', '滚进视口之后必须能拿到它');
+  assert.equal(reachableRun.waited.scrolls, 1, '滚一次就够 —— 不许每轮都滚');
+  assert.equal(reachableRun.waited.attempts, 2, '第一轮判、第二轮滚完重判，恰好两次');
+  assert.match(reachableRun.bodies[0], /elementFromPoint/u, '先量再判，不许一上来就滚');
+
+  // 滚了也点不着：必须**有界地**收手，并把「滚了几次、当时视口多大」一起交出来。
+  const exhausted = await runCase(blocked);
+  assert.equal(exhausted.waited.confirm, null);
+  assert.equal(exhausted.waited.scrolls, 4, '每个轮次都试一次滚动，但不许无限等');
+  assert.equal(exhausted.waited.attempts, 4);
+  assert.equal(exhausted.waited.viewport[1], 500, '失败时要把视口带出来');
+});
+
+test('接线：submit 的报错与日志共用同一份「视口＋候选」摘要，并报出滚了几次', () => {
+  const promo = readScript('collect-promotion-report.mjs');
+  const start = promo.indexOf('export async function waitForConfirmButton');
+  const waitBody = promo.slice(start, promo.indexOf('async function', start + 10));
+  // 为什么断言函数体内部：2026-09-20 这一族的真故障是「判据没错、动作缺了」——
+  // 把「滚进视口」那两行删掉，上面那条行为用例会走到轮次耗尽，这条也会红。
+  assert.match(waitBody, /scrollIntoViewExpression/u, '点不着时必须先把它送进视口');
+  assert.ok(waitBody.indexOf('scrollIntoViewExpression') < waitBody.indexOf('await delay(intervalMs)'),
+    '先滚、再等下一轮按原判据重判；顺序反了就等于没滚');
+
+  const submitBody = promo.slice(promo.indexOf('async function phaseSubmit'),
+    promo.indexOf('async function phaseFetch'));
+  assert.match(submitBody, /describeDialogCandidates\(waited\.buttons, waited\.viewport\)/u,
+    '失败信息与成功日志必须共用同一份摘要，免得两处措辞漂移');
+  assert.match(submitBody, /期间滚动 \$\{waited\.scrolls\} 次/u, '失败时要报出滚了几次');
+});
+
+test('submit 段开跑前先清掉上一轮留下的弹窗（判据落在调用点上，不是「函数存在」）', () => {
+  const promo = readScript('collect-promotion-report.mjs');
+  const submitBody = promo.slice(promo.indexOf('async function phaseSubmit'), promo.indexOf('async function phaseFetch'));
+  const fetchBody = promo.slice(promo.indexOf('async function phaseFetch'));
+  const clearAt = submitBody.indexOf('await clearLeftoverDialog(args, targetId)');
+  const locateAt = submitBody.indexOf('await locateDownloadReportReady(args, targetId)');
+  // 为什么断言调用点：2026-09-20 这一族的真故障就是「函数写好了没人调」——
+  // 只测函数会全绿，而现场照旧踩着上一轮的弹窗点。这条把调用点本身钉住。
+  assert.ok(clearAt > 0, 'submit 段没有调用 clearLeftoverDialog（函数在但没人用，等于没写）');
+  assert.ok(locateAt > 0, 'submit 段没有调用 locateDownloadReportReady');
+  assert.ok(clearAt < locateAt, '清残留必须排在定位之前 —— 弹窗开着时定位与点击都不可靠');
+  assert.equal(fetchBody.includes('clearLeftoverDialog'), false,
+    'fetch 段不该去清 submit 的弹窗（它不点「下载报表」，没有这个前置）');
+});
+
+test('「下载报表」定位表达式在沙箱里真的能跑：只认文字完全相等的叶子，并清掉上一轮标记', () => {
+  const make = (text, { leaf = true, ancestor = null } = {}) => ({
+    tagName: 'SPAN', textContent: text, children: leaf ? [] : [{}],
+    closest() { return ancestor; },
+    setAttribute(name, value) { this[name] = value; },
+    removeAttribute(name) { delete this[name]; },
+  });
+  const run = (els) => {
+    const stale = make('');
+    stale['data-collect-alimama-download'] = '1';
+    const parsed = JSON.parse(new Function('document', `return ${LOCATE_DOWNLOAD_REPORT_EXPRESSION};`)({
+      querySelectorAll: (selector) => (selector === '[data-collect-alimama-download]' ? [stale] : els),
+    }));
+    return { parsed, stale };
+  };
+
+  const withAncestor = make('下载报表', { ancestor: { tagName: 'BUTTON' } });
+  const { parsed, stale } = run([make('报表'), withAncestor, make('下载报表')]);
+  assert.equal(parsed.found, 2, '两个叶子文字相等都要数出来（够判「这个页面上有它」）');
+  assert.equal(parsed.tag, 'SPAN');
+  assert.equal(parsed.clickableAncestor, 'BUTTON', '要报出可点祖先 —— 点击靠事件冒泡');
+  assert.equal(withAncestor['data-collect-alimama-download'], '1', '要标文档序第一个候选');
+  assert.equal(stale['data-collect-alimama-download'], undefined,
+    '动手前必须先清掉上一轮的标记（hash 路由不重载页面，旧标记会一直留着）');
+
+  // 一个候选都没有 ⇒ found:0。调用方据此走「复位路由重试」，而不是直接放弃。
+  assert.equal(run([make('下载'), make('下载报表详情')]).parsed.found, 0);
+  // 有子元素的（不是叶子）不算 —— 认了它就会点到容器上。
+  assert.equal(run([make('下载报表', { leaf: false })]).parsed.found, 0);
 });
 
 // ---------------------------------------------------------------------------

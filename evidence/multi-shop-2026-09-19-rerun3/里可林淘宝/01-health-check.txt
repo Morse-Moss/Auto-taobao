@@ -1,0 +1,27 @@
+体检通过：阻断 0 项，告警 1 项
+  [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+  已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+
+{
+  "version": "xws-platform-health-preflight-v1",
+  "ok": true,
+  "findings": [
+    {
+      "layer": "ENVIRONMENT",
+      "code": "EGRESS_PROXY_NOT_DECLARED",
+      "state": "AUTH_UNKNOWN",
+      "reason": null,
+      "detail": "没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。",
+      "blocking": false
+    }
+  ],
+  "blocking": [],
+  "note": "已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）",
+  "layers": {
+    "IDENTITY": "NOT_IMPLEMENTED",
+    "ENVIRONMENT": "CHECKED",
+    "SESSION": "NOT_IMPLEMENTED",
+    "END_TO_END": "NOT_IMPLEMENTED"
+  },
+  "checkedAt": "2026-09-20T08:10:36.229Z"
+}

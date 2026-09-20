@@ -1,0 +1,30 @@
+
+===== 2026-09-20T08:31:20.571Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-09-19 --proxy http://127.0.0.1:19023 --shop-key 网林天猫 --shop-xlsx "C:\Users\Administrator\Downloads\日报_20260920_80bec2d747ebb68cb870a4272d0d52c1 (3).xlsx" --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20260920_163044.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 网林天猫 ↔ 源产物店名 网林家居旗舰店 一致（证据目录 daily-report-2026-09-19-网林天猫-rerun4）
+{
+  "status": "DRY_RUN_READY",
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-19-网林天猫-rerun4\\plan.json",
+  "tsvPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-19-网林天猫-rerun4\\paste.tsv",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-19-网林天猫-rerun4",
+  "evidenceGeneration": 4,
+  "recordCount": 1885,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 239,
+    "shopName": "网林家居旗舰店",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1789747200000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---
+[留空] UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）
+[留空] 无线端UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）

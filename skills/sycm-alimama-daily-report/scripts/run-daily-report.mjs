@@ -12,6 +12,12 @@ import { appendAudit, describeAuditRow } from '../../../runtime/daily-report-aud
 import { buildCombinedFields, reportDateEpoch, summarizeSourceDates, valuesEqual } from './daily-report-core.mjs';
 import { buildEnvironment, dirHasEntries, evidenceBaseDir, resolveEvidenceDir } from './daily-report-runtime.mjs';
 import { assertEvidenceShopKey } from './shop-identities.mjs';
+import {
+  assertOnTargetPage,
+  buildTargetTableUrl,
+  describePageSearchFailure,
+  inspectPageUrl,
+} from './feishu-shared-page.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -25,6 +31,13 @@ const DEFAULTS = Object.freeze({
   // 期望的 base 名。**刻意不提供 --base-name 覆盖口**：这个值的用途正是「防手填参数造成假绿灯」，
   // 再给它一个命令行入口就等于把守卫自己拆了。要换 base 就改 config/feishu 配置层那一个地方。
   expectedBaseName: TARGET.sourceBaseName,
+});
+
+// 报错文案里把表 id 翻成人看得懂的名字。五家共用这一页，「它现在停在哪张表上」这句话
+// 必须立刻能被读懂 —— 汇报与报错里不甩 id 是本项目的既定要求（id 照样一起印，方便 grep）。
+const KNOWN_TABLES = Object.freeze({
+  [TARGET.sourceTable]: '源表（总数据来源底单）',
+  [TARGET.inquiryTable]: '询单表（readback 的第 2 步）',
 });
 
 function parseArgs(argv) {
@@ -75,15 +88,96 @@ function resolveOutputDir(args) {
     policy: args.commit ? 'latest' : 'fresh' });
 }
 
-async function inspectTarget(args) {
+// 「这一 base 上恰好一个页面」的判据只有一处 —— 落位（ensureTargetPage）与复核（inspectTarget）
+// 必须看到同一个页面，不能各自去 /targets 挑一次、还各挑各的。
+async function discoverFeishuPage(args) {
   const targets = await fetch(`${args.proxy}/targets`).then(response => response.json());
   const matches = targets.filter(target => target.type === 'page' && target.url.includes(`/base/${args.appToken}`));
-  if (matches.length !== 1) throw new Error(`expected one Feishu page for target base, got ${matches.length}`);
-  const page = matches[0];
-  const url = new URL(page.url);
-  if (url.searchParams.get('table') !== args.tableId || url.searchParams.get('view') !== args.viewId) {
-    throw new Error(`Feishu page is not on authorized table/view: ${page.url}`);
+  // 失败时的诊断集中在 feishu-shared-page.mjs：只报一个数字的话，
+  // 「页面被切到别的 base」与「代理连错了浏览器」这两种 got 0 长得一模一样。
+  if (matches.length !== 1) throw new Error(describePageSearchFailure(targets, { appToken: args.appToken }));
+  return matches[0];
+}
+
+// 与 collect-shop-report.mjs / readback-daily-report.mjs 同形的导航（GET /navigate?target=&url=）。
+async function navigate(args, targetId, url) {
+  const response = await fetch(
+    `${args.proxy}/navigate?target=${encodeURIComponent(targetId)}&url=${encodeURIComponent(url)}`);
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || `navigate failed: HTTP ${response.status}`);
+  return payload;
+}
+
+// 导航之后页面模型要重新加载，等它。**不用固定 sleep**（快一点就落空、慢一点就白等）：
+// 判据与 readback-daily-report.mjs 的 waitForModel 逐字相同 —— 等**目标表这个键**出现，
+// 而不是等 `base.tables` 变成一个真对象（2026-09-17 实测：后者先为真，随后读表炸 `table not loaded`）。
+async function waitForTargetModel(args, targetId, tableId, { attempts = 20, delayMs = 1000 } = {}) {
+  let last = null;
+  let used = 0;
+  for (let index = 0; index < attempts; index += 1) {
+    used += 1;
+    try {
+      const response = await fetch(`${args.proxy}/eval?target=${encodeURIComponent(targetId)}`, {
+        method: 'POST',
+        body: `(() => {
+          const base = window.bitableStore?.modelOperator?.base;
+          if (!base) return 'model-not-ready';
+          return Object.values(base.tables || {}).some(item => item && item.id === ${JSON.stringify(tableId)})
+            ? 'ready' : 'table-not-loaded';
+        })()`,
+      });
+      const payload = await response.json();
+      last = response.ok ? payload.value : (payload.error || `HTTP ${response.status}`);
+      if (last === 'ready') return { ready: true, attempts: used, delayMs, last };
+    } catch (error) {
+      last = error.message;
+    }
+    await delay(delayMs);
   }
+  return { ready: false, attempts: used, delayMs, last };
+}
+
+// 进场落位：把这一页导到**本次授权的 table/view**，再交给 inspectTarget 复核。
+//
+// 为什么必须由本步自己做（2026-09-20 定论，完整链条见 feishu-shared-page.mjs 顶部）：
+// 五家店共用这一页。它停在别的表上时，报错挂在**下一家店**的 push 上，措辞还和真因无关。
+// 导航只换 URL、不碰任何数据，所以「自己落位」是安全的；inspectTarget 的断言原样保留 ——
+// 它从「唯一的守卫」退化成「回读校验」，仍然拦得住代理连错浏览器、页面被人切走这类情况。
+//
+// 第二个参数只给测试用（注入更短的等待，别让一个「永远加载不出来」的用例跑满 20 秒）。
+// 生产调用一律 `ensureTargetPage(args)`，走默认等待。
+export async function ensureTargetPage(args, { wait } = {}) {
+  const page = await discoverFeishuPage(args);
+  const before = inspectPageUrl(page.url, { appToken: args.appToken, tableId: args.tableId, viewId: args.viewId });
+  const wanted = before.onTarget ? null
+    : buildTargetTableUrl(page.url, { appToken: args.appToken, tableId: args.tableId, viewId: args.viewId });
+  if (wanted) await navigate(args, page.targetId, wanted);
+  // **已经在授权的 URL 上也要等模型**（2026-09-20）：URL 对不等于表已经加载出来 ——
+  // 上一个阶段可能刚刚导航回来，或者它自己的归位就是失败的那一次（那时它的 waitForModel 也没等到）。
+  // 不在这里等，同一个「页面还在加载」就会换个面目出现在 inspectTarget 里，报成
+  // 「Feishu bitable model is not ready」—— 又是一条看不出真因的错。
+  const waited = await waitForTargetModel(args, page.targetId, args.tableId, wait);
+  if (!waited.ready) {
+    throw new Error('落位到源表之后，页面模型一直没加载出表 '
+      + `${args.tableId}（等了 ${waited.attempts} 次、每次 ${waited.delayMs}ms，`
+      + `最后一次看到的是 ${JSON.stringify(waited.last)}）`
+      + `｜落位目标 ${wanted ?? page.url}`);
+  }
+  if (wanted) {
+    console.log(`[target] 进场时这一页停在 table=${before.actualTable ?? '?'}&view=${before.actualView ?? '?'}`
+      + '（五家共用一页，多半是上一家的阶段没收尾留下的）'
+      + `⇒ 已落位回源表（第 ${waited.attempts} 次探到表已加载）`);
+  }
+  return { navigated: Boolean(wanted), from: before, targetId: page.targetId, wanted };
+}
+
+async function inspectTarget(args) {
+  const page = await discoverFeishuPage(args);
+  // 停错表时的诊断集中在 feishu-shared-page.mjs（与「要不要落位」共用同一份判据）。
+  // 改前这里只报一句 `not on authorized table/view: <url>`：URL 里其实写着当时的 table 是什么，
+  // 但没人会去比对那串 id，于是「这一页是上一家留下的」这件事在报错里完全看不出来。
+  assertOnTargetPage(page.url, { appToken: args.appToken, tableId: args.tableId, viewId: args.viewId,
+    knownTables: KNOWN_TABLES });
   const expression = `(() => {
     const base = window.bitableStore?.modelOperator?.base;
     if (!base) throw new Error('Feishu bitable model is not ready');
@@ -273,6 +367,10 @@ async function main() {
   // 先定产物落哪一代，再动任何东西：同一天第二次跑会顺延到 -rerun2，而不是覆盖上一轮。
   const resolved = resolveOutputDir(args);
   args.outputDir = resolved.dir;
+  // 先落位、再复核（2026-09-20）：这一页五家店共用，进场时它可能还停在上一家的阶段留下的表上。
+  // 落位是幂等的（已经在授权 table/view 上就不发导航，只探一次「表加载出来了没」），
+  // 所以排练与真跑走的是同一条路径。
+  await ensureTargetPage(args);
   const target = await inspectTarget(args);
   const source = extractSources(args);
   const sourceSelfChecks = assertSourceDates(source, args);
@@ -373,13 +471,19 @@ async function main() {
     derivedReadbackAttempts: settled.attempts, checks: plan.checks }, null, 2));
 }
 
-main().catch(async (error) => {
-  console.error(error.stack || error.message);
-  // 失败也是一次「我做过的动作」——而且是最需要留下痕迹的那种。
-  // 只有在已经建立上下文（即真的走到过对外动作那一步）时才记。
-  if (auditContext) {
-    await recordAudit({ ...auditContext, outcome: 'failed',
-      detail: { error: String(error?.message ?? error).slice(0, 2000) } });
-  }
-  process.exitCode = 1;
-});
+// 直接执行才跑 main：本文件现在也要能被 import（测试用假代理验证 ensureTargetPage 的落位行为）。
+// 写法与 readback-daily-report.mjs / collect-promotion-report.mjs / date-picker.mjs 一致。
+const invokedDirectly = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (invokedDirectly) {
+  main().catch(async (error) => {
+    console.error(error.stack || error.message);
+    // 失败也是一次「我做过的动作」——而且是最需要留下痕迹的那种。
+    // 只有在已经建立上下文（即真的走到过对外动作那一步）时才记。
+    if (auditContext) {
+      await recordAudit({ ...auditContext, outcome: 'failed',
+        detail: { error: String(error?.message ?? error).slice(0, 2000) } });
+    }
+    process.exitCode = 1;
+  });
+}

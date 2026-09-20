@@ -1,0 +1,19 @@
+
+===== 2026-09-20T06:00:43.750Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-shop-report.mjs --date 2026-09-19 --proxy http://127.0.0.1:19041 --expect-shop 里可林家居 --expect-member 里可林家居:阿彦 --expect-member-id 2350600069
+exit=0 signal= error=none
+--- stdout ---
+[0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）
+[身份] 生意参谋店铺名 = "里可林家居"（主店）｜期望 "里可林家居" ✓
+      → 生意参谋页 EE67A7612AE6DE6948B6398C87D083A4｜已有日报 xlsx 27 个｜下载目录 C:\Users\Administrator\Downloads｜身份核对=已做
+[1/4] 再进 自助分析 · 公共空间
+[2/4] 2.5s：预览按钮 2 个，日报行 #0（命中复核=true，视口内=true）
+[2/4] 点开「日报」预览（#0）→ {"clicked":true,"tag":"A","text":"预览"}
+[3/4] 3s：统计区间=["2026-08-21","2026-09-19"]｜下载按钮=true
+[3/4] 统计区间 2026-08-21 ~ 2026-09-19 含目标日 2026-09-19 ✓
+[4/4] 点「下载报表」
+      → y=633（中心点命中） → {"clicked":true,"tag":"SPAN","text":"下载报表"}
+      新文件：日报_20260920_b3de46ced2634ef20c9372b4caf00736.xlsx（19849 bytes）
+      shopXlsxPath = C:\Users\Administrator\Downloads\日报_20260920_b3de46ced2634ef20c9372b4caf00736.xlsx
+
+--- stderr ---

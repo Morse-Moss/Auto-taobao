@@ -402,8 +402,10 @@ export async function applyDate(options = {}) {
   }
 }
 
+// settleAttempts 的默认值有依据，不是随手写的：实测「新标签冷挂载到筛选栏齐全」用时 6190ms
+// （evidence/alimama-cold-mount-2026-09-20/02-cold-tab-experiment.txt），16 × 1200ms ≈ 19s 是它的约 3 倍。
 async function runApplyDate({ proxy, site, targetId, requested, mode: requestedMode = 'auto',
-  expectTab, now = new Date(), settleMs = 1200, dryRun = false, trace = [] } = {}) {
+  expectTab, now = new Date(), settleMs = 1200, settleAttempts = 16, dryRun = false, trace = [] } = {}) {
   const adapter = siteAdapter(site);
   const resolved = resolveDateMode({ requested, now });
   const mode = requestedMode === 'auto' ? resolved.mode : requestedMode;
@@ -427,21 +429,48 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
     });
   }
 
+  // 「读一次页面现在是什么样」这一步本身**会失败**，而且失败的含义是「还没渲染好」：
+  //   阿里妈妈页的读取表达式在筛选栏没渲染完时直接抛（`triggers<6`），在筛选栏出来了、
+  //   日期条那条文本还没出时也抛（`date trigger ambiguous: []`）；生意参谋侧同理（读数不唯一）。
+  // 所以它必须待在容错里 —— 抛出的语义是「再等一轮」，不是「这一步输了」。
+  //
+  // 2026-09-20 现场（evidence/alimama-cold-mount-2026-09-20/01-live-failure.txt，栈顶是 settle:434）：
+  // 上一版把这次读取放在 try 之外，于是第一次读就穿透出整步 —— navigate 到那一刻只过了 1.2 秒，
+  // 页面上 triggers=0。实测冷挂载要多久：同目录 02-cold-tab-experiment.txt
+  // （新开的标签不激活也自己渲染，0→0→0→11，用时 6190ms；03 记的是「hash 变化不会拆筛选栏」，
+  // 用来证伪「多试几次就能好」那条路）。也就是说原来那个「8 次重试」在唯一需要它的路径上
+  // 一次都没跑过：预算写成几都不算数，先得让重试真的发生。预算按实测 6.2s 的约 3 倍留。
   const settle = async (label) => {
     let last = null;
-    for (let attempt = 0; attempt < 8; attempt += 1) {
+    let lastReadError = null;
+    let readFailures = 0;
+    for (let attempt = 0; attempt < settleAttempts; attempt += 1) {
       await delay(settleMs);
-      last = await readSiteState({ proxy, site, targetId: page });
+      let state;
+      try {
+        state = await readSiteState({ proxy, site, targetId: page });
+        lastReadError = null;
+      } catch (error) {
+        lastReadError = String(error?.message ?? error).split('\n')[0];
+        readFailures += 1;
+        continue;
+      }
+      last = state;
       if (site === 'alimama') {
         try {
           const checked = assertAlimamaState({ state: last, requested, yesterday: resolved.yesterday });
+          if (attempt > 0) say('settle-retried', { label, reads: attempt + 1, readFailures });
           return { state: last, applied: checked.applied };
         } catch (error) { last.error = error.message; }
       } else if (resolveAppliedDate({ text: last.applied, yesterday: resolved.yesterday }) === requested) {
+        if (attempt > 0) say('settle-retried', { label, reads: attempt + 1, readFailures });
         return { state: last, applied: requested };
       }
     }
-    throw new Error(`${label}: state did not settle to ${requested}; last=${JSON.stringify(last)}`);
+    // 两种「没落定」要分得开：一次都没读成（页面根本没起来）与读成了但对不上（落位失败）。
+    throw new Error(`${label}: state did not settle to ${requested}`
+      + `（读了 ${settleAttempts} 次 × ${settleMs}ms；其中读不到 ${readFailures} 次）`
+      + `; lastReadError=${lastReadError ?? 'none'}; last=${JSON.stringify(last)}`);
   };
 
   const finish = (status, settled) => {

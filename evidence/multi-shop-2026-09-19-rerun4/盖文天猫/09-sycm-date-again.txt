@@ -1,0 +1,68 @@
+
+===== 2026-09-20T08:36:51.078Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site sycm --date 2026-09-19 --proxy http://127.0.0.1:19045
+exit=0 signal= error=none
+--- stdout ---
+{
+  "site": "sycm",
+  "requested": "2026-09-19",
+  "mode": "preset",
+  "route": "preset-or-calendar",
+  "targetId": "7CA04D24BF867D3BDC8A5FE3598024FE",
+  "observedBefore": "统计时间 2026-09-19",
+  "observedAfter": "统计时间 2026-09-19",
+  "filters": null,
+  "tabs": [
+    "智能问数",
+    "找功能",
+    "问指标",
+    "找商品",
+    "业绩分析",
+    "专项分析",
+    "商品分析",
+    "售后分析",
+    "汇总分析",
+    "询单到下单",
+    "下单到付款",
+    "询单到付款"
+  ],
+  "activeTabs": [
+    "智能问数",
+    "业绩分析",
+    "询单到付款"
+  ],
+  "status": "APPLIED",
+  "trace": [
+    {
+      "step": "tab",
+      "expectTab": "询单到付款",
+      "alreadyActive": false,
+      "point": [
+        492,
+        277
+      ]
+    },
+    {
+      "step": "tab-activated",
+      "activeTabs": [
+        "智能问数",
+        "业绩分析",
+        "询单到付款"
+      ]
+    },
+    {
+      "step": "click-preset",
+      "text": "1天",
+      "point": [
+        1102,
+        162
+      ]
+    },
+    {
+      "step": "settled",
+      "applied": "2026-09-19"
+    }
+  ]
+}
+
+--- stderr ---

@@ -322,50 +322,70 @@ async function main() {
     screenshots: {},
   };
 
+  // 读两张表。**这一段包在 try/finally 里**（2026-09-20）：收尾的归位必须无论成败都发生。
+  // 原先归位写在成功路径末尾，readback 一失败（实测：网林等询单表超时）就不执行 ——
+  // 页面停在询单表上留给**下一家店**，而报错挂在下一家身上、措辞与真因无关。
+  //
+  // 这是兜底，不是主修。主修是让**用这一页的步骤自己落位**（run-daily-report.mjs 的
+  // ensureTargetPage）：有它之后，这一页停在哪儿不再由「上一步有没有正常收尾」决定。
+  // 兜底的意义只是「出错那一轮也别把状态留在外面」。
+  //
   // 读每一张表之前都**先导航到那张表**，不在一张表的页面上顺手读另一张。
   // 2026-09-17 的教训：老标签页里的记录集是打开那一刻的快照，跨表读到的记录数会与
   // 真实值差一截（实测同一张表两个页面报过 12 之差）；导航本身即一次重新加载，
   // 顺手把这个问题消掉，也不用再开第二个页签。
-  for (const table of [SOURCE_TABLE, INQUIRY_TABLE]) {
-    const url = tableUrl(table);
-    await navigate(args, page, url);
-    result.page.navigations.push(url);
-    await waitForModel(args, page.targetId, table.tableId);
-    const rowState = await waitForRows(args, page.targetId, table.tableId);
-    const raw = await proxyEval(args, page.targetId, readTableExpression(table, { reportDate: args.reportDate }));
-    const parsed = JSON.parse(raw);
-    const onDate = parsed.rows.filter(row => row.values.reportDate?.display === args.reportDate);
-    result.tables[table.key] = {
-      table: table.label, ...parsed,
-      rowsComplete: rowState.complete,
-      // 行集不齐时，命中数只是**下界**，不许当成结论。
-      onDateCountIsLowerBound: !rowState.complete,
-      onDateCount: onDate.length,
-      onDateRows: onDate,
-      ...(rowState.complete ? {} : {
-        caveat: `页面只物化了 ${rowState.loaded} / ${rowState.recordsNum ?? '?'} 条记录，`
-          + `未物化的部分在模型里不存在 ⇒ onDateCount=${onDate.length} 是下界，不能据此断言「当天没有」；`
-          + '权威判据仍以写入链的 API 路径（selectDailyStoreRecord）为准。',
-      }),
-    };
-    if (args.screenshots) {
-      await fetch(`${args.proxy}/bringToFront?target=${encodeURIComponent(page.targetId)}`).catch(() => {});
-      await delay(1500);
-      const file = path.join(args.outputDir,
-        `feishu-${table.key}-table-after-${args.shotSuffix ?? table.shotSuffix}.png`);
-      result.screenshots[table.key] = await screenshot(args, page.targetId, file);
+  try {
+    for (const table of [SOURCE_TABLE, INQUIRY_TABLE]) {
+      const url = tableUrl(table);
+      await navigate(args, page, url);
+      result.page.navigations.push(url);
+      await waitForModel(args, page.targetId, table.tableId);
+      const rowState = await waitForRows(args, page.targetId, table.tableId);
+      const raw = await proxyEval(args, page.targetId, readTableExpression(table, { reportDate: args.reportDate }));
+      const parsed = JSON.parse(raw);
+      const onDate = parsed.rows.filter(row => row.values.reportDate?.display === args.reportDate);
+      result.tables[table.key] = {
+        table: table.label, ...parsed,
+        rowsComplete: rowState.complete,
+        // 行集不齐时，命中数只是**下界**，不许当成结论。
+        onDateCountIsLowerBound: !rowState.complete,
+        onDateCount: onDate.length,
+        onDateRows: onDate,
+        ...(rowState.complete ? {} : {
+          caveat: `页面只物化了 ${rowState.loaded} / ${rowState.recordsNum ?? '?'} 条记录，`
+            + `未物化的部分在模型里不存在 ⇒ onDateCount=${onDate.length} 是下界，不能据此断言「当天没有」；`
+            + '权威判据仍以写入链的 API 路径（selectDailyStoreRecord）为准。',
+        }),
+      };
+      if (args.screenshots) {
+        await fetch(`${args.proxy}/bringToFront?target=${encodeURIComponent(page.targetId)}`).catch(() => {});
+        await delay(1500);
+        const file = path.join(args.outputDir,
+          `feishu-${table.key}-table-after-${args.shotSuffix ?? table.shotSuffix}.png`);
+        result.screenshots[table.key] = await screenshot(args, page.targetId, file);
+      }
+    }
+  } finally {
+    // 收尾把页面留在**底单**上：底单是这条链的默认工作面，runner 也要求飞书页停在
+    // `table=<底单>&view=<视图>`。回读是运行的最后一步，别把一个「页面停在别处」的状态
+    // 留给下一个人（2026-09-17 实测踩过：回读把页留在询单表，紧接着的重跑被
+    // `expected one Feishu page for target base` 拦下）。
+    //
+    // 抛错路径上这里**必须吞掉自己的错误**：原始异常（比如询单表没等到）才是要报出来的那个，
+    // 归位失败只影响下一个使用者，不该把真正的失败原因顶掉 —— 顶掉之后，
+    // 「为什么这家没读成」就再也看不到了，而这正是前面那一轮最花时间的地方。
+    const stayOn = args.leaveOn ?? SOURCE_TABLE.key;
+    const leaveTable = stayOn === INQUIRY_TABLE.key ? INQUIRY_TABLE : SOURCE_TABLE;
+    try {
+      await navigate(args, page, tableUrl(leaveTable));
+      await waitForModel(args, page.targetId, leaveTable.tableId);
+      result.page.leftOn = tableUrl(leaveTable);
+    } catch (error) {
+      console.error(`[leaveOn] 归位失败：${error.message}`);
+      console.error(`[leaveOn] 期望停在 ${tableUrl(leaveTable)}，但现在这一页停在哪张表上不确定；`
+        + '下一次用它的步骤（push 的 ensureTargetPage）会自己落位回源表，不影响下一家的正确性');
     }
   }
-
-  // 收尾把页面留在**底单**上：底单是这条链的默认工作面，runner 也要求飞书页停在
-  // `table=<底单>&view=<视图>`。回读是运行的最后一步，别把一个「页面停在别处」的状态
-  // 留给下一个人（2026-09-17 实测踩过：回读把页留在询单表，紧接着的重跑被
-  // `expected one Feishu page for target base` 拦下）。
-  const leaveOn = args.leaveOn ?? SOURCE_TABLE.key;
-  const leaveTable = leaveOn === INQUIRY_TABLE.key ? INQUIRY_TABLE : SOURCE_TABLE;
-  await navigate(args, page, tableUrl(leaveTable));
-  await waitForModel(args, page.targetId, leaveTable.tableId);
-  result.page.leftOn = tableUrl(leaveTable);
 
   const readbackPath = path.join(args.outputDir, 'independent-readback.json');
   writeFileSync(readbackPath, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
@@ -390,7 +410,12 @@ async function main() {
     console.log(`  ${v('reportDate')} | ${v('店铺')} | ${row.recordId} | 询单量=${v('询单量')} | 同层同行=${v('同层同行询单量')}`);
   }
   for (const [key, file] of Object.entries(result.screenshots)) console.log(`  screenshot(${key}) → ${file}`);
-  console.log(`页面已留在：${result.page.leftOn}`);
+  // 归位失败时这里**必须说实话**：那一行上面已经打了 [leaveOn] 警告，但读的人也可能
+  // 只看最后一行 —— 此时产物里 `page.leftOn` 是 null，别打印成「已留在 null」。
+  console.log(result.page.leftOn
+    ? `页面已留在：${result.page.leftOn}`
+    : '页面**没有**归位：这一页现在停在哪张表上不确定（见上面的 [leaveOn] 警告）；'
+      + '下一次用它的步骤会自己落位回源表');
 }
 
 // 只有被直接当命令跑时才执行 main；被 import（离线测试拼表达式）时不许产生副作用。

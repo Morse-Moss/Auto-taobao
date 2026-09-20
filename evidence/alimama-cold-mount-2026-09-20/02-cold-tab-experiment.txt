@@ -1,0 +1,12 @@
+created 7BB38BB2D583EEB43A6F76D0F769F809 {"targetId":"7BB38BB2D583EEB43A6F76D0F769F809"}
+  [不激活] +0ms {"visibility":"visible","hidden":false,"n":0,"dateLike":[],"textLen":0}
+  [不激活] +2027ms {"visibility":"visible","hidden":false,"n":0,"dateLike":[],"textLen":0}
+  [不激活] +4093ms {"visibility":"visible","hidden":false,"n":0,"dateLike":[],"textLen":0}
+  [不激活] +6190ms {"visibility":"visible","hidden":false,"n":11,"dateLike":[" 昨日"],"textLen":2610}
+  [不激活] READY at 6190ms
+--- 现在 bringToFront 一次
+  bringToFront {"ok":true}
+  [激活后] +0ms {"visibility":"visible","hidden":false,"n":11,"dateLike":[" 昨日"],"textLen":2610}
+  [激活后] READY at 0ms
+close {"success":true}
+exit=0

@@ -1,0 +1,662 @@
+{
+  "date": "2026-09-19",
+  "mode": "rehearse",
+  "startedAt": "2026-09-20T06:00:34.078Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 0,
+      "logPath": "evidence\\multi-shop-2026-09-19\\00-health-check-daily.txt",
+      "ok": true,
+      "blocking": [],
+      "blockingDetails": []
+    }
+  },
+  "shops": {
+    "里可林淘宝": {
+      "status": "ok",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\里可林淘宝\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": []
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\里可林淘宝\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19041"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\里可林淘宝\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19041",
+            "--expect-shop",
+            "里可林家居",
+            "--expect-member",
+            "里可林家居:阿彦",
+            "--expect-member-id",
+            "2350600069"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\里可林淘宝\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19041"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "shop-report",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\里可林淘宝\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19041",
+            "--expect-shop",
+            "里可林家居",
+            "--expect-member",
+            "里可林家居:阿彦",
+            "--expect-member-id",
+            "2350600069"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "promotion-fetch",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\里可林淘宝\\06-promotion-fetch.txt",
+          "argv": [
+            "--phase",
+            "fetch",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19041",
+            "--expect-shop",
+            "里可林家居",
+            "--expect-member",
+            "里可林家居:阿彦",
+            "--expect-member-id",
+            "2350600069"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "push",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\里可林淘宝\\07-push.txt",
+          "argv": [
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "里可林淘宝",
+            "--shop-xlsx",
+            "C:\\Users\\Administrator\\Downloads\\日报_20260920_b3de46ced2634ef20c9372b4caf00736.xlsx",
+            "--promotion-zip",
+            "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260920_140037.zip"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "sycm-reset",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\里可林淘宝\\08-sycm-reset.txt",
+          "argv": [],
+          "blockingDetails": null
+        },
+        {
+          "stage": "sycm-date-again",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\里可林淘宝\\09-sycm-date-again.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19041"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "backfill",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\里可林淘宝\\10-backfill.txt",
+          "argv": [
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19041",
+            "--source-shop",
+            "里可林家居",
+            "--shop",
+            "里可林淘宝",
+            "--shop-key",
+            "里可林淘宝"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "readback",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\里可林淘宝\\11-readback.txt",
+          "argv": [
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "里可林淘宝"
+          ],
+          "blockingDetails": null
+        }
+      ],
+      "source": {
+        "shopXlsx": "C:\\Users\\Administrator\\Downloads\\日报_20260920_b3de46ced2634ef20c9372b4caf00736.xlsx",
+        "promotionZip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260920_140037.zip"
+      }
+    },
+    "网林天猫": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\网林天猫\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": []
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\网林天猫\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19042"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\网林天猫\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--expect-shop",
+            "网林家居旗舰店",
+            "--expect-member",
+            "网林家居旗舰店:阿彦",
+            "--expect-member-id",
+            "7314426323"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\网林天猫\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19042"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "shop-report",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\网林天猫\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--expect-shop",
+            "网林家居旗舰店",
+            "--expect-member",
+            "网林家居旗舰店:阿彦",
+            "--expect-member-id",
+            "7314426323"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "promotion-fetch",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\网林天猫\\06-promotion-fetch.txt",
+          "argv": [
+            "--phase",
+            "fetch",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--expect-shop",
+            "网林家居旗舰店",
+            "--expect-member",
+            "网林家居旗舰店:阿彦",
+            "--expect-member-id",
+            "7314426323"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "push",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\网林天猫\\07-push.txt",
+          "argv": [
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "网林天猫",
+            "--shop-xlsx",
+            "C:\\Users\\Administrator\\Downloads\\日报_20260920_80bec2d747ebb68cb870a4272d0d52c1 (1).xlsx",
+            "--promotion-zip",
+            "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260920_140228.zip"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "sycm-reset",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\网林天猫\\08-sycm-reset.txt",
+          "argv": [],
+          "blockingDetails": null
+        },
+        {
+          "stage": "sycm-date-again",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\网林天猫\\09-sycm-date-again.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19042"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "backfill",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\网林天猫\\10-backfill.txt",
+          "argv": [
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--source-shop",
+            "网林家居旗舰店",
+            "--shop",
+            "网林天猫",
+            "--shop-key",
+            "网林天猫"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "readback",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\网林天猫\\11-readback.txt",
+          "argv": [
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "网林天猫"
+          ],
+          "blockingDetails": null
+        }
+      ],
+      "source": {
+        "shopXlsx": "C:\\Users\\Administrator\\Downloads\\日报_20260920_80bec2d747ebb68cb870a4272d0d52c1 (1).xlsx",
+        "promotionZip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260920_140228.zip"
+      },
+      "failedStage": "readback",
+      "failureOutput": "\nError: Feishu table tblUnwn05vl8Wik9 did not load within 30000ms (last=false)\n    at waitForModel (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs:126:9)\n    at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs:333:5)\n",
+      "blockingDetails": null,
+      "error": "阶段 readback 失败（exit 1）"
+    },
+    "盖文淘宝": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\盖文淘宝\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": []
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\盖文淘宝\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19043"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\盖文淘宝\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19043",
+            "--expect-shop",
+            "盖文全卫定制",
+            "--expect-member",
+            "随心品质定制:阿彦",
+            "--expect-member-id",
+            "887360146"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\盖文淘宝\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19043"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "shop-report",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\盖文淘宝\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19043",
+            "--expect-shop",
+            "盖文全卫定制",
+            "--expect-member",
+            "随心品质定制:阿彦",
+            "--expect-member-id",
+            "887360146"
+          ],
+          "blockingDetails": null
+        }
+      ],
+      "source": {},
+      "failedStage": "shop-report",
+      "failureOutput": "[0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）\n[身份] 生意参谋店铺名 = \"盖文全卫定制\"（主店）｜期望 \"盖文全卫定制\" ✓\n      → 生意参谋页 AF80943CE84E216CDABF60EBFD824DA3｜已有日报 xlsx 29 个｜下载目录 C:\\Users\\Administrator\\Downloads｜身份核对=已做\n[1/4] 再进 自助分析 · 公共空间\n[2/4] 2.5s：预览按钮 0 个\n[2/4] 5s：预览按钮 0 个\n[2/4] 7.5s：预览按钮 0 个\n[2/4] 10s：预览按钮 0 个\n[2/4] 12.5s：预览按钮 0 个\n[2/4] 15s：预览按钮 0 个\n[2/4] 17.5s：预览按钮 0 个\n[2/4] 20s：预览按钮 0 个\n[2/4] 22.5s：预览按钮 0 个\n[2/4] 25s：预览按钮 0 个\n\n\n采集失败：等不到「日报」这一行的预览按钮\n",
+      "blockingDetails": null,
+      "error": "阶段 shop-report 失败（exit 1）"
+    },
+    "盖文天猫": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\盖文天猫\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": []
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\盖文天猫\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19045"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\盖文天猫\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19045",
+            "--expect-shop",
+            "盖文旗舰店",
+            "--expect-member",
+            "盖文旗舰店:阿彦",
+            "--expect-member-id",
+            "2995200080"
+          ],
+          "blockingDetails": null
+        }
+      ],
+      "source": {},
+      "failedStage": "promotion-submit",
+      "failureOutput": "[0/2] 阿里妈妈页 3508AF96DB5313FF9017774EE3D74904｜phase=submit｜目标日 2026-09-19\n[身份] 阿里妈妈会员 = \"盖文旗舰店:阿彦\" ID=\"2995200080\"（这一页不显示店铺名，只有会员名）｜期望 \"盖文旗舰店:阿彦\" / 2995200080 ✓\n[submit] 页面 = https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-09-19&endTime=2026-09-19&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day｜正文 3008 字符\n[submit] 候选 1 个，取文档序第一个（SPAN，其可点祖先是 BUTTON，点击靠冒泡触发）\n[submit] 滚动后复核通过（y=241（中心点命中））→ 点击 → {\"clicked\":true,\"tag\":\"SPAN\",\"text\":\"下载报表\"}\n\n\n采集失败：等了 30 次（每次 1000ms）仍没有可点的「确定」（候选 [{\"i\":0,\"text\":\"确定\",\"visible\":false,\"hitOk\":false},{\"i\":1,\"text\":\"取消\",\"visible\":true,\"hitOk\":false}]）⇒ 任务未提交\n",
+      "blockingDetails": null,
+      "error": "阶段 promotion-submit 失败（exit 1）"
+    },
+    "科塔淘宝": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\科塔淘宝\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": []
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\科塔淘宝\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19044"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\科塔淘宝\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--expect-shop",
+            "科塔全卫定制",
+            "--expect-member",
+            "j873522735:阿彦",
+            "--expect-member-id",
+            "412070158"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\科塔淘宝\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19044"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "shop-report",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\科塔淘宝\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--expect-shop",
+            "科塔全卫定制",
+            "--expect-member",
+            "j873522735:阿彦",
+            "--expect-member-id",
+            "412070158"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "promotion-fetch",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\科塔淘宝\\06-promotion-fetch.txt",
+          "argv": [
+            "--phase",
+            "fetch",
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--expect-shop",
+            "科塔全卫定制",
+            "--expect-member",
+            "j873522735:阿彦",
+            "--expect-member-id",
+            "412070158"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "push",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-19\\科塔淘宝\\07-push.txt",
+          "argv": [
+            "--date",
+            "2026-09-19",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "科塔淘宝",
+            "--shop-xlsx",
+            "C:\\Users\\Administrator\\Downloads\\日报_20260920_aefdcd0599626688507142b7bbed7e84.xlsx",
+            "--promotion-zip",
+            "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260920_140623.zip"
+          ],
+          "blockingDetails": null
+        }
+      ],
+      "source": {
+        "shopXlsx": "C:\\Users\\Administrator\\Downloads\\日报_20260920_aefdcd0599626688507142b7bbed7e84.xlsx",
+        "promotionZip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260920_140623.zip"
+      },
+      "failedStage": "push",
+      "failureOutput": "\nError: Feishu page is not on authorized table/view: https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblUnwn05vl8Wik9&view=vewHgmRhGR\n    at inspectTarget (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:85:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:276:18)\n",
+      "blockingDetails": null,
+      "error": "阶段 push 失败（exit 1）"
+    }
+  },
+  "finishedAt": "2026-09-20T06:07:24.157Z"
+}

@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  applyDate,
   assertAlimamaState, buildAlimamaUrl, extractIsoDates, isSingleDaySelection,
   resolveAppliedDate, resolveDateMode, resolveTarget, selectDayHits, shiftIso, shiftMonth, siteAdapter,
 } from './date-picker.mjs';
@@ -219,4 +220,108 @@ test('落位认不出页面时按 entryUrl 回位，且只动同一主机下那�
 test('只有生意参谋登记了回位地址', () => {
   assert.match(siteAdapter('sycm').entryUrl, /sycm\.taobao\.com/u);
   assert.equal(siteAdapter('alimama').entryUrl, undefined);
+});
+
+// ------------------------------------------------- 落位重试（2026-09-20 现场修的一处）
+
+// 现场（evidence/multi-shop-2026-09-19-rerun3/盖文淘宝/02-alimama-date.txt）：
+// 两家店都停在 alimama-date，报出来的却是**读取表达式原样抛出**
+// （`filter bar not ready; triggers=0` / `date trigger ambiguous: []`），调用栈顶是
+// `settle …:434` —— 也就是第一次读就穿透出整步，navigate 之后只过了 1.2 秒。
+// 那两次报错的语义都是「还没渲染完」，不是「落位输了」；而原来那个「8 次重试」在这种情况下
+// 一次都跑不到。实测冷挂载到筛选栏齐全要 6190ms
+// （evidence/alimama-cold-mount-2026-09-20/02-cold-tab-experiment.txt）。
+// 下面这条按现场序列回放：读两次读不到、第三次才齐 ⇒ 必须判成功。
+const ALIMAMA_READY_STATE = {
+  applied: ' 昨日',
+  triggers: ['关键词推广 人群推广', '末次点击归因', '30天累计数据', ' 昨日', '分日',
+    '全部计划', '周环比', '展现量', '请选择', '维度 营销场景', '20条/页'],
+};
+
+// 假代理：只答落位要用的三个口子（/targets、/navigate、/eval），eval 按给定序列作答。
+// 用假代理而不是桩函数，是为了让 navigate → settle 的真实顺序也被跑到。
+function stubProxy({ evalResults }) {
+  const calls = [];
+  let evalIndex = 0;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const text = String(url);
+    calls.push({ url: text, body: init?.body ?? null });
+    const respond = (ok, status, payload) => ({
+      ok, status, text: async () => JSON.stringify(payload), json: async () => payload,
+    });
+    if (text.includes('/targets')) {
+      return respond(true, 200, [{ type: 'page', targetId: 'alimama-page', url: 'https://one.alimama.com/index.html' }]);
+    }
+    if (text.includes('/navigate')) return respond(true, 200, { frameId: 'alimama-page' });
+    if (text.includes('/eval')) {
+      const result = evalResults[Math.min(evalIndex, evalResults.length - 1)];
+      evalIndex += 1;
+      if (result.error) return respond(false, 400, { error: result.error });
+      return respond(true, 200, { value: JSON.stringify(result.state) });
+    }
+    throw new Error(`stub 没实现这个口子：${text}`);
+  };
+  return { calls, restore: () => { globalThis.fetch = realFetch; }, evalCalls: () => evalIndex };
+}
+
+const settleCase = { site: 'alimama', requested: '2026-09-19', proxy: 'http://127.0.0.1:1',
+  now: new Date('2026-09-20T09:00:00+08:00'), settleMs: 1 };
+
+test('落位：navigate 之后头两次读不到（页面还没渲染完）不算失败，等到齐为止', async () => {
+  const stub = stubProxy({ evalResults: [
+    { error: 'alimama filter bar not ready; triggers=0' },   // 动作前那次读取（按设计可缺省）
+    { error: 'alimama filter bar not ready; triggers=0' },   // settle 第 1 轮
+    { error: 'alimama date trigger ambiguous: []' },         // settle 第 2 轮（现场天猫正是这句）
+    { state: ALIMAMA_READY_STATE },                          // settle 第 3 轮
+  ] });
+  try {
+    const result = await applyDate(settleCase);
+    assert.equal(result.status, 'APPLIED');
+    assert.equal(result.observedAfter, ' 昨日');
+    const steps = result.trace.map((step) => step.step);
+    assert.ok(steps.includes('read-before-skipped'), '动作前读不到仍按设计缺省');
+    const retried = result.trace.find((step) => step.step === 'settle-retried');
+    assert.ok(retried, '等了不止一轮就要留痕 —— 否则「这一步为什么慢」永远只能靠复现');
+    assert.equal(retried.reads, 3);
+    assert.equal(retried.readFailures, 2);
+    // 读不到的那几轮不许把 navigate 重发一遍：返回 URL hash 就够了，重发等于把页面推回去重挂。
+    assert.equal(stub.calls.filter((call) => call.url.includes('/navigate')).length, 1);
+  } finally { stub.restore(); }
+});
+
+test('落位：一直读不到时，报错要点名「读了几次、最后一次为什么读不到」', async () => {
+  const stub = stubProxy({ evalResults: [{ error: 'alimama filter bar not ready; triggers=0' }] });
+  try {
+    await assert.rejects(() => applyDate(settleCase), (error) => {
+      assert.match(error.message, /state did not settle to 2026-09-19/u);
+      assert.match(error.message, /读了 16 次/u, '预算要写在报错里，别让人猜等过多久');
+      assert.match(error.message, /读不到 16 次/u, '「一次都没读成」与「读成了但对不上」必须分得开');
+      assert.match(error.message, /triggers=0/u, '最后一次读不到的原因要带出来');
+      assert.equal(error.trace.at(-1).step, 'navigate', 'trace 仍要停在最后一步');
+      return true;
+    });
+  } finally { stub.restore(); }
+});
+
+test('落位：读得到但日期对不上时，报错里要留着「最后读成什么样」', async () => {
+  const stub = stubProxy({ evalResults: [{ state: { ...ALIMAMA_READY_STATE, applied: '2026-09-16' } }] });
+  try {
+    await assert.rejects(() => applyDate(settleCase), (error) => {
+      assert.match(error.message, /读不到 0 次/u, '这不是读不到，是读到了没落位');
+      assert.match(error.message, /alimama applied date is/u);
+      assert.match(error.message, /lastReadError=none/u);
+      return true;
+    });
+  } finally { stub.restore(); }
+});
+
+// 源码级接线守卫：这条是本次修的那个「位置错」，所以判的是**位置**，不是行为 ——
+// 行为已经被上面三条用例按住，但位置一旦退回去，行为用例会因为「第一次读恰好成功」而全绿。
+test('落位：settle 里那次读取必须在容错里（放在 try 之外＝第一次读就穿透）', () => {
+  const source = readFileSync(path.join(import.meta.dirname, 'date-picker.mjs'), 'utf8');
+  assert.match(source, /try \{\s*\n\s*state = await readSiteState/u, '读取要在 try 里');
+  assert.equal(/^\s*last = await readSiteState/mu.test(source), false,
+    '别再让读取直接赋值 —— 读不到就不再是「再等一轮」而是「整步失败」');
+  assert.match(source, /if \(attempt > 0\) say\('settle-retried'/u, '重试要留痕');
 });

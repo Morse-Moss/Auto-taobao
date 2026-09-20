@@ -1,0 +1,15 @@
+
+===== 2026-09-20T08:12:43.724Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase submit --date 2026-09-19 --proxy http://127.0.0.1:19042 --expect-shop 网林家居旗舰店 --expect-member 网林家居旗舰店:阿彦 --expect-member-id 7314426323
+exit=0 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 D7F5CB38DCECA6569A76AD47B49A04CC｜phase=submit｜目标日 2026-09-19
+[身份] 阿里妈妈会员 = "网林家居旗舰店:阿彦" ID="7314426323"（这一页不显示店铺名，只有会员名）｜期望 "网林家居旗舰店:阿彦" / 7314426323 ✓
+[submit] 页面 = https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-09-19&endTime=2026-09-19&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day&isRequestedQztDefaultSet=1｜正文 2570 字符
+[submit] 候选 1 个，取文档序第一个（SPAN，其可点祖先是 BUTTON，点击靠冒泡触发）
+[submit] 滚动后复核通过（y=360（中心点命中））→ 点击 → {"clicked":true,"tag":"SPAN","text":"下载报表"}
+[submit] 等到「确定」(#0)，第 2 次轮询命中｜视口 [1528,732]｜确定@[505,588,24,12]可点 取消@[565,578,64,32]可点 → {"clicked":true,"tag":"SPAN","text":"确定"}
+[submit] 提交后提示 = ""
+[submit] 下一步：等它「生成成功」后跑 --phase fetch（提示语里说数据量大时最长 10 分钟）
+
+--- stderr ---
