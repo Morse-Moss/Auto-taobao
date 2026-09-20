@@ -1,0 +1,19 @@
+同主机 sycm 页签 1 个
+  · 761D578B1E6563A9C4C2FD162D35CF36 https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&acti
+领回：https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&la → https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+navigate HTTP 200
+回读：sycm 页签 1 个、其中工作页 1 个
+  · 761D578B1E6563A9C4C2FD162D35CF36 https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+{
+ "proxy": "http://127.0.0.1:19045",
+ "steps": [
+  "同主机 sycm 页签 1 个",
+  "  · 761D578B1E6563A9C4C2FD162D35CF36 https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&acti",
+  "领回：https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&la → https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+  "navigate HTTP 200",
+  "回读：sycm 页签 1 个、其中工作页 1 个",
+  "  · 761D578B1E6563A9C4C2FD162D35CF36 https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+ ],
+ "verdict": "OK"
+}
+exit=0

@@ -1,0 +1,125 @@
+{
+ "commit": true,
+ "prune": true,
+ "label": false,
+ "shops": {
+  "里可林淘宝": {
+   "browserPort": 19031,
+   "proxyPort": 19041,
+   "windowTitle": "里可林淘宝 · 日报采集窗口",
+   "memberName": "里可林家居:阿彦",
+   "labelTabs": 0,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "leftover": [],
+   "prunePlan": [],
+   "pruneKeeps": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "pruneClosed": [],
+   "pruneFailed": []
+  },
+  "网林天猫": {
+   "browserPort": 19032,
+   "proxyPort": 19042,
+   "windowTitle": "网林天猫 · 日报采集窗口",
+   "memberName": "网林家居旗舰店:阿彦",
+   "labelTabs": 0,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "空白页（残留）  about:blank",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "leftover": [
+    "空白页（残留）  about:blank"
+   ],
+   "prunePlan": [
+    "空白页（残留）  about:blank  ← 空白页，没有用途"
+   ],
+   "pruneKeeps": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "pruneClosed": [
+    "空白页（残留）  about:blank"
+   ],
+   "pruneFailed": []
+  },
+  "盖文淘宝": {
+   "browserPort": 19033,
+   "proxyPort": 19043,
+   "windowTitle": "盖文淘宝 · 日报采集窗口",
+   "memberName": "随心品质定制:阿彦",
+   "labelTabs": 0,
+   "tabs": [
+    "空白页（残留）  about:blank",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "leftover": [
+    "空白页（残留）  about:blank"
+   ],
+   "prunePlan": [
+    "空白页（残留）  about:blank  ← 空白页，没有用途"
+   ],
+   "pruneKeeps": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "pruneClosed": [
+    "空白页（残留）  about:blank"
+   ],
+   "pruneFailed": []
+  },
+  "盖文天猫": {
+   "browserPort": 19035,
+   "proxyPort": 19045,
+   "windowTitle": "盖文天猫 · 日报采集窗口",
+   "memberName": "盖文旗舰店:阿彦",
+   "labelTabs": 0,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "leftover": [],
+   "prunePlan": [],
+   "pruneKeeps": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "pruneClosed": [],
+   "pruneFailed": []
+  },
+  "科塔淘宝": {
+   "browserPort": 19034,
+   "proxyPort": 19044,
+   "windowTitle": "科塔淘宝 · 日报采集窗口",
+   "memberName": "j873522735:阿彦",
+   "labelTabs": 0,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "空白页（残留）  about:blank",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "leftover": [
+    "空白页（残留）  about:blank"
+   ],
+   "prunePlan": [
+    "空白页（残留）  about:blank  ← 空白页，没有用途"
+   ],
+   "pruneKeeps": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "pruneClosed": [
+    "空白页（残留）  about:blank"
+   ],
+   "pruneFailed": []
+  }
+ },
+ "failed": 0
+}
+exit=0

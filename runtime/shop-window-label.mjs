@@ -346,20 +346,30 @@ export async function ensureLabelTabOn({
 /**
  * 按 `prunePlan` 关掉多余的页签。
  *
- * 三个必须交代的点：
+ * 四个必须交代的点：
  *   - **关的是这个窗口里我们自己的页签**，关不掉的如实记进 `failed`，不重试、不假装成功；
  *   - `dryRun` 是默认口径：只回报计划，不关任何东西；
  *   - **不信 `/close` 的返回码，关完回读一遍**（2026-09-18 深夜实测）：
  *     `edge://nurturing/` 那个页签，`/close` 返回 `{"success":true}`，但 3 秒后回读**同一个 targetId 仍在**。
  *     如果只信返回码，清理报告就会写「关掉了」而事实没变 —— 这正是本项目最贵的坑
  *     （「每步都成功 ≠ 结果对」）。所以 `closed` 只收**回读确认消失**的，仍在的一律进 `failed`。
+ *   - **回读也不能只读一遍**（2026-09-20 实测，这条是上面那条的镜像）：真机上 `about:blank`
+ *     从 `/close` 到从 `/targets` 里消失要 **270ms**（探针 `measure-close-latency.mjs`，
+ *     采样：8ms 还在 → 270ms 已消失）。而回读原先紧接着 `/close` 就做 ⇒ 把**成功的关闭**
+ *     报成失败，报告写「关完回读它还在」而其实已经关掉了。**这与「只信返回码」是两个相反的
+ *     坑，合起来才是完整口径：返回码不可信，回读要等一拍**。
+ *     等待预算按实测取：3 次读 × 600ms（覆盖 270ms 有余，又不至于让「真关不掉」的用例空等太久）。
  */
-export async function pruneTabsOn({ proxyUrl, dryRun = true, fetchImpl = fetch } = {}) {
+export async function pruneTabsOn({
+  proxyUrl, dryRun = true, fetchImpl = fetch,
+  readAttempts = 3, readIntervalMs = 600,
+  sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }),
+} = {}) {
   const targets = await readTargets(proxyUrl, fetchImpl);
   const classified = classifyShopTabs(targets);
   const plan = prunePlan(classified);
   if (dryRun || plan.close.length === 0) {
-    return { ok: true, dryRun, plan, closed: [], attempted: [], failed: [], classified };
+    return { ok: true, dryRun, plan, closed: [], attempted: [], failed: [], reads: 0, classified };
   }
   const attempted = [];
   for (const tab of plan.close) {
@@ -371,14 +381,22 @@ export async function pruneTabsOn({ proxyUrl, dryRun = true, fetchImpl = fetch }
       attempted.push({ ...tab, thrown: String(error?.message ?? error).slice(0, 160) });
     }
   }
-  // 回读校验：HTTP 200 不等于关掉了。
-  const after = await readTargets(proxyUrl, fetchImpl);
-  const stillThere = new Set(after.map((t) => t.targetId ?? t.id));
+  // 回读校验：HTTP 200 不等于关掉了；但**读一遍也不等于关不掉**（见上面那一段）。
+  // 读满 readAttempts 次，只要中途全部消失就收手（不等满预算）。
+  let stillThere = new Set();
+  let reads = 0;
+  for (let attempt = 0; attempt < readAttempts; attempt += 1) {
+    if (attempt > 0) await sleep(readIntervalMs);
+    const after = await readTargets(proxyUrl, fetchImpl);
+    reads += 1;
+    stillThere = new Set(after.map((t) => t.targetId ?? t.id));
+    if (attempted.every((t) => !stillThere.has(t.targetId))) break;
+  }
   const closed = attempted.filter((t) => !stillThere.has(t.targetId) && !t.thrown);
   const failed = attempted
     .filter((t) => t.thrown || stillThere.has(t.targetId))
-    .map((t) => ({ ...t, error: t.thrown ?? '关完回读它还在：/close 返回成功但页面没有真的关掉' }));
-  return { ok: failed.length === 0, dryRun: false, plan, closed, attempted, failed, classified };
+    .map((t) => ({ ...t, error: t.thrown ?? `关完回读 ${reads} 次它还在：/close 返回成功但页面没有真的关掉` }));
+  return { ok: failed.length === 0, dryRun: false, plan, closed, attempted, failed, reads, classified };
 }
 
 // ---------------------------------------------------------------------------

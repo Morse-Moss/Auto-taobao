@@ -357,6 +357,57 @@ test('回读表达式：注入的是同名实现（不是另抄一份），且�
     '读不到的字段必须打印出来');
 });
 
+test('截图失败只降级、不中断：captureScreenshotSafe 给结论而不是抛', async () => {
+  const { captureScreenshotSafe } = await import('./readback-daily-report.mjs');
+  const warns = [];
+  const fine = await captureScreenshotSafe({
+    args: {}, targetId: 'T1', file: 'x.png',
+    shot: async () => 'x.png', warn: (text) => warns.push(text),
+  });
+  assert.deepEqual(fine, { ok: true, saved: 'x.png' });
+  assert.deepEqual(warns, [], '成功路径不该有警告');
+
+  const bad = await captureScreenshotSafe({
+    args: {}, targetId: 'T1', file: 'x.png',
+    shot: async () => { throw new Error('CDP 命令超时: Page.captureScreenshot'); },
+    warn: (text) => warns.push(text),
+  });
+  assert.equal(bad.ok, false);
+  assert.equal(bad.file, 'x.png');
+  assert.match(bad.error, /captureScreenshot/u, '失败原因必须原样留下（截断成布尔就没法定位了）');
+  assert.equal(warns.length, 1, '失败必须出声 —— 否则「缺证据」这件事没人知道');
+  assert.match(warns[0], /数据回读不受影响/u,
+    '警告必须说清「数据没受影响」，否则会被读成数据失败');
+});
+
+// 这条是 2026-09-20 实测出来的：源表那一页正文 59 万字符时 `Page.captureScreenshot`
+// 稳定超过代理里那条 30 秒固定超时（两次复现，页面 visible/focused），
+// 而原先截图抛错会穿透 main ⇒ 两张表的独立回读一起丢（产物写在 try 之后，根本不落盘）。
+test('截图失败不许顶掉回读：产物照写、失败记进产物、退出码仍非零', () => {
+  const source = readFileSync(path.join(SCRIPTS_DIR, 'readback-daily-report.mjs'), 'utf8');
+  // ① 循环里用的是降级版，而不是会抛的那一版。
+  assert.match(source, /const shot = await captureScreenshotSafe\(/u, '循环里必须用降级版取截图');
+  assert.equal(/await screenshot\(args, page\.targetId, file\)/u.test(source), false,
+    '循环里又直接用会抛的 screenshot 了 —— 一次截图失败会毁掉整份回读产物');
+  // ② 失败要记进产物，不是只打印。
+  assert.match(source, /result\.screenshots\[table\.key\] = shot\.ok \? shot\.saved : null;/u,
+    '截图缺失必须在产物里写成 null，不能缺键');
+  assert.match(source, /result\.screenshotErrors = screenshotFailures;/u,
+    '截图失败的原因必须写进产物');
+  // ③ 写盘不许被截图成败门住（这是本条的要害：主证据不能依赖佐证）。
+  const writeAt = source.indexOf("const readbackPath = path.join(args.outputDir, 'independent-readback.json');");
+  assert.ok(writeAt > 0, '找不到产物写入点');
+  const shotBlockAt = source.indexOf('if (args.screenshots) {');
+  assert.ok(shotBlockAt > 0 && shotBlockAt < writeAt, '截图分支必须在写产物之前，不能包住写盘');
+  assert.equal(source.slice(writeAt).includes('if (args.screenshots)'), false,
+    '写盘之后不该还有截图分支 —— 那意味着写盘被截图门住了');
+  // ④ 缺证据要说出来，且退出码非零（否则 stage 报成功，而产物里明明缺图）。
+  assert.match(source, /\[不完整\] 数据回读已核对并落盘/u,
+    '必须把「数据已核对」与「截图缺失」分成两句说，别混成一句「失败」');
+  assert.match(source, /好让人知道这一轮的证据不完整。'\);\s*\n\s*process\.exitCode = 1;/u,
+    '截图缺失必须让退出码非零');
+});
+
 test('两个写入方都把证据目录交给 resolveEvidenceDir，回填用 latest 并入同一代', () => {
   const report = readFileSync(path.join(SCRIPTS_DIR, 'run-daily-report.mjs'), 'utf8');
   const backfill = readFileSync(path.join(SCRIPTS_DIR, 'run-inquiry-backfill.mjs'), 'utf8');

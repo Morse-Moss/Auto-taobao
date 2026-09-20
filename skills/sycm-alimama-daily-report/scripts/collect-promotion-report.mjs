@@ -393,6 +393,60 @@ async function phaseSubmit(args, targetId) {
   console.log('[submit] 下一步：等它「生成成功」后跑 --phase fetch（提示语里说数据量大时最长 10 分钟）');
 }
 
+// 轮询间隔：平台自己说生成要几分钟，密集成问没有意义。15s 在「别把它问烦」与「别空等太久」之间。
+const GENERATION_POLL_MS = 15000;
+
+/**
+ * 等目标任务行变成「生成成功」。
+ *
+ * 为什么必须等（2026-09-20 现场）：submit 段自己打印「数据量大时最长 10 分钟」，
+ * 而驱动在 submit 与 fetch 之间只填了 sycm-date + shop-report 两步（实测两分钟上下）。
+ * 原实现第一次看不是「生成成功」就抛，于是这一轮五家里有一家（盖文天猫）卡在这里 ——
+ * 平台还在生成，不是页面不对。判据没错，错的是不给它时间。
+ *
+ * 仍然 fail-closed：超过预算就抛，并把「看了几次、等了多久、最后看到的行文本」带出来。
+ * 「压根没出现」与「出现了但没生成成功」分开报：前者要去查 submit，后者才是平台慢。
+ */
+export async function waitForGenerationReady(args, targetId, wanted, deps = {}) {
+  // 三个注入点只为可测：read 默认打真代理，sleep/now 默认用真实时间。
+  // 没有它们，这段「等」就只能靠源码断言守 —— 而这一族的真故障恰恰是「判据对、循环不成立」，
+  // 源码断言看不出循环会不会真的跑第二圈。
+  const read = deps.read ?? (() => evalOn(args, targetId, targetRowExpression(wanted)));
+  const sleep = deps.sleep ?? delay;
+  const now = deps.now ?? Date.now;
+  const budget = args.generationWaitMs ?? 660000;
+  const startedAt = now();
+  const deadline = startedAt + budget;
+  const waited = () => Math.round((now() - startedAt) / 1000);
+  let attempts = 0;
+  let last = null;
+  for (;;) {
+    attempts += 1;
+    last = await read();
+    // 没有复选框是页面结构问题，等多久都不会变 ⇒ 立刻抛，不要把预算耗满。
+    if (last.found && !last.hasCheckbox) {
+      throw new Error(`${wanted} 那一行没有复选框，无法激活它的操作行`);
+    }
+    if (last.found && /生成成功/u.test(String(last.rowText))) {
+      console.log(`[fetch] 目标任务行 = 第 ${last.trIndex} 行｜${String(last.rowText).slice(0, 80)}`
+        + (attempts > 1 ? `｜等了 ${waited()}s、第 ${attempts} 次查看才就绪` : ''));
+      return last;
+    }
+    if (now() >= deadline) break;
+    console.log('[fetch] 还在生成（'
+      + (last.found ? `行文本 ${JSON.stringify(String(last.rowText).slice(0, 60))}` : `列表里还没这一行：${last.reason}`)
+      + `）｜已等 ${waited()}s，${GENERATION_POLL_MS / 1000}s 后再看（预算 ${Math.round(budget / 1000)}s）`);
+    await sleep(GENERATION_POLL_MS);
+  }
+  if (!last.found) {
+    throw new Error(`等了 ${waited()}s（${attempts} 次）列表里始终没有 ${wanted} 那一行（${last.reason}）`
+      + ' ⇒ 这不是「生成慢」，是任务没提交上；先确认 submit 段真的成功了');
+  }
+  throw new Error(`等了 ${waited()}s（${attempts} 次，预算 ${Math.round(budget / 1000)}s）${wanted} 还不是「生成成功」`
+    + `（最后看到的行文本 ${JSON.stringify(String(last.rowText).slice(0, 80))}）`
+    + ' ⇒ 平台那边卡住了，去阿里妈妈「下载任务管理」人工看一眼');
+}
+
 async function phaseFetch(args, targetId) {
   const before = listDownloads(args.downloads, PROMOTION_ZIP_PATTERN).map((entry) => entry.name);
   console.log(`[fetch] 下载任务管理｜已有 zip ${before.length} 个｜目录 ${args.downloads}`);
@@ -422,17 +476,10 @@ async function phaseFetch(args, targetId) {
   // 而这一页「点错」不报错。激活的可靠动作是真实鼠标点该行的复选框，并**回读** checked=true：
   // 点没点上不看接口返回值（它恒 true），看页面状态。
   const boxesBefore = await evalOn(args, targetId, checkboxStateExpression());
-  const row = await evalOn(args, targetId, targetRowExpression(wanted));
-  if (!row.found) throw new Error(`下载任务列表里找不到 ${wanted} 那一行（${row.reason}）`);
-  if (!row.hasCheckbox) throw new Error(`${wanted} 那一行没有复选框，无法激活它的操作行`);
-  console.log(`[fetch] 目标任务行 = 第 ${row.trIndex} 行｜${String(row.rowText).slice(0, 80)}`);
   // 「找到了那一行」不等于「那一行现在能取件」。任务还在生成中时，它的入口点了也不落盘，
-  // 现场表现是 30 秒空等 —— 和「点错了」长得一模一样。先把状态判掉，别留给超时去猜。
-  if (!/生成成功/u.test(String(row.rowText))) {
-    throw new Error(`目标任务 ${wanted} 还不是「生成成功」（行文本 `
-      + `${JSON.stringify(String(row.rowText).slice(0, 80))}）⇒ 现在取件只会空等；`
-      + '等列表里这一行显示生成成功再来跑 --phase fetch');
-  }
+  // 现场表现是 30 秒空等 —— 和「点错了」长得一模一样。所以先把状态判掉，别留给超时去猜；
+  // 而「还没生成成功」是**可自愈**的（平台最长 10 分钟），所以是等到就绪，不是看一眼就抛。
+  const row = await waitForGenerationReady(args, targetId, wanted);
   if (row.checked) {
     console.log('[fetch] 该行本就是选中态，跳过点击');
   } else {

@@ -1,9 +1,9 @@
 {
-  "mode": "dry-run",
+  "mode": "commit",
   "reportDate": "2026-09-19",
   "shop": "里可林淘宝",
   "environment": {
-    "computedAt": "2026-09-20T08:30:17.073Z",
+    "computedAt": "2026-09-20T09:20:43.259Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19041",
     "browserPort": {

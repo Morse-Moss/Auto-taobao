@@ -280,6 +280,36 @@ async function screenshot(args, targetId, file) {
   return payload.saved;
 }
 
+/**
+ * 取一张截图，**失败不抛**：返回 `{ ok, saved | error }`。
+ *
+ * 为什么必须这样（2026-09-20 实测，两次复现）：源表那一页正文 59 万字符时，
+ * `Page.captureScreenshot` 稳定超过代理里 `sendCDP` 的 30 秒固定超时（代理解析成
+ * `HTTP 500 / CDP 命令超时: Page.captureScreenshot`）。而实测同一时刻这一页
+ * `visibilityState=visible`、`hasFocus=true`、视口 1528×732 ⇒ **不是「页面不可见」**，
+ * 是这张页面截图本身就慢。
+ *
+ * 原先截图抛错会穿透整个 main ⇒ 两张表的**独立回读也一起丢掉**（`independent-readback.json`
+ * 写在 try 之后，根本不会落盘）。一次佐证失败毁掉主证据，是这一条链上最贵的一种失败：
+ * 主证据（两张表的回读）当时明明已经读到手了。
+ *
+ * 所以这里把它降级成**可记录的降级项**：产物里如实写 `screenshots[key]=null` 与
+ * `screenshotErrors`，stderr 大声报出来，最后由调用方决定退出码 —— 缺证据要说出来，
+ * 但不能用它顶掉数据结论。
+ */
+export async function captureScreenshotSafe({
+  args, targetId, file, shot = screenshot, warn = console.error,
+} = {}) {
+  try {
+    return { ok: true, saved: await shot(args, targetId, file) };
+  } catch (error) {
+    const message = String(error?.message ?? error);
+    warn(`[screenshot] 截图失败：${message}`
+      + '（数据回读不受影响，照常继续；产物里 screenshots 那一项会写成 null）');
+    return { ok: false, error: message, file };
+  }
+}
+
 async function navigate(args, target, url) {
   const response = await fetch(`${args.proxy}/navigate?target=${encodeURIComponent(target.targetId)}`
     + `&url=${encodeURIComponent(url)}`);
@@ -322,6 +352,9 @@ async function main() {
     screenshots: {},
   };
 
+  // 截图失败**只降级、不中断**：收集起来，记进产物，最后如实说清楚（见 captureScreenshotSafe）。
+  const screenshotFailures = [];
+
   // 读两张表。**这一段包在 try/finally 里**（2026-09-20）：收尾的归位必须无论成败都发生。
   // 原先归位写在成功路径末尾，readback 一失败（实测：网林等询单表超时）就不执行 ——
   // 页面停在询单表上留给**下一家店**，而报错挂在下一家身上、措辞与真因无关。
@@ -362,7 +395,11 @@ async function main() {
         await delay(1500);
         const file = path.join(args.outputDir,
           `feishu-${table.key}-table-after-${args.shotSuffix ?? table.shotSuffix}.png`);
-        result.screenshots[table.key] = await screenshot(args, page.targetId, file);
+        const shot = await captureScreenshotSafe({ args, targetId: page.targetId, file });
+        result.screenshots[table.key] = shot.ok ? shot.saved : null;
+        if (!shot.ok) {
+          screenshotFailures.push({ table: table.key, label: table.label, file, error: shot.error });
+        }
       }
     }
   } finally {
@@ -387,6 +424,7 @@ async function main() {
     }
   }
 
+  if (screenshotFailures.length) result.screenshotErrors = screenshotFailures;
   const readbackPath = path.join(args.outputDir, 'independent-readback.json');
   writeFileSync(readbackPath, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
 
@@ -409,13 +447,29 @@ async function main() {
     const v = (name) => row.values[name]?.display ?? '—';
     console.log(`  ${v('reportDate')} | ${v('店铺')} | ${row.recordId} | 询单量=${v('询单量')} | 同层同行=${v('同层同行询单量')}`);
   }
-  for (const [key, file] of Object.entries(result.screenshots)) console.log(`  screenshot(${key}) → ${file}`);
+  for (const [key, file] of Object.entries(result.screenshots)) {
+    console.log(file === null
+      ? `  screenshot(${key}) → 缺失（见上面 [screenshot] 警告；数据回读不受影响）`
+      : `  screenshot(${key}) → ${file}`);
+  }
   // 归位失败时这里**必须说实话**：那一行上面已经打了 [leaveOn] 警告，但读的人也可能
   // 只看最后一行 —— 此时产物里 `page.leftOn` 是 null，别打印成「已留在 null」。
   console.log(result.page.leftOn
     ? `页面已留在：${result.page.leftOn}`
     : '页面**没有**归位：这一页现在停在哪张表上不确定（见上面的 [leaveOn] 警告）；'
       + '下一次用它的步骤会自己落位回源表');
+
+  // 缺证据要说出来，但不许把它说成「数据没核对」。两句话必须分开写：
+  // 数据的结论已经落盘了（上面那行 readbackPath），这里只报「佐证不完整」。
+  // 退出码仍非零 —— 否则 stage 会报成功，而产物里明明缺了两张图。
+  if (screenshotFailures.length) {
+    console.error(`\n[不完整] 数据回读已核对并落盘：${readbackPath}`);
+    console.error(`[不完整] 但有 ${screenshotFailures.length} 张截图没取到：`
+      + screenshotFailures.map((item) => `${item.label}（${item.error}）`).join('；'));
+    console.error('[不完整] 截图是佐证不是判据，缺它不影响上面的数据结论；本阶段仍按失败退出，'
+      + '好让人知道这一轮的证据不完整。');
+    process.exitCode = 1;
+  }
 }
 
 // 只有被直接当命令跑时才执行 main；被 import（离线测试拼表达式）时不许产生副作用。

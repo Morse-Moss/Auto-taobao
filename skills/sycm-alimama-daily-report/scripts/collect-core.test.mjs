@@ -19,7 +19,7 @@ import {
 // 该脚本带 invokedDirectly 守卫，import 时不会执行 CLI。
 import {
   DIALOG_BUTTONS_EXPRESSION, LOCATE_DOWNLOAD_REPORT_EXPRESSION, describeDialogCandidates,
-  pickCancelButton, pickConfirmButton, waitForConfirmButton,
+  pickCancelButton, pickConfirmButton, waitForConfirmButton, waitForGenerationReady,
 } from './collect-promotion-report.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
@@ -170,11 +170,16 @@ test('阿里妈妈取件：下载入口只认文件名行的下一个兄弟行�
 test('阿里妈妈取件：必须先选中目标任务行并回读 checked，才谈得上找入口', () => {
   const promo = readScript('collect-promotion-report.mjs');
   const fetchBody = promo.slice(promo.indexOf('async function phaseFetch'));
-  const selectAt = fetchBody.indexOf('targetRowExpression(wanted)');
+  // 「定位目标任务行」这一步 2026-09-20 收进了 waitForGenerationReady（它要边等边看同一行），
+  // 所以这里断言的是**调用点**：选行仍必须早于找入口。判据本身没变，变的是它住在哪个函数里。
+  const waitBody = promo.slice(promo.indexOf('export async function waitForGenerationReady'),
+    promo.indexOf('async function phaseFetch'));
+  const selectAt = fetchBody.indexOf('waitForGenerationReady(args, targetId, wanted)');
   const entryAt = fetchBody.indexOf('downloadEntryExpression(wanted)');
-  assert.ok(selectAt > 0, 'fetch 段必须先用 targetRowExpression 定位目标任务行');
+  assert.ok(selectAt > 0, 'fetch 段必须在找入口之前先就位目标任务行（这一步现在在 waitForGenerationReady 里）');
   assert.ok(entryAt > 0, 'fetch 段必须用 downloadEntryExpression 定位入口');
   assert.ok(selectAt < entryAt, '选行必须早于找入口 —— 顺序反了入口永远不显形');
+  assert.match(waitBody, /targetRowExpression\(wanted\)/u, '定位那一行本身仍然要靠 targetRowExpression');
   assert.match(fetchBody, /selectTargetRow\(args, targetId, wanted, row\)/u, '选行要收成一个可复用的过程');
   // 点了复选框要**回读**：clickPoint 的返回值恒为 clicked:true，它证明不了任何事。
   // 「点之前先确认那一点真的是它」与「点完回读」都在 selectTargetRow 里（2026-09-17 被浮层坑过之后）。
@@ -187,7 +192,10 @@ test('阿里妈妈取件：必须先选中目标任务行并回读 checked，才
   assert.match(promo, /拒绝点击可疑坐标/u, '零尺寸矩形算出的 (0,0) 会点到页面左上角，必须挡住');
   assert.match(fetchBody, /滚动后重新定位|滚动后入口不再可定位/u, '滚动会改变显隐状态，滚完必须重新定位');
   // 「那一行找到了」不等于「那一行现在能取件」：还在生成中时点了不落盘，和「点错了」现场长得一样。
-  assert.match(fetchBody, /还不是「生成成功」/u, '任务没生成成功就得停，否则只能靠 30 秒超时去猜');
+  // 2026-09-20 起这个判据从「看一眼就抛」改成「等到就绪，预算内仍不成才停」—— 判据不变，
+  // 只是不再把「平台还在生成」当成失败。分岔之后仍须 fail-closed，那一点由等待函数自己的用例守。
+  assert.match(waitBody, /生成成功/u, '没生成成功就不许往下点，否则只能靠 30 秒超时去猜');
+  assert.match(waitBody, /throw new Error/u, '等不到就必须停，不许默默往下走');
 });
 
 // 「量到坐标」不等于「点得到」：2026-09-17 实测有个 z-index 999999 的浮层正压住第一行，
@@ -1144,4 +1152,97 @@ test('回填也用采集段那一份身份读取（同一件事不许有两份�
     '硬编码类名那份实现必须消失 —— 留着就是「同一件事两份实现」');
   assert.doesNotMatch(code, /unexpected SYCM shop/u,
     '自造的报错措辞也要消失：读不到身份时的表现必须与采集段一模一样');
+});
+
+// 2026-09-20 真跑现场：五家里盖文天猫卡在 promotion-fetch —— 平台还在生成，脚本看一眼就抛。
+// 判据（「行文本里有生成成功」）本来就是对的，错的是**不给它时间**：submit 段自己打印
+// 「数据量大时最长 10 分钟」，而驱动在 submit 与 fetch 之间只填了两步（实测两分钟上下）。
+// 所以这组用例盯的不是「判据对不对」，而是「它到底会不会再等一圈」—— 这一点源码断言看不出来。
+test('等生成成功：还没就绪就继续轮询，就绪后返回那一次的结果', async () => {
+  const rows = [
+    { found: true, hasCheckbox: true, trIndex: 1, rowText: '正在生成 营销场景报表_20260920_172712 30天累计数据' },
+    { found: true, hasCheckbox: true, trIndex: 1, rowText: '正在生成 营销场景报表_20260920_172712 30天累计数据' },
+    { found: true, hasCheckbox: true, trIndex: 2, rowText: '生成成功 营销场景报表_20260920_172712 30天累计数据' },
+  ];
+  let reads = 0;
+  const slept = [];
+  const row = await waitForGenerationReady({ generationWaitMs: 60000 }, 't', '报表A', {
+    read: async () => { const row = rows[Math.min(reads, rows.length - 1)]; reads += 1; return row; },
+    sleep: async (ms) => { slept.push(ms); },
+    now: Date.now,
+  });
+  // 用「第几次读到」当判据：第 1 次就放弃正是这次的现场故障，写成 reads>=1 就守不住它。
+  assert.ok(reads >= 3, `必须真的读到第 3 次才就绪，实际 ${reads} 次`);
+  assert.equal(slept.length, reads - 1, '每没就绪一次就睡一次，睡的次数要与读取次数对得上');
+  assert.equal(row.trIndex, 2, '返回的必须是就绪那一次的读取结果，不是第一次那个');
+});
+
+test('等生成成功：预算耗尽才抛，且把预算与最后看到的行文本带出来', async () => {
+  let clock = 1_700_000_000_000;
+  let reads = 0;
+  await assert.rejects(
+    () => waitForGenerationReady({ generationWaitMs: 5000 }, 't', '报表B', {
+      read: async () => { reads += 1; return { found: true, hasCheckbox: true, trIndex: 1, rowText: '正在生成 报表B' }; },
+      sleep: async () => { clock += 10_000; },
+      now: () => clock,
+    }),
+    (error) => {
+      assert.match(error.message, /不是「生成成功」/u);
+      assert.match(error.message, /预算 5s/u, '要把预算写出来，否则现场判不出是等太短还是平台卡住');
+      assert.match(error.message, /正在生成/u, '要把最后看到的行文本带出来');
+      return true;
+    },
+  );
+  assert.equal(reads, 2, '超时前必须至少再等一圈（第 2 圈才判超时）');
+});
+
+test('等生成成功：任务没出现在列表里时，报「没提交上」而不是「生成慢」', async () => {
+  let clock = 1_700_000_000_000;
+  await assert.rejects(
+    () => waitForGenerationReady({ generationWaitMs: 5000 }, 't', '报表C', {
+      read: async () => ({ found: false, reason: 'row not found' }),
+      sleep: async () => { clock += 10_000; },
+      now: () => clock,
+    }),
+    (error) => {
+      assert.match(error.message, /始终没有 报表C 那一行/u);
+      assert.match(error.message, /先确认 submit 段真的成功了/u);
+      // 两种成因要做的事不同（一个去查提交、一个去等平台），共用一句话就等于让收信人猜。
+      assert.doesNotMatch(error.message, /平台那边卡住了/u);
+      return true;
+    },
+  );
+});
+
+test('等生成成功：那一行没有复选框是页面结构问题，立刻抛、一次都不睡', async () => {
+  let reads = 0;
+  let slept = 0;
+  await assert.rejects(
+    () => waitForGenerationReady({ generationWaitMs: 660000 }, 't', '报表D', {
+      read: async () => {
+        reads += 1;
+        return { found: true, hasCheckbox: false, trIndex: 1, rowText: '生成成功 报表D' };
+      },
+      sleep: async () => { slept += 1; },
+      now: Date.now,
+    }),
+    /没有复选框/u,
+  );
+  assert.equal(reads, 1);
+  assert.equal(slept, 0, '等下去不会长出复选框 ⇒ 不该把 11 分钟预算耗在这里');
+});
+
+test('接线：fetch 段用的是「等到就绪」，且这个预算真的接得上（判据落在调用点）', () => {
+  const promo = readScript('collect-promotion-report.mjs');
+  const fetchBody = promo.slice(promo.indexOf('async function phaseFetch'));
+  // 为什么断言调用点：这一族的真故障是「函数写好了没人调」——只测函数会全绿，现场照旧看一眼就抛。
+  assert.match(fetchBody, /await waitForGenerationReady\(args, targetId, wanted\)/u,
+    'phaseFetch 必须调用 waitForGenerationReady');
+  assert.doesNotMatch(fetchBody, /还不是「生成成功」/u,
+    '「看一眼就抛」那句报错必须消失：它还在就说明有人把等待改回了立即抛');
+  const core = readScript('collect-core.mjs');
+  assert.match(core, /'--generation-wait-ms'/u, '--generation-wait-ms 要在 parseCollectArgs 里');
+  assert.match(core, /generationWaitMs: options\.generationWaitMs/u, '默认值必须存在');
+  assert.match(core, /--generation-wait-ms must be a positive integer/u, '要像 --timeout-ms 一样在解析期校验');
+  assert.match(promo, /args\.generationWaitMs/u, '等待函数要真的读这个预算（解析了没人用等于没有预算）');
 });

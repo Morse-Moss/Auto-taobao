@@ -1,19 +1,19 @@
 
-===== 2026-09-20T06:02:33.178Z =====
+===== 2026-09-20T09:22:17.618Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-shop-report.mjs --date 2026-09-19 --proxy http://127.0.0.1:19042 --expect-shop 网林家居旗舰店 --expect-member 网林家居旗舰店:阿彦 --expect-member-id 7314426323
 exit=0 signal= error=none
 --- stdout ---
 [0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）
 [身份] 生意参谋店铺名 = "网林家居旗舰店"（主店）｜期望 "网林家居旗舰店" ✓
-      → 生意参谋页 75E1623DD3F8E16CB68424149879A5A2｜已有日报 xlsx 28 个｜下载目录 C:\Users\Administrator\Downloads｜身份核对=已做
+      → 生意参谋页 0CE6988664B57DCC12D7F1F456CB8223｜已有日报 xlsx 39 个｜下载目录 C:\Users\Administrator\Downloads｜身份核对=已做
 [1/4] 再进 自助分析 · 公共空间
 [2/4] 2.5s：预览按钮 1 个，日报行 #0（命中复核=true，视口内=true）
 [2/4] 点开「日报」预览（#0）→ {"clicked":true,"tag":"A","text":"预览"}
 [3/4] 3s：统计区间=["2026-08-21","2026-09-19"]｜下载按钮=true
 [3/4] 统计区间 2026-08-21 ~ 2026-09-19 含目标日 2026-09-19 ✓
 [4/4] 点「下载报表」
-      → y=459（中心点命中） → {"clicked":true,"tag":"SPAN","text":"下载报表"}
-      新文件：日报_20260920_80bec2d747ebb68cb870a4272d0d52c1 (1).xlsx（19662 bytes）
-      shopXlsxPath = C:\Users\Administrator\Downloads\日报_20260920_80bec2d747ebb68cb870a4272d0d52c1 (1).xlsx
+      → y=659（中心点命中） → {"clicked":true,"tag":"SPAN","text":"下载报表"}
+      新文件：日报_20260920_80bec2d747ebb68cb870a4272d0d52c1 (4).xlsx（19661 bytes）
+      shopXlsxPath = C:\Users\Administrator\Downloads\日报_20260920_80bec2d747ebb68cb870a4272d0d52c1 (4).xlsx
 
 --- stderr ---

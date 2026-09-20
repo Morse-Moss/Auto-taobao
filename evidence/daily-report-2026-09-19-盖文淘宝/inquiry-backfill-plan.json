@@ -1,9 +1,9 @@
 {
-  "mode": "dry-run",
+  "mode": "commit",
   "reportDate": "2026-09-19",
   "shop": "盖文淘宝",
   "environment": {
-    "computedAt": "2026-09-20T08:35:10.477Z",
+    "computedAt": "2026-09-20T09:26:33.153Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19043",
     "browserPort": {

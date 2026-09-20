@@ -1,11 +1,32 @@
 
-===== 2026-09-20T06:07:23.890Z =====
-$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-09-19 --proxy http://127.0.0.1:19023 --shop-key 科塔淘宝 --shop-xlsx C:\Users\Administrator\Downloads\日报_20260920_aefdcd0599626688507142b7bbed7e84.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20260920_140623.zip
-exit=1 signal= error=none
+===== 2026-09-20T09:35:12.525Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-09-19 --proxy http://127.0.0.1:19023 --shop-key 科塔淘宝 --commit --shop-xlsx "C:\Users\Administrator\Downloads\日报_20260920_aefdcd0599626688507142b7bbed7e84 (3).xlsx" --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20260920_173438.zip
+exit=0 signal= error=none
 --- stdout ---
+[shop-key] 科塔淘宝 ↔ 源产物店名 科塔全卫定制 一致（证据目录 daily-report-2026-09-19-科塔淘宝-rerun2）
+[audit] 已记 push/ok id=53
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "recvvKF8291JVl",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-19-科塔淘宝-rerun2\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-19-科塔淘宝-rerun2",
+  "evidenceGeneration": 2,
+  "recordCountBefore": 1889,
+  "recordCountAfter": 1890,
+  "verifiedFields": 243,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 243,
+    "shopName": "科塔全卫定制",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1789747200000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
 
 --- stderr ---
-Error: Feishu page is not on authorized table/view: https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblUnwn05vl8Wik9&view=vewHgmRhGR
-    at inspectTarget (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:85:11)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:276:18)

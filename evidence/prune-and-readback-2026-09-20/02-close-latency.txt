@@ -1,0 +1,6 @@
+关闭前页面 3 个，其中 about:blank 1 个
+/close HTTP 200 body={"success":true}
+消失耗时 = 270ms
+采样（前 12 条）：8ms 还在 | 270ms 已消失
+关闭后页面 2 个：https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop | https://one.alimama.com/index.html#!/report/download-list
+exit=0

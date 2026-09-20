@@ -1,0 +1,59 @@
+{
+ "commit": true,
+ "prune": true,
+ "label": false,
+ "shops": {
+  "盖文天猫": {
+   "browserPort": 19035,
+   "proxyPort": 19045,
+   "windowTitle": "盖文天猫 · 日报采集窗口",
+   "memberName": "盖文旗舰店:阿彦",
+   "labelTabs": 0,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common&reportId=4300764&type=preview",
+    "工作页（链路要用）  https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common&reportId=4300764&type=preview",
+    "空白页（残留）  about:blank",
+    "浏览器自带页面或本地文件（与这条链无关）  edge://downloads-hub/",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "leftover": [
+    "空白页（残留）  about:blank",
+    "浏览器自带页面或本地文件（与这条链无关）  edge://downloads-hub/"
+   ],
+   "prunePlan": [
+    "工作页（链路要用）  https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common&reportId=4300764&type=preview  ← 同一个后台只留一个：多一个会让「恰好一个」的判据失败",
+    "空白页（残留）  about:blank  ← 空白页，没有用途"
+   ],
+   "pruneKeeps": [
+    "工作页（链路要用）  https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common&reportId=4300764&type=preview",
+    "浏览器自带页面或本地文件（与这条链无关）  edge://downloads-hub/   ← 浏览器自带，脚本关不掉，忽略即可",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list"
+   ],
+   "pruneClosed": [],
+   "pruneFailed": [
+    {
+     "targetId": "7CA04D24BF867D3BDC8A5FE3598024FE",
+     "url": "https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common&reportId=4300764&type=preview",
+     "kind": "work",
+     "label": "工作页（链路要用）",
+     "needed": true,
+     "loggedOut": false,
+     "reason": "同一个后台只留一个：多一个会让「恰好一个」的判据失败",
+     "error": "关完回读它还在：/close 返回成功但页面没有真的关掉"
+    },
+    {
+     "targetId": "8C0AFB7614419BBA3ACF550C7D4B8D03",
+     "url": "about:blank",
+     "kind": "blank",
+     "label": "空白页（残留）",
+     "needed": false,
+     "loggedOut": false,
+     "reason": "空白页，没有用途",
+     "error": "关完回读它还在：/close 返回成功但页面没有真的关掉"
+    }
+   ]
+  }
+ },
+ "failed": 1
+}
+exit=1

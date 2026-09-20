@@ -1,0 +1,11 @@
+
+===== 2026-09-20T09:41:05.427Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\readback-daily-report.mjs --date 2026-09-19 --proxy http://127.0.0.1:19023 --shop-key 盖文天猫
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: CDP 命令超时: Page.captureScreenshot
+    at screenshot (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs:279:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs:365:41)

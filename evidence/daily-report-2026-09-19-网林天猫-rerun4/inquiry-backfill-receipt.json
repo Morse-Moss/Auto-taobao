@@ -1,0 +1,67 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-09-19",
+  "shop": "网林天猫",
+  "environment": {
+    "computedAt": "2026-09-20T09:23:57.172Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19042",
+    "browserPort": {
+      "port": 19032,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19042,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-wanglin-flagship",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop wanglin-flagship)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-19-网林天猫-rerun4",
+    "generation": 4,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "PTfHbPt9EaIzddsfL8Jcj238nrb",
+    "tableId": "tblUnwn05vl8Wik9",
+    "tableName": "各店铺数据日报",
+    "recordId": "recvtXf7PIr9u9"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "shop": "网林家居旗舰店",
+    "column": "当日询单人数",
+    "dateRow": "2026-09-19",
+    "benchmarkRow": "同行同层均值",
+    "peerBenchmark": "PEER_AVAILABLE",
+    "rows": 7
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 2,
+    "同层同行询单量": 13
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "recvtXf7PIr9u9",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 2,
+      "同层同行询单量": 13
+    }
+  }
+}

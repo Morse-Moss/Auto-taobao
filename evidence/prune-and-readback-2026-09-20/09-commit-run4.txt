@@ -1,0 +1,31 @@
+[驱动] 目标日 2026-09-19｜模式 commit｜店铺 1 家：盖文天猫
+[驱动] 日志根 D:\Retire\sycm-automation\evidence\multi-shop-2026-09-19
+[驱动] --commit：会真的写飞书。目标日已有行会硬重复停止（先按 §9.3 删那天）。
+[驱动]   盖文天猫 | 页头店名 盖文旗舰店 | 会员 盖文旗舰店:阿彦 2995200080
+[一轮]   体检通过：阻断 0 项，告警 1 项
+[一轮]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[一轮]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[盖文天猫] 1. health-check —— 跳过（--only 没点名）
+[盖文天猫] 2. alimama-date —— 跳过（--only 没点名）
+[盖文天猫] 3. promotion-submit —— 跳过（--only 没点名）
+[盖文天猫] 4. sycm-date —— 跳过（--only 没点名）
+[盖文天猫] 5. shop-report —— 跳过（--only 没点名）
+[盖文天猫] 6. promotion-fetch —— 跳过（--only 没点名）
+[盖文天猫] 7. push —— 跳过（--only 没点名）
+[盖文天猫] 8. sycm-reset —— 生意参谋回位：把被第 4 步带走的那个页签送回 qos/.../shop/performance（驱动自己导航）
+[盖文天猫]   回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop）
+[盖文天猫] 9. sycm-date-again —— 回位会重置页签与日期 ⇒ 必须重跑落位，否则回填报 expected one 当日询单人数 table, got 0
+[盖文天猫] 10. backfill —— 询单回填（写两个字段）
+[盖文天猫] 11. readback —— 独立回读 + 截图（换一条通路读同一个事实）
+[盖文天猫]   stderr 尾部：
+      Error: CDP 命令超时: Page.captureScreenshot
+          at screenshot (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs:279:27)
+          at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+          at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs:365:41)
+[盖文天猫] 停在这一步：阶段 readback 失败（exit 1）
+[驱动] 按默认策略停整轮（要看完全部店加 --keep-going）。已跑的店记在 evidence\multi-shop-2026-09-19。
+
+[驱动] 汇总：
+  盖文天猫：failed（停在 readback） —— 阶段 readback 失败（exit 1）
+[驱动] 明细 evidence\multi-shop-2026-09-19\summary.json
+exit=1

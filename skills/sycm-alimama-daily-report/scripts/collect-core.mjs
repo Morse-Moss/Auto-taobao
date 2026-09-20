@@ -651,6 +651,10 @@ export function parseCollectArgs(argv, options = {}) {
   const args = { date: null, downloads: null, proxy: null, task: null, phase: null,
     expectShop: null, expectMember: null, expectMemberId: null,
     timeoutMs: options.timeoutMs ?? 30000, reportId: options.reportId ?? null,
+    // 等阿里妈妈把推广报表「生成成功」的预算。**与 timeoutMs 分开**：timeoutMs 是「点了下载之后
+    // 等文件落盘」，这个是「平台自己在生成」；一个开关管两件事正是本项目已经栽过的形态。
+    // 默认 11 分钟的依据是平台自己的提示语：「数据量大时最长 10 分钟」（见 submit 段那行日志）。
+    generationWaitMs: options.generationWaitMs ?? 660000,
     // 勾选目标任务行的重试次数：留给「被浮层挡一下」这类可自愈的遮挡
     // （2026-09-17 实测：z-index 999999 的浮层压住第一行，浮层自己收起后重试即过）。
     selectAttempts: options.selectAttempts ?? 6 };
@@ -668,6 +672,7 @@ export function parseCollectArgs(argv, options = {}) {
     else if (key === '--task') args.task = next();
     else if (key === '--phase') args.phase = next();
     else if (key === '--timeout-ms') args.timeoutMs = Number(next());
+    else if (key === '--generation-wait-ms') args.generationWaitMs = Number(next());
     else if (key === '--report-id') args.reportId = next();
     else if (key === '--expect-shop') args.expectShop = next();
     else if (key === '--expect-member') args.expectMember = next();
@@ -681,6 +686,9 @@ export function parseCollectArgs(argv, options = {}) {
   }
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(args.date ?? '')) throw new Error('missing or invalid --date (expected YYYY-MM-DD)');
   if (!Number.isInteger(args.timeoutMs) || args.timeoutMs <= 0) throw new Error('--timeout-ms must be a positive integer');
+  if (!Number.isInteger(args.generationWaitMs) || args.generationWaitMs <= 0) {
+    throw new Error('--generation-wait-ms must be a positive integer');
+  }
   // 身份期望值写错要**在这里**就炸，而不是等看清了页面、点完下载才炸 —— 那时候坑已经踩了。
   if (args.expectShop !== null && !normalizeShopName(args.expectShop)) {
     throw new Error('--expect-shop must not be blank');

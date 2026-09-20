@@ -1,9 +1,9 @@
 {
-  "mode": "dry-run",
+  "mode": "commit",
   "reportDate": "2026-09-19",
   "shop": "科塔淘宝",
   "environment": {
-    "computedAt": "2026-09-20T08:39:41.957Z",
+    "computedAt": "2026-09-20T09:36:37.315Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19044",
     "browserPort": {

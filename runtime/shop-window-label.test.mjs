@@ -145,6 +145,29 @@ function fakeProxyStubborn({ targets, calls }) {
   };
 }
 
+// 慢一拍假代理：`/close` 之后的**第一遍**回读仍然列出它，第二遍才没有。
+// 这就是真机上的行为（2026-09-20 实测：`about:blank` 从 `/close` 到从 `/targets` 消失要 270ms；
+// 采样 8ms 还在 → 270ms 已消失）。回读只做一遍时，这一拍会把成功的关闭报成失败。
+function fakeProxySlowDisappear({ targets, calls }) {
+  const closed = new Set();
+  let postCloseReads = 0;
+  return async (url, init = {}) => {
+    const href = String(url);
+    calls.push({ url: href, method: init.method ?? 'GET' });
+    if (href.endsWith('/targets')) {
+      if (closed.size > 0) postCloseReads += 1;
+      // 第 1 遍仍然列着（CDP 还没摘掉），第 2 遍起才消失。
+      const visible = targets.filter((t) => !(closed.has(t.targetId) && postCloseReads >= 2));
+      return { ok: true, status: 200, json: async () => visible, text: async () => JSON.stringify(visible) };
+    }
+    if (href.includes('/close')) {
+      closed.add(new URL(href).searchParams.get('target'));
+      return { ok: true, status: 200, json: async () => ({}), text: async () => '{"success":true}' };
+    }
+    throw new Error(`慢一拍假代理没覆盖这个地址：${url}`);
+  };
+}
+
 // 代理的两个入口都把「目标地址」当查询参数（`?url=<再编码一次>`），所以取回来要解一层才能看内容。
 // 两层编码的对应关系容易搞错，踩过两次，写在这里：
 //   代理地址里是 `...url=file%3A%2F%2F...%3Fshop%3D%25E9%2587%258C...`
@@ -600,6 +623,37 @@ test('回读校验不能把真关掉的也判成失败（否则 cleaned 永远�
   assert.deepEqual(result.closed.map((t) => t.targetId).sort(), ['b1', 'k2', 'k3']);
   assert.deepEqual(result.failed, []);
   assert.equal(result.ok, true);
+});
+
+// 上一条的镜像（2026-09-20 真机踩到）：关**成功**了，但 CDP 还没把目标从 `/targets` 里摘掉。
+// 原先回读紧接着 `/close` 就做 ⇒ 报告写「关完回读它还在」，而隔一会儿再看那两条页签已经没了。
+// 两个坑方向相反，合起来才是完整口径：**返回码不可信（要回读），回读也不能只读一遍（要等一拍）**。
+test('回读要允许「慢一拍」：第一遍还列着、第二遍没了 ⇒ 判成功', async () => {
+  const calls = [];
+  const result = await pruneTabsOn({
+    proxyUrl: 'http://127.0.0.1:19044', dryRun: false,
+    sleep: async () => {},   // 真机等 600ms；离线用例把等待换掉，别让跑测试的人白等
+    fetchImpl: fakeProxySlowDisappear({ targets: REAL_KE_TA, calls }),
+  });
+  assert.deepEqual(result.closed.map((t) => t.targetId).sort(), ['b1', 'k2', 'k3'],
+    '慢一拍被当成「关不掉」= 清理报告每轮都在说假话');
+  assert.deepEqual(result.failed, []);
+  assert.equal(result.ok, true);
+  assert.ok(result.reads >= 2, '必须真的读到「消失了」才收手 —— 读到第一遍就下结论正是这次的 bug');
+});
+
+test('回读有上限：一直不消失就如实判失败，且错误里写清读了几次', async () => {
+  const calls = [];
+  const result = await pruneTabsOn({
+    proxyUrl: 'http://127.0.0.1:19041', dryRun: false,
+    readAttempts: 2, sleep: async () => {},
+    fetchImpl: fakeProxyStubborn({ targets: REAL_KE_TA, calls }),
+  });
+  assert.equal(result.reads, 2, '读的次数必须等于上限：既不能提前放弃，也不能无限读下去');
+  assert.equal(result.failed.length, 3);
+  assert.equal(result.ok, false);
+  assert.match(result.failed[0].error, /回读 2 次/u,
+    '错误里要写清读了几次 —— 否则分不清「真关不掉」和「读得太早」');
 });
 
 test('「是否停在登录页」只影响提示，不影响清理处置（改提示不该有副作用）', () => {
