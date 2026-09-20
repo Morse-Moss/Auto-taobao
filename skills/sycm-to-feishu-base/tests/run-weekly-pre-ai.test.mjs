@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { parseOptions, runWorkflow } from '../scripts/run-weekly-pre-ai.mjs';
+import { activeProfileName, envFilePath } from '../../../runtime/feishu-targets.mjs';
 
 const baseArgs = [
   '--base-url', 'https://example.feishu.cn/base/appToken',
@@ -127,6 +129,19 @@ test('fresh weekly collection requires a verified seven-day SYCM receipt', async
 
   const exporter = calls.find((call) => call.script.endsWith('export-search-rank.mjs'));
   assert.deepEqual(exporter.args.slice(0, 5), ['--from-home', '--period', '7d', '--date', '2026-08-21']);
+});
+
+// 默认凭据文件必须来自租户登记表。
+// 反例（2026-09-20 实测）：脚本默认值是旧租户的 E:/小红书/.env.local，而 base 已经
+// 搬到 kcne618basvj，于是「拿旧租户凭据读新租户 base」报 91403 Forbidden —— 一个
+// 会被误读成「应用没被加为协作者」的假故障。
+// 这里对着访问器断言而不是写死字面量：写死等于把当前默认值固化成测试（坑 34）。
+test('the default credentials file comes from the tenant registry', () => {
+  assert.equal(parseOptions(baseArgs).envFile, envFilePath(activeProfileName()));
+
+  const source = readFileSync(new URL('../scripts/run-weekly-pre-ai.mjs', import.meta.url), 'utf8');
+  assert.match(source, /envFile: envFilePath\(activeProfileName\(\)\)/u);
+  assert.doesNotMatch(source, /envFile: 'E:\//u);
 });
 
 test('fresh weekly collection stops on a daily SYCM receipt', async () => {

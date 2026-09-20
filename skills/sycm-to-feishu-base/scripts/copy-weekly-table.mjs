@@ -210,6 +210,23 @@ function humanRequired(message) {
   return error;
 }
 
+// 就绪判据：不只「base 对象出现了」，还要「表清单已经填进来」。
+//
+// 2026-09-20 冷启动实测：脚本用 /new 新开一个 Base 页时，页面会先发布
+// `bitableStore.modelOperator.base`，而 `base.tables` 要晚一拍才填好。只判
+// Boolean(base) 会正好落在这一拍里通过就绪检查，紧接着 snapshotById 在空表清单里
+// 找不到目标表，抛出「Requested table is not available」—— 一个把「还没加载完」
+// 说成「这张表不存在」的假阴性。现场表现：第一次跑必失败、原样重跑就成功，
+// 而失败信息会把人送去查「表是不是被删了」这个错误方向。
+//
+// 为什么写成真函数再 toString() 注入浏览器：这样「浏览器里跑的那个条件」与
+// 「Node 里被测的那个条件」是同一份源码，不会因为两边各写一遍而漂移。
+export function feishuBaseReady(base) {
+  return Boolean(base) && Object.keys(base.tables ?? {}).length > 0;
+}
+
+const FEISHU_BASE_READY_SOURCE = `(${feishuBaseReady.toString()})`;
+
 export async function waitForFeishuModel({ inspect, sleep, timeoutMs = 60000 }) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -241,10 +258,11 @@ async function discoverReadyTarget(options) {
           const visibleTexts = [...document.querySelectorAll('[role=dialog],button,a,[class*=captcha],[class*=Captcha],[class*=verify],[class*=Verify]')]
             .filter(visible).map((element) => (element.innerText || '').trim())
             .filter((text) => text && text.length <= 500 && risk.test(text));
+          const ready = ${FEISHU_BASE_READY_SOURCE}(window.bitableStore?.modelOperator?.base);
           return {
-            ready: Boolean(window.bitableStore?.modelOperator?.base),
+            ready,
             visibleTexts,
-            bodyText: window.bitableStore?.modelOperator?.base ? '' : (document.body?.innerText || '').slice(0, 2000),
+            bodyText: ready ? '' : (document.body?.innerText || '').slice(0, 2000),
           };
         })()`,
       });

@@ -52,7 +52,7 @@
 
 ## 周更边界
 
-周更前半程使用 `run-weekly-pre-ai.mjs`：每次从生意参谋首页进入搜索排行后显式选择并验收 `7天`，以 `collection-date` 作为七天区间结束日；单日、区间不完整或回执无法证明七天的数据会在任何飞书写入前被拒绝。显式复用既有数据时必须同时提供 CSV/XLSX，脚本会回读验证页、逐字段比较并锁定两个文件哈希，不能只凭 CSV 文件名跳过采集。随后在同一 Base 复制上一周结构、追加本周表和历史，并生成携带当前表、上一周表、历史表、批次和行数精确上下文的 `pre-ai-manifest.json`，停在 `READY_FOR_AI`。用户只运行运营已确认的飞书 AI 字段；完成后将该清单交给 `run-weekly-post-ai.mjs`，它会按顺序完成公式 dry-run/必要迁移、灰豚 dry-run/回填、历史 dry-run/同步和最终幂等验收。`是否重点词`不依赖内容热度，`对应产品方向`由三个近两周达标次数按“主推 > 增长 > 探索 > 暂无”自动计算。灰豚返回 `AI_REQUIRED` 时整链停止且不会同步历史；`DONE_NO_CANDIDATES` 会跳过灰豚写入并继续历史同步。
+周更前半程使用 `run-weekly-pre-ai.mjs`：每次从生意参谋首页进入搜索排行后显式选择并验收 `7天`，以 `collection-date` 作为七天区间结束日；单日、区间不完整或回执无法证明七天的数据会在任何飞书写入前被拒绝。显式复用既有数据时必须同时提供 CSV/XLSX，脚本会回读验证页、逐字段比较并锁定两个文件哈希，不能只凭 CSV 文件名跳过采集。随后生成携带当前表、上一周表、历史表、批次和行数精确上下文的 `pre-ai-manifest.json`，停在 `LOCAL_INPUT_READY` —— 这一步**不做任何飞书写入**；复制上一周结构与追加本周表/历史是两个独立的远端写入段。飞书 AI 字段由运营在表内结算，随后由 `sync-decision-history.mjs` 做决策历史同步；灰豚（`huitun-to-feishu-keyword-heat`）是独立的一段。注意 `run-weekly-post-ai.mjs` 不是这条链的下一步：它只吃 `PUBLISH_READY` 工件（`--publish-artifact`），并会明确拒绝 `--pre-ai-manifest`。`是否重点词`不依赖内容热度，`对应产品方向`由三个近两周达标次数按“主推 > 增长 > 探索 > 暂无”自动计算。灰豚返回 `AI_REQUIRED` 时整链停止且不会同步历史；`DONE_NO_CANDIDATES` 会跳过灰豚写入并继续历史同步。
 
 三个 `近2周...达标次数` 是飞书实时公式，不再由周更脚本硬写。历史同步只冻结有效批次的 `0/1` 证据，并按永久关键词编号向本周表写入三个 `上一有效周...达标` 数字快照；本周搜索、交易、内容或灰豚数据变化后，近2周次数、重点词、优先级和产品方向会连续重算。缺少上一周或本周证据时只保留对应结果为空，`A候选`不能按未达标 `0` 处理。
 
@@ -62,10 +62,12 @@
 
 ```powershell
 node "skills\sycm-to-feishu-base\scripts\run-weekly-post-ai.mjs" `
-  --pre-ai-manifest "<pre-ai-manifest.json>" --apply `
+  --publish-artifact "<analysis-artifact.json>" --apply `
   --confirm-base <app-token> --confirm-current-table <current-table-id> `
-  --confirm-history-table <history-table-id>
+  --confirm-history-table <history-table-id> --confirm-library-table <library-table-id>
 ```
+
+工件必须是 `status=PUBLISH_READY`，带 `publishPlan` 与完整的 `evidence`（`source` / `providerDigest` / `promptDigest`）。
 
 ## 最小离线验证
 

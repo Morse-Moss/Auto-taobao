@@ -1,0 +1,55 @@
+{
+  "status": "LOCAL_INPUT_READY",
+  "createdAt": "2026-09-19T23:34:01.707Z",
+  "collectionDate": "2026-09-19",
+  "batchNumber": 8,
+  "source": {
+    "mode": "EXPLICIT_EXPORT_PAIR",
+    "csv": "D:\\Retire\\sycm-automation\\runtime\\sycm-search-rank\\shengyicanmou-search-ranking-2026-09-19-20260919233321.csv",
+    "xlsx": "D:\\Retire\\sycm-automation\\runtime\\sycm-search-rank\\shengyicanmou-search-ranking-2026-09-19-20260919233321.xlsx",
+    "rows": 300,
+    "exportReceipt": null,
+    "proof": {
+      "status": "success",
+      "period": "7天",
+      "startDate": "2026-09-13",
+      "endDate": "2026-09-19",
+      "dayCount": 7,
+      "dateRange": "2026-09-13 ~ 2026-09-19",
+      "rowCount": 300,
+      "rankRange": "1-300",
+      "pageSizes": "50/50/50/50/50/50",
+      "csvSha256": "8E94E79D812687325AA6A4DAE5C651CDE509AD331925C0DD3A0A34DD8E43CB33",
+      "xlsxSha256": "3A33D5804F4FABC01F4D40882D6FA47589195B80BA880A1989AB9D852D2DEDD3"
+    }
+  },
+  "inputSnapshot": {
+    "file": "D:\\Retire\\sycm-automation\\runtime\\weekly-runs\\2026-09-19\\pre-ai-20260919T233400Z\\input-snapshot.json",
+    "sha256": "23c257be5f5aa51b4ea8bf8a8036d0ced9e58681fbd3874068991981351e0638",
+    "digest": "c5cfd959be2b0d67037026e4823ef71defb53009c17e71e964e3b33a9eb02c7e"
+  },
+  "target": {
+    "appToken": "HdBhbttB5aScbasWJAMc0gGXnpe",
+    "sourceTableId": "tblrX0GM7HkVhF85",
+    "sourceTableName": "关键词分析 V1（2026-09-12）",
+    "newTableName": "关键词分析 V1（2026-09-19）",
+    "historyTableId": "tbl7HbH11JsQx6FL",
+    "libraryTableId": "tblDEZY8RkwoHLEX",
+    "expectedHistoryBefore": 2067
+  },
+  "postAi": {
+    "runner": "D:\\Retire\\sycm-automation\\skills\\sycm-to-feishu-base\\scripts\\run-weekly-post-ai.mjs",
+    "baseUrl": "https://kcne618basvj.feishu.cn/base/HdBhbttB5aScbasWJAMc0gGXnpe",
+    "previousTableId": "tblrX0GM7HkVhF85",
+    "previousTableName": "关键词分析 V1（2026-09-12）",
+    "historyTableId": "tbl7HbH11JsQx6FL",
+    "historyTableName": "关键词历史总表 V1",
+    "currentBatchNumber": 8,
+    "expectedCurrentRows": 300,
+    "expectedHistoryRows": 2367,
+    "envFile": "E:/小红书/.env.feishu-kcne.local",
+    "proxy": "http://127.0.0.1:19023"
+  },
+  "nextStage": "本地读取输入快照，执行规则、provider AI 和灰豚证据分析，生成 PUBLISH_READY artifact 后交给唯一发布器。",
+  "manifestFile": "D:\\Retire\\sycm-automation\\runtime\\weekly-runs\\2026-09-19\\pre-ai-20260919T233400Z\\pre-ai-manifest.json"
+}

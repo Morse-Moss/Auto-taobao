@@ -137,7 +137,7 @@
 - SKU 采集：2026-08-21 首批 36 条、2026-08-23 第二批 6 条，写后回读唯一键、双向关联、空间判定全部 36/36、6/6，冲突与重复均为 0。
 - 灰豚话题热度回填：2 条真实验收（`109.4w -> 1094000`；无同名话题 -> `0`）。
 - FAQ 周更：v3.1.0 运营入口，累计主表 + 周期周表双表模型，本地确定性分类不调用飞书 AI。
-- 关键词周更全链：`run-weekly-pre-ai.mjs` -> `READY_FOR_AI` 人工闸门 -> `run-weekly-post-ai.mjs`，含公式迁移、灰豚回填、历史同步、幂等验收。
+- 关键词周更：`run-weekly-pre-ai.mjs` -> `LOCAL_INPUT_READY` 人工闸门 -> `run-weekly-post-ai.mjs`（`--publish-artifact`，只做编号库 creates / 当前表 updates / 历史表 updates 三件事 + 回读验收）。**公式迁移、灰豚回填、历史同步都不在这个发布器里**，它们是人工排在前后的独立段（灰豚 = `huitun-to-feishu-keyword-heat`，历史同步 = `sync-decision-history.mjs`）；顺序由文档和人工保证，代码里没有编排器。另有一条 `runtime/run-weekly-local-analysis.mjs` 的本地 provider AI 旁路，目前**无调用方、无输入生产者**（详见 `docs/ops/WEEKLY-FLOW-CURRENT-2026-09-20.md` 第三节）。
 
 ### 5.2 部分完成 / 未验证
 

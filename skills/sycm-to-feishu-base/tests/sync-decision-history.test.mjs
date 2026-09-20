@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import { activeProfileName, envFilePath } from '../../../runtime/feishu-targets.mjs';
 import {
   assertCurrentVisualizationReady,
   assertDecisionHistoryMutation,
@@ -552,21 +554,25 @@ test('mutation guard permits only the new history snapshot and current helper wr
   ]) assert.throws(() => assertDecisionHistoryMutation(request, scope), /Blocked unauthorized/iu);
 });
 
+// parseOptions 要求一组必填目标参数；抽到模块级，供「默认值」与「三目标确认」两处共用，
+// 避免两处各写一份 13 行参数表（写两份迟早漂移）。
+const CLI_ARGS = [
+  '--base-url', 'https://example.feishu.cn/base/appToken',
+  '--current-table-id', 'tblCurrent',
+  '--current-table-name', '关键词分析 V1（2026-08-14）',
+  '--previous-table-id', 'tblPrevious',
+  '--previous-table-name', '关键词分析 V1（修正版）',
+  '--verify-history-batch', '1',
+  '--expected-verified-batch-rows', '267',
+  '--history-table-id', 'tblHistory',
+  '--history-table-name', '关键词历史总表 V1',
+  '--current-batch-number', '2',
+  '--expected-current-rows', '267',
+  '--expected-history-rows', '567',
+];
+
 test('CLI is read-only by default and apply requires exact three-target confirmations', () => {
-  const args = [
-    '--base-url', 'https://example.feishu.cn/base/appToken',
-    '--current-table-id', 'tblCurrent',
-    '--current-table-name', '关键词分析 V1（2026-08-14）',
-    '--previous-table-id', 'tblPrevious',
-    '--previous-table-name', '关键词分析 V1（修正版）',
-    '--verify-history-batch', '1',
-    '--expected-verified-batch-rows', '267',
-    '--history-table-id', 'tblHistory',
-    '--history-table-name', '关键词历史总表 V1',
-    '--current-batch-number', '2',
-    '--expected-current-rows', '267',
-    '--expected-history-rows', '567',
-  ];
+  const args = CLI_ARGS;
   const dryRun = parseOptions(args);
   assert.equal(dryRun.apply, false);
   assert.equal(dryRun.appToken, 'appToken');
@@ -581,6 +587,19 @@ test('CLI is read-only by default and apply requires exact three-target confirma
     '--confirm-history-table', 'tblHistory',
   ]);
   assert.equal(apply.apply, true);
+});
+
+// 默认凭据文件必须来自租户登记表。这一条与 pre-ai / update-weekly-base / post-ai 三处同因：
+// 脚本里写死旧租户的 E:/小红书/.env.local，而 base 已经搬到 kcne618basvj，
+// 于是「拿旧租户凭据读新租户 base」报 91403 Forbidden —— 会被误读成
+// 「应用没被加为协作者」的假故障（2026-09-20 实测）。
+// 断言对着访问器而不是字面量：写死字面量等于把当前默认值固化成测试。
+test('the default credentials file comes from the tenant registry', () => {
+  assert.equal(parseOptions(CLI_ARGS).envFile, envFilePath(activeProfileName()));
+
+  const source = readFileSync(new URL('../scripts/sync-decision-history.mjs', import.meta.url), 'utf8');
+  assert.match(source, /envFile: envFilePath\(activeProfileName\(\)\)/u);
+  assert.doesNotMatch(source, /envFile: 'E:\//u);
 });
 
 test('write verification permits only planned helpers and the dependent key-word formula result', () => {

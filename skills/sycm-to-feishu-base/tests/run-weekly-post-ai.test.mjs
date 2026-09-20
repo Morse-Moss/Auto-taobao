@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { buildPublishPlan, canonicalDigest } from '../../../runtime/weekly-local-analysis.mjs';
+import { activeProfileName, envFilePath } from '../../../runtime/feishu-targets.mjs';
 import { parseOptions, runPostAiWorkflow } from '../scripts/run-weekly-post-ai.mjs';
 
 const current = buildPublishPlan({
@@ -108,4 +110,17 @@ test('publish stops before mutation when the target records drift', async () => 
     }),
   }), /publish record mismatch/iu);
   assert.equal(writes, 0);
+});
+
+// 默认凭据文件必须来自租户登记表。这一条与 pre-ai / update-weekly-base 两侧同因：
+// 脚本里写死旧租户的 E:/小红书/.env.local，而 base 已经搬到 kcne618basvj，
+// 于是「拿旧租户凭据读新租户 base」报 91403 Forbidden —— 会被误读成
+// 「应用没被加为协作者」的假故障（2026-09-20 实测）。
+// 断言对着访问器而不是字面量：写死字面量等于把当前默认值固化成测试。
+test('the default credentials file comes from the tenant registry', () => {
+  assert.equal(options().envFile, envFilePath(activeProfileName()));
+
+  const source = readFileSync(new URL('../scripts/run-weekly-post-ai.mjs', import.meta.url), 'utf8');
+  assert.match(source, /envFile: envFilePath\(activeProfileName\(\)\)/u);
+  assert.doesNotMatch(source, /envFile: 'E:\//u);
 });

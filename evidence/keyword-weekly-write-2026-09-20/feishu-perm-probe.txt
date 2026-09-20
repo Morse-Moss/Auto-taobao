@@ -1,0 +1,12 @@
+应用 cli_a96e… 取到 tenant_access_token；base=HdBhbttB5aScbasWJAMc0gGXnpe
+
+[1] 列协作者 GET /drive/v1/permissions/…/members → HTTP 403 code=1063004 msg=User has no share permission
+      （拿不到名单，说明这个应用没有 drive 权限读 scope —— 本身就是一条信息）
+[2] 读  新周表 关键词分析 V1（2026-09-19） → HTTP 200 code=0 rows=-
+[2] 读  历史总表 V1 → HTTP 200 code=0 rows=1
+[2] 读  编号库 V1 → HTTP 200 code=0 rows=1
+[2] 读  上一张周表 关键词分析 V1（2026-09-12） → HTTP 200 code=0 rows=1
+[3] 写探针 新周表 关键词分析 V1（2026-09-19） → HTTP 403 code=91403 msg=Forbidden ⇒ 写权限：被拒 91403
+[3] 写探针 历史总表 V1 → HTTP 403 code=91403 msg=Forbidden ⇒ 写权限：被拒 91403
+[3] 写探针 编号库 V1 → HTTP 403 code=91403 msg=Forbidden ⇒ 写权限：被拒 91403
+[3] 写探针 上一张周表 关键词分析 V1（2026-09-12） → HTTP 403 code=91403 msg=Forbidden ⇒ 写权限：被拒 91403

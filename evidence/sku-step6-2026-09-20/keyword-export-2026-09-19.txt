@@ -1,0 +1,5 @@
+{
+  "ok": false,
+  "code": "ERROR",
+  "message": "Timed out waiting for /mc/free/market_rank"
+}

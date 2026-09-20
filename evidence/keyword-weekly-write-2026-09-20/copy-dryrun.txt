@@ -1,0 +1,10 @@
+{
+  "mode": "DRY_RUN",
+  "appToken": "HdBhbttB5aScbasWJAMc0gGXnpe",
+  "sourceTableId": "tblrX0GM7HkVhF85",
+  "sourceTableName": "关键词分析 V1（2026-09-12）",
+  "sourceRecordCount": 300,
+  "sourceFieldCount": 29,
+  "existingCopyCount": 0,
+  "newTableName": "关键词分析 V1（2026-09-19）"
+}

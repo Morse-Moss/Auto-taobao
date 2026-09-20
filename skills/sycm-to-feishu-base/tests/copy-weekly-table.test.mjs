@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
@@ -201,4 +202,26 @@ test('newly opened Base waits for the frontend model and stops on visible securi
     sleep: async () => {},
     timeoutMs: 100,
   }), (error) => error.code === 'HUMAN_REQUIRED');
+});
+
+// 2026-09-20 冷启动实测：脚本用 /new 新开 Base 页时，页面先发布 modelOperator.base，
+// base.tables 晚一拍才填好。只判 Boolean(base) 会在那一拍里通过，随后报出
+// 「Requested table is not available」—— 把「还没加载完」说成「表不存在」。
+test('Base readiness requires a loaded table list, not just the base object', async () => {
+  const { feishuBaseReady } = await modulePromise;
+  assert.equal(typeof feishuBaseReady, 'function');
+
+  assert.equal(feishuBaseReady(undefined), false);
+  assert.equal(feishuBaseReady(null), false);
+  assert.equal(feishuBaseReady({}), false);
+  assert.equal(feishuBaseReady({ tables: {} }), false);
+  assert.equal(feishuBaseReady({ tables: { tblOne: {} } }), true);
+});
+
+// 只留一个没人调用的导出函数不算修好：条件必须真的被注进浏览器探针。
+// 这是**源码级**判据，所以下面两条字面量都不能出现在本文件的注释里（否则会自证成假红）。
+test('the readiness probe sent to the browser is built from that predicate', async () => {
+  const source = readFileSync(new URL('../scripts/copy-weekly-table.mjs', import.meta.url), 'utf8');
+  assert.match(source, /\$\{FEISHU_BASE_READY_SOURCE\}\(window\.bitableStore/u);
+  assert.doesNotMatch(source, /ready: Boolean\(window\.bitableStore/u);
 });

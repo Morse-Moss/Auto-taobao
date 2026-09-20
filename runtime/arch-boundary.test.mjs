@@ -47,10 +47,27 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/sycm-to-feishu-base/scripts/inspect-feishu-fields.mjs',
   'skills/sycm-to-feishu-base/scripts/run-weekly-post-ai.mjs',
   'skills/sycm-to-feishu-base/scripts/run-weekly-pre-ai.mjs',
+  // 2026-09-20 新增下面三条，同一个理由：周更链的**凭据文件默认值**原先在脚本里写死成
+  // 旧租户的 E:/小红书/.env.local，而 base 已经搬到 kcne618basvj —— 拿旧租户凭据读新租户
+  // base 得到 91403 Forbidden，看起来像「应用没被加为协作者」的假故障。改成从
+  // feishu-targets 的 envFilePath(activeProfileName()) 取（与同一条周更链的
+  // huitun-to-feishu-keyword-heat/scripts/flow.mjs 同源），于是 update-weekly-base.mjs
+  // 与它的两个测试各自多了一条 skills → runtime 依赖。理由要留在代码里，
+  // 不是为了过守卫才登记。
+  // 2026-09-20 新增下面两条，与上一批同因（凭据文件默认值写死旧租户）：
+  // `sync-decision-history.mjs` 是关键词周更链的「决策历史同步」段（人工排的独立段），
+  // 它的 `envFile` 默认值同样是 `E:/小红书/.env.local`，而它写的是 kcne 租户的关键词 base
+  // ⇒ 默认路径下拿旧租户凭据读新租户 base 报 91403 Forbidden。同一个修法，
+  // 于是它与它的测试各多一条 skills → runtime 依赖。
+  'skills/sycm-to-feishu-base/scripts/sync-decision-history.mjs',
+  'skills/sycm-to-feishu-base/tests/sync-decision-history.test.mjs',
+  'skills/sycm-to-feishu-base/scripts/update-weekly-base.mjs',
   'skills/sycm-to-feishu-base/tests/adapter-feishu-weekly.test.mjs',
   'skills/sycm-to-feishu-base/tests/copy-weekly-table.test.mjs',
   'skills/sycm-to-feishu-base/tests/paste-endpoint.test.mjs',
   'skills/sycm-to-feishu-base/tests/run-weekly-post-ai.test.mjs',
+  'skills/sycm-to-feishu-base/tests/run-weekly-pre-ai.test.mjs',
+  'skills/sycm-to-feishu-base/tests/update-weekly-base.test.mjs',
   'skills/xws-export-market-analysis/scripts/export-market-analysis.mjs',
   'skills/xws-export-market-analysis/scripts/flow.mjs',
   'skills/xws-export-market-analysis/scripts/segments.mjs',

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -18,6 +19,7 @@ import {
   planInvalidBatchUpdates,
   planPreviousBatchUpdates,
 } from '../scripts/update-weekly-base.mjs';
+import { activeProfileName, envFilePath } from '../../../runtime/feishu-targets.mjs';
 
 const baseArgs = [
   '--base-url', 'https://example.feishu.cn/base/appToken',
@@ -34,6 +36,18 @@ const baseArgs = [
   '--expected-source-rows', '267',
   '--expected-history-before', '300',
 ];
+
+// 默认凭据文件必须来自租户登记表。
+// 反例（2026-09-20 实测）：默认值曾是旧租户的 E:/小红书/.env.local，而 base 已搬到
+// kcne618basvj —— 「旧租户凭据读新租户 base」报 91403 Forbidden，会被误读成权限问题。
+// 对着访问器断言而不是写死字面量（写死等于把当前默认值固化成测试 —— 坑 34）。
+test('the default credentials file comes from the tenant registry', () => {
+  assert.equal(parseOptions(baseArgs).envFile, envFilePath(activeProfileName()));
+
+  const source = readFileSync(new URL('../scripts/update-weekly-base.mjs', import.meta.url), 'utf8');
+  assert.match(source, /envFile: envFilePath\(activeProfileName\(\)\)/u);
+  assert.doesNotMatch(source, /envFile: 'E:\//u);
+});
 
 test('weekly update CLI is read-only unless both Base and weekly table are confirmed', () => {
   const dryRun = parseOptions(baseArgs);

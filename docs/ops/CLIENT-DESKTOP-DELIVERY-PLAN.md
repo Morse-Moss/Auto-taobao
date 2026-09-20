@@ -32,10 +32,11 @@
    - 共享 `web-access` Skill 与 CDP Proxy 位于 `D:\codex\skills\web-access`（README §外部依赖）；
    - 「已登录的 Edge 用户会话」是人工成果，不是安装项；
    - 飞书凭据在 `E:\小红书\.env.local`，仓库只传路径（README 明写「不属于项目资产，不复制到本目录」）。
-2. **交互形态是 PowerShell + 参数。** 举例，周更收尾要这样跑：
-   `run-weekly-post-ai.mjs --pre-ai-manifest <json> --apply --confirm-base <token> --confirm-current-table <id> --confirm-history-table <id>`。
+2. **交互形态是 PowerShell + 参数。** 举例，周更的 AI 结算后发布要这样跑：
+   `run-weekly-post-ai.mjs --publish-artifact <PUBLISH_READY 的 analysis-artifact.json> --apply --confirm-base <token> --confirm-current-table <id> --confirm-history-table <id> --confirm-library-table <id>`。
+   注意入口是 `--publish-artifact`（`--pre-ai-manifest` 已被脚本显式拒绝），且这个发布器**只**写编号库 creates / 当前表 updates / 历史表 updates 三件事 —— 它不吃 pre-ai 的 `pre-ai-manifest.json`，也不跑灰豚与历史同步。
    让运营填 app-token 与 table-id 是不现实的。
-3. **需要理解领域概念才能用。** `READY_FOR_AI`、批次有效性、两个 table ID、`--replace-current`——
+3. **需要理解领域概念才能用。** `LOCAL_INPUT_READY`、批次有效性、两个 table ID、`--replace-current`——
    这些是工程语义，不是运营语言。
 4. **没有界面、没有常驻、没有定时。** 全仓库搜不到本地 HTTP 服务或计划任务实现；
    现在每一次运行都要人打开终端敲命令。

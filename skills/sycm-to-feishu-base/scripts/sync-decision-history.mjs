@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { activeProfileName, envFilePath } from '../../../runtime/feishu-targets.mjs';
+
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 const SNAPSHOT_FIELDS = [
   { snapshot: '重点达标', recent: '近2周重点达标次数', previous: '上一有效周重点达标' },
@@ -30,11 +32,14 @@ function optionKey(name) {
   return name.replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase());
 }
 
+// 默认凭据文件跟着租户登记表走，不要写死。
+// 写死旧租户路径（E:/小红书/.env.local）会拿旧租户的 token 去读新租户的 base，
+// 得到 91403 Forbidden —— 看起来像「应用没被加为协作者」的假故障。
 export function parseOptions(argv) {
   const options = {
     apply: false,
     recalculateExistingSnapshots: false,
-    envFile: 'E:/小红书/.env.local',
+    envFile: envFilePath(activeProfileName()),
     backupDir: 'runtime/keyword-analysis-backups',
   };
   const values = new Set([

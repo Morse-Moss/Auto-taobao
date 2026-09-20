@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { verifyExportPair } from '../../sycm-export-search-rank/scripts/source-period-proof.mjs';
+import { envFilePath, activeProfileName } from '../../../runtime/feishu-targets.mjs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 const RAW_FIELDS = ['排名', '搜索词', '搜索人气', '点击率', '支付转化率'];
@@ -46,7 +47,10 @@ export function parseOptions(argv) {
   const options = {
     apply: false,
     category: '浴缸',
-    envFile: 'E:/小红书/.env.local',
+    // 凭据文件跟着**当前租户**走（写死旧租户的 .env.local 去读 kcne 的 base 是
+    // 91403 Forbidden，会被误读成权限问题）。访问器本身不读环境变量，所以显式传
+    // activeProfileName() 才认 SYCM_FEISHU_PROFILE。
+    envFile: envFilePath(activeProfileName()),
     backupDir: 'runtime/keyword-analysis-backups',
   };
   const values = new Set([

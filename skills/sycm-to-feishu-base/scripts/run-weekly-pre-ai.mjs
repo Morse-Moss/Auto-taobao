@@ -10,6 +10,7 @@ import crypto from 'node:crypto';
 import { parseSourceCsv } from './update-weekly-base.mjs';
 import { verifyExportPair } from '../../sycm-export-search-rank/scripts/source-period-proof.mjs';
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+import { envFilePath, activeProfileName } from '../../../runtime/feishu-targets.mjs';
 
 // 周更的浏览器全是**乙（商家浏览器）**：生意参谋导出 + 飞书网页。
 // 端口只从 runtime/browser-ports.mjs 取（原先写死的是别的项目的共享代理）。
@@ -32,7 +33,12 @@ export function parseOptions(argv) {
     sycmCategory: '普通浴缸',
     cateId: '50002411',
     proxy: WEEKLY_PROXY_DEFAULT,
-    envFile: 'E:/小红书/.env.local',
+    // 凭据文件必须跟着**当前租户**走，不能在脚本里写死某一份：拿旧租户的
+    // E:/小红书/.env.local 去读新租户（kcne618basvj）的关键词库 base，得到的是
+    // 91403 Forbidden —— 会被误读成「这个应用没有权限」的假故障。
+    // envFilePath() 是唯一来源，也吃客户配置对 feishu.<profile>.envFile 的覆盖；
+    // 显式传 activeProfileName() 才会认 SYCM_FEISHU_PROFILE（访问器本身不读环境变量）。
+    envFile: envFilePath(activeProfileName()),
     runRoot: path.join(PROJECT_ROOT, 'runtime', 'weekly-runs'),
     historyTableName: '关键词历史总表 V1',
   };

@@ -1,0 +1,10 @@
+{
+  "mode": "DRY_RUN",
+  "appToken": "HdBhbttB5aScbasWJAMc0gGXnpe",
+  "sourceTableId": "tblmU1n3SO8Mz7Ub",
+  "sourceTableName": "关键词分析 V1（修正版）",
+  "sourceRecordCount": 301,
+  "sourceFieldCount": 26,
+  "existingCopyCount": 0,
+  "newTableName": "冷启动验证_请忽略"
+}

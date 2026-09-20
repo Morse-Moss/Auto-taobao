@@ -1,0 +1,13 @@
+{
+  "mode": "COPIED_AND_VERIFIED",
+  "appToken": "HdBhbttB5aScbasWJAMc0gGXnpe",
+  "sourceTableId": "tblrX0GM7HkVhF85",
+  "newTableId": "tblZsUns9353w3nl",
+  "newTableName": "关键词分析 V1（2026-09-19）",
+  "newTableUrl": "https://kcne618basvj.feishu.cn/base/HdBhbttB5aScbasWJAMc0gGXnpe?table=tblZsUns9353w3nl&view=vewSp8nPZS",
+  "fieldCount": 29,
+  "formulaFieldCount": 12,
+  "aiFieldCount": 0,
+  "viewCount": 1,
+  "copiedRecordCount": 0
+}

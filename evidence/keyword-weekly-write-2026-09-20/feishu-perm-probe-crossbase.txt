@@ -1,0 +1,12 @@
+[关键词库（本次要写的）] base=HdBhbttB5aScbasWJAMc0gGXnpe
+  列表 HTTP 200 code=0 表数=9
+  写探针 table=tbl7HbH11JsQx6FL → HTTP 403 code=91403 msg=Forbidden
+
+[竞品库] base=QcnhbEzYpacGvUskCbVcrcm3nFd
+  列表 HTTP 200 code=0 表数=11
+  写探针 table=tblkYcczxBnW4v5G → HTTP 200 code=0 msg=success
+
+[各店铺日报] base=PTfHbPt9EaIzddsfL8Jcj238nrb
+  列表 HTTP 200 code=0 表数=7
+  写探针 table=tblUnwn05vl8Wik9 → HTTP 200 code=0 msg=success
+

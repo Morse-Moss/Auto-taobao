@@ -5,6 +5,14 @@
 **修后用真实 base 跑通收据级复现**（§6.6 后两行：同一条消息的修前/修后收据对照）。
 适用范围：竞品周更 SOP（base `OWebbPUcBa7B8JseYLccQCy9nkf` → 副本 `OUMqbkYwVaQxQNsv2EDc1DV7nDf`）。
 
+> **现役值以 `runtime/feishu-targets.mjs` 为准（2026-09-20 复核）。**
+> 本文是 2026-09-14 搬迁当天及随后的**历史记录**。文中出现的 `OUMqbkYwVaQxQNsv2EDc1DV7nDf`
+> 是搬迁期的测试副本，**2026-09-15 已经切走**；现役竞品 base 是用户指定的正主
+> `QcnhbEzYpacGvUskCbVcrcm3nFd`（名字「浴缸竞品分析」，四个可稳定引用的表 id 在同文件里）。
+> 关键词库 base 同理：文中记的旧租户 `N21Abkg0HakO6AsbCaDckvcwnVd` 已换成
+> `HdBhbttB5aScbasWJAMc0gGXnpe`。
+> **别拿本文里的 token 直接当参数跑** —— 去读那个文件，读到的才是现役值。
+
 ## 0. 侦察结论
 
 1. 新 base `OUMqbkYwVaQxQNsv2EDc1DV7nDf`（租户 `kcne618basvj`）是原 base 的**结构 + 数据完整副本**：
@@ -163,7 +171,8 @@ token 改为从单点配置派生（实测 `{"appToken":"HdBhbttB5aScbasWJAMc0gG
 5. **正式切换**：✅ 已完成（2026-09-14）。用户确认旧租户废弃、以后在新租户上开发，
    于是把 `DEFAULT_PROFILE` 由 `legacy` 改为 `kcne`，并把 kcne 的 `writeVerified` 声明翻真。
    实测（不设任何环境变量）：`activeProfileName()` → `kcne`，`envFilePath` →
-   `E:/小红书/.env.feishu-kcne.local`，`competitorBaseToken` → `OUMqbkYwVaQxQNsv2EDc1DV7nDf`；
+   `E:/小红书/.env.feishu-kcne.local`，`competitorBaseToken` → `OUMqbkYwVaQxQNsv2EDc1DV7nDf`
+   （**当时值**；2026-09-15 已换成 `QcnhbEzYpacGvUskCbVcrcm3nFd`，见文首现役值提示）；
    `runtime/tally-weekly-classification.mjs` 直接跑出
    `resolved weekly table: 竞品周_2026-09-06_2026-09-12 (tblH56IUDG9l96V8)`，
    统计结果与旧租户逐字节相同。

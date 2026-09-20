@@ -1,0 +1,11 @@
+SYCM page 1: 10 rows
+SYCM page 2: 50 rows
+SYCM page 3: 50 rows
+SYCM page 4: 50 rows
+SYCM page 5: 50 rows
+SYCM page 6: 50 rows
+{
+  "ok": false,
+  "code": "ERROR",
+  "message": "Ranks are not contiguous 1..N (missing or extra rank near 51)"
+}

@@ -1,0 +1,48 @@
+源表 tblrX0GM7HkVhF85: 29 字段，300 行
+新表 tblZsUns9353w3nl: 29 字段，0 行
+
+只在源表有: (无)
+只在新表有: (无)
+
+同名但类型/属性不一致: 12 个
+  交易热度
+    源: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblrX0GM7HkVhF85].$field[fldf2Z02zt]),\"\",IFS(bitable:
+    新: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblZsUns9353w3nl].$field[fldf2Z02zt]),\"\",IFS(bitable:
+  搜索热度
+    源: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblrX0GM7HkVhF85].$field[fldaD9tzQr]),\"\",IFS(OR(bitab
+    新: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblZsUns9353w3nl].$field[fldaD9tzQr]),\"\",IFS(OR(bitab
+  来源渠道
+    源: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblrX0GM7HkVhF85].$field[fldcg1WknI]),\"\",\"淘宝\")"}
+    新: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblZsUns9353w3nl].$field[fldcg1WknI]),\"\",\"淘宝\")"}
+  原始关键词
+    源: type=20 ui=Formula prop={"formatter":"","formula_expression":"bitable::$table[tblrX0GM7HkVhF85].$field[fldcg1WknI]"}
+    新: type=20 ui=Formula prop={"formatter":"","formula_expression":"bitable::$table[tblZsUns9353w3nl].$field[fldcg1WknI]"}
+  主关键词
+    源: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblrX0GM7HkVhF85].$field[fldcg1WknI]),\"\",\"浴缸\")"}
+    新: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblZsUns9353w3nl].$field[fldcg1WknI]),\"\",\"浴缸\")"}
+  一级类目
+    源: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblrX0GM7HkVhF85].$field[fldcg1WknI]),\"\",\"浴缸\")"}
+    新: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblZsUns9353w3nl].$field[fldcg1WknI]),\"\",\"浴缸\")"}
+  优先级
+    源: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblrX0GM7HkVhF85].$field[fldcg1WknI]),\"\",IF(bitable::
+    新: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblZsUns9353w3nl].$field[fldcg1WknI]),\"\",IF(bitable::
+  近2周重点达标次数
+    源: type=20 ui=Formula prop={"formatter":"0.0","formula_expression":"IF(OR(OR(ISBLANK(bitable::$table[tblrX0GM7HkVhF85].$field[fld6QYE7Ym]),bitable:
+    新: type=20 ui=Formula prop={"formatter":"0.0","formula_expression":"IF(OR(OR(ISBLANK(bitable::$table[tblZsUns9353w3nl].$field[fld6QYE7Ym]),bitable:
+  近2周探索达标次数
+    源: type=20 ui=Formula prop={"formatter":"0.0","formula_expression":"IF(OR(OR(ISBLANK(bitable::$table[tblrX0GM7HkVhF85].$field[fld99UH4yN]),bitable:
+    新: type=20 ui=Formula prop={"formatter":"0.0","formula_expression":"IF(OR(OR(ISBLANK(bitable::$table[tblZsUns9353w3nl].$field[fld99UH4yN]),bitable:
+  近2周A级达标次数
+    源: type=20 ui=Formula prop={"formatter":"0.0","formula_expression":"IF(OR(OR(ISBLANK(bitable::$table[tblrX0GM7HkVhF85].$field[fldHz4m1fP]),bitable:
+    新: type=20 ui=Formula prop={"formatter":"0.0","formula_expression":"IF(OR(OR(ISBLANK(bitable::$table[tblZsUns9353w3nl].$field[fldHz4m1fP]),bitable:
+  是否重点词
+    源: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblrX0GM7HkVhF85].$field[fldcg1WknI]),\"\",IF(bitable::
+    新: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblZsUns9353w3nl].$field[fldcg1WknI]),\"\",IF(bitable::
+  对应产品方向
+    源: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblrX0GM7HkVhF85].$field[fldcg1WknI]),\"\",IF(bitable::
+    新: type=20 ui=Formula prop={"formatter":"","formula_expression":"IF(ISBLANK(bitable::$table[tblZsUns9353w3nl].$field[fldcg1WknI]),\"\",IF(bitable::
+
+源表里 property 含 prompt/ai 的字段（AI Prompt 类）: 1
+  细分标签 type=4 prop={"options":[{"color":0,"id":"opt9ebNj17","name":"浴缸"},{"color":1,"id":"optI5U4HMl","name":"人造石"},{"color":2,"id":"optropTDrS","name":"亚克力"},{"color":3,"id":"opt
+
+公式字段: 源 12 个 / 新 12 个
