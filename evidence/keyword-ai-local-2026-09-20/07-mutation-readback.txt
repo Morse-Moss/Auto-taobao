@@ -1,0 +1,22 @@
+[基线]
+  pass=6 fail=0 退出码=0 sha=a3c13dc326f8
+
+[M1 调用点退回 String()（就是这次真跑时产出 {"[object Object]":300} 的那行）]
+  改坏后：pass=5 fail=1 退出码=1
+  点名用例：receipt source uses readbackText for the formula-backed 优先级 column
+  期望的那条是否红了：是 —— 判据真的在判东西
+  还原后：sha a3c13dc326f8 → a3c13dc326f8（逐字节一致） pass=6 fail=0
+
+[M2 对象分支不再递归、不再 trim（回到「带空格的键被统计成两条」）]
+  改坏后：pass=5 fail=1 退出码=1
+  点名用例：readback text unwraps formula-shaped values instead of stringifying to [object Object]
+  期望的那条是否红了：是 —— 判据真的在判东西
+  还原后：sha a3c13dc326f8 → a3c13dc326f8（逐字节一致） pass=6 fail=0
+
+[M3 标量分支丢掉 trim（叶子值带空白也算一条独立的键）]
+  改坏后：pass=5 fail=1 退出码=1
+  点名用例：readback text unwraps formula-shaped values instead of stringifying to [object Object]
+  期望的那条是否红了：是 —— 判据真的在判东西
+  还原后：sha a3c13dc326f8 → a3c13dc326f8（逐字节一致） pass=6 fail=0
+
+结论：3 条突变各自点名了它该点名的那条用例，还原后逐字节一致且全部复绿。

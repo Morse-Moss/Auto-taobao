@@ -1,0 +1,45 @@
+这条是回答「为什么会是黑名单？」的**原始证据**，不是转述。
+
+## 1. 直接跑一次（读操作，无副作用）
+
+$ C:/WINDOWS/System32/schtasks.exe /Query /TN sycm-daily-round
+C:\Users\Administrator\.workbuddy\binaries\PortableGit\versions\1.2.0\bin\bash.exe: line 1: C:/WINDOWS/System32/schtasks.exe: Permission denied
+(exit 126)
+
+沙箱横幅（原文）：
+PROGRAM BLOCKED BY SECURITY POLICY - The sandbox prevented a program on the configured Program Blacklist from starting:
+  - schtasks.exe (C:\WINDOWS\System32\schtasks.exe)
+This block cannot be approved or bypassed from the current command. Do NOT retry this program, launch it through another shell or script, or attempt an equivalent workaround.
+If the user wants to allow this program, they must remove it from Security Center -> Command Security -> Program Blacklist.
+
+## 2. 之前脚本里观测到的形态（同一件事的另一种表现）
+
+`scripts/schedule-install.mjs:70-72` 的记录：
+> 2026-09-19 实测：本机把 `schtasks.exe` 放进了安全策略的黑名单，spawn 直接以 `EPERM` 失败
+> —— 没有任何输出、退出码为 null。
+
+对应留证：`evidence/browser-restart-2026-09-19/schedule-query.txt`、
+`evidence/architecture-rollout-2026-09-19/schedule-query-blocked.txt`（都是本脚本自己打的 `describeBlocked` 文本，退出码 3）。
+
+## 3. 顺带实测到的是同一份清单
+
+本轮跑本地 `cc` 时横幅又打了一次，这次是 `reg.exe`：
+  PROGRAM BLOCKED BY SECURITY POLICY … - reg.exe (C:\WINDOWS\System32\reg.exe)
+（调用本身仍然成功返回）
+⇒ 这不是「Windows Defender / 组策略」那一类系统安全策略，
+  **是 WorkBuddy 工作环境自己的「安全中心 → 命令安全 → 程序黑名单」**，
+  拦的是「进程被启动」这件事本身，而不是命令的权限。
+
+## 4. 我核过 / 我没核过
+
+**核过的**：
+- 这条横幅是运行环境当场打出来的（上面第 1、3 节都是本轮实测原文）。
+- 官方给出的唯一解法路径就是「Security Center → Command Security → Program Blacklist」；
+  横幅同时明确写了「不要换别的 shell 或脚本绕」。
+- 之前的 `spawnSync` EPERM / 退出码 null 记录与本轮现象一致。
+
+**没核到的**：
+- 这份清单**在哪份文件里**。我把 `~/.workbuddy/*.json`（9 个配置文件）逐个扫过，
+  没有任何一个含 blacklist / security 关键字；它应在宿主应用内部（`app.asar` 打包），
+  不是用户可编辑的配置文件。⇒ 「怎么改」只能走界面，不能改文件。
+- 清单里**还有什么**。我只正面撞到 `schtasks.exe` 与 `reg.exe`；这是「撞到才知道」，不是穷举。

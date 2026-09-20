@@ -1,0 +1,112 @@
+内容热度「之前的规则是什么、现在跑的是什么、差在哪」——事实追溯
+运行时刻：2026-09-20（Asia/Shanghai）
+证据文件：08-content-heat-value-history.txt（落库值分布）、09-analysis-field-options.txt（字段类型与选项）
+
+== 一、结论先行 ==
+
+上一轮我说过「现行提示词把 AI预测- 前缀丢了，等于规则被简化了」。**这句话错了，这里更正。**
+
+`AI预测-` 从来只是一个**链路中间态**，写进飞书之前一定会被剥掉。落库值一直是 `高/中/低`。
+现行提示词直接省掉前缀，**在落库结果上与历史 4 个批次完全一致**，不是口径漂移。
+
+真正唯一的差异是：现行提示词多输出第 4 个值 `待核验`，而历史 4 个批次一次都没出现过它。
+
+== 二、三层证据 ==
+
+1) 老口径的「要求」——文档层（核过）
+   runtime/keyword-field-contract-20260809.md:27
+     | 17 | 内容热度 | AI 预测 | ... | 输出必须带 `AI预测-` 前缀，不冒充真实平台热度 | `PROMPT_READY` |
+   runtime/keyword-formulas-ai-prompts-20260809.md:268-290（提示词 F）
+     只允许输出以下一个值，不得解释、不得添加其他文字：AI预测-高、AI预测-中、AI预测-低
+   代码层同源：runtime/legacy-feishu-prompt-analysis.mjs:18
+     const CONTENT_VALUES = new Set(['AI预测-高', 'AI预测-中', 'AI预测-低']);
+   ⇒ 老链路喂给模型的提示词**确实**要求带前缀，只有 3 个合法值。
+
+2) 前缀去哪儿了——代码层（核过）
+   runtime/legacy-feishu-writeback.mjs:5-10
+     export function normalizeContentHeat(value) {
+       const raw = text(value);
+       const normalized = raw.replace(/^AI预测-/u, '');      // ← 剥掉
+       if (!['高', '中', '低'].includes(normalized)) throw new Error(`Invalid 内容热度: ${raw}`);
+       return normalized;                                     // ← 落库的永远是三值
+     }
+   ⇒ 写回层**在写飞书前剥前缀，并且硬校验只许 高/中/低**。模型输出带不带前缀，落库都一样。
+
+3) 前缀真的落过库吗——现场层（核过，且是这条链上最容易被误判的一处）
+   runtime/weekly-runs/2026-08-29/content-heat-fix/plan.json
+     tableId tblG5sd2WfunbpLq  表名「关键词分析 V1（2026-08-29）」  表行数 300  updates 300
+     每条 update 都是 内容热度: 高|中|低（目标值集合 = 低 | 高 | 中）
+   runtime/weekly-runs/2026-08-29/content-heat-fix/receipt.json
+     { "status": "APPLIED_AND_VERIFIED", "recordCount": 300, "updatedRecords": 300 }
+   驱动脚本：runtime/fix-legacy-content-heat.mjs（默认 envFile 写死旧租户 `E:/小红书/.env.local`，
+     属已登记的 5 处遗留默认值之一；它写 runDir 也是绝对路径硬编码）
+   ⇒ **300/300 都需要改**，而 normalizeContentHeat 只在 raw !== 剥完的结果时才产出 update。
+     所以 08-29 那批的 300 行**原本全是带 `AI预测-` 前缀的**，是这次修复把它们剥掉的。
+     ⇒ 「前缀有没有真的落过库」这一问，答案是**真的落过**，且已被剥掉。
+
+== 三、落库值的实测分布（08-content-heat-value-history.txt，逐表全量回读）==
+
+表名（关键词库 base 内的批次表）          行数   空   低    中    高
+关键词分析 V1（修正版）                    301  299    2    0    0
+关键词分析 V1（2026-08-15）                300  300    0    0    0
+关键词分析 V1（2026-08-26）                300    0   55  217   28
+关键词分析 V1（2026-08-29）                300    0   57  213   30
+关键词分析 V1（2026-09-11）                300    0   65  194   41
+关键词分析 V1（2026-09-12）= 上周         300    0   45  219   36
+关键词分析 V1（2026-09-19）= 本周         300  300    0    0    0      ← 待填
+   （固定口径：内容热度 在两张表里都是 type=1 Text，见 09-analysis-field-options.txt）
+
+三条可从这张表直接读出的事实：
+  A. 已定稿的 4 个批次（08-26 / 08-29 / 09-11 / 09-12）里，**没有一条值带 `AI预测-` 前缀**。
+  B. `待核验` 在 7 张表、2101 行里**一次都没出现过**。
+  C. 分布形态稳定：`中` 占 65%~72%，`低` 15%~22%，`高` 9%~14%。
+     —— 与 05 文件里现行提示词小样（10 行里 中 7 条）的偏松形态一致。**但两者形态一致不等于同一实现**
+     （见「证不了什么」）。
+
+== 四、现行实现（核过）==
+
+runtime/weekly-local-analysis.mjs:16（CONTENT_HEAT_PROMPT）
+  只输出：低、中、高、待核验
+ANALYSIS_REGISTRY.fields[内容热度]（同文件:28）
+  { owner: 'llm', input: ['原始关键词', '搜索热度', '交易热度'], output: 'enum', missing: 'LLM_EVIDENCE_REQUIRED' }
+
+与老链路的差异（逐项）：
+  a. 前缀：老提示词要求带、写回层剥掉；现行提示词不带。**落库结果等价。**
+  b. 值域：老 3 值（写回层硬校验，遇 `待核验` 直接 throw）；现行 4 值。**唯一实质差异。**
+  c. 输入：老提示词 F 喂 6 项（原始关键词/关键词分类/细分标签/用户意图/搜索热度/交易热度）；
+     现行注册表只声明 3 项（原始关键词/搜索热度/交易热度）。
+     ⇒ 分类、标签、意图这三项**在现行契约里不再作为输入**，尽管它们此刻已经被规则段写好了、
+        本来可以白用。（这是可被利用的改进点，不是 bug。）
+
+== 五、这条链现在处于什么状态（核过）==
+
+「AI 段」在仓库里**不是从零**：
+  - runtime/run-legacy-feishu-prompt-analysis.mjs —— 完整可跑的老 AI 段编排器：
+    读飞书 300 行 + 从 keyword-formulas-ai-prompts-20260809.md 抽提示词 A~G
+    → 按 --batch-size（默认 10）切批 → 调**本地 provider** → 每批落 provider-output.json / validated-results.json
+    → 汇总 analysis-artifact.json + analysis.csv。默认 provider = `codex`，也接受 `cc`。
+    ⇒ **不需要外部 LLM key**：走的是本机已装的 codex/claude CLI（见 04-provider-cli.txt）。
+  - runtime/apply-legacy-feishu-writeback.mjs —— 老写回器，吃上面的 artifact。
+  - runtime/manual-legacy-analysis.mjs —— **人工兜底路径**：`extract` 导出待分析批次，
+    `apply <file>` 把「助手产出的 JSON」灌回 batch 目录当 provider-output.json。
+    文件头注释即写明这是 "manual (assistant-performed) legacy analysis"。
+    ⇒ 用户说的「你去分析」这条路，历史上**真的用过**，不是设想。
+
+但它**不能整条照搬**到本周，原因是字段已经分家了：
+  老写回器的 WRITEBACK_FIELDS = 标准归并词 / 关键词分类 / 细分标签 / 用户意图 / 内容热度（5 个）。
+  而其中前 4 个**刚刚已被规则段写过**（runtime/local-analysis-runs/20260920T025633Z-tblZsUns9353w3nl）。
+  老提示词 A~G 还包含 `关键词归类` 与 `对应产品方向`，而在本周表里
+  `对应产品方向` **是公式**（type=20），老口径下它由 AI 出、现在由公式算，两代结构不同。
+  ⇒ 新 AI 段只该管 **1 个字段：内容热度**。
+
+== 六、这份追溯证不了什么 ==
+
+- **证不了** 08-26 / 09-11 / 09-12 这三个批次当时走的具体路径
+  （是「写入时就剥」还是「事后用 fix 脚本剥」）。仓库里没有这三个批次的 provider 输出或修复记录，
+  只有 08-29 那一次有 fix 回执。**不猜。**
+- **证不了** 历史 4 批是不是本地模型跑的（没有对应的 provider-output.json 留存）。
+  分布形态与现行提示词小样相似，但这只是**形态相似**，不构成同源证据。
+- **证不了** `待核验` 在 300 行上会占多少 —— 历史一次没出现，小样（10 行）也没出现。
+  它会不会变成「兜底倾倒场」要跑完才知道。
+- 08-15 批次全空、修正版只有 2 行，说明这两个批次当年的 AI 段**没有跑或跑漏**，
+  而不是「跑出来是空」。本文件不解释原因。

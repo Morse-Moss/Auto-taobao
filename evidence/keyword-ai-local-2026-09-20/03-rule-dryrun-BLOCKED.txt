@@ -1,0 +1,24 @@
+命令（**dry-run，不带 --apply**，对飞书零写入）：
+$ node runtime/apply-local-keyword-analysis.mjs \
+    --app-token HdBhbttB5aScbasWJAMc0gGXnpe \
+    --table-id tblZsUns9353w3nl \
+    --table-name "关键词分析 V1（2026-09-19）" \
+    --env-file "E:/小红书/.env.feishu-kcne.local" \
+    --expected-rows 300
+
+输出（原文，stderr）：
+细分标签 missing option: 尺寸/70厘米
+(exit 1)
+
+---- 这次失败说明了什么 ----
+1. **fail-closed 生效了**：`validateFieldContract` 在 `if (!options.apply)` 之前就跑了
+   （`apply-local-keyword-analysis.mjs:242`），所以 dry-run 也拦 —— 没有「dry 时放过、apply 时才炸」。
+2. **中文参数没问题**：表名断言（`table.name !== options.tableName`）在这一步**之前**，
+   它通过了才走到选项校验 ⇒ `--table-name "关键词分析 V1（2026-09-19）"` 在本机没被乱码。
+   同理 `--env-file "E:/小红书/.env.feishu-kcne.local"` 能读出来（否则会停在 `Feishu app credentials unavailable`）。
+3. 它**没有**产生 runtime/local-analysis-runs 下的新目录 —— 目录是在校验之后才建的
+   （`:244`），这也是一处刻意的排序。
+
+---- 还差什么才能真跑 ----
+把 `尺寸/70厘米` 加进本周表 `细分标签` 字段的选项（**只加一项，不动其它选项、不动字段类型**）。
+加完这条，规则段就可以直接进 dry-run → canary → 全量。

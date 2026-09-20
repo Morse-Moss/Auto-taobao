@@ -1,0 +1,9 @@
+$ node -e "for(const n of ['claude','codex','workbuddy']) where(n)"
+claude     FOUND: E:\AI\npm-global\claude | E:\AI\npm-global\claude.cmd
+codex      FOUND: E:\AI\npm-global\codex | E:\AI\npm-global\codex.cmd
+workbuddy  NOT FOUND (status 1)
+
+代码里声明了三个 provider：
+  runtime/local-provider-runner.mjs:8-12  { cc: claude -p --output-format json, codex: codex exec -, workbuddy: workbuddy run }
+  runtime/agent-llm-adapter.mjs:22-28   同三项
+⇒ 本机 `workbuddy` 这一项是**死的选项**（声明了但跑不起来）。要用本地 provider，只能选 cc 或 codex。

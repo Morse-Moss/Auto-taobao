@@ -188,6 +188,28 @@ function stamp() {
   return new Date().toISOString().replace(/[-:]/gu, '').replace(/\.\d{3}Z$/u, 'Z');
 }
 
+/**
+ * 把「从飞书读回来的字段值」归一成可读文本。
+ *
+ * 为什么需要它：公式字段（type=20）从 API 读回来**不是字符串**，而是
+ * `{type:'text', value:[{text:'C-常规跟踪'}]}` 这样的对象；多选字段读回来是对象数组。
+ * 直接 `String(x)` 会得到 `"[object Object]"` —— 2026-09-20 第一次真跑时收据里的
+ * `priorityDistribution` 就整条变成了 `{"[object Object]": 300}`。
+ * **收据里出现这种值，等于把证据变成假信息**（看着像有数据，实际什么也没说），
+ * 比缺这个字段更坏。所以这里统一归一，并留一条断言把它钉住。
+ */
+export function readbackText(value) {
+  if (value == null) return '';
+  if (Array.isArray(value)) return value.map(readbackText).join('');
+  if (typeof value === 'object') {
+    // `{value: [...]}` 与 `{value: '标量'}` 都出现过，统一交回递归处理，
+    // 免得标量形态掉进 text/name 分支被读成空字符串而静默丢数据。
+    if (value.value !== undefined) return readbackText(value.value);
+    return String(value.text ?? value.name ?? '').trim();
+  }
+  return String(value).trim();
+}
+
 function summarizePlan(plan, records) {
   const generated = plan.updates.map((update) => update.fields);
   const distribution = (name) => Object.fromEntries([...generated.reduce((map, fields) => {
@@ -286,7 +308,7 @@ async function main() {
   const receiptFile = path.join(runDir, 'receipt.json');
   fs.writeFileSync(afterFile, `${JSON.stringify({ table, fields: afterFields, records: afterRecords }, null, 2)}\n`, 'utf8');
   const priorityDistribution = Object.fromEntries([...afterRecords.reduce((map, record) => {
-    const value = String(record.fields?.优先级 ?? '(空)');
+    const value = readbackText(record.fields?.优先级) || '(空)';
     map.set(value, (map.get(value) ?? 0) + 1);
     return map;
   }, new Map())]);
