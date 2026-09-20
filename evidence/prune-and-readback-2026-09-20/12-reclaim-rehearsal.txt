@@ -1,0 +1,43 @@
+PASS  演练端口都不在登记表里（免得它变成一次串店）  —— 登记表里的端口：9222, 3457, 19022, 19023, 19024, 19031, 19041, 19032, 19042, 19033, 19043, 19035, 19045, 19034, 19044
+PASS  Edge 存在  —— C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe
+PASS  临时 profile 与六家都不重叠  —— 演练 profile=D:/Retire/sycm-automation/tmp/reclaim-rehearsal-profile
+PASS  端口 19051 现在没人用
+PASS  端口 19052 现在没人用
+PASS  端口 19053 现在没人用
+本地站点 :19053 已起（只回 200，用来让导航真的成功）
+浏览器 pid=44592  argv=--user-data-dir=D:/Retire/sycm-automation/tmp/reclaim-rehearsal-profile --remote-debugging-port=19051 --no-first-run --no-default-browser-check --headless=new --disable-gpu --disable-extensions about:blank
+PASS  演练浏览器在 19051 上就绪  —— 等了 419ms；exitCode=null；stderr=
+DevTools listening on ws://127.0.0.1:19051/devtools/browser/c256fa15-bae6-4f0a-8063-3bc32a25748c
+
+代理 pid=54596  端口 19052 → 浏览器 19051
+PASS  代理连上了演练浏览器  —— browser.id=edge-rehearsal chromePort=19051
+建了两个演练页：rehearsal-drift(3EC8023102EBF552B410C76012BA9BEF)、rehearsal-report(A6EFE6C6BBF976B50B7C7440874F1AD8)
+现场页签：
+    http://127.0.0.1:19053/report
+    http://127.0.0.1:19053/drift
+    about:blank
+    about:blank
+PASS  漂移页确实「同主机但不匹配任何期望片段」  —— host=http://127.0.0.1:19053
+PASS  现场里恰好一个期望页面在位、另一个漂走了
+dry 计划：工作页=would-reclaim  报表页=already-one
+PASS  dry 判据是「可领回」而不是「新建」
+PASS  dry 的写请求列表为空（不带 --open 绝不动运行中的浏览器）
+PASS  真跑时挑出的正是「一条 /navigate」  —— [["navigate","3EC8023102EBF552B410C76012BA9BEF","http://127.0.0.1:19053/home"]]
+PASS  导航目标是漂移页的 targetId
+PASS  真代理接受了这次 /navigate（HTTP 200）  —— status=200 action=reclaim error=无
+回读 1 次后的页签：
+    http://127.0.0.1:19053/report
+    about:blank
+    about:blank
+    http://127.0.0.1:19053/home
+PASS  回读认出来了（每个期望页面各一个）
+PASS  漂移页真的被导航回期望 URL  —— http://127.0.0.1:19053/home
+PASS  漂移 URL 已不在现场
+PASS  **页签总数没变** —— 领回不是新建  —— 4 → 4
+PASS  认不出主机的 about:blank 原样不动（没被当成漂移页领走）
+判据：工作页=1  报表页=1 → ok=true
+PASS  整轮判据为「全就位」
+收尾后页签：about:blank、about:blank
+已请求结束代理 pid=54596（命令结束时整棵进程树还会被回收一次）
+已请求结束浏览器 pid=44592（命令结束时整棵进程树还会被回收一次）
+结论：全部 PASS

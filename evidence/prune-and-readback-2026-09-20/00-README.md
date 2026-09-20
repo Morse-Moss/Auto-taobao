@@ -1,7 +1,9 @@
 # 页签清理与回读的两处缺陷（2026-09-20 午后，写飞书那一轮的副产品）
 
-这一轮的正事是**把 2026-09-19 的日报写进飞书**。写的过程里撞到两处工具缺陷，都在本目录留了原始输出。
-两处的共同形状值得单独记一笔：**判据本身没错，错在「什么时候去读／读几遍」**。
+这一轮的正事是**把 2026-09-19 的日报写进飞书**。写的过程里撞到三处工具缺陷，都在本目录留了原始输出。
+前两处的共同形状值得单独记一笔：**判据本身没错，错在「什么时候去读／读几遍」**。
+第三处是另一类：**判据本身漏了一种状态**（「缺页」其实分「漂走了」和「真没有」两种），
+它在当晚也修掉了 —— 见 §三，带真机演练。
 
 ## 一、`pruneTabsOn` 的回读读得太早 ⇒ 把成功的关闭报成失败
 
@@ -80,7 +82,7 @@ readbackPath = …\daily-report-2026-09-19-盖文天猫\independent-readback.jso
 ```
 ⇒ 主证据保住了，缺的证据如实说出来。
 
-## 三、还没修的那一处（本节只记录，未动手）
+## 三、「缺页时只新建、不领回」（当天记录，当晚已修）
 
 `runtime/shop-pages.mjs --open` 在「某页缺、但同主机有一页漂移到别的 URL」时会**新建**一页，
 而不是把那页**领回来**（`planPageActions` 只看「期望页面的匹配数」，看不见漂移页）。
@@ -91,24 +93,80 @@ readbackPath = …\daily-report-2026-09-19-盖文天猫\independent-readback.jso
 
 当场的处置是人工两步：`shop-window-label.mjs --prune --commit` 关掉重复的那个，
 再把剩下的那个导航回工作页（探针 `reclaim-sycm-19045.mjs`，逐字照 `resetSycmPage` 的判据）。
-**正确修法在 `shop-pages.mjs` 的规划器里**：缺页时先找「同主机、不属于任何期望页面」的那一页，
-恰好一个就 `reclaim`（导航回去），0 个才 `create`。
 
-## 四、这一轮的写飞书结果（背景，证据在别处）
+### 修法（`runtime/shop-pages.mjs`，2026-09-20 晚）
+
+- **`findReclaimCandidates`**：缺页时按「同主机、且不匹配任何期望页面」找漂移页 ——
+  恰好一个 ⇒ `reclaim`（导航回去）；多于一页 ⇒ `ambiguous-drift`（只报不猜，进退出码 3）；
+  一个都没有 ⇒ 才 `create`。一个漂移页只能被一页领回（两页同主机都缺时，第二个只剩 `create`）。
+- **`hostOfUrl`** 归一大小写；**认不出主机的 URL（`about:blank`、`devtools://…`）永远不当候选** ——
+  把它们导航走是破坏，不是修复。
+- **写侧抽成 `planRequests` + `sendRequests`**。这才是原事故真正所在（挑了 `reclaim` 却发 `/new`），
+  而它此前整个躲在 `main()` 里，**离线测不到**。抽开之后：挑什么、发什么、失败怎么记，三层都能断言。
+- **回读改走 `settleSlots`**（最多 3 次 × 600ms，中途满足即收手）—— 与 §一 同源：
+  `/navigate` 之后立刻读，会把**成功的领回**报成「还缺」，方向相反但同样是假报告。
+- 顺带删掉 `action.pinned`：真代理的 `/new` 只回 `{targetId}`，那个字段读出来永远是 `null`
+  （一个看着有数据、其实什么都没说的收据）。钉没钉住问 `/health` 的 `pinnedTabs`。
+- 默认口径不变：不带 `--open` 时动作停在 `would-reclaim`，**一个写请求都不发**。
+
+### 真机跑通一次（`12-reclaim-rehearsal.txt`，21 条全 PASS）
+
+判据写得再全也只是「排练」。带副作用的路径必须真跑一次 —— 但**不能拿六家去试**。
+所以另起了一个演练实例：**19051（浏览器）/19052（代理）/19053（一个只回 200 的本地站点）**
+三个**未登记端口** + 临时 profile 的 headless Edge，脚本自己先断言这三个端口确实不在
+`browser-ports.mjs` 的登记表里、也与六家的 profile 不重叠。
+
+在真代理 + 真浏览器上：
+
+```
+dry   → 工作页=would-reclaim  报表页=already-one；写请求列表为空
+真跑  → 只挑出「一条 /navigate」，目标是漂移页的 targetId，代理回 HTTP 200
+回读  → 漂移页真的回到期望 URL；漂移 URL 已不在现场；**页签总数 4 → 4 没变**
+        两个 about:blank 原样不动；判据 工作页=1 报表页=1 → ok=true
+```
+
+跑完三个端口全部已释放（`15-reclaim-ports-after.txt`），六个日报实例的对账与演练前一致（`16-inventory-after-rehearsal.txt`；
+其中「竞品链 9222/3457 没起」是 2026-09-19 就有的老状态，与本轮无关）。
+
+## 四、这一轮为什么慢（时间账，`14-timeline.txt`）
+
+用逐店证据目录的 mtime 重建出来的（每店每「代」一个目录，`plan/receipt/inquiry-backfill-receipt/independent-readback`
+是逐代追加、不覆盖，所以 mtime 能还原时间线）：
+
+| 段 | 时长 | 性质 |
+|---|---|---|
+| 机器在链上劳动（09:20:15 → 09:37:24） | **≈18 分钟** | 结构性：10 步串行、每步起独立 node 进程，每店固定开销 46~60s |
+| 空档 09:27:08 → 09:32:59 | **≈6 分钟** | **人工排查**：盖文天猫第 8 步失败 → 诊断 → 只读盘点 → 补页 → 补跑 |
+| 空档 09:37:24 → 09:48:41 | **≈11 分钟** | **人工排查**：科塔那轮 + 截图诊断 + 跳过截图跑回读 + 改代码 + 验证 |
+| 其中盖文天猫单独 | **≈14.6 分钟** | push 09:34:33 → backfill 09:41:05 一个间隔就 391.5s；它跨两轮、跑了两次 `promotion-submit`/`promotion-fetch` |
+
+两个结论：
+
+1. **慢的主体不是「机器算得慢」，是「人插进去了」**：机器侧 18 分钟里，有约 7 分钟是我读一份
+   2.8MB 的 `independent-readback.json` 找店名映射（改成只看 mtime 后立刻定位）。
+2. **每轮那 2~3 分钟等平台生成报表是真金白银的空转**：`promotion-submit` 之后必须等平台把报表
+   生成出来，盖文天猫一轮就烧掉约 2 分钟，跨两轮超 3 分钟。这条已经变成一条修好的缺陷
+   （`waitForGenerationReady` + `--generation-wait-ms`，默认 660000ms），但**等平台的时长本身省不掉**。
+
+## 五、这一轮的写飞书结果（背景，证据在别处）
 
 `evidence/multi-shop-2026-09-19/`（逐店日志 + `summary.json`）与五家逐店证据目录。
 独立回读（不采信自报）：底单 1890 行、当日 **5 行**（五家齐）；询单表当日 12 行里**我们五家全部已填**
 （盖文天猫 10/35、网林天猫 2/13、科塔淘宝 6/6、里可林淘宝 6/6、盖文淘宝 4/6），
 其余 7 行是别家、仍为空 —— 与写前基线逐项吻合。
 
-## 五、验证
+## 六、验证
 
-- 突变验证：`04-mutation-prune.txt` **3/3**、`06-mutation-screenshot.txt` **4/4**，各自点名到期望用例，还原后 sha256 逐字节一致。
-- 离线套件：`skills` **746/746**（`probe-live/suite-skills-2026-09-20b.txt`）、
-  `runtime` 见 `probe-live/suite-runtime-2026-09-20b.txt`。
-- 真机：`--prune --commit` 把 3 个 `about:blank` 记进 `pruneClosed`、`pruneFailed` 为空、exit 0（`03-prune-readback-after.txt`）。
+- 突变验证：`04-mutation-prune.txt` **3/3**、`06-mutation-screenshot.txt` **4/4**、
+  `13-mutation-reclaim.txt` **14/14**（含「可领回却发 `/new`」这一条 —— 就是原事故本身），
+  各自点名到期望用例，还原后 sha256 **逐字节一致**。
+- 离线套件（在领回修完之后跑的）：`runtime` **752/752**、`skills` **746/746**，均 exit 0
+  （`node scripts/run-test-suite.mjs <unit> --concurrency=1`，仓库根）。
+- 真机：`--prune --commit` 把 3 个 `about:blank` 记进 `pruneClosed`、`pruneFailed` 为空、exit 0（`03-prune-readback-after.txt`）；
+  只读盘点 6 个后台每页恰好一个、exit 0（`11-reclaim-dry-inventory.txt`）；
+  领回写路径演练 21/21 PASS（`12-reclaim-rehearsal.txt`）。
 
-## 六、文件索引
+## 七、文件索引
 
 | 文件 | 是什么 |
 |---|---|
@@ -122,3 +180,9 @@ readbackPath = …\daily-report-2026-09-19-盖文天猫\independent-readback.jso
 | `08-commit-run3.txt` | 补跑两家：科塔淘宝 11/11 全绿；盖文天猫倒在 `sycm-reset`（同主机 2 个漂移页） |
 | `09-commit-run4.txt` | 补跑盖文天猫剩余四步：前三步过，`readback` 倒在截图 |
 | `10-reclaim-sycm-page.txt` | 把漂移的生意参谋页导航回工作页（逐字照 `resetSycmPage` 的判据） |
+| `11-reclaim-dry-inventory.txt` | 领回修好后的真机只读盘点：6 个后台、每个期望页面恰好一个、exit 0 |
+| `12-reclaim-rehearsal.txt` | 领回写路径的**真机演练**（19051/19052/19053 临时实例）：21/21 PASS |
+| `13-mutation-reclaim.txt` | 领回修复的突变验证 **14/14** |
+| `14-timeline.txt` | 「这一轮为什么慢」的时间账（由逐店证据目录 mtime 重建） |
+| `15-reclaim-ports-after.txt` | 演练用的 19051/19052/19053 跑完都已释放 |
+| `16-inventory-after-rehearsal.txt` | 演练后再对账一次六家：六个日报实例全部 ok，与演练前一致 |

@@ -1,0 +1,18 @@
+原文件 sha256 = a0784b3cec8a3c47f482699570626212b6dfc69999eaeca76b6eed911893a02f
+M1 planPageActions 不再查「可领回」（退回「缺就新建」的原形状） → 红 11 条 ["planPageActions：可领回时 dry 报 would-reclaim、真跑才是 reclaim（并带上 from 与目标 URL）","planRequests：dry 计划一个写请求都不发（默认口径必须是不动运行中的浏览器）","planRequests：可领回 ⇒ 一条 /navigate，导航的是那一页本身，绝不新建","planRequests：那一页找不到了 / 没有 targetId ⇒ blocked，既不猜也不新建","sendRequests：领回发的是 POST /navigate，URL 真的换过去，页签数不变","sendRequests：代理报错 ⇒ 如实记 reclaim-failed（不抛、也不假装成功）","sendRequests：连不上代理也要有结论（一次抽风不该中断整轮盘点）","sendRequests：blocked 只写结论，一个请求都不发","整轮（假代理）：dry 一个写请求都不发，但判据仍如实报「没就位」","整轮（假代理）：领回之后 settleSlots 在真实回读里认出来","源码级：回读走 settleSlots、写请求由 planRequests 挑并由 sendRequests 发"] → 点名到了期望的那条
+M2 拿掉「一个页签只能被领回一次」的记账 → 红 1 条 ["findReclaimCandidates：一个漂移页只被领回一次（两页同主机都缺时，第二个只能新建）"] → 点名到了期望的那条
+M3 领回候选不再要求「同主机」（乱认页面） → 红 4 条 ["findReclaimCandidates：同主机一页都没有 ⇒ 才是真的缺，新建","findReclaimCandidates：认不出主机的页（about:blank 之类）永不当候选","planRequests：真缺（同主机一页都没有）才发一条 /new，且带上页面名当 label","sendRequests：领回发的是 POST /navigate，URL 真的换过去，页签数不变"] → 点名到了期望的那条
+M4 主机不再归一大小写（同一站点会被判成两回事） → 红 1 条 ["hostOfUrl：只认「协议+主机」并归一大小写；认不出主机的返回 null"] → 点名到了期望的那条
+M5 dry 时也吐出可执行的 reclaim（等于默认就动运行中的浏览器） → 红 3 条 ["planPageActions：可领回时 dry 报 would-reclaim、真跑才是 reclaim（并带上 from 与目标 URL）","planRequests：dry 计划一个写请求都不发（默认口径必须是不动运行中的浏览器）","整轮（假代理）：dry 一个写请求都不发，但判据仍如实报「没就位」"] → 点名到了期望的那条
+M6 回读退回「只读一遍」 → 红 2 条 ["settleSlots：导航晚一拍 ⇒ 等到它出现（读太早会把成功的领回报成「还缺」）","settleSlots：一直不满足 ⇒ 读满上限并如实报 settled:false（不许假装就位）"] → 点名到了期望的那条
+M7 settleSlots 无条件报「就位」（假绿灯） → 红 3 条 ["settleSlots：一直不满足 ⇒ 读满上限并如实报 settled:false（不许假装就位）","settleSlots：read 抛错也要有结果（否则一家代理抽风会中断整轮盘点）","settleSlots：只认出一个期望页面不算就位（体检要的是每个都恰好一个）"] → 点名到了期望的那条
+M8 ambiguous-drift 不再进「需人决定」桶（退出码就不会是 3） → 红 1 条 ["judgeSlotReport：ambiguous-drift 进「需人决定」桶（退出码 3 的依据），且同时算缺口"] → 点名到了期望的那条
+M9 main 的回读不再走 settleSlots（源码守卫要能咬住） → 红 1 条 ["源码级：回读走 settleSlots、写请求由 planRequests 挑并由 sendRequests 发"] → 点名到了期望的那条
+M10 main 不再从 planRequests/sendRequests 走写侧（写侧重新变成测不到） → 红 1 条 ["源码级：回读走 settleSlots、写请求由 planRequests 挑并由 sendRequests 发"] → 点名到了期望的那条
+M11 **原事故本身**：可领回时写请求层发的却是 /new（新建） → 红 5 条 ["planRequests：可领回 ⇒ 一条 /navigate，导航的是那一页本身，绝不新建","sendRequests：领回发的是 POST /navigate，URL 真的换过去，页签数不变","sendRequests：代理报错 ⇒ 如实记 reclaim-failed（不抛、也不假装成功）","sendRequests：连不上代理也要有结论（一次抽风不该中断整轮盘点）","整轮（假代理）：领回之后 settleSlots 在真实回读里认出来"] → 点名到了期望的那条
+M12 dry 的 would-reclaim 也漏进写请求（默认口径被破） → 红 2 条 ["planRequests：dry 计划一个写请求都不发（默认口径必须是不动运行中的浏览器）","整轮（假代理）：dry 一个写请求都不发，但判据仍如实报「没就位」"] → 点名到了期望的那条
+M13 sendRequests 里「领回」这条通道实际发的是 /new（选了 navigate 却发成新建） → 红 3 条 ["sendRequests：领回发的是 POST /navigate，URL 真的换过去，页签数不变","整轮（假代理）：领回之后 settleSlots 在真实回读里认出来","源码级：回读走 settleSlots、写请求由 planRequests 挑并由 sendRequests 发"] → 点名到了期望的那条
+M14 settleSlots 只看第一个期望页面（少认一页也会判「就位」） → 红 1 条 ["settleSlots：只认出一个期望页面不算就位（体检要的是每个都恰好一个）"] → 点名到了期望的那条
+还原后 sha256 = a0784b3cec8a3c47f482699570626212b6dfc69999eaeca76b6eed911893a02f → 逐字节一致
+还原后重跑：红 0 条 —— []
+结论：14/14 突变各自点名到期望用例，且还原后全绿

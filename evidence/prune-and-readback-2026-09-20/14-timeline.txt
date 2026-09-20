@@ -1,0 +1,33 @@
++    0.0s  里可林淘宝-rerun3  plan.json  (10214B)
++   52.8s  里可林淘宝-rerun3  receipt.json  (10469B)
++   80.1s  里可林淘宝-rerun3  inquiry-backfill-plan.json  (1453B)
++   99.0s  里可林淘宝-rerun3  inquiry-backfill-receipt.json  (1657B)
++  164.8s  里可林淘宝-rerun3  independent-readback.json  (1910589B)
++  204.2s  网林天猫-rerun4  plan.json  (10051B)
++  252.8s  网林天猫-rerun4  receipt.json  (10306B)
++  274.0s  网林天猫-rerun4  inquiry-backfill-plan.json  (1462B)
++  286.6s  网林天猫-rerun4  inquiry-backfill-receipt.json  (1667B)
++  315.7s  网林天猫-rerun4  independent-readback.json  (2908906B)
++  360.9s  盖文淘宝  plan.json  (10202B)
++  408.7s  盖文淘宝  receipt.json  (10457B)
++  430.0s  盖文淘宝  inquiry-backfill-plan.json  (1445B)
++  448.2s  盖文淘宝  inquiry-backfill-receipt.json  (1649B)
++  465.5s  盖文淘宝  independent-readback.json  (2910603B)
++  856.8s  盖文天猫  plan.json  (10245B)
++  910.6s  盖文天猫  receipt.json  (10500B)
++  950.3s  科塔淘宝-rerun2  plan.json  (10217B)
++  999.2s  科塔淘宝-rerun2  receipt.json  (10472B)
++ 1034.1s  科塔淘宝-rerun2  inquiry-backfill-plan.json  (1446B)
++ 1058.2s  科塔淘宝-rerun2  inquiry-backfill-receipt.json  (1650B)
++ 1080.9s  科塔淘宝-rerun2  independent-readback.json  (2913512B)
++ 1279.8s  盖文天猫  inquiry-backfill-plan.json  (1448B)
++ 1302.1s  盖文天猫  inquiry-backfill-receipt.json  (1654B)
++ 1758.1s  盖文天猫  independent-readback.json  (2914260B)
+
+按店的推进（push 收据 → 回填收据）：
+  里可林淘宝-rerun3   push=09:20:15  backfill=09:21:02  间隔=46.2s  readback=09:22:07
+  网林天猫-rerun4    push=09:23:35  backfill=09:24:09  间隔=33.8s  readback=09:24:38
+  盖文淘宝           push=09:26:11  backfill=09:26:51  间隔=39.6s  readback=09:27:08
+  科塔淘宝-rerun2    push=09:36:02  backfill=09:37:01  间隔=59.0s  readback=09:37:24
+  盖文天猫           push=09:34:33  backfill=09:41:05  间隔=391.5s  readback=09:48:41
+exit=0
