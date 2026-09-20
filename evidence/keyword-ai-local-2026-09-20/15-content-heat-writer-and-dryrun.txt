@@ -1,0 +1,113 @@
+内容热度写入器（AI 段）与它的第一次 dry-run
+运行时刻：2026-09-20（Asia/Shanghai）
+
+== 一、这一件是什么 ==
+
+用户 2026-09-20 的选择是「1. 就在 WorkBuddy 跑了」——即分析由 WorkBuddy 本人做，
+不走任何 CLI provider（本机 codex/cc 那条路留作备选，见 11 号文件第三节）。
+所以这一段拆成两件：
+
+  分析侧：WorkBuddy 按**老提示词 F**（6 项输入）逐行判定 → 产出 JSON 产物。
+  写入侧：`runtime/apply-content-heat.mjs` 吃产物 → 只写 `内容热度` 一个字段。
+
+本文件记录**写入侧**已经落地的东西。
+
+新增/改动：
+  runtime/content-heat-apply.mjs     核心：字段合同、写入计划、变异白名单、回读校验、直方图
+  runtime/apply-content-heat.mjs     CLI：默认 dry-run，真写要 --apply + 两个精确确认
+  runtime/content-heat-apply.test.mjs 11 条判据
+  runtime/feishu-readback.mjs        读回归一（从 apply-local-keyword-analysis.mjs 抽出，两份写入器共用）
+  runtime/apply-local-keyword-analysis.mjs  改为 import + re-export（对外接口不变）
+
+== 二、写入侧守着的六条线（每条都有判据，且有突变验证）==
+
+1. **只写一个字段。** 变异白名单精确匹配：
+   POST `/bitable/v1/apps/<确认过的 app>/tables/<确认过的表>/records/batch_update`，
+   且每条 `fields` **只能有 `内容热度` 这一个键**（多一个键就抛，不是跳过）。
+2. **值域锁死四值** `低/中/高/待核验`，并且**显式拒绝老口径的 `AI预测-` 前缀**。
+   理由：老口径要求带前缀、写回层又会剥掉（见 10 号文件），所以落库值从来不带前缀；
+   万一有人把带前缀的值灌进来，同一列就会出现两代口径，而且肉眼几乎看不出来。
+3. **字段类型可写。** 必须是 type=1（文本）或 type=3（单选）；
+   type=20（公式）直接拒 —— 真写时才发现就晚了。若真是单选，还会校验选项已存在。
+4. **覆盖 fail-closed。** 产物少判一行就抛错并列出行数，除非显式 `--allow-partial`；
+   产物里出现表里不存在的 record_id、或同一 record_id 出现两次，都抛。
+   产物声明的 tableId 与目标表不一致也抛（防止把上一周的分析写进这一周的表）。
+5. **默认只填空白格**，`--replace-content-heat` 才允许覆盖已有值。
+6. **写后回读证两件事**：该写的写进去了（逐条比对），**不该动的没动**（其余字段逐字节比）。
+   全部 type=20 公式字段整体列入「允许变化」—— `内容热度` 是 `优先级` / `近2周X达标次数` /
+   `是否重点词` / `对应产品方向` 的输入，写完它们本来就该跟着变。
+
+另外：默认租户作用域只从 `envFilePath(activeProfileName())` / `keywordBaseToken(activeProfileName())`
+取，源码级判据断言这两个字面量存在、且文件里没有写死的 `E:/` 凭据路径。
+
+== 三、第一次 dry-run（对真实表，零写入）==
+
+探针：`D:/Retire/probe-live/dryrun-content-heat.mjs`（直接用数组调 `main()`，
+绕开中文表名在命令行里的编码风险）。产物 = 我判的 30 行（见 12 号文件）。
+dry-run 会真实地登录、读表清单/字段/300 行、跑字段合同、算计划、落 before/plan ——
+**唯独不发 batch_update**。
+
+原始输出：
+{
+  "status": "DRY_RUN",
+  "recordCount": 300,
+  "judgedRecords": 30,
+  "recordsPlanned": 30,
+  "preservedExisting": 0,
+  "coveredAllRecords": false,
+  "distributions": {
+    "内容热度": { "(空)": 300 },
+    "planned": { "中": 23, "低": 4, "高": 3 }
+  },
+  "beforeFile": ".../runtime/content-heat-runs/20260920T031859Z-tblZsUns9353w3nl/before.json",
+  "planFile": ".../runtime/content-heat-runs/20260920T031859Z-tblZsUns9353w3nl/plan.json"
+}
+
+它证明的：
+  - 现行表的 `内容热度` 字段通过字段合同（type=1 文本，在预期之内）；
+  - 表身份与行数对得上（300 行，表名逐字匹配）；
+  - 30 行产物 → 30 条写入计划，`coveredAllRecords:false`（如实标出这是子集）；
+  - 表里 300 行 `内容热度` 全空，`preservedExisting:0`（没有一格需要保留）。
+
+== 四、dry-run 当场抓出的第二个「收据产假信息」缺陷 ==
+
+第一次跑出来时，`planned` 分布是 **`{"低":1,"中":1,"高":1}`** ——
+因为我先用 `new Set(...)` 去重再统计，数出来的是**「有几种值」**，而不是「各多少条」。
+30 条判定的真实分布是 **低4/中23/高3**，收据却长得像每档各一条。
+
+**这与收据里的 `[object Object]` 是同一类错误：收据里有数，但那个数在说假话。**
+（`[object Object]` 是「什么都读不出来」，这个是「读出来一个错的数量」。）
+
+修法：把计数抽成 `histogram(values, normalize)`，并明确「**必须传原始数组，不能传去重后的集合**」；
+CLI 改走 `contentHeatPlannedDistribution(artifact, readbackText)`。
+判据两条：一条测直方图总数等于输入条数；一条**断言调用点不再就地统计**
+（只测函数拦不住 —— 出问题的是调用方）。突变 M5 专门把调用点改回去，确认会红。
+
+== 五、突变验证（16-mutation-content-heat.txt）==
+
+5 条突变，每条都被期望的那条用例点名，还原后 sha 逐字节一致：
+
+  M1 变异白名单放宽（允许多字段）        → 点名「只允许一个字段」
+  M2 值域放宽（把生成值塞进允许集合）     → 点名「拒绝 AI预测- 前缀」
+  M3 覆盖缺口不再 fail-closed            → 点名「缺判定要抛」
+  M4 回读不再证「不该动的没动」           → 点名「无关字段被改要抛」
+  M5 planned 分布退回去重计数            → 点名「必须用原始数组计数」
+
+基线 11 条判据全绿。另外：M5 第一次跑时被脚本自己报了「目标片段出现 0 次 ⇒ 跳过，不假装跑过」——
+因为突变脚本原先只支持单文件，而那一行在 CLI 里不在核心模块里。脚本改成按文件分组后复跑通过。
+**这条留在这里，是因为「突变脚本自己出问题时要如实报跳过」比那条突变本身更值钱。**
+
+== 六、下一步（等用户过目 30 行样本后才动）==
+
+1. 用户看 12/13/14 号文件的样本与边界分歧，对「高↔中」「品牌标签算不算属性」这两条边界拍板。
+2. 定口径后：按同样方式判完 300 行 → 产物 → **先 `--apply` 需要精确确认**（本文件的所有 dry-run
+   都还没写过飞书）。
+3. 写入后：灰豚（`huitun-to-feishu-keyword-heat`）与决策历史同步（`sync-decision-history.mjs`）还没跑。
+
+== 七、这份文件证不了什么 ==
+
+- 它**只**证明写入器在 dry-run 下不写、且真写前该拦的都会拦。**没有**任何一次真写发生。
+- 30 行产物是**我按文字规则判的**，不是模型输出；换 CLI/模型跑会不会得到同样分布，本文件不回答。
+- 「30 行 dry-run 通过」证不了 300 行真跑会通过：300 行的产物会覆盖每一行，
+  那时 `coveredAllRecords` 才会变成 true，`--allow-partial` 也不再需要。
+- 收据里的 `distributionAfter` 只有在真写之后才有内容，本文件的 dry-run 不产生它。

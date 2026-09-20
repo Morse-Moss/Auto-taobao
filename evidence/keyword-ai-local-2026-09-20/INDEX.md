@@ -101,7 +101,30 @@
 | `08-content-heat-value-history.txt` | 7 张批次表 `内容热度` 的**全量落库值分布**（回答「之前的规则落库长什么样」） |
 | `09-analysis-field-options.txt` | 两张表的分析字段**类型与选项全文**（含公式原文；确认 `内容热度` 是 type=1 Text） |
 | `10-content-heat-rule-trace.txt` | 内容热度口径三层追溯 + **订正我上一轮的错误说法** |
+| `11-legacy-prompts-and-current-scope.txt` | **老提示词 F 全文** + A~G 七项在现表的下落 + 口径**分成四份**的现状 |
+| `12-content-heat-30row-sample.txt` | 我按老提示词 F 判的 **30 行样本**（含规则读法与 4 处边界行标注） |
+| `13-sample-vs-lastweek.txt` | 同一批词、**两个执行者逐行比**：22 个可比词里 6 个不一致，`高级浴缸` 低↔高反转 |
+| `14-content-heat-structural-forecast.txt` | 结构预演：规则 2 把「中」写成默认值 ⇒ **全表 76% 必然落中**（区分度仅约 24%） |
+| `15-content-heat-writer-and-dryrun.txt` | 内容热度**写入器**（只写一个字段）+ 第一次 dry-run + 当场抓出的第二个「收据产假信息」缺陷 |
+| `16-mutation-content-heat.txt` | 写入器 5 条判据的**突变验证**（5/5 被点名拦住 + 逐字节还原） |
 | `login-buyer-2026-09-20/` | 竞品链买家号登录页已拉起（另一个交付项） |
+
+## AI 段（内容热度）：本轮落地的写入侧
+
+代码：
+
+- `runtime/content-heat-apply.mjs` —— 字段合同 / 写入计划 / 变异白名单 / 回读校验 / 直方图
+- `runtime/apply-content-heat.mjs` —— CLI，**默认 dry-run**，真写要 `--apply` + 两个精确确认
+- `runtime/content-heat-apply.test.mjs` —— 11 条判据
+- `runtime/feishu-readback.mjs` —— 读回归一，**从 `apply-local-keyword-analysis.mjs` 抽出**，两份写入器共用
+  （对外接口不变：`apply-local-keyword-analysis.mjs` 改为 import + re-export，原测试仍全绿）
+
+守卫（每条都有判据 + 突变验证，见 16 号文件）：
+只写一个字段｜值域四值且**显式拒绝 `AI预测-` 前缀**｜type 必须可写｜覆盖缺口 fail-closed
+（缺行/外来 record_id/重复 record_id/产物表号不符全抛）｜默认只填空白格｜写后回读既证「写进去了」
+也证「不该动的没动」（全部 type=20 公式列为允许变化）。
+
+状态：**写入侧已就绪并 dry-run 通过；分析侧只做了 30 行试判。飞书至今零写入。**
 
 ## 规则段：本轮的写入与独立回读（不在本目录，指向落点）
 

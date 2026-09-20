@@ -1,0 +1,36 @@
+[基线]
+  pass=11 fail=0 退出码=0
+  sha runtime/content-heat-apply.mjs = e86b78d155b9
+  sha runtime/apply-content-heat.mjs = 7798f37b0760
+
+[M1 变异白名单放宽：允许一次写多个字段]  （改的是 runtime/content-heat-apply.mjs）
+  改坏后：pass=10 fail=1 退出码=1
+  点名用例：content heat mutation guard allows only one field on the confirmed table
+  期望的那条是否红了：是 —— 判据真的在判东西
+  还原后：sha e86b78d155b9 → e86b78d155b9（逐字节一致） pass=11 fail=0
+
+[M2 值域放宽：把生成值本身也塞进允许集合（老口径 AI预测- 前缀就漏进来了）]  （改的是 runtime/content-heat-apply.mjs）
+  改坏后：pass=10 fail=1 退出码=1
+  点名用例：content heat contract rejects the legacy AI预测- prefix instead of silently mixing generations
+  期望的那条是否红了：是 —— 判据真的在判东西
+  还原后：sha e86b78d155b9 → e86b78d155b9（逐字节一致） pass=11 fail=0
+
+[M3 覆盖缺口不再 fail-closed：缺判定的行被静默跳过]  （改的是 runtime/content-heat-apply.mjs）
+  改坏后：pass=10 fail=1 退出码=1
+  点名用例：content heat plan is fail-closed on coverage gaps and on foreign record ids
+  期望的那条是否红了：是 —— 判据真的在判东西
+  还原后：sha e86b78d155b9 → e86b78d155b9（逐字节一致） pass=11 fail=0
+
+[M4 回读不再证「不该动的没动」：无关字段被改也不报]  （改的是 runtime/content-heat-apply.mjs）
+  改坏后：pass=10 fail=1 退出码=1
+  点名用例：content heat readback verification proves what changed and what did not
+  期望的那条是否红了：是 —— 判据真的在判东西
+  还原后：sha e86b78d155b9 → e86b78d155b9（逐字节一致） pass=11 fail=0
+
+[M5 CLI 的 planned 分布退回「按去重后的值域计数」（收据会变成每档各一条）]  （改的是 runtime/apply-content-heat.mjs）
+  改坏后：pass=10 fail=1 退出码=1
+  点名用例：content heat writer reports planned distribution from the raw artifact, not the deduped domain
+  期望的那条是否红了：是 —— 判据真的在判东西
+  还原后：sha 7798f37b0760 → 7798f37b0760（逐字节一致） pass=11 fail=0
+
+结论：5 条突变各自点名了它该点名的那条用例，还原后逐字节一致且全部复绿。

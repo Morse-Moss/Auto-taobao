@@ -1,22 +1,38 @@
 #!/usr/bin/env node
+// 内容热度写入器（AI 段）。只写 `内容热度` 一个字段，默认 dry-run。
+//
+// 与规则段写入器（apply-local-keyword-analysis.mjs）同一套安全约定：
+//   - 变异白名单：只允许对确认过的 base/表的 records/batch_update 下手，且每条只含一个字段；
+//   - 字段合同在 dry-run 之前就校验：类型可写、值域合法（含显式拒绝老口径 `AI预测-` 前缀）、
+//     单选字段的选项必须已经存在；
+//   - 真写时 canary 单条先写 → 回读 → 再写其余 → 全量回读；
+//   - 字段定义（字段清单）在写入前后必须逐字节一致；
+//   - 收据里的每一个值都经 readbackText 归一，**不允许出现 `[object Object]`**。
+//
+// 用法：
+//   node runtime/apply-content-heat.mjs --artifact <analysis.json> \
+//     --table-id <tbl...> --table-name '<表名>' [--apply --confirm-base <app> --confirm-table <tbl>]
+//   不传 --apply 就是 dry-run，只落 before/plan 两个文件，不碰飞书。
+//   `--env-file` / `--app-token` 默认取自 runtime/feishu-targets.mjs 的当前 profile：
+//   **不许把租户凭据路径或 base id 写死在脚本里**（历史上写死旧租户导致过 91403 Forbidden）。
 
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  TARGET_FIELDS,
-  assertLocalAnalysisMutation,
-  buildLocalAnalysisPlan,
-  partitionPlanByFieldTypes,
-  verifyLocalAnalysisApply,
-} from './local-keyword-analysis.mjs';
+  CONTENT_HEAT_ARTIFACT_STATUS,
+  CONTENT_HEAT_FIELD,
+  assertContentHeatMutation,
+  buildContentHeatPlan,
+  contentHeatDigest,
+  contentHeatDistribution,
+  contentHeatPlannedDistribution,
+  validateContentHeatContract,
+  verifyContentHeatApply,
+} from './content-heat-apply.mjs';
 import { readbackText } from './feishu-readback.mjs';
-
-// 对外保持可导入：抽取前后 `import { readbackText } from './apply-local-keyword-analysis.mjs'`
-// 都必须可用，否则就是一次静默的接口收窄。
-export { readbackText };
+import { activeProfileName, envFilePath, keywordBaseToken } from './feishu-targets.mjs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 
@@ -24,22 +40,26 @@ function optionKey(name) {
   return name.replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase());
 }
 
-export function parseOptions(argv) {
+export function parseOptions(argv, defaults = {}) {
   const options = {
     apply: false,
-    replaceUserIntent: false,
-    expectedRows: 267,
-    outputDir: 'runtime/local-analysis-runs',
+    replaceContentHeat: false,
+    allowPartial: false,
+    expectedRows: 300,
+    outputDir: 'runtime/content-heat-runs',
+    envFile: defaults.envFile,
+    appToken: defaults.appToken,
   };
+  const flags = new Set(['apply', 'replace-content-heat', 'allow-partial']);
   const values = new Set([
-    'app-token', 'table-id', 'table-name', 'env-file', 'expected-rows', 'output-dir',
-    'confirm-base', 'confirm-table',
+    'artifact', 'app-token', 'table-id', 'table-name', 'env-file',
+    'expected-rows', 'output-dir', 'confirm-base', 'confirm-table',
   ]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (!argument.startsWith('--')) throw new Error(`Unexpected argument: ${argument}`);
     const name = argument.slice(2);
-    if (name === 'apply' || name === 'replace-user-intent') {
+    if (flags.has(name)) {
       options[optionKey(name)] = true;
       continue;
     }
@@ -49,8 +69,9 @@ export function parseOptions(argv) {
     options[optionKey(name)] = value;
     index += 1;
   }
-  const missing = ['appToken', 'tableId', 'tableName', 'envFile'].filter((name) => !options[name]);
+  const missing = ['artifact', 'tableId', 'tableName'].filter((name) => !options[name]);
   if (missing.length) throw new Error(`Missing required options: ${missing.join(', ')}`);
+  if (!options.envFile) throw new Error('No Feishu credential file resolved: pass --env-file or check runtime/feishu-targets.mjs');
   options.expectedRows = Number(options.expectedRows);
   if (!Number.isInteger(options.expectedRows) || options.expectedRows < 1) {
     throw new Error('--expected-rows must be a positive integer');
@@ -62,33 +83,6 @@ export function parseOptions(argv) {
     throw new Error('Write mode requires matching --confirm-table <table-id>');
   }
   return options;
-}
-
-function requiredField(fields, name, type) {
-  const matches = fields.filter((field) => field.field_name === name);
-  if (matches.length !== 1) throw new Error(`Expected exactly one ${name} field; received ${matches.length}`);
-  const allowed = Array.isArray(type) ? type : [type];
-  if (!allowed.includes(matches[0].type)) {
-    throw new Error(`${name} expected type ${allowed.join(' or ')}; received ${matches[0].type}`);
-  }
-  return matches[0];
-}
-
-function assertOptions(field, required) {
-  const available = new Set((field.property?.options ?? []).map((option) => option.name));
-  const missing = required.filter((name) => !available.has(name));
-  if (missing.length) throw new Error(`${field.field_name} missing option: ${missing.join('、')}`);
-}
-
-export function validateFieldContract(fields, generated) {
-  requiredField(fields, '原始关键词', [1, 20]);
-  requiredField(fields, '标准归并词', [1, 25]);
-  const classification = requiredField(fields, '关键词分类', 3);
-  const labels = requiredField(fields, '细分标签', 4);
-  const intent = requiredField(fields, '用户意图', 3);
-  assertOptions(classification, generated.categories);
-  assertOptions(labels, generated.labels);
-  assertOptions(intent, generated.intents);
 }
 
 function readEnv(file) {
@@ -104,6 +98,14 @@ function readEnv(file) {
     values[line.slice(0, separator).trim()] = value;
   }
   return values;
+}
+
+export function readArtifact(file) {
+  const artifact = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (artifact?.status !== CONTENT_HEAT_ARTIFACT_STATUS) {
+    throw new Error(`Artifact status is ${artifact?.status ?? '(none)'}; expected ${CONTENT_HEAT_ARTIFACT_STATUS}`);
+  }
+  return artifact;
 }
 
 class FeishuApi {
@@ -177,49 +179,25 @@ class FeishuApi {
   }
 }
 
-function canonical(value) {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
-  }
-  return value;
-}
-
-function digest(value) {
-  return crypto.createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
-}
-
 function stamp() {
   return new Date().toISOString().replace(/[-:]/gu, '').replace(/\.\d{3}Z$/u, 'Z');
 }
 
-// 读回归一住在这里：`runtime/feishu-readback.mjs`（规则段与内容热度两份写入器共用）。
-// 单独成模块是为了不让两份收据的归一行为 drift —— 一处改了 trim、另一处没改，两份证据就开始不一样。
-// 原先它定义在本文件里，2026-09-20 抽出；对外仍然从这里可导入（见文末 re-export 与测试）。
-function summarizePlan(plan, records) {
-  const generated = plan.updates.map((update) => update.fields);
-  const distribution = (name) => Object.fromEntries([...generated.reduce((map, fields) => {
-    const value = fields[name];
-    if (value === undefined) return map;
-    const key = Array.isArray(value) ? (value.length ? value.join('、') : '(空)') : value;
-    map.set(key, (map.get(key) ?? 0) + 1);
-    return map;
-  }, new Map())].sort((left, right) => right[1] - left[1]));
-  return {
-    recordCount: records.length,
-    recordsPlanned: plan.updates.length,
-    fieldsPlanned: plan.updates.reduce((sum, update) => sum + Object.keys(update.fields).length, 0),
-    preservedExisting: plan.preservedExisting,
-    distributions: {
-      关键词分类: distribution('关键词分类'),
-      用户意图: distribution('用户意图'),
-      细分标签: distribution('细分标签'),
-    },
-  };
-}
+export async function main(argv = process.argv.slice(2)) {
+  // 默认租户作用域**只从登记表访问器取**，两个字面量都不许出现在这个文件里。
+  // 与 skills 侧 4 个入口脚本同一约定：写死字面量在 base 搬家后会变成 91403 Forbidden，
+  // 而那看着像「应用没被加为协作者」的权限问题（2026-09-20 实测过这个假故障）。
+  const options = parseOptions(argv, {
+    envFile: envFilePath(activeProfileName()),
+    appToken: keywordBaseToken(activeProfileName()),
+  });
+  const artifact = readArtifact(options.artifact);
 
-async function main() {
-  const options = parseOptions(process.argv.slice(2));
+  // 产物必须声明它是为**哪张表**判的。防止把上一周的分析写进这一周的表。
+  if (artifact.tableId && artifact.tableId !== options.tableId) {
+    throw new Error(`Artifact was judged for ${artifact.tableId} but target is ${options.tableId}`);
+  }
+
   const env = readEnv(options.envFile);
   if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) throw new Error('Feishu app credentials unavailable');
   const scope = { appToken: options.appToken, tableId: options.tableId };
@@ -227,7 +205,7 @@ async function main() {
     appId: env.FEISHU_APP_ID,
     appSecret: env.FEISHU_APP_SECRET,
     appToken: options.appToken,
-    mutationGuard: (request) => assertLocalAnalysisMutation(request, scope),
+    mutationGuard: (request) => assertContentHeatMutation(request, scope),
   });
   await api.authenticate();
   const [tables, fields, records] = await Promise.all([
@@ -238,80 +216,80 @@ async function main() {
   if (records.length !== options.expectedRows) {
     throw new Error(`Expected ${options.expectedRows} records; received ${records.length}`);
   }
-  const plan = buildLocalAnalysisPlan(records, {
-    replaceFields: options.replaceUserIntent ? ['用户意图'] : [],
+
+  const generated = [...new Set(artifact.values.map((item) => item[CONTENT_HEAT_FIELD]))];
+  validateContentHeatContract(fields, generated);
+  const plan = buildContentHeatPlan(records, artifact, {
+    replaceFields: options.replaceContentHeat ? [CONTENT_HEAT_FIELD] : [],
+    allowPartial: options.allowPartial,
   });
-  const partitioned = partitionPlanByFieldTypes(plan, fields);
-  const generated = {
-    categories: [...new Set(plan.updates.map((item) => item.fields.关键词分类).filter(Boolean))],
-    labels: [...new Set(plan.updates.flatMap((item) => item.fields.细分标签 ?? []))],
-    intents: [...new Set(plan.updates.map((item) => item.fields.用户意图).filter(Boolean))],
+  const fieldDigestBefore = contentHeatDigest(fields);
+  const summary = {
+    recordCount: records.length,
+    judgedRecords: plan.judgedRecords,
+    recordsPlanned: plan.updates.length,
+    preservedExisting: plan.preservedExisting,
+    coveredAllRecords: plan.coveredAllRecords,
+    distributions: {
+      [CONTENT_HEAT_FIELD]: contentHeatDistribution(records, readbackText),
+      // 这里必须传**产物原始数组**（走 contentHeatPlannedDistribution），
+      // 不能传上面那个去重过的 `generated` —— 那会把「各档多少条」变成「有几种值」。
+      planned: contentHeatPlannedDistribution(artifact, readbackText),
+    },
   };
-  validateFieldContract(fields, generated);
 
   const runDir = path.resolve(options.outputDir, `${stamp()}-${options.tableId}`);
   fs.mkdirSync(runDir, { recursive: true });
-  const before = { table, fields, records };
   const beforeFile = path.join(runDir, 'before.json');
   const planFile = path.join(runDir, 'plan.json');
-  const frontendFile = path.join(runDir, 'standard-merge-values.tsv');
-  fs.writeFileSync(beforeFile, `${JSON.stringify(before, null, 2)}\n`, 'utf8');
-  fs.writeFileSync(planFile, `${JSON.stringify({
-    summary: summarizePlan(plan, records),
-    apiUpdates: partitioned.apiUpdates,
-    frontendUpdates: partitioned.frontendUpdates,
-  }, null, 2)}\n`, 'utf8');
-  const frontendById = new Map(partitioned.frontendUpdates.map((update) => [update.record_id, update.fields.标准归并词]));
-  fs.writeFileSync(frontendFile, `${records.map((record) => frontendById.get(record.record_id) ?? '').join('\n')}\n`, 'utf8');
+  fs.writeFileSync(beforeFile, `${JSON.stringify({ table, fields, records }, null, 2)}\n`, 'utf8');
+  fs.writeFileSync(planFile, `${JSON.stringify({ summary, updates: plan.updates }, null, 2)}\n`, 'utf8');
 
-  const summary = summarizePlan(plan, records);
   if (!options.apply) {
-    console.log(JSON.stringify({
-      status: 'DRY_RUN', ...summary,
-      apiRecordsPlanned: partitioned.apiUpdates.length,
-      frontendRecordsPlanned: partitioned.frontendUpdates.length,
-      beforeFile, planFile, frontendFile,
-    }, null, 2));
+    console.log(JSON.stringify({ status: 'DRY_RUN', ...summary, beforeFile, planFile }, null, 2));
     return;
   }
 
   const derivedFields = fields.filter((field) => field.type === 20).map((field) => field.field_name);
-  const canary = partitioned.apiUpdates.slice(0, 1);
-  await api.batchUpdate(options.tableId, canary);
-  const canaryRecords = await api.listRecords(options.tableId);
-  const canaryFields = await api.listFields(options.tableId);
-  if (digest(fields) !== digest(canaryFields)) throw new Error('Local analysis canary changed field definitions');
-  verifyLocalAnalysisApply({ before: records, after: canaryRecords, updates: canary, derivedFields });
 
-  await api.batchUpdate(options.tableId, partitioned.apiUpdates.slice(1));
+  const canary = plan.updates.slice(0, 1);
+  if (canary.length) {
+    await api.batchUpdate(options.tableId, canary);
+    const canaryRecords = await api.listRecords(options.tableId);
+    const canaryFields = await api.listFields(options.tableId);
+    if (contentHeatDigest(fields) !== contentHeatDigest(canaryFields)) {
+      throw new Error('Content heat canary changed field definitions');
+    }
+    verifyContentHeatApply({ before: records, after: canaryRecords, updates: canary, derivedFields });
+  }
+
+  await api.batchUpdate(options.tableId, plan.updates.slice(canary.length));
   const afterRecords = await api.listRecords(options.tableId);
   const afterFields = await api.listFields(options.tableId);
-  if (digest(fields) !== digest(afterFields)) throw new Error('Local analysis changed field definitions');
-  const verification = verifyLocalAnalysisApply({
-    before: records, after: afterRecords, updates: partitioned.apiUpdates, derivedFields,
+  if (contentHeatDigest(fields) !== contentHeatDigest(afterFields)) {
+    throw new Error('Content heat apply changed field definitions');
+  }
+  const verification = verifyContentHeatApply({
+    before: records, after: afterRecords, updates: plan.updates, derivedFields,
   });
+
   const afterFile = path.join(runDir, 'after.json');
   const receiptFile = path.join(runDir, 'receipt.json');
   fs.writeFileSync(afterFile, `${JSON.stringify({ table, fields: afterFields, records: afterRecords }, null, 2)}\n`, 'utf8');
-  const priorityDistribution = Object.fromEntries([...afterRecords.reduce((map, record) => {
-    const value = readbackText(record.fields?.优先级) || '(空)';
-    map.set(value, (map.get(value) ?? 0) + 1);
-    return map;
-  }, new Map())]);
   const receipt = {
-    status: partitioned.frontendUpdates.length ? 'API_APPLIED_FRONTEND_PENDING' : 'APPLIED_AND_VERIFIED',
+    status: plan.coveredAllRecords ? 'APPLIED_AND_VERIFIED' : 'APPLIED_PARTIAL_CONTENT_HEAT',
     appToken: options.appToken,
     tableId: options.tableId,
     tableName: options.tableName,
-    beforeDigest: digest(before),
-    afterDigest: digest({ table, fields: afterFields, records: afterRecords }),
+    artifact: path.resolve(options.artifact),
+    artifactDigest: contentHeatDigest(artifact),
+    fieldDigestBefore,
     ...summary,
     ...verification,
-    frontendRecordsPending: partitioned.frontendUpdates.length,
-    priorityDistribution,
+    derivedFieldsAllowedToChange: derivedFields,
+    distributionAfter: contentHeatDistribution(afterRecords, readbackText),
     beforeFile,
     planFile,
-    frontendFile,
     afterFile,
   };
   fs.writeFileSync(receiptFile, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
