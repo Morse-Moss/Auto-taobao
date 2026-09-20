@@ -13,7 +13,7 @@
 - `skills/xws-faq-raw-collection`：锁定最新竞品周 A/B TOP5，保存小旺神问大家与评论原始证据到本地。
 - `skills/xws-question-library-collection`：兼容入口，将已验证原始证据生成本地 raw snapshot。
 - `skills/sycm-to-feishu-base`：飞书副本字段检查、TSV 构建、真实粘贴与导入验收。
-- `skills/huitun-to-feishu-keyword-heat`：读取飞书 `A候选` 队列，在灰豚红薯版采集完全同名话题浏览量，并只回填 `灰豚话题浏览量`；`内容热度`不由本技能产出，也不由灰豚按浏览量折算——它是本地分析段的产物，口径取自 `runtime/weekly-local-analysis.mjs` 的 `contentHeat`，由 `runtime/apply-content-heat.mjs` 写入。已登记运行时能力 `huitun.keyword-heat.collect@1.1.0`（采集段独立复验 `results.json` 与队列绑定，发布段对账式写入并由含 `优先级` 公式结算的回读收场）。
+- `skills/huitun-to-feishu-keyword-heat`：读取飞书 `A候选` 队列，在灰豚红薯版采集完全同名话题浏览量，并只回填 `灰豚话题浏览量`；`内容热度`不由本技能产出，也不由灰豚按浏览量折算——它是 **AI 预测的内容创作潜力**（2026-08-09 字段合同第 17 行），口径取自 `runtime/weekly-local-analysis.mjs` 的 `contentHeat`，由 `runtime/apply-content-heat.mjs` 写入。已登记运行时能力 `huitun.keyword-heat.collect@1.1.0`（采集段独立复验 `results.json` 与队列绑定，发布段对账式写入并由含 `优先级` 公式结算的回读收场）。
 - `evidence/stability-20260804`：三轮 267 行稳定性验证文件。
 - `runtime`：后续项目专用运行入口。`runtime/sop-runtime/` 是确定性运行底座（Controller 唯一拥有状态、两段式采集/发布、Agent 判决层、调度侧队列探测、一轮运行的生命周期），入口见 `runtime/sop-runtime/index.mjs`，阶段档案见 `docs/architecture/PHASE-ARCHIVE.md`。`runtime/notify-feishu.mjs`（+ `notify-feishu-core.mjs`）是无人值守方案的告警投递出口：stdin 进告警 JSON、stdout 出投递收据，主通道自建应用消息、群机器人兜底，未送达一律非零退出。`runtime/sop-runtime/round-runner.mjs`（+ `round-notify-policy.mjs`）把「体检 → 探队列 → 两段式执行 → 收尾 → 自愈 → 通知」串成一轮：判定表决定「该不该打扰人」（默认安静、未登记的理由一律按通知处理），去重与恢复成对，同一业务幂等键当天不重复跑。`runtime/sop-runtime/round-schedule.mjs`（+ `runtime/round-schedule.json`）回答「什么时候跑、跑哪个周期」：排期是配置文件、不是某一台机器上的触发器，宿主（常驻 `--serve` / 外部定时器 / 人工点击）只负责叫醒，「该不该跑」始终由配置判定；到期口径是「只有触发日当天」，不跨天自动补跑，要补跑用 `--force`。
 - `docs/architecture/README.md`：多租户运营任务执行平台的目标架构、分层边界、权威数据和迁移原则。
