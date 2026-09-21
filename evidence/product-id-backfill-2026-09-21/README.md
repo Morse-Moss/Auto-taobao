@@ -2,14 +2,17 @@
 
 ## 结论
 
-四期竞品周表的 `商品ID` 现在**全部 100% 有值**：
+四期竞品周表 + 竞品主表的 `商品ID` 现在**全部 100% 有值**：
 
-| 周表 | 表 id | 行数 | 补写前 | 补写后 |
+| 表 | 表 id | 行数 | 补写前 | 补写后 |
 | --- | --- | --- | --- | --- |
+| 竞品主表 | `tblkYcczxBnW4v5G` | 2004 | 1461/2004（缺 543） | **2004/2004** |
 | 竞品周_2026-08-23_2026-08-29 | `tblDpoBCxUJmNBR7` | 1461 | 1461/1461（本来就有） | 未动 |
 | 竞品周_2026-08-30_2026-09-05 | `tblGayj9pTYY0Fb7` | 1423 | 0/1423 | **1423/1423** |
 | 竞品周_2026-09-06_2026-09-12 | `tblosvuwE6xqYn6r` | 1462 | 0/1462 | **1462/1462** |
 | 竞品周_2026-09-13_2026-09-19 | `tbllWI45sK0DfHpr` | 1417 | 0/1417 | **1417/1417** |
+
+（SKU明细 830/830、SKU周_2026-08-23 734/734 本来就满，本次未动。）
 
 ## 这一列空着的原因（不是链接不够用）
 
@@ -37,10 +40,10 @@
 1. 写入器自检 + 回读：三张表都是 `APPLIED_AND_VERIFIED`，回读空白数 **0**（预期 0，等于 noId 数）。
    收据：`receipt.json`（09-13 期）、`competitor-week-2026-08-30.receipt.json`、
    `competitor-week-2026-09-06.receipt.json`；stdout 见 `apply-*.txt`。
-2. **独立回读**（`readback-independent.txt`）：另起只读探针
-   （`D:/Retire/probe-live/weekly-product-id-after.mjs`），**不复用**仓库里的 `extractProductId`，
-   自己用另一份正则重提一遍 id 逐行比对 —— 09-13 期 1417 行、去重商品 1417 个、
-   与重提值**不一致 0 行**。四期有值率见该文件首节。
+2. **独立回读**（`readback-independent-all-tables.txt`，早期版本为 `readback-independent.txt`）：
+   另起只读探针（`D:/Retire/probe-live/product-id-audit.mjs`），**不复用**仓库里的 `extractProductId`，
+   自己用另一份正则重提一遍 id 逐行比对，先断言字段存在再谈有值率。结果：**7 张有这一列的表全部 100%、
+   不一致 0 行**（主表 2004、四期周表 1417/1423/1462/1461、SKU明细 830、SKU周 734）。
 3. 判据的突变验证（`mutation-verification.txt`）：**5/5 CAUGHT_AND_NAMED**，
    源码逐字节还原（`MUTATION_ALL_CAUGHT_AND_RESTORED`）。
    覆盖的错法：允许覆盖已有值 / 把 noId 并进已填 / 幂等失效 / recordId 重复不抛 / 读回判据恒真。
@@ -52,8 +55,10 @@
   这种「先读列、读不到再提」的双轨（例：`runtime/summarize-xws-sku-queue.mjs:76`、
   `runtime/competitor-history-publish-core.mjs:41`），所以本次补写**不会改变任何现有计算结果**——
   它的价值是让这一列名实相符、并让「稳定键」这件事在表上有落点，而不是解锁某条具体链路。
-- 没有补主表侧 543 格空缺（主表 1461/2004）；那属于另一件事，需要单独判断。
 - 没有改任何公式、字段类型或视图。
+- 主表那 543 格是**第二轮**才补的（用户先批周表、再批主表），同一列同一规则、同样只填空：
+  dry-run 报 543 待写、已有 1461 格与链接一致（**不一致 0** —— 顺带校验了既有的那 1461 个值），
+  写入后回读 0 格空。收据 `main-table.receipt.json`，记录见 `dryrun-main-table.txt` / `apply-main-table.txt`。
 
 ## 附：灰豚段队列探测（同一轮顺手做的只读检查）
 

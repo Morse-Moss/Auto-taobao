@@ -1,0 +1,17 @@
+proxy=http://127.0.0.1:19023
+health.browser.id=edge-daily-report  期望=edge-daily-report
+health.connected=true
+
+动之前：这个浏览器上 2 个页签，其中灰豚 0 个
+
+动作=create  targetId=C05DDCA0FB83FC4AC2128B5ABC459684
+钉住结果={"pinned":true,"targetId":"C05DDCA0FB83FC4AC2128B5ABC459684"}
+
+动之后：3 个页签，其中灰豚 1 个
+    C05DDCA0FB83FC4AC2128B5ABC459684  url=https://dy.huitun.com/app/#/dashboard
+      title=  windowId=(未知)
+info={"title":"","url":"about:blank","ready":"complete"}
+
+可见文本开头={"value":""}
+截图={"saved":"D:/Retire/sycm-automation/evidence/huitun-login-2026-09-21/login-page.png"}
+exit=0

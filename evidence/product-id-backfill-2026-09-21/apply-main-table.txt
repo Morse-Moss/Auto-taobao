@@ -1,0 +1,15 @@
+base profile = kcne / QcnhbEzYpacGvUskCbVcrcm3nFd
+table = 竞品主表 (tblkYcczxBnW4v5G)，共 2004 行
+字段在场：商品ID Text(1) ✓，商品链接 Text(1) ✓
+将写入的行数 = 543（只填空）
+已有值且与链接一致 = 1461
+已有值与链接不一致 = 0
+链接提不出 id = 0
+  已写入 200/543
+  已写入 400/543
+  已写入 543/543
+
+回读：2004 行；商品ID 仍为空 0 格（预期 0）
+receipt -> evidence/product-id-backfill-2026-09-21/main-table.receipt.json
+APPLIED_AND_VERIFIED
+exit=0
