@@ -1,0 +1,21 @@
+{
+  "mode": "READ_ONLY",
+  "scope": "weekly",
+  "table": {
+    "name": "竞品周_2026-09-13_2026-09-19",
+    "tableId": "tbllWI45sK0DfHpr",
+    "rows": 1417
+  },
+  "skuDetail": {
+    "tableId": "tbl3N48H4znz304T",
+    "records": 830,
+    "productsWithSize": 14
+  },
+  "counts": {
+    "ab": 1,
+    "ready": 1,
+    "pending": 0
+  },
+  "pending": [],
+  "note": "队列按周表当期 A/B 算（不是主表最新状态）。采集用技能 xws-sku-collection。"
+}
