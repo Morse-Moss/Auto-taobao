@@ -33,6 +33,11 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs',
   'skills/sycm-alimama-daily-report/scripts/daily-report-audit.test.mjs',
   'skills/sycm-alimama-daily-report/scripts/date-picker.mjs',
+  // 2026-09-21 新增：**期望页面清单的唯一来源**。它必须留在能力目录里，不能抽到 runtime/ ——
+  // 抽过去就让它自己变成 runtime → skills（就是下面那条「业务倒灌机制层」），而 shop-pages.mjs
+  // 与驱动都要用它，留在任何一侧的另一侧都会成环。它本身只依赖 date-picker 与 runtime/feishu-targets，
+  // 是一条干净的 skills → runtime，不扩大交付形态的锁定面。
+  'skills/sycm-alimama-daily-report/scripts/expected-pages.mjs',
   'skills/sycm-alimama-daily-report/scripts/login-merchant-core.test.mjs',
   'skills/sycm-alimama-daily-report/scripts/login-merchant.mjs',
   'skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs',
@@ -100,6 +105,11 @@ const RUNTIME_TO_SKILLS = Object.freeze([
   'runtime/publish-competitor-visualization.mjs',
   'runtime/publish-faq-detail-enrichment.mjs',
   'runtime/publish-faq-summaries.mjs',
+  // 2026-09-21 新增：一键刷新五家店页面（把「上一轮把页面留在哪」收回来）。它复用链子自己的
+  // 读侧与词表（expected-pages 的期望页面清单、date-picker 的读页面状态），不是第二份实现；
+  // 而「新建页面」这条写路径全仓只有 shop-pages.mjs 一处，刷新只调它、自己不建。
+  // 换句话说：这条 runtime → skills 是**复用**，不是把业务逻辑倒灌进机制层。
+  'runtime/refresh-shop-pages.mjs',
   'runtime/repair-current-week-and-sync-main.mjs',
   'runtime/repair-weekly-tables.mjs',
   'runtime/run-question-library-collection.mjs',

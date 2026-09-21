@@ -29,16 +29,18 @@ import { pathToFileURL } from 'node:url';
 
 import { siteAdapter } from '../skills/sycm-alimama-daily-report/scripts/date-picker.mjs';
 import { SITES } from '../skills/sycm-alimama-daily-report/scripts/login-merchant-core.mjs';
-import {
-  expectedPagesForDailyBrowser,
-  expectedPagesForShop,
-} from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
+// 期望页面清单住在这个叶子模块里（2026-09-21 从驱动抽出）。**从驱动 import 会成环**：
+// 驱动现在要用补页那一套（失败路径收尾、体检归位），而成环之后那些都加不进来。
+import { expectedPagesForDailyBrowser, expectedPagesForShop } from '../skills/sycm-alimama-daily-report/scripts/expected-pages.mjs';
 import { PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from './browser-ports.mjs';
 import { dailyReportTargets, getProfile } from './feishu-targets.mjs';
 
 /**
  * 每家「带代理的浏览器」要开哪些页、通过哪个代理开。
- * 期望页面清单来自 run-multi-shop-day.mjs（与体检、落位**同源**）—— 这里不另抄一份。
+ * 期望页面清单来自能力目录里的叶子模块
+ * `skills/sycm-alimama-daily-report/scripts/expected-pages.mjs`（与体检、落位**同源**）—— 这里不另抄一份。
+ * 2026-09-21 之前它是从驱动 `run-multi-shop-day.mjs` 取的：驱动现在反过来要用本模块
+ * （失败路径收尾、体检归位），再那么取就成环了。
  */
 export function buildPagePlan() {
   return [

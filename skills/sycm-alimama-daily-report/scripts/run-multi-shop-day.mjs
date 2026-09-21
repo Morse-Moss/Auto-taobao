@@ -53,16 +53,16 @@
 // 排练/只读核对失败是「你正在看屏幕时的事」，发到飞书只会训练人忽略这个信号。
 // 想看文案但不想真的发：`--notify-print`（用同一个渲染器打印，不投递）。
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
-import { dailyReportTargets } from '../../../runtime/feishu-targets.mjs';
-import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
+import { normalizePages } from '../../../runtime/page-normalize.mjs';
+import { READABLE_SOURCE_KEYS, renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { createPlatformHealthCheck } from '../../../runtime/xws-platform-health-preflight.mjs';
-import { shiftIso, shanghaiToday, siteAdapter } from './date-picker.mjs';
+import { shiftIso, shanghaiToday } from './date-picker.mjs';
 import { describeIdentity, expectArgs, formatArgv, shopIdentity } from './shop-identities.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -89,27 +89,17 @@ export const STAGE_NAMES = Object.freeze([
   'push', 'sycm-reset', 'sycm-date-again', 'backfill', 'readback',
 ]);
 
-// 体检要「恰好各一个」的页面。**片段取自唯一权威**（date-picker 的 SITES、飞书目标登记表），
-// 不在这里另抄一份 —— 抄一份就是等着它和落位判据漂移（坑 37）。
+// 体检要「恰好各一个」的页面 —— 定义搬去了叶子模块 `runtime/expected-pages.mjs`（2026-09-21）。
 //
-// 为什么不用体检模块的 `--route=dailyReport`：那是**宿主级**片段（`sycm.taobao.com`），
-// 而店家浏览器上天然有两个 sycm 页面（门户首页 + 工作页）⇒ 必然报「不唯一」；
-// 且多店铺下阿里妈妈页在**各店自己的**浏览器上，商家浏览器根本没有它 ⇒ 必然报「不在」。
-// 2026-09-18 晚实测：`--route=dailyReport` 对 19023 报 2 项 blocking，两条都是判据与现场不匹配
-// （假红）。假红比不检查更坏：它训练人去忽略这个信号。
-export function expectedPagesForShop() {
-  return [
-    { name: '生意参谋工作页', urlFragment: siteAdapter('sycm').urlFragment },
-    { name: '阿里妈妈报表页', urlFragment: siteAdapter('alimama').urlFragment },
-  ];
-}
+// 为什么搬：补页那一套（`runtime/shop-pages.mjs`）本来就要用它，而它此前住在本文件里
+// ⇒ 依赖方向是倒的（`runtime/` import `skills/`），并且**一形成环**就再也加不进新东西
+// （失败路径收尾、体检归位都要用补页那一套）。抽成叶子之后是单向的：驱动 → 补页/归位 → 那里。
+// 这里**既 import 又 export**（不是单纯转出去）：本文件内部还在用这两个函数，
+// 而 `export … from` 只转不落地、不产生本地绑定 —— 只转的话本文件里那三处调用会直接 ReferenceError。
+// 对外名字与从前逐字相同，两处断言「与驱动同源」的用例（shop-pages / run-multi-shop-day）一个字都不用改。
+import { expectedPagesForDailyBrowser, expectedPagesForShop } from './expected-pages.mjs';
 
-export function expectedPagesForDailyBrowser() {
-  return [
-    { name: '生意参谋工作页', urlFragment: siteAdapter('sycm').urlFragment },
-    { name: '飞书底单页', urlFragment: `feishu.cn/base/${dailyReportTargets().baseToken}` },
-  ];
-}
+export { expectedPagesForDailyBrowser, expectedPagesForShop };
 
 // ---------------------------------------------------------------- 目标日：只有一个来源
 
@@ -198,27 +188,35 @@ export function roundFailureSummary(summary = {}) {
 // 收信人在这里看到的每一个词都要是「他明天还会看到的东西」：窗口标题（`运营叫法 · 日报采集窗口`）、
 // 飞书里那张表、生意参谋/阿里妈妈两个后台的中文页名。**不写**英文阶段名、不写我们的结论代号、
 // 不写「重试/自愈」这类没实现的行为（承诺兑现不了比不说更糟）。
+//
+// 2026-09-21 追加一条硬口径：**技术串不进业务消息**。起因是首次定时真跑发出去的那条消息 ——
+// 术语表全绿，正文里却带着 `evidence\multi-shop-2026-09-20`、一整条
+// `node …/run-multi-shop-day.mjs --date … --commit --notify`、机器名 `DESKTOP-…`、告警编号，
+// 业务人员照样看不懂。判据是「形状」不是「词表」（见 driver 的用例），
+// 技术信息一律留在驱动自己的 stdout 与 job.log 里 —— 那里才是给技术同学看的。
 const REASON_BY_CAUSE = Object.freeze({
   ROUND_BLOCKED: '整轮没开跑：那个开着飞书「各店铺日报」的浏览器窗口里，页面不齐。',
   SHOP_BLOCKED: '这家店的专用窗口里页面不齐，所以这家店一步都没跑。',
   DUPLICATE_TARGET: '这一天飞书里已经有数据了，脚本按「不许写第二遍」停住了。',
-  STAGE_FAILED: '跑到一半停住了，停在哪一步见上面那行。',
+  STAGE_FAILED: '这家店跑到一半停住了，这一天的数据没进飞书。',
 });
 
+// 下一步只写**收信人真能做**的，不写我们内部的排查动作（翻日志、跑命令）。
+//
+// 也**不写猜测的病因**：2026-09-21 那条把「最常见的是那个窗口的登录掉了」当成了既定原因，
+// 而现场是「生意参谋页面停在昨天的渲染上」—— 照着做的收信人白跑一趟浏览器去登录，问题不会好。
+// 成因不同、要做的事就不同（同 SKILL `operator-alert-plain-language` §4 的「结论判错」），
+// 所以宁可不给具体动作，也不给一个可能是错的。
 const ACTION_BY_CAUSE = Object.freeze({
   ROUND_BLOCKED: () => '打开那个开着飞书「各店铺日报」的浏览器窗口，把这两页各开一个（只留一个，多开同样会报错）：'
-    + '生意参谋的「店铺」工作页、飞书「各店铺日报」底单页。开好后再跑一次。',
+    + '生意参谋的「店铺」工作页、飞书「各店铺日报」底单页。开好后告诉技术同学重跑一次。',
   SHOP_BLOCKED: (ctx) => `打开这几家店各自的日报采集窗口（窗口标题里写着店名，例如「${ctx.shops[0] ?? '店名'} · 日报采集窗口」），`
-    + '把缺的页面补上：生意参谋的工作页、阿里妈妈报表页各一个（多开同样会报错）。补好后按下面的命令补跑这一天。',
+    + '把缺的页面补上：生意参谋的工作页、阿里妈妈报表页各一个（多开同样会报错）。补好后告诉技术同学重跑一次。',
   DUPLICATE_TARGET: (ctx) => `不用处理：${ctx.date} 的数据已经在飞书里了。`
     + '只有确实要重写时才需要先删掉那一天的记录再跑。',
-  STAGE_FAILED: (ctx) => `先打开 ${ctx.logDir ?? '运行日志目录'} 里那几家店各自的文件，看最后一步报了什么；`
-    + '最常见的是那个窗口的登录掉了 —— 就在标题写着店名（例如「' + `${ctx.shops[0] ?? '店名'} · 日报采集窗口」` + '）的窗口里人工登录一次'
-    + '（登录时勾上「保存密码」），然后按下面的命令补跑这一天。',
+  STAGE_FAILED: () => '这一轮不需要你在浏览器里做什么。'
+    + '如果到今天下班前飞书里还是缺这一天的数据，就把这条消息转给技术同学，让他去看。',
 });
-
-const RERUN_HINT = (date) => '补跑这一天的命令（在那台机器的项目目录里执行一行）：'
-  + `node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date ${date} --commit --notify`;
 
 // 三张表互锁（**加载期**就查）：新增一个结论却忘了给它原因/下一步，模块直接起不来。
 // 放到运行期才发现的写法（比如只在告警里兜底）会让收信人收到一条对不上现场的消息，
@@ -233,14 +231,16 @@ for (const [tableName, table] of [['REASON_BY_CAUSE', REASON_BY_CAUSE], ['ACTION
 /** 收信人看到的「哪家店、停在哪一步」。店名后面带上**他在浏览器里能看到的登录名**，方便对上窗口。 */
 export function describeShopFailure(key, record) {
   const cause = shopFailureCause(record);
-  const login = shopIdentity(key).alimamaMemberName;
   const at = record?.failedStage ? stageNumber(key, record.failedStage) : null;
   const where = record?.failedStage
     ? `停在第 ${at ?? '?'} 步（${stageLabelOf(record.failedStage)}）`
     : '没跑完，但记录里没写停在哪一步';
   // 体检拦下来的那几条明细直接给出来：只说「体检没过」等于让收信人自己去翻日志。
   const specifics = (record?.blockingDetails ?? []).filter(Boolean).slice(0, 3);
-  return `· ${key}${login ? `（浏览器里显示的登录名：${login}）` : ''}—— ${where}。${REASON_BY_CAUSE[cause]}`
+  // 账号名（`里可林家居:阿彦`）**不进业务消息**：窗口标题里写的就是运营叫法（店名），
+  // 业务人员靠店名就够对上窗口了；而账号名一旦被转发到群/邮件就是一条泄露面。
+  // 它仍然留在驱动启动时打出的身份表里（stdout / job.log），需要时那里能查。
+  return `· ${key}—— ${where}。${REASON_BY_CAUSE[cause]}`
     + (specifics.length ? `\n  ${specifics.join('\n  ')}` : '');
 }
 
@@ -248,39 +248,58 @@ export function describeShopFailure(key, record) {
  * 一条告警说清「哪几家收完了、哪几家没有、下一步做什么」。
  *
  * 字段名必须落在 `runtime/notify-feishu-core.mjs` 的 `READABLE_SOURCE_KEYS` 白名单里，
- * 否则渲染时会被静默丢掉（告警照发，收信人看不到「哪台机器」那一行）。
+ * 否则渲染时会被静默丢掉（告警照发，收信人看不到那一行）。
+ * **但白名单管的是键，管不到值** —— 值里的路径/机器名/编号照样会原样发出去，
+ * 所以「不给它这些字段」才是对的写法（2026-09-21：`machine` 与 `evidence` 就是从这里漏出去的）。
+ * 这一条由函数末尾的 `assertAlertIsBusinessReadable` 拦在生成处（fail-closed）。
  */
-export function buildRoundFailureAlert({ date, summary, logDir = null, machine = null, shopCount = null, now = () => new Date() }) {
+export function buildRoundFailureAlert({ date, summary, shopKeys = null, now = () => new Date() }) {
   const view = roundFailureSummary(summary);
   if (!view.any) throw new Error('这一轮没有失败却要生成告警（调用方的判定错误）—— 成功时不许叫人');
+  // `shopKeys` **必填**（这一轮该跑哪几家，从配置来），缺了直接抛。
+  //
+  // 为什么不是「缺了就退化成空」：2026-09-21 两个调用点漏传它（改动被静默丢失 + 没有一条用例
+  // 走这条接线），结果是「另外 N 家今天一步都没跑」那一行**静默消失** —— 而那一行正是收信人
+  // 判断「其余几家是不是收好了」的唯一依据。安静的降级比崩溃危险得多：崩溃会有人来修，
+  // 少一行字不会。家数同样只能由调用方给，不能从 `summary.shops` 数（停轮时那里只有第一家，
+  // 数出来就是「0 家店」，收信人会以为今天根本没排店）。
+  if (!Array.isArray(shopKeys) || shopKeys.length === 0) {
+    throw new Error('buildRoundFailureAlert 必须拿到 shopKeys（这一轮该跑哪几家店）—— '
+      + '缺了它「另外 N 家今天一步都没跑」那一行会静默消失，而那条消息看起来完全正常');
+  }
   const when = now();
-  // 家数要**由调用方给**（配置里这轮该跑几家），不能从 summary.shops 数 ——
-  // 整轮没跑起来时那里是空的，数出来就是「0 家店」，而收信人会以为今天根本没排店
-  // （2026-09-19 干验证时渲染出来才发现，离线用例当时也没覆盖这一条）。
-  const total = shopCount ?? view.total;
+  const total = shopKeys.length;
   const failedNames = view.failed.map((item) => item.key);
   const subject = view.roundBlocked ? '全部店铺' : failedNames.length === 1 ? failedNames[0] : `${failedNames.length} 家店`;
   const causes = [...new Set([...(view.roundBlocked ? ['ROUND_BLOCKED'] : []), ...view.failed.map((item) => item.cause)])];
+  // 默认「第一家失败即停整轮」⇒ 只写「没跑完 1 家」会被读成「其余几家都收好了」。
+  // 2026-09-21 那条正是这个形态：对象写「日报一轮 · 5 家店」，原因写「没跑完 1 家」，
+  // 而实际是**其余 4 家一步都没跑**。少写这一行，等于让收信人以为今天收工了。
+  const notRun = view.roundBlocked ? [] : shopKeys.filter((key) => !(key in (summary?.shops ?? {})));
 
   const reason = [
     view.roundBlocked ? REASON_BY_CAUSE.ROUND_BLOCKED : null,
     ...(view.roundBlocked ? (view.roundBlockedDetails ?? []).filter(Boolean).slice(0, 3).map((line) => `  ${line}`) : []),
     view.failed.length ? `没跑完 ${view.failed.length} 家：\n${view.failed.map((item) => describeShopFailure(item.key, item.record)).join('\n')}` : null,
+    notRun.length ? `· 另外 ${notRun.length} 家今天一步都没跑（有一家停住后，整轮就停了）：${notRun.join('、')}` : null,
     view.ok.length ? `已收完 ${view.ok.length} 家：${view.ok.join('、')}` : null,
   ].filter(Boolean).join('\n');
 
-  const actions = causes.map((cause) => ACTION_BY_CAUSE[cause]({ date, logDir, shops: failedNames }));
-  // 「不用处理」这一类不给补跑命令 —— 给了就等于叫人重跑一天已经写好的数据。
-  if (causes.some((cause) => cause !== 'DUPLICATE_TARGET')) actions.push(RERUN_HINT(date));
+  const actions = causes.map((cause) => ACTION_BY_CAUSE[cause]({ date, shops: failedNames }));
 
-  return {
+  const alert = {
     type: 'DAILY_ROUND_FAILED',
     severity: 'ERROR',
     title: view.roundBlocked
       ? `全部店铺的日报都没跑起来（统计日 ${date}）`
       : `${subject}的日报没收完（统计日 ${date}）`,
-    // 同一天同一轮共用一条锚：同一天重复失败不重复轰炸（投递链本身不去重，这里给的是给调用方用的锚）。
+    // 同一天同一轮共用一条锚；**是否重复投递由调用方的 resolveAlertDedup 判**（投递链本身不去重）。
     alertId: `daily-round-${date.replace(/-/gu, '')}`,
+    // 指纹只服务于「同一天重复失败要不要再发一条」：停的地方没变才算重复。
+    fingerprint: [
+      view.roundBlocked ? 'ROUND_BLOCKED' : 'SHOP_LEVEL',
+      ...view.failed.map((item) => `${item.key}@${item.record?.failedStage ?? '?'}`),
+    ].join('|'),
     createdAt: when.toISOString(),
     reason,
     action: [...new Set(actions)].join('\n'),
@@ -288,11 +307,44 @@ export function buildRoundFailureAlert({ date, summary, logDir = null, machine =
       targetLabel: `日报一轮 · ${total} 家店`,
       period: `统计日 ${date}`,
       capability: '各店铺日报',
-      machine,
       shopName: failedNames.length ? failedNames.join('、') : null,
     },
-    evidence: logDir ? { 运行日志目录: logDir } : null,
+    // **故意不给** machine / 机器、evidence / 运行日志目录：它们是技术串，不该出现在业务消息里
+    // （白名单只约束键，值一旦给了就会原样渲染出去）。技术同学从驱动的 stdout 与 job.log 里看，
+    // 那里会把这条告警的正文、日志目录、机器名完整打出来。
   };
+  assertAlertIsBusinessReadable(alert);
+  return alert;
+}
+
+// 这一条链的收信人是**运营**，白名单是给全仓共用渲染器定的、里面确实有给技术同学用的键
+// （`machine`/`browserProfile`/`loginUrl`）。所以「不给这些字段」这件事必须**在生成处拦**，
+// 不能只靠用例：用例只在 CI 时红，而这条消息可能先被手跑发出去（2026-09-21 就是这么漏的）。
+// 判据是**形状**：任何一层出现这些键名即当场抛错，而不是渲染时静默丢掉或原样发出去。
+const FORBIDDEN_ALERT_KEYS = Object.freeze(['machine', 'browserProfile', 'evidence', 'logDir', 'hostname', 'profile']);
+const READABLE_SOURCE_KEY_NAMES = new Set(READABLE_SOURCE_KEYS.map(([key]) => key));
+
+export function assertAlertIsBusinessReadable(alert) {
+  const seen = [];
+  const walk = (value, at) => {
+    if (!value || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value)) {
+      // 用「包含」而不是「相等」：`machineName` / `hostname2` 这类变体照样是技术串。
+      const hit = FORBIDDEN_ALERT_KEYS.find((bad) => key.toLowerCase().includes(bad));
+      if (hit) seen.push(`${at}${key}`);
+      walk(child, `${at}${key}.`);
+    }
+  };
+  walk(alert, '');
+  if (seen.length) {
+    throw new Error(`告警里出现了不该给业务收信人看的字段（${seen.join('、')}）—— `
+      + '机器名、运行日志目录这类信息只留在驱动自己的 stdout 与 job.log 里，不进这条消息。');
+  }
+  const unknown = Object.keys(alert?.source ?? {}).filter((key) => !READABLE_SOURCE_KEY_NAMES.has(key));
+  if (unknown.length) {
+    throw new Error(`告警的 source 里有渲染器不认识的键（${unknown.join('、')}）—— `
+      + '它们会被白名单静默丢掉：收信人看不到，而你以为发出去了。要么改白名单，要么别给。');
+  }
 }
 
 /**
@@ -511,6 +563,49 @@ const proxyJson = async (url, init) => {
   return payload;
 };
 
+// ------------------------------------------------- 失败路径：先把页面送回中性态
+
+/**
+ * 一家店停手时，页面到底停在哪儿 —— **只读快照**（纯函数；输入就是代理 `/targets` 的返回）。
+ *
+ * 为什么非要先留这一份：紧接着就要把它回位，而回位会把「它当时漂到哪儿」擦掉 ——
+ * 那一句（`…/shop/performance` 还是 `…/report/preview?…`）正是事后判断「这一步为什么失败」
+ * 的唯一线索。所以顺序固定是**先取证、再回位**，两份快照都落进 `summary.json` 可以并排比。
+ *
+ * `foreign` = 既不属于期望清单里任何一页的那些页。缺页时正需要它：漂走的那一页就在这里面。
+ */
+export function describePageWhereabouts(targets = [], expected = []) {
+  const urls = (Array.isArray(targets) ? targets : [])
+    .filter((tab) => !tab?.type || tab.type === 'page')
+    .map((tab) => String(tab?.url ?? ''));
+  return {
+    tabs: urls.length,
+    slots: expected.map((page) => ({
+      page: page.name,
+      count: urls.filter((url) => url.includes(page.urlFragment)).length,
+    })),
+    foreign: urls.filter((url) => !expected.some((page) => url.includes(page.urlFragment))),
+  };
+}
+
+/**
+ * 回位之后到底回没回位。
+ *
+ * **只按「回位后那一份快照」判，不看回位调用报没报错**：`resetSycmPage` 内部已经自检过一次，
+ * 但那是它自己说的；这里用**与体检、落位同源的**那份期望页面清单再数一遍，两份结论不一致时
+ * 以这一份为准。快照给 null（代理读不到）时**不算回位成功** —— 读不到就不知道，
+ * 而这一条的作用正是「别把不知道当成好」。
+ */
+export function judgeResetLanded({ before = null, after = null, page = '生意参谋工作页' } = {}) {
+  const countOf = (snapshot) => (snapshot?.slots ?? []).find((slot) => slot.page === page)?.count ?? null;
+  const beforeCount = countOf(before);
+  const afterCount = countOf(after);
+  if (afterCount === 1) return { restored: true, beforeCount, afterCount, detail: `回位后 ${page} 恰好一个` };
+  return { restored: false, beforeCount, afterCount,
+    detail: `回位后 ${page} 是 ${afterCount ?? '读不到（代理连不上）'} 个（回位前 ${beforeCount ?? '读不到'} 个）`
+      + ' —— 下一轮仍然会从这个起点开始，先看现场' };
+}
+
 /**
  * 生意参谋回位。
  *
@@ -546,17 +641,70 @@ async function resetSycmPage({ proxy, log }) {
     + sycmPages.map((t) => `  · ${t.url}`).join('\n'));
 }
 
+// 告警节流的状态文件。放在 `runtime/` 下是因为那里**不进 git**（`.gitignore` 的
+// `runtime/**/*.json`），而它是本机的运行状态、不是要交付的东西。
+// 名字直白写清它是什么，别让后来的人以为这是采集产物。
+const ALERT_THROTTLE_FILE = path.join(REPO_ROOT, 'runtime/alert-throttle.json');
+
+/**
+ * 同一条编号的告警在时间窗内不重复发。
+ *
+ * 为什么要有这一层：投递链本身**不去重**（`alertId` 只是给调用方用的锚），而这条链的编号只有日期
+ * （`daily-round-20260920`）⇒ 同一天每次重跑失败都会再发一条。后果不是「多收几条」，
+ * 而是收信人开始忽略这个通道 —— 而它是唯一会叫人动手的通道。
+ *
+ * 指纹是保险：**同一个编号、但停的地方变了**（例如从「生意参谋没切过去」变成「飞书写重复」）
+ * 是新信息，不该被当成重复挡掉。只有「编号相同 + 停的地方也相同」才算重复。
+ * 时间读不懂时**宁可发**（沉默的代价比多收一条大）。
+ */
+export function resolveAlertDedup({ previous = null, alertId = null, fingerprint = null,
+  now = new Date(), windowMs = 6 * 60 * 60 * 1000 } = {}) {
+  if (!alertId) return { send: true, reason: '这条告警没有编号，不去重' };
+  if (!previous || previous.alertId !== alertId) return { send: true, reason: '这个编号之前没发过' };
+  if (fingerprint && previous.fingerprint && previous.fingerprint !== fingerprint) {
+    return { send: true, reason: '同一个编号，但这次停的地方变了 —— 算新信息' };
+  }
+  const ageMs = now.getTime() - new Date(previous.sentAt ?? 0).getTime();
+  if (!Number.isFinite(ageMs) || ageMs < 0) return { send: true, reason: '上次记录的时间读不懂，宁可发' };
+  if (ageMs >= windowMs) {
+    return { send: true, reason: `距上次已经 ${Math.round(ageMs / 60000)} 分钟，超过窗口` };
+  }
+  return { send: false,
+    reason: `同一条告警 ${Math.round(ageMs / 60000)} 分钟前刚发过（窗口 ${Math.round(windowMs / 3600000)} 小时），不重复发` };
+}
+
+function readAlertThrottle(file) {
+  try { return JSON.parse(readFileSync(file, 'utf8')); } catch { return null; }
+}
+
+function writeAlertThrottle(entry, file) {
+  try {
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, `${JSON.stringify(entry, null, 2)}\n`, 'utf8');
+  } catch { /* 节流状态写不下去不该影响主流程：那只会导致多发一条，比漏发安全 */ }
+}
+
 /**
  * 把告警交给既有的投递出口，并把它的结论如实打出来。
  *
  * 文案用**真渲染器**（`renderAlertText`）而不是自己拼一遍 —— 自己拼的那份会和收信人
  * 实际看到的东西漂移，而漂移的症状是「本地看着对、飞书里少一行」（白名单会静默吞字段）。
  */
-export function dispatchRoundAlert({ alert, dispatch, logDir = null, spawn = spawnSync, log = console.log }) {
+export function dispatchRoundAlert({ alert, dispatch, logDir = null, spawn = spawnSync, log = console.log,
+  throttleFile = ALERT_THROTTLE_FILE, now = () => new Date() }) {
   const text = renderAlertText(alert);
+  // **不管发不发，先把收信人会看到的那份完整打进本地日志。**
+  // 技术串已经从业务消息里撤掉了，job.log 就成了事后唯一能对上「他到底看到了什么」的地方。
+  log(`[驱动] 告警文案（收信人看到的）：\n${text}`);
   if (dispatch.action === 'print') {
-    log(`[驱动] 告警文案（--notify-print：只打印、不投递）：\n${text}`);
+    log('[驱动] （--notify-print：只打印、不投递）');
     return { delivered: false, printed: true };
+  }
+  const verdict = resolveAlertDedup({ previous: readAlertThrottle(throttleFile),
+    alertId: alert?.alertId, fingerprint: alert?.fingerprint, now: now() });
+  if (!verdict.send) {
+    log(`[驱动] 这一条没往外发：${verdict.reason}（编号 ${alert?.alertId ?? '无'}）`);
+    return { delivered: false, suppressed: true, reason: verdict.reason };
   }
   const result = spawn(NODE, [NOTIFY_CLI], {
     input: JSON.stringify(alert), cwd: REPO_ROOT, encoding: 'utf8', timeout: 60_000,
@@ -567,8 +715,12 @@ export function dispatchRoundAlert({ alert, dispatch, logDir = null, spawn = spa
     // 这条比失败本身更要紧：**失败已经有记录，但没人知道**。
     console.error('[驱动] 告警没送出去 —— 现在只有屏幕知道这一轮失败了，必须有人接手（见上面的投递收据）。'
       + `${logDir ? `日志在 ${logDir}` : ''}`);
+  } else {
+    // 只有真的送出去了才记时间：送失败还记账，会让下一次重跑被自己的记录挡掉。
+    writeAlertThrottle({ alertId: alert?.alertId ?? null, fingerprint: alert?.fingerprint ?? null,
+      sentAt: new Date(now()).toISOString() }, throttleFile);
   }
-  return { delivered: result.status === 0, printed: false };
+  return { delivered: result.status === 0, printed: false, suppressed: false };
 }
 
 function runStage(shopKey, stage, { repoRoot, logDir }) {
@@ -624,6 +776,9 @@ async function main() {
   // （事后没人能从 `--date yesterday` 反推出它当时算的是哪一天）。
   if (args.dateInput !== args.date) console.log(`[驱动] （--date ${args.dateInput} 按 Asia/Shanghai 解析成 ${args.date}）`);
   console.log(`[驱动] 日志根 ${logRoot}`);
+  // 主机名只留在驱动侧日志里（排障要「哪台机器」），**不进告警文案**：
+  // 收信人是运营，`DESKTOP-KJP4RA5` 对他们没有任何可执行含义（2026-09-21 就发过这个）。
+  console.log(`[驱动] 本机 ${MACHINE}`);
   if (mode === 'commit') console.log('[驱动] --commit：会真的写飞书。目标日已有行会硬重复停止（先按 §9.3 删那天）。');
   if (mode === 'verify') console.log(`[驱动] 只读核对模式：--expected-before-count ${args.verifyExisting}（不写飞书）`);
   if (mode === 'rehearse') console.log('[驱动] 排练模式：采集是真的，两个写入方都是干跑，不写飞书。');
@@ -652,6 +807,10 @@ async function main() {
     blocking: roundHealth.detail?.blocking?.map((f) => f.code) ?? null,
     // 告警里要写清「哪一页不齐」，所以明细也得留下来（只留 code 的话告警只能说「体检没过」）。
     blockingDetails: roundHealth.detail?.blocking?.map((f) => f.detail) ?? null,
+    // 归位的结论也要留：体检从「只看」变成「先归位、再看」之后，
+    // 「这次本来就不齐、是脚本自己修好的」与「本来就好」在 summary 上必须分得开。
+    normalize: roundHealth.normalize?.verdict?.detail ?? null,
+    normalizeChanged: roundHealth.normalize?.changed ?? null,
   };
   if (roundHealth.status !== 0) {
     console.error('[驱动] 商家浏览器体检未通过 ⇒ 整轮不跑（推送段与回读段都要用它）。'
@@ -661,7 +820,7 @@ async function main() {
     process.exitCode = 1;
     if (alertDispatch.action !== 'off') {
       dispatchRoundAlert({
-        alert: buildRoundFailureAlert({ date: args.date, summary, logDir: path.relative(REPO_ROOT, logRoot), machine: MACHINE, shopCount: shops.length }),
+        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops }),
         dispatch: alertDispatch, logDir: path.relative(REPO_ROOT, logRoot),
       });
     }
@@ -694,7 +853,9 @@ async function main() {
         logPath: result.logPath ?? null, argv: stage.argv,
         // 体检到底拦在哪一条，要跟着收据一起留下来：告警里那句「哪一页不齐」就是从这儿来的。
         // 不记的话，收信人只能看到「体检没过」，还得自己去翻日志（＝太笼统）。
-        blockingDetails: result.detail?.blocking?.map((finding) => finding.detail) ?? null });
+        blockingDetails: result.detail?.blocking?.map((finding) => finding.detail) ?? null,
+        // 体检那一支的归位结论（别的阶段是 null）：它回答「这次的不齐是本来就坏、还是脚本修好的」。
+        pageNormalize: result.normalize?.verdict?.detail ?? null });
       return result;
     };
 
@@ -745,6 +906,10 @@ async function main() {
     } catch (error) {
       record.error = error.message;
       console.error(`[${key}] 停在这一步：${error.message}`);
+      // 失败也要收尾：先把「停手时页面停在哪」记下来，再把它送回中性态（证据先于处置，
+      // 见 recoverFailedShop 的三条纪律）。位置**刻意放在「停整轮」之前** —— 放到之后的话，
+      // 默认策略下断掉整个 for 循环，而唯一失败的那一家恰恰就是不会被收尾的那一家。
+      record.recovery = await recoverFailedShop({ shopKey: key, logDir: shopLogDir, repoRoot: REPO_ROOT });
       if (!args.keepGoing) {
         console.error(`[驱动] 按默认策略停整轮（要看完全部店加 --keep-going）。已跑的店记在 ${path.relative(REPO_ROOT, logRoot)}。`);
         break;
@@ -766,7 +931,7 @@ async function main() {
     process.exitCode = 1;
     if (alertDispatch.action !== 'off') {
       dispatchRoundAlert({
-        alert: buildRoundFailureAlert({ date: args.date, summary, logDir: path.relative(REPO_ROOT, logRoot), machine: MACHINE, shopCount: shops.length }),
+        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops }),
         dispatch: alertDispatch, logDir: path.relative(REPO_ROOT, logRoot),
       });
     } else if (args.notify || args.notifyPrint) {
@@ -796,6 +961,19 @@ export function healthStageStatus(result) {
   return result.ok ? 0 : 2;
 }
 
+/**
+ * 浏览器键 → 它自己那个 CDP 代理端口。
+ *
+ * 权威仍是**路线表 + 店铺登记表**，这里只做一次换算（各阶段的 `env.CDP_PROXY_PORT` 也来自同一处）。
+ * 认不出来就**抛错**，绝不回落到某个默认端口 —— 回落一次就是「往别的店/别的项目上写」，
+ * 而症状是那家店「跑完了但什么也没采到」。
+ */
+export function proxyPortForBrowser(browserKey) {
+  if (shopBrowserKeys().includes(browserKey)) return shopInstance(browserKey).proxyPort;
+  if (browserKey === ROUTES.dailyReport.browser) return PROJECT_PORTS.dailyReportProxy;
+  throw new Error(`浏览器「${browserKey}」没有登记的代理端口 —— 不猜（猜错就是往别的浏览器上写）`);
+}
+
 async function runHealthCheck({ shopKey, stage, logDir, repoRoot, browserKey = null, expectedPages = null }) {
   const label = shopKey ?? '一轮';
   const outPath = path.join(logDir, `${String(stage.index).padStart(2, '0')}-${stage.stage}.txt`);
@@ -803,10 +981,31 @@ async function runHealthCheck({ shopKey, stage, logDir, repoRoot, browserKey = n
   const log = (line) => { lines.push(line); console.log(`[${label}]   ${line}`); };
   let status = 0;
   let result = null;
+  const pages = expectedPages ?? expectedPagesForShop();
+  const key = browserKey ?? shopKey;
+
+  // ── 归位：体检从「只看」升级成「先归位、再看」（2026-09-21）──────────────────
+  // 缺页的绝大多数情形是「那一页并没有丢，只是被上一轮的第 5 步带到别的 URL 了」（2026-09-20 实测）。
+  // 从前这一条会让**整家店一步都不跑**并叫人来补，而那是脚本顺手能做完的事。
+  // 判据一分都不放宽：归位只负责把可修的修掉，修不掉的照样由下面的体检拦住。
+  // 它也不抢答「连不上」：代理不通时交给体检去报（体检有它自己的连通性判据）。
+  let normalize = null;
+  try {
+    normalize = await normalizePages({ proxyPort: proxyPortForBrowser(key), expected: pages });
+    log(`归位：${normalize.verdict.detail}`);
+    for (const action of normalize.actions) {
+      if (action.action === 'already-one') continue;
+      log(`  [归位] ${action.page}：${action.action}`
+        + `${action.error ? `（${action.error}）` : ''}${normalize.dry ? '（只读，未真做）' : ''}`);
+    }
+  } catch (error) {
+    log(`归位没做成（不改体检结论，交给下面那条判据）：${String(error?.message ?? error).split('\n')[0]}`);
+  }
+
   try {
     const check = createPlatformHealthCheck({
-      browserKey: browserKey ?? shopKey,
-      expectedPages: expectedPages ?? expectedPagesForShop(),
+      browserKey: key,
+      expectedPages: pages,
     });
     result = await check({});
     const warnings = result.findings.filter((finding) => !finding.blocking);
@@ -821,9 +1020,9 @@ async function runHealthCheck({ shopKey, stage, logDir, repoRoot, browserKey = n
     status = 3;
   }
   lines.push('');
-  lines.push(JSON.stringify(result, null, 2));
+  lines.push(JSON.stringify({ normalize, check: result }, null, 2));
   writeFileSync(outPath, `${lines.join('\n')}\n`, 'utf8');
-  return { status, stdout: lines.join('\n'), detail: result, logPath: path.relative(repoRoot, outPath) };
+  return { status, stdout: lines.join('\n'), detail: result, normalize, logPath: path.relative(repoRoot, outPath) };
 }
 
 // 回位是驱动自己做的（没有现成脚本），日志格式与别的阶段一致，便于按同一套办法看。
@@ -842,6 +1041,68 @@ async function runReset(shopKey, stage, { logDir, repoRoot }) {
   }
   writeFileSync(outPath, `${lines.join('\n')}\n`, 'utf8');
   return { status, stdout: lines.join('\n'), detail, logPath: path.relative(repoRoot, outPath) };
+}
+
+/**
+ * 失败路径的收尾：**先把「停手时页面在哪」记下来，再把它送回中性态，然后按期望清单再数一遍。**
+ *
+ * 为什么失败也要做（2026-09-21 的第一性原理分析）：这个浏览器**不会关**（登录态在里面），
+ * 所以每一轮结束时的页面位置就是下一轮的起点。成功路径靠第 8 步回位；而失败路径从前什么都不做
+ * ⇒ 一次失败把脏状态留给下一天，脏状态再制造下一次失败 —— 这是这条链上唯一会自己长大的东西。
+ *
+ * 三条纪律：
+ *   1) **证据先于处置**：先 `describePageWhereabouts` 再回位。反过来的话「当时漂到哪儿」就没了，
+ *      而下一轮正是要拿它当起点。
+ *   2) **绝不吞掉原来那个错**：本函数自己 try 住一切，永远返回对象、永不抛。抛出去会盖掉
+ *      「这一轮为什么失败」，那才是主线。
+ *   3) 回位没做成**只记本地**（`summary.json` 的 `recovery` + `99-recovery.txt`），**不进告警文案** ——
+ *      那是技术信息，业务收信人看不懂（见 `assertAlertIsBusinessReadable` 与它的用例）。
+ *
+ * 依赖注入（`readTargets` / `reset`）与 `settleSlots` 同一个理由：真机才有代理，而这一支的
+ * 三个分支（回位成功、回位抛错、代理读不到）必须在离线里都能断言到 —— 「只在真机上跑过」
+ * 正是上次漏掉这一步的原因。
+ */
+export async function recoverFailedShop({ shopKey, logDir, repoRoot, readTargets = null, reset = null }) {
+  const proxy = shopInstance(shopKey).proxyPort;
+  const expected = expectedPagesForShop();
+  const read = readTargets ?? (() => proxyJson(`http://127.0.0.1:${proxy}/targets`).catch(() => null));
+  const doReset = reset ?? ((options) => resetSycmPage(options));
+  const outPath = path.join(logDir, '99-recovery.txt');
+  const lines = [];
+  const log = (line) => { lines.push(line); console.log(`[${shopKey}]   ${line}`); };
+  const snapshot = (targets) => (targets ? describePageWhereabouts(targets, expected) : null);
+  const recovery = { at: new Date().toISOString(), proxyPort: proxy, leftAt: null, action: null,
+    after: null, restored: null, detail: null, error: null };
+
+  try {
+    const before = await read();
+    recovery.leftAt = snapshot(before);
+    if (recovery.leftAt) {
+      log(`停手时页面停在：${recovery.leftAt.slots.map((slot) => `${slot.page}=${slot.count}`).join('  ')}`
+        + `（共 ${recovery.leftAt.tabs} 个页签）`);
+      for (const url of recovery.leftAt.foreign) log(`  · 不属于期望清单：${String(url).slice(0, 110)}`);
+    } else {
+      log('停手时读不到页面（代理连不上）—— 回位这一支先当学不到，下面照样试一次');
+    }
+
+    const detail = await doReset({ proxy, log });
+    recovery.action = detail?.action ?? null;
+
+    const after = await read();
+    recovery.after = snapshot(after);
+    const verdict = judgeResetLanded({ before: recovery.leftAt, after: recovery.after });
+    recovery.restored = verdict.restored;
+    recovery.detail = verdict.detail;
+    log(verdict.detail);
+  } catch (error) {
+    // 回位自己失败（认不出页面、代理连不上、navigate 回非 2xx）—— 如实记下，**不抛**。
+    recovery.error = String(error?.message ?? error);
+    log(`回位没做成：${recovery.error}`);
+  }
+
+  try { writeFileSync(outPath, `${lines.join('\n')}\n`, 'utf8'); } catch { /* 日志写不下去不该再抛一次 */ }
+  recovery.logPath = path.relative(repoRoot, outPath);
+  return recovery;
 }
 
 // 顶层入口：main 是 async（回位那一支要 await），所以这里也要 await。

@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { BROWSER_IDS, PROJECT_PORTS, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
+import { BROWSER_IDS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
-import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, buildRoundFailureAlert, buildShopStages, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, parseArgs, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
+import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeResetLanded, parseArgs, proxyPortForBrowser, recoverFailedShop, resolveAlertDedup, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -331,6 +332,10 @@ test('驱动：STAGE_NAMES 与真实的阶段表逐字一致（否则合法值�
 const NOW = new Date('2026-09-19T23:30:00Z');
 const ALERT_DATE = '2026-09-19';
 const ALERT_LOG_DIR = 'evidence/multi-shop-2026-09-19';
+// 这一轮**该跑几家**由调用方给（配置里的事实），不由 summary 数出来 ——
+// 整轮没跑起来时 summary.shops 是空的，数出来就是「0 家店」。
+// 这里用登记表里的真实键名而不是 ['A','B']：告警正文里的店名要能被人对上窗口。
+const ALERT_SHOP_KEYS = ['里可林淘宝', '网林天猫', '盖文淘宝', '盖文天猫', '科塔淘宝'];
 const alertNow = () => new Date('2026-09-20T00:10:00Z');
 
 const okRecord = () => ({ status: 'ok', stages: [] });
@@ -349,9 +354,14 @@ const mixedSummary = () => ({
 });
 
 const buildAlert = (summary, overrides = {}) => buildRoundFailureAlert({
-  date: ALERT_DATE, summary, logDir: ALERT_LOG_DIR, machine: 'DEPLOY-01', now: alertNow, ...overrides,
+  date: ALERT_DATE, summary, shopKeys: ALERT_SHOP_KEYS, now: alertNow, ...overrides,
 });
 const renderedAlert = (summary, overrides = {}) => renderAlertText(buildAlert(summary, overrides));
+
+// 节流状态文件必须落在临时目录里：这条链的默认路径是 `runtime/alert-throttle.json`，
+// 而套件**不许写运行期状态**（跑一次测试就在真库里留下一条「刚发过」的记录，
+// 会让真跑的那一轮被自己的测试静默挡掉）。用完即弃，不清理也不影响别的用例。
+const tmpThrottle = () => path.join(mkdtempSync(path.join(tmpdir(), 'sycm-alert-throttle-')), 'alert-throttle.json');
 
 test('驱动：--date 认字面量 yesterday，按 Asia/Shanghai 解析（跨零点不漂）', () => {
   assert.equal(resolveTargetDate('yesterday', NOW), '2026-09-19');
@@ -415,17 +425,19 @@ test('驱动的失败分类：体检拦住 / 重跑撞上已有行 / 阶段报�
   assert.equal(roundFailureSummary({ round: { healthCheckDaily: { ok: false } }, shops: {} }).roundBlocked, true);
 });
 
-test('告警：标题自带主体名，正文说清哪几家没跑完、停在哪一步、哪几家已收完', () => {
+test('告警：标题自带主体名，正文说清哪几家没跑完、停在哪一步、哪几家已收完、哪几家一步没跑', () => {
   const text = renderedAlert(mixedSummary());
   assert.match(text, /【需要处理】/u, '有失败必须是「需要处理」，不是「提示」');
   assert.match(text, /【需要处理】2 家店的日报没收完（统计日 2026-09-19）/u, '标题要自带主体名与是哪一天');
   assert.match(text, /没跑完 2 家：/u);
-  assert.match(text, /网林天猫（浏览器里显示的登录名：网林家居旗舰店:阿彦）—— 停在第 5 步（下载店铺日报）/u,
-    '店名后面要带他在浏览器里能看到的登录名（否则「同店四名」会让人找不到窗口）');
+  assert.match(text, /网林天猫—— 停在第 5 步（下载店铺日报）/u,
+    '店名要能让人对上窗口；**账号名（`网林家居旗舰店:阿彦`）不进业务消息** —— 见下面「形状」那条');
   assert.match(text, /科塔淘宝.*停在第 7 步（写进飞书）/u);
   assert.match(text, /已收完 1 家：里可林淘宝/u, '收信人也要知道哪几家已经好了（不用重复跑）');
-  assert.match(text, /机器：DEPLOY-01/u);
-  assert.match(text, /证据：evidence\/multi-shop-2026-09-19/u);
+  // 「没跑完 1 家」与「另外 4 家一步都没跑」是两件事。少写这一行，收信人会以为今天收工了。
+  assert.match(text, /另外 2 家今天一步都没跑/u, '默认「第一家失败即停整轮」⇒ 必须说清还有几家今天压根没开跑');
+  assert.match(text, /盖文淘宝、盖文天猫/u);
+  assert.match(text, /对象：日报一轮 · 5 家店/u, '家数要来自配置（这一轮该跑几家），不是从记录条数数出来的');
   assert.match(text, /告警编号：daily-round-20260919/u, '事后对账只有编号与时间能引用，不能省');
 
   // 整轮没跑起来是另一种情形：主语是「全部店铺」，而且要说清是哪一页不齐。
@@ -434,21 +446,30 @@ test('告警：标题自带主体名，正文说清哪几家没跑完、停在�
   const blocked = renderedAlert({
     round: { healthCheckDaily: { ok: false, blockingDetails: ['目标页面「飞书底单页」不在这个浏览器里（找到 0 个）；采集会从落位那一步就失败。'] } },
     shops: {},
-  }, { shopCount: 5 });
+  });
   assert.match(blocked, /全部店铺的日报都没跑起来（统计日 2026-09-19）/u);
   assert.match(blocked, /对象：日报一轮 · 5 家店/u, '家数要来自配置（这一轮该跑几家），不是从记录条数数出来的');
   assert.match(blocked, /目标页面「飞书底单页」不在这个浏览器里/u, '要指名道姓说缺哪一页，不能只说「体检没过」');
   assert.match(blocked, /飞书「各店铺日报」底单页/u, '下一步要说清去哪开、开哪两页');
+  assert.equal(blocked.includes('另外'), false, '整轮没开跑时不存在「另外几家没跑」—— 全部都没跑，别写重');
 });
 
-test('告警：每条结论都有自己的「原因 + 下一步」，下一步说清在哪儿做、怎么算做完', () => {
+test('告警：每条结论都有自己的「原因 + 下一步」，下一步只写收信人真能做的', () => {
   const text = renderedAlert(mixedSummary());
   assert.match(text, /下一步：/u);
-  assert.match(text, /日报采集窗口/u, '要告诉收信人进哪个窗口（他明天在屏幕上看到的就是这个标题）');
-  assert.match(text, /人工登录一次/u);
-  assert.match(text, /勾上「保存密码」/u);
-  assert.match(text, /补跑这一天的命令/u);
-  assert.match(text, /--date 2026-09-19 --commit --notify/u, '补跑命令要带上那一天，否则「昨天」会被理解成另一天');
+  // 「窗口里缺页面」这一类才需要人去开窗口，所以「进哪个窗口」这句话要在那一类里出现
+  const needsWindow = renderedAlert({ round: { healthCheckDaily: { ok: true } },
+    shops: { 盖文淘宝: { status: 'failed', failedStage: 'health-check', stages: [] } } });
+  assert.match(needsWindow, /日报采集窗口/u, '要告诉收信人进哪个窗口（他明天在屏幕上看到的就是这个标题）');
+
+  // 「跑到一半停住」这一类**不给具体动作** —— 因为成因未知，猜一个（例如「去登录」）
+  // 会让收信人白跑一趟浏览器，而实际问题不会好（2026-09-21 的现场是生意参谋页面停在昨天的渲染上）。
+  const stalled = renderedAlert({ round: { healthCheckDaily: { ok: true } },
+    shops: { 里可林淘宝: failedAt('sycm-date') } });
+  assert.match(stalled, /跑到一半停住了/u);
+  assert.match(stalled, /不需要你在浏览器里做什么/u, '成因未知时不许编一个「你去登录一下」的动作');
+  assert.match(stalled, /转给技术同学/u, '要给出「什么时候找谁」这条可执行的出路');
+  assert.equal(/人工登录/u.test(stalled), false, '不许把猜测的病因写成既定原因');
 
   // 「已经写过了」这一类**不许**给补跑命令 —— 那等于叫人重跑一天已经写好的数据
   const dup = renderedAlert({ round: { healthCheckDaily: { ok: true } }, shops: { 网林天猫: failedAt('push', 'duplicate daily report row exists: r1') } });
@@ -457,7 +478,23 @@ test('告警：每条结论都有自己的「原因 + 下一步」，下一步�
   assert.equal(dup.includes('人工登录'), false, '「不用处理」不该叫人去登录（那是另一类现场要做的事）');
 });
 
-test('告警：文案里不许出现英文阶段名、结论代号、内部术语，也不许出现链接', () => {
+// 2026-09-21 修订：这条原来是**词表**判据（判据/幂等/fail-closed…），全绿，而真发出去的那条
+// 正文里带着 `evidence\multi-shop-2026-09-20`、一整条 `node …/run-multi-shop-day.mjs --date … --commit --notify`、
+// 机器名 `DESKTOP-KJP4RA5`、在线告警报错里的一段 URL —— 业务人员照样看不懂。
+// 根因不是「词表漏了几个词」，而是**判据管的是词，泄漏的是形状**（路径、命令行、主机名、编号、账号名），
+// 而且这些泄漏全在 `reason`/`action` 这些**自由文本**里：白名单只约束 `source` 的键，约束不到值。
+// 所以判据改成两层：词表继续留着（便宜），另加「形状」扫描，且**扫的是告警对象自己的字段**，
+// 不只是渲染后的文本 —— 渲染器可能吞字段（白名单静默丢键），对着渲染结果扫会漏掉被吞的部分。
+const TECH_SHAPES = [
+  [/[A-Za-z]:[\\/]/u, '盘符路径（如 `D:\\…`）'],
+  [/(?:^|[^A-Za-z])(?:evidence|runtime|skills|scripts)[\\/]/u, '仓库内的相对目录（如 `evidence\\multi-shop-…`）'],
+  [/(?:^|\s)--[a-z][a-z-]+/u, '命令行参数（如 `--commit`）'],
+  [/(?:^|[\s`'"(/])node(?:\s|$|\.exe)/u, '命令行本体（`node …`）'],
+  [/\b[A-Z][A-Z0-9]{2,}-[A-Z0-9]{4,}\b/u, '主机名形状（如 `DESKTOP-KJP4RA5`）'],
+  [/https?:\/\//u, '链接（点了会走系统默认浏览器，到不了目标窗口那个实例，2026-09-19 实测）'],
+];
+
+test('告警：文案里不许出现英文阶段名、结论代号、内部术语，也不许出现路径/命令行/主机名/账号名', () => {
   const jargon = ['判据', '幂等', 'fail-closed', 'capability', '会话', '风控'];
   const cases = {
     ROUND_BLOCKED: { round: { healthCheckDaily: { ok: false, blockingDetails: ['目标页面「飞书底单页」不在这个浏览器里（按片段 feishu.cn/base/xx 找到 0 个）；采集会从落位那一步就失败。'] } }, shops: {} },
@@ -467,19 +504,75 @@ test('告警：文案里不许出现英文阶段名、结论代号、内部术�
   };
   assert.deepEqual(Object.keys(cases).sort(), [...FAILURE_CAUSES].sort(),
     '每一条结论都要在这里被渲染一次（漏一条 = 新一类术语味告警没人守）');
+
+  // 账号名是**数据**，所以从登记表取真值来扫 —— 写死几个样例只能挡住已经出现过的那两个。
+  const accountNames = ALERT_SHOP_KEYS.map((key) => shopIdentity(key).alimamaMemberName).filter(Boolean);
+  assert.ok(accountNames.length >= 2, '登记表里读不到账号名，这条判据会形同虚设');
+
   for (const [cause, summary] of Object.entries(cases)) {
+    const alert = buildAlert(summary);
     const text = renderedAlert(summary);
-    assert.equal(text.includes(cause), false, `${cause} 这个结论代号不该出现在收信人看得到的文案里`);
-    for (const stage of STAGE_NAMES) {
-      assert.equal(text.includes(stage), false, `${cause} 的文案里出现了英文阶段名「${stage}」`);
+    // 收信人看得到的**自由文本**（这几段是泄漏实际发生的地方）
+    const freeText = [alert.title, alert.reason, alert.action].filter(Boolean).join('\n');
+    const haystacks = [['正文', text], ['自由文本字段', freeText]];
+
+    assert.equal('evidence' in alert, false, `${cause} 又给了 evidence —— 运行日志目录是技术串，不该进业务消息`);
+    assert.equal('machine' in (alert.source ?? {}), false, `${cause} 又把机器名塞回 source 了（白名单里真有这个键，给了就会原样渲染出去）`);
+
+    for (const [where, hay] of haystacks) {
+      assert.equal(hay.includes(cause), false, `${cause} 这个结论代号不该出现在${where}里`);
+      for (const stage of STAGE_NAMES) {
+        assert.equal(hay.includes(stage), false, `${cause} 的${where}里出现了英文阶段名「${stage}」`);
+      }
+      for (const word of jargon) {
+        assert.equal(hay.includes(word), false, `${cause} 的${where}里出现了内部术语「${word}」`);
+      }
+      for (const [pattern, label] of TECH_SHAPES) {
+        const hit = hay.match(pattern);
+        assert.equal(Boolean(hit), false, `${cause} 的${where}里出现了${label}：${hit?.[0] ?? ''}`);
+      }
+      for (const account of accountNames) {
+        assert.equal(hay.includes(account), false, `${cause} 的${where}里出现了账号名「${account}」（会被转发到群/邮件，是泄露面）`);
+      }
     }
-    for (const word of jargon) {
-      assert.equal(text.includes(word), false, `${cause} 的文案里出现了内部术语「${word}」`);
-    }
-    // 点 http 链接会走系统默认浏览器，到不了目标 profile 的实例（2026-09-19 实测）⇒ 文案里不许有链接
-    assert.equal(/https?:\/\//u.test(text), false, `${cause} 的文案里出现了链接`);
     assert.match(text, /统计日 2026-09-19/u, `${cause} 的文案没说是哪一天的数据`);
   }
+});
+
+test('告警：缺 shopKeys 直接抛（那一行静默消失过，所以不留退化余地）', () => {
+  assert.throws(() => buildRoundFailureAlert({ date: ALERT_DATE, summary: mixedSummary(), now: alertNow }),
+    /必须拿到 shopKeys/u, '缺参数要当场抛，不许退化成「那一行不显示」');
+  assert.throws(() => buildRoundFailureAlert({ date: ALERT_DATE, summary: mixedSummary(), shopKeys: [], now: alertNow }),
+    /必须拿到 shopKeys/u, '空数组同样不许 —— 那会渲染成「日报一轮 · 0 家店」');
+  assert.doesNotThrow(() => buildAlert(mixedSummary()));
+});
+
+test('驱动：每个生成告警的调用点都真的把 shopKeys 接上了（接线判据）', () => {
+  // 为什么单独立一条：`buildRoundFailureAlert` 自己的用例全部通过，而**两个调用点漏传 shopKeys**
+  // ⇒「另外 N 家今天一步都没跑」那一行静默消失（2026-09-21 实测：改动被静默丢失 + 没有一条用例走这条接线）。
+  // 用例里手建的对象再对，接线漏了也白搭 —— 这一类缺陷只有「从失败现场真跑一遍」才拦得住，
+  // 这条源码扫描只是**便宜的第二道门**（第一道是函数缺参数就抛，运行时才响）。
+  const source = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  const calls = [...source.matchAll(/^\s*alert: buildRoundFailureAlert\(\{([^}]*)\}/gmu)].map((m) => m[1]);
+  assert.ok(calls.length >= 2, `只扫到 ${calls.length} 个调用点 —— 正则认不出真实接线，这条判据就没意义`);
+  for (const args of calls) {
+    assert.match(args, /shopKeys/u, `调用点没给 shopKeys：${args.trim()}`);
+    assert.equal(/machine|logDir|evidence/u.test(args), false, `调用点还在传技术字段：${args.trim()}`);
+  }
+});
+
+test('告警：技术字段在**生成处**就被拦（而不是等渲染时静默丢掉或被原样发出去）', () => {
+  // 白名单是给全仓共用渲染器定的，里面确实有给技术同学用的键（machine/browserProfile/loginUrl）
+  // ⇒ 「这条链的收信人是运营」这件事只能由生成处保证。用例只在上 CI 时红，而消息可能先被手跑发出去。
+  assert.throws(() => assertAlertIsBusinessReadable({ title: 'x', source: { machine: 'DESKTOP-KJP4RA5' } }),
+    /不该给业务收信人看/u);
+  assert.throws(() => assertAlertIsBusinessReadable({ title: 'x', machineName: 'x' }), /不该给业务收信人看/u,
+    '变体写法（machineName）也要拦：判据是「包含」不是「相等」');
+  assert.throws(() => assertAlertIsBusinessReadable({ title: 'x', evidence: { artifacts: ['evidence/a'] } }),
+    /不该给业务收信人看/u);
+  assert.throws(() => assertAlertIsBusinessReadable({ title: 'x', source: { 我编的字段: 'v' } }),
+    /渲染器不认识的键/u, '名字不在白名单里的 source 键会被静默丢掉 —— 那等于「以为发了、其实没有」');
+  assert.doesNotThrow(() => assertAlertIsBusinessReadable(buildAlert(mixedSummary())), '正常那条必须放行');
 });
 
 test('告警：全绿时生成告警要当场抛错（成功时不许叫人）', () => {
@@ -510,6 +603,7 @@ test('驱动：打印路径一次投递都不发生，且打印的是真渲染�
     alert: buildAlert(mixedSummary()),
     dispatch: { action: 'print', why: '--notify-print：只打印不投递' },
     spawn: () => { calls += 1; return { status: 0 }; },
+    throttleFile: tmpThrottle(),
     log: (line) => lines.push(line),
   });
   assert.equal(calls, 0, '--notify-print 绝不许真的投递');
@@ -524,9 +618,10 @@ test('驱动：真正投递时走既有的通知出口，且「没送达」要�
   const seen = {};
   const delivered = dispatchRoundAlert({
     alert, dispatch: { action: 'send', why: 'x' }, log: () => {},
+    throttleFile: tmpThrottle(),
     spawn: (cmd, argv, options) => { Object.assign(seen, { cmd, argv, options }); return { status: 0, stdout: '{"status":"SENT","messageId":"om_x"}' }; },
   });
-  assert.deepEqual(delivered, { delivered: true, printed: false });
+  assert.deepEqual(delivered, { delivered: true, printed: false, suppressed: false });
   assert.equal(seen.cmd, process.execPath);
   assert.match(seen.argv[0], /runtime[\\/]notify-feishu\.mjs$/u,
     '告警必须走这个仓库既有的投递出口，不许另造一条（另造的那条没有「没送达就非零退出码」的性质）');
@@ -535,7 +630,218 @@ test('驱动：真正投递时走既有的通知出口，且「没送达」要�
 
   const notDelivered = dispatchRoundAlert({
     alert, dispatch: { action: 'send', why: 'x' }, logDir: ALERT_LOG_DIR, log: () => {},
+    throttleFile: tmpThrottle(),
     spawn: () => ({ status: 1, stderr: 'NOT_CONFIGURED' }),
   });
   assert.equal(notDelivered.delivered, false, '投递失败不许记成送达');
+});
+
+test('告警去重：同一条编号在时间窗内不重复发，但「停的地方变了」算新信息', () => {
+  const now = new Date('2026-09-20T03:00:00Z');
+  const previous = { alertId: 'daily-round-20260919', fingerprint: 'SHOP_LEVEL|里可林淘宝@sycm-date', sentAt: '2026-09-20T02:00:00Z' };
+
+  // 核心动机不是「少收几条」，而是**别把这个通道训练成噪音** —— 它是唯一会叫人动手的通道。
+  const same = resolveAlertDedup({ previous, alertId: 'daily-round-20260919', fingerprint: previous.fingerprint, now });
+  assert.equal(same.send, false, '一小时前刚发过同样一条，不该再发');
+  assert.ok(same.reason, '不发也要有一句人看得懂的原因');
+
+  const moved = resolveAlertDedup({ previous, alertId: 'daily-round-20260919', fingerprint: 'SHOP_LEVEL|里可林淘宝@push', now });
+  assert.equal(moved.send, true, '同一个编号、但这次停在别的地方 —— 是新信息，不该被当成重复挡掉');
+
+  assert.equal(resolveAlertDedup({ previous: null, alertId: 'daily-round-20260919', fingerprint: 'x', now }).send, true,
+    '没发过就发');
+  assert.equal(resolveAlertDedup({ previous, alertId: 'daily-round-20260918', fingerprint: 'x', now }).send, true,
+    '换了一天就是另一条');
+  assert.equal(resolveAlertDedup({ previous, alertId: null, fingerprint: 'x', now }).send, true, '没有编号就不去重（宁可多发）');
+
+  const later = new Date('2026-09-20T09:00:00Z');
+  assert.equal(resolveAlertDedup({ previous, alertId: 'daily-round-20260919', fingerprint: previous.fingerprint, now: later }).send, true,
+    '过了时间窗就允许再发一次');
+  // 时间读不懂时**宁可发**：沉默的代价比多收一条大
+  assert.equal(resolveAlertDedup({ previous: { ...previous, sentAt: '看不懂' }, alertId: 'daily-round-20260919', fingerprint: previous.fingerprint, now }).send, true);
+  assert.equal(resolveAlertDedup({ previous: { ...previous, sentAt: '2026-09-20T05:00:00Z' }, alertId: 'daily-round-20260919', fingerprint: previous.fingerprint, now }).send, true,
+    '记录的时间在未来（时钟回拨/手改过），不当作「刚发过」');
+});
+
+test('驱动：重复的那条只打在本机日志里，一次投递都不发生；且只有真送出去才记时间', () => {
+  const throttleFile = tmpThrottle();
+  const sentAt = new Date('2026-09-20T02:00:00Z');
+  const alert = buildAlert(mixedSummary());
+  const lines = [];
+  let calls = 0;
+  const spawnOk = () => { calls += 1; return { status: 0, stdout: '{"status":"SENT"}' }; };
+
+  // 第一次：真发，并且把「发过了」记下来
+  const first = dispatchRoundAlert({ alert, dispatch: { action: 'send', why: 'x' }, spawn: spawnOk,
+    throttleFile, now: () => sentAt, log: (line) => lines.push(line) });
+  assert.equal(first.delivered, true);
+  assert.equal(calls, 1);
+  const recorded = JSON.parse(readFileSync(throttleFile, 'utf8'));
+  assert.equal(recorded.alertId, alert.alertId);
+  assert.equal(recorded.fingerprint, alert.fingerprint, '记的是「停在哪」的指纹，不是一个笼统的「发过」');
+
+  // 第二次（同一轮重跑、停在同一个地方）：不投递，但**文案照样打进本机日志** ——
+  // 技术串已经从业务消息里撤掉了，job.log 成了事后唯一能对上「他到底看到了什么」的地方。
+  const second = dispatchRoundAlert({ alert, dispatch: { action: 'send', why: 'x' }, spawn: spawnOk,
+    throttleFile, now: () => new Date('2026-09-20T02:30:00Z'), log: (line) => lines.push(line) });
+  assert.deepEqual(second, { delivered: false, suppressed: true, reason: second.reason });
+  assert.equal(calls, 1, '窗口内不许再投递一次');
+  assert.ok(lines.join('\n').includes('【需要处理】2 家店的日报没收完'), '被挡下的那条也要留下完整文案');
+
+  // 没送出去**不许记账**：记了，下一次真跑就会被自己的记录挡掉（静默漏报）。
+  const failedFile = tmpThrottle();
+  dispatchRoundAlert({ alert, dispatch: { action: 'send', why: 'x' }, throttleFile: failedFile,
+    spawn: () => ({ status: 1, stderr: 'NOT_CONFIGURED' }), log: () => {} });
+  assert.throws(() => readFileSync(failedFile, 'utf8'), '投递失败不该留节流记录');
+});
+
+// ------------------------------------------- 失败路径的收尾（2026-09-21 补，第一性原理那一轮的落地）
+
+const SYCM_OK_URL = 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop';
+const SYCM_DRIFTED_URL = 'https://sycm.taobao.com/lyone/auto_analysis/datafetch/index.htm?taskId=1';
+const SYCM_PORTAL_URL = 'https://sycm.taobao.com/portal/home.htm';
+const ALIMAMA_PAGE_URL = 'https://one.alimama.com/index.htm#/report/account';
+
+const targetsOf = (...urls) => urls.map((url, i) => ({ type: 'page', url, targetId: `t${i}` }));
+
+test('失败收尾：页面快照按期望清单数，并把「不属于期望清单」的那些页单独列出来', () => {
+  const expected = expectedPagesForShop();
+  const snap = describePageWhereabouts([
+    ...targetsOf(SYCM_PORTAL_URL, SYCM_DRIFTED_URL, ALIMAMA_PAGE_URL),
+    { type: 'other', url: 'devtools://devtools/bundled/x.html' },
+  ], expected);
+  const byName = Object.fromEntries(snap.slots.map((slot) => [slot.page, slot.count]));
+
+  assert.equal(snap.tabs, 3, '只数 page 类型的页签');
+  assert.equal(byName['生意参谋工作页'], 0, '漂到报表预览页就不算在位 —— 它已经认不出那个片段了');
+  assert.equal(byName['阿里妈妈报表页'], 1);
+  assert.deepEqual(snap.foreign, [SYCM_PORTAL_URL, SYCM_DRIFTED_URL],
+    'foreign 正是「缺页时它到底漂到哪儿去了」的答案；回位会把它擦掉，所以必须留');
+  assert.deepEqual(describePageWhereabouts(null, expected).slots.map((slot) => slot.count), [0, 0],
+    '代理读不到时传 null 也要给出形状（由 judgeResetLanded 负责把「读不到」和「0 个」分开）');
+});
+
+test('失败收尾：回位判定只看回位之后那份快照，读不到一律不算回位成功', () => {
+  const expected = expectedPagesForShop();
+  const drifted = describePageWhereabouts(targetsOf(SYCM_DRIFTED_URL), expected);
+  const landed = describePageWhereabouts(targetsOf(SYCM_OK_URL, ALIMAMA_PAGE_URL), expected);
+  const two = describePageWhereabouts(targetsOf(SYCM_OK_URL, SYCM_OK_URL), expected);
+
+  assert.equal(judgeResetLanded({ before: drifted, after: landed }).restored, true);
+  assert.equal(judgeResetLanded({ before: landed, after: landed }).restored, true,
+    '本来就位也算就位（那一支回位会报 action=none）');
+
+  const bad = judgeResetLanded({ before: two, after: two });
+  assert.equal(bad.restored, false, '两个工作页不算就位 —— 下一轮体检会拦在这里（宁可不放行）');
+  assert.equal(bad.beforeCount, 2, '判定要带上「回位前几个」，否则看不出它有没有变好');
+
+  const unreadable = judgeResetLanded({ before: drifted, after: null });
+  assert.equal(unreadable.restored, false);
+  assert.match(unreadable.detail, /读不到/u,
+    '读不到要说「读不到」，不许退化成「0 个」—— 那是把「不知道」说成了坏消息');
+});
+
+test('失败收尾：先取证再处置、回位后断言、回位失败不抛也不盖原来那个错', async () => {
+  const logDir = mkdtempSync(path.join(tmpdir(), 'sycm-recovery-'));
+  const queue = [
+    targetsOf(SYCM_DRIFTED_URL, ALIMAMA_PAGE_URL),   // 停手时：工作页漂到预览页
+    targetsOf(SYCM_OK_URL, ALIMAMA_PAGE_URL),        // 回位后：回来一个
+  ];
+  const ok = await recoverFailedShop({
+    shopKey: SHOP, logDir, repoRoot: REPO_ROOT,
+    readTargets: () => Promise.resolve(queue.shift() ?? null),
+    reset: (options) => { options.log('【假回位】'); return Promise.resolve({ action: 'navigated' }); },
+  });
+
+  assert.equal(ok.action, 'navigated');
+  assert.equal(ok.restored, true);
+  assert.equal(ok.leftAt.slots[0].count, 0, '停手时的快照');
+  assert.equal(ok.after.slots[0].count, 1, '回位后的快照');
+  assert.deepEqual(ok.leftAt.foreign, [SYCM_DRIFTED_URL], '「停手时漂到哪」必须留下来');
+  assert.equal(ok.error, null);
+
+  // 顺序判据靠日志正文（这不是形式主义：反过来的话，下一轮的起点就没人知道了）
+  const text = readFileSync(path.join(logDir, '99-recovery.txt'), 'utf8');
+  assert.ok(text.indexOf('停手时页面停在') < text.indexOf('【假回位】'), '取证必须先于处置');
+  assert.ok(text.indexOf('【假回位】') < text.indexOf('回位后'), '断言必须在处置之后');
+
+  // 回位自己炸：只记不抛 —— 抛出去会盖掉「这一轮为什么失败」，那才是主线
+  const boom = await recoverFailedShop({
+    shopKey: SHOP, logDir, repoRoot: REPO_ROOT,
+    readTargets: () => Promise.resolve(targetsOf(SYCM_DRIFTED_URL)),
+    reset: () => Promise.reject(new Error('回位后仍不是恰好一个性能页（2 个）')),
+  });
+  assert.match(boom.error, /仍不是恰好一个性能页/u);
+  assert.equal(boom.restored, null, '没走到断言就不许给一个「成功」或「失败」的结论');
+  assert.ok(readFileSync(path.join(logDir, '99-recovery.txt'), 'utf8').includes('回位没做成'));
+
+  // 代理整个读不到：不许当成「页面挺好」，也不许抛
+  const blind = await recoverFailedShop({
+    shopKey: SHOP, logDir, repoRoot: REPO_ROOT,
+    readTargets: () => Promise.resolve(null),
+    reset: (options) => { options.log('【假回位】'); return Promise.resolve({ action: 'none' }); },
+  });
+  assert.equal(blind.leftAt, null);
+  assert.equal(blind.after, null);
+  assert.equal(blind.restored, false, '读不到不许当成就位');
+});
+
+test('失败收尾：驱动里真的接上了「记下原错 → 取证回位 → 才停整轮」（接线判据）', () => {
+  // 为什么单独立一条：这三个纯函数自己的用例全绿，也拦不住「调用点根本没接上」——
+  // 而这里的接线错法尤其贵：接在 `break` 之后，默认策略下唯一失败的那家恰恰不会被收尾。
+  const source = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  const calls = [...source.matchAll(/^\s*record\.recovery = await recoverFailedShop\(\{([^}]*)\}\)/gmu)];
+  assert.equal(calls.length, 1, `失败路径的收尾调用点应当恰好 1 个，扫到 ${calls.length} 个`);
+  for (const [, args] of calls) {
+    assert.match(args, /shopKey: key/u, '要收尾的是刚失败的那一家，不是随便一家');
+    assert.match(args, /logDir: shopLogDir/u, '证据要写进这家店自己的目录');
+    assert.match(args, /repoRoot: REPO_ROOT/u, '日志路径要相对仓库根（绝对路径落进 summary.json 就没法看了）');
+  }
+  const assignAt = source.indexOf('record.recovery = await recoverFailedShop({');
+  const errAt = source.indexOf('record.error = error.message;');
+  const keepGoingAt = source.indexOf('if (!args.keepGoing)');
+  assert.ok(errAt > 0 && assignAt > errAt, '收尾必须在记下 original error 之后（否则盖掉真因）');
+  assert.ok(keepGoingAt > assignAt, '收尾必须在「停整轮」之前 —— 放后面等于默认策略下唯一失败的那家不被收尾');
+});
+
+test('驱动：浏览器键 → 代理端口只认登记表，认不出来当场抛（回落一次就是往别的浏览器上写）', () => {
+  for (const key of shopBrowserKeys()) {
+    assert.equal(proxyPortForBrowser(key), shopInstance(key).proxyPort, `${key} 的端口要来自它自己的登记`);
+  }
+  assert.equal(proxyPortForBrowser(ROUTES.dailyReport.browser), PROJECT_PORTS.dailyReportProxy);
+  for (const bad of ['competitor', '里可林', '', null, undefined]) {
+    assert.throws(() => proxyPortForBrowser(bad), /没有登记的代理端口/u,
+      `${JSON.stringify(bad)} 必须抛 —— 回落成默认端口会让「那家店跑完了但什么都没采到」看起来像成功`);
+  }
+});
+
+test('驱动：体检真的接上了「先归位、再检查」，归位结论进了 summary（接线判据）', () => {
+  // 这一段会**真的改到运行中浏览器**（导航一页或新建一页），所以它必须同时满足三件事：
+  // 在体检之前跑、结论落进收据、以及修不掉时不许抢答体检的结论。
+  const source = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  const normalizeAt = source.indexOf('normalize = await normalizePages(');
+  const checkAt = source.indexOf('result = await check({})');
+  assert.ok(normalizeAt > 0, 'runHealthCheck 里没有调用 normalizePages —— 体检又退回成「只看不修」了');
+  assert.ok(checkAt > normalizeAt,
+    '归位必须在体检调用**之前**：放后面就成了「先判不过、再修」，下一次体检前结论永远修不上');
+  assert.match(source, /let normalize = null;/u, '归位要允许失败（代理连不上）—— 缺了初值那句 catch 就会 ReferenceError');
+  assert.match(source, /归位没做成（不改体检结论/u, '归位失败不许抢答体检的连通性判据');
+  assert.match(source, /let normalize = null;[\s\S]{0,400}?catch \(error\) \{/u, '归位自己必须被 try 住，不能把体检整段带崩');
+
+  // 期望页面清单只许有一个来源（搬去 expected-pages.mjs 之后，驱动里不该再自己拼）。
+  // 断言写死成「同目录」而不是「某个绝对位置」是刻意的：这个叶子必须在**能力自己的目录里** ——
+  // 抽到 runtime/ 会让它变成 runtime → skills（业务倒灌机制层，见 runtime/arch-boundary.test.mjs），
+  // 而 shop-pages 与驱动都要用它，落在任一侧的另一侧就成环。同目录导入正好是这条约束的可执行形态。
+  assert.match(source, /from '\.\/expected-pages\.mjs'/u,
+    '期望页面清单要来自能力目录内的 expected-pages.mjs，且是唯一来源');
+  assert.equal(/from '[^']*runtime\/expected-pages\.mjs'/u.test(source), false,
+    '叶子不许再落回 runtime/ —— 那会让 arch-boundary 守卫报「业务倒灌机制层」');
+  assert.equal(/siteAdapter\(/u.test(source), false,
+    '驱动里不该再直接调 siteAdapter 拼期望页面 —— 那会变成第二个来源');
+
+  // 归位结论必须落进收据：只留在 stdout 的话，事后从 summary 里分不出「本来就好」与「脚本修好的」
+  assert.match(source, /record\.stages\.push\(\{[\s\S]{0,1000}?pageNormalize: result\.normalize/u,
+    '每个阶段的收据里要带上归位结论（体检那一支才有值）');
+  assert.match(source, /normalize: roundHealth\.normalize\?\.verdict\?\.detail/u,
+    '一轮的体检结论里也要带上归位结论');
 });
