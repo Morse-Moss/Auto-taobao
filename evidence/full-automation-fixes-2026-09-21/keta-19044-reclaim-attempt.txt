@@ -1,0 +1,8 @@
+起点（导航前）：
+  [t0] {"href":"https://sycm.taobao.com/mc/free/sycm","dateReadout":null,"bodyLen":498,"iframes":1}
+导航 → https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  navigate HTTP 200 {"frameId":"0F3988566AF5D318E806DF8B456BE2E0","loaderId":"96D20CE0B84DFE8DC601515399AB8DDC","isDownload":false}
+  [t+3s] {"href":"https://sycm.taobao.com/mc/free/sycm","dateReadout":null,"bodyLen":498,"iframes":0}
+  [t+7s] {"href":"https://sycm.taobao.com/mc/free/sycm","dateReadout":null,"bodyLen":498,"iframes":0}
+  [t+15s] {"href":"https://sycm.taobao.com/mc/free/sycm","dateReadout":null,"bodyLen":498,"iframes":1}
+  [t+30s] {"href":"https://sycm.taobao.com/mc/free/sycm","dateReadout":null,"bodyLen":498,"iframes":1}

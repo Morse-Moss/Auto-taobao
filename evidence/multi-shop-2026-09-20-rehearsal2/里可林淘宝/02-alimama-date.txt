@@ -1,0 +1,44 @@
+
+===== 2026-09-21T06:45:07.460Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site alimama --date 2026-09-20 --proxy http://127.0.0.1:19041
+exit=0 signal= error=none
+--- stdout ---
+{
+  "site": "alimama",
+  "requested": "2026-09-20",
+  "mode": "preset",
+  "route": "url-hash",
+  "targetId": "62EDD89B47915CC47B1F4A4EC6814480",
+  "observedBefore": " 昨日",
+  "observedAfter": " 昨日",
+  "filters": [
+    "关键词推广人群推广",
+    "末次点击归因",
+    "30天累计数据",
+    " 昨日",
+    "分日",
+    "全部计划",
+    "周环比",
+    "展现量",
+    "请选择",
+    "维度 营销场景",
+    "20条/页"
+  ],
+  "tabs": null,
+  "activeTabs": null,
+  "status": "APPLIED",
+  "presetWasNoop": null,
+  "pageReload": null,
+  "trace": [
+    {
+      "step": "navigate",
+      "url": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-09-20&endTime=2026-09-20&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day"
+    },
+    {
+      "step": "settled",
+      "applied": "2026-09-20"
+    }
+  ]
+}
+
+--- stderr ---

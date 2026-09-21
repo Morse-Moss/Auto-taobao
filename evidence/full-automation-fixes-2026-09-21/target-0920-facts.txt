@@ -1,0 +1,53 @@
+2026-09-21T03:41:04.503Z    1 项  daily-job-2026-09-20
+2026-09-20T09:41:05.281Z    9 项  daily-report-2026-09-19-盖文天猫
+2026-09-20T09:26:51.399Z    9 项  daily-report-2026-09-19-盖文淘宝
+2026-09-20T08:16:32.829Z    6 项  daily-report-2026-09-19-科塔淘宝
+2026-09-20T09:37:01.396Z    9 项  daily-report-2026-09-19-科塔淘宝-rerun2
+2026-09-20T05:56:19.092Z    6 项  daily-report-2026-09-19-网林天猫
+2026-09-20T06:04:29.783Z    4 项  daily-report-2026-09-19-网林天猫-rerun2
+2026-09-20T08:14:44.206Z    6 项  daily-report-2026-09-19-网林天猫-rerun3
+2026-09-20T09:24:09.802Z    9 项  daily-report-2026-09-19-网林天猫-rerun4
+2026-09-20T06:02:24.593Z    6 项  daily-report-2026-09-19-里可林淘宝
+2026-09-20T08:12:41.387Z    6 项  daily-report-2026-09-19-里可林淘宝-rerun2
+2026-09-20T09:21:02.150Z    9 项  daily-report-2026-09-19-里可林淘宝-rerun3
+2026-09-21T06:53:21.807Z    2 项  daily-report-2026-09-20-盖文天猫
+2026-09-21T06:51:39.165Z    2 项  daily-report-2026-09-20-盖文淘宝
+2026-09-21T06:47:37.426Z    2 项  daily-report-2026-09-20-网林天猫
+2026-09-21T06:45:53.327Z    2 项  daily-report-2026-09-20-里可林淘宝
+2026-09-20T05:30:04.765Z    7 项  multi-shop-2026-09-19
+2026-09-20T08:08:51.684Z    2 项  multi-shop-2026-09-19-rerun2
+2026-09-20T08:16:32.891Z    7 项  multi-shop-2026-09-19-rerun3
+2026-09-20T08:40:09.419Z    7 项  multi-shop-2026-09-19-rerun4
+2026-09-21T03:41:33.304Z    3 项  multi-shop-2026-09-20
+2026-09-21T06:39:20.783Z    3 项  multi-shop-2026-09-20-rehearsal
+2026-09-21T06:54:38.324Z    7 项  multi-shop-2026-09-20-rehearsal2
+--- multi-shop-2026-09-20/summary.json 概要 ---
+mode=commit date=2026-09-20 startedAt=2026-09-21T03:41:04.824Z finishedAt=2026-09-21T03:41:33.303Z
+  里可林淘宝  status=failed  failedStage=sycm-date  error=阶段 sycm-date 失败（exit 1）
+     health-check:0 alimama-date:0 promotion-submit:0 sycm-date:1
+--- daily-job-2026-09-20/job.log 尾巴 ---
+            "point": [
+              821,
+              162
+            ]
+          }
+        ]
+  [里可林淘宝] 停在这一步：阶段 sycm-date 失败（exit 1）
+  [驱动] 按默认策略停整轮（要看完全部店加 --keep-going）。已跑的店记在 evidence\multi-shop-2026-09-20。
+  [驱动] 汇总：
+    里可林淘宝：failed（停在 sycm-date） —— 阶段 sycm-date 失败（exit 1）
+  [驱动] 明细 evidence\multi-shop-2026-09-20\summary.json
+  [驱动] 告警投递退出码=0：{
+    "version": "feishu-notify-receipt-v1",
+    "status": "SENT",
+    "channel": "app",
+    "alertId": "daily-round-20260920",
+    "sentAt": "2026-09-21T03:41:33.371Z",
+    "attempts": [
+      {
+        "channel": "app",
+        "ok": true,
+        "target": "ou_e254f8d7d91a042b31fcd59299a1a4a9",
+        "messageId": "o
+  [2026-09-21T03:41:34.418Z] --- chain 退出码=1
+  [2026-09-21T03:41:34.418Z] === 定时任务结束：全链退出码=1；证据目录 evidence/multi-shop-2026-09-20/ ===

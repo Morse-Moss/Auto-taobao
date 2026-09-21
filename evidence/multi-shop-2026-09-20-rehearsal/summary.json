@@ -1,0 +1,100 @@
+{
+  "date": "2026-09-20",
+  "mode": "rehearse",
+  "startedAt": "2026-09-21T06:37:10.629Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 0,
+      "logPath": "evidence\\multi-shop-2026-09-20-rehearsal\\00-health-check-daily.txt",
+      "ok": true,
+      "blocking": [],
+      "blockingDetails": [],
+      "normalize": "本来就在位（生意参谋工作页=1  飞书底单页=1）",
+      "normalizeChanged": false
+    }
+  },
+  "shops": {
+    "里可林淘宝": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20-rehearsal\\里可林淘宝\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": [],
+          "pageNormalize": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）"
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20-rehearsal\\里可林淘宝\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-20",
+            "--proxy",
+            "http://127.0.0.1:19041"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20-rehearsal\\里可林淘宝\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-20",
+            "--proxy",
+            "http://127.0.0.1:19041",
+            "--expect-shop",
+            "里可林家居",
+            "--expect-member",
+            "里可林家居:阿彦",
+            "--expect-member-id",
+            "2350600069"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        }
+      ],
+      "source": {},
+      "failedStage": "promotion-submit",
+      "failureOutput": "[0/2] 阿里妈妈页 62EDD89B47915CC47B1F4A4EC6814480｜phase=submit｜目标日 2026-09-20\n[身份] 阿里妈妈会员 = \"里可林家居:阿彦\" ID=\"2350600069\"（这一页不显示店铺名，只有会员名）｜期望 \"里可林家居:阿彦\" / 2350600069 ✓\n[submit] 台账里没有 2026-09-20 这家店的未取任务 ⇒ 照常提交\n[submit] 页面 = https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-09-20&endTime=2026-09-20&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day&isRequestedQztDefaultSet=1｜正文 2909 字符\n[submit] 候选 1 个，取文档序第一个（SPAN，其可点祖先是 BUTTON，点击靠冒泡触发）\n[submit] 滚动后复核通过（y=241（中心点命中））→ 点击 → {\"clicked\":true,\"tag\":\"SPAN\",\"text\":\"下载报表\"}\n[submit] 等到「确定」(#0)，第 3 次轮询命中（先滚动 1 次才落进视口）｜视口 [1038,500]｜确定@[260,456,24,12]可点 取消@[320,446,64,32]可点 → {\"clicked\":true,\"tag\":\"SPAN\",\"text\":\"确定\"}\n[submit] 提交后提示 = \"\"\n[submit] 第 1/10 次看列表：还没多出任务（提交前 11 条） → 重载再看（6s）\n[submit] 第 2/10 次看列表：还没多出任务（提交前 11 条） → 重载再看（6s）\n[submit] 第 3/10 次看列表：还没多出任务（提交前 11 条） → 重载再看（6s）\n[submit] 第 4/10 次看列表：还没多出任务（提交前 11 条） → 重载再看（6s）\n[submit] 第 5/10 次看列表：还没多出任务（提交前 11 条） → 重载再看（6s）\n[submit] 第 6/10 次看列表：还没多出任务（提交前 11 条） → 重载再看（6s）\n[submit] 第 7/10 次看列表：还没多出任务（提交前 11 条） → 重载再看（6s）\n[submit] 第 8/10 次看列表：还没多出任务（提交前 11 条） → 重载再看（6s）\n[submit] 第 9/10 次看列表：还没多出任务（提交前 11 条） → 重载再看（6s）\n\n\n采集失败：提交结果核不清（看了 10 次）：提交之后列表里没有多出任何任务（提交前 11 条） ⇒ 平台可能没接受这次提交，或同名任务被合并；**不能**当成提交成功 ⇒ 不往台账里记一笔来路不明的任务（记了就等于替下一轮编了一个判据）\n",
+      "blockingDetails": null,
+      "error": "阶段 promotion-submit 失败（exit 1）",
+      "recovery": {
+        "at": "2026-09-21T06:39:20.740Z",
+        "proxyPort": 19041,
+        "leftAt": null,
+        "action": "none",
+        "after": {
+          "tabs": 2,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 1
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": []
+        },
+        "restored": true,
+        "detail": "回位后 生意参谋工作页 恰好一个",
+        "error": null,
+        "logPath": "evidence\\multi-shop-2026-09-20-rehearsal\\里可林淘宝\\99-recovery.txt"
+      }
+    }
+  },
+  "finishedAt": "2026-09-21T06:39:20.761Z"
+}

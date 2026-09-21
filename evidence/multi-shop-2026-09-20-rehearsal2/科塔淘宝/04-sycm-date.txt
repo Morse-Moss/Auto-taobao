@@ -1,0 +1,26 @@
+
+===== 2026-09-21T06:54:14.460Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site sycm --date 2026-09-20 --proxy http://127.0.0.1:19044
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: sycm: 重新加载页面后读数仍是 null，期望 2026-09-20。页面停在旧渲染这一种成因已排除 ⇒ 要么平台这一天还没有数，要么落位坏了（读不到 16 次；targetId=0F3988566AF5D318E806DF8B456BE2E0）
+    at runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:593:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:457:12)
+TRACE [
+  {
+    "step": "reload-stale-page",
+    "observedBeforeReload": "统计时间 2026-09-19",
+    "requested": "2026-09-20"
+  },
+  {
+    "step": "reloaded",
+    "reloadError": null,
+    "observedAfterReload": null,
+    "readFailures": 16,
+    "reads": 16,
+    "lastReadError": "proxy http://127.0.0.1:19044/eval?target=0F3988566AF5D318E806DF8B456BE2E0 failed: HTTP 400 Error: sycm date readout count=0     at <anonymous>:4:35     at <anonymous>:14:5"
+  }
+]

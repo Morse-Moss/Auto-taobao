@@ -1,0 +1,53 @@
+TAP version 13
+# Subtest: 刷新判定：读数是昨日才算 ready，读不到一律不算（不许把「不知道」判成「已是昨日」）
+ok 1 - 刷新判定：读数是昨日才算 ready，读不到一律不算（不许把「不知道」判成「已是昨日」）
+  ---
+  duration_ms: 0.7852
+  type: 'test'
+  ...
+# Subtest: 刷新判定：缺了 yesterday 直接抛 —— 它是「读不到」与「已是昨日」之间唯一的分界
+ok 2 - 刷新判定：缺了 yesterday 直接抛 —— 它是「读不到」与「已是昨日」之间唯一的分界
+  ---
+  duration_ms: 0.2825
+  type: 'test'
+  ...
+# Subtest: 刷新判定：工作页不是恰好一个时先补页，刷新无从谈起（判据与体检同源：0 个和 2 个都不行）
+ok 3 - 刷新判定：工作页不是恰好一个时先补页，刷新无从谈起（判据与体检同源：0 个和 2 个都不行）
+  ---
+  duration_ms: 0.0767
+  type: 'test'
+  ...
+# Subtest: 刷新汇总：在位性沿用 shop-pages 的判据（缺口 / 需人决定 / 连不上都算不 ok）
+ok 4 - 刷新汇总：在位性沿用 shop-pages 的判据（缺口 / 需人决定 / 连不上都算不 ok）
+  ---
+  duration_ms: 0.5704
+  type: 'test'
+  ...
+# Subtest: 五家店清单来自路线表本身，且每家都要两页（不许在这里另抄一份店名）
+ok 5 - 五家店清单来自路线表本身，且每家都要两页（不许在这里另抄一份店名）
+  ---
+  duration_ms: 0.5709
+  type: 'test'
+  ...
+# Subtest: 重载：判据是「读数变成目标日」，eval 报错不算失败；一直读不到也不许判成成功
+ok 6 - 重载：判据是「读数变成目标日」，eval 报错不算失败；一直读不到也不许判成成功
+  ---
+  duration_ms: 0.455
+  type: 'test'
+  ...
+# Subtest: 重载：走的是页面自己 reload，不是 navigate（同 URL 的 navigate 是同文档导航，什么都不做）
+ok 7 - 重载：走的是页面自己 reload，不是 navigate（同 URL 的 navigate 是同文档导航，什么都不做）
+  ---
+  duration_ms: 0.2046
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 8.6978
+exit=0

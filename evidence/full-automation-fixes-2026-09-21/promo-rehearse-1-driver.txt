@@ -1,0 +1,31 @@
+[驱动] 目标日 2026-09-20｜模式 rehearse｜店铺 5 家：里可林淘宝 / 网林天猫 / 盖文淘宝 / 盖文天猫 / 科塔淘宝
+[驱动] 日志根 D:\Retire\sycm-automation\evidence\multi-shop-2026-09-20-rehearsal
+[驱动] 本机 DESKTOP-KJP4RA5
+[驱动] 排练模式：采集是真的，两个写入方都是干跑，不写飞书。
+[驱动]   里可林淘宝 | 页头店名 里可林家居 | 会员 里可林家居:阿彦 2350600069
+[驱动]   网林天猫 | 页头店名 网林家居旗舰店 | 会员 网林家居旗舰店:阿彦 7314426323
+[驱动]   盖文淘宝 | 页头店名 盖文全卫定制 | 会员 随心品质定制:阿彦 887360146
+[驱动]   盖文天猫 | 页头店名 盖文旗舰店 | 会员 盖文旗舰店:阿彦 2995200080
+[驱动]   科塔淘宝 | 页头店名 科塔全卫定制 | 会员 j873522735:阿彦 412070158
+[一轮]   归位：本来就在位（生意参谋工作页=1  飞书底单页=1）
+[一轮]   体检通过：阻断 0 项，告警 1 项
+[一轮]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[一轮]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[里可林淘宝] 1. health-check —— 体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个
+[里可林淘宝]   归位：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[里可林淘宝]   体检通过：阻断 0 项，告警 1 项
+[里可林淘宝]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[里可林淘宝]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[里可林淘宝] 2. alimama-date —— 阿里妈妈落位（日期全在 URL hash 里，navigate 即落位）
+[里可林淘宝] 3. promotion-submit —— 提交推广报表生成任务（之后平台要生成几分钟，中途用第 3/4 步填掉）
+[里可林淘宝]   stderr 尾部：
+      采集失败：提交结果核不清（看了 10 次）：提交之后列表里没有多出任何任务（提交前 11 条） ⇒ 平台可能没接受这次提交，或同名任务被合并；**不能**当成提交成功 ⇒ 不往台账里记一笔来路不明的任务（记了就等于替下一轮编了一个判据）
+[里可林淘宝] 停在这一步：阶段 promotion-submit 失败（exit 1）
+[里可林淘宝]   停手时读不到页面（代理连不上）—— 回位这一支先当学不到，下面照样试一次
+[里可林淘宝]   回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop）
+[里可林淘宝]   回位后 生意参谋工作页 恰好一个
+[驱动] 按默认策略停整轮（要看完全部店加 --keep-going）。已跑的店记在 evidence\multi-shop-2026-09-20-rehearsal。
+
+[驱动] 汇总：
+  里可林淘宝：failed（停在 promotion-submit） —— 阶段 promotion-submit 失败（exit 1）
+[驱动] 明细 evidence\multi-shop-2026-09-20-rehearsal\summary.json

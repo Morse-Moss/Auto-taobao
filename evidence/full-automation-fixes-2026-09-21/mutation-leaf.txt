@@ -1,0 +1,21 @@
+{
+  "restoredInPlace": true,
+  "aliasGone": true,
+  "origSha": "79cb78550d916ebcd5f9d926317680e1ecefc623026140f069010983ad4b702f",
+  "results": [
+    {
+      "mut": "M1 驱动改成从 expected-pages-alias.mjs 取清单",
+      "exit": 1,
+      "fails": [
+        "驱动：体检真的接上了「先归位、再检查」，归位结论进了 summary（接线判据）"
+      ]
+    },
+    {
+      "mut": "M2 源码里出现 ../../../runtime/expected-pages.mjs 的 from 写法",
+      "exit": 1,
+      "fails": [
+        "驱动：体检真的接上了「先归位、再检查」，归位结论进了 summary（接线判据）"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+MISSING                     runtime/fill-weekly-product-id.json
+MISSING                     runtime/fill-weekly-product-id.log
+2026-09-21T06:53:10.234Z    evidence/product-id-backfill-2026-09-21
+MISSING                     runtime/product-id-backfill-lock.json
+MISSING                     runtime/.product-id-backfill.lock
+--- evidence/product-id-backfill-2026-09-21 内文件 ---
+  2026-09-21T06:48:04.876Z      1397B  apply-2026-08-30-and-09-06.txt
+  2026-09-21T06:44:13.724Z       639B  apply-2026-09-13.txt
+  2026-09-21T06:47:19.282Z       796B  competitor-week-2026-08-30.receipt.json
+  2026-09-21T06:48:04.793Z       796B  competitor-week-2026-09-06.receipt.json
+  2026-09-21T06:46:19.631Z       862B  dryrun-2026-08-30-and-09-06.txt
+  2026-09-21T06:50:18.944Z      1476B  huitun-queue-probe.txt
+  2026-09-21T06:49:21.705Z      2615B  mutation-verification.txt
+  2026-09-21T06:48:48.143Z       873B  readback-independent.txt
+  2026-09-21T06:52:04.152Z      4334B  README.md
+  2026-09-21T06:44:13.642Z       796B  receipt.json
+--- runtime/ 下最近 20 分钟内被改的文件 ---
+  2026-09-21T06:42:33.059Z  runtime\fill-weekly-product-id-core.test.mjs
+  2026-09-21T06:42:57.990Z  runtime\fill-weekly-product-id.mjs
+  2026-09-21T06:49:10.144Z  runtime\fill-weekly-product-id-core.mutation.mjs
+  2026-09-21T06:49:21.655Z  runtime\fill-weekly-product-id-core.mjs
+  2026-09-21T06:51:17.192Z  runtime\huitun-runs\20260921T065114Z-关键词分析-V1-2026-09-19\events.jsonl
+  2026-09-21T06:54:14.376Z  runtime\promotion-task-ledger.json
+--- 其它仓库内最近 20 分钟被改的文件（排除 tmp/evidence/gitignore 噪声）---
+  2026-09-21T06:42:33.059Z  runtime\fill-weekly-product-id-core.test.mjs
+  2026-09-21T06:42:57.990Z  runtime\fill-weekly-product-id.mjs
+  2026-09-21T06:48:18.973Z  .gitignore
+  2026-09-21T06:49:10.144Z  runtime\fill-weekly-product-id-core.mutation.mjs
+  2026-09-21T06:49:21.655Z  runtime\fill-weekly-product-id-core.mjs
+  2026-09-21T06:54:14.376Z  runtime\promotion-task-ledger.json

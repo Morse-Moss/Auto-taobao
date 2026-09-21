@@ -1,0 +1,3 @@
+停手时读不到页面（代理连不上）—— 回位这一支先当学不到，下面照样试一次
+回位：把 https://sycm.taobao.com/mc/free/sycm 送回 https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+回位没做成：回位后仍不是恰好一个性能页（0 个）—— 停手，先看现场

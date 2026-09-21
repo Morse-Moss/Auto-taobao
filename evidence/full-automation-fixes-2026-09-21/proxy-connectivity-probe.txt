@@ -1,0 +1,109 @@
+里可林淘宝: tcp 15/15 ok；GET /targets ok 200 972B
+网林天猫: tcp 15/15 ok；GET /targets ok 200 972B
+盖文淘宝: tcp 15/15 ok；GET /targets ok 200 971B
+科塔淘宝: tcp 15/15 ok；GET /targets ok 200 677B
+盖文天猫: tcp 15/15 ok；GET /targets ok 200 972B
+日报商家浏览器: tcp 15/15 ok；GET /targets ok 200 1442B
+{
+  "at": "2026-09-21T06:58:16.642Z",
+  "rounds": 15,
+  "gapMs": 0,
+  "out": [
+    {
+      "label": "里可林淘宝",
+      "proxy": 19041,
+      "browser": 19031,
+      "tcpRounds": 15,
+      "tcpFails": 0,
+      "tcpFailSamples": [],
+      "browserPortReachable": true,
+      "httpTargets": {
+        "ok": true,
+        "status": 200,
+        "len": 972
+      },
+      "httpTargetsError": null,
+      "httpTargetsCause": null
+    },
+    {
+      "label": "网林天猫",
+      "proxy": 19042,
+      "browser": 19032,
+      "tcpRounds": 15,
+      "tcpFails": 0,
+      "tcpFailSamples": [],
+      "browserPortReachable": true,
+      "httpTargets": {
+        "ok": true,
+        "status": 200,
+        "len": 972
+      },
+      "httpTargetsError": null,
+      "httpTargetsCause": null
+    },
+    {
+      "label": "盖文淘宝",
+      "proxy": 19043,
+      "browser": 19033,
+      "tcpRounds": 15,
+      "tcpFails": 0,
+      "tcpFailSamples": [],
+      "browserPortReachable": true,
+      "httpTargets": {
+        "ok": true,
+        "status": 200,
+        "len": 971
+      },
+      "httpTargetsError": null,
+      "httpTargetsCause": null
+    },
+    {
+      "label": "科塔淘宝",
+      "proxy": 19044,
+      "browser": 19034,
+      "tcpRounds": 15,
+      "tcpFails": 0,
+      "tcpFailSamples": [],
+      "browserPortReachable": true,
+      "httpTargets": {
+        "ok": true,
+        "status": 200,
+        "len": 677
+      },
+      "httpTargetsError": null,
+      "httpTargetsCause": null
+    },
+    {
+      "label": "盖文天猫",
+      "proxy": 19045,
+      "browser": 19035,
+      "tcpRounds": 15,
+      "tcpFails": 0,
+      "tcpFailSamples": [],
+      "browserPortReachable": true,
+      "httpTargets": {
+        "ok": true,
+        "status": 200,
+        "len": 972
+      },
+      "httpTargetsError": null,
+      "httpTargetsCause": null
+    },
+    {
+      "label": "日报商家浏览器",
+      "proxy": 19023,
+      "browser": 19022,
+      "tcpRounds": 15,
+      "tcpFails": 0,
+      "tcpFailSamples": [],
+      "browserPortReachable": true,
+      "httpTargets": {
+        "ok": true,
+        "status": 200,
+        "len": 1442
+      },
+      "httpTargetsError": null,
+      "httpTargetsCause": null
+    }
+  ]
+}

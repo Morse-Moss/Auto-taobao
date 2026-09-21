@@ -1,0 +1,208 @@
+TAP version 13
+# Subtest: 计划 = 商家浏览器一个 ＋ 每家店一个，代理端口取自登记表
+ok 1 - 计划 = 商家浏览器一个 ＋ 每家店一个，代理端口取自登记表
+  ---
+  duration_ms: 1.4242
+  type: 'test'
+  ...
+# Subtest: assertCoverage：期望页面没有开页 URL 时必须抛错（不许建 undefined 页）
+ok 2 - assertCoverage：期望页面没有开页 URL 时必须抛错（不许建 undefined 页）
+  ---
+  duration_ms: 0.3025
+  type: 'test'
+  ...
+# Subtest: buildUrlByName：飞书页带 table/view，且字段名来自权威（不是 tableId/viewId）
+ok 3 - buildUrlByName：飞书页带 table/view，且字段名来自权威（不是 tableId/viewId）
+  ---
+  duration_ms: 0.2377
+  type: 'test'
+  ...
+# Subtest: planPageActions：已有 / 多于一个（只报）/ 同主机一页都没有时缺（补）
+ok 4 - planPageActions：已有 / 多于一个（只报）/ 同主机一页都没有时缺（补）
+  ---
+  duration_ms: 0.6797
+  type: 'test'
+  ...
+# Subtest: planPageActions：非 dry 时缺的变成 create（且不带 url 之外的多余字段）
+ok 5 - planPageActions：非 dry 时缺的变成 create（且不带 url 之外的多余字段）
+  ---
+  duration_ms: 0.1919
+  type: 'test'
+  ...
+# Subtest: slotsFrom 数的是「包含该片段」的页签数
+ok 6 - slotsFrom 数的是「包含该片段」的页签数
+  ---
+  duration_ms: 0.1667
+  type: 'test'
+  ...
+# Subtest: judgeSlotReport：连不上、缺口、重复各归各的桶
+ok 7 - judgeSlotReport：连不上、缺口、重复各归各的桶
+  ---
+  duration_ms: 0.2928
+  type: 'test'
+  ...
+# Subtest: judgeSlotReport：全就位才是 ok
+ok 8 - judgeSlotReport：全就位才是 ok
+  ---
+  duration_ms: 0.0666
+  type: 'test'
+  ...
+# Subtest: hostOfUrl：只认「协议+主机」并归一大小写；认不出主机的返回 null
+ok 9 - hostOfUrl：只认「协议+主机」并归一大小写；认不出主机的返回 null
+  ---
+  duration_ms: 0.1812
+  type: 'test'
+  ...
+# Subtest: findReclaimCandidates：缺页但同主机有一页只是漂走了 ⇒ 领回，而不是新建
+ok 10 - findReclaimCandidates：缺页但同主机有一页只是漂走了 ⇒ 领回，而不是新建
+  ---
+  duration_ms: 0.302
+  type: 'test'
+  ...
+# Subtest: findReclaimCandidates：同主机有多于一页、都不是它开的 ⇒ 只报不猜
+ok 11 - findReclaimCandidates：同主机有多于一页、都不是它开的 ⇒ 只报不猜
+  ---
+  duration_ms: 0.1249
+  type: 'test'
+  ...
+# Subtest: findReclaimCandidates：同主机一页都没有 ⇒ 才是真的缺，新建
+ok 12 - findReclaimCandidates：同主机一页都没有 ⇒ 才是真的缺，新建
+  ---
+  duration_ms: 0.0599
+  type: 'test'
+  ...
+# Subtest: findReclaimCandidates：认不出主机的页（about:blank 之类）永不当候选
+ok 13 - findReclaimCandidates：认不出主机的页（about:blank 之类）永不当候选
+  ---
+  duration_ms: 0.0388
+  type: 'test'
+  ...
+# Subtest: findReclaimCandidates：一个漂移页只被领回一次（两页同主机都缺时，第二个只能新建）
+ok 14 - findReclaimCandidates：一个漂移页只被领回一次（两页同主机都缺时，第二个只能新建）
+  ---
+  duration_ms: 0.1643
+  type: 'test'
+  ...
+# Subtest: planPageActions：可领回时 dry 报 would-reclaim、真跑才是 reclaim（并带上 from 与目标 URL）
+ok 15 - planPageActions：可领回时 dry 报 would-reclaim、真跑才是 reclaim（并带上 from 与目标 URL）
+  ---
+  duration_ms: 0.1952
+  type: 'test'
+  ...
+# Subtest: planRequests：dry 计划一个写请求都不发（默认口径必须是不动运行中的浏览器）
+ok 16 - planRequests：dry 计划一个写请求都不发（默认口径必须是不动运行中的浏览器）
+  ---
+  duration_ms: 0.1699
+  type: 'test'
+  ...
+# Subtest: planRequests：可领回 ⇒ 一条 /navigate，导航的是那一页本身，绝不新建
+ok 17 - planRequests：可领回 ⇒ 一条 /navigate，导航的是那一页本身，绝不新建
+  ---
+  duration_ms: 0.0779
+  type: 'test'
+  ...
+# Subtest: planRequests：那一页找不到了 / 没有 targetId ⇒ blocked，既不猜也不新建
+ok 18 - planRequests：那一页找不到了 / 没有 targetId ⇒ blocked，既不猜也不新建
+  ---
+  duration_ms: 0.0626
+  type: 'test'
+  ...
+# Subtest: planRequests：真缺（同主机一页都没有）才发一条 /new，且带上页面名当 label
+ok 19 - planRequests：真缺（同主机一页都没有）才发一条 /new，且带上页面名当 label
+  ---
+  duration_ms: 0.0533
+  type: 'test'
+  ...
+# Subtest: sendRequests：领回发的是 POST /navigate，URL 真的换过去，页签数不变
+ok 20 - sendRequests：领回发的是 POST /navigate，URL 真的换过去，页签数不变
+  ---
+  duration_ms: 0.5427
+  type: 'test'
+  ...
+# Subtest: sendRequests：代理报错 ⇒ 如实记 reclaim-failed（不抛、也不假装成功）
+ok 21 - sendRequests：代理报错 ⇒ 如实记 reclaim-failed（不抛、也不假装成功）
+  ---
+  duration_ms: 0.1915
+  type: 'test'
+  ...
+# Subtest: sendRequests：连不上代理也要有结论（一次抽风不该中断整轮盘点）
+ok 22 - sendRequests：连不上代理也要有结论（一次抽风不该中断整轮盘点）
+  ---
+  duration_ms: 0.1291
+  type: 'test'
+  ...
+# Subtest: sendRequests：blocked 只写结论，一个请求都不发
+ok 23 - sendRequests：blocked 只写结论，一个请求都不发
+  ---
+  duration_ms: 0.0717
+  type: 'test'
+  ...
+# Subtest: sendRequests：新建发 /new 并带 label 与 pinned=1，把 targetId 记回动作
+ok 24 - sendRequests：新建发 /new 并带 label 与 pinned=1，把 targetId 记回动作
+  ---
+  duration_ms: 0.1915
+  type: 'test'
+  ...
+# Subtest: 整轮（假代理）：dry 一个写请求都不发，但判据仍如实报「没就位」
+ok 25 - 整轮（假代理）：dry 一个写请求都不发，但判据仍如实报「没就位」
+  ---
+  duration_ms: 0.1098
+  type: 'test'
+  ...
+# Subtest: 整轮（假代理）：领回之后 settleSlots 在真实回读里认出来
+ok 26 - 整轮（假代理）：领回之后 settleSlots 在真实回读里认出来
+  ---
+  duration_ms: 0.2755
+  type: 'test'
+  ...
+# Subtest: judgeSlotReport：ambiguous-drift 进「需人决定」桶（退出码 3 的依据），且同时算缺口
+ok 27 - judgeSlotReport：ambiguous-drift 进「需人决定」桶（退出码 3 的依据），且同时算缺口
+  ---
+  duration_ms: 0.066
+  type: 'test'
+  ...
+# Subtest: settleSlots：第一遍就认出来 ⇒ 只读一次（不给真机加无谓的等待）
+ok 28 - settleSlots：第一遍就认出来 ⇒ 只读一次（不给真机加无谓的等待）
+  ---
+  duration_ms: 0.0608
+  type: 'test'
+  ...
+# Subtest: settleSlots：导航晚一拍 ⇒ 等到它出现（读太早会把成功的领回报成「还缺」）
+ok 29 - settleSlots：导航晚一拍 ⇒ 等到它出现（读太早会把成功的领回报成「还缺」）
+  ---
+  duration_ms: 0.0772
+  type: 'test'
+  ...
+# Subtest: settleSlots：一直不满足 ⇒ 读满上限并如实报 settled:false（不许假装就位）
+ok 30 - settleSlots：一直不满足 ⇒ 读满上限并如实报 settled:false（不许假装就位）
+  ---
+  duration_ms: 0.0713
+  type: 'test'
+  ...
+# Subtest: settleSlots：read 抛错也要有结果（否则一家代理抽风会中断整轮盘点）
+ok 31 - settleSlots：read 抛错也要有结果（否则一家代理抽风会中断整轮盘点）
+  ---
+  duration_ms: 0.0539
+  type: 'test'
+  ...
+# Subtest: settleSlots：只认出一个期望页面不算就位（体检要的是每个都恰好一个）
+ok 32 - settleSlots：只认出一个期望页面不算就位（体检要的是每个都恰好一个）
+  ---
+  duration_ms: 0.0527
+  type: 'test'
+  ...
+# Subtest: 源码级：回读走 settleSlots、写请求由 planRequests 挑并由 sendRequests 发
+ok 33 - 源码级：回读走 settleSlots、写请求由 planRequests 挑并由 sendRequests 发
+  ---
+  duration_ms: 7.8389
+  type: 'test'
+  ...
+1..33
+# tests 33
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 19.3439

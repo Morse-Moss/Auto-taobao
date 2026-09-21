@@ -1,0 +1,93 @@
+{
+  "restored": true,
+  "shas": {
+    "collect-promotion-report.mjs": "c9dca4afe9de0d1cfb77329f71393e026086ee9d229bed58476bd3f59539fd38",
+    "promotion-task-ledger.mjs": "4fe8e6194e03f27e4f27306474266b6c5e256d026d3d0ab0135b019c21c37dd2"
+  },
+  "caught": 9,
+  "total": 9,
+  "results": [
+    {
+      "name": "M1 取件段回退到「猜列表里最新那条」",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）"
+      ],
+      "blockHead": "not ok 13 - 接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）\n  ---\n  duration_ms: 1.415\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\promotion-task-ledger.test.mjs:181:1'\n  failureType: 'testCodeFailure'\n  err"
+    },
+    {
+      "name": "M2 取件段绕过判据，自己挑一条",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）"
+      ],
+      "blockHead": "not ok 13 - 接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）\n  ---\n  duration_ms: 1.3045\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\promotion-task-ledger.test.mjs:181:1'\n  failureType: 'testCodeFailure'\n  er"
+    },
+    {
+      "name": "M3 提交段真重排：先点「下载报表」，再判复用",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）"
+      ],
+      "blockHead": "not ok 13 - 接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）\n  ---\n  duration_ms: 1.0263\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\promotion-task-ledger.test.mjs:181:1'\n  failureType: 'testCodeFailure'\n  er"
+    },
+    {
+      "name": "M4 提交结果不看列表差集",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）"
+      ],
+      "blockHead": "not ok 13 - 接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）\n  ---\n  duration_ms: 0.9306\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\promotion-task-ledger.test.mjs:181:1'\n  failureType: 'testCodeFailure'\n  er"
+    },
+    {
+      "name": "M5 台账里没有记录时回退到最新那条（纯判据）",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "取件段：台账里没有这一笔就不许猜「最新那条」——哪怕列表里有更新的任务"
+      ],
+      "blockHead": "not ok 10 - 取件段：台账里没有这一笔就不许猜「最新那条」——哪怕列表里有更新的任务\n  ---\n  duration_ms: 0.7151\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\promotion-task-ledger.test.mjs:149:1'\n  failureType: 'testCodeFailure'\n  error: |-\n"
+    },
+    {
+      "name": "M6 有未取任务时不复用、反而阻断（纯判据）",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "提交前决策：有未取任务且核得到就复用；核不到就阻断；没有才提交"
+      ],
+      "blockHead": "not ok 6 - 提交前决策：有未取任务且核得到就复用；核不到就阻断；没有才提交\n  ---\n  duration_ms: 0.6221\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\promotion-task-ledger.test.mjs:87:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Ex"
+    },
+    {
+      "name": "M7 「标已取」挪到 zip 落盘之前",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）"
+      ],
+      "blockHead": "not ok 13 - 接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）\n  ---\n  duration_ms: 0.8038\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\promotion-task-ledger.test.mjs:181:1'\n  failureType: 'testCodeFailure'\n  er"
+    },
+    {
+      "name": "M8 差集不在列表页上算（去掉「先导航到下载任务管理」）",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）"
+      ],
+      "blockHead": "not ok 13 - 接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）\n  ---\n  duration_ms: 0.7921\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\promotion-task-ledger.test.mjs:181:1'\n  failureType: 'testCodeFailure'\n  er"
+    },
+    {
+      "name": "M9 判据里「读空」与「没有新增」不分开（读空被说成平台没接受）",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "提交结果：差集必须恰好 1 条；0 条不许当成功，多条算核不清"
+      ],
+      "blockHead": "not ok 8 - 提交结果：差集必须恰好 1 条；0 条不许当成功，多条算核不清\n  ---\n  duration_ms: 0.546\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\promotion-task-ledger.test.mjs:117:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    读空"
+    }
+  ]
+}
+exit=0

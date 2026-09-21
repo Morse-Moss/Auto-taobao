@@ -1,0 +1,78 @@
+{
+  "restored": true,
+  "shas": {
+    "run-multi-shop-day.mjs": "d17af227c327b7f845daf978f926a89e0792286e7573890c5e179504715a3d66"
+  },
+  "caught": 7,
+  "total": 7,
+  "results": [
+    {
+      "name": "M1 可重发判据写成恒真（拿到应答的那一类也被重发）",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发）",
+        "代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因"
+      ],
+      "blockHead": "not ok 44 - 代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发）\n  ---\n  duration_ms: 0.9977\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\run-multi-shop-day.test.mjs:849:1'\n  failureType: 'testCodeFailure'\n "
+    },
+    {
+      "name": "M2 可重发判据漏掉 fetch failed（这次事故的原文就是它）",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发）"
+      ],
+      "blockHead": "not ok 44 - 代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发）\n  ---\n  duration_ms: 0.8505\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\run-multi-shop-day.test.mjs:849:1'\n  failureType: 'testCodeFailure'\n "
+    },
+    {
+      "name": "M3 接线断掉：proxyJson 不再看那条判据（判据成孤岛）",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避",
+        "代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因"
+      ],
+      "blockHead": "not ok 45 - 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避\n  ---\n  duration_ms: 1.3861\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\run-multi-shop-day.test.mjs:873:1'\n  failureType: 'testCodeFailure'\n  error: 'proxy"
+    },
+    {
+      "name": "M7 不可重试的那一类被包装掉了（服务端给的答案被说成「连不上」）",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避",
+        "代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因"
+      ],
+      "blockHead": "not ok 45 - 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避\n  ---\n  duration_ms: 0.8137\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\run-multi-shop-day.test.mjs:873:1'\n  failureType: 'testCodeFailure'\n  error: '不可重试的"
+    },
+    {
+      "name": "M4 重试次数等于没重试（PROXY_ATTEMPTS 改成 1）",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避",
+        "代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因"
+      ],
+      "blockHead": "not ok 45 - 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避\n  ---\n  duration_ms: 0.7778\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\run-multi-shop-day.test.mjs:873:1'\n  failureType: 'testCodeFailure'\n  error: '重试次数要"
+    },
+    {
+      "name": "M5 去掉退避（失败就连打，退化成空转）",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避"
+      ],
+      "blockHead": "not ok 45 - 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避\n  ---\n  duration_ms: 1.5069\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\run-multi-shop-day.test.mjs:873:1'\n  failureType: 'testCodeFailure'\n  error: '重发之间要"
+    },
+    {
+      "name": "M6 报错不写试了几次（事后分不清抖动与长期不通）",
+      "caught": true,
+      "exit": 1,
+      "failedTests": [
+        "代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避",
+        "代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因"
+      ],
+      "blockHead": "not ok 45 - 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避\n  ---\n  duration_ms: 0.6831\n  type: 'test'\n  location: 'D:\\\\Retire\\\\sycm-automation\\\\skills\\\\sycm-alimama-daily-report\\\\scripts\\\\run-multi-shop-day.test.mjs:873:1'\n  failureType: 'testCodeFailure'\n  error: '重试用尽后"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+multi-shop-2026-09-19\科塔淘宝｜submit=2026-09-20T09:34:36.219Z｜fetch=2026-09-20T09:35:00.438Z｜gap=24s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260920_173438｜why=列表里最新，候选 8 个｜submitHint=""｜｜
+multi-shop-2026-09-19\盖文天猫｜submit=2026-09-20T09:33:00.763Z｜fetch=2026-09-20T09:33:26.493Z｜gap=26s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260920_173302｜why=列表里最新，候选 16 个｜submitHint=""｜｜
+multi-shop-2026-09-19\盖文淘宝｜submit=2026-09-20T09:24:40.966Z｜fetch=2026-09-20T09:25:11.395Z｜gap=30s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260920_172443｜why=列表里最新，候选 6 个｜submitHint=""｜｜
+multi-shop-2026-09-19\网林天猫｜submit=2026-09-20T09:22:10.404Z｜fetch=2026-09-20T09:22:34.597Z｜gap=24s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260920_172212｜why=列表里最新，候选 9 个｜submitHint=""｜｜
+multi-shop-2026-09-19\里可林淘宝｜submit=2026-09-20T09:18:44.950Z｜fetch=2026-09-20T09:19:09.250Z｜gap=24s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260920_171846｜why=列表里最新，候选 10 个｜submitHint=""｜｜
+multi-shop-2026-09-19-rerun4\科塔淘宝｜submit=2026-09-20T08:37:44.488Z｜fetch=2026-09-20T08:38:08.637Z｜gap=24s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260920_163746｜why=列表里最新，候选 7 个｜submitHint=""｜｜
+multi-shop-2026-09-19-rerun4\盖文天猫｜submit=2026-09-20T08:35:33.214Z｜fetch=2026-09-20T08:35:59.938Z｜gap=27s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260920_163535｜why=列表里最新，候选 14 个｜submitHint=""｜｜
+multi-shop-2026-09-19-rerun4\盖文淘宝｜submit=2026-09-20T08:33:07.451Z｜fetch=2026-09-20T08:33:34.096Z｜gap=27s｜nameLag=28803s｜row=1｜picked=营销场景报表_20260920_163310｜why=列表里最新，候选 5 个｜submitHint=""｜｜
+multi-shop-2026-09-19-rerun4\网林天猫｜submit=2026-09-20T08:30:42.325Z｜fetch=2026-09-20T08:31:08.161Z｜gap=26s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260920_163044｜why=列表里最新，候选 8 个｜submitHint=""｜｜
+multi-shop-2026-09-19-rerun4\里可林淘宝｜submit=2026-09-20T08:28:12.596Z｜fetch=2026-09-20T08:28:37.131Z｜gap=25s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260920_162814｜why=列表里最新，候选 9 个｜submitHint=""｜｜
+multi-shop-2026-09-19-rerun3\科塔淘宝｜submit=2026-09-20T08:14:50.020Z｜fetch=2026-09-20T08:15:16.299Z｜gap=26s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260920_161451｜why=列表里最新，候选 6 个｜submitHint=""｜｜
+multi-shop-2026-09-19-rerun3\网林天猫｜submit=2026-09-20T08:12:43.724Z｜fetch=2026-09-20T08:13:13.382Z｜gap=30s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260920_161245｜why=列表里最新，候选 7 个｜submitHint=""｜｜
+multi-shop-2026-09-19-rerun3\里可林淘宝｜submit=2026-09-20T08:10:38.091Z｜fetch=2026-09-20T08:11:08.328Z｜gap=30s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260920_161040｜why=列表里最新，候选 8 个｜submitHint=""｜｜
+multi-shop-2026-09-17-retry1\盖文淘宝｜submit=2026-09-19T06:32:26.197Z｜fetch=2026-09-19T06:32:57.968Z｜gap=32s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260919_143227｜why=列表里最新，候选 4 个｜submitHint=""｜｜
+multi-shop-2026-09-18\盖文天猫｜submit=2026-09-19T05:47:31.841Z｜fetch=2026-09-19T05:48:07.831Z｜gap=36s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260919_134733｜why=列表里最新，候选 13 个｜submitHint=""｜｜
+multi-shop-2026-09-18-commit\盖文淘宝｜submit=2026-09-19T04:44:27.484Z｜fetch=2026-09-19T04:44:55.505Z｜gap=28s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260919_124429｜why=列表里最新，候选 3 个｜submitHint=""｜｜
+multi-shop-2026-09-18-commit\科塔淘宝｜submit=2026-09-19T04:37:54.764Z｜fetch=2026-09-19T04:38:22.878Z｜gap=28s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260919_123756｜why=列表里最新，候选 4 个｜submitHint=""｜｜
+multi-shop-2026-09-18-commit\网林天猫｜submit=2026-09-19T04:35:37.669Z｜fetch=2026-09-19T04:36:05.925Z｜gap=28s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260919_123539｜why=列表里最新，候选 4 个｜submitHint=""｜｜
+multi-shop-2026-09-18-commit\里可林淘宝｜submit=2026-09-19T04:34:55.887Z｜fetch=2026-09-19T04:35:23.816Z｜gap=28s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260919_123457｜why=列表里最新，候选 5 个｜submitHint=""｜｜
+multi-shop-2026-09-17-commit\科塔淘宝｜submit=2026-09-19T01:35:12.218Z｜fetch=2026-09-19T01:35:44.392Z｜gap=32s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260919_093514｜why=列表里最新，候选 3 个｜submitHint=""｜｜
+multi-shop-2026-09-17-commit\网林天猫｜submit=2026-09-19T01:33:35.254Z｜fetch=2026-09-19T01:34:07.480Z｜gap=32s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260919_093337｜why=列表里最新，候选 3 个｜submitHint=""｜｜
+multi-shop-2026-09-17-commit\里可林淘宝｜submit=2026-09-19T01:31:32.943Z｜fetch=2026-09-19T01:32:05.445Z｜gap=33s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260919_093134｜why=列表里最新，候选 4 个｜submitHint=""｜｜
+multi-shop-2026-09-17\科塔淘宝｜submit=2026-09-18T10:53:53.285Z｜fetch=2026-09-18T10:54:24.514Z｜gap=31s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260918_185355｜why=列表里最新，候选 2 个｜submitHint=""｜｜
+multi-shop-2026-09-17\盖文淘宝｜submit=2026-09-18T10:51:57.103Z｜fetch=2026-09-18T10:52:25.506Z｜gap=28s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260918_185159｜why=列表里最新，候选 2 个｜submitHint=""｜｜
+multi-shop-2026-09-17\网林天猫｜submit=2026-09-18T10:49:29.623Z｜fetch=2026-09-18T10:49:57.875Z｜gap=28s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260918_184931｜why=列表里最新，候选 2 个｜submitHint=""｜｜
+multi-shop-2026-09-17\里可林淘宝｜submit=2026-09-18T10:47:02.947Z｜fetch=2026-09-18T10:47:30.077Z｜gap=27s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260918_184704｜why=列表里最新，候选 3 个｜submitHint=""｜｜
+multi-shop-run-2026-09-18\keta-taobao｜submit=2026-09-18T08:54:39.681Z｜fetch=2026-09-18T08:58:47.699Z｜gap=248s｜nameLag=28801s｜row=1｜picked=营销场景报表_20260918_165441｜why=列表里最新，候选 1 个｜submitHint=""｜｜
+multi-shop-run-2026-09-18\suixin-taobao｜submit=2026-09-18T08:54:51.309Z｜fetch=2026-09-18T08:58:34.968Z｜gap=224s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260918_165453｜why=列表里最新，候选 1 个｜submitHint=""｜｜
+multi-shop-run-2026-09-18\wanglin-tmall｜submit=2026-09-18T08:54:35.423Z｜fetch=2026-09-18T08:58:22.443Z｜gap=227s｜nameLag=28805s｜row=1｜picked=营销场景报表_20260918_165440｜why=列表里最新，候选 1 个｜submitHint=""｜｜
+multi-shop-run-2026-09-18\likelin-taobao｜submit=2026-09-18T08:54:13.232Z｜fetch=2026-09-18T08:58:02.727Z｜gap=229s｜nameLag=28802s｜row=1｜picked=营销场景报表_20260918_165415｜why=列表里最新，候选 1 个｜submitHint=""｜｜
+
+共 30 组配对
+exit=0

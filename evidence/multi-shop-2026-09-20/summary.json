@@ -1,0 +1,86 @@
+{
+  "date": "2026-09-20",
+  "mode": "commit",
+  "startedAt": "2026-09-21T03:41:04.824Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 0,
+      "logPath": "evidence\\multi-shop-2026-09-20\\00-health-check-daily.txt",
+      "ok": true,
+      "blocking": [],
+      "blockingDetails": []
+    }
+  },
+  "shops": {
+    "里可林淘宝": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20\\里可林淘宝\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": []
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20\\里可林淘宝\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-20",
+            "--proxy",
+            "http://127.0.0.1:19041"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20\\里可林淘宝\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-09-20",
+            "--proxy",
+            "http://127.0.0.1:19041",
+            "--expect-shop",
+            "里可林家居",
+            "--expect-member",
+            "里可林家居:阿彦",
+            "--expect-member-id",
+            "2350600069"
+          ],
+          "blockingDetails": null
+        },
+        {
+          "stage": "sycm-date",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20\\里可林淘宝\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-20",
+            "--proxy",
+            "http://127.0.0.1:19041"
+          ],
+          "blockingDetails": null
+        }
+      ],
+      "source": {},
+      "failedStage": "sycm-date",
+      "failureOutput": "\nError: sycm preset: state did not settle to 2026-09-20（读了 16 次 × 1200ms；其中读不到 0 次）; lastReadError=none; last={\"applied\":\"统计时间 2026-09-19\",\"tabs\":[\"智能问数\",\"找功能\",\"问指标\",\"找商品\",\"业绩分析\",\"专项分析\",\"商品分析\",\"售后分析\",\"汇总分析\",\"询单到下单\",\"下单到付款\",\"询单到付款\"],\"activeTabs\":[\"智能问数\",\"业绩分析\",\"询单到付款\"],\"targetId\":\"0C6B77E3BD7D4721041D265EA13166E9\"}\n    at settle (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:471:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:525:21)\n    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:398:12)\nTRACE [\n  {\n    \"step\": \"tab\",\n    \"expectTab\": \"询单到付款\",\n    \"alreadyActive\": true,\n    \"point\": [\n      492,\n      277\n    ]\n  },\n  {\n    \"step\": \"click-preset\",\n    \"text\": \"1天\",\n    \"point\": [\n      821,\n      162\n    ]\n  }\n]\n",
+      "blockingDetails": null,
+      "error": "阶段 sycm-date 失败（exit 1）"
+    }
+  },
+  "finishedAt": "2026-09-21T03:41:33.303Z"
+}

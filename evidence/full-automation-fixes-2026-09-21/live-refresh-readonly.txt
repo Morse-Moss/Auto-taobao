@@ -1,0 +1,219 @@
+{
+ "dry": true,
+ "yesterday": "2026-09-20",
+ "report": [
+  {
+   "who": "里可林淘宝",
+   "proxyPort": 19041,
+   "reachable": true,
+   "actions": [
+    {
+     "page": "生意参谋工作页",
+     "action": "already-one",
+     "from": null,
+     "found": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "action": "already-one",
+     "from": null,
+     "found": 1
+    }
+   ],
+   "slots": [
+    {
+     "page": "生意参谋工作页",
+     "count": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "count": 1
+    }
+   ],
+   "settleReads": 1,
+   "applied": "统计时间 2026-09-20",
+   "readError": null,
+   "reload": null,
+   "verdict": {
+    "state": "ready",
+    "count": 1,
+    "applied": "统计时间 2026-09-20",
+    "resolved": "2026-09-20",
+    "detail": "读数已是昨日（统计时间 2026-09-20）"
+   }
+  },
+  {
+   "who": "网林天猫",
+   "proxyPort": 19042,
+   "reachable": true,
+   "actions": [
+    {
+     "page": "生意参谋工作页",
+     "action": "already-one",
+     "from": null,
+     "found": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "action": "already-one",
+     "from": null,
+     "found": 1
+    }
+   ],
+   "slots": [
+    {
+     "page": "生意参谋工作页",
+     "count": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "count": 1
+    }
+   ],
+   "settleReads": 1,
+   "applied": "统计时间 2026-09-19",
+   "readError": null,
+   "reload": null,
+   "verdict": {
+    "state": "stale",
+    "count": 1,
+    "applied": "统计时间 2026-09-19",
+    "resolved": "2026-09-19",
+    "detail": "读数是 2026-09-19，不是昨日 2026-09-20 —— 重载一次"
+   }
+  },
+  {
+   "who": "盖文淘宝",
+   "proxyPort": 19043,
+   "reachable": true,
+   "actions": [
+    {
+     "page": "生意参谋工作页",
+     "action": "already-one",
+     "from": null,
+     "found": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "action": "already-one",
+     "from": null,
+     "found": 1
+    }
+   ],
+   "slots": [
+    {
+     "page": "生意参谋工作页",
+     "count": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "count": 1
+    }
+   ],
+   "settleReads": 1,
+   "applied": "统计时间 2026-09-19",
+   "readError": null,
+   "reload": null,
+   "verdict": {
+    "state": "stale",
+    "count": 1,
+    "applied": "统计时间 2026-09-19",
+    "resolved": "2026-09-19",
+    "detail": "读数是 2026-09-19，不是昨日 2026-09-20 —— 重载一次"
+   }
+  },
+  {
+   "who": "盖文天猫",
+   "proxyPort": 19045,
+   "reachable": true,
+   "actions": [
+    {
+     "page": "生意参谋工作页",
+     "action": "already-one",
+     "from": null,
+     "found": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "action": "already-one",
+     "from": null,
+     "found": 1
+    }
+   ],
+   "slots": [
+    {
+     "page": "生意参谋工作页",
+     "count": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "count": 1
+    }
+   ],
+   "settleReads": 1,
+   "applied": "统计时间 2026-09-19",
+   "readError": null,
+   "reload": null,
+   "verdict": {
+    "state": "stale",
+    "count": 1,
+    "applied": "统计时间 2026-09-19",
+    "resolved": "2026-09-19",
+    "detail": "读数是 2026-09-19，不是昨日 2026-09-20 —— 重载一次"
+   }
+  },
+  {
+   "who": "科塔淘宝",
+   "proxyPort": 19044,
+   "reachable": true,
+   "actions": [
+    {
+     "page": "生意参谋工作页",
+     "action": "already-one",
+     "from": null,
+     "found": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "action": "already-one",
+     "from": null,
+     "found": 1
+    }
+   ],
+   "slots": [
+    {
+     "page": "生意参谋工作页",
+     "count": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "count": 1
+    }
+   ],
+   "settleReads": 1,
+   "applied": "统计时间 2026-09-19",
+   "readError": null,
+   "reload": null,
+   "verdict": {
+    "state": "stale",
+    "count": 1,
+    "applied": "统计时间 2026-09-19",
+    "resolved": "2026-09-19",
+    "detail": "读数是 2026-09-19，不是昨日 2026-09-20 —— 重载一次"
+   }
+  }
+ ],
+ "verdict": {
+  "ok": false,
+  "unreachable": [],
+  "gaps": [],
+  "ambiguous": [],
+  "stale": [
+   "网林天猫",
+   "盖文淘宝",
+   "盖文天猫",
+   "科塔淘宝"
+  ]
+ }
+}
+exit=2

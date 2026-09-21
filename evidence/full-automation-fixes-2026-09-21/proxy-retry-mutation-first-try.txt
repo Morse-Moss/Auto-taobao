@@ -1,0 +1,25 @@
+restored=true  caught=5/6  sha={"run-multi-shop-day.mjs":"d17af227c327b7f845daf978f926a89e0792286e7573890c5e179504715a3d66"}
+
+CAUGHT_AND_NAMED M1 可重发判据写成恒真（拿到应答的那一类也被重发）
+  exit=1  failedTests=["代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发）","代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因"]
+  head=not ok 44 - 代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发） |   --- |   duration_ms: 1.0179 |   type: 'test' |   location: 'D:\\Retire\\sycm-automation\\skills\\sycm-alimama-daily-report\\scripts\\run-multi-shop-day.test.mjs:849:1' |   fa
+
+CAUGHT_AND_NAMED M2 可重发判据漏掉 fetch failed（这次事故的原文就是它）
+  exit=1  failedTests=["代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发）"]
+  head=not ok 44 - 代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发） |   --- |   duration_ms: 1.0535 |   type: 'test' |   location: 'D:\\Retire\\sycm-automation\\skills\\sycm-alimama-daily-report\\scripts\\run-multi-shop-day.test.mjs:849:1' |   fa
+
+!! MISSED M3 接线断掉：proxyJson 不再看那条判据（判据成孤岛）
+  exit=1  failedTests=["代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避","代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因"]
+  head=not ok 45 - 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避 |   --- |   duration_ms: 0.81 |   type: 'test' |   location: 'D:\\Retire\\sycm-automation\\skills\\sycm-alimama-daily-report\\scripts\\run-multi-shop-day.test.mjs:873:1' |   failureType: 'test
+
+CAUGHT_AND_NAMED M4 重试次数等于没重试（PROXY_ATTEMPTS 改成 1）
+  exit=1  failedTests=["代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避","代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因"]
+  head=not ok 45 - 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避 |   --- |   duration_ms: 1.003 |   type: 'test' |   location: 'D:\\Retire\\sycm-automation\\skills\\sycm-alimama-daily-report\\scripts\\run-multi-shop-day.test.mjs:873:1' |   failureType: 'tes
+
+CAUGHT_AND_NAMED M5 去掉退避（失败就连打，退化成空转）
+  exit=1  failedTests=["代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避"]
+  head=not ok 45 - 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避 |   --- |   duration_ms: 0.6816 |   type: 'test' |   location: 'D:\\Retire\\sycm-automation\\skills\\sycm-alimama-daily-report\\scripts\\run-multi-shop-day.test.mjs:873:1' |   failureType: 'te
+
+CAUGHT_AND_NAMED M6 报错不写试了几次（事后分不清抖动与长期不通）
+  exit=1  failedTests=["代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避","代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因"]
+  head=not ok 45 - 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避 |   --- |   duration_ms: 0.7123 |   type: 'test' |   location: 'D:\\Retire\\sycm-automation\\skills\\sycm-alimama-daily-report\\scripts\\run-multi-shop-day.test.mjs:873:1' |   failureType: 'te

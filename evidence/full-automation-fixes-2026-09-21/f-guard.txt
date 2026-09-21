@@ -1,0 +1,28 @@
+TAP version 13
+# Subtest: skills → runtime 的依赖清单与登记逐字一致（新增与消失都要显式改这里）
+ok 1 - skills → runtime 的依赖清单与登记逐字一致（新增与消失都要显式改这里）
+  ---
+  duration_ms: 167.1838
+  type: 'test'
+  ...
+# Subtest: runtime → skills 的依赖清单与登记逐字一致（这是交付形态被锁死的根因）
+ok 2 - runtime → skills 的依赖清单与登记逐字一致（这是交付形态被锁死的根因）
+  ---
+  duration_ms: 153.3859
+  type: 'test'
+  ...
+# Subtest: 守卫本身是活的：扫描确实读到了文件（否则「全绿」只是没扫到）
+ok 3 - 守卫本身是活的：扫描确实读到了文件（否则「全绿」只是没扫到）
+  ---
+  duration_ms: 276.1261
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 604.1875

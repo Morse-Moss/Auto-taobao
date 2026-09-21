@@ -1,0 +1,5 @@
+停手时页面停在：生意参谋工作页=0  阿里妈妈报表页=1（共 3 个页签）
+  · 不属于期望清单：https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=
+  · 不属于期望清单：edge://downloads-hub/
+回位：把 https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&la 送回 https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+回位后 生意参谋工作页 恰好一个

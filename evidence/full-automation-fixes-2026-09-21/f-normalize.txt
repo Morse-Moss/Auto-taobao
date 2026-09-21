@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: 归位判定：就位与否看页签数量，但**动作没做成**也要单独算不 ok（两者下一步不同）
+ok 1 - 归位判定：就位与否看页签数量，但**动作没做成**也要单独算不 ok（两者下一步不同）
+  ---
+  duration_ms: 1.5134
+  type: 'test'
+  ...
+# Subtest: 归位：缺页时先领回（导航回去），一个新建请求都不发
+ok 2 - 归位：缺页时先领回（导航回去），一个新建请求都不发
+  ---
+  duration_ms: 1.1064
+  type: 'test'
+  ...
+# Subtest: 归位：同主机多页**只报不猜**，一个写请求都不发（那几页不许被乱导航）
+ok 3 - 归位：同主机多页**只报不猜**，一个写请求都不发（那几页不许被乱导航）
+  ---
+  duration_ms: 0.2509
+  type: 'test'
+  ...
+# Subtest: 归位：一页都没有才新建，且必须 pinned=1（不带它会在闲置 15 分钟后被代理回收，全程不报错）
+ok 4 - 归位：一页都没有才新建，且必须 pinned=1（不带它会在闲置 15 分钟后被代理回收，全程不报错）
+  ---
+  duration_ms: 0.248
+  type: 'test'
+  ...
+# Subtest: 归位：只读时一个写请求都不发（与 shop-pages 的 --open 口径一致）
+ok 5 - 归位：只读时一个写请求都不发（与 shop-pages 的 --open 口径一致）
+  ---
+  duration_ms: 0.3007
+  type: 'test'
+  ...
+# Subtest: 归位：代理端口必须是整数，缺了直接抛（不许回落到某个默认端口）
+ok 6 - 归位：代理端口必须是整数，缺了直接抛（不许回落到某个默认端口）
+  ---
+  duration_ms: 0.3283
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14.533
