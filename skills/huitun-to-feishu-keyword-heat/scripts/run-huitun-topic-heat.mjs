@@ -23,6 +23,7 @@ import {
   resultSnapshotSignature,
   selectCandidates,
   selectRunTarget,
+  USAGE_LIMIT_CODE,
   validateResultDocument,
   verifyBackfill,
 } from './flow.mjs';
@@ -62,6 +63,10 @@ Options:
 
 Rows with blank 优先级 or 优先级=待数据 stop with AI_REQUIRED before browser work.
 Without --apply, the command is read-only apart from local evidence files.
+
+Failure codes: HUMAN_REQUIRED and USAGE_LIMIT_REACHED (灰豚 free-tier daily quota exhausted)
+exit 2 and keep this run's page open, because a person has to act; STALLED exits 3; any other
+code exits 1 and closes the page. Exit codes are derived in cliExitCodeFor/preserveBrowserFor.
 `;
 }
 
@@ -77,6 +82,22 @@ function stalled(reason, details = {}) {
   error.code = 'STALLED';
   error.details = details;
   return error;
+}
+
+// 失败分类的两个轴在这一层是分开的：运行时读 `error.failureClass`，CLI 读 `error.code`。
+// 改一处另一处不会被带动（2026-09-21 实测），所以判据只写在这里一处，两个调用点都走函数，
+// 不许再抄一份内联清单 —— cli.test.mjs 有一条扫源码的接线判据盯着这件事。
+// 配额墙（USAGE_LIMIT_REACHED）与登录墙同类：都是「人得做点什么才能继续」，
+// 因此给同一个退出码，也一并保留浏览器页签（让人能直接看到那堵墙）。
+export function cliExitCodeFor(error) {
+  const code = error?.code;
+  if (code === 'HUMAN_REQUIRED' || code === USAGE_LIMIT_CODE) return 2;
+  return code === 'STALLED' ? 3 : 1;
+}
+
+export function preserveBrowserFor(error) {
+  const code = error?.code;
+  return code === 'HUMAN_REQUIRED' || code === 'STALLED' || code === USAGE_LIMIT_CODE;
 }
 
 function stamp() {
@@ -800,7 +821,7 @@ async function run(options) {
       await browser.close();
     }
   } catch (error) {
-    preserveBrowser = ['HUMAN_REQUIRED', 'STALLED'].includes(error.code);
+    preserveBrowser = preserveBrowserFor(error);
     if (browser?.opened && !preserveBrowser) await browser.close().catch(() => {});
     throw error;
   } finally {
@@ -880,7 +901,7 @@ async function main() {
   } catch (error) {
     const code = error.code || 'FAILED';
     console.error(JSON.stringify({ status: code, error: error.message, details: error.details || {} }));
-    return code === 'HUMAN_REQUIRED' ? 2 : code === 'STALLED' ? 3 : 1;
+    return cliExitCodeFor(error);
   }
 }
 

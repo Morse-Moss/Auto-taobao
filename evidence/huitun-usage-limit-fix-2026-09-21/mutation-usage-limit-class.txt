@@ -1,0 +1,42 @@
+=== 基线（改动前必须先绿，否则「突变后变红」无法归因）===
+三份用例文件：# pass 56，status=0，失败用例 0 条
+
+M1 flow.mjs 不再给配额墙挂 code（退回「普通 Error」）
+  # pass 48，status=1
+    not ok - 接线判据：flow.mjs 挂的每个确定性 code 都必须被映射成分类（否则又落回 BUG→STOP_AND_ALERT）
+    not ok - a Huitun quota wall is a refusal, not an empty result with zero views
+  期望点名：a Huitun quota wall is a refusal, not an empty result with zero views
+  ⇒ CAUGHT　还原逐字节一致：是
+
+M2 FAILURE_CLASS_BY_CODE 不再映射这个 code
+  # pass 33，status=1
+    not ok - translateFlowError 把中文策略结论映射成确定性分类，未知异常原样抛出
+    not ok - 接线判据：flow.mjs 挂的每个确定性 code 都必须被映射成分类（否则又落回 BUG→STOP_AND_ALERT）
+  期望点名：translateFlowError 把中文策略结论映射成确定性分类，未知异常原样抛出
+  ⇒ CAUGHT　还原逐字节一致：是
+
+M3 translateFlowError 不再按 code 翻译（退回消息正则）
+  # pass 33，status=1
+    not ok - translateFlowError 把中文策略结论映射成确定性分类，未知异常原样抛出
+    not ok - 接线判据：flow.mjs 挂的每个确定性 code 都必须被映射成分类（否则又落回 BUG→STOP_AND_ALERT）
+  期望点名：translateFlowError 把中文策略结论映射成确定性分类，未知异常原样抛出
+  ⇒ CAUGHT　还原逐字节一致：是
+
+M4 CLI 退出码判据不再认这个 code
+  # pass 5，status=1
+    not ok - CLI 的两条轴（退出码 / 是否保留页签）由同一处判据给出，配额墙与登录墙同级
+  期望点名：CLI 的两条轴（退出码 / 是否保留页签）由同一处判据给出，配额墙与登录墙同级
+  ⇒ CAUGHT　还原逐字节一致：是
+
+M5 调用点退回内联清单（判据函数还在，但没人用）
+  # pass 5，status=1
+    not ok - 接线判据：两个调用点都必须走判据函数，不许再抄一份内联清单
+  期望点名：接线判据：两个调用点都必须走判据函数，不许再抄一份内联清单
+  ⇒ CAUGHT　还原逐字节一致：是
+
+=== 收尾：全量复核（只逐个复核会漏「改到一半抛错」）===
+  flow.mjs  一致  2c185a7a3ebf
+  adapter.huitun-keyword-heat.mjs  一致  6a62a68067cf
+  run-huitun-topic-heat.mjs  一致  5f7a6ee634a1
+
+结果：CAUGHT 5 / MISSED 0 / 共 5　MUTATION_ALL_CAUGHT_AND_RESTORED

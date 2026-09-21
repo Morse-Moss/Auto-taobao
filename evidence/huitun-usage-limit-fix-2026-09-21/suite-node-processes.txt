@@ -1,0 +1,82 @@
+﻿
+ProcessId ParentProcessId CreationDate       Cmd                                                                                                                                                                                 
+--------- --------------- ------------       ---                                                                                                                                                                                 
+    31756           36700 2026/9/18 18:29:13 D:\Nodejs\node.exe D:\codex\skills\web-access\scripts\cdp-proxy.mjs                                                                                                                 
+    46940           22724 2026/9/20 15:49:20 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.EXE C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\sheetagent\5.5.6-wb.38337834.g5f969292
+     8016           44176 2026/9/20 15:49:21 "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe"  C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\weixinpay\1.6.109/dist/mcp-server.m
+    15960           43340 2026/9/20 16:02:59 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.EXE C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\sheetagent\5.5.6-wb.38337834.g5f969292
+    10340           40160 2026/9/20 16:03:00 "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe"  C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\weixinpay\1.6.109/dist/mcp-server.m
+    39696           49032 2026/9/20 16:05:39 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:/Retire/probe-live/start-daily-chain.mjs                                                              
+     8040           39696 2026/9/20 16:05:39 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:/Retire/sycm-automation/scripts/start-all-hold.mjs --only dailyReport,里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝       
+    44192           21468 2026/9/20 16:05:40 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-daily-report-browser.mjs                                        
+    23444           21468 2026/9/20 16:05:40 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-daily-report-proxy.mjs                                          
+    36776           21468 2026/9/20 16:05:42 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs                                             
+    26368           21468 2026/9/20 16:05:42 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 里可林淘宝                                            
+    39344           21468 2026/9/20 16:05:47 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs                                             
+    37320           21468 2026/9/20 16:05:47 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 网林天猫                                             
+    17084           21468 2026/9/20 16:05:51 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs                                             
+    44612           21468 2026/9/20 16:05:52 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 盖文淘宝                                             
+     4288           21468 2026/9/20 16:05:54 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs                                             
+    44232           21468 2026/9/20 16:05:54 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 盖文天猫                                             
+    37244           21468 2026/9/20 16:05:56 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs                                             
+    41136           21468 2026/9/20 16:05:56 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 科塔淘宝                                             
+    37932           32112 2026/9/20 18:07:16 "D:\Nodejs\node.exe" E:\Crealoom\compat\cowart\runtime\mcp\server.mjs                                                                                                               
+    25248           32112 2026/9/20 18:07:16 "C:\Users\Administrator\AppData\Local\OpenAI\Codex\runtimes\cua_node\b58ca2eaa616c2da\bin\node.exe" D:\codex\plugins\cache\openai-bundled\unified-computer-use\26.903.61454\scripts\
+    54112           44224 2026/9/20 18:07:16 "C:\Users\Administrator\AppData\Local\OpenAI\Codex\runtimes\cua_node\b58ca2eaa616c2da\bin\node.exe"  ./server.mjs                                                                   
+    51968           32112 2026/9/20 18:07:16 "D:\Nodejs\node.exe" ./scripts/start-mcp.mjs                                                                                                                                        
+    28464           32112 2026/9/20 18:07:16 "C:\Users\Administrator\AppData\Local\OpenAI\Codex\runtimes\cua_node\b58ca2eaa616c2da\bin\node.exe" "C:\Program Files\WindowsApps\OpenAI.Codex_26.903.8094.0_x64__2p2nqsd0c76g0\app\
+    40116           42676 2026/9/20 18:07:16 "node"   "E:\AI\npm-global\\node_modules\@colbymchenry\codegraph\npm-shim.js" serve --mcp                                                                                           
+    21780           54020 2026/9/20 18:07:16 "D:\Nodejs\\node.exe"  "D:\Nodejs\\node_modules\npm\bin\npx-cli.js" -y @upstash/context7-mcp                                                                                        
+    23852           40116 2026/9/20 18:07:16 E:\AI\npm-global\node_modules\@colbymchenry\codegraph\node_modules\@colbymchenry\codegraph-win32-x64\node.exe --liftoff-only --disable-warning=ExperimentalWarning E:\AI\npm-global\
+    31100           32172 2026/9/20 18:07:17 "D:\Nodejs\\node.exe"  "D:\Nodejs\\node_modules\npm\bin\npx-cli.js" -y @modelcontextprotocol/server-filesystem E:/Evolution E:/公众号 E:/demo2                                         
+    51704           23852 2026/9/20 18:07:17 E:\AI\npm-global\node_modules\@colbymchenry\codegraph\node_modules\@colbymchenry\codegraph-win32-x64\node.exe -e "...                                                               
+    42192           28856 2026/9/20 18:07:18 "node"   "C:\Users\Administrator\AppData\Local\npm-cache\_npx\a3241bba59c344f5\node_modules\.bin\\..\@modelcontextprotocol\server-filesystem\dist\index.js" E:/Evolution E:/公众号 E:/d
+    20192           25164 2026/9/20 18:07:18 "node"   "C:\Users\Administrator\AppData\Local\npm-cache\_npx\eea2bd7412d4593b\node_modules\.bin\\..\@upstash\context7-mcp\dist\index.js"                                           
+    51960           32112 2026/9/20 20:35:52 "C:\Users\Administrator\AppData\Local\OpenAI\Codex\runtimes\cua_node\b58ca2eaa616c2da\bin\node.exe" "C:\Program Files\WindowsApps\OpenAI.Codex_26.903.8094.0_x64__2p2nqsd0c76g0\app\
+    40088           32112 2026/9/20 20:35:52 "D:\Nodejs\node.exe" E:\Crealoom\compat\cowart\runtime\mcp\server.mjs                                                                                                               
+    54828           32112 2026/9/20 20:35:52 "C:\Users\Administrator\AppData\Local\OpenAI\Codex\runtimes\cua_node\b58ca2eaa616c2da\bin\node.exe" D:\codex\plugins\cache\openai-bundled\unified-computer-use\26.903.61454\scripts\
+    54756           54312 2026/9/20 20:35:53 "C:\Users\Administrator\AppData\Local\OpenAI\Codex\runtimes\cua_node\b58ca2eaa616c2da\bin\node.exe"  ./server.mjs                                                                   
+    50508           32112 2026/9/20 20:35:53 "D:\Nodejs\node.exe" ./scripts/start-mcp.mjs                                                                                                                                        
+    51776           55048 2026/9/20 20:35:53 "node"   "E:\AI\npm-global\\node_modules\@colbymchenry\codegraph\npm-shim.js" serve --mcp                                                                                           
+    21100           51776 2026/9/20 20:35:53 E:\AI\npm-global\node_modules\@colbymchenry\codegraph\node_modules\@colbymchenry\codegraph-win32-x64\node.exe --liftoff-only --disable-warning=ExperimentalWarning E:\AI\npm-global\
+    48400           12056 2026/9/20 20:35:53 "D:\Nodejs\\node.exe"  "D:\Nodejs\\node_modules\npm\bin\npx-cli.js" -y @upstash/context7-mcp                                                                                        
+    54776           41380 2026/9/20 20:35:53 "D:\Nodejs\\node.exe"  "D:\Nodejs\\node_modules\npm\bin\npx-cli.js" -y @modelcontextprotocol/server-filesystem E:/Evolution E:/公众号 E:/demo2                                         
+     3592           21100 2026/9/20 20:35:53 E:\AI\npm-global\node_modules\@colbymchenry\codegraph\node_modules\@colbymchenry\codegraph-win32-x64\node.exe -e "...                                                               
+     4668           44464 2026/9/20 20:35:55 "node"   "C:\Users\Administrator\AppData\Local\npm-cache\_npx\eea2bd7412d4593b\node_modules\.bin\\..\@upstash\context7-mcp\dist\index.js"                                           
+    39436           55068 2026/9/20 20:35:55 "node"   "C:\Users\Administrator\AppData\Local\npm-cache\_npx\a3241bba59c344f5\node_modules\.bin\\..\@modelcontextprotocol\server-filesystem\dist\index.js" E:/Evolution E:/公众号 E:/d
+    42204           32112 2026/9/21 9:43:22  "D:\Nodejs\node.exe" E:\Crealoom\compat\cowart\runtime\mcp\server.mjs                                                                                                               
+    24072           32112 2026/9/21 9:43:22  "C:\Users\Administrator\AppData\Local\OpenAI\Codex\runtimes\cua_node\b58ca2eaa616c2da\bin\node.exe" "C:\Program Files\WindowsApps\OpenAI.Codex_26.903.8094.0_x64__2p2nqsd0c76g0\app\
+    33632           51492 2026/9/21 9:43:22  "C:\Users\Administrator\AppData\Local\OpenAI\Codex\runtimes\cua_node\b58ca2eaa616c2da\bin\node.exe"  ./server.mjs                                                                   
+    53220           32112 2026/9/21 9:43:22  "C:\Users\Administrator\AppData\Local\OpenAI\Codex\runtimes\cua_node\b58ca2eaa616c2da\bin\node.exe" D:\codex\plugins\cache\openai-bundled\unified-computer-use\26.903.61454\scripts\
+    26580           32112 2026/9/21 9:43:23  "D:\Nodejs\node.exe" ./scripts/start-mcp.mjs                                                                                                                                        
+    33460           53748 2026/9/21 9:43:23  "node"   "E:\AI\npm-global\\node_modules\@colbymchenry\codegraph\npm-shim.js" serve --mcp                                                                                           
+    26620            8964 2026/9/21 9:43:23  "D:\Nodejs\\node.exe"  "D:\Nodejs\\node_modules\npm\bin\npx-cli.js" -y @modelcontextprotocol/server-filesystem E:/Evolution E:/公众号 E:/demo2                                         
+     6080           33460 2026/9/21 9:43:23  E:\AI\npm-global\node_modules\@colbymchenry\codegraph\node_modules\@colbymchenry\codegraph-win32-x64\node.exe --liftoff-only --disable-warning=ExperimentalWarning E:\AI\npm-global\
+    51952           53728 2026/9/21 9:43:23  "D:\Nodejs\\node.exe"  "D:\Nodejs\\node_modules\npm\bin\npx-cli.js" -y @upstash/context7-mcp                                                                                        
+    22768            6080 2026/9/21 9:43:24  E:\AI\npm-global\node_modules\@colbymchenry\codegraph\node_modules\@colbymchenry\codegraph-win32-x64\node.exe -e "...                                                               
+    26680           34812 2026/9/21 9:43:25  "node"   "C:\Users\Administrator\AppData\Local\npm-cache\_npx\a3241bba59c344f5\node_modules\.bin\\..\@modelcontextprotocol\server-filesystem\dist\index.js" E:/Evolution E:/公众号 E:/d
+    47316           52292 2026/9/21 9:43:25  "node"   "C:\Users\Administrator\AppData\Local\npm-cache\_npx\eea2bd7412d4593b\node_modules\.bin\\..\@upstash\context7-mcp\dist\index.js"                                           
+    14536           55060 2026/9/21 9:44:28  C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe scripts/start-all-hold.mjs --only competitor                                                            
+    18768           36516 2026/9/21 9:44:28  C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs                                             
+    31136           36516 2026/9/21 9:44:28  C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-competitor-proxy.mjs                                            
+    53064           27956 2026/9/21 15:29:30 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.EXE C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\sheetagent\5.5.6-wb.38337834.g5f969292
+    31312           58276 2026/9/21 15:29:30 "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe"  C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\weixinpay\1.6.109/dist/mcp-server.m
+    24260           36360 2026/9/21 16:52:46 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.EXE C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\sheetagent\5.5.6-wb.38337834.g5f969292
+    55536           42760 2026/9/21 16:52:46 "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe"  C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\weixinpay\1.6.109/dist/mcp-server.m
+    35752           30268 2026/9/21 16:53:29 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.EXE C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\sheetagent\5.5.6-wb.38337834.g5f969292
+    53100           47972 2026/9/21 16:53:29 "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe"  C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\weixinpay\1.6.109/dist/mcp-server.m
+    58212           52884 2026/9/21 17:11:33 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.EXE C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\sheetagent\5.5.6-wb.38337834.g5f969292
+    52268           50072 2026/9/21 17:11:34 "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe"  C:\Users\Administrator\.workbuddy\plugins\cache\workbuddy-builtin\weixinpay\1.6.109/dist/mcp-server.m
+    45316           51404 2026/9/21 17:19:00 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe scripts/run-test-suite.mjs skills --concurrency=1                                                       
+    38944           45316 2026/9/21 17:19:01 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe --test skills/huitun-to-feishu-keyword-heat/tests/adapter-huitun-keyword-heat.test.mjs skills/huitun-to-
+    29204           38944 2026/9/21 17:19:07 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe skills\xws-export-market-analysis\tests\prepare-flow.test.mjs                                           
+    56060           29204 2026/9/21 17:20:32 C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\export-market-analysis.mjs --keyword
+
+
+
+
+LastWriteTime : 2026/9/21 17:20:32
+Length        : 140782
+
+
+

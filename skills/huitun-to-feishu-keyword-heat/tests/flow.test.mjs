@@ -25,6 +25,7 @@ const resultSnapshotSignature = flow.resultSnapshotSignature ?? missing('resultS
 const canonicalEqual = flow.canonicalEqual ?? missing('canonicalEqual');
 const assertProxyBrowserHealth = flow.assertProxyBrowserHealth ?? missing('assertProxyBrowserHealth');
 const hasConfirmedAccount = flow.hasConfirmedAccount ?? missing('hasConfirmedAccount');
+const USAGE_LIMIT_CODE = flow.USAGE_LIMIT_CODE ?? missing('USAGE_LIMIT_CODE');
 
 test('parses Huitun display units without changing the displayed evidence', () => {
   assert.equal(parseDisplayedViews('109.4w'), 1_094_000);
@@ -84,7 +85,17 @@ test('a Huitun quota wall is a refusal, not an empty result with zero views', ()
   // 2026-09-21 实测原文。它曾被当成 NO_EXACT_TOPIC：views=0、willWrite=true，
   // 也就是把「渠道不给查」写成「浏览量是 0」，公式随即把该词从 A候选 降成 B-持续观察。
   const wall = '该版本每天最多可以访问10次，请升级到高版本使用\n\n升级版本';
-  assert.throws(() => classifyTopicSnapshot({ keyword: '泡澡浴缸', rows: [], emptyText: wall }), /refused/i);
+  // 「显式失败」必须带确定性 code：不带就会落到运行时分类的兜底分支 ⇒ 归 BUG ⇒ STOP_AND_ALERT，
+  // 也就是把「平台按套餐拒绝了」报成「疑似代码缺陷、停线」（2026-09-21 实测）。
+  assert.throws(
+    () => classifyTopicSnapshot({ keyword: '泡澡浴缸', rows: [], emptyText: wall }),
+    (error) => {
+      assert.equal(error.code, USAGE_LIMIT_CODE);
+      assert.equal(error.details?.evidence, wall.slice(0, 200), '平台原文要留在 details 里，供收据与现场核对');
+      assert.match(error.message, /refused/i);
+      return true;
+    },
+  );
   // 真·空结果仍然照常分类（不能因为加了这道闸就把正常的「没有同名话题」也判死）
   assert.deepEqual(classifyTopicSnapshot({ keyword: '泡澡浴缸', rows: [], emptyText: '没有找到话题~~点击这里' }), {
     keyword: '泡澡浴缸',

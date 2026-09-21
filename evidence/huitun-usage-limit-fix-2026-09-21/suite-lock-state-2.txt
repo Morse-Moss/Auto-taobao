@@ -1,0 +1,6 @@
+tmpdir            C:\Users\ADMINI~1\AppData\Local\Temp
+xws-runs 目录      存在
+  .market-analysis.lock  123B  mtime=2026-09-21T09:20:35.005Z
+     内容: {"pid":56060,"startedAt":"2026-09-21T09:20:33.537Z","processStartedAt":null,"token":"19513d41-b893-4264-8c15-b70d8984d9be"}
+     pid=56060 存活=alive  startTime=null
+env XWS_MARKET_ANALYSIS_LOCK = null

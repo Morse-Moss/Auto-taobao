@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import {
   ARTIFACT_SURFACE_FIELDS,
   EVIDENCE_SCHEMA_VERSION,
+  FAILURE_CLASS_BY_CODE,
   HuitunEvidenceError,
   WRITABLE_FIELD,
   adapter,
@@ -41,7 +42,7 @@ import {
   stableJson,
   translateFlowError,
 } from '../scripts/adapter.huitun-keyword-heat.mjs';
-import { HUITUN_RESULT_SCHEMA_VERSION, buildQueueBinding, plain } from '../scripts/flow.mjs';
+import { HUITUN_RESULT_SCHEMA_VERSION, USAGE_LIMIT_CODE, buildQueueBinding, plain } from '../scripts/flow.mjs';
 
 import { buildRegistryFromDisk } from '../../../runtime/sop-runtime/build-skill-registry.mjs';
 import { createLoader } from '../../../runtime/sop-runtime/skill-loader.mjs';
@@ -731,12 +732,53 @@ test('translateFlowError 把中文策略结论映射成确定性分类，未知�
   const mapped = translateFlowError(Object.assign(new Error('3 populated row(s) are not ready for Huitun'), { code: 'AI_REQUIRED' }));
   assert.equal(mapped.code, 'AI_REQUIRED');
   assert.equal(mapped.failureClass, 'HUMAN_REQUIRED');
+  // 配额墙走的是 code 而不是消息文本（消息里带平台原文，会变）。它曾被兜底判成 BUG ⇒ STOP_AND_ALERT，
+  // 也就是把「平台按套餐拒绝了这次查询」报成「疑似代码缺陷、停线」。
+  const quotaWall = translateFlowError(Object.assign(
+    new Error('Huitun refused to serve this query instead of returning an empty result: 该版本每天最多可以访问10次'),
+    { code: USAGE_LIMIT_CODE, details: { evidence: '该版本每天最多可以访问10次' } },
+  ));
+  assert.equal(quotaWall.code, USAGE_LIMIT_CODE);
+  assert.equal(quotaWall.failureClass, 'POLICY_DENIED');
+  assert.equal(quotaWall.failureClass, FAILURE_CLASS_BY_CODE[USAGE_LIMIT_CODE]);
+  assert.equal(quotaWall.details.evidence, '该版本每天最多可以访问10次', '平台原文要能到收据侧');
+  assert.equal(
+    quotaWall.message.includes('该版本每天最多可以访问10次'), false,
+    '包装后的消息取稳定文案（平台原文放 details），否则一条会变的文本就成了判据的一部分',
+  );
   // 未命中规则的异常不能被一个「看起来合理」的分类藏起来。
   const bug = new Error('unexpected internal invariant');
   assert.equal(translateFlowError(bug), bug);
   // 已经是确定性错误的，不再包装。
   const known = new HuitunEvidenceError('x', 'QUEUE_CHANGED');
   assert.equal(translateFlowError(known), known);
+});
+
+test('接线判据：flow.mjs 挂的每个确定性 code 都必须被映射成分类（否则又落回 BUG→STOP_AND_ALERT）', () => {
+  // 为什么扫源码而不是列一份名单：名单会随新 code 增长而漏改，而漏改的后果是**静默**的
+  // ——没有 code 或没有映射的异常都会掉进默认分类器的兜底分支，报成「疑似缺陷、停线」。
+  const source = readFileSync(join(here, '..', 'scripts', 'flow.mjs'), 'utf8');
+  const attached = new Set();
+  for (const match of source.matchAll(/error\.code\s*=\s*([^;\n]+);/gu)) {
+    const raw = match[1].trim();
+    const literal = /^'([^']+)'$/u.exec(raw)?.[1]
+      ?? (/^USAGE_LIMIT_CODE$/u.test(raw) ? USAGE_LIMIT_CODE : null);
+    // 认不出来立刻失败：这条判据自己假绿（扫不到东西、却报通过）比没有判据更坏。
+    assert.ok(literal, `flow.mjs 挂了一个本判据认不出的 code：${raw}（改了挂法就要同步改这里）`);
+    attached.add(literal);
+  }
+  for (const expected of [USAGE_LIMIT_CODE, 'AI_REQUIRED']) {
+    assert.ok(
+      attached.has(expected),
+      `flow.mjs 不再挂 ${expected} 了；本判据扫到的是 [${[...attached].join(', ')}]`,
+    );
+  }
+  for (const code of attached) {
+    const translated = translateFlowError(Object.assign(new Error(`generic ${code} failure`), { code }));
+    assert.equal(translated.code, code, `${code} 被翻译后丢了 code`);
+    assert.equal(translated.failureClass, FAILURE_CLASS_BY_CODE[code], `${code} 没有映射到分类`);
+    assert.notEqual(translated.failureClass, 'BUG', `${code} 落回 BUG 就等于报「疑似缺陷、停线」`);
+  }
 });
 
 test('buildReadbackReceipt：归一化数字/富文本字段，分离缺失、浏览量不符、公式未结算与守卫漂移', () => {

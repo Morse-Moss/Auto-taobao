@@ -1,0 +1,21 @@
+=== 第一段：flow.mjs 抛出来的东西 ===
+抛了吗            是（没有把配额墙当成 NO_EXACT_TOPIC / views: 0）
+error.code        "USAGE_LIMIT_REACHED"   期望 "USAGE_LIMIT_REACHED"
+error.details     {"evidence":"该版本每天最多可以访问10次，请升级到高版本使用\n\n升级版本"}
+message           "Huitun refused to serve this query instead of returning an empty result: 该版本每天最多可以访问10次，请升级到高版本使用\n\n升级版本"
+
+=== 第二段：运行时那条轴（适配器 → 收据上的 failureClass → 动作）===
+translateFlowError 包装   是
+code                      "USAGE_LIMIT_REACHED"
+failureClass              "POLICY_DENIED"
+FAILURE_CLASS_BY_CODE 里   "POLICY_DENIED"
+actionForFailure          action=FAIL  reason="policy denied"
+  期望：POLICY_DENIED / FAIL（当天收工、等人补配置）。修之前这一格是 BUG / STOP_AND_ALERT。
+
+=== 第三段：CLI 那条轴（退出码 / 是否保留浏览器页签）===
+cliExitCodeFor       2   期望 2（要人处理）
+preserveBrowserFor   true   期望 true（把那堵墙留在页面上给人看）
+  修之前这两格分别是 1 与 false（因为 803/883 行读的是 .code，而当时它没有 code）。
+
+=== 对照：真·空结果不受影响（不能被这道闸连坐）===
+status=NO_EXACT_TOPIC views=0 viewsRaw="没有找到话题~~点击这里"

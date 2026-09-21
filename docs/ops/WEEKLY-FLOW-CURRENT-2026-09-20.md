@@ -56,6 +56,8 @@
 
 `skills/huitun-to-feishu-keyword-heat`，默认干跑 `--apply --confirm-table` 才写；`AI_REQUIRED`（存在 `优先级=待数据` 的行）即停（依据：该技能 flow.mjs 的失败分类；huitun-candidate-contract.md）[核]
 
+配额用尽（该账号是免费档，每天 10 次）时抛确定性 code `USAGE_LIMIT_REACHED`：运行时侧映射成 `POLICY_DENIED`（`retryAutomatically:false` ⇒ 当天收工、等人处理，不会每 15 分钟白重试），CLI 侧退出码 2 且保留本次页签。此前它没有 code，会落到兜底分类 `BUG` → `STOP_AND_ALERT`（把「平台按套餐拒绝了」报成「疑似代码缺陷、停线」）。2026-09-21 修，证据＝`evidence/huitun-usage-limit-fix-2026-09-21/`（端到端复核 + 突变 5/5）[核]
+
 ### 1.6 决策历史同步：独立段（第二个发布单元）
 
 `skills/sycm-to-feishu-base/scripts/sync-decision-history.mjs`，默认 dry-run；把已达标批次快照进历史并回写三个 `上一有效周...达标` 输入（依据：sync-decision-history.mjs 的 `classifyHistoryBatches` / `planVerifiedBatchPromotion`）[核]

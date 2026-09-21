@@ -175,6 +175,15 @@ export function contentHeatForViews(views) {
 // 所以这类文案在这里显式失败：与 parseDisplayedViews 拒绝无法解析的浏览量文案同一层、同一风格。
 const LIMIT_WALL_PATTERN = /每天最多可以访问|请升级到高版本|升级版本|升级会员|访问次数已达上限|今日访问次数/u;
 
+// 配额墙的**确定性 code**。挂在本题而不是适配器里，有三个理由：
+//  1. `flow.mjs` 是纯逻辑模块（不 import 适配器），只有在这里挂 code，两条轴才看得见同一个事实——
+//     适配器走 `translateFlowError` 把它变成收据上的 `failureClass`，而 CLI 直接读 `error.code`（它不翻译）；
+//  2. 两条轴读的是**不同的字段**（`.failureClass` / `.code`），所以「挂个 HUMAN_REQUIRED」不够，
+//     code 与它的分类映射要**分别表态**（2026-09-21 实测：只改一处，另一处纹丝不动）；
+//  3. 不给它一个 code，它就会落到运行时分类的兜底分支 ⇒ 归 `BUG` ⇒ `STOP_AND_ALERT`（「疑似代码缺陷、停线」），
+//     而事实是「这个免费账号今天的额度用完了」——那是**指错了人**，不是保守。
+export const USAGE_LIMIT_CODE = 'USAGE_LIMIT_REACHED';
+
 export function classifyTopicSnapshot({ keyword, rows, emptyText }) {
   const search = plain(keyword);
   if (!search) throw new Error('Huitun keyword is empty');
@@ -187,7 +196,10 @@ export function classifyTopicSnapshot({ keyword, rows, emptyText }) {
   }
   const evidence = plain(emptyText) || '灰豚返回相近话题，无完全同名话题';
   if (LIMIT_WALL_PATTERN.test(evidence)) {
-    throw new Error(`Huitun refused to serve this query instead of returning an empty result: ${evidence.slice(0, 200)}`);
+    const error = new Error(`Huitun refused to serve this query instead of returning an empty result: ${evidence.slice(0, 200)}`);
+    error.code = USAGE_LIMIT_CODE;
+    error.details = { evidence: evidence.slice(0, 200) };
+    throw error;
   }
   return { keyword: search, status: 'NO_EXACT_TOPIC', topic: null, viewsRaw: evidence, views: 0 };
 }

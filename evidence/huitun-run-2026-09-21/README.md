@@ -140,6 +140,10 @@ classifyExternalFailure (policy)  => BUG  => action=STOP_AND_ALERT  "bug suspect
 事实边界：该能力**尚未挂任何排期**（`config/` 内 grep `huitun` 零命中，
 `skill-registry.index.json` 只有能力登记），所以今天没有无人值守流程会被这条错分类弄停。
 
+**2026-09-21 已修**：给这条失败挂了确定性 code `USAGE_LIMIT_REACHED` → 运行时归 `POLICY_DENIED`
+（当天收工、等人处理），CLI 退出码 2 且保留页签。修法与验证＝`evidence/huitun-usage-limit-fix-2026-09-21/`。
+本节保留的是**修之前**的实测现场，别把下面的 `BUG` / `STOP_AND_ALERT` 读成现状。
+
 ## 文件
 
 | 文件 | 内容 |

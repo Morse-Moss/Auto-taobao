@@ -1,0 +1,460 @@
+TAP version 13
+# Subtest: manifest 与实现自述一致：名称、版本、入口、副作用、发布期验证器不得漂移
+ok 1 - manifest 与实现自述一致：名称、版本、入口、副作用、发布期验证器不得漂移
+  ---
+  duration_ms: 49.9694
+  type: 'test'
+  ...
+# Subtest: collectContract 的 requiredFields 与工件表面清单同源，且被声明为刻意省略的验证器不得出现在 manifest 里
+ok 2 - collectContract 的 requiredFields 与工件表面清单同源，且被声明为刻意省略的验证器不得出现在 manifest 里
+  ---
+  duration_ms: 92.3717
+  type: 'test'
+  ...
+# Subtest: 跨 Skill 依赖漂移守卫：manifest 的 adapter.feishu 与适配器里那条相对导入指向同一个已登记入口
+ok 3 - 跨 Skill 依赖漂移守卫：manifest 的 adapter.feishu 与适配器里那条相对导入指向同一个已登记入口
+  ---
+  duration_ms: 16.1628
+  type: 'test'
+  ...
+# Subtest: 只跑采集段：复验通过、发布轴保持 NOT_REQUESTED、游标不推进、运行终结
+ok 4 - 只跑采集段：复验通过、发布轴保持 NOT_REQUESTED、游标不推进、运行终结
+  ---
+  duration_ms: 106.106
+  type: 'test'
+  ...
+# Subtest: 采集段把 优先级 的公式预期一起算进工件（回读要靠它判断公式是否结算）
+ok 5 - 采集段把 优先级 的公式预期一起算进工件（回读要靠它判断公式是否结算）
+  ---
+  duration_ms: 50.1315
+  type: 'test'
+  ...
+# Subtest: identity 随运行上下文进入车道，且与采集观察一致（source_identity 不是空转）
+ok 6 - identity 随运行上下文进入车道，且与采集观察一致（source_identity 不是空转）
+  ---
+  duration_ms: 240.5839
+  type: 'test'
+  ...
+# Subtest: 结果文档里的来源平台被改坏 → SOURCE_MISMATCH
+ok 7 - 结果文档里的来源平台被改坏 → SOURCE_MISMATCH
+  ---
+  duration_ms: 54.6
+  type: 'test'
+  ...
+# Subtest: 结果文档与队列实况失去绑定 → QUEUE_CHANGED（表名或队列任一变化）
+ok 8 - 结果文档与队列实况失去绑定 → QUEUE_CHANGED（表名或队列任一变化）
+  ---
+  duration_ms: 20.5043
+  type: 'test'
+  ...
+# Subtest: 结果文档过期 → RESULT_STALE
+ok 9 - 结果文档过期 → RESULT_STALE
+  ---
+  duration_ms: 21.872
+  type: 'test'
+  ...
+# Subtest: 结果文档多出一个关键词 → QUEUE_CHANGED（队列与结果必须逐词对齐）
+ok 10 - 结果文档多出一个关键词 → QUEUE_CHANGED（队列与结果必须逐词对齐）
+  ---
+  duration_ms: 104.5236
+  type: 'test'
+  ...
+# Subtest: 浏览量文案无法解析 → RESULT_INVALID
+ok 11 - 浏览量文案无法解析 → RESULT_INVALID
+  ---
+  duration_ms: 310.8469
+  type: 'test'
+  ...
+# Subtest: 目标表名不符 → TABLE_MISMATCH；缺授权字段 → FIELD_MISSING；字段类型不符 → FIELD_TYPE_MISMATCH
+ok 12 - 目标表名不符 → TABLE_MISMATCH；缺授权字段 → FIELD_MISSING；字段类型不符 → FIELD_TYPE_MISMATCH
+  ---
+  duration_ms: 503.3191
+  type: 'test'
+  ...
+# Subtest: 队列为空 → NO_CANDIDATES；队列超限 → QUEUE_TOO_LARGE
+ok 13 - 队列为空 → NO_CANDIDATES；队列超限 → QUEUE_TOO_LARGE
+  ---
+  duration_ms: 131.9771
+  type: 'test'
+  ...
+# Subtest: 上游 AI 分析未完成（存在 优先级=待数据 的行）→ AI_REQUIRED，落 HUMAN_REQUIRED 而不是停线
+ok 14 - 上游 AI 分析未完成（存在 优先级=待数据 的行）→ AI_REQUIRED，落 HUMAN_REQUIRED 而不是停线
+  ---
+  duration_ms: 32.5068
+  type: 'test'
+  ...
+# Subtest: candidateMode 不在契约内 → UNSUPPORTED_MODE
+ok 15 - candidateMode 不在契约内 → UNSUPPORTED_MODE
+  ---
+  duration_ms: 43.0595
+  type: 'test'
+  ...
+# Subtest: 输入缺失：results 文件不存在 → RESULTS_MISSING；env 文件不存在 → CREDENTIALS_UNAVAILABLE
+ok 16 - 输入缺失：results 文件不存在 → RESULTS_MISSING；env 文件不存在 → CREDENTIALS_UNAVAILABLE
+  ---
+  duration_ms: 24.8197
+  type: 'test'
+  ...
+# Subtest: 采集段失败经运行时落地：确定性 code 必须映射成收据上的 failureClass
+ok 17 - 采集段失败经运行时落地：确定性 code 必须映射成收据上的 failureClass
+  ---
+  duration_ms: 28.1839
+  type: 'test'
+  ...
+# Subtest: 工件字节被篡改 → validate 自检失败（摘要不再匹配）
+ok 18 - 工件字节被篡改 → validate 自检失败（摘要不再匹配）
+  ---
+  duration_ms: 44.3169
+  type: 'test'
+  ...
+# Subtest: 表面字段与字节不一致 → STRUCTURE_INVALID；用字节单独重建的工件（无 rowCount）也能通过
+ok 19 - 表面字段与字节不一致 → STRUCTURE_INVALID；用字节单独重建的工件（无 rowCount）也能通过
+  ---
+  duration_ms: 40.0223
+  type: 'test'
+  ...
+# Subtest: 工件里没有计划行 → 发布段拒绝（不允许「空写」冒充对账）
+ok 20 - 工件里没有计划行 → 发布段拒绝（不允许「空写」冒充对账）
+  ---
+  duration_ms: 0.6303
+  type: 'test'
+  ...
+# Subtest: 提交段：写入恰好一次、只含空白行、回读收敛后 VERIFIED 并推进游标
+ok 21 - 提交段：写入恰好一次、只含空白行、回读收敛后 VERIFIED 并推进游标
+  ---
+  duration_ms: 53.4702
+  type: 'test'
+  ...
+# Subtest: 幂等写入：目标表已有同值（公式也已结算）→ 不产生第二次写入，回读仍然收敛
+ok 22 - 幂等写入：目标表已有同值（公式也已结算）→ 不产生第二次写入，回读仍然收敛
+  ---
+  duration_ms: 52.5096
+  type: 'test'
+  ...
+# Subtest: 已有别的值 → OVERWRITE_REFUSED（策略拒绝，不是静默跳过）
+ok 23 - 已有别的值 → OVERWRITE_REFUSED（策略拒绝，不是静默跳过）
+  ---
+  duration_ms: 26.9453
+  type: 'test'
+  ...
+# Subtest: 写前守卫字段被改动 → GUARD_FIELD_CHANGED，且一次写入都没有发生
+ok 24 - 写前守卫字段被改动 → GUARD_FIELD_CHANGED，且一次写入都没有发生
+  ---
+  duration_ms: 61.2774
+  type: 'test'
+  ...
+# Subtest: 写前队列指纹变化（新增一个 A 候选）→ QUEUE_CHANGED，且一次写入都没有发生
+ok 25 - 写前队列指纹变化（新增一个 A 候选）→ QUEUE_CHANGED，且一次写入都没有发生
+  ---
+  duration_ms: 76.0655
+  type: 'test'
+  ...
+# Subtest: 请求目标与已审批工件不一致 → REJECTED 并留下收据，而不是把运行留在 RUNNING
+ok 26 - 请求目标与已审批工件不一致 → REJECTED 并留下收据，而不是把运行留在 RUNNING
+  ---
+  duration_ms: 75.8015
+  type: 'test'
+  ...
+# Subtest: createPublisher 的边界：缺 artifactBytes → RESULTS_MISSING；缺 target → TARGET_REQUIRED
+ok 27 - createPublisher 的边界：缺 artifactBytes → RESULTS_MISSING；缺 target → TARGET_REQUIRED
+  ---
+  duration_ms: 36.9674
+  type: 'test'
+  ...
+# Subtest: 写入失败分流：5xx → UNKNOWN 等对账；4xx → 确定性拒绝 REJECTED
+ok 28 - 写入失败分流：5xx → UNKNOWN 等对账；4xx → 确定性拒绝 REJECTED
+  ---
+  duration_ms: 102.0271
+  type: 'test'
+  ...
+# Subtest: 优先级公式始终不结算 → 回读不收敛，收据不带 verifiedAt，判 UNKNOWN 而不是 VERIFIED
+ok 29 - 优先级公式始终不结算 → 回读不收敛，收据不带 verifiedAt，判 UNKNOWN 而不是 VERIFIED
+  ---
+  duration_ms: 105.7319
+  type: 'test'
+  ...
+# Subtest: 人工闸门：--commit 未记录审批人 → 停在 HUMAN_REQUIRED，一次外部调用都没发生
+ok 30 - 人工闸门：--commit 未记录审批人 → 停在 HUMAN_REQUIRED，一次外部调用都没发生
+  ---
+  duration_ms: 51.5694
+  type: 'test'
+  ...
+# Subtest: isUnknownWriteFailure 逐条：只有可能已经落库的失败才进 UNKNOWN
+ok 31 - isUnknownWriteFailure 逐条：只有可能已经落库的失败才进 UNKNOWN
+  ---
+  duration_ms: 0.6781
+  type: 'test'
+  ...
+# Subtest: translateFlowError 把中文策略结论映射成确定性分类，未知异常原样抛出
+ok 32 - translateFlowError 把中文策略结论映射成确定性分类，未知异常原样抛出
+  ---
+  duration_ms: 0.3357
+  type: 'test'
+  ...
+# Subtest: 接线判据：flow.mjs 挂的每个确定性 code 都必须被映射成分类（否则又落回 BUG→STOP_AND_ALERT）
+ok 33 - 接线判据：flow.mjs 挂的每个确定性 code 都必须被映射成分类（否则又落回 BUG→STOP_AND_ALERT）
+  ---
+  duration_ms: 0.4943
+  type: 'test'
+  ...
+# Subtest: buildReadbackReceipt：归一化数字/富文本字段，分离缺失、浏览量不符、公式未结算与守卫漂移
+ok 34 - buildReadbackReceipt：归一化数字/富文本字段，分离缺失、浏览量不符、公式未结算与守卫漂移
+  ---
+  duration_ms: 0.348
+  type: 'test'
+  ...
+# Subtest: stableJson 与 sha256Hex 是确定性的（摘要绑定必须可复算）
+ok 35 - stableJson 与 sha256Hex 是确定性的（摘要绑定必须可复算）
+  ---
+  duration_ms: 0.1318
+  type: 'test'
+  ...
+# Subtest: requires every A candidate to have a unique non-empty keyword
+ok 36 - requires every A candidate to have a unique non-empty keyword
+  ---
+  duration_ms: 1.2219
+  type: 'test'
+  ...
+# Subtest: requires the result set to equal the complete live A-candidate queue
+ok 37 - requires the result set to equal the complete live A-candidate queue
+  ---
+  duration_ms: 31.1544
+  type: 'test'
+  ...
+# Subtest: rejects reused results with missing, wrong, or stale Huitun provenance
+ok 38 - rejects reused results with missing, wrong, or stale Huitun provenance
+  ---
+  duration_ms: 1.7005
+  type: 'test'
+  ...
+# Subtest: refuses to overwrite a non-empty Huitun field
+ok 39 - refuses to overwrite a non-empty Huitun field
+  ---
+  duration_ms: 0.2863
+  type: 'test'
+  ...
+# Subtest: allows only the exact topic-view batch update against the confirmed target
+ok 40 - allows only the exact topic-view batch update against the confirmed target
+  ---
+  duration_ms: 0.3782
+  type: 'test'
+  ...
+# Subtest: verification permits formula settlement but rejects every unrelated change
+ok 41 - verification permits formula settlement but rejects every unrelated change
+  ---
+  duration_ms: 0.6383
+  type: 'test'
+  ...
+# Subtest: B fallback keeps medium-trade keywords at B even when Huitun views exceed 1000w
+ok 42 - B fallback keeps medium-trade keywords at B even when Huitun views exceed 1000w
+  ---
+  duration_ms: 0.2673
+  type: 'test'
+  ...
+# Subtest: Huitun only writes topic views and preserves the upstream content heat
+ok 43 - Huitun only writes topic views and preserves the upstream content heat
+  ---
+  duration_ms: 0.3583
+  type: 'test'
+  ...
+# Subtest: CLI documents the complete candidate-to-backfill workflow
+ok 44 - CLI documents the complete candidate-to-backfill workflow
+  ---
+  duration_ms: 791.1854
+  type: 'test'
+  ...
+# Subtest: CLI self-test is network-free
+ok 45 - CLI self-test is network-free
+  ---
+  duration_ms: 784.3824
+  type: 'test'
+  ...
+# Subtest: AI_REQUIRED produces a terminal local manifest without credential data
+ok 46 - AI_REQUIRED produces a terminal local manifest without credential data
+  ---
+  duration_ms: 0.2325
+  type: 'test'
+  ...
+# Subtest: formula settlement reads Feishu array-formatted formula text
+ok 47 - formula settlement reads Feishu array-formatted formula text
+  ---
+  duration_ms: 0.2008
+  type: 'test'
+  ...
+# Subtest: CLI 的两条轴（退出码 / 是否保留页签）由同一处判据给出，配额墙与登录墙同级
+ok 48 - CLI 的两条轴（退出码 / 是否保留页签）由同一处判据给出，配额墙与登录墙同级
+  ---
+  duration_ms: 0.188
+  type: 'test'
+  ...
+# Subtest: 接线判据：两个调用点都必须走判据函数，不许再抄一份内联清单
+ok 49 - 接线判据：两个调用点都必须走判据函数，不许再抄一份内联清单
+  ---
+  duration_ms: 0.2854
+  type: 'test'
+  ...
+# Subtest: parses Huitun display units without changing the displayed evidence
+ok 50 - parses Huitun display units without changing the displayed evidence
+  ---
+  duration_ms: 19.216
+  type: 'test'
+  ...
+# Subtest: matches only an exact topic after trimming the surrounding hashes
+ok 51 - matches only an exact topic after trimming the surrounding hashes
+  ---
+  duration_ms: 0.6817
+  type: 'test'
+  ...
+# Subtest: returns zero when Huitun has no exact topic and never sums similar topics
+ok 52 - returns zero when Huitun has no exact topic and never sums similar topics
+  ---
+  duration_ms: 0.1454
+  type: 'test'
+  ...
+# Subtest: a Huitun quota wall is a refusal, not an empty result with zero views
+ok 53 - a Huitun quota wall is a refusal, not an empty result with zero views
+  ---
+  duration_ms: 0.3471
+  type: 'test'
+  ...
+# Subtest: uses the confirmed 1000w threshold and no invented middle band
+ok 54 - uses the confirmed 1000w threshold and no invented middle band
+  ---
+  duration_ms: 1.7157
+  type: 'test'
+  ...
+# Subtest: checks only visible blockers so hidden QR components do not trigger a false alarm
+ok 55 - checks only visible blockers so hidden QR components do not trigger a false alarm
+  ---
+  duration_ms: 2.7236
+  type: 'test'
+  ...
+# Subtest: does not accept stale result rows until the submitted query causes a transition
+ok 56 - does not accept stale result rows until the submitted query causes a transition
+  ---
+  duration_ms: 0.5162
+  type: 'test'
+  ...
+# Subtest: compares field definitions without depending on object key order
+ok 57 - compares field definitions without depending on object key order
+  ---
+  duration_ms: 0.1154
+  type: 'test'
+  ...
+# Subtest: reads Feishu text fields without assuming they are plain strings
+ok 58 - reads Feishu text fields without assuming they are plain strings
+  ---
+  duration_ms: 0.314
+  type: 'test'
+  ...
+# Subtest: stops before Huitun candidate selection while populated AI rows are pending
+ok 59 - stops before Huitun candidate selection while populated AI rows are pending
+  ---
+  duration_ms: 0.6909
+  type: 'test'
+  ...
+# Subtest: B fallback selects strict high-search medium/high-trade rows only when no A queue exists
+ok 60 - B fallback selects strict high-search medium/high-trade rows only when no A queue exists
+  ---
+  duration_ms: 0.2073
+  type: 'test'
+  ...
+# Subtest: rediscovers only the tab labeled for the current run
+ok 61 - rediscovers only the tab labeled for the current run
+  ---
+  duration_ms: 0.161
+  type: 'test'
+  ...
+# Subtest: CLI defaults to dry-run and requires an exact table confirmation for writes
+ok 62 - CLI defaults to dry-run and requires an exact table confirmation for writes
+  ---
+  duration_ms: 1.7862
+  type: 'test'
+  ...
+# Subtest: proxy health must identify the requested Edge browser
+ok 63 - proxy health must identify the requested Edge browser
+  ---
+  duration_ms: 1.3094
+  type: 'test'
+  ...
+# Subtest: confirmed Huitun accounts accept both ID and DY header formats
+ok 64 - confirmed Huitun accounts accept both ID and DY header formats
+  ---
+  duration_ms: 2.0393
+  type: 'test'
+  ...
+# Subtest: READY：队列里有 A 候选即报有活，且整个探测过程一次写调用都没有
+ok 65 - READY：队列里有 A 候选即报有活，且整个探测过程一次写调用都没有
+  ---
+  duration_ms: 88.5631
+  type: 'test'
+  ...
+# Subtest: EMPTY：没有 A 候选就是「本周没有要补的词」，不是失败
+ok 66 - EMPTY：没有 A 候选就是「本周没有要补的词」，不是失败
+  ---
+  duration_ms: 2.496
+  type: 'test'
+  ...
+# Subtest: WAITING_HUMAN：还有内容行没结算完 → 等人工，并把待结算的行带出来
+ok 67 - WAITING_HUMAN：还有内容行没结算完 → 等人工，并把待结算的行带出来
+  ---
+  duration_ms: 3.4166
+  type: 'test'
+  ...
+# Subtest: 探测不做策略判决：表名/字段类型/队列规模都归采集段管，探测里不许复制第二份
+ok 68 - 探测不做策略判决：表名/字段类型/队列规模都归采集段管，探测里不许复制第二份
+  ---
+  duration_ms: 7.4211
+  type: 'test'
+  ...
+# Subtest: 探测不要求 resultsFile：它发生在浏览器采集之前，那时结果文件还不存在
+ok 69 - 探测不要求 resultsFile：它发生在浏览器采集之前，那时结果文件还不存在
+  ---
+  duration_ms: 4.0226
+  type: 'test'
+  ...
+# Subtest: 探测输入缺失即拒绝（用自己的码，不冒充采集段的 RESULTS_MISSING）
+ok 70 - 探测输入缺失即拒绝（用自己的码，不冒充采集段的 RESULTS_MISSING）
+  ---
+  duration_ms: 2.1065
+  type: 'test'
+  ...
+# Subtest: 凭据不可用原样抛出，由调度器判为「没结论」（绝不悄悄返回空队列）
+ok 71 - 凭据不可用原样抛出，由调度器判为「没结论」（绝不悄悄返回空队列）
+  ---
+  duration_ms: 0.8112
+  type: 'test'
+  ...
+# Subtest: 契约形状：导出名是调度器固定的 probeQueue，且它只吃 collectInput
+ok 72 - 契约形状：导出名是调度器固定的 probeQueue，且它只吃 collectInput
+  ---
+  duration_ms: 2.3186
+  type: 'test'
+  ...
+# Subtest: 调度器 × 空队列：跳过，且一条运行都没创建
+ok 73 - 调度器 × 空队列：跳过，且一条运行都没创建
+  ---
+  duration_ms: 19.0606
+  type: 'test'
+  ...
+# Subtest: 调度器 × 等上游 AI：暂停等人工，同样不创建运行
+ok 74 - 调度器 × 等上游 AI：暂停等人工，同样不创建运行
+  ---
+  duration_ms: 277.7399
+  type: 'test'
+  ...
+# Subtest: 调度器 × 有活：照常发起真实运行（这里因缺 resultsFile 在采集段确定性失败，但运行确实被创建）
+ok 75 - 调度器 × 有活：照常发起真实运行（这里因缺 resultsFile 在采集段确定性失败，但运行确实被创建）
+  ---
+  duration_ms: 21.721
+  type: 'test'
+  ...
+1..75
+# tests 75
+# suites 0
+# pass 75
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3288.4848
