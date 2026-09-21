@@ -1,0 +1,33 @@
+﻿=== git status --short ===
+A  evidence/schedule-register-2026-09-20/01-schedule-print.txt
+A  evidence/schedule-register-2026-09-20/02-register-and-readback.txt
+A  evidence/schedule-register-2026-09-20/03-query-tool-gap.txt
+A  evidence/schedule-register-2026-09-20/04-job-print-dry.txt
+A  evidence/schedule-register-2026-09-20/05-unregister-windows-task.txt
+A  evidence/schedule-register-2026-09-20/06-check-after-edit.txt
+A  evidence/schedule-register-2026-09-20/07-arch-boundary-after-edit.txt
+A  evidence/schedule-register-2026-09-20/08-git-status-after.txt
+A  evidence/schedule-register-2026-09-20/09-tmp-cleanup-and-status.txt
+A  evidence/schedule-register-2026-09-20/INDEX.md
+M  scripts/schedule-install.mjs
+M  skills/sycm-alimama-daily-report/references/sop.md
+
+=== 暂存清单（quotepath=false）===
+evidence/schedule-register-2026-09-20/01-schedule-print.txt
+evidence/schedule-register-2026-09-20/02-register-and-readback.txt
+evidence/schedule-register-2026-09-20/03-query-tool-gap.txt
+evidence/schedule-register-2026-09-20/04-job-print-dry.txt
+evidence/schedule-register-2026-09-20/05-unregister-windows-task.txt
+evidence/schedule-register-2026-09-20/06-check-after-edit.txt
+evidence/schedule-register-2026-09-20/07-arch-boundary-after-edit.txt
+evidence/schedule-register-2026-09-20/08-git-status-after.txt
+evidence/schedule-register-2026-09-20/09-tmp-cleanup-and-status.txt
+evidence/schedule-register-2026-09-20/INDEX.md
+scripts/schedule-install.mjs
+skills/sycm-alimama-daily-report/references/sop.md
+
+=== 暂存统计 ===
+ scripts/schedule-install.mjs                       |  6 +-
+ skills/sycm-alimama-daily-report/references/sop.md | 47 +++++++-----
+ 12 files changed, 214 insertions(+), 22 deletions(-)
+

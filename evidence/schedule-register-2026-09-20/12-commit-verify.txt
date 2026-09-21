@@ -1,0 +1,34 @@
+﻿=== commit 输出 ===
+[main 1a8b45d] 瀹氭椂瀹夸富鏀逛负 WorkBuddy 瀹氭椂浠诲姟锛氭挙閿€ Windows 璁″垝浠诲姟 + 鍙ｅ緞鍚屾 + 鐣欒瘉
+ 12 files changed, 214 insertions(+), 22 deletions(-)
+ create mode 100644 evidence/schedule-register-2026-09-20/01-schedule-print.txt
+ create mode 100644 evidence/schedule-register-2026-09-20/02-register-and-readback.txt
+ create mode 100644 evidence/schedule-register-2026-09-20/03-query-tool-gap.txt
+ create mode 100644 evidence/schedule-register-2026-09-20/04-job-print-dry.txt
+ create mode 100644 evidence/schedule-register-2026-09-20/05-unregister-windows-task.txt
+ create mode 100644 evidence/schedule-register-2026-09-20/06-check-after-edit.txt
+ create mode 100644 evidence/schedule-register-2026-09-20/07-arch-boundary-after-edit.txt
+ create mode 100644 evidence/schedule-register-2026-09-20/08-git-status-after.txt
+ create mode 100644 evidence/schedule-register-2026-09-20/09-tmp-cleanup-and-status.txt
+ create mode 100644 evidence/schedule-register-2026-09-20/INDEX.md
+
+=== HEAD ===
+1a8b45d 瀹氭椂瀹夸富鏀逛负 WorkBuddy 瀹氭椂浠诲姟锛氭挙閿€ Windows 璁″垝浠诲姟 + 鍙ｅ緞鍚屾 + 鐣欒瘉
+ .../01-schedule-print.txt                          |  8 ++
+ .../02-register-and-readback.txt                   |  5 ++
+ .../03-query-tool-gap.txt                          | 27 +++++++
+ .../04-job-print-dry.txt                           |  8 ++
+ .../05-unregister-windows-task.txt                 |  5 ++
+ .../06-check-after-edit.txt                        | 15 ++++
+ .../07-arch-boundary-after-edit.txt                | 14 ++++
+ .../08-git-status-after.txt                        |  4 +
+ .../09-tmp-cleanup-and-status.txt                  |  9 +++
+ evidence/schedule-register-2026-09-20/INDEX.md     | 88 ++++++++++++++++++++++
+ scripts/schedule-install.mjs                       |  6 +-
+ skills/sycm-alimama-daily-report/references/sop.md | 47 +++++++-----
+ 12 files changed, 214 insertions(+), 22 deletions(-)
+
+=== 提交后 status ===
+?? evidence/schedule-register-2026-09-20/10-stage-audit.txt
+?? evidence/schedule-register-2026-09-20/11-commit.txt
+
