@@ -92,3 +92,56 @@
 - **回落**：`classifyDimensions(title)`（`competitor-v2-core.mjs:1094`）从**商品标题**提尺寸，
   拿不到即 `无注明` —— 这就是那 1364 行的来源。
 
+---
+
+## 追加：尺寸链固定（2026-09-21 10:0x，方案与口径见 `docs/ops/SIZE-CHAIN-FIXED-2026-09-21.md`）
+
+### 本轮新增的实测（补上第二节缺的那一块）
+
+第二节只查了「标题键」，没查「链接键」，也没查「本期到底有几个 A/B」。本轮补上：
+
+| 观测 | 数字 | 来源 |
+| --- | --- | --- |
+| 周表 `商品链接` 能否提出商品 id | **1417 / 1417**（提不出 0） | `linkid-join.txt` |
+| 周表链接id ∩ SKU明细商品ID | **2**（另一条是 `无分类` 行） | 同上 |
+| 竞品周_2026-09-13_2026-09-19 的 **A/B 行数** | **1** | 同上 |
+| 那一行 | `B-高价值竞品`，id `921092099640`，周表 `尺寸` = `无注明` | 同上 |
+| 同一商品在 SKU明细 侧 | `尺寸汇总 = 1.4m-1.7m`、`适用空间 = 常规卫生间`（96 行） | 同上 |
+
+**这条推翻了第二节的第 5 条结论的适用范围**：对**本期那唯一一个 A/B** 而言，标题键其实是能命中的
+（`title-join-check.txt` 里「周表 A/B 竞品 1 条，命中=是」）。所以本期那行尺寸为空，
+**不是键的问题，而是顺序 + 未编排 + 幂等锁死三件事**。键的问题只在扩展到其他商品时才会显形。
+（`商品ID` 做键这条仍然要做，理由从「本期落空」改成「跨周/跨商品必然落空」。）
+
+### 本轮改动（代码）
+
+| 文件 | 改动 |
+| --- | --- |
+| `runtime/fill-weekly-attribute-labels-core.mjs` | **新建**：判据层 —— `extractProductId` / `isAbClass` / `RECOMPUTABLE_COLUMNS` / `decideWrite` |
+| `runtime/fill-weekly-attribute-labels-core.test.mjs` | **新建**：9 条测试 |
+| `runtime/fill-weekly-attribute-labels.mjs` | 接入 core；联结键改「商品链接里的 id」（主）/「商品标题」（兜底）；新增 `--recompute-ab`；收据升 v3（含 `recomputed` / `joinKeys`） |
+
+### 本轮留证清单
+
+| 文件 | 是什么 |
+| --- | --- |
+| `linkid-join.mjs` / `.txt` | 探针五：链接 id 做键的命中情况 + 本期 A/B 逐行清单 |
+| `fwal-dry-base.json` | 写回 dry-run（**不带** `--recompute-ab`）：`plannedRows = 0` ← 锁死现场 |
+| `fwal-dry-recompute.json` | 写回 dry-run（带 `--recompute-ab`）：`plannedRows = 1`，`primaryHit = 1 / fallbackHit = 0` |
+| `fwal-dry-recompute2.json` | 接完 core 之后复跑，与上一次逐字同结论（防重构改行为） |
+| `mutation-fwal-core.txt` | **突变验证报告：CAUGHT 10/10**，还原 sha256 逐字节一致 |
+
+### 验证（跑在 `0a1cc8d` 之后 + 本次未提交改动）
+
+- `node --check` × 2：通过
+- `runtime/fill-weekly-attribute-labels-core.test.mjs`：**9 pass / 0 fail**
+- `node scripts/run-test-suite.mjs runtime --concurrency=1`：**86 files / 761 tests / 761 pass / 0 fail**
+- 突变验证：**CAUGHT 10/10**，MISSED 0，SKIP/NOOP 0
+
+### 本轮**没有**做的（边界）
+
+- **未回填** 09-13 期周表（按指令：历史周表不回填）。dry-run 只证明「就绪、会写 1 行」。
+- **未做编排入口**（按指令：先完整跑通再固定），所以「先采集、后写回」的顺序目前靠文档约束。
+- **未扩大采集队列**：第 6 步仍只吃主表 A/B（现覆盖 14 个商品），周表每期 A/B 数会变。
+
+

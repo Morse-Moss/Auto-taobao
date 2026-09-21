@@ -7,7 +7,7 @@
 //   一次就能把 5 列属性 + A/B/C/D + 尺寸 + 适用空间 + 数据状态 + 待补数据项全算完
 //   —— 缺的只是「有人把它写进周表」。
 //
-// 本脚本写 10 列（都只填空、绝不覆盖，可重复执行）：
+// 本脚本写 10 列（默认只填空、绝不覆盖，可重复执行）。唯一例外见下面第 3 点的 --recompute-ab。
 //   1. 搜索关键词   —— 常量（--search-keyword，默认「浴缸」）。
 //      采集合同 XWS_HEADERS 只有 16 列、物理上不含此列，所以周表落地即空；
 //      而 sync-latest-ab-to-main-core.mjs 明确 fail-closed：
@@ -15,8 +15,12 @@
 //      本列不是装饰：它空 → 周表 A/B 永远同步不进主表 → 主表指标陈旧 → 主表分类与周表不一致
 //      → 第 6 步 SKU 富化（要求主表 A/B）找不到合格候选。
 //   2. 材质分类/外形/安装方式/功能/风格 —— buildCompetitorRecord（与飞书评级公式同源）。
-//   3. 尺寸/适用空间 —— 优先取 SKU明细 按「商品标题」聚合（与主表 Lookup 同源同形态），
-//      无 SKU 行时回落 buildCompetitorRecord 的标题规则判定。
+//   3. 尺寸/适用空间 —— 优先取 SKU明细，联结键以「商品链接里的商品 id」为主、商品标题兜底
+//      （标题键跨周必然落空：实测与 SKU明细 的交集只有 3/1417，而周表链接 1417/1417
+//      都能提出商品 id）；无 SKU 行时回落 buildCompetitorRecord 的标题规则判定。
+//      加 --recompute-ab 时，A/B 行的 尺寸/适用空间 允许被 SKU 侧新值覆盖一次 ——
+//      因为口径就是「只有 A/B 才该有尺寸」，而它们曾被标题兜底写成「无注明」，
+//      「只填空不覆盖」会把那个错误永久锁死。
 //   4. 数据状态/待补数据项 —— buildCompetitorRecord（主表上这两个是公式，周表建不了 Lookup
 //      导致的死锁见 runtime/create-weekly-formula-fields.mjs 的 RULE_FILLED_TEXT）。
 //
@@ -27,13 +31,16 @@
 // 用法：
 //   node runtime/fill-weekly-attribute-labels.mjs
 //   node runtime/fill-weekly-attribute-labels.mjs --table-id tbllWI45sK0DfHpr
-//   node runtime/fill-weekly-attribute-labels.mjs --apply \
+//   node runtime/fill-weekly-attribute-labels.mjs --recompute-ab          # A/B 尺寸重算（仍 dry-run）
+//   node runtime/fill-weekly-attribute-labels.mjs --apply --recompute-ab \
 //     --confirm-app-token QcnhbEzYpacGvUskCbVcrcm3nFd --env-file "E:/小红书/.env.feishu-kcne.local" \
 //     --receipt "evidence/attribute-writeback-<week>.receipt.json"
+//   本脚本只读 base 名下的 竞品周_* / SKU明细；写侧只有 竞品周_* 的规则列，绝不碰主表、SKU明细。
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { buildCompetitorRecord } from '../skills/xws-to-feishu-base/scripts/competitor-v2-core.mjs';
 import { activeProfileName, competitorBaseToken, envFilePath, tableId } from './feishu-targets.mjs';
+import { decideWrite, extractProductId, isAbClass } from './fill-weekly-attribute-labels-core.mjs';
 
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 const APP_TOKEN = competitorBaseToken();
@@ -46,12 +53,13 @@ const DEFAULT_KEYWORD = '浴缸';
 
 function parseArgs(argv) {
   const options = {
-    apply: false, tableId: '', envFile: envFilePath() ?? 'E:/小红书/.env.local',
+    apply: false, recomputeAb: false, tableId: '', envFile: envFilePath() ?? 'E:/小红书/.env.local',
     receipt: '', searchKeyword: DEFAULT_KEYWORD,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--apply') options.apply = true;
+    else if (arg === '--recompute-ab') options.recomputeAb = true;
     else if (['--table-id', '--env-file', '--confirm-app-token', '--receipt', '--search-keyword'].includes(arg)) {
       const value = argv[++index];
       if (!value || value.startsWith('--')) throw new Error(`${arg} requires a value`);
@@ -82,6 +90,18 @@ const text = (value) => {
   if (typeof value === 'object') return text(value.text ?? value.value ?? value.name);
   return String(value).trim();
 };
+
+// 商品链接 → 商品 id 的取法在 fill-weekly-attribute-labels-core.mjs 里（有测试守着）。
+// 为什么用 id 当主键：实测竞品周表 1417/1417 行都能提出 id（提不出 0 行），而用
+// 「商品标题」做跨表键的实测交集只有 3/1417 —— 每周采到的商品本就不同，
+// 标题键会天然必然落空。标题只留作兜底。
+
+function mergeBucket(map, key, bucket) {
+  const current = map.get(key) ?? { sizes: new Set(), spaces: new Set() };
+  for (const size of bucket.sizes) current.sizes.add(size);
+  for (const space of bucket.spaces) current.spaces.add(space);
+  map.set(key, current);
+}
 
 const options = parseArgs(process.argv.slice(2));
 const env = readEnv(options.envFile);
@@ -148,42 +168,51 @@ if (!derivedPresent.length && !keywordPresent) {
   console.log(`提示：${table.name} 上既无 ${KEYWORD_FIELD} 也无规则列，本脚本只会重写已有列。`);
 }
 
-// SKU明细 按「商品标题」聚合：尺寸取 SKU尺寸（与主表 Lookup 同源），适用空间取 SKU 判定值。
+// SKU明细 聚合：尺寸取 SKU尺寸 + 尺寸汇总（与主表 Lookup 同源），适用空间取 SKU 判定值。
+// 两个索引一起建：商品 id 是主键（周表侧 100% 可提），商品标题只作兜底
+// （标题键跨周必然落空 —— 实测与 SKU明细 的交集只有 3/1417）。
+const skuByProductId = new Map();
 const skuByTitle = new Map();
 const skuTableId = tableId('skuDetail');
 const skuTableExists = all.some((entry) => entry.table_id === skuTableId);
 if (skuTableExists) {
   for (const record of await listRecords(skuTableId)) {
-    const title = text(record.fields?.['商品标题']);
-    if (!title) continue;
-    const bucket = skuByTitle.get(title) ?? { sizes: new Set(), spaces: new Set() };
-    for (const size of [text(record.fields?.['SKU尺寸']), text(record.fields?.['尺寸汇总'])]) {
+    const skuFields = record.fields ?? {};
+    const bucket = { sizes: new Set(), spaces: new Set() };
+    for (const size of [text(skuFields['SKU尺寸']), text(skuFields['尺寸汇总'])]) {
       if (size && size !== '无注明') bucket.sizes.add(size);
     }
-    for (const space of [text(record.fields?.['适用空间'])]) {
+    for (const space of [text(skuFields['适用空间'])]) {
       if (space && space !== '无注明') bucket.spaces.add(space);
     }
-    skuByTitle.set(title, bucket);
+    const productId = text(skuFields['商品ID']) || extractProductId(text(skuFields['商品链接']));
+    if (productId) mergeBucket(skuByProductId, productId, bucket);
+    const title = text(skuFields['商品标题']);
+    if (title) mergeBucket(skuByTitle, title, bucket);
   }
 }
 
 const records = await listRecords(table.table_id);
 const COLUMNS = [...ATTRS, ...derivedPresent];
 if (keywordPresent) COLUMNS.push(KEYWORD_FIELD);
-const stats = new Map(COLUMNS.map((name) => [name, { filled: 0, none: 0, na: 0, skipped: 0, skuBacked: 0 }]));
+const stats = new Map(COLUMNS.map((name) => [name, { filled: 0, none: 0, na: 0, skipped: 0, skuBacked: 0, recomputed: 0 }]));
 const plan = [];
 
 for (const record of records) {
   const f = record.fields ?? {};
   const row = {
     商品标题: text(f['商品标题']),
+    商品链接: text(f['商品链接']),
     价格: text(f['价格']),
     是否有效竞品: text(f['是否有效竞品']),
     月收货人数: text(f['月收货人数']),
     卖点: text(f['卖点']),
   };
   const built = buildCompetitorRecord(row, { searchKeyword: text(f[KEYWORD_FIELD]) || options.searchKeyword });
-  const sku = skuByTitle.get(row.商品标题);
+  const productId = extractProductId(row.商品链接);
+  const sku = (productId ? skuByProductId.get(productId) : undefined) ?? skuByTitle.get(row.商品标题);
+  const rowClass = text(f['竞品分类']);
+  const isAbRow = isAbClass(rowClass);
   const values = {};
   for (const attr of ATTRS) values[attr] = Array.isArray(built[attr]) ? built[attr].join(',') : text(built[attr]);
   for (const name of derivedPresent) {
@@ -203,19 +232,42 @@ for (const record of records) {
 
   const patch = {};
   for (const name of COLUMNS) {
-    if (text(f[name])) { stats.get(name).skipped += 1; continue; } // 已有值，不覆盖
-    const value = values[name];
-    if (!value) continue;
-    patch[name] = value;
+    const existing = text(f[name]);
+    const next = values[name];
+    const decision = decideWrite({
+      name, existing, next, isAb: isAbRow, recomputeAb: options.recomputeAb, joined: sku !== undefined,
+    });
+    if (decision === 'skip-empty') continue;
+    // 已有值默认不覆盖（保证可重复执行）。唯一例外是 A/B 行的 尺寸/适用空间：
+    // 这两列的口径就是「只有 A/B 才该有尺寸」（competitor-v2-core.mjs 只给 A/B
+    // 记『待补 SKU尺寸』），而 09-16 那次写回跑在 SKU 采集之前 4 分 40 秒，
+    // 回落标题规则把它们写成了『无注明』/『不适用』。只填空不覆盖会把那个错误永久锁死，
+    // 所以给 A/B 开一条显式重算通道 —— 判据在 core 里，由测试守着。
+    if (decision === 'skip-existing') { stats.get(name).skipped += 1; continue; }
+    if (decision === 'recompute') {
+      patch[name] = next;
+      stats.get(name).recomputed += 1;
+      continue;
+    }
+    patch[name] = next;
     const bucket = stats.get(name);
-    if (value.includes('不适用')) bucket.na += 1;
-    else if (value.includes('无注明')) bucket.none += 1;
+    if (next.includes('不适用')) bucket.na += 1;
+    else if (next.includes('无注明')) bucket.none += 1;
     else bucket.filled += 1;
     if ((name === '尺寸' || name === '适用空间') && sku && ((name === '尺寸' && sku.sizes.size) || (name === '适用空间' && sku.spaces.size))) {
       bucket.skuBacked += 1;
     }
   }
-  if (Object.keys(patch).length) plan.push({ recordId: record.record_id, title: row.商品标题, patch, klass: built.竞品分类 });
+  if (Object.keys(patch).length) {
+    plan.push({
+      recordId: record.record_id,
+      title: row.商品标题,
+      productId,
+      joinedBy: sku === undefined ? 'none' : (productId && skuByProductId.has(productId) ? 'productId' : 'title'),
+      klass: built.竞品分类,
+      patch,
+    });
+  }
 }
 
 const klass = new Map();
@@ -225,19 +277,21 @@ console.log(`base profile = ${activeProfileName()} / ${APP_TOKEN}`);
 console.log(`table = ${table.name} (${table.table_id})，共 ${records.length} 行`);
 console.log(`字段在场：属性 5，规则列 ${derivedPresent.length}/${DERIVED.length}${derivedPresent.length < DERIVED.length ? `（缺 ${DERIVED.filter((n) => !derivedPresent.includes(n)).join(',')}）` : ''}，${KEYWORD_FIELD} ${keywordPresent ? '有' : '无'}`);
 console.log(`搜索关键词写入值 = ${options.searchKeyword}`);
-console.log(`SKU明细聚合源 = ${skuTableExists ? `${skuTableId}（${skuByTitle.size} 个商品标题）` : '不可用（未在 base 中找到该表）'}`);
-console.log(`将写入的行数 = ${plan.length}（每行只写当前为空的列）`);
+console.log(`SKU明细聚合源 = ${skuTableExists ? `${skuTableId}（商品id ${skuByProductId.size} 个 / 商品标题 ${skuByTitle.size} 个）` : '不可用（未在 base 中找到该表）'}`);
+console.log(`A/B 重算通道 = ${options.recomputeAb ? '开（只覆盖 A/B 行的 尺寸/适用空间，且只在 SKU 侧真拿到新值时才写）' : '关（严格只填空、不覆盖）'}`);
+console.log(`将写入的行数 = ${plan.length}`);
 console.log('各列预计：');
 for (const name of COLUMNS) {
   const c = stats.get(name);
   const rate = ((100 * c.filled) / records.length).toFixed(1);
   const skuNote = (name === '尺寸' || name === '适用空间') ? `   SKU来源 ${c.skuBacked}` : '';
-  console.log(`  ${name.padEnd(6)} 有值 ${String(c.filled).padStart(5)} (${rate}%)   无注明 ${String(c.none).padStart(5)}   不适用 ${String(c.na).padStart(3)}   已存跳过 ${String(c.skipped).padStart(5)}${skuNote}`);
+  const recomputeNote = c.recomputed ? `   A/B重算 ${c.recomputed}` : '';
+  console.log(`  ${name.padEnd(6)} 有值 ${String(c.filled).padStart(5)} (${rate}%)   无注明 ${String(c.none).padStart(5)}   不适用 ${String(c.na).padStart(3)}   已存跳过 ${String(c.skipped).padStart(5)}${skuNote}${recomputeNote}`);
 }
 console.log(`写入后 竞品分类 分布（预期）：${[...klass.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join('  ')}`);
 
 const receipt = {
-  version: 'weekly-rule-column-writeback-v2',
+  version: 'weekly-rule-column-writeback-v3',
   mode: options.apply ? 'APPLIED' : 'DRY_RUN',
   at: new Date().toISOString(),
   profile: activeProfileName(),
@@ -248,9 +302,19 @@ const receipt = {
   rows: records.length,
   plannedRows: plan.length,
   written: 0,
+  recomputeAb: options.recomputeAb,
+  recomputed: Object.fromEntries([...stats.entries()].map(([k, v]) => [k, v.recomputed])),
+  joinKeys: {
+    primary: '商品链接里的商品 id（extractProductId）',
+    fallback: '商品标题',
+    skuDetailProducts: skuByProductId.size,
+    skuDetailTitles: skuByTitle.size,
+    primaryHit: plan.filter((item) => item.joinedBy === 'productId').length,
+    fallbackHit: plan.filter((item) => item.joinedBy === 'title').length,
+  },
   perColumn: Object.fromEntries([...stats.entries()].map(([k, v]) => [k, v])),
   expectedClassAfter: Object.fromEntries(klass),
-  rule: 'buildCompetitorRecord（与飞书评级公式同源）；尺寸/适用空间 优先 SKU明细 按商品标题聚合（与主表 Lookup 同源），否则回落标题规则；Text 多值逗号连接；只填空不覆盖',
+  rule: 'buildCompetitorRecord（与飞书评级公式同源）；尺寸/适用空间 优先 SKU明细，键=商品链接里的商品id（主）/商品标题（兜底），否则回落标题规则；Text 多值逗号连接；默认只填空不覆盖，--recompute-ab 时对 A/B 行重算尺寸/适用空间（仅在 SKU 侧拿到新值时）',
 };
 
 if (!options.apply) {
