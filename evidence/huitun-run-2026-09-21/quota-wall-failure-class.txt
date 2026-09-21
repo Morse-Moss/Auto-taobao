@@ -1,0 +1,17 @@
+原始 error.code        = undefined
+原始 error.failureClass= undefined
+translateFlowError 是否包装 = 否（原样抛出）
+translateFlowError 后 .code = undefined
+
+failureClassOf (worker-adapter)  => BUG  => action=STOP_AND_ALERT  reason="bug suspected, stop automation"
+classifyExternalFailure (policy)  => BUG  => action=STOP_AND_ALERT  reason="bug suspected, stop automation"
+
+对照 A：只挂 code=HUMAN_REQUIRED（CLI 那条轴的做法）
+  failureClassOf => BUG  => action=STOP_AND_ALERT（运行时那条轴不受影响：failureClassOf 读的是 .failureClass，不是 .code）
+
+对照 B：只挂 failureClass=HUMAN_REQUIRED（走 HuitunEvidenceError + FAILURE_CLASS_BY_CODE 的做法）
+  failureClassOf => HUMAN_REQUIRED  => action=WAIT_HUMAN（CLI 那条轴不受影响：803/883 行读的是 .code）
+
+CLI 侧可见差异（run-huitun-topic-heat.mjs）
+  退出码: HUMAN_REQUIRED=2 / 其他=1  => 现在=1，挂上 code=HUMAN_REQUIRED 后=2
+  preserveBrowser: 现在=false，挂上 code=HUMAN_REQUIRED 后=true

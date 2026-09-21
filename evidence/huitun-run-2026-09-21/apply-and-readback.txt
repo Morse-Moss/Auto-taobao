@@ -1,0 +1,49 @@
+profile=kcne  base=HdBhbttB5aScbasWJAMc0gGXnpe  env-file=E:/小红书/.env.feishu-kcne.local
+
+=== 采集结果反推目标表（FOUND_EXACT，按文件时间倒序）===
+  20260921T074555Z-关键词分析-V1-2026-09-19
+      views=327000 (32.7w)  collected_at=2026-09-21T07:46:03.037Z
+      table=tblZsUns9353w3nl name=关键词分析 V1（2026-09-19）  => 可用
+  20260921T074543Z-关键词分析-V1-2026-09-19
+      views=327000 (32.7w)  collected_at=2026-09-21T07:45:52.051Z
+      table=tblZsUns9353w3nl name=关键词分析 V1（2026-09-19）  => 可用
+  20260921T074524Z-关键词分析-V1-2026-09-19
+      views=327000 (32.7w)  collected_at=2026-09-21T07:45:39.901Z
+      table=tblZsUns9353w3nl name=关键词分析 V1（2026-09-19）  => 可用
+  20260921T074136Z-关键词分析-V1-2026-09-19
+      views=327000 (32.7w)  collected_at=2026-09-21T07:41:47.110Z
+      table=tblZsUns9353w3nl name=关键词分析 V1（2026-09-19）  => 可用
+  20260913T004350Z-关键词分析-V1-2026-09-11
+      views=1123000 (112.3w)  collected_at=2026-09-13T00:44:01.228Z
+      table=tblHJpDjwAyuHrTK name=关键词分析 V1（2026-09-11）  => 表不在库里 ⇒ 跳过
+选中：D:/Retire/sycm-automation/runtime/huitun-runs/20260921T074555Z-关键词分析-V1-2026-09-19/results.json
+目标表：tblZsUns9353w3nl  关键词分析 V1（2026-09-19）
+
+=== 目标表 A候选 队列（1 行）===
+  泡澡浴缸  record=recvvIWvenK0TL  灰豚=(空)
+
+[写入前] {"搜索词":"泡澡浴缸","优先级":"A候选","灰豚话题浏览量":"","内容热度":"高"}
+
+=== dry-run（exit 0）===
+{"at":"2026-09-21T08:01:11.212Z","event":"PROXY_READY","browser":"edge-daily-report"}
+{"at":"2026-09-21T08:01:11.213Z","event":"START","tableId":"tblZsUns9353w3nl","tableName":"关键词分析 V1（2026-09-19）","apply":false}
+{"at":"2026-09-21T08:01:13.398Z","event":"QUEUE_READY","candidates":1,"keywords":["泡澡浴缸"]}
+{"at":"2026-09-21T08:01:13.401Z","event":"RESULTS_REUSED","resultsPath":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074555Z-关键词分析-V1-2026-09-19\\results.json"}
+{"at":"2026-09-21T08:01:15.330Z","event":"DRY_RUN_READY","plannedRecordUpdates":1,"runDir":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T080111Z-关键词分析-V1-2026-09-19"}
+
+=== apply（exit 0）===
+{"at":"2026-09-21T08:01:15.647Z","event":"PROXY_READY","browser":"edge-daily-report"}
+{"at":"2026-09-21T08:01:15.648Z","event":"START","tableId":"tblZsUns9353w3nl","tableName":"关键词分析 V1（2026-09-19）","apply":true}
+{"at":"2026-09-21T08:01:18.823Z","event":"QUEUE_READY","candidates":1,"keywords":["泡澡浴缸"]}
+{"at":"2026-09-21T08:01:18.825Z","event":"RESULTS_REUSED","resultsPath":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074555Z-关键词分析-V1-2026-09-19\\results.json"}
+{"at":"2026-09-21T08:01:21.349Z","event":"BACKUP_WRITTEN","path":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T080115Z-关键词分析-V1-2026-09-19\\before-backfill-20260921T080121Z.json","sha256":"85b53aca7a08a37ee3eee99bf85da9e99702459d04ae4bf1b49d3c7e8551e9d8"}
+{"at":"2026-09-21T08:01:21.369Z","event":"APPLY_STARTED","records":1,"fields":["灰豚话题浏览量"]}
+{"at":"2026-09-21T08:01:34.874Z","event":"DONE","recordsWritten":1,"runDir":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T080115Z-关键词分析-V1-2026-09-19"}
+
+[写入后] {"搜索词":"泡澡浴缸","优先级":"B-持续观察","灰豚话题浏览量":"327000","内容热度":"高"}
+
+=== 判定 ===
+灰豚话题浏览量  "" -> "327000"  期望="327000"  => OK
+优先级          "A候选" -> "B-持续观察"
+内容热度         "高" -> "高"  （未被改动）
+apply exit=0

@@ -71,9 +71,9 @@ t+ 47s  ... anchorRect:[68,369,56,17]     ← 27 秒没动，URL 一直是 #/hom
 
 不产生 `DRY_RUN_READY`、不产生写入计划。
 
-**遗留**：这条现在落成不含确定性 code 的通用 FAILED。按本仓「确定性 code 必须映射成收据上的
-failureClass」的规矩，它更该是 `HUMAN_REQUIRED`（人要等配额重置或升级，不是代码 bug）。
-改状态词表会牵动适配器映射与既有用例，本轮没动，留待决定。
+**遗留（已实测取证，见 §五）**：这条现在落成不含确定性 code 的通用 FAILED。按本仓「确定性 code
+必须映射成收据上的 failureClass」的规矩，它更该是 `HUMAN_REQUIRED`（人要等配额重置或升级，
+不是代码 bug）。改状态词表会牵动适配器映射与既有用例，本轮没动，留待决定。
 
 ## 三、当天可采到的那一个值
 
@@ -85,6 +85,60 @@ expectedPriority B-持续观察   （327000 < 10,000,000，未过 A 门槛）
 需求口径见 `docs/requirements/KEYWORD-PRIORITY-REQUIREMENT-ORIGINAL.md`：门槛 `1000w` = `10,000,000`
 （公式源码字面量 `10000000`），与脚本自报的 `expectedPriority` 一致。
 **注意**：这个值**没有写飞书**，是 dry-run。写入需要另取一次明确授权。
+
+## 四、写入与回读（15:59–16:01，摩斯明确授权「写」）
+
+写的是 09-19 那张表的 `泡澡浴缸`（`record recvvIWvenK0TL`）：
+
+```
+灰豚话题浏览量  ""  ->  "327000"        期望 327000  => OK
+优先级          "A候选" -> "B-持续观察"   （公式自己结算，不是我们改的）
+内容热度         "高" -> "高"            （未被改动）
+apply exit=0，写前先落 BACKUP_WRITTEN
+```
+
+写后队列：`A候选 0`（C 287 / B 13）⇒ 灰豚段下一次跑会遇到空队列，确定性跳过。
+
+**顺手发现的一件事：库里同时有 `关键词分析 V1（修正版）` 和 `关键词分析 V1（2026-09-19）`。**
+两者不是同一张表：
+
+| 表 | 字段数 | 行数 | 优先级分布 | 泡澡浴缸 |
+| --- | --- | --- | --- | --- |
+| `修正版` (`tblmU1n3SO8Mz7Ub`) | 26 | 301 | C 242 / B 58 / 空 1 | `B-持续观察`，灰豚空，**内容热度空** |
+| `2026-09-19` (`tblZsUns9353w3nl`) | 29 | 300 | C 287 / B 12 / **A候选 1** | `A候选`，灰豚空，内容热度 高 |
+
+采集的队列是从 `2026-09-19` 读的、结果文档也绑在它上面，所以写它。
+`修正版` 的 `A候选` 是 0 行 —— 这条链在它上面根本不会有活干。
+**「当期表是哪一张」不该由名字排序决定**：第一版驱动就是按名字倒序取，抓到了无日期的 `修正版`
+（字面排序反而压过带日期的），被守卫拦住。现在改成从采集结果文档反推目标表、再与飞书实况核对名字。
+
+## 五、那条配额墙失败到底被归成什么（实测，未修）
+
+`flow.mjs:190` 抛的是**普通 `Error`，不带 `.code`**；`translateFlowError`
+（`adapter.huitun-keyword-heat.mjs:193-210`）的 `FLOW_ERROR_RULES` 里没有匹配它的模式，
+按该函数自己的注释「未命中规则的异常原样抛出」，它被**原样抛出**。于是它落到
+`worker-adapter.mjs:20-29` 的 `failureClassOf` 兜底分支。实测（`quota-wall-failure-class.txt`）：
+
+```
+failureClassOf (worker-adapter)   => BUG  => action=STOP_AND_ALERT  "bug suspected, stop automation"
+classifyExternalFailure (policy)  => BUG  => action=STOP_AND_ALERT  "bug suspected, stop automation"
+```
+
+同时发现**两个轴是分开读的**，改一个不动另一个（这两条是对照，不是推测）：
+
+| 只改这一处 | 运行时那条轴（failureClassOf） | CLI 那条轴（退出码 / preserveBrowser） |
+| --- | --- | --- |
+| `.code = 'HUMAN_REQUIRED'` | 仍 `BUG` ← 它读 `.failureClass`，不读 `.code` | 退出码 2、保留页签 |
+| `.failureClass = 'HUMAN_REQUIRED'` | `HUMAN_REQUIRED` → `WAIT_HUMAN` | 仍退出码 1、关页签 ← 803/883 行读 `.code` |
+
+即「给它挂个 HUMAN_REQUIRED」一句话不够，**两个字段都得表态**。
+另外即使都改对，`round-notify-policy.mjs` 里 `HUMAN_REQUIRED` 的措辞是**为登录失效写的**
+（标题「平台登录已失效」、`needs: ONSITE`、`retryAutomatically: true`），配额墙套上去
+会得到「请去那台机器上登录」的通知、并按 15 分钟节点白重试到当日上限（配额当天不会自愈）。
+语义最贴的现成类别其实更接近 `POLICY_DENIED`（`needs: CONFIG`、`retryAutomatically: false`）。
+
+事实边界：该能力**尚未挂任何排期**（`config/` 内 grep `huitun` 零命中，
+`skill-registry.index.json` 只有能力登记），所以今天没有无人值守流程会被这条错分类弄停。
 
 ## 文件
 
@@ -99,4 +153,8 @@ expectedPriority B-持续观察   （327000 < 10,000,000，未过 A 门槛）
 | `probe-replicate.txt` | 新页签上逐字复刻脚本步骤，全通 |
 | `probe-account.txt` | 红薯版页头账号标记 `ID：1001392394`、输入框/搜索按钮就位、风控文案为空 |
 | `diagnose-topic-menu.txt` | 抖音版工作台上锚点不存在（说明必须先切红薯版） |
+| `apply-and-readback.txt` | 写入全过程：反推目标表 → 定位 A候选 行 → dry-run → apply → 独立回读 |
+| `probe-keyword-tables.txt` | 两张「关键词分析」表的字段数/行数/优先级分布对照 |
+| `quota-wall-failure-class.txt` | 配额墙失败经三个分类器实测：`BUG` → `STOP_AND_ALERT`；两个轴分开读的对照 |
+| `probe-quota-wall-class.mjs` | 上一条的复现脚本（`node evidence/huitun-run-2026-09-21/probe-quota-wall-class.mjs`） |
 | `topic-menu-*.png` / `switch-5s-*.png` / `after-topic-click.png` / `replicate-final.png` | 各阶段截图 |
