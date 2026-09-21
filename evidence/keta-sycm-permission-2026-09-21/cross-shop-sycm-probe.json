@@ -1,0 +1,287 @@
+{
+ "probedAt": "2026-09-21T08:51:10.938Z",
+ "hosts": [
+  {
+   "key": "dailyReport",
+   "label": "商家浏览器",
+   "port": 19023,
+   "reachable": true,
+   "proxyError": null,
+   "tabs": [
+    {
+     "targetId": "761FD748AF40CD7EAAC90A445BD95A12",
+     "type": "page",
+     "url": "https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo",
+     "title": "‍‬⁠​​​﻿​‌​​⁠‌‍​​​​​​​​﻿﻿‍​​​‍​⁠﻿​﻿​﻿​​​﻿​‍​​‍‌﻿‌‬﻿各店铺日报 - 飞书云文档",
+     "isSycmWorkPage": false,
+     "isSycmAny": false,
+     "isAlimama": false
+    },
+    {
+     "targetId": "D9E305560F246C435906047907D6A987",
+     "type": "page",
+     "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+     "title": "生意参谋 - 零售电商大数据产品平台",
+     "isSycmWorkPage": true,
+     "isSycmAny": true,
+     "isAlimama": false
+    },
+    {
+     "targetId": "C05DDCA0FB83FC4AC2128B5ABC459684",
+     "type": "page",
+     "url": "https://xhs.huitun.com/#/anchor/anchor_topic",
+     "title": "话题搜索-灰豚数据红薯版",
+     "isSycmWorkPage": false,
+     "isSycmAny": false,
+     "isAlimama": false
+    }
+   ],
+   "health": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-daily-report",
+     "label": "Microsoft Edge (daily report)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 3,
+    "managedTabs": 3,
+    "pinnedTabs": 3,
+    "chromePort": 19022
+   },
+   "httpStatus": 200,
+   "tabCount": 3,
+   "sycmCount": 1,
+   "sycmAnyCount": 1
+  },
+  {
+   "key": "likelin",
+   "label": "里可林淘宝",
+   "port": 19041,
+   "reachable": true,
+   "proxyError": null,
+   "tabs": [
+    {
+     "targetId": "0C6B77E3BD7D4721041D265EA13166E9",
+     "type": "page",
+     "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+     "title": "生意参谋 - 零售电商大数据产品平台",
+     "isSycmWorkPage": true,
+     "isSycmAny": true,
+     "isAlimama": false
+    },
+    {
+     "targetId": "62EDD89B47915CC47B1F4A4EC6814480",
+     "type": "page",
+     "url": "https://one.alimama.com/index.html#!/report/download-list",
+     "title": "下载任务管理_万相台无界版",
+     "isSycmWorkPage": false,
+     "isSycmAny": false,
+     "isAlimama": true
+    }
+   ],
+   "health": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-shop-likelin-home",
+     "label": "Microsoft Edge (shop likelin-home)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 2,
+    "managedTabs": 2,
+    "pinnedTabs": 2,
+    "chromePort": 19031
+   },
+   "httpStatus": 200,
+   "tabCount": 2,
+   "sycmCount": 1,
+   "sycmAnyCount": 1
+  },
+  {
+   "key": "wanglin",
+   "label": "网林天猫",
+   "port": 19042,
+   "reachable": true,
+   "proxyError": null,
+   "tabs": [
+    {
+     "targetId": "0CE6988664B57DCC12D7F1F456CB8223",
+     "type": "page",
+     "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+     "title": "生意参谋 - 零售电商大数据产品平台",
+     "isSycmWorkPage": true,
+     "isSycmAny": true,
+     "isAlimama": false
+    },
+    {
+     "targetId": "D7F5CB38DCECA6569A76AD47B49A04CC",
+     "type": "page",
+     "url": "https://one.alimama.com/index.html#!/report/download-list",
+     "title": "下载任务管理_万相台无界版",
+     "isSycmWorkPage": false,
+     "isSycmAny": false,
+     "isAlimama": true
+    }
+   ],
+   "health": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-shop-wanglin-flagship",
+     "label": "Microsoft Edge (shop wanglin-flagship)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 2,
+    "managedTabs": 2,
+    "pinnedTabs": 2,
+    "chromePort": 19032
+   },
+   "httpStatus": 200,
+   "tabCount": 2,
+   "sycmCount": 1,
+   "sycmAnyCount": 1
+  },
+  {
+   "key": "gaiwen-tb",
+   "label": "盖文淘宝",
+   "port": 19043,
+   "reachable": true,
+   "proxyError": null,
+   "tabs": [
+    {
+     "targetId": "828620E488449D7A34F2D6033FB9C979",
+     "type": "page",
+     "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+     "title": "生意参谋 - 零售电商大数据产品平台",
+     "isSycmWorkPage": true,
+     "isSycmAny": true,
+     "isAlimama": false
+    },
+    {
+     "targetId": "BADA5838155A861B3E9778C93FFFC522",
+     "type": "page",
+     "url": "https://one.alimama.com/index.html#!/report/download-list",
+     "title": "下载任务管理_万相台无界版",
+     "isSycmWorkPage": false,
+     "isSycmAny": false,
+     "isAlimama": true
+    }
+   ],
+   "health": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-shop-suixin-custom",
+     "label": "Microsoft Edge (shop suixin-custom)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 2,
+    "managedTabs": 2,
+    "pinnedTabs": 2,
+    "chromePort": 19033
+   },
+   "httpStatus": 200,
+   "tabCount": 2,
+   "sycmCount": 1,
+   "sycmAnyCount": 1
+  },
+  {
+   "key": "keta",
+   "label": "科塔淘宝",
+   "port": 19044,
+   "reachable": true,
+   "proxyError": null,
+   "tabs": [
+    {
+     "targetId": "0F3988566AF5D318E806DF8B456BE2E0",
+     "type": "page",
+     "url": "https://sycm.taobao.com/portal/home.htm",
+     "title": "生意参谋 - 零售电商大数据产品平台",
+     "isSycmWorkPage": false,
+     "isSycmAny": true,
+     "isAlimama": false
+    },
+    {
+     "targetId": "F86052A0389C66158B408F5AFB48C8CF",
+     "type": "page",
+     "url": "https://one.alimama.com/index.html#!/report/download-list",
+     "title": "下载任务管理_万相台无界版",
+     "isSycmWorkPage": false,
+     "isSycmAny": false,
+     "isAlimama": true
+    }
+   ],
+   "health": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-shop-j873522735",
+     "label": "Microsoft Edge (shop j873522735)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 2,
+    "managedTabs": 2,
+    "pinnedTabs": 2,
+    "chromePort": 19034
+   },
+   "httpStatus": 200,
+   "tabCount": 2,
+   "sycmCount": 0,
+   "sycmAnyCount": 1
+  },
+  {
+   "key": "gaiwen-tm",
+   "label": "盖文天猫",
+   "port": 19045,
+   "reachable": true,
+   "proxyError": null,
+   "tabs": [
+    {
+     "targetId": "761D578B1E6563A9C4C2FD162D35CF36",
+     "type": "page",
+     "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+     "title": "生意参谋 - 零售电商大数据产品平台",
+     "isSycmWorkPage": true,
+     "isSycmAny": true,
+     "isAlimama": false
+    },
+    {
+     "targetId": "A38A384192871FB3A336159BB4006B2F",
+     "type": "page",
+     "url": "https://one.alimama.com/index.html#!/report/download-list",
+     "title": "下载任务管理_万相台无界版",
+     "isSycmWorkPage": false,
+     "isSycmAny": false,
+     "isAlimama": true
+    },
+    {
+     "targetId": "A0B53A2A5DDEFF3CDCDD1CF5A246DF4D",
+     "type": "page",
+     "url": "edge://downloads-hub/",
+     "title": "下载",
+     "isSycmWorkPage": false,
+     "isSycmAny": false,
+     "isAlimama": false
+    }
+   ],
+   "health": {
+    "status": "ok",
+    "connected": true,
+    "browser": {
+     "id": "edge-shop-gaiwen-flagship",
+     "label": "Microsoft Edge (shop gaiwen-flagship)",
+     "source": "isolated-runtime"
+    },
+    "sessions": 2,
+    "managedTabs": 2,
+    "pinnedTabs": 2,
+    "chromePort": 19035
+   },
+   "httpStatus": 200,
+   "tabCount": 3,
+   "sycmCount": 1,
+   "sycmAnyCount": 1
+  }
+ ]
+}

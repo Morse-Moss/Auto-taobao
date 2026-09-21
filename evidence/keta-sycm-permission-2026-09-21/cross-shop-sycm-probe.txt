@@ -1,0 +1,21 @@
+probedAt=2026-09-21T08:51:10.938Z
+商家浏览器 19023  页签=3  工作页=1  含sycm=1  pinned=3  managed=3
+    [        ] 761FD748  https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+    [工作页✓] D9E30556  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+    [        ] C05DDCA0  https://xhs.huitun.com/#/anchor/anchor_topic
+里可林淘宝 19041  页签=2  工作页=1  含sycm=1  pinned=2  managed=2
+    [工作页✓] 0C6B77E3  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+    [        ] 62EDD89B  https://one.alimama.com/index.html#!/report/download-list
+网林天猫 19042  页签=2  工作页=1  含sycm=1  pinned=2  managed=2
+    [工作页✓] 0CE69886  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+    [        ] D7F5CB38  https://one.alimama.com/index.html#!/report/download-list
+盖文淘宝 19043  页签=2  工作页=1  含sycm=1  pinned=2  managed=2
+    [工作页✓] 828620E4  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+    [        ] BADA5838  https://one.alimama.com/index.html#!/report/download-list
+科塔淘宝 19044  页签=2  工作页=0  含sycm=1  pinned=2  managed=2
+    [        ] 0F398856  https://sycm.taobao.com/portal/home.htm
+    [        ] F86052A0  https://one.alimama.com/index.html#!/report/download-list
+盖文天猫 19045  页签=3  工作页=1  含sycm=1  pinned=2  managed=2
+    [工作页✓] 761D578B  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+    [        ] A38A3841  https://one.alimama.com/index.html#!/report/download-list
+    [        ] A0B53A2A  edge://downloads-hub/

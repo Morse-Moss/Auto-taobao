@@ -1,0 +1,16 @@
+把同一个请求发给五家店的生意参谋页签，看服务端判定：
+  路径 /qos/service/frame/shop/performance
+
+商家浏览器（19023）  放行（停在原路径）
+    当前页签：https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+里可林淘宝（19041）  放行（停在原路径）
+    当前页签：https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+网林天猫（19042）  放行（停在原路径）
+    当前页签：https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+盖文淘宝（19043）  放行（停在原路径）
+    当前页签：https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+科塔淘宝（19044）  被拒（no_permission code=5903 No Buy Func Permission.）
+    当前页签：https://sycm.taobao.com/portal/home.htm
+    finalUrl=https://sycm.taobao.com/custom/no_permission?code=5903&message=No%20Buy%20Func%20Permission.&ref_url=https://sycm.taobao.com/qos/service/frame/shop/performance
+盖文天猫（19045）  放行（停在原路径）
+    当前页签：https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop

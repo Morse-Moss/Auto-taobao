@@ -1,0 +1,193 @@
+===== 科塔淘宝 =====
+{
+ "total": 340,
+ "shopPerformanceNodes": [
+  {
+   "id": 12816,
+   "name": "店铺绩效",
+   "path": "/qos/service/frame/shop/performance/new",
+   "visible": "y",
+   "breadcrumb": [
+    {
+     "id": 10229,
+     "name": "服务",
+     "path": "/qos/service/core_monitor/new",
+     "visible": "y"
+    },
+    {
+     "id": 12812,
+     "name": "客服",
+     "path": "/qos/service/performance/new",
+     "visible": "y"
+    },
+    {
+     "id": 12816,
+     "name": "店铺绩效",
+     "path": "/qos/service/frame/shop/performance/new",
+     "visible": "y"
+    }
+   ]
+  }
+ ],
+ "绩效节点列表": [
+  {
+   "id": 12816,
+   "name": "店铺绩效",
+   "path": "/qos/service/frame/shop/performance/new",
+   "parentId": 12812,
+   "visible": "y"
+  },
+  {
+   "id": 12817,
+   "name": "客服绩效",
+   "path": "/qos/service/frame/customer/performance/new",
+   "parentId": 12812,
+   "visible": "y"
+  },
+  {
+   "id": 12818,
+   "name": "绩效明细",
+   "path": "/qos/service/frame/performance/detail/new",
+   "parentId": 12812,
+   "visible": "y"
+  },
+  {
+   "id": 11552,
+   "name": "(旧)服务绩效",
+   "path": "/qos/service/performance/new",
+   "parentId": 10229,
+   "visible": "n"
+  },
+  {
+   "id": 10552,
+   "name": "绩效考核",
+   "path": "/qos/service/performance_assess",
+   "parentId": 10539,
+   "visible": "y"
+  }
+ ]
+}
+
+===== 盖文淘宝（对照·健康） =====
+{
+ "total": 344,
+ "shopPerformanceNodes": [
+  {
+   "id": 12816,
+   "name": "店铺绩效",
+   "path": "/qos/service/frame/shop/performance/new",
+   "visible": "y",
+   "breadcrumb": [
+    {
+     "id": 10229,
+     "name": "服务",
+     "path": "/qos/service/core_monitor/new",
+     "visible": "y"
+    },
+    {
+     "id": 12812,
+     "name": "客服",
+     "path": "/qos/service/performance/new",
+     "visible": "y"
+    },
+    {
+     "id": 12816,
+     "name": "店铺绩效",
+     "path": "/qos/service/frame/shop/performance/new",
+     "visible": "y"
+    }
+   ]
+  },
+  {
+   "id": 11536,
+   "name": "店铺绩效",
+   "path": "/qos/service/frame/shop/performance",
+   "visible": "y",
+   "breadcrumb": [
+    {
+     "id": 10229,
+     "name": "服务",
+     "path": "/qos/service/core_monitor/new",
+     "visible": "y"
+    },
+    {
+     "id": 11535,
+     "name": "服务绩效",
+     "path": "/qos/service/performance",
+     "visible": "n"
+    },
+    {
+     "id": 11536,
+     "name": "店铺绩效",
+     "path": "/qos/service/frame/shop/performance",
+     "visible": "y"
+    }
+   ]
+  }
+ ],
+ "绩效节点列表": [
+  {
+   "id": 12816,
+   "name": "店铺绩效",
+   "path": "/qos/service/frame/shop/performance/new",
+   "parentId": 12812,
+   "visible": "y"
+  },
+  {
+   "id": 12817,
+   "name": "客服绩效",
+   "path": "/qos/service/frame/customer/performance/new",
+   "parentId": 12812,
+   "visible": "y"
+  },
+  {
+   "id": 12818,
+   "name": "绩效明细",
+   "path": "/qos/service/frame/performance/detail/new",
+   "parentId": 12812,
+   "visible": "y"
+  },
+  {
+   "id": 11552,
+   "name": "(旧)服务绩效",
+   "path": "/qos/service/performance/new",
+   "parentId": 10229,
+   "visible": "n"
+  },
+  {
+   "id": 11535,
+   "name": "服务绩效",
+   "path": "/qos/service/performance",
+   "parentId": 10229,
+   "visible": "n"
+  },
+  {
+   "id": 11536,
+   "name": "店铺绩效",
+   "path": "/qos/service/frame/shop/performance",
+   "parentId": 11535,
+   "visible": "y"
+  },
+  {
+   "id": 11537,
+   "name": "客服绩效",
+   "path": "/qos/service/frame/customer/performance",
+   "parentId": 11535,
+   "visible": "y"
+  },
+  {
+   "id": 10552,
+   "name": "绩效考核",
+   "path": "/qos/service/performance_assess",
+   "parentId": 10539,
+   "visible": "y"
+  },
+  {
+   "id": 11538,
+   "name": "绩效配置",
+   "path": "/qos/service/frame/rule",
+   "parentId": 10541,
+   "visible": "y"
+  }
+ ]
+}

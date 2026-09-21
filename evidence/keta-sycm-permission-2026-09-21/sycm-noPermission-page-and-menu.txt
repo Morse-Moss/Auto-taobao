@@ -1,0 +1,497 @@
+===== 科塔淘宝 =====
+{
+ "noPermission": {
+  "status": 200,
+  "redirected": false,
+  "finalUrl": "https://sycm.taobao.com/custom/no_permission?code=5903&message=No%20Buy%20Func%20Permission.&ref_url=https://sycm.taobao.com/qos/service/frame/shop/performance",
+  "textLen": 3613,
+  "bodyText": "",
+  "raw": "生意参谋 - 零售电商大数据产品平台"
+ },
+ "menuNodes": [
+  {
+   "menuName": "客服",
+   "menuPath": "/qos/service/performance/new",
+   "parentId": 10229,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": {
+    "communicationDateCode": "tb_sycm_sns"
+   },
+   "allKeys": [
+    "children",
+    "exAttr",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId"
+   ]
+  },
+  {
+   "menuName": "店铺绩效",
+   "menuPath": "/qos/service/frame/shop/performance/new",
+   "parentId": 12812,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": {
+    "communicationDateCode": "tb_sycm_sns"
+   },
+   "allKeys": [
+    "exAttr",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "客服绩效",
+   "menuPath": "/qos/service/frame/customer/performance/new",
+   "parentId": 12812,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": {
+    "communicationDateCode": "tb_sycm_sns"
+   },
+   "allKeys": [
+    "exAttr",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "绩效明细",
+   "menuPath": "/qos/service/frame/performance/detail/new",
+   "parentId": 12812,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": {
+    "communicationDateCode": "tb_sycm_sns"
+   },
+   "allKeys": [
+    "exAttr",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "(旧)服务绩效",
+   "menuPath": "/qos/service/performance/new",
+   "parentId": 10229,
+   "isVisible": "n",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": {
+    "communicationDateCode": "tb_sycm_sns"
+   },
+   "allKeys": [
+    "exAttr",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId"
+   ]
+  },
+  {
+   "menuName": "绩效考核",
+   "menuPath": "/qos/service/performance_assess",
+   "parentId": 10539,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "业绩",
+   "menuPath": "/xsite/contentanalysis/lives/performance1",
+   "parentId": 11999,
+   "isVisible": "n",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "children",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId"
+   ]
+  },
+  {
+   "menuName": "千牛直播业绩",
+   "menuPath": "/xsite/contentanalysis/we/live_performance",
+   "parentId": 14093,
+   "isVisible": "n",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "直播业绩",
+   "menuPath": "/xsite/contentanalysis/lives/performance",
+   "parentId": 11999,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "购物小程序",
+   "menuPath": "/xsite/frame/shopsmallroutine",
+   "parentId": 10235,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  }
+ ],
+ "menuCode": 0
+}
+
+===== 盖文淘宝（对照·健康） =====
+{
+ "noPermission": {
+  "status": 200,
+  "redirected": false,
+  "finalUrl": "https://sycm.taobao.com/custom/no_permission?code=5903&message=No%20Buy%20Func%20Permission.&ref_url=https://sycm.taobao.com/qos/service/frame/shop/performance",
+  "textLen": 3613,
+  "bodyText": "",
+  "raw": "生意参谋 - 零售电商大数据产品平台"
+ },
+ "menuNodes": [
+  {
+   "menuName": "客服",
+   "menuPath": "/qos/service/performance/new",
+   "parentId": 10229,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": {
+    "communicationDateCode": "tb_sycm_sns"
+   },
+   "allKeys": [
+    "children",
+    "exAttr",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId"
+   ]
+  },
+  {
+   "menuName": "店铺绩效",
+   "menuPath": "/qos/service/frame/shop/performance/new",
+   "parentId": 12812,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": {
+    "communicationDateCode": "tb_sycm_sns"
+   },
+   "allKeys": [
+    "exAttr",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "客服绩效",
+   "menuPath": "/qos/service/frame/customer/performance/new",
+   "parentId": 12812,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": {
+    "communicationDateCode": "tb_sycm_sns"
+   },
+   "allKeys": [
+    "exAttr",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "绩效明细",
+   "menuPath": "/qos/service/frame/performance/detail/new",
+   "parentId": 12812,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": {
+    "communicationDateCode": "tb_sycm_sns"
+   },
+   "allKeys": [
+    "exAttr",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "(旧)服务绩效",
+   "menuPath": "/qos/service/performance/new",
+   "parentId": 10229,
+   "isVisible": "n",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": {
+    "communicationDateCode": "tb_sycm_sns"
+   },
+   "allKeys": [
+    "exAttr",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId"
+   ]
+  },
+  {
+   "menuName": "服务绩效",
+   "menuPath": "/qos/service/performance",
+   "parentId": 10229,
+   "isVisible": "n",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "children",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId"
+   ]
+  },
+  {
+   "menuName": "客服绩效",
+   "menuPath": "/qos/service/frame/customer/performance",
+   "parentId": 11535,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "店铺绩效",
+   "menuPath": "/qos/service/frame/shop/performance",
+   "parentId": 11535,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "绩效考核",
+   "menuPath": "/qos/service/performance_assess",
+   "parentId": 10539,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "绩效配置",
+   "menuPath": "/qos/service/frame/rule",
+   "parentId": 10541,
+   "isVisible": "y",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  },
+  {
+   "menuName": "业绩",
+   "menuPath": "/xsite/contentanalysis/lives/performance1",
+   "parentId": 11999,
+   "isVisible": "n",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "children",
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId"
+   ]
+  },
+  {
+   "menuName": "千牛直播业绩",
+   "menuPath": "/xsite/contentanalysis/we/live_performance",
+   "parentId": 14093,
+   "isVisible": "n",
+   "visible": null,
+   "hasAuth": null,
+   "auth": null,
+   "exAttr": null,
+   "allKeys": [
+    "isVisible",
+    "menuCode",
+    "menuId",
+    "menuName",
+    "menuOrder",
+    "menuPath",
+    "parentId",
+    "uiAttr"
+   ]
+  }
+ ],
+ "menuCode": 0
+}

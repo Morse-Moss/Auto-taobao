@@ -1,0 +1,73 @@
+===== 科塔淘宝 =====
+{
+ "cases": [
+  {
+   "label": "A 默认（带 referrer）",
+   "pUrl": "http://sycm.taobao.com/qos/service/frame/shop/performance",
+   "status": 200,
+   "body": "{ \"code\":5903, \"message\":\"No Buy Func Permission.\" }"
+  },
+  {
+   "label": "B 不带 referrer",
+   "pUrl": "http://sycm.taobao.com/qos/service/frame/shop/performance",
+   "status": 200,
+   "body": "{ \"code\":5903, \"message\":\"No Buy Func Permission.\" }"
+  },
+  {
+   "label": "C https 形式",
+   "pUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+   "status": 200,
+   "body": "{ \"code\":5903, \"message\":\"No Buy Func Permission.\" }"
+  },
+  {
+   "label": "D 对照：/new 那条（两边都该放行）",
+   "pUrl": "http://sycm.taobao.com/qos/service/frame/shop/performance/new",
+   "status": 200,
+   "body": "{ \"code\":0, \"data\":{ \"accessLevel\":1, \"code\":\"sycm_v2_qos_shop_performance_new_v2\", \"id\":12816, \"securityLevel\":1 }, \"message\":\"操作成功\" }"
+  }
+ ],
+ "modulesType": "array",
+ "hasPerfModule": false,
+ "hasPerfNewModule": false,
+ "perfId11536": false,
+ "perfId12816": false,
+ "modulesHead": "[{\"endDate\":1792486509846,\"hasPermission\":true,\"isTab\":false,\"moduleCode\":\"adm-eportal-order-experience-free\",\"moduleId\":512,\"moduleName\":\"应用市场菜单优化免费用户\",\"remainDate\":30,\"startDate\":1789894509846,\"todayOrder\":false},{\"endDate\":1792486509846,\"hasPermission\":true,\"isTab\":false,\"moduleCode\":\"adm-eportal-order-experience-old\",\"moduleId\":513,\"moduleName\":\"应用市场菜单优化AB测试旧版\",\"remainDate\":30,\"startDate\":1789",
+ "portal": "{ \"code\":0, \"data\":{ \"accessLevel\":1, \"code\":\"portal\", \"id\":223, \"securityLevel\":1 }, \"message\":\"操作成功\" }"
+}
+
+===== 盖文淘宝（对照·健康） =====
+{
+ "cases": [
+  {
+   "label": "A 默认（带 referrer）",
+   "pUrl": "http://sycm.taobao.com/qos/service/frame/shop/performance",
+   "status": 200,
+   "body": "{ \"code\":0, \"data\":{ \"accessLevel\":1, \"code\":\"sycm_v2_qos_shop_performance\", \"id\":11536, \"securityLevel\":1 }, \"message\":\"操作成功\" }"
+  },
+  {
+   "label": "B 不带 referrer",
+   "pUrl": "http://sycm.taobao.com/qos/service/frame/shop/performance",
+   "status": 200,
+   "body": "{ \"code\":0, \"data\":{ \"accessLevel\":1, \"code\":\"sycm_v2_qos_shop_performance\", \"id\":11536, \"securityLevel\":1 }, \"message\":\"操作成功\" }"
+  },
+  {
+   "label": "C https 形式",
+   "pUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+   "status": 200,
+   "body": "{ \"code\":0, \"data\":{ \"accessLevel\":1, \"code\":\"sycm_v2_qos_shop_performance\", \"id\":11536, \"securityLevel\":1 }, \"message\":\"操作成功\" }"
+  },
+  {
+   "label": "D 对照：/new 那条（两边都该放行）",
+   "pUrl": "http://sycm.taobao.com/qos/service/frame/shop/performance/new",
+   "status": 200,
+   "body": "{ \"code\":0, \"data\":{ \"accessLevel\":1, \"code\":\"sycm_v2_qos_shop_performance_new_v2\", \"id\":12816, \"securityLevel\":1 }, \"message\":\"操作成功\" }"
+  }
+ ],
+ "modulesType": "array",
+ "hasPerfModule": false,
+ "hasPerfNewModule": false,
+ "perfId11536": false,
+ "perfId12816": false,
+ "modulesHead": "[{\"endDate\":1792486510668,\"hasPermission\":true,\"isTab\":false,\"moduleCode\":\"adm-eportal-order-experience-free\",\"moduleId\":512,\"moduleName\":\"应用市场菜单优化免费用户\",\"remainDate\":30,\"startDate\":1789894510668,\"todayOrder\":false},{\"endDate\":1792486510668,\"hasPermission\":true,\"isTab\":false,\"moduleCode\":\"adm-eportal-order-experience-old\",\"moduleId\":513,\"moduleName\":\"应用市场菜单优化AB测试旧版\",\"remainDate\":30,\"startDate\":1789",
+ "portal": "{ \"code\":0, \"data\":{ \"accessLevel\":1, \"code\":\"portal\", \"id\":223, \"securityLevel\":1 }, \"message\":\"操作成功\" }"
+}

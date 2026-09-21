@@ -1,0 +1,12 @@
+===== 科塔淘宝 =====
+  模块总数=84  其中 hasPermission!==true 的=0
+  · moduleId=400  服务910版本切换需求  hasPermission=true  remainDate=30  2026-09-20T08:55:25 → 2026-10-20T08:55:25
+  · moduleId=533  无线首页服务专题  hasPermission=true  remainDate=30  2026-09-20T08:55:25 → 2026-10-20T08:55:25
+  · moduleId=737  服务商品分析灰度  hasPermission=true  remainDate=30  2026-09-20T08:55:25 → 2026-10-20T08:55:25
+
+===== 盖文淘宝（对照·健康） =====
+  模块总数=79  其中 hasPermission!==true 的=0
+  · moduleId=400  服务910版本切换需求  hasPermission=true  remainDate=30  2026-09-20T08:55:26 → 2026-10-20T08:55:26
+  · moduleId=533  无线首页服务专题  hasPermission=true  remainDate=30  2026-09-20T08:55:26 → 2026-10-20T08:55:26
+  · moduleId=88  单店版-服务洞察专业版  hasPermission=true  remainDate=245  2024-02-20T02:48:30 → 2027-05-22T16:00:00
+  · moduleId=737  服务商品分析灰度  hasPermission=true  remainDate=30  2026-09-20T08:55:26 → 2026-10-20T08:55:26

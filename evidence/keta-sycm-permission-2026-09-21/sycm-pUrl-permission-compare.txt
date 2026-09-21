@@ -1,0 +1,27 @@
+===== 科塔淘宝 =====
+  p_url=http://sycm.taobao.com/qos/service/frame/shop/performance/new
+      status=200  redirected=false  textLen=147  saysDenied=false
+      finalUrl=https://sycm.taobao.com/oneauth/api/permission.json?_v2=2&p_url=http%3A%2F%2Fsycm.taobao.com%2Fqos%2Fservice%2Fframe%2Fshop%2Fperformance%2Fnew
+      head={ "code":0, "data":{ "accessLevel":1, "code":"sycm_v2_qos_shop_performance_new_v2", "id":12816, "securityLevel":1 }, "message":"操作成功" }
+  p_url=http://sycm.taobao.com/qos/service/frame/shop/performance
+      status=200  redirected=false  textLen=54  saysDenied=true
+      finalUrl=https://sycm.taobao.com/oneauth/api/permission.json?_v2=2&p_url=http%3A%2F%2Fsycm.taobao.com%2Fqos%2Fservice%2Fframe%2Fshop%2Fperformance
+      head={ "code":5903, "message":"No Buy Func Permission." }
+  p_url=http://sycm.taobao.com/portal/home.htm
+      status=200  redirected=false  textLen=126  saysDenied=false
+      finalUrl=https://sycm.taobao.com/oneauth/api/permission.json?_v2=2&p_url=http%3A%2F%2Fsycm.taobao.com%2Fportal%2Fhome.htm
+      head={ "code":0, "data":{ "accessLevel":1, "code":"sycm_v2_portal", "id":10223, "securityLevel":1 }, "message":"操作成功" }
+
+===== 盖文淘宝（对照·健康） =====
+  p_url=http://sycm.taobao.com/qos/service/frame/shop/performance/new
+      status=200  redirected=false  textLen=147  saysDenied=false
+      finalUrl=https://sycm.taobao.com/oneauth/api/permission.json?_v2=2&p_url=http%3A%2F%2Fsycm.taobao.com%2Fqos%2Fservice%2Fframe%2Fshop%2Fperformance%2Fnew
+      head={ "code":0, "data":{ "accessLevel":1, "code":"sycm_v2_qos_shop_performance_new_v2", "id":12816, "securityLevel":1 }, "message":"操作成功" }
+  p_url=http://sycm.taobao.com/qos/service/frame/shop/performance
+      status=200  redirected=false  textLen=140  saysDenied=false
+      finalUrl=https://sycm.taobao.com/oneauth/api/permission.json?_v2=2&p_url=http%3A%2F%2Fsycm.taobao.com%2Fqos%2Fservice%2Fframe%2Fshop%2Fperformance
+      head={ "code":0, "data":{ "accessLevel":1, "code":"sycm_v2_qos_shop_performance", "id":11536, "securityLevel":1 }, "message":"操作成功" }
+  p_url=http://sycm.taobao.com/portal/home.htm
+      status=200  redirected=false  textLen=126  saysDenied=false
+      finalUrl=https://sycm.taobao.com/oneauth/api/permission.json?_v2=2&p_url=http%3A%2F%2Fsycm.taobao.com%2Fportal%2Fhome.htm
+      head={ "code":0, "data":{ "accessLevel":1, "code":"sycm_v2_portal", "id":10223, "securityLevel":1 }, "message":"操作成功" }

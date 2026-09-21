@@ -1,0 +1,116 @@
+[
+ {
+  "key": "dailyReport",
+  "label": "商家浏览器",
+  "port": 19023,
+  "currentUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+  "result": {
+   "ok": true,
+   "value": {
+    "status": 200,
+    "redirected": false,
+    "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+    "denied": false,
+    "code": null,
+    "message": null,
+    "textLen": 3622,
+    "bodyHead": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webk"
+   }
+  }
+ },
+ {
+  "key": "likelin",
+  "label": "里可林淘宝",
+  "port": 19041,
+  "currentUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+  "result": {
+   "ok": true,
+   "value": {
+    "status": 200,
+    "redirected": false,
+    "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+    "denied": false,
+    "code": null,
+    "message": null,
+    "textLen": 3628,
+    "bodyHead": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webk"
+   }
+  }
+ },
+ {
+  "key": "wanglin",
+  "label": "网林天猫",
+  "port": 19042,
+  "currentUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+  "result": {
+   "ok": true,
+   "value": {
+    "status": 200,
+    "redirected": false,
+    "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+    "denied": false,
+    "code": null,
+    "message": null,
+    "textLen": 3628,
+    "bodyHead": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webk"
+   }
+  }
+ },
+ {
+  "key": "gaiwen-tb",
+  "label": "盖文淘宝",
+  "port": 19043,
+  "currentUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+  "result": {
+   "ok": true,
+   "value": {
+    "status": 200,
+    "redirected": false,
+    "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+    "denied": false,
+    "code": null,
+    "message": null,
+    "textLen": 3622,
+    "bodyHead": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webk"
+   }
+  }
+ },
+ {
+  "key": "keta",
+  "label": "科塔淘宝",
+  "port": 19044,
+  "currentUrl": "https://sycm.taobao.com/portal/home.htm",
+  "result": {
+   "ok": true,
+   "value": {
+    "status": 200,
+    "redirected": true,
+    "finalUrl": "https://sycm.taobao.com/custom/no_permission?code=5903&message=No%20Buy%20Func%20Permission.&ref_url=https://sycm.taobao.com/qos/service/frame/shop/performance",
+    "denied": true,
+    "code": "5903",
+    "message": "No Buy Func Permission.",
+    "textLen": 3613,
+    "bodyHead": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webk"
+   }
+  }
+ },
+ {
+  "key": "gaiwen-tm",
+  "label": "盖文天猫",
+  "port": 19045,
+  "currentUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+  "result": {
+   "ok": true,
+   "value": {
+    "status": 200,
+    "redirected": false,
+    "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+    "denied": false,
+    "code": null,
+    "message": null,
+    "textLen": 3628,
+    "bodyHead": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webk"
+   }
+  }
+ }
+]
