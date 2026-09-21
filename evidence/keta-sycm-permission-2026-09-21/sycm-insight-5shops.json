@@ -1,0 +1,97 @@
+[
+ {
+  "key": "likelin",
+  "label": "里可林淘宝",
+  "port": 19041,
+  "data": {
+   "total": 66,
+   "insight": [
+    {
+     "id": 88,
+     "name": "单店版-服务洞察专业版",
+     "code": "service-analyze-C",
+     "has": true,
+     "remain": 270,
+     "from": "2026-06-17",
+     "to": "2027-06-16"
+    }
+   ],
+   "perf": []
+  },
+  "error": null
+ },
+ {
+  "key": "wanglin",
+  "label": "网林天猫",
+  "port": 19042,
+  "data": {
+   "total": 58,
+   "insight": [
+    {
+     "id": 88,
+     "name": "单店版-服务洞察专业版",
+     "code": "service-analyze-C",
+     "has": true,
+     "remain": 270,
+     "from": "2026-06-17",
+     "to": "2027-06-16"
+    }
+   ],
+   "perf": []
+  },
+  "error": null
+ },
+ {
+  "key": "gaiwen-tb",
+  "label": "盖文淘宝",
+  "port": 19043,
+  "data": {
+   "total": 79,
+   "insight": [
+    {
+     "id": 88,
+     "name": "单店版-服务洞察专业版",
+     "code": "service-analyze-C",
+     "has": true,
+     "remain": 245,
+     "from": "2024-02-20",
+     "to": "2027-05-22"
+    }
+   ],
+   "perf": []
+  },
+  "error": null
+ },
+ {
+  "key": "keta",
+  "label": "科塔淘宝",
+  "port": 19044,
+  "data": {
+   "total": 84,
+   "insight": [],
+   "perf": []
+  },
+  "error": null
+ },
+ {
+  "key": "gaiwen-tm",
+  "label": "盖文天猫",
+  "port": 19045,
+  "data": {
+   "total": 69,
+   "insight": [
+    {
+     "id": 88,
+     "name": "单店版-服务洞察专业版",
+     "code": "service-analyze-C",
+     "has": true,
+     "remain": 317,
+     "from": "2026-08-03",
+     "to": "2027-08-02"
+    }
+   ],
+   "perf": []
+  },
+  "error": null
+ }
+]
