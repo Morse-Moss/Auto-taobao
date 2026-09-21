@@ -246,8 +246,9 @@ export async function main(argv = process.argv.slice(2)) {
   fs.writeFileSync(planFile, `${JSON.stringify({ summary, updates: plan.updates }, null, 2)}\n`, 'utf8');
 
   if (!options.apply) {
-    console.log(JSON.stringify({ status: 'DRY_RUN', ...summary, beforeFile, planFile }, null, 2));
-    return;
+    const dryRun = { status: 'DRY_RUN', ...summary, beforeFile, planFile };
+    console.log(JSON.stringify(dryRun, null, 2));
+    return dryRun;
   }
 
   const derivedFields = fields.filter((field) => field.type === 20).map((field) => field.field_name);
@@ -294,6 +295,7 @@ export async function main(argv = process.argv.slice(2)) {
   };
   fs.writeFileSync(receiptFile, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
   console.log(JSON.stringify({ ...receipt, receiptFile }, null, 2));
+  return { ...receipt, receiptFile };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -218,8 +218,11 @@ function summarizePlan(plan, records) {
   };
 }
 
-async function main() {
-  const options = parseOptions(process.argv.slice(2));
+// argv 可注入：编排器（run-keyword-weekly-local-analysis.mjs）要按顺序驱动规则段与 AI 段两个写入器，
+// 而中文表名走 shell 有被按 GBK 打乱的历史（本项目踩过，证据静默为假），所以只能传数组调函数。
+// 从 process.argv 直接读会把编排器逼回「拼命令行字符串」那条老路。
+export async function main(argv = process.argv.slice(2)) {
+  const options = parseOptions(argv);
   const env = readEnv(options.envFile);
   if (!env.FEISHU_APP_ID || !env.FEISHU_APP_SECRET) throw new Error('Feishu app credentials unavailable');
   const scope = { appToken: options.appToken, tableId: options.tableId };
@@ -266,13 +269,14 @@ async function main() {
 
   const summary = summarizePlan(plan, records);
   if (!options.apply) {
-    console.log(JSON.stringify({
+    const dryRun = {
       status: 'DRY_RUN', ...summary,
       apiRecordsPlanned: partitioned.apiUpdates.length,
       frontendRecordsPlanned: partitioned.frontendUpdates.length,
       beforeFile, planFile, frontendFile,
-    }, null, 2));
-    return;
+    };
+    console.log(JSON.stringify(dryRun, null, 2));
+    return dryRun;
   }
 
   const derivedFields = fields.filter((field) => field.type === 20).map((field) => field.field_name);
@@ -316,6 +320,7 @@ async function main() {
   };
   fs.writeFileSync(receiptFile, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
   console.log(JSON.stringify({ ...receipt, receiptFile }, null, 2));
+  return { ...receipt, receiptFile };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

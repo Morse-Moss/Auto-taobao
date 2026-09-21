@@ -48,6 +48,30 @@ test('local labels preserve the previous batch controlled brand vocabulary', () 
   assert.deepEqual(analyzeKeyword('云涛浴缸').细分标签, []);
 });
 
+// 2026-09-21：两处「正则覆盖缺口」+ 两处「受控品牌表扩充」。
+// 起因是 09-19 期那 14 个细分标签为空的词，查到底发现其中 4 个不是「本来无属性」。
+test('local labels cover the 2026-09-21 vocabulary additions', () => {
+  // 场景/老人 此前只认「老人|老年」，漏了「适老」这种常见写法。
+  assert.deepEqual(analyzeKeyword('适老化浴缸').细分标签, ['场景/老人']);
+  assert.equal(analyzeKeyword('适老化浴缸').关键词分类, '场景词');
+  // 功能/新款 此前只认「新款|新型」，漏了「新式」。
+  assert.deepEqual(analyzeKeyword('新式浴缸').细分标签, ['功能/新款']);
+  assert.equal(analyzeKeyword('新式浴缸').关键词分类, '功能词');
+  // 受控品牌表补 Bette / tw：此前它们只在 BRANDS 与 BRAND_WORDS 里。
+  // 注意「品牌/Bette」的大小写与表上选项逐字一致 —— 这不是风格问题：
+  // 写成小写会被 MultiSelect 的选项校验判成不存在的选项、直接 fail-closed。
+  assert.deepEqual(analyzeKeyword('bette').细分标签, ['品牌/Bette']);
+  assert.equal(analyzeKeyword('bette').关键词分类, '品牌词');
+  assert.deepEqual(analyzeKeyword('tw浴缸').细分标签, ['品牌/tw']);
+  assert.equal(analyzeKeyword('tw浴缸').关键词分类, '品牌词');
+  // 受控边界没有被顺手放宽：只在 BRANDS 里、不进标签表的名字，标签依然为空。
+  assert.deepEqual(analyzeKeyword('朵纳浴缸').细分标签, []);
+  assert.equal(analyzeKeyword('朵纳浴缸').关键词分类, '品牌词');
+  // 「无属性」这条路也必须仍然能走通（否则这条修复就把「留空」变成了「必须打标」）。
+  assert.deepEqual(analyzeKeyword('浴缸').细分标签, []);
+  assert.deepEqual(analyzeKeyword('高级浴缸').细分标签, []);
+});
+
 test('local analysis normalizes only approved strict equivalents', () => {
   assert.equal(analyzeKeyword('toto浴缸').标准归并词, '浴缸');
   assert.equal(analyzeKeyword('浴缸亚克力').标准归并词, '亚克力浴缸');

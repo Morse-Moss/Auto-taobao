@@ -1,0 +1,444 @@
+profile=kcne  base=QcnhbEzYpacGvUskCbVcrcm3nFd
+measuredAt=Mon Sep 21 2026 12:56:24 GMT+0800 (中国标准时间)
+
+=== 竞品 base 全部表 ===
+  竞品主表  id=tblkYcczxBnW4v5G
+  SKU明细  id=tbl3N48H4znz304T
+  竞品历史总表 V1  id=tbln7qqA6XopiL4Q
+  问题主库  id=tblbJ9F91NiN8IfO
+  竞品周_2026-08-23_2026-08-29  id=tblDpoBCxUJmNBR7
+  SKU周_2026-08-23_2026-08-29  id=tblTgQo1OtQMDA4X
+  问题库_2026-08-23_2026-08-29  id=tbli5dtqFnFmvfYM
+  竞品周_2026-08-30_2026-09-05  id=tblGayj9pTYY0Fb7
+  竞品周_2026-09-06_2026-09-12  id=tblosvuwE6xqYn6r
+  竞品周_2026-09-13_2026-09-19  id=tbllWI45sK0DfHpr
+  问题库_2026-09-13_2026-09-19  id=tblQeUSb8WQWN2dF
+
+==================================================
+表：SKU明细   id=tbl3N48H4znz304T   字段数=17  公式列=0
+==================================================
+（无公式列）
+
+--- SKU明细 全部字段（type / field_id / ui_type） ---
+  商品链接  type=1  field_id=fldjpjZoge  ui=Text
+  商品标题  type=1  field_id=fld5fPwTIG  ui=Text
+  竞品分类  type=3  field_id=fldtpanaQX  ui=SingleSelect
+  SKU名称  type=1  field_id=fldhXVt0fC  ui=Text
+  SKU规格  type=1  field_id=fldAaARbcK  ui=Text
+  SKU尺寸  type=1  field_id=fldMjPnCtC  ui=Text
+  尺寸汇总  type=1  field_id=fldHubq38Q  ui=Text
+  适用空间  type=3  field_id=fldOROZlrX  ui=SingleSelect
+  采集状态  type=3  field_id=fldtARg21W  ui=SingleSelect
+  待补数据项  type=4  field_id=fld8cOjhFl  ui=MultiSelect
+  所属竞品  type=21  field_id=fldvHml6we  ui=DuplexLink
+  空间判定状态  type=3  field_id=fldEZ6jCLf  ui=SingleSelect
+  空间判定依据  type=1  field_id=fldYqQSExz  ui=Text
+  商品ID  type=1  field_id=fldBaeRV3z  ui=Text
+  SKU唯一键  type=1  field_id=fldM7kUdoH  ui=Text
+  最后出现周  type=1  field_id=fldpDlJCn5  ui=Text
+  当前状态  type=1  field_id=fldlGR6bJP  ui=Text
+
+==================================================
+表：竞品历史总表 V1   id=tbln7qqA6XopiL4Q   字段数=44  公式列=0
+==================================================
+（无公式列）
+
+--- 竞品历史总表 V1 全部字段（type / field_id / ui_type） ---
+  商品周期唯一键  type=1  field_id=fldxMsPnqL  ui=Text
+  快照唯一键  type=1  field_id=fldItd0Ryq  ui=Text
+  周期开始日期  type=5  field_id=fldNR1ObYY  ui=DateTime
+  周期结束日期  type=5  field_id=fldflI3uT0  ui=DateTime
+  商品ID  type=1  field_id=fldP0qwnG9  ui=Text
+  序号  type=1  field_id=fldekMcRzH  ui=Text
+  商品图片  type=17  field_id=fldY5BIBLB  ui=Attachment
+  商品标题  type=1  field_id=fldbo88qF3  ui=Text
+  商品链接  type=1  field_id=fldok0EuMz  ui=Text
+  价格  type=2  field_id=fldnmaRvQD  ui=Number
+  月收货人数  type=1  field_id=fldovOuLva  ui=Text
+  月收货人数计算值  type=2  field_id=fldv4yAhNq  ui=Number
+  计算口径  type=1  field_id=fldV1v6G3R  ui=Text
+  月收货金额  type=2  field_id=fldtFv081A  ui=Number
+  类目  type=1  field_id=fldHJFMw4K  ui=Text
+  同款数  type=1  field_id=fldudD5e8i  ui=Text
+  平台  type=1  field_id=fldZwKWzdb  ui=Text
+  占位类型  type=1  field_id=fldwNopFQr  ui=Text
+  店铺名  type=1  field_id=fldJ04ZGq0  ui=Text
+  店铺旺旺  type=1  field_id=fldzMLMU6w  ui=Text
+  店铺类型  type=1  field_id=fld5Uk1f8T  ui=Text
+  地址  type=1  field_id=fldyCRNbzM  ui=Text
+  收藏人数  type=1  field_id=fldWDnYV4k  ui=Text
+  卖点  type=1  field_id=fldC5ZwZ1B  ui=Text
+  批次ID  type=1  field_id=fldJbmxB7y  ui=Text
+  来源时间  type=5  field_id=fldI7KkXmk  ui=DateTime
+  搜索关键词  type=1  field_id=fld5BOAsJI  ui=Text
+  公式版本  type=1  field_id=fld5CIVMf1  ui=Text
+  AI提示词版本  type=1  field_id=fldil2TGBi  ui=Text
+  是否有效竞品  type=1  field_id=fldilRb65K  ui=Text
+  竞品分类  type=1  field_id=fldk1tpmx0  ui=Text
+  客单价带分类  type=1  field_id=fldgATyhYR  ui=Text
+  材质分类  type=1  field_id=fld7QDtD7m  ui=Text
+  材质金额分摊值  type=2  field_id=fldK4vi7rV  ui=Number
+  金额可计算标记  type=1  field_id=fldPYccLTH  ui=Text
+  金额质量状态  type=1  field_id=fldF5zdto4  ui=Text
+  批次有效性  type=1  field_id=fldMOqMNs7  ui=Text
+  可视化资格  type=1  field_id=fldwvp66aN  ui=Text
+  本期标记  type=1  field_id=fldXhA1Lrd  ui=Text
+  来源周表  type=1  field_id=fldwdNM7bM  ui=Text
+  来源哈希  type=1  field_id=fldX2uelvc  ui=Text
+  规则版本  type=1  field_id=fld5F5KiZU  ui=Text
+  数据状态  type=1  field_id=fldyVvktVu  ui=Text
+  店铺展示分类  type=1  field_id=fld2IwK7Fo  ui=Text
+
+==================================================
+表：竞品周_2026-08-23_2026-08-29   id=tblDpoBCxUJmNBR7   字段数=39  公式列=9
+==================================================
+
+--- 月收货人数计算值 ---
+IF(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),"",IFERROR(VALUE(SUBSTITUTE(【月收货人数】,"+","")),""))
+
+--- 计算口径 ---
+IF(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),"",IF(RIGHT(【月收货人数】,1)="+","下限值",IFERROR(IF(VALUE(【月收货人数】)>=0,"精确值","不可计算"),"不可计算")))
+
+--- 月收货金额 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】),【月收货人数计算值】=""),"",【价格】*【月收货人数计算值】)
+
+--- 客单价带分类 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】)),"",IF(【价格】<1000,"1000以下",IF(【价格】<3000,"1000-3000",IF(【价格】<6000,"3000-6000",IF(【价格】<8000,"6000-8000","8000以上")))))
+
+--- 竞品分类 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】)),"不适用",IF(AND(【月收货人数计算值】>=80,【月收货金额】>=200000),"A-爆款竞品",IF(AND(FIND("人造石",【材质分类】)>0,【月收货人数计算值】>=10),"B-高价值竞品",IF(【价格】>=8000,"C-差异化竞品",IF(【价格】<1000,"D-价格/流量型竞品","无分类")))))
+
+--- 数据状态 ---
+IF(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),"",IF(【待补数据项】="","可用","部分待补"))
+
+--- 待补数据项 ---
+IF(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),"",IF(CONCATENATE(IF(OR(ISBLANK(【月收货人数计算值】),【月收货人数计算值】="无注明",【月收货人数计算值】="不适用"),"月收货人数精确值、",""),IF(OR(ISBLANK(【材质分类】),【材质分类】="无注明",【材质分类】="不适用"),"材质分类、",""),IF(OR(ISBLANK(【外形】),【外形】="无注明",【外形】="不适用"),"外形、",""),IF(OR(ISBLANK(【安装方式】),【安装方式】="无注明",【安装方式】="不适用"),"安装方式、",""),IF(OR(ISBLANK(【功能】),【功能】="无注明",【功能】="不适用"),"功能、",""),IF(OR(ISBLANK(【风格】),【风格】="无注明",【风格】="不适用"),"风格、",""),IF(OR(ISBLANK(【尺寸】),【尺寸】="无注明",【尺寸】="不适用"),"尺寸、",""),IF(OR(ISBLANK(【适用空间】),【适用空间】="无注明",【适用空间】="不适用"),"适用空间、",""))="","",LEFT(CONCATENATE(IF(OR(ISBLANK(【月收货人数计算值】),【月收货人数计算值】="无注明",【月收货人数计算值】="不适用"),"月收货人数精确值、",""),IF(OR(ISBLANK(【材质分类】),【材质分类】="无注明",【材质分类】="不适用"),"材质分类、",""),IF(OR(ISBLANK(【外形】),【外形】="无注明",【外形】="不适用"),"外形、",""),IF(OR(ISBLANK(【安装方式】),【安装方式】="无注明",【安装方式】="不适用"),"安装方式、",""),IF(OR(ISBLANK(【功能】),【功能】="无注明",【功能】="不适用"),"功能、",""),IF(OR(ISBLANK(【风格】),【风格】="无注明",【风格】="不适用"),"风格、",""),IF(OR(ISBLANK(【尺寸】),【尺寸】="无注明",【尺寸】="不适用"),"尺寸、",""),IF(OR(ISBLANK(【适用空间】),【适用空间】="无注明",【适用空间】="不适用"),"适用空间、","")),LEN(CONCATENATE(IF(OR(ISBLANK(【月收货人数计算值】),【月收货人数计算值】="无注明",【月收货人数计算值】="不适用"),"月收货人数精确值、",""),IF(OR(ISBLANK(【材质分类】),【材质分类】="无注明",【材质分类】="不适用"),"材质分类、",""),IF(OR(ISBLANK(【外形】),【外形】="无注明",【外形】="不适用"),"外形、",""),IF(OR(ISBLANK(【安装方式】),【安装方式】="无注明",【安装方式】="不适用"),"安装方式、",""),IF(OR(ISBLANK(【功能】),【功能】="无注明",【功能】="不适用"),"功能、",""),IF(OR(ISBLANK(【风格】),【风格】="无注明",【风格】="不适用"),"风格、",""),IF(OR(ISBLANK(【尺寸】),【尺寸】="无注明",【尺寸】="不适用"),"尺寸、",""),IF(OR(ISBLANK(【适用空间】),【适用空间】="无注明",【适用空间】="不适用"),"适用空间、","")))-1)))
+
+--- 是否有效竞品 ---
+IF(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0),"否",IF(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),IF(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),"是","待确认"),IF(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0),"否",IF(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0),"否",IF(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0)),"否",IF(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),"是","待确认"))))))
+
+--- 排除原因 ---
+IF(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0),"非浴缸主体",IF(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),"",IF(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0),"服务类",IF(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0),"浴缸配件",IF(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0)),"非浴缸主体","")))))
+
+--- 竞品周_2026-08-23_2026-08-29 全部字段（type / field_id / ui_type） ---
+  序号  type=1  field_id=fldHattGjY  ui=Text
+  商品图片  type=17  field_id=fldlxnkQyo  ui=Attachment
+  商品标题  type=1  field_id=fldrsnjSju  ui=Text
+  商品链接  type=1  field_id=fldmlY9fmY  ui=Text
+  价格  type=2  field_id=fldqJyyVDX  ui=Number
+  月收货人数  type=1  field_id=fldUwtuQ5S  ui=Text
+  类目  type=1  field_id=fldhyHK90W  ui=Text
+  同款数  type=1  field_id=fldvrMaXzd  ui=Text
+  平台  type=1  field_id=fldAOGujkZ  ui=Text
+  占位类型  type=1  field_id=flds9YlGRk  ui=Text
+  店铺名  type=1  field_id=fldvDi6QHx  ui=Text
+  店铺旺旺  type=1  field_id=fldsywSheQ  ui=Text
+  店铺类型  type=1  field_id=fldWttPEcc  ui=Text
+  地址  type=1  field_id=fldQYcLd4S  ui=Text
+  收藏人数  type=1  field_id=fldnXQ6srn  ui=Text
+  卖点  type=1  field_id=fldGVtx2ao  ui=Text
+  搜索关键词  type=1  field_id=fldflvrFtn  ui=Text
+  月收货人数计算值  type=20  field_id=fldcEjaxay  ui=Formula  [公式]
+  计算口径  type=20  field_id=fldH49qcO3  ui=Formula  [公式]
+  月收货金额  type=20  field_id=fldCa6KphG  ui=Formula  [公式]
+  客单价带分类  type=20  field_id=fldyfVdeU7  ui=Formula  [公式]
+  材质分类  type=1  field_id=fldXTr8zAd  ui=Text
+  外形  type=1  field_id=fld5Ca5rYw  ui=Text
+  安装方式  type=1  field_id=fldwm9Dx28  ui=Text
+  功能  type=1  field_id=fldauK5xIm  ui=Text
+  风格  type=1  field_id=fldxOHj0RG  ui=Text
+  竞品分类  type=20  field_id=fldBCwzh2l  ui=Formula  [公式]
+  尺寸  type=19  field_id=fldE9RinVa  ui=Lookup
+  适用空间  type=19  field_id=fldC76ueyd  ui=Lookup
+  数据状态  type=20  field_id=fldEm1eFkj  ui=Formula  [公式]
+  待补数据项  type=20  field_id=fldvFqoAUI  ui=Formula  [公式]
+  是否有效竞品  type=20  field_id=fldIRcoKZz  ui=Formula  [公式]
+  排除原因  type=20  field_id=fldJYqmLyA  ui=Formula  [公式]
+  商品周期唯一键  type=1  field_id=fldLQBGX7x  ui=Text
+  数据开始日期  type=5  field_id=fldNG78AlC  ui=DateTime
+  数据结束日期  type=5  field_id=fldVc3U4XU  ui=DateTime
+  采集时间  type=5  field_id=fldr14FKIq  ui=DateTime
+  商品ID  type=1  field_id=fldHiM9n6J  ui=Text
+  主表记录ID  type=1  field_id=fld0TOP9qK  ui=Text
+
+==================================================
+表：SKU周_2026-08-23_2026-08-29   id=tblTgQo1OtQMDA4X   字段数=23  公式列=0
+==================================================
+（无公式列）
+
+--- SKU周_2026-08-23_2026-08-29 全部字段（type / field_id / ui_type） ---
+  商品链接  type=1  field_id=fldjpjZoge  ui=Text
+  商品标题  type=1  field_id=fld5fPwTIG  ui=Text
+  竞品分类  type=3  field_id=fldtpanaQX  ui=SingleSelect
+  SKU名称  type=1  field_id=fldhXVt0fC  ui=Text
+  SKU规格  type=1  field_id=fldAaARbcK  ui=Text
+  SKU尺寸  type=1  field_id=fldMjPnCtC  ui=Text
+  尺寸汇总  type=1  field_id=fldHubq38Q  ui=Text
+  适用空间  type=3  field_id=fldOROZlrX  ui=SingleSelect
+  采集状态  type=3  field_id=fldtARg21W  ui=SingleSelect
+  待补数据项  type=4  field_id=fld8cOjhFl  ui=MultiSelect
+  空间判定状态  type=3  field_id=fldEZ6jCLf  ui=SingleSelect
+  空间判定依据  type=1  field_id=fldYqQSExz  ui=Text
+  商品ID  type=1  field_id=fldBaeRV3z  ui=Text
+  SKU唯一键  type=1  field_id=fldM7kUdoH  ui=Text
+  SKU周期唯一键  type=1  field_id=fldrSzzTQb  ui=Text
+  商品周期唯一键  type=1  field_id=fldzWSdiKf  ui=Text
+  数据开始日期  type=5  field_id=fldSUbJQGM  ui=DateTime
+  数据结束日期  type=5  field_id=fldlkE0v2w  ui=DateTime
+  采集时间  type=5  field_id=fldmFqSmUM  ui=DateTime
+  来源证据哈希  type=1  field_id=fld4f3KoPG  ui=Text
+  主表记录ID  type=1  field_id=fld7vgO1uj  ui=Text
+  竞品周记录ID  type=1  field_id=fldmL4eShr  ui=Text
+  竞品周关联状态  type=1  field_id=fldy6VDWtt  ui=Text
+
+==================================================
+表：问题库_2026-08-23_2026-08-29   id=tbli5dtqFnFmvfYM   字段数=23  公式列=0
+==================================================
+（无公式列）
+
+--- 问题库_2026-08-23_2026-08-29 全部字段（type / field_id / ui_type） ---
+  商品ID  type=1  field_id=fld3vuDouA  ui=Text
+  主表记录ID  type=1  field_id=fldZRBhulZ  ui=Text
+  竞品周记录ID  type=1  field_id=fldz0FiHGT  ui=Text
+  商品链接  type=1  field_id=fldfxCK7ZN  ui=Text
+  商品标题  type=1  field_id=fldaPPJqqn  ui=Text
+  竞品分类  type=3  field_id=fldUOTntdz  ui=SingleSelect
+  来源类型  type=3  field_id=fldYVv0trT  ui=SingleSelect
+  原始内容  type=1  field_id=fld9g03V1t  ui=Text
+  分类标签  type=1  field_id=fldzKPxKqa  ui=Text
+  是否痛点  type=3  field_id=fldHIDTXXC  ui=SingleSelect
+  出现次数  type=2  field_id=fld5mygjGU  ui=Number
+  痛点描述  type=1  field_id=fldYBb8p48  ui=Text
+  典型问题  type=1  field_id=fldE3GvFs5  ui=Text
+  典型用户原话  type=1  field_id=fld0L7OVkk  ui=Text
+  占比  type=2  field_id=fldbJIqp20  ui=Number
+  周期开始日期  type=5  field_id=fldWghhd3e  ui=DateTime
+  周期结束日期  type=5  field_id=fldTZlywRO  ui=DateTime
+  采集状态  type=3  field_id=fldQJNMcVq  ui=SingleSelect
+  来源记录唯一键  type=1  field_id=fld3z4NuEL  ui=Text
+  采集时间  type=1  field_id=fldTEddGQF  ui=Text
+  分析版本  type=1  field_id=fldK62rC07  ui=Text
+  痛点判定依据  type=1  field_id=fldKVqOsuN  ui=Text
+  痛点判定置信度  type=1  field_id=fldhnEykS8  ui=Text
+
+==================================================
+表：竞品周_2026-08-30_2026-09-05   id=tblGayj9pTYY0Fb7   字段数=35  公式列=7
+==================================================
+
+--- 月收货人数计算值 ---
+IF(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),"",IFERROR(VALUE(SUBSTITUTE(【月收货人数】,"+","")),""))
+
+--- 计算口径 ---
+IF(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),"",IF(RIGHT(【月收货人数】,1)="+","下限值",IFERROR(IF(VALUE(【月收货人数】)>=0,"精确值","不可计算"),"不可计算")))
+
+--- 客单价带分类 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】)),"",IF(【价格】<1000,"1000以下",IF(【价格】<3000,"1000-3000",IF(【价格】<6000,"3000-6000",IF(【价格】<8000,"6000-8000","8000以上")))))
+
+--- 是否有效竞品 ---
+IF(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0),"否",IF(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),IF(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),"是","待确认"),IF(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0),"否",IF(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0),"否",IF(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0)),"否",IF(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),"是","待确认"))))))
+
+--- 排除原因 ---
+IF(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0),"非浴缸主体",IF(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),"",IF(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0),"服务类",IF(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0),"浴缸配件",IF(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0)),"非浴缸主体","")))))
+
+--- 月收货金额 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】),【月收货人数计算值】=""),"",【价格】*【月收货人数计算值】)
+
+--- 竞品分类 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】)),"不适用",IF(AND(【月收货人数计算值】>=80,【月收货金额】>=200000),"A-爆款竞品",IF(AND(FIND("人造石",【材质分类】)>0,【月收货人数计算值】>=10),"B-高价值竞品",IF(【价格】>=8000,"C-差异化竞品",IF(【价格】<1000,"D-价格/流量型竞品","无分类")))))
+
+--- 竞品周_2026-08-30_2026-09-05 全部字段（type / field_id / ui_type） ---
+  序号  type=1  field_id=fldePzIyyA  ui=Text
+  商品图片  type=17  field_id=fld7PL4wBJ  ui=Attachment
+  商品标题  type=1  field_id=fldyl1sEQk  ui=Text
+  商品链接  type=1  field_id=fld7QJfihf  ui=Text
+  价格  type=2  field_id=fldOPh5KGp  ui=Number
+  月收货人数  type=1  field_id=fld7sQsMaU  ui=Text
+  类目  type=1  field_id=fldpeWRjAX  ui=Text
+  同款数  type=1  field_id=fldtVt4Mqv  ui=Text
+  平台  type=1  field_id=fldo0qAGef  ui=Text
+  占位类型  type=1  field_id=fldKZiNid7  ui=Text
+  店铺名  type=1  field_id=fldnTmCOah  ui=Text
+  店铺旺旺  type=1  field_id=fldRD8YstO  ui=Text
+  店铺类型  type=1  field_id=fld69JqcdS  ui=Text
+  地址  type=1  field_id=fldpbPYM68  ui=Text
+  收藏人数  type=1  field_id=fldb5AUkzh  ui=Text
+  卖点  type=1  field_id=fldVUqOBWt  ui=Text
+  搜索关键词  type=1  field_id=fldUI4Xj9s  ui=Text
+  材质分类  type=1  field_id=fld2Tnpmx2  ui=Text
+  外形  type=1  field_id=fldhOK82ig  ui=Text
+  安装方式  type=1  field_id=fldaOIjYjl  ui=Text
+  功能  type=1  field_id=fld7Dunyxc  ui=Text
+  风格  type=1  field_id=fldjVeuodX  ui=Text
+  商品周期唯一键  type=1  field_id=fld5eg073i  ui=Text
+  数据开始日期  type=5  field_id=flddSpcaJk  ui=DateTime
+  数据结束日期  type=5  field_id=fldfxTg2jF  ui=DateTime
+  采集时间  type=5  field_id=fldiqUHSzb  ui=DateTime
+  商品ID  type=1  field_id=fldd7GIaiY  ui=Text
+  主表记录ID  type=1  field_id=fldrQvFZZ3  ui=Text
+  月收货人数计算值  type=20  field_id=fldFEkkZky  ui=Formula  [公式]
+  计算口径  type=20  field_id=fldYToK9At  ui=Formula  [公式]
+  客单价带分类  type=20  field_id=fld0HXhpdC  ui=Formula  [公式]
+  是否有效竞品  type=20  field_id=fldWdk57Qy  ui=Formula  [公式]
+  排除原因  type=20  field_id=fldW2iszBW  ui=Formula  [公式]
+  月收货金额  type=20  field_id=fldHE2Tn6W  ui=Formula  [公式]
+  竞品分类  type=20  field_id=fldI1jDglu  ui=Formula  [公式]
+
+==================================================
+表：竞品周_2026-09-06_2026-09-12   id=tblosvuwE6xqYn6r   字段数=35  公式列=7
+==================================================
+
+--- 月收货人数计算值 ---
+IF(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),"",IFERROR(VALUE(SUBSTITUTE(【月收货人数】,"+","")),""))
+
+--- 计算口径 ---
+IF(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),"",IF(RIGHT(【月收货人数】,1)="+","下限值",IFERROR(IF(VALUE(【月收货人数】)>=0,"精确值","不可计算"),"不可计算")))
+
+--- 客单价带分类 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】)),"",IF(【价格】<1000,"1000以下",IF(【价格】<3000,"1000-3000",IF(【价格】<6000,"3000-6000",IF(【价格】<8000,"6000-8000","8000以上")))))
+
+--- 是否有效竞品 ---
+IF(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0),"否",IF(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),IF(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),"是","待确认"),IF(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0),"否",IF(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0),"否",IF(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0)),"否",IF(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),"是","待确认"))))))
+
+--- 排除原因 ---
+IF(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0),"非浴缸主体",IF(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),"",IF(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0),"服务类",IF(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0),"浴缸配件",IF(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0)),"非浴缸主体","")))))
+
+--- 月收货金额 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】),【月收货人数计算值】=""),"",【价格】*【月收货人数计算值】)
+
+--- 竞品分类 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】)),"不适用",IF(AND(【月收货人数计算值】>=80,【月收货金额】>=200000),"A-爆款竞品",IF(AND(FIND("人造石",【材质分类】)>0,【月收货人数计算值】>=10),"B-高价值竞品",IF(【价格】>=8000,"C-差异化竞品",IF(【价格】<1000,"D-价格/流量型竞品","无分类")))))
+
+--- 竞品周_2026-09-06_2026-09-12 全部字段（type / field_id / ui_type） ---
+  序号  type=1  field_id=fldRNwxF26  ui=Text
+  商品图片  type=17  field_id=fldTb2wtkp  ui=Attachment
+  商品标题  type=1  field_id=fld4uzDljd  ui=Text
+  商品链接  type=1  field_id=fld1cTcezn  ui=Text
+  价格  type=2  field_id=fld1LmP0L7  ui=Number
+  月收货人数  type=1  field_id=fldLjFhnPX  ui=Text
+  类目  type=1  field_id=fldIJuLt5d  ui=Text
+  同款数  type=1  field_id=fldoZhEb4f  ui=Text
+  平台  type=1  field_id=fld2ksJFly  ui=Text
+  占位类型  type=1  field_id=fldRHpDpqA  ui=Text
+  店铺名  type=1  field_id=fld4rCuHV2  ui=Text
+  店铺旺旺  type=1  field_id=fldfrTwtcx  ui=Text
+  店铺类型  type=1  field_id=fldBxo8frb  ui=Text
+  地址  type=1  field_id=fldntPoMsp  ui=Text
+  收藏人数  type=1  field_id=fldyyHlhnC  ui=Text
+  卖点  type=1  field_id=fldorfGI8v  ui=Text
+  搜索关键词  type=1  field_id=fldeZSssa7  ui=Text
+  材质分类  type=1  field_id=fldINkCowU  ui=Text
+  外形  type=1  field_id=fldK5wcVdN  ui=Text
+  安装方式  type=1  field_id=fldoUlCbRM  ui=Text
+  功能  type=1  field_id=fldQFubDju  ui=Text
+  风格  type=1  field_id=fldWsIoI1t  ui=Text
+  商品周期唯一键  type=1  field_id=fldecgvPxZ  ui=Text
+  数据开始日期  type=5  field_id=fldj8cr7oz  ui=DateTime
+  数据结束日期  type=5  field_id=fldkdXsvaS  ui=DateTime
+  采集时间  type=5  field_id=fldH6X4ujb  ui=DateTime
+  商品ID  type=1  field_id=fldULLNSJ1  ui=Text
+  主表记录ID  type=1  field_id=fldL3iKZbO  ui=Text
+  月收货人数计算值  type=20  field_id=fldFsRuuuS  ui=Formula  [公式]
+  计算口径  type=20  field_id=fldvbnDxjD  ui=Formula  [公式]
+  客单价带分类  type=20  field_id=fldudfn3jI  ui=Formula  [公式]
+  是否有效竞品  type=20  field_id=fldQe67Bi9  ui=Formula  [公式]
+  排除原因  type=20  field_id=fldosuJmQl  ui=Formula  [公式]
+  月收货金额  type=20  field_id=flddZcD3eM  ui=Formula  [公式]
+  竞品分类  type=20  field_id=fldxFBT2ME  ui=Formula  [公式]
+
+==================================================
+表：竞品周_2026-09-13_2026-09-19   id=tbllWI45sK0DfHpr   字段数=39  公式列=7
+==================================================
+
+--- 月收货人数计算值 ---
+IF(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),"",IFERROR(VALUE(SUBSTITUTE(【月收货人数】,"+","")),""))
+
+--- 计算口径 ---
+IF(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),"",IF(RIGHT(【月收货人数】,1)="+","下限值",IFERROR(IF(VALUE(【月收货人数】)>=0,"精确值","不可计算"),"不可计算")))
+
+--- 客单价带分类 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】)),"",IF(【价格】<1000,"1000以下",IF(【价格】<3000,"1000-3000",IF(【价格】<6000,"3000-6000",IF(【价格】<8000,"6000-8000","8000以上")))))
+
+--- 是否有效竞品 ---
+IF(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0),"否",IF(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),IF(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),"是","待确认"),IF(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0),"否",IF(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0),"否",IF(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0)),"否",IF(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),"是","待确认"))))))
+
+--- 排除原因 ---
+IF(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0),"非浴缸主体",IF(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),"",IF(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0),"服务类",IF(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0),"浴缸配件",IF(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0)),"非浴缸主体","")))))
+
+--- 月收货金额 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】),【月收货人数计算值】=""),"",【价格】*【月收货人数计算值】)
+
+--- 竞品分类 ---
+IF(OR(NOT(AND(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0),NOT(OR(FIND("洗脚池",【商品标题】)>0,FIND("洗脚盆",【商品标题】)>0,FIND("泡脚盆",【商品标题】)>0,FIND("足浴",【商品标题】)>0,FIND("宠物",【商品标题】)>0,FIND("狗洗澡",【商品标题】)>0,FIND("猫洗澡",【商品标题】)>0,FIND("婴儿",【商品标题】)>0,FIND("新生儿",【商品标题】)>0)),OR(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0),AND(NOT(OR(FIND("成人",【商品标题】)>0,FIND("大人",【商品标题】)>0,FIND("老人",【商品标题】)>0,FIND("独立式",【商品标题】)>0,FIND("嵌入式",【商品标题】)>0,FIND("靠墙式",【商品标题】)>0,FIND("深泡",【商品标题】)>0,FIND("可移动",【商品标题】)>0)),NOT(OR(FIND("上门安装",【商品标题】)>0,FIND("维修服务",【商品标题】)>0)),NOT(OR(FIND("龙头",【商品标题】)>0,FIND("花洒套装",【商品标题】)>0,FIND("角阀",【商品标题】)>0,FIND("下水器",【商品标题】)>0,FIND("排水器",【商品标题】)>0,FIND("盖板",【商品标题】)>0,FIND("扶手",【商品标题】)>0,FIND("靠枕",【商品标题】)>0)),NOT(AND(NOT(OR(FIND("浴缸",【商品标题】)>0,FIND("浴桶",【商品标题】)>0,FIND("浴盆",【商品标题】)>0,FIND("洗澡盆",【商品标题】)>0)),FIND("儿童",【商品标题】)>0,OR(FIND("浴盆",【商品标题】)>0,FIND("澡盆",【商品标题】)>0,FIND("折叠",【商品标题】)>0,FIND("充气",【商品标题】)>0,FIND("便携",【商品标题】)>0))))))),ISBLANK(【价格】)),"不适用",IF(AND(【月收货人数计算值】>=80,【月收货金额】>=200000),"A-爆款竞品",IF(AND(FIND("人造石",【材质分类】)>0,【月收货人数计算值】>=10),"B-高价值竞品",IF(【价格】>=8000,"C-差异化竞品",IF(【价格】<1000,"D-价格/流量型竞品","无分类")))))
+
+--- 竞品周_2026-09-13_2026-09-19 全部字段（type / field_id / ui_type） ---
+  序号  type=1  field_id=fld3UQWtf1  ui=Text
+  商品图片  type=17  field_id=flduiCxzuG  ui=Attachment
+  商品标题  type=1  field_id=fld9OgSf0D  ui=Text
+  商品链接  type=1  field_id=fldctUNHCs  ui=Text
+  价格  type=2  field_id=fldlIWwK2Q  ui=Number
+  月收货人数  type=1  field_id=fldbTYRfrI  ui=Text
+  类目  type=1  field_id=fldrWtDfj8  ui=Text
+  同款数  type=1  field_id=fld3m5emDM  ui=Text
+  平台  type=1  field_id=fldnAzUxFi  ui=Text
+  占位类型  type=1  field_id=fld6RJ7jhK  ui=Text
+  店铺名  type=1  field_id=fldl2sxPIm  ui=Text
+  店铺旺旺  type=1  field_id=fldLtZNopH  ui=Text
+  店铺类型  type=1  field_id=fldVgFTtoM  ui=Text
+  地址  type=1  field_id=fldPnNbJ16  ui=Text
+  收藏人数  type=1  field_id=fldqFjaeNJ  ui=Text
+  卖点  type=1  field_id=fld5jaP1OZ  ui=Text
+  搜索关键词  type=1  field_id=fldcB064qE  ui=Text
+  材质分类  type=1  field_id=fldakoH1mr  ui=Text
+  外形  type=1  field_id=fldZ1PjGEh  ui=Text
+  安装方式  type=1  field_id=fldh2C72JX  ui=Text
+  功能  type=1  field_id=fldotqAobO  ui=Text
+  风格  type=1  field_id=fld7qF3jfk  ui=Text
+  商品周期唯一键  type=1  field_id=fldxJAEvLd  ui=Text
+  数据开始日期  type=5  field_id=fldiet5yRB  ui=DateTime
+  数据结束日期  type=5  field_id=fldSxcAaHj  ui=DateTime
+  采集时间  type=5  field_id=fldvrWaOQc  ui=DateTime
+  商品ID  type=1  field_id=fldcKSfP7o  ui=Text
+  主表记录ID  type=1  field_id=fldQcwEj0X  ui=Text
+  月收货人数计算值  type=20  field_id=fldMKVu8zy  ui=Formula  [公式]
+  计算口径  type=20  field_id=fldHYXfZvm  ui=Formula  [公式]
+  客单价带分类  type=20  field_id=fldgGciz9K  ui=Formula  [公式]
+  是否有效竞品  type=20  field_id=fldRyGSic6  ui=Formula  [公式]
+  排除原因  type=20  field_id=fldU1KzXwl  ui=Formula  [公式]
+  月收货金额  type=20  field_id=fldJl7Ohtx  ui=Formula  [公式]
+  竞品分类  type=20  field_id=fldBkNmzqa  ui=Formula  [公式]
+  尺寸  type=1  field_id=fldDVRms1F  ui=Text
+  适用空间  type=1  field_id=fldnP78Dbw  ui=Text
+  数据状态  type=1  field_id=fldssnGZix  ui=Text
+  待补数据项  type=1  field_id=fld9zZWBgy  ui=Text
+
+==================================================
+表：问题库_2026-09-13_2026-09-19   id=tblQeUSb8WQWN2dF   字段数=23  公式列=0
+==================================================
+（无公式列）
+
+--- 问题库_2026-09-13_2026-09-19 全部字段（type / field_id / ui_type） ---
+  商品ID  type=1  field_id=fldScWgtPZ  ui=Text
+  主表记录ID  type=1  field_id=fldisZMWp7  ui=Text
+  竞品周记录ID  type=1  field_id=fldkOMPnxg  ui=Text
+  商品链接  type=1  field_id=fldgtGsBcn  ui=Text
+  商品标题  type=1  field_id=fldzoYMVrg  ui=Text
+  竞品分类  type=3  field_id=fldLDbHcpQ  ui=SingleSelect
+  来源类型  type=3  field_id=fldDrevBaJ  ui=SingleSelect
+  原始内容  type=1  field_id=fldAFtVzI5  ui=Text
+  分类标签  type=1  field_id=fldZ8v353P  ui=Text
+  是否痛点  type=3  field_id=fldJvglt5l  ui=SingleSelect
+  出现次数  type=2  field_id=fldEdhFtwN  ui=Number
+  痛点描述  type=1  field_id=fldpPekrsV  ui=Text
+  典型问题  type=1  field_id=fldKvpAhhc  ui=Text
+  典型用户原话  type=1  field_id=fldt4HjaBk  ui=Text
+  占比  type=2  field_id=fldptf77eA  ui=Number
+  周期开始日期  type=5  field_id=fldvyHQWvc  ui=DateTime
+  周期结束日期  type=5  field_id=fldnQSlzIh  ui=DateTime
+  采集状态  type=3  field_id=fldW20X8Q3  ui=SingleSelect
+  来源记录唯一键  type=1  field_id=fldYAp8eFq  ui=Text
+  采集时间  type=1  field_id=fldIw0a6Zb  ui=Text
+  分析版本  type=1  field_id=fldZ8DEcW7  ui=Text
+  痛点判定依据  type=1  field_id=fldOLxxrMr  ui=Text
+  痛点判定置信度  type=1  field_id=fldzhTAJ5o  ui=Text
+
+done
