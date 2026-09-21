@@ -1,0 +1,104 @@
+profile=kcne
+base=QcnhbEzYpacGvUskCbVcrcm3nFd
+env=E:/小红书/.env.feishu-kcne.local
+auth=ok
+
+=== base 里的表（11 张）===
+  竞品主表	tblkYcczxBnW4v5G
+  SKU明细	tbl3N48H4znz304T
+  竞品历史总表 V1	tbln7qqA6XopiL4Q
+  问题主库	tblbJ9F91NiN8IfO
+  竞品周_2026-08-23_2026-08-29	tblDpoBCxUJmNBR7
+  SKU周_2026-08-23_2026-08-29	tblTgQo1OtQMDA4X
+  问题库_2026-08-23_2026-08-29	tbli5dtqFnFmvfYM
+  竞品周_2026-08-30_2026-09-05	tblGayj9pTYY0Fb7
+  竞品周_2026-09-06_2026-09-12	tblosvuwE6xqYn6r
+  竞品周_2026-09-13_2026-09-19	tbllWI45sK0DfHpr
+  问题库_2026-09-13_2026-09-19	tblQeUSb8WQWN2dF
+
+=== 竞品周表共 4 张 ===
+  竞品周_2026-08-23_2026-08-29	tblDpoBCxUJmNBR7
+  竞品周_2026-08-30_2026-09-05	tblGayj9pTYY0Fb7
+  竞品周_2026-09-06_2026-09-12	tblosvuwE6xqYn6r
+  竞品周_2026-09-13_2026-09-19	tbllWI45sK0DfHpr
+
+### 最新周表 竞品周_2026-09-13_2026-09-19 tbllWI45sK0DfHpr
+  字段数=39
+  [字段] 搜索关键词	type=Text	raw_type=1	
+  [字段] 材质分类	type=Text	raw_type=1	
+  [字段] 外形	type=Text	raw_type=1	
+  [字段] 安装方式	type=Text	raw_type=1	
+  [字段] 功能	type=Text	raw_type=1	
+  [字段] 风格	type=Text	raw_type=1	
+  [字段] 商品ID	type=Text	raw_type=1	
+  [字段] 竞品分类	type=Formula	raw_type=20	{"formatter":"","formula_expression":"IF(OR(NOT(AND(OR(FIND(\"浴缸\",bitable::$table[tbllWI45sK0DfHpr].$field[fld9OgSf0D])
+  [字段] 尺寸	type=Text	raw_type=1	
+  [字段] 适用空间	type=Text	raw_type=1	
+  [字段] 数据状态	type=Text	raw_type=1	
+  [字段] 待补数据项	type=Text	raw_type=1	
+  记录数=1417
+  [有值] 搜索关键词	1417/1417	100.0%
+  [有值] 尺寸	1417/1417	100.0%
+  [有值] 适用空间	1417/1417	100.0%
+  [有值] 数据状态	1394/1417	98.4%
+  [有值] 待补数据项	1394/1417	98.4%
+  [有值] 材质分类	1417/1417	100.0%
+  [有值] 外形	1417/1417	100.0%
+  [有值] 安装方式	1417/1417	100.0%
+  [有值] 功能	1417/1417	100.0%
+  [有值] 风格	1417/1417	100.0%
+  [有值] 竞品分类	1417/1417	100.0%
+  [有值] 商品ID	0/1417	0.0%
+
+### 竞品主表 tblkYcczxBnW4v5G
+  字段数=36
+  [字段] 搜索关键词	type=Text	raw_type=1	
+  [字段] 材质分类	type=Text	raw_type=1	
+  [字段] 外形	type=Text	raw_type=1	
+  [字段] 安装方式	type=Text	raw_type=1	
+  [字段] 功能	type=Text	raw_type=1	
+  [字段] 风格	type=Text	raw_type=1	
+  [字段] 竞品分类	type=Formula	raw_type=20	{"formatter":"","formula_expression":"IF(OR(NOT(AND(OR(FIND(\"浴缸\",bitable::$table[tblkYcczxBnW4v5G].$field[fldrsnjSju])
+  [字段] 尺寸	type=Lookup	raw_type=19	{"filter_info":{"conditions":{"children":[{"field_id":"fld5fPwTIG","field_type":1,"operator":"is","value":null}],"conjun
+  [字段] 适用空间	type=Lookup	raw_type=19	{"filter_info":{"conditions":{"children":[{"field_id":"fld5fPwTIG","field_type":1,"operator":"is","value":null}],"conjun
+  [字段] 数据状态	type=Formula	raw_type=20	{"formatter":"","formula_expression":"IF(NOT(AND(OR(FIND(\"浴缸\",bitable::$table[tblkYcczxBnW4v5G].$field[fldrsnjSju])>0,
+  [字段] 待补数据项	type=Formula	raw_type=20	{"formatter":"","formula_expression":"IF(NOT(AND(OR(FIND(\"浴缸\",bitable::$table[tblkYcczxBnW4v5G].$field[fldrsnjSju])>0,
+  [字段] 商品ID	type=Text	raw_type=1	
+  记录数=2004
+  [有值] 搜索关键词	2004/2004	100.0%
+  [有值] 尺寸	15/2004	0.7%
+  [有值] 适用空间	15/2004	0.7%
+  [有值] 数据状态	1965/2004	98.1%
+  [有值] 待补数据项	1965/2004	98.1%
+  [有值] 材质分类	2004/2004	100.0%
+  [有值] 外形	2004/2004	100.0%
+  [有值] 安装方式	2004/2004	100.0%
+  [有值] 功能	2004/2004	100.0%
+  [有值] 风格	2004/2004	100.0%
+  [有值] 竞品分类	2004/2004	100.0%
+  [有值] 商品ID	1461/2004	72.9%
+
+### SKU明细 tbl3N48H4znz304T
+  字段数=17
+  [字段] 竞品分类	type=SingleSelect	raw_type=3	{"options":[{"color":0,"id":"optZnNupkR","name":"A-爆款竞品"},{"color":1,"id":"optx5d2yqO","name":"B-高价值竞品"},{"color":2,"id"
+  [字段] 适用空间	type=SingleSelect	raw_type=3	{"options":[{"color":0,"id":"optqXKuPa7","name":"小户型"},{"color":1,"id":"optCfrPSTQ","name":"常规卫生间"}]}
+  [字段] 待补数据项	type=MultiSelect	raw_type=4	{"options":[{"color":0,"id":"optFComR5v","name":"SKU明细"},{"color":1,"id":"opt0Vc6Qml","name":"SKU尺寸"},{"color":2,"id":"o
+  [字段] 商品ID	type=Text	raw_type=1	
+  记录数=830
+  [有值] 搜索关键词	0/830	0.0%
+  [有值] 尺寸	0/830	0.0%
+  [有值] 适用空间	830/830	100.0%
+  [有值] 数据状态	0/830	0.0%
+  [有值] 待补数据项	0/830	0.0%
+  [有值] 材质分类	0/830	0.0%
+  [有值] 外形	0/830	0.0%
+  [有值] 安装方式	0/830	0.0%
+  [有值] 功能	0/830	0.0%
+  [有值] 风格	0/830	0.0%
+  [有值] 竞品分类	830/830	100.0%
+  [有值] 商品ID	830/830	100.0%
+
+=== SKU 周表共 1 张 ===
+  SKU周_2026-08-23_2026-08-29	tblTgQo1OtQMDA4X
+
+done

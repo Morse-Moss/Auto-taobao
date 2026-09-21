@@ -27,6 +27,12 @@
 | 7 | FAQ | 完成 | `runtime/faq-analysis/2026-09-13_2026-09-19/operator-status.json` → `status: DONE`，`nextAction: DONE`，`manifestLocked: true`；候选清单 `outcome: NO_QUALIFIED_CANDIDATES`、`candidateCount: 0`；`rawRecords: 0`（空快照 sha256 = 空串哈希 `01ba4719…`） | 判据可解释，但「空周期→DONE」这条旁路需盯（见 §3 P2-1） |
 | 8 | 发布历史总表 | **重跑完成** | `evidence/publish-rerun-2026-09-13_2026-09-19/publish-receipt.json`：`APPLIED_AND_VERIFIED`，`updates 1417 / creates 0 / deletes 0 / after 5763 / readBack true`，`sourceHash 27bcbbe7…` | 稳定（且已验证幂等） |
 
+> **2026-09-21 更正（只读探针实测）**：上表其中两行按当时写，现已不符，**以实测为准**——
+> - 第 2 行「35 字段」：实测该表为 **39 字段**（探针 `competitor-weekly-state.txt`）。
+> - 第 4 行「STILL MISSING (4): 尺寸, 适用空间, 数据状态, 待补数据项」：周表这 4 列**已在场**且为 **Text**，09-13 期有值率 100% / 100% / 98.4% / 98.4%。
+>   `create-weekly-formula-fields.mjs` 的 dry-run 报缺，对象是**竞品主表**（那里 `尺寸`/`适用空间` 才是 Lookup(19)、实测只有 15/2004＝0.7%），不是周表。
+> - 另：本期 SKU 周表 **从未创建**（全 base 仅 `SKU周_2026-08-23_2026-08-29` 一张）。
+
 回归基线：`scripts/run-test-suite.mjs runtime` → **456 通过 / 0 失败 / 65 个文件**（与既有基线一致，本次改动未破坏任何用例）。
 
 ---
@@ -77,6 +83,14 @@
 - 已核清一个次要疑问：Lookup 的**联接键是「商品标题」**（周表 `fld9OgSf0D` ↔ SKU明细 `fld5fPwTIG`），所以「周表商品ID 为空」**不会**影响这条 Lookup。
 
 ### P1-2 周表与历史总表的 `搜索关键词` 全空 —— 未修（潜在阻塞）
+
+> **2026-09-21 更正（只读探针实测，保留上文原样作为当时的快照）**：本项**已失效**。
+> 周表 `竞品周_2026-09-13_2026-09-19` 的 `搜索关键词` 现为 **1417/1417（100%）**，
+> 由 `runtime/fill-weekly-attribute-labels.mjs` 以常量「浴缸」写满；`尺寸`/`适用空间` 也已
+> 改为 **Text 且 100%**。因此 `sync-latest-ab-to-main-core.mjs:79` 那道
+> `if (!fields.搜索关键词) throw` 的 fail-closed **本期是通的**，不再构成阻塞。
+> 证据：`D:/Retire/probe-live/weekly-tables-across-periods.txt`、`competitor-weekly-state.txt`；
+> 跨期对比见 `docs/ops/WEEKLY-FLOW-CURRENT-2026-09-20.md` §七。
 
 - 实测：周表 1417/1417 空；历史总表本周期 1417/1417 空。而**竞品主表该列 0/500 空**（值＝「浴缸」）。
 - 根因：本周采集产物 `weekly-2026-09-13_2026-09-19-merged.csv` 的表头只有 16 列（序号…卖点），**根本没有关键词列**；周表按主表结构克隆了这个列，于是永远是空的。
