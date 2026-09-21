@@ -1,0 +1,149 @@
+{
+  "version": "weekly-rule-column-writeback-v3",
+  "mode": "APPLIED",
+  "at": "2026-09-21T02:51:23.590Z",
+  "profile": "kcne",
+  "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+  "table": {
+    "name": "竞品周_2026-09-13_2026-09-19",
+    "tableId": "tbllWI45sK0DfHpr"
+  },
+  "searchKeyword": "浴缸",
+  "columns": [
+    "材质分类",
+    "外形",
+    "安装方式",
+    "功能",
+    "风格",
+    "尺寸",
+    "适用空间",
+    "数据状态",
+    "待补数据项",
+    "搜索关键词"
+  ],
+  "rows": 1417,
+  "plannedRows": 1,
+  "written": 1,
+  "recomputeAb": true,
+  "recomputed": {
+    "材质分类": 0,
+    "外形": 0,
+    "安装方式": 0,
+    "功能": 0,
+    "风格": 0,
+    "尺寸": 1,
+    "适用空间": 1,
+    "数据状态": 0,
+    "待补数据项": 0,
+    "搜索关键词": 0
+  },
+  "joinKeys": {
+    "primary": "商品链接里的商品 id（extractProductId）",
+    "fallback": "商品标题",
+    "skuDetailProducts": 14,
+    "skuDetailTitles": 14,
+    "primaryHit": 1,
+    "fallbackHit": 0
+  },
+  "perColumn": {
+    "材质分类": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1417,
+      "skuBacked": 0,
+      "recomputed": 0
+    },
+    "外形": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1417,
+      "skuBacked": 0,
+      "recomputed": 0
+    },
+    "安装方式": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1417,
+      "skuBacked": 0,
+      "recomputed": 0
+    },
+    "功能": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1417,
+      "skuBacked": 0,
+      "recomputed": 0
+    },
+    "风格": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1417,
+      "skuBacked": 0,
+      "recomputed": 0
+    },
+    "尺寸": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1416,
+      "skuBacked": 0,
+      "recomputed": 1
+    },
+    "适用空间": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1416,
+      "skuBacked": 0,
+      "recomputed": 1
+    },
+    "数据状态": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1394,
+      "skuBacked": 0,
+      "recomputed": 0
+    },
+    "待补数据项": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1394,
+      "skuBacked": 0,
+      "recomputed": 0
+    },
+    "搜索关键词": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1417,
+      "skuBacked": 0,
+      "recomputed": 0
+    }
+  },
+  "expectedClassAfter": {
+    "B-高价值竞品": 1
+  },
+  "rule": "buildCompetitorRecord（与飞书评级公式同源）；尺寸/适用空间 优先 SKU明细，键=商品链接里的商品id（主）/商品标题（兜底），否则回落标题规则；Text 多值逗号连接；默认只填空不覆盖，--recompute-ab 时对 A/B 行重算尺寸/适用空间（仅在 SKU 侧拿到新值时）",
+  "readBack": {
+    "rows": 1417,
+    "stillBlank": {
+      "材质分类": 0,
+      "外形": 0,
+      "安装方式": 0,
+      "功能": 0,
+      "风格": 0,
+      "尺寸": 0,
+      "适用空间": 0,
+      "数据状态": 23,
+      "待补数据项": 23,
+      "搜索关键词": 0
+    }
+  }
+}

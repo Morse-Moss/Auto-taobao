@@ -143,6 +143,9 @@ A-爆款竞品从没采过 SKU。两个数都对，只是回答的问题不同�
 
 ## 七、没做的（明确划出边界）
 
+> 本节写于第二段结束时（2026-09-21 10:3x）。其中两条**已在第三段做掉**，
+> 最新状态见文末第九节；保留原文是为了留着「当时划的边界」。
+
 - **没有回填 09-13 期那张周表**（按指令：历史周表不回填）。dry-run 证明「就绪、会写 1 行」，
   但没有执行 `--apply`。09-06 期那个缺口商品也**没有去采集**（那属于历史期）。
 - **没有把编排入口挂进任何调度**：它现在是一条可以手动跑的命令，
@@ -157,3 +160,61 @@ A-爆款竞品从没采过 SKU。两个数都对，只是回答的问题不同�
 - 周表 `尺寸` / `适用空间` 是 **Text(type 1)**，多值用英文逗号连接（与 08-23 基准周真值格式一致）。
 - 写回跑之前**先确认第 6 步已经落库**（看 SKU明细 有没有该商品的 `尺寸汇总`），
   否则又会回落标题规则写出「无注明」—— 而它一旦写进去，只有 `--recompute-ab` 能救。
+
+## 九、第三段：真写 + 队列口径（2026-09-21，用户回「做吧」）
+
+### 9.1 09-13 期那一行**已经真写进去了**
+
+命令：`run-weekly-attribute-writeback.mjs --recompute-ab --apply`（用户明确授权后执行）。
+收据与回读见 `evidence/competitor-state-2026-09-21/wbrun-apply.txt` / `.json` / `.writeback.json`。
+
+| 观测 | 值 |
+| --- | --- |
+| 写回侧自报 | `已写入 1/1`，回读 `APPLIED_AND_VERIFIED` |
+| 独立探针（只发 GET，不采信写回自己的话） | `linkid-join-after-apply.txt` |
+| 该行（`B-高价值竞品`，id `921092099640`） | `尺寸 = 1.4m,1.4m-1.7m,1.5m,1.6m,1.7m`，`适用空间 = 常规卫生间` |
+| 同一期另一条命中行（`无分类`，id `1059970355633`） | **完全没被碰** ⇒ 重算确实只落 A/B 行 |
+
+为什么值得单独记一笔：这是**第一次**用「先采后写、只覆盖 A/B 的两列」的口径把尺寸写进周表，
+而且它证明了 `--recompute-ab` 的范围闸（只 A/B、只两列）在现场是有效的，不只是单测里成立。
+
+### 9.2 采集队列加了周表口径
+
+`runtime/summarize-xws-sku-queue.mjs` 新增 `--weekly`（可选 `--table-id <id>`）：
+
+- **默认分支（主表口径）逐字未动** —— 实测改造前后输出 sha256 相同（`diff-default=True`）。
+- `--weekly` 走 `summarizeAbReadiness`，与编排入口**同一个判据函数**（不是第二份实现）。
+  实测：09-13 期 `ab 1 / ready 1 / pending 0`；09-06 期 `ab 1 / ready 0 / pending 1`。
+
+## 十、挂排期的卡点（这段是没做完的部分，如实写清楚）
+
+第三段原计划把编排入口挂进 `runtime/round-schedule.json` 的 `weekly-competitor`。
+**这一步没做**，原因不是配置写不动，而是查清后发现要先有一个能力，而那个能力不存在。
+
+### 10.1 实测到的三件事
+
+1. **`capability: "sycm.feishu.weekly"` 的真实归属**：它登记在
+   `skills/sycm-to-feishu-base/manifest.json`，`description` 是「生意参谋周更流水线」。
+   也就是说它**确实是**一条周更能力，但它的入参是
+   `source_table_id / history_table_id / library_table_id / protected_table_id /
+   collection_date / batch_number / expected_history_before` —— 指向**自营店铺 + 关键词链**，
+   与竞品链要的（源周表、历史总表、批次号、克隆前历史行数）**部分重合但不相同**。
+   所以「写错成关键词链」这个说法要精修：不是名字写错，是**这条排期借用了一条入参对不上的能力**。
+2. **竞品链没有自己的 weekly capability**。`grep` 全部 `skills/*/manifest.json`，竞品侧只有两条：
+   `xws.market-analysis.collect`（`skills/xws-export-market-analysis`）与
+   `xws.sku.collection`（`skills/xws-sku-collection`），都不是周更能力。
+   本轮新建的 `run-weekly-attribute-writeback.mjs` 住在 `runtime/`，**不是一个已登记能力**。
+3. **排期跑不了这条入口**：`round-runner.mjs:821 deriveBrowserForCapability` 与
+   `capability-scheduler.runScheduled` 都按 **manifest 登记表**解析能力；
+   没登记的能力连体检那一步都过不去（`capability not registered`）。
+   另外该文件 `_readme` 第 12–13 行本来就写明：周表 id **不该**写进配置，要运行时按名解析。
+
+### 10.2 结论与建议
+
+挂排期 = **先造一个竞品周更能力**（manifest + `scripts/adapter.*.mjs` 两段式实现 + 登记 +
+按名解析每周入参 + 测试），不是改一个字段。这是一个独立批次，本轮没有硬塞。
+在这之前，这条链是**一条可手动跑的命令**，不是无人值守 —— 别把「脚本化」说成「自动化」。
+
+`runtime/round-schedule.json` 的 `notes` 已把上述事实写进去（`enabled` 仍是 `false`，
+`capability` 一个字节没改）：改 `notes` 只是别让下一个人以为这条排期一开就能跑。
+

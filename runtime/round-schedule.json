@@ -37,7 +37,7 @@
       "commit": false,
       "expectedRows": 300,
       "source": { "targetLabel": "专用部署机", "shopName": null },
-      "notes": "当前两套 SOP 都没有店铺维度，storeId 只是身份契约里的占位值；等运营日报阶段再按店铺拆成多条排期。commit 默认 false（先只采不发），确认稳定后再开。target 是 null 而不是占位串：URL 只表示「授权目标」，能力要的入参另走 collectInput/publishInput，且其中源周表与批次号每周都变——在「每周入参解析」做出来之前，这条排期就算填了 URL 也跑不起来，所以宁可留空失败（fail-closed），不留一个看起来能跑的假值。"
+      "notes": "当前两套 SOP 都没有店铺维度，storeId 只是身份契约里的占位值；等运营日报阶段再按店铺拆成多条排期。commit 默认 false（先只采不发），确认稳定后再开。target 是 null 而不是占位串：URL 只表示「授权目标」，能力要的入参另走 collectInput/publishInput，且其中源周表与批次号每周都变——在「每周入参解析」做出来之前，这条排期就算填了 URL 也跑不起来，所以宁可留空失败（fail-closed），不留一个看起来能跑的假值。补充（2026-09-21 实测，为免下一个人以为打开 enabled 就能跑）：本条借用的 capability \"sycm.feishu.weekly\" 登记在 skills/sycm-to-feishu-base，指的是「生意参谋自营店铺 + 关键词链」的周更 SOP，它的入参（source_table_id / history_table_id / library_table_id / protected_table_id / collection_date / batch_number / expected_history_before）与竞品链要的不相同；而竞品链目前没有自己的周更 capability（skills 下竞品侧只有 xws.market-analysis.collect 与 xws.sku.collection 两条），尺寸写回的编排入口 runtime/run-weekly-attribute-writeback.mjs 只是仓库脚本、未登记为能力，round-runner 按 manifest 登记表解析能力，所以即使打开 enabled 也会停在 capability not registered。要真正挂上这条链，先得有「竞品周更」能力（manifest + 两段式 adapter + 按名解析每周入参），那是独立的一批，不要在这里改字段凑。尺寸链的最新口径与边界见 docs/ops/SIZE-CHAIN-FIXED-2026-09-21.md 第九、十节。"
     }
   ]
 }

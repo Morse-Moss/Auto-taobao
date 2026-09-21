@@ -1,0 +1,28 @@
+{
+  "version": "weekly-attribute-writeback-run-v1",
+  "mode": "APPLY",
+  "at": "2026-09-21T02:51:07.291Z",
+  "profile": "kcne",
+  "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+  "weeklyTable": {
+    "name": "竞品周_2026-09-13_2026-09-19",
+    "tableId": "tbllWI45sK0DfHpr",
+    "rows": 1417
+  },
+  "skuDetail": {
+    "tableId": "tbl3N48H4znz304T",
+    "records": 830,
+    "productsWithSize": 14
+  },
+  "readiness": {
+    "abCount": 1,
+    "readyCount": 1,
+    "missingCount": 0,
+    "missing": []
+  },
+  "writeback": {
+    "invoked": true,
+    "exitCode": 0
+  },
+  "rule": "先检查数据在不在，再写回；有缺口 fail-closed 不写（退出码 3）。缺口队列按「周表当期 A/B」算，不按主表最新状态算。"
+}

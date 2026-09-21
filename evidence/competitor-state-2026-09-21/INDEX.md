@@ -183,8 +183,45 @@
 
 ### 第二段**没有**做的
 
+> 已过期两条，见下一节；原文保留。
+
 - **没把入口挂进调度**：`round-schedule.json` 里竞品链那条排期仍是 `enabled:false`，入口现在是一条可手动跑的命令。
 - **没改采集队列**：`summarize-xws-sku-queue.mjs` 仍读主表；入口只报缺口、不替采集端排队。
 - **没去采 09-06 期那个缺口商品**（属历史期）。
+
+---
+
+## 追加：真写 + 队列口径 + 挂排期卡点（2026-09-21 11:0x，用户回「做吧」）
+
+### 新增留证
+
+| 文件 | 是什么 |
+| --- | --- |
+| `wbrun-apply.txt` / `.json` / `.writeback.json` | 09-13 期**真写**（`--recompute-ab --apply`）：写入 1/1，回读 `APPLIED_AND_VERIFIED` |
+| `linkid-join-after-apply.txt` | 独立只读探针：写后回读，确认值落对了、且 `无分类` 那行没被碰 |
+
+### 实测
+
+| 观测 | 值 |
+| --- | --- |
+| 09-13 期 A/B 行写入后 | `尺寸 = 1.4m,1.4m-1.7m,1.5m,1.6m,1.7m`、`适用空间 = 常规卫生间` |
+| 同期 `无分类` 命中行 | 未被改动 ⇒ 重算范围闸（只 A/B 只两列）在现场有效 |
+| 队列 `--weekly` | 09-13 期 `ab 1 / ready 1 / pending 0`；09-06 期 `ab 1 / ready 0 / pending 1` |
+| 队列默认分支 | 与改造前输出 sha256 相同（`diff-default=True`），主表口径没有被改动 |
+
+### 挂排期这一步**没做**（卡点如实记录）
+
+- `capability: "sycm.feishu.weekly"` 登记在 `skills/sycm-to-feishu-base/manifest.json`，
+  是**生意参谋自营店铺 + 关键词链**的周更 SOP；入参（`source_table_id`/`history_table_id`/
+  `library_table_id`/`protected_table_id`/`collection_date`/`batch_number`/`expected_history_before`）
+  与竞品链要的不相同 ⇒ 这条排期是「借用了一条入参对不上的能力」，不是名字写错。
+- 竞品链**没有** weekly capability：`skills/*/manifest.json` 里竞品侧只有
+  `xws.market-analysis.collect` 与 `xws.sku.collection`。
+- 编排入口住在 `runtime/`，**不是已登记能力** ⇒ `deriveBrowserForCapability` /
+  `runScheduled` 按 manifest 登记表解析，没登记连体检都过不去。
+- 装能力不是改字段：要 manifest + 两段式 adapter + 登记 + 每周入参按名解析 + 测试。**独立批次，本轮未塞。**
+- 已做的最小动作：把上述事实写进 `runtime/round-schedule.json` 的 `notes`
+  （`enabled` 仍 `false`、`capability` 未改）。
+
 
 
