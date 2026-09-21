@@ -1,0 +1,18 @@
+EXIT=0
+--- stdout ---
+{
+  "status": "AUTH_READY",
+  "reason": "No Xiaowangshen login wall was observed",
+  "source": {
+    "mainRecordId": "recvticyHkhtcR",
+    "productId": "921092099640",
+    "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "classification": "B-高价值竞品",
+    "validity": "是"
+  },
+  "authStatusPath": "xws-sku-auth-status-20260921T015933958Z-908b62ad-d26.json",
+  "batchIndexPath": "batch-index.json"
+}
+
+--- stderr ---
+

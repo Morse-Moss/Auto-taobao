@@ -1,0 +1,3 @@
+﻿{
+    "value":  "{\"barPresent\":true,\"allCount\":9,\"all\":[{\"t\":\"标题\",\"vis\":true},{\"t\":\"宝贝ID\",\"vis\":true},{\"t\":\"宝贝链接\",\"vis\":true},{\"t\":\"SKU\",\"vis\":true},{\"t\":\"属性\",\"vis\":true},{\"t\":\"旺旺号\",\"vis\":true},{\"t\":\"店铺名\",\"vis\":true},{\"t\":\"店铺链接\",\"vis\":true},{\"t\":\"店铺ID\",\"vis\":true}]}"
+}

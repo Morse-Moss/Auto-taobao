@@ -1,0 +1,12 @@
+EXIT=0
+--- stdout ---
+{
+  "captureId": "2026-09-21T02-02-46-022Z-1ada52eeb0d9",
+  "payloadPath": "D:\\Retire\\sycm-automation\\evidence\\sku-2026-09-21\\xws-sku-payload-2026-09-21T02-02-46-022Z-1ada52eeb0d9.txt",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\sku-2026-09-21\\xws-sku-capture-2026-09-21T02-02-46-022Z-1ada52eeb0d9.json",
+  "batchIndexPath": "D:\\Retire\\sycm-automation\\evidence\\sku-2026-09-21\\batch-index.json",
+  "payloadSha256": "1ada52eeb0d931f6ed216a714e9101173503f77c85eb98016eac14282d3f7ba4"
+}
+
+--- stderr ---
+

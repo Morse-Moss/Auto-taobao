@@ -1,0 +1,648 @@
+{
+  "version": "xws-sku-dry-run-manifest-v1",
+  "mode": "DRY_RUN",
+  "generatedAt": "2026-09-21T02:03:33.842Z",
+  "target": {
+    "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+    "mainTableId": "tblkYcczxBnW4v5G",
+    "mainTableName": "竞品主表",
+    "skuTableId": "tbl3N48H4znz304T",
+    "skuTableName": "SKU明细"
+  },
+  "inputs": {
+    "payloadFile": "xws-sku-payload-2026-09-21T02-02-46-022Z-1ada52eeb0d9.txt",
+    "captureReceiptFile": "xws-sku-capture-2026-09-21T02-02-46-022Z-1ada52eeb0d9.json",
+    "topologyFile": "xws-sku-topology-921092099640.json",
+    "topologyReceiptFile": "xws-sku-topology-receipt-921092099640.json",
+    "parserFile": "xws-sku-payload-parser.mjs"
+  },
+  "evidence": {
+    "version": "xws-sku-evidence-v1",
+    "captureId": "2026-09-21T02-02-46-022Z-1ada52eeb0d9",
+    "payloadSha256": "1ada52eeb0d931f6ed216a714e9101173503f77c85eb98016eac14282d3f7ba4",
+    "topologySha256": "ad50bbe497d293a4546efd5641c1d9bcd1a0ef87001d6d686dd7188fcf4ebfdd",
+    "topologyVersion": "xws-tmall-sku-topology-v1",
+    "propertyCount": 2,
+    "validCombinationCount": 96,
+    "source": {
+      "mainRecordId": "recvticyHkhtcR",
+      "productId": "921092099640",
+      "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+      "capturedValidity": "是",
+      "capturedClassification": "B-高价值竞品"
+    }
+  },
+  "parser": {
+    "sha256": "0ef18165bdc45af9e611b3c94f7b490de53eead9c9c7bebbbea88b2b9222122d"
+  },
+  "source": {
+    "productId": "921092099640",
+    "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "productTitle": "意大利设计靠墙独立式家用民宿别墅双人浴缸进口纯PMMA人造石浴缸",
+    "competitorClass": "B-高价值竞品",
+    "mainRecordId": "recvticyHkhtcR"
+  },
+  "liveRead": {
+    "mainRecordCount": 2004,
+    "skuRecordCount": 830,
+    "selectedRecordId": "recvticyHkhtcR",
+    "selectedRecordValidity": "是",
+    "selectedRecordClassification": "B-高价值竞品"
+  },
+  "parsedSchema": {
+    "version": "xws-tmall-sku-topology-v1",
+    "payloadSha256": "1ada52eeb0d931f6ed216a714e9101173503f77c85eb98016eac14282d3f7ba4",
+    "propertyCount": 2,
+    "dimensionPropertyIndex": 0,
+    "specificationPropertyIndex": 1,
+    "validCombinationCount": 96
+  },
+  "plan": {
+    "items": [
+      {
+        "skuId": "5795885732578",
+        "uniqueKey": "921092099640|5795885732578",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHTLWR"
+      },
+      {
+        "skuId": "5795885732579",
+        "uniqueKey": "921092099640|5795885732579",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHm2j3"
+      },
+      {
+        "skuId": "5795885732580",
+        "uniqueKey": "921092099640|5795885732580",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHvXfz"
+      },
+      {
+        "skuId": "5795885732581",
+        "uniqueKey": "921092099640|5795885732581",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHhiaf"
+      },
+      {
+        "skuId": "5804215217842",
+        "uniqueKey": "921092099640|5804215217842",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHRppd"
+      },
+      {
+        "skuId": "5804215217843",
+        "uniqueKey": "921092099640|5804215217843",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHWyS0"
+      },
+      {
+        "skuId": "5804215217844",
+        "uniqueKey": "921092099640|5804215217844",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHt1yJ"
+      },
+      {
+        "skuId": "5804215217845",
+        "uniqueKey": "921092099640|5804215217845",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHuPIY"
+      },
+      {
+        "skuId": "5804215217846",
+        "uniqueKey": "921092099640|5804215217846",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHb8Zt"
+      },
+      {
+        "skuId": "5804215217847",
+        "uniqueKey": "921092099640|5804215217847",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHWdQI"
+      },
+      {
+        "skuId": "5804215217848",
+        "uniqueKey": "921092099640|5804215217848",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHMzV9"
+      },
+      {
+        "skuId": "5804215217849",
+        "uniqueKey": "921092099640|5804215217849",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHYsyl"
+      },
+      {
+        "skuId": "5804215217850",
+        "uniqueKey": "921092099640|5804215217850",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHZEGt"
+      },
+      {
+        "skuId": "5804215217851",
+        "uniqueKey": "921092099640|5804215217851",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHeihf"
+      },
+      {
+        "skuId": "5804215217852",
+        "uniqueKey": "921092099640|5804215217852",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHp7EB"
+      },
+      {
+        "skuId": "5804215217853",
+        "uniqueKey": "921092099640|5804215217853",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHNLDb"
+      },
+      {
+        "skuId": "5804215217854",
+        "uniqueKey": "921092099640|5804215217854",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHvtgA"
+      },
+      {
+        "skuId": "5804215217855",
+        "uniqueKey": "921092099640|5804215217855",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHoNPi"
+      },
+      {
+        "skuId": "5804215217856",
+        "uniqueKey": "921092099640|5804215217856",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHNFY1"
+      },
+      {
+        "skuId": "5804215217857",
+        "uniqueKey": "921092099640|5804215217857",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHSRhg"
+      },
+      {
+        "skuId": "5808941556264",
+        "uniqueKey": "921092099640|5808941556264",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH7ikn"
+      },
+      {
+        "skuId": "5808941556265",
+        "uniqueKey": "921092099640|5808941556265",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHw3V7"
+      },
+      {
+        "skuId": "5808941556266",
+        "uniqueKey": "921092099640|5808941556266",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHyPmU"
+      },
+      {
+        "skuId": "5808941556267",
+        "uniqueKey": "921092099640|5808941556267",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHK9O1"
+      },
+      {
+        "skuId": "5955621720023",
+        "uniqueKey": "921092099640|5955621720023",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH7isI"
+      },
+      {
+        "skuId": "5955621720024",
+        "uniqueKey": "921092099640|5955621720024",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHOx2Q"
+      },
+      {
+        "skuId": "5955621720025",
+        "uniqueKey": "921092099640|5955621720025",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHkZ2c"
+      },
+      {
+        "skuId": "5955621720026",
+        "uniqueKey": "921092099640|5955621720026",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHlAqc"
+      },
+      {
+        "skuId": "5955621720027",
+        "uniqueKey": "921092099640|5955621720027",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH7IOr"
+      },
+      {
+        "skuId": "5955621720028",
+        "uniqueKey": "921092099640|5955621720028",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHStmV"
+      },
+      {
+        "skuId": "5955621720029",
+        "uniqueKey": "921092099640|5955621720029",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHNUZ9"
+      },
+      {
+        "skuId": "5955621720030",
+        "uniqueKey": "921092099640|5955621720030",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHHjM9"
+      },
+      {
+        "skuId": "5955621720031",
+        "uniqueKey": "921092099640|5955621720031",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHYzm6"
+      },
+      {
+        "skuId": "5955621720032",
+        "uniqueKey": "921092099640|5955621720032",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH2TrV"
+      },
+      {
+        "skuId": "5955621720033",
+        "uniqueKey": "921092099640|5955621720033",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHDLN1"
+      },
+      {
+        "skuId": "5955621720034",
+        "uniqueKey": "921092099640|5955621720034",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHu4Ns"
+      },
+      {
+        "skuId": "5969485286700",
+        "uniqueKey": "921092099640|5969485286700",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH42G2"
+      },
+      {
+        "skuId": "5969485286701",
+        "uniqueKey": "921092099640|5969485286701",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHraSM"
+      },
+      {
+        "skuId": "5969485286702",
+        "uniqueKey": "921092099640|5969485286702",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHlh0a"
+      },
+      {
+        "skuId": "5969485286703",
+        "uniqueKey": "921092099640|5969485286703",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHJ4sO"
+      },
+      {
+        "skuId": "5969485286708",
+        "uniqueKey": "921092099640|5969485286708",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH9wej"
+      },
+      {
+        "skuId": "5969485286709",
+        "uniqueKey": "921092099640|5969485286709",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH9xbH"
+      },
+      {
+        "skuId": "5969485286710",
+        "uniqueKey": "921092099640|5969485286710",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHKJ99"
+      },
+      {
+        "skuId": "5969485286711",
+        "uniqueKey": "921092099640|5969485286711",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHr9DJ"
+      },
+      {
+        "skuId": "5969485286712",
+        "uniqueKey": "921092099640|5969485286712",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHfgOg"
+      },
+      {
+        "skuId": "5969485286713",
+        "uniqueKey": "921092099640|5969485286713",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHxStB"
+      },
+      {
+        "skuId": "5969485286714",
+        "uniqueKey": "921092099640|5969485286714",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH4JnK"
+      },
+      {
+        "skuId": "5969485286715",
+        "uniqueKey": "921092099640|5969485286715",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH9xRM"
+      },
+      {
+        "skuId": "5969485286716",
+        "uniqueKey": "921092099640|5969485286716",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHOaUC"
+      },
+      {
+        "skuId": "5969485286717",
+        "uniqueKey": "921092099640|5969485286717",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHlTgU"
+      },
+      {
+        "skuId": "5969485286718",
+        "uniqueKey": "921092099640|5969485286718",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHzxvi"
+      },
+      {
+        "skuId": "5969485286719",
+        "uniqueKey": "921092099640|5969485286719",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH7ye3"
+      },
+      {
+        "skuId": "5969485286720",
+        "uniqueKey": "921092099640|5969485286720",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHhW0e"
+      },
+      {
+        "skuId": "5969485286721",
+        "uniqueKey": "921092099640|5969485286721",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHKt8c"
+      },
+      {
+        "skuId": "5969485286722",
+        "uniqueKey": "921092099640|5969485286722",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHdAtO"
+      },
+      {
+        "skuId": "5969485286723",
+        "uniqueKey": "921092099640|5969485286723",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH6iNk"
+      },
+      {
+        "skuId": "5969485286732",
+        "uniqueKey": "921092099640|5969485286732",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHIHw3"
+      },
+      {
+        "skuId": "5969485286733",
+        "uniqueKey": "921092099640|5969485286733",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHCR83"
+      },
+      {
+        "skuId": "5969485286734",
+        "uniqueKey": "921092099640|5969485286734",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHjtKm"
+      },
+      {
+        "skuId": "5969485286735",
+        "uniqueKey": "921092099640|5969485286735",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHdfqo"
+      },
+      {
+        "skuId": "5969675946651",
+        "uniqueKey": "921092099640|5969675946651",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHGQRm"
+      },
+      {
+        "skuId": "5969675946652",
+        "uniqueKey": "921092099640|5969675946652",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH2806"
+      },
+      {
+        "skuId": "5969675946653",
+        "uniqueKey": "921092099640|5969675946653",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHLRyR"
+      },
+      {
+        "skuId": "5969675946654",
+        "uniqueKey": "921092099640|5969675946654",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHp5ZA"
+      },
+      {
+        "skuId": "5969675946663",
+        "uniqueKey": "921092099640|5969675946663",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHRqzM"
+      },
+      {
+        "skuId": "5969675946664",
+        "uniqueKey": "921092099640|5969675946664",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHlJZB"
+      },
+      {
+        "skuId": "5969675946665",
+        "uniqueKey": "921092099640|5969675946665",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH7CT0"
+      },
+      {
+        "skuId": "5969675946666",
+        "uniqueKey": "921092099640|5969675946666",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHZoKf"
+      },
+      {
+        "skuId": "5969675946671",
+        "uniqueKey": "921092099640|5969675946671",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHW3zC"
+      },
+      {
+        "skuId": "5969675946672",
+        "uniqueKey": "921092099640|5969675946672",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHKqhB"
+      },
+      {
+        "skuId": "5969675946673",
+        "uniqueKey": "921092099640|5969675946673",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHHAuh"
+      },
+      {
+        "skuId": "5969675946674",
+        "uniqueKey": "921092099640|5969675946674",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHU73h"
+      },
+      {
+        "skuId": "5970735099779",
+        "uniqueKey": "921092099640|5970735099779",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHF5xz"
+      },
+      {
+        "skuId": "5970735099780",
+        "uniqueKey": "921092099640|5970735099780",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHdpMS"
+      },
+      {
+        "skuId": "5970735099781",
+        "uniqueKey": "921092099640|5970735099781",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH25W5"
+      },
+      {
+        "skuId": "5970735099782",
+        "uniqueKey": "921092099640|5970735099782",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHFr17"
+      },
+      {
+        "skuId": "5970735099783",
+        "uniqueKey": "921092099640|5970735099783",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH7M8H"
+      },
+      {
+        "skuId": "5970735099784",
+        "uniqueKey": "921092099640|5970735099784",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHfJ5C"
+      },
+      {
+        "skuId": "5970735099785",
+        "uniqueKey": "921092099640|5970735099785",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHC0wv"
+      },
+      {
+        "skuId": "5970735099786",
+        "uniqueKey": "921092099640|5970735099786",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHMg65"
+      },
+      {
+        "skuId": "5970735099787",
+        "uniqueKey": "921092099640|5970735099787",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHpVJ2"
+      },
+      {
+        "skuId": "5970735099788",
+        "uniqueKey": "921092099640|5970735099788",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHkWW2"
+      },
+      {
+        "skuId": "5970735099789",
+        "uniqueKey": "921092099640|5970735099789",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHTCtu"
+      },
+      {
+        "skuId": "5970735099790",
+        "uniqueKey": "921092099640|5970735099790",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHsuQN"
+      },
+      {
+        "skuId": "5974773094023",
+        "uniqueKey": "921092099640|5974773094023",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHMshM"
+      },
+      {
+        "skuId": "5974773094024",
+        "uniqueKey": "921092099640|5974773094024",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH2Pjp"
+      },
+      {
+        "skuId": "5974773094025",
+        "uniqueKey": "921092099640|5974773094025",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHiCkK"
+      },
+      {
+        "skuId": "5974773094026",
+        "uniqueKey": "921092099640|5974773094026",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHuQxV"
+      },
+      {
+        "skuId": "6106033079502",
+        "uniqueKey": "921092099640|6106033079502",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHJ5ZX"
+      },
+      {
+        "skuId": "6106033079503",
+        "uniqueKey": "921092099640|6106033079503",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHeT7p"
+      },
+      {
+        "skuId": "6106033079504",
+        "uniqueKey": "921092099640|6106033079504",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHFIeH"
+      },
+      {
+        "skuId": "6106033079505",
+        "uniqueKey": "921092099640|6106033079505",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHZsnb"
+      },
+      {
+        "skuId": "6106033079506",
+        "uniqueKey": "921092099640|6106033079506",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHSfQq"
+      },
+      {
+        "skuId": "6106033079507",
+        "uniqueKey": "921092099640|6106033079507",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHFm75"
+      },
+      {
+        "skuId": "6106033079508",
+        "uniqueKey": "921092099640|6106033079508",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIHTrGE"
+      },
+      {
+        "skuId": "6106033079509",
+        "uniqueKey": "921092099640|6106033079509",
+        "action": "alreadyPresent",
+        "recordId": "recvvlGlIH9p7h"
+      }
+    ],
+    "summary": {
+      "parsedRows": 96,
+      "toCreate": 0,
+      "alreadyPresent": 96,
+      "conflict": 0,
+      "duplicateExistingKeys": 0,
+      "writeReady": true
+    }
+  }
+}
