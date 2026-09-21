@@ -156,7 +156,9 @@ export function stageNumber(key, stage) {
  * 结论的闭集。分类函数、原因表、下一步表必须覆盖**同一个**集合 —— 漏一条的症状是
  * 「这个结论悄悄退化成兜底文案」，而告警照发不误、看起来一切正常。
  */
-export const FAILURE_CAUSES = Object.freeze(['ROUND_BLOCKED', 'SHOP_BLOCKED', 'DUPLICATE_TARGET', 'STAGE_FAILED']);
+export const FAILURE_CAUSES = Object.freeze(
+  ['ROUND_BLOCKED', 'SHOP_BLOCKED', 'DUPLICATE_TARGET', 'SHOP_FUNC_NO_PERMISSION', 'STAGE_FAILED'],
+);
 
 /**
  * 一家店的失败是哪一类。
@@ -168,6 +170,12 @@ export const FAILURE_CAUSES = Object.freeze(['ROUND_BLOCKED', 'SHOP_BLOCKED', 'D
  * （那一天的数据已经在飞书里了）。把它并进「失败」就是每天喊一次狼来了。
  */
 export function shopFailureCause(record = {}) {
+  // 「这一项订购不在账号上」**优先于所有别的结论**：它决定的是「收信人要不要去平台」，
+  // 而别的结论在这个原因下照着做都没用。
+  // 2026-09-21 科塔现场正是被报成「这家店的窗口里页面不齐，去打开窗口把页面补上」——
+  // 照着做的人白跑一趟浏览器，问题不会好。判据是**确定性名字**（`date-picker.mjs` 只在这一种
+  // 情况下抛它，且抛出前一定先问过平台，问不到就不给这个名字）。
+  if (/SHOP_FUNC_NO_PERMISSION/u.test(String(record.failureOutput ?? ''))) return 'SHOP_FUNC_NO_PERMISSION';
   if (record.failedStage === 'health-check') return 'SHOP_BLOCKED';
   if (record.failedStage === 'push'
     && /duplicate daily report row exists/u.test(String(record.failureOutput ?? ''))) return 'DUPLICATE_TARGET';
@@ -198,6 +206,7 @@ const REASON_BY_CAUSE = Object.freeze({
   ROUND_BLOCKED: '整轮没开跑：那个开着飞书「各店铺日报」的浏览器窗口里，页面不齐。',
   SHOP_BLOCKED: '这家店的专用窗口里页面不齐，所以这家店一步都没跑。',
   DUPLICATE_TARGET: '这一天飞书里已经有数据了，脚本按「不许写第二遍」停住了。',
+  SHOP_FUNC_NO_PERMISSION: '这家店在生意参谋里的「店铺绩效」现在不在账号上（平台按店铺开通的一项），所以采集页面一打开就被平台送回首页，这一天的数据没进飞书。',
   STAGE_FAILED: '这家店跑到一半停住了，这一天的数据没进飞书。',
 });
 
@@ -214,6 +223,10 @@ const ACTION_BY_CAUSE = Object.freeze({
     + '把缺的页面补上：生意参谋的工作页、阿里妈妈报表页各一个（多开同样会报错）。补好后告诉技术同学重跑一次。',
   DUPLICATE_TARGET: (ctx) => `不用处理：${ctx.date} 的数据已经在飞书里了。`
     + '只有确实要重写时才需要先删掉那一天的记录再跑。',
+  SHOP_FUNC_NO_PERMISSION: (ctx) => `这一轮不需要你在浏览器里做什么 —— 刷新、重新登录都没用，不是登录的问题。`
+    + `要恢复得把「${ctx.shops[0] ?? '这家店'}」在生意参谋里的「店铺绩效」这一项开通找回来`
+    + '（生意参谋里的服务市场，看「我的订购」那一项是否到期，或直接找平台客服）。'
+    + '在找回来之前，这家店每天都会停在这一步；其余店铺不受影响。',
   STAGE_FAILED: () => '这一轮不需要你在浏览器里做什么。'
     + '如果到今天下班前飞书里还是缺这一天的数据，就把这条消息转给技术同学，让他去看。',
 });

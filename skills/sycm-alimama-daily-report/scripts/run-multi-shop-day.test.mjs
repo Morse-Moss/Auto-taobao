@@ -416,6 +416,13 @@ test('驱动的失败分类：体检拦住 / 重跑撞上已有行 / 阶段报�
   // 别的阶段说同一句话不算「已经写过」：那只是某个脚本的措辞，不能拿来当结论
   assert.equal(shopFailureCause({ failedStage: 'backfill', failureOutput: 'duplicate daily report row exists' }), 'STAGE_FAILED');
   assert.equal(shopFailureCause({ failedStage: 'sycm-date' }), 'STAGE_FAILED');
+  // 「这一项订购不在账号上」**优先于「停在哪一步」**：同一个现场若被报成「去窗口把页面补上」，
+  // 收信人会白跑一趟浏览器，而问题不会好（2026-09-21 科塔现场就是这么被报错的）。
+  // 判据是确定性名字，不是措辞猜测 —— 那个名字只在「问过平台、平台说 5903」时才会出现。
+  assert.equal(shopFailureCause({ failedStage: 'sycm-date', failureOutput: 'SHOP_FUNC_NO_PERMISSION: 平台答复 code=5903' }),
+    'SHOP_FUNC_NO_PERMISSION');
+  assert.equal(shopFailureCause({ failedStage: 'health-check', failureOutput: 'Error: SHOP_FUNC_NO_PERMISSION: x' }),
+    'SHOP_FUNC_NO_PERMISSION', '体检拦下来的同一条现场也要认得出，否则会被报成「去补页面」');
   assert.equal(shopFailureCause({}), 'STAGE_FAILED', '没写停在哪一步也要有结论（不能静默变成「没问题」）');
   const view = roundFailureSummary(mixedSummary());
   assert.equal(view.failed.length, 2);
@@ -500,6 +507,7 @@ test('告警：文案里不许出现英文阶段名、结论代号、内部术�
     ROUND_BLOCKED: { round: { healthCheckDaily: { ok: false, blockingDetails: ['目标页面「飞书底单页」不在这个浏览器里（按片段 feishu.cn/base/xx 找到 0 个）；采集会从落位那一步就失败。'] } }, shops: {} },
     SHOP_BLOCKED: { round: { healthCheckDaily: { ok: true } }, shops: { 盖文淘宝: { status: 'failed', failedStage: 'health-check', blockingDetails: ['目标页面「阿里妈妈报表页」不在这个浏览器里（按片段 one.alimama.com/index.html 找到 0 个）；采集会从落位那一步就失败。'], stages: [] } } },
     DUPLICATE_TARGET: { round: { healthCheckDaily: { ok: true } }, shops: { 科塔淘宝: failedAt('push', 'duplicate daily report row exists: r1') } },
+    SHOP_FUNC_NO_PERMISSION: { round: { healthCheckDaily: { ok: true } }, shops: { 科塔淘宝: failedAt('sycm-date', 'Error: SHOP_FUNC_NO_PERMISSION: 平台答复 code=5903 No Buy Func Permission') } },
     STAGE_FAILED: { round: { healthCheckDaily: { ok: true } }, shops: { 里可林淘宝: failedAt('promotion-fetch', 'Error: expected one 生成成功 row, got 0') } },
   };
   assert.deepEqual(Object.keys(cases).sort(), [...FAILURE_CAUSES].sort(),

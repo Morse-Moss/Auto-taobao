@@ -1,0 +1,28 @@
+Error: SHOP_FUNC_NO_PERMISSION: sycm: 这个账号上现在没有这一页要用的那个功能（平台答复 code=5903 No Buy Func Permission），所以入口地址打开后也被送回首页、认不出页面（page=https://sycm.taobao.com/mc/free/sycm）
+    at namedFailure (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:434:17)
+    at resolveTarget (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:525:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:565:28)
+    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:545:12)
+TRACE [
+  {
+    "step": "recover-entry",
+    "targetId": "0F3988566AF5D318E806DF8B456BE2E0",
+    "from": "https://sycm.taobao.com/adm/v3/micro/auto_analysis/my_space",
+    "entryUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+  },
+  {
+    "step": "shop-func-permission-probe",
+    "site": "sycm",
+    "phase": "resolve-target-missed",
+    "got": 0,
+    "asked": true,
+    "targetId": "0F3988566AF5D318E806DF8B456BE2E0",
+    "href": "https://sycm.taobao.com/mc/free/sycm",
+    "httpStatus": 200,
+    "code": 5903,
+    "message": "No Buy Func Permission.",
+    "moduleCode": null,
+    "raw": "{ \"code\":5903, \"message\":\"No Buy Func Permission.\" }"
+  }
+]

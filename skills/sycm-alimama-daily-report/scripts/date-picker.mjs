@@ -332,6 +332,12 @@ const SITES = Object.freeze({
   sycm: {
     label: '生意参谋 / 店铺绩效',
     urlFragment: 'sycm.taobao.com/qos/service/frame/shop/performance',
+    // 「这一页到底能不能用」平台自己有一个查询地址，判据是**两个不同的模块**：
+    // 不带 `/new` 的那条才是真模块（该店订购了才放行）；带 `/new` 的是壳，对谁都放行（它是给菜单用的）。
+    // 2026-09-21 科塔实测：不带 `/new` 回 `{code:5903 No Buy Func Permission}`，而同一页一打开就被送回首页。
+    // 所以**不能拿壳的答复当判据**（它会说「可以」），也不能只看「页面有没有起来」（那只是后果）。
+    permissionHost: 'sycm.taobao.com',
+    permissionProbeUrl: 'http://sycm.taobao.com/qos/service/frame/shop/performance',
     // 回位地址：采集店铺报表会把**同一个页签**导航到报表预览页（`lyone/auto_analysis/datafetch/…`），
     // 那时这个片段就认不出页面了（实测报 `expected one sycm page …, got 0`）。只把页面挪回去还不够 ——
     // 重新导航会把页签与日期一起重置（实测 `alreadyActive:false`），所以回位之后**照样要把日期重落一遍**。
@@ -417,9 +423,80 @@ async function waitForReadableState({ proxy, site, targetId, attempts, ms }) {
   return { state: null, readFailures, lastError, reads: attempts };
 }
 
+// ---------------------------------------------------------------- 「这个功能在不在这个账号上」
+
+// 失败也要有**确定性名字**。没有名字的失败会落进分类链的兜底那一档，把
+// 「平台侧的订购不在」报成「疑似脚本缺陷、停线」—— 要做的事完全不同（一个要人去平台续订购，
+// 一个要技术同学改代码）。2026-09-21 科塔就是这个形态：链上只留下一句「读数仍是 null」。
+export const SHOP_FUNC_NO_PERMISSION = 'SHOP_FUNC_NO_PERMISSION';
+
+function namedFailure(code, message) {
+  const error = new Error(`${code}: ${message}`);
+  error.code = code;
+  return error;
+}
+
+// 问平台一句：**这个账号现在能不能用这个地址**。要带登录态，所以在页面里发。
+//
+// 为什么要走这一步（2026-09-21，`evidence/keta-workpage-2026-09-21/README.md`）：
+// 科塔的工作页加载不出来，我们先后归因成「页面过期」「导航方式不对」「体检窗口太短」，全错。
+// 平台对同一个地址的答复是**确定性**的：
+//   {code:0}    = 这个账号能用（其余五家都是这个）
+//   {code:5903} = No Buy Func Permission（该店的这一项订购不在账号上）
+// 所以「读数读不出来」之后该做的是**问一句**，而不是接着猜。
+//
+// 用哪张页面问不重要（页面漂到首页也照样能问），只要是**同主机**上的页面就行 ——
+// 这正是它比「页面 URL 对不对」更可靠的地方：把「订购没了」与「页面没落位」分开。
+function permissionProbeExpression(pageUrl) {
+  return `(async () => {
+  let payload = null;
+  let httpStatus = null;
+  let raw = null;
+  try {
+    const r = await fetch('/oneauth/api/permission.json?_v2=2&p_url=' + encodeURIComponent(${JSON.stringify(pageUrl)}),
+      { credentials: 'include' });
+    httpStatus = r.status;
+    raw = (await r.text()).replace(/\\s+/g, ' ').slice(0, 200);
+    try { payload = JSON.parse(raw); } catch { payload = null; }
+  } catch (error) { raw = 'ERR ' + String(error && error.message ? error.message : error); }
+  return JSON.stringify({
+    href: location.href,
+    httpStatus,
+    code: payload && typeof payload.code !== 'undefined' ? payload.code : null,
+    message: payload && payload.message ? String(payload.message) : null,
+    moduleCode: payload && payload.data && payload.data.code ? String(payload.data.code) : null,
+    raw,
+  });
+})()`;
+}
+
+export async function probeShopFuncPermission({ proxy, site, targetId = null } = {}) {
+  const adapter = siteAdapter(site);
+  if (!adapter.permissionProbeUrl) return { asked: false, why: '这个站点没有登记页面级权限查询地址' };
+  const targets = await proxyJson(`${proxy}/targets`);
+  const onHost = (target) => target.type === 'page' && String(target.url ?? '').includes(adapter.permissionHost);
+  // 调用方手上那张优先（它可能已经漂到首页、但依然能问），其余同主机页面兜底。
+  const candidates = [...new Set([targetId, ...targets.filter(onHost).map((t) => t.targetId)].filter(Boolean))];
+  let lastError = null;
+  for (const id of candidates) {
+    try {
+      return { asked: true, targetId: id, ...await evaluate(proxy, id, permissionProbeExpression(adapter.permissionProbeUrl)) };
+    } catch (error) {
+      lastError = String(error?.message ?? error).split('\n')[0].slice(0, 200);
+    }
+  }
+  return { asked: false, why: `没有可在其上查询的生意参谋页面（试了 ${candidates.length} 张）：${lastError ?? 'none'}` };
+}
+
+// 只认「平台明确说了不在」这一种。问不到（ask 失败 / 没有页面 / 网络抖）一律不算 ——
+// 宁可不给结论，也不能把一次读失败写成「这家店没订购」。
+export function isFuncPermissionDenied(probe = {}) {
+  return probe?.asked === true && Number(probe.code) === 5903;
+}
+
 function delay(ms) { return new Promise((resolve) => { setTimeout(resolve, ms); }); }
 
-export async function resolveTarget({ proxy, site, onRecover } = {}) {
+export async function resolveTarget({ proxy, site, onRecover, onProbe } = {}) {
   const adapter = siteAdapter(site);
   const matchOf = (list) => list.filter((target) => target.type === 'page' && String(target.url).includes(adapter.urlFragment));
   const targets = await proxyJson(`${proxy}/targets`);
@@ -437,6 +514,17 @@ export async function resolveTarget({ proxy, site, onRecover } = {}) {
       const found = matchOf(await proxyJson(`${proxy}/targets`));
       if (found.length === 1) return found[0].targetId;
     }
+  }
+  // 回位都送不回去 ⇒ 先问平台一句，再决定报哪种错。
+  // 这一步是**结论的分水岭**：同一条「找不到页面」的现场，一个是「这家店这一项订购不在账号上」，
+  // 另一个是「落位坏了」。前者要人去平台处理，后者要技术同学看脚本 —— 报成一个就等于把人指错方向。
+  const probe = await probeShopFuncPermission({ proxy, site })
+    .catch((error) => ({ asked: false, why: String(error?.message ?? error).slice(0, 200) }));
+  onProbe?.({ site, phase: 'resolve-target-missed', got: matches.length, ...probe });
+  if (isFuncPermissionDenied(probe)) {
+    throw namedFailure(SHOP_FUNC_NO_PERMISSION,
+      `${site}: 这个账号上现在没有这一页要用的那个功能（平台答复 code=5903 No Buy Func Permission），`
+      + `所以入口地址打开后也被送回首页、认不出页面（page=${probe.href ?? '未知'}）`);
   }
   throw new Error(`expected one ${site} page on ${proxy}, got ${matches.length}`);
 }
@@ -474,7 +562,9 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
   let pageReload = null;
   // 认页面时若发现它被同页签导航带走了，就按站点的回位地址送回去（并把这一步记进 trace）；
   // 回位之后下面的页签与日期流程照跑，等于把「回位 + 重落位」合成一条命令。
-  const page = targetId ?? await resolveTarget({ proxy, site, onRecover: (info) => say('recover-entry', info) });
+  const page = targetId ?? await resolveTarget({ proxy, site,
+    onRecover: (info) => say('recover-entry', info),
+    onProbe: (info) => say('shop-func-permission-probe', info) });
   // 「动作前读取」只是信息性的（用于报告 before 与判断 REAPPLIED）：
   // 页面还没渲染完时不该在真正动手之前就失败，所以这里容忍读不到。
   const before = await readSiteState({ proxy, site, targetId: page })
@@ -587,12 +677,27 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
     say('reloaded', pageReload);
     if (!after.state
       || needsStaleReload({ observed: after.state.applied, requested, yesterday: resolved.yesterday })) {
-      // 重载都救不回来 ⇒ **页面过期这个成因已经排除**，剩下的成因要做的事完全不同：
-      // 要么平台这一天还没出数（等一会儿再跑），要么落位真的坏了（要人看）。
-      // 所以这里抛一句能分辨的错，而不是让 settle 报那句通用的「state did not settle」。
+      // 重载也救不回来。先问平台一句再决定报哪种错 —— **这是「这家店没订购」与「落位坏了」的分水岭**。
+      //
+      // 两跳的具体形式由现场决定，别照搬：页面**还在位**时补不了「再导航一次」
+      // （同 URL 的同文档导航实测什么都不做），所以这里补的是「问平台」；
+      // 页面**已经漂走**时补的是「导航回入口」，那条在 `resolveTarget` 里，
+      // 它送不回去之后同样会问平台。两条路都走完才给结论。
+      const probe = await probeShopFuncPermission({ proxy, site, targetId: page })
+        .catch((error) => ({ asked: false, why: String(error?.message ?? error).slice(0, 200) }));
+      say('shop-func-permission-probe', { requested, ...probe });
+      if (isFuncPermissionDenied(probe)) {
+        throw namedFailure(SHOP_FUNC_NO_PERMISSION,
+          `sycm: 重新加载页面后仍读不到数（读了 ${after.readFailures} 次），`
+          + `而平台明确答复这个账号现在没有这一页要用的那个功能`
+          + `（code=5903 No Buy Func Permission；page=${probe.href ?? '未知'}）`
+          + ` ⇒ 不是落位坏了，是这家店的这一项订购不在账号上`);
+      }
+      // 不是权限 ⇒ 老实说「不知道是哪种」，把两种可能的下一步都留着（等一会儿再跑 / 要人看落位）。
       throw new Error(`sycm: 重新加载页面后读数仍是 ${JSON.stringify(after.state?.applied ?? null)}，`
         + `期望 ${requested}。页面停在旧渲染这一种成因已排除 ⇒ `
-        + `要么平台这一天还没有数，要么落位坏了（读不到 ${after.readFailures} 次；targetId=${page}）`);
+        + `要么平台这一天还没有数，要么落位坏了（读不到 ${after.readFailures} 次；targetId=${page}）；`
+        + `平台的功能答复=${JSON.stringify(probe)}`);
     }
   }
 

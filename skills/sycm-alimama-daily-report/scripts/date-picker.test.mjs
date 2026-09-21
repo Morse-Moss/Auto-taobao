@@ -5,8 +5,8 @@ import test from 'node:test';
 
 import {
   applyDate,
-  assertAlimamaState, buildAlimamaUrl, extractIsoDates, isSingleDaySelection,
-  needsStaleReload,
+  assertAlimamaState, buildAlimamaUrl, extractIsoDates, isFuncPermissionDenied, isSingleDaySelection,
+  needsStaleReload, SHOP_FUNC_NO_PERMISSION,
   resolveAppliedDate, resolveDateMode, resolveTarget, selectDayHits, shiftIso, shiftMonth, siteAdapter,
 } from './date-picker.mjs';
 
@@ -420,4 +420,46 @@ test('落位：重载之后读数仍不对 ⇒ 报错要排除「页面过期」
       return true;
     });
   } finally { stub.restore(); }
+});
+
+// ------------------------------------------------- 「这一项订购不在账号上」的判据（2026-09-21）
+//
+// 现场：科塔的工作页加载不出来。我们先后把它归因成「页面停在旧渲染」「导航方式不对」
+// 「体检窗口太短」，三条全错 —— 真正的判据是**问平台一句**：同一个地址，
+// 平台答 {code:0} 表示这个账号能用、{code:5903} 表示这个账号没这一项。
+// 所以这一节钉两件事：① 「问不到」绝不能当结论用；② 两条失败路径都**真的接了**这个判据。
+
+test('功能权限判据：只有「问到了、平台说不」才算数', () => {
+  assert.equal(isFuncPermissionDenied({ asked: true, code: 5903 }), true);
+  // 平台说能用 ⇒ 不许判成没订购：判错这一档会把健康店一起拦下（前四家会被牵连）
+  for (const code of [0, '0', null, undefined, 5902]) {
+    assert.equal(isFuncPermissionDenied({ asked: true, code }), false, `code=${code} 不许判成没订购`);
+  }
+  // **问不到**（页面漂走了 / 网络抖 / eval 的上下文被拆）一律不算 ——「无法解释」不能当结论用
+  assert.equal(isFuncPermissionDenied({ asked: false, code: 5903 }), false, '没问到就不许下结论');
+  assert.equal(isFuncPermissionDenied({ asked: false, why: '没有可在其上查询的页面' }), false);
+  assert.equal(isFuncPermissionDenied({}), false);
+  assert.equal(isFuncPermissionDenied(), false);
+  assert.equal(SHOP_FUNC_NO_PERMISSION, 'SHOP_FUNC_NO_PERMISSION', '这个名字是跨文件的约定，驱动靠它分告警，别改名');
+});
+
+test('接线：两条「读数起不来」的失败路径都真接了功能权限判据', () => {
+  const source = readFileSync(path.join(import.meta.dirname, 'date-picker.mjs'), 'utf8');
+  // ① 「重载也救不回来」那条路：先问平台、再按答复决定报哪种错，顺序不能反
+  const reloadProbe = source.indexOf('probeShopFuncPermission({ proxy, site, targetId: page })');
+  const reloadThrow = source.indexOf('重新加载页面后读数仍是');
+  assert.ok(reloadProbe > 0, '找不到「重载也救不回来」那条路上的问平台调用（改代码时请同步这条判据）');
+  assert.ok(reloadThrow > reloadProbe, '问平台必须在抛错之前 —— 反了就等于没接');
+  assert.ok(source.slice(reloadProbe, reloadThrow).includes('isFuncPermissionDenied(probe)'), '问了要判，不能只是问');
+  // ② 「回位也认不出页面」那条路（现场里科塔是漂到首页才被认出来的）
+  const targetProbe = source.indexOf('probeShopFuncPermission({ proxy, site })');
+  const targetThrow = source.indexOf('expected one ${site} page on ${proxy}');
+  assert.ok(targetProbe > 0, '找不到「认不出页面」那条路上的问平台调用');
+  assert.ok(targetThrow > targetProbe, '这一条同样必须先问后抛');
+  // ③ 抛出去必须带确定性名字：告警链靠它把这一类与「通用失败」分开（否则会被报成「去窗口补页面」）
+  assert.equal((source.match(/namedFailure\(SHOP_FUNC_NO_PERMISSION/gu) ?? []).length, 2, '两条失败路径各一处，别只改一条');
+  // ④ 问的必须是**真模块**：带 /new 的是壳，对谁都放行，拿它当判据会永远判「没问题」
+  assert.equal(siteAdapter('sycm').permissionProbeUrl.includes('/new'), false, '壳地址不能当判据（2026-09-21 实测它对谁都回 code:0）');
+  assert.match(siteAdapter('sycm').permissionProbeUrl, /sycm\.taobao\.com\/qos\/service\/frame\/shop\/performance$/u);
+  assert.equal(siteAdapter('alimama').permissionProbeUrl, undefined, '阿里妈妈没有这个查询口子，别给它编一个');
 });
