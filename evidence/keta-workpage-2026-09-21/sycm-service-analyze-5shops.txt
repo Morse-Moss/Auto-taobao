@@ -1,0 +1,14 @@
+at=2026-09-21T08:55:12.839Z
+
+店铺        | 性能页被重定向 | 权限条目数 | 有 service-analyze-C
+里可林淘宝  |  否  |  66  |  有
+网林天猫  |  否  |  58  |  有
+盖文淘宝  |  否  |  79  |  有
+科塔淘宝  |  是 ★  |  84  |  没有 ★
+盖文天猫  |  否  |  69  |  有
+
+里可林淘宝: ["wl_gray_module_store_overview_service=无线首页服务专题","charge_service_longperiod=订购-长周期加油包","service-analyze-C=单店版-服务洞察专业版","sycm_page_analyze_gray=页面分析灰度"]
+网林天猫: ["wl_gray_module_store_overview_service=无线首页服务专题","charge_service_longperiod=订购-长周期加油包","service-analyze-C=单店版-服务洞察专业版","sycm_page_analyze_gray=页面分析灰度"]
+盖文淘宝: ["wl_gray_module_store_overview_service=无线首页服务专题","charge_service_longperiod=订购-长周期加油包","service-analyze-C=单店版-服务洞察专业版","sycm_page_analyze_gray=页面分析灰度"]
+科塔淘宝: ["wl_gray_module_store_overview_service=无线首页服务专题","charge_service_longperiod=订购-长周期加油包","sycm_page_analyze_gray=页面分析灰度"]
+盖文天猫: ["wl_gray_module_store_overview_service=无线首页服务专题","charge_service_longperiod=订购-长周期加油包","service-analyze-C=单店版-服务洞察专业版","sycm_page_analyze_gray=页面分析灰度"]

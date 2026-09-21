@@ -1,0 +1,19 @@
+probedAt=2026-09-21T08:53:40.142Z
+
+===== 科塔淘宝（19044）现在在 https://sycm.taobao.com/portal/home.htm =====
+  plainPath(/qos/service/frame/shop/performance) = {"status":200,"redirected":true,"finalUrl":"https://sycm.taobao.com/custom/no_permission?code=5903&message=No%20Buy%20Func%20Permission.&ref_url=https://sycm.taobao.com/qos/service/frame/shop/performance"}
+  cached: len=18704 flatCount=0 parseError=-
+  cached hits=[]
+  cached sample=[]
+  fresh: status=200 len=20289 flatCount=593
+  fresh hits=["data.16.moduleCode=wl_gray_module_store_overview_service","data.24.moduleCode=charge_service_longperiod"]
+  fresh sample=["code=0","data.0.endDate=1792486419803","data.0.hasPermission=true","data.0.moduleCode=adm-eportal-order-experience-free","data.0.moduleId=512","data.0.moduleName=应用市场菜单优化免费用户","data.0.remainDate=30","data.0.startDate=1789894419803","data.1.endDate=1792486419803","data.1.hasPermission=true","data.1.moduleCode=adm-eportal-order-experience-old","data.1.moduleId=513","data.1.moduleName=应用市场菜单优化AB测试旧版","data.1.remainDate=30","data.1.startDate=1789894419803","data.2.endDate=1792486419803","data.2.hasPermission=true","data.2.moduleCode=shunshoumaiyijian_report ","data.2.moduleId=515","data.2.moduleName=顺手买一件","data.2.remainDate=30","data.2.startDate=1789894419803","data.3.endDate=1792486419803","data.3.hasPermission=true","data.3.moduleCode=flow_nearest_gray","data.3.moduleId=771","data.3.moduleName=流量-末次归因灰度","data.3.remainDate=30","data.3.startDate=1789894419803","data.4.endDate=1792486419803","data.4.hasPermission=true","data.4.moduleCode=adm_paas","data.4.moduleId=772","data.4.moduleName=应用市场菜单优化-新版分析助手","data.4.remainDate=30","data.4.startDate=1789894419803","data.5.endDate=1792486419803","data.5.hasPermission=true","data.5.moduleCode=industry_incentive","data.5.moduleId=773"]
+
+===== 盖文淘宝（对照·健康）（19043）现在在 https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop =====
+  plainPath(/qos/service/frame/shop/performance) = {"status":200,"redirected":false,"finalUrl":"https://sycm.taobao.com/qos/service/frame/shop/performance"}
+  cached: len=17555 flatCount=0 parseError=-
+  cached hits=[]
+  cached sample=[]
+  fresh: status=200 len=19045 flatCount=555
+  fresh hits=["data.17.moduleCode=wl_gray_module_store_overview_service","data.26.moduleCode=charge_service_longperiod","data.46.moduleCode=service-analyze-C"]
+  fresh sample=["code=0","data.0.endDate=1792486420639","data.0.hasPermission=true","data.0.moduleCode=adm-eportal-order-experience-free","data.0.moduleId=512","data.0.moduleName=应用市场菜单优化免费用户","data.0.remainDate=30","data.0.startDate=1789894420639","data.1.endDate=1792486420639","data.1.hasPermission=true","data.1.moduleCode=adm-eportal-order-experience-old","data.1.moduleId=513","data.1.moduleName=应用市场菜单优化AB测试旧版","data.1.remainDate=30","data.1.startDate=1789894420639","data.2.endDate=1792486420639","data.2.hasPermission=true","data.2.moduleCode=shunshoumaiyijian_report ","data.2.moduleId=515","data.2.moduleName=顺手买一件","data.2.remainDate=30","data.2.startDate=1789894420639","data.3.endDate=1792486420639","data.3.hasPermission=true","data.3.moduleCode=flow_nearest_gray","data.3.moduleId=771","data.3.moduleName=流量-末次归因灰度","data.3.remainDate=30","data.3.startDate=1789894420639","data.4.endDate=1792486420639","data.4.hasPermission=true","data.4.moduleCode=adm_paas","data.4.moduleId=772","data.4.moduleName=应用市场菜单优化-新版分析助手","data.4.remainDate=30","data.4.startDate=1789894420639","data.5.endDate=1792486420639","data.5.hasPermission=true","data.5.moduleCode=industry_incentive","data.5.moduleId=773"]

@@ -1,0 +1,182 @@
+{
+ "at": "2026-09-21T08:56:29.503Z",
+ "got": {
+  "keta": {
+   "status": 200,
+   "hits": [
+    {
+     "exAttr": {
+      "communicationDateCode": "tb_sycm_sns"
+     },
+     "isVisible": "y",
+     "menuCode": "sycm_v2_qos_shop_performance_new_v2",
+     "menuId": 12816,
+     "menuName": "店铺绩效",
+     "menuOrder": 3,
+     "menuPath": "/qos/service/frame/shop/performance/new",
+     "parentId": 12812,
+     "uiAttr": {
+      "spmb": "15166350",
+      "project": "customer-service-performance",
+      "iframeUrl1": "//sycm.taobao.com/csp/index.htm#/shop"
+     }
+    },
+    {
+     "exAttr": {
+      "communicationDateCode": "tb_sycm_sns"
+     },
+     "isVisible": "y",
+     "menuCode": "sycm_v2_customer_performance_new_v2",
+     "menuId": 12817,
+     "menuName": "客服绩效",
+     "menuOrder": 4,
+     "menuPath": "/qos/service/frame/customer/performance/new",
+     "parentId": 12812,
+     "uiAttr": {
+      "spmb": "15166354",
+      "project": "customer-service-performance",
+      "iframeUrl1": "//sycm.taobao.com/csp/index.htm#/user"
+     }
+    },
+    {
+     "exAttr": {
+      "communicationDateCode": "tb_sycm_sns"
+     },
+     "isVisible": "y",
+     "menuCode": "sycm_v2_performance_detail_v2",
+     "menuId": 12818,
+     "menuName": "绩效明细",
+     "menuOrder": 5,
+     "menuPath": "/qos/service/frame/performance/detail/new",
+     "parentId": 12812,
+     "uiAttr": {
+      "spmb": "19762460",
+      "project": "customer-service-performance",
+      "iframeUrl1": "//sycm.taobao.com/csp/index.htm#/detail"
+     }
+    }
+   ],
+   "probe": [
+    {
+     "name": "店铺绩效",
+     "url": null,
+     "result": null
+    },
+    {
+     "name": "客服绩效",
+     "url": null,
+     "result": null
+    },
+    {
+     "name": "绩效明细",
+     "url": null,
+     "result": null
+    }
+   ]
+  },
+  "gaiwen": {
+   "status": 200,
+   "hits": [
+    {
+     "exAttr": {
+      "communicationDateCode": "tb_sycm_sns"
+     },
+     "isVisible": "y",
+     "menuCode": "sycm_v2_qos_shop_performance_new_v2",
+     "menuId": 12816,
+     "menuName": "店铺绩效",
+     "menuOrder": 3,
+     "menuPath": "/qos/service/frame/shop/performance/new",
+     "parentId": 12812,
+     "uiAttr": {
+      "spmb": "15166350",
+      "project": "customer-service-performance",
+      "iframeUrl1": "//sycm.taobao.com/csp/index.htm#/shop"
+     }
+    },
+    {
+     "exAttr": {
+      "communicationDateCode": "tb_sycm_sns"
+     },
+     "isVisible": "y",
+     "menuCode": "sycm_v2_customer_performance_new_v2",
+     "menuId": 12817,
+     "menuName": "客服绩效",
+     "menuOrder": 4,
+     "menuPath": "/qos/service/frame/customer/performance/new",
+     "parentId": 12812,
+     "uiAttr": {
+      "spmb": "15166354",
+      "project": "customer-service-performance",
+      "iframeUrl1": "//sycm.taobao.com/csp/index.htm#/user"
+     }
+    },
+    {
+     "exAttr": {
+      "communicationDateCode": "tb_sycm_sns"
+     },
+     "isVisible": "y",
+     "menuCode": "sycm_v2_performance_detail_v2",
+     "menuId": 12818,
+     "menuName": "绩效明细",
+     "menuOrder": 5,
+     "menuPath": "/qos/service/frame/performance/detail/new",
+     "parentId": 12812,
+     "uiAttr": {
+      "spmb": "19762460",
+      "project": "customer-service-performance",
+      "iframeUrl1": "//sycm.taobao.com/csp/index.htm#/detail"
+     }
+    },
+    {
+     "isVisible": "y",
+     "menuCode": "sycm_v2_customer_performance",
+     "menuId": 11537,
+     "menuName": "客服绩效",
+     "menuOrder": 1,
+     "menuPath": "/qos/service/frame/customer/performance",
+     "parentId": 11535,
+     "uiAttr": {
+      "spmb": "15166354",
+      "iframeUrl": "//sycm.taobao.com/csp/index.htm#/user"
+     }
+    },
+    {
+     "isVisible": "y",
+     "menuCode": "sycm_v2_qos_shop_performance",
+     "menuId": 11536,
+     "menuName": "店铺绩效",
+     "menuOrder": 1,
+     "menuPath": "/qos/service/frame/shop/performance",
+     "parentId": 11535,
+     "uiAttr": {
+      "spmb": "15166350",
+      "iframeUrl": "//sycm.taobao.com/csp/index.htm#/shop"
+     }
+    }
+   ],
+   "probe": [
+    {
+     "name": "店铺绩效",
+     "url": null,
+     "result": null
+    },
+    {
+     "name": "客服绩效",
+     "url": null,
+     "result": null
+    },
+    {
+     "name": "绩效明细",
+     "url": null,
+     "result": null
+    },
+    {
+     "name": "客服绩效",
+     "url": null,
+     "result": null
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,45 @@
+probedAt=2026-09-21T08:52:28.221Z
+
+===== 科塔淘宝（19044）当前在 https://sycm.taobao.com/portal/home.htm =====
+  /qos/service/frame/shop/performance/new
+      status=200  redirected=false  textLen=3622
+      finalUrl=https://sycm.taobao.com/qos/service/frame/shop/performance/new
+      hasLogin=false  hasNoRight=true
+      head= <!DOCTYPE html> <html> <head> <meta charset="utf-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge"> <meta http-equiv="Cache-Control" content="no-siteapp" /> <meta name="ren
+  /qos/service/frame/shop/performance
+      status=200  redirected=true  textLen=3613
+      finalUrl=https://sycm.taobao.com/custom/no_permission?code=5903&message=No%20Buy%20Func%20Permission.&ref_url=https://sycm.taobao.com/qos/service/frame/shop/performance
+      hasLogin=false  hasNoRight=true
+      head= <!DOCTYPE html> <html> <head> <meta charset="utf-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge"> <meta http-equiv="Cache-Control" content="no-siteapp" /> <meta name="ren
+  /mc/free/sycm
+      status=200  redirected=false  textLen=3645
+      finalUrl=https://sycm.taobao.com/mc/free/sycm
+      hasLogin=false  hasNoRight=true
+      head= <!DOCTYPE html> <html> <head> <meta charset="utf-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge"> <meta http-equiv="Cache-Control" content="no-siteapp" /> <meta name="ren
+  /portal/home.htm
+      status=200  redirected=false  textLen=3595
+      finalUrl=https://sycm.taobao.com/portal/home.htm
+      hasLogin=false  hasNoRight=true
+      head= <!DOCTYPE html> <html> <head> <meta charset="utf-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge"> <meta http-equiv="Cache-Control" content="no-siteapp" /> <meta name="ren
+
+===== 盖文淘宝（对照·健康）（19043）当前在 https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop =====
+  /qos/service/frame/shop/performance/new
+      status=200  redirected=false  textLen=3622
+      finalUrl=https://sycm.taobao.com/qos/service/frame/shop/performance/new
+      hasLogin=false  hasNoRight=true
+      head= <!DOCTYPE html> <html> <head> <meta charset="utf-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge"> <meta http-equiv="Cache-Control" content="no-siteapp" /> <meta name="ren
+  /qos/service/frame/shop/performance
+      status=200  redirected=false  textLen=3622
+      finalUrl=https://sycm.taobao.com/qos/service/frame/shop/performance
+      hasLogin=false  hasNoRight=true
+      head= <!DOCTYPE html> <html> <head> <meta charset="utf-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge"> <meta http-equiv="Cache-Control" content="no-siteapp" /> <meta name="ren
+  /mc/free/sycm
+      status=200  redirected=false  textLen=3645
+      finalUrl=https://sycm.taobao.com/mc/free/sycm
+      hasLogin=false  hasNoRight=true
+      head= <!DOCTYPE html> <html> <head> <meta charset="utf-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge"> <meta http-equiv="Cache-Control" content="no-siteapp" /> <meta name="ren
+  /portal/home.htm
+      status=200  redirected=false  textLen=3595
+      finalUrl=https://sycm.taobao.com/portal/home.htm
+      hasLogin=false  hasNoRight=true
+      head= <!DOCTYPE html> <html> <head> <meta charset="utf-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge"> <meta http-equiv="Cache-Control" content="no-siteapp" /> <meta name="ren

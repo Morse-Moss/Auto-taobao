@@ -1,0 +1,128 @@
+{
+ "at": "2026-09-21T08:55:12.836Z",
+ "rows": [
+  {
+   "label": "里可林淘宝",
+   "port": 19041,
+   "value": {
+    "perf": {
+     "status": 200,
+     "redirected": false,
+     "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance"
+    },
+    "total": 66,
+    "hasServiceAnalyzeC": true,
+    "serviceLike": [
+     "wl_gray_module_store_overview_service",
+     "charge_service_longperiod",
+     "service-analyze-C",
+     "sycm_page_analyze_gray"
+    ],
+    "serviceNames": [
+     "wl_gray_module_store_overview_service=无线首页服务专题",
+     "charge_service_longperiod=订购-长周期加油包",
+     "service-analyze-C=单店版-服务洞察专业版",
+     "sycm_page_analyze_gray=页面分析灰度"
+    ]
+   }
+  },
+  {
+   "label": "网林天猫",
+   "port": 19042,
+   "value": {
+    "perf": {
+     "status": 200,
+     "redirected": false,
+     "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance"
+    },
+    "total": 58,
+    "hasServiceAnalyzeC": true,
+    "serviceLike": [
+     "wl_gray_module_store_overview_service",
+     "charge_service_longperiod",
+     "service-analyze-C",
+     "sycm_page_analyze_gray"
+    ],
+    "serviceNames": [
+     "wl_gray_module_store_overview_service=无线首页服务专题",
+     "charge_service_longperiod=订购-长周期加油包",
+     "service-analyze-C=单店版-服务洞察专业版",
+     "sycm_page_analyze_gray=页面分析灰度"
+    ]
+   }
+  },
+  {
+   "label": "盖文淘宝",
+   "port": 19043,
+   "value": {
+    "perf": {
+     "status": 200,
+     "redirected": false,
+     "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance"
+    },
+    "total": 79,
+    "hasServiceAnalyzeC": true,
+    "serviceLike": [
+     "wl_gray_module_store_overview_service",
+     "charge_service_longperiod",
+     "service-analyze-C",
+     "sycm_page_analyze_gray"
+    ],
+    "serviceNames": [
+     "wl_gray_module_store_overview_service=无线首页服务专题",
+     "charge_service_longperiod=订购-长周期加油包",
+     "service-analyze-C=单店版-服务洞察专业版",
+     "sycm_page_analyze_gray=页面分析灰度"
+    ]
+   }
+  },
+  {
+   "label": "科塔淘宝",
+   "port": 19044,
+   "value": {
+    "perf": {
+     "status": 200,
+     "redirected": true,
+     "finalUrl": "https://sycm.taobao.com/custom/no_permission?code=5903&message=No%20Buy%20Func%20Permission.&ref_url=https://sycm.taobao.com/qos/service/frame/shop/performance"
+    },
+    "total": 84,
+    "hasServiceAnalyzeC": false,
+    "serviceLike": [
+     "wl_gray_module_store_overview_service",
+     "charge_service_longperiod",
+     "sycm_page_analyze_gray"
+    ],
+    "serviceNames": [
+     "wl_gray_module_store_overview_service=无线首页服务专题",
+     "charge_service_longperiod=订购-长周期加油包",
+     "sycm_page_analyze_gray=页面分析灰度"
+    ]
+   }
+  },
+  {
+   "label": "盖文天猫",
+   "port": 19045,
+   "value": {
+    "perf": {
+     "status": 200,
+     "redirected": false,
+     "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance"
+    },
+    "total": 69,
+    "hasServiceAnalyzeC": true,
+    "serviceLike": [
+     "wl_gray_module_store_overview_service",
+     "charge_service_longperiod",
+     "service-analyze-C",
+     "sycm_page_analyze_gray"
+    ],
+    "serviceNames": [
+     "wl_gray_module_store_overview_service=无线首页服务专题",
+     "charge_service_longperiod=订购-长周期加油包",
+     "service-analyze-C=单店版-服务洞察专业版",
+     "sycm_page_analyze_gray=页面分析灰度"
+    ]
+   }
+  }
+ ]
+}

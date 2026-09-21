@@ -1,0 +1,18 @@
+at=2026-09-21T08:54:20.504Z
+
+店铺            | 现在停在哪 | redirected | finalUrl
+里可林淘宝  |  OK  |  redirected=false  |  https://sycm.taobao.com/qos/service/frame/shop/performance
+    当前页签: https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+
+网林天猫  |  OK  |  redirected=false  |  https://sycm.taobao.com/qos/service/frame/shop/performance
+    当前页签: https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+
+盖文淘宝  |  OK  |  redirected=false  |  https://sycm.taobao.com/qos/service/frame/shop/performance
+    当前页签: https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+
+科塔淘宝  |  BOUNCED  |  redirected=true  |  https://sycm.taobao.com/custom/no_permission?code=5903&message=No%20Buy%20Func%20Permission.&ref_url=https://sycm.taobao.com/qos/service/frame/shop/performance
+    当前页签: https://sycm.taobao.com/portal/home.htm
+    提示页原文: 生意参谋 - 零售电商大数据产品平台
+
+盖文天猫  |  OK  |  redirected=false  |  https://sycm.taobao.com/qos/service/frame/shop/performance
+    当前页签: https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop

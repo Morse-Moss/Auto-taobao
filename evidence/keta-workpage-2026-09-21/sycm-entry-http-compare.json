@@ -1,0 +1,135 @@
+{
+ "probedAt": "2026-09-21T08:52:28.221Z",
+ "hosts": [
+  {
+   "key": "keta",
+   "label": "科塔淘宝",
+   "port": 19044,
+   "sycmTargetId": "0F3988566AF5D318E806DF8B456BE2E0",
+   "currentUrl": "https://sycm.taobao.com/portal/home.htm",
+   "fetches": [
+    {
+     "path": "/qos/service/frame/shop/performance/new",
+     "ok": true,
+     "value": {
+      "path": "/qos/service/frame/shop/performance/new",
+      "status": 200,
+      "redirected": false,
+      "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new",
+      "textLen": 3622,
+      "head": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webkit\"> <meta name=\"keywords\" content=\"生意参谋，阿里巴巴生意参谋，市场行情，数据作战室，大数据分析，生意经，电商运营，零售电商\"> <meta name=\"descr",
+      "hasLogin": false,
+      "hasNoRight": true
+     }
+    },
+    {
+     "path": "/qos/service/frame/shop/performance",
+     "ok": true,
+     "value": {
+      "path": "/qos/service/frame/shop/performance",
+      "status": 200,
+      "redirected": true,
+      "finalUrl": "https://sycm.taobao.com/custom/no_permission?code=5903&message=No%20Buy%20Func%20Permission.&ref_url=https://sycm.taobao.com/qos/service/frame/shop/performance",
+      "textLen": 3613,
+      "head": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webkit\"> <meta name=\"keywords\" content=\"生意参谋，阿里巴巴生意参谋，市场行情，数据作战室，大数据分析，生意经，电商运营，零售电商\"> <meta name=\"descr",
+      "hasLogin": false,
+      "hasNoRight": true
+     }
+    },
+    {
+     "path": "/mc/free/sycm",
+     "ok": true,
+     "value": {
+      "path": "/mc/free/sycm",
+      "status": 200,
+      "redirected": false,
+      "finalUrl": "https://sycm.taobao.com/mc/free/sycm",
+      "textLen": 3645,
+      "head": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webkit\"> <meta name=\"keywords\" content=\"生意参谋，阿里巴巴生意参谋，市场行情，数据作战室，大数据分析，生意经，电商运营，零售电商\"> <meta name=\"descr",
+      "hasLogin": false,
+      "hasNoRight": true
+     }
+    },
+    {
+     "path": "/portal/home.htm",
+     "ok": true,
+     "value": {
+      "path": "/portal/home.htm",
+      "status": 200,
+      "redirected": false,
+      "finalUrl": "https://sycm.taobao.com/portal/home.htm",
+      "textLen": 3595,
+      "head": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webkit\"> <meta name=\"keywords\" content=\"生意参谋，阿里巴巴生意参谋，市场行情，数据作战室，大数据分析，生意经，电商运营，零售电商\"> <meta name=\"descr",
+      "hasLogin": false,
+      "hasNoRight": true
+     }
+    }
+   ]
+  },
+  {
+   "key": "gaiwen-tb",
+   "label": "盖文淘宝（对照·健康）",
+   "port": 19043,
+   "sycmTargetId": "828620E488449D7A34F2D6033FB9C979",
+   "currentUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "fetches": [
+    {
+     "path": "/qos/service/frame/shop/performance/new",
+     "ok": true,
+     "value": {
+      "path": "/qos/service/frame/shop/performance/new",
+      "status": 200,
+      "redirected": false,
+      "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new",
+      "textLen": 3622,
+      "head": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webkit\"> <meta name=\"keywords\" content=\"生意参谋，阿里巴巴生意参谋，市场行情，数据作战室，大数据分析，生意经，电商运营，零售电商\"> <meta name=\"descr",
+      "hasLogin": false,
+      "hasNoRight": true
+     }
+    },
+    {
+     "path": "/qos/service/frame/shop/performance",
+     "ok": true,
+     "value": {
+      "path": "/qos/service/frame/shop/performance",
+      "status": 200,
+      "redirected": false,
+      "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+      "textLen": 3622,
+      "head": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webkit\"> <meta name=\"keywords\" content=\"生意参谋，阿里巴巴生意参谋，市场行情，数据作战室，大数据分析，生意经，电商运营，零售电商\"> <meta name=\"descr",
+      "hasLogin": false,
+      "hasNoRight": true
+     }
+    },
+    {
+     "path": "/mc/free/sycm",
+     "ok": true,
+     "value": {
+      "path": "/mc/free/sycm",
+      "status": 200,
+      "redirected": false,
+      "finalUrl": "https://sycm.taobao.com/mc/free/sycm",
+      "textLen": 3645,
+      "head": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webkit\"> <meta name=\"keywords\" content=\"生意参谋，阿里巴巴生意参谋，市场行情，数据作战室，大数据分析，生意经，电商运营，零售电商\"> <meta name=\"descr",
+      "hasLogin": false,
+      "hasNoRight": true
+     }
+    },
+    {
+     "path": "/portal/home.htm",
+     "ok": true,
+     "value": {
+      "path": "/portal/home.htm",
+      "status": 200,
+      "redirected": false,
+      "finalUrl": "https://sycm.taobao.com/portal/home.htm",
+      "textLen": 3595,
+      "head": " <!DOCTYPE html> <html> <head> <meta charset=\"utf-8\"> <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"> <meta http-equiv=\"Cache-Control\" content=\"no-siteapp\" /> <meta name=\"renderer\" content=\"webkit\"> <meta name=\"keywords\" content=\"生意参谋，阿里巴巴生意参谋，市场行情，数据作战室，大数据分析，生意经，电商运营，零售电商\"> <meta name=\"descr",
+      "hasLogin": false,
+      "hasNoRight": true
+     }
+    }
+   ]
+  }
+ ]
+}

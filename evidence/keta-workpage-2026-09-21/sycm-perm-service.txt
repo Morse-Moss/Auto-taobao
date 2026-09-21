@@ -1,0 +1,36 @@
+科塔 count=84 status=200 redirected=false
+盖文 count=79 status=200 redirected=false
+
+== 科塔 里带 service/绩效 的条目 ==
+  服务910版本切换需求 | hp=true | 服务910版本切换需求
+  wl_gray_module_store_overview_service | hp=true | 无线首页服务专题
+  charge_service_longperiod | hp=true | 订购-长周期加油包
+  csp_goods_detail_grey | hp=true | 服务商品分析灰度
+
+== 盖文 里带 service/绩效 的条目 ==
+  服务910版本切换需求 | hp=true | 服务910版本切换需求
+  wl_gray_module_store_overview_service | hp=true | 无线首页服务专题
+  charge_service_longperiod | hp=true | 订购-长周期加油包
+  service-analyze-C | hp=true | 单店版-服务洞察专业版
+  csp_goods_detail_grey | hp=true | 服务商品分析灰度
+
+只在盖文有（6）:
+  - minidetail_rank_gray
+  - sycm_search_ai
+  - old_home_questionnaire
+  - ly_sept_act_senior
+  - once_order_market_0409
+  - service-analyze-C
+
+只在科塔有（11）:
+  + new_home_questionnaire
+  + 0925_item_price_gray
+  + content-overview-gray-new
+  + flow_attr_gray
+  + content_item360_gray
+  + short_video_same_industry_level
+  + short_video_billboard
+  + ly_sept_act_junior_with_pack
+  + wl_intelligent_shop_inspection
+  + new_sycm_gray
+  + new_menu_sycm_gray

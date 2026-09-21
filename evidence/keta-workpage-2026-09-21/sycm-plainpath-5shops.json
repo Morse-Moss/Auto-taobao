@@ -1,0 +1,85 @@
+{
+ "at": "2026-09-21T08:54:20.502Z",
+ "rows": [
+  {
+   "label": "里可林淘宝",
+   "port": 19041,
+   "nowAt": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "result": {
+    "status": 200,
+    "redirected": false,
+    "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+    "textLen": 3628,
+    "noPerm": {
+     "status": 200,
+     "textLen": 3619,
+     "text": "生意参谋 - 零售电商大数据产品平台"
+    }
+   }
+  },
+  {
+   "label": "网林天猫",
+   "port": 19042,
+   "nowAt": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "result": {
+    "status": 200,
+    "redirected": false,
+    "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+    "textLen": 3628,
+    "noPerm": {
+     "status": 200,
+     "textLen": 3619,
+     "text": "生意参谋 - 零售电商大数据产品平台"
+    }
+   }
+  },
+  {
+   "label": "盖文淘宝",
+   "port": 19043,
+   "nowAt": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "result": {
+    "status": 200,
+    "redirected": false,
+    "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+    "textLen": 3622,
+    "noPerm": {
+     "status": 200,
+     "textLen": 3613,
+     "text": "生意参谋 - 零售电商大数据产品平台"
+    }
+   }
+  },
+  {
+   "label": "科塔淘宝",
+   "port": 19044,
+   "nowAt": "https://sycm.taobao.com/portal/home.htm",
+   "result": {
+    "status": 200,
+    "redirected": true,
+    "finalUrl": "https://sycm.taobao.com/custom/no_permission?code=5903&message=No%20Buy%20Func%20Permission.&ref_url=https://sycm.taobao.com/qos/service/frame/shop/performance",
+    "textLen": 3613,
+    "noPerm": {
+     "status": 200,
+     "textLen": 3613,
+     "text": "生意参谋 - 零售电商大数据产品平台"
+    }
+   }
+  },
+  {
+   "label": "盖文天猫",
+   "port": 19045,
+   "nowAt": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "result": {
+    "status": 200,
+    "redirected": false,
+    "finalUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance",
+    "textLen": 3628,
+    "noPerm": {
+     "status": 200,
+     "textLen": 3619,
+     "text": "生意参谋 - 零售电商大数据产品平台"
+    }
+   }
+  }
+ ]
+}

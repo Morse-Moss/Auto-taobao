@@ -1,0 +1,87 @@
+{
+ "at": "2026-09-21T08:55:46.332Z",
+ "rows": [
+  {
+   "label": "里可林淘宝",
+   "port": 19041,
+   "value": {
+    "total": 66,
+    "serviceAnalyzeC": {
+     "moduleCode": "service-analyze-C",
+     "moduleName": "单店版-服务洞察专业版",
+     "hasPermission": true,
+     "moduleId": 88,
+     "startDate": "2026-06-17T07:14:03",
+     "endDate": "2027-06-16T16:00:00",
+     "remainDate": 270
+    },
+    "expiredCount": 0,
+    "expiredSample": []
+   }
+  },
+  {
+   "label": "网林天猫",
+   "port": 19042,
+   "value": {
+    "total": 58,
+    "serviceAnalyzeC": {
+     "moduleCode": "service-analyze-C",
+     "moduleName": "单店版-服务洞察专业版",
+     "hasPermission": true,
+     "moduleId": 88,
+     "startDate": "2026-06-17T07:10:08",
+     "endDate": "2027-06-16T16:00:00",
+     "remainDate": 270
+    },
+    "expiredCount": 0,
+    "expiredSample": []
+   }
+  },
+  {
+   "label": "盖文淘宝",
+   "port": 19043,
+   "value": {
+    "total": 79,
+    "serviceAnalyzeC": {
+     "moduleCode": "service-analyze-C",
+     "moduleName": "单店版-服务洞察专业版",
+     "hasPermission": true,
+     "moduleId": 88,
+     "startDate": "2024-02-20T02:48:30",
+     "endDate": "2027-05-22T16:00:00",
+     "remainDate": 245
+    },
+    "expiredCount": 0,
+    "expiredSample": []
+   }
+  },
+  {
+   "label": "科塔淘宝",
+   "port": 19044,
+   "value": {
+    "total": 84,
+    "serviceAnalyzeC": null,
+    "expiredCount": 0,
+    "expiredSample": []
+   }
+  },
+  {
+   "label": "盖文天猫",
+   "port": 19045,
+   "value": {
+    "total": 69,
+    "serviceAnalyzeC": {
+     "moduleCode": "service-analyze-C",
+     "moduleName": "单店版-服务洞察专业版",
+     "hasPermission": true,
+     "moduleId": 88,
+     "startDate": "2026-08-03T03:58:04",
+     "endDate": "2027-08-02T16:00:00",
+     "remainDate": 317
+    },
+    "expiredCount": 0,
+    "expiredSample": []
+   }
+  }
+ ]
+}
