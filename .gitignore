@@ -115,3 +115,10 @@ runtime/.collect-child-pid
 runtime/.collect-exit-code
 runtime/.collection-host-heartbeat
 runtime/.collection-host.pid
+
+# 小旺神复制的原始 SKU payload —— skills/xws-sku-collection/SKILL.md 的 Safety Contract
+# 明文要求「不得打印、提交或上传」，它是本地受保护的证据。
+# 历史遗留：evidence/sku-2026-09-13_2026-09-19/ 下已有两个**被跟踪**的 payload。
+# 2026-09-21 的决定是**先不动它们** —— 改写已被跟踪的历史文件，风险大于收益；
+# 但**新的不许再进来**（这条规则只管未跟踪文件，正是想要的效果）。
+evidence/**/xws-sku-payload-*.txt

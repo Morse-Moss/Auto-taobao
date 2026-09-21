@@ -15,6 +15,7 @@ import {
   decideWrite,
   extractProductId,
   isAbClass,
+  summarizeAbReadiness,
 } from './fill-weekly-attribute-labels-core.mjs';
 
 test('extractProductId：从淘系链接取出商品 id', () => {
@@ -113,4 +114,45 @@ test('decideWrite：空格一律填空，不受 A/B 与重算开关影响', () =
     decideWrite({ name: '搜索关键词', existing: '', next: '浴缸', isAb: false, recomputeAb: false, joined: false }),
     'fill',
   );
+});
+
+// —— 以下守的是「写回编排必须知道数据在不在」这条约束（2026-09-16 事故的直接来源）——
+
+test('summarizeAbReadiness：只统计 A/B 行，非 A/B 不进队列', () => {
+  const out = summarizeAbReadiness(
+    [
+      { recordId: 'r1', productId: '111', klass: 'A-爆款竞品' },
+      { recordId: 'r2', productId: '222', klass: 'C-低价竞品' },
+      { recordId: 'r3', productId: '333', klass: 'B-高价值竞品' },
+    ],
+    (id) => id === '111',
+  );
+  assert.equal(out.abCount, 2);
+  assert.equal(out.readyCount, 1);
+  assert.equal(out.missingCount, 1);
+  assert.deepEqual(out.missing.map((m) => m.recordId), ['r3']);
+});
+
+test('summarizeAbReadiness：两种缺失分开报，链接提不出 id 时不去查 SKU 表', () => {
+  let called = 0;
+  const out = summarizeAbReadiness(
+    [
+      { recordId: 'r1', productId: '', klass: 'A-爆款竞品' },
+      { recordId: 'r2', productId: '999', klass: 'B-高价值竞品' },
+    ],
+    () => { called += 1; return false; },
+  );
+  assert.equal(called, 1, 'productId 为空的行不该去查 SKU 表');
+  assert.deepEqual(out.missing.map((m) => m.reason), ['link-without-product-id', 'no-sku-data']);
+});
+
+test('summarizeAbReadiness：全就绪时 missing 为空', () => {
+  const out = summarizeAbReadiness([{ recordId: 'r1', productId: '1', klass: 'B-高价值竞品' }], () => true);
+  assert.deepEqual(out, { abCount: 1, readyCount: 1, missingCount: 0, missing: [] });
+});
+
+test('summarizeAbReadiness：一个 A/B 都没有时返回全 0（周表可能整期无 A/B）', () => {
+  assert.deepEqual(summarizeAbReadiness([], () => true), {
+    abCount: 0, readyCount: 0, missingCount: 0, missing: [],
+  });
 });

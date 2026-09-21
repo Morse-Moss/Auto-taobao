@@ -1,7 +1,7 @@
 突变验证：runtime/fill-weekly-attribute-labels-core.mjs
-跑在 HEAD=0a1cc8d 之后；目标判据文件 sha256(12)=165d419201da
+跑在 HEAD=49cdd52 之后；目标判据文件 sha256(12)=b658ee948632
 
-基线：exit=0 pass=9 fail=0（全绿，可开始突变）
+基线：exit=0 pass=13 fail=0（全绿，可开始突变）
 
 M1  CAUGHT             重算通道永远开（丢掉 recomputeAb 开关）—— 默认行为会变
       期望点名含：未开重算
@@ -32,9 +32,21 @@ M9  CAUGHT             放宽商品 id 提取（路径里的 /id= 也算）
       实红：extractProductId：从淘系链接取出商品 id
 M10  CAUGHT             把 C 也算进 A/B
       期望点名含：isAbClass
-      实红：isAbClass：只有 A- / B- 前缀算「该有尺寸」
+      实红：isAbClass：只有 A- / B- 前缀算「该有尺寸」 | summarizeAbReadiness：只统计 A/B 行，非 A/B 不进队列
+M11  CAUGHT             就绪度不筛 A/B —— 所有行都进队列（队列会灌爆）
+      期望点名含：只统计 A/B 行
+      实红：summarizeAbReadiness：只统计 A/B 行，非 A/B 不进队列
+M12  CAUGHT             链接提不出 id 时也去查 SKU 表（还把它当成「有 SKU 数据」）
+      期望点名含：两种缺失
+      实红：summarizeAbReadiness：两种缺失分开报，链接提不出 id 时不去查 SKU 表
+M13  CAUGHT             两种缺失不分开报（全报成 no-sku-data）
+      期望点名含：两种缺失
+      实红：summarizeAbReadiness：两种缺失分开报，链接提不出 id 时不去查 SKU 表
+M14  CAUGHT             就绪数恒等于 A/B 总数（缺口被抹平 ⇒ 闸门永远不拦）
+      期望点名含：只统计 A/B 行
+      实红：summarizeAbReadiness：只统计 A/B 行，非 A/B 不进队列
 
-还原自证：sha256(12)=165d419201da  逐字节一致 OK
-还原后复跑基线：exit=0 pass=9 fail=0
+还原自证：sha256(12)=b658ee948632  逐字节一致 OK
+还原后复跑基线：exit=0 pass=13 fail=0
 
-小结：CAUGHT 10/10，MISSED 0，RED-but-unexpected 0，SKIP/NOOP 0
+小结：CAUGHT 14/14，MISSED 0，RED-but-unexpected 0，SKIP/NOOP 0

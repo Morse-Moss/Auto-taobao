@@ -1,0 +1,8 @@
+base profile = kcne / QcnhbEzYpacGvUskCbVcrcm3nFd
+周表 = 竞品周_2026-08-23_2026-08-29 (tblDpoBCxUJmNBR7)，共 1461 行
+SKU明细 = tbl3N48H4znz304T，830 行 / 14 个商品有尺寸数据
+
+本期 A/B 共 8 行，其中 SKU 尺寸可取的 8 行，缺 0 行
+
+检查通过：本期 A/B 的尺寸数据都已就绪（--check-only，未调写回）。
+receipt -> D:\Retire\sycm-automation\evidence\competitor-state-2026-09-21\wbrun-gate-0823.json

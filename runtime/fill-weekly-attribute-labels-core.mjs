@@ -52,3 +52,36 @@ export function decideWrite({ name, existing, next, isAb, recomputeAb, joined })
   if (next === existing) return 'skip-same';
   return 'recompute';
 }
+
+// 周表 A/B 行的「SKU 就绪度」—— 回答「这期还有哪些 A/B 没尺寸可取」。
+//
+// 为什么需要它：尺寸链断过一次，断法是「写回跑在采集之前」。所以任何写回编排都必须
+// 先回答「数据在不在」，不在就先别写 —— 否则回落标题规则会把『无注明』写进去，
+// 而「只填空不覆盖」会让那个错值永久锁死（这正是 2026-09-16 那次事故）。
+//
+// rows: [{ recordId, productId, klass }]（周表行，klass 已由 text() 归一）
+// hasSku: (productId) => boolean（SKU明细里有没有这个商品的尺寸数据）
+// 两种缺失分开报：`link-without-product-id` 是链接本身提不出 id（要查链接形态），
+// `no-sku-data` 是提得出 id 但 SKU 表里没有（这才是真正要去采的队列）。
+export function summarizeAbReadiness(rows, hasSku) {
+  const missing = [];
+  let abCount = 0;
+  for (const row of rows) {
+    if (!isAbClass(row.klass)) continue;
+    abCount += 1;
+    const productId = row.productId ?? '';
+    if (productId && hasSku(productId)) continue;
+    missing.push({
+      recordId: row.recordId ?? '',
+      productId,
+      klass: row.klass ?? '',
+      reason: productId ? 'no-sku-data' : 'link-without-product-id',
+    });
+  }
+  return {
+    abCount,
+    readyCount: abCount - missing.length,
+    missingCount: missing.length,
+    missing,
+  };
+}

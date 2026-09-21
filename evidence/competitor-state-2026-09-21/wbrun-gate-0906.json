@@ -1,0 +1,37 @@
+{
+  "version": "weekly-attribute-writeback-run-v1",
+  "mode": "CHECK_ONLY",
+  "at": "2026-09-21T02:26:49.704Z",
+  "profile": "kcne",
+  "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+  "weeklyTable": {
+    "name": "竞品周_2026-09-06_2026-09-12",
+    "tableId": "tblosvuwE6xqYn6r",
+    "rows": 1462
+  },
+  "skuDetail": {
+    "tableId": "tbl3N48H4znz304T",
+    "records": 830,
+    "productsWithSize": 14
+  },
+  "readiness": {
+    "abCount": 1,
+    "readyCount": 0,
+    "missingCount": 1,
+    "missing": [
+      {
+        "recordId": "recvv59xzccKmD",
+        "productId": "678598686014",
+        "klass": "A-爆款竞品",
+        "reason": "no-sku-data",
+        "title": "SSWW浪鲸深泡浴缸小户型家用日式亚克力独立式国家补贴迷你可移动",
+        "currentSize": ""
+      }
+    ]
+  },
+  "writeback": {
+    "invoked": false,
+    "exitCode": null
+  },
+  "rule": "先检查数据在不在，再写回；有缺口 fail-closed 不写（退出码 3）。缺口队列按「周表当期 A/B」算，不按主表最新状态算。"
+}

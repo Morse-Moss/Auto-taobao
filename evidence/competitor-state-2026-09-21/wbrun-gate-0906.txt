@@ -1,0 +1,14 @@
+base profile = kcne / QcnhbEzYpacGvUskCbVcrcm3nFd
+周表 = 竞品周_2026-09-06_2026-09-12 (tblosvuwE6xqYn6r)，共 1462 行
+SKU明细 = tbl3N48H4znz304T，830 行 / 14 个商品有尺寸数据
+
+本期 A/B 共 1 行，其中 SKU 尺寸可取的 0 行，缺 1 行
+  缺 [A-爆款竞品] no-sku-data 商品id=678598686014 当前尺寸=""
+      标题：SSWW浪鲸深泡浴缸小户型家用日式亚克力独立式国家补贴迷你可移动
+
+=== 顺序闸门：有 A/B 缺 SKU 数据，本次不写 ===
+先按上面列出的商品 id 去小旺神采集 SKU（技能 xws-sku-collection），再重跑本命令。
+不要绕过这一步：写回在数据缺失时会回落标题规则把『无注明』写进去，
+而「只填空不覆盖」会让那个错值永久锁死（2026-09-16 就是这么错的）。
+采集端队列也可用 `node runtime/summarize-xws-sku-queue.mjs` 复核（那边读主表最新状态）。
+receipt -> D:\Retire\sycm-automation\evidence\competitor-state-2026-09-21\wbrun-gate-0906.json

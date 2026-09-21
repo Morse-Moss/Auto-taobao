@@ -138,10 +138,53 @@
 - `node scripts/run-test-suite.mjs runtime --concurrency=1`：**86 files / 761 tests / 761 pass / 0 fail**
 - 突变验证：**CAUGHT 10/10**，MISSED 0，SKIP/NOOP 0
 
-### 本轮**没有**做的（边界）
+### 第一段**没有**做的（边界）
 
 - **未回填** 09-13 期周表（按指令：历史周表不回填）。dry-run 只证明「就绪、会写 1 行」。
-- **未做编排入口**（按指令：先完整跑通再固定），所以「先采集、后写回」的顺序目前靠文档约束。
-- **未扩大采集队列**：第 6 步仍只吃主表 A/B（现覆盖 14 个商品），周表每期 A/B 数会变。
+- **未做编排入口**（当时按指令：先完整跑通再固定），所以「先采集、后写回」的顺序靠文档约束。
+
+---
+
+## 追加：编排入口 + 顺序闸门（2026-09-21 10:3x，用户回「按你推荐的来」）
+
+### 新增
+
+| 文件 | 是什么 |
+| --- | --- |
+| `runtime/run-weekly-attribute-writeback.mjs` | 编排入口：定位周表 → 算这期 A/B → 判 SKU 数据在不在 → 有缺口 fail-closed、无缺口调写回 |
+| `runtime/fill-weekly-attribute-labels-core.mjs` | 追加 `summarizeAbReadiness(rows, hasSku)`（判据层，不进 CLI） |
+| `runtime/fill-weekly-attribute-labels-core.test.mjs` | 9 → **13** 条（新增 4 条守就绪度判据） |
+| `.gitignore` | 新增 `evidence/**/xws-sku-payload-*.txt`（SKILL.md 保密契约；历史两个已跟踪的按决定不动） |
+
+### 闸门实测（这是本轮最有说服力的一段）
+
+| 场景 | 命令 | 结果 | 收据 |
+| --- | --- | --- | --- |
+| 09-13 期（最新，A/B 1） | `--recompute-ab`（演练） | A/B 1 / 可取 1 / 缺 0 ⇒ 通过到写回演练 `plannedRows=1` | `wbrun-dry.json` / `wbrun-dry.txt` |
+| 08-23 期（A/B 8） | `--check-only` | A/B 8 / 可取 8 / 缺 0 ⇒ 通过 | `wbrun-gate-0823.json` / `.txt` |
+| 09-06 期（A/B 1） | `--check-only` | A/B 1 / 可取 0 / 缺 1 ⇒ **拦下，退出码 3，未写** | `wbrun-gate-0906.json` / `.txt` |
+
+09-06 期那条缺口：`[A-爆款竞品] no-sku-data 商品id=678598686014`
+「SSWW浪鲸深泡浴缸小户型家用日式亚克力独立式国家补贴迷你可移动」—— 按老路手工写回，
+它会被回落标题规则写成「无注明」并被永久锁死。
+
+**顺带坐实了「主表口径会漏」**：`summarize-xws-sku-queue.mjs`（读主表）报 `eligible 12 / pending 0`
+（看起来没有待采），而按周表当期口径，09-06 期有 1 个 A-爆款竞品从没采过 SKU。
+两个数都对，只是回答的问题不同 —— 这也是队列改按周表算的理由。
+
+### 第二段的验证
+
+- core 测试 **13 pass / 0 fail**；`node --check` ×3 通过。
+- 突变验证扩到 **14 条（CAUGHT 14/14）**，其中 4 条专门守就绪度判据
+  （不筛 A/B、提不出 id 也去查、两种缺失不分开报、就绪数恒等于 A/B 总数 —— 最后一条就是
+  「让闸门永远不拦」的形态）。
+- `node scripts/run-test-suite.mjs runtime --concurrency=1`：**86 files / 765 tests / 765 pass / 0 fail**
+  （跑在 `49cdd52` 之后 + 本次未提交改动）。
+
+### 第二段**没有**做的
+
+- **没把入口挂进调度**：`round-schedule.json` 里竞品链那条排期仍是 `enabled:false`，入口现在是一条可手动跑的命令。
+- **没改采集队列**：`summarize-xws-sku-queue.mjs` 仍读主表；入口只报缺口、不替采集端排队。
+- **没去采 09-06 期那个缺口商品**（属历史期）。
 
 

@@ -87,26 +87,70 @@ CLI `runtime/fill-weekly-attribute-labels.mjs` 改为引用 core（不再各留�
 
 | 项 | 结果 |
 | --- | --- |
-| `node --check` 两个文件 | 通过 |
-| `runtime/fill-weekly-attribute-labels-core.test.mjs` | **9 pass / 0 fail** |
+| `node --check` 三个文件 | 通过 |
+| `runtime/fill-weekly-attribute-labels-core.test.mjs` | **13 pass / 0 fail** |
 | dry-run **不带** `--recompute-ab` | `plannedRows = 0`（全部已存跳过）—— 这就是锁死的现场 |
 | dry-run **带** `--recompute-ab` | `plannedRows = 1`；`尺寸 重算 1`、`适用空间 重算 1`；`expectedClassAfter = { B-高价值竞品: 1 }`；`joinKeys.primaryHit = 1 / fallbackHit = 0` |
-| 突变验证（10 条，每条守一条判据） | **CAUGHT 10/10**，MISSED 0，SKIP/NOOP 0；还原 sha256(12) 逐字节一致，还原后基线复跑 9 pass |
+| 突变验证（14 条，每条守一条判据） | **CAUGHT 14/14**，MISSED 0，SKIP/NOOP 0；还原 sha256(12)=`b658ee948632` 逐字节一致，还原后基线复跑 13 pass |
+| 编排入口闸门 | 09-06 期实测被拦下（A/B 1 行、可取 0）**退出码 3 且未写**；09-13 与 08-23 期通过 |
+| runtime 套件（跑在 `49cdd52` 之后 + 本次改动） | **86 files / 765 tests / 765 pass / 0 fail** |
 
 突变报告：`evidence/competitor-state-2026-09-21/mutation-fwal-core.txt`
 dry-run 收据：`evidence/competitor-state-2026-09-21/fwal-dry-base.json`、`fwal-dry-recompute.json`
+编排入口收据：`wbrun-dry.json`（演练）、`wbrun-gate-0823.json`（通过）、`wbrun-gate-0906.json`（被拦）
 
-## 六、没做的（明确划出边界）
+## 六、编排入口（同日第二段）
+
+`runtime/run-weekly-attribute-writeback.mjs` —— 把「周表 A/B → 确认数据在 → 写回」固化成一条命令。
+
+为什么必须有它：**手工跑没有任何东西阻止同样的顺序再错一次。** 上一节那三个断点里，
+「顺序」这一条只靠文档约束是不够的。
+
+它按顺序做四件事：
+
+1. 定位竞品周表（默认最新一期，可用 `--table-id` 指定）
+2. 算出这期的 A/B 行，逐行判断「SKU明细里有没有它的尺寸数据」
+3. **有缺口 ⇒ fail-closed（退出码 3）**：打印待采队列，**一个字都不写**
+4. 无缺口 ⇒ 调 `fill-weekly-attribute-labels.mjs`（默认 dry-run；`--apply` 才真写）
+
+参数：`--check-only`（只检查）、`--recompute-ab`（透传）、`--apply`、`--receipt`、`--table-id`。
+退出码：`0` 检查通过 ／ `3` 有 A/B 缺 SKU 数据 ／ `1` 其它错误。
+
+**队列按「周表当期 A/B」算，不按主表最新状态算。** 主表是最新快照：一个商品这周是 B、
+下周降成本 C 之后，主表队列就不含它了 —— 而周表那一期的 A/B 仍然需要尺寸。
+下面 09-06 期那条实测就是撞在这上面。
+
+### 实测：闸门不是装饰
+
+| 场景 | 命令 | 结果 |
+| --- | --- | --- |
+| 09-13 期（最新，A/B 1 行） | `--recompute-ab`（演练） | A/B 1 / 可取 1 / 缺 0 ⇒ 通过，走到写回演练 `plannedRows=1` |
+| 08-23 期（A/B 8 行） | `--check-only` | A/B 8 / 可取 8 / 缺 0 ⇒ 通过（这 8 个正是 SKU明细 那批的来源） |
+| 09-06 期（A/B 1 行） | `--check-only` | A/B 1 / 可取 0 / 缺 1 ⇒ **闸门拦下，退出码 3**，未写任何东西 |
+
+09-06 期那个缺口就是加这个入口的理由：
+
+```
+缺 [A-爆款竞品] no-sku-data 商品id=678598686014 当前尺寸=""
+    标题：SSWW浪鲸深泡浴缸小户型家用日式亚克力独立式国家补贴迷你可移动
+```
+
+含义是：按老路手工写回，这一行会被回落标题规则写成「无注明」，然后被永久锁死。
+
+而且它**顺带证明了主表口径会漏**：`runtime/summarize-xws-sku-queue.mjs`（读主表）报
+`eligible 12 / pending 0`，看起来「没有待采」；但按周表当期口径，09-06 期有一个
+A-爆款竞品从没采过 SKU。两个数都对，只是回答的问题不同。
+
+## 七、没做的（明确划出边界）
 
 - **没有回填 09-13 期那张周表**（按指令：历史周表不回填）。dry-run 证明「就绪、会写 1 行」，
-  但没有执行 `--apply`。
-- **没有做编排入口**（按指令：先完整跑通再固定）。所以「采集 → 写回」的**顺序**
-  目前是靠本文档约束，不是靠代码强制。
-- **没有让第 6 步自动覆盖周表全部 A/B**。现在 SKU明细 只覆盖 14 个商品（来自主表 A/B 队列），
-  而周表每期 A/B 行数会变。要让「周表每个 A/B 都自动取到尺寸」，还得让采集队列改成
-  「周表 A/B ∪ 主表 A/B」。
+  但没有执行 `--apply`。09-06 期那个缺口商品也**没有去采集**（那属于历史期）。
+- **没有把编排入口挂进任何调度**：它现在是一条可以手动跑的命令，
+  `runtime/round-schedule.json` 里竞品链那条排期仍是 `enabled:false`。
+- **没有改第 6 步的采集队列**：`summarize-xws-sku-queue.mjs` 仍读主表。
+  新入口会在缺数据时把「周表口径的待采清单」打出来，但没有替采集端排队。
 
-## 七、下次改这条链之前
+## 八、下次改这条链之前
 
 - A/B 判据在飞书那边是**公式（type 20，不可写）**，本地只读不写；
   `competitor-v2-core.mjs` 是本地唯一同源实现，别在别处再抄一份。
