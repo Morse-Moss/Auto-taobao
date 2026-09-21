@@ -1,0 +1,70 @@
+{
+ "href": "https://sycm.taobao.com/mc/free/sycm",
+ "claim": {
+  "self": {
+   "tag": "DIV",
+   "cls": "order-info-top",
+   "text": "一键领取",
+   "attrs": []
+  },
+  "chain": [
+   {
+    "tag": "DIV",
+    "cls": "order-info-top",
+    "text": "一键领取",
+    "attrs": []
+   },
+   {
+    "tag": "DIV",
+    "cls": "order-info",
+    "text": "一键领取 4月起免费使用全部产品，退还未使用费用 详细惠商规则 市场洞察全新 免费 流量纵横 免费￥3,888/年起 品",
+    "attrs": []
+   },
+   {
+    "tag": "DIV",
+    "cls": "",
+    "text": "一键领取 4月起免费使用全部产品，退还未使用费用 详细惠商规则 市场洞察全新 免费 流量纵横 免费￥3,888/年起 品",
+    "attrs": []
+   },
+   {
+    "tag": "DIV",
+    "cls": "free-sycm-order",
+    "text": "一键领取 4月起免费使用全部产品，退还未使用费用 详细惠商规则 市场洞察全新 免费 流量纵横 免费￥3,888/年起 品",
+    "attrs": []
+   },
+   {
+    "tag": "DIV",
+    "cls": "",
+    "text": "一键领取 4月起免费使用全部产品，退还未使用费用 详细惠商规则 市场洞察全新 免费 流量纵横 免费￥3,888/年起 品",
+    "attrs": []
+   }
+  ]
+ },
+ "tiles": [
+  {
+   "name": "市场洞察全新",
+   "found": false
+  },
+  {
+   "name": "流量纵横",
+   "found": false
+  },
+  {
+   "name": "品类罗盘",
+   "found": false
+  },
+  {
+   "name": "数据作战室",
+   "found": false
+  },
+  {
+   "name": "服务洞察",
+   "found": false
+  },
+  {
+   "name": "长周期365天",
+   "found": false
+  }
+ ],
+ "serviceInsightBlock": null
+}

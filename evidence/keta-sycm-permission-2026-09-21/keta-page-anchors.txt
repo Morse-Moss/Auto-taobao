@@ -1,0 +1,50 @@
+at=2026-09-21T10:01:22.593Z
+
+===== https://sycm.taobao.com/mc/free/sycm
+-- 可点链接（去重后）
+   [生意参谋]  https://sycm.taobao.com/portal/index.htm
+   [科塔全卫定制 主店]  javascript: void(0);
+   [大促招商中，立即报名]  https://myseller.taobao.com/home.htm/starb/tmc-next/sale/seller/campaign/index.htm?campaignId=49646
+   [准确]  javascript:;
+   [去反馈]  https://survey.taobao.com/apps/zhiliao/SliFYO5WI
+   [惠商]  https://sycm.taobao.com/mc/free/sycm
+   [我的]  https://sycm.taobao.com/custom/user_info
+   [帮助]  https://sycm.taobao.com/college/v2/product/event
+   [退出]  https://login.taobao.com/member/logout.jhtml?f=top&redirectURL=https://sycm.taobao.com/portal/home.htm
+   [首页]  https://sycm.taobao.com/portal/home.htm
+   [交易]  https://sycm.taobao.com/ipoll/index.htm
+   [流量]  https://sycm.taobao.com/flow/monitor/overview
+   [客户]  https://sycm.taobao.com/cc/customer/overview
+   [商品]  https://sycm.taobao.com/cc/item_rank
+   [营销]  https://sycm.taobao.com/datawar/activity/analysis
+   [服务]  https://sycm.taobao.com/qos/service/core_monitor/new
+   [内容]  https://sycm.taobao.com/xsite/contentanalysis/overview_new_v2
+   [市场]  https://sycm.taobao.com/mc/free/market_rank
+   [自助分析]  https://sycm.taobao.com/adm/v3/micro/auto_analysis/my_space
+   [业务专区]  https://sycm.taobao.com/xsite/shoutao/information-flow.htm
+   [详细惠商规则]  https://alidocs.dingtalk.com/i/nodes/YndMj49yWjlAYoxjtGkZQbq3J3pmz5aA
+   [阿里巴巴集团]  https://news.alibaba.com/specials/aboutalibaba/aligroup/index.html
+   [阿里巴巴国际站]  https://www.alibaba.com/
+   [阿里巴巴中国站]  https://www.1688.com/
+   [全球速卖通]  https://www.aliexpress.com/
+   [淘宝网]  https://www.taobao.com/?&bc_fl_src=tbsite_hQa17M87
+   [天猫]  https://www.tmall.com/
+   [聚划算]  https://ju.taobao.com/
+   [一淘]  https://www.etao.com/
+   [阿里妈妈]  https://www.alimama.com/
+   [阿里云计算]  https://www.aliyun.com/
+   [云OS]  https://www.yunos.com/
+   [万网]  https://www.net.cn/
+   [中国雅虎]  https://cn.yahoo.com/
+   [支付宝]  https://www.alipay.com/
+   [浙B2-20080224]  http://zcainfo.miitbeian.gov.cn/state/outPortal/loginPortal.action
+   [合作伙伴]  https://www.taobao.com/about/partners.php
+   [营销中心]  https://pro.taobao.com/
+   [联系客服]  https://service.taobao.com/support/main/service_route.htm
+   [开放平台]  https://open.taobao.com/
+   [诚征英才]  https://www.taobao.com/about/join.php
+   [联系我们]  https://www.taobao.com/about/contact.php
+   [网站地图]  https://www.taobao.com/sitemap.php
+   [法律声明]  https://www.taobao.com/about/copyright.php
+-- 命中关键词的元素
+   <SPAN> 一键领取  →  (不是链接)
