@@ -169,6 +169,12 @@ export function contentHeatForViews(views) {
   return views >= A_THRESHOLD ? '高' : '低';
 }
 
+// 「查不到」与「渠道不给查」是两件事。配额用尽时结果表里出现的是升级引导文案，不是空结果占位；
+// 若把它当 NO_EXACT_TOPIC，会算出 views=0 并照常进回填计划（2026-09-21 实测 willWrite=true），
+// 优先级公式随即把该词从 A候选 降成 B-持续观察 —— 等于把「渠道拒绝了」记成「浏览量就是 0」。
+// 所以这类文案在这里显式失败：与 parseDisplayedViews 拒绝无法解析的浏览量文案同一层、同一风格。
+const LIMIT_WALL_PATTERN = /每天最多可以访问|请升级到高版本|升级版本|升级会员|访问次数已达上限|今日访问次数/u;
+
 export function classifyTopicSnapshot({ keyword, rows, emptyText }) {
   const search = plain(keyword);
   if (!search) throw new Error('Huitun keyword is empty');
@@ -180,6 +186,9 @@ export function classifyTopicSnapshot({ keyword, rows, emptyText }) {
     return { keyword: search, status: 'FOUND_EXACT', topic, viewsRaw, views: parseDisplayedViews(viewsRaw) };
   }
   const evidence = plain(emptyText) || '灰豚返回相近话题，无完全同名话题';
+  if (LIMIT_WALL_PATTERN.test(evidence)) {
+    throw new Error(`Huitun refused to serve this query instead of returning an empty result: ${evidence.slice(0, 200)}`);
+  }
   return { keyword: search, status: 'NO_EXACT_TOPIC', topic: null, viewsRaw: evidence, views: 0 };
 }
 

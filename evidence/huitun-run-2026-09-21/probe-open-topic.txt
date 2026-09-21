@@ -1,0 +1,21 @@
+页签 C05DDCA0FB83FC4AC2128B5ABC459684 起点 https://xhs.huitun.com/#/home
+
+---- [起点]
+{"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","anchor":{"exists":true,"text":"话题搜索","rect":[0,0,0,0],"ownDisplay":"inline","ownVisibility":"visible","hiddenAncestors":["UL.ant-menu ant-menu-sub ant-menu-inline=display:none"],"inPopup":false,"inSub":true,"inDropdown":false,"hitIsSelfOrChild":false,"hitDesc":null},"input":false,"submenuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+
+展开「热门内容」前的定位 -> {"value":{"found":true,"text":"热门内容","aria":"rc-menu-uuid-47217-1-sub8-popup","visible":true,"parentAria":"","cls":"ant-menu-submenu-title"}}
+
+---- [点了 sub8-popup 之后]
+{"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","anchor":{"exists":true,"text":"话题搜索","rect":[68,393,56,17],"ownDisplay":"inline","ownVisibility":"visible","hiddenAncestors":[],"inPopup":false,"inSub":true,"inDropdown":false,"hitIsSelfOrChild":true,"hitDesc":"A."},"input":false,"submenuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+
+锚点可见=true  {"value":{"exists":true,"text":"话题搜索","rect":[68,393,56,17],"ownDisplay":"inline","ownVisibility":"visible","hiddenAncestors":[],"inPopup":false,"inSub":true,"inDropdown":false,"hitIsSelfOrChild":true,"hitDesc":"A."}}
+
+标记 -> {"value":"marked"}
+点击 -> {"clicked":true,"x":96.00000190734863,"y":353.8035764694214,"tag":"A","text":"话题搜索"}
+  t+1s {"value":{"href":"https://xhs.huitun.com/#/anchor/anchor_topic","input":true}}
+  t+2s {"value":{"href":"https://xhs.huitun.com/#/anchor/anchor_topic","input":true}}
+  t+3s {"value":{"href":"https://xhs.huitun.com/#/anchor/anchor_topic","input":true}}
+  t+4s {"value":{"href":"https://xhs.huitun.com/#/anchor/anchor_topic","input":true}}
+  t+5s {"value":{"href":"https://xhs.huitun.com/#/anchor/anchor_topic","input":true}}
+  t+6s {"value":{"href":"https://xhs.huitun.com/#/anchor/anchor_topic","input":true}}
+截图={"saved":"D:/Retire/sycm-automation/evidence/huitun-run-2026-09-21/after-topic-click.png"}

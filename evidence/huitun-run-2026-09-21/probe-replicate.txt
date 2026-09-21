@@ -1,0 +1,40 @@
+/new -> [object Object]
+新页签 AA23787FBC1348C143CA1C165487F117  url=https://dy.huitun.com/app/#/dashboard  label=probe-replicate-20260921
+
+[新页签就绪] {"value":{"href":"https://dy.huitun.com/app/#/dashboard","title":"灰豚数据","headerAccount":"","anchorExists":false,"anchorRect":null,"input":false,"dropdownOpen":false}}
+[等 2.5s 后] {"value":{"href":"https://dy.huitun.com/app/#/dashboard","title":"工作台","headerAccount":"灰豚精选\n数据定制\n25\nDY003719756","anchorExists":false,"anchorRect":null,"input":false,"dropdownOpen":false}}
+标触发位 -> {"value":{"marked":true,"count":2,"tag":"SPAN","cls":"antd-pro-components-mod-basic-header-index-header_link ant-dropdown-trigger","text":"","rect":[1018,10,92,28]}}
+clickAt 触发位 -> {"clicked":true,"x":1063.7768592834473,"y":24.000000953674316,"tag":"SPAN","text":""}
+（无 mouseMoved 的）clickAt 之后的下拉 -> {"value":{"items":[{"text":"","img":"logo_dy.svg"},{"text":"","img":"logo_chuangyi.svg"},{"text":"","img":"logo_xhs__2.svg"}],"dd":[{"w":92,"cls":"ant-dropdown ant-dropdown-placement-bottomLeft"}]}}
+
+
+标红薯项 -> {"value":"marked"}
+clickAt 红薯项 -> {"clicked":true,"x":1064.0000648498535,"y":127.00000762939453,"tag":"LI","text":""}
+[切换后 t+1s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"灰豚数据红薯版","headerAccount":"","anchorExists":false,"anchorRect":null,"input":false,"dropdownOpen":false}}
+[切换后 t+2s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","headerAccount":"新手手册\n拉新领会员\nID：1001392394","anchorExists":true,"anchorRect":[0,0,0,0],"input":false,"dropdownOpen":false}}
+[切换后 t+3s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","headerAccount":"新手手册\n拉新领会员\nID：1001392394","anchorExists":true,"anchorRect":[0,0,0,0],"input":false,"dropdownOpen":false}}
+[切换后 t+4s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","headerAccount":"新手手册\n拉新领会员\nID：1001392394","anchorExists":true,"anchorRect":[0,0,0,0],"input":false,"dropdownOpen":false}}
+[切换后 t+5s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","headerAccount":"新手手册\n拉新领会员\nID：1001392394","anchorExists":true,"anchorRect":[0,0,0,0],"input":false,"dropdownOpen":false}}
+[切换后 t+6s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","headerAccount":"新手手册\n拉新领会员\nID：1001392394","anchorExists":true,"anchorRect":[0,0,0,0],"input":false,"dropdownOpen":false}}
+[切换后 t+7s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","headerAccount":"新手手册\n拉新领会员\nID：1001392394","anchorExists":true,"anchorRect":[0,0,0,0],"input":false,"dropdownOpen":false}}
+[切换后 t+8s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","headerAccount":"新手手册\n拉新领会员\nID：1001392394","anchorExists":true,"anchorRect":[0,0,0,0],"input":false,"dropdownOpen":false}}
+
+[话题入口前] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","headerAccount":"新手手册\n拉新领会员\nID：1001392394","anchorExists":true,"anchorRect":[0,0,0,0],"input":false,"dropdownOpen":false}}
+照脚本用 clickDom(sub8-popup) -> {"clicked":true,"tag":"DIV","text":"热门内容"}
+[clickDom 之后 300ms] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","headerAccount":"新手手册\n拉新领会员\nID：1001392394","anchorExists":true,"anchorRect":[68,393,56,17],"input":false,"dropdownOpen":false}}
+clickDom 后锚点 -> {"value":{"rect":[68,393,56,17],"hiddenAncestors":[]}}
+
+标话题入口 -> {"value":"marked"}
+clickAt 话题入口 -> {"clicked":true,"x":96.00000190734863,"y":353.8035764694214,"tag":"A","text":"话题搜索"}
+  t+1s {"value":{"href":"https://xhs.huitun.com/#/anchor/anchor_topic","input":true}}
+  t+2s {"value":{"href":"https://xhs.huitun.com/#/anchor/anchor_topic","input":true}}
+  t+3s {"value":{"href":"https://xhs.huitun.com/#/anchor/anchor_topic","input":true}}
+  t+4s {"value":{"href":"https://xhs.huitun.com/#/anchor/anchor_topic","input":true}}
+  t+5s {"value":{"href":"https://xhs.huitun.com/#/anchor/anchor_topic","input":true}}
+截图={"saved":"D:/Retire/sycm-automation/evidence/huitun-run-2026-09-21/replicate-final.png"}
+
+---- 最终页签清单
+  [飞书底单页] 761FD748AF40CD7EAAC90A445BD95A12  https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+  [生意参谋工作页] D9E305560F246C435906047907D6A987  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [huitun-login] C05DDCA0FB83FC4AC2128B5ABC459684  https://xhs.huitun.com/#/anchor/anchor_topic
+  [probe-replicate-20260921] AA23787FBC1348C143CA1C165487F117  https://xhs.huitun.com/#/anchor/anchor_topic

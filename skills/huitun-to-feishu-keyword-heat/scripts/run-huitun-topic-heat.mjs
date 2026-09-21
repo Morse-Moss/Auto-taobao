@@ -287,6 +287,17 @@ class HuitunBrowser {
     });
   }
 
+  // 坐标精确点击。为什么不复用 clickAt：clickAt 是「自己算 rect 中心再点」，中间隔着一次
+  // 网络往返，目标在这段时间里动过就会点空且不报错；这里要的是「先复核过命中点，再按这个点打」。
+  async clickPoint({ x, y }) {
+    const target = await this.target();
+    return proxyRequest(this.proxy, `/clickPoint?target=${encodeURIComponent(target.targetId)}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ x, y }),
+    });
+  }
+
   async screenshot(name) {
     const target = await this.target();
     const file = path.join(this.runDir, name);
@@ -449,46 +460,74 @@ class HuitunBrowser {
 
   async openTopicSearch() {
     await this.waitForAccount({ stage: '灰豚红薯版' });
+    const confirmTopicSearch = async () => {
+      const ready = await this.evaluate(`Boolean(document.querySelector('input[placeholder="请输入话题关键词"]'))`);
+      if (!ready) return false;
+      await this.ensureAllowed({ requireAccount: true, stage: '灰豚话题搜索' });
+      this.log('TOPIC_SEARCH_READY', { url: XHS_TOPIC_URL });
+      return true;
+    };
+
     let target = await this.target();
-    if (!target.url.includes('#/anchor/anchor_topic')) {
-      const linkReady = await this.evaluate(`(() => {
+    if (target.url.includes('#/anchor/anchor_topic') && await confirmTopicSearch()) return;
+
+    // 这一步为什么不能「标个属性再点」：话题入口在「热门内容」子菜单里，展开带动画，锚点在动画
+    // 中途会漂；按 rect 中心盲点一下，点空了既不报错、页面也不动，只能干等到超时。
+    // 2026-09-21 实测 4 次里 3 次这样静默失败（锚点明明可见、URL 30 秒不变）。
+    // 所以改成：滚进视口 → 用 elementFromPoint 复核「这一点真的落在锚点上」→ 才点 → 点完看它跳没跳。
+    // 判据本身仍是 page-contract.md 的 `a[href="#/anchor/anchor_topic"]`，这里只补「点得着」与「点了有反应」。
+    const deadline = Date.now() + 30_000;
+    let clicks = 0;
+    let lastMiss = 'not-attempted';
+    while (Date.now() < deadline) {
+      const point = await this.evaluate(`(() => {
         const link = document.querySelector('a[href="#/anchor/anchor_topic"]');
-        if (!link) return false;
+        if (!link) return { ok: false, reason: 'anchor-missing' };
+        link.scrollIntoView({ block: 'center' });
         const rect = link.getBoundingClientRect();
-        const style = getComputedStyle(link);
-        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+        if (rect.width <= 0 || rect.height <= 0) return { ok: false, reason: 'anchor-collapsed' };
+        const x = rect.x + rect.width / 2;
+        const y = rect.y + rect.height / 2;
+        const hit = document.elementFromPoint(x, y);
+        return { ok: true, x, y,
+          hitIsTarget: Boolean(hit) && (hit === link || link.contains(hit)),
+          hitDesc: hit ? hit.tagName + '.' + String(hit.className || '').slice(0, 60) : 'none' };
       })()`);
-      if (!linkReady) {
+      if (!point?.ok) {
+        lastMiss = point?.reason || 'anchor-unreadable';
         await this.clickDom('div.ant-menu-submenu-title[aria-controls$="sub8-popup"]');
         await sleep(300);
+        continue;
       }
-      const marked = await this.evaluate(`(() => {
-        const link = document.querySelector('a[href="#/anchor/anchor_topic"]');
-        if (!link) return false;
-        const rect = link.getBoundingClientRect();
-        const style = getComputedStyle(link);
-        if (rect.width <= 0 || rect.height <= 0 || style.display === 'none' || style.visibility === 'hidden') return false;
-        link.setAttribute('data-huitun-topic-search', '1');
-        return true;
-      })()`);
-      if (!marked) throw new Error('The visible 话题搜索 menu item was not found');
-      await this.clickAt('[data-huitun-topic-search="1"]');
-    }
-
-    const deadline = Date.now() + 30_000;
-    while (Date.now() < deadline) {
-      target = await this.target();
-      if (target.url.includes('#/anchor/anchor_topic')) {
-        const ready = await this.evaluate(`Boolean(document.querySelector('input[placeholder="请输入话题关键词"]'))`);
-        if (ready) {
-          await this.ensureAllowed({ requireAccount: true, stage: '灰豚话题搜索' });
-          this.log('TOPIC_SEARCH_READY', { url: XHS_TOPIC_URL });
-          return;
-        }
+      if (!point.hitIsTarget) {
+        lastMiss = `point hits ${point.hitDesc}`;
+        await sleep(250);
+        continue;
       }
-      await sleep(500);
+      clicks += 1;
+      await this.clickPoint({ x: point.x, y: point.y });
+      this.log('TOPIC_ENTRY_CLICKED', { attempt: clicks, x: Math.round(point.x), y: Math.round(point.y) });
+      const settle = Date.now() + 4_000;
+      let navigated = false;
+      while (Date.now() < settle) {
+        target = await this.target();
+        if (target.url.includes('#/anchor/anchor_topic')) { navigated = true; break; }
+        await sleep(250);
+      }
+      if (!navigated) {
+        lastMiss = 'clicked but did not navigate';
+        continue;
+      }
+      // 换了 hash 不等于页面就绪（SPA 先改路由、再渲染表格）。这里必须等，不能只查一次就
+      // 回头再点一遍 —— 那会打出一个假的 attempt=2，让「重试到底有没有救场」变成看不出来的事。
+      const render = Date.now() + 3_000;
+      while (Date.now() < render) {
+        if (await confirmTopicSearch()) return;
+        await sleep(250);
+      }
+      lastMiss = 'navigated but the topic input did not render';
     }
-    throw new Error('Timed out opening 灰豚话题搜索');
+    throw new Error(`Timed out opening 灰豚话题搜索 (clicks=${clicks}, lastMiss=${lastMiss})`);
   }
 
   async readSearchSnapshot() {

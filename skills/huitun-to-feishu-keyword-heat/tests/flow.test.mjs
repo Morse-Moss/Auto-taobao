@@ -80,6 +80,23 @@ test('returns zero when Huitun has no exact topic and never sums similar topics'
   });
 });
 
+test('a Huitun quota wall is a refusal, not an empty result with zero views', () => {
+  // 2026-09-21 实测原文。它曾被当成 NO_EXACT_TOPIC：views=0、willWrite=true，
+  // 也就是把「渠道不给查」写成「浏览量是 0」，公式随即把该词从 A候选 降成 B-持续观察。
+  const wall = '该版本每天最多可以访问10次，请升级到高版本使用\n\n升级版本';
+  assert.throws(() => classifyTopicSnapshot({ keyword: '泡澡浴缸', rows: [], emptyText: wall }), /refused/i);
+  // 真·空结果仍然照常分类（不能因为加了这道闸就把正常的「没有同名话题」也判死）
+  assert.deepEqual(classifyTopicSnapshot({ keyword: '泡澡浴缸', rows: [], emptyText: '没有找到话题~~点击这里' }), {
+    keyword: '泡澡浴缸',
+    status: 'NO_EXACT_TOPIC',
+    topic: null,
+    viewsRaw: '没有找到话题~~点击这里',
+    views: 0,
+  });
+  // 有完全同名话题时也不受这道闸影响
+  assert.equal(classifyTopicSnapshot({ keyword: '泡澡浴缸', rows: [['#泡澡浴缸#', '32.7w']], emptyText: wall }).views, 327_000);
+});
+
 test('uses the confirmed 1000w threshold and no invented middle band', () => {
   assert.equal(contentHeatForViews(9_999_999), '低');
   assert.equal(contentHeatForViews(10_000_000), '高');

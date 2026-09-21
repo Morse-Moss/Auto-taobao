@@ -1,0 +1,28 @@
+页签 C05DDCA0FB83FC4AC2128B5ABC459684 起点 https://dy.huitun.com/app/#/dashboard
+
+[before] {"value":{"href":"https://dy.huitun.com/app/#/dashboard","title":"工作台","account":"DY003719756","topicAnchor":false,"topicInput":false,"menuTitles":["行业","达人","直播","商品","小店","品牌","短视频","本地生活","关注","录制&提取","工具箱"]}}
+标记红薯项 -> {"value":"marked:logo_xhs__2.svg"}
+点击 -> {"clicked":true,"x":1064.0000648498535,"y":127.00000762939453,"tag":"LI","text":""}
+
+[t+1s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":false,"topicInput":false,"menuTitles":[]}}
+[t+2s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+3s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+4s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+5s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+6s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+7s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+8s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+9s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+10s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+11s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+12s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+13s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+14s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+[t+15s] {"value":{"href":"https://xhs.huitun.com/#/home","title":"工作台-灰豚数据红薯版","account":"","topicAnchor":true,"topicInput":false,"menuTitles":["数据大盘","达人查找","品牌查找","笔记查找","品类搜索","热门内容","投放监控","直播分析","商品分析","店铺分析","资源管理","矩阵管理","工具箱"]}}
+
+---- 截图
+5s: {"saved":"D:/Retire/sycm-automation/evidence/huitun-run-2026-09-21/switch-5s-C05DDCA0.png"}
+---- 最终页签
+  761FD748AF40CD7EAAC90A445BD95A12  https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+  D9E305560F246C435906047907D6A987  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  C05DDCA0FB83FC4AC2128B5ABC459684  https://xhs.huitun.com/#/home

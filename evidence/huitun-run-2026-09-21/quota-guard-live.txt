@@ -1,0 +1,10 @@
+profile=kcne
+env-file=E:/小红书/.env.feishu-kcne.local
+{"at":"2026-09-21T07:49:04.673Z","event":"PROXY_READY","browser":"edge-daily-report"}
+{"at":"2026-09-21T07:49:04.674Z","event":"START","tableId":"tblZsUns9353w3nl","tableName":"关键词分析 V1（2026-09-19）","apply":false}
+{"at":"2026-09-21T07:49:07.311Z","event":"QUEUE_READY","candidates":1,"keywords":["泡澡浴缸"]}
+{"at":"2026-09-21T07:49:09.895Z","event":"PLATFORM_READY","platform":"灰豚数据红薯版"}
+{"at":"2026-09-21T07:49:11.639Z","event":"TOPIC_ENTRY_CLICKED","attempt":1,"x":96,"y":354}
+{"at":"2026-09-21T07:49:11.940Z","event":"TOPIC_SEARCH_READY","url":"https://xhs.huitun.com/#/anchor/anchor_topic"}
+{"at":"2026-09-21T07:49:11.942Z","event":"QUERY_STARTED","keyword":"泡澡浴缸"}
+{"status":"FAILED","error":"Huitun refused to serve this query instead of returning an empty result: 该版本每天最多可以访问10次，请升级到高版本使用\n\n升级版本","details":{}}

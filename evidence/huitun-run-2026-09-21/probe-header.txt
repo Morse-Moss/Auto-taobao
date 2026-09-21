@@ -1,0 +1,23 @@
+共 3 个页签：
+  [其他·不碰] 761FD748AF40CD7EAAC90A445BD95A12  https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+  [其他·不碰] D9E305560F246C435906047907D6A987  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [灰豚] C05DDCA0FB83FC4AC2128B5ABC459684  https://dy.huitun.com/app/#/dashboard
+
+工作页签： C05DDCA0FB83FC4AC2128B5ABC459684  https://dy.huitun.com/app/#/dashboard
+
+---- 页头结构
+{"value":{"origin":"https://dy.huitun.com","href":"https://dy.huitun.com/app/#/dashboard","title":"工作台","triggers":["SPAN.antd-pro-components-mod-basic-header-index-header_link.ant-dropdown-trigger |  | rect=1018,10 92x28"],"logoImgs":["dy.huitun.com/images/icon/logo_title_mini.png | alt=灰豚数据","dy.huitun.com/images/icon/icon_nav.svg | alt=","dy.huitun.com/images/background/header_xhs_logo.png | alt=","dy.huitun.com/images/gif/huixuan_logo.gif | alt=","dy.huitun.com/images/icon/logo_dy.svg | alt=","dy.huitun.com/images/icon/initial_avatar.png | alt=","dy.huitun.com/images/icon/vip_mf.svg | alt=","dy.huitun.com/images/gif/liveing_icon.gif | alt=","dy.huitun.com/images/icon/lg_huixuan.png | alt=","dy.huitun.com/images/icon/multi_account.png | alt=","dy.huitun.com/images/icon/lg_4.png | alt=","dy.huitun.com/images/icon/lg_1.png | alt="],"aiEscape":["DIV. |  | rect=214,8 32x32","DIV.antd-pro-components-mod-header-search-index-mod_headerSearch |  | rect=214,8 32x32","SPAN.antd-pro-components-mod-header-search-index-mod_input.null.ant-input-affix-wrapper |  | rect=214,8 32x32","INPUT.ant-input |  | rect=214,8 32x32","SPAN.ant-input-suffix |  | rect=212,9 34x30","DIV.antd-pro-components-mod-header-search-index-search_btn |  | rect=212,9 34x30","I.anticon |  | rect=221,15 16x16","svg.[object.SVGAnimatedString] |  | rect=221,15 16x16","use.[object.SVGAnimatedString] |  | rect=221,15 16x16","DIV.antd-pro-components-mod-basic-header-index-header_right | 灰豚精选数据定制25DY003719756 | rect=704,0 732x48"]}}
+
+---- 形如「…版」的可见徽标（平台切换器通常在这里）
+{"value":{"versionBadges":["DIV | 抖音直播电脑版 | cls=antd-pro-pages-workbench-components-workbench-nav-index-nav_cell","DIV | 抖音直播电脑版 | cls="]}}
+
+hover [class*=dropdown-trigger] -> {"hovered":true,"target":"C05DDCA0FB83FC4AC2128B5ABC459684","x":1063.7768592834473,"y":24.000000953674316}
+
+截图={"saved":"D:/Retire/sycm-automation/evidence/huitun-run-2026-09-21/header-dropdown-C05DDCA0.png"}
+---- 下拉内容
+{"value":{"items":[" || img=dy.huitun.com/images/icon/logo_dy.svg"," || img=dy.huitun.com/images/icon/logo_chuangyi.svg"," || img=dy.huitun.com/images/icon/logo_xhs__2.svg"],"dds":["ant-dropdown ant-dropdown-placement-bottomLeft [visible] "]}}
+
+---- 收尾后页签状态
+  761FD748AF40CD7EAAC90A445BD95A12  https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+  D9E305560F246C435906047907D6A987  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  C05DDCA0FB83FC4AC2128B5ABC459684  https://dy.huitun.com/app/#/dashboard

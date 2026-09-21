@@ -1,0 +1,88 @@
+########## tmp/collect-huitun-3x.out.txt ##########
+===== RUN 1 =====
+profile=kcne
+env-file=E:/小红书/.env.feishu-kcne.local
+{"at":"2026-09-21T07:45:24.199Z","event":"PROXY_READY","browser":"edge-daily-report"}
+{"at":"2026-09-21T07:45:24.201Z","event":"START","tableId":"tblZsUns9353w3nl","tableName":"关键词分析 V1（2026-09-19）","apply":false}
+{"at":"2026-09-21T07:45:29.134Z","event":"QUEUE_READY","candidates":1,"keywords":["泡澡浴缸"]}
+{"at":"2026-09-21T07:45:32.951Z","event":"PLATFORM_READY","platform":"灰豚数据红薯版"}
+{"at":"2026-09-21T07:45:36.301Z","event":"TOPIC_ENTRY_CLICKED","attempt":1,"x":96,"y":354}
+{"at":"2026-09-21T07:45:37.090Z","event":"TOPIC_ENTRY_CLICKED","attempt":2,"x":96,"y":354}
+{"at":"2026-09-21T07:45:37.203Z","event":"TOPIC_SEARCH_READY","url":"https://xhs.huitun.com/#/anchor/anchor_topic"}
+{"at":"2026-09-21T07:45:37.205Z","event":"QUERY_STARTED","keyword":"泡澡浴缸"}
+{"at":"2026-09-21T07:45:39.899Z","event":"QUERY_DONE","keyword":"泡澡浴缸","status":"FOUND_EXACT","topic":"#泡澡浴缸#","viewsRaw":"32.7w","views":327000}
+{"at":"2026-09-21T07:45:39.901Z","event":"RESULTS_WRITTEN","resultsPath":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074524Z-关键词分析-V1-2026-09-19\\results.json","count":1}
+{"at":"2026-09-21T07:45:42.793Z","event":"DRY_RUN_READY","plannedRecordUpdates":1,"runDir":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074524Z-关键词分析-V1-2026-09-19"}
+exit=0
+===== RUN 2 =====
+profile=kcne
+env-file=E:/小红书/.env.feishu-kcne.local
+{"at":"2026-09-21T07:45:43.660Z","event":"PROXY_READY","browser":"edge-daily-report"}
+{"at":"2026-09-21T07:45:43.661Z","event":"START","tableId":"tblZsUns9353w3nl","tableName":"关键词分析 V1（2026-09-19）","apply":false}
+{"at":"2026-09-21T07:45:46.879Z","event":"QUEUE_READY","candidates":1,"keywords":["泡澡浴缸"]}
+{"at":"2026-09-21T07:45:49.161Z","event":"PLATFORM_READY","platform":"灰豚数据红薯版"}
+{"at":"2026-09-21T07:45:50.469Z","event":"TOPIC_ENTRY_CLICKED","attempt":1,"x":96,"y":354}
+{"at":"2026-09-21T07:45:50.669Z","event":"TOPIC_ENTRY_CLICKED","attempt":2,"x":96,"y":354}
+{"at":"2026-09-21T07:45:50.699Z","event":"TOPIC_SEARCH_READY","url":"https://xhs.huitun.com/#/anchor/anchor_topic"}
+{"at":"2026-09-21T07:45:50.700Z","event":"QUERY_STARTED","keyword":"泡澡浴缸"}
+{"at":"2026-09-21T07:45:52.049Z","event":"QUERY_DONE","keyword":"泡澡浴缸","status":"FOUND_EXACT","topic":"#泡澡浴缸#","viewsRaw":"32.7w","views":327000}
+{"at":"2026-09-21T07:45:52.052Z","event":"RESULTS_WRITTEN","resultsPath":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074543Z-关键词分析-V1-2026-09-19\\results.json","count":1}
+{"at":"2026-09-21T07:45:54.198Z","event":"DRY_RUN_READY","plannedRecordUpdates":1,"runDir":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074543Z-关键词分析-V1-2026-09-19"}
+exit=0
+===== RUN 3 =====
+profile=kcne
+env-file=E:/小红书/.env.feishu-kcne.local
+{"at":"2026-09-21T07:45:55.039Z","event":"PROXY_READY","browser":"edge-daily-report"}
+{"at":"2026-09-21T07:45:55.040Z","event":"START","tableId":"tblZsUns9353w3nl","tableName":"关键词分析 V1（2026-09-19）","apply":false}
+{"at":"2026-09-21T07:45:58.465Z","event":"QUEUE_READY","candidates":1,"keywords":["泡澡浴缸"]}
+{"at":"2026-09-21T07:46:00.750Z","event":"PLATFORM_READY","platform":"灰豚数据红薯版"}
+{"at":"2026-09-21T07:46:01.302Z","event":"TOPIC_ENTRY_CLICKED","attempt":1,"x":96,"y":354}
+{"at":"2026-09-21T07:46:01.489Z","event":"TOPIC_ENTRY_CLICKED","attempt":2,"x":96,"y":354}
+{"at":"2026-09-21T07:46:01.598Z","event":"TOPIC_SEARCH_READY","url":"https://xhs.huitun.com/#/anchor/anchor_topic"}
+{"at":"2026-09-21T07:46:01.599Z","event":"QUERY_STARTED","keyword":"泡澡浴缸"}
+{"at":"2026-09-21T07:46:03.036Z","event":"QUERY_DONE","keyword":"泡澡浴缸","status":"FOUND_EXACT","topic":"#泡澡浴缸#","viewsRaw":"32.7w","views":327000}
+{"at":"2026-09-21T07:46:03.038Z","event":"RESULTS_WRITTEN","resultsPath":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074555Z-关键词分析-V1-2026-09-19\\results.json","count":1}
+{"at":"2026-09-21T07:46:05.808Z","event":"DRY_RUN_READY","plannedRecordUpdates":1,"runDir":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074555Z-关键词分析-V1-2026-09-19"}
+exit=0
+
+########## tmp/collect-huitun-3x-b.out.txt ##########
+===== RUN 1 =====
+profile=kcne
+env-file=E:/小红书/.env.feishu-kcne.local
+{"at":"2026-09-21T07:46:25.759Z","event":"PROXY_READY","browser":"edge-daily-report"}
+{"at":"2026-09-21T07:46:25.760Z","event":"START","tableId":"tblZsUns9353w3nl","tableName":"关键词分析 V1（2026-09-19）","apply":false}
+{"at":"2026-09-21T07:46:28.073Z","event":"QUEUE_READY","candidates":1,"keywords":["泡澡浴缸"]}
+{"at":"2026-09-21T07:46:30.384Z","event":"PLATFORM_READY","platform":"灰豚数据红薯版"}
+{"at":"2026-09-21T07:46:32.304Z","event":"TOPIC_ENTRY_CLICKED","attempt":1,"x":96,"y":354}
+{"at":"2026-09-21T07:46:32.623Z","event":"TOPIC_SEARCH_READY","url":"https://xhs.huitun.com/#/anchor/anchor_topic"}
+{"at":"2026-09-21T07:46:32.624Z","event":"QUERY_STARTED","keyword":"泡澡浴缸"}
+{"at":"2026-09-21T07:46:34.000Z","event":"QUERY_DONE","keyword":"泡澡浴缸","status":"NO_EXACT_TOPIC","topic":null,"viewsRaw":"该版本每天最多可以访问10次，请升级到高版本使用\n\n升级版本","views":0}
+{"at":"2026-09-21T07:46:34.002Z","event":"RESULTS_WRITTEN","resultsPath":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074625Z-关键词分析-V1-2026-09-19\\results.json","count":1}
+{"at":"2026-09-21T07:46:36.531Z","event":"DRY_RUN_READY","plannedRecordUpdates":1,"runDir":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074625Z-关键词分析-V1-2026-09-19"}
+exit=0
+===== RUN 2 =====
+profile=kcne
+env-file=E:/小红书/.env.feishu-kcne.local
+{"at":"2026-09-21T07:46:37.649Z","event":"PROXY_READY","browser":"edge-daily-report"}
+{"at":"2026-09-21T07:46:37.650Z","event":"START","tableId":"tblZsUns9353w3nl","tableName":"关键词分析 V1（2026-09-19）","apply":false}
+{"at":"2026-09-21T07:46:39.865Z","event":"QUEUE_READY","candidates":1,"keywords":["泡澡浴缸"]}
+{"at":"2026-09-21T07:46:42.628Z","event":"PLATFORM_READY","platform":"灰豚数据红薯版"}
+{"at":"2026-09-21T07:46:43.801Z","event":"TOPIC_ENTRY_CLICKED","attempt":1,"x":96,"y":354}
+{"at":"2026-09-21T07:46:44.134Z","event":"TOPIC_SEARCH_READY","url":"https://xhs.huitun.com/#/anchor/anchor_topic"}
+{"at":"2026-09-21T07:46:44.136Z","event":"QUERY_STARTED","keyword":"泡澡浴缸"}
+{"status":"STALLED","error":"Huitun query did not settle before the deadline: 泡澡浴缸","details":{"keyword":"泡澡浴缸","screenshot":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074637Z-关键词分析-V1-2026-09-19\\stalled-泡澡浴缸.png"}}
+exit=3
+===== RUN 3 =====
+profile=kcne
+env-file=E:/小红书/.env.feishu-kcne.local
+{"at":"2026-09-21T07:47:15.090Z","event":"PROXY_READY","browser":"edge-daily-report"}
+{"at":"2026-09-21T07:47:15.091Z","event":"START","tableId":"tblZsUns9353w3nl","tableName":"关键词分析 V1（2026-09-19）","apply":false}
+{"at":"2026-09-21T07:47:18.421Z","event":"QUEUE_READY","candidates":1,"keywords":["泡澡浴缸"]}
+{"at":"2026-09-21T07:47:21.188Z","event":"PLATFORM_READY","platform":"灰豚数据红薯版"}
+{"at":"2026-09-21T07:47:22.468Z","event":"TOPIC_ENTRY_CLICKED","attempt":1,"x":96,"y":354}
+{"at":"2026-09-21T07:47:22.759Z","event":"TOPIC_SEARCH_READY","url":"https://xhs.huitun.com/#/anchor/anchor_topic"}
+{"at":"2026-09-21T07:47:22.760Z","event":"QUERY_STARTED","keyword":"泡澡浴缸"}
+{"at":"2026-09-21T07:47:24.071Z","event":"QUERY_DONE","keyword":"泡澡浴缸","status":"NO_EXACT_TOPIC","topic":null,"viewsRaw":"该版本每天最多可以访问10次，请升级到高版本使用\n\n升级版本","views":0}
+{"at":"2026-09-21T07:47:24.073Z","event":"RESULTS_WRITTEN","resultsPath":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074715Z-关键词分析-V1-2026-09-19\\results.json","count":1}
+{"at":"2026-09-21T07:47:26.215Z","event":"DRY_RUN_READY","plannedRecordUpdates":1,"runDir":"D:\\Retire\\sycm-automation\\runtime\\huitun-runs\\20260921T074715Z-关键词分析-V1-2026-09-19"}
+exit=0
