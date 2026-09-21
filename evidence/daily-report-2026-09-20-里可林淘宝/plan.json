@@ -1,8 +1,8 @@
 {
-  "mode": "dry-run",
+  "mode": "api-commit",
   "reportDate": "2026-09-20",
   "environment": {
-    "computedAt": "2026-09-21T06:45:53.301Z",
+    "computedAt": "2026-09-21T07:43:23.167Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19023",
     "browserPort": {
@@ -27,7 +27,7 @@
   "evidence": {
     "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-20-里可林淘宝",
     "generation": 1,
-    "reason": "base-empty"
+    "reason": "latest"
   },
   "sourceSelfChecks": {
     "expectedDate": "2026-09-20",
@@ -43,7 +43,7 @@
     },
     "promotion": {
       "column": "日期",
-      "csvName": "营销场景报表_20260921_143726.csv",
+      "csvName": "营销场景报表_20260921_154237.csv",
       "observedDates": [
         "2026-09-20"
       ],
@@ -61,12 +61,12 @@
     "tableName": "总数据来源底单"
   },
   "source": {
-    "shopFile": "C:\\Users\\Administrator\\Downloads\\日报_20260921_b3de46ced2634ef20c9372b4caf00736.xlsx",
-    "shopSha256": "43a170eeb01a8de4837d9f1699a3e854f5dd4594389ec7b3b0aa459d6e380b45",
+    "shopFile": "C:\\Users\\Administrator\\Downloads\\日报_20260921_b3de46ced2634ef20c9372b4caf00736 (1).xlsx",
+    "shopSha256": "09062aa77a25c034a46a6981e013a62081812f33a0cb892937bb238789eeac4a",
     "shopWorkbookRows": 31,
-    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260921_143726.zip",
-    "promotionSha256": "d246d9f2119d5088a0408e55fbccd94524ec32e03f3d7759f1eb9da0eb0bdcc3",
-    "promotionCsv": "营销场景报表_20260921_143726.csv"
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260921_154237.zip",
+    "promotionSha256": "210741cc365fd177cdac72dc6a39da40aa9c7cf12e6d6ab6fc3e643fb041ed85",
+    "promotionCsv": "营销场景报表_20260921_154237.csv"
   },
   "checks": {
     "visibleFields": 265,

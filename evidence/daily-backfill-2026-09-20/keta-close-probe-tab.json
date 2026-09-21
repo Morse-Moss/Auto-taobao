@@ -1,0 +1,29 @@
+{
+ "closing": "6FEA7C692FBCB41A608EA1848C4E5D43",
+ "before": [
+  {
+   "targetId": "0F3988566AF5D318E806DF8B456BE2E0",
+   "url": "https://sycm.taobao.com/mc/free/sycm"
+  },
+  {
+   "targetId": "F86052A0389C66158B408F5AFB48C8CF",
+   "url": "https://one.alimama.com/index.html#!/report/download-list"
+  },
+  {
+   "targetId": "6FEA7C692FBCB41A608EA1848C4E5D43",
+   "url": "https://sycm.taobao.com/mc/free/sycm"
+  }
+ ],
+ "closeStatus": 200,
+ "after": [
+  {
+   "targetId": "0F3988566AF5D318E806DF8B456BE2E0",
+   "url": "https://sycm.taobao.com/mc/free/sycm"
+  },
+  {
+   "targetId": "F86052A0389C66158B408F5AFB48C8CF",
+   "url": "https://one.alimama.com/index.html#!/report/download-list"
+  }
+ ],
+ "mineGone": true
+}

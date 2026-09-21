@@ -1,0 +1,7 @@
+reportDate=2026-09-20  底单 loaded=1894  命中=4  下界标志=false
+查询耗时字段：table, tableId, tableName, recordsNumFromPageModel, loadedRows, rows, fieldsCoverageEvaluated, fieldsCoverageScope, absentFields, fieldsNotInTable, rowsComplete, onDateCountIsLowerBound, onDateCount, onDateRows
+--- 命中行的「店铺名称」---
+  日期=2026-09-20  店铺名称=里可林家居  店铺(Lookup)=(Lookup 读不到)
+  日期=2026-09-20  店铺名称=盖文全卫定制  店铺(Lookup)=(Lookup 读不到)
+  日期=2026-09-20  店铺名称=盖文旗舰店  店铺(Lookup)=(Lookup 读不到)
+  日期=2026-09-20  店铺名称=网林家居旗舰店  店铺(Lookup)=(Lookup 读不到)

@@ -1,0 +1,38 @@
+evidence/daily-job-2026-09-20/job.log
+   size=19060  mtime=2026-09-21T07:51:59.212Z  ageSec=41
+evidence/multi-shop-2026-09-20/summary.json
+   size=3569  mtime=2026-09-21T03:41:33.304Z  ageSec=15067
+now=2026-09-21T07:52:40.635Z
+
+job.log 总行数=183
+--- 最后 30 行 ---
+[盖文淘宝] shopXlsxPath = C:\Users\Administrator\Downloads\日报2_20260921_90f3f449b92531c0823d97ec6d6bb86b (1).xlsx
+[盖文淘宝]   店铺工作簿 = C:\Users\Administrator\Downloads\日报2_20260921_90f3f449b92531c0823d97ec6d6bb86b (1).xlsx
+[盖文淘宝] 6. promotion-fetch —— 取推广 zip（先断言任务行是「生成成功」，再真实点复选框）
+[盖文淘宝] [fetch] promotionZipPath = C:\Users\Administrator\Downloads\营销场景报表_20260921_154825.zip
+[盖文淘宝]   推广 zip = C:\Users\Administrator\Downloads\营销场景报表_20260921_154825.zip
+[盖文淘宝] 7. push —— 推送（会写底单新增一行）
+[盖文淘宝] [shop-key] 盖文淘宝 ↔ 源产物店名 盖文全卫定制 一致（证据目录 daily-report-2026-09-20-盖文淘宝）
+[盖文淘宝] 8. sycm-reset —— 生意参谋回位：把被第 4 步带走的那个页签送回 qos/.../shop/performance（驱动自己导航）
+[代理] 连接层失败（第 1/3 次）：fetch failed｜cause=ECONNRESET → 1.5s 后重发 http://127.0.0.1:19043/targets
+[代理] 第 2 次才通：http://127.0.0.1:19043/targets
+[盖文淘宝]   回位：把 https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&la 送回 https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+[盖文淘宝] 9. sycm-date-again —— 回位会重置页签与日期 ⇒ 必须重跑落位，否则回填报 expected one 当日询单人数 table, got 0
+[盖文淘宝] 10. backfill —— 询单回填（写两个字段）
+[盖文淘宝] 11. readback —— 独立回读 + 截图（换一条通路读同一个事实）
+[盖文天猫] 1. health-check —— 体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个
+[盖文天猫]   归位：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[盖文天猫]   体检通过：阻断 0 项，告警 1 项
+[盖文天猫]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[盖文天猫]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[盖文天猫] 2. alimama-date —— 阿里妈妈落位（日期全在 URL hash 里，navigate 即落位）
+[盖文天猫] 3. promotion-submit —— 提交推广报表生成任务（之后平台要生成几分钟，中途用第 3/4 步填掉）
+[盖文天猫] 4. sycm-date —— 生意参谋落位（切页签到 询单到付款 再定日期）
+[盖文天猫] 5. shop-report —— 点开日报预览并下载店铺工作簿（会把这个页签留在预览页）
+[盖文天猫] shopXlsxPath = C:\Users\Administrator\Downloads\日报_20260921_adc987ef8d0897700e42dcf1427605b3 (1).xlsx
+[盖文天猫]   店铺工作簿 = C:\Users\Administrator\Downloads\日报_20260921_adc987ef8d0897700e42dcf1427605b3 (1).xlsx
+[盖文天猫] 6. promotion-fetch —— 取推广 zip（先断言任务行是「生成成功」，再真实点复选框）
+[盖文天猫] [fetch] promotionZipPath = C:\Users\Administrator\Downloads\营销场景报表_20260921_155112.zip
+[盖文天猫]   推广 zip = C:\Users\Administrator\Downloads\营销场景报表_20260921_155112.zip
+[盖文天猫] 7. push —— 推送（会写底单新增一行）
+

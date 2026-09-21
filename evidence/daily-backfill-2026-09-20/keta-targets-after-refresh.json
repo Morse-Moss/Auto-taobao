@@ -1,0 +1,17 @@
+{
+ "httpStatus": 200,
+ "count": 2,
+ "tabs": [
+  {
+   "targetId": "0F3988566AF5D318E806DF8B456BE2E0",
+   "title": "生意参谋 - 零售电商大数据产品平台",
+   "url": "https://sycm.taobao.com/mc/free/sycm"
+  },
+  {
+   "targetId": "F86052A0389C66158B408F5AFB48C8CF",
+   "title": "下载任务管理_万相台无界版",
+   "url": "https://one.alimama.com/index.html#!/report/download-list"
+  }
+ ],
+ "sycmTargetIds": []
+}

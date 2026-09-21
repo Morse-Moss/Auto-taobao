@@ -1,0 +1,58 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-09-20",
+  "shop": "里可林淘宝",
+  "environment": {
+    "computedAt": "2026-09-21T07:44:43.473Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19041",
+    "browserPort": {
+      "port": 19031,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19041,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-likelin-home",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop likelin-home)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-20-里可林淘宝",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "PTfHbPt9EaIzddsfL8Jcj238nrb",
+    "tableId": "tblUnwn05vl8Wik9",
+    "tableName": "各店铺数据日报",
+    "recordId": "recvtXf8pkDqQa"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "shop": "里可林家居",
+    "column": "当日询单人数",
+    "dateRow": "2026-09-20",
+    "benchmarkRow": "同行同层均值",
+    "peerBenchmark": "PEER_AVAILABLE",
+    "rows": 7
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 10,
+    "同层同行询单量": 6
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  }
+}

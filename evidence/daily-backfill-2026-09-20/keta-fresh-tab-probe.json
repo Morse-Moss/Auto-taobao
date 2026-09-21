@@ -1,0 +1,48 @@
+{
+ "port": 19044,
+ "targetUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+ "created": {
+  "httpStatus": 200,
+  "targetId": "6FEA7C692FBCB41A608EA1848C4E5D43",
+  "keys": [
+   "targetId"
+  ]
+ },
+ "samples": [
+  {
+   "elapsedMs": 5097,
+   "tabUrl": "https://sycm.taobao.com/mc/free/sycm",
+   "tabTitle": "生意参谋 - 零售电商大数据产品平台",
+   "stillOnPerformance": false
+  },
+  {
+   "elapsedMs": 15114,
+   "tabUrl": "https://sycm.taobao.com/mc/free/sycm",
+   "tabTitle": "生意参谋 - 零售电商大数据产品平台",
+   "stillOnPerformance": false
+  },
+  {
+   "elapsedMs": 25119,
+   "tabUrl": "https://sycm.taobao.com/mc/free/sycm",
+   "tabTitle": "生意参谋 - 零售电商大数据产品平台",
+   "stillOnPerformance": false
+  },
+  {
+   "elapsedMs": 35128,
+   "tabUrl": "https://sycm.taobao.com/mc/free/sycm",
+   "tabTitle": "生意参谋 - 零售电商大数据产品平台",
+   "stillOnPerformance": false
+  },
+  {
+   "elapsedMs": 45144,
+   "tabUrl": "https://sycm.taobao.com/mc/free/sycm",
+   "tabTitle": "生意参谋 - 零售电商大数据产品平台",
+   "stillOnPerformance": false
+  }
+ ],
+ "dom": {
+  "httpStatus": 200,
+  "raw": "{\"value\":\"{\\\"href\\\":\\\"https://sycm.taobao.com/mc/free/sycm\\\",\\\"title\\\":\\\"生意参谋 - 零售电商大数据产品平台\\\",\\\"readyState\\\":\\\"complete\\\",\\\"bodyLen\\\":498,\\\"head\\\":\\\"生意参谋 科塔全卫定制 主店 惠商 我的 帮助 退出 生意参谋 首页 交易 流量 客户 商品 营销 服务 内容 市场 自助分析 业务专区 一键领取 4月起免费使用全部产品，退还未使用费用 详细惠商规则 市场洞察全新 免费 流量纵横 免费￥3,888/年起 品类罗盘 免费￥2,880/年起 数据作战室 免费￥6,888/年起 服务洞察 免费￥1,680/年起 长周期365天 免费 全新市场洞察，更强\\\"}\"}"
+ },
+ "verdict": "BOUNCED（新建也被弹回）"
+}

@@ -1,86 +1,118 @@
 {
   "date": "2026-09-20",
   "mode": "commit",
-  "startedAt": "2026-09-21T03:41:04.824Z",
+  "startedAt": "2026-09-21T07:57:56.411Z",
   "round": {
     "healthCheckDaily": {
       "status": 0,
       "logPath": "evidence\\multi-shop-2026-09-20\\00-health-check-daily.txt",
       "ok": true,
       "blocking": [],
-      "blockingDetails": []
+      "blockingDetails": [],
+      "normalize": "本来就在位（生意参谋工作页=1  飞书底单页=1）",
+      "normalizeChanged": false
     }
   },
   "shops": {
-    "里可林淘宝": {
+    "科塔淘宝": {
       "status": "failed",
       "stages": [
         {
           "stage": "health-check",
           "status": 0,
           "skipped": false,
-          "logPath": "evidence\\multi-shop-2026-09-20\\里可林淘宝\\01-health-check.txt",
+          "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\01-health-check.txt",
           "argv": [],
-          "blockingDetails": []
+          "blockingDetails": [],
+          "pageNormalize": "已归位（生意参谋工作页=0  阿里妈妈报表页=1 → 生意参谋工作页=1  阿里妈妈报表页=1）"
         },
         {
           "stage": "alimama-date",
           "status": 0,
           "skipped": false,
-          "logPath": "evidence\\multi-shop-2026-09-20\\里可林淘宝\\02-alimama-date.txt",
+          "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\02-alimama-date.txt",
           "argv": [
             "--site",
             "alimama",
             "--date",
             "2026-09-20",
             "--proxy",
-            "http://127.0.0.1:19041"
+            "http://127.0.0.1:19044"
           ],
-          "blockingDetails": null
+          "blockingDetails": null,
+          "pageNormalize": null
         },
         {
           "stage": "promotion-submit",
           "status": 0,
           "skipped": false,
-          "logPath": "evidence\\multi-shop-2026-09-20\\里可林淘宝\\03-promotion-submit.txt",
+          "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\03-promotion-submit.txt",
           "argv": [
             "--phase",
             "submit",
             "--date",
             "2026-09-20",
             "--proxy",
-            "http://127.0.0.1:19041",
+            "http://127.0.0.1:19044",
             "--expect-shop",
-            "里可林家居",
+            "科塔全卫定制",
             "--expect-member",
-            "里可林家居:阿彦",
+            "j873522735:阿彦",
             "--expect-member-id",
-            "2350600069"
+            "412070158"
           ],
-          "blockingDetails": null
+          "blockingDetails": null,
+          "pageNormalize": null
         },
         {
           "stage": "sycm-date",
           "status": 1,
           "skipped": false,
-          "logPath": "evidence\\multi-shop-2026-09-20\\里可林淘宝\\04-sycm-date.txt",
+          "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\04-sycm-date.txt",
           "argv": [
             "--site",
             "sycm",
             "--date",
             "2026-09-20",
             "--proxy",
-            "http://127.0.0.1:19041"
+            "http://127.0.0.1:19044"
           ],
-          "blockingDetails": null
+          "blockingDetails": null,
+          "pageNormalize": null
         }
       ],
       "source": {},
       "failedStage": "sycm-date",
-      "failureOutput": "\nError: sycm preset: state did not settle to 2026-09-20（读了 16 次 × 1200ms；其中读不到 0 次）; lastReadError=none; last={\"applied\":\"统计时间 2026-09-19\",\"tabs\":[\"智能问数\",\"找功能\",\"问指标\",\"找商品\",\"业绩分析\",\"专项分析\",\"商品分析\",\"售后分析\",\"汇总分析\",\"询单到下单\",\"下单到付款\",\"询单到付款\"],\"activeTabs\":[\"智能问数\",\"业绩分析\",\"询单到付款\"],\"targetId\":\"0C6B77E3BD7D4721041D265EA13166E9\"}\n    at settle (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:471:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:525:21)\n    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:398:12)\nTRACE [\n  {\n    \"step\": \"tab\",\n    \"expectTab\": \"询单到付款\",\n    \"alreadyActive\": true,\n    \"point\": [\n      492,\n      277\n    ]\n  },\n  {\n    \"step\": \"click-preset\",\n    \"text\": \"1天\",\n    \"point\": [\n      821,\n      162\n    ]\n  }\n]\n",
+      "failureOutput": "\nError: expected one sycm page on http://127.0.0.1:19044, got 0\n    at resolveTarget (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:441:9)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:477:28)\n    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:457:12)\nTRACE [\n  {\n    \"step\": \"recover-entry\",\n    \"targetId\": \"0F3988566AF5D318E806DF8B456BE2E0\",\n    \"from\": \"https://sycm.taobao.com/mc/free/sycm\",\n    \"entryUrl\": \"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop\"\n  }\n]\n",
       "blockingDetails": null,
-      "error": "阶段 sycm-date 失败（exit 1）"
+      "error": "阶段 sycm-date 失败（exit 1）",
+      "recovery": {
+        "at": "2026-09-21T07:58:12.040Z",
+        "proxyPort": 19044,
+        "leftAt": {
+          "tabs": 2,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 0
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": [
+            "https://sycm.taobao.com/mc/free/sycm"
+          ]
+        },
+        "action": null,
+        "after": null,
+        "restored": null,
+        "detail": null,
+        "error": "回位后仍不是恰好一个性能页（0 个）—— 停手，先看现场",
+        "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\99-recovery.txt"
+      }
     }
   },
-  "finishedAt": "2026-09-21T03:41:33.303Z"
+  "finishedAt": "2026-09-21T07:58:17.452Z"
 }

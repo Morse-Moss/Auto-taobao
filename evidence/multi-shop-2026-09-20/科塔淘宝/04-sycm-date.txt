@@ -1,0 +1,20 @@
+
+===== 2026-09-21T07:58:07.600Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site sycm --date 2026-09-20 --proxy http://127.0.0.1:19044
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: expected one sycm page on http://127.0.0.1:19044, got 0
+    at resolveTarget (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:441:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:477:28)
+    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:457:12)
+TRACE [
+  {
+    "step": "recover-entry",
+    "targetId": "0F3988566AF5D318E806DF8B456BE2E0",
+    "from": "https://sycm.taobao.com/mc/free/sycm",
+    "entryUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+  }
+]
