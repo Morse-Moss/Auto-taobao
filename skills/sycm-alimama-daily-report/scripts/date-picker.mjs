@@ -86,6 +86,27 @@ export function resolveAppliedDate({ text, yesterday }) {
   return unique.length === 1 ? unique[0] : null;
 }
 
+/**
+ * 生意参谋这一页「是不是停在上一轮的渲染上」。
+ *
+ * 为什么需要这一步（2026-09-21 实测，首次定时真跑就栽在这）：生意参谋的「1天」是**相对预设**，
+ * 只在页面加载时解析一次。页面被上一轮留在「当时的昨天」这个渲染状态、而 URL 又恰好等于期望
+ * URL（`resolveTarget` 直接返回、**不导航**）时，点一个**已经选中**的「1天」不会触发重新取数，
+ * DOM 就永远停在旧日期：
+ *   · 失败现场：五家店的工作页全部读回 `统计时间 2026-09-19`（目标是 09-20），16 × 1.2s 不变；
+ *   · 真重载一次后立刻变成 `统计时间 2026-09-20`（`tmp/sycm-after-true-reload-alimama.txt`）。
+ * 历史每一轮之所以「过」，是因为页面此前总被导航重载过（那时 before 就已经等于目标日，
+ * 点击是空操作）—— 翻历史 `04-sycm-date.txt`：每一次 `observedBefore == observedAfter == requested`，
+ * 也就是这条阶段**从来没被真正考过**。
+ *
+ * 判据刻意做成纯函数：它只回答「读数是不是目标日」，不猜环境。
+ * 读数**读不到**（null）时也返回 true —— 读不到就不知道它是不是新的，按「先重载」处理，
+ * 因为重载的代价远小于用一个过期页面冒充成功。
+ */
+export function needsStaleReload({ observed, requested, yesterday }) {
+  return resolveAppliedDate({ text: observed, yesterday }) !== requested;
+}
+
 // 断言按「语义」而非「索引」：筛选栏的 trigger 顺序是页面实现细节，索引一变就静默断言错对象。
 // 实测筛选栏（2026-09-16）共 11 个 trigger：
 //   [0] 关键词推广 人群推广 · [1] 末次点击归因 · [2] 30天累计数据 · [3] " 2026-09-14" · [4] 分日 · …
@@ -358,6 +379,44 @@ async function navigate(proxy, targetId, url) {
     { method: 'POST', body: '' });
 }
 
+// 让页面**真的重新加载**一遍。
+//
+// 关键一条：**不能拿「navigate 到同一个 URL」当重载**。同 URL 同 hash 的 navigate 是
+// **同文档导航**，浏览器什么都不做 —— 2026-09-21 实测：`/navigate` 回了
+// `{"frameId":"0C6B…","isDownload":false}`（看着像成功），但随后 trace 里
+// `询单到付款` 仍是 `alreadyActive:true`（页签没被重置）、读数仍是 09-19，
+// 而改成页面自己 reload 之后页签立刻回到 `汇总分析`、读数变成 09-20。
+//
+// 这一步成功与否**不能看这次调用报没报错**：重载会把 eval 的执行上下文一起拆掉，
+// 报错是预期内的。真正的判据是「重载之后能不能读出状态」（调用方的 waitForReadableState）。
+async function reloadPage(proxy, targetId) {
+  try {
+    await proxyJson(`${proxy}/eval?target=${encodeURIComponent(targetId)}`,
+      { method: 'POST', body: "window.location.reload(); 'reloading'" });
+    return null;
+  } catch (error) {
+    return String(error?.message ?? error).split('\n')[0].slice(0, 200);
+  }
+}
+
+// 重载后的就绪等待：判据是「读得出状态」，不是「等了 N 秒」。
+// 生意参谋的读取表达式在页面没起来时直接抛（读数不唯一 / 节点数不对），
+// 所以「抛错」的含义是「再等一轮」，不是「这一步输了」。
+async function waitForReadableState({ proxy, site, targetId, attempts, ms }) {
+  let readFailures = 0;
+  let lastError = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    await delay(ms);
+    try {
+      return { state: await readSiteState({ proxy, site, targetId }), readFailures, lastError: null, reads: attempt + 1 };
+    } catch (error) {
+      readFailures += 1;
+      lastError = String(error?.message ?? error).split('\n')[0].slice(0, 200);
+    }
+  }
+  return { state: null, readFailures, lastError, reads: attempts };
+}
+
 function delay(ms) { return new Promise((resolve) => { setTimeout(resolve, ms); }); }
 
 export async function resolveTarget({ proxy, site, onRecover } = {}) {
@@ -411,6 +470,8 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
   const mode = requestedMode === 'auto' ? resolved.mode : requestedMode;
   if (!['preset', 'explicit'].includes(mode)) throw new Error(`invalid mode: ${requestedMode}`);
   const say = (step, extra = {}) => trace.push({ step, ...extra });
+  // 生意参谋的「页面过期 ⇒ 先真重载」这一步的收据（没走到就是 null，收据里如实记着）。
+  let pageReload = null;
   // 认页面时若发现它被同页签导航带走了，就按站点的回位地址送回去（并把这一步记进 trace）；
   // 回位之后下面的页签与日期流程照跑，等于把「回位 + 重落位」合成一条命令。
   const page = targetId ?? await resolveTarget({ proxy, site, onRecover: (info) => say('recover-entry', info) });
@@ -477,9 +538,19 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
     if (expectTab && !(settled.state.activeTabs ?? []).includes(expectTab)) {
       throw new Error(`expected active tab ${expectTab}; got ${JSON.stringify(settled.state.activeTabs ?? settled.state.tabs)}`);
     }
+    // 「这次点击其实什么都没改」要如实写进收据：历史每一轮的 before 与 after 都等于目标日，
+    // 那正是「预设点击从未真正改过日期」的证据。留一个一眼能看到的标记，别让人再去翻日志。
+    // 比的是**解析出来的日期**，不是原文 —— 读回来的是「统计时间 2026-09-20」这种带前缀的串。
+    const asDate = (value) => resolveAppliedDate({ text: value, yesterday: resolved.yesterday });
+    const presetWasNoop = site === 'sycm'
+      && asDate(settled.state.applied) === requested
+      && asDate(before.applied) === requested;
     return { site, requested, mode, route: adapter.route, targetId: page,
       observedBefore: before.applied, observedAfter: settled.state.applied, filters: settled.state.triggers ?? null,
-      tabs: settled.state.tabs ?? null, activeTabs: settled.state.activeTabs ?? null, status, trace };
+      tabs: settled.state.tabs ?? null, activeTabs: settled.state.activeTabs ?? null, status,
+      presetWasNoop: presetWasNoop ? true : null,
+      pageReload,
+      trace };
   };
 
   if (dryRun) {
@@ -496,6 +567,33 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
     const settled = await settle('alimama');
     say('settled', { applied: settled.applied });
     return finish(before.applied === settled.applied ? 'REAPPLIED' : 'APPLIED', settled);
+  }
+
+  // 生意参谋的「1天」是相对预设，只在页面加载时解析（成因与实测见 needsStaleReload 的注释）。
+  // 读数已经不是目标日 ⇒ 页面停在上一轮的渲染上，此时点一个已选中的预设不会有任何效果，
+  // 必须先真重载一次。**只在读数不对时才重载**：读数本来就对时，这一步不走，行为与从前逐字相同。
+  if (site === 'sycm' && mode === 'preset'
+    && needsStaleReload({ observed: before.applied, requested, yesterday: resolved.yesterday })) {
+    say('reload-stale-page', { observedBeforeReload: before.applied ?? null, requested });
+    pageReload = { reloadError: await reloadPage(proxy, page), observedAfterReload: null, readFailures: null };
+    const after = await waitForReadableState({ proxy, site, targetId: page, attempts: settleAttempts, ms: settleMs });
+    pageReload = {
+      reloadError: pageReload.reloadError,
+      observedAfterReload: after.state?.applied ?? null,
+      readFailures: after.readFailures,
+      reads: after.reads,
+      lastReadError: after.lastError,
+    };
+    say('reloaded', pageReload);
+    if (!after.state
+      || needsStaleReload({ observed: after.state.applied, requested, yesterday: resolved.yesterday })) {
+      // 重载都救不回来 ⇒ **页面过期这个成因已经排除**，剩下的成因要做的事完全不同：
+      // 要么平台这一天还没出数（等一会儿再跑），要么落位真的坏了（要人看）。
+      // 所以这里抛一句能分辨的错，而不是让 settle 报那句通用的「state did not settle」。
+      throw new Error(`sycm: 重新加载页面后读数仍是 ${JSON.stringify(after.state?.applied ?? null)}，`
+        + `期望 ${requested}。页面停在旧渲染这一种成因已排除 ⇒ `
+        + `要么平台这一天还没有数，要么落位坏了（读不到 ${after.readFailures} 次；targetId=${page}）`);
+    }
   }
 
   // sycm 第一件事是确认页签。页签错了，日期控件就是「另一套」：

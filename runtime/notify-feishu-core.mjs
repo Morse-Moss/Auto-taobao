@@ -65,7 +65,7 @@ const TITLE_BY_TYPE = Object.freeze({
 //   · 白名单这里**保留**这个键，只为兼容仍在用它的旧来源
 //     （例如 runtime/question-library-collection/ 下的 alert.json）。
 //     **保留 ≠ 推荐**：新写的告警不要再往里塞 URL。
-const READABLE_SOURCE_KEYS = Object.freeze([
+export const READABLE_SOURCE_KEYS = Object.freeze([
   ['targetLabel', '对象'],
   ['productId', '商品ID'],
   ['shopName', '店铺'],

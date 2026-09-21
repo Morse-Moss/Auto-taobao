@@ -6,6 +6,7 @@ import test from 'node:test';
 import {
   applyDate,
   assertAlimamaState, buildAlimamaUrl, extractIsoDates, isSingleDaySelection,
+  needsStaleReload,
   resolveAppliedDate, resolveDateMode, resolveTarget, selectDayHits, shiftIso, shiftMonth, siteAdapter,
 } from './date-picker.mjs';
 
@@ -240,7 +241,7 @@ const ALIMAMA_READY_STATE = {
 
 // 假代理：只答落位要用的三个口子（/targets、/navigate、/eval），eval 按给定序列作答。
 // 用假代理而不是桩函数，是为了让 navigate → settle 的真实顺序也被跑到。
-function stubProxy({ evalResults }) {
+function stubProxy({ evalResults, targets = [{ type: 'page', targetId: 'alimama-page', url: 'https://one.alimama.com/index.html' }] }) {
   const calls = [];
   let evalIndex = 0;
   const realFetch = globalThis.fetch;
@@ -251,9 +252,12 @@ function stubProxy({ evalResults }) {
       ok, status, text: async () => JSON.stringify(payload), json: async () => payload,
     });
     if (text.includes('/targets')) {
-      return respond(true, 200, [{ type: 'page', targetId: 'alimama-page', url: 'https://one.alimama.com/index.html' }]);
+      return respond(true, 200, targets);
     }
     if (text.includes('/navigate')) return respond(true, 200, { frameId: 'alimama-page' });
+    // 生意参谋那条路要真实点击（页签、预设），所以桩必须认这个口子 ——
+    // 阿里妈妈那条路靠 navigate，用不到它。
+    if (text.includes('/clickPoint')) return respond(true, 200, { ok: true });
     if (text.includes('/eval')) {
       const result = evalResults[Math.min(evalIndex, evalResults.length - 1)];
       evalIndex += 1;
@@ -262,7 +266,12 @@ function stubProxy({ evalResults }) {
     }
     throw new Error(`stub 没实现这个口子：${text}`);
   };
-  return { calls, restore: () => { globalThis.fetch = realFetch; }, evalCalls: () => evalIndex };
+  return {
+    calls,
+    restore: () => { globalThis.fetch = realFetch; },
+    evalCalls: () => evalIndex,
+    reloads: () => calls.filter((call) => String(call.body ?? '').includes('location.reload')),
+  };
 }
 
 const settleCase = { site: 'alimama', requested: '2026-09-19', proxy: 'http://127.0.0.1:1',
@@ -324,4 +333,91 @@ test('落位：settle 里那次读取必须在容错里（放在 try 之外＝�
   assert.equal(/^\s*last = await readSiteState/mu.test(source), false,
     '别再让读取直接赋值 —— 读不到就不再是「再等一轮」而是「整步失败」');
   assert.match(source, /if \(attempt > 0\) say\('settle-retried'/u, '重试要留痕');
+});
+
+// ---------------------------------------------------------------- 生意参谋「页面过期」
+
+// 2026-09-21 现场：五家店的工作页全部读回「统计时间 2026-09-19」（目标日 09-20），
+// 8×1.2s 级别地反复读也不变；而真重载一次之后立刻变成 09-20。
+// 成因是「1天」是相对预设、只在页面加载时解析，点一个**已经选中**的预设不会触发重新取数。
+const SYCM_TARGET = [{ type: 'page', targetId: 'sycm-page',
+  url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop' }];
+const SYCM_TABS = ['智能问数', '业绩分析', '汇总分析', '询单到付款'];
+const sycmState = (applied, activeTabs) => ({ applied, tabs: SYCM_TABS, activeTabs });
+const sycmPresetCase = { site: 'sycm', requested: '2026-09-20', proxy: 'http://127.0.0.1:1',
+  now: new Date('2026-09-21T11:41:00+08:00'), expectTab: '询单到付款', settleMs: 1 };
+
+test('needsStaleReload：只按读数判「页面是不是停在上一轮的渲染上」', () => {
+  const at = (observed) => needsStaleReload({ observed, requested: '2026-09-20', yesterday: '2026-09-20' });
+  assert.equal(at('统计时间 2026-09-19'), true, '读数停在昨天之前 ⇒ 页面是旧的');
+  assert.equal(at('统计时间 2026-09-20'), false, '读数已经是目标日 ⇒ 不动它');
+  assert.equal(at(null), true, '读不到就不知道它是不是新的 ⇒ 按「先重载」处理');
+  assert.equal(at('统计时间 2026-09-14 至 2026-09-20'), true,
+    '读成区间时解析不出唯一日期 ⇒ 同样按过期处理（这正是不许把 7 天区间当单日的判据）');
+});
+
+test('落位：生意参谋读数停在旧日期时先真重载，重载后读数对了才继续', async () => {
+  const stub = stubProxy({
+    targets: SYCM_TARGET,
+    evalResults: [
+      { state: sycmState('统计时间 2026-09-19', ['询单到付款']) },  // 1 动作前读取：过期
+      { error: 'Execution context was destroyed' },                 // 2 重载调用（上下文被拆，预期内）
+      { state: sycmState('统计时间 2026-09-20', ['汇总分析']) },    // 3 重载后读取：对上了
+      { state: { active: false, point: [492, 277] } },              // 4 页签表达式
+      { state: sycmState('统计时间 2026-09-20', ['询单到付款']) },  // 5 点完页签后的复核
+      { state: { point: [821, 162] } },                             // 6 预设表达式
+      { state: sycmState('统计时间 2026-09-20', ['询单到付款']) },  // 7 settle 第 1 轮
+    ],
+  });
+  try {
+    const result = await applyDate(sycmPresetCase);
+    assert.equal(result.status, 'APPLIED');
+    assert.equal(result.observedAfter, '统计时间 2026-09-20');
+    assert.equal(stub.reloads().length, 1, '旧页面必须被真重载一次');
+    assert.equal(result.pageReload.observedAfterReload, '统计时间 2026-09-20');
+    assert.match(String(result.pageReload.reloadError), /Execution context/u,
+      '重载调用本身报错是预期内的（上下文被拆），要如实记下来，不能当成失败');
+    const steps = result.trace.map((step) => step.step);
+    assert.ok(steps.includes('reload-stale-page'), '为什么重载要留痕');
+    assert.ok(steps.includes('reloaded'), '重载的结果要留痕');
+  } finally { stub.restore(); }
+});
+
+test('落位：读数本来就是目标日时不重载（行为与从前逐字相同）', async () => {
+  const stub = stubProxy({
+    targets: SYCM_TARGET,
+    evalResults: [
+      { state: sycmState('统计时间 2026-09-20', ['询单到付款']) },
+      { state: { active: true, point: [492, 277] } },
+      { state: { point: [821, 162] } },
+      { state: sycmState('统计时间 2026-09-20', ['询单到付款']) },
+    ],
+  });
+  try {
+    const result = await applyDate(sycmPresetCase);
+    assert.equal(result.status, 'APPLIED');
+    assert.equal(stub.reloads().length, 0, '读数已经对了就不该动页面（否则每次跑都白重载一遍）');
+    assert.equal(result.pageReload, null);
+    assert.equal(result.presetWasNoop, true,
+      '读数本来就对 ⇒ 这次点击其实是空操作，收据要如实写出来（历史每轮都是这个形态）');
+  } finally { stub.restore(); }
+});
+
+test('落位：重载之后读数仍不对 ⇒ 报错要排除「页面过期」这个成因', async () => {
+  const stub = stubProxy({
+    targets: SYCM_TARGET,
+    evalResults: [
+      { state: sycmState('统计时间 2026-09-19', ['询单到付款']) },
+      { error: 'Execution context was destroyed' },
+      { state: sycmState('统计时间 2026-09-19', ['汇总分析']) },   // 重载了，但平台就是没有这一天的数
+    ],
+  });
+  try {
+    await assert.rejects(() => applyDate(sycmPresetCase), (error) => {
+      assert.match(error.message, /页面停在旧渲染这一种成因已排除/u,
+        '重载都救不回来时，必须把「页面过期」这条成因排除掉，否则看的人会去重载页面白跑一趟');
+      assert.match(error.message, /平台这一天还没有数/u);
+      return true;
+    });
+  } finally { stub.restore(); }
 });
