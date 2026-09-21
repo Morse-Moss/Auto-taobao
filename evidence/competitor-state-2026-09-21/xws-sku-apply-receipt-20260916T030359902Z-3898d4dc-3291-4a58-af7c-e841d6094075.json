@@ -1,0 +1,31 @@
+{
+  "mode": "APPLIED_AND_VERIFIED",
+  "target": {
+    "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+    "mainTableId": "tblkYcczxBnW4v5G",
+    "mainTableName": "竞品主表",
+    "skuTableId": "tbl3N48H4znz304T",
+    "skuTableName": "SKU明细"
+  },
+  "authorization": {
+    "recordCount": 96
+  },
+  "manifest": {
+    "path": "d:\\Retire\\sycm-automation\\evidence\\sku-2026-09-13_2026-09-19\\xws-sku-dry-run-manifest-20260916T030255485Z-37b3cba5-1b11-4730-ae57-63f8dcd811d8.json",
+    "sha256": "447a1c9d31a392aa74fe23bf150bea3d44dbf567752c84ba63a4117d08d6db79"
+  },
+  "write": {
+    "outcome": "api-confirmed",
+    "apiConfirmedRecordCount": 96,
+    "verifiedRecordCount": 96,
+    "createdRecordCount": 96,
+    "beforeSkuRecordCount": 734,
+    "afterSkuRecordCount": 830
+  },
+  "verification": {
+    "verifiedUniqueKeys": 96,
+    "verifiedRelations": 96,
+    "verifiedSpaceDecisions": 96
+  },
+  "batchIndexPath": "d:\\Retire\\sycm-automation\\evidence\\sku-2026-09-13_2026-09-19\\batch-index.json"
+}

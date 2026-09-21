@@ -1,0 +1,122 @@
+{
+  "version": "weekly-rule-column-writeback-v2",
+  "mode": "APPLIED",
+  "at": "2026-09-16T02:59:19.394Z",
+  "profile": "kcne",
+  "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+  "table": {
+    "name": "竞品周_2026-09-13_2026-09-19",
+    "tableId": "tbllWI45sK0DfHpr"
+  },
+  "searchKeyword": "浴缸",
+  "columns": [
+    "材质分类",
+    "外形",
+    "安装方式",
+    "功能",
+    "风格",
+    "尺寸",
+    "适用空间",
+    "数据状态",
+    "待补数据项",
+    "搜索关键词"
+  ],
+  "rows": 1417,
+  "plannedRows": 1417,
+  "written": 1417,
+  "perColumn": {
+    "材质分类": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1417,
+      "skuBacked": 0
+    },
+    "外形": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1417,
+      "skuBacked": 0
+    },
+    "安装方式": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1417,
+      "skuBacked": 0
+    },
+    "功能": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1417,
+      "skuBacked": 0
+    },
+    "风格": {
+      "filled": 0,
+      "none": 0,
+      "na": 0,
+      "skipped": 1417,
+      "skuBacked": 0
+    },
+    "尺寸": {
+      "filled": 30,
+      "none": 1364,
+      "na": 23,
+      "skipped": 0,
+      "skuBacked": 3
+    },
+    "适用空间": {
+      "filled": 682,
+      "none": 712,
+      "na": 23,
+      "skipped": 0,
+      "skuBacked": 3
+    },
+    "数据状态": {
+      "filled": 1394,
+      "none": 0,
+      "na": 0,
+      "skipped": 0,
+      "skuBacked": 0
+    },
+    "待补数据项": {
+      "filled": 1394,
+      "none": 0,
+      "na": 0,
+      "skipped": 0,
+      "skuBacked": 0
+    },
+    "搜索关键词": {
+      "filled": 1417,
+      "none": 0,
+      "na": 0,
+      "skipped": 0,
+      "skuBacked": 0
+    }
+  },
+  "expectedClassAfter": {
+    "D-价格/流量型竞品": 421,
+    "无分类": 890,
+    "B-高价值竞品": 1,
+    "不适用": 23,
+    "C-差异化竞品": 82
+  },
+  "rule": "buildCompetitorRecord（与飞书评级公式同源）；尺寸/适用空间 优先 SKU明细 按商品标题聚合（与主表 Lookup 同源），否则回落标题规则；Text 多值逗号连接；只填空不覆盖",
+  "readBack": {
+    "rows": 1417,
+    "stillBlank": {
+      "材质分类": 0,
+      "外形": 0,
+      "安装方式": 0,
+      "功能": 0,
+      "风格": 0,
+      "尺寸": 0,
+      "适用空间": 0,
+      "数据状态": 23,
+      "待补数据项": 23,
+      "搜索关键词": 0
+    }
+  }
+}
