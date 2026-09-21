@@ -26,6 +26,26 @@ process.env.XWS_BROWSER_ID = BROWSER_IDS.competitor;
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const cli = path.join(root, "scripts", "export-market-analysis.mjs");
+
+// 每个用例都给 CLI 子进程指一把**属于本用例**的市场分析锁。
+//
+// 为什么必须：锁的默认路径是**机器级**的（`os.tmpdir()/xws-runs/.market-analysis.lock`），
+// 而只有 `XWS_MARKET_ANALYSIS_LOCK` 能改它 —— `XWS_RUNTIME_DIR` 不影响锁路径。这些用例把 CLI
+// 当子进程跑、子进程自己去抢那把机器级锁，于是**同一台机器上并行跑两次 skills 套件时必然互撞**，
+// 表现为 `{"status":"BUSY","error":"another Xiaowangshen market-analysis run is already active"}`
+// （实测现场见 evidence/huitun-usage-limit-fix-2026-09-21/）。
+//
+// 锁跟着用例自己的 runtime 目录走：既保留了「子进程照常抢锁」这条语义（不是关掉锁），
+// 又不会与外部正在跑的运行撞车。守卫在 tests/spawn-lock-isolation.test.mjs ——
+// 漏掉一处不会在本文件报错，只会在并行跑套件时炸，所以必须有判据扫源码。
+function cliEnv(runtime, extra = {}) {
+  return {
+    ...process.env,
+    XWS_RUNTIME_DIR: runtime,
+    XWS_MARKET_ANALYSIS_LOCK: path.join(runtime, ".market-analysis.lock"),
+    ...extra,
+  };
+}
 const validator = path.join(root, "scripts", "validate-output.py");
 const python = process.env.XWS_PYTHON || (process.platform === "win32" ? "py" : "python3");
 const pythonPrefix = process.env.XWS_PYTHON || process.platform !== "win32" ? [] : ["-3"];
@@ -725,7 +745,7 @@ test("closes the automation home tab when login verification fails", async () =>
         "--keyword", "浴缸",
         "--prepare-only",
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -749,7 +769,7 @@ test("closes a home tab when the new-tab response fails after creation", async (
         "--keyword", "浴缸",
         "--prepare-only",
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -775,7 +795,7 @@ test("rejects a non-Edge Proxy before target discovery or browser actions", asyn
         "--prepare-only",
         "--proxy",
         `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime }, encoding: "utf8" });
+      ], { env: cliEnv(runtime), encoding: "utf8" });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -806,7 +826,7 @@ test("rejects a disconnected Edge Proxy before target discovery", async () => {
         "--prepare-only",
         "--proxy",
         `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime }, encoding: "utf8" });
+      ], { env: cliEnv(runtime), encoding: "utf8" });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -835,7 +855,7 @@ test("prepare-only retries market analysis once when the first click opens no di
         "--prepare-only",
         "--proxy",
         `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime }, encoding: "utf8" });
+      ], { env: cliEnv(runtime), encoding: "utf8" });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -862,7 +882,7 @@ test("prepare-only retries a transiently missing Xiaowangshen radio label", asyn
         "--keyword", "浴缸",
         "--prepare-only",
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime }, encoding: "utf8" });
+      ], { env: cliEnv(runtime), encoding: "utf8" });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -887,7 +907,7 @@ test("prepare-only runs from Taobao home without touching a live browser", async
         "--prepare-only",
         "--proxy",
         `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime }, encoding: "utf8" });
+      ], { env: cliEnv(runtime), encoding: "utf8" });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -923,7 +943,7 @@ test("prepare-only does not wait for a stubborn Element loading mask over the co
         "--prepare-only",
         "--proxy",
         `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime }, encoding: "utf8" });
+      ], { env: cliEnv(runtime), encoding: "utf8" });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -960,7 +980,7 @@ test("full flow retries a missed start click and validates the downloaded CSV", 
         output,
         "--proxy",
         `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -1007,7 +1027,7 @@ test("adopts a complete live result without clicking start analysis", async () =
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
         "--adopt-live-result",
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -1041,7 +1061,7 @@ test("rejects an export intent when the export target cannot be activated", asyn
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime, XWS_ADAPTIVE_LOCK_OWNER: "1" } });
+      ], { env: cliEnv(runtime, { XWS_ADAPTIVE_LOCK_OWNER: "1" }) });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -1076,7 +1096,7 @@ test("rejects an export intent when the export action never starts", async () =>
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -1119,7 +1139,7 @@ test("full flow falls back to a DOM click when coordinate clicks do not start co
         output,
         "--proxy",
         `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -1156,7 +1176,7 @@ test("full flow reconciles result ownership when the result mutates before its r
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1188,7 +1208,7 @@ test("full flow rejects a background request between arm and the real start clic
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1222,7 +1242,7 @@ test("full flow rejects historical source content after a current request withou
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1255,7 +1275,7 @@ test("full flow does not click again while the first start click is awaiting its
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1289,7 +1309,7 @@ test("full flow retries once after an observed click produces no collection requ
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1323,7 +1343,7 @@ test("full flow rejects a current collection failure that arrives after startup"
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1356,7 +1376,7 @@ test("full flow keeps waiting after startup evidence before a delayed result dia
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -1392,7 +1412,7 @@ test("full flow rebinds a uniquely owned result after its marker is remounted aw
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1426,7 +1446,7 @@ test("full flow rejects a remounted historical result dialog", async () => {
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1459,7 +1479,7 @@ test("full flow rejects historical result content remounted inside the source di
         "--export", "csv",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1493,7 +1513,7 @@ test("full flow closes a stale visible XLSX menu without ARIA ownership before r
         "--export", "csv,xlsx-images",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1528,7 +1548,7 @@ test("full flow waits when the current caret ARIA id points to an already visibl
         "--export", "csv,xlsx-images",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1562,7 +1582,7 @@ test("full flow accepts a newly mounted XLSX menu after the caret ARIA id change
         "--export", "csv,xlsx-images",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1597,7 +1617,7 @@ test("full flow accepts a hidden XLSX menu owned by the current caret", async ()
         "--export", "csv,xlsx-images",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1630,7 +1650,7 @@ test("full flow accepts one XLSX menu that transitions from hidden to visible wi
         "--export", "csv,xlsx-images",
         "--output-dir", output,
         "--proxy", `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stderr = "";
       child.stderr.on("data", (chunk) => { stderr += chunk; });
       child.on("error", reject);
@@ -1666,7 +1686,7 @@ test("full flow waits for a delayed XLSX export menu", async () => {
         output,
         "--proxy",
         `http://127.0.0.1:${proxy.port}`,
-      ], { env: { ...process.env, XWS_RUNTIME_DIR: runtime } });
+      ], { env: cliEnv(runtime) });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk) => { stdout += chunk; });

@@ -102,6 +102,8 @@
 - `CAPABILITY_DEGRADED`：停止当前能力版本，进入维护或回退。
 - `EVIDENCE_INVALID`：拒绝当前工件，不重试同一坏证据。
 - `POLICY_DENIED`：记录原因并终止。
+- `USAGE_LIMIT_REACHED`：记录原因并终止。与 `POLICY_DENIED` 同动作、不同话——额度会自行重置，
+  所以告警要说「额度用尽」（等重置或升级套餐），不能把运营指去查配置。
 - `COMMIT_UNKNOWN`：进入对账，禁止盲目重写。
 - `BUG`：告警并停止自动化。
 

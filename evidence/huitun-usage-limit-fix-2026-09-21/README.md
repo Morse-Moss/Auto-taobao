@@ -18,13 +18,19 @@
 | 位置 | 改动 |
 | --- | --- |
 | `flow.mjs` | 新增导出 `USAGE_LIMIT_CODE = 'USAGE_LIMIT_REACHED'`；配额墙抛错时挂 `error.code` 与 `error.details.evidence`（平台原文） |
-| `adapter.huitun-keyword-heat.mjs` | `FAILURE_CLASS_BY_CODE[USAGE_LIMIT_CODE] = 'POLICY_DENIED'`；`translateFlowError` 加一条按 **code** 翻译的分支（消息里带平台原文、会变，不能拿它当判据） |
+| `adapter.huitun-keyword-heat.mjs` | `FAILURE_CLASS_BY_CODE[USAGE_LIMIT_CODE] = 'POLICY_DENIED'`（**本轮已改为 `'USAGE_LIMIT_REACHED'`**，见末节）；`translateFlowError` 加一条按 **code** 翻译的分支（消息里带平台原文、会变，不能拿它当判据） |
 | `run-huitun-topic-heat.mjs` | 新增纯判据 `cliExitCodeFor(error)` / `preserveBrowserFor(error)`，**两个调用点都改成走函数**；help 里写明退出码含义 |
 
 为什么归 `POLICY_DENIED` 而不是 `HUMAN_REQUIRED`：`round-notify-policy.mjs` 里两者的
 `retryAutomatically` 相反 —— 配额当天不会自愈，落 `HUMAN_REQUIRED` 会**每 15 分钟白重试到当日上限**
 （每次都再撞一次墙），而 `POLICY_DENIED` 是 `false`（当天收工、等人补配置：升级套餐或等明天）。
 代价是现成 8 类里没有一类的措辞完全贴切（标题写「配置或授权不对」），这一点如实记在这里，不粉饰。
+
+**2026-09-21 本轮修正**：上面那句「没有一类的措辞完全贴切」被落实了 —— 新增第 9 个失败分类
+`USAGE_LIMIT_REACHED`（动作与 `POLICY_DENIED` 完全相同：FAIL、当天收工、不自动重试；唯一区别是
+**告警措辞**，标题为「平台今日额度已用尽」），并把 DB 的 CHECK 约束一起补齐（迁移 008）。
+触发理由：这条链的触发条件是 `优先级=A候选`，**一定会跑到额度墙**，告警把运营指去「查配置」不可接受。
+证据＝`evidence/usage-limit-class-and-lock-isolation-2026-09-21/`。
 
 ## 验证
 

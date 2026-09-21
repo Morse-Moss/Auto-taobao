@@ -739,7 +739,7 @@ test('translateFlowError 把中文策略结论映射成确定性分类，未知�
     { code: USAGE_LIMIT_CODE, details: { evidence: '该版本每天最多可以访问10次' } },
   ));
   assert.equal(quotaWall.code, USAGE_LIMIT_CODE);
-  assert.equal(quotaWall.failureClass, 'POLICY_DENIED');
+  assert.equal(quotaWall.failureClass, 'USAGE_LIMIT_REACHED');
   assert.equal(quotaWall.failureClass, FAILURE_CLASS_BY_CODE[USAGE_LIMIT_CODE]);
   assert.equal(quotaWall.details.evidence, '该版本每天最多可以访问10次', '平台原文要能到收据侧');
   assert.equal(
@@ -778,6 +778,24 @@ test('接线判据：flow.mjs 挂的每个确定性 code 都必须被映射成�
     assert.equal(translated.code, code, `${code} 被翻译后丢了 code`);
     assert.equal(translated.failureClass, FAILURE_CLASS_BY_CODE[code], `${code} 没有映射到分类`);
     assert.notEqual(translated.failureClass, 'BUG', `${code} 落回 BUG 就等于报「疑似缺陷、停线」`);
+  }
+});
+
+test('一致性判据：适配器给出的每个失败分类，都必须是运行时失败词表里的一个值', () => {
+  // 为什么在这里扫源码读词表、而不是 import 它：skills → runtime 的每条 import 都要在
+  // runtime/arch-boundary.test.mjs 里显式登记（那关系到交付形态的锁定面），而这条判据只是
+  // **读一份常量表**，不值得为它扩大依赖面。代价是解析必须 fail-closed：提取不到就断言失败，
+  // 绝不允许「扫了个空、却报绿灯」。
+  const source = readFileSync(join(here, '..', '..', '..', 'runtime', 'sop-runtime', 'context-schema.mjs'), 'utf8');
+  const block = /export const FAILURE_CLASS = Object\.freeze\(\[([\s\S]*?)\]\);/u.exec(source);
+  assert.ok(block, '提取不到 FAILURE_CLASS 词表 —— 改了写法就要同步改这里（不许静默通过）');
+  const vocabulary = new Set([...block[1].matchAll(/'([A-Z_]+)'/gu)].map((match) => match[1]));
+  assert.ok(vocabulary.has('BUG') && vocabulary.size >= 8, `词表提取结果可疑：${[...vocabulary].join(', ')}`);
+  for (const [code, failureClass] of Object.entries(FAILURE_CLASS_BY_CODE)) {
+    assert.ok(
+      vocabulary.has(failureClass),
+      `${code} 映射到 ${failureClass}，但运行时词表里没有这个值 —— 收据的上下文校验会拒掉它`,
+    );
   }
 });
 

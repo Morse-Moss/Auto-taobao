@@ -18,6 +18,7 @@ const FILES = {
   flow: path.join(repo, 'skills', 'huitun-to-feishu-keyword-heat', 'scripts', 'flow.mjs'),
   adapter: path.join(repo, 'skills', 'huitun-to-feishu-keyword-heat', 'scripts', 'adapter.huitun-keyword-heat.mjs'),
   cli: path.join(repo, 'skills', 'huitun-to-feishu-keyword-heat', 'scripts', 'run-huitun-topic-heat.mjs'),
+  schema: path.join(repo, 'runtime', 'sop-runtime', 'context-schema.mjs'),
 };
 const TESTS = {
   flow: path.join(skillTests, 'flow.test.mjs'),
@@ -49,7 +50,7 @@ const MUTATIONS = [
   {
     name: 'M2 FAILURE_CLASS_BY_CODE 不再映射这个 code',
     target: 'adapter',
-    find: "  [USAGE_LIMIT_CODE]: 'POLICY_DENIED',\n",
+    find: "  [USAGE_LIMIT_CODE]: 'USAGE_LIMIT_REACHED',\n",
     replace: '',
     tests: [TESTS.adapter],
     expect: 'translateFlowError 把中文策略结论映射成确定性分类，未知异常原样抛出',
@@ -84,6 +85,14 @@ const MUTATIONS = [
     replace: "    preserveBrowser = ['HUMAN_REQUIRED', 'STALLED'].includes(error.code);\n",
     tests: [TESTS.cli],
     expect: '接线判据：两个调用点都必须走判据函数，不许再抄一份内联清单',
+  },
+  {
+    name: 'M6 运行时词表里没有这个分类（适配器映射得出去，但收据的上下文校验会拒）',
+    target: 'schema',
+    find: "'EVIDENCE_INVALID', 'POLICY_DENIED', 'USAGE_LIMIT_REACHED', 'COMMIT_UNKNOWN', 'BUG',\n",
+    replace: "'EVIDENCE_INVALID', 'POLICY_DENIED', 'COMMIT_UNKNOWN', 'BUG',\n",
+    tests: [TESTS.adapter],
+    expect: '一致性判据：适配器给出的每个失败分类，都必须是运行时失败词表里的一个值',
   },
 ];
 

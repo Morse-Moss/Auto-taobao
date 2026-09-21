@@ -56,7 +56,8 @@
 
 `skills/huitun-to-feishu-keyword-heat`，默认干跑 `--apply --confirm-table` 才写；`AI_REQUIRED`（存在 `优先级=待数据` 的行）即停（依据：该技能 flow.mjs 的失败分类；huitun-candidate-contract.md）[核]
 
-配额用尽（该账号是免费档，每天 10 次）时抛确定性 code `USAGE_LIMIT_REACHED`：运行时侧映射成 `POLICY_DENIED`（`retryAutomatically:false` ⇒ 当天收工、等人处理，不会每 15 分钟白重试），CLI 侧退出码 2 且保留本次页签。此前它没有 code，会落到兜底分类 `BUG` → `STOP_AND_ALERT`（把「平台按套餐拒绝了」报成「疑似代码缺陷、停线」）。2026-09-21 修，证据＝`evidence/huitun-usage-limit-fix-2026-09-21/`（端到端复核 + 突变 5/5）[核]
+配额用尽（该账号是免费档，每天 10 次）时抛确定性 code `USAGE_LIMIT_REACHED`：运行时侧映射成**单列**的失败分类 `USAGE_LIMIT_REACHED`（`retryAutomatically:false` ⇒ 当天收工、不会每 15 分钟白重试），CLI 侧退出码 2 且保留本次页签。此前它没有 code，会落到兜底分类 `BUG` → `STOP_AND_ALERT`（把「平台按套餐拒绝了」报成「疑似代码缺陷、停线」）。2026-09-21 修，证据＝`evidence/huitun-usage-limit-fix-2026-09-21/`（端到端复核 + 突变）+ `evidence/usage-limit-class-and-lock-isolation-2026-09-21/`（分类单列 + 测试隔离）[核]
+注意首轮把它并进了 `POLICY_DENIED`（动作相同），**本轮改为单列一类**：那一类的告警标题是「配置或授权不对，已拒绝执行」，会把运营指去查配置，而这里该做的是等额度重置或升级套餐 —— 这条链的触发条件是 `优先级=A候选`，肯定会跑到额度墙。分类口径表＝`docs/ops/UNATTENDED-AGENT-RUNTIME-PLAN.md` §4
 
 ### 1.6 决策历史同步：独立段（第二个发布单元）
 

@@ -9,6 +9,7 @@ import {
 } from '../../skills/huitun-to-feishu-keyword-heat/scripts/adapter.huitun-keyword-heat.mjs';
 import { cliExitCodeFor, preserveBrowserFor } from '../../skills/huitun-to-feishu-keyword-heat/scripts/run-huitun-topic-heat.mjs';
 import { actionForFailure } from '../../runtime/sop-runtime/policy.mjs';
+import { FAILURE_CLASS } from '../../runtime/sop-runtime/context-schema.mjs';
 
 // 2026-09-21 页面原文（含换行后的「升级版本」引导按钮文案）。
 const WALL = '该版本每天最多可以访问10次，请升级到高版本使用\n\n升级版本';
@@ -36,7 +37,8 @@ lines.push(`failureClass              ${JSON.stringify(translated?.failureClass)
 lines.push(`FAILURE_CLASS_BY_CODE 里   ${JSON.stringify(FAILURE_CLASS_BY_CODE[USAGE_LIMIT_CODE])}`);
 const action = actionForFailure(translated?.failureClass);
 lines.push(`actionForFailure          action=${action.action}  reason="${action.reason}"`);
-lines.push('  期望：POLICY_DENIED / FAIL（当天收工、等人补配置）。修之前这一格是 BUG / STOP_AND_ALERT。');
+lines.push(`运行时词表里有吗           ${FAILURE_CLASS.includes(translated?.failureClass) ? '有' : '没有 —— 收据的上下文校验会拒掉它'}`);
+lines.push('  期望：USAGE_LIMIT_REACHED / FAIL（当天收工、不自动重试）。修之前这一格是 BUG / STOP_AND_ALERT。');
 
 lines.push('');
 lines.push('=== 第三段：CLI 那条轴（退出码 / 是否保留浏览器页签）===');

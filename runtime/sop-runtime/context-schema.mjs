@@ -11,9 +11,13 @@ export const HUMAN_GATE_STATUS = Object.freeze(['NONE', 'WAITING_HUMAN', 'APPROV
 export const LEASE_STATUS = Object.freeze(['WAITING', 'HELD', 'EXPIRED', 'RELEASED']);
 export const PUBLICATION_STATUS = Object.freeze(['NOT_REQUESTED', 'READY', 'COMMITTED', 'VERIFIED', 'UNKNOWN']);
 
+// 为什么 USAGE_LIMIT_REACHED 单列一类、而不是并进 POLICY_DENIED（2026-09-21 加）：
+// 两者的**动作**相同（都是 FAIL、当天收工、不自动重试），但**通知措辞**必须不同 ——
+// 运营看到「配置或授权不对，已拒绝执行」会去查配置和授权，而这里实际要做的是
+// 「等额度重置」或「升级套餐」。告警指错了人，比不告警更贵。分类的粒度决定告警指不指得对人。
 export const FAILURE_CLASS = Object.freeze([
   'TRANSIENT_EXTERNAL', 'RESOURCE_BUSY', 'HUMAN_REQUIRED', 'CAPABILITY_DEGRADED',
-  'EVIDENCE_INVALID', 'POLICY_DENIED', 'COMMIT_UNKNOWN', 'BUG',
+  'EVIDENCE_INVALID', 'POLICY_DENIED', 'USAGE_LIMIT_REACHED', 'COMMIT_UNKNOWN', 'BUG',
 ]);
 
 // STALLED 只能描述阶段/分片诊断，不是完成态，因此不在 EXECUTION_STATUS 内。

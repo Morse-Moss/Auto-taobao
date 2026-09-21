@@ -1,4 +1,6 @@
-// 隔离库验证：004 / 005 的语法、重复执行（幂等）与 rollback。
+// 隔离库验证：004 / 005 / 006 / 007 / 008 的语法、重复执行（幂等）与 rollback。
+// 末尾还带一条**漂移守卫**：代码里的 FAILURE_CLASS 词表必须 ⊆ DB 的 CHECK 约束
+// （006 的 FAILED、008 的 USAGE_LIMIT_REACHED 都是这条漂移的产物，每次后果都是失败路径写不进库）。
 // 规则：
 //  - 只在临时库操作，库名 sop_verify_<时间戳>，结束即 DROP DATABASE ... WITH (FORCE)；
 //  - 绝不连接、绝不修改业务库 xws_automation；
@@ -399,7 +401,81 @@ async function main() {
     record('007 rollback 后重放', (await auditTableCount(client)) === 1, '表重建');
     verify.auditColumns = cols007.length;
 
-    console.log('\n[7] 收尾');
+    // --- 008 失败分类词表补齐（USAGE_LIMIT_REACHED）---
+    console.log('\n[7] 008 失败分类词表补齐（USAGE_LIMIT_REACHED）');
+    const failureClassDef = async (c) => String((await c.query(
+      `select pg_get_constraintdef(oid) as def from pg_constraint
+       where conname = 'durable_attempts_failure_class_check'`)).rows[0]?.def ?? '');
+    const tryInsertAttempt = async (c, failureClass) => {
+      try {
+        await c.query(
+          `insert into durable_attempts (attempt_id, run_id, attempt_no, failure_class)
+           values ($1, '11111111-1111-4111-8111-111111111111', 1, $2)`,
+          [`drill-${failureClass}`, failureClass],
+        );
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    // 反例先行：这条断言复现的就是词表漂移的后果（新分类在权威库上写不进去）。
+    record('008 前置：旧约束下 USAGE_LIMIT_REACHED 被拒（复现漂移）',
+      (await tryInsertAttempt(client, 'USAGE_LIMIT_REACHED')) === false,
+      '未迁移前 insert failure_class=USAGE_LIMIT_REACHED 被 CHECK 拒绝');
+
+    await applyFile(client, '008-sop-runtime-usage-limit-class.sql');
+    const vocabAfter008 = await failureClassDef(client);
+    record('008 首次执行', vocabAfter008.includes('USAGE_LIMIT_REACHED'), vocabAfter008 || '（取不到约束定义）');
+    record('008 后 USAGE_LIMIT_REACHED 可写入（失败路径从此能落库）',
+      await tryInsertAttempt(client, 'USAGE_LIMIT_REACHED'), 'insert failure_class=USAGE_LIMIT_REACHED 成功');
+    record('008 后非法值仍被拒（是补齐词表，不是拆掉约束）',
+      (await tryInsertAttempt(client, 'NOT_A_CLASS')) === false, 'insert failure_class=NOT_A_CLASS 被拒绝');
+
+    await applyFile(client, '008-sop-runtime-usage-limit-class.sql');
+    record('008 重复执行幂等', (await failureClassDef(client)) === vocabAfter008, '二次执行后约束定义逐字不变');
+
+    // 回滚 fail-closed：表里还有 USAGE_LIMIT_REACHED 行时，回滚必须整体失败，且不留半执行状态。
+    let classRollbackBlocked = false;
+    let classRollbackError = '';
+    try {
+      await applyFile(client, '008-rollback.sql');
+    } catch (error) {
+      classRollbackBlocked = true;
+      classRollbackError = String(error.message).split('\n')[0];
+    }
+    record('008 rollback 在存在 USAGE_LIMIT_REACHED 行时按预期失败（fail-closed）', classRollbackBlocked,
+      classRollbackError || '竟然回滚成功了，说明约束没有真正生效');
+    record('008 失败的回滚不留下半执行状态', (await failureClassDef(client)) === vocabAfter008,
+      '多语句简单查询按隐式事务整体回滚，约束定义未被改动');
+
+    await client.query("delete from durable_attempts where failure_class = 'USAGE_LIMIT_REACHED'");
+    await applyFile(client, '008-rollback.sql');
+    const vocabAfterClassRollback = await failureClassDef(client);
+    record('008 rollback 清除 USAGE_LIMIT_REACHED（回到 005 的 8 值）',
+      !vocabAfterClassRollback.includes('USAGE_LIMIT_REACHED')
+      && (await tryInsertAttempt(client, 'USAGE_LIMIT_REACHED')) === false,
+      vocabAfterClassRollback || '（取不到约束定义）');
+
+    await applyFile(client, '008-sop-runtime-usage-limit-class.sql');
+    const vocabAfterReplay = await failureClassDef(client);
+    record('008 rollback 后重放', vocabAfterReplay.includes('USAGE_LIMIT_REACHED'), '约束重新含 USAGE_LIMIT_REACHED');
+    verify.failureClassVocab = vocabAfterReplay;
+
+    // 漂移守卫：**代码词表必须 ⊆ DB 约束**。006（FAILED）与 008（USAGE_LIMIT_REACHED）都是这条
+    // 漂移的产物，而它每次的后果都一样：失败路径写库被拒、连收据都落不下来。
+    // 放在这里而不是单测里：只有在这里才同时拿得到「代码词表」与「约束定义」两个事实。
+    const schemaSource = fs.readFileSync(path.join(REPO, 'runtime', 'sop-runtime', 'context-schema.mjs'), 'utf8');
+    const classBlock = /export const FAILURE_CLASS = Object\.freeze\(\[([\s\S]*?)\]\);/u.exec(schemaSource);
+    if (!classBlock) throw new Error('提取不到 FAILURE_CLASS 词表（改了写法就要同步改这里，不许静默通过）');
+    const codeVocabulary = [...classBlock[1].matchAll(/'([A-Z_]+)'/gu)].map((match) => match[1]);
+    const absentInDb = codeVocabulary.filter((name) => !vocabAfterReplay.includes(`'${name}'`));
+    record('代码词表 ⊆ DB 约束（新加一类就必须配一条迁移）', absentInDb.length === 0,
+      absentInDb.length ? `DB 约束里缺：${absentInDb.join(', ')}` : `${codeVocabulary.length} 个值全部被约束接受`);
+
+    await client.query("delete from durable_attempts where attempt_id like 'drill-%'");
+
+    console.log('\n[8] 收尾');
   } catch (error) {
     const full = String(error?.message ?? error);
     record('执行异常', false, full);

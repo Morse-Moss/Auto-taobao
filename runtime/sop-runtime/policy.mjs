@@ -187,6 +187,10 @@ export function actionForFailure(failureClass, { retryUsed = 0, retryBudget = 3 
       return { action: 'REJECT_EVIDENCE', reason: 'evidence invalid, never retry the same bad evidence' };
     case 'POLICY_DENIED':
       return { action: 'FAIL', reason: 'policy denied' };
+    // 与 POLICY_DENIED 同动作、不同话：动作上都是「这次不成，别再自动试」，
+    // 但收据上的理由必须说清是额度用尽（告警靠这个分类挑措辞，见 round-notify-policy）。
+    case 'USAGE_LIMIT_REACHED':
+      return { action: 'FAIL', reason: 'platform usage limit reached, the quota resets on its own' };
     case 'COMMIT_UNKNOWN':
       return { action: 'RECONCILE', reason: 'commit result unknown, reconcile before any retry' };
     case 'CAPABILITY_DEGRADED':

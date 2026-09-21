@@ -96,10 +96,11 @@ export const ARTIFACT_SURFACE_FIELDS = Object.freeze([
 // 而这条链的原因文案大多是中文（「拒绝覆盖」「队列已变化」），必须逐条显式映射。
 export const FAILURE_CLASS_BY_CODE = Object.freeze({
   // 灰豚按套餐拒绝对这次查询提供服务（免费档每天 10 次，配额用尽时页面上是升级引导文案）。
-  // 归 POLICY_DENIED 而不是 HUMAN_REQUIRED：两者的 `retryAutomatically` 相反——
-  // 配额当天不会自愈，落 HUMAN_REQUIRED 会每 15 分钟白重试到当日上限（每次都再撞一次墙），
-  // 而 POLICY_DENIED 当天收工、等人补配置（升级套餐或等明天额度重置）。
-  [USAGE_LIMIT_CODE]: 'POLICY_DENIED',
+  // 单列 USAGE_LIMIT_REACHED，而不是并进 POLICY_DENIED：两者动作相同（FAIL、当天收工），
+  // 但告警措辞必须不同 —— 「配置或授权不对」会把运营指去查配置，而这里要做的是
+  // 等明天额度重置、或升级套餐。也**不是** HUMAN_REQUIRED：那一类 `retryAutomatically=true`，
+  // 会让系统每 15 分钟白撞一次墙（配额当天不会自愈）。
+  [USAGE_LIMIT_CODE]: 'USAGE_LIMIT_REACHED',
   RESULTS_MISSING: 'EVIDENCE_INVALID',
   // 探测专属：调用方没给全探测输入（与采集段的 TARGET_REQUIRED 同类：都是「这次调用没准备好」）。
   // 它永远到不了运行时的失败分类——探测的异常由调度器收成「结论未知、照常发起」。
@@ -209,7 +210,7 @@ export function translateFlowError(error) {
   }
   // 配额墙：平台按套餐拒绝了这次查询。它既不是缺陷（BUG），也不是「证据不合合同」，
   // 所以不能靠消息文本去猜——认的是 flow.mjs 自己挂的那个 code（消息里带平台原文，会变）。
-  // 分类由 FAILURE_CLASS_BY_CODE 给：POLICY_DENIED（当天收工、等人补配置，不自动重试）。
+  // 分类由 FAILURE_CLASS_BY_CODE 给：USAGE_LIMIT_REACHED（当天收工、等人处理额度，不自动重试）。
   if (error?.code === USAGE_LIMIT_CODE) {
     return new HuitunEvidenceError(
       'Huitun refused to serve this query because the account usage limit was reached',

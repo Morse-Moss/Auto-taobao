@@ -218,6 +218,22 @@ export const ROUND_NOTIFY_RULES = Object.freeze([
     nextAction: '按下面的原因补齐配置/授权（缺什么会写在原因里）。',
     retryAutomatically: false,
   },
+  // 额度用尽：与 POLICY_DENIED 同「动作」（FAIL / 当天收工）、不同「话」。
+  // 为什么不复用 POLICY_DENIED：那一类的措辞是「配置或授权不对，已拒绝执行」，运营读到会去查
+  // 配置和授权；而这里该做的是等额度重置或升级套餐 —— 告警的下一步指错了人，比不告警更贵。
+  // 为什么 retryAutomatically=false：额度当天不会自愈，重试就是每 15 分钟再撞一次墙；
+  // 人若升级了套餐，用 nextAction 里那条「手动跑一次」即可，不需要自动化替他盲试。
+  {
+    key: 'USAGE_LIMIT_REACHED',
+    kind: 'failure_class',
+    plan: 'NOTIFY',
+    needs: 'CONFIG',
+    severity: 'HIGH',
+    title: '平台今日额度已用尽',
+    nextAction: '等明天额度重置，系统会自动继续；今天要跑完就得升级该平台的套餐，然后手动跑一次。'
+      + '不用改代码，也不要重启自动化。',
+    retryAutomatically: false,
+  },
   {
     key: 'COMMIT_UNKNOWN',
     kind: 'failure_class',

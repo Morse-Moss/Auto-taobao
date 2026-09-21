@@ -1,0 +1,74 @@
+基础连接指向业务库 xws_automation，本脚本只用它取连接凭据，所有 DDL 都在临时库执行。
+实际生效角色: xws_runner  superuser=true  createdb=true
+角色来源: 进程环境变量（覆盖 env 文件）
+隔离库: sop_verify_20260921093820
+基础凭据: postgresql://***@127.0.0.1:5432/xws_automation
+
+  PASS  创建临时隔离库  — sop_verify_20260921093820
+
+[1] 前置依赖（001/002/003）
+  PASS  001/002/003 建表  — 7/7 张基础表
+
+[2] 依赖顺序反例
+  PASS  005 缺前置表时按预期失败（依赖顺序）  — relation "durable_runs" does not exist
+
+[3] 004 语法与幂等
+  PASS  004 首次执行  — 表 7/7：capabilities, decisions, evidence_refs, gaps, modules, phases, reviews
+  PASS  004 种子数据落库  — reviews=1 caps=5 modules=15 gaps=9 phases=7 decisions=7 evidence=8
+  PASS  004 重复执行幂等  — 二次执行后计数不变
+  PASS  004 rollback 清除 7 张表  — 剩余表 0
+  PASS  004 rollback 保留 schema（按设计）  — architecture schema 保留，便于后续架构迁移
+  PASS  004 rollback 后重放  — 种子重建 reviews=1 gaps=9
+
+[4] 005 语法与幂等
+  PASS  005 首次执行  — 新增列 20/20，约束 4/4，索引 3/3
+  PASS  005 重复执行幂等  — 二次执行后 列20 约束4 索引3 不变
+  PASS  005 CHECK 约束生效  — 非法 evidence_status 被拒绝
+  PASS  005 默认值与 jsonb 可用  — evidence=NONE gate=NONE pub=NOT_REQUESTED ver=0
+  PASS  005 rollback 清除新增对象  — 剩余 列0 约束0 索引0
+  PASS  005 rollback 不删表  — 保留 3/3 张表
+  PASS  005 rollback 后重放  — 列 20/20
+
+[5] 006 提交状态词表补齐（FAILED）
+  PASS  006 前置：旧约束下 FAILED 被拒（复现真实缺陷）  — 未迁移前 insert status=FAILED 被 CHECK 拒绝
+  PASS  006 首次执行  — CHECK ((status = ANY (ARRAY['NOT_REQUESTED'::text, 'READY'::text, 'COMMITTING'::text, 'COMMITTED'::text, 'VERIFIED'::text, 'UNKNOWN'::text, 'FAILED'::text])))
+  PASS  006 后 FAILED 可写入（运行时的失败路径从此能落库）  — insert status=FAILED 成功
+  PASS  006 后非法值仍被拒（是补齐词表，不是拆掉约束）  — insert status=NOT_A_STATUS 被拒绝
+  PASS  006 重复执行幂等  — 二次执行后约束定义逐字不变
+  PASS  006 rollback 在存在 FAILED 行时按预期失败（fail-closed）  — check constraint "supervisor_commit_records_status_check" of relation "supervisor_commit_records" is violated by some row
+  PASS  006 失败的回滚不留下半执行状态  — 多语句简单查询按隐式事务整体回滚，约束定义未被改动
+  PASS  006 rollback 清除 FAILED（回到 001 的 6 值）  — CHECK ((status = ANY (ARRAY['NOT_REQUESTED'::text, 'READY'::text, 'COMMITTING'::text, 'COMMITTED'::text, 'VERIFIED'::text, 'UNKNOWN'::text])))
+  PASS  006 rollback 后重放  — 约束重新含 FAILED
+
+[6] 007 日报链只追加审计表
+  PASS  007 前置：迁移前审计表不存在  — 表未创建
+  PASS  007 首次执行建表  — daily_report_push_audit
+  PASS  007 列集合与写入方一致  — 22 列（期望 22）
+  PASS  007 索引建成  — daily_report_push_audit_pkey, idx_daily_report_push_audit_date_shop, idx_daily_report_push_audit_at
+  PASS  007 词表外的 action 被拒  — action='dry-run'
+  PASS  007 词表外的 outcome 被拒  — outcome='maybe'
+  PASS  007 合法行可写入  — id=3（bigserial，node-pg 返回字符串）
+  PASS  007 同日同店重复写入被允许（刻意无唯一键）  — 两行 id=3 / 4
+  PASS  007 重复执行幂等  — 二次执行后表/索引/列不变
+  PASS  007 rollback 在存在审计行时按预期失败（fail-closed）  — 007-rollback refused: daily_report_push_audit 仍有审计行。请先导出归档并清空表，再执行本回滚 —— 回滚 DDL 不该顺手销毁审计证据。
+  PASS  007 失败的回滚不留下半执行状态  — 表仍在
+  PASS  007 rollback 清空后删除表  — 表已删除
+  PASS  007 rollback 后重放  — 表重建
+
+[7] 008 失败分类词表补齐（USAGE_LIMIT_REACHED）
+  PASS  008 前置：旧约束下 USAGE_LIMIT_REACHED 被拒（复现漂移）  — 未迁移前 insert failure_class=USAGE_LIMIT_REACHED 被 CHECK 拒绝
+  PASS  008 首次执行  — CHECK (((failure_class IS NULL) OR (failure_class = ANY (ARRAY['TRANSIENT_EXTERNAL'::text, 'RESOURCE_BUSY'::text, 'HUMAN_REQUIRED'::text, 'CAPABILITY_DEGRADED'::text, 'EVIDENCE_INVALID'::text, 'POLICY_DENIED'::text, 'USAGE_LIMIT_REACHED'::text, 'COMMIT_UNKNOWN'::text, 'BUG'::text]))))
+  PASS  008 后 USAGE_LIMIT_REACHED 可写入（失败路径从此能落库）  — insert failure_class=USAGE_LIMIT_REACHED 成功
+  PASS  008 后非法值仍被拒（是补齐词表，不是拆掉约束）  — insert failure_class=NOT_A_CLASS 被拒绝
+  PASS  008 重复执行幂等  — 二次执行后约束定义逐字不变
+  PASS  008 rollback 在存在 USAGE_LIMIT_REACHED 行时按预期失败（fail-closed）  — check constraint "durable_attempts_failure_class_check" of relation "durable_attempts" is violated by some row
+  PASS  008 失败的回滚不留下半执行状态  — 多语句简单查询按隐式事务整体回滚，约束定义未被改动
+  PASS  008 rollback 清除 USAGE_LIMIT_REACHED（回到 005 的 8 值）  — CHECK (((failure_class IS NULL) OR (failure_class = ANY (ARRAY['TRANSIENT_EXTERNAL'::text, 'RESOURCE_BUSY'::text, 'HUMAN_REQUIRED'::text, 'CAPABILITY_DEGRADED'::text, 'EVIDENCE_INVALID'::text, 'POLICY_DENIED'::text, 'COMMIT_UNKNOWN'::text, 'BUG'::text]))))
+  PASS  008 rollback 后重放  — 约束重新含 USAGE_LIMIT_REACHED
+  PASS  代码词表 ⊆ DB 约束（新加一类就必须配一条迁移）  — 9 个值全部被约束接受
+
+[8] 收尾
+  PASS  清理临时库  — sop_verify_20260921093820
+
+=== 结果：49/49 通过 ===
+EXIT=0

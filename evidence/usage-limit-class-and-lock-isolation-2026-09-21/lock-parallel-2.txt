@@ -1,0 +1,245 @@
+TAP version 13
+# Subtest: keeps sales sorting mapped to the Xiaowangshen config radio value
+ok 1 - keeps sales sorting mapped to the Xiaowangshen config radio value
+  ---
+  duration_ms: 32.5153
+  type: 'test'
+  ...
+# Subtest: reports the exact Xiaowangshen configuration fields that did not settle
+ok 2 - reports the exact Xiaowangshen configuration fields that did not settle
+  ---
+  duration_ms: 2.4476
+  type: 'test'
+  ...
+# Subtest: settles on the Xiaowangshen form state instead of an Element loading mask
+ok 3 - settles on the Xiaowangshen form state instead of an Element loading mask
+  ---
+  duration_ms: 4.355
+  type: 'test'
+  ...
+# Subtest: browser diagnostics serialize the current response validator and wrapper version
+ok 4 - browser diagnostics serialize the current response validator and wrapper version
+  ---
+  duration_ms: 1.3901
+  type: 'test'
+  ...
+# Subtest: closes only targets owned by the terminal run marker
+ok 5 - closes only targets owned by the terminal run marker
+  ---
+  duration_ms: 2.9231
+  type: 'test'
+  ...
+# Subtest: partial stall export intent uses a bounded settlement deadline
+ok 6 - partial stall export intent uses a bounded settlement deadline
+  ---
+  duration_ms: 15.36
+  type: 'test'
+  ...
+# Subtest: partial stall settlement timeout closes the intent instead of reopening it
+ok 7 - partial stall settlement timeout closes the intent instead of reopening it
+  ---
+  duration_ms: 27.7093
+  type: 'test'
+  ...
+# Subtest: partial stall manifest records the refreshed owned progress used for export
+ok 8 - partial stall manifest records the refreshed owned progress used for export
+  ---
+  duration_ms: 0.3927
+  type: 'test'
+  ...
+# Subtest: closes the automation home tab when login verification fails
+ok 9 - closes the automation home tab when login verification fails
+  ---
+  duration_ms: 5270.1402
+  type: 'test'
+  ...
+# Subtest: closes a home tab when the new-tab response fails after creation
+ok 10 - closes a home tab when the new-tab response fails after creation
+  ---
+  duration_ms: 7677.6794
+  type: 'test'
+  ...
+# Subtest: rejects a non-Edge Proxy before target discovery or browser actions
+ok 11 - rejects a non-Edge Proxy before target discovery or browser actions
+  ---
+  duration_ms: 6896.7554
+  type: 'test'
+  ...
+# Subtest: rejects a disconnected Edge Proxy before target discovery
+ok 12 - rejects a disconnected Edge Proxy before target discovery
+  ---
+  duration_ms: 5183.0818
+  type: 'test'
+  ...
+# Subtest: prepare-only retries market analysis once when the first click opens no dialog
+ok 13 - prepare-only retries market analysis once when the first click opens no dialog
+  ---
+  duration_ms: 33317.9891
+  type: 'test'
+  ...
+# Subtest: prepare-only retries a transiently missing Xiaowangshen radio label
+ok 14 - prepare-only retries a transiently missing Xiaowangshen radio label
+  ---
+  duration_ms: 27674.4418
+  type: 'test'
+  ...
+# Subtest: prepare-only runs from Taobao home without touching a live browser
+ok 15 - prepare-only runs from Taobao home without touching a live browser
+  ---
+  duration_ms: 31288.5219
+  type: 'test'
+  ...
+# Subtest: prepare-only does not wait for a stubborn Element loading mask over the config form
+ok 16 - prepare-only does not wait for a stubborn Element loading mask over the config form
+  ---
+  duration_ms: 27990.2072
+  type: 'test'
+  ...
+# Subtest: full flow retries a missed start click and validates the downloaded CSV
+ok 17 - full flow retries a missed start click and validates the downloaded CSV
+  ---
+  duration_ms: 44706.8883
+  type: 'test'
+  ...
+# Subtest: adopts a complete live result without clicking start analysis
+ok 18 - adopts a complete live result without clicking start analysis
+  ---
+  duration_ms: 10103.7793
+  type: 'test'
+  ...
+# Subtest: rejects an export intent when the export target cannot be activated
+ok 19 - rejects an export intent when the export target cannot be activated
+  ---
+  duration_ms: 24065.9625
+  type: 'test'
+  ...
+# Subtest: rejects an export intent when the export action never starts
+ok 20 - rejects an export intent when the export action never starts
+  ---
+  duration_ms: 28208.6918
+  type: 'test'
+  ...
+# Subtest: full flow falls back to a DOM click when coordinate clicks do not start collection
+ok 21 - full flow falls back to a DOM click when coordinate clicks do not start collection
+  ---
+  duration_ms: 45277.3312
+  type: 'test'
+  ...
+# Subtest: full flow reconciles result ownership when the result mutates before its request starts
+ok 22 - full flow reconciles result ownership when the result mutates before its request starts
+  ---
+  duration_ms: 33349.0482
+  type: 'test'
+  ...
+# Subtest: full flow rejects a background request between arm and the real start click
+ok 23 - full flow rejects a background request between arm and the real start click
+  ---
+  duration_ms: 98168.4617
+  type: 'test'
+  ...
+# Subtest: full flow rejects historical source content after a current request without a new result generation
+ok 24 - full flow rejects historical source content after a current request without a new result generation
+  ---
+  duration_ms: 92286.1358
+  type: 'test'
+  ...
+# Subtest: full flow does not click again while the first start click is awaiting its request
+ok 25 - full flow does not click again while the first start click is awaiting its request
+  ---
+  duration_ms: 44861.9484
+  type: 'test'
+  ...
+# Subtest: full flow retries once after an observed click produces no collection request
+ok 26 - full flow retries once after an observed click produces no collection request
+  ---
+  duration_ms: 95080.7528
+  type: 'test'
+  ...
+# Subtest: full flow rejects a current collection failure that arrives after startup
+ok 27 - full flow rejects a current collection failure that arrives after startup
+  ---
+  duration_ms: 28561.3751
+  type: 'test'
+  ...
+# Subtest: full flow keeps waiting after startup evidence before a delayed result dialog appears
+ok 28 - full flow keeps waiting after startup evidence before a delayed result dialog appears
+  ---
+  duration_ms: 121697.329
+  type: 'test'
+  ...
+# Subtest: full flow rebinds a uniquely owned result after its marker is remounted away
+ok 29 - full flow rebinds a uniquely owned result after its marker is remounted away
+  ---
+  duration_ms: 34492.1806
+  type: 'test'
+  ...
+# Subtest: full flow rejects a remounted historical result dialog
+ok 30 - full flow rejects a remounted historical result dialog
+  ---
+  duration_ms: 92707.3634
+  type: 'test'
+  ...
+# Subtest: full flow rejects historical result content remounted inside the source dialog
+ok 31 - full flow rejects historical result content remounted inside the source dialog
+  ---
+  duration_ms: 98109.1773
+  type: 'test'
+  ...
+# Subtest: full flow closes a stale visible XLSX menu without ARIA ownership before reopening it
+ok 32 - full flow closes a stale visible XLSX menu without ARIA ownership before reopening it
+  ---
+  duration_ms: 40525.8497
+  type: 'test'
+  ...
+# Subtest: full flow waits when the current caret ARIA id points to an already visible old menu
+ok 33 - full flow waits when the current caret ARIA id points to an already visible old menu
+  ---
+  duration_ms: 43580.2646
+  type: 'test'
+  ...
+# Subtest: full flow accepts a newly mounted XLSX menu after the caret ARIA id changes
+ok 34 - full flow accepts a newly mounted XLSX menu after the caret ARIA id changes
+  ---
+  duration_ms: 41253.6657
+  type: 'test'
+  ...
+# Subtest: full flow accepts a hidden XLSX menu owned by the current caret
+ok 35 - full flow accepts a hidden XLSX menu owned by the current caret
+  ---
+  duration_ms: 38214.2007
+  type: 'test'
+  ...
+# Subtest: full flow accepts one XLSX menu that transitions from hidden to visible without ARIA
+ok 36 - full flow accepts one XLSX menu that transitions from hidden to visible without ARIA
+  ---
+  duration_ms: 38462.1439
+  type: 'test'
+  ...
+# Subtest: full flow waits for a delayed XLSX export menu
+ok 37 - full flow waits for a delayed XLSX export menu
+  ---
+  duration_ms: 38136.5675
+  type: 'test'
+  ...
+# Subtest: 每个 CLI 子进程都拿到用例私有的市场分析锁（漏一处只会在并行跑套件时炸）
+ok 38 - 每个 CLI 子进程都拿到用例私有的市场分析锁（漏一处只会在并行跑套件时炸）
+  ---
+  duration_ms: 27.9486
+  type: 'test'
+  ...
+# Subtest: 用了 XWS_RUNTIME_DIR 的测试文件都会处理市场分析锁
+ok 39 - 用了 XWS_RUNTIME_DIR 的测试文件都会处理市场分析锁
+  ---
+  duration_ms: 9.7024
+  type: 'test'
+  ...
+1..39
+# tests 39
+# suites 0
+# pass 39
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1277672.0548
+EXIT=0
