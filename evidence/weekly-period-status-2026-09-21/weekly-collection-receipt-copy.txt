@@ -1,0 +1,46 @@
+EXISTS size=1931 mtime=2026-09-15T10:50:00.030Z
+{
+  "version": "weekly-collection-receipt-v1",
+  "at": "2026-09-15T10:49:58.076Z",
+  "ranges": [
+    "21-24",
+    "25-28",
+    "29-32",
+    "33-36",
+    "37-40"
+  ],
+  "notify": "feishu",
+  "collected": [
+    {
+      "range": "21-24",
+      "csv": "D:\\Retire\\sycm-automation\\runtime\\953b4616-302f-4403-9d32-a43a50b105c0-runs\\final\\浴缸-adaptive-merged.csv",
+      "xlsx": "D:\\Retire\\sycm-automation\\runtime\\953b4616-302f-4403-9d32-a43a50b105c0-runs\\final\\浴缸-adaptive-merged.xlsx"
+    },
+    {
+      "range": "25-28",
+      "csv": "D:\\Retire\\sycm-automation\\runtime\\b4f30d44-f183-48e0-8903-31ac3a82212d-runs\\final\\浴缸-adaptive-merged.csv",
+      "xlsx": "D:\\Retire\\sycm-automation\\runtime\\b4f30d44-f183-48e0-8903-31ac3a82212d-runs\\final\\浴缸-adaptive-merged.xlsx"
+    },
+    {
+      "range": "29-32",
+      "csv": "D:\\Retire\\sycm-automation\\runtime\\46a5a5f6-d5f7-47c4-b18f-9d5d66030ac0-runs\\final\\浴缸-adaptive-merged.csv",
+      "xlsx": "D:\\Retire\\sycm-automation\\runtime\\46a5a5f6-d5f7-47c4-b18f-9d5d66030ac0-runs\\final\\浴缸-adaptive-merged.xlsx"
+    },
+    {
+      "range": "33-36",
+      "csv": "D:\\Retire\\sycm-automation\\runtime\\e1c8edc8-c993-489c-8013-3a747696f328-runs\\final\\浴缸-adaptive-merged.csv",
+      "xlsx": "D:\\Retire\\sycm-automation\\runtime\\e1c8edc8-c993-489c-8013-3a747696f328-runs\\final\\浴缸-adaptive-merged.xlsx"
+    },
+    {
+      "range": "37-40",
+      "csv": "D:\\Retire\\sycm-automation\\runtime\\70acd669-d1c3-4a24-b392-83be1da64b54-runs\\final\\浴缸-adaptive-merged.csv",
+      "xlsx": "D:\\Retire\\sycm-automation\\runtime\\70acd669-d1c3-4a24-b392-83be1da64b54-runs\\final\\浴缸-adaptive-merged.xlsx"
+    }
+  ],
+  "failures": [],
+  "merged": {
+    "ok": true,
+    "csv": "D:\\Retire\\sycm-automation\\runtime\\weekly-merged-1789469398076.csv",
+    "xlsx": "D:\\Retire\\sycm-automation\\runtime\\weekly-merged-1789469398076.xlsx"
+  }
+}
