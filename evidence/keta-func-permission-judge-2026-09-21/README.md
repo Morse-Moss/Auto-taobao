@@ -44,12 +44,52 @@
 | `01-keta-live.txt` | **现场实跑**：先 `recover-entry` 导航回入口 → 认不出页面 → `shop-func-permission-probe` 拿到 `code=5903` → 抛 `SHOP_FUNC_NO_PERMISSION`（exit 1） |
 | `02-gaiwen-tb-control.txt` | 健康店同一步照旧 `status=APPLIED`、`presetWasNoop=true`、trace 里没有探针 ⇒ **没有误杀，健康路径行为与从前逐字相同** |
 | `03-probe-5shops.txt` | 五家并排跑同一个探针：4 家 `code=0`、科塔 `code=5903` ⇒ 判据的分界线在真实数据上成立 |
-| `04-round-rehearsal.log` | 整轮（排练档，不写飞书）：前四家照常、科塔以新结论收尾 |
-| `suite-skills.txt` | 全量 `skills` 套件分母与 `not ok` 行 |
+| `04-round-rehearsal.log` | 整轮（排练档，不写飞书）：**第 1 家就停住**（`DUPLICATE_TARGET` —— 这天飞书里已有数据，脚本按「不许写第二遍」停整轮），所以科塔这一轮**没被跑到** |
+| `05-keta-round-only.txt` | 于是单独跑科塔一家（`--shops 科塔淘宝`）拿**端到端**证据：落到第 4 步 `sycm-date` 失败，驱动的 `summary.json` 里带上新结论，告警正文已是人话 |
+| `suite-skills.txt` | 全量 `skills` 套件分母与 `not ok` 行（结论见下一节） |
 | `mutation.txt` | 突变验证：把判据改坏三处，看它是不是红在期望的那一条上 |
+
+## 全量 skills 套件：783 例 / 777 绿 / 6 红 —— 6 红全部来自「两次套件抢同一把机器级锁」
+
+`suite-skills.txt`（exit 1）：
+
+```
+# tests 783   # pass 777   # fail 6   # cancelled 0   # skipped 0   # todo 0
+# duration_ms 1223173.7213
+```
+
+6 条红**全部**落在同一个文件的相邻区间 `skills/xws-export-market-analysis/tests/prepare-flow.test.mjs:718~855`，
+而且 6 条的 stderr 是同一句：
+
+```
+{"status":"BUSY","error":"another Xiaowangshen market-analysis run is already active","details":{}}
+```
+
+即**互斥锁没拿到、CLI 直接拒启动**；后面那些断言（退出码 2 变 1、关页签 `[]` 而非 `["home"]`、health 调用 0 次）
+全是这个拒绝的连坐。归因有四条互相独立的证据：
+
+1. 那把锁是**机器级**的：`os.tmpdir()/xws-runs/.market-analysis.lock`，只有 `XWS_MARKET_ANALYSIS_LOCK` 能改路径，
+   而这些用例没设 ⇒ **同一台机器上并行跑两次 `skills` 套件必然互撞**。
+2. 进程树实证：`run-test-suite.mjs skills` → `node --test …` → `prepare-flow.test.mjs` → 真 CLI 子进程
+   （`export-market-analysis.mjs --keyword 浴缸 … --proxy http://127.0.0.1:<假代理>`）；持锁 PID 当时是**活的**。
+3. **另一个会话的独立记录**：`evidence/huitun-usage-limit-fix-2026-09-21/README.md` 记了同一现象
+   （它那次 781 例里 1 条红 `#608`，同样是 BUSY），并反过来引用本目录产物的 `#582~#587` 作旁证。
+4. 「不是卡死的陈旧锁」：套件跑完后复查，锁文件**已被释放**。
+
+两个必须记住的口径：
+
+- 基线是 **761/761 全绿**（`evidence/full-automation-fixes-2026-09-21/unit-2026-09-21-c.txt`），所以这 6 条红相对基线是「新增的红」；
+  但**不是任何一方改动引入的回归**。分母从 761 涨到 783，是因为这一天里多个会话都在加用例
+  （含另一会话 09:31 新建的 `spawn-lock-isolation.test.mjs`）⇒ 两个分母**不能逐例对齐**。
+- **TAP 编号是全局连续的**（全文只出现一次 `ok 1 - `）⇒ `not ok 582` **不是**该文件第 582 条用例，
+  定位要用 `location:` 里的 `文件:行号`。
+
+**这个锁隔离缺陷另一个会话已经在修**（09:31 落盘：`prepare-flow` 新增 `cliEnv()` 把锁指到用例自己的 runtime 目录，
+并新建守卫 `tests/spawn-lock-isolation.test.mjs` 扫源码防漏改），本次**不重复动它**，也不提交它的文件。
 
 ## 没做的事
 
 - 没有点科塔平台的任何「订购/领取」按钮（那是改真实账号状态，要用户点头）。
 - 没有写飞书（整轮走的是排练档）。
 - 没有起停任何进程。
+- 没有改 `skills/xws-export-market-analysis/` 里的任何文件（那是另一个会话正在修的范围）。
