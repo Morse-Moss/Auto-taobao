@@ -1,0 +1,43 @@
+===== tblGayj9pTYY0Fb7 =====
+base profile = kcne / QcnhbEzYpacGvUskCbVcrcm3nFd
+table = 竞品周_2026-08-30_2026-09-05 (tblGayj9pTYY0Fb7)，共 1423 行
+字段在场：商品ID Text(1) ✓，商品链接 Text(1) ✓
+将写入的行数 = 1423（只填空）
+已有值且与链接一致 = 0
+已有值与链接不一致 = 0
+链接提不出 id = 0
+  已写入 200/1423
+  已写入 400/1423
+  已写入 600/1423
+  已写入 800/1423
+  已写入 1000/1423
+  已写入 1200/1423
+  已写入 1400/1423
+  已写入 1423/1423
+
+回读：1423 行；商品ID 仍为空 0 格（预期 0）
+receipt -> evidence/product-id-backfill-2026-09-21/competitor-week-2026-08-30.receipt.json
+APPLIED_AND_VERIFIED
+exit=0
+===== tblosvuwE6xqYn6r =====
+base profile = kcne / QcnhbEzYpacGvUskCbVcrcm3nFd
+table = 竞品周_2026-09-06_2026-09-12 (tblosvuwE6xqYn6r)，共 1462 行
+字段在场：商品ID Text(1) ✓，商品链接 Text(1) ✓
+将写入的行数 = 1462（只填空）
+已有值且与链接一致 = 0
+已有值与链接不一致 = 0
+链接提不出 id = 0
+  已写入 200/1462
+  已写入 400/1462
+  已写入 600/1462
+  已写入 800/1462
+  已写入 1000/1462
+  已写入 1200/1462
+  已写入 1400/1462
+  已写入 1462/1462
+
+回读：1462 行；商品ID 仍为空 0 格（预期 0）
+receipt -> evidence/product-id-backfill-2026-09-21/competitor-week-2026-09-06.receipt.json
+APPLIED_AND_VERIFIED
+exit=0
+exit=0

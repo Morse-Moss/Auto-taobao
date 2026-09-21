@@ -1,0 +1,60 @@
+{
+  "restoredOk": true,
+  "report": [
+    {
+      "name": "允许覆盖已有值（把「不一致只报不改」那条分支删掉）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "planProductIdFills：已有值与链接 id 不一致时既不写也不丢，单独报出来"
+      ],
+      "expected": "不一致时既不写也不丢",
+      "restored": true
+    },
+    {
+      "name": "把「链接提不出 id」的行并进 updates（缺口算成产出）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "planProductIdFills：链接提不出 id 的行单独计数，不许并进「已填」"
+      ],
+      "expected": "不许并进「已填」",
+      "restored": true
+    },
+    {
+      "name": "已有值相同的行也重写（幂等性没了）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "planProductIdFills：空的填上，已有且相同的跳过",
+        "planProductIdFills：跑第二遍必须是零更新（幂等）"
+      ],
+      "expected": "幂等",
+      "restored": true
+    },
+    {
+      "name": "recordId 重复不再抛（同一行会被写两次）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "planProductIdFills：recordId 缺失或重复时直接抛，不静默少写/多写"
+      ],
+      "expected": "recordId 缺失或重复",
+      "restored": true
+    },
+    {
+      "name": "读回判据恒真（少写了也不报）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "judgeProductIdBackfill：空白数只该等于「提不出 id」的行数"
+      ],
+      "expected": "judgeProductIdBackfill",
+      "restored": true
+    }
+  ]
+}
+
+CAUGHT_AND_NAMED         允许覆盖已有值（把「不一致只报不改」那条分支删掉）  → planProductIdFills：已有值与链接 id 不一致时既不写也不丢，单独报出来
+CAUGHT_AND_NAMED         把「链接提不出 id」的行并进 updates（缺口算成产出）  → planProductIdFills：链接提不出 id 的行单独计数，不许并进「已填」
+CAUGHT_AND_NAMED         已有值相同的行也重写（幂等性没了）  → planProductIdFills：空的填上，已有且相同的跳过 / planProductIdFills：跑第二遍必须是零更新（幂等）
+CAUGHT_AND_NAMED         recordId 重复不再抛（同一行会被写两次）  → planProductIdFills：recordId 缺失或重复时直接抛，不静默少写/多写
+CAUGHT_AND_NAMED         读回判据恒真（少写了也不报）  → judgeProductIdBackfill：空白数只该等于「提不出 id」的行数
+
+MUTATION_ALL_CAUGHT_AND_RESTORED
+exit=0

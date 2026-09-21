@@ -1,0 +1,45 @@
+profile=kcne
+envFile=E:/小红书/.env.feishu-kcne.local
+collect-input={"envFile":"E:/小红书/.env.feishu-kcne.local","appToken":"HdBhbttB5aScbasWJAMc0gGXnpe","tableId":"tblZsUns9353w3nl","tableName":"关键词分析 V1（2026-09-19）"}
+{
+  "contractVersion": "capability-scheduler-v1",
+  "capabilityId": "huitun.keyword-heat.collect",
+  "outcome": "PROBED_ONLY",
+  "scheduled": false,
+  "ok": true,
+  "humanRequired": false,
+  "failureClass": null,
+  "queueState": "READY",
+  "queueCode": "CANDIDATES_READY",
+  "candidateCount": 1,
+  "reasons": [
+    "1 candidate keyword(s) are queued for collection"
+  ],
+  "probe": {
+    "contractVersion": "capability-scheduler-v1",
+    "capabilityId": "huitun.keyword-heat.collect",
+    "probed": true,
+    "state": "READY",
+    "code": "CANDIDATES_READY",
+    "reason": "1 candidate keyword(s) are queued for collection",
+    "candidateCount": 1,
+    "detail": {
+      "schemaVersion": "huitun-queue-probe-v1",
+      "capabilityId": "huitun.keyword-heat.collect",
+      "capabilityVersion": "1.1.0",
+      "candidateMode": "A_ONLY",
+      "recordCount": 300,
+      "fieldCount": 29,
+      "tableId": "tblZsUns9353w3nl",
+      "tableName": "关键词分析 V1（2026-09-19）",
+      "probedAt": "2026-09-21T06:50:18.869Z",
+      "state": "READY",
+      "code": "CANDIDATES_READY",
+      "reason": "1 candidate keyword(s) are queued for collection",
+      "candidateCount": 1
+    },
+    "probeError": null
+  },
+  "run": null
+}
+exit=0

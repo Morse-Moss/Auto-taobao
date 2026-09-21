@@ -1,0 +1,30 @@
+{
+  "version": "weekly-product-id-backfill-v1",
+  "mode": "APPLIED",
+  "at": "2026-09-21T06:46:43.791Z",
+  "profile": "kcne",
+  "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+  "table": {
+    "name": "竞品周_2026-08-30_2026-09-05",
+    "tableId": "tblGayj9pTYY0Fb7"
+  },
+  "column": "商品ID",
+  "rule": "商品链接 → 商品 id（extractProductId，与 fill-weekly-attribute-labels-core 同一实现）；只填空、已有值不覆盖、不一致只报不改、提不出 id 单独计数",
+  "rows": 1423,
+  "plannedRows": 1423,
+  "written": 1423,
+  "perBucket": {
+    "filled": 1423,
+    "alreadyCorrect": 0,
+    "conflictCount": 0,
+    "noIdCount": 0
+  },
+  "conflict": [],
+  "noId": [],
+  "readBack": {
+    "rows": 1423,
+    "blanksAfter": 0,
+    "expectedBlanks": 0,
+    "ok": true
+  }
+}

@@ -1,0 +1,22 @@
+===== tblGayj9pTYY0Fb7 =====
+base profile = kcne / QcnhbEzYpacGvUskCbVcrcm3nFd
+table = 竞品周_2026-08-30_2026-09-05 (tblGayj9pTYY0Fb7)，共 1423 行
+字段在场：商品ID Text(1) ✓，商品链接 Text(1) ✓
+将写入的行数 = 1423（只填空）
+已有值且与链接一致 = 0
+已有值与链接不一致 = 0
+链接提不出 id = 0
+
+DRY-RUN：未写入任何内容。加 --apply --confirm-app-token 才执行。
+exit=0
+===== tblosvuwE6xqYn6r =====
+base profile = kcne / QcnhbEzYpacGvUskCbVcrcm3nFd
+table = 竞品周_2026-09-06_2026-09-12 (tblosvuwE6xqYn6r)，共 1462 行
+字段在场：商品ID Text(1) ✓，商品链接 Text(1) ✓
+将写入的行数 = 1462（只填空）
+已有值且与链接一致 = 0
+已有值与链接不一致 = 0
+链接提不出 id = 0
+
+DRY-RUN：未写入任何内容。加 --apply --confirm-app-token 才执行。
+exit=0

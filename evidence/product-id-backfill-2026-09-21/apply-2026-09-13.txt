@@ -1,0 +1,20 @@
+base profile = kcne / QcnhbEzYpacGvUskCbVcrcm3nFd
+table = 竞品周_2026-09-13_2026-09-19 (tbllWI45sK0DfHpr)，共 1417 行
+字段在场：商品ID Text(1) ✓，商品链接 Text(1) ✓
+将写入的行数 = 1417（只填空）
+已有值且与链接一致 = 0
+已有值与链接不一致 = 0
+链接提不出 id = 0
+  已写入 200/1417
+  已写入 400/1417
+  已写入 600/1417
+  已写入 800/1417
+  已写入 1000/1417
+  已写入 1200/1417
+  已写入 1400/1417
+  已写入 1417/1417
+
+回读：1417 行；商品ID 仍为空 0 格（预期 0）
+receipt -> evidence/product-id-backfill-2026-09-21/receipt.json
+APPLIED_AND_VERIFIED
+exit=0
