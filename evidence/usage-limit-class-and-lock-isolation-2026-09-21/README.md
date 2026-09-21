@@ -58,6 +58,8 @@ function cliEnv(runtime, extra = {}) {
   `{"status":"BUSY",…}`，而这次两份各自跑完 37 条 prepare-flow + 2 条守卫、互不影响。
 - **突变 2/2 CAUGHT_AND_NAMED**（`mutation-lock-isolation.txt`）：
   L1 某一处退回裸 env、L2 helper 里不再设锁 —— 两次都被上面第一条断言点名，还原后 sha256 逐字节一致。
+- **整跑 skills 套件 786/786、EXIT=0**，上一轮那条 `not ok 608`（同一个 BUSY 失败体）已消失 ——
+  逐字见第四节。这才是「修好了」的正证据：**并行互撞的那条路径，单独跑也必须不再炸**。
 - **完整 `skills` 套件 786/786 全绿**（`suite-skills.txt`，exit 0、`not ok` 零行）：
   这是本轮改动之后的完整分母。上一轮同一条命令是 **781 例 / 1 红**，而那 1 红正是本文件要修的那条 ——
   也就是说：**本轮之后，那个「假红」不再出现**。
@@ -137,6 +139,55 @@ PASS  代码词表 ⊆ DB 约束（新加一类就必须配一条迁移）  — 
 008 只写了文件、只在临时库验过。**生产库 `xws_automation` 一个字没动**（数据库变更要单独授权）。
 灰豚这条链目前仍未挂排期，所以**不 apply 不会立刻出事**；但真跑起来之前必须 apply，
 否则那天会以「失败路径写不进库」的形式炸出来。
+
+## 四、skills 套件整跑：那条红没了（两遍都全绿，而且第二遍是**并发**跑的）
+
+上一轮的基线是 `evidence/huitun-usage-limit-fix-2026-09-21/suite-skills.txt`
+（**781 例 / 780 绿 / 1 红**），唯一的红就是这次修的根因：
+
+```
+not ok 608 - full flow waits for a delayed XLSX export menu
+  location: 'D:\Retire\sycm-automation\skills\xws-export-market-analysis\tests\prepare-flow.test.mjs:1649:1'
+  error: '{"status":"BUSY","error":"another Xiaowangshen market-analysis run is already active","details":{}}'
+  1 !== 0
+```
+
+修完实际跑了两遍，**两遍都全绿**（两份原始输出都在本目录）：
+
+| 原始输出 | `# tests` | `# pass` | `# fail` | `# duration_ms` |
+| --- | --- | --- | --- | --- |
+| `suite-skills.txt` | 786 | 786 | 0 | 1348961.1474 |
+| `suite-skills-concurrent-run.txt` | 786 | 786 | 0 | 1391354.7633 |
+
+两份都是 `==> skills: 57 file(s)`、`EXIT=0`、`^not ok ` **零行**。
+
+- 那条红现在绿了：两份里都是 `ok 611 - full flow waits for a delayed XLSX export menu`。
+- 新加的两条守卫也真的在跑：`ok 617` / `ok 618`（`spawn-lock-isolation.test.mjs`）。
+- 分母 781 → 786 差 5：我的改动只占 2 条（守卫两条），另外 3 条是这期间另一会话合进来的，本文件不认领。
+
+**为什么留两份、而不是删掉重复的那份**：这次修的是「**同机并行才炸**」的缺陷，所以最强的证据不是
+「跑得快」，而是「**两次真的同时在跑、两次都没炸**」。按耗时与落盘时间反推：`suite-skills.txt` 那次
+约 17:59–18:21，`suite-skills-concurrent-run.txt` 那次约 18:03–18:26 —— **两次在时间上重叠了约 18 分钟**。
+（这段重叠是**推断**，不是记录 —— 两次都没留下带时间戳的运行日志。可确证的两点是：
+① 第二遍启动前约两分钟，第一遍的产物里还没有任何汇总行，说明第一遍那时还没跑完；
+② 两份的 `duration_ms` 不同（1348961 vs 1391354），所以确实是两次独立运行，不是同一份被拷了两遍。）
+
+⇒ 这正是修复前**必然互撞**的场景（上一轮就是这么出的 `{"status":"BUSY",…}`，见
+`evidence/keta-func-permission-judge-2026-09-21/suite-skills.txt` 里那 6 条连坐红）。
+给一个并发缺陷留两份原始输出是值得的。
+
+**提醒：别用 TAP 编号定位用例。** 同一个用例两次运行里是 `608` → `611`，`location:` 也从
+`prepare-flow.test.mjs:1649` 变成 `:1669` —— 编号会被别处新增的用例顶走。
+判「这条红是不是我弄的」一律看 `location:` 的文件:行号，或直接搜用例名。
+
+### 附注：`runtime/durable/crash-child.mjs` 是测试生成的，却进了版本库
+
+跑 `runtime/durable/durable.test.mjs` 时，`:71` 会用 `writeFileSync` 把子进程脚本**重新生成**一遍
+（里面的 `runId` 是 `randomUUID()`），而这个文件**是被 git 跟踪的** ⇒ 每跑一次 durable 用例，
+工作区就多一处无意义的改动（本轮就撞到了，`4ee83cef…` → `729718f3…`）。
+
+本轮我把它 `git checkout --` 还原了（内容每次都会被重写，没有信息可丢）。建议后续把它
+加进 `.gitignore` 并 `git rm --cached`——**未做，等你点头**。
 
 ## 边界（不许含糊）
 
