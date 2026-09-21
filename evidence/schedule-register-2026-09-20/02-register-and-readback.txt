@@ -1,0 +1,5 @@
+﻿REGISTER: OK
+READBACK TaskName=sycm-daily-round State=Ready
+READBACK Execute=D:\Nodejs\node.exe Args=D:\Retire\sycm-automation\scripts\run-daily-job.mjs --notify WorkDir=D:\Retire\sycm-automation
+READBACK Trigger=MSFT_TaskDailyTrigger StartBoundary=2026-09-20T11:40:00+08:00
+READBACK NextRunTime=09/21/2026 11:40:00 LastRunTime=11/30/1999 00:00:00 LastResult=267011

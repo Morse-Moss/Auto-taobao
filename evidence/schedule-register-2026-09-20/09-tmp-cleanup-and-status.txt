@@ -1,0 +1,9 @@
+﻿MOVE: OK
+tmp 剩余文件数 = 0
+scratch 收到 = gitlog.txt,ls1.txt,node-probe.txt,notify-env.txt,sched-probe.txt
+
+=== git status（应无 ?? tmp/）===
+ M scripts/schedule-install.mjs
+ M skills/sycm-alimama-daily-report/references/sop.md
+?? evidence/schedule-register-2026-09-20/
+

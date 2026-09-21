@@ -1,0 +1,8 @@
+﻿[瀹氭椂娉ㄥ唽] 鍙墦鍗版ā寮忥紙瑕佺湡鎸傝鍔?--install锛夈€?
+浠诲姟鍚嶏細sycm-daily-round    瑙﹀彂鍣細姣忓ぉ 11:40
+灏嗘墽琛岋細D:\Nodejs\node.exe D:\Retire\sycm-automation\scripts\run-daily-job.mjs --notify
+
+绛変环鐨?schtasks 璋冪敤锛?TR 宸茬敱鑴氭湰鎷煎ソ锛屼笉瑕佹墜鎶勮繖涓€娈?鈥斺€?璁″垝浠诲姟鐨勮В鏋愬櫒涓?shell 涓嶆槸涓€鍥炰簨锛夛細
+  schtasks /Create /TN sycm-daily-round /SC DAILY /ST 11:40 /TR "D:\Nodejs\node.exe D:\Retire\sycm-automation\scripts\run-daily-job.mjs --notify" /F
+
+鎸備箣鍓嶅缓璁厛骞查獙璇佷竴娆★紙鍙銆佷笉鍐欍€佷笉鎶曢€掞級锛?  node scripts/run-daily-job.mjs --print

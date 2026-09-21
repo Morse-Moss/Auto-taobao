@@ -1,0 +1,8 @@
+﻿[瀹氭椂] 鐩爣鏃ュ瓧闈㈤噺锛歽esterday锛堢敱椹卞姩鎸?Asia/Shanghai 瑙ｆ瀽锛岃繖閲屼笉鑷繁绠楋級
+[瀹氭椂] 瀹為檯浼氳В鏋愭垚锛?026-09-19  鈫?鍙敤鏉ョ粰浣犵湅涓€鐪硷紱鐪熻窇鏃剁敱椹卞姩鍦ㄩ偅涓€鍒婚噸鏂拌В鏋愶紙璺ㄩ浂鐐逛笉婕傦級
+  ensure-instances: D:\Nodejs\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs
+     鎶婂０鏄庡疄渚嬭捣榻愶紙骞傜瓑锛氬凡灏变綅鐨勪笉纰帮級
+* chain: D:\Nodejs\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --commit --notify
+     鍏ㄩ摼锛氫綋妫€ 鈫?閲囬泦 鈫?鎺ㄩ€?鈫?鍥炲～ 鈫?鍥炶
+[瀹氭椂] 鍙墦鍗版ā寮忥細娌℃湁璧蜂换浣曡繘绋嬨€佷篃娌℃湁璺戦摼銆?
+exit=0

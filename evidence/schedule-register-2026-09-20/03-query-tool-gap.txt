@@ -1,0 +1,27 @@
+﻿=== A) 项目自带 query（走 schtasks.exe） ===
+node.exe : 鏃犳硶鎵ц schtasks.exe锛圕:\WINDOWS\System32\schtasks.exe锛夆€斺€?鏈満瀹夊叏绛栫暐鎶
+婂畠鍒楄繘浜嗙姝㈠惎鍔ㄧ殑绋嬪簭娓呭崟銆?杩欐棦涓嶆槸銆屾寕浜嗐€嶄篃涓嶆槸銆屾病鎸傘€嶏紝鏄?*璇讳笉鍑烘潵**銆備笁鏉″彲琛岃矾寰勶紙浠婚€変竴鏉★級锛
+?  1) 鍦ㄣ€屽畨鍏ㄤ腑蹇?鈫?鍛戒护瀹夊叏 鈫?绋嬪簭榛戝悕鍗曘€嶉噷鎶?schtasks.exe 绉诲嚭锛屽啀鍥炴潵璺戞湰鑴氭湰锛?  2) 鐢ㄤ换鍔
+¤鍒掔▼搴忕晫闈㈡墜宸ユ寕锛歵askschd.msc 鈫?鍒涘缓鍩烘湰浠诲姟 鈫?姣忔棩 鈫?鏃跺埢濉?11:40 鈫?     鎿嶄綔閫夈€屽惎鍔ㄧ▼搴忋
+€嶏紝绋嬪簭鎴栬剼鏈～涓嬮潰绗竴娈碉紙node 鐨勫畬鏁磋矾寰勶級锛?     娣诲姞鍙傛暟濉笅闈㈢浜屾锛堣剼鏈矾寰勶級锛?       D:\N
+odejs\node.exe D:\Retire\sycm-automation\scripts\run-daily-job.mjs
+所在位置 行:449 字符: 10
++ $out += (& "D:\Nodejs\node.exe" (Join-Path $repo "scripts\schedule-in ...
++          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (鏃犳硶鎵ц schtasks...n-daily-job.mjs 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  3) 鐢ㄥ钩鍙扮殑瀹氭椂浠诲姟锛圵orkBuddy 瀹氭椂浠诲姟锛夋瘡澶╁埌鐐硅窇鍚屼竴鏉″懡浠?鈥斺€?     瀹氫綅鏄厹搴曪細瀹冩瘡澶╄璧蜂竴娆
+″畬鏁翠細璇濓紝鑰岃繖鏉￠摼瑕佺殑鏄€岀‘瀹氭€у湴璺戝悓涓€濂楀姩浣溿€嶃€?
+
+exit=3
+
+=== B) PowerShell Get-ScheduledTask 权威回读 ===
+State=Ready
+Execute=D:\Nodejs\node.exe
+Arguments=D:\Retire\sycm-automation\scripts\run-daily-job.mjs --notify
+WorkingDirectory=D:\Retire\sycm-automation
+StartBoundary=2026-09-20T11:40:00+08:00
+NextRunTime=09/21/2026 11:40:00
+Settings: StartWhenAvailable=True MultipleInstances=IgnoreNew ExecutionTimeLimit=PT2H

@@ -1,0 +1,5 @@
+﻿WorkBuddy 定时下次触发(本机时区)=2026-09-21 11:40:00 +08:00
+撤销前: State=Ready LastRunTime=11/30/1999 00:00:00 NextRunTime=09/21/2026 11:40:00
+UNREGISTER: OK
+撤销后回读: NOT_FOUND（已移除）
+现存含 sycm 的任务: 

@@ -87,8 +87,10 @@ function describeBlocked(entry, time) {
   console.error('     操作选「启动程序」，程序或脚本填下面第一段（node 的完整路径），');
   console.error('     添加参数填下面第二段（脚本路径）：');
   console.error(`       ${entry}`);
-  console.error('  3) 用平台的定时任务（WorkBuddy 定时任务）每天到点跑同一条命令 ——');
-  console.error('     定位是兜底：它每天要起一次完整会话，而这条链要的是「确定性地跑同一套动作」。');
+  console.error('  3) 用平台的定时任务每天到点跑同一条命令 ——');
+  console.error('     无需任何系统级配置，代价是每次触发要起一次会话（消耗 token、要求客户端在运行）。');
+  console.error('     2026-09-21 起本项目实际用的就是这一条。注意：**同一时刻只许有一个叫醒者** ——');
+  console.error('     换宿主请先撤掉旧的那个，否则同一时刻两边各跑一次、同目标日会重复写飞书。');
   return 3;
 }
 
