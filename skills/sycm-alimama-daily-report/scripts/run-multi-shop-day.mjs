@@ -556,11 +556,67 @@ export function withSourcePaths(argv, { shopXlsx, promotionZip } = {}) {
   return cleaned.concat(['--shop-xlsx', shopXlsx, '--promotion-zip', promotionZip]);
 }
 
-const proxyJson = async (url, init) => {
-  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(30000) });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || `proxy request failed: HTTP ${response.status}`);
-  return payload;
+/**
+ * 这次代理请求的失败，**该不该重发一次**。
+ *
+ * 判据只有一条：**我们到底拿到 HTTP 应答没有**。
+ *   没拿到（连接建不起来、建起来被重置、等到超时）⇒ 可重试：这是传输层的一次意外，
+ *     下一次很可能就成。`fetch failed` 正是 undici 在 ECONNREFUSED / ECONNRESET /
+ *     socket hang up 这几种情况上的统一外衣，所以它必须算进来（`cause.code` 也一并看）。
+ *   拿到了（4xx/5xx）⇒ **不重试**：服务端已经给了答案，重发只会把同一个答案再问一遍，
+ *     而真正要做的是把那个答案报上去（例如 400 的 `sycm date readout count=0`）。
+ *
+ * 为什么值得为这一条写代码（2026-09-21 第二轮排练的现场）：
+ *   四家店都在第 8 步（生意参谋回位）报 `ERROR fetch failed`，而同一个端口
+ *   ①71 秒前刚被第 4 步正常用过（exit 0）、②失败后 20 秒被失败收尾的只读快照又读通了
+ *   （四家里三家 recovery 的 `leftAt` 有值）、③代理自己一条日志都没写（它只在连接/断开时写）、
+ *   ④事后 90/90 次 TCP 全通、6/6 次 `GET /targets` 全 200。
+ *   ⇒ 那不是「代理死了」，是一次**瞬时**连接失败；而它落在了一个本来已经快跑完的轮次上，
+ *   把整轮判成失败（在这一步之前，飞书那一次写入已经发生）。
+ *
+ * 重发**安全**的前提，写在这里因为将来会有人想复用这个 helper：
+ *   本文件里非只读的调用只有 `resetSycmPage` 的 `/navigate`，它把一个页签送到一个**固定 URL**
+ *   ⇒ 发一次与发两次的效果相同。**将来若拿它去发 `eval`（点按钮那类），必须先回来重证这一条。**
+ */
+export function judgeProxyRetryable(error) {
+  const message = String(error?.message ?? '');
+  const cause = String(error?.cause?.code ?? error?.cause?.message ?? '');
+  const both = `${message} ${cause}`;
+  // 超时也是「没拿到应答」——`AbortSignal.timeout()` 给的是 TimeoutError。
+  if (/TimeoutError|timed?\s*out|timeout|aborted/iu.test(both)) return true;
+  return /\b(?:fetch failed|ECONNREFUSED|ECONNRESET|ECONNABORTED|EPIPE|EHOSTUNREACH|ENETUNREACH|socket hang up|UND_ERR_SOCKET)\b/iu
+    .test(both);
+}
+
+const PROXY_ATTEMPTS = 3;
+const PROXY_BACKOFF_MS = 1500;
+
+// 导出是为了让「重试真的发生了」这件事能被**行为**断言到（见 run-multi-shop-day.test.mjs
+// 里换掉 globalThis.fetch 的那两条）。只扫源码的接线判据挡不住「判据接上了但重试次数写错」。
+export const proxyJson = async (url, init) => {
+  let lastError = null;
+  for (let attempt = 1; attempt <= PROXY_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(30000) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || `proxy request failed: HTTP ${response.status}`);
+      if (attempt > 1) console.log(`[代理] 第 ${attempt} 次才通：${url}`);
+      return payload;
+    } catch (error) {
+      lastError = error;
+      if (!judgeProxyRetryable(error)) throw error;
+      if (attempt === PROXY_ATTEMPTS) break;
+      const cause = error?.cause?.code ?? error?.cause?.message ?? null;
+      console.log(`[代理] 连接层失败（第 ${attempt}/${PROXY_ATTEMPTS} 次）：${error?.message ?? error}`
+        + `${cause ? `｜cause=${cause}` : ''} → ${PROXY_BACKOFF_MS / 1000}s 后重发 ${url}`);
+      await new Promise((r) => { setTimeout(r, PROXY_BACKOFF_MS); });
+    }
+  }
+  // 重试完还是不通 ⇒ 如实报出来，并且**要说清试了几次**：只说一句 fetch failed 的话，
+  // 事后分不清「抖了一下」与「代理一直不在」。
+  throw new Error(`代理连不上（连试 ${PROXY_ATTEMPTS} 次）：${url}`
+    + ` —— 最后一次：${lastError?.message ?? lastError}`
+    + `${lastError?.cause ? `（cause=${lastError.cause.code ?? lastError.cause.message}）` : ''}`);
 };
 
 // ------------------------------------------------- 失败路径：先把页面送回中性态

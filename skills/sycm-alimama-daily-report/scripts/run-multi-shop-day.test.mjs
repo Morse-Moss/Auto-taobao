@@ -8,7 +8,7 @@ import { BROWSER_IDS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } fro
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
-import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeResetLanded, parseArgs, proxyPortForBrowser, recoverFailedShop, resolveAlertDedup, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
+import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, parseArgs, proxyJson, proxyPortForBrowser, recoverFailedShop, resolveAlertDedup, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -844,4 +844,83 @@ test('驱动：体检真的接上了「先归位、再检查」，归位结论�
     '每个阶段的收据里要带上归位结论（体检那一支才有值）');
   assert.match(source, /normalize: roundHealth\.normalize\?\.verdict\?\.detail/u,
     '一轮的体检结论里也要带上归位结论');
+});
+
+test('代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发）', () => {
+  // 可重发的四种形态。`fetch failed` 是 undici 在 ECONNREFUSED/ECONNRESET/socket hang up
+  // 上的统一外衣 —— 2026-09-21 四家店第 8 步报的就是它，所以它必须算进来。
+  assert.equal(judgeProxyRetryable(new Error('fetch failed')), true,
+    '连接层失败判据丢掉了「fetch failed」这一种');
+  assert.equal(judgeProxyRetryable(Object.assign(new Error('fetch failed'),
+    { cause: { code: 'ECONNREFUSED' } })), true);
+  assert.equal(judgeProxyRetryable(Object.assign(new Error('other'), { cause: { code: 'ECONNRESET' } })), true);
+  assert.equal(judgeProxyRetryable(new Error('socket hang up')), true);
+  assert.equal(judgeProxyRetryable(new Error('UND_ERR_SOCKET')), true);
+  // 超时也算「没拿到应答」：`AbortSignal.timeout()` 给的是 TimeoutError。
+  assert.equal(judgeProxyRetryable(Object.assign(new Error('The operation was aborted due to timeout'),
+    { name: 'TimeoutError' })), true, '连接层失败判据丢掉了「超时」这一种');
+
+  // 拿到应答的一律不重发。第一条是排练现场那句原文（科塔第 4 步），它看着像故障、
+  // 但它是**服务端给出了答案**（页面上没有那个读数），重发只是把同一个答案再问一遍。
+  assert.equal(judgeProxyRetryable(new Error('HTTP 400 Error: sycm date readout count=0')), false,
+    '拿到 HTTP 应答的失败被判成了可重发（重发只是把同一个答案再问一遍）');
+  assert.equal(judgeProxyRetryable(new Error('proxy request failed: HTTP 500')), false);
+  assert.equal(judgeProxyRetryable(new Error('HTTP 403 无权限')), false);
+  assert.equal(judgeProxyRetryable(new Error('')), false);
+  assert.equal(judgeProxyRetryable(null), false);
+});
+
+test('代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避', () => {
+  // 光有判据不算数 —— 它可能是个没人调的孤岛函数（本仓库吃过的亏：函数级用例全绿、接线没接上）。
+  const source = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  const at = source.indexOf('const proxyJson = async');
+  assert.ok(at > 0, '找不到 proxyJson —— 这份接线判据的锚点没了，先修判据再看代码');
+  const body = source.slice(at, source.indexOf('\n};', at));
+  assert.match(body, /judgeProxyRetryable\(error\)/u, 'proxyJson 必须调用这条判据；没调就是孤岛');
+  assert.match(body, /if \(!judgeProxyRetryable\(error\)\) throw error;/u,
+    '不可重试的那一类必须**立刻原样抛出** —— 吞掉它会让「服务端给了答案」变成「连不上」');
+  assert.match(body, /catch \(error\)/u, '重发要落在 catch 里（只有失败才可能重发）');
+  assert.match(body, /setTimeout\(r, PROXY_BACKOFF_MS\)/u, '重发之间要有退避，不能空转连打');
+  assert.match(body, /连试 \$\{PROXY_ATTEMPTS\} 次/u, '重试用尽后要报出**试了几次**（否则事后分不清抖动与长期不通）');
+
+  // 次数的量级也要钉住：1 次＝等于没重试；太大＝一次抖动能把整轮挂住。
+  const attempts = Number(/const PROXY_ATTEMPTS = (\d+);/u.exec(source)?.[1]);
+  const backoff = Number(/const PROXY_BACKOFF_MS = (\d+);/u.exec(source)?.[1]);
+  assert.ok(Number.isInteger(attempts) && attempts >= 2 && attempts <= 5,
+    `重试次数要是 2~5 之间的整数，现在是 ${attempts}（1＝没重试，太大＝抖一下挂住整轮）`);
+  assert.ok(Number.isInteger(backoff) && backoff > 0 && backoff <= 5000,
+    `退避要是 0~5000ms 之间的整数，现在是 ${backoff}`);
+});
+
+test('代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因', async () => {
+  // 用一个**假 fetch** 把 proxyJson 的两种出口都走一遍（不需要真代理）。
+  // 这里能这么做的前提是：proxyJson 里没有模块级可变量，`fetch` 是每次调用时查的全局。
+  const realFetch = globalThis.fetch;
+  try {
+    // ① 服务端给了 400 ⇒ 一次就抛，且抛的是那句原文（不许包装成「连不上」）。
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls += 1;
+      return { ok: false, status: 400, json: async () => ({ error: 'HTTP 400 Error: sycm date readout count=0' }) };
+    };
+    await assert.rejects(() => proxyJson('http://127.0.0.1:1/targets'),
+      /HTTP 400 Error: sycm date readout count=0/u);
+    assert.equal(calls, 1, '拿到应答的失败不该重发');
+
+    // ② 连接一直建不起来 ⇒ 重发到用尽，报错里必须同时有「试了几次」与最后一次的原因。
+    calls = 0;
+    globalThis.fetch = async () => {
+      calls += 1;
+      throw Object.assign(new Error('fetch failed'), { cause: { code: 'ECONNREFUSED' } });
+    };
+    await assert.rejects(() => proxyJson('http://127.0.0.1:1/targets'), (error) => {
+      assert.match(error.message, /代理连不上（连试 3 次）/u);
+      assert.match(error.message, /fetch failed/u);
+      assert.match(error.message, /ECONNREFUSED/u, 'cause 也要带出来（它才是真正的错误码）');
+      return true;
+    });
+    assert.equal(calls, 3, '重试次数要与 PROXY_ATTEMPTS 一致');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });
