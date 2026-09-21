@@ -649,6 +649,9 @@ export function describeHitPass(hit) {
 // 猜错的形态正是用户这次问到的那件事。
 export function parseCollectArgs(argv, options = {}) {
   const args = { date: null, downloads: null, proxy: null, task: null, phase: null,
+    // 推广任务台账文件。默认值在 collect-promotion-report 里给（它才知道仓库根在哪），
+    // 这里只负责承接 --ledger：一次性排查、以及用例要指一个小文件时用得到。
+    ledger: null,
     expectShop: null, expectMember: null, expectMemberId: null,
     timeoutMs: options.timeoutMs ?? 30000, reportId: options.reportId ?? null,
     // 等阿里妈妈把推广报表「生成成功」的预算。**与 timeoutMs 分开**：timeoutMs 是「点了下载之后
@@ -670,6 +673,7 @@ export function parseCollectArgs(argv, options = {}) {
     else if (key === '--downloads') args.downloads = next();
     else if (key === '--proxy') args.proxy = next();
     else if (key === '--task') args.task = next();
+    else if (key === '--ledger') args.ledger = next();
     else if (key === '--phase') args.phase = next();
     else if (key === '--timeout-ms') args.timeoutMs = Number(next());
     else if (key === '--generation-wait-ms') args.generationWaitMs = Number(next());

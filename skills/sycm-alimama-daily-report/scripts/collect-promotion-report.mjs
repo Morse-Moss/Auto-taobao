@@ -18,21 +18,32 @@
 //   ③ 点击前**必须当场重新量矩形**：量到点之间页面会动，差一行（41px）就会点到别的任务的单元格上，
 //      `clicked:true` 却什么都不发生，而且不报错。零尺寸矩形一律 fail-closed。
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
   PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN, TASK_DOWNLOAD_MARK, alimamaIdentityExpression,
   assertMemberIdentity, checkboxStateExpression, createOverlayDismisser, defaultDownloadsDir,
   describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, downloadEntryExpression,
-  hitCheckExpression, listDownloads, newEntries, newestTaskName, parseCollectArgs, pickNewest,
+  hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest,
   restoreCheckboxesExpression, scrollIntoViewExpression, targetRowExpression,
 } from './collect-core.mjs';
 // 报表页 URL 形状只有 date-picker 那份实现（含场景编码与归因参数）。路由复位要重新导航到
 // 同一个报表页，所以这里**取它**而不是再抄一份 —— 抄一份就会在下次改 URL 时漂移。
 import { buildAlimamaUrl } from './date-picker.mjs';
+// 推广任务台账（2026-09-21 晚加）：任务名只有导出日、没有目标日 ⇒「取哪一条」不许猜。
+// 提交段把「亲眼看它多出来哪一条」记进台账，取件段只取那一笔。见该模块文件头。
+import {
+  describeStale, judgeFetchTaskName, judgeResume, judgeSubmitOutcome,
+  ledgerScope, readLedger, recordConsumed, recordSubmitted, staleFor, writeLedger,
+} from './promotion-task-ledger.mjs';
 
 const ALIMAMA_LIST_URL = 'https://one.alimama.com/index.html#!/report/download-list';
+
+// 台账默认落在仓库根的 runtime/ —— 与 alert-throttle.json 同一个位置：它俩都是**跨轮状态**，
+// 不是某一轮的产物，所以不放 evidence/（那里按约定是「只读的历史证据」，不做活输入）。
+// 可用 --ledger 覆盖（一次性排查、用例各指一个小文件）。
+const DEFAULT_LEDGER_FILE = path.resolve(fileURLToPath(new URL('../../../runtime/promotion-task-ledger.json', import.meta.url)));
 
 const delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -334,7 +345,84 @@ async function locateDownloadReportReady(args, targetId, { attempts = 3 } = {}) 
   return located;
 }
 
+// ---------------------------------------------------------------- 下载任务列表（提交段与取件段共用）
+
+/**
+ * 读「下载任务管理」列表里的任务名集合。
+ *
+ * 抽出来不是为了省行数，而是**这个词表只能有一份**：提交段用它算差集（看这一次提交多出来哪一条），
+ * 取件段用它核对台账那一笔还在不在。两处各抄一份正则，迟早给出两个答案。
+ * 只认**任务名形状**的叶子文本：页面上别的短文本（列头、时间戳）混进来会把差集算错。
+ */
+async function readTaskNames(args, targetId) {
+  const read = await evalOn(args, targetId, `(() => {
+    const pattern = ${PROMOTION_TASK_PATTERN.toString()};
+    const found = [...document.querySelectorAll('*')]
+      .filter((el) => el.children.length === 0 && pattern.test(el.textContent.trim()))
+      .map((el) => el.textContent.trim());
+    return JSON.stringify({ names: [...new Set(found)] });
+  })()`);
+  return read.names || [];
+}
+
+/** 导航到下载任务列表并读一次任务名。 */
+async function openTaskList(args, targetId, { settleMs = 7000 } = {}) {
+  await navigateTo(args, targetId, ALIMAMA_LIST_URL);
+  await delay(settleMs);
+  return readTaskNames(args, targetId);
+}
+
+/**
+ * 提交之后等列表里多出那一条，返回**差集**的判定（见 judgeSubmitOutcome）。
+ *
+ * 为什么必须看列表而不是看提示语：提示语只说「已提交/生成中」，**不说任务名**；
+ * 而取件段从今往后只认台账里这一笔 ⇒ 提交段如果不把名字观察出来，取件段就只能猜。
+ *
+ * ⚠️ 第一步必须是**导航到「下载任务管理」**：点完「确定」页面还停在报表页
+ * （`#!/report/account?...`），那一屏上没有任何任务名。2026-09-21 排练实测过这个代价：
+ * 少了这一步，`readTaskNames` 恒得空集，而**空集与「没有新增」算出来的差集一模一样** ——
+ * 于是「没读到」被静默说成「平台没接受这次提交」，里可林被卡在 promotion-submit；
+ * 而同一刻平台上其实已经生成了 `营销场景报表_20260921_143726`（第 1 行、生成成功、
+ * 报表日期 2026-09-20）—— 提交是成功的，只是没人去看。
+ */
+async function waitForNewTask(args, targetId, before, { attempts = 10, intervalMs = 6000 } = {}) {
+  let after = await openTaskList(args, targetId);
+  for (let attempt = 1; ; attempt += 1) {
+    const outcome = judgeSubmitOutcome({ before, after });
+    // 多条也是「有结论」：交给调用方按核不清处理，不用再等。
+    if (outcome.ok || outcome.added.length > 1 || attempt >= attempts) {
+      return { ...outcome, attempts: attempt, afterCount: after.length };
+    }
+    console.log(`[submit] 第 ${attempt}/${attempts} 次看列表：${outcome.reason}`
+      + `（提交前 ${before.length} 条、这一次读到 ${after.length} 条）→ ${intervalMs / 1000}s 后重载再看`);
+    await delay(intervalMs);
+    // 列表页还是同一个 URL ⇒ navigate 到同一 URL 是**同文档导航**（浏览器什么都不做）。
+    // 与 date-picker 2026-09-21 那个坑同一个成因，所以这里也必须真重载。
+    await evalOn(args, targetId, 'window.location.reload(); "reloading"');
+    await delay(intervalMs);
+    after = await readTaskNames(args, targetId);
+  }
+}
+
 async function phaseSubmit(args, targetId) {
+  const ledgerFile = args.ledger ?? DEFAULT_LEDGER_FILE;
+  const shop = ledgerScope(args);
+  // 0) 先看「下载任务管理」：这一目标日是不是已经提交过、只是没取。
+  //    放在点击之前是刻意的 —— 判在点击之前，才谈得上「不产生第二次副作用」，有顺序判据钉着。
+  const listBefore = await openTaskList(args, targetId);
+  const resume = judgeResume({ ledger: readLedger(ledgerFile), date: args.date, shop, list: listBefore });
+  const staleNote = describeStale(resume.stale);
+  if (staleNote) console.log(`[submit] 注意：${staleNote}`);
+  if (resume.action === 'block') throw new Error(`提交前核对未通过：${resume.reason}`);
+  if (resume.action === 'reuse') {
+    console.log(`[submit] ${resume.reason}`);
+    console.log(`[submit] promotionTaskName = ${resume.taskName}`);
+    console.log('[submit] 未点击任何东西（这一目标日的副作用已经产生过了，不再产生第二次）');
+    return;
+  }
+  console.log(`[submit] ${resume.reason} ⇒ 照常提交`);
+  // 看列表会离开报表页 ⇒ 复位回去。resetReportRoute 会把 --date 带上，所以日期不会漂。
+  await resetReportRoute(args, targetId);
   const state0 = await reportPageState(args, targetId);
   console.log(`[submit] 页面 = ${state0.href}｜正文 ${state0.textLen} 字符`);
   // 先清掉上一轮留下的弹窗，再谈定位（理由见 clearLeftoverDialog 上方）。
@@ -390,6 +478,17 @@ async function phaseSubmit(args, targetId) {
     return JSON.stringify({ hint: (text.match(/(提交成功|已提交|生成中|请在下载[^ ]{0,12}查看|已加入下载[^ ]{0,10})/) || [''])[0] });
   })()`);
   console.log(`[submit] 提交后提示 = ${JSON.stringify(hint.hint)}`);
+  // 提示语不说任务名 ⇒ 去看列表差集，把「这一次提交到底产生了哪一条」变成**观察值**记进台账。
+  const observed = await waitForNewTask(args, targetId, listBefore);
+  if (!observed.ok) {
+    throw new Error(`提交结果核不清（看了 ${observed.attempts} 次）：${observed.reason}`
+      + `｜提交前读到 ${listBefore.length} 条、最后一次读到 ${observed.afterCount ?? '?'} 条`
+      + ' ⇒ 不往台账里记一笔来路不明的任务（记了就等于替下一轮编了一个判据）');
+  }
+  writeLedger(ledgerFile, recordSubmitted(readLedger(ledgerFile), {
+    date: args.date, shop, taskName: observed.taskName, proxy: args.proxy, at: new Date().toISOString(),
+  }));
+  console.log(`[submit] promotionTaskName = ${observed.taskName}（${observed.reason}；台账已记：${ledgerFile}）`);
   console.log('[submit] 下一步：等它「生成成功」后跑 --phase fetch（提示语里说数据量大时最长 10 分钟）');
 }
 
@@ -448,28 +547,22 @@ export async function waitForGenerationReady(args, targetId, wanted, deps = {}) 
 }
 
 async function phaseFetch(args, targetId) {
+  const ledgerFile = args.ledger ?? DEFAULT_LEDGER_FILE;
+  const shop = ledgerScope(args);
   const before = listDownloads(args.downloads, PROMOTION_ZIP_PATTERN).map((entry) => entry.name);
   console.log(`[fetch] 下载任务管理｜已有 zip ${before.length} 个｜目录 ${args.downloads}`);
-  await proxyJson(`${args.proxy}/navigate?target=${encodeURIComponent(targetId)}`
-    + `&url=${encodeURIComponent(ALIMAMA_LIST_URL)}`);
-  await delay(7000);
+  const list = await openTaskList(args, targetId);
 
-  // 认任务名：给了 --task 就用它（必须真的在列表里）；没给就取列表里时间戳最大的那个。
-  // 刻意**不按「今天」过滤**：任务名里的日期是导出日而不是目标日（跨零点跑时两者不同），
-  // 而时间戳本身是可比较的，最大的就是刚提交的那个 —— 少一个会错的判据。
-  const names = await evalOn(args, targetId, `(() => {
-    const pattern = ${PROMOTION_TASK_PATTERN.toString()};
-    const found = [...document.querySelectorAll('*')]
-      .filter((el) => el.children.length === 0 && pattern.test(el.textContent.trim()))
-      .map((el) => el.textContent.trim());
-    return JSON.stringify({ names: [...new Set(found)] });
-  })()`);
-  const wanted = args.task ?? newestTaskName(names.names || []);
-  if (!wanted) throw new Error(`下载任务列表里认不出任务（候选 ${JSON.stringify(names.names || [])}）`);
-  if (args.task && !(names.names || []).includes(args.task)) {
-    throw new Error(`指定的任务 ${args.task} 不在列表里（现有 ${JSON.stringify(names.names)}）`);
-  }
-  console.log(`[fetch] 目标任务 = ${wanted}${args.task ? '（--task 指定）' : `（列表里最新，候选 ${names.names.length} 个）`}`);
+  // 认任务名：只有两条被承认的来源 —— 调用方显式 `--task`，或台账里那一笔未取任务**且列表里核得到**。
+  // 「列表里时间戳最大那条」**不再是判据**：任务名里的日期是**导出日**（提交那一刻），不含目标日，
+  // 猜错就是把别天的报表当成这一天的，而那种错没有便宜的下游检查能发现（详见台账模块文件头）。
+  const ledger = readLedger(ledgerFile);
+  const staleNote = describeStale(staleFor(ledger, { date: args.date, shop }));
+  if (staleNote) console.log(`[fetch] 注意：${staleNote}`);
+  const decision = judgeFetchTaskName({ ledger, date: args.date, shop, list, explicit: args.task });
+  if (!decision.ok) throw new Error(`取件前核对未通过：${decision.reason}`);
+  const wanted = decision.taskName;
+  console.log(`[fetch] 目标任务 = ${wanted}（${decision.reason}）`);
 
   // 取件前提：**先激活目标任务行**。它的操作行默认 display:none，只有这一行被激活才显形，
   // 而页面上任何时刻可见的「下载」叶子恰好 1 个 —— 不激活就会点到别的任务行的入口上，
@@ -550,6 +643,12 @@ async function phaseFetch(args, targetId) {
       }
       console.log(`[fetch] 新文件：${newest.name}（${newest.size} bytes）`);
       console.log(`[fetch] promotionZipPath = ${path.join(args.downloads, newest.name)}`);
+      // 取到了才把台账标成已取。顺序反了（先标后取）一旦取件失败，下一轮就会「复用」一笔
+      // 其实从没落盘过的任务，而那笔任务在列表里已经消失 ⇒ 卡在与本轮一样的核不清上。
+      writeLedger(ledgerFile, recordConsumed(readLedger(ledgerFile), {
+        date: args.date, shop, taskName: wanted, at: new Date().toISOString(),
+      }));
+      console.log(`[fetch] 台账已标为已取：${args.date} 的 ${wanted}`);
       return;
     }
     console.log(`[fetch] 等待下载… ${Math.round((args.timeoutMs - (deadline - Date.now())) / 1000)}s`);
