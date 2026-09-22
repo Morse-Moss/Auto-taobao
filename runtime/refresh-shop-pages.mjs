@@ -28,6 +28,9 @@ import { pathToFileURL } from 'node:url';
 
 import { readSiteState, resolveAppliedDate, shiftIso, shanghaiToday } from '../skills/sycm-alimama-daily-report/scripts/date-picker.mjs';
 import { shopBrowserKeys, shopInstance } from './browser-ports.mjs';
+// 「页签属于哪个期望页面」的唯一判据。这里原先也是整串 `includes`：生意参谋的登录跳转页
+// 把目标地址放在 `_target=` 里 ⇒ 会被当成工作页 ⇒ 刷新器会去读一个登录页的「统计日期」。
+import { urlMatchesFragment } from './target-url-match.mjs';
 import {
   assertCoverage,
   buildPagePlan,
@@ -192,7 +195,7 @@ async function main() {
 
     // 读数字段只对「恰好一个工作页」的那一页读 —— 页面不齐时读它没有意义（而读数不是判据）。
     const expectedPage = entry.expected.find((page) => page.name === REFRESH_PAGE);
-    const tab = targets.find((item) => String(item.url).includes(expectedPage.urlFragment));
+    const tab = targets.find((item) => urlMatchesFragment(item.url, expectedPage.urlFragment));
     if (tab) {
       try {
         row.applied = (await readSiteState({ proxy: base, site: 'sycm', targetId: tab.targetId })).applied;

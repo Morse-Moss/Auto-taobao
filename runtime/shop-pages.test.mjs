@@ -254,6 +254,18 @@ function fakeProxy({ targets = [] } = {}) {
       tab.url = parsed.searchParams.get('url');
       return { ok: true, status: 200, json: async () => ({ frameId: 'alimama-page' }) };
     }
+    if (parsed.pathname === '/pin') {
+      const tab = state.find((entry) => entry.targetId === parsed.searchParams.get('target'));
+      if (!tab) return { ok: false, status: 404, json: async () => ({ error: 'no such target' }) };
+      tab.pinned = true;
+      return { ok: true, status: 200, json: async () => ({ targetId: tab.targetId }) };
+    }
+    if (parsed.pathname === '/close') {
+      const index = state.findIndex((entry) => entry.targetId === parsed.searchParams.get('target'));
+      if (index < 0) return { ok: false, status: 404, json: async () => ({ error: 'no such target' }) };
+      state.splice(index, 1);
+      return { ok: true, status: 200, json: async () => ({}) };
+    }
     if (parsed.pathname === '/new') {
       const created = { targetId: `T${state.length + 1}`, url: parsed.searchParams.get('url') };
       state.push(created);
@@ -442,4 +454,113 @@ test('源码级：回读走 settleSlots、写请求由 planRequests 挑并由 se
   assert.match(source, /\/navigate\?target=/u, '领回就是导航，没有只读版本');
   assert.match(source, /\/new\?url=/u, '补页仍然走 /new');
   assert.match(source, /pinned=1/u, '不带 pinned=1 的页会在闲置 15 分钟后被回收，且不报错');
+});
+
+// ---------------------------------------------------------------- 重复页收敛（2026-09-22）
+//
+// 这一批把「多出来的页签不再能挡住整轮日报」这件事钉住。两个成因是同一轮里出现的：
+//   ① 生意参谋的登录跳转页被旧判据误认成工作页（判据修正，见 `target-url-match.test.mjs`）；
+//   ② 商家浏览器里两页飞书底单页 URL 逐字相同（属于**确定的**重复 ⇒ 可以自动收敛）。
+
+test('planPageActions：完全重复的同一页 ⇒ 自动收敛（dedupe），不再交给人', () => {
+  const expected = [{ name: '飞书底单页', urlFragment: 'feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb' }];
+  const urlByName = { 飞书底单页: 'https://x/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=t&view=v' };
+  // 2026-09-22 商家浏览器里的真实形状：两页 URL 逐字相同
+  const same = 'https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblbjgtZL88a6xHY&view=vewHFEZub9';
+
+  const dry = planPageActions({ urls: [same, same], expected, urlByName, dry: true });
+  assert.equal(dry[0].action, 'would-dedupe', '内容逐字相同的重复页，「关哪个」是确定的 ⇒ 可以自动收敛');
+  assert.equal(dry[0].found, 2, '要报出重复了几个');
+  assert.deepEqual([dry[0].keepIndex, ...dry[0].dropIndexes], [0, 1], '保留第一个、其余进待关名单');
+
+  const wet = planPageActions({ urls: [same, same], expected, urlByName, dry: false });
+  assert.equal(wet[0].action, 'dedupe');
+});
+
+test('planPageActions：两页是**不同的** URL ⇒ 仍然交给人（自动关错的代价更大）', () => {
+  const P = 'https://sycm.taobao.com/qos/service/frame/shop/performance';
+  const expected = [{ name: '生意参谋工作页', urlFragment: 'sycm.taobao.com/qos/service/frame/shop/performance' }];
+  const urlByName = { 生意参谋工作页: `${P}/new#/shop` };
+  const actions = planPageActions({ urls: [`${P}/new#/shop`, `${P}/legacy`], expected, urlByName, dry: false });
+  assert.equal(actions[0].action, 'ambiguous', '两个不同 URL 都像正经工作页时，关哪个需要判断 —— 不许自动关');
+  assert.equal(actions[0].found, 2);
+});
+
+test('planRequests：dedupe = 先 pin 保留者、再关其余的（关错页的代价靠 pin 兜底）', () => {
+  const same = 'https://x/base/B?t=1&v=2';
+  const expected = [{ name: '飞书底单页', urlFragment: 'x/base/B' }];
+  const urlByName = { 飞书底单页: same };
+  const actions = planPageActions({ urls: [same, same], expected, urlByName, dry: false });
+  const requests = planRequests({
+    actions,
+    targets: [{ targetId: 'A', url: same }, { targetId: 'B', url: same }],
+  });
+  assert.deepEqual(requests.map((request) => [request.kind, request.targetId]), [['pin', 'A'], ['close', 'B']]);
+});
+
+test('planRequests：保留者没有 targetId ⇒ blocked，不关任何一个', () => {
+  const same = 'https://x/base/B?t=1&v=2';
+  const expected = [{ name: '飞书底单页', urlFragment: 'x/base/B' }];
+  const actions = planPageActions({ urls: [same, same], expected, urlByName: { 飞书底单页: same }, dry: false });
+  const requests = planRequests({ actions, targets: [{ url: same }, { url: same }] });
+  assert.deepEqual(requests.map((request) => request.kind), ['blocked']);
+});
+
+test('sendRequests：dedupe 真的发 /pin 与 /close，页签 2→1，并把收据记回动作', async () => {
+  const same = 'https://x/base/B?t=1&v=2';
+  const expected = [{ name: '飞书底单页', urlFragment: 'x/base/B' }];
+  const urlByName = { 飞书底单页: same };
+  const proxy = fakeProxy({ targets: [{ targetId: 'A', url: same }, { targetId: 'B', url: same }] });
+  const actions = planPageActions({ urls: proxy.state.map((tab) => tab.url), expected, urlByName, dry: false });
+  const requests = planRequests({ actions, targets: proxy.state });
+
+  await sendRequests({ base: 'http://b', requests, fetchImpl: proxy.fetchImpl });
+
+  assert.equal(actions[0].action, 'dedupe', '成功了就不该改写动作名');
+  assert.equal(actions[0].pin.ok, true, 'pin 收据要留下来');
+  assert.deepEqual(actions[0].closed.map((entry) => [entry.targetId, entry.ok]), [['B', true]]);
+  assert.equal(proxy.state.length, 1, '重复页必须真的被关掉');
+  assert.equal(proxy.state[0].targetId, 'A', '保留的是列表里的第一个');
+  assert.equal(proxy.state[0].pinned, true, '保留的那页要 pin 住，否则闲置 15 分钟后被回收');
+  assert.deepEqual(proxy.calls, ['GET /pin?target=A', 'GET /close?target=B'], '先 pin 后 close，顺序不能反');
+});
+
+test('sendRequests：关不掉 ⇒ 如实记 dedupe-failed（不抛、也不假装成功）', async () => {
+  const same = 'https://x/base/B?t=1&v=2';
+  const expected = [{ name: '飞书底单页', urlFragment: 'x/base/B' }];
+  const actions = planPageActions({ urls: [same, same], expected, urlByName: { 飞书底单页: same }, dry: false });
+  const requests = planRequests({ actions, targets: [{ targetId: 'A', url: same }, { targetId: 'B', url: same }] });
+  await sendRequests({
+    base: 'http://b',
+    requests,
+    fetchImpl: async (url) => (String(url).includes('/close')
+      ? { ok: false, status: 500, json: async () => ({}) }
+      : { ok: true, status: 200, json: async () => ({}) }),
+  });
+  assert.equal(actions[0].action, 'dedupe-failed');
+  assert.match(actions[0].error, /HTTP 500/u);
+});
+
+test('judgeSlotReport：dedupe 不进「需人决定」桶（它是自动可做的收敛），但仍是缺口', () => {
+  const verdict = judgeSlotReport([
+    { who: '甲', reachable: true, slots: [{ count: 2 }], actions: [{ action: 'dedupe' }] },
+  ]);
+  assert.deepEqual(verdict.ambiguous, [], '自动能做的事不该退化成「等人」');
+  assert.deepEqual(verdict.gaps.map((entry) => entry.who), ['甲'], '收敛之前它确实没就位，要如实报出来');
+});
+
+test('源码级：页面归属判据全仓唯一（不许再写 `includes(…urlFragment)`）', async () => {
+  const files = [
+    './shop-pages.mjs',
+    './refresh-shop-pages.mjs',
+    './xws-platform-health-preflight.mjs',
+    '../skills/sycm-alimama-daily-report/scripts/date-picker.mjs',
+    '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs',
+  ];
+  for (const file of files) {
+    const source = await readFile(new URL(file, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /\.includes\([^()]*urlFragment\)/u,
+      `${file} 又用「整串 URL includes 片段」判页面归属了 —— 那正是 09-17 与 09-22 两次停线的成因；`
+      + '要改用 runtime/target-url-match.mjs 的 urlMatchesFragment / pagesMatching');
+  }
 });

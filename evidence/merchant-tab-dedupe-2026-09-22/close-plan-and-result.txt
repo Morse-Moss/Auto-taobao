@@ -1,0 +1,21 @@
+[关前] 端口 19023 共 4 个页签
+  · https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblbjgtZL88a6xHY&view=vewHFEZub9
+  · https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblbjgtZL88a6xHY&view=vewHFEZub9
+  · https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new
+  · https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+
+[将要关] 2 个：
+  · 生意参谋组里 path=/custom/login.htm 不是工作页（登录跳转页残留）
+    https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new
+  · 飞书底单页与上一页 URL 完全重复
+    https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblbjgtZL88a6xHY&view=vewHFEZub9
+[关闭] https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/serv → HTTP 200
+[关闭] https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblbjgtZL8 → HTTP 200
+
+[关后] 端口 19023 共 4 个页签
+  · https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblbjgtZL88a6xHY&view=vewHFEZub9
+  · https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblbjgtZL88a6xHY&view=vewHFEZub9
+  · https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new
+  · https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+
+[自证] 生意参谋非工作页残数=1（应为 0）；飞书底单页 URL 是否仍有重复=true（应为 false）

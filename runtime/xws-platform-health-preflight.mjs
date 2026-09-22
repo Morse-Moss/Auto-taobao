@@ -29,6 +29,10 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { BROWSER_PROFILES, ROUTES, SHOP_BROWSERS, classifyPortUsage, inspectPort, PROJECT_PORTS } from './browser-ports.mjs';
+// 「页签属于哪个期望页面」的唯一判据。**别退回 `url.includes(片段)`**：生意参谋的登录跳转页
+// 把目标地址放在 `_target=` 里，整串包含会让它被算成工作页 ⇒ 这里报「不唯一」⇒ 整轮日报不开跑
+// （2026-09-17 与 09-22 各一次，见 `runtime/target-url-match.mjs` 文件头）。
+import { pagesMatching } from './target-url-match.mjs';
 
 export const HEALTH_CONTRACT_VERSION = 'xws-platform-health-preflight-v1';
 
@@ -180,7 +184,7 @@ export function classifyExpectedPages({ targets, expectedPages, readable = true 
     const fragment = String(page?.urlFragment ?? '');
     const name = String(page?.name ?? fragment);
     if (!fragment) continue;
-    const hits = list.filter((target) => target?.type === 'page' && String(target.url ?? '').includes(fragment));
+    const hits = pagesMatching(list, fragment);
     if (hits.length === 1) continue;
     findings.push({
       layer: HEALTH_LAYERS.ENVIRONMENT,

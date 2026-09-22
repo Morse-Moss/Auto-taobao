@@ -60,6 +60,10 @@ import { fileURLToPath } from 'node:url';
 
 import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { normalizePages } from '../../../runtime/page-normalize.mjs';
+// 「页签属于哪个期望页面」的唯一判据（2026-09-22 收编）。这里原先也是整串 `includes`，
+// 而生意参谋的登录跳转页把目标地址放在 `_target=` 里 ⇒ 会被算成工作页 ⇒ 这份「停手快照」
+// 会报出错误的位置、`judgeResetLanded` 也会判错。判据必须与体检、落位同源。
+import { urlMatchesFragment } from '../../../runtime/target-url-match.mjs';
 import { READABLE_SOURCE_KEYS, renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { createPlatformHealthCheck } from '../../../runtime/xws-platform-health-preflight.mjs';
 import { shiftIso, shanghaiToday } from './date-picker.mjs';
@@ -651,9 +655,9 @@ export function describePageWhereabouts(targets = [], expected = []) {
     tabs: urls.length,
     slots: expected.map((page) => ({
       page: page.name,
-      count: urls.filter((url) => url.includes(page.urlFragment)).length,
+      count: urls.filter((url) => urlMatchesFragment(url, page.urlFragment)).length,
     })),
-    foreign: urls.filter((url) => !expected.some((page) => url.includes(page.urlFragment))),
+    foreign: urls.filter((url) => !expected.some((page) => urlMatchesFragment(url, page.urlFragment))),
   };
 }
 

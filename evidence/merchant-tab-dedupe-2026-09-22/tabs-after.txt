@@ -1,0 +1,13 @@
+端口 19023：共 2 个页签
+
+#1 targetId=B746BE65D8F9463735E40EC1CC870747
+   label=""  pinned=(无此字段)
+   title="‍‌⁠​​‌​‬​⁠​​​⁠‌⁠​‌‬‍​​‬​⁠‬‌⁠‬​​‬​﻿​‬﻿‍‍​​‬​​‬​​‍‌​各店铺日报 - 飞书云文档"
+   url=https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblbjgtZL88a6xHY&view=vewHFEZub9
+   → 分类：飞书底单页
+
+#2 targetId=97E6DE6D9952D1861880754517C50513
+   label=""  pinned=(无此字段)
+   title="生意参谋 - 零售电商大数据产品平台"
+   url=https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+   → 分类：生意参谋工作页

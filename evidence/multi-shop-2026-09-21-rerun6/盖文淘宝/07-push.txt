@@ -1,0 +1,33 @@
+
+===== 2026-09-22T12:26:01.913Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe d:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-09-21 --proxy http://127.0.0.1:19023 --shop-key 盖文淘宝 --commit --shop-xlsx C:\Users\Administrator\Downloads\日报2_20260922_90f3f449b92531c0823d97ec6d6bb86b.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20260922_202517.zip
+exit=0 signal= error=none
+--- stdout ---
+[target] 进场时这一页停在 table=tblbjgtZL88a6xHY&view=vewHFEZub9（五家共用一页，多半是上一家的阶段没收尾留下的）⇒ 已落位回源表（第 2 次探到表已加载）
+[shop-key] 盖文淘宝 ↔ 源产物店名 盖文全卫定制 一致（证据目录 daily-report-2026-09-21-盖文淘宝）
+[audit] 已记 push/ok id=72
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "recvvX3dup8Szh",
+  "receiptPath": "d:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-21-盖文淘宝\\receipt.json",
+  "outputDir": "d:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-21-盖文淘宝",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 1898,
+  "recordCountAfter": 1899,
+  "verifiedFields": 243,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 243,
+    "shopName": "盖文全卫定制",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1789920000000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---

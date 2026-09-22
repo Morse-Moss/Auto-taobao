@@ -33,6 +33,11 @@ import { SITES } from '../skills/sycm-alimama-daily-report/scripts/login-merchan
 // 驱动现在要用补页那一套（失败路径收尾、体检归位），而成环之后那些都加不进来。
 import { expectedPagesForDailyBrowser, expectedPagesForShop } from '../skills/sycm-alimama-daily-report/scripts/expected-pages.mjs';
 import { PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from './browser-ports.mjs';
+// 「页签属于哪个期望页面」的唯一判据（2026-09-22 收编）。**别退回 `url.includes(片段)`**：
+// 生意参谋的登录跳转页把目标地址放在 `_target=` 里，整串包含会让它被算成工作页
+// ⇒ 这里报「生意参谋工作页不唯一」、`resolveTarget` 抛 `expected one … got 2`
+// ⇒ 整轮日报一步都不跑（2026-09-17 与 09-22 各一次）。
+import { hostOfUrl, urlMatchesFragment } from './target-url-match.mjs';
 import { dailyReportTargets, getProfile } from './feishu-targets.mjs';
 
 /**
@@ -91,11 +96,11 @@ export function assertCoverage(plan, urlByName) {
  * 这个片段就认不出它了）。唯一还认得出来的，是它还在同一个站点上。
  * 认不出主机的值（`about:blank`、`devtools://…`）一律返回 null ⇒ **永远不当候选**：
  * 它们不是「漂走的那一页」，把它们导航走是破坏而不是修复。
+ *
+ * 2026-09-22：实现搬到 `runtime/target-url-match.mjs`（「URL 结构」这件事只留一处实现），
+ * 这里保留同名 re-export —— 对外接口不变，本文件与其它调用方的用例都不用改。
  */
-export function hostOfUrl(value) {
-  const match = String(value ?? '').match(/^([a-z][a-z0-9+.-]*:\/\/)([^/?#]+)/iu);
-  return match ? `${match[1].toLowerCase()}${match[2].toLowerCase()}` : null;
-}
+export { hostOfUrl };
 
 /**
  * 纯函数：缺的那一页，到底是「真没了」还是「只是漂到别的 URL 了」。
@@ -117,11 +122,11 @@ export function hostOfUrl(value) {
  */
 export function findReclaimCandidates({ urls = [], expected = [], urlByName = {} } = {}) {
   const list = urls.map((url) => String(url));
-  const foreign = (url) => !expected.some((page) => url.includes(page.urlFragment));
+  const foreign = (url) => !expected.some((page) => urlMatchesFragment(url, page.urlFragment));
   const taken = new Set();
   const out = [];
   for (const page of expected) {
-    if (list.some((url) => url.includes(page.urlFragment))) continue;
+    if (list.some((url) => urlMatchesFragment(url, page.urlFragment))) continue;
     const to = urlByName[page.name];
     const host = hostOfUrl(to);
     const candidates = host
@@ -153,10 +158,31 @@ export function planPageActions({ urls, expected, urlByName, dry = true }) {
     findReclaimCandidates({ urls, expected, urlByName }).map((entry) => [entry.page, entry]),
   );
   return expected.map((page) => {
-    const hit = urls.filter((url) => url.includes(page.urlFragment)).length;
+    const hitIndexes = urls
+      .map((url, index) => (urlMatchesFragment(url, page.urlFragment) ? index : -1))
+      .filter((index) => index >= 0);
     const url = urlByName[page.name];
-    if (hit === 1) return { page: page.name, action: 'already-one', found: 1 };
-    if (hit > 1) return { page: page.name, action: 'ambiguous', found: hit };
+    if (hitIndexes.length === 1) return { page: page.name, action: 'already-one', found: 1 };
+    if (hitIndexes.length > 1) {
+      // 命中多页时先问一句：「关哪一个」到底是不是**确定的**？
+      // 如果这些命中**去重后只剩一种 URL**（＝完全重复的同一页），答案就是确定的 ——
+      // 内容逐字相同，关哪个都一样 ⇒ 可以自动收敛（`dedupe`），不必交给人。
+      // 这一条是 2026-09-22 加的：商家浏览器里两页飞书底单页 URL 逐字相同，却把整轮日报
+      // 挡在体检那一步（与「登录跳转页假命中工作页」是同一轮里的两个成因）。
+      // 只要命中里出现**两种以上不同 URL**，仍然交给人 —— 那时「关哪个」需要判断，
+      // 而自动关错的代价是破坏别人正在用的页（这条纪律不放松）。
+      const distinct = [...new Set(hitIndexes.map((index) => urls[index]))];
+      if (distinct.length === 1) {
+        return {
+          page: page.name,
+          action: dry ? 'would-dedupe' : 'dedupe',
+          found: hitIndexes.length,
+          keepIndex: hitIndexes[0],
+          dropIndexes: hitIndexes.slice(1),
+        };
+      }
+      return { page: page.name, action: 'ambiguous', found: hitIndexes.length };
+    }
     const drift = missing.get(page.name);
     if (drift?.action === 'reclaim') {
       return { page: page.name, action: dry ? 'would-reclaim' : 'reclaim', found: 0, url, from: drift.from };
@@ -174,7 +200,7 @@ export function planPageActions({ urls, expected, urlByName, dry = true }) {
 export function slotsFrom(urls, expected) {
   return expected.map((page) => ({
     page: page.name,
-    count: urls.filter((url) => url.includes(page.urlFragment)).length,
+    count: urls.filter((url) => urlMatchesFragment(url, page.urlFragment)).length,
   }));
 }
 
@@ -205,7 +231,7 @@ export async function settleSlots({
   intervalMs = 600,
   sleep = (ms) => new Promise((done) => { setTimeout(done, ms); }),
 } = {}) {
-  const satisfied = (list) => expected.every((page) => list.some((url) => String(url).includes(page.urlFragment)));
+  const satisfied = (list) => expected.every((page) => list.some((url) => urlMatchesFragment(url, page.urlFragment)));
   let targets = [];
   let urls = [];
   let reads = 0;
@@ -252,6 +278,29 @@ export function planRequests({ actions = [], targets = [] } = {}) {
       requests.push({ kind: 'navigate', action, targetId, url: action.url });
       continue;
     }
+    if (action.action === 'dedupe') {
+      // 「完全重复的同一页」收敛：保留者先 pin，再关其余的。
+      // 为什么先 pin：万一把**原本被 pin 的那页**关掉、留下没 pin 的，剩下那页会在
+      // 15 分钟后被代理按 `CDP_TAB_IDLE_TIMEOUT` 回收 ⇒ 等于白关（现场表现「今晚补好、明早没了」）。
+      // 重复页彼此 URL 逐字相同，内容无差别 ⇒ 保留哪一个都行，这里保留**列表里的第一个**。
+      const keep = list[action.keepIndex];
+      const keepId = keep?.targetId ?? keep?.id ?? null;
+      if (!keepId) {
+        requests.push({ kind: 'blocked', action, error: `要保留的第 ${action.keepIndex} 页没有 targetId，没敢动` });
+        continue;
+      }
+      requests.push({ kind: 'pin', action, targetId: keepId });
+      for (const index of action.dropIndexes ?? []) {
+        const target = list[index];
+        const targetId = target?.targetId ?? target?.id ?? null;
+        if (!targetId) {
+          requests.push({ kind: 'blocked', action, error: `要关的第 ${index} 页没有 targetId，没敢动` });
+          continue;
+        }
+        requests.push({ kind: 'close', action, targetId });
+      }
+      continue;
+    }
     if (action.action === 'create') requests.push({ kind: 'new', action, url: action.url, label: action.page });
   }
   return requests;
@@ -283,6 +332,23 @@ export async function sendRequests({ base, requests = [], fetchImpl = fetch } = 
       if (!response?.ok) {
         action.action = 'reclaim-failed';
         action.error = `代理 /navigate 回 HTTP ${action.status ?? '连不上'}`;
+      }
+      continue;
+    }
+    if (request.kind === 'pin') {
+      // 只记代理真回的东西。pin 失败**不改变「要不要关」的决定**（关掉完全重复的那一页本身是对的），
+      // 但必须留下来：没 pin 住 ⇒ 保留的那页仍可能被闲置回收，下次看这个字段就知道。
+      const response = await fetchImpl(`${base}/pin?target=${encodeURIComponent(request.targetId)}`).catch(() => null);
+      action.pin = { status: response?.status ?? null, ok: Boolean(response?.ok) };
+      continue;
+    }
+    if (request.kind === 'close') {
+      const response = await fetchImpl(`${base}/close?target=${encodeURIComponent(request.targetId)}`).catch(() => null);
+      action.closed = Array.isArray(action.closed) ? action.closed : [];
+      action.closed.push({ targetId: request.targetId, status: response?.status ?? null, ok: Boolean(response?.ok) });
+      if (!response?.ok) {
+        action.action = 'dedupe-failed';
+        action.error = `代理 /close 回 HTTP ${response?.status ?? '连不上'}`;
       }
       continue;
     }

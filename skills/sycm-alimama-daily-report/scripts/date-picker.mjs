@@ -19,6 +19,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+// 「页签属于哪个目标页面」的唯一判据（2026-09-22 收编到这里共用）。
+// **不要退回 `String(target.url).includes(片段)`**：生意参谋的登录跳转页把目标地址放在查询参数
+// `_target=` 里（`/custom/login.htm?_target=…/performance/new#/shop`），整串包含会让它被**误认成工作页**
+// ⇒ 这里算出 2 个 ⇒ 抛 `expected one sycm page, got 2` ⇒ 整轮日报一步都不跑（09-17、09-22 各一次）。
+import { pagesMatching, urlMatchesFragment } from '../../../runtime/target-url-match.mjs';
 
 const SITE_TIME_ZONE = 'Asia/Shanghai';
 const ALIMAMA_BASE = 'https://one.alimama.com/index.html#!/report/account';
@@ -498,7 +503,7 @@ function delay(ms) { return new Promise((resolve) => { setTimeout(resolve, ms); 
 
 export async function resolveTarget({ proxy, site, onRecover, onProbe } = {}) {
   const adapter = siteAdapter(site);
-  const matchOf = (list) => list.filter((target) => target.type === 'page' && String(target.url).includes(adapter.urlFragment));
+  const matchOf = (list) => pagesMatching(list, adapter.urlFragment);
   const targets = await proxyJson(`${proxy}/targets`);
   const matches = matchOf(targets);
   if (matches.length === 1) return matches[0].targetId;
@@ -506,7 +511,7 @@ export async function resolveTarget({ proxy, site, onRecover, onProbe } = {}) {
   // 只在「同一主机下恰好一个页面」时才动手 —— 页面多了说明现场不是我以为的样子，宁可报错也别乱导航。
   if (adapter.entryUrl && matches.length === 0) {
     const host = adapter.urlFragment.split('/')[0];
-    const siblings = targets.filter((target) => target.type === 'page' && String(target.url).includes(host));
+    const siblings = targets.filter((target) => target.type === 'page' && urlMatchesFragment(target.url, host));
     if (siblings.length === 1) {
       onRecover?.({ targetId: siblings[0].targetId, from: siblings[0].url, entryUrl: adapter.entryUrl });
       await navigate(proxy, siblings[0].targetId, adapter.entryUrl);
