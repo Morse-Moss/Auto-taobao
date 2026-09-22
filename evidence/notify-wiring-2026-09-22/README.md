@@ -102,10 +102,11 @@ Node ≥18.20.2（CVE-2024-27980 加固）之后 `.cmd`/`.bat` 必须走 shell �
 
 ## 边界：这轮**没有**验证的
 
-- **没有真的往飞书发过一条告警**。投递能力本身 2026-09-15 已实测过（两跳真实收据
+- ~~**没有真的往飞书发过一条告警**~~ ← **同日晚已补上，见本文最后一节。**
+  写这一段时的状态是：投递能力本身 2026-09-15 已实测过（两跳真实收据
   `evidence/notify-channel-check-20260915.receipt.json` / `…-group-20260915…`），
   这轮新接的是「预检 → 投递 CLI」那一段，用真子进程 + 可控失败证明了它通。
-  「端到端真发一条」需要一个明确的动作，见下。
+  原文保留，作为「哪些结论是排练推出来的、哪些是后来真发出来的」的分界。
 - **没启停任何进程**：浏览器与代理只做过只读探测（`/json/list`、`/targets`）。
 - **没碰服务端状态**：整轮零飞书写入、零 DB 写入。
 - **`evaluateTarget` 失败也归入了 `PAGE_UNAVAILABLE`**（代理读不到页面）。这是一个有意的取舍：
@@ -122,6 +123,57 @@ Node ≥18.20.2（CVE-2024-27980 加固）之后 `.cmd`/`.bat` 必须走 shell �
 
 ## 下一步（需要人点头的那一步）
 
-真发一条**验证性告警**到飞书（主收件人 `open_id` + 兜底群 `chat_id` 都已配在
-`E:/小红书/.env.feishu-kcne.local`），用来证明「需要登录时飞书会响」这件事在**真实通道上**也成立。
-在此之前，这台机器上「线通了」的证据只有上面 A/D 两条。
+~~真发一条验证性告警到飞书~~ —— **已做，见下一节。**
+
+---
+
+## 2026-09-22 晚：端到端真发 + 独立回读（补上上面那条边界）
+
+触发时机的现场是真实的，不是造出来的：买家浏览器（9222）**只开着「我的淘宝」，没有任何商品页**，
+所以真实预检必然命中 `PAGE_UNAVAILABLE` —— 也就是本轮新加的那条路。
+
+### 逐次留证
+
+| 文件 | 是什么 |
+| --- | --- |
+| `e-preview.txt` | **零风险预览**：`--no-notify` 跑真实预检拿到真告警 JSON（`delivery=MUTED`），再喂给 `notify-feishu.mjs --dry-run` 渲染出「真要发出去的那段字」 |
+| `e-live-send.txt` / `e-live-send/xws-sku-operator-alert.json` | **第 1 次真发**：`delivery = SENT / channel app / sentAt`。这一步仍走默认出口，零参数干预 |
+| `e-live-send-2.txt` / `e-live-send-2/xws-sku-operator-alert.json` | **第 2 次真发**：修掉下面的 `messageId` 缺口之后重跑，收据里带上 `om_x100b642b4db654a0b39a71cb2214d62` |
+| `e-live-send-readback.txt` | 一次**失败**的回读尝试（如实留证）：`GET /im/v1/chats` 只列得出群，**列不出 P2P 单聊**，所以没有 messageId 时够不到那条消息 |
+| `message-readback-probe.txt` | 用 2026-09-15 那张老收据里的 messageId 打通读回：`GET /im/v1/messages/{id}` → `code=0` 且读回完整正文。**这条路是通的** |
+| `mutation-round2.txt` | 6 个突变点（含本轮新增的 3 条），全部被点名拦住，还原 sha256 逐字节一致 |
+| `preflight-tests-19.txt` / `preflight-tests-20.txt` | 用例数 18 → 19 → 20 的原始输出 |
+
+### 这一轮修掉的两个真缺陷（都是「真发」才暴露出来的）
+
+1. **动作文案里的 Markdown 加粗会原样发给运营**。`ALERT_BY_STATUS.PAGE_UNAVAILABLE` 的 `action` 里
+   写了 `**买家**` —— 那是按 Markdown 面写的，但这条通道发的是飞书 `msg_type=text` 的**纯文本**，
+   星号不会被渲染，运营会看到字面上的 `**买家**`。预览时一眼看见，已改。
+   配套判据：「给运营看的告警是纯文本」遍历所有状态跑 `buildOperatorAlert → renderAlertText` 再断言
+   （不断言常量表，因为标题来自另一张表、正文还拼了 reason/source/时间/编号）。
+2. **收据把平台回执号一起剥掉了，导致收据无法独立复验**。`compactReceipt` 原来只留
+   `status/channel/alertId/sentAt/error`；`messageId` 长在 `attempts[]` 里，而那一项同时带收件人
+   `target`，于是「剥掉收件人」把「平台回执号」连坐剥了。后果很具体：事后想确认「这条到底发出去没有」，
+   手上没有任何能拿去 `GET /im/v1/messages/{message_id}` 的凭据，只能选择相信这份收据自己写的 `SENT`。
+   已改为**留 `messageId`、仍不留 `target`**，并加一条用例同时钉住两个方向
+   （留回执号 + 不许把 `ou_…`/`oc_…` 抄进证据文件）。
+   本次实发因此**发了两次**：第 1 次是修复前的代码（收据无回执号），第 2 次带上了回执号并当即可回读。
+
+### 真发那一条的完整闭环
+
+```
+预检(真实 HTTP 到 3457) → PAGE_UNAVAILABLE → 默认出口 notify-feishu.mjs
+  → SENT / app / sentAt=2026-09-22T03:04:23.337Z / messageId=om_x100b642b4db654a0b39a71cb2214d62
+  → GET /open-apis/im/v1/messages/om_x100b642b4db654a0b39a71cb2214d62 → http=200 code=0 msg_type=text
+  → 读回来的正文与本轮渲染逐字一致（标题是人话「采集用的商品页不在位」，且没有星号）
+```
+
+**「发出去了」这件事现在由平台自己作证，不用相信我们自己的收据。**
+
+### 这一轮**没有**做的
+
+- 没给 `PAGE_UNAVAILABLE` 之外的其它 type 也做一次真发。已发的都是 `XWS_PAGE_UNAVAILABLE`。
+- 没做 P2P 单聊的机器可读回读（平台不给列 P2P 会话）；目前的回读按 `message_id` 直取，够用。
+- `MUTED` 仍不在 `round-history.mjs` 的 `undelivered` 名单里（同上，未修，已用注释钉住）。
+- 「纯文本」这条判据只覆盖了 `ALERT_BY_STATUS` 这一条渲染路径；仓库里其它自己拼告警文案的链
+  （如 `sop-runtime` 的升级文案）**没有**被它保护。今天全仓 grep 没发现别处有 `**`，但那是快照，不是守卫。

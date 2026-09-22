@@ -1,0 +1,15 @@
+=== SKU 链第 3 段：页面 SKU 拓扑 ===
+EXIT=0
+--- stdout ---
+{
+  "topologyPath": "D:\\Retire\\sycm-automation\\evidence\\sku-step6-2026-09-22\\xws-sku-topology-921092099640.json",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\sku-step6-2026-09-22\\xws-sku-topology-receipt-921092099640.json",
+  "productId": "921092099640",
+  "payloadSha256": "1ada52eeb0d931f6ed216a714e9101173503f77c85eb98016eac14282d3f7ba4",
+  "topologySha256": "ad50bbe497d293a4546efd5641c1d9bcd1a0ef87001d6d686dd7188fcf4ebfdd",
+  "propertyCount": 2,
+  "validCombinationCount": 96,
+  "batchIndexPath": "D:\\Retire\\sycm-automation\\evidence\\sku-step6-2026-09-22\\batch-index.json"
+}
+--- stderr ---
+

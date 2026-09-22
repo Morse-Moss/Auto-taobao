@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { existsSync } from 'node:fs';
-import { mkdtemp, readdir, readFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
 import { PROJECT_PORTS } from './browser-ports.mjs';
-import { TITLE_BY_TYPE } from './notify-feishu-core.mjs';
+import { TITLE_BY_TYPE, renderAlertText } from './notify-feishu-core.mjs';
 
 import {
   ALERT_BY_STATUS,
@@ -328,6 +328,63 @@ test('.mjs / .js 形状的 --notify-command 自动用 node 跑（.cmd 那条兜�
   assert.deepEqual(notifyTargetForPath('D:/op/notify.exe'), { command: 'D:/op/notify.exe', args: [] });
 });
 
+test('投递收据要留平台回执号，但不能把收件人抄进证据文件', async () => {
+  // 这条用例钉两件互相拉扯的事：
+  //   1) `messageId`（`om_…`）**必须留** —— 没有它，这份收据事后无法被独立复验，只能选择相信它自己写的 SENT。
+  //      2026-09-22 真发那一条时就卡在这：收据里只有 status / sentAt，想去
+  //      `GET /im/v1/messages/{message_id}` 回读都无从下手。
+  //   2) 收件人 id（`ou_…` / `oc_…`）**绝不能留** —— 证据文件会被复制进提交、诊断包、群聊。
+  // 两者正好在同一个 `attempts[]` 项里，所以「剥掉收件人」很容易连坐把回执号一起剥掉（原来就是这样）。
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'xws-sku-receipt-'));
+  const fakeCli = path.join(directory, 'fake-notify.mjs');
+  await writeFile(fakeCli, [
+    'const chunks = [];',
+    'for await (const chunk of process.stdin) chunks.push(chunk);',
+    'const alert = JSON.parse(Buffer.concat(chunks).toString("utf8"));',
+    'console.log(JSON.stringify({',
+    '  version: "feishu-notify-receipt-v1", status: "SENT", channel: "app",',
+    '  alertId: alert.alertId, sentAt: new Date().toISOString(),',
+    '  attempts: [{ channel: "app", ok: true, target: "ou_e254f8d7d91a042b31fcd59299a1a4a9", messageId: "om_x100fake" }],',
+    '}));',
+  ].join('\n'), 'utf8');
+  const { server, base } = await startFakeProxy({
+    targets: [{ targetId: 't1', type: 'page', url: 'https://item.taobao.com/item.htm?id=1059970355633' }],
+    snapshot: { pageProductId: '1059970355633', pluginPresent: true, skuControlPresent: true, loginMarkers: [] },
+  });
+  try {
+    // 页面快照里没有账号可读 ⇒ AUTH_UNKNOWN（`要叫人`名单里的一条），于是必然会走到投递那一步。
+    // 这个状态会抛（CLI 层 exit 3），告警文件在抛之前就已经落盘 —— 所以用 rejects 接住再看文件。
+    await assert.rejects(
+      runAuthPreflight({
+        proxy: base,
+        productId: '1059970355633',
+        productUrl: 'https://item.taobao.com/item.htm?id=1059970355633',
+        recordId: 'recPay',
+        classification: 'A-爆款竞品',
+        validity: '是',
+        outputDirectory: directory,
+        checkedAt: new Date().toISOString(),
+        notifyCommand: fakeCli,
+        // 声明了期望账号却读不到观察值 ⇒ AUTH_UNKNOWN，而不是被当成通过。
+        expectedAccount: '期望账号',
+        accountSelector: '#account',
+      }),
+      (error) => error.code === 'STALLED',
+    );
+
+    const alert = JSON.parse(await readFile(path.join(directory, 'xws-sku-operator-alert.json'), 'utf8'));
+    assert.equal(alert.delivery.status, 'SENT');
+    assert.equal(alert.delivery.messageId, 'om_x100fake', '平台回执号必须留下，否则收据无法独立复验');
+    assert.doesNotMatch(
+      JSON.stringify(alert),
+      /ou_e254|oc_fdb7/u,
+      '收件人 id 不许被抄进证据文件（它会被复制进提交/诊断包/群聊）',
+    );
+  } finally {
+    server.close();
+  }
+});
+
 test('预检能发出的每个 type 都要有人话标题（少了就是运营收到一行机器词）', () => {
   // 为什么是跨模块判据：type 在本文件定义、标题在 notify-feishu-core 的 TITLE_BY_TYPE 里。
   // 两边是同一条链的两端，只改一端**不会报任何错**，只是那条告警从此说不了人话
@@ -347,6 +404,30 @@ test('「要叫人」的每个状态都必须有文案与动作（漏一个 = �
   }
   // AUTH_READY 不进「要叫人」名单：它是恢复态，只在 resolveAlert 里补一条「已恢复」。
   assert.equal(ALERTING_STATUSES.includes('AUTH_READY'), false);
+});
+
+test('给运营看的告警是纯文本：渲染结果里不能有 Markdown 强调标记', () => {
+  // 为什么需要这条：写文案的人（包括我）默认是在 Markdown 面上写字，顺手就会写 `**买家**`。
+  // 但这条通道发的是飞书 `msg_type=text` 的**纯文本**，星号不会被渲染 —— 运营会看到字面上的
+  // 「**买家**」。2026-09-22 真发前的预览里就出现过一次（见 evidence/notify-wiring-2026-09-22）。
+  //
+  // 刻意断言**整条渲染路径**（buildOperatorAlert → renderAlertText）而不是只 grep `ALERT_BY_STATUS`
+  // 的常量：标题来自另一张表（TITLE_BY_TYPE）、正文还拼了 reason / source / 时间 / 编号，
+  // 任何一个环节塞进星号都一样会漏到运营眼里，只查常量表照不到后面那几段。
+  for (const status of Object.keys(ALERT_BY_STATUS)) {
+    const alert = buildOperatorAlert({
+      checkedAt: new Date().toISOString(),
+      source: { productId: '1', mainRecordId: 'r' },
+      statusPath: 'x.json',
+      reason: 'r',
+      classificationStatus: status,
+    });
+    assert.doesNotMatch(
+      renderAlertText(alert),
+      /\*\*/u,
+      `${status} 渲染出的告警文本里出现了 Markdown 强调标记，纯文本消息会原样显示星号`,
+    );
+  }
 });
 
 test('商品页不在位也要落一条可通知的告警（原来这条路上一个告警都不产生）', async () => {

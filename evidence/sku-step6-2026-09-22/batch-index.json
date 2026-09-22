@@ -1,0 +1,21 @@
+{
+  "version": "xws-sku-batch-index-v1",
+  "updatedAt": "2026-09-22T03:07:36.177Z",
+  "source": {
+    "mainRecordId": "recvticyHkhtcR",
+    "productId": "921092099640",
+    "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "classification": "B-高价值竞品",
+    "validity": "是"
+  },
+  "artifacts": {
+    "authStatus": "xws-sku-auth-status-20260922T030538119Z-75ed3011-434.json",
+    "payload": "xws-sku-payload-2026-09-22T03-06-34-481Z-1ada52eeb0d9.txt",
+    "captureReceipt": "xws-sku-capture-2026-09-22T03-06-34-481Z-1ada52eeb0d9.json",
+    "topology": "xws-sku-topology-921092099640.json",
+    "topologyReceipt": "xws-sku-topology-receipt-921092099640.json",
+    "manifest": "xws-sku-dry-run-manifest-20260922T030736177Z-a5766b17-a431-4198-9f86-41026a0d866c.json",
+    "dryRunReceipt": "xws-sku-dry-run-receipt-20260922T030736177Z-a5766b17-a431-4198-9f86-41026a0d866c.json"
+  },
+  "status": "DRY_RUN_READY"
+}

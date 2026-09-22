@@ -72,8 +72,17 @@ non_goals:
   - Bulk collection, product-link discovery by title inference, and any main-table AI-field change.
 ```
 
-Current stage: WEEKLY-MODEL - COMPLETE_FOR_2026-08-23_2026-08-29. Competitor weekly snapshot was repaired from the complete 1461-row source, master index was upserted to 2004 products, stable text links were written, and obsolete per-week bidirectional relation fields were removed.
+> **租户已迁移（先看这一条再看下面的 id）**：本文件 `scope.owned` 与 `approvals.bounds` 里写的是**旧租户**
+> `OWebbPUcBa7B8JseYLccQCy9nkf` / `竞品主表 tblJ9LHFN6pMVjPv` / `SKU明细 tblddWTrPeB4TKmR`。
+> 项目 2026-09-14 已切到 kcne，现行目标以 `runtime/feishu-targets.mjs` 为唯一事实来源：
+> base `QcnhbEzYpacGvUskCbVcrcm3nFd`、`竞品主表 tblkYcczxBnW4v5G`、`SKU明细 tbl3N48H4znz304T`。
+> 下面那段「last verified」是**旧租户时期的实况**，数字不要当成今天的。今天（2026-09-22）实测：
+> 主表 2004 行、SKU 明细 830 行，与旧租户时期同量，但表 id 不同。
 
-Last completed verified step: `竞品周_2026-08-23_2026-08-29` has 1461 contiguous unique ranks and 1461 real image attachments; `竞品主表` has 2004 rows and all 1461 weekly products have `主表记录ID`; `SKU周_2026-08-23_2026-08-29` has 734 rows, 684 current-week competitor links, and 50 explicit historical-not-in-current-week statuses. Focused SKU tests (60) and XWS/Feishu tests (72) passed.
+Current stage: WEEKLY-MODEL - CHAIN_VERIFIED_2026-09-22 (no rows pending). Competitor weekly snapshot was repaired from the complete 1461-row source, master index was upserted to 2004 products, stable text links were written, and obsolete per-week bidirectional relation fields were removed.
 
-Next exact action: start the next weekly collection by selecting the newest valid A/B queue and creating a new per-product evidence directory; do not reuse these payloads or assume the 2026-08-23 period for a future week.
+Last completed verified step (2026-09-22, kcne tenant, evidence `evidence/sku-step6-2026-09-22/`): the whole collect leg ran for real on product 921092099640 — preflight `AUTH_READY` (exit 0), a real mouse-gesture copy with visible `已复制`, payload sha256 `1ada52ee…` (1331 bytes), topology 2 properties / 96 valid combinations, dry-run `DRY_RUN_READY` with `toCreate 0 / alreadyPresent 96 / conflict 0 / duplicateExistingKeys 0`. \`summarize-xws-sku-queue.mjs --weekly\` reports the current period (09-13~09-19) as \`ab 1 / ready 1 / pending 0\`. **No apply was needed or run**: every unique key was already present, which is also a live proof of the idempotent write path.
+
+Earlier verified step (legacy tenant, 2026-08-25/2026-08-23 period): \`竞品周_2026-08-23_2026-08-29\` has 1461 contiguous unique ranks and 1461 real image attachments; \`竞品主表\` has 2004 rows; \`SKU周_2026-08-23_2026-08-29\` has 734 rows. Focused SKU tests (60) and XWS/Feishu tests (72) passed.
+
+Next exact action: nothing is pending for the current period, so a new collection must target the next period. Two things have to happen first, in this order — (1) the next period's \`竞品周_YYYY-MM-DD_YYYY-MM-DD\` table must exist (the 09-13 period still has **no** \`SKU周\` snapshot table, so the weekly-snapshot leg has not run for it); (2) pick the new period's A/B queue with \`summarize-xws-sku-queue.mjs --weekly\` and give each product its own evidence directory. Do not reuse this batch's payload/topology, and do not assume a period.

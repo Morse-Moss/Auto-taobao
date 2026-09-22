@@ -1,0 +1,27 @@
+{
+  "version": "xws-sku-operator-alert-v1",
+  "alertId": "xws-login-921092099640-20260922T030423027Z-8f2a9645-e32",
+  "status": "OPEN",
+  "severity": "HIGH",
+  "type": "XWS_PAGE_UNAVAILABLE",
+  "createdAt": "2026-09-22T03:04:23.027Z",
+  "source": {
+    "mainRecordId": "recvticyHkhtcR",
+    "productId": "921092099640",
+    "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "classification": "B-高价值竞品",
+    "validity": "是"
+  },
+  "reason": "Preflight could not read the product page: Product page target is unavailable: 921092099640",
+  "action": "在采集用的那个 Edge 用户配置里（装着「小旺神」插件的买家账号那个）把这个商品的页面打开、等它加载完，再重新运行预检。页面本来就开着还报这个，说明窗口被切走或浏览器被回收了：先确认采集浏览器还在运行、代理端口没变，再打开商品页。",
+  "evidence": {
+    "authStatusFile": "xws-sku-auth-status-20260922T030423027Z-c5b7c7b9-781.json"
+  },
+  "delivery": {
+    "status": "SENT",
+    "channel": "app",
+    "alertId": "xws-login-921092099640-20260922T030423027Z-8f2a9645-e32",
+    "sentAt": "2026-09-22T03:04:23.337Z",
+    "messageId": "om_x100b642b4db654a0b39a71cb2214d62"
+  }
+}

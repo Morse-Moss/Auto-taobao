@@ -1,0 +1,207 @@
+{
+  "hasRoot": true,
+  "hasCopyBar": true,
+  "barVisible": true,
+  "itemsCount": 11,
+  "items": [
+    {
+      "tag": "DIV",
+      "className": "xws-copy",
+      "text": "标题 宝贝ID 宝贝链接 SKU 属性",
+      "linkClass": false,
+      "visible": true,
+      "rect": {
+        "x": 922,
+        "y": 450,
+        "w": 230,
+        "h": 28
+      },
+      "centerHit": {
+        "tag": "SPAN",
+        "className": "",
+        "text": "宝贝链接"
+      }
+    },
+    {
+      "tag": "DIV",
+      "className": "xws-copy-item xws-copy-link",
+      "text": "标题",
+      "linkClass": true,
+      "visible": true,
+      "rect": {
+        "x": 922,
+        "y": 450,
+        "w": 39,
+        "h": 28
+      },
+      "centerHit": {
+        "tag": "SPAN",
+        "className": "",
+        "text": "标题"
+      }
+    },
+    {
+      "tag": "DIV",
+      "className": "xws-copy-item xws-copy-link",
+      "text": "宝贝ID",
+      "linkClass": true,
+      "visible": true,
+      "rect": {
+        "x": 962,
+        "y": 450,
+        "w": 50,
+        "h": 28
+      },
+      "centerHit": {
+        "tag": "SPAN",
+        "className": "",
+        "text": "宝贝ID"
+      }
+    },
+    {
+      "tag": "DIV",
+      "className": "xws-copy-item xws-copy-link",
+      "text": "宝贝链接",
+      "linkClass": true,
+      "visible": true,
+      "rect": {
+        "x": 1013,
+        "y": 450,
+        "w": 60,
+        "h": 28
+      },
+      "centerHit": {
+        "tag": "SPAN",
+        "className": "",
+        "text": "宝贝链接"
+      }
+    },
+    {
+      "tag": "DIV",
+      "className": "xws-copy-item xws-copy-link",
+      "text": "SKU",
+      "linkClass": true,
+      "visible": true,
+      "rect": {
+        "x": 1074,
+        "y": 450,
+        "w": 39,
+        "h": 28
+      },
+      "centerHit": {
+        "tag": "SPAN",
+        "className": "",
+        "text": "SKU"
+      }
+    },
+    {
+      "tag": "DIV",
+      "className": "xws-copy-item xws-copy-link",
+      "text": "属性",
+      "linkClass": true,
+      "visible": true,
+      "rect": {
+        "x": 1114,
+        "y": 450,
+        "w": 39,
+        "h": 28
+      },
+      "centerHit": {
+        "tag": "SPAN",
+        "className": "",
+        "text": "属性"
+      }
+    },
+    {
+      "tag": "DIV",
+      "className": "xws-copy",
+      "text": "旺旺号 店铺名 店铺链接 店铺ID",
+      "linkClass": false,
+      "visible": true,
+      "rect": {
+        "x": 1160,
+        "y": 450,
+        "w": 210,
+        "h": 28
+      },
+      "centerHit": {
+        "tag": "DIV",
+        "className": "xws-copy-item xws-copy-link",
+        "text": "店铺链接"
+      }
+    },
+    {
+      "tag": "DIV",
+      "className": "xws-copy-item xws-copy-link",
+      "text": "旺旺号",
+      "linkClass": true,
+      "visible": true,
+      "rect": {
+        "x": 1160,
+        "y": 450,
+        "w": 49,
+        "h": 28
+      },
+      "centerHit": {
+        "tag": "SPAN",
+        "className": "",
+        "text": "旺旺号"
+      }
+    },
+    {
+      "tag": "DIV",
+      "className": "xws-copy-item xws-copy-link",
+      "text": "店铺名",
+      "linkClass": true,
+      "visible": true,
+      "rect": {
+        "x": 1210,
+        "y": 450,
+        "w": 50,
+        "h": 28
+      },
+      "centerHit": {
+        "tag": "SPAN",
+        "className": "",
+        "text": "店铺名"
+      }
+    },
+    {
+      "tag": "DIV",
+      "className": "xws-copy-item xws-copy-link",
+      "text": "店铺链接",
+      "linkClass": true,
+      "visible": true,
+      "rect": {
+        "x": 1261,
+        "y": 450,
+        "w": 60,
+        "h": 28
+      },
+      "centerHit": {
+        "tag": "SPAN",
+        "className": "",
+        "text": "店铺链接"
+      }
+    },
+    {
+      "tag": "DIV",
+      "className": "xws-copy-item xws-copy-link",
+      "text": "店铺ID",
+      "linkClass": true,
+      "visible": true,
+      "rect": {
+        "x": 1322,
+        "y": 450,
+        "w": 49,
+        "h": 28
+      },
+      "centerHit": {
+        "tag": "SPAN",
+        "className": "",
+        "text": "店铺ID"
+      }
+    }
+  ],
+  "pageUrl": "https://item.taobao.com/item.htm?id=921092099640"
+}

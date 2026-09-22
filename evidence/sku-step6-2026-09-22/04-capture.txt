@@ -1,0 +1,32 @@
+=== SKU 链第 2 段：剪贴板采集 ===
+EXIT=0
+--- stdout（只报路径与哈希，不回显 payload 内容）---
+{
+  "captureId": "2026-09-22T03-06-34-481Z-1ada52eeb0d9",
+  "payloadPath": "D:\\Retire\\sycm-automation\\evidence\\sku-step6-2026-09-22\\xws-sku-payload-2026-09-22T03-06-34-481Z-1ada52eeb0d9.txt",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\sku-step6-2026-09-22\\xws-sku-capture-2026-09-22T03-06-34-481Z-1ada52eeb0d9.json",
+  "batchIndexPath": "D:\\Retire\\sycm-automation\\evidence\\sku-step6-2026-09-22\\batch-index.json",
+  "payloadSha256": "1ada52eeb0d931f6ed216a714e9101173503f77c85eb98016eac14282d3f7ba4"
+}
+--- stderr ---
+
+
+=== 采集收据 ===
+{
+  "captureId": "2026-09-22T03-06-34-481Z-1ada52eeb0d9",
+  "capturedAt": "2026-09-22T03:06:34.481Z",
+  "payloadSha256": "1ada52eeb0d931f6ed216a714e9101173503f77c85eb98016eac14282d3f7ba4",
+  "payloadUtf8Bytes": 1331,
+  "payloadCharacterCount": 553,
+  "metadata": {
+    "recordId": "recvticyHkhtcR",
+    "productId": "921092099640",
+    "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "pageUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "validity": "是",
+    "classification": "B-高价值竞品",
+    "copiedItem": "SKU",
+    "copyFeedback": "已复制",
+    "authStatusFile": "xws-sku-auth-status-20260922T030538119Z-75ed3011-434.json"
+  }
+}

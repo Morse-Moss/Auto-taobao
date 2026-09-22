@@ -1,0 +1,21 @@
+=== 步骤 1：真实预检（默认出口）===
+EXIT=3
+--- stderr ---
+{"status":"STALLED","error":"Xiaowangshen preflight did not pass: PAGE_UNAVAILABLE","details":{"status":"PAGE_UNAVAILABLE","reason":"Preflight could not read the product page: Product page target is unavailable: 921092099640","source":{"mainRecordId":"recvticyHkhtcR","productId":"921092099640","productUrl":"https://item.taobao.com/item.htm?id=921092099640","classification":"B-高价值竞品","validity":"是"},"authStatusPath":"xws-sku-auth-status-20260922T030423027Z-c5b7c7b9-781.json","operatorAlertPath":"xws-sku-operator-alert.json","notification":{"status":"SENT","channel":"app","alertId":"xws-login-921092099640-20260922T030423027Z-8f2a9645-e32","sentAt":"2026-09-22T03:04:23.337Z","messageId":"om_x100b642b4db654a0b39a71cb2214d62"},"action":"在采集用的那个 Edge 用户配置里（装着「小旺神」插件的买家账号那个）把这个商品的页面打开、等它加载完，再重新运行预检。页面本来就开着还报这个，说明窗口被切走或浏览器被回收了：先确认采集浏览器还在运行、代理端口没变，再打开商品页。","alertType":"XWS_PAGE_UNAVAILABLE","batchIndexPath":"batch-index.json"}}
+
+=== 步骤 2：落盘收据（这次应该带 messageId）===
+{
+  "status": "SENT",
+  "channel": "app",
+  "alertId": "xws-login-921092099640-20260922T030423027Z-8f2a9645-e32",
+  "sentAt": "2026-09-22T03:04:23.337Z",
+  "messageId": "om_x100b642b4db654a0b39a71cb2214d62"
+}
+
+=== 步骤 3：独立回读（拿 messageId 去平台接口把那条消息读回来）===
+GET /im/v1/messages/om_x100b642b4db654a0b39a71cb2214d62
+http=200 code=0 msg=success
+msg_type=text create_time=1790046263900
+读回来的正文={"text":"【需要处理】采集用的商品页不在位\n商品ID：921092099640\n主表记录：recvticyHkhtcR\n原因：Preflight could not read the product page: Product page target is unavailable: 921092099640\n下一步：在采集用的那个 Edge 用户配置里（装着「小旺神」插件的买家账号那个）把这个商品的页面打开、等它加载完，再重新运行预检。页面本来就开着还报这个，说明窗口被切走或浏览器被回收了：先确认采集浏览器还在运行、代理端口没变，再打开商品页。\n证据：xws-sku-auth-status-20260922T030423027Z-c5b7c7b9-781.json\n时间：2026-09-22 11:04\n告警编号：xws-login-921092099640-20260922T030423027Z-8f2a9645-e32"}
+
+判据：code=0 且读回的正文与本轮告警一致 ⇒ 「发出去」这件事由平台自己作证，不用相信我们的收据。

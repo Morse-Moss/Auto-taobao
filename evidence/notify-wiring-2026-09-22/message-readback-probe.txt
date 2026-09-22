@@ -1,0 +1,7 @@
+取 token：code=0
+GET /im/v1/messages/om_x100b65b868aea4b4df3122e7bb6a2b1
+http=200 code=0 msg=success
+回读到的正文={"text":"【提示】通道验证：自动化系统的飞书提醒已接通\n对象：专用部署机\n任务：通道自检\n原因：这是一条测试消息，用于确认告警可以真实送达。系统当前没有检测到任何故障。\n下一步：无需处理。收到这条说明以后系统真出问题时你能在同一位置收到提醒。\n时间：2026-09-15 11:45\n告警编号：sycm-channel-check-20260915T114500"}
+msg_type=text create_time=1789444710342
+
+判据：code=0 且拿到正文 ⇒ 有了 messageId 就能独立复验（收据里必须留 messageId 的理由）。

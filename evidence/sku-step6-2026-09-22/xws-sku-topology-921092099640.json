@@ -1,0 +1,840 @@
+{
+  "version": "xws-tmall-sku-topology-v1",
+  "payloadSha256": "1ada52eeb0d931f6ed216a714e9101173503f77c85eb98016eac14282d3f7ba4",
+  "dimensionPropertyIndex": 0,
+  "specificationPropertyIndex": 1,
+  "specificationSegmentCount": 2,
+  "specificationSegmentCounts": [
+    1,
+    2
+  ],
+  "specificationSeparator": "-",
+  "properties": [
+    {
+      "propertyIndex": 0,
+      "propertyNameSha256": "fcd53935fd79027bb4780c7e5df5f9673e9e9dcd74ce2641cc0fa8c638b1dca1",
+      "values": [
+        {
+          "payloadLineIndex": 0,
+          "payloadLineSha256": "e3d69ca907693a135de5aa711eea9d6d6cec1a07d6fb2526f66a77314b33d964",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 1,
+          "payloadLineSha256": "c089a2d94b8fbd4cd920c7bbe1726d551594854cec85d76f5c5192d2cf83c22a",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 2,
+          "payloadLineSha256": "2b45ab9b04a782a874ee91fd9144c67ed8f02b928d7d43b1cfbbd0c3c6af1490",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 3,
+          "payloadLineSha256": "bb1989110871f0c67bbef5459ec9ce90c21b76b8e6696884a9ca2eb28066cf80",
+          "empty": false
+        }
+      ]
+    },
+    {
+      "propertyIndex": 1,
+      "propertyNameSha256": "143e909216b45d4888cd4b25c569876d5766831de93c3b0c29514e81dfb76102",
+      "values": [
+        {
+          "payloadLineIndex": 4,
+          "payloadLineSha256": "119eb391614b532ea982dbbbcec72f08b1f8171365ebec0853eca01ed1f2950f",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 5,
+          "payloadLineSha256": "4c38c38236e8381ab80eea336ff9dc0db2b9437d2a4e8404b573038a7485c2b9",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 6,
+          "payloadLineSha256": "1ecbcd4f3a43b4f80a9a4e7034c6264d86cf2b79c66f479369cf3e4e20568d85",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 7,
+          "payloadLineSha256": "ccf24eee12ac269d630b58959984ff3051439ec81a90693fe11cee33b36d02ca",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 8,
+          "payloadLineSha256": "3ccbc84b671ba042b589057b53c2821b5f53de1a0019c07fb99945f0cff96093",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 9,
+          "payloadLineSha256": "be9e47df06019c82f20f8602d403135b6017a18074b6f46afb5c96dd8f580fc3",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 10,
+          "payloadLineSha256": "76286f08d67bd070ce0e5dc29bf33c07aa45ef0e320baebcdfdb67f8e8df900a",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 11,
+          "payloadLineSha256": "790003e20a6f03d9a59c4bbba7ce362c0097141a518710a2509ac49781ff9f7a",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 12,
+          "payloadLineSha256": "4481d2a0616cef77e883b07f43dc8adf0d7a44718a7e54391df062821bdb2d9c",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 13,
+          "payloadLineSha256": "7d50b6514f22890a2aa027c745c34f7888cdfa1d2d08cc1d8909ed790b5f340f",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 14,
+          "payloadLineSha256": "80d2e1a26bcdddbf99d4e174859fe880e02f5b9b21a27230b89679aba96b4aa8",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 15,
+          "payloadLineSha256": "e59c1dc9ac72b84f7c813970c41724f3ee1bca8d5a769bf6139292da13a219f9",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 16,
+          "payloadLineSha256": "2e9c1ab8be6c4ddaa46454bd24ccb8899ec174dbaf09cc4b036b02655f6dade0",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 17,
+          "payloadLineSha256": "ae1981e612fdf961733c4a6bde27640e61eb02bc2e496074b8b1cf26d36bc324",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 18,
+          "payloadLineSha256": "446629de5f65b35babbef2800093cc28720522c0a3d33bb3cf905d737d66664e",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 19,
+          "payloadLineSha256": "f1cb08396f41d08230c15136f8f4726bb583d46026c8a88a5a1a4d6de1cec9a5",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 20,
+          "payloadLineSha256": "20366a69c3c391c7654aaab29bc0b371afdd1e200df45682a64c1844986ba373",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 21,
+          "payloadLineSha256": "ceac5a8957050ebbfe188265cf29c069825461bbeabf644fc824d07d29b449b3",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 22,
+          "payloadLineSha256": "7da3a3c3aaeb276b2a10ec231fab70a96080273e63f0cce697026882102fcf10",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 23,
+          "payloadLineSha256": "f5ac23affebac013b7554fb38bec1c2ab49cebbcf68f60ad0cd98e9cc260dac3",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 24,
+          "payloadLineSha256": "7fc7a0163bb97932b92924427c2613de8f0f65849e909c9a8a3e4e4bfdd66c69",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 25,
+          "payloadLineSha256": "426746e999335c453f11605fec457a22bc3a14d00b007046ad13d51a1cc15c9a",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 26,
+          "payloadLineSha256": "11154b3cfa7a339e855570c4b1bde84b74c2b93c44504e1c0717d1831c25cc16",
+          "empty": false
+        },
+        {
+          "payloadLineIndex": 27,
+          "payloadLineSha256": "56355deff806670121b3a17144f1fc00dd91a9057907d19b78395d3bf2377549",
+          "empty": false
+        }
+      ]
+    }
+  ],
+  "validCombinations": [
+    {
+      "skuId": "5795885732578",
+      "propertyValueIndexes": [
+        0,
+        2
+      ]
+    },
+    {
+      "skuId": "5795885732579",
+      "propertyValueIndexes": [
+        1,
+        2
+      ]
+    },
+    {
+      "skuId": "5795885732580",
+      "propertyValueIndexes": [
+        2,
+        2
+      ]
+    },
+    {
+      "skuId": "5795885732581",
+      "propertyValueIndexes": [
+        3,
+        2
+      ]
+    },
+    {
+      "skuId": "5804215217842",
+      "propertyValueIndexes": [
+        2,
+        1
+      ]
+    },
+    {
+      "skuId": "5804215217843",
+      "propertyValueIndexes": [
+        3,
+        1
+      ]
+    },
+    {
+      "skuId": "5804215217844",
+      "propertyValueIndexes": [
+        1,
+        1
+      ]
+    },
+    {
+      "skuId": "5804215217845",
+      "propertyValueIndexes": [
+        0,
+        1
+      ]
+    },
+    {
+      "skuId": "5804215217846",
+      "propertyValueIndexes": [
+        2,
+        3
+      ]
+    },
+    {
+      "skuId": "5804215217847",
+      "propertyValueIndexes": [
+        3,
+        3
+      ]
+    },
+    {
+      "skuId": "5804215217848",
+      "propertyValueIndexes": [
+        1,
+        3
+      ]
+    },
+    {
+      "skuId": "5804215217849",
+      "propertyValueIndexes": [
+        0,
+        3
+      ]
+    },
+    {
+      "skuId": "5804215217850",
+      "propertyValueIndexes": [
+        2,
+        4
+      ]
+    },
+    {
+      "skuId": "5804215217851",
+      "propertyValueIndexes": [
+        3,
+        4
+      ]
+    },
+    {
+      "skuId": "5804215217852",
+      "propertyValueIndexes": [
+        1,
+        4
+      ]
+    },
+    {
+      "skuId": "5804215217853",
+      "propertyValueIndexes": [
+        0,
+        4
+      ]
+    },
+    {
+      "skuId": "5804215217854",
+      "propertyValueIndexes": [
+        2,
+        7
+      ]
+    },
+    {
+      "skuId": "5804215217855",
+      "propertyValueIndexes": [
+        3,
+        7
+      ]
+    },
+    {
+      "skuId": "5804215217856",
+      "propertyValueIndexes": [
+        1,
+        7
+      ]
+    },
+    {
+      "skuId": "5804215217857",
+      "propertyValueIndexes": [
+        0,
+        7
+      ]
+    },
+    {
+      "skuId": "5808941556264",
+      "propertyValueIndexes": [
+        2,
+        11
+      ]
+    },
+    {
+      "skuId": "5808941556265",
+      "propertyValueIndexes": [
+        3,
+        11
+      ]
+    },
+    {
+      "skuId": "5808941556266",
+      "propertyValueIndexes": [
+        1,
+        11
+      ]
+    },
+    {
+      "skuId": "5808941556267",
+      "propertyValueIndexes": [
+        0,
+        11
+      ]
+    },
+    {
+      "skuId": "5955621720023",
+      "propertyValueIndexes": [
+        2,
+        21
+      ]
+    },
+    {
+      "skuId": "5955621720024",
+      "propertyValueIndexes": [
+        3,
+        21
+      ]
+    },
+    {
+      "skuId": "5955621720025",
+      "propertyValueIndexes": [
+        1,
+        21
+      ]
+    },
+    {
+      "skuId": "5955621720026",
+      "propertyValueIndexes": [
+        0,
+        21
+      ]
+    },
+    {
+      "skuId": "5955621720027",
+      "propertyValueIndexes": [
+        2,
+        22
+      ]
+    },
+    {
+      "skuId": "5955621720028",
+      "propertyValueIndexes": [
+        3,
+        22
+      ]
+    },
+    {
+      "skuId": "5955621720029",
+      "propertyValueIndexes": [
+        1,
+        22
+      ]
+    },
+    {
+      "skuId": "5955621720030",
+      "propertyValueIndexes": [
+        0,
+        22
+      ]
+    },
+    {
+      "skuId": "5955621720031",
+      "propertyValueIndexes": [
+        2,
+        23
+      ]
+    },
+    {
+      "skuId": "5955621720032",
+      "propertyValueIndexes": [
+        3,
+        23
+      ]
+    },
+    {
+      "skuId": "5955621720033",
+      "propertyValueIndexes": [
+        1,
+        23
+      ]
+    },
+    {
+      "skuId": "5955621720034",
+      "propertyValueIndexes": [
+        0,
+        23
+      ]
+    },
+    {
+      "skuId": "5969485286700",
+      "propertyValueIndexes": [
+        2,
+        8
+      ]
+    },
+    {
+      "skuId": "5969485286701",
+      "propertyValueIndexes": [
+        3,
+        8
+      ]
+    },
+    {
+      "skuId": "5969485286702",
+      "propertyValueIndexes": [
+        1,
+        8
+      ]
+    },
+    {
+      "skuId": "5969485286703",
+      "propertyValueIndexes": [
+        0,
+        8
+      ]
+    },
+    {
+      "skuId": "5969485286708",
+      "propertyValueIndexes": [
+        2,
+        9
+      ]
+    },
+    {
+      "skuId": "5969485286709",
+      "propertyValueIndexes": [
+        3,
+        9
+      ]
+    },
+    {
+      "skuId": "5969485286710",
+      "propertyValueIndexes": [
+        1,
+        9
+      ]
+    },
+    {
+      "skuId": "5969485286711",
+      "propertyValueIndexes": [
+        0,
+        9
+      ]
+    },
+    {
+      "skuId": "5969485286712",
+      "propertyValueIndexes": [
+        2,
+        10
+      ]
+    },
+    {
+      "skuId": "5969485286713",
+      "propertyValueIndexes": [
+        3,
+        10
+      ]
+    },
+    {
+      "skuId": "5969485286714",
+      "propertyValueIndexes": [
+        1,
+        10
+      ]
+    },
+    {
+      "skuId": "5969485286715",
+      "propertyValueIndexes": [
+        0,
+        10
+      ]
+    },
+    {
+      "skuId": "5969485286716",
+      "propertyValueIndexes": [
+        2,
+        12
+      ]
+    },
+    {
+      "skuId": "5969485286717",
+      "propertyValueIndexes": [
+        3,
+        12
+      ]
+    },
+    {
+      "skuId": "5969485286718",
+      "propertyValueIndexes": [
+        1,
+        12
+      ]
+    },
+    {
+      "skuId": "5969485286719",
+      "propertyValueIndexes": [
+        0,
+        12
+      ]
+    },
+    {
+      "skuId": "5969485286720",
+      "propertyValueIndexes": [
+        2,
+        13
+      ]
+    },
+    {
+      "skuId": "5969485286721",
+      "propertyValueIndexes": [
+        3,
+        13
+      ]
+    },
+    {
+      "skuId": "5969485286722",
+      "propertyValueIndexes": [
+        1,
+        13
+      ]
+    },
+    {
+      "skuId": "5969485286723",
+      "propertyValueIndexes": [
+        0,
+        13
+      ]
+    },
+    {
+      "skuId": "5969485286732",
+      "propertyValueIndexes": [
+        2,
+        14
+      ]
+    },
+    {
+      "skuId": "5969485286733",
+      "propertyValueIndexes": [
+        3,
+        14
+      ]
+    },
+    {
+      "skuId": "5969485286734",
+      "propertyValueIndexes": [
+        1,
+        14
+      ]
+    },
+    {
+      "skuId": "5969485286735",
+      "propertyValueIndexes": [
+        0,
+        14
+      ]
+    },
+    {
+      "skuId": "5969675946651",
+      "propertyValueIndexes": [
+        2,
+        16
+      ]
+    },
+    {
+      "skuId": "5969675946652",
+      "propertyValueIndexes": [
+        3,
+        16
+      ]
+    },
+    {
+      "skuId": "5969675946653",
+      "propertyValueIndexes": [
+        1,
+        16
+      ]
+    },
+    {
+      "skuId": "5969675946654",
+      "propertyValueIndexes": [
+        0,
+        16
+      ]
+    },
+    {
+      "skuId": "5969675946663",
+      "propertyValueIndexes": [
+        2,
+        19
+      ]
+    },
+    {
+      "skuId": "5969675946664",
+      "propertyValueIndexes": [
+        3,
+        19
+      ]
+    },
+    {
+      "skuId": "5969675946665",
+      "propertyValueIndexes": [
+        1,
+        19
+      ]
+    },
+    {
+      "skuId": "5969675946666",
+      "propertyValueIndexes": [
+        0,
+        19
+      ]
+    },
+    {
+      "skuId": "5969675946671",
+      "propertyValueIndexes": [
+        2,
+        20
+      ]
+    },
+    {
+      "skuId": "5969675946672",
+      "propertyValueIndexes": [
+        3,
+        20
+      ]
+    },
+    {
+      "skuId": "5969675946673",
+      "propertyValueIndexes": [
+        1,
+        20
+      ]
+    },
+    {
+      "skuId": "5969675946674",
+      "propertyValueIndexes": [
+        0,
+        20
+      ]
+    },
+    {
+      "skuId": "5970735099779",
+      "propertyValueIndexes": [
+        2,
+        17
+      ]
+    },
+    {
+      "skuId": "5970735099780",
+      "propertyValueIndexes": [
+        3,
+        17
+      ]
+    },
+    {
+      "skuId": "5970735099781",
+      "propertyValueIndexes": [
+        1,
+        17
+      ]
+    },
+    {
+      "skuId": "5970735099782",
+      "propertyValueIndexes": [
+        0,
+        17
+      ]
+    },
+    {
+      "skuId": "5970735099783",
+      "propertyValueIndexes": [
+        2,
+        15
+      ]
+    },
+    {
+      "skuId": "5970735099784",
+      "propertyValueIndexes": [
+        3,
+        15
+      ]
+    },
+    {
+      "skuId": "5970735099785",
+      "propertyValueIndexes": [
+        1,
+        15
+      ]
+    },
+    {
+      "skuId": "5970735099786",
+      "propertyValueIndexes": [
+        0,
+        15
+      ]
+    },
+    {
+      "skuId": "5970735099787",
+      "propertyValueIndexes": [
+        2,
+        18
+      ]
+    },
+    {
+      "skuId": "5970735099788",
+      "propertyValueIndexes": [
+        3,
+        18
+      ]
+    },
+    {
+      "skuId": "5970735099789",
+      "propertyValueIndexes": [
+        1,
+        18
+      ]
+    },
+    {
+      "skuId": "5970735099790",
+      "propertyValueIndexes": [
+        0,
+        18
+      ]
+    },
+    {
+      "skuId": "5974773094023",
+      "propertyValueIndexes": [
+        2,
+        0
+      ]
+    },
+    {
+      "skuId": "5974773094024",
+      "propertyValueIndexes": [
+        3,
+        0
+      ]
+    },
+    {
+      "skuId": "5974773094025",
+      "propertyValueIndexes": [
+        1,
+        0
+      ]
+    },
+    {
+      "skuId": "5974773094026",
+      "propertyValueIndexes": [
+        0,
+        0
+      ]
+    },
+    {
+      "skuId": "6106033079502",
+      "propertyValueIndexes": [
+        2,
+        5
+      ]
+    },
+    {
+      "skuId": "6106033079503",
+      "propertyValueIndexes": [
+        3,
+        5
+      ]
+    },
+    {
+      "skuId": "6106033079504",
+      "propertyValueIndexes": [
+        1,
+        5
+      ]
+    },
+    {
+      "skuId": "6106033079505",
+      "propertyValueIndexes": [
+        0,
+        5
+      ]
+    },
+    {
+      "skuId": "6106033079506",
+      "propertyValueIndexes": [
+        2,
+        6
+      ]
+    },
+    {
+      "skuId": "6106033079507",
+      "propertyValueIndexes": [
+        3,
+        6
+      ]
+    },
+    {
+      "skuId": "6106033079508",
+      "propertyValueIndexes": [
+        1,
+        6
+      ]
+    },
+    {
+      "skuId": "6106033079509",
+      "propertyValueIndexes": [
+        0,
+        6
+      ]
+    }
+  ]
+}

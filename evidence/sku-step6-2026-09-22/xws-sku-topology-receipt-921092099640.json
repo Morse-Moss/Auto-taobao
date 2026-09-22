@@ -1,0 +1,12 @@
+{
+  "version": "xws-tmall-sku-topology-receipt-v1",
+  "capturedAt": "2026-09-22T03:06:54.511Z",
+  "productId": "921092099640",
+  "payloadFile": "xws-sku-payload-2026-09-22T03-06-34-481Z-1ada52eeb0d9.txt",
+  "payloadSha256": "1ada52eeb0d931f6ed216a714e9101173503f77c85eb98016eac14282d3f7ba4",
+  "pageSnapshotSha256": "21880ca04d8fe30a12e342db305d2e68af97222c0c53325b11a4ead43cc4f865",
+  "topologySha256": "ad50bbe497d293a4546efd5641c1d9bcd1a0ef87001d6d686dd7188fcf4ebfdd",
+  "propertyCount": 2,
+  "validCombinationCount": 96,
+  "disclosure": "The topology file contains only payload hashes, indexes, empty markers, and SKU IDs. No raw SKU option text, browser session data, or credentials are written."
+}

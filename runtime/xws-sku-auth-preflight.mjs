@@ -379,7 +379,10 @@ export const ALERT_BY_STATUS = Object.freeze({
   // 而当时这条路上一个告警都不会产生 —— 现在补上。
   PAGE_UNAVAILABLE: {
     type: 'XWS_PAGE_UNAVAILABLE',
-    action: '在采集用的那个 Edge 用户配置里（装着「小旺神」插件的**买家**账号那个）把这个商品的'
+    // 文案里**不许出现 Markdown 强调标记**（`**x**`）：这条字最终是以飞书**纯文本**消息发出去的，
+    // 星号不会被渲染、会原样打进运营眼里。2026-09-22 真发预览时看到的就是 `**买家**`。
+    // 配套判据：本文件用例「动作文案不能带 Markdown 强调标记」遍历 ALERT_BY_STATUS 逐条挡。
+    action: '在采集用的那个 Edge 用户配置里（装着「小旺神」插件的买家账号那个）把这个商品的'
       + '页面打开、等它加载完，再重新运行预检。页面本来就开着还报这个，说明窗口被切走或浏览器'
       + '被回收了：先确认采集浏览器还在运行、代理端口没变，再打开商品页。',
   },
@@ -410,15 +413,25 @@ export function buildOperatorAlert({ checkedAt, source, statusPath, reason, stat
 
 // 投递收据只留下「判断送达与否要用的字段」。特别注意**不留 `attempts`**：
 // 它逐条带着 `target`（收件人的 open_id / chat_id），没理由把它抄进证据文件。
+//
+// 但 `messageId` **必须留**。它原来是被连坐剥掉的——因为它长在 `attempts[]` 里，而那一项同时
+// 带着收件人 id，于是「剥掉收件人」顺手把「平台回执号」也剥了。代价是这份收据**没法被独立复验**：
+// 事后想确认「这条到底发出去了没有」，手上没有任何可以去 `GET /im/v1/messages/{message_id}`
+// 的凭据，只能选择相信本文件自己写的那句 `SENT`。而 messageId 本身不含收件人信息
+// （`om_x100…` 是平台给这条消息的编号），留着它不泄露任何东西，却把证据链补齐了。
+// 2026-09-22 真发那一条时发现的：收据里只有 status 与 sentAt，回读无从下手。
 function compactReceipt(receipt) {
   if (!receipt || typeof receipt !== 'object') return undefined;
   const status = clean(receipt.status);
   if (!status) return undefined;
+  const messageId = clean(receipt.attempts?.find?.((attempt) => attempt?.ok && attempt?.messageId)?.messageId);
   return {
     status,
     ...(clean(receipt.channel) ? { channel: clean(receipt.channel) } : {}),
     ...(clean(receipt.alertId) ? { alertId: clean(receipt.alertId) } : {}),
     ...(clean(receipt.sentAt) ? { sentAt: clean(receipt.sentAt) } : {}),
+    // 平台回执号：有了它，任何人事后都能拿 GET /open-apis/im/v1/messages/{id} 独立复验。
+    ...(messageId ? { messageId } : {}),
     ...(clean(receipt.error) ? { error: clean(receipt.error).slice(0, 300) } : {}),
   };
 }

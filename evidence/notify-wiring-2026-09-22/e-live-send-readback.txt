@@ -1,0 +1,16 @@
+取 token：http=200 code=0
+列会话：http=200 code=0 msg=success
+会话数=1
+  chat_id=oc_[redacted] mode=group name=[redacted] p2p_target=
+列消息 chat=oc_[redacted]: http=200 code=0 msg=success
+
+=== 回读没命中 ===
+（未找到那条消息；可能原因：应用没有 im:message 读权限、或消息不在机器人可见的会话列表里。
+ 这不等于没发出去 —— 投递收据是 code=0 才报 SENT 的。）
+
+=== 提交前的遮盖（2026-09-22）===
+这份文件落盘时带着兜底群的 chat_id 与会话名，提交前被遮成了 `oc_[redacted]` / `[redacted]`。
+理由：本轮给 `compactReceipt` 立的规矩是「收据**不留收件人 id**」（它会被复制进提交、诊断包、群聊），
+那么自己手工生成的证据文件没有理由比代码生成的收据更宽。
+注意这不是全仓既有不变量 —— 更早的收据（如 `evidence/notify-channel-check-20260915.receipt.json`）
+里就带着 `ou_…`；本文件是**主动收紧**，不是「一直如此」。

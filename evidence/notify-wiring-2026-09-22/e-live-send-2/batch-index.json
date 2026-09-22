@@ -1,0 +1,16 @@
+{
+  "version": "xws-sku-batch-index-v1",
+  "updatedAt": "2026-09-22T03:04:23.027Z",
+  "source": {
+    "mainRecordId": "recvticyHkhtcR",
+    "productId": "921092099640",
+    "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "classification": "B-高价值竞品",
+    "validity": "是"
+  },
+  "artifacts": {
+    "authStatus": "xws-sku-auth-status-20260922T030423027Z-c5b7c7b9-781.json",
+    "operatorAlert": "xws-sku-operator-alert.json"
+  },
+  "status": "PAGE_UNAVAILABLE"
+}

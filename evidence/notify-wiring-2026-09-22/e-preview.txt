@@ -1,0 +1,42 @@
+=== 步骤 1：真实预检（--no-notify 静音，不投递）===
+EXIT=3
+--- stdout ---
+
+--- stderr ---
+{"status":"STALLED","error":"Xiaowangshen preflight did not pass: PAGE_UNAVAILABLE","details":{"status":"PAGE_UNAVAILABLE","reason":"Preflight could not read the product page: Product page target is unavailable: 921092099640","source":{"mainRecordId":"recvticyHkhtcR","productId":"921092099640","productUrl":"https://item.taobao.com/item.htm?id=921092099640","classification":"B-高价值竞品","validity":"是"},"authStatusPath":"xws-sku-auth-status-20260922T030040097Z-fc783bd1-d02.json","operatorAlertPath":"xws-sku-operator-alert.json","notification":{"status":"MUTED"},"action":"在采集用的那个 Edge 用户配置里（装着「小旺神」插件的**买家**账号那个）把这个商品的页面打开、等它加载完，再重新运行预检。页面本来就开着还报这个，说明窗口被切走或浏览器被回收了：先确认采集浏览器还在运行、代理端口没变，再打开商品页。","alertType":"XWS_PAGE_UNAVAILABLE","batchIndexPath":"batch-index.json"}}
+
+=== 步骤 1 产出：真告警 JSON（delivery 应为 MUTED）===
+{
+  "version": "xws-sku-operator-alert-v1",
+  "alertId": "xws-login-921092099640-20260922T030040097Z-d1b083a5-441",
+  "status": "OPEN",
+  "severity": "HIGH",
+  "type": "XWS_PAGE_UNAVAILABLE",
+  "createdAt": "2026-09-22T03:00:40.097Z",
+  "source": {
+    "mainRecordId": "recvticyHkhtcR",
+    "productId": "921092099640",
+    "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "classification": "B-高价值竞品",
+    "validity": "是"
+  },
+  "reason": "Preflight could not read the product page: Product page target is unavailable: 921092099640",
+  "action": "在采集用的那个 Edge 用户配置里（装着「小旺神」插件的**买家**账号那个）把这个商品的页面打开、等它加载完，再重新运行预检。页面本来就开着还报这个，说明窗口被切走或浏览器被回收了：先确认采集浏览器还在运行、代理端口没变，再打开商品页。",
+  "evidence": {
+    "authStatusFile": "xws-sku-auth-status-20260922T030040097Z-fc783bd1-d02.json"
+  },
+  "delivery": {
+    "status": "MUTED"
+  }
+}
+
+=== 步骤 2：把这份 alert 喂给投递 CLI 的 --dry-run（只渲染，不发送）===
+EXIT=0
+--- stdout ---
+{
+  "version": "feishu-notify-receipt-v1",
+  "status": "DRY_RUN",
+  "text": "【需要处理】采集用的商品页不在位\n商品ID：921092099640\n主表记录：recvticyHkhtcR\n原因：Preflight could not read the product page: Product page target is unavailable: 921092099640\n下一步：在采集用的那个 Edge 用户配置里（装着「小旺神」插件的**买家**账号那个）把这个商品的页面打开、等它加载完，再重新运行预检。页面本来就开着还报这个，说明窗口被切走或浏览器被回收了：先确认采集浏览器还在运行、代理端口没变，再打开商品页。\n证据：xws-sku-auth-status-20260922T030040097Z-fc783bd1-d02.json\n时间：2026-09-22 11:00\n告警编号：xws-login-921092099640-20260922T030040097Z-d1b083a5-441"
+}
+--- stderr ---
+

@@ -1,0 +1,21 @@
+=== SKU 链第 1 段：真实预检（默认出口）===
+EXIT=0
+--- stdout ---
+{
+  "status": "AUTH_READY",
+  "reason": "No Xiaowangshen login wall was observed",
+  "source": {
+    "mainRecordId": "recvticyHkhtcR",
+    "productId": "921092099640",
+    "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "classification": "B-高价值竞品",
+    "validity": "是"
+  },
+  "authStatusPath": "xws-sku-auth-status-20260922T030538119Z-75ed3011-434.json",
+  "batchIndexPath": "batch-index.json"
+}
+--- stderr ---
+
+
+=== 落盘的登录态工件 ===
+（按 err 回读失败：Unexpected end of JSON input）

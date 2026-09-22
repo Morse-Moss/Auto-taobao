@@ -1,0 +1,53 @@
+=== 真实预检（默认出口 = 仓库内 notify-feishu.mjs）===
+EXIT=3
+--- stdout ---
+
+--- stderr ---
+{"status":"STALLED","error":"Xiaowangshen preflight did not pass: PAGE_UNAVAILABLE","details":{"status":"PAGE_UNAVAILABLE","reason":"Preflight could not read the product page: Product page target is unavailable: 921092099640","source":{"mainRecordId":"recvticyHkhtcR","productId":"921092099640","productUrl":"https://item.taobao.com/item.htm?id=921092099640","classification":"B-高价值竞品","validity":"是"},"authStatusPath":"xws-sku-auth-status-20260922T030219127Z-6a315b43-ed1.json","operatorAlertPath":"xws-sku-operator-alert.json","notification":{"status":"SENT","channel":"app","alertId":"xws-login-921092099640-20260922T030219127Z-9d4f336e-21b","sentAt":"2026-09-22T03:02:19.413Z"},"action":"在采集用的那个 Edge 用户配置里（装着「小旺神」插件的买家账号那个）把这个商品的页面打开、等它加载完，再重新运行预检。页面本来就开着还报这个，说明窗口被切走或浏览器被回收了：先确认采集浏览器还在运行、代理端口没变，再打开商品页。","alertType":"XWS_PAGE_UNAVAILABLE","batchIndexPath":"batch-index.json"}}
+
+=== 落盘的告警（delivery 应为 SENT + 平台自己的 messageId）===
+{
+  "version": "xws-sku-operator-alert-v1",
+  "alertId": "xws-login-921092099640-20260922T030219127Z-9d4f336e-21b",
+  "status": "OPEN",
+  "severity": "HIGH",
+  "type": "XWS_PAGE_UNAVAILABLE",
+  "createdAt": "2026-09-22T03:02:19.127Z",
+  "source": {
+    "mainRecordId": "recvticyHkhtcR",
+    "productId": "921092099640",
+    "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "classification": "B-高价值竞品",
+    "validity": "是"
+  },
+  "reason": "Preflight could not read the product page: Product page target is unavailable: 921092099640",
+  "action": "在采集用的那个 Edge 用户配置里（装着「小旺神」插件的买家账号那个）把这个商品的页面打开、等它加载完，再重新运行预检。页面本来就开着还报这个，说明窗口被切走或浏览器被回收了：先确认采集浏览器还在运行、代理端口没变，再打开商品页。",
+  "evidence": {
+    "authStatusFile": "xws-sku-auth-status-20260922T030219127Z-6a315b43-ed1.json"
+  },
+  "delivery": {
+    "status": "SENT",
+    "channel": "app",
+    "alertId": "xws-login-921092099640-20260922T030219127Z-9d4f336e-21b",
+    "sentAt": "2026-09-22T03:02:19.413Z"
+  }
+}
+
+=== 落盘的状态工件 ===
+{
+  "version": "xws-sku-auth-preflight-v1",
+  "checkedAt": "2026-09-22T03:02:19.127Z",
+  "source": {
+    "mainRecordId": "recvticyHkhtcR",
+    "productId": "921092099640",
+    "productUrl": "https://item.taobao.com/item.htm?id=921092099640",
+    "classification": "B-高价值竞品",
+    "validity": "是"
+  },
+  "page": {
+    "pluginPresent": null,
+    "skuControlPresent": null
+  },
+  "status": "PAGE_UNAVAILABLE",
+  "reason": "Preflight could not read the product page: Product page target is unavailable: 921092099640"
+}
