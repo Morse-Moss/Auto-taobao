@@ -1,0 +1,11 @@
+{
+  "audience": "项目负责人：淘宝五店日报自动化的使用与验收人（本人与运营）",
+  "reader_task": "用一份可留档的当日记录，看懂今天出了什么问题、怎么解决的、拿到什么结果，并据经验决定后续动作",
+  "genre_contract": "workplace.weekly_report",
+  "adapter": null,
+  "presentation_mode": "normal",
+  "visual_plan": {
+    "reason": "内容以对照与清单为主：用表格承载「基线→今日之后」的成果对照、09-21 逐店补齐状态与一家店多名的平台对照；用高亮块承载必须注意的边界。无需画板、图片或 HTML 组件。",
+    "blocks": []
+  }
+}

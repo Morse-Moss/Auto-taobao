@@ -114,6 +114,12 @@ runtime/tmp-*.py
 # 加这条的直接原因：`git status` 里一个 `?? tmp/` 会让人误以为「有什么该提交的没提交」。
 /tmp/
 
+# 飞书云文档的创作工作区（2026-09-22 加，同一条口径）：`lark-cli docs +script --command init-draft`
+# 会在 CWD 下建 `draft_<hash>_folder/`（内含 draft.xml 与 .presentation-decision.json）。
+# 它是 scratch —— 发布用的 XML 与全部原始输出都会复制到 evidence/<轮次>/ 留档，那份才可核。
+# 忽略它，是为了不让仓库根多一个「看着像该提交」的目录（与上面 /tmp/ 同一个原因）。
+draft_*_folder/
+
 # 采集宿主的临时状态（子进程 pid / 退出码 / 心跳）。是运行态，不是产物；
 # 不忽略它们会让每次 git status 都带 4 个噪音项。
 runtime/.collect-child-pid

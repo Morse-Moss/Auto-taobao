@@ -1,0 +1,82 @@
+=== ARGS === ["docs","+script","--command","parse","--content","@./draft_fa9f921e_folder/draft.xml","--as","user","--format","json"]
+=== STATUS === 0
+=== STDOUT ===
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "assessment": {
+      "status": "passed"
+    },
+    "profile": {
+      "word_count": 3295,
+      "char_count": 4002,
+      "block_count": 147,
+      "blocks": [
+        {
+          "type": "p",
+          "count": 81,
+          "ratio": 0.55102
+        },
+        {
+          "type": "li",
+          "count": 25,
+          "ratio": 0.170068
+        },
+        {
+          "type": "tr",
+          "count": 16,
+          "ratio": 0.108844
+        },
+        {
+          "type": "h1",
+          "count": 7,
+          "ratio": 0.047619
+        },
+        {
+          "type": "h2",
+          "count": 4,
+          "ratio": 0.027211
+        },
+        {
+          "type": "ol",
+          "count": 3,
+          "ratio": 0.020408
+        },
+        {
+          "type": "ul",
+          "count": 3,
+          "ratio": 0.020408
+        },
+        {
+          "type": "table",
+          "count": 2,
+          "ratio": 0.013605
+        },
+        {
+          "type": "tbody",
+          "count": 2,
+          "ratio": 0.013605
+        },
+        {
+          "type": "thead",
+          "count": 2,
+          "ratio": 0.013605
+        },
+        {
+          "type": "callout",
+          "count": 1,
+          "ratio": 0.006803
+        },
+        {
+          "type": "title",
+          "count": 1,
+          "ratio": 0.006803
+        }
+      ]
+    }
+  }
+}
+
+=== STDERR ===
+

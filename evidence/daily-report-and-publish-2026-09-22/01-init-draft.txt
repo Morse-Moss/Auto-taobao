@@ -1,0 +1,16 @@
+=== ARGS === ["docs","+script","--command","init-draft","--presentation-decision","@./tmp/pd-2026-09-22-daily.json","--as","user","--format","json"]
+=== STATUS === 0
+=== STDOUT ===
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "cwd": "D:\\Retire\\sycm-automation",
+    "workspace": "draft_fa9f921e_folder",
+    "draft_path": "draft_fa9f921e_folder\\draft.xml",
+    "tip": "Workspace created; draft XML does not exist yet. Write it directly to \u003ccwd\u003e/\u003cdraft_path\u003e. Prefer workspace for new assets and reuse existing files. Prefer @relative paths within cwd and @absolute paths elsewhere, subject to file access rules. Relative resource paths try cwd first, then the source XML directory only if missing. Keep CLI calls in cwd."
+  }
+}
+
+=== STDERR ===
+

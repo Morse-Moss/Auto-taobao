@@ -1,0 +1,30 @@
+=== REMOTE ===
+origin	https://github.com/Morse-Moss/Auto-taobao.git (fetch)
+origin	https://github.com/Morse-Moss/Auto-taobao.git (push)
+=== HEAD ===
+a70f35f docs(日报): shop-pages 的注释与 dedupe 实现保持一致
+=== AHEAD/BEHIND (left=origin, right=local) ===
+0	6
+=== STATUS ===
+ M evidence/multi-shop-2026-09-20/00-health-check-daily.txt
+ M evidence/multi-shop-2026-09-20/summary.json
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/01-health-check.txt"
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/02-alimama-date.txt"
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/03-promotion-submit.txt"
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/04-sycm-date.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/01-health-check.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/02-alimama-date.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/03-promotion-submit.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/04-sycm-date.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/05-shop-report.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/06-promotion-fetch.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/07-push.txt"
+ M evidence/weekly-status-2026-09-22/README.md
+?? draft_fa9f921e_folder/
+?? "evidence/daily-report-2026-09-20-\347\233\226\346\226\207\345\244\251\347\214\253/independent-readback.json"
+?? "evidence/daily-report-2026-09-20-\347\233\226\346\226\207\346\267\230\345\256\235/independent-readback.json"
+?? "evidence/daily-report-2026-09-20-\347\275\221\346\236\227\345\244\251\347\214\253/independent-readback.json"
+?? "evidence/daily-report-2026-09-20-\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235-rerun2/"
+?? "evidence/daily-report-2026-09-20-\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/independent-readback.json"
+?? evidence/daily-report-2026-09-20/
+?? "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/99-recovery.txt"

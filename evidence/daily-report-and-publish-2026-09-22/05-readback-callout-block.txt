@@ -1,0 +1,17 @@
+=== ARGS === ["docs","+fetch","--doc","Cv6mdV5wVo718WxLRjIcyC82nZ3","--scope","keyword","--keyword","只看底单行","--detail","with-ids","--as","user","--format","json"]
+=== STATUS === 0
+=== STDOUT ===
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "document": {
+      "content": "<fragment mode=\"keyword\" keyword=\"只看底单行\"><p id=\"doxcnv7kODX7Bit0zK6y7sphjue\">明天 11:40 定时链跑 09-22 目标日；开跑前会先过那项前置体检，今天已确认 6 个后台全部「恰好一个」。触发后判成果只看底单行，09-22 目前是 0 行。采集完成后才是「09-22 齐 5 家」。</p><callout id=\"doxcngGqFVhftUnnl3EkCN9Me5b\" background-color=\"rgb(254,255,240)\" border-color=\"rgb(255,242,88)\" emoji=\"💡\"><p id=\"doxcnCPGSWijXxtWXtLTQjlQAbh\">判「某一天跑完没有」只看底单行，不看当轮汇总。当轮汇总说成功、底单没落行，等于飞书没写。反过来，补跑历史某天会与当天的时间窗口径不同，必须加允许缺同层同行的开关，否则会误报失败。</p></callout></fragment>",
+      "document_id": "Cv6mdV5wVo718WxLRjIcyC82nZ3",
+      "revision_id": 3
+    }
+  }
+}
+
+=== STDERR ===
+

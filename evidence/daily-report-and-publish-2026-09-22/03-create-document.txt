@@ -1,0 +1,17 @@
+=== ARGS === ["docs","+create","--doc-format","xml","--content","@./draft_fa9f921e_folder/draft.xml","--as","user","--format","json"]
+=== STATUS === 0
+=== STDOUT ===
+{
+  "ok": true,
+  "identity": "user",
+  "data": {
+    "document": {
+      "document_id": "Cv6mdV5wVo718WxLRjIcyC82nZ3",
+      "revision_id": 3,
+      "url": "https://kcne618basvj.feishu.cn/docx/Cv6mdV5wVo718WxLRjIcyC82nZ3"
+    }
+  }
+}
+
+=== STDERR ===
+
