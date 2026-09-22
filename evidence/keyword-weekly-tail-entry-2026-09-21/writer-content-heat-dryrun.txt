@@ -1,0 +1,29 @@
+# 内容热度（apply-content-heat.mjs）dry-run —— 只读 dry-run（不带 --apply）
+# 生成时间=2026-09-22T01:12:56.275Z
+# exitCode=0
+
+=== STDOUT ===
+{
+  "status": "DRY_RUN",
+  "recordCount": 300,
+  "judgedRecords": 300,
+  "recordsPlanned": 0,
+  "preservedExisting": 300,
+  "coveredAllRecords": true,
+  "distributions": {
+    "内容热度": {
+      "中": 200,
+      "低": 60,
+      "高": 40
+    },
+    "planned": {
+      "中": 202,
+      "低": 58,
+      "高": 40
+    }
+  },
+  "beforeFile": "D:\\Retire\\sycm-automation\\runtime\\content-heat-runs\\20260922T011256Z-tblZsUns9353w3nl\\before.json",
+  "planFile": "D:\\Retire\\sycm-automation\\runtime\\content-heat-runs\\20260922T011256Z-tblZsUns9353w3nl\\plan.json"
+}
+
+=== STDERR ===

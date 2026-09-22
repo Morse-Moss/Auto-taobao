@@ -63,6 +63,21 @@
 
 `skills/sycm-to-feishu-base/scripts/sync-decision-history.mjs`，默认 dry-run；把已达标批次快照进历史并回写三个 `上一有效周...达标` 输入（依据：sync-decision-history.mjs 的 `classifyHistoryBatches` / `planVerifiedBatchPromotion`）[核]
 
+**这一步没跑的后果（2026-09-21 实测，不是推断）**：本期三个 `近2周…达标次数` 列整列为空 —— 那三列的公式是「上一有效周X达标（基数）+ 本期增量」，基数空则公式第一层 `ISBLANK` 直接返回空；同时 `是否重点词` 会在「搜索热度=高 且 交易热度∈{中,高}」的行上落 `待数据`。09-19 期（批次 8）就是这样：三列 0/300、`是否重点词` 待数据×5；历史侧批次 8 的 6 个快照字段同样全空、`本期标记` 仍指向批次 7。
+08-26 期（批次 4）漏过同一步。⇒ 这一步**目前没有任何东西兜住「跑没跑」**。
+为什么没有：`adapter.feishu-weekly.mjs:10-15` 把「克隆 + 导入」定为第一个发布单元，明确把它排除在同一次 publish 之外（依赖非确定性外部结算），并声明 CLI 仍是**人工运维入口、未被替代**。
+补跑命令与前后回读数字＝`evidence/keyword-weekly-columns-audit-2026-09-21/README.md`（2026-09-21 已补跑：源表三列 300/300、历史批次 8 快照 300/300，且未改动批次 1–7）。
+
+**2026-09-21 变更：这一步已被接进本地分析入口**（`runtime/run-keyword-weekly-local-analysis.mjs` 的第三段，见 §3.4）。
+用法＝那条命令加 `--history-table-name` ＋ `--previous-table-name` ＋ `--expected-history-rows`（真写再加 `--confirm-history-table`）。
+它先只读问「缺不缺」，缺才写；已同步整段零写入（09-19 期实测 `ALREADY_SYNCED`）。
+
+**这一步天然要写两遍（2026-09-21 实测，不是推断）**：`sync-decision-history.mjs` 的写入顺序是「先写历史快照（`:1032`）、后写本期基数（`:1033`）」，
+而历史快照里的 `是否重点词` 读的是 `近2周重点达标次数` —— 基数还没写进去时它是 `待数据`。
+于是第一遍快照进历史表的 `是否重点词` 必然是中间态（09-19 期实测：历史表 `否×295 待数据×5`，而源表现值 `否×296 是×4`），
+要靠第二遍 `--recalculate-existing-snapshots` 补（它只改不一致的格；09-19 期写了 5 格）。
+入口把这件事也收进了同一条命令：写完回读比对，不一致才跑第二遍。取证＝`evidence/keyword-weekly-tail-entry-2026-09-21/`。
+
 ### 1.7 旁路：本地分析（目前是孤岛 —— 见第三节）
 
 `runtime/run-weekly-local-analysis.mjs`，用法 `INPUT_JSON OUTPUT_DIR <cc|codex|workbuddy>`，产出 `analysis-artifact.json`（依据：run-weekly-local-analysis.mjs:53-66）[核]
@@ -108,6 +123,23 @@
 竞品采集的关键词是 **CLI 参数 `--keyword`，无默认值、不读任何表**；竞品周表的 `搜索关键词` 列由**常量**写入，默认「浴缸」（依据：skills/xws-export-market-analysis/scripts/export-market-analysis.mjs:56、scripts/flow.mjs:138；runtime/fill-weekly-attribute-labels.mjs:11,45,50）[核]
 
 ⇒ 用户口径里的「先关键词、后竞品」在人排的顺序上成立，**但在代码里不是一条数据链**。文档自己已经把它记为缺口，并建议「采集段在 merged CSV 补一列固定关键词」（依据：docs/ops/WEEKLY-SUPERVISION-2026-09-13_2026-09-19.md:79-83,130-134）[核]
+
+### 3.4 关键词链的 1.6（决策历史同步）：承接者已有，但**只在带参数时生效，且仍没进排期**
+
+2026-09-21 之前的结论是「没有承接者，靠人记得跑」。2026-09-21 起这句话只对了一半：
+`sync-decision-history.mjs` 已被接进 `runtime/run-keyword-weekly-local-analysis.mjs` 的**第三段**，
+一次调用跑完「规则段 → 内容热度 → 决策历史同步」，并且自带「先只读问缺不缺 / 写完自己回读 / 不一致自动补第二遍」。
+（依据：该文件头用法与 `runDecisionHistoryStage`；真机只读取证＝`evidence/keyword-weekly-tail-entry-2026-09-21/`）[核]
+
+**但仍然会缺，因为它是 opt-in 的**：不给 `--history-table-name` 就与从前逐字相同（只跑前两段），
+只是会在尾部打一句「这一跳没跑会缺什么、怎么补」。所以「本期基数有没有回写」这件事，
+现在取决于**调用者有没有带参数**，而不是取决于有没有人记得另跑一条命令 —— 这是进步，不是终点。
+要真正做到「跑一次就对」，还差两件：① 把它挂进排期（`runtime/round-schedule.json` 目前没有关键词周更这一条）；
+② 排期前先按 `scheduler-wiring-needs-registered-capability` 确认调度器认得这个能力标识。
+
+后果不是报错，而是**静默的空**：本期三个 `近2周…达标次数` 整列为空、`是否重点词` 出现 `待数据`，同时历史表对应批次的 6 个快照字段也一起空着。
+已实测漏过两次：08-26 期（批次 4）、09-19 期（批次 8）。这是同一个病的第三例（前两例是 §3.1 / §3.2）。
+（依据：`evidence/keyword-weekly-columns-audit-2026-09-21/`）[核]
 
 ---
 

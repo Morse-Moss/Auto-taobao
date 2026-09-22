@@ -1,0 +1,304 @@
+TAP version 13
+# Subtest: skills → runtime 的依赖清单与登记逐字一致（新增与消失都要显式改这里）
+ok 1 - skills → runtime 的依赖清单与登记逐字一致（新增与消失都要显式改这里）
+  ---
+  duration_ms: 191.0798
+  type: 'test'
+  ...
+# Subtest: runtime → skills 的依赖清单与登记逐字一致（这是交付形态被锁死的根因）
+ok 2 - runtime → skills 的依赖清单与登记逐字一致（这是交付形态被锁死的根因）
+  ---
+  duration_ms: 163.4348
+  type: 'test'
+  ...
+# Subtest: 守卫本身是活的：扫描确实读到了文件（否则「全绿」只是没扫到）
+ok 3 - 守卫本身是活的：扫描确实读到了文件（否则「全绿」只是没扫到）
+  ---
+  duration_ms: 250.8434
+  type: 'test'
+  ...
+# Subtest: 端口登记表：两条链不重号，日报链已从通用值挪开
+ok 4 - 端口登记表：两条链不重号，日报链已从通用值挪开
+  ---
+  duration_ms: 0.6691
+  type: 'test'
+  ...
+# Subtest: 浏览器身份与 profile：商家链与买家链各自独立，不能共用
+ok 5 - 浏览器身份与 profile：商家链与买家链各自独立，不能共用
+  ---
+  duration_ms: 0.0765
+  type: 'test'
+  ...
+# Subtest: 店铺实例：端口与 profile 各自唯一，且不与既有链撞号
+ok 6 - 店铺实例：端口与 profile 各自唯一，且不与既有链撞号
+  ---
+  duration_ms: 0.2189
+  type: 'test'
+  ...
+# Subtest: 店铺实例：browserId/label 唯一，且 shopInstance 对未登记店铺 fail-closed
+ok 7 - 店铺实例：browserId/label 唯一，且 shopInstance 对未登记店铺 fail-closed
+  ---
+  duration_ms: 0.4218
+  type: 'test'
+  ...
+# Subtest: 店铺实例的 profile 必须与店铺身份登记表逐键一致 —— 两边不许各说各话
+ok 8 - 店铺实例的 profile 必须与店铺身份登记表逐键一致 —— 两边不许各说各话
+  ---
+  duration_ms: 1.1273
+  type: 'test'
+  ...
+# Subtest: 店铺 profile 一定带 --disable-sync；两个老浏览器的 argv 逐字不变
+ok 9 - 店铺 profile 一定带 --disable-sync；两个老浏览器的 argv 逐字不变
+  ---
+  duration_ms: 0.2984
+  type: 'test'
+  ...
+# Subtest: resolvePort：显式环境变量优先，非法值抛错而不是静默回落
+ok 10 - resolvePort：显式环境变量优先，非法值抛错而不是静默回落
+  ---
+  duration_ms: 0.3388
+  type: 'test'
+  ...
+# Subtest: profile 归一化：反斜杠、引号、大小写、尾斜杠都不影响比对
+ok 11 - profile 归一化：反斜杠、引号、大小写、尾斜杠都不影响比对
+  ---
+  duration_ms: 0.2228
+  type: 'test'
+  ...
+# Subtest: classifyPortUsage 只对读得出 profile 的冲突下判决
+ok 12 - classifyPortUsage 只对读得出 profile 的冲突下判决
+  ---
+  duration_ms: 0.2271
+  type: 'test'
+  ...
+# Subtest: inspectPort 读出 Browser 与 profile —— 这是唯一能证明端口属于谁的证据
+ok 13 - inspectPort 读出 Browser 与 profile —— 这是唯一能证明端口属于谁的证据
+  ---
+  duration_ms: 0.5303
+  type: 'test'
+  ...
+# Subtest: inspectPort 区分「没人监听」与「在监听但不是 CDP 端点」
+ok 14 - inspectPort 区分「没人监听」与「在监听但不是 CDP 端点」
+  ---
+  duration_ms: 0.5266
+  type: 'test'
+  ...
+# Subtest: describeOccupant 必须说清是谁占了端口，读不出来时也如实讲
+ok 15 - describeOccupant 必须说清是谁占了端口，读不出来时也如实讲
+  ---
+  duration_ms: 0.1656
+  type: 'test'
+  ...
+# Subtest: 生产代码里不得再写死项目端口 —— 只能从登记表取（含每个店铺实例的两个端口）
+ok 16 - 生产代码里不得再写死项目端口 —— 只能从登记表取（含每个店铺实例的两个端口）
+  ---
+  duration_ms: 93.8434
+  type: 'test'
+  ...
+# Subtest: 退役端口与外来端口都不得出现在本项目代码的默认值里
+ok 17 - 退役端口与外来端口都不得出现在本项目代码的默认值里
+  ---
+  duration_ms: 59.575
+  type: 'test'
+  ...
+# Subtest: 退役端口留档：每条都要说清被谁替代、为什么退
+ok 18 - 退役端口留档：每条都要说清被谁替代、为什么退
+  ---
+  duration_ms: 0.3772
+  type: 'test'
+  ...
+# Subtest: 路线表：每条路线要么有浏览器、要么显式标成待定或不需要，二者必居其一
+ok 19 - 路线表：每条路线要么有浏览器、要么显式标成待定或不需要，二者必居其一
+  ---
+  duration_ms: 0.2596
+  type: 'test'
+  ...
+# Subtest: 账号边界：买家链里不许有商家站点，商家链里不许有买家站点
+ok 20 - 账号边界：买家链里不许有商家站点，商家链里不许有买家站点
+  ---
+  duration_ms: 0.2917
+  type: 'test'
+  ...
+# Subtest: 两个浏览器承载的路线各自分明，且 9222 那条是唯一带小旺神的
+ok 21 - 两个浏览器承载的路线各自分明，且 9222 那条是唯一带小旺神的
+  ---
+  duration_ms: 0.3638
+  type: 'test'
+  ...
+# Subtest: 路线声明哪个浏览器，它名下的脚本就只能指向那个浏览器
+ok 22 - 路线声明哪个浏览器，它名下的脚本就只能指向那个浏览器
+  ---
+  duration_ms: 10.1993
+  type: 'test'
+  ...
+# Subtest: 路线表与 skills/ 目录双向一致 —— 改名会让这张表静默说谎（坑 37）
+ok 23 - 路线表与 skills/ 目录双向一致 —— 改名会让这张表静默说谎（坑 37）
+  ---
+  duration_ms: 0.849
+  type: 'test'
+  ...
+# Subtest: 生产代码里不得再出现别的项目的代理地址 —— 注释里提到不算，当默认值用就算
+ok 24 - 生产代码里不得再出现别的项目的代理地址 —— 注释里提到不算，当默认值用就算
+  ---
+  duration_ms: 62.6617
+  type: 'test'
+  ...
+# Subtest: CI 矩阵里的 skill 名单与「自带测试的 skill」完全一致
+ok 25 - CI 矩阵里的 skill 名单与「自带测试的 skill」完全一致
+  ---
+  duration_ms: 3.9844
+  type: 'test'
+  ...
+# Subtest: 判定被钉在提示词原文上：指纹不对就不出产物
+ok 26 - 判定被钉在提示词原文上：指纹不对就不出产物
+  ---
+  duration_ms: 2.3857
+  type: 'test'
+  ...
+# Subtest: 标签切片两种读回形态都要认：数组与已拼好的字符串
+ok 27 - 标签切片两种读回形态都要认：数组与已拼好的字符串
+  ---
+  duration_ms: 0.5873
+  type: 'test'
+  ...
+# Subtest: 纯店铺导航与纯品牌落「低」，即使信号为高
+ok 28 - 纯店铺导航与纯品牌落「低」，即使信号为高
+  ---
+  duration_ms: 0.802
+  type: 'test'
+  ...
+# Subtest: 信号读不到时落「待核验」，不假装知道
+ok 29 - 信号读不到时落「待核验」，不假装知道
+  ---
+  duration_ms: 0.1378
+  type: 'test'
+  ...
+# Subtest: 有属性且信号为高落「高」，有属性但信号一般落「中」，无属性落「低」
+ok 30 - 有属性且信号为高落「高」，有属性但信号一般落「中」，无属性落「低」
+  ---
+  duration_ms: 0.1589
+  type: 'test'
+  ...
+# Subtest: 品牌词表覆盖历史出现过的写法（大小写两种都在）
+ok 31 - 品牌词表覆盖历史出现过的写法（大小写两种都在）
+  ---
+  duration_ms: 0.1051
+  type: 'test'
+  ...
+# Subtest: 产物按「出现次数」统计分布，不是按「出现过几种值」
+ok 32 - 产物按「出现次数」统计分布，不是按「出现过几种值」
+  ---
+  duration_ms: 0.473
+  type: 'test'
+  ...
+# Subtest: 产物 fail-closed：缺 record_id / 缺关键词 / 缺表身份都抛错
+ok 33 - 产物 fail-closed：缺 record_id / 缺关键词 / 缺表身份都抛错
+  ---
+  duration_ms: 0.3209
+  type: 'test'
+  ...
+# Subtest: CSV 带出判定原因，且对逗号/引号做转义
+ok 34 - CSV 带出判定原因，且对逗号/引号做转义
+  ---
+  duration_ms: 0.3418
+  type: 'test'
+  ...
+# Subtest: 入口默认 dry-run，且真写必须带两个精确确认
+ok 35 - 入口默认 dry-run，且真写必须带两个精确确认
+  ---
+  duration_ms: 1.1918
+  type: 'test'
+  ...
+# Subtest: 入口参数 fail-closed：表、日期、批次号缺一个都不许跑
+ok 36 - 入口参数 fail-closed：表、日期、批次号缺一个都不许跑
+  ---
+  duration_ms: 0.2547
+  type: 'test'
+  ...
+# Subtest: 表解析：按名优先，名字与 id 不一致时当场抛错
+ok 37 - 表解析：按名优先，名字与 id 不一致时当场抛错
+  ---
+  duration_ms: 0.1675
+  type: 'test'
+  ...
+# Subtest: 本地规则只补空白格，表上已有的值一个字都不动
+ok 38 - 本地规则只补空白格，表上已有的值一个字都不动
+  ---
+  duration_ms: 4.3214
+  type: 'test'
+  ...
+# Subtest: 一次本地分析产出全部 5 个字段，内容热度按本地算出的分类与标签判
+ok 39 - 一次本地分析产出全部 5 个字段，内容热度按本地算出的分类与标签判
+  ---
+  duration_ms: 1.4035
+  type: 'test'
+  ...
+# Subtest: digest 与对象键顺序无关（否则「同一批数据」会算出两个指纹）
+ok 40 - digest 与对象键顺序无关（否则「同一批数据」会算出两个指纹）
+  ---
+  duration_ms: 0.5929
+  type: 'test'
+  ...
+# Subtest: 第三段默认关闭：不给 history 参数时行为与从前逐字相同
+ok 41 - 第三段默认关闭：不给 history 参数时行为与从前逐字相同
+  ---
+  duration_ms: 0.1567
+  type: 'test'
+  ...
+# Subtest: 第三段 fail-closed：缺上一期表、缺历史行数、缺第三个确认、与 skip 互斥
+ok 42 - 第三段 fail-closed：缺上一期表、缺历史行数、缺第三个确认、与 skip 互斥
+  ---
+  duration_ms: 0.2285
+  type: 'test'
+  ...
+# Subtest: 第三段的调用参数：dry-run 不许带 --apply，真写时四个确认项一个都不能少
+ok 43 - 第三段的调用参数：dry-run 不许带 --apply，真写时四个确认项一个都不能少
+  ---
+  duration_ms: 0.9055
+  type: 'test'
+  ...
+# Subtest: 子进程输出解析：容忍前后杂音，但绝不在解析不出来时静默返回空计划
+ok 44 - 子进程输出解析：容忍前后杂音，但绝不在解析不出来时静默返回空计划
+  ---
+  duration_ms: 0.6735
+  type: 'test'
+  ...
+# Subtest: 第三段独立回读：基数缺口、历史行缺口、快照定格在中间态，三种都要照出来
+ok 45 - 第三段独立回读：基数缺口、历史行缺口、快照定格在中间态，三种都要照出来
+  ---
+  duration_ms: 0.6297
+  type: 'test'
+  ...
+# Subtest: 整体状态判据：本地五列绿 + 决策历史绿 才叫绿；「本来就该空」不算缺口
+ok 46 - 整体状态判据：本地五列绿 + 决策历史绿 才叫绿；「本来就该空」不算缺口
+  ---
+  duration_ms: 1.0391
+  type: 'test'
+  ...
+# Subtest: 第三段幂等：计划全零时一个写入子进程都不起（重跑安全的根据）
+ok 47 - 第三段幂等：计划全零时一个写入子进程都不起（重跑安全的根据）
+  ---
+  duration_ms: 0.5652
+  type: 'test'
+  ...
+# Subtest: 第三段：dry-run 只报「缺什么」，不起写入；计划非零且带 pending 时状态要能区分
+ok 48 - 第三段：dry-run 只报「缺什么」，不起写入；计划非零且带 pending 时状态要能区分
+  ---
+  duration_ms: 0.2334
+  type: 'test'
+  ...
+# Subtest: 第三段自愈：第一遍快照定格在中间态时自动跑第二遍，两遍之后仍不一致就不许报绿
+ok 49 - 第三段自愈：第一遍快照定格在中间态时自动跑第二遍，两遍之后仍不一致就不许报绿
+  ---
+  duration_ms: 1.6426
+  type: 'test'
+  ...
+1..49
+# tests 49
+# suites 0
+# pass 49
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 830.3526

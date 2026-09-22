@@ -1,0 +1,100 @@
+TAP version 13
+# Subtest: 入口默认 dry-run，且真写必须带两个精确确认
+ok 1 - 入口默认 dry-run，且真写必须带两个精确确认
+  ---
+  duration_ms: 1.161
+  type: 'test'
+  ...
+# Subtest: 入口参数 fail-closed：表、日期、批次号缺一个都不许跑
+ok 2 - 入口参数 fail-closed：表、日期、批次号缺一个都不许跑
+  ---
+  duration_ms: 0.2574
+  type: 'test'
+  ...
+# Subtest: 表解析：按名优先，名字与 id 不一致时当场抛错
+ok 3 - 表解析：按名优先，名字与 id 不一致时当场抛错
+  ---
+  duration_ms: 0.1631
+  type: 'test'
+  ...
+# Subtest: 本地规则只补空白格，表上已有的值一个字都不动
+ok 4 - 本地规则只补空白格，表上已有的值一个字都不动
+  ---
+  duration_ms: 3.7964
+  type: 'test'
+  ...
+# Subtest: 一次本地分析产出全部 5 个字段，内容热度按本地算出的分类与标签判
+ok 5 - 一次本地分析产出全部 5 个字段，内容热度按本地算出的分类与标签判
+  ---
+  duration_ms: 1.3765
+  type: 'test'
+  ...
+# Subtest: digest 与对象键顺序无关（否则「同一批数据」会算出两个指纹）
+ok 6 - digest 与对象键顺序无关（否则「同一批数据」会算出两个指纹）
+  ---
+  duration_ms: 0.6053
+  type: 'test'
+  ...
+# Subtest: 第三段默认关闭：不给 history 参数时行为与从前逐字相同
+ok 7 - 第三段默认关闭：不给 history 参数时行为与从前逐字相同
+  ---
+  duration_ms: 0.1397
+  type: 'test'
+  ...
+# Subtest: 第三段 fail-closed：缺上一期表、缺历史行数、缺第三个确认、与 skip 互斥
+ok 8 - 第三段 fail-closed：缺上一期表、缺历史行数、缺第三个确认、与 skip 互斥
+  ---
+  duration_ms: 0.2147
+  type: 'test'
+  ...
+# Subtest: 第三段的调用参数：dry-run 不许带 --apply，真写时四个确认项一个都不能少
+ok 9 - 第三段的调用参数：dry-run 不许带 --apply，真写时四个确认项一个都不能少
+  ---
+  duration_ms: 0.7425
+  type: 'test'
+  ...
+# Subtest: 子进程输出解析：容忍前后杂音，但绝不在解析不出来时静默返回空计划
+ok 10 - 子进程输出解析：容忍前后杂音，但绝不在解析不出来时静默返回空计划
+  ---
+  duration_ms: 0.3747
+  type: 'test'
+  ...
+# Subtest: 第三段独立回读：基数缺口、历史行缺口、快照定格在中间态，三种都要照出来
+ok 11 - 第三段独立回读：基数缺口、历史行缺口、快照定格在中间态，三种都要照出来
+  ---
+  duration_ms: 0.4524
+  type: 'test'
+  ...
+# Subtest: 整体状态判据：本地五列绿 + 决策历史绿 才叫绿；「本来就该空」不算缺口
+ok 12 - 整体状态判据：本地五列绿 + 决策历史绿 才叫绿；「本来就该空」不算缺口
+  ---
+  duration_ms: 1.362
+  type: 'test'
+  ...
+# Subtest: 第三段幂等：计划全零时一个写入子进程都不起（重跑安全的根据）
+ok 13 - 第三段幂等：计划全零时一个写入子进程都不起（重跑安全的根据）
+  ---
+  duration_ms: 0.4562
+  type: 'test'
+  ...
+# Subtest: 第三段：dry-run 只报「缺什么」，不起写入；计划非零且带 pending 时状态要能区分
+ok 14 - 第三段：dry-run 只报「缺什么」，不起写入；计划非零且带 pending 时状态要能区分
+  ---
+  duration_ms: 0.212
+  type: 'test'
+  ...
+# Subtest: 第三段自愈：第一遍快照定格在中间态时自动跑第二遍，两遍之后仍不一致就不许报绿
+ok 15 - 第三段自愈：第一遍快照定格在中间态时自动跑第二遍，两遍之后仍不一致就不许报绿
+  ---
+  duration_ms: 1.7233
+  type: 'test'
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 221.7287

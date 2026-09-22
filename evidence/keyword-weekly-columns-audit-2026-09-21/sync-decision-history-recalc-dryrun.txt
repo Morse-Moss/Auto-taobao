@@ -1,0 +1,55 @@
+# 1.6 dry-run（--recalculate-existing-snapshots，零写入）  时间=2026-09-21T14:06:44.108Z
+# exitCode=0
+
+=== STDOUT ===
+{
+  "mode": "DRY_RUN_READY",
+  "appToken": "HdBhbttB5aScbasWJAMc0gGXnpe",
+  "currentTable": {
+    "id": "tblZsUns9353w3nl",
+    "name": "关键词分析 V1（2026-09-19）",
+    "batchNumber": 8
+  },
+  "historyTable": {
+    "id": "tbl7HbH11JsQx6FL",
+    "name": "关键词历史总表 V1"
+  },
+  "latestBatchNumbers": [
+    7,
+    8
+  ],
+  "ignoredBatchNumbers": [
+    2
+  ],
+  "planned": {
+    "historyFieldsToCreate": 0,
+    "historyFieldsToUpdate": 0,
+    "historyValidityToWrite": 0,
+    "historySnapshotsToWrite": 5,
+    "currentCountsToWrite": 0,
+    "historySnapshotCellsByField": {
+      "是否重点词": 5
+    },
+    "currentSnapshotCellsByField": {}
+  },
+  "visualization": {
+    "source": "关键词历史总表 V1",
+    "currentBatchNumber": 8,
+    "markerField": "本期标记",
+    "snapshotFields": [
+      "标准归并词",
+      "是否重点词",
+      "优先级"
+    ]
+  },
+  "pending": {
+    "historySnapshots": 0,
+    "currentCounts": 0,
+    "historyByField": {},
+    "historyByReason": {},
+    "currentByField": {},
+    "currentByReason": {}
+  }
+}
+
+=== STDERR ===

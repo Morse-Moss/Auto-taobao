@@ -1,0 +1,31 @@
+# 规则段（apply-local-keyword-analysis.mjs）dry-run —— 只读 dry-run（不带 --apply）
+# 生成时间=2026-09-22T01:12:54.337Z
+# exitCode=0
+
+=== STDOUT ===
+{
+  "status": "DRY_RUN",
+  "recordCount": 300,
+  "recordsPlanned": 10,
+  "fieldsPlanned": 10,
+  "preservedExisting": {
+    "标准归并词": 300,
+    "关键词分类": 300,
+    "细分标签": 290,
+    "用户意图": 300
+  },
+  "distributions": {
+    "关键词分类": {},
+    "用户意图": {},
+    "细分标签": {
+      "(空)": 10
+    }
+  },
+  "apiRecordsPlanned": 10,
+  "frontendRecordsPlanned": 0,
+  "beforeFile": "D:\\Retire\\sycm-automation\\runtime\\local-analysis-runs\\20260922T011254Z-tblZsUns9353w3nl\\before.json",
+  "planFile": "D:\\Retire\\sycm-automation\\runtime\\local-analysis-runs\\20260922T011254Z-tblZsUns9353w3nl\\plan.json",
+  "frontendFile": "D:\\Retire\\sycm-automation\\runtime\\local-analysis-runs\\20260922T011254Z-tblZsUns9353w3nl\\standard-merge-values.tsv"
+}
+
+=== STDERR ===

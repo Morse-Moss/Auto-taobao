@@ -119,6 +119,40 @@ const MUTATIONS = [
     replace: '',
     expect: '入口默认 dry-run',
   },
+  // 2026-09-21 新增三条，照的是刚接进来的第三段（决策历史同步）。它们抓的是同一类病：
+  // 「写入器自己报成功」和「它真的该写」不是一回事 —— 下面每一条都能把「先只读探路」这层保护删掉。
+  {
+    name: '第三段的只读探路跟进入口的 --apply（于是探路那一次也真写）',
+    file: RUNNER,
+    test: RUNNER_TEST,
+    find: 'backupDir, write: false });',
+    replace: 'backupDir });',
+    expect: '第三段幂等',
+  },
+  {
+    name: '历史表快照定格了也不再补第二遍（自愈被关掉）',
+    file: RUNNER,
+    test: RUNNER_TEST,
+    find: '  if (readback.visualMismatchCount > 0) {',
+    replace: '  if (readback.visualMismatchCount > 999999) {',
+    expect: '第三段自愈',
+  },
+  {
+    name: '回读不按批次筛（上一批的有值率把本批的缺口洗绿）',
+    file: RUNNER,
+    test: RUNNER_TEST,
+    find: "  const batchRows = historyRecords.filter((record) => Number(readbackText(record.fields?.['批次编号'])) === Number(batchNumber));",
+    replace: '  const batchRows = historyRecords;',
+    expect: '第三段独立回读',
+  },
+  {
+    name: '整体状态判据退回「表上不能有空格」（本来就该空的列被判成缺口）',
+    file: RUNNER,
+    test: RUNNER_TEST,
+    find: '    .filter(([field, filled]) => filled < afterRows - expectedBlank[field])',
+    replace: '    .filter(([field, filled]) => filled < afterRows)',
+    expect: '整体状态判据',
+  },
 ];
 
 // 开跑前记下所有会被改到的文件的指纹，结束时全量复核 ——

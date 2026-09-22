@@ -1,0 +1,122 @@
+{
+  "restoredOk": true,
+  "report": [
+    {
+      "name": "提示词指纹被改（提示词本身没动）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "判定被钉在提示词原文上：指纹不对就不出产物",
+        "产物按「出现次数」统计分布，不是按「出现过几种值」",
+        "产物 fail-closed：缺 record_id / 缺关键词 / 缺表身份都抛错"
+      ],
+      "expected": "判定被钉在提示词原文上",
+      "restored": true
+    },
+    {
+      "name": "「信号未知」的判定挪到导航/纯品牌捷径之前",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "信号读不到时落「待核验」，不假装知道"
+      ],
+      "expected": "信号读不到时落「待核验」",
+      "restored": true
+    },
+    {
+      "name": "标签只认数组形态（字符串形态被当成空）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "标签切片两种读回形态都要认：数组与已拼好的字符串",
+        "纯店铺导航与纯品牌落「低」，即使信号为高"
+      ],
+      "expected": "标签切片两种读回形态都要认",
+      "restored": true
+    },
+    {
+      "name": "分布先去重再统计（把「各档多少条」变成「有几种值」）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "产物按「出现次数」统计分布，不是按「出现过几种值」"
+      ],
+      "expected": "产物按「出现次数」统计分布",
+      "restored": true
+    },
+    {
+      "name": "本地规则覆盖表上已有的值（不再是只补空白格）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "本地规则只补空白格，表上已有的值一个字都不动"
+      ],
+      "expected": "本地规则只补空白格",
+      "restored": true
+    },
+    {
+      "name": "表名与表 id 各指一张表时不再报错（删掉一致性断言）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "表解析：按名优先，名字与 id 不一致时当场抛错"
+      ],
+      "expected": "表解析",
+      "restored": true
+    },
+    {
+      "name": "真写只要求 base 确认，不要求 table 确认",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "入口默认 dry-run，且真写必须带两个精确确认"
+      ],
+      "expected": "入口默认 dry-run",
+      "restored": true
+    },
+    {
+      "name": "第三段的只读探路跟进入口的 --apply（于是探路那一次也真写）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "第三段幂等：计划全零时一个写入子进程都不起（重跑安全的根据）",
+        "第三段自愈：第一遍快照定格在中间态时自动跑第二遍，两遍之后仍不一致就不许报绿"
+      ],
+      "expected": "第三段幂等",
+      "restored": true
+    },
+    {
+      "name": "历史表快照定格了也不再补第二遍（自愈被关掉）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "第三段自愈：第一遍快照定格在中间态时自动跑第二遍，两遍之后仍不一致就不许报绿"
+      ],
+      "expected": "第三段自愈",
+      "restored": true
+    },
+    {
+      "name": "回读不按批次筛（上一批的有值率把本批的缺口洗绿）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "第三段独立回读：基数缺口、历史行缺口、快照定格在中间态，三种都要照出来"
+      ],
+      "expected": "第三段独立回读",
+      "restored": true
+    },
+    {
+      "name": "整体状态判据退回「表上不能有空格」（本来就该空的列被判成缺口）",
+      "verdict": "CAUGHT_AND_NAMED",
+      "failed": [
+        "整体状态判据：本地五列绿 + 决策历史绿 才叫绿；「本来就该空」不算缺口"
+      ],
+      "expected": "整体状态判据",
+      "restored": true
+    }
+  ]
+}
+
+CAUGHT_AND_NAMED         提示词指纹被改（提示词本身没动）  → 判定被钉在提示词原文上：指纹不对就不出产物 / 产物按「出现次数」统计分布，不是按「出现过几种值」 / 产物 fail-closed：缺 record_id / 缺关键词 / 缺表身份都抛错
+CAUGHT_AND_NAMED         「信号未知」的判定挪到导航/纯品牌捷径之前  → 信号读不到时落「待核验」，不假装知道
+CAUGHT_AND_NAMED         标签只认数组形态（字符串形态被当成空）  → 标签切片两种读回形态都要认：数组与已拼好的字符串 / 纯店铺导航与纯品牌落「低」，即使信号为高
+CAUGHT_AND_NAMED         分布先去重再统计（把「各档多少条」变成「有几种值」）  → 产物按「出现次数」统计分布，不是按「出现过几种值」
+CAUGHT_AND_NAMED         本地规则覆盖表上已有的值（不再是只补空白格）  → 本地规则只补空白格，表上已有的值一个字都不动
+CAUGHT_AND_NAMED         表名与表 id 各指一张表时不再报错（删掉一致性断言）  → 表解析：按名优先，名字与 id 不一致时当场抛错
+CAUGHT_AND_NAMED         真写只要求 base 确认，不要求 table 确认  → 入口默认 dry-run，且真写必须带两个精确确认
+CAUGHT_AND_NAMED         第三段的只读探路跟进入口的 --apply（于是探路那一次也真写）  → 第三段幂等：计划全零时一个写入子进程都不起（重跑安全的根据） / 第三段自愈：第一遍快照定格在中间态时自动跑第二遍，两遍之后仍不一致就不许报绿
+CAUGHT_AND_NAMED         历史表快照定格了也不再补第二遍（自愈被关掉）  → 第三段自愈：第一遍快照定格在中间态时自动跑第二遍，两遍之后仍不一致就不许报绿
+CAUGHT_AND_NAMED         回读不按批次筛（上一批的有值率把本批的缺口洗绿）  → 第三段独立回读：基数缺口、历史行缺口、快照定格在中间态，三种都要照出来
+CAUGHT_AND_NAMED         整体状态判据退回「表上不能有空格」（本来就该空的列被判成缺口）  → 整体状态判据：本地五列绿 + 决策历史绿 才叫绿；「本来就该空」不算缺口
+
+MUTATION_ALL_CAUGHT_AND_RESTORED

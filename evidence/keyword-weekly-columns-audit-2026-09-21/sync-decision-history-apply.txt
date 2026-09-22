@@ -1,0 +1,74 @@
+# 1.6 决策历史同步 APPLY（用户 2026-09-21 授权补跑）
+# 生成时间=2026-09-21T14:04:49.770Z
+# exitCode=0  signal=
+
+=== STDOUT ===
+{
+  "mode": "APPLIED_AND_VERIFIED",
+  "appToken": "HdBhbttB5aScbasWJAMc0gGXnpe",
+  "currentTable": {
+    "id": "tblZsUns9353w3nl",
+    "name": "关键词分析 V1（2026-09-19）",
+    "batchNumber": 8
+  },
+  "historyTable": {
+    "id": "tbl7HbH11JsQx6FL",
+    "name": "关键词历史总表 V1"
+  },
+  "latestBatchNumbers": [
+    7,
+    8
+  ],
+  "ignoredBatchNumbers": [
+    2
+  ],
+  "planned": {
+    "historyFieldsToCreate": 0,
+    "historyFieldsToUpdate": 1,
+    "historyValidityToWrite": 0,
+    "historySnapshotsToWrite": 300,
+    "currentCountsToWrite": 300,
+    "historySnapshotCellsByField": {
+      "标准归并词": 300,
+      "是否重点词": 300,
+      "探索达标": 300,
+      "优先级": 300,
+      "重点达标": 300,
+      "A级达标": 300
+    },
+    "currentSnapshotCellsByField": {
+      "上一有效周探索达标": 300,
+      "上一有效周重点达标": 300,
+      "上一有效周A级达标": 300
+    }
+  },
+  "visualization": {
+    "source": "关键词历史总表 V1",
+    "currentBatchNumber": 8,
+    "markerField": "本期标记",
+    "snapshotFields": [
+      "标准归并词",
+      "是否重点词",
+      "优先级"
+    ]
+  },
+  "pending": {
+    "historySnapshots": 0,
+    "currentCounts": 0
+  },
+  "backup": {
+    "file": "D:\\Retire\\sycm-automation\\runtime\\keyword-analysis-backups\\decision-history-before-20260921T140429Z.json",
+    "sha256": "38138119c57b5f2aa8bf5235238f433f6431807fbd1451ddb6ee333454e91e18"
+  },
+  "verification": {
+    "historyFieldsCreated": 0,
+    "historyFieldsUpdated": 1,
+    "historyRecordsWritten": 300,
+    "currentRecordsWritten": 300,
+    "currentPeriodRows": 300
+  },
+  "afterDigest": "5d9660da310ca1c1ce3bfdfaa43ba1827256c3201fb094a267642047ae90a9cc",
+  "receiptFile": "D:\\Retire\\sycm-automation\\evidence\\keyword-weekly-columns-audit-2026-09-21\\sync-decision-history-apply-receipt.json"
+}
+
+=== STDERR ===
