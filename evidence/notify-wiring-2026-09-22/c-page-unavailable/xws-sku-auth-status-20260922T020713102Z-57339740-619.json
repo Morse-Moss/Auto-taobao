@@ -1,0 +1,17 @@
+{
+  "version": "xws-sku-auth-preflight-v1",
+  "checkedAt": "2026-09-22T02:07:13.102Z",
+  "source": {
+    "mainRecordId": "recMain",
+    "productId": "1059970355633",
+    "productUrl": "https://item.taobao.com/item.htm?id=1059970355633",
+    "classification": "A-爆款竞品",
+    "validity": "是"
+  },
+  "page": {
+    "pluginPresent": null,
+    "skuControlPresent": null
+  },
+  "status": "PAGE_UNAVAILABLE",
+  "reason": "Preflight could not read the product page: Product page target is unavailable: 1059970355633"
+}

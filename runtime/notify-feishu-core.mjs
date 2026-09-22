@@ -35,9 +35,20 @@ const MISSING_SCOPE_CODE = 99991672;
 const MISSING_SCOPE_HINT =
   '应用缺少 im:message:send_as_bot（控制台名称：以应用的身份发消息）；开通后必须「版本管理与发布 → 创建版本 → 发布」才生效';
 
-const TITLE_BY_TYPE = Object.freeze({
+// 标题表：告警的**第一行**，运营一眼看到的就是它。
+// 表里查不到的 type 会被 `resolveAlertTitle` 原样透出去——渲染成「【需要处理】XWS_ACCOUNT_MISMATCH」
+// 这种机器词。table 里漏一项 = 那条告警永远说不了人话，而且**不会有任何报错**（这是本文件
+// 2026-09-22 之前的状态：预检能发出的 7 个 type 里有 5 个不在表里）。
+// 所以配套加了一条跨模块判据（`xws-sku-auth-preflight.test.mjs` 里的「每个能发出的 type 都要有人话标题」），
+// 它直接读 `ALERT_BY_STATUS`，漏一项就红。
+export const TITLE_BY_TYPE = Object.freeze({
   XWS_LOGIN_REQUIRED: '小旺神登录已失效',
   XWS_LOGIN_RESOLVED: '小旺神登录已恢复',
+  XWS_ACCOUNT_MISMATCH: '小旺神登录的账号不对',
+  XWS_AUTH_UNKNOWN: '读不出小旺神的登录结论（按不放行处理）',
+  XWS_PLUGIN_NOT_READY: '小旺神插件没就绪',
+  XWS_SOURCE_MISMATCH: '打开的页面不是要采集的商品',
+  XWS_PAGE_UNAVAILABLE: '采集用的商品页不在位',
   LOGIN_REQUIRED: '平台登录已失效',
   ACCOUNT_MISMATCH: '登录的账号不对',
   RISK_BLOCKED: '遇到验证码或风控页，需要人工处理',

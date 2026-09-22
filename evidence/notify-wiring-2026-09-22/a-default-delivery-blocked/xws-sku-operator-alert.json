@@ -1,0 +1,24 @@
+{
+  "version": "xws-sku-operator-alert-v1",
+  "alertId": "xws-login-1059970355633-20260922T020711698Z-c502c9c0-8b5",
+  "status": "OPEN",
+  "severity": "HIGH",
+  "type": "XWS_LOGIN_REQUIRED",
+  "createdAt": "2026-09-22T02:07:11.698Z",
+  "source": {
+    "mainRecordId": "recMain",
+    "productId": "1059970355633",
+    "productUrl": "https://item.taobao.com/item.htm?id=1059970355633",
+    "classification": "A-爆款竞品",
+    "validity": "是"
+  },
+  "reason": "Xiaowangshen login is required",
+  "action": "请在同一个 Edge 用户配置中登录小旺神，登录完成后重新运行采集预检。",
+  "evidence": {
+    "authStatusFile": "xws-sku-auth-status-20260922T020711698Z-490ccb53-c04.json"
+  },
+  "delivery": {
+    "status": "FAILED",
+    "error": "Operator notification command failed with exit 1: {\"status\":\"FAILED\",\"error\":\"Unknown Feishu profile: bogus-on-purpose (known: legacy, old, rcndesfqro3x, kcne, new, kcne618basvj)\"}\n"
+  }
+}

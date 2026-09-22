@@ -135,11 +135,26 @@ node "D:\Retire\sycm-automation\runtime\xws-sku-auth-preflight.mjs" `
 
 The preflight must return `AUTH_READY`. It only inspects the visible Xiaowangshen toolbar and does not click a
 login link. It writes a sanitized `xws-sku-auth-status-*.json` and updates `batch-index.json`. If it returns
-`AUTH_REQUIRED`, it also writes `xws-sku-operator-alert.json` and exits with code `2` (`HUMAN_REQUIRED`). The
-operator scheduler must alert on that exit code. An optional `--notify-command <path-to-wrapper>` receives the
-sanitized alert JSON on stdin; the wrapper and its destination are operator-owned and must not be committed with
-credentials or webhook secrets. Repeated checks for the same open login issue are deduplicated; after a fresh
-`AUTH_READY` check the alert is marked `RESOLVED` so the operator knows the queue can resume.
+`AUTH_REQUIRED`, it also writes `xws-sku-operator-alert.json` and exits with code `2` (`HUMAN_REQUIRED`).
+The same applies to `PAGE_UNAVAILABLE` — the target product page was not found (or the proxy could not read it),
+which is decided **before** the classifier runs; that case exits with code `3` (`STALLED`), matching the exit
+codes callers already branch on.
+
+**Delivery is wired by default** (2026-09-22). Unless told otherwise the preflight hands the alert JSON to
+`runtime/notify-feishu.mjs` on stdin and records what that CLI reported in `delivery.status`
+(`SENT` / `FAILED` / `DEDUPED` / `MUTED`) — nobody has to pass a flag for the alert to reach a human. Two flags
+change that and only two:
+
+- `--no-notify` — explicit silence, for offline rehearsals. The receipt reads `MUTED`, which is deliberately
+  **not** `NOT_CONFIGURED`: that older value meant "the delivery line is missing", and conflating the two is what
+  let the 2026-09-13 blocker sit unnoticed.
+- `--notify-command <path>` — replaces the destination with an operator-owned one. An `.mjs`/`.js` path is run
+  with `node`; anything else is spawned as an executable. (A `.cmd`/`.bat` wrapper will **not** start: Node
+  ≥18.20.2 throws `EINVAL` on `.cmd` when `shell:false`.) The wrapper and its destination are operator-owned and
+  must not be committed with credentials or webhook secrets.
+
+Repeated checks for the same open issue are deduplicated; after a fresh `AUTH_READY` check the alert is marked
+`RESOLVED` so the operator knows the queue can resume.
 
 Only after `AUTH_READY`, locate `#xws-copy` on the real Taobao product page and select the visible
 `.xws-copy-item.xws-copy-link` whose normalized text is exactly `SKU`. Verify the target text immediately before

@@ -1,0 +1,118 @@
+TAP version 13
+# Subtest: classifies the observed Xiaowangshen login wall before any click
+ok 1 - classifies the observed Xiaowangshen login wall before any click
+  ---
+  duration_ms: 0.9625
+  type: 'test'
+  ...
+# Subtest: classifies a product page with the plugin control and no login wall as ready
+ok 2 - classifies a product page with the plugin control and no login wall as ready
+  ---
+  duration_ms: 0.1046
+  type: 'test'
+  ...
+# Subtest: does not treat another product page as an authenticated source
+ok 3 - does not treat another product page as an authenticated source
+  ---
+  duration_ms: 0.059
+  type: 'test'
+  ...
+# Subtest: builds sanitized status and operator alert artifacts
+ok 4 - builds sanitized status and operator alert artifacts
+  ---
+  duration_ms: 5.4206
+  type: 'test'
+  ...
+# Subtest: requires source identity and output directory
+ok 5 - requires source identity and output directory
+  ---
+  duration_ms: 0.441
+  type: 'test'
+  ...
+# Subtest: writes and deduplicates an AUTH_REQUIRED operator alert when notification is explicitly muted
+ok 6 - writes and deduplicates an AUTH_REQUIRED operator alert when notification is explicitly muted
+  ---
+  duration_ms: 65.1907
+  type: 'test'
+  ...
+# Subtest: 探测读不到东西时判 AUTH_UNKNOWN，而不是怪到「页面商品不对」头上
+ok 7 - 探测读不到东西时判 AUTH_UNKNOWN，而不是怪到「页面商品不对」头上
+  ---
+  duration_ms: 0.4634
+  type: 'test'
+  ...
+# Subtest: 声明了期望账号才核对身份：不同判 ACCOUNT_MISMATCH，读不到判 AUTH_UNKNOWN
+ok 8 - 声明了期望账号才核对身份：不同判 ACCOUNT_MISMATCH，读不到判 AUTH_UNKNOWN
+  ---
+  duration_ms: 0.304
+  type: 'test'
+  ...
+# Subtest: 身份判据必须成对声明，只给半个直接拒
+ok 9 - 身份判据必须成对声明，只给半个直接拒
+  ---
+  duration_ms: 0.3507
+  type: 'test'
+  ...
+# Subtest: 每个需要人的状态都有自己的 type 与一句「下一步做什么」
+ok 10 - 每个需要人的状态都有自己的 type 与一句「下一步做什么」
+  ---
+  duration_ms: 0.4325
+  type: 'test'
+  ...
+# Subtest: 状态工件带上身份判据与「读不到什么」的清单
+ok 11 - 状态工件带上身份判据与「读不到什么」的清单
+  ---
+  duration_ms: 0.1125
+  type: 'test'
+  ...
+# Subtest: 不给 --notify-command 时，默认出口就是仓库里那条投递 CLI（不是「不通知」）
+ok 12 - 不给 --notify-command 时，默认出口就是仓库里那条投递 CLI（不是「不通知」）
+  ---
+  duration_ms: 0.3109
+  type: 'test'
+  ...
+# Subtest: --no-notify 是显式静音，并且压过 --notify-command（「不发」必须赢）
+ok 13 - --no-notify 是显式静音，并且压过 --notify-command（「不发」必须赢）
+  ---
+  duration_ms: 0.2271
+  type: 'test'
+  ...
+# Subtest: .mjs / .js 形状的 --notify-command 自动用 node 跑（.cmd 那条兜底路是死的）
+ok 14 - .mjs / .js 形状的 --notify-command 自动用 node 跑（.cmd 那条兜底路是死的）
+  ---
+  duration_ms: 0.1819
+  type: 'test'
+  ...
+# Subtest: 预检能发出的每个 type 都要有人话标题（少了就是运营收到一行机器词）
+ok 15 - 预检能发出的每个 type 都要有人话标题（少了就是运营收到一行机器词）
+  ---
+  duration_ms: 0.1591
+  type: 'test'
+  ...
+# Subtest: 「要叫人」的每个状态都必须有文案与动作（漏一个 = 那个状态永远发不出下一步）
+ok 16 - 「要叫人」的每个状态都必须有文案与动作（漏一个 = 那个状态永远发不出下一步）
+  ---
+  duration_ms: 0.0564
+  type: 'test'
+  ...
+# Subtest: 商品页不在位也要落一条可通知的告警（原来这条路上一个告警都不产生）
+ok 17 - 商品页不在位也要落一条可通知的告警（原来这条路上一个告警都不产生）
+  ---
+  duration_ms: 20.7171
+  type: 'test'
+  ...
+# Subtest: 页面不在位的告警也去重：同一个商品同一句原因只吵一次
+ok 18 - 页面不在位的告警也去重：同一个商品同一句原因只吵一次
+  ---
+  duration_ms: 28.1863
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 372.4582

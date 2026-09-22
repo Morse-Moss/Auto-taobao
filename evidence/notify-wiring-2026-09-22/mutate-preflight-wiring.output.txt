@@ -1,0 +1,9 @@
+原文件 sha256 xws-sku-auth-preflight.mjs = 210b0caeaa5aed819878d96433b1d1d83c1dcbc0edb9821c97ba1f2e0092a724
+原文件 sha256 notify-feishu-core.mjs = 577c6a8c4538126dcb1cb573a21f1832406ff703fb46e680a240d6d31bc17202
+OK    默认通知目标退回「不发」 → 红了 1 条；点名期望用例=true
+OK    标题表漏掉新增的 PAGE_UNAVAILABLE → 红了 1 条；点名期望用例=true
+OK    「要叫人」名单漏掉 PAGE_UNAVAILABLE → 红了 2 条；点名期望用例=true
+还原 xws-sku-auth-preflight.mjs：sha256 210b0caeaa5aed819878d96433b1d1d83c1dcbc0edb9821c97ba1f2e0092a724 RESTORE-OK
+还原 notify-feishu-core.mjs：sha256 577c6a8c4538126dcb1cb573a21f1832406ff703fb46e680a240d6d31bc17202 RESTORE-OK
+还原后重跑：not ok = 0
+MUTATION-VERIFY-PASS

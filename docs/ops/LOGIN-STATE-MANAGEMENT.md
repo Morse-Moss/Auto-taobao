@@ -127,6 +127,12 @@ PLUGIN_NOT_READY / SOURCE_MISMATCH` 基础上扩，**只加不删**）：
 | `PLUGIN_UNAVAILABLE` / `PLUGIN_NOT_READY` | 插件没加载/没就绪 | 强通知 | 「小旺神插件未就绪」+ 重开指引 | 预算内自愈一次，仍失败则升级 |
 | `SOURCE_MISMATCH` | 页面不是目标商品/店铺 | 不通知（属流程参数问题） | — | 记证据，按缺陷处理 |
 | `AUTH_UNKNOWN` | 判据缺失，给不出结论 | 不通知，但**不放行**（fail-closed） | — | 记证据；连续 N 轮 UNKNOWN 升级为强通知 |
+| `PAGE_UNAVAILABLE` | **连读的地方都没有**：目标标签页找不到，或代理读不到页面（**发生在分类器之前**） | 强通知 | 「采集用的商品页不在位」+ 去哪个 Edge 配置打开 + 先确认浏览器还在跑 | 停止本轮，等人 |
+
+`PAGE_UNAVAILABLE` 是 2026-09-22 补的一格，它填的是一个**真实的盲区**而不是一种新故障：
+在此之前「读页面」这一段失败是**直接 throw**，既没进分类器、也不写告警 —— 2026-09-20 那一期的
+SKU 富化（`evidence/sku-step6-2026-09-20`：`STALLED / Product page target is unavailable`）
+就是这么卡的。退出码语义没变（仍是 `STALLED` → exit 3）。
 
 三条硬规则（沿用现有实现，不改）：
 
@@ -215,7 +221,7 @@ PLUGIN_NOT_READY / SOURCE_MISMATCH` 基础上扩，**只加不删**）：
 | `PAGE_EXPRESSION` | 136–162 | 从「小旺神 + 商品页」扩成按平台分支的多段表达式；加身份判据（昵称/店铺名） |
 | `classifyAuthSnapshot` | 164–181 | 扩状态词表（§4），加 `ACCOUNT_MISMATCH` / `RISK_BLOCKED` / `AUTH_EXPIRING` |
 | `buildAuthStatus` / `buildOperatorAlert` | 183–218 | 保留结构；`action` 文案改为按状态映射的「下一步做什么」 |
-| `notifyOperator`（stdin 传 JSON） | 220–244 | 保留；把 `--notify-command` 指向真实的 `notify-feishu.mjs` |
+| `notifyOperator`（stdin 传 JSON） | 220–244 | **已接线（2026-09-22）**：默认投递目标 = 仓库内 `runtime/notify-feishu.mjs`（用 `process.execPath` 跑，不使用 shell）；`--notify-command` 仍是运营自备包装器的覆盖口（`.mjs`/`.js` 自动用 node 跑），`--no-notify` 为显式静音。投递结论以 CLI 的收据为准，不再由退出码 0 推断 |
 | `persistAlert` 去重 / `resolveAlert` 恢复 | 266–312 | 保留（这两块已经踩过坑，是资产） |
 | 退出码约定 | 397–406 | `2=HUMAN_REQUIRED`、`3=STALLED`，保留 |
 | `discoverTarget` / `evaluateTarget` | 246–264 | 保留 |

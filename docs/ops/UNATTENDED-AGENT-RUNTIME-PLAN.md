@@ -247,7 +247,13 @@
 1. **零参数调用**：现有 `notifyOperator` 用 `spawn(command, [], { shell: false })` 调用，
    传不了参数，所以 `notify-feishu.mjs` 的全部配置必须能从 env 文件读到
    （`SYCM_NOTIFY_RECIPIENT` / `_TYPE` / `SYCM_NOTIFY_FALLBACK_RECIPIENT` / `_TYPE` / `SYCM_NOTIFY_WEBHOOK`）。
-   若把 `.mjs` 直接当 `--notify-command`，Windows 上还需要一个 `.cmd` 包装（或用 `node` + 参数数组调用）。
+   ~~若把 `.mjs` 直接当 `--notify-command`，Windows 上还需要一个 `.cmd` 包装（或用 `node` + 参数数组调用）。~~
+   **更正（2026-09-22 实测）**：`.cmd` 包装这条路**是死的**——
+   `spawn('x.cmd', [], { shell: false })` 在 Node ≥18.20.2（CVE-2024-27980 加固）之后**同步抛 EINVAL**
+   （实测留痕 `tmp/_probe-cmd-spawn.out.txt` / `evidence/notify-wiring-2026-09-22/`）。
+   现行做法：`--notify-command` 收 `.mjs`/`.js` 时自动用 `node` 跑，其它形状按真可执行文件直接 spawn；
+   而且 `xws-sku-auth-preflight.mjs` 的**默认**出口已经指向 `runtime/notify-feishu.mjs`，
+   不再需要任何人手传 `--notify-command`（在此之前默认值是「不通知」，见 §11 第 1 步完成状态）。
 2. **投递失败必须非零退出**：否则调用方会把没送达的告警记成送达。收据 JSON 从 stdout 出，供上层留证据。
 3. **时间要按本机时区渲染**：ISO 的 `2026-09-15T03:45:00.000Z` 会被运营读成凌晨 3 点（实际 11:45）。
    这条同样是干跑真实入口时发现的——通知的读者是人，不是日志解析器。

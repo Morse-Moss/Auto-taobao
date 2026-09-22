@@ -1,0 +1,7 @@
+{
+  "version": "feishu-notify-receipt-v1",
+  "status": "DRY_RUN",
+  "text": "【需要处理】小旺神登录已失效\n商品ID：1059970355633\n主表记录：recMain\n原因：Xiaowangshen login is required\n下一步：请在同一个 Edge 用户配置中登录小旺神，登录完成后重新运行采集预检。\n证据：xws-sku-auth-status-20260922T020711698Z-490ccb53-c04.json\n时间：2026-09-22 10:07\n告警编号：xws-login-1059970355633-20260922T020711698Z-c502c9c0-8b5"
+}
+
+--- stderr ---

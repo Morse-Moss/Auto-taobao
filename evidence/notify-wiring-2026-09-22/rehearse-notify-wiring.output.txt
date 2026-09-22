@@ -1,0 +1,13 @@
+[A] 预检 exit=2（期望 2 = HUMAN_REQUIRED，登录墙）。
+[A] 告警 type=XWS_LOGIN_REQUIRED
+[A] delivery={"status":"FAILED","error":"Operator notification command failed with exit 1: {\"status\":\"FAILED\",\"error\":\"Unknown Feishu profile: bogus-on-purpose (known: legacy, old, rcndesfqro3x, kcne, new, kcne618basvj)\"}\n"}
+[A] 判据「真子进程被拉起并把告警喂了进去」= true
+[B] 预检 exit=2（期望 2）。
+[B] delivery={"status":"MUTED"}
+[C] 预检 exit=3（期望 3 = STALLED，退出码语义与改动前一致）。
+[C] 告警 type=XWS_PAGE_UNAVAILABLE；reason=Preflight could not read the product page: Product page target is unavailable: 1059970355633
+[C] 状态工件 status=PAGE_UNAVAILABLE；page.pluginPresent=null（期望 null）
+[D] 投递 CLI --dry-run exit=0（期望 0，零发送）。
+[D] 渲染第一行 = 【需要处理】小旺神登录已失效
+
+留痕：D:\Retire\sycm-automation\evidence\notify-wiring-2026-09-22

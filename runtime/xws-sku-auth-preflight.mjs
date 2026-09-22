@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { updateSkuBatchIndex } from './xws-sku-batch-index.mjs';
 import { PROJECT_PORTS } from './browser-ports.mjs';
@@ -14,6 +14,29 @@ import { PROJECT_PORTS } from './browser-ports.mjs';
 const DEFAULT_PROXY = `http://127.0.0.1:${PROJECT_PORTS.competitorProxy}`;
 const AUTH_STATUS_VERSION = 'xws-sku-auth-preflight-v1';
 const ALERT_VERSION = 'xws-sku-operator-alert-v1';
+
+// 通知出口的默认值 = 仓库里那条已经跑通的投递 CLI（`notify-feishu.mjs`：零参数、凭据从飞书
+// profile 的 env 文件读、主通道个人消息→兜底群→webhook 三跳）。
+//
+// 为什么必须有个默认值：本文件原来把 notifyCommand 留空，于是 `notifyOperator` 直接返回
+// `NOT_CONFIGURED` —— 告警**写进了证据文件，但没有任何人会被叫到**。2026-09-13 那一期的
+// SKU 富化就是这么静默卡住的（docs/ops/WEEKLY-SUPERVISION-2026-09-13_2026-09-19.md:124
+// 记的「飞书未收到提醒」就是它），LOGIN-STATE-MANAGEMENT.md:218 也把它列为待办。
+//
+// 为什么是 `node + .mjs` 而不是把 .mjs 当命令直接 spawn：Windows 上 .mjs 不是可执行文件，
+// 直接 spawn 会 EINVAL。仓库里其它三条链（run-weekly-collection / supervise-collection /
+// login-merchant）统一都是 `spawn(process.execPath, [NOTIFY_CLI])`，这里跟它们保持一致——
+// **复用同一条投递链，不另造**。
+//
+// 为什么不用 `import` 直接调 `main()`：投递是外部副作用，这条边界是本文件与
+// notify-feishu.mjs 文件头共同写死的（「判定」留给内核，「投递」留给子进程与退出码）。
+const HERE = fileURLToPath(new URL('.', import.meta.url));
+const DEFAULT_NOTIFY_CLI = join(HERE, 'notify-feishu.mjs');
+
+// 投递命令最多等多久。默认出口要发两次 HTTPS（取 tenant_access_token + 发消息），
+// 原来的 10 秒对真实网络偏紧：超时会 `kill` 掉子进程，而那时消息**可能已经发出去了** ——
+// 那正是「结果未知」最难对账的形态（见 COMMIT_UNKNOWN 那条口径），所以宁可多等。
+const NOTIFY_TIMEOUT_MS = 30_000;
 
 function required(value, name) {
   const normalized = String(value ?? '').trim();
@@ -99,7 +122,7 @@ function stalled(reason, details = {}) {
 }
 
 export function parsePreflightArgs(argv = []) {
-  const options = { proxy: DEFAULT_PROXY };
+  const options = { proxy: DEFAULT_PROXY, notifyDisabled: false };
   const valueOptions = new Map([
     ['--proxy', 'proxy'],
     ['--product-id', 'productId'],
@@ -116,8 +139,15 @@ export function parsePreflightArgs(argv = []) {
     ['--expected-account', 'expectedAccount'],
     ['--account-selector', 'accountSelector'],
   ]);
+  // 旗标（不带值）。`--no-notify` 是**显式静音**：不给它才是默认「出事就叫人的」。
+  const flagOptions = new Map([['--no-notify', 'notifyDisabled']]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
+    const flagKey = flagOptions.get(argument);
+    if (flagKey) {
+      options[flagKey] = true;
+      continue;
+    }
     const key = valueOptions.get(argument);
     if (!key) throw new Error(`Unknown argument: ${argument}`);
     const value = argv[index + 1];
@@ -145,6 +175,34 @@ export function parsePreflightArgs(argv = []) {
     throw new Error('--expected-account and --account-selector must be supplied together');
   }
   return options;
+}
+
+// 「这一轮要不要叫人、叫谁」是一个决定，所以**只在这里决定一次**。
+// 三个来源的优先级（高 → 低）：
+//   1. `--no-notify`（显式静音）
+//   2. `--notify-command <path>`（运营自备的投递目标：`.mjs`/`.js` 用 node 跑，其它按可执行文件起）
+//   3. 默认 = 仓库内的投递 CLI（用 node 跑）
+//
+// 静音赢过另外两者：这个开关的语义就是「别发出去」，如果在冲突时让它输掉，
+// 「明确说了不发」会变成「还是发了」——那是最不该出错的方向。
+// 反过来，`--notify-command` 依旧压过默认值，所以老调用方（含运营自备包装器）行为不变。
+export function resolveNotifyTarget(options = {}) {
+  if (options.notifyDisabled) return null;
+  const wrapper = clean(options.notifyCommand);
+  if (wrapper) return notifyTargetForPath(wrapper);
+  return { command: process.execPath, args: [DEFAULT_NOTIFY_CLI] };
+}
+
+// 运营自备的投递目标：**两种形状**都收。
+//   · `.mjs` / `.js` → 用 node 跑（零参数，同默认出口的契约）
+//   · 其它（真 .exe 等）→ 按可执行文件直接 spawn
+// 为什么认 .mjs/.js：文档把 `--notify-command` 写成「path-to-wrapper」，并建议
+// 「.mjs 外面包一个 .cmd」——而 `.cmd` 在 Node ≥18.20.2 的 shell:false 下**同步抛 EINVAL**
+// （2026-09-22 实测）。那条路是死的，所以直接把 .mjs/.js 收进来，别让运营去撞。
+export function notifyTargetForPath(wrapper) {
+  return /\.m?js$/iu.test(wrapper)
+    ? { command: process.execPath, args: [wrapper] }
+    : { command: wrapper, args: [] };
 }
 
 // 身份判据的选择器由**调用方给出**，不在这里猜平台 DOM：
@@ -270,8 +328,11 @@ export function buildAuthStatus({ checkedAt, source, targetUrl, snapshot, classi
     page: {
       url: clean(targetUrl),
       productId: clean(snapshot?.pageProductId),
-      pluginPresent: snapshot?.pluginPresent === true,
-      skuControlPresent: snapshot?.skuControlPresent === true,
+      // `false` 的意思是「看过页面了，它不在」；`null` 的意思是「压根没读到页面」。
+      // 上一轮（页面不在位）原来会把这两件事都写成 `false` —— 那是把「没读」说成「插件不在」，
+      // 会把运营送去重装插件。缺页面时这里必须是 null，读过了才允许是布尔。
+      pluginPresent: snapshot == null ? null : snapshot.pluginPresent === true,
+      skuControlPresent: snapshot == null ? null : snapshot.skuControlPresent === true,
     },
     status,
     reason: classification?.reason ?? 'Unknown preflight result',
@@ -283,7 +344,9 @@ export function buildAuthStatus({ checkedAt, source, targetUrl, snapshot, classi
 
 // 「通知必须带下一步做什么」（docs/ops/LOGIN-STATE-MANAGEMENT.md §4 硬规则 2）：
 // 每个状态一个 type（去重与恢复都按 type 成对）+ 一句人话。只报状态码等于没说话。
-const ALERT_BY_STATUS = Object.freeze({
+// 导出是为了让用例能跨模块钉住两件事：①每个 type 在投递侧都有一个人话标题；
+// ②ALERTING_STATUSES 里的每个状态这里都有文案。这两条都是「少写一行就静默失效」的地方。
+export const ALERT_BY_STATUS = Object.freeze({
   AUTH_REQUIRED: {
     type: 'XWS_LOGIN_REQUIRED',
     action: '请在同一个 Edge 用户配置中登录小旺神，登录完成后重新运行采集预检。',
@@ -310,6 +373,16 @@ const ALERT_BY_STATUS = Object.freeze({
     type: 'XWS_SOURCE_MISMATCH',
     action: '当前页面不是要采集的那个商品：打开正确的商品页后重新运行预检。',
   },
+  // 2026-09-22 新增。这个状态**发生在分类器之前**：目标页根本没找到（或读页失败），
+  // 所以它不是「登录墙看到了」而是「连看的地方都没有」。它是 2026-09-20 那一期的真实断点
+  // （evidence/sku-step6-2026-09-20/INDEX.md：STALLED「Product page target is unavailable」），
+  // 而当时这条路上一个告警都不会产生 —— 现在补上。
+  PAGE_UNAVAILABLE: {
+    type: 'XWS_PAGE_UNAVAILABLE',
+    action: '在采集用的那个 Edge 用户配置里（装着「小旺神」插件的**买家**账号那个）把这个商品的'
+      + '页面打开、等它加载完，再重新运行预检。页面本来就开着还报这个，说明窗口被切走或浏览器'
+      + '被回收了：先确认采集浏览器还在运行、代理端口没变，再打开商品页。',
+  },
 });
 
 export function buildOperatorAlert({ checkedAt, source, statusPath, reason, status = 'OPEN', classificationStatus = null } = {}) {
@@ -328,19 +401,78 @@ export function buildOperatorAlert({ checkedAt, source, statusPath, reason, stat
       ? byStatus.action
       : '小旺神登录预检已恢复通过，可以继续 SKU 采集。',
     evidence: { authStatusFile: basename(String(statusPath ?? '')) },
-    delivery: { status: 'NOT_CONFIGURED' },
+    // 初始值只表示「还没投递」，落盘前一定会被 persistAlert / resolveAlert 覆盖。
+    // 这里原来写的是 `NOT_CONFIGURED` —— 那个值现在的含义是「线没接上」，留作占位会误导读者，
+    // 也会让「某个未来分支忘了覆盖」看起来像正常的未配置状态。
+    delivery: { status: 'PENDING' },
   };
 }
 
-async function notifyOperator(command, alert) {
-  if (!clean(command)) return { status: 'NOT_CONFIGURED' };
+// 投递收据只留下「判断送达与否要用的字段」。特别注意**不留 `attempts`**：
+// 它逐条带着 `target`（收件人的 open_id / chat_id），没理由把它抄进证据文件。
+function compactReceipt(receipt) {
+  if (!receipt || typeof receipt !== 'object') return undefined;
+  const status = clean(receipt.status);
+  if (!status) return undefined;
+  return {
+    status,
+    ...(clean(receipt.channel) ? { channel: clean(receipt.channel) } : {}),
+    ...(clean(receipt.alertId) ? { alertId: clean(receipt.alertId) } : {}),
+    ...(clean(receipt.sentAt) ? { sentAt: clean(receipt.sentAt) } : {}),
+    ...(clean(receipt.error) ? { error: clean(receipt.error).slice(0, 300) } : {}),
+  };
+}
+
+function parseReceiptFromStdout(stdout) {
+  const raw = String(stdout ?? '').trim();
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    // 运营自备的包装器可以往 stdout 打任何东西（日志、空）。那不是错误，回落到退出码判断。
+    return undefined;
+  }
+}
+
+async function notifyOperator(target, alert) {
+  // 静音是一个**决定**，不是「没配」：所以它有自己的收据值。
+  // 这里刻意不再用 `NOT_CONFIGURED` —— 那个值原来的含义就是「线没接上」，2026-09-13 那期
+  // 就是它把「卡点无人知晓」盖成了「一切照常」。让静音与断线长得一样，等于把坑留着。
+  //
+  // ⚠️ 下游口径提醒：`MUTED` **不在** `runtime/sop-runtime/round-history.mjs` 的
+  // `undelivered`（它只数 FAILED / NOT_CONFIGURED）。今天到不了那里——那条链有自己的投递实现，
+  // 这个函数只服务于本文件；但如果哪天把这里的收据并进轮次账本，「静音」会被那张表**静默漏掉**。
+  // 那种「新枚举只活在 N 处中的 1 处」的坑本项目已经踩过两次（006/008 的失败分类），所以先写在这。
+  if (!target) return { status: 'MUTED' };
   return new Promise((resolveNotification, rejectNotification) => {
-    const child = spawn(command, [], { shell: false, windowsHide: true, stdio: ['pipe', 'ignore', 'pipe'] });
+    let child;
+    try {
+      child = spawn(target.command, target.args, {
+        shell: false,
+        windowsHide: true,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+    } catch (error) {
+      // **同步抛**，不是 'error' 事件：Node ≥18.20.2（CVE-2024-27980 加固）之后
+      // `spawn('x.cmd', [], { shell: false })` 直接抛 EINVAL —— 也就是说
+      // 「.mjs 外面包一个 .cmd」这条文档里的兜底做法在本机 Node 22 上是**跑不通的**
+      // （2026-09-22 实测，见 tmp/_probe-cmd-spawn.out.txt / evidence）。
+      // 所以这里显式兜住并给出可做的动作，而不是留一句裸的「spawn EINVAL」。
+      rejectNotification(new Error(
+        `Operator notification command could not be started (${String(error?.message ?? error)}); `
+        + 'pass a real .exe, or an .mjs/.js path (those are run with node) — .cmd/.bat wrappers '
+        + 'cannot be spawned with shell:false on this Node version',
+      ));
+      return;
+    }
     let stderr = '';
+    let stdout = '';
     const timer = setTimeout(() => {
       child.kill();
       rejectNotification(new Error('Operator notification command timed out'));
-    }, 10_000);
+    }, NOTIFY_TIMEOUT_MS);
+    child.stdout?.on('data', (chunk) => { stdout += String(chunk); });
     child.stderr?.on('data', (chunk) => { stderr += String(chunk); });
     child.on('error', (error) => {
       clearTimeout(timer);
@@ -352,7 +484,11 @@ async function notifyOperator(command, alert) {
         rejectNotification(new Error(`Operator notification command failed with exit ${code}: ${stderr.slice(0, 200)}`));
         return;
       }
-      resolveNotification({ status: 'SENT' });
+      // 退出码 0 只说明「命令跑完了」，不说明「消息出去了」。投递 CLI 会把自己的收据 JSON
+      // 打到 stdout（`feishu-notify-receipt-v1`），**那个才是结论**；拿不到收据时
+      // （运营自备的包装器不打印 JSON）才回落到「按退出码算送达」。
+      // 仓库里同一原则：login-merchant.mjs 也不替 CLI 下结论，只抄它报的状态。
+      resolveNotification(compactReceipt(parseReceiptFromStdout(stdout)) ?? { status: 'SENT' });
     });
     child.stdin.end(jsonText(alert));
   });
@@ -378,7 +514,7 @@ async function evaluateTarget(proxy, targetId, accountSelector = null) {
   return response.value ?? response;
 }
 
-async function persistAlert({ outputDirectory, source, statusPath, checkedAt, reason, notifyCommand, classificationStatus = null }) {
+async function persistAlert({ outputDirectory, source, statusPath, checkedAt, reason, notifyTarget, classificationStatus = null }) {
   const alertPath = resolve(outputDirectory, 'xws-sku-operator-alert.json');
   const alert = buildOperatorAlert({ checkedAt, source, statusPath, reason, classificationStatus });
   let previous;
@@ -396,7 +532,7 @@ async function persistAlert({ outputDirectory, source, statusPath, checkedAt, re
     alert.delivery = { status: 'DEDUPED', previousAlertId: previous.alertId };
   } else {
     try {
-      alert.delivery = await notifyOperator(notifyCommand, alert);
+      alert.delivery = await notifyOperator(notifyTarget, alert);
     } catch (error) {
       alert.delivery = { status: 'FAILED', error: String(error?.message ?? error).slice(0, 300) };
     }
@@ -405,7 +541,7 @@ async function persistAlert({ outputDirectory, source, statusPath, checkedAt, re
   return { alertPath, alert };
 }
 
-async function resolveAlert({ outputDirectory, source, statusPath, checkedAt, notifyCommand }) {
+async function resolveAlert({ outputDirectory, source, statusPath, checkedAt, notifyTarget }) {
   const alertPath = resolve(outputDirectory, 'xws-sku-operator-alert.json');
   if (!existsSync(alertPath)) return undefined;
   let previous;
@@ -420,7 +556,7 @@ async function resolveAlert({ outputDirectory, source, statusPath, checkedAt, no
     status: 'RESOLVED',
   });
   try {
-    alert.delivery = await notifyOperator(notifyCommand, alert);
+    alert.delivery = await notifyOperator(notifyTarget, alert);
   } catch (error) {
     alert.delivery = { status: 'FAILED', error: String(error?.message ?? error).slice(0, 300) };
   }
@@ -430,12 +566,15 @@ async function resolveAlert({ outputDirectory, source, statusPath, checkedAt, no
 
 // 哪些状态要写告警（即「需要人动手」）。与 docs/ops/LOGIN-STATE-MANAGEMENT.md §4 的表一致：
 // SOURCE_MISMATCH 不通知（属流程参数问题，记证据即可），AUTH_READY 不通知（只在恢复时补一条）。
-const ALERTING_STATUSES = Object.freeze([
+export const ALERTING_STATUSES = Object.freeze([
   'AUTH_REQUIRED',
   'ACCOUNT_MISMATCH',
   'AUTH_UNKNOWN',
   'PLUGIN_UNAVAILABLE',
   'PLUGIN_NOT_READY',
+  // 2026-09-22 补：读页阶段就失败（目标页不在位 / 代理不通）。它以前连告警都不产生，
+  // 是本期真实卡住的那条路，所以必须在「要叫人」的名单里。
+  'PAGE_UNAVAILABLE',
 ]);
 
 export async function runAuthPreflight(options) {
@@ -448,15 +587,35 @@ export async function runAuthPreflight(options) {
     validity: options.validity,
   };
   const outputDirectory = resolve(options.outputDirectory);
-  const target = await discoverTarget(options.proxy, options);
-  const snapshot = await evaluateTarget(options.proxy, target.targetId, options.accountSelector);
-  const classification = classifyAuthSnapshot(snapshot, options.productId, {
-    expectedAccount: options.expectedAccount,
-  });
+  const notifyTarget = resolveNotifyTarget(options);
+
+  // 「读页面」这一段（找到目标标签页 → 在页面上跑探测）失败时**也要落告警**。
+  // 原实现在这里直接 throw：既没进分类器、也没写 alert —— 「商品页不在位」这条本期真断点
+  // 因此一声不响地卡住（evidence/sku-step6-2026-09-20）。现在把它归到 PAGE_UNAVAILABLE，
+  // 走同一条告警与去重路径；**退出码语义不变**（末尾仍走 stalled → exit 3）。
+  //
+  // 归到「需要人」而不是「BUG」的理由：这一段的两种失败（找不到目标页 / 代理读不到）都是现场问题，
+  // 人打开页面或拉起浏览器就能解 —— 与 docs/ops/LOGIN-STATE-MANAGEMENT.md §4 的分类口径一致。
+  // reason 里保留原始报文，真要是代码缺陷，看「原因」那行看得出来。
+  let target = null;
+  let snapshot = null;
+  let classification;
+  try {
+    target = await discoverTarget(options.proxy, options);
+    snapshot = await evaluateTarget(options.proxy, target.targetId, options.accountSelector);
+    classification = classifyAuthSnapshot(snapshot, options.productId, {
+      expectedAccount: options.expectedAccount,
+    });
+  } catch (error) {
+    classification = {
+      status: 'PAGE_UNAVAILABLE',
+      reason: `Preflight could not read the product page: ${String(error?.message ?? error)}`.slice(0, 300),
+    };
+  }
   const status = buildAuthStatus({
     checkedAt,
     source,
-    targetUrl: target.url,
+    targetUrl: target?.url,
     snapshot,
     classification,
   });
@@ -475,7 +634,7 @@ export async function runAuthPreflight(options) {
       statusPath,
       checkedAt,
       reason: classification.reason,
-      notifyCommand: options.notifyCommand,
+      notifyTarget,
       classificationStatus: classification.status,
     });
     artifacts.operatorAlert = alert.alertPath;
@@ -485,7 +644,7 @@ export async function runAuthPreflight(options) {
       source,
       statusPath,
       checkedAt,
-      notifyCommand: options.notifyCommand,
+      notifyTarget,
     });
     if (resolved) artifacts.operatorAlert = resolved.alertPath;
   }

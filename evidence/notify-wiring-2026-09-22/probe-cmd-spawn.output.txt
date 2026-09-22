@@ -1,0 +1,17 @@
+node:internal/child_process:420
+    throw new ErrnoException(err, 'spawn');
+          ^
+
+Error: spawn EINVAL
+    at ChildProcess.spawn (node:internal/child_process:420:11)
+    at spawn (node:child_process:787:9)
+    at file:///D:/Retire/sycm-automation/tmp/_probe-cmd-spawn.mjs:18:19
+    at new Promise (<anonymous>)
+    at attempt (file:///D:/Retire/sycm-automation/tmp/_probe-cmd-spawn.mjs:17:10)
+    at file:///D:/Retire/sycm-automation/tmp/_probe-cmd-spawn.mjs:29:19 {
+  errno: -4071,
+  code: 'EINVAL',
+  syscall: 'spawn'
+}
+
+Node.js v22.22.2
