@@ -299,11 +299,17 @@ test('the shipped config file is valid and its period matches the real SOP week'
   const parsed = parseScheduleJson(text);
   assert.deepEqual(parsed.errors, []);
   assert.equal(parsed.ok, true);
-  const competitor = findRound(parsed.schedule, 'weekly-competitor');
-  assert.ok(competitor, 'the shipped schedule must describe the weekly competitor round');
+  // 这条排期在 2026-09-22 改过名：weekly-competitor → weekly-keyword
+  // （原名与它实际借用的能力 `sycm.feishu.weekly` 不符，那个名字是历史遗留）。
+  // 改名**不影响业务幂等键**：出厂条目没有 businessKeyTemplate，走默认的
+  // `{capability}/{storeId}/{windowKey}`（见 round-schedule.mjs 的 DEFAULT_BUSINESS_KEY_TEMPLATE），
+  // 里面没有 {name}。所以这里跟着改的是**期望值**，不是判据口径 —— 若哪天名字又变，
+  // 这条会红，那正是想要的效果（改名必须是有意识的行为）。
+  const weekly = findRound(parsed.schedule, 'weekly-keyword');
+  assert.ok(weekly, 'the shipped schedule must describe the weekly keyword round');
   // 出厂默认必须是停用的：配置文件在版本库里，启用与否是部署决策。
-  assert.equal(competitor.enabled, false);
-  assert.equal(evaluateSchedule(competitor, at('2026-09-14T09:00:00+08:00')).windowKey, '2026-09-06~2026-09-12');
+  assert.equal(weekly.enabled, false);
+  assert.equal(evaluateSchedule(weekly, at('2026-09-14T09:00:00+08:00')).windowKey, '2026-09-06~2026-09-12');
 });
 
 // ── 一次叫醒的行为 ──────────────────────────────────────────────────────────

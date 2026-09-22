@@ -146,7 +146,7 @@ node "runtime\sop-runtime\round-runner.mjs" `
 
 # 2) 手工跑一条（已到点才跑；没到点会原样跳过并说明下一次什么时候）
 node "runtime\sop-runtime\round-runner.mjs" `
-  --schedule-file "runtime\round-schedule.json" --round weekly-competitor
+  --schedule-file "runtime\round-schedule.json" --round weekly-keyword
 
 # 3) 常驻叫醒（机器基本不关时用）；外部定时器（任务计划程序 / WorkBuddy 定时任务）跑第 2 条命令即可，等价
 node "runtime\sop-runtime\round-runner.mjs" `

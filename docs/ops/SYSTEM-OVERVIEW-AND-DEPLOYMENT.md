@@ -413,7 +413,7 @@ CI 现状（`.github/workflows/ci.yml`）：`windows-latest`，三层（L0 语�
 
 24. 排期写在 `runtime/round-schedule.json`（配置文件，不是触发器）；宿主只需负责叫醒：
     `node runtime/sop-runtime/round-runner.mjs --schedule-file runtime/round-schedule.json --show-plan`（先看计划）
-    `… --round weekly-competitor`（手工跑一条）
+    `… --round weekly-keyword`（手工跑一条。2026-09-22 改过名，原名 `weekly-competitor` 与它实际借用的能力不符）
     `… --serve --interval-seconds 60`（常驻）或交给任务计划程序（等价）。
     判据：`--show-plan` 给出 `triggerAt` / `isLastTriggerToday` / `hoursSinceTriggerAt` / `nextTriggerAt`。
     **到期口径是「只算触发日当天」，跨天不自动补跑**——要补跑用 `--force`。

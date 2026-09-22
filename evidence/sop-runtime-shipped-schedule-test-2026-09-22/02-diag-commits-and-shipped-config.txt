@@ -1,0 +1,13 @@
+=== last commit touching round-schedule.json ===
+b7d4c95 2026-09-22 关键词周更：把「每周入参」做成运行时解析（排期改名 weekly-keyword）
+=== last commit touching round-schedule.test.mjs ===
+b02b6e9 2026-09-18 第 4 步接线：体检层默认关闭地接进 round-runner + 三条登录恢复路线的落地分析
+=== uncommitted diff on those two ===
+(empty means clean)
+=== current round names in shipped config ===
+version=round-schedule-v1
+  name=weekly-keyword enabled=false capability=sycm.feishu.weekly storeId=bathtub-industry
+=== when did the rename land ===
+b7d4c95 2026-09-22 关键词周更：把「每周入参」做成运行时解析（排期改名 weekly-keyword）
+3e111b7 2026-09-21 尺寸链第三段：09-13 期真写成功 + 采集队列加周表口径；挂排期的卡点已查清
+b02b6e9 2026-09-18 第 4 步接线：体检层默认关闭地接进 round-runner + 三条登录恢复路线的落地分析

@@ -1,0 +1,18 @@
+=== DIFF (verify edits landed) ===
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/ops/SYSTEM-OVERVIEW-AND-DEPLOYMENT.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'runtime/sop-runtime/round-schedule.test.mjs', LF will be replaced by CRLF the next time Git touches it
+ README.md                                   |  2 +-
+ docs/ops/SYSTEM-OVERVIEW-AND-DEPLOYMENT.md  |  2 +-
+ runtime/sop-runtime/round-schedule.test.mjs | 14 ++++++++++----
+ 3 files changed, 12 insertions(+), 6 deletions(-)
+=== RERUN sop-runtime ===
+FILES=27
+STATUS=0
+# tests 398
+# pass 398
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2797.266
