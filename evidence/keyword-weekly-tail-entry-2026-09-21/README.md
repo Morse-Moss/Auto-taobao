@@ -39,6 +39,8 @@
 | 文件 | 是什么 | 分母 / 口径 |
 | --- | --- | --- |
 | `unit-entry-2026-09-21.txt` | `node --test runtime/run-keyword-weekly-local-analysis.test.mjs` 原始输出 | **15 tests / 15 pass / 0 fail** |
+| `guards-affected-2026-09-21.txt` | 受影响四个守卫：`arch-boundary` / `browser-ports` / `ci-matrix-coverage` / `content-heat-judge` ＋本入口用例 | **49 tests / 49 pass / 0 fail** |
+| `runtime-suite-after-entry-2026-09-21.txt` | `node scripts/run-test-suite.mjs runtime --concurrency=1` 原始输出 | **runtime 组 91 file(s) / 812 tests / 812 pass / 0 fail**（改动之后跑的版本＝`b2fd302` 的前一个工作区状态） |
 | `mutation-entry-2026-09-21.txt` | `node runtime/content-heat-judge.mutation.mjs` 原始输出 | **11 条突变全部 `CAUGHT_AND_NAMED`，`restoredOk: true`** |
 | `entry-dryrun-2026-09-19.txt` | 入口对 **真表** 跑一次（不带 `--apply`，只读） | exit 0；第三段 `ALREADY_SYNCED` / `writeUnits 0` / `wrote false` |
 | `writer-rule-dryrun.txt` | 规则段单独 dry-run（只读） | `recordsPlanned: 10`，全是 `细分标签: []` 的空写 |
