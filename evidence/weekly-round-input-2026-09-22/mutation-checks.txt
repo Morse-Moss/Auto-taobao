@@ -1,0 +1,47 @@
+original sha256 = ab4a7aff935b5718ff451d0de41ee2ef55f0439e73641e97540457ab607b7bc5
+
+== batch-off-by-one
+   # tests 23 | # pass 21 | # fail 2
+   failed: 2
+     - not ok 10 - batch number is the next unused one, not the row count
+     - not ok 17 - the resolver produces exactly the collectInput shape the weekly adapter requires
+   names the expected case: YES (1 matched)
+   restored byte-identical: YES
+
+== history-filter-inverted
+   # tests 23 | # pass 20 | # fail 3
+   failed: 3
+     - not ok 13 - expected history before is every row that is not part of this batch
+     - not ok 15 - a numeric string batch number is accepted, because that is what a CLI hands over
+     - not ok 17 - the resolver produces exactly the collectInput shape the weekly adapter requires
+   names the expected case: YES (1 matched)
+   restored byte-identical: YES
+
+== previous-week-drift
+   # tests 23 | # pass 18 | # fail 5
+   failed: 5
+     - not ok 4 - the 2026-09-21 trigger resolves to the same tables production actually used
+     - not ok 5 - previous period crosses a month boundary correctly
+     - not ok 6 - previous period crosses a year boundary correctly
+     - not ok 17 - the resolver produces exactly the collectInput shape the weekly adapter requires
+     - not ok 19 - the protected table is resolved by name too, and a missing one stops the run
+   names the expected case: YES (1 matched)
+   restored byte-identical: YES
+
+== fullwidth-parens-to-halfwidth
+   # tests 23 | # pass 18 | # fail 5
+   failed: 5
+     - not ok 1 - table name round-trips through its collection date
+     - not ok 4 - the 2026-09-21 trigger resolves to the same tables production actually used
+     - not ok 17 - the resolver produces exactly the collectInput shape the weekly adapter requires
+     - not ok 19 - the protected table is resolved by name too, and a missing one stops the run
+     - not ok 23 - the table-name format is pinned verbatim, full-width parentheses included
+   names the expected case: YES (1 matched)
+   restored byte-identical: YES
+
+== restored: # tests 23 | # pass 23 | # fail 0
+   not ok lines: 0
+   final sha256 = ab4a7aff935b5718ff451d0de41ee2ef55f0439e73641e97540457ab607b7bc5
+
+ALL MUTANTS BEHAVED AS EXPECTED: YES
+EXIT=0

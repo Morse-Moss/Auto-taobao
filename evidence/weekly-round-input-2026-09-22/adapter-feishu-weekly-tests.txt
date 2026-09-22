@@ -1,0 +1,149 @@
+TAP version 13
+# Subtest: 自报能力 ID 与版本和 manifest 完全一致（Loader 按此校验，不一致会拒绝装载）
+ok 1 - 自报能力 ID 与版本和 manifest 完全一致（Loader 按此校验，不一致会拒绝装载）
+  ---
+  duration_ms: 0.6178
+  type: 'test'
+  ...
+# Subtest: adapter 满足 Worker 适配器契约（7 个方法齐全）
+ok 2 - adapter 满足 Worker 适配器契约（7 个方法齐全）
+  ---
+  duration_ms: 0.0846
+  type: 'test'
+  ...
+# Subtest: stableJson 与键顺序无关，保证同结果同摘要
+ok 3 - stableJson 与键顺序无关，保证同结果同摘要
+  ---
+  duration_ms: 0.1441
+  type: 'test'
+  ...
+# Subtest: prepare 在缺关键输入时拒绝，不进入任何外部动作
+ok 4 - prepare 在缺关键输入时拒绝，不进入任何外部动作
+  ---
+  duration_ms: 0.9524
+  type: 'test'
+  ...
+# Subtest: 采集段（新导出）：校验 7 天窗口证明、解析源行并产出可复验工件
+ok 5 - 采集段（新导出）：校验 7 天窗口证明、解析源行并产出可复验工件
+  ---
+  duration_ms: 3.9054
+  type: 'test'
+  ...
+# Subtest: 采集段（显式复用对）：不调用导出，仍必须通过源文件对证明
+ok 6 - 采集段（显式复用对）：不调用导出，仍必须通过源文件对证明
+  ---
+  duration_ms: 3.3649
+  type: 'test'
+  ...
+# Subtest: 采集段：导出未证明 7 天窗口即判证据无效，绝不继续
+ok 7 - 采集段：导出未证明 7 天窗口即判证据无效，绝不继续
+  ---
+  duration_ms: 1.4969
+  type: 'test'
+  ...
+# Subtest: 能力自检拦住坏工件：排名不连续、字段为空、关键词重复、证明日期不符、目标不符
+ok 8 - 能力自检拦住坏工件：排名不连续、字段为空、关键词重复、证明日期不符、目标不符
+  ---
+  duration_ms: 3.7913
+  type: 'test'
+  ...
+# Subtest: collectContract 的 requiredFields 与工件实际键一致（否则 structure 验证器会误判）
+ok 9 - collectContract 的 requiredFields 与工件实际键一致（否则 structure 验证器会误判）
+  ---
+  duration_ms: 2.1643
+  type: 'test'
+  ...
+# Subtest: 发布段：缺工件字节即拒绝装配钩子
+ok 10 - 发布段：缺工件字节即拒绝装配钩子
+  ---
+  duration_ms: 0.3298
+  type: 'test'
+  ...
+# Subtest: 发布段：dry-run 不传 --apply；两个写入阶段都被调用且顺序固定
+ok 11 - 发布段：dry-run 不传 --apply；两个写入阶段都被调用且顺序固定
+  ---
+  duration_ms: 2.7112
+  type: 'test'
+  ...
+# Subtest: 发布段回读：缺 weeklyTableId 即失败（不允许用「其他表」冒充验收对象）
+ok 12 - 发布段回读：缺 weeklyTableId 即失败（不允许用「其他表」冒充验收对象）
+  ---
+  duration_ms: 2.7197
+  type: 'test'
+  ...
+# Subtest: 发布段回读：凭据从 publishInput.envFile 读，不依赖运行器不传的 env 参数
+ok 13 - 发布段回读：凭据从 publishInput.envFile 读，不依赖运行器不传的 env 参数
+  ---
+  duration_ms: 4.486
+  type: 'test'
+  ...
+# Subtest: 工件字节可独立复验：摘要随内容变化，内容不变则摘要不变
+ok 14 - 工件字节可独立复验：摘要随内容变化，内容不变则摘要不变
+  ---
+  duration_ms: 2.3292
+  type: 'test'
+  ...
+# Subtest: 词表里的每个失败分类都是运行时认可的 FAILURE_CLASS，且都能映射成下一步动作
+ok 15 - 词表里的每个失败分类都是运行时认可的 FAILURE_CLASS，且都能映射成下一步动作
+  ---
+  duration_ms: 0.2881
+  type: 'test'
+  ...
+# Subtest: 调用方/目标没准备好的拒绝归 POLICY_DENIED，证据不符归 EVIDENCE_INVALID，顺序被破坏仍是 BUG
+ok 16 - 调用方/目标没准备好的拒绝归 POLICY_DENIED，证据不符归 EVIDENCE_INVALID，顺序被破坏仍是 BUG
+  ---
+  duration_ms: 0.0781
+  type: 'test'
+  ...
+# Subtest: 缺陷复现：同一条消息，裸 Error 归 BUG 停线，挂上 code 归策略拒绝
+ok 17 - 缺陷复现：同一条消息，裸 Error 归 BUG 停线，挂上 code 归策略拒绝
+  ---
+  duration_ms: 0.1903
+  type: 'test'
+  ...
+# Subtest: fatalError 同时挂上 code 与 failureClass，且不改动消息本身
+ok 18 - fatalError 同时挂上 code 与 failureClass，且不改动消息本身
+  ---
+  duration_ms: 0.1135
+  type: 'test'
+  ...
+# Subtest: 未登记的 code 立刻抛错，不许悄悄退回默认分类器
+ok 19 - 未登记的 code 立刻抛错，不许悄悄退回默认分类器
+  ---
+  duration_ms: 0.0526
+  type: 'test'
+  ...
+# Subtest: 真入口下每类拒绝都带上自己的 code（参数 / 日期 / URL / 目标 / 数值 / 源文件 / 证据）
+ok 20 - 真入口下每类拒绝都带上自己的 code（参数 / 日期 / URL / 目标 / 数值 / 源文件 / 证据）
+  ---
+  duration_ms: 2.2054
+  type: 'test'
+  ...
+# Subtest: 收据级：能力自己的拒绝落成 blocker.class=POLICY_DENIED，而不是 BUG
+ok 21 - 收据级：能力自己的拒绝落成 blocker.class=POLICY_DENIED，而不是 BUG
+  ---
+  duration_ms: 19.6071
+  type: 'test'
+  ...
+# Subtest: 收据级：handler 克隆出的新表 id 会被同一次 publish 的 readBack 用上，发布轴走到 VERIFIED
+ok 22 - 收据级：handler 克隆出的新表 id 会被同一次 publish 的 readBack 用上，发布轴走到 VERIFIED
+  ---
+  duration_ms: 12.2462
+  type: 'test'
+  ...
+# Subtest: 运行时路径上的每个 throw 都走 fatalError
+ok 23 - 运行时路径上的每个 throw 都走 fatalError
+  ---
+  duration_ms: 0.5321
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 270.695
+EXIT=0

@@ -200,6 +200,10 @@ A-爆款竞品从没采过 SKU。两个数都对，只是回答的问题不同�
    collection_date / batch_number / expected_history_before` —— 指向**自营店铺 + 关键词链**，
    与竞品链要的（源周表、历史总表、批次号、克隆前历史行数）**部分重合但不相同**。
    所以「写错成关键词链」这个说法要精修：不是名字写错，是**这条排期借用了一条入参对不上的能力**。
+   **（2026-09-22 更正）** 这条排期已**改名改述**为 `weekly-keyword` —— 反过来了：名字才是那个不对的
+   东西（原名 `weekly-competitor`），而这条排期本来就是关键词链的。入参那一侧由
+   `runtime/weekly-round-input.mjs` 在运行时算出（声明 `collectInputResolver`），不再靠人手改 JSON。
+   见 `docs/ops/WEEKLY-FLOW-CURRENT-2026-09-20.md` §9.7。
 2. **竞品链没有自己的 weekly capability**。`grep` 全部 `skills/*/manifest.json`，竞品侧只有两条：
    `xws.market-analysis.collect`（`skills/xws-export-market-analysis`）与
    `xws.sku.collection`（`skills/xws-sku-collection`），都不是周更能力。
@@ -217,4 +221,9 @@ A-爆款竞品从没采过 SKU。两个数都对，只是回答的问题不同�
 
 `runtime/round-schedule.json` 的 `notes` 已把上述事实写进去（`enabled` 仍是 `false`，
 `capability` 一个字节没改）：改 `notes` 只是别让下一个人以为这条排期一开就能跑。
+
+**（2026-09-22 更正）** 在那之后 `name` 与 `notes` 又改过一次（`weekly-competitor` → `weekly-keyword`，
+并补上 `collectInputResolver`）；`capability` 与 `enabled` **至今未动**，
+所以本节关于「**竞品链没有自己的周更能力、因此挂不上去**」的结论**仍然成立** ——
+上面那次改名不是把竞品链接上了，而是承认那条排期从来就是关键词链的。
 

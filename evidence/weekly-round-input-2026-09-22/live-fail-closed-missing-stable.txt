@@ -1,0 +1,5 @@
+Error: keyword weekly resolver is missing stable config: protectedTableName
+    at resolveKeywordWeeklyCollectInput (file:///D:/Retire/sycm-automation/runtime/weekly-round-input.mjs:197:13)
+    at resolveDeclaredCollectInput (file:///D:/Retire/sycm-automation/runtime/sop-runtime/round-runner.mjs:998:10)
+    at optionsForEntry (file:///D:/Retire/sycm-automation/runtime/sop-runtime/round-runner.mjs:1006:38)
+    at main (file:///D:/Retire/sycm-automation/runtime/sop-runtime/round-runner.mjs:1209:57)

@@ -1,0 +1,149 @@
+TAP version 13
+# Subtest: table name round-trips through its collection date
+ok 1 - table name round-trips through its collection date
+  ---
+  duration_ms: 1.069
+  type: 'test'
+  ...
+# Subtest: the legacy 修正版 table is not mistaken for a dated weekly table
+ok 2 - the legacy 修正版 table is not mistaken for a dated weekly table
+  ---
+  duration_ms: 0.1549
+  type: 'test'
+  ...
+# Subtest: a malformed collection date is rejected rather than interpolated
+ok 3 - a malformed collection date is rejected rather than interpolated
+  ---
+  duration_ms: 0.294
+  type: 'test'
+  ...
+# Subtest: the 2026-09-21 trigger resolves to the same tables production actually used
+ok 4 - the 2026-09-21 trigger resolves to the same tables production actually used
+  ---
+  duration_ms: 0.8448
+  type: 'test'
+  ...
+# Subtest: previous period crosses a month boundary correctly
+ok 5 - previous period crosses a month boundary correctly
+  ---
+  duration_ms: 0.0866
+  type: 'test'
+  ...
+# Subtest: previous period crosses a year boundary correctly
+ok 6 - previous period crosses a year boundary correctly
+  ---
+  duration_ms: 0.0611
+  type: 'test'
+  ...
+# Subtest: a period that does not end on Saturday stops instead of guessing a date
+ok 7 - a period that does not end on Saturday stops instead of guessing a date
+  ---
+  duration_ms: 0.1014
+  type: 'test'
+  ...
+# Subtest: only PREVIOUS_WEEK_SUN_SAT is accepted
+ok 8 - only PREVIOUS_WEEK_SUN_SAT is accepted
+  ---
+  duration_ms: 0.139
+  type: 'test'
+  ...
+# Subtest: a malformed period end date is rejected
+ok 9 - a malformed period end date is rejected
+  ---
+  duration_ms: 0.1957
+  type: 'test'
+  ...
+# Subtest: batch number is the next unused one, not the row count
+ok 10 - batch number is the next unused one, not the row count
+  ---
+  duration_ms: 0.3496
+  type: 'test'
+  ...
+# Subtest: an empty history table stops instead of silently becoming batch 1
+ok 11 - an empty history table stops instead of silently becoming batch 1
+  ---
+  duration_ms: 0.5693
+  type: 'test'
+  ...
+# Subtest: a history row without a valid batch number stops the derivation
+ok 12 - a history row without a valid batch number stops the derivation
+  ---
+  duration_ms: 0.118
+  type: 'test'
+  ...
+# Subtest: expected history before is every row that is not part of this batch
+ok 13 - expected history before is every row that is not part of this batch
+  ---
+  duration_ms: 0.1396
+  type: 'test'
+  ...
+# Subtest: an invalid batch number is rejected before it can filter anything
+ok 14 - an invalid batch number is rejected before it can filter anything
+  ---
+  duration_ms: 0.1997
+  type: 'test'
+  ...
+# Subtest: a numeric string batch number is accepted, because that is what a CLI hands over
+ok 15 - a numeric string batch number is accepted, because that is what a CLI hands over
+  ---
+  duration_ms: 0.0458
+  type: 'test'
+  ...
+# Subtest: tables resolve by exact name and must be unique
+ok 16 - tables resolve by exact name and must be unique
+  ---
+  duration_ms: 0.1086
+  type: 'test'
+  ...
+# Subtest: the resolver produces exactly the collectInput shape the weekly adapter requires
+ok 17 - the resolver produces exactly the collectInput shape the weekly adapter requires
+  ---
+  duration_ms: 0.25
+  type: 'test'
+  ...
+# Subtest: the resolver refuses to run without the stable values it cannot derive
+ok 18 - the resolver refuses to run without the stable values it cannot derive
+  ---
+  duration_ms: 0.3753
+  type: 'test'
+  ...
+# Subtest: the protected table is resolved by name too, and a missing one stops the run
+ok 19 - the protected table is resolved by name too, and a missing one stops the run
+  ---
+  duration_ms: 0.1041
+  type: 'test'
+  ...
+# Subtest: a resolver without a usable reader is rejected at construction, not at run time
+ok 20 - a resolver without a usable reader is rejected at construction, not at run time
+  ---
+  duration_ms: 0.0736
+  type: 'test'
+  ...
+# Subtest: the resolver id is looked up strictly: unknown ids stop, absent ids mean "no resolver"
+ok 21 - the resolver id is looked up strictly: unknown ids stop, absent ids mean "no resolver"
+  ---
+  duration_ms: 0.0741
+  type: 'test'
+  ...
+# Subtest: the module reads only: it never spawns a process or writes to Feishu itself
+ok 22 - the module reads only: it never spawns a process or writes to Feishu itself
+  ---
+  duration_ms: 0.2213
+  type: 'test'
+  ...
+# Subtest: the table-name format is pinned verbatim, full-width parentheses included
+ok 23 - the table-name format is pinned verbatim, full-width parentheses included
+  ---
+  duration_ms: 0.1641
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 203.7811
+EXIT=0

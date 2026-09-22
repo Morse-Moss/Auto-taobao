@@ -10,16 +10,17 @@
     "业务幂等键默认是「能力/店铺/周期」，由排期自动算出来——不需要你填，也不该手填（手填的键不会随周期变，那等于只跑一次）。",
     "店铺维度（identity.storeId）是必需的：同一个能力要给多家店铺各跑一遍时，就写多条排期、每条一个 storeId。**两条排期跑同一个能力却不区分店铺，会被配置校验直接拒掉**——因为那样它们会算出同一个键，然后互相压制（安静地少跑，不报错）。",
     "注意：target **不是一个 URL**。URL 只是「授权目标」这个身份；能力真正要的入参（源周表、历史总表、编号库、受保护表、采集日、批次号、克隆前历史行数）走 collectInput/publishInput，其中有一部分**每周都会变**。",
-    "所以「周表 id」不该写进这份文件：周表每周新建，id 天然会过期；按名字在运行时解析（见 runtime/weekly-table-target.mjs 与 feishu-targets.mjs 顶部说明）。",
+    "所以「周表 id」不该写进这份文件：周表每周新建，id 天然会过期。**每周会变的那几项改由 `collectInputResolver` 在运行时算出来**（2026-09-22 起）：条目声明 resolver id，并给出它推不出来的那几项稳定值（collectInputResolverConfig）；其余全部按名解析 + 读历史表算。实现在 runtime/weekly-round-input.mjs（纯推导无 I/O）与 runtime/weekly-round-input-reader.mjs（只读凭据来源）；竞品链的周表命名另有 runtime/weekly-table-target.mjs。",
+    "声明了 `collectInputResolver` 的条目，**不许再把同一项手写进 collectInput**：解析结果与手写值冲突时会在开跑前抛 COLLECT_INPUT_CONFLICT（两份真相源早晚漂移，而漂移不报错）。",
     "到期口径：只算触发日当天。周一的排期，周一 09:00 之后才算到期；周二再开机**不会自动补跑**（--show-plan 里的 hoursSinceTriggerAt 会告诉你上一次过去多久了）。要补跑就显式加 --force。",
     "这条口径是刻意的：如果改成「错过了就补」，周一没开机就会在周二悄悄跑出一份迟了一天的数据，而看数据的人不知道它迟了。宁可漏跑（漏了在计划里看得见），不要偷跑。",
     "体检（可选，默认关闭）：写 \"healthCheck\": true 就会在每轮开跑前先做一次环境体检（浏览器在不在、是不是目标 profile、出网代理通不通）。不写 = 不体检，收据里如实写 NOT_IMPLEMENTED，不会假装检查过。",
-    "体检查哪台浏览器不用你填：系统按「这条能力属于哪条路线」自己推（见 docs/ops/PROJECT-BROWSER-AND-PORTS.md）。要数页面再加 \"pages\": true —— 只有「页面必须恰好各一个」的链才该开它（日报链要，竞品链不要，竞品本来就要开很多商品页）。",
+    "体检查哪台浏览器不用你填：系统按「这条能力属于哪条路线」自己推（见 docs/ops/PROJECT-BROWSER-AND-PORTS.md）。要数页面再加 \"pages\": true —— 只有「页面必须恰好一个」的链才该开它（日报链要，竞品链不要，竞品本来就要开很多商品页）。",
     "体检发现环境不对时，这一轮**不会**开跑，并会发一条飞书说明要人做什么（例如「启动出网代理软件」）。浏览器键写错、或写了 pages 但路线判不出来，会在**启动时**就报错停跑，不会拖到运行中。"
   ],
   "rounds": [
     {
-      "name": "weekly-competitor",
+      "name": "weekly-keyword",
       "enabled": false,
       "capability": "sycm.feishu.weekly",
       "when": { "kind": "weekly", "weekday": "MO", "at": "09:00" },
@@ -37,7 +38,12 @@
       "commit": false,
       "expectedRows": 300,
       "source": { "targetLabel": "专用部署机", "shopName": null },
-      "notes": "当前两套 SOP 都没有店铺维度，storeId 只是身份契约里的占位值；等运营日报阶段再按店铺拆成多条排期。commit 默认 false（先只采不发），确认稳定后再开。target 是 null 而不是占位串：URL 只表示「授权目标」，能力要的入参另走 collectInput/publishInput，且其中源周表与批次号每周都变——在「每周入参解析」做出来之前，这条排期就算填了 URL 也跑不起来，所以宁可留空失败（fail-closed），不留一个看起来能跑的假值。补充（2026-09-21 实测，为免下一个人以为打开 enabled 就能跑）：本条借用的 capability \"sycm.feishu.weekly\" 登记在 skills/sycm-to-feishu-base，指的是「生意参谋自营店铺 + 关键词链」的周更 SOP，它的入参（source_table_id / history_table_id / library_table_id / protected_table_id / collection_date / batch_number / expected_history_before）与竞品链要的不相同；而竞品链目前没有自己的周更 capability（skills 下竞品侧只有 xws.market-analysis.collect 与 xws.sku.collection 两条），尺寸写回的编排入口 runtime/run-weekly-attribute-writeback.mjs 只是仓库脚本、未登记为能力，round-runner 按 manifest 登记表解析能力，所以即使打开 enabled 也会停在 capability not registered。要真正挂上这条链，先得有「竞品周更」能力（manifest + 两段式 adapter + 按名解析每周入参），那是独立的一批，不要在这里改字段凑。尺寸链的最新口径与边界见 docs/ops/SIZE-CHAIN-FIXED-2026-09-21.md 第九、十节。"
+      "collectInputResolver": "keyword-weekly/v1",
+      "collectInputResolverConfig": {
+        "cateId": "50002411",
+        "category": "普通浴缸"
+      },
+      "notes": "这条排期是**关键词周更**（2026-09-22 改名改述；原名 weekly-competitor 与它实际借用的能力 sycm.feishu.weekly 不符，那个名字是历史遗留）。// 每周会变的入参不再是手写的：`collectInputResolver: keyword-weekly/v1` 会在开跑前按周期算出 collectionDate（=周期结束日）、newTableName、sourceTableName（=上一期）、并按名解析 sourceTableId / historyTableId / libraryTableId / protectedTableId，再读历史表算出 batchNumber 与 expectedHistoryBefore。2026-09-22 用真实库只读跑过一次，算出来的 sourceTableId=tblrX0GM7HkVhF85（上一期 09-12 表）、currentTableId=tblZsUns9353w3nl（本期 09-19 表），与 09-19 期人工手写的参数逐项吻合；历史表 2367 行、批次已到 8，所以下一批 batchNumber=9。// **打开 enabled 之前必须先补一项**：collectInputResolverConfig 里缺 `protectedTableName`，缺它会在解析阶段 fail-closed 停住（这是刻意的，不是 bug）。它的语义是 update-weekly-base.mjs:788-789 那句断言里的 \"Protected previous-week analysis table\" —— 即**上一有效周**的分析表，而「有效」的判据住在 skills/sycm-to-feishu-base/scripts/sync-decision-history.mjs 里，本仓库目前没有把它提出来。**不要凭「上一期」猜这个值**：猜错只会让它去保护一张不该保护的表，而那条断言不会报错。已知的真实用法可参考 docs/architecture/PHASE-ARCHIVE.md 里的演练（weekly=09-12 而 protected=08-29，两者并不相邻），可见它不是简单地取上一期。// 这条排期**不是**竞品段：竞品周更没有自己的周更能力（skills 下竞品侧只有 xws.market-analysis.collect 与 xws.sku.collection），所以它没有被排进这份文件——那是独立的一批（见 docs/ops/WEEKLY-FLOW-CURRENT-2026-09-20.md §9.6 施工顺序第 2 步）。// cateId=50002411 与 category=普通浴缸 取自 docs/ops/WEEKLY-FLOW-CURRENT-2026-09-20.md §1.0（浴缸/淋浴房 → 浴缸 > 普通浴缸）。"
     }
   ]
 }

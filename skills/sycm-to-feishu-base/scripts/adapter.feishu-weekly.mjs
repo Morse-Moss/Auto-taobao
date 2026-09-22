@@ -7,9 +7,19 @@
 //   PUBLISH（有外部写入）：克隆上周周表 → 导入本周行 → 回读新表与历史表验收
 //
 // 一条重要的架构边界（必须写明，否则会被误读为「迁移没做完」）：
-// 周更 SOP 里「克隆 + 导入」之后还要等飞书 AI 结算，再跑 sync-decision-history。
-// 那是**第二个发布单元**，依赖一个非确定性的外部结算过程；不能塞进同一次 publish
-// （一次 publish 只能覆盖一个确定性的外部写入 + 一次回读）。本文件只覆盖第一个。
+// 「克隆 + 导入」之后还有一步 `sync-decision-history`（把本批达标情况快照进历史表，
+// 并回写本期三个「上一有效周…达标」基数）。那是**第二个发布单元**：它必须等本期那几列
+// 分析值落定之后才能算，所以不能塞进同一次 publish（一次 publish 只能覆盖一个确定性的
+// 外部写入 + 一次回读）。本文件只覆盖第一个。
+//
+// 2026-09-22 更正：这段原先写的是「之后还要等飞书 AI 结算」。**那个前提已经不成立** ——
+// 决策类字段（`优先级` / `是否重点词` / `搜索热度` / `交易热度` / `对应产品方向`）现在是飞书
+// **公式**（对应 `runtime/apply-weekly-decision-formulas.mjs` 那批工作，而
+// `runtime/retired-keyword-decision-writer.test.mjs` 断言旧的 AI 写入器已退役）；
+// 唯一剩下的 AI 字段 `内容热度` 也已改由**本地分析**产出再传回飞书
+// （`runtime/run-weekly-local-analysis.mjs`）。
+// 所以第二个发布单元等的不是「非确定性的外部结算」，而是「本地分析那一段先跑完」。
+// 取证：`docs/ops/WEEKLY-FLOW-CURRENT-2026-09-20.md` §9.6（只读实测，表上一个 AI 字段都没有）。
 //
 // CLI（run-weekly-pre-ai.mjs / update-weekly-base.mjs / copy-weekly-table.mjs /
 // sync-decision-history.mjs）仍是人工运维入口，未被替代。

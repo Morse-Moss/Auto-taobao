@@ -1,0 +1,54 @@
+{
+  "resolverId": "keyword-weekly/v1",
+  "period": {
+    "kind": "PREVIOUS_WEEK_SUN_SAT",
+    "startDate": "2026-09-13",
+    "endDate": "2026-09-19"
+  },
+  "profile": "kcne",
+  "appToken": "HdBhbttB5aScbasWJAMc0gGXnpe",
+  "baseUrl": "https://kcne618basvj.feishu.cn/base/HdBhbttB5aScbasWJAMc0gGXnpe",
+  "window": {
+    "collectionDate": "2026-09-19",
+    "tableName": "关键词分析 V1（2026-09-19）",
+    "previousCollectionDate": "2026-09-12",
+    "previousTableName": "关键词分析 V1（2026-09-12）",
+    "newTableName": "关键词分析 V1（2026-09-19）"
+  },
+  "tableCount": 9,
+  "tableNames": [
+    "关键词历史总表 V1",
+    "关键词分析 V1（修正版）",
+    "关键词分析 V1（2026-08-15）",
+    "关键词分析 V1（2026-08-26）",
+    "关键词分析 V1（2026-08-29）",
+    "关键词编号库 V1",
+    "关键词分析 V1（2026-09-11）",
+    "关键词分析 V1（2026-09-12）",
+    "关键词分析 V1（2026-09-19）"
+  ],
+  "resolved": {
+    "sourceTableId": "tblrX0GM7HkVhF85",
+    "sourceTableName": "关键词分析 V1（2026-09-12）",
+    "currentTableId": "tblZsUns9353w3nl",
+    "historyTableId": "tbl7HbH11JsQx6FL",
+    "libraryTableId": "tblDEZY8RkwoHLEX"
+  },
+  "currentTableExists": true,
+  "history": {
+    "rows": 2367,
+    "batchNumber": 9,
+    "expectedHistoryBefore": 2367,
+    "batchHistogram": {
+      "1": 300,
+      "2": 267,
+      "3": 300,
+      "4": 300,
+      "5": 300,
+      "6": 300,
+      "7": 300,
+      "8": 300
+    }
+  }
+}
+EXIT=0

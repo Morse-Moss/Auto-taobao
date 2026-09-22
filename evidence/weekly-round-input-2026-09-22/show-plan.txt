@@ -1,0 +1,21 @@
+{
+  "scheduleFile": "D:\\Retire\\sycm-automation\\runtime\\round-schedule.json",
+  "ok": true,
+  "now": "2026-09-22T05:04:42.571Z",
+  "rounds": [
+    {
+      "name": "weekly-keyword",
+      "capability": "sycm.feishu.weekly",
+      "when": "每周一 09:00，跑上一周（周日~周六）",
+      "enabled": false,
+      "due": false,
+      "triggerAt": "2026-09-21T01:00:00.000Z",
+      "isLastTriggerToday": false,
+      "hoursSinceTriggerAt": 28.1,
+      "windowKey": "2026-09-13~2026-09-19",
+      "businessKey": "sycm.feishu.weekly/bathtub-industry/2026-09-13~2026-09-19",
+      "nextTriggerAt": "2026-09-28T01:00:00.000Z"
+    }
+  ]
+}
+EXIT=0

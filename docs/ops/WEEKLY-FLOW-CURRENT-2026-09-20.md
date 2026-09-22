@@ -134,8 +134,10 @@
 **但仍然会缺，因为它是 opt-in 的**：不给 `--history-table-name` 就与从前逐字相同（只跑前两段），
 只是会在尾部打一句「这一跳没跑会缺什么、怎么补」。所以「本期基数有没有回写」这件事，
 现在取决于**调用者有没有带参数**，而不是取决于有没有人记得另跑一条命令 —— 这是进步，不是终点。
-要真正做到「跑一次就对」，还差两件：① 把它挂进排期（`runtime/round-schedule.json` 目前没有关键词周更这一条）；
-② 排期前先按 `scheduler-wiring-needs-registered-capability` 确认调度器认得这个能力标识。
+要真正做到「跑一次就对」，还差两件：① 把它挂进排期（`runtime/round-schedule.json` 原本没有关键词周更这一条；
+**2026-09-22 补上了前半段**，见 §9.7 —— 但那条排期覆盖的是 `sycm.feishu.weekly` 的**采集 + 第一发布单元**
+（§1.1~1.3），**本节这个 1.6 仍然不在排期里**：它跟着本地分析段走，而本地分析段还不是一个已登记能力）；
+② 排期前先按 `scheduler-wiring-needs-registered-capability` 确认调度器认得这个能力标识（已确认，见 §9.7）。
 
 后果不是报错，而是**静默的空**：本期三个 `近2周…达标次数` 整列为空、`是否重点词` 出现 `待数据`，同时历史表对应批次的 6 个快照字段也一起空着。
 已实测漏过两次：08-26 期（批次 4）、09-19 期（批次 8）。这是同一个病的第三例（前两例是 §3.1 / §3.2）。
@@ -253,6 +255,8 @@
 
 1. **第 6 步 SKU 富化的硬阻塞＝买家号登录态**。`evidence/sku-step6-2026-09-20/preflight-01.txt`：`STALLED` exit 3，商品页被重定向到 `login.taobao.com/havanaone/`（普通登录墙，无风控字样），密码库无该账号凭据 ⇒ 只能人扫码。且 2026-09-21 盘点（`D:/Retire/probe-live/inventory-2026-09-21.txt`）显示**竞品链浏览器整缺**（`9222=free`、`3457` 连不上）。
 2. **主表 `尺寸`/`适用空间` 仍是 Lookup(19)、0.7%**。这是平台枷锁（开放 API 建不了/改不了 Lookup 联接），不是脚本写错；本期用「周表改 Text 写满」绕行，解决了「数据在不在」，**没解决「能不能流进主表那一列」** ⇒ 第 6 步产物的落点仍不完整。
+   > **2026-09-22 晚更正**：本条把两件事混了。①「API 建不了 Lookup」只适用于**新建的表**（周表），不适用于主表现存那两列；
+   > ② 主表那两列实测**正常工作**，0.7% 的来源是「全库只采过 14 个商品」。见 §8.7。
 3. **这条链没有单一编排入口**（§2.1 结论不变）：八步仍靠人按文档顺序逐个跑 `runtime/*.mjs`。
 4. **agent 层不在任何门禁里**：`scripts/run-test-suite.mjs` 的 `listTestFiles('runtime')` 非递归 ⇒ `runtime/supervisor-agent/*.test.mjs` 与 `runtime/supervisor-agent/proposal/*.test.mjs` 一条都不会被跑。
 
@@ -345,6 +349,8 @@
 - SKU 周表 09-13 期**仍未创建**（全 base 只有 `SKU周_2026-08-23_2026-08-29`）⇒ 第 8 段（周快照）对本期仍没跑。
 - 第 7 步落点：主表 `尺寸`/`适用空间` 仍是 Lookup、0.7%。今天新增一条事实：`SKU明细` 830 行里已有
   **14 个商品**带尺寸数据 ⇒ 缺口不在采集侧，在写回/联接键那一侧（同 §7 的分析）。
+  > **2026-09-22 晚更正：这句归因错了。** 实测 Lookup 是通的，14/2004 的真正来源是「全库只采过 14 个商品」。
+  > 见 §8.7。
 
 ### 8.6 排期这一侧的实测与一处更正（2026-09-22，只读）
 
@@ -353,13 +359,276 @@
 
 1. `round-schedule.json` 里**只有一条**排期（`weekly-competitor`，`enabled:false`）。
    **关键词周更要的条目根本不存在** ⇒ §3.4 的「没进排期」是**事实，不是推测**。
+   **（2026-09-22 晚更正）** 那条排期已改名改述为 `weekly-keyword` 并声明了 `collectInputResolver`
+   ⇒ 它现在**就是**关键词周更、且入参能在运行时算出来（见 §9.7），本条第二句已不成立。
+   `enabled` 仍是 `false`；下面那段「竞品周更没有自己的能力」的结论**不变**。
 2. 对 §3.4 与 `round-schedule.json` notes 里那句「就算填了 URL 也跑不起来」作一处**精确化**：
    `round-runner.mjs:949` 是**会读**排期条目里的 `collectInput` 的（`publishInput` 在 `:968`）。
    机制在，缺的是**按名解析每周入参**（源周表 id、批次号、克隆前历史行数每周都变）。
    现在只能靠人每周去 JSON 里手改 —— 那不是「跑不起来」，是「跑起来要靠人记得改」，
    而且是**静默的**：改漏了不报错，只会写错周期。两者要修的东西完全不同，别混。
+   **（2026-09-22 晚更正）这条缺口补上了**：`runtime/weekly-round-input.mjs` 现在会按周期算出
+   `collectionDate` / 本期与上一期表名，并按名解析源周表 id / 历史总表 / 编号库 / 受保护表，
+   再读历史表算出批次号与克隆前历史行数 —— 见 §9.7（含只读实测：算出的值与 09-19 期人工手抄的逐项吻合）。
 
 现状能力登记（`skills/*/manifest.json` 的 `name`，今天用登记表复核）：
 `sycm.search-rank.export`、`sycm.feishu.weekly`、`xws.feishu.import`、`xws.market-analysis.collect`、
 `xws.sku.collection`、`xws.faq.raw-collect`、`xws.faq.product-collect`、`huitun.keyword-heat.collect`
 —— **竞品周更没有自己的能力**（同 §3.4，今天以登记表为准复核过）。
+
+### 8.7 更正 §7.3 与 §8.5 对「主表 Lookup 0.7%」的归因（2026-09-22 晚，只读实测）
+
+§7.3 第 2 条与 §8.5 最后一段都把 0.7% 归因成「平台枷锁 / 写回与联接键那一侧没接上」。**这个归因是错的**，
+本轮把 Lookup 的 formula 直接读出来之后可以下结论：那两列在**正常工作**，0.7% 的真正来源是**分母**。
+
+探针（只发 GET，不写飞书、不启停任何进程）：`tmp/_probe-lookup-coverage-v2.mjs`；
+产物 `tmp/_probe-lookup-coverage-v2.json`。读了三样东西：主表字段定义、SKU明细字段定义、两张表的全部记录。
+
+1. **主表 `尺寸` / `适用空间` 的 Lookup 定义（读 `GET /tables/tblkYcczxBnW4v5G/fields` 的 property.formula）**：
+
+   ```
+   bitable::$table[tbl3N48H4znz304T]
+     .FILTER(CurrentValue.$column[fld5fPwTIG] = bitable::$table[tblkYcczxBnW4v5G].$field[fldrsnjSju])
+     .$column[fldMjPnCtC].LISTCOMBINE().UNIQUE()
+   ```
+
+   按字段 id 映射回列名：源表 `tbl3N48H4znz304T` = **SKU明细**；
+   过滤条件是 **SKU明细.商品标题 = 主表.商品标题**；取值列是 **SKU明细.SKU尺寸**
+   （`适用空间` 同形，取 SKU明细.适用空间）。
+   ⇒ 它是「按商品标题把 SKU明细 里那一行的尺寸拉过来」，**不是断的**。
+   ⚠️ 顺带记一条脆弱点：联接键是**商品标题**，不是商品 ID。标题一改（多一个后缀、空格、emoji），
+   这一行的尺寸就会掉 —— 这是以后「明明采过却看不到」的第一嫌疑，别再去怀疑 Lookup 没接上。
+
+2. **两个数字（同一时刻实测）**：
+
+   | | 行数 | 有值行 | 涉及商品数 |
+   | --- | --- | --- | --- |
+   | SKU明细 `tbl3N48H4znz304T` | 830 | `SKU尺寸` 830/830、`尺寸汇总` 830/830 | **14 个商品** |
+   | 竞品主表 `tblkYcczxBnW4v5G` | 2004 | `尺寸` 15、`适用空间` 15 | 15 个商品 |
+
+   交叉核对：主表那 15 行里，**14 个**的商品 ID 正好就是 SKU明细 的 14 个商品。
+   ⇒ 这 14 个不是「Lookup 没拉过来」，是「**本来就只采过这 14 个商品的 SKU**」。
+
+3. **所以真正的瓶颈在 §8.5 的第 8 段（C6 的覆盖面），不在第 7 步（C4 的落点）**：
+   2004 个商品里只有 14 个采过 SKU ⇒ 主表那两列的上限就是 14/2004 ≈ 0.7%。
+   要让运营在飞书看到的尺寸列变满，要动的是「每期多采多少商品的 SKU」，不是去修 Lookup。
+
+**同一轮更正的第二处**：§七、§八 里反复出现的「开放 API 建不了 Lookup(19)」是**真的**，
+但它的适用面只是「用 API 在**新建的表**上创建 Lookup」（`create-weekly-formula-fields.mjs` 三变体实测全 99992402）。
+主表现存那两列是更早时候**在飞书界面上建的**，一直可用。两句不要混：一句说「建不了新的」，一句被误读成「现有的坏了」。
+
+---
+
+## 九、2026-09-22 对齐记录：用户口径 + 施工顺序
+
+以下四条是**用户本人拍板的**，与本文档其它章节冲突时**以本节为准**。
+
+### 9.1 最终目的（以后所有取舍的判据）
+
+用户原话：「我的最终目的就是系统可以定时自动跑周报流程，然后运营就可以直接去飞书查看相关数据，
+而不需要在意中间的过程，如果出现问题，业务人员也可以自己解决，比如像登录这种问题。」
+
+⇒ 判据是三条：① 定时自动跑完整周报；② 运营只去飞书看结果、不关心中间过程；③ 出问题**业务人员能自救**。
+⇒ 于是「要人」的地方必须分两类读：
+**业务人员能自己解决的**（登录、扫码、在飞书里领某个模块权限）＝可以保留人工，但**告警必须写成他照着能做完的动作**；
+**只有开发能解决的**（接线缺失、没有编排入口、参数要人手改）＝必须消灭。
+机制上限见 `docs/ops/FULL-AUTOMATION-STATE-CONTRACT-2026-09-21.md`。
+
+### 9.2 更正：登录**不是**「必然要人」，商家侧已经自动化（用户指出，代码复核成立）
+
+用户原话：「登录我前几天都是可以做到自动登录的，只要每个店铺隔离开，保存了相对应的登录信息，日报那边是做到了自动化。」
+
+复核结论：**成立**。现役实现＝`skills/sycm-alimama-daily-report/scripts/login-merchant.mjs`
+（纯逻辑在 `login-merchant-core.mjs`），三处硬事实：
+
+- **凭据不经过我们**：来自浏览器自己的密码库（`<profile>/Default/Login Data` 的 logins 表，列名 `password_value`）。
+  脚本只驱动浏览器自己的自动填充，**不读、不写、不传密码**。
+- **每店隔离是前提**：`runtime/browser-ports.mjs:123` `SHOP_BROWSERS` 给五家店各一份 profile
+  （`D:/Retire/edge-profiles/<名>`）＋ 独立调试端口 ＋ 独立代理端口。一个 profile 只能是一个淘宝身份。
+- **判据是「补一次可信手势之后回读有值」**，不是 `:autofill`（预览态与落地态都为 true，不能当判据）。
+- fail-closed 三态：`NO_SAVED_CREDENTIAL` / `CAPTCHA_REQUIRED` / `LOGIN_NOT_CONFIRMED`；
+  需要人时复用 `runtime/notify-feishu.mjs` 发飞书，口径 `--notify auto`（只有真试过且没成才叫人）。
+- 附带一条纪律：**告警里不给 http 链接**（点链接走系统默认浏览器，到不了目标 profile 的 Edge 实例）。
+
+**所以本文档其它地方把「登录」列为硬阻塞的写法，只在一种情况下才对：那份 profile 的密码库里没有该账号的凭据。**
+**竞品段（买家号，`9222` / `D:/Retire/edge-debug-profile`）目前属于这种情况** ——
+`SITES` 只登记了 `sycm` 与阿里妈妈两个**商家**站点，没有买家站点，所以竞品段仍然是「cookie 过期就要人」。
+补齐方式是**复用已有机制**（把买家号凭据存进那个 profile 的密码库 + 照商家那套判据做一遍），不是新造一套。
+
+### 9.3 K5 → K8：AI 字段改由本地分析产生，再传回飞书（用户口径）
+
+用户原话：「转换成我们分析完再上传到飞书，可以在 WorkBuddy 或者接入 LLM 的 key 去做分析。」
+
+现役两半都已在仓库里，缺的是**中间那一段组装**：
+
+- 生产端：`runtime/run-weekly-local-analysis.mjs`（入口）＋ `runtime/weekly-local-analysis.mjs`（core）。
+  它按 provider（`cc` / `codex` / `workbuddy`）算 `ANALYSIS_REGISTRY` 里两个 `owner:'llm'` 的字段
+  （`内容热度`、`对应产品方向`，各带提示词），产出 status **`PUBLISH_READY`** 的 `analysis-artifact.json`。
+- 消费端：`skills/sycm-to-feishu-base/scripts/run-weekly-post-ai.mjs --publish-artifact <那份 artifact>`
+  （校验 `status==='PUBLISH_READY'` + `publishPlan` + `evidence{source,providerDigest,promptDigest}`，然后写回飞书）。
+- **缺口＝输入组装**。`run-weekly-pre-ai.mjs:197-210` 落的是
+  `{collectionDate, batchNumber, category, sourceRows, target:{appToken, sourceTableId, sourceTableName,
+  newTableName, historyTableId, libraryTableId}}`；
+  而 `run-weekly-local-analysis.mjs` 要的是
+  `{appToken, currentTable{tableId,tableName,recordCount}, fields[], records[], historyRecords[],
+  historyTable{}, libraryTable{}, libraryRecords[], collectionDate, batchNumber, sourceEvidence, huitunResults?}`。
+  两者的**行来源根本不同**：前者是导出 CSV 的行，后者是**飞书当前周表里的记录**（带 `record_id`）。
+  ⇒ 顺序上**必须先 K4 导入、再从飞书读回来**，本地分析要插在 K4 之后、发布器之前。
+- 形状模板（**旧租户**时期的实物，只当形状参考，值不要用）：
+  `runtime/weekly-runs/2026-08-26/pre-ai-20260827T110840Z/enriched-input-three-tables.json`
+  （顶层键：`appToken / currentTable / fields / records / historyRecords / historyTable / libraryTable /
+  libraryRecords / collectionDate / batchNumber / sourceEvidence`）。那一期是靠人手工拼这份东西跑通的。
+
+### 9.4 已定的两处口径（不再重复确认）
+
+- **C6 覆盖面＝本期 A/B 候选全采**（用户：「这个之前已经跟你对过确定了的」）。现在全库只采过 14 个商品（见 §8.7）。
+- **C4 不动**（见 §8.7：Lookup 是通的，瓶颈在 C6 的覆盖面）。
+
+### 9.5 施工顺序（2026-09-22 初版 → 当日被 §9.6 推翻并改序，以 §9.6 为准）
+
+> **这条已经不成立。** 初版把「K8 接线」排在第一位，理由是「K5 是关键词段唯一一处硬性人工闸门」。
+> 落地前复核发现**关键词表上根本没有 AI 字段**（见 §9.6），K5 这个闸门不存在，K8 也就不必为它而做。
+> 改后的顺序见 §9.6 末段。
+
+### 9.6 落地前复核：K5 不存在，K8 不是第一步（2026-09-22，只读实测）
+
+初版 §9.3 / §9.5 建立在「关键词表里有两个 AI 字段、现在靠人在飞书页面结算」之上。这个前提**错了**。
+
+探针（只发 GET）：`tmp/_probe-keyword-local-fields.mjs` → `tmp/_probe-keyword-local-fields.json`。
+对象：关键词库 base `HdBhbttB5aScbasWJAMc0gGXnpe` 的当期表 `关键词分析 V1（2026-09-19）` = `tblZsUns9353w3nl`（300 行）。
+
+**一、那张表上一个 AI 字段都没有。**
+
+| 字段 | type / ui_type | property | 谁在算 | 实测有值 |
+| --- | --- | --- | --- | --- |
+| `内容热度` | 1 / Text | `null` | **外部写入方＝我们的本地分析** | 300/300 |
+| `对应产品方向` | 20 / Formula | 只有 `formatter` + `formula_expression`，**无任何 AI property** | 飞书公式 | 300/300 |
+| `优先级` / `是否重点词` / `搜索热度` / `交易热度` / `近2周…达标次数` | 20 / Formula | 同上 | 飞书公式 | 300/300 |
+
+`对应产品方向` 的公式原文（读出来就是它，不是猜的）：
+
+```
+IF(ISBLANK(上一有效周重点达标), "",
+  IF(上一有效周A级达标 >= 2, "主推方向（已有优势放大）",
+    IF(上一有效周探索达标 >= 2, "增长方向（未来新品）",
+      IF(上一有效周重点达标 >= 2, "探索方向（验证市场）", "暂无"))))
+```
+
+⇒ 它读的是那三个「上一有效周…基数」，**纯粹是公式**，跟 AI 无关。
+⇒ `ANALYSIS_REGISTRY` 里把它标成 `owner:'llm'` 是**本地分析设计**侧的口径（那条设计本来要自己算它），
+跟飞书表上这一列的现行实现不是一回事。两者不能混读。
+
+**二、`内容热度` 由本地写，已被实测钉死。** 除了「它是 Text + property 为 null」之外，
+还有一个精确吻合：`run-keyword-weekly-local-analysis.mjs:189-191` 记载「2026-09-19 期 `细分标签` 290/300 有值，
+剩下 10 行本地也判不出」，而本轮实测 `细分标签` 正是 **290/300**。
+⇒ 那 5 个 `LOCAL_ANALYSIS_FIELDS`（4 个规则字段 + `内容热度`）确实是本地分析写进去的，且已写满。
+
+**三、`adapter.feishu-weekly.mjs:9-12` 那句「克隆+导入之后还要等飞书 AI 结算」与现行表结构不符。**
+现状是：决策类字段已改成公式（对应的是 `runtime/apply-weekly-decision-formulas.mjs` 那批工作，
+而 `runtime/retired-keyword-decision-writer.test.mjs` 断言它**已退役**），AI 只剩 `内容热度` 一个、
+且已本地化。⇒ K5 在 09-19 期**不存在**；它是一条**过期的设计边界说明**，应当改掉（本轮未改，留给下一步）。
+
+**四、「每周入参按名解析」比 §9.5 说的完成得多。** `run-keyword-weekly-local-analysis.mjs:380-388`
+的 `resolveTable(tables, {tableName, tableId})` 已经做「按名解析 + 名字与 id 同时给时必须一致」。
+真正还靠人的只剩**这几个数字/名字要手写**：`--collection-date`、`--table-name`、`--previous-table-name`、
+`--batch-number`、`--expected-history-rows`。而它们**全部可由周期推导** ⇒ 这一步的边界比原先写的小得多。
+
+**改后的施工顺序（2026-09-22 定，按此推进）：**
+
+1. **关键词段进排期**：把周期（`PREVIOUS_WEEK_SUN_SAT`）推导成上面那几个入参，
+   再改 `runtime/round-schedule.json` 现存那条排期（**改名改述，不能新增**，`enabled` 保持 `false`）。
+   关键词段每一步都已通，它缺的只是「被叫醒 + 不用人手写参数」。
+2. **竞品段编排入口 + 能力登记**：八步合成一条命令（登记表里目前没有竞品周更能力）。这是剩下最大的一块。
+3. **买家号凭据入库**：让竞品段也能像商家侧一样自动登录（见 §9.2 末段）。
+4. **灰豚段跑满**：当期 `灰豚话题浏览量` 只有 **1/300**，而 `优先级` 的 A 档判定依赖它。
+5. ~~K8 接线~~ **降级为可选**：它只在「关键词段收敛到单一发布器」这个架构目标下才需要；
+   按用户的目的（定时自动跑、运营看飞书）不做也行，现状的本地入口已直接写飞书。
+   要做的话是**独立一批**，不要混进上面四条。
+
+### 9.7 第 1 步落地：关键词周更的「每周入参」解析（2026-09-22，含只读实测）
+
+§9.6 施工顺序第 1 条（「关键词段进排期」）的前置那一半做完了：**把周期算成入参**。
+本步**没有真跑过一轮**（那会写飞书），交付的是「排期算得出入参 + 算错就停」。
+
+**改了什么**
+
+| # | 落点 | 说明 |
+| --- | --- | --- |
+| 1 | `runtime/weekly-round-input.mjs`（新） | 周期 → 入参。纯推导那半（采集日 / 本期与上一期表名 / 按名解析 / 批次号 / 克隆前历史行数）不含任何 I/O，reader 是**注入**的，所以离线可测。 |
+| 2 | `runtime/weekly-round-input-reader.mjs`（新） | 凭据与 base 的来源。`baseUrl`/`appToken` 由 profile 推（`feishu-targets.mjs` 是单一事实来源），**不写进排期配置** —— 手写一份就会与 profile 各自漂移。 |
+| 3 | `runtime/sop-runtime/round-runner.mjs` | 接线：条目声明 `collectInputResolver` 才解析；**不声明 = 这一层不存在**，行为与从前逐字相同。解析结果与条目里手写的同名键冲突时抛 `COLLECT_INPUT_CONFLICT` 停跑（两份真相源早晚漂移，而漂移不报错）。 |
+| 4 | `runtime/round-schedule.json` | 唯一那条排期**改名改述**（`weekly-competitor` → `weekly-keyword`，原名与它实际借用的能力不符），`enabled` 保持 `false`。 |
+
+顺带修掉的三处过期说明（都属「文档没跟上」）：
+- `skills/sycm-to-feishu-base/scripts/adapter.feishu-weekly.mjs` 顶部那句「克隆 + 导入之后还要等飞书 AI 结算」
+  ⇒ 按 §9.6 的实测改写（决策类已是公式，唯一的 AI 字段 `内容热度` 已本地化）。
+- `skills/sycm-to-feishu-base/manifest.json` 的 `description` 还写着「依赖飞书 AI 结算的决策历史同步」
+  ⇒ 改成「依赖本期分析值（决策类字段是飞书公式、内容热度由本地分析产出）落定」。
+  同一个过期前提活在**两处**（适配器注释 + manifest 描述），只改一处就是新的不一致。
+- `runtime/run-keyword-weekly-local-analysis.mjs` 的 `FeishuReader` 改为**导出**（复用，不复制第二份飞书客户端）。
+
+**实测：解析出来的值 = 人过去手抄的值**
+
+只读探针 `evidence/weekly-round-input-2026-09-22/probe-resolve-weekly-input.mjs`（只发 GET、不启浏览器、不写飞书）对
+09-13~09-19 这个真实周期跑了一遍：
+
+| 项 | 解析结果 | 旁证 |
+| --- | --- | --- |
+| `collectionDate` | `2026-09-19` | = 周期结束日（该周周六） |
+| `sourceTableId`（克隆源 = 上一期） | `tblrX0GM7HkVhF85` | 与 09-19 期人工传的 `--previous-table-id` **逐字相同** |
+| 本期表 id | `tblZsUns9353w3nl` | 与 09-19 期人工传的 `--table-id` **逐字相同** |
+| `historyTableId` / `libraryTableId` | `tbl7HbH11JsQx6FL` / `tblDEZY8RkwoHLEX` | 按名解析（该 base 共 9 张表） |
+| `batchNumber` | `9` | 历史表 2367 行、批次 1~8 齐（09-19 期用的是 8） |
+| `expectedHistoryBefore` | `2367` | = 历史表里**非本批次**的行数 |
+
+⇒ 这几个值过去**每周靠人从上一期抄**，抄漏不报错、只写错周期。现在由排期自己算。
+
+**刻意没做：`protectedTableName` 不推导**
+
+它的语义是 `update-weekly-base.mjs:788-789` 那句断言里的 "Protected previous-week analysis table"，
+即**上一有效周**的分析表；而「有效」的判据住在 `skills/sycm-to-feishu-base/scripts/sync-decision-history.mjs` 里，
+本仓库还没把它提出来。`PHASE-ARCHIVE.md` 里那次演练 weekly=09-12 而 protected=08-29（**两者并不相邻**）
+⇒ 它**不是**简单地取上一期。猜错只会让它去保护一张不该保护的表，而那条断言**不会报错** ——
+所以按 §9.6 的纪律：推不出来就不猜，改成排期配置里显式给出。
+
+**它是这条排期唯一的待补项。** 补上即可打开 `enabled`；不补则**在解析阶段**就停（这是刻意的）：
+
+```
+Error: keyword weekly resolver is missing stable config: protectedTableName
+    at resolveKeywordWeeklyCollectInput (runtime/weekly-round-input.mjs:197)
+    at resolveDeclaredCollectInput (runtime/sop-runtime/round-runner.mjs:998)
+    at optionsForEntry (round-runner.mjs:1006) → main (round-runner.mjs:1209)
+```
+
+这条 fail-closed 发生在 `listTables` **之前** ⇒ 不读飞书、不启浏览器、不写任何东西。
+
+**验证跑了什么**（原始输出：`evidence/weekly-round-input-2026-09-22/`）
+
+| 跑的东西 | 结果 | 输出文件 |
+| --- | --- | --- |
+| `runtime/weekly-round-input.test.mjs` | **23/23/0** | `weekly-round-input-tests.txt` |
+| 突变验证（4 个突变） | 逐个点名红 → 还原 → `sha256` 逐字节一致 | `mutation-checks.txt` |
+| `skills` 全量 | **786/786/0**（1226.6 秒） | `skills-suite.txt` |
+| `runtime` 全量 | **844/844/0** | `runtime-suite.txt` |
+| `runtime/sop-runtime/*.test.mjs` | **398/398/0** | `sop-runtime-suite.txt` |
+| `skills/sycm-to-feishu-base/tests/adapter-feishu-weekly.test.mjs` | **23/23/0** | `adapter-feishu-weekly-tests.txt` |
+| 真解析一次（只发 GET） | 解析值 = 09-19 期人工手抄值 | `live-resolve-real-period.txt` |
+| 真 CLI 缺 stable 项（fail-closed） | EXIT=1，停在解析期、零网络 | `live-fail-closed-missing-stable.txt` |
+| 真 CLI 坏 resolver id | EXIT=1，点名 `Unknown collectInputResolver` | `live-fail-closed-unknown-resolver.txt` |
+
+`skills` / `runtime` 两次全量跑在 `manifest.json` 描述那次改写**之前**，而它们覆盖的代码文件此后一字未动；
+所以改完单独重跑了覆盖该 manifest 的用例文件（`adapter-feishu-weekly-tests.txt`，23/23）。
+
+**怎么复核这一批**（全部只读或离线）：
+
+```
+node --test runtime/weekly-round-input.test.mjs                  # 23 用例全绿
+node evidence/weekly-round-input-2026-09-22/mutate-weekly-round-input.mjs   # 改坏→点名红→还原→逐字节一致
+node runtime/sop-runtime/round-runner.mjs --schedule-file runtime/round-schedule.json --show-plan
+node evidence/weekly-round-input-2026-09-22/probe-resolve-weekly-input.mjs  # 真解析一次（只发 GET）
+```
+
+**还没做的部分（明确交接）**：排期目前只到「算得出入参」。真正打开 `enabled` 之前还要
+① 补 `protectedTableName`；② 用 `--force` 排练一轮；③ 后段仍未进排期 ——
+本地分析段（第一发布单元跑完之后才轮到它）与灰豚段（§9.6 第 4 条，当期 `灰豚话题浏览量` 只有 1/300）；
+④ 竞品段仍没有自己的周更能力（§9.6 第 2 条）。

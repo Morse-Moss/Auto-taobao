@@ -3,7 +3,7 @@
   "name": "sycm.feishu.weekly",
   "version": "1.1.0",
   "kind": "capability",
-  "description": "生意参谋周更流水线（第一发布单元）：SYCM 导出并验证源文件对，克隆上周周表、导入本周行并回读验收。依赖飞书 AI 结算的决策历史同步是第二个发布单元，不在本次提交内。",
+  "description": "生意参谋周更流水线（第一发布单元）：SYCM 导出并验证源文件对，克隆上周周表、导入本周行并回读验收。依赖本期分析值（决策类字段是飞书公式、内容热度由本地分析产出）落定的决策历史同步是第二个发布单元，不在本次提交内。",
   "entry": "scripts/adapter.feishu-weekly.mjs",
   "inputs": [
     {

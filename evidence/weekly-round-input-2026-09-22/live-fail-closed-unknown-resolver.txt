@@ -1,0 +1,5 @@
+Error: Unknown collectInputResolver: keyword-weekly/nope (known: keyword-weekly/v1)
+    at assertKnownCollectInputResolverId (file:///D:/Retire/sycm-automation/runtime/weekly-round-input.mjs:237:11)
+    at resolveDeclaredCollectInput (file:///D:/Retire/sycm-automation/runtime/sop-runtime/round-runner.mjs:990:3)
+    at optionsForEntry (file:///D:/Retire/sycm-automation/runtime/sop-runtime/round-runner.mjs:1006:38)
+    at main (file:///D:/Retire/sycm-automation/runtime/sop-runtime/round-runner.mjs:1209:57)

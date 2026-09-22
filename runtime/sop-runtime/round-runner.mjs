@@ -49,6 +49,11 @@ import {
 // 轮次历史（只追加）。它是**旁路**：没有任何判定读它，写失败也不许影响这一轮的业务结果
 // （见本文件 finish() 里那段：失败记进收据的 history.error，不抛）。
 import { buildHistoryEntry, shouldRecord, createFileRoundHistory, DEFAULT_HISTORY_FILE } from './round-history.mjs';
+// 「每周会变的入参」的运行时解析（2026-09-22）。
+// 真实现只在这里（编排层的 CLI 装配处）接线，理由与体检层相同：编排内核 `runRound` 拿到的
+// 始终只是**注入好的入参**，所以它仍然能在没有网络、没有凭据的机器上被完整测一遍。
+import { assertKnownCollectInputResolverId, collectInputResolverFor } from '../weekly-round-input.mjs';
+import { createKeywordWeeklyReader } from '../weekly-round-input-reader.mjs';
 
 export const ROUND_CONTRACT_VERSION = 'agent-round-v1';
 export const ROUND_STATE_VERSION = 'agent-round-state-v1';
@@ -943,10 +948,69 @@ function machineName() {
   }
 }
 
+// 解析结果与条目里**手写**的值冲突就停，不信任任何一边。
+//
+// 为什么不是「解析结果覆盖手写值」：那会让「配置里明明写着 sourceTableId」表现成「跑的是另一个
+// 源表」，而两边都不报错。为什么也不是「手写值覆盖解析结果」：那等于解析白做，且改漏了不报错。
+// 每周会变的入参不该同时写在两处 —— 两份真相源早晚漂移，漂移的方向没人能预测。
+//（同族判据：`healthCheckFromEntry` 里 declared !== derived ⇒ HEALTH_BROWSER_MISMATCH。）
+export function mergeResolvedCollectInput(collectInput, resolvedCollectInput) {
+  if (!resolvedCollectInput) return collectInput;
+  const conflicts = Object.entries(resolvedCollectInput)
+    .filter(([key, value]) => Object.hasOwn(collectInput, key)
+      && JSON.stringify(collectInput[key]) !== JSON.stringify(value))
+    .map(([key]) => key);
+  if (conflicts.length > 0) {
+    throw new RoundError(
+      `collectInputResolver computed different values for: ${conflicts.join(', ')} —— `
+        + 'these keys are recomputed every week, so remove them from the schedule entry '
+        + '(two sources of truth for one field drift apart, and nothing reports it)',
+      'COLLECT_INPUT_CONFLICT',
+    );
+  }
+  return { ...collectInput, ...resolvedCollectInput };
+}
+
+// 条目声明了 `collectInputResolver` 才解析；**不声明 = 这一层不存在**，行为与从前逐字相同。
+//
+// 为什么必须在这一层：`sourceTableId` / `batchNumber` / `expectedHistoryBefore` 都是
+// 「每周会变、且只能从飞书读出来」的值 —— 静态配置里根本写不出正确的值。缺了这一步，
+// 排期只有两种结局：填了 URL 也 fail-closed，或者靠人每周改 JSON 而改漏了不报错。
+//（这条缺口记在 `docs/ops/LESSONS-2026-09-14_15.md:255`。）
+export async function resolveDeclaredCollectInput(entry, decision, { keywordReader = null } = {}) {
+  const id = entry?.collectInputResolver;
+  if (!id) return null;
+  const stableConfig = entry.collectInputResolverConfig ?? {};
+  if (typeof stableConfig !== 'object' || Array.isArray(stableConfig)) {
+    throw new RoundError('collectInputResolverConfig must be an object', 'COLLECT_INPUT_RESOLVER_CONFIG_INVALID');
+  }
+  // **先校验 id，再碰凭据**：一个写错的 id 应当表现为「配置写错了」，
+  // 而不是「一次莫名其妙的凭据读取失败」。这条顺序也让「用坏配置跑真 CLI」成为
+  // 一个不产生任何副作用的活证据（见本文件顶部关于装配点的说明）。
+  assertKnownCollectInputResolverId(id);
+  // 凭据与 base 由 profile 推（`feishu-targets.mjs` 是它们的单一事实来源），不写进排期配置：
+  // 手写一份就会与 profile 各自漂移，而「跑的是哪个租户」不该变成靠记忆判断的事。
+  const created = keywordReader ?? createKeywordWeeklyReader();
+  const resolver = collectInputResolverFor(id, {
+    reader: created.reader,
+    stable: { ...stableConfig, baseUrl: stableConfig.baseUrl ?? created.baseUrl, appToken: created.appToken },
+  });
+  return resolver({ period: decision?.period });
+}
+
+/**
+ * 排期条目 → 一次运行的选项（含「每周会变的入参」的运行时解析）。
+ * 它只是「先 await 解析、再交给同步的 optionsFromEntry」这一步，没有别的职责。
+ */
+export async function optionsForEntry(entry, args = {}, decision = null, options = {}) {
+  const resolvedCollectInput = await resolveDeclaredCollectInput(entry, decision, options);
+  return optionsFromEntry(entry, args, decision, { ...options, resolvedCollectInput });
+}
+
 // 排期条目 -> 一次运行的选项。命令行参数可以盖掉条目里的值（人工临时跑用），但**不反过来**：
 // 配置文件是运营日常改的地方，命令行是临时干预，临时的不该被持久的那份悄悄覆盖。
-function optionsFromEntry(entry, args = {}, decision = null, { registry = null } = {}) {
-  const collectInput = { ...(entry.collectInput ?? {}) };
+export function optionsFromEntry(entry, args = {}, decision = null, { registry = null, resolvedCollectInput = null } = {}) {
+  const collectInput = mergeResolvedCollectInput({ ...(entry.collectInput ?? {}) }, resolvedCollectInput);
   if (args.collectInput) Object.assign(collectInput, JSON.parse(args.collectInput));
   const envFile = args.envFile ?? entry.envFile ?? null;
   if (envFile) collectInput.envFile = resolve(envFile);
@@ -1110,7 +1174,7 @@ export async function main(argv = process.argv.slice(2)) {
         intervalMs: intervalSeconds * 1000,
         maxTicks,
         runRoundOnce: async (entry, decision) => {
-          const receipt = await runRound(buildRound(optionsFromEntry(entry, args, decision, { registry }), { dueDecision: decision }));
+          const receipt = await runRound(buildRound(await optionsForEntry(entry, args, decision, { registry }), { dueDecision: decision }));
           process.stdout.write(`[round] ${entry.name} → ${receipt.outcome} (key ${receipt.businessKey}, notify ${receipt.notification.status})\n`);
           return receipt;
         },
@@ -1142,7 +1206,7 @@ export async function main(argv = process.argv.slice(2)) {
           receipts.push({ name: decision.name, skipped: true, reason: decision.reason, nextTriggerAt: decision.nextTriggerAt, businessKey: decision.businessKey });
           continue;
         }
-        const receipt = await runRound(buildRound(optionsFromEntry(entry, args, decision, { registry }), { dueDecision: decision, force: args.force === true }));
+        const receipt = await runRound(buildRound(await optionsForEntry(entry, args, decision, { registry }), { dueDecision: decision, force: args.force === true }));
         receipts.push({ name: decision.name, skipped: false, receipt });
       }
       process.stdout.write(`${JSON.stringify({ scheduleFile: path, rounds: receipts }, null, 2)}\n`);

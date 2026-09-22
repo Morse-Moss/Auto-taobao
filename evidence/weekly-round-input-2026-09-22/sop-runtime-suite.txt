@@ -1,0 +1,2398 @@
+TAP version 13
+# Subtest: PLAN 提案解析：能力/输入/理由来自固定的三个 claim，其余一律不进步骤
+ok 1 - PLAN 提案解析：能力/输入/理由来自固定的三个 claim，其余一律不进步骤
+  ---
+  duration_ms: 1.7633
+  type: 'test'
+  ...
+# Subtest: 候选集必须由调用方声明；没有候选集就没有「在边界内」这回事
+ok 2 - 候选集必须由调用方声明；没有候选集就没有「在边界内」这回事
+  ---
+  duration_ms: 0.2781
+  type: 'test'
+  ...
+# Subtest: 未登记的能力不能被提议：否则等于绕开副作用闸门
+ok 3 - 未登记的能力不能被提议：否则等于绕开副作用闸门
+  ---
+  duration_ms: 0.1353
+  type: 'test'
+  ...
+# Subtest: 声明写外部的能力：未授权时不允许成为自动执行的步骤，授权后才放行
+ok 4 - 声明写外部的能力：未授权时不允许成为自动执行的步骤，授权后才放行
+  ---
+  duration_ms: 0.1301
+  type: 'test'
+  ...
+# Subtest: 输入面收敛：键必须在白名单内，值只能是标量
+ok 5 - 输入面收敛：键必须在白名单内，值只能是标量
+  ---
+  duration_ms: 0.2734
+  type: 'test'
+  ...
+# Subtest: 路径类输入必须真实存在且落在 allowedRoots 之下（Agent 不能指向仓库外的任意文件）
+ok 6 - 路径类输入必须真实存在且落在 allowedRoots 之下（Agent 不能指向仓库外的任意文件）
+  ---
+  duration_ms: 1.023
+  type: 'test'
+  ...
+# Subtest: 没有 Planner、或没有 Reviewer 时，兜底就是默认路径，不是错误路径
+ok 7 - 没有 Planner、或没有 Reviewer 时，兜底就是默认路径，不是错误路径
+  ---
+  duration_ms: 0.6025
+  type: 'test'
+  ...
+# Subtest: 提案阶段失败（抛错 / 非法 / 非 PLAN）一律降级兜底，并把提案留痕
+ok 8 - 提案阶段失败（抛错 / 非法 / 非 PLAN）一律降级兜底，并把提案留痕
+  ---
+  duration_ms: 0.8697
+  type: 'test'
+  ...
+# Subtest: 边界检查失败：越界能力不执行，但「Agent 提了越界步骤」必须留痕
+ok 9 - 边界检查失败：越界能力不执行，但「Agent 提了越界步骤」必须留痕
+  ---
+  duration_ms: 1.1577
+  type: 'test'
+  ...
+# Subtest: 复核阶段失败：降级兜底，提案仍留痕；复核非 ACCEPT 时分别走兜底与「等人」
+ok 10 - 复核阶段失败：降级兜底，提案仍留痕；复核非 ACCEPT 时分别走兜底与「等人」
+  ---
+  duration_ms: 1.0204
+  type: 'test'
+  ...
+# Subtest: 全部通过：产出 RUN_PLANNED 步骤，并带上复核结论与合并后的输入
+ok 11 - 全部通过：产出 RUN_PLANNED 步骤，并带上复核结论与合并后的输入
+  ---
+  duration_ms: 0.4293
+  type: 'test'
+  ...
+# Subtest: planNextStep 永不抛异常：把会抛错的一切都包住
+ok 12 - planNextStep 永不抛异常：把会抛错的一切都包住
+  ---
+  duration_ms: 0.8354
+  type: 'test'
+  ...
+# Subtest: 规划结论落进权威审计：走 controller.recordDecisions，空结论不写
+ok 13 - 规划结论落进权威审计：走 controller.recordDecisions，空结论不写
+  ---
+  duration_ms: 2.2215
+  type: 'test'
+  ...
+# Subtest: 动作与拒绝原因枚举与实现一致
+ok 14 - 动作与拒绝原因枚举与实现一致
+  ---
+  duration_ms: 0.136
+  type: 'test'
+  ...
+# Subtest: Agent manifest：必须声明只读工具、不得有写副作用、必须声明兜底路径
+ok 15 - Agent manifest：必须声明只读工具、不得有写副作用、必须声明兜底路径
+  ---
+  duration_ms: 1.3588
+  type: 'test'
+  ...
+# Subtest: 提案校验：合法的、带证据引用的提案通过，并只转成 decisions
+ok 16 - 提案校验：合法的、带证据引用的提案通过，并只转成 decisions
+  ---
+  duration_ms: 0.6105
+  type: 'test'
+  ...
+# Subtest: 提案不得写状态轴或身份字段（含嵌套位置）
+ok 17 - 提案不得写状态轴或身份字段（含嵌套位置）
+  ---
+  duration_ms: 0.2165
+  type: 'test'
+  ...
+# Subtest: 把状态轴取值塞进 status/state 这类键也被拒（防止调用方误读提案当成状态）
+ok 18 - 把状态轴取值塞进 status/state 这类键也被拒（防止调用方误读提案当成状态）
+  ---
+  duration_ms: 0.0965
+  type: 'test'
+  ...
+# Subtest: 通用词不会被误杀：正文里出现 READY / UNKNOWN 不影响校验
+ok 19 - 通用词不会被误杀：正文里出现 READY / UNKNOWN 不影响校验
+  ---
+  duration_ms: 0.0842
+  type: 'test'
+  ...
+# Subtest: 无证据的断言一律拒绝——「模型说的」不是证据
+ok 20 - 无证据的断言一律拒绝——「模型说的」不是证据
+  ---
+  duration_ms: 0.0977
+  type: 'test'
+  ...
+# Subtest: 引用本轮之外的证据即拒绝（不允许拿历史或凭空的引用冒充证据）
+ok 21 - 引用本轮之外的证据即拒绝（不允许拿历史或凭空的引用冒充证据）
+  ---
+  duration_ms: 1.0823
+  type: 'test'
+  ...
+# Subtest: 提案的其余形状校验：runId 必须对上、kind 必须在声明范围内、置信度必须在 [0,1]
+ok 22 - 提案的其余形状校验：runId 必须对上、kind 必须在声明范围内、置信度必须在 [0,1]
+  ---
+  duration_ms: 0.2569
+  type: 'test'
+  ...
+# Subtest: Agent 端口：合法提案产出 decision，工具面只读且不可被调用方追加
+ok 23 - Agent 端口：合法提案产出 decision，工具面只读且不可被调用方追加
+  ---
+  duration_ms: 1.1146
+  type: 'test'
+  ...
+# Subtest: Agent 抛错或给出非法提案时明确降级为确定性兜底，绝不把异常抛给编排层
+ok 24 - Agent 抛错或给出非法提案时明确降级为确定性兜底，绝不把异常抛给编排层
+  ---
+  duration_ms: 0.4328
+  type: 'test'
+  ...
+# Subtest: 装配 Agent 端口时先过 manifest 闸门：非法 manifest 直接拒绝装配
+ok 25 - 装配 Agent 端口时先过 manifest 闸门：非法 manifest 直接拒绝装配
+  ---
+  duration_ms: 0.163
+  type: 'test'
+  ...
+# Subtest: 「移除 Agent 后确定性流程仍可运行」有静态检查：兜底声明 + 核心模块不得反向依赖 Agent
+ok 26 - 「移除 Agent 后确定性流程仍可运行」有静态检查：兜底声明 + 核心模块不得反向依赖 Agent
+  ---
+  duration_ms: 0.1718
+  type: 'test'
+  ...
+# Subtest: 拒绝原因枚举与实现一致；提案种类全部是「读 + 生成」性质，不含执行类
+ok 27 - 拒绝原因枚举与实现一致；提案种类全部是「读 + 生成」性质，不含执行类
+  ---
+  duration_ms: 0.1825
+  type: 'test'
+  ...
+# Subtest: 合法的 ACCEPT 通过复核；结论转成 decisions 且不含任何状态轴
+ok 28 - 合法的 ACCEPT 通过复核；结论转成 decisions 且不含任何状态轴
+  ---
+  duration_ms: 1.9537
+  type: 'test'
+  ...
+# Subtest: 摘要绑定：复核必须盖在**这一份**提案上，拿上一次的结论盖章会被拒
+ok 29 - 摘要绑定：复核必须盖在**这一份**提案上，拿上一次的结论盖章会被拒
+  ---
+  duration_ms: 0.2739
+  type: 'test'
+  ...
+# Subtest: 自审禁止：复核者不能是产出提案的那个 Agent，换个版本号也不行
+ok 30 - 自审禁止：复核者不能是产出提案的那个 Agent，换个版本号也不行
+  ---
+  duration_ms: 0.1249
+  type: 'test'
+  ...
+# Subtest: 角色闸门：复核端口只接 reviewer，复核者的 manifest 必须真的是 reviewer
+ok 31 - 角色闸门：复核端口只接 reviewer，复核者的 manifest 必须真的是 reviewer
+  ---
+  duration_ms: 0.5116
+  type: 'test'
+  ...
+# Subtest: 橡皮图章与无证据否决都不允许：三种结论都必须有带证据的理由
+ok 32 - 橡皮图章与无证据否决都不允许：三种结论都必须有带证据的理由
+  ---
+  duration_ms: 0.5295
+  type: 'test'
+  ...
+# Subtest: 结论白名单：verdict 必须在枚举内，且必须在复核者声明范围内
+ok 33 - 结论白名单：verdict 必须在枚举内，且必须在复核者声明范围内
+  ---
+  duration_ms: 0.4859
+  type: 'test'
+  ...
+# Subtest: 复核结论不得夹带状态轴或身份字段（与提案层共用同一份判定的两种落点）
+ok 34 - 复核结论不得夹带状态轴或身份字段（与提案层共用同一份判定的两种落点）
+  ---
+  duration_ms: 0.3294
+  type: 'test'
+  ...
+# Subtest: 复核的形状校验：runId 必须与运行和被复核提案同时对齐
+ok 35 - 复核的形状校验：runId 必须与运行和被复核提案同时对齐
+  ---
+  duration_ms: 0.7447
+  type: 'test'
+  ...
+# Subtest: 「复核者与提案者必须是两个 Agent」有静态检查，且把角色一起判
+ok 36 - 「复核者与提案者必须是两个 Agent」有静态检查，且把角色一起判
+  ---
+  duration_ms: 0.2611
+  type: 'test'
+  ...
+# Subtest: 复核端口：合法复核产出 decision；ESCALATE 表达为「需要人」，不是失败
+ok 37 - 复核端口：合法复核产出 decision；ESCALATE 表达为「需要人」，不是失败
+  ---
+  duration_ms: 0.6571
+  type: 'test'
+  ...
+# Subtest: 复核者坏掉时降级到确定性兜底，绝不把异常抛给编排层
+ok 38 - 复核者坏掉时降级到确定性兜底，绝不把异常抛给编排层
+  ---
+  duration_ms: 0.3135
+  type: 'test'
+  ...
+# Subtest: 角色分离：planner 端口拒接 reviewer 的 manifest，反之亦然
+ok 39 - 角色分离：planner 端口拒接 reviewer 的 manifest，反之亦然
+  ---
+  duration_ms: 0.1783
+  type: 'test'
+  ...
+# Subtest: 拒绝原因枚举与实现一致
+ok 40 - 拒绝原因枚举与实现一致
+  ---
+  duration_ms: 0.1299
+  type: 'test'
+  ...
+# Subtest: 探测没拿到结论时一律照常发起：无 loader / 加载失败 / 能力未实现探测
+ok 41 - 探测没拿到结论时一律照常发起：无 loader / 加载失败 / 能力未实现探测
+  ---
+  duration_ms: 13.9433
+  type: 'test'
+  ...
+# Subtest: 探测抛异常：不下结论、原因原样带出，仍然照常发起（探测器坏掉不能变成静默漏做）
+ok 42 - 探测抛异常：不下结论、原因原样带出，仍然照常发起（探测器坏掉不能变成静默漏做）
+  ---
+  duration_ms: 6.8981
+  type: 'test'
+  ...
+# Subtest: 探测返回不可识别的状态：不当作空队列，归为 UNAVAILABLE 并留下原始结论
+ok 43 - 探测返回不可识别的状态：不当作空队列，归为 UNAVAILABLE 并留下原始结论
+  ---
+  duration_ms: 6.4732
+  type: 'test'
+  ...
+# Subtest: READY：发起真实运行，收据把运行收据整体带出来
+ok 44 - READY：发起真实运行，收据把运行收据整体带出来
+  ---
+  duration_ms: 7.4608
+  type: 'test'
+  ...
+# Subtest: EMPTY：跳过且一条运行都没创建，ok=true（没有要做的活不是失败）
+ok 45 - EMPTY：跳过且一条运行都没创建，ok=true（没有要做的活不是失败）
+  ---
+  duration_ms: 0.9247
+  type: 'test'
+  ...
+# Subtest: WAITING_HUMAN：暂停等上游结算，不创建运行，且 ok=false / humanRequired=true
+ok 46 - WAITING_HUMAN：暂停等上游结算，不创建运行，且 ok=false / humanRequired=true
+  ---
+  duration_ms: 0.6989
+  type: 'test'
+  ...
+# Subtest: forceRun 抑制探测：探测函数一次都没被调用，即使它说空队列也照常发起
+ok 47 - forceRun 抑制探测：探测函数一次都没被调用，即使它说空队列也照常发起
+  ---
+  duration_ms: 5.9152
+  type: 'test'
+  ...
+# Subtest: probeOnly：只探测不发起（给排产方用），等人工时退出语义与暂停一致
+ok 48 - probeOnly：只探测不发起（给排产方用），等人工时退出语义与暂停一致
+  ---
+  duration_ms: 1.6193
+  type: 'test'
+  ...
+# Subtest: 五条出口共用同一组字段，humanRequired 每条路径都在场
+ok 49 - 五条出口共用同一组字段，humanRequired 每条路径都在场
+  ---
+  duration_ms: 17.0416
+  type: 'test'
+  ...
+# Subtest: 调度器自己的开关不会漏进运行器选项
+ok 50 - 调度器自己的开关不会漏进运行器选项
+  ---
+  duration_ms: 1.9386
+  type: 'test'
+  ...
+# Subtest: 运行未通过时收据如实反映 run.ok 与失败分类，humanRequired 跟着失败分类走
+ok 51 - 运行未通过时收据如实反映 run.ok 与失败分类，humanRequired 跟着失败分类走
+  ---
+  duration_ms: 3.0117
+  type: 'test'
+  ...
+# Subtest: 归一化是必然步骤且幂等：注入的探测器也要过同一道状态白名单
+ok 52 - 归一化是必然步骤且幂等：注入的探测器也要过同一道状态白名单
+  ---
+  duration_ms: 0.1457
+  type: 'test'
+  ...
+# Subtest: 可跳过集合只含「确定没活」的两个状态：把 READY 放进来就是静默漏做
+ok 53 - 可跳过集合只含「确定没活」的两个状态：把 READY 放进来就是静默漏做
+  ---
+  duration_ms: 0.0761
+  type: 'test'
+  ...
+# Subtest: CLI 参数：--probe-only / --force-run 是布尔开关（不吃值），也不给 run profile 添新要求
+ok 54 - CLI 参数：--probe-only / --force-run 是布尔开关（不吃值），也不给 run profile 添新要求
+  ---
+  duration_ms: 0.5135
+  type: 'test'
+  ...
+# Subtest: 退出码映射：完成/无可做之事=0，运行未通过=2，需要人工=3
+ok 55 - 退出码映射：完成/无可做之事=0，运行未通过=2，需要人工=3
+  ---
+  duration_ms: 0.0706
+  type: 'test'
+  ...
+# Subtest: 缺 registry / capabilityId 属调用方缺陷，直接抛（不伪装成调度结论）
+ok 56 - 缺 registry / capabilityId 属调用方缺陷，直接抛（不伪装成调度结论）
+  ---
+  duration_ms: 0.8027
+  type: 'test'
+  ...
+# Subtest: 按能力 ID 装配 Worker 并跑通一次采集
+ok 57 - 按能力 ID 装配 Worker 并跑通一次采集
+  ---
+  duration_ms: 22.2761
+  type: 'test'
+  ...
+# Subtest: manifest 声明的 contiguous_prefix 真的会拦住不连续分片
+ok 58 - manifest 声明的 contiguous_prefix 真的会拦住不连续分片
+  ---
+  duration_ms: 8.8813
+  type: 'test'
+  ...
+# Subtest: 不声明该验证器时不再拦同一问题（证明是 manifest 在起作用，不是硬编码）
+ok 59 - 不声明该验证器时不再拦同一问题（证明是 manifest 在起作用，不是硬编码）
+  ---
+  duration_ms: 10.3232
+  type: 'test'
+  ...
+# Subtest: manifest 声明未实现的验证器：注册期即失败
+ok 60 - manifest 声明未实现的验证器：注册期即失败
+  ---
+  duration_ms: 2.9862
+  type: 'test'
+  ...
+# Subtest: 枚举外验证器名在 manifest 阶段就被拒绝
+ok 61 - 枚举外验证器名在 manifest 阶段就被拒绝
+  ---
+  duration_ms: 3.4782
+  type: 'test'
+  ...
+# Subtest: 前置条件未在 manifest 声明时拒绝装配
+ok 62 - 前置条件未在 manifest 声明时拒绝装配
+  ---
+  duration_ms: 9.309
+  type: 'test'
+  ...
+# Subtest: 按能力 ID 装配时未注册能力被拒绝
+ok 63 - 按能力 ID 装配时未注册能力被拒绝
+  ---
+  duration_ms: 16.0493
+  type: 'test'
+  ...
+# Subtest: 运行时提交状态词表必须被库约束全部接受
+ok 64 - 运行时提交状态词表必须被库约束全部接受
+  ---
+  duration_ms: 1.8705
+  type: 'test'
+  ...
+# Subtest: FAILED 必须同时存在于运行时词表与库约束里
+ok 65 - FAILED 必须同时存在于运行时词表与库约束里
+  ---
+  duration_ms: 3.5845
+  type: 'test'
+  ...
+# Subtest: 账本在 handler 确定性失败时写出的状态，必须是库约束接受的那个
+ok 66 - 账本在 handler 确定性失败时写出的状态，必须是库约束接受的那个
+  ---
+  duration_ms: 2.4572
+  type: 'test'
+  ...
+# Subtest: 结果未知与确定性失败必须是两个不同的值（否则对账与重试分不开）
+ok 67 - 结果未知与确定性失败必须是两个不同的值（否则对账与重试分不开）
+  ---
+  duration_ms: 0.9191
+  type: 'test'
+  ...
+# Subtest: 完整上下文能产出通过校验的结构化摘要
+ok 68 - 完整上下文能产出通过校验的结构化摘要
+  ---
+  duration_ms: 2.9325
+  type: 'test'
+  ...
+# Subtest: 摘要缺关键字段时校验失败且不可被消费
+ok 69 - 摘要缺关键字段时校验失败且不可被消费
+  ---
+  duration_ms: 0.4216
+  type: 'test'
+  ...
+# Subtest: 可为 null 的字段（stepId/attemptId/verifiedCursor/blocker）允许为 null，但字段必须存在
+ok 70 - 可为 null 的字段（stepId/attemptId/verifiedCursor/blocker）允许为 null，但字段必须存在
+  ---
+  duration_ms: 0.1096
+  type: 'test'
+  ...
+# Subtest: 身份不完整时拒绝压缩（fail-closed，不产出「差不多能用」的摘要）
+ok 71 - 身份不完整时拒绝压缩（fail-closed，不产出「差不多能用」的摘要）
+  ---
+  duration_ms: 0.1194
+  type: 'test'
+  ...
+# Subtest: 阈值与阶段边界触发压缩
+ok 72 - 阈值与阶段边界触发压缩
+  ---
+  duration_ms: 0.325
+  type: 'test'
+  ...
+# Subtest: compressIfNeeded 命中阈值才产出摘要，且空数组 digest 也算结构完整
+ok 73 - compressIfNeeded 命中阈值才产出摘要，且空数组 digest 也算结构完整
+  ---
+  duration_ms: 0.3009
+  type: 'test'
+  ...
+# Subtest: 原文可由 digest 追溯（工件与证据引用都进 sourceDigest）
+ok 74 - 原文可由 digest 追溯（工件与证据引用都进 sourceDigest）
+  ---
+  duration_ms: 0.2904
+  type: 'test'
+  ...
+# Subtest: 非法 digest 结构导致摘要被拒（不能引用无法校验的原文）
+ok 75 - 非法 digest 结构导致摘要被拒（不能引用无法校验的原文）
+  ---
+  duration_ms: 0.1882
+  type: 'test'
+  ...
+# Subtest: 摘要必须指向同一个 run/attempt，否则拒绝（压缩污染恢复的主要防线）
+ok 76 - 摘要必须指向同一个 run/attempt，否则拒绝（压缩污染恢复的主要防线）
+  ---
+  duration_ms: 0.3359
+  type: 'test'
+  ...
+# Subtest: 当前 run 证据优先于历史规则和经验
+ok 77 - 当前 run 证据优先于历史规则和经验
+  ---
+  duration_ms: 0.2924
+  type: 'test'
+  ...
+# Subtest: token/字节估算确定性可复现
+ok 78 - token/字节估算确定性可复现
+  ---
+  duration_ms: 0.1344
+  type: 'test'
+  ...
+# Subtest: 摘要字段清单覆盖 Spec 要求：身份/授权/状态轴/游标/副作用/阻塞/下一动作/原文 digest
+ok 79 - 摘要字段清单覆盖 Spec 要求：身份/授权/状态轴/游标/副作用/阻塞/下一动作/原文 digest
+  ---
+  duration_ms: 0.0631
+  type: 'test'
+  ...
+# Subtest: createContext 产出合法 sop-context-v1
+ok 80 - createContext 产出合法 sop-context-v1
+  ---
+  duration_ms: 1.4467
+  type: 'test'
+  ...
+# Subtest: 缺身份字段与非法状态被拒绝
+ok 81 - 缺身份字段与非法状态被拒绝
+  ---
+  duration_ms: 0.1493
+  type: 'test'
+  ...
+# Subtest: advance 递增版本且不原地修改
+ok 82 - advance 递增版本且不原地修改
+  ---
+  duration_ms: 0.0821
+  type: 'test'
+  ...
+# Subtest: setBlocker 只接受已定义失败分类
+ok 83 - setBlocker 只接受已定义失败分类
+  ---
+  duration_ms: 1.8294
+  type: 'test'
+  ...
+# Subtest: summarize 只暴露恢复关键字段且不含原文
+ok 84 - summarize 只暴露恢复关键字段且不含原文
+  ---
+  duration_ms: 0.2882
+  type: 'test'
+  ...
+# Subtest: 风险分级：本地低、飞书高、登录人工、未登记副作用高风险
+ok 85 - 风险分级：本地低、飞书高、登录人工、未登记副作用高风险
+  ---
+  duration_ms: 0.144
+  type: 'test'
+  ...
+# Subtest: lane 与并发上限：策略只给 lane 与上限，占用判定不在准入期做
+ok 86 - lane 与并发上限：策略只给 lane 与上限，占用判定不在准入期做
+  ---
+  duration_ms: 0.2805
+  type: 'test'
+  ...
+# Subtest: 未注册能力被拒绝
+ok 87 - 未注册能力被拒绝
+  ---
+  duration_ms: 0.0645
+  type: 'test'
+  ...
+# Subtest: 失败分类映射：预算内重试、耗尽终止、UNKNOWN 只走对账
+ok 88 - 失败分类映射：预算内重试、耗尽终止、UNKNOWN 只走对账
+  ---
+  duration_ms: 0.2213
+  type: 'test'
+  ...
+# Subtest: spec 构造：每个子项有稳定 businessKey，且重复 itemKey 直接拒绝
+ok 89 - spec 构造：每个子项有稳定 businessKey，且重复 itemKey 直接拒绝
+  ---
+  duration_ms: 3.2739
+  type: 'test'
+  ...
+# Subtest: 派发：全部成功时 complete 为真
+ok 90 - 派发：全部成功时 complete 为真
+  ---
+  duration_ms: 2.4302
+  type: 'test'
+  ...
+# Subtest: 失败隔离：单个子项被拒不影响其余子项，且拒因区分「稍后重试」与「子项本身有问题」
+ok 91 - 失败隔离：单个子项被拒不影响其余子项，且拒因区分「稍后重试」与「子项本身有问题」
+  ---
+  duration_ms: 0.6317
+  type: 'test'
+  ...
+# Subtest: 失败隔离：容量类拒因被标记为可重试，不误导调用方去改数据
+ok 92 - 失败隔离：容量类拒因被标记为可重试，不误导调用方去改数据
+  ---
+  duration_ms: 0.2563
+  type: 'test'
+  ...
+# Subtest: 收集：全部成功则合并结果完成度与冲突都干净
+ok 93 - 收集：全部成功则合并结果完成度与冲突都干净
+  ---
+  duration_ms: 6.9853
+  type: 'test'
+  ...
+# Subtest: 收集：缺失子项一律要求人工，不能把「少了几件」当成全部成功
+ok 94 - 收集：缺失子项一律要求人工，不能把「少了几件」当成全部成功
+  ---
+  duration_ms: 0.1858
+  type: 'test'
+  ...
+# Subtest: 收集：同一 key 的冲突值交人工，绝不静默择一
+ok 95 - 收集：同一 key 的冲突值交人工，绝不静默择一
+  ---
+  duration_ms: 3.9152
+  type: 'test'
+  ...
+# Subtest: 收集：单个子项失败单列进 failures，不影响其余结果的可用性
+ok 96 - 收集：单个子项失败单列进 failures，不影响其余结果的可用性
+  ---
+  duration_ms: 0.3229
+  type: 'test'
+  ...
+# Subtest: 重复消费守卫：同批内 businessKey 必须唯一，重复即抛错（重复写外部效果的前置防线）
+ok 97 - 重复消费守卫：同批内 businessKey 必须唯一，重复即抛错（重复写外部效果的前置防线）
+  ---
+  duration_ms: 0.5692
+  type: 'test'
+  ...
+# Subtest: 跨父运行的同一商品是不同的幂等键（重跑不会被当成「已提交」而静默跳过）
+ok 98 - 跨父运行的同一商品是不同的幂等键（重跑不会被当成「已提交」而静默跳过）
+  ---
+  duration_ms: 0.283
+  type: 'test'
+  ...
+# Subtest: 并发放大必须建立在容量证据上：没有证据不放大，写操作恒为 1
+ok 99 - 并发放大必须建立在容量证据上：没有证据不放大，写操作恒为 1
+  ---
+  duration_ms: 0.1975
+  type: 'test'
+  ...
+# Subtest: 拒绝原因枚举与实现一致
+ok 100 - 拒绝原因枚举与实现一致
+  ---
+  duration_ms: 0.0508
+  type: 'test'
+  ...
+# Subtest: 全部商品证据完好时整批 publishable
+ok 101 - 全部商品证据完好时整批 publishable
+  ---
+  duration_ms: 122.0725
+  type: 'test'
+  ...
+# Subtest: 单个商品证据损坏时其余商品照常结算（失败隔离）
+ok 102 - 单个商品证据损坏时其余商品照常结算（失败隔离）
+  ---
+  duration_ms: 91.6519
+  type: 'test'
+  ...
+# Subtest: 证据缺失的商品进人工队列但不阻塞其他商品
+ok 103 - 证据缺失的商品进人工队列但不阻塞其他商品
+  ---
+  duration_ms: 72.5097
+  type: 'test'
+  ...
+# Subtest: 空批次不是失败，也不等于采集完成
+ok 104 - 空批次不是失败，也不等于采集完成
+  ---
+  duration_ms: 62.5494
+  type: 'test'
+  ...
+# Subtest: 未锁定的清单直接拒绝（不能拿未锁定清单当范围依据）
+ok 105 - 未锁定的清单直接拒绝（不能拿未锁定清单当范围依据）
+  ---
+  duration_ms: 25.7198
+  type: 'test'
+  ...
+# Subtest: 清单缺失直接拒绝
+ok 106 - 清单缺失直接拒绝
+  ---
+  duration_ms: 2.9238
+  type: 'test'
+  ...
+# Subtest: 指定了清单里不存在的商品时拒绝（不允许凭空造子项）
+ok 107 - 指定了清单里不存在的商品时拒绝（不允许凭空造子项）
+  ---
+  duration_ms: 42.6165
+  type: 'test'
+  ...
+# Subtest: 可以只重跑指定商品（定向重试）
+ok 108 - 可以只重跑指定商品（定向重试）
+  ---
+  duration_ms: 64.9225
+  type: 'test'
+  ...
+# Subtest: 子项标识带父批次且同批内唯一（跨周重跑不会认成已提交）
+ok 109 - 子项标识带父批次且同批内唯一（跨周重跑不会认成已提交）
+  ---
+  duration_ms: 81.3899
+  type: 'test'
+  ...
+# Subtest: 同批次内同一商品只产出一条 run（不会重复消费）
+ok 110 - 同批次内同一商品只产出一条 run（不会重复消费）
+  ---
+  duration_ms: 36.0583
+  type: 'test'
+  ...
+# Subtest: 人类队列的构建规则：派发被拒/缺失/冲突各有独立原因
+ok 111 - 人类队列的构建规则：派发被拒/缺失/冲突各有独立原因
+  ---
+  duration_ms: 0.4029
+  type: 'test'
+  ...
+# Subtest: 批次回执与人工队列都会落盘到周期目录
+ok 112 - 批次回执与人工队列都会落盘到周期目录
+  ---
+  duration_ms: 59.7091
+  type: 'test'
+  ...
+# Subtest: lane 上限默认 1；写操作恒为 1；只有只读才允许通过 limits 放宽
+ok 113 - lane 上限默认 1；写操作恒为 1；只有只读才允许通过 limits 放宽
+  ---
+  duration_ms: 0.5369
+  type: 'test'
+  ...
+# Subtest: 同一 lane 已有其它活跃运行时，开新 attempt 被拒并归类 RESOURCE_BUSY
+ok 114 - 同一 lane 已有其它活跃运行时，开新 attempt 被拒并归类 RESOURCE_BUSY
+  ---
+  duration_ms: 15.2635
+  type: 'test'
+  ...
+# Subtest: 运行自己占用 lane 不算冲突（同一 run 可以连续开 attempt）
+ok 115 - 运行自己占用 lane 不算冲突（同一 run 可以连续开 attempt）
+  ---
+  duration_ms: 2.5423
+  type: 'test'
+  ...
+# Subtest: 不同 capability 属于不同 lane，互不阻塞
+ok 116 - 不同 capability 属于不同 lane，互不阻塞
+  ---
+  duration_ms: 0.5491
+  type: 'test'
+  ...
+# Subtest: 不同账号/profile 属于不同 lane，互不阻塞
+ok 117 - 不同账号/profile 属于不同 lane，互不阻塞
+  ---
+  duration_ms: 0.2867
+  type: 'test'
+  ...
+# Subtest: 只读能力显式放宽后允许并行，但写操作即便放宽仍被拒
+ok 118 - 只读能力显式放宽后允许并行，但写操作即便放宽仍被拒
+  ---
+  duration_ms: 0.5301
+  type: 'test'
+  ...
+# Subtest: 已终止的 run 不再占用 lane
+ok 119 - 已终止的 run 不再占用 lane
+  ---
+  duration_ms: 0.4309
+  type: 'test'
+  ...
+# Subtest: 等提交（RUNNING+RELEASED）与等人工（PAUSED）的 run 不占执行槽，同 lane 可继续开 attempt
+ok 120 - 等提交（RUNNING+RELEASED）与等人工（PAUSED）的 run 不占执行槽，同 lane 可继续开 attempt
+  ---
+  duration_ms: 1.5746
+  type: 'test'
+  ...
+# Subtest: 记忆记录必须带合法层级、作用域和来源
+ok 121 - 记忆记录必须带合法层级、作用域和来源
+  ---
+  duration_ms: 1.441
+  type: 'test'
+  ...
+# Subtest: 置信度必须落在 [0,1]，有效期必须自洽
+ok 122 - 置信度必须落在 [0,1]，有效期必须自洽
+  ---
+  duration_ms: 0.1296
+  type: 'test'
+  ...
+# Subtest: 入库存校验失败即拒绝，不产生半条记录
+ok 123 - 入库存校验失败即拒绝，不产生半条记录
+  ---
+  duration_ms: 0.4807
+  type: 'test'
+  ...
+# Subtest: 按作用域隔离，默认不返回已退役记忆
+ok 124 - 按作用域隔离，默认不返回已退役记忆
+  ---
+  duration_ms: 0.2661
+  type: 'test'
+  ...
+# Subtest: 有效期过期后不再参与决策
+ok 125 - 有效期过期后不再参与决策
+  ---
+  duration_ms: 0.5222
+  type: 'test'
+  ...
+# Subtest: 同 scope+topic 下权威更高的新记忆会退役旧记忆，而不是覆盖删除
+ok 126 - 同 scope+topic 下权威更高的新记忆会退役旧记忆，而不是覆盖删除
+  ---
+  duration_ms: 0.2962
+  type: 'test'
+  ...
+# Subtest: 冲突判定顺序固定：层级 -> 置信度 -> 更新时间 -> 标识（不依赖插入顺序）
+ok 127 - 冲突判定顺序固定：层级 -> 置信度 -> 更新时间 -> 标识（不依赖插入顺序）
+  ---
+  duration_ms: 6.0118
+  type: 'test'
+  ...
+# Subtest: 当前 run 证据优先，历史层一律被覆盖（含被标记为 overridden）
+ok 128 - 当前 run 证据优先，历史层一律被覆盖（含被标记为 overridden）
+  ---
+  duration_ms: 2.3164
+  type: 'test'
+  ...
+# Subtest: 把历史记忆当作当前事实会失败关闭
+ok 129 - 把历史记忆当作当前事实会失败关闭
+  ---
+  duration_ms: 0.4568
+  type: 'test'
+  ...
+# Subtest: 记忆带证据摘要时可追溯来源
+ok 130 - 记忆带证据摘要时可追溯来源
+  ---
+  duration_ms: 0.3224
+  type: 'test'
+  ...
+# Subtest: 当前运行层的定义与优先级保持稳定
+ok 131 - 当前运行层的定义与优先级保持稳定
+  ---
+  duration_ms: 0.2155
+  type: 'test'
+  ...
+# Subtest: 发布期验证器名单由 Validator 实现表的 stage 派生
+ok 132 - 发布期验证器名单由 Validator 实现表的 stage 派生
+  ---
+  duration_ms: 1.7453
+  type: 'test'
+  ...
+# Subtest: manifest 校验拒绝「写外部但没有发布期验证器」的能力
+ok 133 - manifest 校验拒绝「写外部但没有发布期验证器」的能力
+  ---
+  duration_ms: 0.6636
+  type: 'test'
+  ...
+# Subtest: 同一能力只要补上发布期验证器就通过（证明拦的是这条义务本身）
+ok 134 - 同一能力只要补上发布期验证器就通过（证明拦的是这条义务本身）
+  ---
+  duration_ms: 0.3386
+  type: 'test'
+  ...
+# Subtest: adapter 不受该义务约束（发布验收责任在能力层）
+ok 135 - adapter 不受该义务约束（发布验收责任在能力层）
+  ---
+  duration_ms: 0.2442
+  type: 'test'
+  ...
+# Subtest: 不写外部的能力没有发布义务：不触碰发布轴，也不调用 handler
+ok 136 - 不写外部的能力没有发布义务：不触碰发布轴，也不调用 handler
+  ---
+  duration_ms: 6.4271
+  type: 'test'
+  ...
+# Subtest: 运行时兜底：绕过注册期校验也不会静默放行
+ok 137 - 运行时兜底：绕过注册期校验也不会静默放行
+  ---
+  duration_ms: 1.0168
+  type: 'test'
+  ...
+# Subtest: 未审批时拒绝提交：人工闸门在提交路径上再守一道
+ok 138 - 未审批时拒绝提交：人工闸门在提交路径上再守一道
+  ---
+  duration_ms: 0.8091
+  type: 'test'
+  ...
+# Subtest: 按只读副作用准入也无法绕过人工闸门（风险取自 manifest 而不是准入参数）
+ok 139 - 按只读副作用准入也无法绕过人工闸门（风险取自 manifest 而不是准入参数）
+  ---
+  duration_ms: 0.9447
+  type: 'test'
+  ...
+# Subtest: 提交 + 真实回读 + 发布期验证器全过：publicationStatus=VERIFIED 且游标可推进
+ok 140 - 提交 + 真实回读 + 发布期验证器全过：publicationStatus=VERIFIED 且游标可推进
+  ---
+  duration_ms: 8.4332
+  type: 'test'
+  ...
+# Subtest: 回读行数不符：UNKNOWN + 对账动作，游标不得推进
+ok 141 - 回读行数不符：UNKNOWN + 对账动作，游标不得推进
+  ---
+  duration_ms: 1.8182
+  type: 'test'
+  ...
+# Subtest: 可证伪：账本回读通过但 manifest 的 readback 验证器失败 → 仍然 UNKNOWN
+ok 142 - 可证伪：账本回读通过但 manifest 的 readback 验证器失败 → 仍然 UNKNOWN
+  ---
+  duration_ms: 12.0827
+  type: 'test'
+  ...
+# Subtest: 不声明 readback 时同一份收据被放行（证明是 manifest 在拦）
+ok 143 - 不声明 readback 时同一份收据被放行（证明是 manifest 在拦）
+  ---
+  duration_ms: 0.9112
+  type: 'test'
+  ...
+# Subtest: 提交失败按结构化状态码归类：4xx 判策略拒绝，5xx 判瞬时（不一律当 BUG 停线）
+ok 144 - 提交失败按结构化状态码归类：4xx 判策略拒绝，5xx 判瞬时（不一律当 BUG 停线）
+  ---
+  duration_ms: 1.7087
+  type: 'test'
+  ...
+# Subtest: 提交结果未知：UNKNOWN，且不做回读、不重试
+ok 145 - 提交结果未知：UNKNOWN，且不做回读、不重试
+  ---
+  duration_ms: 1.5736
+  type: 'test'
+  ...
+# Subtest: 确定性拒绝：REJECTED，发布轴回到「未提交」，策略拒绝进终止
+ok 146 - 确定性拒绝：REJECTED，发布轴回到「未提交」，策略拒绝进终止
+  ---
+  duration_ms: 0.4607
+  type: 'test'
+  ...
+# Subtest: 确定性瞬时失败：REJECTED + 重试等待，重试计数递增
+ok 147 - 确定性瞬时失败：REJECTED + 重试等待，重试计数递增
+  ---
+  duration_ms: 0.4419
+  type: 'test'
+  ...
+# Subtest: 幂等：同一 commitKey 只产生一次业务效果
+ok 148 - 幂等：同一 commitKey 只产生一次业务效果
+  ---
+  duration_ms: 1.1247
+  type: 'test'
+  ...
+# Subtest: 已 VERIFIED 的 run 不允许再次发布（防止重复对外写入）
+ok 149 - 已 VERIFIED 的 run 不允许再次发布（防止重复对外写入）
+  ---
+  duration_ms: 0.5976
+  type: 'test'
+  ...
+# Subtest: 副作用闸门：未在 manifest 声明的外部副作用被拒绝
+ok 150 - 副作用闸门：未在 manifest 声明的外部副作用被拒绝
+  ---
+  duration_ms: 0.5398
+  type: 'test'
+  ...
+# Subtest: 缺少 businessKey 时拒绝提交（幂等键是硬前提）
+ok 151 - 缺少 businessKey 时拒绝提交（幂等键是硬前提）
+  ---
+  duration_ms: 0.2957
+  type: 'test'
+  ...
+# Subtest: settlePublication 非法转移直接抛错
+ok 152 - settlePublication 非法转移直接抛错
+  ---
+  duration_ms: 0.346
+  type: 'test'
+  ...
+# Subtest: 对账收敛：UNKNOWN + 账本已 VERIFIED + 真实回读收据 → VERIFIED，随后游标可以推进
+ok 153 - 对账收敛：UNKNOWN + 账本已 VERIFIED + 真实回读收据 → VERIFIED，随后游标可以推进
+  ---
+  duration_ms: 7.0797
+  type: 'test'
+  ...
+# Subtest: 顺序闸门：账本还没收敛就不许收敛运行（两处真相不能打架）
+ok 154 - 顺序闸门：账本还没收敛就不许收敛运行（两处真相不能打架）
+  ---
+  duration_ms: 4.3222
+  type: 'test'
+  ...
+# Subtest: 完全没有提交记录的运行不许被收敛成 VERIFIED（缺的是「效果发生过」的证据）
+ok 155 - 完全没有提交记录的运行不许被收敛成 VERIFIED（缺的是「效果发生过」的证据）
+  ---
+  duration_ms: 0.5942
+  type: 'test'
+  ...
+# Subtest: 对账到 VERIFIED 必须带真实回读收据：没有凭据就拒绝（UNKNOWN 不是免回读后门）
+ok 156 - 对账到 VERIFIED 必须带真实回读收据：没有凭据就拒绝（UNKNOWN 不是免回读后门）
+  ---
+  duration_ms: 0.6335
+  type: 'test'
+  ...
+# Subtest: 第三格：READY + 提交记录停在 COMMITTING（进程死在 handler 里）—— 回收与两种对账都必须先过账本
+ok 157 - 第三格：READY + 提交记录停在 COMMITTING（进程死在 handler 里）—— 回收与两种对账都必须先过账本
+  ---
+  duration_ms: 1.1098
+  type: 'test'
+  ...
+# Subtest: 对账只适用于 UNKNOWN / READY：对一条 COMMITTED 的运行调用直接抛
+ok 158 - 对账只适用于 UNKNOWN / READY：对一条 COMMITTED 的运行调用直接抛
+  ---
+  duration_ms: 1.3314
+  type: 'test'
+  ...
+# Subtest: ABSENT 分支必须具名操作者：举证责任在人身上，不能匿名
+ok 159 - ABSENT 分支必须具名操作者：举证责任在人身上，不能匿名
+  ---
+  duration_ms: 0.7999
+  type: 'test'
+  ...
+# Subtest: ABSENT：操作者具名确认外部效果没发生 → 发布轴回 READY、运行终结、幂等键释放
+ok 160 - ABSENT：操作者具名确认外部效果没发生 → 发布轴回 READY、运行终结、幂等键释放
+  ---
+  duration_ms: 0.9751
+  type: 'test'
+  ...
+# Subtest: ABSENT 不许在「提交记录已交付过 handler」时使用（人也得看账本）
+ok 161 - ABSENT 不许在「提交记录已交付过 handler」时使用（人也得看账本）
+  ---
+  duration_ms: 1.0849
+  type: 'test'
+  ...
+# Subtest: 未知的对账结论被拒（不允许悄悄放宽成「大概好了」）
+ok 162 - 未知的对账结论被拒（不允许悄悄放宽成「大概好了」）
+  ---
+  duration_ms: 5.7174
+  type: 'test'
+  ...
+# Subtest: assessRun 只读汇报：死了吗 / 回收安全吗 / 下一步做什么，三件事分开答
+ok 163 - assessRun 只读汇报：死了吗 / 回收安全吗 / 下一步做什么，三件事分开答
+  ---
+  duration_ms: 1.2971
+  type: 'test'
+  ...
+# Subtest: reclaimStale：租约过期的运行被终结，attempt 一并回收，幂等键释放
+ok 164 - reclaimStale：租约过期的运行被终结，attempt 一并回收，幂等键释放
+  ---
+  duration_ms: 0.3761
+  type: 'test'
+  ...
+# Subtest: reclaimStale 拒绝活运行：租约还有效 → RUN_NOT_STALE（绝不去动可能正在跑的运行）
+ok 165 - reclaimStale 拒绝活运行：租约还有效 → RUN_NOT_STALE（绝不去动可能正在跑的运行）
+  ---
+  duration_ms: 0.3645
+  type: 'test'
+  ...
+# Subtest: reclaimStale 拒绝等人工的运行：PAUSED 是合法等待，回收等于把审批中的运行杀掉
+ok 166 - reclaimStale 拒绝等人工的运行：PAUSED 是合法等待，回收等于把审批中的运行杀掉
+  ---
+  duration_ms: 0.254
+  type: 'test'
+  ...
+# Subtest: reclaimStale 拒绝外部写入未定的运行：UNKNOWN 只能对账，回收就是重复写入
+ok 167 - reclaimStale 拒绝外部写入未定的运行：UNKNOWN 只能对账，回收就是重复写入
+  ---
+  duration_ms: 0.4102
+  type: 'test'
+  ...
+# Subtest: reclaimStaleRuns 批量：能收的收掉、不能收的原样留着（单条失败不炸整批）
+ok 168 - reclaimStaleRuns 批量：能收的收掉、不能收的原样留着（单条失败不炸整批）
+  ---
+  duration_ms: 0.7016
+  type: 'test'
+  ...
+# Subtest: 批量 reaper 不依赖 this：解构出来调用同样成立
+ok 169 - 批量 reaper 不依赖 this：解构出来调用同样成立
+  ---
+  duration_ms: 0.4403
+  type: 'test'
+  ...
+# Subtest: 准入自动回收：崩溃遗留的运行不再挡住重跑（旧行为是永久占住幂等键）
+ok 170 - 准入自动回收：崩溃遗留的运行不再挡住重跑（旧行为是永久占住幂等键）
+  ---
+  duration_ms: 0.674
+  type: 'test'
+  ...
+# Subtest: 准入自动回收不会掩盖真正的拒绝：外部写入未定时照样被挡住，并把拒绝码带回来
+ok 171 - 准入自动回收不会掩盖真正的拒绝：外部写入未定时照样被挡住，并把拒绝码带回来
+  ---
+  duration_ms: 1.5872
+  type: 'test'
+  ...
+# Subtest: 只有「没过到期闸门」的轮次不进账本；其余都必须进（分母不许偏小）
+ok 172 - 只有「没过到期闸门」的轮次不进账本；其余都必须进（分母不许偏小）
+  ---
+  duration_ms: 1.2307
+  type: 'test'
+  ...
+# Subtest: needs 在**写入时**定稿：判定表的结论随行落盘，不靠事后现查
+ok 173 - needs 在**写入时**定稿：判定表的结论随行落盘，不靠事后现查
+  ---
+  duration_ms: 0.6737
+  type: 'test'
+  ...
+# Subtest: 判定表里没有的理由要显式标成「未登记」，不许安静落进「未细分」
+ok 174 - 判定表里没有的理由要显式标成「未登记」，不许安静落进「未细分」
+  ---
+  duration_ms: 0.1456
+  type: 'test'
+  ...
+# Subtest: 账本里不留自由文本；通知失败原文要过凭据遮盖并截断
+ok 175 - 账本里不留自由文本；通知失败原文要过凭据遮盖并截断
+  ---
+  duration_ms: 1.0991
+  type: 'test'
+  ...
+# Subtest: 文件落点是 JSONL，且只追加（第二行进来不许重写第一行）
+ok 176 - 文件落点是 JSONL，且只追加（第二行进来不许重写第一行）
+  ---
+  duration_ms: 5.9508
+  type: 'test'
+  ...
+# Subtest: 读不存在/空文件 ⇒ 空账本，不是错误
+ok 177 - 读不存在/空文件 ⇒ 空账本，不是错误
+  ---
+  duration_ms: 1.313
+  type: 'test'
+  ...
+# Subtest: 坏行不许静默：要数出来并给出行号
+ok 178 - 坏行不许静默：要数出来并给出行号
+  ---
+  duration_ms: 0.3211
+  type: 'test'
+  ...
+# Subtest: 同一问题持续中（DEDUPED）不算一次新发生，但必须单列出来
+ok 179 - 同一问题持续中（DEDUPED）不算一次新发生，但必须单列出来
+  ---
+  duration_ms: 1.0797
+  type: 'test'
+  ...
+# Subtest: 未细分 / 未登记 / 各经手人分桶，且按天、按店给出分布
+ok 180 - 未细分 / 未登记 / 各经手人分桶，且按天、按店给出分布
+  ---
+  duration_ms: 7.7244
+  type: 'test'
+  ...
+# Subtest: 「本该通知人却没送出去」按动作判定：恢复通知没送出去不算这一类
+ok 181 - 「本该通知人却没送出去」按动作判定：恢复通知没送出去不算这一类
+  ---
+  duration_ms: 0.6367
+  type: 'test'
+  ...
+# Subtest: 窗口外与时间解析不出来的条目都要报出来，不许安静丢掉
+ok 182 - 窗口外与时间解析不出来的条目都要报出来，不许安静丢掉
+  ---
+  duration_ms: 0.2168
+  type: 'test'
+  ...
+# Subtest: 空账本：不报错，且报告必须说清「无法回填」
+ok 183 - 空账本：不报错，且报告必须说清「无法回填」
+  ---
+  duration_ms: 0.4585
+  type: 'test'
+  ...
+# Subtest: 人话报告要给出「需要人到现场」的次数、占比，并在有坏行时点名
+ok 184 - 人话报告要给出「需要人到现场」的次数、占比，并在有坏行时点名
+  ---
+  duration_ms: 0.1593
+  type: 'test'
+  ...
+# Subtest: CLI：--help / 参数写错 / 天数不是正数 都要给出人话与退出码
+ok 185 - CLI：--help / 参数写错 / 天数不是正数 都要给出人话与退出码
+  ---
+  duration_ms: 0.2525
+  type: 'test'
+  ...
+# Subtest: CLI：--json 输出结构化结果；有坏行时退出码 1（历史被读少会让频率偏低）
+ok 186 - CLI：--json 输出结构化结果；有坏行时退出码 1（历史被读少会让频率偏低）
+  ---
+  duration_ms: 1.6364
+  type: 'test'
+  ...
+# Subtest: CLI：文件不存在与文件为空要分开说（前者是配置问题，后者是还没跑过）
+ok 187 - CLI：文件不存在与文件为空要分开说（前者是配置问题，后者是还没跑过）
+  ---
+  duration_ms: 0.7588
+  type: 'test'
+  ...
+# Subtest: CLI：--file 指向真实文件时能读回来（含写入 → 读回一整圈）
+ok 188 - CLI：--file 指向真实文件时能读回来（含写入 → 读回一整圈）
+  ---
+  duration_ms: 1.954
+  type: 'test'
+  ...
+# Subtest: parseReportArgs 只认自己声明的键，未知参数直接报错
+ok 189 - parseReportArgs 只认自己声明的键，未知参数直接报错
+  ---
+  duration_ms: 0.2889
+  type: 'test'
+  ...
+# Subtest: every failure class and diagnose class is explicitly decided in the notify policy
+ok 190 - every failure class and diagnose class is explicitly decided in the notify policy
+  ---
+  duration_ms: 2.3254
+  type: 'test'
+  ...
+# Subtest: notify and silent reasons partition the table (no reason is silently undecided)
+ok 191 - notify and silent reasons partition the table (no reason is silently undecided)
+  ---
+  duration_ms: 0.1927
+  type: 'test'
+  ...
+# Subtest: every notifying rule carries a human-readable next step and a title
+ok 192 - every notifying rule carries a human-readable next step and a title
+  ---
+  duration_ms: 0.2531
+  type: 'test'
+  ...
+# Subtest: only rules that can prove recovery are allowed to clear an open alert
+ok 193 - only rules that can prove recovery are allowed to clear an open alert
+  ---
+  duration_ms: 0.0789
+  type: 'test'
+  ...
+# Subtest: an unregistered reason notifies instead of going quiet (fail-closed)
+ok 194 - an unregistered reason notifies instead of going quiet (fail-closed)
+  ---
+  duration_ms: 0.6724
+  type: 'test'
+  ...
+# Subtest: the same reason does not notify twice, a different one supersedes it
+ok 195 - the same reason does not notify twice, a different one supersedes it
+  ---
+  duration_ms: 0.1537
+  type: 'test'
+  ...
+# Subtest: an empty queue must not clear a login alert (and says why)
+ok 196 - an empty queue must not clear a login alert (and says why)
+  ---
+  duration_ms: 0.1525
+  type: 'test'
+  ...
+# Subtest: the round alert id survives credential redaction
+ok 197 - the round alert id survives credential redaction
+  ---
+  duration_ms: 1.5191
+  type: 'test'
+  ...
+# Subtest: a notifying alert renders as a human-readable message with a next step
+ok 198 - a notifying alert renders as a human-readable message with a next step
+  ---
+  duration_ms: 0.8744
+  type: 'test'
+  ...
+# Subtest: a resolved alert talks about the previous alert, not about success
+ok 199 - a resolved alert talks about the previous alert, not about success
+  ---
+  duration_ms: 0.989
+  type: 'test'
+  ...
+# Subtest: an empty queue ends the round quietly and never touches the notify port
+ok 200 - an empty queue ends the round quietly and never touches the notify port
+  ---
+  duration_ms: 1.0396
+  type: 'test'
+  ...
+# Subtest: a round that is not due does not even probe the queue
+ok 201 - a round that is not due does not even probe the queue
+  ---
+  duration_ms: 0.1797
+  type: 'test'
+  ...
+# Subtest: a business key that already completed today is skipped, quietly
+ok 202 - a business key that already completed today is skipped, quietly
+  ---
+  duration_ms: 0.3251
+  type: 'test'
+  ...
+# Subtest: a successful round quietly clears a previously open alert
+ok 203 - a successful round quietly clears a previously open alert
+  ---
+  duration_ms: 0.2319
+  type: 'test'
+  ...
+# Subtest: a self-healed failure is quiet but recorded as auto-healed
+ok 204 - a self-healed failure is quiet but recorded as auto-healed
+  ---
+  duration_ms: 0.2518
+  type: 'test'
+  ...
+# Subtest: a health block stops the round before it wastes a collection, and notifies
+ok 205 - a health block stops the round before it wastes a collection, and notifies
+  ---
+  duration_ms: 0.3015
+  type: 'test'
+  ...
+# Subtest: a health finding that names no known reason still notifies (fail-closed)
+ok 206 - a health finding that names no known reason still notifies (fail-closed)
+  ---
+  duration_ms: 0.2282
+  type: 'test'
+  ...
+# Subtest: a broken health check proceeds but never claims the round was checked
+ok 207 - a broken health check proceeds but never claims the round was checked
+  ---
+  duration_ms: 0.3228
+  type: 'test'
+  ...
+# Subtest: an unwired health check is reported as not implemented, not as healthy
+ok 208 - an unwired health check is reported as not implemented, not as healthy
+  ---
+  duration_ms: 0.1536
+  type: 'test'
+  ...
+# Subtest: a human-required failure notifies once with a next step
+ok 209 - a human-required failure notifies once with a next step
+  ---
+  duration_ms: 0.2182
+  type: 'test'
+  ...
+# Subtest: an unhandled transient failure is escalated, never silently swallowed
+ok 210 - an unhandled transient failure is escalated, never silently swallowed
+  ---
+  duration_ms: 0.2179
+  type: 'test'
+  ...
+# Subtest: an exhausted heal budget reports the attempt count in the next step
+ok 211 - an exhausted heal budget reports the attempt count in the next step
+  ---
+  duration_ms: 0.2421
+  type: 'test'
+  ...
+# Subtest: repeating the same failure notifies once and is deduped afterwards
+ok 212 - repeating the same failure notifies once and is deduped afterwards
+  ---
+  duration_ms: 0.3261
+  type: 'test'
+  ...
+# Subtest: a non-retryable failure closes the day instead of retrying every 15 minutes
+ok 213 - a non-retryable failure closes the day instead of retrying every 15 minutes
+  ---
+  duration_ms: 0.1656
+  type: 'test'
+  ...
+# Subtest: a retryable failure keeps retrying until the daily attempt cap
+ok 214 - a retryable failure keeps retrying until the daily attempt cap
+  ---
+  duration_ms: 0.2057
+  type: 'test'
+  ...
+# Subtest: a round that starts a run but fails keeps the business key open
+ok 215 - a round that starts a run but fails keeps the business key open
+  ---
+  duration_ms: 0.1354
+  type: 'test'
+  ...
+# Subtest: an unrecognized scheduler receipt is an orchestration defect, not a silent success
+ok 216 - an unrecognized scheduler receipt is an orchestration defect, not a silent success
+  ---
+  duration_ms: 0.2151
+  type: 'test'
+  ...
+# Subtest: a scheduler port that throws becomes ROUND_ERROR, not a crash
+ok 217 - a scheduler port that throws becomes ROUND_ERROR, not a crash
+  ---
+  duration_ms: 0.2118
+  type: 'test'
+  ...
+# Subtest: a failed delivery is recorded but does not change the round outcome
+ok 218 - a failed delivery is recorded but does not change the round outcome
+  ---
+  duration_ms: 1.1646
+  type: 'test'
+  ...
+# Subtest: a notify port that throws does not break the round either
+ok 219 - a notify port that throws does not break the round either
+  ---
+  duration_ms: 0.1754
+  type: 'test'
+  ...
+# Subtest: a missing notify port is recorded as not configured, never as silent
+ok 220 - a missing notify port is recorded as not configured, never as silent
+  ---
+  duration_ms: 0.1544
+  type: 'test'
+  ...
+# Subtest: every outcome carries the full receipt field set
+ok 221 - every outcome carries the full receipt field set
+  ---
+  duration_ms: 0.4412
+  type: 'test'
+  ...
+# Subtest: a paused queue notifies because a human has to settle it
+ok 222 - a paused queue notifies because a human has to settle it
+  ---
+  duration_ms: 0.1165
+  type: 'test'
+  ...
+# Subtest: the day key is local, not UTC
+ok 223 - the day key is local, not UTC
+  ---
+  duration_ms: 0.042
+  type: 'test'
+  ...
+# Subtest: the round CLI parser handles its own boolean flag
+ok 224 - the round CLI parser handles its own boolean flag
+  ---
+  duration_ms: 0.3597
+  type: 'test'
+  ...
+# Subtest: 计划报告全量给出字段，尤其是「上一次触发过去多久」
+ok 225 - 计划报告全量给出字段，尤其是「上一次触发过去多久」
+  ---
+  duration_ms: 0.7806
+  type: 'test'
+  ...
+# Subtest: 体检默认关闭：不写 healthCheck 就与接线前逐字相同
+ok 226 - 体检默认关闭：不写 healthCheck 就与接线前逐字相同
+  ---
+  duration_ms: 0.1954
+  type: 'test'
+  ...
+# Subtest: 写了 healthCheck: true ⇒ 按能力推导出浏览器，不用运维手填
+ok 227 - 写了 healthCheck: true ⇒ 按能力推导出浏览器，不用运维手填
+  ---
+  duration_ms: 0.2704
+  type: 'test'
+  ...
+# Subtest: 能力未注册又没写浏览器 ⇒ 报错停跑，不猜一个默认浏览器
+ok 228 - 能力未注册又没写浏览器 ⇒ 报错停跑，不猜一个默认浏览器
+  ---
+  duration_ms: 0.1764
+  type: 'test'
+  ...
+# Subtest: 声明的浏览器与能力所属路线矛盾 ⇒ 报错（这条闸门堵的就是假绿灯）
+ok 229 - 声明的浏览器与能力所属路线矛盾 ⇒ 报错（这条闸门堵的就是假绿灯）
+  ---
+  duration_ms: 0.1212
+  type: 'test'
+  ...
+# Subtest: 浏览器键根本不存在 ⇒ 与「矛盾」分开报（打错字不该被说成路线冲突，排查方向会偏）
+ok 230 - 浏览器键根本不存在 ⇒ 与「矛盾」分开报（打错字不该被说成路线冲突，排查方向会偏）
+  ---
+  duration_ms: 0.0614
+  type: 'test'
+  ...
+# Subtest: 能力走的路线不开浏览器 ⇒ 报错要说清是「没有浏览器可查」
+ok 231 - 能力走的路线不开浏览器 ⇒ 报错要说清是「没有浏览器可查」
+  ---
+  duration_ms: 0.0504
+  type: 'test'
+  ...
+# Subtest: 开了 pages 却判不出是哪条路线 ⇒ 报错（不许随便挑一条路线的页面来数）
+ok 232 - 开了 pages 却判不出是哪条路线 ⇒ 报错（不许随便挑一条路线的页面来数）
+  ---
+  duration_ms: 0.0504
+  type: 'test'
+  ...
+# Subtest: 排期条目里写的 healthCheck 会一路走到收据（含体检自己的 note 与逐层状态）
+ok 233 - 排期条目里写的 healthCheck 会一路走到收据（含体检自己的 note 与逐层状态）
+  ---
+  duration_ms: 0.136
+  type: 'test'
+  ...
+# Subtest: buildRound 要把体检端口转交给 runRound（源码级检查，补行为用例够不到的那一环）
+ok 234 - buildRound 要把体检端口转交给 runRound（源码级检查，补行为用例够不到的那一环）
+  ---
+  duration_ms: 0.4217
+  type: 'test'
+  ...
+# Subtest: 每个会打扰人的理由都表态了「要谁去办」；静默的理由不许带非空 needs
+ok 235 - 每个会打扰人的理由都表态了「要谁去办」；静默的理由不许带非空 needs
+  ---
+  duration_ms: 0.2922
+  type: 'test'
+  ...
+# Subtest: 「需要人到现场」这一桶钉住登录相关的那两条（改口径必须是一次显式改动）
+ok 236 - 「需要人到现场」这一桶钉住登录相关的那两条（改口径必须是一次显式改动）
+  ---
+  duration_ms: 0.1654
+  type: 'test'
+  ...
+# Subtest: 没配历史端口时收据如实写 NOT_CONFIGURED（默认行为与接线前逐字相同）
+ok 237 - 没配历史端口时收据如实写 NOT_CONFIGURED（默认行为与接线前逐字相同）
+  ---
+  duration_ms: 0.1123
+  type: 'test'
+  ...
+# Subtest: 配了历史端口：过了到期闸门的轮次记一条，未到期的写 SKIPPED 且不进账本
+ok 238 - 配了历史端口：过了到期闸门的轮次记一条，未到期的写 SKIPPED 且不进账本
+  ---
+  duration_ms: 0.2746
+  type: 'test'
+  ...
+# Subtest: 登录失效那类失败会带着「要人到现场」的结论进账本（这就是频率统计的分子）
+ok 239 - 登录失效那类失败会带着「要人到现场」的结论进账本（这就是频率统计的分子）
+  ---
+  duration_ms: 0.1345
+  type: 'test'
+  ...
+# Subtest: 账本写失败不改变业务结果，但收据里必须写 FAILED（不许静默）
+ok 240 - 账本写失败不改变业务结果，但收据里必须写 FAILED（不许静默）
+  ---
+  duration_ms: 0.1346
+  type: 'test'
+  ...
+# Subtest: buildRound / optionsFromEntry 的三处转交（源码级检查，补行为用例够不到的那一环）
+ok 241 - buildRound / optionsFromEntry 的三处转交（源码级检查，补行为用例够不到的那一环）
+  ---
+  duration_ms: 0.368
+  type: 'test'
+  ...
+# Subtest: the weekly competitor period is the finished Sunday-to-Saturday week
+ok 242 - the weekly competitor period is the finished Sunday-to-Saturday week
+  ---
+  duration_ms: 2.8472
+  type: 'test'
+  ...
+# Subtest: period kinds cover the project vocabulary and clamp to real calendar dates
+ok 243 - period kinds cover the project vocabulary and clamp to real calendar dates
+  ---
+  duration_ms: 1.822
+  type: 'test'
+  ...
+# Subtest: monthly schedules clamp to the last day of a short month
+ok 244 - monthly schedules clamp to the last day of a short month
+  ---
+  duration_ms: 0.2109
+  type: 'test'
+  ...
+# Subtest: a weekly round is not due before its trigger time
+ok 245 - a weekly round is not due before its trigger time
+  ---
+  duration_ms: 0.2464
+  type: 'test'
+  ...
+# Subtest: a daily round is due on the day and rolls to the next day
+ok 246 - a daily round is due on the day and rolls to the next day
+  ---
+  duration_ms: 0.2059
+  type: 'test'
+  ...
+# Subtest: a round does not become due just because its last trigger is long past
+ok 247 - a round does not become due just because its last trigger is long past
+  ---
+  duration_ms: 1.9763
+  type: 'test'
+  ...
+# Subtest: the plan exposes how stale the last trigger is, without claiming the round ran
+ok 248 - the plan exposes how stale the last trigger is, without claiming the round ran
+  ---
+  duration_ms: 0.6141
+  type: 'test'
+  ...
+# Subtest: a disabled round still reports its window and next trigger, but is never due
+ok 249 - a disabled round still reports its window and next trigger, but is never due
+  ---
+  duration_ms: 0.1679
+  type: 'test'
+  ...
+# Subtest: the derived business key changes with the window, so later weeks really do run
+ok 250 - the derived business key changes with the window, so later weeks really do run
+  ---
+  duration_ms: 0.2966
+  type: 'test'
+  ...
+# Subtest: the default business key carries the store, so one capability can run for many shops
+ok 251 - the default business key carries the store, so one capability can run for many shops
+  ---
+  duration_ms: 0.2524
+  type: 'test'
+  ...
+# Subtest: 多家店铺共用同一个能力是合法的：三条排期三个键，一个都不许被压掉
+ok 252 - 多家店铺共用同一个能力是合法的：三条排期三个键，一个都不许被压掉
+  ---
+  duration_ms: 0.3083
+  type: 'test'
+  ...
+# Subtest: 手写模板漏掉 {storeId} 而同一能力排了多条 → 拒绝开跑，并点名是哪几条
+ok 253 - 手写模板漏掉 {storeId} 而同一能力排了多条 → 拒绝开跑，并点名是哪几条
+  ---
+  duration_ms: 0.2313
+  type: 'test'
+  ...
+# Subtest: 同一能力下两家店写成同一个 storeId → 拒绝（键照样会撞）
+ok 254 - 同一能力下两家店写成同一个 storeId → 拒绝（键照样会撞）
+  ---
+  duration_ms: 0.0861
+  type: 'test'
+  ...
+# Subtest: 只有一条排期时，不带 {storeId} 的自定义模板仍然接受（不误伤既有配置）
+ok 255 - 只有一条排期时，不带 {storeId} 的自定义模板仍然接受（不误伤既有配置）
+  ---
+  duration_ms: 0.0415
+  type: 'test'
+  ...
+# Subtest: the human-readable description says when and which period
+ok 256 - the human-readable description says when and which period
+  ---
+  duration_ms: 0.0412
+  type: 'test'
+  ...
+# Subtest: a valid schedule passes and an invalid one lists every problem
+ok 257 - a valid schedule passes and an invalid one lists every problem
+  ---
+  duration_ms: 0.1319
+  type: 'test'
+  ...
+# Subtest: a schedule with no rounds is rejected instead of silently running nothing
+ok 258 - a schedule with no rounds is rejected instead of silently running nothing
+  ---
+  duration_ms: 0.0553
+  type: 'test'
+  ...
+# Subtest: parseScheduleJson reports invalid JSON instead of inventing a schedule
+ok 259 - parseScheduleJson reports invalid JSON instead of inventing a schedule
+  ---
+  duration_ms: 0.4929
+  type: 'test'
+  ...
+# Subtest: the shipped config file is valid and its period matches the real SOP week
+ok 260 - the shipped config file is valid and its period matches the real SOP week
+  ---
+  duration_ms: 0.9353
+  type: 'test'
+  ...
+# Subtest: a tick runs only the due rounds and records the waiting ones
+ok 261 - a tick runs only the due rounds and records the waiting ones
+  ---
+  duration_ms: 0.3398
+  type: 'test'
+  ...
+# Subtest: an invalid schedule makes a tick fail loudly rather than run a subset
+ok 262 - an invalid schedule makes a tick fail loudly rather than run a subset
+  ---
+  duration_ms: 0.1733
+  type: 'test'
+  ...
+# Subtest: the scheduler itself does not dedupe: the same due round is offered every tick
+ok 263 - the scheduler itself does not dedupe: the same due round is offered every tick
+  ---
+  duration_ms: 0.2138
+  type: 'test'
+  ...
+# Subtest: the serve loop wakes on the configured interval and reports each tick
+ok 264 - the serve loop wakes on the configured interval and reports each tick
+  ---
+  duration_ms: 0.205
+  type: 'test'
+  ...
+# Subtest: the plan lists every round with its next trigger and derived key
+ok 265 - the plan lists every round with its next trigger and derived key
+  ---
+  duration_ms: 0.2615
+  type: 'test'
+  ...
+# Subtest: healthCheck 不写 / false / null 一律合法，且等于「不体检」
+ok 266 - healthCheck 不写 / false / null 一律合法，且等于「不体检」
+  ---
+  duration_ms: 0.618
+  type: 'test'
+  ...
+# Subtest: healthCheck 的合法写法：true / {} / { browser } / { pages } / 两者都给
+ok 267 - healthCheck 的合法写法：true / {} / { browser } / { pages } / 两者都给
+  ---
+  duration_ms: 0.1582
+  type: 'test'
+  ...
+# Subtest: healthCheck 写坏了要在配置解析时就报出来（否则表现为「体检长期静默地没开」）
+ok 268 - healthCheck 写坏了要在配置解析时就报出来（否则表现为「体检长期静默地没开」）
+  ---
+  duration_ms: 0.1129
+  type: 'test'
+  ...
+# Subtest: 允许的键名清单只有一处来源（排期层），编排层引用它而不是另抄一份
+ok 269 - 允许的键名清单只有一处来源（排期层），编排层引用它而不是另抄一份
+  ---
+  duration_ms: 0.0364
+  type: 'test'
+  ...
+# Subtest: 持有效租约的运行是活的——无论它看起来等了多久
+ok 270 - 持有效租约的运行是活的——无论它看起来等了多久
+  ---
+  duration_ms: 1.4077
+  type: 'test'
+  ...
+# Subtest: 租约已过期的运行可证已死
+ok 271 - 租约已过期的运行可证已死
+  ---
+  duration_ms: 0.1003
+  type: 'test'
+  ...
+# Subtest: 租约宽限期能吸收时钟抖动，但过了宽限期就必须判死
+ok 272 - 租约宽限期能吸收时钟抖动，但过了宽限期就必须判死
+  ---
+  duration_ms: 0.084
+  type: 'test'
+  ...
+# Subtest: RUNNING 却一个开放 attempt 都没有：崩在状态写回与开 attempt 之间
+ok 273 - RUNNING 却一个开放 attempt 都没有：崩在状态写回与开 attempt 之间
+  ---
+  duration_ms: 0.0607
+  type: 'test'
+  ...
+# Subtest: PAUSED（等人工）与 RETRY_WAIT（等退避）都是合法等待，绝不回收
+ok 274 - PAUSED（等人工）与 RETRY_WAIT（等退避）都是合法等待，绝不回收
+  ---
+  duration_ms: 0.0959
+  type: 'test'
+  ...
+# Subtest: 不给阈值时 QUEUED 一律不回收：多久算遗弃必须由调用方显式说出
+ok 275 - 不给阈值时 QUEUED 一律不回收：多久算遗弃必须由调用方显式说出
+  ---
+  duration_ms: 1.7028
+  type: 'test'
+  ...
+# Subtest: 终态运行既不 active 也不 reclaimable
+ok 276 - 终态运行既不 active 也不 reclaimable
+  ---
+  duration_ms: 0.1711
+  type: 'test'
+  ...
+# Subtest: NOT_REQUESTED 从未可能调用 handler：连提交记录都不需要就判安全
+ok 277 - NOT_REQUESTED 从未可能调用 handler：连提交记录都不需要就判安全
+  ---
+  duration_ms: 0.1126
+  type: 'test'
+  ...
+# Subtest: READY 而拿不到提交记录：fail-closed 判不安全（猜错就是重复外部写入）
+ok 278 - READY 而拿不到提交记录：fail-closed 判不安全（猜错就是重复外部写入）
+  ---
+  duration_ms: 0.1804
+  type: 'test'
+  ...
+# Subtest: READY + 提交记录停在 READY/FAILED：handler 从未被交付，可安全回收
+ok 279 - READY + 提交记录停在 READY/FAILED：handler 从未被交付，可安全回收
+  ---
+  duration_ms: 0.2419
+  type: 'test'
+  ...
+# Subtest: READY + 提交记录停在 COMMITTING：进程死在 handler 执行中，回收就是重复写入
+ok 280 - READY + 提交记录停在 COMMITTING：进程死在 handler 执行中，回收就是重复写入
+  ---
+  duration_ms: 0.534
+  type: 'test'
+  ...
+# Subtest: 同一份「租约过期」的死运行，发布轴状态不同则结论相反
+ok 281 - 同一份「租约过期」的死运行，发布轴状态不同则结论相反
+  ---
+  duration_ms: 0.1686
+  type: 'test'
+  ...
+# Subtest: COMMITTED / UNKNOWN / VERIFIED 一律不可回收，只有对账这一条路
+ok 282 - COMMITTED / UNKNOWN / VERIFIED 一律不可回收，只有对账这一条路
+  ---
+  duration_ms: 0.183
+  type: 'test'
+  ...
+# Subtest: 回收候选发布态只有 NOT_REQUESTED 与 READY（供报错信息引用）
+ok 283 - 回收候选发布态只有 NOT_REQUESTED 与 READY（供报错信息引用）
+  ---
+  duration_ms: 0.0586
+  type: 'test'
+  ...
+# Subtest: guidance 把「活的」与「安全的」说成两件事，不混成一句
+ok 284 - guidance 把「活的」与「安全的」说成两件事，不混成一句
+  ---
+  duration_ms: 0.6632
+  type: 'test'
+  ...
+# Subtest: 「未交付 handler」的判据是从账本唯一清单推导出的补集，不是第二份手抄
+ok 285 - 「未交付 handler」的判据是从账本唯一清单推导出的补集，不是第二份手抄
+  ---
+  duration_ms: 0.1294
+  type: 'test'
+  ...
+# Subtest: parseVersion 解析合法版本并拒绝非法
+ok 286 - parseVersion 解析合法版本并拒绝非法
+  ---
+  duration_ms: 0.8893
+  type: 'test'
+  ...
+# Subtest: compareVersions 顺序正确，含 prerelease
+ok 287 - compareVersions 顺序正确，含 prerelease
+  ---
+  duration_ms: 0.3137
+  type: 'test'
+  ...
+# Subtest: satisfies 支持 ^ ~ 精确 >= 区间并用与 ||
+ok 288 - satisfies 支持 ^ ~ 精确 >= 区间并用与 ||
+  ---
+  duration_ms: 1.2667
+  type: 'test'
+  ...
+# Subtest: satisfies 对 prerelease 默认不放行
+ok 289 - satisfies 对 prerelease 默认不放行
+  ---
+  duration_ms: 0.072
+  type: 'test'
+  ...
+# Subtest: 非法 range 抛错（fail-closed）
+ok 290 - 非法 range 抛错（fail-closed）
+  ---
+  duration_ms: 0.1303
+  type: 'test'
+  ...
+# Subtest: maxSatisfying 选最高匹配版本
+ok 291 - maxSatisfying 选最高匹配版本
+  ---
+  duration_ms: 0.1443
+  type: 'test'
+  ...
+# Subtest: 装载已注册能力：解析路径、校验身份与摘要
+ok 292 - 装载已注册能力：解析路径、校验身份与摘要
+  ---
+  duration_ms: 10.8394
+  type: 'test'
+  ...
+# Subtest: 未注册能力拒绝加载
+ok 293 - 未注册能力拒绝加载
+  ---
+  duration_ms: 0.4191
+  type: 'test'
+  ...
+# Subtest: 版本不满足拒绝加载
+ok 294 - 版本不满足拒绝加载
+  ---
+  duration_ms: 3.7354
+  type: 'test'
+  ...
+# Subtest: entry 逃逸技能目录时 Loader 拒绝（不依赖 Registry 校验）
+ok 295 - entry 逃逸技能目录时 Loader 拒绝（不依赖 Registry 校验）
+  ---
+  duration_ms: 0.2778
+  type: 'test'
+  ...
+# Subtest: 实现摘要漂移拒绝加载
+ok 296 - 实现摘要漂移拒绝加载
+  ---
+  duration_ms: 5.8935
+  type: 'test'
+  ...
+# Subtest: 实现自报身份与 manifest 不一致拒绝加载
+ok 297 - 实现自报身份与 manifest 不一致拒绝加载
+  ---
+  duration_ms: 6.4873
+  type: 'test'
+  ...
+# Subtest: 入口文件缺失拒绝加载
+ok 298 - 入口文件缺失拒绝加载
+  ---
+  duration_ms: 4.6199
+  type: 'test'
+  ...
+# Subtest: loadAdapter 校验 Adapter 契约
+ok 299 - loadAdapter 校验 Adapter 契约
+  ---
+  duration_ms: 10.9247
+  type: 'test'
+  ...
+# Subtest: discoverSkillManifests 默认忽略可执行 manifest.mjs
+ok 300 - discoverSkillManifests 默认忽略可执行 manifest.mjs
+  ---
+  duration_ms: 7.1507
+  type: 'test'
+  ...
+# Subtest: 合法 manifest 通过校验
+ok 301 - 合法 manifest 通过校验
+  ---
+  duration_ms: 2.3559
+  type: 'test'
+  ...
+# Subtest: SIDE_EFFECT_CLASSES 与 policy 副作用表同源
+ok 302 - SIDE_EFFECT_CLASSES 与 policy 副作用表同源
+  ---
+  duration_ms: 0.1228
+  type: 'test'
+  ...
+# Subtest: name/version/kind/entry 基础字段校验
+ok 303 - name/version/kind/entry 基础字段校验
+  ---
+  duration_ms: 0.424
+  type: 'test'
+  ...
+# Subtest: entry 必须站内相对 .mjs，拒绝绝对路径与逃逸
+ok 304 - entry 必须站内相对 .mjs，拒绝绝对路径与逃逸
+  ---
+  duration_ms: 0.2407
+  type: 'test'
+  ...
+# Subtest: 未知/被禁权限与未知副作用被拒绝
+ok 305 - 未知/被禁权限与未知副作用被拒绝
+  ---
+  duration_ms: 0.1285
+  type: 'test'
+  ...
+# Subtest: 外部副作用必须声明对应权限，写权限必须声明对应副作用
+ok 306 - 外部副作用必须声明对应权限，写权限必须声明对应副作用
+  ---
+  duration_ms: 0.1028
+  type: 'test'
+  ...
+# Subtest: 外部副作用不可恢复（recovery.supported=false）被拒绝
+ok 307 - 外部副作用不可恢复（recovery.supported=false）被拒绝
+  ---
+  duration_ms: 0.471
+  type: 'test'
+  ...
+# Subtest: recovery supported 必须给出具体 resumeFrom
+ok 308 - recovery supported 必须给出具体 resumeFrom
+  ---
+  duration_ms: 0.0942
+  type: 'test'
+  ...
+# Subtest: 依赖串与版本区间校验
+ok 309 - 依赖串与版本区间校验
+  ---
+  duration_ms: 0.1965
+  type: 'test'
+  ...
+# Subtest: parseDependency / formatDependency 往返一致
+ok 310 - parseDependency / formatDependency 往返一致
+  ---
+  duration_ms: 0.3196
+  type: 'test'
+  ...
+# Subtest: normalizeManifest 补默认值且不改写语义
+ok 311 - normalizeManifest 补默认值且不改写语义
+  ---
+  duration_ms: 0.1758
+  type: 'test'
+  ...
+# Subtest: 合法 registry 通过并生成索引
+ok 312 - 合法 registry 通过并生成索引
+  ---
+  duration_ms: 9.548
+  type: 'test'
+  ...
+# Subtest: 索引 digest 对同一 manifest 稳定、对改动敏感
+ok 313 - 索引 digest 对同一 manifest 稳定、对改动敏感
+  ---
+  duration_ms: 0.2241
+  type: 'test'
+  ...
+# Subtest: 重复 manifest（同名同版本）被拒绝
+ok 314 - 重复 manifest（同名同版本）被拒绝
+  ---
+  duration_ms: 0.5959
+  type: 'test'
+  ...
+# Subtest: 同名不同版本共存，resolveVersion 选最高匹配
+ok 315 - 同名不同版本共存，resolveVersion 选最高匹配
+  ---
+  duration_ms: 0.669
+  type: 'test'
+  ...
+# Subtest: 缺失依赖被拒绝；allowlist 内外部依赖只告警
+ok 316 - 缺失依赖被拒绝；allowlist 内外部依赖只告警
+  ---
+  duration_ms: 0.3511
+  type: 'test'
+  ...
+# Subtest: 版本不兼容被拒绝
+ok 317 - 版本不兼容被拒绝
+  ---
+  duration_ms: 0.2534
+  type: 'test'
+  ...
+# Subtest: 循环依赖被拒绝
+ok 318 - 循环依赖被拒绝
+  ---
+  duration_ms: 0.8479
+  type: 'test'
+  ...
+# Subtest: 非法 manifest 在任何执行前失败，strict 抛 SkillRegistryError
+ok 319 - 非法 manifest 在任何执行前失败，strict 抛 SkillRegistryError
+  ---
+  duration_ms: 0.5658
+  type: 'test'
+  ...
+# Subtest: list 可按 kind/前置条件/输入类型/副作用筛选
+ok 320 - list 可按 kind/前置条件/输入类型/副作用筛选
+  ---
+  duration_ms: 0.5061
+  type: 'test'
+  ...
+# Subtest: require 的三种失败路径
+ok 321 - require 的三种失败路径
+  ---
+  duration_ms: 0.4476
+  type: 'test'
+  ...
+# Subtest: 副作用/权限闸门：未声明即拒绝
+ok 322 - 副作用/权限闸门：未声明即拒绝
+  ---
+  duration_ms: 0.3342
+  type: 'test'
+  ...
+# Subtest: knownValidators 注入后，声明未实现验证器的 manifest 被拒绝
+ok 323 - knownValidators 注入后，声明未实现验证器的 manifest 被拒绝
+  ---
+  duration_ms: 0.2473
+  type: 'test'
+  ...
+# Subtest: 写外部但不声明发布期验证器的能力被 Registry 拒绝
+ok 324 - 写外部但不声明发布期验证器的能力被 Registry 拒绝
+  ---
+  duration_ms: 0.1945
+  type: 'test'
+  ...
+# Subtest: assertRegistry 对非法注册表抛错
+ok 325 - assertRegistry 对非法注册表抛错
+  ---
+  duration_ms: 0.1462
+  type: 'test'
+  ...
+# Subtest: 采集 -> 验证 -> evidence manifest -> 提交 -> 游标推进
+ok 326 - 采集 -> 验证 -> evidence manifest -> 提交 -> 游标推进
+  ---
+  duration_ms: 13.7443
+  type: 'test'
+  ...
+# Subtest: 同一 businessKey 重复提交只登记一条（幂等）
+ok 327 - 同一 businessKey 重复提交只登记一条（幂等）
+  ---
+  duration_ms: 2.7095
+  type: 'test'
+  ...
+# Subtest: commit-before-response：结果未知进 UNKNOWN，对账前不重试写入
+ok 328 - commit-before-response：结果未知进 UNKNOWN，对账前不重试写入
+  ---
+  duration_ms: 1.5444
+  type: 'test'
+  ...
+# Subtest: 无 readBack 的 UNKNOWN 对账要求人工介入，不自动判定
+ok 329 - 无 readBack 的 UNKNOWN 对账要求人工介入，不自动判定
+  ---
+  duration_ms: 0.975
+  type: 'test'
+  ...
+# Subtest: worker 崩溃后从权威状态恢复：不重复已确认副作用，继续下一分片
+ok 330 - worker 崩溃后从权威状态恢复：不重复已确认副作用，继续下一分片
+  ---
+  duration_ms: 23.2093
+  type: 'test'
+  ...
+# Subtest: EVIDENCE_INVALID：坏工件被拒绝，不推进游标也不重试同一证据
+ok 331 - EVIDENCE_INVALID：坏工件被拒绝，不推进游标也不重试同一证据
+  ---
+  duration_ms: 3.3559
+  type: 'test'
+  ...
+# Subtest: 登录/风控类失败映射到 HUMAN_REQUIRED 并暂停
+ok 332 - 登录/风控类失败映射到 HUMAN_REQUIRED 并暂停
+  ---
+  duration_ms: 2.5729
+  type: 'test'
+  ...
+# Subtest: commitKey 由 businessKey 稳定派生
+ok 333 - commitKey 由 businessKey 稳定派生
+  ---
+  duration_ms: 0.2415
+  type: 'test'
+  ...
+# Subtest: 退避是指数且有上限；非法输入退回首次退避
+ok 334 - 退避是指数且有上限；非法输入退回首次退避
+  ---
+  duration_ms: 0.6637
+  type: 'test'
+  ...
+# Subtest: 熔断：连续失败到阈值即打开，冷却结束后自动闭合，成功可清零
+ok 335 - 熔断：连续失败到阈值即打开，冷却结束后自动闭合，成功可清零
+  ---
+  duration_ms: 0.48
+  type: 'test'
+  ...
+# Subtest: 限流：令牌桶按容量扣减、耗尽即拒、可归还、按时间匀速回填
+ok 336 - 限流：令牌桶按容量扣减、耗尽即拒、可归还、按时间匀速回填
+  ---
+  duration_ms: 0.2023
+  type: 'test'
+  ...
+# Subtest: fan-out 合并：确定性排序；同键异值记为冲突并要求人工，不静默择一
+ok 337 - fan-out 合并：确定性排序；同键异值记为冲突并要求人工，不静默择一
+  ---
+  duration_ms: 7.2016
+  type: 'test'
+  ...
+# Subtest: 入队：无副作用只读任务正常准入，队列元数据落到上下文
+ok 338 - 入队：无副作用只读任务正常准入，队列元数据落到上下文
+  ---
+  duration_ms: 2.1958
+  type: 'test'
+  ...
+# Subtest: 入队：已过截止时间直接拒收（DEADLINE_PASSED），不落 run
+ok 339 - 入队：已过截止时间直接拒收（DEADLINE_PASSED），不落 run
+  ---
+  duration_ms: 0.1725
+  type: 'test'
+  ...
+# Subtest: 入队：目标平台熔断中拒收（CIRCUIT_OPEN）
+ok 340 - 入队：目标平台熔断中拒收（CIRCUIT_OPEN）
+  ---
+  duration_ms: 0.1704
+  type: 'test'
+  ...
+# Subtest: 入队：限流预算耗尽拒收（RATE_LIMITED），且准入被拒时归还令牌
+ok 341 - 入队：限流预算耗尽拒收（RATE_LIMITED），且准入被拒时归还令牌
+  ---
+  duration_ms: 1.0384
+  type: 'test'
+  ...
+# Subtest: 入队：同一 lane 的多个不同任务都能入队（lane 占用是执行期约束，不是准入约束）
+ok 342 - 入队：同一 lane 的多个不同任务都能入队（lane 占用是执行期约束，不是准入约束）
+  ---
+  duration_ms: 1.7109
+  type: 'test'
+  ...
+# Subtest: 入队：全局队列深度达到上限触发背压
+ok 343 - 入队：全局队列深度达到上限触发背压
+  ---
+  duration_ms: 0.7942
+  type: 'test'
+  ...
+# Subtest: 入队：单 lane 队列深度达到上限触发背压
+ok 344 - 入队：单 lane 队列深度达到上限触发背压
+  ---
+  duration_ms: 0.6962
+  type: 'test'
+  ...
+# Subtest: 入队：规格不合法归 INVALID_SPEC，重试无用
+ok 345 - 入队：规格不合法归 INVALID_SPEC，重试无用
+  ---
+  duration_ms: 0.3571
+  type: 'test'
+  ...
+# Subtest: 出队顺序：优先级降序 -> 入队时间升序 -> runId 升序，完全可复现
+ok 346 - 出队顺序：优先级降序 -> 入队时间升序 -> runId 升序，完全可复现
+  ---
+  duration_ms: 0.6419
+  type: 'test'
+  ...
+# Subtest: 出队闸门：退避未到的任务被跳过，时钟推进后重新可出
+ok 347 - 出队闸门：退避未到的任务被跳过，时钟推进后重新可出
+  ---
+  duration_ms: 0.2038
+  type: 'test'
+  ...
+# Subtest: 出队闸门：已过截止时间的任务不被选中（由 sweepTimeouts 负责收敛）
+ok 348 - 出队闸门：已过截止时间的任务不被选中（由 sweepTimeouts 负责收敛）
+  ---
+  duration_ms: 0.1232
+  type: 'test'
+  ...
+# Subtest: 出队闸门：lane 容量用完时同 lane 的排队任务不出队，释放后可出
+ok 349 - 出队闸门：lane 容量用完时同 lane 的排队任务不出队，释放后可出
+  ---
+  duration_ms: 0.3676
+  type: 'test'
+  ...
+# Subtest: 出队闸门：等提交（RUNNING+RELEASED）与等人工（PAUSED）都不占用执行槽
+ok 350 - 出队闸门：等提交（RUNNING+RELEASED）与等人工（PAUSED）都不占用执行槽
+  ---
+  duration_ms: 0.2272
+  type: 'test'
+  ...
+# Subtest: 认领：只做一次状态转移，产出 attempt 与 lease
+ok 351 - 认领：只做一次状态转移，产出 attempt 与 lease
+  ---
+  duration_ms: 0.5832
+  type: 'test'
+  ...
+# Subtest: 回队列：退避写进上下文，执行轴由 Controller 决定，不重复执行
+ok 352 - 回队列：退避写进上下文，执行轴由 Controller 决定，不重复执行
+  ---
+  duration_ms: 0.566
+  type: 'test'
+  ...
+# Subtest: 超时清扫：RUNNING 且超过截止时间的任务转为等待人工，不自动重试
+ok 353 - 超时清扫：RUNNING 且超过截止时间的任务转为等待人工，不自动重试
+  ---
+  duration_ms: 0.4948
+  type: 'test'
+  ...
+# Subtest: 取消：进入终态，不再参与出队与活跃计数
+ok 354 - 取消：进入终态，不再参与出队与活跃计数
+  ---
+  duration_ms: 0.2731
+  type: 'test'
+  ...
+# Subtest: 深度统计：按 lane 分组且顺序稳定
+ok 355 - 深度统计：按 lane 分组且顺序稳定
+  ---
+  duration_ms: 0.3017
+  type: 'test'
+  ...
+# Subtest: 队列拒绝原因的枚举与实现一致
+ok 356 - 队列拒绝原因的枚举与实现一致
+  ---
+  duration_ms: 1.0233
+  type: 'test'
+  ...
+# Subtest: collectSideEffects 只保留非外部写副作用；primaryWriteEffect 取声明顺序里的第一个写副作用
+ok 357 - collectSideEffects 只保留非外部写副作用；primaryWriteEffect 取声明顺序里的第一个写副作用
+  ---
+  duration_ms: 0.9635
+  type: 'test'
+  ...
+# Subtest: 发布钩子解析：缺工厂 fail-closed；返回不合法即拒绝；合法则原样返回
+ok 358 - 发布钩子解析：缺工厂 fail-closed；返回不合法即拒绝；合法则原样返回
+  ---
+  duration_ms: 0.3581
+  type: 'test'
+  ...
+# Subtest: CLI 参数校验：必填项与 --commit 的人工授权要求
+ok 359 - CLI 参数校验：必填项与 --commit 的人工授权要求
+  ---
+  duration_ms: 0.3171
+  type: 'test'
+  ...
+# Subtest: CLI 参数校验：probe profile 只要求 --capability（探测不建运行，不逼调用方传假身份）
+ok 360 - CLI 参数校验：probe profile 只要求 --capability（探测不建运行，不逼调用方传假身份）
+  ---
+  duration_ms: 0.1474
+  type: 'test'
+  ...
+# Subtest: parseEnvFile 解析键值、跳过注释并去掉成对引号
+ok 361 - parseEnvFile 解析键值、跳过注释并去掉成对引号
+  ---
+  duration_ms: 2.0554
+  type: 'test'
+  ...
+# Subtest: dry-run：只跑采集段，不动发布轴、不推进游标；即使 manifest 声明了外部写也不开人工闸门
+ok 362 - dry-run：只跑采集段，不动发布轴、不推进游标；即使 manifest 声明了外部写也不开人工闸门
+  ---
+  duration_ms: 13.2683
+  type: 'test'
+  ...
+# Subtest: commit：人工闸门先开、提交后回读、验证器全过才 VERIFIED 并推进游标
+ok 363 - commit：人工闸门先开、提交后回读、验证器全过才 VERIFIED 并推进游标
+  ---
+  duration_ms: 10.1269
+  type: 'test'
+  ...
+# Subtest: commit 但没有操作者：不开闸也不假装放行，直接返回等待人工
+ok 364 - commit 但没有操作者：不开闸也不假装放行，直接返回等待人工
+  ---
+  duration_ms: 0.9439
+  type: 'test'
+  ...
+# Subtest: 声明要写外部却没有 createPublisher：提交路径 fail-closed，不静默跳过发布
+ok 365 - 声明要写外部却没有 createPublisher：提交路径 fail-closed，不静默跳过发布
+  ---
+  duration_ms: 6.444
+  type: 'test'
+  ...
+# Subtest: 采集期验证器失败：整体失败并归类 EVIDENCE_INVALID，绝不进入发布段
+ok 366 - 采集期验证器失败：整体失败并归类 EVIDENCE_INVALID，绝不进入发布段
+  ---
+  duration_ms: 6.5268
+  type: 'test'
+  ...
+# Subtest: row_count 声明与工件不符即失败（expectedRows 是硬合同，不是提示）
+ok 367 - row_count 声明与工件不符即失败（expectedRows 是硬合同，不是提示）
+  ---
+  duration_ms: 4.3939
+  type: 'test'
+  ...
+# Subtest: structure 声明未实现的验证器即失败，且归类为能力缺陷而不是证据无效
+ok 368 - structure 声明未实现的验证器即失败，且归类为能力缺陷而不是证据无效
+  ---
+  duration_ms: 4.2816
+  type: 'test'
+  ...
+# Subtest: 拒绝准入时不创建运行（能力未注册）
+ok 369 - 拒绝准入时不创建运行（能力未注册）
+  ---
+  duration_ms: 0.7864
+  type: 'test'
+  ...
+# Subtest: 缺 businessKey 即拒绝：没有幂等键就不允许走提交路径
+ok 370 - 缺 businessKey 即拒绝：没有幂等键就不允许走提交路径
+  ---
+  duration_ms: 0.7928
+  type: 'test'
+  ...
+# Subtest: 回读不符预期时结算为 UNKNOWN 而非 VERIFIED，游标不推进
+ok 371 - 回读不符预期时结算为 UNKNOWN 而非 VERIFIED，游标不推进
+  ---
+  duration_ms: 6.854
+  type: 'test'
+  ...
+# Subtest: UNKNOWN 对账收据必须带得出 commitKey（端口是 camelCase，不能读 snake_case 列名）
+ok 372 - UNKNOWN 对账收据必须带得出 commitKey（端口是 camelCase，不能读 snake_case 列名）
+  ---
+  duration_ms: 1.0905
+  type: 'test'
+  ...
+# Subtest: 实现覆盖 manifest 允许声明的全部验证器名
+ok 373 - 实现覆盖 manifest 允许声明的全部验证器名
+  ---
+  duration_ms: 1.1685
+  type: 'test'
+  ...
+# Subtest: 验证器按阶段划分且不重叠
+ok 374 - 验证器按阶段划分且不重叠
+  ---
+  duration_ms: 0.1579
+  type: 'test'
+  ...
+# Subtest: assertValidatorCoverage 对未实现声明抛 fail-closed 错误
+ok 375 - assertValidatorCoverage 对未实现声明抛 fail-closed 错误
+  ---
+  duration_ms: 0.3119
+  type: 'test'
+  ...
+# Subtest: buildValidatorsFromManifest 只取声明过的、且属于该阶段的验证器
+ok 376 - buildValidatorsFromManifest 只取声明过的、且属于该阶段的验证器
+  ---
+  duration_ms: 2.0348
+  type: 'test'
+  ...
+# Subtest: contiguous_prefix：范围必须紧接已验证游标
+ok 377 - contiguous_prefix：范围必须紧接已验证游标
+  ---
+  duration_ms: 0.2241
+  type: 'test'
+  ...
+# Subtest: contiguous_prefix：缺 range 视为无效（不允许隐式空范围）
+ok 378 - contiguous_prefix：缺 range 视为无效（不允许隐式空范围）
+  ---
+  duration_ms: 0.1265
+  type: 'test'
+  ...
+# Subtest: row_count 与 structure 按 contract 生效
+ok 379 - row_count 与 structure 按 contract 生效
+  ---
+  duration_ms: 0.1536
+  type: 'test'
+  ...
+# Subtest: artifact_integrity 与 digest 抓缺失摘要/摘要不符
+ok 380 - artifact_integrity 与 digest 抓缺失摘要/摘要不符
+  ---
+  duration_ms: 0.2294
+  type: 'test'
+  ...
+# Subtest: 发布期验证器需要回读收据，缺收据不判通过
+ok 381 - 发布期验证器需要回读收据，缺收据不判通过
+  ---
+  duration_ms: 1.0167
+  type: 'test'
+  ...
+# Subtest: runManifestValidation 聚合结果并按阶段过滤
+ok 382 - runManifestValidation 聚合结果并按阶段过滤
+  ---
+  duration_ms: 0.8627
+  type: 'test'
+  ...
+# Subtest: VALIDATOR_IMPLS 每个实现都声明了合法阶段
+ok 383 - VALIDATOR_IMPLS 每个实现都声明了合法阶段
+  ---
+  duration_ms: 0.2046
+  type: 'test'
+  ...
+# Subtest: row_count：expectedRows 为 null 视为未声明，不误判
+ok 384 - row_count：expectedRows 为 null 视为未声明，不误判
+  ---
+  duration_ms: 0.1272
+  type: 'test'
+  ...
+# Subtest: publication：expected.rows 为 null 视为未声明，不误判
+ok 385 - publication：expected.rows 为 null 视为未声明，不误判
+  ---
+  duration_ms: 0.1523
+  type: 'test'
+  ...
+# Subtest: taskSpec 校验：缺身份字段被拒
+ok 386 - taskSpec 校验：缺身份字段被拒
+  ---
+  duration_ms: 0.631
+  type: 'test'
+  ...
+# Subtest: 准入成功：run 落库，状态 QUEUED，nextAction START
+ok 387 - 准入成功：run 落库，状态 QUEUED，nextAction START
+  ---
+  duration_ms: 1.8408
+  type: 'test'
+  ...
+# Subtest: 高风险副作用准入后进入人工闸门，不能直接开始
+ok 388 - 高风险副作用准入后进入人工闸门，不能直接开始
+  ---
+  duration_ms: 0.842
+  type: 'test'
+  ...
+# Subtest: 同一事项重复准入被拒（按 idempotencyKey 去重，而非按 lane 占用）
+ok 389 - 同一事项重复准入被拒（按 idempotencyKey 去重，而非按 lane 占用）
+  ---
+  duration_ms: 0.3254
+  type: 'test'
+  ...
+# Subtest: 同一 lane 的不同事项都能准入，但执行期仍然串行（并发约束留在 beginAttempt）
+ok 390 - 同一 lane 的不同事项都能准入，但执行期仍然串行（并发约束留在 beginAttempt）
+  ---
+  duration_ms: 0.5488
+  type: 'test'
+  ...
+# Subtest: beginAttempt 持有 lease 并推进 RUNNING
+ok 391 - beginAttempt 持有 lease 并推进 RUNNING
+  ---
+  duration_ms: 0.2146
+  type: 'test'
+  ...
+# Subtest: 失败分类：TRANSIENT_EXTERNAL 预算内进 RETRY_WAIT，耗尽进 FAILED
+ok 392 - 失败分类：TRANSIENT_EXTERNAL 预算内进 RETRY_WAIT，耗尽进 FAILED
+  ---
+  duration_ms: 1.0668
+  type: 'test'
+  ...
+# Subtest: HUMAN_REQUIRED 进 PAUSED + WAITING_HUMAN；COMMIT_UNKNOWN 进 UNKNOWN 不重试
+ok 393 - HUMAN_REQUIRED 进 PAUSED + WAITING_HUMAN；COMMIT_UNKNOWN 进 UNKNOWN 不重试
+  ---
+  duration_ms: 0.5508
+  type: 'test'
+  ...
+# Subtest: 游标只能前进，且只能在 VALIDATED 证据上推进
+ok 394 - 游标只能前进，且只能在 VALIDATED 证据上推进
+  ---
+  duration_ms: 0.9331
+  type: 'test'
+  ...
+# Subtest: 声称要写外部的运行：发布未请求时游标不得推进（只读运行不受影响）
+ok 395 - 声称要写外部的运行：发布未请求时游标不得推进（只读运行不受影响）
+  ---
+  duration_ms: 2.6507
+  type: 'test'
+  ...
+# Subtest: decisions 追加：唯一审计入口，拒绝夹带状态轴、拒绝空写入、终态拒绝追加
+ok 396 - decisions 追加：唯一审计入口，拒绝夹带状态轴、拒绝空写入、终态拒绝追加
+  ---
+  duration_ms: 0.7421
+  type: 'test'
+  ...
+# Subtest: 终态拒绝再次转移；CAS 冲突可被检测
+ok 397 - 终态拒绝再次转移；CAS 冲突可被检测
+  ---
+  duration_ms: 0.3271
+  type: 'test'
+  ...
+# Subtest: recover：只从权威 store 恢复，回收过期 lease
+ok 398 - recover：只从权威 store 恢复，回收过期 lease
+  ---
+  duration_ms: 0.6449
+  type: 'test'
+  ...
+1..398
+# tests 398
+# suites 0
+# pass 398
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1999.6255

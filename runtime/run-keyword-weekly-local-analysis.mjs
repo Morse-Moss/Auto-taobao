@@ -307,7 +307,15 @@ function readEnv(file) {
   return values;
 }
 
-class FeishuReader {
+/**
+ * 关键词库 base 的只读客户端。
+ *
+ * **导出**（2026-09-22）：周更排期的「每周入参解析」要按名找出源周表/历史表/编号库，
+ * 而它需要的就是这同一个只读客户端。复制一份到 `runtime/weekly-round-input-reader.mjs`
+ * 等于把「怎么读这个 base」变成两处实现 —— 本项目已经吃过「同一个事实两处实现」的亏，
+ * 所以这里导出、那边 import。
+ */
+export class FeishuReader {
   #token;
 
   constructor({ appId, appSecret, appToken }) {
