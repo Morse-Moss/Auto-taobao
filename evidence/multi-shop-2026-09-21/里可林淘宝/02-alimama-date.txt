@@ -1,0 +1,24 @@
+
+===== 2026-09-22T03:41:22.406Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site alimama --date 2026-09-21 --proxy http://127.0.0.1:19041
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: alimama: state did not settle to 2026-09-21（读了 16 次 × 1200ms；其中读不到 16 次）; lastReadError=proxy http://127.0.0.1:19041/eval?target=5EC3C730F2DC1EA82CEB05435E285BAD failed: HTTP 400 Error: alimama filter bar not ready; triggers=0     at <anonymous>:6:36     at <anonymous>:10:5; last=null
+    at settle (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:622:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:657:21)
+    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:545:12)
+TRACE [
+  {
+    "step": "read-before-skipped",
+    "tolerated": true,
+    "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
+    "detail": "proxy http://127.0.0.1:19041/eval?target=5EC3C730F2DC1EA82CEB05435E285BAD failed: HTTP 400 Error: alimama filter bar not ready; triggers=0     at <anonymous>:6:"
+  },
+  {
+    "step": "navigate",
+    "url": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-09-21&endTime=2026-09-21&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day"
+  }
+]

@@ -1,0 +1,95 @@
+{
+  "date": "2026-09-21",
+  "mode": "commit",
+  "startedAt": "2026-09-22T03:41:16.962Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 0,
+      "logPath": "evidence\\multi-shop-2026-09-21\\00-health-check-daily.txt",
+      "ok": true,
+      "blocking": [],
+      "blockingDetails": [],
+      "normalize": "已归位（生意参谋工作页=0  飞书底单页=0 → 生意参谋工作页=1  飞书底单页=1）",
+      "normalizeChanged": true
+    }
+  },
+  "shops": {
+    "里可林淘宝": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-21\\里可林淘宝\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": [],
+          "pageNormalize": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）"
+        },
+        {
+          "stage": "alimama-date",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-21\\里可林淘宝\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-09-21",
+            "--proxy",
+            "http://127.0.0.1:19041"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        }
+      ],
+      "source": {},
+      "failedStage": "alimama-date",
+      "failureOutput": "\nError: alimama: state did not settle to 2026-09-21（读了 16 次 × 1200ms；其中读不到 16 次）; lastReadError=proxy http://127.0.0.1:19041/eval?target=5EC3C730F2DC1EA82CEB05435E285BAD failed: HTTP 400 Error: alimama filter bar not ready; triggers=0     at <anonymous>:6:36     at <anonymous>:10:5; last=null\n    at settle (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:622:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:657:21)\n    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:545:12)\nTRACE [\n  {\n    \"step\": \"read-before-skipped\",\n    \"tolerated\": true,\n    \"reason\": \"动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）\",\n    \"detail\": \"proxy http://127.0.0.1:19041/eval?target=5EC3C730F2DC1EA82CEB05435E285BAD failed: HTTP 400 Error: alimama filter bar not ready; triggers=0     at <anonymous>:6:\"\n  },\n  {\n    \"step\": \"navigate\",\n    \"url\": \"https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-09-21&endTime=2026-09-21&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day\"\n  }\n]\n",
+      "blockingDetails": null,
+      "error": "阶段 alimama-date 失败（exit 1）",
+      "recovery": {
+        "at": "2026-09-22T03:41:44.042Z",
+        "proxyPort": 19041,
+        "leftAt": {
+          "tabs": 3,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 1
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": [
+            "about:blank"
+          ]
+        },
+        "action": "none",
+        "after": {
+          "tabs": 3,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 1
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": [
+            "about:blank"
+          ]
+        },
+        "restored": true,
+        "detail": "回位后 生意参谋工作页 恰好一个",
+        "error": null,
+        "logPath": "evidence\\multi-shop-2026-09-21\\里可林淘宝\\99-recovery.txt"
+      }
+    }
+  },
+  "finishedAt": "2026-09-22T03:41:45.568Z"
+}

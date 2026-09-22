@@ -1,0 +1,101 @@
+[2026-09-22T03:41:05.862Z] === 定时任务开始（目标日字面量 yesterday → 2026-09-21）===
+[2026-09-22T03:41:05.863Z] 日志：D:\Retire\sycm-automation\evidence\daily-job-2026-09-21\job.log
+[2026-09-22T03:41:05.863Z] --- ensure-instances：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs
+[起齐] 目标 7 个实例（来源：runtime/browser-ports.mjs）
+  · 竞品链（买家号 ＋ 小旺神）  起前:ready  已就位，不动
+  · 商家浏览器（日报/周表/灰豚）  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=39148  日志 runtime/start-stop-logs/2026-09-22T03-41-05/dailyReport-browser.log
+      起后:ready
+  · 里可林淘宝  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=34872  日志 runtime/start-stop-logs/2026-09-22T03-41-05/里可林淘宝-browser.log
+      起后:ready
+  · 网林天猫  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=40128  日志 runtime/start-stop-logs/2026-09-22T03-41-05/网林天猫-browser.log
+      起后:ready
+  · 盖文淘宝  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=41936  日志 runtime/start-stop-logs/2026-09-22T03-41-05/盖文淘宝-browser.log
+      起后:ready
+  · 盖文天猫  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=58696  日志 runtime/start-stop-logs/2026-09-22T03-41-05/盖文天猫-browser.log
+      起后:ready
+  · 科塔淘宝  起前:ready  已就位，不动
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-09-22T03:41:16.844Z] --- ensure-instances 退出码=0
+[2026-09-22T03:41:16.844Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --commit --notify
+[驱动] 目标日 2026-09-21｜模式 commit｜店铺 5 家：里可林淘宝 / 网林天猫 / 盖文淘宝 / 盖文天猫 / 科塔淘宝
+[驱动] （--date yesterday 按 Asia/Shanghai 解析成 2026-09-21）
+[驱动] 日志根 D:\Retire\sycm-automation\evidence\multi-shop-2026-09-21
+[驱动] 本机 DESKTOP-KJP4RA5
+[驱动] --commit：会真的写飞书。目标日已有行会硬重复停止（先按 §9.3 删那天）。
+[驱动] 出错时：--notify 且 --commit
+[驱动]   里可林淘宝 | 页头店名 里可林家居 | 会员 里可林家居:阿彦 2350600069
+[驱动]   网林天猫 | 页头店名 网林家居旗舰店 | 会员 网林家居旗舰店:阿彦 7314426323
+[驱动]   盖文淘宝 | 页头店名 盖文全卫定制 | 会员 随心品质定制:阿彦 887360146
+[驱动]   盖文天猫 | 页头店名 盖文旗舰店 | 会员 盖文旗舰店:阿彦 2995200080
+[驱动]   科塔淘宝 | 页头店名 科塔全卫定制 | 会员 j873522735:阿彦 412070158
+[一轮]   归位：已归位（生意参谋工作页=0  飞书底单页=0 → 生意参谋工作页=1  飞书底单页=1）
+[一轮]     [归位] 生意参谋工作页：reclaim
+[一轮]     [归位] 飞书底单页：create
+[一轮]   体检通过：阻断 0 项，告警 1 项
+[一轮]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[一轮]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[里可林淘宝] 1. health-check —— 体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个
+[里可林淘宝]   归位：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）
+[里可林淘宝]     [归位] 生意参谋工作页：create
+[里可林淘宝]     [归位] 阿里妈妈报表页：create
+[里可林淘宝]   体检通过：阻断 0 项，告警 1 项
+[里可林淘宝]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[里可林淘宝]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[里可林淘宝] 2. alimama-date —— 阿里妈妈落位（日期全在 URL hash 里，navigate 即落位）
+[里可林淘宝]   stderr 尾部：
+      TRACE [
+        {
+          "step": "read-before-skipped",
+          "tolerated": true,
+          "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
+          "detail": "proxy http://127.0.0.1:19041/eval?target=5EC3C730F2DC1EA82CEB05435E285BAD failed: HTTP 400 Error: alimama filter bar not ready; triggers=0     at <anonymous>:6:"
+        },
+        {
+          "step": "navigate",
+          "url": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-09-21&endTime=2026-09-21&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day"
+        }
+      ]
+[里可林淘宝] 停在这一步：阶段 alimama-date 失败（exit 1）
+[代理] 连接层失败（第 1/3 次）：fetch failed｜cause=ECONNRESET → 1.5s 后重发 http://127.0.0.1:19041/targets
+[代理] 第 2 次才通：http://127.0.0.1:19041/targets
+[里可林淘宝]   停手时页面停在：生意参谋工作页=1  阿里妈妈报表页=1（共 3 个页签）
+[里可林淘宝]     · 不属于期望清单：about:blank
+[里可林淘宝]   回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/serv）
+[里可林淘宝]   回位后 生意参谋工作页 恰好一个
+[驱动] 按默认策略停整轮（要看完全部店加 --keep-going）。已跑的店记在 evidence\multi-shop-2026-09-21。
+
+[驱动] 汇总：
+  里可林淘宝：failed（停在 alimama-date） —— 阶段 alimama-date 失败（exit 1）
+[驱动] 明细 evidence\multi-shop-2026-09-21\summary.json
+[驱动] 告警文案（收信人看到的）：
+【需要处理】里可林淘宝的日报没收完（统计日 2026-09-21）
+对象：日报一轮 · 5 家店
+店铺：里可林淘宝
+数据周期：统计日 2026-09-21
+任务：各店铺日报
+原因：没跑完 1 家：
+· 里可林淘宝—— 停在第 2 步（阿里妈妈切到那一天）。这家店跑到一半停住了，这一天的数据没进飞书。
+· 另外 4 家今天一步都没跑（有一家停住后，整轮就停了）：网林天猫、盖文淘宝、盖文天猫、科塔淘宝
+下一步：这一轮不需要你在浏览器里做什么。如果到今天下班前飞书里还是缺这一天的数据，就把这条消息转给技术同学，让他去看。
+时间：2026-09-22 11:41
+告警编号：daily-round-20260921
+[驱动] 告警投递退出码=0：{
+  "version": "feishu-notify-receipt-v1",
+  "status": "SENT",
+  "channel": "app",
+  "alertId": "daily-round-20260921",
+  "sentAt": "2026-09-22T03:41:45.630Z",
+  "attempts": [
+    {
+      "channel": "app",
+      "ok": true,
+      "target": "ou_e254f8d7d91a042b31fcd59299a1a4a9",
+      "messageId": "o
+[2026-09-22T03:41:46.592Z] --- chain 退出码=1
+[2026-09-22T03:41:46.592Z] === 定时任务结束：全链退出码=1；证据目录 evidence/multi-shop-2026-09-21/ ===

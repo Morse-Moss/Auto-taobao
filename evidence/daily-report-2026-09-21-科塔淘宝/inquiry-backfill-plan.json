@@ -1,0 +1,58 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-09-21",
+  "shop": "科塔淘宝",
+  "environment": {
+    "computedAt": "2026-09-22T10:15:42.032Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19044",
+    "browserPort": {
+      "port": 19034,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19044,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-j873522735",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop j873522735)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-21-科塔淘宝",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "PTfHbPt9EaIzddsfL8Jcj238nrb",
+    "tableId": "tblUnwn05vl8Wik9",
+    "tableName": "各店铺数据日报",
+    "recordId": "recvtXf8UkylnP"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "shop": "科塔全卫定制",
+    "column": "当日询单人数",
+    "dateRow": "2026-09-21",
+    "benchmarkRow": "同行同层均值",
+    "peerBenchmark": "PEER_AVAILABLE",
+    "rows": 7
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 8,
+    "同层同行询单量": 6
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  }
+}

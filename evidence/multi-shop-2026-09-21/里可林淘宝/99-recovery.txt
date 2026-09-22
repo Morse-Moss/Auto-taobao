@@ -1,0 +1,4 @@
+停手时页面停在：生意参谋工作页=1  阿里妈妈报表页=1（共 3 个页签）
+  · 不属于期望清单：about:blank
+回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/serv）
+回位后 生意参谋工作页 恰好一个
