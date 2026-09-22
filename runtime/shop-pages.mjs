@@ -7,6 +7,9 @@
 //   1) 新建一律 `/new?url=…&label=…&pinned=1`。不带 `pinned=1` 的页会在闲置 15 分钟后被
 //      CDP 代理回收，表现为「今晚补好、明早没了」，而且**全程不报错**。
 //   2) 已有页不动：同一个后台出现多于一页时只报不修（关哪一个是人的决定）。
+//      **例外**（2026-09-22 加）：多页的 URL **逐字相同**时那属于「确定的重复」——
+//      内容一模一样、关哪个都一样 ⇒ 自动收敛到 1 个（`dedupe`，先 `/pin` 保留者再 `/close` 其余）。
+//      只要出现的 URL 有两种以上，仍然只报不修。
 //   3) 飞书页必须带 `?table=&view=`，字段名是 `sourceTable` / `sourceView`（不是 tableId/viewId）——
 //      猜错会建出 `table=undefined` 的页，飞书把它重定向到别的表，**不报错**。
 //   4) **缺页时先「领回」，不要先新建**（2026-09-20 补，踩过一次）：链的第 5 步会把工作页留在
@@ -22,7 +25,8 @@
 // 用法：
 //   node runtime/shop-pages.mjs            # 只读盘点：每家店缺哪一页、哪一页能领回（不写）
 //   node runtime/shop-pages.mjs --json     # 同上，机器可读
-//   node runtime/shop-pages.mjs --open     # 可领回的导航回去；确实没有的才真开；多于一个的只报
+//   node runtime/shop-pages.mjs --open     # 可领回的导航回去；确实没有的才真开；
+//                                          # URL 逐字重复的自动收敛到 1 个；其余「多于一个」的只报
 //   退出码：0＝每个期望页面都恰好一个；2＝有缺口或代理连不上；3＝有需要人决定的项（同主机多于一个，或漂移页认不出该领回哪个）
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -148,7 +152,8 @@ export function findReclaimCandidates({ urls = [], expected = [], urlByName = {}
  * 纯函数：拿「当前页签 URL 列表」定出要做什么。
  * 返回值里的 action 每种对应一个不同的处置者：
  *   already-one     已经有了，不动
- *   ambiguous       多于一个 —— 只有人能决定关哪个
+ *   ambiguous       多于一个，且彼此 URL 不同 —— 只有人能决定关哪个
+ *   dedupe          多于一个，但 URL **逐字重复** ⇒ 确定的重复，自动收敛到 1 个（dry 时为 would-dedupe）
  *   reclaim         缺，但同主机有一页只是漂走了 ⇒ 导航回去（dry 时为 would-reclaim）
  *   ambiguous-drift 缺，同主机有多页都不是它开的 ⇒ 只报不猜（进 ambiguous 桶，退出码 3）
  *   create          缺，且同主机一页都没有 ⇒ 新建（dry 时为 would-create）
@@ -254,9 +259,11 @@ export async function settleSlots({
  *
  * 返回请求列表（`kind`）：
  *   navigate  领回：把 drifted 那一页导航回 `url`
+ *   pin       收敛重复页时钉住「要保留的那一个」—— 不先 pin 就关，剩下的可能被闲置回收（白关）
+ *   close     收敛重复页时关掉多余的那几个
  *   new       新建：`/new?url=…&label=…&pinned=1`
  *   blocked   知道该动却动不了（两次读之间页签被关掉、没有 targetId）—— 必须报出来，不许静默跳过
- * dry 计划里的动作名是 `would-reclaim` / `would-create` ⇒ 落到这里一个请求都不产生。
+ * dry 计划里的动作名是 `would-reclaim` / `would-create` / `would-dedupe` ⇒ 落到这里一个请求都不产生。
  */
 export function planRequests({ actions = [], targets = [] } = {}) {
   const list = Array.isArray(targets) ? targets : [];
