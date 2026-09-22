@@ -7,10 +7,20 @@ import { test } from 'node:test';
 import {
   LABEL_PAGE_NAME, LABEL_PAGE_PATH, LOGIN_PAGE_PATTERNS, PRUNE_POLICY, TAB_KINDS, WINDOW_TITLE_SUFFIX,
   classifyShopTabs, describeTab, ensureLabelTabOn, isLabelTab, labelPageUrlFor, leftoverTabs, loginStateHint,
-  looksLikeLoginPage, memberNameFor, parseCli, prunePlan, pruneTabsOn, tabKindOf, windowTitleFor,
+  looksLikeLoginPage, memberNameFor, memberVerdictFor, parseCli, prunePlan, pruneTabsOn,
+  readLoggedInMemberOn, tabKindOf, windowTitleFor,
 } from './shop-window-label.mjs';
 import { SHOP_BROWSERS } from './browser-ports.mjs';
 import { SHOP_IDENTITIES } from '../skills/sycm-alimama-daily-report/scripts/shop-identities.mjs';
+// 只读「页面实际登的是谁」用的表达式。**必须从采集链那一份 import**：本用例有一条断言
+// 把「脚本发的 body 逐字等于它」钉住 —— 另写一份选择器在这里就当场红。
+import { alimamaIdentityExpression } from '../skills/sycm-alimama-daily-report/scripts/collect-core.mjs';
+
+// 标签页 URL 的参数名**全量**（已排序）。两处判据都用它：
+//   · 「脚本写了 ?k= 但页面从不读它」⇒ 这一格永远是空的；
+//   · 「页面读了 ?k= 但脚本从不写它」⇒ 页面拿到的是 null。
+// 写成一份共享常量而不是各写一行字面量：否则新增参数时只改一处，另一处会**静默**放过。
+const LABEL_URL_KEYS = ['actual', 'member', 'ok', 'port', 'shop', 'state'];
 
 // 真实页签清单：逐字取自 evidence/multi-shop-run-2026-09-18/15-identity-recheck.txt（2026-09-18 实测）。
 // 用实测值而不是编的 URL，是为了让分类判据真的对着现场。
@@ -94,17 +104,34 @@ test('isLabelTab：认仓库内那份，也认机器上遗留的旧文件名（�
 // IO：注入假 fetch，把「幂等」与「堆了多个就停手」钉住
 // ---------------------------------------------------------------------------
 
-function fakeProxy({ targets, calls }) {
+function fakeProxy({ targets, calls, evalReading, evalStatus = 200 }) {
   // 关掉的 target 要从后续 `/targets` 里消失 —— 假代理必须模拟「关掉之后的世界」，
   // 否则 `pruneTabsOn` 的回读校验（不信 HTTP 200）会认为「一个都没关掉」，
   // 用例就会红在一个假问题上。
   const closed = new Set();
   return async (url, init = {}) => {
     const href = String(url);
-    calls.push({ url: href, method: init.method ?? 'GET' });
+    // body 也记下来：`/eval` 的 body 就是那条表达式，而「读法用的是不是采集链那一份」
+    // 只能从 body 上验（只记 url 的话，两套选择器里哪一套都查不出来）。
+    calls.push({ url: href, method: init.method ?? 'GET', body: init.body ?? null });
     if (href.endsWith('/targets')) {
       const visible = targets.filter((t) => !closed.has(t.targetId));
       return { ok: true, status: 200, json: async () => visible, text: async () => JSON.stringify(visible) };
+    }
+    if (href.includes('/eval')) {
+      // 真代理回 `{value: '<表达式自己 stringify 的那层 JSON>'}`（见 cdp-proxy.mjs 的 /eval，
+      // 表达式是 collect-core 的 alimamaIdentityExpression）。**两层包装必须照真代理的样子来**：
+      // 只回一层的话，脚本里的「解两层」会静默解不出来 → 实际值永远是 null → 页面上那一行
+      // 永远空着，而离线用例照样全绿。这正是本仓库反复吃过的「假绿灯」。
+      if (evalStatus !== 200) {
+        const body = JSON.stringify({ error: `Runtime.evaluate 失败（假代理 status=${evalStatus}）` });
+        return { ok: false, status: evalStatus, json: async () => JSON.parse(body), text: async () => body };
+      }
+      const reading = evalReading ?? {
+        href: 'https://one.alimama.com/index.html', memberName: null, memberId: null, raw: null,
+      };
+      const payload = JSON.stringify({ value: JSON.stringify(reading) });
+      return { ok: true, status: 200, json: async () => JSON.parse(payload), text: async () => payload };
     }
     if (href.includes('/navigate')) {
       return { ok: true, status: 200, json: async () => ({}), text: async () => '{"ok":true}' };
@@ -244,6 +271,7 @@ test('标签页 URL 的参数名必须与页面读的参数名一一对得上', 
   // 用「状态齐全」的那一份 URL 来算脚本会写哪些键（`ok` 只在 true 时才写，所以要用 ok:true 取样）
   const written = new Set(new URL(labelPageUrlFor({
     shop: '盖文淘宝', port: 19033, state: '需要登录', ok: true, member: '随心品质定制:阿彦',
+    actual: '随心品质定制:阿彦',
   })).searchParams.keys());
 
   for (const key of written) {
@@ -252,7 +280,7 @@ test('标签页 URL 的参数名必须与页面读的参数名一一对得上', 
   for (const key of read) {
     assert.ok(written.has(key), `页面里读了 ?${key}= 但脚本从不写它 ⇒ 页面拿到的是 null`);
   }
-  assert.deepEqual([...read].sort(), ['member', 'ok', 'port', 'shop', 'state'].sort());
+  assert.deepEqual([...read].sort(), LABEL_URL_KEYS);
 });
 
 test('登录状态必须真的落到页面元素上，且是「量到才显示」', () => {
@@ -370,12 +398,168 @@ test('挂标签页时把会员名一起带上（不透传的话页面上那一�
     'ensureLabelTabOn 没有把 member 透传给 labelPageUrlFor ⇒ 页面上那一行永远空着');
 });
 
+// ---------------------------------------------------------------------------
+// 「实际登的是谁」上窗口（2026-09-22 加）
+// ---------------------------------------------------------------------------
+//
+// 由来：`login-merchant.mjs` 的 `sites.*.loggedIn` 只回答「**有没有**会话」，
+// 不回答「**以谁的身份**持有会话」。2026-09-13 的事故正是「登录态完全正常、但登的是别人」，
+// 而串号的下游代价是**静默**的：文件照落、数字照进飞书，阿里妈妈那份产物里连一个店铺身份
+// 字段都没有，事后从产物里查不出来。所以窗口上要多一行 —— **实际登录的会员名**（读页面得来），
+// 与登记表不符时标红。
+
+test('标签页 URL：没读到实际会员名就整条不带 actual（不写占位）', () => {
+  const without = labelPageUrlFor({ shop: '盖文淘宝', port: 19033, member: '随心品质定制:阿彦' });
+  assert.equal(without.includes('actual='), false,
+    '没读到实际值时不该带这个参数 —— 写「未知」会让人以为量过了');
+  // 空白串同样是「没读到」（否则页面上会出现一行只有前缀、没有值的「实际登录」）
+  assert.equal(labelPageUrlFor({ shop: '盖文淘宝', actual: '   ' }).includes('actual='), false);
+  const shown = labelPageUrlFor({ shop: '盖文淘宝', actual: '随心品质定制:阿彦' });
+  assert.equal(new URL(shown).searchParams.get('actual'), '随心品质定制:阿彦');
+});
+
+test('判定四种结果各不相同：「没量到」不是「一致」，「登记表没有期望值」也不下判定', () => {
+  assert.equal(memberVerdictFor({ expected: 'a', actual: null }), null);
+  assert.equal(memberVerdictFor({ expected: 'a', actual: '   ' }), null);
+  assert.equal(memberVerdictFor({ actual: '随心品质定制:阿彦' }), 'unregistered',
+    '登记表里没有期望值时只能报实际值 —— 判成「一致」等于用一个没核对过的判断题冒充核对过');
+  assert.equal(memberVerdictFor({ expected: '随心品质定制:阿彦', actual: '随心品质定制:阿彦' }), 'match');
+  assert.equal(memberVerdictFor({ expected: '随心品质定制:阿彦', actual: ' 随心品质定制:阿彦 ' }), 'match',
+    '首尾空白不该把一个真匹配判成不一致（两端必须是同一个归一化口径）');
+  assert.equal(memberVerdictFor({ expected: '随心品质定制:阿彦', actual: 'j873522735:阿彦' }), 'mismatch',
+    '科塔的会员名出现在盖文淘宝的窗口上 —— 这就是串号，必须判成不一致');
+  assert.equal(memberVerdictFor(), null);
+  assert.equal(memberVerdictFor({}), null);
+});
+
+test('读实际登录会员名：照真代理的两层包装解，读法复用采集链那一份表达式', async () => {
+  const calls = [];
+  const reading = await readLoggedInMemberOn({
+    proxyUrl: 'http://127.0.0.1:19043',
+    fetchImpl: fakeProxy({
+      targets: REAL_SUI_XIN,
+      calls,
+      evalReading: {
+        href: 'https://one.alimama.com/index.html',
+        memberName: '随心品质定制:阿彦', memberId: '887360146', raw: '随心品质定制:阿彦 ID：887360146',
+      },
+    }),
+  });
+  assert.equal(reading.memberName, '随心品质定制:阿彦',
+    '解不出两层包装的话这里会是 null，页面上那一行就永远空着，而离线用例照样全绿');
+  assert.equal(reading.memberId, '887360146');
+  assert.equal(reading.reason, null);
+  const evals = calls.filter((c) => c.url.includes('/eval'));
+  assert.equal(evals.length, 1);
+  assert.equal(evals[0].method, 'POST');
+  assert.equal(new URL(evals[0].url).searchParams.get('target'), 'b',
+    '必须读阿里妈妈那一页：读错页拿到的是另一种东西（生意参谋页头只有店铺名）');
+  assert.equal(evals[0].body, alimamaIdentityExpression(),
+    '读法必须逐字用采集链那一份 —— 另写一份选择器迟早漂移，而漂移的表现是结论错');
+});
+
+test('读实际登录会员名：读不到一律 null 且带原因，绝不抛错（登录前必然读不到）', async () => {
+  // ① 窗口里根本没有阿里妈妈页签（还停在登录页时就是这样）
+  const noPage = await readLoggedInMemberOn({
+    proxyUrl: 'http://127.0.0.1:19041', fetchImpl: fakeProxy({ targets: [], calls: [] }),
+  });
+  assert.equal(noPage.memberName, null);
+  assert.match(noPage.reason, /没有阿里妈妈页签/u);
+  // 只有生意参谋页时同理：那是「读不到」，不是错
+  const onlySycm = await readLoggedInMemberOn({
+    proxyUrl: 'http://127.0.0.1:19041',
+    fetchImpl: fakeProxy({
+      targets: [{ type: 'page', targetId: 's', url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop' }],
+      calls: [],
+    }),
+  });
+  assert.equal(onlySycm.memberName, null);
+  assert.match(onlySycm.reason, /没有阿里妈妈页签/u);
+  // ② 页面确实在，但还停在登录页：表达式读得到，只是里面没有「会员名 + ID」那一段
+  const loggedOut = await readLoggedInMemberOn({
+    proxyUrl: 'http://127.0.0.1:19043',
+    fetchImpl: fakeProxy({
+      targets: REAL_SUI_XIN,
+      calls: [],
+      evalReading: {
+        href: 'https://one.alimama.com/index.html#!/login/index', memberName: null, memberId: null, raw: null,
+      },
+    }),
+  });
+  assert.equal(loggedOut.memberName, null);
+  assert.match(loggedOut.reason, /登录页/u, '原因要说清「多半还停在登录页」，否则与故障分不开');
+  // ③ 代理 /eval 回 400（表达式抛了或页面在导航中）：原因里必须带 HTTP 码
+  const bad = await readLoggedInMemberOn({
+    proxyUrl: 'http://127.0.0.1:19043',
+    fetchImpl: fakeProxy({ targets: REAL_SUI_XIN, calls: [], evalStatus: 400 }),
+  });
+  assert.equal(bad.memberName, null);
+  assert.match(bad.reason, /400/u);
+  // ④ 代理没起：fetch 直接抛 —— 这是最常见的一种（脚本比浏览器先跑）
+  const down = await readLoggedInMemberOn({
+    proxyUrl: 'http://127.0.0.1:19999',
+    fetchImpl: async (url) => {
+      if (String(url).endsWith('/targets')) {
+        return { ok: true, status: 200, json: async () => REAL_SUI_XIN, text: async () => JSON.stringify(REAL_SUI_XIN) };
+      }
+      throw new Error('fetch failed');
+    },
+  });
+  assert.equal(down.memberName, null);
+  assert.match(down.reason, /没打通/u);
+});
+
+test('挂标签页时把「实际登录的会员名」一起带上（不透传的话那一行永远是空的）', async () => {
+  const calls = [];
+  await ensureLabelTabOn({
+    proxyUrl: 'http://127.0.0.1:19043',
+    shop: '盖文淘宝',
+    port: 19033,
+    member: memberNameFor('盖文淘宝'),
+    actual: '随心品质定制:阿彦',
+    fetchImpl: fakeProxy({ targets: REAL_SUI_XIN, calls }),
+  });
+  const created = calls.find((c) => c.url.includes('/new'));
+  assert.ok(created, '这一台当时没有标签页，必须新建');
+  assert.equal(new URL(targetUrlOf(created)).searchParams.get('actual'), '随心品质定制:阿彦',
+    'ensureLabelTabOn 没有把 actual 透传给 labelPageUrlFor ⇒ 页面上那一行永远空着');
+});
+
+test('实际登录的会员名必须真的落到页面元素上，且与登记表不符时标红', () => {
+  const html = readFileSync(LABEL_PAGE_PATH, 'utf8');
+  assert.ok(html.includes('id="actual"'), '页面上没有显示「实际登录会员名」的地方');
+  assert.match(html, /getElementById\('actual'\)[\s\S]{0,300}textContent/u,
+    '实际会员名没有写进页面元素 ⇒ 串号时还是看不出来');
+  assert.match(html, /if\s*\(actual\)/u,
+    '这一行必须「量到才显示」：没量到就整行不显示（登录前必然读不到）');
+  // 只截这一段自己的代码（到 alias 那一段为止）。**必须先剥注释**：上面紧挨着的就是一段
+  // 解释「为什么要加这一行」的说明，里面同样会出现 mismatch / bad 这些字样 ——
+  // 拿含注释的整段去匹配，等于让注释替代码通过（本仓库记过这条，突变验证实测过一次）。
+  const raw = html.slice(html.indexOf('const actual ='), html.indexOf('const alias'));
+  const block = raw.split('\n').map((line) => line.replace(/\/\/.*$/u, '')).join('\n');
+  assert.match(block, /mismatch/u, '页面没有「不一致」这一态');
+  assert.match(block, /actual === member/u,
+    '页面必须拿实际值与登记表的值**逐字**比 —— 这是判据本身，不是措辞');
+  assert.match(block, /'bad'/u, '不一致时必须挂到 bad 类上，否则那一行与普通信息长得一样');
+  // 「登记表里没有期望值」必须是**单独一态**。只断言文案里出现过「没有这家的期望值」是不够的：
+  // 把判定写成 `!member ? 'match'` 时，那一句文案仍然在（因为它挂在「非 match 非 mismatch」那一支上），
+  // 于是「用一个没核对过的判断题冒充核对过」照样上线、用例全绿。突变 M8 实测过这件事。
+  assert.match(block, /!\s*member\s*\?[^:]{0,10}'unknown'/u,
+    '「登记表里没有期望值」必须单独成一态（unknown），不能算成 match');
+  assert.match(block, /没有这家的期望值/u,
+    '那一态在页面上要说人话（只报实际值、不下判定）');
+  // 只挂类名、没有 .x.bad 规则 ⇒ 页面上根本不红。这就是「契约齐、测试绿、接线没接上」的形态。
+  assert.match(html, /\.x\.bad\s*\{[^}]*color/u, '.x.bad 没有颜色规则 ⇒ 挂着 bad 类也不会红');
+  assert.equal(/id="actual"[^>]*>[^<]+</u.test(html), false, '不许把会员名写死在 HTML 里');
+});
+
 test('标签页 URL 里只许出现账号名，绝不许出现密码（这个 URL 会进浏览历史）', () => {
   const url = labelPageUrlFor({
     shop: '科塔淘宝', port: 19034, state: '需要登录', ok: true, member: 'j873522735:阿彦',
+    actual: '随心品质定制:阿彦',
   });
   const keys = [...new URL(url).searchParams.keys()].sort();
-  assert.deepEqual(keys, ['member', 'ok', 'port', 'shop', 'state'],
+  assert.deepEqual(keys, LABEL_URL_KEYS,
     '标签页 URL 的键集合是封闭的：多一个键就等于多一个可能漏凭据的口子');
   const suspicious = /pass|pwd|secret|token|credential|cookie/iu;
   for (const key of keys) assert.equal(suspicious.test(key), false, `键名可疑：${key}`);

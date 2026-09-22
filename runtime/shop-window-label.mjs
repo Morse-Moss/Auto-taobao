@@ -20,6 +20,12 @@
 import { SHOP_BROWSERS, shopBrowserKeys } from './browser-ports.mjs';
 // 会员名从「店铺身份登记表」读 —— 那是唯一来源（逐字抄自运营的店铺底单，见 shop-identities.mjs）。
 import { SHOP_IDENTITIES } from '../skills/sycm-alimama-daily-report/scripts/shop-identities.mjs';
+// 「页面**实际登的是谁**」怎么读，不在这里另写一份 —— 复用采集链唯一那份判据（collect-core.mjs）。
+// 各写一份选择器迟早会漂移，而漂移的表现是**结论错**：窗口上写着「登的是 A」，采集链却按另一套
+// 判据取数。归一化（`normalizeShopName`）也一并复用：比对的两端必须是同一个口径。
+import {
+  alimamaIdentityExpression, normalizeShopName,
+} from '../skills/sycm-alimama-daily-report/scripts/collect-core.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -68,10 +74,40 @@ export function memberNameFor(shop, identities = SHOP_IDENTITIES) {
   return identities.find((row) => row?.key === name)?.alimamaMemberName ?? null;
 }
 
-// 标签页的 URL。`state` 与 `member` 都是可选的：量到就带上，量不到就**整个参数不带**，
+/**
+ * 把「登记表说应该是谁」（`expected`＝`memberNameFor` 那个值）与「页面**实际**登的是谁」
+ * （`actual`＝从工作页读出来的会员名）摆在一起判定。
+ *
+ * 为什么需要它（2026-09-22 加。事故形态是 2026-09-13 那次：登录态完全正常、但登的是别人）：
+ * `login-merchant.mjs` 的 `sites.*.loggedIn` 只回答「**有没有**会话」，不回答
+ * 「**以谁的身份**持有会话」。而串号的下游代价是静默的 —— 采集照跑、文件照落、数字照进飞书，
+ * 阿里妈妈那份产物里连一个店铺身份字段都没有，事后从产物里查不出来。
+ * 所以「实际登的是谁」必须有一个**站在机器前就能看见**的落点，而不是只活在某次体检的日志里。
+ *
+ * 四种结果，含义各不相同，**不许混成一个布尔**：
+ *   `null`            量不到实际值 ⇒ 页面上那一行整个不显示（不写占位）。
+ *                     **这不是「一致」** —— 把「没量到」写成「对得上」正是本项目犯过两次的错。
+ *   `'unregistered'`  登记表里没有这家的期望值（未实测）⇒ 只显示实际值，**不下判定**。
+ *                     写成「一致」就等于用一个没核对过的判断题冒充核对过。
+ *   `'match'`         逐字相同。
+ *   `'mismatch'`      不一样 ⇒ 页面上标红。**这才是这个功能存在的全部理由。**
+ *
+ * 比对口径是**去空白后的逐字相等**，不做任何「像不像」的模糊判断：
+ * 实测盖文淘宝的会员名是 `随心品质定制:阿彦`，与店名（盖文全卫定制）毫无字面关系 ——
+ * 靠相似度认店在这个项目里已经被推翻过一次，这里不重犯。
+ */
+export function memberVerdictFor({ expected = null, actual = null } = {}) {
+  const got = normalizeShopName(actual);
+  if (!got) return null;
+  const want = normalizeShopName(expected);
+  if (!want) return 'unregistered';
+  return got === want ? 'match' : 'mismatch';
+}
+
+// 标签页的 URL。`state` / `member` / `actual` 都是可选的：量到就带上，量不到就**整个参数不带**，
 // 页面上那一行也就不显示 —— 不写「未知」去占位，那会让人以为量过了。
 export function labelPageUrlFor({
-  shop, port = null, state = null, ok = null, member = null, pagePath = LABEL_PAGE_PATH,
+  shop, port = null, state = null, ok = null, member = null, actual = null, pagePath = LABEL_PAGE_PATH,
 } = {}) {
   const name = String(shop ?? '').trim();
   if (!name) throw new Error('labelPageUrlFor 需要一个店名');
@@ -79,6 +115,11 @@ export function labelPageUrlFor({
   if (port !== null && port !== undefined && port !== '') query.set('port', String(port));
   const memberText = String(member ?? '').trim();
   if (memberText) query.set('member', memberText);
+  // 实际登录的会员名（**读页面得来**，不是登记表里的期望值）。与 `member` 同一口径：量到才带。
+  // 刻意**不给 `--actual` 这样的手工入口**：这一格的全部价值在于它是**机器读出来的**，
+  // 允许人手填就等于把「机器说的」与「人说的」混进同一格 —— 那正是这个功能要治的病。
+  const actualText = String(actual ?? '').trim();
+  if (actualText) query.set('actual', actualText);
   const text = String(state ?? '').trim();
   if (text) {
     query.set('state', text);
@@ -272,6 +313,68 @@ async function readTargets(proxyUrl, fetchImpl) {
 }
 
 /**
+ * 读「这个窗口**现在实际登的是谁**」—— 阿里妈妈页头的登录会员名。
+ *
+ * 为什么读的是阿里妈妈那一页：运营同事手里那串账号就是**阿里妈妈会员名**
+ * （`随心品质定制:阿彦` / `j873522735:阿彦`），窗口上写的也是它，拿它比对才是同一种东西。
+ * 生意参谋页头写的是**店铺名**（`盖文全卫定制`），它与会员名**本来就可以不同名**
+ * （实测：盖文淘宝这两个名字毫无关系）—— 把两者并进同一行，会让「不一致」这句话变得有歧义
+ * （是串号了？还是只是两套名字？）。所以这一轮只做会员名；另一个独立见证**刻意留到下一步**，
+ * 不是漏了（见 `.workbuddy/memory/` 当日实录）。
+ *
+ * 三条口径：
+ *   1) 表达式**不在这里另写一份** —— 用采集链唯一那份（`alimamaIdentityExpression`）；
+ *   2) 读不到**不抛错**，返回 `{ memberName: null, reason }`：登录前本来就读不到
+ *      （这一页会被重定向到登录页），那不是故障。与 `pinLabelTab` 同一处理 ——
+ *      如实回报，既不假装读到、也不让「挂标签页」整件事因为这一步失败；
+ *   3) 代理回的是 `{ value: '<表达式自己 stringify 的那层 JSON>' }` ⇒ **要解两层**
+ *      （`cdp-proxy.mjs` 的 `/eval` 把 `Runtime.evaluate` 的返回值原样放进 `value`，
+ *      而表达式返回的是一个 JSON 字符串）。解不出来就如实说「读到的不是预期的 JSON」。
+ */
+export async function readLoggedInMemberOn({
+  proxyUrl, targets = null, fetchImpl = fetch, timeoutMs = 15000,
+} = {}) {
+  const list = targets ?? await readTargets(proxyUrl, fetchImpl);
+  // 按主机找那一页，不看页签顺序：顺序会随人手动点动而变，主机不会。
+  const page = list.find((t) => String(t?.url ?? '').includes('one.alimama.com'));
+  const targetId = page?.targetId ?? page?.id ?? null;
+  if (!targetId) {
+    return { memberName: null, targetId: null, reason: '这个窗口里没有阿里妈妈页签（还停在登录页时就是这样）' };
+  }
+  let raw;
+  try {
+    const response = await fetchImpl(`${proxyUrl}/eval?target=${encodeURIComponent(targetId)}`, {
+      method: 'POST', body: alimamaIdentityExpression(), signal: AbortSignal.timeout(timeoutMs),
+    });
+    raw = await response.text();
+    if (!response.ok) {
+      return { memberName: null, targetId, reason: `代理 /eval 回 HTTP ${response.status}：${String(raw).slice(0, 160)}` };
+    }
+  } catch (error) {
+    return {
+      memberName: null,
+      targetId,
+      reason: `/eval 没打通：${String(error?.message ?? error).slice(0, 140)}`,
+    };
+  }
+  let reading;
+  try {
+    reading = JSON.parse(JSON.parse(raw).value);
+  } catch {
+    return { memberName: null, targetId, reason: `读到的不是预期的 JSON：${String(raw).slice(0, 160)}` };
+  }
+  const memberName = normalizeShopName(reading?.memberName) || null;
+  return {
+    memberName,
+    memberId: reading?.memberId ?? null,
+    href: reading?.href ?? null,
+    targetId,
+    // 读到了就没原因；读不到要把「为什么」带上 —— 否则「没读到」与「页面还没登录」分不开。
+    reason: memberName ? null : '页面上没有「会员名 + ID」那一段（多半还停在登录页）',
+  };
+}
+
+/**
  * 把店名标签页**钉住**。
  *
  * 为什么必须有这一步（2026-09-19 实测出来的，不是设想）：
@@ -301,7 +404,9 @@ export async function pinLabelTab(proxyUrl, targetId, fetchImpl = fetch) {
 }
 
 /**
- * 让这家店的窗口里恰好有一个窗口标签页，且它写的是这家店、以及（可选）当前登录状态。
+ * 让这家店的窗口里恰好有一个窗口标签页，且它写的是这家店、（可选）当前登录状态、
+ * 以及（可选）**实际登录的会员名**。`actual` 由调用方用 `readLoggedInMemberOn` 读好再传进来 ——
+ * 本函数只管「把它写到页面上」，不在写路径里顺手读页面（读与写分开，各自可离线测）。
  *
  * 幂等：已存在就导航它（不会越堆越多），不存在才新建。
  * **只动标签页**：链路要用的工作页、千牛、登录页一概不碰，残留页签也只报告。
@@ -313,12 +418,13 @@ export async function ensureLabelTabOn({
   state = null,
   ok = null,
   member = null,
+  actual = null,
   fetchImpl = fetch,
 } = {}) {
   const targets = await readTargets(proxyUrl, fetchImpl);
   const classified = classifyShopTabs(targets);
   const labels = classified.filter((t) => t.kind === 'label');
-  const url = labelPageUrlFor({ shop, port, state, ok, member });
+  const url = labelPageUrlFor({ shop, port, state, ok, member, actual });
 
   if (labels.length > 1) {
     // 堆了多个标签页时按纪律停手：navigate 哪个都不对，关掉哪个都是替人做决定。
@@ -413,11 +519,18 @@ export async function pruneTabsOn({
 //   node runtime/shop-window-label.mjs --prune --commit      # 只关多余页签（**默认不开，必须显式给**）
 //   node runtime/shop-window-label.mjs --label --prune --commit   # 两件一起做
 //
+// 标签页上现在有四类信息，全部**量到才显示**（量不到整行不出现，不写占位）：
+//   店名（大标题，同时进 window.title）/ 登记表里的会员名 / **实际登录的会员名** / 登录状态。
+// 「实际登录的会员名」是 2026-09-22 加的：它与登记表不符就是**串号的现场证据** ——
+// 那一行在窗口上标红即等于「这台登错店了」。两种模式都会读它（只读报告也会报一次）；
+// 只有 `--prune`（清页签）不读 —— 清页签与「登的是谁」无关，读了是白花时间。
+//
 // `--prune` 是**独占意图**：带上它就只清页签；挂标签页要么不带 `--prune`，要么显式加 `--label`。
 // 一个开关管两件事的写法在这里踩过（见 parseCli 注释）：两步被并成一步，中间那次对照就作废了。
 //
 // 不带 `--commit` 时是**只读报告**：它同时回答用户那句「我看到每个浏览器里面有多个界面」——
-// 每个页签是什么性质、哪些是链路要用的、哪些是残留、**哪一家还停在登录页**，都列出来，不用人去猜。
+// 每个页签是什么性质、哪些是链路要用的、哪些是残留、**哪一家还停在登录页**、
+// **哪一台实际登的是谁**，都列出来，不用人去猜。
 
 export function parseCli(argv) {
   const opts = {
@@ -455,6 +568,16 @@ export function parseCli(argv) {
   }
   return opts;
 }
+
+// 判定词（只用于 CLI 报告这一侧）。页面上那一份措辞是 HTML 里手写的 ——
+// file:// 页面没法 import 仓库模块，所以这两处**只能是两份文字**。
+// 能共享的是**判定本身**（`memberVerdictFor` 的四种结果）；措辞不一致只是不好看，
+// 判定不一致才是错的，所以这里只管把 `memberVerdictFor` 的结果翻成人话，不自己再判一次。
+const MEMBER_VERDICT_TEXT = Object.freeze({
+  match: '与登记表一致',
+  mismatch: '与登记表不一致 —— 这就是登错了店（窗口上这一行会标红）',
+  unregistered: '登记表里没有这家的期望值（未实测）：只报实际值，不下判定',
+});
 
 async function main() {
   const opts = parseCli(process.argv.slice(2));
@@ -510,8 +633,13 @@ async function main() {
         const ok = opts.ok !== null ? opts.ok : (hint ? hint.ok : null);
         // 会员名从登记表读 —— 它存在的理由就是「让人把窗口和手里的账号对上」。
         const member = opts.member ?? memberNameFor(shop);
+        // 实际登的是谁：**读页面**得来（读不到就是 null，页面上那一行整个不显示）。
+        // 这里刻意不提供手工入口 —— 这一格的全部价值在于它是机器读出来的。
+        const reading = await readLoggedInMemberOn({ proxyUrl, targets, fetchImpl: fetch });
+        const actual = reading.memberName;
+        const verdict = memberVerdictFor({ expected: member, actual });
         const result = await ensureLabelTabOn({
-          proxyUrl, shop, port: entry.browserPort, state, ok, member,
+          proxyUrl, shop, port: entry.browserPort, state, ok, member, actual,
         });
         row.labelTab = result.ok
           ? {
@@ -531,6 +659,9 @@ async function main() {
         row.labelMember = member === null
           ? '登记表里没有这家店的会员名 ⇒ 标签页上不显示这一行'
           : member;
+        row.labelActual = actual === null
+          ? `没读到实际登录的会员名 ⇒ 标签页上不显示这一行（${reading.reason ?? '原因未知'}）`
+          : `${actual}（${MEMBER_VERDICT_TEXT[verdict] ?? verdict}）`;
         if (!result.ok) failed += 1;
         if (result.ok && opts.front && result.targetId) {
           await fetch(`${proxyUrl}/bringToFront?target=${encodeURIComponent(result.targetId)}`, { method: 'POST' })
@@ -539,6 +670,13 @@ async function main() {
         }
       } else if (!opts.prune) {
         row.needsLabelTab = labels.length === 0;
+        // 只读报告也读一次「实际登的是谁」：用户问的「哪台登的是谁」正是这一格，
+        // 而 /eval 是只读的（表达式只读文本、不点任何控件）—— 报告模式不必因为它是 POST 就回避。
+        const reading = await readLoggedInMemberOn({ proxyUrl, targets, fetchImpl: fetch });
+        const verdict = memberVerdictFor({ expected: memberNameFor(shop), actual: reading.memberName });
+        row.actualMember = reading.memberName === null
+          ? `没读到（${reading.reason ?? '原因未知'}）`
+          : `${reading.memberName}（${MEMBER_VERDICT_TEXT[verdict] ?? verdict}）`;
       }
 
       report.shops[shop] = row;

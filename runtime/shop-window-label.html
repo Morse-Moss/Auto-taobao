@@ -12,6 +12,10 @@
   .n{font-size:18px;color:#9ad}
   /* 会员名：`量到才显示` —— 空的 div 不该在版面上占位（`:empty` 让整行连外边距一起消失）。 */
   .m:not(:empty){font-size:20px;color:#9ad;margin-top:10px}
+  /* 实际登录的会员名（2026-09-22 加）：同样量到才显示；与登记表不符时标红。 */
+  .x:not(:empty){font-size:20px;margin-top:6px}
+  .x.ok{color:#5ddc7f}
+  .x.bad{color:#ff6b6b;font-weight:700}
   /* 「同一个店的两套名字」那一行（2026-09-19 加）：同样量到才显示。 */
   .a:not(:empty){font-size:16px;color:#777;margin-top:8px;max-width:900px;line-height:1.6}
   .a b{color:#bbb;font-weight:400}
@@ -26,6 +30,7 @@
 <div class="k">这个浏览器窗口是给这家店用的</div>
 <div class="v" id="shop"></div>
 <div class="m" id="member"></div>
+<div class="x" id="actual"></div>
 <div class="a" id="alias"></div>
 <div class="n" id="port"></div>
 <div class="s" id="state"></div>
@@ -50,6 +55,27 @@
   // **只放会员名，绝不放密码**：这个 URL 会留在浏览历史里，凭据一律不进这里。
   const member = q.get('member') || '';
   if (member) document.getElementById('member').textContent = '会员名 ' + member;
+
+  // 实际登录的会员名（2026-09-22 加）——**读页面得来**，不是登记表里的期望值。
+  // 为什么需要它：上面那行「会员名」回答的是「这家店**应该**是谁」（来自登记表），
+  // 它答不了「这台机器**现在实际**登的是谁」。2026-09-13 出过一次「登录态完全正常、
+  // 但登的是别人」：采集照跑、文件照落、数字照进飞书，而阿里妈妈那份产物里连一个店铺身份
+  // 字段都没有 ⇒ 事后从产物里查不出来。所以「实际登的是谁」必须站在机器前就能看见。
+  // **与登记表不符时标红**：那一行红起来就等于「这台登错店了」，不用再去翻日志。
+  // 同样「量到才显示」（读不到就整行不显示）—— 登录前必然读不到，所以这一行本来就常常不出现。
+  const actual = q.get('actual') || '';
+  if (actual) {
+    const el = document.getElementById('actual');
+    // 三态分开，不许塌成一个布尔：登记表里没有期望值时**不下判定**（只报实际值）——
+    // 把它写成「一致」就等于用一个没核对过的判断题冒充核对过（本项目犯过两次的同类错）。
+    const verdict = !member ? 'unknown' : (actual === member ? 'match' : 'mismatch');
+    el.textContent = '实际登录 ' + actual + (verdict === 'match'
+      ? '（与登记表一致）'
+      : verdict === 'mismatch'
+        ? ' —— 与登记的「' + member + '」不一致，这台多半登错了店'
+        : '（登记表里没有这家的期望值，只报实际值）');
+    el.className = 'x ' + (verdict === 'mismatch' ? 'bad' : verdict === 'match' ? 'ok' : '');
+  }
 
   // 为什么还要再加一行「同一家店的两个名字」（2026-09-19 加，用户原话：
   // 「这个浏览器不是给随心定制的吗」）：

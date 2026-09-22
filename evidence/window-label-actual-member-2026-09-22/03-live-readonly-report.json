@@ -1,0 +1,89 @@
+{
+ "commit": false,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "里可林淘宝": {
+   "browserPort": 19031,
+   "proxyPort": 19041,
+   "windowTitle": "里可林淘宝 · 日报采集窗口",
+   "memberName": "里可林家居:阿彦",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031&member=%E9%87%8C%E5%8F%AF%E6%9E%97%E5%AE%B6%E5%B1%85%3A%E9%98%BF%E5%BD%A6&state=%E9%9C%80%E8%A6%81%E7%99%BB%E5%BD%95",
+    "空白页（残留）  about:blank"
+   ],
+   "leftover": [
+    "空白页（残留）  about:blank"
+   ],
+   "needsLabelTab": false,
+   "actualMember": "里可林家居:阿彦（与登记表一致）"
+  },
+  "网林天猫": {
+   "browserPort": 19032,
+   "proxyPort": 19042,
+   "windowTitle": "网林天猫 · 日报采集窗口",
+   "memberName": "网林家居旗舰店:阿彦",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032&member=%E7%BD%91%E6%9E%97%E5%AE%B6%E5%B1%85%E6%97%97%E8%88%B0%E5%BA%97%3A%E9%98%BF%E5%BD%A6",
+    "工作页（链路要用）  https://one.alimama.com/index.html"
+   ],
+   "leftover": [],
+   "needsLabelTab": false,
+   "actualMember": "网林家居旗舰店:阿彦（与登记表一致）"
+  },
+  "盖文淘宝": {
+   "browserPort": 19033,
+   "proxyPort": 19043,
+   "windowTitle": "盖文淘宝 · 日报采集窗口",
+   "memberName": "随心品质定制:阿彦",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&member=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E9%98%BF%E5%BD%A6",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+   ],
+   "leftover": [],
+   "needsLabelTab": false,
+   "actualMember": "随心品质定制:阿彦（与登记表一致）"
+  },
+  "盖文天猫": {
+   "browserPort": 19035,
+   "proxyPort": 19045,
+   "windowTitle": "盖文天猫 · 日报采集窗口",
+   "memberName": "盖文旗舰店:阿彦",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035&member=%E7%9B%96%E6%96%87%E6%97%97%E8%88%B0%E5%BA%97%3A%E9%98%BF%E5%BD%A6&state=%E9%9C%80%E8%A6%81%E7%99%BB%E5%BD%95"
+   ],
+   "leftover": [],
+   "needsLabelTab": false,
+   "actualMember": "盖文旗舰店:阿彦（与登记表一致）"
+  },
+  "科塔淘宝": {
+   "browserPort": 19034,
+   "proxyPort": 19044,
+   "windowTitle": "科塔淘宝 · 日报采集窗口",
+   "memberName": "j873522735:阿彦",
+   "labelTabs": 1,
+   "tabs": [
+    "空白页（残留）  about:blank",
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%A7%91%E5%A1%94%E6%B7%98%E5%AE%9D&port=19034&member=j873522735%3A%E9%98%BF%E5%BD%A6"
+   ],
+   "leftover": [
+    "空白页（残留）  about:blank"
+   ],
+   "needsLabelTab": false,
+   "actualMember": "j873522735:阿彦（与登记表一致）"
+  }
+ },
+ "failed": 0
+}

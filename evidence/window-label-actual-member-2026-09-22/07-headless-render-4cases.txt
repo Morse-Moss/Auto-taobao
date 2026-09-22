@@ -1,0 +1,12 @@
+PASS  一致（与登记表相同）
+      页面渲染 = <div class="x ok" id="actual">实际登录 随心品质定制:阿彦（与登记表一致）</div>
+PASS  不一致（串号的现场）
+      页面渲染 = <div class="x bad" id="actual">实际登录 j873522735:阿彦 —— 与登记的「随心品质定制:阿彦」不一致，这台多半登错了店</div>
+      对照：<div class="m" id="member">会员名 随心品质定制:阿彦</div>
+PASS  登记表里没有期望值（只报实际值）
+      页面渲染 = <div class="x " id="actual">实际登录 somebody:阿彦（登记表里没有这家的期望值，只报实际值）</div>
+PASS  没量到（整行不显示）
+      页面渲染 = <div class="x" id="actual"></div>
+
+样例 URL 的键：shop, port, member, actual
+样例 URL：file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%A7%91%E5%A1%94%E6%B7%98%E5%AE%9D&port=19034&member=j873522735%3A%E9%98%BF%E5%BD%A6&actual=j873522735%3A%E9%98%BF%E5%BD%A6
