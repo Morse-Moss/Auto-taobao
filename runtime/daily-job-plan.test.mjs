@@ -14,13 +14,28 @@ import { JOB_FILES, buildJobPlan, renderCommand, renderJobEntryCommand } from '.
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 const argsOf = (plan, name) => plan.steps.find((s) => s.name === name).args;
 
-test('两步的顺序是「先保证实例在、再跑链」', () => {
+test('三步的顺序是「先保证实例在 → 再看一眼登录态 → 再跑链」', () => {
   // 反过来（先跑链）时，链的第 0 步体检会整轮拦下并发一条**本可以不出**的告警；
   // 告警这个通道被无谓地用一次就少一次可信度。
+  // 而登录态体检必须排在**起实例之后**：实例不在时它一个页面都读不到，只留下一片「读不到」。
   const plan = buildJobPlan();
-  assert.deepEqual(plan.steps.map((s) => s.name), ['ensure-instances', 'chain']);
+  assert.deepEqual(plan.steps.map((s) => s.name), ['ensure-instances', 'login-preflight', 'chain']);
   assert.equal(plan.steps[0].blocking, false, '起实例失败不该阻断链：权威判据在链的体检里');
-  assert.equal(plan.steps[1].blocking, true);
+  // 登录态体检**不是闸门**：它的三个退出码只落进日志，不许拦住链 ——
+  // 冷启动之后页面还没归位时它会判「没结论」，而那是链的归位会自己解决的事。
+  assert.equal(plan.steps[1].blocking, false, '登录态体检不该阻断链（它不是「今天能不能写」的判据）');
+  assert.equal(plan.steps[2].blocking, true);
+});
+
+test('登录态体检那一步：只读、且指定店铺时只体检那几家', () => {
+  const args = argsOf(buildJobPlan(), 'login-preflight');
+  // 一个参数都不给 ＝ 查登记表里全部五家（不是「什么都不查」）
+  assert.deepEqual(args, []);
+  assert.deepEqual(argsOf(buildJobPlan({ shops: ['科塔淘宝'] }), 'login-preflight'), ['--shops', '科塔淘宝']);
+  // 它必须是**只读**那一条命令：不许把自动登录（--commit）误接进来
+  const file = buildJobPlan().steps.find((s) => s.name === 'login-preflight').file;
+  assert.match(file, /check-login-shops\.mjs/u, '这一步要的是逐店只读体检，不是单店自动登录');
+  assert.doesNotMatch(args.join(' '), /--commit/u);
 });
 
 test('计划指向的文件都真实存在（脚本被改名时不许静默生效）', () => {
@@ -81,8 +96,9 @@ test('渲染出的命令行是 Windows 形态：反斜杠、路径带引号', ()
   assert.match(spaced, /"x y"/u);
 });
 
-test('/TR 只拉起一个入口（两步由它自己按顺序执行，日志也就只有一处）', () => {
+test('/TR 只拉起一个入口（三步由它自己按顺序执行，日志也就只有一处）', () => {
   const text = renderJobEntryCommand({ nodeExe: 'C:\\node.exe', repoRoot: 'D:\\repo', jobFile: 'scripts/run-daily-job.mjs' });
   assert.match(text, /run-daily-job\.mjs/u);
-  assert.doesNotMatch(text, /start-all|run-multi-shop-day/u, '两步不许被拍平进 /TR —— 那样没人能说清到点跑的是什么');
+  // 三步都不许被拍平进 /TR —— 那样没人能说清到点跑的是什么
+  assert.doesNotMatch(text, /start-all|run-multi-shop-day|check-login-shops/u);
 });

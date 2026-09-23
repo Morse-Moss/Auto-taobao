@@ -1,8 +1,9 @@
 // 定时任务「到点跑什么」的**唯一口径**。
 //
 // 背景（为什么需要这层）：SOP §13 说的是「任务计划到点敲**一条**命令」。而今天真实要做的其实有
-// **两件**：① 保证实例在（浏览器与代理；本项目的进程绑会话，机器重启或回收之后它们不在）；
-// ② 跑全链。把两件都塞进 `/TR` 里由 shell 拼，三个月后没人能说清当时到底跑的是什么。
+// **三件**：① 保证实例在（浏览器与代理；本项目的进程绑会话，机器重启或回收之后它们不在）；
+// ② 看一眼五家店的登录态（只读，2026-09-23 加）；③ 跑全链。三件都塞进 `/TR` 里由 shell 拼，
+// 三个月后没人能说清当时到底跑的是什么。
 // 所以口径放在这里、由 `scripts/run-daily-job.mjs` 执行、由 `scripts/schedule-install.mjs` 注册。
 //
 // 三条不变量（每条都对应一个已经吃过的亏）：
@@ -19,6 +20,10 @@
 // 见 runtime/arch-boundary.test.mjs 与提案 D3）。
 export const JOB_FILES = Object.freeze({
   ensureInstances: 'scripts/start-all.mjs',
+  // 跑前登录态体检（只读：不开页面、不点任何东西）。2026-09-23 接进本计划。
+  // 它排在「起实例」之后、「跑链」之前 —— 实例不在时它读不到任何东西，
+  // 而那正是链的第 0 步体检（归位）要负责的事。
+  loginPreflight: 'skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs',
   // 全链驱动。参数口径见 skills/sycm-alimama-daily-report/references/sop.md §13。
   chain: 'skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs',
 });
@@ -34,11 +39,22 @@ const CHAIN_FLAGS = Object.freeze({
 const CHAIN_VALUED = Object.freeze({ shops: '--shops', only: '--only', logs: '--logs', downloads: '--downloads' });
 
 /**
- * 定时任务要跑的两步。纯函数 —— 参数表可以被离线断言。
+ * 定时任务要跑的三步。纯函数 —— 参数表可以被离线断言。
  *
- * 步骤顺序有意义：① 先保证实例在（`start-all` 幂等，已就位的一个都不碰），
- * ② 再跑链。反过来的话，链的第 0 步体检会因为实例不在而整轮不跑并发一条告警 ——
- * 那是一条**本可以不出**的告警，而告警这个通道被无谓地用一次就少一次可信度。
+ * 步骤顺序有意义，且是**两次实测换来的**：
+ *   ① 先保证实例在（`start-all` 幂等，已就位的一个都不碰）；
+ *   ② 再看一眼登录态（只读；这一步是给「跑前那一眼」留证据，不是闸门）；
+ *   ③ 最后跑链。
+ *
+ * 为什么登录态体检排在**起实例之后**：实例不在时它一个页面都读不到，只会留下一片「读不到」
+ * —— 那是**本可以不出**的噪声。反过来，排在链前面才有意义：链的第 0 步体检只看
+ * 「端口/页面/出网」，**不看登录态**（`runtime/xws-platform-health-preflight.mjs` 里
+ * IDENTITY / SESSION 两层明写未实现），所以掉登录这件事从前只能等到采集阶段炸，
+ * 炸出来的告警还是「没跑完，但记录里没写停在哪一步」。
+ *
+ * 为什么这一步 `blocking: false`：链的第 0 步体检才是「今天能不能写」的权威判据。
+ * 在这里截断只会让告警少一层信息；而它自己判「读不到」时（冷启动后页面还没归位）
+ * 更不该停 —— 那件事链的归位会自己解决。
  */
 export function buildJobPlan(options = {}) {
   const {
@@ -78,6 +94,17 @@ export function buildJobPlan(options = {}) {
         note: '把声明实例起齐（幂等：已就位的不碰）',
         // 这一步失败**不阻止**下一步：链的第 0 步体检才是权威判据，它会给出更准的告警
         // （哪一页不齐、哪家店连不上）。在这里截断只会让告警少一层信息。
+        blocking: false,
+      },
+      {
+        name: 'login-preflight',
+        file: JOB_FILES.loginPreflight,
+        // 指定店铺跑（排查用）时，只体检那几家；否则查登记表里全部五家。
+        args: shops ? ['--shops', shops.join(',')] : [],
+        note: '跑前登录态体检（只读：不开页面、不点东西）—— 哪家店的哪个后台掉登录了，写进日志',
+        // 同一条理由：它**不是闸门**。它的三个退出码会被记进日志
+        // （0＝全在登录态；2＝有后台明确掉登录；3＝没结论/读不到），人翻日志时一眼能看到；
+        // 但它不许拦住链 —— 掉了登录这件事，链自己会在采集段如实报出来。
         blocking: false,
       },
       {

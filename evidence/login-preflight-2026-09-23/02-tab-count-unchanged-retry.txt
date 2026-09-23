@@ -1,0 +1,27 @@
+=== 体检之前 ===
+  里可林淘宝: 3 个页签  ["https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank","https://one.alimama.com/index.html"]
+  网林天猫: 3 个页签  ["https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank","https://one.alimama.com/index.html"]
+  盖文淘宝: 3 个页签  ["about:blank","https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","https://one.alimama.com/index.html"]
+  盖文天猫: 3 个页签  ["https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank","https://one.alimama.com/index.html"]
+  科塔淘宝: 3 个页签  ["https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank","https://one.alimama.com/index.html"]
+
+=== 跑一次体检（skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs）===
+[跑前体检] 登录态 · 5 家店 × 2 个平台（生意参谋 + 阿里妈妈）｜只读：不开页面、不点任何东西｜本机 DESKTOP-KJP4RA5
+  里可林淘宝：生意参谋在登录态，阿里妈妈在登录态
+  网林天猫：生意参谋在登录态，阿里妈妈在登录态
+  盖文淘宝：生意参谋在登录态，阿里妈妈在登录态
+  盖文天猫：生意参谋在登录态，阿里妈妈在登录态
+  科塔淘宝：生意参谋在登录态，阿里妈妈在登录态
+[判据] 5 家店、10 个平台都在登录态 —— 可以开跑。
+
+体检退出码=0
+
+=== 体检之后 ===
+  里可林淘宝: 3 个页签（之前 3）—— 没变  ["https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank","https://one.alimama.com/index.html"]
+  网林天猫: 3 个页签（之前 3）—— 没变  ["https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank","https://one.alimama.com/index.html"]
+  盖文淘宝: 3 个页签（之前 3）—— 没变  ["about:blank","https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","https://one.alimama.com/index.html"]
+  盖文天猫: 3 个页签（之前 3）—— 没变  ["https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank","https://one.alimama.com/index.html"]
+  科塔淘宝: 3 个页签（之前 3）—— 没变  ["https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank","https://one.alimama.com/index.html"]
+
+[判据] 每个窗口的页签条数都没变；体检退出码=0（0＝十项全在登录态）
+EXIT=0

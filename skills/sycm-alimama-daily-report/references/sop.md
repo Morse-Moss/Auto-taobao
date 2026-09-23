@@ -1052,6 +1052,9 @@ node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date 2026
 ```powershell
 # 只读检测（默认）：它会去两个站点各导航一次验登录态，然后告诉你结论；不点任何东西
 node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs
+# 纯读（2026-09-23 加）：连登录页都不开。默认那条在「掉登录」的现场会去 /new 一个淘宝登录页
+# （那是自动登录的第一步），所以它并不是严格只读；要在没人看着的时候跑（定时链）就用这个开关。
+node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --check-only
 # 真的走登录（失败了会自动发飞书，见 §11.4）
 node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit
 # 只处理一个站点 / 留截图
@@ -1083,6 +1086,29 @@ node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --shop 科塔�
 
 **判据：四份输出的 `proxy` 字段必须各是各的店。** 若四份逐字相同，先停下来 —— 那是没接上，
 不是「四家都健康」。这个坑之所以危险，正因为它的表现是**全绿**。
+
+### 11.0 五家店一起查：`check-login-shops.mjs`（2026-09-23 建，只读）
+
+上面那四条手工命令的正确性依赖「抄对端口」，而抄错的表现同样是全绿。逐店体检把这件事收进脚本：
+
+```powershell
+# 五家店 × 两个后台，一条命令；端口从 runtime/browser-ports.mjs 取，不手抄
+node skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs
+node skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs --shops 盖文淘宝,科塔淘宝
+node skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs --json   # 给下游用
+```
+
+- 它**不做探测**：按登记表逐店调 `login-merchant.mjs --check-only --proxy <该店代理>`，
+  再把回执翻成「哪家店的哪个后台掉登录了、该用哪个账号登」。所以未登录 URL 的判据仍然只有一份。
+- 每个平台**各说各的名字**（生意参谋给页头店名、阿里妈妈给会员名，来自 `shop-identities.mjs`）——
+  §11.0 那句「按平台分别说名字」的口径就是它。
+- 三个退出码：`0` 全部确认在登录态／`2` 有后台明确掉登录／`3` 这一层没有结论（读不到）／`4` 参数错。
+  **`3` 与 `0` 刻意分开**：冷启动后页面还没归位时它读不到，若那时回 0，日志里那一行就与
+  「体检真的过了」长得一模一样。
+- 它**不投递任何告警**（内部固定 `--notify off`）：同一次故障再发一条飞书只会让那条通道更不可信。
+- 它只查**一店一实例那五家**，不查商家共用浏览器（19022/19023）—— 理由写在脚本头部。
+- 已接进定时链（§13 第 ② 步）。2026-09-23 真机实录：5 家店 10 个平台全在登录态、退出码 0
+  （`evidence/login-preflight-2026-09-23/`）。
 
 **另一条已知的假阴性（同一次实测发现，2026-09-19 已修）**：当淘宝主站会话有效但阿里妈妈未登录时，
 脚本第二步会去开顶层登录页，而淘宝会把已登录的请求**重定向到千牛工作台**
@@ -1453,6 +1479,11 @@ push / sycm-reset / sycm-date-again / backfill / readback
 口径与 §10.2 一致：**「没读到」不停线，读到且不对才停线**（登录态是 §10.0 那一行，
 仍归 `login-merchant.mjs`，不在体检里判）。
 
+> 2026-09-23 补：登录态**仍然不在体检里判**（这一条没变）。新增的是**定时链的第 ② 步** ——
+> `check-login-shops.mjs` 只读地过一遍五家店两个后台（§11.0），只为把
+> 「哪家店的哪个后台掉登录了」写进跑前那份日志。它不是体检层的一层，
+> 也不改体检的结论：体检的返回形状一个字都没动。
+
 **体检模块按浏览器键参数化**：键取自两条链（`competitorBrowser` / `dailyReportBrowser`）与
 `SHOP_BROWSERS` 里的四家店。键写错会当场抛错并**同时点名**两条链与店铺实例，
 不会回落成某台机器的默认端口 —— 那样体检会去查另一台机器，而它同样「能找到生意参谋页」，
@@ -1539,8 +1570,11 @@ node runtime/shop-pages.mjs --open     # 可领回的导航回去；确实没有
 
 - 任务名 `sycm 日报定时（每日 11:40）`，每天 11:40，工作目录＝仓库根，到点起一个会话执行**唯一一条**命令
   `node scripts/run-daily-job.mjs --notify`（prompt 里写死了「只跑这一条、不要自己拼别的」）。
-- 它内部按 `runtime/daily-job-plan.mjs` 的顺序跑两步（① `scripts/start-all.mjs` 把声明实例起齐；
-  ② 全链命令 `run-multi-shop-day.mjs --date yesterday --commit --notify`）。
+- 它内部按 `runtime/daily-job-plan.mjs` 的顺序跑三步（① `scripts/start-all.mjs` 把声明实例起齐；
+  ② `check-login-shops.mjs` 看一眼五家店两个后台的登录态，**只读、不阻断**（2026-09-23 加，见 §11.0）；
+  ③ 全链命令 `run-multi-shop-day.mjs --date yesterday --commit --notify`）。
+  ②那一步是**给日志留证据**、不是闸门：链的第 0 步体检才是「今天能不能写」的权威判据，
+  在它前面截断只会让告警少一层信息。
 - 两条路径在「跑什么」上完全等价，差别只在**谁叫醒、谁付成本**：平台定时任务无需任何系统级配置，
   但每次触发要起一个会话（消耗 token、要求客户端在运行）；Windows 计划任务直接跑 node（零 token、
   `StartWhenAvailable` 还能补跑），但本机把 `schtasks.exe` 列进了程序黑名单，注册得绕开它。

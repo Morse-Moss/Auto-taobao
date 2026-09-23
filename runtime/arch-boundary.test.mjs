@@ -29,6 +29,14 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/huitun-to-feishu-keyword-heat/tests/adapter-huitun-keyword-heat.test.mjs',
   'skills/huitun-to-feishu-keyword-heat/tests/flow.test.mjs',
   'skills/huitun-to-feishu-keyword-heat/tests/queue-probe.test.mjs',
+  // 2026-09-23 新增两条：**跑前登录态体检**（`check-login-shops.mjs` 是 IO 那一半，
+  // `check-login-shops-core.test.mjs` 是它的离线用例）。两个都要 import
+  // `runtime/browser-ports.mjs`：一个为拿「哪家店用哪个代理端口」（切实例只能靠 --proxy），
+  // 一个为拿真实店铺登记表当断言输入。方向是干净的 skills → runtime（登记表是叶子），
+  // 而且它们**刻意不重复实现探测** —— 那件事仍在同目录的 `login-merchant.mjs` 里，
+  // 本层只按登记表逐店调用它、把回执翻成人话。
+  'skills/sycm-alimama-daily-report/scripts/check-login-shops-core.test.mjs',
+  'skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs',
   'skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs',
   'skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs',
   'skills/sycm-alimama-daily-report/scripts/daily-report-audit.test.mjs',

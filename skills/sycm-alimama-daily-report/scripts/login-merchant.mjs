@@ -29,11 +29,15 @@
 //
 // 用法：
 //   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs                 # 只检测，不点任何东西
+//   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --check-only    # 纯读：连登录页都不开
 //   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit        # 真的走登录，失败会发飞书
 //   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --target sycm   # 只处理其中一个站点
 //   ... --notify dry                                                                  # 只渲染告警文案，不发
 //   ... --notify off                                                                  # 彻底不发
 // 说明：不带 --commit 时是**只读排练**（量坐标、回读状态、截图），可以用来判断「现在到底要不要登录」。
+// 而 `--check-only` 比它更严：**一个页面都不碰**（不开登录页、不量坐标），代价是它只能回答
+// 「在不在登录态」，不能接着往下走。多店逐店体检（`check-login-shops.mjs`）与定时链的
+// 跑前那一步用的就是它。
 import { spawn } from 'node:child_process';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -226,6 +230,26 @@ async function attempt() {
   if (needLogin.length === 0) {
     receipt.verdict = 'ALREADY_LOGGED_IN';
     return finish(receipt);
+  }
+
+  // 第一步半（`--check-only`，2026-09-23 加）：只回答「有没有登录态」，**到此为止**。
+  //
+  // 这一支存在的唯一理由：下面第二步的 `ensureLoginPage()` 会 `/new` 一个淘宝登录页。
+  // 于是**不带 --check-only 时，「只读检测」在掉登录的现场恰恰会开一个页签** ——
+  // 而「跑前登录态体检」要接进定时链、在没人看着的时候跑，一次体检顺手开个登录页
+  // 是没有人授权过的副作用。开关默认关，所以不带它时行为与原样**逐字相同**。
+  //
+  // 如实分两种情形（这是这一支唯一有价值的信息，不能糊成一句）：
+  //   `loggedIn === false` ⇒ 被平台踢回了登录页，实锤；
+  //   `loggedIn === null`  ⇒ **读不到**（这个窗口里没有它的页面）—— 不许写成「掉登录」，
+  //                          那会把「还没归位」当成「要人登录」报出去（假红比不报更坏）。
+  if (args.checkOnly) {
+    receipt.verdict = 'NEEDS_LOGIN';
+    const because = (key) => (receipt.sites[key].loggedIn === false
+      ? `${SITES[key].label}（被踢回登录页）`
+      : `${SITES[key].label}（读不到：这个窗口里没有它的页面）`);
+    receipt.detail = `要留意的是：${needLogin.map(because).join('、')}。`;
+    return finish(receipt, 2);
   }
 
   // 第二步：打开（或复用）顶层淘宝登录页。

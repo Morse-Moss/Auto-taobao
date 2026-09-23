@@ -1,0 +1,36 @@
+=== 体检之前 ===
+  里可林淘宝: 3 个页签  ["https://one.alimama.com/index.html","https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank"]
+  网林天猫: 3 个页签  ["https://one.alimama.com/index.html","https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank"]
+  盖文淘宝: 3 个页签  ["about:blank","https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","https://one.alimama.com/index.html"]
+  盖文天猫: 3 个页签  ["https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank","https://one.alimama.com/index.html"]
+  科塔淘宝: 3 个页签  ["https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","about:blank","https://one.alimama.com/index.html"]
+
+=== 跑一次体检（skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs）===
+[跑前体检] 登录态 · 5 家店 × 2 个平台（生意参谋 + 阿里妈妈）｜只读：不开页面、不点任何东西｜本机 DESKTOP-KJP4RA5
+  里可林淘宝：生意参谋在登录态，阿里妈妈在登录态
+  网林天猫：生意参谋在登录态，阿里妈妈在登录态
+  盖文淘宝：生意参谋在登录态，阿里妈妈在登录态
+  盖文天猫：生意参谋在登录态，阿里妈妈在登录态
+  科塔淘宝：生意参谋在登录态，阿里妈妈在登录态
+[判据] 5 家店、10 个平台都在登录态 —— 可以开跑。
+
+体检退出码=0
+node:internal/deps/undici/undici:14976
+      Error.captureStackTrace(err);
+            ^
+
+TypeError: fetch failed
+    at node:internal/deps/undici/undici:14976:13
+    at async tabsOf (file:///d:/Retire/sycm-automation/evidence/login-preflight-2026-09-23/repro-tab-count-unchanged.mjs:22:20)
+    at async snapshot (file:///d:/Retire/sycm-automation/evidence/login-preflight-2026-09-23/repro-tab-count-unchanged.mjs:32:18)
+    at async file:///d:/Retire/sycm-automation/evidence/login-preflight-2026-09-23/repro-tab-count-unchanged.mjs:48:15 {
+  [cause]: Error: read ECONNRESET
+      at TCP.onStreamRead (node:internal/stream_base_commons:216:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+
+Node.js v22.22.2
+EXIT=1

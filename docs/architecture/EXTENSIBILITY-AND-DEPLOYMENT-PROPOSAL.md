@@ -251,7 +251,7 @@ runtime/（机制） → skills/（业务）      ← 现实有约 10 处，记�
 
 | 段 | 输入 | 输出 | 主要失败码 | 幂等要求 | 现状 |
 | --- | --- | --- | --- | --- | --- |
-| `checkSession()` | 店铺 + profile | 登录态（只看 `sites.*.loggedIn`） | `HUMAN_REQUIRED` | 只读，可重复 | 已落地（`login-merchant.mjs`）；**必须配 `--proxy`**，否则四份输出逐字相同＝假测四台 |
+| `checkSession()` | 店铺 + profile | 登录态（只看 `sites.*.loggedIn`） | `HUMAN_REQUIRED` | 只读，可重复 | 已落地（`login-merchant.mjs`）；**必须配 `--proxy`**，否则四份输出逐字相同＝假测四台。2026-09-23 补：**逐店版前端**已落地（`check-login-shops.mjs`，按登记表逐店跑 `--check-only` 并翻成人话；`--check-only` 保证连登录页都不开），并作为定时链的第二步（非阻断） |
 | `prepare(input)` | 目标日 + 店铺 | 页面落位、页签选对 | `TRANSIENT_EXTERNAL` | **必须幂等** | 已落地（`date-picker --site sycm`） |
 | `start(input)` | — | 触发导出/采集 | — | 天然不幂等 ⇒ 靠判重 | 已落地 |
 | `observe()` | — | 进度事实 | `STALLED`（≠ DONE） | 只读 | 部分实现 |

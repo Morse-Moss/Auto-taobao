@@ -33,6 +33,14 @@ export const VERDICTS = Object.freeze([
   'MAIN_SESSION_ONLY',    // 登录页把我们送走了（主站会话还有效）⇒ 目标站点要单独登一次
   'CAPTCHA_REQUIRED',     // 滑块/验证码显形 —— 按 SOP §10.2 停手交人
   'LOGIN_NOT_CONFIRMED',  // 提交后仍停在登录页 —— 如实报没成
+  // 2026-09-23 加，**只在 `--check-only` 下产生**：有站点没在登录态，而这次运行
+  // 明确不许碰页面 ⇒ 如实报「要去登一次」，然后把决定权交回给人。
+  //
+  // 为什么它必须有一个自己的词，而不是复用 NO_SAVED_CREDENTIAL：那一条的「下一步」
+  // 断言「登录页已经开在这个窗口里了」（登录流程确实开了）—— 而 check-only **刻意**
+  // 一个页面都没开。照抄那句话会让收信人去窗口里找一个根本不存在的登录页。
+  // 一个分类词只在一处拼错，症状是「照着做找不到东西」，而现场不会报任何错。
+  'NEEDS_LOGIN',
   'STOP_AND_ALERT',
 ]);
 
@@ -81,6 +89,16 @@ export const NOTIFY_MODES = Object.freeze(['auto', 'send', 'dry', 'off']);
 export function parseArgs(argv, { defaultProxy, shops = null } = {}) {
   const opts = {
     target: 'both', commit: false, proxy: defaultProxy, shots: null, notify: 'auto', help: false,
+    // 2026-09-23 加。`--check-only` ＝ **只回答「有没有登录态」，一个页面都不许碰**。
+    //
+    // 为什么要它：只要有一个站点不在登录态，主流程的下一步就是 `ensureLoginPage()`，
+    // 而它会 `/new` 一个淘宝登录页。也就是说**不带 --check-only 时，「只读检测」在
+    // 掉登录的现场恰恰会开一个页签**。体检要接进定时链、在没人看着的时候跑，
+    // 一次体检顺手开个登录页是没人授权过的副作用 ⇒ 用一个显式开关把它切成纯读。
+    //
+    // 默认 false：不带这个开关时，行为与从前**逐字相同**（打开登录页仍是自动登录的第一步，
+    // 告警里那句「登录页已经开在…了」依赖它）。
+    checkOnly: false,
     // `--shop` 是**运营叫法**（＝登记表 SHOP_BROWSERS 的键，如「盖文淘宝」）。
     // 它唯一的用途是让告警**点名是哪一家店** —— 2026-09-18 用户原话：
     // 「我不知道是哪一个店铺的浏览器需要登录」。缺了它，五家店发出的告警逐字相同。
@@ -89,6 +107,7 @@ export function parseArgs(argv, { defaultProxy, shops = null } = {}) {
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === '--commit') { opts.commit = true; continue; }
+    if (token === '--check-only') { opts.checkOnly = true; continue; }
     if (token === '--help' || token === '-h') { opts.help = true; continue; }
     const valueFlags = ['--target', '--proxy', '--shots', '--notify', '--shop'];
     if (!valueFlags.includes(token)) throw new Error(`Unknown argument: ${token}`);
@@ -211,6 +230,7 @@ export const VERDICTS_NEEDING_HUMAN = Object.freeze([
   'CAPTCHA_REQUIRED',     // 滑块或验证码 ⇒ 人的动作，脚本按纪律不硬闯
   'LOGIN_NOT_CONFIRMED',  // 提交了但没离开登录页 ⇒ 可能密码不对，也可能是风控
   'PARTIAL',              // 提交了，但有站点没进去
+  'NEEDS_LOGIN',          // check-only：有站点没在登录态（掉登录，或它的页面还没打开）
   'STOP_AND_ALERT',       // fail-closed 停手（坐标可疑、页面堆叠等）
 ]);
 
@@ -274,6 +294,10 @@ const ACTION_BY_VERDICT = Object.freeze({
     + '系统不会自己再试一遍（连着试会把账号锁住）。',
   // 后两条不承诺「登录页开着」：PARTIAL 是提交后已经跳走，STOP_AND_ALERT 可能停在打开页面那一步。
   PARTIAL: '去{窗口}里，把没进去的那个后台登一次。',
+  // check-only 下**同样**不许承诺「登录页开着」——它一个页面都没开。
+  // 也因此它把「页面还没打开」这种情形也一并纳入：那一种同样要人去那个窗口动一下手。
+  NEEDS_LOGIN: '去{窗口}里把「生意参谋」和「阿里妈妈」各看一眼：哪一个停在登录页，就登哪一个'
+    + '（登录时点浏览器提示里的「保存密码」）。这一步只是体检，系统没有动过任何页面。',
   STOP_AND_ALERT: '去{窗口}里照「原因」那一条处理（系统已经停手，没有留下半成品）。',
 });
 
@@ -300,6 +324,7 @@ export const REASON_BY_VERDICT = Object.freeze({
   CAPTCHA_REQUIRED: '登录时平台要求滑块或短信验证，这一步只能由人来完成。',
   LOGIN_NOT_CONFIRMED: '账号密码填了、登录按钮也点了，页面却还停在登录页。',
   PARTIAL: '账号密码提交成功了，但两个后台里还有没进去的。',
+  NEEDS_LOGIN: '这个窗口里至少有一个后台现在不在登录态：要么掉登录了，要么它的页面还没打开。',
   STOP_AND_ALERT: '系统在动手之前停住了。',
 });
 

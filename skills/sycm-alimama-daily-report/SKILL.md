@@ -128,6 +128,19 @@ node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date 2026
 
 `--shops a,b` narrows the round, `--only <stage>` runs a single stage (an unknown stage name throws at parse time with the full legal list — silently skipping the whole round with exit code 0 was the old failure shape), `--keep-going` continues past a failed shop. In `--verify-existing`, `N` is the target's total record count **before** the push and the predicate is `before.length === N + 1` (2026-09-17: `N = 1879`). Rehearse **cannot** run on a date that was already written — the dry run hits the same hard duplicate stop by design. Per-stage stdout/stderr plus the argv each stage actually received land in `evidence/multi-shop-<date>/<shop>/NN-<stage>.txt`, the once-per-round preflight in `evidence/multi-shop-<date>/00-health-check-daily.txt`, and the roll-up in `summary.json`. `references/sop.md` §12.6 holds the mode table and the measured 2026-09-18 run (four shops × ten stages, no manual intervention; the round is eleven stages since the preflight was wired in — see §12.8).
 
+## Pre-run Login Check
+
+The whole round used to have **no step that looks at login state** (`runtime/xws-platform-health-preflight.mjs` covers port / pages / egress only; IDENTITY and SESSION are explicitly unimplemented). A shop that lost its session was therefore only discovered mid-collection, as the alert that names no step: *"没跑完，但记录里没写停在哪一步"*. This is the layer that says which shop, which back office, and which account before the round starts.
+
+```powershell
+# five shops × two back offices, one command. Read-only: it opens no page and clicks nothing.
+node skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs
+node skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs --shops 盖文淘宝,科塔淘宝
+node skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs --json        # for anything downstream
+```
+
+It does **not** re-implement probing: it walks the registry and calls `login-merchant.mjs --check-only --proxy <that shop's proxy>` per shop, then translates the receipt. `--check-only` is what makes the read-only claim true — without it, a shop that is logged out makes `ensureLoginPage()` open a new Taobao login tab. Each back office is named with its own name (Sycm → header shop name, Alimama → member name, both from `shop-identities.mjs`). Exit codes: `0` all ten confirmed · `2` a back office is definitely logged out · `3` **no verdict** (unreadable) · `4` usage error — `0` and `3` are deliberately distinct, because reporting "unreadable" as `0` would make that log line identical to a real pass. It never delivers an alert (internally `--notify off`). Wired into the timed job as step ② of three, **non-blocking**; measured live 2026-09-23 (5 shops / 10 platforms / exit 0, see `evidence/login-preflight-2026-09-23/`).
+
 ## Login Recovery
 
 Login is the one step no automation can take over, so when it fails the system has to hand it to a human **who can act on the message without guessing**. Two things make that true, and they are two halves of one leg:
