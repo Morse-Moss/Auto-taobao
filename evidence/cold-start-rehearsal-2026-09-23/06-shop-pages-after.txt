@@ -1,0 +1,221 @@
+﻿{
+ "dry": true,
+ "report": [
+  {
+   "who": "商家浏览器（日报（生意参谋 + 万相台/阿里妈妈 + 飞书））",
+   "proxyPort": 19023,
+   "reachable": true,
+   "actions": [
+    {
+     "page": "生意参谋工作页",
+     "action": "already-one",
+     "found": 1
+    },
+    {
+     "page": "飞书底单页",
+     "action": "already-one",
+     "found": 1
+    }
+   ],
+   "settleReads": 1,
+   "slots": [
+    {
+     "page": "生意参谋工作页",
+     "count": 1
+    },
+    {
+     "page": "飞书底单页",
+     "count": 1
+    }
+   ],
+   "pinnedTabs": 1,
+   "managedTabs": 1,
+   "tabs": [
+    "https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblUnwn05vl8Wik9&view=vewHgmRhGR",
+    "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+   ]
+  },
+  {
+   "who": "里可林淘宝",
+   "proxyPort": 19041,
+   "reachable": true,
+   "actions": [
+    {
+     "page": "生意参谋工作页",
+     "action": "already-one",
+     "found": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "action": "already-one",
+     "found": 1
+    }
+   ],
+   "settleReads": 1,
+   "slots": [
+    {
+     "page": "生意参谋工作页",
+     "count": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "count": 1
+    }
+   ],
+   "pinnedTabs": 2,
+   "managedTabs": 2,
+   "tabs": [
+    "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "about:blank",
+    "https://one.alimama.com/index.html"
+   ]
+  },
+  {
+   "who": "网林天猫",
+   "proxyPort": 19042,
+   "reachable": true,
+   "actions": [
+    {
+     "page": "生意参谋工作页",
+     "action": "already-one",
+     "found": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "action": "already-one",
+     "found": 1
+    }
+   ],
+   "settleReads": 1,
+   "slots": [
+    {
+     "page": "生意参谋工作页",
+     "count": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "count": 1
+    }
+   ],
+   "pinnedTabs": 2,
+   "managedTabs": 2,
+   "tabs": [
+    "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "about:blank",
+    "https://one.alimama.com/index.html"
+   ]
+  },
+  {
+   "who": "盖文淘宝",
+   "proxyPort": 19043,
+   "reachable": true,
+   "actions": [
+    {
+     "page": "生意参谋工作页",
+     "action": "already-one",
+     "found": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "action": "already-one",
+     "found": 1
+    }
+   ],
+   "settleReads": 1,
+   "slots": [
+    {
+     "page": "生意参谋工作页",
+     "count": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "count": 1
+    }
+   ],
+   "pinnedTabs": 2,
+   "managedTabs": 2,
+   "tabs": [
+    "https://one.alimama.com/index.html",
+    "about:blank",
+    "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+   ]
+  },
+  {
+   "who": "盖文天猫",
+   "proxyPort": 19045,
+   "reachable": true,
+   "actions": [
+    {
+     "page": "生意参谋工作页",
+     "action": "already-one",
+     "found": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "action": "already-one",
+     "found": 1
+    }
+   ],
+   "settleReads": 1,
+   "slots": [
+    {
+     "page": "生意参谋工作页",
+     "count": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "count": 1
+    }
+   ],
+   "pinnedTabs": 2,
+   "managedTabs": 2,
+   "tabs": [
+    "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "about:blank",
+    "https://one.alimama.com/index.html"
+   ]
+  },
+  {
+   "who": "科塔淘宝",
+   "proxyPort": 19044,
+   "reachable": true,
+   "actions": [
+    {
+     "page": "生意参谋工作页",
+     "action": "already-one",
+     "found": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "action": "already-one",
+     "found": 1
+    }
+   ],
+   "settleReads": 1,
+   "slots": [
+    {
+     "page": "生意参谋工作页",
+     "count": 1
+    },
+    {
+     "page": "阿里妈妈报表页",
+     "count": 1
+    }
+   ],
+   "pinnedTabs": 2,
+   "managedTabs": 2,
+   "tabs": [
+    "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "about:blank",
+    "https://one.alimama.com/index.html"
+   ]
+  }
+ ],
+ "verdict": {
+  "ok": true,
+  "unreachable": [],
+  "gaps": [],
+  "ambiguous": []
+ }
+}
+

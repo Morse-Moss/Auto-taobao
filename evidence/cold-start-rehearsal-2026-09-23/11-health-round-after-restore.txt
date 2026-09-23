@@ -1,0 +1,133 @@
+﻿[驱动] 目标日 2026-09-22｜模式 rehearse｜店铺 5 家：里可林淘宝 / 网林天猫 / 盖文淘宝 / 盖文天猫 / 科塔淘宝
+[驱动] 日志根 D:\Retire\sycm-automation\tmp\rehearsal-0923\healthonly3
+[驱动] 本机 DESKTOP-KJP4RA5
+[驱动] 排练模式：采集是真的，两个写入方都是干跑，不写飞书。
+[驱动] 出错时：--notify-print：只打印不投递
+[驱动]   里可林淘宝 | 页头店名 里可林家居 | 会员 里可林家居:阿彦 2350600069
+[驱动]   网林天猫 | 页头店名 网林家居旗舰店 | 会员 网林家居旗舰店:阿彦 7314426323
+[驱动]   盖文淘宝 | 页头店名 盖文全卫定制 | 会员 随心品质定制:阿彦 887360146
+[驱动]   盖文天猫 | 页头店名 盖文旗舰店 | 会员 盖文旗舰店:阿彦 2995200080
+[驱动]   科塔淘宝 | 页头店名 科塔全卫定制 | 会员 j873522735:阿彦 412070158
+[一轮]   归位：已归位（生意参谋工作页=0  飞书底单页=0 → 生意参谋工作页=1  飞书底单页=1）
+[一轮]     [归位] 生意参谋工作页：reclaim
+[一轮]     [归位] 飞书底单页：create
+[一轮]   体检通过：阻断 0 项，告警 1 项
+[一轮]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[一轮]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[里可林淘宝] 1. health-check —— 体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个
+[里可林淘宝]   归位：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[里可林淘宝]   体检通过：阻断 0 项，告警 1 项
+[里可林淘宝]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[里可林淘宝]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[里可林淘宝] 2. alimama-date —— 跳过（--only 没点名）
+[里可林淘宝] 3. promotion-submit —— 跳过（--only 没点名）
+[里可林淘宝] 4. sycm-date —— 跳过（--only 没点名）
+[里可林淘宝] 5. shop-report —— 跳过（--only 没点名）
+[里可林淘宝] 6. promotion-fetch —— 跳过（--only 没点名）
+node.exe : [里可林淘宝] 停在这一步：没有拿到 shopXlsxPath / promotionZipPath：push 的这两个参数是必填，不猜
+路径。要么让采集段（shop-report / promotion-fetch）在本轮里跑过，要么用 --shop-xlsx + --promotion-zi
+p 显式给一对（单独重跑推送段时）。
+所在位置 行:449 字符: 7
++ $t = (& $node 'skills\sycm-alimama-daily-report\scripts\run-multi-sho ...
++       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([里可林淘宝] 停在这一步：没...式给一对（单独重跑推送段时）。 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[里可林淘宝]   停手时页面停在：生意参谋工作页=1  阿里妈妈报表页=1（共 3 个页签）
+[里可林淘宝]     · 不属于期望清单：about:blank
+[里可林淘宝]   回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop）
+[里可林淘宝]   回位后 生意参谋工作页 恰好一个
+[网林天猫] 1. health-check —— 体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个
+[网林天猫]   归位：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[网林天猫]   体检通过：阻断 0 项，告警 1 项
+[网林天猫]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[网林天猫]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[网林天猫] 2. alimama-date —— 跳过（--only 没点名）
+[网林天猫] 3. promotion-submit —— 跳过（--only 没点名）
+[网林天猫] 4. sycm-date —— 跳过（--only 没点名）
+[网林天猫] 5. shop-report —— 跳过（--only 没点名）
+[网林天猫] 6. promotion-fetch —— 跳过（--only 没点名）
+[网林天猫] 停在这一步：没有拿到 shopXlsxPath / promotionZipPath：push 的这两个参数是必填，不猜路径。要么让采集段（sh
+op-report / promotion-fetch）在本轮里跑过，要么用 --shop-xlsx + --promotion-zip 显式给一对（单独重跑
+推送段时）。
+[网林天猫]   停手时页面停在：生意参谋工作页=1  阿里妈妈报表页=1（共 3 个页签）
+[网林天猫]     · 不属于期望清单：about:blank
+[网林天猫]   回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop）
+[网林天猫]   回位后 生意参谋工作页 恰好一个
+[盖文淘宝] 1. health-check —— 体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个
+[盖文淘宝]   归位：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[盖文淘宝]   体检通过：阻断 0 项，告警 1 项
+[盖文淘宝]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[盖文淘宝]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[盖文淘宝] 2. alimama-date —— 跳过（--only 没点名）
+[盖文淘宝] 3. promotion-submit —— 跳过（--only 没点名）
+[盖文淘宝] 4. sycm-date —— 跳过（--only 没点名）
+[盖文淘宝] 5. shop-report —— 跳过（--only 没点名）
+[盖文淘宝] 6. promotion-fetch —— 跳过（--only 没点名）
+[盖文淘宝] 停在这一步：没有拿到 shopXlsxPath / promotionZipPath：push 的这两个参数是必填，不猜路径。要么让采集段（sh
+op-report / promotion-fetch）在本轮里跑过，要么用 --shop-xlsx + --promotion-zip 显式给一对（单独重跑
+推送段时）。
+[盖文淘宝]   停手时页面停在：生意参谋工作页=1  阿里妈妈报表页=1（共 3 个页签）
+[盖文淘宝]     · 不属于期望清单：about:blank
+[盖文淘宝]   回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop）
+[盖文淘宝]   回位后 生意参谋工作页 恰好一个
+[盖文天猫] 1. health-check —— 体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个
+[盖文天猫]   归位：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[盖文天猫]   体检通过：阻断 0 项，告警 1 项
+[盖文天猫]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[盖文天猫]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[盖文天猫] 2. alimama-date —— 跳过（--only 没点名）
+[盖文天猫] 3. promotion-submit —— 跳过（--only 没点名）
+[盖文天猫] 4. sycm-date —— 跳过（--only 没点名）
+[盖文天猫] 5. shop-report —— 跳过（--only 没点名）
+[盖文天猫] 6. promotion-fetch —— 跳过（--only 没点名）
+[盖文天猫] 停在这一步：没有拿到 shopXlsxPath / promotionZipPath：push 的这两个参数是必填，不猜路径。要么让采集段（sh
+op-report / promotion-fetch）在本轮里跑过，要么用 --shop-xlsx + --promotion-zip 显式给一对（单独重跑
+推送段时）。
+[盖文天猫]   停手时页面停在：生意参谋工作页=1  阿里妈妈报表页=1（共 3 个页签）
+[盖文天猫]     · 不属于期望清单：about:blank
+[盖文天猫]   回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop）
+[盖文天猫]   回位后 生意参谋工作页 恰好一个
+[科塔淘宝] 1. health-check —— 体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个
+[科塔淘宝]   归位：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[科塔淘宝]   体检通过：阻断 0 项，告警 1 项
+[科塔淘宝]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[科塔淘宝]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[科塔淘宝] 2. alimama-date —— 跳过（--only 没点名）
+[科塔淘宝] 3. promotion-submit —— 跳过（--only 没点名）
+[科塔淘宝] 4. sycm-date —— 跳过（--only 没点名）
+[科塔淘宝] 5. shop-report —— 跳过（--only 没点名）
+[科塔淘宝] 6. promotion-fetch —— 跳过（--only 没点名）
+[科塔淘宝] 停在这一步：没有拿到 shopXlsxPath / promotionZipPath：push 的这两个参数是必填，不猜路径。要么让采集段（sh
+op-report / promotion-fetch）在本轮里跑过，要么用 --shop-xlsx + --promotion-zip 显式给一对（单独重跑
+推送段时）。
+[科塔淘宝]   停手时页面停在：生意参谋工作页=1  阿里妈妈报表页=1（共 3 个页签）
+[科塔淘宝]     · 不属于期望清单：about:blank
+[科塔淘宝]   回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop）
+[科塔淘宝]   回位后 生意参谋工作页 恰好一个
+
+[驱动] 汇总：
+  里可林淘宝：pending —— 没有拿到 shopXlsxPath / promotionZipPath：push 的这两个参数是必填，不猜路径。要么让采集段（shop-report / promotion-fetch）在本轮里跑过，要么用 --shop-xlsx + --promotion-zip 显式给一对（单独重跑推送段时）。
+  网林天猫：pending —— 没有拿到 shopXlsxPath / promotionZipPath：push 的这两个参数是必填，不猜路径。要么让采集段（shop-report / promotion-fetch）在本轮里跑过，要么用 --shop-xlsx + --promotion-zip 显式给一对（单独重跑推送段时）。
+  盖文淘宝：pending —— 没有拿到 shopXlsxPath / promotionZipPath：push 的这两个参数是必填，不猜路径。要么让采集段（shop-report / promotion-fetch）在本轮里跑过，要么用 --shop-xlsx + --promotion-zip 显式给一对（单独重跑推送段时）。
+  盖文天猫：pending —— 没有拿到 shopXlsxPath / promotionZipPath：push 的这两个参数是必填，不猜路径。要么让采集段（shop-report / promotion-fetch）在本轮里跑过，要么用 --shop-xlsx + --promotion-zip 显式给一对（单独重跑推送段时）。
+  科塔淘宝：pending —— 没有拿到 shopXlsxPath / promotionZipPath：push 的这两个参数是必填，不猜路径。要么让采集段（shop-report / promotion-fetch）在本轮里跑过，要么用 --shop-xlsx + --promotion-zip 显式给一对（单独重跑推送段时）。
+[驱动] 明细 tmp\rehearsal-0923\healthonly3\summary.json
+[驱动] 告警文案（收信人看到的）：
+【需要处理】5 家店的日报没收完（统计日 2026-09-22）
+对象：日报一轮 · 5 家店
+店铺：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝
+数据周期：统计日 2026-09-22
+任务：各店铺日报
+原因：没跑完 5 家：
+· 里可林淘宝—— 没跑完，但记录里没写停在哪一步。这家店跑到一半停住了，这一天的数据没进飞书。
+· 网林天猫—— 没跑完，但记录里没写停在哪一步。这家店跑到一半停住了，这一天的数据没进飞书。
+· 盖文淘宝—— 没跑完，但记录里没写停在哪一步。这家店跑到一半停住了，这一天的数据没进飞书。
+· 盖文天猫—— 没跑完，但记录里没写停在哪一步。这家店跑到一半停住了，这一天的数据没进飞书。
+· 科塔淘宝—— 没跑完，但记录里没写停在哪一步。这家店跑到一半停住了，这一天的数据没进飞书。
+下一步：这一轮不需要你在浏览器里做什么。如果到今天下班前飞书里还是缺这一天的数据，就把这条消息转给技术同学，让他去看。
+时间：2026-09-23 10:19
+告警编号：daily-round-20260922
+[驱动] （--notify-print：只打印、不投递）
+

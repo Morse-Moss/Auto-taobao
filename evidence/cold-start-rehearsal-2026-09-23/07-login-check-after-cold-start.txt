@@ -1,0 +1,36 @@
+﻿
+########## 里可林淘宝｜proxy=http://127.0.0.1:19041｜浏览器 19031
+退出码=0
+判定=ALREADY_LOGGED_IN
+  生意参谋：loggedIn=true    after=
+  阿里妈妈：loggedIn=true    after=
+  说明：
+
+########## 网林天猫｜proxy=http://127.0.0.1:19042｜浏览器 19032
+退出码=0
+判定=ALREADY_LOGGED_IN
+  生意参谋：loggedIn=true    after=
+  阿里妈妈：loggedIn=true    after=
+  说明：
+
+########## 盖文淘宝｜proxy=http://127.0.0.1:19043｜浏览器 19033
+退出码=0
+判定=ALREADY_LOGGED_IN
+  生意参谋：loggedIn=true    after=
+  阿里妈妈：loggedIn=true    after=
+  说明：
+
+########## 盖文天猫｜proxy=http://127.0.0.1:19045｜浏览器 19035
+退出码=0
+判定=ALREADY_LOGGED_IN
+  生意参谋：loggedIn=true    after=
+  阿里妈妈：loggedIn=true    after=
+  说明：
+
+########## 科塔淘宝｜proxy=http://127.0.0.1:19044｜浏览器 19034
+退出码=0
+判定=ALREADY_LOGGED_IN
+  生意参谋：loggedIn=true    after=
+  阿里妈妈：loggedIn=true    after=
+  说明：
+

@@ -1,0 +1,16 @@
+﻿=== 停之前：全部 start-all-hold 进程 ===
+PID 8040    PPID 39696   起于 09-20 16:05:39 子进程 0 个 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:/Retire/sycm-automation/scripts/start-all-hold.mjs --only dailyReport,里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+PID 14536   PPID 55060   起于 09-21 09:44:28 子进程 0 个 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe scripts/start-all-hold.mjs --only competitor
+PID 55720   PPID 3884    起于 09-22 17:49:31 子进程 0 个 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe scripts/start-all-hold.mjs
+PID 21352   PPID 50316   起于 09-22 18:04:20 子进程 0 个 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe scripts/start-all-hold.mjs
+PID 24256   PPID 25356   起于 09-23 10:15:01 子进程 0 个 :: "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe" scripts\start-all-hold.mjs
+holder 个数: 5
+
+taskkill /PID 8040 /F  ->  SUCCESS: The process with PID 8040 has been terminated.
+taskkill /PID 14536 /F  ->  SUCCESS: The process with PID 14536 has been terminated.
+taskkill /PID 21352 /F  ->  SUCCESS: The process with PID 21352 has been terminated.
+taskkill /PID 55720 /F  ->  SUCCESS: The process with PID 55720 has been terminated.
+
+=== 停之后：还剩几个 holder ===
+PID 24256   PPID 25356   起于 09-23 10:15:01 :: "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe" scripts\start-all-hold.mjs
+holder 个数: 1

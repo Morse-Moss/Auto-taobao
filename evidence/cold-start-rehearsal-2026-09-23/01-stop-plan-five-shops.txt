@@ -1,0 +1,38 @@
+﻿（只打印模式：不会停任何进程。要真停请加 --yes）
+[停] 目标 7 个实例（只打印）
+  · 竞品链（买家号 ＋ 小旺神）
+      将停 proxy pid=31136  ← 端口在听、进程命令行是 start-competitor-proxy.mjs
+         taskkill /PID 31136 /T /F
+      将停 browser pid=54708  ← CDP 自证 profile 一致；杀启动器 54708（连带浏览器进程树与保活进程）
+         taskkill /PID 54708 /T /F
+  · 商家浏览器（日报/周表/灰豚）
+      将停 proxy pid=23444  ← 端口在听、进程命令行是 start-daily-report-proxy.mjs
+         taskkill /PID 23444 /T /F
+      将停 browser pid=63240  ← CDP 自证 profile 一致；杀启动器 63240（连带浏览器进程树与保活进程）
+         taskkill /PID 63240 /T /F
+  · 里可林淘宝
+      将停 proxy pid=26368  ← 端口在听、进程命令行是 start-shop-proxy.mjs 里可林淘宝
+         taskkill /PID 26368 /T /F
+      将停 browser pid=29732  ← CDP 自证 profile 一致；杀启动器 29732（连带浏览器进程树与保活进程）
+         taskkill /PID 29732 /T /F
+  · 网林天猫
+      将停 proxy pid=37320  ← 端口在听、进程命令行是 start-shop-proxy.mjs 网林天猫
+         taskkill /PID 37320 /T /F
+      将停 browser pid=47236  ← CDP 自证 profile 一致；杀启动器 47236（连带浏览器进程树与保活进程）
+         taskkill /PID 47236 /T /F
+  · 盖文淘宝
+      将停 proxy pid=44612  ← 端口在听、进程命令行是 start-shop-proxy.mjs 盖文淘宝
+         taskkill /PID 44612 /T /F
+      将停 browser pid=2340  ← CDP 自证 profile 一致；杀启动器 2340（连带浏览器进程树与保活进程）
+         taskkill /PID 2340 /T /F
+  · 盖文天猫
+      将停 proxy pid=44232  ← 端口在听、进程命令行是 start-shop-proxy.mjs 盖文天猫
+         taskkill /PID 44232 /T /F
+      将停 browser pid=57412  ← CDP 自证 profile 一致；杀启动器 57412（连带浏览器进程树与保活进程）
+         taskkill /PID 57412 /T /F
+  · 科塔淘宝
+      将停 proxy pid=41136  ← 端口在听、进程命令行是 start-shop-proxy.mjs 科塔淘宝
+         taskkill /PID 41136 /T /F
+      将停 browser pid=56628  ← CDP 自证 profile 一致；杀启动器 56628（连带浏览器进程树与保活进程）
+         taskkill /PID 56628 /T /F
+
