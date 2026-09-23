@@ -1,0 +1,81 @@
+{
+ "at": "2026-09-23T04:25:11.784Z",
+ "repoRoot": "D:\\Retire\\sycm-automation",
+ "node": "v22.22.2",
+ "total": 9,
+ "unexpected": 0,
+ "rows": [
+  {
+   "id": "M1",
+   "what": "链的两个告警调用点漏传 loginPreflight（＝这条修复整个不生效）",
+   "file": "skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs",
+   "occurrences": 2,
+   "verdict": "红在期望的那一条：not ok 30 - 驱动：每个生成告警的调用点都真的把 shopKeys 与登录态结论接上了（接线判据）",
+   "sha256": "5321e762127a8dbe"
+  },
+  {
+   "id": "M2",
+   "what": "把 `null`（没查）当成一个普通入参 —— 返回对象多出一个 login 键",
+   "file": "skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs",
+   "occurrences": 1,
+   "verdict": "红在期望的那一条：not ok 38 - 驱动：不给登录态结论时，roundFailureSummary 的输出**逐字不变**",
+   "sha256": "5321e762127a8dbe"
+  },
+  {
+   "id": "M3",
+   "what": "掉登录的店没有被改判成 NEEDS_LOGIN（店里那一层的告警又回到「去补页面」）",
+   "file": "skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs",
+   "occurrences": 1,
+   "verdict": "红在期望的那一条：not ok 32 - 告警：这一家是「页面不齐」判下来的、而它的登录掉了 ⇒ 这一家的结论也要改成「去登录」",
+   "sha256": "5321e762127a8dbe"
+  },
+  {
+   "id": "M4",
+   "what": "结论文件里的 `null`/数组被折成「没查」（「本来要查、结论丢了」就此消失）",
+   "file": "skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs",
+   "occurrences": 1,
+   "verdict": "红在期望的那一条：not ok 37 - 跑前登录态结论的读取：不给＝没查、读不到＝没结论、读到＝只留业务能用的字段",
+   "sha256": "5321e762127a8dbe"
+  },
+  {
+   "id": "M5",
+   "what": "登录态结论没有按本轮的店筛（分批时会点名跟这次无关的店）",
+   "file": "skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs",
+   "occurrences": 1,
+   "verdict": "红在期望的那一条：not ok 36 - 告警：登录态结论只留本轮要跑的那几家（分批时不许点名别的店）",
+   "sha256": "5321e762127a8dbe"
+  },
+  {
+   "id": "M6",
+   "what": "定时宿主没把本轮证据目录交给计划（链永远读不到结论）",
+   "file": "scripts/run-daily-job.mjs",
+   "occurrences": 1,
+   "verdict": "红在期望的那一条：not ok 22 - 宿主（定时链）真的把结论接上了：--print 里那条链命令带着 --login-preflight",
+   "sha256": "f1f664fb117e56ea"
+  },
+  {
+   "id": "M7",
+   "what": "体检那一步不再出 JSON（没有结论可以交，链读一个永远不存在的路径）",
+   "file": "runtime/daily-job-plan.mjs",
+   "occurrences": 1,
+   "verdict": "红在期望的那一条：not ok 17 - 跑前登录态结论真的交给链了：② 出 JSON、③ 收路径（都只在给了证据目录时）",
+   "sha256": "0af5625c8662aca2"
+  },
+  {
+   "id": "M8",
+   "what": "分批宿主没把结论转给每一批的链",
+   "file": "scripts/run-batches.mjs",
+   "occurrences": 1,
+   "verdict": "红在期望的那一条：not ok 23 - 宿主（分批链）也接上了：每一批的链都带着同一个结论路径",
+   "sha256": "df9e7b0fe5f442fd"
+  },
+  {
+   "id": "M9",
+   "what": "「这一轮没有先查登录态」那句不承诺的话被删掉（没查过时装作无话可说）",
+   "file": "skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs",
+   "occurrences": 1,
+   "verdict": "红在期望的那一条：not ok 33 - 告警：没查过登录态 ⇒ 如实说「没查过」，不许装作查过、也不许说「都不缺」",
+   "sha256": "5321e762127a8dbe"
+  }
+ ]
+}

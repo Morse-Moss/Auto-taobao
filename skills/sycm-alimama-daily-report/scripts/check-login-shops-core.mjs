@@ -16,10 +16,13 @@
 //   ⇒ 站点词表、未登录 URL 判据、探针地址都只有一份（login-merchant-core.mjs 的 SITES），
 //     连「哪个平台该显示哪个名字」也只有一份（shop-identities.mjs）。
 //
-// 权威字段只有一个：`sites[key].loggedIn`。
+// 权威字段是 `sites[key].loggedInAfter ?? sites[key].loggedIn`（2026-09-23 加后半截）。
 //   `true` ⇒ 在登录态；`false` ⇒ 掉登录（被踢回登录页）；`null` ⇒ **读不到**。
 //   `null` 绝不算通过 —— 这是 2026-09-19 那次静默的教训（空窗口被判成 ALREADY_LOGGED_IN，
 //   于是不叫人、不做事、安静地过）。本层把它翻成 `UNREADABLE`，单独成一类。
+//   为什么有两个字段：带 `--login` 时子进程会真的去登一次，登完写 `loggedInAfter`；
+//   而 `loggedIn` 是**登录之前**那一眼。只读前者的后果是「一次成功的自动登录被报成掉登录」，
+//   于是收信人被叫去做一件机器人刚做完的事 —— 详见 judgeShopReceipt 的注释。
 //
 // **只体检五家店，不看商家浏览器**：那台的登录取自同一批账号，而它的两个页面
 // （生意参谋 + 飞书底单页）与五家店的采集无关 —— 它掉了登录会在日报那一侧的失败里露出来。
@@ -48,15 +51,22 @@ export function siteVerdictOf(loggedIn) {
 export const SHOP_VERDICTS = Object.freeze(['OK', 'NEEDS_LOGIN', 'UNKNOWN']);
 
 /**
- * 把一条 `login-merchant.mjs --check-only` 的回执翻成一家店的结论。
+ * 把一条 `login-merchant.mjs` 的回执翻成一家店的结论。
  *
  * `receipt === null`（子进程没起来 / 输出不是 JSON）⇒ 两个平台都是 `UNREADABLE` ⇒ `UNKNOWN`。
  * 这一支刻意不抛错：五家店里有一家的回执读不出来，不该让另外四家的结论一起消失。
+ *
+ * **看哪个字段**（2026-09-23 加 `--login` 时定的）：权威字段是 `loggedInAfter ?? loggedIn`。
+ *   - 带 `--login` 时子进程会**真的去登一次**，登完把结果写进 `loggedInAfter`；
+ *     而 `loggedIn` 仍是**登录之前**那一眼。只读 `loggedIn` 的话，**一次成功的自动登录会被报成
+ *     「还是掉登录」** —— 于是收信人被叫去窗口里做一件机器人刚刚做完的事（假红，比不报更坏）。
+ *   - 不带 `--login`（`--check-only`）时 `loggedInAfter` **根本不存在**，
+ *     `??` 原样落到 `loggedIn` ⇒ 行为与从前逐字相同。
  */
 export function judgeShopReceipt({ shop, receipt = null } = {}) {
   const sites = {};
   for (const key of SITE_KEYS) {
-    sites[key] = siteVerdictOf(receipt?.sites?.[key]?.loggedIn);
+    sites[key] = siteVerdictOf(receipt?.sites?.[key]?.loggedInAfter ?? receipt?.sites?.[key]?.loggedIn);
   }
   const needsLogin = SITE_KEYS.filter((key) => sites[key] === 'LOGGED_OUT');
   const unreadable = SITE_KEYS.filter((key) => sites[key] === 'UNREADABLE');
@@ -115,16 +125,24 @@ export function exitCodeForPreflight(verdict) {
  * 只查一个平台是 login-merchant.mjs `--target` 的用法，不在这里再开一个口子 ——
  * 多一个开关就多一种「四个平台里只查了两个」的现场，而那种现场看起来是绿的。
  *
+ * `--login`（2026-09-23 加，**默认关**）：把「查」升级成「查 + 掉了就自己登一次」。
+ *   - 不带它：子进程走 `--check-only`，**一个页面都不碰**（只读），行为与从前逐字相同。
+ *   - 带它：子进程走 `--commit`，会开登录页、补一次可信手势、提交表单。
+ *     ⇒ **这一层就从只读变成了写入方**，调用方必须知道自己要的是哪一种。
+ *   默认关不是保守，是分工：本模块同时被「跑前那一眼的体检」和「跑前登录守卫」用，
+ *   两者对「能不能碰页面」的答案相反，所以由调用方显式选，不由这里替它猜。
+ *
  * @param {string[]} argv
  * @param {{ shops?: string[]|null }} ctx
  *   `shops` 是**登记表里的合法店名**（运行时由 browser-ports.shopBrowserKeys() 给）。
  *   不传时跳过店名校验 —— 保持「解析」与「登记表」解耦，用例可以只测解析本身。
  */
 export function parseCheckShopsArgs(argv, { shops = null } = {}) {
-  const opts = { shops: null, json: false, timeoutMs: 180000, help: false };
+  const opts = { shops: null, json: false, timeoutMs: 180000, help: false, login: false };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === '--json') { opts.json = true; continue; }
+    if (token === '--login') { opts.login = true; continue; }
     if (token === '--help' || token === '-h') { opts.help = true; continue; }
     const valued = ['--shops', '--timeout'];
     if (!valued.includes(token)) throw new Error(`Unknown argument: ${token}`);
@@ -182,6 +200,25 @@ const SITE_RESULT_TEXT = Object.freeze({
   UNREADABLE: '读不到',
 });
 
+// 「自动登录为什么没成」—— 词是 login-merchant-core.mjs 的 VERDICTS，**不在这里另造一套**。
+// 每一条都要能回答「接下来人该做什么」，所以只写「人该怎么办」，不复述内部机制。
+// 漏一条的后果是收了告警的人看到一句内部代号（或什么都没有），所以宁可写得直白。
+const LOGIN_FAIL_TEXT = Object.freeze({
+  NEEDS_LOGIN: '这一轮只做体检，系统没有去登',
+  NO_SAVED_CREDENTIAL: '浏览器没把账号密码填进去 —— 这一家的密码库里没有这份凭据，或填充没落地',
+  CAPTCHA_REQUIRED: '出现了滑块或图片验证码，这一步只能人来过',
+  MAIN_SESSION_ONLY: '淘宝主站会话还在，是这两个后台自己的会话没了，得单独登一次',
+  LOGIN_NOT_CONFIRMED: '提交之后还停在登录页（密码不对，或平台要求额外验证）',
+  STOP_AND_ALERT: '页面结构和预期不一样，系统没有乱点',
+  PARTIAL: '只进去了一部分后台',
+});
+
+/** 把子脚本次次报的结论翻成一句人话。认不出来就如实说认不出来 —— 不猜。 */
+export function loginFailReason(scriptVerdict) {
+  if (!scriptVerdict) return null;
+  return LOGIN_FAIL_TEXT[scriptVerdict] ?? `自动登录没成（内部结论：${scriptVerdict}）`;
+}
+
 function siteLine(shop, key, state) {
   const hint = platformNameHint(shop, key);
   const whose = hint
@@ -205,24 +242,51 @@ export function renderShopBlock(row) {
   return lines;
 }
 
-/** 末尾那段「要人做什么」。只在真的需要人 / 真的没结论时才出现。 */
-export function renderVerdictLines(rows, judged = judgePreflight(rows)) {
+/**
+ * 末尾那段「要人做什么」。只在真的需要人 / 真的没结论时才出现。
+ *
+ * `autoLogin`（2026-09-23 加）只改**措辞**，不改任何判定：
+ *   不带它时，这一层是只读体检，话是「你去窗口里登一次」；
+ *   带它时，这一层已经**自己试过了**，话必须改成「自动登录也试过了、没成」，
+ *   并且把子进程报的失败原因抄出来 —— 否则收信人会以为「机器什么都没做」，
+ *   而其实机器做过一次（那次尝试本身就是他需要知道的信息）。
+ */
+export function renderVerdictLines(rows, judged = judgePreflight(rows), { autoLogin = false } = {}) {
   const { verdict, needHuman, unknown } = judged;
   const lines = [];
+  const rowOf = (shop) => rows.find((row) => row.shop === shop) ?? null;
   if (verdict === 'ALL_IN') {
     lines.push(`[判据] ${rows.length} 家店、${rows.length * SITE_KEYS.length} 个平台都在登录态 —— 可以开跑。`);
+    // 只在**真的去登过**（`autoLogin`）而且**确实登进去了**（子进程回 `LOGGED_IN`）时才多这一行。
+    // 两个条件缺一不可：只读模式下「这一次自己登进去的」这句话本身就是假的
+    // （那一轮没有任何登录发生过）。只读回执里也不会出现 `LOGGED_IN` 这个结论，
+    // 但把这句的成立条件**写出来**，比依赖「那个值不会出现」更可靠。
+    const autoFixed = autoLogin
+      ? rows.filter((row) => row.scriptVerdict === 'LOGGED_IN').map((row) => row.shop)
+      : [];
+    if (autoFixed.length > 0) {
+      lines.push(`  其中 ${autoFixed.length} 家是**这一次自己登进去的**（其余本来就在登录态）：${autoFixed.join(' / ')}`);
+    }
     return lines;
   }
   if (needHuman.length > 0) {
-    lines.push(`[判据] 有 ${needHuman.length} 家店要你去窗口里动一下手：`);
+    lines.push(autoLogin
+      ? `[判据] 有 ${needHuman.length} 家店**自动登录也试过了、没成**，要你去窗口里动一下手：`
+      : `[判据] 有 ${needHuman.length} 家店要你去窗口里动一下手：`);
     for (const item of needHuman) {
       const which = item.sites.map((key) => SITES[key].label).join('、');
       const account = loginAccountFor(item.shop);
       const how = account ? `用「${account}」登录` : '用这家店自己的账号登录';
       lines.push(`  · ${item.shop}（${which}）—— 在标题写着「${item.shop}」的那个浏览器窗口里，${how}一次`
         + '（登录时点浏览器提示里的「保存密码」，下次就不用再来）。');
+      // 原因那一行**只在真的去登过时才印**：只读模式下子进程的结论是 `NEEDS_LOGIN`，
+      // 照抄那句话会写成「自动登录没成：这一轮只做体检」—— 一件根本没发生的事被说成失败了。
+      const why = autoLogin ? loginFailReason(rowOf(item.shop)?.scriptVerdict) : null;
+      if (why) lines.push(`      自动登录没成的原因：${why}。`);
     }
-    lines.push('  这一层只是体检：它没有打开过任何页面、也没有点过任何东西。');
+    lines.push(autoLogin
+      ? '  这一层**已经自己试过登录了**（打开过登录页、补过一次可信手势、提交过表单）；上面列出的是试完仍然没进去的那些。'
+      : '  这一层只是体检：它没有打开过任何页面、也没有点过任何东西。');
   }
   if (unknown.length > 0) {
     lines.push(`[判据] 还有 ${unknown.length} 家店**这一层没有结论**（读不到不等于通过）：`);
@@ -236,13 +300,16 @@ export function renderVerdictLines(rows, judged = judgePreflight(rows)) {
 }
 
 /** 整份报告（stdout 上看到的那段）。 */
-export function renderReport({ rows, machine = null } = {}) {
+export function renderReport({ rows, machine = null, autoLogin = false } = {}) {
+  const mode = autoLogin
+    ? '｜会自己登：掉登录的当场用浏览器密码库登一次，没成才叫人'
+    : '｜只读：不开页面、不点任何东西';
   const lines = [
     `[跑前体检] 登录态 · ${rows.length} 家店 × ${SITE_KEYS.length} 个平台`
     + `（${SITE_KEYS.map((key) => SITES[key].label).join(' + ')}）`
-    + `｜只读：不开页面、不点任何东西${machine ? `｜本机 ${machine}` : ''}`,
+    + `${mode}${machine ? `｜本机 ${machine}` : ''}`,
   ];
   for (const row of rows) lines.push(...renderShopBlock(row));
-  lines.push(...renderVerdictLines(rows, judgePreflight(rows)));
+  lines.push(...renderVerdictLines(rows, judgePreflight(rows), { autoLogin }));
   return lines.join('\n');
 }

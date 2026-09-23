@@ -17,6 +17,12 @@
 // 默认**不写飞书**：不给 `--commit` 就是排练（与链本身的默认一致）。
 // 默认**会释放**：只在链跑成的时候（见 releaseAfterBatch）；`--no-release` 可以整轮关掉。
 //
+// 整轮之前还有一步**跑前登录态体检**（2026-09-23 加，只读）：它整轮跑一次，结论落成
+// `<证据根>/login-preflight.json`，并用 `--login-preflight` 交给**每一批**的链 ——
+// 链会按本批 `--shops` 把结论筛一遍，所以掉登录时告警能直接点名是哪家店的哪个后台，
+// 而不是给一句「把这两页各开一个」（掉登录时那个动作是无效的）。
+// 参数与产物名的单一来源是 runtime/daily-job-plan.mjs，这里不另抄一份。
+//
 // 用法：
 //   node scripts/run-batches.mjs --print                 # 只打印每一批要执行什么（不起任何进程）
 //   node scripts/run-batches.mjs --batch-size 2          # 排练：每批 2 家，跑完释放（不写飞书）
@@ -31,10 +37,14 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
-  DEFAULT_BATCH_SIZE, buildBatchSteps, buildSharedStep, describeBatch, planBatches, releaseAfterBatch,
-  resolveBatchSize,
+  DEFAULT_BATCH_SIZE, buildBatchSteps, buildLoginPreflightStep, buildSharedStep, describeBatch, planBatches,
+  releaseAfterBatch, resolveBatchSize,
 } from '../runtime/batch-plan.mjs';
-import { renderCommand } from '../runtime/daily-job-plan.mjs';
+// 跑前登录态体检那一步的**文件、参数名、产物名**都只在那里定义一次（分批这条链与定时链共用）。
+// 不各写一份：漂出来的症状是静默的 —— 链那边参数没少、只是永远读不到结论。
+import {
+  JOB_FILES, LOGIN_PREFLIGHT_ARTIFACT, LOGIN_PREFLIGHT_FLAG, buildLoginPreflightArgs, renderCommand,
+} from '../runtime/daily-job-plan.mjs';
 import { versionLineSafe } from '../runtime/version.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
 
@@ -108,13 +118,26 @@ async function main(argv) {
     return 2;
   }
   const date = resolveTargetDate(options.dateInput);
-  const chainArgs = chainArgsFor(options);
 
   // 证据根：**批次形态用它自己的目录**，不去挤 `evidence/multi-shop-<日>/`。
   // 理由：链把 summary.json 写在 `--logs` 根上，多个批次共用同一个根会互相覆盖 ——
   // 「后一批把前一批的明细盖掉」在事后完全看不出来（文件在、内容新、没有报错）。
   // 这里只算路径（`--print` 也要能打印出真正会执行的那一行），建目录留到真跑那一步。
   const evidenceRoot = path.resolve(REPO_ROOT, options.logs ?? path.join('evidence', `batches-${date}`));
+
+  // 跑前登录态结论：整轮一份，落在本轮的证据根上。**每一批的链读同一份** ——
+  // 链会按本批 `--shops` 把结论筛一遍，所以共用一份不会把别的批次扯进来。
+  const loginPreflightPath = path.join(evidenceRoot, LOGIN_PREFLIGHT_ARTIFACT);
+  const chainArgs = [...chainArgsFor(options), LOGIN_PREFLIGHT_FLAG, loginPreflightPath];
+  const loginStep = buildLoginPreflightStep({
+    file: JOB_FILES.loginPreflight,
+    // 整轮一次 ⇒ `--shops` 给的是**全部**要跑的店（不是某一批的）。
+    // `login: true`（2026-09-23 加）：掉了就自己登一次 —— 与定时链同一个默认值、同一份理由
+    // （用户明确授权自动登录；且掉登录是**会话级 cookie** 导致的常态，不是偶发）。
+    // 分批这条链跑得比定时链更少人看着（排练/补跑常是无人值守），更需要它。
+    args: buildLoginPreflightArgs({ shops: plan.shops, json: true, login: true }),
+    artifactPath: loginPreflightPath,
+  });
 
   const batches = plan.batches.map((batch) => ({
     batch,
@@ -133,6 +156,9 @@ async function main(argv) {
       + `；跑完${options.release ? '释放' : '不释放（--no-release）'}`);
     console.log(`[批次] ${sharedStep.name}: ${renderCommand(sharedStep, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
     console.log(`        ${sharedStep.note}`);
+    console.log(`[批次] ${loginStep.name}: ${renderCommand(loginStep, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
+    console.log(`        ${loginStep.note}`);
+    console.log(`        结论落：${path.relative(REPO_ROOT, loginPreflightPath).replaceAll('\\', '/')}`);
     for (const { batch, steps } of batches) {
       console.log(`[批次] ${describeBatch(batch, plan.total)}`);
       for (const step of steps) {
@@ -175,6 +201,30 @@ async function main(argv) {
       // 不阻断：链自己的体检会给出更准的原因（哪一页不齐、哪一家连不上）。
       // 但必须显眼 —— 它多半意味着这一整轮都跑不成。
       log('[批次] 注意：共享实例（商家浏览器）没起齐 —— 整轮很可能在链的体检那一步就停。');
+    }
+  }
+
+  // 整轮一次：跑前登录态体检。**排在每一批之前**，因为它查的是「今天开跑前」的状态 ——
+  // 排在第一批之后、第二批之前，查到的就已经是「跑完一批之后」的状态，那是另一件事。
+  // 它只读（`--check-only` 不开任何页面、不点任何东西），所以放在这里不影响任何一批。
+  {
+    log(`--- ${loginStep.name}：${renderCommand(loginStep, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
+    // stdout 单独接出来落成文件（链要读它），同时回显进日志（「当时打了什么」这条证据不能丢）。
+    const result = spawnSync(NODE, [path.join(REPO_ROOT, loginStep.file), ...loginStep.args], {
+      cwd: REPO_ROOT, stdio: ['ignore', 'pipe', logFd], encoding: 'utf8',
+    });
+    const status = result.status ?? -1;
+    const stdout = result.stdout ?? '';
+    fs.writeFileSync(loginStep.artifactPath, stdout, 'utf8');
+    if (stdout) fs.writeSync(logFd, stdout);
+    log(`--- ${loginStep.name} 结论已落 ${path.relative(REPO_ROOT, loginStep.artifactPath).replaceAll('\\', '/')}`
+      + `（${Buffer.byteLength(stdout, 'utf8')} 字节；每一批的链都会读它）`);
+    log(`--- ${loginStep.name} 退出码=${status}`);
+    if (status !== 0) {
+      // 不阻断：它不是闸门（三个退出码的含义见 check-login-shops.mjs 头部）。但它多半意味着
+      // 「今天有店掉登录了」或「实例没起齐」，所以必须显眼。
+      log(`[批次] 注意：${loginStep.name} 不是「全在登录态」（退出码 ${status}）—— 不阻断，`
+        + '链的告警会点名是哪家店的哪个后台。');
     }
   }
 

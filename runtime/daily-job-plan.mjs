@@ -2,8 +2,8 @@
 //
 // 背景（为什么需要这层）：SOP §13 说的是「任务计划到点敲**一条**命令」。而今天真实要做的其实有
 // **三件**：① 保证实例在（浏览器与代理；本项目的进程绑会话，机器重启或回收之后它们不在）；
-// ② 看一眼五家店的登录态（只读，2026-09-23 加）；③ 跑全链。三件都塞进 `/TR` 里由 shell 拼，
-// 三个月后没人能说清当时到底跑的是什么。
+// ② 看一眼五家店的登录态（只读，2026-09-23 加；**并把结论交给链**，同日晚补上）；③ 跑全链。
+// 三件都塞进 `/TR` 里由 shell 拼，三个月后没人能说清当时到底跑的是什么。
 // 所以口径放在这里、由 `scripts/run-daily-job.mjs` 执行、由 `scripts/schedule-install.mjs` 注册。
 //
 // 三条不变量（每条都对应一个已经吃过的亏）：
@@ -18,6 +18,8 @@
 // 路径以**字符串**写在这里（不做 import）：这条计划只是「该跑哪个文件」，
 // 不需要、也不该把能力的脚本拉进模块图（拉了就会在依赖白名单里多一条反向依赖，
 // 见 runtime/arch-boundary.test.mjs 与提案 D3）。
+import path from 'node:path';
+
 export const JOB_FILES = Object.freeze({
   ensureInstances: 'scripts/start-all.mjs',
   // 跑前登录态体检（只读：不开页面、不点任何东西）。2026-09-23 接进本计划。
@@ -31,6 +33,38 @@ export const JOB_FILES = Object.freeze({
   // 路径同样以字符串写：本文件不该把编排脚本拉进模块图（理由见文件头）。
   batchChain: 'scripts/run-batches.mjs',
 });
+
+/**
+ * 跑前登录态结论落在哪个文件里 + 链那一步用哪个参数收它。
+ *
+ * 这两样**必须只有一份**：定时链（本文件）与分批驱动（scripts/run-batches.mjs）都会用它，
+ * 各写一份就会漂 —— 而漂出来的症状是「链那边参数没少、只是永远读不到结论」，
+ * 于是告警退回「这一轮没有先查登录态」，看起来完全正常（本条要治的正是这种静默）。
+ */
+export const LOGIN_PREFLIGHT_ARTIFACT = 'login-preflight.json';
+export const LOGIN_PREFLIGHT_FLAG = '--login-preflight';
+
+/**
+ * 跑前登录态体检那一步的参数。**两个调用点共用一份**。
+ *
+ * `json` 只在「结论确实有人接」时才给：`--json` 会**取代**那一份给人看的报告
+ * （check-login-shops.mjs 是 if/else），而人翻日志时那份报告很有用。
+ * 所以：有人接 ⇒ 出 JSON（跑那一步的宿主会把它同时落成文件、回显进日志）；
+ * 没人接 ⇒ 保持昨天那样只打报告，链的告警会如实说「这一轮没有先查登录态」。
+ *
+ * `login`（2026-09-23 加）：把这一步从「只查」升级成「查 + 掉了就自己登一次」。
+ *   默认**关**，由调用方显式打开 —— 因为带它之后这一步**会碰页面**（开登录页、提交表单），
+ *   不再是只读；「要不要让机器去登」是调用点的决定，不该由这个纯函数替它猜。
+ *   打开它的两个调用点都是自动化入口（定时链 scripts/run-daily-job.mjs 与分批驱动
+ *   scripts/run-batches.mjs），理由见 CLAUDE/CHANGELOG：用户 2026-09-23 明确授权自动登录。
+ */
+export function buildLoginPreflightArgs({ shops = null, json = false, login = false } = {}) {
+  const args = [];
+  if (login) args.push('--login');
+  if (shops && shops.length > 0) args.push('--shops', shops.join(','));
+  if (json) args.push('--json');
+  return args;
+}
 
 /** 允许转发的可选开关（透传，不在本文件里复述它们的含义）。 */
 const CHAIN_FLAGS = Object.freeze({
@@ -76,7 +110,8 @@ export function buildBatchChainArgs({
  *
  * 步骤顺序有意义，且是**两次实测换来的**：
  *   ① 先保证实例在（`start-all` 幂等，已就位的一个都不碰）；
- *   ② 再看一眼登录态（只读；这一步是给「跑前那一眼」留证据，不是闸门）；
+ *   ② 再看一眼登录态（只读；这一步是给「跑前那一眼」留证据，不是闸门），
+ *      **并把结论写成一个文件交给链**（`--login-preflight`，2026-09-23 接上）；
  *   ③ 最后跑链。
  *
  * 为什么登录态体检排在**起实例之后**：实例不在时它一个页面都读不到，只会留下一片「读不到」
@@ -84,6 +119,13 @@ export function buildBatchChainArgs({
  * 「端口/页面/出网」，**不看登录态**（`runtime/xws-platform-health-preflight.mjs` 里
  * IDENTITY / SESSION 两层明写未实现），所以掉登录这件事从前只能等到采集阶段炸，
  * 炸出来的告警还是「没跑完，但记录里没写停在哪一步」。
+ *
+ * ⚠️ 2026-09-23 补上的一环（用户拍板「1.改」）：② 的结论原先**只落在日志里**，链一个字都看不到
+ * —— 于是掉登录时链看到的仍然是「页面不齐」，发出去的告警是「把这两页各开一个」，
+ * 而收信人照着做无效（掉登录时开几个页面都会被送回登录页）。现在 ② 的 stdout 会被落成
+ * `login-preflight.json` 并作为 `--login-preflight` 交给 ③，链把「页面不齐」改判成
+ * 「哪个店哪个后台掉登录了」。**这一步不是闸门**这一点没有变：拿不到结论时链照样跑，
+ * 只是告警会如实说「这一轮没有先查登录态」。
  *
  * 为什么这一步 `blocking: false`：链的第 0 步体检才是「今天能不能写」的权威判据。
  * 在这里截断只会让告警少一层信息；而它自己判「读不到」时（冷启动后页面还没归位）
@@ -93,8 +135,34 @@ export function buildJobPlan(options = {}) {
   const {
     dateInput = 'yesterday', notify = false, notifyPrint = false, keepGoing = false,
     allowMissingPeer = false, shops = null, only = null, logs = null, downloads = null,
-    batches = null,
+    batches = null, artifactsDir = null,
+    // `autoLogin`（2026-09-23 加）：跑前那一步要不要「掉了就自己登一次」。
+    // **默认关**（与「新能力默认关」的既有纪律一致），由宿主显式打开：
+    //   `scripts/run-daily-job.mjs` 默认打开（用户 2026-09-23 明确授权自动登录），
+    //   且给了 `--no-auto-login` 让运维一键退回只读体检。
+    // 为什么默认关而不是默认开：这个模块也被用例与排查直接调用，
+    // 而带它的那一步**会碰页面**（开登录页、提交表单）。让「碰页面」变成调用方要说的话，
+    // 不是这里替所有人默认决定的事。
+    autoLogin = false,
   } = options;
+
+  // 「分批跑」是一个**显式**开关（提前算出来，因为「结论交给谁」在下面要用到它）。
+  const batchMode = batches !== null && batches !== undefined;
+
+  // 跑前登录态结论的**落点**。`artifactsDir`＝本轮证据目录（`evidence/daily-job-<日>/`）。
+  // 不给它时这一步只把报告打进日志、链那一步也拿不到结论 —— 链的告警会如实说
+  // 「这一轮没有先查登录态」（文案口径见 run-multi-shop-day.mjs 的 loginPreflightLines），
+  // 而不是安静地少说一件事。**但真实调用点（scripts/run-daily-job.mjs）一定会给**，
+  // 并由一条用例钉住这件事：少给就等于把这一整条链的修复退回原样。
+  //
+  // 分批那一档**刻意例外**：那条路的结果交接在分批驱动**内部**完成
+  // （它整轮跑一次、把同一份结论交给每一批的链），所以这里既不生成 JSON、也不给
+  // `batch-chain` 加参数 —— 这里生成的那份没有任何人读，而「写了没人读的文件」正是
+  // 后来人会照着接错的地方。这一步本身仍然跑：它的报告进 job.log，
+  // 是整轮唯一一份「开跑前五家店登录态」的整轮视角记录。
+  const loginPreflightFile = artifactsDir && !batchMode
+    ? path.join(artifactsDir, LOGIN_PREFLIGHT_ARTIFACT)
+    : null;
 
   // 告警出口必须恰好一个：两个都传会让驱动那边 `--notify-print` 赢（resolveAlertDispatch 的顺序），
   // 于是「我要发飞书」这个意图被静默丢掉。与其指望调用方记得，不如在这里当场拦住。
@@ -103,9 +171,7 @@ export function buildJobPlan(options = {}) {
       + '于是「要发飞书」这层意图被静默丢掉）');
   }
 
-  // 「分批跑」是一个**显式**开关：不传 `batches` 时下面这个分支一个字符都不会走到，
-  // 三步与从前逐字相同（这条由 daily-job-plan.test.mjs 断言，因为「默认不变」是它唯一的安全保证）。
-  if (batches !== null && batches !== undefined) {
+  if (batchMode) {
     if (!Number.isInteger(batches) || batches < 1) {
       throw new Error(`--batches 要一个 ≥1 的整数（每批几家），收到 ${JSON.stringify(batches)}。`
         + '不给这个开关，定时链的行为与从前逐字相同。');
@@ -132,8 +198,10 @@ export function buildJobPlan(options = {}) {
     const value = key === 'shops' || key === 'only' ? (options[key]?.join(',') ?? null) : options[key];
     if (value) chainArgs.push(flag, String(value));
   }
+  // 跑前登录态结论交给链那一步。**值是一个绝对路径，而且由本文件算出**（不是 spawn 那一刻补）：
+  // 「打印出来的必须是真正执行的」—— `--print` 时人看到的就是这一行的真实路径。
+  if (loginPreflightFile) chainArgs.push(LOGIN_PREFLIGHT_FLAG, loginPreflightFile);
 
-  const batchMode = batches !== null && batches !== undefined;
   const chainStep = batchMode
     ? {
       name: 'batch-chain',
@@ -169,11 +237,21 @@ export function buildJobPlan(options = {}) {
         name: 'login-preflight',
         file: JOB_FILES.loginPreflight,
         // 指定店铺跑（排查用）时，只体检那几家；否则查登记表里全部五家。
-        args: shops ? ['--shops', shops.join(',')] : [],
-        note: '跑前登录态体检（只读：不开页面、不点东西）—— 哪家店的哪个后台掉登录了，写进日志',
+        // `autoLogin` 打开时这一步同时承担「跑前登录守卫」：掉登录的当场自己登一次。
+        args: buildLoginPreflightArgs({ shops, json: Boolean(loginPreflightFile), login: autoLogin }),
+        // `artifactPath`：这一步的 stdout 要**落成一个文件**，不能只进日志 ——
+        // 链那一步把它当参数读。没有它，「结论进告警」这句话就没有落点
+        // （2026-09-23 之前正是这样：体检跑了、报告也打了，而告警仍然说「页面不齐，去开页面」）。
+        ...(loginPreflightFile ? { artifactPath: loginPreflightFile } : {}),
+        note: (autoLogin
+          ? '跑前登录守卫（**会碰页面**：掉登录的当场用浏览器密码库登一次，没成才叫人）'
+          : '跑前登录态体检（只读：不开页面、不点东西）')
+          + '—— 哪家店的哪个后台掉登录了，写进日志'
+          + (loginPreflightFile ? '，并交给链（掉登录时告警会直接点名，不再叫人去开页面）' : ''),
         // 同一条理由：它**不是闸门**。它的三个退出码会被记进日志
         // （0＝全在登录态；2＝有后台明确掉登录；3＝没结论/读不到），人翻日志时一眼能看到；
         // 但它不许拦住链 —— 掉了登录这件事，链自己会在采集段如实报出来。
+        // `autoLogin` 改了这一步会不会碰页面，**不改它的闸门语义**：登没登上都不许由它截断整轮。
         blocking: false,
       },
       chainStep,

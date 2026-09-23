@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -8,7 +8,7 @@ import { BROWSER_IDS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } fro
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
-import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, parseArgs, proxyJson, proxyPortForBrowser, recoverFailedShop, resolveAlertDedup, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
+import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDedup, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -503,23 +503,33 @@ const TECH_SHAPES = [
 
 test('告警：文案里不许出现英文阶段名、结论代号、内部术语，也不许出现路径/命令行/主机名/账号名', () => {
   const jargon = ['判据', '幂等', 'fail-closed', 'capability', '会话', '风控'];
+  const blockedDetail = '目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。';
   const cases = {
     ROUND_BLOCKED: { round: { healthCheckDaily: { ok: false, blockingDetails: ['目标页面「飞书底单页」不在这个浏览器里（按片段 feishu.cn/base/xx 找到 0 个）；采集会从落位那一步就失败。'] } }, shops: {} },
     SHOP_BLOCKED: { round: { healthCheckDaily: { ok: true } }, shops: { 盖文淘宝: { status: 'failed', failedStage: 'health-check', blockingDetails: ['目标页面「阿里妈妈报表页」不在这个浏览器里（按片段 one.alimama.com/index.html 找到 0 个）；采集会从落位那一步就失败。'], stages: [] } } },
+    // NEEDS_LOGIN 的判据不在 summary 里，在跑前那一次的结论里 ⇒ 它的样例要多一个入参（见 overrideFor）。
+    NEEDS_LOGIN: { round: { healthCheckDaily: { ok: false, blockingDetails: [blockedDetail] } }, shops: {} },
     DUPLICATE_TARGET: { round: { healthCheckDaily: { ok: true } }, shops: { 科塔淘宝: failedAt('push', 'duplicate daily report row exists: r1') } },
     SHOP_FUNC_NO_PERMISSION: { round: { healthCheckDaily: { ok: true } }, shops: { 科塔淘宝: failedAt('sycm-date', 'Error: SHOP_FUNC_NO_PERMISSION: 平台答复 code=5903 No Buy Func Permission') } },
     STAGE_FAILED: { round: { healthCheckDaily: { ok: true } }, shops: { 里可林淘宝: failedAt('promotion-fetch', 'Error: expected one 生成成功 row, got 0') } },
   };
   assert.deepEqual(Object.keys(cases).sort(), [...FAILURE_CAUSES].sort(),
     '每一条结论都要在这里被渲染一次（漏一条 = 新一类术语味告警没人守）');
+  const LOGIN_OVERRIDE = {
+    loginPreflight: {
+      verdict: 'NEEDS_LOGIN', checked: 5, unknown: [],
+      needHuman: [{ shop: '科塔淘宝', sites: ['sycm', 'alimama'] }],
+    },
+  };
+  const overrideFor = (cause) => (cause === 'NEEDS_LOGIN' ? LOGIN_OVERRIDE : {});
 
   // 账号名是**数据**，所以从登记表取真值来扫 —— 写死几个样例只能挡住已经出现过的那两个。
   const accountNames = ALERT_SHOP_KEYS.map((key) => shopIdentity(key).alimamaMemberName).filter(Boolean);
   assert.ok(accountNames.length >= 2, '登记表里读不到账号名，这条判据会形同虚设');
 
   for (const [cause, summary] of Object.entries(cases)) {
-    const alert = buildAlert(summary);
-    const text = renderedAlert(summary);
+    const alert = buildAlert(summary, overrideFor(cause));
+    const text = renderedAlert(summary, overrideFor(cause));
     // 收信人看得到的**自由文本**（这几段是泄漏实际发生的地方）
     const freeText = [alert.title, alert.reason, alert.action].filter(Boolean).join('\n');
     const haystacks = [['正文', text], ['自由文本字段', freeText]];
@@ -555,7 +565,7 @@ test('告警：缺 shopKeys 直接抛（那一行静默消失过，所以不留�
   assert.doesNotThrow(() => buildAlert(mixedSummary()));
 });
 
-test('驱动：每个生成告警的调用点都真的把 shopKeys 接上了（接线判据）', () => {
+test('驱动：每个生成告警的调用点都真的把 shopKeys 与登录态结论接上了（接线判据）', () => {
   // 为什么单独立一条：`buildRoundFailureAlert` 自己的用例全部通过，而**两个调用点漏传 shopKeys**
   // ⇒「另外 N 家今天一步都没跑」那一行静默消失（2026-09-21 实测：改动被静默丢失 + 没有一条用例走这条接线）。
   // 用例里手建的对象再对，接线漏了也白搭 —— 这一类缺陷只有「从失败现场真跑一遍」才拦得住，
@@ -565,7 +575,180 @@ test('驱动：每个生成告警的调用点都真的把 shopKeys 接上了（�
   assert.ok(calls.length >= 2, `只扫到 ${calls.length} 个调用点 —— 正则认不出真实接线，这条判据就没意义`);
   for (const args of calls) {
     assert.match(args, /shopKeys/u, `调用点没给 shopKeys：${args.trim()}`);
+    // 同一条理由：漏传 loginPreflight 的症状也是静默的 —— 告警照发，只是永远说
+    // 「这一轮没有先查登录态」，于是这条修复在真机上等于没做。
+    assert.match(args, /loginPreflight/u,
+      `调用点没把跑前登录态结论接上：${args.trim()}（症状：告警永远说「这一轮没有先查登录态」）`);
     assert.equal(/machine|logDir|evidence/u.test(args), false, `调用点还在传技术字段：${args.trim()}`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 跑前登录态结论（2026-09-23 用户拍板「1.改」）。
+//
+// 为什么值得单独立一节：链的第 0 步体检只答「页面够不够」，而「页面被弹回登录页」与
+// 「页签被关掉」在它眼里**同形** ⇒ 掉登录时告警给的是「把这两页各开一个」，收信人照着做无效。
+// 这里守的就是「别再说错那句话」，以及「没查过时不许假装查过」。
+// ---------------------------------------------------------------------------
+const BLOCKED_SUMMARY = () => ({
+  round: {
+    healthCheckDaily: {
+      ok: false,
+      blocking: ['TARGET_PAGE_MISSING'],
+      blockingDetails: ['目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。'],
+    },
+  },
+  shops: {},
+});
+const loginPre = (needHuman, unknown = [], verdict = null) => normalizeLoginPreflight({
+  verdict: verdict ?? (needHuman.length ? 'NEEDS_LOGIN' : unknown.length ? 'INCONCLUSIVE' : 'ALL_IN'),
+  checked: 5, needHuman, unknown,
+});
+
+test('告警：查过登录态、有店掉了 ⇒ 改成「去登录」，不再叫人去开页面', () => {
+  const summary = BLOCKED_SUMMARY();
+  const text = renderedAlert(summary, {
+    loginPreflight: loginPre([{ shop: '里可林淘宝', sites: ['sycm', 'alimama'] }, { shop: '网林天猫', sites: ['sycm'] }]),
+  });
+  assert.match(text, /掉登录/u);
+  assert.match(text, /里可林淘宝（生意参谋、阿里妈妈）/u,
+    '平台名要按店分别说（用户口径：提到某家店必须按平台分别说名字）');
+  assert.match(text, /网林天猫（生意参谋）/u);
+  assert.match(text, /重新登录/u);
+  // **这条修复的全部目的**：掉登录时「把这两页各开一个」是无效动作，必须消失。
+  assert.equal(text.includes('把这两页各开一个'), false,
+    '掉登录时还在叫人去开页面 —— 收信人会白跑一趟，而问题不会好');
+  assert.match(text, /上面那条「页面不齐」就是这么来的/u, '要把「页面不齐」与掉登录的因果挑明');
+});
+
+test('告警：这一家是「页面不齐」判下来的、而它的登录掉了 ⇒ 这一家的结论也要改成「去登录」', () => {
+  // 上面那条守的是**整轮**那一层；这条守**店里**那一层。
+  // 链对每一家店的第 1 步也是页面体检，它同样只看「页面在不在」—— 掉登录时那个页面
+  // 就是被弹回了登录页，所以「页面不齐」在这一家身上也只是症状。
+  const summary = {
+    round: { healthCheckDaily: { ok: true } },
+    shops: {
+      盖文淘宝: {
+        status: 'failed', failedStage: 'health-check', stages: [],
+        blockingDetails: ['目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。'],
+      },
+    },
+  };
+  const text = renderedAlert(summary, { loginPreflight: loginPre([{ shop: '盖文淘宝', sites: ['sycm'] }]) });
+  assert.match(text, /这家店的后台掉登录了/u, '这一家的原因要换成「掉登录」');
+  assert.match(text, /重新登录/u);
+  assert.equal(text.includes('把缺的页面补上'), false,
+    '掉登录时「把缺的页面补上」同样是无效动作：补了也会被送回登录页');
+  // 反过来：掉登录的**不是**这一家 ⇒ 这一家仍然按「页面不齐」处置（不许张冠李戴）。
+  const other = renderedAlert(summary, { loginPreflight: loginPre([{ shop: '里可林淘宝', sites: ['sycm'] }]) });
+  assert.match(other, /这家店的专用窗口里页面不齐/u);
+  assert.match(other, /里可林淘宝（生意参谋）掉登录了/u);
+  assert.equal(other.includes('盖文淘宝（生意参谋）'), false, '这一家没掉登录，不许被算进去');
+});
+
+test('告警：没查过登录态 ⇒ 如实说「没查过」，不许装作查过、也不许说「都不缺」', () => {
+  const summary = BLOCKED_SUMMARY();
+  for (const overrides of [{}, { loginPreflight: null }]) {
+    const text = renderedAlert(summary, overrides);
+    assert.match(text, /没有先查登录态/u, '「没查」必须说出来：它是这条链今天与昨天的差别所在');
+    assert.equal(text.includes('掉登录了'), false, '没查过就不许说谁掉了登录');
+    assert.match(text, /把这两页各开一个/u, '没查过时按原来的处置走（它仍然是对的可能性之一）');
+  }
+});
+
+test('告警：查了、都在登录态 ⇒ 明确说「问题不在登录上」（省掉一趟白跑的浏览器）', () => {
+  const text = renderedAlert(BLOCKED_SUMMARY(), { loginPreflight: loginPre([]) });
+  assert.match(text, /都在登录态/u);
+  assert.match(text, /问题不在登录上/u);
+  assert.equal(text.includes('掉登录了'), false);
+});
+
+test('告警：查过但没有结论 / 结论读不到 ⇒ 如实说「不知道是不是掉登录」', () => {
+  const inconclusive = renderedAlert(BLOCKED_SUMMARY(), {
+    loginPreflight: loginPre([], [{ shop: '盖文淘宝', sites: ['alimama'] }]),
+  });
+  assert.match(inconclusive, /没读出结论/u);
+  assert.match(inconclusive, /盖文淘宝（阿里妈妈）/u);
+
+  const unreadable = renderedAlert(BLOCKED_SUMMARY(), {
+    loginPreflight: { verdict: null, needHuman: [], unknown: [], checked: null, unreadable: true },
+  });
+  assert.match(unreadable, /结论没读出来/u);
+  assert.equal(unreadable.includes('都在登录态'), false, '结论丢了不许说成「都好的」');
+});
+
+test('告警：登录态结论只留本轮要跑的那几家（分批时不许点名别的店）', () => {
+  const summary = BLOCKED_SUMMARY();
+  // 体检一次查了五家（里可林掉了），而这一轮只跑盖文那两家 ⇒ 告警不该提里可林。
+  const text = renderedAlert(summary, {
+    loginPreflight: loginPre([{ shop: '里可林淘宝', sites: ['sycm'] }]),
+    shopKeys: ['盖文淘宝', '盖文天猫'],
+  });
+  assert.equal(text.includes('里可林淘宝'), false, '这一轮没跑那家店，点名它只会让收信人困惑');
+  assert.match(text, /这一轮的店都不缺登录；掉登录的是别的店/u,
+    '「有店掉了、但不是这几家」也必须说出来 —— 沉默会被读成「查过没问题」');
+  // 反过来：掉的就是这一轮的店 ⇒ 必须点名。
+  const hit = renderedAlert(summary, {
+    loginPreflight: loginPre([{ shop: '盖文淘宝', sites: ['sycm'] }]),
+    shopKeys: ['盖文淘宝', '盖文天猫'],
+  });
+  assert.match(hit, /盖文淘宝（生意参谋）掉登录了/u);
+});
+
+test('跑前登录态结论的读取：不给＝没查、读不到＝没结论、读到＝只留业务能用的字段', () => {
+  assert.equal(readLoginPreflight(null), null, '不给路径 ＝ 这一轮没查过（不是「都不缺」）');
+  assert.equal(readLoginPreflight(''), null);
+  assert.deepEqual(readLoginPreflight(path.join(tmpdir(), 'sycm-绝对不存在-的结论.json')),
+    { verdict: null, needHuman: [], unknown: [], checked: null, unreadable: true },
+    '路径给了但读不到 ⇒ 「本来要查、结论没读出来」，不许折成「没查」');
+
+  const file = path.join(mkdtempSync(path.join(tmpdir(), 'sycm-login-pre-')), 'login-preflight.json');
+  writeFileSync(file, JSON.stringify({
+    machine: 'DESKTOP-KJP4RA5',
+    verdict: 'NEEDS_LOGIN',
+    checked: 5,
+    needHuman: [{ shop: '里可林淘宝', sites: ['sycm', '不认识的平台'] }],
+    unknown: [],
+    rows: [{ shop: '里可林淘宝', href: 'https://sycm.taobao.com/custom/login.htm?_target=x' }],
+  }, null, 1), 'utf8');
+  const seen = readLoginPreflight(file);
+  assert.equal(seen.verdict, 'NEEDS_LOGIN');
+  assert.deepEqual(seen.needHuman, [{ shop: '里可林淘宝', sites: ['sycm'] }],
+    '认不出来的平台键要丢掉（那会是一串英文原样发出去）');
+  assert.equal(JSON.stringify(seen).includes('DESKTOP'), false, '机器名不许跟着结论走下去');
+  assert.equal(JSON.stringify(seen).includes('href'), false, '探针读到的页面地址是技术串');
+
+  // 文件内容是 `null` / 数组 / 半截 JSON ⇒ 一律算「没结论」。折成「没查」会让
+  // 「本来要查、结论丢了」这件事从现在这条链上彻底消失。
+  for (const broken of ['null', '[1,2]', '{不是 JSON', '']) {
+    writeFileSync(file, broken, 'utf8');
+    assert.equal(readLoginPreflight(file).unreadable, true, `${JSON.stringify(broken)} 应当算「读不出来」`);
+  }
+});
+
+test('驱动：不给登录态结论时，roundFailureSummary 的输出**逐字不变**', () => {
+  // 「默认不变」是这层唯一的安全保证：多一个键都会让「今天与昨天不一样」而没人知道。
+  const summary = mixedSummary();
+  const bare = roundFailureSummary(summary);
+  assert.equal(Object.hasOwn(bare, 'login'), false);
+  assert.deepEqual(bare, roundFailureSummary(summary, {}));
+  assert.deepEqual(bare, roundFailureSummary(summary, { loginPreflight: null }));
+  assert.equal(bare.any, true);
+
+  // ⚠️ `[]` 与 `null` 是**两件事**：`null` ＝「没查」，`[]` ＝「查了、零家」。
+  const empty = roundFailureSummary(summary, { loginPreflight: loginPre([]) });
+  assert.equal(Object.hasOwn(empty, 'login'), true);
+  assert.equal(empty.any, bare.any, '登录态结论不许把「全绿」翻成「有失败」');
+  const allGreen = roundFailureSummary({ shops: { 里可林淘宝: okRecord() } }, { loginPreflight: loginPre([]) });
+  assert.equal(allGreen.any, false, '店都收完了就没人要叫人 —— 登录态结论不是失败');
+});
+
+test('驱动 CLI：--login-preflight 要一个路径，缺值当场抛（不许静默折成「没查」）', () => {
+  assert.equal(parseArgs(['--date', DATE]).loginPreflight, null, '默认不问登录态（手动排障那条命令的形态）');
+  assert.equal(parseArgs(['--date', DATE, '--login-preflight', 'x.json']).loginPreflight, 'x.json');
+  for (const argv of [['--date', DATE, '--login-preflight'], ['--date', DATE, '--login-preflight', '--commit']]) {
+    assert.throws(() => parseArgs(argv), /需要一个结论文件路径/u,
+      '缺值静默折成「没查」＝ 这条修复在最需要它的那天不生效，而且看不出来');
   }
 });
 

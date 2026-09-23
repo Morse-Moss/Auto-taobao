@@ -1,0 +1,10 @@
+======================================================================
+里可林淘宝   D:/Retire/edge-profiles/likelin-home\Default\Network\Cookies
+Traceback (most recent call last):
+  File "D:\Retire\sycm-automation\tmp\ck-probe.py", line 28, in <module>
+    shutil.copyfile(src, dst)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Administrator\.workbuddy\binaries\python\versions\3.13.12\Lib\shutil.py", line 260, in copyfile
+    with open(src, 'rb') as fsrc:
+         ~~~~^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: 'D:/Retire/edge-profiles/likelin-home\\Default\\Network\\Cookies'

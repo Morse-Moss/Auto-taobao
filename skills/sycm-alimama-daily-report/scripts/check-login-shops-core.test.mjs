@@ -217,6 +217,86 @@ test('渲染里不许出现结论代号（读了半天的 `LOGGED_OUT` 不是给
 });
 
 // ---------------------------------------------------------------------------
+// 2026-09-23 加：`--login`（跑前登录守卫）那一条链
+// ---------------------------------------------------------------------------
+// 这一组守的是「自动登录接进来之后，本来对的那几件事有没有被弄坏」：
+//   ① 默认（不带 --login）的行为必须逐字不变 —— 它是「跑前那一眼的体检」，不能变成写操作；
+//   ② 带 --login 时，结论必须看**登完之后**那一眼（看错了会把成功报成失败，白叫人一趟）；
+//   ③ 措辞必须说清「机器已经试过了」—— 否则收信人以为机器什么都没做。
+
+test('parseCheckShopsArgs：--login 默认关，给了才开', () => {
+  assert.equal(parseCheckShopsArgs([]).login, false, '默认必须是只读（不带 --login）');
+  assert.equal(parseCheckShopsArgs(['--login']).login, true);
+  assert.equal(parseCheckShopsArgs(['--login', '--json']).login, true);
+  // 拼错仍然当场抛，不许被当成「没给值」而静默降级成只读。
+  assert.throws(() => parseCheckShopsArgs(['--login=1']), /Unknown argument/u);
+});
+
+test('带 --login 时结论看的是「登完之后」那一眼（看错了会把成功报成掉登录）', () => {
+  // 子进程的回执里：`loggedIn`＝**登录之前**那一眼，`loggedInAfter`＝登完之后那一遍。
+  // 只读前者的话，机器人刚把两个后台都登进去，报告仍然写「掉登录」⇒
+  // 收信人被叫去窗口里做一件刚做完的事。这是这次改动里唯一一处「错了不报错、只是白叫人」的地方。
+  const receipt = {
+    sites: {
+      sycm: { loggedIn: false, loggedInAfter: true },
+      alimama: { loggedIn: null, loggedInAfter: true },
+    },
+    verdict: 'LOGGED_IN',
+  };
+  const row = judgeShopReceipt({ shop: '科塔淘宝', receipt });
+  assert.deepEqual(row.sites, { sycm: 'LOGGED_IN', alimama: 'LOGGED_IN' },
+    '登完之后那一眼才是结论');
+  assert.equal(row.verdict, 'OK');
+  assert.equal(row.scriptVerdict, 'LOGGED_IN', '子脚本自己报的结论要原样留着');
+});
+
+test('只读回执里没有 loggedInAfter，结论与从前逐字相同（默认关是硬保证）', () => {
+  const row = judgeShopReceipt({
+    shop: '科塔淘宝',
+    receipt: { sites: { sycm: { loggedIn: false }, alimama: { loggedIn: true } }, verdict: 'NEEDS_LOGIN' },
+  });
+  assert.deepEqual(row.sites, { sycm: 'LOGGED_OUT', alimama: 'LOGGED_IN' });
+  assert.equal(row.verdict, 'NEEDS_LOGIN');
+});
+
+test('autoLogin 只改措辞、不改判定：既要人说得清、也不许把「没登过」说成「登过」', () => {
+  const rows = [judgeShopReceipt({
+    shop: '科塔淘宝',
+    receipt: { sites: { sycm: { loggedIn: false }, alimama: { loggedIn: false } }, verdict: 'NO_SAVED_CREDENTIAL' },
+  })];
+  const readOnly = renderReport({ rows, machine: 'M' });
+  const guarded = renderReport({ rows, machine: 'M', autoLogin: true });
+
+  // ① 只读那句原样在，而且**不许**出现任何「自动登录」字样 ——
+  //    只读模式下子进程的结论是 NEEDS_LOGIN，照抄会写成「自动登录没成」，
+  //    而那一轮根本没有任何登录发生过。
+  assert.match(readOnly, /这一层只是体检：它没有打开过任何页面、也没有点过任何东西。/u);
+  assert.equal(readOnly.includes('自动登录'), false, `只读报告里不许提自动登录：\n${readOnly}`);
+  assert.equal(readOnly.includes('NO_SAVED_CREDENTIAL'), false, '结论代号不许出现在报告里');
+
+  // ② 守卫模式：说清「试过了、没成」，并把子脚本报的原因翻成人话。
+  assert.match(guarded, /自动登录也试过了、没成/u);
+  assert.match(guarded, /已经自己试过登录了/u);
+  assert.match(guarded, /自动登录没成的原因：浏览器没把账号密码填进去/u);
+  // ③ 判定本身不许因为措辞变了而动。
+  assert.deepEqual(judgePreflight(rows).verdict, 'NEEDS_LOGIN');
+  assert.equal(exitCodeForPreflight('NEEDS_LOGIN'), 2);
+});
+
+test('成功那一轮要说清「哪几家是这次自己登进去的」（否则运维会以为一直在白跑）', () => {
+  const rows = [
+    judgeShopReceipt({ shop: '科塔淘宝', receipt: { sites: { sycm: { loggedIn: false, loggedInAfter: true }, alimama: { loggedIn: false, loggedInAfter: true } }, verdict: 'LOGGED_IN' } }),
+    judgeShopReceipt({ shop: '盖文淘宝', receipt: { sites: { sycm: { loggedIn: true }, alimama: { loggedIn: true } }, verdict: 'ALREADY_LOGGED_IN' } }),
+  ];
+  const text = renderReport({ rows, machine: 'M', autoLogin: true });
+  assert.match(text, /2 家店、4 个平台都在登录态/u);
+  assert.match(text, /其中 1 家是\*\*这一次自己登进去的\*\*/u, `没点名这次登进去的那几家：\n${text}`);
+  assert.match(text, /科塔淘宝/u);
+  // 只读模式不许出现这句（那时没有登录发生）。
+  assert.equal(renderReport({ rows, machine: 'M' }).includes('自己登进去的'), false);
+});
+
+// ---------------------------------------------------------------------------
 // 两条「接线」判据（函数对 ≠ 接上了）
 // ---------------------------------------------------------------------------
 
@@ -233,7 +313,7 @@ test('体检探针的落点仍在链的期望页面清单之内（否则体检�
 
 test('主脚本真的按「一店一实例 + 纯读」调用 login-merchant（三类静默各有一条判据）', () => {
   const source = readFileSync(new URL('./check-login-shops.mjs', import.meta.url), 'utf8');
-  // ① 纯读：没有 --check-only 的话，掉登录的现场会被顺手开一个登录页
+  // ① 纯读那一支：没有 --check-only 的话，掉登录的现场会被顺手开一个登录页
   assert.match(source, /'--check-only'/u, '必须带 --check-only，否则体检在掉登录现场不是只读的');
   // ② 切实例靠 --proxy（端口来自登记表），不是靠 --shop
   assert.match(source, /'--proxy', `http:\/\/127\.0\.0\.1:\$\{conf\.proxyPort\}`/u,
@@ -243,4 +323,13 @@ test('主脚本真的按「一店一实例 + 纯读」调用 login-merchant（�
   // ④ 用 process.execPath 起真 node，**不**经过任何 .cmd/.bat 包装
   //    （Node ≥18.20.2 起 spawn('<x>.cmd', shell:false) 同步抛 EINVAL，包一层是死的）
   assert.match(source, /spawn\(process\.execPath, \[/u);
+  // ⑤ 「查」与「查 + 登」**只在这一处分叉**，两种模式共用其余参数。
+  //    写成两份调用的话，漂移的症状是「自动登录打到了另一个实例上」，日志里看不出来。
+  assert.match(source, /login \? '--commit' : '--check-only'/u,
+    '两种模式必须在同一处按同一个开关分叉');
+  // ⑥ 带 `--login` 时**串行 + 固定间隔**：五家店同时提交登录＝同一出口 IP 上短时间内五次登录，
+  //    那是风控最敏感的形态，最坏结果不是「跑失败」而是一批账号被保护性锁定。
+  assert.match(source, /LOGIN_GAP_MS/u, '登录模式必须有两店之间的静默期');
+  assert.match(source, /if \(!opts\.login\) \{[\s\S]*?Promise\.all[\s\S]*?\} else \{[\s\S]*?for \(const shop of shops\)/u,
+    '只读才并行；带 --login 必须串行（并行登录是风控加速器）');
 });

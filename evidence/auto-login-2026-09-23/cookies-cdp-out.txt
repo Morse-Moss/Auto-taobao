@@ -1,0 +1,82 @@
+========================================================================
+里可林淘宝  browser:19031  proxy:19041
+  该浏览器 cookie 总数 66｜相关域 36（会话级 7 / 持久 29）
+      .taobao.com            t                  session=false expires=2026-12-22
+      .alimama.com           cna                session=false expires=2027-10-23
+      .tmall.com             cna                session=false expires=2027-10-23
+      .taobao.com            sgcookie           session=false expires=2027-09-22
+      .taobao.com            cna                session=false expires=2027-10-27
+      one.alimama.com        _tb_token_         session=true expires=1969-12-31
+      .taobao.com            cookie2            session=true expires=1969-12-31
+      .taobao.com            _tb_token_         session=true expires=1969-12-31
+========================================================================
+网林天猫  browser:19032  proxy:19042
+  该浏览器 cookie 总数 74｜相关域 45（会话级 19 / 持久 26）
+      .taobao.com            t                  session=true expires=1969-12-31
+      .alimama.com           cna                session=false expires=2027-10-23
+      .tmall.com             cna                session=false expires=2027-10-23
+      .taobao.com            sgcookie           session=false expires=2027-09-22
+      .taobao.com            cna                session=false expires=2027-10-28
+      one.alimama.com        _tb_token_         session=true expires=1969-12-31
+      .taobao.com            cookie2            session=true expires=1969-12-31
+      .taobao.com            _tb_token_         session=true expires=1969-12-31
+      .alimama.com           sgcookie           session=true expires=1969-12-31
+      .alimama.com           t                  session=true expires=1969-12-31
+      .alimama.com           lgc                session=true expires=1969-12-31
+      .alimama.com           sn                 session=true expires=1969-12-31
+      .alimama.com           _tb_token_         session=true expires=1969-12-31
+      .alimama.com           cookie2            session=true expires=1969-12-31
+========================================================================
+盖文淘宝  browser:19033  proxy:19043
+  该浏览器 cookie 总数 78｜相关域 49（会话级 20 / 持久 29）
+      .taobao.com            t                  session=true expires=1969-12-31
+      .alimama.com           cna                session=false expires=2027-10-23
+      .tmall.com             cna                session=false expires=2027-10-23
+      .taobao.com            sgcookie           session=false expires=2027-09-22
+      .taobao.com            cna                session=false expires=2027-10-27
+      one.alimama.com        _tb_token_         session=true expires=1969-12-31
+      .taobao.com            cookie2            session=true expires=1969-12-31
+      .taobao.com            _tb_token_         session=true expires=1969-12-31
+      .alimama.com           sgcookie           session=true expires=1969-12-31
+      .alimama.com           t                  session=true expires=1969-12-31
+      .alimama.com           lgc                session=true expires=1969-12-31
+      .alimama.com           sn                 session=true expires=1969-12-31
+      .alimama.com           _tb_token_         session=true expires=1969-12-31
+      .alimama.com           cookie2            session=true expires=1969-12-31
+========================================================================
+科塔淘宝  browser:19034  proxy:19044
+  该浏览器 cookie 总数 66｜相关域 38（会话级 6 / 持久 32）
+      .taobao.com            t                  session=false expires=2026-12-22
+      .alimama.com           cna                session=false expires=2027-10-23
+      .tmall.com             cna                session=false expires=2027-10-23
+      .taobao.com            sgcookie           session=false expires=2027-09-22
+      .taobao.com            cna                session=false expires=2027-10-27
+      .taobao.com            cookie2            session=true expires=1969-12-31
+      .taobao.com            _tb_token_         session=true expires=1969-12-31
+========================================================================
+盖文天猫  browser:19035  proxy:19045
+  该浏览器 cookie 总数 116｜相关域 45（会话级 19 / 持久 26）
+      .taobao.com            t                  session=false expires=2026-12-22
+      .alimama.com           cna                session=false expires=2027-10-24
+      .tmall.com             cna                session=false expires=2027-10-24
+      .taobao.com            sgcookie           session=false expires=2027-09-22
+      .taobao.com            cna                session=false expires=2027-10-27
+      one.alimama.com        _tb_token_         session=true expires=1969-12-31
+      .taobao.com            cookie2            session=true expires=1969-12-31
+      .taobao.com            _tb_token_         session=true expires=1969-12-31
+      .alimama.com           sgcookie           session=true expires=1969-12-31
+      .alimama.com           t                  session=true expires=1969-12-31
+      .alimama.com           lgc                session=true expires=1969-12-31
+      .alimama.com           sn                 session=true expires=1969-12-31
+      .alimama.com           _tb_token_         session=true expires=1969-12-31
+      .alimama.com           cookie2            session=true expires=1969-12-31
+========================================================================
+商家浏览器  browser:19022  proxy:19023
+  该浏览器 cookie 总数 178｜相关域 42（会话级 6 / 持久 36）
+      .taobao.com            t                  session=false expires=2026-12-22
+      .alimama.com           cna                session=false expires=2027-10-21
+      .tmall.com             cna                session=false expires=2027-10-21
+      .taobao.com            sgcookie           session=false expires=2027-09-22
+      .taobao.com            cna                session=false expires=2027-10-27
+      .taobao.com            cookie2            session=true expires=1969-12-31
+      .taobao.com            _tb_token_         session=true expires=1969-12-31

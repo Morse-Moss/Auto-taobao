@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: VERSION 存在、可解析、且只有一行
+ok 1 - VERSION 存在、可解析、且只有一行
+  ---
+  duration_ms: 0.847
+  type: 'test'
+  ...
+# Subtest: package.json 的 version 与 VERSION 逐字一致
+ok 2 - package.json 的 version 与 VERSION 逐字一致
+  ---
+  duration_ms: 0.5085
+  type: 'test'
+  ...
+# Subtest: CHANGELOG.md 首条标题与 VERSION 一致，且版本号严格递减排列
+ok 3 - CHANGELOG.md 首条标题与 VERSION 一致，且版本号严格递减排列
+  ---
+  duration_ms: 0.7003
+  type: 'test'
+  ...
+# Subtest: parseVersion：接受合法写法，拒绝会让同一个版本变成两个字符串的写法
+ok 4 - parseVersion：接受合法写法，拒绝会让同一个版本变成两个字符串的写法
+  ---
+  duration_ms: 0.3531
+  type: 'test'
+  ...
+# Subtest: readVersion：读不到就抛错，绝不回落成 unknown
+ok 5 - readVersion：读不到就抛错，绝不回落成 unknown
+  ---
+  duration_ms: 0.2138
+  type: 'test'
+  ...
+# Subtest: versionLine 与 versionLineSafe：前者准、后者活，两边措辞都不许掩盖失败
+ok 6 - versionLine 与 versionLineSafe：前者准、后者活，两边措辞都不许掩盖失败
+  ---
+  duration_ms: 0.85
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 234.7265

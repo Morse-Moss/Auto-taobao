@@ -1,0 +1,14 @@
+# exit=0
+--- stdout ---
+[定时] 版本：sycm-automation 1.1.0
+[定时] 目标日字面量：2026-09-22（由驱动按 Asia/Shanghai 解析，这里不自己算）
+[定时] 实际会解析成：2026-09-22  ← 只用来给你看一眼；真跑时由驱动在那一刻重新解析（跨零点不漂）
+  ensure-instances: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs
+     把声明实例起齐（幂等：已就位的不碰）
+  login-preflight: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --json
+     跑前登录守卫（**会碰页面**：掉登录的当场用浏览器密码库登一次，没成才叫人）—— 哪家店的哪个后台掉登录了，写进日志，并交给链（掉登录时告警会直接点名，不再叫人去开页面）
+* chain: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-09-22 --commit --notify-print --login-preflight D:\Retire\sycm-automation\evidence\daily-job-2026-09-22\login-preflight.json
+     全链：体检 → 采集 → 推送 → 回填 → 回读
+[定时] 只打印模式：没有起任何进程、也没有跑链。
+
+--- stderr ---

@@ -1,0 +1,11 @@
+# 自动登录接线 1.2.0 离线判据（全量重跑，逐文件报分母）
+# 时间：2026-09-23T05:22:28.596Z
+# VERSION=1.2.0
+
+check-login-shops-core.test.mjs        pass=21 fail=0 exit=0
+daily-job-plan.test.mjs                pass=24 fail=0 exit=0
+batch-plan.test.mjs                    pass=17 fail=0 exit=0
+version-consistency.test.mjs           pass=6 fail=0 exit=0
+run-multi-shop-day.test.mjs            pass=55 fail=0 exit=0
+arch-boundary.test.mjs                 pass=3 fail=0 exit=0
+TOTAL pass=126 fail=0

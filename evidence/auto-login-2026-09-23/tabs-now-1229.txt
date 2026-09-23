@@ -1,0 +1,46 @@
+=== :19023  共 3 个 target
+  [page] C13B1C747B9A0781F83B77CA01430A0E
+      https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/
+  [page] CEF7C3639633F8693D0637737859470C
+      https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+  [page] 620EE557EB2227E4EFEC11CAF50CFC0E
+      https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+=== :19041  共 4 个 target
+  [page] C095D61B07C2BDA8A09B8B050606A1BD
+      about:blank
+  [page] 322F70FEA6B84ABF6DF420077C97F9D1
+      about:blank
+  [page] F503412A32EC476BD3606B374430A18B
+      https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [page] F48D42A6263060785CDFC2715CC9A633
+      https://one.alimama.com/index.html#!/login/index?mxredirectUrl=%23!%2Freport%2Faccount%3FrptType%3Daccount%26startTime%3D2026-09-21%26endTime%3D2026-09-21%26eff
+=== :19042  共 4 个 target
+  [page] C7EF4C9C9F1072B1033DD9F670A6AD04
+      file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032&member=%E7%BD%91%E6%9E%97%E5%AE%B6%E5%B1%8
+  [page] C64A611614DB8E53C647A12A5F315EC1
+      about:blank
+  [page] 3B0AD74F135A5A934B0A073E12B87C12
+      https://one.alimama.com/index.html#!/login/index
+  [page] D877CC7036F267A76E20FDC50BD4DACA
+      https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+=== :19043  共 3 个 target
+  [page] 58B3D7445E1F811B26B56EAD3F76E55D
+      about:blank
+  [page] 54C611AC4F7ACE8E4FF14741B14DD70D
+      file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&member=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A
+  [page] A32DD2AC16717252D1046D09674700EE
+      https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+=== :19044  共 2 个 target
+  [page] D4740AA669A52FAC7242D15951BE5B46
+      https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  [page] 124DE2D4A75437FB4469ABBBAA55A354
+      about:blank
+=== :19045  共 4 个 target
+  [page] 83A3CC94017F68CDB7D71B17B700B0AC
+      file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035&member=%E7%9B%96%E6%96%87%E6%97%97%E8%88%B
+  [page] 10EA4F943E50EDB36DFC54607D8918BD
+      about:blank
+  [page] D483EC912D3ECC243427CA530369F96E
+      https://one.alimama.com/index.html#!/login/index
+  [page] B83704D7EF6D54F26E3C2B84A3A53EC8
+      https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop

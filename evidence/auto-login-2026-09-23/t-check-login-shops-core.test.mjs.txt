@@ -1,0 +1,136 @@
+TAP version 13
+# Subtest: 站点词表来自 login-merchant-core（多一份就是「体检的站点」和「探测的站点」各说各话）
+ok 1 - 站点词表来自 login-merchant-core（多一份就是「体检的站点」和「探测的站点」各说各话）
+  ---
+  duration_ms: 0.8491
+  type: 'test'
+  ...
+# Subtest: 读不到（null）绝不算通过 —— 这是 2026-09-19 那次静默的形态
+ok 2 - 读不到（null）绝不算通过 —— 这是 2026-09-19 那次静默的形态
+  ---
+  duration_ms: 0.126
+  type: 'test'
+  ...
+# Subtest: 一家店：两个都在登录态才是 OK；掉登录与读不到各自成一类，且都不算 OK
+ok 3 - 一家店：两个都在登录态才是 OK；掉登录与读不到各自成一类，且都不算 OK
+  ---
+  duration_ms: 0.2937
+  type: 'test'
+  ...
+# Subtest: 回执读不出来 ⇒ 两个平台都算读不到（读不出 ≠ 不在登录态）
+ok 4 - 回执读不出来 ⇒ 两个平台都算读不到（读不出 ≠ 不在登录态）
+  ---
+  duration_ms: 0.2011
+  type: 'test'
+  ...
+# Subtest: 回执里的结论与地址只抄不猜（复核时那是唯一能核对的现场事实）
+ok 5 - 回执里的结论与地址只抄不猜（复核时那是唯一能核对的现场事实）
+  ---
+  duration_ms: 0.1016
+  type: 'test'
+  ...
+# Subtest: 整轮的三个结论与退出码：0 只在**全部正面确认**时才给
+ok 6 - 整轮的三个结论与退出码：0 只在**全部正面确认**时才给
+  ---
+  duration_ms: 0.1733
+  type: 'test'
+  ...
+# Subtest: parseCheckShopsArgs：默认查全部、默认不输出 JSON
+ok 7 - parseCheckShopsArgs：默认查全部、默认不输出 JSON
+  ---
+  duration_ms: 0.1784
+  type: 'test'
+  ...
+# Subtest: 店名拼错必须当场抛错并列出合法值（否则「连不上」看起来像故障，其实是名字打错了）
+ok 8 - 店名拼错必须当场抛错并列出合法值（否则「连不上」看起来像故障，其实是名字打错了）
+  ---
+  duration_ms: 0.279
+  type: 'test'
+  ...
+# Subtest: 参数拼错要报「未知」，不许伪装成「需要一个值」；空 --shops 与坏 --timeout 当场抛错
+ok 9 - 参数拼错要报「未知」，不许伪装成「需要一个值」；空 --shops 与坏 --timeout 当场抛错
+  ---
+  duration_ms: 0.3169
+  type: 'test'
+  ...
+# Subtest: 按平台分别说名字：生意参谋给页头店名、阿里妈妈给会员名（不许互相冒充）
+ok 10 - 按平台分别说名字：生意参谋给页头店名、阿里妈妈给会员名（不许互相冒充）
+  ---
+  duration_ms: 0.577
+  type: 'test'
+  ...
+# Subtest: OK 的店压成一行；要处理的店逐平台展开
+ok 11 - OK 的店压成一行；要处理的店逐平台展开
+  ---
+  duration_ms: 0.211
+  type: 'test'
+  ...
+# Subtest: 「读不到」必须自解释，且整轮的判据段不许把它说成通过
+ok 12 - 「读不到」必须自解释，且整轮的判据段不许把它说成通过
+  ---
+  duration_ms: 0.1159
+  type: 'test'
+  ...
+# Subtest: 每家店的两个平台各说各的名字，且名字与登记表逐字一致
+ok 13 - 每家店的两个平台各说各的名字，且名字与登记表逐字一致
+  ---
+  duration_ms: 0.1235
+  type: 'test'
+  ...
+# Subtest: 渲染里不许出现结论代号（读了半天的 `LOGGED_OUT` 不是给收信人看的）
+ok 14 - 渲染里不许出现结论代号（读了半天的 `LOGGED_OUT` 不是给收信人看的）
+  ---
+  duration_ms: 0.0817
+  type: 'test'
+  ...
+# Subtest: parseCheckShopsArgs：--login 默认关，给了才开
+ok 15 - parseCheckShopsArgs：--login 默认关，给了才开
+  ---
+  duration_ms: 0.0567
+  type: 'test'
+  ...
+# Subtest: 带 --login 时结论看的是「登完之后」那一眼（看错了会把成功报成掉登录）
+ok 16 - 带 --login 时结论看的是「登完之后」那一眼（看错了会把成功报成掉登录）
+  ---
+  duration_ms: 0.0516
+  type: 'test'
+  ...
+# Subtest: 只读回执里没有 loggedInAfter，结论与从前逐字相同（默认关是硬保证）
+ok 17 - 只读回执里没有 loggedInAfter，结论与从前逐字相同（默认关是硬保证）
+  ---
+  duration_ms: 0.0322
+  type: 'test'
+  ...
+# Subtest: autoLogin 只改措辞、不改判定：既要人说得清、也不许把「没登过」说成「登过」
+ok 18 - autoLogin 只改措辞、不改判定：既要人说得清、也不许把「没登过」说成「登过」
+  ---
+  duration_ms: 0.1843
+  type: 'test'
+  ...
+# Subtest: 成功那一轮要说清「哪几家是这次自己登进去的」（否则运维会以为一直在白跑）
+ok 19 - 成功那一轮要说清「哪几家是这次自己登进去的」（否则运维会以为一直在白跑）
+  ---
+  duration_ms: 0.0909
+  type: 'test'
+  ...
+# Subtest: 体检探针的落点仍在链的期望页面清单之内（否则体检会把页面带偏，链也跟着红）
+ok 20 - 体检探针的落点仍在链的期望页面清单之内（否则体检会把页面带偏，链也跟着红）
+  ---
+  duration_ms: 0.0631
+  type: 'test'
+  ...
+# Subtest: 主脚本真的按「一店一实例 + 纯读」调用 login-merchant（三类静默各有一条判据）
+ok 21 - 主脚本真的按「一店一实例 + 纯读」调用 login-merchant（三类静默各有一条判据）
+  ---
+  duration_ms: 0.2734
+  type: 'test'
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 250.9278

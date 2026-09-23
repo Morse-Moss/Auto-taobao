@@ -6,10 +6,14 @@
 //   ③ 告警默认只落日志、不投递 —— 一封半夜发出去的飞书比不提醒更糟（会训练人忽略这个通道）。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { JOB_FILES, buildJobPlan, renderCommand, renderJobEntryCommand } from './daily-job-plan.mjs';
+import {
+  JOB_FILES, LOGIN_PREFLIGHT_ARTIFACT, LOGIN_PREFLIGHT_FLAG, buildJobPlan, buildLoginPreflightArgs,
+  renderCommand, renderJobEntryCommand,
+} from './daily-job-plan.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 const argsOf = (plan, name) => plan.steps.find((s) => s.name === name).args;
@@ -163,5 +167,135 @@ test('启用分批时的形状校验：家数必须是 ≥1 的整数，且不�
   assert.throws(() => buildJobPlan({ batches: 2, only: ['push'] }), /不能同时给/u);
   assert.throws(() => buildJobPlan({ batches: 2, logs: 'x' }), /不能同时给/u);
   assert.throws(() => buildJobPlan({ batches: 2, downloads: 'x' }), /不能同时给/u);
+});
+
+// ---------------------------------------------------------------------------
+// 跑前登录态结论 → 链（2026-09-23，用户拍板「1.改」）。
+//
+// 为什么值得单独立一节：② 的结论原先**只落在日志里**，链一个字都看不到 —— 于是掉登录时
+// 链看到的仍然是「页面不齐」，发出去的告警是「把这两页各开一个」，收信人照着做无效。
+// 这里守两件事：结论真的交到了链手上；以及**没交到时不假装交到了**（那条由链侧的文案保证）。
+// ---------------------------------------------------------------------------
+const ARTIFACTS_DIR = path.join('D:\\repo', 'evidence', 'daily-job-2026-09-22');
+const ARTIFACT_PATH = path.join(ARTIFACTS_DIR, LOGIN_PREFLIGHT_ARTIFACT);
+
+test('跑前登录态结论真的交给链了：② 出 JSON、③ 收路径（都只在给了证据目录时）', () => {
+  const plan = buildJobPlan({ artifactsDir: ARTIFACTS_DIR });
+  // ② 要出 JSON：`--json` 会**取代**那份给人看的报告，所以只有「确实有人接」时才加。
+  assert.deepEqual(argsOf(plan, 'login-preflight'), ['--json']);
+  // 产物落点要在计划里给出：宿主照着它把这一步的 stdout 写成文件。
+  assert.equal(plan.steps.find((s) => s.name === 'login-preflight').artifactPath, ARTIFACT_PATH);
+  // ③ 收的是一个**路径**，而且由计划自己算出（spawn 那一刻补会让打印与执行不一致）。
+  assert.deepEqual(argsOf(plan, 'chain').slice(-2), [LOGIN_PREFLIGHT_FLAG, ARTIFACT_PATH]);
+  // 「打印出来的必须是真正执行的」：渲染出来的那一行必须带着真实路径。
+  assert.match(renderCommand(plan.steps[2], { nodeExe: 'N', repoRoot: 'R' }),
+    /--login-preflight D:\\repo\\evidence\\daily-job-2026-09-22\\login-preflight\.json/u);
+  // 它仍然**不是闸门**（这一步的结论丢了，链照样跑）。
+  assert.equal(plan.steps[1].blocking, false);
+});
+
+test('不给证据目录时：不许凭空造一个路径，也不许给链加参数', () => {
+  // 宁可不给，也不给一个指向别处的路径 —— 链那侧会把「读不到」如实说成
+  // 「这一轮没有先查登录态」，而不是假装查过。
+  assert.deepEqual(argsOf(buildJobPlan(), 'login-preflight'), []);
+  assert.equal(argsOf(buildJobPlan(), 'chain').includes(LOGIN_PREFLIGHT_FLAG), false);
+  assert.equal(buildJobPlan().steps.find((s) => s.name === 'login-preflight').artifactPath, undefined);
+});
+
+test('分批那一档：结论交接在分批驱动内部完成，这里不生成也不转发', () => {
+  const plan = buildJobPlan({ batches: 2, artifactsDir: ARTIFACTS_DIR });
+  // 这里生成的那份没有任何人读 —— 而「写了没人读的文件」正是后来人会照着接错的地方。
+  assert.deepEqual(argsOf(plan, 'login-preflight'), [], '分批档里不生成 JSON');
+  // run-batches.mjs 自己不认这个参数，给了会当场报未知参数（比静默无效更难查）。
+  assert.equal(plan.steps[2].args.includes(LOGIN_PREFLIGHT_FLAG), false);
+  // 但这一步**仍然跑**：它的报告进 job.log，是整轮唯一一份「开跑前五家店登录态」的记录。
+  assert.deepEqual(plan.steps.map((s) => s.name), ['ensure-instances', 'login-preflight', 'batch-chain']);
+});
+
+test('接线判据：两个宿主真的把结论接上了（防「函数全绿、没人调」）', () => {
+  // 为什么单独立一条：计划那一侧的判据全绿而宿主漏传时，症状是静默的 ——
+  // 告警照发，只是永远说「这一轮没有先查登录态」，于是这条修复在真机上等于没做。
+  const job = readFileSync(path.join(REPO_ROOT, 'scripts', 'run-daily-job.mjs'), 'utf8');
+  assert.match(job, /artifactsDir/u, '宿主没把本轮证据目录交给计划 ⇒ 链永远读不到结论');
+  assert.match(job, /artifactPath/u, '宿主没把体检的 stdout 落成文件 ⇒ 链那一步读的是一个不存在的路径');
+
+  const batches = readFileSync(path.join(REPO_ROOT, 'scripts', 'run-batches.mjs'), 'utf8');
+  assert.match(batches, /buildLoginPreflightStep/u, '分批链没把「整轮一次」那一步接进去');
+  assert.match(batches, /LOGIN_PREFLIGHT_FLAG/u, '分批链没把结论传给每一批的链');
+  assert.match(batches, /artifactPath/u);
+  assert.match(batches, /JOB_FILES/u, '两个宿主必须共用同一份「跑哪个文件」的定义（各写一份就会漂）');
+});
+
+test('跑前登录态体检的参数只有一个来源（两个宿主共用，不许各写一份）', () => {
+  assert.deepEqual(buildLoginPreflightArgs({}), []);
+  assert.deepEqual(buildLoginPreflightArgs({ shops: ['科塔淘宝'] }), ['--shops', '科塔淘宝']);
+  assert.deepEqual(buildLoginPreflightArgs({ json: true }), ['--json']);
+  assert.deepEqual(buildLoginPreflightArgs({ shops: ['里可林淘宝', '科塔淘宝'], json: true }),
+    ['--shops', '里可林淘宝,科塔淘宝', '--json']);
+  // 默认**不带** `--login`：这个纯函数的默认必须是最不伤人的那一种（不带它＝只读）。
+  // 「碰页面」这件事由调用点显式说 —— 打开它的两个调用点都是自动化入口。
+  assert.ok(!buildLoginPreflightArgs({ json: true }).includes('--login'),
+    '不给 login 时不许自作主张带上 --login');
+  assert.deepEqual(buildLoginPreflightArgs({ login: true, json: true }), ['--login', '--json']);
+  assert.deepEqual(buildLoginPreflightArgs({ login: true, shops: ['科塔淘宝'], json: true }),
+    ['--login', '--shops', '科塔淘宝', '--json']);
+  // 开关名只能是 `--login`（check-login-shops 自己的入口开关）。
+  // **不许**把 `--commit` 直接透给它：那是 login-merchant.mjs 的参数，
+  // check-login-shops 收到它会当场按「未知参数」退 4（而 4 与「掉登录」是两个码）——
+  // 这种错在日志里长得像「参数打错了」，实际后果是整条守卫一步都没跑。
+  assert.ok(!buildLoginPreflightArgs({ login: true, json: true }).includes('--commit'),
+    '--commit 是子脚本的参数，不该出现在这一层的命令行上');
+  assert.match(JOB_FILES.loginPreflight, /check-login-shops\.mjs$/u);
+});
+
+// 上面那条源码扫描只能证明「字符串在那儿」。真正要守的是「宿主跑起来之后，链真的收到了路径」——
+// 所以下面两条**真跑一遍那个入口**（`--print` 不起任何进程、不碰浏览器、不写飞书）。
+// 期望路径由本文件的 `import.meta.dirname` 推出来，不写死盘符：换机器照样成立。
+const runHostPrint = (script, args) => {
+  const result = spawnSync(process.execPath, [path.join(REPO_ROOT, 'scripts', script), '--print', ...args],
+    { encoding: 'utf8', cwd: REPO_ROOT });
+  assert.equal(result.status, 0, `${script} --print 没跑成：${result.stderr}`);
+  return result.stdout;
+};
+
+test('宿主（定时链）真的把结论接上了：--print 里那条链命令带着 --login-preflight', () => {
+  const text = runHostPrint('run-daily-job.mjs', ['--date', '2026-09-22']);
+  const expected = path.join(REPO_ROOT, 'evidence', 'daily-job-2026-09-22', 'login-preflight.json');
+  assert.ok(text.includes(`--login-preflight ${expected}`),
+    `链那一步没拿到结论路径 —— 告警会永远说「这一轮没有先查登录态」。实际输出：\n${text}`);
+  // 体检那一步必须出 JSON（不出就没有结论可以交；`--json` 只在有人接的时候才加），
+  // 而且**默认带着 `--login`** —— 2026-09-23 起这一步同时是「跑前登录守卫」：
+  // 掉登录的当场自己登一次（用户明确授权的自动登录），没成才叫人。
+  assert.match(text, /check-login-shops\.mjs --login --json/u,
+    `跑前那一步默认应当会自己登（带 --login）。实际输出：\n${text}`);
+  // 顺序不能反：结论要在链**之前**产生。
+  assert.ok(text.indexOf('check-login-shops.mjs') < text.indexOf('--login-preflight'),
+    '结论必须在链开跑之前就写好，否则链读到的永远是上一轮的那份');
+});
+
+test('宿主（定时链）：--no-auto-login 退回只读体检（一个页面都不碰）', () => {
+  const text = runHostPrint('run-daily-job.mjs', ['--date', '2026-09-22', '--no-auto-login']);
+  // 结论仍然要交（`--json` 不能跟着一起丢）：关掉的只是「去登」，不是「交结论」。
+  assert.match(text, /check-login-shops\.mjs --json/u, `--no-auto-login 之后那一步不该再带 --login：\n${text}`);
+  assert.ok(!/check-login-shops\.mjs .*--login\b/u.test(text),
+    `--no-auto-login 是显式静音，不许还留着 --login：\n${text}`);
+  // 打印出来的说明也必须跟着改：`--print` 是人用来确认「将要执行什么」的唯一凭据，
+  // 那里写着「只读」而实际会提交表单，就是本仓库反复在治的那种不一致。
+  assert.match(text, /跑前登录态体检（只读：不开页面、不点东西）/u, `说明没跟着开关走：\n${text}`);
+});
+
+test('宿主（分批链）也接上了：每一批的链都带着同一个结论路径', () => {
+  const text = runHostPrint('run-batches.mjs', ['--date', '2026-09-22', '--batch-size', '2']);
+  const expected = path.join(REPO_ROOT, 'evidence', 'batches-2026-09-22', 'login-preflight.json');
+  const chainLines = text.split('\n').filter((line) => /run-multi-shop-day\.mjs/u.test(line));
+  assert.equal(chainLines.length, 3, `2+2+1 ⇒ 三批，实际扫到 ${chainLines.length} 条链命令`);
+  for (const line of chainLines) {
+    assert.ok(line.includes(`--login-preflight ${expected}`), `这一批的链没拿到结论：${line}`);
+  }
+  // 整轮一份：三批读的是**同一个**路径（链内部按本批 `--shops` 筛，所以不会串店）。
+  const hits = text.split(`--login-preflight ${expected}`).length - 1;
+  assert.equal(hits, chainLines.length, `三批应当读同一份结论，实际只出现 ${hits} 次`);
+  assert.match(text, /check-login-shops\.mjs --login --shops .*--json/u,
+    `整轮一次、查的是全部要跑的店，而且（分批这条链）也默认会自己登。实际输出：\n${text}`);
 });
 

@@ -18,6 +18,10 @@
 //   --commit             真写（推送 + 回填都加 `--commit`）。**目标日已被写过会硬重复停止**，先按 SOP §9.3 删那天。
 //   --allow-missing-peer 补跑**历史日**时给回填开的降级开关（默认关，见 backfill 那段的长注释）：
 //                        历史日的 SYCM 表格取不到「同行同层均值」行，不打开它，第 10 步必定 fail-closed 停下。
+//   --login-preflight <文件>  跑前登录态结论（`check-login-shops.mjs --json` 的产物）。
+//                        给了它，失败告警才会**点名哪个店哪个后台掉登录** —— 那正是「页面不齐」的
+//                        真因；不给就是「这一轮没查过」，告警会如实这么写（不假装查过）。
+//                        读不到那个文件**不报错、也不拦采集**：它是诊断层，不是闸门。
 //
 // 每台店各走一遍的十个阶段（顺序即 SOP §10.1；第 7/8 步的顺序是实测结论，不是偏好）：
 //   1 alimama-date   2 promotion-submit   3 sycm-date       4 shop-report   5 promotion-fetch
@@ -39,6 +43,11 @@
 //
 //   node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs \
 //        --date yesterday --commit --notify            （Windows 计划任务里写成一行）
+//
+// 但**今天实际用的不是上面这一条**：定时任务跑的是 `scripts/run-daily-job.mjs`，
+// 它先起实例、再跑一次只读的登录态体检、最后才跑链 —— 并把那份体检的结论用
+// `--login-preflight <文件>` 交给链（见 runtime/daily-job-plan.mjs）。所以上面那条
+// 裸命令只在「手动排障」时用；用它跑的失败告警会如实说「这一轮没有先查登录态」。
 //
 // 为什么日期要写成字面量 `yesterday` 而不是让调度器去算：调度器算日期就是把
 // 「Asia/Shanghai 的昨日」这条口径抄到命令之外，抄一份就是等着它与落位脚本漂移。
@@ -67,6 +76,9 @@ import { urlMatchesFragment } from '../../../runtime/target-url-match.mjs';
 import { READABLE_SOURCE_KEYS, renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { createPlatformHealthCheck } from '../../../runtime/xws-platform-health-preflight.mjs';
 import { shiftIso, shanghaiToday } from './date-picker.mjs';
+// 平台词表（`sites` → 中文页名）的唯一来源。告警里说「哪个后台掉登录」时必须用它，
+// 不许在这里另抄一份「生意参谋 / 阿里妈妈」—— 抄一份就是等着它与探测判据漂开。
+import { SITES } from './login-merchant-core.mjs';
 import { describeIdentity, expectArgs, formatArgv, shopIdentity } from './shop-identities.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -161,7 +173,7 @@ export function stageNumber(key, stage) {
  * 「这个结论悄悄退化成兜底文案」，而告警照发不误、看起来一切正常。
  */
 export const FAILURE_CAUSES = Object.freeze(
-  ['ROUND_BLOCKED', 'SHOP_BLOCKED', 'DUPLICATE_TARGET', 'SHOP_FUNC_NO_PERMISSION', 'STAGE_FAILED'],
+  ['ROUND_BLOCKED', 'SHOP_BLOCKED', 'NEEDS_LOGIN', 'DUPLICATE_TARGET', 'SHOP_FUNC_NO_PERMISSION', 'STAGE_FAILED'],
 );
 
 /**
@@ -186,15 +198,75 @@ export function shopFailureCause(record = {}) {
   return 'STAGE_FAILED';
 }
 
-/** 一轮的失败视图（纯函数；`summary` 就是落盘的 summary.json 的形状）。 */
-export function roundFailureSummary(summary = {}) {
+/** 一轮的失败视图（纯函数；`summary` 就是落盘的 summary.json 的形状）。
+ *
+ * 第二个参数是**跑前登录态结论**（`check-login-shops.mjs --json` 的产物）。三条口径：
+ *   ① **不给（`null`）⇒ 返回对象逐字不变** —— 一个键都不多。多一个键都会让「这条链今天
+ *      与昨天不一样」，而「默认不变」是这层唯一的安全保证。
+ *   ② ⚠️ 不给**不许**退化成 `[]`：那会让「没查」被读成「都不缺」，收信人看到一句「都好的」
+ *      —— 而那一层根本没跑过。所以这里判的是 `=== null`，`[]` 是另一个东西（＝查了、零家）。
+ *   ③ 它**不影响 `any`**：这条消息是失败告警，全绿的那天不发。登录态结论只改「怎么解释这次失败」。
+ */
+export function roundFailureSummary(summary = {}, { loginPreflight = null } = {}) {
   const entries = Object.entries(summary?.shops ?? {});
   const failed = entries.filter(([, record]) => record?.status !== 'ok')
     .map(([key, record]) => ({ key, record, cause: shopFailureCause(record) }));
   const ok = entries.filter(([, record]) => record?.status === 'ok').map(([key]) => key);
   const roundBlocked = summary?.round?.healthCheckDaily?.ok === false;
-  return { failed, ok, roundBlocked, roundBlockedDetails: summary?.round?.healthCheckDaily?.blockingDetails ?? null,
+  const view = { failed, ok, roundBlocked, roundBlockedDetails: summary?.round?.healthCheckDaily?.blockingDetails ?? null,
     any: roundBlocked || failed.length > 0, total: entries.length };
+  if (loginPreflight === null || loginPreflight === undefined) return view;
+  return { ...view, login: normalizeLoginPreflight(loginPreflight) };
+}
+
+/**
+ * 跑前登录态结论 —— 只留业务消息能用的那几项。
+ *
+ * ⚠️ 产物里还有**机器名**（`machine`）与逐店的 `href`（探针最终地址）。那些是技术串，
+ * 一个都不许进这条消息（`assertAlertIsBusinessReadable` 也会在生成处拦一次）。
+ * 这里做第一道：**只挑字段，不做透传** —— 透传的写法会在上游加一个字段的那天自动把它发出去。
+ */
+export function normalizeLoginPreflight(input) {
+  if (input === null || input === undefined) return null;
+  const pick = (list) => (Array.isArray(list) ? list : [])
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      shop: item.shop ?? null,
+      // 平台键一律**按词表过滤**：认不出来的键不许原样出现在业务消息里（那会是一串英文）。
+      sites: (Array.isArray(item.sites) ? item.sites : []).filter((key) => Boolean(SITES[key])),
+    }));
+  return {
+    verdict: typeof input.verdict === 'string' ? input.verdict : null,
+    needHuman: pick(input.needHuman),
+    unknown: pick(input.unknown),
+    checked: Number.isInteger(input.checked) ? input.checked : null,
+    unreadable: input.unreadable === true,
+  };
+}
+
+/**
+ * 读跑前登录态结论那个文件（`check-login-shops.mjs --json` 写出来的）。
+ *
+ * 三种输入、三种结论，**一种都不许折成另一种**：
+ *   · 没给路径（`null`）      ⇒ `null`：「这一轮没查过」。
+ *   · 给了但读不出来/不是 JSON ⇒ `{ unreadable: true }`：「本来要查，结论丢了」。
+ *   · 读到了                  ⇒ 归一化后的结论。
+ *
+ * 中间那一种刻意**不抛错**：这是一层**诊断**，不是闸门 —— 它读不到不该拦住整轮采集
+ * （链的第 0 步体检才是「今天能不能写」的权威判据）。但它也不许静默降级成「都不缺」：
+ * `unreadable` 会被原样说进告警文案里，收信人看得到「这次不知道是不是掉登录」。
+ */
+export function readLoginPreflight(filePath) {
+  if (!filePath) return null;
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, 'utf8'));
+    // `null` / 不是对象（例如文件里只有 `null`、或写的是个数组）同样算「读不到」：
+    // 折成「没查」会让「本来要查、结论丢了」从现在这条链上彻底消失。
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('结论不是一个对象');
+    return normalizeLoginPreflight(parsed);
+  } catch {
+    return { verdict: null, needHuman: [], unknown: [], checked: null, unreadable: true };
+  }
 }
 
 // 收信人在这里看到的每一个词都要是「他明天还会看到的东西」：窗口标题（`运营叫法 · 日报采集窗口`）、
@@ -209,6 +281,11 @@ export function roundFailureSummary(summary = {}) {
 const REASON_BY_CAUSE = Object.freeze({
   ROUND_BLOCKED: '整轮没开跑：那个开着飞书「各店铺日报」的浏览器窗口里，页面不齐。',
   SHOP_BLOCKED: '这家店的专用窗口里页面不齐，所以这家店一步都没跑。',
+  // 2026-09-23 单列一类，因为它的下一步与「页面不齐」**相反**：掉登录时页面开几个都会被
+  // 平台送回登录页，叫人去开页面等于让他白跑一趟（这正是这条分类要治的那个形态）。
+  // 它**不由 shopFailureCause 产出** —— 它的判据不在 `summary` 里，而在跑前那一次只读体检的
+  // 结论里（`--login-preflight`）。所以它只可能出现在「结论文件确实读过」的时候。
+  NEEDS_LOGIN: '这家店的后台掉登录了 —— 采集页面一打开就被平台送回了登录页，开几个都一样，所以没跑成。',
   DUPLICATE_TARGET: '这一天飞书里已经有数据了，脚本按「不许写第二遍」停住了。',
   SHOP_FUNC_NO_PERMISSION: '这家店在生意参谋里的「店铺绩效」现在不在账号上（平台按店铺开通的一项），所以采集页面一打开就被平台送回首页，这一天的数据没进飞书。',
   STAGE_FAILED: '这家店跑到一半停住了，这一天的数据没进飞书。',
@@ -225,6 +302,15 @@ const ACTION_BY_CAUSE = Object.freeze({
     + '生意参谋的「店铺」工作页、飞书「各店铺日报」底单页。开好后告诉技术同学重跑一次。',
   SHOP_BLOCKED: (ctx) => `打开这几家店各自的日报采集窗口（窗口标题里写着店名，例如「${ctx.shops[0] ?? '店名'} · 日报采集窗口」），`
     + '把缺的页面补上：生意参谋的工作页、阿里妈妈报表页各一个（多开同样会报错）。补好后告诉技术同学重跑一次。',
+  // 与 SHOP_BLOCKED 的差别只有一处，但那一处决定收信人要不要跑一趟：**掉登录时页面是补不上的**
+  // （补了也被弹回登录页）。所以这一类的动作是「登录」，而且要说清只在**这家店自己的**窗口里登
+  // —— 一店一套登录态，登错了窗口等于把另一家店顶掉（那会造出比原故障更难查的现场）。
+  NEEDS_LOGIN: (ctx) => {
+    const which = (ctx.needLogin ?? []).length ? ctx.needLogin : ctx.shops;
+    return `打开这几家店各自的日报采集窗口（窗口标题里写着店名，例如「${which?.[0] ?? '店名'} · 日报采集窗口」），`
+      + '用这家店自己的账号重新登录一次 —— 只在这一家店自己的窗口里登，别在别的窗口里登'
+      + '（每个窗口是它自己那套登录态）。登录好之后告诉技术同学重跑一次。';
+  },
   DUPLICATE_TARGET: (ctx) => `不用处理：${ctx.date} 的数据已经在飞书里了。`
     + '只有确实要重写时才需要先删掉那一天的记录再跑。',
   SHOP_FUNC_NO_PERMISSION: (ctx) => `这一轮不需要你在浏览器里做什么 —— 刷新、重新登录都没用，不是登录的问题。`
@@ -246,8 +332,10 @@ for (const [tableName, table] of [['REASON_BY_CAUSE', REASON_BY_CAUSE], ['ACTION
 }
 
 /** 收信人看到的「哪家店、停在哪一步」。店名后面带上**他在浏览器里能看到的登录名**，方便对上窗口。 */
-export function describeShopFailure(key, record) {
-  const cause = shopFailureCause(record);
+export function describeShopFailure(key, record, { cause = null } = {}) {
+  // 结论可以由调用方**指定**：跑前登录态那一层会把「页面不齐」这类改判成「掉登录」
+  // （见 buildRoundFailureAlert）。不给就自己算 —— 两个参数的调用与从前逐字相同。
+  const effective = cause ?? shopFailureCause(record);
   const at = record?.failedStage ? stageNumber(key, record.failedStage) : null;
   const where = record?.failedStage
     ? `停在第 ${at ?? '?'} 步（${stageLabelOf(record.failedStage)}）`
@@ -257,8 +345,57 @@ export function describeShopFailure(key, record) {
   // 账号名（`里可林家居:阿彦`）**不进业务消息**：窗口标题里写的就是运营叫法（店名），
   // 业务人员靠店名就够对上窗口了；而账号名一旦被转发到群/邮件就是一条泄露面。
   // 它仍然留在驱动启动时打出的身份表里（stdout / job.log），需要时那里能查。
-  return `· ${key}—— ${where}。${REASON_BY_CAUSE[cause]}`
+  return `· ${key}—— ${where}。${REASON_BY_CAUSE[effective]}`
     + (specifics.length ? `\n  ${specifics.join('\n  ')}` : '');
+}
+
+/** 平台键 → 中文页名。认不出来的键在归一化那一步已经被丢掉，这里只是最后兜一次底。 */
+const siteLabels = (sites) => {
+  const labels = (sites ?? []).map((key) => SITES[key]?.label).filter(Boolean);
+  return labels.length ? labels.join('、') : '后台';
+};
+
+/**
+ * 跑前登录态那一段话。四种情形各有各的说法，**一种都不许省**：
+ *   ① 没查（`null`）       —— 说清「没查过」，并给出「若打开后又回登录页就是掉登录」这条自判据；
+ *   ② 要查但结论丢了       —— 说清「本来要查、结论没读出来」，不许装作查过；
+ *   ③ 查了、谁掉了         —— 点名哪个店哪个后台（**按平台分别说**），整轮没开跑时补一句因果；
+ *   ④ 查了、都在 / 没结论  —— 分别说清（「问题不在登录上」本身就是收信人最想要的一句话）。
+ *
+ * 为什么这段话必须存在（2026-09-23 用户拍板「1.改」）：链的第 0 步体检只答「页面够不够」，
+ * 而「页面被弹回登录页」与「页签被关掉」在它眼里**同形**（都是页面不在）。
+ * 于是掉登录时告警给的是「把这两页各开一个」—— 收信人照着做**无效**（开几个都被送回登录页）。
+ * 收信人照着一条对不上现场的建议去做比不通知更糟，这已经是本仓库第三次吃同一个亏。
+ */
+function loginPreflightLines(login, { needLogin = [], unknown = [], roundBlocked = false } = {}) {
+  if (login === null) {
+    return ['（这一轮没有先查登录态：上面那句「页面不齐」到底是页面被关掉了、还是掉登录后被送回'
+      + '登录页，没查过。按上面的下一步做；如果打开后又被送回登录页，那就是掉登录，'
+      + '要在窗口里重新登录一次。）'];
+  }
+  if (login.unreadable || login.verdict === null) {
+    return ['（这一轮本来要查登录态，但那份结论没读出来 —— 所以不知道是不是掉登录。按上面的下一步做。）'];
+  }
+  if (needLogin.length > 0) {
+    const who = needLogin.map((item) => `${item.shop}（${siteLabels(item.sites)}）`).join('、');
+    // 整轮没开跑时，上面那句「页面不齐」就是这一件事的**症状**，必须把因果挑明 ——
+    // 否则收信人会同时看到「页面不齐」与「去登录」两条对不上的话。
+    const bridge = roundBlocked
+      ? ' —— 上面那条「页面不齐」就是这么来的：掉登录时采集页面会被平台送回登录页，开几个都一样。'
+      : '';
+    return [`（跑前先查过登录态：${who}掉登录了${bridge}）`];
+  }
+  if (login.verdict === 'ALL_IN') {
+    return ['（跑前先查过登录态：这一轮的店后台都在登录态 —— 所以问题不在登录上，按上面的下一步做。）'];
+  }
+  if (unknown.length > 0) {
+    const who = unknown.map((item) => `${item.shop}（${siteLabels(item.sites)}）`).join('、');
+    return [`（跑前先查过登录态，但这些店没读出结论：${who} —— 它们的登录态没法确认。）`];
+  }
+  // 查过、而且确实有店掉登录，但掉的不是**这一轮**要跑的那几家（分批时会出现）。
+  // 这句必须说：不说的话，收信人会以为「没提登录＝查过没问题」—— 而这里恰恰是
+  // 「有店有问题、但不是这几家」。
+  return ['（跑前先查过登录态：这一轮的店都不缺登录；掉登录的是别的店。）'];
 }
 
 /**
@@ -269,9 +406,13 @@ export function describeShopFailure(key, record) {
  * **但白名单管的是键，管不到值** —— 值里的路径/机器名/编号照样会原样发出去，
  * 所以「不给它这些字段」才是对的写法（2026-09-21：`machine` 与 `evidence` 就是从这里漏出去的）。
  * 这一条由函数末尾的 `assertAlertIsBusinessReadable` 拦在生成处（fail-closed）。
+ *
+ * `loginPreflight`＝跑前登录态结论（`readLoginPreflight` 的产物）。**不给就是 `null`**：
+ * 那会让文案退到「这一轮没有先查登录态」那一句（见 loginPreflightLines），而不是安静地少说
+ * 一件事 —— 「没查」与「查了没问题」在收信人眼里必须是两句不同的话。
  */
-export function buildRoundFailureAlert({ date, summary, shopKeys = null, now = () => new Date() }) {
-  const view = roundFailureSummary(summary);
+export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPreflight = null, now = () => new Date() }) {
+  const view = roundFailureSummary(summary, { loginPreflight });
   if (!view.any) throw new Error('这一轮没有失败却要生成告警（调用方的判定错误）—— 成功时不许叫人');
   // `shopKeys` **必填**（这一轮该跑哪几家，从配置来），缺了直接抛。
   //
@@ -287,8 +428,18 @@ export function buildRoundFailureAlert({ date, summary, shopKeys = null, now = (
   const when = now();
   const total = shopKeys.length;
   const failedNames = view.failed.map((item) => item.key);
+  // 登录态结论**只保留这一轮真的在跑的那几家**：那一次体检可能是一次查五家，
+  // 而这一轮（尤其分批时）只跑其中几家 —— 不筛就会在告警里点名一批跟这次无关的店。
+  const inRound = (item) => shopKeys.includes(item.shop);
+  const needLogin = (view.login?.needHuman ?? []).filter(inRound);
+  const unknownLogin = (view.login?.unknown ?? []).filter(inRound);
+  const loginShops = new Set(needLogin.map((item) => item.shop));
+  // 结论合并：掉登录的那些店（以及被它们挡住的整轮）改判成 NEEDS_LOGIN。
+  // 「页面不齐」在掉登录下只是**症状**，照着它的下一步（去开页面）做是无效动作。
+  const causeOf = (item) => (loginShops.has(item.key) ? 'NEEDS_LOGIN' : item.cause);
+  const blockedCause = view.roundBlocked ? (loginShops.size > 0 ? 'NEEDS_LOGIN' : 'ROUND_BLOCKED') : null;
   const subject = view.roundBlocked ? '全部店铺' : failedNames.length === 1 ? failedNames[0] : `${failedNames.length} 家店`;
-  const causes = [...new Set([...(view.roundBlocked ? ['ROUND_BLOCKED'] : []), ...view.failed.map((item) => item.cause)])];
+  const causes = [...new Set([...(blockedCause ? [blockedCause] : []), ...view.failed.map(causeOf)])];
   // 默认「第一家失败即停整轮」⇒ 只写「没跑完 1 家」会被读成「其余几家都收好了」。
   // 2026-09-21 那条正是这个形态：对象写「日报一轮 · 5 家店」，原因写「没跑完 1 家」，
   // 而实际是**其余 4 家一步都没跑**。少写这一行，等于让收信人以为今天收工了。
@@ -297,12 +448,16 @@ export function buildRoundFailureAlert({ date, summary, shopKeys = null, now = (
   const reason = [
     view.roundBlocked ? REASON_BY_CAUSE.ROUND_BLOCKED : null,
     ...(view.roundBlocked ? (view.roundBlockedDetails ?? []).filter(Boolean).slice(0, 3).map((line) => `  ${line}`) : []),
-    view.failed.length ? `没跑完 ${view.failed.length} 家：\n${view.failed.map((item) => describeShopFailure(item.key, item.record)).join('\n')}` : null,
+    // 紧跟在「页面不齐」那几行后面：这一段是**对它的解释**，顺序反了就成了一句前言不搭后语的话。
+    ...loginPreflightLines(view.login ?? null, { needLogin, unknown: unknownLogin, roundBlocked: view.roundBlocked }),
+    view.failed.length ? `没跑完 ${view.failed.length} 家：\n${view.failed.map((item) => describeShopFailure(item.key, item.record, { cause: causeOf(item) })).join('\n')}` : null,
     notRun.length ? `· 另外 ${notRun.length} 家今天一步都没跑（有一家停住后，整轮就停了）：${notRun.join('、')}` : null,
     view.ok.length ? `已收完 ${view.ok.length} 家：${view.ok.join('、')}` : null,
   ].filter(Boolean).join('\n');
 
-  const actions = causes.map((cause) => ACTION_BY_CAUSE[cause]({ date, shops: failedNames }));
+  const actions = causes.map((cause) => ACTION_BY_CAUSE[cause]({
+    date, shops: failedNames, needLogin: needLogin.map((item) => item.shop),
+  }));
 
   const alert = {
     type: 'DAILY_ROUND_FAILED',
@@ -378,7 +533,7 @@ export function resolveAlertDispatch({ notify = false, notifyPrint = false, mode
 export const parseArgs = (argv, { now = new Date() } = {}) => {
   const args = { date: null, dateInput: null, shops: null, commit: false, verifyExisting: null, keepGoing: false,
     only: null, logs: null, downloads: null, shopXlsx: null, promotionZip: null,
-    allowMissingPeer: false, notify: false, notifyPrint: false };
+    allowMissingPeer: false, notify: false, notifyPrint: false, loginPreflight: null };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     // 原样收下，出了循环再解析（`--date yesterday` 要用「这一刻」的时钟算，只算一次）。
@@ -394,6 +549,15 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
     else if (key === '--keep-going') args.keepGoing = true;
     else if (key === '--only') args.only = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
     else if (key === '--logs') args.logs = argv[++i];
+    // 跑前登录态结论（`check-login-shops.mjs --json` 写出来的那个文件）。**只在给的时候读**：
+    // 不给就是「这一轮没查过登录态」，告警文案会如实这么写（见 loginPreflightLines）。
+    // ⚠️ 给了路径却读不到**不在这里报错**：它是诊断层、不是闸门，读不到不该拦住采集 ——
+    // 但它会被说成「本来要查、结论没读出来」，不许静默折成「都不缺」（见 readLoginPreflight）。
+    else if (key === '--login-preflight') {
+      const value = argv[++i];
+      if (!value || value.startsWith('--')) throw new Error('--login-preflight 需要一个结论文件路径');
+      args.loginPreflight = value;
+    }
     else if (key === '--downloads') args.downloads = argv[++i];
     // 只给「采集已经跑完、要单独重跑推送段」用（那一轮的产物路径不可能再问采集要）。
     // 这两种情况下必须两种都给/都不给 —— 只给一种是「一半手填」的形态，见 withSourcePaths。
@@ -843,12 +1007,26 @@ async function main() {
   const explicitSources = { shopXlsx: args.shopXlsx, promotionZip: args.promotionZip };
   // 失败的告警在**两个**失败出口都要能发（整轮没跑起来 / 某家店停在半路），所以算一次、用两次。
   const alertDispatch = resolveAlertDispatch({ notify: args.notify, notifyPrint: args.notifyPrint, mode });
+  // 跑前登录态结论：**读一次、两个失败出口都用**。它在 main 里只读一次而不是在告警里现读，
+  // 是因为「本轮读到的是什么」这件事本身要**打进驱动的 stdout / job.log** ——
+  // 事后翻日志的人必须能看出「这一轮到底查没查、结论是什么」，而不是只看到告警里那句转述。
+  const loginPreflight = readLoginPreflight(args.loginPreflight);
 
   console.log(`[驱动] 目标日 ${args.date}｜模式 ${mode}｜店铺 ${shops.length} 家：${shops.join(' / ')}`);
   // 字面量被解析过就要说清楚解析成了哪天 —— 定时跑出来的日志里，这一行是唯一的对账依据
   // （事后没人能从 `--date yesterday` 反推出它当时算的是哪一天）。
   if (args.dateInput !== args.date) console.log(`[驱动] （--date ${args.dateInput} 按 Asia/Shanghai 解析成 ${args.date}）`);
   console.log(`[驱动] 日志根 ${logRoot}`);
+  // 「结论文案进了告警」这件事的唯一事后证据：这一行。没有它，读日志的人分不清
+  // 「这一轮本来就条没查」与「查了、但参数没接上」—— 那正是本条要治的形态。
+  if (args.loginPreflight) {
+    const state = loginPreflight === null ? '没读（路径为空）'
+      : loginPreflight.unreadable ? '读不出来（文件不在或不是那份 JSON）'
+        : `${loginPreflight.verdict}（掉登录 ${loginPreflight.needHuman.length} 家／没结论 ${loginPreflight.unknown.length} 家）`;
+    console.log(`[驱动] 跑前登录态结论 ${args.loginPreflight} ⇒ ${state}`);
+  } else {
+    console.log('[驱动] 没有给 --login-preflight：这一轮没查过登录态（告警里会如实这么写）。');
+  }
   // 主机名只留在驱动侧日志里（排障要「哪台机器」），**不进告警文案**：
   // 收信人是运营，`DESKTOP-KJP4RA5` 对他们没有任何可执行含义（2026-09-21 就发过这个）。
   console.log(`[驱动] 本机 ${MACHINE}`);
@@ -893,7 +1071,7 @@ async function main() {
     process.exitCode = 1;
     if (alertDispatch.action !== 'off') {
       dispatchRoundAlert({
-        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops }),
+        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight }),
         dispatch: alertDispatch, logDir: path.relative(REPO_ROOT, logRoot),
       });
     }
@@ -1004,7 +1182,7 @@ async function main() {
     process.exitCode = 1;
     if (alertDispatch.action !== 'off') {
       dispatchRoundAlert({
-        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops }),
+        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight }),
         dispatch: alertDispatch, logDir: path.relative(REPO_ROOT, logRoot),
       });
     } else if (args.notify || args.notifyPrint) {

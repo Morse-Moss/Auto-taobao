@@ -15,8 +15,8 @@ import path from 'node:path';
 import { shopBrowserKeys } from './browser-ports.mjs';
 import {
   BATCH_FILES, BATCH_SIZE_BY_MEMORY, DEFAULT_BATCH_SIZE, SHARED_INSTANCE_KEYS, assertBatchCoversRegistry,
-  batchableShopKeys, buildBatchSteps, buildSharedStep, describeBatch, planBatches, releaseAfterBatch,
-  resolveBatchSize, resolveShopNames,
+  batchableShopKeys, buildBatchSteps, buildLoginPreflightStep, buildSharedStep, describeBatch, planBatches,
+  releaseAfterBatch, resolveBatchSize, resolveShopNames,
 } from './batch-plan.mjs';
 import { REPO_ROOT } from './version.mjs';
 
@@ -179,5 +179,49 @@ test('共享实例：只起不停、且只有商家浏览器（省内存才是�
   const stopStep = buildBatchSteps(planBatches({ size: 5 }).batches[0]).find((s) => s.name === 'stop');
   assert.doesNotMatch(stopStep.args.join(' '), /dailyReport|competitor/u,
     '释放只针对本批店铺：一旦把共享实例写进 --only，整轮的推送/回读链就被自己掐断了');
+});
+
+// ---------------------------------------------------------------------------
+// 跑前登录态体检那一步（2026-09-23 加）：**整轮一次**，结论交给每一批的链。
+//
+// 为什么放在这一层而不是每一批：它只读、不占新实例，一次查五家与分五次查五家得到同一份结论，
+// 而后者要多付四倍的等待。链内部会按本批 `--shops` 把结论筛一遍，所以共用一份不会串店。
+// ---------------------------------------------------------------------------
+const LOGIN_FILE = 'skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs';
+const LOGIN_ARTIFACT = 'E:\\ev\\batches-2026-09-22\\login-preflight.json';
+
+test('跑前登录态体检那一步：整轮一次、只读、不阻断，且结论落成文件', () => {
+  const step = buildLoginPreflightStep({
+    file: LOGIN_FILE,
+    args: ['--shops', ALL.join(','), '--json'],
+    artifactPath: LOGIN_ARTIFACT,
+  });
+  assert.equal(step.name, 'login-preflight');
+  assert.equal(step.file, LOGIN_FILE, '跑哪个文件由调用方给（单一来源是 daily-job-plan 的 JOB_FILES）');
+  assert.equal(step.blocking, false, '它不是闸门：读不到登录态不该拦住整轮（链的告警会如实说）');
+  // 它是**只读**那一条：一个 `--commit` 都不许出现（那是自动登录的第一步，不是体检）。
+  assert.doesNotMatch(step.args.join(' '), /--commit/u);
+  // 结论必须落成**文件**：只进日志的话，链那一步读的就是一个不存在的路径。
+  assert.equal(step.artifactPath, LOGIN_ARTIFACT);
+  // 整轮一次 ⇒ `--shops` 给的是全部要跑的店，不是某一家。
+  assert.equal(step.args[1], ALL.join(','));
+});
+
+test('结论交给**每一批**的链，且每批拿到的是各自独立的参数数组', () => {
+  const flag = ['--login-preflight', LOGIN_ARTIFACT];
+  const batches = planBatches({ size: 2 }).batches;
+  const chains = batches.map((batch) => buildBatchSteps(batch, {
+    dateInput: 'yesterday', chainArgs: ['--commit', ...flag],
+  }).find((s) => s.name === 'chain'));
+
+  for (const chain of chains) {
+    const at = chain.args.indexOf('--login-preflight');
+    assert.notEqual(at, -1, `这一批的链没拿到结论：${chain.args.join(' ')}`);
+    assert.equal(chain.args[at + 1], LOGIN_ARTIFACT);
+  }
+  // 每一批的链参数必须是**各自一份**：共享同一个数组引用时，后一批的 `--logs` 拼接
+  // 会把前一批的参数改掉（那种错在日志里长得完全正常）。
+  assert.equal(new Set(chains.map((c) => c.args)).size, chains.length);
+  assert.notEqual(chains[0].args, chains[1].args);
 });
 
