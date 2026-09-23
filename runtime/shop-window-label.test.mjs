@@ -235,6 +235,75 @@ test('没有标签页时才新建一个，且建出来的是这家店的标签�
   assert.equal(calls.filter((c) => c.url.includes('/navigate')).length, 0, '没有可导航的目标时不该去导航别的页面');
 });
 
+// 2026-09-23 用户原话：「相当于替换原本的空白页，不要空白页了」。
+// 场景：窗口里没有标签页，但躺着一个链路用完没关的 `about:blank`
+// （真机上里可林、科塔两个窗口就是这个样子，见 03-label-readonly.json 的 leftover）。
+// 期望：**接管它**（导航成标签页并钉住），不新建 —— 新建会让页签总数 +1，
+// 于是窗口里从此永远躺着一个空白页，而那个空白页的唯一归宿本来就是被关掉。
+test('没有标签页但有空白页时：接管那个空白页，绝不新建（否则窗口里永远多躺一个空白页）', async () => {
+  const calls = [];
+  const targets = [
+    { type: 'page', targetId: 's', url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop' },
+    { type: 'page', targetId: 'b', url: 'about:blank' },
+  ];
+  const result = await ensureLabelTabOn({
+    proxyUrl: 'http://127.0.0.1:19041',
+    shop: '里可林淘宝',
+    port: 19031,
+    fetchImpl: fakeProxy({ targets, calls }),
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.adoptedBlank, true, '必须如实报出这一路是「接管」来的');
+  assert.equal(result.reused, false, '它不是「复用已有标签页」—— 这两个来源不能混成一个标志');
+  assert.equal(result.targetId, 'b', '接管的必须是那个空白页的 targetId');
+  assert.equal(calls.filter((c) => c.url.includes('/new')).length, 0,
+    '有空白页可接管时新建就会多一个页签 —— 这正是要治的那件事');
+  const navigated = calls.filter((c) => c.url.includes('/navigate'));
+  assert.equal(navigated.length, 1);
+  assert.ok(navigated[0].url.includes('target=b'), '导航的目标必须是那个空白页');
+  assert.ok(targetUrlOf(navigated[0]).includes(encodeURIComponent('里可林淘宝')), '导航到的是这家店的标签页');
+  assert.equal(calls.filter((c) => c.url.includes('/pin')).length, 1,
+    '接管来的标签页也要钉：它的 targetId 是当初 /new 建的，同样会被代理 15 分钟回收');
+});
+
+test('接管空白页时只取第一个，剩下的报出来交给 --prune（本函数不替人关别的页）', async () => {
+  const calls = [];
+  const targets = [
+    { type: 'page', targetId: 'b1', url: 'about:blank' },
+    { type: 'page', targetId: 'b2', url: 'about:blank' },
+  ];
+  const result = await ensureLabelTabOn({
+    proxyUrl: 'http://127.0.0.1:19044',
+    shop: '科塔淘宝',
+    port: 19034,
+    fetchImpl: fakeProxy({ targets, calls }),
+  });
+  assert.equal(result.adoptedBlank, true);
+  assert.equal(result.targetId, 'b1', '固定取第一个：否则每轮接管的可能是不同的页签，前后对不上');
+  assert.equal(result.extraBlanks, 1, '还剩几个空白页必须报出来，否则人不知道窗口里还有残渣');
+  assert.equal(calls.filter((c) => c.url.includes('/close')).length, 0, '本函数不关别的页签');
+});
+
+test('既有标签页又有空白页时：复用标签页而不是接管空白页（否则会变成两个标签页）', async () => {
+  const calls = [];
+  const targets = [
+    { type: 'page', targetId: 'c', url: `file:///D:/a/${LABEL_PAGE_NAME}?shop=x` },
+    { type: 'page', targetId: 'b', url: 'about:blank' },
+  ];
+  const result = await ensureLabelTabOn({
+    proxyUrl: 'http://127.0.0.1:19041',
+    shop: '里可林淘宝',
+    port: 19031,
+    fetchImpl: fakeProxy({ targets, calls }),
+  });
+  assert.equal(result.reused, true, '已经有标签页时走复用这一路');
+  assert.equal(result.adoptedBlank, false);
+  assert.equal(result.targetId, 'c');
+  const navigated = calls.filter((c) => c.url.includes('/navigate'));
+  assert.equal(navigated.length, 1);
+  assert.ok(navigated[0].url.includes('target=c'), '导航的必须是那个已有标签页，不是空白页');
+});
+
 test('堆了多个标签页就停手：既不导航也不新建（关哪一个都是替人做决定）', async () => {
   const calls = [];
   const result = await ensureLabelTabOn({

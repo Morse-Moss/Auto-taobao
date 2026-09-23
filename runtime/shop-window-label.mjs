@@ -408,8 +408,9 @@ export async function pinLabelTab(proxyUrl, targetId, fetchImpl = fetch) {
  * 以及（可选）**实际登录的会员名**。`actual` 由调用方用 `readLoggedInMemberOn` 读好再传进来 ——
  * 本函数只管「把它写到页面上」，不在写路径里顺手读页面（读与写分开，各自可离线测）。
  *
- * 幂等：已存在就导航它（不会越堆越多），不存在才新建。
- * **只动标签页**：链路要用的工作页、千牛、登录页一概不碰，残留页签也只报告。
+ * 幂等：已存在就导航它（不会越堆越多）；不存在时**优先接管一个空白页**（见函数里那段注释），
+ * 连空白页都没有才新建。
+ * **只动标签页，外加至多一个空白页**：链路要用的工作页、千牛、登录页一概不碰，其余残留页签只报告。
  */
 export async function ensureLabelTabOn({
   proxyUrl,
@@ -436,8 +437,40 @@ export async function ensureLabelTabOn({
     // 复用**也要钉一次**：这个标签页可能是「还没有 pinned 语义的那版」挂的，
     // 不钉的话它照样会在 15 分钟后被收走 —— 而那种失效要等一刻钟才显形。
     const pinned = await pinLabelTab(proxyUrl, labels[0].targetId, fetchImpl);
-    return { ok: true, shop, reused: true, targetId: labels[0].targetId, url, classified, pinned };
+    // `adoptedBlank: false` 与另外两条路保持同一组字段：三种来源（复用 / 接管空白页 / 新建）
+    // 各自可判，而不是靠「某个键不存在」去反推 —— 靠缺键反推的判据，等加了字段就会静默失效。
+    return {
+      ok: true, shop, reused: true, adoptedBlank: false,
+      targetId: labels[0].targetId, url, classified, pinned,
+    };
   }
+  // 没有标签页时：**先找一个空白页接管**，实在没有才新建。
+  //
+  // 为什么（2026-09-23 用户原话「相当于替换原本的空白页，不要空白页了」）：
+  // 新建会让页签总数 +1，于是窗口里从此永远躺着那个 `about:blank` —— 它是链路用完没关的残留，
+  // 而 `prunePlan` 对它的策略本来就是「永远关」。把那个空白页**导航**成标签页，
+  // 一步同时做到「多了个店名」与「少了个空白页」：页签条数不变，位置也不变（不会突然跳到最后）。
+  // 只有在完全没有可接管对象时才新建 —— 新建是能力，不是首选。
+  //
+  // 前提（这条假设成立，因为链路的中间态页都带 URL）：稳态下窗口里剩下的 `about:blank`
+  // 都是上一轮留下的残渣；链路正在跑的时候，它用的是 sycm / alimama 那两个工作页。
+  // 所以取「第一个空白页」不会抢走链路要用的东西。
+  const blanks = classified.filter((t) => t.kind === 'blank' && t.targetId);
+  if (blanks.length > 0) {
+    const adopted = blanks[0];
+    await fetchImpl(`${proxyUrl}/navigate?target=${encodeURIComponent(adopted.targetId)}&url=${encodeURIComponent(url)}`,
+      { method: 'POST', signal: AbortSignal.timeout(15000) });
+    // 接管**也要钉一次**：它的 targetId 是当初 `/new` 建出来的，同样躺在代理的 managedTabs 里，
+    // 不钉的话照样会在 15 分钟后被收走 —— 而那种失效要等一刻钟才显形。
+    const pinned = await pinLabelTab(proxyUrl, adopted.targetId, fetchImpl);
+    // 其余空白页**不在这里关**：本函数只接管一个。「替人关掉别的页」是另一个决定，
+    // 交给 `--prune` 做（它的策略表里 blank 是「永远关」，开着 prune 时它们会被一并清掉）。
+    return {
+      ok: true, shop, reused: false, adoptedBlank: true,
+      targetId: adopted.targetId, url, classified, pinned, extraBlanks: blanks.length - 1,
+    };
+  }
+
   const created = JSON.parse(await fetchImpl(
     `${proxyUrl}/new?url=${encodeURIComponent(url)}&label=window-label&pinned=1`,
     { method: 'POST', signal: AbortSignal.timeout(15000) },
@@ -446,7 +479,7 @@ export async function ensureLabelTabOn({
   // 新建分支也显式钉一次：`pinned=1` 只对认这个参数的代理有效，
   // 旧版代理会把它当无关参数忽略掉 —— 那一步的失败要看得见，而不是让人以为钉住了。
   const pinned = await pinLabelTab(proxyUrl, targetId, fetchImpl);
-  return { ok: true, shop, reused: false, targetId, url, classified, pinned };
+  return { ok: true, shop, reused: false, adoptedBlank: false, targetId, url, classified, pinned };
 }
 
 /**
@@ -612,6 +645,11 @@ async function main() {
       // 登录提示只挂在这一行上。它不改任何行为，只回答用户那句「也没有登录」。
       if (hint) row.loginHint = `这家店还没登录：看到登录页的是 ${hint.sites.join('、')}`;
 
+      // 顺序说明：清理排在「挂标签页」**之前**（2026-09-18 拆开关时就定下的结构，见上面 parseCli 那段）。
+      // 所以在 `--label --prune --commit` 这种组合下，空白页会**先**被关掉，
+      // 于是 ensureLabelTabOn 里「接管空白页」那条路走不到 —— 结果仍然对（窗口里没有空白页、
+      // 有一个标签页），只是那个标签页是**新建**的、排在页签条最后，而不是原地接管的。
+      // 要它**原地**接管（页签位置也不变），分两步下达：先 `--commit --front`，再 `--prune --commit`。
       if (opts.prune) {
         const plan = prunePlan(classified);
         row.prunePlan = plan.close.map((t) => `${describeTab(t)}  ← ${t.reason}`);
@@ -645,6 +683,15 @@ async function main() {
           ? {
             ok: true,
             reused: result.reused,
+            // 标签页是**接管**来的还是新建的：接管意味着那个空白页被替换掉了（页签总数不变）。
+            // 这一格必须能看见 —— 否则「窗口里的空白页怎么没了」就只能靠猜。
+            ...(result.adoptedBlank === true ? { adoptedBlank: true } : {}),
+            ...(result.extraBlanks > 0
+              ? {
+                extraBlanks: result.extraBlanks,
+                hint: `窗口里还剩 ${result.extraBlanks} 个空白页，加 --prune 一并关掉`,
+              }
+              : {}),
             targetId: result.targetId,
             // 钉住的结果必须如实报出来：钉不住（例如代理还是旧版、没有 /pin）时，
             // 标签页会在 15 分钟后被代理收走 —— 那是**延迟出现**的失效，

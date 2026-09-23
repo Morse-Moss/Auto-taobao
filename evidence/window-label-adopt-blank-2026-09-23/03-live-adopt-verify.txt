@@ -1,0 +1,60 @@
+[前] 4 个页签
+  DAC3D4DDECC4AEFDAD5545F11E74C0D2  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  CDE1632C07C08FC2575BDA13209E6114  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031&mem
+  6172EA2473035A74D1350C7CFBB39672  https://one.alimama.com/index.html#!/report/download-list
+  C27132AA7D2871F0C10D65F3517BAA17  about:blank
+
+将关掉标签页 CDE1632C07C08FC2575BDA13209E6114；期望脚本去接管空白页 C27132AA7D2871F0C10D65F3517BAA17
+
+[关掉标签页之后] 3 个页签
+  DAC3D4DDECC4AEFDAD5545F11E74C0D2  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  6172EA2473035A74D1350C7CFBB39672  https://one.alimama.com/index.html#!/report/download-list
+  C27132AA7D2871F0C10D65F3517BAA17  about:blank
+
+--- 挂标签页的输出 ---
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "里可林淘宝": {
+   "browserPort": 19031,
+   "proxyPort": 19041,
+   "windowTitle": "里可林淘宝 · 日报采集窗口",
+   "memberName": "里可林家居:阿彦",
+   "labelTabs": 0,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/report/download-list",
+    "空白页（残留）  about:blank"
+   ],
+   "leftover": [
+    "空白页（残留）  about:blank"
+   ],
+   "labelTab": {
+    "ok": true,
+    "reused": false,
+    "adoptedBlank": true,
+    "targetId": "C27132AA7D2871F0C10D65F3517BAA17",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "里可林家居:阿彦",
+   "labelActual": "里可林家居:阿彦（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+
+[后] 3 个页签
+  DAC3D4DDECC4AEFDAD5545F11E74C0D2  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  6172EA2473035A74D1350C7CFBB39672  https://one.alimama.com/index.html#!/report/download-list
+  C27132AA7D2871F0C10D65F3517BAA17  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031&mem
+
+--- 判定 ---
+空白页那个 targetId（C27132AA7D2871F0C10D65F3517BAA17）现在指向：file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port
+接管成功（原地变成标签页）：是
+窗口里还剩空白页：0 个（期望 0）
+标签页数量：1（期望 1）
+页签总数：前 4 → 关掉标签页后 3 → 接管后 3（接管这一步没有增加页签：符合）

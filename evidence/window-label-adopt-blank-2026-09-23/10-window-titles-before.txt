@@ -1,0 +1,40 @@
+﻿== msedge 有主窗口的进程（这就是任务栏/Alt-Tab 上看到的东西）==
+
+   Id  MB MainWindowTitle                                                                                 
+   --  -- ---------------                                                                                 
+ 5896 157 ‌﻿​​​​​​‬‍‍​​​​​​﻿​​‬‍⁠‬​‬​‍‌​​‌​‍﻿​﻿‍​​﻿​​​‬⁠​​​﻿各店铺日报 - 飞书云文档 和另外 1 个页面 - 个人 - Microsoft​ Edge
+18040 105 科塔淘宝 · 日报采集窗口 和另外 3 个页面 - 用户配置 1 - Microsoft​ Edge                                              
+31176 118 生意参谋 - 零售电商大数据产品平台 和另外 2 个页面 - 个人 - Microsoft​ Edge                                             
+30108 116 生意参谋 - 零售电商大数据产品平台 和另外 2 个页面 - 用户配置 1 - Microsoft​ Edge                                         
+40924 113 生意参谋 - 零售电商大数据产品平台 和另外 4 个页面 - 用户配置 1 - Microsoft​ Edge                                         
+30368 122 网林天猫 · 日报采集窗口 和另外 2 个页面 - 用户配置 1 - Microsoft​ Edge                                              
+16128 112 我的淘宝 和另外 1 个页面 - 用户配置 1 - Microsoft​ Edge                                                       
+
+
+
+== 全部顶层窗口（含非 msedge，只列标题非空的）==
+
+   Id ProcessName           MainWindowTitle                                                                                 
+   -- -----------           ---------------                                                                                 
+55444 AliWorkbench          悬浮条                                                                                             
+17384 ApplicationFrameHost  Realtek Audio Console                                                                           
+52576 chrome                「广州招聘」-2026年广州人才招聘信息 - BOSS直聘 - Chromium                                                        
+56948 explorer              My WangWang - 文件资源管理器                                                                           
+40280 explorer              My WangWang - 文件资源管理器                                                                           
+30368 msedge                网林天猫 · 日报采集窗口 和另外 2 个页面 - 用户配置 1 - Microsoft​ Edge                                              
+31176 msedge                生意参谋 - 零售电商大数据产品平台 和另外 2 个页面 - 个人 - Microsoft​ Edge                                             
+40924 msedge                生意参谋 - 零售电商大数据产品平台 和另外 4 个页面 - 用户配置 1 - Microsoft​ Edge                                         
+30108 msedge                生意参谋 - 零售电商大数据产品平台 和另外 2 个页面 - 用户配置 1 - Microsoft​ Edge                                         
+ 5896 msedge                ‌﻿​​​​​​‬‍‍​​​​​​﻿​​‬‍⁠‬​‬​‍‌​​‌​‍﻿​﻿‍​​﻿​​​‬⁠​​​﻿各店铺日报 - 飞书云文档 和另外 1 个页面 - 个人 - Microsoft​ Edge
+16128 msedge                我的淘宝 和另外 1 个页面 - 用户配置 1 - Microsoft​ Edge                                                       
+18040 msedge                科塔淘宝 · 日报采集窗口 和另外 3 个页面 - 用户配置 1 - Microsoft​ Edge                                              
+26048 QMGameRecommendTips64 QMGameRecommendTips64                                                                           
+ 7364 RtkUWP                Realtek Audio Console                                                                           
+28052 SystemSettings        设置                                                                                              
+ 5176 TabTip                Shell Handwriting Canvas                                                                        
+17224 TextInputHost         Windows 输入体验                                                                                    
+57044 WorkBuddy             WorkBuddy                                                                                       
+51740 wps                   0922 11-19-08 4970export.xlsx - WPS Office                                                      
+
+
+

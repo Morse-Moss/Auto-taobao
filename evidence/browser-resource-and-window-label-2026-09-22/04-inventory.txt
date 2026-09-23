@@ -1,0 +1,9 @@
+[实例对账] 声明 7 个实例（来源：runtime/browser-ports.mjs）
+  ok   竞品链（买家号 ＋ 小旺神）  浏览器:9222=occupied(profile 一致)  代理:3457=在
+  ok   商家浏览器（日报/周表/灰豚）  浏览器:19022=occupied(profile 一致)  代理:19023=在
+  ok   里可林淘宝  浏览器:19031=occupied(profile 一致)  代理:19041=在
+  ok   网林天猫  浏览器:19032=occupied(profile 一致)  代理:19042=在
+  ok   盖文淘宝  浏览器:19033=occupied(profile 一致)  代理:19043=在
+  ok   盖文天猫  浏览器:19035=occupied(profile 一致)  代理:19045=在
+  ok   科塔淘宝  浏览器:19034=occupied(profile 一致)  代理:19044=在
+[判据] 全部 7 个实例就位

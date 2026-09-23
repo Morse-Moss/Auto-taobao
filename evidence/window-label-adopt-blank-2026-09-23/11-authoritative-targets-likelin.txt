@@ -1,0 +1,10 @@
+Target.getTargets 共 5 条：
+  type=page       attached=true  DAC3D4DDECC4  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  type=iframe     attached=false 2BA97E56901D  https://g.alicdn.com/platform/xdomain-storage/0.2.4/frame.html#%7B%22options%22%3A%7B%22emulateSessi
+  type=page       attached=true  C27132AA7D28  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6
+  type=page       attached=true  6172EA247303  https://one.alimama.com/index.html#!/report/download-list
+  type=iframe     attached=false 3E6AA1F08990  https://xstore.insights.1688.com/index.html?at_iframe=1&versionId=CAEQFBiBgMDcoZfp1BciIGViNWE3YWZjN2
+
+其中 type=page 的：3 条
+任务栏标题说的标签数：4（= 1 + 「另外 3 个页面」）
+差额：1 （有东西没被 CDP 当 page 报出来）
