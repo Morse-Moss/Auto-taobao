@@ -1,0 +1,13 @@
+=== 导航前：620EE557 ===
+  {"href":"https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","title":"生意参谋","ready":"complete","bodyLen":301}
+
+=== 导航到目标地址一次 ===
+  url=https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  /navigate 回执={"frameId":"620EE557EB2227E4EFEC11CAF50CFC0E","loaderId":"67DEC27A8A3DD70D947AC08DEFCA9858","isDownload":false}
+  再等 3000ms 后：{"href":"https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","title":"生意参谋","ready":"complete","bodyLen":301}
+  再等 5000ms 后：{"href":"https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","title":"生意参谋","ready":"complete","bodyLen":301}
+  再等 8000ms 后：{"href":"https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","title":"生意参谋","ready":"complete","bodyLen":301}
+
+=== 判据 ===
+  最终 URL = https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  落在登录页？ 是 ⇒ **会话已失效**（淘宝把目标地址弹回了登录页）⇒ 需要人工登录一次

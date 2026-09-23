@@ -1,0 +1,81 @@
+[
+ {
+  "name": "把「默认不启用分批」改坏（默认每批 2 家）",
+  "verdict": "如期望变红",
+  "red": 7,
+  "failing": [
+   "not ok 1 - 三步的顺序是「先保证实例在 → 再看一眼登录态 → 再跑链」",
+   "not ok 4 - 日期只有一种给法：默认 yesterday，且从不写死具体日期",
+   "not ok 5 - 定时那一档永远不加 --allow-missing-peer（默认关，要开必须显式）"
+  ],
+  "exit": 1
+ },
+ {
+  "name": "把「默认不启用分批」改坏（默认每批 2 家） —— 还原后校验",
+  "verdict": "逐字节一致",
+  "file": "runtime/daily-job-plan.mjs",
+  "sha": "55e3592d7638b00c"
+ },
+ {
+  "name": "把「起与停同一组目标」改坏（停只停第一家）",
+  "verdict": "如期望变红",
+  "red": 1,
+  "failing": [
+   "not ok 7 - 起与停作用在同一组目标上（同一个变量渲染，不给「起 3 家停 2 家」留缝）"
+  ],
+  "exit": 1
+ },
+ {
+  "name": "把「起与停同一组目标」改坏（停只停第一家） —— 还原后校验",
+  "verdict": "逐字节一致",
+  "file": "runtime/batch-plan.mjs",
+  "sha": "35a4c75abe96a97a"
+ },
+ {
+  "name": "把「失败不释放」改坏（链失败也释放）",
+  "verdict": "如期望变红",
+  "red": 1,
+  "failing": [
+   "not ok 12 - 该不该释放：成功放行、失败不主动释放、没跑到链就收掉"
+  ],
+  "exit": 1
+ },
+ {
+  "name": "把「失败不释放」改坏（链失败也释放） —— 还原后校验",
+  "verdict": "逐字节一致",
+  "file": "runtime/batch-plan.mjs",
+  "sha": "35a4c75abe96a97a"
+ },
+ {
+  "name": "把版本号三处一致改坏（package.json 漂一格）",
+  "verdict": "如期望变红",
+  "red": 1,
+  "failing": [
+   "not ok 2 - package.json 的 version 与 VERSION 逐字一致"
+  ],
+  "exit": 1
+ },
+ {
+  "name": "把版本号三处一致改坏（package.json 漂一格） —— 还原后校验",
+  "verdict": "逐字节一致",
+  "file": "package.json",
+  "sha": "fdac85185e8264ab"
+ },
+ {
+  "name": "把「分批也要 --commit」改坏（静默降级成排练）",
+  "verdict": "如期望变红",
+  "red": 3,
+  "failing": [
+   "not ok 13 - 启用分批：它**替换**链那一步（不是并排），参数只带分批驱动认得的那几个",
+   "not ok 14 - 启用分批时 `--commit` 必须显式传下去（漏了它就变成「排练」，而日志看不出异常）",
+   "not ok 15 - 启用分批：告警出口与降级开关照旧按需转发"
+  ],
+  "exit": 1
+ },
+ {
+  "name": "把「分批也要 --commit」改坏（静默降级成排练） —— 还原后校验",
+  "verdict": "逐字节一致",
+  "file": "runtime/daily-job-plan.mjs",
+  "sha": "55e3592d7638b00c"
+ }
+]

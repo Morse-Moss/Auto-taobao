@@ -115,17 +115,38 @@
 （`BROWSER_ACCOUNT`）：同一 profile 里换个账号，采集链会**静默**读到另一家店的数据。
 这条以前踩过，不要为了省内存把它换回来。
 
-## 4. 还没有的那一层
+## 4. 那一层：分批驱动（2026-09-23 已建）
 
-现在**没有**「按店铺起浏览器 / 分批 / 跑完关掉」的驱动：
+**「按店铺起浏览器 / 分批 / 跑完关掉」的驱动已经建出来了**，两半都在：
 
-- SOP 第 1 步是按店铺人工起浏览器（`PROJECT_BROWSER_PORT` / `PROJECT_BROWSER_PROFILE` 各传一遍）；
-- `start-shop-proxy.mjs` 只起**代理**，不起浏览器；
-- `run-multi-shop-day.mjs` 假设「这些店的浏览器都已经开着」。
+- 切批与「该不该释放」的**纯函数**：`runtime/batch-plan.mjs`（离线判据 `runtime/batch-plan.test.mjs`）。
+  每批家数是配置（`--batch-size`），默认 5 家；客户机档位映射见 §3 那张表（8 GB→2、16 GB→4、32 GB→5）。
+- **IO 层**：`scripts/run-batches.mjs`。每一批走四段：
+  `start`（`scripts/start-all.mjs --only <本批>`，幂等）→ `label`（每店挂窗口标识页）→
+  `chain`（`run-multi-shop-day.mjs --shops <本批>`）→ `stop`（`scripts/stop-all.mjs --yes --only <本批>`）。
+  整轮只在开头起一次**共享实例**（商家浏览器 `dailyReport`）：推送段与回读段跑在它上面，
+  所以它**整轮都不停**。
 
-所以方案 B 要落地，得先补一层「**批次驱动**」：划分批次 → 起这一批的浏览器（顺带挂窗口标签页，
-见 `references/sop.md` §1.3）→ 跑这一批 → 关掉这一批 → 下一批。它和「按店铺循环」那层是同一件事的
-两半，建议一起做。
+```bash
+node scripts/run-batches.mjs --print                 # 只打印每一批要执行什么（不起任何进程）
+node scripts/run-batches.mjs --batch-size 2          # 排练（不写飞书），跑完释放
+node scripts/run-batches.mjs --commit                # 真跑：写飞书，跑完释放
+node scripts/run-daily-job.mjs --batches 2 --commit  # 定时形态：把「整轮一次跑完五家」换成分批
+```
+
+**默认关闭**：定时链不带 `--batches` 时三步与从前逐字相同（仍是整轮一次跑完五家店），
+这一条由 `runtime/daily-job-plan.test.mjs` 逐字守着。
+
+失败时**不主动释放**（第 5 条口径：失败优先解决问题，需要人工的就转人工），释放命令写进日志。
+但有一条实测边界必须说清：本层的 `start` 用的是 `scripts/start-all.mjs`（**起完就退**），
+而宿主要在**命令结束时回收整棵进程树** ⇒ **这批窗口活不过本轮命令**；
+「不释放」只等于「我不去停它」，不等于「它还活着」（2026-09-23 实测：命令结束 0.26 秒后
+浏览器连同启动器一起消失、代理还在，看起来像「停了一半」）。
+要让窗口真的留到人来看，得用 `scripts/start-all-hold.mjs` 在后台托住；人不在现场时，
+可查的证据是证据目录里的 `batches.log` 与链自己的体检原始输出。
+
+> 旧说法（已过时，留作对照）：SOP 第 1 步按店铺人工起浏览器；`start-shop-proxy.mjs` 只起代理；
+> `run-multi-shop-day.mjs` 假设「这些店的浏览器都已经开着」；没有分批驱动。
 
 ## 5. 一句话给客户的说法
 

@@ -1,0 +1,22 @@
+{
+  "date": "2026-09-22",
+  "mode": "rehearse",
+  "startedAt": "2026-09-23T03:14:40.834Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 2,
+      "logPath": "evidence\\batches-2026-09-22\\b1\\00-health-check-daily.txt",
+      "ok": false,
+      "blocking": [
+        "TARGET_PAGE_MISSING"
+      ],
+      "blockingDetails": [
+        "目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。"
+      ],
+      "normalize": "有一项不敢动或没做成（生意参谋工作页:ambiguous-drift），交给体检去报",
+      "normalizeChanged": true
+    }
+  },
+  "shops": {},
+  "finishedAt": "2026-09-23T03:14:43.635Z"
+}

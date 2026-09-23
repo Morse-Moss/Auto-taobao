@@ -1,0 +1,89 @@
+[2026-09-23T03:14:35.123Z] 版本：sycm-automation 1.0.0
+[2026-09-23T03:14:35.124Z] === 分批跑开始：目标日 yesterday → 2026-09-22；每批 1 家；共 1 批；模式 rehearse（不写飞书） ===
+[2026-09-23T03:14:35.124Z] 本批证据根：evidence/batches-2026-09-22
+[2026-09-23T03:14:35.124Z] --- ensure-shared：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 商家浏览器（日报/周表/灰豚）  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=31780  日志 runtime/start-stop-logs/2026-09-23T03-14-35/dailyReport-browser.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-09-23T03:14:37.583Z] --- ensure-shared 退出码=0
+[2026-09-23T03:14:37.583Z] --- 第 1/1 批：里可林淘宝 ---
+[2026-09-23T03:14:37.584Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 里可林淘宝  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=63988  日志 runtime/start-stop-logs/2026-09-23T03-14-37/里可林淘宝-browser.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-09-23T03:14:40.064Z] --- start 退出码=0
+[2026-09-23T03:14:40.065Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "里可林淘宝": {
+   "browserPort": 19031,
+   "proxyPort": 19041,
+   "windowTitle": "里可林淘宝 · 日报采集窗口",
+   "memberName": "里可林家居:阿彦",
+   "labelTabs": 0,
+   "tabs": [
+    "工作页（链路要用）  https://one.alimama.com/index.html#!/login/index?mxredirectUrl=%23!%2Freport%2Faccount%3FrptType%3Daccount%26startTime%3D2026-09-21%26endTime%3D2026-09-21%26effectEqual%3D30%26bizCodeIn%3D%255B%2522onebpSearch%2522%252C%2522onebpDisplay%2522%255D%26granularity%3Dday   ← 这一页现在停在登录页，说明这家店还没登录",
+    "工作页（链路要用）  https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop   ← 这一页现在停在登录页，说明这家店还没登录",
+    "空白页（残留）  about:blank"
+   ],
+   "leftover": [
+    "空白页（残留）  about:blank"
+   ],
+   "loginHint": "这家店还没登录：看到登录页的是 one.alimama.com、sycm.taobao.com",
+   "labelTab": {
+    "ok": true,
+    "reused": false,
+    "adoptedBlank": true,
+    "targetId": "9E8A9D5C689D331905D1823CC51120B2",
+    "pinned": true
+   },
+   "labelState": "需要登录（来源：从页签 URL 读出来）",
+   "labelMember": "里可林家居:阿彦",
+   "labelActual": "没读到实际登录的会员名 ⇒ 标签页上不显示这一行（页面上没有「会员名 + ID」那一段（多半还停在登录页））",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-09-23T03:14:40.528Z] --- label:里可林淘宝 退出码=0
+[2026-09-23T03:14:40.529Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --shops 里可林淘宝 --notify-print --logs evidence\batches-2026-09-22\b1
+[驱动] 目标日 2026-09-22｜模式 rehearse｜店铺 1 家：里可林淘宝
+[驱动] （--date yesterday 按 Asia/Shanghai 解析成 2026-09-22）
+[驱动] 日志根 D:\Retire\sycm-automation\evidence\batches-2026-09-22\b1
+[驱动] 本机 DESKTOP-KJP4RA5
+[驱动] 排练模式：采集是真的，两个写入方都是干跑，不写飞书。
+[驱动] 出错时：--notify-print：只打印不投递
+[驱动]   里可林淘宝 | 页头店名 里可林家居 | 会员 里可林家居:阿彦 2350600069
+[一轮]   归位：有一项不敢动或没做成（生意参谋工作页:ambiguous-drift），交给体检去报
+[一轮]     [归位] 生意参谋工作页：ambiguous-drift
+[一轮]     [归位] 飞书底单页：create
+[一轮]   体检未通过：阻断 1 项，告警 1 项
+[一轮]     [阻断] TARGET_PAGE_MISSING：目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。
+[一轮]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[一轮]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；未通过 1 项：TARGET_PAGE_MISSING；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[驱动] 商家浏览器体检未通过 ⇒ 整轮不跑（推送段与回读段都要用它）。详见 evidence\batches-2026-09-22\b1\00-health-check-daily.txt
+[驱动] 告警文案（收信人看到的）：
+【需要处理】全部店铺的日报都没跑起来（统计日 2026-09-22）
+对象：日报一轮 · 1 家店
+数据周期：统计日 2026-09-22
+任务：各店铺日报
+原因：整轮没开跑：那个开着飞书「各店铺日报」的浏览器窗口里，页面不齐。
+  目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。
+下一步：打开那个开着飞书「各店铺日报」的浏览器窗口，把这两页各开一个（只留一个，多开同样会报错）：生意参谋的「店铺」工作页、飞书「各店铺日报」底单页。开好后告诉技术同学重跑一次。
+时间：2026-09-23 11:14
+告警编号：daily-round-20260922
+[驱动] （--notify-print：只打印、不投递）
+[2026-09-23T03:14:43.661Z] --- chain 退出码=1
+[2026-09-23T03:14:43.661Z] --- stop：跳过 —— 这一批没跑成（链退出码 1）—— 窗口留着等人看；处理完后用 node scripts/stop-all.mjs --yes --only <本批店铺> 释放
+[2026-09-23T03:14:43.661Z] [批次] 这一批的窗口**留着**：这一批没跑成（链退出码 1）—— 窗口留着等人看；处理完后用 node scripts/stop-all.mjs --yes --only <本批店铺> 释放
+[2026-09-23T03:14:43.661Z] --- 第 1/1 批：里可林淘宝 小结：链退出码=1；释放=未做；这一批没跑成（链退出码 1）—— 窗口留着等人看；处理完后用 node scripts/stop-all.mjs --yes --only <本批店铺> 释放
+[2026-09-23T03:14:43.700Z] === 分批跑结束：0/1 批成功；释放 0 批；明细 evidence/batches-2026-09-22/batches.json ===

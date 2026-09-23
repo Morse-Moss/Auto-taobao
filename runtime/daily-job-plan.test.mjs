@@ -102,3 +102,66 @@ test('/TR 只拉起一个入口（三步由它自己按顺序执行，日志也�
   // 三步都不许被拍平进 /TR —— 那样没人能说清到点跑的是什么
   assert.doesNotMatch(text, /start-all|run-multi-shop-day|check-login-shops/u);
 });
+
+// ---------------------------------------------------------------------------
+// 分批跑（2026-09-23 加）：**默认关闭**这件事必须由判据守着，不能只写在注释里。
+//
+// 背景：用户要「跑完释放」，因为「全部店铺都不释放，电脑性能撑不住」。分批驱动的语义是
+// 「起这一批 → 挂标识页 → 跑这一批 → 停这一批」。它一旦被误开，代价是**定时链的行为变了**
+// 而没人知道 —— 所以第一条判据就是「不传 `--batches` 时，渲染出来的命令逐字不变」。
+// ---------------------------------------------------------------------------
+test('不启用分批时，三步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）', () => {
+  const plan = buildJobPlan();
+  assert.equal(plan.batches, null);
+  assert.deepEqual(plan.steps.map((s) => s.name), ['ensure-instances', 'login-preflight', 'chain']);
+
+  // 逐字比较：跟上一次「没有分批这个概念」时渲染出来的那三行比。
+  // 用固定期望值而不是「再跑一次自己」，否则这类断言永远绿（自己等于自己）。
+  const render = (p) => p.steps.map((s) => renderCommand(s, { nodeExe: 'N', repoRoot: 'R' }));
+  assert.deepEqual(render(plan), [
+    'N R\\scripts\\start-all.mjs',
+    'N R\\skills\\sycm-alimama-daily-report\\scripts\\check-login-shops.mjs',
+    'N R\\skills\\sycm-alimama-daily-report\\scripts\\run-multi-shop-day.mjs --date yesterday --commit --notify-print',
+  ]);
+  assert.doesNotMatch(render(plan).join(' '), /run-batches\.mjs/u, '默认这一档里不许出现分批驱动');
+});
+
+test('启用分批：它**替换**链那一步（不是并排），参数只带分批驱动认得的那几个', () => {
+  const plan = buildJobPlan({ batches: 2 });
+  assert.equal(plan.batches, 2);
+  assert.deepEqual(plan.steps.map((s) => s.name), ['ensure-instances', 'login-preflight', 'batch-chain'],
+    '两条一起跑会让同一家店被驱动两次 —— 必须是替换关系');
+  const step = plan.steps[2];
+  assert.match(step.file, /scripts\/run-batches\.mjs$/u);
+  assert.equal(step.blocking, true);
+  assert.deepEqual(step.args, ['--date', 'yesterday', '--batch-size', '2', '--commit', '--notify-print']);
+  // 链那边才认的开关不许漏进来：分批驱动没有 `--only`/`--logs`/`--downloads` 的概念
+  assert.doesNotMatch(step.args.join(' '), /--only|--logs|--downloads/u);
+});
+
+test('启用分批时 `--commit` 必须显式传下去（漏了它就变成「排练」，而日志看不出异常）', () => {
+  // 分批驱动自己的默认是排练（不写飞书）；定时任务的职责是写下今天的数据。
+  // 这条是**静默降级**里最贵的一种：不报错、不告警、日志里那句「模式」也照旧。
+  assert.ok(buildJobPlan({ batches: 2 }).steps[2].args.includes('--commit'),
+    '定时形态必须带 --commit，否则整轮不写飞书而没人会发现');
+});
+
+test('启用分批：告警出口与降级开关照旧按需转发', () => {
+  const plan = buildJobPlan({ batches: 3, notify: true, keepGoing: true });
+  assert.deepEqual(plan.steps[2].args,
+    ['--date', 'yesterday', '--batch-size', '3', '--commit', '--notify', '--keep-going']);
+  assert.deepEqual(buildJobPlan({ batches: 3, shops: ['科塔淘宝'] }).steps[2].args,
+    ['--date', 'yesterday', '--batch-size', '3', '--commit', '--notify-print', '--shops', '科塔淘宝']);
+});
+
+test('启用分批时的形状校验：家数必须是 ≥1 的整数，且不许与链那边独有的开关同给', () => {
+  for (const bad of [0, -1, 2.5, '2', null]) {
+    if (bad === null) continue; // null ＝ 不启用，不是非法值
+    assert.throws(() => buildJobPlan({ batches: bad }), /≥1 的整数/u, `${JSON.stringify(bad)} 应当被拒`);
+  }
+  // 静默忽略 `--only` 会让操作者以为自己筛过了，而实际跑的是全部 —— 宁可当场拒。
+  assert.throws(() => buildJobPlan({ batches: 2, only: ['push'] }), /不能同时给/u);
+  assert.throws(() => buildJobPlan({ batches: 2, logs: 'x' }), /不能同时给/u);
+  assert.throws(() => buildJobPlan({ batches: 2, downloads: 'x' }), /不能同时给/u);
+});
+

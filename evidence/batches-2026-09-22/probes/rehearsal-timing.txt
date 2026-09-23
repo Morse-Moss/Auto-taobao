@@ -1,0 +1,20 @@
+===== 每段耗时（由日志时间戳算）=====
+     2.5 s   ensure-shared
+     0.0 s   ensure-shared
+     0.0 s   第 1/1 批
+     2.5 s   start
+     0.0 s   start
+     0.5 s   label:里可林淘宝
+     0.0 s   label:里可林淘宝
+     3.1 s   chain
+     0.0 s   chain
+     0.0 s   stop
+  （最后一条：第 1/1 批 @ 2026-09-23T03:14:43.661Z）
+===== 关键判据行 =====
+--- ensure-shared 退出码=0
+--- start 退出码=0
+--- label:里可林淘宝 退出码=0
+--- chain 退出码=1
+--- stop：跳过 —— 这一批没跑成（链退出码 1）—— 窗口留着等人看；处理完后用 node scripts/stop-all.mjs --yes --only <本批店铺> 释放
+[批次] 这一批的窗口**留着**：这一批没跑成（链退出码 1）—— 窗口留着等人看；处理完后用 node scripts/stop-all.mjs --yes --only <本批店铺> 释放
+--- 第 1/1 批：里可林淘宝 小结：链退出码=1；释放=未做；这一批没跑成（链退出码 1）—— 窗口留着等人看；处理完后用 node scripts/stop-all.mjs --yes --only <本批店铺> 释放

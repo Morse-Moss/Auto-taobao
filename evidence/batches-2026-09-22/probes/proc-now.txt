@@ -1,0 +1,20 @@
+[说明] 只保留与本项目相关的行（原始快照含别的项目/别的会话，不提交）。
+[说明] 用途：证明「自动化实例的 msedge 一个都没有、而启动器/代理的 node 全在」。
+
+=== node 进程 ===
+PID=24256 PPID=25356 :: "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe" scripts\start-all-hold.mjs
+PID=60516 PPID=55684 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=17992 PPID=55684 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 里可林淘宝
+PID=41980 PPID=55684 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=40888 PPID=55684 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 网林天猫
+PID=40900 PPID=55684 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=59044 PPID=55684 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 盖文淘宝
+PID=50456 PPID=55684 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=58940 PPID=55684 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 盖文天猫
+PID=50272 PPID=55684 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=50492 PPID=55684 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 科塔淘宝
+PID=45108 PPID=62016 :: "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe" scripts\start-all-hold.mjs
+PID=59720 PPID=25184 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=19044 PPID=25184 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-competitor-proxy.mjs
+PID=36636 PPID=25184 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-daily-report-browser.mjs
+PID=3292 PPID=25184 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-daily-report-proxy.mjs

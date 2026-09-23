@@ -1,0 +1,39 @@
+### .workbuddy/memory/2026-09-12.md
+  7: - 坑2：WorkBuddy 前台命令退出会连带杀掉启动的 Edge/proxy 子进程；只有 run_in_background 后台任务能保活子进程。后台任务沙箱还拦 taskkill/curl（PATH 走到 system32），改用 node process.kill 和 /dev/tcp 探测。
+
+### .workbuddy/memory/2026-09-19.md
+  272: `taskkill /F` 只杀那一个 PID，不带 `/T`。新代理起来后 `/health` 出现 `pinnedTabs` 字段 ⇒ 新版生效。
+
+### docs/ops/DEV-AGENT-PRODUCTION-SUPERVISION.md
+  32: | 死活 | `process.kill(pid,0)` | `FAILED` / `RUNNING` |
+
+### evidence/cold-start-rehearsal-2026-09-23/README.md
+  115: ⇒ 结论（写进纪律）：**「用 taskkill 停 holder 就能顺手带走实例」这个假设是错的；
+
+### runtime/launch-plan.mjs
+  225: /** taskkill 的参数（渲染与执行共用一份，避免「打印的」与「执行的」不一样）。 */
+  226: export function taskkillArgs(pid) {
+
+### runtime/launch-plan.test.mjs
+  10: import { buildChildEnv, buildFullPlan, buildLaunchCommands, buildStopOrder, INSTANCE_ENV_KEYS, launcherHintFor, matchInstances, onlyHelpText, planInstanceStop, selectActions, taskkillArgs } from './launch-plan.mjs';
+  192: test('taskkill 参数只有一份：打印的与执行的不可能不一样', () => {
+  193: assert.deepEqual(taskkillArgs(1234), ['/PID', '1234', '/T', '/F']);
+  194: assert.deepEqual(taskkillArgs('1234'), taskkillArgs(1234), 'pid 传入字符串也要得到同一组参数');
+
+### runtime/supervise-collection.mjs
+  123: process.kill(pid, 0);
+
+### scripts/stop-all.mjs
+  33: import { launcherHintFor, matchInstances, onlyHelpText, planInstanceStop, taskkillArgs } from '../runtime/launch-plan.mjs';
+  38: /** taskkill 的绝对路径。用它而不是裸命令名：本脚本可能在计划任务里跑，那里的 PATH 未必一样。 */
+  39: const TASKKILL = path.join(process.env.SystemRoot ?? 'C:/Windows', 'System32', 'taskkill.exe');
+  129: targets: decision.targets.map((t) => ({ ...t, command: `taskkill ${taskkillArgs(t.pid).join(' ')}` })),
+  137: execFileSync(TASKKILL, taskkillArgs(target.pid), { stdio: 'pipe' });
+  140: // taskkill 在「进程已经没了」时也返回非 0 —— 那不算失败。看得见的证据是**回读**。
+  146: // 判据是回读，不是 taskkill 的退出码（HTTP 200 / exit 0 都可能是假成功，这里同理）。
+
+### skills/xws-export-market-analysis/scripts/runtime-lock.mjs
+  34: process.kill(pid, 0);
+
+### tmp/probe-market-analysis-lock.mjs
+  22: try { process.kill(record.pid, 0); alive = 'alive'; } catch (error) { alive = error.code === 'ESRCH' ? 'dead' : error.code; }

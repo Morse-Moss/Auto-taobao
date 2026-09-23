@@ -1,0 +1,151 @@
+{
+ "machine": "DESKTOP-KJP4RA5",
+ "verdict": "NEEDS_LOGIN",
+ "needHuman": [
+  {
+   "shop": "里可林淘宝",
+   "sites": [
+    "sycm"
+   ]
+  },
+  {
+   "shop": "网林天猫",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "盖文淘宝",
+   "sites": [
+    "sycm"
+   ]
+  },
+  {
+   "shop": "盖文天猫",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "科塔淘宝",
+   "sites": [
+    "sycm"
+   ]
+  }
+ ],
+ "unknown": [],
+ "checked": 5,
+ "rows": [
+  {
+   "shop": "里可林淘宝",
+   "verdict": "NEEDS_LOGIN",
+   "sites": {
+    "sycm": "LOGGED_OUT",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [
+    "sycm"
+   ],
+   "unreadable": [
+    "alimama"
+   ],
+   "href": {
+    "sycm": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": null
+   },
+   "scriptVerdict": "NEEDS_LOGIN",
+   "detail": "要留意的是：生意参谋（被踢回登录页）、阿里妈妈（读不到：这个窗口里没有它的页面）。",
+   "childExitCode": 2,
+   "probeError": null
+  },
+  {
+   "shop": "网林天猫",
+   "verdict": "NEEDS_LOGIN",
+   "sites": {
+    "sycm": "LOGGED_OUT",
+    "alimama": "LOGGED_OUT"
+   },
+   "needsLogin": [
+    "sycm",
+    "alimama"
+   ],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html#!/login/index"
+   },
+   "scriptVerdict": "NEEDS_LOGIN",
+   "detail": "要留意的是：生意参谋（被踢回登录页）、阿里妈妈（被踢回登录页）。",
+   "childExitCode": 2,
+   "probeError": null
+  },
+  {
+   "shop": "盖文淘宝",
+   "verdict": "NEEDS_LOGIN",
+   "sites": {
+    "sycm": "LOGGED_OUT",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [
+    "sycm"
+   ],
+   "unreadable": [
+    "alimama"
+   ],
+   "href": {
+    "sycm": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": null
+   },
+   "scriptVerdict": "NEEDS_LOGIN",
+   "detail": "要留意的是：生意参谋（被踢回登录页）、阿里妈妈（读不到：这个窗口里没有它的页面）。",
+   "childExitCode": 2,
+   "probeError": null
+  },
+  {
+   "shop": "盖文天猫",
+   "verdict": "NEEDS_LOGIN",
+   "sites": {
+    "sycm": "LOGGED_OUT",
+    "alimama": "LOGGED_OUT"
+   },
+   "needsLogin": [
+    "sycm",
+    "alimama"
+   ],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html#!/login/index"
+   },
+   "scriptVerdict": "NEEDS_LOGIN",
+   "detail": "要留意的是：生意参谋（被踢回登录页）、阿里妈妈（被踢回登录页）。",
+   "childExitCode": 2,
+   "probeError": null
+  },
+  {
+   "shop": "科塔淘宝",
+   "verdict": "NEEDS_LOGIN",
+   "sites": {
+    "sycm": "LOGGED_OUT",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [
+    "sycm"
+   ],
+   "unreadable": [
+    "alimama"
+   ],
+   "href": {
+    "sycm": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": null
+   },
+   "scriptVerdict": "NEEDS_LOGIN",
+   "detail": "要留意的是：生意参谋（被踢回登录页）、阿里妈妈（读不到：这个窗口里没有它的页面）。",
+   "childExitCode": 2,
+   "probeError": null
+  }
+ ]
+}
+EXIT=2

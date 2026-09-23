@@ -1,0 +1,15 @@
+=== 这个浏览器里有 3 个页；逐页读「页面自己说的话」 ===
+  C13B1C74
+     /targets.url = https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/
+     页面自报     = {"href":"https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/","title":"生意参谋","ready":"complete","bodyLen":301}
+  620EE557
+     /targets.url = https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+     页面自报     = {"href":"https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","title":"生意参谋","ready":"complete","bodyLen":301}
+  CEF7C363
+     /targets.url = https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+     页面自报     = {"href":"https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo","title":"Docs","ready":"complete","bodyLen":190}
+
+=== 等 8 秒后再读一遍（区分「没加载完」与「加载不到」） ===
+  C13B1C74  {"href":"https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/","ready":"complete"}
+  620EE557  {"href":"https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","ready":"complete"}
+  CEF7C363  {"href":"https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo","ready":"complete"}

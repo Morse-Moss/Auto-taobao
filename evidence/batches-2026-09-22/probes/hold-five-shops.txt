@@ -1,0 +1,19 @@
+[起齐] 目标 5 个实例（来源：runtime/browser-ports.mjs）
+  · 里可林淘宝  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=30892  日志 runtime/start-stop-logs/2026-09-23T03-24-55/里可林淘宝-browser.log
+      起后:ready
+  · 网林天猫  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=46328  日志 runtime/start-stop-logs/2026-09-23T03-24-55/网林天猫-browser.log
+      起后:ready
+  · 盖文淘宝  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=17380  日志 runtime/start-stop-logs/2026-09-23T03-24-55/盖文淘宝-browser.log
+      起后:ready
+  · 盖文天猫  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=25464  日志 runtime/start-stop-logs/2026-09-23T03-24-55/盖文天猫-browser.log
+      起后:ready
+  · 科塔淘宝  起前:browser-missing  代理在，浏览器没了
+      已起 browser pid=55440  日志 runtime/start-stop-logs/2026-09-23T03-24-55/科塔淘宝-browser.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[hold] start-all 已就位，开始托住（停这个进程不会停浏览器；要停浏览器用 scripts/stop-all.mjs --yes）

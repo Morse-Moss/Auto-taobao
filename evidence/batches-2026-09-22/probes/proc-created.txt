@@ -1,0 +1,21 @@
+﻿=== 项目相关 node 进程的创建时间 ===
+PID=24256 PPID=25356 created=2026-09-23T10:15:01.6518760+08:00 :: "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe" scripts\start-all-hold.mjs
+PID=60516 PPID=55684 created=2026-09-23T10:15:02.0840440+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=17992 PPID=55684 created=2026-09-23T10:15:02.1146920+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 里可林淘宝
+PID=41980 PPID=55684 created=2026-09-23T10:15:04.1728060+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=40888 PPID=55684 created=2026-09-23T10:15:04.2022420+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 网林天猫
+PID=40900 PPID=55684 created=2026-09-23T10:15:06.2444990+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=59044 PPID=55684 created=2026-09-23T10:15:06.2736830+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 盖文淘宝
+PID=50456 PPID=55684 created=2026-09-23T10:15:08.3090550+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=58940 PPID=55684 created=2026-09-23T10:15:08.3697980+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 盖文天猫
+PID=50272 PPID=55684 created=2026-09-23T10:15:10.4311470+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=50492 PPID=55684 created=2026-09-23T10:15:10.4675480+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-shop-proxy.mjs 科塔淘宝
+PID=45108 PPID=62016 created=2026-09-23T10:18:36.0263150+08:00 :: "C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe" scripts\start-all-hold.mjs
+PID=59720 PPID=25184 created=2026-09-23T10:18:36.5526320+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-project-browser.mjs
+PID=19044 PPID=25184 created=2026-09-23T10:18:36.5832630+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-competitor-proxy.mjs
+PID=36636 PPID=25184 created=2026-09-23T10:18:38.6266520+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-daily-report-browser.mjs
+PID=3292 PPID=25184 created=2026-09-23T10:18:38.6584170+08:00 :: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\start-daily-report-proxy.mjs
+
+=== 那两个启动器日志的 mtime ===
+D:\Retire\sycm-automation\runtime\start-stop-logs\2026-09-23T03-14-35\dailyReport-browser.log  size=479  mtime=2026-09-23T11:14:36.5620815+08:00
+D:\Retire\sycm-automation\runtime\start-stop-logs\2026-09-23T03-14-37\里可林淘宝-browser.log  size=377  mtime=2026-09-23T11:14:39.1280465+08:00

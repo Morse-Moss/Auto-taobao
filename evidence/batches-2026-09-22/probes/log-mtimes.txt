@@ -1,0 +1,21 @@
+now=2026-09-23T03:18:09.241Z  本地=2026-09-23 11:18:09
+=== 2026-09-23T02-15-02 ===
+  盖文天猫-browser.log  414B  mtime=2026-09-23T02:47:07.065Z
+  盖文天猫-proxy.log  1008B  mtime=2026-09-23T02:47:06.156Z
+  盖文淘宝-browser.log  410B  mtime=2026-09-23T02:47:05.799Z
+  盖文淘宝-proxy.log  1002B  mtime=2026-09-23T02:47:04.953Z
+  科塔淘宝-browser.log  414B  mtime=2026-09-23T02:47:08.210Z
+  科塔淘宝-proxy.log  998B  mtime=2026-09-23T02:47:07.381Z
+  网林天猫-browser.log  416B  mtime=2026-09-23T02:47:04.469Z
+  网林天猫-proxy.log  1011B  mtime=2026-09-23T02:47:03.912Z
+  里可林淘宝-browser.log  408B  mtime=2026-09-23T02:47:02.654Z
+  里可林淘宝-proxy.log  1180B  mtime=2026-09-23T03:14:43.961Z
+=== 2026-09-23T02-18-36 ===
+  competitor-browser.log  344B  mtime=2026-09-23T02:47:11.453Z
+  competitor-proxy.log  896B  mtime=2026-09-23T02:47:11.099Z
+  dailyReport-browser.log  510B  mtime=2026-09-23T02:47:09.174Z
+  dailyReport-proxy.log  1081B  mtime=2026-09-23T03:14:44.200Z
+=== 2026-09-23T03-14-35 ===
+  dailyReport-browser.log  479B  mtime=2026-09-23T03:14:36.562Z
+=== 2026-09-23T03-14-37 ===
+  里可林淘宝-browser.log  377B  mtime=2026-09-23T03:14:39.128Z

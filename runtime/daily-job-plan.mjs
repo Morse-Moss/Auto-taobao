@@ -26,6 +26,10 @@ export const JOB_FILES = Object.freeze({
   loginPreflight: 'skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs',
   // 全链驱动。参数口径见 skills/sycm-alimama-daily-report/references/sop.md §13。
   chain: 'skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs',
+  // 分批驱动（2026-09-23 加，**默认不启用**）。它自己会做「起这一批 → 挂标识页 → 跑 → 停这一批」，
+  // 所以启用时它**替换**上面那条 `chain`，而不是与它并排 —— 两条一起跑会让同一家店被驱动两次。
+  // 路径同样以字符串写：本文件不该把编排脚本拉进模块图（理由见文件头）。
+  batchChain: 'scripts/run-batches.mjs',
 });
 
 /** 允许转发的可选开关（透传，不在本文件里复述它们的含义）。 */
@@ -37,6 +41,35 @@ const CHAIN_FLAGS = Object.freeze({
 });
 
 const CHAIN_VALUED = Object.freeze({ shops: '--shops', only: '--only', logs: '--logs', downloads: '--downloads' });
+
+/**
+ * 分批驱动那一段的参数（**与链那一段刻意分开算**）。
+ *
+ * 为什么不复用 `chainArgs`：分批驱动只认其中一部分开关 —— 它没有 `--only`（阶段级筛选在
+ * 「一批」这个粒度上没有意义）、也没有 `--logs`/`--downloads`（它自己按批分配证据目录，
+ * 见 run-batches 里那段注释）。把链的参数表整份塞过去，轻则报「未知参数」，
+ * 重则某个同名字段被当成另一层含义用掉 —— 那种错在日志里长得完全正常。
+ *
+ * `--batch-size` 是必给的（`--batches` 没值就当场拒，见 buildJobPlan）：
+ * 「每批几家」是这个功能唯一的旋钮，它缺省掉的那天没人会注意到自己又回到了全量常驻。
+ */
+export function buildBatchChainArgs({
+  dateInput = 'yesterday', notify = false, keepGoing = false, allowMissingPeer = false,
+  shops = null, batches = null, commit = false,
+} = {}) {
+  const args = ['--date', dateInput, '--batch-size', String(batches)];
+  // `--commit` 必须由这里显式给：分批驱动自己的默认是**排练**（不写飞书），
+  // 而定时任务的职责就是「写下今天的数据」。漏了这一句，行为会从「写飞书」
+  // 悄悄变成「什么都不写」，而日志里那句「模式 commit」不会有任何异常 ——
+  // 这是本条最危险的一处静默降级，所以它有一条专门的用例。
+  if (commit) args.push('--commit');
+  args.push(notify ? CHAIN_FLAGS.notify : CHAIN_FLAGS.notifyPrint);
+  if (keepGoing) args.push(CHAIN_FLAGS.keepGoing);
+  if (allowMissingPeer) args.push(CHAIN_FLAGS.allowMissingPeer);
+  // 排查用「只跑某几家」在这里仍然有意义：`--shops` 是「跑哪几家」，与批次粒度无关。
+  if (shops) args.push(CHAIN_VALUED.shops, shops.join(','));
+  return args;
+}
 
 /**
  * 定时任务要跑的三步。纯函数 —— 参数表可以被离线断言。
@@ -60,6 +93,7 @@ export function buildJobPlan(options = {}) {
   const {
     dateInput = 'yesterday', notify = false, notifyPrint = false, keepGoing = false,
     allowMissingPeer = false, shops = null, only = null, logs = null, downloads = null,
+    batches = null,
   } = options;
 
   // 告警出口必须恰好一个：两个都传会让驱动那边 `--notify-print` 赢（resolveAlertDispatch 的顺序），
@@ -67,6 +101,21 @@ export function buildJobPlan(options = {}) {
   if (notify && notifyPrint) {
     throw new Error('--notify 与 --notify-print 互斥：告警出口只能有一个（同时传时 --notify-print 会赢，'
       + '于是「要发飞书」这层意图被静默丢掉）');
+  }
+
+  // 「分批跑」是一个**显式**开关：不传 `batches` 时下面这个分支一个字符都不会走到，
+  // 三步与从前逐字相同（这条由 daily-job-plan.test.mjs 断言，因为「默认不变」是它唯一的安全保证）。
+  if (batches !== null && batches !== undefined) {
+    if (!Number.isInteger(batches) || batches < 1) {
+      throw new Error(`--batches 要一个 ≥1 的整数（每批几家），收到 ${JSON.stringify(batches)}。`
+        + '不给这个开关，定时链的行为与从前逐字相同。');
+    }
+    if (only || logs || downloads) {
+      // 这三样是**链那一段**的开关，分批驱动没有对应的概念。静默忽略它们，
+      // 等于让操作者以为自己筛过了 —— 而实际跑的是全部。宁可当场拒。
+      throw new Error('--only / --logs / --downloads 与 --batches 不能同时给：'
+        + '分批驱动没有这三个概念（它自己按批分配证据目录）。要阶段级筛选请直接用链那条命令。');
+    }
   }
 
   const chainArgs = ['--date', dateInput, '--commit'];
@@ -84,8 +133,28 @@ export function buildJobPlan(options = {}) {
     if (value) chainArgs.push(flag, String(value));
   }
 
+  const batchMode = batches !== null && batches !== undefined;
+  const chainStep = batchMode
+    ? {
+      name: 'batch-chain',
+      file: JOB_FILES.batchChain,
+      args: buildBatchChainArgs({
+        dateInput, notify, keepGoing, allowMissingPeer, shops, batches, commit: true,
+      }),
+      note: `分批跑（每批 ${batches} 家）：起这一批 → 挂店铺标识页 → 跑这一批 → 停这一批（跑成才停）`,
+      blocking: true,
+    }
+    : {
+      name: 'chain',
+      file: JOB_FILES.chain,
+      args: chainArgs,
+      note: '全链：体检 → 采集 → 推送 → 回填 → 回读',
+      blocking: true,
+    };
+
   return {
     dateInput,
+    batches: batches ?? null,
     steps: [
       {
         name: 'ensure-instances',
@@ -107,13 +176,7 @@ export function buildJobPlan(options = {}) {
         // 但它不许拦住链 —— 掉了登录这件事，链自己会在采集段如实报出来。
         blocking: false,
       },
-      {
-        name: 'chain',
-        file: JOB_FILES.chain,
-        args: chainArgs,
-        note: '全链：体检 → 采集 → 推送 → 回填 → 回读',
-        blocking: true,
-      },
+      chainStep,
     ],
   };
 }
@@ -125,7 +188,7 @@ export function renderCommand(step, { nodeExe, repoRoot } = {}) {
   return [quote(nodeExe), quote(file), ...step.args.map(quote)].join(' ');
 }
 
-/** 任务的 `/TR`：只要拉起**这一个**入口，两步由它自己按顺序执行（日志也就只有一处）。 */
+/** 任务的 `/TR`：只要拉起**这一个**入口，三步由它自己按顺序执行（日志也就只有一处）。 */
 export function renderJobEntryCommand({ nodeExe, repoRoot, jobFile, args = [] } = {}) {
   return renderCommand({ file: jobFile, args }, { nodeExe, repoRoot });
 }

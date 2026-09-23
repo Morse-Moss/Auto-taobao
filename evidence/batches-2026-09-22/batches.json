@@ -1,0 +1,29 @@
+{
+ "version": "sycm-automation 1.0.0",
+ "date": "2026-09-22",
+ "dateInput": "yesterday",
+ "mode": "rehearse",
+ "batchSize": 1,
+ "evidenceRoot": "evidence/batches-2026-09-22",
+ "release": true,
+ "rounds": [
+  {
+   "index": 1,
+   "shops": [
+    "里可林淘宝"
+   ],
+   "steps": {
+    "start": 0,
+    "label:里可林淘宝": 0,
+    "chain": 1,
+    "stop": "skipped"
+   },
+   "chainStatus": 1,
+   "release": null,
+   "decision": {
+    "release": false,
+    "why": "这一批没跑成（链退出码 1）—— 窗口留着等人看；处理完后用 node scripts/stop-all.mjs --yes --only <本批店铺> 释放"
+   }
+  }
+ ]
+}
