@@ -1,0 +1,30 @@
+﻿{
+ "proxy": "http://127.0.0.1:19043",
+ "commit": false,
+ "notify": {
+  "mode": "auto",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": true,
+   "href": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  },
+  "alimama": {
+   "label": "阿里妈妈",
+   "loggedIn": true,
+   "href": "https://one.alimama.com/index.html",
+   "reason": null
+  }
+ },
+ "login": null,
+ "session": {
+  "shop": "盖文淘宝",
+  "proxyPort": 19043,
+  "judged": true
+ },
+ "verdict": "ALREADY_LOGGED_IN"
+}

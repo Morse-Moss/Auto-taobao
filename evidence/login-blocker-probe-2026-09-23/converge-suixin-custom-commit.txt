@@ -1,0 +1,24 @@
+备份：D:/Retire/edge-profile-backups/suixin-custom-2026-09-23T14-59-24（Login Data ＋ -wal ＋ -shm）
+目标 profile：D:/Retire/edge-profiles/suixin-custom
+模式：**真删**
+
+── 删前 ──
+  淘宝凭据：共 4 条淘宝凭据，其中与登录页同 origin 的 2 条
+      id=2  https://login.taobao.com/member/login.jhtml  →  "盖文旗舰店:阿彦"（用过 0）
+      id=5  https://login.taobao.com/member/login.jhtml  →  "随心品质定制:阿彦"（用过 1）
+
+要删：origin=https://login.taobao.com/member/login.jhtml  账号="盖文旗舰店:阿彦"
+  ✓ 命中 1 条：id=2（用过 0）
+
+要删：origin=https://havanalogin.taobao.com/mini_login.htm  账号="盖文旗舰店:阿彦"
+  ✓ 命中 1 条：id=3（用过 0）
+
+已删除 2 条（logins ＋ sync_entities_metadata ＋ logins_edge_extended 同步删）。
+
+── 删后（回读自证）──
+  淘宝凭据：共 2 条淘宝凭据，其中与登录页同 origin 的 1 条
+      id=5  https://login.taobao.com/member/login.jhtml  →  "随心品质定制:阿彦"（用过 1）
+  ⇒ 与登录页同 origin 的凭据 1 条：恰好一条 ⇒ 能填、且填的一定是它 ✅
+  ⇒ 被删的那几条是否真的不在了：是 ✅
+
+⚠️ 复核要求：起一次这个 profile 的浏览器，再跑 peek-sync-state.mjs 看有没有被同步拉回来。

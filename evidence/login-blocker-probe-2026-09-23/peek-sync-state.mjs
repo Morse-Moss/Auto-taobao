@@ -10,7 +10,9 @@
 // 报告由脚本自己写文件：本机 PowerShell 会把子进程 stdout 按 GBK 解码，
 // 中文与 emoji 经它中转会变成乱码甚至二进制（Read 工具直接拒读）。
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 
 const argv = process.argv.slice(2);
 const outIdx = argv.indexOf('--out');
@@ -62,6 +64,44 @@ for (const p of PROFILES) {
     say(`  ⚠️ 存在 Sync Data 目录，里面 ${count} 个文件 ⇒ 这个 profile 做过同步（密码可能被云端留着，删了会被拉回来）`);
   } else {
     say('  ✅ 没有 Sync Data 目录 ⇒ 从没同步过，删掉就是删掉了');
+  }
+
+  // 最硬的一条判据，而且就长在密码库自己身上：Chromium 把「这条凭据的同步元数据」写进
+  // `Login Data` 里的 `sync_entities_metadata` / `meta` 表。这两张表**在且非空** ⇒ 这个密码库
+  // 确实参与过同步 ⇒ 从本地直接删掉一行，云端**可能**把它再拉回来（删完回读 0 条、下次启动又变 2 条，且不报错）。
+  const loginData = `${dir}/Default/Login Data`;
+  if (fs.existsSync(loginData)) {
+    try {
+      let db = null;
+      let src = loginData;
+      try {
+        db = new DatabaseSync(loginData, { readOnly: true });
+        db.prepare('SELECT count(*) AS n FROM logins').get();
+      } catch {
+        try { db?.close(); } catch { /* 忽略 */ }
+        src = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'sync-peek-')), 'Login Data');
+        fs.copyFileSync(loginData, src);
+        db = new DatabaseSync(src, { readOnly: true });
+      }
+      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all()
+        .map((r) => String(r.name));
+      const syncTables = tables.filter((t) => t.startsWith('sync_') || t === 'meta');
+      let detail = [];
+      for (const t of syncTables) {
+        let n = -1;
+        try { n = db.prepare(`SELECT count(*) AS n FROM ${t}`).get().n; } catch { n = -1; }
+        detail.push(`${t}=${n}`);
+      }
+      const logins = db.prepare('SELECT count(*) AS n FROM logins').get().n;
+      db.close();
+      say(`  密码库 ${src === loginData ? '直接打开' : '读的复制件'}：logins=${logins} 条；同步元数据表 `
+        + (syncTables.length ? detail.join(' ') : '一张都没有'));
+      say(syncTables.some((t) => t.startsWith('sync_'))
+        ? '  ⚠️ 密码库里带着同步元数据 ⇒ **直接改库删条目有被云端拉回来的风险**'
+        : '  ✅ 密码库里没有同步元数据表 ⇒ 删掉就是删掉了');
+    } catch (e) {
+      say(`  Login Data 检查失败：${e.message}`);
+    }
   }
 
   const localState = `${dir}/Local State`;

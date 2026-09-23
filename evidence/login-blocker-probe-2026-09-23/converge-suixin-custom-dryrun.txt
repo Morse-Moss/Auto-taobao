@@ -1,0 +1,20 @@
+目标 profile：D:/Retire/edge-profiles/suixin-custom
+模式：干跑（不写一个字节）
+
+── 删前 ──
+  淘宝凭据：共 4 条淘宝凭据，其中与登录页同 origin 的 2 条
+      id=2  https://login.taobao.com/member/login.jhtml  →  "盖文旗舰店:阿彦"（用过 0）
+      id=5  https://login.taobao.com/member/login.jhtml  →  "随心品质定制:阿彦"（用过 1）
+
+要删：origin=https://login.taobao.com/member/login.jhtml  账号="盖文旗舰店:阿彦"
+  ✓ 命中 1 条：id=2（用过 0）
+
+要删：origin=https://havanalogin.taobao.com/mini_login.htm  账号="盖文旗舰店:阿彦"
+  ✓ 命中 1 条：id=3（用过 0）
+
+── 删后（回读自证）──
+  淘宝凭据：共 4 条淘宝凭据，其中与登录页同 origin 的 2 条
+      id=2  https://login.taobao.com/member/login.jhtml  →  "盖文旗舰店:阿彦"（用过 0）
+      id=5  https://login.taobao.com/member/login.jhtml  →  "随心品质定制:阿彦"（用过 1）
+  ⇒ 与登录页同 origin 的凭据 2 条：≥2 条 ⇒ 浏览器仍可能挑错 ❌
+  ⇒ 被删的两条是否真的不在了：否 ❌（回读还能看到 ⇒ 删除没生效）
