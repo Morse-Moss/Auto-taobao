@@ -208,7 +208,8 @@ test('分批那一档：结论交接在分批驱动内部完成，这里不生�
   assert.deepEqual(argsOf(plan, 'login-preflight'), [], '分批档里不生成 JSON');
   // run-batches.mjs 自己不认这个参数，给了会当场报未知参数（比静默无效更难查）。
   assert.equal(plan.steps[2].args.includes(LOGIN_PREFLIGHT_FLAG), false);
-  // 但这一步**仍然跑**：它的报告进 job.log，是整轮唯一一份「开跑前五家店登录态」的记录。
+  // 但这一步**仍然跑**：它的报告进 job.log，是定时任务日志里唯一一条「整轮视角」的记录。
+  // （逐批那份结论由分批驱动自己生成 —— 见下面「宿主（分批链）也接上了」那条真跑判据。）
   assert.deepEqual(plan.steps.map((s) => s.name), ['ensure-instances', 'login-preflight', 'batch-chain']);
 });
 
@@ -220,7 +221,7 @@ test('接线判据：两个宿主真的把结论接上了（防「函数全绿�
   assert.match(job, /artifactPath/u, '宿主没把体检的 stdout 落成文件 ⇒ 链那一步读的是一个不存在的路径');
 
   const batches = readFileSync(path.join(REPO_ROOT, 'scripts', 'run-batches.mjs'), 'utf8');
-  assert.match(batches, /buildLoginPreflightStep/u, '分批链没把「整轮一次」那一步接进去');
+  assert.match(batches, /buildLoginPreflightStep/u, '分批链没把登录守卫那一步接进去');
   assert.match(batches, /LOGIN_PREFLIGHT_FLAG/u, '分批链没把结论传给每一批的链');
   assert.match(batches, /artifactPath/u);
   assert.match(batches, /JOB_FILES/u, '两个宿主必须共用同一份「跑哪个文件」的定义（各写一份就会漂）');
@@ -284,18 +285,44 @@ test('宿主（定时链）：--no-auto-login 退回只读体检（一个页面�
   assert.match(text, /跑前登录态体检（只读：不开页面、不点东西）/u, `说明没跟着开关走：\n${text}`);
 });
 
-test('宿主（分批链）也接上了：每一批的链都带着同一个结论路径', () => {
+test('宿主（分批链）也接上了：每一批的链各读**本批**那份结论，且守卫排在本批 start 之后', () => {
   const text = runHostPrint('run-batches.mjs', ['--date', '2026-09-22', '--batch-size', '2']);
-  const expected = path.join(REPO_ROOT, 'evidence', 'batches-2026-09-22', 'login-preflight.json');
+  const dir = path.join(REPO_ROOT, 'evidence', 'batches-2026-09-22');
   const chainLines = text.split('\n').filter((line) => /run-multi-shop-day\.mjs/u.test(line));
   assert.equal(chainLines.length, 3, `2+2+1 ⇒ 三批，实际扫到 ${chainLines.length} 条链命令`);
-  for (const line of chainLines) {
-    assert.ok(line.includes(`--login-preflight ${expected}`), `这一批的链没拿到结论：${line}`);
+
+  // 2026-09-23 晚改：结论**逐批一份**（`login-preflight-b<N>.json`），不再三批共用一份。
+  // 共用一个名字时，后一批的结论会盖掉前一批 —— 而本批的链读到的仍然是「某个存在的文件」，
+  // 于是「这一批的链看的是另一批的登录态」在日志里完全看不出来。
+  const seen = new Set();
+  chainLines.forEach((line, i) => {
+    const match = line.match(/--login-preflight (\S+)/u);
+    assert.ok(match, `这一批的链没拿到结论：${line}`);
+    const expected = path.join(dir, `login-preflight-b${i + 1}.json`);
+    assert.equal(match[1], expected, `第 ${i + 1} 批读的不是本批那份结论：${line}`);
+    seen.add(match[1]);
+  });
+  assert.equal(seen.size, chainLines.length, '三批读的是同一份结论 —— 共用名字正是要治的那个病');
+
+  // 顺序：登录守卫必须排在**本批 start 之后**、chain 之前。
+  // 2026-09-23 实测（batches.log 13:29:27）：排在 start 之前 ⇒ 五个实例还没起 ⇒
+  // 五家店代理全回 HTTP 500 ⇒ 自动登录一次机会都没有，而表面上只看到一句「不是全在登录态」。
+  const lineOf = (needle) => text.split('\n').findIndex((line) => line.includes(needle));
+  for (const shops of ['里可林淘宝,网林天猫', '盖文淘宝,盖文天猫', '科塔淘宝']) {
+    const start = lineOf(`start-all.mjs --only ${shops}`);
+    const login = lineOf(`check-login-shops.mjs --login --shops ${shops} --json`);
+    const chain = lineOf(`run-multi-shop-day.mjs --date 2026-09-22 --shops ${shops}`);
+    assert.ok(start !== -1 && login !== -1 && chain !== -1, `这一批的三行没找齐：${shops}`);
+    assert.ok(start < login, `登录守卫排在 start 之前（实例还没起，只会读到 HTTP 500）：${shops}`);
+    assert.ok(login < chain, `登录守卫排在链之后（链读不到结论）：${shops}`);
   }
-  // 整轮一份：三批读的是**同一个**路径（链内部按本批 `--shops` 筛，所以不会串店）。
-  const hits = text.split(`--login-preflight ${expected}`).length - 1;
-  assert.equal(hits, chainLines.length, `三批应当读同一份结论，实际只出现 ${hits} 次`);
-  assert.match(text, /check-login-shops\.mjs --login --shops .*--json/u,
-    `整轮一次、查的是全部要跑的店，而且（分批这条链）也默认会自己登。实际输出：\n${text}`);
+  // 每批一份结论 ⇒ 打印里必须逐批给出它的落点（`--print` 是人确认「将要执行什么」的唯一凭据）。
+  for (let i = 1; i <= 3; i += 1) {
+    assert.ok(text.includes(`结论落：evidence/batches-2026-09-22/login-preflight-b${i}.json`),
+      `第 ${i} 批的结论落点没打印出来：\n${text}`);
+  }
+  // 释放口径（2026-09-23 用户第二次拍板）：打印出来的必须是「跑完释放」，不许还是旧的「失败不释放」。
+  assert.match(text, /跑完释放/u, `打印的释放口径不对：\n${text}`);
+  assert.doesNotMatch(text, /失败不主动释放|跑成才停/u, `还留着旧口径的说法：\n${text}`);
 });
 

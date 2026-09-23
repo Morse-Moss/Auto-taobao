@@ -18,6 +18,11 @@
 // 推导看起来省事，但它会让「脚本被改名」这件事静默生效 —— 名字变了，拼出来的路径不存在，
 // 报错会发生在 spawn 那一刻而不是这里。显式表让改名必须同时改这一行。
 import { buildDeclarationPlan } from './browser-inventory.mjs';
+// 「店铺标识页的 URL 长什么样」只此一处实现（shop-window-label.mjs 的 labelPageUrlFor）。
+// 在这里复用它、而不是另拼一个 file:// 地址：两处拼地址的后果是**两个格式**，而其中一处
+// 改了（多带一个参数、换个页面文件）另一处不会跟着改 —— 表现就是「窗口首屏那个页面点不动」，
+// 而没有任何一处会报错。
+import { labelPageUrlFor } from './shop-window-label.mjs';
 
 /** 浏览器实例与代理各自的启动脚本。路径相对仓库根。 */
 const LAUNCHERS = Object.freeze({
@@ -50,8 +55,8 @@ export function buildLaunchCommands(entry) {
     ];
   }
   if (entry.kind === 'shop') {
-    // 通用启动器没有「店铺」这个概念，靠这两个环境变量定位 profile 与调试端口。
-    // 两个值都取自登记表条目 —— 传错就是串店，而串店在这套系统里是静默失败。
+    // 通用启动器没有「店铺」这个概念，靠这三个环境变量定位 profile、调试端口与**首屏页面**。
+    // 值都取自登记表条目 —— 传错就是串店，而串店在这套系统里是静默失败。
     return [
       {
         role: 'browser',
@@ -60,6 +65,25 @@ export function buildLaunchCommands(entry) {
         env: {
           PROJECT_BROWSER_PORT: String(entry.browserPort),
           PROJECT_BROWSER_PROFILE: entry.profile,
+          // 首屏＝**这家店自己的标识页**（而不是启动器的默认 `about:blank`）。
+          //
+          // 为什么（2026-09-23 用户两条原话：「不要空页」、「每个店铺的浏览器要有标识页」）：
+          // 通用启动器的 `START_URL` 默认是 `about:blank`，而 `start-all` 从不设这个变量
+          // ⇒ **每次冷启动都恰好留下一个空白页**。它没有任何用途（`prunePlan` 对 blank 的策略
+          // 本来就是「永远关」），却正是用户反复看到的那一个「空页」；而标识页原先是靠
+          // 起完之后再跑一遍 `shop-window-label.mjs --commit` 补的 —— 那一步失败或没跑到时，
+          // 窗口上就既没有店名、又留着那个空白页。
+          //
+          // 把首屏直接设成标识页，一次解决两件事，而且**没有新增任何页签**：
+          //   · 窗口一开出来，标题里就写着店名（`windowTitleFor`），页面上大字写着店名与会员名；
+          //   · 那个「等谁来接管」的空白页压根不存在。
+          // 它同时也是链路已经容忍的东西：`shop-window-label.mjs` 的 label 分支会认出现成的
+          // 标识页并**原地导航**（`reused: true`，把登录态/实际会员名补上），不会再堆一个。
+          //
+          // 为什么只给店铺实例（竞品链与日报链不动）：这两条链的首屏有它们自己的语义
+          // （日报链的商家浏览器已自带 `https://sycm.taobao.com/`；竞品链那条不读店铺身份）。
+          // 给它们套一个店铺标识页是**把标签贴错窗口**，那比留一个空白页更坏。
+          PROJECT_BROWSER_URL: labelPageUrlFor({ shop: entry.key, port: entry.browserPort }),
         },
       },
       // 代理这一条用**运营叫法**（登记表的键）当参数：start-shop-proxy 会用它去查登记表，

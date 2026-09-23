@@ -129,14 +129,19 @@ async function main(argv) {
     console.log(`[定时] 实际会解析成：${resolveTargetDate(plan.dateInput)}`
       + '  ← 只用来给你看一眼；真跑时由驱动在那一刻重新解析（跨零点不漂）');
     if (plan.batches) {
-      console.log(`[定时] 分批跑：每批 ${plan.batches} 家 —— 起这一批 → 挂店铺标识页 → 跑 → 停这一批`
-        + '（跑成才停；失败不主动释放）');
-      // 这句是 2026-09-23 真机实测后改的：从前这里写「失败留着等人看」，但批次的 start 是
-      // scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，这批窗口活不过本轮，
-      // 实测命令结束后 0.26 秒就连同启动器一起消失。「不释放」只是「我不去停它」，不等于「窗口还在」。
+      console.log(`[定时] 分批跑：每批 ${plan.batches} 家 —— 起这一批 → 查本批登录 → 挂店铺标识页 → 跑 → `
+        + '停这一批（**一律释放**：链成功、链失败、链没跑到，都放）');
+      // 这两句都是 2026-09-23 真机实测后改的。
+      // ① 释放口径：从前写「失败不主动释放／失败留着等人看」，但批次的 start 是
+      //    scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，
+      //    这批窗口活不过本轮，实测命令结束后 0.26 秒就连同启动器一起消失。
+      //    于是「不释放」的真实效果只有「内存没省下来」＋「现场也没留住」。
+      // ② 因此提醒的是**怎么才留得住**，而不是「它留着」：
+      //    要真的留到人来看，得 `--no-release` **并且**另起 scripts/start-all-hold.mjs 托住；
+      //    人不在现场时，可查的证据是证据目录里的日志（batches.log ＋ 链自己的体检原始输出）。
       console.log('[定时] 边界：窗口留不留得住取决于用什么托住 —— 要真的留到人来看，'
-        + '得另起 scripts/start-all-hold.mjs；人不在现场时，可查的证据是证据目录里的日志'
-        + '（batches.log ＋ 链自己的体检原始输出）。');
+        + '得同时给 --no-release 与 scripts/start-all-hold.mjs（缺一不可）；'
+        + '人不在现场时，可查的证据是证据目录里的日志（batches.log ＋ 链自己的体检原始输出）。');
     }
     for (const command of commands) console.log(`${command.blocking ? '*' : ' '} ${command.name}: ${command.text}\n     ${command.note}`);
     console.log('[定时] 只打印模式：没有起任何进程、也没有跑链。');

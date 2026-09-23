@@ -1,0 +1,151 @@
+{
+ "machine": "DESKTOP-KJP4RA5",
+ "verdict": "INCONCLUSIVE",
+ "autoLogin": true,
+ "needHuman": [],
+ "unknown": [
+  {
+   "shop": "里可林淘宝",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "网林天猫",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "盖文淘宝",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "盖文天猫",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "科塔淘宝",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  }
+ ],
+ "checked": 5,
+ "rows": [
+  {
+   "shop": "里可林淘宝",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "STOP_AND_ALERT",
+   "detail": "http://127.0.0.1:19041/targets → HTTP 500 {\"error\":\"连不上浏览器调试端口 19031（本次进程自报的身份是 edge-shop-likelin-home）：fetch failed\\n本项目请用启动器起专用浏览器，端口与 profile 的唯一来源是 runtime/browser-ports.mjs：\\n  竞品/买家链: node runtime",
+   "childExitCode": 3,
+   "probeError": null
+  },
+  {
+   "shop": "网林天猫",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "STOP_AND_ALERT",
+   "detail": "http://127.0.0.1:19042/targets → HTTP 500 {\"error\":\"连不上浏览器调试端口 19032（本次进程自报的身份是 edge-shop-wanglin-flagship）：fetch failed\\n本项目请用启动器起专用浏览器，端口与 profile 的唯一来源是 runtime/browser-ports.mjs：\\n  竞品/买家链: node run",
+   "childExitCode": 3,
+   "probeError": null
+  },
+  {
+   "shop": "盖文淘宝",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "STOP_AND_ALERT",
+   "detail": "http://127.0.0.1:19043/targets → HTTP 500 {\"error\":\"连不上浏览器调试端口 19033（本次进程自报的身份是 edge-shop-suixin-custom）：fetch failed\\n本项目请用启动器起专用浏览器，端口与 profile 的唯一来源是 runtime/browser-ports.mjs：\\n  竞品/买家链: node runtim",
+   "childExitCode": 3,
+   "probeError": null
+  },
+  {
+   "shop": "盖文天猫",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "STOP_AND_ALERT",
+   "detail": "http://127.0.0.1:19045/targets → HTTP 500 {\"error\":\"连不上浏览器调试端口 19035（本次进程自报的身份是 edge-shop-gaiwen-flagship）：fetch failed\\n本项目请用启动器起专用浏览器，端口与 profile 的唯一来源是 runtime/browser-ports.mjs：\\n  竞品/买家链: node runt",
+   "childExitCode": 3,
+   "probeError": null
+  },
+  {
+   "shop": "科塔淘宝",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "STOP_AND_ALERT",
+   "detail": "http://127.0.0.1:19044/targets → HTTP 500 {\"error\":\"连不上浏览器调试端口 19034（本次进程自报的身份是 edge-shop-j873522735）：fetch failed\\n本项目请用启动器起专用浏览器，端口与 profile 的唯一来源是 runtime/browser-ports.mjs：\\n  竞品/买家链: node runtime/s",
+   "childExitCode": 3,
+   "probeError": null
+  }
+ ]
+}

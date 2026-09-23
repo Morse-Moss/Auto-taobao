@@ -10,18 +10,23 @@
 //
 // 三件事分得很清（混在一起就会写出「以为释放了、其实没有」的假成功）：
 //   1) **该切成几批、每批执行哪四条命令** —— runtime/batch-plan.mjs（纯函数、有离线判据）。
-//   2) **该不该发起释放** —— 同一个模块的 releaseAfterBatch（用户第 5 条拍板：失败优先解决问题）。
+//   2) **该不该发起释放** —— 同一个模块的 releaseAfterBatch（2026-09-23 用户拍板：
+//      **每一轮跑完都要释放**；旧口径「失败留着等人看」已作废，理由见那个函数的注释）。
 //   3) **能不能真停** —— scripts/stop-all.mjs 的三类证据（CDP 自报 profile / 代理命令行 /
 //      启动器 pid），foreign 与 unconfirmed 一律拒停。本文件**不替它判**。
 //
 // 默认**不写飞书**：不给 `--commit` 就是排练（与链本身的默认一致）。
-// 默认**会释放**：只在链跑成的时候（见 releaseAfterBatch）；`--no-release` 可以整轮关掉。
+// 默认**会释放**：**每一批跑完都释放** —— 链成功、链失败、链没跑到，都放。
+// 依据是用户 2026-09-23 原话「每一轮跑完要释放浏览器资源」，以及一条实测事实：
+// `start` 走 `scripts/start-all.mjs`（起完就退），宿主在命令结束时回收**整棵进程树** ⇒
+// 「不释放」并不等于「窗口还在」（实测命令结束 0.26 秒后这批窗口就没了）。
+// 要看现场得 `--no-release` **并且**用 `scripts/start-all-hold.mjs` 在后台托住，两件缺一不可。
 //
-// 整轮之前还有一步**跑前登录态体检**（2026-09-23 加，只读）：它整轮跑一次，结论落成
-// `<证据根>/login-preflight.json`，并用 `--login-preflight` 交给**每一批**的链 ——
-// 链会按本批 `--shops` 把结论筛一遍，所以掉登录时告警能直接点名是哪家店的哪个后台，
-// 而不是给一句「把这两页各开一个」（掉登录时那个动作是无效的）。
-// 参数与产物名的单一来源是 runtime/daily-job-plan.mjs，这里不另抄一份。
+// 每一批里有一步**跑前登录守卫**（2026-09-23 加）：排在**本批 `start` 之后**，查本批那几家，
+// 结论落成 `<证据根>/login-preflight-b<N>.json`，并用 `--login-preflight` 交给本批的链 ——
+// 掉登录时告警能直接点名是哪家店的哪个后台，而不是给一句「把这两页各开一个」（掉登录时那个动作无效）。
+// ⚠️ 它**不是只读**：带 `--login` 时会开这几家店自己的页面、用浏览器密码库登一次。
+// 参数与产物名的单一来源是 runtime/daily-job-plan.mjs 与 runtime/batch-plan.mjs，这里不另抄一份。
 //
 // 用法：
 //   node scripts/run-batches.mjs --print                 # 只打印每一批要执行什么（不起任何进程）
@@ -37,13 +42,14 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
-  DEFAULT_BATCH_SIZE, buildBatchSteps, buildLoginPreflightStep, buildSharedStep, describeBatch, planBatches,
-  releaseAfterBatch, resolveBatchSize,
+  DEFAULT_BATCH_SIZE, batchLoginArtifactName, buildBatchSteps, buildLoginPreflightStep, buildSharedStep,
+  describeBatch, planBatches, releaseAfterBatch, resolveBatchSize,
 } from '../runtime/batch-plan.mjs';
-// 跑前登录态体检那一步的**文件、参数名、产物名**都只在那里定义一次（分批这条链与定时链共用）。
+// 跑前登录守卫那一步的**文件、参数名**都只在那里定义一次（分批这条链与定时链共用）。
 // 不各写一份：漂出来的症状是静默的 —— 链那边参数没少、只是永远读不到结论。
+// 产物名**不从这里取**：分批形态每批一份（`batchLoginArtifactName`），共用一个常量正是要治的那个病。
 import {
-  JOB_FILES, LOGIN_PREFLIGHT_ARTIFACT, LOGIN_PREFLIGHT_FLAG, buildLoginPreflightArgs, renderCommand,
+  JOB_FILES, LOGIN_PREFLIGHT_FLAG, buildLoginPreflightArgs, renderCommand,
 } from '../runtime/daily-job-plan.mjs';
 import { versionLineSafe } from '../runtime/version.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
@@ -125,26 +131,30 @@ async function main(argv) {
   // 这里只算路径（`--print` 也要能打印出真正会执行的那一行），建目录留到真跑那一步。
   const evidenceRoot = path.resolve(REPO_ROOT, options.logs ?? path.join('evidence', `batches-${date}`));
 
-  // 跑前登录态结论：整轮一份，落在本轮的证据根上。**每一批的链读同一份** ——
-  // 链会按本批 `--shops` 把结论筛一遍，所以共用一份不会把别的批次扯进来。
-  const loginPreflightPath = path.join(evidenceRoot, LOGIN_PREFLIGHT_ARTIFACT);
-  const chainArgs = [...chainArgsFor(options), LOGIN_PREFLIGHT_FLAG, loginPreflightPath];
-  const loginStep = buildLoginPreflightStep({
+  // 跑前登录态结论：**每一批一份**，并在**那一批的 `start` 之后**生成。
+  // 为什么不再整轮一份：带 `--login` 的守卫要开那几家店自己的浏览器，整轮一份就必须排在
+  // 所有 `start` 之前 —— 那时实例还没起。2026-09-23 实测（batches.log 13:29:27 那段）：
+  // 五家店的代理全部 `HTTP 500 连不上浏览器调试端口`，五家全 `UNREADABLE`、退出码 3，
+  // **自动登录一次机会都没有**，而表面上只看到一句「不是全在登录态」。
+  const loginArtifactFor = (batch) => path.join(evidenceRoot, batchLoginArtifactName(batch.index));
+  const loginStepFor = (batch) => buildLoginPreflightStep({
     file: JOB_FILES.loginPreflight,
-    // 整轮一次 ⇒ `--shops` 给的是**全部**要跑的店（不是某一批的）。
+    // `--shops` 只给**本批**：这一份结论只描述这一批，本批的链也只读它。
     // `login: true`（2026-09-23 加）：掉了就自己登一次 —— 与定时链同一个默认值、同一份理由
     // （用户明确授权自动登录；且掉登录是**会话级 cookie** 导致的常态，不是偶发）。
     // 分批这条链跑得比定时链更少人看着（排练/补跑常是无人值守），更需要它。
-    args: buildLoginPreflightArgs({ shops: plan.shops, json: true, login: true }),
-    artifactPath: loginPreflightPath,
+    args: buildLoginPreflightArgs({ shops: batch.shops, json: true, login: true }),
+    artifactPath: loginArtifactFor(batch),
   });
 
   const batches = plan.batches.map((batch) => ({
     batch,
     steps: buildBatchSteps(batch, {
       dateInput: options.dateInput,
-      chainArgs,
+      // 本批的链读**本批自己**那份结论（路径逐批不同，`--logs` 也是各自一份）。
+      chainArgs: [...chainArgsFor(options), LOGIN_PREFLIGHT_FLAG, loginArtifactFor(batch)],
       logsDir: path.relative(REPO_ROOT, path.join(evidenceRoot, `b${batch.index}`)),
+      loginStep: loginStepFor(batch),
     }),
   }));
   const sharedStep = buildSharedStep();
@@ -156,14 +166,16 @@ async function main(argv) {
       + `；跑完${options.release ? '释放' : '不释放（--no-release）'}`);
     console.log(`[批次] ${sharedStep.name}: ${renderCommand(sharedStep, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
     console.log(`        ${sharedStep.note}`);
-    console.log(`[批次] ${loginStep.name}: ${renderCommand(loginStep, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
-    console.log(`        ${loginStep.note}`);
-    console.log(`        结论落：${path.relative(REPO_ROOT, loginPreflightPath).replaceAll('\\', '/')}`);
     for (const { batch, steps } of batches) {
       console.log(`[批次] ${describeBatch(batch, plan.total)}`);
       for (const step of steps) {
         console.log(`   ${step.blocking ? '*' : ' '} ${step.name}: ${renderCommand(step, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
         console.log(`        ${step.note}`);
+        // 登录守卫那一步的产物路径不在命令行里（它是 stdout 落的文件），单独打出来 ——
+        // `--print` 是人确认「将要执行什么」的唯一凭据，hiding 一个真实产物路径就是那句假话的同类。
+        if (step.artifactPath) {
+          console.log(`        结论落：${path.relative(REPO_ROOT, step.artifactPath).replaceAll('\\', '/')}`);
+        }
       }
     }
     console.log('[批次] 只打印模式：没有起任何进程、没有跑链、没有停任何东西。');
@@ -204,30 +216,10 @@ async function main(argv) {
     }
   }
 
-  // 整轮一次：跑前登录态体检。**排在每一批之前**，因为它查的是「今天开跑前」的状态 ——
-  // 排在第一批之后、第二批之前，查到的就已经是「跑完一批之后」的状态，那是另一件事。
-  // 它只读（`--check-only` 不开任何页面、不点任何东西），所以放在这里不影响任何一批。
-  {
-    log(`--- ${loginStep.name}：${renderCommand(loginStep, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
-    // stdout 单独接出来落成文件（链要读它），同时回显进日志（「当时打了什么」这条证据不能丢）。
-    const result = spawnSync(NODE, [path.join(REPO_ROOT, loginStep.file), ...loginStep.args], {
-      cwd: REPO_ROOT, stdio: ['ignore', 'pipe', logFd], encoding: 'utf8',
-    });
-    const status = result.status ?? -1;
-    const stdout = result.stdout ?? '';
-    fs.writeFileSync(loginStep.artifactPath, stdout, 'utf8');
-    if (stdout) fs.writeSync(logFd, stdout);
-    log(`--- ${loginStep.name} 结论已落 ${path.relative(REPO_ROOT, loginStep.artifactPath).replaceAll('\\', '/')}`
-      + `（${Buffer.byteLength(stdout, 'utf8')} 字节；每一批的链都会读它）`);
-    log(`--- ${loginStep.name} 退出码=${status}`);
-    if (status !== 0) {
-      // 不阻断：它不是闸门（三个退出码的含义见 check-login-shops.mjs 头部）。但它多半意味着
-      // 「今天有店掉登录了」或「实例没起齐」，所以必须显眼。
-      log(`[批次] 注意：${loginStep.name} 不是「全在登录态」（退出码 ${status}）—— 不阻断，`
-        + '链的告警会点名是哪家店的哪个后台。');
-    }
-  }
-
+  // 跑前登录守卫**不在整轮这一层跑了**（2026-09-23 改）：它现在是每一批 `start` 之后的
+  // 那一步（见上面 `loginStepFor` 与 batch-plan.mjs 的注释）。整轮跑一次的前提是
+  // 「它只读、不开页面」，而 `--login` 把这个前提推翻了 —— 五个实例还没起就被查，
+  // 只会得到五行 `UNREADABLE`，而且**看起来像「今天有店掉登录了」**。
   for (const { batch, steps } of batches) {
     const round = { index: batch.index, shops: batch.shops, steps: {}, chainStatus: null, release: null };
     log(`--- ${describeBatch(batch, plan.total)} ---`);
@@ -242,20 +234,36 @@ async function main(argv) {
           : releaseAfterBatch({ chainStatus: round.chainStatus });
         if (round.decision.release === false) {
           log(`--- stop：跳过 —— ${round.decision.why}`);
-          // 判决里那条「留窗口」是有条件的，条件必须跟着判决一起出现在日志里 ——
-          // 否则这一行会被读成「窗口还在，去看吧」，而它多半已经不在了（见 releaseAfterBatch 的注释）。
-          if (round.decision.caveat) log(`    （留窗口的前提：${round.decision.caveat}）`);
           round.steps.stop = 'skipped';
           continue;
         }
       }
       log(`--- ${step.name}：${renderCommand(step, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
+      // 登录守卫那一步的 stdout 要**单独接出来落成文件**（本批的链把它当参数读），
+      // 同时回显进日志 —— 「当时到底打了什么」这条证据不能只留在文件里（下一批会盖掉它）。
+      const captureArtifact = step.name === 'login-preflight' && Boolean(step.artifactPath);
       const result = spawnSync(NODE, [path.join(REPO_ROOT, step.file), ...step.args], {
-        cwd: REPO_ROOT, stdio: ['ignore', logFd, logFd], encoding: 'utf8',
+        cwd: REPO_ROOT,
+        stdio: captureArtifact ? ['ignore', 'pipe', logFd] : ['ignore', logFd, logFd],
+        encoding: 'utf8',
       });
       const status = result.status ?? -1;
+      if (captureArtifact) {
+        const stdout = result.stdout ?? '';
+        fs.writeFileSync(step.artifactPath, stdout, 'utf8');
+        if (stdout) fs.writeSync(logFd, stdout);
+        log(`--- ${step.name} 结论已落 ${path.relative(REPO_ROOT, step.artifactPath).replaceAll('\\', '/')}`
+          + `（${Buffer.byteLength(stdout, 'utf8')} 字节；本批的链会读它）`);
+      }
       log(`--- ${step.name} 退出码=${status}`);
       round.steps[step.name] = status;
+
+      // 守卫不是闸门（三个退出码的含义见 check-login-shops.mjs 头部），但它非 0 多半意味着
+      // 「这几家掉登录了、而且自动登录也没成」—— 必须显眼，否则这一轮会带着一条假结论往下跑。
+      if (step.name === 'login-preflight' && status !== 0) {
+        log(`[批次] 注意：${step.name} 不是「全在登录态」（退出码 ${status}）—— 不阻断，`
+          + '链的告警会点名是哪家店的哪个后台。');
+      }
 
       if (step.name === 'chain') round.chainStatus = status;
       if (step.name === 'stop' && status !== 0) {
@@ -274,13 +282,19 @@ async function main(argv) {
 
     if (round.chainStatus !== 0) hardFail += 1;
     if (round.decision?.release === false && round.steps.stop === 'skipped') {
-      // 「不主动释放」而不是「窗口留着」：后一句在非 hold 形态下是做不到的（见 batch-plan 的 caveat）。
-      log(`[批次] 这一批不主动释放：${round.decision.why}`);
+      // 只有 `--no-release` 才走得到这里。说清是「不主动释放」，**不是**「窗口留着」——
+      // 后一句在非 hold 形态下是做不到的（见 batch-plan.mjs 的 releaseAfterBatch）。
+      log(`[批次] 这一批不主动释放：${round.decision.why}；`
+        + '注意这不等于窗口还在（start-all 起完就退，宿主会回收整棵进程树）');
     }
 
     rounds.push(round);
+    // `释放` 这个词在**本文件里只有一个意思**：末尾那句里的「释放 N 批」。
+    // 这一行原先写成 `释放=${stop 的退出码}` ⇒ 打印出「释放=0」，与末尾的「释放 1 批」并列时
+    // 读起来像「一批都没释放」。2026-09-23 自己读日志时就误读过一次 —— 所以改成点名的写法。
     log(`--- ${describeBatch(batch, plan.total)} 小结：链退出码=${round.chainStatus}；`
-      + `释放=${round.steps.stop === 'skipped' ? '未做' : round.steps.stop}；${round.decision?.why ?? ''}`);
+      + `stop（释放窗口）=${round.steps.stop === 'skipped' ? '未跑' : `退出码 ${round.steps.stop}`}；`
+      + `${round.decision?.why ?? ''}`);
   }
 
   const index = {

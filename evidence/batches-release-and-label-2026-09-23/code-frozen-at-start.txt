@@ -1,0 +1,14 @@
+# 本轮真跑（排练）起跑时刻：2026-09-23T05:41:19.918Z（北京 13:41）
+# 判据：功能代码的 mtime 必须全部落在起跑之前 —— 用来证明「日志里那行版本 1.2.0」只是
+# 启动时读到的旧值（VERSION 在本轮跑起来之后才翻到 1.3.0），跑的是同一份功能代码。
+
+起跑之前      2026-09-23T05:40:35.492Z  runtime/batch-plan.mjs
+起跑之前      2026-09-23T05:40:33.001Z  runtime/launch-plan.mjs
+起跑之前      2026-09-23T05:40:52.001Z  scripts/run-batches.mjs
+起跑之前      2026-09-23T05:40:37.099Z  runtime/daily-job-plan.mjs
+起跑之前      2026-09-19T15:48:21.761Z  scripts/start-all.mjs
+起跑之前      2026-09-23T00:11:31.566Z  runtime/shop-window-label.mjs
+起跑之前      2026-09-19T05:04:16.821Z  runtime/start-project-browser.mjs
+起跑之后改的  2026-09-23T05:41:32.750Z  VERSION
+起跑之后改的  2026-09-23T05:41:35.681Z  package.json
+起跑之后改的  2026-09-23T05:41:57.078Z  CHANGELOG.md

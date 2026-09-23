@@ -1,0 +1,18 @@
+== gaiwen-flagship  凭据条数=1
+   origin=https://havanalogin.taobao.com/mini_login.htm  用户名长度=8  密文长度=40  用过=1
+== likelin-home  凭据条数=2
+   origin=https://login.taobao.com/havanaone/login/login.htm  用户名长度=8  密文长度=40  用过=0
+   origin=https://havanalogin.taobao.com/mini_login.htm  用户名长度=8  密文长度=40  用过=1
+== shop-j873522735  凭据条数=2
+   origin=https://login.taobao.com/havanaone/login/login.htm  用户名长度=13  密文长度=40  用过=0
+   origin=https://havanalogin.taobao.com/mini_login.htm  用户名长度=13  密文长度=40  用过=2
+== suixin-custom  凭据条数=4
+   origin=https://login.taobao.com/member/login.jhtml  用户名长度=8  密文长度=40  用过=0
+   origin=https://havanalogin.taobao.com/mini_login.htm  用户名长度=8  密文长度=40  用过=0
+   origin=https://havanalogin.taobao.com/mini_login.htm  用户名长度=9  密文长度=40  用过=4
+   origin=https://login.taobao.com/member/login.jhtml  用户名长度=9  密文长度=40  用过=1
+== wanglin-flagship  凭据条数=1
+   origin=https://login.taobao.com/havanaone/login/login.htm  用户名长度=10  密文长度=40  用过=1
+(node:54368) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+exit=0

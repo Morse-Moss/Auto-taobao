@@ -156,10 +156,16 @@ export function buildJobPlan(options = {}) {
   // 并由一条用例钉住这件事：少给就等于把这一整条链的修复退回原样。
   //
   // 分批那一档**刻意例外**：那条路的结果交接在分批驱动**内部**完成
-  // （它整轮跑一次、把同一份结论交给每一批的链），所以这里既不生成 JSON、也不给
-  // `batch-chain` 加参数 —— 这里生成的那份没有任何人读，而「写了没人读的文件」正是
-  // 后来人会照着接错的地方。这一步本身仍然跑：它的报告进 job.log，
-  // 是整轮唯一一份「开跑前五家店登录态」的整轮视角记录。
+  // （2026-09-23 晚改成**逐批一份**：`login-preflight-b<N>.json`，由 run-batches 负责生成与转发），
+  // 所以这里既不生成 JSON、也不给 `batch-chain` 加参数 —— 这里生成的那份没有任何人读，
+  // 而「写了没人读的文件」正是后来人会照着接错的地方。这一步本身仍然跑：它的报告进 job.log，
+  // 是「开跑前（整轮视角）五家店登录态」那一条记录。
+  //
+  // ⚠️ 已知的重复（刻意留下，不是漏改）：分批形态下登录守卫会跑**两遍** ——
+  // 这一整轮一遍（排在 `ensure-instances` 之后，那时七个实例都起来了，前提成立），
+  // 分批驱动里再逐批一遍（那一遍查的是本批、结论也只交给本批的链）。
+  // 第二遍才是权威的那一遍（它排在**本批 start 之后**）；这一遍留下是因为它同时也是
+  // 定时任务日志里唯一一条「整轮视角」的记录。要收紧的话应当删掉**这一遍**、不是删分批那条。
   const loginPreflightFile = artifactsDir && !batchMode
     ? path.join(artifactsDir, LOGIN_PREFLIGHT_ARTIFACT)
     : null;
@@ -209,7 +215,7 @@ export function buildJobPlan(options = {}) {
       args: buildBatchChainArgs({
         dateInput, notify, keepGoing, allowMissingPeer, shops, batches, commit: true,
       }),
-      note: `分批跑（每批 ${batches} 家）：起这一批 → 挂店铺标识页 → 跑这一批 → 停这一批（跑成才停）`,
+      note: `分批跑（每批 ${batches} 家）：起这一批 → 查本批登录 → 挂店铺标识页 → 跑这一批 → 停这一批（**一律释放**）`,
       blocking: true,
     }
     : {

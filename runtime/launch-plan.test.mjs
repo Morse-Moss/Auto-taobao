@@ -10,6 +10,9 @@ import path from 'node:path';
 import { buildChildEnv, buildFullPlan, buildLaunchCommands, buildStopOrder, INSTANCE_ENV_KEYS, launcherHintFor, matchInstances, onlyHelpText, planInstanceStop, selectActions, taskkillArgs } from './launch-plan.mjs';
 import { buildDeclarationPlan, summarize } from './browser-inventory.mjs';
 import { SHOP_BROWSERS, shopBrowserKeys } from './browser-ports.mjs';
+// 用**同一个实现**当断言的期望值：断言里另拼一份期望 URL 的话，改实现时会两处一起漂，
+// 而这条判据从此只会证明「实现等于它自己」。
+import { labelPageUrlFor } from './shop-window-label.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -49,6 +52,31 @@ test('店铺实例的参数与身份取自登记表条目，改条目计划就�
     const other = buildLaunchCommands({ ...entry, browserPort: 1, profile: 'D:/x' });
     assert.equal(other[0].env.PROJECT_BROWSER_PORT, '1');
     assert.equal(other[0].env.PROJECT_BROWSER_PROFILE, 'D:/x');
+  }
+});
+
+// 2026-09-23 加。用户两条原话：「不要空页」、「每个店铺的浏览器要有标识页」。
+// 这两件事在**首屏**上是同一件事：首屏给了标识页，就没有那个待接管的空白页。
+test('店铺实例的首屏是它自己的标识页（不是 about:blank）—— 空页与标识页一起解决', () => {
+  for (const key of shopBrowserKeys()) {
+    const entry = { kind: 'shop', key, profile: SHOP_BROWSERS[key].profile, browserPort: SHOP_BROWSERS[key].browserPort };
+    const [browser] = buildLaunchCommands(entry);
+    const url = browser.env.PROJECT_BROWSER_URL;
+    assert.ok(url, `${key} 没有给起始页 ⇒ 启动器的默认值是 about:blank，窗口里就永远躺着一个空白页`);
+    assert.match(url, /shop-window-label\.html/u, `${key} 的起始页不是标识页`);
+    // 店名必须真的在 URL 里：标识页靠这个 query 参数显示店名与标题。
+    // 只断言「有 URL」的话，五家店给同一个地址也能过 —— 那正是「贴错窗口」的形态。
+    assert.equal(new URL(url).searchParams.get('shop'), key);
+    // 端口跟着条目走（换机器/改登记表时不需要改这里）
+    assert.equal(new URL(url).searchParams.get('port'), String(SHOP_BROWSERS[key].browserPort));
+    // 起始页地址必须与「挂标识页」那一步用的是**同一个实现**（否则是两个格式）。
+    assert.equal(url, labelPageUrlFor({ shop: key, port: SHOP_BROWSERS[key].browserPort }));
+  }
+  // 反例：竞品链与日报链**不套**店铺标识页 —— 那是把标签贴错窗口。
+  for (const kind of ['competitor', 'dailyReport']) {
+    const [browser] = buildLaunchCommands({ kind, key: kind });
+    assert.equal(browser.env.PROJECT_BROWSER_URL, undefined,
+      `${kind} 不该被塞一个店铺标识页（日报链的商家浏览器有自己的首屏，竞品链不读店铺身份）`);
   }
 });
 

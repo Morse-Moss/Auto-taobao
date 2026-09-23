@@ -1,20 +1,28 @@
 {
- "version": "sycm-automation 1.0.0",
+ "version": "sycm-automation 1.2.0",
  "date": "2026-09-22",
  "dateInput": "yesterday",
  "mode": "rehearse",
- "batchSize": 1,
+ "batchSize": 5,
  "evidenceRoot": "evidence/batches-2026-09-22",
  "release": true,
  "rounds": [
   {
    "index": 1,
    "shops": [
-    "里可林淘宝"
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝"
    ],
    "steps": {
     "start": 0,
     "label:里可林淘宝": 0,
+    "label:网林天猫": 0,
+    "label:盖文淘宝": 0,
+    "label:盖文天猫": 0,
+    "label:科塔淘宝": 0,
     "chain": 1,
     "stop": "skipped"
    },
@@ -22,7 +30,8 @@
    "release": null,
    "decision": {
     "release": false,
-    "why": "这一批没跑成（链退出码 1）—— 窗口留着等人看；处理完后用 node scripts/stop-all.mjs --yes --only <本批店铺> 释放"
+    "why": "这一批没跑成（链退出码 1）—— 不主动释放（失败优先解决问题）；处理完后用 node scripts/stop-all.mjs --yes --only <本批店铺> 释放",
+    "caveat": "本批的 start 是 scripts/start-all.mjs（起完就退）：宿主要在命令结束时回收整棵进程树，所以**这批窗口活不过本轮命令**，「不释放」只是「我不去停它」。要让窗口真的留到人来看，得用 scripts/start-all-hold.mjs 在后台把本批实例托住再排查；人不在现场时，可查的证据在证据目录里（batches.log ＋ 链自己的体检原始输出）。"
    }
   }
  ]

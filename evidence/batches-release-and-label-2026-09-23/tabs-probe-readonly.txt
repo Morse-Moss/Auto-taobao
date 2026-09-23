@@ -1,0 +1,32 @@
+
+=== 里可林淘宝（代理 19041） 页签 2 个：空白 0 个、标识页 1 个
+    file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031
+    https://myseller.taobao.com/home.htm/QnworkbenchHome/
+
+=== 网林天猫（代理 19042） 页签 2 个：空白 0 个、标识页 1 个
+    file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032
+    https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+
+=== 盖文淘宝（代理 19043） 页签 2 个：空白 0 个、标识页 1 个
+    file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033
+    https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+
+=== 盖文天猫（代理 19045） 页签 5 个：空白 0 个、标识页 2 个
+    https://one.alimama.com/index.html#!/login/index
+    https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+    file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035
+    file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035&member=%E7%9B%96%E6%96%87%E6%97%97%E8%88%B
+    https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+
+=== 科塔淘宝（代理 19044） 页签 2 个：空白 0 个、标识页 1 个
+    file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%A7%91%E5%A1%94%E6%B7%98%E5%AE%9D&port=19034
+    https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/mc/free/sycm
+
+=== 判据 ===
+✓ 里可林淘宝：空白 0 个、标识页 1 个
+✓ 网林天猫：空白 0 个、标识页 1 个
+✓ 盖文淘宝：空白 0 个、标识页 1 个
+✗ 盖文天猫：标识页 2 个（期望恰好 1 个）
+✓ 科塔淘宝：空白 0 个、标识页 1 个
+
+结论：1 处不符合

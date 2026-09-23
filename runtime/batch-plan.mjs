@@ -68,13 +68,24 @@ export function buildSharedStep() {
 }
 
 /**
- * 跑前登录态体检那一步（**整轮一次**，不是每批一次）。2026-09-23 加。
+ * 跑前登录守卫那一步。2026-09-23 加；**同日改成「每一批 start 之后跑一次」**。
  *
- * 为什么整轮一次而不是每批一次：它只读、不写、不占新实例（`--check-only` 一个页面都不开），
- * 一次查五家与分五次查五家得到的是同一份结论，而后者要多付四倍的等待。
+ * ⚠️ 位置是实测改的，不是偏好 —— 旧写法（整轮一次、排在 `ensure-shared` 之后、各批 `start` 之前）
+ * 的依据是「它只读、不开页面，所以放哪儿都不影响」。那条依据在**同一天**被自己推翻了：
+ * 2026-09-23 给这一步加了 `--login`（掉登录的当场自己登一次），它**会开页面、会提交表单**，
+ * 于是它**需要五家店自己的浏览器已经起来**。而旧位置下那五个实例还没起 ——
+ * 实测（`evidence/batches-2026-09-22/batches.log`，13:29:27 那一段）：五家店的代理全部回
+ * `HTTP 500 连不上浏览器调试端口 19xxx` ⇒ 五行全 `UNREADABLE` ⇒ 退出码 3 ⇒
+ * **自动登录一次机会都没有**，而表面上只看到一句「不是全在登录态」。
  *
- * 为什么一份结论能给所有批次用（不会串店）：链内部会把它**按本批 `--shops` 筛一遍**
- * （`run-multi-shop-day.mjs` 的 `inRound`）—— 不筛的话，第一批的告警会点名一批跟它无关的店。
+ * 所以现在的口径：**排在每一批的 `start` 之后**，查的是**这一批**那几家。
+ * 代价是家数分几批就查几次 —— 这是对的：每一批查的是「这一批的浏览器起没起、掉没掉登录」，
+ * 而那是**批次相关**的事实，不是整轮的常量（旧写法把批次相关的事实当成了全局常量）。
+ * `--shops` 因此只给本批，链也只读本批那一份结论（`--login-preflight <本批文件>`）。
+ *
+ * 定时链（不分批）那边仍然是整轮一次、排在 `ensure-instances` 之后 —— 因为那一步
+ * 一次就把 7 个实例全起齐了，前提成立，位置就是对的。两条链的差别在**实例什么时候起**，
+ * 不在「要不要查」。
  *
  * `file` / `args` 由调用方给（那两个东西的单一来源是 runtime/daily-job-plan.mjs 的
  * `JOB_FILES` 与 `buildLoginPreflightArgs`）：本模块只管「这一步长什么样」，
@@ -96,8 +107,17 @@ export function buildLoginPreflightStep({ file, args = [], artifactPath = null }
     note: (args.includes('--login')
       ? '跑前登录守卫（**会碰页面**：掉登录的当场用浏览器密码库登一次，没成才叫人）'
       : '跑前登录态体检（只读：不开页面、不点东西）')
-      + '—— 整轮一次，结论交给每一批的链（掉登录时告警会直接点名，不再叫人去开页面）',
+      + '—— 查的是**这一批**这几家（`--shops` 只给本批，结论也只交给本批的链）',
   };
+}
+
+/**
+ * 每一批那一份登录结论的文件名。**逐批不同是必须的**：共用一个名字时，
+ * 后一批的结论会盖掉前一批的 —— 而链读到的仍然是「某个存在的文件」，
+ * 于是「这一批的链看的是另一批的登录态」这种错在日志里完全看不出来。
+ */
+export function batchLoginArtifactName(index) {
+  return `login-preflight-b${index}.json`;
 }
 
 /**
@@ -189,15 +209,19 @@ export function batchOnlyArgs(batch) {
 }
 
 /**
- * 一个批次的四段命令。返回顺序**就是执行顺序**，每一步都带 `blocking`：
- *   start  —— 失败则跳过链（起不来就采不到），但**仍然发起释放**（别留半批占内存）；
+ * 一个批次的命令。返回顺序**就是执行顺序**，每一步都带 `blocking`：
+ *   start  —— 失败则**仍然继续**（链的第 0 步体检会给出更准的原因：哪一页不齐、哪一家连不上），
+ *             但**仍然发起释放**（别留半批占内存）；
+ *   login  —— **跑前登录守卫**（2026-09-23 加，可空）。**必须排在 `start` 之后**：
+ *             带 `--login` 时它要开那几家店自己的浏览器，实例没起就只能读到 `HTTP 500`。
+ *             它 `blocking: false`（不是闸门），但结论会落成文件交给本批的链。
  *   label  —— 每家一条（shop-window-label 的 `--only` 只收一个店名，且它是幂等的）。
  *             失败不算致命：标识页只是给人看的，缺了它数据照样收；
  *             所以 `blocking: false`，但失败会被记下来（「窗口上没写店名」是用户明确投诉过的现象）。
  *   chain  —— 唯一判「这一批成不成」的那一步；
  *   stop   —— 显式带 `--yes`（stop-all 的默认是只打印；在编排里只打印等于没释放）。
  */
-export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = [], logsDir = null } = {}) {
+export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = [], logsDir = null, loginStep = null } = {}) {
   return [
     {
       name: 'start',
@@ -206,16 +230,23 @@ export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = []
       blocking: true,
       note: `起这一批 ${batch.shops.length} 家（幂等：已就位的不碰）`,
     },
+    // 起完再查登录态：这一步带 `--login` 时会开这几家店自己的页面，实例没起就白查
+    // （2026-09-23 实测：排在 start 之前 ⇒ 五家全 `HTTP 500` ⇒ 自动登录一次机会都没有）。
+    ...(loginStep ? [loginStep] : []),
     ...batch.shops.map((shop) => ({
       name: `label:${shop}`,
       file: BATCH_FILES.label,
       // `--front`：把标识页置前，窗口标题＝店名 —— 业务人员走到机器前一眼能对上。
       // 不带 `--prune`：那个开关是**独占意图**，而且它在 main() 里排在挂标签页之前，
       // 一起给会让「原地接管空白页」这条路走不到（详见 shop-window-label.mjs 的 CLI 注释）。
-      // 冷启动后每个窗口恰好一个空白页，接管它就已经没有残留了，prune 在这里是多余动作。
       args: ['--commit', '--front', '--only', shop],
       blocking: false,
-      note: `给 ${shop} 挂/更新窗口标识页（接管空白页，顺带置前）`,
+      // 2026-09-23 起**冷启动的窗口首屏就已经是这个标识页**（见 runtime/launch-plan.mjs 给店铺实例
+      // 设的 `PROJECT_BROWSER_URL`），所以这一步在冷启动后走的是「复用现成那一页、原地导航」，
+      // 而不是「接管空白页」—— 空白页压根不会被生出来。措辞两种都写上：
+      // 只写「接管空白页」的话，读 `--print` 的人会以为窗口里有一个空白页在等着，
+      // 而那是**上一版的行为**（也正是用户投诉的那个空页）。
+      note: `给 ${shop} 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）`,
     })),
     {
       name: 'chain',
@@ -243,23 +274,20 @@ export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = []
 /**
  * 这一轮跑完之后，**该不该发起释放**。
  *
- * 用户第 5 条的拍板原话：「失败优先解决问题，需要人工的就转人工」。
- * 落成判决就是这一条：
- *   · 链没跑成（status ≠ 0）⇒ **不释放**。不主动把排查现场收掉，释放随时可以补做
- *     （命令就在下面这行 `why` 里），而复现一次失败要再花一整个批次的时间。
- *   · 链没跑（status === null）⇒ 释放。没有「现场」可言，留着只是占内存。
- *   · 链成功 ⇒ 释放。这才是这条链存在的全部收益所在。
+ * **2026-09-23 用户第二次拍板，口径改了**：原话「**每一轮跑完要释放浏览器资源**」。
+ * 旧口径（只在成功时释放，失败时留着现场等人看）作废，理由是那条承诺本来就兑现不了：
+ * 本文件批次里的 `start` 走 `scripts/start-all.mjs`（**起完就退**），而宿主在命令结束时
+ * 回收的是**整棵进程树** ⇒ 「不释放」只等于「我不去停它」，**不等于「它还活着」**。
+ * 真机实测（2026-09-23，`evidence/batches-2026-09-22/batches.log`）：那批窗口在命令结束
+ * **0.26 秒**后就连同启动器一起没了，只留下代理 —— 看起来像「停了一半」，其实是被连根回收。
+ * 于是「失败不释放」的真实效果只有两个：**内存没省下来**、**排查现场也没留住**。
  *
- * 注意这**不是**「停第一遍」：真正能不能停由 stop-all 的三类证据决定
- * （foreign / unconfirmed 一律拒停）。本函数只回答「要不要发起」。
- *
- * ⚠️ 关于「留着窗口等人看」这句话 —— 2026-09-23 真机实测后改成实话（见 `caveat`）：
- * 本文件批次里的 `start` 走的是 `scripts/start-all.mjs`（**起完就退**），而宿主在命令结束时
- * 回收的是**整棵进程树**；于是「不释放」只等于「我不去停它」，**不等于「它还活着」** ——
- * 实测里那批窗口在命令结束 0.26 秒后就连同启动器一起没了（代理还留着，于是看起来像
- * 「浏览器没了、代理在」，很像我们停了一半）。真正能把窗口留住的只有
- * `scripts/start-all-hold.mjs`（在后台托住），而那是宿主侧的选择，不是本模块能决定的。
- * 所以这句承诺必须带上条件说，否则它就是一句事后查不出原因的假话。
+ * 现在：**一律释放**（链成功、链失败、链根本没跑到，都释放）。
+ *   · 要看失败现场 ⇒ 用 `--no-release`（CLI 的开关）**并且**用
+ *     `scripts/start-all-hold.mjs` 在后台把实例托住 —— 两件缺一不可，只给 `--no-release`
+ *     会得到「以为窗口还在、其实已经没了」。
+ *   · 释放能不能真落地仍由 `stop-all.mjs` 的三类证据决定（foreign / unconfirmed 一律拒停）。
+ *     本函数只回答「要不要发起」，不回答「能不能停」—— 两件事混在一起会写出「以为停了、其实拒停」。
  */
 export function releaseAfterBatch({ chainStatus } = {}) {
   if (chainStatus === null || chainStatus === undefined) {
@@ -269,13 +297,10 @@ export function releaseAfterBatch({ chainStatus } = {}) {
     return { release: true, why: '这一批全绿：按计划收掉，把内存让给下一批' };
   }
   return {
-    release: false,
-    why: `这一批没跑成（链退出码 ${chainStatus}）—— 不主动释放（失败优先解决问题）；处理完后用 `
-      + 'node scripts/stop-all.mjs --yes --only <本批店铺> 释放',
-    caveat: '本批的 start 是 scripts/start-all.mjs（起完就退）：宿主要在命令结束时回收整棵进程树，'
-      + '所以**这批窗口活不过本轮命令**，「不释放」只是「我不去停它」。'
-      + '要让窗口真的留到人来看，得用 scripts/start-all-hold.mjs 在后台把本批实例托住再排查；'
-      + '人不在现场时，可查的证据在证据目录里（batches.log ＋ 链自己的体检原始输出）。',
+    release: true,
+    why: `这一批没跑成（链退出码 ${chainStatus}）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；`
+      + '要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，'
+      + '只给 --no-release 留不住窗口',
   };
 }
 

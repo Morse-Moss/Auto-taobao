@@ -15,8 +15,8 @@ import path from 'node:path';
 import { shopBrowserKeys } from './browser-ports.mjs';
 import {
   BATCH_FILES, BATCH_SIZE_BY_MEMORY, DEFAULT_BATCH_SIZE, SHARED_INSTANCE_KEYS, assertBatchCoversRegistry,
-  batchableShopKeys, buildBatchSteps, buildLoginPreflightStep, buildSharedStep, describeBatch, planBatches,
-  releaseAfterBatch, resolveBatchSize, resolveShopNames,
+  batchLoginArtifactName, batchableShopKeys, buildBatchSteps, buildLoginPreflightStep, buildSharedStep,
+  describeBatch, planBatches, releaseAfterBatch, resolveBatchSize, resolveShopNames,
 } from './batch-plan.mjs';
 import { REPO_ROOT } from './version.mjs';
 
@@ -71,7 +71,7 @@ test('resolveShopNames：不认识的店铺当场抛错，并列出已登记的'
   assert.throws(() => assertBatchCoversRegistry({ shops: [ALL[0], ALL[0]] }), /多次/u);
 });
 
-test('一个批次四段：起 → 挂标识页（每家一条）→ 跑 → 停', () => {
+test('一个批次：起 → 挂标识页（每家一条）→ 跑 → 停（不给 loginStep 时就是这四段）', () => {
   const plan = planBatches({ size: 2 });
   const batch = plan.batches[0];
   const steps = buildBatchSteps(batch, { dateInput: 'yesterday', chainArgs: ['--commit', '--notify-print'] });
@@ -133,27 +133,31 @@ test('计划指向的文件都真实存在（脚本被改名时不许静默生�
   }
 });
 
-// 用例名也是交付面：2026-09-23 之前这里叫「失败留着等人」，而实测证明窗口活不过本轮命令
-// （见下面 failed.caveat 那几条断言）。名字与判决文案不一致会误导后来人，所以一并改成实话。
-test('该不该释放：成功放行、失败不主动释放、没跑到链就收掉', () => {
-  assert.deepEqual(releaseAfterBatch({ chainStatus: 0 }).release, true);
-  assert.deepEqual(releaseAfterBatch({ chainStatus: null }).release, true);
+// 用例名也是交付面。2026-09-23 用户第二次拍板，口径从「失败留着等人」翻成
+// 「**每一轮跑完都要释放浏览器资源**」，这里跟着改成实话。
+//
+// 旧的「失败不释放」不是被证伪，而是**兑现不了**：批次的 start 走 scripts/start-all.mjs
+// （起完就退），宿主在命令结束时回收的是整棵进程树 ⇒ 那批窗口在命令结束 0.26 秒后就连同
+// 启动器一起没了（真机实测）。于是「不释放」的真实效果只有两个：内存没省下来、现场也没留住。
+test('该不该释放：一律释放 —— 链成功、链失败、链根本没跑到，都放', () => {
+  for (const chainStatus of [0, 1, 2, 3, null, undefined]) {
+    assert.equal(releaseAfterBatch({ chainStatus }).release, true,
+      `链退出码 ${chainStatus} 时没有释放 —— 用户 2026-09-23：每一轮跑完都要释放浏览器资源`);
+  }
+  // 三档的「为什么放」必须各自不同：那一行是日志里唯一能复查这是哪种情况的东西。
+  const why = [releaseAfterBatch({ chainStatus: 0 }).why,
+    releaseAfterBatch({ chainStatus: 1 }).why,
+    releaseAfterBatch({ chainStatus: null }).why];
+  assert.equal(new Set(why).size, 3, '三档的 reason 逐字相同的话，日志里看不出是哪种情况');
 
+  // 失败那一档必须点名**唯一**能真把窗口留住的组合，否则「我要去看现场」是一句空话。
   const failed = releaseAfterBatch({ chainStatus: 1 });
-  assert.equal(failed.release, false, '链失败时不释放 —— 用户第 5 条：失败优先解决问题');
-  assert.match(failed.why, /stop-all\.mjs --yes --only/u, '留着就得给出「处理完怎么释放」的那条命令');
-  // 「留窗口」这句承诺必须带条件。
-  // 2026-09-23 真机实测：start 走的是 start-all.mjs（起完就退），宿主在命令结束时回收整棵
-  // 进程树 ⇒ 那批窗口在命令结束 0.26 秒后就连同启动器一起没了。所以「不释放」≠「还活着」，
-  // 判决里必须把这件事说出来（否则事后翻日志的人会以为自己看漏了什么）。
-  assert.match(failed.caveat, /start-all-hold\.mjs/u,
-    '必须点名唯一能真把窗口留住的那条路（start-all-hold），否则这句承诺是空话');
-  assert.match(failed.caveat, /活不过本轮命令/u, '必须说清「不释放」只是「我不去停它」');
-  assert.equal(releaseAfterBatch({ chainStatus: 0 }).caveat, undefined,
-    '成功分支没有这个限制（它本来就该收掉），不该多一句容易误读的话');
-
-  assert.equal(releaseAfterBatch({ chainStatus: 2 }).release, false);
-  assert.equal(releaseAfterBatch({ chainStatus: 3 }).release, false);
+  assert.match(failed.why, /start-all-hold\.mjs/u, '必须点名能真把实例托住的那条路');
+  assert.match(failed.why, /--no-release/u, '两个条件缺一不可 —— 只给 --no-release 留不住窗口');
+  assert.match(failed.why, /释放/u, '要说清「照旧释放」这个决定本身');
+  // 旧口径的残骸不许留：`caveat` 一旦还在，读日志的人就会以为「不释放＝窗口还在」。
+  assert.equal(failed.caveat, undefined, 'caveat 是旧口径的字段，一律释放之后它不该再存在');
+  assert.equal(releaseAfterBatch({ chainStatus: 0 }).caveat, undefined);
 });
 
 test('批次的一行说明里同时有「第几批」与「哪几家」', () => {  const plan = planBatches({ size: 2 });
@@ -182,42 +186,83 @@ test('共享实例：只起不停、且只有商家浏览器（省内存才是�
 });
 
 // ---------------------------------------------------------------------------
-// 跑前登录态体检那一步（2026-09-23 加）：**整轮一次**，结论交给每一批的链。
+// 跑前登录守卫那一步（2026-09-23 加，**同日改成「每一批 start 之后跑一次」**）。
 //
-// 为什么放在这一层而不是每一批：它只读、不占新实例，一次查五家与分五次查五家得到同一份结论，
-// 而后者要多付四倍的等待。链内部会按本批 `--shops` 把结论筛一遍，所以共用一份不会串店。
+// 位置是**实测改的，不是偏好**：旧位置（整轮一次、排在所有 start 之前）的依据是「它只读、
+// 不开页面」，而 `--login` 把那条依据推翻了 —— 它要开这几家店自己的浏览器。
+// 2026-09-23 实测（evidence/batches-2026-09-22/batches.log 13:29:27 那段）：
+// 五个实例还没起 ⇒ 五家店的代理全回 `HTTP 500 连不上浏览器调试端口 19xxx` ⇒
+// 五行全 UNREADABLE、退出码 3 ⇒ **自动登录一次机会都没有**，而表面上只看到一句
+// 「不是全在登录态」。所以这里盯三件事：位置、只查本批、产物名逐批不同。
 // ---------------------------------------------------------------------------
 const LOGIN_FILE = 'skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs';
 const LOGIN_ARTIFACT = 'E:\\ev\\batches-2026-09-22\\login-preflight.json';
 
-test('跑前登录态体检那一步：整轮一次、只读、不阻断，且结论落成文件', () => {
+test('跑前登录守卫：不是闸门、会碰页面（带 --login）、结论落成文件', () => {
   const step = buildLoginPreflightStep({
     file: LOGIN_FILE,
-    args: ['--shops', ALL.join(','), '--json'],
+    args: ['--shops', ALL.join(','), '--json', '--login'],
     artifactPath: LOGIN_ARTIFACT,
   });
   assert.equal(step.name, 'login-preflight');
   assert.equal(step.file, LOGIN_FILE, '跑哪个文件由调用方给（单一来源是 daily-job-plan 的 JOB_FILES）');
-  assert.equal(step.blocking, false, '它不是闸门：读不到登录态不该拦住整轮（链的告警会如实说）');
-  // 它是**只读**那一条：一个 `--commit` 都不许出现（那是自动登录的第一步，不是体检）。
-  assert.doesNotMatch(step.args.join(' '), /--commit/u);
-  // 结论必须落成**文件**：只进日志的话，链那一步读的就是一个不存在的路径。
-  assert.equal(step.artifactPath, LOGIN_ARTIFACT);
-  // 整轮一次 ⇒ `--shops` 给的是全部要跑的店，不是某一家。
-  assert.equal(step.args[1], ALL.join(','));
+  assert.equal(step.blocking, false, '它不是闸门：掉登录不该拦住整轮（链的告警会如实点名是哪家店）');
+  assert.equal(step.artifactPath, LOGIN_ARTIFACT,
+    '结论必须落成**文件**：只进日志的话，链那一步读的就是一个不存在的路径');
+  // 措辞必须跟着参数走：带 `--login` 时会开页面、补可信手势、提交表单，
+  // 这时还印「只读：不开页面、不点东西」就是一句假话 —— 而 `--print` 正是人用来确认
+  // 「将要执行什么」的唯一凭据（本仓库反复在治的正是这种「打印的和实际做的不一致」）。
+  assert.match(step.note, /会碰页面/u, '带 --login 时不许再说自己是只读');
+  assert.doesNotMatch(step.note, /只读/u);
+  const readOnly = buildLoginPreflightStep({ file: LOGIN_FILE, args: ['--shops', 'x', '--json'] });
+  assert.match(readOnly.note, /只读/u, '不带 --login 时才是纯只读体检，那句「只读」才是真的');
+});
+
+test('登录守卫**排在每一批的 start 之后**，且 `--shops` 只给本批', () => {
+  for (const batch of planBatches({ size: 2 }).batches) {
+    const steps = buildBatchSteps(batch, {
+      loginStep: buildLoginPreflightStep({
+        file: LOGIN_FILE,
+        args: ['--shops', batch.shops.join(','), '--json', '--login'],
+        artifactPath: 'E:\\ev\\x.json',
+      }),
+    });
+    const names = steps.map((s) => s.name);
+    // 顺序就是执行顺序：起 → 查登录（会开这一批自己的页面）→ 挂标识页 → 跑 → 停。
+    assert.equal(names[0], 'start');
+    assert.equal(names[1], 'login-preflight', `这一批的步骤是 ${names.join(' → ')}`);
+    assert.ok(names.indexOf('login-preflight') > names.indexOf('start'),
+      '守卫必须排在 start 之后 —— 实例没起时它只会读到 HTTP 500，自动登录一次机会都没有');
+    assert.ok(names.indexOf('login-preflight') < names.indexOf('chain'),
+      '守卫必须排在 chain 之前：链要把这份结论当参数读');
+    // 只查本批：整轮一份的旧写法把「批次相关的事实」当成了全局常量。
+    assert.equal(steps[1].args[1], batch.shops.join(','), '`--shops` 必须只给这一批');
+    // 不给 loginStep 时这一步整个不出现（定时链那边由 daily-job-plan 自己生成它）。
+    assert.ok(!buildBatchSteps(batch).some((s) => s.name === 'login-preflight'),
+      '不传 loginStep 却冒出一个 login-preflight —— 说明它被硬塞进了批次里');
+  }
+});
+
+test('登录结论的文件名逐批不同（共用一个名字时，后一批会盖掉前一批）', () => {
+  assert.equal(batchLoginArtifactName(1), 'login-preflight-b1.json');
+  assert.notEqual(batchLoginArtifactName(1), batchLoginArtifactName(2),
+    '两批共用一个文件名 ⇒ 「这一批的链看的是另一批的登录态」，而日志里完全看不出来');
 });
 
 test('结论交给**每一批**的链，且每批拿到的是各自独立的参数数组', () => {
-  const flag = ['--login-preflight', LOGIN_ARTIFACT];
   const batches = planBatches({ size: 2 }).batches;
-  const chains = batches.map((batch) => buildBatchSteps(batch, {
-    dateInput: 'yesterday', chainArgs: ['--commit', ...flag],
-  }).find((s) => s.name === 'chain'));
+  const chains = batches.map((batch) => {
+    const flag = ['--login-preflight', `E:\\ev\\${batchLoginArtifactName(batch.index)}`];
+    return buildBatchSteps(batch, {
+      dateInput: 'yesterday', chainArgs: ['--commit', ...flag],
+    }).find((s) => s.name === 'chain');
+  });
 
   for (const chain of chains) {
     const at = chain.args.indexOf('--login-preflight');
     assert.notEqual(at, -1, `这一批的链没拿到结论：${chain.args.join(' ')}`);
-    assert.equal(chain.args[at + 1], LOGIN_ARTIFACT);
+    assert.match(chain.args[at + 1], /login-preflight-b\d+\.json$/u,
+      '链必须读**本批自己**那份结论，而不是某个共用的名字');
   }
   // 每一批的链参数必须是**各自一份**：共享同一个数组引用时，后一批的 `--logs` 拼接
   // 会把前一批的参数改掉（那种错在日志里长得完全正常）。
