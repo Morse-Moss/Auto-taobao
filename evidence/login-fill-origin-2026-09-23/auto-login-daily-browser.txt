@@ -1,0 +1,47 @@
+{
+ "proxy": "http://127.0.0.1:19023",
+ "commit": true,
+ "notify": {
+  "mode": "dry",
+  "alertId": "sycm-login-sycm-20260923",
+  "status": "DRY_RUN",
+  "exitCode": 0,
+  "text": "【需要处理】需要你登录一次\n对象：生意参谋\n机器：DESKTOP-KJP4RA5\n浏览器配置：D:/Retire/edge-daily-report-profile\n原因：账号密码填了、登录按钮也点了，页面却还停在登录页。 页面还停在登录页 —— 可能是密码不对，也可能是平台要求额外验证。系统没有再试一遍（连着试会把账号锁住）。\n下一步：登录页已经开在那台电脑的浏览器窗口了。看它的提示：要求验证就验证，提示密码不对就先改密码。系统不会自己再试一遍（连着试会把账号锁住）。\n时间：2026-09-23 14:40\n告警编号：sycm-login-sycm-20260923"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": false,
+   "href": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  }
+ },
+ "login": {
+  "targetId": "C038C0D551C6636E606CB649444F4D05",
+  "opened": true,
+  "urlBefore": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+  "autofill": {
+   "id": true,
+   "password": true
+  },
+  "gesturePoint": [
+   873,
+   321
+  ],
+  "afterGesture": {
+   "idLen": 8,
+   "passwordLen": 9
+  },
+  "captcha": false,
+  "agreementChecked": false,
+  "submitPoint": [
+   873,
+   489
+  ],
+  "urlAfter": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+  "shots": "evidence\\login-fill-origin-2026-09-23\\shots-daily\\login-after-submit.png"
+ },
+ "verdict": "LOGIN_NOT_CONFIRMED",
+ "detail": "页面还停在登录页 —— 可能是密码不对，也可能是平台要求额外验证。系统没有再试一遍（连着试会把账号锁住）。"
+}
+exit=2

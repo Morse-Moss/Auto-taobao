@@ -1,0 +1,134 @@
+自动登录脚本打开的登录页 origin = https://login.taobao.com
+（Chromium 只在「保存凭据的 origin_url 与当前页 origin 相同」时才做填充）
+
+== 里可林淘宝  D:/Retire/edge-profiles/likelin-home
+   logins 表的列：origin_url, action_url, username_element, username_value, password_element, password_value, submit_element, signon_realm, date_created, blacklisted_by_user, scheme, password_type, times_used, form_data, display_name, icon_url, federation_url, skip_zero_click, generation_upload_status, possible_username_pairs, id, date_last_used, moving_blocked_for, date_password_modified, sender_email, sender_name, date_received, sharing_notification_displayed, keychain_identifier, sender_profile_image_url, date_last_filled, actor_login_approved
+   origin=https://login.taobao.com/havanaone/login/login.htm
+      用户名长度=8  密文长度=40  用过=0  ✅ 与脚本打开的登录页同 origin（能被填）
+   origin=https://havanalogin.taobao.com/mini_login.htm
+      用户名长度=8  密文长度=40  用过=1  ❌ 不同 origin（脚本那一页填不上）
+
+== 网林天猫  D:/Retire/edge-profiles/wanglin-flagship
+   origin=https://login.taobao.com/havanaone/login/login.htm
+      用户名长度=10  密文长度=40  用过=1  ✅ 与脚本打开的登录页同 origin（能被填）
+
+== 盖文淘宝  D:/Retire/edge-profiles/suixin-custom
+   origin=https://login.taobao.com/member/login.jhtml
+      用户名长度=8  密文长度=40  用过=0  ✅ 与脚本打开的登录页同 origin（能被填）
+   origin=https://havanalogin.taobao.com/mini_login.htm
+      用户名长度=8  密文长度=40  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://havanalogin.taobao.com/mini_login.htm
+      用户名长度=9  密文长度=40  用过=4  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://login.taobao.com/member/login.jhtml
+      用户名长度=9  密文长度=40  用过=1  ✅ 与脚本打开的登录页同 origin（能被填）
+
+== 盖文天猫  D:/Retire/edge-profiles/gaiwen-flagship
+   origin=https://havanalogin.taobao.com/mini_login.htm
+      用户名长度=8  密文长度=40  用过=1  ❌ 不同 origin（脚本那一页填不上）
+
+== 科塔淘宝  D:/Retire/edge-profiles/shop-j873522735
+   origin=https://login.taobao.com/havanaone/login/login.htm
+      用户名长度=13  密文长度=40  用过=0  ✅ 与脚本打开的登录页同 origin（能被填）
+   origin=https://havanalogin.taobao.com/mini_login.htm
+      用户名长度=13  密文长度=40  用过=2  ❌ 不同 origin（脚本那一页填不上）
+
+== 商家浏览器  D:/Retire/edge-daily-report-profile
+   （原库被运行中的浏览器锁着，改读复制件：C:\Users\ADMINI~1\AppData\Local\Temp\login-data-WqdRq3\edge-daily-report-profile-Login Data）
+   origin=http://127.0.0.1:5173/login
+      用户名长度=5  密文长度=39  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://auto-operations-production.up.railway.app/login
+      用户名长度=6  密文长度=37  用过=1  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://localhost:5173/login
+      用户名长度=5  密文长度=39  用过=1  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://192.168.0.135:18080/platforms/xhs/accounts
+      用户名长度=11  密文长度=39  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://havanalogin.taobao.com/mini_login.htm
+      用户名长度=8  密文长度=40  用过=11  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://hello-shudong.com/auth/login
+      用户名长度=17  密文长度=42  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://github.com/login
+      用户名长度=17  密文长度=45  用过=7  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://www.idictation.cn/
+      用户名长度=11  密文长度=45  用过=3  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://www.gyg.la/user/login
+      用户名长度=17  密文长度=45  用过=4  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://x.com/i/jf/onboarding/web
+      用户名长度=12  密文长度=45  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://aitavix.com/login
+      用户名长度=6  密文长度=37  用过=5  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://127.0.0.1:18080/login
+      用户名长度=6  密文长度=37  用过=2  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://localhost:8080/login
+      用户名长度=19  密文长度=42  用过=228  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://apizh.net/register
+      用户名长度=24  密文长度=37  用过=7  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://www.idictation.cn/
+      用户名长度=11  密文长度=45  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://auto-operations-production.up.railway.app/login
+      用户名长度=6  密文长度=37  用过=2  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://login.live.com/oauth20_authorize.srf
+      用户名长度=0  密文长度=42  用过=9  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://www38.polyu.edu.hk/eAdmission/login.do
+      用户名长度=24  密文长度=40  用过=3  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://xn--9kqq05d.xn--cesw6hd3s99f.com/auth/login
+      用户名长度=19  密文长度=39  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://192.168.0.135:18080/login
+      用户名长度=6  密文长度=37  用过=3  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://apply.cityu-dg.edu.cn/pg/a/login
+      用户名长度=24  密文长度=40  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://localhost:8080/login
+      用户名长度=17  密文长度=37  用过=202  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://aitavix.com/login
+      用户名长度=6  密文长度=37  用过=5  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://aimorse.tech/admin
+      用户名长度=0  密文长度=45  用过=8  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://accounts.google.com/v3/signin/challenge/pwd
+      用户名长度=24  密文长度=45  用过=5  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://vwd239gtghx.feishu.cn/wiki/KQt0wYD7uiCCZJkmhBscSgTHnWc
+      用户名长度=0  密文长度=40  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://signin.ea.com/p/juno/login
+      用户名长度=28  密文长度=43  用过=1  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://localhost:19080/geo_admin/login
+      用户名长度=5  密文长度=39  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://dash.cloudflare.com/login
+      用户名长度=17  密文长度=43  用过=1  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://login.live.com/ppsecure/post.srf
+      用户名长度=23  密文长度=40  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://127.0.0.1:5174/login
+      用户名长度=5  密文长度=39  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://127.0.0.1:8010/login
+      用户名长度=5  密文长度=39  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://accounts.google.com/v3/signin/challenge/pwd
+      用户名长度=18  密文长度=41  用过=4  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://www.packyapi.com/login
+      用户名长度=17  密文长度=39  用过=2  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://signin.ea.com/p/juno/login
+      用户名长度=23  密文长度=45  用过=3  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://127.0.0.1:18789/config
+      用户名长度=3  密文长度=80  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://t.smartsousou.com/
+      用户名长度=11  密文长度=37  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://sub.exellome.online/login
+      用户名长度=17  密文长度=37  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://auth.openai.com/log-in/password
+      用户名长度=34  密文长度=47  用过=1  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://nihao.gwshudong.com/auth/login
+      用户名长度=17  密文长度=42  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://www.xn--kivn76b41nnhi.com/user/login
+      用户名长度=17  密文长度=45  用过=0  ❌ 不同 origin（脚本那一页填不上）
+   origin=http://192.168.0.135:8010/login
+      用户名长度=5  密文长度=39  用过=12  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://worldclawpro.ai/sign-in
+      用户名长度=17  密文长度=39  用过=2  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://xiaowangshen.com/user/base-login/
+      用户名长度=11  密文长度=39  用过=3  ❌ 不同 origin（脚本那一页填不上）
+   origin=https://login.taobao.com/member/login.jhtml
+      用户名长度=8  密文长度=40  用过=10  ✅ 与脚本打开的登录页同 origin（能被填）
+   origin=https://login.taobao.com/havanaone/login/login.htm
+      用户名长度=8  密文长度=40  用过=0  ✅ 与脚本打开的登录页同 origin（能被填）
+   origin=https://havanalogin.taobao.com/mini_login.htm
+      用户名长度=9  密文长度=40  用过=1  ❌ 不同 origin（脚本那一页填不上）
+
+(node:21716) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+exit=0

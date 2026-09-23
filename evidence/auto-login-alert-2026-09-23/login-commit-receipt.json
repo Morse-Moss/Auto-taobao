@@ -1,0 +1,34 @@
+{
+ "proxy": "http://127.0.0.1:19943",
+ "commit": true,
+ "notify": {
+  "mode": "auto",
+  "alertId": "sycm-login-盖文天猫-sycm-alimama-20260923",
+  "status": "SENT",
+  "exitCode": 0
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": null,
+   "reason": "expected one 生意参谋 page, got 0"
+  },
+  "alimama": {
+   "label": "阿里妈妈",
+   "loggedIn": null,
+   "reason": "expected one 阿里妈妈 page, got 0"
+  }
+ },
+ "login": {
+  "targetId": "91A8B4FB635B49CF4DA050A2771FCFEC",
+  "opened": true,
+  "urlBefore": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+  "autofill": {
+   "id": false,
+   "password": false
+  },
+  "shots": null
+ },
+ "verdict": "NO_SAVED_CREDENTIAL",
+ "detail": "登录时请点浏览器提示里的「保存密码」，这样下次系统就能自己填了。"
+}

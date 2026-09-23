@@ -9,8 +9,8 @@ import { test } from 'node:test';
 
 import {
   PREFLIGHT_VERDICTS, SHOP_VERDICTS, SITE_KEYS, SITE_VERDICTS, exitCodeForPreflight,
-  judgePreflight, judgeShopReceipt, loginAccountFor, parseCheckShopsArgs, platformNameHint,
-  renderReport, siteVerdictOf,
+  judgePreflight, judgeShopReceipt, loginAccountFor, notifyModeFor, parseCheckShopsArgs, platformNameHint,
+  renderNotifyLines, renderReport, siteVerdictOf,
 } from './check-login-shops-core.mjs';
 // 站点词表与探针地址的唯一来源：这里只**核对**，不另抄一份。
 import { SITES } from './login-merchant-core.mjs';
@@ -318,8 +318,13 @@ test('主脚本真的按「一店一实例 + 纯读」调用 login-merchant（�
   // ② 切实例靠 --proxy（端口来自登记表），不是靠 --shop
   assert.match(source, /'--proxy', `http:\/\/127\.0\.0\.1:\$\{conf\.proxyPort\}`/u,
     '必须用登记表里的 proxyPort 指定那家店自己的实例');
-  // ③ 这一层不投递：同一次故障再发一条飞书只会让那条通道更不可信
-  assert.match(source, /'--notify', 'off'/u, '这一层不许投递告警');
+  // ③ 告警必须与「有没有真的去登」绑在一起（2026-09-23 用户拍板：「自动登录失败就飞书告警，
+  //    但前提是你要先自动登录」）—— 所以这里**不许**再出现写死的 `--notify off`，
+  //    只能是 notifyModeFor() 算出来的那个值；而「哪一档该发」本身由下面一组用例钉住。
+  assert.match(source, /'--notify', notifyModeFor\(\{ login \}\)/u,
+    '告警取值必须由 notifyModeFor() 决定（写死常量＝「哪一档该不该发」只活在 IO 里，离线测不到）');
+  assert.doesNotMatch(source, /'--notify',\s*'(?:off|auto|dry|send)'/u,
+    '不许在 IO 里写死 --notify 的取值：那会让「没登过就不许叫人」这条判据失去落点');
   // ④ 用 process.execPath 起真 node，**不**经过任何 .cmd/.bat 包装
   //    （Node ≥18.20.2 起 spawn('<x>.cmd', shell:false) 同步抛 EINVAL，包一层是死的）
   assert.match(source, /spawn\(process\.execPath, \[/u);
@@ -332,4 +337,78 @@ test('主脚本真的按「一店一实例 + 纯读」调用 login-merchant（�
   assert.match(source, /LOGIN_GAP_MS/u, '登录模式必须有两店之间的静默期');
   assert.match(source, /if \(!opts\.login\) \{[\s\S]*?Promise\.all[\s\S]*?\} else \{[\s\S]*?for \(const shop of shops\)/u,
     '只读才并行；带 --login 必须串行（并行登录是风控加速器）');
+});
+
+// ---------------------------------------------------------------------------
+// 告警出口：只允许在「真的去登过」之后叫人（2026-09-23 用户拍板）
+// ---------------------------------------------------------------------------
+// 用户原话：「如果自动登录失败就飞书告警，但是前提是你要先自动登录」。
+// 这句话拆成两条判据：① 没去登 ⇒ 闭嘴；② 去登了、且仍需要人 ⇒ 才发。
+// 第 ② 条不由本层判（在 login-merchant-core 的应通知判据里），本层守住第 ① 条。
+
+test('notifyModeFor：没去登 ⇒ 一个字都不发；真的去登了 ⇒ 才允许叫人', () => {
+  assert.equal(notifyModeFor({ login: false }), 'off', '只读档必须闭嘴：那一轮没有任何登录发生过');
+  assert.equal(notifyModeFor({}), 'off', '不给参数时按只读算（默认不许发）');
+  assert.equal(notifyModeFor({ login: true }), 'auto', '带 --login 才允许发');
+});
+
+test('告警收据要透传到行里 —— 否则「叫没叫到人」只能靠猜', () => {
+  const receipt = {
+    verdict: 'NO_SAVED_CREDENTIAL',
+    sites: { sycm: { loggedIn: false, href: 'x', loggedInAfter: false } },
+    notify: { mode: 'auto', alertId: 'sycm-login-盖文天猫-sycm-20260923', status: 'SENT' },
+  };
+  const row = judgeShopReceipt({ shop: '盖文天猫', receipt });
+  assert.equal(row.notify?.status, 'SENT');
+  assert.equal(row.notify?.alertId, 'sycm-login-盖文天猫-sycm-20260923');
+  // 只读档下子进程不产生这个键 ⇒ 必须是 null，而不是凭空造一个对象
+  assert.equal(judgeShopReceipt({ shop: '盖文天猫', receipt: { sites: {} } }).notify, null);
+});
+
+test('renderNotifyLines：已叫人 / 被去重 / 发失败 / 根本没发，四种要说得出区别', () => {
+  const row = (shop, status, extra = {}) => ({
+    shop, notify: { mode: 'auto', status, alertId: `sycm-login-${shop}-sycm-20260923`, ...extra },
+  });
+  const text = renderNotifyLines([
+    row('网林天猫', 'SENT'), row('盖文天猫', 'DEDUPED'), row('盖文淘宝', 'FAILED', { error: 'HTTP 500' }),
+  ]).join('\n');
+  assert.match(text, /已经叫人 1 次：网林天猫/u);
+  assert.match(text, /盖文天猫：.*不重复发/u);
+  assert.match(text, /盖文淘宝：.*发送失败 —— HTTP 500/u);
+  // 「没发出去」与「已叫人」**必须**长得不一样：混起来会让收信人以为已经通知过了，
+  // 而其实一条都没到（这正是本仓库反复在治的那类静默）。
+  assert.notEqual(
+    renderNotifyLines([row('网林天猫', 'SENT')]).join('\n'),
+    renderNotifyLines([row('网林天猫', 'NOT_CONFIGURED')]).join('\n'),
+  );
+  // 认不出来的状态不许被当成「发过了」
+  assert.match(renderNotifyLines([row('网林天猫', 'WHATEVER')]).join('\n'), /认不出来/u);
+  // 一条收据都没有（只读档）⇒ 这一段整段不出现
+  assert.deepEqual(renderNotifyLines([{ shop: '网林天猫', notify: null }]), []);
+});
+
+test('只读档的报告里没有「已叫人」那一段，并且明说这一档不会发告警', () => {
+  const rows = [judgeShopReceipt({ shop: '网林天猫', receipt: both(false, false) })];
+  const report = renderReport({ rows, autoLogin: false });
+  // 没有告警段落、没有「已经叫人」这种话 —— 那一轮没有任何登录发生过
+  assert.doesNotMatch(report, /^\[告警\]/mu);
+  assert.doesNotMatch(report, /已经叫人/u);
+  // 但要把「为什么群里没动静」写在明面上：否则读报告的人会以为告警坏了
+  // （2026-09-23 用户原话就是「如果登录不了，为什么没有飞书提醒」）。
+  assert.match(report, /不发任何告警/u);
+});
+
+test('带 --login 的报告里，告警那一段要出现在判据下面', () => {
+  const rows = [{
+    ...judgeShopReceipt({
+      shop: '盖文天猫',
+      receipt: {
+        verdict: 'NO_SAVED_CREDENTIAL',
+        sites: { sycm: { loggedIn: false, href: 'x' }, alimama: { loggedIn: false, href: 'y' } },
+        notify: { mode: 'auto', alertId: 'sycm-login-盖文天猫-sycm-alimama-20260923', status: 'SENT' },
+      },
+    }),
+  }];
+  const report = renderReport({ rows, autoLogin: true });
+  assert.match(report, /^\[告警\] 已经叫人 1 次：盖文天猫（编号 .*盖文天猫.*）$/mu);
 });

@@ -1,0 +1,13 @@
+代理 19045：匹配「havanaone」的页签 1 个
+--- 登录
+    url=https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+    {"idValue":"","idValueLen":0,"pwdBoxExists":true,"errText":"","bodyHead":"网站无障碍  \"登录页面\"改进建议 密码登录短信登录 忘记密码 登录 忘记账号 免费注册 * 已阅读并同意以下协议淘宝平台服务协议、隐私权政策、法律声明、支付宝及客户端服务协议 手机扫码登录 二维码已失效 刷新 打开 淘宝APP—点击左上角扫一扫 怎么扫码登录?"}
+代理 19042：匹配「havanaone」的页签 1 个
+--- 登录
+    url=https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+    {"idValue":"网林家居旗舰店:阿彦","idValueLen":10,"pwdBoxExists":true,"errText":"","bodyHead":"网站无障碍  \"登录页面\"改进建议 密码登录短信登录 忘记密码 登录 忘记账号 免费注册 * 已阅读并同意以下协议淘宝平台服务协议、隐私权政策、法律声明、支付宝及客户端服务协议 手机扫码登录 二维码已失效 刷新 打开 淘宝APP—点击左上角扫一扫 怎么扫码登录?"}
+代理 19023：匹配「havanaone」的页签 1 个
+--- 登录
+    url=https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+    {"idValue":"里可林家居:阿彦","idValueLen":8,"pwdBoxExists":true,"errText":"","bodyHead":"网站无障碍  \"登录页面\"改进建议 密码登录短信登录 忘记密码 登录 忘记账号 免费注册 * 已阅读并同意以下协议淘宝平台服务协议、隐私权政策、法律声明、支付宝及客户端服务协议 手机扫码登录 打开 淘宝APP—点击左上角扫一扫 怎么扫码登录?"}
+exit=0

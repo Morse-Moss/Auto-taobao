@@ -5,8 +5,10 @@
 // 两种模式，**同一份判定逻辑、同一份登记表**，差别只在子进程带哪个开关：
 //   （默认，不带 `--login`）**只读体检**：子进程走 `--check-only`，一个页面都不碰。
 //   （带 `--login`）**跑前登录守卫**：子进程走 `--commit` —— 掉登录的当场自己登一次，
-//     没成才把「要人做什么」报出来（2026-09-23 按用户明确授权加，原话「可以自动登录把项目规则改了」）。
-//   ⚠️ 带 `--login` 时这一条**不再是只读**：它会开登录页、补一次可信手势、提交表单。
+//     没成才把「要人做什么」报出来，**并给需要人的那几家各发一条飞书**（见下面纪律 3）
+//     （2026-09-23 按用户明确授权加，原话「可以自动登录把项目规则改了」）。
+//   ⚠️ 带 `--login` 时这一条**不再是只读**：它会开登录页、补一次可信手势、提交表单
+//      ⇒ 它同时成了一个**写入方与投递方**（登录 + 飞书告警）。
 //      所以它只在「确实想让机器去登」的调用点带这个开关（定时链与分批驱动），
 //      人工排查时想只看一眼就不要带。
 //
@@ -25,8 +27,16 @@
 //   2. **不带 `--login` 时一个页面都不碰**：`--check-only` 让 login-merchant 在读完登录态之后
 //      就返回，不会去 `/new` 那个淘宝登录页（不带这个开关时它会 —— 那是自动登录的第一步）。
 //      带上 `--login` 就是**故意要它去登**，那时上面这句不成立，别拿它当只读用。
-//   3. 这一层**不投递任何告警**（`--notify off`）。它只把结论落进跑它的那份日志/终端。
-//      同一次故障再发一条飞书，只会让那条通道更不可信；真正的告警仍由链失败时那一条负责。
+//   3. **告警与「有没有真的去登」绑在一起**（2026-09-23 按用户拍板改；原话
+//      「如果自动登录失败就飞书告警，但是前提是你要先自动登录」）：
+//        · 只读档（不带 `--login`）⇒ 子进程拿 `--notify off`，**一个字都不发**。
+//          那一轮没有任何登录发生过，拿「结论看起来像失败」去叫人，是在为一件没做的事叫。
+//        · 带 `--login`（真的会开登录页、补手势、提交表单）⇒ 子进程拿 `--notify auto`，
+//          它在「真的试过（`--commit`）且结论需要人」时才发（语义在 login-merchant-core 的 shouldNotify）。
+//        取哪个值一律由 `notifyModeFor()` 算，不在 IO 里拼字符串 —— 接线必须能被纯函数用例钉住。
+//      链那一条照旧：链失败时自己发一条，文案里点名「哪个店哪个后台掉登录」。
+//      两条**口径不同且刻意不同**：这一条答「登不进就立刻叫人」，链那条答「整轮停在哪」。
+//      去重靠告警编号（含店名与日期），所以同一天同一家店只会被叫一次。
 //
 // 刻意**不查**商家浏览器（dailyReport，19022/19023）：它用的是同一批账号，
 // 而它的两个页面（生意参谋 + 飞书底单页）与五家店的采集无关 —— 它掉了登录会在
@@ -49,7 +59,7 @@ import { pathToFileURL } from 'node:url';
 
 import { SHOP_BROWSERS, shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
 import {
-  exitCodeForPreflight, judgePreflight, judgeShopReceipt, parseCheckShopsArgs, renderReport,
+  exitCodeForPreflight, judgePreflight, judgeShopReceipt, notifyModeFor, parseCheckShopsArgs, renderReport,
 } from './check-login-shops-core.mjs';
 
 const LOGIN_CLI = fileURLToPath(new URL('./login-merchant.mjs', import.meta.url));
@@ -77,11 +87,11 @@ function probeShop(shop, timeoutMs, { login = false } = {}) {
         login ? '--commit' : '--check-only',
         '--proxy', `http://127.0.0.1:${conf.proxyPort}`,
         '--shop', shop,
-        // 两种模式都 `--notify off`：自动登录失败**也不在这里发飞书**。
-        // 理由与只读模式同源（见头部第 3 条）：真正的告警由链失败时那一条负责，
-        // 这一层只把结论落进跑它的那份日志。否则同一次故障会在群里出现两条，
-        // 而且第二条（本层这条）说不出「整条链停在哪」。
-        '--notify', 'off',
+        // 告警与「有没有真的去登」绑定（见头部第 3 条，2026-09-23 用户拍板）：
+        //   只读档 ⇒ `off`（没登过就不许叫人）；带 `--login` ⇒ `auto`（真登过且仍需要人才发）。
+        // 取值算法在 core 的 `notifyModeFor()`（纯函数、有用例钉住），这里不拼字符串 ——
+        // 拼字符串的话，「哪一档该不该发」这件事就只活在 IO 里，离线测不到。
+        '--notify', notifyModeFor({ login }),
       ], { cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     } catch (error) {
       resolve({ receipt: null, error: `spawn 失败：${String(error?.message ?? error)}`, exitCode: null });

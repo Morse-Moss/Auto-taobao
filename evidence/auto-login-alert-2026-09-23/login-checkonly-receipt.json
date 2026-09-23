@@ -1,0 +1,24 @@
+{
+ "proxy": "http://127.0.0.1:19943",
+ "commit": false,
+ "notify": {
+  "mode": "off",
+  "status": "SKIPPED",
+  "reason": "mode_or_not_attempted"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": null,
+   "reason": "expected one 生意参谋 page, got 0"
+  },
+  "alimama": {
+   "label": "阿里妈妈",
+   "loggedIn": null,
+   "reason": "expected one 阿里妈妈 page, got 0"
+  }
+ },
+ "login": null,
+ "verdict": "NEEDS_LOGIN",
+ "detail": "要留意的是：生意参谋（读不到：这个窗口里没有它的页面）、阿里妈妈（读不到：这个窗口里没有它的页面）。"
+}

@@ -1,0 +1,124 @@
+{
+ "startedAt": "2026-09-23T06:55:37.411Z",
+ "browserPort": 19933,
+ "proxyPort": 19943,
+ "shop": "盖文天猫",
+ "checks": [
+  {
+   "name": "演练端口事先是空的（不是接上别人的实例）",
+   "ok": true,
+   "detail": "浏览器 19933=null，代理 19943=null"
+  },
+  {
+   "name": "只读档真的读到了回执",
+   "ok": true,
+   "detail": "exit=2，stderr 尾："
+  },
+  {
+   "name": "只读档的收据是 SKIPPED（「没去登过就一个字都不发」）",
+   "ok": true,
+   "detail": "{\"mode\":\"off\",\"status\":\"SKIPPED\",\"reason\":\"mode_or_not_attempted\"}"
+  },
+  {
+   "name": "真的去登的那一次拿到了回执",
+   "ok": true,
+   "detail": "exit=2，stderr 尾："
+  },
+  {
+   "name": "照实记下这次落在哪一个结论上（结论是实测出来的，不是预设的）",
+   "ok": true,
+   "detail": "verdict=NO_SAVED_CREDENTIAL"
+  },
+  {
+   "name": "结论需要人 ⇒ 告警真的被投递了（收据 status=SENT）",
+   "ok": true,
+   "detail": "notify={\"mode\":\"auto\",\"alertId\":\"sycm-login-盖文天猫-sycm-alimama-20260923\",\"status\":\"SENT\",\"exitCode\":0}"
+  },
+  {
+   "name": "告警编号里带店名与日期（同一天同一家店只会叫一次）",
+   "ok": true,
+   "detail": "alertId=sycm-login-盖文天猫-sycm-alimama-20260923"
+  },
+  {
+   "name": "投递收据里带了投递模式 auto（证明走的是新接线，不是写死的 off）",
+   "ok": true,
+   "detail": "mode=auto"
+  },
+  {
+   "name": "释放后两个端口都不再应答（自报「已释放」不算数）",
+   "ok": true,
+   "detail": "浏览器 19933=null，代理 19943=null"
+  }
+ ],
+ "temporaryProfile": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\auto-login-alert-HmJiL0",
+ "checkOnly": {
+  "code": 2,
+  "receipt": {
+   "verdict": "NEEDS_LOGIN",
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "mode_or_not_attempted"
+   },
+   "sites": {
+    "sycm": {
+     "label": "生意参谋",
+     "loggedIn": null
+    },
+    "alimama": {
+     "label": "阿里妈妈",
+     "loggedIn": null
+    }
+   }
+  }
+ },
+ "commit": {
+  "code": 2,
+  "receipt": {
+   "verdict": "NO_SAVED_CREDENTIAL",
+   "notify": {
+    "mode": "auto",
+    "alertId": "sycm-login-盖文天猫-sycm-alimama-20260923",
+    "status": "SENT",
+    "exitCode": 0
+   },
+   "login": {
+    "opened": true,
+    "autofill": {
+     "id": false,
+     "password": false
+    },
+    "urlAfter": null
+   },
+   "sites": {
+    "sycm": {
+     "label": "生意参谋",
+     "loggedIn": null
+    },
+    "alimama": {
+     "label": "阿里妈妈",
+     "loggedIn": null
+    }
+   }
+  }
+ },
+ "verdict": "全部成立",
+ "release": {
+  "reason": "演练结束",
+  "killed": [
+   {
+    "pid": 60832,
+    "taskkill": "0"
+   },
+   {
+    "pid": 30944,
+    "taskkill": "0"
+   }
+  ],
+  "browserPortAfter": null,
+  "proxyPortAfter": null,
+  "profile": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\auto-login-alert-HmJiL0",
+  "profileRemoved": true
+ },
+ "finishedAt": "2026-09-23T06:55:53.817Z"
+}

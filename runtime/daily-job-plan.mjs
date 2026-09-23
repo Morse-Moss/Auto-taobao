@@ -22,7 +22,9 @@ import path from 'node:path';
 
 export const JOB_FILES = Object.freeze({
   ensureInstances: 'scripts/start-all.mjs',
-  // 跑前登录态体检（只读：不开页面、不点任何东西）。2026-09-23 接进本计划。
+  // 跑前登录态体检 / 跑前登录守卫（两种模式，由 autoLogin 选）。2026-09-23 接进本计划。
+  //   · 只读档：不开页面、不点任何东西、**也不发任何告警**（没去登就不许叫人）；
+  //   · `autoLogin` 打开：会碰页面（登录），登不进去的当场各发一条飞书告警。
   // 它排在「起实例」之后、「跑链」之前 —— 实例不在时它读不到任何东西，
   // 而那正是链的第 0 步体检（归位）要负责的事。
   loginPreflight: 'skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs',
@@ -250,8 +252,8 @@ export function buildJobPlan(options = {}) {
         // （2026-09-23 之前正是这样：体检跑了、报告也打了，而告警仍然说「页面不齐，去开页面」）。
         ...(loginPreflightFile ? { artifactPath: loginPreflightFile } : {}),
         note: (autoLogin
-          ? '跑前登录守卫（**会碰页面**：掉登录的当场用浏览器密码库登一次，没成才叫人）'
-          : '跑前登录态体检（只读：不开页面、不点东西）')
+          ? '跑前登录守卫（**会碰页面**：掉登录的当场用浏览器密码库登一次；登不进去的**当场各发一条飞书告警**）'
+          : '跑前登录态体检（只读：不开页面、不点东西、也不发任何告警）')
           + '—— 哪家店的哪个后台掉登录了，写进日志'
           + (loginPreflightFile ? '，并交给链（掉登录时告警会直接点名，不再叫人去开页面）' : ''),
         // 同一条理由：它**不是闸门**。它的三个退出码会被记进日志

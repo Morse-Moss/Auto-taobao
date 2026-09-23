@@ -82,6 +82,11 @@ export function judgeShopReceipt({ shop, receipt = null } = {}) {
     // 子脚本自己报的结论与说明。**只抄，不替它下结论** —— 与登录那侧的纪律一致。
     scriptVerdict: receipt?.verdict ?? null,
     detail: receipt?.detail ?? null,
+    // 告警那一侧的收据（2026-09-23 透传）。子进程发没发、被没被去重、发失败没有，
+    // 只有它知道 —— 不透传的话，「自动登录失败会叫人」这句话在日志里**无从核对**
+    // （报告会照旧只写「要你去窗口里动手」，与「已经叫过你了」长得一样）。
+    // 只读档下这个字段是 `null`（子进程 `--notify off`，连这个键都不产生）。
+    notify: receipt?.notify ?? null,
   };
 }
 
@@ -115,6 +120,34 @@ export function exitCodeForPreflight(verdict) {
   if (verdict === 'ALL_IN') return 0;
   if (verdict === 'NEEDS_LOGIN') return 2;
   return 3;
+}
+
+// ---------------------------------------------------------------------------
+// 「这一层要不要替子进程发飞书」——告警必须与「有没有真的去登」绑在一起
+// ---------------------------------------------------------------------------
+/**
+ * 子进程该拿哪个 `--notify`。
+ *
+ * 用户 2026-09-23 拍板的口径（原话）：
+ *   「如果自动登录失败就飞书告警，但是前提是你要先自动登录」。
+ * ⇒ 两个条件缺一不可：**① 这一轮真的去登过（带 `--login`）② 登完仍需要人**。
+ *   第二条不由本层判 —— 交给 `login-merchant-core.mjs` 的 `shouldNotify`
+ *   （它自己要求 `commit === true`，见那里 `mode === 'auto'` 那一支）。
+ *   本层只负责第一条：**没去登的那一档，一个字都不许发**。
+ *
+ * 为什么把这条判据抽成函数而不是留在 IO 脚本里拼字符串：
+ *   它是一条**接线**判据（「告警与去登绑定」），而接线只能靠纯函数断言 ——
+ *   IO 脚本离线测不到（本仓库已经吃过一次：`buildLoginAlert` 早就支持店名，
+ *   主脚本就是没传，契约齐、用例绿、告警里五家店一模一样）。
+ *
+ * 三种取值的语义（词表在 login-merchant-core.mjs 的 `NOTIFY_MODES`）：
+ *   `off`  —— 彻底不发。只读档用这个：那一轮没有任何登录发生过，
+ *             拿「结论看起来像失败」去叫人，是在为一件没做的事叫。
+ *   `auto` —— 只在**真的试过**（`--commit`）且结论需要人时才发。带 `--login` 时用这个。
+ *   `dry`  —— 只渲染不发，排查用（本层不做这个开关，留给直接调用 login-merchant 的场合）。
+ */
+export function notifyModeFor({ login = false } = {}) {
+  return login ? 'auto' : 'off';
 }
 
 // ---------------------------------------------------------------------------
@@ -299,11 +332,55 @@ export function renderVerdictLines(rows, judged = judgePreflight(rows), { autoLo
   return lines;
 }
 
+// ---------------------------------------------------------------------------
+// 渲染：告警那一侧发生了什么
+// ---------------------------------------------------------------------------
+// 状态词是**投递方报的**（`runtime/notify-feishu.mjs` 的收据），这里只翻译，不另造一套。
+// 每一条都要能回答收件人的下一个问题：
+//   「我已经被告知了吗？」「为什么没发？」「发了但失败了怎么办？」
+// 漏一条的症状是「报告上写着要人处理，而没有人被通知」—— 那正是本次要消灭的形态。
+const NOTIFY_STATUS_TEXT = Object.freeze({
+  SENT: '已发飞书告警',
+  DEDUPED: '同一天、同一家店已经叫过一次了，本次不重复发（去重按告警编号）',
+  MUTED: '这条告警被显式静音了（不是发送失败）',
+  DRY_RUN: '只渲染了告警文案，没有真发（调试档）',
+  NOT_CONFIGURED: '告警没发出去：通知通道没有配置',
+  FAILED: '告警发送失败',
+  SKIPPED: '没发（这一条结论不需要人，或这一轮没去登）',
+});
+
+/**
+ * 告警那一侧的那几行。**只在带 `--login` 的报告里出现**（只读档下 `notify` 恒为 `null`）。
+ *
+ * 为什么单列成一段、而不是塞进每家店那两行里：这一段回答的是一个**跨店**的问题
+ * （「这一轮一共叫了几个人、谁没叫到」），而每家店那两行回答的是「这家店怎么了」。
+ * 混在一起的后果是：五家店里有一家告警发失败了，收信人扫过去不会注意到。
+ */
+export function renderNotifyLines(rows = []) {
+  const withReceipt = rows.filter((row) => row.notify);
+  if (withReceipt.length === 0) return [];
+  const sent = withReceipt.filter((row) => row.notify.status === 'SENT');
+  const needAttention = withReceipt.filter((row) => !['SENT', 'SKIPPED'].includes(row.notify.status));
+  const lines = [];
+  if (sent.length > 0) {
+    lines.push(`[告警] 已经叫人 ${sent.length} 次：${sent.map((row) => `${row.shop}（编号 ${row.notify.alertId ?? '(没给)'}）`).join('、')}`);
+  }
+  for (const row of needAttention) {
+    const text = NOTIFY_STATUS_TEXT[row.notify.status] ?? `告警状态 ${row.notify.status}（认不出来，别当成发过了）`;
+    const tail = row.notify.error ? ` —— ${String(row.notify.error).slice(0, 200)}` : '';
+    lines.push(`[告警] ${row.shop}：${text}${tail}`);
+  }
+  if (sent.length === 0 && needAttention.length === 0) {
+    lines.push('[告警] 本次没有需要叫人（没有店在试过之后仍然进不去）。');
+  }
+  return lines;
+}
+
 /** 整份报告（stdout 上看到的那段）。 */
 export function renderReport({ rows, machine = null, autoLogin = false } = {}) {
   const mode = autoLogin
-    ? '｜会自己登：掉登录的当场用浏览器密码库登一次，没成才叫人'
-    : '｜只读：不开页面、不点任何东西';
+    ? '｜会自己登：掉登录的当场用浏览器密码库登一次，没成才发飞书叫人'
+    : '｜只读：不开页面、不点任何东西、也不发任何告警';
   const lines = [
     `[跑前体检] 登录态 · ${rows.length} 家店 × ${SITE_KEYS.length} 个平台`
     + `（${SITE_KEYS.map((key) => SITES[key].label).join(' + ')}）`
@@ -311,5 +388,7 @@ export function renderReport({ rows, machine = null, autoLogin = false } = {}) {
   ];
   for (const row of rows) lines.push(...renderShopBlock(row));
   lines.push(...renderVerdictLines(rows, judgePreflight(rows), { autoLogin }));
+  // 告警只可能出现在「真的去登过」那一档（只读档下每一行的 notify 都是 null）。
+  if (autoLogin) lines.push(...renderNotifyLines(rows));
   return lines.join('\n');
 }

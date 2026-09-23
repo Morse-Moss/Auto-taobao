@@ -1,0 +1,72 @@
+﻿✓ 演练端口事先是空的（不是接上别人的实例） —— 浏览器 19933=null，代理 19943=null
+=== 起一次性实例：port=19933 profile=C:\Users\ADMINI~1\AppData\Local\Temp\auto-login-alert-HmJiL0
+    [browser] [browser] profile=C:\Users\ADMINI~1\AppData\Local\Temp\auto-login-alert-HmJiL0 不在登记表的两个浏览器里 —— 账号要求无从核对，请自行确认登的是哪一类账号。
+    [browser] [browser] msedge pid=15768 profile=C:\Users\ADMINI~1\AppData\Local\Temp\auto-login-alert-HmJiL0 port=19933
+    [proxy] [CDP Proxy] 运行在 http://localhost:19943
+    [proxy] [CDP Proxy] 选用 一次性演练实例（跑完就释放） (端口 19933，带 wsPath) [登记表/环境变量]
+    [proxy] [CDP Proxy] 已连接浏览器 (端口 19933)
+
+=== 对照 1：只读档口径（--check-only --notify off）
+✓ 只读档真的读到了回执 —— exit=2，stderr 尾：
+✓ 只读档的收据是 SKIPPED（「没去登过就一个字都不发」） —— {"mode":"off","status":"SKIPPED","reason":"mode_or_not_attempted"}
+{
+ "verdict": "NEEDS_LOGIN",
+ "notify": {
+  "mode": "off",
+  "status": "SKIPPED",
+  "reason": "mode_or_not_attempted"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": null
+  },
+  "alimama": {
+   "label": "阿里妈妈",
+   "loggedIn": null
+  }
+ }
+}
+
+=== 对照 2：真的去登（--commit --notify auto）
+✓ 真的去登的那一次拿到了回执 —— exit=2，stderr 尾：
+{
+ "verdict": "NO_SAVED_CREDENTIAL",
+ "notify": {
+  "mode": "auto",
+  "alertId": "sycm-login-盖文天猫-sycm-alimama-20260923",
+  "status": "SENT",
+  "exitCode": 0
+ },
+ "login": {
+  "opened": true,
+  "autofill": {
+   "id": false,
+   "password": false
+  },
+  "urlAfter": null
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": null
+  },
+  "alimama": {
+   "label": "阿里妈妈",
+   "loggedIn": null
+  }
+ }
+}
+✓ 照实记下这次落在哪一个结论上（结论是实测出来的，不是预设的） —— verdict=NO_SAVED_CREDENTIAL
+✓ 结论需要人 ⇒ 告警真的被投递了（收据 status=SENT） —— notify={"mode":"auto","alertId":"sycm-login-盖文天猫-sycm-alimama-20260923","status":"SENT","exitCode":0}
+✓ 告警编号里带店名与日期（同一天同一家店只会叫一次） —— alertId=sycm-login-盖文天猫-sycm-alimama-20260923
+✓ 投递收据里带了投递模式 auto（证明走的是新接线，不是写死的 off） —— mode=auto
+
+=== 释放（演练结束）
+   taskkill /PID 60832 /T /F → 0
+   taskkill /PID 30944 /T /F → 0
+✓ 释放后两个端口都不再应答（自报「已释放」不算数） —— 浏览器 19933=null，代理 19943=null
+   临时 profile：C:\Users\ADMINI~1\AppData\Local\Temp\auto-login-alert-HmJiL0（删除结果：true）
+
+结论：全部成立；明细：evidence/auto-login-alert-2026-09-23/rehearsal-auto-login-alert.json
+exit=0
