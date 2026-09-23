@@ -5,9 +5,12 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  FORM_STATE_EXPRESSION, LOGIN_TARGETS, NOTIFY_MODES, REASON_BY_VERDICT, SITES, VERDICTS,
-  VERDICTS_NEEDING_HUMAN, alertForRun, buildLoginAlert, captchaVisible, centerOf, detectLoginDetour,
-  isTaobaoLoginUrl, needsHuman, parseArgs, profileForShop, resolveAction, shouldNotify, sitesNeedingLogin,
+  ATTEMPT_OUTCOMES, FILLED_VERDICTS, FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION,
+  LOGIN_PAGE_PROMISED_VERDICTS, LOGIN_TARGETS, LOGIN_URL_CANDIDATES, NOTIFY_MODES, OUTCOME_TO_VERDICT,
+  REASON_BY_VERDICT, SITES, TAOBAO_LOGIN_URL, VERDICTS, VERDICTS_NEEDING_HUMAN, alertForRun,
+  buildLoginAlert, captchaVisible, centerOf, detectLoginDetour, expectedMemberFor, finalLoginVerdict,
+  isTaobaoLoginUrl, judgeFilled, judgeShopTarget, loginFormVisible, needsHuman, parseArgs, profileForShop,
+  proxyPortOf, resolveAction, shopForProxy, shouldNotify, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 // 用**真的那份登记表**（不是测试自己造的假表）来验「哪家店 → 哪个 profile」：
 // 造一张假表只能证明这个函数会查表，证明不了四家店各自指向自己的 profile。
@@ -408,7 +411,9 @@ test('「原因」不许读两遍：主脚本补的 detail 不能把静态原因
   //   「原因：这个浏览器里没有存这家店的账号密码，系统没法自动填。 这台浏览器里没有存这家店的账号密码，系统没法自动填。…」
   // 静态原因与 detail 各自都通顺，合起来才是病 —— 所以判据必须在**拼好之后**看。
   const code = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
-  const details = [...code.matchAll(/receipt\.detail = '([^']+)'/gu)].map((m) => m[1]);
+  // 两种写法都收：单引号字面量**与模板串**。
+  // 先前只收单引号，于是「新加的那几条 detail 正好绕开这条判据」—— 判据就成了摆设（2026-09-23 修）。
+  const details = [...code.matchAll(/receipt\.detail\s*=\s*(?:'([^']*)'|`([^`]*)`)/gu)].map((m) => m[1] ?? m[2]);
   assert.ok(details.length >= 4, `从主脚本里只抓到 ${details.length} 条 detail，这条判据会空转`);
   for (const detail of details) {
     for (const reason of Object.values(REASON_BY_VERDICT)) {
@@ -422,7 +427,9 @@ test('告警里不许让人去做收信人做不到的事（截图、本地路�
   // PARTIAL 原来写的是「按顺序先看截图再重跑」—— 截图落在**那台机器**的证据目录里，
   // 收信人在飞书里根本看不到它。这类文案比不写更坏：它让人以为少了东西。
   const code = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
-  for (const detail of [...code.matchAll(/receipt\.detail = '([^']+)'/gu)].map((m) => m[1])) {
+  const details = [...code.matchAll(/receipt\.detail\s*=\s*(?:'([^']*)'|`([^`]*)`)/gu)].map((m) => m[1] ?? m[2]);
+  assert.ok(details.length >= 4, `从主脚本里只抓到 ${details.length} 条 detail，这条判据会空转`);
+  for (const detail of details) {
     for (const word of ['截图', '证据目录', '日志', 'stdout', 'receipt', 'profile']) {
       assert.equal(detail.includes(word), false, `detail 让人去做收信人做不到的事（出现「${word}」）：${detail}`);
     }
@@ -525,4 +532,296 @@ test('主脚本必须真的会用新判据，且「还在不在登录页」只�
   // 反回退：主脚本里不许再内联一份「是不是淘宝登录页」的正则。
   assert.equal(/\/login\\\.taobao\\\.com/u.test(code), false,
     '主脚本又内联了一份登录页正则 —— 两处口径迟早各自漂移，而漂移的表现是同一现场两个结论');
+});
+
+// ---------------------------------------------------------------------------
+// 候选登录地址（2026-09-23）：用户那句「做不到自动登录吗？？？」的正解
+// ---------------------------------------------------------------------------
+//
+// 现场（`evidence/login-blocker-probe-2026-09-23/`）：盖文天猫那台**注定**填不上 ——
+// Chromium 的自动填充按 **origin** 匹配，而它密码库里那条凭据的 origin 是
+// `havanalogin.taobao.com`，脚本固定打开的那条是 `login.taobao.com`。
+// 所以正解不是「换一条地址」（会把本来能登的机器弄坏），而是**一组候选、逐条试到能填为止**。
+// 下面这组用例钉住的是「这组候选够不够用」与「逐条试的取舍有没有写错」——
+// 两件事都不会报错，只会静默地少登一家店、或者把人引到错的动作上。
+// ---------------------------------------------------------------------------
+
+test('候选地址表：第一条必须是实测命中率最高的那条，且 id 唯一、每条都被认成登录页', () => {
+  const list = LOGIN_URL_CANDIDATES;
+  assert.ok(list.length >= 2, '只有一条候选 ⇒ 又回到「固定开一条、必然有机器填不上」的形态');
+  // 2026-09-23 真机对照矩阵（复制 profile + 一次性实例 + 25ms 采样）。
+  // **数字只认 `evidence/login-candidate-loop-2026-09-23/raw/` 里留档的原始输出**，
+  // 逐格对应见该目录 `raw/INDEX.md`（每份输出的「导航 → …」那一行才说明它真的打开了哪条地址）：
+  //   havanaone/login/login.htm?bizName=taobao   里可林 ✓ 网林 ✓ 科塔 ✓              → 3/3
+  //   member/login.jhtml                         里可林 ✓ 商家 ✓ 盖文天猫 ✗          → 2/3
+  // 所以第一条必须是 3/3 的那条。把它换成 `member/login.jhtml` **不会报错**，
+  // 只会让盖文天猫那类机器每次都先从「实测填不上的那条」开始试，白付一次打开+点击。
+  assert.equal(list[0].url, 'https://login.taobao.com/havanaone/login/login.htm?bizName=taobao',
+    '第一条不再是实测命中率最高的那条地址 —— 逐条试的代价就从「偶尔」变成「每次」');
+  assert.equal(list[0].url, TAOBAO_LOGIN_URL, 'TAOBAO_LOGIN_URL 必须仍等于第一条（旧调用方的语义）');
+  assert.equal(list[1].url, 'https://login.taobao.com/member/login.jhtml',
+    '第二条要留 `member/login.jhtml` —— 它在两个 profile 上确实成功过，是「第一条改版」时的覆盖');
+  const ids = list.map((c) => c.id);
+  assert.equal(new Set(ids).size, ids.length, `候选 id 必须唯一：${ids.join(' / ')}`);
+  for (const c of list) {
+    assert.match(c.url, /^https:\/\//u, `${c.id} 必须是 https`);
+    assert.equal(isTaobaoLoginUrl(c.url), true,
+      `${c.id} 自己都不被认成登录页 ⇒ 这条候选永远走不到（而「走不到」不会报错）`);
+  }
+});
+
+test('候选表必须落在 login.taobao.com 上，且不得把已被证伪的 havanalogin 塞回来', () => {
+  // 这一条是**反向判据**，钉住的是一次实测证伪：原先的候选表里有
+  // `https://havanalogin.taobao.com/mini_login.htm?...`，理由是「盖文天猫的凭据存在那个 origin 上」。
+  // 真机对照推翻了它：商家浏览器里那条 `signon_realm=https://havanalogin.taobao.com/`、
+  // `times_used=11` 的凭据，**开在它自己的 origin 上也不填**（`:autofill` 恒 false）。
+  // 也就是说那条不是「还没试过的备选」，是死路；留着会让每台机器白付一次打开+点击，
+  // 还会让失败文案继续把人引向「去那个页面保存密码」这个无效动作。
+  const hosts = LOGIN_URL_CANDIDATES.map((c) => new URL(c.url).host);
+  assert.ok(hosts.includes('login.taobao.com'), '候选表里没有 login.taobao.com —— 那就没有一条实测能填的地址了');
+  assert.equal(hosts.includes('havanalogin.taobao.com'), false,
+    'havanalogin.taobao.com 又回到候选表里了 —— 它在 2026-09-23 的对照里是「同源凭据也不填」的那一条');
+});
+
+test('isTaobaoLoginUrl：按 URL 结构判，不再靠「子串巧合」', () => {
+  // 注意这条**不是**在给 `havanalogin` 那条地址背书：它已经从候选表里删掉了
+  // （实测同源也不填，见上面那条反向判据）。这个函数回答的是另一个问题 ——
+  // 「当前这一页是不是淘宝登录页」（可能来自平台的跳转，不是我们打开的），
+  // 那个问题里它仍然是登录页，所以必须认。
+  assert.equal(isTaobaoLoginUrl('https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao'), true,
+    'havanalogin 上那一页确实是淘宝登录页 —— 认不出它会让「被送走/停在登录页」这类判据失灵');
+  // 这一条是**旧判据的假命中**：`/login\.taobao\.com\/.*login/u` 会把它判成 true
+  // （字符串里恰好有 `login.taobao.com/member/login`），而它其实是一台别的主机。
+  // 归属按结构判、不按子串 includes —— 这是全仓的纪律，改完行为在实测地址上逐字不变。
+  assert.equal(isTaobaoLoginUrl('https://xlogin.taobao.com/member/login.jhtml'), false,
+    '旧判据在这里假命中；按 host 判就不会');
+  // 主机对、路径不像登录页 ⇒ 不算（否则「被送走了」这条判据永远判不出来）
+  assert.equal(isTaobaoLoginUrl('https://login.taobao.com/'), false);
+  assert.equal(isTaobaoLoginUrl('https://havanalogin.taobao.com/'), false);
+});
+
+test('loginFormVisible：两个框都真的占了位，才算「这一页有表单」', () => {
+  assert.equal(loginFormVisible({ id: { visible: true }, password: { visible: true } }), true);
+  assert.equal(loginFormVisible({ id: { visible: true }, password: { visible: false } }), false,
+    '只有一个框 ⇒ 页面还没准备好，点它就是「在没准备好的页面上乱点」（而这一页点错不报错）');
+  assert.equal(loginFormVisible({ id: { visible: true } }), false, '缺字段不能当成可见');
+  assert.equal(loginFormVisible(null), false);
+  assert.equal(loginFormVisible({}), false);
+});
+
+test('每个现场都有唯一的一条结论 —— 少映射一个就是「回执里没有结论」', () => {
+  assert.equal(Object.keys(OUTCOME_TO_VERDICT).length, ATTEMPT_OUTCOMES.length,
+    '两边词数不一致 ⇒ 迟早漏掉一个现场，而漏掉的那个会静默落进兜底');
+  for (const word of ATTEMPT_OUTCOMES) {
+    assert.ok(VERDICTS.includes(OUTCOME_TO_VERDICT[word]), `${word} 映射到了未登记的结论词`);
+    assert.equal(finalLoginVerdict([{ outcome: word }]).verdict, OUTCOME_TO_VERDICT[word]);
+  }
+});
+
+test('finalLoginVerdict：五选一的优先级，以及「该把人送到哪一页」', () => {
+  // 一条记录都没有 ⇒ 这一层**没有结论**，不许猜
+  assert.deepEqual(finalLoginVerdict([]),
+    { verdict: 'STOP_AND_ALERT', outcome: null, stoppedAt: null, parkOnLoginPage: false });
+  assert.equal(finalLoginVerdict([{ outcome: '没这个词' }]).verdict, 'STOP_AND_ALERT');
+
+  const only = (outcome, extra = {}) => [{ id: 'havanaone', url: 'U1', outcome, ...extra }];
+  assert.equal(finalLoginVerdict(only('WRONG_ACCOUNT')).verdict, 'WRONG_ACCOUNT');
+  assert.equal(finalLoginVerdict(only('DETOUR')).verdict, 'MAIN_SESSION_ONLY');
+  assert.equal(finalLoginVerdict(only('NO_VALUE_LANDED')).verdict, 'NO_SAVED_CREDENTIAL');
+  assert.equal(finalLoginVerdict(only('NO_AUTOFILL')).verdict, 'NO_SAVED_CREDENTIAL');
+  assert.equal(finalLoginVerdict(only('NO_FORM')).verdict, 'STOP_AND_ALERT');
+
+  // 「登成了别人」压过其余一切 —— 它是唯一一条做错了也不报错的（数字看起来都对，其实属于别家）
+  const picked = finalLoginVerdict([
+    { id: 'a', url: 'UA', outcome: 'NO_AUTOFILL' },
+    { id: 'b', url: 'UB', outcome: 'WRONG_ACCOUNT' },
+    { id: 'c', url: 'UC', outcome: 'NO_FORM' },
+  ]);
+  assert.equal(picked.verdict, 'WRONG_ACCOUNT');
+  assert.equal(picked.stoppedAt.id, 'b',
+    '要停在**产生这条结论**的那一页，而不是循环结束时碰巧停的那一页（告警承诺了登录页在那里）');
+
+  // 「主站会话还在」压过两个 NO_*：它的下一步最省事，而且把「保存密码」也带上了
+  assert.equal(finalLoginVerdict([
+    { id: 'a', url: 'UA', outcome: 'NO_AUTOFILL' },
+    { id: 'b', url: 'UB', outcome: 'DETOUR' },
+  ]).verdict, 'MAIN_SESSION_ONLY');
+
+  // 同一条结论出现两次 ⇒ 取**最后一次**（那是页面停得最近的一次）
+  assert.equal(finalLoginVerdict([
+    { id: 'a', url: 'UA', outcome: 'NO_AUTOFILL' },
+    { id: 'b', url: 'UB', outcome: 'NO_AUTOFILL' },
+  ]).stoppedAt.id, 'b');
+
+  // 「交付前要不要把页导回去」只对承诺了有登录页的那两条为真
+  for (const word of ATTEMPT_OUTCOMES) {
+    const want = ['NO_SAVED_CREDENTIAL', 'WRONG_ACCOUNT'].includes(OUTCOME_TO_VERDICT[word]);
+    assert.equal(finalLoginVerdict(only(word)).parkOnLoginPage, want, `${word} 的 parkOnLoginPage 判错了`);
+  }
+});
+
+test('「承诺登录页开着」的名单必须与文案逐字对得上（两条腿绑在一起）', () => {
+  // 名单漏一条的症状：那条结论产生的页面在别的候选上，而回执却说「登录页已经开在窗口里了」，
+  // 收信人跑过去发现没有登录页 —— 代价是「下次不再信这条提醒」。
+  //
+  // 只比**逐条试可能产出的那批结论**（OUTCOME_TO_VERDICT 的值域）：CAPTCHA_REQUIRED 与
+  // LOGIN_NOT_CONFIRMED 的文案也这样承诺，但它们一出现就当场返回、页签本来就在正确的页上，
+  // 不经过候选收尾，所以不需要进这张名单。
+  const fromLoop = new Set(Object.values(OUTCOME_TO_VERDICT));
+  const promisedByText = [...fromLoop]
+    .filter((verdict) => resolveAction(verdict, '某店').startsWith('登录页已经开在'))
+    .sort();
+  assert.deepEqual([...LOGIN_PAGE_PROMISED_VERDICTS].sort(), promisedByText,
+    'core 里那张名单必须与 ACTION_BY_VERDICT 里真的这样承诺的那批逐字一致');
+  assert.deepEqual([...LOGIN_PAGE_PROMISED_VERDICTS].sort(), ['NO_SAVED_CREDENTIAL', 'WRONG_ACCOUNT']);
+});
+
+test('身份守卫：填进来的账号必须与这家店登记的会员名逐字相同（四态各有明确出口）', () => {
+  // 期望值的唯一来源是登记表里的**实测值**。派生成 `${店名}:阿彦` 已被实测推翻 ——
+  // 盖文淘宝那家的会员名是「随心品质定制:阿彦」，与店名毫无关系。
+  assert.equal(expectedMemberFor({ shop: '盖文天猫' }), '盖文旗舰店:阿彦');
+  assert.equal(expectedMemberFor({ shop: '盖文淘宝' }), '随心品质定制:阿彦');
+  assert.equal(expectedMemberFor({}), null, '没给店名 ⇒ 没有期望值（不是「随便」）');
+  assert.equal(expectedMemberFor({ shop: null }), null);
+  assert.throws(() => expectedMemberFor({ shop: '不存在的店' }), /未登记的店铺/u,
+    '店名写错必须抛错，不能静默地「没有期望值」');
+
+  assert.equal(judgeFilled({ filled: '盖文旗舰店:阿彦', expected: '盖文旗舰店:阿彦' }), 'ACCEPT');
+  assert.equal(judgeFilled({ filled: '', expected: '盖文旗舰店:阿彦' }), 'EMPTY');
+  assert.equal(judgeFilled({ filled: null, expected: '盖文旗舰店:阿彦' }), 'EMPTY');
+  // 实测的串店现场：商家浏览器那个 profile 的 `login.taobao.com` 下两条凭据分属两家店
+  assert.equal(judgeFilled({ filled: '里可林家居:阿彦', expected: '盖文旗舰店:阿彦' }), 'WRONG_ACCOUNT');
+  assert.equal(judgeFilled({ filled: '盖文旗舰店:阿彦 ', expected: '盖文旗舰店:阿彦' }), 'WRONG_ACCOUNT',
+    '差一个空格也算另一家 —— 「差不多」在这里就等于「登错家」');
+  assert.equal(judgeFilled({ filled: '盖文旗舰店:阿彦' }), 'UNKNOWN', '没有期望值 ⇒ 不许假装过了');
+  assert.deepEqual([...FILLED_VERDICTS].sort(), ['ACCEPT', 'EMPTY', 'UNKNOWN', 'WRONG_ACCOUNT']);
+});
+
+test('身份守卫读的**只有账号**：那个表达式永远不许碰密码框', () => {
+  assert.match(LOGIN_ID_VALUE_EXPRESSION, /#fm-login-id/u);
+  assert.equal(LOGIN_ID_VALUE_EXPRESSION.includes('password'), false,
+    '身份守卫的表达式一旦扩到密码框，密码就会进回执与证据目录');
+  // 表单状态那一份刻意只给长度、不给值（2026-09-18 实测：截图里画着账号，el.value 是空的）
+  assert.equal(FORM_STATE_EXPRESSION.includes('value:'), false,
+    '表单状态里出现了原始值 ⇒ 所有回执与证据目录都多了一条凭据外泄的口子');
+});
+
+test('WRONG_ACCOUNT 的文案不能复用「点保存密码」那套 —— 它的病恰好是这台存了多家店的账号', () => {
+  const action = resolveAction('WRONG_ACCOUNT', '盖文淘宝');
+  assert.match(action, /标题写着「盖文淘宝」的那个浏览器窗口/u, '仍然要用店名定位窗口');
+  assert.equal(action.includes('保存密码'), false,
+    '让人去「保存密码」只会把「一台混着多家店凭据」这件事坐实 —— 这正是要避免的动作');
+  assert.match(REASON_BY_VERDICT.WRONG_ACCOUNT, /不止一家店/u, '原因要交代「为什么系统不替你猜」');
+  assert.equal(REASON_BY_VERDICT.WRONG_ACCOUNT.includes('保存密码'), false);
+  // 与 NO_SAVED_CREDENTIAL 必须是两句不同的话（照抄会把人引到错的动作上）
+  assert.notEqual(action, resolveAction('NO_SAVED_CREDENTIAL', '盖文淘宝'));
+  assert.notEqual(REASON_BY_VERDICT.WRONG_ACCOUNT, REASON_BY_VERDICT.NO_SAVED_CREDENTIAL);
+});
+
+test('WRONG_ACCOUNT 要叫人，且告警点名到店：静默登成别家是这条链上最贵的一种失败', () => {
+  assert.equal(needsHuman('WRONG_ACCOUNT'), true);
+  const alert = buildLoginAlert({
+    verdict: 'WRONG_ACCOUNT',
+    detail: '这家店该填的是「随心品质定制:阿彦」，浏览器填进来的却是「盖文旗舰店:阿彦」—— 系统没有提交。',
+    sites: ['sycm', 'alimama'],
+    shopName: '盖文淘宝',
+    machine: 'DEPLOY-01',
+    browserProfile: 'D:/Retire/edge-profiles/suixin-custom',
+    now: () => new Date('2026-09-23T10:00:00+08:00'),
+  });
+  const text = renderAlertText(alert);
+  assert.match(text, /【需要处理】盖文淘宝 需要你登录一次/u);
+  assert.match(text, /浏览器配置：D:\/Retire\/edge-profiles\/suixin-custom/u);
+  assert.equal(alert.alertId, 'sycm-login-盖文淘宝-sycm-alimama-20260923');
+});
+
+test('回执里可以出现账号名（那不是秘密），但**密码面一个都不许出现**', () => {
+  // 2026-09-23 定的边界：`#fm-login-id` 的值（＝阿里妈妈页头上那个会员名）会写进 detail 与回执，
+  // 因为它正是收信人判断「该用哪个账号登」的依据；密码则从头到尾不经过本脚本。
+  const source = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
+  const code = source.replace(/^\s*\/\/.*$/gmu, '');
+  for (const forbidden of ['fm-login-password', 'passwordValue', 'password_value', 'Login Data']) {
+    assert.equal(code.includes(forbidden), false, `主脚本里出现了 ${forbidden} —— 那意味着这条链开始碰密码了`);
+  }
+});
+
+test('judgeShopTarget：给了店名就必须落在它自己的代理端口上（2026-09-22 那次事故的封条）', () => {
+  // 硬事实：`--proxy` 才是实例选择器，`--shop` 只写店名。两者对不上时，接下来做的每一件事
+  // 都会落在**别的浏览器**上 —— 2026-09-22 就是这么把那个共用浏览器登进了某个淘宝卖家号的，
+  // 而当时的输出从文字上看不出来（五份结果逐字相同）。
+  const okCall = judgeShopTarget({ shop: '盖文天猫', proxy: 'http://127.0.0.1:19045', shops: SHOP_BROWSERS });
+  assert.deepEqual({ ok: okCall.ok, judged: okCall.judged }, { ok: true, judged: true });
+
+  const crossed = judgeShopTarget({ shop: '盖文天猫', proxy: 'http://127.0.0.1:19041', shops: SHOP_BROWSERS });
+  assert.equal(crossed.ok, false);
+  assert.equal(crossed.reason, 'other_shop');
+  assert.equal(crossed.owner, '里可林淘宝', '详情要能说出「那个端口是谁的」，人才知道改什么');
+
+  const shared = judgeShopTarget({ shop: '盖文天猫', proxy: 'http://127.0.0.1:19023', shops: SHOP_BROWSERS });
+  assert.equal(shared.ok, false);
+  assert.equal(shared.reason, 'not_a_shop_port', '那个共用浏览器的端口不属于任何一家店 —— 正是事故现场');
+
+  // 没给店名 ⇒ 不判：裸调用是 `--shop` 出现之前的老用法，行为必须不变（而且仍然要能跑通）
+  const bare = judgeShopTarget({ proxy: 'http://127.0.0.1:19023', shops: SHOP_BROWSERS });
+  assert.equal(bare.judged, false);
+  assert.equal(bare.ok, true);
+
+  // 端口说不出是哪台 ⇒ **不下结论**：端口→店铺这张表只在**本机**成立，
+  // 拿它去判一个远端地址会得到假结论，而假结论会去拦一个本来正确的调用。
+  for (const remote of ['http://192.168.2.113:19045', 'not a url', '', null]) {
+    const r = judgeShopTarget({ shop: '盖文天猫', proxy: remote, shops: SHOP_BROWSERS });
+    assert.equal(r.judged, false, `${JSON.stringify(remote)} 不该被判成「对上了」或「对不上」`);
+    assert.equal(r.ok, true, `${JSON.stringify(remote)} 时不该拦人 —— 没有依据就不下结论`);
+  }
+});
+
+test('shopForProxy / proxyPortOf：端口 → 店铺的唯一来源是登记表', () => {
+  for (const [shop, conf] of Object.entries(SHOP_BROWSERS)) {
+    assert.equal(shopForProxy({ proxy: `http://127.0.0.1:${conf.proxyPort}`, shops: SHOP_BROWSERS }), shop,
+      `${shop} 的代理端口 ${conf.proxyPort} 反查不出它自己`);
+  }
+  assert.equal(shopForProxy({ proxy: 'http://127.0.0.1:19023', shops: SHOP_BROWSERS }), null,
+    '共用浏览器不是任何一家店');
+  assert.equal(proxyPortOf('127.0.0.1:19045'), 19045, '不带 scheme 也要认（两种写法现场都用过）');
+  assert.equal(proxyPortOf('http://localhost:19045/'), 19045);
+  assert.equal(proxyPortOf('http://192.168.2.113:19045'), null, '非本机 ⇒ 没有结论');
+  assert.equal(proxyPortOf(''), null);
+  assert.equal(proxyPortOf(undefined), null);
+});
+
+test('主脚本真的接了候选循环与身份守卫（判据齐全但没人用＝最难发现的空转）', () => {
+  const source = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
+  const code = source.replace(/^\s*\/\/.*$/gmu, '');
+  // 注意：这里断言的是**调用点的形状**，不是「某个名字出现过」。
+  // 2026-09-23 实测的教训：`code.includes('parkTabOn(')` 会被**函数定义那一行**满足，
+  // 于是「候选都没成时不把页导回去」这个突变照样全绿 —— 存在性判据在源码扫描里几乎总是失效的。
+  for (const needed of [
+    'for (const candidate of LOGIN_URL_CANDIDATES)', // 而不是「名字出现过」（import 行也满足）
+    'finalLoginVerdict(',
+    'judgeFilled(',
+    'expectedMemberFor(',
+    'judgeShopTarget(',
+    'loginFormVisible(',
+  ]) {
+    assert.ok(code.includes(needed), `主脚本里没有 ${needed} —— 写在 core 里的那条判据永远不会被问到`);
+  }
+  // 反回退：固定那一条地址不许再被主脚本当成流程（它就是「必然有机器填不上」的成因）
+  assert.equal(code.includes('TAOBAO_LOGIN_URL'), false,
+    '主脚本又拿单条地址当流程了 —— 「试哪几条」必须由候选表说，不由主脚本说');
+  // 身份守卫必须在**点登录之前**：读账号要早于按提交按钮（迟一步就成了事后取证，拦不住串店）
+  const guardAt = code.indexOf('judgeFilled(');
+  const submitAt = code.indexOf("centerOf(state, 'submit')");
+  assert.ok(guardAt > 0 && submitAt > guardAt, '身份守卫必须发生在点「登录」之前');
+  // 而且它的**结果必须真的改道** —— 只调一下 `judgeFilled()` 然后照原样提交下去，
+  // 与「不装这道守卫」逐字等价，而上面那条「有没有调它」完全看不出来。
+  assert.ok(code.includes("guard === 'WRONG_ACCOUNT'"), 'guard 判出「填的是别人」，代码里却没有任何一处照它改道');
+  assert.ok(code.includes("guard === 'EMPTY'"), 'guard 判出「还没填上」也没人照它改道');
+  assert.ok(code.indexOf("guard === 'WRONG_ACCOUNT'") < submitAt, '「填的是别人」必须在提交之前就改道');
+  // 候选没试成时**要把页签导回去**（告警承诺了登录页在那里）。三条腿缺一不可：
+  //   真的调了（`await parkTabOn(`，定义那一行没有 await）；
+  //   调用受 core 的判定管（`final.parkOnLoginPage`）；
+  //   导的是**判定选中的那一页**（`final.stoppedAt.url`，不是循环结束时碰巧停的那一页）。
+  assert.ok(code.includes('await parkTabOn('), '没有真的调用 parkTabOn ⇒ 页签会留在最后一条候选上');
+  assert.ok(code.includes('final.parkOnLoginPage'), 'parkTabOn 没有受 core 的判定管 —— 那它就是在替所有结论导页面');
+  assert.ok(code.includes('final.stoppedAt.url'), 'parkTabOn 没有用「判定选中的那一页」');
 });

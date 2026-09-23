@@ -1,0 +1,54 @@
+
+== 盖文天猫  (D:/Retire/edge-profiles/gaiwen-flagship)
+   [Login Data] 1 行（复制件（原库被浏览器锁着））
+     realm=https://havanalogin.taobao.com/
+       账号="盖文旗舰店:阿彦"  用过=2  最后填充=0（从未）  拉黑=0
+   [Login Data For Account] 0 行（复制件（原库被浏览器锁着））
+
+== 里可林淘宝  (D:/Retire/edge-profiles/likelin-home)
+   [Login Data] 2 行（原库）
+     realm=https://login.taobao.com/
+       账号="里可林家居:阿彦"  用过=0  最后填充=0（从未）  拉黑=0
+     realm=https://havanalogin.taobao.com/
+       账号="里可林家居:阿彦"  用过=1  最后填充=0（从未）  拉黑=0
+   [Login Data For Account] 0 行（原库）
+
+== 网林天猫  (D:/Retire/edge-profiles/wanglin-flagship)
+   [Login Data] 1 行（原库）
+     realm=https://login.taobao.com/
+       账号="网林家居旗舰店:阿彦"  用过=1  最后填充=0（从未）  拉黑=0
+   [Login Data For Account] 0 行（复制件（原库被浏览器锁着））
+
+== 科塔淘宝  (D:/Retire/edge-profiles/shop-j873522735)
+   [Login Data] 2 行（原库）
+     realm=https://login.taobao.com/
+       账号="j873522735:阿彦"  用过=0  最后填充=0（从未）  拉黑=0
+     realm=https://havanalogin.taobao.com/
+       账号="j873522735:阿彦"  用过=2  最后填充=0（从未）  拉黑=0
+   [Login Data For Account] 0 行（原库）
+
+== 盖文淘宝  (D:/Retire/edge-profiles/suixin-custom)
+   [Login Data] 4 行（原库）
+     realm=https://login.taobao.com/
+       账号="盖文旗舰店:阿彦"  用过=0  最后填充=0（从未）  拉黑=0
+     realm=https://havanalogin.taobao.com/
+       账号="盖文旗舰店:阿彦"  用过=0  最后填充=0（从未）  拉黑=0
+     realm=https://havanalogin.taobao.com/
+       账号="随心品质定制:阿彦"  用过=4  最后填充=0（从未）  拉黑=0
+     realm=https://login.taobao.com/
+       账号="随心品质定制:阿彦"  用过=1  最后填充=0（从未）  拉黑=0
+   [Login Data For Account] 0 行（复制件（原库被浏览器锁着））
+
+== 商家浏览器  (D:/Retire/edge-daily-report-profile)
+   [Login Data] 4 行（复制件（原库被浏览器锁着））
+     realm=https://havanalogin.taobao.com/
+       账号="盖文旗舰店:阿彦"  用过=11  最后填充=0（从未）  拉黑=0
+     realm=https://login.taobao.com/
+       账号="盖文旗舰店:阿彦"  用过=10  最后填充=0（从未）  拉黑=0
+     realm=https://login.taobao.com/
+       账号="里可林家居:阿彦"  用过=0  最后填充=0（从未）  拉黑=0
+     realm=https://havanalogin.taobao.com/
+       账号="随心品质定制:阿彦"  用过=1  最后填充=0（从未）  拉黑=0
+   [Login Data For Account] 0 行（复制件（原库被浏览器锁着））
+(node:2888) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

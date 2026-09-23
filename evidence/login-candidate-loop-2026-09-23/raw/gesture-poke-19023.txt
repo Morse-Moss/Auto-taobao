@@ -1,0 +1,34 @@
+﻿########## 代理 19023 ##########
+代理 http://127.0.0.1:19023：2 个页签
+  - 71A08B0F66C8D391AEEC09FF4028105A  生意参谋  https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  - 08CF039B78FA301AAFD08BED91D5E3B3  ‌​​​​﻿​​​⁠​​​﻿‬‍​​‌‍​​‬​‬‬⁠‬‬​‬​​​﻿‌​‌‬​​﻿​‬​​‌​‬‬各店铺日报 - 飞书云文档  https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+
+没有登录页页签 —— 不新建任何页面，直接退出
+########## 代理 19041 ##########
+代理 http://127.0.0.1:19041：3 个页签
+  - EB020ED55350DA80348295E5ACAC1BAA  首页_万相台无界版  https://one.alimama.com/index.html
+  - 5E9D356E3095B843A7D254D4ADD56E43  里可林淘宝 · 日报采集窗口  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031
+  - 20FD1C5E44A0EB0664F056B99AACDB5D  生意参谋 - 零售电商大数据产品平台  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+
+没有登录页页签 —— 不新建任何页面，直接退出
+########## 代理 19042 ##########
+代理 http://127.0.0.1:19042：3 个页签
+  - ACE990939C326100913F46136378BE75  首页_万相台无界版  https://one.alimama.com/index.html
+  - 761D2FCA815D4A851D312956D7E64604  网林天猫 · 日报采集窗口  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032
+  - 8BE9114CA8B9802A09BE28FA6A38682E  生意参谋 - 零售电商大数据产品平台  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+
+没有登录页页签 —— 不新建任何页面，直接退出
+########## 代理 19043 ##########
+代理 http://127.0.0.1:19043：3 个页签
+  - 9C45A26C1A235160B4CD9E0220AC4218  生意参谋 - 零售电商大数据产品平台  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  - 70FC8ED211466E05A3BA66FE580C9F83  盖文淘宝 · 日报采集窗口  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033
+  - 131B90DB4C1BF74C093102A348B1CD81  首页_万相台无界版  https://one.alimama.com/index.html
+
+没有登录页页签 —— 不新建任何页面，直接退出
+########## 代理 19044 ##########
+代理 http://127.0.0.1:19044：3 个页签
+  - 3C06FBF67880083E48B02E565087A7DD  首页_万相台无界版  https://one.alimama.com/index.html
+  - AD464F5578E859842BE71088BD754C97  科塔淘宝 · 日报采集窗口  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%A7%91%E5%A1%94%E6%B7%98%E5%AE%9D&port=19034
+  - 2E4E5CF7539601A5A78C35D663AAB7C7  生意参谋 - 零售电商大数据产品平台  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+
+没有登录页页签 —— 不新建任何页面，直接退出

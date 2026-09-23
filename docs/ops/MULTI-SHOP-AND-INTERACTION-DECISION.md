@@ -507,19 +507,34 @@ storeId 只是身份契约里的占位值；等运营日报阶段再按店铺拆
 - 字段：`#fm-login-id`、`#fm-login-password`（`autocomplete` **未设**，没有关掉密码管理器）、
   `#fm-login-checkcode`（图片验证码，提交前 `visible=false`）、`#fm-agreement-checkbox`（默认未勾）。
   「密码登录」是默认 tab。
-- `havanalogin.taobao.com/mini_login.htm` **不能独立打开**（报「非法请求 [appNameError]」）——
+- `havanalogin.taobao.com/mini_login.htm` **裸 URL 不能独立打开**（报「非法请求 [appNameError]」）——
   它是被别的应用内嵌调用的迷你登录页。库里存着这条凭据只说明历史上被用过，不代表它是入口。
+  **2026-09-23 补充（并排实测，两句话都要留）**：① 带上平台自己给的参数、**顶层打开就是活登录页**
+  （账号框/密码框/登录按钮全 visible）⇒ 「不能打开」只对**裸 URL**成立；
+  ② **「能被打开」≠「会被填充」** —— 同一台机器上把那条带参数地址真打开、真点击，
+  `:autofill` **恒 false**、值不落地（0/3）⇒ 存在**某些 origin，其凭据永远不会被装饰**。
+  所以「改成凭据所属 origin 那条地址」**不是**一条可用的修法（本条曾被写成可用修法，已证伪）。
+  进候选表的是 `login.taobao.com` 上的两条：`havanaone/login/login.htm?bizName=taobao`（实测 3/3）
+  与 `member/login.jhtml`（2/3），**顺序即优先级**，逐条打开试到 `:autofill` 为真为止。
+  取证＝`evidence/login-candidate-loop-2026-09-23/README.md`。
 
 #### 5.2.4 修正后的方案（**不保管、不填充、不解密**）
 
 1. 每店一个 profile；首次由人工在该 profile 里登录一次并勾选「保存密码」——**一次性 setup，13 次**。
-2. 会话过期时：导航到登录页 → **不填任何字段** → 等密码管理器自己填。
+   **保存那一刻地址栏必须停在以 `login.taobao.com` 开头的登录页上**：在别的 origin 的登录页保存，
+   下次一样填不上（而这件事**没有任何地方会报错**，只表现为下一次 `NO_AUTOFILL`）。
+2. 会话过期时：**按候选表逐条打开**（`login-merchant-core.mjs` 的 `LOGIN_URL_CANDIDATES`，
+   顺序即实测命中率）→ **不填任何字段** → 等密码管理器自己填 → 读 `:autofill` 判有没有出手；
+   这一条不成立就换下一条，全试完仍不成 ⇒ `NO_AUTOFILL`。
 3. **然后必须补一次可信手势**（CDP `Input.dispatchMouseEvent`，不是 `el.click()`）——
    这是 §5.2.2 第 2/3 条的直接后果：不发可信事件，值就留在预览态、页面读不到。
 4. 勾协议 → 点登录 → 若出现协议二次确认则点「同意」。
 5. 判据只看「输入框有没有值、长度非零」，**值绝不进日志、不进证据目录**。
-6. 任何一步没成 ⇒ 停下，走飞书通知要人。
-7. **明确不做**：不解密 `Login Data`（DPAPI + Chromium AES key）。那正是「代账密」的定义，
+6. **身份守卫（先于提交）**：填进来的账号必须等于该店登记的会员名；不等（或为空）⇒ **不点提交**、
+   判 `WRONG_ACCOUNT` / 空值，转人工。理由见 `MEMORY` 里「同 origin ≥2 条 ⇒ 浏览器自己挑一条」——
+   「登成了别人」不会报错，比「登录失败」贵得多。
+7. 任何一步没成 ⇒ 停下，走飞书通知要人。
+8. **明确不做**：不解密 `Login Data`（DPAPI + Chromium AES key）。那正是「代账密」的定义，
    而且等于把「解密客户密码库」这段代码交付出去。
 
 **仍然未验证、且必须写清楚的一条**：真实账号提交之后**会不会触发滑块或短信验证**。

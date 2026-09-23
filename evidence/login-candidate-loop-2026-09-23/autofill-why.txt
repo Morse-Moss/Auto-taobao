@@ -1,0 +1,71 @@
+代理 http://127.0.0.1:19045：4 个页签
+  - 38764635BF8ED0EA260E0CE675E0539A  生意参谋  https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  - 2A7FC74F7453D495A7D93D7079130AA3  登录  https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntrance=sycm_new&styleType=vertical&bizParams=&notLoadSsoView=true&notKeepLogin=false&isMobile=false&cssUrl=https://g.alicdn.com/dt/sycm-login-css/0.0.1/sycm-iframe-style.css&returnUrl=https://sycm.taobao.com/portal/home.htm&rnd=0.1234567890
+  - 962B2606177B7A1EBFC823BB252D7698  万相台无界版  https://one.alimama.com/index.html#!/login/index
+  - 09A23034208644D631DD6AB26F27865D  盖文天猫 · 日报采集窗口  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035
+
+淘宝登录页页签：1 个
+
+① 现状（target=2A7FC74F7453D495A7D93D7079130AA3）
+{
+ "href": "https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntrance=sycm_new&styleType=vertical&bizParams=&notLoadSsoView=true&notKeepLogin=false&isMobile=false&cssUrl=https://g.alicdn.com/dt/sycm-login-css/0.0.1/sycm-iframe-style.css&returnUrl=https://sycm.taobao.com/portal/home.htm&rnd=0.1234567890",
+ "readyState": "complete",
+ "isTop": true,
+ "inputs": 3,
+ "iframes": 1,
+ "formAutocomplete": null,
+ "id": {
+  "valueLen": 0,
+  "autofill": false,
+  "autocomplete": null,
+  "name": "fm-login-id",
+  "type": "text",
+  "visible": true
+ },
+ "password": {
+  "valueLen": 0,
+  "autofill": false,
+  "autocomplete": null,
+  "name": "fm-login-password",
+  "type": "password",
+  "visible": true
+ },
+ "webdriver": false,
+ "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0",
+ "brands": "Not;A=Brand/8,Chromium/150,Microsoft Edge/150"
+}
+
+② 重载之后各时刻（这一页本来就停在登录页上，只重载它自己）
+  +2000ms  ready=complete  id.autofill=false  id.valueLen=0  pwd.autofill=false  pwd.valueLen=0
+  +4000ms  ready=complete  id.autofill=false  id.valueLen=0  pwd.autofill=false  pwd.valueLen=0
+  +6000ms  ready=complete  id.autofill=false  id.valueLen=0  pwd.autofill=false  pwd.valueLen=0
+  +8000ms  ready=complete  id.autofill=false  id.valueLen=0  pwd.autofill=false  pwd.valueLen=0
+
+③ 页面属性（重载稳定之后）
+{
+ "href": "https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntrance=sycm_new&styleType=vertical&bizParams=&notLoadSsoView=true&notKeepLogin=false&isMobile=false&cssUrl=https://g.alicdn.com/dt/sycm-login-css/0.0.1/sycm-iframe-style.css&returnUrl=https://sycm.taobao.com/portal/home.htm&rnd=0.1234567890",
+ "readyState": "complete",
+ "isTop": true,
+ "inputs": 3,
+ "iframes": 1,
+ "formAutocomplete": null,
+ "id": {
+  "valueLen": 0,
+  "autofill": false,
+  "autocomplete": null,
+  "name": "fm-login-id",
+  "type": "text",
+  "visible": true
+ },
+ "password": {
+  "valueLen": 0,
+  "autofill": false,
+  "autocomplete": null,
+  "name": "fm-login-password",
+  "type": "password",
+  "visible": true
+ },
+ "webdriver": false,
+ "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0",
+ "brands": "Not;A=Brand/8,Chromium/150,Microsoft Edge/150"
+}

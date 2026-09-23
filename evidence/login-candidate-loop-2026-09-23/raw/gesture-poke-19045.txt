@@ -1,0 +1,72 @@
+﻿代理 http://127.0.0.1:19045：4 个页签
+  - 38764635BF8ED0EA260E0CE675E0539A  生意参谋  https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  - 2A7FC74F7453D495A7D93D7079130AA3  登录  https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntrance=sycm_new&styleType=vertical&bizParams=&notLoadSsoView=true&notKeepLogin=false&isMobile=false&cssUrl=https://g.alicdn.com/dt/sycm-login-css/0.0.1/sycm-iframe-style.css&returnUrl=https://sycm.taobao.com/portal/home.htm&rnd=0.1234567890
+  - 962B2606177B7A1EBFC823BB252D7698  万相台无界版  https://one.alimama.com/index.html#!/login/index
+  - 09A23034208644D631DD6AB26F27865D  盖文天猫 · 日报采集窗口  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035
+
+目标页签 target=2A7FC74F7453D495A7D93D7079130AA3
+
+凭据行（点击前）："盖文旗舰店:阿彦" 用过=2 最后使用=13434622658755787
+
+① 现状（不碰）
+{
+ "href": "https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntrance=sycm_new&styleType=vertical&bizParams=&notLoadSsoView=true&notKeepLogin=false&isMobile=false&cssUrl=https://g.alicdn.com/dt/sycm-login-css/0.0.1/sycm-iframe-style.css&returnUrl=https://sycm.taobao.com/portal/home.htm&rnd=0.1234567890",
+ "readyState": "complete",
+ "activeElement": "mini-login-body",
+ "iframeSrcs": [
+  "https://main.m.tmall.com/app/vip/h5-webapp/third-party-cookie.html"
+ ],
+ "id": {
+  "valueLen": 0,
+  "autofill": false,
+  "visible": true,
+  "rect": [
+   0,
+   12,
+   1442,
+   42
+  ],
+  "pointHits": "fm-login-id",
+  "pointIsSelf": true
+ },
+ "password": {
+  "valueLen": 0,
+  "autofill": false,
+  "visible": true,
+  "rect": [
+   0,
+   82,
+   1442,
+   42
+  ],
+  "pointHits": "fm-login-password",
+  "pointIsSelf": true
+ },
+ "suggestionNodes": 0,
+ "shadowRoots": 0
+}
+
+== ② 真实鼠标点击 #fm-login-id
+  点击前 active=mini-login-body  id.valueLen=0 id.autofill=false pwd.valueLen=0
+  动作回执：{"clicked":true,"x":721.1428833007812,"y":33.000000953674316,"tag":"INPUT","text":""}
+  点击后 active=fm-login-id  id.valueLen=0 id.autofill=false pwd.valueLen=0 pwd.autofill=false 建议节点=0
+  elementFromPoint： id 命中 fm-login-id(self=true)  pwd 命中 fm-login-password(self=true)
+  截图 → shots/gesture-1-after-id-click.png
+
+== ③ 真实鼠标点击 #fm-login-password
+  点击前 active=fm-login-id  id.valueLen=0 id.autofill=false pwd.valueLen=0
+  动作回执：{"clicked":true,"x":721.1428833007812,"y":103,"tag":"INPUT","text":""}
+  点击后 active=fm-login-password  id.valueLen=0 id.autofill=false pwd.valueLen=0 pwd.autofill=false 建议节点=0
+  elementFromPoint： id 命中 fm-login-id(self=true)  pwd 命中 fm-login-password(self=true)
+  截图 → shots/gesture-2-after-pwd-click.png
+
+== ④ 点空白 → 再点回用户名框
+  点击前 active=fm-login-password  id.valueLen=0 id.autofill=false pwd.valueLen=0
+  动作回执：{"clicked":true,"x":721.1428833007812,"y":33.000000953674316,"tag":"INPUT","text":""}
+  点击后 active=fm-login-id  id.valueLen=0 id.autofill=false pwd.valueLen=0 pwd.autofill=false 建议节点=0
+  elementFromPoint： id 命中 fm-login-id(self=true)  pwd 命中 fm-login-password(self=true)
+  截图 → shots/gesture-3-after-refocus.png
+
+凭据行（点击后）："盖文旗舰店:阿彦" 用过=2 最后使用=13434622658755787
+
+收尾：页签 4 → 4（必须相等）

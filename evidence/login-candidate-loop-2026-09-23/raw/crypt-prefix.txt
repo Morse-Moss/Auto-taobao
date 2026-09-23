@@ -1,0 +1,42 @@
+﻿
+== 盖文天猫
+   [Default/Login Data] 1 行（复制件（原库被浏览器锁着））；其中淘宝 1 条
+     v10  密文 3 字节（明文长度≈-56）  "盖文旗舰店:阿彦"@https://havanalogin.taobao.com/
+   [Default/Login Data For Account] 0 行（复制件（原库被浏览器锁着））；其中淘宝 0 条
+
+== 里可林淘宝
+   [Default/Login Data] 2 行（原库）；其中淘宝 2 条
+     v10  密文 3 字节（明文长度≈-56）  "里可林家居:阿彦"@https://login.taobao.com/
+     v10  密文 3 字节（明文长度≈-56）  "里可林家居:阿彦"@https://havanalogin.taobao.com/
+   [Default/Login Data For Account] 0 行（原库）；其中淘宝 0 条
+
+== 网林天猫
+   [Default/Login Data] 1 行（原库）；其中淘宝 1 条
+     v10  密文 3 字节（明文长度≈-56）  "网林家居旗舰店:阿彦"@https://login.taobao.com/
+   [Default/Login Data For Account] 0 行（复制件（原库被浏览器锁着））；其中淘宝 0 条
+
+== 科塔淘宝
+   [Default/Login Data] 2 行（原库）；其中淘宝 2 条
+     v10  密文 3 字节（明文长度≈-56）  "j873522735:阿彦"@https://login.taobao.com/
+     v10  密文 3 字节（明文长度≈-56）  "j873522735:阿彦"@https://havanalogin.taobao.com/
+   [Default/Login Data For Account] 0 行（原库）；其中淘宝 0 条
+
+== 盖文淘宝
+   [Default/Login Data] 4 行（原库）；其中淘宝 4 条
+     v10  密文 3 字节（明文长度≈-56）  "盖文旗舰店:阿彦"@https://login.taobao.com/
+     v10  密文 3 字节（明文长度≈-56）  "盖文旗舰店:阿彦"@https://havanalogin.taobao.com/
+     v10  密文 3 字节（明文长度≈-56）  "随心品质定制:阿彦"@https://havanalogin.taobao.com/
+     v10  密文 3 字节（明文长度≈-56）  "随心品质定制:阿彦"@https://login.taobao.com/
+   [Default/Login Data For Account] 0 行（复制件（原库被浏览器锁着））；其中淘宝 0 条
+
+== 商家浏览器
+   [Default/Login Data] 47 行（复制件（原库被浏览器锁着））；其中淘宝 4 条
+     v10  密文 3 字节（明文长度≈-56）  "盖文旗舰店:阿彦"@https://havanalogin.taobao.com/
+     v10  密文 3 字节（明文长度≈-56）  "盖文旗舰店:阿彦"@https://login.taobao.com/
+     v10  密文 3 字节（明文长度≈-56）  "里可林家居:阿彦"@https://login.taobao.com/
+     v10  密文 3 字节（明文长度≈-56）  "随心品质定制:阿彦"@https://havanalogin.taobao.com/
+   [Default/Login Data For Account] 0 行（复制件（原库被浏览器锁着））；其中淘宝 0 条
+
+前缀统计：{"v10":14}
+v10 ⇒ 老方案，同机同用户可解；v20 ⇒ 应用绑定加密，解不开时密码管理器会静默不提供该凭据。
+EXIT=0

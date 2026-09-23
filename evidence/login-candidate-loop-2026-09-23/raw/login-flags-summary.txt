@@ -1,0 +1,90 @@
+﻿
+== 鐩栨枃澶╃尗  (D:/Retire/edge-profiles/gaiwen-flagship)
+   [Default/Login Data] 1 琛岋紙澶嶅埗浠讹紙鍘熷簱琚祻瑙堝櫒閿佺潃锛夛級
+     realm=https://havanalogin.taobao.com/
+       璐﹀彿="鐩栨枃鏃楄埌搴?闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=2  actor_login_approved=0
+       寤轰簬=2026-09-19 05:40:20Z
+       鏈€鍚庝娇鐢?2026-09-23 07:37:38Z  鏀瑰瘑=2026-09-19 05:40:20Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+   [Default/Login Data For Account] 0 琛岋紙澶嶅埗浠讹紙鍘熷簱琚祻瑙堝櫒閿佺潃锛夛級
+
+== 閲屽彲鏋楁窐瀹? (D:/Retire/edge-profiles/likelin-home)
+   [Default/Login Data] 2 琛岋紙鍘熷簱锛?     realm=https://login.taobao.com/
+       璐﹀彿="閲屽彲鏋楀灞?闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=0  actor_login_approved=0
+       寤轰簬=2026-09-18 05:06:08Z
+       鏈€鍚庝娇鐢?2026-09-18 05:06:04Z  鏀瑰瘑=2026-09-18 15:15:30Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+     realm=https://havanalogin.taobao.com/
+       璐﹀彿="閲屽彲鏋楀灞?闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=1  actor_login_approved=0
+       寤轰簬=2026-09-18 15:15:30Z
+       鏈€鍚庝娇鐢?2026-09-18 15:15:27Z  鏀瑰瘑=2026-09-18 15:15:30Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+   [Default/Login Data For Account] 0 琛岋紙鍘熷簱锛?
+== 缃戞灄澶╃尗  (D:/Retire/edge-profiles/wanglin-flagship)
+   [Default/Login Data] 1 琛岋紙鍘熷簱锛?     realm=https://login.taobao.com/
+       璐﹀彿="缃戞灄瀹跺眳鏃楄埌搴?闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=1  actor_login_approved=0
+       寤轰簬=2026-09-18 05:05:26Z
+       鏈€鍚庝娇鐢?2026-09-22 12:14:22Z  鏀瑰瘑=2026-09-18 05:05:26Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+   [Default/Login Data For Account] 0 琛岋紙澶嶅埗浠讹紙鍘熷簱琚祻瑙堝櫒閿佺潃锛夛級
+
+== 绉戝娣樺疂  (D:/Retire/edge-profiles/shop-j873522735)
+   [Default/Login Data] 2 琛岋紙鍘熷簱锛?     realm=https://login.taobao.com/
+       璐﹀彿="j873522735:闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=0  actor_login_approved=0
+       寤轰簬=2026-09-18 05:07:30Z
+       鏈€鍚庝娇鐢?2026-09-18 05:07:26Z  鏀瑰瘑=2026-09-22 02:47:54Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+     realm=https://havanalogin.taobao.com/
+       璐﹀彿="j873522735:闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=2  actor_login_approved=0
+       寤轰簬=2026-09-18 21:10:56Z
+       鏈€鍚庝娇鐢?2026-09-22 02:47:52Z  鏀瑰瘑=2026-09-18 21:10:56Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+   [Default/Login Data For Account] 0 琛岋紙鍘熷簱锛?
+== 鐩栨枃娣樺疂  (D:/Retire/edge-profiles/suixin-custom)
+   [Default/Login Data] 4 琛岋紙鍘熷簱锛?     realm=https://login.taobao.com/
+       璐﹀彿="鐩栨枃鏃楄埌搴?闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=0  actor_login_approved=0
+       寤轰簬=2026-09-18 15:08:20Z
+       鏈€鍚庝娇鐢?2026-09-18 15:08:18Z  鏀瑰瘑=2026-09-18 15:08:20Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+     realm=https://havanalogin.taobao.com/
+       璐﹀彿="鐩栨枃鏃楄埌搴?闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=0  actor_login_approved=0
+       寤轰簬=2026-09-18 15:08:54Z
+       鏈€鍚庝娇鐢?2026-09-18 15:08:51Z  鏀瑰瘑=2026-09-18 15:08:54Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+     realm=https://havanalogin.taobao.com/
+       璐﹀彿="闅忓績鍝佽川瀹氬埗:闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=4  actor_login_approved=0
+       寤轰簬=2026-09-19 02:55:48Z
+       鏈€鍚庝娇鐢?2026-09-22 12:11:35Z  鏀瑰瘑=2026-09-22 12:09:41Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+     realm=https://login.taobao.com/
+       璐﹀彿="闅忓績鍝佽川瀹氬埗:闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=1  actor_login_approved=0
+       寤轰簬=2026-09-22 12:09:41Z
+       鏈€鍚庝娇鐢?2026-09-22 12:09:39Z  鏀瑰瘑=2026-09-22 12:11:39Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+   [Default/Login Data For Account] 0 琛岋紙澶嶅埗浠讹紙鍘熷簱琚祻瑙堝櫒閿佺潃锛夛級
+
+== 鍟嗗娴忚鍣? (D:/Retire/edge-daily-report-profile)
+   [Default/Login Data] 4 琛岋紙澶嶅埗浠讹紙鍘熷簱琚祻瑙堝櫒閿佺潃锛夛級
+     realm=https://havanalogin.taobao.com/
+       璐﹀彿="鐩栨枃鏃楄埌搴?闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=11  actor_login_approved=0
+       寤轰簬=2026-08-04 07:18:09Z
+       鏈€鍚庝娇鐢?2026-09-18 12:57:53Z  鏀瑰瘑=2026-09-16 04:02:47Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+     realm=https://login.taobao.com/
+       璐﹀彿="鐩栨枃鏃楄埌搴?闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=10  actor_login_approved=0
+       寤轰簬=2026-09-16 04:02:47Z
+       鏈€鍚庝娇鐢?2026-09-16 04:02:46Z  鏀瑰瘑=2026-09-18 12:57:55Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+     realm=https://login.taobao.com/
+       璐﹀彿="閲屽彲鏋楀灞?闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=0  actor_login_approved=0
+       寤轰簬=2026-09-18 04:15:16Z
+       鏈€鍚庝娇鐢?2026-09-18 04:14:46Z  鏀瑰瘑=2026-09-18 04:15:16Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+     realm=https://havanalogin.taobao.com/
+       璐﹀彿="闅忓績鍝佽川瀹氬埗:闃垮溅"
+       skip_zero_click=0锛堝厑璁搁浂鐐瑰嚮濉厖锛?       鎷夐粦=0  scheme=0  鐢ㄨ繃=1  actor_login_approved=0
+       寤轰簬=2026-09-18 04:20:30Z
+       鏈€鍚庝娇鐢?2026-09-19 05:00:12Z  鏀瑰瘑=2026-09-18 04:20:30Z  鏈€鍚庡～鍏?"0"锛堜粠鏈級
+   [Default/Login Data For Account] 0 琛岋紙澶嶅埗浠讹紙鍘熷簱琚祻瑙堝櫒閿佺潃锛夛級
+
+鍚堣 14 琛屾窐瀹濆嚟鎹€?

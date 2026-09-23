@@ -1,0 +1,15 @@
+profile=D:/Retire/edge-profiles/gaiwen-flagship
+（原库被运行中的浏览器锁着，读的复制件；logins 表列名：origin_url, action_url, username_element, username_value, password_element, password_value, submit_element, signon_realm, date_created, blacklisted_by_user, scheme, password_type, times_used, form_data, display_name, icon_url, federation_url, skip_zero_click, generation_upload_status, possible_username_pairs, id, date_last_used, moving_blocked_for, date_password_modified, sender_email, sender_name, date_received, sharing_notification_displayed, keychain_identifier, sender_profile_image_url, date_last_filled, actor_login_approved）
+（只读账号名，不读密码；命中 1 行）
+  ── 一行凭据 ──
+    origin_url = "https://havanalogin.taobao.com/mini_login.htm"
+    signon_realm = "https://havanalogin.taobao.com/"
+    scheme = 0
+    username_value = "盖文旗舰店:阿彦"
+    username_element = "fm-login-id"
+    password_element = "fm-login-password"
+    times_used = 2
+    blacklisted_by_user = 0
+    date_created = "13434270020077694"
+(node:50980) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

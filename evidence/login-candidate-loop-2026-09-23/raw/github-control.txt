@@ -1,0 +1,38 @@
+﻿实验 github-control：源=D:/Retire/edge-daily-report-profile  --disable-sync=false
+临时 profile=D:\Retire\tmp-autofill2-93BGnJ\profile
+复制：Local State, Default/Preferences, Default/Secure Preferences, Default/Login Data, Default/Login Data For Account
+复制件里的淘宝凭据：4 条
+
+起一次性实例：--user-data-dir=D:\Retire\tmp-autofill2-93BGnJ\profile --remote-debugging-port=19801 --no-first-run --no-default-browser-check about:blank
+pid=46928
+起来了：Edg/150.0.4078.65
+
+导航 → https://github.com/login…
+
+=== 从导航到 +12s 的全部取值变化（5 条状态变化）===
+  [27ms] poll  idLen=-1 idAf=null pwdLen=-1 pwdAf=null focused=true vis=visible
+  [851ms] poll  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [1120ms] DOMContentLoaded  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [1302ms] load  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [1352ms] poll  idLen=0 idAf=true pwdLen=0 pwdAf=true focused=true vis=visible
+  +12s 终态：{"idLen":0,"idAf":true,"pwdLen":0,"focused":true,"vis":"visible"}
+   截图 → shots/github-control-1-onload.png
+
+再点一次用户名框（手势），然后读最后 6 秒的采样
+
+=== 手势之后最后 25 条（6 条状态变化）===
+  [27ms] poll  idLen=-1 idAf=null pwdLen=-1 pwdAf=null focused=true vis=visible
+  [851ms] poll  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [1120ms] DOMContentLoaded  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [1302ms] load  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [1352ms] poll  idLen=0 idAf=true pwdLen=0 pwdAf=true focused=true vis=visible
+  [12103ms] poll  idLen=17 idAf=true pwdLen=14 pwdAf=true focused=true vis=visible
+   截图 → shots/github-control-2-after-click.png
+
+=== 结论 ===
+  · **出现过非空/已填充状态** ⇒ Chromium 确实出手填过，随后被擦掉（或只短暂存在）
+
+回收：taskkill /PID 46928 /T /F
+端口 19801 已释放 ✓
+临时 profile 已删：D:/Retire/tmp-autofill2-93BGnJ
+EXIT=0

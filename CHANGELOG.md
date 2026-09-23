@@ -15,6 +15,107 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.6.0] - 2026-09-23
+
+把用户那句「**做不到自动登录吗？？？**」再往下做一层：登录入口从「一条写死的 URL」改成
+**一组候选地址、逐条打开试到浏览器真的肯填为止**，并在**按下提交之前**加一道**身份守卫**
+（填进来的账号不是这家店的 ⇒ 绝不提交）。真机上跑完了对照矩阵，其中两条结论**推翻了本仓
+1.3.0 里我自己写下的判断**。
+
+### 为什么必须改：旧形态把两个假设当成了事实
+
+1. **「脚本固定打开的那一页」= 唯一入口。** `TAOBAO_LOGIN_URL` 是一个常量，而实测五家店
+   各有各的凭据落点（`havanaone/login/login.htm` / `member/login.jhtml` / `mini_login.htm`）。
+   一条 URL 承担不了五个落点。
+2. **「密码库里有凭据 ⇒ 能自动填」。** 1.3.0 把它进一步写成「缺的是**那条 origin** ⇒
+   补齐 origin 就能填」。真机对照矩阵把这条**证伪**了：**origin 相等是必要不充分** ——
+   `havanalogin.taobao.com` 上的凭据，即使 `signon_realm` 就是它、`skip_zero_click=0`、
+   `blacklisted_by_user=0`、密文合法（`v10`、40 字节）、页面就开在它上面，Chromium **也不填**
+   （`:autofill` 恒 false，实测 0/3）。
+
+### 实测矩阵（一次性实例，逐格都能指到 `evidence/login-candidate-loop-2026-09-23/raw/` 的原始输出）
+
+| 打开的地址 | 里可林 | 网林 | 科塔 | 盖文天猫 | 商家 | 命中 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `login.taobao.com/havanaone/login/login.htm?bizName=taobao` | ✓ | ✓ | ✓ | — | — | **3/3** |
+| `login.taobao.com/member/login.jhtml` | ✓ | — | — | ✗ | ✓ | 2/3 |
+| `havanalogin.taobao.com/mini_login.htm?...`（带参数） | — | ✗ ✗ | ✗ | — | ✗ ✗ | **0/5**（3 台机器各试了 1–2 次） |
+| 对照 `github.com/login`（同一个 profile） | — | — | — | — | ✓ | 1/1 |
+
+**决定性的一格是「商家浏览器 + `havanalogin`」那两次**：那台机器的凭据里**就有**一条
+`signon_realm=https://havanalogin.taobao.com/`、`times_used=11`、`skip_zero_click=0` 的记录，
+页面也开在它自己的 origin 上 —— **仍不填**。所以「同源就会填」在这条主机上不成立。
+
+⚠️ **这张表在交付前被更正过一次，值得记下来**：初版 `member/login.jhtml` 那行写的是
+「商家 ✓ 里可林 ✓ 网林 ✗ 科塔 ✗ → 2/4」，而那两次「网林/科塔 + member」**实际打开的是
+`havanalogin` 那条地址**（命令漏传 `--url`，`--label` 却按 member 写了）⇒ 两个失败样本归错了行。
+**回读原始输出里的「导航 → …」才发现**（标签是人手写的，地址是程序打的）。
+更正**不改变任何结论**，但它是一条判据：**引用「哪次实验是什么结果」要读输出里的地址，不要读标签**；
+跑这类实验时输出**按 run 命名**，别复用同一个临时文件名。
+
+另：**方法**＝复制一份 profile 到临时目录 → 未登记端口（**19801**）起一次性实例 → 25ms 采样
+`#fm-login-id` / `#fm-login-password` 的 `value.length` 与 `:autofill`，并用
+`Page.addScriptToEvaluateOnNewDocument` 挂钩 `HTMLInputElement.prototype.value` 的 setter
+（这是唯一能在页面脚本之前埋观察器的时机）；跑完 `taskkill /T` ＋ **端口回读** ＋ 删临时目录。
+**六个生产 profile 全程没碰**（用户当时正在那些窗口里手工登录 ⇒ 扰动静默降到零）。
+
+**判据是四条组合，不是「2 秒后读一次值」** —— `:autofill`（出手的唯一可观测痕迹、且只是预览态）
+＋ `value.length`（值有没有落地）＋ 挂钩 `HTMLInputElement.prototype.value` 的 setter（谁在写、带调用栈）
+＋ `elementFromPoint`（点击真落在框上）。单读值一定会漏：值可能从未出现，也可能出现过又被页面擦掉。
+**原生密码下拉不在 DOM 里** ⇒ `[role=listbox]` 的个数**永远不可作判据**，唯一能看见它的是**截图**。
+**不能拿「这台机器的填充坏了」当解释**：对照组用同一个 profile 打开 `github.com/login`，
+真实点击后 17/14 字符落地。**`times_used` 不是「填进去了」的证据**（每次跑登录都被刷新，而值从未落地）。
+
+
+### 本版改动
+
+- **候选表 `LOGIN_URL_CANDIDATES`**（`login-merchant-core.mjs`，**顺序即优先级**）＝
+  `[havanaone, member-login]`。**`mini-login` 已删除** —— 实测 0/3，它不是「还没试过的备选」，是死路。
+  `TAOBAO_LOGIN_URL` 保留为 `LOGIN_URL_CANDIDATES[0].url`，只为**不改动**既有调用方与既有判据的语义。
+- **主脚本逐条试**（`login-merchant.mjs`）：`for (const candidate of LOGIN_URL_CANDIDATES)`
+  → 打开 → 读 `:autofill` → 是才补可信手势、等一拍、回读值；不是就换下一条。
+  全试完仍不成立 ⇒ `NO_AUTOFILL`。每一步的 `attempt.outcome` 都进回执（「试过哪几条」必须可查）。
+- **身份守卫（先于提交）**：`expectedMemberFor({shop})` 给出这家店**该有**的会员名
+  （唯一来源 `shop-identities.mjs`；**不派生** `<店名>:阿彦` —— 实测已推翻这个假设），
+  `judgeFilled({filled, expected})` 四个出口：`ACCEPT`（逐字相同，往下走）／`EMPTY`（换下一条候选）／
+  **`WRONG_ACCOUNT`（填了别人 ⇒ 绝不提交，换下一条；都不行就 fail-closed）**／`UNKNOWN`
+  （没有期望值 ⇒ 如实说「这条守卫没有依据」，不假装它过了）。守卫的位置**必须在 `centerOf(state,'submit')` 之前**。
+- **读账号框的表达式单独一个**（`LOGIN_ID_VALUE_EXPRESSION`），**刻意不并进 `FORM_STATE_EXPRESSION`**：
+  后者结果会进回执、还会被 `--shots` 写进证据目录，往里加 `value` 等于给**所有**回执开一条凭据外泄的口子。
+  这个表达式**永远不许扩到密码框**（账号不是秘密，密码才是）。
+- **`NO_AUTOFILL` 的人话重写**：原文案让人「登录时点浏览器提示里的『保存密码』」——
+  在**错的登录页**上保存等于没修。改成明确要求**地址栏停在以 `login.taobao.com` 开头的登录页上**再保存。
+- **`LOGIN_FAIL_TEXT` 补 `WRONG_ACCOUNT` 并导出**（`check-login-shops-core.mjs`），
+  文案与 `NO_SAVED_CREDENTIAL` **刻意不同**：前者是「填进来的是**另一家店**的账号，系统没有替你提交」，
+  人该做的是「用这一家的账号登一次、把多余的凭据清掉」，**不是**「去点保存密码」（那会把混着多家凭据这件事坐实）。
+
+### 本版验证（分开说，别混成一句）
+
+- **离线**（三个直接相关的文件，**87/87、exit 0**；原始输出 `evidence/login-candidate-loop-2026-09-23/raw/tests-adjacent-1.6.0.txt`）：
+  `login-merchant-core.test.mjs` ＋ `check-login-shops-core.test.mjs` ＋ `runtime/version-consistency.test.mjs`。
+  新增的判据：候选表顺序／id 唯一／每条都被认成登录页、**反向断言**「`havanalogin` 不许回到候选表」、
+  `LOGIN_FAIL_TEXT` 对 `VERDICTS_NEEDING_HUMAN` **逐个覆盖**、`WRONG_ACCOUNT` 文案与「没凭据」不许共用一句。
+  「覆盖」这件事**必须由判据守**：漏一条的现场表现只是运营看到一句内部代号，**不会报任何错**。
+- **突变 9/9**：`evidence/login-candidate-loop-2026-09-23/mutate-login-guard-1.6.0.mjs`，
+  报告 `raw/mutation-report-run2-final.txt`。九条**每一处都红在点名的那一条**、还原后 sha256 逐字节一致。
+  上一版报告（`raw/mutation-report-run1-superseded.txt`）里有一条被标 `skip` —— 那条想验「候选表只剩一条」，
+  但改法只改了一个 id、**改不坏任何判据**，等于一条没有判据的突变；本版换成真能改坏的写法（把第二条候选整段删掉），
+  并顺带修掉原脚本把报告写进仓库根 `tmp/` 的问题（搬进证据目录后会因目录不存在而失效）。
+- **真机**：上表矩阵（一次性实例）。**不是**「已经在生产窗口上跑通了」。
+- **没做**：在真实生产窗口上跑 `--commit --shop 盖文天猫` —— 用户当时正在那些窗口里手工登录，
+  本轮**刻意不碰**（真机复核仍欠）。
+
+### 本版仍然是欠账的（别当成已做）
+
+- **盖文天猫仍要人工登一次**（理由换成：它那个 profile 在 `login.taobao.com` 上**一条凭据都没有**，
+  两条候选都会判 `NO_AUTOFILL`）。**这不是自动化做不做得到，是缺一条能用的凭据。**
+- **凭据收敛未做**：商家浏览器与盖文淘宝的密码库里各有**两条同 origin、分属两家店**的凭据
+  ⇒ 浏览器自己挑一条、脚本控制不了 ⇒ 有可能**悄悄登成另一家店**（页面照开、导出照成、
+  数字看起来都对，**链上没有任何一步会发现**）。动手给这两台自动登录之前必须先收敛成一条。
+- **熔断仍未实现**（1.2.0 就欠着）；**带 `--login` 的成功支路仍未在真机上验过**。
+- **`mini_login.htm` 那条**：带参数顶层打开**是**活登录页（能被打开），但**不会被填** ——
+  两条结论并存，别只留前一条（1.3.0 曾把「能被打开」误当成「能用」）。
+
 ## [1.5.0] - 2026-09-23
 
 把用户 2026-09-23 拍板原话「**如果自动登录失败就飞书告警，但是前提是你要先自动登录**」落地：
@@ -193,6 +294,9 @@
 `havanalogin.taobao.com/mini_login.htm` 这一条，自动登录固定打开的是
 `login.taobao.com/havanaone/login/login.htm` ⇒ 一次也填不上 ⇒ 报的是「没存凭据」
 （`NO_SAVED_CREDENTIAL`，`login-merchant.mjs` 第 292 行）。
+⚠️ **这一段里的「按 origin 匹配」在当日更晚被证伪**（origin 相等**照样不填**，
+`havanalogin` 那条主机上的凭据实测 0/3）；「盖文天猫要人工登一次」这个**结论仍然成立**，
+理由换成「它在 `login.taobao.com` 上一条凭据都没有」。详见 [1.6.0]。
 **也不是** 2026-09-19 那种「主站会话有效被重定向到千牛」的假阴性：这次那两页的 URL 是真的登录页，
 而那条形态已有 `detectLoginDetour` 处理。
 
@@ -289,6 +393,8 @@
   已确证不是脚本坏：只读审计五家 profile 的密码库（`login-data-audit-0923.txt`）显示
   **盖文天猫只有 `havanalogin.taobao.com` 那条 origin，没有 `login.taobao.com` 这条**，
   而自动登录固定打开后者 ⇒ 按 origin 匹配的填充无从发生 ⇒ `NO_SAVED_CREDENTIAL`。
+  ⚠️ 其中「按 origin 匹配 ⇒ 换到凭据所属 origin 那条地址就能填」当日更晚被证伪，见 [1.6.0]；
+  「要人工登一次」不变。
   人工登一次并勾「保存密码」即可（一次性）。
 
 ### 本版仍然是欠账的（别当成已做）

@@ -8,12 +8,12 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  PREFLIGHT_VERDICTS, SHOP_VERDICTS, SITE_KEYS, SITE_VERDICTS, exitCodeForPreflight,
-  judgePreflight, judgeShopReceipt, loginAccountFor, notifyModeFor, parseCheckShopsArgs, platformNameHint,
-  renderNotifyLines, renderReport, siteVerdictOf,
+  LOGIN_FAIL_TEXT, PREFLIGHT_VERDICTS, SHOP_VERDICTS, SITE_KEYS, SITE_VERDICTS, exitCodeForPreflight,
+  judgePreflight, judgeShopReceipt, loginAccountFor, loginFailReason, notifyModeFor, parseCheckShopsArgs,
+  platformNameHint, renderNotifyLines, renderReport, siteVerdictOf,
 } from './check-login-shops-core.mjs';
 // 站点词表与探针地址的唯一来源：这里只**核对**，不另抄一份。
-import { SITES } from './login-merchant-core.mjs';
+import { SITES, VERDICTS_NEEDING_HUMAN } from './login-merchant-core.mjs';
 import { siteAdapter } from './date-picker.mjs';
 // 店名与「哪个平台显示哪个名字」的唯一来源。
 import { shopIdentity } from './shop-identities.mjs';
@@ -411,4 +411,28 @@ test('带 --login 的报告里，告警那一段要出现在判据下面', () =>
   }];
   const report = renderReport({ rows, autoLogin: true });
   assert.match(report, /^\[告警\] 已经叫人 1 次：盖文天猫（编号 .*盖文天猫.*）$/mu);
+});
+
+test('每一条「要叫人」的结论都有自己的人话文案（漏一条＝运营看到一句内部代号）', () => {
+  // 2026-09-23 加。漏一条的现场：`loginFailReason` 回落到
+  // 「自动登录没成（内部结论：WRONG_ACCOUNT）」—— 收信人看到的是一个内部代号，
+  // 而这件事**不会报任何错**（这就是它必须由判据来守、而不是靠「写的人记得加」的原因）。
+  for (const verdict of VERDICTS_NEEDING_HUMAN) {
+    assert.ok(LOGIN_FAIL_TEXT[verdict], `${verdict} 没有翻成人话 ⇒ 报告里会印出内部代号`);
+    assert.equal(loginFailReason(verdict).includes('内部结论'), false, `${verdict} 落到了兜底文案`);
+    assert.equal(loginFailReason(verdict).includes(verdict), false, `${verdict} 的文案里出现了自己的代号`);
+  }
+  // 反向：词表里不许有 VERDICTS 之外（或已删掉）的词残留 —— 那是一句永远印不出来的话
+  const extra = Object.keys(LOGIN_FAIL_TEXT).filter((word) => !VERDICTS_NEEDING_HUMAN.includes(word));
+  assert.deepEqual(extra, [], `LOGIN_FAIL_TEXT 里有印不出来的词：${extra.join(' / ')}`);
+  // 认不出来时如实说认不出来，而不是编一句
+  assert.equal(loginFailReason('没这个词'), '自动登录没成（内部结论：没这个词）');
+  assert.equal(loginFailReason(null), null);
+});
+
+test('WRONG_ACCOUNT 的人话不能与「没凭据」共用一句 —— 两者的下一步不同', () => {
+  const wrong = loginFailReason('WRONG_ACCOUNT');
+  assert.notEqual(wrong, loginFailReason('NO_SAVED_CREDENTIAL'));
+  assert.match(wrong, /另一家店/u, '要说清「填进来的是别人」，否则人会以为只是没填上');
+  assert.equal(wrong.includes('保存密码'), false, '这一条不该让人去「保存密码」（那会把混着多家凭据这件事坐实）');
 });

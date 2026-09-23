@@ -1,0 +1,133 @@
+﻿实验 likelin-havanaone：源=D:/Retire/edge-profiles/likelin-home  --disable-sync=false
+临时 profile=D:\Retire\tmp-autofill2-9koUuv\profile
+复制：Local State, Default/Preferences, Default/Secure Preferences, Default/Login Data, Default/Login Data For Account
+复制件里的淘宝凭据：2 条
+
+起一次性实例：--user-data-dir=D:\Retire\tmp-autofill2-9koUuv\profile --remote-debugging-port=19801 --no-first-run --no-default-browser-check about:blank
+pid=52920
+起来了：Edg/150.0.4078.65
+
+导航 → https://login.taobao.com/havanaone/login/login.htm?bizName=taobao…
+
+=== 从导航到 +12s 的全部取值变化（7 条状态变化）===
+  [26ms] poll  idLen=-1 idAf=null pwdLen=-1 pwdAf=null focused=true vis=visible
+  [118ms] setter:fm-login-id 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393268) <- at https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [118ms] setter:fm-login-password 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393374) <- at https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [165ms] poll  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [171ms] DOMContentLoaded  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [482ms] poll  idLen=0 idAf=true pwdLen=0 pwdAf=true focused=true vis=visible
+  [534ms] load  idLen=0 idAf=true pwdLen=0 pwdAf=true focused=true vis=visible
+  +12s 终态：{"idLen":0,"idAf":true,"pwdLen":0,"focused":true,"vis":"visible"}
+   截图 → shots/likelin-havanaone-1-onload.png
+
+再点一次用户名框（手势），然后读最后 6 秒的采样
+
+=== 手势之后最后 25 条（8 条状态变化）===
+  [26ms] poll  idLen=-1 idAf=null pwdLen=-1 pwdAf=null focused=true vis=visible
+  [118ms] setter:fm-login-id 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393268) <- at https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [118ms] setter:fm-login-password 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393374) <- at https://g.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [165ms] poll  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [171ms] DOMContentLoaded  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [482ms] poll  idLen=0 idAf=true pwdLen=0 pwdAf=true focused=true vis=visible
+  [534ms] load  idLen=0 idAf=true pwdLen=0 pwdAf=true focused=true vis=visible
+  [12101ms] poll  idLen=8 idAf=true pwdLen=9 pwdAf=true focused=true vis=visible
+   截图 → shots/likelin-havanaone-2-after-click.png
+
+=== 结论 ===
+  · 页面自己写入了输入框 4 次（见上面的调用栈）
+  · **出现过非空/已填充状态** ⇒ Chromium 确实出手填过，随后被擦掉（或只短暂存在）
+
+回收：taskkill /PID 52920 /T /F
+端口 19801 已释放 ✓
+临时 profile 已删：D:/Retire/tmp-autofill2-9koUuv
+实验 wanglin-member：源=D:/Retire/edge-profiles/wanglin-flagship  --disable-sync=false
+临时 profile=D:\Retire\tmp-autofill2-KySkBy\profile
+复制：Local State, Default/Preferences, Default/Secure Preferences, Default/Login Data, Default/Login Data For Account
+复制件里的淘宝凭据：1 条
+
+起一次性实例：--user-data-dir=D:\Retire\tmp-autofill2-KySkBy\profile --remote-debugging-port=19801 --no-first-run --no-default-browser-check about:blank
+pid=41856
+起来了：Edg/150.0.4078.65
+
+导航 → https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntra…
+
+=== 从导航到 +12s 的全部取值变化（6 条状态变化）===
+  [26ms] poll  idLen=-1 idAf=null pwdLen=-1 pwdAf=null focused=true vis=visible
+  [141ms] setter:fm-login-id 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393268) <- at https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [142ms] setter:fm-login-password 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393374) <- at https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [170ms] poll  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [170ms] DOMContentLoaded  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [638ms] load  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  +12s 终态：{"idLen":0,"idAf":false,"pwdLen":0,"focused":true,"vis":"visible"}
+   截图 → shots/wanglin-member-1-onload.png
+
+再点一次用户名框（手势），然后读最后 6 秒的采样
+
+=== 手势之后最后 25 条（6 条状态变化）===
+  [26ms] poll  idLen=-1 idAf=null pwdLen=-1 pwdAf=null focused=true vis=visible
+  [141ms] setter:fm-login-id 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393268) <- at https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [142ms] setter:fm-login-password 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393374) <- at https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [170ms] poll  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [170ms] DOMContentLoaded  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [638ms] load  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+   截图 → shots/wanglin-member-2-after-click.png
+
+=== 结论 ===
+  · 页面自己写入了输入框 4 次（见上面的调用栈）
+  · 全程未出现任何非空值、也未出现 :autofill ⇒ Chromium 从出手环节就没发生
+
+回收：taskkill /PID 41856 /T /F
+端口 19801 已释放 ✓
+临时 profile 已删：D:/Retire/tmp-autofill2-KySkBy
+实验 keta-member：源=D:/Retire/edge-profiles/shop-j873522735  --disable-sync=false
+临时 profile=D:\Retire\tmp-autofill2-MHx6qO\profile
+复制：Local State, Default/Preferences, Default/Secure Preferences, Default/Login Data, Default/Login Data For Account
+复制件里的淘宝凭据：2 条
+
+起一次性实例：--user-data-dir=D:\Retire\tmp-autofill2-MHx6qO\profile --remote-debugging-port=19801 --no-first-run --no-default-browser-check about:blank
+pid=15624
+起来了：Edg/150.0.4078.65
+
+导航 → https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntra…
+
+=== 从导航到 +12s 的全部取值变化（6 条状态变化）===
+  [27ms] poll  idLen=-1 idAf=null pwdLen=-1 pwdAf=null focused=true vis=visible
+  [169ms] setter:fm-login-id 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393268) <- at https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [169ms] setter:fm-login-password 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393374) <- at https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [195ms] poll  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [204ms] DOMContentLoaded  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [709ms] load  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  +12s 终态：{"idLen":0,"idAf":false,"pwdLen":0,"focused":true,"vis":"visible"}
+   截图 → shots/keta-member-1-onload.png
+
+再点一次用户名框（手势），然后读最后 6 秒的采样
+
+=== 手势之后最后 25 条（6 条状态变化）===
+  [27ms] poll  idLen=-1 idAf=null pwdLen=-1 pwdAf=null focused=true vis=visible
+  [169ms] setter:fm-login-id 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393268) <- at https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [169ms] setter:fm-login-password 写入长度=0
+        调用栈：at HTMLInputElement.set [as value] (<anonymous>:30:27) <- at Object.te [as clear] (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:181447) <- at n.value (https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:393374) <- at https://x.alicdn.com/vip/havana-nlogin/0.10.37/index.js:1:620588
+  [195ms] poll  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [204ms] DOMContentLoaded  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+  [709ms] load  idLen=0 idAf=false pwdLen=0 pwdAf=false focused=true vis=visible
+   截图 → shots/keta-member-2-after-click.png
+
+=== 结论 ===
+  · 页面自己写入了输入框 4 次（见上面的调用栈）
+  · 全程未出现任何非空值、也未出现 :autofill ⇒ Chromium 从出手环节就没发生
+
+回收：taskkill /PID 15624 /T /F
+端口 19801 已释放 ✓
+临时 profile 已删：D:/Retire/tmp-autofill2-MHx6qO
+EXIT=0

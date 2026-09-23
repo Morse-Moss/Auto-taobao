@@ -403,5 +403,14 @@ SKU 富化（`evidence/sku-step6-2026-09-20`：`STALLED / Product page target is
 2. 四家店的凭据只有两家被浏览器存下（里可林家居:阿彦 落 `login.taobao.com/havanaone/login/login.htm`、
    随心品质定制:阿彦 落 `havanalogin.taobao.com/mini_login.htm`），网林家居旗舰店、j873522735 都没存下；
    已查 `blacklisted_by_user=1`（「从不保存」名单）**为空**，所以不是被拉黑，原因待查。
-   另：`mini_login.htm` 这个 origin **不能独立打开**（报「非法请求 [appNameError]」），
+   另：`mini_login.htm` 这个 origin **裸 URL 不能独立打开**（报「非法请求 [appNameError]」），
    所以「保存的 origin 不统一」对自动化不是等价的两条路。
+   **2026-09-23 结论（本条已不再是待核事实）**：①「保存的 origin 不统一」**不只是不等价 ——
+   其中一条是死的**：`havanalogin.taobao.com` 上的凭据，即使 `signon_realm` 就是它、页面就开在它上面、
+   `skip_zero_click=0`、`blacklisted_by_user=0`、密文合法（`v10`、40 字节），Chromium **也不填**
+   （`:autofill` 恒 false；**3 台机器上共 5 次打开那条地址，无一例外**，其中决定性的样本是商家浏览器
+   ——它的凭据 `signon_realm` 就是 `havanalogin`）。② 由此得到可用的判据：**origin 相等是必要不充分**；
+   判「这台机器能不能自动登」要同时看**登录页的 origin 上有没有凭据**与**那条凭据所在的 origin 会不会被填**。
+   ③ 进候选表的是 `login.taobao.com` 上的 `havanaone/login/login.htm?bizName=taobao`（3/3）与
+   `member/login.jhtml`（2/3，在盖文天猫那台上实测失败）。取证＝`evidence/login-candidate-loop-2026-09-23/`
+   （逐格原始输出在 `raw/`，含 `raw/INDEX.md` 对应表）。

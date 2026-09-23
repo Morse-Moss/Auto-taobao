@@ -1,0 +1,61 @@
+﻿实验 merchant-nosync：源=D:/Retire/edge-daily-report-profile  临时 profile=D:\Retire\tmp-autofill-merchant-nosync-MfGRVT\profile  --disable-sync=false
+
+① 源凭据（原件，只读复制一份库）
+   (复制件里没有 Login Data)
+
+② 组装临时 profile
+   复制：Local State, Default/Preferences, Default/Secure Preferences, Default/Login Data, Default/Login Data For Account, Default/Login Data-journal, Default/History, Default/Web Data
+   复制件凭据：共 47 行；淘宝相关 4 条：
+     "盖文旗舰店:阿彦"@https://havanalogin.taobao.com/ 用过=11
+     "盖文旗舰店:阿彦"@https://login.taobao.com/ 用过=10
+     "里可林家居:阿彦"@https://login.taobao.com/ 用过=0
+     "随心品质定制:阿彦"@https://havanalogin.taobao.com/ 用过=1
+
+③ 起一次性实例（argv：--user-data-dir=D:\Retire\tmp-autofill-merchant-nosync-MfGRVT\profile --remote-debugging-port=19801 --no-first-run --no-default-browser-check about:blank）
+   pid=32460
+   起来了：Edg/150.0.4078.65  Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0
+
+④ 导航到登录页：https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntrance=sycm_n…
+
+⑤ 页面加载后（零点击）
+   ready=complete hasForm=true inputs=3 active=mini-login-body
+   id.valueLen=0 id.autofill=false pwd.valueLen=0 pwd.autofill=false
+   截图 → shots/merchant-nosync-1-onload.png
+
+⑥ 真实鼠标点击 用户名框 @ (673, 33)
+   active=fm-login-id id.valueLen=0 id.autofill=false pwd.valueLen=0 pwd.autofill=false
+   id 命中=fm-login-id(self=true)  pwd 命中=fm-login-password(self=true)
+   截图 → shots/merchant-nosync-2-after-id-click.png
+
+⑥ 真实鼠标点击 密码框 @ (673, 103)
+   active=fm-login-password id.valueLen=0 id.autofill=false pwd.valueLen=0 pwd.autofill=false
+   id 命中=fm-login-id(self=true)  pwd 命中=fm-login-password(self=true)
+   截图 → shots/merchant-nosync-2-after-pwd-click.png
+
+⑦ 在密码框里派发一次真实按键（Input.dispatchKeyEvent）
+   按键后密码框长度=2（这里只验证「按键能落到框里」，随后清掉）
+   清掉后 id.valueLen=0 id.autofill=false
+
+结论（merchant-nosync）：**没填上**（连点击后的手势也没唤醒）
+
+⑧ 回收：taskkill /PID 32460 /T /F
+SUCCESS: The process with PID 16188 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 29652 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 11196 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 56524 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 57176 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 20688 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 49948 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 52068 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 32044 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 3404 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 37936 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 63916 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 15824 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 63440 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 43800 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 49272 (child process of PID 32460) has been terminated.
+SUCCESS: The process with PID 32460 (child process of PID 8588) has been terminated.
+   端口 19801 已释放 ✓
+   临时 profile 已删：D:\Retire\tmp-autofill-merchant-nosync-MfGRVT
+EXIT=0

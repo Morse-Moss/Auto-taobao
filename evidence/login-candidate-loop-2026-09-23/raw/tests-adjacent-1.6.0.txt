@@ -1,0 +1,533 @@
+﻿TAP version 13
+# Subtest: VERSION 存在、可解析、且只有一行
+ok 1 - VERSION 存在、可解析、且只有一行
+  ---
+  duration_ms: 1.033
+  type: 'test'
+  ...
+# Subtest: package.json 的 version 与 VERSION 逐字一致
+ok 2 - package.json 的 version 与 VERSION 逐字一致
+  ---
+  duration_ms: 0.4127
+  type: 'test'
+  ...
+# Subtest: CHANGELOG.md 首条标题与 VERSION 一致，且版本号严格递减排列
+ok 3 - CHANGELOG.md 首条标题与 VERSION 一致，且版本号严格递减排列
+  ---
+  duration_ms: 1.6461
+  type: 'test'
+  ...
+# Subtest: parseVersion：接受合法写法，拒绝会让同一个版本变成两个字符串的写法
+ok 4 - parseVersion：接受合法写法，拒绝会让同一个版本变成两个字符串的写法
+  ---
+  duration_ms: 0.4725
+  type: 'test'
+  ...
+# Subtest: readVersion：读不到就抛错，绝不回落成 unknown
+ok 5 - readVersion：读不到就抛错，绝不回落成 unknown
+  ---
+  duration_ms: 0.4237
+  type: 'test'
+  ...
+# Subtest: versionLine 与 versionLineSafe：前者准、后者活，两边措辞都不许掩盖失败
+ok 6 - versionLine 与 versionLineSafe：前者准、后者活，两边措辞都不许掩盖失败
+  ---
+  duration_ms: 0.6774
+  type: 'test'
+  ...
+# Subtest: 站点词表来自 login-merchant-core（多一份就是「体检的站点」和「探测的站点」各说各话）
+ok 7 - 站点词表来自 login-merchant-core（多一份就是「体检的站点」和「探测的站点」各说各话）
+  ---
+  duration_ms: 1.0326
+  type: 'test'
+  ...
+# Subtest: 读不到（null）绝不算通过 —— 这是 2026-09-19 那次静默的形态
+ok 8 - 读不到（null）绝不算通过 —— 这是 2026-09-19 那次静默的形态
+  ---
+  duration_ms: 0.1726
+  type: 'test'
+  ...
+# Subtest: 一家店：两个都在登录态才是 OK；掉登录与读不到各自成一类，且都不算 OK
+ok 9 - 一家店：两个都在登录态才是 OK；掉登录与读不到各自成一类，且都不算 OK
+  ---
+  duration_ms: 0.2654
+  type: 'test'
+  ...
+# Subtest: 回执读不出来 ⇒ 两个平台都算读不到（读不出 ≠ 不在登录态）
+ok 10 - 回执读不出来 ⇒ 两个平台都算读不到（读不出 ≠ 不在登录态）
+  ---
+  duration_ms: 0.1709
+  type: 'test'
+  ...
+# Subtest: 回执里的结论与地址只抄不猜（复核时那是唯一能核对的现场事实）
+ok 11 - 回执里的结论与地址只抄不猜（复核时那是唯一能核对的现场事实）
+  ---
+  duration_ms: 0.1074
+  type: 'test'
+  ...
+# Subtest: 整轮的三个结论与退出码：0 只在**全部正面确认**时才给
+ok 12 - 整轮的三个结论与退出码：0 只在**全部正面确认**时才给
+  ---
+  duration_ms: 0.1822
+  type: 'test'
+  ...
+# Subtest: parseCheckShopsArgs：默认查全部、默认不输出 JSON
+ok 13 - parseCheckShopsArgs：默认查全部、默认不输出 JSON
+  ---
+  duration_ms: 0.196
+  type: 'test'
+  ...
+# Subtest: 店名拼错必须当场抛错并列出合法值（否则「连不上」看起来像故障，其实是名字打错了）
+ok 14 - 店名拼错必须当场抛错并列出合法值（否则「连不上」看起来像故障，其实是名字打错了）
+  ---
+  duration_ms: 0.2977
+  type: 'test'
+  ...
+# Subtest: 参数拼错要报「未知」，不许伪装成「需要一个值」；空 --shops 与坏 --timeout 当场抛错
+ok 15 - 参数拼错要报「未知」，不许伪装成「需要一个值」；空 --shops 与坏 --timeout 当场抛错
+  ---
+  duration_ms: 0.418
+  type: 'test'
+  ...
+# Subtest: 按平台分别说名字：生意参谋给页头店名、阿里妈妈给会员名（不许互相冒充）
+ok 16 - 按平台分别说名字：生意参谋给页头店名、阿里妈妈给会员名（不许互相冒充）
+  ---
+  duration_ms: 0.7549
+  type: 'test'
+  ...
+# Subtest: OK 的店压成一行；要处理的店逐平台展开
+ok 17 - OK 的店压成一行；要处理的店逐平台展开
+  ---
+  duration_ms: 0.2813
+  type: 'test'
+  ...
+# Subtest: 「读不到」必须自解释，且整轮的判据段不许把它说成通过
+ok 18 - 「读不到」必须自解释，且整轮的判据段不许把它说成通过
+  ---
+  duration_ms: 0.1216
+  type: 'test'
+  ...
+# Subtest: 每家店的两个平台各说各的名字，且名字与登记表逐字一致
+ok 19 - 每家店的两个平台各说各的名字，且名字与登记表逐字一致
+  ---
+  duration_ms: 0.1357
+  type: 'test'
+  ...
+# Subtest: 渲染里不许出现结论代号（读了半天的 `LOGGED_OUT` 不是给收信人看的）
+ok 20 - 渲染里不许出现结论代号（读了半天的 `LOGGED_OUT` 不是给收信人看的）
+  ---
+  duration_ms: 0.0882
+  type: 'test'
+  ...
+# Subtest: parseCheckShopsArgs：--login 默认关，给了才开
+ok 21 - parseCheckShopsArgs：--login 默认关，给了才开
+  ---
+  duration_ms: 0.0605
+  type: 'test'
+  ...
+# Subtest: 带 --login 时结论看的是「登完之后」那一眼（看错了会把成功报成掉登录）
+ok 22 - 带 --login 时结论看的是「登完之后」那一眼（看错了会把成功报成掉登录）
+  ---
+  duration_ms: 0.0565
+  type: 'test'
+  ...
+# Subtest: 只读回执里没有 loggedInAfter，结论与从前逐字相同（默认关是硬保证）
+ok 23 - 只读回执里没有 loggedInAfter，结论与从前逐字相同（默认关是硬保证）
+  ---
+  duration_ms: 0.0379
+  type: 'test'
+  ...
+# Subtest: autoLogin 只改措辞、不改判定：既要人说得清、也不许把「没登过」说成「登过」
+ok 24 - autoLogin 只改措辞、不改判定：既要人说得清、也不许把「没登过」说成「登过」
+  ---
+  duration_ms: 0.7066
+  type: 'test'
+  ...
+# Subtest: 成功那一轮要说清「哪几家是这次自己登进去的」（否则运维会以为一直在白跑）
+ok 25 - 成功那一轮要说清「哪几家是这次自己登进去的」（否则运维会以为一直在白跑）
+  ---
+  duration_ms: 0.174
+  type: 'test'
+  ...
+# Subtest: 体检探针的落点仍在链的期望页面清单之内（否则体检会把页面带偏，链也跟着红）
+ok 26 - 体检探针的落点仍在链的期望页面清单之内（否则体检会把页面带偏，链也跟着红）
+  ---
+  duration_ms: 0.5202
+  type: 'test'
+  ...
+# Subtest: 主脚本真的按「一店一实例 + 纯读」调用 login-merchant（三类静默各有一条判据）
+ok 27 - 主脚本真的按「一店一实例 + 纯读」调用 login-merchant（三类静默各有一条判据）
+  ---
+  duration_ms: 0.4217
+  type: 'test'
+  ...
+# Subtest: notifyModeFor：没去登 ⇒ 一个字都不发；真的去登了 ⇒ 才允许叫人
+ok 28 - notifyModeFor：没去登 ⇒ 一个字都不发；真的去登了 ⇒ 才允许叫人
+  ---
+  duration_ms: 0.0712
+  type: 'test'
+  ...
+# Subtest: 告警收据要透传到行里 —— 否则「叫没叫到人」只能靠猜
+ok 29 - 告警收据要透传到行里 —— 否则「叫没叫到人」只能靠猜
+  ---
+  duration_ms: 0.0671
+  type: 'test'
+  ...
+# Subtest: renderNotifyLines：已叫人 / 被去重 / 发失败 / 根本没发，四种要说得出区别
+ok 30 - renderNotifyLines：已叫人 / 被去重 / 发失败 / 根本没发，四种要说得出区别
+  ---
+  duration_ms: 0.1776
+  type: 'test'
+  ...
+# Subtest: 只读档的报告里没有「已叫人」那一段，并且明说这一档不会发告警
+ok 31 - 只读档的报告里没有「已叫人」那一段，并且明说这一档不会发告警
+  ---
+  duration_ms: 0.0963
+  type: 'test'
+  ...
+# Subtest: 带 --login 的报告里，告警那一段要出现在判据下面
+ok 32 - 带 --login 的报告里，告警那一段要出现在判据下面
+  ---
+  duration_ms: 0.2797
+  type: 'test'
+  ...
+# Subtest: 每一条「要叫人」的结论都有自己的人话文案（漏一条＝运营看到一句内部代号）
+ok 33 - 每一条「要叫人」的结论都有自己的人话文案（漏一条＝运营看到一句内部代号）
+  ---
+  duration_ms: 0.1064
+  type: 'test'
+  ...
+# Subtest: WRONG_ACCOUNT 的人话不能与「没凭据」共用一句 —— 两者的下一步不同
+ok 34 - WRONG_ACCOUNT 的人话不能与「没凭据」共用一句 —— 两者的下一步不同
+  ---
+  duration_ms: 0.0375
+  type: 'test'
+  ...
+# Subtest: 站点判据：实测的「未登录」URL 命中，实测的「已登录」URL 不命中
+ok 35 - 站点判据：实测的「未登录」URL 命中，实测的「已登录」URL 不命中
+  ---
+  duration_ms: 0.875
+  type: 'test'
+  ...
+# Subtest: 两个站点都声明了探测页与标签，且探测页自身不会被自己的判据命中
+ok 36 - 两个站点都声明了探测页与标签，且探测页自身不会被自己的判据命中
+  ---
+  duration_ms: 0.2099
+  type: 'test'
+  ...
+# Subtest: parseArgs：默认只读排练，--commit 才动手
+ok 37 - parseArgs：默认只读排练，--commit 才动手
+  ---
+  duration_ms: 0.9816
+  type: 'test'
+  ...
+# Subtest: parseArgs：未知参数要报「未知」，不能报成「需要一个值」
+ok 38 - parseArgs：未知参数要报「未知」，不能报成「需要一个值」
+  ---
+  duration_ms: 0.4266
+  type: 'test'
+  ...
+# Subtest: LOGIN_TARGETS 与 SITES 的键一致（多一个值就会变成「谁也不会被处理」）
+ok 39 - LOGIN_TARGETS 与 SITES 的键一致（多一个值就会变成「谁也不会被处理」）
+  ---
+  duration_ms: 0.0982
+  type: 'test'
+  ...
+# Subtest: centerOf：零尺寸矩形算出来的中心是 (0,0) ⇒ 必须 fail-closed 返回 null
+ok 40 - centerOf：零尺寸矩形算出来的中心是 (0,0) ⇒ 必须 fail-closed 返回 null
+  ---
+  duration_ms: 0.1113
+  type: 'test'
+  ...
+# Subtest: sitesNeedingLogin：只有「确认已登录」才算通过 —— 读不出来（null）一样要去处理
+ok 41 - sitesNeedingLogin：只有「确认已登录」才算通过 —— 读不出来（null）一样要去处理
+  ---
+  duration_ms: 0.2393
+  type: 'test'
+  ...
+# Subtest: captchaVisible：三种载体任一可见即为真（SOP §10.2 停手交人的判据）
+ok 42 - captchaVisible：三种载体任一可见即为真（SOP §10.2 停手交人的判据）
+  ---
+  duration_ms: 0.073
+  type: 'test'
+  ...
+# Subtest: 登录表单表达式：只认那五个具名元素（id 来自实测），并且读的是 DOM 值不是视觉
+ok 43 - 登录表单表达式：只认那五个具名元素（id 来自实测），并且读的是 DOM 值不是视觉
+  ---
+  duration_ms: 1.1736
+  type: 'test'
+  ...
+# Subtest: 主脚本用到的结论词都在 VERDICTS 里（拼错一个词就是一次静默降级）
+ok 44 - 主脚本用到的结论词都在 VERDICTS 里（拼错一个词就是一次静默降级）
+  ---
+  duration_ms: 1.3897
+  type: 'test'
+  ...
+# Subtest: 「需要人」的结论词都在 VERDICTS 里，且成功/排练的结论一个都不在里面
+ok 45 - 「需要人」的结论词都在 VERDICTS 里，且成功/排练的结论一个都不在里面
+  ---
+  duration_ms: 0.3326
+  type: 'test'
+  ...
+# Subtest: shouldNotify：只有「真的试过了并且没成」才默认叫人
+ok 46 - shouldNotify：只有「真的试过了并且没成」才默认叫人
+  ---
+  duration_ms: 0.1266
+  type: 'test'
+  ...
+# Subtest: parseArgs：--notify 默认 auto，取值受词表约束
+ok 47 - parseArgs：--notify 默认 auto，取值受词表约束
+  ---
+  duration_ms: 0.1091
+  type: 'test'
+  ...
+# Subtest: buildLoginAlert：拿到「不需要人」的结论就抛，不生成一条不该有的告警
+ok 48 - buildLoginAlert：拿到「不需要人」的结论就抛，不生成一条不该有的告警
+  ---
+  duration_ms: 0.1194
+  type: 'test'
+  ...
+# Subtest: 告警真渲染一遍：指路、机器、浏览器配置、下一步都在（键名写错会被白名单静默丢掉）
+ok 49 - 告警真渲染一遍：指路、机器、浏览器配置、下一步都在（键名写错会被白名单静默丢掉）
+  ---
+  duration_ms: 1.7442
+  type: 'test'
+  ...
+# Subtest: 告警文案里不许出现结论代号与内部术语（用户 2026-09-18：「不要讲一堆术语」）
+ok 50 - 告警文案里不许出现结论代号与内部术语（用户 2026-09-18：「不要讲一堆术语」）
+  ---
+  duration_ms: 0.5834
+  type: 'test'
+  ...
+# Subtest: 前三条结论必须承诺「登录页已经开在窗口里了」——入口由脚本开，不是让人自己找
+ok 51 - 前三条结论必须承诺「登录页已经开在窗口里了」——入口由脚本开，不是让人自己找
+  ---
+  duration_ms: 0.0891
+  type: 'test'
+  ...
+# Subtest: 每个「要叫人」的结论都必须有自己的原因和下一步——漏一个就会悄悄退化成兜底文案
+ok 52 - 每个「要叫人」的结论都必须有自己的原因和下一步——漏一个就会悄悄退化成兜底文案
+  ---
+  duration_ms: 0.1132
+  type: 'test'
+  ...
+# Subtest: 告警对象里不许再带 loginUrl —— 那条链接只会把人带到默认浏览器
+ok 53 - 告警对象里不许再带 loginUrl —— 那条链接只会把人带到默认浏览器
+  ---
+  duration_ms: 0.0813
+  type: 'test'
+  ...
+# Subtest: 告警里不含任何凭据面：没有密码/账号字段，也没有登录表单的状态
+ok 54 - 告警里不含任何凭据面：没有密码/账号字段，也没有登录表单的状态
+  ---
+  duration_ms: 0.0754
+  type: 'test'
+  ...
+# Subtest: alertId 是「同站点同一天一条」——它是去重的锚，不能每次都变
+ok 55 - alertId 是「同站点同一天一条」——它是去重的锚，不能每次都变
+  ---
+  duration_ms: 0.0836
+  type: 'test'
+  ...
+# Subtest: 主脚本确实把通知接到了失败路径上（不是只写了两个导出函数）
+ok 56 - 主脚本确实把通知接到了失败路径上（不是只写了两个导出函数）
+  ---
+  duration_ms: 0.4685
+  type: 'test'
+  ...
+# Subtest: 主脚本必须无条件把登录窗口置前（不是只在 --shots 时才前置）
+ok 57 - 主脚本必须无条件把登录窗口置前（不是只在 --shots 时才前置）
+  ---
+  duration_ms: 0.4448
+  type: 'test'
+  ...
+# Subtest: alertForRun：带 --shop 时，告警必须点名是哪一家店
+ok 58 - alertForRun：带 --shop 时，告警必须点名是哪一家店
+  ---
+  duration_ms: 0.2427
+  type: 'test'
+  ...
+# Subtest: alertForRun：没给 --shop 时行为与加店名之前逐字相同（旧来源不受影响）
+ok 59 - alertForRun：没给 --shop 时行为与加店名之前逐字相同（旧来源不受影响）
+  ---
+  duration_ms: 0.0829
+  type: 'test'
+  ...
+# Subtest: profileForShop：四家店各自指向自己的 profile，谁也不是日报那个
+ok 60 - profileForShop：四家店各自指向自己的 profile，谁也不是日报那个
+  ---
+  duration_ms: 0.1485
+  type: 'test'
+  ...
+# Subtest: profileForShop：fail-closed —— 给了店名却拿不到登记表，宁可抛错也不回落成共用 profile
+ok 61 - profileForShop：fail-closed —— 给了店名却拿不到登记表，宁可抛错也不回落成共用 profile
+  ---
+  duration_ms: 0.1002
+  type: 'test'
+  ...
+# Subtest: alertForRun：该安静的时候必须安静（判定在 core 里，不散在 IO 里）
+ok 62 - alertForRun：该安静的时候必须安静（判定在 core 里，不散在 IO 里）
+  ---
+  duration_ms: 0.1999
+  type: 'test'
+  ...
+# Subtest: alertId 含店名：五家店同一天必须是五条锚，不能共用一条（共用会被去重吞掉四家）
+ok 63 - alertId 含店名：五家店同一天必须是五条锚，不能共用一条（共用会被去重吞掉四家）
+  ---
+  duration_ms: 0.2236
+  type: 'test'
+  ...
+# Subtest: 「原因」不许读两遍：主脚本补的 detail 不能把静态原因整句再说一遍
+ok 64 - 「原因」不许读两遍：主脚本补的 detail 不能把静态原因整句再说一遍
+  ---
+  duration_ms: 0.5766
+  type: 'test'
+  ...
+# Subtest: 告警里不许让人去做收信人做不到的事（截图、本地路径、日志）
+ok 65 - 告警里不许让人去做收信人做不到的事（截图、本地路径、日志）
+  ---
+  duration_ms: 0.5081
+  type: 'test'
+  ...
+# Subtest: 「下一步」必须能定位到哪一个窗口：用店名，而不是「上面那个窗口」
+ok 66 - 「下一步」必须能定位到哪一个窗口：用店名，而不是「上面那个窗口」
+  ---
+  duration_ms: 0.1823
+  type: 'test'
+  ...
+# Subtest: 告警里那句「标题写着「X」」必须与窗口标题真的对得上（两条腿绑在一起）
+ok 67 - 告警里那句「标题写着「X」」必须与窗口标题真的对得上（两条腿绑在一起）
+  ---
+  duration_ms: 0.1974
+  type: 'test'
+  ...
+# Subtest: parseArgs：--shop 是运营叫法，拼错当场抛错并列出全部合法值
+ok 68 - parseArgs：--shop 是运营叫法，拼错当场抛错并列出全部合法值
+  ---
+  duration_ms: 0.147
+  type: 'test'
+  ...
+# Subtest: isTaobaoLoginUrl：对着实测的登录页与被送走后的落点各判一次
+ok 69 - isTaobaoLoginUrl：对着实测的登录页与被送走后的落点各判一次
+  ---
+  duration_ms: 0.1794
+  type: 'test'
+  ...
+# Subtest: 登录页被送走必须单独成一类：动作是「去打开那两个后台」，不是「去点保存密码」
+ok 70 - 登录页被送走必须单独成一类：动作是「去打开那两个后台」，不是「去点保存密码」
+  ---
+  duration_ms: 0.0711
+  type: 'test'
+  ...
+# Subtest: detectLoginDetour：还在登录页 ⇒ 不绕路；被送去卖家后台 ⇒ 报这一类
+ok 71 - detectLoginDetour：还在登录页 ⇒ 不绕路；被送去卖家后台 ⇒ 报这一类
+  ---
+  duration_ms: 0.1164
+  type: 'test'
+  ...
+# Subtest: 主脚本必须真的会用新判据，且「还在不在登录页」只有一个解释点
+ok 72 - 主脚本必须真的会用新判据，且「还在不在登录页」只有一个解释点
+  ---
+  duration_ms: 0.3559
+  type: 'test'
+  ...
+# Subtest: 候选地址表：第一条必须是实测命中率最高的那条，且 id 唯一、每条都被认成登录页
+ok 73 - 候选地址表：第一条必须是实测命中率最高的那条，且 id 唯一、每条都被认成登录页
+  ---
+  duration_ms: 0.1226
+  type: 'test'
+  ...
+# Subtest: 候选表必须落在 login.taobao.com 上，且不得把已被证伪的 havanalogin 塞回来
+ok 74 - 候选表必须落在 login.taobao.com 上，且不得把已被证伪的 havanalogin 塞回来
+  ---
+  duration_ms: 0.055
+  type: 'test'
+  ...
+# Subtest: isTaobaoLoginUrl：按 URL 结构判，不再靠「子串巧合」
+ok 75 - isTaobaoLoginUrl：按 URL 结构判，不再靠「子串巧合」
+  ---
+  duration_ms: 0.0384
+  type: 'test'
+  ...
+# Subtest: loginFormVisible：两个框都真的占了位，才算「这一页有表单」
+ok 76 - loginFormVisible：两个框都真的占了位，才算「这一页有表单」
+  ---
+  duration_ms: 0.0495
+  type: 'test'
+  ...
+# Subtest: 每个现场都有唯一的一条结论 —— 少映射一个就是「回执里没有结论」
+ok 77 - 每个现场都有唯一的一条结论 —— 少映射一个就是「回执里没有结论」
+  ---
+  duration_ms: 0.1261
+  type: 'test'
+  ...
+# Subtest: finalLoginVerdict：五选一的优先级，以及「该把人送到哪一页」
+ok 78 - finalLoginVerdict：五选一的优先级，以及「该把人送到哪一页」
+  ---
+  duration_ms: 0.1345
+  type: 'test'
+  ...
+# Subtest: 「承诺登录页开着」的名单必须与文案逐字对得上（两条腿绑在一起）
+ok 79 - 「承诺登录页开着」的名单必须与文案逐字对得上（两条腿绑在一起）
+  ---
+  duration_ms: 0.0676
+  type: 'test'
+  ...
+# Subtest: 身份守卫：填进来的账号必须与这家店登记的会员名逐字相同（四态各有明确出口）
+ok 80 - 身份守卫：填进来的账号必须与这家店登记的会员名逐字相同（四态各有明确出口）
+  ---
+  duration_ms: 0.3215
+  type: 'test'
+  ...
+# Subtest: 身份守卫读的**只有账号**：那个表达式永远不许碰密码框
+ok 81 - 身份守卫读的**只有账号**：那个表达式永远不许碰密码框
+  ---
+  duration_ms: 0.058
+  type: 'test'
+  ...
+# Subtest: WRONG_ACCOUNT 的文案不能复用「点保存密码」那套 —— 它的病恰好是这台存了多家店的账号
+ok 82 - WRONG_ACCOUNT 的文案不能复用「点保存密码」那套 —— 它的病恰好是这台存了多家店的账号
+  ---
+  duration_ms: 0.0477
+  type: 'test'
+  ...
+# Subtest: WRONG_ACCOUNT 要叫人，且告警点名到店：静默登成别家是这条链上最贵的一种失败
+ok 83 - WRONG_ACCOUNT 要叫人，且告警点名到店：静默登成别家是这条链上最贵的一种失败
+  ---
+  duration_ms: 0.0842
+  type: 'test'
+  ...
+# Subtest: 回执里可以出现账号名（那不是秘密），但**密码面一个都不许出现**
+ok 84 - 回执里可以出现账号名（那不是秘密），但**密码面一个都不许出现**
+  ---
+  duration_ms: 0.8044
+  type: 'test'
+  ...
+# Subtest: judgeShopTarget：给了店名就必须落在它自己的代理端口上（2026-09-22 那次事故的封条）
+ok 85 - judgeShopTarget：给了店名就必须落在它自己的代理端口上（2026-09-22 那次事故的封条）
+  ---
+  duration_ms: 0.6061
+  type: 'test'
+  ...
+# Subtest: shopForProxy / proxyPortOf：端口 → 店铺的唯一来源是登记表
+ok 86 - shopForProxy / proxyPortOf：端口 → 店铺的唯一来源是登记表
+  ---
+  duration_ms: 0.1543
+  type: 'test'
+  ...
+# Subtest: 主脚本真的接了候选循环与身份守卫（判据齐全但没人用＝最难发现的空转）
+ok 87 - 主脚本真的接了候选循环与身份守卫（判据齐全但没人用＝最难发现的空转）
+  ---
+  duration_ms: 0.3658
+  type: 'test'
+  ...
+1..87
+# tests 87
+# suites 0
+# pass 87
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 415.4188
+EXIT=0
