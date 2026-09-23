@@ -153,6 +153,11 @@ alimama: loggedIn=null  expected one 阿里妈妈 page, got 0
 ② **商家浏览器 / 盖文淘宝：把不属于自己的淘宝凭据删掉，让「一个浏览器 = 一个身份」成立。**
    删完这两台的密码库里就只剩本店那一条同 origin 凭据 ⇒ 自动登录既填得上、也不会登错人。
    动的是浏览器数据，**需要明确授权**。
+   ⇒ **逐条清单已出**：`CREDENTIAL-CONVERGENCE-LIST.md`（2026-09-23 晚补，六台 profile 全量审计；
+   必删 2 条、可选删 3 条；并记下「商家浏览器开着微软账号同步 ⇒ 直接改库会被拉回来」这条坑）。
+   另：**盖文天猫的人工兜底已经做掉了** —— 用户 2026-09-23 晚手工登过一次，
+   `gaiwen-flagship` 现在有 1 条同 origin 凭据（`member/login.jhtml` → 盖文旗舰店:阿彦，用过 3），
+   所以 §1.2 里「同 origin 0 条」那条已经过期（见 `credential-audit-all-profiles.txt`）。
 
 ③ **盖文天猫的人工兜底（若不做 ①）：在脚本已经打开的那一页上登一次并点「保存密码」。**
    那一页此刻**就开在那个窗口里**（19045 的第 2 个页签：
@@ -171,6 +176,10 @@ alimama: loggedIn=null  expected one 阿里妈妈 page, got 0
 | `merchant-browser-checkonly.txt` | 商家浏览器只读体检（`--check-only --notify off`） | `node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --check-only --notify off --proxy http://127.0.0.1:19023` |
 | `peek-merchant-tabs.mjs` / `merchant-browser-tabs.json` | 只读：那台窗口开着哪些页签、有没有人在手输 | `node evidence/login-blocker-probe-2026-09-23/peek-merchant-tabs.mjs` |
 | `peek-taobao-credentials.mjs` | 只读（**不读密码**）：某个 profile 的淘宝凭据分别是哪家店的账号 | `node …/peek-taobao-credentials.mjs D:/Retire/edge-profiles/gaiwen-flagship` |
+| `audit-all-profiles.mjs` | 只读：**六台 profile 一次全扫**，并把「同 origin 几条」直接算成人话（2026-09-23 晚补） | `node …/audit-all-profiles.mjs <输出文件>` |
+| `credential-audit-all-profiles.txt` | 上面那次全扫的原始报告 | — |
+| `peek-sync-state.mjs` / `sync-state-profiles.txt` | 只读：profile 有没有开微软账号同步（决定「删掉的会不会被拉回来」） | `node …/peek-sync-state.mjs <profile…> --out <文件>` |
+| `CREDENTIAL-CONVERGENCE-LIST.md` | **决策件**：该删哪几条、该留哪条、为什么（只列不删） | — |
 | `creds-*.txt` | 四台机器各自的凭据审计输出 | 同上 |
 | `peek-gaiwen-tmall-login-frame.mjs` / `gaiwen-tmall-login-frame.json` | 只读：盖文天猫窗口里登录页内嵌的 iframe `src`（平台自己给的地址） | `node …/peek-gaiwen-tmall-login-frame.mjs` |
 | `probe-mini-login-toplevel.mjs` / `mini-login-toplevel.txt` / `shots/` | 一次性实例（19937/19947）并排对照：带参数 vs 裸 URL | `node …/probe-mini-login-toplevel.mjs`（约 1 分钟，自带释放与端口回读） |

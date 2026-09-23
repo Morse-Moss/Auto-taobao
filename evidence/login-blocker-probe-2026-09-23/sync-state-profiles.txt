@@ -1,0 +1,24 @@
+
+===== D:/Retire/edge-daily-report-profile =====
+  已登录的同步账号："1074083863@qq.com"
+  sync.requested=null  initial_sync_done=null
+  ⚠️ 存在 Sync Data 目录，里面 11 个文件 ⇒ 这个 profile 做过同步（密码可能被云端留着，删了会被拉回来）
+  Local State 里账号相关键：无
+
+===== D:/Retire/edge-profiles/suixin-custom =====
+  已登录的同步账号：无（没登录微软账号）
+  sync.requested=false  initial_sync_done=null
+  ⚠️ 存在 Sync Data 目录，里面 7 个文件 ⇒ 这个 profile 做过同步（密码可能被云端留着，删了会被拉回来）
+  Local State 里账号相关键：无
+
+===== D:/Retire/edge-profiles/gaiwen-flagship =====
+  已登录的同步账号："1074083863@qq.com"
+  sync.requested=null  initial_sync_done=null
+  ⚠️ 存在 Sync Data 目录，里面 6 个文件 ⇒ 这个 profile 做过同步（密码可能被云端留着，删了会被拉回来）
+  Local State 里账号相关键：无
+
+===== D:/Retire/edge-profiles/likelin-home =====
+  已登录的同步账号：无（没登录微软账号）
+  sync.requested=false  initial_sync_done=null
+  ⚠️ 存在 Sync Data 目录，里面 7 个文件 ⇒ 这个 profile 做过同步（密码可能被云端留着，删了会被拉回来）
+  Local State 里账号相关键：无
