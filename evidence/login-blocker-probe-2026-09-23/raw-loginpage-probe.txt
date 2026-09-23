@@ -1,0 +1,9 @@
+https://havanalogin.taobao.com/mini_login.htm
+  status=200 final=https://havanalogin.taobao.com/mini_login.htm bytes=1102
+  has_pwd_field=false has_login_id=false has_agreement=false title=?
+  snippet= <!DOCTYPE html> <html> <link rel="shortcut icon" href="//gw.alicdn.com/tps/i2/TB1nmqyFFXXXXcQbFXXE5jB3XXX-114-114.png" type="image/x-icon"/> <link rel="stylesheet" href="https://g
+
+https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+  status=200 final=https://login.taobao.com/havanaone/login/login.htm?bizName=taobao bytes=58081
+  has_pwd_field=false has_login_id=true has_agreement=false title=登录
+  snippet= <!doctype html> <html lang="en" style="height:100%;" > <head> <meta charset="utf-8"> <meta name="robots" content="noodp, noydir"/> <meta name="eagleeye-trace" content="213e03aa179

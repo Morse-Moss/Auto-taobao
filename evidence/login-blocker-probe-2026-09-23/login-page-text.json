@@ -1,0 +1,77 @@
+{
+ "startedAt": "2026-09-23T07:27:33.749Z",
+ "windows": [
+  {
+   "shop": "网林天猫",
+   "proxyPort": 19042,
+   "ok": true,
+   "tabsBefore": [
+    {
+     "targetId": "ACE990939C326100913F46136378BE75",
+     "url": "https://one.alimama.com/index.html#!/login/index"
+    },
+    {
+     "targetId": "761D2FCA815D4A851D312956D7E64604",
+     "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032"
+    },
+    {
+     "targetId": "8BE9114CA8B9802A09BE28FA6A38682E",
+     "url": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+    }
+   ],
+   "loginTabs": [],
+   "tabsAfter": [
+    {
+     "targetId": "ACE990939C326100913F46136378BE75",
+     "url": "https://one.alimama.com/index.html#!/login/index"
+    },
+    {
+     "targetId": "761D2FCA815D4A851D312956D7E64604",
+     "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032"
+    },
+    {
+     "targetId": "8BE9114CA8B9802A09BE28FA6A38682E",
+     "url": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+    }
+   ],
+   "tabLedgerUnchanged": true
+  },
+  {
+   "shop": "盖文天猫",
+   "proxyPort": 19045,
+   "ok": true,
+   "tabsBefore": [
+    {
+     "targetId": "38764635BF8ED0EA260E0CE675E0539A",
+     "url": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+    },
+    {
+     "targetId": "962B2606177B7A1EBFC823BB252D7698",
+     "url": "https://one.alimama.com/index.html#!/login/index"
+    },
+    {
+     "targetId": "09A23034208644D631DD6AB26F27865D",
+     "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035"
+    }
+   ],
+   "loginTabs": [],
+   "tabsAfter": [
+    {
+     "targetId": "38764635BF8ED0EA260E0CE675E0539A",
+     "url": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+    },
+    {
+     "targetId": "962B2606177B7A1EBFC823BB252D7698",
+     "url": "https://one.alimama.com/index.html#!/login/index"
+    },
+    {
+     "targetId": "09A23034208644D631DD6AB26F27865D",
+     "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035"
+    }
+   ],
+   "tabLedgerUnchanged": true
+  }
+ ],
+ "notes": [],
+ "finishedAt": "2026-09-23T07:27:33.789Z"
+}

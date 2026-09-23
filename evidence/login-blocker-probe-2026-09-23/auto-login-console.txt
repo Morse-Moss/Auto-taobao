@@ -1,0 +1,12 @@
+退出码=2
+收据可解析=true
+整体结论=NEEDS_LOGIN
+  · 网林天猫：OK
+      两个后台={"sycm":"LOGGED_IN","alimama":"LOGGED_IN"}
+      子脚本结论=ALREADY_LOGGED_IN
+      飞书投递=SKIPPED
+  · 盖文天猫：NEEDS_LOGIN
+      两个后台={"sycm":"LOGGED_OUT","alimama":"LOGGED_OUT"}
+      子脚本结论=NO_SAVED_CREDENTIAL —— 登录时请点浏览器提示里的「保存密码」，这样下次系统就能自己填了。
+      飞书投递=SENT (sycm-login-盖文天猫-sycm-alimama-20260923)
+exit=0

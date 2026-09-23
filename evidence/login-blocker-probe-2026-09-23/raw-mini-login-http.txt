@@ -1,0 +1,44 @@
+status=200 final=https://havanalogin.taobao.com/mini_login.htm
+
+<!DOCTYPE html>
+<html>
+
+
+    <link rel="shortcut icon" href="//gw.alicdn.com/tps/i2/TB1nmqyFFXXXXcQbFXXE5jB3XXX-114-114.png" type="image/x-icon"/>
+<link rel="stylesheet" href="https://g.alicdn.com//cm/account/0.3.2/css/ucenter.css?v=0.3.2"/>
+<style>
+    @media screen and (max-width: 500px) {
+        .content-layout {
+            width: 100%;
+        }
+
+        .ui-tipbox-icon {
+            display: none;
+        }
+
+        .ui-tipbox-content-simple {
+            margin-left: 10px;
+        }
+
+        #content {
+            padding: 0px 10px;
+            width: auto;
+        }
+    }
+</style>
+<div id="content">
+    <div class="content-layout">
+
+        <div class="ui-tipbox ui-tipbox-error">
+            <div class="ui-tipbox-icon">
+                <i class="iconfont" title="出错"></i>
+            </div>
+            <div class="ui-tipbox-content-simple">
+                <h3 class="ui-tipbox-title">非法请求 [appNameError]</h3>
+            </div>
+        </div>
+        <br>
+    </div>
+</div>
+<!-- traceId: 213e04de17901483657784248e0acb  -->
+<!-- host: havanamlogin011130112134.center.na610  -->

@@ -1,0 +1,8 @@
+profile=D:/Retire/edge-profiles/gaiwen-flagship
+（只读账号名，不读密码；原库直接打开）
+脚本打开的登录页 origin=https://login.taobao.com
+  origin=https://havanalogin.taobao.com/mini_login.htm
+      账号="盖文旗舰店:阿彦"  用过=1  ❌ origin 不同（填不上）
+  ⇒ 同 origin 的凭据 0 条：一条都没有 ⇒ 自动登录必然判 NO_SAVED_CREDENTIAL（要人工登一次并保存密码）
+(node:26084) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

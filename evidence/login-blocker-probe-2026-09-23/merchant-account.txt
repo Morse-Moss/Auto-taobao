@@ -1,0 +1,15 @@
+profile=D:/Retire/edge-daily-report-profile
+（只读账号名；不读密码。原库被锁，读的复制件）
+目标 origin=https://login.taobao.com
+  origin=https://havanalogin.taobao.com/mini_login.htm
+      账号="盖文旗舰店:阿彦"  用过=11  ❌ origin 不同
+  origin=https://login.taobao.com/member/login.jhtml
+      账号="盖文旗舰店:阿彦"  用过=10  ✅ 能被自动填
+  origin=https://login.taobao.com/havanaone/login/login.htm
+      账号="里可林家居:阿彦"  用过=0  ✅ 能被自动填
+  origin=https://havanalogin.taobao.com/mini_login.htm
+      账号="随心品质定制:阿彦"  用过=1  ❌ origin 不同
+（共 4 条淘宝相关凭据）
+(node:56036) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+exit=0

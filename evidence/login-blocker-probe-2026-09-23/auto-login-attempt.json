@@ -1,0 +1,68 @@
+{
+ "machine": "DESKTOP-KJP4RA5",
+ "verdict": "NEEDS_LOGIN",
+ "autoLogin": true,
+ "needHuman": [
+  {
+   "shop": "盖文天猫",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  }
+ ],
+ "unknown": [],
+ "checked": 2,
+ "rows": [
+  {
+   "shop": "网林天猫",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "auto",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "盖文天猫",
+   "verdict": "NEEDS_LOGIN",
+   "sites": {
+    "sycm": "LOGGED_OUT",
+    "alimama": "LOGGED_OUT"
+   },
+   "needsLogin": [
+    "sycm",
+    "alimama"
+   ],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html#!/login/index"
+   },
+   "scriptVerdict": "NO_SAVED_CREDENTIAL",
+   "detail": "登录时请点浏览器提示里的「保存密码」，这样下次系统就能自己填了。",
+   "notify": {
+    "mode": "auto",
+    "alertId": "sycm-login-盖文天猫-sycm-alimama-20260923",
+    "status": "SENT",
+    "exitCode": 0
+   },
+   "childExitCode": 2,
+   "probeError": null
+  }
+ ]
+}

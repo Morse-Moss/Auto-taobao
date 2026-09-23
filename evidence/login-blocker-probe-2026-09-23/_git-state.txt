@@ -1,0 +1,155 @@
+=== log -1 ===
+3bc208a feat(1.5.0): 告警与「有没有真的去登」绑定（自动登录失败才发飞书）
+
+=== status -sb ===
+## main...origin/main [ahead 4]
+ M evidence/multi-shop-2026-09-20/00-health-check-daily.txt
+ M evidence/multi-shop-2026-09-20/summary.json
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/01-health-check.txt"
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/02-alimama-date.txt"
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/03-promotion-submit.txt"
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/04-sycm-date.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/01-health-check.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/02-alimama-date.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/03-promotion-submit.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/04-sycm-date.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/05-shop-report.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/06-promotion-fetch.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/07-push.txt"
+ M evidence/weekly-status-2026-09-22/README.md
+?? .tmp-adj-and2.txt
+?? .tmp-adjacent-summary.txt
+?? .tmp-adjacent.txt
+?? .tmp-adjacent2.txt
+?? .tmp-checkstate-u8.txt
+?? .tmp-checkstate.txt
+?? .tmp-dry1.txt
+?? .tmp-hold-out.txt
+?? .tmp-inv-now.txt
+?? .tmp-inv0.txt
+?? .tmp-inv1.txt
+?? .tmp-inv2.txt
+?? .tmp-leakscan.txt
+?? .tmp-leakscan2.txt
+?? .tmp-list-todelete.txt
+?? .tmp-login1.txt
+?? .tmp-login2.txt
+?? .tmp-loginid-daily.txt
+?? .tmp-ls1.txt
+?? .tmp-memtail.txt
+?? .tmp-notifycfg.txt
+?? .tmp-pages1.txt
+?? .tmp-pages2.txt
+?? .tmp-read-login-id.mjs
+?? .tmp-status2.txt
+?? .tmp-t1.txt
+?? .tmp-t1s.txt
+?? .tmp-t2.txt
+?? .tmp-t2s.txt
+?? .tmp-tabs-probe.mjs
+?? .tmp-tabs1.txt
+?? .tmp-ver.txt
+?? .tmp-vercheck.txt
+?? _commit-out.txt
+?? _leftover.txt
+?? _leftover2.txt
+?? _loginpage-probe.txt
+?? _mini-login-raw.txt
+?? _msg-check.txt
+?? _msg-utf8.txt
+?? _pre-commit.txt
+?? _rc.txt
+?? _state-merchant.txt
+?? _state-shops.txt
+?? _tmp_git.txt
+?? "evidence/daily-report-2026-09-20-\347\233\226\346\226\207\345\244\251\347\214\253/independent-readback.json"
+?? "evidence/daily-report-2026-09-20-\347\233\226\346\226\207\346\267\230\345\256\235/independent-readback.json"
+?? "evidence/daily-report-2026-09-20-\347\275\221\346\236\227\345\244\251\347\214\253/independent-readback.json"
+?? "evidence/daily-report-2026-09-20-\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235-rerun2/"
+?? "evidence/daily-report-2026-09-20-\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/independent-readback.json"
+?? evidence/daily-report-2026-09-20/
+?? "evidence/daily-report-2026-09-22-\347\233\226\346\226\207\345\244\251\347\214\253/"
+?? "evidence/daily-report-2026-09-22-\347\233\226\346\226\207\346\267\230\345\256\235/"
+?? "evidence/daily-report-2026-09-22-\347\247\221\345\241\224\346\267\230\345\256\235/"
+?? "evidence/daily-report-2026-09-22-\347\275\221\346\236\227\345\244\251\347\214\253/"
+?? "evidence/daily-report-2026-09-22-\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/"
+?? evidence/login-agreement-probe-2026-09-23/
+?? evidence/login-blocker-probe-2026-09-23/
+?? "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/99-recovery.txt"
+?? evidence/multi-shop-2026-09-22/
+
+=== status --short ===
+ M evidence/multi-shop-2026-09-20/00-health-check-daily.txt
+ M evidence/multi-shop-2026-09-20/summary.json
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/01-health-check.txt"
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/02-alimama-date.txt"
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/03-promotion-submit.txt"
+ M "evidence/multi-shop-2026-09-20/\347\247\221\345\241\224\346\267\230\345\256\235/04-sycm-date.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/01-health-check.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/02-alimama-date.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/03-promotion-submit.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/04-sycm-date.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/05-shop-report.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/06-promotion-fetch.txt"
+ M "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/07-push.txt"
+ M evidence/weekly-status-2026-09-22/README.md
+?? .tmp-adj-and2.txt
+?? .tmp-adjacent-summary.txt
+?? .tmp-adjacent.txt
+?? .tmp-adjacent2.txt
+?? .tmp-checkstate-u8.txt
+?? .tmp-checkstate.txt
+?? .tmp-dry1.txt
+?? .tmp-hold-out.txt
+?? .tmp-inv-now.txt
+?? .tmp-inv0.txt
+?? .tmp-inv1.txt
+?? .tmp-inv2.txt
+?? .tmp-leakscan.txt
+?? .tmp-leakscan2.txt
+?? .tmp-list-todelete.txt
+?? .tmp-login1.txt
+?? .tmp-login2.txt
+?? .tmp-loginid-daily.txt
+?? .tmp-ls1.txt
+?? .tmp-memtail.txt
+?? .tmp-notifycfg.txt
+?? .tmp-pages1.txt
+?? .tmp-pages2.txt
+?? .tmp-read-login-id.mjs
+?? .tmp-status2.txt
+?? .tmp-t1.txt
+?? .tmp-t1s.txt
+?? .tmp-t2.txt
+?? .tmp-t2s.txt
+?? .tmp-tabs-probe.mjs
+?? .tmp-tabs1.txt
+?? .tmp-ver.txt
+?? .tmp-vercheck.txt
+?? _commit-out.txt
+?? _leftover.txt
+?? _leftover2.txt
+?? _loginpage-probe.txt
+?? _mini-login-raw.txt
+?? _msg-check.txt
+?? _msg-utf8.txt
+?? _pre-commit.txt
+?? _rc.txt
+?? _state-merchant.txt
+?? _state-shops.txt
+?? _tmp_git.txt
+?? "evidence/daily-report-2026-09-20-\347\233\226\346\226\207\345\244\251\347\214\253/independent-readback.json"
+?? "evidence/daily-report-2026-09-20-\347\233\226\346\226\207\346\267\230\345\256\235/independent-readback.json"
+?? "evidence/daily-report-2026-09-20-\347\275\221\346\236\227\345\244\251\347\214\253/independent-readback.json"
+?? "evidence/daily-report-2026-09-20-\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235-rerun2/"
+?? "evidence/daily-report-2026-09-20-\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/independent-readback.json"
+?? evidence/daily-report-2026-09-20/
+?? "evidence/daily-report-2026-09-22-\347\233\226\346\226\207\345\244\251\347\214\253/"
+?? "evidence/daily-report-2026-09-22-\347\233\226\346\226\207\346\267\230\345\256\235/"
+?? "evidence/daily-report-2026-09-22-\347\247\221\345\241\224\346\267\230\345\256\235/"
+?? "evidence/daily-report-2026-09-22-\347\275\221\346\236\227\345\244\251\347\214\253/"
+?? "evidence/daily-report-2026-09-22-\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/"
+?? evidence/login-agreement-probe-2026-09-23/
+?? evidence/login-blocker-probe-2026-09-23/
+?? "evidence/multi-shop-2026-09-20/\351\207\214\345\217\257\346\236\227\346\267\230\345\256\235/99-recovery.txt"
+?? evidence/multi-shop-2026-09-22/

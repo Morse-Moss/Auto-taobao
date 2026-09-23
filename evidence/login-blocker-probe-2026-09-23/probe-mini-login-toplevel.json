@@ -1,0 +1,81 @@
+{
+ "startedAt": "2026-09-23T07:43:04.230Z",
+ "browserPort": 19937,
+ "proxyPort": 19947,
+ "cases": [
+  {
+   "name": "带参数（平台给的那条）",
+   "url": "https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntrance=sycm_new&styleType=vertical&bizParams=&notLoadSsoView=true&notKeepLogin=false&isMobile=false&cssUrl=https://g.alicdn.com/dt/sycm-login-css/0.0.1/sycm-iframe-style.css&returnUrl=https://sycm.taobao.com/portal/home.htm&rnd=0.1234567890",
+   "found": {
+    "href": "https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntrance=sycm_new&styleType=vertical&bizParams=&notLoadSsoView=true&notKeepLogin=false&isMobile=false&cssUrl=https://g.alicdn.com/dt/sycm-login-css/0.0.1/sycm-iframe-style.css&returnUrl=https://sycm.taobao.com/portal/home.htm&rnd=0.1234567890",
+    "idBox": {
+     "rect": [
+      0,
+      12,
+      1029,
+      42
+     ],
+     "visible": true
+    },
+    "passwordBox": {
+     "rect": [
+      0,
+      82,
+      1029,
+      42
+     ],
+     "visible": true
+    },
+    "submitBox": {
+     "rect": [
+      0,
+      158,
+      1029,
+      42
+     ],
+     "visible": true
+    },
+    "agreementBox": null,
+    "text": "忘记登录密码？ 登录 免费注册",
+    "shot": "evidence\\login-blocker-probe-2026-09-23\\shots\\mini-login-with-params.png"
+   }
+  },
+  {
+   "name": "裸 URL（无参数，对照组）",
+   "url": "https://havanalogin.taobao.com/mini_login.htm",
+   "found": {
+    "href": "https://havanalogin.taobao.com/mini_login.htm",
+    "idBox": null,
+    "passwordBox": null,
+    "submitBox": null,
+    "agreementBox": null,
+    "text": " 非法请求 [appNameError]",
+    "shot": "evidence\\login-blocker-probe-2026-09-23\\shots\\mini-login-bare.png"
+   }
+  }
+ ],
+ "temporaryProfile": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\mini-login-toplevel-qAabkv",
+ "verdict": {
+  "withParamsRendersForm": true,
+  "bareRendersForm": false,
+  "conclusion": "带参数能渲染表单、裸 URL 不能 ⇒ 这条 origin 没死，是缺参数才回「非法请求」"
+ },
+ "release": {
+  "reason": "探针结束",
+  "killed": [
+   {
+    "pid": 47644,
+    "taskkill": "0"
+   },
+   {
+    "pid": 45816,
+    "taskkill": "0"
+   }
+  ],
+  "browserPortAfter": null,
+  "proxyPortAfter": null,
+  "ok": true,
+  "profileRemoved": true
+ },
+ "finishedAt": "2026-09-23T07:43:44.492Z"
+}

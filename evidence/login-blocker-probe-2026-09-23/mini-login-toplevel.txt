@@ -1,0 +1,23 @@
+  · 前提：两个端口事先是空的：{"browserBefore":null,"proxyBefore":null}
+=== 起一次性实例：port=19937 profile=C:\Users\ADMINI~1\AppData\Local\Temp\mini-login-toplevel-qAabkv
+  · 调试端口 就绪：ok
+  · 代理 就绪：ok
+
+=== 带参数（平台给的那条）
+  https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntrance=sycm_new&styleType=vertical&bizParams=&notLoadSsoView=true&notKeepLogin=false&isMobile=false&cssUrl=https://g.alicdn.com/dt/sycm-login-css/0.0.1/sycm-iframe-style.css&returnUrl=https://sycm.taobao.com/portal/home.htm&rnd=0.1234567890
+  href=https://havanalogin.taobao.com/mini_login.htm?lang=zh_cn&appName=taobao&appEntrance=sycm_new&styleType=vertical&bizParams=&notLoadSsoView=true&notKeepLogin=false&isMobile=false&cssUrl=https://g.alicdn.com/dt/sycm-login-css/0.0.1/sycm-iframe-style.css&returnUrl=https://sycm.taobao.com/portal/home.htm&rnd=0.1234567890
+  账号框={"rect":[0,12,1029,42],"visible":true} 密码框={"rect":[0,82,1029,42],"visible":true} 登录按钮={"rect":[0,158,1029,42],"visible":true}
+  正文前 160 字：忘记登录密码？ 登录 免费注册
+
+=== 裸 URL（无参数，对照组）
+  https://havanalogin.taobao.com/mini_login.htm
+  href=https://havanalogin.taobao.com/mini_login.htm
+  账号框=null 密码框=null 登录按钮=null
+  正文前 160 字： 非法请求 [appNameError]
+
+=== 结论：{"withParamsRendersForm":true,"bareRendersForm":false,"conclusion":"带参数能渲染表单、裸 URL 不能 ⇒ 这条 origin 没死，是缺参数才回「非法请求」"}
+
+=== 释放（探针结束）
+  端口回读：浏览器=null 代理=null；profile 删除=true
+明细：evidence/login-blocker-probe-2026-09-23/probe-mini-login-toplevel.json
+exit=0

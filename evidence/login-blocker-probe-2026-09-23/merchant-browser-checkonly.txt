@@ -1,0 +1,26 @@
+{
+ "proxy": "http://127.0.0.1:19023",
+ "commit": false,
+ "notify": {
+  "mode": "off",
+  "status": "SKIPPED",
+  "reason": "mode_or_not_attempted"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": false,
+   "href": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  },
+  "alimama": {
+   "label": "阿里妈妈",
+   "loggedIn": null,
+   "reason": "expected one 阿里妈妈 page, got 0"
+  }
+ },
+ "login": null,
+ "verdict": "NEEDS_LOGIN",
+ "detail": "要留意的是：生意参谋（被踢回登录页）、阿里妈妈（读不到：这个窗口里没有它的页面）。"
+}
+exit=2
