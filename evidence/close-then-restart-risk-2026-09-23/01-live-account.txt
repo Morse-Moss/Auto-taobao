@@ -1,0 +1,21 @@
+﻿机器内存：总 31801 MB，当前可用 2044 MB（可用率 6.4%）
+声明实例数：7（来源 runtime/browser-ports.mjs）
+
+实例                     浏览器内存  进程数  GPU    渲染   页签  代理node  代理内存  profile磁盘  任务栏上显示
+竞品链（买家号+小旺神）                  404 MB     11    131MB    93MB     2     31136      8MB     1939MB   我的淘宝 和另外 1 个页面 - 用户配置 1 - Microsoft​ Edge
+商家浏览器（日报/周表/灰豚）              2761 MB     16    201MB  2324MB     2     23444     31MB     3132MB   ‌‍⁠‍‬⁠​​​​​‌‬‌‍​‍​‌⁠​⁠​‌‍﻿‌​​⁠‍‬​​﻿﻿⁠‬​​​‌⁠​​​​​‍​各店铺日报 - 飞书云文档 和另外 1 个页面 - 个人 - Microsoft​ Edge
+里可林淘宝                        1500 MB     14    379MB   910MB     4     26368     18MB     1004MB   生意参谋 - 零售电商大数据产品平台 和另外 3 个页面 - 用户配置 1 - Microsoft​ Edge
+网林天猫                         1593 MB     12    594MB   775MB     3     37320     13MB      984MB   下载任务管理_万相台无界版 和另外 2 个页面 - 用户配置 1 - Microsoft​ Edge
+盖文淘宝                          837 MB     13    338MB   340MB     3     44612     15MB     1012MB   盖文淘宝 · 日报采集窗口 和另外 2 个页面 - 用户配置 1 - Microsoft​ Edge
+盖文天猫                          820 MB     14    252MB   382MB     3     44232     10MB      960MB   盖文天猫 · 日报采集窗口 和另外 2 个页面 - 个人 - Microsoft​ Edge
+科塔淘宝                         1288 MB     13    320MB   809MB     3     41136     15MB     1039MB   科塔淘宝 · 日报采集窗口 和另外 2 个页面 - 用户配置 1 - Microsoft​ Edge
+
+合计：浏览器 9203 MB（93 个进程，7 个实例） + 代理 node 109 MB = 约 9312 MB
+按进程类型分解：renderer=5633MB  GPU=2215MB  browser=975MB  network.mojom.NetworkService=184MB  edge_search_indexer.mojom.SearchIndexerInterfaceBroker=64MB  storage.mojom.StorageService=50MB  audio.mojom.AudioService=44MB  video_capture.mojom.VideoCaptureService=38MB
+profile 磁盘合计：10069 MB
+
+不属于已声明实例的 msedge 主进程：1 个
+  PID 64332 自身 233MB + 7 个子进程 = 446MB   ← 父进程 PID 18476（已不存在）
+
+进程总数核对：msedge 108 个（已认领 100 个）
+
