@@ -1,0 +1,54 @@
+✓ 演练端口事先是空的（不是接上别人的实例） —— 浏览器 19931=null，代理 19941=null
+=== 起一次性实例：port=19931 profile=C:\Users\ADMINI~1\AppData\Local\Temp\label-converge-5vj5Qf
+    首屏＝标识页（与店铺实例同一口径）：file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031
+    [browser] [browser] profile=C:\Users\ADMINI~1\AppData\Local\Temp\label-converge-5vj5Qf 不在登记表的两个浏览器里 —— 账号要求无从核对，请自行确认登的是哪一类账号。
+    [browser] [browser] msedge pid=58584 profile=C:\Users\ADMINI~1\AppData\Local\Temp\label-converge-5vj5Qf port=19931
+    [browser] [browser] READY Edg/150.0.4078.65 on 19931
+    [proxy] [CDP Proxy] 运行在 http://localhost:19941
+    [proxy] [CDP Proxy] 选用 一次性演练实例（跑完就释放） (端口 19931，带 wsPath) [登记表/环境变量]
+    [proxy] [CDP Proxy] 已连接浏览器 (端口 19931)
+
+=== 起完时的页签（2 个）：
+    2D9FC3FE50C4856BF35209D1B83A69F8  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031
+    AFABE2D65B44547377FA873FCFCB39FA  edge://sync-confirmation-dialog/
+✓ 冷启动首屏就是一个标识页（1.3.0 的首屏改动在这一档也成立） —— 标识页 1 个
+
+=== 造出现场后的页签（3 个）：
+    2D9FC3FE50C4856BF35209D1B83A69F8  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031
+    AFABE2D65B44547377FA873FCFCB39FA  edge://sync-confirmation-dialog/
+    DF9BA2B00DD56796CD053DA08BDF8004  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031&member=%E9%87%8C%E5%8F%AF%E6%9E%97%E5%AE%B6%E5%B1%85%3A%E9%98%BF%E5%BD%A6&actual=%E9%87%8C%E5%8F%AF%E6%9E%97%E5%AE%B6%E5%B1%85%3A%E9%98%BF%E5%BD%A6&state=%E5%B7%B2%E7%99%BB%E5%BD%95&ok=1
+✓ 现场成立：这个窗口里现在有 2 个标识页 —— 标识页 2 个（新建的 DF9BA2B00DD56796CD053DA08BDF8004）
+
+=== 真跑 ensureLabelTabOn（真代理、真 /close、真回读）
+{
+ "ok": true,
+ "converged": true,
+ "reused": true,
+ "adoptedBlank": false,
+ "targetId": "2D9FC3FE50C4856BF35209D1B83A69F8",
+ "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031",
+ "labelsAfter": 1,
+ "reads": 2,
+ "closed": [
+  "DF9BA2B00DD56796CD053DA08BDF8004"
+ ],
+ "failed": [],
+ "error": null,
+ "pinned": {
+  "pinned": true,
+  "reason": null
+ },
+ "elapsedMs": 753
+}
+✓ 收敛报成功，且如实标出走的是收敛这一路 —— ok=true converged=true
+
+!! 演练中断：labelOrder is not defined
+
+=== 释放（演练中断也要释放）
+   taskkill /PID 41404 /T /F → 128
+   taskkill /PID 63348 /T /F → 0
+✓ 释放后两个端口都不再应答（自报「已释放」不算数） —— /json/version=null，/targets 端口=null
+   临时 profile：C:\Users\ADMINI~1\AppData\Local\Temp\label-converge-5vj5Qf（删除结果：true）
+
+结论：未完成；明细：evidence\label-converge-2026-09-23\throwaway-rehearsal.json
+exit=0

@@ -1,21 +1,19 @@
-// 突变验证（本轮：**每批跑完一律释放** ＋ **店铺首屏＝标识页** ＋ **登录守卫排到每批 start 之后**）：
-// 把源码改坏，确认判据真的会红、并且红在**期望的那一条**上，然后还原并自证逐字节一致。
-//
-// ⚠️ 本文件是 **1.3.0 那一批的判据快照**（留档用）。1.4.0 起请跑
-//    `evidence/label-converge-2026-09-23/mutate-1.4.0.mjs` —— 那一份是这里的**完整超集**
-//    （九条逐字保留 ＋ 三条守「标识页收敛」的新条目），一次运行就能回答「现在这些判据还活着吗」。
-//    这里只保留「版本号三处一致」那一条的 `from` 跟着当前版本号更新，免得它变成一条
-//    一跑就报「无法执行」的死条目。
+// 突变验证（1.4.0：**标识页收敛成一个**）—— 把源码改坏，确认判据真的会红、
+// 并且红在**期望的那一条**上，然后还原并自证逐字节一致。
 //
 // 为什么必须做（本仓库反复吃过的亏）：函数级用例全绿 ≠ 那件事被守住了。
 // 一条永远绿的判据与没有判据是一样的，而它更贵 —— 它让人以为有人在看守。
+//
+// 本文件是 1.3.0 那一批（`evidence/batches-release-and-label-2026-09-23/mutate-2026-09-23.mjs`）
+// 的**完整超集**：九条既有条目逐字保留（其中「版本号三处一致」那条的 `from` 跟着 1.4.0 改了），
+// 另加三条守本版新增判据的条目。一份文件、一次运行就能回答「现在这些判据还活着吗」。
 //
 // ⚠️ 路径按**自身位置**算（`../..` = 仓库根）。从 tmp/ 收进 evidence/<批次>/ 时深度会变，
 //    照抄 `..` 会把 REPO 解析成 evidence/ 然后静默跑不动（这条坑本仓库吃过一次）。
 //
 // 用法（任意目录均可）：
-//   node evidence/batches-release-and-label-2026-09-23/mutate-2026-09-23.mjs
-// 产物：同目录 mutation-report-2026-09-23.json ＋ stdout（另存为 mutation-report-2026-09-23.txt）
+//   node evidence/label-converge-2026-09-23/mutate-1.4.0.mjs
+// 产物：同目录 mutation-report-1.4.0.json ＋ stdout（另存为 mutation-report-1.4.0.txt）
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -27,7 +25,33 @@ const sha = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).
 
 // 每一条：改哪个文件、把什么换成什么、跑哪个用例文件、期望哪句标题变红。
 const MUTATIONS = [
-  // ---- 本轮新增的三条：各对应一个用户要求 ----
+  // ---- 本版（1.4.0）新增的三条：都守「标识页只保留一个」这件事 ----
+  {
+    name: '把「收敛成一个」改回「停手」（用户 2026-09-23：有两个肯定不行只保留一个标识）',
+    file: 'runtime/shop-window-label.mjs',
+    from: '    const [keep, ...extras] = labels;',
+    to: '    if (labels.length > 1) return { ok: false, shop, classified, error: `这个窗口里堆了 ${labels.length} 个标签页` };\n'
+      + '    const [keep, ...extras] = labels;',
+    spec: 'runtime/shop-window-label.test.mjs',
+    expectTitle: '堆了多个标识页就收敛成一个',
+  },
+  {
+    name: '把「留第一个」改成「留最后一个」（那会与 prunePlan 的 keepFirst 打架）',
+    file: 'runtime/shop-window-label.mjs',
+    from: '    const [keep, ...extras] = labels;',
+    to: '    const [keep, ...extras] = [...labels].reverse();',
+    spec: 'runtime/shop-window-label.test.mjs',
+    expectTitle: '两个执行点（收敛 / prune）必须留同一个标识页',
+  },
+  {
+    name: '把「回读后的真实数量」改成写死 1（等于把回读确认这一步废掉）',
+    file: 'runtime/shop-window-label.mjs',
+    from: '    const labelsAfter = classifyShopTabs(remaining).filter((t) => t.kind === \'label\').length;',
+    to: '    const labelsAfter = 1;',
+    spec: 'runtime/shop-window-label.test.mjs',
+    expectTitle: '多出来的标识页关不掉时',
+  },
+  // ---- 1.3.0 的九条（逐字保留；版本号那条的 from 跟着本版改了）----
   {
     name: '把「一律释放」改回「失败不释放」（用户 2026-09-23：每一轮跑完都要释放）',
     file: 'runtime/batch-plan.mjs',
@@ -60,7 +84,6 @@ const MUTATIONS = [
     spec: 'runtime/batch-plan.test.mjs',
     expectTitle: '登录结论的文件名逐批不同',
   },
-  // ---- 既有四条（仍然必须活着；标题若有改动要一起改）----
   {
     name: '把「默认不启用分批」改坏（默认每批 2 家）',
     file: 'runtime/daily-job-plan.mjs',
@@ -131,11 +154,16 @@ for (const mutation of MUTATIONS) {
   }
 }
 
-const outPath = path.join(import.meta.dirname, 'mutation-report-2026-09-23.json');
+const outPath = path.join(import.meta.dirname, 'mutation-report-1.4.0.json');
 fs.writeFileSync(outPath, `${JSON.stringify(results, null, 1)}\n`, 'utf8');
 for (const row of results) {
   console.log(`${row.verdict.padEnd(22)} ${row.name}`);
   for (const line of row.failing ?? []) console.log(`      ${line}`);
   if (row.detail) console.log(`      ${row.detail}`);
 }
-console.log(`\n明细：${path.relative(REPO, outPath)}`);
+const mutations = results.filter((r) => !r.name.includes('还原后校验'));
+const red = mutations.filter((r) => r.verdict === '如期望变红').length;
+const restored = results.filter((r) => r.name.includes('还原后校验'));
+console.log(`\n合计：${red}/${mutations.length} 如期望变红；`
+  + `还原逐字节一致 ${restored.filter((r) => r.verdict === '逐字节一致').length}/${restored.length}`);
+console.log(`明细：${path.relative(REPO, outPath)}`);

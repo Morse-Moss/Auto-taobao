@@ -250,7 +250,13 @@ export function isLabelTab(url) {
 // 整家店停在这一步 —— 所以重复的工作页不是"看着乱"，是真的会拦人。
 export const PRUNE_POLICY = Object.freeze({
   work: Object.freeze({ keepFirst: true, why: '同一个后台只留一个：多一个会让「恰好一个」的判据失败' }),
-  label: Object.freeze({ keepFirst: true, why: '只留一个：堆了多个说明上一轮挂标签页时没按幂等走' }),
+  label: Object.freeze({
+    keepFirst: true,
+    // 两个执行点：挂标签页那一步现在**自己就会收敛**（`ensureLabelTabOn` 的 `converged` 分支），
+    // 这条是它的兜底 —— 兜底与正路都必须留**第一个**，否则同一次 `--label --prune --commit`
+    // 会互相拆台（prune 排在前面，会把刚更新的那个关掉）。
+    why: '只留一个：堆了多个说明上一轮挂标签页时没按幂等走（挂标签页那一步自己会收敛，这条是兜底）',
+  }),
   qianniu: Object.freeze({ keepFirst: true, why: '只留一个：日报链不读千牛，它只是 SOP 里的预留槽位' }),
   loginPage: Object.freeze({ keepFirst: true, why: '只留一个：登录过程留下的，留一个以防人正准备登录' }),
   blank: Object.freeze({ keepFirst: false, why: '空白页，没有用途' }),
@@ -404,13 +410,20 @@ export async function pinLabelTab(proxyUrl, targetId, fetchImpl = fetch) {
 }
 
 /**
- * 让这家店的窗口里恰好有一个窗口标签页，且它写的是这家店、（可选）当前登录状态、
+ * 让这家店的窗口里**恰好一个**窗口标签页，且它写的是这家店、（可选）当前登录状态、
  * 以及（可选）**实际登录的会员名**。`actual` 由调用方用 `readLoggedInMemberOn` 读好再传进来 ——
  * 本函数只管「把它写到页面上」，不在写路径里顺手读页面（读与写分开，各自可离线测）。
  *
- * 幂等：已存在就导航它（不会越堆越多）；不存在时**优先接管一个空白页**（见函数里那段注释），
- * 连空白页都没有才新建。
- * **只动标签页，外加至多一个空白页**：链路要用的工作页、千牛、登录页一概不碰，其余残留页签只报告。
+ * 四条来源路径各自可判，且**四条路径都会带上 `converged` 这个键**（值 false/true），
+ * 不靠「某个键不存在」去反推是哪条路 —— 靠缺键反推的判据，等加了字段就会静默失效：
+ *   · `reused: true`          —— 已有一个，就**原地**导航它（页签条数不变、位置不变）；
+ *   · `converged: true`       —— 堆了**多个**，收敛成一个（留第一个、关掉其余，见下面那段注释）；
+ *   · `adoptedBlank: true`    —— 一个都没有时，**接管一个空白页**（一步同时做到「多个店名」与
+ *                                「少个空白页」，页签条数不变）；不存在时优先它，连空白页都没有才新建；
+ *   · 三个都是 false          —— 新建（新建是能力，不是首选）。
+ *
+ * **能动的只有三类**：标签页本身、至多一个空白页、以及「多出来的那些标签页」。
+ * 链路要用的工作页、千牛、登录页一概不碰，其余残留页签只报告（交给 `--prune`）。
  */
 export async function ensureLabelTabOn({
   proxyUrl,
@@ -421,6 +434,11 @@ export async function ensureLabelTabOn({
   member = null,
   actual = null,
   fetchImpl = fetch,
+  // 回读预算：与 `pruneTabsOn` 同一口径，因为关完之后**都要等一拍再确认**
+  // （返回值不可信；但读一遍也不可信 —— 真机上 `about:blank` 从 `/close` 到消失要 270ms）。
+  readAttempts = 3,
+  readIntervalMs = 600,
+  sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }),
 } = {}) {
   const targets = await readTargets(proxyUrl, fetchImpl);
   const classified = classifyShopTabs(targets);
@@ -428,8 +446,55 @@ export async function ensureLabelTabOn({
   const url = labelPageUrlFor({ shop, port, state, ok, member, actual });
 
   if (labels.length > 1) {
-    // 堆了多个标签页时按纪律停手：navigate 哪个都不对，关掉哪个都是替人做决定。
-    return { ok: false, shop, classified, error: `这个窗口里堆了 ${labels.length} 个标签页，先去关到只剩一个` };
+    // 收敛成一个（2026-09-23 用户拍板原话：「**有两个肯定不行只保留一个标识**」）。
+    //
+    // 这条**推翻了原先写在这里的决定**（原话是「堆了多个标签页时按纪律停手：navigate 哪个都不对，
+    // 关掉哪个都是替人做决定」）。为什么可以推翻，而不是「纪律不能破」：
+    //   · 那个窗口里的多个标识页**是同一个东西的多个副本**，不是不同的东西。留哪个都对，
+    //     因为留下来的那一个**紧接着会被导航到本次的新 URL**（店名/端口/登录态/实际会员名
+    //     全部按当下重写）—— 于是「留哪个」这个选择**不影响最终事实**，只影响页签位置。
+    //   · 「停手」的代价是真的：它让这家店的窗口**永久**停在两个标识页（每次都报同一句话），
+    //     而用户要的恰恰是「只保留一个」。停手保护的是「不替人做决定」，
+    //     可这里没有任何需要人的决定 —— 关掉的那个与留下的那个，语义完全相同。
+    //   · 它也不是新增的能力面：`PRUNE_POLICY.label` 早就写着「只留一个：堆了多个说明上一轮
+    //     挂标签页时没按幂等走」，`--prune` 一直在做同一件事。这里做的是**同一决定的就地执行**。
+    //
+    // 留哪个：**留第一个**（`labels[0]`，即 `/targets` 里的顺序）。这一条必须与
+    // `prunePlan` 的 `keepFirst` 一致，否则 `--label --prune --commit` 同一次下达里
+    // 两边会指向不同的页签（prune 留第一个、这里留最后一个 ⇒ prune 把刚更新的那个关掉）。
+    // 顺序说明见 main()：清理排在挂标签页**之前**。
+    //
+    // 注意 `/targets` 的顺序**不是页签条顺序，也不是创建顺序**（2026-09-23 一次性实例实测两次、
+    // 两次**还相反**：一次新建的重复页排在首屏那个前面、一次排在后面）。
+    // 这不影响正确性，而且正是「留下的那个紧接着要重新导航」这一步在兜底：
+    // 「留哪个」只决定**哪个 targetId 活下来**，不决定窗口上写的是什么 ——
+    // 真正必须成立的是「与 prunePlan 同一个口径」，而那条由「两边都取 /targets 顺序」保证。
+    // 取证：`evidence/label-converge-2026-09-23/`（第一次按「留的必是首屏那个」写的断言当场变红，
+    // 才把这条事实记下来 —— 改的是断言，不是代码）。
+    //
+    // 顺序：先更新+钉住留下的那个（万一关不掉，窗口至少是**可读**的），再关多余的，最后回读确认。
+    // 只关 `labels` 里的（`kind === 'label'`）—— 工作页、千牛、登录页、空白页一个都不碰。
+    const [keep, ...extras] = labels;
+    await fetchImpl(`${proxyUrl}/navigate?target=${encodeURIComponent(keep.targetId)}&url=${encodeURIComponent(url)}`,
+      { method: 'POST', signal: AbortSignal.timeout(15000) });
+    const pinned = await pinLabelTab(proxyUrl, keep.targetId, fetchImpl);
+    const { closed, failed, reads, remaining } = await closeTabsAndConfirm({
+      proxyUrl, tabs: extras, fetchImpl, readAttempts, readIntervalMs, sleep,
+    });
+    // 回读**不能只看「关掉的那几个消失了没有」**：那只能证明减法成立，
+    // 证不了「还剩恰好一个标识页」这个真正要成立的不变量（留下来的那个也可能自己没了）。
+    const labelsAfter = classifyShopTabs(remaining).filter((t) => t.kind === 'label').length;
+    const convergedOk = failed.length === 0 && labelsAfter === 1;
+    return {
+      ok: convergedOk, shop, reused: true, adoptedBlank: false, converged: true,
+      targetId: keep.targetId, url, classified, pinned,
+      closed, failed, reads, labelsAfter,
+      ...(convergedOk ? {} : {
+        error: failed.length > 0
+          ? `收敛没做完：关了 ${extras.length} 个多余标识页，回读 ${reads} 次后还有 ${failed.length} 个没消失（${failed.map((t) => t.targetId).join('、')}）`
+          : `收敛后回读到 ${labelsAfter} 个标识页（期望恰好 1 个）`,
+      }),
+    };
   }
   if (labels.length === 1) {
     await fetchImpl(`${proxyUrl}/navigate?target=${encodeURIComponent(labels[0].targetId)}&url=${encodeURIComponent(url)}`,
@@ -437,10 +502,10 @@ export async function ensureLabelTabOn({
     // 复用**也要钉一次**：这个标签页可能是「还没有 pinned 语义的那版」挂的，
     // 不钉的话它照样会在 15 分钟后被收走 —— 而那种失效要等一刻钟才显形。
     const pinned = await pinLabelTab(proxyUrl, labels[0].targetId, fetchImpl);
-    // `adoptedBlank: false` 与另外两条路保持同一组字段：三种来源（复用 / 接管空白页 / 新建）
+    // `adoptedBlank: false` 与另外三条路保持同一组字段：四条来源（复用 / 收敛 / 接管空白页 / 新建）
     // 各自可判，而不是靠「某个键不存在」去反推 —— 靠缺键反推的判据，等加了字段就会静默失效。
     return {
-      ok: true, shop, reused: true, adoptedBlank: false,
+      ok: true, shop, reused: true, adoptedBlank: false, converged: false,
       targetId: labels[0].targetId, url, classified, pinned,
     };
   }
@@ -466,7 +531,7 @@ export async function ensureLabelTabOn({
     // 其余空白页**不在这里关**：本函数只接管一个。「替人关掉别的页」是另一个决定，
     // 交给 `--prune` 做（它的策略表里 blank 是「永远关」，开着 prune 时它们会被一并清掉）。
     return {
-      ok: true, shop, reused: false, adoptedBlank: true,
+      ok: true, shop, reused: false, adoptedBlank: true, converged: false,
       targetId: adopted.targetId, url, classified, pinned, extraBlanks: blanks.length - 1,
     };
   }
@@ -479,25 +544,66 @@ export async function ensureLabelTabOn({
   // 新建分支也显式钉一次：`pinned=1` 只对认这个参数的代理有效，
   // 旧版代理会把它当无关参数忽略掉 —— 那一步的失败要看得见，而不是让人以为钉住了。
   const pinned = await pinLabelTab(proxyUrl, targetId, fetchImpl);
-  return { ok: true, shop, reused: false, adoptedBlank: false, targetId, url, classified, pinned };
+  return { ok: true, shop, reused: false, adoptedBlank: false, converged: false, targetId, url, classified, pinned };
+}
+
+/**
+ * 关掉一批页签，并**回读确认它们真的没了**。返回 `{ attempted, closed, failed, reads, remaining }`。
+ *
+ * 为什么把它单独抽出来（2026-09-23）：它原先只活在 `pruneTabsOn` 里，而「收敛多余的标识页」
+ * 要的是**逐字相同**的一套口径。抄一份的后果不是「多几行」，是两边会各自演化 ——
+ * 而这两条路都建立在同一条最容易写错的判据上（下一条注释）。一处修好、另一处仍旧错，
+ * 症状是「有的地方关得掉、有的地方关不掉」，人会去怀疑浏览器。
+ *
+ * 两个相反的坑，合起来才是完整口径（都实测过，不是设想）：
+ *   1. **不信 `/close` 的返回码**：`edge://nurturing/` 那个页签，`/close` 返回 `{"success":true}`，
+ *      但 3 秒后回读**同一个 targetId 仍在**（2026-09-18 深夜）。只信返回码 ⇒ 报告写「关掉了」
+ *      而事实没变 —— 本项目最贵的坑（「每步都成功 ≠ 结果对」）。
+ *   2. **回读也不能只读一遍**：真机上 `about:blank` 从 `/close` 到从 `/targets` 里消失要 **270ms**
+ *      （探针 `measure-close-latency.mjs`：采样 8ms 还在 → 270ms 已消失，2026-09-20）。紧接着就回读
+ *      ⇒ 把**成功的关闭**报成失败。
+ *   所以：`closed` 只收**回读确认消失**的，仍在的一律进 `failed`；等待预算 3 次读 × 600ms
+ *   （覆盖 270ms 有余，又不至于让「真关不掉」的用例空等太久），中途全部消失就收手（不等满预算）。
+ */
+async function closeTabsAndConfirm({
+  proxyUrl, tabs, fetchImpl, readAttempts, readIntervalMs, sleep,
+}) {
+  const attempted = [];
+  for (const tab of tabs) {
+    try {
+      await fetchImpl(`${proxyUrl}/close?target=${encodeURIComponent(tab.targetId)}`,
+        { method: 'POST', signal: AbortSignal.timeout(15000) });
+      attempted.push(tab);
+    } catch (error) {
+      attempted.push({ ...tab, thrown: String(error?.message ?? error).slice(0, 160) });
+    }
+  }
+  let stillThere = new Set();
+  let reads = 0;
+  let remaining = null;
+  for (let attempt = 0; attempt < readAttempts; attempt += 1) {
+    if (attempt > 0) await sleep(readIntervalMs);
+    const after = await readTargets(proxyUrl, fetchImpl);
+    reads += 1;
+    remaining = after;
+    stillThere = new Set(after.map((t) => t.targetId ?? t.id));
+    if (attempted.every((t) => !stillThere.has(t.targetId))) break;
+  }
+  const closed = attempted.filter((t) => !stillThere.has(t.targetId) && !t.thrown);
+  const failed = attempted
+    .filter((t) => t.thrown || stillThere.has(t.targetId))
+    .map((t) => ({ ...t, error: t.thrown ?? `关完回读 ${reads} 次它还在：/close 返回成功但页面没有真的关掉` }));
+  return { attempted, closed, failed, reads, remaining };
 }
 
 /**
  * 按 `prunePlan` 关掉多余的页签。
  *
- * 四个必须交代的点：
+ * 三个必须交代的点：
  *   - **关的是这个窗口里我们自己的页签**，关不掉的如实记进 `failed`，不重试、不假装成功；
  *   - `dryRun` 是默认口径：只回报计划，不关任何东西；
- *   - **不信 `/close` 的返回码，关完回读一遍**（2026-09-18 深夜实测）：
- *     `edge://nurturing/` 那个页签，`/close` 返回 `{"success":true}`，但 3 秒后回读**同一个 targetId 仍在**。
- *     如果只信返回码，清理报告就会写「关掉了」而事实没变 —— 这正是本项目最贵的坑
- *     （「每步都成功 ≠ 结果对」）。所以 `closed` 只收**回读确认消失**的，仍在的一律进 `failed`。
- *   - **回读也不能只读一遍**（2026-09-20 实测，这条是上面那条的镜像）：真机上 `about:blank`
- *     从 `/close` 到从 `/targets` 里消失要 **270ms**（探针 `measure-close-latency.mjs`，
- *     采样：8ms 还在 → 270ms 已消失）。而回读原先紧接着 `/close` 就做 ⇒ 把**成功的关闭**
- *     报成失败，报告写「关完回读它还在」而其实已经关掉了。**这与「只信返回码」是两个相反的
- *     坑，合起来才是完整口径：返回码不可信，回读要等一拍**。
- *     等待预算按实测取：3 次读 × 600ms（覆盖 270ms 有余，又不至于让「真关不掉」的用例空等太久）。
+ *   - **关完要回读确认，且回读要等一拍** —— 两个相反的坑（只信返回码／只读一遍）与等待预算
+ *     都写在 `closeTabsAndConfirm` 上，这里不再复述；`closed` 只收回读确认消失的。
  */
 export async function pruneTabsOn({
   proxyUrl, dryRun = true, fetchImpl = fetch,
@@ -510,31 +616,9 @@ export async function pruneTabsOn({
   if (dryRun || plan.close.length === 0) {
     return { ok: true, dryRun, plan, closed: [], attempted: [], failed: [], reads: 0, classified };
   }
-  const attempted = [];
-  for (const tab of plan.close) {
-    try {
-      await fetchImpl(`${proxyUrl}/close?target=${encodeURIComponent(tab.targetId)}`,
-        { method: 'POST', signal: AbortSignal.timeout(15000) });
-      attempted.push(tab);
-    } catch (error) {
-      attempted.push({ ...tab, thrown: String(error?.message ?? error).slice(0, 160) });
-    }
-  }
-  // 回读校验：HTTP 200 不等于关掉了；但**读一遍也不等于关不掉**（见上面那一段）。
-  // 读满 readAttempts 次，只要中途全部消失就收手（不等满预算）。
-  let stillThere = new Set();
-  let reads = 0;
-  for (let attempt = 0; attempt < readAttempts; attempt += 1) {
-    if (attempt > 0) await sleep(readIntervalMs);
-    const after = await readTargets(proxyUrl, fetchImpl);
-    reads += 1;
-    stillThere = new Set(after.map((t) => t.targetId ?? t.id));
-    if (attempted.every((t) => !stillThere.has(t.targetId))) break;
-  }
-  const closed = attempted.filter((t) => !stillThere.has(t.targetId) && !t.thrown);
-  const failed = attempted
-    .filter((t) => t.thrown || stillThere.has(t.targetId))
-    .map((t) => ({ ...t, error: t.thrown ?? `关完回读 ${reads} 次它还在：/close 返回成功但页面没有真的关掉` }));
+  const { attempted, closed, failed, reads } = await closeTabsAndConfirm({
+    proxyUrl, tabs: plan.close, fetchImpl, readAttempts, readIntervalMs, sleep,
+  });
   return { ok: failed.length === 0, dryRun: false, plan, closed, attempted, failed, reads, classified };
 }
 
@@ -560,6 +644,11 @@ export async function pruneTabsOn({
 //
 // `--prune` 是**独占意图**：带上它就只清页签；挂标签页要么不带 `--prune`，要么显式加 `--label`。
 // 一个开关管两件事的写法在这里踩过（见 parseCli 注释）：两步被并成一步，中间那次对照就作废了。
+//
+// 挂标签页那一段**自带收敛**（2026-09-23 起）：窗口里堆了多个标识页时会**留一个、关掉其余**，
+// 不需要额外加 `--prune`。这一条与 `--prune` 不冲突 —— `--prune` 清的是**所有类别**的残留
+// （空白页、千牛、重复工作页…），收敛只管**标识页自己**这一种：它多做的那一步是「把多出来的
+// 自己人关掉」，属于「标识页恰好一个」这个不变量的就地兑现。两件事都会打印出来，各自可查。
 //
 // 不带 `--commit` 时是**只读报告**：它同时回答用户那句「我看到每个浏览器里面有多个界面」——
 // 每个页签是什么性质、哪些是链路要用的、哪些是残留、**哪一家还停在登录页**、
@@ -679,27 +768,40 @@ async function main() {
         const result = await ensureLabelTabOn({
           proxyUrl, shop, port: entry.browserPort, state, ok, member, actual,
         });
-        row.labelTab = result.ok
-          ? {
-            ok: true,
-            reused: result.reused,
-            // 标签页是**接管**来的还是新建的：接管意味着那个空白页被替换掉了（页签总数不变）。
-            // 这一格必须能看见 —— 否则「窗口里的空白页怎么没了」就只能靠猜。
-            ...(result.adoptedBlank === true ? { adoptedBlank: true } : {}),
-            ...(result.extraBlanks > 0
-              ? {
-                extraBlanks: result.extraBlanks,
-                hint: `窗口里还剩 ${result.extraBlanks} 个空白页，加 --prune 一并关掉`,
-              }
-              : {}),
-            targetId: result.targetId,
-            // 钉住的结果必须如实报出来：钉不住（例如代理还是旧版、没有 /pin）时，
-            // 标签页会在 15 分钟后被代理收走 —— 那是**延迟出现**的失效，
-            // 不写进输出就等于没有人会知道。
-            pinned: result.pinned?.pinned === true,
-            ...(result.pinned?.pinned === true ? {} : { pinReason: result.pinned?.reason ?? '未知' }),
-          }
-          : { ok: false, error: result.error };
+        row.labelTab = {
+          ok: result.ok,
+          ...(result.ok
+            ? {
+              reused: result.reused,
+              // 标签页是**接管**来的还是新建的：接管意味着那个空白页被替换掉了（页签总数不变）。
+              // 这一格必须能看见 —— 否则「窗口里的空白页怎么没了」就只能靠猜。
+              ...(result.adoptedBlank === true ? { adoptedBlank: true } : {}),
+              ...(result.extraBlanks > 0
+                ? {
+                  extraBlanks: result.extraBlanks,
+                  hint: `窗口里还剩 ${result.extraBlanks} 个空白页，加 --prune 一并关掉`,
+                }
+                : {}),
+              targetId: result.targetId,
+              // 钉住的结果必须如实报出来：钉不住（例如代理还是旧版、没有 /pin）时，
+              // 标签页会在 15 分钟后被代理收走 —— 那是**延迟出现**的失效，
+              // 不写进输出就等于没有人会知道。
+              pinned: result.pinned?.pinned === true,
+              ...(result.pinned?.pinned === true ? {} : { pinReason: result.pinned?.reason ?? '未知' }),
+            }
+            : { error: result.error }),
+          // 收敛这件事**成败两种情形都要报**：成功时它是「这一轮修掉了几个多余标识页」，
+          // 失败时它正是原因本身。只在成功分支里报的话，`!ok` 那条路只剩一句 error，
+          // 「关了几个、哪个没关掉」全丢了 —— 而那是唯一能接着查的东西。
+          ...(result.converged === true
+            ? {
+              converged: true,
+              convergedClosed: result.closed.map(describeTab),
+              convergedFailed: result.failed,
+              labelsAfter: result.labelsAfter,
+            }
+            : {}),
+        };
         row.labelState = state === null
           ? '没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）'
           : `${state}（来源：${explicit ? '--state 参数' : '从页签 URL 读出来'}）`;

@@ -1,0 +1,157 @@
+{
+ "startedAt": "2026-09-23T06:14:24.687Z",
+ "browserPort": 19931,
+ "proxyPort": 19941,
+ "shop": "里可林淘宝",
+ "checks": [
+  {
+   "name": "演练端口事先是空的（不是接上别人的实例）",
+   "ok": true,
+   "detail": "浏览器 19931=null，代理 19941=null"
+  },
+  {
+   "name": "冷启动首屏就是一个标识页（1.3.0 的首屏改动在这一档也成立）",
+   "ok": true,
+   "detail": "标识页 1 个"
+  },
+  {
+   "name": "现场成立：这个窗口里现在有 2 个标识页",
+   "ok": true,
+   "detail": "标识页 2 个（新建的 0C78EC8F0F773696FB6DA4945CE908F6）"
+  },
+  {
+   "name": "收敛报成功，且如实标出走的是收敛这一路",
+   "ok": true,
+   "detail": "ok=true converged=true"
+  },
+  {
+   "name": "留下的就是首屏那个标识页（关掉的是多余的第二个）",
+   "ok": false,
+   "detail": "留下 0C78EC8F0F773696FB6DA4945CE908F6，首屏那个是 2162415F30779E9CB3A847E6384A3AFD，新建的重复页是 0C78EC8F0F773696FB6DA4945CE908F6"
+  },
+  {
+   "name": "关掉了恰好 1 个（就是多余的那个）",
+   "ok": false,
+   "detail": "closed=[\"2162415F30779E9CB3A847E6384A3AFD\"]"
+  },
+  {
+   "name": "关完回读确认：恰好剩 1 个标识页",
+   "ok": true,
+   "detail": "labelsAfter=1，reads=1"
+  },
+  {
+   "name": "留下的那个已被重新导航到本次 URL（URL 里带本次店名、不带旧 member=）",
+   "ok": true,
+   "detail": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031"
+  },
+  {
+   "name": "真机事实：窗口里只剩 1 个标识页（不是「报告说关了」）",
+   "ok": true,
+   "detail": "标识页 1 个"
+  },
+  {
+   "name": "多出来的那个 targetId 真的从 /targets 里消失了",
+   "ok": false,
+   "detail": "新建的 0C78EC8F0F773696FB6DA4945CE908F6"
+  },
+  {
+   "name": "**其余页签一个都没变**（「只动标识页」这句话的证据）",
+   "ok": true,
+   "detail": "前：[]；后：[]"
+  },
+  {
+   "name": "关的只有那一个标识页 —— 没有顺手关掉别的东西",
+   "ok": true,
+   "detail": "本函数一共发了 1 次 /close"
+  },
+  {
+   "name": "第二次跑走的是「复用」而不是「收敛」，且一次 /close 都没发",
+   "ok": true,
+   "detail": "converged=false reused=true closes=0"
+  },
+  {
+   "name": "释放后两个端口都不再应答（自报「已释放」不算数）",
+   "ok": true,
+   "detail": "/json/version=null，/targets 端口=null"
+  }
+ ],
+ "artifacts": [],
+ "temporaryProfile": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\label-converge-GaesR2",
+ "firstScreenUrl": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031",
+ "tabsBefore": [
+  {
+   "targetId": "2162415F30779E9CB3A847E6384A3AFD",
+   "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031"
+  }
+ ],
+ "tabsWithDuplicate": [
+  {
+   "targetId": "0C78EC8F0F773696FB6DA4945CE908F6",
+   "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031&member=%E9%87%8C%E5%8F%AF%E6%9E%97%E5%AE%B6%E5%B1%85%3A%E9%98%BF%E5%BD%A6&actual=%E9%87%8C%E5%8F%AF%E6%9E%97%E5%AE%B6%E5%B1%85%3A%E9%98%BF%E5%BD%A6&state=%E5%B7%B2%E7%99%BB%E5%BD%95&ok=1"
+  },
+  {
+   "targetId": "2162415F30779E9CB3A847E6384A3AFD",
+   "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031"
+  }
+ ],
+ "result": {
+  "ok": true,
+  "converged": true,
+  "reused": true,
+  "adoptedBlank": false,
+  "targetId": "0C78EC8F0F773696FB6DA4945CE908F6",
+  "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031",
+  "labelsAfter": 1,
+  "reads": 1,
+  "closed": [
+   "2162415F30779E9CB3A847E6384A3AFD"
+  ],
+  "failed": [],
+  "error": null,
+  "pinned": {
+   "pinned": true,
+   "reason": null
+  },
+  "elapsedMs": 139
+ },
+ "ledger": [
+  "GET http://127.0.0.1:19941/targets",
+  "POST http://127.0.0.1:19941/navigate?target=0C78EC8F0F773696FB6DA4945CE908F6&url=file%3A%2F%2F%2FD%3A%2FRetire%2Fsycm-automation%2Fruntime%2Fshop-window-label.html%3Fshop%3D%25E9%2587%258C%25E5%258F%25AF%25E6%259E%2597%25E6%25B7%2598%25E5%25AE%259D%26port%3D19031",
+  "POST http://127.0.0.1:19941/pin?target=0C78EC8F0F773696FB6DA4945CE908F6",
+  "POST http://127.0.0.1:19941/close?target=2162415F30779E9CB3A847E6384A3AFD",
+  "GET http://127.0.0.1:19941/targets"
+ ],
+ "tabsAfter": [
+  {
+   "targetId": "0C78EC8F0F773696FB6DA4945CE908F6",
+   "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031"
+  }
+ ],
+ "secondRun": {
+  "ok": true,
+  "converged": false,
+  "reused": true,
+  "targetId": "0C78EC8F0F773696FB6DA4945CE908F6",
+  "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031",
+  "closes": 0
+ },
+ "verdict": "有不成立的项",
+ "release": {
+  "reason": "演练结束",
+  "killed": [
+   {
+    "pid": 15808,
+    "taskkill": "255"
+   },
+   {
+    "pid": 38728,
+    "taskkill": "0"
+   }
+  ],
+  "browserPortAfter": null,
+  "proxyPortAfter": null,
+  "profileRemoved": true,
+  "profile": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\label-converge-GaesR2"
+ },
+ "finishedAt": "2026-09-23T06:14:35.755Z"
+}

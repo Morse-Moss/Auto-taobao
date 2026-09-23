@@ -101,7 +101,7 @@ test('isLabelTab：认仓库内那份，也认机器上遗留的旧文件名（�
 });
 
 // ---------------------------------------------------------------------------
-// IO：注入假 fetch，把「幂等」与「堆了多个就停手」钉住
+// IO：注入假 fetch，把「幂等」与「收敛成一个」钉住
 // ---------------------------------------------------------------------------
 
 function fakeProxy({ targets, calls, evalReading, evalStatus = 200 }) {
@@ -304,19 +304,147 @@ test('既有标签页又有空白页时：复用标签页而不是接管空白�
   assert.ok(navigated[0].url.includes('target=c'), '导航的必须是那个已有标签页，不是空白页');
 });
 
-test('堆了多个标签页就停手：既不导航也不新建（关哪一个都是替人做决定）', async () => {
+// 2026-09-23 用户拍板：「**有两个肯定不行只保留一个标识**」。
+// 这一条**推翻了原先写在这里的决定**（原话是「堆了多个标签页就停手：navigate 哪个都不对，
+// 关掉哪个都是替人做决定」）。旧决定保护的是「不替人做决定」，可那些重复的标识页
+// **是同一个东西的多个副本**：留下来的那一个紧接着会被导航到**本次的新 URL**，
+// 所以「留哪个」不影响最终事实，只影响页签位置。它的实际代价是这家店**永久**停在两个标识页上
+// （每轮都报同一句话），而用户要的正是一个。判据跟着改成「收敛」。
+test('堆了多个标识页就收敛成一个：更新并钉住第一个，关掉多余的，回读确认剩下恰好一个', async () => {
   const calls = [];
+  const targets = [
+    ...REAL_WANG_LIN,
+    { type: 'page', targetId: 'z1', url: `file:///D:/a/${LABEL_PAGE_NAME}?shop=x` },
+    { type: 'page', targetId: 'z2', url: `file:///D:/a/${LABEL_PAGE_NAME}?shop=x&member=y` },
+  ];
   const result = await ensureLabelTabOn({
     proxyUrl: 'http://127.0.0.1:19041',
     shop: '里可林淘宝',
-    fetchImpl: fakeProxy({
-      targets: [...REAL_WANG_LIN, { type: 'page', targetId: 'z', url: `file:///D:/a/${LABEL_PAGE_NAME}?shop=x` }],
-      calls,
-    }),
+    port: 19031,
+    fetchImpl: fakeProxy({ targets, calls }),
   });
-  assert.equal(result.ok, false);
-  assert.match(result.error, /堆了 2 个标签页/u);
-  assert.equal(calls.length, 1, '只该读一次 /targets，之后的动作一概不做');
+  assert.equal(result.ok, true, '收敛成功就是成功 —— 这一条原先报的是「先去关到只剩一个」');
+  assert.equal(result.converged, true);
+  assert.equal(result.reused, true, '留下的那个是既有的标识页（不是新建、也不是接管空白页）');
+  assert.equal(result.adoptedBlank, false);
+  assert.equal(result.targetId, 'c', '留第一个：必须与 prunePlan 的 keepFirst 同一口径，'
+    + '否则 `--label --prune --commit` 同一次下达里两边会指向不同的页签');
+
+  const navigated = calls.filter((c) => c.url.includes('/navigate'));
+  assert.equal(navigated.length, 1, '只导航一个 —— 多余的那些是被关掉，不是被改成同一个地址');
+  assert.ok(navigated[0].url.includes('target=c'));
+  assert.ok(targetUrlOf(navigated[0]).includes(encodeURIComponent('里可林淘宝')),
+    '留下的那个要按**本次**的 URL 重写（「留哪个」才真的不影响最终事实）');
+  const pins = calls.filter((c) => c.url.includes('/pin')).map((c) => new URL(c.url).searchParams.get('target'));
+  assert.deepEqual(pins, ['c'], '留下的那个照样要钉 —— 它是上一轮的标签页，不钉会被代理 15 分钟收走');
+
+  assert.deepEqual(result.closed.map((t) => t.targetId).sort(), ['z1', 'z2']);
+  assert.deepEqual(
+    calls.filter((c) => c.url.includes('/close')).map((c) => new URL(c.url).searchParams.get('target')).sort(),
+    ['z1', 'z2'],
+    '只关标识页：工作页、千牛、登录页、空白页一个都不许碰',
+  );
+  assert.deepEqual(result.failed, []);
+  assert.equal(result.labelsAfter, 1,
+    '判据是「回读后**恰好剩一个标识页**」，不只是「关掉的那几个没了」—— 后者证不了留下的那个还在');
+  assert.equal(result.reads, 1, '假代理里关掉就消失 ⇒ 第一遍回读就该收手，不该白等满预算');
+});
+
+// 收敛也有「关不掉」的那一面：不许把没关掉的报成收敛成功。
+// 判据最早来自 2026-09-18 深夜实测（`edge://nurturing/`：`/close` 回 `{"success":true}` 但页面不消失）。
+// 这里加的是一条**顺序**要求：先更新留下的那个、再关多余的 —— 于是即使关不掉，
+// 窗口上那一页也是**新的**（可读），而不是「旧内容 + 一句报错」。
+test('多出来的标识页关不掉时：如实报 ok=false，但留下的那个已经更新好（窗口至少可读）', async () => {
+  const calls = [];
+  const targets = [
+    ...REAL_WANG_LIN,
+    { type: 'page', targetId: 'z1', url: `file:///D:/a/${LABEL_PAGE_NAME}?shop=x` },
+  ];
+  const stubborn = async (url, init = {}) => {
+    const href = String(url);
+    calls.push({ url: href, method: init.method ?? 'GET' });
+    if (href.endsWith('/targets')) {
+      return { ok: true, status: 200, json: async () => targets, text: async () => JSON.stringify(targets) };
+    }
+    if (href.includes('/navigate') || href.includes('/pin')) {
+      return { ok: true, status: 200, json: async () => ({ pinned: true }), text: async () => '{"pinned":true}' };
+    }
+    // 关键：报成功，但不消失。
+    if (href.includes('/close')) {
+      return { ok: true, status: 200, json: async () => ({}), text: async () => '{"success":true}' };
+    }
+    throw new Error(`假代理没覆盖这个地址：${url}`);
+  };
+  const result = await ensureLabelTabOn({
+    proxyUrl: 'http://127.0.0.1:19041',
+    shop: '里可林淘宝',
+    port: 19031,
+    fetchImpl: stubborn,
+    sleep: async () => {},
+  });
+  assert.equal(result.ok, false, '「回读后恰好一个」这个不变量没成立，就不许报成功');
+  assert.equal(result.converged, true, '但确实走过收敛这条路，要如实标出来');
+  assert.equal(result.closed.length, 0, '没真的消失就不许进 closed');
+  assert.equal(result.failed.length, 1);
+  assert.equal(result.labelsAfter, 2, '回读到的真实数量要报出来');
+  assert.match(result.error, /收敛没做完/u);
+  assert.match(result.error, /还有 1 个没消失/u);
+  assert.equal(result.targetId, 'c');
+  assert.ok(calls.some((c) => c.url.includes('/navigate') && c.url.includes('target=c')),
+    '顺序要求：先更新留下的那个 —— 关不掉的时候，窗口上那一页至少是新的');
+  assert.equal(result.reads, 3, '读满默认预算（3 次）才下结论 —— 读一遍就判「关不掉」正是那个镜像的坑');
+});
+
+// 四条路必须用**同一个键**表达「我是哪一路」，不许靠「某个键不存在」去反推。
+// 理由：靠缺键反推的判据会在加字段那一刻静默失效（本仓库吃过多次），而这里刚刚加过一次字段。
+test('四条来源路径都带上 converged 这个键（复用／收敛／接管空白页／新建）', async () => {
+  const cases = [
+    ['复用', REAL_WANG_LIN],
+    ['收敛', [...REAL_WANG_LIN, { type: 'page', targetId: 'z1', url: `file:///D:/a/${LABEL_PAGE_NAME}?shop=x` }]],
+    ['接管空白页', [{ type: 'page', targetId: 'b1', url: 'about:blank' }]],
+    ['新建', []],
+  ];
+  const seen = [];
+  for (const [label, targets] of cases) {
+    const result = await ensureLabelTabOn({
+      proxyUrl: 'http://127.0.0.1:19041',
+      shop: '里可林淘宝',
+      port: 19031,
+      fetchImpl: fakeProxy({ targets, calls: [] }),
+      sleep: async () => {},
+    });
+    assert.equal(typeof result.converged, 'boolean',
+      `${label} 这一路没有 converged 键 —— 靠缺键反推的判据等加了字段就会静默失效`);
+    seen.push(`${label}=${result.converged}`);
+  }
+  assert.deepEqual(seen, ['复用=false', '收敛=true', '接管空白页=false', '新建=false']);
+});
+
+// 「标识页恰好一个」这件事有**两个执行点**（挂标签页那一步的收敛 / `--prune` 的 label 类），
+// 而 main() 里清理排在挂标签页**之前**。于是它们留的必须是同一个，否则同一次
+// `--label --prune --commit` 里 prune 会先把「刚更新的那个」关掉 —— 结果看起来只是
+// 「标签页没了」，完全不像两边打架。
+test('两个执行点（收敛 / prune）必须留同一个标识页，否则同一次下达会互相拆台', async () => {
+  const targets = [
+    ...REAL_WANG_LIN,
+    { type: 'page', targetId: 'z1', url: `file:///D:/a/${LABEL_PAGE_NAME}?shop=x` },
+    { type: 'page', targetId: 'z2', url: `file:///D:/a/${LABEL_PAGE_NAME}?shop=x&member=y` },
+  ];
+  const plan = prunePlan(classifyShopTabs(targets));
+  assert.deepEqual(plan.keep.filter((t) => t.kind === 'label').map((t) => t.targetId), ['c'],
+    'prune 的 keepFirst 留第一个');
+  assert.deepEqual(plan.close.filter((t) => t.kind === 'label').map((t) => t.targetId).sort(), ['z1', 'z2']);
+  assert.equal(PRUNE_POLICY.label.keepFirst, true);
+
+  const result = await ensureLabelTabOn({
+    proxyUrl: 'http://127.0.0.1:19041',
+    shop: '里可林淘宝',
+    port: 19031,
+    fetchImpl: fakeProxy({ targets, calls: [] }),
+    sleep: async () => {},
+  });
+  assert.equal(result.targetId, 'c', '收敛也要留第一个 —— 与 prunePlan 的 keepFirst 同一口径');
+  assert.deepEqual(result.closed.map((t) => t.targetId).sort(), ['z1', 'z2']);
 });
 
 test('仓库里那份标签页真的把店名写进了 window.title（这是它唯一真正起作用的地方）', () => {
