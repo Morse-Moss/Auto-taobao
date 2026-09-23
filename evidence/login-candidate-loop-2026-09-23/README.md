@@ -137,7 +137,8 @@
 | `probe-throwaway-autofill2.mjs` | **一次性实例 v2（主力）**：25ms 采样 + setter 挂钩 + `--url` 可换地址 |
 | `shots/` | 各次实验的截图（Chromium 的密码下拉是原生控件、不进 DOM，截图是唯一能看见它的方式） |
 | `raw/` ＋ `raw/INDEX.md` | **各次一次性实例实验的完整原始输出**（含每份的「导航 → …」），以及逐格对应表 |
-| `mutate-login-guard-1.6.0.mjs` / `raw/mutation-report-run2-final.txt` | 1.6.0 的突变验证（9 条，全部被点名用例抓住并逐字节还原） |
+| `mutate-login-guard-1.6.0.mjs` | 1.6.0 的突变验证（9 条，全部被点名用例抓住并逐字节还原）。**脚本自己的输出路径＝`mutation-report.txt`**（本目录下） |
+| `raw/mutation-report-run2-final.txt` | 同一份报告的**控制台捕获**（比上面那份多一行 `EXIT=0`，其余逐字节相同） |
 | `raw/mutation-report-run1-superseded.txt` | 上一版突变报告（8 条里有一条被标 `skip`，等于一条没有判据的突变）——**留档说明它为什么被重写** |
 
 跑突变验证（**必须在仓库根跑**，脚本自己会定位仓库根、报告写在脚本旁边）：
