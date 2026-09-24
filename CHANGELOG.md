@@ -67,25 +67,27 @@
 ### 验证到什么程度（照实写）
 
 - **离线判据全绿**：6 个文件 **155/155、fail 0、退出码 0**（发版后跑的，含版本号一致性守卫；
-  `tmp/affected-tests-1.7.0.txt`。改动落地时先跑过一次 5 文件 149/149，`tmp/affected-tests-2026-09-24.txt`）。
-  含新增的 `runtime/alert-throttle.test.mjs` 6 条、
+  `evidence/login-alert-round-2026-09-24/affected-tests-1.7.0.txt`。改动落地时先跑过一次 5 文件 149/149，
+  同目录 `affected-tests-before-bump.txt`）。含新增的 `runtime/alert-throttle.test.mjs` 6 条、
   `login-merchant-core.test.mjs` 54 条（其中一条是**源码级接线判据**：`PAGES_ABSENT` 那段
   必须出现在登录流程循环**之前**，且 `needsHuman('PAGES_ABSENT') === false`）、
   `check-login-shops-core.test.mjs` 31 条（含「归位必须排在探针之前」「归位必须挂在 `--login` 档下」
   「子进程的 `--notify` 只能是 `notifyModeFor()`」）。
 - **跨目录依赖守卫先红过一次**：新增 `skills/…/check-login-shops-core.mjs → runtime/notify-feishu-core.mjs`
   这条依赖（拿渲染器的键名白名单，另抄一份就是第二个事实）被守卫抓到，已显式登记并写明理由，
-  之后 **3/3 绿**（`tmp/arch-boundary-after2-2026-09-24.txt`）。
+  之后 **3/3 绿**（先红的原始输出与重跑结果都在
+  `evidence/login-alert-round-2026-09-24/arch-boundary-RED-before-registering.txt` 与 `…-GREEN-after.txt`）。
 - **整轮告警过的是真渲染器**：构造一条「2 家店要登录」的告警，走
   `runtime/notify-feishu.mjs --dry-run`（**一个字节都没发**），核对正文里
   对象／店铺／任务／原因／下一步／时间／告警编号七项齐全，且**不含机器名与本机路径**
-  （`tmp/round-alert-dry-run.json`、`tmp/round-alert-2026-09-24.json`）。
+  （`evidence/login-alert-round-2026-09-24/`：`round-alert-input.json` 是输入、`round-alert-dry-run.json` 是渲染结果，
+  生成脚本 `gen-round-alert.mjs` 与渲染命令都写在那份 README 里，**从该目录原地复跑逐字节相同**）。
   这步是必要的：`source` 里的键名写错时渲染器会**静默丢掉那一行**，收信人看不到
   「哪几家、哪个后台」而你以为发出去了 —— 所以 core 侧现在对未知键**当场抛错**。
 - **只读真跑一次预检**（不带 `--login`，一个页面都没碰）：退出码 3、五家 `notify.mode` **全是 `off`**、
   `roundNotify.status = SKIPPED`（原因：「这一轮是只读体检，没有去登，所以一个字都不发」）、
   `normalize.asked = false`，且 stdout 是**纯 JSON**（stderr 0 字节）
-  ⇒ `tmp/preflight-readonly-after-2026-09-24.json`。五家店的代理当时没起（`fetch failed`），
+  ⇒ `evidence/login-alert-round-2026-09-24/preflight-readonly.json`。五家店的代理当时没起（`fetch failed`），
   所以逐店结论是 `UNREADABLE / STOP_AND_ALERT`、`needHuman=[]` —— 这正是**改之前的形态做不到的事**：
   读不到的时候不再叫人。
 - **只有离线判据、没有真机证据的两处**（如实写明）：① `--login` 档的归位**写路径** ——

@@ -595,9 +595,7 @@ p_url=…/portal/home.htm                         两边 → {code:0}   ← 阳�
   （理由：要在上面 1/2 之后做，否则等于用一个「会自己去登」的动作换掉一个「只报不猜」的动作）。
 - `PAGES_ABSENT` 只有离线判据，**真机现场复现未做**（需要先有「窗口里没有该站点页面」的现场）。
 
-**可核产物**：`tmp/affected-tests-2026-09-24.txt`（149/149）、
-`tmp/arch-boundary-after2-2026-09-24.txt`（3/3）、
-`tmp/round-alert-dry-run.json`（整轮告警过真渲染器 `--dry-run`，一个字节没发）、
-`tmp/preflight-readonly-after-2026-09-24.json`（只读真跑：五家 `notify.mode=off`、
-`roundNotify=SKIPPED`、`normalize.asked=false`）。
+**可核产物**：`evidence/login-alert-round-2026-09-24/`（该目录的 README 逐文件说明「证明了什么、怎么复现」）——
+受影响用例 155/155、跨目录守卫**先红后绿**（两次原始输出都在）、整轮告警过真渲染器 `--dry-run`
+（一个字节没发）、只读真跑一次预检的收据。
 

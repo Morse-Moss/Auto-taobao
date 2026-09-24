@@ -1,0 +1,183 @@
+{
+ "machine": "DESKTOP-KJP4RA5",
+ "verdict": "INCONCLUSIVE",
+ "autoLogin": false,
+ "normalize": {
+  "asked": false
+ },
+ "roundNotify": {
+  "status": "SKIPPED",
+  "reason": "这一轮是只读体检，没有去登，所以一个字都不发"
+ },
+ "needHuman": [],
+ "unknown": [
+  {
+   "shop": "里可林淘宝",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "网林天猫",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "盖文淘宝",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "盖文天猫",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "科塔淘宝",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  }
+ ],
+ "checked": 5,
+ "rows": [
+  {
+   "shop": "里可林淘宝",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "STOP_AND_ALERT",
+   "detail": "fetch failed",
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "mode_or_not_attempted"
+   },
+   "childExitCode": 3,
+   "probeError": null
+  },
+  {
+   "shop": "网林天猫",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "STOP_AND_ALERT",
+   "detail": "fetch failed",
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "mode_or_not_attempted"
+   },
+   "childExitCode": 3,
+   "probeError": null
+  },
+  {
+   "shop": "盖文淘宝",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "STOP_AND_ALERT",
+   "detail": "fetch failed",
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "mode_or_not_attempted"
+   },
+   "childExitCode": 3,
+   "probeError": null
+  },
+  {
+   "shop": "盖文天猫",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "STOP_AND_ALERT",
+   "detail": "fetch failed",
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "mode_or_not_attempted"
+   },
+   "childExitCode": 3,
+   "probeError": null
+  },
+  {
+   "shop": "科塔淘宝",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "STOP_AND_ALERT",
+   "detail": "fetch failed",
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "mode_or_not_attempted"
+   },
+   "childExitCode": 3,
+   "probeError": null
+  }
+ ]
+}
