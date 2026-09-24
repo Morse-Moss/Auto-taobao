@@ -7,12 +7,17 @@
     "node": ">=22"
   },
   "scripts": {
+    "check:fast": "node scripts/check-fast.mjs",
+    "check:staged": "node scripts/check-fast.mjs --staged",
+    "check:delivery": "node scripts/delivery-status.mjs",
     "test:offline": "node scripts/run-offline-self-tests.mjs",
+    "test:changed": "node scripts/run-affected-tests.mjs",
+    "test:staged": "node scripts/run-affected-tests.mjs --staged",
     "test:unit": "node scripts/run-test-suite.mjs unit",
     "test:skills": "node scripts/run-test-suite.mjs skills",
     "test:runtime": "node scripts/run-test-suite.mjs runtime",
     "test:integration": "node scripts/run-test-suite.mjs integration",
-    "test:all": "npm run test:offline && npm run test:unit && npm run test:runtime",
+    "test:all": "npm run check:fast && npm run test:offline && npm run test:unit",
     "test:agent-runtime": "node --test agent-runtime/tests/*.test.mjs",
     "run:agent-runtime-local": "node agent-runtime/run-local-task.mjs"
   },

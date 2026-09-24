@@ -164,15 +164,15 @@ tenant / store / platform / account / browserProfile / capability
 
 以下是当前已知事实，不是本规范的假设：
 
-- `package.json` 声明 Node `>=18`，并提供 `test:offline` / `test:unit` / `test:runtime` / `test:skills` / `test:integration` 分层入口（集成层需外部系统，未置绿）；**仍没有** lint 或 build 定义。
-- 已有 `requirements.txt`（锁定 `openpyxl==3.1.5` / `Pillow==11.3.0` / `python-docx==1.2.0`）与 `.github/workflows/ci.yml`（离线闸门：L0 语法 / L1 self-test / L2 单测，`windows-latest`，按 skill 分矩阵）；`docx` 已声明进 `package.json`。**仍缺**解释器版本声明（README 用 `py -3`，实测 CPython 3.12.9）、部署清单与环境 bootstrap。
+- `package.json` 声明 Node `>=22`，并提供 `check:fast`、`check:staged`、`test:changed`、`test:staged`、`test:offline` / `test:unit` / `test:runtime` / `test:skills` / `test:integration` 分层入口。日常开发先跑默认只检查改动文件的 `check:fast` 与受影响测试；提交前只针对暂存文件运行 `check:staged` 与 `test:staged`；CI 使用 `check:fast -- --all`；集成层需外部系统，未置绿；当前仍没有 lint/build 工具配置。
+- 已有 `requirements.txt`（锁定 `openpyxl==3.1.5` / `Pillow==11.3.0` / `python-docx==1.2.0`）与 `.github/workflows/ci.yml`：PR 运行 L0/L1 和受影响测试，main 或手动运行 L0/L1/runtime 与按 skill 矩阵；`docx` 已声明进 `package.json`。**仍缺**解释器版本声明（README 用 `py -3`，实测 CPython 3.12.9）、部署清单与环境 bootstrap。
 - 此前记的「部分 Python 脚本依赖**未声明**的 `openpyxl`/`Pillow`/`python-docx`」与「Node 文档脚本依赖**未声明**的 `docx`」**已过时**——三者现均随清单或 `package.json` 声明。
 - `table_geometry` 仍依赖仓库外模块且无发布包，涉及 `runtime/build-keyword-decision-brief.py` 与 `runtime/build-keyword-decision-report.py`，故这两个脚本**不能**从干净 checkout 复现（技术债 C1）。
 - PostgreSQL 侧**已形成项目级合同**：`db/migrations/001-007`（每份带 rollback）+ `runtime/verify-migrations-isolated.mjs` 隔离预演（39/39）+ 仓库级词表守卫（`commit-status-vocabulary.test.mjs` 从迁移推导现状；007 的 action/outcome 词表另有一条从迁移文件推导的守卫，见 `skills/sycm-alimama-daily-report/scripts/daily-report-audit.test.mjs`）；**仍缺**服务本身、连接变量与凭据注入方式的合同，`pg` 仍只是客户端依赖。
 - durable 语义与确定性运行时**已落地**：PostgreSQL 承担 `runtime/sop-runtime/` 的状态权威，跨进程故障注入（`recovery-fault-injection.mjs`）17/17。**未落地**的是 Object Storage、Browser Broker 与多租户隔离。
 - 当前真实运行依赖外部已登录 Edge、共享 CDP Proxy、平台状态和外部凭据文件。
 
-`test:offline` 只运行三个固定的确定性 self-test，不发现或执行测试文件，因此不会触发真实 CDP、PostgreSQL、Python 或外部凭据；它不是完整 test gate。已知的 adaptive retry-budget 长时间失败不属于本阶段修复或验收范围。
+`check:fast` 默认只做改动 JavaScript/Python 文件的语法检查，传入 `--all` 扫描全部已跟踪源文件，传入 `--staged` 只扫描暂存文件；`test:changed` 根据修改路径选择单文件或受影响 Skill/runtime 测试，`test:staged` 只读取暂存文件。Python 测试统一通过 `unittest` 入口执行。`test:offline` 仍只运行三个固定的确定性 self-test，不发现或执行测试文件，因此不会触发真实 CDP、PostgreSQL、Python 外部系统或外部凭据；它不是完整 test gate。已知的 adaptive retry-budget 长时间失败不属于本阶段修复或验收范围。
 
 因此当前只能承诺已由对应 Skill、测试和运行证据证明的能力，不能承诺干净环境一键复现、完整 CI、生产级恢复或多租户并发。仍未解决的是：解释器 bootstrap、`table_geometry` 归属、部署清单，以及运维面（监控、告警、备份与恢复演练）。后续补齐每项缺口时，必须同时补版本声明、安装方式、失败模式和验证命令。
 

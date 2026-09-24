@@ -1,4 +1,4 @@
-# Minimal offline CI gate for sycm-automation.
+# CI gates for sycm-automation.
 #
 # Scope (deliberately narrow, matching docs/standards/README.md section 7):
 #   - L0 syntax / L1 offline self-tests / L2 unit tests only.
@@ -6,12 +6,17 @@
 #     Integration tests are gated behind external systems by design; the unit
 #     suite excludes them (see scripts/run-test-suite.mjs EXCLUSIONS).
 #
+# Pull requests use affected checks for fast feedback. Main pushes and manual
+# runs use the full offline gates and the skill matrix. This keeps the normal
+# edit loop short without removing the broad regression gate at integration
+# boundaries.
+#
 # Three layers of parallel jobs instead of one, based on measured durations
 # (2026-09-11): GitHub's Windows runners are ~3x slower than the dev machine,
 # the full skill suite exceeded both a 30-minute and a 60-minute job, and the
 # xws-export-market-analysis prepare-flow file alone runs ~17 minutes locally.
-# Each skill now runs in its own matrix job; the heaviest skill gets a larger
-# budget. fast-gate still covers the runtime layer for quick feedback.
+# Each skill runs in its own matrix job on mainline/manual runs; the heaviest
+# skill gets a larger budget. Pull requests use the affected-test selector.
 #
 # Runner note: windows-latest is used because the project is Windows-native
 # (Edge-bound CDP proxy, PowerShell helpers, Windows clipboard contracts).
@@ -24,9 +29,11 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   fast-gate:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -40,13 +47,25 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Install Python dependencies
+        run: py -3 -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Fast syntax check (L0)
+        run: npm run check:fast -- --all
+
       - name: Offline self-tests (L1)
         run: npm run test:offline
 
-      - name: Runtime tests (L2)
+      - name: Affected tests (PR) / full unit tests (main)
+        if: github.event_name == 'pull_request'
+        run: npm run test:changed -- --base=${{ github.event.pull_request.base.sha }}
+
+      - name: Full unit tests (main)
+        if: github.event_name == 'push'
         run: npm run test:runtime
 
   skill-tests:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     timeout-minutes: ${{ matrix.timeout }}
     strategy:

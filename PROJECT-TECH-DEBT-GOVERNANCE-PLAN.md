@@ -117,7 +117,7 @@
 
 **C2 没有构建、检查、集成流水线**
 
-具体证据：`package.json` 只有 3 个脚本（`test:offline`、`test:agent-runtime`、`run:agent-runtime-local`）；无 lint、无 build、无 CI 配置。`test:offline` 实测只跑 3 个固定 self-test、不发现测试文件。`docs/standards/README.md` 自己写明"没有 CI 时，不得把人工命令列表表述为自动化门禁"。
+历史证据（2026-09-11）：当时 `package.json` 只有少量入口且无 CI。当前已存在 `.github/workflows/ci.yml`；本计划中的后续治理项仍需以当前 `package.json`、CI 文件和 `docs/standards/README.md` 为准，不得把本段历史快照当作现状。
 
 成因：本地单人项目没有引入流水线的触发点。
 

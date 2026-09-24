@@ -82,7 +82,7 @@ npm run test:offline
 
 该入口只运行三个确定性 `--self-test`，不发现测试文件，不访问真实浏览器/CDP Proxy、PostgreSQL、飞书、平台账号或外部凭据。它不是全仓库回归，也不证明 Python、外部环境或真实业务流程可用。
 
-完整业务流程仍依赖已登录 Edge、共享 CDP Proxy、PostgreSQL 和外部飞书凭据。两个 `runtime/generate-competitor-v2-*.cjs` 入口依赖未声明的 `docx`；Python 路径依赖 `openpyxl`、Pillow、`python-docx`，部分报告还依赖仓库外的 `table_geometry`。
+完整业务流程仍依赖已登录 Edge、共享 CDP Proxy、PostgreSQL 和外部飞书凭据。两个 `runtime/generate-competitor-v2-*.cjs` 入口使用 `package.json` 已声明的 `docx`；Python 路径依赖 `openpyxl`、Pillow、`python-docx`，部分报告还依赖仓库外的 `table_geometry`。
 
 ## 验证
 

@@ -22,6 +22,13 @@
 
 ## Acceptance
 
+## Development delivery check
+
+- A local commit is not a delivered change. Before reporting completion, run `npm run check:delivery -- --commit=<sha>` and report `mainline_contains_commit`, `remote_contains_commit`, and `worktree_clean` separately.
+- A worktree or feature branch may remain only when the handoff explicitly names its path, branch, commit, and next absorption action. Do not infer that a pushed branch changed `main`.
+- The primary checkout is the default for bounded development. Use a worktree only for explicit isolation or concurrent work, and record its path, branch, base commit, owner, and absorption action.
+- Before a local commit, run `npm run check:staged` and `npm run test:staged`; do not use `--no-verify` to bypass a failing check. Fix the check, narrow the staged scope, or stop at the evidence boundary.
+
 - SYCM export: ranks contiguous and unique, source fields present, and CSV/XLSX validated.
 - Feishu import: exact source-row count, first/last rank match, five source fields in order, no duplicate rows, and copied views/tables remain present.
 - Xiaowangshen API import: authorized target table starts empty, all 16 fields exist, `商品图片` is attachment type `17`, and API verification reports equal source-row, imported-row, and attachment counts.
