@@ -47,6 +47,11 @@
 // 而 `--check-only` 比它更严：**一个页面都不碰**（不开登录页、不量坐标），代价是它只能回答
 // 「在不在登录态」，不能接着往下走。多店逐店体检（`check-login-shops.mjs`）与定时链的
 // 跑前那一步用的就是它。
+//
+// 2026-09-24 加：`--commit` 档在进登录流程**之前**会先判一次「窗口里到底有没有这两个后台的页面」
+// （core 的 `absentSites`）。两个站点都读不到、且没有一个是实锤掉登录时，报 `PAGES_ABSENT`、
+// 退出码 3、**不发任何告警** —— 那是「页面还没归位」，链的第 0 步会补上，不是登录故障。
+// 加它的直接原因：冷启动后的跑前预检把这类现场报成了 `MAIN_SESSION_ONLY`，并连发 5 条飞书告警。
 import { spawn } from 'node:child_process';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -56,9 +61,9 @@ import { fileURLToPath } from 'node:url';
 import { BROWSER_PROFILES, PROJECT_PORTS, SHOP_BROWSERS, shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
 // 判据与纯逻辑都在 core 里（可离线测）；这里只留 IO。
 import {
-  FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION, LOGIN_URL_CANDIDATES, SITES, alertForRun,
+  FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION, LOGIN_URL_CANDIDATES, SITES, absentSites, alertForRun,
   captchaVisible, centerOf, detectLoginDetour, expectedMemberFor, finalLoginVerdict, isTaobaoLoginUrl,
-  judgeFilled, judgeShopTarget, loginFormVisible, needsHuman, parseArgs, sitesNeedingLogin,
+  judgeFilled, judgeShopTarget, loggedOutSites, loginFormVisible, needsHuman, parseArgs, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 
 const delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -320,6 +325,33 @@ async function attempt() {
       : `${SITES[key].label}（读不到：这个窗口里没有它的页面）`);
     receipt.detail = `要留意的是：${needLogin.map(because).join('、')}。`;
     return finish(receipt, 2);
+  }
+
+  // 第一步又四分之一（**页面不在 ≠ 掉登录**，2026-09-24 加）：这一道只挡「会去登」的那一档。
+  //
+  // 为什么放在 check-only 之后：只读档一个页面都不开，所以它不需要这道闸（它的 detail 已经把
+  // 「被踢回登录页」与「读不到」分开写了）；而这一档下面第二步的 `ensureLoginPage()` 会
+  // **开一个淘宝登录页** —— 冷启动（浏览器刚起、页面还没归位）时那一步的真实后果是：
+  // 登录页被仍然有效的主站会话直接送走 ⇒ 逐条候选都 DETOUR ⇒ 报 `MAIN_SESSION_ONLY`
+  // ⇒ 那是一条「要人处理」的结论 ⇒ 一次预检并发 5 条飞书告警，而**每一家其实只是页面还没归位**
+  // （链的第 0 步会补上）。一个「页签不在」的问题被改写成了「登录问题」。
+  //
+  // 判据要**两个条件同时成立**（缺一不可）：
+  //   ① 有站点读不到（`loggedIn === null`）；
+  //   ② 没有任何站点是实锤掉登录（`loggedIn === false`）。
+  // 第 ② 条是关键：只要有一个后台真被踢回登录页，那就是**真问题**，照旧走登录流程去修它 ——
+  // 这道闸不许把「真的掉登录」一起挡掉；混合情形（一个读不到 + 一个掉登录）同样走登录流程。
+  //
+  // 退出码 3 与只读档的「没有结论」同码：这一层的三个退出码本来就这么分工
+  // （0 确认在登录态 / 2 确定要人动手 / 3 没有结论），而这一条属于第三类。
+  const absent = absentSites(receipt.sites);
+  const kickedOut = loggedOutSites(receipt.sites);
+  if (absent.length > 0 && kickedOut.length === 0) {
+    receipt.verdict = 'PAGES_ABSENT';
+    receipt.detail = `读不到的是「${absent.map((key) => SITES[key].label).join('、')}」`
+      + '—— 这个窗口里现在没有它们的页面（浏览器刚起、页面还没归位时就是这样）。'
+      + '这一次没有开登录页、也没有判「掉登录」；链的第 0 步会先把页面补齐再体检。';
+    return finish(receipt, 3);
   }
 
   // 第二步：逐条打开候选登录地址，**试到浏览器真的肯填为止**。

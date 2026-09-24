@@ -8,7 +8,7 @@ import { BROWSER_IDS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } fro
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
-import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDedup, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
+import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -827,32 +827,9 @@ test('驱动：真正投递时走既有的通知出口，且「没送达」要�
   assert.equal(notDelivered.delivered, false, '投递失败不许记成送达');
 });
 
-test('告警去重：同一条编号在时间窗内不重复发，但「停的地方变了」算新信息', () => {
-  const now = new Date('2026-09-20T03:00:00Z');
-  const previous = { alertId: 'daily-round-20260919', fingerprint: 'SHOP_LEVEL|里可林淘宝@sycm-date', sentAt: '2026-09-20T02:00:00Z' };
-
-  // 核心动机不是「少收几条」，而是**别把这个通道训练成噪音** —— 它是唯一会叫人动手的通道。
-  const same = resolveAlertDedup({ previous, alertId: 'daily-round-20260919', fingerprint: previous.fingerprint, now });
-  assert.equal(same.send, false, '一小时前刚发过同样一条，不该再发');
-  assert.ok(same.reason, '不发也要有一句人看得懂的原因');
-
-  const moved = resolveAlertDedup({ previous, alertId: 'daily-round-20260919', fingerprint: 'SHOP_LEVEL|里可林淘宝@push', now });
-  assert.equal(moved.send, true, '同一个编号、但这次停在别的地方 —— 是新信息，不该被当成重复挡掉');
-
-  assert.equal(resolveAlertDedup({ previous: null, alertId: 'daily-round-20260919', fingerprint: 'x', now }).send, true,
-    '没发过就发');
-  assert.equal(resolveAlertDedup({ previous, alertId: 'daily-round-20260918', fingerprint: 'x', now }).send, true,
-    '换了一天就是另一条');
-  assert.equal(resolveAlertDedup({ previous, alertId: null, fingerprint: 'x', now }).send, true, '没有编号就不去重（宁可多发）');
-
-  const later = new Date('2026-09-20T09:00:00Z');
-  assert.equal(resolveAlertDedup({ previous, alertId: 'daily-round-20260919', fingerprint: previous.fingerprint, now: later }).send, true,
-    '过了时间窗就允许再发一次');
-  // 时间读不懂时**宁可发**：沉默的代价比多收一条大
-  assert.equal(resolveAlertDedup({ previous: { ...previous, sentAt: '看不懂' }, alertId: 'daily-round-20260919', fingerprint: previous.fingerprint, now }).send, true);
-  assert.equal(resolveAlertDedup({ previous: { ...previous, sentAt: '2026-09-20T05:00:00Z' }, alertId: 'daily-round-20260919', fingerprint: previous.fingerprint, now }).send, true,
-    '记录的时间在未来（时钟回拨/手改过），不当作「刚发过」');
-});
+// 去重判据本身的用例**不在这里**：它 2026-09-24 随实现在 `runtime/alert-throttle.mjs`
+// 一起搬到了 `runtime/alert-throttle.test.mjs`（判据现在被两条链共用，只有那一层测得到
+// 「两条链写同一个文件」这件事）。这里只留本驱动自己的投递口径。
 
 test('驱动：重复的那条只打在本机日志里，一次投递都不发生；且只有真送出去才记时间', () => {
   const throttleFile = tmpThrottle();

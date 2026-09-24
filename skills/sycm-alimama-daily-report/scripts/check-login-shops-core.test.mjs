@@ -8,9 +8,10 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  LOGIN_FAIL_TEXT, PREFLIGHT_VERDICTS, SHOP_VERDICTS, SITE_KEYS, SITE_VERDICTS, exitCodeForPreflight,
-  judgePreflight, judgeShopReceipt, loginAccountFor, loginFailReason, notifyModeFor, parseCheckShopsArgs,
-  platformNameHint, renderNotifyLines, renderReport, siteVerdictOf,
+  LOGIN_FAIL_TEXT, PREFLIGHT_VERDICTS, SHOP_VERDICTS, SITE_KEYS, SITE_VERDICTS, buildRoundLoginAlert,
+  exitCodeForPreflight, judgePreflight, judgeShopReceipt, loginAccountFor, loginFailReason, notifyModeFor,
+  parseCheckShopsArgs, platformNameHint, renderNormalizeLines, renderReport, renderRoundNotifyLines,
+  shouldNotifyRound, siteVerdictOf,
 } from './check-login-shops-core.mjs';
 // 站点词表与探针地址的唯一来源：这里只**核对**，不另抄一份。
 import { SITES, VERDICTS_NEEDING_HUMAN } from './login-merchant-core.mjs';
@@ -18,6 +19,8 @@ import { siteAdapter } from './date-picker.mjs';
 // 店名与「哪个平台显示哪个名字」的唯一来源。
 import { shopIdentity } from './shop-identities.mjs';
 import { shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
+// 整轮告警文案要**走真渲染器**验（白名单会把键名写错的字段静默丢掉，只有渲染出来才看得见）。
+import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 
 const both = (a, b) => ({ sites: { sycm: { loggedIn: a }, alimama: { loggedIn: b } } });
 
@@ -187,7 +190,12 @@ test('「读不到」必须自解释，且整轮的判据段不许把它说成�
   assert.match(text, /网林天猫（没结论）/u);
   assert.match(text, /阿里妈妈：读不到（这个窗口里没有它的页面，或者连不上这个窗口）/u);
   assert.match(text, /没有结论\*\*（读不到不等于通过）/u);
-  assert.match(text, /链的第 0 步会自己补上/u, '要告诉人这是可自愈的，别把页面还没归位当成故障');
+  // 「这是可自愈的、不是掉登录」这句话必须说出来 —— 它是这件事与「掉登录」的分界线。
+  // 2026-09-24 起措辞更新：这一层**开跑前已经归位过一次**（见 [归位] 段），
+  // 所以「页面还没归位」不再是默认解释，要说的是「下一步谁还会再试一次」。
+  assert.match(text, /不是掉登录/u, '要把「读不到」与「掉登录」分开说');
+  assert.match(text, /本次开跑前已经归位过一次/u, '要说清这一层已经先归位过了（不然人会以为没人管页面）');
+  assert.match(text, /链的第 0 步还会再补一次/u, '要告诉人这是可自愈的，别把页面还没归位当成故障');
   assert.equal(/都在登录态 —— 可以开跑/u.test(text), false, '「读不到」时绝不许出现「可以开跑」');
 });
 
@@ -318,13 +326,29 @@ test('主脚本真的按「一店一实例 + 纯读」调用 login-merchant（�
   // ② 切实例靠 --proxy（端口来自登记表），不是靠 --shop
   assert.match(source, /'--proxy', `http:\/\/127\.0\.0\.1:\$\{conf\.proxyPort\}`/u,
     '必须用登记表里的 proxyPort 指定那家店自己的实例');
-  // ③ 告警必须与「有没有真的去登」绑在一起（2026-09-23 用户拍板：「自动登录失败就飞书告警，
-  //    但前提是你要先自动登录」）—— 所以这里**不许**再出现写死的 `--notify off`，
-  //    只能是 notifyModeFor() 算出来的那个值；而「哪一档该发」本身由下面一组用例钉住。
-  assert.match(source, /'--notify', notifyModeFor\(\{ login \}\)/u,
-    '告警取值必须由 notifyModeFor() 决定（写死常量＝「哪一档该不该发」只活在 IO 里，离线测不到）');
-  assert.doesNotMatch(source, /'--notify',\s*'(?:off|auto|dry|send)'/u,
-    '不许在 IO 里写死 --notify 的取值：那会让「没登过就不许叫人」这条判据失去落点');
+  // ③ 子进程的告警取值必须**恒 off**（2026-09-24 改）：投递权整轮收在本层（`deliverRoundAlert`），
+  //    子进程各自发正是那次「一次预检 5 条告警、且全是假红」的形态。
+  //    判据两处：取值由 `notifyModeFor()` 算（不许写死常量）；取值本身恒 off（见下面那条用例）。
+  assert.match(source, /'--notify', notifyModeFor\(\)/u,
+    '子进程的 --notify 取值必须由 notifyModeFor() 决定（写死常量＝「哪一档该不该发」只活在 IO 里，离线测不到）');
+  assert.doesNotMatch(source, /'--notify',\s*'(?:auto|dry|send)'/u,
+    'IO 里不许出现「会真的发」的取值：子进程发告警＝绕过整轮判定与去重（2026-09-24 那 5 条就是这么来的）');
+  // ④ 告警的**投递入口只有一处**，且必须先过整轮判定（shouldNotifyRound）—— 接线判据：
+  //    「判定在一处、投递在一处」这句话如果只写在注释里，下一次改动就会各自漂开。
+  assert.match(source, /if \(shouldNotifyRound\(\{ login: opts\.login, judged \}\)\)/u,
+    '投递必须先过 shouldNotifyRound（写死一个 if 别的条件＝判定与投递又分居两处）');
+  assert.match(source, /await deliverRoundAlert\(\{ alert: buildRoundLoginAlert\(\{ rows, judged \}\), log \}\)/u,
+    '整轮告警必须由 buildRoundLoginAlert 构造、由 deliverRoundAlert 投递');
+  // ⑤ 归位必须排在**探针之前**（2026-09-24 加）：顺序反了就等于「先读一遍页面不在、
+  //    再去补页面、然后再也不读」—— 报告里那句「读不到」会是真的读不到，
+  //    而它本来是可以避免的（那正是这次要治的假红）。
+  const normalizeAt = source.indexOf('await normalizeShopPages(shops, log)');
+  const probeAt = source.indexOf('await probeShop(shop');
+  assert.ok(normalizeAt > 0, '主脚本里必须有归位那一步');
+  assert.ok(probeAt > normalizeAt, '归位必须排在探针之前（顺序反了＝白读一次「页面不在」）');
+  // ⑥ 归位**只在 `--login` 档**跑：只读档「一个页面都不碰」是那一档存在的全部意义。
+  assert.match(source, /if \(opts\.login\) \{[\s\S]{0,200}normalizeShopPages/u,
+    '归位必须挂在 --login 档下（只读档碰页面＝把只读承诺作废）');
   // ④ 用 process.execPath 起真 node，**不**经过任何 .cmd/.bat 包装
   //    （Node ≥18.20.2 起 spawn('<x>.cmd', shell:false) 同步抛 EINVAL，包一层是死的）
   assert.match(source, /spawn\(process\.execPath, \[/u);
@@ -346,10 +370,14 @@ test('主脚本真的按「一店一实例 + 纯读」调用 login-merchant（�
 // 这句话拆成两条判据：① 没去登 ⇒ 闭嘴；② 去登了、且仍需要人 ⇒ 才发。
 // 第 ② 条不由本层判（在 login-merchant-core 的应通知判据里），本层守住第 ① 条。
 
-test('notifyModeFor：没去登 ⇒ 一个字都不发；真的去登了 ⇒ 才允许叫人', () => {
-  assert.equal(notifyModeFor({ login: false }), 'off', '只读档必须闭嘴：那一轮没有任何登录发生过');
-  assert.equal(notifyModeFor({}), 'off', '不给参数时按只读算（默认不许发）');
-  assert.equal(notifyModeFor({ login: true }), 'auto', '带 --login 才允许发');
+test('notifyModeFor：子进程一律闭嘴 —— 告警整轮只由本层发一条（2026-09-24 改）', () => {
+  // 2026-09-23 的取值是「带 --login ⇒ auto」，于是**每店一个子进程各发一条**：
+  // 实测一次预检并发 5 条同一天的告警（其中一批全是假红）。现在投递权整轮收在 IO 层
+  // （`deliverRoundAlert`），子进程恒 off —— 它与 `shouldNotifyRound` 是一对：
+  // **判定在一处（core）、投递在一处（IO 的 deliverRoundAlert）**。
+  assert.equal(notifyModeFor(), 'off');
+  assert.equal(notifyModeFor({ login: true }), 'off', '带 --login 也一样：那一次的结论由整轮那条告警说');
+  assert.equal(notifyModeFor({ login: false }), 'off', '只读档更不许发');
 });
 
 test('告警收据要透传到行里 —— 否则「叫没叫到人」只能靠猜', () => {
@@ -365,26 +393,24 @@ test('告警收据要透传到行里 —— 否则「叫没叫到人」只能靠
   assert.equal(judgeShopReceipt({ shop: '盖文天猫', receipt: { sites: {} } }).notify, null);
 });
 
-test('renderNotifyLines：已叫人 / 被去重 / 发失败 / 根本没发，四种要说得出区别', () => {
-  const row = (shop, status, extra = {}) => ({
-    shop, notify: { mode: 'auto', status, alertId: `sycm-login-${shop}-sycm-20260923`, ...extra },
-  });
-  const text = renderNotifyLines([
-    row('网林天猫', 'SENT'), row('盖文天猫', 'DEDUPED'), row('盖文淘宝', 'FAILED', { error: 'HTTP 500' }),
-  ]).join('\n');
-  assert.match(text, /已经叫人 1 次：网林天猫/u);
-  assert.match(text, /盖文天猫：.*不重复发/u);
-  assert.match(text, /盖文淘宝：.*发送失败 —— HTTP 500/u);
+test('renderRoundNotifyLines：已发 / 被去重 / 发失败 / 根本没发，四种要说得出区别', () => {
+  const sent = renderRoundNotifyLines({ status: 'SENT', alertId: 'sycm-login-round-20260924' }).join('\n');
+  assert.match(sent, /已发 1 条飞书（编号 sycm-login-round-20260924）/u);
+  assert.match(renderRoundNotifyLines({ status: 'DEDUPED', alertId: 'x', reason: '同一条告警 10 分钟前刚发过（窗口 6 小时），不重复发' }).join('\n'),
+    /不重复发/u);
+  const failed = renderRoundNotifyLines({ status: 'FAILED', alertId: 'x', error: 'HTTP 500' }).join('\n');
+  assert.match(failed, /发送失败/u);
+  assert.match(failed, /HTTP 500/u);
+  assert.match(renderRoundNotifyLines({ status: 'SKIPPED', reason: '这一轮是只读体检，没有去登' }).join('\n'),
+    /没发 —— 这一轮是只读体检，没有去登/u);
   // 「没发出去」与「已叫人」**必须**长得不一样：混起来会让收信人以为已经通知过了，
   // 而其实一条都没到（这正是本仓库反复在治的那类静默）。
-  assert.notEqual(
-    renderNotifyLines([row('网林天猫', 'SENT')]).join('\n'),
-    renderNotifyLines([row('网林天猫', 'NOT_CONFIGURED')]).join('\n'),
-  );
+  assert.notEqual(sent, renderRoundNotifyLines({ status: 'NOT_CONFIGURED' }).join('\n'));
   // 认不出来的状态不许被当成「发过了」
-  assert.match(renderNotifyLines([row('网林天猫', 'WHATEVER')]).join('\n'), /认不出来/u);
-  // 一条收据都没有（只读档）⇒ 这一段整段不出现
-  assert.deepEqual(renderNotifyLines([{ shop: '网林天猫', notify: null }]), []);
+  assert.match(renderRoundNotifyLines({ status: 'WHATEVER' }).join('\n'), /认不出来/u);
+  // 没有收据（只读档、以及「不需要人」那两档都不产生收据）⇒ 这一段整段不出现
+  assert.deepEqual(renderRoundNotifyLines(null), []);
+  assert.deepEqual(renderRoundNotifyLines(), []);
 });
 
 test('只读档的报告里没有「已叫人」那一段，并且明说这一档不会发告警', () => {
@@ -398,19 +424,15 @@ test('只读档的报告里没有「已叫人」那一段，并且明说这一�
   assert.match(report, /不发任何告警/u);
 });
 
-test('带 --login 的报告里，告警那一段要出现在判据下面', () => {
-  const rows = [{
-    ...judgeShopReceipt({
-      shop: '盖文天猫',
-      receipt: {
-        verdict: 'NO_SAVED_CREDENTIAL',
-        sites: { sycm: { loggedIn: false, href: 'x' }, alimama: { loggedIn: false, href: 'y' } },
-        notify: { mode: 'auto', alertId: 'sycm-login-盖文天猫-sycm-alimama-20260923', status: 'SENT' },
-      },
-    }),
-  }];
-  const report = renderReport({ rows, autoLogin: true });
-  assert.match(report, /^\[告警\] 已经叫人 1 次：盖文天猫（编号 .*盖文天猫.*）$/mu);
+test('带 --login 的报告里，告警那一段说的是**整轮那一条**（不是逐店）', () => {
+  const rows = [judgeShopReceipt({ shop: '盖文天猫', receipt: both(false, false) })];
+  const report = renderReport({
+    rows, autoLogin: true, roundNotify: { status: 'SENT', alertId: 'sycm-login-round-20260924' },
+  });
+  assert.match(report, /^\[告警\] 已发 1 条飞书（编号 sycm-login-round-20260924）$/mu);
+  // 没有收据（不需要人 / 只读档）⇒ 整段不出现：这两档**一个字都没发**，
+  // 报告里若留一句「告警」会让人以为查过投递结果。
+  assert.doesNotMatch(renderReport({ rows, autoLogin: true }), /^\[告警\]/mu);
 });
 
 test('每一条「要叫人」的结论都有自己的人话文案（漏一条＝运营看到一句内部代号）', () => {
@@ -435,4 +457,79 @@ test('WRONG_ACCOUNT 的人话不能与「没凭据」共用一句 —— 两者�
   assert.notEqual(wrong, loginFailReason('NO_SAVED_CREDENTIAL'));
   assert.match(wrong, /另一家店/u, '要说清「填进来的是别人」，否则人会以为只是没填上');
   assert.equal(wrong.includes('保存密码'), false, '这一条不该让人去「保存密码」（那会把混着多家凭据这件事坐实）');
+});
+
+// ---------------------------------------------------------------------------
+// 整轮一条告警（2026-09-24 加）：判定、构造、归位那一段的报告
+// ---------------------------------------------------------------------------
+
+test('shouldNotifyRound：只有「真的去登过」+「确定有店要人」才叫一条', () => {
+  const needLogin = judgePreflight([judgeShopReceipt({ shop: '盖文天猫', receipt: both(false, false) })]);
+  const unknown = judgePreflight([judgeShopReceipt({ shop: '盖文天猫', receipt: both(null, null) })]);
+  const allIn = judgePreflight([judgeShopReceipt({ shop: '盖文天猫', receipt: both(true, true) })]);
+  assert.equal(needLogin.verdict, 'NEEDS_LOGIN');
+  assert.equal(unknown.verdict, 'INCONCLUSIVE');
+  assert.equal(allIn.verdict, 'ALL_IN');
+
+  assert.equal(shouldNotifyRound({ login: true, judged: needLogin }), true);
+  assert.equal(shouldNotifyRound({ login: false, judged: needLogin }), false,
+    '没去登就不许叫人（2026-09-23 用户拍板那句「前提是你要先自动登录」）');
+  // 这一条是本次修复的核心：`INCONCLUSIVE` 是「读不到」，不是「要人」。
+  // 2026-09-24 那 5 条假红就是这个形态（页面还没归位被报成「主站会话还在」）。
+  assert.equal(shouldNotifyRound({ login: true, judged: unknown }), false,
+    '「读不到」不是「要人」：读了 5 条假红才会去改它');
+  assert.equal(shouldNotifyRound({ login: true, judged: allIn }), false);
+  // 没有结论时一律不许发（宁可少叫一次，也不要为一件没确认的事叫人）
+  assert.equal(shouldNotifyRound({ login: true }), false);
+  assert.equal(shouldNotifyRound(), false);
+});
+
+test('buildRoundLoginAlert：一条说清哪几家、哪个后台、去哪几个窗口做什么', () => {
+  const rows = [
+    judgeShopReceipt({ shop: '里可林淘宝', receipt: both(true, false) }),
+    judgeShopReceipt({ shop: '盖文天猫', receipt: both(false, false) }),
+  ];
+  const judged = judgePreflight(rows);
+  assert.equal(judged.verdict, 'NEEDS_LOGIN');
+  const alert = buildRoundLoginAlert({ rows, judged, now: () => new Date('2026-09-24T09:20:00+08:00') });
+
+  // 编号同一天只有一条（去重能不能生效的前提），且与逐店那条**刻意不同**。
+  assert.equal(alert.alertId, 'sycm-login-round-20260924');
+  assert.equal(alert.type, 'LOGIN_REQUIRED');
+  assert.match(alert.title, /2 家店需要你登录一次/u, '标题要带家数：收信人一眼看出今天要动几台机器');
+
+  const text = renderAlertText(alert);
+  assert.match(text, /【需要处理】2 家店需要你登录一次/u);
+  assert.match(text, /· 里可林淘宝（阿里妈妈）/u, '要逐店点名**哪个后台**，不能只说「有一家掉了」');
+  assert.match(text, /· 盖文天猫（生意参谋、阿里妈妈）/u);
+  assert.match(text, /告警编号：sycm-login-round-20260924/u, '事后对账只有编号与时间能引用');
+  // 这一条是给业务收信人看的：机器名/浏览器配置**不许**出现（source 只放白名单里的键）。
+  assert.doesNotMatch(text, /机器：|浏览器配置：/u);
+  assert.doesNotMatch(text, /D:\\Retire/u, '本机路径不该出现在业务消息里');
+
+  // 指纹只跟「哪几家、哪几个后台」：同一批店同一天再跑一次要能被去重，换了一批店则是新信息。
+  assert.match(alert.fingerprint, /盖文天猫:alimama,sycm/u);
+  assert.match(alert.fingerprint, /里可林淘宝:alimama/u);
+  const smaller = buildRoundLoginAlert({ rows: [rows[1]], judged: judgePreflight([rows[1]]), now: () => new Date('2026-09-24T09:20:00+08:00') });
+  assert.notEqual(smaller.fingerprint, alert.fingerprint, '要人的那几家变了 ⇒ 指纹必须变（否则新信息会被当成重复挡掉）');
+  assert.equal(smaller.title, '盖文天猫 需要你登录一次', '只有一家时标题直接写店名');
+
+  // 不需要人时**当场抛**：不该叫人的时候发一条，就是在教收信人忽略这个通道。
+  assert.throws(() => buildRoundLoginAlert({ rows, judged: judgePreflight([judgeShopReceipt({ shop: '盖文天猫', receipt: both(true, true) })]) }),
+    /不该生成登录告警/u);
+});
+
+test('renderNormalizeLines：归位那段要说清「哪家、动没动、齐没齐」；只读档整段不出现', () => {
+  // 只读档（`asked: false`）**不许**印出一段像「已经归位过」的话 —— 那一档一个页面都没碰。
+  assert.deepEqual(renderNormalizeLines(null), []);
+  assert.deepEqual(renderNormalizeLines({ asked: false }), []);
+  const text = renderNormalizeLines({ asked: true, shops: [
+    { shop: '里可林淘宝', ok: true, detail: '已归位（生意参谋工作页=0 → 1）' },
+    { shop: '网林天猫', ok: false, detail: '归位后仍不齐（阿里妈妈报表页=2）' },
+    { shop: '科塔淘宝', ok: false, error: '连不上代理 127.0.0.1:19044' },
+  ] }).join('\n');
+  assert.match(text, /^\[归位\]/u);
+  assert.match(text, /里可林淘宝：已就位（已归位/u);
+  assert.match(text, /网林天猫：⚠️ 仍不齐（归位后仍不齐/u);
+  assert.match(text, /科塔淘宝：没做成 —— 连不上代理/u);
 });

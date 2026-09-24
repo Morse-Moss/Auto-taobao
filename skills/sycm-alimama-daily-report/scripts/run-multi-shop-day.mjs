@@ -67,6 +67,10 @@ import { hostname } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// 告警节流（同一条编号在时间窗内不重复发）的唯一实现在 runtime/alert-throttle.mjs
+// （2026-09-24 抽出）。抽出的理由是**第二条会叫人的链**（跑前登录守卫）没有它 ——
+// 判据只写在本文件旁边时，就只有本文件有判据：那次实测并发 5 条同一天的登录告警。
+import { ALERT_THROTTLE_FILE, readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from '../../../runtime/alert-throttle.mjs';
 import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { normalizePages } from '../../../runtime/page-normalize.mjs';
 // 「页签属于哪个期望页面」的唯一判据（2026-09-22 收编）。这里原先也是整串 `includes`，
@@ -878,48 +882,10 @@ async function resetSycmPage({ proxy, log }) {
     + sycmPages.map((t) => `  · ${t.url}`).join('\n'));
 }
 
-// 告警节流的状态文件。放在 `runtime/` 下是因为那里**不进 git**（`.gitignore` 的
-// `runtime/**/*.json`），而它是本机的运行状态、不是要交付的东西。
-// 名字直白写清它是什么，别让后来的人以为这是采集产物。
-const ALERT_THROTTLE_FILE = path.join(REPO_ROOT, 'runtime/alert-throttle.json');
-
-/**
- * 同一条编号的告警在时间窗内不重复发。
- *
- * 为什么要有这一层：投递链本身**不去重**（`alertId` 只是给调用方用的锚），而这条链的编号只有日期
- * （`daily-round-20260920`）⇒ 同一天每次重跑失败都会再发一条。后果不是「多收几条」，
- * 而是收信人开始忽略这个通道 —— 而它是唯一会叫人动手的通道。
- *
- * 指纹是保险：**同一个编号、但停的地方变了**（例如从「生意参谋没切过去」变成「飞书写重复」）
- * 是新信息，不该被当成重复挡掉。只有「编号相同 + 停的地方也相同」才算重复。
- * 时间读不懂时**宁可发**（沉默的代价比多收一条大）。
- */
-export function resolveAlertDedup({ previous = null, alertId = null, fingerprint = null,
-  now = new Date(), windowMs = 6 * 60 * 60 * 1000 } = {}) {
-  if (!alertId) return { send: true, reason: '这条告警没有编号，不去重' };
-  if (!previous || previous.alertId !== alertId) return { send: true, reason: '这个编号之前没发过' };
-  if (fingerprint && previous.fingerprint && previous.fingerprint !== fingerprint) {
-    return { send: true, reason: '同一个编号，但这次停的地方变了 —— 算新信息' };
-  }
-  const ageMs = now.getTime() - new Date(previous.sentAt ?? 0).getTime();
-  if (!Number.isFinite(ageMs) || ageMs < 0) return { send: true, reason: '上次记录的时间读不懂，宁可发' };
-  if (ageMs >= windowMs) {
-    return { send: true, reason: `距上次已经 ${Math.round(ageMs / 60000)} 分钟，超过窗口` };
-  }
-  return { send: false,
-    reason: `同一条告警 ${Math.round(ageMs / 60000)} 分钟前刚发过（窗口 ${Math.round(windowMs / 3600000)} 小时），不重复发` };
-}
-
-function readAlertThrottle(file) {
-  try { return JSON.parse(readFileSync(file, 'utf8')); } catch { return null; }
-}
-
-function writeAlertThrottle(entry, file) {
-  try {
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, `${JSON.stringify(entry, null, 2)}\n`, 'utf8');
-  } catch { /* 节流状态写不下去不该影响主流程：那只会导致多发一条，比漏发安全 */ }
-}
+// 告警节流的状态文件与判据**2026-09-24 搬到 `runtime/alert-throttle.mjs`**（已 import 在上面）。
+// 搬走的理由留在那个文件头部；这里只记一句「为什么这里看不到了」：
+// 判据必须能被**每一条会叫人的链**共用，而它原先住在本文件里 ⇒ 跑前登录守卫那条链没有去重，
+// 实测一次预检并发 5 条告警。这里仍然保留 `dispatchRoundAlert`（它只管本驱动的投递口径）。
 
 /**
  * 把告警交给既有的投递出口，并把它的结论如实打出来。
@@ -937,7 +903,9 @@ export function dispatchRoundAlert({ alert, dispatch, logDir = null, spawn = spa
     log('[驱动] （--notify-print：只打印、不投递）');
     return { delivered: false, printed: true };
   }
-  const verdict = resolveAlertDedup({ previous: readAlertThrottle(throttleFile),
+  // 读的是**本编号**那一条（`readAlertThrottleEntry`），不是文件顶层：两条链共用这一个状态文件，
+  // 顶层那条可能是另一条链刚写的（详见 runtime/alert-throttle.mjs 的文件头）。
+  const verdict = resolveAlertDedup({ previous: readAlertThrottleEntry({ file: throttleFile, alertId: alert?.alertId }),
     alertId: alert?.alertId, fingerprint: alert?.fingerprint, now: now() });
   if (!verdict.send) {
     log(`[驱动] 这一条没往外发：${verdict.reason}（编号 ${alert?.alertId ?? '无'}）`);

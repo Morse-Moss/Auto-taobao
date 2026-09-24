@@ -35,6 +35,12 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   // 一个为拿真实店铺登记表当断言输入。方向是干净的 skills → runtime（登记表是叶子），
   // 而且它们**刻意不重复实现探测** —— 那件事仍在同目录的 `login-merchant.mjs` 里，
   // 本层只按登记表逐店调用它、把回执翻成人话。
+  // 2026-09-24 新增一条：`check-login-shops-core.mjs` 为生成**整轮**登录告警，
+  // import 了 `runtime/notify-feishu-core.mjs` 的 `READABLE_SOURCE_KEYS`（它是「渲染器认哪些键」
+  // 的唯一来源，另抄一份就是第二个事实）。方向是干净的 skills → runtime（白名单是叶子常量），
+  // 而且这条登记本身换来了一个会抛错的判据：source 里出现白名单之外的键时当场拦下，
+  // 而不是让渲染器**静默丢掉那一行**（告警照发、收信人看不到「哪几家、哪个后台」）。
+  'skills/sycm-alimama-daily-report/scripts/check-login-shops-core.mjs',
   'skills/sycm-alimama-daily-report/scripts/check-login-shops-core.test.mjs',
   'skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs',
   'skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs',

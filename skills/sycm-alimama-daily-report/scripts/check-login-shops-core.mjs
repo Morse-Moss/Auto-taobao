@@ -27,8 +27,11 @@
 // **只体检五家店，不看商家浏览器**：那台的登录取自同一批账号，而它的两个页面
 // （生意参谋 + 飞书底单页）与五家店的采集无关 —— 它掉了登录会在日报那一侧的失败里露出来。
 // 这一层刻意不扩到它，理由写在 check-login-shops.mjs 的头部。
-import { SITES } from './login-merchant-core.mjs';
+import { SITES, localDateStamp, resolveAction } from './login-merchant-core.mjs';
 import { shopIdentity } from './shop-identities.mjs';
+// 整轮告警的 source 字段名必须落在渲染器的白名单里，否则渲染时会被静默丢掉
+//（告警照发、收信人看不到那一行）。**import 渲染器自己那份**，不在这里另抄一份键名清单。
+import { READABLE_SOURCE_KEYS } from '../../../runtime/notify-feishu-core.mjs';
 
 /** 平台键。取自 login-merchant-core 的 SITES —— 不在这里另抄一份站点名。 */
 export const SITE_KEYS = Object.freeze(Object.keys(SITES));
@@ -131,23 +134,112 @@ export function exitCodeForPreflight(verdict) {
  * 用户 2026-09-23 拍板的口径（原话）：
  *   「如果自动登录失败就飞书告警，但是前提是你要先自动登录」。
  * ⇒ 两个条件缺一不可：**① 这一轮真的去登过（带 `--login`）② 登完仍需要人**。
- *   第二条不由本层判 —— 交给 `login-merchant-core.mjs` 的 `shouldNotify`
- *   （它自己要求 `commit === true`，见那里 `mode === 'auto'` 那一支）。
- *   本层只负责第一条：**没去登的那一档，一个字都不许发**。
  *
- * 为什么把这条判据抽成函数而不是留在 IO 脚本里拼字符串：
- *   它是一条**接线**判据（「告警与去登绑定」），而接线只能靠纯函数断言 ——
- *   IO 脚本离线测不到（本仓库已经吃过一次：`buildLoginAlert` 早就支持店名，
- *   主脚本就是没传，契约齐、用例绿、告警里五家店一模一样）。
+ * **2026-09-24 改：这个函数恒返回 `off`，投递权整体收到本层（整轮一条）**。原先是
+ * 「带 `--login` ⇒ 子进程 `auto`」，于是每个店子进程各自发一条 —— 真出故障时收信人会收到
+ * 「5 条预检 + 1 条链」，而 2026-09-24 那次更糟：**5 条全是假红**（页面还没归位，
+ * 子进程把 `MAIN_SESSION_ONLY` 当成了要人处理）。
  *
- * 三种取值的语义（词表在 login-merchant-core.mjs 的 `NOTIFY_MODES`）：
- *   `off`  —— 彻底不发。只读档用这个：那一轮没有任何登录发生过，
- *             拿「结论看起来像失败」去叫人，是在为一件没做的事叫。
- *   `auto` —— 只在**真的试过**（`--commit`）且结论需要人时才发。带 `--login` 时用这个。
- *   `dry`  —— 只渲染不发，排查用（本层不做这个开关，留给直接调用 login-merchant 的场合）。
+ * 为什么必须收到本层（两个理由，都不是「少发几条更好看」）：
+ *   ① **两层判定不一致**：子进程按自己的 `receipt.verdict` 判要不要叫人，而本层按
+ *      `judgeShopReceipt`（两个站点的 `loggedIn`）判 —— 同一次运行，本层算出
+ *      `needHuman=[]`（什么都不用做），子进程却发了 5 条。判定与投递分居两层，
+ *      收信人看到的话就与「整轮到底要不要人」无关了。
+ *   ② **去重没有落点**：`alertId` 逐个店一个编号，本层没有「整轮一条」的锚，
+ *      于是这一条链根本不进 `runtime/alert-throttle.json` 的去重（实测：5 条全发了）。
+ * 收上来之后：判定用 `judgePreflight`（本层唯一那份整轮结论）、投递用 `shouldNotifyRound`、
+ * 去重用公共模块 `runtime/alert-throttle.mjs` —— 三者都只有一个来源。
+ *
+ * 「没去登就不许叫人」这条纪律**没有变**，只是落在 `shouldNotifyRound` 上了。
  */
-export function notifyModeFor({ login = false } = {}) {
-  return login ? 'auto' : 'off';
+export function notifyModeFor() {
+  return 'off';
+}
+
+/**
+ * 整轮那一层要不要叫一个人。**纯函数**（判定不许活在 IO 里：IO 脚本离线测不到）。
+ *
+ * 两个条件缺一不可（第一条是用户 2026-09-23 拍板的那句「前提是你要先自动登录」）：
+ *   ① `login`：这一轮真的去登过（`--login`）。没去登却叫人，是在为一件没做的事叫 ——
+ *      2026-09-23 之前正是这样：只读体检撞到登录墙也发告警。
+ *   ② `judged.verdict === 'NEEDS_LOGIN'`：**确定**有店要人动手。
+ *      `INCONCLUSIVE`（读不到，例如页面不在/代理连不上）与 `ALL_IN` 都不叫：
+ *      前者是「这一层没有结论」，链的第 0 步会自己补页面；后者本来就没事。
+ *      ⚠️ 这里**绝不能**退成「有 unknown 也叫一声」——那就是 2026-09-24 那 5 条假红的形态。
+ */
+export function shouldNotifyRound({ login = false, judged = null } = {}) {
+  if (!login) return false;
+  return judged?.verdict === 'NEEDS_LOGIN';
+}
+
+// ---------------------------------------------------------------------------
+// 整轮告警：**一条**说清「哪几家要人、去哪几个窗口、各做什么」
+// ---------------------------------------------------------------------------
+//
+// 为什么是「一条」而不是「一家一条」（2026-09-24）：一家一条的来源是「每店一个子进程、各自发」，
+// 而收信人需要回答的问题是**跨店**的 ——「今天一共要动几台机器、哪几台」。一次 5 条既答不了这个问题，
+// 又会把这个通道训练成噪音（而它往往是唯一会叫人动手的通道）。
+// 判定用 `judgePreflight`（本层唯一那份整轮结论）、去重用 `runtime/alert-throttle.mjs`。
+const READABLE_SOURCE_KEY_NAMES = new Set(READABLE_SOURCE_KEYS.map(([key]) => key));
+
+/**
+ * 拼整轮那一条登录告警。**只有真的需要人时才允许调用** —— 不需要人却发一条，
+ * 是在教人忽略这个通道（fail-closed：调用方判错了就当场抛，而不是发出去一条不该有的）。
+ *
+ * 内容取舍（收信人看完要能直接动手，不用再去翻日志）：
+ *   · 标题带**家数**（一眼看出今天要动几台机器；一家时直接写店名）；
+ *   · `reason` 逐店列出「哪家店、哪个后台」；
+ *   · `action` 逐店给一句「照着做就能做完」的话 —— 用 `resolveAction` 的**同一份文案**
+ *     （它已经把「去哪个窗口、做什么」写全了，包括「登录页已经开着」这种承诺的取舍），
+ *     但**把 `{窗口}` 占位符按「不带店名」渲染**：店名已经在本行开头，重复五遍只会让话变长。
+ *   · `source` 只放白名单里的键，且**不放机器名/浏览器配置**：这一条是给业务收信人看的，
+ *     技术串留在报告与 job.log 里（键名由下面那条断言拦住，不是靠写的人记得）。
+ */
+export function buildRoundLoginAlert({ rows = [], judged = judgePreflight(rows), now = () => new Date() } = {}) {
+  const { verdict, needHuman } = judged;
+  if (verdict !== 'NEEDS_LOGIN' || needHuman.length === 0) {
+    throw new Error('这一轮没有「确定要人处理」的店，不该生成登录告警（调用方判定错误）—— '
+      + '不需要人时发一条，等于在教收信人忽略这个通道');
+  }
+  const when = now();
+  const shops = needHuman.map((item) => item.shop);
+  const rowOf = (shop) => rows.find((row) => row.shop === shop) ?? null;
+  const sitesOf = (item) => item.sites.map((key) => SITES[key].label).join('、');
+  const alert = {
+    type: 'LOGIN_REQUIRED',
+    severity: 'ERROR',
+    title: shops.length === 1 ? `${shops[0]} 需要你登录一次` : `${shops.length} 家店需要你登录一次`,
+    // 同一轮同一天共用一条锚（`sycm-login-round-<日期戳>`）：**这是去重能不能生效的前提**
+    // （投递链本身不去重，只认调用方传进来的编号）。日期戳来自 login-merchant-core 的
+    // `localDateStamp` —— 不在这里再拼一份，两份日期戳会在同一天里拼出两个锚。
+    //
+    // 与逐店那条（`sycm-login-<店>-sycm-alimama-<日>`）**刻意不同**：那个编号是子进程自己发的
+    // （2026-09-24 起子进程一律不发），保留它只为让历史记录仍能对上。
+    alertId: `sycm-login-round-${localDateStamp(when)}`,
+    // 指纹 = 「哪几家、哪几个后台」。变了才算新信息（例如第一次是 2 家、第二次多了 1 家）。
+    fingerprint: needHuman
+      .map((item) => `${item.shop}:${[...item.sites].sort().join(',')}`)
+      .sort()
+      .join('|'),
+    createdAt: when.toISOString(),
+    reason: `跑前登录体检 + 自动登录都试过之后，这 ${shops.length} 家店的后台仍不在登录态：\n`
+      + needHuman.map((item) => `· ${item.shop}（${sitesOf(item)}）`).join('\n'),
+    action: `去标题写着店名的那个浏览器窗口里各处理一次（任务栏里就能看到窗口标题）：\n`
+      + needHuman.map((item) => `· ${item.shop}：${resolveAction(rowOf(item.shop)?.scriptVerdict ?? 'NEEDS_LOGIN', null)}`)
+        .join('\n'),
+    source: {
+      targetLabel: `日报跑前登录体检 · ${shops.length} 家店`,
+      capability: '各店铺日报',
+      shopName: shops.join('、'),
+    },
+  };
+  // 键名写错时渲染器会**静默丢掉**那一行（告警照发、收信人看不到），所以在这里当场拦。
+  const unknown = Object.keys(alert.source).filter((key) => !READABLE_SOURCE_KEY_NAMES.has(key));
+  if (unknown.length) {
+    throw new Error(`整轮登录告警的 source 里有渲染器不认识的键（${unknown.join('、')}）—— `
+      + '它们会被白名单静默丢掉：收信人看不到，而你以为发出去了。要么改白名单，要么别给。');
+  }
+  return alert;
 }
 
 // ---------------------------------------------------------------------------
@@ -335,13 +427,18 @@ export function renderVerdictLines(rows, judged = judgePreflight(rows), { autoLo
       const which = item.sites.map((key) => SITES[key].label).join('、');
       lines.push(`  · ${item.shop}（${which}）`);
     }
-    lines.push('  多数情况下这是「它的页面还没归位」—— 链的第 0 步会自己补上再体检。');
+    // 措辞按 2026-09-24 的改动更新：**这一层开跑前已经归位过一次**（见 [归位] 段），
+    // 所以「页面还没归位」不再是默认解释 —— 归位后仍读不到，说明归位也没做成
+    // （代理没起、页面被人手关掉等），该说的是「下一步谁还会再试一次」。
+    lines.push('  这是「这个窗口里没有它的页面」或「连不上这个窗口」——**不是掉登录**。'
+      + '本次开跑前已经归位过一次（见上面的 [归位] 段）；链的第 0 步还会再补一次，'
+      + '届时采集阶段会如实报出来。');
   }
   return lines;
 }
 
 // ---------------------------------------------------------------------------
-// 渲染：告警那一侧发生了什么
+// 渲染：告警那一侧发生了什么（**整轮一条**，2026-09-24 起）
 // ---------------------------------------------------------------------------
 // 状态词是**投递方报的**（`runtime/notify-feishu.mjs` 的收据），这里只翻译，不另造一套。
 // 每一条都要能回答收件人的下一个问题：
@@ -349,54 +446,68 @@ export function renderVerdictLines(rows, judged = judgePreflight(rows), { autoLo
 // 漏一条的症状是「报告上写着要人处理，而没有人被通知」—— 那正是本次要消灭的形态。
 const NOTIFY_STATUS_TEXT = Object.freeze({
   SENT: '已发飞书告警',
-  DEDUPED: '同一天、同一家店已经叫过一次了，本次不重复发（去重按告警编号）',
+  DEDUPED: '同一天、同一轮已经叫过一次了，本次不重复发（去重按告警编号 + 停的地方）',
   MUTED: '这条告警被显式静音了（不是发送失败）',
   DRY_RUN: '只渲染了告警文案，没有真发（调试档）',
   NOT_CONFIGURED: '告警没发出去：通知通道没有配置',
-  FAILED: '告警发送失败',
-  SKIPPED: '没发（这一条结论不需要人，或这一轮没去登）',
+  FAILED: '告警发送失败 —— 必须有人接手（这一轮的结论只在日志里）',
+  SKIPPED: '没发',
 });
 
 /**
- * 告警那一侧的那几行。**只在带 `--login` 的报告里出现**（只读档下 `notify` 恒为 `null`）。
+ * 整轮告警收据那几行。
  *
- * 为什么单列成一段、而不是塞进每家店那两行里：这一段回答的是一个**跨店**的问题
- * （「这一轮一共叫了几个人、谁没叫到」），而每家店那两行回答的是「这家店怎么了」。
- * 混在一起的后果是：五家店里有一家告警发失败了，收信人扫过去不会注意到。
+ * `receipt === null` ⇒ 这一整段不出现（只读档、以及「没有需要人」的那两档都不产生收据）。
+ * 为什么单列成一段、而不是塞进每家店那两行里：它回答的是一个**跨店**的问题
+ * （「这一轮一共叫没叫到人」），而每家店那两行回答的是「这家店怎么了」——
+ * 混在一起的后果是「告警发失败了」这件事被淹没在五行店名里，收信人扫过去不会注意到。
  */
-export function renderNotifyLines(rows = []) {
-  const withReceipt = rows.filter((row) => row.notify);
-  if (withReceipt.length === 0) return [];
-  const sent = withReceipt.filter((row) => row.notify.status === 'SENT');
-  const needAttention = withReceipt.filter((row) => !['SENT', 'SKIPPED'].includes(row.notify.status));
-  const lines = [];
-  if (sent.length > 0) {
-    lines.push(`[告警] 已经叫人 ${sent.length} 次：${sent.map((row) => `${row.shop}（编号 ${row.notify.alertId ?? '(没给)'}）`).join('、')}`);
+export function renderRoundNotifyLines(receipt = null) {
+  if (!receipt) return [];
+  const id = receipt.alertId ? `（编号 ${receipt.alertId}）` : '';
+  const note = receipt.reason ? ` —— ${receipt.reason}` : '';
+  if (receipt.status === 'SENT') return [`[告警] 已发 1 条飞书${id}`];
+  const text = NOTIFY_STATUS_TEXT[receipt.status] ?? `告警状态 ${receipt.status}（认不出来，别当成发过了）`;
+  const tail = receipt.error ? ` —— ${String(receipt.error).slice(0, 200)}` : note;
+  return [`[告警] ${text}${id}${tail}`];
+}
+
+/**
+ * 归位那一段（2026-09-24 加）：这一轮**开跑前**把五家店的页面补齐到「恰好各一个」。
+ *
+ * 为什么要把它打进报告：它改变了「登录态体检读到的东西」这个前提 ——
+ * 不写出来，人看到「读不到」时会去猜页面到底在不在（而这一步已经回答过了）。
+ * 只读档（`asked === false`）要把「没有归位」说明白，否则那一段看起来像「归位过了、一切正常」。
+ */
+export function renderNormalizeLines(normalize = null) {
+  if (!normalize || normalize.asked !== true) return [];
+  const entries = Array.isArray(normalize.shops) ? normalize.shops : [];
+  const lines = ['[归位] 开跑前把页面补齐到「恰好各一个」（缺的先领回、确认没有的才新建）：'];
+  for (const entry of entries) {
+    if (entry.error) { lines.push(`  · ${entry.shop}：没做成 —— ${entry.error}`); continue; }
+    const why = entry.detail ? `（${entry.detail}）` : '';
+    lines.push(`  · ${entry.shop}：${entry.ok === false ? '⚠️ 仍不齐' : '已就位'}${why}`);
   }
-  for (const row of needAttention) {
-    const text = NOTIFY_STATUS_TEXT[row.notify.status] ?? `告警状态 ${row.notify.status}（认不出来，别当成发过了）`;
-    const tail = row.notify.error ? ` —— ${String(row.notify.error).slice(0, 200)}` : '';
-    lines.push(`[告警] ${row.shop}：${text}${tail}`);
-  }
-  if (sent.length === 0 && needAttention.length === 0) {
-    lines.push('[告警] 本次没有需要叫人（没有店在试过之后仍然进不去）。');
-  }
+  if (entries.length === 0) lines.push('  （没有可归位的店。）');
   return lines;
 }
 
 /** 整份报告（stdout 上看到的那段）。 */
-export function renderReport({ rows, machine = null, autoLogin = false } = {}) {
+export function renderReport({ rows, machine = null, autoLogin = false, normalize = null, roundNotify = null } = {}) {
   const mode = autoLogin
-    ? '｜会自己登：掉登录的当场用浏览器密码库登一次，没成才发飞书叫人'
-    : '｜只读：不开页面、不点任何东西、也不发任何告警';
+    ? '｜会自己登：开跑前先把页面归位，掉登录的当场用浏览器密码库登一次，没成才发飞书叫人（整轮一条）'
+    : '｜只读：不开页面、不点任何东西、不归位、也不发任何告警';
   const lines = [
     `[跑前体检] 登录态 · ${rows.length} 家店 × ${SITE_KEYS.length} 个平台`
     + `（${SITE_KEYS.map((key) => SITES[key].label).join(' + ')}）`
     + `${mode}${machine ? `｜本机 ${machine}` : ''}`,
   ];
+  // 归位排在最前：它发生在体检**之前**，报告的顺序要跟时间顺序一致 ——
+  // 否则读报告的人会以为「先读了登录态，然后才补的页面」。
+  lines.push(...renderNormalizeLines(normalize));
   for (const row of rows) lines.push(...renderShopBlock(row));
   lines.push(...renderVerdictLines(rows, judgePreflight(rows), { autoLogin }));
-  // 告警只可能出现在「真的去登过」那一档（只读档下每一行的 notify 都是 null）。
-  if (autoLogin) lines.push(...renderNotifyLines(rows));
+  // 告警段吃的是**整轮那一份收据**（不是逐店行 —— 子进程从 2026-09-24 起不再自己发）。
+  lines.push(...renderRoundNotifyLines(roundNotify));
   return lines.join('\n');
 }

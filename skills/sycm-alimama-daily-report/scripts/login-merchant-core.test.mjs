@@ -7,10 +7,10 @@ import { test } from 'node:test';
 import {
   ATTEMPT_OUTCOMES, FILLED_VERDICTS, FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION,
   LOGIN_PAGE_PROMISED_VERDICTS, LOGIN_TARGETS, LOGIN_URL_CANDIDATES, NOTIFY_MODES, OUTCOME_TO_VERDICT,
-  REASON_BY_VERDICT, SITES, TAOBAO_LOGIN_URL, VERDICTS, VERDICTS_NEEDING_HUMAN, alertForRun,
+  REASON_BY_VERDICT, SITES, TAOBAO_LOGIN_URL, VERDICTS, VERDICTS_NEEDING_HUMAN, absentSites, alertForRun,
   buildLoginAlert, captchaVisible, centerOf, detectLoginDetour, expectedMemberFor, finalLoginVerdict,
-  isTaobaoLoginUrl, judgeFilled, judgeShopTarget, loginFormVisible, needsHuman, parseArgs, profileForShop,
-  proxyPortOf, resolveAction, shopForProxy, shouldNotify, sitesNeedingLogin,
+  isTaobaoLoginUrl, judgeFilled, judgeShopTarget, loggedOutSites, loginFormVisible, needsHuman, parseArgs,
+  profileForShop, proxyPortOf, resolveAction, shopForProxy, shouldNotify, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 // 用**真的那份登记表**（不是测试自己造的假表）来验「哪家店 → 哪个 profile」：
 // 造一张假表只能证明这个函数会查表，证明不了四家店各自指向自己的 profile。
@@ -143,8 +143,11 @@ test('「需要人」的结论词都在 VERDICTS 里，且成功/排练的结论
   // （这里断言的是**补集**，所以新增一个「要叫人」的失败结论不需要改这一行；
   //   测试名也刻意不再写死个数 —— 写死个数的话，加一个结论就要改一次名字，改着改着就没人看了。）
   const quiet = VERDICTS.filter((v) => !VERDICTS_NEEDING_HUMAN.includes(v));
+  // `PAGES_ABSENT`（2026-09-24 加）属于这一侧，而且它是**刻意**在这一侧的：
+  // 它说的是「这个窗口里没有它的页面」（读不到），不是「掉登录」。放进要叫人那一侧的症状
+  // 已经实测过一次 —— 冷启动后的跑前预检连发 5 条飞书告警，而五家店只是页面还没归位。
   assert.deepEqual([...quiet].sort(), [
-    'ALREADY_LOGGED_IN', 'LOGGED_IN', 'READY_TO_GESTURE', 'READY_TO_SUBMIT',
+    'ALREADY_LOGGED_IN', 'LOGGED_IN', 'PAGES_ABSENT', 'READY_TO_GESTURE', 'READY_TO_SUBMIT',
   ]);
 });
 
@@ -162,6 +165,12 @@ test('shouldNotify：只有「真的试过了并且没成」才默认叫人', ()
   assert.equal(shouldNotify({ verdict: 'CAPTCHA_REQUIRED', commit: false, mode: 'dry' }), true);
   // off 是彻底的闭嘴
   assert.equal(shouldNotify({ verdict: 'CAPTCHA_REQUIRED', commit: true, mode: 'off' }), false);
+  // `PAGES_ABSENT`（2026-09-24 加）：任何模式、任何档位都不许叫人 ——
+  // 它是「窗口里没有它的页面」，下一步是等链第 0 步归位补页，不是让人去窗口里动手。
+  for (const mode of NOTIFY_MODES) {
+    assert.equal(shouldNotify({ verdict: 'PAGES_ABSENT', commit: true, mode }), false,
+      `${mode} 不该为 PAGES_ABSENT 发：那是「读不到」，不是「掉登录」`);
+  }
   // 未登记的结论词一律不发（fail-closed：宁可少叫，不可乱叫）
   assert.equal(shouldNotify({ verdict: 'TYPO_VERDICT', commit: true, mode: 'auto' }), false);
 });
@@ -172,6 +181,46 @@ test('parseArgs：--notify 默认 auto，取值受词表约束', () => {
   assert.throws(() => parseArgs(['--notify', 'yes'], DEFAULTS), /Unknown --notify yes/u);
   assert.throws(() => parseArgs(['--notify'], DEFAULTS), /--notify requires a value/u);
   assert.deepEqual([...NOTIFY_MODES].sort(), ['auto', 'dry', 'off', 'send']);
+});
+
+test('「读不到」与「被踢回登录页」必须能分开：前者不该被推成登录故障', () => {
+  // 2026-09-24 的现场：浏览器刚起、窗口里一个后台页都没有（页面还没归位）。
+  // 此前这一档会去开登录页 ⇒ 登录页被仍然有效的主站会话送走 ⇒ 报 MAIN_SESSION_ONLY
+  // ⇒ 一次预检连发 5 条告警，而每一家其实只是页面不在。
+  const absentBoth = { sycm: { loggedIn: null }, alimama: { loggedIn: null } };
+  assert.deepEqual(absentSites(absentBoth), ['sycm', 'alimama']);
+  assert.deepEqual(loggedOutSites(absentBoth), []);
+  assert.deepEqual(sitesNeedingLogin(absentBoth), ['sycm', 'alimama'],
+    '「要不要去登」仍然算要去看一眼（读不到不是已登录的证据）—— 这条旧语义不许被这次改动放宽');
+
+  // 混合现场：一个实锤掉登录 + 一个读不到 ⇒ 两个判据各说各的，谁也不吞谁。
+  // （主脚本靠「有没有 false」决定走不走登录流程，所以这里必须能分开。）
+  const mixed = { sycm: { loggedIn: false }, alimama: { loggedIn: null } };
+  assert.deepEqual(absentSites(mixed), ['alimama']);
+  assert.deepEqual(loggedOutSites(mixed), ['sycm']);
+
+  assert.deepEqual(absentSites({ sycm: { loggedIn: true }, alimama: { loggedIn: true } }), []);
+  assert.deepEqual(loggedOutSites({ sycm: { loggedIn: true }, alimama: { loggedIn: false } }), ['alimama']);
+  // 站点键缺失不算「读不到」：那是编程错误，不该被静默归进「页面不在」（那种归并会让闸门失灵）
+  assert.deepEqual(absentSites({}), []);
+  assert.deepEqual(absentSites(), []);
+});
+
+test('主脚本在进登录流程之前先判「页面不在」，且它不叫人（接线判据）', () => {
+  // 为什么必须是**源码级**判据（2026-09-24）：这条闸门写在 IO 主流程里，
+  // 而 IO 脚本离线跑不到 —— 只有「它确实排在登录流程之前」这件事能被读源码钉住。
+  // 函数级用例全绿 ≠ 接线接上了：本仓库已经吃过一次（buildLoginAlert 支持店名，
+  // 主脚本就是不传，契约齐、用例绿、告警里五家店一模一样）。
+  const source = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
+  const absentAt = source.indexOf("receipt.verdict = 'PAGES_ABSENT'");
+  const loginFlowAt = source.indexOf('for (const candidate of LOGIN_URL_CANDIDATES)');
+  assert.ok(absentAt > 0, '主脚本里必须有 PAGES_ABSENT 这一支（否则冷启动后又会去开登录页 ⇒ 假红告警）');
+  assert.ok(loginFlowAt > 0, '找不到登录流程的循环 —— 这条断言要跟着源码结构更新');
+  assert.ok(loginFlowAt > absentAt, 'PAGES_ABSENT 必须判在**进登录流程之前**：判在之后就等于没挡');
+  assert.match(source, /absent\.length > 0 && kickedOut\.length === 0/u,
+    '判据是「有读不到 **且** 没有实锤掉登录」——少第二个条件会把真掉登录也一起挡掉');
+  // 它不叫人：词表那一侧由 core 的用例钉住（PAGES_ABSENT 不在 VERDICTS_NEEDING_HUMAN），这里再钉一次。
+  assert.equal(needsHuman('PAGES_ABSENT'), false);
 });
 
 test('buildLoginAlert：拿到「不需要人」的结论就抛，不生成一条不该有的告警', () => {

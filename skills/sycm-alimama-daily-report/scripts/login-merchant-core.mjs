@@ -117,6 +117,22 @@ export const VERDICTS = Object.freeze([
   // 一个页面都没开。照抄那句话会让收信人去窗口里找一个根本不存在的登录页。
   // 一个分类词只在一处拼错，症状是「照着做找不到东西」，而现场不会报任何错。
   'NEEDS_LOGIN',
+  // 2026-09-24 加。**只在「会去登」的那一档（`--commit`）产生**：窗口里**没有**该站点的页面
+  // （`loggedIn === null`，即「读不到」），且这次运行没有任何站点是**实锤掉登录**（false）。
+  //
+  // 为什么必须有它（2026-09-24 真机）：那一档进登录流程之前不看「页面在不在」，
+  // 于是冷启动（浏览器刚起、还没归位）时它会**去开登录页**，而主站会话还在 ⇒ 登录页被直接送走
+  // ⇒ 报 `MAIN_SESSION_ONLY`（「主站会话还在，这两个后台要单独登一次」）⇒ 那一条在
+  // `VERDICTS_NEEDING_HUMAN` 里 ⇒ 一次预检并发 5 条飞书告警，而**每一家其实什么都没坏**：
+  // 页面还没归位而已，链的第 0 步会自己补上。
+  //   一个「页签不在」的问题被改写成「登录问题」，再被叫成人去处理 —— 这是本仓库反复在治的
+  //   那类假事实：**结论看起来确定，而下一步动作完全相反**（前者什么都不用做）。
+  //
+  // 与 `NEEDS_LOGIN` 的区别（两个都不许混）：
+  //   · `NEEDS_LOGIN` 是 `--check-only` 档的「要留意」，它把两种现场都收在 detail 里；
+  //   · 这一条是「**这一层没有结论**」——它不进 `VERDICTS_NEEDING_HUMAN`，退出码 3（不是 2），
+  //     也不产生任何告警。判据是「读不到」，不是「掉登录」。
+  'PAGES_ABSENT',
   'STOP_AND_ALERT',
 ]);
 
@@ -419,6 +435,27 @@ export function sitesNeedingLogin(siteStates) {
     .map(([key]) => key);
 }
 
+// 上面那个回答的是「要不要去看一眼」，**不回答「为什么」**。2026-09-24 把「为什么」拆成两个：
+//
+//   absentSites  —— `loggedIn === null`：**读不到**（这个窗口里没有它的页面，或连不上这个窗口）
+//   loggedOutSites —— `loggedIn === false`：**被平台踢回登录页**，实锤
+//
+// 为什么非拆不可：这两件事的**下一步动作完全相反**（一个什么都不用做、链的归位会自己补上；
+// 一个要人去登一次），而它们此前在后半段共用同一个结论 `MAIN_SESSION_ONLY`。
+// 一个可核对的事实（读不到）被推成一个确定的结论（主站会话还在、后台要单独登），
+// 再去叫人 —— 2026-09-24 那 5 条告警就是这么来的，且它们**看起来完全正常**。
+export function absentSites(siteStates = {}) {
+  return Object.entries(siteStates)
+    .filter(([, state]) => state?.loggedIn === null)
+    .map(([key]) => key);
+}
+
+export function loggedOutSites(siteStates = {}) {
+  return Object.entries(siteStates)
+    .filter(([, state]) => state?.loggedIn === false)
+    .map(([key]) => key);
+}
+
 // 验证码/滑块是否显形（三种载体任一可见即为真）。
 export function captchaVisible(state) {
   return Boolean(state?.sliderVisible || state?.captchaInputVisible || state?.checkcode?.visible);
@@ -517,6 +554,10 @@ export const VERDICTS_NEEDING_HUMAN = Object.freeze([
   'NEEDS_LOGIN',          // check-only：有站点没在登录态（掉登录，或它的页面还没打开）
   'STOP_AND_ALERT',       // fail-closed 停手（坐标可疑、页面堆叠等）
 ]);
+// ⚠️ `PAGES_ABSENT` 刻意**不在**上面这张表里（2026-09-24）：它是「这一层没有结论」，
+// 不是「要人做什么」。放进去的症状已经实测过一次 —— 冷启动后的预检并发 5 条告警，
+// 而五家店其实只是页面还没归位。**别为了「让它可见」把它加进来**：
+// 它可见的地方是报告与 `login-preflight.json`（链的告警会如实引用），不是收信人的手机。
 
 export function needsHuman(verdict) {
   return VERDICTS_NEEDING_HUMAN.includes(verdict);
@@ -626,7 +667,10 @@ export const REASON_BY_VERDICT = Object.freeze({
 // `TAOBAO_LOGIN_URL` 仍然保留：登录流程自己要用它（ensureLoginPage 打开登录页）。
 
 
-function localDateStamp(date) {
+// 导出（2026-09-24）：跑前体检那一层要拼**整轮**告警的编号（`sycm-login-round-<日期戳>`），
+// 而「日期戳怎么拼」只能有一个实现 —— 两处各写一份，就会在同一天里拼出两个不同的锚，
+// 去重随之失效（症状：同一天叫两次，而两次看起来都「合理地」发了）。
+export function localDateStamp(date) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
 }
