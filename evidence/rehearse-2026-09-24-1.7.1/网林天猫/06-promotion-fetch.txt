@@ -1,0 +1,20 @@
+
+===== 2026-09-25T02:09:13.014Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase fetch --date 2026-09-24 --proxy http://127.0.0.1:19042 --expect-shop 网林家居旗舰店 --expect-member 网林家居旗舰店:阿彦 --expect-member-id 7314426323
+exit=1 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 24D4ECF3B9564DB03AB3EF92C862DB86｜phase=fetch｜目标日 2026-09-24
+[身份] 阿里妈妈会员 = "网林家居旗舰店:阿彦" ID="7314426323"（这一页不显示店铺名，只有会员名）｜期望 "网林家居旗舰店:阿彦" / 7314426323 ✓
+[fetch] 下载任务管理｜已有 zip 78 个｜目录 C:\Users\Administrator\Downloads
+[fetch] 目标任务 = 营销场景报表_20260925_100840（台账里 2026-09-24 的未取任务，且列表里核到了（列表 15 条））
+[fetch] 目标任务行 = 第 1 行｜生成成功 营销场景报表_20260925_100840 30天累计数据 2026-09-24至2026-09-24 2026-09-25
+[fetch] 第 1/6 次：复选框中心被 TD. asiYyshMux  挡住，等一会儿重试（不硬点 —— 这一页点错不报错）
+[fetch] 第 2/6 次：复选框中心被 TD. asiYyshMux  挡住，等一会儿重试（不硬点 —— 这一页点错不报错）
+[fetch] 第 3/6 次：复选框中心被 TD. asiYyshMux  挡住，等一会儿重试（不硬点 —— 这一页点错不报错）
+[fetch] 第 4/6 次：复选框中心被 TD. asiYyshMux  挡住，等一会儿重试（不硬点 —— 这一页点错不报错）
+[fetch] 第 5/6 次：复选框中心被 TD. asiYyshMux  挡住，等一会儿重试（不硬点 —— 这一页点错不报错）
+[fetch] 第 6/6 次：复选框中心被 TD. asiYyshMux  挡住，等一会儿重试（不硬点 —— 这一页点错不报错）
+
+--- stderr ---
+
+采集失败：勾选 营销场景报表_20260925_100840 失败（试了 6 次都回读 checked=false；最后一次中心命中 TD. asiYyshMux ）—— 它的操作行不会显形，取件必然落空，停在这里比继续更省事

@@ -1,0 +1,30 @@
+
+===== 2026-09-25T02:07:25.656Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-09-24 --proxy http://127.0.0.1:19023 --shop-key 里可林淘宝 --shop-xlsx "C:\Users\Administrator\Downloads\日报_20260925_b3de46ced2634ef20c9372b4caf00736 (1).xlsx" --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20260925_100641.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 里可林淘宝 ↔ 源产物店名 里可林家居 一致（证据目录 daily-report-2026-09-24-里可林淘宝-rerun2）
+{
+  "status": "DRY_RUN_READY",
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-24-里可林淘宝-rerun2\\plan.json",
+  "tsvPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-24-里可林淘宝-rerun2\\paste.tsv",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-24-里可林淘宝-rerun2",
+  "evidenceGeneration": 2,
+  "recordCount": 1909,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 240,
+    "shopName": "里可林家居",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1790179200000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---
+[留空] UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）
+[留空] 无线端UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）

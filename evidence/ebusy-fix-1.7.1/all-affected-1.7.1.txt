@@ -1,0 +1,817 @@
+TAP version 13
+# Subtest: 默认状态文件落在 runtime/ 下（不进 git 的本机运行状态）
+ok 1 - 默认状态文件落在 runtime/ 下（不进 git 的本机运行状态）
+  ---
+  duration_ms: 0.7934
+  type: 'test'
+  ...
+# Subtest: 告警去重：同一条编号在时间窗内不重复发，但「停的地方变了」算新信息
+ok 2 - 告警去重：同一条编号在时间窗内不重复发，但「停的地方变了」算新信息
+  ---
+  duration_ms: 0.3911
+  type: 'test'
+  ...
+# Subtest: 读记录：按编号取，不读文件顶层 —— 顶层那条可能是**另一条链**刚写的
+ok 3 - 读记录：按编号取，不读文件顶层 —— 顶层那条可能是**另一条链**刚写的
+  ---
+  duration_ms: 11.5856
+  type: 'test'
+  ...
+# Subtest: 读记录：旧格式（顶层单条、没有 byAlertId）仍能读出来
+ok 4 - 读记录：旧格式（顶层单条、没有 byAlertId）仍能读出来
+  ---
+  duration_ms: 5.293
+  type: 'test'
+  ...
+# Subtest: 读记录：文件不存在或内容坏了，一律当「没发过」（宁可多发）
+ok 5 - 读记录：文件不存在或内容坏了，一律当「没发过」（宁可多发）
+  ---
+  duration_ms: 5.8216
+  type: 'test'
+  ...
+# Subtest: 写记录：两条链共用同一个文件时，各自的记录都留得住
+ok 6 - 写记录：两条链共用同一个文件时，各自的记录都留得住
+  ---
+  duration_ms: 8.6234
+  type: 'test'
+  ...
+# Subtest: skills → runtime 的依赖清单与登记逐字一致（新增与消失都要显式改这里）
+ok 7 - skills → runtime 的依赖清单与登记逐字一致（新增与消失都要显式改这里）
+  ---
+  duration_ms: 1130.1738
+  type: 'test'
+  ...
+# Subtest: runtime → skills 的依赖清单与登记逐字一致（这是交付形态被锁死的根因）
+ok 8 - runtime → skills 的依赖清单与登记逐字一致（这是交付形态被锁死的根因）
+  ---
+  duration_ms: 302.2609
+  type: 'test'
+  ...
+# Subtest: 守卫本身是活的：扫描确实读到了文件（否则「全绿」只是没扫到）
+ok 9 - 守卫本身是活的：扫描确实读到了文件（否则「全绿」只是没扫到）
+  ---
+  duration_ms: 283.969
+  type: 'test'
+  ...
+# Subtest: 三步的顺序是「先保证实例在 → 再看一眼登录态 → 再跑链」
+ok 10 - 三步的顺序是「先保证实例在 → 再看一眼登录态 → 再跑链」
+  ---
+  duration_ms: 1.026
+  type: 'test'
+  ...
+# Subtest: 登录态体检那一步：只读、且指定店铺时只体检那几家
+ok 11 - 登录态体检那一步：只读、且指定店铺时只体检那几家
+  ---
+  duration_ms: 0.2581
+  type: 'test'
+  ...
+# Subtest: 计划指向的文件都真实存在（脚本被改名时不许静默生效）
+ok 12 - 计划指向的文件都真实存在（脚本被改名时不许静默生效）
+  ---
+  duration_ms: 0.2644
+  type: 'test'
+  ...
+# Subtest: 日期只有一种给法：默认 yesterday，且从不写死具体日期
+ok 13 - 日期只有一种给法：默认 yesterday，且从不写死具体日期
+  ---
+  duration_ms: 0.2406
+  type: 'test'
+  ...
+# Subtest: 定时那一档永远不加 --allow-missing-peer（默认关，要开必须显式）
+ok 14 - 定时那一档永远不加 --allow-missing-peer（默认关，要开必须显式）
+  ---
+  duration_ms: 0.1838
+  type: 'test'
+  ...
+# Subtest: 告警默认只落日志、不投递；要发必须显式 --notify
+ok 15 - 告警默认只落日志、不投递；要发必须显式 --notify
+  ---
+  duration_ms: 0.0808
+  type: 'test'
+  ...
+# Subtest: 两个告警出口同时给 ⇒ 当场抛错，不许静默丢掉一个
+ok 16 - 两个告警出口同时给 ⇒ 当场抛错，不许静默丢掉一个
+  ---
+  duration_ms: 0.298
+  type: 'test'
+  ...
+# Subtest: --commit 永远在（这是定时任务的职责：写下今天的数据）
+ok 17 - --commit 永远在（这是定时任务的职责：写下今天的数据）
+  ---
+  duration_ms: 0.0577
+  type: 'test'
+  ...
+# Subtest: 可选开关按需追加：不给就不出现，给了就原样转发
+ok 18 - 可选开关按需追加：不给就不出现，给了就原样转发
+  ---
+  duration_ms: 0.2432
+  type: 'test'
+  ...
+# Subtest: 渲染出的命令行是 Windows 形态：反斜杠、路径带引号
+ok 19 - 渲染出的命令行是 Windows 形态：反斜杠、路径带引号
+  ---
+  duration_ms: 0.3427
+  type: 'test'
+  ...
+# Subtest: /TR 只拉起一个入口（三步由它自己按顺序执行，日志也就只有一处）
+ok 20 - /TR 只拉起一个入口（三步由它自己按顺序执行，日志也就只有一处）
+  ---
+  duration_ms: 0.1935
+  type: 'test'
+  ...
+# Subtest: 不启用分批时，三步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）
+ok 21 - 不启用分批时，三步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）
+  ---
+  duration_ms: 0.1589
+  type: 'test'
+  ...
+# Subtest: 启用分批：它**替换**链那一步（不是并排），参数只带分批驱动认得的那几个
+ok 22 - 启用分批：它**替换**链那一步（不是并排），参数只带分批驱动认得的那几个
+  ---
+  duration_ms: 0.1877
+  type: 'test'
+  ...
+# Subtest: 启用分批时 `--commit` 必须显式传下去（漏了它就变成「排练」，而日志看不出异常）
+ok 23 - 启用分批时 `--commit` 必须显式传下去（漏了它就变成「排练」，而日志看不出异常）
+  ---
+  duration_ms: 0.0538
+  type: 'test'
+  ...
+# Subtest: 启用分批：告警出口与降级开关照旧按需转发
+ok 24 - 启用分批：告警出口与降级开关照旧按需转发
+  ---
+  duration_ms: 0.0602
+  type: 'test'
+  ...
+# Subtest: 启用分批时的形状校验：家数必须是 ≥1 的整数，且不许与链那边独有的开关同给
+ok 25 - 启用分批时的形状校验：家数必须是 ≥1 的整数，且不许与链那边独有的开关同给
+  ---
+  duration_ms: 0.2461
+  type: 'test'
+  ...
+# Subtest: 跑前登录态结论真的交给链了：② 出 JSON、③ 收路径（都只在给了证据目录时）
+ok 26 - 跑前登录态结论真的交给链了：② 出 JSON、③ 收路径（都只在给了证据目录时）
+  ---
+  duration_ms: 0.1262
+  type: 'test'
+  ...
+# Subtest: 不给证据目录时：不许凭空造一个路径，也不许给链加参数
+ok 27 - 不给证据目录时：不许凭空造一个路径，也不许给链加参数
+  ---
+  duration_ms: 0.055
+  type: 'test'
+  ...
+# Subtest: 分批那一档：结论交接在分批驱动内部完成，这里不生成也不转发
+ok 28 - 分批那一档：结论交接在分批驱动内部完成，这里不生成也不转发
+  ---
+  duration_ms: 0.0544
+  type: 'test'
+  ...
+# Subtest: 接线判据：两个宿主真的把结论接上了（防「函数全绿、没人调」）
+ok 29 - 接线判据：两个宿主真的把结论接上了（防「函数全绿、没人调」）
+  ---
+  duration_ms: 1.3795
+  type: 'test'
+  ...
+# Subtest: 跑前登录态体检的参数只有一个来源（两个宿主共用，不许各写一份）
+ok 30 - 跑前登录态体检的参数只有一个来源（两个宿主共用，不许各写一份）
+  ---
+  duration_ms: 0.1623
+  type: 'test'
+  ...
+# Subtest: 宿主（定时链）真的把结论接上了：--print 里那条链命令带着 --login-preflight
+ok 31 - 宿主（定时链）真的把结论接上了：--print 里那条链命令带着 --login-preflight
+  ---
+  duration_ms: 342.7938
+  type: 'test'
+  ...
+# Subtest: 宿主（定时链）：--no-auto-login 退回只读体检（一个页面都不碰）
+ok 32 - 宿主（定时链）：--no-auto-login 退回只读体检（一个页面都不碰）
+  ---
+  duration_ms: 365.1698
+  type: 'test'
+  ...
+# Subtest: 宿主（分批链）也接上了：每一批的链各读**本批**那份结论，且守卫排在本批 start 之后
+ok 33 - 宿主（分批链）也接上了：每一批的链各读**本批**那份结论，且守卫排在本批 start 之后
+  ---
+  duration_ms: 591.3292
+  type: 'test'
+  ...
+# Subtest: VERSION 存在、可解析、且只有一行
+ok 34 - VERSION 存在、可解析、且只有一行
+  ---
+  duration_ms: 1.2504
+  type: 'test'
+  ...
+# Subtest: package.json 的 version 与 VERSION 逐字一致
+ok 35 - package.json 的 version 与 VERSION 逐字一致
+  ---
+  duration_ms: 0.3037
+  type: 'test'
+  ...
+# Subtest: CHANGELOG.md 首条标题与 VERSION 一致，且版本号严格递减排列
+ok 36 - CHANGELOG.md 首条标题与 VERSION 一致，且版本号严格递减排列
+  ---
+  duration_ms: 1.874
+  type: 'test'
+  ...
+# Subtest: parseVersion：接受合法写法，拒绝会让同一个版本变成两个字符串的写法
+ok 37 - parseVersion：接受合法写法，拒绝会让同一个版本变成两个字符串的写法
+  ---
+  duration_ms: 0.3725
+  type: 'test'
+  ...
+# Subtest: readVersion：读不到就抛错，绝不回落成 unknown
+ok 38 - readVersion：读不到就抛错，绝不回落成 unknown
+  ---
+  duration_ms: 0.2188
+  type: 'test'
+  ...
+# Subtest: versionLine 与 versionLineSafe：前者准、后者活，两边措辞都不许掩盖失败
+ok 39 - versionLine 与 versionLineSafe：前者准、后者活，两边措辞都不许掩盖失败
+  ---
+  duration_ms: 0.4566
+  type: 'test'
+  ...
+# Subtest: 摊平收据：带出处的端口/身份被取出裸值，源文件与哈希逐项保留
+ok 40 - 摊平收据：带出处的端口/身份被取出裸值，源文件与哈希逐项保留
+  ---
+  duration_ms: 1.2912
+  type: 'test'
+  ...
+# Subtest: 摊平是宽容的：缺字段记 null，不抛错（审计不该因为收据少个字段就炸）
+ok 41 - 摊平是宽容的：缺字段记 null，不抛错（审计不该因为收据少个字段就炸）
+  ---
+  duration_ms: 1.1053
+  type: 'test'
+  ...
+# Subtest: 写入成功：参数顺序与列一一对应，detail 序列化成 JSON，返回 id
+ok 42 - 写入成功：参数顺序与列一一对应，detail 序列化成 JSON，返回 id
+  ---
+  duration_ms: 0.3802
+  type: 'test'
+  ...
+# Subtest: 写不进去绝不抛错：返回 written:false 与原因（成功的数据不该被本地旁证拖下水）
+ok 43 - 写不进去绝不抛错：返回 written:false 与原因（成功的数据不该被本地旁证拖下水）
+  ---
+  duration_ms: 0.1409
+  type: 'test'
+  ...
+# Subtest: 词表之外的动作/结果一律拒写，而且不碰数据库
+ok 44 - 词表之外的动作/结果一律拒写，而且不碰数据库
+  ---
+  duration_ms: 0.0965
+  type: 'test'
+  ...
+# Subtest: 拿不到连接串时跳过写入，而不是抛错（也不去连真实库）
+ok 45 - 拿不到连接串时跳过写入，而不是抛错（也不去连真实库）
+  ---
+  duration_ms: 0.1124
+  type: 'test'
+  ...
+# Subtest: 连接串解析：进程环境变量优先，其次才是 env 文件；都取不到返回 null
+ok 46 - 连接串解析：进程环境变量优先，其次才是 env 文件；都取不到返回 null
+  ---
+  duration_ms: 0.2294
+  type: 'test'
+  ...
+# Subtest: 写入方模块不许导出任何读接口（它只能是审计，不能变成台账）
+ok 47 - 写入方模块不许导出任何读接口（它只能是审计，不能变成台账）
+  ---
+  duration_ms: 0.2262
+  type: 'test'
+  ...
+# Subtest: 全仓库只有写入方与迁移提到这张表（没有第二个读者或写者）
+ok 48 - 全仓库只有写入方与迁移提到这张表（没有第二个读者或写者）
+  ---
+  duration_ms: 1643.4472
+  type: 'test'
+  ...
+# Subtest: 迁移文件的 CHECK 词表与代码常数完全一致
+ok 49 - 迁移文件的 CHECK 词表与代码常数完全一致
+  ---
+  duration_ms: 1.0739
+  type: 'test'
+  ...
+# Subtest: 自证：两侧都是目标日时通过，并留下「观察到哪几天」的证据
+ok 50 - 自证：两侧都是目标日时通过，并留下「观察到哪几天」的证据
+  ---
+  duration_ms: 1.9222
+  type: 'test'
+  ...
+# Subtest: 自证：推广 ZIP 是前一天的就判不通过（下载错文件的主要形态）
+ok 51 - 自证：推广 ZIP 是前一天的就判不通过（下载错文件的主要形态）
+  ---
+  duration_ms: 0.1339
+  type: 'test'
+  ...
+# Subtest: 自证：店铺工作簿里目标日出现两次也判不通过
+ok 52 - 自证：店铺工作簿里目标日出现两次也判不通过
+  ---
+  duration_ms: 0.5028
+  type: 'test'
+  ...
+# Subtest: 自证：取用的那一行不是目标日时判不通过（防止「列里有一行对」就放行）
+ok 53 - 自证：取用的那一行不是目标日时判不通过（防止「列里有一行对」就放行）
+  ---
+  duration_ms: 0.1554
+  type: 'test'
+  ...
+# Subtest: maps all 119 shop columns by exact header and converts live types
+ok 54 - maps all 119 shop columns by exact header and converts live types
+  ---
+  duration_ms: 0.6023
+  type: 'test'
+  ...
+# Subtest: 数字字段遇到数据源的文本标记 ⇒ 留空并留痕（不写 0，也不抛错）
+ok 55 - 数字字段遇到数据源的文本标记 ⇒ 留空并留痕（不写 0，也不抛错）
+  ---
+  duration_ms: 0.2409
+  type: 'test'
+  ...
+# Subtest: maps promotion columns, leaves secondary scene fields blank, and drops subsidy columns
+ok 56 - maps promotion columns, leaves secondary scene fields blank, and drops subsidy columns
+  ---
+  duration_ms: 0.3911
+  type: 'test'
+  ...
+# Subtest: normalizes Feishu copy suffixes and scene prefixes for schema comparison
+ok 57 - normalizes Feishu copy suffixes and scene prefixes for schema comparison
+  ---
+  duration_ms: 0.0608
+  type: 'test'
+  ...
+# Subtest: 证据目录：第一次跑用基础目录，同一代已经有人用过就顺延 -rerun2 / -rerun3
+ok 58 - 证据目录：第一次跑用基础目录，同一代已经有人用过就顺延 -rerun2 / -rerun3
+  ---
+  duration_ms: 0.9598
+  type: 'test'
+  ...
+# Subtest: 证据目录：显式给了目录就不改名（那是调用方的选择，脚本不替他决定）
+ok 59 - 证据目录：显式给了目录就不改名（那是调用方的选择，脚本不替他决定）
+  ---
+  duration_ms: 0.099
+  type: 'test'
+  ...
+# Subtest: 证据目录 latest 策略：并入当前最新一代，而不是另开一代
+ok 60 - 证据目录 latest 策略：并入当前最新一代，而不是另开一代
+  ---
+  duration_ms: 0.1214
+  type: 'test'
+  ...
+# Subtest: 证据目录：策略写错或没给 baseDir 一律抛错（不许静默按默认值跑）
+ok 61 - 证据目录：策略写错或没给 baseDir 一律抛错（不许静默按默认值跑）
+  ---
+  duration_ms: 0.429
+  type: 'test'
+  ...
+# Subtest: dirHasEntries：目录不存在或读不到只算「没内容」，不抛错
+ok 62 - dirHasEntries：目录不存在或读不到只算「没内容」，不抛错
+  ---
+  duration_ms: 0.3559
+  type: 'test'
+  ...
+# Subtest: 证据目录的店铺维度：不给键时逐字不变，给了键就加一维
+ok 63 - 证据目录的店铺维度：不给键时逐字不变，给了键就加一维
+  ---
+  duration_ms: 0.9804
+  type: 'test'
+  ...
+# Subtest: 证据目录的店铺键：非法键一律抛错，不许被拼进路径
+ok 64 - 证据目录的店铺键：非法键一律抛错，不许被拼进路径
+  ---
+  duration_ms: 0.4122
+  type: 'test'
+  ...
+# Subtest: 三个写入方都按同一维拼证据目录，并且都把店铺键交给了它
+ok 65 - 三个写入方都按同一维拼证据目录，并且都把店铺键交给了它
+  ---
+  duration_ms: 21.7743
+  type: 'test'
+  ...
+# Subtest: 环境旁证：默认值标 registry-default，环境变量优先，非法值如实记 env-invalid
+ok 66 - 环境旁证：默认值标 registry-default，环境变量优先，非法值如实记 env-invalid
+  ---
+  duration_ms: 2.0306
+  type: 'test'
+  ...
+# Subtest: 页面模型的单元格：SingleSelect 的选项 id 必须换成名字，换不出来要标出来
+ok 67 - 页面模型的单元格：SingleSelect 的选项 id 必须换成名字，换不出来要标出来
+  ---
+  duration_ms: 0.423
+  type: 'test'
+  ...
+# Subtest: 选项解析分层：字段自己的选项优先，跨表同名 id 不许冒充歧义
+ok 68 - 选项解析分层：字段自己的选项优先，跨表同名 id 不许冒充歧义
+  ---
+  duration_ms: 0.1654
+  type: 'test'
+  ...
+# Subtest: 字段覆盖：派生字段读不到、普通字段为空格、表里没这个字段，三者必须区分开
+ok 69 - 字段覆盖：派生字段读不到、普通字段为空格、表里没这个字段，三者必须区分开
+  ---
+  duration_ms: 0.3162
+  type: 'test'
+  ...
+# Subtest: 注入的片段自洽：剥掉模块作用域后仍能真的跑（光比字符串看不见未定义的引用）
+ok 70 - 注入的片段自洽：剥掉模块作用域后仍能真的跑（光比字符串看不见未定义的引用）
+  ---
+  duration_ms: 1.8319
+  type: 'test'
+  ...
+# Subtest: 日期字段：epoch 毫秒按 +08:00 换算，不随宿主时区漂移
+ok 71 - 日期字段：epoch 毫秒按 +08:00 换算，不随宿主时区漂移
+  ---
+  duration_ms: 0.0869
+  type: 'test'
+  ...
+# Subtest: 回读表达式：注入的是同名实现（不是另抄一份），且分层顺序写死在里面
+ok 72 - 回读表达式：注入的是同名实现（不是另抄一份），且分层顺序写死在里面
+  ---
+  duration_ms: 6.4404
+  type: 'test'
+  ...
+# Subtest: 截图失败只降级、不中断：captureScreenshotSafe 给结论而不是抛
+ok 73 - 截图失败只降级、不中断：captureScreenshotSafe 给结论而不是抛
+  ---
+  duration_ms: 0.2681
+  type: 'test'
+  ...
+# Subtest: 截图失败不许顶掉回读：产物照写、失败记进产物、退出码仍非零
+ok 74 - 截图失败不许顶掉回读：产物照写、失败记进产物、退出码仍非零
+  ---
+  duration_ms: 0.3552
+  type: 'test'
+  ...
+# Subtest: 两个写入方都把证据目录交给 resolveEvidenceDir，回填用 latest 并入同一代
+ok 75 - 两个写入方都把证据目录交给 resolveEvidenceDir，回填用 latest 并入同一代
+  ---
+  duration_ms: 0.4983
+  type: 'test'
+  ...
+# [驱动] 告警没送出去 —— 现在只有屏幕知道这一轮失败了，必须有人接手（见上面的投递收据）。日志在 evidence/multi-shop-2026-09-19
+# [驱动] 告警没送出去 —— 现在只有屏幕知道这一轮失败了，必须有人接手（见上面的投递收据）。
+# [里可林淘宝]   停手时页面停在：生意参谋工作页=0  阿里妈妈报表页=1（共 2 个页签）
+# [里可林淘宝]     · 不属于期望清单：https://sycm.taobao.com/lyone/auto_analysis/datafetch/index.htm?taskId=1
+# [里可林淘宝]   【假回位】
+# [里可林淘宝]   回位后 生意参谋工作页 恰好一个
+# [里可林淘宝]   停手时页面停在：生意参谋工作页=0  阿里妈妈报表页=0（共 1 个页签）
+# [里可林淘宝]     · 不属于期望清单：https://sycm.taobao.com/lyone/auto_analysis/datafetch/index.htm?taskId=1
+# [里可林淘宝]   回位没做成：回位后仍不是恰好一个性能页（2 个）
+# [里可林淘宝]   停手时读不到页面（代理连不上）—— 回位这一支先当学不到，下面照样试一次
+# [里可林淘宝]   【假回位】
+# [里可林淘宝]   回位后 生意参谋工作页 是 读不到（代理连不上） 个（回位前 读不到 个） —— 下一轮仍然会从这个起点开始，先看现场
+# [代理] 连接层失败（第 1/3 次）：fetch failed｜cause=ECONNREFUSED → 1.5s 后重发 http://127.0.0.1:1/targets
+# Subtest: 驱动：阶段顺序与 SOP §10.1 逐字一致（回位在第 4 步之后、回填之前）
+ok 76 - 驱动：阶段顺序与 SOP §10.1 逐字一致（回位在第 4 步之后、回填之前）
+  ---
+  duration_ms: 1.5219
+  type: 'test'
+  ...
+# Subtest: 驱动：有脚本的带脚本；没脚本的必须声明自己那一支（否则阶段会报 ok 却什么也没做）
+ok 77 - 驱动：有脚本的带脚本；没脚本的必须声明自己那一支（否则阶段会报 ok 却什么也没做）
+  ---
+  duration_ms: 0.2712
+  type: 'test'
+  ...
+# Subtest: 驱动：每个带脚本的阶段都自带 --date 与 --proxy（不靠调用方 shell 里恰好有什么）
+ok 78 - 驱动：每个带脚本的阶段都自带 --date 与 --proxy（不靠调用方 shell 里恰好有什么）
+  ---
+  duration_ms: 0.1003
+  type: 'test'
+  ...
+# Subtest: 驱动：采集/回填/回位打这家店自己的代理，推送/回读打商家浏览器代理（飞书页只在那一个浏览器里）
+ok 79 - 驱动：采集/回填/回位打这家店自己的代理，推送/回读打商家浏览器代理（飞书页只在那一个浏览器里）
+  ---
+  duration_ms: 0.1748
+  type: 'test'
+  ...
+# Subtest: 驱动：四家店的审计身份互不相同，且没有一家被写成日报链那一组
+ok 80 - 驱动：四家店的审计身份互不相同，且没有一家被写成日报链那一组
+  ---
+  duration_ms: 0.668
+  type: 'test'
+  ...
+# Subtest: 驱动：三个写入方的 --shop-key 是同一个值且各只出现一次
+ok 81 - 驱动：三个写入方的 --shop-key 是同一个值且各只出现一次
+  ---
+  duration_ms: 0.1429
+  type: 'test'
+  ...
+# Subtest: 驱动：采集段的三个身份期望值来自登记表，且四家店互不相同
+ok 82 - 驱动：采集段的三个身份期望值来自登记表，且四家店互不相同
+  ---
+  duration_ms: 0.1967
+  type: 'test'
+  ...
+# Subtest: 驱动：三种模式的写入口径（排练两个写入方都干跑；verify 只核对；commit 才写）
+ok 83 - 驱动：三种模式的写入口径（排练两个写入方都干跑；verify 只核对；commit 才写）
+  ---
+  duration_ms: 0.1815
+  type: 'test'
+  ...
+# Subtest: 驱动：历史日回填降级开关默认关、只在显式打开时透传，且不污染别的阶段
+ok 84 - 驱动：历史日回填降级开关默认关、只在显式打开时透传，且不污染别的阶段
+  ---
+  duration_ms: 0.3833
+  type: 'test'
+  ...
+# Subtest: 驱动：未知模式 / 错日期 / verify 缺 expectedBeforeCount / 未登记的店，一律抛错不静默
+ok 85 - 驱动：未知模式 / 错日期 / verify 缺 expectedBeforeCount / 未登记的店，一律抛错不静默
+  ---
+  duration_ms: 0.4625
+  type: 'test'
+  ...
+# Subtest: 驱动：已登记的店铺都能构造出完整阶段（没有哪家要到真跑时才因身份缺失而炸）
+ok 86 - 驱动：已登记的店铺都能构造出完整阶段（没有哪家要到真跑时才因身份缺失而炸）
+  ---
+  duration_ms: 0.1286
+  type: 'test'
+  ...
+# Subtest: 驱动：体检的期望页面用**路径级**片段，且与落位脚本的 SITES 同源
+ok 87 - 驱动：体检的期望页面用**路径级**片段，且与落位脚本的 SITES 同源
+  ---
+  duration_ms: 0.8235
+  type: 'test'
+  ...
+# Subtest: 驱动：体检结论只有「明确 ok:true」才放行，读不出来算不放行
+ok 88 - 驱动：体检结论只有「明确 ok:true」才放行，读不出来算不放行
+  ---
+  duration_ms: 0.0762
+  type: 'test'
+  ...
+# Subtest: 驱动：从采集脚本的 stdout 里抓得到两条产物路径（含 [fetch] 那种带前缀的行）
+ok 89 - 驱动：从采集脚本的 stdout 里抓得到两条产物路径（含 [fetch] 那种带前缀的行）
+  ---
+  duration_ms: 0.2546
+  type: 'test'
+  ...
+# Subtest: 驱动：产物路径的抓取格式与两个采集脚本里的打印模板真的对得上
+ok 90 - 驱动：产物路径的抓取格式与两个采集脚本里的打印模板真的对得上
+  ---
+  duration_ms: 1.1599
+  type: 'test'
+  ...
+# Subtest: 驱动：源产物路径是替换而不是追加（两份真相不许同时留在参数表里）
+ok 91 - 驱动：源产物路径是替换而不是追加（两份真相不许同时留在参数表里）
+  ---
+  duration_ms: 0.2368
+  type: 'test'
+  ...
+# Subtest: 驱动：源产物路径只给一半 / 都不给 / 文件不存在，一律抛错
+ok 92 - 驱动：源产物路径只给一半 / 都不给 / 文件不存在，一律抛错
+  ---
+  duration_ms: 0.2142
+  type: 'test'
+  ...
+# Subtest: 驱动 CLI：--commit 与 --verify-existing 互斥，源产物路径必须成对，未知参数不吞
+ok 93 - 驱动 CLI：--commit 与 --verify-existing 互斥，源产物路径必须成对，未知参数不吞
+  ---
+  duration_ms: 0.9175
+  type: 'test'
+  ...
+# Subtest: 驱动 CLI：--only 里出现拼错的阶段名必须当场抛错，不许静默跳过整轮
+ok 94 - 驱动 CLI：--only 里出现拼错的阶段名必须当场抛错，不许静默跳过整轮
+  ---
+  duration_ms: 0.1549
+  type: 'test'
+  ...
+# Subtest: 驱动：STAGE_NAMES 与真实的阶段表逐字一致（否则合法值清单自己会造出「拼错就等于没事」）
+ok 95 - 驱动：STAGE_NAMES 与真实的阶段表逐字一致（否则合法值清单自己会造出「拼错就等于没事」）
+  ---
+  duration_ms: 0.0889
+  type: 'test'
+  ...
+# Subtest: 驱动：--date 认字面量 yesterday，按 Asia/Shanghai 解析（跨零点不漂）
+ok 96 - 驱动：--date 认字面量 yesterday，按 Asia/Shanghai 解析（跨零点不漂）
+  ---
+  duration_ms: 12.9384
+  type: 'test'
+  ...
+# Subtest: 驱动 CLI：--date 走同一条解析，缺了就抛（默认不放宽）
+ok 97 - 驱动 CLI：--date 走同一条解析，缺了就抛（默认不放宽）
+  ---
+  duration_ms: 0.3556
+  type: 'test'
+  ...
+# Subtest: 驱动：每个阶段都有面向人的中文名（告警正文里不许出现英文阶段名）
+ok 98 - 驱动：每个阶段都有面向人的中文名（告警正文里不许出现英文阶段名）
+  ---
+  duration_ms: 0.2946
+  type: 'test'
+  ...
+# Subtest: 驱动：告警说的「第 N 步」与日志文件上的编号对得上
+ok 99 - 驱动：告警说的「第 N 步」与日志文件上的编号对得上
+  ---
+  duration_ms: 0.1407
+  type: 'test'
+  ...
+# Subtest: 驱动的失败分类：体检拦住 / 重跑撞上已有行 / 阶段报错，三类必须分开
+ok 100 - 驱动的失败分类：体检拦住 / 重跑撞上已有行 / 阶段报错，三类必须分开
+  ---
+  duration_ms: 0.2569
+  type: 'test'
+  ...
+# Subtest: 告警：标题自带主体名，正文说清哪几家没跑完、停在哪一步、哪几家已收完、哪几家一步没跑
+ok 101 - 告警：标题自带主体名，正文说清哪几家没跑完、停在哪一步、哪几家已收完、哪几家一步没跑
+  ---
+  duration_ms: 2.0064
+  type: 'test'
+  ...
+# Subtest: 告警：每条结论都有自己的「原因 + 下一步」，下一步只写收信人真能做的
+ok 102 - 告警：每条结论都有自己的「原因 + 下一步」，下一步只写收信人真能做的
+  ---
+  duration_ms: 0.3923
+  type: 'test'
+  ...
+# Subtest: 告警：文案里不许出现英文阶段名、结论代号、内部术语，也不许出现路径/命令行/主机名/账号名
+ok 103 - 告警：文案里不许出现英文阶段名、结论代号、内部术语，也不许出现路径/命令行/主机名/账号名
+  ---
+  duration_ms: 3.0616
+  type: 'test'
+  ...
+# Subtest: 告警：缺 shopKeys 直接抛（那一行静默消失过，所以不留退化余地）
+ok 104 - 告警：缺 shopKeys 直接抛（那一行静默消失过，所以不留退化余地）
+  ---
+  duration_ms: 0.2538
+  type: 'test'
+  ...
+# Subtest: 驱动：每个生成告警的调用点都真的把 shopKeys 与登录态结论接上了（接线判据）
+ok 105 - 驱动：每个生成告警的调用点都真的把 shopKeys 与登录态结论接上了（接线判据）
+  ---
+  duration_ms: 0.6363
+  type: 'test'
+  ...
+# Subtest: 告警：查过登录态、有店掉了 ⇒ 改成「去登录」，不再叫人去开页面
+ok 106 - 告警：查过登录态、有店掉了 ⇒ 改成「去登录」，不再叫人去开页面
+  ---
+  duration_ms: 0.1736
+  type: 'test'
+  ...
+# Subtest: 告警：这一家是「页面不齐」判下来的、而它的登录掉了 ⇒ 这一家的结论也要改成「去登录」
+ok 107 - 告警：这一家是「页面不齐」判下来的、而它的登录掉了 ⇒ 这一家的结论也要改成「去登录」
+  ---
+  duration_ms: 0.1708
+  type: 'test'
+  ...
+# Subtest: 告警：没查过登录态 ⇒ 如实说「没查过」，不许装作查过、也不许说「都不缺」
+ok 108 - 告警：没查过登录态 ⇒ 如实说「没查过」，不许装作查过、也不许说「都不缺」
+  ---
+  duration_ms: 0.5317
+  type: 'test'
+  ...
+# Subtest: 告警：查了、都在登录态 ⇒ 明确说「问题不在登录上」（省掉一趟白跑的浏览器）
+ok 109 - 告警：查了、都在登录态 ⇒ 明确说「问题不在登录上」（省掉一趟白跑的浏览器）
+  ---
+  duration_ms: 0.3111
+  type: 'test'
+  ...
+# Subtest: 告警：查过但没有结论 / 结论读不到 ⇒ 如实说「不知道是不是掉登录」
+ok 110 - 告警：查过但没有结论 / 结论读不到 ⇒ 如实说「不知道是不是掉登录」
+  ---
+  duration_ms: 0.261
+  type: 'test'
+  ...
+# Subtest: 告警：登录态结论只留本轮要跑的那几家（分批时不许点名别的店）
+ok 111 - 告警：登录态结论只留本轮要跑的那几家（分批时不许点名别的店）
+  ---
+  duration_ms: 0.1454
+  type: 'test'
+  ...
+# Subtest: 跑前登录态结论的读取：不给＝没查、读不到＝没结论、读到＝只留业务能用的字段
+ok 112 - 跑前登录态结论的读取：不给＝没查、读不到＝没结论、读到＝只留业务能用的字段
+  ---
+  duration_ms: 32.9439
+  type: 'test'
+  ...
+# Subtest: 驱动：不给登录态结论时，roundFailureSummary 的输出**逐字不变**
+ok 113 - 驱动：不给登录态结论时，roundFailureSummary 的输出**逐字不变**
+  ---
+  duration_ms: 0.2303
+  type: 'test'
+  ...
+# Subtest: 驱动 CLI：--login-preflight 要一个路径，缺值当场抛（不许静默折成「没查」）
+ok 114 - 驱动 CLI：--login-preflight 要一个路径，缺值当场抛（不许静默折成「没查」）
+  ---
+  duration_ms: 0.159
+  type: 'test'
+  ...
+# Subtest: 告警：技术字段在**生成处**就被拦（而不是等渲染时静默丢掉或被原样发出去）
+ok 115 - 告警：技术字段在**生成处**就被拦（而不是等渲染时静默丢掉或被原样发出去）
+  ---
+  duration_ms: 0.5789
+  type: 'test'
+  ...
+# Subtest: 告警：全绿时生成告警要当场抛错（成功时不许叫人）
+ok 116 - 告警：全绿时生成告警要当场抛错（成功时不许叫人）
+  ---
+  duration_ms: 0.224
+  type: 'test'
+  ...
+# Subtest: 驱动：--notify 只在 --commit 那一档投递；排练/只读核对的失败不进飞书
+ok 117 - 驱动：--notify 只在 --commit 那一档投递；排练/只读核对的失败不进飞书
+  ---
+  duration_ms: 0.1615
+  type: 'test'
+  ...
+# Subtest: 驱动：打印路径一次投递都不发生，且打印的是真渲染器的输出
+ok 118 - 驱动：打印路径一次投递都不发生，且打印的是真渲染器的输出
+  ---
+  duration_ms: 1.586
+  type: 'test'
+  ...
+# Subtest: 驱动：真正投递时走既有的通知出口，且「没送达」要被当回事
+ok 119 - 驱动：真正投递时走既有的通知出口，且「没送达」要被当回事
+  ---
+  duration_ms: 426.2737
+  type: 'test'
+  ...
+# Subtest: 驱动：跑前环境自检要把「宿主掐断」与「数据问题」当场分开
+ok 120 - 驱动：跑前环境自检要把「宿主掐断」与「数据问题」当场分开
+  ---
+  duration_ms: 4.2818
+  type: 'test'
+  ...
+# Subtest: 驱动：环境自检的探针必须探「管道 stdin」那一形态，且只许跑一个什么都不做的子进程
+ok 121 - 驱动：环境自检的探针必须探「管道 stdin」那一形态，且只许跑一个什么都不做的子进程
+  ---
+  duration_ms: 1.7587
+  type: 'test'
+  ...
+# Subtest: 驱动：两个同步子进程调用点必须显式声明 stdio，且 stdin 不许是管道（源码级接线判据）
+ok 122 - 驱动：两个同步子进程调用点必须显式声明 stdio，且 stdin 不许是管道（源码级接线判据）
+  ---
+  duration_ms: 2.6473
+  type: 'test'
+  ...
+# Subtest: 驱动：重复的那条只打在本机日志里，一次投递都不发生；且只有真送出去才记时间
+ok 123 - 驱动：重复的那条只打在本机日志里，一次投递都不发生；且只有真送出去才记时间
+  ---
+  duration_ms: 202.7428
+  type: 'test'
+  ...
+# Subtest: 失败收尾：页面快照按期望清单数，并把「不属于期望清单」的那些页单独列出来
+ok 124 - 失败收尾：页面快照按期望清单数，并把「不属于期望清单」的那些页单独列出来
+  ---
+  duration_ms: 1.9205
+  type: 'test'
+  ...
+# Subtest: 失败收尾：回位判定只看回位之后那份快照，读不到一律不算回位成功
+ok 125 - 失败收尾：回位判定只看回位之后那份快照，读不到一律不算回位成功
+  ---
+  duration_ms: 0.875
+  type: 'test'
+  ...
+# Subtest: 失败收尾：先取证再处置、回位后断言、回位失败不抛也不盖原来那个错
+ok 126 - 失败收尾：先取证再处置、回位后断言、回位失败不抛也不盖原来那个错
+  ---
+  duration_ms: 54.6374
+  type: 'test'
+  ...
+# Subtest: 失败收尾：驱动里真的接上了「记下原错 → 取证回位 → 才停整轮」（接线判据）
+ok 127 - 失败收尾：驱动里真的接上了「记下原错 → 取证回位 → 才停整轮」（接线判据）
+  ---
+  duration_ms: 0.8147
+  type: 'test'
+  ...
+# Subtest: 驱动：浏览器键 → 代理端口只认登记表，认不出来当场抛（回落一次就是往别的浏览器上写）
+ok 128 - 驱动：浏览器键 → 代理端口只认登记表，认不出来当场抛（回落一次就是往别的浏览器上写）
+  ---
+  duration_ms: 0.3316
+  type: 'test'
+  ...
+# Subtest: 驱动：体检真的接上了「先归位、再检查」，归位结论进了 summary（接线判据）
+ok 129 - 驱动：体检真的接上了「先归位、再检查」，归位结论进了 summary（接线判据）
+  ---
+  duration_ms: 0.6521
+  type: 'test'
+  ...
+# Subtest: 代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发）
+ok 130 - 代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发）
+  ---
+  duration_ms: 0.6356
+  type: 'test'
+  ...
+# Subtest: 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避
+ok 131 - 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避
+  ---
+  duration_ms: 0.5299
+  type: 'test'
+  ...
+# [代理] 连接层失败（第 2/3 次）：fetch failed｜cause=ECONNREFUSED → 1.5s 后重发 http://127.0.0.1:1/targets
+# Subtest: 代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因
+ok 132 - 代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因
+  ---
+  duration_ms: 3016.7336
+  type: 'test'
+  ...
+1..132
+# tests 132
+# suites 0
+# pass 132
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4846.0699
+EXIT=0

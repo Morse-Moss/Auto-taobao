@@ -62,8 +62,8 @@
 // 排练/只读核对失败是「你正在看屏幕时的事」，发到飞书只会训练人忽略这个信号。
 // 想看文案但不想真的发：`--notify-print`（用同一个渲染器打印，不投递）。
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { hostname } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { hostname, tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -911,9 +911,27 @@ export function dispatchRoundAlert({ alert, dispatch, logDir = null, spawn = spa
     log(`[驱动] 这一条没往外发：${verdict.reason}（编号 ${alert?.alertId ?? '无'}）`);
     return { delivered: false, suppressed: true, reason: verdict.reason };
   }
-  const result = spawn(NODE, [NOTIFY_CLI], {
-    input: JSON.stringify(alert), cwd: REPO_ROOT, encoding: 'utf8', timeout: 60_000,
-  });
+  // 告警 JSON 走**文件**，不走 stdin（2026-09-25 修）。
+  //
+  // 为什么：`spawn(..., { input })` 会隐式给子进程建一根 **stdin 管道**，而本机宿主沙箱对
+  // 「给子进程管道 stdin 的同步 spawn」直接回 `EBUSY`（`errno=-4082`／libuv `UV_EBUSY`，
+  // 1~4ms 内 fail-fast、`status=null`）—— 那正是 2026-09-24 四轮里
+  // `告警投递退出码=null` 的成因：**出事的时候连一条告警都发不出去**。
+  // `--alert-file` 是 `runtime/notify-feishu.mjs` 本来就有的入口（实测取到过
+  // `status=DRY_RUN` 的收据），换成它就不需要 stdin 管道了。
+  // 落临时目录而不是证据目录：它的唯一职责是**当运输工具**，而「收信人到底看到了什么」
+  // 已经由上面那行 `告警文案（收信人看到的）` 完整落在日志里（唯一证据来源，不重复两份）。
+  const alertPath = path.join(tmpdir(), `sycm-round-alert-${process.pid}.json`);
+  writeFileSync(alertPath, JSON.stringify(alert), 'utf8');
+  // `stdio` 必须显式写：默认值就是被掐的那一形态。写完就删（同步写完即 spawn，不存在重名竞争）。
+  let result;
+  try {
+    result = spawn(NODE, [NOTIFY_CLI, '--alert-file', alertPath], {
+      cwd: REPO_ROOT, encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } finally {
+    try { unlinkSync(alertPath); } catch { /* 临时文件删不掉不影响投递结论 */ }
+  }
   const receipt = String(result.stdout || result.stderr || '').trim().slice(0, 300);
   log(`[驱动] 告警投递退出码=${result.status}：${receipt}`);
   if (result.status !== 0) {
@@ -928,6 +946,39 @@ export function dispatchRoundAlert({ alert, dispatch, logDir = null, spawn = spa
   return { delivered: result.status === 0, printed: false, suppressed: false };
 }
 
+/**
+ * 跑前环境自检：这台宿主会不会掐断「给子进程管道 stdin 的同步 spawn」。
+ *
+ * 为什么要有它（2026-09-25 加）：09-24 那四轮全灭时，日志里只有各阶段一句
+ * `error=spawnSync … EBUSY`，事后读日志的人第一反应是「采集脚本坏了／登录掉了」——
+ * 而它其实是**宿主执行环境的限制**，与数据、与代码逻辑都无关。把这句话在**跑之前**
+ * 就打进 job.log，是唯一能把这两种成因在第一时间分开的办法。
+ * （这正是本项目反复出现的同一个形态：一个结论被两种完全不同的成因共用。）
+ *
+ * 为什么探的是**坏形态**（`stdio: ['pipe','pipe','pipe']`）而不是已经修好的形态：
+ * 本驱动自己的两个调用点已经改好（见 runStage / dispatchRoundAlert），但链上**其它**
+ * 同步子进程仍在踩 —— `runtime/browser-inventory.mjs` 的 `netstat` 扫描、
+ * `scripts/stop-all.mjs` 的 `netstat`/`taskkill`，以及各采集脚本内部的子进程。
+ * 它们报 EBUSY 时症状都是**静默降级**（把「读不到」当成「没有」）⇒ 这一行是解释它们的唯一线索。
+ *
+ * 性质：只读、无副作用（探测子进程是 `node -e 0`）；探测本身失败**不抛错、不拦采集** ——
+ * 它是诊断层，不是闸门。
+ */
+export function probeSyncSpawnSanity({ spawn = spawnSync, node = NODE } = {}) {
+  const result = spawn(node, ['-e', '0'], { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' });
+  const code = result?.error?.code ?? null;
+  const blocked = Boolean(result?.error);
+  const line = blocked
+    ? `[驱动] 环境自检：宿主会掐断「给子进程管道 stdin 的同步 spawn」（${code ?? 'EBUSY'}）—— `
+      + '这是宿主执行环境限制，不是数据问题。链上的同步子进程（本驱动各阶段、告警投递、'
+      + 'push 阶段内部的提取器）已按 stdin=ignore 的形态调用；链外仍有未改的调用点'
+      + '（runtime/browser-inventory.mjs 的 netstat 扫描、scripts/stop-all.mjs 的 netstat/taskkill），'
+      + '它们若因此报 EBUSY、或静默少报了东西（把「读不到」当成「没有」），'
+      + '请把这一行连同该阶段的证据一起交给维护者，别按数据问题排查。'
+    : '[驱动] 环境自检：宿主没有掐断同步子进程（管道 stdin 可用）—— 这一轮不会因 EBUSY 失败。';
+  return { blocked, code, detail: result?.error?.message ?? null, line };
+}
+
 function runStage(shopKey, stage, { repoRoot, logDir }) {
   const log = (line) => console.log(`[${shopKey}] ${line}`);
   const outPath = path.join(logDir, `${String(stage.index).padStart(2, '0')}-${stage.stage}.txt`);
@@ -936,6 +987,15 @@ function runStage(shopKey, stage, { repoRoot, logDir }) {
   const command = `${NODE} ${formatArgv([scriptPath, ...stage.argv])}`;
   const result = spawnSync(NODE, [scriptPath, ...stage.argv], {
     cwd: repoRoot, encoding: 'utf8',
+    // `stdio` 必须**显式**写，而且 stdin 只能是 `'ignore'`（2026-09-25 修）。
+    //
+    // 不写 stdio 时 Node 的默认值是「三根都是管道」，而本机宿主沙箱对「给子进程管道 stdin 的
+    // 同步 spawn」直接回 `EBUSY`（`errno=-4082`／`UV_EBUSY`，1~4ms fail-fast、`status=null`）——
+    // 2026-09-24 四轮里**每个阶段**都只留三行、连告警都发不出去，全是这一条。
+    // 判据与排除过程在 `.workbuddy/memory/TOOLING-NOTES.md`（分界就在 stdin 那条管道上：
+    // `['ignore',…]` 全通，`['pipe',…]` 与 `input:` 全灭；Python 的同步 subprocess 正常
+    // ⇒ 与业务、Node 版本、shim 都无关）。
+    stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, ...stage.env },
   });
   const text = `\n===== ${startedAt} =====\n$ ${command}\nexit=${result.status} signal=${result.signal ?? ''} error=${result.error?.message ?? 'none'}\n`
@@ -980,6 +1040,10 @@ async function main() {
   // 事后翻日志的人必须能看出「这一轮到底查没查、结论是什么」，而不是只看到告警里那句转述。
   const loginPreflight = readLoginPreflight(args.loginPreflight);
 
+  // **跑前的第一行**：把「这台宿主会不会掐断同步子进程」先钉进 job.log。
+  // 为什么必须排在所有阶段之前：事后读日志的人分不清「宿主掐断」与「采集/登录坏了」，
+  // 而这两种成因的处置完全相反（一个是等环境、一个是修数据）。见 probeSyncSpawnSanity 的头注。
+  console.log(probeSyncSpawnSanity().line);
   console.log(`[驱动] 目标日 ${args.date}｜模式 ${mode}｜店铺 ${shops.length} 家：${shops.join(' / ')}`);
   // 字面量被解析过就要说清楚解析成了哪天 —— 定时跑出来的日志里，这一行是唯一的对账依据
   // （事后没人能从 `--date yesterday` 反推出它当时算的是哪一天）。

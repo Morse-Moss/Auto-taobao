@@ -1,0 +1,12 @@
+== 原样形态（{ encoding: "utf8" }，不声明 stdio）＝测试里逐字相同的写法 ==
+[huitun-to-feishu-keyword-heat/tests/cli.test.mjs]
+  原样    : status=null errorCode=EBUSY stdoutLen=0 stderrLen=0
+  摘 stdin: status=0 errorCode=none stdoutHead="Usage: node run-huitun-topic-heat.mjs [options]\n"
+[xws-export-market-analysis/tests/cli.test.mjs]
+  原样    : status=null errorCode=EBUSY stdoutLen=0 stderrLen=0
+  摘 stdin: status=0 errorCode=none stdoutHead="Usage: node export-market-analysis.mjs [options]"
+[sycm-export-search-rank/scripts/full-flow.test.mjs]
+  原样    : status=null errorCode=EBUSY stdoutLen=0 stderrLen=0
+  摘 stdin: status=0 errorCode=none stdoutHead="Usage: node export-search-rank.mjs [options]\n\nOp"
+
+== 逐行明细（上面每条「原样」若 errorCode=EBUSY 且 status=null，即用例里 assert.equal(result.status, 0) 报 null !== 0 的成因）==

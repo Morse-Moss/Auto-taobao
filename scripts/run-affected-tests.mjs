@@ -74,19 +74,26 @@ export function selectChecks(files) {
 }
 
 function changedFilesFromGit(base, staged) {
+  // `stdio` 必须显式写、且 stdin 只能是 `'ignore'`（2026-09-25，同 CHANGELOG 1.7.1）：
+  // 宿主沙箱对「给子进程管道 stdin 的同步 spawn」直接回 `EBUSY`，而默认 stdio 三根都是管道
+  // ⇒ **门禁自己在沙箱会话里跑不起来**（报 `spawnSync git EBUSY`，看起来像 git 坏了）。
+  const GIT_STDIO = ['ignore', 'pipe', 'pipe'];
   if (staged) {
     return execFileSync('git', ['diff', '--cached', '--name-only', '--diff-filter=ACMR'], {
       cwd: root,
       encoding: 'utf8',
+      stdio: GIT_STDIO,
     }).split(/\r?\n/).filter(Boolean);
   }
   if (base) {
     return execFileSync('git', ['diff', '--name-only', '--diff-filter=ACMR', `${base}...HEAD`], {
       cwd: root,
       encoding: 'utf8',
+      stdio: GIT_STDIO,
     }).split(/\r?\n/).filter(Boolean);
   }
-  const status = execFileSync('git', ['status', '--porcelain=v1'], { cwd: root, encoding: 'utf8' });
+  const status = execFileSync('git', ['status', '--porcelain=v1'],
+    { cwd: root, encoding: 'utf8', stdio: GIT_STDIO });
   return status.split(/\r?\n/).filter(Boolean).map((line) => line.slice(3)).flatMap((file) => {
     if (file.includes(' -> ')) return [file.split(' -> ').at(-1)];
     return [file];

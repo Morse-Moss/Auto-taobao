@@ -223,6 +223,15 @@ function extractSources(args) {
   const result = spawnSync(python, pythonArgs, {
     encoding: 'utf8',
     windowsHide: true,
+    // `stdio` 必须显式写、且 stdin 只能是 `'ignore'`（2026-09-25，同 CHANGELOG 1.7.1）。
+    //
+    // 为什么本文件也要改（驱动那一层改了还不够）：实测这个限制**穿透到孙进程** ——
+    // 用一个 `stdio: ['ignore','pipe','pipe']` 起起来的子进程，它自己再做一次默认 stdio 的
+    // 同步 spawn，照样拿到 `EBUSY`。而本文件是链的第 7 步（`push`）跑的脚本，
+    // 也就是**第一次真的往飞书写字**的那一步：它一死，整轮就在写飞书之前停住，
+    // 前面六个阶段的采集白做。stdout 仍要接下来（下面 `JSON.parse(result.stdout)`），
+    // 所以只把 stdin 改成 `'ignore'`。
+    stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
   });
   if (result.status !== 0) throw new Error(`source extraction failed: ${result.stderr || result.stdout}`.trim());

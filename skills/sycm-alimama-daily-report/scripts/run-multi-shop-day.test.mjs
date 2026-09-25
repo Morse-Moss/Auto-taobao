@@ -8,7 +8,7 @@ import { BROWSER_IDS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } fro
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
-import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
+import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -810,14 +810,24 @@ test('驱动：真正投递时走既有的通知出口，且「没送达」要�
   const delivered = dispatchRoundAlert({
     alert, dispatch: { action: 'send', why: 'x' }, log: () => {},
     throttleFile: tmpThrottle(),
-    spawn: (cmd, argv, options) => { Object.assign(seen, { cmd, argv, options }); return { status: 0, stdout: '{"status":"SENT","messageId":"om_x"}' }; },
+    // 告警 JSON 已改成走 `--alert-file`（stdin 管道会被宿主沙箱掐断），所以在 spawn 这一刻
+    // 把它从文件里读出来 —— 文件是在 spawn **返回之后**才删的，这个时点它一定还在。
+    spawn: (cmd, argv, options) => {
+      Object.assign(seen, { cmd, argv, options, alert: JSON.parse(readFileSync(argv[2], 'utf8')) });
+      return { status: 0, stdout: '{"status":"SENT","messageId":"om_x"}' };
+    },
   });
   assert.deepEqual(delivered, { delivered: true, printed: false, suppressed: false });
   assert.equal(seen.cmd, process.execPath);
   assert.match(seen.argv[0], /runtime[\\/]notify-feishu\.mjs$/u,
     '告警必须走这个仓库既有的投递出口，不许另造一条（另造的那条没有「没送达就非零退出码」的性质）');
-  assert.equal(JSON.parse(seen.options.input).alertId, 'daily-round-20260919', '喂进去的必须是这条告警的 JSON');
-  assert.equal(JSON.parse(seen.options.input).type, 'DAILY_ROUND_FAILED');
+  assert.equal(seen.argv[1], '--alert-file',
+    '告警 JSON 必须走文件而不是 stdin：`input:` 会隐式给子进程建 stdin 管道，'
+      + '而管道 stdin 的同步 spawn 会被宿主沙箱掐成 EBUSY —— 那条路断了就等于「出事时一条告警都发不出去」');
+  assert.deepEqual(seen.options.stdio, ['ignore', 'pipe', 'pipe'],
+    'stdio 必须显式声明，且 stdin 不许是管道（默认值就是被掐的那一形态）');
+  assert.equal(seen.alert.alertId, 'daily-round-20260919', '喂进去的必须是这条告警的 JSON');
+  assert.equal(seen.alert.type, 'DAILY_ROUND_FAILED');
 
   const notDelivered = dispatchRoundAlert({
     alert, dispatch: { action: 'send', why: 'x' }, logDir: ALERT_LOG_DIR, log: () => {},
@@ -825,6 +835,60 @@ test('驱动：真正投递时走既有的通知出口，且「没送达」要�
     spawn: () => ({ status: 1, stderr: 'NOT_CONFIGURED' }),
   });
   assert.equal(notDelivered.delivered, false, '投递失败不许记成送达');
+});
+
+test('驱动：跑前环境自检要把「宿主掐断」与「数据问题」当场分开', () => {
+  // 掐断那一档：spawnSync 返回的是**错误对象**（不是非零退出码）。文案里必须点名
+  // 「这是宿主执行环境限制，不是数据问题」——否则读日志的人会去查采集脚本，方向就反了。
+  const blocked = probeSyncSpawnSanity({
+    spawn: () => ({ error: Object.assign(new Error('spawnSync node.exe EBUSY'), { code: 'EBUSY' }) }),
+  });
+  assert.equal(blocked.blocked, true);
+  assert.equal(blocked.code, 'EBUSY');
+  assert.match(blocked.line, /不是数据问题/u, '必须把归因写死在文案里，而不是留给读日志的人猜');
+  assert.match(blocked.line, /EBUSY/u, '错误码要露出来（它是这条判据的原始证据）');
+
+  // 正常那一档：说清楚「这一轮不会因 EBUSY 失败」，而不是留白让人以为没查。
+  const ok = probeSyncSpawnSanity({ spawn: () => ({ status: 0, stdout: '' }) });
+  assert.equal(ok.blocked, false);
+  assert.match(ok.line, /不会因 EBUSY 失败/u, '正常也要有一句明确的结论（安静不等于没查）');
+});
+
+test('驱动：环境自检的探针必须探「管道 stdin」那一形态，且只许跑一个什么都不做的子进程', () => {
+  let seen = null;
+  probeSyncSpawnSanity({ spawn: (cmd, argv, options) => { seen = { cmd, argv, options }; return { status: 0 }; } });
+  assert.deepEqual(seen.options.stdio, ['pipe', 'pipe', 'pipe'],
+    '探针必须是**被掐的那一形态**（管道 stdin）—— 用 ignore 去探永远绿，测不出任何东西');
+  assert.deepEqual(seen.argv, ['-e', '0'], '探针只许跑一个空转的子进程（只读、无副作用）');
+});
+
+test('驱动：两个同步子进程调用点必须显式声明 stdio，且 stdin 不许是管道（源码级接线判据）', () => {
+  // 为什么用源码扫描而不是行为断言：这两个调用点在函数体深处，行为级要真起子进程才测得到；
+  // 而「宿主沙箱掐断」这一环境下行为级判据本身可能就是假的（函数级用例全绿 ≠ 接线接上了）。
+  // 这一条治的正是那个形态：把 stdio 删掉、或把告警换回 `input:` 时当场红。
+  const source = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  assert.match(source,
+    /spawnSync\(NODE, \[scriptPath, \.\.\.stage\.argv\], \{[\s\S]{0,600}?stdio: \['ignore', 'pipe', 'pipe'\]/u,
+    '每个采集/写入阶段都必须以 stdio [ignore,pipe,pipe] 起子进程 —— 默认值（三根都是管道）会被宿主沙箱掐成 EBUSY');
+  assert.ok(!/input: JSON\.stringify\(alert\)/u.test(source),
+    '告警 JSON 不许走 stdin（`input:`）—— 它会隐式建 stdin 管道，改走 --alert-file');
+  assert.match(source, /\[NOTIFY_CLI, '--alert-file', alertPath\]/u,
+    '告警必须走 notify-feishu.mjs 既有的 --alert-file 入口');
+  // 环境自检必须排在**整轮体检之前**：它是「宿主掐断」与「数据坏了」在日志里的唯一分界，
+  // 排在体检之后就等于「已经按业务问题排查了一半，才看到那句解释」。
+  const selfCheckAt = source.indexOf('probeSyncSpawnSanity().line');
+  const healthAt = source.indexOf('await runHealthCheck({');
+  assert.ok(selfCheckAt > 0 && healthAt > 0 && selfCheckAt < healthAt,
+    `环境自检必须打在整轮体检之前（自检在 ${selfCheckAt}、体检在 ${healthAt}）`);
+  // 光修驱动那一层**不够**：实测这个限制**穿透到孙进程**（用 ['ignore','pipe','pipe']
+  // 起起来的子进程，它自己再做默认 stdio 的同步 spawn 照样 EBUSY）。
+  // 而第 7 步 push 跑的 run-daily-report.mjs 内部就有一个同步子进程（`py extract-sources.py`）——
+  // 它一死，整轮在**第一次真的往飞书写字之前**停住，前面六个阶段的采集全白做。
+  const pushSource = readFileSync(path.join(SCRIPTS_DIR, 'run-daily-report.mjs'), 'utf8');
+  assert.match(pushSource,
+    /spawnSync\(python, pythonArgs, \{[\s\S]{0,700}?stdio: \['ignore', 'pipe', 'pipe'\]/u,
+    'push 阶段内部那个 `py extract-sources.py` 也必须以 stdio [ignore,pipe,pipe] 起：'
+      + '宿主沙箱的限制会穿透到孙进程，只修驱动那一层整轮还是会死在第一次飞书写入之前');
 });
 
 // 去重判据本身的用例**不在这里**：它 2026-09-24 随实现在 `runtime/alert-throttle.mjs`

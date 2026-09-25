@@ -253,9 +253,16 @@ test('跑前登录态体检的参数只有一个来源（两个宿主共用，�
 // 所以下面两条**真跑一遍那个入口**（`--print` 不起任何进程、不碰浏览器、不写飞书）。
 // 期望路径由本文件的 `import.meta.dirname` 推出来，不写死盘符：换机器照样成立。
 const runHostPrint = (script, args) => {
+  // `stdio` 必须显式写、且 stdin 只能是 `'ignore'`（2026-09-25，同 CHANGELOG 1.7.1）：
+  // 不写 stdio 时默认「三根都是管道」，而本机宿主沙箱对「给子进程管道 stdin 的同步 spawn」
+  // 直接回 EBUSY（`status=null`）⇒ 下面三条会以 `null !== 0` **假红**，
+  // 把「宿主掐断了子进程」报成「接线断了」。
   const result = spawnSync(process.execPath, [path.join(REPO_ROOT, 'scripts', script), '--print', ...args],
-    { encoding: 'utf8', cwd: REPO_ROOT });
-  assert.equal(result.status, 0, `${script} --print 没跑成：${result.stderr}`);
+    { encoding: 'utf8', cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+  // 失败信息里必须带上 `error`：子进程**根本没起来**时 stderr 是空的，
+  // 只报 stderr 的话这一条会显示成 `没跑成：undefined`，读日志的人看不出成因。
+  assert.equal(result.status, 0,
+    `${script} --print 没跑成：status=${result.status} error=${result.error?.message ?? 'none'} stderr=${result.stderr}`);
   return result.stdout;
 };
 

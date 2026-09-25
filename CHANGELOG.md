@@ -15,6 +15,173 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.7.1] - 2026-09-25
+
+起因是 09-24 那天的**补跑四轮全灭**：链的每个阶段都只留下一行
+`error=spawnSync … EBUSY`，飞书一个字没写，而且**连一条失败告警都发不出去**
+（日志里是 `告警投递退出码=null`）。而同一天早上 08:14 的定时轮与 08:55 的一次手动
+补跑却 11/11 全绿。本版把这条「时通时炸」的成因定死、把受影响的调用点改掉，
+并加一道跑前自检，让「宿主掐断」与「数据坏了」在日志里当场分开。
+
+### 成因：宿主沙箱按**每次调用**决定要不要掐断同步子进程，分界在 stdin 那条管道
+
+不是随机、不是业务问题、不是 Node 版本问题。判据（全部只读）：
+
+- **12 组对照**：`stdio` 里 stdin 是 `'ignore'` 的（`['ignore','pipe','pipe']`、
+  `[ignore,pipe,ignore]`、`[ignore,ignore,pipe]`、标量 `'ignore'`、`'inherit'`、文件 fd）
+  **全通**；stdin 是 `'pipe'` 的（`['pipe',…]`、不写 `stdio` 的默认值、`input:`）**全灭**：
+  `error.code='EBUSY'`、`errno=-4082`（libuv `UV_EBUSY`）、`status=null`、
+  `stdout=undefined`，且**1~4ms 内 fail-fast**（不是超时）。
+  `input:` 与显式 `stdio:['ignore',…]` 同时给也照样炸 ⇒ `input` 会把 stdio[0] 覆盖回管道。
+- **排除项**：换 `cmd.exe` / `python.exe` 做子进程同样炸；而 **Python 的同步
+  `subprocess.run(capture_output=True)` 正常** ⇒ 不是 OS 层、也不是「所有同步子进程」；
+  Node 版本、shim、以及全部 `CODEBUDDY_*` / `WORKBUDDY_*` / `SANDBOX_*` 环境变量逐个排除
+  （自建命名管道可通；job object 拒绝 breakaway）。
+- **归因到宿主**：宿主日志 `%USERPROFILE%\.workbuddy\logs\<日期>\<工作区>__*.log` 里
+  **每次工具调用**都有一行 `[SandboxOrchestrator] OUTCOME … outcome=…`。
+  同一台机器、同一个仓库、同一天：`outcome=sandbox-disabled` 的两次**全通**
+  （08:14 与 08:55，后者把里可林淘宝 11 个阶段跑完），
+  `background-sandbox` / `sandbox-success` 的每一次**全灭**（08:32、09:26、09:28）。
+  ⇒ 「时通时炸」＝每次调用各自的沙箱判定，与代码和数据无关。
+- **权限与沙箱是两件事**（不是「权限没开」）：沙箱开着的调用记的是
+  `[SandboxPermissionGateway] sandbox path active → skip 8-Phase`、
+  `[BashTool] sandbox path active, skipping 8-Phase permission check`；
+  关着的调用记 `permissionPath=n/a`。把权限全开**不会**去掉沙箱，只会让失败更安静。
+
+### 本版改动（1 个自检 ＋ 3 个生产调用点 ＋ 2 处测试 ＋ 2 个门禁脚本，共 10 处调用点／6 个文件）
+
+1. **`runStage` 的每个阶段显式声明 `stdio: ['ignore','pipe','pipe']`**
+   （`skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs`）。
+   改前它不写 `stdio` ⇒ 走 Node 默认的「三根都是管道」⇒ 正好是被掐的那一形态。
+   这正是 09-24 四轮里**每个阶段**都只留三行的原因。改法照搬本仓已有的正确样例
+   （`scripts/run-daily-job.mjs` 的 spawn 一直是 `['ignore', …]`，因此同一轮里它退出码正常
+   而链的阶段全灭 —— 这条「父子不同命」的现场本身就是定位这次故障的线索）。
+2. **失败告警改走 `notify-feishu.mjs --alert-file`，不再走 `input:`**
+   （同文件 `dispatchRoundAlert`）。`input:` 会隐式建 stdin 管道 ⇒ 告警这一条路在沙箱下
+   **必然**发不出去（09-24 四轮里 `告警投递退出码=null` 全是这么来的）。
+   该 CLI 本来就有 `--alert-file` 这个开关，改用它并同样显式声明 stdio。
+   告警 JSON 落系统临时目录、用完即删：它的职责只是**运输**，
+   而「收信人到底看到了什么」已由 `告警文案（收信人看到的）` 那一段完整落在 job.log 里。
+3. **跑前环境自检 `probeSyncSpawnSanity`**（同文件，`main()` 里**第一行** `[驱动]` 输出）。
+   它用 `node -e 0` 探**被掐的那一形态**（`['pipe','pipe','pipe']`），把结论直接写进 job.log：
+   掐断时是「这是宿主执行环境限制，不是数据问题」＋错误码；正常时是「这一轮不会因 EBUSY 失败」。
+   为什么必须排在所有阶段之前：09-24 事后读日志的人第一反应是「采集脚本坏了／登录掉了」，
+   而这两种成因的处置完全相反。探「坏形态」而不是「已修好的形态」还有一个理由：
+   链上**其它**同步子进程仍在踩它（`runtime/browser-inventory.mjs` 的 `netstat` 扫描、
+   `scripts/stop-all.mjs` 的 `netstat` / `taskkill`、各采集脚本内部），
+   它们报 EBUSY 的症状是**静默降级**（把「读不到」当成「没有」）——
+   这一行是解释那些症状的唯一线索。自检只读、失败不拦采集（诊断层，不是闸门）。
+4. **顺手修掉同一个病根的两处测试代码**（`runtime/daily-job-plan.test.mjs` 的 `runHostPrint`、
+   `skills/sycm-alimama-daily-report/scripts/daily-report-audit.test.mjs` 的 `git ls-files` 扫描）。
+   它们起子进程时都没写 `stdio` ⇒ 在沙箱态下不是「断言失败」而是**整条跑不起来**：
+   前者报 `null !== 0`（伪装成接线断了），后者报 `spawnSync …cmd.exe EBUSY`。
+   本版给两处补上显式 `stdio`；`runHostPrint` 的断言消息同时改成带上 `result.error?.message` ——
+   子进程**根本没起来**时 stderr 是空的，只报 stderr 会显示成 `没跑成：undefined`。
+   这两处在本次验证时**先红后绿**（红的原文与转绿后的输出都在证据目录里），
+   记下来是因为它们正是本版要治的形态：**把「读不到」报成「不存在」**。
+5. **`run-daily-report.mjs` 里那个 `py extract-sources.py` 也补上显式 `stdio`**（同病根第 4 处）。
+   为什么只修驱动那一层**不够** —— 实测这条限制**穿透到孙进程**：
+   用 `stdio: ['ignore','pipe','pipe']` 起起来的子进程，它自己再做一次默认 stdio 的同步 spawn，
+   照样拿到 `EBUSY`（`tmp/probe-1.7.1-depth-out.txt`）。
+   而 `run-daily-report.mjs` 正是链第 7 步 `push` 跑的脚本，也就是**第一次真的往飞书写字**的那一步：
+   它一死，整轮在写飞书之前就停住，前面六个阶段的采集全白做。
+   （这条是动手核查「L1 到底够不够」时才发现的：整个链上**只有这一处**阶段内同步子进程，
+   其余阶段全是走代理的 HTTP，不受这条限制影响。）
+6. **两道提交前门禁自己也跑不起来**（`scripts/check-fast.mjs` 两处、`scripts/run-affected-tests.mjs` 三处，
+   都是 `execFileSync('git', …)` 没写 `stdio`）。症状极具误导性：`spawnSync git EBUSY`
+   看起来像 **git 坏了**，而真实原因是门禁给自己建了一根 stdin 管道。
+   这条必须一起修：`AGENTS.md` 要求提交前跑 `npm run check:staged` / `npm run test:staged`，
+   而**无人值守的自动化很可能就是跑在沙箱会话里** —— 门禁自己跑不起来，等于这道防线在那种会话里根本不存在。
+
+### 本版**没有**做（明确记下来，免得下次当成年久失修）
+
+- **三个「把读不到当成没有」的静默降级点**：`runtime/browser-inventory.mjs:332`、
+  `scripts/stop-all.mjs:57` 与 `:137`。它们是已知缺陷②「释放路径假绿」的下游成因，
+  但属于另一批（要连「读不到时该报什么」一起设计），本版只把**成因**写进上述自检文案。
+- **禁止裸 `spawnSync` 的仓库守卫（原计划的 L3）＋剩下裸调用点的清扫**。本版只修了**本次路径上**的
+  10 处（`grep -rn "spawnSync\|execFileSync\|execSync"` 之后逐处判读）。仓库里其它测试与工具脚本
+  仍有一批同步调用没写 `stdio` —— 且**光看 grep 数不出来**（很多是"选项对象写在下一行"的多行写法），
+  它们在沙箱会话里同样会「整条跑不起来」。判据：`[SandboxOrchestrator] OUTCOME` 不是 `sandbox-disabled`
+  时，看到 `status=null` ＋ `error.code=EBUSY` 就按这条处理，**别去查那门业务**。
+- **遮挡层判定假红**：另一条独立缺陷（`collect-core.mjs` 的 `dismissed` 与
+  `collect-promotion-report.mjs` 的 `hitCheckDismissingOverlay`），本版未动。
+- **商家浏览器（19022/19023）自动登录**：仍押后（1.7.0 已记）。
+
+### 验证到什么程度（照实写）
+
+- **离线判据全绿**（原始输出都在 `evidence/ebusy-fix-1.7.1/`）：
+  · `all-affected-1.7.1.txt` —— **8 个文件 132/132、fail 0、退出码 0**：
+    `runtime/version-consistency.test.mjs`、`run-multi-shop-day.test.mjs`、
+    `daily-report-core` / `daily-report-runtime` / `daily-report-audit.test.mjs`、
+    `runtime/daily-job-plan.test.mjs`、`runtime/alert-throttle.test.mjs`、`runtime/arch-boundary.test.mjs`。
+    其中新增 3 条（自检的两种归因文案、探针形态）、改写 1 条（投递必须走 `--alert-file` 且显式 stdio）、
+    另加 1 条**源码级接线判据**（驱动两个调用点必须显式 `stdio`、告警不许再用 `input:`、
+    自检必须排在整轮体检之前、**push 阶段内部的 `py extract-sources.py` 也必须显式 stdio**）。
+  · `affected-tests-1.7.1.txt` 与 `related-tests-1.7.1.txt` 是**逐步跑出来的中间记录**，两份都**先红后绿**：
+    前者在修 `daily-report-audit.test.mjs` 那处之前是 98/99（红的是 `spawnSync …cmd.exe EBUSY`），
+    后者是 30/33（红的三条都是 `run-daily-job.mjs --print 没跑成：undefined` ＋ `null !== 0`）。
+    记下来是因为这两处红正是本版要治的形态：**把「读不到」报成「不存在」**。
+  · `mutation-1.7.1.json` —— `run-multi-shop-day.mutation.mjs`：**7/7 命中、`restored: true`**。
+    它每跑一次就把驱动源码改坏再还原，`restored: true` 意味着本版的改动**没有被它改坏**，
+    也意味着那 7 条精确字符串替换在本版改动之后仍然唯一命中（改动的位置没把它们错开）。
+- **两个调用点都在「本机这一轮确实被掐」的环境里真验过**
+  （`tmp/probe-1.7.1-alert-path-out.txt`，探针脚本 `tmp/probe-1.7.1-alert-path.mjs`）：
+  · A 用**真** `spawnSync` 探到 `blocked=true`、`code=EBUSY` —— 即这一轮本身就是被掐的那一形态，
+    自检在它该发声的环境里发了声（不是我在推断「它应该会响」）。
+  · B 走**真** `runtime/notify-feishu.mjs`：调用形态是
+    `[notify-feishu.mjs, --alert-file, <tmp>.json]`、`stdio=["ignore","pipe","pipe"]`，
+    收据 `status: DRY_RUN`（**一个字节都没发**）；告警临时文件「spawn 那一刻在、
+    返回之后不在」＝用完即删。改动前这一条在同样的环境里是 `status=null`
+    （就是 09-24 日志里的 `告警投递退出码=null`）。
+  · 另有一张更早的 A/B/C/D/E 形状对照表（`tmp/probe-ebusy-fix-shape-out.txt`），
+    它是这次定案的依据：D（`--alert-file` ＋ 显式 stdio）通、A（`input:`）与 C（都不加）灭。
+  · **穿透性**（`tmp/probe-1.7.1-depth-out.txt`）：`['ignore','pipe','pipe']` 起起来的子进程里，
+    它自己再做一次默认 stdio 的同步 spawn 仍然 `EBUSY`；换成 `['ignore',…]` 就 `status=0`。
+    这条**推翻了「修好驱动那一层就够」这个假设**，也是本版多出改动第 5 条（push 阶段内部那一处）的原因。
+    没有它，今天就跑不了任何一轮能写出飞书的补跑。
+- **真机整链已跑过一次排练**（`--date 2026-09-24 --keep-going`，默认档＝两个写入方都干跑，
+  **飞书一个字节都没写**；证据目录 `evidence/rehearse-2026-09-24-1.7.1/`，stdout 全文
+  `tmp/rehearse-2026-09-24.log`）。这一轮本身就在**被掐的那个环境**里（同一次会话的自检行写着
+  `blocked=true code=EBUSY`），结果：**里可林淘宝／盖文淘宝／盖文天猫／科塔淘宝 四家 11/11 全阶段
+  exit=0**，第 7 步 `push`（就是改动第 5 条那一处 python 调用）也在内；网林天猫 停在第 6 步
+  `promotion-fetch`（复选框中心被 `TD.` 挡住、6 次重试后按设计停手 —— **另一条已知缺陷，与本节无关**）。
+  整轮零 `EBUSY` ⇒ 改动 1/3/5 三处调用点在真机上成立，不只是离线判据。
+  · 附带推翻一条旧判断：09-24 那轮网林是停在**第 3 步** `promotion-submit`（全屏遮挡层回读判"没关掉"），
+    这次它在第 3 步**顺利过了**（同一台机、同一个 938×442 的小窗口、同一天）
+    ⇒ 那次大概率是**时序**（遮挡层还没落稳就点了），不是稳定的判据错误。
+    当前真正的拦路点在第 6 步，**本版刻意没碰**（要连"挡住的到底是什么"一起查）。
+- **`--keep-going` 是这次跑通的前提**：默认"首家失败即停整轮"会把整轮停在第 2 家（网林），
+  只能写进 1 家；给它才拿得到 4 家。这条与代码无关，是**跑法**，记在这里免得下次又踩。
+- **本次改动**顺手**没有**做（已在上面「本版没有做」里记过）：`runtime/browser-inventory.mjs:332`、
+  `scripts/stop-all.mjs:57`/`:137` 这三处静默降级点仍在踩同一个限制（它们是**只读对账**与
+  **释放路径**，不在链上；症状是「读不到当成没有」，不是「整轮死掉」）。
+- **本次改动**没有**碰**：任何浏览器/容器/服务的起停（一个都没动），
+  也没有对飞书写入任何真实数据（探针一律 `--dry-run`，且用独立节流文件、不碰生产节流状态）。
+- **两道提交前门禁的实际结论，照实分两段写**（本版最需要交代的一处）：
+  · `npm run check:staged` —— **PASS**。它能过正是改动第 6 条的功劳：改之前它自己都起不来，
+    报的还是一句看起来像「git 坏了」的 `spawnSync git EBUSY`。
+  · `npm run test:staged` —— **没有拿到整体结论**。它先跑 `unit`（= `run-test-suite unit`），
+    而 `unit` 的结构是「`unit:skills` 段 exit 0 才接着跑 `unit:runtime` 段」，
+    于是 `unit:skills`（58 个文件）这一段把整条门禁卡住，后面 `runtime` 段与 `docs` / `runtime-file` /
+    `skill:sycm-alimama-daily-report` 三个 check 都没跑到。卡住的原因与本节改动**无关**，两类：
+    ① **10 条假红**，同一个病根 —— 未声明 `stdio` 的**同步** `spawn`，断言原样是 `null !== 0`。
+       它们落在 6 个本版**一个字节都没改**的文件里（`git status` 里看不到它们）⇒ 同样的红在 HEAD 上也在：
+       `skills/huitun-to-feishu-keyword-heat/tests/cli.test.mjs`、
+       `skills/sycm-export-search-rank/scripts/full-flow.test.mjs` 与 `source-period-proof.test.mjs`、
+       `skills/xws-export-market-analysis/tests/cli.test.mjs`、`adaptive.test.mjs`、
+       `merge-market-analysis.test.mjs`。取证见
+       `evidence/ebusy-fix-1.7.1/probe-affected-false-reds-out.txt`：拿**逐字相同**的调用形态复现，
+       得 `status=null errorCode=EBUSY`；同一条命令摘掉 stdin 就 `status=0`、正常打出 `--help`。
+       这正是本版要治的形态，只是这一批不在本次路径上（留给 L3）。
+    ② **1 条不结束的用例**（`skills/xws-export-market-analysis/tests/prepare-flow.test.mjs`
+       第 931 行 `does not wait for a stubborn Element loading mask over the config form`）：
+       历史日志里它稳定 26~27 秒（`runtime/_skills-suite-20260919.log` 中 `duration_ms: 26230.9`），
+       本次跑到 18 分钟仍无新输出。它用的是**异步** `spawn`（本版治的那条限制掐不到异步），
+       而同一文件第 230 行的注释早已写明这条链会「一直轮询到 60 分钟的 final deadline 才失败
+       （用例看似"挂死"）」⇒ 属**既有的挂起路径**，与本版无关。
+    本次**没有**去停这个进程（未获授权不动任何进程），也**没有**顺手补那 10 处 —— 补了也不够：
+    `unit:skills` 段仍会被②卡住，门禁照样给不出整体结论。这两类一起留给 L3（见上面「本版没有做」）。
+
 ## [1.7.0] - 2026-09-24
 
 起因是 09-24 08:14 那轮定时：**链本身 11/11 全绿、退出码 0、底单五行齐全**，

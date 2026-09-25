@@ -1,0 +1,209 @@
+TAP version 13
+# Subtest: 默认状态文件落在 runtime/ 下（不进 git 的本机运行状态）
+ok 1 - 默认状态文件落在 runtime/ 下（不进 git 的本机运行状态）
+  ---
+  duration_ms: 0.6069
+  type: 'test'
+  ...
+# Subtest: 告警去重：同一条编号在时间窗内不重复发，但「停的地方变了」算新信息
+ok 2 - 告警去重：同一条编号在时间窗内不重复发，但「停的地方变了」算新信息
+  ---
+  duration_ms: 0.2544
+  type: 'test'
+  ...
+# Subtest: 读记录：按编号取，不读文件顶层 —— 顶层那条可能是**另一条链**刚写的
+ok 3 - 读记录：按编号取，不读文件顶层 —— 顶层那条可能是**另一条链**刚写的
+  ---
+  duration_ms: 46.5275
+  type: 'test'
+  ...
+# Subtest: 读记录：旧格式（顶层单条、没有 byAlertId）仍能读出来
+ok 4 - 读记录：旧格式（顶层单条、没有 byAlertId）仍能读出来
+  ---
+  duration_ms: 13.8369
+  type: 'test'
+  ...
+# Subtest: 读记录：文件不存在或内容坏了，一律当「没发过」（宁可多发）
+ok 5 - 读记录：文件不存在或内容坏了，一律当「没发过」（宁可多发）
+  ---
+  duration_ms: 16.6778
+  type: 'test'
+  ...
+# Subtest: 写记录：两条链共用同一个文件时，各自的记录都留得住
+ok 6 - 写记录：两条链共用同一个文件时，各自的记录都留得住
+  ---
+  duration_ms: 41.8427
+  type: 'test'
+  ...
+# Subtest: skills → runtime 的依赖清单与登记逐字一致（新增与消失都要显式改这里）
+ok 7 - skills → runtime 的依赖清单与登记逐字一致（新增与消失都要显式改这里）
+  ---
+  duration_ms: 553.4645
+  type: 'test'
+  ...
+# Subtest: runtime → skills 的依赖清单与登记逐字一致（这是交付形态被锁死的根因）
+ok 8 - runtime → skills 的依赖清单与登记逐字一致（这是交付形态被锁死的根因）
+  ---
+  duration_ms: 187.6307
+  type: 'test'
+  ...
+# Subtest: 守卫本身是活的：扫描确实读到了文件（否则「全绿」只是没扫到）
+ok 9 - 守卫本身是活的：扫描确实读到了文件（否则「全绿」只是没扫到）
+  ---
+  duration_ms: 298.3812
+  type: 'test'
+  ...
+# Subtest: 三步的顺序是「先保证实例在 → 再看一眼登录态 → 再跑链」
+ok 10 - 三步的顺序是「先保证实例在 → 再看一眼登录态 → 再跑链」
+  ---
+  duration_ms: 1.1474
+  type: 'test'
+  ...
+# Subtest: 登录态体检那一步：只读、且指定店铺时只体检那几家
+ok 11 - 登录态体检那一步：只读、且指定店铺时只体检那几家
+  ---
+  duration_ms: 0.5588
+  type: 'test'
+  ...
+# Subtest: 计划指向的文件都真实存在（脚本被改名时不许静默生效）
+ok 12 - 计划指向的文件都真实存在（脚本被改名时不许静默生效）
+  ---
+  duration_ms: 0.3396
+  type: 'test'
+  ...
+# Subtest: 日期只有一种给法：默认 yesterday，且从不写死具体日期
+ok 13 - 日期只有一种给法：默认 yesterday，且从不写死具体日期
+  ---
+  duration_ms: 0.1844
+  type: 'test'
+  ...
+# Subtest: 定时那一档永远不加 --allow-missing-peer（默认关，要开必须显式）
+ok 14 - 定时那一档永远不加 --allow-missing-peer（默认关，要开必须显式）
+  ---
+  duration_ms: 0.1423
+  type: 'test'
+  ...
+# Subtest: 告警默认只落日志、不投递；要发必须显式 --notify
+ok 15 - 告警默认只落日志、不投递；要发必须显式 --notify
+  ---
+  duration_ms: 0.0805
+  type: 'test'
+  ...
+# Subtest: 两个告警出口同时给 ⇒ 当场抛错，不许静默丢掉一个
+ok 16 - 两个告警出口同时给 ⇒ 当场抛错，不许静默丢掉一个
+  ---
+  duration_ms: 0.3284
+  type: 'test'
+  ...
+# Subtest: --commit 永远在（这是定时任务的职责：写下今天的数据）
+ok 17 - --commit 永远在（这是定时任务的职责：写下今天的数据）
+  ---
+  duration_ms: 0.0594
+  type: 'test'
+  ...
+# Subtest: 可选开关按需追加：不给就不出现，给了就原样转发
+ok 18 - 可选开关按需追加：不给就不出现，给了就原样转发
+  ---
+  duration_ms: 0.2588
+  type: 'test'
+  ...
+# Subtest: 渲染出的命令行是 Windows 形态：反斜杠、路径带引号
+ok 19 - 渲染出的命令行是 Windows 形态：反斜杠、路径带引号
+  ---
+  duration_ms: 0.367
+  type: 'test'
+  ...
+# Subtest: /TR 只拉起一个入口（三步由它自己按顺序执行，日志也就只有一处）
+ok 20 - /TR 只拉起一个入口（三步由它自己按顺序执行，日志也就只有一处）
+  ---
+  duration_ms: 0.2188
+  type: 'test'
+  ...
+# Subtest: 不启用分批时，三步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）
+ok 21 - 不启用分批时，三步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）
+  ---
+  duration_ms: 0.165
+  type: 'test'
+  ...
+# Subtest: 启用分批：它**替换**链那一步（不是并排），参数只带分批驱动认得的那几个
+ok 22 - 启用分批：它**替换**链那一步（不是并排），参数只带分批驱动认得的那几个
+  ---
+  duration_ms: 0.2144
+  type: 'test'
+  ...
+# Subtest: 启用分批时 `--commit` 必须显式传下去（漏了它就变成「排练」，而日志看不出异常）
+ok 23 - 启用分批时 `--commit` 必须显式传下去（漏了它就变成「排练」，而日志看不出异常）
+  ---
+  duration_ms: 0.0572
+  type: 'test'
+  ...
+# Subtest: 启用分批：告警出口与降级开关照旧按需转发
+ok 24 - 启用分批：告警出口与降级开关照旧按需转发
+  ---
+  duration_ms: 0.0645
+  type: 'test'
+  ...
+# Subtest: 启用分批时的形状校验：家数必须是 ≥1 的整数，且不许与链那边独有的开关同给
+ok 25 - 启用分批时的形状校验：家数必须是 ≥1 的整数，且不许与链那边独有的开关同给
+  ---
+  duration_ms: 0.1628
+  type: 'test'
+  ...
+# Subtest: 跑前登录态结论真的交给链了：② 出 JSON、③ 收路径（都只在给了证据目录时）
+ok 26 - 跑前登录态结论真的交给链了：② 出 JSON、③ 收路径（都只在给了证据目录时）
+  ---
+  duration_ms: 0.1012
+  type: 'test'
+  ...
+# Subtest: 不给证据目录时：不许凭空造一个路径，也不许给链加参数
+ok 27 - 不给证据目录时：不许凭空造一个路径，也不许给链加参数
+  ---
+  duration_ms: 0.053
+  type: 'test'
+  ...
+# Subtest: 分批那一档：结论交接在分批驱动内部完成，这里不生成也不转发
+ok 28 - 分批那一档：结论交接在分批驱动内部完成，这里不生成也不转发
+  ---
+  duration_ms: 0.0546
+  type: 'test'
+  ...
+# Subtest: 接线判据：两个宿主真的把结论接上了（防「函数全绿、没人调」）
+ok 29 - 接线判据：两个宿主真的把结论接上了（防「函数全绿、没人调」）
+  ---
+  duration_ms: 2.8315
+  type: 'test'
+  ...
+# Subtest: 跑前登录态体检的参数只有一个来源（两个宿主共用，不许各写一份）
+ok 30 - 跑前登录态体检的参数只有一个来源（两个宿主共用，不许各写一份）
+  ---
+  duration_ms: 0.204
+  type: 'test'
+  ...
+# Subtest: 宿主（定时链）真的把结论接上了：--print 里那条链命令带着 --login-preflight
+ok 31 - 宿主（定时链）真的把结论接上了：--print 里那条链命令带着 --login-preflight
+  ---
+  duration_ms: 376.5354
+  type: 'test'
+  ...
+# Subtest: 宿主（定时链）：--no-auto-login 退回只读体检（一个页面都不碰）
+ok 32 - 宿主（定时链）：--no-auto-login 退回只读体检（一个页面都不碰）
+  ---
+  duration_ms: 328.7622
+  type: 'test'
+  ...
+# Subtest: 宿主（分批链）也接上了：每一批的链各读**本批**那份结论，且守卫排在本批 start 之后
+ok 33 - 宿主（分批链）也接上了：每一批的链各读**本批**那份结论，且守卫排在本批 start 之后
+  ---
+  duration_ms: 416.8964
+  type: 'test'
+  ...
+1..33
+# tests 33
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1510.8326
+EXIT=0
