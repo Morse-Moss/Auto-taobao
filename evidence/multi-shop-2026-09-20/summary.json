@@ -1,7 +1,7 @@
 {
   "date": "2026-09-20",
   "mode": "commit",
-  "startedAt": "2026-09-21T07:57:56.411Z",
+  "startedAt": "2026-09-25T04:08:38.471Z",
   "round": {
     "healthCheckDaily": {
       "status": 0,
@@ -15,7 +15,7 @@
   },
   "shops": {
     "科塔淘宝": {
-      "status": "failed",
+      "status": "ok",
       "stages": [
         {
           "stage": "health-check",
@@ -24,7 +24,7 @@
           "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\01-health-check.txt",
           "argv": [],
           "blockingDetails": [],
-          "pageNormalize": "已归位（生意参谋工作页=0  阿里妈妈报表页=1 → 生意参谋工作页=1  阿里妈妈报表页=1）"
+          "pageNormalize": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）"
         },
         {
           "stage": "alimama-date",
@@ -66,7 +66,7 @@
         },
         {
           "stage": "sycm-date",
-          "status": 1,
+          "status": 0,
           "skipped": false,
           "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\04-sycm-date.txt",
           "argv": [
@@ -79,40 +79,139 @@
           ],
           "blockingDetails": null,
           "pageNormalize": null
+        },
+        {
+          "stage": "shop-report",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-09-20",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--expect-shop",
+            "科塔全卫定制",
+            "--expect-member",
+            "j873522735:阿彦",
+            "--expect-member-id",
+            "412070158"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "promotion-fetch",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\06-promotion-fetch.txt",
+          "argv": [
+            "--phase",
+            "fetch",
+            "--date",
+            "2026-09-20",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--expect-shop",
+            "科塔全卫定制",
+            "--expect-member",
+            "j873522735:阿彦",
+            "--expect-member-id",
+            "412070158"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "push",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\07-push.txt",
+          "argv": [
+            "--date",
+            "2026-09-20",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "科塔淘宝",
+            "--commit",
+            "--shop-xlsx",
+            "C:\\Users\\Administrator\\Downloads\\日报_20260925_aefdcd0599626688507142b7bbed7e84 (2).xlsx",
+            "--promotion-zip",
+            "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260921_145402.zip"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "sycm-reset",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\08-sycm-reset.txt",
+          "argv": [],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "sycm-date-again",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\09-sycm-date-again.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-09-20",
+            "--proxy",
+            "http://127.0.0.1:19044"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "backfill",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\10-backfill.txt",
+          "argv": [
+            "--date",
+            "2026-09-20",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--source-shop",
+            "科塔全卫定制",
+            "--shop",
+            "科塔淘宝",
+            "--shop-key",
+            "科塔淘宝",
+            "--commit",
+            "--allow-missing-peer"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "readback",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\11-readback.txt",
+          "argv": [
+            "--date",
+            "2026-09-20",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "科塔淘宝"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
         }
       ],
-      "source": {},
-      "failedStage": "sycm-date",
-      "failureOutput": "\nError: expected one sycm page on http://127.0.0.1:19044, got 0\n    at resolveTarget (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:441:9)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:477:28)\n    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:457:12)\nTRACE [\n  {\n    \"step\": \"recover-entry\",\n    \"targetId\": \"0F3988566AF5D318E806DF8B456BE2E0\",\n    \"from\": \"https://sycm.taobao.com/mc/free/sycm\",\n    \"entryUrl\": \"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop\"\n  }\n]\n",
-      "blockingDetails": null,
-      "error": "阶段 sycm-date 失败（exit 1）",
-      "recovery": {
-        "at": "2026-09-21T07:58:12.040Z",
-        "proxyPort": 19044,
-        "leftAt": {
-          "tabs": 2,
-          "slots": [
-            {
-              "page": "生意参谋工作页",
-              "count": 0
-            },
-            {
-              "page": "阿里妈妈报表页",
-              "count": 1
-            }
-          ],
-          "foreign": [
-            "https://sycm.taobao.com/mc/free/sycm"
-          ]
-        },
-        "action": null,
-        "after": null,
-        "restored": null,
-        "detail": null,
-        "error": "回位后仍不是恰好一个性能页（0 个）—— 停手，先看现场",
-        "logPath": "evidence\\multi-shop-2026-09-20\\科塔淘宝\\99-recovery.txt"
+      "source": {
+        "shopXlsx": "C:\\Users\\Administrator\\Downloads\\日报_20260925_aefdcd0599626688507142b7bbed7e84 (2).xlsx",
+        "promotionZip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20260921_145402.zip"
       }
     }
   },
-  "finishedAt": "2026-09-21T07:58:17.452Z"
+  "finishedAt": "2026-09-25T04:11:13.843Z"
 }

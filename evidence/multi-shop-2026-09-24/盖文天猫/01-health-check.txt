@@ -5,7 +5,7 @@
 
 {
   "normalize": {
-    "proxyPort": 19044,
+    "proxyPort": 19045,
     "dry": false,
     "before": [
       {
@@ -70,6 +70,6 @@
       "SESSION": "NOT_IMPLEMENTED",
       "END_TO_END": "NOT_IMPLEMENTED"
     },
-    "checkedAt": "2026-09-25T04:08:38.521Z"
+    "checkedAt": "2026-09-25T04:03:21.398Z"
   }
 }

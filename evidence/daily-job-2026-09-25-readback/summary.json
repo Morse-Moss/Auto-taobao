@@ -1,0 +1,358 @@
+{
+  "what": "2026-09-25 两笔历史日报（09-24 五家、09-20 科塔）补齐与否的独立回读汇总",
+  "howToJudge": "看 sourceTable.onDateCount（且 onDateCountIsLowerBound=false）：09-24 期望 5、09-20 期望 5",
+  "reads": [
+    {
+      "label": "09-24 补齐之后（11:53 那轮跑完做的独立回读）",
+      "originalFile": "tmp/readback-2026-09-24-post/independent-readback.json",
+      "readAt": "2026-09-25T04:11:22.077Z",
+      "reportDate": "2026-09-24",
+      "sourceTable": {
+        "tableId": "tblkY3W8tnPWPcnh",
+        "tableName": "总数据来源底单",
+        "recordsNumFromPageModel": 1915,
+        "onDateCount": 5,
+        "onDateCountIsLowerBound": false,
+        "note": "onDateCountIsLowerBound=false 才说明这个数是准的（页签没加载全时它是下界）",
+        "shops": [
+          "盖文旗舰店",
+          "科塔全卫定制",
+          "里可林家居",
+          "盖文全卫定制",
+          "网林家居旗舰店"
+        ]
+      },
+      "inquiryTable": {
+        "tableId": "tblUnwn05vl8Wik9",
+        "tableName": "各店铺数据日报",
+        "onDateCount": 12,
+        "rows": [
+          {
+            "shop": "安比淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "科塔龙头店",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "保拉淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "里可林淘宝",
+            "inquiry": 4,
+            "peerInquiry": 5
+          },
+          {
+            "shop": "盖文天猫",
+            "inquiry": 17,
+            "peerInquiry": 29
+          },
+          {
+            "shop": "保拉天猫",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "安比龙头店",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "盖文淘宝",
+            "inquiry": 4,
+            "peerInquiry": 5
+          },
+          {
+            "shop": "科塔淘宝",
+            "inquiry": 2,
+            "peerInquiry": 5
+          },
+          {
+            "shop": "网林天猫",
+            "inquiry": 6,
+            "peerInquiry": 10
+          },
+          {
+            "shop": "网林淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "里可林天猫",
+            "inquiry": null,
+            "peerInquiry": null
+          }
+        ]
+      }
+    },
+    {
+      "label": "09-24 幂等前置（12:30 那条一次性定时跑的回读）",
+      "originalFile": "tmp/readback-2026-09-24-rehang/independent-readback.json",
+      "readAt": "2026-09-25T04:31:15.740Z",
+      "reportDate": "2026-09-24",
+      "sourceTable": {
+        "tableId": "tblkY3W8tnPWPcnh",
+        "tableName": "总数据来源底单",
+        "recordsNumFromPageModel": 1915,
+        "onDateCount": 5,
+        "onDateCountIsLowerBound": false,
+        "note": "onDateCountIsLowerBound=false 才说明这个数是准的（页签没加载全时它是下界）",
+        "shops": [
+          "科塔全卫定制",
+          "盖文旗舰店",
+          "里可林家居",
+          "网林家居旗舰店",
+          "盖文全卫定制"
+        ]
+      },
+      "inquiryTable": {
+        "tableId": "tblUnwn05vl8Wik9",
+        "tableName": "各店铺数据日报",
+        "onDateCount": 12,
+        "rows": [
+          {
+            "shop": "安比淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "科塔淘宝",
+            "inquiry": 2,
+            "peerInquiry": 5
+          },
+          {
+            "shop": "里可林淘宝",
+            "inquiry": 4,
+            "peerInquiry": 5
+          },
+          {
+            "shop": "保拉淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "网林淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "科塔龙头店",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "网林天猫",
+            "inquiry": 6,
+            "peerInquiry": 10
+          },
+          {
+            "shop": "保拉天猫",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "盖文天猫",
+            "inquiry": 17,
+            "peerInquiry": 29
+          },
+          {
+            "shop": "盖文淘宝",
+            "inquiry": 4,
+            "peerInquiry": 5
+          },
+          {
+            "shop": "安比龙头店",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "里可林天猫",
+            "inquiry": null,
+            "peerInquiry": null
+          }
+        ]
+      }
+    },
+    {
+      "label": "09-20 补齐之后（11:53 那轮跑完做的独立回读）",
+      "originalFile": "tmp/readback-2026-09-20-post/independent-readback.json",
+      "readAt": "2026-09-25T04:11:37.395Z",
+      "reportDate": "2026-09-20",
+      "sourceTable": {
+        "tableId": "tblkY3W8tnPWPcnh",
+        "tableName": "总数据来源底单",
+        "recordsNumFromPageModel": 1915,
+        "onDateCount": 5,
+        "onDateCountIsLowerBound": false,
+        "note": "onDateCountIsLowerBound=false 才说明这个数是准的（页签没加载全时它是下界）",
+        "shops": [
+          "网林家居旗舰店",
+          "科塔全卫定制",
+          "盖文旗舰店",
+          "里可林家居",
+          "盖文全卫定制"
+        ]
+      },
+      "inquiryTable": {
+        "tableId": "tblUnwn05vl8Wik9",
+        "tableName": "各店铺数据日报",
+        "onDateCount": 12,
+        "rows": [
+          {
+            "shop": "网林淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "里可林淘宝",
+            "inquiry": 10,
+            "peerInquiry": 6
+          },
+          {
+            "shop": "里可林天猫",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "盖文淘宝",
+            "inquiry": 4,
+            "peerInquiry": 6
+          },
+          {
+            "shop": "网林天猫",
+            "inquiry": 3,
+            "peerInquiry": 14
+          },
+          {
+            "shop": "安比龙头店",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "保拉淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "科塔龙头店",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "盖文天猫",
+            "inquiry": 10,
+            "peerInquiry": 35
+          },
+          {
+            "shop": "安比淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "科塔淘宝",
+            "inquiry": 7,
+            "peerInquiry": null
+          },
+          {
+            "shop": "保拉天猫",
+            "inquiry": null,
+            "peerInquiry": null
+          }
+        ]
+      }
+    },
+    {
+      "label": "09-20 幂等前置（12:30 那条一次性定时跑的回读）",
+      "originalFile": "tmp/readback-2026-09-20-rehang/independent-readback.json",
+      "readAt": "2026-09-25T04:31:54.717Z",
+      "reportDate": "2026-09-20",
+      "sourceTable": {
+        "tableId": "tblkY3W8tnPWPcnh",
+        "tableName": "总数据来源底单",
+        "recordsNumFromPageModel": 1915,
+        "onDateCount": 5,
+        "onDateCountIsLowerBound": false,
+        "note": "onDateCountIsLowerBound=false 才说明这个数是准的（页签没加载全时它是下界）",
+        "shops": [
+          "网林家居旗舰店",
+          "盖文旗舰店",
+          "科塔全卫定制",
+          "里可林家居",
+          "盖文全卫定制"
+        ]
+      },
+      "inquiryTable": {
+        "tableId": "tblUnwn05vl8Wik9",
+        "tableName": "各店铺数据日报",
+        "onDateCount": 12,
+        "rows": [
+          {
+            "shop": "科塔淘宝",
+            "inquiry": 7,
+            "peerInquiry": null
+          },
+          {
+            "shop": "保拉淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "盖文淘宝",
+            "inquiry": 4,
+            "peerInquiry": 6
+          },
+          {
+            "shop": "保拉天猫",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "安比龙头店",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "网林天猫",
+            "inquiry": 3,
+            "peerInquiry": 14
+          },
+          {
+            "shop": "网林淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "里可林淘宝",
+            "inquiry": 10,
+            "peerInquiry": 6
+          },
+          {
+            "shop": "安比淘宝",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "盖文天猫",
+            "inquiry": 10,
+            "peerInquiry": 35
+          },
+          {
+            "shop": "科塔龙头店",
+            "inquiry": null,
+            "peerInquiry": null
+          },
+          {
+            "shop": "里可林天猫",
+            "inquiry": null,
+            "peerInquiry": null
+          }
+        ]
+      }
+    }
+  ]
+}

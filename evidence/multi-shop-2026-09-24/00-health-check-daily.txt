@@ -1,11 +1,11 @@
-归位：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+归位：本来就在位（生意参谋工作页=1  飞书底单页=1）
 体检通过：阻断 0 项，告警 1 项
   [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
   已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
 
 {
   "normalize": {
-    "proxyPort": 19044,
+    "proxyPort": 19023,
     "dry": false,
     "before": [
       {
@@ -13,7 +13,7 @@
         "count": 1
       },
       {
-        "page": "阿里妈妈报表页",
+        "page": "飞书底单页",
         "count": 1
       }
     ],
@@ -23,7 +23,7 @@
         "count": 1
       },
       {
-        "page": "阿里妈妈报表页",
+        "page": "飞书底单页",
         "count": 1
       }
     ],
@@ -35,7 +35,7 @@
         "found": 1
       },
       {
-        "page": "阿里妈妈报表页",
+        "page": "飞书底单页",
         "action": "already-one",
         "found": 1
       }
@@ -46,7 +46,7 @@
       "ok": true,
       "changed": false,
       "notDone": [],
-      "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）"
+      "detail": "本来就在位（生意参谋工作页=1  飞书底单页=1）"
     }
   },
   "check": {
@@ -70,6 +70,6 @@
       "SESSION": "NOT_IMPLEMENTED",
       "END_TO_END": "NOT_IMPLEMENTED"
     },
-    "checkedAt": "2026-09-25T04:08:38.521Z"
+    "checkedAt": "2026-09-25T04:14:58.162Z"
   }
 }

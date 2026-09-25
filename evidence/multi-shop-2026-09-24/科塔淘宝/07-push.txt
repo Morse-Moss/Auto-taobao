@@ -1,0 +1,32 @@
+
+===== 2026-09-25T04:06:43.274Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-09-24 --proxy http://127.0.0.1:19023 --shop-key 科塔淘宝 --commit --shop-xlsx "C:\Users\Administrator\Downloads\日报_20260925_aefdcd0599626688507142b7bbed7e84 (1).xlsx" --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20260925_120601.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 科塔淘宝 ↔ 源产物店名 科塔全卫定制 一致（证据目录 daily-report-2026-09-24-科塔淘宝）
+[audit] 已记 push/ok id=104
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "recvwcz2FGcN7k",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-24-科塔淘宝\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-24-科塔淘宝",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 1913,
+  "recordCountAfter": 1914,
+  "verifiedFields": 243,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 243,
+    "shopName": "科塔全卫定制",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1790179200000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---

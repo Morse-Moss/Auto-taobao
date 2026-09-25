@@ -1,0 +1,17 @@
+
+===== 2026-09-25T04:03:22.961Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase submit --date 2026-09-24 --proxy http://127.0.0.1:19045 --expect-shop 盖文旗舰店 --expect-member 盖文旗舰店:阿彦 --expect-member-id 2995200080
+exit=0 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 E38B90D98797412B52ADD7E4A42836C6｜phase=submit｜目标日 2026-09-24
+[身份] 阿里妈妈会员 = "盖文旗舰店:阿彦" ID="2995200080"（这一页不显示店铺名，只有会员名）｜期望 "盖文旗舰店:阿彦" / 2995200080 ✓
+[submit] 台账里没有 2026-09-24 这家店的未取任务 ⇒ 照常提交
+[submit] 页面 = https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-09-24&endTime=2026-09-24&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day&isRequestedQztDefaultSet=1｜正文 3070 字符
+[submit] 候选 1 个，取文档序第一个（SPAN，其可点祖先是 BUTTON，点击靠冒泡触发）
+[submit] 滚动后复核通过（y=360（中心点命中））→ 点击 → {"clicked":true,"tag":"SPAN","text":"下载报表"}
+[submit] 等到「确定」(#0)，第 2 次轮询命中｜视口 [1528,732]｜确定@[505,624,24,12]可点 取消@[565,614,64,32]可点 → {"clicked":true,"tag":"SPAN","text":"确定"}
+[submit] 提交后提示 = ""
+[submit] promotionTaskName = 营销场景报表_20260925_120337（列表里恰好多出 1 条：营销场景报表_20260925_120337；台账已记：D:\Retire\sycm-automation\runtime\promotion-task-ledger.json）
+[submit] 下一步：等它「生成成功」后跑 --phase fetch（提示语里说数据量大时最长 10 分钟）
+
+--- stderr ---

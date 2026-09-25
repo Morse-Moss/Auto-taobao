@@ -1,11 +1,11 @@
 
-===== 2026-09-21T07:57:59.553Z =====
+===== 2026-09-25T04:08:39.958Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase submit --date 2026-09-20 --proxy http://127.0.0.1:19044 --expect-shop 科塔全卫定制 --expect-member j873522735:阿彦 --expect-member-id 412070158
 exit=0 signal= error=none
 --- stdout ---
-[0/2] 阿里妈妈页 F86052A0389C66158B408F5AFB48C8CF｜phase=submit｜目标日 2026-09-20
+[0/2] 阿里妈妈页 2B4D7E1D8A53C495A135F6FB6586C393｜phase=submit｜目标日 2026-09-20
 [身份] 阿里妈妈会员 = "j873522735:阿彦" ID="412070158"（这一页不显示店铺名，只有会员名）｜期望 "j873522735:阿彦" / 412070158 ✓
-[submit] 台账记着 2026-09-20 已提交过 营销场景报表_20260921_145402，且它仍在下载任务列表里（列表 9 条） ⇒ 跳过提交，直接取件（不再对平台产生第二次副作用）
+[submit] 台账记着 2026-09-20 已提交过 营销场景报表_20260921_145402，且它仍在下载任务列表里（列表 14 条） ⇒ 跳过提交，直接取件（不再对平台产生第二次副作用）
 [submit] promotionTaskName = 营销场景报表_20260921_145402
 [submit] 未点击任何东西（这一目标日的副作用已经产生过了，不再产生第二次）
 
