@@ -3,8 +3,14 @@ import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
 
+// `stdio` 必须显式写、且 stdin 只能是 `'ignore'`（2026-09-25，与 CHANGELOG 1.7.1 同一病根）。
+// 宿主沙箱对「给了子进程管道 stdin 的同步 spawn」直接回 `EBUSY`（`errno=-4082`），而 execFileSync 的
+// 默认 stdio 三根都是管道 ⇒ 这一处漏写会让 `npm run check:delivery`（AGENTS.md 强制要跑的那一步）
+// 直接抛 `spawnSync git EBUSY`，看起来像 git 坏了。1.7.1 修了链上和另外几个门禁脚本，当时漏了这一处。
+const GIT_STDIO = ['ignore', 'pipe', 'pipe'];
+
 function git(args) {
-  return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: GIT_STDIO }).trim();
 }
 
 export function evaluateDelivery({ status, mainlineContains, remoteContains, remoteKnown }) {

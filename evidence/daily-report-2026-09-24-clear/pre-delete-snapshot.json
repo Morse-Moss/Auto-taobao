@@ -1,0 +1,117 @@
+{
+  "takenAt": "2026-09-25T01:25:28.419Z",
+  "reportDate": "2026-09-24",
+  "apply": true,
+  "note": "删除前的枚举快照。派生列（Lookup/Formula）的值来自底单，随底单行一起归零属于预期。",
+  "source": {
+    "total": 1910,
+    "onDay": [
+      {
+        "recordId": "recvwbNPugMbwN",
+        "shop": "里可林家居",
+        "nonDerivedFilled": 234
+      }
+    ]
+  },
+  "inquiry": {
+    "total": 2197,
+    "onDay": [
+      {
+        "recordId": "recvtXeLhcuYMV",
+        "shop": "盖文天猫",
+        "inquiry": null,
+        "peer": null,
+        "strangers": []
+      },
+      {
+        "recordId": "recvtXfapnm4Co",
+        "shop": "里可林淘宝",
+        "inquiry": "4",
+        "peer": "5",
+        "strangers": []
+      },
+      {
+        "recordId": "recvtXfapnwH6f",
+        "shop": "里可林天猫",
+        "inquiry": null,
+        "peer": null,
+        "strangers": []
+      },
+      {
+        "recordId": "recvtXfapnR6Xd",
+        "shop": "网林天猫",
+        "inquiry": null,
+        "peer": null,
+        "strangers": []
+      },
+      {
+        "recordId": "recvtXfapnI2XX",
+        "shop": "盖文淘宝",
+        "inquiry": null,
+        "peer": null,
+        "strangers": []
+      },
+      {
+        "recordId": "recvtXfapnSjfR",
+        "shop": "网林淘宝",
+        "inquiry": null,
+        "peer": null,
+        "strangers": []
+      },
+      {
+        "recordId": "recvtXfapnKxyj",
+        "shop": "科塔淘宝",
+        "inquiry": null,
+        "peer": null,
+        "strangers": []
+      },
+      {
+        "recordId": "recvtXfapnB8x2",
+        "shop": "保拉淘宝",
+        "inquiry": null,
+        "peer": null,
+        "strangers": []
+      },
+      {
+        "recordId": "recvtXfapn6Jnt",
+        "shop": "保拉天猫",
+        "inquiry": null,
+        "peer": null,
+        "strangers": []
+      },
+      {
+        "recordId": "recvtXfapnE3sQ",
+        "shop": "安比龙头店",
+        "inquiry": null,
+        "peer": null,
+        "strangers": []
+      },
+      {
+        "recordId": "recvtXfapnVqE4",
+        "shop": "科塔龙头店",
+        "inquiry": null,
+        "peer": null,
+        "strangers": []
+      },
+      {
+        "recordId": "recvtXfapnUVVx",
+        "shop": "安比淘宝",
+        "inquiry": null,
+        "peer": null,
+        "strangers": []
+      }
+    ]
+  },
+  "decision": {
+    "deleteSource": [
+      "recvwbNPugMbwN"
+    ],
+    "clearInquiryFields": [
+      "recvtXeLhcuYMV",
+      "recvtXfapnm4Co",
+      "recvtXfapnR6Xd",
+      "recvtXfapnI2XX",
+      "recvtXfapnKxyj"
+    ]
+  }
+}

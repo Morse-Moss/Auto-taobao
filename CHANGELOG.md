@@ -15,6 +15,52 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.7.2] - 2026-09-25
+
+起因是**提交前门禁在一个后台会话里跑了 8 小时 2 分，没人知道它还在跑**。
+2026-09-25 10:28 为了给 1.7.1 做提交前检查跑了 `npm run test:staged`；它按「受影响的测试」选面，
+把 `skills/xws-export-market-analysis/` 的**整套**测试拉了起来 —— 实测 **664 条用例、合计 7.64 小时**，
+其中 `prepare-flow.test.mjs` 的 7 条 `full flow …` 用例**每条各等满 CLI 自己的 60 分钟下载 deadline**
+（`61.9 / 61.4 / 60.6 / 60.6 / 60.6 / 60.4 / 60.4` 分，错误全是 `Timed out waiting for .csv download`），
+这 7 条吃掉总时长的 **92%**。门禁本身没有给出整体结论，而它也不该以「拖着跑半天」的形式存在。
+
+### 改了什么
+
+- **`scripts/run-affected-tests.mjs`：给每条命令加墙上时钟预算。**
+  默认 **1800 秒/条**，`--budget-seconds=N` 可改，`0`＝不限。超预算时**连根终止整棵进程树**
+  并退出 **3 = INCOMPLETE** —— 口径沿用本仓已立过的那一条：**没有结论既不是通过、也不是失败**，
+  所以不伪装成 0（假绿）也不伪装成 1（假红）。为此把 `spawnSync` 换成异步 `spawn`
+  （`spawnSync` 只能杀直接子进程，留下过孤儿；Windows 用 `taskkill /F /T` 连根拔）。
+  超预算时会打出被砍的那条命令、它的含义、以及「单独跑完它 / 放宽预算」两条出路。
+- **`scripts/delivery-status.mjs`：补上 `stdio: ['ignore','pipe','pipe']`。**
+  与 1.7.1 同一病根（宿主沙箱对「同步 spawn ＋ 管道 stdin」回 `EBUSY`），1.7.1 修了链上与另外几个
+  门禁脚本，**漏了这一处** ⇒ `npm run check:delivery`（`AGENTS.md` 强制要报的那一步）在这类会话里
+  直接抛 `spawnSync git EBUSY`，看起来像 git 坏了。同文件 `:19` 那处本来就写了 `stdio`。
+- **`AGENTS.md` 新增两条跑法纪律**：①「跑完释放」不是默认行为 —— `run-daily-job.mjs` 不带 `--batches`
+  时计划里根本没有 stop 步骤，只有 `--batches N` 才经 `run-batches.mjs` 释放；②不许只信
+  `stop-all.mjs` 的退出码判释放（它有已知假绿），必须回读端口，且第一次读可能是旧值。
+- **顺带更正一条 09-25 自己下过的错结论**：那天 18:04 被这个门禁派生出来的 CLI 子进程，
+  **没有**碰真小旺神。判据：`prepare-flow.test.mjs` 里 29 处 `spawn(process.execPath)` 与
+  29 处 `"--proxy"` 一一对应（配 `startFakeProxy` 本地假 CDP 代理），且 `flow.mjs:81/130`
+  里 `--proxy` 覆盖默认值 ⇒ 不会回落到真 `3457`、不碰买家浏览器 `9222`、不消耗配额。
+  坏的只是「选面太宽 ＋ 单条 60 分钟」，不是「门禁去动了生产」。
+
+### 验证到什么程度（说实话）
+
+- `npm run check:fast` = **PASS**（2 个 JS 文件）。
+- `npm run test:offline` 三段全绿：`sycm-export-search-rank` / `xws-export-market-analysis`
+  （含 `deadline` 一项）/ `huitun-topic-heat` 均 `ok: true`。
+- `npm run check:delivery` **从「直接崩」变成能出结论**：实测 `mainline_contains_commit=true`、
+  `remote_contains_commit=true`、`worktree_clean=false`、`verdict=WORKTREE_DIRTY`。
+- 超预算分支**真机实测**（不是只读代码）：`--budget-seconds=3` 下踢 `test:runtime`，
+  退出码 **3**、提示完整；**终止后另起命令查进程表，孤儿 = 0 个**。
+- 参数校验实测：`--budget-seconds=abc` → 报用法错、退出码 **2**。
+- **本版没做的**：没有完整重跑一次 `test:staged`（一次就是几小时，正是本版要消除的东西）。
+  `prepare-flow.test.mjs` 那 7 条各 60 分钟的真实失败（`Timed out waiting for .csv download`
+  ⇒ `1 !== 0`）**仍然红、本版没修** —— 本版只把它从「会拖死门禁」降级成「会被预算砍掉并如实报
+  INCOMPLETE」。它与 1.7.1 已记录的那 10 条 EBUSY 假红、以及 `unit:skills` 段短路导致的
+  「`test:staged` 永远给不出整体结论」，一起留在待修清单里。
+
 ## [1.7.1] - 2026-09-25
 
 起因是 09-24 那天的**补跑四轮全灭**：链的每个阶段都只留下一行
