@@ -316,7 +316,7 @@ export const ROUTES = Object.freeze({
     account: ACCOUNT_KINDS.merchant,
     sites: Object.freeze(['sycm.taobao.com', 'one.alimama.com', 'feishu.cn']),
     needsExtension: null,
-    skills: Object.freeze(['sycm-alimama-daily-report']),
+    skills: Object.freeze(['sycm-alimama-daily-report', 'sycm-inquiry-data', 'sycm-product-data', 'sycm-promotion-data']),
   }),
   weeklyPaste: Object.freeze({
     label: '周表粘贴（周表 → 飞书网页）',
