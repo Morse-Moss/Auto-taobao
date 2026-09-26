@@ -1,0 +1,92 @@
+{
+  "date": "2026-09-25",
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝"
+  ],
+  "bottom": [
+    {
+      "shop": "里可林淘宝",
+      "sourceRows": 24,
+      "plannedRows": 24,
+      "afterRows": 4455,
+      "mode": "apply"
+    },
+    {
+      "shop": "网林天猫",
+      "sourceRows": 17,
+      "plannedRows": 17,
+      "afterRows": 4431,
+      "mode": "apply"
+    },
+    {
+      "shop": "盖文淘宝",
+      "sourceRows": 55,
+      "plannedRows": 55,
+      "afterRows": 4546,
+      "mode": "apply"
+    },
+    {
+      "shop": "盖文天猫",
+      "sourceRows": 35,
+      "plannedRows": 35,
+      "afterRows": 4581,
+      "mode": "apply"
+    },
+    {
+      "shop": "科塔淘宝",
+      "sourceRows": 36,
+      "plannedRows": 36,
+      "afterRows": 4491,
+      "mode": "apply"
+    }
+  ],
+  "inquiry": [
+    {
+      "shop": "里可林淘宝",
+      "sourceRows": 5,
+      "plannedRows": 5,
+      "afterRows": 980,
+      "mode": "apply"
+    },
+    {
+      "shop": "网林天猫",
+      "sourceRows": 2,
+      "plannedRows": 2,
+      "afterRows": 982,
+      "mode": "apply"
+    },
+    {
+      "shop": "盖文淘宝",
+      "sourceRows": 6,
+      "plannedRows": 6,
+      "afterRows": 988,
+      "mode": "apply"
+    },
+    {
+      "shop": "盖文天猫",
+      "sourceRows": 11,
+      "plannedRows": 11,
+      "afterRows": 999,
+      "mode": "apply"
+    },
+    {
+      "shop": "科塔淘宝",
+      "sourceRows": 6,
+      "plannedRows": 6,
+      "afterRows": 1005,
+      "mode": "apply"
+    }
+  ],
+  "promotion": {
+    "sourceRows": 93,
+    "plannedRows": 44,
+    "afterRows": 2472,
+    "mode": "apply",
+    "idempotencyPlannedRows": 0
+  },
+  "downloadRetry": "fullscreen overlay safe-dismiss, target rediscovery, real mouse click, filesystem ZIP verification"
+}

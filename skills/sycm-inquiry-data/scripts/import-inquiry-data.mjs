@@ -1,0 +1,11 @@
+#!/usr/bin/env node
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { loadFeishuCredentials, productDataTargets } from '../../../runtime/feishu-targets.mjs';
+import { FeishuClient } from '../../xws-to-feishu-base/scripts/feishu-client.mjs';
+import { parseInquiryRows, planInquiryImport } from './inquiry-core.mjs';
+
+function args(argv) { const o={apply:false}; for(let i=0;i<argv.length;i+=1){if(argv[i]==='--file')o.file=argv[++i];else if(argv[i]==='--date')o.date=argv[++i];else if(argv[i]==='--shop')o.shop=argv[++i];else if(argv[i]==='--apply')o.apply=true;else if(argv[i]==='--evidence')o.evidence=argv[++i];else throw new Error(`unknown argument ${argv[i]}`);} if(!o.file||!o.date||!o.shop)throw new Error('--file --date --shop are required'); o.evidence??=`evidence/product-inquiry-${o.date}`; return o; }
+function readXls(file) { const script=path.join(import.meta.dirname,'../../sycm-product-data/scripts/read-product-xls.py'); const r=spawnSync(process.env.PYTHON||'py',['-3',script,path.resolve(file)],{encoding:'utf8'}); if(r.status!==0)throw new Error(r.stderr||'XLS parser failed'); return JSON.parse(r.stdout); }
+const o=args(process.argv.slice(2)); const rows=parseInquiryRows(readXls(o.file),o.date,o.shop); const c=loadFeishuCredentials('kcne'); const target=productDataTargets('kcne'); const client=new FeishuClient({appId:c.appId,appSecret:c.appSecret,appToken:target.baseToken,tableId:target.inquiryTable}); const existing=await client.listRecords(); const plan=planInquiryImport({rows,existing}); mkdirSync(o.evidence,{recursive:true}); const receipt={source:path.resolve(o.file),shop:o.shop,date:o.date,sourceRows:rows.length,existingRows:existing.length,plannedRows:plan.records.length,excludedSummaryRows:2,mode:o.apply?'apply':'dry-run',manifest:plan.manifest}; if(o.apply){const ids=[];for(let i=0;i<plan.records.length;i+=500)ids.push(...await client.batchCreateRecords(plan.records.slice(i,i+500)));receipt.recordIds=ids;receipt.afterRows=(await client.listRecords()).length;} writeFileSync(path.join(o.evidence,`receipt-${o.shop}.json`),JSON.stringify(receipt,null,2)); console.log(JSON.stringify(receipt,null,2));

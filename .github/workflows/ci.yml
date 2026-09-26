@@ -104,6 +104,12 @@ jobs:
             timeout: 40
           - skill: sycm-alimama-daily-report
             timeout: 40
+          - skill: sycm-inquiry-data
+            timeout: 40
+          - skill: sycm-product-data
+            timeout: 40
+          - skill: sycm-promotion-data
+            timeout: 40
           - skill: xws-faq-operator
             timeout: 40
           - skill: xws-sku-collection

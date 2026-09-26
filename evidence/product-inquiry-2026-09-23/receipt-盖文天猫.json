@@ -1,0 +1,11 @@
+{
+  "source": "D:\\codex\\worktrees\\product-data-collection-analysis\\sycm-automation\\evidence\\product-inquiry-2026-09-23\\gaiwen-tmall-inquiry-rerun.xls",
+  "shop": "盖文天猫",
+  "date": "2026-09-23",
+  "sourceRows": 14,
+  "existingRows": 975,
+  "plannedRows": 0,
+  "excludedSummaryRows": 2,
+  "mode": "dry-run",
+  "manifest": []
+}

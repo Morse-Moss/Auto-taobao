@@ -73,6 +73,12 @@ export const PROFILES = Object.freeze({
       sourceView: 'vewwg0rhjo',
       inquiryTable: 'tblUnwn05vl8Wik9',
     }),
+    productData: Object.freeze({
+      baseToken: 'DQ2DbRinJaDx8Ss4gVFczsTXn3d',
+      productTable: 'tblzyf0oLvfbvN1l',
+      inquiryTable: 'tbl1hHlRX0LYMvYY',
+      promotionTable: 'tblaCPQMLWAq21Gw',
+    }),
     // 2026-09-15 实测：用户把应用加为「浴缸竞品分析」的可编辑协作者后，
     // 幂等写探针（把历史总表的「平台」写成它当前的值）由 403/91403 变成 **HTTP 200 / code 0**。
     // 这就是「这个 base 的写权限已验证」的证据，所以置 true。
@@ -182,6 +188,12 @@ export function keywordBaseToken(name) {
 export function dailyReportTargets(name) {
   const target = getProfile(name).dailyReport;
   if (!target) throw new Error(`Daily-report target is not configured for profile: ${resolveProfileName(name)}`);
+  return target;
+}
+
+export function productDataTargets(name) {
+  const target = getProfile(name).productData;
+  if (!target) throw new Error(`Product-data target is not configured for profile: ${resolveProfileName(name)}`);
   return target;
 }
 

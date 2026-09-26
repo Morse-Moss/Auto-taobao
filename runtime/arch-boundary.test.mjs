@@ -25,6 +25,13 @@ import { diffAgainstWhitelist, findCrossDirDeps, walkMjs } from './arch-boundary
 
 // 白名单：与 2026-09-19 的实测逐字一致。**要改就一起改**（新增或消失都算变化）。
 const SKILLS_TO_RUNTIME = Object.freeze([
+  // 2026-09-26 商品数据三链共享 runtime 端口/Feishu 目标配置；保留在能力目录，避免把业务逻辑倒灌 runtime。
+  'skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs',
+  'skills/sycm-inquiry-data/scripts/import-inquiry-data.mjs',
+  'skills/sycm-product-data/scripts/collect-product-report.mjs',
+  'skills/sycm-product-data/scripts/import-product-data.mjs',
+  'skills/sycm-promotion-data/scripts/collect-product-report.mjs',
+  'skills/sycm-promotion-data/scripts/import-promotion-data.mjs',
   'skills/huitun-to-feishu-keyword-heat/scripts/flow.mjs',
   'skills/huitun-to-feishu-keyword-heat/tests/adapter-huitun-keyword-heat.test.mjs',
   'skills/huitun-to-feishu-keyword-heat/tests/flow.test.mjs',

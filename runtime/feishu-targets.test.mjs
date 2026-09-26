@@ -12,6 +12,7 @@ import {
   baseUrl,
   competitorBaseToken,
   dailyReportTargets,
+  productDataTargets,
   envFilePath,
   getProfile,
   keywordBaseToken,
@@ -171,6 +172,16 @@ test('日报目标指向正主 base「各店铺日报」，不再是同名副本
   // 那种写法会在客户机上红，属于「测试依赖了不该依赖的环境状态」。
   assert.deepEqual(Object.keys(target).sort(),
     ['baseToken', 'inquiryTable', 'sourceBaseName', 'sourceTable', 'sourceView']);
+});
+
+test('商品数据三张目标表属于用户授权的商品数据 base', () => {
+  const target = productDataTargets('kcne');
+  assert.deepEqual(target, {
+    baseToken: 'DQ2DbRinJaDx8Ss4gVFczsTXn3d',
+    productTable: 'tblzyf0oLvfbvN1l',
+    inquiryTable: 'tbl1hHlRX0LYMvYY',
+    promotionTable: 'tblaCPQMLWAq21Gw',
+  });
 });
 
 // 配套的静态守卫：脚本自己**不许**再写死任何一张 base 的名字。
