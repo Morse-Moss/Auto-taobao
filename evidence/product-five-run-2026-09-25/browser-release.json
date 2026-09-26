@@ -1,0 +1,35 @@
+{
+  "date": "2026-09-26",
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝"
+  ],
+  "issue": "商品三类流程最初未调用释放阶段，成功导入后五家浏览器和代理仍在监听",
+  "reused": [
+    "runtime/browser-ports.mjs",
+    "scripts/start-all.mjs",
+    "scripts/stop-all.mjs",
+    "skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs",
+    "scripts/run-batches.mjs"
+  ],
+  "stopCommand": "node scripts/stop-all.mjs --yes --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝",
+  "stopEvidence": {
+    "allShopTargetsProfileVerified": true,
+    "allStillAlive": [],
+    "stopExitCode": 0,
+    "portReadbacks": [
+      {
+        "attempt": 1,
+        "listeningPorts": []
+      },
+      {
+        "attempt": 2,
+        "listeningPorts": []
+      }
+    ]
+  },
+  "fix": "新增 scripts/release-product-data-browsers.mjs，委托 stop-all 后对每店浏览器和代理端口二次回读"
+}
