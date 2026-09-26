@@ -13,15 +13,7 @@ description: Collect daily 商品排行 reports from logged-in shop SYCM browser
 node scripts/run-product-data-job.mjs --date yesterday --commit
 ```
 
-独立计划任务安装与核验（不覆盖日报任务 `sycm-daily-round`）：
-
-```powershell
-node scripts/schedule-install-product-data.mjs
-node scripts/schedule-install-product-data.mjs --install
-node scripts/schedule-install-product-data.mjs --query
-```
-
-默认每日 11:40 运行，自动登录失败会沿用日报流程的飞书告警；三类数据结束后会释放五家店浏览器，并复核端口两次。
+定时调度由 WorkBuddy 负责，不注册 Windows 任务计划。WorkBuddy 每天调用总控入口；自动登录失败会沿用日报流程的飞书告警；三类数据结束后会释放五家店浏览器，并复核端口两次。
 
 This flow uses one isolated shop browser per store. It logs in through the browser's native autofill, verifies the SYCM header identity, opens 商品排行, selects 日, clicks 下载, parses the downloaded XLS, and appends only missing `统计日期 + 店铺 + 商品ID` rows to the authorized Feishu table.
 
