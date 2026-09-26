@@ -3,7 +3,25 @@ name: sycm-product-data
 description: Collect daily 商品排行 reports from logged-in shop SYCM browsers and append deduplicated rows to the authorized Feishu 商品数据底单.
 ---
 
-# 生意参谋商品数据底单
+# 商品数据自动采集
+
+本流程覆盖商品底单、商品询单、商品推广三类数据，支持五家店铺并行采集，并写入已授权的飞书底单。
+
+日常定时入口：
+
+```powershell
+node scripts/run-product-data-job.mjs --date yesterday --commit
+```
+
+独立计划任务安装与核验（不覆盖日报任务 `sycm-daily-round`）：
+
+```powershell
+node scripts/schedule-install-product-data.mjs
+node scripts/schedule-install-product-data.mjs --install
+node scripts/schedule-install-product-data.mjs --query
+```
+
+默认每日 11:40 运行，自动登录失败会沿用日报流程的飞书告警；三类数据结束后会释放五家店浏览器，并复核端口两次。
 
 This flow uses one isolated shop browser per store. It logs in through the browser's native autofill, verifies the SYCM header identity, opens 商品排行, selects 日, clicks 下载, parses the downloaded XLS, and appends only missing `统计日期 + 店铺 + 商品ID` rows to the authorized Feishu table.
 
