@@ -5,6 +5,7 @@ import { PROJECT_PORTS, shopInstance } from '../../../runtime/browser-ports.mjs'
 import { SHOP_IDENTITIES } from '../../sycm-alimama-daily-report/scripts/shop-identities.mjs';
 import { alimamaIdentityExpression, assertMemberIdentity, createOverlayDismisser, defaultDownloadsDir, listDownloads, newEntries, overlayAfterExpression, overlayScanExpression, pickOverlayCloseCandidate } from '../../sycm-alimama-daily-report/scripts/collect-core.mjs';
 import { buildProductReportUrl, PRODUCT_TASK_PREFIX, PRODUCT_TASK_RE, PRODUCT_ZIP_RE, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
+import { nextDownloadAction } from './download-retry-core.mjs';
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 function args(argv) { const o = { date: null, shop: null, task: null, downloads: defaultDownloadsDir(), locateOnly: false }; for (let i=0;i<argv.length;i+=1) { const k=argv[i]; if(k==='--date')o.date=argv[++i]; else if(k==='--shop')o.shop=argv[++i]; else if(k==='--task')o.task=argv[++i]; else if(k==='--downloads')o.downloads=path.resolve(argv[++i]); else if(k==='--locate-only')o.locateOnly=true; else throw Error(`unknown argument ${k}`); } if(!/^\d{4}-\d{2}-\d{2}$/u.test(o.date??''))throw Error('--date must be YYYY-MM-DD'); if(!o.shop)throw Error('--shop is required'); return o; }
@@ -43,7 +44,7 @@ async function fetchTask(proxy,target,task,downloads) {
       if(!row?.ok)throw Error(`商品报表任务行没有复选框: ${ready}`);
       if(!row.checked){
         const scan=await evalOn(proxy,target,overlayScanExpression());
-        if(scan?.blocked){await dismissOverlay(proxy,target,null);throw Error('下载任务页被平台遮挡层拦住，已尝试安全关闭并刷新重试');}
+        if(scan?.blocked){const decision=nextDownloadAction({overlayBlocked:true,taskReady:true});await dismissOverlay(proxy,target,null);throw Error(`下载任务页被平台遮挡层拦住（${decision.action}），已尝试安全关闭并刷新重试`);}
         await clickPoint(proxy,target,row.center); await sleep(800);
       } else {
         const visible = await evalOn(proxy,target,`(()=>{const n=[...document.querySelectorAll('*')].find(x=>x.children.length===0&&(x.innerText||'').trim()===${JSON.stringify(task)});const a=n?.closest('tr')?.nextElementSibling;return !!a&&getComputedStyle(a).display!=='none'})()`);
@@ -54,7 +55,7 @@ async function fetchTask(proxy,target,task,downloads) {
       }
       const activated = await evalOn(proxy,target,`(()=>{const n=[...document.querySelectorAll('*')].find(x=>x.children.length===0&&(x.innerText||'').trim()===${JSON.stringify(task)});const tr=n&&n.closest('tr');const box=tr&&tr.querySelector('input[type=checkbox]');return !!box&&box.checked})()`);
       const actionVisible = await evalOn(proxy,target,`(()=>{const n=[...document.querySelectorAll('*')].find(x=>x.children.length===0&&(x.innerText||'').trim()===${JSON.stringify(task)});const a=n?.closest('tr')?.nextElementSibling;return !!a&&getComputedStyle(a).display!=='none'})()`);
-      if(!activated||!actionVisible)throw Error('真实点击后目标任务操作行仍未显形');
+      if(!activated||!actionVisible){const decision=nextDownloadAction({taskReady:true,actionVisible:false});throw Error(`真实点击后目标任务操作行仍未显形（${decision.action}）`);}
       await sleep(800);
       const point=await evalOn(proxy,target,`(()=>{const n=[...document.querySelectorAll('*')].find(x=>x.children.length===0&&(x.innerText||'').trim()===${JSON.stringify(task)});const tr=n&&n.closest('tr');const a=tr&&tr.nextElementSibling;const e=a&&[...a.querySelectorAll('*')].find(x=>x.children.length===0&&(x.innerText||'').trim()==='下载'&&x.getBoundingClientRect().width>0);if(!e)return null;const b=e.closest('button')||e;const r=b.getBoundingClientRect();const cx=Math.round(r.x+r.width/2),cy=Math.round(r.y+r.height/2),hit=document.elementFromPoint(cx,cy);return {point:[cx,cy],hit:!!hit,targetHit:!!hit&&(hit===b||b.contains(hit)||hit.contains(b))}})()`);
       if(!point)throw Error('商品报表任务下载入口不可见');
