@@ -23,7 +23,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
   PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN, TASK_DOWNLOAD_MARK, alimamaIdentityExpression,
-  assertMemberIdentity, checkboxStateExpression, createOverlayDismisser, defaultDownloadsDir,
+  assertMemberIdentity, checkboxStateExpression, createOverlayDismisser, createPageReloader, defaultDownloadsDir,
   describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, downloadEntryExpression,
   hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest,
   restoreCheckboxesExpression, scrollIntoViewExpression, targetRowExpression,
@@ -77,6 +77,15 @@ async function click(args, targetId, selector) {
 async function clickPoint(args, targetId, point) {
   return proxyJson(`${args.proxy}/clickPoint?target=${encodeURIComponent(targetId)}`,
     { method: 'POST', body: JSON.stringify({ x: point[0], y: point[1] }) });
+}
+
+// 发一个真实按键（CDP 的 rawKeyDown → keyUp，走代理既有的 `/key` 白名单路由）。
+// 为什么不用页面里 `dispatchEvent(new KeyboardEvent('keydown', ...))`：这一族页面**只认真实输入事件**
+// —— 同一页上 `el.click()` 无效、真实鼠标点才落盘，那条 09-17 的对照同样适用于按键。
+// 只用来发 Escape：那是模态框最常见的出口，而且**不用点页面上的任何东西**，没有「点错」的风险。
+async function pressKey(args, targetId, key) {
+  return proxyJson(`${args.proxy}/key?target=${encodeURIComponent(targetId)}`,
+    { method: 'POST', body: JSON.stringify({ key }) });
 }
 
 // 用哪个点：中心点命中就用中心（最不容易擦到边），否则用复核时找到的那个命中点。
@@ -138,6 +147,16 @@ async function hitCheck(args, targetId, selector) {
 const dismissBlockingOverlay = createOverlayDismisser({
   evalOn: (args, targetId, expression) => evalOn(args, targetId, expression),
   clickPoint: (args, targetId, point) => clickPoint(args, targetId, point),
+  pressEscape: (args, targetId) => pressKey(args, targetId, 'Escape'),
+  delay,
+  log: (...parts) => console.log(...parts),
+});
+
+// 关不掉之后「换一个现场再来一次」：真重载页面（2026-09-26 加）。
+// 现场依据：09-26 科塔 submit 段那层弹窗关不掉，而**同族**的层在网林那次是关得掉的
+// （两边都是 data-owner-id=app）⇒ 更像「这一份渲染不理会我们的点击」，而不是「这层根本关不掉」。
+const reloadAndSettle = createPageReloader({
+  evalOn: (args, targetId, expression) => evalOn(args, targetId, expression),
   delay,
   log: (...parts) => console.log(...parts),
 });
@@ -146,13 +165,29 @@ const dismissBlockingOverlay = createOverlayDismisser({
 // 漏掉某一个阶段，那个阶段就是定时任务半夜挂掉的地方。
 // `reLocate` 可选：取件段的入口依赖「该行处于激活态」，而激活态会衰减（实测 15 秒）；
 // 关弹窗要花掉一两秒 ⇒ 关完必须**重新定位**再复核，不能拿关之前的坐标直接点。
+//
+// 两遍结构（第 2 遍只在「关不掉」时发生，2026-09-26 加）：
+//   第 1 遍：复核 → 关（ESC → 有序候选）→ 关掉了就重新定位 + 复核，到此为止；
+//   第 2 遍：第 1 遍连关都关不掉 ⇒ 真重载页面拿到一份新渲染，在新现场上把同一条路再走一遍。
+// 为什么敢在这一页重载：走到这一步时这个阶段**本来就已经要失败了**，重载不会弄丢任何已取到的产物
+// （产物是这一步成功之后才落盘的），成本只有几秒。
+// 为什么只在这一页开：生意参谋那一侧没有现场证据，就不给它加「主动重载」这种带副作用的动作。
 async function hitCheckDismissingOverlay(args, targetId, selector, reLocate) {
-  let hit = await hitCheck(args, targetId, selector);
-  if (hit.ok) return hit;
+  const first = await hitCheck(args, targetId, selector);
+  if (first.ok) return first;
   const attempt = await dismissBlockingOverlay(args, targetId, selector);
-  if (!attempt.dismissed) return { ...hit, overlayAttempt: attempt };
-  if (reLocate) await reLocate(attempt);
-  return { ...(await hitCheck(args, targetId, selector)), overlayAttempt: attempt };
+  if (attempt.dismissed) {
+    if (reLocate) await reLocate(attempt);
+    return { ...(await hitCheck(args, targetId, selector)), overlayAttempt: attempt, reloaded: false };
+  }
+  const reloaded = await reloadAndSettle(args, targetId);
+  if (!reloaded) return { ...first, overlayAttempt: attempt, reloaded: false };
+  const second = await hitCheck(args, targetId, selector);
+  if (second.ok) return { ...second, overlayAttempt: attempt, reloaded: true };
+  const attemptAgain = await dismissBlockingOverlay(args, targetId, selector);
+  if (!attemptAgain.dismissed) return { ...second, overlayAttempt: attemptAgain, reloaded: true };
+  if (reLocate) await reLocate(attemptAgain);
+  return { ...(await hitCheck(args, targetId, selector)), overlayAttempt: attemptAgain, reloaded: true };
 }
 
 // describeOverlayAttempt 在 collect-core 里 —— 两个采集脚本共用同一份措辞，免得越写越不一样。
@@ -667,6 +702,9 @@ async function selectTargetRow(args, targetId, taskName, firstRow) {
   let row = firstRow;
   // 只主动关一次：这一页也可能被**平台自己的全屏弹窗**压住，而那种等不好（与会自收的浮层相反）。
   // 六次重试若全是「等一会儿」，等于把一次当场能修好的失败拖成 45 秒后才报错。
+  // （2026-09-26：这一次「主动关」内部现在会按 ESC → 有序候选逐个试，最坏多花十来秒；
+  //   上限仍然是一次 —— 不在这里做「重载重试」：这一段正在等文件落盘，换现场会把这笔等待搅乱。
+  //   重载重试只加在 submit 段的复核路径上。）
   let overlayTried = false;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     if (row.checkboxHit === false) {

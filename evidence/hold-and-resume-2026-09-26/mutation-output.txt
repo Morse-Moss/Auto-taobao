@@ -1,0 +1,38 @@
+OK   [CAUGHT] 判据「空集不算好了」被拿掉（没东西可探时立刻续跑）
+       文件 runtime/hold-and-resume-plan.mjs｜用例 hold-and-resume-plan.test.mjs｜期望命中「判据转正」
+       实际失败 1 条：判据转正：只有「一个都没在等、也没有读不到」才算好了；**空集不算好**
+       还原自证：sha256 逐字节一致
+OK   [CAUGHT] 起点下探的方向写反（floor 变成「只许往后」⇒ 漏跑失败那一步）
+       文件 runtime/hold-and-resume-plan.mjs｜用例 hold-and-resume-plan.test.mjs｜期望命中「起点下探」
+       实际失败 2 条：续跑起点：从失败那一步跑到结尾，且 **health-check 永远带上** | 起点下探：人碰过页面 ⇒ 退到 alimama-date（日期落位要重做），而且**只许往前、不许往后**
+       还原自证：sha256 逐字节一致
+OK   [CAUGHT] 续跑成功/失败共用同一个告警编号（失败会被上一轮的成功去重挡掉）
+       文件 runtime/hold-and-resume-plan.mjs｜用例 hold-and-resume-plan.test.mjs｜期望命中「三条各有各的编号」
+       实际失败 2 条：通知：三条各有各的编号，且续跑成功/失败**不许共用同一个指纹** | 通知：文案是给运营看的 —— 不出现阶段名/结论代号/路径/命令行/链接/账号名
+       还原自证：sha256 逐字节一致
+OK   [CAUGHT] 驻留那一步不再「只在链失败时」执行（链成功的那天也去驻留）
+       文件 runtime/daily-job-plan.mjs｜用例 hold-and-resume-plan.test.mjs｜期望命中「只在链失败时才执行」
+       实际失败 1 条：接线：定时计划里真的有「驻留」这一步，且它只在链失败时才执行
+       还原自证：sha256 逐字节一致
+OK   [CAUGHT] 不告诉链「这一轮会驻留」（告警叫人去重跑，而窗口其实留着）
+       文件 runtime/daily-job-plan.mjs｜用例 hold-and-resume-plan.test.mjs｜期望命中「will-resume」
+       实际失败 1 条：接线：`--will-resume` 跟着「这一轮会不会驻留」走（承诺系统会自己续跑就必须真有驻留）
+       还原自证：sha256 逐字节一致
+OK   [CAUGHT] 压根不加驻留那一步（默认关掉）
+       文件 runtime/daily-job-plan.mjs｜用例 hold-and-resume-plan.test.mjs｜期望命中「驻留」
+       实际失败 4 条：接线：定时计划里真的有「驻留」这一步，且它只在链失败时才执行 | 接线：没有具体某一天时**不加**这一步（给字面量 yesterday 会拼出不存在的结论路径） | 接线：`--will-resume` 跟着「这一轮会不会驻留」走（承诺系统会自己续跑就必须真有驻留） | 接线：入口真的把「哪一天」与「证据目录」交给计划了（漏一个就静默少一段）
+       还原自证：sha256 逐字节一致
+OK   [CAUGHT] 「该不该执行」的判据写反（链失败时不驻留、链成功时反而驻留）
+       文件 runtime/daily-job-plan.mjs｜用例 hold-and-resume-plan.test.mjs｜期望命中「该不该执行」
+       实际失败 1 条：接线：入口那一步「该不该执行」的判据是纯函数（写在入口里会测不到，而写反了两头都错）
+       还原自证：sha256 逐字节一致
+OK   [CAUGHT] 告警出口缺 off 分支（「没让发」的调用会真发一条飞书）
+       文件 skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs｜用例 run-multi-shop-day.test.mjs｜期望命中「action=off」
+       实际失败 1 条：驱动：action=off 时**一个字都不发**（这条判据必须活在出口里，不许只挂在调用点）
+       还原自证：sha256 逐字节一致
+OK   [CAUGHT] PAGE_OBSTRUCTED 的分类分支被删（关不掉的弹窗退回兜底话术）
+       文件 skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs｜用例 run-multi-shop-day.test.mjs｜期望命中「PAGE_OBSTRUCTED 的判据」
+       实际失败 1 条：告警：PAGE_OBSTRUCTED 的判据是那个**机器标记**，不是措辞猜测
+       还原自证：sha256 逐字节一致
+
+突变 9 条：抓住 9，异常 0

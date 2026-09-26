@@ -1,0 +1,18 @@
+
+===== 2026-09-26T00:29:52.609Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase submit --date 2026-09-25 --proxy http://127.0.0.1:19044 --expect-shop 科塔全卫定制 --expect-member j873522735:阿彦 --expect-member-id 412070158
+exit=1 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 62A00BDF893440A6581AF6D620CBBCFD｜phase=submit｜目标日 2026-09-25
+[身份] 阿里妈妈会员 = "j873522735:阿彦" ID="412070158"（这一页不显示店铺名，只有会员名）｜期望 "j873522735:阿彦" / 412070158 ✓
+[submit] 台账里没有 2026-09-25 这家店的未取任务 ⇒ 照常提交
+[submit] 页面 = https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-09-25&endTime=2026-09-25&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day&isRequestedQztDefaultSet=1｜正文 2981 字符
+[submit] 候选 1 个，取文档序第一个（SPAN，其可点祖先是 BUTTON，点击靠冒泡触发）
+[遮挡] 全屏层 DIV#wrapper_dlg_624(data-owner-id=app) z=99999，rect=[0,0,1442,685]，层内可点小控件 24/30 个，选中 IMG「」于 (1003,27)
+[遮挡] 关后回读：全屏层剩 2 个（["DIV#mask_dlg_624 z=99998","DIV#wrapper_dlg_624 z=99999"]）｜目标可点=false ⇒ 没关掉
+
+--- stderr ---
+
+采集失败：「下载报表」复核未通过（not-hit，y=337，视口内=true，视口内采样=25/25，命中自己=0，rect=[1336,337,48,12]，视口=[1442,685]，遮挡物={"tag":"DIV","cls":""}）（检出了全屏遮挡层但没能关掉：全屏层 DIV#wrapper_dlg_624(data-owner-id=app) z=99999，rect=[0,0,1442,685]，层内可点小控件 24/30 个，选中 IMG「」于 (1003,27)）
+
+==== 以上为原件逐字复制，原件在 evidence/multi-shop-2026-09-25/科塔淘宝/03-promotion-submit.txt ====

@@ -6,9 +6,10 @@ import test from 'node:test';
 
 import { BROWSER_IDS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
+import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
-import { FAILURE_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
+import { FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -289,6 +290,16 @@ test('驱动 CLI：--commit 与 --verify-existing 互斥，源产物路径必须
   assert.deepEqual(parsed.only, ['push']);
   assert.equal(parsed.keepGoing, true);
   assert.equal(parsed.commit, false);
+  // 2026-09-25：默认值是「一家失败不带走其余」。这条判据管的是**默认方向** ——
+  // 不给任何旗标时 `stopOnFirstFailure` 必须是 false，否则一处单店缺陷又会把一整天的数据带走
+  // （实测：`evidence/daily-job-2026-09-24/job.log` 里四轮全都是这个形状）。
+  assert.equal(parseArgs(['--date', DATE]).stopOnFirstFailure, false, '默认不许停整轮');
+  assert.equal(parseArgs(['--date', DATE, '--keep-going']).stopOnFirstFailure, false,
+    '--keep-going 现在是默认值的显式声明，不该改变方向');
+  assert.equal(parseArgs(['--date', DATE, '--stop-on-first-failure']).stopOnFirstFailure, true,
+    '退回旧行为要显式点名');
+  assert.throws(() => parseArgs(['--date', DATE, '--stop-on-failure']), /unknown argument/u,
+    '拼错的旗标不许静默吞掉（吞掉的后果是「以为自己让它停了，其实一路跑完」）');
   assert.throws(() => parseArgs(['--date', DATE, '--commit', '--verify-existing', '1879']), /互斥/u);
   assert.throws(() => parseArgs(['--date', DATE, '--verify-existing', 'many']), /整数/u);
   assert.throws(() => parseArgs(['--date', DATE, '--shop-xlsx', REAL_XLSX]), /成对/u);
@@ -501,6 +512,22 @@ const TECH_SHAPES = [
   [/https?:\/\//u, '链接（点了会走系统默认浏览器，到不了目标窗口那个实例，2026-09-19 实测）'],
 ];
 
+test('告警：PAGE_OBSTRUCTED 的判据是那个**机器标记**，不是措辞猜测', () => {
+  // 为什么单独立一条：上面那张 `cases` 表只要求「每一类都有一条样例」，
+  // 把分类器里那一行删掉它照样绿（样例还是那张表里的那个对象，表格不负责分类）。
+  // 也就是说「表格齐」与「分类器认得出」是两件事，必须分开守。
+  assert.equal(shopFailureCause(failedAt('promotion-submit', `[遮挡] 没关掉\n${OVERLAY_NOT_DISMISSED_TOKEN}\n`)),
+    'PAGE_OBSTRUCTED');
+  // 反面：不带标记时**必须**落回兜底类 —— 否则「关不掉」会被误报成「需要人点一下」，
+  // 而兜底那句说的是「这一轮不需要你在浏览器里做什么」（09-26 早上科塔就是这样被报错的）。
+  assert.equal(shopFailureCause(failedAt('promotion-submit', '[遮挡] 关后回读：全屏层剩 2 个')), 'STAGE_FAILED');
+  // 它也**不许**盖过 SHOP_FUNC_NO_PERMISSION：那一条决定「要不要去平台」，优先级最高。
+  assert.equal(shopFailureCause(failedAt('sycm-date',
+    `SHOP_FUNC_NO_PERMISSION\n${OVERLAY_NOT_DISMISSED_TOKEN}\n`)), 'SHOP_FUNC_NO_PERMISSION');
+  // 人在浏览器里做的事只对这两类有意义（其余类别不驻留、不续跑）。
+  assert.deepEqual([...HUMAN_REQUIRED_CAUSES], ['NEEDS_LOGIN', 'PAGE_OBSTRUCTED']);
+});
+
 test('告警：文案里不许出现英文阶段名、结论代号、内部术语，也不许出现路径/命令行/主机名/账号名', () => {
   const jargon = ['判据', '幂等', 'fail-closed', 'capability', '会话', '风控'];
   const blockedDetail = '目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。';
@@ -511,6 +538,11 @@ test('告警：文案里不许出现英文阶段名、结论代号、内部术�
     NEEDS_LOGIN: { round: { healthCheckDaily: { ok: false, blockingDetails: [blockedDetail] } }, shops: {} },
     DUPLICATE_TARGET: { round: { healthCheckDaily: { ok: true } }, shops: { 科塔淘宝: failedAt('push', 'duplicate daily report row exists: r1') } },
     SHOP_FUNC_NO_PERMISSION: { round: { healthCheckDaily: { ok: true } }, shops: { 科塔淘宝: failedAt('sycm-date', 'Error: SHOP_FUNC_NO_PERMISSION: 平台答复 code=5903 No Buy Func Permission') } },
+    // 2026-09-26 加。样例里必须**带上那个机器标记**（用常量，不写死字面量）——
+    // 不带它的话 `shopFailureCause` 会把它归成 STAGE_FAILED，这一条就成了「用兜底文案考兜底文案」，
+    // 全绿而什么都没守住。
+    PAGE_OBSTRUCTED: { round: { healthCheckDaily: { ok: true } },
+      shops: { 科塔淘宝: failedAt('promotion-submit', `[遮挡] 关后回读：全屏层剩 2 个 ⇒ 没关掉\n${OVERLAY_NOT_DISMISSED_TOKEN}\n`) } },
     STAGE_FAILED: { round: { healthCheckDaily: { ok: true } }, shops: { 里可林淘宝: failedAt('promotion-fetch', 'Error: expected one 生成成功 row, got 0') } },
   };
   assert.deepEqual(Object.keys(cases).sort(), [...FAILURE_CAUSES].sort(),
@@ -804,6 +836,29 @@ test('驱动：打印路径一次投递都不发生，且打印的是真渲染�
   assert.ok(printed.includes('daily-round-20260919'));
 });
 
+test('驱动：action=off 时**一个字都不发**（这条判据必须活在出口里，不许只挂在调用点）', () => {
+  // 2026-09-26 补。此前 `dispatchRoundAlert` **没有** off 分支：传 off 会直接落到下面的
+  // 去重与投递（去重只按编号/指纹判「最近发过没」，它不读 `dispatch`）⇒ 一个「没让发」的调用
+  // 会真发一条飞书出去。当时没炸，只因为两个调用点各自在调用前写了
+  // `if (alertDispatch.action !== 'off')` —— 也就是这条判据活在**调用方**。
+  // 第三个调用点（`scripts/hold-and-resume.mjs`）差一点就成了那个漏一处的地方。
+  let calls = 0;
+  const lines = [];
+  const result = dispatchRoundAlert({
+    alert: buildAlert(mixedSummary()),
+    dispatch: resolveAlertDispatch({ notify: false, notifyPrint: false, mode: 'commit' }),
+    spawn: () => { calls += 1; return { status: 0 }; },
+    throttleFile: tmpThrottle(),
+    log: (line) => lines.push(line),
+  });
+  assert.equal(calls, 0, 'off 档绝不许真的投递 —— 这正是缺了那个分支时会发生的错');
+  assert.equal(result.delivered, false);
+  assert.equal(result.off, true);
+  // 文案照旧进日志：事后要能对上「他本来会看到什么」，这一条不能因为不发就丢掉。
+  assert.ok(lines.join('\n').includes('daily-round-20260919'), 'off 档也要把收信人会看到的文案打进日志');
+  assert.ok(lines.join('\n').includes('没有打开告警'), '安静也要说清为什么安静');
+});
+
 test('驱动：真正投递时走既有的通知出口，且「没送达」要被当回事', () => {
   const alert = buildAlert(mixedSummary());
   const seen = {};
@@ -1031,9 +1086,16 @@ test('失败收尾：驱动里真的接上了「记下原错 → 取证回位 �
   }
   const assignAt = source.indexOf('record.recovery = await recoverFailedShop({');
   const errAt = source.indexOf('record.error = error.message;');
-  const keepGoingAt = source.indexOf('if (!args.keepGoing)');
+  // 2026-09-25 起默认值是「继续跑其余店」，所以这里钉的是那个**显式的**停整轮分支
+  // （`--stop-on-first-failure`）—— 判据的本意没变：收尾必须排在「停整轮」之前，
+  // 排在后面就等于「唯一失败的那一家不被收尾」。
+  const stopAt = source.indexOf('if (args.stopOnFirstFailure)');
+  assert.ok(stopAt > 0, '找不到「停整轮」那个显式分支了 —— 判据要跟着改，不能静默失效');
   assert.ok(errAt > 0 && assignAt > errAt, '收尾必须在记下 original error 之后（否则盖掉真因）');
-  assert.ok(keepGoingAt > assignAt, '收尾必须在「停整轮」之前 —— 放后面等于默认策略下唯一失败的那家不被收尾');
+  assert.ok(stopAt > assignAt, '收尾必须在「停整轮」之前 —— 放后面等于唯一失败的那家不被收尾');
+  // 反向判据：旧的默认值写法不许再回来。
+  assert.equal(source.includes('if (!args.keepGoing)'), false,
+    '默认值已经翻成「一家失败不带走其余」，不许退回 `if (!args.keepGoing) break`');
 });
 
 test('驱动：浏览器键 → 代理端口只认登记表，认不出来当场抛（回落一次就是往别的浏览器上写）', () => {

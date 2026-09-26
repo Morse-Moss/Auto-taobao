@@ -73,11 +73,21 @@ async function clickPoint(args, targetId, point) {
     { method: 'POST', body: JSON.stringify({ x: point[0], y: point[1] }) });
 }
 
+// 发一个真实按键（CDP 的 rawKeyDown → keyUp，走代理既有的 `/key` 白名单路由）。
+// 只用来发 Escape：那是模态框最常见的出口，而且**不用点页面上的任何东西**，没有「点错」的风险。
+async function pressKey(args, targetId, key) {
+  return proxyJson(`${args.proxy}/key?target=${encodeURIComponent(targetId)}`,
+    { method: 'POST', body: JSON.stringify({ key }) });
+}
+
 // 生意参谋这一侧同样会被**平台自己的全屏弹窗**盖住（新手引导/活动弹窗那一族），
 // 而定时任务里没人去手点它 ⇒ 接上「主动关掉再复核」。编排在 collect-core（见那里的长注释）。
+// 2026-09-26：与阿里妈妈侧共用同一套关法（先 ESC，再按有序候选逐个试，封顶 collect-core 里那个常量）；
+// 但**不接**「关不掉就重载页面」那一步 —— 那一侧有现场证据、这一侧没有，没有证据就不加带副作用的动作。
 const dismissBlockingOverlay = createOverlayDismisser({
   evalOn: (args, targetId, expression) => evalOn(args, targetId, expression),
   clickPoint: (args, targetId, point) => clickPoint(args, targetId, point),
+  pressEscape: (args, targetId) => pressKey(args, targetId, 'Escape'),
   delay,
   log: (...parts) => console.log(...parts),
 });

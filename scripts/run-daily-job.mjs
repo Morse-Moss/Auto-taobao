@@ -2,9 +2,10 @@
 
 // 定时任务的**唯一入口**：到点敲这一条，其余都在它里面。
 //
-// 为什么不让计划任务直接跑全链驱动：真实要做的有三件 —— ① 保证实例在（浏览器与代理；
+// 为什么不让计划任务直接跑全链驱动：真实要做的有四件 —— ① 保证实例在（浏览器与代理；
 // 本项目进程绑会话，机器重启或回收之后它们不在），② 看一眼五家店的登录态（只读，
-// 2026-09-23 加），③ 跑全链。三件都塞进 `/TR` 由 shell 拼，
+// 2026-09-23 加），③ 把**共享商家浏览器**的会话修好（2026-09-25 加：链的整轮级体检跑在它上面，
+// 它掉登录＝整轮不跑，而从前没有任何一步管它），④ 跑全链。四件都塞进 `/TR` 由 shell 拼，
 // 三个月后没人能说清当时到底跑的是什么。步骤口径在 runtime/daily-job-plan.mjs（纯函数、有判据）。
 //
 // 每一步的输出都落进同一个日志文件（计划任务里没有人看终端，日志是唯一的证据）。
@@ -24,7 +25,8 @@
 //   node scripts/run-daily-job.mjs --shops 科塔淘宝         # 只跑一家（排查用）
 //   node scripts/run-daily-job.mjs --batches 2              # 分批跑：每批 2 家，跑完释放这一批
 //                                                          # （**默认不启用**；不给就与从前逐字相同）
-//   node scripts/run-daily-job.mjs --no-auto-login          # 跑前那一步退回**只读**体检（默认是「掉了就自己登」）
+//   node scripts/run-daily-job.mjs --no-auto-login          # 跑前那两步退回**只读**体检（默认是「掉了就自己登」）
+//                                                          # （两条一起退：逐店预检 与 共享商家浏览器守卫）
 // 退出码：0＝全链成功；非 0＝全链失败（与驱动的退出码一致）；2＝用法错误
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -32,7 +34,7 @@ import path from 'node:path';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { buildJobPlan, renderCommand } from '../runtime/daily-job-plan.mjs';
+import { HOLD_EXIT, buildJobPlan, renderCommand, shouldRunStep } from '../runtime/daily-job-plan.mjs';
 import { versionLineSafe } from '../runtime/version.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
 
@@ -46,7 +48,12 @@ function parseArgs(argv) {
     // 淘宝系的登录键（`cookie2` / `_tb_token_`）是**会话级 cookie**，浏览器进程一结束就丢，
     // 所以掉登录是**每次重启都会发生**的常态，不是偶发事故 —— 把常态交给人工，
     // 等于把「无人值守」这句话作废。`--no-auto-login` 是退回只读体检的开关。
-    autoLogin: true };
+    autoLogin: true,
+    // `hold` **默认开**（2026-09-26 用户明确要求：关不掉的弹窗要转人工、且**不要关浏览器**、
+    // 人处理完系统要能自己续跑）。它**只在链失败的那一轮起作用** —— 链成功时那一步
+    // 根本不执行（计划里带 `onlyWhenChainFailed`），所以「不需要人」的默认行为逐字不变。
+    // `--no-hold` 是一键退回的开关。
+    hold: true };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--print') options.print = true;
@@ -55,6 +62,7 @@ function parseArgs(argv) {
     else if (arg === '--keep-going') options.keepGoing = true;
     else if (arg === '--allow-missing-peer') options.allowMissingPeer = true;
     else if (arg === '--no-auto-login') options.autoLogin = false;
+    else if (arg === '--no-hold') options.hold = false;
     else if (arg === '--date') options.dateInput = argv[++i];
     else if (arg === '--shops') options.shops = String(argv[++i] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--only') options.only = String(argv[++i] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -68,7 +76,7 @@ function parseArgs(argv) {
       }
       options.batches = value;
     } else if (arg === '--help' || arg === '-h') options.help = true;
-    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --date --shops --only --batches）` };
+    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-hold --date --shops --only --batches）` };
   }
   return { options };
 }
@@ -111,6 +119,11 @@ async function main(argv) {
       // 而日志里看不出「本该去登却没登」—— 这正是这一版要修的那件事本身。
       // 默认开（用户明确授权），`--no-auto-login` 关掉它。
       autoLogin: options.autoLogin,
+      // 「链失败就把窗口留住、等人处理完自动续跑」那一条的**起点**（2026-09-26 加）。
+      // 漏了 `resolvedDate` 的症状是静默的：那一步干脆不进计划，日志里少一行，
+      // 而「留窗口给人」一次也不会发生（有一条用例钉住真实调用点确实传了它）。
+      hold: options.hold,
+      resolvedDate: date,
     });
   } catch (error) {
     // 计划本身不合法时给一句人话 + 用法错误码；把栈打给操作者没有用（他不是来读栈的）。
@@ -144,6 +157,15 @@ async function main(argv) {
         + '人不在现场时，可查的证据是证据目录里的日志（batches.log ＋ 链自己的体检原始输出）。');
     }
     for (const command of commands) console.log(`${command.blocking ? '*' : ' '} ${command.name}: ${command.text}\n     ${command.note}`);
+    if (plan.holdStep) {
+      console.log('[定时] 驻留那一步只在**链失败**时才执行（计划里带 onlyWhenChainFailed）；'
+        + '链成功的那一天它对行为的影响是零。');
+      console.log('[定时] 驻留的判据与时长：链的失败分类属「只有人能解除」的两类（掉登录 / 关不掉的遮挡层）'
+        + '才驻留，默认等到当天 12:00；期间只读、不碰页面，人处理完自动**只补那几家、从停下的那一步跑到结尾**。');
+    } else if (plan.batchWithoutHold) {
+      console.log('[定时] 分批跑这一档**不驻留**（已知缺口，刻意留名）：那个形态的存在理由就是'
+        + '「跑完一批就放掉」，与「按住几家窗口几小时」在同一条命令里直接冲突，未设计。');
+    }
     console.log('[定时] 只打印模式：没有起任何进程、也没有跑链。');
     return 0;
   }
@@ -174,7 +196,15 @@ async function main(argv) {
   log(`日志：${logPath}`);
 
   let chainStatus = null;
+  let holdStatus = null;
   for (const command of commands) {
+    // 「只在链失败时才跑」的那一步（驻留）。判据抽成了纯函数 `shouldRunStep` ——
+    // 它的两条分支（链成功 ⇒ 跳过；链没跑/失败 ⇒ 执行）在这里是**走不到**的（要真起进程），
+    // 所以判据必须活在能被离线用例断言的地方。
+    if (!shouldRunStep(command, { chainStatus })) {
+      log(`--- ${command.name}：跳过 —— 链成功了，这一轮没有需要人接管的失败`);
+      continue;
+    }
     log(`--- ${command.name}：${command.text}`);
     // stdio 直接继承调用者的：计划任务里 stdout 会被我们的 logFd 接住吗？不会 ——
     // 所以这里显式把子进程输出写进同一个 fd，父子两边的输出按时间顺序落在同一份证据里。
@@ -199,15 +229,37 @@ async function main(argv) {
     }
     log(`--- ${command.name} 退出码=${status}`);
     if (command.blocking) chainStatus = status;
-    else if (status !== 0) {
+    else if (command.name === 'hold-and-resume') {
+      // 驻留那一步的退出码有它自己的口径（`HOLD_EXIT`：0＝不需要驻留｜1＝续跑没成功｜
+      // 2＝判不了｜3＝等到截止时间｜4＝续跑成功）。它是 `blocking: false`，所以**不覆盖**
+      // 链的退出码 —— 覆盖会造出两种假结论：不需驻留（0）把链的失败洗成绿、
+      // 或等人没等到（3）把一个本来写成功的轮次染红。只有 4 才允许把整轮翻回 0。
+      holdStatus = status;
+      if (status === HOLD_EXIT.RESUMED_OK) {
+        log('[定时] 这一轮的缺口经自动续跑补上了 ⇒ 全链退出码记 0（链那一步当时的退出码是 '
+          + `${chainStatus}，已经不再代表这一轮的最终结果）`);
+      } else if (status === HOLD_EXIT.TIMED_OUT) {
+        log(`[定时] 等到截止时间也没等到人处理 ⇒ 窗口已按约定放掉，这一天仍然缺数据`
+          + '（收信人应该收到了一条「还缺着」的提醒）。');
+      } else if (status === HOLD_EXIT.RESUME_FAILED) {
+        log('[定时] 人处理完了、但自动续跑没成功 ⇒ 不再自动重试第二次，需要技术同学看现场。');
+      }
+    } else if (status !== 0) {
       log(`[定时] 注意：${command.name} 没成功（退出码 ${status}）—— 不阻断下一步，`
         + '因为链的第 0 步体检是「今天能不能写」的权威判据，它会给出更准的告警。');
     }
   }
 
-  log(`=== 定时任务结束：全链退出码=${chainStatus}；证据目录 evidence/multi-shop-${date}/ ===`);
+  // 最终口径：**只有**「驻留后自动续跑成功」（退出码 4）允许把整轮从 1 翻成 0，
+  // 其余任何情况都保持链当时的结论。理由：这个数字会出现在日志、告警之外的每一次复盘里，
+  // 把它翻绿必须对应一件**真发生过**的事（那几家真的补上了），而不是「我们试过了」。
+  const recovered = holdStatus === HOLD_EXIT.RESUMED_OK;
+  const finalStatus = recovered ? 0 : (chainStatus ?? 1);
+  log(`=== 定时任务结束：全链退出码=${finalStatus}`
+    + `${recovered ? `（链那一步当时是 ${chainStatus}，经自动续跑后补上）` : ''}`
+    + `；证据目录 evidence/multi-shop-${date}/ ===`);
   fs.closeSync(logFd);
-  return chainStatus ?? 1;
+  return finalStatus;
 }
 
 const isMain = Boolean(process.argv[1]) && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;

@@ -198,6 +198,27 @@ export const OVERLAY_DISMISS_DANGER = /报名|开通|购买|支付|确认|提交
 export const OVERLAY_MIN_COVERAGE = 0.85;
 export const OVERLAY_CANDIDATE_MAX_SIZE = 48;
 
+// 「让它消失」类确认词的闭集（2026-09-26 加）。
+// 为什么要有它：实测有一类弹窗**既没有「关闭」两个字，也不是右上角那个 X** —— 它唯一的出口是
+// 「我知道了／稍后再说」这一族按钮。它与「立即报名」在语义上是**相反**的两件事：
+// 一个只是让这一层消失，一个是有对外副作用的动作。所以这不是把黑名单放宽，
+// 而是**第二张白名单**：只认这几个确定的「消失」语义，其余照旧一个都不点。
+export const OVERLAY_ACK_PATTERN = /我知道了|知道了|不再提示|不再提醒|稍后|暂不|跳过|以后再说/u;
+
+// 一次最多顺着试几个候选（2026-09-26 加）。原来是「只点一个」。
+// 现场依据：2026-09-26 科塔 promotion-submit 上，第一个候选是一个**无文字**的右上角图标，
+// 点完那一层纹丝不动（mask + wrapper 都还在），而层里还有别的安全出口没被试过。
+// 为什么要封顶：不封顶就成了「在一层不明控件里乱点」，而这页上有些控件点下去是有对外副作用的。
+export const OVERLAY_MAX_PICKS = 3;
+
+// 「遮挡没关掉」这件事的**机器标记**（2026-09-26 加）。
+// 为什么需要：采集脚本跑在子进程里，失败只能靠 stderr 文本传出来，而没有标记的失败会被
+// 链的 `shopFailureCause` 归进兜底的 `STAGE_FAILED` —— 收信人会收到一句「这一轮不需要你在浏览器里
+// 做什么」，而真实现场是人得去关掉那一层（2026-09-26 早上科塔就是这么被报错的）。
+// 用法有两处、且必须同源：产出在下方 `describeOverlayAttempt` 的**未关掉**分支，
+// 消费在 `run-multi-shop-day.mjs` 的 `shopFailureCause`（那边 import 这个常量，不写字面量）。
+export const OVERLAY_NOT_DISMISSED_TOKEN = 'OVERLAY_NOT_DISMISSED';
+
 // 采集：最上面那个盖住视口的层 + 层内「中心点命中自己」的小控件候选（可点性当场算完）。
 export function overlayScanExpression(options = {}) {
   const coverage = options.coverage ?? OVERLAY_MIN_COVERAGE;
@@ -263,24 +284,50 @@ export function overlayScanExpression(options = {}) {
 }
 
 // 选「关」：纯函数，离线可测。
-// **不给兜底**：只在「语义上是关闭」或「位于层右上角」里选；两者都没有就返回 null（不盲点）。
-// 宁可报「没找到可点的关闭控件」让人来看，也不要落到某个语义不明的小控件上 ——
-// 层里那个「立即报名」就长成一个小控件。
-export function pickOverlayCloseCandidate(scan, options = {}) {
+// **不给兜底**：只在「语义上是关闭」「语义上是让它消失」或「位于层右上角」里选；
+// 三类都没有就返回 null（不盲点）。宁可报「没找到可点的关闭控件」让人来看，
+// 也不要落到某个语义不明的小控件上 —— 层里那个「立即报名」就长成一个小控件。
+//
+// 2026-09-26 起返回的是**有序候选表**而不是单个点：原来的「只看第一个」在现场实测里不够用
+// （科塔那次第一个候选是个无文字的右上角图标，点完纹丝不动）。顺序＝
+// 明确关闭语义 → 消失类确认词 → 层右上角图标；同一坐标只留一个（一枚图标外面常套着 2-4 层，
+// 点第二次就是重复点同一个点），总长封顶 `OVERLAY_MAX_PICKS`。
+export function pickOverlayCloseCandidates(scan, options = {}) {
   const danger = options.danger ?? OVERLAY_DISMISS_DANGER;
+  const ack = options.ack ?? OVERLAY_ACK_PATTERN;
+  const maxPicks = options.maxPicks ?? OVERLAY_MAX_PICKS;
   if (!scan || scan.blocked !== true || !Array.isArray(scan.candidates)) return null;
-  const safe = scan.candidates.filter((c) => !danger.test(`${c.text || ''} ${c.label || ''} ${c.cls || ''}`));
-  const named = safe.filter((c) => /关闭|close|取消/iu.test(`${c.text || ''} ${c.label || ''}`));
+  const metaOf = (c) => `${c.text || ''} ${c.label || ''} ${c.cls || ''}`;
+  const textOf = (c) => `${c.text || ''} ${c.label || ''}`;
+  const safe = scan.candidates.filter((c) => !danger.test(metaOf(c)));
+  const named = safe.filter((c) => /关闭|close|取消/iu.test(textOf(c)));
+  const acknowledged = safe.filter((c) => ack.test(textOf(c)));
   const icon = safe.filter((c) => c.atTopRight === true).sort((a, b) => (a.cy - b.cy) || (b.cx - a.cx));
-  const pick = named[0] ?? icon[0] ?? null;
-  if (!pick) return null;
+  const seen = new Set();
+  const picks = [];
+  for (const candidate of [...named, ...acknowledged, ...icon]) {
+    const key = `${candidate.cx}|${candidate.cy}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    picks.push(candidate);
+    if (picks.length >= maxPicks) break;
+  }
+  if (!picks.length) return null;
   return {
-    pick,
+    picks,
+    // `pick` 保留给既有的调用方与措辞（就是有序表的第一个）。
+    pick: picks[0],
     // 把「排除了谁」一起带回去：日志里要能看出「没点那个『立即报名』是判据做的，不是碰巧」。
-    excluded: scan.candidates.filter((c) => danger.test(`${c.text || ''} ${c.label || ''} ${c.cls || ''}`))
-      .map((c) => c.text || c.label || c.cls),
+    excluded: scan.candidates.filter((c) => danger.test(metaOf(c))).map((c) => c.text || c.label || c.cls),
     namedCount: named.length,
+    ackCount: acknowledged.length,
+    iconCount: icon.length,
   };
+}
+
+// 单个候选的老入口：就是上面那张有序表的第一个。保留它是为了不改既有调用方与既有用例。
+export function pickOverlayCloseCandidate(scan, options = {}) {
+  return pickOverlayCloseCandidates(scan, options);
 }
 
 // 关完**回读**（HTTP 200 / `clicked:true` 都证明不了任何事）：全屏层还在不在 + 目标还能不能点到。
@@ -326,6 +373,9 @@ export function describeOverlayScan(scan, picked) {
     const target = picked.pick;
     parts.push(`选中 ${target.tag}${target.id ? `#${target.id}` : ''}`
       + `「${target.text || target.label || target.cls}」于 (${target.cx},${target.cy})`);
+    if ((picked.picks?.length ?? 0) > 1) {
+      parts.push(`另有 ${picked.picks.length - 1} 个安全备选（按序试，封顶 ${OVERLAY_MAX_PICKS} 个）`);
+    }
     if (picked.excluded?.length) parts.push(`已按黑名单排除 ${JSON.stringify(picked.excluded)}`);
   } else {
     parts.push('没找到可安全点击的关闭控件（不盲点，交给人处理）');
@@ -333,46 +383,149 @@ export function describeOverlayScan(scan, picked) {
   return parts.join('，');
 }
 
-// 把「扫 → 选 → 点 → 回读」串成一步，**依赖注入**（`evalOn` / `clickPoint` / `delay` / `log`）。
+// 「这一层还算不算挡事」——纯函数，离线可测（2026-09-26 加）。
+// 原来的判据只有「全屏层归零」，而**下一步真正需要的**是「那个控件能点到了」。两者不等价：
+// 层可能还挂在 DOM 上（另一个 mask、另一个不相关的浮层），但目标已经能命中 —— 那种情况
+// 按老判据会判「没关掉」然后整轮停下，而实际上路已经通了。所以两个条件满足任一条就算不再挡事，
+// 但**理由要如实分开报**，免得下次误读成「层没了」。
+export function judgeOverlayAfter(after = {}) {
+  const layers = Array.isArray(after.remainingLayers) ? after.remainingLayers : [];
+  if (layers.length === 0) return { cleared: true, why: '全屏层已归零' };
+  if (after.targetHit === true) return { cleared: true, why: `层还剩 ${layers.length} 个但目标控件已可点` };
+  return { cleared: false, why: `层还剩 ${layers.length} 个且目标仍不可点` };
+}
+
+// 把「扫 → 关 → 回读」串成一步，**依赖注入**（`evalOn` / `clickPoint` / `pressEscape` / `delay` / `log`）。
 // 为什么做成工厂而不是在各脚本里各写一遍：两个采集脚本（生意参谋侧、阿里妈妈侧）都要用它，
 // 而且「关不掉时不许改变主流程的失败方向」这条编排约束必须**离线可测** —— 注入以后就能用假实现
 // 直接断言这条约束，不必等真跑到一次遮挡。
 // 注入函数的形状统一是 `(args, targetId, payload)`；返回的 dismisser 形状是 `(args, targetId, selector)`。
-export function createOverlayDismisser({ evalOn, clickPoint, delay, log = () => {}, settleMs = 2500 } = {}) {
+//
+// 关法按「风险从低到高」排序（2026-09-26 起）：
+//   ① ESC —— 模态框最常见也最安全的出口，**不用点页面上的任何东西**，没有点错的可能；
+//   ② 有序候选表（明确关闭语义 → 消失类确认词 → 层右上角图标，封顶 `OVERLAY_MAX_PICKS` 个）；
+//   ③ 都不行就如实回报「没关掉」，由调用方决定还要不要换一个现场（见 collect-promotion-report 的
+//      「重载一次再走一遍」）。
+// 判据仍然是**回读**，不是接口返回值；但判据从「全屏层归零」放宽成
+// 「层归零 **或** 目标控件已可点」—— 理由见 `judgeOverlayAfter`。
+// `pressEscape` 可以不注入：不注入就**跳过**这一步并在日志里说清，而不是假装试过。
+export function createOverlayDismisser({ evalOn, clickPoint, pressEscape, delay, log = () => {}, settleMs = 2500, maxPicks } = {}) {
   for (const [name, fn] of Object.entries({ evalOn, clickPoint, delay })) {
     if (typeof fn !== 'function') throw new Error(`createOverlayDismisser 缺少注入实现：${name}`);
   }
+  if (pressEscape !== undefined && typeof pressEscape !== 'function') {
+    throw new Error('createOverlayDismisser 的 pressEscape 要么不注入，要么是一个真能发键的函数');
+  }
+  const readAfter = async (args, targetId, selector) => {
+    const after = await evalOn(args, targetId, overlayAfterExpression(selector));
+    const verdict = judgeOverlayAfter(after);
+    log(`[遮挡] 回读：全屏层剩 ${after?.remainingLayers?.length ?? '?'} 个`
+      + `${after?.remainingLayers?.length ? `（${JSON.stringify(after.remainingLayers)}）` : ''}`
+      + `｜目标可点=${after?.targetHit} ⇒ ${verdict.cleared ? '不再挡事' : '还在挡'}（${verdict.why}）`);
+    return { after, verdict };
+  };
   return async function dismissBlockingOverlay(args, targetId, selector = null) {
     const scan = await evalOn(args, targetId, overlayScanExpression());
     // 没检出这一类遮挡就**原样返回 false**：调用方照旧按原来的措辞报错，
     // 不能因为多了这一步就把「点不到」错报成「弹窗导致的」。
     if (!scan || scan.blocked !== true) return { attempted: false, reason: 'not-a-fullscreen-overlay' };
-    const picked = pickOverlayCloseCandidate(scan);
+    const picked = pickOverlayCloseCandidates(scan, maxPicks ? { maxPicks } : {});
     log(`[遮挡] ${describeOverlayScan(scan, picked)}`);
-    if (!picked) return { attempted: true, dismissed: false, reason: 'no-safe-candidate', scan, picked: null };
-    // 真实鼠标点击（这一族页面 JS 点击常无效）。点这一步自身失败也不该把整轮带走 ⇒ 吞掉异常，
-    // 让下面的**回读**去下结论（回读说没关掉就是没关掉）。
-    await clickPoint(args, targetId, [picked.pick.cx, picked.pick.cy]).catch(() => '');
-    await delay(settleMs);
-    const after = await evalOn(args, targetId, overlayAfterExpression(selector));
-    const dismissed = after.remainingLayers.length === 0;
-    log(`[遮挡] 关后回读：全屏层剩 ${after.remainingLayers.length} 个`
-      + `${after.remainingLayers.length ? `（${JSON.stringify(after.remainingLayers)}）` : ''}`
-      + `｜目标可点=${after.targetHit} ⇒ ${dismissed ? '已关掉' : '没关掉'}`);
-    return { attempted: true, dismissed, remainingLayers: after.remainingLayers,
-      targetHit: after.targetHit, scan, picked };
+    const tried = [];
+    if (typeof pressEscape === 'function') {
+      // 发键失败（代理异常）不该把整轮带走，也不该被当成「ESC 无效」—— 如实记下来继续下一招。
+      const escaped = await pressEscape(args, targetId).then(() => true).catch(() => false);
+      if (escaped) {
+        await delay(settleMs);
+        const { after, verdict } = await readAfter(args, targetId, selector);
+        tried.push(`ESC→${verdict.why}`);
+        if (verdict.cleared) {
+          return { attempted: true, dismissed: true, strategy: 'escape', tried,
+            remainingLayers: after.remainingLayers, targetHit: after.targetHit, scan, picked };
+        }
+      } else {
+        tried.push('ESC→按键没发出去');
+      }
+    } else {
+      log('[遮挡] 没有注入 pressEscape ⇒ 跳过 ESC 这一步（不假装试过）');
+    }
+    if (!picked) return { attempted: true, dismissed: false, reason: 'no-safe-candidate', scan, picked: null, tried };
+    let last = null;
+    for (const [index, candidate] of picked.picks.entries()) {
+      // 真实鼠标点击（这一族页面 JS 点击常无效）。点这一步自身失败也不该把整轮带走 ⇒ 吞掉异常，
+      // 让下面的**回读**去下结论（回读说没关掉就是没关掉）。
+      await clickPoint(args, targetId, [candidate.cx, candidate.cy]).catch(() => '');
+      await delay(settleMs);
+      const { after, verdict } = await readAfter(args, targetId, selector);
+      last = after;
+      tried.push(`候选${index + 1}(${candidate.cx},${candidate.cy})→${verdict.why}`);
+      if (verdict.cleared) {
+        return { attempted: true, dismissed: true,
+          strategy: index === 0 && picked.namedCount > 0 ? 'named' : 'candidate',
+          tried, remainingLayers: after.remainingLayers, targetHit: after.targetHit, scan, picked };
+      }
+    }
+    log(`[遮挡] 试了 ${tried.length} 种关法都没关掉：${tried.join('；')}`);
+    return { attempted: true, dismissed: false, reason: 'still-blocked', tried, scan, picked,
+      remainingLayers: last?.remainingLayers, targetHit: last?.targetHit };
   };
 }
 
 // 把「关遮挡那一步试出了什么」变成报错里的一句人话（两个脚本共用）。
 // 没试过（`attempted !== true`）时说清「这次失败与全屏弹窗无关」——
 // 免得下一次看到同类报错时，把「其实是选择器/坐标问题」误判成「又是弹窗」。
+// **未关掉**这一支必须带上 `OVERLAY_NOT_DISMISSED_TOKEN`：链靠它把这类失败单独认出来，
+// 否则收信人会收到一句「这一轮不需要你在浏览器里做什么」，而真实现场是人得去把那一层关掉。
 export function describeOverlayAttempt(attempt) {
   if (!attempt || attempt.attempted !== true) return '（复核失败与全屏弹窗无关）';
   const detail = describeOverlayScan(attempt.scan, attempt.picked);
-  return attempt.dismissed
-    ? `（遮挡层已关掉：${detail}；但复核仍不过，说明这次不是它挡的）`
-    : `（检出了全屏遮挡层但没能关掉：${detail}）`;
+  if (attempt.dismissed) return `（遮挡层已关掉：${detail}；但复核仍不过，说明这次不是它挡的）`;
+  const tried = attempt.tried?.length ? `；试过的关法：${attempt.tried.join('；')}` : '';
+  return `（${OVERLAY_NOT_DISMISSED_TOKEN} 检出了全屏遮挡层但没能关掉：${detail}${tried}）`;
+}
+
+// ---------------------------------------------------------------------------
+// 「换一个现场再来一次」：真重载页面（2026-09-26 加）
+// ---------------------------------------------------------------------------
+// 为什么需要它：有一类全屏弹窗是**一次性**的（同一族的层在别的店上是关得掉的，见 09-26 科塔 vs 网林），
+// 关不掉的那一次往往只是「这一份渲染上它不理会我们的点击」。重载一次页面就换了新现场，
+// 而这一步的成本只有几秒。
+// 为什么必须真重载：**不能用 navigate** —— 目标 URL 与当前 URL 相同时，navigate 是「同文档导航」，
+// 浏览器什么都不做（本项目 09-21 实测过，见 date-picker 里那条同名教训）。
+// 为什么要有「等就绪」：重载会打断 eval 上下文，紧接着的复核会读到空白页 —— 那会被误判成
+// 「控件不见了」，然后按「选择器选错了」去报错，把一个能自愈的现场变成一条假的结论。
+export const OVERLAY_RELOAD_READY_TIMEOUT_MS = 20000;
+
+export function reloadPageExpression() {
+  return `(() => { window.location.reload(); return JSON.stringify({ reloading: true, href: location.href }); })()`;
+}
+
+export function pageReadyExpression() {
+  return `JSON.stringify({ readyState: document.readyState, title: document.title || '' })`;
+}
+
+export function createPageReloader({ evalOn, delay, log = () => {}, timeoutMs = OVERLAY_RELOAD_READY_TIMEOUT_MS, pollMs = 1000 } = {}) {
+  for (const [name, fn] of Object.entries({ evalOn, delay })) {
+    if (typeof fn !== 'function') throw new Error(`createPageReloader 缺少注入实现：${name}`);
+  }
+  return async function reloadAndSettle(args, targetId) {
+    // 重载会把 eval 上下文打断 ⇒ 这一条读到异常是**预期**的，不能当成「重载失败」。
+    await evalOn(args, targetId, reloadPageExpression()).catch(() => null);
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      await delay(pollMs);
+      let state = null;
+      try { state = await evalOn(args, targetId, pageReadyExpression()); } catch { state = null; }
+      if (state && state.readyState === 'complete') {
+        log(`[遮挡] 已重载页面（${state.title || '无标题'}）—— 在新现场上再走一遍`);
+        return true;
+      }
+      if (Date.now() >= deadline) {
+        log(`[遮挡] 重载后 ${timeoutMs}ms 内没等到页面就绪 ⇒ 不用这个新现场了`);
+        return false;
+      }
+    }
+  };
 }
 
 // ---------------------------------------------------------------------------

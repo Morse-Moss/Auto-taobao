@@ -512,6 +512,31 @@ export function isTaobaoLoginUrl(href) {
   return /login/u.test(url.pathname);
 }
 
+// 「业务站自己弹的那个登录页」。它**不是**上面那条（那条判的是「有没有被送去顶层登录页」，
+// 刻意把这一族排除在外），所以必须单独一条：
+//   `sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/`  ← 2026-09-25 商家浏览器掉登录的现场
+//   `sycm.taobao.com/custom/login.htm?_target=…/qos/serv`              ← 2026-09-22 五家店全部落在这里
+// 为什么要有它：页签停在登录墙上 = **掉了登录**，不是「页面不齐」——
+// 2026-09-25 那次告警就是把这一种归成了「页面不齐」，让人去开页面（开几个都会被弹回来）。
+// 判据按**结构**（host 相等 + path 相等），不按子串 includes。
+export const SYCM_LOGIN_WALL_HOST = 'sycm.taobao.com';
+export const SYCM_LOGIN_WALL_PATH = '/custom/login.htm';
+
+export function isSycmLoginWallUrl(href) {
+  const text = String(href ?? '').trim();
+  if (!text) return false;
+  let url = null;
+  try { url = new URL(text); } catch { return false; }
+  return url.host === SYCM_LOGIN_WALL_HOST && url.pathname === SYCM_LOGIN_WALL_PATH;
+}
+
+// 两族合起来问一句「这个页签是不是停在登录墙上」。
+// 驻留轮询（`scripts/hold-and-resume.mjs`）用的就是这一句：判据必须是**同一个**东西 ——
+// 分开写两份，迟早有一份漏掉新出现的那种登录页，而「漏掉」的症状是「一直等到超时」。
+export function isLoginWallUrl(href) {
+  return isTaobaoLoginUrl(href) || isSycmLoginWallUrl(href);
+}
+
 // 「登录页把我们送走了吗」—— 送走了返回结论，没送走返回 null。
 //
 // 2026-09-19 实测：淘宝**主站**会话还有效时，打开顶层登录页会被直接送去卖家后台

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
 
 import {
   RUNTIME_EXTRA_DIRS,
@@ -53,10 +54,18 @@ test('extra directories actually exist and contribute tests', () => {
 test('the suite dry-run reports the same file list the discovery returns', async () => {
   const { spawnSync } = await import('node:child_process');
   const result = spawnSync(process.execPath, ['scripts/run-test-suite.mjs', 'runtime', '--dry-run'], {
-    cwd: process.cwd(),
+    // cwd 用**仓库根**（由本文件的位置推出来），不用 `process.cwd()` —— 后者取决于谁在哪跑测试，
+    // 从别的目录跑时 `scripts/run-test-suite.mjs` 会找不到，而失败信息只是「清单对不上」。
+    cwd: path.resolve(import.meta.dirname, '..'),
     encoding: 'utf8',
+    // `stdio` 必须显式写成 stdin `'ignore'`（2026-09-26 补，同 CHANGELOG 1.7.1 那一族）：
+    // 不写时默认「三根都是管道」，而**本机宿主沙箱对「给子进程管道 stdin 的同步 spawn」
+    // 直接回 EBUSY**（`status=null`）⇒ 这一条会以 `null !== 0` **假红**，
+    // 把「宿主掐断了子进程」报成「清单不一致」。1.7.1 修了链上三处生产点与两个测试，**漏了这一处**。
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
   });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(result.status, 0, `error=${result.error?.message ?? 'none'}\n${result.stderr || result.stdout}`);
   const listed = result.stdout.split('\n').map((line) => line.trim()).filter((line) => line.endsWith('.test.mjs'));
   assert.deepEqual(listed.sort(), discoverRuntimeTests());
 });

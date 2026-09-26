@@ -84,6 +84,10 @@ import { shiftIso, shanghaiToday } from './date-picker.mjs';
 // 不许在这里另抄一份「生意参谋 / 阿里妈妈」—— 抄一份就是等着它与探测判据漂开。
 import { SITES } from './login-merchant-core.mjs';
 import { describeIdentity, expectArgs, formatArgv, shopIdentity } from './shop-identities.mjs';
+// 「遮挡层没关掉」这个机器标记的**唯一来源**（产出在 collect-core 的 describeOverlayAttempt）。
+// 消费方（`shopFailureCause`）import 它、不写字面量：两边各写一份，改名那天就会静默漂移成
+// 「这一类永远归到兜底」，而告警照发、看起来一切正常。
+import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -177,8 +181,26 @@ export function stageNumber(key, stage) {
  * 「这个结论悄悄退化成兜底文案」，而告警照发不误、看起来一切正常。
  */
 export const FAILURE_CAUSES = Object.freeze(
-  ['ROUND_BLOCKED', 'SHOP_BLOCKED', 'NEEDS_LOGIN', 'DUPLICATE_TARGET', 'SHOP_FUNC_NO_PERMISSION', 'STAGE_FAILED'],
+  ['ROUND_BLOCKED', 'SHOP_BLOCKED', 'NEEDS_LOGIN', 'DUPLICATE_TARGET', 'SHOP_FUNC_NO_PERMISSION',
+    'PAGE_OBSTRUCTED', 'STAGE_FAILED'],
 );
+
+/**
+ * **逐店**的失败里，哪几种只有人动手才能解除（驻留与自动续跑只对这几类开，其余照旧「跑完就结束」）。
+ *
+ * 为什么必须是一个具名常量而不是各调用方各写一份：驻留拿它决定「这一轮要不要一直活着」，
+ * 写错方向的代价是**对称**的 —— 多算一类 ⇒ 每天早上把机器白挂几小时；少算一类 ⇒
+ * 人到了现场而窗口已经被收走（2026-09-25、09-26 连着两天都是后者）。
+ * 它是 `FAILURE_CAUSES` 的子集，由加载期那条互锁与用例一起钉住。
+ *
+ * 刻意不在里面：
+ *   · `SHOP_FUNC_NO_PERMISSION` —— 要人去生意参谋把「店铺绩效」的订购找回来，不是浏览器里的事；
+ *   · `DUPLICATE_TARGET` —— 不用做任何事（那天飞书里已经有数据）；
+ *   · `STAGE_FAILED` —— 兜底类，成因不明；对它开驻留等于「每天挂几小时等一个没人知道要不要人的东西」；
+ *   · `ROUND_BLOCKED` —— 它**不是逐店**结论。整轮被挡要不要人由 `runtime/hold-and-resume-plan.mjs`
+ *     的 `holdDecision` 单独判（那两种成因 —— 掉登录 / 页面真缺 —— 都只有人能解除，所以一律算需要人）。
+ */
+export const HUMAN_REQUIRED_CAUSES = Object.freeze(['NEEDS_LOGIN', 'PAGE_OBSTRUCTED']);
 
 /**
  * 一家店的失败是哪一类。
@@ -196,6 +218,12 @@ export function shopFailureCause(record = {}) {
   // 照着做的人白跑一趟浏览器，问题不会好。判据是**确定性名字**（`date-picker.mjs` 只在这一种
   // 情况下抛它，且抛出前一定先问过平台，问不到就不给这个名字）。
   if (/SHOP_FUNC_NO_PERMISSION/u.test(String(record.failureOutput ?? ''))) return 'SHOP_FUNC_NO_PERMISSION';
+  // 2026-09-26 加：平台自己的全屏弹窗压住整页、而且试过多种关法都没关掉。
+  // 判据是**确定性标记**（`collect-core` 只在「检出了全屏遮挡层，且 ESC／有序候选都试过仍没关掉」
+  // 这一种情况下写它），不是靠在这里猜措辞。标记本身从 collect-core import，不抄字面量。
+  // 为什么必须单列：兜底那句的下一步是「这一轮不需要你在浏览器里做什么」，而这一类的下一步
+  // 恰恰**相反** —— 要人去把那一层关掉（2026-09-26 早上科塔就是这么被报错的）。
+  if (String(record.failureOutput ?? '').includes(OVERLAY_NOT_DISMISSED_TOKEN)) return 'PAGE_OBSTRUCTED';
   if (record.failedStage === 'health-check') return 'SHOP_BLOCKED';
   if (record.failedStage === 'push'
     && /duplicate daily report row exists/u.test(String(record.failureOutput ?? ''))) return 'DUPLICATE_TARGET';
@@ -292,6 +320,9 @@ const REASON_BY_CAUSE = Object.freeze({
   NEEDS_LOGIN: '这家店的后台掉登录了 —— 采集页面一打开就被平台送回了登录页，开几个都一样，所以没跑成。',
   DUPLICATE_TARGET: '这一天飞书里已经有数据了，脚本按「不许写第二遍」停住了。',
   SHOP_FUNC_NO_PERMISSION: '这家店在生意参谋里的「店铺绩效」现在不在账号上（平台按店铺开通的一项），所以采集页面一打开就被平台送回首页，这一天的数据没进飞书。',
+  // 2026-09-26 加。为什么必须与兜底那句分开：兜底说的是「不需要你在浏览器里做什么」，
+  // 而这一类的下一步**就是要人去点一下**。字面上还得让收信人知道「那层不是他做错了什么」。
+  PAGE_OBSTRUCTED: '这家店的页面上弹出了一个盖住整页的活动弹窗，脚本按过 Esc、也按过「关闭」这一类按钮，都没能把它关掉，所以停在那儿没往下跑，这一天的数据没进飞书。',
   STAGE_FAILED: '这家店跑到一半停住了，这一天的数据没进飞书。',
 });
 
@@ -301,6 +332,16 @@ const REASON_BY_CAUSE = Object.freeze({
 // 而现场是「生意参谋页面停在昨天的渲染上」—— 照着做的收信人白跑一趟浏览器去登录，问题不会好。
 // 成因不同、要做的事就不同（同 SKILL `operator-alert-plain-language` §4 的「结论判错」），
 // 所以宁可不给具体动作，也不给一个可能是错的。
+//
+// 2026-09-26 加：「做完不用回复、系统会自己继续」这句话**只在真的有驻留进程时才能说**。
+// 定时任务（`scripts/run-daily-job.mjs`）会在链因「需要人」失败后转入驻留并自动续跑；
+// 而手工直接跑这条链不会有驻留 ⇒ 那种情况下承诺「系统会自己继续」就是一句兑现不了的假话
+//（本仓纪律：文案承诺错了比不说更贵）。所以由调用方用 `--will-resume` 说了才算数。
+const RESUME_SENTENCE = Object.freeze({
+  PAGE_OBSTRUCTED: '关掉之后不用回复、也不用重跑：这一轮的窗口留在原地，系统会自己接着把这家店剩下的步骤跑完。',
+  NEEDS_LOGIN: '登录好之后不用回复、也不用重跑：这一轮的窗口留在原地，系统会自己接着把这家店剩下的步骤跑完。',
+});
+
 const ACTION_BY_CAUSE = Object.freeze({
   ROUND_BLOCKED: () => '打开那个开着飞书「各店铺日报」的浏览器窗口，把这两页各开一个（只留一个，多开同样会报错）：'
     + '生意参谋的「店铺」工作页、飞书「各店铺日报」底单页。开好后告诉技术同学重跑一次。',
@@ -313,8 +354,15 @@ const ACTION_BY_CAUSE = Object.freeze({
     const which = (ctx.needLogin ?? []).length ? ctx.needLogin : ctx.shops;
     return `打开这几家店各自的日报采集窗口（窗口标题里写着店名，例如「${which?.[0] ?? '店名'} · 日报采集窗口」），`
       + '用这家店自己的账号重新登录一次 —— 只在这一家店自己的窗口里登，别在别的窗口里登'
-      + '（每个窗口是它自己那套登录态）。登录好之后告诉技术同学重跑一次。';
+      + '（每个窗口是它自己那套登录态）。'
+      + (ctx.willResume ? RESUME_SENTENCE.NEEDS_LOGIN : '登录好之后告诉技术同学重跑一次。');
   },
+  // 2026-09-26 加。要写的只有三件事：哪扇窗、关什么、关完要不要回复。
+  // 「关什么」必须给出**页面上真有**的两种形态（右上角的叉 / 它自己的关闭按钮），
+  // 因为这一层的 id 与文案每次都不一样（实测过 2936/925/694/624 四种形态）。
+  PAGE_OBSTRUCTED: (ctx) => `打开「${ctx.shops[0] ?? '这家店'}」的日报采集窗口，把盖住整个页面的那个弹窗关掉`
+    + '（点它右上角的叉，或者它自己那个「关闭」「我知道了」按钮）—— 登录是好的，不用重新登录。'
+    + (ctx.willResume ? RESUME_SENTENCE.PAGE_OBSTRUCTED : '关掉之后告诉技术同学重跑这一家。'),
   DUPLICATE_TARGET: (ctx) => `不用处理：${ctx.date} 的数据已经在飞书里了。`
     + '只有确实要重写时才需要先删掉那一天的记录再跑。',
   SHOP_FUNC_NO_PERMISSION: (ctx) => `这一轮不需要你在浏览器里做什么 —— 刷新、重新登录都没用，不是登录的问题。`
@@ -333,6 +381,14 @@ for (const [tableName, table] of [['REASON_BY_CAUSE', REASON_BY_CAUSE], ['ACTION
   if (absent.length) {
     throw new Error(`${tableName} 少了这些结论：${absent.join(' / ')}（收信人会看到一句对不上现场的兜底文案）`);
   }
+}
+
+// 「需要人」那一集必须是结论闭集的**子集**（同样是加载期查）。
+// 多写一个不存在的值的症状是「驻留永远不触发」或「触发了但没人知道为什么」，两种都不报错 ——
+// 而驻留是**唯一**能保住窗口的形态，它悄悄不触发就等于回到「人赶到时窗口已经没了」。
+const strayHuman = HUMAN_REQUIRED_CAUSES.filter((cause) => !FAILURE_CAUSES.includes(cause));
+if (strayHuman.length) {
+  throw new Error(`HUMAN_REQUIRED_CAUSES 里有不在结论闭集里的值：${strayHuman.join(' / ')}`);
 }
 
 /** 收信人看到的「哪家店、停在哪一步」。店名后面带上**他在浏览器里能看到的登录名**，方便对上窗口。 */
@@ -415,7 +471,7 @@ function loginPreflightLines(login, { needLogin = [], unknown = [], roundBlocked
  * 那会让文案退到「这一轮没有先查登录态」那一句（见 loginPreflightLines），而不是安静地少说
  * 一件事 —— 「没查」与「查了没问题」在收信人眼里必须是两句不同的话。
  */
-export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPreflight = null, now = () => new Date() }) {
+export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPreflight = null, willResume = false, now = () => new Date() }) {
   const view = roundFailureSummary(summary, { loginPreflight });
   if (!view.any) throw new Error('这一轮没有失败却要生成告警（调用方的判定错误）—— 成功时不许叫人');
   // `shopKeys` **必填**（这一轮该跑哪几家，从配置来），缺了直接抛。
@@ -460,7 +516,7 @@ export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPr
   ].filter(Boolean).join('\n');
 
   const actions = causes.map((cause) => ACTION_BY_CAUSE[cause]({
-    date, shops: failedNames, needLogin: needLogin.map((item) => item.shop),
+    date, shops: failedNames, needLogin: needLogin.map((item) => item.shop), willResume,
   }));
 
   const alert = {
@@ -536,8 +592,9 @@ export function resolveAlertDispatch({ notify = false, notifyPrint = false, mode
 
 export const parseArgs = (argv, { now = new Date() } = {}) => {
   const args = { date: null, dateInput: null, shops: null, commit: false, verifyExisting: null, keepGoing: false,
+    stopOnFirstFailure: false,
     only: null, logs: null, downloads: null, shopXlsx: null, promotionZip: null,
-    allowMissingPeer: false, notify: false, notifyPrint: false, loginPreflight: null };
+    allowMissingPeer: false, notify: false, notifyPrint: false, loginPreflight: null, willResume: false };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     // 原样收下，出了循环再解析（`--date yesterday` 要用「这一刻」的时钟算，只算一次）。
@@ -545,12 +602,20 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
     // 出错时才发飞书（成功一声不响）；`--notify-print` 只打印不投递，用来看文案。
     else if (key === '--notify') args.notify = true;
     else if (key === '--notify-print') args.notifyPrint = true;
+    // 这一轮跑完之后会有**驻留进程**接管（定时任务用，见 scripts/hold-and-resume.mjs）
+    // ⇒ 告警里才可以说「做完不用回复，系统会自己接着跑」。手工直接跑链时不给这个开关，
+    // 文案就是「告诉技术同学重跑一次」（见 ACTION_BY_CAUSE 上方那条注释）。
+    else if (key === '--will-resume') args.willResume = true;
     // 历史日（不是「昨日」）的回填降级开关。**默认关**，见 buildShopStages 里 backfill 那段。
     else if (key === '--allow-missing-peer') args.allowMissingPeer = true;
     else if (key === '--shops') args.shops = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
     else if (key === '--commit') args.commit = true;
     else if (key === '--verify-existing') args.verifyExisting = Number(argv[++i]);
     else if (key === '--keep-going') args.keepGoing = true;
+    // 2026-09-25 加：**退回**「首家失败即停整轮」。默认不再启用它 ——
+    // 默认值已经翻成「一家失败不带走其余」（理由见下面那个 break 处的注释）。
+    // `--keep-going` 仍然接受：它是新默认值的显式声明，保留是为了不改既有调用方的命令行。
+    else if (key === '--stop-on-first-failure') args.stopOnFirstFailure = true;
     else if (key === '--only') args.only = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
     else if (key === '--logs') args.logs = argv[++i];
     // 跑前登录态结论（`check-login-shops.mjs --json` 写出来的那个文件）。**只在给的时候读**：
@@ -899,6 +964,19 @@ export function dispatchRoundAlert({ alert, dispatch, logDir = null, spawn = spa
   // **不管发不发，先把收信人会看到的那份完整打进本地日志。**
   // 技术串已经从业务消息里撤掉了，job.log 就成了事后唯一能对上「他到底看到了什么」的地方。
   log(`[驱动] 告警文案（收信人看到的）：\n${text}`);
+  // `off` 必须在这里就返回（2026-09-26 补；此前**没有**这个分支）。
+  //
+  // 为什么这是一个真缺陷而不是洁癖：`off` 的唯一含义就是「一个字都别发」，而缺了这个分支之后，
+  // 传 `off` 会**直接落到下面的去重与投递**（去重只按编号/指纹判「最近发过没」，它不读
+  // `dispatch`）⇒ 一个「没让发」的调用会**真发一条飞书**出去。
+  // 目前没炸，只是因为两个调用点各自在调用前写了 `if (alertDispatch.action !== 'off')` ——
+  // 也就是说这条判据活在**调用方**，而这正是本项目反复吃的那一类亏：
+  // 同一个事实两处实现，漏一处就静默失效（`scripts/hold-and-resume.mjs` 是第三个调用点，
+  // 它差一点就成了那个「漏一处」）。判据放回它唯一该在的地方：出口自己。
+  if (dispatch.action === 'off') {
+    log(`[驱动] （没有打开告警：${dispatch.why ?? '--notify 未给'} —— 只打印，不投递）`);
+    return { delivered: false, printed: false, suppressed: false, off: true };
+  }
   if (dispatch.action === 'print') {
     log('[驱动] （--notify-print：只打印、不投递）');
     return { delivered: false, printed: true };
@@ -1103,7 +1181,7 @@ async function main() {
     process.exitCode = 1;
     if (alertDispatch.action !== 'off') {
       dispatchRoundAlert({
-        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight }),
+        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight, willResume: args.willResume }),
         dispatch: alertDispatch, logDir: path.relative(REPO_ROOT, logRoot),
       });
     }
@@ -1193,8 +1271,20 @@ async function main() {
       // 见 recoverFailedShop 的三条纪律）。位置**刻意放在「停整轮」之前** —— 放到之后的话，
       // 默认策略下断掉整个 for 循环，而唯一失败的那一家恰恰就是不会被收尾的那一家。
       record.recovery = await recoverFailedShop({ shopKey: key, logDir: shopLogDir, repoRoot: REPO_ROOT });
-      if (!args.keepGoing) {
-        console.error(`[驱动] 按默认策略停整轮（要看完全部店加 --keep-going）。已跑的店记在 ${path.relative(REPO_ROOT, logRoot)}。`);
+      // 一家店失败之后要不要继续跑其余店。**2026-09-25 把默认值翻了**（旧默认＝停整轮）。
+      //
+      // 旧默认的理由是「出了问题就别继续写」，但实测下来它的代价远大于收益：
+      //   ① 每一家店的采集/推送都是**独立的** —— 各自的浏览器实例、各自的账号、各自那几行飞书。
+      //      一家失败不会让别家的数据变得不干净（每家的写都自带回读核对）。
+      //   ② 实测形态（`evidence/daily-job-2026-09-24/job.log`，当天四轮全都是这个形状）：
+      //      里可林停在 `alimama-date`、或停在 `push` ⇒ **停整轮** ⇒ 另外四家一步都没跑
+      //      ⇒ 那天只写进 0~1 家，而它们本来都是能成的。一处已知的单店缺陷（缺陷⑤：
+      //      网林停在第 6 步）就这样被放大成「一整天的数据都没有」。
+      //   ③ 继续跑不会让失败变安静：轮末照旧 `anyFailed` ⇒ 退出码 1 ＋ 一条**点名到店**的告警
+      //      （文案见 buildRoundFailureAlert）。失败该报还是报，只是不再连坐。
+      // 所以默认改成「一家失败不带走其余」；要退回旧行为用显式的 `--stop-on-first-failure`。
+      if (args.stopOnFirstFailure) {
+        console.error(`[驱动] --stop-on-first-failure：停整轮（默认是继续跑其余店）。已跑的店记在 ${path.relative(REPO_ROOT, logRoot)}。`);
         break;
       }
     }
@@ -1214,7 +1304,7 @@ async function main() {
     process.exitCode = 1;
     if (alertDispatch.action !== 'off') {
       dispatchRoundAlert({
-        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight }),
+        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight, willResume: args.willResume }),
         dispatch: alertDispatch, logDir: path.relative(REPO_ROOT, logRoot),
       });
     } else if (args.notify || args.notifyPrint) {

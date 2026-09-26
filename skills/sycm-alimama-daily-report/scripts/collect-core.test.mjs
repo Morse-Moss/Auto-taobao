@@ -7,11 +7,13 @@ import test from 'node:test';
 
 import {
   SHOP_REPORT_PATTERN, PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN,
-  OVERLAY_DISMISS_DANGER, alimamaIdentityExpression, assertMemberIdentity, assertShopIdentity,
-  checkboxStateExpression, createOverlayDismisser, dateWithinRange, defaultDownloadsDir,
+  OVERLAY_ACK_PATTERN, OVERLAY_DISMISS_DANGER, OVERLAY_MAX_PICKS, OVERLAY_NOT_DISMISSED_TOKEN,
+  alimamaIdentityExpression, assertMemberIdentity, assertShopIdentity,
+  checkboxStateExpression, createOverlayDismisser, createPageReloader, dateWithinRange, defaultDownloadsDir,
   describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, describeOverlayScan,
-  downloadEntryExpression, hitCheckExpression, listDownloads, newEntries, newestTaskName,
-  overlayAfterExpression, overlayScanExpression, parseCollectArgs, pickNewest, pickOverlayCloseCandidate,
+  downloadEntryExpression, hitCheckExpression, judgeOverlayAfter, listDownloads, newEntries, newestTaskName,
+  overlayAfterExpression, overlayScanExpression, pageReadyExpression, parseCollectArgs, pickNewest,
+  pickOverlayCloseCandidate, pickOverlayCloseCandidates, reloadPageExpression,
   restoreCheckboxesExpression, scrollIntoViewExpression, sycmShopIdentityExpression, targetRowExpression,
 } from './collect-core.mjs';
 
@@ -1045,15 +1047,21 @@ test('关遮挡的编排：不是这一类遮挡就不点；点完以**回读**�
       return queue.shift();
     };
   };
-  const build = (scans) => {
+  const build = (scans, extra = {}) => {
     const clicks = [];
+    const keys = [];
     return {
       clicks,
+      keys,
       dismisser: createOverlayDismisser({
         evalOn: scripted(scans),
         clickPoint: async (_args, _targetId, point) => { clicks.push(point); return '{"clicked":true}'; },
         delay: async () => {},
         log: () => {},
+        ...(extra.pressEscape
+          ? { pressEscape: async () => { keys.push('Escape'); return extra.pressEscape(); } }
+          : (extra.pressEscapeThrows ? { pressEscape: async () => { keys.push('Escape'); throw new Error('proxy down'); } } : {})),
+        ...(extra.onLog ? { log: extra.onLog } : {}),
       }),
     };
   };
@@ -1076,19 +1084,31 @@ test('关遮挡的编排：不是这一类遮挡就不点；点完以**回读**�
   assert.equal(dangerResult.reason, 'no-safe-candidate');
   assert.equal(danger.clicks.length, 0);
   assert.match(describeOverlayAttempt(dangerResult), /没能关掉/u);
+  // 未关掉这一支必须带上那个**机器标记**：链靠它把这类失败单独认出来
+  // （不带它 ⇒ 收信人收到的是「这一轮不需要你在浏览器里做什么」，而真实现场是人得去关那一层）。
+  assert.ok(describeOverlayAttempt(dangerResult).includes(OVERLAY_NOT_DISMISSED_TOKEN),
+    '未关掉时一定要带上机器标记，否则链会把它归成兜底类');
 
-  // ③ 正常路径：点的坐标必须是**黑名单筛过之后**选出来的那个。
+  // ③ 正常路径：点的坐标必须是**黑名单筛过之后**选出来的那个；关掉了就**不再试下一个候选**。
   const ok = build([OVERLAY_925, { remainingLayers: [], targetHit: true }]);
   const okResult = await ok.dismisser(args, 'T', '[sel]');
-  assert.deepEqual(ok.clicks, [[569, 634]], '点的是「关闭」，不是「立即报名」');
+  assert.deepEqual(ok.clicks, [[569, 634]], '点的是「关闭」，不是「立即报名」；关掉了就不该再点第二个候选');
   assert.equal(okResult.dismissed, true);
+  assert.equal(okResult.strategy, 'named');
   assert.match(describeOverlayAttempt(okResult), /已关掉/u);
 
-  // ④ 接口返回成功、但**回读说层还在** ⇒ 必须判没关掉（HTTP 200 证明不了任何事）。
-  const still = build([OVERLAY_925, { remainingLayers: ['DIV#wrapper_dlg_925 z=99999'], targetHit: false }]);
+  // ④ 接口返回成功、但**回读说层还在** ⇒ 必须判没关掉（HTTP 200 证明不了任何事），
+  //    而且（2026-09-26 起）要**按有序表继续试下一个候选** —— 只看第一个在现场实测里不够用
+  //    （科塔那次第一个候选是个无文字的右上角图标，点完纹丝不动）。
+  //    OVERLAY_925 的安全候选恰好两个：`关闭`(569,634) 与右上角图标(1059,98)。
+  const still = build([OVERLAY_925, { remainingLayers: ['DIV#wrapper_dlg_925 z=99999'], targetHit: false },
+    { remainingLayers: ['DIV#wrapper_dlg_925 z=99999'], targetHit: false }]);
   const stillResult = await still.dismisser(args, 'T', '[sel]');
   assert.equal(stillResult.dismissed, false, '回读层还在就是没关掉 —— 不许因为点了就当成功');
   assert.deepEqual(stillResult.remainingLayers, ['DIV#wrapper_dlg_925 z=99999']);
+  assert.deepEqual(still.clicks, [[569, 634], [1059, 98]], '第一个没关掉就要去试第二个候选');
+  assert.equal(stillResult.tried.length, 2, '试过哪几招要如实记下来（报错里要能自答）');
+  assert.match(describeOverlayAttempt(stillResult), /试过的关法/u);
 
   // ⑤ 连点击都失败了（网络/代理异常）⇒ 不把异常抛出去污染主流程，仍以回读下结论。
   const throwing = createOverlayDismisser({
@@ -1099,8 +1119,130 @@ test('关遮挡的编排：不是这一类遮挡就不点；点完以**回读**�
   const thrownResult = await throwing(args, 'T', '[sel]');
   assert.equal(thrownResult.dismissed, true, '点这一步的异常不该把整轮带走，回读说关掉了就是关掉了');
 
-  // ⑥ 注入不全要在**构造时**就炸，而不是等到真跑那一天。
+  // ⑥ 判据（2026-09-26 改）从「全屏层归零」放宽成「层归零 **或** 目标控件已可点」。
+  //    两者不等价：层可能还挂在 DOM 上（另一个不相关的浮层），但目标已经能命中了 ——
+  //    按老判据会判「没关掉」然后整轮停下，而实际上路已经通了。
+  const hitThrough = build([OVERLAY_925, { remainingLayers: ['DIV#mask_dlg_925 z=99998'], targetHit: true }]);
+  const hitResult = await hitThrough.dismisser(args, 'T', '[sel]');
+  assert.equal(hitResult.dismissed, true, '层还剩但目标可点 ⇒ 已经不再挡事');
+  assert.equal(hitResult.strategy, 'named');
+  // 理由要如实分开报，免得下次把「目标可点」误读成「层没了」。
+  assert.equal(judgeOverlayAfter({ remainingLayers: [], targetHit: false }).why, '全屏层已归零');
+  assert.match(judgeOverlayAfter({ remainingLayers: ['x'], targetHit: true }).why, /层还剩 1 个但目标控件已可点/u);
+  assert.equal(judgeOverlayAfter({ remainingLayers: ['x'], targetHit: false }).cleared, false);
+  assert.equal(judgeOverlayAfter({ remainingLayers: ['x'], targetHit: null }).cleared, false,
+    '读不到目标状态（null）不许当成可点 —— 读不到被读成好了是本项目最贵的一类错误');
+  assert.equal(judgeOverlayAfter({}).cleared, true);
+
+  // ⑦ ESC 是**第一招**（风险最低：不用点页面上的任何东西）。它关掉了就一次都不点。
+  const escaped = build([OVERLAY_925, { remainingLayers: [], targetHit: true }], { pressEscape: () => true });
+  const escapedResult = await escaped.dismisser(args, 'T', '[sel]');
+  assert.deepEqual(escaped.keys, ['Escape']);
+  assert.deepEqual(escaped.clicks, [], 'ESC 就关掉了，不该再点页面上的任何东西');
+  assert.equal(escapedResult.strategy, 'escape');
+  assert.equal(escapedResult.tried.length, 1);
+
+  // ⑧ ESC 没管用 ⇒ 如实记下来，然后照旧走候选（不许停在「点了 ESC 就当关掉了」）。
+  const escIneffective = build([OVERLAY_925,
+    { remainingLayers: ['DIV#wrapper_dlg_925 z=99999'], targetHit: false },
+    { remainingLayers: [], targetHit: true }], { pressEscape: () => true });
+  const escResult = await escIneffective.dismisser(args, 'T', '[sel]');
+  assert.deepEqual(escIneffective.clicks, [[569, 634]], 'ESC 无效之后要走候选');
+  assert.equal(escResult.dismissed, true);
+  assert.equal(escResult.strategy, 'named');
+  assert.match(escResult.tried[0], /^ESC→/u);
+
+  // ⑨ 发键这一步自己失败（代理异常）⇒ 记「没发出去」并继续，**不许**记成「ESC 试过了没用」。
+  const escThrew = build([OVERLAY_925, { remainingLayers: [], targetHit: true }], { pressEscapeThrows: true });
+  const escThrewResult = await escThrew.dismisser(args, 'T', '[sel]');
+  assert.equal(escThrewResult.tried[0], 'ESC→按键没发出去', '发键失败要如实记成「没发出去」，不许记成「ESC 试过了没用」');
+  assert.equal(escThrewResult.dismissed, true, '发键失败不该终止整条编排');
+
+  // ⑩ 没注入 pressEscape ⇒ **跳过**这一步并说清（不假装试过）。
+  const noEscape = build([OVERLAY_925, { remainingLayers: [], targetHit: true }]);
+  const noEscapeLogs = [];
+  const noEscapeDismisser = createOverlayDismisser({
+    evalOn: scripted([OVERLAY_925, { remainingLayers: [], targetHit: true }]),
+    clickPoint: async () => '{"clicked":true}',
+    delay: async () => {},
+    log: (line) => noEscapeLogs.push(line),
+  });
+  const noEscapeResult = await noEscapeDismisser(args, 'T', '[sel]');
+  assert.match(noEscapeLogs.join('\n'), /没有注入 pressEscape ⇒ 跳过 ESC/u);
+  assert.deepEqual(noEscapeResult.tried, ['候选1(569,634)→全屏层已归零'], '没试过的一招不许出现在 tried 里');
+  void noEscape;
+
+  // ⑪ 注入不全要在**构造时**就炸，而不是等到真跑那一天。
   assert.throws(() => createOverlayDismisser({ evalOn: async () => ({}) }), /缺少注入实现：clickPoint/u);
+  // pressEscape 可以不给（＝跳过），但给了就必须是真能发键的函数 —— 给个字符串会静默变成「跳过」。
+  assert.throws(() => createOverlayDismisser({ evalOn: async () => ({}), clickPoint: async () => '', delay: async () => {},
+    pressEscape: 'Escape' }), /pressEscape/u);
+});
+
+test('有序候选表：排掉危险词、按「关闭语义 → 消失确认词 → 右上角图标」排、按坐标去重、封顶', () => {
+  const picked = pickOverlayCloseCandidates(OVERLAY_925);
+  assert.ok(picked);
+  assert.deepEqual(picked.picks.map((c) => [c.cx, c.cy]), [[569, 634], [1059, 98]],
+    '「关闭」(569,634) 在前，右上角图标(1059,98) 在后；同坐标的两层只留一个');
+  assert.equal(picked.namedCount, 1);
+  assert.equal(picked.excluded.length, 1);
+
+  // 形态：只有「我知道了」这类消失确认词 —— 它是第二档，照样选中。
+  const ack = { blocked: true, viewport: [1528, 732], layer: OVERLAY_925.layer, candidateTotal: 1,
+    candidates: [{ tag: 'BUTTON', id: null, cls: '', text: '我知道了', label: '', cx: 760, cy: 600, w: 80, h: 30, atTopRight: false }] };
+  const ackPicked = pickOverlayCloseCandidates(ack);
+  assert.equal(ackPicked.picks[0].text, '我知道了');
+  assert.equal(ackPicked.ackCount, 1);
+  assert.equal(OVERLAY_ACK_PATTERN.test('知道了'), true);
+  assert.equal(OVERLAY_ACK_PATTERN.test('稍后再说'), true);
+  assert.equal(OVERLAY_ACK_PATTERN.test('立即报名'), false);
+
+  // 封顶：安全候选再多，也不许把整层的小控件挨个点一遍。
+  const many = { blocked: true, viewport: [1528, 732], layer: OVERLAY_925.layer,
+    candidateTotal: OVERLAY_MAX_PICKS + 4,
+    candidates: Array.from({ length: OVERLAY_MAX_PICKS + 4 }, (_, i) => ({ tag: 'I', id: null, cls: '',
+      text: '', label: '', cx: 1400, cy: 20 + i * 20, w: 14, h: 14, atTopRight: true })) };
+  assert.equal(pickOverlayCloseCandidates(many).picks.length, OVERLAY_MAX_PICKS);
+  // 全部都是危险词 ⇒ 返回 null（宁可不点，让人来看）。
+  const allDanger = { blocked: true, viewport: [1528, 732], layer: OVERLAY_925.layer, candidateTotal: 2,
+    candidates: [{ tag: 'SPAN', cls: '', text: '立即报名', label: '', cx: 1, cy: 1, w: 4, h: 4, atTopRight: true },
+      { tag: 'SPAN', cls: '', text: '立即购买', label: '', cx: 2, cy: 2, w: 4, h: 4, atTopRight: true }] };
+  assert.equal(pickOverlayCloseCandidates(allDanger), null);
+  // 不是这一类遮挡 ⇒ 也返回 null（调用方据此走「与弹窗无关」的措辞）。
+  assert.equal(pickOverlayCloseCandidates({ blocked: false }), null);
+  assert.equal(pickOverlayCloseCandidates(null), null);
+});
+
+test('「关不掉就换一份新渲染再来一次」：真重载页面 + 等就绪（不能用 navigate）', async () => {
+  // 为什么不能用 navigate：目标 URL 与当前 URL 相同时它是**同文档导航**，浏览器什么都不做
+  //（本项目 09-21 实测过）。所以这里必须 `window.location.reload()`。
+  assert.match(reloadPageExpression(), /window\.location\.reload\(\)/u);
+  assert.match(pageReadyExpression(), /readyState/u);
+
+  const reads = [];
+  let ticks = 0;
+  const reloader = createPageReloader({
+    evalOn: async (_args, _targetId, expression) => {
+      reads.push(expression === reloadPageExpression() ? 'reload' : 'ready');
+      // 重载那一下的读**必然**失败（eval 上下文被打断）—— 这是预期，不许当成「重载失败」。
+      if (expression === reloadPageExpression()) throw new Error('Execution context was destroyed');
+      ticks += 1;
+      return { readyState: ticks >= 3 ? 'complete' : 'loading', title: '阿里妈妈' };
+    },
+    delay: async () => {},
+    log: () => {},
+    pollMs: 0,
+  });
+  assert.equal(await reloader({}, 'T'), true, '读到 readyState=complete 才算就绪');
+  assert.deepEqual(reads, ['reload', 'ready', 'ready', 'ready']);
+  // 超时那一档：一直读不到就绪 ⇒ false（调用方据此走「换不成现场」那条路，而不是硬走下去）。
+  const stuck = createPageReloader({
+    evalOn: async () => ({ readyState: 'loading', title: '' }),
+    delay: async () => {},
+    timeoutMs: 0,
+  });
+  assert.equal(await stuck({}, 'T'), false);
+  assert.throws(() => createPageReloader({ evalOn: async () => ({}) }), /缺少注入实现：delay/u);
 });
 
 // 接线守卫：漏接任何一个采集脚本，那个脚本对应的阶段就是定时任务半夜挂掉的地方。
@@ -1119,6 +1261,11 @@ test('两个采集脚本都接上了关遮挡，且报错里说清「关遮挡�
   assert.equal(misses, 2, '阿里妈妈侧应当只有 submit / fetch 两处复核报错（改了这里，也要回来改断言）');
   assert.equal((promotion.match(/describeOverlayAttempt\(hit\.overlayAttempt\)/gu) ?? []).length, misses,
     '两处复核失败都要带上关遮挡的结论');
+  // 两个调用点必须走**带关遮挡的那条复核**，不是裸 hitCheck。
+  // 这一条比下面的计数更能抓住「悄悄换回裸复核」：换成裸的时，上面「必须出现 describeOverlayAttempt」
+  // 仍能靠另一处满足（漏一处看不出来），而这条计数会立刻少一。
+  assert.equal((promotion.match(/await hitCheckDismissingOverlay\(/gu) ?? []).length, misses,
+    '两处复核失败都必须经由 hitCheckDismissingOverlay（漏一处 ⇒ 那一处遇到弹窗就直接失败）');
 
   // 生意参谋侧：复核失败必须经过 dismissBlockingOverlay 再重试，而不是直接抛。
   assert.match(shop, /dismissBlockingOverlay\(args, targetId, selector\)/u);
@@ -1128,12 +1275,20 @@ test('两个采集脚本都接上了关遮挡，且报错里说清「关遮挡�
   // 报错文案一个字都不会少，所以上面那些「必须出现」的断言全看不见它
   // （133 号突变验证的 M7 就是这么漏过去的，这条判据是专门为它补的）。
   // 数字是**已知的合法直调点**，改代码要回来一起改：
-  //   阿里妈妈 2 处 = hitCheckDismissingOverlay 里「先复核一次」+「关掉后再复核一次」；
+  //   阿里妈妈 4 处 = hitCheckDismissingOverlay 里「第 1 遍的先复核 / 关掉后再复核」，
+  //                  加上「第 2 遍（真重载之后）的先复核 / 关掉后再复核」
+  //                  —— 2026-09-26 加了第 2 遍结构（关不掉就换一份新渲染再走一遍），所以从 2 变 4；
   //   生意参谋 4 处 = clickVerified 2 处 + locateOnly 排练 2 处（同样是复核 / 关掉后再复核）。
-  assert.equal((promotion.match(/await hitCheck\(/gu) ?? []).length, 2,
+  assert.equal((promotion.match(/await hitCheck\(/gu) ?? []).length, 4,
     '阿里妈妈侧的直接复核只允许出现在 hitCheckDismissingOverlay 里（多一处就是漏接）');
   assert.equal((shop.match(/await hitCheckOnly\(/gu) ?? []).length, 4,
     '生意参谋侧的直接复核只允许出现在 clickVerified 与 locateOnly 那两段里（多一处就是漏接）');
+
+  // 「重载一次再走一遍」只允许加在**阿里妈妈侧**：生意参谋那一侧没有现场证据，
+  // 不给它加「主动重载」这种带副作用的动作（多一处就是超出授权的行为）。
+  assert.equal((promotion.match(/await reloadAndSettle\(/gu) ?? []).length, 1);
+  assert.equal((shop.match(/createPageReloader\(/gu) ?? []).length, 0,
+    '生意参谋侧不许接重载：没有现场证据就加副作用动作，等于把一次失败变成一次未知');
 });
 
 // 2026-09-19：回填原先自己写了一份身份读取（硬编码类名 `.ebase-frame-header-root a`，且只认「 主店」），

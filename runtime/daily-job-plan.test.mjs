@@ -11,24 +11,29 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import {
-  JOB_FILES, LOGIN_PREFLIGHT_ARTIFACT, LOGIN_PREFLIGHT_FLAG, buildJobPlan, buildLoginPreflightArgs,
-  renderCommand, renderJobEntryCommand,
+  JOB_FILES, LOGIN_PREFLIGHT_ARTIFACT, LOGIN_PREFLIGHT_FLAG, MERCHANT_LOGIN_SITE, buildJobPlan,
+  buildLoginPreflightArgs, buildMerchantLoginGuardArgs, renderCommand, renderJobEntryCommand,
 } from './daily-job-plan.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 const argsOf = (plan, name) => plan.steps.find((s) => s.name === name).args;
 
-test('三步的顺序是「先保证实例在 → 再看一眼登录态 → 再跑链」', () => {
+test('四步的顺序是「先保证实例在 → 再看一眼登录态 → 再修共享实例的会话 → 再跑链」', () => {
   // 反过来（先跑链）时，链的第 0 步体检会整轮拦下并发一条**本可以不出**的告警；
   // 告警这个通道被无谓地用一次就少一次可信度。
   // 而登录态体检必须排在**起实例之后**：实例不在时它一个页面都读不到，只留下一片「读不到」。
+  // 2026-09-25 加的第三步（共享商家浏览器守卫）也必须排在链之前：链的**整轮级体检**跑在
+  // 那台实例上，它挂掉的处置是「整轮不跑」—— 守卫晚一步，五家店就一家都不开跑。
   const plan = buildJobPlan();
-  assert.deepEqual(plan.steps.map((s) => s.name), ['ensure-instances', 'login-preflight', 'chain']);
+  assert.deepEqual(plan.steps.map((s) => s.name),
+    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'chain']);
   assert.equal(plan.steps[0].blocking, false, '起实例失败不该阻断链：权威判据在链的体检里');
   // 登录态体检**不是闸门**：它的三个退出码只落进日志，不许拦住链 ——
   // 冷启动之后页面还没归位时它会判「没结论」，而那是链的归位会自己解决的事。
   assert.equal(plan.steps[1].blocking, false, '登录态体检不该阻断链（它不是「今天能不能写」的判据）');
-  assert.equal(plan.steps[2].blocking, true);
+  assert.equal(plan.steps[2].blocking, false,
+    '共享实例守卫也不是闸门：它没登成时，链自己那一次整轮级体检会如实报「整轮不跑」并告警');
+  assert.equal(plan.steps[3].blocking, true);
 });
 
 test('登录态体检那一步：只读、且指定店铺时只体检那几家', () => {
@@ -114,17 +119,21 @@ test('/TR 只拉起一个入口（三步由它自己按顺序执行，日志也�
 // 「起这一批 → 挂标识页 → 跑这一批 → 停这一批」。它一旦被误开，代价是**定时链的行为变了**
 // 而没人知道 —— 所以第一条判据就是「不传 `--batches` 时，渲染出来的命令逐字不变」。
 // ---------------------------------------------------------------------------
-test('不启用分批时，三步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）', () => {
+test('不启用分批时，四步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）', () => {
   const plan = buildJobPlan();
   assert.equal(plan.batches, null);
-  assert.deepEqual(plan.steps.map((s) => s.name), ['ensure-instances', 'login-preflight', 'chain']);
+  assert.deepEqual(plan.steps.map((s) => s.name),
+    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'chain']);
 
-  // 逐字比较：跟上一次「没有分批这个概念」时渲染出来的那三行比。
+  // 逐字比较：跟上一次「没有分批这个概念」时渲染出来的那几行比。
   // 用固定期望值而不是「再跑一次自己」，否则这类断言永远绿（自己等于自己）。
   const render = (p) => p.steps.map((s) => renderCommand(s, { nodeExe: 'N', repoRoot: 'R' }));
   assert.deepEqual(render(plan), [
     'N R\\scripts\\start-all.mjs',
     'N R\\skills\\sycm-alimama-daily-report\\scripts\\check-login-shops.mjs',
+    // 2026-09-25 新加的那一步：默认（`autoLogin` 未打开）必须是**只读档**，
+    // 且 `--notify` 必须是 `off`（login-merchant 自己的默认值是 `auto`，会把告警投出去）。
+    'N R\\skills\\sycm-alimama-daily-report\\scripts\\login-merchant.mjs --check-only --target sycm --notify off',
     'N R\\skills\\sycm-alimama-daily-report\\scripts\\run-multi-shop-day.mjs --date yesterday --commit --notify-print',
   ]);
   assert.doesNotMatch(render(plan).join(' '), /run-batches\.mjs/u, '默认这一档里不许出现分批驱动');
@@ -133,9 +142,10 @@ test('不启用分批时，三步与从前**逐字相同**（默认关闭是硬�
 test('启用分批：它**替换**链那一步（不是并排），参数只带分批驱动认得的那几个', () => {
   const plan = buildJobPlan({ batches: 2 });
   assert.equal(plan.batches, 2);
-  assert.deepEqual(plan.steps.map((s) => s.name), ['ensure-instances', 'login-preflight', 'batch-chain'],
+  assert.deepEqual(plan.steps.map((s) => s.name),
+    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'batch-chain'],
     '两条一起跑会让同一家店被驱动两次 —— 必须是替换关系');
-  const step = plan.steps[2];
+  const step = plan.steps[3];
   assert.match(step.file, /scripts\/run-batches\.mjs$/u);
   assert.equal(step.blocking, true);
   assert.deepEqual(step.args, ['--date', 'yesterday', '--batch-size', '2', '--commit', '--notify-print']);
@@ -146,15 +156,15 @@ test('启用分批：它**替换**链那一步（不是并排），参数只带�
 test('启用分批时 `--commit` 必须显式传下去（漏了它就变成「排练」，而日志看不出异常）', () => {
   // 分批驱动自己的默认是排练（不写飞书）；定时任务的职责是写下今天的数据。
   // 这条是**静默降级**里最贵的一种：不报错、不告警、日志里那句「模式」也照旧。
-  assert.ok(buildJobPlan({ batches: 2 }).steps[2].args.includes('--commit'),
+  assert.ok(buildJobPlan({ batches: 2 }).steps[3].args.includes('--commit'),
     '定时形态必须带 --commit，否则整轮不写飞书而没人会发现');
 });
 
 test('启用分批：告警出口与降级开关照旧按需转发', () => {
   const plan = buildJobPlan({ batches: 3, notify: true, keepGoing: true });
-  assert.deepEqual(plan.steps[2].args,
+  assert.deepEqual(plan.steps[3].args,
     ['--date', 'yesterday', '--batch-size', '3', '--commit', '--notify', '--keep-going']);
-  assert.deepEqual(buildJobPlan({ batches: 3, shops: ['科塔淘宝'] }).steps[2].args,
+  assert.deepEqual(buildJobPlan({ batches: 3, shops: ['科塔淘宝'] }).steps[3].args,
     ['--date', 'yesterday', '--batch-size', '3', '--commit', '--notify-print', '--shops', '科塔淘宝']);
 });
 
@@ -188,7 +198,7 @@ test('跑前登录态结论真的交给链了：② 出 JSON、③ 收路径（�
   // ③ 收的是一个**路径**，而且由计划自己算出（spawn 那一刻补会让打印与执行不一致）。
   assert.deepEqual(argsOf(plan, 'chain').slice(-2), [LOGIN_PREFLIGHT_FLAG, ARTIFACT_PATH]);
   // 「打印出来的必须是真正执行的」：渲染出来的那一行必须带着真实路径。
-  assert.match(renderCommand(plan.steps[2], { nodeExe: 'N', repoRoot: 'R' }),
+  assert.match(renderCommand(plan.steps[3], { nodeExe: 'N', repoRoot: 'R' }),
     /--login-preflight D:\\repo\\evidence\\daily-job-2026-09-22\\login-preflight\.json/u);
   // 它仍然**不是闸门**（这一步的结论丢了，链照样跑）。
   assert.equal(plan.steps[1].blocking, false);
@@ -207,10 +217,11 @@ test('分批那一档：结论交接在分批驱动内部完成，这里不生�
   // 这里生成的那份没有任何人读 —— 而「写了没人读的文件」正是后来人会照着接错的地方。
   assert.deepEqual(argsOf(plan, 'login-preflight'), [], '分批档里不生成 JSON');
   // run-batches.mjs 自己不认这个参数，给了会当场报未知参数（比静默无效更难查）。
-  assert.equal(plan.steps[2].args.includes(LOGIN_PREFLIGHT_FLAG), false);
+  assert.equal(plan.steps[3].args.includes(LOGIN_PREFLIGHT_FLAG), false);
   // 但这一步**仍然跑**：它的报告进 job.log，是定时任务日志里唯一一条「整轮视角」的记录。
   // （逐批那份结论由分批驱动自己生成 —— 见下面「宿主（分批链）也接上了」那条真跑判据。）
-  assert.deepEqual(plan.steps.map((s) => s.name), ['ensure-instances', 'login-preflight', 'batch-chain']);
+  assert.deepEqual(plan.steps.map((s) => s.name),
+    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'batch-chain']);
 });
 
 test('接线判据：两个宿主真的把结论接上了（防「函数全绿、没人调」）', () => {
@@ -249,8 +260,103 @@ test('跑前登录态体检的参数只有一个来源（两个宿主共用，�
   assert.match(JOB_FILES.loginPreflight, /check-login-shops\.mjs$/u);
 });
 
-// 上面那条源码扫描只能证明「字符串在那儿」。真正要守的是「宿主跑起来之后，链真的收到了路径」——
-// 所以下面两条**真跑一遍那个入口**（`--print` 不起任何进程、不碰浏览器、不写飞书）。
+// ---------------------------------------------------------------------------
+// 共享商家浏览器登录守卫（2026-09-25 加）。
+//
+// 为什么值得单独立判据：这一步没接上时的症状是**最贵的那一种** —— 链的整轮级体检跑在这台
+// 共用实例上，它一掉登录，驱动的处置是「商家浏览器体检未通过 ⇒ 整轮不跑」⇒ 五家店一家都不出数，
+// 而此前**没有任何一步**会给它补登录（逐店的 `--login` 打不到共用实例上）。
+// 实测凭据：`evidence/daily-job-2026-09-24/job.log` 08:16 那一轮
+// （`[一轮] 归位后仍不齐（生意参谋工作页=0 飞书底单页=1）` → 整轮不跑）。
+// ---------------------------------------------------------------------------
+test('共享实例守卫：只盯生意参谋、默认只读、告警默认不投递', () => {
+  assert.equal(MERCHANT_LOGIN_SITE, 'sycm');
+  // 默认（调用方不点名）必须是**只读**档：不许自作主张去提交登录表单。
+  assert.deepEqual(buildMerchantLoginGuardArgs({}), ['--check-only', '--target', 'sycm', '--notify', 'off']);
+  assert.deepEqual(buildMerchantLoginGuardArgs({ login: true }),
+    ['--commit', '--target', 'sycm', '--notify', 'off']);
+  // 第 ③ 条不变量（告警默认只落日志、不投递）在这一步上的形态：`login-merchant.mjs` 自己的
+  // `--notify` 默认值是 `auto`（真的去登了没成就会投递），所以这个纯函数**必须显式写 off** ——
+  // 漏了它，一个「没给 --notify」的定时任务会悄悄往飞书发一条消息，而链那侧的用例看不出来。
+  for (const args of [buildMerchantLoginGuardArgs({}), buildMerchantLoginGuardArgs({ login: true })]) {
+    assert.equal(args[args.indexOf('--notify') + 1], 'off', '不许落到 login-merchant 的默认 auto');
+  }
+  // 跟着整轮走：整轮要发时这一步也才允许发（口径由 login-merchant 自己定：真登过 + 确定要人）。
+  assert.deepEqual(buildMerchantLoginGuardArgs({ login: true, notify: true }),
+    ['--commit', '--target', 'sycm', '--notify', 'auto']);
+  // 反向：只读档**不许**跟着整轮变成 auto —— 没去登就不许叫人（与 check-login-shops 同一纪律）。
+  const readOnly = buildMerchantLoginGuardArgs({ notify: true });
+  assert.equal(readOnly[readOnly.indexOf('--notify') + 1], 'off');
+});
+
+test('共享实例守卫：用自己那个脚本，且排在逐店预检之后、链之前', () => {
+  assert.match(JOB_FILES.merchantLogin, /login-merchant\.mjs$/u);
+  // 它是**单机脚本**，不是逐店体检那条：混起来会让「查五家」的命令去打共用实例
+  // （`check-login-shops.mjs` 明确不覆盖共用实例，见它文件头那段「刻意不查」）。
+  assert.doesNotMatch(JOB_FILES.merchantLogin, /check-login-shops/u);
+  const names = buildJobPlan().steps.map((s) => s.name);
+  assert.ok(names.indexOf('ensure-merchant-login') > names.indexOf('login-preflight'),
+    '排在逐店预检之前会把两次登录提交的距离压得更近（同一账号 + 同一出口 IP）');
+  assert.ok(names.indexOf('ensure-merchant-login') < names.indexOf('chain'),
+    '排在链之后等于没做：链的整轮级体检已经因为这台实例掉登录而「整轮不跑」了');
+  // 整轮最多一次登录提交：这一步在计划里只出现一次（分批形态也不许被复制进每一批）。
+  assert.equal(names.filter((name) => name === 'ensure-merchant-login').length, 1);
+  assert.equal(buildJobPlan({ batches: 2 }).steps.filter((s) => s.name === 'ensure-merchant-login').length, 1);
+});
+
+// ---------------------------------------------------------------------------
+// 驻留 → 自动续跑（2026-09-26 加）。
+//
+// 用户原话：「碰到广告能自动关闭就自动关闭，如果关不了就要转人工，同时不要关闭浏览器，
+// 这样人工才能接管，当人工关闭完广告后，系统要能识别并续跑」。
+// 判据的重心不在「驻留」这个词，而在两件会被静默做错的事：
+//   ① 链**成功**的那一天，这一步一个字都不许影响（默认行为逐字不变）；
+//   ② 「系统会自己接着跑」这句承诺，只有在真的有驻留进程时才许说出去。
+// ---------------------------------------------------------------------------
+test('宿主（定时链）：驻留那一步真的接上了，且排在链之后', () => {
+  const text = runHostPrint('run-daily-job.mjs', ['--date', '2026-09-22']);
+  const lines = text.split('\n');
+  const chainLine = lines.findIndex((line) => line.includes('run-multi-shop-day.mjs'));
+  const holdLine = lines.findIndex((line) => line.includes('scripts\\hold-and-resume.mjs'));
+  assert.ok(chainLine !== -1, `没找到链那一步：\n${text}`);
+  assert.ok(holdLine !== -1, `驻留那一步没接上 —— 「留窗口给人」一次也不会发生：\n${text}`);
+  assert.ok(holdLine > chainLine, '驻留必须排在链之后（它读的就是链写下的那份结论）');
+  // 结论路径必须是**这一天**的（给字面量 yesterday 会拼出一个不存在的路径 ⇒ 它只会判「读不到」）。
+  const summaryPath = path.join(REPO_ROOT, 'evidence', 'multi-shop-2026-09-22', 'summary.json');
+  assert.ok(text.includes(`--summary ${summaryPath}`), `结论路径不对：\n${text}`);
+  // 告警出口默认不投递：整轮没给 --notify ⇒ 这一步也必须是 --no-notify
+  //（与共享实例守卫压成 `--notify off` 是同一条纪律，见本文件「三个不变量」的第 ③ 条）。
+  assert.ok(text.includes('hold-and-resume.mjs --date 2026-09-22 --summary') && text.includes('--no-notify'),
+    `驻留那一步的告警出口应当是 --no-notify：\n${text}`);
+});
+
+test('宿主（定时链）：只有「真有驻留」时，链的告警才敢承诺「系统会自己接着跑」', () => {
+  // 链的 `ACTION_BY_CAUSE` 在两类「要人处理」的结论里，带 `--will-resume` 时写
+  // 「做完不用回复、系统会自己接着跑」，不带时写「告诉技术同学重跑一次」。
+  // 手工直接跑链没有驻留 ⇒ 那种情况下承诺就是一句兑现不了的假话。
+  assert.match(runHostPrint('run-daily-job.mjs', ['--date', '2026-09-22']),
+    /run-multi-shop-day\.mjs .*--will-resume/u, '有驻留却不告诉链 ⇒ 告警会叫人去回复/重跑');
+  assert.doesNotMatch(runHostPrint('run-daily-job.mjs', ['--date', '2026-09-22', '--no-hold']),
+    /--will-resume/u, '--no-hold 时不许还承诺「系统会自己接着跑」');
+});
+
+test('宿主（定时链）：--no-hold 一键退回旧行为（一个字符都不多）', () => {
+  const text = runHostPrint('run-daily-job.mjs', ['--date', '2026-09-22', '--no-hold']);
+  assert.doesNotMatch(text, /hold-and-resume\.mjs/u, '--no-hold 之后计划里不该再有那一步');
+  // 但链那一步照旧（退回的只是「驻留」，不是「跑链」）。
+  assert.match(text, /run-multi-shop-day\.mjs --date 2026-09-22 --commit/u);
+});
+
+test('宿主（定时链）：分批那一档**不驻留**，而且这件事在 --print 里被说出来（缺口要有名字）', () => {
+  // 分批存在的理由就是「跑完一批就放掉、把内存让给下一批」，与「按住几家窗口几小时」冲突。
+  const text = runHostPrint('run-daily-job.mjs', ['--date', '2026-09-22', '--batches', '2']);
+  assert.doesNotMatch(text, /hold-and-resume\.mjs/u);
+  assert.doesNotMatch(text, /--will-resume/u);
+  assert.match(text, /不驻留/u, '缺口必须被打印出来，否则读 --print 的人以为它接上了');
+});
+
+// 上面那些源码扫描与纯函数判据只能证明「字符串在那儿」。真正要守的是「宿主跑起来之后」——
+// 所以下面几条**真跑一遍那个入口**（`--print` 不起任何进程、不碰浏览器、不写飞书）。
 // 期望路径由本文件的 `import.meta.dirname` 推出来，不写死盘符：换机器照样成立。
 const runHostPrint = (script, args) => {
   // `stdio` 必须显式写、且 stdin 只能是 `'ignore'`（2026-09-25，同 CHANGELOG 1.7.1）：
@@ -284,6 +390,14 @@ test('宿主（定时链）真的把结论接上了：--print 里那条链命令
   // 顺序不能反：结论要在链**之前**产生。
   assert.ok(text.indexOf('check-login-shops.mjs') < text.indexOf('--login-preflight'),
     '结论必须在链开跑之前就写好，否则链读到的永远是上一轮的那份');
+  // 2026-09-25 加的共享实例守卫：默认（不给 --no-auto-login 时）**必须真的去登** ——
+  // 这一条是本轮修复的判据本体：它不登，链的整轮级体检就会让五家店一家都不开跑。
+  // 同时钉住告警出口：整轮没给 --notify ⇒ 这一步必须是 `off`（不许悄悄投递）。
+  assert.match(text, /login-merchant\.mjs --commit --target sycm --notify off/u,
+    `共享商家浏览器守卫没接上（或告警出口没跟着整轮走）。实际输出：\n${text}`);
+  // 它必须排在链**之前**：链的整轮级体检第一名就是它。
+  assert.ok(text.indexOf('login-merchant.mjs') < text.lastIndexOf('run-multi-shop-day.mjs'),
+    '共享实例守卫必须排在链之前，否则链体检时它还没登');
 });
 
 test('宿主（定时链）：--no-auto-login 退回只读体检（一个页面都不碰）', () => {
@@ -305,6 +419,9 @@ test('宿主（定时链）：--no-auto-login 退回只读体检（一个页面�
   // 反面：只读档的说明里不许出现「会发飞书」那种承诺（说了发而实际不发 = 线断了的另一种样子）。
   assert.ok(!/飞书告警/u.test(text.split('\n').filter((l) => l.includes('login-preflight')).join('\n')),
     `--no-auto-login 这一档不许预告会发飞书：\n${text}`);
+  // 共享实例守卫也要跟着退回只读档 —— 一个 `--no-auto-login` 不许只关掉一半的自动登录。
+  assert.match(text, /login-merchant\.mjs --check-only --target sycm --notify off/u,
+    `--no-auto-login 之后共享实例守卫应当退回只读档：\n${text}`);
 });
 
 test('宿主（分批链）也接上了：每一批的链各读**本批**那份结论，且守卫排在本批 start 之后', () => {
