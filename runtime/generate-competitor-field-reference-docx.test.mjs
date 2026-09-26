@@ -12,9 +12,17 @@ const CLIENT_MD = path.join(ROOT, 'docs/references/COMPETITOR-FIELD-REFERENCE-CL
 const WORKDIR = path.join(os.tmpdir(), 'sycm-docx-parser-guard');
 
 function render(src, out) {
+  // `stdio` 必须显式写、且 stdin 只能是 `'ignore'`（2026-09-26，与 CHANGELOG 1.7.1/1.7.2 同一病根）：
+  // 不写 stdio 时默认**三根都是管道**，而本机宿主沙箱对「给子进程管道 stdin 的同步 spawn」直接回
+  // `EBUSY`（`errno=-4082`）⇒ `status` 是 `null`，两条用例报
+  // `renderer exited null: undefined` / `null !== 0`，看起来像**渲染器坏了**，
+  // 实际是这道门自己根本没跑起来。本文件是这处漏修的**第四处**
+  //（1.7.1 修了链上与几个门禁脚本、1.7.2 补修了 delivery-status，都没扫到这里）。
+  // stdout 要接下来判断，所以只把 stdin 改成 ignore。
   return spawnSync(process.execPath, [SCRIPT, '--src', src, '--out', out], {
     encoding: 'utf8',
     timeout: 120000,
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
 }
 

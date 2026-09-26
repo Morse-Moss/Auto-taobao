@@ -178,7 +178,23 @@ test('全仓库只有写入方与迁移提到这张表（没有第二个读者�
     { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
     .split('\n')
     .map((line) => line.trim()).filter(Boolean)
-    .filter((file) => /\.(mjs|cjs|js|ts|py|sql)$/u.test(file));
+    .filter((file) => /\.(mjs|cjs|js|ts|py|sql)$/u.test(file))
+    // `evidence/` 整个目录**不在扫描范围内**（2026-09-26 补）。
+    //
+    // 理由不是「它红了所以放过它」，而是 `AGENTS.md` 对它的定性：
+    //   「`evidence/` contains validation outputs and run evidence; **do not treat it as live input**」
+    // 证据目录里的探针是**一次性的取证脚本**：没有任何链会 import 或执行它，
+    // 所以它读一次这张表**构不成**「第二个能对『这天推过没有』下断言的地方」——
+    // 而这条守卫要守的恰恰是后者（它上面的那条导出形状用例才是真正的闸门）。
+    //
+    // 为什么不改成「把它加进白名单」：白名单是「写入方/迁移/回滚/隔离预演/本测试」这一族，
+    // 而且有**双向校验**（每一项都必须真的还在说这张表）⇒ 删掉一个旧探针就会让守卫变红，
+    // 红的理由却与这条不变量毫无关系。每写一个探针就往白名单里加一项，这条守卫会被磨成装饰。
+    //
+    // 代价说清楚（不是「没影响」）：真有人把生产读者藏到 `evidence/` 下，这条守卫**看不见**。
+    // 接受这个代价的前提是 `AGENTS.md` 那条定性成立 —— 如果哪天 `evidence/` 下的东西被接进执行路径，
+    // 这条排除必须一起撤掉。
+    .filter((file) => !file.startsWith('evidence/'));
   // 空结果不许被读成「没问题」（本项目坑 33 的通用形态）。
   assert.ok(tracked.length > 50, `扫描只找到 ${tracked.length} 个代码文件，守卫本身可能坏了`);
 

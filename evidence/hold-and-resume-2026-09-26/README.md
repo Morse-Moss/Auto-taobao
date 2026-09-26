@@ -30,28 +30,43 @@
 | `affected-tests.txt` | 受影响用例的原始输出：**168 条全过、0 失败** | 见下方命令 |
 | `mutation-verify.mjs` | 突变验证脚本（9 条，把源码逐条改坏再还原） | `node evidence/hold-and-resume-2026-09-26/mutation-verify.mjs` |
 | `mutation-output.txt` | 上面那次的输出：**9/9 抓住**，每条都点名到期望的用例，全部 sha256 逐字节还原 | 同上 |
-| `suite-runtime.txt` | `runtime` 整包套件：**957 条 / 955 过 / 2 红**（两条红**都不是本批的**，见下） | `node scripts/run-test-suite.mjs runtime --concurrency=1` |
-| `suite-skill-daily-report.txt` | 受影响技能整包：**297 条 / 296 过 / 1 红**（那条红**不是本批的**，见下） | `node scripts/run-test-suite.mjs skills --skill=sycm-alimama-daily-report --concurrency=1` |
+| `suite-runtime.txt` | `runtime` 整包套件：**957 条全过、0 失败、退出码 0** | `node scripts/run-test-suite.mjs runtime --concurrency=1` |
+| `suite-skill-daily-report.txt` | 受影响技能整包：**297 条全过、0 失败、退出码 0** | `node scripts/run-test-suite.mjs skills --skill=sycm-alimama-daily-report --concurrency=1` |
+| `audit-guard-mutation-verify.mjs` ＋ `audit-guard-mutation-output.txt` | 审计表守卫的突变验证：**2/2 抓住**（收窄扫描范围后它仍然会咬，且点名到文件） | `node evidence/hold-and-resume-2026-09-26/audit-guard-mutation-verify.mjs` |
 | `foreground-*.txt` | 上面那张表的原始证据 | — |
 
-## 两个套件里的 3 条红，全部**不是**本批引入的
+## 两个套件现在都是全绿（2026-09-26 09:4x 修掉那 3 条红之后）
 
-`test:staged` 对这批改动共选 8 项（含 `npm run test:unit`）。下面 3 条红都在这 8 项里，
-**都不在**本批改的 14 个文件里：
+结论先说：`runtime` 整包 **957/957**、受影响技能整包 **297/297**，两个套件退出码都是 0。
+修之前它们分别是 957/955/2 与 297/296/1 —— 那 3 条红**都不是本批引入的**，是本仓早记过的两类旧账。
+这两笔在本次一并还掉了：
 
 1. + 2. `runtime/generate-competitor-field-reference-docx.test.mjs` 的两条
    （`renderer consumes every special-looking line instead of stalling` /
    `client reference markdown renders end to end`）：报 `renderer exited null: undefined` 与
-   `null !== 0` —— 这正是本仓记过两次的**宿主沙箱假红**（`spawnSync` 默认三根管道 ⇒ `EBUSY`、
-   `status=null`）。判据：该文件 `:15` 的 `spawnSync(process.execPath, …)` **没有写 `stdio`**，
-   而它**只 import node 内建**、本批一个字没改它（`git diff 5e8fec5 d258c9c --name-only` 里没有它）。
-   ⇒ 与 1.7.1/1.7.2 修掉的那三处**同一个病根**，是**第四处漏修**（改法就是补
-   `stdio: ['ignore','pipe','pipe']`）。**本批没有改它**（一个版本＝一次可交付批次，
-   已经提交并验证过的那一版不回头动），留作下一批。
-3. `skills/sycm-alimama-daily-report/scripts/daily-report-audit.test.mjs:166`
-   （`全仓库只有写入方与迁移提到这张表`）：红点是既有取证文件
-   `evidence/daily-report-2026-09-24-independent-verify/probe-audit-table.mjs` 提到 `AUDIT_TABLE`
-   但不在白名单里，**2026-09-25 22:34 就在那里**，与本批无关。
+   `null !== 0` —— 本仓记过两次的**宿主沙箱假红**（`spawnSync` 默认三根管道 ⇒ `EBUSY`、`status=null`）。
+   该文件 `:15` 的 `spawnSync(process.execPath, …)` **没写 `stdio`**，与本批无关
+   （`git diff 5e8fec5 d258c9c --name-only` 里没有它，且它只 import node 内建）。
+   ⇒ 与 1.7.1/1.7.2 修掉的那三处**同一病根**，是**第四处漏修**。
+   **改法**＝补 `stdio: ['ignore','pipe','pipe']`（只有 stdin 要改，stdout 还要用来判断）。
+   修完这两条**真的通过** ⇒ 渲染器本身没坏，此前是**这道门自己没跑起来**。
+3. `skills/sycm-alimama-daily-report/scripts/daily-report-audit.test.mjs`
+   （`全仓库只有写入方与迁移提到这张表`）：红点是取证文件
+   `evidence/daily-report-2026-09-24-independent-verify/probe-audit-table.mjs`
+   （2026-09-25 22:34 就在那里，与本批无关）—— 它按设计要直接读这张表。
+   **改的是守卫的扫描范围，不是白名单**：`evidence/` 整个目录不再参与扫描，
+   依据是 `AGENTS.md` 对它的定性「do not treat it as live input」——
+   档案里的探针没有任何链会 import 或执行，构不成「第二个能对『这天推过没有』下断言的地方」。
+   进白名单反而更糟：白名单有**双向校验**（每一项都必须真的还在说这张表），
+   删掉一个旧探针就会让守卫变红，而红的理由与这条不变量毫无关系。
+   **代价写在代码注释里**：真有人把生产读者藏到 `evidence/` 下，这条守卫**看不见**。
+   **并且验证了它没被改成装饰**：突变 2/2 —— 把表名塞进 `scripts/run-daily-job.mjs` 与
+   `runtime/browser-ports.mjs`（都在非白名单、非 evidence），守卫**都红、且点名到那个文件**，
+   还原 sha256 逐字节一致。脚本与输出＝`audit-guard-mutation-verify.mjs` / `audit-guard-mutation-output.txt`。
+
+（`test:staged` 对这批改动共选 8 项，含 `npm run test:unit`；上面两笔覆盖了其中会红的部分。
+`test:unit` 本身没跑 —— 它是全量套件，与本次改动面无直接关系，且正是 1.7.2 记的那个长跑门禁。）
+
 
 
 ## 复现命令（都在仓库根跑）
