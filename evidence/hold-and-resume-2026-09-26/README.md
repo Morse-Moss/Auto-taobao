@@ -30,7 +30,29 @@
 | `affected-tests.txt` | 受影响用例的原始输出：**168 条全过、0 失败** | 见下方命令 |
 | `mutation-verify.mjs` | 突变验证脚本（9 条，把源码逐条改坏再还原） | `node evidence/hold-and-resume-2026-09-26/mutation-verify.mjs` |
 | `mutation-output.txt` | 上面那次的输出：**9/9 抓住**，每条都点名到期望的用例，全部 sha256 逐字节还原 | 同上 |
+| `suite-runtime.txt` | `runtime` 整包套件：**957 条 / 955 过 / 2 红**（两条红**都不是本批的**，见下） | `node scripts/run-test-suite.mjs runtime --concurrency=1` |
+| `suite-skill-daily-report.txt` | 受影响技能整包：**297 条 / 296 过 / 1 红**（那条红**不是本批的**，见下） | `node scripts/run-test-suite.mjs skills --skill=sycm-alimama-daily-report --concurrency=1` |
 | `foreground-*.txt` | 上面那张表的原始证据 | — |
+
+## 两个套件里的 3 条红，全部**不是**本批引入的
+
+`test:staged` 对这批改动共选 8 项（含 `npm run test:unit`）。下面 3 条红都在这 8 项里，
+**都不在**本批改的 14 个文件里：
+
+1. + 2. `runtime/generate-competitor-field-reference-docx.test.mjs` 的两条
+   （`renderer consumes every special-looking line instead of stalling` /
+   `client reference markdown renders end to end`）：报 `renderer exited null: undefined` 与
+   `null !== 0` —— 这正是本仓记过两次的**宿主沙箱假红**（`spawnSync` 默认三根管道 ⇒ `EBUSY`、
+   `status=null`）。判据：该文件 `:15` 的 `spawnSync(process.execPath, …)` **没有写 `stdio`**，
+   而它**只 import node 内建**、本批一个字没改它（`git diff 5e8fec5 d258c9c --name-only` 里没有它）。
+   ⇒ 与 1.7.1/1.7.2 修掉的那三处**同一个病根**，是**第四处漏修**（改法就是补
+   `stdio: ['ignore','pipe','pipe']`）。**本批没有改它**（一个版本＝一次可交付批次，
+   已经提交并验证过的那一版不回头动），留作下一批。
+3. `skills/sycm-alimama-daily-report/scripts/daily-report-audit.test.mjs:166`
+   （`全仓库只有写入方与迁移提到这张表`）：红点是既有取证文件
+   `evidence/daily-report-2026-09-24-independent-verify/probe-audit-table.mjs` 提到 `AUDIT_TABLE`
+   但不在白名单里，**2026-09-25 22:34 就在那里**，与本批无关。
+
 
 ## 复现命令（都在仓库根跑）
 
