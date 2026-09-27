@@ -43,7 +43,15 @@ export const DEFAULT_TARGET = Object.freeze({
 
 // 内容热度由上游内容平台/AI流程提供；灰豚只负责补充原始浏览量证据。
 export const WRITABLE_FIELDS = new Set(['灰豚话题浏览量']);
-const EXPECTED_FORMULA_FIELDS = new Set(['优先级']);
+// 回填灰豚浏览量后，飞书公式会同时结算优先级和近两周达标计数。
+// 这些字段是公式联动结果，不属于本能力的写入范围，但必须纳入回读白名单，
+// 否则真实写入成功后会被误报为“修改了未授权字段”。
+const EXPECTED_FORMULA_FIELDS = new Set([
+  '优先级',
+  '近2周重点达标次数',
+  '近2周探索达标次数',
+  '近2周A级达标次数',
+]);
 const VALUE_OPTIONS = new Set([
   'app-token',
   'table-id',

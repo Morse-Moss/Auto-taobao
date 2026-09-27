@@ -1,4 +1,4 @@
-// 关键词库 base 的**只读** reader 工厂：把「凭据与 base 从哪来」关在一个地方。
+// 周报 Base 的**只读** reader 工厂：把「凭据与 base 从哪来」关在一个地方。
 //
 // 为什么单独一个文件，而不是塞进 `weekly-round-input.mjs`：
 // 那个模块的契约是「只算入参、不含任何 I/O 出口」（它有一条源码守卫钉着这一点），
@@ -7,7 +7,7 @@
 // 为什么复用 `FeishuReader` 而不是再写一个飞书客户端：见 `run-keyword-weekly-local-analysis.mjs`
 // 里那个 class 的注释（同一个事实两处实现是本项目吃过亏的老坑）。
 import { FeishuReader } from './run-keyword-weekly-local-analysis.mjs';
-import { activeProfileName, getProfile, keywordBaseToken, loadFeishuCredentials } from './feishu-targets.mjs';
+import { activeProfileName, getProfile, keywordBaseToken, loadFeishuCredentials, competitorBaseToken } from './feishu-targets.mjs';
 
 /**
  * 造一个「懒认证」的只读 reader。
@@ -42,6 +42,22 @@ function lazilyAuthenticated(client) {
 export function createKeywordWeeklyReader({ profile = activeProfileName(), credentials = null } = {}) {
   const credentialsFile = credentials ?? loadFeishuCredentials(profile);
   const appToken = keywordBaseToken(profile);
+  const { host } = getProfile(profile);
+  return {
+    profile,
+    appToken,
+    baseUrl: `https://${host}/base/${appToken}`,
+    reader: lazilyAuthenticated(new FeishuReader({
+      appId: credentialsFile.appId,
+      appSecret: credentialsFile.appSecret,
+      appToken,
+    })),
+  };
+}
+
+export function createCompetitorWeeklyReader({ profile = activeProfileName(), credentials = null } = {}) {
+  const credentialsFile = credentials ?? loadFeishuCredentials(profile);
+  const appToken = competitorBaseToken(profile);
   const { host } = getProfile(profile);
   return {
     profile,

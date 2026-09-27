@@ -340,7 +340,11 @@ class HuitunBrowser {
         const style = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
         return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0'
-          && rect.width > 0 && rect.height > 0;
+          && rect.width > 0 && rect.height > 0
+          // 灰豚会把已关闭的腾讯验证码节点移到视口外（y=-1000000）。
+          // 仅检查尺寸会把这个残留 DOM 误判成当前安全验证。
+          && rect.bottom > 0 && rect.right > 0
+          && rect.top < window.innerHeight && rect.left < window.innerWidth;
       };
       const riskPattern = /验证码|滑块验证|安全验证|账号异常|风控|访问受限|操作频繁|无权限|权限不足|扫码登录|登录\\/注册|请登录|微信登录|短信验证/u;
       const candidates = [...document.querySelectorAll('[role=dialog],.ant-modal-wrap,.ant-message-notice-content,.ant-notification-notice,.ant-drawer,[class*=captcha],[class*=Captcha],[class*=verify],[class*=Verify],button,a')];
@@ -558,7 +562,9 @@ class HuitunBrowser {
         const style = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
         return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0'
-          && rect.width > 0 && rect.height > 0;
+          && rect.width > 0 && rect.height > 0
+          && rect.bottom > 0 && rect.right > 0
+          && rect.top < window.innerHeight && rect.left < window.innerWidth;
       };
       const riskPattern = /验证码|滑块验证|安全验证|账号异常|风控|访问受限|操作频繁|无权限|权限不足|扫码登录|登录\\/注册|请登录|微信登录|短信验证/u;
       const visibleTexts = [...document.querySelectorAll('[role=dialog],.ant-modal-wrap,.ant-message-notice-content,.ant-notification-notice,.ant-drawer,[class*=captcha],[class*=Captcha],[class*=verify],[class*=Verify],button,a')]

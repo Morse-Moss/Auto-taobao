@@ -53,7 +53,7 @@ import { buildHistoryEntry, shouldRecord, createFileRoundHistory, DEFAULT_HISTOR
 // 真实现只在这里（编排层的 CLI 装配处）接线，理由与体检层相同：编排内核 `runRound` 拿到的
 // 始终只是**注入好的入参**，所以它仍然能在没有网络、没有凭据的机器上被完整测一遍。
 import { assertKnownCollectInputResolverId, collectInputResolverFor } from '../weekly-round-input.mjs';
-import { createKeywordWeeklyReader } from '../weekly-round-input-reader.mjs';
+import { createKeywordWeeklyReader, createCompetitorWeeklyReader } from '../weekly-round-input-reader.mjs';
 
 export const ROUND_CONTRACT_VERSION = 'agent-round-v1';
 export const ROUND_STATE_VERSION = 'agent-round-state-v1';
@@ -990,7 +990,9 @@ export async function resolveDeclaredCollectInput(entry, decision, { keywordRead
   assertKnownCollectInputResolverId(id);
   // 凭据与 base 由 profile 推（`feishu-targets.mjs` 是它们的单一事实来源），不写进排期配置：
   // 手写一份就会与 profile 各自漂移，而「跑的是哪个租户」不该变成靠记忆判断的事。
-  const created = keywordReader ?? createKeywordWeeklyReader();
+  const created = keywordReader ?? (entry?.weeklyTargetDomain === 'competitor'
+    ? createCompetitorWeeklyReader()
+    : createKeywordWeeklyReader());
   const resolver = collectInputResolverFor(id, {
     reader: created.reader,
     stable: { ...stableConfig, baseUrl: stableConfig.baseUrl ?? created.baseUrl, appToken: created.appToken },
