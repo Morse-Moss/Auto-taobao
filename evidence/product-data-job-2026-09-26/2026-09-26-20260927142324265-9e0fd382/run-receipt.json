@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-09-26-20260927142324265-9e0fd382",
+  "date": "2026-09-26",
+  "status": "FAILED",
+  "startedAt": "2026-09-27T14:23:24.267Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "FAILED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝"
+  ],
+  "failure": {
+    "class": "TRANSIENT_EXTERNAL",
+    "reason": "EXTERNAL_RETRYABLE",
+    "message": "里可林淘宝 商品推广采集失败：[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined\n采集失败：o is not defined；重试记录=[{\"attempt\":1,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"},{\"attempt\":2,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"},{\"attempt\":3,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"}]\n"
+  },
+  "failedStage": "promotion",
+  "finishedAt": "2026-09-27T14:27:29.392Z"
+}

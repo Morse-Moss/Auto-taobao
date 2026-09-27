@@ -4,13 +4,36 @@ export const INQUIRY_HEADERS = Object.freeze(['商品名称','商品编号','咨
 const TARGET = Object.freeze({ 商品名称:'名称', 商品编号:'商品ID', 延最终付款人数:'最终付款人数', 延最终付款金额:'最终付款金额', 延最终付款件数:'最终付款件数' });
 const NUMERIC = new Set(['咨询人数','当日询单人数','当日付款人数','当日付款金额']);
 
+// 同一列在导出侧出现过两种写法。**必须都认**，理由是实测出来的（2026-09-27）：
+//   · 仓库里 2026-09-23 存档的原始导出 `evidence/product-inquiry-2026-09-23/gaiwen-*.xls`
+//     （契约就是照着它写的）真实列名是 `最终付款人数/最终付款金额/最终付款件数`，**没有「延」**；
+//   · 2026-09-26 新采的五份导出，列名同样是这三个无「延」写法。
+// 那么契约里的「延」从哪来？它是那一次「跑通」时的产物：当时走 xlrd 读、中文 BIFF 标签变成乱码，
+// 匹配命中的是下面 ③ 那个「第 6 个使用行 + 12 列形状」的兜底（形状对得上，真列名根本没被读出来）。
+// 于是这条链一直「能跑」，直到 2026-09-26 的机器上 COM（pywin32）可用、中文被正确解出来 ⇒
+// 逐字匹配与乱码兜底同时失效 ⇒ 五家店询单全灭（报「缺少 12 列标准表头」）。
+// 注意：别名只影响**识别**；写回飞书的列序与目标字段仍由 INQUIRY_HEADERS / TARGET 决定，不受影响。
+const HEADER_ALIASES = Object.freeze({
+  延最终付款人数: ['延最终付款人数', '最终付款人数'],
+  延最终付款金额: ['延最终付款金额', '最终付款金额'],
+  延最终付款件数: ['延最终付款件数', '最终付款件数'],
+});
+
+/** 某一行是不是契约表头（逐列接受该列的任一别名写法）。导出侧换个写法不该让整条链停摆。 */
+export function headerMatches(row) {
+  return INQUIRY_HEADERS.every((name, index) => (HEADER_ALIASES[name] ?? [name]).includes(String(row[index] ?? '').trim()));
+}
+
 export function parseInquiryRows(rows, date, sourceShop) {
-  // Excel may expose the Chinese BIFF labels as a legacy-codepage mojibake string
-  // through xlrd/COM. The report contract is positional and its header is the
-  // sixth used row, so require the stable 12-column shape as a fallback.
-  const headerIndex = rows.findIndex((r) => INQUIRY_HEADERS.every((h, i) => String(r[i] ?? '').trim() === h));
+  const headerIndex = rows.findIndex(headerMatches);
+  // 乱码兜底：xlrd 路径下中文 BIFF 标签会变成 `���…`，那时只能靠形状认。
   const fallback = headerIndex >= 0 ? headerIndex : rows.findIndex((r, i) => i >= 4 && r.length >= INQUIRY_HEADERS.length && String(r[1] ?? '').includes('���'));
-  if (fallback < 0) throw new Error('询单报表缺少 12 列标准表头');
+  // 失败时把**实际看到的表头**带出去：上一版只报「缺少 12 列标准表头」，
+  // 于是「到底是列名变了、还是采到了另一张表」只能靠人重新解一遍文件才知道（2026-09-27 就是这么被卡住的）。
+  if (fallback < 0) {
+    const seen = rows.find((r) => String(r[0] ?? '').trim() === '商品名称' && r.length >= 6) ?? [];
+    throw new Error(`询单报表缺少 12 列标准表头：实际表头=${JSON.stringify(seen.map((value) => String(value)))}`);
+  }
   const data = rows.slice(fallback + 1).filter((r) => r.length >= INQUIRY_HEADERS.length
     && r[1] && !['平均值','汇总值'].includes(String(r[0]).trim()) && String(r[1]).trim() !== '-');
   return data.map((row) => ({ header: INQUIRY_HEADERS, row: [date, ...row], sourceShop }));

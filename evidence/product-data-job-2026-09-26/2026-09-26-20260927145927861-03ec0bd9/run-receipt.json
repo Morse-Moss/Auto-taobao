@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-09-26-20260927145927861-03ec0bd9",
+  "date": "2026-09-26",
+  "status": "COMPLETED",
+  "startedAt": "2026-09-27T14:59:27.863Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "COMPLETED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝"
+  ],
+  "failure": null,
+  "failedStage": null,
+  "finishedAt": "2026-09-27T15:11:19.839Z"
+}

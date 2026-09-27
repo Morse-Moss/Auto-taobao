@@ -1,0 +1,132 @@
+[
+  {
+    "shop": "里可林淘宝",
+    "product": {
+      "exit": 0,
+      "sourceRows": 24,
+      "existingRows": 4581,
+      "plannedRows": 24
+    },
+    "inquiry": {
+      "exit": 0,
+      "sourceRows": 0,
+      "existingRows": 1005,
+      "plannedRows": 0,
+      "date": "2026-09-26"
+    },
+    "promotion": {
+      "exit": 0,
+      "sourceRows": 15,
+      "existingRows": 2472,
+      "plannedRows": 15,
+      "duplicateRows": 0,
+      "date": [
+        "2026-09-26"
+      ]
+    }
+  },
+  {
+    "shop": "网林天猫",
+    "product": {
+      "exit": 0,
+      "sourceRows": 14,
+      "existingRows": 4581,
+      "plannedRows": 14
+    },
+    "inquiry": {
+      "exit": 0,
+      "sourceRows": 4,
+      "existingRows": 1005,
+      "plannedRows": 4,
+      "date": "2026-09-26"
+    },
+    "promotion": {
+      "exit": 0,
+      "sourceRows": 8,
+      "existingRows": 2472,
+      "plannedRows": 8,
+      "duplicateRows": 0,
+      "date": [
+        "2026-09-26"
+      ]
+    }
+  },
+  {
+    "shop": "盖文淘宝",
+    "product": {
+      "exit": 0,
+      "sourceRows": 52,
+      "existingRows": 4581,
+      "plannedRows": 52
+    },
+    "inquiry": {
+      "exit": 0,
+      "sourceRows": 7,
+      "existingRows": 1005,
+      "plannedRows": 7,
+      "date": "2026-09-26"
+    },
+    "promotion": {
+      "exit": 0,
+      "sourceRows": 20,
+      "existingRows": 2472,
+      "plannedRows": 20,
+      "duplicateRows": 0,
+      "date": [
+        "2026-09-26"
+      ]
+    }
+  },
+  {
+    "shop": "盖文天猫",
+    "product": {
+      "exit": 0,
+      "sourceRows": 43,
+      "existingRows": 4581,
+      "plannedRows": 43
+    },
+    "inquiry": {
+      "exit": 0,
+      "sourceRows": 9,
+      "existingRows": 1005,
+      "plannedRows": 9,
+      "date": "2026-09-26"
+    },
+    "promotion": {
+      "exit": 0,
+      "sourceRows": 29,
+      "existingRows": 2472,
+      "plannedRows": 29,
+      "duplicateRows": 0,
+      "date": [
+        "2026-09-26"
+      ]
+    }
+  },
+  {
+    "shop": "科塔淘宝",
+    "product": {
+      "exit": 0,
+      "sourceRows": 32,
+      "existingRows": 4581,
+      "plannedRows": 32
+    },
+    "inquiry": {
+      "exit": 0,
+      "sourceRows": 3,
+      "existingRows": 1005,
+      "plannedRows": 3,
+      "date": "2026-09-26"
+    },
+    "promotion": {
+      "exit": 0,
+      "sourceRows": 20,
+      "existingRows": 2472,
+      "plannedRows": 20,
+      "duplicateRows": 0,
+      "date": [
+        "2026-09-26"
+      ]
+    }
+  }
+]

@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-09-26-20260927143811154-0ab5dd12",
+  "date": "2026-09-26",
+  "status": "FAILED",
+  "startedAt": "2026-09-27T14:38:11.155Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "FAILED"
+    },
+    {
+      "name": "inquiry",
+      "status": "FAILED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝"
+  ],
+  "failure": {
+    "class": "FAILED",
+    "reason": "UNCLASSIFIED",
+    "message": "本轮不完整（16 处）：里可林淘宝/底单 导入失败；里可林淘宝/询单 导入失败；网林天猫/底单 导入失败；网林天猫/询单 导入失败；盖文淘宝/底单 导入失败；盖文淘宝/询单 导入失败；盖文天猫/底单 导入失败；盖文天猫/询单 导入失败；科塔淘宝/底单 导入失败；科塔淘宝/询单 导入失败；推广 批量导入失败；里可林淘宝/推广 导入失败；网林天猫/推广 导入失败；盖文淘宝/推广 导入失败；盖文天猫/推广 导入失败；科塔淘宝/推广 导入失败"
+  },
+  "failedStage": "product-import",
+  "finishedAt": "2026-09-27T14:45:05.752Z"
+}

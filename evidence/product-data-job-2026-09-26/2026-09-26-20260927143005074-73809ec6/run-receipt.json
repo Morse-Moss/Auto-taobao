@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-09-26-20260927143005074-73809ec6",
+  "date": "2026-09-26",
+  "status": "FAILED",
+  "startedAt": "2026-09-27T14:30:05.075Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝"
+  ],
+  "failure": {
+    "class": "TRANSIENT_EXTERNAL",
+    "reason": "EXTERNAL_RETRYABLE",
+    "message": "网林天猫 商品推广采集失败：采集失败：商品报表下载弹窗没有可点击确定\n"
+  },
+  "failedStage": "promotion",
+  "finishedAt": "2026-09-27T14:36:46.601Z"
+}

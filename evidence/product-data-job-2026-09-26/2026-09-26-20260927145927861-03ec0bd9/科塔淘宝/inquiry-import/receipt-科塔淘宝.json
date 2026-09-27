@@ -1,0 +1,33 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927145927861-03ec0bd9\\科塔淘宝\\inquiry.xls",
+  "shop": "科塔淘宝",
+  "date": "2026-09-26",
+  "sourceRows": 3,
+  "existingRows": 1025,
+  "plannedRows": 3,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-09-26",
+      "productId": "684065559945",
+      "shop": "科塔淘宝"
+    },
+    {
+      "date": "2026-09-26",
+      "productId": "981539656451",
+      "shop": "科塔淘宝"
+    },
+    {
+      "date": "2026-09-26",
+      "productId": "696004439009",
+      "shop": "科塔淘宝"
+    }
+  ],
+  "recordIds": [
+    "recvwqWVGmwzxz",
+    "recvwqWVGmogCK",
+    "recvwqWVGmBXzc"
+  ],
+  "afterRows": 1028
+}

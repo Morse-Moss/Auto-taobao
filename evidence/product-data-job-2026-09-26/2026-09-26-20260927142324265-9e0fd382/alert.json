@@ -1,0 +1,18 @@
+{
+  "severity": "ERROR",
+  "title": "商品数据采集未完成（2026-09-26）",
+  "targetLabel": "2026-09-26 五家店铺商品数据",
+  "period": "2026-09-26",
+  "capability": "商品数据采集与导入",
+  "machine": "DESKTOP-KJP4RA5",
+  "reason": "TRANSIENT_EXTERNAL/EXTERNAL_RETRYABLE：里可林淘宝 商品推广采集失败：[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined\n采集失败：o is not defined；重试记录=[{\"attempt\":1,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"},{\"attempt\":2,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"},{\"attempt\":3,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"}]\n",
+  "action": "打开 D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927142324265-9e0fd382 看 job.log 与 collection.json，确认停在哪家店哪一段；证据齐了再决定是否重跑该日",
+  "evidence": {
+    "runReceipt": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927142324265-9e0fd382\\run-receipt.json",
+    "collection": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927142324265-9e0fd382\\collection.json",
+    "jobLog": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927142324265-9e0fd382\\job.log"
+  },
+  "createdAt": "2026-09-27T14:27:29.406Z",
+  "alertId": "product-data-2026-09-26",
+  "runId": "2026-09-26-20260927142324265-9e0fd382"
+}

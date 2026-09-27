@@ -1,0 +1,11 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927145927861-03ec0bd9\\盖文淘宝\\inquiry.xls",
+  "shop": "盖文淘宝",
+  "date": "2026-09-26",
+  "sourceRows": 7,
+  "existingRows": 1028,
+  "plannedRows": 0,
+  "excludedSummaryRows": 2,
+  "mode": "dry-run",
+  "manifest": []
+}

@@ -1,0 +1,11 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927145927861-03ec0bd9\\网林天猫\\inquiry.xls",
+  "shop": "网林天猫",
+  "date": "2026-09-26",
+  "sourceRows": 4,
+  "existingRows": 1028,
+  "plannedRows": 0,
+  "excludedSummaryRows": 2,
+  "mode": "dry-run",
+  "manifest": []
+}

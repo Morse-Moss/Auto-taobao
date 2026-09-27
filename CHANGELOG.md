@@ -15,6 +15,76 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.7.5] - 2026-09-27
+
+起因是 **商品数据统一入口（`scripts/run-product-data-job.mjs`）首次真机执行连跑四轮、飞书零写入**。
+第一轮是入口自己的接线错（`--downloads` 指到证据目录，而五店浏览器真实下载目录是
+`%USERPROFILE%\Downloads`，导出的文件名又不含店铺标识 ⇒ 五家全部报「下载超时」）；
+第 2~4 轮**采集全绿、导入全灭**，报 `XLS parser failed` / `ZIP parse failed` ——
+那句话里没有任何 traceback，因为它根本不是解析器报出来的。
+
+三条**实测**事实决定了这一版怎么做（都不是推断）：
+
+1. 本机宿主沙箱对「给了子进程 stdin 管道的同步 spawn」直接回 `EBUSY`（`errno=-4082`），此时
+   `status=null`、`stdout=null`、`stderr=''`（`evidence/import-ebusy-fix-2026-09-27/probe-spawn-stdio.mjs`）。
+   同一个病根在这条链上有**三种完全不同的症状**，所以修的时候必须顺着调用链 grep 到底 ——
+   只修看得见的那一处，会把「假绿」变成「假红」。
+2. 询单导出的真实列名是 `最终付款人数/最终付款金额/最终付款件数`（**无「延」**），而契约写的是「延最终付款人数」。
+   **不是平台改版**：仓库里 `evidence/product-inquiry-2026-09-23/gaiwen-*.xls`（契约就是照它写的）
+   同样无「延」；「延」来自当初走 xlrd 读到乱码、命中「第 6 个使用行 + 12 列形状」兜底留下的痕迹。
+3. 释放步骤的所谓「端口二次回读」原本是一句**恒真断言**：`stdout` 为 null 时 `Number('')||0` 恒等于 0。
+
+### 改了什么
+
+**一、同步 spawn 的 `stdio`（三处症状、一个病根）**
+
+- `skills/sycm-{product,inquiry,promotion}-data/scripts/import-*.mjs`：**四轮零写入的直接原因**。
+  补 `stdio: ['ignore','pipe','pipe']`，并把真因（非空 `stderr` 或 `error.message`）写进报错 ——
+  上一版的 `stderr || 'XLS parser failed'` 在 EBUSY 下只剩后半句，看起来像解析器坏了。
+- `scripts/release-product-data-browsers.mjs`：补 `stdio`；读不出来时返回 `null`（＝**没有证据**），
+  只有真的读到 0 才算 `released`。取证：改前 `{status:null, errno:'EBUSY'}`，改后同一条命令返回 `2`。
+- `scripts/stop-all.mjs`：监听表与 `taskkill` 两处补齐；读不到监听表时**不再断言「没有在跑」**，
+  报告中多一个 `listenTableError`，`--yes` 下以非 0 收场（这条假绿在 `docs/ops/LOGIN-HOLD-AND-AUTO-RESUME-PLAN.md` 记过）。
+- `runtime/browser-inventory.mjs`：`readProcessTable` 与监听表两处补齐。**不留这处，前三处会把假绿变假红**：
+  读不到进程表 ⇒ 拿不到代理的命令行 ⇒ 代理一律被判「认不出启动脚本」而拒停。
+
+**二、询单表头契约（`inquiry-core.mjs`）**
+
+- 引入 `HEADER_ALIASES`：三个无「延」写法视为**同一列**，写回的目标字段与列序不变（仍由 `INQUIRY_HEADERS`/`TARGET` 决定）。
+- 失败时把**实际表头**写进报错，不再只报「缺少 12 列标准表头」—— 上一轮就是卡在这句话上，
+  只能靠人重新解一遍文件才知道「是列名变了还是采错了表」。
+- 补 3 条回归用例（真实文件形状 / 乱码兜底 / 报错带实际表头）。旧用例把 `INQUIRY_HEADERS` 自己当夹具，
+  等于把「契约与真实文件是否一致」整个跳过了。
+
+**三、守卫**
+
+- 新增 `runtime/product-data-path-sync-spawn-guard.test.mjs`：钉住这条链 13 个文件的
+  「同步 spawn 必须显式写 `stdio`，且 stdin 不许是管道」。范围**故意不是全仓** ——
+  全仓版会因为别的会话正在改的文件立刻变红，那不是发现缺陷，只是噪音。
+
+### 验证到什么程度
+
+- **真机**：`node scripts/run-product-data-job.mjs --date yesterday --commit --notify` → **退出码 0**，
+  runId `2026-09-26-20260927145927861-03ec0bd9`（11m53s）。底单 24/14/52/43/32、询单 0/4/7/9/3、
+  推广 92 源行→92 计划行；商品表 4581→4746、询单表 1005→1028、推广表 2472→2564。
+- **幂等**：用刚写完的同一批产物重算（dry-run，不写飞书）⇒ 五家三段 `plannedRows` 全 0。
+- **释放**：脚本外独立两次 `Get-NetTCPConnection -LocalPort <端口> -State Listen` 回读，
+  19031~19035 与 19041~19045 全 free；`release.json` 逐条带证据真停（代理命令行匹配店名、
+  浏览器 CDP 自证 profile 一致），停后盘点 `missing`。
+- **守卫突变验证**：4 种改法（去掉 `stdio` ×3、`stdio:'pipe'` ×1）全红且**点名到期望的那一处**，
+  还原 sha256 一致、还原后回绿 → `evidence/import-ebusy-fix-2026-09-27/mutation-verify-guard.mjs`。
+- 证据目录：`evidence/import-ebusy-fix-2026-09-27/`（含 `VERDICT.md`）与
+  `evidence/product-data-job-2026-09-26/2026-09-26-20260927145927861-03ec0bd9/`。
+
+### 本版没有做
+
+- **全仓版的「禁止裸同步 spawn」守卫（L3）仍未做**：1.7.1 就记着这条待办，本版只钉了商品数据这条链；
+  仓库其它链上仍有未写 `stdio` 的调用点（若干 test 与工具脚本），未逐处判读。
+- **里可林淘宝 2026-09-26 询单为 0 行**：平台导出文件里只有表头 ＋ 平均值/汇总值，没有商品行
+  （09-25 同店为 5 行）。按事实记录，不当失败处理。
+- 入口其余接线修复（下载目录改回真实目录、`capture:true`、阶段状态、告警投递）与那一轮的采集侧轮询修复
+  同属本批次，一并落地；单独看它们都只是「少传一个参数」，合起来才是「这条链能跑通」。
+
 ## [1.7.4] - 2026-09-26
 
 起因是 **2026-09-25 那一轮五家店里有一家写了 0 行，而人赶到时窗口已经没了**

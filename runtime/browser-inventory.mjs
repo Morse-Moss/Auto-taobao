@@ -268,11 +268,15 @@ export function parseProcessTable(payload) {
 /**
  * 读本机进程表。**失败只报失败**：不能返回空表 —— 空表与「一个进程都没有」不可区分，
  * 而后者会让停止脚本得出「什么都没在跑」这个假结论。所以错误必须带出去。
+ *
+ * `stdio` 不能省：宿主沙箱对「带 stdin 管道」的同步 spawn 直接回 `EBUSY`（`errno=-4082`）。
+ * 2026-09-27 实测：不写 stdio 时这里恒失败 ⇒ `stop-all` 拿不到任何进程命令行 ⇒
+ * **代理永远被判「认不出脚本」而拒停**（释放步骤于是要么假绿、要么假红）。
  */
 export async function readProcessTable(options = {}) {
   const { execSync } = await import('node:child_process');
   try {
-    const raw = (options.execSync ?? execSync)(PROC_QUERY, { maxBuffer: 64 * 1024 * 1024 })
+    const raw = (options.execSync ?? execSync)(PROC_QUERY, { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 })
       .toString('utf8').trim();
     return { rows: parseProcessTable(raw ? JSON.parse(raw) : []), error: null };
   } catch (error) {
@@ -329,7 +333,7 @@ if (isMain) {
     const { execSync } = await import('node:child_process');
     let listen = new Map();
     try {
-      listen = parseListenTable(execSync('netstat -ano -p tcp', { maxBuffer: 32 * 1024 * 1024 }).toString('latin1'));
+      listen = parseListenTable(execSync('netstat -ano -p tcp', { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 32 * 1024 * 1024 }).toString('latin1'));
     } catch (error) {
       report.listenScanError = error.message;
     }

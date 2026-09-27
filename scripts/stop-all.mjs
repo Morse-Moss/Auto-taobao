@@ -54,10 +54,17 @@ function parseArgs(argv) {
 
 function listenTableNow() {
   try {
-    return parseListenTable(execFileSync('netstat', ['-ano', '-p', 'tcp'], { maxBuffer: 32 * 1024 * 1024 }).toString('latin1'));
-  } catch {
+    // `stdio` 必写：宿主沙箱对「带 stdin 管道」的同步 spawn 直接回 `EBUSY`（`errno=-4082`）。
+    // 不写 ⇒ **恒**读不到监听表 ⇒ 每个 pid 都是 null ⇒ 断言「没有在跑，无需处理」并退 0
+    // —— 这就是本文件记了很久的那条假绿（2026-09-27 实测：五家店的释放步骤全部走的是它）。
+    return {
+      table: parseListenTable(execFileSync('netstat', ['-ano', '-p', 'tcp'], { stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 32 * 1024 * 1024 }).toString('latin1')),
+      error: null,
+    };
+  } catch (error) {
     // 读不到监听表 ⇒ 后面每个 pid 都是 null ⇒ 全部落进「找不到进程」而不是「可以停」。
-    return new Map();
+    // 这个失败必须**带出去**：空表与「一个都没在听」不可区分，而后者会被读成一次成功的释放。
+    return { table: new Map(), error: String(error.message ?? error) };
   }
 }
 
@@ -85,11 +92,12 @@ async function main(argv) {
     return 2;
   }
 
-  const listen = listenTableNow();
+  const { table: listen, error: listenError } = listenTableNow();
+  if (listenError) console.error(`  [警告] 读监听表失败（${listenError}）⇒ 无法判断任何端口在不在听；本次不下「已释放」结论`);
   const { rows: processRows, error: processError } = await readProcessTable();
   const report = {
     at: new Date().toISOString(), executed: options.yes,
-    processTableError: processError, instances: [],
+    processTableError: processError, listenTableError: listenError, instances: [],
   };
 
   for (const entry of targets) {
@@ -134,7 +142,7 @@ async function main(argv) {
     if (options.yes) {
       for (const target of decision.targets) {
         try {
-          execFileSync(TASKKILL, taskkillArgs(target.pid), { stdio: 'pipe' });
+          execFileSync(TASKKILL, taskkillArgs(target.pid), { stdio: ['ignore', 'pipe', 'pipe'] });
           record.executed.push({ pid: target.pid, role: target.role, ok: true });
         } catch (error) {
           // taskkill 在「进程已经没了」时也返回非 0 —— 那不算失败。看得见的证据是**回读**。
@@ -169,7 +177,7 @@ async function main(argv) {
       console.log(`  · ${record.who}`);
       for (const target of record.targets) console.log(`      将停 ${target.role} pid=${target.pid}  ← ${target.evidence}\n         ${target.command}`);
       for (const refusal of record.refusals) console.log(`      拒停 ${refusal.role} pid=${refusal.pid}  ← ${refusal.why}`);
-      if (record.targets.length === 0 && record.refusals.length === 0) console.log('      没有在跑，无需处理');
+      if (record.targets.length === 0 && record.refusals.length === 0) console.log(listenError ? '      监听表读不出来 ⇒ 这一项无法判断（不是「没有在跑」）' : '      没有在跑，无需处理');
       for (const done of record.executed) console.log(`      ${done.ok ? '已停' : '未停'} ${done.role} pid=${done.pid}${done.ok ? '' : `  ${done.error}`}`);
       if (record.judgementAfter) {
         const alive = record.stillAlive === null
@@ -189,6 +197,13 @@ async function main(argv) {
     (sum, i) => sum + i.refusals.length + (i.stillAlive?.length ?? 0),
     0,
   );
+  // 读不到监听表时「停掉了没有」**没有证据**。真停模式（--yes）下必须非 0：
+  // 调用方（`--batches` 的释放步骤、release-product-data-browsers）会拿退出码当结论，
+  // 而这条路径正是历史上「释放了 5 批」在证据上为空的那一次。
+  if (options.yes && listenError) {
+    console.error('  [判据] 监听表读不出来 ⇒ 本次没有「已释放」的证据，按未确认收场');
+    return 1;
+  }
   return hardFail > 0 ? 1 : 0;
 }
 

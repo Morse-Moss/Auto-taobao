@@ -1,0 +1,18 @@
+{
+  "severity": "ERROR",
+  "title": "商品数据采集未完成（2026-09-26）",
+  "targetLabel": "2026-09-26 五家店铺商品数据",
+  "period": "2026-09-26",
+  "capability": "商品数据采集与导入",
+  "machine": "DESKTOP-KJP4RA5",
+  "reason": "FAILED/UNCLASSIFIED：本轮不完整（16 处）：里可林淘宝/底单 导入失败；里可林淘宝/询单 导入失败；网林天猫/底单 导入失败；网林天猫/询单 导入失败；盖文淘宝/底单 导入失败；盖文淘宝/询单 导入失败；盖文天猫/底单 导入失败；盖文天猫/询单 导入失败；科塔淘宝/底单 导入失败；科塔淘宝/询单 导入失败；推广 批量导入失败；里可林淘宝/推广 导入失败；网林天猫/推广 导入失败；盖文淘宝/推广 导入失败；盖文天猫/推广 导入失败；科塔淘宝/推广 导入失败",
+  "action": "打开 D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927143811154-0ab5dd12 看 job.log 与 collection.json，确认停在哪家店哪一段；证据齐了再决定是否重跑该日",
+  "evidence": {
+    "runReceipt": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927143811154-0ab5dd12\\run-receipt.json",
+    "collection": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927143811154-0ab5dd12\\collection.json",
+    "jobLog": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927143811154-0ab5dd12\\job.log"
+  },
+  "createdAt": "2026-09-27T14:45:05.782Z",
+  "alertId": "product-data-2026-09-26",
+  "runId": "2026-09-26-20260927143811154-0ab5dd12"
+}

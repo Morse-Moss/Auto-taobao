@@ -1,0 +1,44 @@
+[2026-09-27T14:23:24.395Z] 商品数据自动采集开始：yesterday → 2026-09-26；5 店；底单串行、询单/推广并行；模式 commit
+[2026-09-27T14:26:01.681Z] [底单] 里可林淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (3).xls
+[2026-09-27T14:26:08.339Z] [底单] 网林天猫 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (4).xls
+[2026-09-27T14:26:14.933Z] [底单] 盖文淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (5).xls
+[2026-09-27T14:26:21.398Z] [底单] 盖文天猫 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (6).xls
+[2026-09-27T14:26:27.853Z] [底单] 科塔淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (7).xls
+[2026-09-27T14:26:34.606Z] [询单] 科塔淘宝 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14
+if(!first.hasInquiry){await delay(1500); page=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com')); if(!page)throw new Error('商品分析点击后找不到生意参谋页面'); const clicked=await evalOn(o.proxy,page.targetId,"(()=>{const e=[...document.querySelectorAll('a,span,div')].find(x=>(x.innerText||x.textContent||'').trim()==='商品咨询分析');if(!e)return false;e.click();return true})()"); if(!clicked)throw new Error('找不到商品咨询分析入口'); await delay(2000);}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            ^
+
+Error: 找不到商品咨询分析入口
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14:445
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-09-27T14:26:34.673Z] [询单] 盖文天猫 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14
+if(!first.hasInquiry){await delay(1500); page=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com')); if(!page)throw new Error('商品分析点击后找不到生意参谋页面'); const clicked=await evalOn(o.proxy,page.targetId,"(()=>{const e=[...document.querySelectorAll('a,span,div')].find(x=>(x.innerText||x.textContent||'').trim()==='商品咨询分析');if(!e)return false;e.click();return true})()"); if(!clicked)throw new Error('找不到商品咨询分析入口'); await delay(2000);}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            ^
+
+Error: 找不到商品咨询分析入口
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14:445
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-09-27T14:27:25.789Z] [推广] 网林天猫 失败：[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined
+[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined
+[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined
+采集失败：o is not defined；重试记录=[{"attempt":1,"target":"59678064D919952BC69F0E338BE0AF44","error":"o is not defined"},{"attempt":2,"target":"59678064D919952BC69F0E338BE0AF44","error":"o is not defined"},{"attempt":3,"target":"59678064D919952BC69F0E338BE0AF44","error":"o is not defined"}]（exit 1）
+[2026-09-27T14:27:26.213Z] [推广] 盖文淘宝 失败：[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined
+[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined
+[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined
+采集失败：o is not defined；重试记录=[{"attempt":1,"target":"AF7F8BDDA01C0F5FB518EE112F5F2701","error":"o is not defined"},{"attempt":2,"target":"AF7F8BDDA01C0F5FB518EE112F5F2701","error":"o is not defined"},{"attempt":3,"target":"AF7F8BDDA01C0F5FB518EE112F5F2701","error":"o is not defined"}]（exit 1）
+[2026-09-27T14:27:26.244Z] [推广] 里可林淘宝 失败：[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined
+[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined
+[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined
+采集失败：o is not defined；重试记录=[{"attempt":1,"target":"00BCE4432B709768FA0F6349611FF761","error":"o is not defined"},{"attempt":2,"target":"00BCE4432B709768FA0F6349611FF761","error":"o is not defined"},{"attempt":3,"target":"00BCE4432B709768FA0F6349611FF761","error":"o is not defined"}]（exit 1）
+[2026-09-27T14:27:26.264Z] 失败：里可林淘宝 商品推广采集失败：[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined
+[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined
+[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined
+采集失败：o is not defined；重试记录=[{"attempt":1,"target":"00BCE4432B709768FA0F6349611FF761","error":"o is not defined"},{"attempt":2,"target":"00BCE4432B709768FA0F6349611FF761","error":"o is not defined"},{"attempt":3,"target":"00BCE4432B709768FA0F6349611FF761","error":"o is not defined"}]
+（TRANSIENT_EXTERNAL/EXTERNAL_RETRYABLE；停在哪一段=promotion）
+[2026-09-27T14:27:28.329Z] 浏览器已释放并完成端口二次回读
+[2026-09-27T14:27:30.798Z] 告警投递：FAILED（exit 0）
+[2026-09-27T14:27:30.814Z] 商品数据自动采集结束：退出码 1

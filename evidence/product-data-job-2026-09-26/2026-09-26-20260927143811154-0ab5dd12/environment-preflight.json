@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "checkedAt": "2026-09-27T14:38:11.299Z",
+  "profile": "kcne",
+  "ok": true,
+  "checks": [
+    {
+      "name": "node",
+      "ok": true,
+      "detail": "v22.22.2"
+    },
+    {
+      "name": "python",
+      "ok": true,
+      "detail": "Python 3.12.9"
+    },
+    {
+      "name": "feishu-credentials",
+      "ok": true,
+      "detail": "E:/小红书/.env.feishu-kcne.local"
+    },
+    {
+      "name": "ports-unique",
+      "ok": true,
+      "detail": [
+        19022,
+        19023,
+        19031,
+        19041,
+        19032,
+        19042,
+        19033,
+        19043,
+        19035,
+        19045,
+        19034,
+        19044
+      ]
+    },
+    {
+      "name": "project-root",
+      "ok": true,
+      "detail": "D:\\Retire\\sycm-automation"
+    }
+  ]
+}

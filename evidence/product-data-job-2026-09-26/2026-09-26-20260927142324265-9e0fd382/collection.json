@@ -1,0 +1,105 @@
+[
+  {
+    "shop": "里可林淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"里可林淘宝\",\"date\":\"2026-09-26\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (3).xls\",\"bytes\":40448}\n",
+      "err": ""
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (3).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"里可林淘宝\",\n  \"date\": \"2026-09-26\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-09-26\\\\2026-09-26-20260927142324265-9e0fd382\\\\里可林淘宝\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20260926&dateRange=1d&orderBy=cstCnt&startDate=20260926&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927142324265-9e0fd382\\里可林淘宝\\inquiry.xls",
+    "promotion": {
+      "code": 1,
+      "out": "[身份] 里可林家居:阿彦 / 2350600069 ✓\n[校验] 商品报表 / 2026-09-26 / 商品+计划 ✓\n[提交] 商品报表_20260927_222652\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20260927_222652.zip (1297 bytes)\n[下载重试] 已刷新任务管理页并重新发现 target=00BCE4432B709768FA0F6349611FF761\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20260927_222652 (1).zip (1297 bytes)\n[下载重试] 已刷新任务管理页并重新发现 target=00BCE4432B709768FA0F6349611FF761\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20260927_222652 (3).zip (1297 bytes)\n",
+      "err": "[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined\n采集失败：o is not defined；重试记录=[{\"attempt\":1,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"},{\"attempt\":2,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"},{\"attempt\":3,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"}]\n"
+    },
+    "promotionFile": null,
+    "stoppedAt": "promotion-collect",
+    "error": "[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined\n采集失败：o is not defined；重试记录=[{\"attempt\":1,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"},{\"attempt\":2,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"},{\"attempt\":3,\"target\":\"00BCE4432B709768FA0F6349611FF761\",\"error\":\"o is not defined\"}]"
+  },
+  {
+    "shop": "网林天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林天猫\",\"date\":\"2026-09-26\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (4).xls\",\"bytes\":29696}\n",
+      "err": ""
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (4).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林天猫\",\n  \"date\": \"2026-09-26\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-09-26\\\\2026-09-26-20260927142324265-9e0fd382\\\\网林天猫\\\\inquiry.xls\",\n  \"bytes\": 14336,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20260926&dateRange=1d&orderBy=cstCnt&startDate=20260926&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927142324265-9e0fd382\\网林天猫\\inquiry.xls",
+    "promotion": {
+      "code": 1,
+      "out": "[身份] 网林家居旗舰店:阿彦 / 7314426323 ✓\n[校验] 商品报表 / 2026-09-26 / 商品+计划 ✓\n[提交] 商品报表_20260927_222652\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20260927_222652.zip (1297 bytes)\n[下载重试] 已刷新任务管理页并重新发现 target=59678064D919952BC69F0E338BE0AF44\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20260927_222652 (1).zip (1297 bytes)\n[下载重试] 已刷新任务管理页并重新发现 target=59678064D919952BC69F0E338BE0AF44\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20260927_222652 (3).zip (1297 bytes)\n",
+      "err": "[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined\n采集失败：o is not defined；重试记录=[{\"attempt\":1,\"target\":\"59678064D919952BC69F0E338BE0AF44\",\"error\":\"o is not defined\"},{\"attempt\":2,\"target\":\"59678064D919952BC69F0E338BE0AF44\",\"error\":\"o is not defined\"},{\"attempt\":3,\"target\":\"59678064D919952BC69F0E338BE0AF44\",\"error\":\"o is not defined\"}]\n"
+    },
+    "promotionFile": null,
+    "stoppedAt": "promotion-collect",
+    "error": "[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined\n采集失败：o is not defined；重试记录=[{\"attempt\":1,\"target\":\"59678064D919952BC69F0E338BE0AF44\",\"error\":\"o is not defined\"},{\"attempt\":2,\"target\":\"59678064D919952BC69F0E338BE0AF44\",\"error\":\"o is not defined\"},{\"attempt\":3,\"target\":\"59678064D919952BC69F0E338BE0AF44\",\"error\":\"o is not defined\"}]"
+  },
+  {
+    "shop": "盖文淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"盖文淘宝\",\"date\":\"2026-09-26\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (5).xls\",\"bytes\":71680}\n",
+      "err": ""
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (5).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"盖文淘宝\",\n  \"date\": \"2026-09-26\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-09-26\\\\2026-09-26-20260927142324265-9e0fd382\\\\盖文淘宝\\\\inquiry.xls\",\n  \"bytes\": 15360,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20260926&dateRange=1d&orderBy=cstCnt&startDate=20260926&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927142324265-9e0fd382\\盖文淘宝\\inquiry.xls",
+    "promotion": {
+      "code": 1,
+      "out": "[身份] 随心品质定制:阿彦 / 887360146 ✓\n[校验] 商品报表 / 2026-09-26 / 商品+计划 ✓\n[提交] 商品报表_20260927_222652\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20260927_222652.zip (1297 bytes)\n[下载重试] 已刷新任务管理页并重新发现 target=AF7F8BDDA01C0F5FB518EE112F5F2701\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20260927_222652 (1).zip (1297 bytes)\n[下载重试] 已刷新任务管理页并重新发现 target=AF7F8BDDA01C0F5FB518EE112F5F2701\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20260927_222652 (3).zip (1297 bytes)\n",
+      "err": "[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined\n采集失败：o is not defined；重试记录=[{\"attempt\":1,\"target\":\"AF7F8BDDA01C0F5FB518EE112F5F2701\",\"error\":\"o is not defined\"},{\"attempt\":2,\"target\":\"AF7F8BDDA01C0F5FB518EE112F5F2701\",\"error\":\"o is not defined\"},{\"attempt\":3,\"target\":\"AF7F8BDDA01C0F5FB518EE112F5F2701\",\"error\":\"o is not defined\"}]\n"
+    },
+    "promotionFile": null,
+    "stoppedAt": "promotion-collect",
+    "error": "[下载重试] 商品报表_20260927_222652 第 1 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 2 次失败：o is not defined\n[下载重试] 商品报表_20260927_222652 第 3 次失败：o is not defined\n采集失败：o is not defined；重试记录=[{\"attempt\":1,\"target\":\"AF7F8BDDA01C0F5FB518EE112F5F2701\",\"error\":\"o is not defined\"},{\"attempt\":2,\"target\":\"AF7F8BDDA01C0F5FB518EE112F5F2701\",\"error\":\"o is not defined\"},{\"attempt\":3,\"target\":\"AF7F8BDDA01C0F5FB518EE112F5F2701\",\"error\":\"o is not defined\"}]"
+  },
+  {
+    "shop": "盖文天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"盖文天猫\",\"date\":\"2026-09-26\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (6).xls\",\"bytes\":61440}\n",
+      "err": ""
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (6).xls",
+    "inquiry": {
+      "code": 1,
+      "out": "",
+      "err": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14\r\nif(!first.hasInquiry){await delay(1500); page=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com')); if(!page)throw new Error('商品分析点击后找不到生意参谋页面'); const clicked=await evalOn(o.proxy,page.targetId,\"(()=>{const e=[...document.querySelectorAll('a,span,div')].find(x=>(x.innerText||x.textContent||'').trim()==='商品咨询分析');if(!e)return false;e.click();return true})()\"); if(!clicked)throw new Error('找不到商品咨询分析入口'); await delay(2000);}\r\n                                                                                                                                                                                                                                                                                                                                                                                                                                                            ^\r\n\r\nError: 找不到商品咨询分析入口\r\n    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14:445\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n\r\nNode.js v22.22.2\r\n"
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927142324265-9e0fd382\\盖文天猫\\inquiry.xls",
+    "stoppedAt": "inquiry-collect",
+    "error": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14\r\nif(!first.hasInquiry){await delay(1500); page=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com')); if(!page)throw new Error('商品分析点击后找不到生意参谋页面'); const clicked=await evalOn(o.proxy,page.targetId,\"(()=>{const e=[...document.querySelectorAll('a,span,div')].find(x=>(x.innerText||x.textContent||'').trim()==='商品咨询分析');if(!e)return false;e.click();return true})()\"); if(!clicked)throw new Error('找不到商品咨询分析入口'); await delay(2000);}\r\n                                                                                                                                                                                                                                                                                                                                                                                                                                                            ^\r\n\r\nError: 找不到商品咨询分析入口\r\n    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14:445\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n\r\nNode.js v22.22.2"
+  },
+  {
+    "shop": "科塔淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"科塔淘宝\",\"date\":\"2026-09-26\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (7).xls\",\"bytes\":49152}\n",
+      "err": ""
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-09-26_2026-09-26 (7).xls",
+    "inquiry": {
+      "code": 1,
+      "out": "",
+      "err": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14\r\nif(!first.hasInquiry){await delay(1500); page=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com')); if(!page)throw new Error('商品分析点击后找不到生意参谋页面'); const clicked=await evalOn(o.proxy,page.targetId,\"(()=>{const e=[...document.querySelectorAll('a,span,div')].find(x=>(x.innerText||x.textContent||'').trim()==='商品咨询分析');if(!e)return false;e.click();return true})()\"); if(!clicked)throw new Error('找不到商品咨询分析入口'); await delay(2000);}\r\n                                                                                                                                                                                                                                                                                                                                                                                                                                                            ^\r\n\r\nError: 找不到商品咨询分析入口\r\n    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14:445\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n\r\nNode.js v22.22.2\r\n"
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927142324265-9e0fd382\\科塔淘宝\\inquiry.xls",
+    "stoppedAt": "inquiry-collect",
+    "error": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14\r\nif(!first.hasInquiry){await delay(1500); page=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com')); if(!page)throw new Error('商品分析点击后找不到生意参谋页面'); const clicked=await evalOn(o.proxy,page.targetId,\"(()=>{const e=[...document.querySelectorAll('a,span,div')].find(x=>(x.innerText||x.textContent||'').trim()==='商品咨询分析');if(!e)return false;e.click();return true})()\"); if(!clicked)throw new Error('找不到商品咨询分析入口'); await delay(2000);}\r\n                                                                                                                                                                                                                                                                                                                                                                                                                                                            ^\r\n\r\nError: 找不到商品咨询分析入口\r\n    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14:445\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n\r\nNode.js v22.22.2"
+  }
+]

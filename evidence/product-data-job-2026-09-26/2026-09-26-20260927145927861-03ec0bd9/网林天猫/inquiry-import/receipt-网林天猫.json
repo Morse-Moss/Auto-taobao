@@ -1,0 +1,39 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-26\\2026-09-26-20260927145927861-03ec0bd9\\网林天猫\\inquiry.xls",
+  "shop": "网林天猫",
+  "date": "2026-09-26",
+  "sourceRows": 4,
+  "existingRows": 1005,
+  "plannedRows": 4,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-09-26",
+      "productId": "977271829805",
+      "shop": "网林天猫"
+    },
+    {
+      "date": "2026-09-26",
+      "productId": "982883522589",
+      "shop": "网林天猫"
+    },
+    {
+      "date": "2026-09-26",
+      "productId": "1072247628377",
+      "shop": "网林天猫"
+    },
+    {
+      "date": "2026-09-26",
+      "productId": "983637449275",
+      "shop": "网林天猫"
+    }
+  ],
+  "recordIds": [
+    "recvwqWlSnAULD",
+    "recvwqWlSnqY9W",
+    "recvwqWlSnZ1Xr",
+    "recvwqWlSnF49D"
+  ],
+  "afterRows": 1009
+}
