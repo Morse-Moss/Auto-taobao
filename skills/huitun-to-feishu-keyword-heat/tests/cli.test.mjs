@@ -16,7 +16,7 @@ const cliExitCodeFor = runner.cliExitCodeFor ?? (() => assert.fail('missing expo
 const preserveBrowserFor = runner.preserveBrowserFor ?? (() => assert.fail('missing export: preserveBrowserFor'));
 
 test('CLI documents the complete candidate-to-backfill workflow', () => {
-  const result = spawnSync(process.execPath, [cli, '--help'], { encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [cli, '--help'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /A候选/u);
   assert.match(result.stdout, /--apply/u);
@@ -32,7 +32,7 @@ test('CLI documents the complete candidate-to-backfill workflow', () => {
 });
 
 test('CLI self-test is network-free', () => {
-  const result = spawnSync(process.execPath, [cli, '--self-test'], { encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [cli, '--self-test'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     ok: true,
