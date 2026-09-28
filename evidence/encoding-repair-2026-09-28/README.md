@@ -28,10 +28,32 @@ node 侧 `spawnSync(..., { encoding: 'utf8' })` 按 UTF-8 解子进程 stdout，
 - `inquiry-2026-09-25/<店铺>/receipt.json`：询单 09-25 重推收据（5 份）。
 - `inquiry-2026-09-23/<店铺>/receipt.json`：询单 09-23 重推收据（2 份）。
 
+## 取证脚本（只读，已归档）
+
+按仓库 `.gitignore` 的规矩（`/tmp/` 是 scratch，要留档的证据一律复制到 `evidence/<轮次>/` 再提交），
+本次用到的 4 个脚本已从 `tmp/` 复制到本目录 `scripts/` 下，并把相对路径改成从新位置出发
+（import 改 `'../../../runtime/...'`、`root = resolve(dirname, '../..')`）。归档后**逐个真跑过**，
+`check-date-style-0928.mjs` 的输出与归档前逐字一致。
+
+| 脚本 | 作用 |
+| --- | --- |
+| `scripts/verify-encoding-fix.mjs` | 复现 + 突变验证：修前 / 修后 / 剥掉修复块三种形态的 U+FFFD 计数 |
+| `scripts/check-date-style-0928.mjs` | 全表逐日「旧式 / 新式」分布（下面那张表的来源） |
+| `scripts/dump-legacy-rows-0928.mjs` | 把 09-20 以后的全部旧式行整条打出（用来确认它们是占位空行） |
+| `scripts/identify-snapshot.mjs` | 在 8 份重复快照里认定「哪一份真的被导入过」（逐字段比对） |
+
+这四个都是**只读**的。会写飞书的两个脚本（删除 `repair-*`、重推 `reimport-*`）**刻意没有复制进来**，
+免得有人误跑；原件留在 `tmp/`：
+
+```
+node tmp/repair-encoding-2026-09-28.mjs           # 只读：体检、落备份、打印将删除的清单
+node tmp/repair-encoding-2026-09-28.mjs --commit   # 执行删除（会写飞书）
+```
+
 ## 复现与验证
 
 - 复现（修复前）：`PYTHONIOENCODING=gbk` 跑 `read-product-xls.py`，输出含 U+FFFD **601** 次，
-  与飞书乱码逐字一致（`tmp/verify-encoding-fix.mjs` 的前后对照 + 突变体）。
+  与飞书乱码逐字一致（`scripts/verify-encoding-fix.mjs` 的前后对照 + 突变体）。
 - 重推时**刻意清空** `PYTHONUTF8` / `PYTHONIOENCODING`（复现当初出错的环境），12 批
   计划数 = 期望数 = 写入数，无一偏差。见 `reimport-summary.json`。
 - 回读：两张表 U+FFFD 命中 **0**；抽样 `商品名称` / `当前在线` / `延迟统计` 均为正常中文。
@@ -52,7 +74,7 @@ node 侧 `spawnSync(..., { encoding: 'utf8' })` 按 UTF-8 解子进程 stdout，
 于是 `new Date(v).toISOString().slice(0,10)`（UTC 读法）得到的是**前一天**。
 代码位置：`skills/sycm-product-data/scripts/product-core.mjs:49`、`skills/sycm-inquiry-data/scripts/inquiry-core.mjs:55`。
 
-2026-09-28 全表实测（脚本 `tmp/check-date-style-0928.mjs`）：
+2026-09-28 全表实测（脚本 `scripts/check-date-style-0928.mjs`）：
 
 | 表 | 日期范围 | 行数 | 日期读法 |
 | --- | --- | --- | --- |
