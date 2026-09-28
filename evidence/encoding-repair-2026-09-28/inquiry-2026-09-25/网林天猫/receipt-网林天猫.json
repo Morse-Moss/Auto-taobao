@@ -1,0 +1,27 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\product-inquiry-网林天猫-2026-09-25.xls",
+  "shop": "网林天猫",
+  "date": "2026-09-25",
+  "sourceRows": 2,
+  "existingRows": 982,
+  "plannedRows": 2,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-09-25",
+      "productId": "1003593529956",
+      "shop": "网林天猫"
+    },
+    {
+      "date": "2026-09-25",
+      "productId": "977271829805",
+      "shop": "网林天猫"
+    }
+  ],
+  "recordIds": [
+    "recvwtlEP92K74",
+    "recvwtlEP9ItrT"
+  ],
+  "afterRows": 984
+}

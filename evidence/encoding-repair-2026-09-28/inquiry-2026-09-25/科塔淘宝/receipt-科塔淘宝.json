@@ -1,0 +1,51 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\product-inquiry-科塔淘宝-2026-09-25.xls",
+  "shop": "科塔淘宝",
+  "date": "2026-09-25",
+  "sourceRows": 6,
+  "existingRows": 1001,
+  "plannedRows": 6,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-09-25",
+      "productId": "967422729815",
+      "shop": "科塔淘宝"
+    },
+    {
+      "date": "2026-09-25",
+      "productId": "981539656451",
+      "shop": "科塔淘宝"
+    },
+    {
+      "date": "2026-09-25",
+      "productId": "1001284104332",
+      "shop": "科塔淘宝"
+    },
+    {
+      "date": "2026-09-25",
+      "productId": "980149022296",
+      "shop": "科塔淘宝"
+    },
+    {
+      "date": "2026-09-25",
+      "productId": "981545180389",
+      "shop": "科塔淘宝"
+    },
+    {
+      "date": "2026-09-25",
+      "productId": "907608207639",
+      "shop": "科塔淘宝"
+    }
+  ],
+  "recordIds": [
+    "recvwtlN4Fx8ih",
+    "recvwtlN4FPajg",
+    "recvwtlN4F6tVs",
+    "recvwtlN4FLMEc",
+    "recvwtlN4FSNAK",
+    "recvwtlN4FtpTv"
+  ],
+  "afterRows": 1007
+}

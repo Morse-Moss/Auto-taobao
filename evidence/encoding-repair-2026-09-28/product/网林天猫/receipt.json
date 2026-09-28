@@ -1,0 +1,115 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-09-25_2026-09-25 (5).xls",
+  "shop": "网林天猫",
+  "sourceRows": 17,
+  "existingRows": 4603,
+  "plannedRows": 17,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "897126873385"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "897534572146"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "923336705176"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "923791888580"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "941023585326"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "943715195278"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "976539362164"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "976593634003"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "977271829805"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "979218594488"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "1002790238345"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "1003593529956"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "1060911657748"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "1060913369469"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "1071284033110"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "1072247628377"
+    },
+    {
+      "date": "2026-09-25",
+      "shop": "网林天猫",
+      "productId": "1083847067443"
+    }
+  ],
+  "recordIds": [
+    "recvwtl6JzpIWU",
+    "recvwtl6JzLJsc",
+    "recvwtl6JzFjeg",
+    "recvwtl6Jz68Dj",
+    "recvwtl6JzmQ2M",
+    "recvwtl6JzpAp5",
+    "recvwtl6JzEw51",
+    "recvwtl6Jz00gD",
+    "recvwtl6JzgUDF",
+    "recvwtl6JzbLC1",
+    "recvwtl6JzW2p9",
+    "recvwtl6Jz5CBO",
+    "recvwtl6JzTNF3",
+    "recvwtl6Jzl3w3",
+    "recvwtl6JzTd4j",
+    "recvwtl6JzXfW7",
+    "recvwtl6JzkKSg"
+  ],
+  "afterRows": 4620
+}
