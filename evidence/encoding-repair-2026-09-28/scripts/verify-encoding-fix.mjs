@@ -6,8 +6,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(import.meta.dirname, '../..');
+// 向上找仓库根的哨兵文件 VERSION ⇒ 与所在目录深度无关（tmp/ 原件与 evidence/ 副本可逐字相同）
+let root = path.dirname(fileURLToPath(import.meta.url));
+while (!fs.existsSync(path.join(root, 'VERSION'))) root = path.dirname(root);
 const srcPy = path.join(root, 'skills/sycm-product-data/scripts/read-product-xls.py');
 
 // ---- 1. 造一个「去掉修复」的副本（突变体），用于证明修复真的有用 ----

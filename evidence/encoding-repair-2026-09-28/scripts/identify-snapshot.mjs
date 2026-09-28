@@ -3,10 +3,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { loadFeishuCredentials, productDataTargets } from '../../../runtime/feishu-targets.mjs';
-import { PRODUCT_HEADERS, buildProductFields } from '../../../skills/sycm-product-data/scripts/product-core.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const root = path.resolve(import.meta.dirname, '../..');
+// 向上找仓库根的哨兵文件 VERSION ⇒ 与所在目录深度无关（tmp/ 原件与 evidence/ 副本可逐字相同）
+let root = path.dirname(fileURLToPath(import.meta.url));
+while (!fs.existsSync(path.join(root, 'VERSION'))) root = path.dirname(root);
+
+const { loadFeishuCredentials, productDataTargets } = await import(pathToFileURL(path.join(root, 'runtime/feishu-targets.mjs')).href);
+const { PRODUCT_HEADERS, buildProductFields } = await import(pathToFileURL(path.join(root, 'skills/sycm-product-data/scripts/product-core.mjs')).href);
 const PY = path.join(root, 'skills/sycm-product-data/scripts/read-product-xls.py');
 function readXls(file) {
   const r = spawnSync(process.env.PYTHON || 'py', ['-3', PY, path.resolve(file)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });

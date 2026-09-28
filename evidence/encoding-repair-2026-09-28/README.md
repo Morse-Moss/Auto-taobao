@@ -31,9 +31,14 @@ node 侧 `spawnSync(..., { encoding: 'utf8' })` 按 UTF-8 解子进程 stdout，
 ## 取证脚本（只读，已归档）
 
 按仓库 `.gitignore` 的规矩（`/tmp/` 是 scratch，要留档的证据一律复制到 `evidence/<轮次>/` 再提交），
-本次用到的 4 个脚本已从 `tmp/` 复制到本目录 `scripts/` 下，并把相对路径改成从新位置出发
-（import 改 `'../../../runtime/...'`、`root = resolve(dirname, '../..')`）。归档后**逐个真跑过**，
-`check-date-style-0928.mjs` 的输出与归档前逐字一致。
+本次用到的 4 个脚本已从 `tmp/` 复制到本目录 `scripts/` 下。
+
+路径**刻意不数目录层数**：脚本从自身位置向上找仓库根的哨兵文件 `VERSION`，再动态 `import` 依赖
+（静态 `import` 的路径在编译期就固定了，用不了运行时变量）。因此 `tmp/` 下的原件与这里的副本
+**逐字节相同**（sha256 已核对），以后再挪一层也不会坏。
+
+归档后**真跑过**：`check-date-style-0928.mjs` 与 `verify-encoding-fix.mjs` 都在新位置跑通，
+前者输出与归档前逐字一致。
 
 | 脚本 | 作用 |
 | --- | --- |

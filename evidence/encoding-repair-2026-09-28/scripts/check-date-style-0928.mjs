@@ -1,5 +1,13 @@
 // 只读：量「商品数据底单 / 商品询单数据底单」上每一行的日期读法，判断哪些天是「旧式」（UTC 读法与 +8 读法差一天）。
-import { loadFeishuCredentials, productDataTargets } from '../../../runtime/feishu-targets.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+// 向上找仓库根的哨兵文件 VERSION ⇒ 与所在目录深度无关（tmp/ 原件与 evidence/ 副本可逐字相同）
+let ROOT = path.dirname(fileURLToPath(import.meta.url));
+while (!fs.existsSync(path.join(ROOT, 'VERSION'))) ROOT = path.dirname(ROOT);
+
+const { loadFeishuCredentials, productDataTargets } = await import(pathToFileURL(path.join(ROOT, 'runtime/feishu-targets.mjs')).href);
 
 const c = loadFeishuCredentials('kcne');
 const auth = await (await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
