@@ -4,6 +4,18 @@ export const PRODUCT_HEADERS = Object.freeze(['统计日期','商品ID','商品�
 const NUMERIC_HEADERS = new Set(['主商品ID','商品访客数','商品浏览量','平均停留时长','商品收藏人数','商品加购件数','商品加购人数','下单买家数','下单件数','下单金额','支付买家数','支付件数','支付金额','支付新买家数','支付老买家数','老买家支付金额','聚划算支付金额','访客平均价值','成功退款金额','年累计支付金额','月累计支付金额','月累计支付件数','搜索引导访客数','搜索引导支付买家数']);
 const TARGET_NAMES = Object.freeze({ 货号: '-', 商品状态: '当前在线' });
 
+// 飞书日期字段一律用「北京时间零点」。理由（2026-09-28 实测）：
+// 「商品数据看板」里带日期条件的查找引用要求两个日期字段的**时间戳精确相等**，而看板是人工维护的
+// （全仓无代码写它）、底单 2026-09-01~09-19 的历史数据也都是北京时间零点。
+// 原先写 `Date.UTC(y, m-1, d)`（世界时零点）比看板早 8 小时 ⇒ 看板上 09-23 起整天引用不到值。
+const BEIJING_OFFSET_MS = 8 * 3600 * 1000;
+
+/** 北京时区某天的零点，返回飞书日期字段要的毫秒数。入参 month 为 1~12。 */
+const toBeijingMidnight = (year, month, day) => Date.UTC(year, month - 1, day) - BEIJING_OFFSET_MS;
+
+/** 把飞书返回的日期时间戳读成 `YYYY-MM-DD`。加 8 小时对「北京零点」与「世界时零点」两种存法都读得对。 */
+const readBeijingDay = (value) => new Date(Number(value) + BEIJING_OFFSET_MS).toISOString().slice(0, 10);
+
 export function parseCsvRows(text) {
   const rows = []; let row = []; let cell = ''; let quoted = false;
   for (let i = 0; i < String(text).length; i += 1) {
@@ -35,7 +47,7 @@ export function buildProductFields(row, header = PRODUCT_HEADERS) {
   const fields = {};
   header.forEach((name, index) => {
     const value = row[index]; const target = TARGET_NAMES[name] ?? name;
-    if (name === '统计日期') { const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/u); if (!match) throw new Error(`无效统计日期: ${value}`); fields[target] = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])); }
+    if (name === '统计日期') { const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/u); if (!match) throw new Error(`无效统计日期: ${value}`); fields[target] = toBeijingMidnight(Number(match[1]), Number(match[2]), Number(match[3])); }
     else if (name === '商品类型' || name === '商品标签') return;
     else if (NUMERIC_HEADERS.has(name)) { if (value === '-' || value === '') return; const number = Number(String(value).replaceAll(',', '')); if (!Number.isFinite(number)) throw new Error(`数字字段无法解析: ${name}=${value}`); fields[target] = number; }
     else fields[target] = value;
@@ -46,7 +58,7 @@ export function buildProductFields(row, header = PRODUCT_HEADERS) {
 export function productKey(date, productId) { return `${date}|${productId}`; }
 
 export function planProductImport({ rows, existing = [], shopForProduct = () => '' }) {
-  const existingKeys = new Set(existing.map(({ fields = {} }) => productKey(new Date(Number(fields['统计日期'] ?? 0)).toISOString().slice(0, 10), String(fields['商品ID'] ?? ''))));
+  const existingKeys = new Set(existing.map(({ fields = {} }) => productKey(readBeijingDay(fields['统计日期'] ?? 0), String(fields['商品ID'] ?? ''))));
   const records = []; const manifest = []; const seen = new Set();
   for (const entry of rows) {
     const shop = entry.sourceShop; if (!shop) throw new Error(`商品 ${entry.row[1]} 缺少来源店铺`);

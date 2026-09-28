@@ -4,6 +4,18 @@ export const INQUIRY_HEADERS = Object.freeze(['商品名称','商品编号','咨
 const TARGET = Object.freeze({ 商品名称:'名称', 商品编号:'商品ID', 延最终付款人数:'最终付款人数', 延最终付款金额:'最终付款金额', 延最终付款件数:'最终付款件数' });
 const NUMERIC = new Set(['咨询人数','当日询单人数','当日付款人数','当日付款金额']);
 
+// 飞书日期字段一律用「北京时间零点」。理由（2026-09-28 实测）：
+// 「商品数据看板」里带日期条件的查找引用要求两个日期字段的**时间戳精确相等**，而看板是人工维护的
+// （全仓无代码写它）、两张底单 2026-09-01~09-19 的历史数据也都是北京时间零点。
+// 原先写 `Date.UTC(y, m-1, d)`（世界时零点）比看板早 8 小时 ⇒ 看板上 09-23 起整天引用不到值。
+const BEIJING_OFFSET_MS = 8 * 3600 * 1000;
+
+/** 北京时区某天的零点，返回飞书日期字段要的毫秒数。入参 month 为 1~12。 */
+const toBeijingMidnight = (year, month, day) => Date.UTC(year, month - 1, day) - BEIJING_OFFSET_MS;
+
+/** 把飞书返回的日期时间戳读成 `YYYY-MM-DD`。加 8 小时对「北京零点」与「世界时零点」两种存法都读得对。 */
+const readBeijingDay = (value) => new Date(Number(value) + BEIJING_OFFSET_MS).toISOString().slice(0, 10);
+
 // 同一列在导出侧出现过两种写法。**必须都认**，理由是实测出来的（2026-09-27）：
 //   · 仓库里 2026-09-23 存档的原始导出 `evidence/product-inquiry-2026-09-23/gaiwen-*.xls`
 //     （契约就是照着它写的）真实列名是 `最终付款人数/最终付款金额/最终付款件数`，**没有「延」**；
@@ -40,7 +52,9 @@ export function parseInquiryRows(rows, date, sourceShop) {
 }
 
 export function buildInquiryFields(entry) {
-  const [, ...row] = entry.row; const fields = { 数据日期: Date.UTC(...entry.row[0].split('-').map((v, i) => i === 1 ? Number(v) - 1 : Number(v))) };
+  const [, ...row] = entry.row;
+  const [year, month, day] = String(entry.row[0]).split('-').map(Number);
+  const fields = { 数据日期: toBeijingMidnight(year, month, day) };
   INQUIRY_HEADERS.forEach((name, i) => {
     const target = TARGET[name] ?? name; const value = String(row[i] ?? '').trim();
     if (name === '商品名称' || name === '商品编号' || !NUMERIC.has(name)) fields[target] = value;
@@ -52,8 +66,7 @@ export function buildInquiryFields(entry) {
 export function inquiryKey(date, id) { return `${date}|${String(id)}`; }
 
 export function planInquiryImport({ rows, existing = [] }) {
-  const dateOf = (value) => new Date(Number(value)).toISOString().slice(0, 10);
-  const existingKeys = new Set(existing.map((r) => inquiryKey(dateOf(r.fields?.['数据日期']), r.fields?.['商品ID'] ?? '')));
+  const existingKeys = new Set(existing.map((r) => inquiryKey(readBeijingDay(r.fields?.['数据日期']), r.fields?.['商品ID'] ?? '')));
   const seen = new Set(); const records = []; const manifest = [];
   for (const entry of rows) {
     const key = inquiryKey(entry.row[0], entry.row[2]);

@@ -49,7 +49,7 @@ test('推广幂等键只包含报表行身份，不因指标变化而重复写�
   const first = ['2026-09-25', '371', 'plan-1', 'item-1', '12.3'];
   const changedMetrics = ['2026-09-25', '371', 'plan-1', 'item-1', '18.8'];
   assert.equal(promotionKey(first, headers), promotionKey(changedMetrics, headers));
-  const existing = [{ fields: { 日期: Date.UTC(2026, 8, 25), 场景ID: 371, 计划ID: 'plan-1', 主体ID: 'item-1', 花费: 12.3 } }];
+  const existing = [{ fields: { 日期: Date.UTC(2026, 8, 25) - 8 * 3600 * 1000, 场景ID: 371, 计划ID: 'plan-1', 主体ID: 'item-1', 花费: 12.3 } }]; // 日期＝北京时间零点，与 buildPromotionFields 的写法一致
   assert.equal(planPromotionImport({ rows: [changedMetrics], existing, headers, targetNames: headers }).records.length, 0);
 });
 
