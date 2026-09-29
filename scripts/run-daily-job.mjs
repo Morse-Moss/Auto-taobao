@@ -38,6 +38,9 @@ import { pathToFileURL } from 'node:url';
 import { HOLD_EXIT, buildJobPlan, renderCommand, shouldRunStep } from '../runtime/daily-job-plan.mjs';
 import { versionLineSafe } from '../runtime/version.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
+import { acquireWorkflowLock, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
+import { createWorkflowReceipt, writeWorkflowReceipt } from '../runtime/workflow-receipt.mjs';
+import { runEnvironmentPreflight } from '../runtime/environment-preflight.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 const NODE = process.execPath;
@@ -203,6 +206,32 @@ async function main(argv) {
     fs.writeSync(logFd, text);
     process.stdout.write(text);
   };
+  const receiptPath = path.join(jobDir, 'run-receipt.json');
+  const runReceipt = createWorkflowReceipt({ workflow: 'daily-report', runId: `daily-${date}-${process.pid}`, date, stages: plan.steps.map(step => ({ name: step.name, status: 'PENDING' })) });
+  writeWorkflowReceipt(receiptPath, runReceipt);
+  const preflight = runEnvironmentPreflight({ root: REPO_ROOT, workflow: 'daily-report' });
+  fs.writeFileSync(path.join(jobDir, 'environment-preflight.json'), `${JSON.stringify(preflight, null, 2)}\n`);
+  if (!preflight.ok) {
+    log(`环境预检失败：${preflight.checks.filter(check => !check.ok).map(check => check.name).join(', ')}`);
+    runReceipt.status = 'FAILED';
+    runReceipt.finishedAt = new Date().toISOString();
+    writeWorkflowReceipt(receiptPath, runReceipt);
+    fs.closeSync(logFd);
+    return 1;
+  }
+  let workflowLock;
+  try {
+    workflowLock = acquireWorkflowLock(WORKFLOW_LOCK_NAME, 'daily-report', { directory: path.join(REPO_ROOT, 'runtime', '.workflow-locks') });
+  } catch (error) {
+    log(`运行锁冲突：${error.message}；持有者=${JSON.stringify(error.lock ?? null)}`);
+    fs.closeSync(logFd);
+    return 1;
+  }
+  process.once('exit', () => workflowLock.release());
+  // 回收要留痕：静默自愈会让人以为「本来就没锁」，而上一次是被硬杀的事实就此消失。
+  if (workflowLock.staleReclaimed) {
+    log(`回收过期锁：原持有者=${workflowLock.reclaimedFrom?.owner ?? '未知'}、pid=${workflowLock.reclaimedFrom?.pid ?? '未知'}（该进程已不在）`);
+  }
 
   // 用 versionLineSafe 而不是 versionLine：这里记的是账，不是判据。
   // VERSION 文件丢了是记账问题，为了它停掉一整天的采集是把小错升级成业务停摆；
@@ -279,6 +308,10 @@ async function main(argv) {
   // 把它翻绿必须对应一件**真发生过**的事（那几家真的补上了），而不是「我们试过了」。
   const recovered = holdStatus === HOLD_EXIT.RESUMED_OK;
   const finalStatus = recovered ? 0 : (chainStatus ?? 1);
+  runReceipt.status = finalStatus === 0 ? (recovered ? 'RECOVERED' : 'COMPLETED') : 'FAILED';
+  runReceipt.finishedAt = new Date().toISOString();
+  runReceipt.exitCode = finalStatus;
+  writeWorkflowReceipt(receiptPath, runReceipt);
   log(`=== 定时任务结束：全链退出码=${finalStatus}`
     + `${recovered ? `（链那一步当时是 ${chainStatus}，经自动续跑后补上）` : ''}`
     + `；证据目录 evidence/multi-shop-${date}/ ===`);
