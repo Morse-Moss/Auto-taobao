@@ -7,6 +7,7 @@ import test from 'node:test';
 import { BROWSER_IDS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
+import { triageFailures } from './remediation-table.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
 import { FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
@@ -1217,4 +1218,54 @@ test('代理重试：不可重试的失败原样上抛，重试用尽的失败�
   } finally {
     globalThis.fetch = realFetch;
   }
+});
+
+// ------------------------------------------------- 分诊接线（2026-09-28）
+
+test('接线：告警决策里真的有分诊闸门，且它按「需人处数」放行/拦截', () => {
+  // 「函数级用例全绿 ≠ 接线接上了」——triageFailures 自己的用例全过，
+  // 但**调用点漏接**的话，行为一个字都不会变（照样每次叫人）。
+  // 所以这里扫源码：主流程必须① 算了 triage、② 用 needsHumanCount 做放行判断。
+  const source = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  assert.match(source, /const triage = anyFailed[\s\S]{0,80}triageFailures\(roundFailureSummary\(/u,
+    '主流程必须调用 triageFailures，且喂给它的是同一个 summary 的失败视图');
+  assert.match(source, /triage\.needsHumanCount === 0/u,
+    '必须按「需人处数 === 0」才走「不打扰」这一支');
+  assert.match(source, /全都落在「已知、不需要人」里/u,
+    '拦截时必须留一行说明为什么没发（否则「没收到」与「没发出去」事后同形）');
+});
+
+test('分诊判定：09-27 那轮的真实形状（两家 DUPLICATE_TARGET）⇒ 零处需人 ⇒ 不发打扰', () => {
+  // 这是本功能的**原始动机场景**：那天五家店里两家停在 push、成因是「同一天已经写过了」，
+  // 正确处置是「不用做任何事」，而旧的告警每天把人叫起来一次。
+  const summary = {
+    shops: {
+      里可林淘宝: okRecord(),
+      盖文天猫: okRecord(),
+      科塔淘宝: okRecord(),
+      网林天猫: { status: 'failed', failedStage: 'push',
+        failureOutput: 'Error: duplicate daily report row exists: recvwuXUkNPUkJ' },
+      盖文淘宝: { status: 'failed', failedStage: 'push',
+        failureOutput: 'Error: duplicate daily report row exists: recvwuYqiOzzLk' },
+    },
+  };
+  const view = roundFailureSummary(summary);
+  for (const row of view.failed) assert.equal(row.cause, 'DUPLICATE_TARGET');
+  const triage = triageFailures(view.failed);
+  assert.equal(triage.total, 2);
+  assert.equal(triage.needsHumanCount, 0, '两家「今天已经写过了」都不该叫人');
+  assert.equal(triage.silentCount, 2);
+});
+
+test('分诊判定：只要有一家是真问题（如掉登录）⇒ 必须叫人，绝不静默', () => {
+  const summary = {
+    shops: {
+      网林天猫: { status: 'failed', failedStage: 'push',
+        failureOutput: 'Error: duplicate daily report row exists: recvwuXUkNPUkJ' },
+      科塔淘宝: { status: 'failed', failedStage: 'alimama-date', failureOutput: 'boom' },
+    },
+  };
+  const triage = triageFailures(roundFailureSummary(summary).failed);
+  assert.equal(triage.needsHumanCount, 1, '兜底类必须叫人 —— 新问题就该出现在这里');
+  assert.equal(triage.needsHuman[0].key, '科塔淘宝');
 });

@@ -88,6 +88,17 @@ import { describeIdentity, expectArgs, formatArgv, shopIdentity } from './shop-i
 // 消费方（`shopFailureCause`）import 它、不写字面量：两边各写一份，改名那天就会静默漂移成
 // 「这一类永远归到兜底」，而告警照发、看起来一切正常。
 import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
+// 「数据已核对、仅截图缺失」这个退出码的**唯一来源**（定义在 readback 那边）。
+// 同样不写字面量 4：两边各写一份，哪天改了就会静默失配成「又变回真故障」。
+import { SCREENSHOT_INCOMPLETE_EXIT_CODE } from './readback-daily-report.mjs';
+// 失败现场的「感知层」（2026-09-28）。它只做一件事：某步失败时，把**页面当时长什么样**
+// 落成可读事实（截图 + DOM 摘要 + 可见元素 + 视口）。放在这里 import 的用意与上面两条一致：
+// 判据/产物的定义只有一处，消费方 import 它，不另抄一份形状。
+import { captureFailureState } from './failure-perception.mjs';
+// 「已知问题 → 处置」的记忆表（2026-09-28）。分诊用它决定「这次失败要不要打扰人」。
+// **它的键被互锁钉在 `FAILURE_CAUSES` 上**（见 remediation-table.test.mjs 第 1 条），
+// 所以这里 import 它不会引入第二套分类。
+import { triageFailures } from './remediation-table.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -1241,6 +1252,22 @@ async function main() {
           argv = withSourcePaths(stage.argv, sources);
         }
         const result = await run({ ...stage, argv });
+        // **退出码 4 = 数据已核对、仅佐证（截图）不完整**，只可能来自 readback（2026-09-28 加）。
+        // 它不是数据故障：`independent-readback.json` 已落盘、两张表的结论都在里面。
+        // 原先它和真故障共用 exit 1，导致「这一家其实写进去了」与「这一家没写进去」
+        // 在 summary/告警里长得一样（09-27 那轮盖文淘宝就是这样）。
+        // 这里如实记进 `evidenceIncomplete`，**不写 failedStage、不抛错**，让这家继续按成功收尾；
+        // 但**必须留痕**，否则「缺证据」会被静默吞掉 —— 那正是本项目反复吃过的亏。
+        if (result.status === SCREENSHOT_INCOMPLETE_EXIT_CODE) {
+          record.evidenceIncomplete = record.evidenceIncomplete ?? [];
+          record.evidenceIncomplete.push({
+            stage: stage.stage,
+            note: '数据回读已核对并落盘，仅截图缺失（退出码 4）',
+          });
+          console.error(`[${key}]   ⚠️ 第 ${stage.stage} 步：数据已核对，仅截图缺失`
+            + '（计入 evidenceIncomplete，不判失败）');
+          continue;
+        }
         if (result.status !== 0) {
           record.status = 'failed';
           record.failedStage = stage.stage;
@@ -1267,7 +1294,28 @@ async function main() {
     } catch (error) {
       record.error = error.message;
       console.error(`[${key}] 停在这一步：${error.message}`);
-      // 失败也要收尾：先把「停手时页面停在哪」记下来，再把它送回中性态（证据先于处置，
+      // ① 先把**页面当时长什么样**落成事实（感知层，2026-09-28 加）。
+      //    顺序**必须**在 recoverFailedShop 之前：回位会把页面导航走，
+      //    那一刻的 DOM/截图就没了 —— 而它正是「符号 → 事实」翻译的唯一原料。
+      //    本调用**永不抛**（见 failure-perception 的三条纪律），所以它不会盖掉上面那个错；
+      //    它失败只会在 record 里留下 `perception.errors`，主线失败原因一个字不改。
+      record.perception = await captureFailureState({
+        proxy: `http://127.0.0.1:${shopInstance(key).proxyPort}`,
+        logDir: shopLogDir,
+        shopKey: key,
+        stage: record.failedStage ?? null,
+        error: error.message,
+        readTargets: (base) => proxyJson(`${base}/targets`),
+        evalInPage: (base, targetId, expression) => proxyJson(
+          `${base}/eval?target=${encodeURIComponent(targetId)}`, { method: 'POST', body: expression },
+        ),
+        screenshot: async (base, targetId, file) => {
+          const payload = await proxyJson(`${base}/screenshot?target=${encodeURIComponent(targetId)}`
+            + `&file=${encodeURIComponent(file)}`);
+          return payload.saved;
+        },
+      });
+      // ② 再收尾：把「停手时页面停在哪」记下来，再把它送回中性态（证据先于处置，
       // 见 recoverFailedShop 的三条纪律）。位置**刻意放在「停整轮」之前** —— 放到之后的话，
       // 默认策略下断掉整个 for 循环，而唯一失败的那一家恰恰就是不会被收尾的那一家。
       record.recovery = await recoverFailedShop({ shopKey: key, logDir: shopLogDir, repoRoot: REPO_ROOT });
@@ -1300,9 +1348,34 @@ async function main() {
   }
   console.log(`[驱动] 明细 ${path.relative(REPO_ROOT, summaryPath)}`);
   const anyFailed = Object.values(summary.shops).some((r) => r.status !== 'ok');
+
+  // 分诊（2026-09-28）：把失败按「已知问题表」分堆，只对**要人**的那堆叫人。
+  // 这一步是「注意力真正被释放」的地方 —— 不是替人做事，而是替人挡掉不需要他看的事。
+  // 典型收益：`DUPLICATE_TARGET`（同一天已经写过了）过去每天都会把人叫起来，
+  // 而正确处置是「不用做任何事」。它现在进 `silent` 堆，不再打扰。
+  //
+  // 安全方向（fail-closed）：**只有整批失败全部落在 silent 堆时才不发告警**。
+  // 只要有一家需要人，照旧发、且文案里仍然点名到店。未登记的成因会被
+  // `lookupRemediation` 判成 `human` ⇒ 新问题永远叫得到人（这是这张表的安全底座）。
+  const triage = anyFailed
+    ? triageFailures(roundFailureSummary(summary, { loginPreflight }).failed)
+    : null;
+
   if (anyFailed) {
     process.exitCode = 1;
-    if (alertDispatch.action !== 'off') {
+    // 如实打印分诊结论（无论发不发告警都要有这一行）：否则「没收到消息」与
+    // 「消息没发出去」在事后看起来一模一样 —— 这条链反复强调的一件事。
+    if (triage) {
+      console.log(`[驱动] 分诊：${triage.total} 处失败 —— 需人 ${triage.needsHumanCount} 处`
+        + `${triage.needsHuman.length ? `（${triage.needsHuman.map((r) => `${r.key}@${r.plan.cause}`).join('、')}）` : ''}`
+        + `；不需要人 ${triage.silentCount} 处`
+        + `${triage.silent.length ? `（${triage.silent.map((r) => `${r.key}@${r.plan.cause}`).join('、')}）` : ''}`);
+    }
+    if (triage && triage.needsHumanCount === 0) {
+      // 整批都不需要人 ⇒ **不发打扰**。仍然留一行日志说明为什么没发（供事后核对）。
+      console.log(`[驱动] 没发提醒：${triage.total} 处失败全都落在「已知、不需要人」里`
+        + `（${triage.silent.map((r) => `${r.key}@${r.plan.cause}`).join('、')}）。`);
+    } else if (alertDispatch.action !== 'off') {
       dispatchRoundAlert({
         alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight, willResume: args.willResume }),
         dispatch: alertDispatch, logDir: path.relative(REPO_ROOT, logRoot),

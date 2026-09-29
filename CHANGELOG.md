@@ -15,7 +15,83 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
-## [1.7.5] - 2026-09-27
+## [1.7.6] - 2026-09-28
+
+起因是用户复盘出这条链的**真实长期成本**：日报每天要跑，而「每天要跑通都得我多轮对话」——
+维护本身在持续消耗注意力。第一性原理拆解后把成本定位在一处：**失败只留符号、不留事实**。
+崩溃报的是 `action-row-hidden`（一个符号），人要弄清「当时页面到底长什么样」只能靠对话一轮轮问回去。
+自进化需要三条硬前提 —— 可感知 / 可判定 / 可收敛；本仓当时只有「可判定」（第 11 步独立回读），另两条全缺。
+本版补上前两条，**不改 11 步链的任何失败语义**（退出码、`failedStage`、既有告警触发条件一律不动）。
+
+### 改了什么
+
+**一、失败现场感知层（补「可感知」）**
+
+- 新增 `skills/sycm-alimama-daily-report/scripts/failure-perception.mjs`：**零 import、依赖全部注入**，
+  因此不产生 skills→runtime 依赖边、无需登记。导出 `FAILURE_STATE_EXPRESSION`（在页面里取现场的 IIFE，
+  每一项都套 `safe()` 包装，取不到的那项退化为 `null` 而不中断整体）、`captureFailureState`（**永不抛**）、
+  `renderFailureStateText`（人读版）。
+- 取的事实：页面 title/url、**viewport**（冷启动小窗的直接判据）、可见文本、
+  **遮挡层**（`wrapper_dlg_*` 一族，带 z-index 与 rect）、**可见按钮/链接及其矩形**（「入口在哪」的答案）、
+  DOM 摘要（标签计数＋主容器）、表格尺寸。
+- 产物三个：`98-failure-state.json`（给机器/下次执行用）、`98-failure-state.txt`（给人 30 秒看懂）、
+  `98-failure-page.png`（截图；截图本身失败只降级，不影响前两个）。
+- 接线 `run-multi-shop-day.mjs` 的失败 catch 块，**放在 `recoverFailedShop` 之前** ——
+  顺序是关键，回位会导航走页面、现场就没了。失败语义一个字没改：不写 `failedStage`、不改退出码、
+  不进告警，只追加 `record.perception` 与两个产物文件。
+
+**二、错误分诊表（补「可收敛」）**
+
+- 新增 `skills/sycm-alimama-daily-report/scripts/remediation-table.mjs`（同样零 import、纯数据＋纯函数）：
+  - 动作闭集 `REMEDIATION_ACTIONS = ['RETRY_STAGE','RETRY_WITH_SETTLE','HUMAN']`；
+  - `REMEDIATION_TABLE`：键＝`FAILURE_CAUSES`（7 个成因），每项含 `action`/`notifyLevel`(`silent`|`human`)/`why`/`verify`。
+    **`DUPLICATE_TARGET` 是唯一 `notifyLevel='silent'`**（同日重复行＝被去重闸门正确拦下，不是故障）；
+    其余全是 `human`；`STAGE_FAILED` 作兜底安全基座；
+  - `lookupRemediation(cause)` **永不抛**，未登记的成因 **fail-closed 落 `HUMAN`**（⇒ 新问题一定到人）；
+  - `triageFailures(failed)` → `{silent, needsHuman, total, silentCount, needsHumanCount}`；
+  - `validateRemediationTable(table)` 校验动作名/`notifyLevel`/缺 `why`·`verify`。
+- **互锁**：表键被 `remediation-table.test.mjs` 第 1 条钉在从 `run-multi-shop-day.mjs` 导入的 `FAILURE_CAUSES` 上
+  （断言逐字相等），防枚举漂移。
+- 接线 `run-multi-shop-day.mjs` 告警决策路径：失败时先 `triageFailures(...)`，新增闸门
+  `if (triage && triage.needsHumanCount === 0)` ⇒ **整轮失败全落在 `silent` 里时不发告警**（只打印一行分诊）。
+
+**三、修掉一个「证据不全被当成失败」的判据**
+
+- 新增 `SCREENSHOT_INCOMPLETE_EXIT_CODE = 4`（`readback-daily-report.mjs`）：CDP 截图缺失不再退 1
+  （＝真故障），而与「数据已验证、仅证据不完整」区分；`run-multi-shop-day.mjs` 收到 4 时记
+  `evidenceIncomplete` 并**继续按成功收尾**。起因是 09-27 那轮盖文淘宝在 `readback` 退 1，
+  而独立复跑同命令 exit 0、数据面完全无误 —— 失败纯粹来自证据收集的稳定性。
+
+**四、店铺浏览器窗口尺寸（缓解冷启动布局不稳）**
+
+- `runtime/browser-ports.mjs` 新增 `SHOP_BROWSER_WINDOW_SIZE='--window-size=1528,732'` 并塞进
+  `SHOP_BROWSER_EXTRA_ARGS`：**只影响 5 个店铺 profile**，两条链浏览器的 argv 逐字节不变。
+  起因是 09-27 首次七实例全冷启动那轮，五店实测视口极不稳定（1178x460 / 950x442 / 1528x732 混杂，
+  而 `buildBrowserLaunchArgs` 从不传 `--window-size`）。**注意：这不是那一轮的完整解释**
+  （盖文天猫视口正常却仍失败）——站得住的判据是「冷启动后页面布局在点击那一刻仍在动」。
+
+**五、取件入口要求二次一致采样**
+
+- `collect-promotion-report.mjs` 的取件入口从「单次采样」改成 `locateEntry/locateEntryRetry`，
+  要求**两次一致采样**（`ENTRY_RESTABILIZE_MS=400`、`ENTRY_LOCATE_ATTEMPTS=4`），全败才抛且带两次采样文本。
+  起因是 `promotion-fetch` 报操作行 `display:none` —— 该路径原本只采样一次、没有二次稳定判据。
+
+### 验证
+
+- `failure-perception.test.mjs` **9/9**（三分支：全成功／部分失败／全失败 ＋ 永不抛 ＋ 不静默空 ＋
+  `about:blank` 跳过 ＋ 写盘失败）；`remediation-table.test.mjs` **12/12**；
+  `run-multi-shop-day.test.mjs` **62/62**（新增 1 条接线守卫 ＋ 2 条行为用例）；
+  该技能全套 **321/321**；`node --check` 全通过。
+- **两处突变验证都真咬**：删掉表里的 `DUPLICATE_TARGET` ⇒ 报「表里缺：DUPLICATE_TARGET」；
+  把闸门条件 `triage.needsHumanCount === 0` 改成 `false` ⇒ 用例 60 红，还原后 62/62。
+- **假 DOM 实测**：表达式在模拟页面里正确取出 viewport 1178x460、遮挡层 z=99999、按钮 rect 796,0,45x26。
+- **真机判据（09-28 16:04 那次重跑，仍属 1.7.5 代码）**：三处修复（窗口尺寸 ＋ 二次采样 ＋ 截图退 4）
+  已在真跑里被考到并生效 —— 09-27 失败的三个形态（里可林＋盖文天猫 `action-row-hidden`、
+  科塔视口外按钮）本轮全部通过，五店 0/5 → 3/5。
+- **本版新增的两层（感知层＋分诊表）只跑到离线判据**：未真机跑（五店浏览器当时已全部释放，
+  未经许可不起停任何进程）。⇒ 它们下一次定时跑的失败现场产物，是第一次真机被考。
+
+
 
 起因是 **商品数据统一入口（`scripts/run-product-data-job.mjs`）首次真机执行连跑四轮、飞书零写入**。
 第一轮是入口自己的接线错（`--downloads` 指到证据目录，而五店浏览器真实下载目录是
