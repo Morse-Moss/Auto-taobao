@@ -62,6 +62,7 @@ function parseArgs(argv) {
     dateInput: 'yesterday', batchSize: null, shops: null, commit: false, keepGoing: false,
     allowMissingPeer: false, notify: false, notifyPrint: false, logs: null, print: false,
     autoRepair: false, autoRepairMaxRounds: null,
+    deferAgentActionableAlert: false,
     release: true, help: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -74,6 +75,10 @@ function parseArgs(argv) {
     else if (arg === '--notify-print') options.notifyPrint = true;
     else if (arg === '--no-release') options.release = false;
     else if (arg === '--auto-repair') options.autoRepair = true;
+    // ⑨b（2026-09-29）：分批形态下**必须转发**，否则这个开关在「跑完释放」的生产形态里
+    // 被静默丢掉 —— 与 `--auto-repair` 同一个坑（命令行给了它、每一批的链却都没生效，
+    // 日志里一个字都不提示）。
+    else if (arg === '--defer-agent-actionable-alert') options.deferAgentActionableAlert = true;
     else if (arg === '--auto-repair-max-rounds') {
       const raw = argv[++i];
       const n = Number(raw);
@@ -91,7 +96,7 @@ function parseArgs(argv) {
       return {
         error: `未知参数 ${arg}（可用：--print --commit --no-release --batch-size N --date <日> `
           + '--shops a,b --keep-going --allow-missing-peer --auto-repair --auto-repair-max-rounds N '
-          + '--notify|--notify-print --logs <目录>）',
+          + '--defer-agent-actionable-alert --notify|--notify-print --logs <目录>）',
       };
     }
   }
@@ -114,6 +119,8 @@ function chainArgsFor(options) {
   // 「跑完释放」的生产形态里被静默丢掉 —— 症状是「命令行给了它、每一批的链却都没自修」，
   // 而日志里一个字都不会提示（`run-daily-job.mjs` 收下它、批次驱动不认它）。
   if (options.autoRepair) args.push('--auto-repair');
+  // ⑨b：同 `--auto-repair` 的理由 —— 不转发就等于「给了它、每批都没生效」。
+  if (options.deferAgentActionableAlert) args.push('--defer-agent-actionable-alert');
   if (options.autoRepairMaxRounds !== null && options.autoRepairMaxRounds !== undefined) {
     args.push('--auto-repair-max-rounds', String(options.autoRepairMaxRounds));
   }

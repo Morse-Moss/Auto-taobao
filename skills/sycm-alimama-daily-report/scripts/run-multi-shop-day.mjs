@@ -99,6 +99,10 @@ import { captureFailureState } from './failure-perception.mjs';
 // **它的键被互锁钉在 `FAILURE_CAUSES` 上**（见 remediation-table.test.mjs 第 1 条），
 // 所以这里 import 它不会引入第二套分类。
 import { triageFailures } from './remediation-table.mjs';
+// ⑨b（2026-09-29）：告警闸门要问「这一家该不该先交给 agent」，判据必须与派单**同源**，
+// 不许在这里另写一份「哪些成因算 agent 的活」—— 两份判据漂开的那天，
+// 会出现「派单说交给 agent、告警说快叫人」这种自相矛盾，而两边都各自看起来正常。
+import { classifyShopEscalation } from '../../../runtime/escalation-plan.mjs';
 // 「失败 → 该试哪些修复动作」的候选菜单（2026-09-29）。它把感知层的事实与分诊表的方向
 // 合成一份**给 agent 看的修复请求单**（97-repair-request.json）：
 //   分诊表说「这一类值得重试」，但没说「重试之前要对页面做什么」；本模块补上那一半。
@@ -337,6 +341,44 @@ export function roundFailureSummary(summary = {}, { loginPreflight = null } = {}
     any: roundBlocked || failed.length > 0, total: entries.length };
   if (loginPreflight === null || loginPreflight === undefined) return view;
   return { ...view, login: normalizeLoginPreflight(loginPreflight) };
+}
+
+/**
+ * 告警闸门的第二道（2026-09-29，⑨b）：**「先让 agent 试一下，再叫人」**。
+ *
+ * 背景（三层降级的第②层一直被跳过）：
+ *   用户口径是「脚本修不动 ⇒ 唤醒修复 agent ⇒ agent 也修不动才发飞书」。
+ *   可链级告警原先由本文件**直接**发飞书，完全不问「这一家其实该先交给 agent」——
+ *   于是第②层在真跑里从没被执行过，第③层（叫人）被提前执行。
+ *   脚本自己没有 `Agent` 工具（唤不醒 agent，那是会话侧的事），所以「派 agent」这一步
+ *   不可能在这里真的做掉；**能做、也是真正断掉的那一截**是：别在这一刻叫人，
+ *   而是把派单落盘、把「这一轮交给 agent 了」这个意图如实说出来。
+ *
+ * 判据（fail-closed，只有整批都够格才拦）：
+ *   · 只看 `failed` 里每一家经 `classifyShopEscalation` 是否 actionable；
+ *   · **只要有一家「只能人上」**（登录掉了、权限不足、无候选可修）⇒ 照旧叫人，
+ *     并把那一家的店名带出来 —— 半批能救不是「都不用叫人」的理由；
+ *   · 全批都够格 ⇒ 不发飞书，返回派单（调用方落盘）。
+ *
+ * 为什么不是「把 actionable 的挑出来不发、剩下的照发」：那样会出现
+ * 「同一轮里有些店悄悄进了 agent 队列、人只看到另一部分」—— 事后核对时
+ * 「这半批去哪了」无从回答。整批进 / 整批出，是一句能写进收据的话。
+ *
+ * @returns {{defer: boolean, targets: object[], humanOnly: string[]}}
+ */
+export function planAlertDeferral({ summary = {}, summaryPath = null, loginPreflight = null, enabled = false } = {}) {
+  const view = roundFailureSummary(summary, { loginPreflight });
+  if (!enabled || !view.any) return { defer: false, targets: [], humanOnly: [] };
+  const targets = [];
+  const humanOnly = [];
+  for (const { key, record } of view.failed) {
+    const target = classifyShopEscalation({ shop: key, record, summaryPath });
+    if (target) targets.push(target);
+    else humanOnly.push(key);
+  }
+  // 整批失败都必须够格；`targets` 为空（一家都不够格）也不 defer —— 那正是「叫人」的场合。
+  const defer = targets.length > 0 && humanOnly.length === 0;
+  return { defer, targets: defer ? targets : [], humanOnly };
 }
 
 /**
@@ -683,7 +725,8 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
     stopOnFirstFailure: false,
     only: null, logs: null, downloads: null, shopXlsx: null, promotionZip: null,
     allowMissingPeer: false, notify: false, notifyPrint: false, loginPreflight: null, willResume: false,
-    autoRepair: false, autoRepairMaxRounds: DEFAULT_AUTO_REPAIR_MAX_ROUNDS };
+    autoRepair: false, autoRepairMaxRounds: DEFAULT_AUTO_REPAIR_MAX_ROUNDS,
+    deferAgentActionableAlert: false };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     // 原样收下，出了循环再解析（`--date yesterday` 要用「这一刻」的时钟算，只算一次）。
@@ -724,6 +767,17 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
       }
       args.autoRepairMaxRounds = value;
     }
+    // 2026-09-29 加：**「先让 agent 试一下，再叫人」**——把「三层降级」的第②层接进告警闸门。
+    //
+    // 为什么默认关：它改变的是「这一轮要不要打扰人」，属于行为口径，不是一个修复动作。
+    // 而且它只有配合**会话侧的派单**才有意义（脚本自己没有 `Agent` 工具，唤不醒 agent）。
+    // 所以默认保持原样（有需要人的失败就叫人），要它得显式给 —— 与会话侧约定好再开。
+    //
+    // 它做什么：把失败店按 `classifyShopEscalation`（`runtime/escalation-plan.mjs`，
+    // **与派单同一份判据**）分成「agent 能救」与「只能人上」两堆。**只有全部失败店
+    // 都落在「agent 能救」时**才不发飞书，并把派单落成 `escalation-handoff.json`；
+    // 只要有一家只能人上，照旧发、且文案里仍然点名到店（fail-closed）。
+    else if (key === '--defer-agent-actionable-alert') args.deferAgentActionableAlert = true;
     else if (key === '--only') args.only = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
     else if (key === '--logs') args.logs = argv[++i];
     // 跑前登录态结论（`check-login-shops.mjs --json` 写出来的那个文件）。**只在给的时候读**：
@@ -1172,6 +1226,30 @@ export function probeSyncSpawnSanity({ spawn = spawnSync, node = NODE } = {}) {
 export const DEFAULT_AUTO_REPAIR_MAX_ROUNDS = 1;
 
 /**
+ * 把候选动作归一成**动作名字符串**。
+ *
+ * 为什么需要（2026-09-29 实测，`--auto-repair` 整条路径是死的）：
+ * `planRepair()` 给的候选是**对象** `{ action, mutating, why }`（契约见 repair-actions.mjs 的
+ * `candidates:Array<{action:string,mutating:boolean,why:string}>`），而执行层 `applyRepairAction`
+ * 拿的是**动作名**去比 `=== 'DISMISS_OVERLAYS'` 这类字面量。原代码 `const action = list[0]`
+ * 直接把对象传下去 ⇒ 四路 `===` 全落空 ⇒ 抛 `没有实现的动作：[object Object]`，
+ * 五家店都「试了 1 轮、applied=false」，等于**零修复动作真正执行过**。
+ *
+ * 为什么用例当时全绿：`run-multi-shop-day.test.mjs` 传的是**字符串数组**
+ * `candidates: ['DISMISS_OVERLAYS','RELOAD_PAGE']`，生产传的是对象数组
+ * —— 又一次「函数级全绿 ≠ 接线接上了」。所以这一层**同时接受两种形状**（老调用方与离线夹具
+ * 都还能用），并把「形状不对」当场炸出来，而不是留给 `===` 静默落空。
+ */
+export function actionNameOf(candidate) {
+  if (typeof candidate === 'string') return candidate;
+  if (candidate && typeof candidate === 'object' && typeof candidate.action === 'string') {
+    return candidate.action;
+  }
+  throw new Error(`修复候选既不是动作名也不是候选对象：${JSON.stringify(candidate)}`
+    + ' —— 不猜动作；这条一旦走到就是接线漏了');
+}
+
+/**
  * 按修复请求单**执行一个候选动作**（只执行，不判断、不重试）。
  *
  * 为什么单独抽成一层：判断（挑哪个候选、值不值得修）是 agent 的事，
@@ -1183,9 +1261,10 @@ export const DEFAULT_AUTO_REPAIR_MAX_ROUNDS = 1;
  * 但 `repair-shop-stage.mjs` 是 skills 侧另一个文件，直接 import 会引入
  * skills→skills 的隐式依赖；所以这里**只接受注入的 `exec`**，默认由调用方给。
  *
- * 永不抛：修复本身失败不该改变「主线已经失败」这个事实。
+ * 永不抛：修复本身失败不该改变「主线已经失败」这个事实。**唯一的例外**是候选形状不合法
+ * ——那不是「修没修成」，而是「根本传错了」，静默吞掉它正是这次故障的成因。
  *
- * @param {{req:object, candidates:string[], exec:Function, log:Function}} o
+ * @param {{req:object, candidates:Array<string|{action:string}>, exec:Function, log:Function}} o
  * @returns {Promise<object>} {attempted, action, applied, detail, error}
  */
 export async function executeRepairCandidate({ req, candidates, exec, log = () => {} }) {
@@ -1200,7 +1279,8 @@ export async function executeRepairCandidate({ req, candidates, exec, log = () =
     result.error = '没有注入 exec（无法执行修复动作）—— 这一支不会被走到，走到就是接线漏了';
     return result;
   }
-  const action = list[0];
+  // 归一成动作名（认对象与字符串两种形状）。形状不合法直接抛——见函数注释。
+  const action = actionNameOf(list[0]);
   result.attempted = true;
   result.action = action;
   try {
@@ -1214,6 +1294,10 @@ export async function executeRepairCandidate({ req, candidates, exec, log = () =
     result.applied = out?.applied ?? null;
     result.detail = out?.detail ?? null;
     result.exitCode = out?.exitCode ?? null;
+    // 动作自己炸了（`applyRepairAction` 把异常收进 `error` 而不是抛）与
+    // 「动作执行了但没落地」是两件不同的事 —— 原先它们在 summary 里长得一样
+    // （都只是 `applied=false`），排查时要重新去猜。如实转出来。
+    result.error = out?.error ?? null;
   } catch (error) {
     // 修复失败**不抛**：主线已经是失败态，再抛一次只会把失败原因换成修复的原因。
     result.error = String(error?.message ?? error);
@@ -1277,7 +1361,16 @@ export async function autoRepairAndRetry({ shopKey, logDir, req, maxRounds = DEF
       entry.detail = attempt.detail;
       entry.error = attempt.error;
       // 用掉就**从候选里摘掉**（纪律②）：不论成功失败，同一个动作不试第二遍。
-      if (attempt.action) remaining.splice(remaining.indexOf(attempt.action), 1);
+      //
+      // ⚠️ 必须按**动作名**找下标，不能 `remaining.indexOf(attempt.action)`：
+      // `remaining` 里的元素是**对象**（`planRepair` 的契约），拿字符串去 indexOf 永远得 -1
+      // ⇒ `splice(-1,1)` 摘掉的是**最后一个候选**，而刚试过的那个还留在队列里
+      // ⇒ 同一个动作会被反复试到 maxRounds 用完。2026-09-29 实测到的正是这个形态
+      // （候选是对象数组，`attempt.action` 却是字符串）。按名字找，两种形状都对。
+      if (attempt.action) {
+        const index = remaining.findIndex((item) => actionNameOf(item) === attempt.action);
+        if (index >= 0) remaining.splice(index, 1);
+      }
       if (attempt.attempted && attempt.applied !== true) {
         // 动作没能落地（页面认不出来／重载超时）⇒ 换下一个候选，不重试阶段。
         // 在「没修成」的前提下重试阶段 = 原样再来一遍，那正是这条回环要消灭的东西。
@@ -1303,8 +1396,14 @@ export async function autoRepairAndRetry({ shopKey, logDir, req, maxRounds = DEF
       }
     }
     if (!trace.gaveUp) {
-      trace.gaveUp = remaining.length
-        ? `用完 ${maxRounds} 轮（候选还剩 ${remaining.join('、')}）`
+      // 候选在 `remaining` 里可能是**对象**（`planRepair` 的契约）。直接 `join` 会印出
+      // `[object Object]` —— 2026-09-29 那轮的生产收据就是这样，读的人看不出还剩哪个动作没试。
+      // 这里统一取动作名。
+      const names = remaining.map((item) => {
+        try { return actionNameOf(item); } catch { return JSON.stringify(item); }
+      });
+      trace.gaveUp = names.length
+        ? `用完 ${maxRounds} 轮（候选还剩 ${names.join('、')}）`
         : '候选动作已全部试过';
     }
     return trace;
@@ -1682,6 +1781,12 @@ async function main() {
     ? triageFailures(roundFailureSummary(summary, { loginPreflight }).failed)
     : null;
 
+  // ⑨b：告警闸门的第二道 —— 「先让 agent 试一下，再叫人」（默认关，见 parseArgs 里那条注释）。
+  // 「需要人」的那一档才问这个；整批已知不需要人时，上面那一支已经处理掉了。
+  const deferral = planAlertDeferral({
+    summary, summaryPath, loginPreflight, enabled: args.deferAgentActionableAlert,
+  });
+
   if (anyFailed) {
     process.exitCode = 1;
     // 如实打印分诊结论（无论发不发告警都要有这一行）：否则「没收到消息」与
@@ -1696,6 +1801,20 @@ async function main() {
       // 整批都不需要人 ⇒ **不发打扰**。仍然留一行日志说明为什么没发（供事后核对）。
       console.log(`[驱动] 没发提醒：${triage.total} 处失败全都落在「已知、不需要人」里`
         + `（${triage.silent.map((r) => `${r.key}@${r.plan.cause}`).join('、')}）。`);
+    } else if (deferral.defer) {
+      // ⑨b：这一整批失败都「agent 能救」。此刻叫人 = 跳过了三层降级的第②层。
+      // 不发飞书，改把派单落盘（会话侧照着它派后台修复 agent）。
+      const handoffPath = path.join(logRoot, 'escalation-handoff.json');
+      writeFileSync(handoffPath, `${JSON.stringify({
+        date: args.date, createdAt: new Date().toISOString(),
+        note: '链级告警被闸门拦下：本批失败全部「agent 能救」⇒ 先派修复 agent，不先叫人。',
+        escalatedBy: 'run-multi-shop-day.mjs --defer-agent-actionable-alert', targets: deferral.targets,
+      }, null, 2)}\n`, 'utf8');
+      console.log(`[驱动] 没发提醒：${deferral.targets.length} 处失败全都「agent 能救」`
+        + `（${deferral.targets.map((t) => `${t.shop}@${t.cause ?? '?'}`).join('、')}）`
+        + ` ⇒ 按三层降级的第②层交给修复 agent，不先叫人。`);
+      console.log(`[驱动] 派单已落盘：${path.relative(REPO_ROOT, handoffPath)}`
+        + '（会话侧照它派后台修复 agent；agent 也修不动才发飞书）');
     } else if (alertDispatch.action !== 'off') {
       dispatchRoundAlert({
         alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight, willResume: args.willResume }),

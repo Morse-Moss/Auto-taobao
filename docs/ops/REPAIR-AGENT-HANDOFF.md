@@ -24,6 +24,26 @@
 4. 「没登记修复的成因」不该出现 —— 遇到就驻留等 agent/人，而不是直接放弃。
 5. 权限：只读现场 + **允许改仓库代码**修根因；**全过程必须可回溯**。
 
+### 第 2 层是怎么接上的（2026-09-29，⑨b）
+
+第 2 层原先**在真跑里从没被执行过**：链级告警由 `run-multi-shop-day.mjs` 直接发飞书，
+从不问「这一家该不该先交给 agent」，于是第 3 层（叫人）被提前执行。
+
+硬事实：脚本是 shell/Node 子进程，**没有 `Agent` 工具，唤不醒 agent** ——
+能把 agent 叫起来的只有 WorkBuddy 会话（定时任务本身就是）。所以这一层拆成两截：
+
+- **脚本侧（已接上）**：链在发飞书之前过一道闸门。给 `--defer-agent-actionable-alert` 时，
+  把失败店按 `classifyShopEscalation`（`runtime/escalation-plan.mjs`，**与派单同一份判据**）
+  分成「agent 能救」与「只能人上」两堆：
+  - **只有整批失败都「agent 能救」** ⇒ 不发飞书，改把派单写进
+    `evidence/batches-<日>/b<n>/escalation-handoff.json`（不分批则写在 `multi-shop-<日>/` 下）；
+  - **只要有一家「只能人上」**（登录掉了、权限不足）⇒ 照旧发飞书且点名到店（fail-closed）。
+  - 半批进 agent 队列、人只看到另一半，是事后无从回答的形态 ⇒ **整批进 / 整批出**。
+  - 默认关：它改变的是「要不要打扰人」，属于口径决定（脚本侧口令见下面的触发条件）。
+- **会话侧（你的活）**：会话跑完命令后读**两处**——先看那份 `escalation-handoff.json`，
+  没有再跑 `node runtime/escalation-plan.mjs --date <目标日> --json`，
+  `needsAgent=true` 就照 `handoff` 那句派一个后台修复 agent。
+
 ## 触发条件（脚本侧判据，会话侧照读）
 
 跑 `node scripts/run-daily-job.mjs --date yesterday --batches 5 --notify` 之后，
@@ -32,6 +52,12 @@
 - `evidence/multi-shop-<目标日>/summary.json` 里有店 `status !== 'ok'`；且
 - 该店的 `autoRepair.gaveUp` 非空（脚本自己修过但没救回来），**或** `repairRequest.candidates` 为空
   （成因没登记修法）。
+
+**更快的一条**（脚本已经替你判过）：若那一轮的日志里有
+「派单已落盘：…/escalation-handoff.json」，直接读那份 JSON 的 `targets[]` ——
+那是脚本按**同一份判据**筛出来的、且已经确认「整批都够格交给 agent」的名单。
+注意：这两条判据同源但**触发条件不同** —— `escalation-handoff.json` 只在给了
+`--defer-agent-actionable-alert` 且整批都够格时才出现；没给这个开关时仍按上面那两条自己判。
 
 ## 修复 agent 该做什么（按顺序）
 

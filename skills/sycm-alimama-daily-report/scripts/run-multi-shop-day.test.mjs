@@ -11,7 +11,7 @@ import { triageFailures } from './remediation-table.mjs';
 import { planRepair } from './repair-actions.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
-import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
+import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -413,6 +413,81 @@ test('驱动：每个阶段都有面向人的中文名（告警正文里不许�
     assert.equal(/[A-Za-z_]/u.test(label), false, `${stage} 的中文名里不该出现英文或下划线：${label}`);
   }
   assert.throws(() => stageLabelOf('new-stage'), /没有面向人的中文名/u);
+});
+
+// --- ⑨b：告警闸门「先让 agent 试一下，再叫人」（2026-09-29 补）-------------------
+//
+// 三层降级的第②层（唤醒修复 agent）原先在真跑里被跳过：链级告警由本文件**直接**发飞书，
+// 从不问「这一家该不该先交给 agent」。下面这组钉住「谁拦、谁不拦」的边界。
+//
+// 关键的安全方向：**只有整批失败都够格交给 agent 时才不发飞书**；只要有一家只能人上，
+// 照旧叫人（fail-closed）—— 否则会出现「半批悄悄进了 agent 队列、人只看到另一半」。
+const agentActionableRecord = () => ({
+  status: 'failed', failedStage: 'shop-report', stages: [],
+  repairRequest: {
+    cause: 'STAGE_FAILED',
+    candidates: [{ action: 'REAPPLY_DATES', mutating: true, why: '日期被回位重置' }],
+    statePath: 'evidence/x/98-failure-state.json',
+  },
+  autoRepair: { gaveUp: '用完 1 轮（候选还剩 RELOAD_PAGE）' },
+});
+const humanOnlyRecord = () => ({
+  status: 'failed', failedStage: 'health-check', stages: [],
+  repairRequest: { cause: 'NEEDS_LOGIN', candidates: [{ action: 'RELOAD_PAGE', mutating: true, why: 'x' }] },
+});
+
+test('⑨b：默认（不给开关）一个字都不改 —— 有需要人的失败就照旧发告警', () => {
+  const summary = { date: ALERT_DATE, shops: { 里可林淘宝: agentActionableRecord() } };
+  const off = planAlertDeferral({ summary, enabled: false });
+  assert.deepEqual(off, { defer: false, targets: [], humanOnly: [] },
+    '默认必须是「不 defer」：这是一个改变「要不要打扰人」的口径开关，安全方向是保持原样');
+});
+
+test('⑨b：整批失败都「agent 能救」⇒ 拦住告警并给出派单', () => {
+  const summary = { date: ALERT_DATE, shops: { 里可林淘宝: agentActionableRecord(), 网林天猫: agentActionableRecord() } };
+  const on = planAlertDeferral({ summary, enabled: true });
+  assert.equal(on.defer, true);
+  assert.equal(on.targets.length, 2);
+  assert.deepEqual(on.targets.map((t) => t.shop), ['里可林淘宝', '网林天猫']);
+  assert.deepEqual(on.targets[0].candidates, ['REAPPLY_DATES']);
+  assert.equal(on.humanOnly.length, 0);
+});
+
+test('⑨b：只要有一家「只能人上」⇒ 不许拦，整批照旧叫人', () => {
+  // 登录掉了不是 agent 的活（它要的是登录，不是页面动作）。这一家在场 ⇒ 必须叫人。
+  const summary = { date: ALERT_DATE, shops: { 里可林淘宝: agentActionableRecord(), 盖文淘宝: humanOnlyRecord() } };
+  const on = planAlertDeferral({ summary, enabled: true });
+  assert.equal(on.defer, false, '半批能救不是「都不用叫人」的理由');
+  assert.equal(on.humanOnly.includes('盖文淘宝'), true, '要把「只能人上」的店带出来，好写进日志');
+});
+
+test('⑨b：一家都不够格时不 defer（那正是叫人场合，不是「拦下来但没派单」）', () => {
+  const summary = { date: ALERT_DATE, shops: { 盖文淘宝: humanOnlyRecord() } };
+  const on = planAlertDeferral({ summary, enabled: true });
+  assert.equal(on.defer, false);
+  assert.deepEqual(on.targets, []);
+});
+
+test('⑨b：全绿时闸门不参与（没有失败就没有「要不要叫人」这回事）', () => {
+  const on = planAlertDeferral({ summary: { date: ALERT_DATE, shops: { 里可林淘宝: okRecord() } }, enabled: true });
+  assert.equal(on.defer, false);
+});
+
+test('⑨b：整轮被体检拦住（failed 为空、roundBlocked）时不许 defer', () => {
+  // 这一条的形态很容易漏：`view.any` 为真（体检没过），但 `failed` 是**空的**
+  // —— 一家店的失败记录都还没有，因为整轮根本没开跑。
+  // 此时若判成 defer，就等于「把整轮没跑这件事静默吞掉、还假装交给了 agent」，
+  // 而 agent 那边一份派单都收不到（targets 为空）。必须照旧叫人。
+  const summary = { date: ALERT_DATE, round: { healthCheckDaily: { ok: false, blocking: ['TARGET_PAGE_MISSING'] } },
+    shops: { 里可林淘宝: okRecord() } };
+  const on = planAlertDeferral({ summary, enabled: true });
+  assert.equal(on.defer, false, '整轮没跑起来不是「agent 能救」，是「必须叫人」');
+  assert.deepEqual(on.targets, []);
+});
+
+test('⑨b：CLI 开关默认关，给了才开', () => {
+  assert.equal(parseArgs(['--date', DATE], { now: NOW }).deferAgentActionableAlert, false);
+  assert.equal(parseArgs(['--date', DATE, '--defer-agent-actionable-alert'], { now: NOW }).deferAgentActionableAlert, true);
 });
 
 test('驱动：告警说的「第 N 步」与日志文件上的编号对得上', () => {
@@ -1431,6 +1506,87 @@ test('executeRepairCandidate：只试候选里的第一个，而且用 req 的 s
   assert.equal(seen[0].action, 'DISMISS_OVERLAYS', '必须挑第一个 —— 表里的顺序就是「先试哪个」');
   assert.equal(seen[0].shopKey, SHOP);
   assert.equal(seen[0].stage, 'shop-report');
+});
+
+// --- 对象数组形状的接线用例（2026-09-29 补）-----------------------------------
+//
+// 上面那条用例传的是**字符串数组**，而生产传的是 `planRepair()` 给的**对象数组**
+// `[{action, mutating, why}]`。两者形状不同 ⇒ 函数级全绿、生产里四路 `===` 全落空
+// （`run-multi-shop-day.mjs` 原 `const action = list[0]`），`--auto-repair`
+// 整条执行路径是死的，而**没有任何一条用例报红**。
+//
+// 这就是本项目第三次吃「函数级全绿 ≠ 接线接上了」。下面三条的入参**逐字复制生产形状**：
+// 候选用对象、断言「exec 收到的 action 是字符串」，不给「传字符串也能过」留后门。
+test('executeRepairCandidate：候选是对象数组（生产形状）时，exec 收到的必须是动作名', async () => {
+  const seen = [];
+  const out = await executeRepairCandidate({
+    req: { shopKey: SHOP, stage: 'backfill', cause: 'STAGE_FAILED' },
+    // 逐字取自 `planRepair()` 的契约（repair-actions.mjs:116）。
+    candidates: [
+      { action: 'REAPPLY_DATES', mutating: true, why: '日期又被回位重置了' },
+      { action: 'RELOAD_PAGE', mutating: true, why: '页面状态不可信' },
+    ],
+    exec: async (o) => { seen.push(o); return { applied: true }; },
+    log: () => {},
+  });
+  assert.equal(seen.length, 1);
+  assert.equal(typeof seen[0].action, 'string', '动作名传成对象 ⇒ 下游四路 === 全落空');
+  assert.equal(seen[0].action, 'REAPPLY_DATES');
+  assert.equal(out.action, 'REAPPLY_DATES');
+  assert.notEqual(out.action, '[object Object]');
+});
+
+test('executeRepairCandidate：候选形状不合法 ⇒ 当场抛（不猜动作、不静默落空）', async () => {
+  // 「静默落空」正是这次故障的成因：对象被当动作名传下去，下游认不出就抛
+  // `没有实现的动作：[object Object]`，而那已经是**第四层**了，排查要多绕三圈。
+  await assert.rejects(() => executeRepairCandidate({
+    req: { shopKey: SHOP, stage: 'backfill', cause: 'STAGE_FAILED' },
+    candidates: [{ mutating: true, why: '忘了写 action 字段' }],
+    exec: async () => ({ applied: true }),
+    log: () => {},
+  }), /既不是动作名也不是候选对象/u);
+});
+
+test('autoRepairAndRetry：gaveUp 文案不许印 [object Object]（候选没试完时）', async () => {
+  // 09-29 那轮的生产收据里 `gaveUp` 是 `用完 1 轮（候选还剩 [object Object]）` —— 读的人
+  // 看不出还剩哪个动作没试。触发条件是**候选没试完就用完配额**（maxRounds < 候选数），
+  // 所以这条刻意让 maxRounds=1、给 2 个候选：第 1 轮试完就耗尽配额，剩下那个进文案。
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x', maxRounds: 1,
+    req: { shopKey: SHOP, stage: 'backfill', cause: 'STAGE_FAILED', retryStage: 'backfill',
+      candidates: [
+        { action: 'REAPPLY_DATES', mutating: true, why: 'A' },
+        { action: 'RELOAD_PAGE', mutating: true, why: 'B' },
+      ] },
+    runStage: async () => ({ status: 1 }),
+    exec: async () => ({ applied: false }),
+    log: () => {},
+  });
+  assert.equal(trace.gaveUp, '用完 1 轮（候选还剩 RELOAD_PAGE）');
+  assert.ok(!String(trace.gaveUp).includes('[object Object]'),
+    'gaveUp 文案不许印 [object Object]（09-29 那轮的生产收据就是这样）');
+});
+
+test('autoRepairAndRetry：对象候选用掉一个就摘掉一个，同一个动作不试第二遍', async () => {
+  // 原先 `remaining.indexOf(attempt.action)` 拿字符串在**对象数组**里找 ⇒ 恒 -1
+  // ⇒ `splice(-1,1)` 摘掉的是最后一个候选，刚试过的那个还留在队列里
+  // ⇒ 同一个动作被反复试到 maxRounds 用完。这条钉住「按名字摘」。
+  const actions = [];
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x', maxRounds: 3,
+    req: { shopKey: SHOP, stage: 'backfill', cause: 'STAGE_FAILED', retryStage: 'backfill',
+      candidates: [
+        { action: 'REAPPLY_DATES', mutating: true, why: 'A' },
+        { action: 'RELOAD_PAGE', mutating: true, why: 'B' },
+      ] },
+    // 重试永远失败 ⇒ 会把候选一路试完，正好能观察到「每个只试一次」。
+    runStage: async () => ({ status: 1 }),
+    exec: async (o) => { actions.push(o.action); return { applied: true }; },
+    log: () => {},
+  });
+  assert.deepEqual(actions, ['REAPPLY_DATES', 'RELOAD_PAGE'],
+    '两个候选各试一次就没了；出现重复说明摘除按错了下标');
+  assert.equal(trace.gaveUp, '候选动作已全部试过');
 });
 
 test('autoRepairAndRetry：修复表没登记的成因一个字都不动（登录掉了不自动去点登录）', async () => {

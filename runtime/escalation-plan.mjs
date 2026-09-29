@@ -135,6 +135,57 @@ export function mergeSummaries(summaries) {
  * `multi-shop-<日>/summary.json` —— 所以调用方（会话）必须把**实际的** summary 路径给进来。
  * 本函数只看 `summary.shops` 的形状（两种形态一致），不关心它从哪来。
  */
+/**
+ * 单家店：**该不该交给 agent** —— 判据的唯一实现在这里（`buildEscalationPlan` 与
+ * `run-multi-shop-day.mjs` 的告警闸门都调它，不各写一份）。
+ *
+ * 为什么抽出来（2026-09-29，⑨b）：链级告警原先由 `run-multi-shop-day.mjs` 直接发飞书，
+ * **完全不问**「这一家其实该先交给 agent」。于是「三层降级」的第 ② 层在真跑里被跳过、
+ * 第 ③ 层（叫人）被提前执行 —— 脚本建了派单能力，接线没接上。
+ * 抽成纯函数后，告警侧能就着**同一份判据**决定「这家人该不该现在被打扰」。
+ *
+ * 返回 `null`＝不需要 agent（不打扰）；否则返回派单条目（形状与 `plan.targets[]` 一致）。
+ *
+ * @param {{shop:string, record:object, unfixable?:Set<string>, summaryPath?:string|null}} o
+ */
+export function classifyShopEscalation({ shop, record, unfixable = new Set(), summaryPath = null } = {}) {
+  const cause = record?.repairRequest?.cause ?? null;
+  const candidates = record?.repairRequest?.candidates ?? null;
+  const gaveUp = record?.autoRepair?.gaveUp ?? null;
+  const reasons = [];
+  const hasCandidates = Array.isArray(candidates) && candidates.length > 0;
+  const emptyMenu = Array.isArray(candidates) && candidates.length === 0;
+  const agentPreferred = Boolean(cause && AGENT_PREFERRED_CAUSES.includes(cause));
+
+  if (typeof gaveUp === 'string' && gaveUp.trim()) reasons.push(`脚本自修没救回来（${gaveUp}）`);
+  if (emptyMenu) reasons.push('成因没有登记修法（候选菜单为空）');
+  else if (unfixable.has(shop)) reasons.push('脚本自己修不动这一家');
+  // 「现场还能救、只是还没人去救」这一档：有非空候选，但这一轮没有自动修复记录
+  // （`--auto-repair` 未开）⇒ 交给 agent 去试。仅限 AGENT_PREFERRED_CAUSES ——
+  // `NEEDS_LOGIN` 这类有候选也不是 agent 的事（它要的是登录，不是页面动作）。
+  if (hasCandidates && !gaveUp && !record?.autoRepair && agentPreferred) {
+    reasons.push('这一轮没有自动修复记录（--auto-repair 未开或未跑到），现场还没被救过');
+  }
+  // 空菜单在 AGENT_PREFERRED_CAUSES 之外（如 NEEDS_LOGIN / SHOP_FUNC_NO_PERMISSION）
+  // ⇒ 有理由但**不是 agent 的活**：把它标出来让会话别派 agent（交给人）。
+  const agentActionable = hasCandidates || (emptyMenu && agentPreferred);
+  if (reasons.length && agentPreferred && AGENT_REASON[cause]) reasons.push(AGENT_REASON[cause]);
+  if (!reasons.length || !agentActionable) return null;
+  const dir = cardPathFor(record, candidateDirFor(record, summaryPath));
+  return {
+    shop,
+    cause,
+    stage: record?.failedStage ?? null,
+    repairRequestPath: record?.repairRequest?.path ?? null,
+    statePath: record?.repairRequest?.statePath ?? null,
+    screenshotPath: record?.repairRequest?.screenshotPath ?? null,
+    execHint: record?.repairRequest?.execHint ?? null,
+    candidates: (record?.repairRequest?.candidates ?? []).map((c) => c.action),
+    reasons,
+    logDir: dir,
+  };
+}
+
 export function buildEscalationPlan({ summary = {}, summaryPath = null, cardPath = null } = {}) {
   const shops = summary?.shops ?? {};
   const failed = Object.entries(shops)
@@ -144,41 +195,9 @@ export function buildEscalationPlan({ summary = {}, summaryPath = null, cardPath
   const unfixable = new Set(unfixableShopsOf(summary));
   const targets = [];
   for (const { shop, record } of failed) {
-    const cause = record?.repairRequest?.cause ?? null;
-    const candidates = record?.repairRequest?.candidates ?? null;
-    const gaveUp = record?.autoRepair?.gaveUp ?? null;
-    const reasons = [];
-    const hasCandidates = Array.isArray(candidates) && candidates.length > 0;
-    const emptyMenu = Array.isArray(candidates) && candidates.length === 0;
-    const agentPreferred = Boolean(cause && AGENT_PREFERRED_CAUSES.includes(cause));
-
-    if (typeof gaveUp === 'string' && gaveUp.trim()) reasons.push(`脚本自修没救回来（${gaveUp}）`);
-    if (emptyMenu) reasons.push('成因没有登记修法（候选菜单为空）');
-    else if (unfixable.has(shop)) reasons.push('脚本自己修不动这一家');
-    // 「现场还能救、只是还没人去救」这一档：有非空候选，但这一轮没有自动修复记录
-    // （`--auto-repair` 未开）⇒ 交给 agent 去试。仅限 AGENT_PREFERRED_CAUSES ——
-    // `NEEDS_LOGIN` 这类有候选也不是 agent 的事（它要的是登录，不是页面动作）。
-    if (hasCandidates && !gaveUp && !record?.autoRepair && agentPreferred) {
-      reasons.push('这一轮没有自动修复记录（--auto-repair 未开或未跑到），现场还没被救过');
-    }
-    // 空菜单在 AGENT_PREFERRED_CAUSES 之外（如 NEEDS_LOGIN / SHOP_FUNC_NO_PERMISSION）
-    // ⇒ 有理由但**不是 agent 的活**：把它标出来让会话别派 agent（交给人）。
-    const agentActionable = hasCandidates || (emptyMenu && agentPreferred);
-    if (reasons.length && agentPreferred && AGENT_REASON[cause]) reasons.push(AGENT_REASON[cause]);
-    if (!reasons.length || !agentActionable) continue;
-    const dir = cardPathFor(record, candidateDirFor(record, summaryPath));
-    targets.push({
-      shop,
-      cause,
-      stage: record?.failedStage ?? null,
-      repairRequestPath: record?.repairRequest?.path ?? null,
-      statePath: record?.repairRequest?.statePath ?? null,
-      screenshotPath: record?.repairRequest?.screenshotPath ?? null,
-      execHint: record?.repairRequest?.execHint ?? null,
-      candidates: (record?.repairRequest?.candidates ?? []).map((c) => c.action),
-      reasons,
-      logDir: dir,
-    });
+    const verdict = /** @type {any} */ (classifyShopEscalation({ shop, record, unfixable, summaryPath }));
+    if (!verdict) continue;
+    targets.push(verdict);
   }
 
   return {

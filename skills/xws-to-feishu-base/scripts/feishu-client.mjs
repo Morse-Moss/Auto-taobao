@@ -49,6 +49,27 @@ export class FeishuClient {
     }));
   }
 
+  /**
+   * 列出字段的**完整原始条目**（含 `property`，即 SingleSelect 的选项表）。
+   *
+   * 为什么另开一个而不是改 `listFields()`：`listFields()` 的返回形状已被多处断言逐字比对
+   * （多一个 `property` 键就会让那些 `deepEqual` 变红）。这里只给真正需要选项表的调用方用。
+   * 分页照 `listTables`/`listRecords` 的写法 —— 字段数超过 100 时静默截断会让
+   * 「选项表少了几家店」变成一个看不见的缺口。
+   */
+  async listFieldItems() {
+    const items = [];
+    let pageToken;
+    do {
+      const query = new URLSearchParams({ page_size: '100' });
+      if (pageToken) query.set('page_token', pageToken);
+      const data = await this.#request(`/bitable/v1/apps/${this.appToken}/tables/${this.tableId}/fields?${query}`);
+      items.push(...(data.items ?? []));
+      pageToken = data.has_more ? data.page_token : undefined;
+    } while (pageToken);
+    return items;
+  }
+
   // 列出 Base 下的表。目的是让调用方能证明「我读写的 tableId 就是它自称的那张表」，
   // 而不是只信调用方传进来的名字。只读，无副作用。
   async listTables() {

@@ -201,6 +201,9 @@ const CHAIN_FLAGS = Object.freeze({
   // 透传的是调用方的开关而不是一个默认值 —— 它是一条会真的动页面的路径，
   // 什么时候打开应当是**明确说出口的决定**，不能靠这一层替人默认打开。
   autoRepair: '--auto-repair',
+  // ⑨b（2026-09-29 加）：告警闸门「先让 agent 试一下，再叫人」。**默认关**，同 `autoRepair`
+  // 的理由 —— 它改变的是「这一轮要不要打扰人」，属于口径决定，不能由这一层替人默认打开。
+  deferAgentActionableAlert: '--defer-agent-actionable-alert',
   // 由 `buildJobPlan` 按「这一轮会不会转入驻留」自己决定加不加，**不**透传调用方的开关
   // （它不是一个「可选开关」，而是「谁会接手」这件事的结论）。
   willResume: '--will-resume',
@@ -229,6 +232,9 @@ export function buildBatchChainArgs({
   //   而日志里没有任何提示。分批驱动 `scripts/run-batches.mjs` 认这两个开关（已补），
   //   这里负责把调用方的意图转过去 —— 两层都补上，这条链才真的通。
   autoRepair = false, autoRepairMaxRounds = null,
+  // ⑨b（2026-09-29 补）：分批形态也要能转发告警闸门开关。漏接的症状与 `--auto-repair`
+  // 那次完全相同 —— 「命令行给了、run-daily-job 也收下了，但每一批的链都没收到」。
+  deferAgentActionableAlert = false,
 } = {}) {
   const args = ['--date', dateInput, '--batch-size', String(batches)];
   // `--commit` 必须由这里显式给：分批驱动自己的默认是**排练**（不写飞书），
@@ -240,6 +246,7 @@ export function buildBatchChainArgs({
   if (keepGoing) args.push(CHAIN_FLAGS.keepGoing);
   if (allowMissingPeer) args.push(CHAIN_FLAGS.allowMissingPeer);
   if (autoRepair) args.push(CHAIN_FLAGS.autoRepair);
+  if (deferAgentActionableAlert) args.push(CHAIN_FLAGS.deferAgentActionableAlert);
   if (autoRepairMaxRounds !== null && autoRepairMaxRounds !== undefined) {
     // 值与 `chainArgs` 那条路径保持一致：转成字符串再给（`spawn` 拼参数时非字符串会被隐式转换）。
     args.push(CHAIN_VALUED.autoRepairMaxRounds, String(autoRepairMaxRounds));
@@ -287,6 +294,9 @@ export function buildJobPlan(options = {}) {
     // **默认关**（与 `autoLogin` 同一个理由，而且更严：它会真的动页面）。
     // 打开它的调用方等于说「这一轮允许系统自己动手修」，那是必须说出口的决定。
     autoRepair = false, autoRepairMaxRounds = null,
+    // ⑨b（2026-09-29 加）：告警闸门「先让 agent 试一下，再叫人」。**默认关**，
+    // 与 `autoRepair` 同一个理由（改变的是「要不要打扰人」，必须说出口）。
+    deferAgentActionableAlert = false,
     // `autoLogin`（2026-09-23 加）：跑前那一步要不要「掉了就自己登一次」。
     // **默认关**（与「新能力默认关」的既有纪律一致），由宿主显式打开：
     //   `scripts/run-daily-job.mjs` 默认打开（用户 2026-09-23 明确授权自动登录），
@@ -385,7 +395,7 @@ export function buildJobPlan(options = {}) {
       file: JOB_FILES.batchChain,
       args: buildBatchChainArgs({
         dateInput, notify, keepGoing, allowMissingPeer, shops, batches, commit: true,
-        autoRepair, autoRepairMaxRounds,
+        autoRepair, autoRepairMaxRounds, deferAgentActionableAlert,
       }),
       note: `分批跑（每批 ${batches} 家）：起这一批 → 查本批登录 → 挂店铺标识页 → 跑这一批 → 停这一批（**一律释放**）`,
       blocking: true,

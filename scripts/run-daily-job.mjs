@@ -65,7 +65,10 @@ function parseArgs(argv) {
     //     它没有「不打开就会天天坏」的对应事实 —— 不打开只是在失败时维持原样，
     //     而原样正是过去一直以来的行为。所以默认值必须停在这一侧。
     // 要打开就给 `--auto-repair`（可配 `--auto-repair-max-rounds N`）。
-    autoRepair: false, autoRepairMaxRounds: null };
+    autoRepair: false, autoRepairMaxRounds: null,
+    // ⑨b（2026-09-29 加）：告警闸门「先让 agent 试一下，再叫人」。**默认关** ——
+    // 它只有配合会话侧派单才有意义（脚本自己没有 `Agent` 工具），所以要与会话侧约定好再开。
+    deferAgentActionableAlert: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--print') options.print = true;
@@ -77,6 +80,8 @@ function parseArgs(argv) {
     else if (arg === '--no-hold') options.hold = false;
     // 让系统自己按修复请求单修一次再重试（默认关，见上面 autoRepair 的注释）。
     else if (arg === '--auto-repair') options.autoRepair = true;
+    // ⑨b：把「先派 agent、不先叫人」这个意图透传到链（两层都要能收，见 daily-job-plan 的注释）。
+    else if (arg === '--defer-agent-actionable-alert') options.deferAgentActionableAlert = true;
     else if (arg === '--auto-repair-max-rounds') {
       const raw = argv[++i];
       const value = Number(raw);
@@ -98,7 +103,7 @@ function parseArgs(argv) {
       }
       options.batches = value;
     } else if (arg === '--help' || arg === '-h') options.help = true;
-    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-hold --auto-repair --auto-repair-max-rounds --date --shops --only --batches）` };
+    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-hold --auto-repair --auto-repair-max-rounds --defer-agent-actionable-alert --date --shops --only --batches）` };
   }
   return { options };
 }
@@ -150,6 +155,9 @@ async function main(argv) {
       // 而日志里看不出「本该去修却没修」—— 与 `autoLogin` 完全同一种漏接形态。
       autoRepair: options.autoRepair,
       autoRepairMaxRounds: options.autoRepairMaxRounds,
+      // ⑨b：「先派 agent、不先叫人」那一条的**起点**。漏了它同样是静默的：
+      // 链那一步少一个开关、失败时仍直接发飞书，而日志里看不出「本该先交给 agent」。
+      deferAgentActionableAlert: options.deferAgentActionableAlert,
       resolvedDate: date,
     });
   } catch (error) {

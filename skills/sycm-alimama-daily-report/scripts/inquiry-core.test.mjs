@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { classifyInquiryWrite, extractInquiryMetrics, selectDailyStoreRecord } from './inquiry-core.mjs';
+import { classifyInquiryWrite, extractInquiryMetrics, findDailyStoreRow, selectDailyStoreRecord } from './inquiry-core.mjs';
 
 test('extracts the date row and peer average from 当日询单人数', () => {
   const table = {
@@ -51,6 +51,67 @@ test('selects exactly one Feishu row by date and shop', () => {
   assert.equal(selectDailyStoreRecord(records, 1, '盖文天猫').record_id, 'a');
   assert.throws(() => selectDailyStoreRecord([...records, records[0]], 1, '盖文天猫'), /got 2/u);
   assert.throws(() => selectDailyStoreRecord(records, 2, '盖文天猫'), /got 0/u);
+});
+
+// --- findDailyStoreRow：认「店名」与「SingleSelect 选项 id」两种形态 -----------
+//
+// 这一组是 2026-09-29 那次真实故障的回归锁。当时 `mkt_singleselect_option_id` 这一支
+// 在**生产里**是断的（`selectDailyStoreRecord` 只比店名，而表里 09-28 那 12 行存的是
+// `optFFaXJeh`），函数级用例却全绿——因为用例只喂了店名形态的数据。
+// 教训（本项目的第三条）：「函数级全绿 ≠ 接线接上了」。所以下面这条用例
+// **逐字复制生产调用的入参形状**（对象里取 `.record`、以及传入的 optionId 来自选项表），
+// 而不是造一个更宽松的夹具。
+test('findDailyStoreRow 认店名形态，并报出候选数', () => {
+  const records = [
+    { record_id: 'a', fields: { 日期: 1790524800000, 店铺: '盖文天猫' } },
+    { record_id: 'b', fields: { 日期: 1790524800000, 店铺: '盖文淘宝' } },
+  ];
+  const hit = findDailyStoreRow(records, 1790524800000, '盖文天猫');
+  assert.equal(hit.record.record_id, 'a');
+  assert.equal(hit.matchedBy, 'shop-name');
+  assert.equal(hit.candidateCount, 1);
+
+  const miss = findDailyStoreRow(records, 1790524800000, '科塔淘宝');
+  assert.equal(miss.record, null);
+  assert.equal(miss.matchedBy, null);
+  assert.equal(miss.candidateCount, 0);
+});
+
+test('findDailyStoreRow 认选项 id 形态（09-28 那 12 行的真实形态）', () => {
+  // 逐字取自 2026-09-29 OpenAPI 实读：`店铺` = optFFaXJeh，其选项名 = 盖文淘宝。
+  const records = [
+    { record_id: 'reczz28HKFEfqcpo', fields: { 日期: 1790524800000, 店铺: 'optFFaXJeh' } },
+    { record_id: 'reczz28HKFEfoVac', fields: { 日期: 1790524800000, 店铺: 'optIYzOzu2' } },
+  ];
+  // 不传 optionId：行为与修复前逐字相同 —— 匹配不上，如实报 0 个。
+  const blind = findDailyStoreRow(records, 1790524800000, '盖文淘宝');
+  assert.equal(blind.record, null);
+  assert.equal(blind.candidateCount, 0);
+
+  // 传入由字段选项表反查出的 optionId 之后，命中同一行，并写明是靠 id 认出来的。
+  const hit = findDailyStoreRow(records, 1790524800000, '盖文淘宝', { optionId: 'optFFaXJeh' });
+  assert.equal(hit.record.record_id, 'reczz28HKFEfqcpo');
+  assert.equal(hit.matchedBy, 'field-option-id');
+  assert.equal(hit.candidateCount, 1);
+
+  // **别家的 optionId 不许当成本店的 id 用**：这里 `optIYzOzu2` 是「盖文天猫」的选项 id，
+  // 拿它去匹配「盖文淘宝」时，它既不是 `盖文淘宝` 这个店名、也不在 accepted 里
+  // ⇒ 候选数必须是 0（否则就是「按 id 猜店」，会把别家那一行写坏）。
+  // 只用 id 形态的行来验，免得被同名行干扰。
+  const idOnly = [{ record_id: 'x', fields: { 日期: 1790524800000, 店铺: 'optIYzOzu2' } }];
+  const wrong = findDailyStoreRow(idOnly, 1790524800000, '盖文淘宝', { optionId: 'optFFaXJeh' });
+  assert.equal(wrong.candidateCount, 0);
+  assert.equal(wrong.record, null);
+});
+
+test('findDailyStoreRow 同日同店两行时报 2 个候选（不挑一行写）', () => {
+  const records = [
+    { record_id: 'a', fields: { 日期: 7, 店铺: '科塔淘宝' } },
+    { record_id: 'b', fields: { 日期: 7, 店铺: 'optnF3h5i7' } },
+  ];
+  const hit = findDailyStoreRow(records, 7, '科塔淘宝', { optionId: 'optnF3h5i7' });
+  assert.equal(hit.record, null, '两行都算候选 ⇒ 不唯一 ⇒ 不许写');
+  assert.equal(hit.candidateCount, 2);
 });
 
 test('allows only a blank write or an exact idempotent rerun', () => {

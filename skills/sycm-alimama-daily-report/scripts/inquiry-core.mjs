@@ -57,6 +57,36 @@ export function selectDailyStoreRecord(records, reportDateEpoch, shop) {
   return matches[0];
 }
 
+/**
+ * 我方那一行在不在 —— 按「日期 + 店铺」找**唯一**候选，认两种形态。
+ *
+ * 为什么必须有它（2026-09-29 实测，`got 0` 的真因）：
+ * `店铺` 是 SingleSelect（type=3），而 OpenAPI 在这个字段上**会回两种形态** ——
+ * 店名（`"盖文淘宝"`，全表 2185 行）与选项 id（`"optFFaXJeh"`，09-28 那 12 行）。
+ * 原判据只认店名 ⇒ 撞上选项 id 的那一天恒不匹配、报 `got 0`，而人在页面上明明看得见那一行。
+ * 这正是本项目那条老病根「把读不到当成不存在」的又一例。
+ *
+ * 认 id 的正当性不是「为了兼容」，而是它**在字段自己的选项表里唯一**：`optionId` 由
+ * `property.options` 反查（id → name）得出，命中即等于同名。传空/缺省时行为与从前逐字相同。
+ * 绝不猜近似名 —— 猜错会把另一家店的行写坏，且写坏之后从产物上看不出来。
+ *
+ * 候选数必须恰好 1：同日同店出现两行是数据异常，宁可炸掉也不挑一行写。
+ * 找不到时**返回结果对象而不是抛错**，让调用方决定措辞（要区分 0 个与 >1 个）。
+ */
+export function findDailyStoreRow(records, reportDateEpoch, shop, options = {}) {
+  const optionId = options?.optionId ?? null;
+  const accepted = optionId ? [shop, optionId] : [shop];
+  const matches = records.filter(record => Number(record.fields?.['日期']) === reportDateEpoch
+    && accepted.includes(cell(record.fields?.['店铺'])));
+  const only = matches.length === 1 ? matches[0] : null;
+  return {
+    record: only,
+    // 认的是哪种形态 —— 落进产物，让读证据的人不必再猜 optXXX 是哪家店。
+    matchedBy: only === null ? null : (cell(only.fields?.['店铺']) === shop ? 'shop-name' : 'field-option-id'),
+    candidateCount: matches.length,
+  };
+}
+
 export function classifyInquiryWrite(fields, metrics) {
   const inquiry = fields?.['询单量'] ?? null;
   const peerInquiry = fields?.['同层同行询单量'] ?? null;

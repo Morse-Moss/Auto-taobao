@@ -528,6 +528,37 @@ test('分批形态：--auto-repair-max-rounds 带上值时透传（第二跳的 
   assert.match(step.args.join(' '), /--auto-repair-max-rounds 2/u);
 });
 
+// --- ⑨b：告警闸门开关也要走完两跳（2026-09-29 补）------------------------------
+//
+// `--auto-repair` 那次实测断在第二跳（`buildBatchChainArgs` 不认它），症状是
+// 「命令行给了、生产形态下永远不生效」。新开关走的是同一条链，用同一组判据钉住。
+test('分批形态：--defer-agent-actionable-alert 打开时，batch-chain 那一步拿到它', () => {
+  const plan = buildJobPlan({ dateInput: 'yesterday', batches: 5, deferAgentActionableAlert: true, resolvedDate: '2026-09-28', artifactsDir: 'evidence/daily-job-2026-09-28' });
+  const step = plan.steps.find((s) => s.name === 'batch-chain');
+  assert.ok(step, '分批形态必须用 batch-chain 这一步');
+  assert.ok(step.args.includes('--defer-agent-actionable-alert'),
+    `batch-chain 必须拿到 --defer-agent-actionable-alert，实际：${step.args.join(' ')}`);
+});
+
+test('分批形态：不带它时 batch-chain **逐字**不含它（默认不变）', () => {
+  const plan = buildJobPlan({ dateInput: 'yesterday', batches: 5, resolvedDate: '2026-09-28', artifactsDir: 'evidence/daily-job-2026-09-28' });
+  const step = plan.steps.find((s) => s.name === 'batch-chain');
+  assert.doesNotMatch(step.args.join(' '), /--defer-agent-actionable-alert/u, '默认关闭必须在不分批形态之外也成立');
+});
+
+test('第二跳：scripts/run-batches.mjs 认 --defer-agent-actionable-alert 并转发给链（源码判据）', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts', 'run-batches.mjs'), 'utf8');
+  assert.match(src, /arg === '--defer-agent-actionable-alert'/u, 'run-batches 必须接受它');
+  assert.match(src, /if \(options\.deferAgentActionableAlert\) args\.push\('--defer-agent-actionable-alert'\)/u,
+    'run-batches 必须把它转发给链 —— 不转发就是「给了开关、生产形态下每批都没生效」');
+});
+
+test('第三跳：scripts/run-daily-job.mjs 收下它并透传进计划（源码判据）', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts', 'run-daily-job.mjs'), 'utf8');
+  assert.match(src, /arg === '--defer-agent-actionable-alert'/u, 'run-daily-job 必须接受它');
+  assert.match(src, /deferAgentActionableAlert: options\.deferAgentActionableAlert/u, '必须透传进计划');
+});
+
 test('第二跳：scripts/run-batches.mjs 认 --auto-repair 并把它转发给链（源码判据）', () => {
   // 第一跳（plan → run-batches）在上一组里已经用 args 断言过了；
   // 这一条盯第二跳（run-batches → run-multi-shop-day）—— 只改第一跳、第二跳不认它，

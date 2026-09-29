@@ -12,7 +12,7 @@ import { reportDateEpoch } from './daily-report-core.mjs';
 import { buildEnvironment, dirHasEntries, evidenceBaseDir, resolveEvidenceDir } from './daily-report-runtime.mjs';
 import { assertEvidenceShopKey } from './shop-identities.mjs';
 import { assertShopIdentity, sycmShopIdentityExpression } from './collect-core.mjs';
-import { classifyInquiryWrite, extractInquiryMetrics, selectDailyStoreRecord } from './inquiry-core.mjs';
+import { classifyInquiryWrite, extractInquiryMetrics, findDailyStoreRow } from './inquiry-core.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -100,6 +100,36 @@ function withoutInquiryFields(fields) {
   return Object.fromEntries(Object.entries(fields ?? {}).filter(([name]) => !WRITTEN_FIELDS.includes(name)));
 }
 
+// 把某个字段的 `property.options` 读成 id→name 表：**唯一来源是 API**，不在代码里抄第二份。
+//
+// 为什么不塞进 `client.listFields()`：那个方法的返回形状被多处 `deepEqual` 逐字断言，
+// 多带一个 `property` 就会让那些用例变红。`client.listFieldItems()` 是给需要选项表的调用方开的。
+//
+// 这一段要处理「选项列表可能超过一页」——少读一页不会抛错，只会安静地少认几家店。
+async function listFieldOptions(client, fieldName) {
+  const items = await client.listFieldItems();
+  const field = items.find((item) => item.field_name === fieldName);
+  return (field?.property?.options ?? []).filter((option) => option?.id);
+}
+
+/**
+ * 「运营店名」→「SingleSelect 选项 id」。
+ *
+ * 找不到时**返回 null 而不是抛错**：这个函数只服务于「多认一种形态」，
+ * 而旧行为（只认店名）永远是正确的一支。抛错会把一次可降级的匹配失败升级成整轮停摆。
+ * 但两种找不到要分开写日志：**选项表里没有任何同类店名**（判据本身可能过期）
+ * 与 **选项名与店名不同名**（有人改过选项名）——它们的处置完全不同。
+ */
+async function resolveShopOptionId(client, shop) {
+  const options = await listFieldOptions(client, '店铺');
+  const exact = options.filter((option) => option.name === shop);
+  if (exact.length === 1) return exact[0].id;
+  if (exact.length > 1) {
+    throw new Error(`店铺选项里 ${JSON.stringify(shop)} 出现 ${exact.length} 次，选项表本身有重名`);
+  }
+  return null;
+}
+
 // 审计：**这是补上的缺口**（2026-09-17 复盘）。
 //
 // 007 的 CHECK 早就允许 `push | ui-verify | inquiry-backfill` 三个动作，可 appendAudit 只被
@@ -155,8 +185,21 @@ async function main() {
     if (!field || field.type !== type) throw new Error(`unexpected Feishu field ${name}: ${JSON.stringify(field)}`);
   }
 
+  // 「店铺」是 SingleSelect：OpenAPI 在这个字段上**会回店名、也会回选项 id**（2026-09-29 实测，
+  // 09-28 那天整批 12 行是 id 形态）。id 只在字段自己的选项表里唯一，所以必须**从 API 读**这张表，
+  // 而不是在代码里抄一份——抄一份的代价是「选项改名/加店」时判据静默失效。
+  // 读不到就退回只认店名（与修复前逐字相同），不猜。
+  const shopOptionId = await resolveShopOptionId(client, args.shop);
+  console.log(`[店铺] ${JSON.stringify(args.shop)} → 选项 id ${JSON.stringify(shopOptionId)}`
+    + `${shopOptionId ? '' : '（字段选项里没有这个店名；只按店名匹配）'}`);
+
   const epoch = reportDateEpoch(args.reportDate);
-  const before = selectDailyStoreRecord(beforeRecords, epoch, args.shop);
+  const picked = findDailyStoreRow(beforeRecords, epoch, args.shop, { optionId: shopOptionId });
+  if (!picked.record) {
+    // 报错里要带「候选几个」：0 个＝这一天没有我方的行；>1 个＝同日同店出现多行（更该炸）。
+    throw new Error(`expected one Feishu row for ${args.shop} / ${epoch}, got ${picked.candidateCount}`);
+  }
+  const before = picked.record;
   const disposition = classifyInquiryWrite(before.fields, metrics);
   // 降级时只写「询单量」，不碰「同层同行询单量」——让那一格保持空白，而不是写 0 或占位值。
   const values = metrics.peerBenchmark === 'PEER_UNAVAILABLE'
@@ -170,7 +213,10 @@ async function main() {
       identities: { id: BROWSER_IDS.dailyReport, label: BROWSER_LABELS.dailyReport },
     }),
     evidence: { outputDir: args.outputDir, generation: resolved.generation, reason: resolved.reason },
-    target: { appToken: args.appToken, tableId: args.tableId, tableName: table.name, recordId: before.record_id },
+    target: { appToken: args.appToken, tableId: args.tableId, tableName: table.name, recordId: before.record_id,
+      // 认的是店名还是选项 id —— 写进产物。2026-09-29 之前没人记这个，
+      // 于是「表里那行店铺存的是 optXXX」这件事只能靠人肉重读全表才发现。
+      matchedBy: picked.matchedBy, shopOptionId },
     source: { url: source.url, shop: source.sourceShop, column: '当日询单人数',
       dateRow: args.reportDate, benchmarkRow: metrics.peerBenchmark === 'PEER_UNAVAILABLE' ? null : '同行同层均值',
       peerBenchmark: metrics.peerBenchmark, rows: (source.rows ?? []).length },
@@ -216,7 +262,13 @@ async function main() {
     }
   }
   const afterRecords = await client.listRecords();
-  const after = selectDailyStoreRecord(afterRecords, epoch, args.shop);
+  // 回读用**同一个匹配器**（含选项 id 形态）。这里若退回只认店名，
+  // 就会出现「写成功了、回读报 got 0」这种最难查的假红 —— 匹配口径两边必须同一份。
+  const afterPicked = findDailyStoreRow(afterRecords, epoch, args.shop, { optionId: shopOptionId });
+  if (!afterPicked.record) {
+    throw new Error(`回读时找不到那一行 ${args.shop} / ${epoch}，got ${afterPicked.candidateCount}`);
+  }
+  const after = afterPicked.record;
   assert.equal(classifyInquiryWrite(after.fields, metrics), 'ALREADY_VERIFIED');
   assert.equal(after.record_id, before.record_id);
   assert.deepEqual(withoutInquiryFields(after.fields), withoutInquiryFields(before.fields));
@@ -231,7 +283,8 @@ async function main() {
   }
   const receipt = { ...plan, status: 'COMMITTED_AND_VERIFIED',
     writeResponseError,
-    verified: { recordId: after.record_id, unchangedOtherFields: true, values: plan.values } };
+    verified: { recordId: after.record_id, unchangedOtherFields: true, values: plan.values,
+      matchedBy: afterPicked.matchedBy } };
   const receiptPath = path.join(args.outputDir, 'inquiry-backfill-receipt.json');
   writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
   writeFileSync(attemptPath, `${JSON.stringify({ ...receipt, before, source }, null, 2)}\n`, 'utf8');
