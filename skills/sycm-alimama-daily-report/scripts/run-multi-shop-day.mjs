@@ -99,6 +99,12 @@ import { captureFailureState } from './failure-perception.mjs';
 // **它的键被互锁钉在 `FAILURE_CAUSES` 上**（见 remediation-table.test.mjs 第 1 条），
 // 所以这里 import 它不会引入第二套分类。
 import { triageFailures } from './remediation-table.mjs';
+// 「失败 → 该试哪些修复动作」的候选菜单（2026-09-29）。它把感知层的事实与分诊表的方向
+// 合成一份**给 agent 看的修复请求单**（97-repair-request.json）：
+//   分诊表说「这一类值得重试」，但没说「重试之前要对页面做什么」；本模块补上那一半。
+// **它只给候选、不做决定** —— 决定权（挑哪个动作、要不要换下一个）留给 agent。
+// 这也是本模块零 import 的原因：它不依赖链里的任何东西，所以不引入第二套分类。
+import { planRepair } from './repair-actions.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -239,6 +245,77 @@ export function shopFailureCause(record = {}) {
   if (record.failedStage === 'push'
     && /duplicate daily report row exists/u.test(String(record.failureOutput ?? ''))) return 'DUPLICATE_TARGET';
   return 'STAGE_FAILED';
+}
+
+/**
+ * 一次失败 → 一份**修复请求单**（2026-09-29 加）。纯函数 + 一处落盘，永不抛。
+ *
+ * 它是「自进化回环」的中间产物：链接三方 ——
+ *   感知层（`perception.state`：失败那一刻页面长什么样）
+ *   → 修复表（`planRepair`：值得一试的候选动作 + 为什么）
+ *   → agent（读这张单子，挑一个动作交给 `repair-shop-stage.mjs` 执行，然后重试该阶段）。
+ *
+ * 产物 `97-repair-request.json` 里刻意把**三方各自要的东西**都写全：
+ *   · `cause` / `stage` / `error`：给分类与重试定位；
+ *   · `candidates`：agent 的菜单（含 `mutating` 与 `why`）；
+ *   · `statePath` / `stateUrl` / `stateTitle`：指向完整现场事实（单子里只放摘要，不重复 3KB 文本）；
+ *   · `retryStage`：**修完要重试哪一步**。取「失败的那一步」，认不出来就不给（不许猜）。
+ *   · `execHint`：给人/agent 一条可直接照抄的命令（不自作主张执行）。
+ *
+ * **本函数不做任何动作、不改退出码、不进告警**：它只在证据目录里多写一个文件。
+ * 默认不自动执行任何修复 —— 执行由 `--auto-repair`（或外部 agent）显式触发。
+ *
+ * @param {{shopKey:string, stage:string|null, error:string, perception:object|null,
+ *          logDir:string, writeFile?:Function}} o
+ * @returns {object} 请求单（同时已落盘；落盘失败只记 `writeError`，不抛）
+ */
+export function buildRepairRequest({ shopKey, stage = null, error = null, perception = null,
+  logDir, writeFile = writeFileSync } = {}) {
+  // 成因由**同一个分类器**给（`shopFailureCause`）—— 不在这里重判一遍。
+  // 重判就是两套分类，而修复请求单最怕的就是「单子上的成因与告警里的成因不是同一个」。
+  const cause = shopFailureCause({ failedStage: stage, failureOutput: String(error ?? '') });
+  const plan = planRepair({ cause, stage, state: perception?.state ?? null });
+  const request = {
+    at: new Date().toISOString(),
+    shopKey, stage, cause, error: error === null ? null : String(error),
+    // 现场事实落盘的地方（`failure-perception` 写的 98-failure-state.json）——
+    // agent 要判断「怎么修」时必须读的是那一份完整事实，不是这里的摘要。
+    statePath: perception?.files?.stateJson
+      ? path.relative(REPO_ROOT, perception.files.stateJson) : null,
+    stateTextPath: perception?.files?.stateText
+      ? path.relative(REPO_ROOT, perception.files.stateText) : null,
+    screenshotPath: perception?.files?.screenshot
+      ? path.relative(REPO_ROOT, perception.files.screenshot) : null,
+    // 摘要（不在单子里重复完整现场，避免两份事实漂开）：
+    stateSummary: perception?.state
+      ? { url: perception.state.url ?? null, title: perception.state.title ?? null,
+        viewport: perception.state.viewport ?? null,
+        overlayCount: (perception.state.dialogs ?? []).length }
+      : null,
+    candidates: plan.candidates,
+    planNote: plan.note,
+    stageHint: plan.stageHint,
+    // 修完要重试哪一步：失败的那一步。认不出来（stage 为空）就如实置 null，不猜。
+    retryStage: stage ?? null,
+    // 一条可直接照抄的命令（**不自动执行**）。agent 挑好 candidate 后把它填进 --action。
+    execHint: `node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs`
+      + ` --shop ${shopKey} --proxy http://127.0.0.1:${shopInstance(shopKey).proxyPort}`
+      + ` --stage ${stage ?? '<stage>'} --cause ${cause} --action <候选动作>`
+      // logDir 认不出来就**不给 --log-dir**（写 `<stage>` 比写一个像路径的垃圾更诚实，
+      // 也避免调用方把提示当命令直接粘贴执行）。
+      + (logDir ? ` --log-dir ${path.relative(REPO_ROOT, logDir)}` : ''),
+  };
+  if (typeof writeFile === 'function' && logDir) {
+    try {
+      const outPath = path.join(logDir, '97-repair-request.json');
+      writeFile(outPath, `${JSON.stringify(request, null, 2)}\n`, 'utf8');
+      request.path = path.relative(REPO_ROOT, outPath);
+    } catch (err) {
+      // 落盘失败不该改变失败语义（主线已经失败了）—— 如实记，不抛。
+      request.writeError = String(err?.message ?? err);
+    }
+  }
+  return request;
 }
 
 /** 一轮的失败视图（纯函数；`summary` 就是落盘的 summary.json 的形状）。
@@ -605,7 +682,8 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
   const args = { date: null, dateInput: null, shops: null, commit: false, verifyExisting: null, keepGoing: false,
     stopOnFirstFailure: false,
     only: null, logs: null, downloads: null, shopXlsx: null, promotionZip: null,
-    allowMissingPeer: false, notify: false, notifyPrint: false, loginPreflight: null, willResume: false };
+    allowMissingPeer: false, notify: false, notifyPrint: false, loginPreflight: null, willResume: false,
+    autoRepair: false, autoRepairMaxRounds: DEFAULT_AUTO_REPAIR_MAX_ROUNDS };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     // 原样收下，出了循环再解析（`--date yesterday` 要用「这一刻」的时钟算，只算一次）。
@@ -627,6 +705,25 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
     // 默认值已经翻成「一家失败不带走其余」（理由见下面那个 break 处的注释）。
     // `--keep-going` 仍然接受：它是新默认值的显式声明，保留是为了不改既有调用方的命令行。
     else if (key === '--stop-on-first-failure') args.stopOnFirstFailure = true;
+    // 2026-09-29 加：**失败后按「修复请求单」自动修一次再重试该阶段**。
+    //
+    // 为什么默认关：这是一条**会真的动页面**的路径（关弹窗、重载、重新落日期），
+    // 而它接在一条本来就会写飞书的链上。默认开会让「第一次跑就出意外」的概率上升，
+    // 而本项目所有默认值的安全方向都是「先什么都不做」。要它就得显式给。
+    //
+    // 它修什么、不修什么：只做 `REPAIR_TABLE` 里登记过的机械动作（修复动作闭集），
+    // 且**只修不需要人的成因**（`HUMAN_REQUIRED_CAUSES` 一律不碰、直接留给人）。
+    // 挑哪个候选按表里的顺序（表本身就是「先试哪个」的排序）。
+    else if (key === '--auto-repair') args.autoRepair = true;
+    // 一轮里最多自动修几次（防止「修不好 → 重试 → 又失败 → 又修」在原地打转）。
+    // 默认 1：一次修不好就停手交人 —— 修两次还不行说明这条成因不在表里能覆盖的范围内。
+    else if (key === '--auto-repair-max-rounds') {
+      const value = Number(argv[++i]);
+      if (!Number.isInteger(value) || value < 0) {
+        throw new Error('--auto-repair-max-rounds 需要一个非负整数（0 = 关掉自动修复）');
+      }
+      args.autoRepairMaxRounds = value;
+    }
     else if (key === '--only') args.only = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
     else if (key === '--logs') args.logs = argv[++i];
     // 跑前登录态结论（`check-login-shops.mjs --json` 写出来的那个文件）。**只在给的时候读**：
@@ -1068,6 +1165,156 @@ export function probeSyncSpawnSanity({ spawn = spawnSync, node = NODE } = {}) {
   return { blocked, code, detail: result?.error?.message ?? null, line };
 }
 
+/**
+ * 一轮里最多自动修几次。**默认 1**（见 `--auto-repair-max-rounds` 的注释）。
+ * 导出是为了让测试与调用方读同一个数，而不是各自写一遍。
+ */
+export const DEFAULT_AUTO_REPAIR_MAX_ROUNDS = 1;
+
+/**
+ * 按修复请求单**执行一个候选动作**（只执行，不判断、不重试）。
+ *
+ * 为什么单独抽成一层：判断（挑哪个候选、值不值得修）是 agent 的事，
+ * 执行是脚本的事。这一层只做后者，于是它可以在离线测试里被完整断言，
+ * 也可以被 `--auto-repair` 与外部 agent 两条路径共用。
+ *
+ * 执行方式：**在同一个进程里调 `repair-shop-stage.mjs` 的纯函数**，不再 spawn 一次
+ * —— 理由是本项目已经吃过「多一层子进程就多一种静默失败」（EBUSY／.cmd EINVAL）。
+ * 但 `repair-shop-stage.mjs` 是 skills 侧另一个文件，直接 import 会引入
+ * skills→skills 的隐式依赖；所以这里**只接受注入的 `exec`**，默认由调用方给。
+ *
+ * 永不抛：修复本身失败不该改变「主线已经失败」这个事实。
+ *
+ * @param {{req:object, candidates:string[], exec:Function, log:Function}} o
+ * @returns {Promise<object>} {attempted, action, applied, detail, error}
+ */
+export async function executeRepairCandidate({ req, candidates, exec, log = () => {} }) {
+  const result = { attempted: false, action: null, applied: null, detail: null, error: null };
+  const list = Array.isArray(candidates) ? candidates : [];
+  if (!list.length) {
+    // 空候选 = 表里没登记这条成因该怎么修。**如实说「没得修」**，不猜一个动作出来。
+    result.detail = '没有可用的修复动作（成因未登记候选，或全部候选都已试过）';
+    return result;
+  }
+  if (typeof exec !== 'function') {
+    result.error = '没有注入 exec（无法执行修复动作）—— 这一支不会被走到，走到就是接线漏了';
+    return result;
+  }
+  const action = list[0];
+  result.attempted = true;
+  result.action = action;
+  try {
+    const out = await exec({
+      shopKey: req?.shopKey ?? null,
+      stage: req?.stage ?? null,
+      cause: req?.cause ?? null,
+      action,
+      log,
+    });
+    result.applied = out?.applied ?? null;
+    result.detail = out?.detail ?? null;
+    result.exitCode = out?.exitCode ?? null;
+  } catch (error) {
+    // 修复失败**不抛**：主线已经是失败态，再抛一次只会把失败原因换成修复的原因。
+    result.error = String(error?.message ?? error);
+  }
+  return result;
+}
+
+/**
+ * **agent 修复回环**：失败 → 按请求单挑候选 → 执行 → 重试该阶段。
+ *
+ * 这条回环的存在理由是用户的一句话：「重试必须要让 agent 根据失败原因去修复再重试」。
+ * 换句话说，重试不能是「原样再来一遍」—— 原样再来一遍对 `PAGE_OBSTRUCTED`
+ * 这类成因的成功率是零（页面还是那个页面）。**修完再试**才是重试。
+ *
+ * 三条纪律（写进代码而不是写在文档里，因为它们会被改）：
+ *   ① **只修「修复表登记过的成因」**：候选菜单为空 ⇒ 一步都不动。
+ *      `NEEDS_LOGIN`／`SHOP_FUNC_NO_PERMISSION`／`ROUND_BLOCKED`／`DUPLICATE_TARGET`
+ *      在 `REPAIR_TABLE` 里都没有条目 ⇒ 天然不碰，不靠另一份名单去挡。
+ *      为什么不按 `HUMAN_REQUIRED_CAUSES` 判：那个集合说的是「**最终**要人参与」，
+ *      而 `PAGE_OBSTRUCTED` 同时属于它**和** `REPAIR_TABLE` —— 前者是「关不掉就得人来」，
+ *      后者是「先试着关」。拿前者当闸门会让这一族候选永远试不到，等于把修复层架空。
+ *      **闸门只能是修复表本身**（一个来源，不会两处漂开）。
+ *   ② **同一个动作不重复试**：一轮修完重试还失败，换下一个候选；候选耗尽就停 ——
+ *      这不只是省时间，更是为了不在同一个错误页面上反复重载（那会把页面拖进更差的状态）。
+ *   ③ **永不抛、永不改退出码**：回环失败只是让这家店维持原来的失败态，
+ *      由上层照旧分诊／告警。它成功才改 `record`。
+ *
+ * @param {{shopKey:string, logDir:string, req:object, maxRounds:number,
+ *          runStage:Function, exec:Function, log?:Function}} o
+ * @returns {Promise<object>} 回环记录（会被写进 summary.shops[key].autoRepair）
+ */
+export async function autoRepairAndRetry({ shopKey, logDir, req, maxRounds = DEFAULT_AUTO_REPAIR_MAX_ROUNDS,
+  runStage, exec, log = () => {} }) {
+  const trace = { enabled: true, cause: req?.cause ?? null, stage: req?.stage ?? null,
+    maxRounds, rounds: [], rescued: false, gaveUp: null, error: null };
+  try {
+    if (!Number.isInteger(maxRounds) || maxRounds <= 0) {
+      trace.gaveUp = 'maxRounds<=0（自动修复没开或配额为零）';
+      return trace;
+    }
+    // 候选来自请求单（＝`planRepair` 给的菜单，而它只从 `REPAIR_TABLE` 取）。
+    // **空菜单就是唯一的闸门**：表里没登记这条成因 ⇒ 一个动作都不发。
+    //
+    // ⚠️ 刻意不另加一张「不许修」的名单：本链已经吃过「同一件事活在四处」的亏
+    //    （分类值散在词表/动作表/通知表/DB CHECK，漏一处就静默失效）。
+    //    要挡一条成因，正确做法是**别在 `REPAIR_TABLE` 里给它候选**，
+    //    而不是在调用侧再抄一份排除名单 —— 两处判据迟早漂开。
+    const remaining = Array.isArray(req?.candidates) ? [...req.candidates] : [];
+    if (!remaining.length) {
+      trace.gaveUp = `成因 ${trace.cause} 在修复表里没有候选动作（不猜动作，交给人）`;
+      log(`不自动修：${trace.gaveUp}`);
+      return trace;
+    }
+    // （闸门就是上面那个「空菜单」：要挡一条成因，把它从 `REPAIR_TABLE` 里去掉即可，
+    //   不在调用侧另留一份「不许修」的名单 —— 两处判据迟早漂开。）
+    for (let round = 1; round <= maxRounds && remaining.length; round += 1) {
+      const entry = { round, action: null, applied: null, retry: null };
+      const attempt = await executeRepairCandidate({ req, candidates: remaining, exec, log });
+      entry.action = attempt.action;
+      entry.applied = attempt.applied;
+      entry.detail = attempt.detail;
+      entry.error = attempt.error;
+      // 用掉就**从候选里摘掉**（纪律②）：不论成功失败，同一个动作不试第二遍。
+      if (attempt.action) remaining.splice(remaining.indexOf(attempt.action), 1);
+      if (attempt.attempted && attempt.applied !== true) {
+        // 动作没能落地（页面认不出来／重载超时）⇒ 换下一个候选，不重试阶段。
+        // 在「没修成」的前提下重试阶段 = 原样再来一遍，那正是这条回环要消灭的东西。
+        entry.retry = { attempted: false, why: '修复动作没落地，不重试阶段（避免原样再来一遍）' };
+        trace.rounds.push(entry);
+        continue;
+      }
+      // 修成了 ⇒ 重试该阶段。重试的是**失败的那一步**（`req.retryStage`），不是整条链。
+      const retryStage = req?.retryStage ?? req?.stage ?? null;
+      if (!retryStage) {
+        entry.retry = { attempted: false, why: '请求单里没给重试哪一步（认不出来就不猜）' };
+        trace.rounds.push(entry);
+        trace.gaveUp = entry.retry.why;
+        return trace;
+      }
+      const retried = await runStage(retryStage);
+      entry.retry = { attempted: true, stage: retryStage, status: retried?.status ?? null };
+      trace.rounds.push(entry);
+      if (retried?.status === 0) {
+        trace.rescued = true;
+        log(`自动修复救回来了：${attempt.action} → 重试 ${retryStage} 成功`);
+        return trace;
+      }
+    }
+    if (!trace.gaveUp) {
+      trace.gaveUp = remaining.length
+        ? `用完 ${maxRounds} 轮（候选还剩 ${remaining.join('、')}）`
+        : '候选动作已全部试过';
+    }
+    return trace;
+  } catch (error) {
+    // 纪律③：回环自己炸了**不改主线失败语义** —— 如实记，交回上层照旧告警。
+    trace.error = String(error?.message ?? error);
+    return trace;
+  }
+}
+
 function runStage(shopKey, stage, { repoRoot, logDir }) {
   const log = (line) => console.log(`[${shopKey}] ${line}`);
   const outPath = path.join(logDir, `${String(stage.index).padStart(2, '0')}-${stage.stage}.txt`);
@@ -1205,6 +1452,11 @@ async function main() {
     const record = { status: 'pending', stages: [], source: {} };
     summary.shops[key] = record;
     let index = 0;
+    // 这一家店的全部阶段（跑一次算出来，重试时按名字在里面找）。
+    // **阶段表只建一次**：自动修复要「重试失败的那一步」，它必须拿到**与首跑完全相同的
+    // argv/env**（含 push 的源文件路径），否则重试就变成了「用一份不同的参数再跑一遍」。
+    const stages = buildShopStages(key, { date: args.date, mode, expectedBeforeCount: args.verifyExisting, downloads,
+      allowMissingPeer: args.allowMissingPeer });
     const run = async (stage) => {
       index += 1;
       const withIndex = { ...stage, index };
@@ -1230,10 +1482,37 @@ async function main() {
         pageNormalize: result.normalize?.verdict?.detail ?? null });
       return result;
     };
+    // 按**名字**重跑一个阶段（自动修复用）。找不到就如实报，不猜一个阶段出来跑。
+    // 名字比对用 `stage.stage`（闭集里那 11 个），不用下标 —— 下标会在阶段表变化时静默指错。
+    const runNamedStage = async (name) => {
+      const stage = stages.find((s) => s.stage === name);
+      if (!stage) {
+        console.error(`[${key}] 自动修复要重试 ${name}，但这一家的阶段表里没有这一步 —— 不猜，停手`);
+        return { status: 1, skipped: true, why: `阶段表里没有 ${name}` };
+      }
+      // push 阶段的源文件路径要照旧填上（与首跑同一份 argv）。
+      let argv = stage.argv;
+      if (stage.stage === 'push') {
+        argv = withSourcePaths(stage.argv, explicitSources.shopXlsx
+          ? explicitSources
+          : { shopXlsx: record.source.shopXlsx, promotionZip: record.source.promotionZip });
+      }
+      return run({ ...stage, argv });
+    };
+    // 修复动作的执行器：把「挑好的动作」交给 repair-shop-stage 的**纯函数**执行，
+    // 在这一层注入而不是在驱动里再 spawn 一次子进程（多一层子进程 = 多一种静默失败）。
+    const execRepair = async ({ shopKey, stage, action, log }) => {
+      const proxy = `http://127.0.0.1:${shopInstance(shopKey).proxyPort}`;
+      const { applyRepairAction } = await import('./repair-shop-stage.mjs');
+      const out = await applyRepairAction(
+        { shop: shopKey, proxy, stage, action, logDir: shopLogDir },
+        { readTargets: (base) => proxyJson(`${base}/targets`), log },
+      );
+      return out;
+    };
 
     try {
-      for (const stage of buildShopStages(key, { date: args.date, mode, expectedBeforeCount: args.verifyExisting, downloads,
-        allowMissingPeer: args.allowMissingPeer })) {
+      for (const stage of stages) {
         // 采集段产出的两条路径要在 push 之前填进参数。**三种模式都要填**：
         // `--shop-xlsx` / `--promotion-zip` 在 run-daily-report.mjs 里是必填参数，
         // 「只读核对就不给源文件」会让 push 直接 missing required argument —— 那就不是只读，
@@ -1315,6 +1594,48 @@ async function main() {
           return payload.saved;
         },
       });
+      // ③ 把「这次失败该怎么修」写成一份**给人/给 agent 看的修复请求单**（2026-09-29 加）。
+      //    它把前面两份原料合起来：
+      //      · 感知层给的事实（刚才落盘的 98-failure-state.json 内容，这里内联一份摘要）；
+      //      · 分诊表给的方向 + 修复表给的候选动作（planRepair 的菜单）。
+      //    **它只写文件、不做任何动作** —— 执行是 `repair-shop-stage.mjs` 的事，
+      //    判断（挑哪个候选）是 agent 的事。默认不自动执行，所以这一行不改变任何既有失败语义。
+      //    顺序在这里（感知之后、回位之前）：回位会把页面导航走，那之后现场事实就对不上了，
+      //    而修复请求单要引用的正是「失败那一刻的现场」。
+      record.repairRequest = buildRepairRequest({
+        shopKey: key, stage: record.failedStage ?? null, error: error.message,
+        perception: record.perception, logDir: shopLogDir,
+      });
+      // ④ **agent 修复回环**（2026-09-29 加，默认关）：按请求单挑一个候选动作 → 执行 → 重试该阶段。
+      //
+      //   位置刻意在这里（请求单之后、回位之前）：修复要动的是**失败那一刻的页面**，
+      //   而回位会把它导航走 —— 放到回位之后，修的就不是那个坏页面了。
+      //
+      //   走通时它会改 `record`：`status` 翻回 ok、清掉 failedStage —— 因为「修好了」这件事
+      //   必须对后面的分诊与告警都成立，否则会出现「其实修好了、但照样叫人」的假红。
+      //   没走通（或没开）时它一个字段都不改，主线失败语义原样保留。
+      if (args.autoRepair && args.autoRepairMaxRounds > 0) {
+        const loop = await autoRepairAndRetry({
+          shopKey: key, logDir: shopLogDir, req: record.repairRequest,
+          maxRounds: args.autoRepairMaxRounds,
+          runStage: runNamedStage,
+          exec: execRepair,
+          log: (line) => console.log(`[${key}]   ${line}`),
+        });
+        record.autoRepair = loop;
+        if (loop.rescued) {
+          // 救回来了：这一家不再是失败态。`stages` 里那几条失败记录**留着**（它们是事实），
+          // 但 overall 状态按成功算 —— 这正是「修完再试」与「重试」的区别所在。
+          record.status = 'ok';
+          record.rescuedFrom = record.failedStage ?? null;
+          record.rescuedBy = loop.rounds.at(-1)?.action ?? null;
+          delete record.failedStage;
+          delete record.error;
+          console.log(`[${key}]   ✅ 自动修复后重试成功（${record.rescuedBy}）—— 这一家按成功收尾`);
+        } else {
+          console.log(`[${key}]   自动修复没救回来：${loop.gaveUp ?? loop.error ?? '未说明'}`);
+        }
+      }
       // ② 再收尾：把「停手时页面停在哪」记下来，再把它送回中性态（证据先于处置，
       // 见 recoverFailedShop 的三条纪律）。位置**刻意放在「停整轮」之前** —— 放到之后的话，
       // 默认策略下断掉整个 for 循环，而唯一失败的那一家恰恰就是不会被收尾的那一家。

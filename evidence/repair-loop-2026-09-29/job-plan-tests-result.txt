@@ -1,0 +1,214 @@
+TAP version 13
+# Subtest: 四步的顺序是「先保证实例在 → 再看一眼登录态 → 再修共享实例的会话 → 再跑链」
+ok 1 - 四步的顺序是「先保证实例在 → 再看一眼登录态 → 再修共享实例的会话 → 再跑链」
+  ---
+  duration_ms: 3.8881
+  type: 'test'
+  ...
+# Subtest: 登录态体检那一步：只读、且指定店铺时只体检那几家
+ok 2 - 登录态体检那一步：只读、且指定店铺时只体检那几家
+  ---
+  duration_ms: 0.3769
+  type: 'test'
+  ...
+# Subtest: 计划指向的文件都真实存在（脚本被改名时不许静默生效）
+ok 3 - 计划指向的文件都真实存在（脚本被改名时不许静默生效）
+  ---
+  duration_ms: 0.248
+  type: 'test'
+  ...
+# Subtest: 日期只有一种给法：默认 yesterday，且从不写死具体日期
+ok 4 - 日期只有一种给法：默认 yesterday，且从不写死具体日期
+  ---
+  duration_ms: 0.1878
+  type: 'test'
+  ...
+# Subtest: 定时那一档永远不加 --allow-missing-peer（默认关，要开必须显式）
+ok 5 - 定时那一档永远不加 --allow-missing-peer（默认关，要开必须显式）
+  ---
+  duration_ms: 0.2193
+  type: 'test'
+  ...
+# Subtest: 告警默认只落日志、不投递；要发必须显式 --notify
+ok 6 - 告警默认只落日志、不投递；要发必须显式 --notify
+  ---
+  duration_ms: 0.2344
+  type: 'test'
+  ...
+# Subtest: 两个告警出口同时给 ⇒ 当场抛错，不许静默丢掉一个
+ok 7 - 两个告警出口同时给 ⇒ 当场抛错，不许静默丢掉一个
+  ---
+  duration_ms: 0.3871
+  type: 'test'
+  ...
+# Subtest: --commit 永远在（这是定时任务的职责：写下今天的数据）
+ok 8 - --commit 永远在（这是定时任务的职责：写下今天的数据）
+  ---
+  duration_ms: 0.0651
+  type: 'test'
+  ...
+# Subtest: 可选开关按需追加：不给就不出现，给了就原样转发
+ok 9 - 可选开关按需追加：不给就不出现，给了就原样转发
+  ---
+  duration_ms: 0.3513
+  type: 'test'
+  ...
+# Subtest: 渲染出的命令行是 Windows 形态：反斜杠、路径带引号
+ok 10 - 渲染出的命令行是 Windows 形态：反斜杠、路径带引号
+  ---
+  duration_ms: 0.4326
+  type: 'test'
+  ...
+# Subtest: /TR 只拉起一个入口（三步由它自己按顺序执行，日志也就只有一处）
+ok 11 - /TR 只拉起一个入口（三步由它自己按顺序执行，日志也就只有一处）
+  ---
+  duration_ms: 0.192
+  type: 'test'
+  ...
+# Subtest: 不启用分批时，四步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）
+ok 12 - 不启用分批时，四步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）
+  ---
+  duration_ms: 0.1741
+  type: 'test'
+  ...
+# Subtest: 启用分批：它**替换**链那一步（不是并排），参数只带分批驱动认得的那几个
+ok 13 - 启用分批：它**替换**链那一步（不是并排），参数只带分批驱动认得的那几个
+  ---
+  duration_ms: 0.2054
+  type: 'test'
+  ...
+# Subtest: 启用分批时 `--commit` 必须显式传下去（漏了它就变成「排练」，而日志看不出异常）
+ok 14 - 启用分批时 `--commit` 必须显式传下去（漏了它就变成「排练」，而日志看不出异常）
+  ---
+  duration_ms: 0.0543
+  type: 'test'
+  ...
+# Subtest: 启用分批：告警出口与降级开关照旧按需转发
+ok 15 - 启用分批：告警出口与降级开关照旧按需转发
+  ---
+  duration_ms: 0.0658
+  type: 'test'
+  ...
+# Subtest: 启用分批时的形状校验：家数必须是 ≥1 的整数，且不许与链那边独有的开关同给
+ok 16 - 启用分批时的形状校验：家数必须是 ≥1 的整数，且不许与链那边独有的开关同给
+  ---
+  duration_ms: 0.2638
+  type: 'test'
+  ...
+# Subtest: 跑前登录态结论真的交给链了：② 出 JSON、③ 收路径（都只在给了证据目录时）
+ok 17 - 跑前登录态结论真的交给链了：② 出 JSON、③ 收路径（都只在给了证据目录时）
+  ---
+  duration_ms: 2.7606
+  type: 'test'
+  ...
+# Subtest: 不给证据目录时：不许凭空造一个路径，也不许给链加参数
+ok 18 - 不给证据目录时：不许凭空造一个路径，也不许给链加参数
+  ---
+  duration_ms: 1.1747
+  type: 'test'
+  ...
+# Subtest: 分批那一档：结论交接在分批驱动内部完成，这里不生成也不转发
+ok 19 - 分批那一档：结论交接在分批驱动内部完成，这里不生成也不转发
+  ---
+  duration_ms: 0.8934
+  type: 'test'
+  ...
+# Subtest: 接线判据：两个宿主真的把结论接上了（防「函数全绿、没人调」）
+ok 20 - 接线判据：两个宿主真的把结论接上了（防「函数全绿、没人调」）
+  ---
+  duration_ms: 1.6729
+  type: 'test'
+  ...
+# Subtest: 跑前登录态体检的参数只有一个来源（两个宿主共用，不许各写一份）
+ok 21 - 跑前登录态体检的参数只有一个来源（两个宿主共用，不许各写一份）
+  ---
+  duration_ms: 0.6746
+  type: 'test'
+  ...
+# Subtest: 共享实例守卫：只盯生意参谋、默认只读、告警默认不投递
+ok 22 - 共享实例守卫：只盯生意参谋、默认只读、告警默认不投递
+  ---
+  duration_ms: 0.1235
+  type: 'test'
+  ...
+# Subtest: 共享实例守卫：用自己那个脚本，且排在逐店预检之后、链之前
+ok 23 - 共享实例守卫：用自己那个脚本，且排在逐店预检之后、链之前
+  ---
+  duration_ms: 0.116
+  type: 'test'
+  ...
+# Subtest: 宿主（定时链）：驻留那一步真的接上了，且排在链之后
+ok 24 - 宿主（定时链）：驻留那一步真的接上了，且排在链之后
+  ---
+  duration_ms: 792.248
+  type: 'test'
+  ...
+# Subtest: 宿主（定时链）：只有「真有驻留」时，链的告警才敢承诺「系统会自己接着跑」
+ok 25 - 宿主（定时链）：只有「真有驻留」时，链的告警才敢承诺「系统会自己接着跑」
+  ---
+  duration_ms: 913.8059
+  type: 'test'
+  ...
+# Subtest: 宿主（定时链）：--no-hold 一键退回旧行为（一个字符都不多）
+ok 26 - 宿主（定时链）：--no-hold 一键退回旧行为（一个字符都不多）
+  ---
+  duration_ms: 406.0463
+  type: 'test'
+  ...
+# Subtest: 宿主（定时链）：分批那一档**不驻留**，而且这件事在 --print 里被说出来（缺口要有名字）
+ok 27 - 宿主（定时链）：分批那一档**不驻留**，而且这件事在 --print 里被说出来（缺口要有名字）
+  ---
+  duration_ms: 543.7213
+  type: 'test'
+  ...
+# Subtest: 宿主（定时链）真的把结论接上了：--print 里那条链命令带着 --login-preflight
+ok 28 - 宿主（定时链）真的把结论接上了：--print 里那条链命令带着 --login-preflight
+  ---
+  duration_ms: 513.032
+  type: 'test'
+  ...
+# Subtest: 宿主（定时链）：--no-auto-login 退回只读体检（一个页面都不碰）
+ok 29 - 宿主（定时链）：--no-auto-login 退回只读体检（一个页面都不碰）
+  ---
+  duration_ms: 415.6142
+  type: 'test'
+  ...
+# Subtest: 宿主（分批链）也接上了：每一批的链各读**本批**那份结论，且守卫排在本批 start 之后
+ok 30 - 宿主（分批链）也接上了：每一批的链各读**本批**那份结论，且守卫排在本批 start 之后
+  ---
+  duration_ms: 439.7689
+  type: 'test'
+  ...
+# Subtest: --auto-repair 打开时，链那一步拿到 --auto-repair（透传对了方向）
+ok 31 - --auto-repair 打开时，链那一步拿到 --auto-repair（透传对了方向）
+  ---
+  duration_ms: 0.2568
+  type: 'test'
+  ...
+# Subtest: --auto-repair 不开时，链那一步**逐字**不含它（默认关闭是硬保证）
+ok 32 - --auto-repair 不开时，链那一步**逐字**不含它（默认关闭是硬保证）
+  ---
+  duration_ms: 0.1193
+  type: 'test'
+  ...
+# Subtest: --auto-repair-max-rounds 带上值时透传，值为 0 时不透传（0 等于关，不发一个空开关）
+ok 33 - --auto-repair-max-rounds 带上值时透传，值为 0 时不透传（0 等于关，不发一个空开关）
+  ---
+  duration_ms: 0.1068
+  type: 'test'
+  ...
+# Subtest: 真实入口 run-daily-job.mjs 确实把 autoRepair 传进了计划（漏接是静默的）
+ok 34 - 真实入口 run-daily-job.mjs 确实把 autoRepair 传进了计划（漏接是静默的）
+  ---
+  duration_ms: 0.4965
+  type: 'test'
+  ...
+1..34
+# tests 34
+# suites 0
+# pass 34
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4461.1588

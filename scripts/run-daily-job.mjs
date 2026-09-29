@@ -26,6 +26,7 @@
 //   node scripts/run-daily-job.mjs --batches 2              # 分批跑：每批 2 家，跑完释放这一批
 //                                                          # （**默认不启用**；不给就与从前逐字相同）
 //   node scripts/run-daily-job.mjs --no-auto-login          # 跑前那两步退回**只读**体检（默认是「掉了就自己登」）
+//   node scripts/run-daily-job.mjs --auto-repair            # 某家失败后按修复请求单自动修一次再重试该阶段（**默认关**）
 //                                                          # （两条一起退：逐店预检 与 共享商家浏览器守卫）
 // 退出码：0＝全链成功；非 0＝全链失败（与驱动的退出码一致）；2＝用法错误
 import { spawnSync } from 'node:child_process';
@@ -53,7 +54,15 @@ function parseArgs(argv) {
     // 人处理完系统要能自己续跑）。它**只在链失败的那一轮起作用** —— 链成功时那一步
     // 根本不执行（计划里带 `onlyWhenChainFailed`），所以「不需要人」的默认行为逐字不变。
     // `--no-hold` 是一键退回的开关。
-    hold: true };
+    hold: true,
+    // `autoRepair` **默认关**（2026-09-29 加）。与 `autoLogin`/`hold` 的默认值刻意不同：
+    //   · `autoLogin` 开的理由是「掉登录是每次重启都发生的常态」；
+    //   · `hold` 开的理由是「关不掉的弹窗本来就只能等人，驻留只是把窗口留住」；
+    //   · 而 `autoRepair` 是**让系统自己在别人的页面上动手**（关弹窗、重载、重新落日期）。
+    //     它没有「不打开就会天天坏」的对应事实 —— 不打开只是在失败时维持原样，
+    //     而原样正是过去一直以来的行为。所以默认值必须停在这一侧。
+    // 要打开就给 `--auto-repair`（可配 `--auto-repair-max-rounds N`）。
+    autoRepair: false, autoRepairMaxRounds: null };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--print') options.print = true;
@@ -63,6 +72,16 @@ function parseArgs(argv) {
     else if (arg === '--allow-missing-peer') options.allowMissingPeer = true;
     else if (arg === '--no-auto-login') options.autoLogin = false;
     else if (arg === '--no-hold') options.hold = false;
+    // 让系统自己按修复请求单修一次再重试（默认关，见上面 autoRepair 的注释）。
+    else if (arg === '--auto-repair') options.autoRepair = true;
+    else if (arg === '--auto-repair-max-rounds') {
+      const raw = argv[++i];
+      const value = Number(raw);
+      if (!Number.isInteger(value) || value < 0) {
+        return { error: `--auto-repair-max-rounds 要一个 ≥0 的整数，收到 ${JSON.stringify(raw)}` };
+      }
+      options.autoRepairMaxRounds = value;
+    }
     else if (arg === '--date') options.dateInput = argv[++i];
     else if (arg === '--shops') options.shops = String(argv[++i] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--only') options.only = String(argv[++i] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -76,7 +95,7 @@ function parseArgs(argv) {
       }
       options.batches = value;
     } else if (arg === '--help' || arg === '-h') options.help = true;
-    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-hold --date --shops --only --batches）` };
+    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-hold --auto-repair --auto-repair-max-rounds --date --shops --only --batches）` };
   }
   return { options };
 }
@@ -123,6 +142,11 @@ async function main(argv) {
       // 漏了 `resolvedDate` 的症状是静默的：那一步干脆不进计划，日志里少一行，
       // 而「留窗口给人」一次也不会发生（有一条用例钉住真实调用点确实传了它）。
       hold: options.hold,
+      // 「失败后按修复请求单自己修一次再重试该阶段」那一条的**起点**（2026-09-29 加）。
+      // 漏了它的症状同样是静默的：链那一步少两个开关、失败时仍按老样子直接停手，
+      // 而日志里看不出「本该去修却没修」—— 与 `autoLogin` 完全同一种漏接形态。
+      autoRepair: options.autoRepair,
+      autoRepairMaxRounds: options.autoRepairMaxRounds,
       resolvedDate: date,
     });
   } catch (error) {

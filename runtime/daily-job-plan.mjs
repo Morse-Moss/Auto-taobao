@@ -197,12 +197,17 @@ const CHAIN_FLAGS = Object.freeze({
   notifyPrint: '--notify-print',
   keepGoing: '--keep-going',
   allowMissingPeer: '--allow-missing-peer',
+  // 失败后按修复请求单自动修一次再重试该阶段（2026-09-29 加）。**默认关**，
+  // 透传的是调用方的开关而不是一个默认值 —— 它是一条会真的动页面的路径，
+  // 什么时候打开应当是**明确说出口的决定**，不能靠这一层替人默认打开。
+  autoRepair: '--auto-repair',
   // 由 `buildJobPlan` 按「这一轮会不会转入驻留」自己决定加不加，**不**透传调用方的开关
   // （它不是一个「可选开关」，而是「谁会接手」这件事的结论）。
   willResume: '--will-resume',
 });
 
-const CHAIN_VALUED = Object.freeze({ shops: '--shops', only: '--only', logs: '--logs', downloads: '--downloads' });
+const CHAIN_VALUED = Object.freeze({ shops: '--shops', only: '--only', logs: '--logs', downloads: '--downloads',
+  autoRepairMaxRounds: '--auto-repair-max-rounds' });
 
 /**
  * 分批驱动那一段的参数（**与链那一段刻意分开算**）。
@@ -267,6 +272,10 @@ export function buildJobPlan(options = {}) {
     dateInput = 'yesterday', notify = false, notifyPrint = false, keepGoing = false,
     allowMissingPeer = false, shops = null, only = null, logs = null, downloads = null,
     batches = null, artifactsDir = null,
+    // `autoRepair`（2026-09-29 加）：某一家失败后，要不要按修复请求单自动修一次再重试该阶段。
+    // **默认关**（与 `autoLogin` 同一个理由，而且更严：它会真的动页面）。
+    // 打开它的调用方等于说「这一轮允许系统自己动手修」，那是必须说出口的决定。
+    autoRepair = false, autoRepairMaxRounds = null,
     // `autoLogin`（2026-09-23 加）：跑前那一步要不要「掉了就自己登一次」。
     // **默认关**（与「新能力默认关」的既有纪律一致），由宿主显式打开：
     //   `scripts/run-daily-job.mjs` 默认打开（用户 2026-09-23 明确授权自动登录），

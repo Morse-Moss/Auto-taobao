@@ -465,3 +465,38 @@ test('宿主（分批链）也接上了：每一批的链各读**本批**那份�
   assert.doesNotMatch(text, /失败不主动释放|跑成才停/u, `还留着旧口径的说法：\n${text}`);
 });
 
+// ---------------------------------------------------------------------------
+// agent 修复回环的开关透传（2026-09-29 加）
+//
+// 为什么这两条必须有：`autoLogin` 那次漏接就是同一个形态 —— 计划里加了参数、
+// 入口忘了传，结果「本该去登却永远不登」，而日志里长得完全正常。
+// 这里用两条把两个方向都钉住：**打开时要到得了链**、**不打开时逐字不变**。
+// ---------------------------------------------------------------------------
+test('--auto-repair 打开时，链那一步拿到 --auto-repair（透传对了方向）', () => {
+  const plan = buildJobPlan({ autoRepair: true });
+  const args = argsOf(plan, 'chain');
+  assert.ok(args.includes('--auto-repair'), `链那一步必须拿到 --auto-repair，实际：${args.join(' ')}`);
+});
+
+test('--auto-repair 不开时，链那一步**逐字**不含它（默认关闭是硬保证）', () => {
+  const plan = buildJobPlan();
+  assert.doesNotMatch(argsOf(plan, 'chain').join(' '), /--auto-repair/u,
+    '默认关闭这件事必须在渲染结果里看得见，不能只在注释里');
+});
+
+test('--auto-repair-max-rounds 带上值时透传，值为 0 时不透传（0 等于关，不发一个空开关）', () => {
+  assert.match(argsOf(buildJobPlan({ autoRepair: true, autoRepairMaxRounds: 3 }), 'chain').join(' '),
+    /--auto-repair-max-rounds 3/u);
+  assert.doesNotMatch(argsOf(buildJobPlan({ autoRepair: true, autoRepairMaxRounds: 0 }), 'chain').join(' '),
+    /--auto-repair-max-rounds/u);
+});
+
+test('真实入口 run-daily-job.mjs 确实把 autoRepair 传进了计划（漏接是静默的）', () => {
+  // 这是 `autoLogin` 那条教训的复用：计划侧写了、入口忘了传 ⇒ 什么都没发生且没人知道。
+  // 所以判据落在**入口源码**上 —— 它必须出现 `autoRepair: options.autoRepair`。
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts/run-daily-job.mjs'), 'utf8');
+  assert.match(src, /autoRepair: options\.autoRepair/u, '入口必须把 autoRepair 传给 buildJobPlan');
+  assert.match(src, /autoRepairMaxRounds: options\.autoRepairMaxRounds/u, '入口必须把配额也传下去');
+  assert.match(src, /autoRepair: false/u, '入口的默认值必须是关（这条路径会真的动页面）');
+});
+

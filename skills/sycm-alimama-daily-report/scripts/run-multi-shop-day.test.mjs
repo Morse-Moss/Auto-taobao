@@ -8,9 +8,10 @@ import { BROWSER_IDS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } fro
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
 import { triageFailures } from './remediation-table.mjs';
+import { planRepair } from './repair-actions.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { shopIdentity } from './shop-identities.mjs';
-import { FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
+import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -1268,4 +1269,340 @@ test('分诊判定：只要有一家是真问题（如掉登录）⇒ 必须叫�
   const triage = triageFailures(roundFailureSummary(summary).failed);
   assert.equal(triage.needsHumanCount, 1, '兜底类必须叫人 —— 新问题就该出现在这里');
   assert.equal(triage.needsHuman[0].key, '科塔淘宝');
+});
+
+// ---------------------------------------------------------------------------
+// 修复请求单（2026-09-29）：失败 → 给 agent 的修复菜单
+// ---------------------------------------------------------------------------
+
+test('接线：驱动在失败路径上真的产出修复请求单（源码级扫描，防「函数写了但没接」）', () => {
+  const source = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  assert.match(source, /record\.repairRequest = buildRepairRequest\(/u,
+    '失败 catch 块里必须真的调用 buildRepairRequest 并挂到 record 上');
+  // 顺序判据：修复请求单必须在**回位之前**生成 —— 回位会把页面导航走，
+  // 那之后引用「失败那一刻的现场」就对不上了。用 indexOf 比先后。
+  const reqAt = source.indexOf('record.repairRequest = buildRepairRequest(');
+  const recAt = source.indexOf('record.recovery = await recoverFailedShop(');
+  assert.ok(reqAt > 0 && recAt > 0, '两个调用都要在源码里找得到');
+  assert.ok(reqAt < recAt, '修复请求单必须在回位之前生成（回位会毁掉现场）');
+});
+
+test('buildRepairRequest：已知成因（PAGE_OBSTRUCTED）⇒ 带候选菜单与重试阶段', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'repair-req-'));
+  const req = buildRepairRequest({
+    shopKey: '里可林淘宝', stage: 'promotion-fetch',
+    error: 'overlay blocked (OVERLAY_NOT_DISMISSED ...)', perception: null, logDir: dir,
+  });
+  assert.equal(req.cause, 'PAGE_OBSTRUCTED');
+  assert.equal(req.retryStage, 'promotion-fetch');
+  assert.deepEqual(req.candidates.map((c) => c.action), ['DISMISS_OVERLAYS', 'RELOAD_PAGE']);
+  assert.match(req.execHint, /repair-shop-stage\.mjs/u);
+  assert.match(req.execHint, /--action <候选动作>/u, '提示里要给动作占位符，不替 agent 定动作');
+  assert.ok(req.path, '单子应已落盘并带回相对路径');
+});
+
+test('buildRepairRequest：DUPLICATE_TARGET 也给候选（交给人），且不假装要重试', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'repair-req-'));
+  const req = buildRepairRequest({
+    shopKey: '网林天猫', stage: 'push',
+    error: 'Error: duplicate daily report row exists: recvwuXUkNPUkJ', perception: null, logDir: dir,
+  });
+  assert.equal(req.cause, 'DUPLICATE_TARGET');
+  // 这一类的修法是「交给人」（分诊表口径），但请求单仍然如实把它写出来 ——
+  // 请求单的职责是「把选择摆给 agent」，不是「替它筛掉」。
+  assert.ok(Array.isArray(req.candidates));
+  assert.equal(req.retryStage, 'push');
+});
+
+test('buildRepairRequest：把感知层的三个产物路径带进单子（agent 要读的是完整事实）', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'repair-req-'));
+  const req = buildRepairRequest({
+    shopKey: '科塔淘宝', stage: 'sycm-date', error: 'still outside viewport', logDir: dir,
+    perception: {
+      state: { url: 'https://sycm.taobao.com/x', title: '生意参谋', viewport: { w: 1178, h: 460 }, dialogs: [] },
+      files: {
+        stateJson: path.join(dir, '98-failure-state.json'),
+        stateText: path.join(dir, '98-failure-state.txt'),
+        screenshot: path.join(dir, '98-failure-page.png'),
+      },
+    },
+  });
+  assert.ok(req.statePath && req.stateTextPath && req.screenshotPath);
+  assert.equal(req.stateSummary.viewport.w, 1178, '摘要里要带视口 —— 冷启动小窗是已知根因');
+  assert.equal(req.stateSummary.overlayCount, 0);
+});
+
+test('buildRepairRequest：现场是登录页时，planNote 指出来（但不改候选）', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'repair-req-'));
+  const req = buildRepairRequest({
+    shopKey: '盖文天猫', stage: 'health-check', error: 'pages missing', logDir: dir,
+    perception: { state: { url: 'https://sycm.taobao.com/custom/login.htm?_target=x', domSummary: { totalElements: 9 } }, files: {} },
+  });
+  assert.match(req.planNote, /登录/u, '现场是登录页必须被指出来 —— 否则 agent 会去关已经不存在的弹窗');
+});
+
+test('buildRepairRequest：认不出的成因 ⇒ 空候选（不猜动作），但单子照样落盘', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'repair-req-'));
+  const req = buildRepairRequest({ shopKey: '科塔淘宝', stage: 'readback', error: 'some brand new thing', logDir: dir });
+  assert.equal(req.cause, 'STAGE_FAILED', '未知阶段失败落在兜底类');
+  assert.ok(Array.isArray(req.candidates), '兜底类照样给菜单（STAGE_FAILED 在修复表里有登记）');
+});
+
+test('buildRepairRequest：落盘失败不抛（主线已经失败了，不能再制造一个错误）', () => {
+  const req = buildRepairRequest({
+    shopKey: '科塔淘宝', stage: 'push', error: 'x', logDir: 'nowhere',
+    writeFile: () => { throw new Error('disk full'); },
+  });
+  assert.match(req.writeError, /disk full/u);
+  assert.equal(req.cause, 'STAGE_FAILED');
+});
+
+test('buildRepairRequest：没有 logDir 也能返回对象（只是不落盘）', () => {
+  const req = buildRepairRequest({ shopKey: '科塔淘宝', stage: 'push', error: 'x', logDir: null });
+  assert.equal(req.path, undefined);
+  assert.ok(Array.isArray(req.candidates));
+});
+
+// ---------------------------------------------------------------------------
+// agent 修复回环（2026-09-29 加）
+// 用户的一句话是这条回环的规格：「重试必须要让 agent 根据失败原因去修复再重试」。
+// 换句话说，重试**不能是原样再来一遍** —— 下面每一条都在钉这件事的某个侧面。
+// ---------------------------------------------------------------------------
+
+test('parseArgs：--auto-repair 默认关（这是一条会动页面的路径，默认必须是「什么都不做」）', () => {
+  const args = parseArgs(['--date', DATE]);
+  assert.equal(args.autoRepair, false);
+  assert.equal(args.autoRepairMaxRounds, DEFAULT_AUTO_REPAIR_MAX_ROUNDS);
+});
+
+test('parseArgs：--auto-repair 打开了它，--auto-repair-max-rounds 给出配额', () => {
+  const args = parseArgs(['--date', DATE, '--auto-repair', '--auto-repair-max-rounds', '2']);
+  assert.equal(args.autoRepair, true);
+  assert.equal(args.autoRepairMaxRounds, 2);
+});
+
+test('parseArgs：--auto-repair-max-rounds 只收非负整数（负数/小数/乱写一律拒）', () => {
+  for (const bad of ['-1', '1.5', 'abc']) {
+    assert.throws(() => parseArgs(['--date', DATE, '--auto-repair-max-rounds', bad]), /非负整数/u, `应拒绝 ${bad}`);
+  }
+  assert.equal(parseArgs(['--date', DATE, '--auto-repair-max-rounds', '0']).autoRepairMaxRounds, 0);
+});
+
+test('executeRepairCandidate：没有候选 ⇒ 如实说「没得修」，不猜一个动作出来', async () => {
+  let called = false;
+  const out = await executeRepairCandidate({
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'ROUND_BLOCKED' },
+    candidates: [], exec: async () => { called = true; }, log: () => {},
+  });
+  assert.equal(out.attempted, false);
+  assert.equal(called, false, '没有候选就一个动作都不该发出去');
+  assert.match(out.detail, /没有可用的修复动作/u);
+});
+
+test('executeRepairCandidate：没有注入 exec ⇒ 报接线漏了（而不是静默什么都不做）', async () => {
+  const out = await executeRepairCandidate({
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'PAGE_OBSTRUCTED' },
+    candidates: ['DISMISS_OVERLAYS'], exec: null, log: () => {},
+  });
+  assert.equal(out.attempted, false);
+  assert.match(out.error, /没有注入 exec/u);
+});
+
+test('executeRepairCandidate：exec 抛错也不抛出去（主线已经失败了，不能再换一个错误）', async () => {
+  const out = await executeRepairCandidate({
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'PAGE_OBSTRUCTED' },
+    candidates: ['DISMISS_OVERLAYS'],
+    exec: async () => { throw new Error('代理连不上'); }, log: () => {},
+  });
+  assert.equal(out.attempted, true);
+  assert.equal(out.applied, null);
+  assert.match(out.error, /代理连不上/u);
+});
+
+test('executeRepairCandidate：只试候选里的第一个，而且用 req 的 shopKey/stage 去执行', async () => {
+  const seen = [];
+  await executeRepairCandidate({
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'PAGE_OBSTRUCTED' },
+    candidates: ['DISMISS_OVERLAYS', 'RELOAD_PAGE'],
+    exec: async (o) => { seen.push(o); return { applied: true }; },
+    log: () => {},
+  });
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].action, 'DISMISS_OVERLAYS', '必须挑第一个 —— 表里的顺序就是「先试哪个」');
+  assert.equal(seen[0].shopKey, SHOP);
+  assert.equal(seen[0].stage, 'shop-report');
+});
+
+test('autoRepairAndRetry：修复表没登记的成因一个字都不动（登录掉了不自动去点登录）', async () => {
+  const executed = [];
+  // 这条的判据不是「代码里写没写 NEEDS_LOGIN」，而是**请求单里有没有候选**。
+  // 请求单由 `planRepair` 从 `REPAIR_TABLE` 生成，而 `NEEDS_LOGIN` 在那里没有条目
+  // ⇒ 候选必为空 ⇒ 一个动作都发不出去。下面用空的 candidates 复现这个真实形状。
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x',
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'NEEDS_LOGIN', candidates: [], retryStage: 'shop-report' },
+    runStage: async () => { throw new Error('不该重试'); },
+    exec: async (o) => { executed.push(o); return { applied: true }; },
+    log: () => {},
+  });
+  assert.equal(trace.rescued, false);
+  assert.equal(executed.length, 0, '候选为空 ⇒ 一个动作都不该试');
+  assert.match(trace.gaveUp, /没有候选动作/u);
+});
+
+test('互锁：修复表给候选的成因，就是自动修复会去修的成因（同一个来源，不许两处判）', () => {
+  // 这条钉住的是「闸门只有一个来源」：`autoRepairAndRetry` 不读任何排除名单，
+  // 它只看候选菜单。于是「谁能被自动修」完全等于「`REPAIR_TABLE` 里谁有候选」。
+  // 有人往调用侧加一张「不许修」的名单 ⇒ 这条不会红；但有人往 `REPAIR_TABLE`
+  // 里给 NEEDS_LOGIN 加候选 ⇒ 自动修复就会去点登录 —— 所以这条从**表**这一侧守。
+  const reqFor = (cause) => buildRepairRequest({ shopKey: SHOP, stage: 'shop-report', error: '', logDir: null });
+  assert.ok(reqFor, '形状守卫：buildRepairRequest 仍在');
+  const noCandidates = ['NEEDS_LOGIN', 'SHOP_FUNC_NO_PERMISSION', 'ROUND_BLOCKED', 'DUPLICATE_TARGET'];
+  for (const cause of noCandidates) {
+    const plan = planRepair({ cause, stage: 'shop-report' });
+    assert.deepEqual(plan.candidates, [], `${cause} 不该有自动修复候选（它要人/不需要人，都不该动页面）`);
+    assert.equal(plan.known, false);
+  }
+  // 反过来：这几个必须有候选，否则修复层对它们永远不生效（`PAGE_OBSTRUCTED` 是主场景）。
+  for (const cause of ['PAGE_OBSTRUCTED', 'SHOP_BLOCKED', 'STAGE_FAILED']) {
+    const plan = planRepair({ cause, stage: 'shop-report' });
+    assert.ok(plan.candidates.length > 0, `${cause} 必须有候选 —— 否则这一族失败永远不会被自动修`);
+  }
+});
+
+test('autoRepairAndRetry：maxRounds=0 ⇒ 直接放弃（配额为零）', async () => {
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x',
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'PAGE_OBSTRUCTED', candidates: ['DISMISS_OVERLAYS'] },
+    maxRounds: 0, runStage: async () => ({ status: 0 }), exec: async () => ({ applied: true }), log: () => {},
+  });
+  assert.equal(trace.rescued, false);
+  assert.match(trace.gaveUp, /maxRounds<=0/u);
+  assert.equal(trace.rounds.length, 0);
+});
+
+test('autoRepairAndRetry：修成了 ⇒ 重试失败的那一步，且只重试那一步', async () => {
+  const retried = [];
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x',
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'PAGE_OBSTRUCTED',
+      candidates: ['DISMISS_OVERLAYS', 'RELOAD_PAGE'], retryStage: 'shop-report' },
+    runStage: async (name) => { retried.push(name); return { status: 0 }; },
+    exec: async () => ({ applied: true }), log: () => {},
+  });
+  assert.equal(trace.rescued, true);
+  assert.deepEqual(retried, ['shop-report'], '重试的必须是失败那一步，不是整条链');
+  assert.equal(trace.rounds.length, 1);
+  assert.equal(trace.rounds[0].action, 'DISMISS_OVERLAYS');
+  assert.equal(trace.rounds[0].retry.status, 0);
+});
+
+test('autoRepairAndRetry：动作没落地 ⇒ 换下一个候选，但**不重试阶段**（原样再来一遍正是要消灭的）', async () => {
+  const retried = [];
+  const tried = [];
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x',
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'PAGE_OBSTRUCTED',
+      candidates: ['DISMISS_OVERLAYS', 'RELOAD_PAGE'], retryStage: 'shop-report' },
+    maxRounds: 2,
+    runStage: async (name) => { retried.push(name); return { status: 0 }; },
+    exec: async (o) => { tried.push(o.action); return { applied: o.action === 'RELOAD_PAGE' }; },
+    log: () => {},
+  });
+  assert.deepEqual(tried, ['DISMISS_OVERLAYS', 'RELOAD_PAGE'], '没落地的动作之后要换下一个候选');
+  assert.deepEqual(retried, ['shop-report'], '只有落地的那个动作才配触发重试');
+  assert.equal(trace.rescued, true);
+});
+
+test('autoRepairAndRetry：同一个动作不试第二遍（把页面反复重载会把状态拖更差）', async () => {
+  const tried = [];
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x',
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'PAGE_OBSTRUCTED',
+      candidates: ['DISMISS_OVERLAYS'], retryStage: 'shop-report' },
+    maxRounds: 5,
+    runStage: async () => ({ status: 1 }),
+    exec: async (o) => { tried.push(o.action); return { applied: true }; },
+    log: () => {},
+  });
+  assert.deepEqual(tried, ['DISMISS_OVERLAYS'], '候选用掉就不再出现在下一轮');
+  assert.equal(trace.rescued, false);
+  assert.match(trace.gaveUp, /候选/u);
+});
+
+test('autoRepairAndRetry：修好了但重试还是失败，且候选耗尽 ⇒ 停手，如实说「试过什么」', async () => {
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x',
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'PAGE_OBSTRUCTED',
+      candidates: ['DISMISS_OVERLAYS', 'RELOAD_PAGE'], retryStage: 'shop-report' },
+    maxRounds: 3,
+    runStage: async () => ({ status: 1 }),
+    exec: async () => ({ applied: true }),
+    log: () => {},
+  });
+  assert.equal(trace.rescued, false);
+  assert.equal(trace.rounds.length, 2, '两个候选各试一轮');
+  assert.match(trace.gaveUp, /候选/u);
+});
+
+test('autoRepairAndRetry：请求单里没给 retryStage ⇒ 不猜（认不出来就不重试）', async () => {
+  const retried = [];
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x',
+    req: { shopKey: SHOP, stage: null, cause: 'PAGE_OBSTRUCTED', candidates: ['DISMISS_OVERLAYS'], retryStage: null },
+    runStage: async (name) => { retried.push(name); return { status: 0 }; },
+    exec: async () => ({ applied: true }), log: () => {},
+  });
+  assert.equal(trace.rescued, false);
+  assert.deepEqual(retried, [], '认不出重试哪一步就不猜');
+  assert.match(trace.gaveUp, /没给重试哪一步/u);
+});
+
+test('autoRepairAndRetry：候选本身为空 ⇒ 明确放弃（成因未登记到修复表）', async () => {
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x',
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'DUPLICATE_TARGET', candidates: [], retryStage: 'shop-report' },
+    runStage: async () => ({ status: 0 }), exec: async () => ({ applied: true }), log: () => {},
+  });
+  assert.equal(trace.rescued, false);
+  assert.match(trace.gaveUp, /没有候选动作/u);
+});
+
+test('autoRepairAndRetry：回环自己炸了也不抛 —— 主线失败语义原样保留', async () => {
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x',
+    req: { shopKey: SHOP, stage: 'shop-report', cause: 'PAGE_OBSTRUCTED', candidates: ['DISMISS_OVERLAYS'], retryStage: 'shop-report' },
+    runStage: async () => { throw new Error('runStage 炸了'); },
+    exec: async () => ({ applied: true }), log: () => {},
+  });
+  assert.equal(trace.rescued, false);
+  assert.match(trace.error, /runStage 炸了/u);
+});
+
+test('接线守卫：main 里 autoRepairAndRetry 真的被调用，且排在 recoverFailedShop 之前', () => {
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  const callAt = src.indexOf('await autoRepairAndRetry(');
+  assert.ok(callAt > 0, 'main 必须真的调用这条回环（否则三个模块都白建了）');
+  const recoverAt = src.indexOf('record.recovery = await recoverFailedShop(');
+  assert.ok(recoverAt > 0, '回位那一步应当还在');
+  assert.ok(callAt < recoverAt, '修复要在回位之前 —— 回位会把页面导航走，之后修的就不是那个坏页面了');
+  const reqAt = src.indexOf('record.repairRequest = buildRepairRequest(');
+  assert.ok(reqAt > 0 && reqAt < callAt, '修复回环读的是请求单 ⇒ 请求单必须先算出来');
+  assert.match(src, /if \(args\.autoRepair && args\.autoRepairMaxRounds > 0\)/u,
+    '默认关闭这件事必须在代码里看得见，不能只在注释里');
+});
+
+test('接线守卫：修复后的重试用的是「按名字重跑」，而不是另建一份阶段表', () => {
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  // 只看 main 里那一段：`stageNumber`（模块级工具）自己也调 buildShopStages，
+  // 扫全文会把那个无害的调用算进来 —— 判据要扫对范围，否则它会因为一句无关代码变红。
+  const mainAt = src.indexOf('async function main()');
+  assert.ok(mainAt > 0, 'main 应当还在');
+  const main = src.slice(mainAt);
+  assert.match(main, /const runNamedStage = async \(name\) =>/u, '重试必须按阶段名找');
+  assert.match(main, /stages\.find\(\(s\) => s\.stage === name\)/u, '找不到就如实报，不猜一个阶段出来跑');
+  // 阶段表只建一次：重试要用与首跑**完全相同**的 argv（含 push 的源文件路径）。
+  assert.match(main, /const stages = buildShopStages\(key,/u);
+  const buildCount = (main.match(/buildShopStages\(key,/gu) ?? []).length;
+  assert.equal(buildCount, 1, `main 里 buildShopStages(key,…) 只该出现一次，实际 ${buildCount} 次`);
 });
