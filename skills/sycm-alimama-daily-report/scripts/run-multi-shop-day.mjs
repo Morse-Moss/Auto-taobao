@@ -1605,7 +1605,27 @@ async function main() {
       const { applyRepairAction } = await import('./repair-shop-stage.mjs');
       const out = await applyRepairAction(
         { shop: shopKey, proxy, stage, action, logDir: shopLogDir },
-        { readTargets: (base) => proxyJson(`${base}/targets`), log },
+        // ⚠️ 契约以 `applyRepairAction` 为准：它调的是 `readTargets(args)`（传**整个 args
+        //   对象**）并读回 `{ ok, targets, error }`（见 repair-shop-stage.mjs:294）。
+        //   2026-09-29 真机排练实测到的坑：原先这里抄的是 `captureFailureState` 的注入形状
+        //   ——`(base) => proxyJson(\`${base}/targets\`)`，其中 `base` 是**代理地址字符串**。
+        //   两种同名函数、两种契约，抄错了不会报错：`readTargets` 拿到的是 `[object Object]`，
+        //   拼出 `[object Object]/targets` ⇒ 每个非 `RESET_PAGES` 的动作都报
+        //   「读不到页签（代理连不上）」、退 3，而 `RESET_PAGES` 因为不读页签反而「正常」。
+        //   ⇒ 修复层看起来修好了（有动作执行），实际只有第一个候选能用。
+        //   正确写法（2026-09-29 真机排练复验：RELOAD_PAGE / DISMISS_OVERLAYS 都能定位到页）：
+        //   注意第二个参数是一个**完整对象** `{ readTargets, log }`；`readTargets` 收到的是
+        //   **整个 args 对象**（`a.proxy` 才是代理地址），不是代理地址字符串。
+        {
+          readTargets: async (a) => {
+            try {
+              return { ok: true, targets: await proxyJson(`${a.proxy}/targets`), error: null };
+            } catch (error) {
+              return { ok: false, targets: null, error: String(error?.message ?? error) };
+            }
+          },
+          log,
+        },
       );
       return out;
     };

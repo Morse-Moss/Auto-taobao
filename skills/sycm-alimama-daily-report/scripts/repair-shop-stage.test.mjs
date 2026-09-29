@@ -13,7 +13,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  REPAIR_EXIT_CODES, locateStagePage, parseRepairArgs, renderRepairReport, resolveProxy,
+  REPAIR_EXIT_CODES, applyRepairAction, locateStagePage, parseRepairArgs, renderRepairReport, resolveProxy,
 } from './repair-shop-stage.mjs';
 
 test('parseRepairArgs：动作名不在闭集里 ⇒ 当场抛（不许静默变空操作）', () => {
@@ -126,4 +126,58 @@ test('退出码口径：三个值互不相同且都是整数', () => {
   assert.equal(new Set(values).size, values.length);
   for (const v of values) assert.ok(Number.isInteger(v));
   assert.equal(REPAIR_EXIT_CODES.APPLIED, 0);
+});
+
+// --- readTargets 契约用例（2026-09-29 真机排练补）--------------------------------
+//
+// 病根：`applyRepairAction` 调的是 `readTargets(args)`——传**整个 args 对象**，
+// 读回 `{ ok, targets, error }`。而同一个名字在 `failure-perception.mjs` 里是**另一种契约**
+// （`readTargets(proxy)`，proxy 是字符串，返回裸数组）。两处同名、两种形状。
+//
+// `run-multi-shop-day.mjs` 的 `execRepair` 原先抄了 perception 那一种注入，
+// 于是 `readTargets` 拿到 `[object Object]`、拼出 `[object Object]/targets` ⇒
+// **每个非 RESET_PAGES 的动作都报「读不到页签（代理连不上）」、退 3**（而 RESET_PAGES 不读页签，
+// 看起来「正常」）。函数级全绿测不出（用例自己注入 exec，走不到 applyRepairAction）。
+// 下面两条把契约钉死：注入一份 `readTargets(args)`，断言它收到的是 args 对象、且页面被定位到。
+const TARGETS_FIXTURE = [{
+  type: 'page', targetId: 'T1', url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new',
+}];
+
+test('applyRepairAction：readTargets 收到的是整个 args 对象（不是代理地址字符串）', async () => {
+  const seen = [];
+  const out = await applyRepairAction(
+    { shop: '里可林淘宝', proxy: 'http://127.0.0.1:19041', stage: 'shop-report', action: 'RELOAD_PAGE', logDir: 'tmp/x', dryRun: true },
+    {
+      readTargets: async (a) => { seen.push(a); return { ok: true, targets: TARGETS_FIXTURE, error: null }; },
+      log: () => {},
+    },
+  );
+  assert.equal(seen.length, 1, '非 RESET_PAGES 动作必须先读页签');
+  assert.equal(typeof seen[0], 'object', 'readTargets 收的必须是 args 对象，收成字符串会拼出 [object Object]/targets');
+  assert.equal(seen[0].proxy, 'http://127.0.0.1:19041', 'args 里必须带 proxy —— 适配器要靠它拼 URL');
+  assert.equal(out.targetUrl, TARGETS_FIXTURE[0].url, '定位到页 ⇒ 说明契约对了');
+  assert.equal(out.exitCode, REPAIR_EXIT_CODES.APPLIED);
+});
+
+test('applyRepairAction：readTargets 契约不符（把 args 当字符串拼进 URL）⇒ 退 3 而不是静默', async () => {
+  // 复刻错误注入：base 是对象 ⇒ `${base}/targets` 变成 "[object Object]/targets"
+  const out = await applyRepairAction(
+    { shop: '里可林淘宝', proxy: 'http://127.0.0.1:19041', stage: 'shop-report', action: 'RELOAD_PAGE', logDir: 'tmp/x' },
+    {
+      readTargets: async (base) => ({ ok: String(base).startsWith('http'), targets: TARGETS_FIXTURE }),
+      log: () => {},
+    },
+  );
+  assert.equal(out.exitCode, REPAIR_EXIT_CODES.INCONCLUSIVE, '读不到页签 ⇒ 退 3（既不通过也不算应用失败）');
+  assert.match(String(out.detail), /读不到页签/u);
+});
+
+test('applyRepairAction：RESET_PAGES 不需要目标页（归位本身就是去找页）', async () => {
+  let called = false;
+  const out = await applyRepairAction(
+    { shop: '里可林淘宝', proxy: 'http://127.0.0.1:19041', stage: 'shop-report', action: 'RESET_PAGES', logDir: 'tmp/x', dryRun: true },
+    { readTargets: async () => { called = true; return { ok: false, targets: null, error: '不该被调' }; }, log: () => {} },
+  );
+  assert.equal(called, false, 'RESET_PAGES 不该读页签');
+  assert.equal(out.exitCode, REPAIR_EXIT_CODES.APPLIED);
 });
