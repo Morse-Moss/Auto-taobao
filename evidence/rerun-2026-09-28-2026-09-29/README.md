@@ -154,8 +154,9 @@ OpenAPI 实读 `tblUnwn05vl8Wik9` 全表 2197 行后：
 
 ## 未修 / 挂账
 
-1. **🔴 最高：定「询单量写哪张表的哪一行」的口径** —— 这是 4/5 家失败的真因，且卡在产品决策上，不是代码能擅自定的。
-   定了才动 `run-inquiry-backfill.mjs` 的 `tableId` 与日期字段解析。
+1. **🔴 最高：`inquiry-core.mjs:52` 的 `店铺` 匹配改成「SingleSelect 选项 id ↔ 店名」映射** —— 这是 4/5 家失败的真因。
+   `tableId` 不动；要动的只有匹配口径（先取字段 `property.options` 建 id→name 表，再同时接受两种形态）。
+   另需查清 09-28 那 12 行「选项 id + 无值」骨架行的写入方（见 `evidence/inquiry-writeback-audit-2026-09-29/README.md`）。
 2. **🔴 修复回环接线**（`list[0]` → 取 `.action`、`gaveUp` 文案别打 `[object Object]`）＋ 补**对象数组形状**的接线级用例。
    价值仅限「修复层不再是死的」，**不解决本轮这 5 家**。
 3. **🔴 真机验证无现场**：五店代理端口（19041~19045）本轮结束已随批次释放，`repair-shop-stage.mjs --dry-run` 读不到目标页 ⇒ 未排练、未真跑。
