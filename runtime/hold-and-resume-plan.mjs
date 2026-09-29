@@ -61,10 +61,28 @@ export function deadlineReached({ nowMinutes, untilMinutes }) {
  * 整轮被挡（`roundBlocked`）**一律算需要人**：能挡住整轮的只有两种成因 ——
  * 商家浏览器掉登录（2026-09-25 现场）与页面真的缺（2026-09-22 现场）—— 两种都只有人能解除。
  * 它不受 `humanCauses` 管：那是个**逐店**词表，用在这里会漏掉「一家都没跑起来」的那一轮。
+ *
+ * ── 2026-09-29 扩容：`unfixableShops` ──────────────────────────────────────
+ * 用户定的三层降级是「脚本自己修 → 修不动就驻留并唤醒修复 agent → agent 也不行才叫人」。
+ * 于是驻留的判据不再只是「只有人能解除的成因」，还包括**脚本自己修过但没救回来的那几家**：
+ * 那些店的现场必须留着（窗口不释放、失败页不导航走），修复 agent 赶过来才有东西可修。
+ *
+ * `unfixableShops` 由调用方给（＝`--auto-repair` 跑完后 `autoRepair.gaveUp` 非空、或成因
+ * 在修复表里没候选的那些店）。刻意**不把它并进 `humanCauses`**：那个词表的语义是「成因」，
+ * 而这一条说的是「这家店的自动修复没成功」——两件事混在一个词表里，将来一定会漂开。
+ * 两路取并集，且**都不给时行为与从前逐字相同**。
  */
-export function holdDecision({ failed = [], roundBlocked = false, roundCause = null, humanCauses = [] } = {}) {
+export function holdDecision({ failed = [], roundBlocked = false, roundCause = null,
+  humanCauses = [], unfixableShops = [] } = {}) {
   const human = (Array.isArray(failed) ? failed : [])
     .filter((item) => item && humanCauses.includes(item.cause));
+  const unfixable = (Array.isArray(failed) ? failed : [])
+    .filter((item) => item && Array.isArray(unfixableShops) && unfixableShops.includes(item.shop));
+  // 并集（同一家店可能同时命中两路 ⇒ 去重），且**按 `failed` 的原始顺序**输出 ——
+  // 不按「先 human 再 unfixable」拼：那会让点名的次序随判据的加法而变，
+  // 而收信人看到的名单顺序不该由「它是哪一路进来的」决定。判据集合只负责「进不进」。
+  const wanted = new Set([...human, ...unfixable].map((item) => item.shop));
+  const union = (Array.isArray(failed) ? failed : []).filter((item) => item && wanted.has(item.shop));
   if (roundBlocked === true) {
     return {
       needed: true,
@@ -76,13 +94,13 @@ export function holdDecision({ failed = [], roundBlocked = false, roundCause = n
     };
   }
   return {
-    needed: human.length > 0,
+    needed: union.length > 0,
     roundLevel: false,
-    causes: [...new Set(human.map((item) => item.cause))],
-    subjects: human.map((item) => item.shop),
+    causes: [...new Set(union.map((item) => item.cause))],
+    subjects: union.map((item) => item.shop),
     // 只补需要人那几家。整轮重跑会撞「同一天＋同店铺」的查重键：
     // 已经写进去的那几家会被硬停，把一次成功续跑变成一个新告警。
-    resumeShops: human.map((item) => item.shop),
+    resumeShops: union.map((item) => item.shop),
   };
 }
 
@@ -92,6 +110,36 @@ export function pollSecondsFor(causes = []) {
     .map((cause) => POLL_SECONDS_BY_CAUSE[cause])
     .filter((value) => Number.isFinite(value));
   return values.length ? Math.min(...values) : DEFAULT_POLL_SECONDS;
+}
+
+/**
+ * 「脚本自己修不动」的店 —— 驻留判据的第二路（2026-09-29 加）。
+ *
+ * 两条判据，任一成立即算：
+ *   · `record.autoRepair.gaveUp` 非空 —— `--auto-repair` 跑过、候选试用完/用完轮数仍没救回来
+ *     （「修了没救回来」）；
+ *   · `record.repairRequest.candidates` 为空 —— 成因在修复表里没候选，脚本**压根不知道该修什么**
+ *     （「不知道怎么修」）。用户口径：这一档不该出现，遇到就驻留等 agent／人，而不是直接放弃。
+ *
+ * ⚠️ 只认**这两个字段**，不看 `record.status`：调用方已经把「失败的店」筛过一遍了。
+ * 也刻意不看 `HUMAN_REQUIRED_CAUSES` 那类成因词表 —— 成因词表回答的是「谁最终要人」，
+ * 而这里回答的是「脚本自己能不能搞定」，两件事。
+ *
+ * `autoRepair` 与 `repairRequest` 只在驱动真的跑过那两段流程时才有值。都没值 ⇒ 返回空数组 ⇒
+ * 行为与加这个函数之前逐字相同（默认不变）。
+ */
+export function unfixableShopsOf(summary) {
+  const out = [];
+  for (const [shop, record] of Object.entries(summary?.shops ?? {})) {
+    if (!record || typeof record !== 'object') continue;
+    if (record.status === 'ok') continue;
+    const gaveUp = record.autoRepair?.gaveUp;
+    const candidates = record.repairRequest?.candidates;
+    const noCandidates = Array.isArray(candidates) && candidates.length === 0;
+    if (typeof gaveUp === 'string' && gaveUp.trim()) out.push(shop);
+    else if (record.repairRequest && noCandidates) out.push(shop);
+  }
+  return out;
 }
 
 /**

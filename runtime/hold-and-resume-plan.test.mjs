@@ -16,6 +16,7 @@ import {
   DEFAULT_HOLD_UNTIL, DEFAULT_POLL_SECONDS, POLL_SECONDS_BY_CAUSE, PROBE_STATES, RESUME_FLOOR_BY_CAUSE,
   buildResumeArgv, closeOutNotice, deadlineReached, holdDecision, holdStatusLine, judgeProbes,
   minutesOfDay, parseClock, pollSecondsFor, resumeFloorFor, resumeResultNotice, resumeStageListFrom,
+  unfixableShopsOf,
 } from './hold-and-resume-plan.mjs';
 import { failedShopsOf, parseArgs as parseHoldArgs } from '../scripts/hold-and-resume.mjs';
 
@@ -74,6 +75,65 @@ test('需要人时：点名那几家，且续跑**只补那几家**（整轮重�
   assert.deepEqual(decision.subjects, ['科塔淘宝', '盖文天猫'], '只点名「只有人能解除」的那几家');
   assert.deepEqual(decision.resumeShops, ['科塔淘宝', '盖文天猫']);
   assert.deepEqual(decision.causes, ['PAGE_OBSTRUCTED', 'NEEDS_LOGIN'], '成因去重且保持出现顺序');
+});
+
+test('unfixableShopsOf：只认「脚本自己修不动」的两个字段，其余一律不算', () => {
+  const summary = {
+    shops: {
+      里可林淘宝: { status: 'ok' },
+      // ① autoRepair 跑过、gaveUp 非空 ⇒ 修了没救回来
+      网林天猫: { status: 'failed', autoRepair: { gaveUp: '候选动作已全部试过' } },
+      // ② 成因没登记修法 ⇒ 修复请求单的候选是空的
+      盖文淘宝: { status: 'failed', repairRequest: { candidates: [] } },
+      // ③ 有候选、也没 gaveUp（脚本压根没试）⇒ **不算**，还得靠 humanCauses 那一路
+      盖文天猫: { status: 'failed', repairRequest: { candidates: [{ action: 'RELOAD_PAGE' }] } },
+      // ④ 空白的 gaveUp（`''`）不算（不许把「没说明」当成「修不动」）
+      科塔淘宝: { status: 'failed', autoRepair: { gaveUp: '   ' } },
+    },
+  };
+  assert.deepEqual(unfixableShopsOf(summary), ['网林天猫', '盖文淘宝']);
+  assert.deepEqual(unfixableShopsOf({}), [], '没有 shops ⇒ 空');
+  assert.deepEqual(unfixableShopsOf(null), [], '不给 summary ⇒ 空，不抛');
+});
+
+test('unfixableShopsOf：status=ok 的店不进（修好了就不该再占用修复 agent）', () => {
+  const summary = { shops: { 网林天猫: { status: 'ok', autoRepair: { gaveUp: '候选动作已全部试过' } } } };
+  assert.deepEqual(unfixableShopsOf(summary), []);
+});
+
+test('holdDecision 扩容：unfixableShops 与 humanCauses **取并集**，且去重、保持顺序', () => {
+  const failed = [
+    { shop: '科塔淘宝', cause: 'PAGE_OBSTRUCTED', stage: 'promotion-submit' },
+    { shop: '网林天猫', cause: 'STAGE_FAILED', stage: 'promotion-fetch' },
+    { shop: '盖文天猫', cause: 'NEEDS_LOGIN', stage: 'sycm-date' },
+  ];
+  const decision = holdDecision({
+    failed, humanCauses: ['NEEDS_LOGIN', 'PAGE_OBSTRUCTED'], unfixableShops: ['网林天猫', '科塔淘宝'],
+  });
+  assert.equal(decision.needed, true);
+  // 顺序＝`failed` 里的原始顺序，且科塔（两路都命中）只出现一次。
+  assert.deepEqual(decision.subjects, ['科塔淘宝', '网林天猫', '盖文天猫']);
+  assert.deepEqual(decision.resumeShops, ['科塔淘宝', '网林天猫', '盖文天猫']);
+  assert.deepEqual(decision.causes, ['PAGE_OBSTRUCTED', 'STAGE_FAILED', 'NEEDS_LOGIN']);
+});
+
+test('holdDecision 默认不变：不给 unfixableShops 时行为与从前逐字相同', () => {
+  // 这条是「新能力默认关」的硬落点：扩容不许改变任何既有调用方的结论。
+  const failed = [{ shop: '网林天猫', cause: 'STAGE_FAILED', stage: 'push' }];
+  assert.equal(holdDecision({ failed }).needed, false);
+  assert.equal(holdDecision({ failed, humanCauses: ['NEEDS_LOGIN', 'PAGE_OBSTRUCTED'] }).needed, false);
+  // 给了 unfixableShops 才驻留 —— 而且只点名那一家。
+  const withUnfixable = holdDecision({ failed, humanCauses: [], unfixableShops: ['网林天猫'] });
+  assert.equal(withUnfixable.needed, true);
+  assert.deepEqual(withUnfixable.subjects, ['网林天猫']);
+});
+
+test('holdDecision：unfixableShops 里的店名不在 failed 里 ⇒ 不点名（不凭空造一家出来）', () => {
+  const decision = holdDecision({
+    failed: [{ shop: '网林天猫', cause: 'STAGE_FAILED' }], unfixableShops: ['不存在的店'],
+  });
+  assert.equal(decision.needed, false);
+  assert.deepEqual(decision.subjects, []);
 });
 
 test('整轮被挡**一律算需要人**，且**不能点名**（不给 --shops 就是整轮重跑）', () => {

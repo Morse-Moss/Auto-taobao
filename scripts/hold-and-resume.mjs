@@ -36,7 +36,7 @@ import { pagesMatching } from '../runtime/target-url-match.mjs';
 import {
   DEFAULT_HOLD_UNTIL, STATUS_EVERY_MS, buildResumeArgv, closeOutNotice, deadlineReached,
   holdDecision, holdStatusLine, judgeProbes, minutesOfDay, parseClock, pollSecondsFor,
-  resumeFloorFor, resumeResultNotice, resumeStageListFrom,
+  resumeFloorFor, resumeResultNotice, resumeStageListFrom, unfixableShopsOf,
 } from '../runtime/hold-and-resume-plan.mjs';
 import { overlayScanExpression } from '../skills/sycm-alimama-daily-report/scripts/collect-core.mjs';
 import { siteAdapter } from '../skills/sycm-alimama-daily-report/scripts/date-picker.mjs';
@@ -240,6 +240,9 @@ async function main() {
   const roundBlocked = summary?.round?.healthCheckDaily?.ok === false;
   const shopKeys = args.shops ?? shopBrowserKeys();
   const humanCauses = [...HUMAN_REQUIRED_CAUSES];
+  // 2026-09-29：驻留判据的第二路 —— 脚本自己修不动的那几家（见 `unfixableShopsOf`）。
+  // 它让「修不动就驻留等 agent」这条链成立：现场留着，修复 agent 才有东西可修。
+  const unfixableShops = unfixableShopsOf(summary);
 
   // 整轮被挡时先探一次商家浏览器，好把「掉登录」与「页面真缺」分开说（这是 09-25 那次报错归因错的根因）。
   const roundProbe = roundBlocked ? await probeMerchantBrowser() : null;
@@ -247,11 +250,14 @@ async function main() {
     ? (isLoginWallText(roundProbe?.why) ? 'NEEDS_LOGIN' : 'ROUND_BLOCKED')
     : null;
 
-  const decision = holdDecision({ failed, roundBlocked, roundCause, humanCauses });
+  const decision = holdDecision({ failed, roundBlocked, roundCause, humanCauses, unfixableShops });
   log(`[驻留] 目标日 ${args.date}｜逐店失败 ${failed.length} 家｜整轮被挡=${roundBlocked}`);
   for (const item of failed) log(`[驻留]   ${item.shop}：${item.cause}（停在第 ${item.stage ?? '?'} 步）`);
+  if (unfixableShops.length) {
+    log(`[驻留] 脚本自修没救回来的：${unfixableShops.join('、')}（现场留着，等修复 agent／人）`);
+  }
   if (!decision.needed) {
-    log('[驻留] 这一轮没有「只有人能解除」的失败 ⇒ 不驻留、不续跑（与从前逐字相同）');
+    log('[驻留] 这一轮没有「只有人能解除」也没有「脚本修不动」的失败 ⇒ 不驻留、不续跑（与从前逐字相同）');
     process.exitCode = HOLD_EXIT.NO_HOLD;
     return;
   }

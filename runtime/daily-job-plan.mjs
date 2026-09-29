@@ -223,6 +223,12 @@ const CHAIN_VALUED = Object.freeze({ shops: '--shops', only: '--only', logs: '--
 export function buildBatchChainArgs({
   dateInput = 'yesterday', notify = false, keepGoing = false, allowMissingPeer = false,
   shops = null, batches = null, commit = false,
+  // `--auto-repair`（2026-09-29 补）：分批形态也要能转发。
+  // ⚠️ 这一条曾**漏掉**，症状是「命令行给了 --auto-repair、run-daily-job 也收下了，
+  //   但每一批的链都没收到」⇒ 生产形态（`--batches`）下「脚本自己修」这一层**永远不执行**，
+  //   而日志里没有任何提示。分批驱动 `scripts/run-batches.mjs` 认这两个开关（已补），
+  //   这里负责把调用方的意图转过去 —— 两层都补上，这条链才真的通。
+  autoRepair = false, autoRepairMaxRounds = null,
 } = {}) {
   const args = ['--date', dateInput, '--batch-size', String(batches)];
   // `--commit` 必须由这里显式给：分批驱动自己的默认是**排练**（不写飞书），
@@ -233,6 +239,11 @@ export function buildBatchChainArgs({
   args.push(notify ? CHAIN_FLAGS.notify : CHAIN_FLAGS.notifyPrint);
   if (keepGoing) args.push(CHAIN_FLAGS.keepGoing);
   if (allowMissingPeer) args.push(CHAIN_FLAGS.allowMissingPeer);
+  if (autoRepair) args.push(CHAIN_FLAGS.autoRepair);
+  if (autoRepairMaxRounds !== null && autoRepairMaxRounds !== undefined) {
+    // 值与 `chainArgs` 那条路径保持一致：转成字符串再给（`spawn` 拼参数时非字符串会被隐式转换）。
+    args.push(CHAIN_VALUED.autoRepairMaxRounds, String(autoRepairMaxRounds));
+  }
   // 排查用「只跑某几家」在这里仍然有意义：`--shops` 是「跑哪几家」，与批次粒度无关。
   if (shops) args.push(CHAIN_VALUED.shops, shops.join(','));
   return args;
@@ -374,6 +385,7 @@ export function buildJobPlan(options = {}) {
       file: JOB_FILES.batchChain,
       args: buildBatchChainArgs({
         dateInput, notify, keepGoing, allowMissingPeer, shops, batches, commit: true,
+        autoRepair, autoRepairMaxRounds,
       }),
       note: `分批跑（每批 ${batches} 家）：起这一批 → 查本批登录 → 挂店铺标识页 → 跑这一批 → 停这一批（**一律释放**）`,
       blocking: true,

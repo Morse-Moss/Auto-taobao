@@ -61,6 +61,7 @@ function parseArgs(argv) {
   const options = {
     dateInput: 'yesterday', batchSize: null, shops: null, commit: false, keepGoing: false,
     allowMissingPeer: false, notify: false, notifyPrint: false, logs: null, print: false,
+    autoRepair: false, autoRepairMaxRounds: null,
     release: true, help: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -72,6 +73,15 @@ function parseArgs(argv) {
     else if (arg === '--notify') options.notify = true;
     else if (arg === '--notify-print') options.notifyPrint = true;
     else if (arg === '--no-release') options.release = false;
+    else if (arg === '--auto-repair') options.autoRepair = true;
+    else if (arg === '--auto-repair-max-rounds') {
+      const raw = argv[++i];
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 0) {
+        return { error: `--auto-repair-max-rounds 要一个 ≥0 的整数，收到 ${JSON.stringify(raw)}` };
+      }
+      options.autoRepairMaxRounds = n;
+    }
     else if (arg === '--batch-size') options.batchSize = argv[++i];
     else if (arg === '--date') options.dateInput = argv[++i];
     else if (arg === '--logs') options.logs = argv[++i];
@@ -80,7 +90,8 @@ function parseArgs(argv) {
     else {
       return {
         error: `未知参数 ${arg}（可用：--print --commit --no-release --batch-size N --date <日> `
-          + '--shops a,b --keep-going --allow-missing-peer --notify|--notify-print --logs <目录>）',
+          + '--shops a,b --keep-going --allow-missing-peer --auto-repair --auto-repair-max-rounds N '
+          + '--notify|--notify-print --logs <目录>）',
       };
     }
   }
@@ -99,6 +110,13 @@ function chainArgsFor(options) {
   args.push(options.notify ? '--notify' : '--notify-print');
   if (options.keepGoing) args.push('--keep-going');
   if (options.allowMissingPeer) args.push('--allow-missing-peer');
+  // `--auto-repair`（2026-09-29 补）：分批形态下**必须转发**，否则这个开关在
+  // 「跑完释放」的生产形态里被静默丢掉 —— 症状是「命令行给了它、每一批的链却都没自修」，
+  // 而日志里一个字都不会提示（`run-daily-job.mjs` 收下它、批次驱动不认它）。
+  if (options.autoRepair) args.push('--auto-repair');
+  if (options.autoRepairMaxRounds !== null && options.autoRepairMaxRounds !== undefined) {
+    args.push('--auto-repair-max-rounds', String(options.autoRepairMaxRounds));
+  }
   return args;
 }
 

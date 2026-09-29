@@ -500,3 +500,42 @@ test('真实入口 run-daily-job.mjs 确实把 autoRepair 传进了计划（漏�
   assert.match(src, /autoRepair: false/u, '入口的默认值必须是关（这条路径会真的动页面）');
 });
 
+// ---------------------------------------------------------------------------
+// ★ 分批形态（**生产路径**）的自动修复透传（2026-09-29 补）
+//
+// 上面那三条只覆盖 `chain` 那一段（不分批）。而定时任务跑的是 `--batches 5` ⇒ 走的是
+// `buildBatchChainArgs` → `scripts/run-batches.mjs` → 链，**另一条参数链**。
+// 实测这一条曾经断在中间：`run-daily-job.mjs` 收下了 `--auto-repair`，
+// 但 `buildBatchChainArgs` 不认它 ⇒ **生产形态下「脚本自己修」永远不执行**，
+// 日志里一个字都不提示。这几条把整条链的两跳都钉住。
+// ---------------------------------------------------------------------------
+test('分批形态：--auto-repair 打开时，batch-chain 那一步拿到 --auto-repair', () => {
+  const plan = buildJobPlan({ dateInput: 'yesterday', batches: 5, autoRepair: true, resolvedDate: '2026-09-28', artifactsDir: 'evidence/daily-job-2026-09-28' });
+  const step = plan.steps.find((s) => s.name === 'batch-chain');
+  assert.ok(step, '分批形态必须用 batch-chain 这一步');
+  assert.ok(step.args.includes('--auto-repair'), `batch-chain 必须拿到 --auto-repair，实际：${step.args.join(' ')}`);
+});
+
+test('分批形态：--auto-repair 不开时，batch-chain **逐字**不含它（默认不变）', () => {
+  const plan = buildJobPlan({ dateInput: 'yesterday', batches: 5, resolvedDate: '2026-09-28', artifactsDir: 'evidence/daily-job-2026-09-28' });
+  const step = plan.steps.find((s) => s.name === 'batch-chain');
+  assert.doesNotMatch(step.args.join(' '), /--auto-repair/u, '默认关闭必须在不分批形态之外也成立');
+});
+
+test('分批形态：--auto-repair-max-rounds 带上值时透传（第二跳的 valued 参数）', () => {
+  const plan = buildJobPlan({ dateInput: 'yesterday', batches: 5, autoRepair: true, autoRepairMaxRounds: 2, resolvedDate: '2026-09-28', artifactsDir: 'evidence/daily-job-2026-09-28' });
+  const step = plan.steps.find((s) => s.name === 'batch-chain');
+  assert.match(step.args.join(' '), /--auto-repair-max-rounds 2/u);
+});
+
+test('第二跳：scripts/run-batches.mjs 认 --auto-repair 并把它转发给链（源码判据）', () => {
+  // 第一跳（plan → run-batches）在上一组里已经用 args 断言过了；
+  // 这一条盯第二跳（run-batches → run-multi-shop-day）—— 只改第一跳、第二跳不认它，
+  // 症状仍然是「给了开关、链收不到」，而且报的是「未知参数」被当失败。
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts/run-batches.mjs'), 'utf8');
+  assert.match(src, /arg === '--auto-repair'/u, 'run-batches 必须接受 --auto-repair');
+  assert.match(src, /if \(options\.autoRepair\) args\.push\('--auto-repair'\)/u,
+    'run-batches 必须把它转发给链');
+  assert.match(src, /options\.autoRepairMaxRounds/u, '配额也要转发');
+});
+
