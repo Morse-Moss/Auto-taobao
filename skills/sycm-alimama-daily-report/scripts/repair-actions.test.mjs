@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 
 import {
   PAGE_MUTATING_ACTIONS, REPAIR_ACTIONS, REPAIR_TABLE, REPAIR_WHY, STAGE_PAGE_HINT,
-  planRepair, validateRepairActions,
+  describeUnreadable, planRepair, validateRepairActions,
 } from './repair-actions.mjs';
 // ⚠️ 互锁的另一半：从链里 import 两个闭集，**不抄字面量**。
 // 抄一份的话，链改名那天本测试照样绿 —— 而它存在的唯一理由就是「链改名时要红」。
@@ -111,5 +111,93 @@ test('STAGE_PAGE_HINT 的值只用语义标签（alimama/sycm），不掺选择�
   const allowed = new Set(['alimama', 'sycm']);
   for (const [stage, hint] of Object.entries(STAGE_PAGE_HINT)) {
     assert.ok(allowed.has(hint), `阶段 ${stage} 的提示「${hint}」不是允许的语义标签`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 「读不到」时把「换现场」提到最前（2026-09-29 加）
+// ---------------------------------------------------------------------------
+//
+// 用户原话：「读不到就转 Agent，不行再转人工」。这一组钉的是**转 Agent 那一步的菜单顺序**：
+// 现场读不到时，先重落日期是注定无效的一轮（连目标元素都定位不了），应当先换个现场。
+
+test('describeUnreadable：判据只有一个出口，认不出来就是「不是读不到」', () => {
+  // 现场读不到（`state` 为 null）≠ 页面读不到 —— 这是两件事，不能混。
+  assert.deepEqual(describeUnreadable(null), { unreadable: false, why: null }, '没现场就没有依据，不许判成读不到');
+  assert.equal(describeUnreadable(undefined).unreadable, false);
+  assert.equal(describeUnreadable('https://x').unreadable, false, '不是对象也不判');
+
+  // ① 停在登录页：读不到（页面类修复对它无效，但换个现场至少能把状态变成可判定）。
+  assert.equal(describeUnreadable({ url: 'https://sycm.taobao.com/custom/login.htm?_target=x' }).unreadable, true);
+  assert.equal(describeUnreadable({ url: 'https://login.taobao.com/member/login.jhtml' }).unreadable, true);
+  assert.equal(describeUnreadable({ url: 'https://havanalogin.taobao.com/x' }).unreadable, true);
+
+  // ② 0 元素：没渲染完 / 页签被换走。
+  assert.equal(describeUnreadable({ url: 'https://sycm.taobao.com/qos/x', domSummary: { totalElements: 0 } }).unreadable, true);
+  assert.equal(describeUnreadable({ url: 'https://sycm.taobao.com/qos/x', domSummary: { totalElements: 12 } }).unreadable, false);
+
+  // ③ 正常的业务页（有元素、不在登录页）⇒ 不是读不到。
+  assert.equal(describeUnreadable({ url: 'https://sycm.taobao.com/qos/service/frame/shop/performance', domSummary: { totalElements: 900 } }).unreadable, false);
+});
+
+test('planRepair：现场读不到 ⇒ RELOAD_PAGE 提到候选第一位；正常现场顺序不变', () => {
+  // STAGE_FAILED 的表序是 [REAPPLY_DATES, RELOAD_PAGE] —— 正常落位失败就该先重落日期。
+  const normal = planRepair({ cause: 'STAGE_FAILED', stage: 'sycm-date',
+    state: { url: 'https://sycm.taobao.com/qos/x', domSummary: { totalElements: 900 } } });
+  assert.deepEqual(normal.candidates.map((c) => c.action), ['REAPPLY_DATES', 'RELOAD_PAGE'],
+    '现场正常时**不许**动表序（默认行为与加这个函数之前逐字相同）');
+  assert.equal(normal.note, null);
+
+  // 现场读不到 ⇒ 换现场先试。
+  const unreadable = planRepair({ cause: 'STAGE_FAILED', stage: 'sycm-date',
+    state: { url: 'https://sycm.taobao.com/qos/x', domSummary: { totalElements: 0 } } });
+  assert.deepEqual(unreadable.candidates.map((c) => c.action), ['RELOAD_PAGE', 'REAPPLY_DATES'],
+    '读不到时先换现场：重落日期连目标元素都定位不了');
+  assert.match(unreadable.note, /重载换现场/u);
+
+  // 登录页那一路：仍把 RELOAD_PAGE 提前，但提示要明说「真正要做的是登录」。
+  const onLogin = planRepair({ cause: 'STAGE_FAILED', stage: 'sycm-date',
+    state: { url: 'https://sycm.taobao.com/custom/login.htm?_target=x' } });
+  assert.equal(onLogin.candidates[0].action, 'RELOAD_PAGE');
+  assert.match(onLogin.note, /真正要做的是登录/u);
+});
+
+test('planRepair：重排只换顺序，一项都不增不减（丢项会让「候选耗尽」提前成立）', () => {
+  for (const cause of Object.keys(REPAIR_TABLE)) {
+    const before = planRepair({ cause, stage: 'sycm-date', state: null });
+    const after = planRepair({ cause, stage: 'sycm-date', state: { url: 'https://a/login.htm', domSummary: {} } });
+    const b = before.candidates.map((c) => c.action).sort();
+    const a = after.candidates.map((c) => c.action).sort();
+    assert.deepEqual(a, b, `成因 ${cause} 重排前后集合不一致`);
+  }
+});
+
+test('planRepair：没有 RELOAD_PAGE 的候选表，重排是空操作（不因为它缺项就出错）', () => {
+  // 现实里 REPAIR_TABLE 每条都含 RELOAD_PAGE，但判据不该依赖这一点（依赖了就成了隐藏前提）。
+  // 用 `describeUnreadable` + 与 `planRepair` 内部同形的排序，验「不缺项时不动」。
+  const sortLike = (actions, state) => {
+    if (!describeUnreadable(state).unreadable) return [...actions];
+    if (!actions.includes('RELOAD_PAGE')) return [...actions];
+    return [...actions].sort((a, b) => (a === 'RELOAD_PAGE' ? -1 : 0) - (b === 'RELOAD_PAGE' ? -1 : 0));
+  };
+  assert.deepEqual(sortLike(['RESET_PAGES'], { url: 'https://a/login.htm' }), ['RESET_PAGES']);
+  assert.deepEqual(sortLike(['RESET_PAGES', 'RELOAD_PAGE'], { url: 'https://a/login.htm' }),
+    ['RELOAD_PAGE', 'RESET_PAGES']);
+});
+
+test('互锁：note 与重排共用同一个判据（两处各判一套的话，它们永远不会报错）', () => {
+  // 若有人把 noteForState 改回自己判一套，会出现「重排按 A 判、提示按 B 判」：
+  // 现场判成读不到（重排生效）却不给 note，或者反过来。用四种现场对齐两边。
+  const cases = [
+    { state: { url: 'https://a/login.htm' }, unreadable: true },
+    { state: { url: 'https://a/x', domSummary: { totalElements: 0 } }, unreadable: true },
+    { state: { url: 'https://a/x', domSummary: { totalElements: 500 } }, unreadable: false },
+    { state: null, unreadable: false },
+  ];
+  for (const { state, unreadable } of cases) {
+    const plan = planRepair({ cause: 'STAGE_FAILED', stage: 'sycm-date', state });
+    assert.equal(describeUnreadable(state).unreadable, unreadable);
+    assert.equal(plan.note !== null, unreadable,
+      `note 的存在与否必须与 describeUnreadable 一致（现场=${String(JSON.stringify(state))}）`);
   }
 });

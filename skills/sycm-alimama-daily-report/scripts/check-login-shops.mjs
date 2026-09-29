@@ -79,7 +79,7 @@ import { normalizePages } from '../../../runtime/page-normalize.mjs';
 import { assertCoverage, buildPagePlan, buildUrlByName } from '../../../runtime/shop-pages.mjs';
 import {
   buildRoundLoginAlert, exitCodeForPreflight, judgePreflight, judgeShopReceipt, notifyModeFor,
-  parseCheckShopsArgs, renderReport, shouldNotifyRound,
+  parseCheckShopsArgs, renderReport, shouldNotifyRound, shouldRetryProbe,
 } from './check-login-shops-core.mjs';
 
 const LOGIN_CLI = fileURLToPath(new URL('./login-merchant.mjs', import.meta.url));
@@ -89,6 +89,11 @@ const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..');
 // 它唯一要保证的是「同一个出口 IP 上不会出现同一秒的连续登录提交」。
 // 要改小它之前先想清楚：那是在拿账号安全换轮次时间（见 main 里那段理由）。
 const LOGIN_GAP_MS = 20000;
+
+// 「读不到」重试前的退避。**这一条是给代理那侧的**（网络/进程调度），不是给平台的 ——
+// 所以它比 LOGIN_GAP_MS 短得多：它要绕开的是「代理闲置后第一条 eval 超时」这个坑
+// （2026-09-29 实测：网林那家整条回执都没拿到），而不是风控。
+const PROBE_RETRY_BACKOFF_MS = 3000;
 
 // ---------------------------------------------------------------------------
 // 通知出口（IO 侧）：**整轮一条**
@@ -305,13 +310,33 @@ async function main(argv) {
   let probed;
   if (!opts.login) {
     // 只读模式下**并行**：一家店一个浏览器实例、一个代理，互不相干。串行的话五家店要等 5 倍的长。
-    probed = await Promise.all(shops.map(async (shop) => ({ shop, ...(await probeShop(shop, opts.timeoutMs)) })));
+    //
+    // 「读不到就再试一次」（2026-09-29 加）：这一层并行探测最容易撞上「代理闲置后第一条 eval 超时」
+    // 那个坑，而它的后果是这家店**整条结论消失**（只读档拿不到状态就什么都判不出来）。
+    // 重试判据在 core 的 `shouldRetryProbe`（纯逻辑，有用例钉住）：只对「没回执」与
+    // 「两个站点都读不到」重试**一次**，实锤掉登录不重试。重试是只读的（`--check-only` 不碰页面），
+    // 所以它不破坏这一档「一个页面都不碰」的承诺。
+    probed = await Promise.all(shops.map(async (shop) => {
+      let last = await probeShop(shop, opts.timeoutMs);
+      for (let attempt = 0; shouldRetryProbe({ receipt: last.receipt, attempt }); attempt += 1) {
+        log(`[重试] ${shop} 这次没读出登录态（${last.error ?? '两个站点都读不到'}）—— `
+          + `${PROBE_RETRY_BACKOFF_MS}ms 后重试一次`);
+        await new Promise((r) => setTimeout(r, PROBE_RETRY_BACKOFF_MS));
+        last = await probeShop(shop, opts.timeoutMs);
+      }
+      return { shop, ...last };
+    }));
   } else {
     // 带 `--login` 时**必须串行 + 留间隔**，这是本次改动里唯一一处「为了不惹风控而放慢」。
     // 理由（不是保守，是实测口径，见 docs/ops/LOGIN-RECOVERY-OPTIONS.md §3.5）：
     //   五家店同时提交登录＝在同一个出口 IP 上短时间内五次登录，正是风控最敏感的形态；
     //   最坏结果不是「跑失败」，而是**一批账号被保护性锁定**——那比掉登录贵得多。
     //   串行 + 固定间隔把这件事的形态改掉：同一时刻只有一个登录在途，且两次之间有静默期。
+    //
+    // ⚠️ 这一档的重试**只管探测，不管登录**：重试同一次 `probeShop` 会**再走一遍 `--commit`**，
+    // 那是第二次提交登录 —— 与上面那条「不重复提交」的纪律冲突。所以这一档**不重试**：
+    // 它拿不到回执时，如实报 `UNREADABLE`（不叫人去登录，因为那不是实锤掉登录）。
+    // 这一条取舍写在这里，免得将来有人「顺手把重试也加上」。
     probed = [];
     for (const shop of shops) {
       probed.push({ shop, ...(await probeShop(shop, opts.timeoutMs, { login: true })) });

@@ -125,7 +125,10 @@ export function planRepair({ cause = null, stage = null, state = null } = {}) {
         : '没给成因 ⇒ 不给候选（不猜动作），交给人。',
     };
   }
-  const candidates = actions.map((action) => ({
+  // 按现场事实重排（2026-09-29 加，见 `reorderForUnreadable`）：这张表给人的是候选**菜单**，
+  // 而「先试哪个」取决于现场 —— 现场读不到时，先重落日期是注定无效的一轮。
+  const ordered = reorderForUnreadable(actions, state);
+  const candidates = ordered.map((action) => ({
     action,
     mutating: PAGE_MUTATING_ACTIONS.includes(action),
     why: REPAIR_WHY[action] ?? '',
@@ -134,6 +137,57 @@ export function planRepair({ cause = null, stage = null, state = null } = {}) {
     cause, stage: stage ?? null, stageHint: STAGE_PAGE_HINT[stage] ?? null,
     candidates, known: true, note: noteForState(state),
   };
+}
+
+/**
+ * 现场「读不到」时把「换现场」类动作提到最前（2026-09-29 加）。
+ *
+ * 起因（用户原话是「读不到就转 Agent，不行再转人工」）：三类失败的第一步并不相同 ——
+ *   · 落位类（日期没落上去）⇒ 第一件事是**重落日期**（`REAPPLY_DATES`）；
+ *   · 读不到类（CDP 超时 / 页签被换走 / 0 元素）⇒ 第一件事是**换个现场**，
+ *     因为页面都读不到时，「重落日期」连目标元素都定位不了，必然白跑一轮。
+ * 没有这个重排时，`STAGE_FAILED` 一律从 `REAPPLY_DATES` 开始试
+ * ⇒ 读不到这一类每次都要先浪费一轮（真跑里就是几十秒 + 一次真实的页面操作）。
+ *
+ * 判据刻意只看**现场事实**、不看成因名：
+ *   · `state.url` 命中登录页 → 任何页面类修复都无效，但重排仍把 `RELOAD_PAGE` 提到前面
+ *     （它至少能把页面从登录墙刷成一个可判定的现场）；
+ *   · `state.domSummary.totalElements === 0` → 页面几乎是空的，先换现场；
+ *   · `state` 读不到 / 不是对象 → **一律原序返回**（读不到现场就没有依据重排，
+ *     猜一个顺序等于把「读不到」升级成「乱动」）。
+ *
+ * 三条纪律：
+ *   ① **只重排、不增删** —— 返回的集合与 `actions` 逐项相同（只是顺序可能不同）。
+ *      重排丢项会让「候选耗尽」这个停手条件提前成立，那是静默的。
+ *   ② 只把 `RELOAD_PAGE` 上提，不动其余相对顺序（保持表里那一条「先关层/先归位」的意图）。
+ *   ③ 现场认不出来就不动 —— 默认行为与加这个函数之前逐字相同。
+ */
+function reorderForUnreadable(actions, state) {
+  if (!Array.isArray(actions)) return actions;
+  if (!actions.includes('RELOAD_PAGE')) return actions;
+  const info = describeUnreadable(state);
+  if (!info.unreadable) return actions;
+  // 稳定重排：RELOAD_PAGE 提前，其余保持表里的相对顺序。
+  return [...actions].sort((a, b) => (a === 'RELOAD_PAGE' ? -1 : 0) - (b === 'RELOAD_PAGE' ? -1 : 0));
+}
+
+/**
+ * 现场像不像「读不到」。返回 `{unreadable, why}` —— 这是**判据的唯一出口**，
+ * 于是 `planRepair` 的重排与 `noteForState` 的提示不会各判一套。
+ *
+ * 认不出来的现场（`null` / 非对象）⇒ `unreadable:false`（保守：不重排）。
+ */
+export function describeUnreadable(state) {
+  if (!state || typeof state !== 'object') return { unreadable: false, why: null };
+  const url = String(state.url ?? '');
+  if (/login\.htm|member\/login|havanalogin|mini_login/u.test(url)) {
+    return { unreadable: true, why: '现场停在登录页（页面类修复对它无效，先换一个现场再看）' };
+  }
+  const total = Number(state.domSummary?.totalElements ?? -1);
+  if (total === 0) {
+    return { unreadable: true, why: '现场页面几乎是空的（0 个元素 ⇒ 没渲染完，或页签被换走了）' };
+  }
+  return { unreadable: false, why: null };
 }
 
 /**
@@ -150,18 +204,17 @@ export const REPAIR_WHY = Object.freeze({
 /**
  * 用现场事实给一句「值得注意」的话。**只提示，不否决**。
  *
- * 最有价值的一种：现场 URL 已经是登录页 —— 那么「重载页面」「关遮挡」都注定没用，
- * 真正要做的是登录（那不在修复菜单里）。把它说出来，agent 就不必自己再推一遍。
+ * 判据来自 `describeUnreadable`（唯一出口）—— 这里只负责把它翻成给 agent 看的一句话，
+ * 不另判一套。两处各判一套的话，会出现「重排按一个判据、提示按另一个判据」，而它们都不会报错。
  */
 function noteForState(state) {
-  if (!state || typeof state !== 'object') return null;
-  const url = String(state.url ?? '');
+  const info = describeUnreadable(state);
+  if (!info.unreadable) return null;
+  const url = String(state?.url ?? '');
   if (/login\.htm|member\/login|havanalogin|mini_login/u.test(url)) {
     return '现场是登录页 ⇒ 页面类修复（关遮挡/重载/落位）都不会有效，真正要做的是登录。';
   }
-  const empty = Number(state.domSummary?.totalElements ?? -1);
-  if (empty === 0) return '现场页面几乎是空的（0 个元素）⇒ 可能是还没渲染完或页签被换走了。';
-  return null;
+  return `${info.why} ⇒ 已把「重载换现场」提到候选第一位。`;
 }
 
 /**

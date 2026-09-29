@@ -560,6 +560,137 @@ export function detectLoginDetour(href) {
 }
 
 // ---------------------------------------------------------------------------
+// 「确认登录 / 快速进入」中间屏（2026-09-29 加）
+// ---------------------------------------------------------------------------
+//
+// 这是本仓成本最高的一处缺口，2026-09-25 的专项诊断
+// （`evidence/login-diagnosis-2026-09-25/DIAGNOSIS.md`）把它定位到根：
+//   账号密码填了、身份核对过了、协议勾了、「登录」也真的点了 —— **服务端放行、页面切到
+//   「确认登录 / 快速进入」那一屏**，而**那一屏的 `location.href` 不变**
+//   （它只是在同一页上把容器切成 `login-view-hasLogin`）。
+//   于是提交之后唯一的成败判据 `isTaobaoLoginUrl(hrefAfter)` **恒为真** ⇒ 永远报
+//   `LOGIN_NOT_CONFIRMED` ⇒ 那一下确认**从来没有被点过**。
+//   历史症状：「每次都要求同意协议」「反复要人登」—— 不是平台无常，是我们每次都停在它面前没点。
+//
+// 为什么判据取**结构**（class / text）而不是坐标、也不是「等更久」：
+//   · 坐标：这一屏是同一页重排出来的，坐标随视口变（1506x642 与 1528x732 实测不同）；
+//   · 等更久：2026-09-25 那四次每次提交后都等了 6s，地址仍然不变 —— 它不是「还没跳完」，是**不会跳**。
+//
+// 判据的**取舍方向**（这是关键，别照抄成「有就点」）：
+//   命中 ⇒ 点它；**误判的代价要小**。所以两条都带「快速进入 / 确认登录」这类**动作词**的显式文本，
+//   而不是只认一个 `login-view-hasLogin` 的 class —— 那个 class 在别的屏上也可能出现。
+//   认不出来就**不点**（返回 null，照旧报 LOGIN_NOT_CONFIRMED）⇒ 退回今天的行为，不会更差。
+export const CONFIRM_SCREEN_SELECTORS = Object.freeze([
+  Object.freeze({ id: 'view-hasLogin', selector: '.login-view-hasLogin' }),
+  Object.freeze({ id: 'cm-has-login', selector: '.cm-has-login' }),
+]);
+
+// 这一屏上「点哪里」的那句话。刻意列全：漏一个症状是「屏认出来了但点不中」，
+// 而那种症状在日志里看起来像「点了但没用」（下一轮又要人）。
+export const CONFIRM_ACTION_TEXTS = Object.freeze(['快速进入', '确认登录', '确认进入']);
+
+/**
+ * 读「确认登录 / 快速进入」中间屏的状态。**纯表达式**，不在这里判。
+ *
+ * 为什么表达式要跟判据分开：表达式是 IO（注入进页面跑），判据是纯逻辑（离线可测）。
+ * 合在一起的话，「什么算命中」这件事就没有用例碰得到 —— 而它决定了「点还是不点」。
+ */
+export const CONFIRM_SCREEN_EXPRESSION = `(() => {
+  const visible = (el) => {
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    if (!(r.width > 0 && r.height > 0)) return false;
+    const cs = getComputedStyle(el);
+    if (!cs) return true;
+    return cs.visibility !== 'hidden' && cs.display !== 'none';
+  };
+  const sels = ${JSON.stringify(CONFIRM_SCREEN_SELECTORS.map((s) => s.selector))};
+  const texts = ${JSON.stringify(CONFIRM_ACTION_TEXTS)};
+  const present = [];
+  for (let i = 0; i < sels.length; i += 1) {
+    const el = document.querySelector(sels[i]);
+    if (el && visible(el)) present.push(sels[i]);
+  }
+  // 「点哪里」：在命中的容器里（找不到容器就在整页里）找一个**可见**且文本命中动作词的叶子。
+  // 取最后一个命中项没有依据，取第一个也没有 —— 但两者都可能点错；所以同时回传 rect，
+  // 由调用方（IO 侧）决定用中心点点击，并把 rect 写进回执供事后复盘。
+  let target = null;
+  const scope = present.length > 0 ? document.querySelector(present[0]) : document;
+  if (scope) {
+    const all = Array.from(scope.querySelectorAll('a, button, div, span, input'));
+    for (const el of all) {
+      if (!visible(el)) continue;
+      const t = String(el.textContent || el.value || '').trim();
+      if (!t) continue;
+      if (!texts.some((w) => t === w || t.includes(w))) continue;
+      // 只要**最内层**那个（外层容器的 textContent 会把整段都包进去，点它等于点空白）。
+      if (Array.from(el.children).some((c) => texts.some((w) => String(c.textContent || '').includes(w)))) continue;
+      const r = el.getBoundingClientRect();
+      target = { text: t, rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] };
+      break;
+    }
+  }
+  return JSON.stringify({ present, target });
+})()`;
+
+/**
+ * 「这一屏是不是确认登录中间屏」——**纯判据**，只有「命中 / 没命中」两个出口。
+ *
+ * 判据刻意要求**两条同时成立**：① 有命中的容器 class；② 在那个容器里真的找到一个带动作词的
+ * 可点叶子。只满足①就点，等于「看见一个可能是它的容器就点它中心」——
+ * 而这一屏点错的代价是点到「快速进入」以外的什么东西，那一步不会报错。
+ *
+ * 认不出来 ⇒ 返回 `null` ⇒ 调用方保持今天的行为（报 LOGIN_NOT_CONFIRMED 交人）。
+ * **这个方向的失败是「退化成现状」，不是「更差」** —— 这是这条判据能被接受的原因。
+ */
+export function detectConfirmScreen(state = null) {
+  if (!state) return null;
+  let parsed = state;
+  if (typeof state === 'string') {
+    try { parsed = JSON.parse(state); } catch { return null; }
+  }
+  const present = Array.isArray(parsed?.present) ? parsed.present : [];
+  const target = parsed?.target ?? null;
+  if (present.length === 0 || !target) return null;
+  const rect = Array.isArray(target.rect) ? target.rect : null;
+  if (!rect || rect.length !== 4) return null;
+  // 宽度或高度为 0 的矩形**不是可点目标**（`getBoundingClientRect` 对隐藏元素会给 0，
+  // 而表达式那边已经过滤过一遍；这里是第二道，防的是表达式将来被改动时判据悄悄放宽）。
+  if (!(rect[2] > 0 && rect[3] > 0)) return null;
+  return {
+    container: present[0],
+    containers: present,
+    point: [rect[0] + Math.floor(rect[2] / 2), rect[1] + Math.floor(rect[3] / 2)],
+    rect,
+    text: String(target.text ?? ''),
+  };
+}
+
+/**
+ * 提交之后，「还要不要再点一下」——把上面那两条判据和「点了之后有没有用」串成一条决策。
+ *
+ * 三个出口：
+ *   `CONFIRM_REQUIRED` —— 命中中间屏，且有可点目标 ⇒ 调用方去点，点完再回读两个站点
+ *   `NONE`             —— 没命中 ⇒ 保持现状（按 `isTaobaoLoginUrl` 判 LOGIN_NOT_CONFIRMED）
+ *   `AMBIGUOUS`        —— 命中容器但找不到可点目标 ⇒ **停手交人**（认出来却没得点，
+ *                        不猜、不乱点；写进回执让人知道「这一屏出现了，但我们没点」）
+ */
+export function judgeSubmitOutcome({ hrefAfter = null, confirmState = null } = {}) {
+  const detected = detectConfirmScreen(confirmState);
+  if (detected) return { outcome: 'CONFIRM_REQUIRED', detected };
+  const confirmPresent = (() => {
+    if (!confirmState) return false;
+    let parsed = confirmState;
+    if (typeof confirmState === 'string') { try { parsed = JSON.parse(confirmState); } catch { return false; } }
+    return Array.isArray(parsed?.present) && parsed.present.length > 0;
+  })();
+  if (confirmPresent) return { outcome: 'AMBIGUOUS', detected: null };
+  // 没命中中间屏：把「还在不在登录页」这件事交回原判据（`isTaobaoLoginUrl`），
+  // 这里**只做转发**，不在这里重写一遍那个口径（两份口径迟早漂移）。
+  return { outcome: 'NONE', detected: null, stillOnLogin: isTaobaoLoginUrl(hrefAfter) };
+}
+
+// ---------------------------------------------------------------------------
 // 飞书提醒：哪些结论要叫人、叫人的话怎么说
 // ---------------------------------------------------------------------------
 //

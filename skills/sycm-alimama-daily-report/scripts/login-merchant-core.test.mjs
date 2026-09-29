@@ -5,11 +5,14 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  ATTEMPT_OUTCOMES, FILLED_VERDICTS, FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION,
+  ATTEMPT_OUTCOMES, CONFIRM_ACTION_TEXTS, CONFIRM_SCREEN_EXPRESSION, FILLED_VERDICTS,
+  FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION,
   LOGIN_PAGE_PROMISED_VERDICTS, LOGIN_TARGETS, LOGIN_URL_CANDIDATES, NOTIFY_MODES, OUTCOME_TO_VERDICT,
   REASON_BY_VERDICT, SITES, TAOBAO_LOGIN_URL, VERDICTS, VERDICTS_NEEDING_HUMAN, absentSites, alertForRun,
-  buildLoginAlert, captchaVisible, centerOf, detectLoginDetour, expectedMemberFor, finalLoginVerdict,
-  isTaobaoLoginUrl, judgeFilled, judgeShopTarget, loggedOutSites, loginFormVisible, needsHuman, parseArgs,
+  buildLoginAlert, captchaVisible, centerOf, detectConfirmScreen, detectLoginDetour, expectedMemberFor,
+  finalLoginVerdict,
+  isTaobaoLoginUrl, judgeFilled, judgeShopTarget, judgeSubmitOutcome, loggedOutSites, loginFormVisible,
+  needsHuman, parseArgs,
   profileForShop, proxyPortOf, resolveAction, shopForProxy, shouldNotify, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 // 用**真的那份登记表**（不是测试自己造的假表）来验「哪家店 → 哪个 profile」：
@@ -873,4 +876,93 @@ test('主脚本真的接了候选循环与身份守卫（判据齐全但没人�
   assert.ok(code.includes('await parkTabOn('), '没有真的调用 parkTabOn ⇒ 页签会留在最后一条候选上');
   assert.ok(code.includes('final.parkOnLoginPage'), 'parkTabOn 没有受 core 的判定管 —— 那它就是在替所有结论导页面');
   assert.ok(code.includes('final.stoppedAt.url'), 'parkTabOn 没有用「判定选中的那一页」');
+});
+
+// ---------------------------------------------------------------------------
+// 「确认登录 / 快速进入」中间屏（2026-09-29 加）
+// ---------------------------------------------------------------------------
+//
+// 这一组钉的是**本仓成本最高的那处缺口**：登录成功后淘宝会停在「确认登录」那一屏，
+// 而那一屏的 `location.href` 与登录页逐字相同 ⇒ 唯一判据恒真 ⇒ 那一下确认从来没被点过
+//（2026-09-25 诊断，见 core 的注释）。判据认不出来会退回今天的行为（交人），所以取舍方向是安全的；
+// 但**认出来了却不点**与「没认出来」在日志里长得一样，所以两条腿都要钉住。
+
+test('确认登录中间屏：命中容器 + 命中可点叶子才算命中（只有一条腿不算）', () => {
+  // 只有容器、没有可点叶子 ⇒ 不是「可以点的中间屏」⇒ 返回 null（交人），绝不是「命中但点不动」。
+  assert.equal(detectConfirmScreen({ present: ['.login-view-hasLogin'], target: null }), null,
+    '只有容器没有可点目标却判成命中 —— 调用方会去点一个不存在的位置');
+  assert.equal(detectConfirmScreen({ present: [], target: { text: '快速进入', rect: [1, 2, 3, 4] } }), null,
+    '没有容器却只看叶子 —— 那等于「页面上任何一个写着快速进入的元素都点」');
+  assert.equal(detectConfirmScreen(null), null);
+  assert.equal(detectConfirmScreen({ present: ['.login-view-hasLogin'], target: { text: '快速进入', rect: [1, 2, 0, 30] } }), null,
+    '宽为 0 的矩形不是可点目标（隐藏元素就是这么长出来的）');
+
+  const hit = detectConfirmScreen({
+    present: ['.login-view-hasLogin'],
+    target: { text: '快速进入', rect: [100, 200, 80, 30] },
+  });
+  assert.equal(hit.container, '.login-view-hasLogin');
+  assert.deepEqual(hit.point, [140, 215], '点击点必须是矩形中心（不是左上角 —— 那是边框外）');
+});
+
+test('确认登录中间屏：动作词词表非空且不带「同意/协议」这类词', () => {
+  // 词表为空 ⇒ 表达式永远找不到 target ⇒ 这条修复在真机上是死的（而所有用例仍然绿）。
+  assert.ok(CONFIRM_ACTION_TEXTS.length > 0, '动作词表是空的 —— 那条修复等于没装');
+  assert.ok(CONFIRM_ACTION_TEXTS.includes('快速进入'), '实测到的那一屏写的是「快速进入」');
+  for (const word of CONFIRM_ACTION_TEXTS) {
+    assert.equal(/同意|协议|隐私/u.test(word), false,
+      `动作词「${word}」看起来像在点协议 —— 协议那一步有自己的位置，别让这条判据替它做决定`);
+  }
+});
+
+test('确认登录中间屏：表达式可被解析且空页面不炸', () => {
+  const fn = new Function('document', 'getComputedStyle', `return ${CONFIRM_SCREEN_EXPRESSION}`);
+  const empty = { querySelector: () => null, querySelectorAll: () => [] };
+  assert.deepEqual(JSON.parse(fn(empty, () => null)), { present: [], target: null },
+    '空页面上这个表达式必须返回「没命中」，不能抛 —— 抛了就会被 catch 成 null，看起来与「没命中」一样');
+});
+
+test('judgeSubmitOutcome：三种出口各对应一个明确的处置（不许糊成一个「没成」）', () => {
+  // ① 命中中间屏 ⇒ 去点
+  assert.equal(judgeSubmitOutcome({
+    hrefAfter: 'https://login.taobao.com/havanaone/login/login.htm',
+    confirmState: { present: ['.cm-has-login'], target: { text: '确认登录', rect: [10, 20, 60, 20] } },
+  }).outcome, 'CONFIRM_REQUIRED');
+  // ② 命中容器但没得点 ⇒ 停手交人（**不许**当成「没出现」——那样这一屏就再也没人知道它出现过）
+  assert.equal(judgeSubmitOutcome({
+    hrefAfter: 'https://login.taobao.com/havanaone/login/login.htm',
+    confirmState: { present: ['.cm-has-login'], target: null },
+  }).outcome, 'AMBIGUOUS');
+  // ③ 没命中 ⇒ 把「还在不在登录页」交回原判据（转发，不在这里重写那个口径）
+  const none = judgeSubmitOutcome({ hrefAfter: 'https://login.taobao.com/havanaone/login/login.htm', confirmState: null });
+  assert.equal(none.outcome, 'NONE');
+  assert.equal(none.stillOnLogin, true, '没命中时必须仍能回答「还在不在登录页」');
+  assert.equal(judgeSubmitOutcome({ hrefAfter: 'https://myseller.taobao.com/home.htm', confirmState: null }).stillOnLogin, false);
+});
+
+test('接线：主脚本必须在判 URL 之前先处理确认屏，且点了之后才回读站点', () => {
+  const code = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
+  // 判据必须来自 core（写死在这里的话，上面那些用例碰不到真的那一份）
+  assert.ok(code.includes('CONFIRM_SCREEN_EXPRESSION'), '确认屏表达式没有从 core 取 ⇒ 判据有两份');
+  assert.ok(code.includes('judgeSubmitOutcome('), '主脚本没有问 core 那个判据');
+  // ⚠️ 顺序是这条修复的全部意义：先处理中间屏，再谈「还在登录页」。
+  // 反过来（先 isTaobaoLoginUrl 并当场 return）＝ 中间屏永远走不到 ＝ 退回今天的行为。
+  const confirmAt = code.indexOf('judgeSubmitOutcome(');
+  const notConfirmedAt = code.indexOf("receipt.verdict = 'LOGIN_NOT_CONFIRMED'");
+  assert.ok(confirmAt > 0 && notConfirmedAt > confirmAt,
+    '主脚本先判「还在登录页」才处理确认屏 —— 中间屏永远走不到，那一下确认还是没人点');
+  // 点了之后必须**重新回读**：点一下不足以保证成交，只有两个站点都读到登录态才算成
+  assert.ok(code.includes('hrefAfterConfirm'), '点完确认屏没有回读地址 ⇒ 无法回答「那一下到底有没有用」');
+  assert.ok(code.includes("outcome.outcome === 'AMBIGUOUS'"), '「认出这一屏却没得点」没有独立处置');
+});
+
+test('自动同意协议：勾选之后必须留下「同意了哪一份、什么时候」的凭据', () => {
+  const code = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
+  assert.ok(code.includes('agreedAt'), '自动同意却没有留同意时刻 —— 事后无法核对');
+  assert.ok(code.includes('AGREEMENT_TEXT'), '协议文本没有从页面上取（内联一份等于伪造凭据）');
+  // 文本必须**从页面取**：内联的字面量在平台改协议之后会变成假凭据，而它看起来完全正常。
+  const agreeBlock = code.slice(code.indexOf('const AGREEMENT_TEXT'), code.indexOf('async function proxyText'));
+  assert.match(agreeBlock, /#fm-agreement/u, '协议文本表达式没有指向真实的协议节点');
+  assert.equal(/我已阅读并同意[^']*'[^)]*\)/u.test(agreeBlock), false,
+    '把「我已阅读并同意…」写成了字面量 —— 那是最容易被平台改掉的一句话，必须是读出来的');
 });

@@ -8,10 +8,10 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  LOGIN_FAIL_TEXT, PREFLIGHT_VERDICTS, SHOP_VERDICTS, SITE_KEYS, SITE_VERDICTS, buildRoundLoginAlert,
-  exitCodeForPreflight, judgePreflight, judgeShopReceipt, loginAccountFor, loginFailReason, notifyModeFor,
-  parseCheckShopsArgs, platformNameHint, renderNormalizeLines, renderReport, renderRoundNotifyLines,
-  shouldNotifyRound, siteVerdictOf,
+  LOGIN_FAIL_TEXT, PREFLIGHT_VERDICTS, PROBE_RETRY_LIMIT, SHOP_VERDICTS, SITE_KEYS, SITE_VERDICTS,
+  buildRoundLoginAlert, exitCodeForPreflight, judgePreflight, judgeShopReceipt, loginAccountFor,
+  loginFailReason, notifyModeFor, parseCheckShopsArgs, platformNameHint, renderNormalizeLines,
+  renderReport, renderRoundNotifyLines, shouldNotifyRound, shouldRetryProbe, siteVerdictOf,
 } from './check-login-shops-core.mjs';
 // 站点词表与探针地址的唯一来源：这里只**核对**，不另抄一份。
 import { SITES, VERDICTS_NEEDING_HUMAN } from './login-merchant-core.mjs';
@@ -532,4 +532,70 @@ test('renderNormalizeLines：归位那段要说清「哪家、动没动、齐没
   assert.match(text, /里可林淘宝：已就位（已归位/u);
   assert.match(text, /网林天猫：⚠️ 仍不齐（归位后仍不齐/u);
   assert.match(text, /科塔淘宝：没做成 —— 连不上代理/u);
+});
+
+// ---------------------------------------------------------------------------
+// 「读不到」要不要再试一次（2026-09-29 加）
+// ---------------------------------------------------------------------------
+
+// 每一种现场一个具名回执：`shouldRetryProbe` 的输入形状与 `judgeShopReceipt` 完全一样，
+// 所以这里直接复用上面那条构造器，不另造一套字段名（否则两边漂移了都没人发现）。
+const receiptOf = (a, b) => ({ sites: { sycm: { loggedIn: a }, alimama: { loggedIn: b } } });
+
+test('shouldRetryProbe：只对「读不到」重试，实锤掉登录绝不重试', () => {
+  // ① 没有回执 ⇒ 子进程超时 / 没起来 / 输出不是 JSON。这是 2026-09-29 批次级预检
+  //    网林天猫那一行的现场（`CDP 命令超时: Runtime.evaluate`）：值得再读一次。
+  assert.equal(shouldRetryProbe({ receipt: null, attempt: 0 }), true, '读不到就该再读一次，而不是直接叫人');
+  assert.equal(shouldRetryProbe({}), true, '默认值也要落到「再试一次」，不能因为没传就静默变成不重试');
+
+  // ② 有回执但两站全 `null` ⇒ 同样是「读不到」。
+  assert.equal(shouldRetryProbe({ receipt: receiptOf(null, null), attempt: 0 }), true);
+
+  // ③ 只要有**一个**站读到实锤，就不再重试 —— 那是确定的事实，重试只会多开一次页面。
+  //    （2026-09-29）：这一组钉的是**行为**，不是某一行代码。判据只有一个出口
+  //    `every(s => s === null)`，它已经蕴含「任何非 null 就不重试」；
+  //    曾经多加过一行显式的 `some(s => s === false) return false`，那是**死代码**
+  //    （删掉后本组用例仍全绿，突变没抓住）⇒ 已删，别加回来。
+  assert.equal(shouldRetryProbe({ receipt: receiptOf(false, null), attempt: 0 }), false, '实锤掉登录不重试');
+  assert.equal(shouldRetryProbe({ receipt: receiptOf(null, false), attempt: 0 }), false);
+  assert.equal(shouldRetryProbe({ receipt: receiptOf(false, false), attempt: 0 }), false);
+  assert.equal(shouldRetryProbe({ receipt: receiptOf(false, true), attempt: 0 }), false,
+    '一台实锤掉登录、另一台确认在 ⇒ 结论已经确定，不重试');
+  assert.equal(shouldRetryProbe({ receipt: receiptOf(true, false), attempt: 0 }), false);
+
+  // ④ 全在登录态 ⇒ 没什么可试的。
+  assert.equal(shouldRetryProbe({ receipt: receiptOf(true, true), attempt: 0 }), false);
+  assert.equal(shouldRetryProbe({ receipt: receiptOf(true, null), attempt: 0 }), false, '已确认在则不必重试');
+});
+
+test('shouldRetryProbe：重试次数是固定一次，不是「重试到成功」', () => {
+  // 为什么必须封顶：代理真的挂掉时，无限重试会把一轮预检拖成永不返回 —— 比读不到更糟。
+  assert.equal(PROBE_RETRY_LIMIT, 1, '上限就是 1（这个坑的行为是「闲置后第一条慢」，退避一次足够覆盖）');
+  assert.equal(shouldRetryProbe({ receipt: null, attempt: 0 }), true);
+  assert.equal(shouldRetryProbe({ receipt: null, attempt: 1 }), false, '第二次之后一律停手，把结论交出去');
+  assert.equal(shouldRetryProbe({ receipt: null, attempt: 5 }), false);
+});
+
+test('shouldRetryProbe：`loggedInAfter` 优先于 `loggedIn`（带 --login 的档位不许被读成「还是读不到」）', () => {
+  // 带 `--login` 时子进程会真去登一次，登完写进 `loggedInAfter`；`loggedIn` 是登录**之前**那一眼。
+  // 若这里只看 `loggedIn`，一次成功的自动登录会被判成「读不到」⇒ 再登一次 ⇒ 二次提交。
+  assert.equal(shouldRetryProbe({ receipt: { sites: { sycm: { loggedIn: null, loggedInAfter: true }, alimama: { loggedIn: null, loggedInAfter: true } } }, attempt: 0 }), false,
+    '登成功了就不该再重试');
+  // 反过来：登录后**实锤没登上**，也不重试（那是事实）。
+  assert.equal(shouldRetryProbe({ receipt: { sites: { sycm: { loggedIn: null, loggedInAfter: false }, alimama: { loggedIn: null, loggedInAfter: null } } }, attempt: 0 }), false);
+});
+
+test('shouldRetryProbe：接线顺序 —— 只读档重试，`--login` 档不重试（重试 = 二次提交）', () => {
+  // 这条钉的是**调用点**，不是纯判据：`check-login-shops.mjs` 的重试循环只包在只读探针外面。
+  // 理由：`--login` 档重试一次就等于再点一次「登录」，那不是重试、是重复动作。
+  const src = readFileSync(new URL('./check-login-shops.mjs', import.meta.url), 'utf8');
+  assert.match(src, /shouldRetryProbe\(\{ receipt: last\.receipt, attempt \}\)/u,
+    '重试循环必须由 shouldRetryProbe 驱动（改回硬编码就会与这里说的理由脱钩）');
+  // 只读分支用 `!opts.login`（不是 `args.login`）——别把它当成没写。
+  const retryIdx = src.indexOf('shouldRetryProbe({ receipt: last.receipt, attempt })');
+  const readonlyIdx = src.indexOf('if (!opts.login)');
+  const loginIdx = src.indexOf('} else {', readonlyIdx);
+  assert.ok(retryIdx > 0 && readonlyIdx > 0 && loginIdx > 0, '三个锚点都要找得到，否则这条用例等于没测');
+  assert.ok(retryIdx > readonlyIdx && retryIdx < loginIdx,
+    '重试循环要落在只读分支内部（`if (!opts.login)` 与它的 `else` 之间），不能把 --login 也包进去');
 });

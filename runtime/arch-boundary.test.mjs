@@ -62,6 +62,13 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/sycm-alimama-daily-report/scripts/login-merchant-core.test.mjs',
   'skills/sycm-alimama-daily-report/scripts/login-merchant.mjs',
   'skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs',
+  // 2026-09-29 新增：**修复动作的执行侧**（自进化回环里的「手」）。它必须 import 两处 runtime：
+  //   ① `browser-ports.mjs` —— 拿 `--proxy` 与 `--shop` 的一致性判据（同这一族所有脚本，
+  //      切实例只能靠端口，绝不回落到别的店）；② `page-normalize.mjs` —— `RESET_PAGES` 动作
+  //      的归位能力**只有这一份实现**，重写一遍就是第二个事实。
+  // 方向是干净的 skills → runtime（两个都是机制层叶子）。它本身**零判断**（判断留给 agent），
+  // 所以它不是「业务倒灌机制层」，只是把一个既有机制接到一条新的调用路径上。
+  'skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs',
   'skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs',
   'skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs',
   'skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs',
@@ -97,6 +104,12 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/xws-export-market-analysis/scripts/export-market-analysis.mjs',
   'skills/xws-export-market-analysis/scripts/flow.mjs',
   'skills/xws-export-market-analysis/scripts/segments.mjs',
+  // 2026-09-29 补登记（改动本身是 09-27 留下的未提交内容，本次收口时守卫才发现它红着）：
+  // 监管器新接了两件事 —— 「登录态要人」时先自己试一次小旺神登录（`runtime/xws-login.mjs`），
+  // 以及复用 `export-market-analysis.mjs` 的 `cleanupSearchTargets`。
+  // 两者都是 skills → runtime 的干净方向：`xws-login.mjs` 只依赖 node:child_process 与
+  // `browser-ports.mjs`（机制层叶子），登录能力**只此一份**，在 skills 侧重写一遍就是第二个事实。
+  'skills/xws-export-market-analysis/scripts/supervise-adaptive-export.mjs',
   'skills/xws-export-market-analysis/tests/flow.test.mjs',
   'skills/xws-export-market-analysis/tests/prepare-flow.test.mjs',
   'skills/xws-faq-operator/tests/adapter-faq-product.test.mjs',

@@ -61,12 +61,24 @@ import { fileURLToPath } from 'node:url';
 import { BROWSER_PROFILES, PROJECT_PORTS, SHOP_BROWSERS, shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
 // 判据与纯逻辑都在 core 里（可离线测）；这里只留 IO。
 import {
-  FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION, LOGIN_URL_CANDIDATES, SITES, absentSites, alertForRun,
+  CONFIRM_SCREEN_EXPRESSION, FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION, LOGIN_URL_CANDIDATES, SITES,
+  absentSites, alertForRun,
   captchaVisible, centerOf, detectLoginDetour, expectedMemberFor, finalLoginVerdict, isTaobaoLoginUrl,
-  judgeFilled, judgeShopTarget, loggedOutSites, loginFormVisible, needsHuman, parseArgs, sitesNeedingLogin,
+  judgeFilled, judgeShopTarget, judgeSubmitOutcome, loggedOutSites, loginFormVisible, needsHuman, parseArgs,
+  sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 
 const delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+// 协议文本（2026-09-29 加）：自动同意要留下「同意了哪一份」的凭据，而文本**只从页面上取**。
+// 在这里内联一份「我已阅读并同意…」等于伪造凭据：平台改了协议，回执仍写着旧文本。
+// 取的是协议那一行的可见文本，去掉首尾空白，截断在调用侧做（回执不该被一段长文本撑爆）。
+const AGREEMENT_TEXT = `(() => {
+  const el = document.querySelector('#fm-agreement');
+  if (!el) return null;
+  const line = el.closest('label') || el.parentElement || el;
+  return String(line.textContent || '').replace(/\\s+/g, ' ').trim() || null;
+})()`;
 
 // 通知出口：复用既有 CLI，不新造一条投递链（不另写一份 app_id/secret 的读法）。
 const NOTIFY_CLI = fileURLToPath(new URL('../../../runtime/notify-feishu.mjs', import.meta.url));
@@ -107,6 +119,8 @@ async function shot(args, targetId, name) {
 
 // 表达式与坐标选取都来自 core（那份是离线测过的同一份）。
 const FORM_STATE = FORM_STATE_EXPRESSION;
+// 「确认登录 / 快速进入」中间屏的读取表达式 —— 同样只在 core 里定义一份（判据那边要用它）。
+const CONFIRM_SCREEN = CONFIRM_SCREEN_EXPRESSION;
 
 // 站点是否已经登录：导航到只有登录态才进得去的那一页，看最终 URL 有没有被踢回登录。
 async function siteLoggedIn(args, site) {
@@ -508,12 +522,34 @@ async function attempt() {
       return finish(receipt);
     }
 
-    // 第五步：勾协议（默认未勾）→ 点登录。
+    // 第五步：勾协议 → 点登录。
+    //
+    // 协议勾选（2026-09-29 改：**自动同意**，用户明确授权）。
+    // 原先这一节是「默认未勾就点一下」——行为上早就等同于自动同意，但没有留下**同意过哪一份**的凭据。
+    // 自动替账号接受一份法律文本这件事要能被事后核对，所以现在把协议文本与同意时刻写进回执
+    // （`login.agreement`）。文案取自页面自身（`#fm-agreement` 那一行的可见文本），不在这里另抄一份——
+    // 抄一份的话，平台改协议而回执仍写着旧文本，那份记录就成了假凭据。
+    let agreementText = null;
+    if (state.agreement) {
+      agreementText = await evalOn(args, targetId, AGREEMENT_TEXT).catch(() => null);
+    }
     if (state.agreement && state.agreement.checked === false) {
       const point = centerOf(state, 'agreement');
-      if (point) { await clickPoint(args, targetId, point[0], point[1]); await delay(1200); state = JSON.parse(await evalOn(args, targetId, FORM_STATE)); }
+      if (point) {
+        await clickPoint(args, targetId, point[0], point[1]);
+        await delay(1200);
+        state = JSON.parse(await evalOn(args, targetId, FORM_STATE));
+      }
     }
     receipt.login.agreementChecked = state.agreement?.checked ?? null;
+    receipt.login.agreement = state.agreement
+      ? {
+        autoAccepted: true,
+        agreedAt: new Date().toISOString(),
+        checkedAfter: state.agreement.checked ?? null,
+        text: agreementText ? String(agreementText).slice(0, 500) : null,
+      }
+      : null;
     const submitPoint = centerOf(state, 'submit');
     if (!submitPoint) {
       receipt.verdict = 'STOP_AND_ALERT';
@@ -524,17 +560,45 @@ async function attempt() {
     receipt.login.submitPoint = submitPoint;
     await delay(6000);
 
-    // 第六步：判成败 —— 看它有没有离开登录页，再回到两个站点各验一次。
+    // 第六步：判成败 —— 先看有没有「确认登录 / 快速进入」中间屏（**要先处理它**），
+    // 再回到两个站点各验一次。
+    //
+    // 顺序不能颠倒：这一屏的 `location.href` 与登录页**逐字相同**（它只是同一页换了个容器），
+    // 所以「还在不在登录页」这个判据对它恒为真。原先是先判 URL、判到就 return
+    // ⇒ 上面这一屏永远走不到 ⇒ 那一下确认从来没被点过（2026-09-25 诊断的根因，见 core 的注释）。
     const hrefAfter = await evalOn(args, targetId, 'location.href').catch(() => null);
     receipt.login.urlAfter = hrefAfter ?? null;
     receipt.login.shots = await shot(args, targetId, 'login-after-submit');
-    // 「还在不在登录页上」只由 core 的 isTaobaoLoginUrl 解释（这里原先内联了一份同样的正则，
-    // 而这次新增的 MAIN_SESSION_ONLY 判断也要用 —— 两份口径迟早会各自漂移，漂移的表现是结论错）。
-    if (hrefAfter && isTaobaoLoginUrl(hrefAfter)) {
+
+    // 判据全在 core 的 `judgeSubmitOutcome`（离线可测）——「点还是不点」这件事不能只活在 IO 里。
+    const confirmState = await evalOn(args, targetId, CONFIRM_SCREEN).catch(() => null);
+    const outcome = judgeSubmitOutcome({ hrefAfter, confirmState });
+    receipt.login.submitOutcome = outcome.outcome;
+
+    if (outcome.outcome === 'CONFIRM_REQUIRED') {
+      const { detected } = outcome;
+      receipt.login.confirmScreen = { container: detected.container, text: detected.text, rect: detected.rect };
+      await proxyText(`${args.proxy}/bringToFront?target=${encodeURIComponent(targetId)}`).catch(() => {});
+      await clickPoint(args, targetId, detected.point[0], detected.point[1]);
+      receipt.login.confirmPoint = detected.point;
+      await delay(5000);
+      receipt.login.shots = await shot(args, targetId, 'login-after-confirm');
+      receipt.login.hrefAfterConfirm = await evalOn(args, targetId, 'location.href').catch(() => null);
+    } else if (outcome.outcome === 'AMBIGUOUS') {
+      // 认出了这一屏、却找不到可点的目标 ⇒ **停手交人**，不猜、不乱点。
+      // 这一条与「没认出这一屏」是两件事：前者说明这一屏确实出现了（人会想知道），
+      // 后者是今天的行为（照旧报 LOGIN_NOT_CONFIRMED）。混在一起的话，「点不中」会被记成「没出现」。
+      receipt.verdict = 'STOP_AND_ALERT';
+      receipt.detail = '页面上出现了「确认登录 / 快速进入」那一屏，但系统没能定位到可点的位置，'
+        + '所以没有替你点。请在那个窗口里手点一次（点完就进后台了）。';
+      return finish(receipt, 2);
+    } else if (outcome.stillOnLogin) {
       receipt.verdict = 'LOGIN_NOT_CONFIRMED';
       receipt.detail = '页面还停在登录页 —— 可能是密码不对，也可能是平台要求额外验证。系统没有再试一遍（连着试会把账号锁住）。';
       return finish(receipt, 2);
     }
+
+    // 第七步：两个站点各验一次（中间屏点过之后也走这里 —— 只有这一关才算「成了」）。
     for (const key of args.sites) {
       const site = SITES[key];
       const after = await siteLoggedIn(args, site);
