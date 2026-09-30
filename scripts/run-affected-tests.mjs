@@ -31,6 +31,32 @@ export function classifyChangedFiles(files) {
       checks.add(`skill:${skillMatch[1]}`);
       continue;
     }
+    // 仓库级 `scripts/*.mjs` ＝ **编排层**（run-daily-job / run-batches / stop-all / start-all /
+    // run-product-data-job / run-test-suite …）。归 `runtime`，**不归 `unit`**（2026-09-30 修）。
+    //
+    // 为什么必须分开（用户 2026-09-30 原话「为什么现在开发一个东西要这么久？」）：
+    //   `unit` ＝ `unit:skills`（67 个技能用例文件）＋ `unit:runtime`（108 个文件，实测 **30 秒**）。
+    //   实测过一次只改 `scripts/` 的提交：命中 `unit`，`test:unit` **跑了 22 分 56 秒仍未结束**、
+    //   被我停掉（两段的文件数 67 vs 108，慢的全在技能那一段）。
+    //   而技能那一段里有会**等满 CLI 自己 60 分钟下载超时**的 e2e 用例 —— 2026-09-25 实测：某次
+    //   门禁跑了 664 条 / **7.64 小时**，其中 92% 花在 7 条这样的用例上（日志 `Timed out waiting
+    //   for .csv download`，每条 60.4–61.9 分）。
+    //   ⇒ 「改一个编排脚本」就挂上几十分钟到几小时的门槛，真实效果不是「更稳」，而是
+    //   **没人再跑这道门**（09-25 那次跑了 8 小时才被发现，期间谁都不知道它还在跑）。
+    //
+    // 覆盖不会少（改动前实测，不是推断）：
+    //   · `grep -rln 'scripts/…' skills/*/tests skills/*/scripts --include=*.test.mjs` 为空
+    //     ⇒ **没有任何技能测试引用仓库级 `scripts/`**；
+    //   · 20 个 `runtime/*.test.mjs` 引用它 ⇒ 编排脚本的判据本来就在 runtime 里
+    //     （计划与接线守卫：daily-job-plan / batch-plan / product-data-job-core /
+    //      product-data-batch-release-wiring / product-data-path-sync-spawn-guard …）。
+    //
+    // 只把 JS 编排脚本改归 `runtime`；`scripts/` 下若出现 `.py`，或者仓库根下的零散脚本，
+    // 仍走 `unit`（它们没有 runtime 侧判据兜底，宁可贵也不能漏）。
+    if (file.startsWith('scripts/') && /\.(?:mjs|cjs|js)$/u.test(file)) {
+      checks.add('runtime');
+      continue;
+    }
     if (file.endsWith('.mjs') || file.endsWith('.cjs') || file.endsWith('.js') || file.endsWith('.py')) {
       checks.add('unit');
     }
