@@ -15,6 +15,8 @@ import {
   buildLoginPreflightArgs, buildMerchantLoginGuardArgs, renderCommand, renderJobEntryCommand,
 } from './daily-job-plan.mjs';
 import { collectingShopKeys } from './browser-ports.mjs';
+// 共享实例名单的单一来源：分批形态下第 ① 步只起它（见 2026-09-30 修的那个缺陷）。
+import { SHARED_INSTANCE_KEYS } from './batch-plan.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 const argsOf = (plan, name) => plan.steps.find((s) => s.name === name).args;
@@ -145,9 +147,9 @@ test('启用分批：它**替换**链那一步（不是并排），参数只带�
   const plan = buildJobPlan({ batches: 2 });
   assert.equal(plan.batches, 2);
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'batch-chain'],
+    ['ensure-instances', 'ensure-merchant-login', 'batch-chain'],
     '两条一起跑会让同一家店被驱动两次 —— 必须是替换关系');
-  const step = plan.steps[3];
+  const step = plan.steps[2];
   assert.match(step.file, /scripts\/run-batches\.mjs$/u);
   assert.equal(step.blocking, true);
   assert.deepEqual(step.args, ['--date', 'yesterday', '--batch-size', '2', '--commit', '--notify-print']);
@@ -158,15 +160,15 @@ test('启用分批：它**替换**链那一步（不是并排），参数只带�
 test('启用分批时 `--commit` 必须显式传下去（漏了它就变成「排练」，而日志看不出异常）', () => {
   // 分批驱动自己的默认是排练（不写飞书）；定时任务的职责是写下今天的数据。
   // 这条是**静默降级**里最贵的一种：不报错、不告警、日志里那句「模式」也照旧。
-  assert.ok(buildJobPlan({ batches: 2 }).steps[3].args.includes('--commit'),
+  assert.ok(buildJobPlan({ batches: 2 }).steps[2].args.includes('--commit'),
     '定时形态必须带 --commit，否则整轮不写飞书而没人会发现');
 });
 
 test('启用分批：告警出口与降级开关照旧按需转发', () => {
   const plan = buildJobPlan({ batches: 3, notify: true, keepGoing: true });
-  assert.deepEqual(plan.steps[3].args,
+  assert.deepEqual(plan.steps[2].args,
     ['--date', 'yesterday', '--batch-size', '3', '--commit', '--notify', '--keep-going']);
-  assert.deepEqual(buildJobPlan({ batches: 3, shops: ['科塔淘宝'] }).steps[3].args,
+  assert.deepEqual(buildJobPlan({ batches: 3, shops: ['科塔淘宝'] }).steps[2].args,
     ['--date', 'yesterday', '--batch-size', '3', '--commit', '--notify-print', '--shops', '科塔淘宝']);
 });
 
@@ -214,16 +216,45 @@ test('不给证据目录时：不许凭空造一个路径，也不许给链加�
   assert.equal(buildJobPlan().steps.find((s) => s.name === 'login-preflight').artifactPath, undefined);
 });
 
-test('分批那一档：结论交接在分批驱动内部完成，这里不生成也不转发', () => {
+test('分批那一档：整轮的逐店预检**不进计划**，结论交接全在分批驱动内部完成', () => {
   const plan = buildJobPlan({ batches: 2, artifactsDir: ARTIFACTS_DIR });
+  // 这一步带 `--login` 时必然白跑（店铺实例要等各批自己的 `start` 才起）—— 见计划里那段长注释。
+  assert.equal(plan.steps.some((s) => s.name === 'login-preflight'), false,
+    '分批档里不该有整轮的逐店预检：那一刻 12 家店的调试端口一个都没开');
   // 这里生成的那份没有任何人读 —— 而「写了没人读的文件」正是后来人会照着接错的地方。
-  assert.deepEqual(argsOf(plan, 'login-preflight'), [], '分批档里不生成 JSON');
+  assert.equal(plan.steps.some((s) => s.artifactPath), false, '分批档里不生成结论文件');
   // run-batches.mjs 自己不认这个参数，给了会当场报未知参数（比静默无效更难查）。
-  assert.equal(plan.steps[3].args.includes(LOGIN_PREFLIGHT_FLAG), false);
-  // 但这一步**仍然跑**：它的报告进 job.log，是定时任务日志里唯一一条「整轮视角」的记录。
-  // （逐批那份结论由分批驱动自己生成 —— 见下面「宿主（分批链）也接上了」那条真跑判据。）
+  assert.equal(plan.steps[2].args.includes(LOGIN_PREFLIGHT_FLAG), false);
+  // 逐批那份结论由分批驱动自己生成（见下面「宿主（分批链）也接上了」那条真跑判据）。
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'batch-chain']);
+    ['ensure-instances', 'ensure-merchant-login', 'batch-chain']);
+});
+
+// ---------------------------------------------------------------------------
+// 分批**真的只起这一批**（2026-09-30 修的那个缺陷）。
+//
+// 缺陷形态：`--batches` 只把**链**切成批，而第 ① 步照旧 `start-all.mjs`（**全部**登记实例：
+// 13 家店 ＋ 竞品链）⇒ 峰值仍是一次全起，分批「省内存」一分没省、峰值与从前逐字相同 ——
+// 而省内存正是分批存在的唯一理由（batch-plan.mjs 文件头：瓶颈是内存，「同时开着几个实例」
+// 才是旋钮）。实测：那一轮第 0 步之后，28 个店铺端口全在（当天 12/12 家失败的轮次也在）。
+// ---------------------------------------------------------------------------
+test('分批形态：第 ① 步**只起共享实例**，一个店铺实例都不点名（否则分批等于没分）', () => {
+  const args = argsOf(buildJobPlan({ batches: 5 }), 'ensure-instances');
+  assert.deepEqual(args, ['--only', SHARED_INSTANCE_KEYS.join(',')],
+    '共享实例名单只有一份（batch-plan.mjs 的 SHARED_INSTANCE_KEYS），不许在这里再写第二遍');
+  for (const shop of collectingShopKeys()) {
+    assert.equal(args.includes(shop), false, `分批形态的第 ① 步不许点名店铺实例：${shop}`);
+  }
+  // 对比：不分批那一档仍然一次起齐 —— 那是它的语义，不许被这次改动顺手改掉。
+  assert.deepEqual(argsOf(buildJobPlan(), 'ensure-instances'), []);
+});
+
+test('分批形态：整轮的逐店预检不进计划（那一刻店铺实例一个都没起）', () => {
+  const names = buildJobPlan({ batches: 5 }).steps.map((s) => s.name);
+  assert.equal(names.includes('login-preflight'), false,
+    '整轮逐店预检在分批形态下必然白跑（12 家全报「连不上调试端口」），权威的是逐批那一条');
+  // 不分批那一档照旧保留它（那时实例确实都起来了，前提成立）。
+  assert.equal(buildJobPlan().steps.map((s) => s.name).includes('login-preflight'), true);
 });
 
 test('接线判据：两个宿主真的把结论接上了（防「函数全绿、没人调」）', () => {

@@ -27,6 +27,17 @@
 // 见 runtime/arch-boundary.test.mjs 与提案 D3）。
 import path from 'node:path';
 
+// 共享实例的名单**只有一份**：`runtime/batch-plan.mjs` 的 `SHARED_INSTANCE_KEYS`
+// （＝共享商家浏览器 `dailyReport`／19022·19023）。分批形态下本计划的第 ① 步只起这几个，
+// 而分批驱动里的 `ensure-shared` 也读它 —— 各写一份就会漂，漂出来的症状是
+// 「分批其实没省内存」（第 ① 步悄悄把 13 家店全起起来了）。
+//
+// 为什么这里 import 是允许的（而上面 `JOB_FILES` 那几条「路径以字符串写、不做 import」不允许）：
+// 那几条是**能力脚本**（`skills/` 下的可执行文件），把它们拉进模块图会同时改掉交付形态与
+// 依赖方向（见 runtime/arch-boundary.test.mjs 与本文件头那段）；而 `batch-plan.mjs` 是一个
+// **同目录的纯函数计划模块**，import 它是「同一层里不写第二个事实」，方向与代价都不同。
+import { SHARED_INSTANCE_KEYS } from './batch-plan.mjs';
+
 export const JOB_FILES = Object.freeze({
   ensureInstances: 'scripts/start-all.mjs',
   // 跑前登录态体检 / 跑前登录守卫（两种模式，由 autoLogin 选）。2026-09-23 接进本计划。
@@ -329,14 +340,12 @@ export function buildJobPlan(options = {}) {
   // 分批那一档**刻意例外**：那条路的结果交接在分批驱动**内部**完成
   // （2026-09-23 晚改成**逐批一份**：`login-preflight-b<N>.json`，由 run-batches 负责生成与转发），
   // 所以这里既不生成 JSON、也不给 `batch-chain` 加参数 —— 这里生成的那份没有任何人读，
-  // 而「写了没人读的文件」正是后来人会照着接错的地方。这一步本身仍然跑：它的报告进 job.log，
-  // 是「开跑前（整轮视角）全部店铺登录态」那一条记录。
+  // 而「写了没人读的文件」正是后来人会照着接错的地方。
   //
-  // ⚠️ 已知的重复（刻意留下，不是漏改）：分批形态下登录守卫会跑**两遍** ——
-  // 这一整轮一遍（排在 `ensure-instances` 之后，那时七个实例都起来了，前提成立），
-  // 分批驱动里再逐批一遍（那一遍查的是本批、结论也只交给本批的链）。
-  // 第二遍才是权威的那一遍（它排在**本批 start 之后**）；这一遍留下是因为它同时也是
-  // 定时任务日志里唯一一条「整轮视角」的记录。要收紧的话应当删掉**这一遍**、不是删分批那条。
+  // 2026-09-30 改（**本轮修的缺陷**）：分批那一档这一步**整个不进计划**了（原来是「照跑、
+  // 只是不交结论」）。这里原来写着「⚠️ 已知的重复（刻意留下，不是漏改）…… 要收紧的话应当
+  // 删掉**这一遍**、不是删分批那条」—— 本轮就照那句话收紧，两条理由（它必然白跑；且会把
+  // 12 家店的登录提交一次性排进队列）写在下面 `loginPreflightStep` 那一段注释里。
   const loginPreflightFile = artifactsDir && !batchMode
     ? path.join(artifactsDir, LOGIN_PREFLIGHT_ARTIFACT)
     : null;
@@ -439,6 +448,73 @@ export function buildJobPlan(options = {}) {
     }
     : null;
 
+  // 第 ① 步：保证实例在。**分批形态下目标收窄成「只有共享实例」**（2026-09-30 修）。
+  //
+  // 为什么必须收窄：`--batches` 原先只把**链**切成批，而这一步照旧 `start-all.mjs`
+  // （**全部**登记实例：13 家店 ＋ 竞品链）⇒ 峰值仍是一次全起，分批「省内存」一分没省 ——
+  // 而省内存正是分批存在的唯一理由（见 runtime/batch-plan.mjs 文件头：瓶颈是内存，
+  // 「同时开着几个实例」才是旋钮）。实测形态：分批那一轮的第 0 步之后，28 个店铺端口全在。
+  //
+  // 为什么不是「分批形态干脆删掉这一步」：本轮的**共享商家浏览器登录守卫**排在 `batch-chain`
+  // **之前**，而它要开那台实例（19022/19023）的页面去补会话 ⇒ 实例必须先起来。
+  // 分批驱动里的 `ensure-shared` 排得比守卫**晚**（它在 `batch-chain` 内部），
+  // 所以这一步必须留着，只是把目标收窄。店铺实例一律由**每一批自己的** `start` 起、
+  // 由同一批的 `stop` 停（`batchOnlyArgs` 起停共用一份名单，见 batch-plan.mjs 的设计约束③）。
+  const ensureInstancesStep = {
+    name: 'ensure-instances',
+    file: JOB_FILES.ensureInstances,
+    args: batchMode ? ['--only', SHARED_INSTANCE_KEYS.join(',')] : [],
+    note: batchMode
+      ? `只起共享实例（${SHARED_INSTANCE_KEYS.join('、')}），**一个店铺实例都不起** ——`
+        + '店铺实例由每一批自己的 start 起、stop 停（分批的意义就在这里）'
+      : '把声明实例起齐（幂等：已就位的不碰）',
+    // 这一步失败**不阻止**下一步：链的第 0 步体检才是权威判据，它会给出更准的告警
+    // （哪一页不齐、哪家店连不上）。在这里截断只会让告警少一层信息。
+    blocking: false,
+  };
+
+  // 跑前登录态体检 / 跑前登录守卫（`autoLogin` 打开时同时是后者）。**分批形态下不进计划**
+  // （2026-09-30 改；原先照跑，理由是「排在 ensure-instances 之后，那时（七个）实例都起来了，
+  // 前提成立」—— 而那个前提正是本轮修掉的那个缺陷）。
+  const loginPreflightStep = {
+    name: 'login-preflight',
+    file: JOB_FILES.loginPreflight,
+    // 指定店铺跑（排查用）时，只体检那几家；否则查**参与采集**的全部店铺
+    // （＝`collectingShopKeys()`，2026-09-30 晚起 13 家 ＝ 登记表全量；当天白天曾差 1 家，
+    //  那家挂在 `SHOPS_NOT_COLLECTING_YET` 里，当晚用户拍板「开 13 家」后已清空）。
+    // 原文写的是「登记表里全部五家」，五店时代留下的，已过期。
+    // `autoLogin` 打开时这一步同时承担「跑前登录守卫」：掉登录的当场自己登一次。
+    args: buildLoginPreflightArgs({ shops, json: Boolean(loginPreflightFile), login: autoLogin }),
+    // `artifactPath`：这一步的 stdout 要**落成一个文件**，不能只进日志 ——
+    // 链那一步把它当参数读。没有它，「结论进告警」这句话就没有落点
+    // （2026-09-23 之前正是这样：体检跑了、报告也打了，而告警仍然说「页面不齐，去开页面」）。
+    ...(loginPreflightFile ? { artifactPath: loginPreflightFile } : {}),
+    note: (autoLogin
+      ? '跑前登录守卫（**会碰页面**：掉登录的当场用浏览器密码库登一次；登不进去的**当场各发一条飞书告警**）'
+      : '跑前登录态体检（只读：不开页面、不点东西、也不发任何告警）')
+      + '—— 哪家店的哪个后台掉登录了，写进日志'
+      + (loginPreflightFile ? '，并交给链（掉登录时告警会直接点名，不再叫人去开页面）' : ''),
+    // 同一条理由：它**不是闸门**。它的三个退出码会被记进日志
+    // （0＝全在登录态；2＝有后台明确掉登录；3＝没结论/读不到），人翻日志时一眼能看到；
+    // 但它不许拦住链 —— 掉了登录这件事，链自己会在采集段如实报出来。
+    // `autoLogin` 改了这一步会不会碰页面，**不改它的闸门语义**：登没登上都不许由它截断整轮。
+    blocking: false,
+  };
+
+  // ⚠️ 分批形态下上面那一步**为什么不进计划**（两种形态各自成立的事实，别只看一半）：
+  //   ① 带 `--login` 时它**必然什么都做不了**：店铺实例要等各批自己的 `start` 才起，
+  //      此刻 12 家店的调试端口一个都没开 ⇒ 逐店只会读到「连不上浏览器调试端口」⇒ 全 `UNREADABLE`
+  //      ⇒ 退出码 3（「不是全在登录态」），而**自动登录一次机会都没有**这件事在日志里看不出来
+  //      —— 与 2026-09-23 刚给这一步加 `--login` 时踩过的那个坑（详见 batch-plan.mjs
+  //      里 `buildLoginPreflightStep` 的实测凭据）**逐字是同一个形态**；
+  //   ② 就算它读得到，它也会在开跑前把 **12 家店**的登录提交一次性排进队列 ——
+  //      而这类提交的间隔是被刻意拉开的（同一出口 IP 短时间多次登录＝账号风控，
+  //      见下面 `ensure-merchant-login` 的备注②）。它省不下任何东西，只会多花掉一份风控额度。
+  // 逐批那一条（`start` 之后、`chain` 之前，结论落 `login-preflight-b<N>.json`）才是权威的
+  // 那一条 —— 它查的正是「本批的浏览器起没起、掉没掉登录」，而那是**批次相关**的事实，
+  // 不是整轮的常量。
+  // 「整轮视角的那一条记录」由 job.log 里每一步的原始输出承担，不值得用一个会误报的步骤去换。
+
   return {
     dateInput,
     batches: batches ?? null,
@@ -451,39 +527,11 @@ export function buildJobPlan(options = {}) {
     batchWithoutHold: batchMode && hold,
     holdStep,
     steps: [
-      {
-        name: 'ensure-instances',
-        file: JOB_FILES.ensureInstances,
-        args: [],
-        note: '把声明实例起齐（幂等：已就位的不碰）',
-        // 这一步失败**不阻止**下一步：链的第 0 步体检才是权威判据，它会给出更准的告警
-        // （哪一页不齐、哪家店连不上）。在这里截断只会让告警少一层信息。
-        blocking: false,
-      },
-      {
-        name: 'login-preflight',
-        file: JOB_FILES.loginPreflight,
-        // 指定店铺跑（排查用）时，只体检那几家；否则查**参与采集**的全部店铺
-        // （＝`collectingShopKeys()`，2026-09-30 晚起 13 家 ＝ 登记表全量；当天白天曾差 1 家，
-        //  那家挂在 `SHOPS_NOT_COLLECTING_YET` 里，当晚用户拍板「开 13 家」后已清空）。
-        // 原文写的是「登记表里全部五家」，五店时代留下的，已过期。
-        // `autoLogin` 打开时这一步同时承担「跑前登录守卫」：掉登录的当场自己登一次。
-        args: buildLoginPreflightArgs({ shops, json: Boolean(loginPreflightFile), login: autoLogin }),
-        // `artifactPath`：这一步的 stdout 要**落成一个文件**，不能只进日志 ——
-        // 链那一步把它当参数读。没有它，「结论进告警」这句话就没有落点
-        // （2026-09-23 之前正是这样：体检跑了、报告也打了，而告警仍然说「页面不齐，去开页面」）。
-        ...(loginPreflightFile ? { artifactPath: loginPreflightFile } : {}),
-        note: (autoLogin
-          ? '跑前登录守卫（**会碰页面**：掉登录的当场用浏览器密码库登一次；登不进去的**当场各发一条飞书告警**）'
-          : '跑前登录态体检（只读：不开页面、不点东西、也不发任何告警）')
-          + '—— 哪家店的哪个后台掉登录了，写进日志'
-          + (loginPreflightFile ? '，并交给链（掉登录时告警会直接点名，不再叫人去开页面）' : ''),
-        // 同一条理由：它**不是闸门**。它的三个退出码会被记进日志
-        // （0＝全在登录态；2＝有后台明确掉登录；3＝没结论/读不到），人翻日志时一眼能看到；
-        // 但它不许拦住链 —— 掉了登录这件事，链自己会在采集段如实报出来。
-        // `autoLogin` 改了这一步会不会碰页面，**不改它的闸门语义**：登没登上都不许由它截断整轮。
-        blocking: false,
-      },
+      ensureInstancesStep,
+      // 分批形态下这一步**不进计划**（2026-09-30 改；两条理由写在上面 `loginPreflightStep`
+      // 之前那段注释里：它带 `--login` 时必然只读到「连不上端口」，且会把 12 家店的登录提交
+      // 一次性排进队列）。逐批那一条（`start` 之后、`chain` 之前）才是权威的那一条。
+      ...(batchMode ? [] : [loginPreflightStep]),
       {
         // 共享商家浏览器登录守卫（2026-09-25 加，**排在这里而不是更前面**）。
         //
@@ -493,6 +541,10 @@ export function buildJobPlan(options = {}) {
         //   ② 排在逐店预检之后是为了**拉开登录提交的间隔**：这台实例与「盖文天猫」用的是
         //      同一个账号，逐店预检会按登记表顺序串行提交（两店之间 20 秒静默），
         //      把它排在后面能多拉开一段距离 —— 账号风控看的正是「同一出口 IP 短时间内的登录次数」。
+        //      ⚠️ 分批形态下这一条前提没了（2026-09-30）：整轮不再有逐店预检，守卫排在各批之前。
+        //      代价很小、且是有意的：守卫**只在真的掉登录时**才提交一次（正常那轮它读到的是
+        //      `ALREADY_LOGGED_IN`、零提交），而「它掉登录」本来就是罕见事故；反过来，为了
+        //      拉开间隔而保留一条「必然白跑、还会把 12 家店的提交排进队列」的步骤，代价更大。
         //   ③ 每一次真的登录提交都是一次账号动作，所以**整轮最多一次**：这一步在计划里只出现一次，
         //      分批形态下也不会被复制到每一批里（分批驱动只复制它自己那几段）。
         name: 'ensure-merchant-login',
