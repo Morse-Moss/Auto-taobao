@@ -157,9 +157,15 @@ test('驱动：采集段的三个身份期望值来自登记表，且每家给�
       assert.equal(flagValue(argv, '--expect-member'), row.alimamaMemberName, `${key}/${name} 的 --expect-member`);
       assert.equal(flagValue(argv, '--expect-member-id'), row.alimamaMemberId, `${key}/${name} 的 --expect-member-id`);
     }
-    // 登记表这两个字段现在同值（页头店名就是平台店铺全称）。哪天真分开不要紧，
-    // 但要**知道**分开了 —— 回填的 --source-shop 取的是 fullName，页头读回来的是 sycmHeader。
-    assert.equal(row.sycmHeader, row.fullName, `${key} 的 sycmHeader 与 fullName 漂移了，--source-shop 要重看`);
+    // 登记表这两个字段**默认同值**（页头店名就是平台店铺全称）。唯一允许分开的是
+    // 「平台把长店名截断」那一情形（2026-09-30 实测：保拉淘宝页头是 `Paola Lenti保拉伦...`，
+    // 底单原文是 `Paola Lenti保拉伦蒂`）。分开时**必须知道** ——
+    // 回填的 `--source-shop` 取的是 fullName，页头读回来的是 sycmHeader。
+    if (row.sycmHeader !== row.fullName) {
+      const stem = row.sycmHeader.replace(/\.{3}$/u, '');
+      assert.equal(stem.length >= 4 && row.fullName.startsWith(stem), true,
+        `${key} 的 sycmHeader 与 fullName 漂移了，且不构成「被平台截断」—— --source-shop 要重看`);
+    }
     headers.add(row.sycmHeader);
   }
   assert.equal(headers.size, IDENTITY_SHOP_HEADER_VERIFIED_SHOPS.length,

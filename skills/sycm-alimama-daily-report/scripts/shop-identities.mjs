@@ -33,8 +33,16 @@
 //
 // 操作员账号（`alimamaMemberName`）：2026-09-30 起以用户《店铺账号信息表》为准，
 // 13 家全部换成表里给定的操作员（用户口径：「操作员固定好，以后一般不会再更改了」）。
-// 它因此是 `human-record` 级，**不是** `expression` 级 —— 那个级别只留给「用采集脚本
-// 那两个表达式在真实窗口里读到」的值。原 5 家的 `:阿彦` 是被替换掉的旧值，不作废也得作废。
+// 当天下午 13 家逐店人工登录一次，**13 家的会员名/ID 与页头店名都升到了 `expression` 级**
+// （用采集脚本那两个表达式在真实窗口里读到，与账号表逐字一致）—— 所以
+// IDENTITY_MEMBER_MEASURED_SHOPS / IDENTITY_SHOP_HEADER_VERIFIED_SHOPS 现在都是 13 家。
+// 原 5 家的 `:阿彦` 是被替换掉的旧值，已作废。
+//
+// ⚠️ **页头店名可能被平台截断**（2026-09-30 实测）：保拉淘宝的页头文本本身就是
+// `Paola Lenti保拉伦...`（省略号在文本节点里，DOM 里没有 title/aria-label 可取全名），
+// 而它的平台店铺全称（店铺底单原文）是 `Paola Lenti保拉伦蒂`。
+// ⇒ `sycmHeader` 必须写**实测到的截断值**（闸门用同一个表达式，写全称会在正确窗口上拦人），
+// `fullName` 保持底单原文不动。这是唯一允许两者不同名的情形，测试里显式记账。
 //
 // 已实测的部分（右侧 `sycmHeaderVerified`）在 2026-09-18 用真实页面读到，
 // 判据表达式就是 collect-core.mjs 里那两个（不在探针里另写一份，避免「验的是另一套」）。
@@ -150,8 +158,8 @@ export const SHOP_IDENTITIES = Object.freeze([
     sycmHeaderVerified: 'expression',
     alimamaMemberName: 'j873522735:嘉慧',
     alimamaMemberId: '412070158',
-    alimamaVerified: 'human-record',
-    evidence: '页头店名 2026-09-18 实测（隔离 profile shop-j873522735）。会员名取 2026-09-30 账号表的操作员「嘉慧」，替换当日实测的 :阿彦（换人）；会员 ID 是主账号的数字 ID，不随操作员变，原实测值仍有效',
+    alimamaVerified: 'expression',
+    evidence: '页头店名 2026-09-18 实测、2026-09-30 复核一致（隔离 profile shop-j873522735）。会员名与会员 ID 2026-09-30 用采集表达式实测（换操作员后的值）；此前人工记录的 :阿彦 已作废',
   }),
   Object.freeze({
     key: '盖文淘宝',
@@ -161,8 +169,8 @@ export const SHOP_IDENTITIES = Object.freeze([
     sycmHeaderVerified: 'expression',
     alimamaMemberName: '随心品质定制:小瓜',
     alimamaMemberId: '887360146',
-    alimamaVerified: 'human-record',
-    evidence: '页头店名 2026-09-18 实测（隔离 profile suixin-custom）。会员名取账号表操作员「小瓜」；**与店名不同名是正常的**（老会员号沿用旧品牌名）',
+    alimamaVerified: 'expression',
+    evidence: '页头店名 2026-09-18 实测、2026-09-30 复核一致（隔离 profile suixin-custom）。会员名与会员 ID 2026-09-30 用采集表达式实测。**会员名与店名不同名是正常的**（老会员号沿用旧品牌名）',
   }),
   Object.freeze({
     key: '盖文天猫',
@@ -172,41 +180,41 @@ export const SHOP_IDENTITIES = Object.freeze([
     sycmHeaderVerified: 'expression',
     alimamaMemberName: '盖文旗舰店:小瓜',
     alimamaMemberId: '2995200080',
-    alimamaVerified: 'human-record',
-    evidence: '页头店名 2026-09-19 实测（隔离 profile gaiwen-flagship，专用窗口当日登录过一次）。会员名取账号表操作员「小瓜」，替换 2026-09-17 人工抄录、09-19 实测的 :阿彦',
+    alimamaVerified: 'expression',
+    evidence: '页头店名 2026-09-19 实测、2026-09-30 复核一致（隔离 profile gaiwen-flagship）。会员名与会员 ID 2026-09-30 用采集表达式实测（替换 2026-09-17 人工抄录、09-19 实测的 :阿彦）',
   }),
   Object.freeze({
     key: '保拉淘宝',
     fullName: 'Paola Lenti保拉伦蒂',
     platform: 'taobao',
-    sycmHeader: null,
-    sycmHeaderVerified: null,
+    sycmHeader: 'Paola Lenti保拉伦...',
+    sycmHeaderVerified: 'expression',
     alimamaMemberName: '保拉伦蒂:小保',
-    alimamaMemberId: null,
-    alimamaVerified: 'human-record',
-    evidence: '会员名取 2026-09-30 账号表的操作员「小保」。底座已建（隔离 profile 与端口见 ISOLATED_PROFILES / runtime/browser-ports.mjs），页头店名与会员 ID 待人工在该 profile 登录后实测',
+    alimamaMemberId: '1991150160',
+    alimamaVerified: 'expression',
+    evidence: '页头店名 2026-09-30 用采集表达式实测（隔离 profile paola-taobao）。⚠️ **平台把长店名截断了**：页头文本本身就是 `Paola Lenti保拉伦...`（省略号在文本节点里，`offsetWidth === scrollWidth`、DOM 无 title/aria-label 可取全名），而平台店铺全称（店铺底单原文）是 `Paola Lenti保拉伦蒂` ⇒ 这里的 sycmHeader 必须是**实测到的截断值**，否则闸门会在正确的窗口上拦人。会员名与会员 ID 同日用采集表达式实测',
   }),
   Object.freeze({
     key: '保拉天猫',
     fullName: '保拉伦蒂旗舰店',
     platform: 'tmall',
-    sycmHeader: null,
-    sycmHeaderVerified: null,
+    sycmHeader: '保拉伦蒂旗舰店',
+    sycmHeaderVerified: 'expression',
     alimamaMemberName: '保拉伦蒂旗舰店:小杜',
-    alimamaMemberId: null,
-    alimamaVerified: 'human-record',
-    evidence: '会员名取 2026-09-30 账号表的操作员「小杜」。底座已建（隔离 profile paola-tmall），页头店名与会员 ID 待人工登录后实测',
+    alimamaMemberId: '7445214812',
+    alimamaVerified: 'expression',
+    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile paola-tmall，当天人工登录一次）',
   }),
   Object.freeze({
     key: '网林淘宝',
     fullName: '网林全卫定制',
     platform: 'taobao',
-    sycmHeader: null,
-    sycmHeaderVerified: null,
+    sycmHeader: '网林全卫定制',
+    sycmHeaderVerified: 'expression',
     alimamaMemberName: '网林卫浴:小慧',
-    alimamaMemberId: null,
-    alimamaVerified: 'human-record',
-    evidence: '会员名取 2026-09-30 账号表的操作员「小慧」。底座已建（隔离 profile wanglin-taobao），页头店名与会员 ID 待人工登录后实测',
+    alimamaMemberId: '1510910194',
+    alimamaVerified: 'expression',
+    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile wanglin-taobao，当天人工登录一次）',
   }),
   Object.freeze({
     key: '网林天猫',
@@ -216,8 +224,8 @@ export const SHOP_IDENTITIES = Object.freeze([
     sycmHeaderVerified: 'expression',
     alimamaMemberName: '网林家居旗舰店:饺子',
     alimamaMemberId: '7314426323',
-    alimamaVerified: 'human-record',
-    evidence: '页头店名 2026-09-18 实测（隔离 profile wanglin-flagship）。会员名取账号表操作员「饺子」，替换当日实测的 :阿彦',
+    alimamaVerified: 'expression',
+    evidence: '页头店名 2026-09-18 实测、2026-09-30 复核一致（隔离 profile wanglin-flagship）。会员名与会员 ID 2026-09-30 用采集表达式实测（替换当日实测的 :阿彦；账号表原写的密码是错的，已更正）',
   }),
   Object.freeze({
     key: '里可林淘宝',
@@ -227,64 +235,63 @@ export const SHOP_IDENTITIES = Object.freeze([
     sycmHeaderVerified: 'expression',
     alimamaMemberName: '里可林家居:小宁',
     alimamaMemberId: '2350600069',
-    alimamaVerified: 'human-record',
-    evidence: '页头店名 2026-09-18 实测（隔离 profile likelin-home）。会员名取账号表操作员「小宁」，替换当日实测的 :阿彦',
+    alimamaVerified: 'expression',
+    evidence: '页头店名 2026-09-18 实测、2026-09-30 复核一致（隔离 profile likelin-home）。会员名与会员 ID 2026-09-30 用采集表达式实测（替换当日实测的 :阿彦）',
   }),
   Object.freeze({
     key: '里可林天猫',
     fullName: '里可林旗舰店',
     platform: 'tmall',
-    sycmHeader: null,
-    sycmHeaderVerified: null,
+    sycmHeader: '里可林旗舰店',
+    sycmHeaderVerified: 'expression',
     alimamaMemberName: '里可林旗舰店:月饼',
-    alimamaMemberId: null,
-    alimamaVerified: 'human-record',
-    evidence: '会员名取 2026-09-30 账号表的操作员「月饼」。底座已建（隔离 profile likelin-tmall），页头店名与会员 ID 待人工登录后实测',
+    alimamaMemberId: '7449643996',
+    alimamaVerified: 'expression',
+    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile likelin-tmall，当天人工登录一次）',
   }),
   Object.freeze({
     key: '安比龙头店',
     fullName: '安比全卫定制',
     platform: 'leading',
-    sycmHeader: null,
-    sycmHeaderVerified: null,
+    sycmHeader: '安比全卫定制',
+    sycmHeaderVerified: 'expression',
     alimamaMemberName: 'tb720555516:泡芙',
-    alimamaMemberId: null,
-    alimamaVerified: 'human-record',
-    evidence: '会员名取 2026-09-30 账号表的操作员「泡芙」（主账号是 tb 开头的数字号，不是 j 开头那串）。底座已建（隔离 profile anbi-leading），待实测',
+    alimamaMemberId: '4611324807',
+    alimamaVerified: 'expression',
+    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile anbi-leading）。账号表原写的密码是错的，已按用户口述更正为 pf115588',
   }),
   Object.freeze({
     key: '科塔龙头店',
     fullName: '科塔建材卫浴',
     platform: 'leading',
-    sycmHeader: null,
-    sycmHeaderVerified: null,
+    sycmHeader: '科塔建材卫浴',
+    sycmHeaderVerified: 'expression',
     alimamaMemberName: '科塔建材卫浴品牌店:小森',
-    alimamaMemberId: null,
-    alimamaVerified: 'human-record',
-    evidence: '会员名取 2026-09-30 账号表的操作员「小森」。底座已建（隔离 profile keta-leading），页头店名与会员 ID 待人工登录后实测',
+    alimamaMemberId: '6438408891',
+    alimamaVerified: 'expression',
+    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile keta-leading，当天人工登录一次）',
   }),
   Object.freeze({
     key: '安比淘宝',
     fullName: '安比定制家居',
     platform: 'taobao',
-    sycmHeader: null,
-    sycmHeaderVerified: null,
+    sycmHeader: '安比定制家居',
+    sycmHeaderVerified: 'expression',
     alimamaMemberName: '安比定制家居:小森',
-    alimamaMemberId: null,
-    alimamaVerified: 'human-record',
-    evidence: '会员名取 2026-09-30 账号表的操作员「小森」。底座已建（隔离 profile anbi-taobao），页头店名与会员 ID 待人工登录后实测',
+    alimamaMemberId: '2979090045',
+    alimamaVerified: 'expression',
+    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile anbi-taobao）。账号表原写的密码是错的，已按用户口述更正为 xs115588',
   }),
-  // 第 13 家：只在操作员账号表里有，飞书「店铺底单」当时还没有这一行（见 EXTRA_SHOPS_FROM_ACCOUNT_TABLE）。
   Object.freeze({
     key: '网林定制淘宝',
     fullName: '网林定制家居',
     platform: 'taobao',
-    sycmHeader: null,
-    sycmHeaderVerified: null,
+    sycmHeader: '网林定制家居',
+    sycmHeaderVerified: 'expression',
     alimamaMemberName: '网林定制家居:嘉嘉',
-    alimamaMemberId: null,
-    alimamaVerified: 'human-record',
-    evidence: '2026-09-30 用户《店铺账号信息表》新增的第 13 家（平台店铺全称「网林定制家居」）。底座已建（隔离 profile wanglin-custom），且它在 10 月两张商品 base 的「店铺」选项里都还不存在，待人工登录后实测并补选项',
+    alimamaMemberId: '1731780198',
+    alimamaVerified: 'expression',
+    evidence: '2026-09-30 用户《店铺账号信息表》新增的第 13 家（平台店铺全称「网林定制家居」）。底座与登录都在当天完成，页头店名、会员名、会员 ID 均于当天用采集表达式实测（隔离 profile wanglin-custom）。它 10 月两张商品 base 的「店铺」选项里还不存在 —— 开始采集前要补上那两个选项',
   }),
 ]);
 
@@ -295,14 +302,11 @@ export function shopKeys() {
 /**
  * 「哪家店在哪个专用 profile 里被实测过」。
  *
- * **2026-09-29 扩到 12 家**（5 家 → 12 家）。这张表现在有两个层次，字段本身不区分、
- * 由 `SHOP_IDENTITIES` 的 `sycmHeaderVerified`/`alimamaVerified` 说明每家实测到哪一步：
- *   · 前 5 家（2026-09-18/19 建）：页头店名已实测到 `expression` 级；
- *   · 后 8 家（2026-09-29 起建底座）：profile 与端口已定死，**页头店名还是 null**，
- *     等人工逐店登录一次后用只读探针读出来回填。
- *   · **2026-09-30 换操作员**：13 家的阿里妈妈会员名全部改成用户《店铺账号信息表》
- *     给定的操作员（`human-record` 级）。这一步把「会员名已测到 expression」这条账
- *     **清零了** —— 见 IDENTITY_MEMBER_MEASURED_SHOPS，明天按 profile 逐个实测再迁回。
+ * **2026-09-30 扩到 13 家**（5 → 12 → 13）。这张表现在**只有一层**：
+ * 13 家的页头店名、会员名、会员 ID 都已用采集表达式在真实窗口里读到（`expression` 级）。
+ * 演进路径留着当参照：09-29 加 8 家底座（那时页头店名还是 null）；09-30 上午换操作员把
+ * 会员名那一侧**打回 human-record**，当天下午按 5/5/3 三批「起批 → 人工登录 → 只读探针读数 →
+ * 释放」逐店实测，才全部升回 `expression`。两张显式清单跟着一起动（见下）。
  *
  * 这张表的键**必须与 `runtime/browser-ports.mjs` 的 `SHOP_BROWSERS` 逐键一致**
  * （见 `runtime/browser-ports.test.mjs`），两边漂移会当场红。
@@ -338,33 +342,31 @@ export const ISOLATED_PROFILES = Object.freeze({
  * 推出来的话，「有一家掉级」和「本来就还没测」在测试里长得一模一样。
  */
 export const IDENTITY_SHOP_HEADER_VERIFIED_SHOPS = Object.freeze([
-  '里可林淘宝', '网林天猫', '盖文淘宝', '盖文天猫', '科塔淘宝',
+  '科塔淘宝', '盖文淘宝', '盖文天猫', '保拉淘宝', '保拉天猫', '网林淘宝', '网林天猫',
+  '里可林淘宝', '里可林天猫', '安比龙头店', '科塔龙头店', '安比淘宝', '网林定制淘宝',
 ]);
 
 /**
  * 会员名已用采集表达式实测过的店铺。
  *
- * **2026-09-30 归零**：用户把 13 家的操作员全部换成《店铺账号信息表》上的人，
- * 原来那 5 家的 `:阿彦` 实测值随之作废 ⇒ 这一侧现在**没有任何一家**够得上
- * `expression` 级，全部是 `human-record`。空清单是如实记账，不是遗漏。
- *
- * 明天用户统一登录后：对每家跑一次只读探针，读到的会员名/ID 与登记表逐字比对，
- * 一致就把该家迁进这张清单、`alimamaVerified` 升 `expression`；不一致就以实测为准改写。
+ * **2026-09-30 先归零、再填满**：当天上午换操作员（13 家全部退回 `human-record`），
+ * 当天下午逐店人工登录后用只读探针跑采集表达式，读到的会员名/ID 与账号表**逐字一致**
+ * ⇒ 13 家全部升回 `expression`。
+ * 这个「归零 → 填满」的过程留着记：**换人会让实测值当场作废**，值换了级别必须跟着退回。
  */
-export const IDENTITY_MEMBER_MEASURED_SHOPS = Object.freeze([]);
-
-/**
- * 还需要一次「人工登录 + 只读探针读数」的店铺 —— 当前＝**全部 13 家**。
- *
- * 为什么是全部而不是 8 家：底座（profile + 端口）13 家都建好了，但
- * ① 8 家的页头店名从来没测过；② 13 家的会员名都刚被换掉、要重测。
- * 所以「明天登录一次」这件事的覆盖面是 13 家，不是 8 家 —— 写成 8 家会漏掉
- * 那 5 家「以为早就测过了」的店（那 5 家的会员名现在同样是 human-record）。
- */
-export const IDENTITY_PENDING_SHOPS = Object.freeze([
+export const IDENTITY_MEMBER_MEASURED_SHOPS = Object.freeze([
   '科塔淘宝', '盖文淘宝', '盖文天猫', '保拉淘宝', '保拉天猫', '网林淘宝', '网林天猫',
   '里可林淘宝', '里可林天猫', '安比龙头店', '科塔龙头店', '安比淘宝', '网林定制淘宝',
 ]);
+
+/**
+ * 还需要一次「人工登录 + 只读探针读数」的店铺 —— **当前为空**（13 家当天全部实测完）。
+ *
+ * 2026-09-30 的完整路径：上午换操作员 ⇒ 13 家全进这张清单；下午按 5/5/3 三批逐店登录并实测 ⇒ 清空。
+ * 空清单是如实记账。**下次换操作员或新增店铺时这一栏必须重新填上** ——
+ * 「已登记但还没测」的家一旦漏出这张清单，闸门就会拿一个没实测的身份去比。
+ */
+export const IDENTITY_PENDING_SHOPS = Object.freeze([]);
 
 
 /** 按运营叫法取登记行。**未登记一律抛错**（fail-closed），不回落成「不核对」。 */

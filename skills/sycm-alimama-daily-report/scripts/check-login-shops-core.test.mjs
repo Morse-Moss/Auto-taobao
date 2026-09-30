@@ -224,8 +224,17 @@ test('每家店的两个平台各说各的名字，且名字与登记表逐字�
   }
   assert.equal(withHeader, IDENTITY_SHOP_HEADER_VERIFIED_SHOPS.length,
     '「有页头店名」的家数必须与已实测清单一致（清单是那件事的唯一来源，别在这里另写一个数）');
-  assert.ok(withHeader < shopBrowserKeys().length,
-    '当前 13 家里应当**仍有**店没实测过页头店名；全是实体值说明有人把 null 填成了猜出来的值');
+  // 2026-09-30 下午逐店实测完之后 13 家全部有页头店名 ⇒ 上面「没值」那条分支没有店能走到。
+  // 原来这里是 `withHeader < 家数`（防「把 null 填成一个猜出来的值」），现在换成更强的一道闸：
+  // **凡是有期望值的行，实测级别必须是 `expression`**（＝真在窗口里用采集表达式读到的），
+  // 不是 `human-record`（人工记录）。级别就是「有没有真测过」那本账，比「有没有值」更难糊弄。
+  for (const shop of shopBrowserKeys()) {
+    const row = shopIdentity(shop);
+    if (row.sycmHeader) {
+      assert.equal(row.sycmHeaderVerified, 'expression',
+        `${shop} 给了页头店名却不是 expression 级 —— 期望值可能是猜的/抄的`);
+    }
+  }
   // 未登记的店名不许抛出去炸掉整份报告：如实说「没登记名字」（这里直接问渲染要输出）
   const text = renderReport({ rows: [{ shop: '不存在的店', verdict: 'NEEDS_LOGIN', sites: { sycm: 'LOGGED_OUT', alimama: 'LOGGED_IN' }, needsLogin: ['sycm'], unreadable: [] }] });
   assert.match(text, /没有登记名字/u);

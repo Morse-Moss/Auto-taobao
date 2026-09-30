@@ -7,7 +7,8 @@
 //      —— 注意两者的行数**本来就不等**：底单 12 行 + 另立来源的第 13 家 = 登记表 13 行；
 //   ③ 诚实：**级别与字段必须自洽** —— 有值就有级别、有级别就有值。要分清两件事：
 //      `expression` 才是「用采集表达式在真实窗口里实测过」，`human-record` 只是「人工记录」
-//      （2026-09-30 换操作员后 13 家的会员名全是这一级，所以摘要里必须显示成未实测）；
+//      （2026-09-30 上午换操作员时 13 家的会员名全退回这一级，当天下午逐店实测后才全部升回
+//      `expression` —— 所以现在 13 家都是实测级，`human-record` 那条分支没有店能走到）；
 //      未实测的字段整行为 null —— 不许把推测值填进判据；
 //   ④ 可用：把登记表接回真实判据（assertShopIdentity / assertMemberIdentity）跑一遍 ——
 //      逐店自比必须过，跨店比对必须停。第 ④ 条才算「这份表能当判据用」的证明；
@@ -99,8 +100,19 @@ test('诚实性：已实测的行字段齐全，未实测的行整行为 null', 
     //   那等于为了整齐而丢掉一条真能用的判据。）
     assert.equal(Boolean(row.alimamaMemberId && !row.alimamaMemberName), false,
       `${row.key}：有会员 ID 却没有会员名 —— 这是半截身份`);
-    if (shopKnown) assert.equal(row.sycmHeader, row.fullName,
-      `${row.key}：实测到的页头店名与平台店铺全称不一致 —— 这两者不同名时，必须把实测值单列，不能拿 fullName 冒充`);
+    // 页头店名与平台店铺全称**默认必须一致**，只允许一个已记账的例外：
+    // 平台自己把长店名截断了（2026-09-30 实测：保拉淘宝的页头文本就是 `Paola Lenti保拉伦...`，
+    // 省略号在**文本节点里**、DOM 无 title/aria-label 可取全名，而底单原文是 `Paola Lenti保拉伦蒂`）。
+    // 判据：不同名时必须是「fullName 以去掉尾部省略号后的实测值为前缀」——
+    // 既挡住「随手把 fullName 改写成实测值」，也挡住「真抄错了还放行」。
+    if (shopKnown && row.sycmHeader !== row.fullName) {
+      assert.match(row.sycmHeader, /\.\.\.$/u,
+        `${row.key}：页头店名与平台店铺全称不同名时，必须带尾部省略号（＝被平台截断的证据）`);
+      const stem = row.sycmHeader.replace(/\.{3}$/u, '');
+      assert.ok(stem.length >= 4 && row.fullName.startsWith(stem),
+        `${row.key}：实测页头店名 ${JSON.stringify(row.sycmHeader)}`
+        + ` 与平台店铺全称 ${JSON.stringify(row.fullName)} 不构成「被平台截断」的形态 —— 只允许这一种不同名`);
+    }
     if (memberKnown) {
       assert.match(row.alimamaMemberName, /^.{2,20}:.{1,20}$/u,
         `${row.key} 的会员名应形如「主账号:子账号」`);
@@ -112,6 +124,16 @@ test('诚实性：已实测的行字段齐全，未实测的行整行为 null', 
     }
     assert.ok(row.evidence, `${row.key} 缺少证据字段`);
   }
+  // 「页头店名 ≠ 平台店铺全称」的唯一合法情形是**平台截断**，而且要**逐家记账**。
+  // 这条是上一段那个「前缀」判据的另一半：上一段只在「已经不同名」时兜住形态，
+  // 而把截断值**换回 fullName** 会让两者相等、悄悄绕过它 —— 那正是最危险的一步
+  // （闸门用同一个表达式，写全称会在正确的窗口上拦人）。
+  // 显式清单两个方向都会红：多一家＝有人动了别家名字；少一家＝截断值被换掉了。
+  const truncated = SHOP_IDENTITIES
+    .filter((row) => row.sycmHeader !== row.fullName).map((row) => row.key);
+  assert.deepEqual(truncated, ['保拉淘宝'],
+    '页头店名与平台店铺全称不同名的店必须逐家列在这里 —— 少了就是有人把截断值换成了 fullName');
+
   // 实测级别是**闭集**：多出一个级别时 `describeIdentity` 会退回含糊的「（未实测）」，
   // 把「人工填的」与「根本没填」显示成同一个样子。所以未知级别必须在这里就红。
   for (const row of SHOP_IDENTITIES) {
@@ -121,13 +143,14 @@ test('诚实性：已实测的行字段齐全，未实测的行整行为 null', 
         `${row.key} 的实测级别「${level}」不在 IDENTITY_VERIFIED_LABEL 里 —— 摘要会把它显示成「未实测」`);
     }
   }
-  // 实测过的家数要如实反映现实：
-  //   页头店名：2026-09-18/19 测了 5 家；第 13 家与另外 7 家是 09-29 之后才建底座，还没测。
-  //   会员名：**2026-09-30 换操作员后归零** —— 13 家全部改成账号表给定的人，都只是 human-record。
-  assert.equal(SHOP_IDENTITIES.filter((row) => row.sycmHeaderVerified === 'expression').length, 5);
-  assert.equal(SHOP_IDENTITIES.filter((row) => row.alimamaVerified === 'expression').length, 0,
-    '换操作员之后没有任何一家的会员名够得上 expression —— 明天实测完再升');
-  assert.equal(SHOP_IDENTITIES.filter((row) => row.alimamaVerified === 'human-record').length, 13);
+  // 实测过的家数要如实反映现实（2026-09-30 当天走完「换操作员 → 逐店登录实测」）：
+  //   页头店名：13 家全部到 expression（老 5 家 09-18/19，其余 09-30 当天）。
+  //   会员名：上午换操作员时全部退回 human-record，下午逐店实测后 13 家全部升回 expression。
+  assert.equal(SHOP_IDENTITIES.filter((row) => row.sycmHeaderVerified === 'expression').length, 13);
+  assert.equal(SHOP_IDENTITIES.filter((row) => row.alimamaVerified === 'expression').length, 13,
+    '13 家的会员名都已在真实窗口里用采集表达式读到 —— 这个数字掉下来就说明有人凭记录填了值');
+  assert.equal(SHOP_IDENTITIES.filter((row) => row.alimamaVerified === 'human-record').length, 0,
+    'human-record 只该在「换了操作员但还没实测」时出现；现在这个数是 0 才算实测做完');
 });
 
 test('隔离 profile：键唯一、值唯一、与登记表逐键一致，三张清单互相自洽', () => {
@@ -152,9 +175,14 @@ test('隔离 profile：键唯一、值唯一、与登记表逐键一致，三张
   const memberMeasured = SHOP_IDENTITIES
     .filter((row) => row.alimamaVerified === 'expression').map((row) => row.key);
   assert.deepEqual([...IDENTITY_MEMBER_MEASURED_SHOPS].sort(), memberMeasured.sort(),
-    '会员名清单必须与字段一致（换操作员后它应当是空的）');
-  assert.deepEqual([...IDENTITY_PENDING_SHOPS].sort(), shopKeys().sort(),
-    '2026-09-30 换操作员后 13 家的会员名都要重测 —— 待实测名单就该是全部 13 家，不是 8 家');
+    '会员名清单必须与字段一致');
+  // 待实测名单：2026-09-30 当天从「全部 13 家」被清空。两条一起钉住 ——
+  // 「该空的没空」会让闸门拿没实测的身份去比；删掉这条则等于放弃「有没有人漏测」这本账。
+  assert.equal(IDENTITY_PENDING_SHOPS.length, 0,
+    '13 家当天全部实测完 ⇒ 待实测名单必须是空的（还有店没测完就不该空）');
+  const covered = new Set([...IDENTITY_MEMBER_MEASURED_SHOPS, ...IDENTITY_PENDING_SHOPS]);
+  assert.deepEqual([...covered].sort(), shopKeys().sort(),
+    '13 家必须被「已实测 ∪ 待实测」全覆盖 —— 漏在两边之外的那家会既不跑也不报错');
   for (const key of IDENTITY_MEMBER_MEASURED_SHOPS) {
     assert.equal(IDENTITY_PENDING_SHOPS.includes(key), false, `${key} 同时在两张清单里`);
   }
@@ -167,31 +195,27 @@ test('未登记的店铺一律抛错（fail-closed），不回落成「不核对
   assert.throws(() => shopIdentity(undefined), /未登记的店铺/u);
 });
 
-test('expectArgs：能给的给，给不了的如实列进 missing；require 时缺字段直接抛错', () => {
-  const full = expectArgs('里可林淘宝');
-  assert.deepEqual(full.args, [
-    '--expect-shop', '里可林家居',
-    '--expect-member', '里可林家居:小宁',
-    '--expect-member-id', '2350600069',
-  ]);
-  assert.deepEqual(full.missing, []);
-
-  // 只有会员名、没有会员 ID 的店（第 13 家与另外 7 家）：member 算「已知」——
-  // 只给 name 时 assertMemberIdentity 照样是有效闸门，所以不许因为缺 ID 就判它缺失。
-  const nameOnly = expectArgs('网林定制淘宝');
-  assert.deepEqual(nameOnly.args, ['--expect-member', '网林定制家居:嘉嘉']);
-  assert.deepEqual(nameOnly.missing, ['shop'],
-    '页头店名还没实测 ⇒ 只有 shop 缺失；member 不该被算进去');
-
-  // require 了就必须有 —— 这条堵的是「以为开着守卫、其实少给了一个参数」。
-  assert.throws(() => expectArgs('网林定制淘宝', { require: ['shop'] }), /还没有实测值/u);
-  assert.throws(() => expectArgs('网林定制淘宝', { require: ['shop'] }), /生意参谋页头店名/u,
-    '报错要带上证据字段与出处，否则下一个人只能靠猜「为什么没有」');
-  assert.throws(() => expectArgs('网林定制淘宝', { require: ['shop'] }), /待人工登录后实测/u);
-  // require member **不该**抛：13 家的会员名都有了（来自账号表），闸门开得起来。
-  assert.doesNotThrow(() => expectArgs('网林定制淘宝', { require: ['member'] }),
-    '只有会员名的店也必须能开 member 闸门 —— 不给就等于把这道判据白关掉');
+test('expectArgs：13 家三样都齐，缺字段即抛错的那条 fail-closed 分支仍在源码里', () => {
+  // 2026-09-30 起 13 家全部实测完 ⇒ **没有任何一家**再走到「缺字段」那条分支。
+  // 这里改成正面证明：每家都能开满三道闸门，且给的期望值就是登记表里的值。
+  for (const row of SHOP_IDENTITIES) {
+    const full = expectArgs(row.key, { require: ['shop', 'member'] });
+    assert.deepEqual(full.missing, [], `${row.key} 应当三样都齐`);
+    assert.deepEqual(full.args, [
+      '--expect-shop', row.sycmHeader,
+      '--expect-member', row.alimamaMemberName,
+      '--expect-member-id', row.alimamaMemberId,
+    ], `${row.key} 的期望值参数`);
+  }
   assert.deepEqual(expectArgs('里可林淘宝', { require: ['shop', 'member'] }).args.length, 6);
+
+  // fail-closed 那条分支**现在没有店能走到**（＝没有一个缺字段的店）——
+  // 但正因为没人走，才更要从源码上钉住它还在：下一个新增店铺一定会走进去。
+  // 删掉它不会让任何用例变红，只会让新店静默失去闸门（「能力删在生产者侧」那类事故）。
+  const identitySource = readFileSync(path.join(SCRIPTS_DIR, 'shop-identities.mjs'), 'utf8');
+  assert.match(identitySource, /还没有实测值/u, 'fail-closed 的报错文案不见了 —— 新店会静默失去闸门');
+  assert.match(identitySource, /不能拿一个猜出来的身份去开守卫/u);
+  assert.match(identitySource, /const missing = require\.filter/u, 'required-fields 的判定不见了');
 });
 
 test('把登记表接回真实判据：逐店自比必须过', () => {
@@ -248,20 +272,30 @@ test('把登记表接回真实判据：跨店比对必须停，而且要点名�
 });
 
 test('describeIdentity 给出人读摘要，未实测/非实测的部分要显式标出来', () => {
-  // 科塔淘宝现在是**混合**的：页头店名 2026-09-18 用采集表达式实测过（expression ⇒ 不带标记），
-  // 会员名 2026-09-30 刚换成账号表上的操作员（human-record ⇒ 必须带标记）。
-  // 这一条正是原实现栽的地方：`'human-record'` 是 truthy，会被当成「已实测」而不打标记。
-  const mixed = describeIdentity('科塔淘宝');
-  assert.match(mixed, /科塔全卫定制/u);
-  assert.match(mixed, /j873522735:嘉慧/u);
-  assert.doesNotMatch(mixed, /科塔全卫定制（/u, '实测过（expression）的页头店名不该带任何标记');
-  assert.match(mixed, /嘉慧（人工记录，未实测）/u,
-    'human-record 的会员名不许显示成已实测 —— 「人工填的」与「实测的」不能长得一样');
-  // 完全没测过的店（第 13 家）：页头店名与会员 ID 两处都要标出来。
-  const pending = describeIdentity('网林定制淘宝');
-  assert.match(pending, /页头店名 （未实测）/u);
-  assert.match(pending, /嘉嘉（人工记录，未实测）/u,
-    '未实测的行在摘要里必须看得见 —— 「什么都没有」和「已核对过」不能长得一样');
+  // 2026-09-30 当天实测完之后 13 家全是 expression 级 ⇒ 摘要里**不许出现任何标记**。
+  // 这条正是原实现栽的地方：`'human-record'` 是 truthy，会被当成「已实测」而不打标记 ——
+  // 反过来，「实测过的值被误标成未实测」同样是错的，两个方向都要挡。
+  for (const row of SHOP_IDENTITIES) {
+    const text = describeIdentity(row.key);
+    assert.ok(text.includes(row.key), `${row.key} 的摘要里没有店名`);
+    assert.ok(text.includes(row.sycmHeader), `${row.key} 的摘要里没有页头店名`);
+    assert.ok(text.includes(row.alimamaMemberName), `${row.key} 的摘要里没有会员名`);
+    assert.ok(text.includes(row.alimamaMemberId), `${row.key} 的摘要里没有会员 ID`);
+    assert.doesNotMatch(text, /（未实测）/u, `${row.key} 已实测，摘要里不该出现「未实测」`);
+    assert.doesNotMatch(text, /人工记录/u, `${row.key} 已实测，不该再显示成人工记录`);
+  }
+  // 被平台截断的那家：摘要如实显示**实测到的**值（不是底单原文）。
+  assert.match(describeIdentity('保拉淘宝'), /Paola Lenti保拉伦\.\.\./u);
+
+  // 标记表本身还要正确 —— 下一轮换操作员时 13 家会立刻退回 human-record，届时靠它显示。
+  assert.equal(IDENTITY_VERIFIED_LABEL['human-record'], '人工记录，未实测');
+  assert.equal(IDENTITY_VERIFIED_LABEL.expression, null);
+  assert.equal(IDENTITY_VERIFIED_LABEL.text, '仅页面正文，未实测');
+  // 空值兜底分支（`!value` ⇒ 「（未实测）」）现在没有店能走到，但删掉它 =
+  // 将来新增的空行会被显示成「有值」。从源码上钉住。
+  const identitySource = readFileSync(path.join(SCRIPTS_DIR, 'shop-identities.mjs'), 'utf8');
+  assert.match(identitySource, /if \(!value\) return '（未实测）'/u,
+    '空值兜底分支不见了 —— 将来新增的空字段会显示成「有值」');
 });
 
 test('打印器：可粘贴内容只走 stdout，提示走 stderr；require 不满足即非零退出', () => {
@@ -290,33 +324,32 @@ test('打印器：可粘贴内容只走 stdout，提示走 stderr；require 不�
     'stdout 必须干净到可以直接粘 —— 多一行提示就会把命令行粘坏');
   assert.equal(one.stderr, '');
 
-  // 「只有会员名、页头店名还没实测」的店（第 13 家与另外 7 家）：
-  // 印出能给的那一项，缺的那一项**走 stderr 点名** —— 但 stdout 仍必须干净可粘。
-  //
-  // 注意（2026-09-30 起）：换操作员之后 13 家的会员名都有了 ⇒ 原来那个
-  // 「一个 --expect-* 都印不出、只印一行 # 注释」的分支已经没有店对应得上，
-  // 所以这里守的是「缺 shop 时 stdout 只带 member」。那个分支本身还在实现里
-  // （`args.length === 0`），但**没有店能走到** —— 这是如实记账，不是漏测。
-  const nameOnly = run(['网林定制淘宝']);
-  assert.equal(nameOnly.code, 0);
-  assert.equal(nameOnly.stdout, '--expect-member 网林定制家居:嘉嘉\n');
-  assert.match(nameOnly.stderr, /shop 还没有实测值/u,
-    '缺页头店名要在 stderr 点名，不能一声不响地少给一个参数（调用方会以为守卫开着）');
+  // 2026-09-30 实测完之后 13 家三样都齐 ⇒ 每家都必须能直接印出一整行可粘的参数。
+  // （原来这里测的是网林定制淘宝「缺 shop、只印 member」的形态，现在没有店走得到那条分支了。）
+  const fullRow = run(['网林定制淘宝']);
+  assert.equal(fullRow.code, 0);
+  assert.equal(fullRow.stdout, '--expect-shop 网林定制家居 --expect-member 网林定制家居:嘉嘉 --expect-member-id 1731780198\n',
+    'stdout 必须干净到可以直接粘 —— 多一行提示就会把命令行粘坏');
+  assert.equal(fullRow.stderr, '');
 
-  // 带空格的店名（保拉淘宝的全称是 `Paola Lenti保拉伦蒂`）—— 引号规则单独测，
-  // 因为当前没有一家「带空格且已实测」的店，只有这一条能守住它。
+  // 带空格的店名：保拉淘宝的**实测**页头店名是 `Paola Lenti保拉伦...`（带空格）——
+  // 现在它就是「带空格且已实测」的真实店，所以这条同时测引号规则与真实输出。
+  // （原注释说「当前没有一家带空格且已实测的店」，已经不成立。）
+  const spaced = run(['保拉淘宝']);
+  assert.equal(spaced.code, 0);
+  assert.equal(spaced.stdout,
+    '--expect-shop "Paola Lenti保拉伦..." --expect-member 保拉伦蒂:小保 --expect-member-id 1991150160\n',
+    '带空格的页头店名必须加引号，否则粘到命令行会被拆成两个参数');
   assert.equal(formatArgv(['--expect-shop', 'Paola Lenti保拉伦蒂', '--expect-member', 'j873522735:嘉慧']),
     '--expect-shop "Paola Lenti保拉伦蒂" --expect-member j873522735:嘉慧',
     '带空格的参数必须加引号；带冒号的会员名不该被加引号');
 
-  const blocked = run(['安比淘宝', '--require', 'shop']);
-  assert.equal(blocked.code, 2, 'require 不满足必须非零退出，否则它当不了闸门');
-  assert.match(blocked.stderr, /还没有实测值/u);
-  assert.match(blocked.stderr, /生意参谋页头店名/u);
-  assert.match(blocked.stderr, /待人工登录后实测/u, '报错要带证据出处，下一个人不用靠猜「为什么没有」');
-  // require member **不该**被拒：13 家的会员名都有（来自账号表），这道闸门开得起来。
+  // require 不满足必须非零退出（否则它当不了闸门）。现在 13 家字段都齐，
+  // 「缺字段」那种拒绝没有店能触发；能触发拒绝的是「--require 给了不认识的字段」这一条。
+  assert.equal(run(['安比淘宝', '--require', 'shop']).code, 0,
+    '13 家都能开出 shop 闸门 —— 有店开不出来就说明回填漏了字段');
   assert.equal(run(['安比淘宝', '--require', 'member']).code, 0,
-    '只有会员名的店也必须能开 member 闸门 —— 不给就等于把这道判据白关掉');
+    '13 家都能开出 member 闸门');
 
   assert.equal(run(['安比淘宝', '--require', 'platform']).code, 2, '--require 只认 shop / member');
   assert.equal(run(['盖文1688']).code, 2, '未登记的店铺要非零退出并点名');

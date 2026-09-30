@@ -463,7 +463,10 @@ export function buildJobPlan(options = {}) {
       {
         name: 'login-preflight',
         file: JOB_FILES.loginPreflight,
-        // 指定店铺跑（排查用）时，只体检那几家；否则查登记表里全部五家。
+        // 指定店铺跑（排查用）时，只体检那几家；否则查**参与采集**的全部店铺
+        // （＝`collectingShopKeys()`，2026-09-30 起 12 家；登记表是 13 家，
+        //  差的那一家是 `SHOPS_NOT_COLLECTING_YET` 里的「网林定制淘宝」）。
+        // 原文写的是「登记表里全部五家」，五店时代留下的，已过期。
         // `autoLogin` 打开时这一步同时承担「跑前登录守卫」：掉登录的当场自己登一次。
         args: buildLoginPreflightArgs({ shops, json: Boolean(loginPreflightFile), login: autoLogin }),
         // `artifactPath`：这一步的 stdout 要**落成一个文件**，不能只进日志 ——
