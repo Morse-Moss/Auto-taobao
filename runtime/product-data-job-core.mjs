@@ -1,5 +1,8 @@
 import path from 'node:path';
 import { collectingShopKeys, shopBrowserKeys } from './browser-ports.mjs';
+// 「每批几家」的默认值从 `runtime/batch-plan.mjs` 取 —— 与日报链是**同一个旋钮、同一份口径**。
+// 在这里另写一个字面量 5 就是第二处实现，而它漂了的表现是「两条链的批次大小悄悄不一样」。
+import { DEFAULT_BATCH_SIZE } from './batch-plan.mjs';
 
 export const PRODUCT_JOB_FILES = Object.freeze({
   start: 'scripts/start-all.mjs',
@@ -31,9 +34,15 @@ export function buildProductJobPlan({ dateInput = 'yesterday', shops = null, com
     reportOrder: ['product', 'inquiry', 'promotion'], commit };
 }
 
-export function renderProductJobEntry({ nodeExe = process.execPath, repoRoot = path.resolve(import.meta.dirname, '..'), dateInput = 'yesterday', commit = true } = {}) {
+export function renderProductJobEntry({ nodeExe = process.execPath, repoRoot = path.resolve(import.meta.dirname, '..'), dateInput = 'yesterday', commit = true, batches = DEFAULT_BATCH_SIZE } = {}) {
   const quote = (value) => `"${String(value).replaceAll('"', '\\"')}"`;
   const args = [quote(path.join(repoRoot, 'scripts', 'run-product-data-job.mjs')), '--date', dateInput];
   if (commit) args.push('--commit');
+  // 分批（2026-09-30 起，用户拍板「要分批，跟日报一样的批次」）：**跑完一批释放一批**。
+  // 为什么必须落在这一处：这条链从前是一把起齐**全部**参与采集的店铺（12 家 ⇒ 12 个 Edge ＋ 12 个代理
+  // 同时活着），而 12 × 约 1.7 GB 远超本机余量。定时命令是从**这里**渲染出来的，
+  // 所以「分批」这件事必须出现在这里，否则定时那条路永远回到全量常驻。
+  // 传 `batches: null` 可以显式渲染出「不分批」的那条命令（排查用）。
+  if (batches !== null && batches !== undefined) args.push('--batches', String(batches));
   return [quote(nodeExe), ...args].join(' ');
 }

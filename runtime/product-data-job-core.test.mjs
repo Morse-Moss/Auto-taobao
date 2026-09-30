@@ -10,10 +10,11 @@ test('product job defaults to yesterday and covers all shops that actually colle
   // 默认名单是 collectingShopKeys() 而不是 shopBrowserKeys()：登记表里还有没开始收集的空店，
   // 空店算进来会让登录预检多查一家、采集多起一家、导入多写一家 —— 三项它都做不成。
   assert.deepEqual(plan.shops, collectingShopKeys());
-  // ⚠️ 这条同时是一笔资源账：本任务**没有分批**，`parallelShopCount` 就是「一次起多少个实例」——
-  // 12 家 ＝ 12 个 Edge 实例 + 12 个代理进程同时活着（底单串行采集，但实例全起，
-  // 且 `run-product-data-job.mjs` 里没有 stop 段之前不释放）。要不要给这条链也加分批，
-  // 是留给用户拍板的事，不是这里悄悄改掉的。
+  // ⚠️ 这条同时是一笔资源账：`parallelShopCount` 是「一次会起多少个实例」的**名义**值 ——
+  // 12 家 ＝ 12 个 Edge 实例 + 12 个代理进程同时活着（底单串行采集，但实例全起）。
+  // 2026-09-30 起入口给了 `--batches`（默认 5）：**真正同时开着的**是这个数除以批次大小，
+  // 由 `scripts/run-product-data-job.mjs` 的分批循环决定（切法只来自 `runtime/batch-plan.mjs`）。
+  // 这条用例刻意继续钉 plan 的名义值：改口径要连它一起改，而不是让它跟着漂。
   assert.equal(plan.parallelShopCount, collectingShopKeys().length);
   assert.deepEqual(plan.reportOrder, ['product', 'inquiry', 'promotion']);
 });
@@ -30,6 +31,17 @@ test('product job plan rejects unknown / empty / not-yet-collecting shop selecti
 });
 
 test('scheduled entry targets the independent product-data job and commits yesterday by default', () => {
+  // 2026-09-30：定时入口默认带上 `--batches`（跑完一批释放一批），与日报链同款批次。
+  // 这条是**渲染层**的判据 —— 定时任务是用注册表里的字符串装的，命令行长什么样由这里决定，
+  // 所以「分批」不落在这条断言里，就等于定时那条路仍然全量常驻。
   assert.equal(renderProductJobEntry({ nodeExe: 'C:\\Program Files\\node\\node.exe', repoRoot: 'D:\\repo' }),
+    '"C:\\Program Files\\node\\node.exe" "D:\\repo\\scripts\\run-product-data-job.mjs" --date yesterday --commit --batches 5');
+});
+
+test('scheduled entry can render an explicit no-batch command (troubleshooting only)', () => {
+  // `batches: null` 是**显式**要求不分批：渲染出来必须一个 `--batches` 都没有（不能退化成默认值）。
+  const entry = renderProductJobEntry({ nodeExe: 'C:\\Program Files\\node\\node.exe', repoRoot: 'D:\\repo', batches: null });
+  assert.equal(entry,
     '"C:\\Program Files\\node\\node.exe" "D:\\repo\\scripts\\run-product-data-job.mjs" --date yesterday --commit');
+  assert.ok(!entry.includes('--batches'), '显式不分批时不得出现 --batches');
 });

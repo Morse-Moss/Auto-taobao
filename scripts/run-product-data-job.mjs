@@ -12,10 +12,14 @@ import os from 'node:os';
 import { classifyWorkflowError, createWorkflowReceipt, writeWorkflowReceipt } from '../runtime/workflow-receipt.mjs';
 import { runEnvironmentPreflight } from '../runtime/environment-preflight.mjs';
 import { readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from '../runtime/alert-throttle.mjs';
+// 分批的「该切成几批、每批跑哪几家」**唯一口径**在 `runtime/batch-plan.mjs`（纯函数、有离线判据）：
+// 与日报链共用同一层，**不在这里再写一份切法** —— 两处实现最后一定不一致，而切错了只会**静默漏做**
+// （跑完了，但有两家没被处理）。逐批登录结论的文件名同样从那里取（`batchLoginArtifactName`）。
+import { batchLoginArtifactName, describeBatch, planBatches } from '../runtime/batch-plan.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-function parseArgs(argv) { const o = { date: 'yesterday', shops: null, commit: false, notify: false }; for (let i = 0; i < argv.length; i += 1) { const a = argv[i]; if (a === '--date') o.date = argv[++i]; else if (a === '--shops') o.shops = String(argv[++i] ?? '').split(',').map((x) => x.trim()).filter(Boolean); else if (a === '--commit') o.commit = true; else if (a === '--notify') o.notify = true; else if (a === '--help' || a === '-h') o.help = true; else throw new Error(`unknown argument ${a}`); } return o; }
+function parseArgs(argv) { const o = { date: 'yesterday', shops: null, commit: false, notify: false, batches: null }; for (let i = 0; i < argv.length; i += 1) { const a = argv[i]; if (a === '--date') o.date = argv[++i]; else if (a === '--shops') o.shops = String(argv[++i] ?? '').split(',').map((x) => x.trim()).filter(Boolean); else if (a === '--commit') o.commit = true; else if (a === '--notify') o.notify = true; else if (a === '--batches') { const raw = argv[++i]; const value = Number(raw); if (!Number.isInteger(value) || value < 1) throw new Error(`--batches 要一个 ≥1 的整数（每批几家），收到 ${JSON.stringify(raw)}`); o.batches = value; } else if (a === '--help' || a === '-h') o.help = true; else throw new Error(`unknown argument ${a}`); } return o; }
 function run(file, args, { capture = false } = {}) { return new Promise((resolve) => { const child = spawn(process.execPath, [path.join(ROOT, file), ...args], { cwd: ROOT, stdio: capture ? ['ignore', 'pipe', 'pipe'] : ['ignore', 'inherit', 'inherit'] }); let out = ''; let err = ''; if (capture) { child.stdout.on('data', (x) => { out += x; }); child.stderr.on('data', (x) => { err += x; }); } child.on('close', (code) => resolve({ code: code ?? -1, out, err })); child.on('error', (error) => resolve({ code: -1, out, err: String(error.message) })); }); }
 function jsonTail(text) { const i = text.lastIndexOf('{'); if (i < 0) return null; try { return JSON.parse(text.slice(i)); } catch { return null; } }
 // 子 CLI 的收据（notify-feishu / 释放包装）是**缩进过的** JSON，jsonTail 那种「从最后一个 `{` 开始解析」
@@ -80,30 +84,32 @@ async function notifyFailure({ date, runId, evidence, failure, failedStage, log,
   return receipt;
 }
 
-async function main(argv) {
-  let options; try { options = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
-  if (options.help) { console.log('node scripts/run-product-data-job.mjs [--date yesterday] [--shops a,b] [--commit] [--notify]'); return 0; }
-  const date = resolveTargetDate(options.date); const plan = buildProductJobPlan({ dateInput: options.date, shops: options.shops, commit: options.commit });
-  const runId = `${date}-${new Date().toISOString().replace(/[-:.TZ]/g, '')}-${crypto.randomUUID().slice(0, 8)}`;
-  const evidence = path.join(ROOT, 'evidence', `product-data-job-${date}`, runId); ensureDir(evidence);
-  const receiptPath = path.join(evidence, 'run-receipt.json');
-  const receipt = createWorkflowReceipt({ workflow: 'product-data', runId, date, shops: plan.shops, stages: plan.reportOrder.map((name) => ({ name, status: 'PENDING' })) });
-  const logPath = path.join(evidence, 'job.log'); const log = (line) => { const text = `[${new Date().toISOString()}] ${line}\n`; fs.appendFileSync(logPath, text); process.stdout.write(text); };
-  const shopArg = plan.shops.join(','); let status = 0; let lock = null; let failure = null; let failedStage = null;
+/**
+ * 一轮（＝一家或一批店铺）的完整工作：起这批 → 查这批登录 → 采三类 → 导入三类。
+ *
+ * **释放不在这里**，而且这是刻意的：分批存在的理由就是「这一批跑完立刻放掉、把内存让给下一批」，
+ * 释放的时机与「这一轮跑完成没成」是两件事。所以收尾（释放）留在 `main` 里 ——
+ * 不分批时它只有一次（与从前逐字相同），分批时它每批一次。
+ *
+ * 出错**不往外抛**，而是把结论装在返回值里：调用方无论成败都要释放这一批，
+ * 且「这一批挂了」不该让前面已经采到的几家从 `collection.json` 里消失。
+ */
+async function runRound({ round, rounds, batched, evidence, date, options, log, receipt }) {
+  const shops = round.shops;
+  const tag = batched ? `b${round.index}` : null;
+  const shopArg = shops.join(',');
+  const results = shops.map((shop) => ({ shop }));
+  const gaps = [];
+  const outcome = { round, results, gaps, failure: null, failedStage: null };
+  const collectionFile = path.join(evidence, tag ? `collection-${tag}.json` : 'collection.json');
+  const loginFile = path.join(evidence, tag ? batchLoginArtifactName(round.index) : 'login-preflight.json');
   try {
-    lock = acquireWorkflowLock(WORKFLOW_LOCK_NAME, 'product-data', { directory: path.join(ROOT, 'runtime', '.workflow-locks') });
-    if (lock.staleReclaimed) log(`回收过期锁：原持有者=${lock.reclaimedFrom?.owner ?? '未知'}、pid=${lock.reclaimedFrom?.pid ?? '未知'}（该进程已不在）`);
-    writeWorkflowReceipt(receiptPath, receipt);
-    const preflight = runEnvironmentPreflight({ root: ROOT, workflow: 'product-data' });
-    fs.writeFileSync(path.join(evidence, 'environment-preflight.json'), `${JSON.stringify(preflight, null, 2)}\n`);
-    if (!preflight.ok) throw new Error(`环境预检失败：${preflight.checks.filter(check => !check.ok).map(check => check.name).join(', ')}`);
-    log(`商品数据自动采集开始：${options.date} → ${date}；${plan.shops.length} 店；底单串行、询单/推广并行；模式 ${options.commit ? 'commit' : 'dry-run'}`);
+    log(`--- ${batched ? `${describeBatch(round, rounds.length)}；` : ''}${shops.length} 家：${shops.join('、')}`);
     const started = await run(PRODUCT_JOB_FILES.start, ['--only', shopArg]); if (started.code !== 0) throw new Error(`浏览器启动失败（${started.code}）`);
-    const login = await run(PRODUCT_JOB_FILES.login, ['--shops', shopArg, '--json', '--login'], { capture: true }); fs.writeFileSync(path.join(evidence, 'login-preflight.json'), login.out); if (login.code !== 0) throw new Error(`登录预检未通过（${login.code}），已停止采集并保留告警收据`);
+    const login = await run(PRODUCT_JOB_FILES.login, ['--shops', shopArg, '--json', '--login'], { capture: true }); fs.writeFileSync(loginFile, login.out); if (login.code !== 0) throw new Error(`登录预检未通过（${login.code}），已停止采集并保留告警收据`);
     // 采集脚本一律**用它们自己的默认下载目录**（`%USERPROFILE%\Downloads`）—— 那是浏览器真的会写进去的地方，
     // 由 profile 的 `download.default_directory` 决定，脚本侧改不了。别再传 `--downloads <证据目录>`：
     // 上一版就是这么传的，结果是「下载其实成功了、采集脚本盯错目录」⇒ 五家全部报「下载超时」。
-    const results = plan.shops.map((shop) => ({ shop }));
     // 阶段一：商品底单 —— **必须串行**（不是偷懒，是判据）。
     // 五个店铺浏览器共用同一个真实下载目录，而 SYCM 导出的文件名里**不含店铺标识**
     // （`【生意参谋平台】商品_全部_<日>_<日>.xls`）。并行点击时每个进程都在取「目录里新出现的那份」，
@@ -134,9 +140,8 @@ async function main(argv) {
       if (promotion.code !== 0 || !item.promotionFile) { item.stoppedAt = 'promotion-collect'; item.error = (promotion.err || promotion.out || '').trim(); log(`[推广] ${shop} 失败：${item.error || '未返回文件'}（exit ${promotion.code}）`); }
       else log(`[推广] ${shop} 已采集 ${item.promotionFile}`);
     }
-    markStage(receipt, 'inquiry', results.every((item) => item.inquiryFile && fs.existsSync(item.inquiryFile)) ? 'COMPLETED' : 'FAILED');
-    markStage(receipt, 'promotion', results.every((item) => item.promotionFile) ? 'COMPLETED' : 'FAILED');
-    fs.writeFileSync(path.join(evidence, 'collection.json'), JSON.stringify(results, null, 2));
+    // 这一批的采集快照**先落盘再导入**：导入段崩了也要留下「采到了什么」。
+    fs.writeFileSync(collectionFile, JSON.stringify(results, null, 2));
     // 导入阶段：**逐店独立推进** —— 一家失败不再把另外几家已经采好的数据一起丢掉。
     // 为什么改（2026-09-27 实测三次）：旧版是「先把五家三段全验一遍，任一处不合格就 throw」，
     // 于是「底单 5/5、询单 5/5、推广 4/5」这样的一轮，飞书一个字都没写、整晚白跑。
@@ -144,8 +149,6 @@ async function main(argv) {
     // **成功口径不变**：任何一家/一段没采到或没导成，整轮照样以失败收场（退出码 1 + 告警），
     // 逐条缺口写进 `gaps`，不静默降级。
     const common = options.commit ? ['--apply'] : [];
-    const gaps = [];
-    const gapFor = (keyword) => gaps.some((gap) => gap.includes(keyword));
     for (const item of results) {
       if (!item.productFile) { gaps.push(`${item.shop}/底单 未采集`); continue; }
       const r = await run(PRODUCT_JOB_FILES.productImport, ['--file', item.productFile, '--shop', item.shop, '--date', date, ...common, '--evidence', path.join(evidence, item.shop, 'product-import')]);
@@ -154,43 +157,125 @@ async function main(argv) {
       else { const q = await run(PRODUCT_JOB_FILES.inquiryImport, ['--file', item.inquiryFile, '--date', date, '--shop', item.shop, ...common, '--evidence', path.join(evidence, item.shop, 'inquiry-import')]); if (q.code !== 0) { gaps.push(`${item.shop}/询单 导入失败`); log(`[导入] ${item.shop} 询单失败（exit ${q.code}）`); } else log(`[导入] ${item.shop} 询单已写入`); }
       if (!item.promotionFile) gaps.push(`${item.shop}/推广 未采集`);
     }
-    // 推广：五家齐时按小手册的形状做一次批量调用（收据落 `promotion-import/receipt.json`）；
+    // 推广：这一批齐时按小手册的形状做一次批量调用（收据落 `promotion-import/receipt.json`）；
     // 有人缺 ZIP 或批量失败时退成逐店导入（收据落 `promotion-import/<店>/`），把能写的先写掉。
     //
-    // ⚠️ 未修的已知缺陷（2026-09-30 记录，**故意没动**）：下面那个批量调用把五家塞进**同一次**
+    // ⚠️ 未修的已知缺陷（2026-09-30 记录，**故意没动**）：下面那个批量调用把几家塞进**同一次**
     // CLI 调用，而该进程只建一个 FeishuClient（一个 base）、只读那一个 base 的既存记录做去重。
     // 商品数据已改成「按月 × 按部门」分 base（见 runtime/feishu-targets.mjs 的
     // PRODUCT_DATA_MONTH_BASES），所以只要一轮里出现**跨部门**的两家店，批量这条路必然让
     // 一半写进错的 base；拆开后去重集合也会跟着变。
+    // 2026-09-30 给这条链加了分批（每批默认 5 家）**不改变这个缺陷的性质**（一批里仍可能跨部门），
+    // 只是把「一轮几家」从 12 变成 5 —— 所以这一段仍然一行不改。
     // 用户 2026-09-30 原话「推广数据这个流程我还没开发，你先放着不管，先全部注意商品数据」
-    // ⇒ 这一段本轮**一行不改**，等推广链一起改造时把批量路径改成「按 (月,部门) 分组后各组一次调用」。
+    // ⇒ 等推广链一起改造时把批量路径改成「按 (月,部门) 分组后各组一次调用」。
     // 底单与询单不受影响：它们是**逐店一次调用**（上面那个循环里），各自按自己的店铺解析 base。
     const importPromotionPerShop = async (items) => { for (const item of items) { const r = await run(PRODUCT_JOB_FILES.promotionImport, ['--file', item.promotionFile, '--shop', item.shop, ...common, '--evidence', path.join(evidence, 'promotion-import', item.shop)]); if (r.code !== 0) { gaps.push(`${item.shop}/推广 导入失败`); log(`[导入] ${item.shop} 推广失败（exit ${r.code}）`); } else log(`[导入] ${item.shop} 推广已写入`); } };
     const promoReady = results.filter((item) => item.promotionFile);
     if (promoReady.length === results.length) {
       const promotionArgs = promoReady.flatMap((item) => ['--file', item.promotionFile, '--shop', item.shop]);
       const promo = await run(PRODUCT_JOB_FILES.promotionImport, [...promotionArgs, ...common, '--evidence', path.join(evidence, 'promotion-import')]);
-      if (promo.code === 0) log('[导入] 推广五家已批量写入');
+      if (promo.code === 0) log(`[导入] 推广 ${promoReady.length} 家已批量写入`);
       else { gaps.push('推广 批量导入失败'); await importPromotionPerShop(promoReady); }
     } else if (promoReady.length) {
       log(`[导入] 推广有 ${results.length - promoReady.length} 家未采到，改为逐店导入已采到的 ${promoReady.length} 家`);
       await importPromotionPerShop(promoReady);
     }
-    markStage(receipt, 'product', gapFor('底单') ? 'FAILED' : 'COMPLETED');
-    markStage(receipt, 'inquiry', gapFor('询单') ? 'FAILED' : 'COMPLETED');
-    markStage(receipt, 'promotion', gapFor('推广') ? 'FAILED' : 'COMPLETED');
-    if (gaps.length) { failedStage = gapFor('底单') ? 'product-import' : gapFor('询单') ? 'inquiry-import' : 'promotion-import'; throw new Error(`本轮不完整（${gaps.length} 处）：${gaps.join('；')}`); }
+    markStage(receipt, 'inquiry', results.every((item) => item.inquiryFile && fs.existsSync(item.inquiryFile)) ? 'COMPLETED' : 'FAILED');
+    markStage(receipt, 'promotion', results.every((item) => item.promotionFile) ? 'COMPLETED' : 'FAILED');
+  } catch (error) {
+    outcome.failure = classifyWorkflowError(error);
+    outcome.failedStage = stageFromMessage(error.message);
+    // 「这一批在采集之前就挂了」（起不来 / 登录预检没过）时，上面那个导入循环**根本没跑**
+    // ⇒ 缺口一条都没记 ⇒ 整轮会被判成成功（整批没采到却退 0，正是本仓反复在治的假绿）。
+    // 所以这里按「实到手的东西」补记缺口；用 addGap 去重，避免与导入段已经记过的重复。
+    const addGap = (gap) => { if (!gaps.includes(gap)) gaps.push(gap); };
+    for (const item of results) {
+      if (!item.productFile) addGap(`${item.shop}/底单 未采集`);
+      if (!item.inquiryFile || !fs.existsSync(item.inquiryFile)) addGap(`${item.shop}/询单 未采集`);
+      if (!item.promotionFile) addGap(`${item.shop}/推广 未采集`);
+    }
+    log(`${batched ? `[批次] ${describeBatch(round, rounds.length)} ` : ''}未完成：${error.message}`
+      + `（${outcome.failure.class}/${outcome.failure.reason}；停在哪一段=${outcome.failedStage ?? '未知'}）`);
+  }
+  return outcome;
+}
+
+async function main(argv) {
+  let options; try { options = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
+  if (options.help) { console.log('node scripts/run-product-data-job.mjs [--date yesterday] [--shops a,b] [--commit] [--notify] [--batches N]'); return 0; }
+  const date = resolveTargetDate(options.date); const plan = buildProductJobPlan({ dateInput: options.date, shops: options.shops, commit: options.commit });
+  const runId = `${date}-${new Date().toISOString().replace(/[-:.TZ]/g, '')}-${crypto.randomUUID().slice(0, 8)}`;
+  const evidence = path.join(ROOT, 'evidence', `product-data-job-${date}`, runId); ensureDir(evidence);
+  const receiptPath = path.join(evidence, 'run-receipt.json');
+  const receipt = createWorkflowReceipt({ workflow: 'product-data', runId, date, shops: plan.shops, stages: plan.reportOrder.map((name) => ({ name, status: 'PENDING' })) });
+  const logPath = path.join(evidence, 'job.log'); const log = (line) => { const text = `[${new Date().toISOString()}] ${line}\n`; fs.appendFileSync(logPath, text); process.stdout.write(text); };
+  // 分批计划：切法**唯一**来自 `runtime/batch-plan.mjs`（与日报链同一层）。
+  // 不给 `--batches` 时 `rounds` 就是「一整轮」⇒ 一条命令、起齐、最后释放一次，与从前逐字相同。
+  const batched = options.batches !== null;
+  const rounds = batched
+    ? planBatches({ shops: plan.shops, size: options.batches }).batches
+    : [{ index: 1, shops: plan.shops }];
+  let status = 0; let lock = null; let failure = null; let failedStage = null;
+  const allResults = []; const gaps = [];
+  const releasedTags = [];
+  const logLine = `${options.date} → ${date}；${plan.shops.length} 店；`
+    + (batched ? `分 ${rounds.length} 批（每批最多 ${options.batches} 家，**每批跑完立刻释放**）` : '一次全起、结束统一释放');
+  try {
+    lock = acquireWorkflowLock(WORKFLOW_LOCK_NAME, 'product-data', { directory: path.join(ROOT, 'runtime', '.workflow-locks') });
+    if (lock.staleReclaimed) log(`回收过期锁：原持有者=${lock.reclaimedFrom?.owner ?? '未知'}、pid=${lock.reclaimedFrom?.pid ?? '未知'}（该进程已不在）`);
+    writeWorkflowReceipt(receiptPath, receipt);
+    const preflight = runEnvironmentPreflight({ root: ROOT, workflow: 'product-data' });
+    fs.writeFileSync(path.join(evidence, 'environment-preflight.json'), `${JSON.stringify(preflight, null, 2)}\n`);
+    if (!preflight.ok) throw new Error(`环境预检失败：${preflight.checks.filter(check => !check.ok).map(check => check.name).join(', ')}`);
+    log(`商品数据自动采集开始：${logLine}；底单串行、询单/推广并行；模式 ${options.commit ? 'commit' : 'dry-run'}`);
+
+    for (const round of rounds) {
+      const outcome = await runRound({ round, rounds, batched, evidence, date, options, log, receipt });
+      allResults.push(...outcome.results);
+      gaps.push(...outcome.gaps);
+      failure = failure ?? outcome.failure;
+      failedStage = failedStage ?? outcome.failedStage;
+      // **这一批的释放**（**只在分批形态**）：不管成没成都放 —— 分批存在的理由就是把内存让给下一批。
+      // 不分批时释放**不在这里**，而是收尾那一段的 `finally`（与从前逐字相同：一次运行、一次释放）。
+      // 两处都放会变成「释放两次」，而第二次面对的是一个已经空掉的目标 —— 它的退出码不再说明任何事。
+      if (!batched) continue;
+      // 释放判据不能只看退出码：既有的释放路径出过「假绿」（见 AGENTS.md），
+      // 这里再要求收据别自称没释放。
+      const tag = `b${round.index}`;
+      const shopArg = round.shops.join(',');
+      const released = await run(PRODUCT_JOB_FILES.release, ['--shops', shopArg], { capture: true });
+      const releasePath = path.join(evidence, `release-${tag}.json`);
+      fs.writeFileSync(releasePath, released.out || released.err);
+      const releaseReceipt = parseJsonOutput(released.out) ?? parseJsonOutput(released.err);
+      if (released.code !== 0 || releaseReceipt?.released === false) {
+        status = 1; failure = failure ?? { class: 'FAILED', reason: 'RELEASE_FAILED', message: 'browser release failed' }; failedStage = failedStage ?? 'release';
+        log(`浏览器释放未确认（${shopArg}；exit ${released.code}${releaseReceipt?.released === false ? '、released=false' : ''}）`);
+      } else { releasedTags.push(shopArg); log(`浏览器已释放并完成端口二次回读（${shopArg}）`); }
+    }
+
+    // 分批时另写一份**全轮聚合**的 collection.json：读证据的人只看这一个文件也不该漏家。
+    // （不分批时 `runRound` 写的那份就是全量，不再重复写 —— 「打印的与执行的一致」同理。）
+    if (batched) fs.writeFileSync(path.join(evidence, 'collection.json'), JSON.stringify(allResults, null, 2));
+    writeWorkflowReceipt(receiptPath, receipt);
+    markStage(receipt, 'product', gaps.some((gap) => gap.includes('底单')) ? 'FAILED' : 'COMPLETED');
+    markStage(receipt, 'inquiry', gaps.some((gap) => gap.includes('询单')) ? 'FAILED' : 'COMPLETED');
+    markStage(receipt, 'promotion', gaps.some((gap) => gap.includes('推广')) ? 'FAILED' : 'COMPLETED');
+    if (gaps.length) { failedStage = gaps.some((gap) => gap.includes('底单')) ? 'product-import' : gaps.some((gap) => gap.includes('询单')) ? 'inquiry-import' : 'promotion-import'; throw new Error(`本轮不完整（${gaps.length} 处）：${gaps.join('；')}`); }
+    if (failure) throw new Error(`有批次未完成：${failure.message ?? failure.reason}`);
     log('商品三类数据采集与导入完成');
   } catch (error) { status = 1; failure = classifyWorkflowError(error); failedStage = failedStage ?? stageFromMessage(error.message); if (failedStage && receipt.stages.some((stage) => stage.name === failedStage)) markStage(receipt, failedStage, 'FAILED'); log(`失败：${error.message}（${failure.class}/${failure.reason}；停在哪一段=${failedStage ?? '未知'}）`); } finally {
-    if (lock) {
-      const released = await run(PRODUCT_JOB_FILES.release, ['--shops', shopArg], { capture: true });
+    // 不分批时释放发生在**这里**（与从前逐字相同）；分批时每批的释放已经在上面的循环里做过。
+    if (lock && !batched) {
+      const released = await run(PRODUCT_JOB_FILES.release, ['--shops', plan.shops.join(',')], { capture: true });
       fs.writeFileSync(path.join(evidence, 'release.json'), released.out || released.err);
       // 不能只看退出码：既有的释放路径出过「假绿」（见 AGENTS.md）。这里再要求收据别自称没释放。
       const releaseReceipt = parseJsonOutput(released.out) ?? parseJsonOutput(released.err);
       if (released.code !== 0 || releaseReceipt?.released === false) { status = 1; failure = failure ?? { class: 'FAILED', reason: 'RELEASE_FAILED', message: 'browser release failed' }; failedStage = failedStage ?? 'release'; log(`浏览器释放未确认（exit ${released.code}${releaseReceipt?.released === false ? '、released=false' : ''}）`); }
       else log('浏览器已释放并完成端口二次回读');
-      lock.release();
-    } else log('未获得运行锁，跳过浏览器释放以保护其他流程');
+    } else if (lock && !releasedTags.length) log('分批形态：没有批次跑到释放这一步（未起任何实例）');
+    if (lock) lock.release();
+    else log('未获得运行锁，跳过浏览器释放以保护其他流程');
     receipt.status = status === 0 ? 'COMPLETED' : 'FAILED';
     receipt.failure = failure; receipt.failedStage = failedStage; receipt.finishedAt = new Date().toISOString();
     writeWorkflowReceipt(receiptPath, receipt);
