@@ -147,8 +147,9 @@ export const BATCH_SIZE_BY_MEMORY = Object.freeze({
  * 本层认得的店铺＝**参与采集**的店铺（顺序＝登记表顺序，也就是人抄下来的顺序）。
  *
  * 用 `collectingShopKeys()` 而不是 `shopBrowserKeys()`：登记表里可能有**还没开始收集**的店
- * （2026-09-30 起有 1 家）。切批/点名如果按登记表来，就会出现「给一家空店切出一批、
- * 起一个浏览器、跑一轮什么都没有」——而它在日志里长得完全正常。
+ * （2026-09-30 白天有 1 家，当晚用户拍板开 13 家后那张表清空，两个集合此刻逐字相同）。
+ * 切批/点名如果按登记表来，就会出现「给一家空店切出一批、起一个浏览器、跑一轮什么都没有」
+ * ——而它在日志里长得完全正常。
  */
 export function batchableShopKeys() {
   return collectingShopKeys();
@@ -178,14 +179,19 @@ export function resolveBatchSize(raw, { fallback = DEFAULT_BATCH_SIZE } = {}) {
  *
  * 与 start-all/stop-all 的 `--only` 同一条口径：拼错不静默回落。
  * 回落的表现是「跑完了，但那一家根本没被处理」，一个不会报错的漏做。
+ *
+ * 两个集合可注入（`registered` / `collecting`），默认＝真实登记表。**为什么要开这个口**：
+ * 「已登记但还没开始收集」这条分支的**活体样本已经没了**（2026-09-30 晚那张表清空），
+ * 而它恰恰是个一年只响几次的守卫 —— 靠「仓库里恰好有一家空店」来覆盖它，等于把覆盖度交给运气，
+ * 空店一开就永远没人守了。注入之后，用例可以自己构造那个现场。
  */
-export function resolveShopNames(names) {
-  const known = batchableShopKeys();
+export function resolveShopNames(names, { registered = shopBrowserKeys(), collecting = collectingShopKeys() } = {}) {
+  const known = collecting;
   if (!names || names.length === 0) return known;
   // 「还没开始收集」与「压根没登记」是两件事，报错必须分开。
   // 混成一句「不认识的店铺」的最坏后果不是难懂，而是**让人不再相信这条报错** ——
   // 他会去登记表里翻，发现明明有它，然后开始怀疑整套名单。
-  const notCollecting = names.filter((name) => !known.includes(name) && shopBrowserKeys().includes(name));
+  const notCollecting = names.filter((name) => !known.includes(name) && registered.includes(name));
   if (notCollecting.length > 0) {
     throw new Error(`「${notCollecting.join('、')}」已登记但**还没开始收集数据**`
       + '（见 runtime/browser-ports.mjs 的 SHOPS_NOT_COLLECTING_YET）——'
@@ -193,7 +199,7 @@ export function resolveShopNames(names) {
   }
   const unknown = names.filter((name) => !known.includes(name));
   if (unknown.length > 0) {
-    throw new Error(`不认识的店铺：${unknown.join('、')}\n已登记：${shopBrowserKeys().join(' / ')}`);
+    throw new Error(`不认识的店铺：${unknown.join('、')}\n已登记：${registered.join(' / ')}`);
   }
   // 去重但保持「登记表顺序」而不是「输入顺序」：批次的顺序也是行为的一部分
   // （顺序里科塔在最后 —— 它失败挡不住前面的店），所以不让人随手打乱。
@@ -208,8 +214,8 @@ export function resolveShopNames(names) {
  *   · 不重：同一家不许出现在两批里（两批同时开同一家 = 串店的现实版本）；
  *   · 有序：批内与批间都保持登记表顺序（下面按登记表顺序切，不做任何排序）。
  */
-export function planBatches({ shops = null, size = DEFAULT_BATCH_SIZE } = {}) {
-  const keys = resolveShopNames(shops);
+export function planBatches({ shops = null, size = DEFAULT_BATCH_SIZE, registered, collecting } = {}) {
+  const keys = resolveShopNames(shops, { registered, collecting });
   const chunk = resolveBatchSize(size);
   const batches = [];
   for (let i = 0; i < keys.length; i += chunk) {
@@ -324,12 +330,13 @@ export function describeBatch(batch, total) {
   return `第 ${batch.index}/${total} 批：${batch.shops.join('、')}`;
 }
 
-/** 这一批会不会碰到**不该采**的店铺（开跑前的一道自检；不通过就别起浏览器）。 */
-export function assertBatchCoversRegistry(batch) {
-  const known = batchableShopKeys();
+/** 这一批会不会碰到**不该采**的店铺（开跑前的一道自检；不通过就别起浏览器）。
+ *  两个集合可注入，同 `resolveShopNames` 的理由（分支的活体样本已随空表清空）。 */
+export function assertBatchCoversRegistry(batch, { registered = shopBrowserKeys(), collecting = collectingShopKeys() } = {}) {
+  const known = collecting;
   // 「已登记但还没开始收集」要单独报 —— 报成「未登记」会让人去登记表里翻（那里有它），
   // 从此不再相信这条自检。
-  const pending = batch.shops.filter((key) => !known.includes(key) && shopBrowserKeys().includes(key));
+  const pending = batch.shops.filter((key) => !known.includes(key) && registered.includes(key));
   if (pending.length > 0) {
     throw new Error(`批次里有「已登记但还没开始收集」的店铺：${pending.join('、')}`
       + '（见 runtime/browser-ports.mjs 的 SHOPS_NOT_COLLECTING_YET）');

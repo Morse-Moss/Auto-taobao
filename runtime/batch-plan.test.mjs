@@ -20,12 +20,22 @@ import {
 } from './batch-plan.mjs';
 import { REPO_ROOT } from './version.mjs';
 
-// 两个口径别混（2026-09-30 起不同）：
-//   · REGISTERED ＝ 登记表全部实例（含**还没开始收集**的空店）—— 只有「实例/登记」类的事才用它；
+// 两个口径别混：
+//   · REGISTERED ＝ 登记表全部实例 —— 只有「实例/登记」类的事才用它；
 //   · ALL        ＝ **参与采集**的店铺 —— 分批层认的就是它（`batchableShopKeys()`）。
-// 这一层里的断言绝大多数是分批语义，所以默认用 ALL。
+// 2026-09-30 白天两者差 1 家（第 13 家挂在「还没开始收集」里），当晚用户拍板开 13 家后**逐字相同**。
+// 这一层里的断言绝大多数是分批语义，所以默认用 ALL；两个集合的关系由下面这条 test 单独守。
 const REGISTERED = shopBrowserKeys();
 const ALL = collectingShopKeys();
+
+test('「参与采集」是登记表的子集，且当前两者逐字相同（13 家全采）', () => {
+  // 这条守住「有没有店掉进缝里」：采集名单里出现未登记的店 ⇒ 那台实例根本起不来；
+  // 登记表里有店既不在采集名单、也不在「还没开始收集」表里 ⇒ 它今天一步都不会跑，而整轮报全绿。
+  assert.ok(ALL.every((key) => REGISTERED.includes(key)),
+    '有店在采集名单里却不在登记表 —— 那台实例根本起不来');
+  assert.deepEqual(ALL, REGISTERED,
+    'SHOPS_NOT_COLLECTING_YET 为空时两者必须逐字相同；不同就说明有店掉进了缝里');
+});
 
 /**
  * 按 size 切一份名单时，每批该有几家 —— **从名单长度推，不写死数字**。
@@ -103,22 +113,35 @@ test('resolveShopNames：不认识的店铺当场抛错，并列出已登记的'
 });
 
 test('「已登记但还没开始收集」的店：默认名单里没有它，点它的名要说清是「还没开始收集」', () => {
-  // 2026-09-30 加（用户原话：「网林定制淘宝这个是新加的店，还没有正式收集数据」）。
+  // 2026-09-30 加（用户原话：「网林家居这个是新加的店，还没有正式收集数据」；当天这家店的
+  // 运营叫法从账号表里最初的「网林定制淘宝」改成了「网林家居」）。
   // 两个方向都要钉：
   //   ① 默认名单不许带上它 —— 带上它不是「多跑一家」，而是整轮失败或天天一条假告警；
   //   ② 显式点名时**报错要说对人话** —— 混成「不认识的店铺」会让人去登记表里翻，
   //      发现明明有它，从此不再相信这条报错（而这条报错是唯一的防线）。
-  const pending = REGISTERED.filter((key) => !ALL.includes(key));
-  assert.ok(pending.length > 0,
-    '当前应当有「还没开始收集」的店；一家都没有的话这条用例失去意义，要跟着改口径');
-  for (const key of pending) {
-    assert.equal(resolveShopNames(null).includes(key), false, `默认名单带上了没开始收集的「${key}」`);
-    assert.throws(() => resolveShopNames([key]), /还没开始收集/u,
+  //
+  // **当晚用户拍板「肯定开 13 家啊」⇒ 登记表里的空店清零，这条分支现实中取不到活体样本了。**
+  // 所以这里改成**显式注入两个集合**来构造现场（与 shop-identities 的 `platformOf` 同一手法）：
+  // 靠「仓库里恰好有一家空店」覆盖它，等于把一年只响几次的守卫交给运气 —— 空店一开就没人守。
+  const registered = ['甲店', '乙店', '丙店'];
+  const collecting = ['甲店', '乙店'];
+  const opts = { registered, collecting };
+
+  // 默认名单＝参与采集那几家（顺序照登记表），不带空店。
+  assert.deepEqual(resolveShopNames(null, opts), collecting, '默认名单带上了没开始收集的店');
+  for (const key of registered.filter((k) => !collecting.includes(k))) {
+    assert.throws(() => resolveShopNames([key], opts), /还没开始收集/u,
       `点名「${key}」时必须说清是「还没开始收集」，不是「不认识」`);
-    assert.throws(() => planBatches({ shops: [key] }), /还没开始收集/u);
-    assert.throws(() => assertBatchCoversRegistry({ shops: [key] }), /还没开始收集/u,
+    assert.throws(() => planBatches({ shops: [key], ...opts }), /还没开始收集/u);
+    assert.throws(() => assertBatchCoversRegistry({ shops: [key] }, opts), /还没开始收集/u,
       '分批层的最后一道自检也只认「参与采集」集合 —— 空店不该被切进任何一批，且理由要说对人话');
   }
+  // 「没开始收集」不许把「压根没登记」也吞掉：两者报错必须分家。
+  assert.throws(() => resolveShopNames(['丁店'], opts), /不认识的店铺/u,
+    '未登记的店被报成了别的理由 —— 两件事混成一件，人就分不清该去补哪里');
+  // 注入口的默认值必须仍然是真实登记表：不注入时行为逐字不变（这一条防止注入口把生产路径改掉）。
+  assert.deepEqual(resolveShopNames(null), collectingShopKeys());
+  assert.throws(() => resolveShopNames(['盖文1688']), /已登记/u);
 });
 
 test('一个批次：起 → 挂标识页（每家一条）→ 跑 → 停（不给 loginStep 时就是这四段）', () => {

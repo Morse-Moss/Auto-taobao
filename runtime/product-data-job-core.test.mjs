@@ -1,17 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { collectingShopKeys, shopBrowserKeys } from './browser-ports.mjs';
+import { collectingShopKeys } from './browser-ports.mjs';
 import { buildProductJobPlan, renderProductJobEntry } from './product-data-job-core.mjs';
 
 test('product job defaults to yesterday and covers all shops that actually collect, in parallel waves', () => {
   const plan = buildProductJobPlan();
   assert.equal(plan.dateInput, 'yesterday');
-  // 家数从**参与采集**的名单推，不写死（2026-09-30：5 → 12 家参与采集 + 1 家待收集）。
-  // 默认名单是 collectingShopKeys() 而不是 shopBrowserKeys()：登记表里还有没开始收集的空店，
+  // 家数从**参与采集**的名单推，不写死（2026-09-30：5 → 12 家参与采集 ＋ 1 家待收集；
+  // 当晚用户拍板开 13 家后那张表清空 ⇒ 现在是 13 家全采）。
+  // 默认名单是 collectingShopKeys() 而不是 shopBrowserKeys()：登记表里可能还有没开始收集的空店，
   // 空店算进来会让登录预检多查一家、采集多起一家、导入多写一家 —— 三项它都做不成。
   assert.deepEqual(plan.shops, collectingShopKeys());
   // ⚠️ 这条同时是一笔资源账：`parallelShopCount` 是「一次会起多少个实例」的**名义**值 ——
-  // 12 家 ＝ 12 个 Edge 实例 + 12 个代理进程同时活着（底单串行采集，但实例全起）。
+  // 13 家 ＝ 13 个 Edge 实例 + 13 个代理进程同时活着（底单串行采集，但实例全起）。
   // 2026-09-30 起入口给了 `--batches`（默认 5）：**真正同时开着的**是这个数除以批次大小，
   // 由 `scripts/run-product-data-job.mjs` 的分批循环决定（切法只来自 `runtime/batch-plan.mjs`）。
   // 这条用例刻意继续钉 plan 的名义值：改口径要连它一起改，而不是让它跟着漂。
@@ -23,11 +24,16 @@ test('product job plan rejects unknown / empty / not-yet-collecting shop selecti
   assert.throws(() => buildProductJobPlan({ shops: [] }), /at least one/u);
   assert.throws(() => buildProductJobPlan({ shops: ['missing'] }), /unknown shops/u);
   // 已登记但还没开始收集的店：点名也要拒，且理由要说清 —— 它的数据没有可写的落点。
-  const pending = shopBrowserKeys().filter((key) => !collectingShopKeys().includes(key));
-  assert.ok(pending.length > 0, '当前应当有「还没开始收集」的店；否则这条用例要改口径');
-  for (const key of pending) {
-    assert.throws(() => buildProductJobPlan({ shops: [key] }), /还没开始收集/u);
-  }
+  // 2026-09-30 晚用户拍板开 13 家 ⇒ 登记表里的空店清零，这条分支现实中取不到活体样本，
+  // 所以用**显式注入**构造现场（靠「仓库里恰好有空店」覆盖它＝把一年只响几次的守卫交给运气）。
+  const registered = ['甲店', '乙店', '丙店'];
+  const collecting = ['甲店', '乙店'];
+  assert.throws(() => buildProductJobPlan({ shops: ['丙店'], registered, collecting }), /还没开始收集/u,
+    '已登记但没开始收集的店必须被拒，且理由不能混成 unknown shops');
+  // 未登记走的是另一条报错 —— 两件事不许混。
+  assert.throws(() => buildProductJobPlan({ shops: ['丁店'], registered, collecting }), /unknown shops/u);
+  // 注入口的默认值必须仍是真实登记表（本条防止注入口把生产路径改掉）。
+  assert.deepEqual(buildProductJobPlan().shops, collectingShopKeys());
 });
 
 test('scheduled entry targets the independent product-data job and commits yesterday by default', () => {

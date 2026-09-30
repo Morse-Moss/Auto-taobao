@@ -68,8 +68,10 @@ test('登记表与「照抄读回的原文」是双射：既没抄错，也没�
   const extra = SHOP_IDENTITIES.map((row) => row.key).filter((key) => !fromMapping.has(key));
   assert.deepEqual(extra.sort(), [...EXTRA_SHOPS_FROM_ACCOUNT_TABLE].sort(),
     '登记表里多出来的店必须逐家列在 EXTRA_SHOPS_FROM_ACCOUNT_TABLE —— 否则就是凭空多出一家');
-  // 第 13 家（网林定制淘宝）确实不在底单里，这条断言把「原本就是 12 家」这个事实钉住。
-  assert.equal(fromMapping.has('网林定制淘宝'), false);
+  // 第 13 家（网林家居）确实不在底单里，这条断言把「原本就是 12 家」这个事实钉住。
+  // 注意这里用的是**改后的**运营叫法：11:05 版账号表写的是「网林定制淘宝」，15:43 起改成
+  // 「网林家居」（详见 shop-identities.mjs 文件头 ②）。
+  assert.equal(fromMapping.has('网林家居'), false);
   assert.throws(() => shopIdentityByHeader('盖文'), /没有哪家店的平台店铺全称是/u);
 });
 
@@ -78,6 +80,17 @@ test('平台后缀与 platform 字段一致；未知后缀当场抛错', () => {
     assert.equal(row.platform, platformOf(row.key), `${row.key} 的 platform 与后缀不一致`);
   }
   assert.throws(() => platformOf('科塔1688'), /没有已知的平台后缀/u);
+  // 2026-09-30：「网林家居」是**唯一**不带平台后缀的叫法（「家居」是品牌词，不是平台标记），
+  // 所以它的平台走 PLATFORM_BY_KEY 显式声明那条路。这条断言把「它确实没有后缀可推」钉住 ——
+  // 否则下次有人把「家居」加进后缀表，这里会静默变成「按后缀推出来的」，而那是错的推断。
+  assert.equal(platformOf('网林家居'), 'taobao');
+  assert.equal(SHOP_IDENTITIES.find((row) => row.key === '网林家居').platform, 'taobao');
+  // 两个来源同时成立时必须抛错：总有一个是抄错的。用注入的方式构造这个冲突 ——
+  // 直接拿门店去试是走不到这条分支的（PLATFORM_BY_KEY 里只有那一家不带后缀的店）。
+  assert.throws(() => platformOf('科塔淘宝', { byKey: { 科塔淘宝: 'tmall' } }),
+    /平台只能有一个来源/u, '带后缀的店同时被写进 PLATFORM_BY_KEY 时要当场红');
+  // 注入口本身也要能用默认值跑通，否则「可注入」是假的。
+  assert.equal(platformOf('科塔淘宝', { byKey: {} }), 'taobao');
   // 13 家店的平台分布（7 个淘宝 / 4 个天猫 / 2 个龙头店）：这条不是为了好看，
   // 而是把「只有淘宝和天猫」这个直觉错判钉住 —— 本来就有两家是「龙头店」。
   const count = (platform) => SHOP_IDENTITIES.filter((row) => row.platform === platform).length;
@@ -155,7 +168,7 @@ test('诚实性：已实测的行字段齐全，未实测的行整行为 null', 
 
 test('隔离 profile：键唯一、值唯一、与登记表逐键一致，三张清单互相自洽', () => {
   const entries = Object.entries(ISOLATED_PROFILES);
-  // 2026-09-30：12 家 → 13 家（第 13 家网林定制淘宝也分到独立 profile）。
+  // 2026-09-30：12 家 → 13 家（第 13 家网林家居也分到独立 profile）。
   assert.equal(entries.length, 13);
   assert.equal(new Set(entries.map(([, profile]) => profile)).size, entries.length,
     '两个店铺共用一个 profile 是复制粘贴事故的高发形态');
@@ -325,8 +338,8 @@ test('打印器：可粘贴内容只走 stdout，提示走 stderr；require 不�
   assert.equal(one.stderr, '');
 
   // 2026-09-30 实测完之后 13 家三样都齐 ⇒ 每家都必须能直接印出一整行可粘的参数。
-  // （原来这里测的是网林定制淘宝「缺 shop、只印 member」的形态，现在没有店走得到那条分支了。）
-  const fullRow = run(['网林定制淘宝']);
+  // （原来这里测的是第 13 家「缺 shop、只印 member」的形态，现在没有店走得到那条分支了。）
+  const fullRow = run(['网林家居']);
   assert.equal(fullRow.code, 0);
   assert.equal(fullRow.stdout, '--expect-shop 网林定制家居 --expect-member 网林定制家居:嘉嘉 --expect-member-id 1731780198\n',
     'stdout 必须干净到可以直接粘 —— 多一行提示就会把命令行粘坏');

@@ -26,10 +26,18 @@
 //   ① 店铺维度（`key` ↔ `fullName`）——来自飞书 base「各店铺日报」的「店铺底单」，
 //      2026-09-18 只读读回，**12 行**，两列：`平台店铺全称` / `店铺`。逐字照抄在 RAW_MAPPING_ROWS。
 //      用户原话：「这个是完整表…这是一一对应的」。
-//   ② 第 13 家「网林定制淘宝」**不在这 12 行里** —— 它是 2026-09-30 新增的店，
-//      飞书底单当天还没这一行。它的 key/fullName 来自用户同日给的《店铺账号信息表》，
-//      单列在 EXTRA_SHOPS_FROM_ACCOUNT_TABLE（不许混进 RAW_MAPPING_ROWS：那份是「读回的原文」，
-//      往里补一行就等于伪造证据）。
+//   ② 第 13 家「网林家居」**不在这 12 行里** —— 它是 2026-09-30 新增的店，
+//      而 RAW_MAPPING_ROWS 是 2026-09-18 那次读回的原文。它的 key/fullName 来自用户同日给的
+//      《店铺账号信息表》，单列在 EXTRA_SHOPS_FROM_ACCOUNT_TABLE（不许混进 RAW_MAPPING_ROWS：
+//      那份是「读回的原文」，往里补一行就等于伪造证据）。
+//
+//      ⚠️ 这一家的运营叫法当天改过一次，别照抄旧值：11:05 那版账号表里「飞书表格简称」是
+//      「网林定制淘宝」，15:43 与 16:01（测试版）两版都改成了**「网林家居」**。
+//      三处独立证据都指向新名字：① 账号表 15:43/16:01 两版；② 2026-09-30 晚换上的日报 base
+//      「各店铺日报 副本」里「各店铺数据日报」的「店铺」单选选项（13 项，含「网林家居」）；
+//      ③ 同一个 base 的「店铺底单」（tbltxmw6VJs3jLZr，13 行）里那一行是
+//      `平台店铺全称=网林定制家居 / 店铺=网林家居`。
+//      ⇒ 这个 key **就是写进飞书「店铺」列的值**，飞书侧叫什么，这里就必须叫什么。
 //
 // 操作员账号（`alimamaMemberName`）：2026-09-30 起以用户《店铺账号信息表》为准，
 // 13 家全部换成表里给定的操作员（用户口径：「操作员固定好，以后一般不会再更改了」）。
@@ -89,7 +97,7 @@ export const ACCOUNT_TABLE_SOURCE = Object.freeze({
  * 目前 1 家。它必须显式列出来 —— 否则「登记表 13 行 vs 底单 12 行」这个差
  * 会被下一个读代码的人当成抄袭事故。
  */
-export const EXTRA_SHOPS_FROM_ACCOUNT_TABLE = Object.freeze(['网林定制淘宝']);
+export const EXTRA_SHOPS_FROM_ACCOUNT_TABLE = Object.freeze(['网林家居']);
 
 /**
  * 逐字照抄的 12 行原文（顺序＝表里的行序）。
@@ -119,18 +127,51 @@ const PLATFORM_BY_SUFFIX = Object.freeze({
   龙头店: 'leading',
 });
 
-export function platformOf(shopKey) {
-  for (const [suffix, platform] of Object.entries(PLATFORM_BY_SUFFIX)) {
-    if (shopKey.endsWith(suffix)) return platform;
+/**
+ * **运营叫法里不带平台后缀**的那几家：平台必须在这里显式写出来。
+ *
+ * 为什么要有第二张表（2026-09-30 加）：用户给第 13 家起的运营叫法是「网林家居」——
+ * 而「家居」是**品牌词**，不是平台标记（它家其实是淘宝店；里可林淘宝的平台店铺全称也叫
+ * 「里可林家居」）。所以后缀推导在这一家上必然落空。
+ *
+ * 为什么不干脆把「家居」加进 PLATFORM_BY_SUFFIX：那等于宣称「叫家居的都是淘宝店」，
+ * 而这条推断是错的 —— 真正相反的方向才是对的（天猫店也可以叫家居）。下次来一家天猫的
+ * 「XX家居」时，后缀表会**静默地**给它打上 taobao，而这张表存在的全部意义就是不许静默。
+ *
+ * 三条规则（都在 `platformOf` 里，测试逐条钉住）：
+ *   ① 有后缀、且在后缀表里 ⇒ 用后缀推（原行为，13 家里 12 家走这条）；
+ *   ② 没后缀、但在这张表里 ⇒ 用它（当前只有「网林家居」1 家）；
+ *   ③ 两个都没有 ⇒ 抛错（新店必须显式声明，不许猜）。
+ * 同一家同时满足 ① 与 ② 也抛错 —— 两个来源同时成立时，总有一个是抄错的。
+ */
+const PLATFORM_BY_KEY = Object.freeze({
+  网林家居: 'taobao',
+});
+
+/**
+ * 取平台。两张表都可以注入（默认就是本文件那两张）—— 唯一的目的是让「两个来源同时成立」
+ * 这条守卫能被离线用例真的走到：不可注入时它只能靠人去构造一次事故来验证，等于没有。
+ * 与 `runtime/feishu-targets.mjs` 的 `assertProductDataBaseCoverage({ registry })` 同一写法。
+ */
+export function platformOf(shopKey, { byKey = PLATFORM_BY_KEY, bySuffix = PLATFORM_BY_SUFFIX } = {}) {
+  const explicit = byKey[shopKey];
+  const hit = Object.entries(bySuffix).find(([suffix]) => String(shopKey).endsWith(suffix));
+  if (explicit && hit) {
+    throw new Error(`店铺叫法「${shopKey}」既可以按后缀「${hit[0]}」推、又在 PLATFORM_BY_KEY 里显式写了`
+      + `（${explicit}）—— 平台只能有一个来源，留一个、删一个`);
   }
-  throw new Error(`店铺叫法「${shopKey}」没有已知的平台后缀（已知：${Object.keys(PLATFORM_BY_SUFFIX).join(' / ')}）`);
+  if (explicit) return explicit;
+  if (hit) return hit[1];
+  throw new Error(`店铺叫法「${shopKey}」没有已知的平台后缀（已知：${Object.keys(bySuffix).join(' / ')}）`
+    + `，也不在 PLATFORM_BY_KEY 里 —— 新店的平台要在那里显式写，不许猜`);
 }
 
 /**
  * 13 家店的身份（销售1部 8 家 + 销售2部 5 家）。字段含义：
  *   key                 运营叫法（＝回填时写进「店铺」列的值，也是幂等键的一半）
  *   fullName            平台店铺全称（＝生意参谋页头店名）
- *   platform            taobao | tmall | leading（由 key 后缀派生，测试会核对一致）
+ *   platform            taobao | tmall | leading（由 key 后缀推；不带平台后缀的那几家在
+ *                       `PLATFORM_BY_KEY` 里显式声明。测试会核对两者一致）
  *   sycmHeader          生意参谋页头店名；**已实测的行与 fullName 相同**（这正是「按页头店名能唯一认店」的判据）
  *   sycmHeaderVerified  'expression' 用本技能那两个表达式读到 | 'text' 只从页面正文读到 | null 未实测
  *   alimamaMemberName   阿里妈妈页头的登录会员名（**可能与店名毫无关系**）。
@@ -283,7 +324,7 @@ export const SHOP_IDENTITIES = Object.freeze([
     evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile anbi-taobao）。账号表原写的密码是错的，已按用户口述更正为 xs115588',
   }),
   Object.freeze({
-    key: '网林定制淘宝',
+    key: '网林家居',
     fullName: '网林定制家居',
     platform: 'taobao',
     sycmHeader: '网林定制家居',
@@ -291,7 +332,7 @@ export const SHOP_IDENTITIES = Object.freeze([
     alimamaMemberName: '网林定制家居:嘉嘉',
     alimamaMemberId: '1731780198',
     alimamaVerified: 'expression',
-    evidence: '2026-09-30 用户《店铺账号信息表》新增的第 13 家（平台店铺全称「网林定制家居」）。底座与登录都在当天完成，页头店名、会员名、会员 ID 均于当天用采集表达式实测（隔离 profile wanglin-custom）。它 10 月两张商品 base 的「店铺」选项里还不存在 —— 开始采集前要补上那两个选项',
+    evidence: '2026-09-30 用户《店铺账号信息表》新增的第 13 家（平台店铺全称「网林定制家居」）。底座与登录都在当天完成，页头店名、会员名、会员 ID 均于当天用采集表达式实测（隔离 profile wanglin-custom）。**运营叫法当天改过**：11:05 版账号表的「飞书表格简称」是「网林定制淘宝」，15:43 起改成「网林家居」，本表与飞书侧已同步（依据见文件头 ②）。落点已具备：新日报 base 的「店铺」选项与 09-29 起的预建行里都有「网林家居」；商品链三张底单不写店铺列，不需要额外选项',
   }),
 ]);
 
@@ -325,7 +366,7 @@ export const ISOLATED_PROFILES = Object.freeze({
   科塔淘宝: 'shop-j873522735',
   网林淘宝: 'wanglin-taobao',
   里可林天猫: 'likelin-tmall',
-  网林定制淘宝: 'wanglin-custom',
+  网林家居: 'wanglin-custom',
   // 销售2部（5 家）
   保拉淘宝: 'paola-taobao',
   保拉天猫: 'paola-tmall',
@@ -343,7 +384,7 @@ export const ISOLATED_PROFILES = Object.freeze({
  */
 export const IDENTITY_SHOP_HEADER_VERIFIED_SHOPS = Object.freeze([
   '科塔淘宝', '盖文淘宝', '盖文天猫', '保拉淘宝', '保拉天猫', '网林淘宝', '网林天猫',
-  '里可林淘宝', '里可林天猫', '安比龙头店', '科塔龙头店', '安比淘宝', '网林定制淘宝',
+  '里可林淘宝', '里可林天猫', '安比龙头店', '科塔龙头店', '安比淘宝', '网林家居',
 ]);
 
 /**
@@ -356,7 +397,7 @@ export const IDENTITY_SHOP_HEADER_VERIFIED_SHOPS = Object.freeze([
  */
 export const IDENTITY_MEMBER_MEASURED_SHOPS = Object.freeze([
   '科塔淘宝', '盖文淘宝', '盖文天猫', '保拉淘宝', '保拉天猫', '网林淘宝', '网林天猫',
-  '里可林淘宝', '里可林天猫', '安比龙头店', '科塔龙头店', '安比淘宝', '网林定制淘宝',
+  '里可林淘宝', '里可林天猫', '安比龙头店', '科塔龙头店', '安比淘宝', '网林家居',
 ]);
 
 /**

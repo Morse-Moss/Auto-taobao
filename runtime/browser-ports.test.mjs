@@ -149,28 +149,36 @@ test('店铺实例的 profile 必须与店铺身份登记表逐键一致 —— 
 });
 
 // --- 「已登记」与「参与收集」（2026-09-30 加）--------------------------------------
-// 背景：用户说「网林定制淘宝这个是新加的店，还没有正式收集数据」。
+// 背景：白天新加第 13 家（11:05 版账号表里简称写的是「网林定制淘宝」，15:43 起改成「网林家居」），
+// 先挂进 `SHOPS_NOT_COLLECTING_YET` 挡住采集；当晚三件事到位后用户拍板「肯定开 13 家啊」，该表清空。
+// **表清空了，两个集合仍然必须分开** —— 那张表不是「一次性的迁移动作」，而是加店/换操作员的常规节拍，
+// 所以判据保留，只把它改写成**空清单下也成立**的形态。
 // 一家空店留在采集默认名单里的后果不是「多跑一家」，而是整轮失败或天天假告警
 // （日报链身份闸门直接抛；商品数据链的登录预检一家不过就整轮中止）。
-// 所以两个集合必须分开，且**合起来恰好等于登记表** —— 掉进缝里的那家会「既不被采集、
-// 也不被任何名单提到」，而所有表面现象都正常。
+// 两个集合还要**合起来恰好等于登记表** —— 掉进缝里的那家会「既不被采集、也不被任何名单提到」，
+// 而所有表面现象都正常。
 test('「参与收集」与「已登记待收集」两个集合并起来恰好是登记表，不重不漏', () => {
   const all = shopBrowserKeys();
   const collecting = collectingShopKeys();
   const pending = [...SHOPS_NOT_COLLECTING_YET];
 
-  assert.ok(pending.length > 0,
-    '这张表存在的意义就是「有店在里面」；空了就该把它删掉，而不是留一张空表当装饰');
   for (const key of pending) {
     assert.ok(all.includes(key), `${key} 不在登记表里 —— 那它既不是「已登记待收集」，也不是任何东西`);
     assert.equal(collecting.includes(key), false, `${key} 同时出现在「参与收集」里 —— 两个集合必须互斥`);
+    // 待收集 ≠ 未登记：那台浏览器照样要起、要登录、要挂标识页，所以实例口径必须认它。
+    assert.deepEqual(shopInstance(key), SHOP_BROWSERS[key]);
   }
   assert.deepEqual([...collecting, ...pending].sort(), [...all].sort(), '两个集合并起来必须恰好是登记表');
   // 顺序仍严格取自登记表（切批就是按这个顺序切的，「两家店被切到最后」是行为的一部分）。
   assert.deepEqual(collecting, all.filter((key) => !pending.includes(key)),
     '「参与收集」不许改变登记表顺序，只许把待收集的那几家摘掉');
-  // 待收集 ≠ 未登记：那台浏览器照样要起、要登录、要挂标识页，所以实例口径必须认它。
-  for (const key of pending) assert.deepEqual(shopInstance(key), SHOP_BROWSERS[key]);
+  // 空清单**不是**「这条判据失去意义」——它同样是要能说得清的形态：此时两个集合必须逐字相同，
+  // 否则就有店掉进缝里（既不采集、也不在任何清单里，而一切看起来正常）。
+  // 2026-09-30 晚起当前就是空清单，所以下面这条此刻是**真在跑**的判据，不是装饰。
+  if (pending.length === 0) {
+    assert.deepEqual(collecting, all,
+      'SHOPS_NOT_COLLECTING_YET 为空时，「参与采集」必须与登记表逐字相同 —— 否则有店掉进缝里');
+  }
 });
 
 

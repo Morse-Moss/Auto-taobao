@@ -152,25 +152,31 @@ test('loadFeishuCredentials 只认 FEISHU_APP_ID / FEISHU_APP_SECRET', () => {
   );
 });
 
-// 2026-09-18：日报链从「各店铺日报  副本」（X02Xb7fHba…）切到用户指定的正主「各店铺日报 」（PTfHbPt9Ea…）。
+// 2026-09-18：日报链从「各店铺日报  副本」（X02Xb7fHba…）切到当时的正主「各店铺日报 」（PTfHbPt9Ea…）。
+// 2026-09-30 晚：**用户又指定换成一张名字里带「副本」的 base**（RjKcb3isDaVn1GsoVJfc7Ykknyg）——
+// 这一次「副本」两个字不是判错：它才是全的那一张（底单 2184 vs 1934 行、店铺底单 13 vs 12 行，
+// 逐张表的行数与取证见 feishu-targets.mjs 的 dailyReport 注释）。
 //
-// 为什么这条要单独钉：两张 base 有 7 张同名表，其中 6 张逐表行数与字段签名**完全相同**，
-// 唯一肉眼可见的差别是底单行数（副本 8 行 / 正主 1873 行）和名字里多出来的「副本」两个字。
-// 也就是说，配置被改回副本时**不会有任何东西报错**——链照跑、数据照写，只是写进了一个
+// 为什么这两条要单独钉：这几张 base 有 7 张同名表、其中 6 张逐表行数与字段签名完全相同，
+// 肉眼分辨不出；配置指错时**不会有任何东西报错**——链照跑、数据照写，只是写进了一个
 // 运营不看的 base 里。这正是「默认值即目标」（坑 35）的形状，所以默认值必须被断言钉住，
 // 而不是靠人记得。名字与 id 一起断言，是因为只改一个的话两边会互相矛盾。
-test('日报目标指向正主 base「各店铺日报」，不再是同名副本', () => {
+test('日报目标指向用户 2026-09-30 指定的 base「各店铺日报 副本」', () => {
   const target = dailyReportTargets('kcne');
-  assert.equal(target.baseToken, 'PTfHbPt9EaIzddsfL8Jcj238nrb');
-  assert.equal(target.sourceTable, 'tblkY3W8tnPWPcnh');
+  assert.equal(target.baseToken, 'RjKcb3isDaVn1GsoVJfc7Ykknyg');
+  assert.equal(target.sourceTable, 'tblIuAX4nPc1zDOO');
   assert.equal(target.sourceView, 'vewwg0rhjo');
-  assert.equal(target.inquiryTable, 'tblUnwn05vl8Wik9');
-  // 名字按「去空格」比较：接口读回的正主名带一个尾随空格，副本名带中间空格，
+  assert.equal(target.inquiryTable, 'tblqF2YD2VfmKP4C');
+  // 名字按「去空格」比较：接口读回的名字带尾随空格/中间空格，
   // 这种看不见的字符不能决定写的是哪一张 base（脚本里的比较用的是同一条规则）。
   const stripSpaces = value => String(value ?? '').replaceAll(' ', '');
-  assert.equal(stripSpaces(target.sourceBaseName), '各店铺日报');
-  assert.notEqual(stripSpaces(target.sourceBaseName), '各店铺日报副本');
-  // 切换前的副本 id：留在测试里当反例，免得下次有人「看着眼熟」把它配回来。
+  assert.equal(stripSpaces(target.sourceBaseName), '各店铺日报副本');
+  // 上一任目标（2026-09-18…09-30 用的那张）留在测试里当反例：它的底单在 09-18…09-28
+  // 只剩每天 5 家，配回去等于把 12 家的历史写回一张缺数据的表。
+  assert.notEqual(target.baseToken, 'PTfHbPt9EaIzddsfL8Jcj238nrb');
+  assert.notEqual(target.sourceTable, 'tblkY3W8tnPWPcnh');
+  assert.notEqual(target.inquiryTable, 'tblUnwn05vl8Wik9');
+  // 更早那一任副本（2026-09-18 之前指向的）：同样是反例，别「看着眼熟」配回来。
   assert.notEqual(target.baseToken, 'X02Xb7fHba7mU9sr8uIcRlExn6b');
   assert.notEqual(target.sourceTable, 'tbl84ZGwLQKyLxV3');
   assert.notEqual(target.inquiryTable, 'tblm9Hx7R9A1YoLC');
@@ -232,11 +238,13 @@ test('月份只认 YYYY-MM / YYYY-MM-DD，别的形状当场抛错', () => {
 
 test('按（数据日期 × 部门）解析目标：两个部门两张 base，且缺登记一律 fail-closed', () => {
   const s1 = productDataTargetsForShop('盖文淘宝', '2026-10-08', 'kcne');
-  assert.equal(s1.baseToken, 'LQgZbi78oaAmIYsc4urcwk9rnNf');
+  assert.equal(s1.baseToken, 'FhCUbn7vVaEc26sRjMAccQJAn5e');
   assert.equal(s1.baseName, '10月商品监控表-销售1部');
   const s2 = productDataTargetsForShop('保拉淘宝', '2026-10-08', 'kcne');
-  assert.equal(s2.baseToken, 'LLWcbIuVFaBm6yshX9Xc8DFZn9d');
-  assert.equal(s2.baseName, '10月商品监控表-销售2部');
+  assert.equal(s2.baseToken, 'ZYwWbYP9fa5d3rsXX8IcKrkYnod');
+  // 2 部这张接口读回的名字带「副本」两个字，照抄 —— 它与 1 部那张是两个不同的 base
+  // （2026-09-30 用户给的《店铺账号信息表测试.xlsx》里给的链接就是这两个 token）。
+  assert.equal(s2.baseName, '10月商品监控表-销售2部 副本');
   // 两家店同一天必须落到两张不同的 base —— 这是「绝不串数据」在这条链上的判据化。
   assert.notEqual(s1.baseToken, s2.baseToken);
   assert.notEqual(s1.productTable, s2.productTable);
@@ -335,6 +343,6 @@ test('日报脚本不许写死 base 名，期望值只能从配置层取', () =>
   assert.ok(code.includes('function inspectTarget'), '去注释后代码主体不见了 —— 剥离实现有问题');
   assert.match(code, /expectedBaseName: TARGET\.sourceBaseName/u, '期望 base 名必须来自配置层');
   assert.doesNotMatch(code, /各店铺日报/u, '脚本里不许出现任何 base 名字面量（含正主名）');
-  assert.doesNotMatch(code, /X02Xb7fHba7mU9sr8uIcRlExn6b|PTfHbPt9EaIzddsfL8Jcj238nrb/u,
-    '脚本里不许出现 base token 字面量');
+  assert.doesNotMatch(code, /X02Xb7fHba7mU9sr8uIcRlExn6b|PTfHbPt9EaIzddsfL8Jcj238nrb|RjKcb3isDaVn1GsoVJfc7Ykknyg/u,
+    '脚本里不许出现 base token 字面量（含当前在用的那个）');
 });

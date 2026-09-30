@@ -46,31 +46,45 @@ shell 里残留一个值会让「一键起齐」把每一家店都指向同一�
 但操作的是别人的浏览器」。竞品链的 9222 / 3457 保留不动：`evidence/` 与 `runtime/` 下的历史收据
 和 manifest 里记着这两个值，改名会让旧证据对不上（坑 37）。
 
-## 1.0.1 「已登记」≠「参与采集」（2026-09-30 起）
+## 1.0.1 「已登记」≠「参与采集」（2026-09-30 加；当晚该表已清空，13 家全采）
 
 登记表 `SHOP_BROWSERS` 管的是**实例侧**：这家有没有自己的浏览器、端口、profile、身份行。
-两条采集链的**默认名单**管的是**数据侧**：今天要不要采它的数。两者在「有没有还没开始收集的店」上会不同。
+两条采集链的**默认名单**管的是**数据侧**：今天要不要采它的数。两者只在
+`SHOPS_NOT_COLLECTING_YET` 非空时才会不同 —— **当前为空**（2026-09-30 晚用户拍板「肯定开 13 家啊」），
+所以此刻 `collectingShopKeys()` 与 `shopBrowserKeys()` 返回**逐字相同**的 13 家。
+这张表**留着不删**：「先建底座、观察一两天、再进采集名单」是这套流程的常规节拍，加店/换操作员时填回来即可。
 
-- 参与采集＝`collectingShopKeys()`；已登记但还没开始收集＝`SHOPS_NOT_COLLECTING_YET`
-  （当前＝**网林定制淘宝**，2026-09-30 用户原话「这个是新加的店，还没有正式收集数据」）。
+沿革（一天之内走完的一轮，别把它当成一次性迁移）：
+- 2026-09-30 白天新加第 13 家，先挂进 `SHOPS_NOT_COLLECTING_YET` 挡住采集（用户原话
+  「这个是新加的店，还没有正式收集数据」）。这家店的运营叫法当天改过一次：11:05 版
+  《店铺账号信息表》写的是「网林定制淘宝」，15:43 起改成「网林家居」，代码与飞书侧已同步到新名字。
+- 当晚三件事到位：① 13 家身份全部实测并回填 `shop-identities.mjs`（`expression` 级）；
+  ② 换到新日报 base「各店铺日报 副本」，其「店铺」选项已有 13 项、09-29…10-05 预建行也按 13 家铺好；
+  ③ 实例/端口/代理/标识页本来就按登记表走 ⇒ 用户拍板开满十三家，表清空。
+
+- 参与采集＝`collectingShopKeys()`；已登记但还没开始收集＝`SHOPS_NOT_COLLECTING_YET`（当前 `[]`）。
 - 两条链的默认名单都用 `collectingShopKeys()`（`batch-plan.mjs` 的 `batchableShopKeys()`、
   `product-data-job-core.mjs`、`run-multi-shop-day.mjs`、`check-login-shops.mjs`）。
-- **实例侧仍然按全量登记表走**：`start-all` / `stop-all` / `browser-inventory` / `shop-pages` /
-  `shop-window-label` / 身份实测 —— 那台浏览器照样要起、要登录、要挂标识页。
+- **实例侧一律按全量登记表走**：`start-all` / `stop-all` / `browser-inventory` / `shop-pages` /
+  `shop-window-label` / 身份实测 —— 表里有的店照样要起、要登录、要挂标识页。
 - 报错必须分家：点一家「已登记但还没开始收集」的名，要说清是**还没开始收集**，
   不能混成「不认识的店铺」（混起来会让人去登记表里翻，那里明明有它）。
 
 把一家空店留在默认名单里，后果不是「多跑一家」，而是**整轮失败或天天假告警**：
 ① 日报链 `buildShopStages` 要求身份齐全（页头店名实测过）⇒ 构造阶段直接抛错；
 ② 商品数据链的登录预检是「一次调用查全部店、不通过就整轮中止」⇒ 一家没登录，其余全不采；
-③ 就算前两关都过，它也没有可写的落点（当月商品 base 的「店铺」单选里没有它），
-而写入侧对不存在的选项 fail-closed ⇒ 每天一条假告警。
+③ 写入落点：日报链的回填按「店铺」这个**单选选项**匹配，选项不存在就 fail-closed
+⇒ 每天一条假告警（商品链三张底单不写店铺列，不受影响）。
 
-它开始收集时要做的三件事：① 把它从 `SHOPS_NOT_COLLECTING_YET` 删掉；
-② 在飞书给**当月**那张商品 base 的「店铺」补一个单选选项（schema 写入，需单独授权）；
-③ 人工登录一次并实测身份（回填 `shop-identities.mjs`）。
-守卫：`runtime/browser-ports.test.mjs`（两个集合并起来恰好是登记表、不重不漏）＋
-`runtime/batch-plan.test.mjs`（默认名单里没有它、点它名报的是「还没开始收集」）。
+再往表里放一家时要做的三件事：① 当月日报 base 的「店铺」选项与预建行要有它；
+② 人工登录一次并实测身份（回填 `shop-identities.mjs`）；③ 把它从 `SHOPS_NOT_COLLECTING_YET` 删掉。
+
+守卫：`runtime/browser-ports.test.mjs`（两个集合并起来恰好是登记表、不重不漏；**空清单下也断言两者逐字相同**）
+＋ `runtime/batch-plan.test.mjs`、`runtime/product-data-job-core.test.mjs`（默认名单里没有它、
+点它名报的是「还没开始收集」）。后两条在表清空后**改成注入两个集合来构造现场** ——
+「仓库里恰好有一家空店」这种覆盖率是靠运气，空店一开就永远没人守了
+（`resolveShopNames` / `assertBatchCoversRegistry` / `buildProductJobPlan` 都开了 `registered` /
+`collecting` 两个注入口，默认值＝真实登记表，不注入时行为逐字不变）。
 
 ## 1.1 账号前提：两条链不能共用一个浏览器（客户交付必须交代）
 

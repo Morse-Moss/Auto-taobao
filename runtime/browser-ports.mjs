@@ -226,7 +226,7 @@ export const SHOP_BROWSERS = Object.freeze({
     label: 'Microsoft Edge (shop likelin-tmall)',
     extraArgs: SHOP_BROWSER_EXTRA_ARGS,
   }),
-  网林定制淘宝: Object.freeze({
+  网林家居: Object.freeze({
     profile: 'D:/Retire/edge-profiles/wanglin-custom',
     browserPort: 19052,
     proxyPort: 19062,
@@ -282,30 +282,37 @@ export function shopBrowserKeys() {
 }
 
 /**
- * **已登记、但还没有开始收集数据**的店铺：底座（profile / 端口 / 身份行）都建好了，
- * 但两条采集链的**默认名单里不含**它们 —— 只有显式点名才会去碰。
+ * **已登记、但还没有开始收集数据**的店铺。**当前为空**（2026-09-30 晚起 13 家全采）。
  *
- * 为什么要分成「登记」与「参与收集」两个概念（2026-09-30 用户原话：
- * 「网林定制淘宝这个是新加的店，还没有正式收集数据」）：
- * 把一家空店留在默认名单里，后果**不是「多跑一家」，而是整轮失败或天天假告警**：
- *   ① 日报链 `buildShopStages` 要求身份齐全（页头店名实测过），它没实测 ⇒ 构造阶段直接抛错；
+ * 为什么要分成「登记」与「参与收集」两个概念 —— 不是洁癖，是因为
+ * 把一家空店留在采集默认名单里，后果**不是「多跑一家」，而是整轮失败或天天假告警**：
+ *   ① 日报链 `buildShopStages` 要求身份齐全（页头店名实测过）；
  *   ② 商品数据链的登录预检是**一次调用查全部店、不通过就整轮中止**
  *      （`run-product-data-job.mjs` 那句 `if (login.code !== 0) throw`）⇒ 一家没登录，全部不采；
- *   ③ 就算前两关都过了，它也没有可写的落点（当月两张商品 base 的「店铺」单选选项里没有它），
- *      而写入侧对不存在的选项是 fail-closed ⇒ 每天一条「采集失败」的假告警。
+ *   ③ 写入落点：日报链回填按「店铺」这个**单选选项**匹配，当月 base 里没有它就直接 fail-closed。
  *
- * 开始收集时要做的三件事：① 把它从这张表里删掉；② 在飞书给**当月**两张商品 base 的
- * 「店铺」补上选项；③ 人工登录一次并实测身份（回填 `shop-identities.mjs` / 升级 verified 级别）。
+ * 沿革（一句话）：2026-09-30 白天新加第 13 家「网林家居」（当天 11:05 那版账号表里简称还叫
+ * 「网林定制淘宝」，15:43 起改成现名），上午先把它挂进这张表挡住采集；当天晚些时候
+ * 三件事陆续到位 —— ① 13 家身份全部实测并回填 `shop-identities.mjs`（`expression` 级）；
+ * ② 换到新日报 base「各店铺日报 副本」，其「店铺」选项已有 13 项、09-29…10-05 预建行也按 13 家铺好
+ *      （商品链**不需要**这个选项：三张被写的底单一个「店铺」列都没有，看板上的「店铺」是
+ *      type 19 引用/lookup，不可写）；③ 实例/端口/代理/标识页本来就按登记表走。
+ * 于是用户拍板「肯定开 13 家啊」，这张表清空 ⇒ `collectingShopKeys()` 与
+ * `shopBrowserKeys()` **逐字相同**（13 家），这是**期望形态**，不是判据失效。
+ *
+ * 表**留着不删**：「先建底座、观察一两天、再让它进采集名单」是这套流程的常规节拍，
+ * 下次加店或换操作员时把新店名填回来即可 —— `collectingShopKeys()` 会自动把它从两条链的
+ * 默认名单里摘掉，两个函数也各自有 fail-closed 的「还没开始收集」报错分支（措辞与「未登记」分开）。
  *
  * 它**不影响实例侧**（`start-all` / `stop-all` / `browser-inventory` / 标签页 / 身份实测）
- * 仍然按 `shopBrowserKeys()` 走 —— 那台浏览器照样要起、要登录、要挂标识页，
- * 只是「今天要不要采它的数」为否。
+ * 那些一律按 `shopBrowserKeys()` 走 —— 表里有的店照样要起、要登录、要挂标识页。
  */
-export const SHOPS_NOT_COLLECTING_YET = Object.freeze(['网林定制淘宝']);
+export const SHOPS_NOT_COLLECTING_YET = Object.freeze([]);
 
 /**
  * 参与采集的店铺（顺序＝登记表顺序）。
- * **两条采集链的默认名单都用它**，不是 `shopBrowserKeys()` —— 两者在「有没有空店」上会不同。
+ * **两条采集链的默认名单都用它**，不是 `shopBrowserKeys()` —— 那张「待收集」表非空时两者会不同
+ * （当前为空 ⇒ 此刻两个函数返回逐字相同的 13 家；判据在 `browser-ports.test.mjs`）。
  */
 export function collectingShopKeys() {
   return shopBrowserKeys().filter((key) => !SHOPS_NOT_COLLECTING_YET.includes(key));

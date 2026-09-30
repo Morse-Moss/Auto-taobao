@@ -55,27 +55,39 @@ export const PROFILES = Object.freeze({
     competitorBase: 'QcnhbEzYpacGvUskCbVcrcm3nFd',
     // 关键词库也搬了：旧租户那张的副本，2026-09-14 核对 8 张表字段签名与行数逐表相同
     keywordBase: 'HdBhbttB5aScbasWJAMc0gGXnpe',
-    // 2026-09-18 切到用户指定的正主 base「各店铺日报」。
-    // 切换前指向的 X02Xb7fHba7mU9sr8uIcRlExn6b 接口读回的名字是「各店铺日报  副本」——
-    // 两张 base 的 7 张表同名、其中 6 张逐表行数与字段签名完全相同，肉眼分辨不出；
-    // 唯一的分水岭是「总数据来源底单」：副本只有 8 行（全是盖文旗舰店 + 我们推的
-    // 09-14/15/16/17），正主有 1873 行（04-01…09-03 每天 12 家店）。
-    // 名字里多个「副本」两个字是唯一线索，靠人看是看不出来的，所以这条要写在这里。
-    // 回滚 = 把 baseToken / sourceTable / inquiryTable 换回：
-    //   X02Xb7fHba7mU9sr8uIcRlExn6b / tbl84ZGwLQKyLxV3 / tblm9Hx7R9A1YoLC
-    // 同时必须把 run-daily-report.mjs 里那条 base 名断言一起换回（它写死的是名字，不是 id）。
+    // 2026-09-18：从「各店铺日报  副本」（X02Xb7fHba7mU9sr8uIcRlExn6b）切到用户指定的正主
+    // 「各店铺日报 」（PTfHbPt9Ea…）。当时两张 base 的 7 张表同名、其中 6 张逐表行数与字段签名
+    // 完全相同，肉眼分辨不出，唯一的分水岭是「总数据来源底单」的行数（副本 8 行 / 正主 1873 行）。
+    //
+    // 2026-09-30 晚：**用户又指定换成一张叫「各店铺日报 副本」的 base**
+    // （RjKcb3isDaVn1GsoVJfc7Ykknyg）。这次名字里的「副本」**不是**判错 —— 它才是全的那一张，
+    // 2026-09-30 只读取证（D:/Retire/probe-20260930/base-inventory-20260930.json）：
+    //   总数据来源底单  新 2184 行（04-01…09-29 每天 12 家齐）| 旧 1934 行（09-18…09-28 只剩每天 5 家）
+    //   店铺底单        新 13 行（多了第 13 家「网林家居」）  | 旧 12 行
+    //   各店铺数据日报  新 09-29 起每天 13 家               | 旧 每天 12 家
+    // ⇒ 判据仍然是**底单行数**，不是名字；这条纪律没变，变的是哪一张更全。
+    // 回滚 = 把四个值换回（并同步 feishu-targets.test.mjs 里那条「正主 vs 副本」用例）：
+    //   PTfHbPt9EaIzddsfL8Jcj238nrb / 各店铺日报 / tblkY3W8tnPWPcnh / tblUnwn05vl8Wik9
+    //
     // sourceBaseName 是 base 名的**第二因子**：run-daily-report.mjs 会在浏览器里读回页面所属
     // base 的名字，跟这里的值比对 —— id 抄对了而名字对不上（或反过来）都当场炸，而不是等写进去
     // 才发现写错了 base。名字与 id 存在同一个对象里，就是为了让它们不可能各自漂移。
-    // 存的是**去空格后**的形式：接口读回的正主名是「各店铺日报 」带一个尾随空格，
-    // 副本名是「各店铺日报  副本」带中间空格 —— 比较时两边都去空格，免得这种看不见的字符
-    // 再坑一次（这一条就是被「多两个字看不出来」坑出来的）。
+    // 比较时两边都去空格（`normalizeBaseName`）：接口读回的名字带尾随/中间空格，
+    // 这种看不见的字符不该决定写的是哪一张 base。这里存**接口读回的原文**（含「副本」两个字）。
+    //
+    // ⚠️ 用户给的 URL 里 `?table=blkA0FiI6um8CwmK` **不是这个 base 的任何一张数据表**：
+    // OpenAPI 对它在四个相关 base 上逐个试过，一律回 `1254004 WrongTableId`；这个 base 实际只有
+    // 7 张表（`tbl` 开头，逐张列在 base-inventory-20260930.json 里），也没有仪表盘。
+    // 所以落位仍按**表名**取：底单＝总数据来源底单、询单＝各店铺数据日报。
     dailyReport: Object.freeze({
-      baseToken: 'PTfHbPt9EaIzddsfL8Jcj238nrb',
-      sourceBaseName: '各店铺日报',
-      sourceTable: 'tblkY3W8tnPWPcnh',
+      baseToken: 'RjKcb3isDaVn1GsoVJfc7Ykknyg',
+      sourceBaseName: '各店铺日报 副本',
+      sourceTable: 'tblIuAX4nPc1zDOO',
+      // 新 base 的「总数据来源底单」**只有一个视图**，而且它的 id 与旧 base 那个逐字相同
+      // （vewwg0rhjo，2026-09-30 用 `GET …/tables/tblIuAX4nPc1zDOO/views` 读回）——
+      // 所以这一格这次不用改。别把它当成「配置没切」的证据：id 相同是读回来的事实。
       sourceView: 'vewwg0rhjo',
-      inquiryTable: 'tblUnwn05vl8Wik9',
+      inquiryTable: 'tblqF2YD2VfmKP4C',
     }),
     // ⚠️ 2026-09-30 起：**新代码不要再用这一格**。商品数据已改成「月份 × 部门」分 base，见下方
     // PRODUCT_DATA_MONTH_BASES 与 `productDataTargetsForShop(店铺, 数据日期)`。
@@ -213,16 +225,23 @@ export function productDataTargets(name) {
 // 3 个 tableId」的单对象，装不下 4 张 base / 9 个写入面；把它硬撑成数组只会把
 // 「哪家店写哪张 base」这件事藏进调用方的 if-else 里。
 //
-// 现状（2026-09-30 只读取证，见 D:/Retire/probe-20260930/）：
-//   2026-09 × sales1  DQ2DbRinJaDx8Ss4gVFczsTXn3d「9月商品监控表」  ← 原先那唯一一张
-//   2026-10 × sales1  LQgZbi78oaAmIYsc4urcwk9rnNf「10月商品监控表-销售1部」
-//   2026-10 × sales2  LLWcbIuVFaBm6yshX9Xc8DFZn9d「10月商品监控表-销售2部」
+// 现状（2026-09-30 只读取证，见 D:/Retire/probe-20260930/base-inventory-20260930.json）：
+//   2026-09 × sales1  DQ2DbRinJaDx8Ss4gVFczsTXn3d「9月商品监控表」  ← 至今没换过
+//   2026-10 × sales1  FhCUbn7vVaEc26sRjMAccQJAn5e「10月商品监控表-销售1部」
+//   2026-10 × sales2  ZYwWbYP9fa5d3rsXX8IcKrkYnod「10月商品监控表-销售2部 副本」
 //   2026-09 × sales2  **不存在** —— 2 部是 10 月才有的，9 月只有一张不分部门的 base。
+// 10 月这两张在 2026-09-30 晚按用户给的《店铺账号信息表测试.xlsx》换过一次（那天表里
+// 「对应飞书商品表格链接」一栏从旧租户 rcnbpuvafkct 的 LQgZbi78oa…/LLWcbIuVFaB… 改成了
+// 新租户 kcne618basvj 的这两张，并第一次带上了 `&table=&view=`）——
+// 两个旧 token 留在这里当回滚值：LQgZbi78oaAmIYsc4urcwk9rnNf / LLWcbIuVFaBm6yshX9Xc8DFZn9d。
+// 2 部那张的名字里带「副本」是按接口读回的原文照抄（1 部那张不带），属于事实记账，不是笔误。
 // 缺一对就 fail-closed 抛错，**绝不回落到上个月的 base**：回落的后果是「跑成功、数据写进
 // 运营不看的表」，而且从收据上看不出来（坑 35「默认值即目标」的形态）。
 //
-// 三张被写的表在 9月/10月1部/10月2部 之间**逐字段零差异**（73 / 14 / 82 字段，顺序一致），
-// 所以换 base 不需要动任何写入逻辑 —— 这是只读取证得到的结论，不是推测。
+// 三张被写的表在 9月/10月1部/10月2部 之间**逐字段零差异**（73 / 14 / 82 字段，**顺序也一致**）：
+// 2026-09-30 用 `GET …/tables/<id>/fields` 把三张表 × 三个 base 的字段名序列逐项比对过
+// （probe-20260930/field-signature-compare.json），6 组全部「逐字段（含顺序）完全一致」。
+// 所以换 base 不需要动任何写入逻辑 —— 这是实测结论，不是推测。
 //
 // ⚠️ 推广链（`import-promotion-data.mjs`）**不读这张表**：它还没改造（用户 2026-09-30 原话
 // 「推广数据这个流程我还没开发，你先放着不管」）。10 月的推广在**另一套 base**里、而且是
@@ -244,7 +263,13 @@ export const SHOP_DEPARTMENTS = Object.freeze({
   科塔淘宝: 'sales1',
   网林淘宝: 'sales1',
   里可林天猫: 'sales1',
-  网林定制淘宝: 'sales1',
+  // 2026-09-30 晚改名：`网林定制淘宝` → `网林家居`。
+  // 依据是用户自己改的：当天 11:05 那版《店铺账号信息表》里这家的「飞书表格简称」写的是
+  // 「网林定制淘宝」，15:43 与 16:01（测试版）两版都改成了「网林家居」；同一天新日报 base
+  // 「各店铺日报 副本」的「店铺底单」与「各店铺数据日报」的「店铺」选项也都已经是「网林家居」。
+  // 这个键**就是写进飞书「店铺」列的值**，所以它必须等于飞书侧的选项名 —— 否则第 13 家
+  // 会在写入侧被 fail-closed（选项不存在）挡下，而其余 12 家照常成功。详见 shop-identities.mjs。
+  网林家居: 'sales1',
   // 销售2部（5 家）
   保拉淘宝: 'sales2',
   保拉天猫: 'sales2',
@@ -281,18 +306,18 @@ export const PRODUCT_DATA_MONTH_BASES = Object.freeze({
     promotionTable: 'tblaCPQMLWAq21Gw',
   }),
   '2026-10:sales1': Object.freeze({
-    baseToken: 'LQgZbi78oaAmIYsc4urcwk9rnNf',
+    baseToken: 'FhCUbn7vVaEc26sRjMAccQJAn5e',
     baseName: '10月商品监控表-销售1部',
-    productTable: 'tblvmGJfOL4OBYek',
-    inquiryTable: 'tblb1uK5zQYd8yOq',
-    promotionTable: 'tblDxXenp3vSg2SM',
+    productTable: 'tbley1xD9wDfQheX',
+    inquiryTable: 'tblenEzSMpp5RTQb',
+    promotionTable: 'tblC6QPcGOQu1D0T',
   }),
   '2026-10:sales2': Object.freeze({
-    baseToken: 'LLWcbIuVFaBm6yshX9Xc8DFZn9d',
-    baseName: '10月商品监控表-销售2部',
-    productTable: 'tbllkWhKDQqGU9DT',
-    inquiryTable: 'tblomySKkoTFsatn',
-    promotionTable: 'tbl3SkayTTo9OlJo',
+    baseToken: 'ZYwWbYP9fa5d3rsXX8IcKrkYnod',
+    baseName: '10月商品监控表-销售2部 副本',
+    productTable: 'tbl1Y9pPDKigluLL',
+    inquiryTable: 'tblux0yx7kUaYD3h',
+    promotionTable: 'tbld7K4Fwy9ISh9R',
   }),
 });
 
