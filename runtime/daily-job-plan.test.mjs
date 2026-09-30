@@ -14,6 +14,7 @@ import {
   JOB_FILES, LOGIN_PREFLIGHT_ARTIFACT, LOGIN_PREFLIGHT_FLAG, MERCHANT_LOGIN_SITE, buildJobPlan,
   buildLoginPreflightArgs, buildMerchantLoginGuardArgs, renderCommand, renderJobEntryCommand,
 } from './daily-job-plan.mjs';
+import { collectingShopKeys } from './browser-ports.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 const argsOf = (plan, name) => plan.steps.find((s) => s.name === name).args;
@@ -38,7 +39,8 @@ test('四步的顺序是「先保证实例在 → 再看一眼登录态 → 再�
 
 test('登录态体检那一步：只读、且指定店铺时只体检那几家', () => {
   const args = argsOf(buildJobPlan(), 'login-preflight');
-  // 一个参数都不给 ＝ 查登记表里全部五家（不是「什么都不查」）
+  // 一个参数都不给 ＝ 由脚本按**参与采集**的店铺自己枚举（不是「什么都不查」，
+  // 也不是「登记表全部」—— 登记表里可能还有没开始收集的空店，带上它会天天假告警）。
   assert.deepEqual(args, []);
   assert.deepEqual(argsOf(buildJobPlan({ shops: ['科塔淘宝'] }), 'login-preflight'), ['--shops', '科塔淘宝']);
   // 它必须是**只读**那一条命令：不许把自动登录（--commit）误接进来
@@ -425,10 +427,19 @@ test('宿主（定时链）：--no-auto-login 退回只读体检（一个页面�
 });
 
 test('宿主（分批链）也接上了：每一批的链各读**本批**那份结论，且守卫排在本批 start 之后', () => {
-  const text = runHostPrint('run-batches.mjs', ['--date', '2026-09-22', '--batch-size', '2']);
+  const size = 2;
+  // 切批＝参与采集的店铺顺序、每批 `size` 家。这里**从采集名单推**，不写死「2+2+1」：
+  // 写死的话每加一家店这条用例都会红一次，而它真正要守的是「每批各读自己那份结论」
+  // 与「登录守卫的位置」，与总家数无关。
+  // 2026-09-30：分母从 `shopBrowserKeys()` 改成 `collectingShopKeys()` —— 分批层认的是
+  // 「参与采集」那一侧（登记表里还有一家没开始收集的空店，它不切进任何一批）。
+  const groups = [];
+  const all = collectingShopKeys();
+  for (let i = 0; i < all.length; i += size) groups.push(all.slice(i, i + size));
+  const text = runHostPrint('run-batches.mjs', ['--date', '2026-09-22', '--batch-size', String(size)]);
   const dir = path.join(REPO_ROOT, 'evidence', 'batches-2026-09-22');
   const chainLines = text.split('\n').filter((line) => /run-multi-shop-day\.mjs/u.test(line));
-  assert.equal(chainLines.length, 3, `2+2+1 ⇒ 三批，实际扫到 ${chainLines.length} 条链命令`);
+  assert.equal(chainLines.length, groups.length, `每批 ${size} 家 ⇒ ${groups.length} 批，实际扫到 ${chainLines.length} 条链命令`);
 
   // 2026-09-23 晚改：结论**逐批一份**（`login-preflight-b<N>.json`），不再三批共用一份。
   // 共用一个名字时，后一批的结论会盖掉前一批 —— 而本批的链读到的仍然是「某个存在的文件」，
@@ -441,13 +452,14 @@ test('宿主（分批链）也接上了：每一批的链各读**本批**那份�
     assert.equal(match[1], expected, `第 ${i + 1} 批读的不是本批那份结论：${line}`);
     seen.add(match[1]);
   });
-  assert.equal(seen.size, chainLines.length, '三批读的是同一份结论 —— 共用名字正是要治的那个病');
+  assert.equal(seen.size, chainLines.length, `${groups.length} 批读的是同一份结论 —— 共用名字正是要治的那个病`);
 
   // 顺序：登录守卫必须排在**本批 start 之后**、chain 之前。
   // 2026-09-23 实测（batches.log 13:29:27）：排在 start 之前 ⇒ 五个实例还没起 ⇒
   // 五家店代理全回 HTTP 500 ⇒ 自动登录一次机会都没有，而表面上只看到一句「不是全在登录态」。
   const lineOf = (needle) => text.split('\n').findIndex((line) => line.includes(needle));
-  for (const shops of ['里可林淘宝,网林天猫', '盖文淘宝,盖文天猫', '科塔淘宝']) {
+  for (const group of groups) {
+    const shops = group.join(',');
     const start = lineOf(`start-all.mjs --only ${shops}`);
     const login = lineOf(`check-login-shops.mjs --login --shops ${shops} --json`);
     const chain = lineOf(`run-multi-shop-day.mjs --date 2026-09-22 --shops ${shops}`);
@@ -456,7 +468,7 @@ test('宿主（分批链）也接上了：每一批的链各读**本批**那份�
     assert.ok(login < chain, `登录守卫排在链之后（链读不到结论）：${shops}`);
   }
   // 每批一份结论 ⇒ 打印里必须逐批给出它的落点（`--print` 是人确认「将要执行什么」的唯一凭据）。
-  for (let i = 1; i <= 3; i += 1) {
+  for (let i = 1; i <= groups.length; i += 1) {
     assert.ok(text.includes(`结论落：evidence/batches-2026-09-22/login-preflight-b${i}.json`),
       `第 ${i} 批的结论落点没打印出来：\n${text}`);
   }

@@ -70,11 +70,13 @@ test('刷新汇总：在位性沿用 shop-pages 的判据（缺口 / 需人决�
     '同主机多页要进「需人决定」，本命令不许自己挑一个（这是 shop-pages 的纪律，只沿用不重写）');
 });
 
-test('五家店清单来自路线表本身，且每家都要两页（不许在这里另抄一份店名）', () => {
+test('店铺清单来自路线表本身，且每家都要两页（不许在这里另抄一份店名）', () => {
   const plan = buildShopPlan();
   const keys = shopBrowserKeys();
   assert.deepEqual(plan.map((entry) => entry.key).sort(), [...keys].sort());
-  assert.equal(plan.length, 5, '五家店');
+  // 家数从登记表推（2026-09-30：5 → 13 家）。写死数字的后果是每加一家店这条用例都红一次，
+  // 而它真正要守的是「清单来自登记表、不是另抄一份」与「每家两页」，与总家数无关。
+  assert.equal(plan.length, keys.length);
   for (const entry of plan) {
     assert.equal(entry.expected.length, 2, `${entry.key} 应当有工作页 + 阿里妈妈页两个期望页面`);
     assert.equal(entry.proxyPort, shopInstance(entry.key).proxyPort, '代理端口必须来自这家店自己的登记');

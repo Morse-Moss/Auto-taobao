@@ -17,7 +17,7 @@ import {
 import { SITES, VERDICTS_NEEDING_HUMAN } from './login-merchant-core.mjs';
 import { siteAdapter } from './date-picker.mjs';
 // 店名与「哪个平台显示哪个名字」的唯一来源。
-import { shopIdentity } from './shop-identities.mjs';
+import { IDENTITY_SHOP_HEADER_VERIFIED_SHOPS, shopIdentity } from './shop-identities.mjs';
 import { shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
 // 整轮告警文案要**走真渲染器**验（白名单会把键名写错的字段静默丢掉，只有渲染出来才看得见）。
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
@@ -201,11 +201,31 @@ test('「读不到」必须自解释，且整轮的判据段不许把它说成�
 
 test('每家店的两个平台各说各的名字，且名字与登记表逐字一致', () => {
   // 用真登记表逐店验一遍：漏一家就是「那家店要人登录时说不清该登哪个账号」。
+  //
+  // 2026-09-30 改（5 家 → 13 家）：这 13 家里只有 5 家实测过生意参谋页头店名，
+  // 另外 8 家是**有会员名、没页头店名**（底座当日刚建，人还没登录过）。
+  // 旧写法 `assert.equal(hint?.value, row.sycmHeader)` 在「两边都是空」时会拿
+  // `undefined` 比 `null` 而红，更糟的是它会诱导后来者把 null 填成一个猜的值把用例骗绿 ——
+  // 所以这里改成显式二分：**有值就必须逐字给出；没值就必须是 null（不许拿店名冒充）**。
+  let withHeader = 0;
   for (const shop of shopBrowserKeys()) {
     const row = shopIdentity(shop);
-    assert.equal(platformNameHint(shop, 'sycm')?.value, row.sycmHeader, `${shop} 的生意参谋名字`);
-    assert.equal(platformNameHint(shop, 'alimama')?.value, row.alimamaMemberName, `${shop} 的阿里妈妈名字`);
+    const sycm = platformNameHint(shop, 'sycm');
+    if (row.sycmHeader) {
+      assert.deepEqual(sycm, { kind: 'shop', value: row.sycmHeader }, `${shop} 的生意参谋名字`);
+      withHeader += 1;
+    } else {
+      assert.equal(sycm, null, `${shop} 没有实测页头店名时不许给期望值 —— 更不许拿店名/简称冒充`);
+    }
+    // 会员名 13 家都有（账号表给了操作员），必须逐字一致。
+    assert.ok(row.alimamaMemberName, `${shop} 连会员名都没有 —— 去登录时说不清该登哪个账号`);
+    assert.deepEqual(platformNameHint(shop, 'alimama'),
+      { kind: 'member', value: row.alimamaMemberName }, `${shop} 的阿里妈妈名字`);
   }
+  assert.equal(withHeader, IDENTITY_SHOP_HEADER_VERIFIED_SHOPS.length,
+    '「有页头店名」的家数必须与已实测清单一致（清单是那件事的唯一来源，别在这里另写一个数）');
+  assert.ok(withHeader < shopBrowserKeys().length,
+    '当前 13 家里应当**仍有**店没实测过页头店名；全是实体值说明有人把 null 填成了猜出来的值');
   // 未登记的店名不许抛出去炸掉整份报告：如实说「没登记名字」（这里直接问渲染要输出）
   const text = renderReport({ rows: [{ shop: '不存在的店', verdict: 'NEEDS_LOGIN', sites: { sycm: 'LOGGED_OUT', alimama: 'LOGGED_IN' }, needsLogin: ['sycm'], unreadable: [] }] });
   assert.match(text, /没有登记名字/u);

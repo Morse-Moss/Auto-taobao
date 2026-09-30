@@ -27,7 +27,7 @@
 // （见 runtime/launch-plan.mjs 的 planInstanceStop 与 scripts/stop-all.mjs）。
 // 本层只决定**该不该发起释放**，不决定「能不能停」——两件事混在一起会写出一个
 // 「以为停了、其实拒停了」的假成功。
-import { shopBrowserKeys, shopInstance } from './browser-ports.mjs';
+import { collectingShopKeys, shopBrowserKeys, shopInstance } from './browser-ports.mjs';
 
 /** 每一段做什么，用哪个脚本（路径相对仓库根）。**显式表，不按 kind 拼文件名**。 */
 export const BATCH_FILES = Object.freeze({
@@ -143,9 +143,15 @@ export const BATCH_SIZE_BY_MEMORY = Object.freeze({
   '32GB': 5,
 });
 
-/** 本层认得的店铺＝登记表里的全部店铺实例（顺序＝登记表顺序，也就是人抄下来的顺序）。 */
+/**
+ * 本层认得的店铺＝**参与采集**的店铺（顺序＝登记表顺序，也就是人抄下来的顺序）。
+ *
+ * 用 `collectingShopKeys()` 而不是 `shopBrowserKeys()`：登记表里可能有**还没开始收集**的店
+ * （2026-09-30 起有 1 家）。切批/点名如果按登记表来，就会出现「给一家空店切出一批、
+ * 起一个浏览器、跑一轮什么都没有」——而它在日志里长得完全正常。
+ */
 export function batchableShopKeys() {
-  return shopBrowserKeys();
+  return collectingShopKeys();
 }
 
 /**
@@ -176,12 +182,21 @@ export function resolveBatchSize(raw, { fallback = DEFAULT_BATCH_SIZE } = {}) {
 export function resolveShopNames(names) {
   const known = batchableShopKeys();
   if (!names || names.length === 0) return known;
+  // 「还没开始收集」与「压根没登记」是两件事，报错必须分开。
+  // 混成一句「不认识的店铺」的最坏后果不是难懂，而是**让人不再相信这条报错** ——
+  // 他会去登记表里翻，发现明明有它，然后开始怀疑整套名单。
+  const notCollecting = names.filter((name) => !known.includes(name) && shopBrowserKeys().includes(name));
+  if (notCollecting.length > 0) {
+    throw new Error(`「${notCollecting.join('、')}」已登记但**还没开始收集数据**`
+      + '（见 runtime/browser-ports.mjs 的 SHOPS_NOT_COLLECTING_YET）——'
+      + '要开始收集：先从那张表里删掉、再在飞书给当月商品 base 的「店铺」补上选项、并实测一次身份');
+  }
   const unknown = names.filter((name) => !known.includes(name));
   if (unknown.length > 0) {
-    throw new Error(`不认识的店铺：${unknown.join('、')}\n已登记：${known.join(' / ')}`);
+    throw new Error(`不认识的店铺：${unknown.join('、')}\n已登记：${shopBrowserKeys().join(' / ')}`);
   }
   // 去重但保持「登记表顺序」而不是「输入顺序」：批次的顺序也是行为的一部分
-  // （五家店的顺序里科塔在最后 —— 它失败挡不住前四家），所以不让人随手打乱。
+  // （顺序里科塔在最后 —— 它失败挡不住前面的店），所以不让人随手打乱。
   return known.filter((name) => names.includes(name));
 }
 
@@ -309,9 +324,16 @@ export function describeBatch(batch, total) {
   return `第 ${batch.index}/${total} 批：${batch.shops.join('、')}`;
 }
 
-/** 这一批会不会碰到登记表里没有的店铺（开跑前的一道自检；不通过就别起浏览器）。 */
+/** 这一批会不会碰到**不该采**的店铺（开跑前的一道自检；不通过就别起浏览器）。 */
 export function assertBatchCoversRegistry(batch) {
   const known = batchableShopKeys();
+  // 「已登记但还没开始收集」要单独报 —— 报成「未登记」会让人去登记表里翻（那里有它），
+  // 从此不再相信这条自检。
+  const pending = batch.shops.filter((key) => !known.includes(key) && shopBrowserKeys().includes(key));
+  if (pending.length > 0) {
+    throw new Error(`批次里有「已登记但还没开始收集」的店铺：${pending.join('、')}`
+      + '（见 runtime/browser-ports.mjs 的 SHOPS_NOT_COLLECTING_YET）');
+  }
   const bad = batch.shops.filter((key) => !known.includes(key));
   if (bad.length > 0) throw new Error(`批次里有未登记的店铺：${bad.join('、')}`);
   // 也拒绝「同一家出现两次」：那会让同一家店被两个批次同时驱动（串店的现实版本）。

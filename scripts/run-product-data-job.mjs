@@ -50,7 +50,7 @@ function stageFromMessage(message) { return STAGE_OF_MESSAGE.find(([pattern]) =>
  *      送失败还记账，会让下一次重跑被自己的记录挡掉。
  *   ③ 告警载荷同时落盘成 `alert.json`，收信人照着能自己去看证据目录。
  */
-async function notifyFailure({ date, runId, evidence, failure, failedStage, log }) {
+async function notifyFailure({ date, runId, evidence, failure, failedStage, log, shopCount = null }) {
   const alertId = `product-data-${date}`;
   const fingerprint = `${failure?.class ?? 'FAILED'}|${failure?.reason ?? 'UNKNOWN'}|${failedStage ?? '-'}`;
   const decision = resolveAlertDedup({ previous: readAlertThrottleEntry({ alertId }), alertId, fingerprint });
@@ -59,7 +59,9 @@ async function notifyFailure({ date, runId, evidence, failure, failedStage, log 
   fs.writeFileSync(alertFile, `${JSON.stringify({
     severity: 'ERROR',
     title: `商品数据采集未完成（${date}）`,
-    targetLabel: `${date} 五家店铺商品数据`,
+    // 家数从计划里来，不写死：2026-09-30 起是「参与采集」的店铺数（12），
+    // 而写死「五家」的旧文案在扩编之后就是一句假话 —— 收信人会按错误的家数去找缺口。
+    targetLabel: `${date} ${shopCount === null ? '' : `${shopCount} 家`}店铺商品数据`,
     period: date,
     capability: '商品数据采集与导入',
     machine: os.hostname(),
@@ -146,7 +148,7 @@ async function main(argv) {
     const gapFor = (keyword) => gaps.some((gap) => gap.includes(keyword));
     for (const item of results) {
       if (!item.productFile) { gaps.push(`${item.shop}/底单 未采集`); continue; }
-      const r = await run(PRODUCT_JOB_FILES.productImport, ['--file', item.productFile, '--shop', item.shop, ...common, '--evidence', path.join(evidence, item.shop, 'product-import')]);
+      const r = await run(PRODUCT_JOB_FILES.productImport, ['--file', item.productFile, '--shop', item.shop, '--date', date, ...common, '--evidence', path.join(evidence, item.shop, 'product-import')]);
       if (r.code !== 0) { gaps.push(`${item.shop}/底单 导入失败`); log(`[导入] ${item.shop} 底单失败（exit ${r.code}）`); } else log(`[导入] ${item.shop} 底单已写入`);
       if (!item.inquiryFile || !fs.existsSync(item.inquiryFile)) gaps.push(`${item.shop}/询单 未采集`);
       else { const q = await run(PRODUCT_JOB_FILES.inquiryImport, ['--file', item.inquiryFile, '--date', date, '--shop', item.shop, ...common, '--evidence', path.join(evidence, item.shop, 'inquiry-import')]); if (q.code !== 0) { gaps.push(`${item.shop}/询单 导入失败`); log(`[导入] ${item.shop} 询单失败（exit ${q.code}）`); } else log(`[导入] ${item.shop} 询单已写入`); }
@@ -154,6 +156,15 @@ async function main(argv) {
     }
     // 推广：五家齐时按小手册的形状做一次批量调用（收据落 `promotion-import/receipt.json`）；
     // 有人缺 ZIP 或批量失败时退成逐店导入（收据落 `promotion-import/<店>/`），把能写的先写掉。
+    //
+    // ⚠️ 未修的已知缺陷（2026-09-30 记录，**故意没动**）：下面那个批量调用把五家塞进**同一次**
+    // CLI 调用，而该进程只建一个 FeishuClient（一个 base）、只读那一个 base 的既存记录做去重。
+    // 商品数据已改成「按月 × 按部门」分 base（见 runtime/feishu-targets.mjs 的
+    // PRODUCT_DATA_MONTH_BASES），所以只要一轮里出现**跨部门**的两家店，批量这条路必然让
+    // 一半写进错的 base；拆开后去重集合也会跟着变。
+    // 用户 2026-09-30 原话「推广数据这个流程我还没开发，你先放着不管，先全部注意商品数据」
+    // ⇒ 这一段本轮**一行不改**，等推广链一起改造时把批量路径改成「按 (月,部门) 分组后各组一次调用」。
+    // 底单与询单不受影响：它们是**逐店一次调用**（上面那个循环里），各自按自己的店铺解析 base。
     const importPromotionPerShop = async (items) => { for (const item of items) { const r = await run(PRODUCT_JOB_FILES.promotionImport, ['--file', item.promotionFile, '--shop', item.shop, ...common, '--evidence', path.join(evidence, 'promotion-import', item.shop)]); if (r.code !== 0) { gaps.push(`${item.shop}/推广 导入失败`); log(`[导入] ${item.shop} 推广失败（exit ${r.code}）`); } else log(`[导入] ${item.shop} 推广已写入`); } };
     const promoReady = results.filter((item) => item.promotionFile);
     if (promoReady.length === results.length) {
@@ -183,7 +194,7 @@ async function main(argv) {
     receipt.status = status === 0 ? 'COMPLETED' : 'FAILED';
     receipt.failure = failure; receipt.failedStage = failedStage; receipt.finishedAt = new Date().toISOString();
     writeWorkflowReceipt(receiptPath, receipt);
-    if (options.notify && status !== 0) { try { await notifyFailure({ date, runId, evidence, failure, failedStage, log }); } catch (error) { log(`告警投递自身出错：${error.message}`); } }
+    if (options.notify && status !== 0) { try { await notifyFailure({ date, runId, evidence, failure, failedStage, log, shopCount: plan.shops.length }); } catch (error) { log(`告警投递自身出错：${error.message}`); } }
   }
   log(`商品数据自动采集结束：退出码 ${status}`); return status;
 }

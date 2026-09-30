@@ -18,6 +18,7 @@ import {
 // 用**真的那份登记表**（不是测试自己造的假表）来验「哪家店 → 哪个 profile」：
 // 造一张假表只能证明这个函数会查表，证明不了四家店各自指向自己的 profile。
 import { SHOP_BROWSERS } from '../../../runtime/browser-ports.mjs';
+import { shopIdentity } from './shop-identities.mjs';
 // 告警承诺「找标题写着 X 的窗口」，那句话的落点在窗口标签页那一侧 —— 两边必须一起测。
 import { windowTitleFor } from '../../../runtime/shop-window-label.mjs';
 // 用**真的那份渲染器**去验告警文案：白名单是 notify-feishu-core 的，
@@ -729,23 +730,30 @@ test('「承诺登录页开着」的名单必须与文案逐字对得上（两�
 });
 
 test('身份守卫：填进来的账号必须与这家店登记的会员名逐字相同（四态各有明确出口）', () => {
-  // 期望值的唯一来源是登记表里的**实测值**。派生成 `${店名}:阿彦` 已被实测推翻 ——
-  // 盖文淘宝那家的会员名是「随心品质定制:阿彦」，与店名毫无关系。
-  assert.equal(expectedMemberFor({ shop: '盖文天猫' }), '盖文旗舰店:阿彦');
-  assert.equal(expectedMemberFor({ shop: '盖文淘宝' }), '随心品质定制:阿彦');
+  // 期望值的唯一来源是登记表里记录的值。按 `${店名}:<操作员>` 派生已被实测推翻 ——
+  // 盖文淘宝那家的会员名前缀是「随心品质定制」，与店名毫无关系。
+  //
+  // 2026-09-30 改：原来这几行写的是 `:阿彦` 的字面量（当日值），换操作员之后它们就成了假话，
+  // 而用例**不会因此变红**，只会悄悄失去意义。现在取登记表的值 + 一条「不许派生」的反向断言。
+  const gaiwenTmall = shopIdentity('盖文天猫').alimamaMemberName;
+  const gaiwenTaobao = shopIdentity('盖文淘宝').alimamaMemberName;
+  assert.equal(expectedMemberFor({ shop: '盖文天猫' }), gaiwenTmall);
+  assert.equal(expectedMemberFor({ shop: '盖文淘宝' }), gaiwenTaobao);
+  assert.notEqual(gaiwenTaobao.split(':')[0], '盖文淘宝',
+    '会员名前缀不是店名 —— 期望值只能来自登记表，一旦能派生就说明它又变成猜的了');
   assert.equal(expectedMemberFor({}), null, '没给店名 ⇒ 没有期望值（不是「随便」）');
   assert.equal(expectedMemberFor({ shop: null }), null);
   assert.throws(() => expectedMemberFor({ shop: '不存在的店' }), /未登记的店铺/u,
     '店名写错必须抛错，不能静默地「没有期望值」');
 
-  assert.equal(judgeFilled({ filled: '盖文旗舰店:阿彦', expected: '盖文旗舰店:阿彦' }), 'ACCEPT');
-  assert.equal(judgeFilled({ filled: '', expected: '盖文旗舰店:阿彦' }), 'EMPTY');
-  assert.equal(judgeFilled({ filled: null, expected: '盖文旗舰店:阿彦' }), 'EMPTY');
+  assert.equal(judgeFilled({ filled: gaiwenTmall, expected: gaiwenTmall }), 'ACCEPT');
+  assert.equal(judgeFilled({ filled: '', expected: gaiwenTmall }), 'EMPTY');
+  assert.equal(judgeFilled({ filled: null, expected: gaiwenTmall }), 'EMPTY');
   // 实测的串店现场：商家浏览器那个 profile 的 `login.taobao.com` 下两条凭据分属两家店
-  assert.equal(judgeFilled({ filled: '里可林家居:阿彦', expected: '盖文旗舰店:阿彦' }), 'WRONG_ACCOUNT');
-  assert.equal(judgeFilled({ filled: '盖文旗舰店:阿彦 ', expected: '盖文旗舰店:阿彦' }), 'WRONG_ACCOUNT',
+  assert.equal(judgeFilled({ filled: gaiwenTaobao, expected: gaiwenTmall }), 'WRONG_ACCOUNT');
+  assert.equal(judgeFilled({ filled: `${gaiwenTmall} `, expected: gaiwenTmall }), 'WRONG_ACCOUNT',
     '差一个空格也算另一家 —— 「差不多」在这里就等于「登错家」');
-  assert.equal(judgeFilled({ filled: '盖文旗舰店:阿彦' }), 'UNKNOWN', '没有期望值 ⇒ 不许假装过了');
+  assert.equal(judgeFilled({ filled: gaiwenTmall }), 'UNKNOWN', '没有期望值 ⇒ 不许假装过了');
   assert.deepEqual([...FILLED_VERDICTS].sort(), ['ACCEPT', 'EMPTY', 'UNKNOWN', 'WRONG_ACCOUNT']);
 });
 

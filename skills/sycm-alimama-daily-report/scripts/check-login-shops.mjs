@@ -69,7 +69,7 @@ import { pathToFileURL } from 'node:url';
 // 跨轮告警去重（2026-09-24 接）：这条链此前**根本没有去重** —— 一次预检能并发 5 条同一天的告警，
 // 而收信人只收到一片刷屏。判据与状态文件都与日报链共用同一份（runtime/alert-throttle.mjs）。
 import { ALERT_THROTTLE_FILE, readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from '../../../runtime/alert-throttle.mjs';
-import { SHOP_BROWSERS, shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
+import { collectingShopKeys, SHOP_BROWSERS, shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 // 开跑前归位（2026-09-24 接）：复用 `runtime/page-normalize.mjs` 的 normalizePages ——
 // 它本来就是为「体检**之前**的归位」写的（文件头第一句），只是此前没接在这条命令前面。
@@ -266,6 +266,12 @@ function probeShop(shop, timeoutMs, { login = false } = {}) {
 }
 
 async function main(argv) {
+  // `valid`＝`--shops` 的**合法值集合**（任何已登记店都能点名，包括还没开始收集的那家 ——
+  // 人的排查入口不该被采集口径挡住）；而**默认**查的是「参与采集」的那几家。
+  //
+  // 为什么默认不是登记表全部（2026-09-30）：登记表里可能有还没开始收集的空店，
+  // 而这一步带 `--login` 时登不进去会**当场发一条飞书**。带上空店＝每天叫人去登一家
+  // 根本不采数据的店 —— 通知疲劳正是这条链最贵的失败模式（多叫一次之后，真出事那次没人看）。
   const valid = shopBrowserKeys();
   let opts;
   try {
@@ -291,7 +297,7 @@ async function main(argv) {
   // 宿主两个流都收进同一份 job.log，人翻日志时一个字都不少。
   const log = (line) => { if (opts.json) console.error(line); else console.log(line); };
 
-  const shops = opts.shops ?? valid;
+  const shops = opts.shops ?? collectingShopKeys();
 
   // 第 0 步（2026-09-24 加）：**只在会碰页面的那一档归位**。
   // 只读档必须保持「一个页面都不碰」的承诺（这是那一档存在的全部意义）。

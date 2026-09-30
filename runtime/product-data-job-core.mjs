@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { shopBrowserKeys } from './browser-ports.mjs';
+import { collectingShopKeys, shopBrowserKeys } from './browser-ports.mjs';
 
 export const PRODUCT_JOB_FILES = Object.freeze({
   start: 'scripts/start-all.mjs',
@@ -14,8 +14,17 @@ export const PRODUCT_JOB_FILES = Object.freeze({
 });
 
 export function buildProductJobPlan({ dateInput = 'yesterday', shops = null, commit = true } = {}) {
-  const selected = shops ?? shopBrowserKeys();
+  // 默认＝**参与采集**的店铺，不是登记表全部：登记表里可能还有没开始收集的空店
+  // （2026-09-30 起 1 家），把空店算进来会让登录预检多查一家、采集多起一家、导入多写一家 ——
+  // 而它三项都做不成，最后表现为「一条每天都会响的假告警」。
+  const selected = shops ?? collectingShopKeys();
   if (!selected.length) throw new Error('shops must contain at least one shop');
+  const notCollecting = selected.filter((shop) => !collectingShopKeys().includes(shop)
+    && shopBrowserKeys().includes(shop));
+  if (notCollecting.length) {
+    throw new Error(`这些店铺已登记但还没开始收集数据：${notCollecting.join(', ')}`
+      + '（见 runtime/browser-ports.mjs 的 SHOPS_NOT_COLLECTING_YET）');
+  }
   const unknown = selected.filter((shop) => !shopBrowserKeys().includes(shop));
   if (unknown.length) throw new Error(`unknown shops: ${unknown.join(', ')}`);
   return { dateInput, shops: selected, parallelShopCount: selected.length,

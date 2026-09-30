@@ -17,12 +17,15 @@ import {
   RETIRED_PORTS,
   ROUTES,
   SHOP_BROWSERS,
+  SHOP_BROWSER_WINDOW_SIZE,
   SITE_ACCOUNT,
   allDeclaredPorts,
   buildBrowserLaunchArgs,
+  collectingShopKeys,
   extraArgsForProfile,
   shopBrowserKeys,
   shopInstance,
+  SHOPS_NOT_COLLECTING_YET,
   classifyPortUsage,
   retiredPortNumbers,
   describeBrowserRoutes,
@@ -145,7 +148,32 @@ test('店铺实例的 profile 必须与店铺身份登记表逐键一致 —— 
     'browser-ports.mjs 的 SHOP_BROWSERS 与 shop-identities.mjs 的 ISOLATED_PROFILES 必须逐键一致');
 });
 
-// --- 启动参数（2026-09-19 加，为第五家「盖文天猫」）------------------------------------
+// --- 「已登记」与「参与收集」（2026-09-30 加）--------------------------------------
+// 背景：用户说「网林定制淘宝这个是新加的店，还没有正式收集数据」。
+// 一家空店留在采集默认名单里的后果不是「多跑一家」，而是整轮失败或天天假告警
+// （日报链身份闸门直接抛；商品数据链的登录预检一家不过就整轮中止）。
+// 所以两个集合必须分开，且**合起来恰好等于登记表** —— 掉进缝里的那家会「既不被采集、
+// 也不被任何名单提到」，而所有表面现象都正常。
+test('「参与收集」与「已登记待收集」两个集合并起来恰好是登记表，不重不漏', () => {
+  const all = shopBrowserKeys();
+  const collecting = collectingShopKeys();
+  const pending = [...SHOPS_NOT_COLLECTING_YET];
+
+  assert.ok(pending.length > 0,
+    '这张表存在的意义就是「有店在里面」；空了就该把它删掉，而不是留一张空表当装饰');
+  for (const key of pending) {
+    assert.ok(all.includes(key), `${key} 不在登记表里 —— 那它既不是「已登记待收集」，也不是任何东西`);
+    assert.equal(collecting.includes(key), false, `${key} 同时出现在「参与收集」里 —— 两个集合必须互斥`);
+  }
+  assert.deepEqual([...collecting, ...pending].sort(), [...all].sort(), '两个集合并起来必须恰好是登记表');
+  // 顺序仍严格取自登记表（切批就是按这个顺序切的，「两家店被切到最后」是行为的一部分）。
+  assert.deepEqual(collecting, all.filter((key) => !pending.includes(key)),
+    '「参与收集」不许改变登记表顺序，只许把待收集的那几家摘掉');
+  // 待收集 ≠ 未登记：那台浏览器照样要起、要登录、要挂标识页，所以实例口径必须认它。
+  for (const key of pending) assert.deepEqual(shopInstance(key), SHOP_BROWSERS[key]);
+});
+
+
 // 背景：新建店铺 profile **必须**带 `--disable-sync`（A/B 实测：不带则 Edge 自动登录微软账号、
 // 把个人密码库连同别家店凭据一起同步进来，实测 47 条）。这条开关加在登记表里，
 // 于是有了一个新的风险面：**它会不会顺手加到两个老浏览器上**（那会改变既有链的启动行为）。
@@ -181,6 +209,25 @@ test('店铺 profile 一定带 --disable-sync；两个老浏览器的 argv 逐�
   assert.ok(shopArgs.indexOf('--disable-sync') < shopArgs.indexOf('about:blank'));
   assert.ok(shopArgs.includes(`--user-data-dir=${SHOP_BROWSERS.盖文天猫.profile}`));
   assert.ok(shopArgs.includes(`--remote-debugging-port=${SHOP_BROWSERS.盖文天猫.browserPort}`));
+
+  // 窗口尺寸（2026-09-28 加）：**五个店铺 profile 一个都不能漏**，且同样在 startUrl 之前。
+  // 为什么这条要按「每个 profile」逐个断言而不是抽查一个：冷启动窗口尺寸不定曾让
+  // 落位/取件 fail-closed（09-27 实测视口 1178x460 / 950x442），而漏配的店铺**不会报错**，
+  // 只会偶尔失败一次 —— 正是本项目最贵的那种「看起来随机」的故障。
+  for (const key of shopBrowserKeys()) {
+    const args = buildBrowserLaunchArgs({
+      profile: SHOP_BROWSERS[key].profile, port: SHOP_BROWSERS[key].browserPort,
+    });
+    assert.ok(args.includes(SHOP_BROWSER_WINDOW_SIZE),
+      `${key} 的启动参数里缺 ${SHOP_BROWSER_WINDOW_SIZE} —— 冷启动窗口又变成随机值了`);
+    assert.ok(args.indexOf(SHOP_BROWSER_WINDOW_SIZE) < args.indexOf('about:blank'),
+      `${key}：开关必须在 startUrl 之前（Chromium 只把开关认在 URL 前面）`);
+  }
+  // 反方向也要钉住：两个老浏览器**不得**被加上窗口尺寸（它们的 argv 上面已逐字断言，
+  // 这里再显式说一次，免得以后有人图省事把开关挪到公共分支上）。
+  assert.ok(!buildBrowserLaunchArgs({
+    profile: BROWSER_PROFILES.competitor, port: PROJECT_PORTS.competitorBrowser,
+  }).includes(SHOP_BROWSER_WINDOW_SIZE));
 });
 
 test('resolvePort：显式环境变量优先，非法值抛错而不是静默回落', () => {

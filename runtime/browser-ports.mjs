@@ -101,17 +101,39 @@ export const BROWSER_PROFILES = Object.freeze({
 //      走的是代理的 /targets /eval /navigate /click /screenshot；裸 CDP 端口只有 /json/list
 //      ⇒ 2026-09-18 实测：四个店铺窗口「页面上什么都有，脚本一个也连不上」。
 //
-// 端口段 19031-19039（调试）/ 19041-19049（代理）：与日报链（19022/19023）、运营台（19024）
-// 都不重叠。2026-09-19 起五家店用掉 19031-19035 与 19041-19045。
+// 端口段规划（2026-09-29 扩到 12 家时重排，**旧值一律不动**）：
+//   第一批 5 家（2026-09-19 起）：调试 19031-19035 / 代理 19041-19045。
+//     ⚠️ 这一批的 10 个端口**不许改** —— `docs/ops/FULL-AUTOMATION-STATE-CONTRACT-2026-09-21.md`
+//     与 `evidence/` 下的历史收据按「19041=里可林、19044=科塔」这样逐条记着，
+//     改号会让旧证据对不上（坑 37）。所以扩容是**追加**，不是重排。
+//   第二批 7 家（2026-09-29 加）：调试 19050-19056 / 代理 19060-19066。
+//     为什么单起一段而不是接着 19036 往上排：19041-19045 已经被第一批的代理占住，
+//     顺着 19036 排调试会一路撞进那一段（19041/19042 两个号正好撞车）。
+//     改成「调试 1905x / 代理 1906x」两块各自连续，是为了让「一眼看出一家店的两个端口」
+//     这件事在第二批内部仍然成立（19050↔19060、19051↔19061 …），且与第一批永不交叉。
+//   与日报链（19022/19023）、运营台（19024）都不重叠。
 //
 // 店铺 profile 的「卫生开关」（2026-09-18 的 A/B 实测，见
 // docs/ops/MULTI-SHOP-AND-INTERACTION-DECISION.md §5.3.1）：新 profile **首次启动必须带
 // `--disable-sync`** —— 不带的话 Edge 会自动登录微软账号并把个人密码库（实测 47 条，
 // 还包含当时存在旧 profile 里的**别家店凭据**）同步进来；预置 `signin.allowed=false` 拦不住。
-// 这里做成**每次启动都带**而不是「首次记得带」：一次性动作没人记得住，而代价是静默的串号风险。
+// 这里做成**每次启动都带**而不是「首次记得住」：一次性动作没人记得住，而代价是静默的串号风险。
 // 它只作用于声明了它的店铺 profile，两个老浏览器（competitor / dailyReport）argv **逐字不变**
 // —— 这条由 browser-ports.test.mjs 断言。
-export const SHOP_BROWSER_EXTRA_ARGS = Object.freeze(['--disable-sync']);
+//
+// **窗口尺寸（2026-09-28 加，同日真机取证）**：冷启动的 Edge 拿的是 Windows 给的默认窗，
+// 实测五店视口一次跑出 **1178x460 / 950x442 / 1528x732**（历史暖启动轮稳定在 1326~1528 × 658~732）。
+// 后果不是「难看」，是**落位与取件失败**：`date-picker.mjs` 的 `aim()` 要求元素完整落在视口内，
+// 而 `scrollIntoView({block:'nearest'})` 对「已部分可见」的元素**什么都不做**
+// ⇒ 按钮贴顶（`rect=[796,0,45,26]`）时判「仍在视口外」并 fail-closed 抛错；
+// 取件入口那一处同理（点击后重排，操作行没在采样那一瞬显形）。
+// 钉成与历史成功轮一致的值，把「窗口多大」从随机变量变成常量。
+// 只作用于店铺 profile ⇒ 两个老浏览器 argv 仍逐字不变。
+export const SHOP_BROWSER_WINDOW_SIZE = '--window-size=1528,732';
+export const SHOP_BROWSER_EXTRA_ARGS = Object.freeze([
+  '--disable-sync',
+  SHOP_BROWSER_WINDOW_SIZE,
+]);
 //
 // 键 = 运营叫法（与 skills/sycm-alimama-daily-report/scripts/shop-identities.mjs 的
 // `key` 同源；`browser-ports.test.mjs` 会交叉核对两边，改名会让测试红而不是静默漂移）。
@@ -161,10 +183,132 @@ export const SHOP_BROWSERS = Object.freeze({
     label: 'Microsoft Edge (shop j873522735)',
     extraArgs: SHOP_BROWSER_EXTRA_ARGS,
   }),
+  // -------------------------------------------------------------------------
+  // 第二批 8 家（5 家 → 13 家；2026-09-30 定稿，同日用户给的《店铺账号信息表》）。
+  //
+  // **顺序＝部门**：销售1部 8 家在前（上面那 5 家＋本批前 3 家）、销售2部 5 家在后。
+  // 顺序不只是好看 —— `planBatches` 按登记表顺序切批，部门连续才让
+  // 「一批落在同一个部门的飞书 base 上」这件事尽量成立
+  // （飞书目标按月×部门换 base，见 runtime/feishu-targets.mjs 的 PRODUCT_DATA_MONTH_BASES）。
+  // 注意仍会有**跨部门的那一批**：13 家按每批 5 家切成 5/5/3，第 2 批必然切在部门边界上
+  // （1部后 3 家＋2部前 2 家）。这不影响正确性 —— 每条导入自己按店铺解析 base ——
+  // 但报缺口时要按店铺看，不能按批下结论。
+  //
+  // 这一批的**身份值尚未实测**（`shop-identities.mjs` 里这 8 家仍是 null）。
+  // 底座先建好、端口与 profile 先定死；身份值等人工在这台机器上逐店登录一次、
+  // 用只读探针读出来再回填 —— **不许派生、不许猜**（实测已推翻「会员名＝店名:阿彦」）。
+  //
+  // profile 名一律小写 ASCII 与连字符，规则：
+  //   · 用例断言 `^[a-z0-9-]+$`；
+  //   · **一店一目录**，绝不共用（共用 profile ＝ 两个淘宝身份混在一个浏览器里，
+  //     Chromium 会自己挑一条凭据，登错店不报错 —— 2026-09-23 实测过）。
+  //   · 每个目录都还没有实体，首次由 `start-all.mjs` / 启动器按需创建；
+  //     建好后在这台机器上人工登一次并点「保存密码」。
+  //
+  // 端口：调试 19050-19057 / 代理 19060-19067（同尾数配对）。
+  // ⚠️ 这一段是 2026-09-30 起用的**全新号段**，此前未进过任何历史收据，
+  //    所以按部门重排时连号一起重排是安全的（第一批 19031-19035 则**只许追加**，见上）。
+  // -------------------------------------------------------------------------
+  // --- 销售1部（本批 3 家，接在上面 5 家之后） ---
+  网林淘宝: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/wanglin-taobao',
+    browserPort: 19050,
+    proxyPort: 19060,
+    browserId: 'edge-shop-wanglin-taobao',
+    label: 'Microsoft Edge (shop wanglin-taobao)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
+  }),
+  里可林天猫: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/likelin-tmall',
+    browserPort: 19051,
+    proxyPort: 19061,
+    browserId: 'edge-shop-likelin-tmall',
+    label: 'Microsoft Edge (shop likelin-tmall)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
+  }),
+  网林定制淘宝: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/wanglin-custom',
+    browserPort: 19052,
+    proxyPort: 19062,
+    browserId: 'edge-shop-wanglin-custom',
+    label: 'Microsoft Edge (shop wanglin-custom)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
+  }),
+  // --- 销售2部（5 家） ---
+  保拉淘宝: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/paola-taobao',
+    browserPort: 19053,
+    proxyPort: 19063,
+    browserId: 'edge-shop-paola-taobao',
+    label: 'Microsoft Edge (shop paola-taobao)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
+  }),
+  保拉天猫: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/paola-tmall',
+    browserPort: 19054,
+    proxyPort: 19064,
+    browserId: 'edge-shop-paola-tmall',
+    label: 'Microsoft Edge (shop paola-tmall)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
+  }),
+  安比龙头店: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/anbi-leading',
+    browserPort: 19055,
+    proxyPort: 19065,
+    browserId: 'edge-shop-anbi-leading',
+    label: 'Microsoft Edge (shop anbi-leading)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
+  }),
+  科塔龙头店: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/keta-leading',
+    browserPort: 19056,
+    proxyPort: 19066,
+    browserId: 'edge-shop-keta-leading',
+    label: 'Microsoft Edge (shop keta-leading)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
+  }),
+  安比淘宝: Object.freeze({
+    profile: 'D:/Retire/edge-profiles/anbi-taobao',
+    browserPort: 19057,
+    proxyPort: 19067,
+    browserId: 'edge-shop-anbi-taobao',
+    label: 'Microsoft Edge (shop anbi-taobao)',
+    extraArgs: SHOP_BROWSER_EXTRA_ARGS,
+  }),
 });
 
 export function shopBrowserKeys() {
   return Object.keys(SHOP_BROWSERS);
+}
+
+/**
+ * **已登记、但还没有开始收集数据**的店铺：底座（profile / 端口 / 身份行）都建好了，
+ * 但两条采集链的**默认名单里不含**它们 —— 只有显式点名才会去碰。
+ *
+ * 为什么要分成「登记」与「参与收集」两个概念（2026-09-30 用户原话：
+ * 「网林定制淘宝这个是新加的店，还没有正式收集数据」）：
+ * 把一家空店留在默认名单里，后果**不是「多跑一家」，而是整轮失败或天天假告警**：
+ *   ① 日报链 `buildShopStages` 要求身份齐全（页头店名实测过），它没实测 ⇒ 构造阶段直接抛错；
+ *   ② 商品数据链的登录预检是**一次调用查全部店、不通过就整轮中止**
+ *      （`run-product-data-job.mjs` 那句 `if (login.code !== 0) throw`）⇒ 一家没登录，全部不采；
+ *   ③ 就算前两关都过了，它也没有可写的落点（当月两张商品 base 的「店铺」单选选项里没有它），
+ *      而写入侧对不存在的选项是 fail-closed ⇒ 每天一条「采集失败」的假告警。
+ *
+ * 开始收集时要做的三件事：① 把它从这张表里删掉；② 在飞书给**当月**两张商品 base 的
+ * 「店铺」补上选项；③ 人工登录一次并实测身份（回填 `shop-identities.mjs` / 升级 verified 级别）。
+ *
+ * 它**不影响实例侧**（`start-all` / `stop-all` / `browser-inventory` / 标签页 / 身份实测）
+ * 仍然按 `shopBrowserKeys()` 走 —— 那台浏览器照样要起、要登录、要挂标识页，
+ * 只是「今天要不要采它的数」为否。
+ */
+export const SHOPS_NOT_COLLECTING_YET = Object.freeze(['网林定制淘宝']);
+
+/**
+ * 参与采集的店铺（顺序＝登记表顺序）。
+ * **两条采集链的默认名单都用它**，不是 `shopBrowserKeys()` —— 两者在「有没有空店」上会不同。
+ */
+export function collectingShopKeys() {
+  return shopBrowserKeys().filter((key) => !SHOPS_NOT_COLLECTING_YET.includes(key));
 }
 
 /** 按运营叫法取店铺实例。**未登记一律抛错**（fail-closed），不回落成「随便连一个」。 */

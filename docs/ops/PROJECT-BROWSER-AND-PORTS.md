@@ -6,7 +6,7 @@
 > 而**现状**（此刻谁活着、谁缺、谁被谁的 profile 占着）要跑命令看：
 >
 > ```
-> node runtime/browser-inventory.mjs --listen   # 7 个声明实例：就位 / 缺浏览器 / 缺代理 / 外来 / 读不出来
+> node runtime/browser-inventory.mjs --listen   # 15 个声明实例（13 家店铺 ＋ 竞品链 ＋ 商家浏览器）：就位 / 缺浏览器 / 缺代理 / 外来 / 读不出来
 > node scripts/start-all.mjs                    # 起齐（幂等；已就位的一个都不碰）
 > node scripts/stop-all.mjs                     # 停（默认只打印，--yes 才真停）
 > ```
@@ -27,11 +27,13 @@
 | 项目专用 CDP 代理 | **3457** | `node runtime/start-competitor-proxy.mjs` |
 | 运营日报商家 Edge（商家号） | **19022** | `node runtime/start-daily-report-browser.mjs` |
 | 运营日报 CDP 代理 | **19023** | `node runtime/start-daily-report-proxy.mjs` |
-| 五家店各自的 Edge（19031~19035） | 一店一个 | 设 `PROJECT_BROWSER_PORT` 与 `PROJECT_BROWSER_PROFILE` 后跑 `node runtime/start-project-browser.mjs` |
-| 五家店各自的 CDP 代理（19041~19045） | 一店一个 | `node runtime/start-shop-proxy.mjs <运营叫法>` |
+| 各店铺的 Edge | 一店一个（2026-09-30 起 13 家） | 设 `PROJECT_BROWSER_PORT` 与 `PROJECT_BROWSER_PROFILE` 后跑 `node runtime/start-project-browser.mjs` |
+| 各店铺的 CDP 代理 | 一店一个（与上面一一配对） | `node runtime/start-shop-proxy.mjs <运营叫法>` |
 
-上面两行的**具体数字与 profile 一律不在这里复述**（一复述就会漂）：看
+上面两行的**家数、端口与 profile 一律不在这里复述**（一复述就会漂）：看
 `runtime/browser-ports.mjs` 的 `SHOP_BROWSERS`，或跑 `node runtime/browser-inventory.mjs` 看现状。
+`SHOP_BROWSERS` 的顺序**就是采集顺序**：销售1部 8 家在前、销售2部 5 家在后（部门顺序见
+`runtime/feishu-targets.mjs` 的 `SHOP_DEPARTMENTS`，两张表同键同序，有守卫盯着）。
 **竞品链的代理启动器 2026-09-19 才有**（此前只能照注释手打 `CDP_PROXY_PORT=… CDP_BROWSER_PORT=…`，
 端口靠人抄 ⇒ 抄错是静默串店）。
 
@@ -43,6 +45,32 @@ shell 里残留一个值会让「一键起齐」把每一家店都指向同一�
 3456/3457/3458 是本机其他项目也在用的一段 —— 撞号后的表现是「点击和导航都成功，
 但操作的是别人的浏览器」。竞品链的 9222 / 3457 保留不动：`evidence/` 与 `runtime/` 下的历史收据
 和 manifest 里记着这两个值，改名会让旧证据对不上（坑 37）。
+
+## 1.0.1 「已登记」≠「参与采集」（2026-09-30 起）
+
+登记表 `SHOP_BROWSERS` 管的是**实例侧**：这家有没有自己的浏览器、端口、profile、身份行。
+两条采集链的**默认名单**管的是**数据侧**：今天要不要采它的数。两者在「有没有还没开始收集的店」上会不同。
+
+- 参与采集＝`collectingShopKeys()`；已登记但还没开始收集＝`SHOPS_NOT_COLLECTING_YET`
+  （当前＝**网林定制淘宝**，2026-09-30 用户原话「这个是新加的店，还没有正式收集数据」）。
+- 两条链的默认名单都用 `collectingShopKeys()`（`batch-plan.mjs` 的 `batchableShopKeys()`、
+  `product-data-job-core.mjs`、`run-multi-shop-day.mjs`、`check-login-shops.mjs`）。
+- **实例侧仍然按全量登记表走**：`start-all` / `stop-all` / `browser-inventory` / `shop-pages` /
+  `shop-window-label` / 身份实测 —— 那台浏览器照样要起、要登录、要挂标识页。
+- 报错必须分家：点一家「已登记但还没开始收集」的名，要说清是**还没开始收集**，
+  不能混成「不认识的店铺」（混起来会让人去登记表里翻，那里明明有它）。
+
+把一家空店留在默认名单里，后果不是「多跑一家」，而是**整轮失败或天天假告警**：
+① 日报链 `buildShopStages` 要求身份齐全（页头店名实测过）⇒ 构造阶段直接抛错；
+② 商品数据链的登录预检是「一次调用查全部店、不通过就整轮中止」⇒ 一家没登录，其余全不采；
+③ 就算前两关都过，它也没有可写的落点（当月商品 base 的「店铺」单选里没有它），
+而写入侧对不存在的选项 fail-closed ⇒ 每天一条假告警。
+
+它开始收集时要做的三件事：① 把它从 `SHOPS_NOT_COLLECTING_YET` 删掉；
+② 在飞书给**当月**那张商品 base 的「店铺」补一个单选选项（schema 写入，需单独授权）；
+③ 人工登录一次并实测身份（回填 `shop-identities.mjs`）。
+守卫：`runtime/browser-ports.test.mjs`（两个集合并起来恰好是登记表、不重不漏）＋
+`runtime/batch-plan.test.mjs`（默认名单里没有它、点它名报的是「还没开始收集」）。
 
 ## 1.1 账号前提：两条链不能共用一个浏览器（客户交付必须交代）
 

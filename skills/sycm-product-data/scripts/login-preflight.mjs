@@ -3,6 +3,15 @@ import path from 'node:path';
 import { ISOLATED_PROFILES } from '../../sycm-alimama-daily-report/scripts/shop-identities.mjs';
 
 export const LOGIN_SCRIPT = path.resolve(import.meta.dirname, '../../sycm-alimama-daily-report/scripts/check-login-shops.mjs');
+/**
+ * 单独跑这个脚本时的默认店铺＝**全部已登记实例**（含还没开始收集的空店）。
+ *
+ * 为什么是「实例」口径而不是「参与采集」口径：这个脚本是**登录**用的，
+ * 而空店的浏览器照样要起、要登录（身份与凭据要先就位），所以它的默认作用域比采集更宽。
+ * 真正的**采集**默认名单在 `runtime/product-data-job-core.mjs`（`collectingShopKeys()`），
+ * 而 `scripts/run-product-data-job.mjs` 调这一步时**总是显式给 `--shops`**（只用那 12 家），
+ * 所以定时链不会因为这里更宽而多查一家。
+ */
 export const DEFAULT_PRODUCT_SHOPS = Object.freeze(Object.keys(ISOLATED_PROFILES));
 
 function parseJsonOutput(stdout) {

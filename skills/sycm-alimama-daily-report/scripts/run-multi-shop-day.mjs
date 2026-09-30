@@ -71,7 +71,9 @@ import { fileURLToPath } from 'node:url';
 // （2026-09-24 抽出）。抽出的理由是**第二条会叫人的链**（跑前登录守卫）没有它 ——
 // 判据只写在本文件旁边时，就只有本文件有判据：那次实测并发 5 条同一天的登录告警。
 import { ALERT_THROTTLE_FILE, readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from '../../../runtime/alert-throttle.mjs';
-import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
+// `shopBrowserKeys` 仍要留：它是**实例**口径（`proxyPortForBrowser` 要认任何一家已登记店），
+// 而 `collectingShopKeys` 是**采集**口径（默认跑哪几家）。两者在「有没有还没开始收集的店」上会不同。
+import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS, ROUTES, collectingShopKeys, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { normalizePages } from '../../../runtime/page-normalize.mjs';
 // 「页签属于哪个期望页面」的唯一判据（2026-09-22 收编）。这里原先也是整串 `includes`，
 // 而生意参谋的登录跳转页把目标地址放在 `_target=` 里 ⇒ 会被算成工作页 ⇒ 这份「停手快照」
@@ -1463,7 +1465,10 @@ export const findPath = (text, marker) => {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const mode = args.commit ? 'commit' : args.verifyExisting !== null ? 'verify' : 'rehearse';
-  const shops = args.shops ?? shopBrowserKeys();
+  // 默认跑**参与采集**的那几家，不是登记表全部：登记表里可能有还没开始收集的空店
+  // （2026-09-30 起 1 家）。空店跑起来只会停在身份闸门（页头店名没实测），
+  // 而那是**每轮都会出现**的一条假失败。
+  const shops = args.shops ?? collectingShopKeys();
   for (const key of shops) shopInstance(key);
   const logRoot = path.resolve(args.logs ?? path.join(REPO_ROOT, 'evidence', `multi-shop-${args.date}`));
   const downloads = args.downloads ?? null;

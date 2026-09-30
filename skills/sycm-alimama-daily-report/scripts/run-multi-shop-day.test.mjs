@@ -10,7 +10,7 @@ import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
 import { triageFailures } from './remediation-table.mjs';
 import { planRepair } from './repair-actions.mjs';
 import { siteAdapter } from './date-picker.mjs';
-import { shopIdentity } from './shop-identities.mjs';
+import { IDENTITY_SHOP_HEADER_VERIFIED_SHOPS, shopIdentity } from './shop-identities.mjs';
 import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
@@ -96,9 +96,14 @@ test('驱动：采集/回填/回位打这家店自己的代理，推送/回读�
 
 // 这条是「审计表四列来自环境变量」那个坑的判据：不显式设，四家店的审计行会全部写成商家浏览器那一组，
 // 而实际打的是各自店铺的代理 —— 事后复盘会看不出哪条记录属于哪家店。
-test('驱动：四家店的审计身份互不相同，且没有一家被写成日报链那一组', () => {
+test('驱动：每家店的审计身份互不相同，且没有一家被写成日报链那一组', () => {
+  // 2026-09-30：只对**身份齐全、真能构造出阶段**的店断言。
+  // 另外 8 家页头店名还没实测，buildShopStages 对它们 fail-closed（当场抛），
+  // 所以它们根本没有「阶段里的审计身份」可查 —— 那件事由身份闸门负责，这里不越权替它兜底。
   const proxyPorts = new Map();
-  for (const key of shopBrowserKeys()) {
+  const runnable = shopBrowserKeys().filter((key) => shopIdentity(key).sycmHeader);
+  assert.ok(runnable.length > 0, '一个能跑的店都没有 —— 下面的断言会变成空循环（看着绿，其实什么都没验）');
+  for (const key of runnable) {
     const shop = shopInstance(key);
     for (const stage of buildShopStages(key, { date: DATE, mode: 'rehearse' })) {
       if (DAILY_STAGES.includes(stage.stage)) continue;
@@ -111,7 +116,10 @@ test('驱动：四家店的审计身份互不相同，且没有一家被写成�
     }
     proxyPorts.set(key, shop.proxyPort);
   }
-  assert.equal(new Set(proxyPorts.values()).size, proxyPorts.size, '四家店的代理端口必须互不相同');
+  assert.equal(new Set(proxyPorts.values()).size, proxyPorts.size, '各家店的代理端口必须互不相同');
+  // 端口唯一性要对**全部**登记店铺成立，不只是能跑的那几家 —— 这条不需要身份，直接问登记表。
+  const allProxies = shopBrowserKeys().map((key) => shopInstance(key).proxyPort);
+  assert.equal(new Set(allProxies).size, allProxies.length, '13 家的代理端口必须互不相同');
 });
 
 test('驱动：三个写入方的 --shop-key 是同一个值且各只出现一次', () => {
@@ -126,23 +134,38 @@ test('驱动：三个写入方的 --shop-key 是同一个值且各只出现一�
   assert.equal(flagValue(stages.backfill.argv, '--source-shop'), shopIdentity(SHOP).fullName);
 });
 
-test('驱动：采集段的三个身份期望值来自登记表，且四家店互不相同', () => {
+test('驱动：采集段的三个身份期望值来自登记表，且每家给的都逐字对得上', () => {
   const headers = new Set();
+  let gated = 0;
   for (const key of shopBrowserKeys()) {
     const row = shopIdentity(key);
+    if (!row.sycmHeader) {
+      // 2026-09-30：13 家里有 8 家的页头店名还没实测（底座建好、人还没登录过）。
+      // buildShopStages 对身份**要求齐全**（fail-closed），所以这 8 家的正确行为是
+      // 「当场抛错、点名缺哪一项」—— 不是「构造出一份没有闸门的阶段表」。
+      assert.throws(() => buildShopStages(key, { date: DATE, mode: 'rehearse' }),
+        /还没有实测值/u, `${key} 缺页头店名时不许构造出阶段（那会变成「没判据就跑完」）`);
+      gated += 1;
+      continue;
+    }
     const stages = byStage(buildShopStages(key, { date: DATE, mode: 'rehearse' }));
     for (const name of COLLECTORS) {
       const argv = stages[name].argv;
+      // 三个期望值都「有就给、没有就不给」：`flagValue` 在开关缺席时返回 null。
+      // 这条写法顺带钉住一件事：**不许拿猜出来的值把空缺填上**（填了这里就红）。
       assert.equal(flagValue(argv, '--expect-shop'), row.sycmHeader, `${key}/${name} 的 --expect-shop`);
       assert.equal(flagValue(argv, '--expect-member'), row.alimamaMemberName, `${key}/${name} 的 --expect-member`);
       assert.equal(flagValue(argv, '--expect-member-id'), row.alimamaMemberId, `${key}/${name} 的 --expect-member-id`);
     }
-    headers.add(row.sycmHeader);
     // 登记表这两个字段现在同值（页头店名就是平台店铺全称）。哪天真分开不要紧，
     // 但要**知道**分开了 —— 回填的 --source-shop 取的是 fullName，页头读回来的是 sycmHeader。
     assert.equal(row.sycmHeader, row.fullName, `${key} 的 sycmHeader 与 fullName 漂移了，--source-shop 要重看`);
+    headers.add(row.sycmHeader);
   }
-  assert.equal(headers.size, shopBrowserKeys().length, '四家店的页头店名必须互不相同');
+  assert.equal(headers.size, IDENTITY_SHOP_HEADER_VERIFIED_SHOPS.length,
+    '已实测的页头店名必须互不相同（分母取实测清单：写死一个数，加一家店就红一次）');
+  assert.equal(gated + IDENTITY_SHOP_HEADER_VERIFIED_SHOPS.length, shopBrowserKeys().length,
+    '「能跑」+「被身份闸门挡住」必须正好等于全部店铺 —— 漏掉的那家会既不跑也不报错');
 });
 
 test('驱动：三种模式的写入口径（排练两个写入方都干跑；verify 只核对；commit 才写）', () => {
@@ -199,16 +222,32 @@ test('驱动：未知模式 / 错日期 / verify 缺 expectedBeforeCount / 未�
   assert.throws(() => stagesOf(SHOP, { mode: undefined }), /未知模式/u);
   assert.throws(() => stagesOf(SHOP, { date: '2026/09/17' }), /YYYY-MM-DD/u);
   assert.throws(() => stagesOf(SHOP, { mode: 'verify' }), /expectedBeforeCount/u);
-  // 保拉淘宝 / 里可林天猫 在身份登记表里，但没有隔离 profile ⇒ 没有浏览器可连，必须当场拒绝。
-  // （2026-09-19 之前这里举的第二家是「盖文天猫」；那天它有了专用窗口，就不再是反例了。）
-  assert.throws(() => buildShopStages('保拉淘宝', { date: DATE, mode: 'rehearse' }), /未登记的店铺实例/u);
-  assert.throws(() => buildShopStages('里可林天猫', { date: DATE, mode: 'rehearse' }), /未登记的店铺实例/u);
+  // 未登记的店名必须当场拒绝：没有登记就没有「隔离 profile + 端口」可连，
+  // 而回落成共用 profile 会让「那家店跑完了但什么都没采到」看起来像成功。
+  // 2026-09-30：原来举的反例是「保拉淘宝 / 里可林天猫」——它们在 13 家扩编后**已经登记**，
+  // 于是这条断言悄悄失效（不再抛错，用例却还是绿的）。改成用一个真正不在登记表里的名字。
+  assert.throws(() => buildShopStages('盖文1688', { date: DATE, mode: 'rehearse' }), /未登记的店铺实例/u);
+  assert.throws(() => buildShopStages('', { date: DATE, mode: 'rehearse' }), /未登记的店铺实例/u);
 });
 
-test('驱动：已登记的店铺都能构造出完整阶段（没有哪家要到真跑时才因身份缺失而炸）', () => {
+test('驱动：身份齐全的店都能构造出完整阶段；身份缺的当场抛且点名缺哪一项', () => {
+  // 用例名 2026-09-30 改（原来叫「已登记的店铺都能构造出完整阶段」）：
+  // 「已登记」与「能跑」在 13 家扩编后不再是同一件事 —— 登记表 13 家，实测过页头店名的只有 5 家。
+  // 旧名字会让后来者以为 13 家都能跑，而实际是 13 家**登记**、5 家**能跑**、8 家被身份闸门挡住。
+  let runnable = 0;
+  let gated = 0;
   for (const key of shopBrowserKeys()) {
-    assert.equal(buildShopStages(key, { date: DATE, mode: 'rehearse' }).length, EXPECTED_ORDER.length, key);
+    if (shopIdentity(key).sycmHeader) {
+      assert.equal(buildShopStages(key, { date: DATE, mode: 'rehearse' }).length, EXPECTED_ORDER.length, key);
+      runnable += 1;
+    } else {
+      assert.throws(() => buildShopStages(key, { date: DATE, mode: 'rehearse' }), /还没有实测值/u, key);
+      gated += 1;
+    }
   }
+  assert.equal(runnable, IDENTITY_SHOP_HEADER_VERIFIED_SHOPS.length,
+    '能跑的家数必须等于「已实测页头店名」清单 —— 两边不一致说明有一家是硬闯进来的，或清单没跟着更');
+  assert.equal(runnable + gated, shopBrowserKeys().length, '两家都要算进去，没有第三类');
 });
 
 test('驱动：体检的期望页面用**路径级**片段，且与落位脚本的 SITES 同源', () => {

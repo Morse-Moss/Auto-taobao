@@ -10,6 +10,10 @@
 //
 // 注意：`weekly` 表（竞品周 / SKU周 / 问题库）**不在本文件里**——它们每周新建，
 // id 天然会过期。按名字在运行时解析（见 weekly-table-target.mjs）。
+//
+// 商品数据链的 base **按月 × 按部门**换（2026-09-30 起），那一部分不在 PROFILES 里，
+// 而是下面的 PRODUCT_DATA_MONTH_BASES 注册表 —— 唯一的取目标入口是
+// `productDataTargetsForShop(店铺, 数据日期)`，别再用 profile 上那个单对象。
 import { readFileSync } from 'node:fs';
 
 import {
@@ -73,6 +77,10 @@ export const PROFILES = Object.freeze({
       sourceView: 'vewwg0rhjo',
       inquiryTable: 'tblUnwn05vl8Wik9',
     }),
+    // ⚠️ 2026-09-30 起：**新代码不要再用这一格**。商品数据已改成「月份 × 部门」分 base，见下方
+    // PRODUCT_DATA_MONTH_BASES 与 `productDataTargetsForShop(店铺, 数据日期)`。
+    // 这一格保留的原因有二：① 它就是「2026-09 × 销售1部」那个条目（测试断言两者同源，
+    // 防止两份值各自漂移）；② 尚未改造的推广链（import-promotion-data.mjs）仍在读它。
     productData: Object.freeze({
       baseToken: 'DQ2DbRinJaDx8Ss4gVFczsTXn3d',
       productTable: 'tblzyf0oLvfbvN1l',
@@ -195,6 +203,209 @@ export function productDataTargets(name) {
   const target = getProfile(name).productData;
   if (!target) throw new Error(`Product-data target is not configured for profile: ${resolveProfileName(name)}`);
   return target;
+}
+
+// ---------------------------------------------------------------------------
+// 商品数据链的飞书目标：「月份 × 部门」注册表（2026-09-30 加）
+// ---------------------------------------------------------------------------
+// 为什么要有它：商品数据的飞书 base **按月换**，而且从 2026-10 起**还要按部门分开**
+// （销售1部 / 销售2部 各一张）。上面那个 `PROFILES.kcne.productData` 是「1 个 baseToken +
+// 3 个 tableId」的单对象，装不下 4 张 base / 9 个写入面；把它硬撑成数组只会把
+// 「哪家店写哪张 base」这件事藏进调用方的 if-else 里。
+//
+// 现状（2026-09-30 只读取证，见 D:/Retire/probe-20260930/）：
+//   2026-09 × sales1  DQ2DbRinJaDx8Ss4gVFczsTXn3d「9月商品监控表」  ← 原先那唯一一张
+//   2026-10 × sales1  LQgZbi78oaAmIYsc4urcwk9rnNf「10月商品监控表-销售1部」
+//   2026-10 × sales2  LLWcbIuVFaBm6yshX9Xc8DFZn9d「10月商品监控表-销售2部」
+//   2026-09 × sales2  **不存在** —— 2 部是 10 月才有的，9 月只有一张不分部门的 base。
+// 缺一对就 fail-closed 抛错，**绝不回落到上个月的 base**：回落的后果是「跑成功、数据写进
+// 运营不看的表」，而且从收据上看不出来（坑 35「默认值即目标」的形态）。
+//
+// 三张被写的表在 9月/10月1部/10月2部 之间**逐字段零差异**（73 / 14 / 82 字段，顺序一致），
+// 所以换 base 不需要动任何写入逻辑 —— 这是只读取证得到的结论，不是推测。
+//
+// ⚠️ 推广链（`import-promotion-data.mjs`）**不读这张表**：它还没改造（用户 2026-09-30 原话
+// 「推广数据这个流程我还没开发，你先放着不管」）。10 月的推广在**另一套 base**里、而且是
+// 换了形状的两张表（关键词数据 78 字段 / 人群数据 74 字段），与这里登记的
+// 「商品推广数据底单」不是一回事。这一格留着是为了记账，不代表推广已经接上。
+
+/**
+ * 店铺 → 部门。键与 `runtime/browser-ports.mjs` 的 `SHOP_BROWSERS` **逐项同序**：
+ * 同序不是洁癖 —— `planBatches` 按那份登记表的顺序切批，顺序一致才让
+ * 「一批尽量落在同一个部门的 base 上」这件事有据可依（13 家 ÷ 5 = 5/5/3，第 2 批必然跨界）。
+ * 测试会把两边逐项比对，改名或调序会当场红，而不是静默漂移。
+ */
+export const SHOP_DEPARTMENTS = Object.freeze({
+  // 销售1部（8 家）
+  里可林淘宝: 'sales1',
+  网林天猫: 'sales1',
+  盖文淘宝: 'sales1',
+  盖文天猫: 'sales1',
+  科塔淘宝: 'sales1',
+  网林淘宝: 'sales1',
+  里可林天猫: 'sales1',
+  网林定制淘宝: 'sales1',
+  // 销售2部（5 家）
+  保拉淘宝: 'sales2',
+  保拉天猫: 'sales2',
+  安比龙头店: 'sales2',
+  科塔龙头店: 'sales2',
+  安比淘宝: 'sales2',
+});
+
+/** 部门的可读名（报错与日志里用；键是内部值，别把它印给人看）。 */
+export const DEPARTMENT_LABELS = Object.freeze({
+  sales1: '销售1部',
+  sales2: '销售2部',
+});
+
+/**
+ * 月份 × 部门 → 商品数据 base 及它里面三张被写的表。
+ *
+ * 月份的口径 = **数据的统计日期**（也就是链上那个 `--date`），不是「跑的那天」。
+ * 依据：整条链其余部分（底单行、幂等键、报表的「统计日期」列）都锚在 `--date` 上；
+ * 若这里改用运行日期，跨月那天早上补跑前一天的数据就会写进新月份的 base，
+ * 而同一批数据在旧 base 里已经有行 —— 出现「同一天的数据分裂在两个 base」。
+ *
+ * ⚠️ 这张表**不走客户配置层**：`runtime/customer-config.mjs` 的 overlay 只作用在
+ * `PROFILES` 上的字段，这里是模块级常量。将来要交付给客户（base 完全不同）时，
+ * 先决定是把它挪进配置层、还是让客户共用同一批 base ——
+ * **别让客户去改这个文件**（那会把「配置」变成「改源码」，升级就会覆盖掉它）。
+ */
+export const PRODUCT_DATA_MONTH_BASES = Object.freeze({
+  '2026-09:sales1': Object.freeze({
+    baseToken: 'DQ2DbRinJaDx8Ss4gVFczsTXn3d',
+    baseName: '9月商品监控表',
+    productTable: 'tblzyf0oLvfbvN1l',
+    inquiryTable: 'tbl1hHlRX0LYMvYY',
+    promotionTable: 'tblaCPQMLWAq21Gw',
+  }),
+  '2026-10:sales1': Object.freeze({
+    baseToken: 'LQgZbi78oaAmIYsc4urcwk9rnNf',
+    baseName: '10月商品监控表-销售1部',
+    productTable: 'tblvmGJfOL4OBYek',
+    inquiryTable: 'tblb1uK5zQYd8yOq',
+    promotionTable: 'tblDxXenp3vSg2SM',
+  }),
+  '2026-10:sales2': Object.freeze({
+    baseToken: 'LLWcbIuVFaBm6yshX9Xc8DFZn9d',
+    baseName: '10月商品监控表-销售2部',
+    productTable: 'tbllkWhKDQqGU9DT',
+    inquiryTable: 'tblomySKkoTFsatn',
+    promotionTable: 'tbl3SkayTTo9OlJo',
+  }),
+});
+
+/** 按运营叫法取部门。**未登记一律抛错**（fail-closed），不回落成「猜一个部门」。 */
+export function departmentOfShop(shopKey) {
+  const department = SHOP_DEPARTMENTS[shopKey];
+  if (!department) {
+    throw new Error(`店铺「${shopKey}」没有登记部门；已登记：${Object.keys(SHOP_DEPARTMENTS).join(' / ')}`);
+  }
+  return department;
+}
+
+/**
+ * 从数据日期里取飞书月份键（`YYYY-MM`）。
+ * 接受 `YYYY-MM-DD` 与 `YYYY-MM`；别的形状（空、闰日之外的怪字符串、数字时间戳）一律抛错 ——
+ * 这里放行一个「看起来差不多」的值，下游就会拿着它去查一个不存在的 base，
+ * 报出来的错却是「没有这个月的 base」，把「日期传错了」伪装成「base 没建」。
+ */
+export function feishuMonthOf(dateInput) {
+  const match = String(dateInput ?? '').match(/^(\d{4})-(\d{2})(?:-\d{2})?$/u);
+  if (!match) {
+    throw new Error(`飞书月份只认 YYYY-MM 或 YYYY-MM-DD，收到 ${JSON.stringify(dateInput)}`);
+  }
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) throw new Error(`月份超出 1-12：${JSON.stringify(dateInput)}`);
+  return `${match[1]}-${match[2]}`;
+}
+
+/** `YYYY-MM:部门` 这个注册表键（调用方要打日志/写收据时用同一处拼，别各拼一份）。 */
+export function productDataBaseKey(shopKey, dateInput) {
+  return `${feishuMonthOf(dateInput)}:${departmentOfShop(shopKey)}`;
+}
+
+/**
+ * **商品数据链唯一的取目标入口**：按「这家店 + 这天数据」解析出该写哪张 base、哪几张表。
+ *
+ * 缺登记一律抛错，并把「已登记了哪些月份×部门」原样列出来 ——
+ * 新月份上线时最常见的一步就是漏建/漏登记一张 base，报错里带上全表，
+ * 下一个人才不用靠猜「到底是没建还是名字写错了」。
+ */
+export function productDataTargetsForShop(shopKey, dateInput, name) {
+  const department = departmentOfShop(shopKey);
+  const key = productDataBaseKey(shopKey, dateInput);
+  const target = PRODUCT_DATA_MONTH_BASES[key];
+  if (!target) {
+    throw new Error(`没有「${key.split(':')[0]}」×「${DEPARTMENT_LABELS[department] ?? department}」的商品数据 base`
+      + `（店铺「${shopKey}」→ ${department}，profile=${resolveProfileName(name)}）；`
+      + `已登记：${Object.keys(PRODUCT_DATA_MONTH_BASES).join(' / ')}`
+      + ' —— 新月份要先在飞书建好 base、再把它的 baseToken 与表 id 登记进 PRODUCT_DATA_MONTH_BASES；'
+      + '不许回落到上个月的 base（那样会「跑成功但写进运营不看的表」）');
+  }
+  return target;
+}
+
+/**
+ * 注册表自洽性体检（**不依赖当前时间**，所以可以放进单测）。
+ *
+ * 守两件事：
+ *   ① 每个键都是 `YYYY-MM:已登记的部门`，每个条目的 token / 表 id 形状合法；
+ *   ② **最新那个月必须覆盖全部在用的部门** —— 上月加了 2 部、这月忘了加，
+ *      结果是 2 部那 5 家整天写不进去，而别的店照常成功（一半绿一半红最难看出来）。
+ *
+ * 为什么不在这里也读一遍飞书核对 base 存在：那需要凭据与网络，会把单测变成联网测试。
+ * 核对归属靠 `feishu-targets.test.mjs` 的交叉断言（与 SHOP_BROWSERS 同序同键）。
+ */
+export function assertProductDataBaseCoverage({
+  registry = PRODUCT_DATA_MONTH_BASES,
+  departments = SHOP_DEPARTMENTS,
+} = {}) {
+  const problems = [];
+  const known = new Set(Object.values(departments));
+  const byMonth = new Map();
+  const tokenOwners = new Map();
+  for (const [key, entry] of Object.entries(registry)) {
+    const match = key.match(/^(\d{4}-\d{2}):([a-z0-9]+)$/u);
+    if (!match) {
+      problems.push(`键「${key}」不是「YYYY-MM:部门」形状`);
+      continue;
+    }
+    const [, month, department] = match;
+    if (!known.has(department)) {
+      problems.push(`键「${key}」的部门「${department}」没有任何店铺归属（已知：${[...known].join(' / ')}）`);
+    }
+    if (!byMonth.has(month)) byMonth.set(month, new Set());
+    byMonth.get(month).add(department);
+    for (const field of ['baseToken', 'baseName', 'productTable', 'inquiryTable']) {
+      if (!entry?.[field]) problems.push(`「${key}」缺 ${field}`);
+    }
+    for (const [field, pattern] of [['baseToken', /^[A-Za-z0-9]{20,}$/u], ['productTable', /^tbl[A-Za-z0-9]{10,}$/u],
+      ['inquiryTable', /^tbl[A-Za-z0-9]{10,}$/u], ['promotionTable', /^tbl[A-Za-z0-9]{10,}$/u]]) {
+      const value = entry?.[field];
+      if (value === undefined) continue;
+      if (!pattern.test(value)) problems.push(`「${key}」的 ${field}=${JSON.stringify(value)} 形状非法`);
+    }
+    // 同一个 base 登记在两个键下必然有一处是抄错的（各部门是分开的 base）。
+    const owner = tokenOwners.get(entry?.baseToken);
+    if (owner) problems.push(`baseToken ${entry?.baseToken} 同时登记在「${owner}」与「${key}」下`);
+    else if (entry?.baseToken) tokenOwners.set(entry.baseToken, key);
+  }
+  const months = [...byMonth.keys()].sort();
+  const latest = months.at(-1) ?? null;
+  if (latest !== null) {
+    for (const department of known) {
+      if (byMonth.get(latest).has(department)) continue;
+      const shops = Object.keys(departments).filter((shop) => departments[shop] === department);
+      problems.push(`最新月份「${latest}」缺部门「${DEPARTMENT_LABELS[department] ?? department}」`
+        + `（这 ${shops.length} 家会整天写不进去：${shops.join(' / ')}）`);
+    }
+  }
+  if (problems.length > 0) {
+    throw new Error(`商品数据 base 注册表不自洽：\n- ${problems.join('\n- ')}`);
+  }
+  return { months, latest, departments: [...known].sort() };
 }
 
 export function tableId(logicalName, name) {

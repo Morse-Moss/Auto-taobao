@@ -6,9 +6,9 @@
 // 所以这里只做一件事：把登记表里的值原样印成可粘贴的参数。
 //
 // 用法：
-//   node scripts/show-shop-identity.mjs                     # 12 家一览（含未实测标记）
+//   node scripts/show-shop-identity.mjs                     # 13 家一览（含未实测标记）
 //   node scripts/show-shop-identity.mjs 里可林淘宝          # 打印该店的参数
-//   node scripts/show-shop-identity.mjs 安比淘宝 --require shop,member
+//   node scripts/show-shop-identity.mjs 安比淘宝 --require shop
 //                                                          # 缺字段即非零退出（可直接用在脚本里当闸门）
 //
 // 退出码：0 = 成功；2 = 参数/登记表问题（含 require 未满足）。踩到问题就非零退出，
@@ -34,9 +34,12 @@ for (const field of require) {
   }
 }
 if (!key) {
-  process.stdout.write(`已登记 ${SHOP_IDENTITIES.length} 家店（* ＝该店两侧身份都已实测）：\n`);
+  // `*` 只标「两侧都到了 expression 级」。原来是 `row.sycmHeaderVerified && row.alimamaVerified`
+  // —— 那两个字段是**字符串**，`'human-record'` 也是 truthy，于是人工填的会员名会被标成已实测
+  // （2026-09-30 换操作员后 13 家全成了 human-record，这个星会全亮）。必须逐字比 `'expression'`。
+  process.stdout.write(`已登记 ${SHOP_IDENTITIES.length} 家店（* ＝该店两侧身份都用采集表达式实测过）：\n`);
   for (const row of SHOP_IDENTITIES) {
-    const verified = row.sycmHeaderVerified && row.alimamaVerified ? '*' : ' ';
+    const verified = row.sycmHeaderVerified === 'expression' && row.alimamaVerified === 'expression' ? '*' : ' ';
     process.stdout.write(`  ${verified} ${describeIdentity(row.key)}   [${platformOf(row.key)}]\n`);
   }
   process.stdout.write('\n用法：node scripts/show-shop-identity.mjs <店铺叫法> [--require shop,member]\n');

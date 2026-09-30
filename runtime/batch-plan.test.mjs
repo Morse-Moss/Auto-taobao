@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { shopBrowserKeys } from './browser-ports.mjs';
+import { collectingShopKeys, shopBrowserKeys } from './browser-ports.mjs';
 import {
   BATCH_FILES, BATCH_SIZE_BY_MEMORY, DEFAULT_BATCH_SIZE, SHARED_INSTANCE_KEYS, assertBatchCoversRegistry,
   batchLoginArtifactName, batchableShopKeys, buildBatchSteps, buildLoginPreflightStep, buildSharedStep,
@@ -20,26 +20,53 @@ import {
 } from './batch-plan.mjs';
 import { REPO_ROOT } from './version.mjs';
 
-const ALL = shopBrowserKeys();
+// 两个口径别混（2026-09-30 起不同）：
+//   · REGISTERED ＝ 登记表全部实例（含**还没开始收集**的空店）—— 只有「实例/登记」类的事才用它；
+//   · ALL        ＝ **参与采集**的店铺 —— 分批层认的就是它（`batchableShopKeys()`）。
+// 这一层里的断言绝大多数是分批语义，所以默认用 ALL。
+const REGISTERED = shopBrowserKeys();
+const ALL = collectingShopKeys();
+
+/**
+ * 按 size 切一份名单时，每批该有几家 —— **从名单长度推，不写死数字**。
+ *
+ * 为什么不留 `[2, 2, 1]` 这种字面量：那是「5 家店」时代的算术。家数一路
+ * 5 → 12 → 13 之后，这种字面量每加一家店就红一次，而红的原因**不是被测代码坏了**，
+ * 是断言自己过期了。更糟的是它会把人的注意力从「切批有没有漏店」带到「数字对不对」上。
+ * 真正的判据只有三条：拼起来逐字等于登记表、没有重复、批数＝向上取整。
+ */
+function batchSizes(list, size) {
+  const out = [];
+  for (let i = 0; i < list.length; i += size) out.push(Math.min(size, list.length - i));
+  return out;
+}
 
 test('切批覆盖全部店铺，不重不漏，且保持登记表顺序', () => {
   const plan = planBatches({ size: 2 });
   const flat = plan.batches.flatMap((b) => b.shops);
-  assert.deepEqual(flat, ALL, '切完之后拼起来必须与登记表逐字相同（顺序也相同）');
+  assert.deepEqual(flat, ALL, '切完之后拼起来必须与「参与采集的店铺」逐字相同（顺序也相同）');
   assert.equal(new Set(flat).size, flat.length, '同一家店不许出现在两个批次里');
   assert.equal(plan.total, Math.ceil(ALL.length / 2));
-  assert.deepEqual(plan.batches.map((b) => b.shops.length), [2, 2, 1]);
-  // 科塔必须在最后一批：它失败挡不住前四家（这条是链那边的既定顺序，切批不许打乱）。
-  assert.equal(plan.batches.at(-1).shops.at(-1), '科塔淘宝');
+  assert.deepEqual(plan.batches.map((b) => b.shops.length), batchSizes(ALL, 2));
+  // 最后一批的最后一家＝登记表的最后一家：**切批不许打乱登记表顺序**。
+  // 顺序本身由登记表定，而它现在是「按部门排」的（销售1部 8 家在前、销售2部 5 家在后）——
+  // 于是「谁在末位」会随部门调整而变，所以这里比登记表，不比某个具体店名。
+  // （2026-09-30 之前末位是科塔淘宝；13 家按部门重排后是安比淘宝。变的是排序口径，不是切批。）
+  assert.equal(plan.batches.at(-1).shops.at(-1), ALL.at(-1));
+  for (const batch of plan.batches) {
+    assert.deepEqual(batch.shops, ALL.slice((batch.index - 1) * 2, (batch.index - 1) * 2 + batch.shops.length),
+      `第 ${batch.index} 批的内容必须是登记表里连续的一段 —— 切批不做任何挑选或重排`);
+  }
 });
 
-test('默认每批 5 家 = 本机今天的行为；给一个更大的数也只有一批', () => {
+test('默认每批 5 家；每批家数一旦不小于店铺总数就只有一批', () => {
   assert.equal(DEFAULT_BATCH_SIZE, 5);
   const plan = planBatches({});
-  assert.equal(plan.total, 1);
-  assert.deepEqual(plan.batches[0].shops, ALL);
-  assert.equal(planBatches({ size: 8 }).total, 1, '每批家数大于店铺数时就是一批');
-  assert.equal(planBatches({ size: ALL.length }).total, 1);
+  assert.equal(plan.total, Math.ceil(ALL.length / DEFAULT_BATCH_SIZE),
+    `默认档下批数必须是向上取整（${ALL.length} 家 ÷ ${DEFAULT_BATCH_SIZE} 家／批）`);
+  assert.deepEqual(plan.batches.flatMap((b) => b.shops), ALL, '默认档也不许漏店');
+  assert.equal(planBatches({ size: ALL.length }).total, 1, '每批家数等于店铺总数时就是一批');
+  assert.equal(planBatches({ size: ALL.length + 1 }).total, 1, '每批家数大于店铺总数时也是一批');
   // 「大到不像话」也要拒：客户机上一次性开 99 个实例的结果是整机卡死，不是报错。
   assert.throws(() => planBatches({ size: 99 }), /不像话/u);
 });
@@ -65,10 +92,33 @@ test('resolveBatchSize：合法值照收，非法值当场抛错（不回落默�
 test('resolveShopNames：不认识的店铺当场抛错，并列出已登记的', () => {
   assert.deepEqual(resolveShopNames(null), ALL);
   assert.deepEqual(resolveShopNames([]), ALL);
-  assert.throws(() => resolveShopNames(['里可林天猫']), /已登记/u);
+  // 用一个**真正没登记**的名字。原来这里写「里可林天猫」，它在 5 家时代确实未登记，
+  // 2026-09-30 扩到 13 家后成了已登记店铺 ⇒ 用例静默失效（不再抛错，于是
+  // 「不认识的店铺会被拒」这条判据实际上没人守了）。
+  assert.throws(() => resolveShopNames(['盖文1688']), /已登记/u,
+    '未登记的店铺必须当场抛错，不许静默忽略');
   assert.equal(assertBatchCoversRegistry({ shops: ALL }), true);
   assert.throws(() => assertBatchCoversRegistry({ shops: ['不存在店'] }), /未登记/u);
   assert.throws(() => assertBatchCoversRegistry({ shops: [ALL[0], ALL[0]] }), /多次/u);
+});
+
+test('「已登记但还没开始收集」的店：默认名单里没有它，点它的名要说清是「还没开始收集」', () => {
+  // 2026-09-30 加（用户原话：「网林定制淘宝这个是新加的店，还没有正式收集数据」）。
+  // 两个方向都要钉：
+  //   ① 默认名单不许带上它 —— 带上它不是「多跑一家」，而是整轮失败或天天一条假告警；
+  //   ② 显式点名时**报错要说对人话** —— 混成「不认识的店铺」会让人去登记表里翻，
+  //      发现明明有它，从此不再相信这条报错（而这条报错是唯一的防线）。
+  const pending = REGISTERED.filter((key) => !ALL.includes(key));
+  assert.ok(pending.length > 0,
+    '当前应当有「还没开始收集」的店；一家都没有的话这条用例失去意义，要跟着改口径');
+  for (const key of pending) {
+    assert.equal(resolveShopNames(null).includes(key), false, `默认名单带上了没开始收集的「${key}」`);
+    assert.throws(() => resolveShopNames([key]), /还没开始收集/u,
+      `点名「${key}」时必须说清是「还没开始收集」，不是「不认识」`);
+    assert.throws(() => planBatches({ shops: [key] }), /还没开始收集/u);
+    assert.throws(() => assertBatchCoversRegistry({ shops: [key] }), /还没开始收集/u,
+      '分批层的最后一道自检也只认「参与采集」集合 —— 空店不该被切进任何一批，且理由要说对人话');
+  }
 });
 
 test('一个批次：起 → 挂标识页（每家一条）→ 跑 → 停（不给 loginStep 时就是这四段）', () => {
@@ -105,9 +155,14 @@ test('停那一行必须带 --yes（stop-all 默认只打印，不带就是「�
 });
 
 test('链只跑本批的店铺，日期只有一种给法', () => {
-  const steps = buildBatchSteps(planBatches({ size: 2 }).batches[1], { dateInput: 'yesterday' });
+  const batch = planBatches({ size: 2 }).batches[1];
+  const steps = buildBatchSteps(batch, { dateInput: 'yesterday' });
   const chain = steps.find((s) => s.name === 'chain');
-  assert.deepEqual(chain.args.slice(0, 4), ['--date', 'yesterday', '--shops', '盖文淘宝,盖文天猫']);
+  // 断言的是**形状**（日期怎么给、店铺名单是不是只有本批），不必再复述某几个店名 ——
+  // 店名与顺序的单一来源是登记表，写在这里的字面量每加一家店就要改一次。
+  assert.deepEqual(chain.args.slice(0, 4), ['--date', 'yesterday', '--shops', batch.shops.join(',')],
+    '链只许拿到本批这几家');
+  assert.equal(batch.shops.length, 2, '用的就是「每批 2 家」那一档，链才该只看到 2 家');
   assert.ok(!chain.args.some((a) => /^\d{4}-\d{2}-\d{2}$/u.test(a)),
     '日期不许写死具体某天 —— 写死的日期第二天就过期，而它看起来还在正常工作');
 });
@@ -160,8 +215,16 @@ test('该不该释放：一律释放 —— 链成功、链失败、链根本没
   assert.equal(releaseAfterBatch({ chainStatus: 0 }).caveat, undefined);
 });
 
-test('批次的一行说明里同时有「第几批」与「哪几家」', () => {  const plan = planBatches({ size: 2 });
-  assert.equal(describeBatch(plan.batches[1], plan.total), '第 2/3 批：盖文淘宝、盖文天猫');
+test('批次的一行说明里同时有「第几批」与「哪几家」', () => {
+  const plan = planBatches({ size: 2 });
+  const batch = plan.batches[1];
+  assert.equal(plan.total, Math.ceil(ALL.length / 2));
+  assert.equal(describeBatch(batch, plan.total), `第 2/${plan.total} 批：${batch.shops.join('、')}`);
+  // 「哪几家」必须是**这一批自己的**店，不是整轮名单 —— 那行说明是日志里唯一
+  // 能看出「这一批跑了什么」的东西。
+  for (const shop of batch.shops) assert.ok(describeBatch(batch, plan.total).includes(shop), shop);
+  assert.ok(!describeBatch(batch, plan.total).includes(ALL.at(-1)) || batch.shops.includes(ALL.at(-1)),
+    '说明里的店名只能来自本批');
 });
 
 test('切批是纯函数：同一入参两次调用结果逐字相同（不读时钟、不读环境）', () => {

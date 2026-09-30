@@ -9,7 +9,7 @@
 //        导出工作簿     = 「店铺名称」列
 //        飞书「店铺」列 = 运营自己的叫法（带平台后缀，如 盖文淘宝）
 //      ⇒ 「跨站点比名字」没有意义，必须**逐站点各取各的、各自比对**。
-//      实测例：盖文淘宝那家，阿里妈妈显示 `随心品质定制:阿彦`、生意参谋显示 `盖文全卫定制`
+//      实测例：盖文淘宝那家，阿里妈妈显示 `随心品质定制:阿彦`（2026-09-30 起子账号改为 `:小瓜`）、生意参谋显示 `盖文全卫定制`
 //      —— 两个都不是「盖文淘宝」。所以这份表不能靠名字相似度推，只能照抄。
 //
 //   2. 两个采集脚本原先**一次身份都没核对过**；而两个产物里只有一个带身份：
@@ -21,22 +21,36 @@
 //   3. 期望值原先要靠人手敲。敲错一个字，判据就会在**正确的窗口上拦人**（更糟的是：
 //      敲成别家店的名字，于是在**错误的窗口上放行**）。所以期望值必须来自一处可核的来源。
 //
-// 数据来源（可核）：用户 2026-09-18 给的「完整表」——飞书 base「各店铺日报」里的「店铺底单」，
-// 12 行，两列：`平台店铺全称` / `店铺`。只读读回（脚本见下），逐字照抄在 RAW_MAPPING_ROWS。
-// 用户原话：「这个是完整表…这是一一对应的」。
+// 数据来源有**两个**，别混成一个（2026-09-30 起）：
 //
-// 已实测的部分（右侧 `sycmHeaderVerified` / `alimamaVerified`）在 2026-09-18 用真实页面读到，
+//   ① 店铺维度（`key` ↔ `fullName`）——来自飞书 base「各店铺日报」的「店铺底单」，
+//      2026-09-18 只读读回，**12 行**，两列：`平台店铺全称` / `店铺`。逐字照抄在 RAW_MAPPING_ROWS。
+//      用户原话：「这个是完整表…这是一一对应的」。
+//   ② 第 13 家「网林定制淘宝」**不在这 12 行里** —— 它是 2026-09-30 新增的店，
+//      飞书底单当天还没这一行。它的 key/fullName 来自用户同日给的《店铺账号信息表》，
+//      单列在 EXTRA_SHOPS_FROM_ACCOUNT_TABLE（不许混进 RAW_MAPPING_ROWS：那份是「读回的原文」，
+//      往里补一行就等于伪造证据）。
+//
+// 操作员账号（`alimamaMemberName`）：2026-09-30 起以用户《店铺账号信息表》为准，
+// 13 家全部换成表里给定的操作员（用户口径：「操作员固定好，以后一般不会再更改了」）。
+// 它因此是 `human-record` 级，**不是** `expression` 级 —— 那个级别只留给「用采集脚本
+// 那两个表达式在真实窗口里读到」的值。原 5 家的 `:阿彦` 是被替换掉的旧值，不作废也得作废。
+//
+// 已实测的部分（右侧 `sycmHeaderVerified`）在 2026-09-18 用真实页面读到，
 // 判据表达式就是 collect-core.mjs 里那两个（不在探针里另写一份，避免「验的是另一套」）。
 // **未实测的字段一律是 null，不填推测值** —— 宁可让调用方 fail-closed，也不要一个猜出来的身份。
 //
-// 只读核对脚本（仓库外，避免被仓库守卫扫到）：D:/Retire/probe-20260918/
-//   read-mapping-table.mjs   —— 把「店铺底单」原文读下来
-//   probe-identity-live.mjs  —— 用它把四个窗口的真实身份读出来（直接 import 本技能源码）
-//   compare-bases.diff  系列  —— 两个同名 base 的对照（见 docs §5.3.3）
+// 只读核对脚本（仓库外，避免被仓库守卫扫到）：
+//   D:/Retire/probe-20260918/  read-mapping-table.mjs（把「店铺底单」原文读下来）
+//                              probe-identity-live.mjs（把窗口的真实身份读出来）
+//   D:/Retire/probe-20260930/  read-base-meta.mjs 等（10 月新 base 的只读取证）
 
 /**
  * 映射表的出处。刻意带 base/table/view 三个 id 与读取日期：
  * 以后有人质疑某个名字，要能一键回到那张表上重读，而不是翻聊天记录。
+ *
+ * ⚠️ `recordCount` 是**那张表当时的行数**（12），不是登记表现在的行数（13）。
+ * 两者必须分开看：差的那 1 家就是 EXTRA_SHOPS_FROM_ACCOUNT_TABLE。
  */
 export const MAPPING_SOURCE = Object.freeze({
   baseToken: 'PTfHbPt9EaIzddsfL8Jcj238nrb',
@@ -47,6 +61,27 @@ export const MAPPING_SOURCE = Object.freeze({
   readAt: '2026-09-18',
   recordCount: 12,
 });
+
+/**
+ * 操作员账号表的出处（第二来源）。给的是「哪家店归谁登」，不是窗口里读到的身份。
+ *
+ * 为什么不并进 MAPPING_SOURCE：那是「店铺底单」的出处，两份东西的字段、行数、
+ * 可信度都不同；并在一起就再也说不清「这一格是从哪来的」。
+ */
+export const ACCOUNT_TABLE_SOURCE = Object.freeze({
+  fileName: '店铺账号信息表(1)(1).xlsx',
+  receivedAt: '2026-09-30',
+  receivedVia: '微信（用户发来的最新一版；前两版因部门/base 列不全被替换）',
+  operatorFixedAt: '2026-09-30',
+  note: '用户口径：操作员固定、以后不再更改。账号列的值＝阿里妈妈页头的登录会员名（形如「主账号:子账号」）。',
+});
+
+/**
+ * 只在操作员账号表里有、飞书「店铺底单」还没有行的店铺。
+ * 目前 1 家。它必须显式列出来 —— 否则「登记表 13 行 vs 底单 12 行」这个差
+ * 会被下一个读代码的人当成抄袭事故。
+ */
+export const EXTRA_SHOPS_FROM_ACCOUNT_TABLE = Object.freeze(['网林定制淘宝']);
 
 /**
  * 逐字照抄的 12 行原文（顺序＝表里的行序）。
@@ -84,22 +119,26 @@ export function platformOf(shopKey) {
 }
 
 /**
- * 12 家店的身份。字段含义：
+ * 13 家店的身份（销售1部 8 家 + 销售2部 5 家）。字段含义：
  *   key                 运营叫法（＝回填时写进「店铺」列的值，也是幂等键的一半）
  *   fullName            平台店铺全称（＝生意参谋页头店名）
  *   platform            taobao | tmall | leading（由 key 后缀派生，测试会核对一致）
  *   sycmHeader          生意参谋页头店名；**已实测的行与 fullName 相同**（这正是「按页头店名能唯一认店」的判据）
  *   sycmHeaderVerified  'expression' 用本技能那两个表达式读到 | 'text' 只从页面正文读到 | null 未实测
- *   alimamaMemberName   阿里妈妈页头的登录会员名（**可能与店名毫无关系**）
- *   alimamaMemberId     阿里妈妈页头的会员数字 ID
- *   alimamaVerified     'expression' | 'human-record' | null
+ *   alimamaMemberName   阿里妈妈页头的登录会员名（**可能与店名毫无关系**）。
+ *                       **2026-09-30 起全部来自用户《店铺账号信息表》给定的操作员** ⇒ human-record。
+ *   alimamaMemberId     阿里妈妈页头的会员数字 ID。**它是主账号的属性，不随操作员变**，
+ *                       所以换人之后那 5 家的原实测值仍然有效；另外 8 家（+第 13 家）表里没给，是 null。
+ *                       ⚠️ 允许「有名字没 ID」：判据 `assertMemberIdentity` 只给 name 时照样是有效闸门，
+ *                       只是少一道旁证。所以「成对出现」不是硬约束 —— 硬约束是「不许有 ID 没名字」。
+ *   alimamaVerified     'expression'（窗口实测）| 'human-record'（人工记录，可当期望值但不算实测）| null
  *   isolatedProfile     见文件末尾的 ISOLATED_PROFILES（单独一张表，不塞进每一行）：
- *                       端口不在本文件里 —— 端口只有一个来源 runtime/browser-ports.mjs，
- *                       而且「按店铺实例化」还没做（见 docs §4.2）
+ *                       端口不在本文件里 —— 端口只有一个来源 runtime/browser-ports.mjs
  *   evidence            这一行的证据出处（哪一天、在哪个窗口/哪份文档）
  *
- * 为什么 alimamaMemberName 与 key 分开存而不是派生成 `${key}:阿彦`：
- * 实测已推翻这个假设（盖文淘宝那家的会员名是 `随心品质定制:阿彦`）。
+ * 为什么 alimamaMemberName 与 key 分开存而不是派生成「店名 + 冒号 + 子账号」：
+ * 实测已推翻这个假设（盖文淘宝那家的会员名前缀是 `随心品质定制`，不是店名 `盖文淘宝`）。
+ * 2026-09-30 换操作员又加固了一次：子账号一变，任何派生值当场失效。
  * 派生值一旦写进判据，就会变成「在正确窗口上拦人」的假警报。
  */
 export const SHOP_IDENTITIES = Object.freeze([
@@ -109,10 +148,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'taobao',
     sycmHeader: '科塔全卫定制',
     sycmHeaderVerified: 'expression',
-    alimamaMemberName: 'j873522735:阿彦',
+    alimamaMemberName: 'j873522735:嘉慧',
     alimamaMemberId: '412070158',
-    alimamaVerified: 'expression',
-    evidence: '2026-09-18 实测：隔离 profile shop-j873522735 的窗口，两个表达式各读一次',
+    alimamaVerified: 'human-record',
+    evidence: '页头店名 2026-09-18 实测（隔离 profile shop-j873522735）。会员名取 2026-09-30 账号表的操作员「嘉慧」，替换当日实测的 :阿彦（换人）；会员 ID 是主账号的数字 ID，不随操作员变，原实测值仍有效',
   }),
   Object.freeze({
     key: '盖文淘宝',
@@ -120,10 +159,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'taobao',
     sycmHeader: '盖文全卫定制',
     sycmHeaderVerified: 'expression',
-    alimamaMemberName: '随心品质定制:阿彦',
+    alimamaMemberName: '随心品质定制:小瓜',
     alimamaMemberId: '887360146',
-    alimamaVerified: 'expression',
-    evidence: '2026-09-18 实测：隔离 profile suixin-custom 的窗口。会员名与店名不同名（老会员号沿用旧品牌名）',
+    alimamaVerified: 'human-record',
+    evidence: '页头店名 2026-09-18 实测（隔离 profile suixin-custom）。会员名取账号表操作员「小瓜」；**与店名不同名是正常的**（老会员号沿用旧品牌名）',
   }),
   Object.freeze({
     key: '盖文天猫',
@@ -131,14 +170,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'tmall',
     sycmHeader: '盖文旗舰店',
     sycmHeaderVerified: 'expression',
-    alimamaMemberName: '盖文旗舰店:阿彦',
+    alimamaMemberName: '盖文旗舰店:小瓜',
     alimamaMemberId: '2995200080',
-    alimamaVerified: 'expression',
-    // 2026-09-19 用户登录了这台专用窗口（19035/19045），随即用 lib 里那两个表达式各读一次：
-    // 生意参谋页头「盖文旗舰店 主店」、阿里妈妈「盖文旗舰店:阿彦 ID：2995200080」。
-    // **与 2026-09-17 人工抄下来的那两个值逐字一致** —— 人工记录这次被证明是对的，
-    // 但在此之前它只能是 `human-record`，不能当判据用（判据必须来自可复现的读法）。
-    evidence: '2026-09-19 实测：隔离 profile gaiwen-flagship 的窗口，两个表达式各读一次（此前 2026-09-17 只有页面正文/人工抄录）',
+    alimamaVerified: 'human-record',
+    evidence: '页头店名 2026-09-19 实测（隔离 profile gaiwen-flagship，专用窗口当日登录过一次）。会员名取账号表操作员「小瓜」，替换 2026-09-17 人工抄录、09-19 实测的 :阿彦',
   }),
   Object.freeze({
     key: '保拉淘宝',
@@ -146,10 +181,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'taobao',
     sycmHeader: null,
     sycmHeaderVerified: null,
-    alimamaMemberName: null,
+    alimamaMemberName: '保拉伦蒂:小保',
     alimamaMemberId: null,
-    alimamaVerified: null,
-    evidence: '未实测：没有该店的隔离窗口',
+    alimamaVerified: 'human-record',
+    evidence: '会员名取 2026-09-30 账号表的操作员「小保」。底座已建（隔离 profile 与端口见 ISOLATED_PROFILES / runtime/browser-ports.mjs），页头店名与会员 ID 待人工在该 profile 登录后实测',
   }),
   Object.freeze({
     key: '保拉天猫',
@@ -157,10 +192,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'tmall',
     sycmHeader: null,
     sycmHeaderVerified: null,
-    alimamaMemberName: null,
+    alimamaMemberName: '保拉伦蒂旗舰店:小杜',
     alimamaMemberId: null,
-    alimamaVerified: null,
-    evidence: '未实测：没有该店的隔离窗口',
+    alimamaVerified: 'human-record',
+    evidence: '会员名取 2026-09-30 账号表的操作员「小杜」。底座已建（隔离 profile paola-tmall），页头店名与会员 ID 待人工登录后实测',
   }),
   Object.freeze({
     key: '网林淘宝',
@@ -168,10 +203,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'taobao',
     sycmHeader: null,
     sycmHeaderVerified: null,
-    alimamaMemberName: null,
+    alimamaMemberName: '网林卫浴:小慧',
     alimamaMemberId: null,
-    alimamaVerified: null,
-    evidence: '未实测：没有该店的隔离窗口',
+    alimamaVerified: 'human-record',
+    evidence: '会员名取 2026-09-30 账号表的操作员「小慧」。底座已建（隔离 profile wanglin-taobao），页头店名与会员 ID 待人工登录后实测',
   }),
   Object.freeze({
     key: '网林天猫',
@@ -179,10 +214,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'tmall',
     sycmHeader: '网林家居旗舰店',
     sycmHeaderVerified: 'expression',
-    alimamaMemberName: '网林家居旗舰店:阿彦',
+    alimamaMemberName: '网林家居旗舰店:饺子',
     alimamaMemberId: '7314426323',
-    alimamaVerified: 'expression',
-    evidence: '2026-09-18 实测：隔离 profile wanglin-flagship 的窗口',
+    alimamaVerified: 'human-record',
+    evidence: '页头店名 2026-09-18 实测（隔离 profile wanglin-flagship）。会员名取账号表操作员「饺子」，替换当日实测的 :阿彦',
   }),
   Object.freeze({
     key: '里可林淘宝',
@@ -190,10 +225,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'taobao',
     sycmHeader: '里可林家居',
     sycmHeaderVerified: 'expression',
-    alimamaMemberName: '里可林家居:阿彦',
+    alimamaMemberName: '里可林家居:小宁',
     alimamaMemberId: '2350600069',
-    alimamaVerified: 'expression',
-    evidence: '2026-09-18 实测：隔离 profile likelin-home 的窗口',
+    alimamaVerified: 'human-record',
+    evidence: '页头店名 2026-09-18 实测（隔离 profile likelin-home）。会员名取账号表操作员「小宁」，替换当日实测的 :阿彦',
   }),
   Object.freeze({
     key: '里可林天猫',
@@ -201,10 +236,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'tmall',
     sycmHeader: null,
     sycmHeaderVerified: null,
-    alimamaMemberName: null,
+    alimamaMemberName: '里可林旗舰店:月饼',
     alimamaMemberId: null,
-    alimamaVerified: null,
-    evidence: '未实测：没有该店的隔离窗口',
+    alimamaVerified: 'human-record',
+    evidence: '会员名取 2026-09-30 账号表的操作员「月饼」。底座已建（隔离 profile likelin-tmall），页头店名与会员 ID 待人工登录后实测',
   }),
   Object.freeze({
     key: '安比龙头店',
@@ -212,10 +247,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'leading',
     sycmHeader: null,
     sycmHeaderVerified: null,
-    alimamaMemberName: null,
+    alimamaMemberName: 'tb720555516:泡芙',
     alimamaMemberId: null,
-    alimamaVerified: null,
-    evidence: '未实测：没有该店的隔离窗口',
+    alimamaVerified: 'human-record',
+    evidence: '会员名取 2026-09-30 账号表的操作员「泡芙」（主账号是 tb 开头的数字号，不是 j 开头那串）。底座已建（隔离 profile anbi-leading），待实测',
   }),
   Object.freeze({
     key: '科塔龙头店',
@@ -223,10 +258,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'leading',
     sycmHeader: null,
     sycmHeaderVerified: null,
-    alimamaMemberName: null,
+    alimamaMemberName: '科塔建材卫浴品牌店:小森',
     alimamaMemberId: null,
-    alimamaVerified: null,
-    evidence: '未实测：没有该店的隔离窗口',
+    alimamaVerified: 'human-record',
+    evidence: '会员名取 2026-09-30 账号表的操作员「小森」。底座已建（隔离 profile keta-leading），页头店名与会员 ID 待人工登录后实测',
   }),
   Object.freeze({
     key: '安比淘宝',
@@ -234,10 +269,22 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'taobao',
     sycmHeader: null,
     sycmHeaderVerified: null,
-    alimamaMemberName: null,
+    alimamaMemberName: '安比定制家居:小森',
     alimamaMemberId: null,
-    alimamaVerified: null,
-    evidence: '未实测：没有该店的隔离窗口',
+    alimamaVerified: 'human-record',
+    evidence: '会员名取 2026-09-30 账号表的操作员「小森」。底座已建（隔离 profile anbi-taobao），页头店名与会员 ID 待人工登录后实测',
+  }),
+  // 第 13 家：只在操作员账号表里有，飞书「店铺底单」当时还没有这一行（见 EXTRA_SHOPS_FROM_ACCOUNT_TABLE）。
+  Object.freeze({
+    key: '网林定制淘宝',
+    fullName: '网林定制家居',
+    platform: 'taobao',
+    sycmHeader: null,
+    sycmHeaderVerified: null,
+    alimamaMemberName: '网林定制家居:嘉嘉',
+    alimamaMemberId: null,
+    alimamaVerified: 'human-record',
+    evidence: '2026-09-30 用户《店铺账号信息表》新增的第 13 家（平台店铺全称「网林定制家居」）。底座已建（隔离 profile wanglin-custom），且它在 10 月两张商品 base 的「店铺」选项里都还不存在，待人工登录后实测并补选项',
   }),
 ]);
 
@@ -246,24 +293,79 @@ export function shopKeys() {
 }
 
 /**
- * 「哪家店在哪个专用 profile 里被实测过」—— 2026-09-18 建立的四个店铺专用 profile
- * （`D:/Retire/edge-profiles/<名>`，首次启动带 `--disable-sync`、`Login Data` 0 条，见 docs §5.3.1）；
- * **2026-09-19 补上第五家「盖文天猫」**（`gaiwen-flagship`，端口 19035/19045）——
- * 用户当日口径：盖文旗舰店与盖文全卫定制是两家店，全卫＝盖文淘宝，旗舰店＝盖文天猫，
- * 「没有专用浏览器就新增一个」。它与 `runtime/browser-ports.mjs` 的 `SHOP_BROWSERS` 逐键互核
+ * 「哪家店在哪个专用 profile 里被实测过」。
+ *
+ * **2026-09-29 扩到 12 家**（5 家 → 12 家）。这张表现在有两个层次，字段本身不区分、
+ * 由 `SHOP_IDENTITIES` 的 `sycmHeaderVerified`/`alimamaVerified` 说明每家实测到哪一步：
+ *   · 前 5 家（2026-09-18/19 建）：页头店名已实测到 `expression` 级；
+ *   · 后 8 家（2026-09-29 起建底座）：profile 与端口已定死，**页头店名还是 null**，
+ *     等人工逐店登录一次后用只读探针读出来回填。
+ *   · **2026-09-30 换操作员**：13 家的阿里妈妈会员名全部改成用户《店铺账号信息表》
+ *     给定的操作员（`human-record` 级）。这一步把「会员名已测到 expression」这条账
+ *     **清零了** —— 见 IDENTITY_MEMBER_MEASURED_SHOPS，明天按 profile 逐个实测再迁回。
+ *
+ * 这张表的键**必须与 `runtime/browser-ports.mjs` 的 `SHOP_BROWSERS` 逐键一致**
  * （见 `runtime/browser-ports.test.mjs`），两边漂移会当场红。
  *
- * 为什么要单独一张表：这张表的键是**被实测过**的证据指针，不是配置。
- * 它现在的用途有两个：① 说明登记表里那 5 行实测值是从哪来的；② 让「两个店铺共用一个 profile」
- * 这种复制粘贴事故当场变红（键唯一、且键必须是已登记店铺）。
+ * ⚠️ 一条纪律没有变（它是这张表存在的理由）：**一店一 profile，绝不共用**。
+ * 共用 profile ＝ 两个淘宝身份混在一个浏览器里，Chromium 会**自己挑一条凭据**，
+ * 登错店不报任何错（2026-09-23 实测：商家浏览器那个 profile 里 `login.taobao.com`
+ * 下有两条凭据，分属两家店）。
  */
 export const ISOLATED_PROFILES = Object.freeze({
+  // 销售1部（8 家）
   里可林淘宝: 'likelin-home',
   网林天猫: 'wanglin-flagship',
   盖文淘宝: 'suixin-custom',
   盖文天猫: 'gaiwen-flagship',
   科塔淘宝: 'shop-j873522735',
+  网林淘宝: 'wanglin-taobao',
+  里可林天猫: 'likelin-tmall',
+  网林定制淘宝: 'wanglin-custom',
+  // 销售2部（5 家）
+  保拉淘宝: 'paola-taobao',
+  保拉天猫: 'paola-tmall',
+  安比龙头店: 'anbi-leading',
+  科塔龙头店: 'keta-leading',
+  安比淘宝: 'anbi-taobao',
 });
+
+/**
+ * 页头店名已用采集表达式实测过的店铺（**显式清单，不是从字段推**）。
+ *
+ * 为什么要单独一行而不是「数 verified 非空的条数」：这条清单是**给人看的账**——
+ * 新加一家店时它会当场红，逼着人要么去实测、要么把它写在这里当成一条能被复审的决定。
+ * 推出来的话，「有一家掉级」和「本来就还没测」在测试里长得一模一样。
+ */
+export const IDENTITY_SHOP_HEADER_VERIFIED_SHOPS = Object.freeze([
+  '里可林淘宝', '网林天猫', '盖文淘宝', '盖文天猫', '科塔淘宝',
+]);
+
+/**
+ * 会员名已用采集表达式实测过的店铺。
+ *
+ * **2026-09-30 归零**：用户把 13 家的操作员全部换成《店铺账号信息表》上的人，
+ * 原来那 5 家的 `:阿彦` 实测值随之作废 ⇒ 这一侧现在**没有任何一家**够得上
+ * `expression` 级，全部是 `human-record`。空清单是如实记账，不是遗漏。
+ *
+ * 明天用户统一登录后：对每家跑一次只读探针，读到的会员名/ID 与登记表逐字比对，
+ * 一致就把该家迁进这张清单、`alimamaVerified` 升 `expression`；不一致就以实测为准改写。
+ */
+export const IDENTITY_MEMBER_MEASURED_SHOPS = Object.freeze([]);
+
+/**
+ * 还需要一次「人工登录 + 只读探针读数」的店铺 —— 当前＝**全部 13 家**。
+ *
+ * 为什么是全部而不是 8 家：底座（profile + 端口）13 家都建好了，但
+ * ① 8 家的页头店名从来没测过；② 13 家的会员名都刚被换掉、要重测。
+ * 所以「明天登录一次」这件事的覆盖面是 13 家，不是 8 家 —— 写成 8 家会漏掉
+ * 那 5 家「以为早就测过了」的店（那 5 家的会员名现在同样是 human-record）。
+ */
+export const IDENTITY_PENDING_SHOPS = Object.freeze([
+  '科塔淘宝', '盖文淘宝', '盖文天猫', '保拉淘宝', '保拉天猫', '网林淘宝', '网林天猫',
+  '里可林淘宝', '里可林天猫', '安比龙头店', '科塔龙头店', '安比淘宝', '网林定制淘宝',
+]);
+
 
 /** 按运营叫法取登记行。**未登记一律抛错**（fail-closed），不回落成「不核对」。 */
 export function shopIdentity(key) {
@@ -301,7 +403,11 @@ export function expectArgs(key, { require = [] } = {}) {
   const row = shopIdentity(key);
   const unknown = [];
   if (!row.sycmHeader) unknown.push('shop');
-  if (!row.alimamaMemberName || !row.alimamaMemberId) unknown.push('member');
+  // 「member 已知」的判据是**会员名**，不是「名字与 ID 都有」：
+  // assertMemberIdentity 只给 name 时照样是有效闸门（ID 是旁证，不是前提）。
+  // 写成「两个都要」的后果不是更保守，而是更松 —— 那 8 家只有名字的店会被判成
+  // 「member 缺失」，闸门被白白关掉，而调用方还以为开着。
+  if (!row.alimamaMemberName) unknown.push('member');
 
   const missing = require.filter((field) => unknown.includes(field));
   if (missing.length > 0) {
@@ -350,10 +456,30 @@ export function assertEvidenceShopKey(key, observed = {}) {
   return row;
 }
 
+/**
+ * 实测级别 → 摘要里要不要带标记。**只有 `expression` 不带**（＝真用采集脚本那两个表达式
+ * 在真实窗口里读到的）。
+ *
+ * 为什么必须按级别判、不能按「值非空」判（2026-09-30 修）：换操作员之后 13 家的会员名
+ * 全部是 `human-record`（人工填的）。原实现写的是 `verified ? '' : '（未实测）'` ——
+ * `'human-record'` 是 truthy，于是摘要会把「人工填的」显示成「实测的」。
+ * 这份表是判据的期望值来源，「看起来核过」与「其实没核」长得一样是最贵的一种糊弄。
+ */
+export const IDENTITY_VERIFIED_LABEL = Object.freeze({
+  expression: null,
+  'human-record': '人工记录，未实测',
+  text: '仅页面正文，未实测',
+});
+
 /** 人看的一行摘要（写日志/文档时用，避免各处自己拼措辞）。 */
 export function describeIdentity(key) {
   const row = shopIdentity(key);
-  const mark = (value, verified) => (value ? `${value}${verified ? '' : '（未实测）'}` : '（未实测）');
+  const mark = (value, verified) => {
+    if (!value) return '（未实测）';
+    // 未知级别退回最保守的措辞「（未实测）」，而不是当成已实测 —— 失败方向朝安全那边倒。
+    const label = verified in IDENTITY_VERIFIED_LABEL ? IDENTITY_VERIFIED_LABEL[verified] : '未实测';
+    return label ? `${value}（${label}）` : `${value}`;
+  };
   return `${row.key} | 页头店名 ${mark(row.sycmHeader, row.sycmHeaderVerified)}`
     + ` | 会员 ${mark(row.alimamaMemberName, row.alimamaVerified)}`
     + ` ${mark(row.alimamaMemberId, row.alimamaVerified)}`;

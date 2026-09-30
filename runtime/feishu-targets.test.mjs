@@ -5,14 +5,22 @@ import path from 'node:path';
 
 import {
   DEFAULT_PROFILE,
+  DEPARTMENT_LABELS,
+  PRODUCT_DATA_MONTH_BASES,
   PROFILES,
   PROFILE_ENV_VAR,
+  SHOP_DEPARTMENTS,
   STABLE_TABLE_KEYS,
   activeProfileName,
+  assertProductDataBaseCoverage,
   baseUrl,
   competitorBaseToken,
   dailyReportTargets,
+  departmentOfShop,
+  feishuMonthOf,
+  productDataBaseKey,
   productDataTargets,
+  productDataTargetsForShop,
   envFilePath,
   getProfile,
   keywordBaseToken,
@@ -182,6 +190,131 @@ test('商品数据三张目标表属于用户授权的商品数据 base', () => 
     inquiryTable: 'tbl1hHlRX0LYMvYY',
     promotionTable: 'tblaCPQMLWAq21Gw',
   });
+});
+
+// ---------------------------------------------------------------------------
+// 商品数据的「月份 × 部门」注册表（2026-09-30 加）
+// ---------------------------------------------------------------------------
+// 为什么这些断言不能省：
+//   · 部门分错 ⇒ 数据写进另一个部门的 base，而两边表结构**逐字段相同**（已只读取证），
+//     所以「跑成功、行数也对」—— 从收据上看不出任何异常，只有运营发现自己的表是空的；
+//   · 月份解析错 ⇒ 月底那张新 base 上线那天，10 月 1 日的数据写进 9 月那张；
+//   · 缺一本组合没登记 ⇒ 半个部门整天写不进去，另一半照常成功（最难看出来的一种红）。
+
+test('部门划分与端口登记表**同键同序**，且每个部门都有可读名', async () => {
+  const { shopBrowserKeys } = await import('./browser-ports.mjs');
+  // 同序不是洁癖：`planBatches` 按 browser-ports 的顺序切批，
+  // 两边顺序一致才让「一批尽量落在同一个部门的 base 上」这个说法有据可依。
+  assert.deepEqual(Object.keys(SHOP_DEPARTMENTS), shopBrowserKeys(),
+    'SHOP_DEPARTMENTS 的键与顺序必须与 runtime/browser-ports.mjs 的 SHOP_BROWSERS 逐项相同');
+  const count = (department) => Object.values(SHOP_DEPARTMENTS).filter((value) => value === department).length;
+  assert.deepEqual({ sales1: count('sales1'), sales2: count('sales2') }, { sales1: 8, sales2: 5 },
+    '销售1部 8 家 / 销售2部 5 家（2026-09-30 用户给的《店铺账号信息表》口径）');
+  for (const department of new Set(Object.values(SHOP_DEPARTMENTS))) {
+    assert.ok(DEPARTMENT_LABELS[department], `部门 ${department} 没有可读名 —— 报错里不该印内部值`);
+  }
+  assert.throws(() => departmentOfShop('盖文1688'), /没有登记部门/u, '未登记的店铺不许猜一个部门');
+  assert.throws(() => departmentOfShop(undefined), /没有登记部门/u);
+});
+
+test('月份只认 YYYY-MM / YYYY-MM-DD，别的形状当场抛错', () => {
+  assert.equal(feishuMonthOf('2026-10-08'), '2026-10');
+  assert.equal(feishuMonthOf('2026-10'), '2026-10');
+  assert.equal(feishuMonthOf('2026-01-01'), '2026-01');
+  for (const bad of ['', null, undefined, '2026/10/01', '20261008', '2026-1-1', '2026-13-01',
+    'yesterday', 20261008, '2026-10-08T00:00:00Z']) {
+    // 两类拒绝各说各话：形状不对 ⇒ 「只认 YYYY-MM」；形状对但月份越界 ⇒ 「月份超出 1-12」。
+    assert.throws(() => feishuMonthOf(bad), /YYYY-MM|月份超出/u, `${JSON.stringify(bad)} 必须被拒`);
+  }
+  assert.equal(productDataBaseKey('盖文淘宝', '2026-10-01'), '2026-10:sales1');
+  assert.equal(productDataBaseKey('保拉淘宝', '2026-10-31'), '2026-10:sales2');
+});
+
+test('按（数据日期 × 部门）解析目标：两个部门两张 base，且缺登记一律 fail-closed', () => {
+  const s1 = productDataTargetsForShop('盖文淘宝', '2026-10-08', 'kcne');
+  assert.equal(s1.baseToken, 'LQgZbi78oaAmIYsc4urcwk9rnNf');
+  assert.equal(s1.baseName, '10月商品监控表-销售1部');
+  const s2 = productDataTargetsForShop('保拉淘宝', '2026-10-08', 'kcne');
+  assert.equal(s2.baseToken, 'LLWcbIuVFaBm6yshX9Xc8DFZn9d');
+  assert.equal(s2.baseName, '10月商品监控表-销售2部');
+  // 两家店同一天必须落到两张不同的 base —— 这是「绝不串数据」在这条链上的判据化。
+  assert.notEqual(s1.baseToken, s2.baseToken);
+  assert.notEqual(s1.productTable, s2.productTable);
+  assert.notEqual(s1.inquiryTable, s2.inquiryTable);
+
+  // 月份取的是**数据日期**：09-30 那天的数据进 9 月那张，而不是「跑的那天」所在的 10 月。
+  assert.equal(productDataTargetsForShop('盖文淘宝', '2026-09-30', 'kcne').baseToken,
+    'DQ2DbRinJaDx8Ss4gVFczsTXn3d');
+
+  // 9 月没有 2 部这张 —— 补跑历史日时它必须当场停，而不是悄悄写进 1 部那张。
+  assert.throws(() => productDataTargetsForShop('保拉淘宝', '2026-09-30', 'kcne'), /销售2部/u);
+  // 11 月还没登记 ⇒ 不许**回落到 10 月**（那会「跑成功但写进运营已经不看的那张表」）。
+  assert.throws(() => productDataTargetsForShop('盖文淘宝', '2026-11-01', 'kcne'), /2026-11/u,
+    '新月份没登记时必须停 —— 回落到上个月是最贵的静默失败');
+  assert.throws(() => productDataTargetsForShop('盖文淘宝', '2026-11-01', 'kcne'),
+    /PRODUCT_DATA_MONTH_BASES/u, '报错要说清该怎么补：把新 base 登记进 PRODUCT_DATA_MONTH_BASES');
+  assert.throws(() => productDataTargetsForShop('不存在的店', '2026-10-08', 'kcne'), /没有登记部门/u);
+});
+
+test('注册表自洽体检：缺部门、坏键、重复 base 都要当场红', () => {
+  const report = assertProductDataBaseCoverage();
+  assert.equal(report.latest, '2026-10');
+  assert.deepEqual(report.months, ['2026-09', '2026-10']);
+  assert.deepEqual(report.departments, ['sales1', 'sales2']);
+
+  const entry = PRODUCT_DATA_MONTH_BASES['2026-10:sales1'];
+  // ① 最新月份缺一个部门（上月加了 2 部、这月忘了加）：那 5 家会整天写不进去，且必须点名是谁。
+  assert.throws(() => assertProductDataBaseCoverage({ registry: { '2026-10:sales1': entry } }),
+    /最新月份「2026-10」缺部门「销售2部」[\s\S]*保拉淘宝/u);
+  // ② 键里写了一个没有店铺归属的部门（多半是拼错）。用一个**不同**的 baseToken，
+  //    否则会同时触发「同一个 base 登记在两处」，把这条用例变成在验另一件事。
+  assert.throws(() => assertProductDataBaseCoverage({
+    registry: { ...PRODUCT_DATA_MONTH_BASES, '2026-10:sales3': { ...entry, baseToken: 'Zz9Yy8Xx7Ww6Vv5Uu4Tt3Ss2Rr1' } },
+  }), /没有任何店铺归属/u);
+  // ③ 同一个 base 登记在两个键下 —— 两份里必有一处是抄错的。
+  assert.throws(() => assertProductDataBaseCoverage({
+    registry: { '2026-10:sales1': entry, '2026-10:sales2': entry },
+  }), /同时登记在/u);
+  // ④ 键形状不对（月份写成英文）。
+  assert.throws(() => assertProductDataBaseCoverage({ registry: { 'October:sales1': entry } }),
+    /不是「YYYY-MM:部门」形状/u);
+  // ⑤ 表 id / token 形状不对：抄漏一位最常见的表现是长度不够。
+  assert.throws(() => assertProductDataBaseCoverage({
+    registry: { '2026-10:sales1': { ...entry, productTable: 'tblXXX' } },
+  }), /productTable/u);
+  assert.throws(() => assertProductDataBaseCoverage({
+    registry: { '2026-10:sales1': { ...entry, baseName: '' } },
+  }), /缺 baseName/u);
+});
+
+test('profile 上那份单对象与注册表的 2026-09:sales1 同源（不许各自漂移）', () => {
+  const legacy = productDataTargets('kcne');
+  const registered = PRODUCT_DATA_MONTH_BASES['2026-09:sales1'];
+  for (const field of ['baseToken', 'productTable', 'inquiryTable', 'promotionTable']) {
+    assert.equal(legacy[field], registered[field],
+      `${field} 在两处不一致 —— 一份是 PROFILES.kcne.productData，一份是注册表的 2026-09:sales1`);
+  }
+});
+
+// 这条守卫的形态与 `FOREIGN_PROXY_ALLOWED_FILES` 同一族：**把「故意没改」写下来**，
+// 而不是让「忘了改」与「决定不改」在代码里长得一模一样。
+test('底单/询单导入按（店铺, 日期）解析 base；推广是记录在案的例外', () => {
+  const read = (relative) => readFileSync(path.join(import.meta.dirname, '..', relative), 'utf8');
+  for (const relative of [
+    'skills/sycm-product-data/scripts/import-product-data.mjs',
+    'skills/sycm-inquiry-data/scripts/import-inquiry-data.mjs',
+  ]) {
+    const source = read(relative);
+    assert.ok(source.includes('productDataTargetsForShop'),
+      `${relative} 没有按（店铺, 数据日期）解析 base —— 换月起它会写进上个月的 base`);
+    assert.doesNotMatch(source, /\bproductDataTargets\b/u,
+      `${relative} 还在用不认月份的旧入口（它永远指向 9 月那张）`);
+  }
+  // 推广链：用户 2026-09-30 原话「推广数据这个流程我还没开发，你先放着不管」⇒ **故意**没改。
+  // 等推广链改造完（10 月推广已换成另一套 base 与两张不同形状的表），它必须一起改，届时这里会红。
+  const promotion = read('skills/sycm-promotion-data/scripts/import-promotion-data.mjs');
+  assert.match(promotion, /\bproductDataTargets\b/u,
+    '推广导入已经不用旧入口了 ⇒ 请把它从这条「故意例外」里移出去');
 });
 
 // 配套的静态守卫：脚本自己**不许**再写死任何一张 base 的名字。

@@ -514,23 +514,26 @@ test('会员名从登记表读，不在标签页这一层另抄一份（另抄�
   assert.ok(Array.isArray(SHOP_IDENTITIES), '登记表的形状变了，取值的写法要跟着改');
   assert.throws(() => memberNameFor('盖文淘宝', { 盖文淘宝: { alimamaMemberName: 'x' } }), /数组形状/u,
     '形状不对必须炸：静默返回 null 会让「会员名那一行永远空着」看起来像正常结果');
-  // 用户手里那四组账号必须逐字能对上（这是这条修复存在的唯一理由）
-  const held = ['里可林家居:阿彦', '网林家居旗舰店:阿彦', '随心品质定制:阿彦', 'j873522735:阿彦'];
+  // 用户手里那几组账号必须逐字能对上（这是这条修复存在的唯一理由）。
+  // 刻意**不写死具体子账号**：2026-09-30 换操作员之后那一批 `:阿彦` 全部作废，
+  // 写死只会让这条用例变成「每换一次人红一次」的噪音。这里守的是**同源**与**那个形状**：
+  //   ① 窗口上显示的必须逐字等于登记表那一格（不是第二份真相）；
+  //   ② 登记表那一格的字面里**不含**运营叫法 —— 这正是当年用户「五个店铺哪里有科塔」的成因。
+  const held = Object.keys(SHOP_BROWSERS).map((shop) => fromRegistry(shop));
   const shown = Object.keys(SHOP_BROWSERS).map((shop) => memberNameFor(shop));
-  for (const account of held) {
-    assert.ok(shown.includes(account),
-      `运营给的账号「${account}」在四台窗口上找不到对应 —— 用户又会问「哪里有我手里这个」`);
-  }
+  assert.deepEqual(shown, held, '窗口上显示的会员名必须逐字等于登记表里那一格');
   assert.equal(shown.length, new Set(shown).size, '两个窗口挂同一个会员名 ⇒ 又分不出是哪家');
-  assert.equal(memberNameFor('科塔淘宝'), 'j873522735:阿彦',
+  assert.equal(memberNameFor('科塔淘宝'), fromRegistry('科塔淘宝'),
     '科塔的会员名是一串数字，它正是用户看不出「哪里有科塔」的原因');
+  assert.doesNotMatch(memberNameFor('科塔淘宝'), /科塔/u,
+    '科塔淘宝的会员名里出现了「科塔」—— 多半是有人改成拿店名拼了（实测已推翻这个假设）');
   // 读不到就是 null，页面上整行不显示（不写占位 —— 那会让人以为量过了）
   assert.equal(memberNameFor('不存在的店'), null);
   assert.equal(memberNameFor(''), null);
   assert.equal(memberNameFor(null), null);
   // CLI 口子：显式覆盖可用，没给时为 null（由 main 从登记表取）
   assert.equal(parseCli([]).member, null);
-  assert.equal(parseCli(['--member', 'j873522735:阿彦']).member, 'j873522735:阿彦');
+  assert.equal(parseCli(['--member', 'j873522735:嘉慧']).member, 'j873522735:嘉慧');
   assert.throws(() => parseCli(['--member']), /--member requires a value/u);
   assert.throws(() => parseCli(['--member', '--commit']), /--member requires a value/u);
 });
@@ -542,8 +545,13 @@ test('会员名必须真的落到页面元素上，且是「量到才显示」',
     '会员名没有写进页面元素 ⇒ 窗口上还是对不上「哪一组账号是哪一家」');
   assert.match(html, /if\s*\(member\)/u,
     '会员名必须是有条件的：没量到就整行不显示（不能显示空行或占位）');
-  assert.equal(/id="member"[^>]*>[^<]*:阿彦/u.test(html), false,
-    '会员名不许写死在 HTML 里 —— 那会把某一家店的账号贴到四台窗口上');
+  // 2026-09-30 改：原来这条断言的是「HTML 里没有 `:阿彦`」—— 换操作员、`:阿彦` 全部作废之后，
+  // 它就成了**永远为绿的空检查**（源码里早就没有那个串了），而「把某一家店的账号写死进 HTML」
+  // 这个真故障反而没人守。改成断言**那个元素本身是空的**：与具体账号值无关，换谁都不失效。
+  const memberBody = html.match(/id="member"[^>]*>([\s\S]*?)</u)?.[1] ?? null;
+  assert.equal(memberBody, '', '会员名不许写死在 HTML 里 —— 那会把某一家店的账号贴到四台窗口上');
+  assert.doesNotMatch(html, /id="member"[\s\S]{0,80}?[\u4e00-\u9fa5A-Za-z0-9]+:/u,
+    '会员名那一行里出现了「名字:操作员」形状的字面量 —— 同样是写死账号');
 });
 
 // 2026-09-19 加。用户原话：「已登录随心，还有[截图]，这个浏览器不是给随心定制的吗」——
@@ -591,7 +599,9 @@ test('挂标签页时把会员名一起带上（不透传的话页面上那一�
   });
   const created = calls.find((c) => c.url.includes('/new'));
   assert.ok(created, '这一台当时没有标签页，必须新建');
-  assert.equal(new URL(targetUrlOf(created)).searchParams.get('member'), '随心品质定制:阿彦',
+  // 期望值取自登记表（不写死子账号）：2026-09-30 换操作员之后 `:阿彦` 已作废，
+  // 写死的话这条用例会在每次换人后红一次，而它守的是「透传」这件事。
+  assert.equal(new URL(targetUrlOf(created)).searchParams.get('member'), memberNameFor('盖文淘宝'),
     'ensureLabelTabOn 没有把 member 透传给 labelPageUrlFor ⇒ 页面上那一行永远空着');
 });
 
