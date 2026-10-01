@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   WAITING_OPERATOR_ACCOUNT,
   WAITING_OPERATOR_ACCOUNT_SHOPS,
+  GATE_SCOPE,
   isWaitingOperatorAccountShop,
   isWaitingOperatorAccountStatus,
   waitingOperatorAccountRecord,
@@ -11,6 +12,7 @@ import {
 } from './daily-report-shop-gates.mjs';
 
 test('日报账号阻断登记：6 家店进入可恢复等待状态', () => {
+  assert.equal(GATE_SCOPE, 'daily-report');
   assert.equal(WAITING_OPERATOR_ACCOUNT_SHOPS.length, 6);
   assert.deepEqual(waitingOperatorAccountShops(), [...WAITING_OPERATOR_ACCOUNT_SHOPS]);
   for (const shop of WAITING_OPERATOR_ACCOUNT_SHOPS) {

@@ -14,6 +14,10 @@ export const WAITING_OPERATOR_ACCOUNT_SHOPS = Object.freeze([
   '安比淘宝',
 ]);
 
+// This registry is consumed only by the daily-report chain. It does not disable
+// product, inquiry, weekly, or any other shop workflow.
+export const GATE_SCOPE = 'daily-report';
+
 export const WAITING_OPERATOR_ACCOUNT = 'WAITING_OPERATOR_ACCOUNT';
 
 export function waitingOperatorAccountShops() {
