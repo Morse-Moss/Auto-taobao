@@ -110,6 +110,7 @@ import {
   isWaitingOperatorAccountStatus,
   waitingOperatorAccountRecord,
 } from '../../../runtime/daily-report-shop-gates.mjs';
+import { writeDownloadManifest } from '../../../runtime/daily-report-download-manifest.mjs';
 // 「失败 → 该试哪些修复动作」的候选菜单（2026-09-29）。它把感知层的事实与分诊表的方向
 // 合成一份**给 agent 看的修复请求单**（97-repair-request.json）：
 //   分诊表说「这一类值得重试」，但没说「重试之前要对页面做什么」；本模块补上那一半。
@@ -1700,11 +1701,21 @@ async function main() {
         }
         if (stage.stage === 'shop-report') {
           record.source.shopXlsx = findPath(result.stdout, 'shopXlsxPath');
-          if (record.source.shopXlsx) console.log(`[${key}]   店铺工作簿 = ${record.source.shopXlsx}`);
+          if (record.source.shopXlsx) {
+            record.source.shopReportManifest = path.join(shopLogDir, 'shop-report-manifest.json');
+            writeDownloadManifest({ outputPath: record.source.shopReportManifest, filePath: record.source.shopXlsx,
+              reportType: 'shop-report', date: args.date, shop: key, member: shopIdentity(key).alimamaMemberName });
+            console.log(`[${key}]   店铺工作簿 = ${record.source.shopXlsx}`);
+          }
         }
         if (stage.stage === 'promotion-fetch') {
           record.source.promotionZip = findPath(result.stdout, 'promotionZipPath');
-          if (record.source.promotionZip) console.log(`[${key}]   推广 zip = ${record.source.promotionZip}`);
+          if (record.source.promotionZip) {
+            record.source.promotionManifest = path.join(shopLogDir, 'promotion-report-manifest.json');
+            writeDownloadManifest({ outputPath: record.source.promotionManifest, filePath: record.source.promotionZip,
+              reportType: 'promotion-report', date: args.date, shop: key, member: shopIdentity(key).alimamaMemberName });
+            console.log(`[${key}]   推广 zip = ${record.source.promotionZip}`);
+          }
         }
       }
       record.status = 'ok';
