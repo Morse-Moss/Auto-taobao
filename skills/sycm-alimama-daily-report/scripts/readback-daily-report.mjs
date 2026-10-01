@@ -34,6 +34,9 @@ const DEFAULTS = Object.freeze({
   proxy: `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`,
   appToken: TARGET.baseToken,
 });
+// 退出码：0＝数据与佐证都齐；**4＝数据已核对、仅截图缺失**；1＝真失败（数据没读到/核对不上）。
+// 4 这个值在本仓库没有别的含义（1 是通用失败、3 用于 INCOMPLETE/INCONCLUSIVE 口径），
+// 所以它能被上游稳定地当成「这一家其实写进去了」来读。
 export const SCREENSHOT_INCOMPLETE_EXIT_CODE = 4;
 const SOURCE_TABLE = Object.freeze({ key: 'source', tableId: TARGET.sourceTable, viewId: TARGET.sourceView,
   label: '底单', shotSuffix: 'push' });
@@ -388,7 +391,7 @@ async function main() {
         ...(rowState.complete ? {} : {
           caveat: `页面只物化了 ${rowState.loaded} / ${rowState.recordsNum ?? '?'} 条记录，`
             + `未物化的部分在模型里不存在 ⇒ onDateCount=${onDate.length} 是下界，不能据此断言「当天没有」；`
-            + '权威判据仍以写入链的 API 路径（selectDailyStoreRecord）为准。',
+            + '权威判据仍以写入链的 API 路径（inquiry-core 的 findDailyStoreRow）为准。',
         }),
       };
       if (args.screenshots) {
@@ -462,14 +465,19 @@ async function main() {
 
   // 缺证据要说出来，但不许把它说成「数据没核对」。两句话必须分开写：
   // 数据的结论已经落盘了（上面那行 readbackPath），这里只报「佐证不完整」。
-  // 退出码仍非零 —— 否则 stage 会报成功，而产物里明明缺了两张图。
+  //
+  // **退出码 4 = 数据已核对、仅佐证不完整（2026-09-28 改）**。原先这里退 1，
+  // 与「真数据故障」共用一个码 ⇒ 汇总里两者混在一栏，读的人必须回去翻日志才知道
+  // 这一家到底有没有写进去。09-27 那轮实测：盖文淘宝就是这种情形（数据齐、只缺一张图），
+  // 独立复跑同命令即 exit 0 —— 它不是数据故障，却在汇报里和真故障并列。
+  // 仍然**非零**（否则 stage 会报成功，而产物里明明缺了图），但码要能把两类分开。
   if (screenshotFailures.length) {
     console.error(`\n[不完整] 数据回读已核对并落盘：${readbackPath}`);
     console.error(`[不完整] 但有 ${screenshotFailures.length} 张截图没取到：`
       + screenshotFailures.map((item) => `${item.label}（${item.error}）`).join('；'));
-    console.error('[不完整] 截图是佐证不是判据，缺它不影响上面的数据结论；本阶段仍按失败退出，'
-      + '好让人知道这一轮的证据不完整。');
-    process.exitCode = 1;
+    console.error('[不完整] 截图是佐证不是判据，缺它不影响上面的数据结论；'
+      + '本阶段按「数据已核对、仅佐证不完整」退出（码 4，与真数据故障的 1 区分开）。');
+    process.exitCode = SCREENSHOT_INCOMPLETE_EXIT_CODE;
   }
 }
 

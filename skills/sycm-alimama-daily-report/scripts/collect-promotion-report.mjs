@@ -529,6 +529,13 @@ async function phaseSubmit(args, targetId) {
 
 // 轮询间隔：平台自己说生成要几分钟，密集成问没有意义。15s 在「别把它问烦」与「别空等太久」之间。
 const GENERATION_POLL_MS = 15000;
+
+// 取件入口定位的「稳定」参数（2026-09-28 加）。
+// ENTRY_RESTABILIZE_MS：两次采样之间的间隔。取值依据是**已量到的页面重排时长**——
+//   点击复选框到操作行显形的历史成功样本都在一次往返（<1s）内完成，取 400ms 只是让重排有个落脚点，
+//   不是「等它生成」。总开销上限 = ENTRY_LOCATE_ATTEMPTS × ENTRY_RESTABILIZE_MS。
+// ENTRY_LOCATE_ATTEMPTS：含首次在内最多采样几次。4 次 ≈ 1.2s，对 10 分钟的取件预算可忽略。
+const ENTRY_RESTABILIZE_MS = 400;
 const DOWNLOAD_ENTRY_POLL_MS = 400;
 const DOWNLOAD_ENTRY_WAIT_MS = 10000;
 
@@ -583,13 +590,7 @@ export async function waitForGenerationReady(args, targetId, wanted, deps = {}) 
     + ' ⇒ 平台那边卡住了，去阿里妈妈「下载任务管理」人工看一眼');
 }
 
-/**
- * 等目标任务行的操作行显形。
- *
- * 复选框回读 checked=true 只证明选中了任务，不证明下一行已经完成渲染。
- * 并发跑多店时平台会出现 action-row-hidden 数秒；固定几次短重试会把可恢复的
- * 渲染延迟误报成失败。这里等到入口显形或 10 秒上限，仍然 fail-closed。
- */
+/** 等目标任务的操作行显形；页面重排慢时等待，超时仍 fail-closed。 */
 export async function waitForDownloadEntry(args, targetId, wanted, deps = {}) {
   const read = deps.read ?? (() => evalOn(args, targetId, downloadEntryExpression(wanted)));
   const sleep = deps.sleep ?? delay;
@@ -644,8 +645,33 @@ async function phaseFetch(args, targetId) {
   }
 
   // 入口：只认**目标任务行的下一行**（它的操作行）里那个可见的「下载」。
+  //
+  // **二次稳定判据（2026-09-28 加，同日真机取证）**：只采样一次会在「刚点完、页面正在重排」时误判。
+  // 现场（09-27 那轮）：复选框已确认 checked=true，但紧接着这一次定位就报
+  // `action-row-hidden（操作行 display=none）` —— 而同一个操作行**点击前本来就是 display:none**
+  // （见上面 602-604 行注释），所以「还没显形」与「正在重排还没到位」在这一瞬长得一模一样。
+  // 对照组是 09-23 的成功轮：同店、同序、同一步，紧接着就给出了「入口 = 第 2 行」。
+  // ⇒ 不改成「等固定几秒」（那是在赌一个没量过的数），而是**要求两次采样给出同一个结论**：
+  //    要么两次都 ok 且几何一致（真就位），要么第一次 not-ok 就等一小会儿再看一次。
+  //    **两次都不 ok 才抛**，报错里带上两次的原文，别把「重排中」说成「找不到」。
   const entrySelector = `[${TASK_DOWNLOAD_MARK}="1"]`;
-  let located = await waitForDownloadEntry(args, targetId, wanted);
+  const locateEntry = async () => {
+    const first = await waitForDownloadEntry(args, targetId, wanted);
+    // 已 ok 也再确认一次：这一页「量到点」之间会动，两次几何一致才叫稳。
+    await delay(ENTRY_RESTABILIZE_MS);
+    const second = await evalOn(args, targetId, downloadEntryExpression(wanted));
+    if (!second.ok) {
+      console.log(`[fetch] 首次定位 ok，二次采样变成不可定位（${describeEntryMiss(second)}）⇒ 按未就位处理`);
+      return waitForDownloadEntry(args, targetId, wanted);
+    }
+    if (JSON.stringify(second.rect) !== JSON.stringify(first.rect)
+      || second.actionTrIndex !== first.actionTrIndex) {
+      console.log(`[fetch] 入口两次采样不一致（第 ${first.actionTrIndex} 行 ${JSON.stringify(first.rect)}`
+        + ` → 第 ${second.actionTrIndex} 行 ${JSON.stringify(second.rect)}）⇒ 以第二次为准`);
+    }
+    return second;
+  };
+  let located = await locateEntry();
   console.log(`[fetch] 入口 = 第 ${located.actionTrIndex} 行（正是该任务行的操作行）`
     + `｜rect=${JSON.stringify(located.rect)}，center=${JSON.stringify(located.center)}`
     + `｜操作行内叶子 ${located.leavesInActionRow} 个`);
@@ -659,7 +685,7 @@ async function phaseFetch(args, targetId) {
   if (!located.inViewport) {
     await evalOn(args, targetId, scrollIntoViewExpression(entrySelector));
     await delay(1200);
-    located = await waitForDownloadEntry(args, targetId, wanted);
+    located = await evalOn(args, targetId, downloadEntryExpression(wanted));
     if (!located.ok) throw new Error(`滚动后入口不再可定位（${describeEntryMiss(located)}）`);
     console.log(`[fetch] 原位置在视口外，滚动后重新定位：rect=${JSON.stringify(located.rect)}`
       + `，center=${JSON.stringify(located.center)}`);
