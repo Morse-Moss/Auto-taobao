@@ -25,7 +25,8 @@ import {
 } from './collect-promotion-report.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
-const readScript = (name) => readFileSync(path.join(SCRIPTS_DIR, name), 'utf8');
+// 源文件在 Windows checkout 可能是 CRLF；源码守卫只关心调用顺序，不应把换行格式当成行为。
+const readScript = (name) => readFileSync(path.join(SCRIPTS_DIR, name), 'utf8').replaceAll('\r\n', '\n');
 
 function fixture(files) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'collect-core-'));
