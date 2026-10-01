@@ -307,6 +307,8 @@ test('落位：一直读不到时，报错要点名「读了几次、最后一�
       assert.match(error.message, /读了 16 次/u, '预算要写在报错里，别让人猜等过多久');
       assert.match(error.message, /读不到 16 次/u, '「一次都没读成」与「读成了但对不上」必须分得开');
       assert.match(error.message, /triggers=0/u, '最后一次读不到的原因要带出来');
+      assert.match(error.message, /diagnostic=\{"phase":"filter-bar","status":"not-rendered"/u,
+        '失败收据要区分筛选条始终未渲染');
       assert.equal(error.trace.at(-1).step, 'navigate', 'trace 仍要停在最后一步');
       return true;
     });
@@ -320,9 +322,19 @@ test('落位：读得到但日期对不上时，报错里要留着「最后读�
       assert.match(error.message, /读不到 0 次/u, '这不是读不到，是读到了没落位');
       assert.match(error.message, /alimama applied date is/u);
       assert.match(error.message, /lastReadError=none/u);
+      assert.match(error.message, /diagnostic=\{"phase":"assertion","status":"readable-but-not-target","applied":"2026-09-16"/u,
+        '失败收据要区分已读到页面但日期未落位');
       return true;
     });
   } finally { stub.restore(); }
+});
+
+test('生意参谋点击坐标允许 2px 舍入误差，但不放行明显越界', () => {
+  const source = readFileSync(path.join(import.meta.dirname, 'date-picker.mjs'), 'utf8');
+  assert.match(source, /r\.left >= -2 && r\.top >= -2/u);
+  assert.match(source, /r\.right <= window\.innerWidth \+ 2 && r\.bottom <= window\.innerHeight \+ 2/u);
+  assert.doesNotMatch(source, /r\.right <= window\.innerWidth \+ 10/u,
+    '容差必须保持为小范围，不能把明显在视口外的点放行');
 });
 
 // 源码级接线守卫：这条是本次修的那个「位置错」，所以判的是**位置**，不是行为 ——

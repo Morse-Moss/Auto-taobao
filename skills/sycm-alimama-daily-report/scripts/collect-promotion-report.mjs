@@ -529,6 +529,8 @@ async function phaseSubmit(args, targetId) {
 
 // 轮询间隔：平台自己说生成要几分钟，密集成问没有意义。15s 在「别把它问烦」与「别空等太久」之间。
 const GENERATION_POLL_MS = 15000;
+const DOWNLOAD_ENTRY_POLL_MS = 400;
+const DOWNLOAD_ENTRY_WAIT_MS = 10000;
 
 /**
  * 等目标任务行变成「生成成功」。
@@ -581,6 +583,33 @@ export async function waitForGenerationReady(args, targetId, wanted, deps = {}) 
     + ' ⇒ 平台那边卡住了，去阿里妈妈「下载任务管理」人工看一眼');
 }
 
+/**
+ * 等目标任务行的操作行显形。
+ *
+ * 复选框回读 checked=true 只证明选中了任务，不证明下一行已经完成渲染。
+ * 并发跑多店时平台会出现 action-row-hidden 数秒；固定几次短重试会把可恢复的
+ * 渲染延迟误报成失败。这里等到入口显形或 10 秒上限，仍然 fail-closed。
+ */
+export async function waitForDownloadEntry(args, targetId, wanted, deps = {}) {
+  const read = deps.read ?? (() => evalOn(args, targetId, downloadEntryExpression(wanted)));
+  const sleep = deps.sleep ?? delay;
+  const now = deps.now ?? Date.now;
+  const budget = args.downloadEntryWaitMs ?? DOWNLOAD_ENTRY_WAIT_MS;
+  const startedAt = now();
+  const deadline = startedAt + budget;
+  let attempts = 0;
+  let last = null;
+  for (;;) {
+    attempts += 1;
+    last = await read();
+    if (last?.ok) return { ...last, attempts, waitedMs: Math.max(0, now() - startedAt) };
+    if (now() >= deadline) break;
+    await sleep(Math.min(DOWNLOAD_ENTRY_POLL_MS, Math.max(0, deadline - now())));
+  }
+  throw new Error(`等了 ${Math.max(0, now() - startedAt)}ms（${attempts} 次）仍找不到 ${wanted} 的下载入口`
+    + `（${describeEntryMiss(last ?? {})}）`);
+}
+
 async function phaseFetch(args, targetId) {
   const ledgerFile = args.ledger ?? DEFAULT_LEDGER_FILE;
   const shop = ledgerScope(args);
@@ -616,8 +645,7 @@ async function phaseFetch(args, targetId) {
 
   // 入口：只认**目标任务行的下一行**（它的操作行）里那个可见的「下载」。
   const entrySelector = `[${TASK_DOWNLOAD_MARK}="1"]`;
-  let located = await evalOn(args, targetId, downloadEntryExpression(wanted));
-  if (!located.ok) throw new Error(`找不到 ${wanted} 的操作行里的「下载」入口（${describeEntryMiss(located)}）`);
+  let located = await waitForDownloadEntry(args, targetId, wanted);
   console.log(`[fetch] 入口 = 第 ${located.actionTrIndex} 行（正是该任务行的操作行）`
     + `｜rect=${JSON.stringify(located.rect)}，center=${JSON.stringify(located.center)}`
     + `｜操作行内叶子 ${located.leavesInActionRow} 个`);
@@ -631,7 +659,7 @@ async function phaseFetch(args, targetId) {
   if (!located.inViewport) {
     await evalOn(args, targetId, scrollIntoViewExpression(entrySelector));
     await delay(1200);
-    located = await evalOn(args, targetId, downloadEntryExpression(wanted));
+    located = await waitForDownloadEntry(args, targetId, wanted);
     if (!located.ok) throw new Error(`滚动后入口不再可定位（${describeEntryMiss(located)}）`);
     console.log(`[fetch] 原位置在视口外，滚动后重新定位：rect=${JSON.stringify(located.rect)}`
       + `，center=${JSON.stringify(located.center)}`);

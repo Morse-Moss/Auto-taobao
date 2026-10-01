@@ -105,6 +105,12 @@ import { triageFailures } from './remediation-table.mjs';
 // 不许在这里另写一份「哪些成因算 agent 的活」—— 两份判据漂开的那天，
 // 会出现「派单说交给 agent、告警说快叫人」这种自相矛盾，而两边都各自看起来正常。
 import { classifyShopEscalation } from '../../../runtime/escalation-plan.mjs';
+import {
+  isWaitingOperatorAccountShop,
+  isWaitingOperatorAccountStatus,
+  waitingOperatorAccountRecord,
+} from '../../../runtime/daily-report-shop-gates.mjs';
+import { writeDownloadManifest } from '../../../runtime/daily-report-download-manifest.mjs';
 // 「失败 → 该试哪些修复动作」的候选菜单（2026-09-29）。它把感知层的事实与分诊表的方向
 // 合成一份**给 agent 看的修复请求单**（97-repair-request.json）：
 //   分诊表说「这一类值得重试」，但没说「重试之前要对页面做什么」；本模块补上那一半。
@@ -336,10 +342,12 @@ export function buildRepairRequest({ shopKey, stage = null, error = null, percep
 export function roundFailureSummary(summary = {}, { loginPreflight = null } = {}) {
   const entries = Object.entries(summary?.shops ?? {});
   const failed = entries.filter(([, record]) => record?.status !== 'ok')
+    .filter(([, record]) => !isWaitingOperatorAccountStatus(record))
     .map(([key, record]) => ({ key, record, cause: shopFailureCause(record) }));
   const ok = entries.filter(([, record]) => record?.status === 'ok').map(([key]) => key);
+  const waiting = entries.filter(([, record]) => isWaitingOperatorAccountStatus(record)).map(([key]) => key);
   const roundBlocked = summary?.round?.healthCheckDaily?.ok === false;
-  const view = { failed, ok, roundBlocked, roundBlockedDetails: summary?.round?.healthCheckDaily?.blockingDetails ?? null,
+  const view = { failed, ok, waiting, roundBlocked, roundBlockedDetails: summary?.round?.healthCheckDaily?.blockingDetails ?? null,
     any: roundBlocked || failed.length > 0, total: entries.length };
   if (loginPreflight === null || loginPreflight === undefined) return view;
   return { ...view, login: normalizeLoginPreflight(loginPreflight) };
@@ -643,6 +651,7 @@ export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPr
     // 紧跟在「页面不齐」那几行后面：这一段是**对它的解释**，顺序反了就成了一句前言不搭后语的话。
     ...loginPreflightLines(view.login ?? null, { needLogin, unknown: unknownLogin, roundBlocked: view.roundBlocked }),
     view.failed.length ? `没跑完 ${view.failed.length} 家：\n${view.failed.map((item) => describeShopFailure(item.key, item.record, { cause: causeOf(item) })).join('\n')}` : null,
+    view.waiting.length ? `等待运营账号 ${view.waiting.length} 家：${view.waiting.join('、')}（日报流程暂缓，账号恢复后可继续）` : null,
     notRun.length ? `· 另外 ${notRun.length} 家今天一步都没跑（有一家停住后，整轮就停了）：${notRun.join('、')}` : null,
     view.ok.length ? `已收完 ${view.ok.length} 家：${view.ok.join('、')}` : null,
   ].filter(Boolean).join('\n');
@@ -1553,6 +1562,12 @@ async function main() {
   for (const key of shops) {
     const shopLogDir = path.join(logRoot, key);
     mkdirSync(shopLogDir, { recursive: true });
+    if (isWaitingOperatorAccountShop(key)) {
+      const waiting = waitingOperatorAccountRecord(key);
+      summary.shops[key] = waiting;
+      console.log(`[${key}] 日报暂缓：等待运营账号（${waiting.state}）；继续下一家`);
+      continue;
+    }
     const record = { status: 'pending', stages: [], source: {} };
     summary.shops[key] = record;
     let index = 0;
@@ -1686,11 +1701,21 @@ async function main() {
         }
         if (stage.stage === 'shop-report') {
           record.source.shopXlsx = findPath(result.stdout, 'shopXlsxPath');
-          if (record.source.shopXlsx) console.log(`[${key}]   店铺工作簿 = ${record.source.shopXlsx}`);
+          if (record.source.shopXlsx) {
+            record.source.shopReportManifest = path.join(shopLogDir, 'shop-report-manifest.json');
+            writeDownloadManifest({ outputPath: record.source.shopReportManifest, filePath: record.source.shopXlsx,
+              reportType: 'shop-report', date: args.date, shop: key, member: shopIdentity(key).alimamaMemberName });
+            console.log(`[${key}]   店铺工作簿 = ${record.source.shopXlsx}`);
+          }
         }
         if (stage.stage === 'promotion-fetch') {
           record.source.promotionZip = findPath(result.stdout, 'promotionZipPath');
-          if (record.source.promotionZip) console.log(`[${key}]   推广 zip = ${record.source.promotionZip}`);
+          if (record.source.promotionZip) {
+            record.source.promotionManifest = path.join(shopLogDir, 'promotion-report-manifest.json');
+            writeDownloadManifest({ outputPath: record.source.promotionManifest, filePath: record.source.promotionZip,
+              reportType: 'promotion-report', date: args.date, shop: key, member: shopIdentity(key).alimamaMemberName });
+            console.log(`[${key}]   推广 zip = ${record.source.promotionZip}`);
+          }
         }
       }
       record.status = 'ok';
@@ -1792,7 +1817,8 @@ async function main() {
       + `${record.error ? ` —— ${record.error}` : ''}`);
   }
   console.log(`[驱动] 明细 ${path.relative(REPO_ROOT, summaryPath)}`);
-  const anyFailed = Object.values(summary.shops).some((r) => r.status !== 'ok');
+  const anyFailed = Object.values(summary.shops).some((r) => r.status !== 'ok'
+    && !isWaitingOperatorAccountStatus(r));
 
   // 分诊（2026-09-28）：把失败按「已知问题表」分堆，只对**要人**的那堆叫人。
   // 这一步是「注意力真正被释放」的地方 —— 不是替人做事，而是替人挡掉不需要他看的事。
@@ -1850,7 +1876,11 @@ async function main() {
     }
   } else if (args.notify || args.notifyPrint) {
     // 成功要留一行「没发提醒」：否则「没收到消息」与「消息没发出去」在事后看起来一模一样。
-    console.log(`[驱动] ${shops.length} 家店都收完了，没发提醒（--notify 只在出错时叫人）。`);
+    const waiting = Object.entries(summary.shops)
+      .filter(([, record]) => isWaitingOperatorAccountStatus(record)).map(([key]) => key);
+    console.log(waiting.length
+      ? `[驱动] ${shops.length - waiting.length} 家店收完，${waiting.length} 家等待运营账号（${waiting.join('、')}），没发提醒。`
+      : `[驱动] ${shops.length} 家店都收完了，没发提醒（--notify 只在出错时叫人）。`);
   }
 }
 

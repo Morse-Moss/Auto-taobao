@@ -34,6 +34,7 @@ const DEFAULTS = Object.freeze({
   proxy: `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`,
   appToken: TARGET.baseToken,
 });
+export const SCREENSHOT_INCOMPLETE_EXIT_CODE = 4;
 const SOURCE_TABLE = Object.freeze({ key: 'source', tableId: TARGET.sourceTable, viewId: TARGET.sourceView,
   label: '底单', shotSuffix: 'push' });
 const INQUIRY_TABLE = Object.freeze({ key: 'inquiry', tableId: TARGET.inquiryTable, viewId: null,

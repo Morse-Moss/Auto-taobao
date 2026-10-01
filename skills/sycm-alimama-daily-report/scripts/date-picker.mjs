@@ -224,7 +224,8 @@ const READ_EXPRESSIONS = Object.freeze({
 const SYCM_PRELUDE = `
   const clean = (value) => String(value ?? '').replace(/\\s+/g, ' ').trim();
   const digits = (value) => Number(String(value ?? '').replace(/[^0-9]/g, ''));
-  const inside = (r) => r.left >= 0 && r.top >= 0 && r.right <= window.innerWidth && r.bottom <= window.innerHeight;
+  // 浏览器布局可能把边缘像素舍入到视口外 1px；允许极小误差，但不放行明显在视口外的元素。
+  const inside = (r) => r.left >= -2 && r.top >= -2 && r.right <= window.innerWidth + 2 && r.bottom <= window.innerHeight + 2;
   const rendered = (el) => { const r = el.getBoundingClientRect();
     if (r.width < 8 || r.height < 8) return false;
     const style = getComputedStyle(el);
@@ -600,6 +601,7 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
     let last = null;
     let lastReadError = null;
     let readFailures = 0;
+    let lastDiagnostic = null;
     for (let attempt = 0; attempt < settleAttempts; attempt += 1) {
       await delay(settleMs);
       let state;
@@ -609,6 +611,12 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
       } catch (error) {
         lastReadError = String(error?.message ?? error).split('\n')[0];
         readFailures += 1;
+        const detail = lastReadError;
+        lastDiagnostic = /triggers=0/u.test(detail)
+          ? { phase: 'filter-bar', status: 'not-rendered', detail }
+          : /date trigger ambiguous/u.test(detail)
+            ? { phase: 'date-trigger', status: 'not-rendered-or-ambiguous', detail }
+            : { phase: 'read', status: 'unreadable', detail };
         continue;
       }
       last = state;
@@ -617,7 +625,11 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
           const checked = assertAlimamaState({ state: last, requested, yesterday: resolved.yesterday });
           if (attempt > 0) say('settle-retried', { label, reads: attempt + 1, readFailures });
           return { state: last, applied: checked.applied };
-        } catch (error) { last.error = error.message; }
+        } catch (error) {
+          last.error = error.message;
+          lastDiagnostic = { phase: 'assertion', status: 'readable-but-not-target', applied: last.applied ?? null,
+            triggers: Array.isArray(last.triggers) ? last.triggers.length : null, detail: error.message };
+        }
       } else if (resolveAppliedDate({ text: last.applied, yesterday: resolved.yesterday }) === requested) {
         if (attempt > 0) say('settle-retried', { label, reads: attempt + 1, readFailures });
         return { state: last, applied: requested };
@@ -626,7 +638,7 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
     // 两种「没落定」要分得开：一次都没读成（页面根本没起来）与读成了但对不上（落位失败）。
     throw new Error(`${label}: state did not settle to ${requested}`
       + `（读了 ${settleAttempts} 次 × ${settleMs}ms；其中读不到 ${readFailures} 次）`
-      + `; lastReadError=${lastReadError ?? 'none'}; last=${JSON.stringify(last)}`);
+      + `; lastReadError=${lastReadError ?? 'none'}; diagnostic=${JSON.stringify(lastDiagnostic)}; last=${JSON.stringify(last)}`);
   };
 
   const finish = (status, settled) => {

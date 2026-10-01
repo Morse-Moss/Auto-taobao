@@ -40,6 +40,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { unfixableShopsOf } from './hold-and-resume-plan.mjs';
+import { isWaitingOperatorAccountStatus } from './daily-report-shop-gates.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -189,7 +190,7 @@ export function classifyShopEscalation({ shop, record, unfixable = new Set(), su
 export function buildEscalationPlan({ summary = {}, summaryPath = null, cardPath = null } = {}) {
   const shops = summary?.shops ?? {};
   const failed = Object.entries(shops)
-    .filter(([, record]) => record?.status !== 'ok')
+    .filter(([, record]) => record?.status !== 'ok' && !isWaitingOperatorAccountStatus(record))
     .map(([shop, record]) => ({ shop, record }));
 
   const unfixable = new Set(unfixableShopsOf(summary));

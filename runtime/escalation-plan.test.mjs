@@ -5,6 +5,7 @@
 //   · 不该派 agent 却派了 ⇒ 每次一个「只有登录能解」的失败也去叫 agent 白忙一轮。
 // 所以每一条都要能离线断言，且默认（没有失败/没有修复记录）行为必须与从前一致。
 import test from 'node:test';
+import { waitingOperatorAccountRecord } from './daily-report-shop-gates.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -217,4 +218,14 @@ test('合并后的 summary 直接喂 buildEscalationPlan：跨批的失败一起
   const plan = buildEscalationPlan({ summary: merged });
   assert.equal(plan.needsAgent, true);
   assert.deepEqual(plan.targets.map((t) => t.shop), ['甲店']);
+});
+
+test('账号等待店铺不进入修复 agent 派单', () => {
+  const plan = buildEscalationPlan({ summary: {
+    date: '2026-09-29',
+    shops: { 里可林淘宝: waitingOperatorAccountRecord('里可林淘宝') },
+  }});
+  assert.equal(plan.failedCount, 0);
+  assert.equal(plan.needsAgent, false);
+  assert.deepEqual(plan.targets, []);
 });

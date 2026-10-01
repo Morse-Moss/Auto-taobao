@@ -293,7 +293,11 @@ hitOk: !!point && (point === el || el.contains(point) || point.contains(el)),
 - 那次读取移进容错：读不到＝「还没渲染好」＝再等一轮，不是这一步输了；
 - 预算 `settleAttempts = 16` × 1200ms ≈ 19s（实测 6.2s 的约 3 倍，依据写在注释里）；
 - 等过不止一轮就记 `settle-retried { reads, readFailures }` 进 trace —— 「这一步为什么慢」以后查得到；
-- 终态报错把「一次都没读成」与「读成了但对不上」分开。
+- 终态报错把「一次都没读成」与「读成了但对不上」分开，并附 `diagnostic` 摘要：
+  `filter-bar/not-rendered`、`date-trigger/not-rendered-or-ambiguous` 或
+  `readable-but-not-target`，便于按现场区分页面未渲染与日期未落位。
+
+生意参谋点击前的视口判据允许 2px 的布局舍入误差；仍会拒绝明显越界的元素，并在滚动后重新读取矩形。
 
 值得单独记一笔的理由：「动作前页面还没渲染完」在正常一轮里是**常态**。rerun4 五家里三家在这一步的
 读取都撞上半渲染（`triggers=2` 就是它的指纹，一直被 `read-before-skipped` 容忍着，所以没人注意），
