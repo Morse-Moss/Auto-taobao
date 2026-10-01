@@ -133,7 +133,7 @@ node skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs --date 2026
 The whole round used to have **no step that looks at login state** (`runtime/xws-platform-health-preflight.mjs` covers port / pages / egress only; IDENTITY and SESSION are explicitly unimplemented). A shop that lost its session was therefore only discovered mid-collection, as the alert that names no step: *"没跑完，但记录里没写停在哪一步"*. This is the layer that says which shop, which back office, and which account before the round starts.
 
 ```powershell
-# five shops × two back offices, one command. Read-only: it opens no page and clicks nothing.
+# registered shops × two back offices, one command. Read-only: it opens no page and clicks nothing.
 node skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs
 node skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs --shops 盖文淘宝,科塔淘宝
 node skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs --json        # for anything downstream
@@ -143,7 +143,7 @@ It does **not** re-implement probing: it walks the registry and calls `login-mer
 
 **Alerting is tied to whether it actually attempted a login** (user decision 2026-09-23: *"if auto-login fails, alert on Feishu — but the premise is that you attempted the login first"*). Read-only mode passes `--notify off` and says so in its own report line: that pass attempted nothing, so it must not page anyone. With `--login` each shop's child gets `--notify auto`, so an alert goes out **only** when the attempt really happened (`--commit`) *and* the verdict still needs a human — one alert per shop, deduplicated by an alert id that carries the shop name and date. Delivery status (`SENT` / `DEDUPED` / `FAILED` / `NOT_CONFIGURED` / …) is passed through into a `[告警]` block at the end of the report, because "asked a human" and "tried to ask a human and failed" must never look alike.
 
-Wired into the timed job as step ② of three, **non-blocking**; measured live 2026-09-23 (5 shops / 10 platforms / exit 0, see `evidence/login-preflight-2026-09-23/`).
+Wired into the timed job as step ② of three, **non-blocking**; measured live 2026-09-23 (historical 5-shop / 10-platform run / exit 0, see `evidence/login-preflight-2026-09-23/`).
 
 ⚠️ It covers **only the five per-shop instances** — not the shared merchant browser (19022/19023). That browser has its own required Sycm page, and step 0 of the round demands exactly one, so a logged-out shared browser stops the whole round while this layer says nothing about it. Check it separately with `node runtime/shop-pages.mjs` (read-only).
 
@@ -184,7 +184,7 @@ Two names belong on the label, because two different people read different ones.
 
 Cleaning tabs does **not** save memory (measured: 6,297 MB before, 6,726 MB after, with one new label tab added per window in the same step; a real page costs 200-300 MB while a blank page costs almost nothing). Its value is removing predicate interference and human confusion. Memory scales with how many browser instances are open at once, not with tabs per window — see `docs/ops/CLIENT-MACHINE-CAPACITY.md` §3.
 
-`--shop` takes the **operating name** (a `SHOP_BROWSERS` key: 里可林淘宝 / 网林天猫 / 盖文淘宝 / 科塔淘宝), the same name operations sees in Feishu — not the SYCM page-header name and not the Alimama member name. A misspelling throws at parse time listing the legal values, because an alert carrying a shop name that does not exist is worse than one carrying none. The name drives three fields: the title (`<shop> 需要你登录一次`), the `店铺` line, and the `alertId` (`sycm-login-<shop>-<sites>-<YYYYMMDD>`). That last one matters: without the shop dimension all five shops share one dedup anchor and any caller deduping by `alertId` swallows four of them **silently**.
+`--shop` takes the **operating name** (a `SHOP_BROWSERS` key), the same name operations sees in Feishu — not the SYCM page-header name and not the Alimama member name. A misspelling throws at parse time listing the legal values, because an alert carrying a shop name that does not exist is worse than one carrying none. The name drives three fields: the title (`<shop> 需要你登录一次`), the `店铺` line, and the `alertId` (`sycm-login-<shop>-<sites>-<YYYYMMDD>`). That last one matters: without the shop dimension each shop would share one dedup anchor and callers could swallow alerts **silently**.
 
 The alert's `下一步` locates the window by name — `在标题写着「盖文淘宝」的那个浏览器窗口（任务栏里就能看到）里人工登录一次`. That sentence is only true when the window title actually carries the shop name, which is `runtime/shop-window-label.mjs`'s whole job; a cross-module test binds the two together. `--shop` also selects the alert's `浏览器配置`: each shop has its own isolated profile, and hardcoding the shared daily-report profile made four shops' alerts identical.
 
