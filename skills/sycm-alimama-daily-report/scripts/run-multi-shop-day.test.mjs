@@ -8,6 +8,7 @@ import { BROWSER_IDS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } fro
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
 import { triageFailures } from './remediation-table.mjs';
+import { WAITING_OPERATOR_ACCOUNT_SHOPS, waitingOperatorAccountRecord } from '../../../runtime/daily-report-shop-gates.mjs';
 import { planRepair } from './repair-actions.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { IDENTITY_SHOP_HEADER_VERIFIED_SHOPS, shopIdentity } from './shop-identities.mjs';
@@ -563,6 +564,18 @@ test('驱动的失败分类：体检拦住 / 重跑撞上已有行 / 阶段报�
   assert.equal(view.any, true);
   assert.equal(roundFailureSummary({ shops: { 里可林淘宝: okRecord() } }).any, false, '全绿时不许认为有失败');
   assert.equal(roundFailureSummary({ round: { healthCheckDaily: { ok: false } }, shops: {} }).roundBlocked, true);
+});
+
+test('驱动：运营账号等待项不计入失败，但保留在汇总并可恢复', () => {
+  const waiting = waitingOperatorAccountRecord(WAITING_OPERATOR_ACCOUNT_SHOPS[0]);
+  const view = roundFailureSummary({ shops: {
+    [WAITING_OPERATOR_ACCOUNT_SHOPS[0]]: waiting,
+    里可林天猫: okRecord(),
+  }});
+  assert.deepEqual(view.failed, []);
+  assert.deepEqual(view.ok, ['里可林天猫']);
+  assert.deepEqual(view.waiting, [WAITING_OPERATOR_ACCOUNT_SHOPS[0]]);
+  assert.equal(view.any, false);
 });
 
 test('告警：标题自带主体名，正文说清哪几家没跑完、停在哪一步、哪几家已收完、哪几家一步没跑', () => {
