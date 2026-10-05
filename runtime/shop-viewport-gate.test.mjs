@@ -140,10 +140,24 @@ test('接线①：视口闸门排在 start 之后、login 之前（顺序错了�
   const body = source.slice(source.indexOf('async function runRound('), source.indexOf('async function main('));
   const startAt = body.indexOf('PRODUCT_JOB_FILES.start');
   const checkAt = body.indexOf('checkShopViewports({ shops })');
-  const loginAt = body.indexOf('PRODUCT_JOB_FILES.login');
+  // 2026-10-05：登录那一步从 runRound 里抽进了 `runBatchLogin`（它要多做「先补页再复查一次」
+  // 与「逐店剔除」两件事，内联在 runRound 里会把它撑成两屏）。**顺序的判据一个字没变**，
+  // 只是被调用的名字从 `PRODUCT_JOB_FILES.login` 换成了 `runBatchLogin` —— 所以下面必须
+  // 补一条**反向断言**（那个函数里确实去调登录预检）：否则这个间接层可以拿来
+  // 「偷偷把登录这一步删掉，而这条守卫照样绿」。
+  const loginAt = body.indexOf('runBatchLogin({ shops, shopArg, loginFile, log })');
   assert.ok(startAt > 0, 'runRound 里必须有启动实例那一步');
   assert.ok(checkAt > 0, 'runRound 里必须调用视口闸门（否则闸门是个死代码）');
   assert.ok(loginAt > 0, 'runRound 里必须有登录预检那一步');
+  // 反向断言：那个函数里确实去调登录预检，且**守卫那一次带 `--login`**。
+  // 2026-10-05 第二版：`--login` 的拼法从「内联字面量」改成了「按 `autoLogin` 选一组 flag」
+  // （补页后的复查改成只读，见 runBatchLogin 的注释），所以这里改成对**函数体**取片段来断言 ——
+  // 断言按整行字面量抄，会在每次给它加一个开关时变红，而它真正要守的是「这一步还在、还没被去势」。
+  const loginHelper = source.slice(source.indexOf('async function runBatchLogin('), source.indexOf('async function runRound('));
+  assert.ok(loginHelper.includes('PRODUCT_JOB_FILES.login'),
+    'runBatchLogin 里必须真的去调登录预检 —— 间接层不许把它藏掉');
+  assert.ok(loginHelper.includes("'--login'"),
+    '守卫那一次必须带 --login —— 去掉它等于把「掉了就自己登」这条链静默关掉');
   assert.ok(startAt < checkAt, '视口回读必须在启动实例之后 —— 放在之前永远读不到东西');
   assert.ok(checkAt < loginAt, '视口回读必须在登录预检之前 —— 放在之后白跑一趟登录');
 });

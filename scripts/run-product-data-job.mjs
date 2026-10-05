@@ -19,6 +19,14 @@ import { batchLoginArtifactName, describeBatch, planBatches } from '../runtime/b
 // 起完实例的「视口回读」闸门。为什么必须在采集之前：窗口被屏幕尺寸夹窄时，
 // 采集脚本只会报一堆 `not-hit`，等看到那些读数，这一家已经白跑完了。
 import { checkShopViewports, describeViewportFailure } from '../runtime/shop-viewport-gate.mjs';
+// 补页能力的**唯一实现**是 `runtime/page-normalize.mjs`（它自己再调 `shop-pages.mjs`）。
+// 这里只是把它接到「登录预检读到『这个窗口里没有它的页面』」这条路径上 —— 不另写一份补页。
+import { normalizePages } from '../runtime/page-normalize.mjs';
+// 期望页面清单的唯一来源（守卫 `runtime/arch-boundary.test.mjs` 钉着它）。
+import { expectedPagesForShop } from '../skills/sycm-alimama-daily-report/scripts/expected-pages.mjs';
+// 站点名（生意参谋 / 阿里妈妈）的唯一来源。**不在这里另抄一份中英对照** ——
+// 抄一份就会出现「告警里写的是另一个名字」，而收信人照着找不到那个后台。
+import { SITES } from '../skills/sycm-alimama-daily-report/scripts/login-merchant-core.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -91,6 +99,117 @@ async function notifyFailure({ date, runId, evidence, failure, failedStage, log,
   return receipt;
 }
 
+// ---------------------------------------------------------------------------
+// 跑前登录预检：**不是闸门**（2026-10-05 改）
+// ---------------------------------------------------------------------------
+//
+// 与日报链同一约定 —— `runtime/batch-plan.mjs` 的 `buildLoginPreflightStep()` 写死
+// `blocking: false`，`scripts/run-batches.mjs` 里那句原话是「守卫不是闸门」，
+// `scripts/run-daily-job.mjs` 是 `if (command.blocking) chainStatus = status;`
+// ⇒ 非阻塞步不进整轮退出码。理由（`runtime/daily-job-plan.mjs`）：
+//   「链的第 0 步体检才是『今天能不能写』的权威判据。在这里截断只会让告警少一层信息；
+//     而它自己判『读不到』时（冷启动后页面还没归位）更不该停。」
+//
+// 为什么这条链必须改（2026-10-05 真机实测，`evidence/product-data-job-2026-10-04/
+// 2026-10-04-20261005141212788-7e3ec402/`）：第 1 批里**盖文天猫**的阿里妈妈页签不在位，
+// 探针只能回 `loggedIn: null` ⇒ 该店 `UNKNOWN` ⇒ 预检退出码 3 ⇒ 旧代码 `throw`
+// ⇒ **整批 5 家一步采集都没跑**。而事后只读复查：同一家店两个站点都是 `LOGGED_IN`
+// —— 账号一直是好的，预检报的是「页签没就位」。
+// 那个代价与日报链 2026-09-25 翻默认值时的实测同形（「停整轮 ⇒ 另外四家一步都没跑」）。
+//
+// 现在的分工：
+//   · 退出码 **0/2/3 都不再中断**本批（`2`＝有店被实锤踢回登录页，`3`＝这一层没有结论）；
+//   · 逐店按 `rows[]` 把 **verdict !== OK** 的店从**本批采集名单里剔除**，其余照采照导照释放；
+//   · 剔除这件事**逐条记进 `gaps`**（点名店 + 后台），所以整轮**照旧退 1 并告警**，不静默降级；
+//   · 读不到（UNREADABLE）而**没有任何店被实锤踢回登录页**时，先补一次页面再复查一次 ——
+//     这就是日报链那句「链的第 0 步会先把页面补齐再体检」。只补一次，不循环。
+//
+// 唯一的 fail-closed：`rows` 解析不出来（子进程没起来、输出不是 JSON）⇒ 无法归因 ⇒ 仍然停手。
+// 那一条不能放宽 —— 非阻塞的前提是「结论确实读到了」。
+const SITE_LABELS = Object.fromEntries(Object.entries(SITES).map(([key, site]) => [key, site.label]));
+const siteLabel = (key) => SITE_LABELS[key] ?? String(key);
+
+/** 一行回执 → 给人看的一句话（只点后台名，不抄整段 detail）。 */
+function describeLoginRow(row) {
+  const kicked = Array.isArray(row?.needsLogin) ? row.needsLogin : [];
+  const unread = Array.isArray(row?.unreadable) ? row.unreadable : [];
+  const parts = [];
+  if (kicked.length) parts.push(`掉登录=${kicked.map(siteLabel).join('、')}`);
+  if (unread.length) parts.push(`读不到=${unread.map(siteLabel).join('、')}`);
+  return parts.length ? parts.join('；') : `verdict=${row?.verdict ?? '未知'}`;
+}
+
+/** 逐店回执 → 「本批先不采的店」表。**只有 `OK` 才算通过**（`UNKNOWN` 是没结论，不是通过）。 */
+function blockedShopsFrom(report) {
+  const rows = Array.isArray(report?.rows) ? report.rows : [];
+  const blocked = new Map();
+  for (const row of rows) {
+    if (!row?.shop || row.verdict === 'OK') continue;
+    blocked.set(row.shop, `未通过（${describeLoginRow(row)}）`);
+  }
+  return blocked;
+}
+
+/**
+ * 该不该「先补页再复查」。
+ *
+ * 判据要**两个条件同时成立**（与 `login-merchant.mjs` 里 PAGES_ABSENT 那道闸同源）：
+ *   ① 有站点读不到（`unreadable` 非空）；
+ *   ② **没有任何店被实锤踢回登录页**（`needsLogin` 全空）。
+ * 第 ② 条是关键：真的有店被踢回登录页时补页没用、也不该拿补页去掩盖它。
+ */
+function shouldRepairPages(report) {
+  const rows = Array.isArray(report?.rows) ? report.rows : [];
+  if (!rows.length) return false;
+  const anyKickedOut = rows.some((row) => (row?.needsLogin?.length ?? 0) > 0);
+  const anyUnreadable = rows.some((row) => (row?.unreadable?.length ?? 0) > 0);
+  return anyUnreadable && !anyKickedOut;
+}
+
+/** 给本批每一家补页（走 `page-normalize.mjs` 的现成实现，不带第二份补页逻辑）。 */
+async function repairBatchPages({ shops, log }) {
+  const expected = expectedPagesForShop();
+  for (const shop of shops) {
+    try {
+      const result = await normalizePages({ proxyPort: shopInstance(shop).proxyPort, expected });
+      // 结论在 `verdict` 里（`normalizePages` 返回 `{before, after, actions, verdict}`）——
+      // 2026-10-05 第一次接的时候读的是 `result.detail`（顶层没有这个键），日志打出一串
+      // 「补页 X：undefined」。**日志打 undefined 比不打更坏**：它看起来像「补页成功了、只是没写说明」。
+      log(`[登录] 补页 ${shop}：${result?.verdict?.detail ?? '未返回结论'}`);
+    } catch (error) {
+      // 补页失败不抛：它是**尽力而为**的自愈，成不成由复查那一次说了算。
+      log(`[登录] 补页 ${shop} 失败：${String(error?.message ?? error)}`);
+    }
+  }
+}
+
+/**
+ * 跑一次登录预检；必要时补页后复查一次。返回最终那一次的 `{code, out, report}`。
+ *
+ * **复查那一遍刻意不带 `--login`**（2026-10-05 真机教训，见下面那段注释）：
+ * 补页解决的是「页签不在」，不是「凭据不对」；再跑一遍自动登录会在同一个窗口里
+ * 再开一次淘宝登录页、再试一遍候选地址 —— 实测后果是页签**翻倍**（用户看到「打开了好几个页面」），
+ * 而且同一个出口 IP 上连着提交两次正是登录守卫自己警告过的事。
+ */
+async function runBatchLogin({ shops, shopArg, loginFile, log }) {
+  const attempt = async ({ autoLogin }) => {
+    const flags = autoLogin ? ['--shops', shopArg, '--json', '--login'] : ['--shops', shopArg, '--json'];
+    const result = await run(PRODUCT_JOB_FILES.login, flags, { capture: true });
+    return { ...result, report: parseJsonOutput(result.out) };
+  };
+  let result = await attempt({ autoLogin: true });
+  fs.writeFileSync(loginFile, result.out);
+  if (result.code !== 0 && shouldRepairPages(result.report)) {
+    // 第一次那份也落盘：它是「为什么触发补页」的唯一依据，复查会把它盖掉。
+    fs.writeFileSync(loginFile.replace(/\.json$/u, '-initial.json'), result.out);
+    log(`[登录] 预检退出码 ${result.code}：有站点读不到、且没有店被踢回登录页 ⇒ 先补页再复查一次（复查只读，不再登）`);
+    await repairBatchPages({ shops, log });
+    result = await attempt({ autoLogin: false });
+    fs.writeFileSync(loginFile, result.out);
+  }
+  return result;
+}
+
 /**
  * 一轮（＝一家或一批店铺）的完整工作：起这批 → 查这批登录 → 采三类 → 导入三类。
  *
@@ -120,7 +239,18 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
     fs.writeFileSync(path.join(evidence, tag ? `viewport-${tag}.json` : 'viewport.json'), `${JSON.stringify(viewport, null, 2)}\n`);
     if (!viewport.ok) throw new Error(`浏览器视口不达标（${describeViewportFailure(viewport)}），已停止采集`);
     log(`视口回读通过：${viewport.entries.map((entry) => `${entry.shop}=${entry.width}x${entry.height}`).join('、')}`);
-    const login = await run(PRODUCT_JOB_FILES.login, ['--shops', shopArg, '--json', '--login'], { capture: true }); fs.writeFileSync(loginFile, login.out); if (login.code !== 0) throw new Error(`登录预检未通过（${login.code}），已停止采集并保留告警收据`);
+    const login = await runBatchLogin({ shops, shopArg, loginFile, log });
+    // 拿不到逐店结论就没法归因 ⇒ **这一条是唯一的 fail-closed**（理由见上面 runBatchLogin 那段）。
+    // 退出码非 0 但 `rows` 读得出来时**不中断**：逐店剔除，其余照跑。
+    if (login.code !== 0 && !Array.isArray(login.report?.rows)) {
+      throw new Error(`登录预检未通过（${login.code}）且没有可归因的逐店结论，已停止采集`);
+    }
+    const blocked = blockedShopsFrom(login.report);
+    for (const [shop, reason] of blocked) gaps.push(`${shop}/登录 ${reason}`);
+    if (blocked.size) {
+      log(`[登录] 预检退出码 ${login.code}：${blocked.size} 家先不采（${[...blocked.entries()].map(([shop, reason]) => `${shop} ${reason}`).join('；')}），`
+        + `本批其余 ${results.length - blocked.size} 家照常采集`);
+    }
     // 采集脚本一律**用它们自己的默认下载目录**（`%USERPROFILE%\Downloads`）—— 那是浏览器真的会写进去的地方，
     // 由 profile 的 `download.default_directory` 决定，脚本侧改不了。别再传 `--downloads <证据目录>`：
     // 上一版就是这么传的，结果是「下载其实成功了、采集脚本盯错目录」⇒ 五家全部报「下载超时」。
@@ -132,7 +262,12 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
     // （阶段二不必串行：询单走显式 `--out`，脚本自己把内容写进指定路径；推广按任务名唯一匹配
     //   `商品报表_YYYYMMDD_HHMMSS`，含时间戳、跨店不重复。）
     for (const item of results) {
-      const shop = item.shop; ensureDir(path.join(evidence, shop));
+      const shop = item.shop;
+      // 登录预检点名先不采的店：**在这里就退出采集循环**，而不是让它去跑一遍注定失败、
+      // 还会把共享下载目录搅乱的采集（五家共用一个真实下载目录，见下面那段注释）。
+      // 它的缺口已经在上面记过 `登录 未通过`，这里不重复记，也不进阶段二。
+      if (blocked.has(shop)) { item.stoppedAt = 'login'; continue; }
+      ensureDir(path.join(evidence, shop));
       const product = await run(PRODUCT_JOB_FILES.productCollect, ['--shop', shop, '--date', date], { capture: true });
       item.product = product; item.productFile = jsonTail(product.out)?.file ?? null;
       if (product.code !== 0 || !item.productFile) { item.stoppedAt = 'product-collect'; item.error = (product.err || product.out || '').trim(); log(`[底单] ${shop} 失败：${item.error || '未返回文件'}（exit ${product.code}）`); }
@@ -167,12 +302,20 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
     // 逐条缺口写进 `gaps`，不静默降级。
     const common = options.commit ? ['--apply'] : [];
     for (const item of results) {
+      // 登录预检剔掉的店在采集段已经记过缺口，这里不再记「底单/询单 未采集」——
+      // 同一件事记两条会让收据里的缺口数虚高，归因也会被带到 `product-import` 上（它其实停在登录）。
+      if (blocked.has(item.shop)) continue;
       if (!item.productFile) { gaps.push(`${item.shop}/底单 未采集`); continue; }
       const r = await run(PRODUCT_JOB_FILES.productImport, ['--file', item.productFile, '--shop', item.shop, '--date', date, ...common, '--evidence', path.join(evidence, item.shop, 'product-import')]);
       if (r.code !== 0) { gaps.push(`${item.shop}/底单 导入失败`); log(`[导入] ${item.shop} 底单失败（exit ${r.code}）`); } else log(`[导入] ${item.shop} 底单已写入`);
       if (!item.inquiryFile || !fs.existsSync(item.inquiryFile)) gaps.push(`${item.shop}/询单 未采集`);
       else { const q = await run(PRODUCT_JOB_FILES.inquiryImport, ['--file', item.inquiryFile, '--date', date, '--shop', item.shop, ...common, '--evidence', path.join(evidence, item.shop, 'inquiry-import')]); if (q.code !== 0) { gaps.push(`${item.shop}/询单 导入失败`); log(`[导入] ${item.shop} 询单失败（exit ${q.code}）`); } else log(`[导入] ${item.shop} 询单已写入`); }
-      if (!item.promotionFile) gaps.push(`${item.shop}/推广 未采集`);
+      // 有意跳过的段**不记缺口** —— 与下面 catch 段那句逐字同口径。
+      // （2026-10-05 修：这一行原先漏了 `skipPromotion`，于是 `--skip-promotion` 的那一轮
+      //   即使收据里推广段已经正确记成 SKIPPED，整轮也会被自己这条缺口判成失败 ——
+      //   实测形态见 evidence/product-data-job-2026-10-04/…/run-receipt.json 的「13 处」，
+      //   其中 3 条就是「推广 未采集」。带 `--skip-promotion` 的定时入口默认就会撞上它。）
+      if (!options.skipPromotion && !item.promotionFile) gaps.push(`${item.shop}/推广 未采集`);
     }
     // 推广：这一批齐时按小手册的形状做一次批量调用（收据落 `promotion-import/receipt.json`）；
     // 有人缺 ZIP 或批量失败时退成逐店导入（收据落 `promotion-import/<店>/`），把能写的先写掉。
@@ -293,9 +436,12 @@ async function main(argv) {
       ? 'SKIPPED'
       : (gaps.some((gap) => gap.includes('推广')) ? 'FAILED' : 'COMPLETED'));
     if (gaps.length) {
-      // 缺口归因：底单 → 询单 → 推广。跳过推广时最后一档**不可能**出现（有意跳过不记缺口），
+      // 缺口归因：登录 → 底单 → 询单 → 推广。登录排第一是因为它最先发生：
+      // 被预检剔掉的店根本不会有采集缺口之外的记录，归到 `product-import` 会把人指到错的地方去。
+      // 跳过推广时最后一档**不可能**出现（有意跳过不记缺口），
       // 真出现说明有人往 gaps 里塞了新东西 ⇒ 报 unknown 比错报成「推广导入」更诚实。
-      failedStage = gaps.some((gap) => gap.includes('底单')) ? 'product-import'
+      failedStage = gaps.some((gap) => gap.includes('登录')) ? 'login'
+        : gaps.some((gap) => gap.includes('底单')) ? 'product-import'
         : gaps.some((gap) => gap.includes('询单')) ? 'inquiry-import'
           : (options.skipPromotion ? 'unknown' : 'promotion-import');
       throw new Error(`本轮不完整（${gaps.length} 处）：${gaps.join('；')}`);
@@ -323,3 +469,7 @@ async function main(argv) {
 }
 if (pathToFileURL(process.argv[1]).href === import.meta.url) process.exit(await main(process.argv.slice(2)));
 export { main, parseArgs };
+// 登录预检的三个纯函数导出**只为离线用例**（守卫 `runtime/product-data-login-preflight-wiring.test.mjs`）：
+// 「哪几家被剔除」「要不要先补页」这两条判断的错法都是**静默**的（剔除多了少采一家、
+// 剔除少了白跑一家，两种都不会报错），所以它们必须有一条离线判据钉住，而不是只靠真机。
+export { blockedShopsFrom, describeLoginRow, shouldRepairPages };
