@@ -14,6 +14,7 @@ import {
   assertCoverage,
   buildPagePlan,
   buildUrlByName,
+  fetchJson,
   findReclaimCandidates,
   hostOfUrl,
   judgeSlotReport,
@@ -563,4 +564,46 @@ test('源码级：页面归属判据全仓唯一（不许再写 `includes(…url
       `${file} 又用「整串 URL includes 片段」判页面归属了 —— 那正是 09-17 与 09-22 两次停线的成因；`
       + '要改用 runtime/target-url-match.mjs 的 urlMatchesFragment / pagesMatching');
   }
+});
+
+// ---------------------------------------------------------------- 代理读数不许拖垮整轮（2026-10-05）
+//
+// 现场真事：一家店的代理回 `500 {"error":…}`，而 `response.json()` **照样成功**解析出一个对象
+// ⇒ 调用点拿它当 `/targets` 的数组用 ⇒ `before.map is not a function` ⇒
+// **整条只读盘点全崩**（12 家一起白跑）。修法的要点是把「读不到」变成上层能 catch 的一句话，
+// 于是那家店只是 `reachable: false`，其余店照常出结论。
+
+test('fetchJson：非 2xx 必须抛，且把状态码与正文带出来（不许把错误正文当数据回）', async () => {
+  await assert.rejects(
+    () => fetchJson('http://p/targets', {
+      fetchImpl: async () => ({
+        ok: false, status: 500, statusText: 'Internal Server Error',
+        text: async () => '{"error":"proxy exploded"}',
+      }),
+    }),
+    (error) => /HTTP 500/u.test(error.message) && /proxy exploded/u.test(error.message),
+  );
+});
+
+test('fetchJson：2xx 但正文不是 JSON 也要抛（别把半截错误页当数据）', async () => {
+  await assert.rejects(
+    () => fetchJson('http://p/targets', {
+      fetchImpl: async () => ({ ok: true, status: 200, text: async () => '<html>502 Bad Gateway</html>' }),
+    }),
+    (error) => /不是 JSON/u.test(error.message),
+  );
+});
+
+test('fetchJson：正常响应原样回（修这条时别把好路径一起改坏）', async () => {
+  const data = await fetchJson('http://p/targets', {
+    fetchImpl: async () => ({ ok: true, status: 200, text: async () => '[{"targetId":"A"}]' }),
+  });
+  assert.deepEqual(data, [{ targetId: 'A' }]);
+});
+
+test('源码级：/targets 要单独判「是不是数组」（状态码 200 也可能回 {"error":…}）', async () => {
+  const source = await readFile(new URL('./shop-pages.mjs', import.meta.url), 'utf8');
+  assert.match(source, /Array\.isArray\(before\)/u,
+    '形状要单独判 —— 否则一家店回错形状就把整轮盘点带崩');
+  assert.match(source, /await getJson\(`\$\{base\}\/targets`\)/u, '/targets 的读仍要经 getJson');
 });

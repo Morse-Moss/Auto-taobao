@@ -113,6 +113,41 @@ export const FAILURE_STATE_EXPRESSION = `(() => {
 })()`;
 
 /**
+ * 把 `/eval` 的返回剥成「表达式真正的返回值」。
+ *
+ * 为什么必须有这一层（2026-10-05 第四次踩；这次代价＝现场产物一直是空壳）：
+ * 代理的 `/eval` 回的是 **`{ value: <表达式返回值> }`**（CDP `Runtime.evaluate` 的形状）——
+ * 仓库里既有调用点一直写着 `.value`（`runtime/feishu-ui-field-menu.mjs` 等），这里漏了。
+ * 原先只判 `typeof raw === 'string'`：拿到对象就**直接当成 state 用** ⇒ 落盘的 JSON 变成
+ * `{"value":"{…真现场…}"}`、人读版每一栏都是 `?` 与空串 ⇒
+ * **「采到了」与「采空了」长得一模一样**，而这个模块存在的全部理由就是把符号翻成事实。
+ * 更坏的是它**不报错**：`ok:true`、两份产物都在，只是内容没意义 —— 谁都不会去查。
+ *
+ * 剥法：`{value}` 允许套多层（代理包装、将来再包一层都不慌）；中途遇到字符串就按 JSON 解析一次
+ * （表达式自己 `JSON.stringify` 过）；解析不动就把它当最终值返回，由调用点判形状。
+ */
+export function unwrapEvalValue(raw, { maxDepth = 4 } = {}) {
+  let current = raw;
+  for (let depth = 0; depth < maxDepth; depth += 1) {
+    if (typeof current === 'string') {
+      try {
+        current = JSON.parse(current);
+      } catch {
+        return current; // 不是 JSON ⇒ 它就是最终值（调用点会判它是不是对象）
+      }
+      continue;
+    }
+    if (current && typeof current === 'object' && !Array.isArray(current)
+      && Object.keys(current).length === 1 && 'value' in current) {
+      current = current.value;
+      continue;
+    }
+    return current;
+  }
+  return current;
+}
+
+/**
  * 把一次「取现场」的结果渲染成人读的文本，写进 `98-failure-state.txt`。
  *
  * 为什么要人读版：JSON 是给下一次执行/agent 用的，txt 是给人巡场时 30 秒看懂的。
@@ -192,7 +227,14 @@ export async function captureFailureState({
   if (targetId) {
     try {
       const raw = await evalInPage(proxy, targetId, FAILURE_STATE_EXPRESSION);
-      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const parsed = unwrapEvalValue(raw);
+      // 形状要判：拿到的东西不是「现场对象」时**不许当成采到了**。
+      // 原先的写法正是这里的反面 —— 一个 `{value:…}` 包装被当成现场，产物落盘但每栏都是空，
+      // 而 `ok:true` 让谁都不会去查（见 unwrapEvalValue 的注释）。
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error(`取到的不是页面现场对象（拿到 ${parsed === null ? 'null' : typeof parsed}）：`
+          + `${JSON.stringify(raw)?.slice(0, 200) ?? ''}`);
+      }
       result.state = parsed;
       result.ok = true;
     } catch (err) {

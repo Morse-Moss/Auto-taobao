@@ -379,6 +379,31 @@ export async function sendRequests({ base, requests = [], fetchImpl = fetch } = 
 // 而不会顺手把五个后台都探一遍。
 const isMain = Boolean(process.argv[1]) && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
 
+/**
+ * 读一个 JSON 端点。**先看状态码，再看正文能不能解析** —— 两条都要，缺一条都会静默走偏。
+ *
+ * 为什么必须查状态码（2026-10-05 修，现场真事）：原先直接 `response.json()`。
+ * 代理在自家出错时回的是 `500 {"error":"…"}`，`json()` 照样**成功**解析出一个对象 ⇒
+ * 调用点拿它当 `/targets` 的**数组**用 ⇒ `before.map is not a function` ⇒
+ * **一家店的代理挂了，整条只读盘点全崩**（当天 12 家一起白跑，而报告一个字都没吐出来）。
+ * 形状也要判：状态码 200 却回 `{"error":…}` 的同族代理一样会走到这里。
+ *
+ * 依赖注入 `fetchImpl` 是为了能离线断言（与 `sendRequests` 同一做法）——
+ * 这条判据的全部价值就在「非 200 时会不会被当成数据」。
+ */
+export async function fetchJson(url, { fetchImpl = fetch, timeoutMs = 6000 } = {}) {
+  const response = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText ?? ''}｜${String(text).slice(0, 200)}`.trim());
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`响应不是 JSON（HTTP ${response.status}）：${String(text).slice(0, 200)}`);
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const DRY = !args.includes('--open');
@@ -394,10 +419,7 @@ async function main() {
   const urlByName = buildUrlByName();
   assertCoverage(plan, urlByName);
 
-  const getJson = async (url) => {
-    const response = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    return response.json();
-  };
+  const getJson = (url) => fetchJson(url);
 
   const report = [];
   for (const entry of plan) {
@@ -405,6 +427,10 @@ async function main() {
     let before;
     try {
       before = await getJson(`${base}/targets`);
+      // 形状也要判：状态码 200 但回了 `{"error":…}` 的代理同样会走到这里（见上）。
+      if (!Array.isArray(before)) {
+        throw new Error(`/targets 没回数组（回的是 ${Array.isArray(before) ? 'array' : typeof before}）`);
+      }
     } catch (error) {
       report.push({ who: entry.who, proxyPort: entry.proxyPort, reachable: false, error: error.message, actions: [] });
       continue;

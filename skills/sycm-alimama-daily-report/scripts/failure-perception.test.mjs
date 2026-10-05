@@ -7,6 +7,7 @@ import {
   FAILURE_STATE_EXPRESSION,
   captureFailureState,
   renderFailureStateText,
+  unwrapEvalValue,
 } from './failure-perception.mjs';
 
 const makeDir = () => mkdtempSync(path.join(tmpdir(), 'failure-perception-'));
@@ -42,7 +43,10 @@ test('全成功：落 JSON + 人读文本 + 截图，ok=true', async () => {
       proxy: 'http://127.0.0.1:19041', logDir: dir, shopKey: '里可林淘宝', stage: 'promotion-fetch',
       error: '阶段 promotion-fetch 失败（exit 1）',
       readTargets: async () => ([{ type: 'page', targetId: 'T1', url: 'https://sycm.taobao.com/x' }]),
-      evalInPage: async () => JSON.stringify(sampleState),
+      // ⚠️ 这里必须是**代理真会的那个形状**：`/eval` 回 `{ value: <表达式返回值> }`。
+      // 本用例原来喂的是裸字符串 —— 那是错的契约，于是真机上「包装没剥」这个缺陷
+      // 在函数级一直全绿（本项目第 N 次「用例全绿 ≠ 接线接上了」）。
+      evalInPage: async () => ({ value: JSON.stringify(sampleState) }),
       screenshot: async (proxy, targetId, file) => { written.push(file); return file; },
       log: () => {},
     });
@@ -58,6 +62,42 @@ test('全成功：落 JSON + 人读文本 + 截图，ok=true', async () => {
     assert.match(txt, /1178x460/);
     const json = JSON.parse(readFileSync(result.files.stateJson, 'utf8'));
     assert.equal(json.viewport.w, 1178);
+    assert.equal(json.value, undefined, '落盘的必须是**剥过包装**的现场，不是 {"value":…}');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// ---------------------------------------------------------------- 包装剥层（2026-10-05）
+//
+// 现场真事：`/eval` 回 `{ value: "…" }`，旧代码只判「是不是字符串」⇒ 拿对象当 state 用 ⇒
+// 产物落盘、`ok:true`、人读版每一栏都是 `?` 与空串。**不报错**，所以没人会去查。
+// 这一族判据钉住「包装必须剥掉」与「剥不出对象就不许说采到了」。
+
+test('unwrapEvalValue：剥掉 {value} 包装（真代理的形状），也认裸字符串', () => {
+  assert.deepEqual(unwrapEvalValue({ value: '{"url":"https://x"}' }), { url: 'https://x' });
+  assert.deepEqual(unwrapEvalValue('{"url":"https://x"}'), { url: 'https://x' });
+  assert.deepEqual(unwrapEvalValue({ value: { value: '{"url":"https://x"}' } }), { url: 'https://x' },
+    '多套一层也别慌（代理再包一层就认不出来了）');
+  // 已经是对象、没有包装 ⇒ 原样返回，别动它。
+  assert.deepEqual(unwrapEvalValue({ url: 'https://x', title: 'y' }), { url: 'https://x', title: 'y' });
+  // 不是 JSON 的字符串 ⇒ 原样返回（由调用点判形状，别在这里假装解析成功）。
+  assert.equal(unwrapEvalValue('not json'), 'not json');
+});
+
+test('取到的不是现场对象 ⇒ ok=false、如实记原因是「形状不对」，且不落一套空壳产物', async () => {
+  const dir = makeDir();
+  try {
+    const result = await captureFailureState({
+      proxy: 'http://127.0.0.1:19041', logDir: dir, shopKey: '盖文天猫', stage: 'promotion-fetch',
+      error: 'x',
+      readTargets: async () => ([{ type: 'page', targetId: 'T1', url: 'https://sycm.taobao.com/x' }]),
+      evalInPage: async () => ({ value: 'null' }),
+      screenshot: async () => {},
+      log: () => {},
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.state, null);
+    assert.equal(result.files.stateJson, undefined, '采空了就不许落一套「看着像采到了」的空壳');
+    assert.ok(result.errors.some((line) => /不是页面现场对象/u.test(line)), result.errors.join('｜'));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
