@@ -219,7 +219,7 @@ export const SHOP_IDENTITIES = Object.freeze([
     sycmHeaderVerified: 'expression',
     alimamaMemberName: '随心品质定制:小嘉',
     alimamaMemberId: '887360146',
-    alimamaVerified: 'human-record',
+    alimamaVerified: 'expression',
     evidence: '页头店名 2026-09-18 实测、2026-09-30 复核一致（隔离 profile suixin-custom）。'
       + '会员 ID 2026-09-30 用采集表达式实测，是**主账号属性、不随子账号变** ⇒ 换子账号后仍然有效。'
       + '会员名 2026-10-05 按用户给的《店铺账号信息表测试.xlsx》改为「随心品质定制:小嘉」'
@@ -289,7 +289,7 @@ export const SHOP_IDENTITIES = Object.freeze([
     sycmHeaderVerified: 'expression',
     alimamaMemberName: '里可林家居:小嘉',
     alimamaMemberId: '2350600069',
-    alimamaVerified: 'human-record',
+    alimamaVerified: 'expression',
     evidence: '页头店名 2026-09-18 实测、2026-09-30 复核一致（隔离 profile likelin-home）。'
       + '会员 ID 2026-09-30 用采集表达式实测，是主账号属性、不随子账号变。'
       + '会员名 2026-10-05 按用户给的《店铺账号信息表测试.xlsx》改为「里可林家居:小嘉」'
@@ -348,7 +348,7 @@ export const SHOP_IDENTITIES = Object.freeze([
     sycmHeaderVerified: 'expression',
     alimamaMemberName: '网林定制家居:小瓜',
     alimamaMemberId: '1731780198',
-    alimamaVerified: 'human-record',
+    alimamaVerified: 'expression',
     evidence: '2026-09-30 用户《店铺账号信息表》新增的第 13 家（平台店铺全称「网林定制家居」）。底座与登录都在当天完成，页头店名、会员 ID 均于当天用采集表达式实测（隔离 profile wanglin-custom）。**运营叫法当天改过**：11:05 版账号表的「飞书表格简称」是「网林定制淘宝」，15:43 起改成「网林家居」，本表与飞书侧已同步（依据见文件头 ②）。落点已具备：新日报 base 的「店铺」选项与 09-29 起的预建行里都有「网林家居」；商品链三张底单不写店铺列，不需要额外选项。'
       + '⚠️ 会员名 2026-10-05 按用户给的《店铺账号信息表测试.xlsx》由「:嘉嘉」改为「:小瓜」，'
       + '并退回 human-record —— 该店 wanglin-custom 的凭据库里存的还是旧号「:嘉嘉」，'
@@ -421,28 +421,29 @@ export const IDENTITY_SHOP_HEADER_VERIFIED_SHOPS = Object.freeze([
  * 2026-10-05 又有三家退回（用户给了新的《店铺账号信息表测试.xlsx》，会员名与本表不一致）：
  * 盖文淘宝（`:小瓜`→`:小嘉`）、里可林淘宝（`:小宁`→`:小嘉`）、网林家居（`:嘉嘉`→`:小瓜`）。
  * 三家都从这张清单移出、进了下面的 `IDENTITY_PENDING_SHOPS`。
+ * ⚠️ **同日 10:46 用户人工登录后，三家全部实测通过**（盖文淘宝 19043 / 网林家居 19062 /
+ * 里可林淘宝 19041，各读 `collect-core.mjs` 那两个身份表达式）⇒ 又全部移回这张清单：
+ *   盖文淘宝   阿里妈妈读回「随心品质定制:小嘉 ID：887360146」、生意参谋读回「盖文全卫定制 主店」
+ *   网林家居   阿里妈妈读回「网林定制家居:小瓜 ID：1731780198」、生意参谋读回「网林定制家居 主店」
+ *   里可林淘宝 阿里妈妈读回「里可林家居:小嘉 ID：2350600069」、生意参谋读回「里可林家居 主店」
+ * 三条都与新账号表**逐字一致**（网林家居这条尤其要紧：它凭据库里存的是旧号 `:嘉嘉`，
+ * 实测证明现在窗口里是 `:小瓜` ⇒ 没有悄悄登成旧账号）。
  */
 export const IDENTITY_MEMBER_MEASURED_SHOPS = Object.freeze([
-  '科塔淘宝', '盖文天猫', '保拉淘宝', '保拉天猫', '网林淘宝', '网林天猫',
-  '里可林天猫', '安比龙头店', '科塔龙头店', '安比淘宝',
+  '科塔淘宝', '盖文淘宝', '盖文天猫', '保拉淘宝', '保拉天猫', '网林淘宝', '网林天猫',
+  '里可林淘宝', '里可林天猫', '安比龙头店', '科塔龙头店', '安比淘宝', '网林家居',
 ]);
 
 /**
  * 还需要一次「人工登录 + 只读探针读数」的店铺。
  *
- * 2026-09-30 走了两轮后清空；**2026-10-05 又有 3 家进来**（换子账号，实测值当场作废）：
- *   · 盖文淘宝 —— 新号「随心品质定制:小嘉」，且 suixin-custom 的**凭据库 0 条** ⇒ 只能人登；
- *   · 里可林淘宝 —— 新号「里可林家居:小嘉」，凭据库里存的就是这个（3 条 origin），自动登录能用，
- *     但仍要实测确认阿里妈妈页头确实是它（登记表原先写的是已作废的「:小宁」）；
- *   · 网林家居 —— 新号「网林定制家居:小瓜」，**凭据库里存的是旧号「:嘉嘉」**
- *     ⇒ 不先人登并点「保存密码」，自动登录会**悄悄登成旧账号**。
+ * 沿革：2026-09-30 走了两轮后清空；2026-10-05 因新账号表推翻了三条而重新进 3 家；
+ * **同日 10:46 人工登录后实测全部通过 ⇒ 再次清空**（见上面那份清单的实测记录）。
  *
  * **非空期间闸门拿的是人工记录值**（「已登记但还没测」漏出这张清单，
  * 表现为「在正确的窗口上拦人」的假警报）。清空它只有一个办法：逐家实测。
  */
-export const IDENTITY_PENDING_SHOPS = Object.freeze([
-  '盖文淘宝', '里可林淘宝', '网林家居',
-]);
+export const IDENTITY_PENDING_SHOPS = Object.freeze([]);
 
 
 /** 按运营叫法取登记行。**未登记一律抛错**（fail-closed），不回落成「不核对」。 */

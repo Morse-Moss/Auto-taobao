@@ -98,6 +98,45 @@ export function dateWithinRange(range, date) {
 // ---------------------------------------------------------------------------
 // 点击前的「滚动到能点到 + 复核命中」两段表达式（2026-09-17 加，两次实亏换来的）
 // ---------------------------------------------------------------------------
+/**
+ * 收集「本页面所有可查的文档」：**外层 + 同源 iframe 内部**。
+ *
+ * ⚠️ 2026-10-05 加，根因之一：生意参谋「自助分析 · 公共空间」那条地址
+ * （`/lyone/auto_analysis/my_space?activeKey=common`）会被平台**重定向到新版**
+ * `/adm/v3/micro/auto_analysis/my_space`，后者是「外壳 + iframe」结构，
+ * **报表清单在 iframe 里**。只查外层 `document` 的话：表头 0 行、预览按钮 0 个，
+ * 而失败日志里那个恒定的「预览按钮 1 个」其实来自**跨 iframe 坐标下的误判**。
+ *
+ * 为什么放进 collect-core 而不是各脚本自己拼：命中复核、滚动、点击、遮罩扫描
+ * 都要在**元素自己那个窗口**里算坐标与命中 —— 只改扫描那一处、点击还在外层点，
+ * 会变成「找得到、点不到」的新形态。跨域 iframe 拿不到 `contentDocument`，
+ * 那一项会被跳过（fail-closed：宁可当它不存在，也不要拿外层坐标去算命中）。
+ *
+ * 以字符串片段返回（不是函数）：这些生成器产出的是**要发到页面里 eval 的 JS 源码**，
+ * 共享逻辑必须以源码形式插进去，不能是闭包变量。
+ */
+export const ALL_DOCS_EXPR = `(function () {
+  const scopes = [{ doc: document, win: window }];
+  for (const f of document.querySelectorAll('iframe')) {
+    try {
+      if (f.contentDocument && f.contentDocument.body) {
+        scopes.push({ doc: f.contentDocument, win: f.contentWindow || f.contentDocument.defaultView });
+      }
+    } catch (e) { /* 跨域：拿不到就当它不存在 */ }
+  }
+  return scopes;
+})()`;
+
+/** 穿透 iframe 的 `querySelectorAll`，返回全部匹配（跨文档合并，顺序＝外层在前）。 */
+export const QUERY_ALL_DOCS_EXPR = `(function (selector) {
+  const out = [];
+  for (const scope of ${ALL_DOCS_EXPR}) {
+    for (const el of scope.doc.querySelectorAll(selector)) out.push(el);
+  }
+  return out;
+})`;
+
+// ---------------------------------------------------------------------------
 // 只写 `block:'center'` 是不够的：`inline` 会取默认的 `'nearest'`，而阿里妈妈报表页在
 // 窄窗口下「下载报表」整个落在视口**右边界之外**（实测 innerWidth=1203、元素 x∈[1305,1378]）
 // ⇒ `elementFromPoint(中心)` 直接返回 null，复核报 not-hit。点击本身走 JS（`el.click()`）
@@ -112,8 +151,9 @@ export function dateWithinRange(range, date) {
 export function scrollIntoViewExpression(selector) {
   // 两个方向都要居中：垂直决定是否在视口内，水平决定「右侧被截掉」时能不能带回来。
   // 取元素时只认可见的那个 —— selector 可能是被多次运行标过的（见 hitCheckExpression 的注释）。
+  // 2026-10-05：查询穿透 iframe（公共空间那页是外壳＋iframe，元素在 iframe 里）。
   return `(() => {
-    const matches = [...document.querySelectorAll(${JSON.stringify(selector)})];
+    const matches = ${QUERY_ALL_DOCS_EXPR}(${JSON.stringify(selector)});
     const el = matches.find((node) => { const r = node.getBoundingClientRect(); return r.width > 0 && r.height > 0; }) || matches[0];
     if (!el) return JSON.stringify({ ok: false, reason: 'element-missing', matches: matches.length });
     el.scrollIntoView({ block: 'center', inline: 'center' });
@@ -128,9 +168,20 @@ export function hitCheckExpression(selector) {
     // navigate 到别的子页**不会重新加载页面**，于是上一轮标过的元素留在 DOM 里。
     // querySelector 取文档序第一个 ⇒ 会拿到旧运行残留的隐藏元素，报 not-visible，
     // 却看不出「其实只是残留」（2026-09-17 实亏一次）。所以这里必须挑可见的那个。
-    const matches = [...document.querySelectorAll(${JSON.stringify(selector)})];
+    const matches = ${QUERY_ALL_DOCS_EXPR}(${JSON.stringify(selector)});
     const el = matches.find(isVisible) || matches[0];
     if (!el) return JSON.stringify({ ok: false, reason: 'element-missing', matches: matches.length });
+    // ⚠️ 2026-10-05：**视口与 elementFromPoint 必须用元素自己那个窗口**。
+    // 元素在 iframe 里时，getBoundingClientRect 给的是 **iframe 内部坐标**，
+    // 而外层 window.innerWidth/innerHeight 是整个浏览器视口 —— 拿外层尺寸去比，
+    // 会把「在 iframe 里好好待着」误判成 outside-viewport；
+    // document.elementFromPoint 更是**只在外层文档**有意义，
+    // 在 iframe 坐标上调用恒返回 null 或别的东西 ⇒ not-hit。
+    const doc = el.ownerDocument || document;
+    // ⚠️ 兜住 ownerDocument / defaultView 缺失：测试沙箱里造的假元素没有这两个，
+    // 真实页面里也可能有 detached 节点。缺了就退回外层窗口 —— 宁可**判不准**，
+    // 也不许整段表达式抛出去（抛出去会被当成「复核未通过」，方向完全错）。
+    const win = (doc && doc.defaultView) || window;
     const self = (node) => !!node && (node === el || el.contains(node) || node.contains(el));
     const r = el.getBoundingClientRect();
     if (!(r.width > 0 && r.height > 0)) {
@@ -147,9 +198,10 @@ export function hitCheckExpression(selector) {
       for (const fx of insets) {
         const x = Math.round(r.x + r.width * fx);
         const y = Math.round(r.y + r.height * fy);
-        if (x < 0 || x >= window.innerWidth || y < 0 || y >= window.innerHeight) continue;
+        if (x < 0 || x >= win.innerWidth || y < 0 || y >= win.innerHeight) continue;
         inViewportSamples += 1;
-        if (self(document.elementFromPoint(x, y))) {
+        const h = typeof win.elementFromPoint === 'function' ? win.elementFromPoint(x, y) : null;
+        if (self(h)) {
           insideSamples += 1;
           if (!firstHit) firstHit = [x, y];
         }
@@ -157,8 +209,9 @@ export function hitCheckExpression(selector) {
     }
     const cx = Math.round(r.x + r.width / 2);
     const cy = Math.round(r.y + r.height / 2);
-    const centerInViewport = cx >= 0 && cx < window.innerWidth && cy >= 0 && cy < window.innerHeight;
-    const centerPoint = centerInViewport ? document.elementFromPoint(cx, cy) : null;
+    const centerInViewport = cx >= 0 && cx < win.innerWidth && cy >= 0 && cy < win.innerHeight;
+    const centerPoint = (centerInViewport && typeof win.elementFromPoint === 'function')
+      ? win.elementFromPoint(cx, cy) : null;
     const centerIsSelf = self(centerPoint);
     return JSON.stringify({
       ok: insideSamples > 0,
@@ -166,10 +219,11 @@ export function hitCheckExpression(selector) {
       matches: matches.length,
       hiddenSiblings: matches.filter((node) => !isVisible(node)).length,
       y: Math.round(r.y),
-      inViewport: cy >= 0 && cy < window.innerHeight,
+      inViewport: cy >= 0 && cy < win.innerHeight,
       rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)],
       inViewportSamples, insideSamples, firstHit, centerIsSelf,
-      viewport: [window.innerWidth, window.innerHeight],
+      viewport: [win.innerWidth, win.innerHeight],
+      inScope: doc === document ? 'outer' : 'iframe',
       blocker: centerIsSelf ? null : (centerPoint
         ? { tag: centerPoint.tagName, cls: String(centerPoint.className).slice(0, 60) }
         : (centerInViewport ? null : 'center-outside-viewport')),

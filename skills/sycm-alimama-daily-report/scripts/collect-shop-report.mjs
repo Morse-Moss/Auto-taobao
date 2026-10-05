@@ -23,6 +23,51 @@ const SYCM_APP_URL = 'https://sycm.taobao.com/qos/service/frame/shop/performance
 const SYCM_SPACE_URL = 'https://sycm.taobao.com/lyone/auto_analysis/my_space'
   + '?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common';
 
+/**
+ * 店 → 它那份「日报」报表在公共空间里的**行标题**。
+ *
+ * ⚠️ 2026-10-05 之前这里是硬编码的字面量 `rowText.includes('日报')` ——
+ * 也就是**假定每家店的报表都叫「日报」**。盖文天猫不成立：
+ * 它的报表行标题是「活动-店铺-整体-近30天」（2026-10-05 用户口径：「这个就是这家店的日报，
+ * 只是名称不一样」），字面量判据于是 10 次轮询全落空、报「等不到『日报』这一行的预览按钮」。
+ * 实测证据（盖文天猫 19045 窗口，只读）：`/lyone/…my_space?activeKey=common` 会被平台
+ * **重定向到新版 `/adm/v3/micro/auto_analysis/my_space`**，后者是外壳＋iframe：
+ * 外层文档 `tr` 数为 0、预览按钮 0 个，iframe 内层 2 行、预览按钮 1 个，
+ * 那 1 行就是「活动-店铺-整体-近30天」—— 与失败日志里那个恒定的「预览按钮 1 个」逐字对上。
+ *
+ * 为什么做成数据而不是改字面量（用户 10-05 定的口径：**别再出现判据不一致**）：
+ * 报表名是**店铺侧的东西**，会随运营改口径而变。写进代码就等于「每改一次名字改一次代码」，
+ * 而且改错了报的还是「等不到日报行」—— 指向错误方向。改成配置后：
+ *   · 这张表就是唯一来源，运营改名 ⇒ 改这一处，不再散在代码里；
+ *   · **没登记的店 fail-closed**，报错点名「该店报表行标题未登记」，
+ *     而不是含糊地说「等不到日报行」（那是把「不知道」说成「不存在」，坑 33 的同类）；
+ *   · 判据从「含日报」放宽成「**逐字等于**登记值」——含匹配会被同前缀的别的行误命中。
+ *
+ * 值从哪来：2026-10-05 在盖文天猫窗口上实测读到的行文本（`97-*` 之外的只读取证）。
+ * `null` ＝**已登记但实测名字就是含「日报」的那种**（历史 12 家的默认形态，保持原行为不变）。
+ */
+export const SHOP_REPORT_ROW_TITLES = Object.freeze({
+  盖文天猫: '活动-店铺-整体-近30天',
+});
+
+/**
+ * 这家店该匹配的行标题。**没登记 ⇒ 抛错**（fail-closed），且措辞要指向「未知」而不是「没有」。
+ * @param {string|null|undefined} shop 运营叫法（`shop-identities.mjs` 的 key）
+ */
+export function reportRowTitleFor(shop) {
+  const key = String(shop ?? '').trim();
+  if (!key) throw new Error('没给店名，无法确定要找哪份报表');
+  if (Object.hasOwn(SHOP_REPORT_ROW_TITLES, key)) return SHOP_REPORT_ROW_TITLES[key];
+  return null; // ← 默认形态：判据退回「行标题含『日报』」，与 2026-10-05 之前逐字相同
+}
+
+/** 匹配用的判据表达式片段：逐字相等（有登记）或含「日报」（未登记＝默认形态）。 */
+export function rowTitleMatcher(rowTitle) {
+  return rowTitle === null
+    ? '/日报/.test(rowText)'
+    : `rowText === ${JSON.stringify(rowTitle)}`;
+}
+
 // 「哪个页面才算生意参谋那个**工作页**」—— 与 date-picker.mjs 的
 // `siteAdapter('sycm').urlFragment`、run-inquiry-backfill.mjs 的 discoverSycmTarget 逐字相同
 // （三方一致由 collect-core.test.mjs 的一条守卫扫，改一处就红）。
@@ -184,34 +229,75 @@ async function main() {
   console.log('[1/4] 再进 自助分析 · 公共空间');
   await navigate(args, targetId, SYCM_SPACE_URL);
 
+  // ⚠️ 必须**穿透 iframe**（2026-10-05 实测，根因之一）：
+  // `/lyone/auto_analysis/my_space?activeKey=common` 会被平台**重定向到新版**
+  // `/adm/v3/micro/auto_analysis/my_space`，后者是「外壳 + iframe」结构 ——
+  // 报表清单在 iframe 里。外层 `document` 上 `tr` 数 = 0、预览按钮 = 0 个。
+  //
+  // 为什么原来居然能数出 1 个（而不是 0）：`elementFromPoint` 在**跨 iframe 坐标**下会算错，
+  // 而更重要的是标 `[data-collect-preview]` 打在了**外层**元素上 ——
+  // 于是「计数」看着像成功、「按行文本挑行」永远挑不出来，最后报「等不到日报行」。
+  //
+  // 命中复核也必须在**元素所属的那个文档**里做：`getBoundingClientRect` 给出的是
+  // iframe 内部坐标，拿到外层 `window.innerHeight` 去比会误判成「不在视口内」；
+  // `elementFromPoint` 更是只在**本窗口**有意义。
   const findPreview = `(() => {
     document.querySelectorAll('[data-collect-preview]')
       .forEach((el) => el.removeAttribute('data-collect-preview'));
-    const leaves = [...document.querySelectorAll('*')].filter((el) => el.children.length === 0
-      && el.textContent.trim() === '预览');
-    const info = leaves.map((el, i) => {
+    for (const f of document.querySelectorAll('iframe')) {
+      try { if (f.contentDocument) f.contentDocument.querySelectorAll('[data-collect-preview]')
+        .forEach((el) => el.removeAttribute('data-collect-preview')); } catch (e) { /* 跨域，跳过 */ }
+    }
+    // 每项：{ doc, win } —— 坐标与命中判定都用元素**自己那个窗口**。
+    const scopes = [{ doc: document, win: window }];
+    for (const f of document.querySelectorAll('iframe')) {
+      try { if (f.contentDocument && f.contentDocument.body) scopes.push({ doc: f.contentDocument, win: f.contentWindow || f.contentDocument.defaultView }); } catch (e) { /* 跨域 */ }
+    }
+    const all = [];
+    for (const scope of scopes) {
+      for (const el of scope.doc.querySelectorAll('*')) {
+        if (el.children.length !== 0 || el.textContent.trim() !== '预览') continue;
+        all.push({ el, scope });
+      }
+    }
+    const info = all.map(({ el, scope }, i) => {
       const row = el.closest('tr') || el.closest('[class*=row]') || el.parentElement;
       el.setAttribute('data-collect-preview', String(i));
       const r = el.getBoundingClientRect();
-      const hit = document.elementFromPoint(Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2));
+      const cx = Math.round(r.x + r.width / 2);
+      const cy = Math.round(r.y + r.height / 2);
+      const hit = scope.win.elementFromPoint ? scope.win.elementFromPoint(cx, cy) : null;
       return { i, rowText: (row ? row.innerText : '').replace(/\\s+/g, ' ').trim().slice(0, 70),
-        inViewport: r.y >= 0 && r.y < window.innerHeight,
+        inScope: scope.doc === document ? 'outer' : 'iframe',
+        inViewport: r.y >= 0 && r.y < (scope.win.innerHeight || 0),
         hitOk: !!hit && (hit === el || el.contains(hit) || hit.contains(el)) };
     });
-    return JSON.stringify({ href: location.href, count: leaves.length, info });
+    return JSON.stringify({ href: location.href, count: all.length, info });
   })()`;
 
   let found = null;
+  const rowTitle = reportRowTitleFor(args.expectShop);
+  // 判据按 JS 源码注入，所以先在**外面**把正则编好，页面里只做 replace 占位 ——
+  // 直接把店名拼进表达式字符串会造成两个问题：店名里有引号/反斜杠就语法错、
+  // 且注入面随店名变大。这里传的是一个**已经编译好的字面量**。
+  const MATCHER = new RegExp(rowTitleMatcher(rowTitle));
   for (let round = 1; round <= 10; round += 1) {
     await delay(2500);
     const state = await evalOn(args, targetId, findPreview);
-    const daily = (state.info || []).find((entry) => entry.rowText.includes('日报'));
+    const daily = (state.info || []).find((entry) => MATCHER.test(entry.rowText));
     console.log(`[2/4] ${round * 2.5}s：预览按钮 ${state.count} 个`
       + `${daily ? `，日报行 #${daily.i}（命中复核=${daily.hitOk}，视口内=${daily.inViewport}）` : ''}`);
     if (daily && daily.hitOk) { found = daily; break; }
     if (daily && round === 10) found = daily;
   }
-  if (!found) throw new Error('等不到「日报」这一行的预览按钮');
+  if (!found) {
+    // 措辞必须说清是「没找到」还是「不知道要找哪个」—— 把未知说成不存在会把人带偏。
+    throw new Error(rowTitle === null
+      ? '等不到「日报」这一行的预览按钮'
+      : `等不到「${rowTitle}」这一行的预览按钮`
+        + `（${args.expectShop} 登记的日报报表行标题就是它；该屏可见的预览按钮 ${state?.count ?? 0} 个，`
+        + '若报表刚被改名/删除，请更新 collect-shop-report.mjs 的 SHOP_REPORT_ROW_TITLES）');
+  }
   console.log(`[2/4] 点开「日报」预览（#${found.i}）→ ${await click(args, targetId, `[data-collect-preview="${found.i}"]`)}`);
 
   let preview = null;

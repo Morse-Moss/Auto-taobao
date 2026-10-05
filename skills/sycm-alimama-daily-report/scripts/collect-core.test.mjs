@@ -378,10 +378,21 @@ test('复核表达式在沙箱里真的能跑：视口外判负、中心被盖�
     getBoundingClientRect() { return this.rect; },
     contains(node) { return node === this; },
   });
-  const run = (expression, { el, elList, pointAt }) => new Function('document', 'window', `return ${expression};`)({
-    querySelectorAll: () => elList ?? (el ? [el] : []),
-    elementFromPoint: pointAt,
-  }, { innerWidth: 1203, innerHeight: 612 });
+  // 2026-10-05：命中判据改成「用**元素自己那个窗口**」（根因是报表清单在 iframe 里，
+  // 外层 window 的尺寸与 elementFromPoint 对 iframe 内元素无效）。
+  // ⇒ 夹具必须给 `ownerDocument.defaultView` —— 真实页面里元素**一定**有这两个属性，
+  // 夹具不给就成了「测的是一份现实中不存在的 DOM」，那才是真正的假绿/假红来源。
+  // 真实页面里也可能有 detached 节点 ⇒ 表达式侧另有 `|| document` / `|| window` 兜底。
+  const run = (expression, { el, elList, pointAt }) => {
+    const win = { innerWidth: 1203, innerHeight: 612, elementFromPoint: pointAt };
+    const doc = {
+      querySelectorAll: () => elList ?? (el ? [el] : []),
+      elementFromPoint: pointAt,
+      defaultView: win,
+    };
+    if (el && !el.ownerDocument) el.ownerDocument = doc;
+    return new Function('document', 'window', `return ${expression};`)(doc, win);
+  };
 
   // 场景 A：整个在视口右边界外 ⇒ 一个视口内采样点都没有，判负且 reason 点名原因。
   const outside = makeEl({ x: 1305, y: 310, width: 73, height: 32 });
