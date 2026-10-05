@@ -17,6 +17,7 @@ import {
   RETIRED_PORTS,
   ROUTES,
   SHOP_BROWSERS,
+  SHOP_BROWSER_SCALE_FACTOR,
   SHOP_BROWSER_WINDOW_SIZE,
   SITE_ACCOUNT,
   allDeclaredPorts,
@@ -231,11 +232,35 @@ test('店铺 profile 一定带 --disable-sync；两个老浏览器的 argv 逐�
     assert.ok(args.indexOf(SHOP_BROWSER_WINDOW_SIZE) < args.indexOf('about:blank'),
       `${key}：开关必须在 startUrl 之前（Chromium 只把开关认在 URL 前面）`);
   }
+  // 强制缩放（2026-10-05 加）：`--window-size` 的单位是 DIP，DIP 的物理大小由**系统显示缩放**
+  // 决定 ⇒ 只钉窗口尺寸挡不住「系统缩放变了」——窗口会被屏幕**静默夹掉**，参数照写、视口悄悄变小。
+  // 现场：系统缩放 1.25→2.5，视口从 1506 掉到 1114 < 页面文档宽 1418 ⇒ 被迫横滚
+  // ⇒ 目标按钮被平台右侧固定挂栏盖住 ⇒ 8 家店全停在 promotion-submit（详见登记表里的长注释）。
+  // 所以这条要按「每个 profile」逐个断言：漏配的店铺不会报错，只会在某个早晨静默失败。
+  for (const key of shopBrowserKeys()) {
+    const args = buildBrowserLaunchArgs({
+      profile: SHOP_BROWSERS[key].profile, port: SHOP_BROWSERS[key].browserPort,
+    });
+    assert.ok(args.includes(SHOP_BROWSER_SCALE_FACTOR),
+      `${key} 的启动参数里缺 ${SHOP_BROWSER_SCALE_FACTOR} —— 系统显示缩放一变，视口又会掉回去`);
+    assert.ok(args.indexOf(SHOP_BROWSER_SCALE_FACTOR) < args.indexOf('about:blank'),
+      `${key}：开关必须在 startUrl 之前（Chromium 只把开关认在 URL 前面）`);
+  }
+  // 缩放值必须是**写死的常量**，不许来自环境变量或系统默认 —— 否则这台机器上「固定住」这件事
+  // 又变成了「看当前系统设置」。数字本身可以调，但必须是个常量。
+  assert.match(SHOP_BROWSER_SCALE_FACTOR, /^--force-device-scale-factor=[0-9]+(?:\.[0-9]+)?$/u,
+    '强制缩放必须是「--force-device-scale-factor=<常数>」的形式，不能是空值或变量');
   // 反方向也要钉住：两个老浏览器**不得**被加上窗口尺寸（它们的 argv 上面已逐字断言，
   // 这里再显式说一次，免得以后有人图省事把开关挪到公共分支上）。
   assert.ok(!buildBrowserLaunchArgs({
     profile: BROWSER_PROFILES.competitor, port: PROJECT_PORTS.competitorBrowser,
   }).includes(SHOP_BROWSER_WINDOW_SIZE));
+  assert.ok(!buildBrowserLaunchArgs({
+    profile: BROWSER_PROFILES.competitor, port: PROJECT_PORTS.competitorBrowser,
+  }).includes(SHOP_BROWSER_SCALE_FACTOR));
+  assert.ok(!buildBrowserLaunchArgs({
+    profile: BROWSER_PROFILES.dailyReport, port: PROJECT_PORTS.dailyReportBrowser,
+  }).includes(SHOP_BROWSER_SCALE_FACTOR));
 });
 
 test('resolvePort：显式环境变量优先，非法值抛错而不是静默回落', () => {
