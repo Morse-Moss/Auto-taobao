@@ -68,6 +68,12 @@ test('下载目录扫描：只认形状对的文件，大小与 mtime 一起带�
     '带数字后缀的报表名（日报2）也是本链的产物，不许漏');
   assert.equal(SHOP_REPORT_PATTERN.test('日报2_20260918_90f3f449b92531c0823d97ec6d6bb86b (1).xlsx'), true,
     '数字后缀与 Windows 的重名后缀可以同时出现');
+  // 2026-10-02 实例：「科塔淘宝」的报表叫「店铺数据日报」，落盘文件名前面带字 ⇒ 旧正则
+  // `^日报…` 漏判，脚本报「没等到新的店铺报表」。这里把它钉住，不许再漏。
+  assert.equal(SHOP_REPORT_PATTERN.test('店铺数据日报_20261002_8903471d5657b8875620a116960da9bc.xlsx'), true,
+    '报表名前面带字（店铺数据日报）也是本链的产物，不许漏');
+  assert.equal(SHOP_REPORT_PATTERN.test('~$店铺数据日报_20261002_8903471d5657b8875620a116960da9bc.xlsx'), false,
+    '放宽前缀之后，Excel 锁文件 `~$…` 仍不算候选');
   // 目录不存在要抛出可读错误，不许静默当成「目录里是空的」。
   assert.throws(() => listDownloads(path.join(dir, '__not_here__'), SHOP_REPORT_PATTERN), /cannot read downloads directory/u);
 });

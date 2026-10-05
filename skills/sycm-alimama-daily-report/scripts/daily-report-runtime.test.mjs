@@ -383,7 +383,7 @@ test('截图失败只降级、不中断：captureScreenshotSafe 给结论而不�
 // 这条是 2026-09-20 实测出来的：源表那一页正文 59 万字符时 `Page.captureScreenshot`
 // 稳定超过代理里那条 30 秒固定超时（两次复现，页面 visible/focused），
 // 而原先截图抛错会穿透 main ⇒ 两张表的独立回读一起丢（产物写在 try 之后，根本不落盘）。
-test('截图失败不许顶掉回读：产物照写、失败记进产物、退出码仍非零', () => {
+test('截图失败不许顶掉回读：产物照写、失败记进产物、退出码非零且与真故障区分', () => {
   const source = readFileSync(path.join(SCRIPTS_DIR, 'readback-daily-report.mjs'), 'utf8');
   // ① 循环里用的是降级版，而不是会抛的那一版。
   assert.match(source, /const shot = await captureScreenshotSafe\(/u, '循环里必须用降级版取截图');
@@ -404,8 +404,19 @@ test('截图失败不许顶掉回读：产物照写、失败记进产物、退�
   // ④ 缺证据要说出来，且退出码非零（否则 stage 报成功，而产物里明明缺图）。
   assert.match(source, /\[不完整\] 数据回读已核对并落盘/u,
     '必须把「数据已核对」与「截图缺失」分成两句说，别混成一句「失败」');
-  assert.match(source, /好让人知道这一轮的证据不完整。'\);\s*\n\s*process\.exitCode = 1;/u,
-    '截图缺失必须让退出码非零');
+  // ⑤ **2026-09-28 改**：退出码从 1 改成**独立的 4**（数据已核对、仅佐证不完整），
+  //    理由是 09-27 真机实测：盖文淘宝数据齐、只缺一张图，却和真故障共用 exit 1，
+  //    在 summary/告警里长得一样。判据从「必须是 1」改成「必须非零、且不是通用失败码 1」——
+  //    后半句才是重点：退回 1 等于把这个区分又抹掉。
+  assert.match(source, /process\.exitCode = SCREENSHOT_INCOMPLETE_EXIT_CODE;/u,
+    '截图缺失必须让退出码非零（且用独立的常量，不要写字面量）');
+  assert.match(source, /export const SCREENSHOT_INCOMPLETE_EXIT_CODE = 4;/u,
+    '退出码常量必须等于 4（与通用失败 1 区分）');
+  assert.equal(/process\.exitCode = 1;\s*\n\s*\}\s*\n\}/u.test(source), false,
+    '截图缺失那条路径又退回成通用失败码 1 了 —— 它与真数据故障必须能分开');
+  // 反向自证：判据真的在判东西 —— 换回 1 就该被判红。
+  assert.equal(/process\.exitCode = SCREENSHOT_INCOMPLETE_EXIT_CODE;/u.test('process.exitCode = 1;'), false,
+    '判据本身失效了（正则写废了才会全绿）');
 });
 
 test('两个写入方都把证据目录交给 resolveEvidenceDir，回填用 latest 并入同一代', () => {

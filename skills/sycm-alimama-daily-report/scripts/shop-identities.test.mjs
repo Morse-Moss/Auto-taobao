@@ -160,10 +160,28 @@ test('诚实性：已实测的行字段齐全，未实测的行整行为 null', 
   //   页头店名：13 家全部到 expression（老 5 家 09-18/19，其余 09-30 当天）。
   //   会员名：上午换操作员时全部退回 human-record，下午逐店实测后 13 家全部升回 expression。
   assert.equal(SHOP_IDENTITIES.filter((row) => row.sycmHeaderVerified === 'expression').length, 13);
-  assert.equal(SHOP_IDENTITIES.filter((row) => row.alimamaVerified === 'expression').length, 13,
-    '13 家的会员名都已在真实窗口里用采集表达式读到 —— 这个数字掉下来就说明有人凭记录填了值');
-  assert.equal(SHOP_IDENTITIES.filter((row) => row.alimamaVerified === 'human-record').length, 0,
-    'human-record 只该在「换了操作员但还没实测」时出现；现在这个数是 0 才算实测做完');
+
+  // 「会员名还没在这个店的窗口里实测过」的账，只认登记表里那张**显式清单**
+  // （`IDENTITY_PENDING_SHOPS`）—— 这里绝不另抄一份常量，抄两份就会有一天两边不一致。
+  //   原来这里写死的是一对数字（expression === 13、human-record === 0），含义是「实测全做完了」。
+  //   但「换了子账号、还没实测」是一个**必须允许**的真实中间态（2026-09-30 17:46 科塔淘宝走了第二次），
+  //   写死数字会把人逼到两条坏路上去：要么凭记录填成 expression（那是在撒谎），
+  //   要么干脆把名字删掉（丢掉一条真能用的闸门，`assertMemberIdentity` 就不再拦了）。
+  //   与清单互锁之后，两个方向仍然会红：
+  //     · 不在待实测清单里、级别却不是 expression ⇒ 有人凭记录填了值，或者实测完忘了升级；
+  //     · 在待实测清单里、级别却是 expression ⇒ 实测补上了却忘了把这一行从清单里划掉 ——
+  //       这个豁免会永远留着，等于悄悄取消这条闸门。
+  const memberLevels = SHOP_IDENTITIES.map((row) => [row.key, row.alimamaVerified]);
+  assert.deepEqual(
+    memberLevels.filter(([, level]) => level !== 'expression').map(([key]) => key).sort(),
+    [...IDENTITY_PENDING_SHOPS].sort(),
+    '会员名非 expression 的家必须**恰好**等于 IDENTITY_PENDING_SHOPS（换了子账号、还没实测的那几家）',
+  );
+  assert.equal(
+    memberLevels.filter(([, level]) => level === 'expression').length,
+    SHOP_IDENTITIES.length - IDENTITY_PENDING_SHOPS.length,
+    '会员名实测家数 = 总家数 − 待实测家数；expression 数掉下来就说明有人凭记录填了值',
+  );
 });
 
 test('隔离 profile：键唯一、值唯一、与登记表逐键一致，三张清单互相自洽', () => {
@@ -189,10 +207,13 @@ test('隔离 profile：键唯一、值唯一、与登记表逐键一致，三张
     .filter((row) => row.alimamaVerified === 'expression').map((row) => row.key);
   assert.deepEqual([...IDENTITY_MEMBER_MEASURED_SHOPS].sort(), memberMeasured.sort(),
     '会员名清单必须与字段一致');
-  // 待实测名单：2026-09-30 当天从「全部 13 家」被清空。两条一起钉住 ——
-  // 「该空的没空」会让闸门拿没实测的身份去比；删掉这条则等于放弃「有没有人漏测」这本账。
-  assert.equal(IDENTITY_PENDING_SHOPS.length, 0,
-    '13 家当天全部实测完 ⇒ 待实测名单必须是空的（还有店没测完就不该空）');
+  // 待实测名单**不钉具体长度** —— 它非空是允许的中间态（闸门拿的是人工记录值，摘要会如实标出），
+  // 空了才等于「全都实测过」。历史上这里写死过 `length === 0`，那会把「刚换子账号、还没实测」
+  // 这种正常中间态当成故障（2026-09-30 17:46 科塔淘宝就是这一态，当天第二次走进去）。
+  // 真正要钉住的是两条结构性质：两张清单**不相交**，且合起来**全覆盖**（下面那条）。
+  assert.equal(new Set([...IDENTITY_MEMBER_MEASURED_SHOPS, ...IDENTITY_PENDING_SHOPS]).size,
+    IDENTITY_MEMBER_MEASURED_SHOPS.length + IDENTITY_PENDING_SHOPS.length,
+    '两张清单必须不相交 —— 同一家同时出现在「已实测」和「待实测」里，谁也不知道该信哪个');
   const covered = new Set([...IDENTITY_MEMBER_MEASURED_SHOPS, ...IDENTITY_PENDING_SHOPS]);
   assert.deepEqual([...covered].sort(), shopKeys().sort(),
     '13 家必须被「已实测 ∪ 待实测」全覆盖 —— 漏在两边之外的那家会既不跑也不报错');
@@ -285,17 +306,26 @@ test('把登记表接回真实判据：跨店比对必须停，而且要点名�
 });
 
 test('describeIdentity 给出人读摘要，未实测/非实测的部分要显式标出来', () => {
-  // 2026-09-30 当天实测完之后 13 家全是 expression 级 ⇒ 摘要里**不许出现任何标记**。
-  // 这条正是原实现栽的地方：`'human-record'` 是 truthy，会被当成「已实测」而不打标记 ——
-  // 反过来，「实测过的值被误标成未实测」同样是错的，两个方向都要挡。
+  // 摘要必须**逐行如实**反映这一行的实测级别，两个方向都要挡（2026-09-30 傍晚改成按行判 ——
+  // 原来这条假设「13 家全是 expression」，一旦有店退回 human-record 就会红在「没实测却被标成实测」之外，
+  // 而它真正该挡的是下面这两件事）：
+  //   · 级别是 expression ⇒ 摘要里**不许**出现任何「未实测／人工记录」标记。
+  //     这正是原实现栽的地方：`'human-record'` 是 truthy，会被当成「已实测」而不打标记。
+  //   · 级别是 human-record ⇒ **必须**出现「人工记录，未实测」，一行都不能漏 ——
+  //     读摘要的人靠它判断「这个身份能不能信」；标不出来，等于拿人工记录冒充实测值。
   for (const row of SHOP_IDENTITIES) {
     const text = describeIdentity(row.key);
     assert.ok(text.includes(row.key), `${row.key} 的摘要里没有店名`);
     assert.ok(text.includes(row.sycmHeader), `${row.key} 的摘要里没有页头店名`);
     assert.ok(text.includes(row.alimamaMemberName), `${row.key} 的摘要里没有会员名`);
     assert.ok(text.includes(row.alimamaMemberId), `${row.key} 的摘要里没有会员 ID`);
-    assert.doesNotMatch(text, /（未实测）/u, `${row.key} 已实测，摘要里不该出现「未实测」`);
-    assert.doesNotMatch(text, /人工记录/u, `${row.key} 已实测，不该再显示成人工记录`);
+    if (row.alimamaVerified === 'expression') {
+      assert.doesNotMatch(text, /（未实测）/u, `${row.key} 已实测，摘要里不该出现「未实测」`);
+      assert.doesNotMatch(text, /人工记录/u, `${row.key} 已实测，不该再显示成人工记录`);
+    } else {
+      assert.match(text, /（人工记录，未实测）/u,
+        `${row.key} 的会员名只有人工记录值，摘要必须把它标出来（不许拿记录冒充实测）`);
+    }
   }
   // 被平台截断的那家：摘要如实显示**实测到的**值（不是底单原文）。
   assert.match(describeIdentity('保拉淘宝'), /Paola Lenti保拉伦\.\.\./u);

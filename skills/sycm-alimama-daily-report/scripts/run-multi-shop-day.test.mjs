@@ -1321,6 +1321,22 @@ test('代理重试接线：proxyJson 真的用了那条判据，且有次数上�
     `退避要是 0~5000ms 之间的整数，现在是 ${backoff}`);
 });
 
+test('自动修复接线：execRepair 必须把 cause 原样转给 applyRepairAction', () => {
+  // 2026-10-02 实测：`execRepair` 曾漏掉 `cause` ⇒ `applyRepairAction` 内部的
+  // `planRepair({ cause: undefined, stage })` 反查不到 `STAGE_PAGE_HINT` ⇒ `stageHint` 恒为 null
+  // ⇒ 每个**非 RESET_PAGES** 的候选都报「找不到要修的那一页：没有阶段页提示…」，
+  // 自动修复实际只剩 RESET_PAGES 一个动作可用（三家店的 autoRepair detail 逐字相同）。
+  // 光有函数级用例抓不到它（`executeRepairCandidate` 的用例注入的是**假 exec**），所以在这里钉住接线。
+  const source = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  const at = source.indexOf('const execRepair = async (');
+  assert.ok(at > 0, '找不到 execRepair —— 这条接线判据的锚点没了，先修判据再看代码');
+  const body = source.slice(at, source.indexOf('return out;', at));
+  assert.match(body, /const execRepair = async \(\{[^}]*\bcause\b[^}]*\}\)/u,
+    'execRepair 的解构里必须有 cause —— 上游 executeRepairCandidate 已经把它传下来了');
+  assert.match(body, /applyRepairAction\(\s*\{[^}]*\bcause\b[^}]*\}/u,
+    'cause 必须原样进 applyRepairAction 的参数（它靠 cause 反查 stageHint，才有得修哪一页）');
+});
+
 test('代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因', async () => {
   // 用一个**假 fetch** 把 proxyJson 的两种出口都走一遍（不需要真代理）。
   // 这里能这么做的前提是：proxyJson 里没有模块级可变量，`fetch` 是每次调用时查的全局。

@@ -1620,11 +1620,20 @@ async function main() {
     };
     // 修复动作的执行器：把「挑好的动作」交给 repair-shop-stage 的**纯函数**执行，
     // 在这一层注入而不是在驱动里再 spawn 一次子进程（多一层子进程 = 多一种静默失败）。
-    const execRepair = async ({ shopKey, stage, action, log }) => {
+    //
+    // ⚠️ `cause` 必须**原样转下去**（2026-10-02 修）：`applyRepairAction` 内部用
+    //   `planRepair({ cause, stage, state })` 反查 `STAGE_PAGE_HINT`，拿到 `stageHint` 才能
+    //   定位「该修哪一页」。原先这里把 `cause` 漏了（上游 `executeRepairCandidate` 已经
+    //   把 `cause` 传进来了，见本文件 `cause: req?.cause ?? null`）⇒ `REPAIR_TABLE[undefined]`
+    //   恒为 undefined ⇒ `stageHint` 恒为 null ⇒ 每个 `非 RESET_PAGES` 的动作都报
+    //   「找不到要修的那一页：没有阶段页提示、且窗口里有 N 个页签 ⇒ 不猜要修哪一页」，
+    //   自动修复因此**只剩 RESET_PAGES 一个候选能用**（2026-10-01 目标日 10-01 那轮三家店
+    //   的 `autoRepair.rounds[].detail` 逐字相同，都卡在这一句）。
+    const execRepair = async ({ shopKey, stage, cause, action, log }) => {
       const proxy = `http://127.0.0.1:${shopInstance(shopKey).proxyPort}`;
       const { applyRepairAction } = await import('./repair-shop-stage.mjs');
       const out = await applyRepairAction(
-        { shop: shopKey, proxy, stage, action, logDir: shopLogDir },
+        { shop: shopKey, proxy, stage, cause, action, logDir: shopLogDir },
         // ⚠️ 契约以 `applyRepairAction` 为准：它调的是 `readTargets(args)`（传**整个 args
         //   对象**）并读回 `{ ok, targets, error }`（见 repair-shop-stage.mjs:294）。
         //   2026-09-29 真机排练实测到的坑：原先这里抄的是 `captureFailureState` 的注入形状
