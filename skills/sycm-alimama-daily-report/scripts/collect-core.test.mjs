@@ -15,6 +15,7 @@ import {
   overlayAfterExpression, overlayScanExpression, pageReadyExpression, parseCollectArgs, pickNewest,
   pickOverlayCloseCandidate, pickOverlayCloseCandidates, reloadPageExpression,
   restoreCheckboxesExpression, scrollIntoViewExpression, sycmShopIdentityExpression, targetRowExpression,
+  ALL_DOCS_EXPR, QUERY_ALL_DOCS_EXPR,
 } from './collect-core.mjs';
 
 // 两条定位表达式与「确定按钮」的挑选住在采集脚本里（代码即字符串），要能被离线跑一次。
@@ -1418,4 +1419,60 @@ test('接线：fetch 段用的是「等到就绪」，且这个预算真的接�
   assert.match(core, /generationWaitMs: options\.generationWaitMs/u, '默认值必须存在');
   assert.match(core, /--generation-wait-ms must be a positive integer/u, '要像 --timeout-ms 一样在解析期校验');
   assert.match(promo, /args\.generationWaitMs/u, '等待函数要真的读这个预算（解析了没人用等于没有预算）');
+});
+
+/**
+ * 2026-10-05 真机实亏后补的守卫：iframe 穿透那两个表达式**必须真的可调用**。
+ *
+ * 事故形态：`QUERY_ALL_DOCS_EXPR` 写成了 `(function (selector) {...})`，而它是以
+ * **调用点插值**（QUERY_ALL_DOCS_EXPR("选择器")）使用的 ⇒ 调用点拿到的是函数**本身**
+ * ⇒ `matches.find(...)` 取不到元素 ⇒ 命中复核一律 `element-missing`
+ * ⇒ 8 家店全停在 `promotion-submit`，报「『下载报表』复核未通过（element-missing）」，
+ * 现场看着像平台弹窗 / 页面没渲染。
+ *
+ * 为什么原来没被抓住：单文件用例断言的是「源码里有没有这段字符串」，
+ * 字符串在、**形状**对不对它不知道。这条用例改成**把源码当 JS 执行并断言返回值形状**。
+ */
+test('iframe 穿透两个表达式：能求出 scopes，且调用点返回元素数组（不是函数本身）', () => {
+  // ① ALL_DOCS_EXPR 必须是「调用即得数组」的 IIFE
+  assert.match(ALL_DOCS_EXPR, /^\(function \(\) \{/u,
+    'ALL_DOCS_EXPR 必须自己带 () 调用，否则调用点拿到的是函数定义');
+  assert.match(ALL_DOCS_EXPR, /\}\)\(\)\s*$/u,
+    'ALL_DOCS_EXPR 末尾必须是 `})()`（IIFE），不能只到 `}`');
+
+  // ② QUERY_ALL_DOCS_EXPR 必须**不以 `function` 关键字开头** —— 那正是出事的那一处
+  assert.doesNotMatch(QUERY_ALL_DOCS_EXPR, /^\s*\(function\b/u,
+    'QUERY_ALL_DOCS_EXPR 写成了普通函数表达式 ⇒ 调用点拿到函数本身 ⇒ matches 永远空'
+    + '（2026-10-05 真机事故：8 家店全停在 promotion-submit，报 element-missing）');
+  assert.match(QUERY_ALL_DOCS_EXPR, /^\(\(?\s*selector\s*\)?\s*=>/u,
+    'QUERY_ALL_DOCS_EXPR 必须是 `(selector) => {...}` 这种可调用的箭头函数');
+
+  // ③ 真执行：在最小沙箱里求值，断言**返回数组**且跨文档合并（外层在前）。
+  const outerEl = { tagName: 'OUTER' };
+  const innerEl = { tagName: 'INNER' };
+  const fakeWin = { innerWidth: 1000, innerHeight: 800, elementFromPoint: () => null };
+  const innerDoc = { querySelectorAll: (sel) => (sel === '.x' ? [innerEl] : []), body: true };
+  const document = {
+    querySelectorAll: (sel) => {
+      if (sel === 'iframe') return [{ contentDocument: innerDoc, contentWindow: fakeWin }];
+      if (sel === '.x') return [outerEl];   // ← 外层**自己也有**一个匹配项，才能验「外层在前」
+      return [];
+    },
+  };
+  const fn = new Function('document', 'window', 'return ' + QUERY_ALL_DOCS_EXPR + ';')(document, fakeWin);
+  const got = fn('.x');
+  assert.ok(Array.isArray(got),
+    '调用点必须返回数组，实际拿到 ' + typeof got
+    + ' —— 函数表达式写成普通 function 是 2026-10-05 那次事故的根因');
+  assert.deepEqual(got.map((e) => e.tagName), ['OUTER', 'INNER'],
+    '必须跨文档合并，且外层在前（顺序变了会让「挑第一个可见元素」的逻辑漂移）');
+
+  // ④ 顺带证明两个生成器产出的源码**能被执行**（不是被当字符串）：
+  // 事故那版的症状正是 hitCheck 一律 element-missing。
+  const hit = new Function('document', 'window', 'return ' + hitCheckExpression('.x') + ';')(
+    { querySelectorAll: () => [] },
+    { innerWidth: 100, innerHeight: 100, elementFromPoint: () => null },
+  );
+  assert.equal(JSON.parse(hit).reason, 'element-missing',
+    '沙箱里没有匹配元素时应报 element-missing；这条断言顺带证明表达式可执行');
 });

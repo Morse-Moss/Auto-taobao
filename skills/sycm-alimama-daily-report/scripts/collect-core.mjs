@@ -127,8 +127,18 @@ export const ALL_DOCS_EXPR = `(function () {
   return scopes;
 })()`;
 
-/** 穿透 iframe 的 `querySelectorAll`，返回全部匹配（跨文档合并，顺序＝外层在前）。 */
-export const QUERY_ALL_DOCS_EXPR = `(function (selector) {
+/**
+ * 穿透 iframe 的 `querySelectorAll`，返回全部匹配（跨文档合并，顺序＝外层在前）。
+ *
+ * ⚠️ **必须是「箭头函数」而不是 `(function (sel) {...})`**（2026-10-05 真机实亏）：
+ * 它以**调用点插值**的形式使用（`${QUERY_ALL_DOCS_EXPR}("选择器")`），
+ * 写成普通函数表达式就变成「函数定义本身」⇒ 调用点拿到的是 `Function` 对象
+ * ⇒ `matches.find(...)` 在函数上取不到元素 ⇒ 命中复核一律报 `element-missing`。
+ * 现场形态：8 家店全停在 promotion-submit，报「『下载报表』复核未通过（element-missing）」
+ * —— 看着像平台弹窗/页面没渲染，实际是**判据自己的形状错了**。
+ * 这类错只有真机能暴露：单文件用例断言的是「源码里有没有这段字符串」，字符串在、形状对不对它不知道。
+ */
+export const QUERY_ALL_DOCS_EXPR = `((selector) => {
   const out = [];
   for (const scope of ${ALL_DOCS_EXPR}) {
     for (const el of scope.doc.querySelectorAll(selector)) out.push(el);
