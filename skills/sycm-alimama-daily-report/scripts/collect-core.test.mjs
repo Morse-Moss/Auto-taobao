@@ -371,6 +371,49 @@ test('点击前复核：两个方向都要居中；判据是「矩形内有视�
   assert.equal(/const hitOk = !!point && \(point === el/u.test(check), false);
 });
 
+// ⚠️ 2026-10-05 真机实亏：`elementFromPoint` 是 `document` 的方法，**`window` 上没有它**。
+// 一次性实例实测（one.alimama.com 报表页，纯 DOM 事实、与登录态无关）：
+//     typeof window.elementFromPoint === 'undefined'
+//     typeof document.elementFromPoint === 'function'
+// 当时 hitCheckExpression 与 overlayAfterExpression 都写成了 `win.elementFromPoint`
+// ⇒ 25 个采样点 + 中心点全部拿到 null ⇒ `命中自己=0` / `not-hit`；而且 `centerPoint`
+// 为 null 连「遮挡物=」都不打印 —— 现场读起来像「有东西盖住了按钮」，其实**根本没有遮挡**，
+// 于是先按「换个现场」去重载页面，8 家店全停在 promotion-submit。
+//
+// 为什么原有用例没拦住：三处夹具**都**给 defaultView 挂了一个 elementFromPoint，
+// 而真实 `window` 上根本没有它 —— 源码照着一份现实中不存在的 DOM 写，自然全绿。
+// 那些夹具已改成真实形状；本用例是**独立**的守卫，故意不写在别的用例内部
+// （写在里面时，前面任一断言先红它就永远跑不到，等于没有）。
+test('命中判据必须调 document.elementFromPoint —— window 上没有这个方法（2026-10-05 真机实亏）', () => {
+  const mk = (rect) => ({
+    rect,
+    getBoundingClientRect() { return this.rect; },
+    contains(node) { return node === this; },
+  });
+  const el = mk({ x: 1100, y: 300, width: 73, height: 32 });
+  // 真实浏览器里 window 就是「有 innerWidth/innerHeight、**没有** elementFromPoint」的那个对象
+  const win = { innerWidth: 1203, innerHeight: 612 };
+  const doc = { querySelectorAll: () => [el], elementFromPoint: () => el, defaultView: win };
+  el.ownerDocument = doc;
+
+  assert.equal(typeof win.elementFromPoint, 'undefined',
+    '夹具必须照真实 DOM：window 上没有 elementFromPoint（有它就成了「测一份现实中不存在的 DOM」）');
+  assert.equal(typeof doc.elementFromPoint, 'function', 'elementFromPoint 只在 document 上');
+
+  const hit = JSON.parse(new Function('document', 'window', `return ${hitCheckExpression('#x')};`)(doc, win));
+  assert.equal(hit.ok, true,
+    '中心点命中自己就该判通过；源码若调了 window.elementFromPoint，这里会拿到 null 而变红（2026-10-05 真机事故）');
+  assert.equal(hit.insideSamples, 25, '矩形整个在视口内且点全命中自己 ⇒ 25/25');
+  assert.equal(hit.centerIsSelf, true);
+
+  // 同一个形状过一遍 overlayAfter（关遮挡后的回读）—— 两套判据必须落在同一个 document 上。
+  const ov = JSON.parse(new Function('document', 'window', 'getComputedStyle',
+    `return ${overlayAfterExpression('#x')};`)(doc, win,
+    () => ({ position: 'static', display: 'block', visibility: 'visible', opacity: '1', zIndex: 'auto' })));
+  assert.equal(ov.targetHit, true, 'overlayAfter 也必须判命中（同一份夹具、同一套规则）');
+  assert.equal(ov.hitDetail?.insideSamples, 25, 'overlayAfter 要带 hitDetail，好让两侧一眼可比');
+});
+
 // 真的把它跑一次：字符串比对看不见「这个名字在页面里根本不存在」，也看不见分支走错。
 // 用最小 stub 造出今天现场的两个形态，验证判据给出的结论是同一套。
 test('复核表达式在沙箱里真的能跑：视口外判负、中心被盖但边缘命中的判正', () => {
@@ -379,13 +422,13 @@ test('复核表达式在沙箱里真的能跑：视口外判负、中心被盖�
     getBoundingClientRect() { return this.rect; },
     contains(node) { return node === this; },
   });
-  // 2026-10-05：命中判据改成「用**元素自己那个窗口**」（根因是报表清单在 iframe 里，
-  // 外层 window 的尺寸与 elementFromPoint 对 iframe 内元素无效）。
-  // ⇒ 夹具必须给 `ownerDocument.defaultView` —— 真实页面里元素**一定**有这两个属性，
-  // 夹具不给就成了「测的是一份现实中不存在的 DOM」，那才是真正的假绿/假红来源。
+  // 2026-10-05：命中判据用「**元素自己那个文档**」的 elementFromPoint，尺寸用「元素自己那个窗口」。
+  // ⚠️ 夹具必须造**真实 DOM 的形状**：`document` 上有 elementFromPoint，**`window` 上没有**。
+  // 这里一度也给 `win` 挂了一个 elementFromPoint，于是「源码把 document 的方法写到 window 上」
+  // 这个错误在夹具里根本不暴露 —— 8 家店全停在 promotion-submit 的真机事故正是被这份夹具放过去的。
   // 真实页面里也可能有 detached 节点 ⇒ 表达式侧另有 `|| document` / `|| window` 兜底。
   const run = (expression, { el, elList, pointAt }) => {
-    const win = { innerWidth: 1203, innerHeight: 612, elementFromPoint: pointAt };
+    const win = { innerWidth: 1203, innerHeight: 612 };
     const doc = {
       querySelectorAll: () => elList ?? (el ? [el] : []),
       elementFromPoint: pointAt,
@@ -955,10 +998,12 @@ test('关遮挡的回读表达式在沙箱里真的能跑：层还在就点名�
     _style: { position: 'static', display: 'block', visibility: 'visible', opacity: '1', zIndex: 'auto', ...style },
   });
   const run = (nodes, target) => {
-    const win = { innerWidth: 1528, innerHeight: 732, elementFromPoint: () => target ?? null };
+    // ⚠️ 同 hitCheck 那处夹具：`elementFromPoint` 只在 `document` 上，`window` 上**没有**它
+    // （真机实测 typeof window.elementFromPoint === 'undefined'）。
+    const win = { innerWidth: 1528, innerHeight: 732 };
     const document = {
       querySelectorAll: (sel) => (sel === 'body *' ? nodes : (target ? [target] : [])),
-      elementFromPoint: win.elementFromPoint,
+      elementFromPoint: () => target ?? null,
       defaultView: win,
     };
     // 2026-10-05：命中判据改用**元素自己那个窗口**（这一页在 iframe 里），
@@ -1524,9 +1569,14 @@ test('两套命中判据必须一致：中心点 vs 多采样点曾在真机给�
   const edgePoint = { tagName: 'DIV', contains: () => false };
 
   const runBoth = (pointAt) => {
-    const win = { innerWidth: 1506, innerHeight: 642, elementFromPoint: pointAt };
+    // ⚠️ 必须照**真实 DOM 的形状**：elementFromPoint 在 document 上，window 上**没有**它。
+    // 这处夹具一开始写反了（给 win 挂 elementFromPoint、document 上不挂），
+    // 源码照着一份现实中不存在的 DOM 写，就用了根本不存在的 window.elementFromPoint ——
+    // 测试全绿、真机 8 家全停 promotion-submit（2026-10-05）。
+    const win = { innerWidth: 1506, innerHeight: 642 };
     const document = {
       querySelectorAll: (sel) => (sel === 'body *' ? [] : [el]),
+      elementFromPoint: pointAt,
       defaultView: win,
     };
     el.ownerDocument = document;

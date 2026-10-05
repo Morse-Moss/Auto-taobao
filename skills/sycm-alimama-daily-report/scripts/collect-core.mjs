@@ -181,15 +181,25 @@ export function hitCheckExpression(selector) {
     const matches = ${QUERY_ALL_DOCS_EXPR}(${JSON.stringify(selector)});
     const el = matches.find(isVisible) || matches[0];
     if (!el) return JSON.stringify({ ok: false, reason: 'element-missing', matches: matches.length });
-    // ⚠️ 2026-10-05：**视口与 elementFromPoint 必须用元素自己那个窗口**。
-    // 元素在 iframe 里时，getBoundingClientRect 给的是 **iframe 内部坐标**，
-    // 而外层 window.innerWidth/innerHeight 是整个浏览器视口 —— 拿外层尺寸去比，
-    // 会把「在 iframe 里好好待着」误判成 outside-viewport；
-    // document.elementFromPoint 更是**只在外层文档**有意义，
-    // 在 iframe 坐标上调用恒返回 null 或别的东西 ⇒ not-hit。
+    // ⚠️ 2026-10-05：**视口尺寸用「元素自己那个窗口」，命中判据用「元素自己那个文档」**。
+    // 这两件事必须分开说，混成一句就会写错（下面那处 doc.elementFromPoint 真机实亏）：
+    //   · 视口尺寸：元素在 iframe 里时 getBoundingClientRect 给的是 **iframe 内部坐标**，
+    //     而外层 window.innerWidth/innerHeight 是整个浏览器视口 —— 拿外层尺寸去比，
+    //     会把「在 iframe 里好好待着」误判成 outside-viewport。所以尺寸要用 win。
+    //   · 命中判据：**elementFromPoint 是 document 的方法，window 上根本没有它。**
+    //     2026-10-05 一次性实例真机实测（one.alimama.com 报表页）：
+    //       typeof window.elementFromPoint === 'undefined'   ← window 没有
+    //       typeof document.elementFromPoint === 'function'  ← document 有
+    //     当时写成 win.elementFromPoint ⇒ 25 个采样点 + 中心点全部拿到 null
+    //     ⇒ 命中自己=0 ⇒ not-hit，而且 centerPoint 为 null 连「遮挡物=」都不打印
+    //     ⇒ 现场读起来像「有个东西盖住了按钮」，其实**根本没有遮挡**。
+    //     那一次 8 家店全停在 promotion-submit，而这一页的按钮**根本不在 iframe 里**
+    //     （el.ownerDocument === document，win === window）—— 「改用元素自己的窗口」
+    //     这个动机本身没错，错在把 document 的方法挂到了 window 上。
+    //     （本段是模板字符串内部，注释里不能出现反引号，否则直接终结字符串 —— 已踩一次。）
     const doc = el.ownerDocument || document;
     // ⚠️ 兜住 ownerDocument / defaultView 缺失：测试沙箱里造的假元素没有这两个，
-    // 真实页面里也可能有 detached 节点。缺了就退回外层窗口 —— 宁可**判不准**，
+    // 真实页面里也可能有 detached 节点。缺了就退回外层 —— 宁可**判不准**，
     // 也不许整段表达式抛出去（抛出去会被当成「复核未通过」，方向完全错）。
     const win = (doc && doc.defaultView) || window;
     const self = (node) => !!node && (node === el || el.contains(node) || node.contains(el));
@@ -210,7 +220,7 @@ export function hitCheckExpression(selector) {
         const y = Math.round(r.y + r.height * fy);
         if (x < 0 || x >= win.innerWidth || y < 0 || y >= win.innerHeight) continue;
         inViewportSamples += 1;
-        const h = typeof win.elementFromPoint === 'function' ? win.elementFromPoint(x, y) : null;
+        const h = typeof doc.elementFromPoint === 'function' ? doc.elementFromPoint(x, y) : null;
         if (self(h)) {
           insideSamples += 1;
           if (!firstHit) firstHit = [x, y];
@@ -220,8 +230,8 @@ export function hitCheckExpression(selector) {
     const cx = Math.round(r.x + r.width / 2);
     const cy = Math.round(r.y + r.height / 2);
     const centerInViewport = cx >= 0 && cx < win.innerWidth && cy >= 0 && cy < win.innerHeight;
-    const centerPoint = (centerInViewport && typeof win.elementFromPoint === 'function')
-      ? win.elementFromPoint(cx, cy) : null;
+    const centerPoint = (centerInViewport && typeof doc.elementFromPoint === 'function')
+      ? doc.elementFromPoint(cx, cy) : null;
     const centerIsSelf = self(centerPoint);
     return JSON.stringify({
       ok: insideSamples > 0,
@@ -433,11 +443,11 @@ export function overlayAfterExpression(selector = null) {
       const matches = [...document.querySelectorAll(selector)];
       const el = matches.find(isVisible) || matches[0] || null;
       if (el) {
-        // ⚠️ 必须用**元素自己那个窗口**的 elementFromPoint（与 hitCheckExpression 逐字一致）。
-        // 这一页在 iframe 里（2026-10-05 实测）：document.elementFromPoint 只认**外层文档**，
-        // 在 iframe 内元素的坐标上调用恒返回外层某个元素 ⇒ 判据会**稳定地判错**。
-        // 真机对照（科塔淘宝 19044）：同一个 [data-probe]，这里给 25/25、hitCheck 给 0/25 ——
-        // 差别只在这一个调用上。
+        // ⚠️ 与 hitCheckExpression 逐字同一套：**尺寸用元素自己的窗口，命中用元素自己的文档**。
+        // elementFromPoint 是 document 的方法，window 上没有它（真机实测
+        // typeof window.elementFromPoint === 'undefined'）—— 2026-10-05 这里一度写成
+        // win2.elementFromPoint，与 hitCheckExpression 一起稳定判成 0/25，
+        // 于是「关遮挡层后目标可点=false」被当成事实，整条链把 8 家店停在了 promotion-submit。
         const doc2 = el.ownerDocument || document;
         const win2 = (doc2 && doc2.defaultView) || window;
         const owns = (a, b) => !!a && typeof a.contains === 'function' && a.contains(b);
@@ -452,7 +462,7 @@ export function overlayAfterExpression(selector = null) {
             const y = Math.round(r.y + r.height * fy);
             if (x < 0 || x >= win2.innerWidth || y < 0 || y >= win2.innerHeight) continue;
             inViewportSamples += 1;
-            const h = typeof win2.elementFromPoint === 'function' ? win2.elementFromPoint(x, y) : null;
+            const h = typeof doc2.elementFromPoint === 'function' ? doc2.elementFromPoint(x, y) : null;
             if (self(h)) insideSamples += 1;
           }
         }

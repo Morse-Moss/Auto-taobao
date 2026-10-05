@@ -248,7 +248,10 @@ async function main() {
       try { if (f.contentDocument) f.contentDocument.querySelectorAll('[data-collect-preview]')
         .forEach((el) => el.removeAttribute('data-collect-preview')); } catch (e) { /* 跨域，跳过 */ }
     }
-    // 每项：{ doc, win } —— 坐标与命中判定都用元素**自己那个窗口**。
+    // 每项：{ doc, win } —— **尺寸用元素自己那个窗口，命中判定用元素自己那个文档**。
+    // ⚠️ elementFromPoint 是 document 的方法，window 上根本没有它
+    // （2026-10-05 一次性实例实测 typeof window.elementFromPoint === 'undefined'）——
+    // 这里一度写成 scope.win.elementFromPoint，会恒为 undefined ⇒ hitOk 恒 false。
     const scopes = [{ doc: document, win: window }];
     for (const f of document.querySelectorAll('iframe')) {
       try { if (f.contentDocument && f.contentDocument.body) scopes.push({ doc: f.contentDocument, win: f.contentWindow || f.contentDocument.defaultView }); } catch (e) { /* 跨域 */ }
@@ -266,7 +269,7 @@ async function main() {
       const r = el.getBoundingClientRect();
       const cx = Math.round(r.x + r.width / 2);
       const cy = Math.round(r.y + r.height / 2);
-      const hit = scope.win.elementFromPoint ? scope.win.elementFromPoint(cx, cy) : null;
+      const hit = scope.doc.elementFromPoint ? scope.doc.elementFromPoint(cx, cy) : null;
       return { i, rowText: (row ? row.innerText : '').replace(/\\s+/g, ' ').trim().slice(0, 70),
         inScope: scope.doc === document ? 'outer' : 'iframe',
         inViewport: r.y >= 0 && r.y < (scope.win.innerHeight || 0),
