@@ -40,8 +40,13 @@ test('登记表：13 行，运营叫法与页头店名都唯一', () => {
   assert.equal(MAPPING_SOURCE.recordCount + EXTRA_SHOPS_FROM_ACCOUNT_TABLE.length, SHOP_IDENTITIES.length,
     '底单行数 + 另立来源的新增家数 必须等于登记表行数（否则不是抄漏就是没记账）');
   assert.equal(MAPPING_SOURCE.readAt, '2026-09-18');
-  assert.equal(ACCOUNT_TABLE_SOURCE.receivedAt, '2026-09-30',
-    '操作员账号表的收到日期要如实写 —— 这 13 家的会员名都是那天起按它填的');
+  // ⚠️ 账号表的收到日期**故意不断言具体值**：它已经换过三版（09-30 → 10-05 又推翻三条），
+  // 写死任何一版都会在用户发来新版时变成假红，而它本来要守的是「日期如实记账」——
+  // 也就是**格式**要像日期、且不许比记忆里的日期更早（漏更新的最坏形态是「表换了但没记」）。
+  assert.match(ACCOUNT_TABLE_SOURCE.receivedAt, /^\d{4}-\d{2}-\d{2}$/u,
+    '操作员账号表的收到日期必须是 YYYY-MM-DD —— 它是这 13 家会员名的记账依据');
+  assert.ok(ACCOUNT_TABLE_SOURCE.receivedAt >= '2026-09-30',
+    `账号表日期 ${ACCOUNT_TABLE_SOURCE.receivedAt} 早于第一版（2026-09-30）—— 要么写漏了更新，要么表选错了`);
 
   const keys = shopKeys();
   assert.equal(new Set(keys).size, keys.length, `运营叫法重复：${keys.join(' / ')}`);
@@ -363,7 +368,11 @@ test('打印器：可粘贴内容只走 stdout，提示走 stderr；require 不�
 
   const one = run(['里可林淘宝']);
   assert.equal(one.code, 0);
-  assert.equal(one.stdout, '--expect-shop 里可林家居 --expect-member 里可林家居:小宁 --expect-member-id 2350600069\n',
+  // 期望值**从登记表派生**，不写死会员名 —— 账号表已换过三版，写死会在换人时变成假红
+  // （它本来要守的是「stdout 干净到能直接粘」，不是「会员名恰好是哪一个」）。
+  const likelin = shopIdentity('里可林淘宝');
+  assert.equal(one.stdout,
+    `--expect-shop ${likelin.sycmHeader} --expect-member ${likelin.alimamaMemberName} --expect-member-id ${likelin.alimamaMemberId}\n`,
     'stdout 必须干净到可以直接粘 —— 多一行提示就会把命令行粘坏');
   assert.equal(one.stderr, '');
 
@@ -371,7 +380,9 @@ test('打印器：可粘贴内容只走 stdout，提示走 stderr；require 不�
   // （原来这里测的是第 13 家「缺 shop、只印 member」的形态，现在没有店走得到那条分支了。）
   const fullRow = run(['网林家居']);
   assert.equal(fullRow.code, 0);
-  assert.equal(fullRow.stdout, '--expect-shop 网林定制家居 --expect-member 网林定制家居:嘉嘉 --expect-member-id 1731780198\n',
+  const wanglin = shopIdentity('网林家居');
+  assert.equal(fullRow.stdout,
+    `--expect-shop ${wanglin.sycmHeader} --expect-member ${wanglin.alimamaMemberName} --expect-member-id ${wanglin.alimamaMemberId}\n`,
     'stdout 必须干净到可以直接粘 —— 多一行提示就会把命令行粘坏');
   assert.equal(fullRow.stderr, '');
 
@@ -405,7 +416,10 @@ test('登记表与文档里的四处名字对不上的坑：会员名与店名�
   assert.notEqual(weixin.alimamaMemberName, `${weixin.key}:小瓜`);
   assert.notEqual(weixin.alimamaMemberName, `${weixin.fullName}:小瓜`);
   // 但确有同名的（里可林：店名就是会员名的前缀），所以判据也不许反过来假设「一定不同名」。
-  assert.equal(shopIdentity('里可林淘宝').alimamaMemberName, '里可林家居:小宁');
+  // ⚠️ 这里刻意**不断言具体值**：换过三轮子账号（小宁→小嘉、小瓜、小嘉），
+  // 写死任何一版都会在下次换人时变成假红，而它本来要守的是「同名也合法」这个**性质**。
+  assert.ok(shopIdentity('里可林淘宝').alimamaMemberName.startsWith('里可林家居:'),
+    '里可林淘宝的会员名应当以店名「里可林家居」为前缀 —— 同名是合法的，不得被当成异常改掉');
   // 整个文件里不许出现「用店名拼会员名」的派生代码。
   //
   // 要先去注释：这份文件顶上的说明里**正好在讲**「不要派生」，

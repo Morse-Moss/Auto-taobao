@@ -567,15 +567,38 @@ test('驱动的失败分类：体检拦住 / 重跑撞上已有行 / 阶段报�
 });
 
 test('驱动：运营账号等待项不计入失败，但保留在汇总并可恢复', () => {
-  const waiting = waitingOperatorAccountRecord(WAITING_OPERATOR_ACCOUNT_SHOPS[0]);
+  // ⚠️ 2026-10-05 起 `WAITING_OPERATOR_ACCOUNT_SHOPS` 已被用户清空（销售1部要全跑），
+  // 所以样本**不能**再从名单里取 —— 照 `waitingOperatorAccountRecord` 的契约手写一条。
+  // 它守的是汇总的三分（failed / ok / waiting）与 `any=false`，与名单里恰好有谁无关。
+  const waitingShop = '某等待中的店';
+  const waiting = {
+    shop: waitingShop,
+    status: 'waiting',
+    state: 'WAITING_OPERATOR_ACCOUNT',
+    resumable: true,
+    failedStage: 'shop-report',
+    reason: '生意参谋日报需要运营账号处理，开发侧暂缓该店日报流程。',
+    owner: '运营',
+    stages: [],
+    source: {},
+  };
   const view = roundFailureSummary({ shops: {
-    [WAITING_OPERATOR_ACCOUNT_SHOPS[0]]: waiting,
+    [waitingShop]: waiting,
     里可林天猫: okRecord(),
   }});
   assert.deepEqual(view.failed, []);
   assert.deepEqual(view.ok, ['里可林天猫']);
-  assert.deepEqual(view.waiting, [WAITING_OPERATOR_ACCOUNT_SHOPS[0]]);
+  assert.deepEqual(view.waiting, [waitingShop]);
   assert.equal(view.any, false);
+
+  // 反向自证：同一条汇总里混进一家**缺记录**的店（value 是 null），
+  // 整段不许崩 —— 这正是 2026-10-05 修的那个真缺陷
+  // （`shopFailureCause(record = {})` 的默认值只挡 undefined，null 照样穿透）。
+  const withNull = roundFailureSummary({ shops: { 某缺记录的店: null, 里可林天猫: okRecord() } });
+  assert.equal(withNull.ok.length, 1, '正常那家仍要算收完');
+  assert.equal(withNull.failed.length, 1, '缺记录的店必须被算成失败，而不是被静默丢掉');
+  assert.equal(withNull.any, true, '缺记录不许被读成「都好的」');
+  assert.equal(shopFailureCause(null), 'STAGE_FAILED', 'null 记录不许把汇总整段带崩');
 });
 
 test('告警：标题自带主体名，正文说清哪几家没跑完、停在哪一步、哪几家已收完、哪几家一步没跑', () => {

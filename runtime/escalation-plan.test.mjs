@@ -5,7 +5,7 @@
 //   · 不该派 agent 却派了 ⇒ 每次一个「只有登录能解」的失败也去叫 agent 白忙一轮。
 // 所以每一条都要能离线断言，且默认（没有失败/没有修复记录）行为必须与从前一致。
 import test from 'node:test';
-import { waitingOperatorAccountRecord } from './daily-report-shop-gates.mjs';
+import { isWaitingOperatorAccountStatus, WAITING_OPERATOR_ACCOUNT } from './daily-report-shop-gates.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -221,9 +221,28 @@ test('合并后的 summary 直接喂 buildEscalationPlan：跨批的失败一起
 });
 
 test('账号等待店铺不进入修复 agent 派单', () => {
+  // ⚠️ 2026-10-05 起 `WAITING_OPERATOR_ACCOUNT_SHOPS` 已被用户清空 ⇒
+  // `waitingOperatorAccountRecord('里可林淘宝')` 现在返回 null，用它当样本造不出等待记录。
+  // 所以这里直接照 `waitingOperatorAccountRecord` 的**契约**手写那条记录 ——
+  // 它守的是派单侧的过滤判据（`escalation-plan.mjs:193` 那句 `!isWaitingOperatorAccountStatus(record)`），
+  // 不该依赖「名单里恰好有谁」。
+  const waiting = {
+    shop: '某等待中的店',
+    status: 'waiting',
+    state: WAITING_OPERATOR_ACCOUNT,
+    resumable: true,
+    failedStage: 'shop-report',
+    reason: '生意参谋日报需要运营账号处理，开发侧暂缓该店日报流程。',
+    owner: '运营',
+    stages: [],
+    source: {},
+  };
+  // 前置自证：这份样本必须真的被闸门认成等待，否则这条用例会变成永真的空检查。
+  assert.equal(isWaitingOperatorAccountStatus(waiting), true,
+    '手写的等待记录没被闸门认出来 —— 样本构造错了，这条用例的结论不可信');
   const plan = buildEscalationPlan({ summary: {
-    date: '2026-09-29',
-    shops: { 里可林淘宝: waitingOperatorAccountRecord('里可林淘宝') },
+    date: '2026-10-05',
+    shops: { 某等待中的店: waiting },
   }});
   assert.equal(plan.failedCount, 0);
   assert.equal(plan.needsAgent, false);

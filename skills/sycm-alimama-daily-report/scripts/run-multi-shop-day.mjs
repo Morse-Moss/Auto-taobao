@@ -240,22 +240,29 @@ export const HUMAN_REQUIRED_CAUSES = Object.freeze(['NEEDS_LOGIN', 'PAGE_OBSTRUC
  * `DUPLICATE_TARGET` 单独一类，因为它的下一步与别的**相反** —— 不用做任何事
  * （那一天的数据已经在飞书里了）。把它并进「失败」就是每天喊一次狼来了。
  */
-export function shopFailureCause(record = {}) {
+export function shopFailureCause(record) {
+  // ⚠️ 2026-10-05 修一个真缺陷：`record = {}` 这个默认值**只对 `undefined` 生效**，
+  // 传进来 `null` 时照样穿透 ⇒ 下面读 `record.failureOutput` 直接抛
+  // `Cannot read properties of null`。这不是测试造样本的问题：
+  // 汇总里任何一条**缺记录**的店（`Object.entries` 拿到的 value 是 null）
+  // 都会让 `roundFailureSummary` 整段崩掉，一轮汇总全丢。
+  // 判据本身只读 `failureOutput` 与 `failedStage` 两个键，给个空对象等价。
+  const r = record ?? {};
   // 「这一项订购不在账号上」**优先于所有别的结论**：它决定的是「收信人要不要去平台」，
   // 而别的结论在这个原因下照着做都没用。
   // 2026-09-21 科塔现场正是被报成「这家店的窗口里页面不齐，去打开窗口把页面补上」——
   // 照着做的人白跑一趟浏览器，问题不会好。判据是**确定性名字**（`date-picker.mjs` 只在这一种
   // 情况下抛它，且抛出前一定先问过平台，问不到就不给这个名字）。
-  if (/SHOP_FUNC_NO_PERMISSION/u.test(String(record.failureOutput ?? ''))) return 'SHOP_FUNC_NO_PERMISSION';
+  if (/SHOP_FUNC_NO_PERMISSION/u.test(String(r.failureOutput ?? ''))) return 'SHOP_FUNC_NO_PERMISSION';
   // 2026-09-26 加：平台自己的全屏弹窗压住整页、而且试过多种关法都没关掉。
   // 判据是**确定性标记**（`collect-core` 只在「检出了全屏遮挡层，且 ESC／有序候选都试过仍没关掉」
   // 这一种情况下写它），不是靠在这里猜措辞。标记本身从 collect-core import，不抄字面量。
   // 为什么必须单列：兜底那句的下一步是「这一轮不需要你在浏览器里做什么」，而这一类的下一步
   // 恰恰**相反** —— 要人去把那一层关掉（2026-09-26 早上科塔就是这么被报错的）。
-  if (String(record.failureOutput ?? '').includes(OVERLAY_NOT_DISMISSED_TOKEN)) return 'PAGE_OBSTRUCTED';
-  if (record.failedStage === 'health-check') return 'SHOP_BLOCKED';
-  if (record.failedStage === 'push'
-    && /duplicate daily report row exists/u.test(String(record.failureOutput ?? ''))) return 'DUPLICATE_TARGET';
+  if (String(r.failureOutput ?? '').includes(OVERLAY_NOT_DISMISSED_TOKEN)) return 'PAGE_OBSTRUCTED';
+  if (r.failedStage === 'health-check') return 'SHOP_BLOCKED';
+  if (r.failedStage === 'push'
+    && /duplicate daily report row exists/u.test(String(r.failureOutput ?? ''))) return 'DUPLICATE_TARGET';
   return 'STAGE_FAILED';
 }
 
