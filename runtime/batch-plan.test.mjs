@@ -12,7 +12,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { collectingShopKeys, shopBrowserKeys } from './browser-ports.mjs';
+import { collectingShopKeys, shopBrowserKeys, SHOPS_NOT_COLLECTING_YET } from './browser-ports.mjs';
+import { SHOP_DEPARTMENTS } from './feishu-targets.mjs';
 import {
   BATCH_FILES, BATCH_SIZE_BY_MEMORY, DEFAULT_BATCH_SIZE, SHARED_INSTANCE_KEYS, assertBatchCoversRegistry,
   batchLoginArtifactName, batchableShopKeys, buildBatchSteps, buildLoginPreflightStep, buildSharedStep,
@@ -24,17 +25,41 @@ import { REPO_ROOT } from './version.mjs';
 //   · REGISTERED ＝ 登记表全部实例 —— 只有「实例/登记」类的事才用它；
 //   · ALL        ＝ **参与采集**的店铺 —— 分批层认的就是它（`batchableShopKeys()`）。
 // 2026-09-30 白天两者差 1 家（第 13 家挂在「还没开始收集」里），当晚用户拍板开 13 家后**逐字相同**。
-// 这一层里的断言绝大多数是分批语义，所以默认用 ALL；两个集合的关系由下面这条 test 单独守。
+// 2026-10-05 用户指令「销售二部的全停止」⇒ 两者**又一次**不同，且这次是成组的（销售2部 5 家）。
+// 这一层里的断言绝大多数是分批语义，所以默认用 ALL；两个集合的关系由下面两条 test 单独守。
 const REGISTERED = shopBrowserKeys();
 const ALL = collectingShopKeys();
 
-test('「参与采集」是登记表的子集，且当前两者逐字相同（13 家全采）', () => {
+test('「参与采集」是登记表的子集，没有店掉进缝里', () => {
   // 这条守住「有没有店掉进缝里」：采集名单里出现未登记的店 ⇒ 那台实例根本起不来；
   // 登记表里有店既不在采集名单、也不在「还没开始收集」表里 ⇒ 它今天一步都不会跑，而整轮报全绿。
   assert.ok(ALL.every((key) => REGISTERED.includes(key)),
     '有店在采集名单里却不在登记表 —— 那台实例根本起不来');
-  assert.deepEqual(ALL, REGISTERED,
-    'SHOPS_NOT_COLLECTING_YET 为空时两者必须逐字相同；不同就说明有店掉进了缝里');
+  // 2026-10-05 起两者**应当**不同（销售2部停采），所以这条只守方向、不守相等。
+  // 「登记表里没在采的店」必须逐个都能在「还没开始收集」表里找到名字，否则它就真的掉缝里了。
+  const stopped = REGISTERED.filter((key) => !ALL.includes(key));
+  for (const key of stopped) {
+    assert.ok(SHOPS_NOT_COLLECTING_YET.includes(key),
+      `「${key}」既不在采集名单、也不在 SHOPS_NOT_COLLECTING_YET 里 —— 它今天一步都不会跑，而整轮报全绿`);
+  }
+});
+
+test('销售2部 5 家停采、销售1部 8 家在采（2026-10-05 用户指令钉住）', () => {
+  // 为什么单独钉一条：部门切分是**业务决定**，不是实现细节。上面那条只守「没掉缝里」，
+  // 守不住「停的是不是恰好那 5 家」—— 少停一家会变成静默的少采，多停一家会变成误伤。
+  const s2 = Object.entries(SHOP_DEPARTMENTS).filter(([, dept]) => dept === 'sales2').map(([k]) => k);
+  const s1 = Object.entries(SHOP_DEPARTMENTS).filter(([, dept]) => dept === 'sales1').map(([k]) => k);
+  assert.equal(s2.length, 5, '销售2部 5 家这个数变了 —— 部门表与本用例要一起更新');
+  assert.equal(s1.length, 8, '销售1部 8 家这个数变了 —— 部门表与本用例要一起更新');
+  assert.equal(ALL.length, 8, '参与采集应当正好是销售1部 8 家');
+  for (const key of s2) {
+    assert.ok(!ALL.includes(key), `销售2部的「${key}」还在采集名单里 —— 停采指令没生效`);
+  }
+  for (const key of s1) {
+    assert.ok(ALL.includes(key), `销售1部的「${key}」被误踢出采集 —— 停采范围只该是销售2部`);
+  }
+  // 登记表本身不能动：实例侧（起停/登录/盘点/标签页）一律按登记表走，销售2部照样要能起实例。
+  assert.equal(REGISTERED.length, 13, '登记表应当仍是 13 家 —— 停采只动采集名单，不动登记表');
 });
 
 /**

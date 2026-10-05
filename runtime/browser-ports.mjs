@@ -306,13 +306,25 @@ export function shopBrowserKeys() {
  *
  * 它**不影响实例侧**（`start-all` / `stop-all` / `browser-inventory` / 标签页 / 身份实测）
  * 那些一律按 `shopBrowserKeys()` 走 —— 表里有的店照样要起、要登录、要挂标识页。
+ *
+ * 2026-10-05 用户指令「销售二部的全停止」⇒ 把销售2部 5 家（`feishu-targets.mjs` 的
+ * `SHOP_DEPARTMENTS` 里 `sales2` 那组：保拉淘宝、保拉天猫、安比龙头店、科塔龙头店、安比淘宝）
+ * 填进这张表。**两条采集链一起停**（日报链 + 商品数据链），实例侧不受影响。
+ * 这不是「暂缓一家新店」，是**整部门停采**，所以下面那句「两者逐字相同」不再成立。
+ * 恢复：把这 5 行删掉即可（表留着的意义正在这里）。
  */
-export const SHOPS_NOT_COLLECTING_YET = Object.freeze([]);
+export const SHOPS_NOT_COLLECTING_YET = Object.freeze([
+  '保拉淘宝',
+  '保拉天猫',
+  '安比龙头店',
+  '科塔龙头店',
+  '安比淘宝',
+]);
 
 /**
  * 参与采集的店铺（顺序＝登记表顺序）。
  * **两条采集链的默认名单都用它**，不是 `shopBrowserKeys()` —— 那张「待收集」表非空时两者会不同
- * （当前为空 ⇒ 此刻两个函数返回逐字相同的 13 家；判据在 `browser-ports.test.mjs`）。
+ * （2026-10-05 起：登记表 13 家、参与采集 8 家＝销售1部；判据在 `browser-ports.test.mjs`）。
  */
 export function collectingShopKeys() {
   return shopBrowserKeys().filter((key) => !SHOPS_NOT_COLLECTING_YET.includes(key));
