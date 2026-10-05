@@ -417,17 +417,50 @@ export function overlayAfterExpression(selector = null) {
     const selector = ${JSON.stringify(selector)};
     let targetHit = null;
     if (selector) {
+      // ⚠️ 2026-10-05：这里原来用**中心单点**判命中，而 hitCheckExpression 用的是
+      // **25 个采样点里至少一个命中** —— 两套判据会给出**相反**的结论，
+      // 于是在真实链路上出现自相矛盾的日志：
+      //   「全屏层剩 0 个｜目标可点=true ⇒ 不再挡事」   ← 这一句（中心点，SPAN 自己）
+      //   「『下载报表』复核未通过（not-hit，命中自己=0/25）」  ← 紧接着这句（多点）
+      // 现场：科塔淘宝 promotion-submit，rect=[1400,314,48,12]，命中的是按钮**内部的 SPAN**
+      // （日志也写了「其可点祖先是 BUTTON，点击靠冒泡触发」）⇒ 中心点落在 SPAN 上，
+      // 中心判据认为「命中了按钮的子节点」= 可点；多点判据里按钮的 25 个采样点
+      // 有一部分落在 SPAN 之外 ⇒ 记 0 ⇒ not-hit。
+      //
+      // 判据必须**唯一**。这里改成与 hitCheckExpression 逐字同一套（多点 + 同样的自含判定），
+      // 并把「命中几个采样点」一起带出来 —— 这样两个日志行不可能再互相打脸。
       const isVisible = (node) => { const r = node.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
       const matches = [...document.querySelectorAll(selector)];
       const el = matches.find(isVisible) || matches[0] || null;
       if (el) {
-        const r = el.getBoundingClientRect();
+        // ⚠️ 必须用**元素自己那个窗口**的 elementFromPoint（与 hitCheckExpression 逐字一致）。
+        // 这一页在 iframe 里（2026-10-05 实测）：document.elementFromPoint 只认**外层文档**，
+        // 在 iframe 内元素的坐标上调用恒返回外层某个元素 ⇒ 判据会**稳定地判错**。
+        // 真机对照（科塔淘宝 19044）：同一个 [data-probe]，这里给 25/25、hitCheck 给 0/25 ——
+        // 差别只在这一个调用上。
+        const doc2 = el.ownerDocument || document;
+        const win2 = (doc2 && doc2.defaultView) || window;
         const owns = (a, b) => !!a && typeof a.contains === 'function' && a.contains(b);
-        const hit = document.elementFromPoint(Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2));
-        targetHit = !!hit && (hit === el || owns(el, hit) || owns(hit, el));
+        const self = (node) => !!node && (node === el || owns(el, node) || owns(node, el));
+        const r = el.getBoundingClientRect();
+        const insets = [0.5, 0.25, 0.75, 0.12, 0.88];
+        let inViewportSamples = 0;
+        let insideSamples = 0;
+        for (const fy of insets) {
+          for (const fx of insets) {
+            const x = Math.round(r.x + r.width * fx);
+            const y = Math.round(r.y + r.height * fy);
+            if (x < 0 || x >= win2.innerWidth || y < 0 || y >= win2.innerHeight) continue;
+            inViewportSamples += 1;
+            const h = typeof win2.elementFromPoint === 'function' ? win2.elementFromPoint(x, y) : null;
+            if (self(h)) insideSamples += 1;
+          }
+        }
+        targetHit = insideSamples > 0;
+        var hitDetail = { inViewportSamples, insideSamples, inScope: doc2 === document ? 'outer' : 'iframe' };
       }
     }
-    return JSON.stringify({ remainingLayers, targetHit });
+    return JSON.stringify({ remainingLayers, targetHit, ...(typeof hitDetail === 'undefined' ? {} : { hitDetail }) });
   })()`;
 }
 

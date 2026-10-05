@@ -955,13 +955,18 @@ test('关遮挡的回读表达式在沙箱里真的能跑：层还在就点名�
     _style: { position: 'static', display: 'block', visibility: 'visible', opacity: '1', zIndex: 'auto', ...style },
   });
   const run = (nodes, target) => {
+    const win = { innerWidth: 1528, innerHeight: 732, elementFromPoint: () => target ?? null };
     const document = {
       querySelectorAll: (sel) => (sel === 'body *' ? nodes : (target ? [target] : [])),
-      elementFromPoint: () => target ?? null,
+      elementFromPoint: win.elementFromPoint,
+      defaultView: win,
     };
+    // 2026-10-05：命中判据改用**元素自己那个窗口**（这一页在 iframe 里），
+    // 真实元素**一定**有 ownerDocument —— 夹具不给就成了「测一份现实中不存在的 DOM」。
+    if (target && !target.ownerDocument) target.ownerDocument = document;
     return JSON.parse(new Function('document', 'window', 'getComputedStyle',
       `return ${overlayAfterExpression('[data-x]')};`)(
-      document, { innerWidth: 1528, innerHeight: 732 }, (el) => el._style));
+      document, win, (el) => el._style));
   };
   const layer = node({ tag: 'DIV', id: 'wrapper_dlg_925', box: rect(0, 0, 1528, 732),
     style: { position: 'fixed', zIndex: '99999' } });
@@ -1475,4 +1480,94 @@ test('iframe 穿透两个表达式：能求出 scopes，且调用点返回元素
   );
   assert.equal(JSON.parse(hit).reason, 'element-missing',
     '沙箱里没有匹配元素时应报 element-missing；这条断言顺带证明表达式可执行');
+});
+
+/**
+ * 2026-10-05 真机实亏后补：**两套「命中」判据必须给出一致结论**。
+ *
+ * 事故形态：链条上并存两个判同一件事的表达式，却用了**不同的采样规则** ——
+ *   · overlayAfterExpression（关遮挡后的回读）：**中心单点** `document.elementFromPoint`；
+ *   · hitCheckExpression（点击前复核）：**25 个采样点里至少一个命中**。
+ * 于是同一条日志里出现自相矛盾的两行（科塔淘宝 promotion-submit）：
+ *   「全屏层剩 0 个｜目标可点=true ⇒ 不再挡事」      ← 中心点，落在按钮内部的 SPAN 上
+ *   「『下载报表』复核未通过（not-hit，命中自己=0/25）」  ← 多点，采样点落在 SPAN 之外
+ * 现场元素 rect=[1400,314,**48,12**]：宽扁按钮 + 内部 SPAN，正好落进两套规则的差里。
+ *
+ * 修法不是「让某一个改对」，而是**把两边统一**（多点采样 + 元素自己那个窗口 + 同一套自含判定），
+ * 并让 `overlayAfter` 额外带出 `hitDetail`（命中几个采样点、在哪一层文档）——
+ * 这样下次再不一致，从日志里就能立刻看出是哪一侧的采样出了问题。
+ *
+ * 这条守卫直接**执行两段源码、比对结论**，而不是比对字符串：字符串在、形状与规则对不对它不知道。
+ */
+test('两套命中判据必须一致：中心点 vs 多采样点曾在真机给出相反结论', () => {
+  const mkEl = (rect, { withChild = true } = {}) => {
+    const el = {
+      rect,
+      getBoundingClientRect: () => rect,
+      contains: (n) => n === el || n === el.child,
+    };
+    el.child = { tagName: 'SPAN', contains: () => false, getBoundingClientRect: () => rect };
+    return el;
+  };
+
+  // 现场那个形态：48x12 的宽扁按钮，命中落在**内部 SPAN** 上（中心点命中、多点不命中）。
+  const rect = { x: 1400, y: 314, width: 48, height: 12 };
+  const el = mkEl(rect);
+  const centerPoint = el.child;                      // elementFromPoint 落在内部子节点
+  // 边缘采样点落在别处 ⇒ 不算命中。真实 DOM 里每个节点都有 contains，
+  // 夹具不给就会在 self() 里抛 —— 那是夹具不真实，不是被测代码的问题。
+  const edgePoint = { tagName: 'DIV', contains: () => false };
+
+  const runBoth = (pointAt) => {
+    const win = { innerWidth: 1506, innerHeight: 642, elementFromPoint: pointAt };
+    const document = {
+      querySelectorAll: (sel) => (sel === 'body *' ? [] : [el]),
+      defaultView: win,
+    };
+    el.ownerDocument = document;
+    const call = (expr) => JSON.parse(new Function('document', 'window', 'getComputedStyle',
+      `return ${expr};`)(document, win, () => ({ position: 'static', display: 'block', visibility: 'visible', opacity: '1', zIndex: 'auto' })));
+    return { ov: call(overlayAfterExpression('[data-x]')), hit: call(hitCheckExpression('[data-x]')) };
+  };
+
+  // 场景 ①：**按钮左侧一小块露在外面、其余被盖住**（现场那个形态：48x12 宽扁按钮 +
+  // 内部 SPAN）。阈值取 x < rect.x + rect.width/3 —— 最左那列采样点
+  // （inset 0.12 ⇒ x≈1406）落在这一侧，其余落在被盖区。
+  // ⇒ 两边都必须判「命中」（只要有一个采样点在视口内且命中自己就算）。
+  // 这是本次修法的**核心**：旧的中心单点判据在「中心被盖」时会说不可点，
+  // 而实际按钮有一小截是能点的 —— 于是「关完遮挡说可点、点下去又说点不到」。
+  {
+    const { ov, hit } = runBoth((x) => (x < rect.x + rect.width / 3 ? el.child : edgePoint));
+    assert.equal(hit.ok, true, `左缘采样点命中自己 ⇒ 应判命中（实测 insideSamples=${hit.insideSamples}）`);
+    assert.equal(ov.targetHit, true, 'overlayAfter 也必须判命中');
+    assert.equal(ov.targetHit, hit.ok, '★ 中心被盖、边缘命中时，两套判据必须给同一结论');
+  }
+
+  // 场景 ①b：**中心命中、边缘全部不命中**（按钮极扁时中心唯一）
+  // ⇒ 两边都判命中。这一条是「统一成多点后别把真能点的判成点不到」的防呆。
+  {
+    const { ov, hit } = runBoth((x, y) => (
+      Math.round(x) === Math.round(rect.x + rect.width / 2)
+      && Math.round(y) === Math.round(rect.y + rect.height / 2) ? el.child : edgePoint));
+    assert.equal(hit.ok, true, '中心采样点命中 ⇒ 应判命中');
+    assert.equal(ov.targetHit, true, 'overlayAfter 也必须判命中');
+  }
+
+  // 场景 ②：**一个采样点都不命中** ⇒ 两边都必须判「未命中」。
+  // 这一条钉住「不能因为多点就变得宽松」：内部 SPAN 之外的点算不算命中，规则要唯一。
+  {
+    const { ov, hit } = runBoth(() => edgePoint);
+    assert.equal(hit.ok, false, '所有采样点都不命中 ⇒ 应判 not-hit');
+    assert.equal(ov.targetHit, false, 'overlayAfter 也不能说可点 —— 否则又是那两行打架的日志');
+    assert.equal(ov.targetHit, hit.ok, '★ 全不命中时两套判据也必须一致');
+  }
+
+  // 场景 ③：产物必须带上采样明细，否则日志里还是只能看到两个互相打架的结论
+  {
+    const { ov } = runBoth(() => el.child);
+    assert.ok(ov.hitDetail, 'overlayAfter 必须带出 hitDetail（命中几个采样点）—— '
+      + '不带的话下次不一致时，日志里看不出是哪一侧的采样出的问题');
+    assert.equal(typeof ov.hitDetail.insideSamples, 'number');
+    assert.equal(typeof ov.hitDetail.inViewportSamples, 'number');
+  }
 });
