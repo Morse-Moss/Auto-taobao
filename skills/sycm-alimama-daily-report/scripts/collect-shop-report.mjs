@@ -13,9 +13,9 @@ import { pathToFileURL } from 'node:url';
 
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
-  SHOP_REPORT_PATTERN, assertShopIdentity, createOverlayDismisser, dateWithinRange, defaultDownloadsDir,
+  assertShopIdentity, createOverlayDismisser, dateWithinRange, defaultDownloadsDir,
   describeHitMiss, describeHitPass, describeOverlayAttempt, hitCheckExpression, listDownloads, newEntries,
-  parseCollectArgs, pickNewest, scrollIntoViewExpression, sycmShopIdentityExpression,
+  parseCollectArgs, pickNewest, scrollIntoViewExpression, shopReportNamePattern, sycmShopIdentityExpression,
 } from './collect-core.mjs';
 
 // 已验证的报表定义 id（SOP §3）；它进文件名哈希，变了就说明取的不是同一份报表。
@@ -44,6 +44,13 @@ const SYCM_SPACE_URL = 'https://sycm.taobao.com/lyone/auto_analysis/my_space'
  * 那段措辞已按实际行为改写：未登记 ≠ fail-closed，未登记 ＝ 沿用默认形态。
  *
  * 值从哪来：2026-10-05 在盖文天猫窗口上实测读到的行文本（`97-*` 之外的只读取证）。
+ *
+ * ⚠️ **键是运营叫法（`shop-identities.mjs` 的 key），不是生意参谋页头店名。**
+ * 2026-10-05 第二次踩：这张表登记好了 盖文天猫 ⇒「活动-店铺-整体-近30天」，
+ * 而调用点写的是 `reportRowTitleFor(args.expectShop)` —— `--expect-shop` 是页头名
+ * 「盖文旗舰店」，于是**查不到、静默退回默认「含『日报』」**，报的还是「等不到『日报』」。
+ * 登记生效但查错键，症状与「根本没登记」逐字一样（函数级用例全绿、接线没接上，本项目第 4 次）。
+ * 现在查键统一走 `resolveReportRowTitle()`，调用点必须把 `--shop-key`（运营叫法）传进来。
  */
 export const SHOP_REPORT_ROW_TITLES = Object.freeze({
   盖文天猫: '活动-店铺-整体-近30天',
@@ -58,6 +65,20 @@ export function reportRowTitleFor(shop) {
   if (!key) throw new Error('没给店名，无法确定要找哪份报表');
   if (Object.hasOwn(SHOP_REPORT_ROW_TITLES, key)) return SHOP_REPORT_ROW_TITLES[key];
   return null; // 未登记：沿用「含『日报』」，与 2026-10-05 之前逐字相同
+}
+
+/**
+ * 查键的**唯一入口**：优先运营叫法（`--shop-key`），没有才退回页头店名（`--expect-shop`）。
+ *
+ * 为什么要写成纯函数、而不是在调用点写一行三元：这一行正是 2026-10-05 那次「登记了却不生效」的
+ * 病灶（查错键＝静默退回默认）。抽出来之后它可以被用例直接钉住，而且能说清**两种参数各自
+ * 会查到什么** —— 只给 `--expect-shop` 时查不到 盖文天猫 的登记，那不是 bug 而是口径：
+ * 页头名与运营叫法本来就可能不同（`shop-identities.mjs` 明写「一店多名是常态」）。
+ *
+ * 两个都不给 ⇒ 返回空串，交给 `reportRowTitleFor` 抛「没给店名」（保持历史 fail-closed 措辞）。
+ */
+export function rowTitleLookupKey({ shopKey = null, expectShop = null } = {}) {
+  return String(shopKey ?? '').trim() || String(expectShop ?? '').trim();
 }
 
 /**
@@ -243,9 +264,21 @@ async function main() {
       ? `｜期望 ${JSON.stringify(args.expectShop)} ✓`
       : '｜未给 --expect-shop：只记录，不拦'));
 
-  const before = listDownloads(args.downloads, SHOP_REPORT_PATTERN).map((entry) => entry.name);
+  // 查键：**运营叫法优先**。2026-10-05 第二次事故 —— 这里原先只拿 `args.expectShop`
+  // （生意参谋页头店名）去查，而登记表的键是运营叫法；盖文天猫的页头叫「盖文旗舰店」⇒ 查不到
+  // ⇒ 静默退回默认「含『日报』」⇒ 报的还是「等不到『日报』」，与「根本没登记」逐字一样。
+  //
+  // ⚠️ 它必须**赶在下面那两处「下载目录文件名判据」之前**算出来（2026-10-05 第三次事故）：
+  // 落盘文件的文件名＝平台给的**报表名**，「活动-店铺-整体-近30天_20261005_….xlsx」既不含
+  // 「日报」、又带连字符 ⇒ 默认正则认不出 ⇒ 行找到了、下载也落了盘，回执仍报「没等到新的店铺报表」。
+  const rowTitleKey = rowTitleLookupKey({ shopKey: args.shopKey, expectShop: args.expectShop });
+  const rowTitle = reportRowTitleFor(rowTitleKey);
+  const reportPattern = shopReportNamePattern(rowTitle);
+
+  const before = listDownloads(args.downloads, reportPattern).map((entry) => entry.name);
   console.log(`      → 生意参谋页 ${targetId}｜已有日报 xlsx ${before.length} 个｜下载目录 ${args.downloads}`
-    + `｜身份核对=${identityCheck.checked ? '已做' : '未做（没有期望值）'}`);
+    + `｜身份核对=${identityCheck.checked ? '已做' : '未做（没有期望值）'}`
+    + (rowTitle === null ? '' : `｜按「${rowTitleKey}」登记的行标题「${rowTitle}」认）`));
 
   console.log('[1/4] 再进 自助分析 · 公共空间');
   await navigate(args, targetId, SYCM_SPACE_URL);
@@ -300,7 +333,7 @@ async function main() {
   })()`;
 
   let found = null;
-  const rowTitle = reportRowTitleFor(args.expectShop);
+  // 查键在函数前半段就算好了（它同时决定「下载目录认哪个文件名」）—— 这里只用结论。
   for (let round = 1; round <= 10; round += 1) {
     await delay(2500);
     const state = await evalOn(args, targetId, findPreview);
@@ -317,7 +350,7 @@ async function main() {
     throw new Error(rowTitle === null
       ? '等不到「日报」这一行的预览按钮'
       : `等不到「${rowTitle}」这一行的预览按钮`
-        + `（${args.expectShop} 登记的日报报表行标题就是它；该屏可见的预览按钮 ${state?.count ?? 0} 个，`
+        + `（按「${rowTitleKey}」登记的日报报表行标题就是它；该屏可见的预览按钮 ${state?.count ?? 0} 个，`
         + '若报表刚被改名/删除，请更新 collect-shop-report.mjs 的 SHOP_REPORT_ROW_TITLES）');
   }
   console.log(`[2/4] 点开「日报」预览（#${found.i}）→ ${await click(args, targetId, `[data-collect-preview="${found.i}"]`)}`);
@@ -373,9 +406,9 @@ async function main() {
   const deadline = Date.now() + args.timeoutMs;
   while (Date.now() < deadline) {
     await delay(3000);
-    const fresh = newEntries(before, listDownloads(args.downloads, SHOP_REPORT_PATTERN).map((entry) => entry.name));
+    const fresh = newEntries(before, listDownloads(args.downloads, reportPattern).map((entry) => entry.name));
     if (fresh.length) {
-      const newest = pickNewest(listDownloads(args.downloads, SHOP_REPORT_PATTERN)
+      const newest = pickNewest(listDownloads(args.downloads, reportPattern)
         .filter((entry) => fresh.includes(entry.name)));
       console.log(`      新文件：${newest.name}（${newest.size} bytes）`);
       console.log(`      shopXlsxPath = ${path.join(args.downloads, newest.name)}`);

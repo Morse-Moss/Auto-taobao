@@ -69,34 +69,25 @@ function mutate(name, apply, expectation) {
   }
 }
 
-const clickLine = "  console.log(`[submit] 滚动后复核通过（${describeHitPass(hit)}）→ 点击 → `\n"
-  + "    + `${(await click(args, targetId, '[data-collect-alimama-download=\"1\"]')).slice(0, 80)}`);";
+const FETCH_DECISION = '  const decision = judgeFetchCandidates({ ledger: readLedger(ledgerFile), date: args.date, shop, rows, explicit: args.task });';
 
 mutate('M1 取件段回退到「猜列表里最新那条」',
-  () => replaceIn(REPORT,
-    '  const decision = judgeFetchTaskName({ ledger, date: args.date, shop, list, explicit: args.task });',
-    '  const fallback = newestTaskName(list);\n'
-    + '  const decision = judgeFetchTaskName({ ledger, date: args.date, shop, list, explicit: args.task });'),
+  () => replaceIn(REPORT, FETCH_DECISION,
+    '  const fallback = newestTaskName(rows.map((row) => row.name));\n' + FETCH_DECISION),
   /取件段不许再出现 newestTaskName/u);
 
+// M2 拦的是「主路径绕过判据、但补提交那条路还留着旧判据」这个**只改一半**的形态：
+// 判据如果只写「取件段出现过 judgeFetchCandidates」，就拦不住它 —— 第二处调用会让它继续绿。
+// 所以期望串必须指向「主路径有且只有一次」那条断言，别退回「出现过就行」那版文案。
 mutate('M2 取件段绕过判据，自己挑一条',
-  () => replaceIn(REPORT,
-    '  const decision = judgeFetchTaskName({ ledger, date: args.date, shop, list, explicit: args.task });',
-    '  const decision = { ok: true, taskName: list[0] ?? null, reason: "自己挑的" };'),
-  /取件段要经判据拿任务名/u);
+  () => replaceIn(REPORT, FETCH_DECISION,
+    '  const decision = { ok: true, taskNames: rows.map((row) => row.name), reason: "自己挑的" };'),
+  /主路径（补提交之前那一段）要有且只有一次「经判据拿候选」/u);
 
 mutate('M3 提交段真重排：先点「下载报表」，再判复用',
-  () => {
-    const text = originals.get(REPORT);
-    const prologue = text.slice(text.indexOf('  const listBefore = await openTaskList('),
-      text.indexOf('⇒ 照常提交`);') + '⇒ 照常提交`);'.length);
-    if (!prologue.includes('judgeResume({')) throw new Error('没抓到要搬动的段落');
-    replaceIn(REPORT, prologue, '');
-    const after = fs.readFileSync(REPORT, 'utf8');
-    const hits = after.split(clickLine).length - 1;
-    if (hits !== 1) throw new Error(`点击行期望 1 处，实际 ${hits} 处`);
-    fs.writeFileSync(REPORT, after.split(clickLine).join(`${clickLine}\n${prologue}`), 'utf8');
-  },
+  () => replaceIn(REPORT,
+    '  const listBefore = await openTaskList(args, targetId);',
+    '  await submitDownloadTask(args, targetId);\n  const listBefore = await openTaskList(args, targetId);'),
   /复用判定必须在真正点「下载报表」之前/u);
 
 mutate('M4 提交结果不看列表差集',
@@ -105,25 +96,27 @@ mutate('M4 提交结果不看列表差集',
     '    const outcome = { ok: true, added: [], reason: "" };'),
   /提交成功与否要看列表差集/u);
 
-mutate('M5 台账里没有记录时回退到最新那条（纯判据）',
+mutate('M5 没有「日期范围＝目标日」的候选时回退到列表最新那条（纯判据）',
   () => replaceIn(LEDGER,
-    '  return { ok: false, taskName: null,\n    reason: `台账里没有 ${date} 这家店的未取任务',
-    '  const fallback = newestTaskName(names);\n'
-    + '  if (fallback) return { ok: true, taskName: fallback, reason: "回退到列表最新一条" };\n'
-    + '  return { ok: false, taskName: null,\n    reason: `台账里没有 ${date} 这家店的未取任务'),
-  /不许回退到「列表里最新那条」|不拿「列表里最新那条」去猜/u);
+    '  if (!candidates.length) {\n',
+    '  const fallback = withRange.at(-1);\n'
+    + '  if (fallback) return { ok: true, taskNames: [fallback.name], reason: "回退到列表最新一条" };\n'
+    + '  if (!candidates.length) {\n'),
+  /不许回退到「列表里最新那条」/u);
 
 mutate('M6 有未取任务时不复用、反而阻断（纯判据）',
-  () => replaceIn(LEDGER, "      return { action: 'reuse', taskName, stale,", "      return { action: 'block', taskName, stale,"),
+  () => replaceIn(LEDGER,
+    "    return { action: 'reuse', taskName: pending[0].taskName, stale,",
+    "    return { action: 'block', taskName: pending[0].taskName, stale,"),
   /复用/u);
 
 mutate('M7 「标已取」挪到 zip 落盘之前',
   () => replaceIn(REPORT,
-    '  const deadline = Date.now() + args.timeoutMs;',
-    '  writeLedger(ledgerFile, recordConsumed(readLedger(ledgerFile), '
+    '    const deadline = Date.now() + args.timeoutMs;',
+    '    writeLedger(ledgerFile, recordConsumedAll(readLedger(ledgerFile), '
     + '{ date: args.date, shop, taskName: wanted, at: new Date().toISOString() }));\n'
-    + '  const deadline = Date.now() + args.timeoutMs;'),
-  /recordConsumed 要写在「zip 落盘」那一段之后/u);
+    + '    const deadline = Date.now() + args.timeoutMs;'),
+  /recordConsumedAll 要写在「zip 落盘」那一段之后/u);
 
 // 2026-09-21 现场事故的两个成因，各锁一条判据。
 mutate('M8 差集不在列表页上算（去掉「先导航到下载任务管理」）',

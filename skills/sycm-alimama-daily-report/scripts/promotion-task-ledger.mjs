@@ -11,14 +11,18 @@
 // 口径（与 docs/ops/FULL-AUTOMATION-STATE-CONTRACT-2026-09-21.md §三 #4 一致）：
 //   · 同一目标日已有未取任务，且**能在列表里核到** ⇒ `reuse`：跳过提交，直接取件
 //     （不再对平台产生第二次副作用；这也正是「提交成功但取件前崩了」的自愈路径）
-//   · 台账里记着、但列表里核不到，或同一目标日记着多笔 ⇒ `block`：**核不清就不动**
+//   · 同一目标日记着**多笔**、且都在列表里 ⇒ 仍是 `reuse`（2026-10-05 起）：
+//     取件失败后允许**补提交一次**（平台存在「最新那条点了不落盘、紧挨着下面那条能下」的形态，
+//     见 collect-promotion-report 的 duplicateRetry）。多笔之间业务日相同、数据等价，
+//     取件段按业务日给候选并逐条试，所以「分不清该取哪一条」这件事本身已经不成立了。
+//   · 台账里记着、但（任一笔）列表里核不到 ⇒ `block`：**核不清就不动**
 //   · 台账里没有本目标日的记录 ⇒ `block`：**不猜**「列表里最新那条」，并给出怎么修
 //   · 别的目标日还挂着未取任务 ⇒ 只**报**不拦（它不危害本轮，而拦住一条无人值守的链
 //     直到人来手改 JSON，是比残留更糟的失败模式）
 import path from 'node:path';
 import fs from 'node:fs';
 
-import { PROMOTION_TASK_PATTERN, newestTaskName } from './collect-core.mjs';
+import { PROMOTION_TASK_PATTERN } from './collect-core.mjs';
 
 export const LEDGER_VERSION = 1;
 
@@ -129,6 +133,32 @@ export function recordConsumed(ledger, { date, shop, taskName, at } = {}) {
   return { ...ledger, records };
 }
 
+/**
+ * 把这一目标日、这家店**所有**未取记录一次结清（2026-10-05 加）。
+ *
+ * 只在**取件真的成功之后**调用。同一天补提交出来的多个任务是等价的（同日导出、业务日相同），
+ * 取到一条就说明这一天的数据到手了；只标那一条会让兄弟记录一直挂着，
+ * 下一轮再去点一次同一份数据 —— 而那一轮可能是几小时后的重跑。
+ *
+ * 安全性仍然来自调用顺序：先落盘、后结清（与 recordConsumed 同一条纪律）。
+ */
+export function recordConsumedAll(ledger, { date, shop, taskName = null, at = null } = {}) {
+  const stamp = at ?? new Date().toISOString();
+  const records = ledger.records.map((record) => (
+    record.date === date && record.shop === shop && !record.consumedAt
+      ? { ...record, consumedAt: stamp }
+      : record));
+  // 与 recordConsumed 同一条 upsert 纪律：`--task` 显式指定、或列表里的候选本来就没记过时，
+  // 也要落一笔 —— 否则台账会假装那天从没提交过，下一轮又去提交一次。
+  const known = taskName
+    ? records.some((record) => record.date === date && record.shop === shop && record.taskName === taskName)
+    : true;
+  if (!known) {
+    return { ...ledger, records: [...records, { date, shop, taskName, proxy: null, submittedAt: null, consumedAt: stamp }] };
+  }
+  return { ...ledger, records };
+}
+
 /** 这一目标日、这家店还没取过的任务。 */
 export function pendingFor(ledger, { date, shop } = {}) {
   return ledger.records.filter((record) => record.date === date && record.shop === shop && !record.consumedAt);
@@ -139,7 +169,17 @@ export function staleFor(ledger, { date, shop } = {}) {
   return ledger.records.filter((record) => record.shop === shop && record.date !== date && !record.consumedAt);
 }
 
-const asNames = (value) => (Array.isArray(value) ? value : []).filter((name) => PROMOTION_TASK_PATTERN.test(String(name)));
+/**
+ * 把「列表读到的行」或「裸任务名」统一成任务名数组。
+ *
+ * 为什么要接受两种形态：2026-10-05 起列表读取（`readTaskRows`）返回的是
+ * `{ name, rangeStart, rangeEnd }`（因为判「哪一条是目标日」必须看**日期范围**列），
+ * 而台账这层只关心名字。让它自己认两种形态，比让每个调用点各写一次 `.map(row => row.name)`
+ * 更不容易漏 —— 漏一处就会静默变成「列表里一条都没有」⇒ 台账判 `block`，而现场是好的。
+ */
+const asNames = (value) => (Array.isArray(value) ? value : [])
+  .map((item) => (typeof item === 'string' ? item : item?.name))
+  .filter((name) => PROMOTION_TASK_PATTERN.test(String(name)));
 
 export function describeStale(stale = []) {
   if (!stale.length) return null;
@@ -156,21 +196,24 @@ export function judgeResume({ ledger, date, shop, list = [] } = {}) {
   const names = asNames(list);
   const pending = pendingFor(ledger, { date, shop });
   const stale = staleFor(ledger, { date, shop });
-  if (pending.length > 1) {
-    return { action: 'block', taskName: null, stale,
-      reason: `台账里 ${date} 这家店记着 ${pending.length} 笔未取任务（${pending.map((record) => record.taskName).join('、')}）`
-        + ' ⇒ 分不清哪一笔是本轮该用的，核不清就不提交' };
-  }
-  if (pending.length === 1) {
-    const { taskName } = pending[0];
-    if (names.includes(taskName)) {
-      return { action: 'reuse', taskName, stale,
-        reason: `台账记着 ${date} 已提交过 ${taskName}，且它仍在下载任务列表里（列表 ${names.length} 条）`
-          + ' ⇒ 跳过提交，直接取件（不再对平台产生第二次副作用）' };
+  if (pending.length > 0) {
+    // 「同一目标日记着多笔」现在**不再等于核不清**：2026-10-05 起允许在取件失败后
+    // **补提交一次**（平台存在「最新那条点了不落盘、下面那条能下」的形态，业务方口径见
+    // collect-promotion-report 的 duplicateRetry 注释）。多笔之间数据等价，判据在取件段
+    // 按「业务日」而不是按「哪一个任务名」把关，所以这里只需要确认它们**都还在列表里**。
+    const missing = pending.filter((record) => !names.includes(record.taskName));
+    if (missing.length) {
+      return { action: 'block', taskName: null, stale,
+        reason: `台账里 ${date} 记着 ${pending.length} 笔未取任务，其中 ${missing.map((record) => record.taskName).join('、')}`
+          + ` 已不在下载任务列表里（列表现有 ${names.length} 条）`
+          + ' ⇒ 无法确认平台那边这些笔还在不在，核不清就不提交（先人工看一眼「下载任务管理」）' };
     }
-    return { action: 'block', taskName: null, stale,
-      reason: `台账记着 ${date} 已提交 ${taskName}，但它已不在下载任务列表里（列表现有 ${names.length} 条）`
-        + ' ⇒ 无法确认平台那边这一笔还在不在，核不清就不提交（先人工看一眼「下载任务管理」）' };
+    return { action: 'reuse', taskName: pending[0].taskName, stale,
+      reason: pending.length === 1
+        ? `台账记着 ${date} 已提交过 ${pending[0].taskName}，且它仍在下载任务列表里（列表 ${names.length} 条）`
+          + ' ⇒ 跳过提交，直接取件（不再对平台产生第二次副作用）'
+        : `台账记着 ${date} 有 ${pending.length} 笔未取任务（这一目标日补提交过），且都还在列表里（列表 ${names.length} 条）`
+          + ' ⇒ 跳过提交，直接取件（取件段按业务日逐条试）' };
   }
   return { action: 'submit', taskName: null, stale, reason: `台账里没有 ${date} 这家店的未取任务` };
 }
@@ -211,41 +254,77 @@ export function judgeSubmitOutcome({ before = [], after = [] } = {}) {
 }
 
 /**
- * 取件段：本轮该取哪一个任务。**这里刻意没有「列表里最新那条」这个回退** ——
- * 任务名只有导出日、没有目标日，猜错就是把别的日子数据写进这一天，而那种错没有便宜的下游检查。
- * 唯一被承认的两条来源：调用方显式 `--task`，或台账里那一笔未取任务**且列表里核得到**。
+ * 取件段：本轮**可以取哪些任务**（候选集，2026-10-05 改成按业务日认）。
+ *
+ * 判据锚在**业务日**上，不锚在「哪一个任务名」上：
+ *   · 页面上每一行的「日期范围」列（`YYYY-MM-DD至YYYY-MM-DD`）是业务日的**可读真相**；
+ *     起止都等于目标日的行，才是这一天的数据。
+ *   · 候选 = 所有这样的行。正常情况下 1 条；同一目标日补提交过一次时 2 条，**两条数据等价**。
+ *   · 一条日期范围都读不到 ⇒ **fail-closed**：判据失效（页面结构可能变了），停下来看页面。
+ *     **不许**退回「按任务名认」—— 那正是老实现拿 `newestTaskName` 猜的那条路。
+ *
+ * 为什么是候选集而不是「唯一一条」：平台存在「最新那条点了不落盘、紧挨着下面那条能下」的形态
+ * （2026-10-05 业务方实测），一条通道坏了要能换一条。换哪条都不会写错日子 ——
+ * 因为候选之间**业务日相同**，这一点由上面那条判据保证，不由「它排第几行」保证。
  */
-export function judgeFetchTaskName({ ledger, date, shop, list = [], explicit = null } = {}) {
-  if (!DATE_RE.test(String(date ?? ''))) throw new Error(`judgeFetchTaskName 需要目标日（YYYY-MM-DD），收到 ${JSON.stringify(date)}`);
-  const names = asNames(list);
-  // 这一支的错误信息要给出**看得见的现场**：列表里最新的是哪一条。
-  // 它同时也是 newestTaskName 在本仓里唯一的用途 —— 只用来**告诉你现场长什么样**，
-  // 不再用来决定「取哪一条」（那件事只有台账与 --task 有资格决定）。
-  const newest = newestTaskName(names);
-  const hint = newest ? `列表里最新的一条是 ${newest}` : '列表里没有任何任务名形状的条目';
+export function judgeFetchCandidates({ ledger, date, shop, rows = [], explicit = null } = {}) {
+  if (!DATE_RE.test(String(date ?? ''))) throw new Error(`judgeFetchCandidates 需要目标日（YYYY-MM-DD），收到 ${JSON.stringify(date)}`);
+  const parsed = normalizeTaskRows(rows);
+  const hint = describeRows(parsed);
   if (explicit) {
-    if (names.includes(explicit)) {
-      return { ok: true, taskName: explicit, reason: `--task 显式指定且列表里有它（列表 ${names.length} 条）` };
+    const hit = parsed.find((row) => row.name === explicit);
+    if (!hit) {
+      return { ok: false, taskNames: [], reason: `--task 指定的 ${explicit} 不在列表里（${hint}）` };
     }
-    return { ok: false, taskName: null,
-      reason: `--task 指定的 ${explicit} 不在列表里（现有 ${JSON.stringify(names)}；${hint}）` };
+    if (hit.rangeStart && hit.rangeEnd && (hit.rangeStart !== date || hit.rangeEnd !== date)) {
+      return { ok: false, taskNames: [],
+        reason: `--task 指定的 ${explicit} 的日期范围是 ${hit.rangeStart}至${hit.rangeEnd}，不是目标日 ${date}`
+          + ' ⇒ 不取（取错日子会把别天的数据静默写进这一天）' };
+    }
+    return { ok: true, taskNames: [explicit],
+      reason: `--task 显式指定，列表里有它且日期范围与目标日一致（列表 ${parsed.length} 条）` };
   }
-  const pending = pendingFor(ledger, { date, shop });
-  if (pending.length === 1) {
-    const { taskName } = pending[0];
-    if (names.includes(taskName)) {
-      return { ok: true, taskName, reason: `台账里 ${date} 的未取任务，且列表里核到了（列表 ${names.length} 条）` };
-    }
-    return { ok: false, taskName: null,
-      reason: `台账里 ${date} 的未取任务是 ${taskName}，但它不在列表里（现有 ${JSON.stringify(names)}）`
+  const withRange = parsed.filter((row) => row.rangeStart && row.rangeEnd);
+  if (!withRange.length) {
+    return { ok: false, taskNames: [],
+      reason: `列表里读到 ${parsed.length} 条任务名，但没有一条能读出「日期范围」列`
+        + ' ⇒ 判据失效（页面结构可能变了），停下来看一眼「下载任务管理」；不退回按任务名猜' };
+  }
+  const candidates = withRange.filter((row) => row.rangeStart === date && row.rangeEnd === date)
+    .map((row) => row.name);
+  if (!candidates.length) {
+    const pending = pendingFor(ledger, { date, shop });
+    return { ok: false, taskNames: [],
+      reason: `列表里没有日期范围等于 ${date} 的任务（${hint}）`
+        + (pending.length ? `；台账里记着 ${date} 的未取任务 ${pending.map((record) => record.taskName).join('、')}` : '')
         + ' ⇒ 核不清，不取' };
   }
-  if (pending.length > 1) {
-    return { ok: false, taskName: null,
-      reason: `台账里 ${date} 记着 ${pending.length} 笔未取任务（${pending.map((record) => record.taskName).join('、')}）⇒ 分不清该取哪一条` };
-  }
-  return { ok: false, taskName: null,
-    reason: `台账里没有 ${date} 这家店的未取任务 ⇒ 不拿「列表里最新那条」去猜`
-      + '（任务名只有导出日、没有目标日，猜错就是把别天的数据写进这一天）。'
-      + `${hint}；先跑 --phase submit，或用 --task 显式指定那一条` };
+  return { ok: true, taskNames: candidates,
+    reason: `日期范围等于 ${date} 的任务共 ${candidates.length} 条（${candidates.join('、')}）⇒ 逐条试，哪条落盘用哪条` };
+}
+
+/**
+ * 列表行归一化：既接受 `{ name, rangeStart, rangeEnd }`，也接受裸名字。
+ * 裸名字（老调用点与用例传的形态）**没有日期范围**，因此不会成为候选，只会出现在提示里 ——
+ * 这是刻意的：读不到业务日的行，没有资格被当成「这一天的数据」。
+ */
+function normalizeTaskRows(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => (typeof row === 'string'
+      ? { name: row.trim(), rangeStart: null, rangeEnd: null }
+      : {
+        name: String(row?.name ?? '').trim(),
+        rangeStart: row?.rangeStart ?? null,
+        rangeEnd: row?.rangeEnd ?? null,
+      }))
+    .filter((row) => PROMOTION_TASK_PATTERN.test(row.name));
+}
+
+/** 错误信息要给出「现场长什么样」：前几条任务名 + 它们的日期范围。 */
+function describeRows(rows) {
+  if (!rows.length) return '列表里没有任何任务名形状的条目';
+  const shown = rows.slice(0, 4)
+    .map((row) => (row.rangeStart ? `${row.name}（${row.rangeStart}至${row.rangeEnd}）` : `${row.name}（范围读不到）`))
+    .join('、');
+  return `现有 ${rows.length} 条：${shown}${rows.length > 4 ? ' …' : ''}`;
 }

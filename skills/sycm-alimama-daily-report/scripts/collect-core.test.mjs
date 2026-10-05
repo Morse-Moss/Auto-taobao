@@ -14,7 +14,8 @@ import {
   downloadEntryExpression, hitCheckExpression, judgeOverlayAfter, listDownloads, newEntries, newestTaskName,
   overlayAfterExpression, overlayScanExpression, pageReadyExpression, parseCollectArgs, pickNewest,
   pickOverlayCloseCandidate, pickOverlayCloseCandidates, reloadPageExpression,
-  restoreCheckboxesExpression, scrollIntoViewExpression, sycmShopIdentityExpression, targetRowExpression,
+  restoreCheckboxesExpression, scrollIntoViewExpression, shopReportNamePattern,
+  sycmShopIdentityExpression, targetRowExpression, taskNameOfZip,
   ALL_DOCS_EXPR, QUERY_ALL_DOCS_EXPR,
 } from './collect-core.mjs';
 
@@ -28,6 +29,15 @@ import {
 const SCRIPTS_DIR = import.meta.dirname;
 // 源文件在 Windows checkout 可能是 CRLF；源码守卫只关心调用顺序，不应把换行格式当成行为。
 const readScript = (name) => readFileSync(path.join(SCRIPTS_DIR, name), 'utf8').replaceAll('\r\n', '\n');
+
+// 阿里妈妈「提交段」的区间 = `submitDownloadTask` **加上** `phaseSubmit` 两段。
+//
+// 2026-10-05 把点击那一串动作（定位 → 复核 → 点「下载报表」→ 等弹窗 → 点「确定」）
+// 抽成了 `submitDownloadTask`：取件失败后的**补提交**要复用逐字同一段逻辑。
+// 所以按 `phaseSubmit` 单切会漏掉一半 —— 这几条判据要盯的是「这条路径」，
+// 不是「哪个函数里」；切窄了会变成「函数还在但没人调」也判不出来（正是它们本来要防的形态）。
+const submitRegion = (promo) => promo.slice(promo.indexOf('async function submitDownloadTask'),
+  promo.indexOf('async function phaseFetch'));
 
 function fixture(files) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'collect-core-'));
@@ -79,6 +89,34 @@ test('下载目录扫描：只认形状对的文件，大小与 mtime 一起带�
   assert.throws(() => listDownloads(path.join(dir, '__not_here__'), SHOP_REPORT_PATTERN), /cannot read downloads directory/u);
 });
 
+test('按店认下载文件名：登记了行标题的店，用它的名字当前缀（2026-10-05 盖文天猫实亏）', () => {
+  // 真机事实（`C:\\Users\\Administrator\\Downloads`，2026-10-05 17:03:24，21153 bytes）：
+  // 盖文天猫那家店的日报报表叫「活动-店铺-整体-近30天」，落盘就是这个名字打头 ——
+  // 既不含「日报」、又带连字符 ⇒ 默认正则认不出 ⇒ 行找到了、下载也真落了盘，
+  // 回执仍然报「30000ms 内没等到新的店铺报表」。所以文件名判据也必须按店。
+  const LANDED = '活动-店铺-整体-近30天_20261005_5101fe58498b2d2694371a0b05f989f3.xlsx';
+  assert.equal(SHOP_REPORT_PATTERN.test(LANDED), false,
+    '默认形态本来就认不出它（这一条钉的是「为什么需要按店」）');
+  const perShop = shopReportNamePattern('活动-店铺-整体-近30天');
+  assert.equal(perShop.test(LANDED), true, '登记名当前缀必须认得出真机落盘的那个文件');
+  assert.equal(perShop.test('活动-店铺-整体-近30天_20261005_5101fe58498b2d2694371a0b05f989f3 (1).xlsx'), true,
+    '重名后缀要一起认');
+  // 登记是**补充**不是替换：万一平台对这家店仍按「日报…」给文件名，原来那条路要还在。
+  assert.equal(perShop.test('日报_20260917_adc987ef8d0897700e42dcf1427605b3.xlsx'), true,
+    '登记后仍要认得出默认形态的文件名');
+  // 未登记的店 ⇒ 与从前逐字相同的那条正则。
+  assert.equal(shopReportNamePattern(null), SHOP_REPORT_PATTERN);
+  assert.equal(shopReportNamePattern(undefined), SHOP_REPORT_PATTERN);
+  // 仍然不许把 Excel 锁文件、无关文件当成候选（放宽前缀不等于放宽尾部形状）。
+  assert.equal(perShop.test('~$活动-店铺-整体-近30天_20261005_5101fe58498b2d2694371a0b05f989f3.xlsx'), false);
+  assert.equal(perShop.test('活动-店铺-整体-近30天.xlsx'), false, '缺「_下载日_哈希」段的不算');
+  assert.equal(perShop.test('营销场景报表_20261005_164053.zip'), false);
+  // 正则元字符必须被转义 —— 报表名里带 `-`，不能当字符区间用。
+  assert.equal(shopReportNamePattern('日报2').test('日报2_20260918_90f3f449b92531c0823d97ec6d6bb86b.xlsx'), true);
+  assert.equal(shopReportNamePattern('a.c').test('axc_20260918_90f3f449b92531c0823d97ec6d6bb86b.xlsx'), false,
+    '`a.c` 里的 `.` 必须被转义成字面量');
+});
+
 test('下载判据取文件系统：新出现的文件才是成功，且多个时取 mtime 最新的', () => {
   const before = ['日报_a.xlsx'];
   const after = ['日报_a.xlsx', '日报_b.xlsx', '日报_b (1).xlsx'];
@@ -110,6 +148,19 @@ test('认下载任务：按名字里的时间戳取最新，不按「今天」�
   assert.equal(newestTaskName([]), null);
   assert.equal(PROMOTION_TASK_PATTERN.test('营销场景报表_20260917_112258'), true);
   assert.equal(PROMOTION_TASK_PATTERN.test('营销场景报表_20260917_1122'), false);
+});
+
+// 落盘的 zip 名字 → 它是哪一条任务的产物。取件那一步要靠它**按候选集合**判断落盘对象：
+// 写死「必须等于台账那一个名字」时，「同一天补提交、取了下面那条」会被误判成
+// 「落盘的不是目标任务」，于是换通道永远走不通（2026-10-05 三处堵点之三）。
+test('落盘文件名 → 任务名：两种合法形态都要认得，别的一律不是', () => {
+  assert.equal(taskNameOfZip('营销场景报表_20261005_132917.zip'), '营销场景报表_20261005_132917');
+  assert.equal(taskNameOfZip('营销场景报表_20261005_132917 (1).zip'), '营销场景报表_20261005_132917',
+    '浏览器重名加的后缀要去掉');
+  assert.equal(taskNameOfZip('营销场景报表_20261005_132917 (12).zip'), '营销场景报表_20261005_132917');
+  // 别的东西不许被认成任务名（防「以后再放宽一点」时把别的文件放进来）。
+  assert.equal(taskNameOfZip('日报_20261005_abc.xlsx').endsWith('.xlsx'), true, '不是 zip 就不动它');
+  assert.equal(taskNameOfZip('营销场景报表_20261005_132917'), '营销场景报表_20261005_132917');
 });
 
 test('统计区间必须含目标日（含不含是这份工作簿能不能用的前提）', () => {
@@ -527,7 +578,7 @@ test('排练开关 --locate-only：定位全走一遍但绝不点击（顺序也
   const promo = readScript('collect-promotion-report.mjs');
   // 按阶段切出函数体再判序：同一段选择器字符串在「复核」和「点击」两处都出现，
   // 直接 indexOf 会命中复核那一处，判出错误的先后（第一版就是这么写废的）。
-  const submitBody = promo.slice(promo.indexOf('async function phaseSubmit'), promo.indexOf('async function phaseFetch'));
+  const submitBody = submitRegion(promo);
   const fetchBody = promo.slice(promo.indexOf('async function phaseFetch'));
   for (const [label, body, clickCall] of [
     ['submit', submitBody, `await click(args, targetId, '[data-collect-alimama-download="1"]')`],
@@ -542,10 +593,13 @@ test('排练开关 --locate-only：定位全走一遍但绝不点击（顺序也
   }
   // 两个阶段都得有排练分支（只加一个是「以为排练过了」的经典形态）。
   assert.equal(promo.match(/args\.locateOnly/gu).length >= 2, true, 'submit 与 fetch 都要能排练');
-  // 「点了但没反应」这一族：fetch 的下载必须用真实鼠标事件，而且落盘后要核对是目标任务那份。
+  // 「点了但没反应」这一族：fetch 的下载必须用真实鼠标事件，而且落盘后要核对是**这一目标日**那份。
   assert.equal(/await click\(args, targetId, '\[data-collect-task-download/u.test(promo), false,
     'fetch 的「下载」不许退回 JS 点击 —— 实测它返回 clicked:true 却不触发下载');
-  assert.match(promo, /落盘的不是目标任务/u, '下来的若是别的任务必须停下，不许拿去写库');
+  // 2026-10-05 放宽成「∈ 候选集」（换通道：同一天补提交出来的另一条也能用），
+  // 所以这里钉的是**集合判据**本身，而不是某一句措辞。
+  assert.match(promo, /落盘的不是这一目标日的候选/u, '下来的若不是这一目标日的候选必须停下，不许拿去写库');
+  assert.match(promo, /candidates\.includes\(taskNameOfZip\(/u, '落盘核对要按候选集合判，不是「必须等于某一个名字」');
 });
 
 test('采集脚本：失败要给非零退出码并说清原因，端口从登记表取', () => {
@@ -703,8 +757,7 @@ test('接线：submit 的报错与日志共用同一份「视口＋候选」摘�
   assert.ok(waitBody.indexOf('scrollIntoViewExpression') < waitBody.indexOf('await delay(intervalMs)'),
     '先滚、再等下一轮按原判据重判；顺序反了就等于没滚');
 
-  const submitBody = promo.slice(promo.indexOf('async function phaseSubmit'),
-    promo.indexOf('async function phaseFetch'));
+  const submitBody = submitRegion(promo);
   assert.match(submitBody, /describeDialogCandidates\(waited\.buttons, waited\.viewport\)/u,
     '失败信息与成功日志必须共用同一份摘要，免得两处措辞漂移');
   assert.match(submitBody, /期间滚动 \$\{waited\.scrolls\} 次/u, '失败时要报出滚了几次');
@@ -712,7 +765,7 @@ test('接线：submit 的报错与日志共用同一份「视口＋候选」摘�
 
 test('submit 段开跑前先清掉上一轮留下的弹窗（判据落在调用点上，不是「函数存在」）', () => {
   const promo = readScript('collect-promotion-report.mjs');
-  const submitBody = promo.slice(promo.indexOf('async function phaseSubmit'), promo.indexOf('async function phaseFetch'));
+  const submitBody = submitRegion(promo);
   const fetchBody = promo.slice(promo.indexOf('async function phaseFetch'));
   const clearAt = submitBody.indexOf('await clearLeftoverDialog(args, targetId)');
   const locateAt = submitBody.indexOf('await locateDownloadReportReady(args, targetId)');
@@ -1360,7 +1413,10 @@ test('两个采集脚本都接上了关遮挡，且报错里说清「关遮挡�
 
   // 「重载一次再走一遍」只允许加在**阿里妈妈侧**：生意参谋那一侧没有现场证据，
   // 不给它加「主动重载」这种带副作用的动作（多一处就是超出授权的行为）。
-  assert.equal((promotion.match(/await reloadAndSettle\(/gu) ?? []).length, 1);
+  // 阿里妈妈侧现在是 2 处，都是**同一条理由**（把现场重置成干净的一份再走一遍）：
+  //   ① hitCheckDismissingOverlay 里「关不掉 ⇒ 重载后再走一遍」（2026-09-26）；
+  //   ② reopenTaskList 里「换候选之前重置列表页」（2026-10-05，取件逐条试）。
+  assert.equal((promotion.match(/await reloadAndSettle\(/gu) ?? []).length, 2);
   assert.equal((shop.match(/createPageReloader\(/gu) ?? []).length, 0,
     '生意参谋侧不许接重载：没有现场证据就加副作用动作，等于把一次失败变成一次未知');
 });

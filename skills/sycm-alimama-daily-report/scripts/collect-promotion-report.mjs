@@ -26,16 +26,17 @@ import {
   assertMemberIdentity, checkboxStateExpression, createOverlayDismisser, createPageReloader, defaultDownloadsDir,
   describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, downloadEntryExpression,
   hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest,
-  restoreCheckboxesExpression, scrollIntoViewExpression, targetRowExpression,
+  restoreCheckboxesExpression, scrollIntoViewExpression, targetRowExpression, taskNameOfZip,
 } from './collect-core.mjs';
 // 报表页 URL 形状只有 date-picker 那份实现（含场景编码与归因参数）。路由复位要重新导航到
 // 同一个报表页，所以这里**取它**而不是再抄一份 —— 抄一份就会在下次改 URL 时漂移。
 import { buildAlimamaUrl } from './date-picker.mjs';
 // 推广任务台账（2026-09-21 晚加）：任务名只有导出日、没有目标日 ⇒「取哪一条」不许猜。
-// 提交段把「亲眼看它多出来哪一条」记进台账，取件段只取那一笔。见该模块文件头。
+// 提交段把「亲眼看它多出来哪一条」记进台账；取件段**按业务日给候选**（不是只认台账那一笔）
+// —— 2026-10-05 改成候选集，理由见 judgeFetchCandidates 的文件头。
 import {
-  describeStale, judgeFetchTaskName, judgeResume, judgeSubmitOutcome,
-  ledgerScope, readLedger, recordConsumed, recordSubmitted, staleFor, writeLedger,
+  describeStale, judgeFetchCandidates, judgeResume, judgeSubmitOutcome,
+  ledgerScope, pendingFor, readLedger, recordConsumedAll, recordSubmitted, staleFor, writeLedger,
 } from './promotion-task-ledger.mjs';
 
 const ALIMAMA_LIST_URL = 'https://one.alimama.com/index.html#!/report/download-list';
@@ -401,28 +402,49 @@ async function locateDownloadReportReady(args, targetId, { attempts = 3 } = {}) 
 // ---------------------------------------------------------------- 下载任务列表（提交段与取件段共用）
 
 /**
- * 读「下载任务管理」列表里的任务名集合。
+ * 读「下载任务管理」列表：每条任务**名字 + 它的日期范围**。
+ *
+ * 为什么是「行」而不是「名字集合」（2026-10-05 改）：任务名里的日期是**导出日**（提交那一刻），
+ * 不含业务日 ⇒ 光看名字分不出「这条对应哪一天」。而列表的**日期范围**列
+ * （`YYYY-MM-DD至YYYY-MM-DD`）是业务日的**可读真相** —— 实测它就在任务行的文本里，
+ * 例：`生成成功 营销场景报表_20261005_132917 30天累计数据 2026-10-04至2026-10-04 2026-10-05`
+ * （见 evidence/batches-2026-10-04/b2/网林家居/06-promotion-fetch.txt 那行「目标任务行 = 第 1 行」）。
+ * 取件段用它挑候选（判据在 promotion-task-ledger 的 judgeFetchCandidates）。
  *
  * 抽出来不是为了省行数，而是**这个词表只能有一份**：提交段用它算差集（看这一次提交多出来哪一条），
- * 取件段用它核对台账那一笔还在不在。两处各抄一份正则，迟早给出两个答案。
+ * 取件段用它认业务日。两处各抄一份正则，迟早给出两个答案。
  * 只认**任务名形状**的叶子文本：页面上别的短文本（列头、时间戳）混进来会把差集算错。
+ *
+ * ⚠️ 日期范围必须从**该行自己的 `tr`** 里找，不能整页找：整页找会把「第一条能读到的范围」
+ * 配给所有行，于是每一行都长成同一天 —— 那比读不到更危险（读不到会 fail-closed，配错会静默取错日子）。
  */
-async function readTaskNames(args, targetId) {
+async function readTaskRows(args, targetId) {
   const read = await evalOn(args, targetId, `(() => {
     const pattern = ${PROMOTION_TASK_PATTERN.toString()};
-    const found = [...document.querySelectorAll('*')]
-      .filter((el) => el.children.length === 0 && pattern.test(el.textContent.trim()))
-      .map((el) => el.textContent.trim());
-    return JSON.stringify({ names: [...new Set(found)] });
+    const rangePattern = /(\\d{4}-\\d{2}-\\d{2})\\s*至\\s*(\\d{4}-\\d{2}-\\d{2})/;
+    const leaves = [...document.querySelectorAll('*')]
+      .filter((el) => el.children.length === 0 && pattern.test(el.textContent.trim()));
+    const rows = [];
+    const seen = new Set();
+    for (const leaf of leaves) {
+      const name = leaf.textContent.trim();
+      if (seen.has(name)) continue;
+      seen.add(name);
+      const tr = leaf.closest('tr');
+      const text = (tr ? (tr.innerText || '') : '').replace(/\\s+/g, ' ');
+      const range = text.match(rangePattern);
+      rows.push({ name, rangeStart: range ? range[1] : null, rangeEnd: range ? range[2] : null });
+    }
+    return JSON.stringify({ rows });
   })()`);
-  return read.names || [];
+  return read.rows || [];
 }
 
-/** 导航到下载任务列表并读一次任务名。 */
+/** 导航到下载任务列表并读一次（任务名 + 日期范围）。 */
 async function openTaskList(args, targetId, { settleMs = 7000 } = {}) {
   await navigateTo(args, targetId, ALIMAMA_LIST_URL);
   await delay(settleMs);
-  return readTaskNames(args, targetId);
+  return readTaskRows(args, targetId);
 }
 
 /**
@@ -433,7 +455,7 @@ async function openTaskList(args, targetId, { settleMs = 7000 } = {}) {
  *
  * ⚠️ 第一步必须是**导航到「下载任务管理」**：点完「确定」页面还停在报表页
  * （`#!/report/account?...`），那一屏上没有任何任务名。2026-09-21 排练实测过这个代价：
- * 少了这一步，`readTaskNames` 恒得空集，而**空集与「没有新增」算出来的差集一模一样** ——
+ * 少了这一步，列表读数恒得空集，而**空集与「没有新增」算出来的差集一模一样** ——
  * 于是「没读到」被静默说成「平台没接受这次提交」，里可林被卡在 promotion-submit；
  * 而同一刻平台上其实已经生成了 `营销场景报表_20260921_143726`（第 1 行、生成成功、
  * 报表日期 2026-09-20）—— 提交是成功的，只是没人去看。
@@ -453,27 +475,23 @@ async function waitForNewTask(args, targetId, before, { attempts = 10, intervalM
     // 与 date-picker 2026-09-21 那个坑同一个成因，所以这里也必须真重载。
     await evalOn(args, targetId, 'window.location.reload(); "reloading"');
     await delay(intervalMs);
-    after = await readTaskNames(args, targetId);
+    // `before`/`after` 传的都是**行**（名字 + 日期范围）：差集只用名字，而台账那层会把两种形态
+    // 都归一成名字（`asNames`）—— 一次读数同时供得出差集与业务日，不再分两次读。
+    after = await readTaskRows(args, targetId);
   }
 }
 
-async function phaseSubmit(args, targetId) {
-  const ledgerFile = args.ledger ?? DEFAULT_LEDGER_FILE;
-  const shop = ledgerScope(args);
-  // 0) 先看「下载任务管理」：这一目标日是不是已经提交过、只是没取。
-  //    放在点击之前是刻意的 —— 判在点击之前，才谈得上「不产生第二次副作用」，有顺序判据钉着。
-  const listBefore = await openTaskList(args, targetId);
-  const resume = judgeResume({ ledger: readLedger(ledgerFile), date: args.date, shop, list: listBefore });
-  const staleNote = describeStale(resume.stale);
-  if (staleNote) console.log(`[submit] 注意：${staleNote}`);
-  if (resume.action === 'block') throw new Error(`提交前核对未通过：${resume.reason}`);
-  if (resume.action === 'reuse') {
-    console.log(`[submit] ${resume.reason}`);
-    console.log(`[submit] promotionTaskName = ${resume.taskName}`);
-    console.log('[submit] 未点击任何东西（这一目标日的副作用已经产生过了，不再产生第二次）');
-    return;
-  }
-  console.log(`[submit] ${resume.reason} ⇒ 照常提交`);
+/**
+ * 走一遍「点『下载报表』→ 弹窗点『确定』」这一串动作。
+ *
+ * 抽出来是因为它有**两个调用方**：正常的 promotion-submit 段，以及取件失败后的**补提交**
+ * （见 tryCandidates 之后那段「换通道」）。两处必须走**逐字同一段**点击逻辑 ——
+ * 抄一份的代价是「平台改版时只有一条路会被修」，而另一条路只在出事时才走，等于没修。
+ *
+ * 返回值：`{ locateOnly: true }`（--locate-only 排练，什么都没点）
+ *        或 `{ locateOnly: false, hint }`（hint＝提交后页面提示语的原文）。
+ */
+async function submitDownloadTask(args, targetId) {
   // 看列表会离开报表页 ⇒ 复位回去。resetReportRoute 会把 --date 带上，所以日期不会漂。
   await resetReportRoute(args, targetId);
   const state0 = await reportPageState(args, targetId);
@@ -515,7 +533,7 @@ async function phaseSubmit(args, targetId) {
   // 排练开关：定位与复核都走一遍，但不点 —— 这样能在不动任何东西的前提下先证明选择器是对的。
   if (args.locateOnly) {
     console.log(`[submit] --locate-only：找到「下载报表」并复核通过（${describeHitPass(hit)}），未点击`);
-    return;
+    return { locateOnly: true };
   }
   console.log(`[submit] 滚动后复核通过（${describeHitPass(hit)}）→ 点击 → `
     + `${(await click(args, targetId, '[data-collect-alimama-download="1"]')).slice(0, 80)}`);
@@ -543,6 +561,28 @@ async function phaseSubmit(args, targetId) {
     return JSON.stringify({ hint: (text.match(/(提交成功|已提交|生成中|请在下载[^ ]{0,12}查看|已加入下载[^ ]{0,10})/) || [''])[0] });
   })()`);
   console.log(`[submit] 提交后提示 = ${JSON.stringify(hint.hint)}`);
+  return { locateOnly: false, hint: hint.hint };
+}
+
+async function phaseSubmit(args, targetId) {
+  const ledgerFile = args.ledger ?? DEFAULT_LEDGER_FILE;
+  const shop = ledgerScope(args);
+  // 0) 先看「下载任务管理」：这一目标日是不是已经提交过、只是没取。
+  //    放在点击之前是刻意的 —— 判在点击之前，才谈得上「不产生第二次副作用」，有顺序判据钉着。
+  const listBefore = await openTaskList(args, targetId);
+  const resume = judgeResume({ ledger: readLedger(ledgerFile), date: args.date, shop, list: listBefore });
+  const staleNote = describeStale(resume.stale);
+  if (staleNote) console.log(`[submit] 注意：${staleNote}`);
+  if (resume.action === 'block') throw new Error(`提交前核对未通过：${resume.reason}`);
+  if (resume.action === 'reuse') {
+    console.log(`[submit] ${resume.reason}`);
+    console.log(`[submit] promotionTaskName = ${resume.taskName}`);
+    console.log('[submit] 未点击任何东西（这一目标日的副作用已经产生过了，不再产生第二次）');
+    return;
+  }
+  console.log(`[submit] ${resume.reason} ⇒ 照常提交`);
+  const submitted = await submitDownloadTask(args, targetId);
+  if (submitted.locateOnly) return;
   // 提示语不说任务名 ⇒ 去看列表差集，把「这一次提交到底产生了哪一条」变成**观察值**记进台账。
   const observed = await waitForNewTask(args, targetId, listBefore);
   if (!observed.ok) {
@@ -646,133 +686,273 @@ async function phaseFetch(args, targetId) {
   const shop = ledgerScope(args);
   const before = listDownloads(args.downloads, PROMOTION_ZIP_PATTERN).map((entry) => entry.name);
   console.log(`[fetch] 下载任务管理｜已有 zip ${before.length} 个｜目录 ${args.downloads}`);
-  const list = await openTaskList(args, targetId);
+  const rows = await openTaskList(args, targetId);
+  console.log(`[fetch] 列表读到 ${rows.length} 条任务（目标日按「日期范围」列认，不按任务名认）`);
 
-  // 认任务名：只有两条被承认的来源 —— 调用方显式 `--task`，或台账里那一笔未取任务**且列表里核得到**。
+  // 认候选：只有两条被承认的来源 —— 调用方显式 `--task`，或**日期范围等于目标日**的行。
   // 「列表里时间戳最大那条」**不再是判据**：任务名里的日期是**导出日**（提交那一刻），不含目标日，
   // 猜错就是把别天的报表当成这一天的，而那种错没有便宜的下游检查能发现（详见台账模块文件头）。
-  const ledger = readLedger(ledgerFile);
-  const staleNote = describeStale(staleFor(ledger, { date: args.date, shop }));
+  // 候选**可以不止一条**：同一目标日补提交过就会有两条，它们数据等价（判据在 judgeFetchCandidates）。
+  const staleNote = describeStale(staleFor(readLedger(ledgerFile), { date: args.date, shop }));
   if (staleNote) console.log(`[fetch] 注意：${staleNote}`);
-  const decision = judgeFetchTaskName({ ledger, date: args.date, shop, list, explicit: args.task });
+  const decision = judgeFetchCandidates({ ledger: readLedger(ledgerFile), date: args.date, shop, rows, explicit: args.task });
   if (!decision.ok) throw new Error(`取件前核对未通过：${decision.reason}`);
-  const wanted = decision.taskName;
-  console.log(`[fetch] 目标任务 = ${wanted}（${decision.reason}）`);
+  console.log(`[fetch] ${decision.reason}`);
 
-  // 取件前提：**先激活目标任务行**。它的操作行默认 display:none，只有这一行被激活才显形，
-  // 而页面上任何时刻可见的「下载」叶子恰好 1 个 —— 不激活就会点到别的任务行的入口上，
-  // 而这一页「点错」不报错。激活的可靠动作是真实鼠标点该行的复选框，并**回读** checked=true：
-  // 点没点上不看接口返回值（它恒 true），看页面状态。
-  const boxesBefore = await evalOn(args, targetId, checkboxStateExpression());
-  // 「找到了那一行」不等于「那一行现在能取件」。任务还在生成中时，它的入口点了也不落盘，
-  // 现场表现是 30 秒空等 —— 和「点错了」长得一模一样。所以先把状态判掉，别留给超时去猜；
-  // 而「还没生成成功」是**可自愈**的（平台最长 10 分钟），所以是等到就绪，不是看一眼就抛。
-  const row = await waitForGenerationReady(args, targetId, wanted);
-  if (row.checked) {
-    console.log('[fetch] 该行本就是选中态，跳过点击');
-  } else {
-    await selectTargetRow(args, targetId, wanted, row);
-  }
+  const first = await tryCandidates(args, targetId, decision.taskNames, before);
+  if (first.locateOnly) return;
+  if (first.ok) return;
 
-  // 入口：只认**目标任务行的下一行**（它的操作行）里那个可见的「下载」。
+  // ---------------------------------------------------------------------------
+  // 换通道：这一目标日的候选**全部**取不到 ⇒ 补提交一条同目标日的任务，再逐条试一次。
   //
-  // **二次稳定判据（2026-09-28 加，同日真机取证）**：只采样一次会在「刚点完、页面正在重排」时误判。
-  // 现场（09-27 那轮）：复选框已确认 checked=true，但紧接着这一次定位就报
-  // `action-row-hidden（操作行 display=none）` —— 而同一个操作行**点击前本来就是 display:none**
-  // （见上面 602-604 行注释），所以「还没显形」与「正在重排还没到位」在这一瞬长得一模一样。
-  // 对照组是 09-23 的成功轮：同店、同序、同一步，紧接着就给出了「入口 = 第 2 行」。
-  // ⇒ 不改成「等固定几秒」（那是在赌一个没量过的数），而是**要求两次采样给出同一个结论**：
-  //    要么两次都 ok 且几何一致（真就位），要么第一次 not-ok 就等一小会儿再看一次。
-  //    **两次都不 ok 才抛**，报错里带上两次的原文，别把「重排中」说成「找不到」。
-  const entrySelector = `[${TASK_DOWNLOAD_MARK}="1"]`;
-  const locateEntry = async () => {
-    const first = await waitForDownloadEntry(args, targetId, wanted);
-    // 已 ok 也再确认一次：这一页「量到点」之间会动，两次几何一致才叫稳。
-    await delay(ENTRY_RESTABILIZE_MS);
-    const second = await evalOn(args, targetId, downloadEntryExpression(wanted));
-    if (!second.ok) {
-      console.log(`[fetch] 首次定位 ok，二次采样变成不可定位（${describeEntryMiss(second)}）⇒ 按未就位处理`);
-      return waitForDownloadEntry(args, targetId, wanted);
+  // 第一性原理（2026-10-05 业务方实测口径）：**任务只是通道**，业务要的是「目标日那份数据」。
+  // 平台存在「最新那条点了不落盘、紧挨着下面那条能下、两条数据等价」的形态
+  // （盖文天猫 09-30～10-04 连续 6 笔都是这个形态，人工比对过），所以通道坏了就换一条，
+  // 而不是和某一条通道绑死。
+  //
+  // 默认开：它**只在取件失败这条路上生效**，成功轮一条任务都不会多；上限是每目标日 1 次；
+  // 每次补提交都打进日志与台账。要关掉用 `--no-duplicate-retry`。
+  // ---------------------------------------------------------------------------
+  const exhausted = first.tried.join('；');
+  if (!args.duplicateRetry) {
+    throw new Error(`这一目标日的 ${decision.taskNames.length} 条候选都取不到，且 --no-duplicate-retry`
+      + ` 关掉了补提交：${exhausted}`);
+  }
+  // 上限：同一目标日最多补提交 **1 次**。判据取**台账里该目标日的未取记录条数** ——
+  // 补过一次之后那里会有 ≥2 笔（提交段与补提交段各记一笔），再进来就知道该停了。
+  // 用台账而不是新加一个内存标记：它是**跨轮状态**，重跑同一目标日时这个上限仍然成立
+  // （否则「重跑一次」就成了「再补一次」，当天会在平台上堆出一串任务）。
+  const pending = pendingFor(readLedger(ledgerFile), { date: args.date, shop });
+  if (pending.length > 1) {
+    throw new Error(`这一目标日已有 ${pending.length} 笔未取任务（说明补提交过了），候选仍全部取不到：${exhausted}`
+      + ' ⇒ 停手。再生成一条不会变好（业务方口径：这是**位置性**的坏任务，同一天再加也还是坏）——'
+      + '要有人看平台侧（换账号／换浏览器／找阿里妈妈），或先删掉那天多余的任务行再重跑');
+  }
+  console.log(`[fetch] 候选全试完没落盘（${exhausted}）⇒ 补提交一条同目标日的任务，再逐条试一次`);
+  const submitted = await submitDownloadTask(args, targetId);
+  if (submitted.locateOnly) return;
+  const observed = await waitForNewTask(args, targetId, rows);
+  if (!observed.ok) {
+    throw new Error(`补提交结果核不清（看了 ${observed.attempts} 次）：${observed.reason}`
+      + ' ⇒ 不往台账里记一笔来路不明的任务（记了就等于替下一轮编了一个判据）');
+  }
+  writeLedger(ledgerFile, recordSubmitted(readLedger(ledgerFile), {
+    date: args.date, shop, taskName: observed.taskName, proxy: args.proxy, at: new Date().toISOString(),
+  }));
+  console.log(`[fetch] 补提交成功：${observed.taskName}（${observed.reason}；台账已记）`);
+
+  const rows2 = await openTaskList(args, targetId);
+  console.log(`[fetch] 补提交后重读列表：${rows2.length} 条`);
+  const second = judgeFetchCandidates({ ledger: readLedger(ledgerFile), date: args.date, shop, rows: rows2 });
+  if (!second.ok) throw new Error(`补提交后仍核不到目标日的候选：${second.reason}`);
+  console.log(`[fetch] ${second.reason}`);
+  const retry = await tryCandidates(args, targetId, second.taskNames, before);
+  if (retry.locateOnly) return;
+  if (retry.ok) return;
+  // 安全阀：候选**全部**试完还是没落盘 ⇒ 仍然 fail-closed。**绝不拿别天的数据顶替** ——
+  // 这一天的推广数据这次就是没拿到，宁可让这家的 push 停在缺源文件上。
+  throw new Error(`补提交后 ${second.taskNames.length} 条候选仍全部取不到：${retry.tried.join('；')}`
+    + ' ⇒ fail-closed：绝不拿别天的数据顶替（这一天的推广数据这次没拿到，去平台侧看）');
+}
+
+/**
+ * 把「下载任务管理」页重置成一个干净现场：真重载 + 重读。
+ *
+ * 为什么换候选之前必须重置：上一轮选中的那一行**还留着勾选态**，而「操作行显形」是逐行的 ——
+ * 多选态下第二条的入口能不能显形，页面上没有保证（实测第一条选中后勾选框是 `[0,1]`，
+ * 说明这一页本来就不止一个勾选位）。与其赌「平台允许多选且都会显形」，不如花几秒重载一次：
+ * 赌错的方向是**误报失败**（接着会去做一次没必要的补提交），重载错的方向只是多花几秒。
+ *
+ * 必须**真重载**：列表页还是同一个 URL，navigate 到同一 URL 是同文档导航（浏览器什么都不做）。
+ * 重载顺带把坐标全部作废 —— 所以调用方在动手前必须重新定位（tryCandidates 里的
+ * `waitForGenerationReady` 就是那次重新定位）。
+ */
+async function reopenTaskList(args, targetId) {
+  await reloadAndSettle(args, targetId);
+  await delay(2000);
+  const rows = await readTaskRows(args, targetId);
+  console.log(`[fetch] 换候选前重置列表页：读到 ${rows.length} 条任务`);
+  return rows;
+}
+
+/**
+ * 对一批候选**逐条试**（候选＝日期范围等于目标日的任务，见 judgeFetchCandidates）。
+ *
+ * 顺序不是列表顺序，而是「**现在就能取的排前面**」：补提交刚生成的那条通常要等几分钟
+ * （平台自称最长 10 分钟），而另一条可能现在就能下 —— 先等它生成会把一趟几秒的取件拖成几分钟。
+ * 所以先只读探一遍，还没「生成成功」的候选排到最后，由 `waitForGenerationReady` 去等。
+ *
+ * 一条候选失败**不抛**（它是「一条通道」，不是判据）：收进 `tried` 继续下一条，
+ * 由调用方决定是报错还是补提交。**全部**失败时由调用方 fail-closed。
+ */
+async function tryCandidates(args, targetId, taskNames, before) {
+  const ready = [];
+  const deferred = [];
+  for (const wanted of taskNames) {
+    const probe = await evalOn(args, targetId, targetRowExpression(wanted));
+    if (probe.found && /生成成功/u.test(String(probe.rowText))) ready.push(wanted);
+    else {
+      console.log(`[fetch] 候选 ${wanted} 还没「生成成功」（${probe.found ? '列表说它还在生成' : probe.reason}）`
+        + '⇒ 排到最后，别的候选试完再回来等它');
+      deferred.push(wanted);
     }
-    if (JSON.stringify(second.rect) !== JSON.stringify(first.rect)
-      || second.actionTrIndex !== first.actionTrIndex) {
-      console.log(`[fetch] 入口两次采样不一致（第 ${first.actionTrIndex} 行 ${JSON.stringify(first.rect)}`
-        + ` → 第 ${second.actionTrIndex} 行 ${JSON.stringify(second.rect)}）⇒ 以第二次为准`);
+  }
+  const plan = [...ready, ...deferred];
+  const tried = [];
+  for (let index = 0; index < plan.length; index += 1) {
+    const wanted = plan[index];
+    // 坐标一律在**动手前重取**（上面那次探测只用来排序）：这一页「量到点」之间页面会动，
+    // 差一行（41px）就点空；而重载过的现场更是把上一轮的读数全作废了。
+    const row = await waitForGenerationReady(args, targetId, wanted);
+    const outcome = await fetchCandidate(args, targetId, wanted, before, row, taskNames);
+    if (outcome.locateOnly) return { locateOnly: true };
+    if (outcome.ok) return { ok: true, taskName: wanted, path: outcome.path, tried };
+    tried.push(`${wanted}→${outcome.reason}`);
+    console.log(`[fetch] 候选 ${wanted} 没取到：${outcome.reason}`);
+    if (index < plan.length - 1) await reopenTaskList(args, targetId);
+  }
+  return { ok: false, tried };
+}
+
+/**
+ * 试一条候选：激活它的行 → 定位并**真实点**它的「下载」→ 等文件落盘 → 结清台账。
+ *
+ * **不 fail-closed**：这一条只是「一条通道」，坏了就返回 `{ ok:false, reason }`，
+ * 由调用方决定换下一条（这正是「任务只是通道」这条第一性原理的落点）。
+ * 唯一例外是 `--locate-only` 排练：那时判据本身就是被检验的对象，异常照旧穿出去。
+ *
+ * 落盘核对（2026-10-05 放宽）：落盘的那一份必须是**这一目标日的候选之一**（`candidates`），
+ * 而不再是「台账里那唯一一条」。放宽的前提全在 `judgeFetchCandidates` 上 ——
+ * 候选之间**业务日相同**这一点由「日期范围列」保证，不由「它排第几行」保证。
+ * 所以放宽**没有**放松「不取别天数据」这条线。
+ */
+async function fetchCandidate(args, targetId, wanted, before, row, candidates) {
+  const ledgerFile = args.ledger ?? DEFAULT_LEDGER_FILE;
+  const shop = ledgerScope(args);
+  try {
+    // 取件前提：**先激活目标任务行**。它的操作行默认 display:none，只有这一行被激活才显形，
+    // 而页面上任何时刻可见的「下载」叶子恰好 1 个 —— 不激活就会点到别的任务行的入口上，
+    // 而这一页「点错」不报错。激活的可靠动作是真实鼠标点该行的复选框，并**回读** checked=true：
+    // 点没点上不看接口返回值（它恒 true），看页面状态。
+    // 「找到了那一行」不等于「那一行现在能取件」：任务还在生成中时，它的入口点了也不落盘，
+    // 现场表现是 30 秒空等 —— 和「点错了」长得一模一样。状态已由调用方用
+    // waitForGenerationReady 判过（它要边等边看同一行），这里拿到的 `row` 就是那一次的读数。
+    const boxesBefore = await evalOn(args, targetId, checkboxStateExpression());
+    if (row.checked) {
+      console.log('[fetch] 该行本就是选中态，跳过点击');
+    } else {
+      await selectTargetRow(args, targetId, wanted, row);
     }
-    return second;
-  };
-  let located = await locateEntry();
-  console.log(`[fetch] 入口 = 第 ${located.actionTrIndex} 行（正是该任务行的操作行）`
-    + `｜rect=${JSON.stringify(located.rect)}，center=${JSON.stringify(located.center)}`
-    + `｜操作行内叶子 ${located.leavesInActionRow} 个`);
-  // 全页可见的「下载」叶子应当恰好 1 个；多了说明有别的行也处于激活态，「下的是哪一条」就不再唯一。
-  if (located.visibleDownloads !== 1) {
-    console.log(`[fetch] 注意：页面上可见的「下载」共 ${located.visibleDownloads} 个（期望 1 个）`);
-  }
 
-  // 不在视口才滚动。**滚动本身会改变显隐状态**（实测滚完那个入口就换了一行），
-  // 所以滚完必须重新定位、重新断言，不能拿滚动前的坐标继续用。
-  if (!located.inViewport) {
-    await evalOn(args, targetId, scrollIntoViewExpression(entrySelector));
-    await delay(1200);
-    located = await evalOn(args, targetId, downloadEntryExpression(wanted));
-    if (!located.ok) throw new Error(`滚动后入口不再可定位（${describeEntryMiss(located)}）`);
-    console.log(`[fetch] 原位置在视口外，滚动后重新定位：rect=${JSON.stringify(located.rect)}`
-      + `，center=${JSON.stringify(located.center)}`);
-  }
-
-  // 复核与点击之间只隔一次往返：这一页「量到点」之间页面会动，差一行（41px）就点空。
-  // 被平台自己的全屏弹窗挡住时先关掉再复核；关完必须重新定位（激活态会衰减，见上面 reLocate 的注释）。
-  const hit = await hitCheckDismissingOverlay(args, targetId, entrySelector, async () => {
-    const again = await evalOn(args, targetId, downloadEntryExpression(wanted));
-    if (!again.ok) throw new Error(`关掉遮挡层后入口不再可定位（${describeEntryMiss(again)}）`);
-    console.log(`[遮挡] 关掉后重新定位入口：rect=${JSON.stringify(again.rect)}`
-      + `，center=${JSON.stringify(again.center)}`);
-  });
-  if (!hit.ok) {
-    throw new Error(`「下载」复核未通过（${describeHitMiss(hit)}）`
-      + describeOverlayAttempt(hit.overlayAttempt));
-  }
-  // 排练开关：选行 + 定位 + 复核都走一遍，但不点下载。
-  // 选行是排练的**必要**步骤（不然操作行不显形，排练会「通过」而真跑失败），
-  // 所以排练结束要把勾选状态恢复原样 —— 排练的语义是「只读」，不能留下状态改动。
-  if (args.locateOnly) {
-    const restored = await evalOn(args, targetId, restoreCheckboxesExpression(boxesBefore.checked));
-    console.log(`[fetch] --locate-only：入口已定位并复核通过（${describeHitPass(hit)}），未点击；`
-      + `勾选状态已恢复（改动 ${restored.changed} 项，现为 ${JSON.stringify(restored.checked)}）`);
-    return;
-  }
-  const point = pointOf(hit);
-  console.log(`[fetch] 复核通过（${describeHitPass(hit)}）→ 真实鼠标点击 (${point.join(',')}) → `
-    + `${(await clickPoint(args, targetId, point)).slice(0, 80)}`);
-
-  const deadline = Date.now() + args.timeoutMs;
-  while (Date.now() < deadline) {
-    await delay(3000);
-    const fresh = newEntries(before, listDownloads(args.downloads, PROMOTION_ZIP_PATTERN).map((entry) => entry.name));
-    if (fresh.length) {
-      const newest = pickNewest(listDownloads(args.downloads, PROMOTION_ZIP_PATTERN)
-        .filter((entry) => fresh.includes(entry.name)));
-      // 新文件必须就是**目标任务**那一份。页面上「下载」按钮并没有「下载哪一条」的显式表述
-      // （靠的是哪一行被激活），万一落到别的任务上，就要在这里抓住，而不是拿一份错的源文件
-      // 往下走 —— 错源文件的后果是静默写错数据。
-      if (!(newest.name === `${wanted}.zip` || newest.name.startsWith(`${wanted} (`))) {
-        throw new Error(`落盘的不是目标任务：期望 ${wanted}.zip，实得 ${newest.name}`
-          + '（下载的对象与预期不符，停在这里比继续更省事）');
+    // 入口：只认**目标任务行的下一行**（它的操作行）里那个可见的「下载」。
+    //
+    // **二次稳定判据（2026-09-28 加，同日真机取证）**：只采样一次会在「刚点完、页面正在重排」时误判。
+    // 现场（09-27 那轮）：复选框已确认 checked=true，但紧接着这一次定位就报
+    // `action-row-hidden（操作行 display=none）` —— 而同一个操作行**点击前本来就是 display:none**，
+    // 所以「还没显形」与「正在重排还没到位」在这一瞬长得一模一样。
+    // 对照组是 09-23 的成功轮：同店、同序、同一步，紧接着就给出了「入口 = 第 2 行」。
+    // ⇒ 不改成「等固定几秒」（那是在赌一个没量过的数），而是**要求两次采样给出同一个结论**：
+    //    要么两次都 ok 且几何一致（真就位），要么第一次 not-ok 就等一小会儿再看一次。
+    //    **两次都不 ok 才抛**，报错里带上两次的原文，别把「重排中」说成「找不到」。
+    const entrySelector = `[${TASK_DOWNLOAD_MARK}="1"]`;
+    const locateEntry = async () => {
+      const firstRead = await waitForDownloadEntry(args, targetId, wanted);
+      // 已 ok 也再确认一次：这一页「量到点」之间会动，两次几何一致才叫稳。
+      await delay(ENTRY_RESTABILIZE_MS);
+      const secondRead = await evalOn(args, targetId, downloadEntryExpression(wanted));
+      if (!secondRead.ok) {
+        console.log(`[fetch] 首次定位 ok，二次采样变成不可定位（${describeEntryMiss(secondRead)}）⇒ 按未就位处理`);
+        return waitForDownloadEntry(args, targetId, wanted);
       }
-      console.log(`[fetch] 新文件：${newest.name}（${newest.size} bytes）`);
-      console.log(`[fetch] promotionZipPath = ${path.join(args.downloads, newest.name)}`);
-      // 取到了才把台账标成已取。顺序反了（先标后取）一旦取件失败，下一轮就会「复用」一笔
-      // 其实从没落盘过的任务，而那笔任务在列表里已经消失 ⇒ 卡在与本轮一样的核不清上。
-      writeLedger(ledgerFile, recordConsumed(readLedger(ledgerFile), {
-        date: args.date, shop, taskName: wanted, at: new Date().toISOString(),
-      }));
-      console.log(`[fetch] 台账已标为已取：${args.date} 的 ${wanted}`);
-      return;
+      if (JSON.stringify(secondRead.rect) !== JSON.stringify(firstRead.rect)
+        || secondRead.actionTrIndex !== firstRead.actionTrIndex) {
+        console.log(`[fetch] 入口两次采样不一致（第 ${firstRead.actionTrIndex} 行 ${JSON.stringify(firstRead.rect)}`
+          + ` → 第 ${secondRead.actionTrIndex} 行 ${JSON.stringify(secondRead.rect)}）⇒ 以第二次为准`);
+      }
+      return secondRead;
+    };
+    let located = await locateEntry();
+    console.log(`[fetch] 入口 = 第 ${located.actionTrIndex} 行（正是该任务行的操作行）`
+      + `｜rect=${JSON.stringify(located.rect)}，center=${JSON.stringify(located.center)}`
+      + `｜操作行内叶子 ${located.leavesInActionRow} 个`);
+    // 全页可见的「下载」叶子应当恰好 1 个；多了说明有别的行也处于激活态，「下的是哪一条」就不再唯一。
+    if (located.visibleDownloads !== 1) {
+      console.log(`[fetch] 注意：页面上可见的「下载」共 ${located.visibleDownloads} 个（期望 1 个）`);
     }
-    console.log(`[fetch] 等待下载… ${Math.round((args.timeoutMs - (deadline - Date.now())) / 1000)}s`);
+
+    // 不在视口才滚动。**滚动本身会改变显隐状态**（实测滚完那个入口就换了一行），
+    // 所以滚完必须重新定位、重新断言，不能拿滚动前的坐标继续用。
+    if (!located.inViewport) {
+      await evalOn(args, targetId, scrollIntoViewExpression(entrySelector));
+      await delay(1200);
+      located = await evalOn(args, targetId, downloadEntryExpression(wanted));
+      if (!located.ok) throw new Error(`滚动后入口不再可定位（${describeEntryMiss(located)}）`);
+      console.log(`[fetch] 原位置在视口外，滚动后重新定位：rect=${JSON.stringify(located.rect)}`
+        + `，center=${JSON.stringify(located.center)}`);
+    }
+
+    // 复核与点击之间只隔一次往返：这一页「量到点」之间页面会动，差一行（41px）就点空。
+    // 被平台自己的全屏弹窗挡住时先关掉再复核；关完必须重新定位（激活态会衰减，见上面 reLocate 的注释）。
+    const hit = await hitCheckDismissingOverlay(args, targetId, entrySelector, async () => {
+      const again = await evalOn(args, targetId, downloadEntryExpression(wanted));
+      if (!again.ok) throw new Error(`关掉遮挡层后入口不再可定位（${describeEntryMiss(again)}）`);
+      console.log(`[遮挡] 关掉后重新定位入口：rect=${JSON.stringify(again.rect)}`
+        + `，center=${JSON.stringify(again.center)}`);
+    });
+    if (!hit.ok) {
+      throw new Error(`「下载」复核未通过（${describeHitMiss(hit)}）`
+        + describeOverlayAttempt(hit.overlayAttempt));
+    }
+    // 排练开关：选行 + 定位 + 复核都走一遍，但不点下载。
+    // 选行是排练的**必要**步骤（不然操作行不显形，排练会「通过」而真跑失败），
+    // 所以排练结束要把勾选状态恢复原样 —— 排练的语义是「只读」，不能留下状态改动。
+    if (args.locateOnly) {
+      const restored = await evalOn(args, targetId, restoreCheckboxesExpression(boxesBefore.checked));
+      console.log(`[fetch] --locate-only：入口已定位并复核通过（${describeHitPass(hit)}），未点击；`
+        + `勾选状态已恢复（改动 ${restored.changed} 项，现为 ${JSON.stringify(restored.checked)}）`);
+      return { locateOnly: true };
+    }
+    const point = pointOf(hit);
+    console.log(`[fetch] 复核通过（${describeHitPass(hit)}）→ 真实鼠标点击 (${point.join(',')}) → `
+      + `${(await clickPoint(args, targetId, point)).slice(0, 80)}`);
+
+    const deadline = Date.now() + args.timeoutMs;
+    while (Date.now() < deadline) {
+      await delay(3000);
+      const fresh = newEntries(before, listDownloads(args.downloads, PROMOTION_ZIP_PATTERN).map((entry) => entry.name));
+      if (fresh.length) {
+        const newest = pickNewest(listDownloads(args.downloads, PROMOTION_ZIP_PATTERN)
+          .filter((entry) => fresh.includes(entry.name)));
+        // 落盘的那一份必须是**这一目标日的候选之一** —— 页面上「下载」按钮并没有「下载哪一条」
+        // 的显式表述（靠的是哪一行被激活），万一落到别的任务上，就要在这里抓住，而不是拿一份错的
+        // 源文件往下走（错源文件的后果是静默写错数据）。
+        // 2026-10-05 放宽：原来是「必须等于台账那唯一一条」，现在允许是候选集里任何一条 ——
+        // 候选之间业务日相同（判据在 judgeFetchCandidates），所以放宽不放松「不取别天数据」。
+        // 候选集为空（`--task` 那条路之外不该发生）时按「不是候选」处理：宁可停，不许放过。
+        if (!candidates.includes(taskNameOfZip(newest.name))) {
+          throw new Error(`落盘的不是这一目标日的候选：${newest.name}｜候选 ${JSON.stringify(candidates)}`
+            + '（下载的对象与预期不符，停在这里比继续更省事）');
+        }
+        console.log(`[fetch] 新文件：${newest.name}（${newest.size} bytes）`);
+        console.log(`[fetch] promotionZipPath = ${path.join(args.downloads, newest.name)}`);
+        // 取到了才把台账标成已取。顺序反了（先标后取）一旦取件失败，下一轮就会「复用」一笔
+        // 其实从没落盘过的任务，而那笔任务在列表里已经消失 ⇒ 卡在与本轮一样的核不清上。
+        // 用 recordConsumedAll 而不是 recordConsumed：同一目标日补提交出来的那几条**数据等价**，
+        // 取到一条就说明这一天的数据到手了；只标那一条会让兄弟记录一直挂着，下一轮再点一次同一份数据。
+        writeLedger(ledgerFile, recordConsumedAll(readLedger(ledgerFile), {
+          date: args.date, shop, taskName: wanted, at: new Date().toISOString(),
+        }));
+        console.log(`[fetch] 台账已标为已取：${args.date} 的 ${wanted}（该目标日全部未取记录一起结清）`);
+        return { ok: true, name: newest.name, path: path.join(args.downloads, newest.name) };
+      }
+      console.log(`[fetch] 等待下载… ${Math.round((args.timeoutMs - (deadline - Date.now())) / 1000)}s`);
+    }
+    throw new Error(`${args.timeoutMs}ms 内没等到新 zip：判据取文件系统，页面说「生成成功」不算数`);
+  } catch (error) {
+    if (args.locateOnly) throw error;
+    return { ok: false, reason: error.message };
   }
-  throw new Error(`${args.timeoutMs}ms 内没等到新 zip：判据取文件系统，页面说「生成成功」不算数`);
 }
 
 // 勾选目标任务行：**点之前先确认那一点真的是这个复选框**。

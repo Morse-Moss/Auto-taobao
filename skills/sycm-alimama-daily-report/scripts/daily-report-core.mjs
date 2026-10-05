@@ -111,21 +111,65 @@ export function buildPromotionFields(headers, row, targetFields, scene, reportDa
   return fields;
 }
 
+// 推广两段（关键词 / 人群）在飞书可见字段里的切段位置。**顺序与 SCENES 的声明顺序一致**，
+// 改顺序必须同时改这里，否则两段会写到对方的列上（写错列不会报错，只会静默错数据）。
+const PROMOTION_SCENE_BLOCKS = Object.freeze([
+  Object.freeze({ scene: SCENES.keyword, from: 121, to: 190 }),
+  Object.freeze({ scene: SCENES.audience, from: 190, to: 259 }),
+]);
+
+/**
+ * 把店铺段 + 推广各场景段拼成一条飞书写入 payload。
+ *
+ * ⚠️ 2026-10-05 改：**不再要求「恰好两条推广行」**。
+ *
+ * 原来这里写死「恰好 2 条、且必须同时有 371 与 372」，于是**一家店本身没开某个场景**时
+ * （实测网林家居没开关键词推广 ⇒ 报表里只有 372 一条）整条链停在 push，
+ * 报 `expected exactly two unique promotion rows, got 1` —— 而那份数据本身是**完整的**：
+ * 它只是没有这个场景的投放，不是没采到。业务方已确认「这家店铺没有开这个推广」是常态。
+ *
+ * 现在的口径：**有几个场景写几个，缺的那几个场景的列全部留空**。
+ *
+ * 为什么「留空」在下游是自洽的：`buildPasteTsv` 对**不在 payload 里**的字段填空串，
+ * `verifyRecordFields` 只核 payload 里**有**的字段 ⇒ 缺场景=那一整段不写、也不会被读回核对。
+ * 代价是「这家店没开推广」与「采集漏了这段」在飞书页面上长得一模一样，
+ * 所以缺场景时必须打一行 warn 留痕（`[留空]`）。
+ *
+ * 仍然 fail-closed 的三种：
+ *   ① 一个场景行都没有 ⇒ 这是采集链路整段失效，不是「这家店没开推广」；
+ *   ② 出现了不认识的场景 id ⇒ 报表定义变了（可能平台加了新场景），别硬塞进这两段里；
+ *   ③ 同一个 id 出现两条 ⇒ 分不清该用哪一条。
+ */
 export function buildCombinedFields(source, visibleFields, reportDate) {
   if (visibleFields.length !== 265) throw new Error(`expected 265 visible Feishu fields, got ${visibleFields.length}`);
-  const rowsById = new Map(source.promotion.rows.map(row => [row[1], row]));
-  if (rowsById.size !== 2 || source.promotion.rows.length !== 2) {
-    throw new Error(`expected exactly two unique promotion rows, got ${source.promotion.rows.length}`);
+  const known = new Map(Object.values(SCENES).map((scene) => [scene.id, scene]));
+  const rowsById = new Map();
+  for (const row of source.promotion.rows) {
+    const id = String(row?.[1] ?? '');
+    if (!known.has(id)) {
+      throw new Error(`promotion row has unknown scene id ${JSON.stringify(id)}`
+        + `（只认 ${[...known.keys()].join(' / ')}）—— 多出来的 id 说明平台侧的报表定义变了，别硬塞`);
+    }
+    if (rowsById.has(id)) throw new Error(`promotion rows contain duplicate scene id ${id}`);
+    rowsById.set(id, row);
   }
-  const keyword = rowsById.get(SCENES.keyword.id);
-  const audience = rowsById.get(SCENES.audience.id);
-  if (!keyword || !audience) throw new Error('promotion rows must contain scene ids 371 and 372');
+  if (rowsById.size === 0) {
+    throw new Error('promotion rows are empty —— 一个推广场景都没有，这是没采到数据（不是「这家店没开推广」）');
+  }
 
-  const fields = {
-    ...buildShopFields(source.shop, visibleFields.slice(2, 121), reportDate),
-    ...buildPromotionFields(source.promotion.headers, keyword, visibleFields.slice(121, 190), SCENES.keyword, reportDate),
-    ...buildPromotionFields(source.promotion.headers, audience, visibleFields.slice(190, 259), SCENES.audience, reportDate),
-  };
+  const fields = { ...buildShopFields(source.shop, visibleFields.slice(2, 121), reportDate) };
+  const missing = [];
+  for (const { scene, from, to } of PROMOTION_SCENE_BLOCKS) {
+    const row = rowsById.get(scene.id);
+    if (!row) { missing.push(`${scene.id}/${scene.name}`); continue; }
+    Object.assign(fields, buildPromotionFields(source.promotion.headers, row,
+      visibleFields.slice(from, to), scene, reportDate));
+  }
+  if (missing.length) {
+    // 必须留痕：留空与「没采到」在飞书页面上长得一样，这一行是两者唯一的区分依据。
+    console.warn(`[留空] 这份推广报表里没有 ${missing.join('、')} 这一行 ⇒ 对应的 ${missing.length} 段字段整段留空`
+      + '（是数据源没给这个场景，不是采集漏了）');
+  }
   const forbidden = ['空列不用管', '店铺', '字段 1', '字段 2', '父记录', '字段 3', '字段 4', '字段 5'];
   for (const name of forbidden) {
     if (Object.hasOwn(fields, name)) throw new Error(`forbidden field entered payload: ${name}`);

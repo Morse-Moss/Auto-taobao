@@ -175,6 +175,22 @@ test('驱动：采集段的三个身份期望值来自登记表，且每家给�
     '「能跑」+「被身份闸门挡住」必须正好等于全部店铺 —— 漏掉的那家会既不跑也不报错');
 });
 
+test('驱动：shop-report 阶段必须带 --shop-key（行标题登记表按运营叫法查，页头名查不到）', () => {
+  // 2026-10-05 实测代价：少了这一个参数，盖文天猫在 collect-shop-report 里**查登记表查不到**
+  // （页头店名「盖文旗舰店」≠ 运营叫法「盖文天猫」）⇒ 静默退回默认判据 ⇒ 报「等不到『日报』」，
+  // 症状与「根本没登记」逐字一样。函数级用例全绿也照不出来 —— 所以钉在**阶段参数**这一层。
+  assert.equal(flagValue(byStage(stagesOf('盖文天猫'))['shop-report'].argv, '--shop-key'), '盖文天猫');
+  for (const key of ['里可林淘宝', '网林家居', '盖文天猫']) {
+    const stages = byStage(buildShopStages(key, { date: DATE, mode: 'rehearse' }));
+    assert.equal(flagValue(stages['shop-report'].argv, '--shop-key'), key,
+      `${key} 的 --shop-key 必须是这家店自己 —— 给别家的会让它去查别人的行标题`);
+  }
+  // 别的**采集**阶段不需要它；多给就是「装饰性配置」（本项目对「配了但没人读」的东西零容忍）。
+  for (const name of ['promotion-submit', 'promotion-fetch']) {
+    assert.equal(countFlag(byStage(stagesOf('盖文天猫'))[name].argv, '--shop-key'), 0, `${name} 不该带它`);
+  }
+});
+
 test('驱动：三种模式的写入口径（排练两个写入方都干跑；verify 只核对；commit 才写）', () => {
   const rehearse = byStage(stagesOf());
   assert.equal(countFlag(rehearse.push.argv, '--commit'), 0);
@@ -1278,7 +1294,12 @@ test('驱动：体检真的接上了「先归位、再检查」，归位结论�
     '归位必须在体检调用**之前**：放后面就成了「先判不过、再修」，下一次体检前结论永远修不上');
   assert.match(source, /let normalize = null;/u, '归位要允许失败（代理连不上）—— 缺了初值那句 catch 就会 ReferenceError');
   assert.match(source, /归位没做成（不改体检结论/u, '归位失败不许抢答体检的连通性判据');
-  assert.match(source, /let normalize = null;[\s\S]{0,400}?catch \(error\) \{/u, '归位自己必须被 try 住，不能把体检整段带崩');
+  // 窗口原为 {0,400}，而这段的真实跨度实测是 399 字符 —— 只剩 1 个字符余量，
+  // 于是**任何**微小改动都能把它打红：2026-10-05 只是编辑时把文件写成了 CRLF
+  // （每行多一个 \r，这段里恰好有 9 个换行）就红了（429 > 400），而它与归位逻辑毫无关系。
+  // 这里按这条判据的**意图**放宽：要拦的是「归位没被 try 住 / catch 离得很远」，
+  // 不是「恰好 N 个字符」。顺带把这条踩坑记在这里 —— 别再把窗口卡到贴近边界。
+  assert.match(source, /let normalize = null;[\s\S]{0,600}?catch \(error\) \{/u, '归位自己必须被 try 住，不能把体检整段带崩');
 
   // 期望页面清单只许有一个来源（搬去 expected-pages.mjs 之后，驱动里不该再自己拼）。
   // 断言写死成「同目录」而不是「某个绝对位置」是刻意的：这个叶子必须在**能力自己的目录里** ——

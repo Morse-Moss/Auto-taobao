@@ -895,8 +895,13 @@ export function buildShopStages(shopKey, options) {
   add('sycm-date', 'date-picker.mjs',
     ['--site', 'sycm', '--date', date, '--proxy', shopProxy], shopEnv,
     '生意参谋落位（切页签到 询单到付款 再定日期）');
+  // `--shop-key`（运营叫法）**必须给**：这一阶段要按店铺查「日报报表行标题」的登记表
+  // （`collect-shop-report.mjs` 的 `SHOP_REPORT_ROW_TITLES`），而那张表的键是运营叫法，
+  // 不是 `--expect-shop` 的页头店名（盖文天猫的页头叫「盖文旗舰店」）。
+  // 2026-10-05 实测：少了这一个参数，登记好的店也查不到 ⇒ 静默退回默认判据
+  // ⇒ 报「等不到『日报』」，看着与「根本没登记」一模一样。
   add('shop-report', 'collect-shop-report.mjs',
-    ['--date', date, '--proxy', shopProxy, ...common, ...identityArgs], shopEnv,
+    ['--date', date, '--proxy', shopProxy, '--shop-key', shopKey, ...common, ...identityArgs], shopEnv,
     '点开日报预览并下载店铺工作簿（会把这个页签留在预览页）');
   add('promotion-fetch', 'collect-promotion-report.mjs',
     ['--phase', 'fetch', '--date', date, '--proxy', shopProxy, ...common, ...identityArgs], shopEnv,

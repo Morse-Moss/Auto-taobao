@@ -27,10 +27,51 @@ import path from 'node:path';
 // 放宽的只是「报表名」那一段（限定为中文/字母/数字 —— Excel 的锁文件 `~$…` 因此仍被排除）；
 // `_\d{8}_<hex>.xlsx` 这段形状照旧 ——
 // 那是「下载日 + 内容哈希」，哈希实测是**按店铺**变的（见 collect-shop-report.mjs 的注释）。
-export const SHOP_REPORT_PATTERN = /^[\p{Script=Han}A-Za-z0-9]*日报\d*_\d{8}_[0-9a-f]+(?: \(\d+\))?\.xlsx$/u;
+//
+// ⚠️ 第三次实亏（2026-10-05，盖文天猫）：报表名那一段**不一定是「日报」**。
+// 那家店的日报报表叫「活动-店铺-整体-近30天」，落盘文件就是
+// `活动-店铺-整体-近30天_20261005_5101fe….xlsx` —— 连字符 + 不含「日报」⇒ 上面这条又匹配不上，
+// 于是**行标题终于找对了、下载也真的落了盘，回执还是报「没等到新的店铺报表」**。
+// 所以文件名判据也做成**按店**的：登记了行标题的店，用它当文件名前缀（见 shopReportNamePattern）。
+const REPORT_FILE_TAIL = '_\\d{8}_[0-9a-f]+(?: \\(\\d+\\))?\\.xlsx';
+const DEFAULT_REPORT_STEM = '[\\p{Script=Han}A-Za-z0-9]*日报\\d*';
+export const SHOP_REPORT_PATTERN = new RegExp(`^${DEFAULT_REPORT_STEM}${REPORT_FILE_TAIL}$`, 'u');
+
+/** 把字面量转义成正则体（报表名里有 `-` 这类字符，不能直接拼）。 */
+function escapeRegExp(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+}
+
+/**
+ * 这家店该认哪个下载文件名。`rowTitle === null`（未登记）⇒ 历史默认形态，与从前逐字相同。
+ *
+ * 为什么是「登记名前缀 **或** 默认形态」而不是「只认登记名」：登记只是**补充**一种认法，
+ * 不是替换 —— 万一平台对某家店仍按「日报…」给文件名（改名/回滚），原来那条路要还在。
+ * 认错的代价是单向的：这里只决定「哪几个文件算候选」，最终还要过 `newEntries` 的新鲜度判据。
+ */
+export function shopReportNamePattern(rowTitle = null) {
+  if (rowTitle === null || rowTitle === undefined) return SHOP_REPORT_PATTERN;
+  const stem = escapeRegExp(rowTitle);
+  return new RegExp(`^(?:${stem}|${DEFAULT_REPORT_STEM})${REPORT_FILE_TAIL}$`, 'u');
+}
+
 export const PROMOTION_ZIP_PATTERN = /^营销场景报表_\d{8}_\d{6}(?: \(\d+\))?\.zip$/u;
 // 下载任务在「下载任务管理」里的行名（不含后缀）。
 export const PROMOTION_TASK_PATTERN = /^营销场景报表_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$/u;
+
+/**
+ * 落盘的推广 zip 文件名 → 它是哪一条任务的产物（去掉可选的 ` (n)` 副本后缀与 `.zip`）。
+ *
+ * 形态只有 `PROMOTION_ZIP_PATTERN` 允许的那两种：`<任务名>.zip` 与 `<任务名> (n).zip`
+ * （浏览器遇到重名时加 ` (n)`）。抽成函数是为了取件那一步能**按候选集合**判断落盘对象 ——
+ * 原来它写死「必须等于台账那唯一一条」，而「同一目标日补提交过」时合法的落盘名有两条，
+ * 那道判据会把**换通道取到的那一份**误判成「落盘的不是目标任务」（2026-10-05 第三处堵点）。
+ */
+export function taskNameOfZip(fileName) {
+  // **先剥 `.zip`、再剥 ` (n)`** —— 顺序反了 ` (1)$` 永远匹配不上（末尾是 `.zip`），
+  // 而那种错的表现是「同一天补提交取到的那份被判成『落盘的不是候选』」，只在换通道时才现形。
+  return String(fileName).replace(/\.zip$/u, '').replace(/ \(\d+\)$/u, '');
+}
 
 // 浏览器的默认下载目录。写死在仓库里会把别人的机器路径带进来，所以从环境变量推。
 export function defaultDownloadsDir(env = process.env) {
@@ -920,6 +961,13 @@ export function parseCollectArgs(argv, options = {}) {
     // 这里只负责承接 --ledger：一次性排查、以及用例要指一个小文件时用得到。
     ledger: null,
     expectShop: null, expectMember: null, expectMemberId: null,
+    // 运营叫法（`shop-identities.mjs` 的 key）。**与 `--expect-shop` 不是一回事**：
+    // `--expect-shop` 是**生意参谋页头**的店铺名（如实测的「盖文旗舰店」），运营叫法是「盖文天猫」——
+    // 两者不同的店（盖文天猫、网林家居…）上，「按店登记」的东西（如日报报表行标题
+    // `SHOP_REPORT_ROW_TITLES`）**必须用运营叫法查**，用页头名查会静默落空
+    // （2026-10-05 实测：盖文天猫登记了行标题仍然报「等不到『日报』」，就是查错了键）。
+    // 2026-10-05 加。旧调用点（手工排查只给 --expect-shop）不受影响。
+    shopKey: null,
     timeoutMs: options.timeoutMs ?? 30000, reportId: options.reportId ?? null,
     // 等阿里妈妈把推广报表「生成成功」的预算。**与 timeoutMs 分开**：timeoutMs 是「点了下载之后
     // 等文件落盘」，这个是「平台自己在生成」；一个开关管两件事正是本项目已经栽过的形态。
@@ -927,7 +975,13 @@ export function parseCollectArgs(argv, options = {}) {
     generationWaitMs: options.generationWaitMs ?? 660000,
     // 勾选目标任务行的重试次数：留给「被浮层挡一下」这类可自愈的遮挡
     // （2026-09-17 实测：z-index 999999 的浮层压住第一行，浮层自己收起后重试即过）。
-    selectAttempts: options.selectAttempts ?? 6 };
+    selectAttempts: options.selectAttempts ?? 6,
+    // 取件失败后的「换通道」分支（2026-10-05 加，**默认开**）：
+    // 平台侧存在「同一天最新的那条任务点了不落盘、紧挨着下面那条能下、两条数据等价」的形态
+    // （业务方实测口径）。默认开着是因为它**只在取件失败这条路上生效** —— 成功轮一条任务都不会多；
+    // 且同一目标日最多补一次（判据＝台账里该日的未取记录条数）。
+    // 要关掉用 `--no-duplicate-retry`。
+    duplicateRetry: options.duplicateRetry ?? true };
   const allowed = new Set(options.flags ?? []);
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
@@ -948,6 +1002,11 @@ export function parseCollectArgs(argv, options = {}) {
     else if (key === '--expect-shop') args.expectShop = next();
     else if (key === '--expect-member') args.expectMember = next();
     else if (key === '--expect-member-id') args.expectMemberId = next();
+    else if (key === '--shop-key') args.shopKey = next();
+    // 布尔开关里**唯一一个「默认开、写出来反而要取反」**的：`--no-duplicate-retry`。
+    // 单独放在这里而不是走下面那条 allowed 白名单，是因为白名单只支持「出现即为 true」，
+    // 表达不了「默认 true、显式关掉」。
+    else if (key === '--no-duplicate-retry') args.duplicateRetry = false;
     // 布尔开关：`--locate-only` → args.locateOnly。带横线的名字一律转小驼峰，
     // 免得调用方去猜 `args['locate-only']` 还是 `args.locate_only`。
     else if (allowed.has(key)) {
