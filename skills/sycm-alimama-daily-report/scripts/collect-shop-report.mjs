@@ -9,6 +9,7 @@
 //
 // 全流程只有一个目标日，所以 --date 不是「选项」而是断言的一部分：统计区间必须含它。
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
@@ -37,35 +38,55 @@ const SYCM_SPACE_URL = 'https://sycm.taobao.com/lyone/auto_analysis/my_space'
  *
  * 为什么做成数据而不是改字面量（用户 10-05 定的口径：**别再出现判据不一致**）：
  * 报表名是**店铺侧的东西**，会随运营改口径而变。写进代码就等于「每改一次名字改一次代码」，
- * 而且改错了报的还是「等不到日报行」—— 指向错误方向。改成配置后：
- *   · 这张表就是唯一来源，运营改名 ⇒ 改这一处，不再散在代码里；
- *   · **没登记的店 fail-closed**，报错点名「该店报表行标题未登记」，
- *     而不是含糊地说「等不到日报行」（那是把「不知道」说成「不存在」，坑 33 的同类）；
- *   · 判据从「含日报」放宽成「**逐字等于**登记值」——含匹配会被同前缀的别的行误命中。
+ * 而且改错了报的还是「等不到日报行」—— 指向错误方向。改成配置后，这张表就是唯一来源。
+ * ⚠️ 本文件曾把「未登记」写成 `fail-closed`（抛错），而代码**从来没抛过** —— 它一直返回
+ * `null` ＝ 退回「行标题含『日报』」这一历史形态。**以代码为准**（另外 12 家店靠它跑通），
+ * 那段措辞已按实际行为改写：未登记 ≠ fail-closed，未登记 ＝ 沿用默认形态。
  *
  * 值从哪来：2026-10-05 在盖文天猫窗口上实测读到的行文本（`97-*` 之外的只读取证）。
- * `null` ＝**已登记但实测名字就是含「日报」的那种**（历史 12 家的默认形态，保持原行为不变）。
  */
 export const SHOP_REPORT_ROW_TITLES = Object.freeze({
   盖文天猫: '活动-店铺-整体-近30天',
 });
 
 /**
- * 这家店该匹配的行标题。**没登记 ⇒ 抛错**（fail-closed），且措辞要指向「未知」而不是「没有」。
+ * 这家店该匹配的行标题。`null` ＝**未登记的店**（沿用历史默认形态：行标题含「日报」）。
  * @param {string|null|undefined} shop 运营叫法（`shop-identities.mjs` 的 key）
  */
 export function reportRowTitleFor(shop) {
   const key = String(shop ?? '').trim();
   if (!key) throw new Error('没给店名，无法确定要找哪份报表');
   if (Object.hasOwn(SHOP_REPORT_ROW_TITLES, key)) return SHOP_REPORT_ROW_TITLES[key];
-  return null; // ← 默认形态：判据退回「行标题含『日报』」，与 2026-10-05 之前逐字相同
+  return null; // 未登记：沿用「含『日报』」，与 2026-10-05 之前逐字相同
 }
 
-/** 匹配用的判据表达式片段：逐字相等（有登记）或含「日报」（未登记＝默认形态）。 */
+/**
+ * 行标题判据：**返回一个函数** `(rowText) => boolean`。
+ *
+ * ⚠️ 2026-10-05 事故（8 家店全停在 shop-report 的真因）：调用点曾写成
+ * `new RegExp(rowTitleMatcher(rowTitle))` —— 把「一段判据源码」当成**正则体**，
+ * 于是它只会去匹配那段源码的字面字符，**恒不命中** ⇒ `daily` 恒 null ⇒ 轮询 10 轮全落空 ⇒
+ * 每家店都报「等不到『日报』这一行的预览按钮」。**判据必须被调用，不能被包成字符串或正则。**
+ *
+ * ⚠️ 第二件必须记住的：`rowText` 是**整行**的 innerText（行标题在最前，后面还跟着
+ * 报表类型/创建人/修改时间/操作），所以登记形态**不能用 `===`** —— 逐字相等永远不成立
+ * （那是「含匹配会误命中」这条顾虑引出的另一个极端）。判据＝「以登记标题开头，且标题之后
+ * 紧跟空白或到头」，这样「日报2」不会被「日报」误命中。
+ */
 export function rowTitleMatcher(rowTitle) {
-  return rowTitle === null
-    ? '/日报/.test(rowText)'
-    : `rowText === ${JSON.stringify(rowTitle)}`;
+  if (rowTitle === null) return (rowText) => /日报/.test(rowText);
+  return (rowText) => {
+    const text = String(rowText ?? '');
+    if (text === rowTitle) return true;
+    if (!text.startsWith(rowTitle)) return false;
+    return /^(\s|$)/u.test(text.slice(rowTitle.length));
+  };
+}
+
+/** 从 `findPreview` 的读数里挑出这家店那一行的预览按钮；挑不出来 ⇒ `null`。 */
+export function pickDailyPreview(info, rowTitle) {
+  const matches = rowTitleMatcher(rowTitle);
+  return (info || []).find((entry) => matches(entry.rowText)) ?? null;
 }
 
 // 「哪个页面才算生意参谋那个**工作页**」—— 与 date-picker.mjs 的
@@ -280,14 +301,12 @@ async function main() {
 
   let found = null;
   const rowTitle = reportRowTitleFor(args.expectShop);
-  // 判据按 JS 源码注入，所以先在**外面**把正则编好，页面里只做 replace 占位 ——
-  // 直接把店名拼进表达式字符串会造成两个问题：店名里有引号/反斜杠就语法错、
-  // 且注入面随店名变大。这里传的是一个**已经编译好的字面量**。
-  const MATCHER = new RegExp(rowTitleMatcher(rowTitle));
   for (let round = 1; round <= 10; round += 1) {
     await delay(2500);
     const state = await evalOn(args, targetId, findPreview);
-    const daily = (state.info || []).find((entry) => MATCHER.test(entry.rowText));
+    // 挑行这件事收在 pickDailyPreview（纯函数、有独立用例钉住）。
+    // 2026-10-05 那次事故就出在这一行 —— 当时把它写成 `new RegExp(rowTitleMatcher(...))`。
+    const daily = pickDailyPreview(state.info, rowTitle);
     console.log(`[2/4] ${round * 2.5}s：预览按钮 ${state.count} 个`
       + `${daily ? `，日报行 #${daily.i}（命中复核=${daily.hitOk}，视口内=${daily.inViewport}）` : ''}`);
     if (daily && daily.hitOk) { found = daily; break; }
@@ -367,7 +386,13 @@ async function main() {
   throw new Error(`${args.timeoutMs}ms 内没等到新的店铺报表：判据取文件系统，页面说「已触发下载」不算数`);
 }
 
-main().catch((error) => {
-  console.error(`\n采集失败：${error.message}`);
-  process.exitCode = 1;
-});
+// 被 import 时不执行 CLI（同 collect-promotion-report.mjs / readback-daily-report.mjs 的写法）。
+// 为什么需要它：行标题判据是纯函数，必须能在离线用例里被**真正调用**一次 ——
+// 只比源码字面看不见「这段判据在真机上根本命中不了」（2026-10-05 事故）。
+const invokedDirectly = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedDirectly) {
+  main().catch((error) => {
+    console.error(`\n采集失败：${error.message}`);
+    process.exitCode = 1;
+  });
+}
