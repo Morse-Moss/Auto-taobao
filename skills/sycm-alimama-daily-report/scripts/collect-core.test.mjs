@@ -1281,15 +1281,20 @@ test('两个采集脚本都接上了关遮挡，且报错里说清「关遮挡�
 
   // 阿里妈妈侧：每个「复核未通过」都要跟着一句「关遮挡试出了什么」——
   // 否则下次看到 not-hit 又要靠人回头猜「是不是又是那个弹窗」。
-  const misses = (promotion.match(/复核未通过/gu) ?? []).length;
-  assert.equal(misses, 2, '阿里妈妈侧应当只有 submit / fetch 两处复核报错（改了这里，也要回来改断言）');
+  // \u26a0\ufe0f 计数按**带 describeHitMiss 的那一类**算，不要按「复核未通过」这个字符串算：
+  // 2026-10-05 新增的 reLocate 回调里还有一类失败（重新定位后仍找不到「下载报表」），
+  // 措辞里也带「复核未通过」但**不是**复核失败那一类 => 按字符串数会从 2 变 4，
+  // 于是「是 2 还是 4」这个断言会在与本意无关的改动上假红。
+  // 真正要守的是：**复核失败那一类，报错必须带上关遮挡的结论**。
+  const misses = (promotion.match(/复核未通过（\$\{describeHitMiss\(/gu) ?? []).length;
+  assert.ok(misses >= 2, `阿里妈妈侧至少要有两处「复核失败」并带上关遮挡结论（现在 ${misses} 处）`);
   assert.equal((promotion.match(/describeOverlayAttempt\(hit\.overlayAttempt\)/gu) ?? []).length, misses,
-    '两处复核失败都要带上关遮挡的结论');
+    '每一处复核失败都要带上关遮挡的结论');
   // 两个调用点必须走**带关遮挡的那条复核**，不是裸 hitCheck。
   // 这一条比下面的计数更能抓住「悄悄换回裸复核」：换成裸的时，上面「必须出现 describeOverlayAttempt」
   // 仍能靠另一处满足（漏一处看不出来），而这条计数会立刻少一。
   assert.equal((promotion.match(/await hitCheckDismissingOverlay\(/gu) ?? []).length, misses,
-    '两处复核失败都必须经由 hitCheckDismissingOverlay（漏一处 ⇒ 那一处遇到弹窗就直接失败）');
+    '每一处复核失败都必须经由 hitCheckDismissingOverlay（漏一处 ⇒ 那一处遇到弹窗就直接失败）');
 
   // 生意参谋侧：复核失败必须经过 dismissBlockingOverlay 再重试，而不是直接抛。
   assert.match(shop, /dismissBlockingOverlay\(args, targetId, selector\)/u);

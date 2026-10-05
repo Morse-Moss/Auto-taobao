@@ -182,11 +182,29 @@ async function hitCheckDismissingOverlay(args, targetId, selector, reLocate) {
   }
   const reloaded = await reloadAndSettle(args, targetId);
   if (!reloaded) return { ...first, overlayAttempt: attempt, reloaded: false };
+  // ⚠️ 2026-10-05 修（真机连踩三轮才暴露）：**重载后必须重新定位**。
+  // `reloadAndSettle` 是整页重载 ⇒ 上一轮用 `data-collect-alimama-download="1"`
+  // 标在 DOM 上的标记**必然被冲掉** ⇒ 直接复核只会拿到 `element-missing`，
+  // 报出来是「复核未通过（element-missing，y=undefined…）」——
+  // 看着像「按钮没了/页面没渲染」，实际是**编排漏了一步**。
+  // 现场（科塔淘宝 promotion-submit，目标日 10-04，10-05 连踩三轮）：
+  //   [submit] 候选 1 个，取文档序第一个（SPAN，其可点祖先是 BUTTON…）  ← 定位成功
+  //   [遮挡] 已重载页面（营销场景报表_万相台无界版）—— 在新现场上再走一遍
+  //   采集失败：「下载报表」复核未通过（element-missing…）              ← 标记已被冲掉
+  //
+  // `reLocate` 形参本就存在（关遮挡后一直在用），**只有重载这条路没调**。
+  // 这里补上；它为 null 时不能静默跳过 —— 那正是本缺陷的形态，
+  // 所以直接抛错点名「调用方必须能重新定位」，而不是退回 element-missing。
+  if (!reLocate) {
+    throw new Error('整页重载后必须重新定位目标元素——'
+      + '重载会冲掉 data- 标记（调用方没给 reLocate）');
+  }
+  await reLocate({ reason: 'reloaded' });
   const second = await hitCheck(args, targetId, selector);
   if (second.ok) return { ...second, overlayAttempt: attempt, reloaded: true };
   const attemptAgain = await dismissBlockingOverlay(args, targetId, selector);
   if (!attemptAgain.dismissed) return { ...second, overlayAttempt: attemptAgain, reloaded: true };
-  if (reLocate) await reLocate(attemptAgain);
+  await reLocate({ reason: 'reloaded-then-overlay' });
   return { ...(await hitCheck(args, targetId, selector)), overlayAttempt: attemptAgain, reloaded: true };
 }
 
@@ -477,7 +495,19 @@ async function phaseSubmit(args, targetId) {
   // 两个方向都要居中：只写 block 时窄窗口下按钮会落在视口右边界之外（2026-09-17 实测）。
   await evalOn(args, targetId, scrollIntoViewExpression('[data-collect-alimama-download="1"]'));
   await delay(1500);
-  const hit = await hitCheckDismissingOverlay(args, targetId, '[data-collect-alimama-download="1"]');
+  const hit = await hitCheckDismissingOverlay(args, targetId, '[data-collect-alimama-download="1"]',
+    // 2026-10-05：重载后必须能重新定位（reLocate）—— 整页重载会冲掉 data- 标记。
+    // 原来这里**没传**，于是走重载那条路时必定 element-missing（连踩三轮）。
+    async (why) => {
+      const again = await locateDownloadReportReady(args, targetId);
+      if (!again.found) {
+        throw new Error(`重新定位后仍找不到「下载报表」（${why?.reason ?? '未知原因'}）`);
+      }
+      console.log(`[submit] 重新定位「下载报表」：候选 ${again.found} 个，tag=${again.tag}`
+        + `，rect=${JSON.stringify(again.rect)}（${why?.reason ?? '未说明原因'}）`);
+      await evalOn(args, targetId, scrollIntoViewExpression('[data-collect-alimama-download="1"]'));
+      await delay(1500);
+    });
   if (!hit.ok) {
     throw new Error(`「下载报表」复核未通过（${describeHitMiss(hit)}）`
       + describeOverlayAttempt(hit.overlayAttempt));
