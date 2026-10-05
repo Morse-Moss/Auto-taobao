@@ -36,18 +36,33 @@ test('product job plan rejects unknown / empty / not-yet-collecting shop selecti
   assert.deepEqual(buildProductJobPlan().shops, collectingShopKeys());
 });
 
-test('scheduled entry targets the independent product-data job and commits yesterday by default', () => {
+test('scheduled entry targets the independent product-data job, commits yesterday, batches, and skips promotion', () => {
   // 2026-09-30：定时入口默认带上 `--batches`（跑完一批释放一批），与日报链同款批次。
   // 这条是**渲染层**的判据 —— 定时任务是用注册表里的字符串装的，命令行长什么样由这里决定，
   // 所以「分批」不落在这条断言里，就等于定时那条路仍然全量常驻。
+  // 2026-10-05：默认再带上 `--skip-promotion`（推广线在分支开发、推广段的导入目标还是 9 月的 base）。
+  // ⚠️ 这条断言同时是**闸门的到期提醒**：推广链接上 main 之后，把它改成相反方向（默认不带），
+  //    而不是让这条闸门悄悄留在无人值守的那条路上。
   assert.equal(renderProductJobEntry({ nodeExe: 'C:\\Program Files\\node\\node.exe', repoRoot: 'D:\\repo' }),
-    '"C:\\Program Files\\node\\node.exe" "D:\\repo\\scripts\\run-product-data-job.mjs" --date yesterday --commit --batches 5');
+    '"C:\\Program Files\\node\\node.exe" "D:\\repo\\scripts\\run-product-data-job.mjs" --date yesterday --commit --batches 5 --skip-promotion');
 });
 
 test('scheduled entry can render an explicit no-batch command (troubleshooting only)', () => {
   // `batches: null` 是**显式**要求不分批：渲染出来必须一个 `--batches` 都没有（不能退化成默认值）。
   const entry = renderProductJobEntry({ nodeExe: 'C:\\Program Files\\node\\node.exe', repoRoot: 'D:\\repo', batches: null });
   assert.equal(entry,
-    '"C:\\Program Files\\node\\node.exe" "D:\\repo\\scripts\\run-product-data-job.mjs" --date yesterday --commit');
+    '"C:\\Program Files\\node\\node.exe" "D:\\repo\\scripts\\run-product-data-job.mjs" --date yesterday --commit --skip-promotion');
   assert.ok(!entry.includes('--batches'), '显式不分批时不得出现 --batches');
+});
+
+test('plan 默认不跳过推广，只有显式要跳时才跳（回滚不需要改代码）', () => {
+  assert.equal(buildProductJobPlan().skipPromotion, false,
+    '默认必须是「照旧做推广」—— 跳过是一个决定，不该是不写参数时的副作用');
+  assert.equal(buildProductJobPlan({ skipPromotion: true }).skipPromotion, true);
+  // 跳过的只是**跑不跑**，不是把这一段从收据里删掉：收据要能记下 SKIPPED，
+  // 就得先有这个阶段格子（删掉格子会让「有意跳过」退化成「收据里没有这一段」）。
+  assert.deepEqual(buildProductJobPlan({ skipPromotion: true }).reportOrder, ['product', 'inquiry', 'promotion']);
+  // 渲染层也一样：显式 false 时一个 --skip-promotion 都不许出现。
+  const entry = renderProductJobEntry({ nodeExe: 'node', repoRoot: 'D:\\repo', skipPromotion: false });
+  assert.ok(!entry.includes('--skip-promotion'), '显式要求做推广时不得出现 --skip-promotion');
 });

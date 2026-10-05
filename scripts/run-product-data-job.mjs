@@ -4,7 +4,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { shopBrowserKeys, shopInstance } from '../runtime/browser-ports.mjs';
-import { buildProductJobPlan, PRODUCT_JOB_FILES } from '../runtime/product-data-job-core.mjs';
+import { buildProductJobPlan, PRODUCT_JOB_FILES, SKIP_PROMOTION_REASON } from '../runtime/product-data-job-core.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
 import { acquireWorkflowLock, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
 import crypto from 'node:crypto';
@@ -16,10 +16,13 @@ import { readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from '.
 // 与日报链共用同一层，**不在这里再写一份切法** —— 两处实现最后一定不一致，而切错了只会**静默漏做**
 // （跑完了，但有两家没被处理）。逐批登录结论的文件名同样从那里取（`batchLoginArtifactName`）。
 import { batchLoginArtifactName, describeBatch, planBatches } from '../runtime/batch-plan.mjs';
+// 起完实例的「视口回读」闸门。为什么必须在采集之前：窗口被屏幕尺寸夹窄时，
+// 采集脚本只会报一堆 `not-hit`，等看到那些读数，这一家已经白跑完了。
+import { checkShopViewports, describeViewportFailure } from '../runtime/shop-viewport-gate.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-function parseArgs(argv) { const o = { date: 'yesterday', shops: null, commit: false, notify: false, batches: null }; for (let i = 0; i < argv.length; i += 1) { const a = argv[i]; if (a === '--date') o.date = argv[++i]; else if (a === '--shops') o.shops = String(argv[++i] ?? '').split(',').map((x) => x.trim()).filter(Boolean); else if (a === '--commit') o.commit = true; else if (a === '--notify') o.notify = true; else if (a === '--batches') { const raw = argv[++i]; const value = Number(raw); if (!Number.isInteger(value) || value < 1) throw new Error(`--batches 要一个 ≥1 的整数（每批几家），收到 ${JSON.stringify(raw)}`); o.batches = value; } else if (a === '--help' || a === '-h') o.help = true; else throw new Error(`unknown argument ${a}`); } return o; }
+function parseArgs(argv) { const o = { date: 'yesterday', shops: null, commit: false, notify: false, batches: null, skipPromotion: false }; for (let i = 0; i < argv.length; i += 1) { const a = argv[i]; if (a === '--date') o.date = argv[++i]; else if (a === '--shops') o.shops = String(argv[++i] ?? '').split(',').map((x) => x.trim()).filter(Boolean); else if (a === '--commit') o.commit = true; else if (a === '--notify') o.notify = true; else if (a === '--skip-promotion') o.skipPromotion = true; else if (a === '--batches') { const raw = argv[++i]; const value = Number(raw); if (!Number.isInteger(value) || value < 1) throw new Error(`--batches 要一个 ≥1 的整数（每批几家），收到 ${JSON.stringify(raw)}`); o.batches = value; } else if (a === '--help' || a === '-h') o.help = true; else throw new Error(`unknown argument ${a}`); } return o; }
 function run(file, args, { capture = false } = {}) { return new Promise((resolve) => { const child = spawn(process.execPath, [path.join(ROOT, file), ...args], { cwd: ROOT, stdio: capture ? ['ignore', 'pipe', 'pipe'] : ['ignore', 'inherit', 'inherit'] }); let out = ''; let err = ''; if (capture) { child.stdout.on('data', (x) => { out += x; }); child.stderr.on('data', (x) => { err += x; }); } child.on('close', (code) => resolve({ code: code ?? -1, out, err })); child.on('error', (error) => resolve({ code: -1, out, err: String(error.message) })); }); }
 function jsonTail(text) { const i = text.lastIndexOf('{'); if (i < 0) return null; try { return JSON.parse(text.slice(i)); } catch { return null; } }
 // 子 CLI 的收据（notify-feishu / 释放包装）是**缩进过的** JSON，jsonTail 那种「从最后一个 `{` 开始解析」
@@ -27,7 +30,9 @@ function jsonTail(text) { const i = text.lastIndexOf('{'); if (i < 0) return nul
 function parseJsonOutput(text) { const raw = String(text ?? '').trim(); if (!raw) return null; try { return JSON.parse(raw); } catch { return jsonTail(raw); } }
 function ensureDir(dir) { fs.mkdirSync(dir, { recursive: true }); }
 
-// 收据里阶段状态只用三个词：PENDING（没轮到）/ COMPLETED / FAILED。
+// 收据里阶段状态只用四个词：PENDING（没轮到）/ COMPLETED / FAILED / **SKIPPED（有意跳过）**。
+// SKIPPED 是 2026-10-05 加的：那三个词表达不了「这段我们决定不做」——
+// 写成 PENDING 会被读成「还没轮到、下次会跑」，写成 COMPLETED 是假绿，写成 FAILED 会让整轮报错。
 // 「停在哪一段」另记 `failedStage` —— 否则 PENDING 会同时表示「没轮到」和「跑失败了」。
 // 阶段＝采集＋导入：导入失败时要把已经记成 COMPLETED 的那一段改回 FAILED（见下面的信息映射）。
 function markStage(receipt, name, status) { const stage = receipt.stages?.find((entry) => entry.name === name); if (stage) stage.status = status; }
@@ -40,6 +45,8 @@ const STAGE_OF_MESSAGE = [
   [/商品推广/u, 'promotion'],
   [/环境预检/u, 'preflight'],
   [/浏览器启动/u, 'start'],
+  // 视口闸门拦下来的归到 `start`：它不是某一家采集失败，而是「这批实例的启动结果不可用」。
+  [/浏览器视口/u, 'start'],
   [/登录预检/u, 'login'],
 ];
 function stageFromMessage(message) { return STAGE_OF_MESSAGE.find(([pattern]) => pattern.test(String(message)))?.[1] ?? null; }
@@ -106,6 +113,13 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
   try {
     log(`--- ${batched ? `${describeBatch(round, rounds.length)}；` : ''}${shops.length} 家：${shops.join('、')}`);
     const started = await run(PRODUCT_JOB_FILES.start, ['--only', shopArg]); if (started.code !== 0) throw new Error(`浏览器启动失败（${started.code}）`);
+    // 起完立刻回读**本批每一家**的视口，读数不论达不达标都落盘（`viewport.json` / `viewport-b<N>.json`）——
+    // 达标时它是「这一轮的窗口多大」的可核对现场，不达标时它是那句判红的依据。
+    // 判据与阈值只有一处实现（`runtime/shop-viewport-gate.mjs`），这里不许再写一份。
+    const viewport = await checkShopViewports({ shops });
+    fs.writeFileSync(path.join(evidence, tag ? `viewport-${tag}.json` : 'viewport.json'), `${JSON.stringify(viewport, null, 2)}\n`);
+    if (!viewport.ok) throw new Error(`浏览器视口不达标（${describeViewportFailure(viewport)}），已停止采集`);
+    log(`视口回读通过：${viewport.entries.map((entry) => `${entry.shop}=${entry.width}x${entry.height}`).join('、')}`);
     const login = await run(PRODUCT_JOB_FILES.login, ['--shops', shopArg, '--json', '--login'], { capture: true }); fs.writeFileSync(loginFile, login.out); if (login.code !== 0) throw new Error(`登录预检未通过（${login.code}），已停止采集并保留告警收据`);
     // 采集脚本一律**用它们自己的默认下载目录**（`%USERPROFILE%\Downloads`）—— 那是浏览器真的会写进去的地方，
     // 由 profile 的 `download.default_directory` 决定，脚本侧改不了。别再传 `--downloads <证据目录>`：
@@ -135,6 +149,9 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
       item.inquiry = inquiry; item.inquiryFile = inquiryFile;
       if (inquiry.code !== 0 || !fs.existsSync(inquiryFile)) { item.stoppedAt = 'inquiry-collect'; item.error = (inquiry.err || inquiry.out || '').trim(); log(`[询单] ${shop} 失败：${item.error || '未落盘'}（exit ${inquiry.code}）`); continue; }
       log(`[询单] ${shop} 已落盘 ${inquiryFile}`);
+      // 推广段：`--skip-promotion` 时**整段不跑**（连采集脚本都不起）—— 理由见 product-data-job-core
+      // 的 `SKIP_PROMOTION_REASON`：它的导入目标还指向 9 月的 base，跑一次就是把 10 月数据写进关账的表。
+      if (options.skipPromotion) continue;
       const promotion = await run(PRODUCT_JOB_FILES.promotionCollect, ['--shop', shop, '--date', date], { capture: true });
       item.promotion = promotion; item.promotionFile = jsonTail(promotion.out)?.file ?? null;
       if (promotion.code !== 0 || !item.promotionFile) { item.stoppedAt = 'promotion-collect'; item.error = (promotion.err || promotion.out || '').trim(); log(`[推广] ${shop} 失败：${item.error || '未返回文件'}（exit ${promotion.code}）`); }
@@ -170,19 +187,29 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
     // 用户 2026-09-30 原话「推广数据这个流程我还没开发，你先放着不管，先全部注意商品数据」
     // ⇒ 等推广链一起改造时把批量路径改成「按 (月,部门) 分组后各组一次调用」。
     // 底单与询单不受影响：它们是**逐店一次调用**（上面那个循环里），各自按自己的店铺解析 base。
-    const importPromotionPerShop = async (items) => { for (const item of items) { const r = await run(PRODUCT_JOB_FILES.promotionImport, ['--file', item.promotionFile, '--shop', item.shop, ...common, '--evidence', path.join(evidence, 'promotion-import', item.shop)]); if (r.code !== 0) { gaps.push(`${item.shop}/推广 导入失败`); log(`[导入] ${item.shop} 推广失败（exit ${r.code}）`); } else log(`[导入] ${item.shop} 推广已写入`); } };
-    const promoReady = results.filter((item) => item.promotionFile);
-    if (promoReady.length === results.length) {
-      const promotionArgs = promoReady.flatMap((item) => ['--file', item.promotionFile, '--shop', item.shop]);
-      const promo = await run(PRODUCT_JOB_FILES.promotionImport, [...promotionArgs, ...common, '--evidence', path.join(evidence, 'promotion-import')]);
-      if (promo.code === 0) log(`[导入] 推广 ${promoReady.length} 家已批量写入`);
-      else { gaps.push('推广 批量导入失败'); await importPromotionPerShop(promoReady); }
-    } else if (promoReady.length) {
-      log(`[导入] 推广有 ${results.length - promoReady.length} 家未采到，改为逐店导入已采到的 ${promoReady.length} 家`);
-      await importPromotionPerShop(promoReady);
+    // `--skip-promotion`：**连导入都不做**。这里必须一起跳过 —— 只跳采集不跳导入的话，
+    // `promoReady` 会是空数组而静默走完，看起来一样，但收据里就没有任何「有意跳过」的痕迹。
+    if (options.skipPromotion) {
+      log(`[导入] 推广段有意跳过：${SKIP_PROMOTION_REASON}`);
+    } else {
+      const importPromotionPerShop = async (items) => { for (const item of items) { const r = await run(PRODUCT_JOB_FILES.promotionImport, ['--file', item.promotionFile, '--shop', item.shop, ...common, '--evidence', path.join(evidence, 'promotion-import', item.shop)]); if (r.code !== 0) { gaps.push(`${item.shop}/推广 导入失败`); log(`[导入] ${item.shop} 推广失败（exit ${r.code}）`); } else log(`[导入] ${item.shop} 推广已写入`); } };
+      const promoReady = results.filter((item) => item.promotionFile);
+      if (promoReady.length === results.length) {
+        const promotionArgs = promoReady.flatMap((item) => ['--file', item.promotionFile, '--shop', item.shop]);
+        const promo = await run(PRODUCT_JOB_FILES.promotionImport, [...promotionArgs, ...common, '--evidence', path.join(evidence, 'promotion-import')]);
+        if (promo.code === 0) log(`[导入] 推广 ${promoReady.length} 家已批量写入`);
+        else { gaps.push('推广 批量导入失败'); await importPromotionPerShop(promoReady); }
+      } else if (promoReady.length) {
+        log(`[导入] 推广有 ${results.length - promoReady.length} 家未采到，改为逐店导入已采到的 ${promoReady.length} 家`);
+        await importPromotionPerShop(promoReady);
+      }
     }
     markStage(receipt, 'inquiry', results.every((item) => item.inquiryFile && fs.existsSync(item.inquiryFile)) ? 'COMPLETED' : 'FAILED');
-    markStage(receipt, 'promotion', results.every((item) => item.promotionFile) ? 'COMPLETED' : 'FAILED');
+    // 有意跳过 ≠ 失败，也 ≠ 没轮到：收据里必须能一眼分出这三件事，否则「跑成功但少了推广」
+    // 会被读成「推广还没轮到」，下一次重跑也不会有任何提示。
+    markStage(receipt, 'promotion', options.skipPromotion
+      ? 'SKIPPED'
+      : (results.every((item) => item.promotionFile) ? 'COMPLETED' : 'FAILED'));
   } catch (error) {
     outcome.failure = classifyWorkflowError(error);
     outcome.failedStage = stageFromMessage(error.message);
@@ -193,7 +220,8 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
     for (const item of results) {
       if (!item.productFile) addGap(`${item.shop}/底单 未采集`);
       if (!item.inquiryFile || !fs.existsSync(item.inquiryFile)) addGap(`${item.shop}/询单 未采集`);
-      if (!item.promotionFile) addGap(`${item.shop}/推广 未采集`);
+      // 有意跳过的段**不记缺口** —— 否则整轮会被自己的闸门判成失败，而闸门是配置、不是故障。
+      if (!options.skipPromotion && !item.promotionFile) addGap(`${item.shop}/推广 未采集`);
     }
     log(`${batched ? `[批次] ${describeBatch(round, rounds.length)} ` : ''}未完成：${error.message}`
       + `（${outcome.failure.class}/${outcome.failure.reason}；停在哪一段=${outcome.failedStage ?? '未知'}）`);
@@ -203,8 +231,8 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
 
 async function main(argv) {
   let options; try { options = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
-  if (options.help) { console.log('node scripts/run-product-data-job.mjs [--date yesterday] [--shops a,b] [--commit] [--notify] [--batches N]'); return 0; }
-  const date = resolveTargetDate(options.date); const plan = buildProductJobPlan({ dateInput: options.date, shops: options.shops, commit: options.commit });
+  if (options.help) { console.log('node scripts/run-product-data-job.mjs [--date yesterday] [--shops a,b] [--commit] [--notify] [--batches N] [--skip-promotion]'); return 0; }
+  const date = resolveTargetDate(options.date); const plan = buildProductJobPlan({ dateInput: options.date, shops: options.shops, commit: options.commit, skipPromotion: options.skipPromotion });
   const runId = `${date}-${new Date().toISOString().replace(/[-:.TZ]/g, '')}-${crypto.randomUUID().slice(0, 8)}`;
   const evidence = path.join(ROOT, 'evidence', `product-data-job-${date}`, runId); ensureDir(evidence);
   const receiptPath = path.join(evidence, 'run-receipt.json');
@@ -228,7 +256,8 @@ async function main(argv) {
     const preflight = runEnvironmentPreflight({ root: ROOT, workflow: 'product-data' });
     fs.writeFileSync(path.join(evidence, 'environment-preflight.json'), `${JSON.stringify(preflight, null, 2)}\n`);
     if (!preflight.ok) throw new Error(`环境预检失败：${preflight.checks.filter(check => !check.ok).map(check => check.name).join(', ')}`);
-    log(`商品数据自动采集开始：${logLine}；底单串行、询单/推广并行；模式 ${options.commit ? 'commit' : 'dry-run'}`);
+    log(`商品数据自动采集开始：${logLine}；底单串行、询单/推广并行；模式 ${options.commit ? 'commit' : 'dry-run'}`
+      + (options.skipPromotion ? `；**推广段有意跳过**（${SKIP_PROMOTION_REASON}）` : ''));
 
     for (const round of rounds) {
       const outcome = await runRound({ round, rounds, batched, evidence, date, options, log, receipt });
@@ -260,8 +289,17 @@ async function main(argv) {
     writeWorkflowReceipt(receiptPath, receipt);
     markStage(receipt, 'product', gaps.some((gap) => gap.includes('底单')) ? 'FAILED' : 'COMPLETED');
     markStage(receipt, 'inquiry', gaps.some((gap) => gap.includes('询单')) ? 'FAILED' : 'COMPLETED');
-    markStage(receipt, 'promotion', gaps.some((gap) => gap.includes('推广')) ? 'FAILED' : 'COMPLETED');
-    if (gaps.length) { failedStage = gaps.some((gap) => gap.includes('底单')) ? 'product-import' : gaps.some((gap) => gap.includes('询单')) ? 'inquiry-import' : 'promotion-import'; throw new Error(`本轮不完整（${gaps.length} 处）：${gaps.join('；')}`); }
+    markStage(receipt, 'promotion', options.skipPromotion
+      ? 'SKIPPED'
+      : (gaps.some((gap) => gap.includes('推广')) ? 'FAILED' : 'COMPLETED'));
+    if (gaps.length) {
+      // 缺口归因：底单 → 询单 → 推广。跳过推广时最后一档**不可能**出现（有意跳过不记缺口），
+      // 真出现说明有人往 gaps 里塞了新东西 ⇒ 报 unknown 比错报成「推广导入」更诚实。
+      failedStage = gaps.some((gap) => gap.includes('底单')) ? 'product-import'
+        : gaps.some((gap) => gap.includes('询单')) ? 'inquiry-import'
+          : (options.skipPromotion ? 'unknown' : 'promotion-import');
+      throw new Error(`本轮不完整（${gaps.length} 处）：${gaps.join('；')}`);
+    }
     if (failure) throw new Error(`有批次未完成：${failure.message ?? failure.reason}`);
     log('商品三类数据采集与导入完成');
   } catch (error) { status = 1; failure = classifyWorkflowError(error); failedStage = failedStage ?? stageFromMessage(error.message); if (failedStage && receipt.stages.some((stage) => stage.name === failedStage)) markStage(receipt, failedStage, 'FAILED'); log(`失败：${error.message}（${failure.class}/${failure.reason}；停在哪一段=${failedStage ?? '未知'}）`); } finally {
