@@ -84,7 +84,10 @@ import { createPlatformHealthCheck } from '../../../runtime/xws-platform-health-
 import { shiftIso, shanghaiToday } from './date-picker.mjs';
 // 平台词表（`sites` → 中文页名）的唯一来源。告警里说「哪个后台掉登录」时必须用它，
 // 不许在这里另抄一份「生意参谋 / 阿里妈妈」—— 抄一份就是等着它与探测判据漂开。
-import { SITES } from './login-merchant-core.mjs';
+// `isSycmLoginWallUrl`：判「这一轮的整轮阻断是不是登录墙造成的」只此一处实现
+//（`login-merchant-core.mjs`，注释里点名 2026-09-25 的同一个现场）。在这里另写一份正则，
+// 两边迟早漂开 —— 而漂开的症状是「同一种现场两个结论」，且两边看着都能自证。
+import { SITES, isSycmLoginWallUrl } from './login-merchant-core.mjs';
 import { describeIdentity, expectArgs, formatArgv, shopIdentity } from './shop-identities.mjs';
 // 「遮挡层没关掉」这个机器标记的**唯一来源**（产出在 collect-core 的 describeOverlayAttempt）。
 // 消费方（`shopFailureCause`）import 它、不写字面量：两边各写一份，改名那天就会静默漂移成
@@ -210,7 +213,7 @@ export function stageNumber(key, stage) {
  * 「这个结论悄悄退化成兜底文案」，而告警照发不误、看起来一切正常。
  */
 export const FAILURE_CAUSES = Object.freeze(
-  ['ROUND_BLOCKED', 'SHOP_BLOCKED', 'NEEDS_LOGIN', 'DUPLICATE_TARGET', 'SHOP_FUNC_NO_PERMISSION',
+  ['ROUND_BLOCKED', 'ROUND_LOGIN_WALL', 'SHOP_BLOCKED', 'NEEDS_LOGIN', 'DUPLICATE_TARGET', 'SHOP_FUNC_NO_PERMISSION',
     'PAGE_OBSTRUCTED', 'STAGE_FAILED'],
 );
 
@@ -337,6 +340,35 @@ export function buildRepairRequest({ shopKey, stage = null, error = null, percep
   return request;
 }
 
+/**
+ * 「整轮被挡」的**真因**（2026-10-06 加）。纯函数，输入就是体检那一步留下的 `detail` 与 `normalize`。
+ *
+ * 为什么必须有它（2026-10-06 的真实事故）：整轮被挡时，告警的结论改判**只**照跑前那一次
+ * 店铺登录体检（`--login-preflight`）来判 —— 而那一轮 8 家店后台全是好的，掉登录的是
+ * **共用窗口**（商家号），它不在那份体检里 ⇒ 判据返回「问题不在登录上」，
+ * 收信人拿到的下一步是「把这两页各开一个」，而真因是登录墙：开几个都会被送回登录页。
+ * 一句对不上现场的下一步，比不通知更贵（本仓第三次吃同一个亏）。
+ *
+ * 判据用的是**链自己第 0 步留下的现场**：归位记录里 `reclaim` 动作的 `from` 就是
+ * 「那个页签当时实际停在哪」——停在登录墙上就是登录墙。判定复用
+ * `isSycmLoginWallUrl`（结构判据：host 相等 + path 相等），不在这里另写正则。
+ *
+ * 返回：`null`（体检通过）｜`'ROUND_LOGIN_WALL'`｜`'ROUND_BLOCKED'`。
+ * **读不到 `from` 一律落回 `ROUND_BLOCKED`**：缺证据不下结论，宁可给旧口径也不编一个。
+ */
+export function roundCauseOf({ ok, normalize } = {}) {
+  if (ok !== false) return null;
+  const actions = Array.isArray(normalize?.actions) ? normalize.actions : [];
+  const onLoginWall = actions.some((action) => isSycmLoginWallUrl(action?.from));
+  return onLoginWall ? 'ROUND_LOGIN_WALL' : 'ROUND_BLOCKED';
+}
+
+/** 归位之后**仍然缺**的页面名（业务口径：就是窗口里少开的那几页）。 */
+export function roundMissingPagesOf(normalize) {
+  const after = Array.isArray(normalize?.after) ? normalize.after : [];
+  return after.filter((item) => item && Number(item.count) === 0).map((item) => item.page).filter(Boolean);
+}
+
 /** 一轮的失败视图（纯函数；`summary` 就是落盘的 summary.json 的形状）。
  *
  * 第二个参数是**跑前登录态结论**（`check-login-shops.mjs --json` 的产物）。三条口径：
@@ -354,7 +386,12 @@ export function roundFailureSummary(summary = {}, { loginPreflight = null } = {}
   const ok = entries.filter(([, record]) => record?.status === 'ok').map(([key]) => key);
   const waiting = entries.filter(([, record]) => isWaitingOperatorAccountStatus(record)).map(([key]) => key);
   const roundBlocked = summary?.round?.healthCheckDaily?.ok === false;
-  const view = { failed, ok, waiting, roundBlocked, roundBlockedDetails: summary?.round?.healthCheckDaily?.blockingDetails ?? null,
+  // 整轮被挡的**真因**优先读 summary 里落盘的那一个（链在第 0 步就算好写进去，2026-10-06）；
+  // 老 summary（没有那个字段）落回 `ROUND_BLOCKED` —— 与加这个字段之前逐字相同。
+  const roundCause = roundBlocked ? (summary?.round?.healthCheckDaily?.roundCause ?? 'ROUND_BLOCKED') : null;
+  const view = { failed, ok, waiting, roundBlocked, roundCause,
+    roundBlockedDetails: summary?.round?.healthCheckDaily?.blockingDetails ?? null,
+    roundMissingPages: summary?.round?.healthCheckDaily?.missingPages ?? null,
     any: roundBlocked || failed.length > 0, total: entries.length };
   if (loginPreflight === null || loginPreflight === undefined) return view;
   return { ...view, login: normalizeLoginPreflight(loginPreflight) };
@@ -459,6 +496,16 @@ export function readLoginPreflight(filePath) {
 // 技术信息一律留在驱动自己的 stdout 与 job.log 里 —— 那里才是给技术同学看的。
 const REASON_BY_CAUSE = Object.freeze({
   ROUND_BLOCKED: '整轮没开跑：那个开着飞书「各店铺日报」的浏览器窗口里，页面不齐。',
+  // 2026-10-06 单列一类。它是 `ROUND_BLOCKED` 的**孪生形态**：现场看起来一模一样
+  // （第 0 步体检报「生意参谋工作页不在这个浏览器里」），但要做的事**相反** ——
+  // 这一类去开页面是白跑（开了也被平台送回登录页），要做的是登一次。
+  //
+  // 为什么不能并进 `NEEDS_LOGIN`：那个结论说的是「**这家店**自己的窗口掉登录」，
+  // 下一步写的是「打开这几家店各自的窗口、用这家店自己的账号登、别在别的窗口里登」——
+  // 而这里是**共用窗口**的商家号掉登录，是**一次**登录，店名指路会把人指到错的窗口上。
+  // 成因不同、要做的事不同 ⇒ 必须分开（同 SKILL `operator-alert-plain-language` §4）。
+  ROUND_LOGIN_WALL: '整轮没开跑：那个共用窗口自己掉登录了 —— 采集页面一打开就被平台送回登录页，'
+    + '所以这几家一起没跑起来。',
   SHOP_BLOCKED: '这家店的专用窗口里页面不齐，所以这家店一步都没跑。',
   // 2026-09-23 单列一类，因为它的下一步与「页面不齐」**相反**：掉登录时页面开几个都会被
   // 平台送回登录页，叫人去开页面等于让他白跑一趟（这正是这条分类要治的那个形态）。
@@ -487,11 +534,24 @@ const REASON_BY_CAUSE = Object.freeze({
 const RESUME_SENTENCE = Object.freeze({
   PAGE_OBSTRUCTED: '关掉之后不用回复、也不用重跑：这一轮的窗口留在原地，系统会自己接着把这家店剩下的步骤跑完。',
   NEEDS_LOGIN: '登录好之后不用回复、也不用重跑：这一轮的窗口留在原地，系统会自己接着把这家店剩下的步骤跑完。',
+  // 整轮被挡 ⇒ 续跑是**整轮重跑**（一批都没成，没有「剩下的步骤」可言），
+  // 所以这一句刻意不写「这家店」。
+  ROUND_LOGIN_WALL: '登录好之后不用回复、也不用重跑：系统会自己接着把这一轮的店铺重跑一遍。',
 });
 
 const ACTION_BY_CAUSE = Object.freeze({
   ROUND_BLOCKED: () => '打开那个开着飞书「各店铺日报」的浏览器窗口，把这两页各开一个（只留一个，多开同样会报错）：'
     + '生意参谋的「店铺」工作页、飞书「各店铺日报」底单页。开好后告诉技术同学重跑一次。',
+  // 指路只能指**业务人员看得见的东西**：那扇窗口里开着飞书「各店铺日报」那张表，
+  // 而这张表只在共用窗口里开着（各店自己的窗口没有它）⇒ 这句话能唯一定位到那扇窗口。
+  // ⚠️ 刻意**不写窗口标题**：共用窗口现在没有标识页（标识页机制只覆盖各店自己的窗口），
+  // 写一个任务栏上并不存在的标题，等于让收信人满地找不到。
+  // ⚠️ 也刻意不写机器名与 profile 路径：那是给技术同学的信息，业务人员拿它找不到窗口。
+  ROUND_LOGIN_WALL: (ctx) => '打开那扇开着飞书「各店铺日报」表格的浏览器窗口 —— 就是共用窗口，'
+    + '它里面开着「各店铺日报」这张表，各店自己的窗口里都没有这张表。'
+    + '在这个窗口里把「生意参谋」重新登录一次（登录时点浏览器提示里的「保存密码」）。'
+    + '只登这一处就够，不用去各店自己的窗口里登。'
+    + (ctx.willResume ? RESUME_SENTENCE.ROUND_LOGIN_WALL : '登录好之后告诉技术同学重跑一次。'),
   SHOP_BLOCKED: (ctx) => `打开这几家店各自的日报采集窗口（窗口标题里写着店名，例如「${ctx.shops[0] ?? '店名'} · 日报采集窗口」），`
     + '把缺的页面补上：生意参谋的工作页、阿里妈妈报表页各一个（多开同样会报错）。补好后告诉技术同学重跑一次。',
   // 与 SHOP_BLOCKED 的差别只有一处，但那一处决定收信人要不要跑一趟：**掉登录时页面是补不上的**
@@ -574,7 +634,19 @@ const siteLabels = (sites) => {
  * 于是掉登录时告警给的是「把这两页各开一个」—— 收信人照着做**无效**（开几个都被送回登录页）。
  * 收信人照着一条对不上现场的建议去做比不通知更糟，这已经是本仓库第三次吃同一个亏。
  */
-function loginPreflightLines(login, { needLogin = [], unknown = [], roundBlocked = false } = {}) {
+function loginPreflightLines(login, { needLogin = [], unknown = [], roundBlocked = false, roundLoginWall = false } = {}) {
+  // ①′ 先判「整轮被挡的真因就是登录墙」（2026-10-06 加）。
+  //
+  // 它必须排在最前面：下面每一条讲的都是**各店后台**的登录态，而这一种现场里那些店后台其实是好的
+  // （跑前刚查过）—— 照下面任何一条写，出来的就是「问题不在登录上」这句话本身。
+  // 这一句的措辞刻意与「哪一家店掉登录」分开：掉的是**共用窗口**（商家号），只有一次登录，
+  // 而且要去共用窗口里登 —— 照着逐店那条去登，会把每家自己的窗口都登一遍，然后问题照旧。
+  if (roundLoginWall) {
+    // 这一句只补**上面「原因」里没有的**那一半：不是哪一家店，别去它们自己的窗口里找。
+    // （2026-09-18 记过同一条纪律：「原因」那一段被写成同一句话读两遍。）
+    return ['（这不是哪一家店掉登录：跑前查过的那几家店后台当时都是好的，'
+      + '所以别去它们各自的窗口里找 —— 只登那一个共用窗口。）'];
+  }
   if (login === null) {
     return ['（这一轮没有先查登录态：上面那句「页面不齐」到底是页面被关掉了、还是掉登录后被送回'
       + '登录页，没查过。按上面的下一步做；如果打开后又被送回登录页，那就是掉登录，'
@@ -644,7 +716,14 @@ export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPr
   // 结论合并：掉登录的那些店（以及被它们挡住的整轮）改判成 NEEDS_LOGIN。
   // 「页面不齐」在掉登录下只是**症状**，照着它的下一步（去开页面）做是无效动作。
   const causeOf = (item) => (loginShops.has(item.key) ? 'NEEDS_LOGIN' : item.cause);
-  const blockedCause = view.roundBlocked ? (loginShops.size > 0 ? 'NEEDS_LOGIN' : 'ROUND_BLOCKED') : null;
+  // 整轮被挡时的结论分两步：先看「有没有哪一家店**自己**掉登录」（那是逐店动作、一次登一家），
+  // 都没有才看整轮的真因 —— 而整轮的真因只有两种：共用窗口掉登录（登一次）与页面真的缺（去补页）。
+  // 2026-10-06 之前这里只有前者，于是共用窗口掉登录时落进 `ROUND_BLOCKED`，
+  // 收信人被指去补页（补了也被送回登录页）。
+  const roundLoginWall = view.roundCause === 'ROUND_LOGIN_WALL';
+  const blockedCause = view.roundBlocked
+    ? (loginShops.size > 0 ? 'NEEDS_LOGIN' : (roundLoginWall ? 'ROUND_LOGIN_WALL' : 'ROUND_BLOCKED'))
+    : null;
   const subject = view.roundBlocked ? '全部店铺' : failedNames.length === 1 ? failedNames[0] : `${failedNames.length} 家店`;
   const causes = [...new Set([...(blockedCause ? [blockedCause] : []), ...view.failed.map(causeOf)])];
   // 默认「第一家失败即停整轮」⇒ 只写「没跑完 1 家」会被读成「其余几家都收好了」。
@@ -653,10 +732,17 @@ export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPr
   const notRun = view.roundBlocked ? [] : shopKeys.filter((key) => !(key in (summary?.shops ?? {})));
 
   const reason = [
-    view.roundBlocked ? REASON_BY_CAUSE.ROUND_BLOCKED : null,
-    ...(view.roundBlocked ? (view.roundBlockedDetails ?? []).filter(Boolean).slice(0, 3).map((line) => `  ${line}`) : []),
+    view.roundBlocked ? REASON_BY_CAUSE[blockedCause] : null,
+    // 体检那几行明细只在「页面真的缺」时给：它们带着内部片段（「按片段 … 找到 0 个」），
+    // 而在掉登录的现场它们只是**症状** —— 给出去等于让收信人照着去补页，白跑一趟。
+    ...(view.roundBlocked && !roundLoginWall
+      ? (view.roundBlockedDetails ?? []).filter(Boolean).slice(0, 3).map((line) => `  ${line}`) : []),
+    // 掉登录时改说「窗口里少了哪一页」，并且**明确说不用补** —— 这一句就是防他照着旧文案去开页面的。
+    ...(roundLoginWall && (view.roundMissingPages ?? []).length
+      ? [`  窗口里少了：${view.roundMissingPages.join('、')} —— 这是掉登录的结果，不用你去补页。`] : []),
     // 紧跟在「页面不齐」那几行后面：这一段是**对它的解释**，顺序反了就成了一句前言不搭后语的话。
-    ...loginPreflightLines(view.login ?? null, { needLogin, unknown: unknownLogin, roundBlocked: view.roundBlocked }),
+    ...loginPreflightLines(view.login ?? null, { needLogin, unknown: unknownLogin,
+      roundBlocked: view.roundBlocked, roundLoginWall }),
     view.failed.length ? `没跑完 ${view.failed.length} 家：\n${view.failed.map((item) => describeShopFailure(item.key, item.record, { cause: causeOf(item) })).join('\n')}` : null,
     view.waiting.length ? `等待运营账号 ${view.waiting.length} 家：${view.waiting.join('、')}（日报流程暂缓，账号恢复后可继续）` : null,
     notRun.length ? `· 另外 ${notRun.length} 家今天一步都没跑（有一家停住后，整轮就停了）：${notRun.join('、')}` : null,
@@ -1555,6 +1641,16 @@ async function main() {
     // 「这次本来就不齐、是脚本自己修好的」与「本来就好」在 summary 上必须分得开。
     normalize: roundHealth.normalize?.verdict?.detail ?? null,
     normalizeChanged: roundHealth.normalize?.changed ?? null,
+    // 整轮被挡的**真因**（2026-10-06 加）：`ROUND_LOGIN_WALL`（共用窗口掉登录）｜
+    // `ROUND_BLOCKED`（页面真的缺）｜`null`（体检通过）。
+    //
+    // 为什么要落盘而不是只留在内存里传给告警：① 告警只是它**一个**读者 ——
+    // 驻留那一步（`scripts/hold-and-resume.mjs`）也要照它判「这一轮要不要挂住等人」，
+    // 而它在**另一个进程**里，只能读落盘的东西；② 事后复盘时「这一轮到底是哪种被挡」
+    // 必须能从证据里读出来，否则人只能再跑一次体检去猜。
+    // 判据是纯函数 `roundCauseOf`，输入就是这一步手里的 `detail` 与 `normalize`。
+    roundCause: roundCauseOf({ ok: roundHealth.detail?.ok, normalize: roundHealth.normalize }),
+    missingPages: roundMissingPagesOf(roundHealth.normalize),
   };
   if (roundHealth.status !== 0) {
     console.error('[驱动] 商家浏览器体检未通过 ⇒ 整轮不跑（推送段与回读段都要用它）。'

@@ -12,7 +12,7 @@ import { WAITING_OPERATOR_ACCOUNT_SHOPS, waitingOperatorAccountRecord } from '..
 import { planRepair } from './repair-actions.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { IDENTITY_SHOP_HEADER_VERIFIED_SHOPS, shopIdentity } from './shop-identities.mjs';
-import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
+import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, roundCauseOf, roundMissingPagesOf, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -710,6 +710,10 @@ test('告警：文案里不许出现英文阶段名、结论代号、内部术�
     SHOP_BLOCKED: { round: { healthCheckDaily: { ok: true } }, shops: { 盖文淘宝: { status: 'failed', failedStage: 'health-check', blockingDetails: ['目标页面「阿里妈妈报表页」不在这个浏览器里（按片段 one.alimama.com/index.html 找到 0 个）；采集会从落位那一步就失败。'], stages: [] } } },
     // NEEDS_LOGIN 的判据不在 summary 里，在跑前那一次的结论里 ⇒ 它的样例要多一个入参（见 overrideFor）。
     NEEDS_LOGIN: { round: { healthCheckDaily: { ok: false, blockingDetails: [blockedDetail] } }, shops: {} },
+    // 2026-10-06 加。`ROUND_BLOCKED` 的孪生形态：现场逐字一样（第 0 步报「页面不在这个浏览器里」），
+    // 但真因是共用窗口掉登录 ⇒ 下一步是「登一次」，而**不是**去补页。差的那一处决定收信人白不白跑。
+    ROUND_LOGIN_WALL: { round: { healthCheckDaily: { ok: false, roundCause: 'ROUND_LOGIN_WALL',
+      missingPages: ['生意参谋工作页'], blockingDetails: [blockedDetail] } }, shops: {} },
     DUPLICATE_TARGET: { round: { healthCheckDaily: { ok: true } }, shops: { 科塔淘宝: failedAt('push', 'duplicate daily report row exists: r1') } },
     SHOP_FUNC_NO_PERMISSION: { round: { healthCheckDaily: { ok: true } }, shops: { 科塔淘宝: failedAt('sycm-date', 'Error: SHOP_FUNC_NO_PERMISSION: 平台答复 code=5903 No Buy Func Permission') } },
     // 2026-09-26 加。样例里必须**带上那个机器标记**（用常量，不写死字面量）——
@@ -1879,4 +1883,105 @@ test('接线守卫：修复后的重试用的是「按名字重跑」，而不�
   assert.match(main, /const stages = buildShopStages\(key,/u);
   const buildCount = (main.match(/buildShopStages\(key,/gu) ?? []).length;
   assert.equal(buildCount, 1, `main 里 buildShopStages(key,…) 只该出现一次，实际 ${buildCount} 次`);
+});
+
+// ---------------------------------------------------------------------------
+// 2026-10-06：「整轮被挡」的真因 —— 共用窗口掉登录 vs 页面真的缺
+//
+// 起因是一次真实事故（目标日 2026-10-05）：两批都倒在第 0 步体检，飞书告警说的是
+// 「问题不在登录上」＋「把这两页各开一个」，而真因是**共用窗口（商家号）掉登录** ——
+// 收信人照着做，页面开几次都会被平台送回登录页。
+//
+// 判据不在 `summary.shops` 里（那儿是空的：一家都没跑），而在链自己第 0 步留下的现场：
+// 归位记录里 `reclaim` 动作的 `from` —— 那个页签**实际停在哪**。停在登录墙上就是登录墙。
+//
+// 下面这份现场**逐字抄自** evidence/batches-2026-10-05/b1/00-health-check-daily.txt。
+// 用真值而不是造一个样例：这一段的意义就在于「它在真现场里长这样」。
+// ---------------------------------------------------------------------------
+const REAL_LOGIN_WALL_NORMALIZE = Object.freeze({
+  actions: [
+    {
+      page: '生意参谋工作页',
+      action: 'reclaim',
+      found: 0,
+      url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop',
+      from: 'https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop',
+    },
+    {
+      page: '飞书底单页',
+      action: 'create',
+      found: 0,
+      url: 'https://kcne618basvj.feishu.cn/base/RjKcb3isDaVn1GsoVJfc7Ykknyg?table=tblIuAX4nPc1zDOO&view=vewwg0rhjo',
+    },
+  ],
+  after: [
+    { page: '生意参谋工作页', count: 0 },
+    { page: '飞书底单页', count: 1 },
+  ],
+});
+
+test('整轮被挡的真因：归位记录停在登录墙上 ⇒ ROUND_LOGIN_WALL（用本轮真实现场）', () => {
+  assert.equal(roundCauseOf({ ok: false, normalize: REAL_LOGIN_WALL_NORMALIZE }), 'ROUND_LOGIN_WALL');
+  assert.deepEqual(roundMissingPagesOf(REAL_LOGIN_WALL_NORMALIZE), ['生意参谋工作页']);
+});
+
+test('整轮被挡的真因：不是登录墙 ⇒ ROUND_BLOCKED；体检通过 ⇒ null；读不到现场 ⇒ 落回旧口径', () => {
+  const drifted = {
+    actions: [{ page: '生意参谋工作页', action: 'reclaim', from: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop' }],
+    after: [{ page: '生意参谋工作页', count: 0 }],
+  };
+  assert.equal(roundCauseOf({ ok: false, normalize: drifted }), 'ROUND_BLOCKED');
+  assert.equal(roundCauseOf({ ok: true, normalize: drifted }), null);
+  // 缺证据不下结论：宁可给旧口径，也不编一个「掉登录」出来（编出来的那一个会让人白登一次）。
+  assert.equal(roundCauseOf({ ok: false, normalize: undefined }), 'ROUND_BLOCKED');
+  assert.equal(roundCauseOf({ ok: false, normalize: { actions: [{ action: 'reclaim' }] } }), 'ROUND_BLOCKED');
+  assert.equal(roundCauseOf({ ok: false }), 'ROUND_BLOCKED');
+});
+
+test('告警：整轮被挡、真因是共用窗口掉登录 ⇒ 说去登录；不再叫人补页、不再给那条内部片段', () => {
+  const summary = BLOCKED_SUMMARY();
+  summary.round.healthCheckDaily.roundCause = 'ROUND_LOGIN_WALL';
+  summary.round.healthCheckDaily.missingPages = ['生意参谋工作页'];
+  // 跑前那一次店铺体检是**全好的** —— 这正是事故当时的形状（店后台都没问题，掉的是共用窗口）。
+  const text = renderedAlert(summary, { loginPreflight: loginPre([]) });
+
+  assert.match(text, /共用窗口自己掉登录了/u);
+  assert.equal(text.includes('问题不在登录上'), false,
+    '这一句就是 2026-10-06 事故里指错方向的那句：店后台都好 ≠ 共用窗口没掉登录');
+  assert.equal(text.includes('把这两页各开一个'), false, '掉登录时补页是无效动作，不许再叫人去补');
+  assert.equal(text.includes('qos/service/frame/shop/performance'), false,
+    '体检明细里的内部片段不许进业务消息 —— 它在掉登录现场只是症状');
+  assert.match(text, /不用你去补页/u, '要主动挡住「照着上一版文案去开页面」这条路');
+  assert.match(text, /开着飞书「各店铺日报」表格的浏览器窗口/u, '指路要指业务人员看得见的东西');
+  assert.equal(text.includes('机器'), false, '业务消息里不许出现机器名（白名单里真有这个键）');
+  assert.equal(text.includes('浏览器配置'), false, '业务消息里不许出现浏览器配置路径');
+  // 指路指错窗口比不指更贵：这一种是「登那一个共用窗口」，不是「每家自己的窗口都登一遍」。
+  assert.match(text, /不用去各店自己的窗口里登/u);
+
+  assert.equal(text.includes('系统会自己接着'), false, '没给 --will-resume 就不许承诺系统会自己继续');
+  const resumed = renderedAlert(summary, { loginPreflight: loginPre([]), willResume: true });
+  assert.match(resumed, /系统会自己接着把这一轮的店铺重跑一遍/u);
+});
+
+test('告警：共用窗口掉登录时的「原因」只读一遍 —— 括号里补新信息，不复述', () => {
+  const summary = BLOCKED_SUMMARY();
+  summary.round.healthCheckDaily.roundCause = 'ROUND_LOGIN_WALL';
+  const text = renderedAlert(summary, { loginPreflight: loginPre([]) });
+  // 2026-09-18 记过同一条纪律：「原因」那一段被写成同一句话读两遍。
+  const mechanisms = text.split('采集页面一打开就被平台送回登录页').length - 1;
+  assert.equal(mechanisms, 1, `同一句机制说明出现了 ${mechanisms} 次 —— 收信人会以为在说两件事`);
+});
+
+test('告警：老 summary（没有 roundCause 字段）逐字不变 —— 仍按「页面不齐」叫人补页', () => {
+  // 「不传新字段 ⇒ 行为与从前逐字相同」是这一层唯一的安全保证（见 roundFailureSummary 的注释）。
+  const text = renderedAlert(BLOCKED_SUMMARY(), { loginPreflight: loginPre([]) });
+  assert.match(text, /那个开着飞书「各店铺日报」的浏览器窗口里，页面不齐/u);
+  assert.match(text, /把这两页各开一个/u);
+});
+
+test('驱动：体检落盘带上 roundCause / missingPages（驻留那一步在别的进程里，只能读落盘的）', () => {
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  const block = src.slice(src.indexOf('summary.round.healthCheckDaily = {'), src.indexOf('if (roundHealth.status !== 0)'));
+  assert.match(block, /roundCause: roundCauseOf\(/u, '真因必须落盘，否则 hold 与复盘都读不到');
+  assert.match(block, /missingPages: roundMissingPagesOf\(/u, '缺哪几页要落盘（告警要拿它挡住「去补页」）');
 });
