@@ -1,0 +1,37 @@
+# escalation-plan 的 --date 口径：修前 / 修后（原始输出）
+# 采集时间：2026-10-06 17:25:53 +0800
+
+## 定时任务里那条命令（修前：exit 1、读不到结论）
+$ node runtime/escalation-plan.mjs --date yesterday --json
+  [派单] --date 要 YYYY-MM-DD（收到 yesterday）      <= 修前的行为（已复现 4 次）
+
+## 修后
+$ node runtime/escalation-plan.mjs --date yesterday
+[派单] 目标日 2026-10-05（--date yesterday）（合并了 2 批结论）｜失败 0 家｜需要修复 agent：否
+[派单] 没有需要 agent 的失败 ⇒ 不唤醒。
+EXIT=0
+
+$ node runtime/escalation-plan.mjs --date yestoday
+[派单] invalid --date "yestoday"：要给 YYYY-MM-DD 或 yesterday
+EXIT=1
+
+$ node runtime/escalation-plan.mjs --date 2026-10-05   # 老用法不回归
+[派单] 目标日 2026-10-05（合并了 2 批结论）｜失败 0 家｜需要修复 agent：否
+[派单] 没有需要 agent 的失败 ⇒ 不唤醒。
+EXIT=0
+
+$ node runtime/escalation-plan.mjs --date yesterday --json | head -c 400
+{
+  "date": "2026-10-05",
+  "summaryPath": null,
+  "failedCount": 0,
+  "needsAgent": false,
+  "targets": [],
+  "handoff": "这一轮不需要修复 agent。",
+  "sourceCount": 2,
+  "sources": [
+    "evidence\\batches-2026-10-05\\b1\\summary.json",
+    "evidence\\batches-2026-10-05\\b2\\summary.json"
+  ]
+}
+

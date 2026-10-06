@@ -27,9 +27,16 @@
  *   · 某店 `repairRequest.cause` 落在「交给 agent 更好」的成因里（读不到类 / 落位类）。
  *
  * 用法：
- *   node runtime/escalation-plan.mjs --date 2026-09-28                 # 打印（默认）
+ *   node runtime/escalation-plan.mjs --date yesterday                  # 打印（默认；定时任务用的就是这条）
+ *   node runtime/escalation-plan.mjs --date 2026-09-28                 # 补跑历史日
  *   node runtime/escalation-plan.mjs --date 2026-09-28 --json          # 机器可读
  *   node runtime/escalation-plan.mjs --summary <path/to/summary.json>  # 指定结论文件
+ *
+ * `--date` 的字面量口径**复用链那一份**（`date-picker.mjs` 的 `resolveTargetDate`）：
+ * 2026-10-06 之前这里只收 `YYYY-MM-DD`，而定时任务 prompt 里写的是 `--date yesterday`
+ * ⇒ 那条命令每次都落进「`--date` 要 YYYY-MM-DD」⇒ 读不到结论 ⇒ **第 ② 层降级
+ *（唤醒修复 agent）静默空转**（同一处已复现 4 次）。在这里另写一份「昨天」就是把
+ * 「Asia/Shanghai 的昨日」抄到第二个地方，迟早与落位脚本漂开。
  *
  * 退出码：0＝不需要 agent（或已列出需要 agent 的清单）｜1＝读不到结论（不猜）。
  *   ⚠️ 它**不是**「有没有失败」的判据 —— 有没有失败看 summary 与底单行数。
@@ -41,6 +48,11 @@ import { fileURLToPath } from 'node:url';
 
 import { unfixableShopsOf } from './hold-and-resume-plan.mjs';
 import { isWaitingOperatorAccountStatus } from './daily-report-shop-gates.mjs';
+// `--date` 的字面量口径：**只此一处**。`date-picker.mjs` 是叶子（它只依赖 runtime 的
+// browser-ports / target-url-match），所以这条 runtime → skills 是「复用」，不是倒灌。
+// **不能**改成 import 驱动 `run-multi-shop-day.mjs` —— 那个文件 import 了本文件
+//（`classifyShopEscalation`），反向再 import 就成环，而成环之后两边都加不进新东西。
+import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/date-picker.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -60,17 +72,27 @@ export const AGENT_REASON = Object.freeze({
   SHOP_BLOCKED: '页面不齐可能是渲染没起来，agent 可以先归位/重载再试再判断是否真缺页。',
 });
 
-function parseArgs(argv) {
-  const args = { date: null, summary: null, json: false };
+export function parseArgs(argv, now = new Date()) {
+  const args = { date: null, dateInput: null, summary: null, json: false };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
-    if (key === '--date') args.date = argv[++i];
+    if (key === '--date') args.dateInput = argv[++i];
     else if (key === '--summary') args.summary = argv[++i];
     else if (key === '--json') args.json = true;
     else return { error: `未知参数 ${key}（可用：--date --summary --json）` };
   }
-  if (!args.date && !args.summary) return { error: '必须给 --date 或 --summary' };
-  if (args.date && !/^\d{4}-\d{2}-\d{2}$/u.test(args.date)) return { error: `--date 要 YYYY-MM-DD（收到 ${args.date}）` };
+  if (!args.dateInput && !args.summary) return { error: '必须给 --date 或 --summary' };
+  // 解析成 ISO 之后才去拼路径（`evidence/multi-shop-<日>/` 用的是 ISO）。判据托给
+  // `resolveTargetDate`（闭集 + 纯函数 + 冻结 now），在这里**不重写**一份日期规则。
+  // 原始取值留在 `dateInput`：日志里要能看出它被解析成了哪天，也只有它能证明
+  // 「调度器给的 literally 是 yesterday」。
+  if (args.dateInput) {
+    try {
+      args.date = resolveTargetDate(args.dateInput, now);
+    } catch (error) {
+      return { error: error.message };
+    }
+  }
   // ⚠️ 不给 `--summary` 时**不能只认 `multi-shop-<日>/summary.json`**：
   //   生产用的 `--batches 5` 把结论落成 `evidence/batches-<日>/b<n>/summary.json`，
   //   那条路径**根本不存在** ⇒ 只认它会每次都判「读不到结论」，
@@ -276,7 +298,10 @@ function main() {
   if (args.json) { console.log(JSON.stringify(plan, null, 2)); process.exitCode = 0; return; }
 
   const srcNote = read.sourceCount > 1 ? `（合并了 ${read.sourceCount} 批结论）` : '';
-  console.log(`[派单] 目标日 ${plan.date ?? '?'}${srcNote}｜失败 ${plan.failedCount} 家｜需要修复 agent：${plan.needsAgent ? '是' : '否'}`);
+  // 字面量解析成了哪天要写出来：日报定时在**次日**跑，事后复盘「这轮看的是哪一天」靠这句自证，
+  // 而不是靠人记得当时命令里写的是 `yesterday` 还是某个具体日期。
+  const inputNote = args.dateInput && args.dateInput !== args.date ? `（--date ${args.dateInput}）` : '';
+  console.log(`[派单] 目标日 ${plan.date ?? '?'}${inputNote}${srcNote}｜失败 ${plan.failedCount} 家｜需要修复 agent：${plan.needsAgent ? '是' : '否'}`);
   if (!plan.needsAgent) { console.log('[派单] 没有需要 agent 的失败 ⇒ 不唤醒。'); return; }
   for (const t of plan.targets) {
     console.log(`[派单]   ${t.shop}：${t.cause ?? '(成因未知)'}（停在第 ${t.stage ?? '?'} 步）`);

@@ -135,6 +135,18 @@ const RUNTIME_TO_SKILLS = Object.freeze([
   'runtime/diagnose-attribute-writeback.mjs',
   'runtime/diagnose-vocab-gain.mjs',
   'runtime/diagnose-weekly-field-conversion.mjs',
+  // 2026-10-06 新增：`runtime/escalation-plan.mjs`（派单计划）import 了
+  // `skills/sycm-alimama-daily-report/scripts/date-picker.mjs` 的 `resolveTargetDate`。
+  // 理由是**同一个口径只能有一处**：定时任务那句 `--date yesterday` 必须解析成与落位脚本
+  // 完全同一天（`Asia/Shanghai` 的昨日），在这里另写一份就是等着两边漂开 ——
+  // 而漂开的症状是「派单计划去看另一天的结论」，那是静默的（它只会说「读不到结论」）。
+  // 方向是干净的 runtime → skills **叶子**：`date-picker.mjs` 只依赖 runtime 的
+  // browser-ports / target-url-match，不反向依赖任何东西。
+  // ⚠️ **不能**改成 import 驱动 `run-multi-shop-day.mjs`：那个文件 import 了本模块
+  //（`classifyShopEscalation`），反向再 import 就成环。这也是这次把它搬进叶子的唯一原因。
+  // 同一次搬迁让 `run-multi-shop-day.mjs` 从「自己定义」改成「从叶子 import 之后原样转出」，
+  // 对外名字与从前逐字相同，原有用例一个字都没改。
+  'runtime/escalation-plan.mjs',
   'runtime/export-live-competitor-formulas.mjs',
   'runtime/faq-operator-client.test.mjs',
   'runtime/fill-weekly-attribute-labels.mjs',

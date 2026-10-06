@@ -50,6 +50,32 @@ export function shiftIso(isoDate, days) {
   return cursor.toISOString().slice(0, 10);
 }
 
+// ---------------------------------------------------------------- `--date` 的字面量：只有一个来源
+
+// 2026-10-06 从 `run-multi-shop-day.mjs` **搬到这里**。理由与 `expected-pages.mjs` 当初那条同源：
+// `runtime/escalation-plan.mjs`（派单计划）也要把定时任务里那句 `--date yesterday` 解析成**同一天**，
+// 而它**不能** import 驱动 —— 驱动已经 import 了 `runtime/escalation-plan.mjs`（`classifyShopEscalation`），
+// 反向再 import 就成环，而成环之后两边都加不进新东西。放进这个叶子后，驱动与派单计划都只依赖它。
+// 对外名字与从前逐字相同（驱动侧 import 之后原样转出），原有断言一个字都不用改。
+//
+// 允许的字面量是**闭集**：写错一个字母必须当场报错，不能静默落成别的日子
+// （`--date today` 这类「差不多能用」的取值一律不要 —— 每多一个，就多一种
+// 「调度器以为它算的是另一天」的可能，而日报链对日期是最敏感的）。
+export const TARGET_DATE_LITERALS = Object.freeze(['yesterday']);
+
+/**
+ * 把 `--date` 的取值解析成 ISO 日期。**纯函数**（`now` 由调用方冻结一次，
+ * 执行过程中不再取时间 —— 跨零点时「昨天」会漂到另一天，那是相对日期的最大风险）。
+ */
+export function resolveTargetDate(raw, now = new Date()) {
+  const value = String(raw ?? '').trim();
+  if (TARGET_DATE_LITERALS.includes(value)) return shiftIso(shanghaiToday(now), -1);
+  if (/^\d{4}-\d{2}-\d{2}$/u.test(value)) return value;
+  const options = `YYYY-MM-DD 或 ${TARGET_DATE_LITERALS.join(' / ')}`;
+  if (!value) throw new Error(`missing --date：要给 ${options}（定时任务写 --date yesterday）`);
+  throw new Error(`invalid --date ${JSON.stringify(raw)}：要给 ${options}`);
+}
+
 // auto 的判定：目标日等于站点时区的昨日就走预设。调用方在开始那一刻冻结 now，
 // 执行过程中不再取 now，否则跨零点会把「昨日」漂到另一天（相对日期的最大风险）。
 export function resolveDateMode({ requested, now = new Date() }) {

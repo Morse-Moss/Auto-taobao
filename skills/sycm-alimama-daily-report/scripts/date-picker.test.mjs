@@ -7,7 +7,8 @@ import {
   applyDate,
   assertAlimamaState, buildAlimamaUrl, extractIsoDates, isFuncPermissionDenied, isSingleDaySelection,
   needsStaleReload, SHOP_FUNC_NO_PERMISSION,
-  resolveAppliedDate, resolveDateMode, resolveTarget, selectDayHits, shiftIso, shiftMonth, siteAdapter,
+  resolveAppliedDate, resolveDateMode, resolveTarget, resolveTargetDate, selectDayHits, shiftIso, shiftMonth,
+  siteAdapter, TARGET_DATE_LITERALS,
 } from './date-picker.mjs';
 
 // 落位的 stdout 是要给人看的（客户演示时甚至会被录进视频），所以「设计上允许」与「真的出错」
@@ -474,4 +475,45 @@ test('接线：两条「读数起不来」的失败路径都真接了功能权�
   assert.equal(siteAdapter('sycm').permissionProbeUrl.includes('/new'), false, '壳地址不能当判据（2026-09-21 实测它对谁都回 code:0）');
   assert.match(siteAdapter('sycm').permissionProbeUrl, /sycm\.taobao\.com\/qos\/service\/frame\/shop\/performance$/u);
   assert.equal(siteAdapter('alimama').permissionProbeUrl, undefined, '阿里妈妈没有这个查询口子，别给它编一个');
+});
+
+// ---------------------------------------------------------------------------
+// 目标日的字面量口径（2026-10-06 从 `run-multi-shop-day.mjs` **搬到这里**）
+//
+// 搬家本身要有判据：`runtime/escalation-plan.mjs`（派单计划）现在也 import 它 ——
+// 于是「定时任务里写的 `yesterday` 是哪一天」全仓只有这一份实现。
+// 驱动那边留了一组逐字相同的用例（证明「转出之后对外名字没变」），这里证明
+// 「口径确实住在这儿」。两边都要有 —— 搬家最怕的就是只搬了一半。
+// ---------------------------------------------------------------------------
+const RESOLVE_NOW = new Date('2026-09-20T00:00:00Z'); // 上海 08:00 ⇒ 昨日＝2026-09-19
+
+test('目标日：字面量 yesterday 按 Asia/Shanghai 解析（本机 08:00 与 07:30 必须是同一天）', () => {
+  assert.equal(resolveTargetDate('yesterday', RESOLVE_NOW), '2026-09-19');
+  assert.equal(resolveTargetDate('yesterday', new Date('2026-09-19T23:30:00Z')), '2026-09-19',
+    '上海 09-20 07:30 与 08:00 是同一天：口径按站点时区算，不按 UTC');
+  assert.equal(resolveTargetDate('2026-09-01', RESOLVE_NOW), '2026-09-01', '显式日期原样通过');
+});
+
+test('目标日：认不出来的取值当场抛错并列出允许的写法（静默落成「今天」会让整天数据错位）', () => {
+  for (const bad of ['today', 'YESTERDAY', 'yestoday', '2026-9-1', '前天', '', null, undefined]) {
+    assert.throws(() => resolveTargetDate(bad, RESOLVE_NOW), (err) => {
+      assert.match(err.message, /YYYY-MM-DD/u);
+      assert.match(err.message, /yesterday/u, '报错要顺手告诉人正确写法');
+      return true;
+    }, `${JSON.stringify(bad)} 不该被接受`);
+  }
+  assert.deepEqual([...TARGET_DATE_LITERALS], ['yesterday'],
+    '相对日期的字面量只留 yesterday：多一个就多一种「调度器以为它算的是另一天」的可能');
+});
+
+test('接线（源码级）：驱动只**转出**，不再自己定义（两处定义 ＝ 等着漂开）', () => {
+  const driver = readFileSync(path.join(import.meta.dirname, 'run-multi-shop-day.mjs'), 'utf8');
+  assert.match(driver, /import \{ resolveTargetDate, TARGET_DATE_LITERALS \} from '\.\/date-picker\.mjs';/u,
+    '驱动没有从叶子里 import ⇒ 要么定义又长回来了、要么转出口断了');
+  assert.match(driver, /export \{ resolveTargetDate, TARGET_DATE_LITERALS \};/u,
+    '转出口没了 ⇒ 依赖「resolveTargetDate 来自驱动」的调用方会当场断');
+  // 只扫**语句形态**：注释里必然要写清「搬过家、为什么搬」，那种出现是应该保留的。
+  const code = driver.replace(/^\s*\/\/.*$/gmu, '');
+  assert.equal(/export function resolveTargetDate/u.test(code), false, '驱动里又长出一份实现');
+  assert.equal(/export const TARGET_DATE_LITERALS = /u.test(code), false, '驱动里又长出一份字面量表');
 });

@@ -51,7 +51,8 @@
 //
 // 为什么日期要写成字面量 `yesterday` 而不是让调度器去算：调度器算日期就是把
 // 「Asia/Shanghai 的昨日」这条口径抄到命令之外，抄一份就是等着它与落位脚本漂移。
-// 这里用**落位脚本同一个函数**（shanghaiToday/shiftIso）解析，且只认这一个字面量 ——
+// 这里用**落位脚本同一个函数**（`date-picker.mjs` 的 `shanghaiToday`/`shiftIso`，2026-10-06 起
+// 连 `resolveTargetDate` 本身也住在那里、本文件只是转出）解析，且只认这一个字面量 ——
 // 写错（如 `yestoday`）会当场报错，不会静默落成「今天」。
 //
 // 为什么定时跑的那一天**必须**是「昨天」：SYCM「询单到付款」表格里那行「同行同层均值」
@@ -81,7 +82,8 @@ import { normalizePages } from '../../../runtime/page-normalize.mjs';
 import { urlMatchesFragment } from '../../../runtime/target-url-match.mjs';
 import { READABLE_SOURCE_KEYS, renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { createPlatformHealthCheck } from '../../../runtime/xws-platform-health-preflight.mjs';
-import { shiftIso, shanghaiToday } from './date-picker.mjs';
+// 日期原语（`shiftIso`/`shanghaiToday`/`resolveTargetDate`）的 import 挪到下面
+// 「目标日：只有一个来源」那一段 —— 那里也是它们的转出口，两处写会看着像两份来源。
 // 平台词表（`sites` → 中文页名）的唯一来源。告警里说「哪个后台掉登录」时必须用它，
 // 不许在这里另抄一份「生意参谋 / 阿里妈妈」—— 抄一份就是等着它与探测判据漂开。
 // `isSycmLoginWallUrl`：判「这一轮的整轮阻断是不是登录墙造成的」只此一处实现
@@ -159,23 +161,16 @@ export { expectedPagesForDailyBrowser, expectedPagesForShop };
 
 // ---------------------------------------------------------------- 目标日：只有一个来源
 
-// 允许的字面量是**闭集**：写错一个字母必须当场报错，不能静默落成别的日子
-// （`--date today` 这类「差不多能用」的取值一律不要 —— 每多一个，就多一种
-// 「调度器以为它算的是另一天」的可能，而日报链对日期是最敏感的）。
-export const TARGET_DATE_LITERALS = Object.freeze(['yesterday']);
+// 2026-10-06 搬进 `date-picker.mjs`（叶子），这里 import 之后**原样转出** —— 对外名字逐字不变。
+// 搬的理由见 `date-picker.mjs` 那一段：`runtime/escalation-plan.mjs`（派单计划）也要把定时任务里
+// 那句 `--date yesterday` 解析成同一天，而它**不能** import 本文件 —— 本文件已经 import 了它
+// （`classifyShopEscalation`），反向再 import 就成环。（口径与做法完全照 `expected-pages.mjs` 那次。）
+// **既 import 又 export**（不是 `export … from`）：本文件内部还在用 `resolveTargetDate`，
+// 而 `export … from` 只转不落地、不产生本地绑定 —— 只转的话那一处调用会直接 ReferenceError。
+import { resolveTargetDate, TARGET_DATE_LITERALS } from './date-picker.mjs';
 
-/**
- * 把 `--date` 的取值解析成 ISO 日期。**纯函数**（`now` 由调用方冻结一次，
- * 执行过程中不再取时间 —— 跨零点时「昨天」会漂到另一天，那是相对日期的最大风险）。
- */
-export function resolveTargetDate(raw, now = new Date()) {
-  const value = String(raw ?? '').trim();
-  if (TARGET_DATE_LITERALS.includes(value)) return shiftIso(shanghaiToday(now), -1);
-  if (/^\d{4}-\d{2}-\d{2}$/u.test(value)) return value;
-  const options = `YYYY-MM-DD 或 ${TARGET_DATE_LITERALS.join(' / ')}`;
-  if (!value) throw new Error(`missing --date：要给 ${options}（定时任务写 --date yesterday）`);
-  throw new Error(`invalid --date ${JSON.stringify(raw)}：要给 ${options}`);
-}
+export { resolveTargetDate, TARGET_DATE_LITERALS };
+
 
 // 阶段名 → 收信人看得懂的中文名。措辞**只在这一处决定**：告警正文里不许出现英文阶段名
 // （那是我们内部的叫法，收信人对着它不知道去点什么）。与 STAGE_NAMES 的完整性由用例双向互锁。

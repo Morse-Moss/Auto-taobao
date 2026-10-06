@@ -7,11 +7,13 @@
 import test from 'node:test';
 import { isWaitingOperatorAccountStatus, WAITING_OPERATOR_ACCOUNT } from './daily-report-shop-gates.mjs';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { AGENT_PREFERRED_CAUSES, buildEscalationPlan, mergeSummaries, resolveSummarySources } from './escalation-plan.mjs';
+import {
+  AGENT_PREFERRED_CAUSES, buildEscalationPlan, mergeSummaries, parseArgs, resolveSummarySources,
+} from './escalation-plan.mjs';
 
 const shopRecord = (over = {}) => ({ status: 'failed', ...over });
 
@@ -247,4 +249,51 @@ test('账号等待店铺不进入修复 agent 派单', () => {
   assert.equal(plan.failedCount, 0);
   assert.equal(plan.needsAgent, false);
   assert.deepEqual(plan.targets, []);
+});
+
+// ---------------------------------------------------------------------------
+// `--date` 的字面量（2026-10-06）
+//
+// 此前这里只收 `YYYY-MM-DD`，而定时任务 prompt 里写的是 `--date yesterday`
+// ⇒ 那条命令每次都落进「`--date` 要 YYYY-MM-DD」⇒ 读不到结论 ⇒ **第 ② 层降级
+//（唤醒修复 agent）静默空转**。同一处已复现 4 次，所以把它当判据钉住。
+// ---------------------------------------------------------------------------
+const NOW = new Date('2026-10-06T03:00:00Z'); // 上海 11:00 ⇒ 昨日＝2026-10-05
+
+test('parseArgs：定时任务那句 `--date yesterday` 必须被接受（第 ② 层降级的入口）', () => {
+  const args = parseArgs(['--date', 'yesterday', '--json'], NOW);
+  assert.equal(args.error, undefined, `被拒了 ⇒ 派单永远读不到结论：${args.error}`);
+  assert.equal(args.date, '2026-10-05');
+  assert.equal(args.dateInput, 'yesterday', '原始取值要留着：日志里要能看出它被解析成了哪天');
+  assert.equal(args.json, true);
+});
+
+test('parseArgs：显式日期原样通过；非法取值给 error（不抛、也不静默落成今天）', () => {
+  assert.equal(parseArgs(['--date', '2026-09-28'], NOW).date, '2026-09-28');
+  for (const bad of ['today', 'yestoday', '2026-9-1', '前天']) {
+    const args = parseArgs(['--date', bad], NOW);
+    assert.ok(args.error, `${bad} 不该被接受 —— 静默落成别的日子比报错贵得多`);
+    assert.match(args.error, /YYYY-MM-DD/u, '报错要写清允许的写法');
+    assert.match(args.error, /yesterday/u, '报错要顺手告诉人定时任务用的是哪个字面量');
+  }
+});
+
+test('parseArgs：缺日期且缺 --summary ⇒ error；`--summary` 那一档不凭空造日期', () => {
+  assert.match(parseArgs([], NOW).error, /--date 或 --summary/u);
+  const bySummary = parseArgs(['--summary', 'x.json'], NOW);
+  assert.equal(bySummary.error, undefined);
+  assert.equal(bySummary.date, null, '给 --summary 时不该自己编一个日期（结论文件里自带日期）');
+});
+
+test('接线（源码级）：日期口径**复用**链那一份，且不是 import 驱动（成环是禁止项）', () => {
+  const source = readFileSync(new URL('./escalation-plan.mjs', import.meta.url), 'utf8');
+  assert.match(source, /from '\.\.\/skills\/sycm-alimama-daily-report\/scripts\/date-picker\.mjs'/u,
+    '没复用叶子里的 resolveTargetDate ⇒ 「昨天是哪天」出现第二份实现，两份迟早漂开');
+  assert.match(source, /args\.date = resolveTargetDate\(args\.dateInput, now\);/u,
+    'import 了却没接在解析路径上 ＝ 一条永远绿的判据');
+  // ⚠️ 判据只这一条：**不许出现「从驱动 import」的语句**。驱动（run-multi-shop-day.mjs）
+  // import 了本模块，反向再 import 就成环；而成环之后两边都加不进新东西。
+  // 注释里提到它的名字是应该的（要写清为什么不能那么做），所以只扫 import 语句。
+  assert.equal(/^import[^\n]*run-multi-shop-day/mu.test(source), false,
+    '本模块出现了从驱动 import 的语句 ⇒ 成环');
 });
