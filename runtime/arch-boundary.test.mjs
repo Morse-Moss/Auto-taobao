@@ -51,6 +51,9 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/sycm-alimama-daily-report/scripts/check-login-shops-core.test.mjs',
   'skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs',
   'skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs',
+  // 2026-10-06 推广日报复用主线目标配置与 Feishu 客户端；两条入口的跨目录依赖显式登记。
+  'skills/sycm-alimama-daily-report/scripts/import-promotion-daily-report.mjs',
+  'skills/sycm-alimama-daily-report/scripts/run-promotion-daily-report.mjs',
   'skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs',
   'skills/sycm-alimama-daily-report/scripts/daily-report-audit.test.mjs',
   'skills/sycm-alimama-daily-report/scripts/date-picker.mjs',
@@ -232,3 +235,4 @@ test('守卫本身是活的：扫描确实读到了文件（否则「全绿」�
   assert.ok(deps.skillsToRuntime.length > 10 && deps.runtimeToSkills.length > 10,
     '两侧都应有实质依赖；若都变空，先确认不是扫描逻辑坏了');
 });
+

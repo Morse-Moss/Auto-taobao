@@ -89,6 +89,8 @@ export const PROFILES = Object.freeze({
       sourceView: 'vewwg0rhjo',
       inquiryTable: 'tblqF2YD2VfmKP4C',
     }),
+    // 推广日报目标必须由运营确认后登记；未登记时所有真实导入 fail-closed。
+    promotionDaily: null,
     // ⚠️ 2026-09-30 起：**新代码不要再用这一格**。商品数据已改成「月份 × 部门」分 base，见下方
     // PRODUCT_DATA_MONTH_BASES 与 `productDataTargetsForShop(店铺, 数据日期)`。
     // 这一格保留的原因有二：① 它就是「2026-09 × 销售1部」那个条目（测试断言两者同源，
@@ -208,6 +210,14 @@ export function keywordBaseToken(name) {
 export function dailyReportTargets(name) {
   const target = getProfile(name).dailyReport;
   if (!target) throw new Error(`Daily-report target is not configured for profile: ${resolveProfileName(name)}`);
+  return target;
+}
+
+export function promotionDailyTargets(name) {
+  const target = getProfile(name).promotionDaily;
+  if (!target) {
+    throw new Error(`Promotion-daily target is not configured for profile: ${resolveProfileName(name)}; confirm Base/table ids first`);
+  }
   return target;
 }
 

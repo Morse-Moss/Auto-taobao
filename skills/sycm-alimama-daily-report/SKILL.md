@@ -5,6 +5,12 @@ description: Collect the logged-in SYCM shop daily report, SYCM inquiry metrics,
 
 # 生意参谋 + 阿里妈妈运营日报
 
+## 推广日报（主线集成中）
+
+推广日报复用主线的阿里妈妈身份、浏览器端口、工作流锁、任务账本、下载任务管理、证据收据和 Feishu 客户端。新增业务差异只有关键词报表与人群报表的页面筛选、两类 CSV 合同和独立幂等键。
+
+当前只支持手工提交/取件与 dry-run 准备，不接定时。目标必须通过 `runtime/feishu-targets.mjs` 的 `promotionDailyTargets(profile)` 登记；未登记时真实导入直接停止，不回落到普通日报或商品数据表。
+
 Use the dedicated daily-report Edge profile and proxy. This workflow is specific to the merchant account and must not reuse the Xiaowangshen buyer profile.
 
 ## Runtime Contract
