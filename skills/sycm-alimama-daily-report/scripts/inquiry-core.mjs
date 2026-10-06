@@ -1,3 +1,25 @@
+/**
+ * 「这一天的源表里根本没有日期行」的**确定性标记**（2026-10-06 加）。
+ *
+ * 为什么必须是一个标记，而不是一句措辞：链的分类器（`run-multi-shop-day.mjs` 的
+ * `shopFailureCause`）靠标记把这一档与「兜底阶段失败」分开，而两者的处置**相反** ——
+ * 兜底那一档要叫人（成因不明，正是新问题该露头的地方），这一档的正确处置是「谁都不用动」
+ * （平台那一天没有这一行：重试变不出来，修页面变不出来，人也没法在平台上把它变出来）。
+ * 消费方 import 这个常量，不写字面量：两边各写一份，改名那天就会静默漂成「这一类又归回兜底」。
+ *
+ * 2026-10-05 `网林家居` 现场（同店、同实例、同一份代码，只换日期）：
+ *   `10-05` 日期列＝【暂无数据】⇒ 0 个日期行；`10-04` ⇒ 1 个日期行（当日询单人数＝1）；`10-03` ⇒ 又是【暂无数据】。
+ * ⇒ 日期生效、登录正常、身份对上、表没选错。**守卫判「不是一行就炸」本身是对的**，
+ * 错的是它把这三种完全不同的成因压成同一句 `must contain exactly one daily date row`：
+ * 措辞不可行动、自进化菜单答非所问（`STAGE_FAILED` ⇒ 派 `REAPPLY_DATES`，而它是报告者不是执行者）、
+ * 分诊把一件不需要人做的事落进「要人处理」。
+ *
+ * ⚠️ 判据边界：**「暂无数据」≠「询单量 0」**。询单表历史上有 122 行 `询单量 = 0`，
+ * 那些都是从**带日期行的源表**写出来的（0 会渲染成一行 `0`）。空态与 0 是两种状态，
+ * 不许把 0 当成空态处理，也不许把空态当成 0 写进底单。
+ */
+export const SOURCE_NO_ROW_FOR_DATE_TOKEN = 'SOURCE_NO_ROW_FOR_DATE';
+
 function cell(value) {
   return String(value ?? '').trim().replace(/\s+/gu, ' ');
 }
@@ -20,6 +42,25 @@ function integer(value, label) {
   return Number(raw);
 }
 
+/**
+ * 「日期行不是恰好一行」时的那句话。**纯函数**，因此这句话的措辞与它带出的现场值都能离线断言。
+ *
+ * 三件事必须同时成立（2026-10-06 修 ㉕）：
+ *   ① **把现场值带出来**（日期列前若干行原值 + 日期行数 + 期望日）。原先那句只有一句英文判据，
+ *      读证据的人想知道「是空态还是选到了区间」只能再跑到那台机器上复现一次 —— 而那是可避免的成本；
+ *   ② **该日无行单独给标记**（`SOURCE_NO_ROW_FOR_DATE_TOKEN`），不再与「结构异常」共用一句；
+ *   ③ **结构异常那一支保持原样**（`>1` 行确实是异常：日期筛选可能被选成了区间，那要人/agent 去看）。
+ */
+export function describeDateRowGap({ rows = [], dateIndex = -1, reportDate = null, count = 0 } = {}) {
+  const observed = rows.map(row => cell(row[dateIndex])).filter(Boolean).slice(0, 12);
+  const facts = `日期列原值=${JSON.stringify(observed)}｜日期行数=${count}｜期望=${reportDate}`;
+  if (count === 0) {
+    return `${SOURCE_NO_ROW_FOR_DATE_TOKEN} 这一天的源表里没有日期行`
+      + `（生意参谋「询单到付款」对该店该日返回的是空态，不是读不到）｜${facts}`;
+  }
+  return `inquiry source must contain exactly one daily date row｜${facts}`;
+}
+
 export function extractInquiryMetrics(table, reportDate, options = {}) {
   const peerBenchmarkRequired = options.peerBenchmarkRequired !== false;
   const headers = table?.headers ?? [];
@@ -27,7 +68,9 @@ export function extractInquiryMetrics(table, reportDate, options = {}) {
   const dateIndex = exactIndex(headers, '日期', 'header');
   const inquiryIndex = exactIndex(headers, '当日询单人数', 'header');
   const datedRows = rows.filter(row => /^\d{4}-\d{2}-\d{2}$/u.test(cell(row[dateIndex])));
-  if (datedRows.length !== 1) throw new Error('inquiry source must contain exactly one daily date row');
+  if (datedRows.length !== 1) {
+    throw new Error(describeDateRowGap({ rows, dateIndex, reportDate, count: datedRows.length }));
+  }
   const dateRow = exactRow(rows, dateIndex, reportDate, 'date');
   const peerRows = rows.filter(row => cell(row[dateIndex]) === '同行同层均值');
   if (peerRows.length > 1) throw new Error(`expected one benchmark row 同行同层均值, got ${peerRows.length}`);

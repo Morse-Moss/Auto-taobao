@@ -99,3 +99,14 @@ test('duplicate 那条刻意是 silent：每天为「今天已经跑过了」喊
   const plan = lookupRemediation('DUPLICATE_TARGET');
   assert.equal(plan.notifyLevel, 'silent');
 });
+
+test('平台无此行那条也是 silent（2026-10-06 加）：它是不叫人**也**不驻留的判据', () => {
+  const plan = lookupRemediation('SOURCE_NO_ROW_FOR_DATE');
+  assert.equal(plan.known, true);
+  assert.equal(plan.notifyLevel, 'silent');
+  // `notifyLevel: 'silent'` 在本仓是**两件事**共用的一条判据：不分诊给人 + 不驻留
+  //（后者见 `run-multi-shop-day.mjs` 的 `buildRepairRequest.noActionRequired` 与
+  //  `runtime/hold-and-resume-plan.mjs` 的 `unfixableShopsOf`）。落成 human 的代价
+  // 不止一条告警，还有每天早上白挂几小时 —— 所以这一条不许被「顺手改成 human」。
+  assert.match(plan.why, /变不出来/u, '要说清「谁都变不出这一行」，否则下一个人会以为可以重试出来');
+});

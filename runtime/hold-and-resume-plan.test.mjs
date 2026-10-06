@@ -154,6 +154,25 @@ test('unfixableShopsOf：status=ok 的店不进（修好了就不该再占用修
   assert.deepEqual(unfixableShopsOf(summary), []);
 });
 
+test('unfixableShopsOf：「谁都不用动」的失败不进这一路（否则白挂几小时等一个不存在的人）', () => {
+  // 2026-10-05 `网林家居`：平台那一天没有那一行（`SOURCE_NO_ROW_FOR_DATE`）⇒ 修复表没有候选 ⇒
+  // `gaveUp` 随之非空 ⇒ 下面那两条判据**同时**成立，于是它被算成「脚本自修不动」而驻留 4 小时。
+  // 闸门是链写进修复请求单的 `noActionRequired`（值取自分诊表的 `notifyLevel === 'silent'`）。
+  const noAction = { status: 'failed', autoRepair: { gaveUp: '成因 X 本来就不需要任何人处理（不猜动作）' },
+    repairRequest: { cause: 'SOURCE_NO_ROW_FOR_DATE', candidates: [], noActionRequired: true } };
+  assert.deepEqual(unfixableShopsOf({ shops: { 网林家居: noAction } }), [],
+    '「不用处理」被算成「修不动」⇒ 驻留条件凭空成立');
+  // 反面：**同形状但没标**的那一条必须仍然进（缺了这一步，上面那条就成了「永远返回空」的假绿）。
+  const real = { status: 'failed', autoRepair: { gaveUp: '候选动作已全部试过' },
+    repairRequest: { cause: 'STAGE_FAILED', candidates: [] } };
+  assert.deepEqual(unfixableShopsOf({ shops: { 网林家居: real } }), ['网林家居']);
+  // 只有显式 `true` 才算：`false` 与缺字段都不许被当「不用处理」。
+  for (const value of [false, undefined, null, 'true']) {
+    const record = { status: 'failed', repairRequest: { candidates: [], noActionRequired: value } };
+    assert.deepEqual(unfixableShopsOf({ shops: { X: record } }), ['X'], `noActionRequired=${JSON.stringify(value)} 不该被当「不用处理」`);
+  }
+});
+
 test('holdDecision 扩容：unfixableShops 与 humanCauses **取并集**，且去重、保持顺序', () => {
   const failed = [
     { shop: '科塔淘宝', cause: 'PAGE_OBSTRUCTED', stage: 'promotion-submit' },

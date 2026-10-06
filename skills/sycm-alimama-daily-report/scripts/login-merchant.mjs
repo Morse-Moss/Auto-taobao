@@ -63,7 +63,8 @@ import { BROWSER_PROFILES, PROJECT_PORTS, SHOP_BROWSERS, shopBrowserKeys } from 
 import {
   CONFIRM_SCREEN_EXPRESSION, FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION, LOGIN_URL_CANDIDATES, SITES,
   absentSites, alertForRun,
-  captchaVisible, centerOf, detectLoginDetour, expectedMemberFor, finalLoginVerdict, isTaobaoLoginUrl,
+  agreementSatisfied, captchaVisible, centerOf, detectLoginDetour, expectedMemberFor, finalLoginVerdict,
+  isTaobaoLoginUrl, judgeAgreement,
   judgeFilled, judgeShopTarget, judgeSubmitOutcome, loggedOutSites, loginFormVisible, needsHuman, parseArgs,
   profileForShop, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
@@ -73,11 +74,38 @@ const delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 // 协议文本（2026-09-29 加）：自动同意要留下「同意了哪一份」的凭据，而文本**只从页面上取**。
 // 在这里内联一份「我已阅读并同意…」等于伪造凭据：平台改了协议，回执仍写着旧文本。
 // 取的是协议那一行的可见文本，去掉首尾空白，截断在调用侧做（回执不该被一段长文本撑爆）。
+// 2026-10-06 改：**不再写死 `#fm-agreement`**。实测那一轮（10-05 真跑回执）里
+// `agreement.text` 是 `null` —— 不是「页面没有协议」，而是这个 id 当时已经不在 DOM 里了。
+// 10-06 在一次性实例上把结构量清楚了（`evidence/login-agreement-probe-2026-10-06/`）：
+//   `INPUT#fm-agreement-checkbox` → 父 `DIV.fm-agreement.resize-window`（含整行文本）
+//   → `DIV.login-blocks.block10` → `FORM#login-form`；
+//   而 `label.fm-agreement-text` 是勾选框的**兄弟**，**不是**祖先（`closest('label')` 返回 null）。
+// ⇒ 文本来源改成「从勾选框本身往上找容器」，`#fm-agreement` 只作为旧页面的兜底之一。
+// 判据不变：文本**只从页面取**，取不到就如实写 null（不在这里内联一份假的协议文本）。
 const AGREEMENT_TEXT = `(() => {
-  const el = document.querySelector('#fm-agreement');
-  if (!el) return null;
-  const line = el.closest('label') || el.parentElement || el;
-  return String(line.textContent || '').replace(/\\s+/g, ' ').trim() || null;
+  const box = document.querySelector('#fm-agreement-checkbox');
+  if (!box) return null;
+  const byLegacyId = document.querySelector('#fm-agreement');
+  const labelFor = box.id ? document.querySelector('label[for="' + CSS.escape(box.id) + '"]') : null;
+  const sources = [byLegacyId, box.parentElement, labelFor, box];
+  for (const el of sources) {
+    const text = String(el?.textContent ?? '').replace(/\\s+/g, ' ').trim();
+    if (text) return text.slice(0, 500);
+  }
+  return null;
+})()`;
+
+// 勾选框的**可点目标**（2026-10-06 加）。为什么要有它：
+// 10-06 实测坐标点击在这个页面上勾不上（点勾选框中心、点可见 label 的中心，两次都没生效），
+// 而 DOM `.click()` 一次就成。所以这一步的次序是「先坐标点击（旧页面的通路）→
+// 仍没勾上就 DOM 点击（新页面的通路）」。DOM 点击不接受坐标，它点的是**元素本身**，
+// 所以这里只解析「点哪个元素」，不解析坐标 —— 页面改版时这一条比坐标稳。
+const AGREEMENT_DOM_CLICK = `(() => {
+  const box = document.querySelector('#fm-agreement-checkbox');
+  if (!box) return JSON.stringify({ clicked: false, why: 'no-checkbox' });
+  const before = !!box.checked;
+  box.click();
+  return JSON.stringify({ clicked: true, before, after: !!box.checked });
 })()`;
 
 // 通知出口：复用既有 CLI，不新造一条投递链（不另写一份 app_id/secret 的读法）。
@@ -547,27 +575,61 @@ async function attempt() {
     // 自动替账号接受一份法律文本这件事要能被事后核对，所以现在把协议文本与同意时刻写进回执
     // （`login.agreement`）。文案取自页面自身（`#fm-agreement` 那一行的可见文本），不在这里另抄一份——
     // 抄一份的话，平台改协议而回执仍写着旧文本，那份记录就成了假凭据。
+    const agreementBefore = state.agreement ?? null;
     let agreementText = null;
-    if (state.agreement) {
+    if (agreementBefore) {
       agreementText = await evalOn(args, targetId, AGREEMENT_TEXT).catch(() => null);
     }
-    if (state.agreement && state.agreement.checked === false) {
+    // 勾协议：**先坐标点击（2026-09-23 实测有效的旧通路）→ 仍没勾上就 DOM 点击（2026-10-06 实测有效）**。
+    // 两条都留着，不拿今天的实测去删掉昨天的通路 —— 这一页在这两个日期之间改过，
+    // 删掉任一条都会在它改回去的那天静默失效（理由同 core 的 `AGREEMENT_VERDICTS` 头注）。
+    let agreementVia = agreementBefore ? (agreementBefore.checked === true ? 'already' : null) : null;
+    if (agreementBefore && agreementBefore.checked !== true) {
       const point = centerOf(state, 'agreement');
       if (point) {
         await clickPoint(args, targetId, point[0], point[1]);
         await delay(1200);
         state = JSON.parse(await evalOn(args, targetId, FORM_STATE));
+        if (state.agreement?.checked === true) agreementVia = 'clickPoint';
+      }
+      if (state.agreement?.checked !== true) {
+        // DOM 点击只负责「点一下」，成不成由紧随其后的**回读**判 —— 不在这里自己说自己成了。
+        await evalOn(args, targetId, AGREEMENT_DOM_CLICK).catch(() => null);
+        await delay(800);
+        state = JSON.parse(await evalOn(args, targetId, FORM_STATE));
+        if (state.agreement?.checked === true) agreementVia = 'domClick';
       }
     }
+    const agreementVerdict = judgeAgreement({
+      before: agreementBefore, after: state.agreement ?? null, attempted: agreementVia !== null,
+    });
     receipt.login.agreementChecked = state.agreement?.checked ?? null;
-    receipt.login.agreement = state.agreement
+    // **回执不许写没发生过的同意**。2026-10-05 那份回执写的是 `autoAccepted:true` 而
+    // `checkedAfter:false` —— 一条假凭据，而它不会报错。现在两个字段只在**回读确实为 true** 时才写。
+    const agreementOk = agreementSatisfied(agreementVerdict);
+    receipt.login.agreement = agreementBefore
       ? {
-        autoAccepted: true,
-        agreedAt: new Date().toISOString(),
-        checkedAfter: state.agreement.checked ?? null,
+        autoAccepted: agreementOk,
+        agreedAt: agreementOk ? new Date().toISOString() : null,
+        checkedBefore: agreementBefore.checked ?? null,
+        checkedAfter: state.agreement?.checked ?? null,
+        via: agreementVia,
+        verdict: agreementVerdict,
         text: agreementText ? String(agreementText).slice(0, 500) : null,
       }
       : null;
+    // **协议没勾上就不提交。** 为什么是闸门而不是提示：不勾就点登录，平台**静默**拒掉，
+    // 回执于是写成「可能是密码不对」把排查带偏（2026-10-05 真机：一整轮 + 一条误导告警），
+    // 而同一份回执里的 `autoAccepted:true` 还会让事后核对的人以为凭据是真实的。
+    if (agreementVerdict === 'CLICKED_BUT_STILL_UNCHECKED' || agreementVerdict === 'NOT_CLICKABLE') {
+      receipt.verdict = 'AGREEMENT_REQUIRED';
+      // detail 只补**这一次**的具体情况（措辞纪律见 core 的 `REASON_BY_VERDICT` 头注：
+      // 静态原因与 detail 各自都通顺、合起来才是病）。所以这里不重说「协议没勾上」，
+      // 只说「系统因此做了什么」与「不勾会有什么后果」。
+      receipt.detail = '不勾就点「登录」，平台会静默拒掉，然后被记成「密码不对」——'
+        + '所以系统停在这里没有提交，那个页面原样留着等你动手。';
+      return finish(receipt, 2);
+    }
     const submitPoint = centerOf(state, 'submit');
     if (!submitPoint) {
       receipt.verdict = 'STOP_AND_ALERT';

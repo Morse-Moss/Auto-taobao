@@ -15,6 +15,81 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.7.12] - 2026-10-06
+
+用户指令（原话）：「那你推荐的改，然后网林这个你告诉我缺什么？」—— 指的是 2026-10-05 那一轮
+（共用窗口掉登录 + `网林家居` 回填失败）复盘之后我列出的待修项。本版修其中两条，并撤回一条（见末节）。
+
+### 修：协议没勾上却照样提交，还写下一份「同意过」的假凭据（㉔）
+- **现象**（2026-10-05 真跑回执 `evidence/daily-job-2026-10-05/job.log`）：
+  `agreementChecked:false`，却照样点了「登录」；同一份回执里写着
+  `agreement.autoAccepted:true, agreedAt:…` ⇒ **一条假的同意凭据**。平台静默拒掉之后
+  报出来的是 `LOGIN_NOT_CONFIRMED`「页面还停在登录页（可能是密码不对）」—— 方向正好反。
+- **修法**：
+  1. `login-merchant-core.mjs` 新增纯判据 `AGREEMENT_VERDICTS` / `judgeAgreement` / `agreementSatisfied`
+     （五个出口各对应一个处置：页面没有那个框 / 本来就勾着 / 点了勾上了 / 点不着 / 点了没勾上）；
+     `VERDICTS` 与 `VERDICTS_NEEDING_HUMAN` 各加 `AGREEMENT_REQUIRED`，
+     `ACTION_BY_VERDICT` / `REASON_BY_VERDICT` 各加它的专属文案（不并进 `LOGIN_NOT_CONFIRMED`：
+     那一条让人「改密码」，而这里的账号密码一个字都没错）。
+  2. `login-merchant.mjs`：协议勾选走**两条通路** —— 先坐标点击（2026-09-23 实测有效），
+     没勾上再 DOM `.click()`（2026-10-06 实测有效），每次点击后**回读**；
+     `autoAccepted` / `agreedAt` 只在**回读确实为 `true`** 时才写；
+     `CLICKED_BUT_STILL_UNCHECKED` / `NOT_CLICKABLE` ⇒ `AGREEMENT_REQUIRED`
+     且**在取「登录」按钮坐标之前返回 exit 2**（不提交）。
+  3. `AGREEMENT_TEXT` 不再写死 `#fm-agreement`（10-05 那份回执里 `text:null` 就是这个 id 已不在
+     DOM 里）：改成从 `#fm-agreement-checkbox` 往上找容器取文本，`#fm-agreement` 只作旧页面兜底。
+  4. `check-login-shops-core.mjs` 的 `LOGIN_FAIL_TEXT` 补 `AGREEMENT_REQUIRED`
+     （漏了它，体检报告里会印出内部代号 —— 那条覆盖判据在同文件的用例里）。
+- **为什么两条通路都留着**（不拿今天的实测删昨天的通路）：`evidence/login-agreement-probe-2026-10-06/`
+  在一台一次性实例上实测 —— 坐标点勾选框中心（539,586）与点可见文字中心（727,596）**都**不改
+  `checked`，DOM `.click()` 才改；而 2026-09-23 的证据恰好相反（坐标点击有效）。
+  页面在这两个日期之间改过 ⇒ 删掉任一条都会在它改回去的那天静默失效。
+- **验证程度**：离线用例（含两条接线判据：闸门必须在点「登录」之前、条件的**文本**必须真的读判据 ——
+  只查「赋值在不在」会被 `if (false)` 骗过，这一点是突变验证当场抓到的）＋ 11 处突变验证
+  （`evidence/fix-agreement-inquiry-2026-10-06/mutation-verify.txt`）。**未经真机复测**。
+
+### 修：「这一天的源表里没有日期行」被归成兜底类失败（㉕）
+- **现象**（2026-10-05 `网林家居`）：`backfill` 抛
+  `inquiry source must contain exactly one daily date row`。三种完全不同的成因
+  （该日无行 / 选到了区间 / 表里有两行）共用这一句 ⇒ ① 措辞不可行动；
+  ② 自进化菜单按 `STAGE_FAILED` 派 `REAPPLY_DATES`（而它是**报告者不是执行者**）⇒ 白跑一轮；
+  ③ 分诊落「要人处理」＋驻留判据落「脚本自修不动」⇒ 为一件不需要人做的事把窗口白挂几小时。
+- **定案**（同店同实例同代码，只换日期）：`10-04` ⇒ 1 个日期行；`10-05` 与 `10-03` ⇒
+  空态「暂无数据」、0 个日期行 ⇒ 日期生效、登录正常、身份对上、表没选错。
+  **守卫本身是对的**，错的是归因。口径：**「暂无数据」≠「询单量 0」**（后者会渲染成一行 `0`，
+  历史上有 122 行）。
+- **修法**：
+  1. `inquiry-core.mjs` 新增 `SOURCE_NO_ROW_FOR_DATE_TOKEN` 与纯函数 `describeDateRowGap`：
+     0 个日期行 ⇒ 带标记 + **把现场值带出来**（日期列前 12 行原值、日期行数、期望日）；
+     `>1` 行仍走旧那句（结构异常，要人/agent 去看）。
+  2. `run-multi-shop-day.mjs`：`FAILURE_CAUSES` 加 `SOURCE_NO_ROW_FOR_DATE`；`shopFailureCause`
+     认那个标记（import 常量，不写字面量）；补 `REASON_BY_CAUSE` / `ACTION_BY_CAUSE` 两条文案
+     （下一步明写「不用重跑、也不用找技术同学」——兜底那句的最后一句恰恰是「转给技术同学」）。
+  3. `remediation-table.mjs` 给它 `notifyLevel: 'silent'`（与 `DUPLICATE_TARGET` 同形：不叫人）；
+     顺手把 `notifyLevel` 这条既有判据**明确**成「也是不驻留的判据」，
+     由 `buildRepairRequest.noActionRequired` 落进修复请求单。
+  4. `runtime/hold-and-resume-plan.mjs` 的 `unfixableShopsOf` 跳过
+     `repairRequest.noActionRequired === true` 的店（原先「空菜单 ⇒ gaveUp 非空 ⇒ 算修不动」，
+     对「谁都不用动」那两类同样成立 ⇒ 驻留 4 小时等一个不存在的人）。
+  5. `autoRepairAndRetry` 的空菜单 `gaveUp` 措辞分两档（「本来就不需要任何人处理」≠「交给人」）。
+- **验证程度**：离线用例（分类器、`describeDateRowGap`、`noActionRequired` 正反两面、
+  驻留闸门正反两面、告警文案样例表覆盖）＋ 同一份突变验证脚本。**仅离线判据**。
+
+### 撤回：原计划的「给共用商家窗口登记一个期望账号」（㉓）—— 实测否掉了它
+原判据 `expectedMemberFor({shop:null})` 返回 `null` ⇒ `judgeFilled` 恒为 `UNKNOWN` ⇒
+共用窗口无论填进哪家店的账号都照样提交。本打算给它登记一个期望账号，动手前核对登记表发现：
+`里可林淘宝` 现在的 `alimamaMemberName` 是 **`里可林家居:小嘉`**（2026-09-30 用户账号表），
+而 2026-10-05 那份**跑成了的回执**里，共用窗口填进去的是 **`里可林家居:阿彦`**。
+⇒ 按登记表登记期望值，会把一条**正在工作的通路**当场判成 `WRONG_ACCOUNT` 并拒绝提交（假红）。
+且用户 2026-10-05 口径是「账号要换就换」⇒ 这个期望值本身不稳定。
+**故不修**，维持「共用窗口没有期望值、回执里如实写 `guardBasis:no_expected_member`」。
+
+### 未动：商品数据链的失败告警仍输出技术串（㉒）
+`scripts/run-product-data-job.mjs` 的 `notifyFailure` 仍把 `机器`、`D:\Retire\…` 盘符路径、
+`job.log` / `collection.json` 文件名与 `FAILED/UNCLASSIFIED` 内部代号渲染给业务收信人。
+**本版不动它**：那是另一个开发线程正在写的文件（工作区里已有它未提交的改动），
+按本仓纪律「别的会话在改的文件一个字都不要碰」，改法已备好（4 个字段），等腾出手再说。
+
 ## [1.7.11] - 2026-09-30
 
 用户指令（原话）：「先修分批的问题，然后你监督着去跑没成功那几家，分析到底是什么问题」。

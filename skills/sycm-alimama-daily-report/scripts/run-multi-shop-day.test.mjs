@@ -7,6 +7,10 @@ import test from 'node:test';
 import { BROWSER_IDS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
+// 「这一天的源表里没有日期行」这个机器标记的**唯一来源**。样例里必须用它而不是写死字面量 ——
+// 理由同下面 PAGE_OBSTRUCTED 那条注释：写死的话，改名那天样例仍然「是」那一类，
+// 而分类器已经不认得它了 ⇒ 用例全绿而什么都没守住（2026-10-06 加这一类时踩的正是这个点）。
+import { SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inquiry-core.mjs';
 import { triageFailures } from './remediation-table.mjs';
 import { WAITING_OPERATOR_ACCOUNT_SHOPS, waitingOperatorAccountRecord } from '../../../runtime/daily-report-shop-gates.mjs';
 import { planRepair } from './repair-actions.mjs';
@@ -702,6 +706,42 @@ test('告警：PAGE_OBSTRUCTED 的判据是那个**机器标记**，不是措辞
   assert.deepEqual([...HUMAN_REQUIRED_CAUSES], ['NEEDS_LOGIN', 'PAGE_OBSTRUCTED']);
 });
 
+test('告警：SOURCE_NO_ROW_FOR_DATE 的判据是那个**机器标记**，不是措辞猜测', () => {
+  // 与上面那条同形：表格里有没有样例，和分类器认不认得出，是两件事。
+  assert.equal(shopFailureCause(failedAt('backfill',
+    `Error: ${SOURCE_NO_ROW_FOR_DATE_TOKEN} 这一天的源表里没有日期行｜日期列原值=["暂无数据"]｜日期行数=0｜期望=2026-10-05`)),
+  'SOURCE_NO_ROW_FOR_DATE');
+  // 反面①：**结构异常**不带标记时必须落回兜底 —— 那是真要看的东西（日期筛选可能被选成了区间），
+  // 不许被这一条吞掉。这一句正是修之前那句（现在还用于 >1 行的情形）。
+  assert.equal(shopFailureCause(failedAt('backfill',
+    'Error: inquiry source must contain exactly one daily date row｜日期列原值=["2026-10-04"]｜日期行数=1｜期望=2026-10-05')),
+  'STAGE_FAILED');
+  // 反面②：它不叫人（`HUMAN_REQUIRED_CAUSES` 那一集是驻留的唯一理由，进去＝白挂几小时）。
+  assert.equal(HUMAN_REQUIRED_CAUSES.includes('SOURCE_NO_ROW_FOR_DATE'), false);
+});
+
+test('buildRepairRequest：不需任何人处理的成因必须自己说出来（那是不驻留的判据）', () => {
+  // 2026-10-05 `网林家居` 的事故链：平台无行 ⇒ 修复表没有候选 ⇒ `gaveUp` 非空 ⇒
+  // `unfixableShopsOf` 把它当成「脚本自修不动」⇒ 驻留 4 小时等一个不存在的人。
+  // 闸门是单子上的 `noActionRequired`，而它的值取自分诊表的 `notifyLevel === 'silent'`（一处来源）。
+  const dir = mkdtempSync(path.join(tmpdir(), 'sycm-repair-'));
+  const noAction = buildRepairRequest({
+    shopKey: SHOP, stage: 'backfill', error: `Error: ${SOURCE_NO_ROW_FOR_DATE_TOKEN} 这一天的源表里没有日期行`,
+    logDir: dir, writeFile: writeFileSync,
+  });
+  assert.equal(noAction.cause, 'SOURCE_NO_ROW_FOR_DATE');
+  assert.equal(noAction.noActionRequired, true, '不需处理的成因没标出来 ⇒ 会被判成「脚本自修不动」而驻留');
+  assert.deepEqual(noAction.candidates, [], '修复表里不许给它候选（有候选就会被拿去改真实页面）');
+  // 反面：兜底类失败**不许**被标成「不用处理」—— 那会把真问题静默放掉。
+  // （这就是「两件事共用一条判据」的另一半：改错了方向是一条假绿，而不是一条假红。）
+  const real = buildRepairRequest({
+    shopKey: SHOP, stage: 'promotion-fetch', error: 'Error: expected one 生成成功 row, got 0',
+    logDir: dir, writeFile: writeFileSync,
+  });
+  assert.equal(real.cause, 'STAGE_FAILED');
+  assert.equal(real.noActionRequired, false);
+});
+
 test('告警：文案里不许出现英文阶段名、结论代号、内部术语，也不许出现路径/命令行/主机名/账号名', () => {
   const jargon = ['判据', '幂等', 'fail-closed', 'capability', '会话', '风控'];
   const blockedDetail = '目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。';
@@ -722,6 +762,13 @@ test('告警：文案里不许出现英文阶段名、结论代号、内部术�
     PAGE_OBSTRUCTED: { round: { healthCheckDaily: { ok: true } },
       shops: { 科塔淘宝: failedAt('promotion-submit', `[遮挡] 关后回读：全屏层剩 2 个 ⇒ 没关掉\n${OVERLAY_NOT_DISMISSED_TOKEN}\n`) } },
     STAGE_FAILED: { round: { healthCheckDaily: { ok: true } }, shops: { 里可林淘宝: failedAt('promotion-fetch', 'Error: expected one 生成成功 row, got 0') } },
+    // 2026-10-06 加。样例同样必须**带上那个机器标记**（用常量，不写死字面量）——
+    // 不带它就会被归回 `STAGE_FAILED`，这一条于是变成「用兜底文案考兜底文案」。
+    // 现场取自 2026-10-05 `网林家居` 的真机输出：日期列只有空态、0 个日期行。
+    SOURCE_NO_ROW_FOR_DATE: { round: { healthCheckDaily: { ok: true } },
+      shops: { 网林家居: failedAt('backfill', `Error: ${SOURCE_NO_ROW_FOR_DATE_TOKEN} 这一天的源表里没有日期行`
+        + `（生意参谋「询单到付款」对该店该日返回的是空态，不是读不到）`
+        + `｜日期列原值=["暂无数据","汇总值"]｜日期行数=0｜期望=2026-09-19`) } },
   };
   assert.deepEqual(Object.keys(cases).sort(), [...FAILURE_CAUSES].sort(),
     '每一条结论都要在这里被渲染一次（漏一条 = 新一类术语味告警没人守）');

@@ -95,6 +95,10 @@ import { describeIdentity, expectArgs, formatArgv, shopIdentity } from './shop-i
 // 消费方（`shopFailureCause`）import 它、不写字面量：两边各写一份，改名那天就会静默漂移成
 // 「这一类永远归到兜底」，而告警照发、看起来一切正常。
 import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
+// 「这一天的源表里根本没有日期行」这个机器标记的**唯一来源**（产出在 inquiry-core 的
+// `describeDateRowGap`）。消费方 import 它、不写字面量 —— 理由同上：两边各写一份，
+// 改名那天会静默漂成「这一类又归回兜底」，而兜底那一档会叫人 + 驻留，代价是白挂几小时。
+import { SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inquiry-core.mjs';
 // 「数据已核对、仅截图缺失」这个退出码的**唯一来源**（定义在 readback 那边）。
 // 同样不写字面量 4：两边各写一份，哪天改了就会静默失配成「又变回真故障」。
 import { SCREENSHOT_INCOMPLETE_EXIT_CODE } from './readback-daily-report.mjs';
@@ -105,7 +109,7 @@ import { captureFailureState } from './failure-perception.mjs';
 // 「已知问题 → 处置」的记忆表（2026-09-28）。分诊用它决定「这次失败要不要打扰人」。
 // **它的键被互锁钉在 `FAILURE_CAUSES` 上**（见 remediation-table.test.mjs 第 1 条），
 // 所以这里 import 它不会引入第二套分类。
-import { triageFailures } from './remediation-table.mjs';
+import { triageFailures, lookupRemediation } from './remediation-table.mjs';
 // ⑨b（2026-09-29）：告警闸门要问「这一家该不该先交给 agent」，判据必须与派单**同源**，
 // 不许在这里另写一份「哪些成因算 agent 的活」—— 两份判据漂开的那天，
 // 会出现「派单说交给 agent、告警说快叫人」这种自相矛盾，而两边都各自看起来正常。
@@ -209,7 +213,7 @@ export function stageNumber(key, stage) {
  */
 export const FAILURE_CAUSES = Object.freeze(
   ['ROUND_BLOCKED', 'ROUND_LOGIN_WALL', 'SHOP_BLOCKED', 'NEEDS_LOGIN', 'DUPLICATE_TARGET', 'SHOP_FUNC_NO_PERMISSION',
-    'PAGE_OBSTRUCTED', 'STAGE_FAILED'],
+    'PAGE_OBSTRUCTED', 'SOURCE_NO_ROW_FOR_DATE', 'STAGE_FAILED'],
 );
 
 /**
@@ -223,6 +227,8 @@ export const FAILURE_CAUSES = Object.freeze(
  * 刻意不在里面：
  *   · `SHOP_FUNC_NO_PERMISSION` —— 要人去生意参谋把「店铺绩效」的订购找回来，不是浏览器里的事；
  *   · `DUPLICATE_TARGET` —— 不用做任何事（那天飞书里已经有数据）；
+ *   · `SOURCE_NO_ROW_FOR_DATE`（2026-10-06 加）—— 同样**不用做任何事**：平台那一天没有这一行，
+ *     重试/修页面/人去平台都变不出来。把它放进驻留等于每天早上白挂几小时等一个不存在的人；
  *   · `STAGE_FAILED` —— 兜底类，成因不明；对它开驻留等于「每天挂几小时等一个没人知道要不要人的东西」；
  *   · `ROUND_BLOCKED` —— 它**不是逐店**结论。整轮被挡要不要人由 `runtime/hold-and-resume-plan.mjs`
  *     的 `holdDecision` 单独判（那两种成因 —— 掉登录 / 页面真缺 —— 都只有人能解除，所以一律算需要人）。
@@ -258,6 +264,17 @@ export function shopFailureCause(record) {
   // 为什么必须单列：兜底那句的下一步是「这一轮不需要你在浏览器里做什么」，而这一类的下一步
   // 恰恰**相反** —— 要人去把那一层关掉（2026-09-26 早上科塔就是这么被报错的）。
   if (String(r.failureOutput ?? '').includes(OVERLAY_NOT_DISMISSED_TOKEN)) return 'PAGE_OBSTRUCTED';
+  // 2026-10-06 加：源表里**这一天的日期行一个都没有**（空态），不是「读不到」、更不是「数据是 0」。
+  // 判据是**确定性标记**（`inquiry-core` 的 `describeDateRowGap` 只在「0 个日期行」这一种情况下写它），
+  // 不是靠在这里猜措辞。
+  //
+  // 为什么必须单列（2026-10-05 `网林家居` 现场）：并进 `STAGE_FAILED` 的代价是三重的 ——
+  //   ① 告警照兜底那句说「这一轮不需要你在浏览器里做什么…把这条消息转给技术同学」，而技术同学
+  //      到了现场也做不了任何事（平台那一天就是没有这一行）；
+  //   ② 自进化菜单按 `STAGE_FAILED` 派 `REAPPLY_DATES`，而那个动作**是报告者不是执行者** ⇒ 白跑一轮；
+  //   ③ 分诊按 `STAGE_FAILED` 落「要人处理」+ 驻留判据按「空菜单」落「脚本自修不动」⇒
+  //      为一件不需要人做的事把窗口白挂几小时。
+  if (String(r.failureOutput ?? '').includes(SOURCE_NO_ROW_FOR_DATE_TOKEN)) return 'SOURCE_NO_ROW_FOR_DATE';
   if (r.failedStage === 'health-check') return 'SHOP_BLOCKED';
   if (r.failedStage === 'push'
     && /duplicate daily report row exists/u.test(String(r.failureOutput ?? ''))) return 'DUPLICATE_TARGET';
@@ -312,6 +329,17 @@ export function buildRepairRequest({ shopKey, stage = null, error = null, percep
     candidates: plan.candidates,
     planNote: plan.note,
     stageHint: plan.stageHint,
+    // 2026-10-06 加：**这一条失败需不需要任何人做任何事**。
+    //
+    // 判据**不在这里另立一套**，而是直接问分诊表：`notifyLevel === 'silent'` 的语义本就是
+    // 「不用做任何事」（现在只有 `DUPLICATE_TARGET` 与新加的 `SOURCE_NO_ROW_FOR_DATE` 两档）。
+    // ⇒ 「不叫人」与「不驻留」是**同一个判断**，只有一处来源，不会漂。
+    //
+    // 为什么要落进这张单子：这是运行期唯一的跨目录通道。`unfixableShopsOf`
+    // （`runtime/hold-and-resume-plan.mjs`）跑在 runtime 侧，它**不能** import skills 的分诊表，
+    // 只能读 summary 里的字段；而它原先的判据是「`gaveUp` 非空 **或** 候选为空」⇒
+    // 一条「谁都不用动」的成因会被算成「脚本自修不动」⇒ 驻留 4 小时等一个不存在的人。
+    noActionRequired: lookupRemediation(cause).notifyLevel === 'silent',
     // 修完要重试哪一步：失败的那一步。认不出来（stage 为空）就如实置 null，不猜。
     retryStage: stage ?? null,
     // 一条可直接照抄的命令（**不自动执行**）。agent 挑好 candidate 后把它填进 --action。
@@ -512,6 +540,11 @@ const REASON_BY_CAUSE = Object.freeze({
   // 2026-09-26 加。为什么必须与兜底那句分开：兜底说的是「不需要你在浏览器里做什么」，
   // 而这一类的下一步**就是要人去点一下**。字面上还得让收信人知道「那层不是他做错了什么」。
   PAGE_OBSTRUCTED: '这家店的页面上弹出了一个盖住整页的活动弹窗，脚本按过 Esc、也按过「关闭」这一类按钮，都没能把它关掉，所以停在那儿没往下跑，这一天的数据没进飞书。',
+  // 2026-10-06 加。与兜底那句 STAGE_FAILED 的差别是**要不要打扰人**：兜底要人（成因不明），
+  // 这一条谁都不用动。所以它不能并进 FOR 兜底 —— 并进去就会「每天都为一件不存在的事叫人一次」，
+  // 而那正是把注意力磨没的方式（同 DUPLICATE_TARGET 那一类的理由）。
+  SOURCE_NO_ROW_FOR_DATE: '这家店在生意参谋里的「询单到付款」这一张表，这一天平台自己就没有出数据（表格显示「暂无数据」），'
+    + '所以「询单量 / 同层同行询单量」这两列这一天是空的，其余字段都写进去了。',
   STAGE_FAILED: '这家店跑到一半停住了，这一天的数据没进飞书。',
 });
 
@@ -571,6 +604,12 @@ const ACTION_BY_CAUSE = Object.freeze({
     + `要恢复得把「${ctx.shops[0] ?? '这家店'}」在生意参谋里的「店铺绩效」这一项开通找回来`
     + '（生意参谋里的服务市场，看「我的订购」那一项是否到期，或直接找平台客服）。'
     + '在找回来之前，这家店每天都会停在这一步；其余店铺不受影响。',
+  // 2026-10-06 加。措辞的落点只有一个：**别让人为这件事做任何动作**（含「转给技术同学」）。
+  // 为什么明写「不用找技术同学」：兜底那句的最后一句就是「把这条消息转给技术同学」，
+  // 而技术同学到了现场也做不了任何事（平台那一天不出数）⇒ 那是一次纯浪费的转派。
+  SOURCE_NO_ROW_FOR_DATE: (ctx) => `不用处理：${ctx.date} 这一天，这一家在平台上的「询单到付款」表本身就显示「暂无数据」，`
+    + '所以只有「询单量 / 同层同行询单量」这两列是空的，其余字段都已经写进飞书了。'
+    + '不用重跑，也不用找技术同学 —— 这一天不会再跑出数来。',
   STAGE_FAILED: () => '这一轮不需要你在浏览器里做什么。'
     + '如果到今天下班前飞书里还是缺这一天的数据，就把这条消息转给技术同学，让他去看。',
 });
@@ -1451,7 +1490,15 @@ export async function autoRepairAndRetry({ shopKey, logDir, req, maxRounds = DEF
     //    而不是在调用侧再抄一份排除名单 —— 两处判据迟早漂开。
     const remaining = Array.isArray(req?.candidates) ? [...req.candidates] : [];
     if (!remaining.length) {
-      trace.gaveUp = `成因 ${trace.cause} 在修复表里没有候选动作（不猜动作，交给人）`;
+      // 措辞按「这一条到底要不要人」分两档（2026-10-06）。空菜单有两种完全不同的含义：
+      //   · 修复表里没登记 ⇒ 「不知道该修什么」⇒ 交给人/agent（原先只有这一支）；
+      //   · 本来就无需任何人处理（`noActionRequired`）⇒ **不该说「交给人」** ——
+      //     这句话会进 summary 与 job.log，读的人会以为还有一件事等着谁去做。
+      // 两档合说一句的后果在 2026-10-05 是实打实的：`网林家居` 的 `gaveUp` 被下一个判据
+      // （`unfixableShopsOf`）当成「脚本自修不动」⇒ 驻留 4 小时。
+      trace.gaveUp = req?.noActionRequired === true
+        ? `成因 ${trace.cause} 本来就不需要任何人处理（不猜动作）`
+        : `成因 ${trace.cause} 在修复表里没有候选动作（不猜动作，交给人）`;
       log(`不自动修：${trace.gaveUp}`);
       return trace;
     }

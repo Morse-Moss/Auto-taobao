@@ -192,12 +192,29 @@ export function pollSecondsFor(causes = []) {
  *
  * `autoRepair` 与 `repairRequest` 只在驱动真的跑过那两段流程时才有值。都没值 ⇒ 返回空数组 ⇒
  * 行为与加这个函数之前逐字相同（默认不变）。
+ *
+ * ── 2026-10-06 加第三条闸门：`repairRequest.noActionRequired === true` 的店**不进来** ──
+ * 上面两条都是「脚本自己修不动」的**代理判据**，而「谁都不用动」那两类失败同样满足它们
+ * （空菜单 ⇒ 没试过任何动作 ⇒ `gaveUp` 非空）⇒ 会被算成「留着现场等 agent／人」。
+ * 那样做的代价是**白挂几小时**，而等的是一个不存在的人：2026-10-05 `网林家居`
+ * 就是「平台那一天没有这一行」（`SOURCE_NO_ROW_FOR_DATE`）。
+ * 字段由链写进修复请求单、值取自分诊表的 `notifyLevel === 'silent'` —— 判据只有一处来源，
+ * 本文件不另立一份「哪些成因不用管」的名单。
  */
 export function unfixableShopsOf(summary) {
   const out = [];
   for (const [shop, record] of Object.entries(summary?.shops ?? {})) {
     if (!record || typeof record !== 'object') continue;
     if (record.status === 'ok') continue;
+    // 2026-10-06 加：**「谁都不用动」的失败不进这一路**（驻留＝白挂几小时，等一个不存在的人）。
+    //
+    // 判据不在 runtime 侧另写一份 —— 它是链写进修复请求单的 `noActionRequired`，
+    // 而那个字段的值来自**分诊表**的 `notifyLevel === 'silent'`（唯一来源在 skills 侧）。
+    // 为什么要这条闸门：下面两条判据（`gaveUp` 非空 / 候选为空）都是「脚本自己修不动」的代理，
+    // 而它们对「本来就不需要任何人做任何事」那两类失败同样成立 ——
+    // 2026-10-05 `网林家居` 就是这么被判成「脚本自修不动」的：
+    // 平台那一天没有那一行，脚本给了空菜单、`gaveUp` 随之非空 ⇒ 窗口白留 4 小时。
+    if (record.repairRequest?.noActionRequired === true) continue;
     const gaveUp = record.autoRepair?.gaveUp;
     const candidates = record.repairRequest?.candidates;
     const noCandidates = Array.isArray(candidates) && candidates.length === 0;

@@ -5,14 +5,14 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  ATTEMPT_OUTCOMES, CONFIRM_ACTION_TEXTS, CONFIRM_SCREEN_EXPRESSION, FILLED_VERDICTS,
+  AGREEMENT_VERDICTS, ATTEMPT_OUTCOMES, CONFIRM_ACTION_TEXTS, CONFIRM_SCREEN_EXPRESSION, FILLED_VERDICTS,
   FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION,
   LOGIN_PAGE_PROMISED_VERDICTS, LOGIN_TARGETS, LOGIN_URL_CANDIDATES, NOTIFY_MODES, OUTCOME_TO_VERDICT,
   REASON_BY_VERDICT, SHARED_WINDOW_NAME, SITES, TAOBAO_LOGIN_URL, VERDICTS, VERDICTS_NEEDING_HUMAN,
-  absentSites, alertForRun, assertBusinessReadable,
+  absentSites, agreementSatisfied, alertForRun, assertBusinessReadable,
   buildLoginAlert, captchaVisible, centerOf, detectConfirmScreen, detectLoginDetour, expectedMemberFor,
   finalLoginVerdict,
-  isTaobaoLoginUrl, judgeFilled, judgeShopTarget, judgeSubmitOutcome, loggedOutSites, loginFormVisible,
+  isTaobaoLoginUrl, judgeAgreement, judgeFilled, judgeShopTarget, judgeSubmitOutcome, loggedOutSites, loginFormVisible,
   needsHuman, parseArgs,
   profileForShop, proxyPortOf, resolveAction, shopForProxy, shouldNotify, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
@@ -1046,4 +1046,55 @@ test('自动同意协议：勾选之后必须留下「同意了哪一份、什�
   assert.match(agreeBlock, /#fm-agreement/u, '协议文本表达式没有指向真实的协议节点');
   assert.equal(/我已阅读并同意[^']*'[^)]*\)/u.test(agreeBlock), false,
     '把「我已阅读并同意…」写成了字面量 —— 那是最容易被平台改掉的一句话，必须是读出来的');
+});
+
+test('judgeAgreement：五种出口各对应一个明确的处置（不许糊成一个「没勾上」）', () => {
+  // 2026-10-06 在一次性实例上量到的真实形态（`evidence/login-agreement-probe-2026-10-06/`）：
+  // 坐标点勾选框中心（539,586）与点可见文字中心（727,596）**都**不改 `checked`，DOM `.click()` 才改；
+  // 而 2026-09-23 的实测恰恰相反（坐标点击有效）。页面在这两个日期之间改过，
+  // 所以两条通路都留着，判据则必须能分辨「点了但没勾上」与「根本点不着」—— 下一步不同。
+  assert.equal(judgeAgreement({ before: null }), 'NOT_PRESENT',
+    '页面上没有那个勾选框（可能这一版登录页本来就不需要勾）⇒ 不许把它说成「没勾上」');
+  assert.equal(judgeAgreement({ before: { checked: true }, after: { checked: true } }), 'ALREADY_CHECKED');
+  assert.equal(judgeAgreement({ before: { checked: false }, after: { checked: true }, attempted: true }), 'CLICKED_THEN_CHECKED');
+  assert.equal(judgeAgreement({ before: { checked: false }, after: { checked: false }, attempted: true }), 'CLICKED_BUT_STILL_UNCHECKED');
+  assert.equal(judgeAgreement({ before: { checked: false }, after: { checked: false }, attempted: false }), 'NOT_CLICKABLE');
+  // 回读丢了（`after` 为空）时按**没勾上**算 —— 不许把「读不到」当成「勾上了」（本仓的老病根）。
+  assert.equal(judgeAgreement({ before: { checked: false }, after: null, attempted: true }), 'CLICKED_BUT_STILL_UNCHECKED');
+  // 只有这两条算「已满足」；`NOT_PRESENT` 不是满足（回执照样写 `autoAccepted:false`，不编凭据）。
+  assert.deepEqual(AGREEMENT_VERDICTS.filter(agreementSatisfied), ['ALREADY_CHECKED', 'CLICKED_THEN_CHECKED']);
+  // 闭集与「要叫人」那一集的互锁：漏一条的症状是「这一档回落到兜底文案」，不报错。
+  assert.equal(VERDICTS.includes('AGREEMENT_REQUIRED'), true);
+  assert.equal(VERDICTS_NEEDING_HUMAN.includes('AGREEMENT_REQUIRED'), true);
+});
+
+test('接线：协议没勾上时**不许提交**，回执也不许写没发生过的同意（2026-10-05 那份假凭据）', () => {
+  // 现场（2026-10-05 真跑回执）：`agreementChecked:false` 却照样点了「登录」，
+  // 回执写下 `autoAccepted:true` ⇒ 一条**假的同意凭据**；平台静默拒掉之后，
+  // 报出来的是「可能是密码不对」，把一整轮排查带向错的方向。
+  const code = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
+  // ① 闸门必须在**点「登录」之前**。判据只此一份（core 的 `agreementSatisfied`），
+  //    这里用源码顺序守它：闸门的 return 早于取「登录」按钮坐标那一行。
+  const gateAt = code.indexOf("receipt.verdict = 'AGREEMENT_REQUIRED'");
+  const submitAt = code.indexOf("centerOf(state, 'submit')");
+  assert.ok(gateAt > 0, '协议没勾上时没有闸门 ⇒ 假凭据与「密码不对」式误报会原样回来');
+  assert.ok(submitAt > gateAt, '闸门排在点「登录」之后 ⇒ 等于没闸（点了之后才发现没勾上）');
+  // ①b **条件本身**也得是真的。只查「赋值在不在」是不够的 —— 突变验证实测过：
+  //     把条件换成 `if (false)` 之后，赋值那行还在源码里 ⇒ 只查它的话这条用例照样绿，
+  //     而闸门已经彻底失效（这正是「用例全绿但没守住」的形态）。
+  const cond = code.slice(code.lastIndexOf('if (', gateAt), gateAt);
+  assert.match(cond, /agreementVerdict/u, `闸门的条件没读判据（被改成了 if (false) 之类）：${cond.trim()}`);
+  for (const verdict of ['CLICKED_BUT_STILL_UNCHECKED', 'NOT_CLICKABLE']) {
+    assert.ok(cond.includes(verdict), `闸门条件里少了 ${verdict} ⇒ 那一档会照样提交`);
+  }
+  // ①c 闸门必须**非零退出**：上游（驱动/定时任务）靠退出码判「这一家没成」，
+  //     返回 0 会让整轮被记成成功，而底单里那两列其实是空的。
+  assert.match(code.slice(gateAt, submitAt), /return finish\(receipt, 2\)/u,
+    '闸门返回的退出码不是 2（失败态）⇒ 上游会把它记成成功');
+  // ② 判据与回读都必须来自 core，不在这里另写一套（写死一份的话，core 的用例碰不到真的那一份）
+  assert.ok(code.includes('judgeAgreement('), '主脚本没有问 core「协议到底勾上了没有」');
+  assert.ok(code.includes('agreementSatisfied(agreementVerdict)'), '回执的同意凭据没有挂在 core 的判据上');
+  // ③ 回执只许在**回读确实为 true** 时写同意时刻
+  assert.match(code, /autoAccepted: agreementOk/u, 'autoAccepted 又变回写死的 true 了');
+  assert.match(code, /agreedAt: agreementOk \?/u, 'agreedAt 又变回无条件写入 ⇒ 凭据可以是假的');
 });

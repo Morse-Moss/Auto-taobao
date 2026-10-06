@@ -1,7 +1,49 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { classifyInquiryWrite, extractInquiryMetrics, findDailyStoreRow, selectDailyStoreRecord } from './inquiry-core.mjs';
+import { classifyInquiryWrite, describeDateRowGap, extractInquiryMetrics, findDailyStoreRow, selectDailyStoreRecord, SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inquiry-core.mjs';
+
+// ---------------------------------------------------------------------------
+// 「这一天的源表里没有日期行」必须与「结构异常」分开（2026-10-06 修 ㉕）
+// ---------------------------------------------------------------------------
+// 2026-10-05 `网林家居` 现场（同店、同实例、同一份代码，只换日期）：
+//   `10-05` 日期列＝【暂无数据】⇒ 0 个日期行；`10-04` ⇒ 1 个日期行；`10-03` ⇒ 又【暂无数据】。
+// 原先两种成因共用一句 'must contain exactly one daily date row'，于是
+// 自进化菜单按兜底类派 `REAPPLY_DATES`（白跑一轮）、分诊把它落进「要人处理」。
+test('空态（0 个日期行）单列一类，且**必须带上现场值**', () => {
+  const table = {
+    headers: ['日期', '当日询单人数', '当日付款人数'],
+    // 真机空态的日期列长这样：不是空的，而是这些字面量。
+    rows: [['暂无数据', '-', '-'], ['汇总值', '-', '-'], ['平均值', '-', '-'],
+      ['全店汇总值', '-', '-'], ['同行同层均值', '-', '-']],
+  };
+  const error = (() => { try { extractInquiryMetrics(table, '2026-10-05'); return null; } catch (e) { return e.message; } })();
+  assert.ok(error, '空态必须仍然 fail-closed（不许静默写出一个假值）');
+  assert.ok(error.includes(SOURCE_NO_ROW_FOR_DATE_TOKEN),
+    `空态要带机器标记，否则链会把它归回兜底类（会叫人、会驻留）：${error}`);
+  // 现场值必须落在错误里：读证据的人不该再跑到那台机器上复现一次才能知道「是空态还是选到了区间」
+  assert.match(error, /日期列原值=\["暂无数据"/u);
+  assert.match(error, /日期行数=0/u);
+  assert.match(error, /期望=2026-10-05/u);
+});
+
+test('「暂无数据」≠「询单量 0」：0 是一个正常的日期行，不许被当成空态', () => {
+  const table = {
+    headers: ['日期', '当日询单人数', '当日付款人数'],
+    rows: [['2026-10-05', '0', '0'], ['同行同层均值', '12', '3']],
+  };
+  assert.deepEqual(extractInquiryMetrics(table, '2026-10-05'),
+    { inquiry: 0, peerInquiry: 12, peerBenchmark: 'PEER_AVAILABLE' });
+});
+
+test('结构异常（日期行 >1）**不带**空态标记：那是要人去看的，不许被这一类吞掉', () => {
+  const gap = describeDateRowGap({
+    rows: [['2026-10-05'], ['2026-10-04']], dateIndex: 0, reportDate: '2026-10-05', count: 2,
+  });
+  assert.equal(gap.includes(SOURCE_NO_ROW_FOR_DATE_TOKEN), false, `>1 行不许带空态标记：${gap}`);
+  assert.match(gap, /exactly one daily date row/u);
+  assert.match(gap, /日期行数=2/u, '结构异常同样要把现场值带出来');
+});
 
 test('extracts the date row and peer average from 当日询单人数', () => {
   const table = {

@@ -113,6 +113,15 @@ export const VERDICTS = Object.freeze([
   'MAIN_SESSION_ONLY',    // 登录页把我们送走了（主站会话还有效）⇒ 目标站点要单独登一次
   'CAPTCHA_REQUIRED',     // 滑块/验证码显形 —— 按 SOP §10.2 停手交人
   'LOGIN_NOT_CONFIRMED',  // 提交后仍停在登录页 —— 如实报没成
+  // 2026-10-06 加。**协议没勾上 ⇒ 绝不提交**。
+  //
+  // 为什么必须与 `LOGIN_NOT_CONFIRMED` 分开（2026-10-05 真机现场）：
+  // 那一轮 `agreementChecked:false` 却照样点了提交，淘宝把提交静默拒掉，
+  // 回执于是写成 `LOGIN_NOT_CONFIRMED`「可能是密码不对」—— **把排查引向密码，方向正好相反**。
+  // 而同一份回执里 `agreement.autoAccepted` 还写着 `true`（其实一下都没勾上）：
+  // 一条假凭据 + 一条错误归因，两者都不报错。
+  // 现在：勾不上就停在这一步，不提交、不猜密码，指路改成「去把那一行勾上」。
+  'AGREEMENT_REQUIRED',
   // 2026-09-23 加，**只在 `--check-only` 下产生**：有站点没在登录态，而这次运行
   // 明确不许碰页面 ⇒ 如实报「要去登一次」，然后把决定权交回给人。
   //
@@ -416,6 +425,56 @@ export function centerOf(state, field) {
   return [Math.round(x + w / 2), Math.round(y + h / 2)];
 }
 
+// ---------------------------------------------------------------------------
+// 「提交前那一勾到底勾上了没有」——纯判据（2026-10-06 加）
+// ---------------------------------------------------------------------------
+//
+// 为什么这件事必须有个能被离线钉住的判据：它是**提交的前置条件**，
+// 而「没勾上」这件事在平台上**不报错** —— 提交被静默拒掉，页面不动，
+// 于是现场只剩一句「可能是密码不对或平台要额外验证」（2026-10-05 真机），
+// 排查方向从「协议」被带到「密码」。
+//
+// 2026-10-06 在一次性实例上实测（`evidence/login-agreement-probe-2026-10-06/`）：
+//   · 勾选框本身**可见**（`rect=[531,578,16,16]`、`display:block`、`pointer-events:auto`）；
+//   · 但**坐标点击（`/clickPoint`，产品代码同一个手法）勾不上** ——
+//     点它自己的中心、点右边那个可见 `label.fm-agreement-text` 的中心，两次回读都是 `false`
+//     （`elementFromPoint` 在两个点上都返回 null：那两个点在页面自己的命中测试里“什么也没有”）；
+//   · 同一时刻 **DOM `.click()` 一次就 `false → true`**，回读也是 `true`。
+//   · 对照：2026-09-23 同一页面坐标点击是**能**勾上的 ⇒ 这中间页面改过，
+//     所以「先坐标点击、不行再 DOM 点击」这条**两条都留着**，不拿今天的事实去删掉昨天的通路。
+//
+// 判据只看状态，不看手段 —— 手段（点了没点、怎么点的）由 IO 层记进回执的 `via`。
+export const AGREEMENT_VERDICTS = Object.freeze([
+  'NOT_PRESENT',              // 这一页根本没有勾选框 ⇒ 不适用（老页面）
+  'ALREADY_CHECKED',          // 进这一步时就已经勾着
+  'CLICKED_THEN_CHECKED',     // 我们点过，回读确实勾上了
+  'NOT_CLICKABLE',            // 想点，但连一个可点的目标都算不出来（没提交）
+  'CLICKED_BUT_STILL_UNCHECKED', // 点了、回读仍是未勾（**绝不提交**）
+]);
+
+/**
+ * @param {{before?:object|null, after?:object|null, attempted?:boolean}} o
+ *   `before` / `after` 都是 `FORM_STATE_EXPRESSION` 里的 `agreement` 那个片段。
+ * @returns {string} `AGREEMENT_VERDICTS` 里的一个
+ */
+export function judgeAgreement({ before = null, after = null, attempted = false } = {}) {
+  if (!before) return 'NOT_PRESENT';
+  const checked = after?.checked ?? before.checked ?? null;
+  if (before.checked === true) return 'ALREADY_CHECKED';
+  if (checked === true) return 'CLICKED_THEN_CHECKED';
+  return attempted ? 'CLICKED_BUT_STILL_UNCHECKED' : 'NOT_CLICKABLE';
+}
+
+/**
+ * 勾上了没有 —— 只有 `true` 算通过。`null`（读不到）**不算通过**。
+ *
+ * 与 `loggedSites` 那条同源：**「读不到」不是「已完成」的证据**。
+ * 这份文件里同类判据已经栽过三次，所以这里单独写成函数、单独有用例。
+ */
+export function agreementSatisfied(verdict) {
+  return verdict === 'ALREADY_CHECKED' || verdict === 'CLICKED_THEN_CHECKED';
+}
+
 // 「这个站点现在能不能直接用」——**只有确认已登录（true）才算通过**。
 //
 // 2026-09-19 改（实测出来的静默，用户当场撞到）：原先这里只收 `loggedIn === false`，
@@ -713,6 +772,10 @@ export const VERDICTS_NEEDING_HUMAN = Object.freeze([
   'PARTIAL',              // 提交了，但有站点没进去
   'NEEDS_LOGIN',          // check-only：有站点没在登录态（掉登录，或它的页面还没打开）
   'STOP_AND_ALERT',       // fail-closed 停手（坐标可疑、页面堆叠等）
+  // 2026-10-06 加。协议勾不上 ⇒ 脚本**刻意不提交**，要在那台机器的那个窗口里手点一下。
+  // 为什么必须叫人而不是静默：不叫人就等于「这一轮什么都不说地少登一个站点」，
+  // 而下游看到的是「页面不齐 / 页面不齐的告警」（10-05 现场），根因被埋掉。
+  'AGREEMENT_REQUIRED',
 ]);
 // ⚠️ `PAGES_ABSENT` 刻意**不在**上面这张表里（2026-09-24）：它是「这一层没有结论」，
 // 不是「要人做什么」。放进去的症状已经实测过一次 —— 冷启动后的预检并发 5 条告警，
@@ -789,6 +852,12 @@ const ACTION_BY_VERDICT = Object.freeze({
   NEEDS_LOGIN: '去{窗口}里把「生意参谋」和「阿里妈妈」各看一眼：哪一个停在登录页，就登哪一个'
     + '（登录时点浏览器提示里的「保存密码」）。这一步只是体检，系统没有动过任何页面。',
   STOP_AND_ALERT: '去{窗口}里照「原因」那一条处理（系统已经停手，没有留下半成品）。',
+  // 2026-10-06 加。**不能并进上面的 `LOGIN_NOT_CONFIRMED`** —— 那一条说的是「提交了但没进去」，
+  // 让人「看它的提示：要求验证就验证，提示密码不对就先改密码」；而这一条里账号密码一个字都没错，
+  // 错的是「同意协议」那一行没勾上（判据＝core 的 `judgeAgreement`）。照「改密码」去做，方向正好反。
+  // 与前三句同形：这一支是在点「登录」**之前**返回的，登录页确实还停在原地，所以可以承诺「登录页开着」。
+  AGREEMENT_REQUIRED: '登录页已经开在{窗口}了，账号密码也替你已经填好。'
+    + '把页面上「已阅读并同意以下协议」那一行勾上，然后点「登录」。',
 });
 
 // 把 `{窗口}` 换成收信人真的能在机器上认出来的说法。
@@ -830,6 +899,8 @@ export const REASON_BY_VERDICT = Object.freeze({
   PARTIAL: '账号密码提交成功了，但两个后台里还有没进去的。',
   NEEDS_LOGIN: '这个窗口里至少有一个后台现在不在登录态：要么掉登录了，要么它的页面还没打开。',
   STOP_AND_ALERT: '系统在动手之前停住了。',
+  // 只说「出了什么事」。**不许提密码**：这一条存在的全部意义就是把「协议没勾上」与「密码不对」分开。
+  AGREEMENT_REQUIRED: '登录页上「已阅读并同意以下协议」那一行没有被勾上，系统就没有替你提交。',
 });
 
 // [已删] `loginUrlFor()` —— 告警不再给链接。
