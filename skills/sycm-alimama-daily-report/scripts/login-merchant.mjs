@@ -65,7 +65,7 @@ import {
   absentSites, alertForRun,
   captchaVisible, centerOf, detectLoginDetour, expectedMemberFor, finalLoginVerdict, isTaobaoLoginUrl,
   judgeFilled, judgeShopTarget, judgeSubmitOutcome, loggedOutSites, loginFormVisible, needsHuman, parseArgs,
-  sitesNeedingLogin,
+  profileForShop, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 
 const delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -195,25 +195,43 @@ function runNotifyCli(cliArgs, payload) {
   });
 }
 
-// 告警里那条「浏览器配置」该指向哪个 profile：
-//   给了 `--shop` ⇒ core 的 profileForShop 去**店铺登记表**里取那家店自己的隔离实例
+// 「哪家店 → 哪个浏览器配置」这一格（2026-10-06 起只进**回执**，不进告警）：
+//   给了 `--shop` ⇒ core 的 `profileForShop` 去**店铺登记表**里取那家店自己的隔离实例
 //   （每店一个 profile，见 SHOP_BROWSERS）；没给 ⇒ 回落到日报那个（`--shop` 之前的老用法，行为不变）。
 //
-// 「哪家店 → 哪个 profile」这一步刻意留在 core（可离线测）：原先它写在这个 IO 脚本里，
-// 于是「接线接对了没有」没有任何判据 —— 实测到的后果就是四家店的告警都写着同一个
-// `edge-daily-report-profile`，收信人照着这个路径去找，四个窗口长得一模一样。
+// 判据还在 core 里（`profileForShop`，离线可测）；**调用点**在 `deliverAlert` 里。
+// 为什么调用点从 core 搬到了这里：那两样东西原先随告警一起算，现在告警不带了（收信人是业务人员），
+// 它们的新落点是回执。搬迁带来的风险是「以后有人删掉这次调用」—— 那一刻闸门就没了，
+// 而它不会报任何错（症状：忘了传店名就静默退回全体共用的配置，五家店的告警长得一模一样）。
+// 所以有一条源码级判据盯着这个调用点（见 `login-merchant-core.test.mjs`），不是靠这段注释。
+//
+// ⚠️ 这一条**推翻了原先写在这里的一段话**（原话是「这一步刻意留在 core：原先它写在这个 IO 脚本里，
+// 于是『接线接对了没有』没有任何判据」）。当时的处置是对的、但**治错了地方**：病根不是
+// 「代码放在哪个文件」，而是「没有任何东西盯着调用点」。所以这次搬回来的同时补上了那条判据。
 async function deliverAlert(args, receipt) {
   const verdict = receipt?.verdict ?? null;
   const mode = args?.notify ?? 'auto';
-  // 「该不该叫人」与「叫人的话是哪家店、哪个配置」都在 core 的 alertForRun 里（离线可测）。
-  // 返回 null 就等于「这次不该叫人」—— 判定不再散落在这个 IO 脚本里。
-  const alert = alertForRun({
-    args,
-    receipt,
+  // 机器名与浏览器配置**写在回执里**（2026-10-06）。
+  // 为什么不再进告警：收信人是业务人员，「DESKTOP-XXXX」与「D:\Retire\edge-...profile」
+  // 对他们不是指路、是噪音（用户原话「一堆专业术语」。指路改由**窗口标题**承担）。
+  // 但它们对排查故障的人有用，所以留在这一侧 —— 回执会落进 stdout 与 job.log。
+  //
+  // `profileForShop` **必须在这里调**：它的两条 fail-closed（给了店名却没给登记表 /
+  // 店名不在登记表里）是「接线接错了」的唯一闸门，而「忘传店名 ⇒ 静默退回全体共用的日报配置」
+  // 那条通道不会报任何错（2026-09-18 实测到过：五家店的告警逐字相同）。
+  // 它原先在 core 的 `alertForRun` 里、随着告警一起算 —— 现在告警不带这两样了，
+  // 所以闸门也一起搬到这里（发消息**之前**跑，失败即抛）。
+  receipt.tech = {
     machine: os.hostname(),
-    shops: SHOP_BROWSERS,
-    fallbackProfile: process.env.PROJECT_BROWSER_PROFILE || BROWSER_PROFILES.dailyReport,
-  });
+    browserProfile: profileForShop({
+      shop: args?.shop ?? null,
+      shops: SHOP_BROWSERS,
+      fallback: process.env.PROJECT_BROWSER_PROFILE || BROWSER_PROFILES.dailyReport,
+    }),
+  };
+  // 「该不该叫人」与「叫人的话是哪家店」都在 core 的 alertForRun 里（离线可测）。
+  // 返回 null 就等于「这次不该叫人」—— 判定不再散落在这个 IO 脚本里。
+  const alert = alertForRun({ args, receipt });
   if (!alert) {
     receipt.notify = {
       mode,

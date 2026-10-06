@@ -1,0 +1,2689 @@
+==> skills: 18 file(s)
+TAP version 13
+# Subtest: 站点词表来自 login-merchant-core（多一份就是「体检的站点」和「探测的站点」各说各话）
+ok 1 - 站点词表来自 login-merchant-core（多一份就是「体检的站点」和「探测的站点」各说各话）
+  ---
+  duration_ms: 0.9413
+  type: 'test'
+  ...
+# Subtest: 读不到（null）绝不算通过 —— 这是 2026-09-19 那次静默的形态
+ok 2 - 读不到（null）绝不算通过 —— 这是 2026-09-19 那次静默的形态
+  ---
+  duration_ms: 0.1458
+  type: 'test'
+  ...
+# Subtest: 一家店：两个都在登录态才是 OK；掉登录与读不到各自成一类，且都不算 OK
+ok 3 - 一家店：两个都在登录态才是 OK；掉登录与读不到各自成一类，且都不算 OK
+  ---
+  duration_ms: 0.2537
+  type: 'test'
+  ...
+# Subtest: 回执读不出来 ⇒ 两个平台都算读不到（读不出 ≠ 不在登录态）
+ok 4 - 回执读不出来 ⇒ 两个平台都算读不到（读不出 ≠ 不在登录态）
+  ---
+  duration_ms: 0.2502
+  type: 'test'
+  ...
+# Subtest: 回执里的结论与地址只抄不猜（复核时那是唯一能核对的现场事实）
+ok 5 - 回执里的结论与地址只抄不猜（复核时那是唯一能核对的现场事实）
+  ---
+  duration_ms: 0.1861
+  type: 'test'
+  ...
+# Subtest: 整轮的三个结论与退出码：0 只在**全部正面确认**时才给
+ok 6 - 整轮的三个结论与退出码：0 只在**全部正面确认**时才给
+  ---
+  duration_ms: 0.1951
+  type: 'test'
+  ...
+# Subtest: parseCheckShopsArgs：默认查全部、默认不输出 JSON
+ok 7 - parseCheckShopsArgs：默认查全部、默认不输出 JSON
+  ---
+  duration_ms: 0.1956
+  type: 'test'
+  ...
+# Subtest: 店名拼错必须当场抛错并列出合法值（否则「连不上」看起来像故障，其实是名字打错了）
+ok 8 - 店名拼错必须当场抛错并列出合法值（否则「连不上」看起来像故障，其实是名字打错了）
+  ---
+  duration_ms: 0.3013
+  type: 'test'
+  ...
+# Subtest: 参数拼错要报「未知」，不许伪装成「需要一个值」；空 --shops 与坏 --timeout 当场抛错
+ok 9 - 参数拼错要报「未知」，不许伪装成「需要一个值」；空 --shops 与坏 --timeout 当场抛错
+  ---
+  duration_ms: 0.3274
+  type: 'test'
+  ...
+# Subtest: 按平台分别说名字：生意参谋给页头店名、阿里妈妈给会员名（不许互相冒充）
+ok 10 - 按平台分别说名字：生意参谋给页头店名、阿里妈妈给会员名（不许互相冒充）
+  ---
+  duration_ms: 0.6676
+  type: 'test'
+  ...
+# Subtest: OK 的店压成一行；要处理的店逐平台展开
+ok 11 - OK 的店压成一行；要处理的店逐平台展开
+  ---
+  duration_ms: 0.1744
+  type: 'test'
+  ...
+# Subtest: 「读不到」必须自解释，且整轮的判据段不许把它说成通过
+ok 12 - 「读不到」必须自解释，且整轮的判据段不许把它说成通过
+  ---
+  duration_ms: 0.1226
+  type: 'test'
+  ...
+# Subtest: 每家店的两个平台各说各的名字，且名字与登记表逐字一致
+ok 13 - 每家店的两个平台各说各的名字，且名字与登记表逐字一致
+  ---
+  duration_ms: 0.2892
+  type: 'test'
+  ...
+# Subtest: 渲染里不许出现结论代号（读了半天的 `LOGGED_OUT` 不是给收信人看的）
+ok 14 - 渲染里不许出现结论代号（读了半天的 `LOGGED_OUT` 不是给收信人看的）
+  ---
+  duration_ms: 0.0975
+  type: 'test'
+  ...
+# Subtest: parseCheckShopsArgs：--login 默认关，给了才开
+ok 15 - parseCheckShopsArgs：--login 默认关，给了才开
+  ---
+  duration_ms: 0.0709
+  type: 'test'
+  ...
+# Subtest: 带 --login 时结论看的是「登完之后」那一眼（看错了会把成功报成掉登录）
+ok 16 - 带 --login 时结论看的是「登完之后」那一眼（看错了会把成功报成掉登录）
+  ---
+  duration_ms: 0.0695
+  type: 'test'
+  ...
+# Subtest: 只读回执里没有 loggedInAfter，结论与从前逐字相同（默认关是硬保证）
+ok 17 - 只读回执里没有 loggedInAfter，结论与从前逐字相同（默认关是硬保证）
+  ---
+  duration_ms: 0.0383
+  type: 'test'
+  ...
+# Subtest: autoLogin 只改措辞、不改判定：既要人说得清、也不许把「没登过」说成「登过」
+ok 18 - autoLogin 只改措辞、不改判定：既要人说得清、也不许把「没登过」说成「登过」
+  ---
+  duration_ms: 0.1956
+  type: 'test'
+  ...
+# Subtest: 成功那一轮要说清「哪几家是这次自己登进去的」（否则运维会以为一直在白跑）
+ok 19 - 成功那一轮要说清「哪几家是这次自己登进去的」（否则运维会以为一直在白跑）
+  ---
+  duration_ms: 0.0989
+  type: 'test'
+  ...
+# Subtest: 体检探针的落点仍在链的期望页面清单之内（否则体检会把页面带偏，链也跟着红）
+ok 20 - 体检探针的落点仍在链的期望页面清单之内（否则体检会把页面带偏，链也跟着红）
+  ---
+  duration_ms: 0.0716
+  type: 'test'
+  ...
+# Subtest: 主脚本真的按「一店一实例 + 纯读」调用 login-merchant（三类静默各有一条判据）
+ok 21 - 主脚本真的按「一店一实例 + 纯读」调用 login-merchant（三类静默各有一条判据）
+  ---
+  duration_ms: 1.0641
+  type: 'test'
+  ...
+# Subtest: notifyModeFor：子进程一律闭嘴 —— 告警整轮只由本层发一条（2026-09-24 改）
+ok 22 - notifyModeFor：子进程一律闭嘴 —— 告警整轮只由本层发一条（2026-09-24 改）
+  ---
+  duration_ms: 0.0689
+  type: 'test'
+  ...
+# Subtest: 告警收据要透传到行里 —— 否则「叫没叫到人」只能靠猜
+ok 23 - 告警收据要透传到行里 —— 否则「叫没叫到人」只能靠猜
+  ---
+  duration_ms: 0.0703
+  type: 'test'
+  ...
+# Subtest: renderRoundNotifyLines：已发 / 被去重 / 发失败 / 根本没发，四种要说得出区别
+ok 24 - renderRoundNotifyLines：已发 / 被去重 / 发失败 / 根本没发，四种要说得出区别
+  ---
+  duration_ms: 0.0823
+  type: 'test'
+  ...
+# Subtest: 只读档的报告里没有「已叫人」那一段，并且明说这一档不会发告警
+ok 25 - 只读档的报告里没有「已叫人」那一段，并且明说这一档不会发告警
+  ---
+  duration_ms: 0.095
+  type: 'test'
+  ...
+# Subtest: 带 --login 的报告里，告警那一段说的是**整轮那一条**（不是逐店）
+ok 26 - 带 --login 的报告里，告警那一段说的是**整轮那一条**（不是逐店）
+  ---
+  duration_ms: 0.1209
+  type: 'test'
+  ...
+# Subtest: 每一条「要叫人」的结论都有自己的人话文案（漏一条＝运营看到一句内部代号）
+ok 27 - 每一条「要叫人」的结论都有自己的人话文案（漏一条＝运营看到一句内部代号）
+  ---
+  duration_ms: 0.0956
+  type: 'test'
+  ...
+# Subtest: WRONG_ACCOUNT 的人话不能与「没凭据」共用一句 —— 两者的下一步不同
+ok 28 - WRONG_ACCOUNT 的人话不能与「没凭据」共用一句 —— 两者的下一步不同
+  ---
+  duration_ms: 0.0409
+  type: 'test'
+  ...
+# Subtest: shouldNotifyRound：只有「真的去登过」+「确定有店要人」才叫一条
+ok 29 - shouldNotifyRound：只有「真的去登过」+「确定有店要人」才叫一条
+  ---
+  duration_ms: 0.3234
+  type: 'test'
+  ...
+# Subtest: buildRoundLoginAlert：一条说清哪几家、哪个后台、去哪几个窗口做什么
+ok 30 - buildRoundLoginAlert：一条说清哪几家、哪个后台、去哪几个窗口做什么
+  ---
+  duration_ms: 4.0058
+  type: 'test'
+  ...
+# Subtest: renderNormalizeLines：归位那段要说清「哪家、动没动、齐没齐」；只读档整段不出现
+ok 31 - renderNormalizeLines：归位那段要说清「哪家、动没动、齐没齐」；只读档整段不出现
+  ---
+  duration_ms: 0.1093
+  type: 'test'
+  ...
+# Subtest: shouldRetryProbe：只对「读不到」重试，实锤掉登录绝不重试
+ok 32 - shouldRetryProbe：只对「读不到」重试，实锤掉登录绝不重试
+  ---
+  duration_ms: 0.1314
+  type: 'test'
+  ...
+# Subtest: shouldRetryProbe：重试次数是固定一次，不是「重试到成功」
+ok 33 - shouldRetryProbe：重试次数是固定一次，不是「重试到成功」
+  ---
+  duration_ms: 0.0378
+  type: 'test'
+  ...
+# Subtest: shouldRetryProbe：`loggedInAfter` 优先于 `loggedIn`（带 --login 的档位不许被读成「还是读不到」）
+ok 34 - shouldRetryProbe：`loggedInAfter` 优先于 `loggedIn`（带 --login 的档位不许被读成「还是读不到」）
+  ---
+  duration_ms: 0.04
+  type: 'test'
+  ...
+# Subtest: shouldRetryProbe：接线顺序 —— 只读档重试，`--login` 档不重试（重试 = 二次提交）
+ok 35 - shouldRetryProbe：接线顺序 —— 只读档重试，`--login` 档不重试（重试 = 二次提交）
+  ---
+  duration_ms: 0.413
+  type: 'test'
+  ...
+# Subtest: 下载目录扫描：只认形状对的文件，大小与 mtime 一起带出来
+ok 36 - 下载目录扫描：只认形状对的文件，大小与 mtime 一起带出来
+  ---
+  duration_ms: 15.3043
+  type: 'test'
+  ...
+# Subtest: 按店认下载文件名：登记了行标题的店，用它的名字当前缀（2026-10-05 盖文天猫实亏）
+ok 37 - 按店认下载文件名：登记了行标题的店，用它的名字当前缀（2026-10-05 盖文天猫实亏）
+  ---
+  duration_ms: 0.5062
+  type: 'test'
+  ...
+# Subtest: 下载判据取文件系统：新出现的文件才是成功，且多个时取 mtime 最新的
+ok 38 - 下载判据取文件系统：新出现的文件才是成功，且多个时取 mtime 最新的
+  ---
+  duration_ms: 0.136
+  type: 'test'
+  ...
+# Subtest: 认下载任务：按名字里的时间戳取最新，不按「今天」过滤
+ok 39 - 认下载任务：按名字里的时间戳取最新，不按「今天」过滤
+  ---
+  duration_ms: 0.2071
+  type: 'test'
+  ...
+# Subtest: 落盘文件名 → 任务名：两种合法形态都要认得，别的一律不是
+ok 40 - 落盘文件名 → 任务名：两种合法形态都要认得，别的一律不是
+  ---
+  duration_ms: 0.19
+  type: 'test'
+  ...
+# Subtest: 统计区间必须含目标日（含不含是这份工作簿能不能用的前提）
+ok 41 - 统计区间必须含目标日（含不含是这份工作簿能不能用的前提）
+  ---
+  duration_ms: 0.2328
+  type: 'test'
+  ...
+# Subtest: 采集脚本参数：缺日期/未知参数/阶段写错一律抛错，不静默按默认值跑
+ok 42 - 采集脚本参数：缺日期/未知参数/阶段写错一律抛错，不静默按默认值跑
+  ---
+  duration_ms: 0.4308
+  type: 'test'
+  ...
+# Subtest: 下载目录默认值从环境推，不许把某台机器的路径写进仓库
+ok 43 - 下载目录默认值从环境推，不许把某台机器的路径写进仓库
+  ---
+  duration_ms: 1.6274
+  type: 'test'
+  ...
+# Subtest: 阿里妈妈取件：下载入口只认文件名行的下一个兄弟行，且必须只接受可见元素
+ok 44 - 阿里妈妈取件：下载入口只认文件名行的下一个兄弟行，且必须只接受可见元素
+  ---
+  duration_ms: 0.8337
+  type: 'test'
+  ...
+# Subtest: 阿里妈妈取件：必须先选中目标任务行并回读 checked，才谈得上找入口
+ok 45 - 阿里妈妈取件：必须先选中目标任务行并回读 checked，才谈得上找入口
+  ---
+  duration_ms: 0.6633
+  type: 'test'
+  ...
+# Subtest: 目标行表达式在沙箱里真的能算遮挡：命中自己=可点，命中别人=报出是谁
+ok 46 - 目标行表达式在沙箱里真的能算遮挡：命中自己=可点，命中别人=报出是谁
+  ---
+  duration_ms: 0.5651
+  type: 'test'
+  ...
+# Subtest: 取件表达式在沙箱里真的能跑：操作行隐藏时报 action-row-hidden，显形时给出可点中心
+ok 47 - 取件表达式在沙箱里真的能跑：操作行隐藏时报 action-row-hidden，显形时给出可点中心
+  ---
+  duration_ms: 0.8074
+  type: 'test'
+  ...
+# Subtest: 勾选集：能记一份、也能恢复成原来那份（排练收尾用）
+ok 48 - 勾选集：能记一份、也能恢复成原来那份（排练收尾用）
+  ---
+  duration_ms: 0.4202
+  type: 'test'
+  ...
+# Subtest: 点击前复核：两个方向都要居中；判据是「矩形内有视口内且命中自己的采样点」
+ok 49 - 点击前复核：两个方向都要居中；判据是「矩形内有视口内且命中自己的采样点」
+  ---
+  duration_ms: 0.1317
+  type: 'test'
+  ...
+# Subtest: 命中判据必须调 document.elementFromPoint —— window 上没有这个方法（2026-10-05 真机实亏）
+ok 50 - 命中判据必须调 document.elementFromPoint —— window 上没有这个方法（2026-10-05 真机实亏）
+  ---
+  duration_ms: 0.4586
+  type: 'test'
+  ...
+# Subtest: 复核表达式在沙箱里真的能跑：视口外判负、中心被盖但边缘命中的判正
+ok 51 - 复核表达式在沙箱里真的能跑：视口外判负、中心被盖但边缘命中的判正
+  ---
+  duration_ms: 0.9541
+  type: 'test'
+  ...
+# Subtest: 动手前先清掉上一轮的 data- 标记（hash 路由不会重载页面）
+ok 52 - 动手前先清掉上一轮的 data- 标记（hash 路由不会重载页面）
+  ---
+  duration_ms: 1.506
+  type: 'test'
+  ...
+# Subtest: 排练开关 --locate-only：定位全走一遍但绝不点击（顺序也要对）
+ok 53 - 排练开关 --locate-only：定位全走一遍但绝不点击（顺序也要对）
+  ---
+  duration_ms: 0.6879
+  type: 'test'
+  ...
+# Subtest: 采集脚本：失败要给非零退出码并说清原因，端口从登记表取
+ok 54 - 采集脚本：失败要给非零退出码并说清原因，端口从登记表取
+  ---
+  duration_ms: 0.5009
+  type: 'test'
+  ...
+# Subtest: 弹窗按钮表达式在沙箱里真的能跑：认得四个文案，命中自己才算可点
+ok 55 - 弹窗按钮表达式在沙箱里真的能跑：认得四个文案，命中自己才算可点
+  ---
+  duration_ms: 0.5104
+  type: 'test'
+  ...
+# Subtest: 弹窗候选摘要：视口与每个候选的 rect 一起报，三档状态不许混
+ok 56 - 弹窗候选摘要：视口与每个候选的 rect 一起报，三档状态不许混
+  ---
+  duration_ms: 0.101
+  type: 'test'
+  ...
+# [fetch] 还在生成（行文本 "正在生成 营销场景报表_20260920_172712 30天累计数据"）｜已等 0s，15s 后再看（预算 60s）
+# [fetch] 还在生成（行文本 "正在生成 营销场景报表_20260920_172712 30天累计数据"）｜已等 0s，15s 后再看（预算 60s）
+# [fetch] 目标任务行 = 第 2 行｜生成成功 营销场景报表_20260920_172712 30天累计数据｜等了 0s、第 3 次查看才就绪
+# [fetch] 还在生成（行文本 "正在生成 报表B"）｜已等 0s，15s 后再看（预算 5s）
+# [fetch] 还在生成（列表里还没这一行：row not found）｜已等 0s，15s 后再看（预算 5s）
+# Subtest: 等「确定」：点不着时先把它滚进视口，滚完按原判据重判（不是干等）
+ok 57 - 等「确定」：点不着时先把它滚进视口，滚完按原判据重判（不是干等）
+  ---
+  duration_ms: 169.868
+  type: 'test'
+  ...
+# Subtest: 接线：submit 的报错与日志共用同一份「视口＋候选」摘要，并报出滚了几次
+ok 58 - 接线：submit 的报错与日志共用同一份「视口＋候选」摘要，并报出滚了几次
+  ---
+  duration_ms: 0.6922
+  type: 'test'
+  ...
+# Subtest: submit 段开跑前先清掉上一轮留下的弹窗（判据落在调用点上，不是「函数存在」）
+ok 59 - submit 段开跑前先清掉上一轮留下的弹窗（判据落在调用点上，不是「函数存在」）
+  ---
+  duration_ms: 0.4329
+  type: 'test'
+  ...
+# Subtest: 「下载报表」定位表达式在沙箱里真的能跑：只认文字完全相等的叶子，并清掉上一轮标记
+ok 60 - 「下载报表」定位表达式在沙箱里真的能跑：只认文字完全相等的叶子，并清掉上一轮标记
+  ---
+  duration_ms: 0.3786
+  type: 'test'
+  ...
+# Subtest: 身份表达式在沙箱里真的能跑：店铺名去掉「主店」，会员名不会被时间串顶替
+ok 61 - 身份表达式在沙箱里真的能跑：店铺名去掉「主店」，会员名不会被时间串顶替
+  ---
+  duration_ms: 0.6158
+  type: 'test'
+  ...
+# Subtest: 身份核对：对不上要停、读不到要停、没给期望值只记录不拦
+ok 62 - 身份核对：对不上要停、读不到要停、没给期望值只记录不拦
+  ---
+  duration_ms: 2.54
+  type: 'test'
+  ...
+# Subtest: 两个采集脚本都必须核对身份，而且必须在点下载之前；判据不许写死带哈希的类名
+ok 63 - 两个采集脚本都必须核对身份，而且必须在点下载之前；判据不许写死带哈希的类名
+  ---
+  duration_ms: 1.4321
+  type: 'test'
+  ...
+# Subtest: 站点工作页片段：三个读页面的脚本用逐字相同的口径（各写一份就会认错页面）
+ok 64 - 站点工作页片段：三个读页面的脚本用逐字相同的口径（各写一份就会认错页面）
+  ---
+  duration_ms: 1.98
+  type: 'test'
+  ...
+# Subtest: 身份期望值参数：两个站点各一个名字（不合成一个），写错在解析期就炸
+ok 65 - 身份期望值参数：两个站点各一个名字（不合成一个），写错在解析期就炸
+  ---
+  duration_ms: 0.1994
+  type: 'test'
+  ...
+# Subtest: 全屏弹窗选点：优先「关闭」语义，有对外副作用的候选永不入选
+ok 66 - 全屏弹窗选点：优先「关闭」语义，有对外副作用的候选永不入选
+  ---
+  duration_ms: 0.4061
+  type: 'test'
+  ...
+# Subtest: 关遮挡的回读表达式在沙箱里真的能跑：层还在就点名报出来，层没了就是空数组
+ok 67 - 关遮挡的回读表达式在沙箱里真的能跑：层还在就点名报出来，层没了就是空数组
+  ---
+  duration_ms: 0.5058
+  type: 'test'
+  ...
+# Subtest: 全屏弹窗选点：没有文字语义时退到「层右上角」的图标按钮
+ok 68 - 全屏弹窗选点：没有文字语义时退到「层右上角」的图标按钮
+  ---
+  duration_ms: 0.07
+  type: 'test'
+  ...
+# Subtest: 全屏弹窗选点：只剩危险候选时返回 null（宁可停手交给人都不要盲点）
+ok 69 - 全屏弹窗选点：只剩危险候选时返回 null（宁可停手交给人都不要盲点）
+  ---
+  duration_ms: 0.0549
+  type: 'test'
+  ...
+# Subtest: 遮挡扫描表达式在沙箱里真的能跑：认最上层那个盖住视口的层，不认右侧常驻浮层
+ok 70 - 遮挡扫描表达式在沙箱里真的能跑：认最上层那个盖住视口的层，不认右侧常驻浮层
+  ---
+  duration_ms: 0.7653
+  type: 'test'
+  ...
+# Subtest: 关遮挡的编排：不是这一类遮挡就不点；点完以**回读**为准，不信接口返回值
+ok 71 - 关遮挡的编排：不是这一类遮挡就不点；点完以**回读**为准，不信接口返回值
+  ---
+  duration_ms: 1.1984
+  type: 'test'
+  ...
+# Subtest: 有序候选表：排掉危险词、按「关闭语义 → 消失确认词 → 右上角图标」排、按坐标去重、封顶
+ok 72 - 有序候选表：排掉危险词、按「关闭语义 → 消失确认词 → 右上角图标」排、按坐标去重、封顶
+  ---
+  duration_ms: 0.1547
+  type: 'test'
+  ...
+# Subtest: 「关不掉就换一份新渲染再来一次」：真重载页面 + 等就绪（不能用 navigate）
+ok 73 - 「关不掉就换一份新渲染再来一次」：真重载页面 + 等就绪（不能用 navigate）
+  ---
+  duration_ms: 0.3458
+  type: 'test'
+  ...
+# Subtest: 两个采集脚本都接上了关遮挡，且报错里说清「关遮挡试出了什么」
+ok 74 - 两个采集脚本都接上了关遮挡，且报错里说清「关遮挡试出了什么」
+  ---
+  duration_ms: 0.6591
+  type: 'test'
+  ...
+# Subtest: 回填也用采集段那一份身份读取（同一件事不许有两份实现）
+ok 75 - 回填也用采集段那一份身份读取（同一件事不许有两份实现）
+  ---
+  duration_ms: 2.1836
+  type: 'test'
+  ...
+# Subtest: 等生成成功：还没就绪就继续轮询，就绪后返回那一次的结果
+ok 76 - 等生成成功：还没就绪就继续轮询，就绪后返回那一次的结果
+  ---
+  duration_ms: 0.3366
+  type: 'test'
+  ...
+# Subtest: 等生成成功：预算耗尽才抛，且把预算与最后看到的行文本带出来
+ok 77 - 等生成成功：预算耗尽才抛，且把预算与最后看到的行文本带出来
+  ---
+  duration_ms: 0.1902
+  type: 'test'
+  ...
+# Subtest: 等生成成功：任务没出现在列表里时，报「没提交上」而不是「生成慢」
+ok 78 - 等生成成功：任务没出现在列表里时，报「没提交上」而不是「生成慢」
+  ---
+  duration_ms: 0.11
+  type: 'test'
+  ...
+# Subtest: 等生成成功：那一行没有复选框是页面结构问题，立刻抛、一次都不睡
+ok 79 - 等生成成功：那一行没有复选框是页面结构问题，立刻抛、一次都不睡
+  ---
+  duration_ms: 0.1053
+  type: 'test'
+  ...
+# Subtest: 接线：fetch 段用的是「等到就绪」，且这个预算真的接得上（判据落在调用点）
+ok 80 - 接线：fetch 段用的是「等到就绪」，且这个预算真的接得上（判据落在调用点）
+  ---
+  duration_ms: 0.597
+  type: 'test'
+  ...
+# Subtest: iframe 穿透两个表达式：能求出 scopes，且调用点返回元素数组（不是函数本身）
+ok 81 - iframe 穿透两个表达式：能求出 scopes，且调用点返回元素数组（不是函数本身）
+  ---
+  duration_ms: 0.4345
+  type: 'test'
+  ...
+# Subtest: 两套命中判据必须一致：中心点 vs 多采样点曾在真机给出相反结论
+ok 82 - 两套命中判据必须一致：中心点 vs 多采样点曾在真机给出相反结论
+  ---
+  duration_ms: 0.7952
+  type: 'test'
+  ...
+# Subtest: 判据必须是一个「能被调用」的函数，不是一段源码/正则
+ok 83 - 判据必须是一个「能被调用」的函数，不是一段源码/正则
+  ---
+  duration_ms: 0.5548
+  type: 'test'
+  ...
+# Subtest: 默认形态（未登记店）必须真的命中含「日报」的整行文本
+ok 84 - 默认形态（未登记店）必须真的命中含「日报」的整行文本
+  ---
+  duration_ms: 0.0973
+  type: 'test'
+  ...
+# Subtest: 默认形态不许命中不含「日报」的行
+ok 85 - 默认形态不许命中不含「日报」的行
+  ---
+  duration_ms: 0.0504
+  type: 'test'
+  ...
+# Subtest: 登记形态必须命中「整行以登记标题开头」的那种行（=== 会漏掉它）
+ok 86 - 登记形态必须命中「整行以登记标题开头」的那种行（=== 会漏掉它）
+  ---
+  duration_ms: 0.1095
+  type: 'test'
+  ...
+# Subtest: 登记形态不许被同前缀的别的行误命中（「日报2」不能被「日报」吃掉）
+ok 87 - 登记形态不许被同前缀的别的行误命中（「日报2」不能被「日报」吃掉）
+  ---
+  duration_ms: 0.1031
+  type: 'test'
+  ...
+# Subtest: 默认形态保持历史行为：含匹配、取第一行（这条钉的是现状，不是推荐）
+ok 88 - 默认形态保持历史行为：含匹配、取第一行（这条钉的是现状，不是推荐）
+  ---
+  duration_ms: 0.0433
+  type: 'test'
+  ...
+# Subtest: reportRowTitleFor：未登记 ⇒ null（沿用默认），空的店名 ⇒ 抛错
+ok 89 - reportRowTitleFor：未登记 ⇒ null（沿用默认），空的店名 ⇒ 抛错
+  ---
+  duration_ms: 0.2735
+  type: 'test'
+  ...
+# Subtest: 查键必须是运营叫法：拿页头店名去查 ⇒ 登记形同没登记（2026-10-05 第二次事故）
+ok 90 - 查键必须是运营叫法：拿页头店名去查 ⇒ 登记形同没登记（2026-10-05 第二次事故）
+  ---
+  duration_ms: 0.1028
+  type: 'test'
+  ...
+# Subtest: 接线守卫（二）：调用点必须用运营叫法查行标题，不许直接拿 --expect-shop 去查
+ok 91 - 接线守卫（二）：调用点必须用运营叫法查行标题，不许直接拿 --expect-shop 去查
+  ---
+  duration_ms: 0.7375
+  type: 'test'
+  ...
+# Subtest: 接线守卫（三）：下载文件名判据也必须按店 —— 不许再用固定的 SHOP_REPORT_PATTERN
+ok 92 - 接线守卫（三）：下载文件名判据也必须按店 —— 不许再用固定的 SHOP_REPORT_PATTERN
+  ---
+  duration_ms: 0.5969
+  type: 'test'
+  ...
+# Subtest: 接线守卫：调用点不许把判据再包成 RegExp/字符串 —— 判据必须被调用
+ok 93 - 接线守卫：调用点不许把判据再包成 RegExp/字符串 —— 判据必须被调用
+  ---
+  duration_ms: 1.7835
+  type: 'test'
+  ...
+# Subtest: 摊平收据：带出处的端口/身份被取出裸值，源文件与哈希逐项保留
+ok 94 - 摊平收据：带出处的端口/身份被取出裸值，源文件与哈希逐项保留
+  ---
+  duration_ms: 0.6091
+  type: 'test'
+  ...
+# Subtest: 摊平是宽容的：缺字段记 null，不抛错（审计不该因为收据少个字段就炸）
+ok 95 - 摊平是宽容的：缺字段记 null，不抛错（审计不该因为收据少个字段就炸）
+  ---
+  duration_ms: 0.4271
+  type: 'test'
+  ...
+# Subtest: 写入成功：参数顺序与列一一对应，detail 序列化成 JSON，返回 id
+ok 96 - 写入成功：参数顺序与列一一对应，detail 序列化成 JSON，返回 id
+  ---
+  duration_ms: 0.3192
+  type: 'test'
+  ...
+# Subtest: 写不进去绝不抛错：返回 written:false 与原因（成功的数据不该被本地旁证拖下水）
+ok 97 - 写不进去绝不抛错：返回 written:false 与原因（成功的数据不该被本地旁证拖下水）
+  ---
+  duration_ms: 0.1376
+  type: 'test'
+  ...
+# Subtest: 词表之外的动作/结果一律拒写，而且不碰数据库
+ok 98 - 词表之外的动作/结果一律拒写，而且不碰数据库
+  ---
+  duration_ms: 0.0941
+  type: 'test'
+  ...
+# Subtest: 拿不到连接串时跳过写入，而不是抛错（也不去连真实库）
+ok 99 - 拿不到连接串时跳过写入，而不是抛错（也不去连真实库）
+  ---
+  duration_ms: 0.1161
+  type: 'test'
+  ...
+# Subtest: 连接串解析：进程环境变量优先，其次才是 env 文件；都取不到返回 null
+ok 100 - 连接串解析：进程环境变量优先，其次才是 env 文件；都取不到返回 null
+  ---
+  duration_ms: 0.2079
+  type: 'test'
+  ...
+# Subtest: 写入方模块不许导出任何读接口（它只能是审计，不能变成台账）
+ok 101 - 写入方模块不许导出任何读接口（它只能是审计，不能变成台账）
+  ---
+  duration_ms: 0.3072
+  type: 'test'
+  ...
+# Subtest: 全仓库只有写入方与迁移提到这张表（没有第二个读者或写者）
+ok 102 - 全仓库只有写入方与迁移提到这张表（没有第二个读者或写者）
+  ---
+  duration_ms: 1404.0852
+  type: 'test'
+  ...
+# Subtest: 迁移文件的 CHECK 词表与代码常数完全一致
+ok 103 - 迁移文件的 CHECK 词表与代码常数完全一致
+  ---
+  duration_ms: 1.7694
+  type: 'test'
+  ...
+# Subtest: 自证：两侧都是目标日时通过，并留下「观察到哪几天」的证据
+ok 104 - 自证：两侧都是目标日时通过，并留下「观察到哪几天」的证据
+  ---
+  duration_ms: 1.1185
+  type: 'test'
+  ...
+# Subtest: 自证：推广 ZIP 是前一天的就判不通过（下载错文件的主要形态）
+ok 105 - 自证：推广 ZIP 是前一天的就判不通过（下载错文件的主要形态）
+  ---
+  duration_ms: 0.1636
+  type: 'test'
+  ...
+# Subtest: 自证：店铺工作簿里目标日出现两次也判不通过
+ok 106 - 自证：店铺工作簿里目标日出现两次也判不通过
+  ---
+  duration_ms: 0.5046
+  type: 'test'
+  ...
+# Subtest: 自证：取用的那一行不是目标日时判不通过（防止「列里有一行对」就放行）
+ok 107 - 自证：取用的那一行不是目标日时判不通过（防止「列里有一行对」就放行）
+  ---
+  duration_ms: 0.1245
+  type: 'test'
+  ...
+# Subtest: maps all 119 shop columns by exact header and converts live types
+ok 108 - maps all 119 shop columns by exact header and converts live types
+  ---
+  duration_ms: 0.6586
+  type: 'test'
+  ...
+# Subtest: 数字字段遇到数据源的文本标记 ⇒ 留空并留痕（不写 0，也不抛错）
+ok 109 - 数字字段遇到数据源的文本标记 ⇒ 留空并留痕（不写 0，也不抛错）
+  ---
+  duration_ms: 0.2631
+  type: 'test'
+  ...
+# Subtest: maps promotion columns, leaves secondary scene fields blank, and drops subsidy columns
+ok 110 - maps promotion columns, leaves secondary scene fields blank, and drops subsidy columns
+  ---
+  duration_ms: 0.3848
+  type: 'test'
+  ...
+# Subtest: normalizes Feishu copy suffixes and scene prefixes for schema comparison
+ok 111 - normalizes Feishu copy suffixes and scene prefixes for schema comparison
+  ---
+  duration_ms: 0.0589
+  type: 'test'
+  ...
+# Subtest: buildCombinedFields：单场景放行（有几个场景写几个），一个都没有仍 fail-closed
+ok 112 - buildCombinedFields：单场景放行（有几个场景写几个），一个都没有仍 fail-closed
+  ---
+  duration_ms: 1.6546
+  type: 'test'
+  ...
+# Subtest: 证据目录：第一次跑用基础目录，同一代已经有人用过就顺延 -rerun2 / -rerun3
+ok 113 - 证据目录：第一次跑用基础目录，同一代已经有人用过就顺延 -rerun2 / -rerun3
+  ---
+  duration_ms: 0.9851
+  type: 'test'
+  ...
+# Subtest: 证据目录：显式给了目录就不改名（那是调用方的选择，脚本不替他决定）
+ok 114 - 证据目录：显式给了目录就不改名（那是调用方的选择，脚本不替他决定）
+  ---
+  duration_ms: 0.1054
+  type: 'test'
+  ...
+# Subtest: 证据目录 latest 策略：并入当前最新一代，而不是另开一代
+ok 115 - 证据目录 latest 策略：并入当前最新一代，而不是另开一代
+  ---
+  duration_ms: 0.142
+  type: 'test'
+  ...
+# Subtest: 证据目录：策略写错或没给 baseDir 一律抛错（不许静默按默认值跑）
+ok 116 - 证据目录：策略写错或没给 baseDir 一律抛错（不许静默按默认值跑）
+  ---
+  duration_ms: 0.2739
+  type: 'test'
+  ...
+# Subtest: dirHasEntries：目录不存在或读不到只算「没内容」，不抛错
+ok 117 - dirHasEntries：目录不存在或读不到只算「没内容」，不抛错
+  ---
+  duration_ms: 0.2824
+  type: 'test'
+  ...
+# Subtest: 证据目录的店铺维度：不给键时逐字不变，给了键就加一维
+ok 118 - 证据目录的店铺维度：不给键时逐字不变，给了键就加一维
+  ---
+  duration_ms: 1.2365
+  type: 'test'
+  ...
+# Subtest: 证据目录的店铺键：非法键一律抛错，不许被拼进路径
+ok 119 - 证据目录的店铺键：非法键一律抛错，不许被拼进路径
+  ---
+  duration_ms: 0.4647
+  type: 'test'
+  ...
+# Subtest: 三个写入方都按同一维拼证据目录，并且都把店铺键交给了它
+ok 120 - 三个写入方都按同一维拼证据目录，并且都把店铺键交给了它
+  ---
+  duration_ms: 2.5583
+  type: 'test'
+  ...
+# Subtest: 环境旁证：默认值标 registry-default，环境变量优先，非法值如实记 env-invalid
+ok 121 - 环境旁证：默认值标 registry-default，环境变量优先，非法值如实记 env-invalid
+  ---
+  duration_ms: 2.6409
+  type: 'test'
+  ...
+# Subtest: 页面模型的单元格：SingleSelect 的选项 id 必须换成名字，换不出来要标出来
+ok 122 - 页面模型的单元格：SingleSelect 的选项 id 必须换成名字，换不出来要标出来
+  ---
+  duration_ms: 0.3714
+  type: 'test'
+  ...
+# Subtest: 选项解析分层：字段自己的选项优先，跨表同名 id 不许冒充歧义
+ok 123 - 选项解析分层：字段自己的选项优先，跨表同名 id 不许冒充歧义
+  ---
+  duration_ms: 0.1586
+  type: 'test'
+  ...
+# Subtest: 字段覆盖：派生字段读不到、普通字段为空格、表里没这个字段，三者必须区分开
+ok 124 - 字段覆盖：派生字段读不到、普通字段为空格、表里没这个字段，三者必须区分开
+  ---
+  duration_ms: 0.3403
+  type: 'test'
+  ...
+# Subtest: 注入的片段自洽：剥掉模块作用域后仍能真的跑（光比字符串看不见未定义的引用）
+ok 125 - 注入的片段自洽：剥掉模块作用域后仍能真的跑（光比字符串看不见未定义的引用）
+  ---
+  duration_ms: 0.5751
+  type: 'test'
+  ...
+# Subtest: 日期字段：epoch 毫秒按 +08:00 换算，不随宿主时区漂移
+ok 126 - 日期字段：epoch 毫秒按 +08:00 换算，不随宿主时区漂移
+  ---
+  duration_ms: 0.0766
+  type: 'test'
+  ...
+# Subtest: 回读表达式：注入的是同名实现（不是另抄一份），且分层顺序写死在里面
+ok 127 - 回读表达式：注入的是同名实现（不是另抄一份），且分层顺序写死在里面
+  ---
+  duration_ms: 17.3352
+  type: 'test'
+  ...
+# Subtest: 截图失败只降级、不中断：captureScreenshotSafe 给结论而不是抛
+ok 128 - 截图失败只降级、不中断：captureScreenshotSafe 给结论而不是抛
+  ---
+  duration_ms: 0.2927
+  type: 'test'
+  ...
+# Subtest: 截图失败不许顶掉回读：产物照写、失败记进产物、退出码非零且与真故障区分
+ok 129 - 截图失败不许顶掉回读：产物照写、失败记进产物、退出码非零且与真故障区分
+  ---
+  duration_ms: 0.3967
+  type: 'test'
+  ...
+# Subtest: 两个写入方都把证据目录交给 resolveEvidenceDir，回填用 latest 并入同一代
+ok 130 - 两个写入方都把证据目录交给 resolveEvidenceDir，回填用 latest 并入同一代
+  ---
+  duration_ms: 0.4461
+  type: 'test'
+  ...
+# Subtest: 落位 trace：动作前读不到写成「可缺省」，不许用 failed 的措辞
+ok 131 - 落位 trace：动作前读不到写成「可缺省」，不许用 failed 的措辞
+  ---
+  duration_ms: 1.1355
+  type: 'test'
+  ...
+# Subtest: resolveDateMode 只在目标日等于站点时区昨日时走预设
+ok 132 - resolveDateMode 只在目标日等于站点时区昨日时走预设
+  ---
+  duration_ms: 14.8621
+  type: 'test'
+  ...
+# Subtest: resolveDateMode 按站点时区判昨日，不随宿主时区漂移
+ok 133 - resolveDateMode 按站点时区判昨日，不随宿主时区漂移
+  ---
+  duration_ms: 0.294
+  type: 'test'
+  ...
+# Subtest: shiftIso 跨月回退
+ok 134 - shiftIso 跨月回退
+  ---
+  duration_ms: 0.1008
+  type: 'test'
+  ...
+# Subtest: shiftMonth 用于同月比较驱动翻月，处理跨年
+ok 135 - shiftMonth 用于同月比较驱动翻月，处理跨年
+  ---
+  duration_ms: 0.1631
+  type: 'test'
+  ...
+# Subtest: extractIsoDates 从页面文本里取全部日期
+ok 136 - extractIsoDates 从页面文本里取全部日期
+  ---
+  duration_ms: 0.3187
+  type: 'test'
+  ...
+# Subtest: buildAlimamaUrl 把日期/场景/周期/粒度全部编码进 hash
+ok 137 - buildAlimamaUrl 把日期/场景/周期/粒度全部编码进 hash
+  ---
+  duration_ms: 0.2942
+  type: 'test'
+  ...
+# Subtest: resolveAppliedDate 把「昨日」回显换算成具体日期
+ok 138 - resolveAppliedDate 把「昨日」回显换算成具体日期
+  ---
+  duration_ms: 0.1063
+  type: 'test'
+  ...
+# Subtest: assertAlimamaState 通过真实筛选栏文本，并按语义识别而非索引
+ok 139 - assertAlimamaState 通过真实筛选栏文本，并按语义识别而非索引
+  ---
+  duration_ms: 0.3326
+  type: 'test'
+  ...
+# Subtest: assertAlimamaState 对日期不符/场景缺失/周期不符逐条报错
+ok 140 - assertAlimamaState 对日期不符/场景缺失/周期不符逐条报错
+  ---
+  duration_ms: 0.518
+  type: 'test'
+  ...
+# Subtest: assertAlimamaState 支持「昨日」回显（预设模式）
+ok 141 - assertAlimamaState 支持「昨日」回显（预设模式）
+  ---
+  duration_ms: 0.1963
+  type: 'test'
+  ...
+# Subtest: siteAdapter 只接受已实测的两个站点
+ok 142 - siteAdapter 只接受已实测的两个站点
+  ---
+  duration_ms: 0.1252
+  type: 'test'
+  ...
+# Subtest: selectDayHits 在同月的两个块里各取到一次目标日
+ok 143 - selectDayHits 在同月的两个块里各取到一次目标日
+  ---
+  duration_ms: 0.6681
+  type: 'test'
+  ...
+# Subtest: selectDayHits 目标月不可见时报出可见月份，不静默点错
+ok 144 - selectDayHits 目标月不可见时报出可见月份，不静默点错
+  ---
+  duration_ms: 0.1279
+  type: 'test'
+  ...
+# Subtest: selectDayHits 目标日在块内缺失或重复时报错
+ok 145 - selectDayHits 目标日在块内缺失或重复时报错
+  ---
+  duration_ms: 0.1084
+  type: 'test'
+  ...
+# Subtest: isSingleDaySelection 只认「X 至 X」
+ok 146 - isSingleDaySelection 只认「X 至 X」
+  ---
+  duration_ms: 0.0642
+  type: 'test'
+  ...
+# Subtest: 落位认不出页面时按 entryUrl 回位，且只动同一主机下那一个页面
+ok 147 - 落位认不出页面时按 entryUrl 回位，且只动同一主机下那一个页面
+  ---
+  duration_ms: 3016.496
+  type: 'test'
+  ...
+# Subtest: 只有生意参谋登记了回位地址
+ok 148 - 只有生意参谋登记了回位地址
+  ---
+  duration_ms: 0.2111
+  type: 'test'
+  ...
+# Subtest: 落位：navigate 之后头两次读不到（页面还没渲染完）不算失败，等到齐为止
+ok 149 - 落位：navigate 之后头两次读不到（页面还没渲染完）不算失败，等到齐为止
+  ---
+  duration_ms: 30.6167
+  type: 'test'
+  ...
+# Subtest: 落位：一直读不到时，报错要点名「读了几次、最后一次为什么读不到」
+ok 150 - 落位：一直读不到时，报错要点名「读了几次、最后一次为什么读不到」
+  ---
+  duration_ms: 237.5561
+  type: 'test'
+  ...
+# Subtest: 落位：读得到但日期对不上时，报错里要留着「最后读成什么样」
+ok 151 - 落位：读得到但日期对不上时，报错里要留着「最后读成什么样」
+  ---
+  duration_ms: 251.3899
+  type: 'test'
+  ...
+# Subtest: 生意参谋点击坐标允许 2px 舍入误差，但不放行明显越界
+ok 152 - 生意参谋点击坐标允许 2px 舍入误差，但不放行明显越界
+  ---
+  duration_ms: 0.6632
+  type: 'test'
+  ...
+# Subtest: 落位：settle 里那次读取必须在容错里（放在 try 之外＝第一次读就穿透）
+ok 153 - 落位：settle 里那次读取必须在容错里（放在 try 之外＝第一次读就穿透）
+  ---
+  duration_ms: 0.4988
+  type: 'test'
+  ...
+# Subtest: needsStaleReload：只按读数判「页面是不是停在上一轮的渲染上」
+ok 154 - needsStaleReload：只按读数判「页面是不是停在上一轮的渲染上」
+  ---
+  duration_ms: 0.1546
+  type: 'test'
+  ...
+# Subtest: 落位：生意参谋读数停在旧日期时先真重载，重载后读数对了才继续
+ok 155 - 落位：生意参谋读数停在旧日期时先真重载，重载后读数对了才继续
+  ---
+  duration_ms: 46.5174
+  type: 'test'
+  ...
+# Subtest: 落位：读数本来就是目标日时不重载（行为与从前逐字相同）
+ok 156 - 落位：读数本来就是目标日时不重载（行为与从前逐字相同）
+  ---
+  duration_ms: 14.9978
+  type: 'test'
+  ...
+# Subtest: 落位：重载之后读数仍不对 ⇒ 报错要排除「页面过期」这个成因
+ok 157 - 落位：重载之后读数仍不对 ⇒ 报错要排除「页面过期」这个成因
+  ---
+  duration_ms: 1.0456
+  type: 'test'
+  ...
+# Subtest: 功能权限判据：只有「问到了、平台说不」才算数
+ok 158 - 功能权限判据：只有「问到了、平台说不」才算数
+  ---
+  duration_ms: 0.1671
+  type: 'test'
+  ...
+# Subtest: 接线：两条「读数起不来」的失败路径都真接了功能权限判据
+ok 159 - 接线：两条「读数起不来」的失败路径都真接了功能权限判据
+  ---
+  duration_ms: 0.5743
+  type: 'test'
+  ...
+# Subtest: 表达式是自包裹的 IIFE，且带 safe 包装（页面任何一项取不到都不该中断整体）
+ok 160 - 表达式是自包裹的 IIFE，且带 safe 包装（页面任何一项取不到都不该中断整体）
+  ---
+  duration_ms: 1.3859
+  type: 'test'
+  ...
+# Subtest: 全成功：落 JSON + 人读文本 + 截图，ok=true
+ok 161 - 全成功：落 JSON + 人读文本 + 截图，ok=true
+  ---
+  duration_ms: 506.269
+  type: 'test'
+  ...
+# Subtest: unwrapEvalValue：剥掉 {value} 包装（真代理的形状），也认裸字符串
+ok 162 - unwrapEvalValue：剥掉 {value} 包装（真代理的形状），也认裸字符串
+  ---
+  duration_ms: 0.3438
+  type: 'test'
+  ...
+# Subtest: 取到的不是现场对象 ⇒ ok=false、如实记原因是「形状不对」，且不落一套空壳产物
+ok 163 - 取到的不是现场对象 ⇒ ok=false、如实记原因是「形状不对」，且不落一套空壳产物
+  ---
+  duration_ms: 113.6599
+  type: 'test'
+  ...
+# Subtest: 整段永不抛：读页签抛错也返回对象、把原因记进 errors
+ok 164 - 整段永不抛：读页签抛错也返回对象、把原因记进 errors
+  ---
+  duration_ms: 145.5371
+  type: 'test'
+  ...
+# Subtest: 部分失败：DOM 取到了、截图挂了 ⇒ ok=true、JSON 照写、截图记进 errors
+ok 165 - 部分失败：DOM 取到了、截图挂了 ⇒ ok=true、JSON 照写、截图记进 errors
+  ---
+  duration_ms: 243.0812
+  type: 'test'
+  ...
+# Subtest: 没有可用页签 ⇒ 不崩，如实记「读不到页签」
+ok 166 - 没有可用页签 ⇒ 不崩，如实记「读不到页签」
+  ---
+  duration_ms: 103.8531
+  type: 'test'
+  ...
+# Subtest: about:blank 会被跳过，优先取真实页面（否则记录的是空页，等于白采）
+ok 167 - about:blank 会被跳过，优先取真实页面（否则记录的是空页，等于白采）
+  ---
+  duration_ms: 255.5359
+  type: 'test'
+  ...
+# Subtest: 写盘失败也绝不抛，记进 errors
+ok 168 - 写盘失败也绝不抛，记进 errors
+  ---
+  duration_ms: 109.6966
+  type: 'test'
+  ...
+# Subtest: 人读文本在 state 为 null 时给明确占位，而不是空字符串
+ok 169 - 人读文本在 state 为 null 时给明确占位，而不是空字符串
+  ---
+  duration_ms: 0.5334
+  type: 'test'
+  ...
+# Subtest: 人读文本不吞关键事实：遮挡层/视口/可见元素都在
+ok 170 - 人读文本不吞关键事实：遮挡层/视口/可见元素都在
+  ---
+  duration_ms: 0.1909
+  type: 'test'
+  ...
+# Subtest: inspectPageUrl：授权 table/view 之外的一切都算「没落位」
+ok 171 - inspectPageUrl：授权 table/view 之外的一切都算「没落位」
+  ---
+  duration_ms: 1.1281
+  type: 'test'
+  ...
+# Subtest: buildTargetTableUrl：只在原 origin 上拼回 base 表地址，形状与 readback 一致
+ok 172 - buildTargetTableUrl：只在原 origin 上拼回 base 表地址，形状与 readback 一致
+  ---
+  duration_ms: 0.1184
+  type: 'test'
+  ...
+# Subtest: describeTargetMismatch：同时报出「当前」与「期望」，并点出这一页是上一家留下的
+ok 173 - describeTargetMismatch：同时报出「当前」与「期望」，并点出这一页是上一家留下的
+  ---
+  duration_ms: 0.2722
+  type: 'test'
+  ...
+# Subtest: describeTargetMismatch：view 不同时的说法与「停在别张表」分开，不许混成一句
+ok 174 - describeTargetMismatch：view 不同时的说法与「停在别张表」分开，不许混成一句
+  ---
+  duration_ms: 0.085
+  type: 'test'
+  ...
+# Subtest: describePageSearchFailure：got 0 的两种成因要能分开，且列出 /targets 看到的页面
+ok 175 - describePageSearchFailure：got 0 的两种成因要能分开，且列出 /targets 看到的页面
+  ---
+  duration_ms: 0.2414
+  type: 'test'
+  ...
+# Subtest: assertOnTargetPage：在授权表上原样返回判据，否则抛那条带诊断的错
+ok 176 - assertOnTargetPage：在授权表上原样返回判据，否则抛那条带诊断的错
+  ---
+  duration_ms: 0.3714
+  type: 'test'
+  ...
+# [target] 进场时这一页停在 table=tblUnwn05vl8Wik9&view=vewHgmRhGR（五家共用一页，多半是上一家的阶段没收尾留下的）⇒ 已落位回源表（第 1 次探到表已加载）
+# Subtest: ensureTargetPage：这一页停在别张表上时，进场自己导航回源表（导航在复核之前）
+ok 177 - ensureTargetPage：这一页停在别张表上时，进场自己导航回源表（导航在复核之前）
+  ---
+  duration_ms: 40.3666
+  type: 'test'
+  ...
+# Subtest: ensureTargetPage：已经在授权的 table/view 上时一个导航请求都不发，但仍等模型加载
+ok 178 - ensureTargetPage：已经在授权的 table/view 上时一个导航请求都不发，但仍等模型加载
+  ---
+  duration_ms: 7.4454
+  type: 'test'
+  ...
+# Subtest: ensureTargetPage：导航之后表一直没加载出来时当场炸，并报出等了几次
+ok 179 - ensureTargetPage：导航之后表一直没加载出来时当场炸，并报出等了几次
+  ---
+  duration_ms: 47.6152
+  type: 'test'
+  ...
+# Subtest: ensureTargetPage：base 上一个页面都没有时，报错要带上 /targets 的实况
+ok 180 - ensureTargetPage：base 上一个页面都没有时，报错要带上 /targets 的实况
+  ---
+  duration_ms: 4.4532
+  type: 'test'
+  ...
+# Subtest: 接线：push 的 main 先落位、再复核（删掉 ensureTargetPage 这一行必红）
+ok 181 - 接线：push 的 main 先落位、再复核（删掉 ensureTargetPage 这一行必红）
+  ---
+  duration_ms: 0.4028
+  type: 'test'
+  ...
+# Subtest: 接线：readback 的归位写在 finally 里，且失败时自己吞掉（不能顶掉原始错误）
+ok 182 - 接线：readback 的归位写在 finally 里，且失败时自己吞掉（不能顶掉原始错误）
+  ---
+  duration_ms: 5.0285
+  type: 'test'
+  ...
+# Subtest: 接线：夹具用的 id 与 runtime/feishu-targets.mjs 同源（配置改了就当场红）
+ok 183 - 接线：夹具用的 id 与 runtime/feishu-targets.mjs 同源（配置改了就当场红）
+  ---
+  duration_ms: 0.3042
+  type: 'test'
+  ...
+# Subtest: extracts the date row and peer average from 当日询单人数
+ok 184 - extracts the date row and peer average from 当日询单人数
+  ---
+  duration_ms: 1.267
+  type: 'test'
+  ...
+# Subtest: rejects ambiguous headers, missing rows, and nonnumeric values
+ok 185 - rejects ambiguous headers, missing rows, and nonnumeric values
+  ---
+  duration_ms: 0.1326
+  type: 'test'
+  ...
+# Subtest: 默认对缺失的同行基准 fail-closed，显式关闭才降级为 PEER_UNAVAILABLE
+ok 186 - 默认对缺失的同行基准 fail-closed，显式关闭才降级为 PEER_UNAVAILABLE
+  ---
+  duration_ms: 0.159
+  type: 'test'
+  ...
+# Subtest: selects exactly one Feishu row by date and shop
+ok 187 - selects exactly one Feishu row by date and shop
+  ---
+  duration_ms: 0.1234
+  type: 'test'
+  ...
+# Subtest: findDailyStoreRow 认店名形态，并报出候选数
+ok 188 - findDailyStoreRow 认店名形态，并报出候选数
+  ---
+  duration_ms: 0.563
+  type: 'test'
+  ...
+# Subtest: findDailyStoreRow 认选项 id 形态（09-28 那 12 行的真实形态）
+ok 189 - findDailyStoreRow 认选项 id 形态（09-28 那 12 行的真实形态）
+  ---
+  duration_ms: 0.1147
+  type: 'test'
+  ...
+# Subtest: findDailyStoreRow 同日同店两行时报 2 个候选（不挑一行写）
+ok 190 - findDailyStoreRow 同日同店两行时报 2 个候选（不挑一行写）
+  ---
+  duration_ms: 0.0952
+  type: 'test'
+  ...
+# Subtest: allows only a blank write or an exact idempotent rerun
+ok 191 - allows only a blank write or an exact idempotent rerun
+  ---
+  duration_ms: 0.1724
+  type: 'test'
+  ...
+# Subtest: 降级写入只认「询单量」，且要求同行那一格保持空白
+ok 192 - 降级写入只认「询单量」，且要求同行那一格保持空白
+  ---
+  duration_ms: 0.2202
+  type: 'test'
+  ...
+# Subtest: 站点判据：实测的「未登录」URL 命中，实测的「已登录」URL 不命中
+ok 193 - 站点判据：实测的「未登录」URL 命中，实测的「已登录」URL 不命中
+  ---
+  duration_ms: 1.1877
+  type: 'test'
+  ...
+# Subtest: 两个站点都声明了探测页与标签，且探测页自身不会被自己的判据命中
+ok 194 - 两个站点都声明了探测页与标签，且探测页自身不会被自己的判据命中
+  ---
+  duration_ms: 0.2359
+  type: 'test'
+  ...
+# Subtest: parseArgs：默认只读排练，--commit 才动手
+ok 195 - parseArgs：默认只读排练，--commit 才动手
+  ---
+  duration_ms: 0.6607
+  type: 'test'
+  ...
+# Subtest: parseArgs：未知参数要报「未知」，不能报成「需要一个值」
+ok 196 - parseArgs：未知参数要报「未知」，不能报成「需要一个值」
+  ---
+  duration_ms: 0.3348
+  type: 'test'
+  ...
+# Subtest: LOGIN_TARGETS 与 SITES 的键一致（多一个值就会变成「谁也不会被处理」）
+ok 197 - LOGIN_TARGETS 与 SITES 的键一致（多一个值就会变成「谁也不会被处理」）
+  ---
+  duration_ms: 0.0839
+  type: 'test'
+  ...
+# Subtest: centerOf：零尺寸矩形算出来的中心是 (0,0) ⇒ 必须 fail-closed 返回 null
+ok 198 - centerOf：零尺寸矩形算出来的中心是 (0,0) ⇒ 必须 fail-closed 返回 null
+  ---
+  duration_ms: 0.1067
+  type: 'test'
+  ...
+# Subtest: sitesNeedingLogin：只有「确认已登录」才算通过 —— 读不出来（null）一样要去处理
+ok 199 - sitesNeedingLogin：只有「确认已登录」才算通过 —— 读不出来（null）一样要去处理
+  ---
+  duration_ms: 0.2332
+  type: 'test'
+  ...
+# Subtest: captchaVisible：三种载体任一可见即为真（SOP §10.2 停手交人的判据）
+ok 200 - captchaVisible：三种载体任一可见即为真（SOP §10.2 停手交人的判据）
+  ---
+  duration_ms: 0.0722
+  type: 'test'
+  ...
+# Subtest: 登录表单表达式：只认那五个具名元素（id 来自实测），并且读的是 DOM 值不是视觉
+ok 201 - 登录表单表达式：只认那五个具名元素（id 来自实测），并且读的是 DOM 值不是视觉
+  ---
+  duration_ms: 0.2846
+  type: 'test'
+  ...
+# Subtest: 主脚本用到的结论词都在 VERDICTS 里（拼错一个词就是一次静默降级）
+ok 202 - 主脚本用到的结论词都在 VERDICTS 里（拼错一个词就是一次静默降级）
+  ---
+  duration_ms: 1.8628
+  type: 'test'
+  ...
+# Subtest: 「需要人」的结论词都在 VERDICTS 里，且成功/排练的结论一个都不在里面
+ok 203 - 「需要人」的结论词都在 VERDICTS 里，且成功/排练的结论一个都不在里面
+  ---
+  duration_ms: 0.1529
+  type: 'test'
+  ...
+# Subtest: shouldNotify：只有「真的试过了并且没成」才默认叫人
+ok 204 - shouldNotify：只有「真的试过了并且没成」才默认叫人
+  ---
+  duration_ms: 0.1253
+  type: 'test'
+  ...
+# Subtest: parseArgs：--notify 默认 auto，取值受词表约束
+ok 205 - parseArgs：--notify 默认 auto，取值受词表约束
+  ---
+  duration_ms: 0.1026
+  type: 'test'
+  ...
+# Subtest: 「读不到」与「被踢回登录页」必须能分开：前者不该被推成登录故障
+ok 206 - 「读不到」与「被踢回登录页」必须能分开：前者不该被推成登录故障
+  ---
+  duration_ms: 0.1167
+  type: 'test'
+  ...
+# Subtest: 主脚本在进登录流程之前先判「页面不在」，且它不叫人（接线判据）
+ok 207 - 主脚本在进登录流程之前先判「页面不在」，且它不叫人（接线判据）
+  ---
+  duration_ms: 0.3176
+  type: 'test'
+  ...
+# Subtest: buildLoginAlert：拿到「不需要人」的结论就抛，不生成一条不该有的告警
+ok 208 - buildLoginAlert：拿到「不需要人」的结论就抛，不生成一条不该有的告警
+  ---
+  duration_ms: 0.1522
+  type: 'test'
+  ...
+# Subtest: 告警真渲染一遍：指路、下一步都在，且**机器名/浏览器配置一行都没有**（2026-10-06 起）
+ok 209 - 告警真渲染一遍：指路、下一步都在，且**机器名/浏览器配置一行都没有**（2026-10-06 起）
+  ---
+  duration_ms: 2.0657
+  type: 'test'
+  ...
+# Subtest: 告警文案里不许出现结论代号与内部术语（用户 2026-09-18：「不要讲一堆术语」）
+ok 210 - 告警文案里不许出现结论代号与内部术语（用户 2026-09-18：「不要讲一堆术语」）
+  ---
+  duration_ms: 0.5311
+  type: 'test'
+  ...
+# Subtest: 前三条结论必须承诺「登录页已经开在窗口里了」——入口由脚本开，不是让人自己找
+ok 211 - 前三条结论必须承诺「登录页已经开在窗口里了」——入口由脚本开，不是让人自己找
+  ---
+  duration_ms: 0.1105
+  type: 'test'
+  ...
+# Subtest: 每个「要叫人」的结论都必须有自己的原因和下一步——漏一个就会悄悄退化成兜底文案
+ok 212 - 每个「要叫人」的结论都必须有自己的原因和下一步——漏一个就会悄悄退化成兜底文案
+  ---
+  duration_ms: 0.2085
+  type: 'test'
+  ...
+# Subtest: 告警对象里不许再带 loginUrl —— 那条链接只会把人带到默认浏览器
+ok 213 - 告警对象里不许再带 loginUrl —— 那条链接只会把人带到默认浏览器
+  ---
+  duration_ms: 0.0815
+  type: 'test'
+  ...
+# Subtest: 告警里不含任何凭据面：没有密码/账号字段，也没有登录表单的状态
+ok 214 - 告警里不含任何凭据面：没有密码/账号字段，也没有登录表单的状态
+  ---
+  duration_ms: 0.0853
+  type: 'test'
+  ...
+# Subtest: 形状判据：技术串一旦被加回告警，构造时就当场抛错（不靠写的人记得）
+ok 215 - 形状判据：技术串一旦被加回告警，构造时就当场抛错（不靠写的人记得）
+  ---
+  duration_ms: 0.9129
+  type: 'test'
+  ...
+# Subtest: 接线（源码级）：IO 脚本真的调了 profileForShop（搬走之后闸门不许跟着消失）
+ok 216 - 接线（源码级）：IO 脚本真的调了 profileForShop（搬走之后闸门不许跟着消失）
+  ---
+  duration_ms: 0.3833
+  type: 'test'
+  ...
+# Subtest: alertId 是「同站点同一天一条」——它是去重的锚，不能每次都变
+ok 217 - alertId 是「同站点同一天一条」——它是去重的锚，不能每次都变
+  ---
+  duration_ms: 0.14
+  type: 'test'
+  ...
+# Subtest: 主脚本确实把通知接到了失败路径上（不是只写了两个导出函数）
+ok 218 - 主脚本确实把通知接到了失败路径上（不是只写了两个导出函数）
+  ---
+  duration_ms: 0.3158
+  type: 'test'
+  ...
+# Subtest: 主脚本必须无条件把登录窗口置前（不是只在 --shots 时才前置）
+ok 219 - 主脚本必须无条件把登录窗口置前（不是只在 --shots 时才前置）
+  ---
+  duration_ms: 0.4541
+  type: 'test'
+  ...
+# Subtest: alertForRun：带 --shop 时，告警必须点名是哪一家店
+ok 220 - alertForRun：带 --shop 时，告警必须点名是哪一家店
+  ---
+  duration_ms: 0.2203
+  type: 'test'
+  ...
+# Subtest: alertForRun：没给 --shop 时点名**共用窗口**（2026-10-06 改；不再是「那台电脑」）
+ok 221 - alertForRun：没给 --shop 时点名**共用窗口**（2026-10-06 改；不再是「那台电脑」）
+  ---
+  duration_ms: 0.16
+  type: 'test'
+  ...
+# Subtest: profileForShop：四家店各自指向自己的 profile，谁也不是日报那个
+ok 222 - profileForShop：四家店各自指向自己的 profile，谁也不是日报那个
+  ---
+  duration_ms: 0.1585
+  type: 'test'
+  ...
+# Subtest: profileForShop：fail-closed —— 给了店名却拿不到登记表，宁可抛错也不回落成共用 profile
+ok 223 - profileForShop：fail-closed —— 给了店名却拿不到登记表，宁可抛错也不回落成共用 profile
+  ---
+  duration_ms: 0.0924
+  type: 'test'
+  ...
+# Subtest: alertForRun：该安静的时候必须安静（判定在 core 里，不散在 IO 里）
+ok 224 - alertForRun：该安静的时候必须安静（判定在 core 里，不散在 IO 里）
+  ---
+  duration_ms: 0.0905
+  type: 'test'
+  ...
+# Subtest: alertId 含店名：五家店同一天必须是五条锚，不能共用一条（共用会被去重吞掉四家）
+ok 225 - alertId 含店名：五家店同一天必须是五条锚，不能共用一条（共用会被去重吞掉四家）
+  ---
+  duration_ms: 0.1177
+  type: 'test'
+  ...
+# Subtest: 「原因」不许读两遍：主脚本补的 detail 不能把静态原因整句再说一遍
+ok 226 - 「原因」不许读两遍：主脚本补的 detail 不能把静态原因整句再说一遍
+  ---
+  duration_ms: 0.4738
+  type: 'test'
+  ...
+# Subtest: 告警里不许让人去做收信人做不到的事（截图、本地路径、日志）
+ok 227 - 告警里不许让人去做收信人做不到的事（截图、本地路径、日志）
+  ---
+  duration_ms: 0.4369
+  type: 'test'
+  ...
+# Subtest: 「下一步」必须能定位到哪一个窗口：有店名用店名，没店名用共用窗口
+ok 228 - 「下一步」必须能定位到哪一个窗口：有店名用店名，没店名用共用窗口
+  ---
+  duration_ms: 0.1472
+  type: 'test'
+  ...
+# Subtest: 没店名时告警承诺的那个名字，必须与共用窗口标识页写在标题上的名字一致
+ok 229 - 没店名时告警承诺的那个名字，必须与共用窗口标识页写在标题上的名字一致
+  ---
+  duration_ms: 0.1077
+  type: 'test'
+  ...
+# Subtest: 告警里那句「标题写着「X」」必须与窗口标题真的对得上（两条腿绑在一起）
+ok 230 - 告警里那句「标题写着「X」」必须与窗口标题真的对得上（两条腿绑在一起）
+  ---
+  duration_ms: 0.1289
+  type: 'test'
+  ...
+# Subtest: parseArgs：--shop 是运营叫法，拼错当场抛错并列出全部合法值
+ok 231 - parseArgs：--shop 是运营叫法，拼错当场抛错并列出全部合法值
+  ---
+  duration_ms: 0.1195
+  type: 'test'
+  ...
+# Subtest: isTaobaoLoginUrl：对着实测的登录页与被送走后的落点各判一次
+ok 232 - isTaobaoLoginUrl：对着实测的登录页与被送走后的落点各判一次
+  ---
+  duration_ms: 0.0794
+  type: 'test'
+  ...
+# Subtest: 登录页被送走必须单独成一类：动作是「去打开那两个后台」，不是「去点保存密码」
+ok 233 - 登录页被送走必须单独成一类：动作是「去打开那两个后台」，不是「去点保存密码」
+  ---
+  duration_ms: 0.0521
+  type: 'test'
+  ...
+# Subtest: detectLoginDetour：还在登录页 ⇒ 不绕路；被送去卖家后台 ⇒ 报这一类
+ok 234 - detectLoginDetour：还在登录页 ⇒ 不绕路；被送去卖家后台 ⇒ 报这一类
+  ---
+  duration_ms: 0.0885
+  type: 'test'
+  ...
+# Subtest: 主脚本必须真的会用新判据，且「还在不在登录页」只有一个解释点
+ok 235 - 主脚本必须真的会用新判据，且「还在不在登录页」只有一个解释点
+  ---
+  duration_ms: 0.4037
+  type: 'test'
+  ...
+# Subtest: 候选地址表：第一条必须是实测命中率最高的那条，且 id 唯一、每条都被认成登录页
+ok 236 - 候选地址表：第一条必须是实测命中率最高的那条，且 id 唯一、每条都被认成登录页
+  ---
+  duration_ms: 0.1361
+  type: 'test'
+  ...
+# Subtest: 候选表必须落在 login.taobao.com 上，且不得把已被证伪的 havanalogin 塞回来
+ok 237 - 候选表必须落在 login.taobao.com 上，且不得把已被证伪的 havanalogin 塞回来
+  ---
+  duration_ms: 0.0539
+  type: 'test'
+  ...
+# Subtest: isTaobaoLoginUrl：按 URL 结构判，不再靠「子串巧合」
+ok 238 - isTaobaoLoginUrl：按 URL 结构判，不再靠「子串巧合」
+  ---
+  duration_ms: 0.0366
+  type: 'test'
+  ...
+# Subtest: loginFormVisible：两个框都真的占了位，才算「这一页有表单」
+ok 239 - loginFormVisible：两个框都真的占了位，才算「这一页有表单」
+  ---
+  duration_ms: 0.0538
+  type: 'test'
+  ...
+# Subtest: 每个现场都有唯一的一条结论 —— 少映射一个就是「回执里没有结论」
+ok 240 - 每个现场都有唯一的一条结论 —— 少映射一个就是「回执里没有结论」
+  ---
+  duration_ms: 0.1425
+  type: 'test'
+  ...
+# Subtest: finalLoginVerdict：五选一的优先级，以及「该把人送到哪一页」
+ok 241 - finalLoginVerdict：五选一的优先级，以及「该把人送到哪一页」
+  ---
+  duration_ms: 0.1456
+  type: 'test'
+  ...
+# Subtest: 「承诺登录页开着」的名单必须与文案逐字对得上（两条腿绑在一起）
+ok 242 - 「承诺登录页开着」的名单必须与文案逐字对得上（两条腿绑在一起）
+  ---
+  duration_ms: 0.0645
+  type: 'test'
+  ...
+# Subtest: 身份守卫：填进来的账号必须与这家店登记的会员名逐字相同（四态各有明确出口）
+ok 243 - 身份守卫：填进来的账号必须与这家店登记的会员名逐字相同（四态各有明确出口）
+  ---
+  duration_ms: 0.1549
+  type: 'test'
+  ...
+# Subtest: 身份守卫读的**只有账号**：那个表达式永远不许碰密码框
+ok 244 - 身份守卫读的**只有账号**：那个表达式永远不许碰密码框
+  ---
+  duration_ms: 0.0377
+  type: 'test'
+  ...
+# Subtest: WRONG_ACCOUNT 的文案不能复用「点保存密码」那套 —— 它的病恰好是这台存了多家店的账号
+ok 245 - WRONG_ACCOUNT 的文案不能复用「点保存密码」那套 —— 它的病恰好是这台存了多家店的账号
+  ---
+  duration_ms: 0.0393
+  type: 'test'
+  ...
+# Subtest: WRONG_ACCOUNT 要叫人，且告警点名到店：静默登成别家是这条链上最贵的一种失败
+ok 246 - WRONG_ACCOUNT 要叫人，且告警点名到店：静默登成别家是这条链上最贵的一种失败
+  ---
+  duration_ms: 0.0851
+  type: 'test'
+  ...
+# Subtest: 回执里可以出现账号名（那不是秘密），但**密码面一个都不许出现**
+ok 247 - 回执里可以出现账号名（那不是秘密），但**密码面一个都不许出现**
+  ---
+  duration_ms: 0.6515
+  type: 'test'
+  ...
+# Subtest: judgeShopTarget：给了店名就必须落在它自己的代理端口上（2026-09-22 那次事故的封条）
+ok 248 - judgeShopTarget：给了店名就必须落在它自己的代理端口上（2026-09-22 那次事故的封条）
+  ---
+  duration_ms: 0.5043
+  type: 'test'
+  ...
+# Subtest: shopForProxy / proxyPortOf：端口 → 店铺的唯一来源是登记表
+ok 249 - shopForProxy / proxyPortOf：端口 → 店铺的唯一来源是登记表
+  ---
+  duration_ms: 0.1407
+  type: 'test'
+  ...
+# Subtest: 主脚本真的接了候选循环与身份守卫（判据齐全但没人用＝最难发现的空转）
+ok 250 - 主脚本真的接了候选循环与身份守卫（判据齐全但没人用＝最难发现的空转）
+  ---
+  duration_ms: 0.3659
+  type: 'test'
+  ...
+# Subtest: 确认登录中间屏：命中容器 + 命中可点叶子才算命中（只有一条腿不算）
+ok 251 - 确认登录中间屏：命中容器 + 命中可点叶子才算命中（只有一条腿不算）
+  ---
+  duration_ms: 0.1509
+  type: 'test'
+  ...
+# Subtest: 确认登录中间屏：动作词词表非空且不带「同意/协议」这类词
+ok 252 - 确认登录中间屏：动作词词表非空且不带「同意/协议」这类词
+  ---
+  duration_ms: 0.0954
+  type: 'test'
+  ...
+# Subtest: 确认登录中间屏：表达式可被解析且空页面不炸
+ok 253 - 确认登录中间屏：表达式可被解析且空页面不炸
+  ---
+  duration_ms: 0.1754
+  type: 'test'
+  ...
+# Subtest: judgeSubmitOutcome：三种出口各对应一个明确的处置（不许糊成一个「没成」）
+ok 254 - judgeSubmitOutcome：三种出口各对应一个明确的处置（不许糊成一个「没成」）
+  ---
+  duration_ms: 0.1032
+  type: 'test'
+  ...
+# Subtest: 接线：主脚本必须在判 URL 之前先处理确认屏，且点了之后才回读站点
+ok 255 - 接线：主脚本必须在判 URL 之前先处理确认屏，且点了之后才回读站点
+  ---
+  duration_ms: 0.2663
+  type: 'test'
+  ...
+# Subtest: 自动同意协议：勾选之后必须留下「同意了哪一份、什么时候」的凭据
+ok 256 - 自动同意协议：勾选之后必须留下「同意了哪一份、什么时候」的凭据
+  ---
+  duration_ms: 0.2928
+  type: 'test'
+  ...
+# Subtest: promotion-fetch：操作行延迟显形时等待后继续
+ok 257 - promotion-fetch：操作行延迟显形时等待后继续
+  ---
+  duration_ms: 0.7217
+  type: 'test'
+  ...
+# Subtest: promotion-fetch：操作行持续隐藏超过预算时 fail-closed
+ok 258 - promotion-fetch：操作行持续隐藏超过预算时 fail-closed
+  ---
+  duration_ms: 0.8425
+  type: 'test'
+  ...
+# Subtest: 整页重载后必须重新定位目标（重载会冲掉 data- 标记）
+ok 259 - 整页重载后必须重新定位目标（重载会冲掉 data- 标记）
+  ---
+  duration_ms: 3.1106
+  type: 'test'
+  ...
+# Subtest: 台账解析：坏掉的台账一律抛，绝不当成空台账
+ok 260 - 台账解析：坏掉的台账一律抛，绝不当成空台账
+  ---
+  duration_ms: 1.0541
+  type: 'test'
+  ...
+# Subtest: 读台账：文件不存在＝还没记过；文件在但读坏了＝抛
+ok 261 - 读台账：文件不存在＝还没记过；文件在但读坏了＝抛
+  ---
+  duration_ms: 0.5243
+  type: 'test'
+  ...
+# Subtest: 写台账：先写 .tmp 再改名（半截文件能把这条链停住）
+ok 262 - 写台账：先写 .tmp 再改名（半截文件能把这条链停住）
+  ---
+  duration_ms: 0.1441
+  type: 'test'
+  ...
+# Subtest: 记账是纯函数：不改入参，且用 --task 直取时也要落一笔（否则下一轮又会提交一次）
+ok 263 - 记账是纯函数：不改入参，且用 --task 直取时也要落一笔（否则下一轮又会提交一次）
+  ---
+  duration_ms: 0.1735
+  type: 'test'
+  ...
+# Subtest: 台账按店定位：优先 --expect-shop，退化到 --proxy，都没有就抛
+ok 264 - 台账按店定位：优先 --expect-shop，退化到 --proxy，都没有就抛
+  ---
+  duration_ms: 0.1433
+  type: 'test'
+  ...
+# Subtest: 提交前决策：有未取任务且核得到就复用；核不到就阻断；没有才提交
+ok 265 - 提交前决策：有未取任务且核得到就复用；核不到就阻断；没有才提交
+  ---
+  duration_ms: 0.2356
+  type: 'test'
+  ...
+# Subtest: 别的目标日挂着的未取任务只报不拦（拦住一条无人值守的链比残留更糟）
+ok 266 - 别的目标日挂着的未取任务只报不拦（拦住一条无人值守的链比残留更糟）
+  ---
+  duration_ms: 0.2524
+  type: 'test'
+  ...
+# Subtest: 提交结果：差集必须恰好 1 条；0 条不许当成功，多条算核不清
+ok 267 - 提交结果：差集必须恰好 1 条；0 条不许当成功，多条算核不清
+  ---
+  duration_ms: 0.2278
+  type: 'test'
+  ...
+# Subtest: 差集只认任务名形状：页面上的别的叶子文本不许混进来把差集算错
+ok 268 - 差集只认任务名形状：页面上的别的叶子文本不许混进来把差集算错
+  ---
+  duration_ms: 0.1856
+  type: 'test'
+  ...
+# Subtest: 取件段：候选按「日期范围等于目标日」给，不按任务名认（同一天补提交过就是两条）
+ok 269 - 取件段：候选按「日期范围等于目标日」给，不按任务名认（同一天补提交过就是两条）
+  ---
+  duration_ms: 0.4069
+  type: 'test'
+  ...
+# Subtest: 取件段：一条「日期范围」都读不到 ⇒ 判据失效，fail-closed（绝不退回按任务名认）
+ok 270 - 取件段：一条「日期范围」都读不到 ⇒ 判据失效，fail-closed（绝不退回按任务名认）
+  ---
+  duration_ms: 0.1101
+  type: 'test'
+  ...
+# Subtest: 取件段：没有一行日期范围等于目标日 ⇒ 不取（不许回退到「列表里最新那条」）
+ok 271 - 取件段：没有一行日期范围等于目标日 ⇒ 不取（不许回退到「列表里最新那条」）
+  ---
+  duration_ms: 0.0575
+  type: 'test'
+  ...
+# Subtest: 取件段：--task 显式指定时以它为准（人愿意负责的那条路），但仍要核日期范围
+ok 272 - 取件段：--task 显式指定时以它为准（人愿意负责的那条路），但仍要核日期范围
+  ---
+  duration_ms: 0.0873
+  type: 'test'
+  ...
+# Subtest: 结清：取到一条就把该目标日全部未取记录一起标掉（兄弟记录一直挂着会天天被再点一次）
+ok 273 - 结清：取到一条就把该目标日全部未取记录一起标掉（兄弟记录一直挂着会天天被再点一次）
+  ---
+  duration_ms: 0.1157
+  type: 'test'
+  ...
+# Subtest: 接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）
+ok 274 - 接线判据：fetch 段真的不再自己挑任务（函数级用例全绿也拦不住「没说出口的回退」）
+  ---
+  duration_ms: 0.8467
+  type: 'test'
+  ...
+# Subtest: 表的键与生产代码的成因闭集逐字一致（漏一条 = 那一类永远走兜底叫人）
+ok 275 - 表的键与生产代码的成因闭集逐字一致（漏一条 = 那一类永远走兜底叫人）
+  ---
+  duration_ms: 0.8732
+  type: 'test'
+  ...
+# Subtest: 加载期自检：本仓现表零错误
+ok 276 - 加载期自检：本仓现表零错误
+  ---
+  duration_ms: 0.1196
+  type: 'test'
+  ...
+# Subtest: 自检真的会咬：动作名拼错要报
+ok 277 - 自检真的会咬：动作名拼错要报
+  ---
+  duration_ms: 0.2012
+  type: 'test'
+  ...
+# Subtest: 自检真的会咬：notifyLevel 写错要报（写错会让「该叫人」变「不叫人」）
+ok 278 - 自检真的会咬：notifyLevel 写错要报（写错会让「该叫人」变「不叫人」）
+  ---
+  duration_ms: 0.0726
+  type: 'test'
+  ...
+# Subtest: 自检真的会咬：缺 why 或缺 verify 都要报（缺 verify 的自动处置＝自证）
+ok 279 - 自检真的会咬：缺 why 或缺 verify 都要报（缺 verify 的自动处置＝自证）
+  ---
+  duration_ms: 0.0685
+  type: 'test'
+  ...
+# Subtest: 查表：登记过的成因返回 known=true 且动作来自闭集
+ok 280 - 查表：登记过的成因返回 known=true 且动作来自闭集
+  ---
+  duration_ms: 0.1281
+  type: 'test'
+  ...
+# Subtest: 查表 fail-closed：未登记成因（含 null/undefined）一律交给人、不抛
+ok 281 - 查表 fail-closed：未登记成因（含 null/undefined）一律交给人、不抛
+  ---
+  duration_ms: 0.1867
+  type: 'test'
+  ...
+# Subtest: 分诊：DUPLICATE_TARGET 进 silent（不打扰人），其余进 needsHuman
+ok 282 - 分诊：DUPLICATE_TARGET 进 silent（不打扰人），其余进 needsHuman
+  ---
+  duration_ms: 0.1769
+  type: 'test'
+  ...
+# Subtest: 分诊空输入不崩，返回全零
+ok 283 - 分诊空输入不崩，返回全零
+  ---
+  duration_ms: 0.2194
+  type: 'test'
+  ...
+# Subtest: 分诊对未登记成因也 fail-closed 进 needsHuman（不是 silent）
+ok 284 - 分诊对未登记成因也 fail-closed 进 needsHuman（不是 silent）
+  ---
+  duration_ms: 0.5605
+  type: 'test'
+  ...
+# Subtest: 安全底座：STAGE_FAILED（兜底）必须在表里且是叫人 —— 新问题就该出现在这里
+ok 285 - 安全底座：STAGE_FAILED（兜底）必须在表里且是叫人 —— 新问题就该出现在这里
+  ---
+  duration_ms: 0.0994
+  type: 'test'
+  ...
+# Subtest: duplicate 那条刻意是 silent：每天为「今天已经跑过了」喊狼来了就是磨注意力
+ok 286 - duplicate 那条刻意是 silent：每天为「今天已经跑过了」喊狼来了就是磨注意力
+  ---
+  duration_ms: 0.0364
+  type: 'test'
+  ...
+# Subtest: 互锁：修复表的成因名逐字落在链的 FAILURE_CAUSES 里，阶段名逐字落在 STAGE_NAMES 里
+ok 287 - 互锁：修复表的成因名逐字落在链的 FAILURE_CAUSES 里，阶段名逐字落在 STAGE_NAMES 里
+  ---
+  duration_ms: 0.9238
+  type: 'test'
+  ...
+# Subtest: 动作闭集非空、无重复，且每个动作都有 why、都不是死动作
+ok 288 - 动作闭集非空、无重复，且每个动作都有 why、都不是死动作
+  ---
+  duration_ms: 0.1377
+  type: 'test'
+  ...
+# Subtest: 已知成因：返回候选菜单，且格式正确（含 mutating 标记）
+ok 289 - 已知成因：返回候选菜单，且格式正确（含 mutating 标记）
+  ---
+  duration_ms: 0.2059
+  type: 'test'
+  ...
+# Subtest: 未知成因：返回空候选且 known=false —— 默认不猜动作（安全方向）
+ok 290 - 未知成因：返回空候选且 known=false —— 默认不猜动作（安全方向）
+  ---
+  duration_ms: 0.1158
+  type: 'test'
+  ...
+# Subtest: 没给成因：同样空候选、known=false，且 note 说明「没给成因」
+ok 291 - 没给成因：同样空候选、known=false，且 note 说明「没给成因」
+  ---
+  duration_ms: 0.0609
+  type: 'test'
+  ...
+# Subtest: planRepair 永不抛：给垃圾输入也返回固定结构
+ok 292 - planRepair 永不抛：给垃圾输入也返回固定结构
+  ---
+  duration_ms: 0.0747
+  type: 'test'
+  ...
+# Subtest: 现场是登录页：只加一句 note，**不否决**候选（决定权仍在 agent）
+ok 293 - 现场是登录页：只加一句 note，**不否决**候选（决定权仍在 agent）
+  ---
+  duration_ms: 0.1768
+  type: 'test'
+  ...
+# Subtest: 现场几乎为空（0 元素）：note 指出可能是没渲染完
+ok 294 - 现场几乎为空（0 元素）：note 指出可能是没渲染完
+  ---
+  duration_ms: 0.0812
+  type: 'test'
+  ...
+# Subtest: 互锁会咬：塞一个链里没有的成因名，validateRepairActions 报错
+ok 295 - 互锁会咬：塞一个链里没有的成因名，validateRepairActions 报错
+  ---
+  duration_ms: 0.2158
+  type: 'test'
+  ...
+# Subtest: 互锁会咬：塞一个闭集外的动作名，validateRepairActions 报错
+ok 296 - 互锁会咬：塞一个闭集外的动作名，validateRepairActions 报错
+  ---
+  duration_ms: 0.3288
+  type: 'test'
+  ...
+# Subtest: STAGE_PAGE_HINT 的值只用语义标签（alimama/sycm），不掺选择器或 URL
+ok 297 - STAGE_PAGE_HINT 的值只用语义标签（alimama/sycm），不掺选择器或 URL
+  ---
+  duration_ms: 0.1692
+  type: 'test'
+  ...
+# Subtest: describeUnreadable：判据只有一个出口，认不出来就是「不是读不到」
+ok 298 - describeUnreadable：判据只有一个出口，认不出来就是「不是读不到」
+  ---
+  duration_ms: 0.0784
+  type: 'test'
+  ...
+# Subtest: planRepair：现场读不到 ⇒ RELOAD_PAGE 提到候选第一位；正常现场顺序不变
+ok 299 - planRepair：现场读不到 ⇒ RELOAD_PAGE 提到候选第一位；正常现场顺序不变
+  ---
+  duration_ms: 0.1595
+  type: 'test'
+  ...
+# Subtest: planRepair：重排只换顺序，一项都不增不减（丢项会让「候选耗尽」提前成立）
+ok 300 - planRepair：重排只换顺序，一项都不增不减（丢项会让「候选耗尽」提前成立）
+  ---
+  duration_ms: 0.1243
+  type: 'test'
+  ...
+# Subtest: planRepair：没有 RELOAD_PAGE 的候选表，重排是空操作（不因为它缺项就出错）
+ok 301 - planRepair：没有 RELOAD_PAGE 的候选表，重排是空操作（不因为它缺项就出错）
+  ---
+  duration_ms: 0.063
+  type: 'test'
+  ...
+# Subtest: 互锁：note 与重排共用同一个判据（两处各判一套的话，它们永远不会报错）
+ok 302 - 互锁：note 与重排共用同一个判据（两处各判一套的话，它们永远不会报错）
+  ---
+  duration_ms: 0.0796
+  type: 'test'
+  ...
+# Subtest: parseRepairArgs：动作名不在闭集里 ⇒ 当场抛（不许静默变空操作）
+ok 303 - parseRepairArgs：动作名不在闭集里 ⇒ 当场抛（不许静默变空操作）
+  ---
+  duration_ms: 0.7933
+  type: 'test'
+  ...
+# Subtest: parseRepairArgs：不给 --action ⇒ 抛（不知道要做什么就不做）
+ok 304 - parseRepairArgs：不给 --action ⇒ 抛（不知道要做什么就不做）
+  ---
+  duration_ms: 0.0916
+  type: 'test'
+  ...
+# Subtest: parseRepairArgs：合法参数被正确接住（含布尔 --dry-run 与数字参数）
+ok 305 - parseRepairArgs：合法参数被正确接住（含布尔 --dry-run 与数字参数）
+  ---
+  duration_ms: 0.1302
+  type: 'test'
+  ...
+# Subtest: parseRepairArgs：未知参数 ⇒ 抛（不静默吞掉）
+ok 306 - parseRepairArgs：未知参数 ⇒ 抛（不静默吞掉）
+  ---
+  duration_ms: 0.0696
+  type: 'test'
+  ...
+# Subtest: resolveProxy：--shop 与 --proxy 对不上 ⇒ 抛（绝不往别的店写）
+ok 307 - resolveProxy：--shop 与 --proxy 对不上 ⇒ 抛（绝不往别的店写）
+  ---
+  duration_ms: 0.1157
+  type: 'test'
+  ...
+# Subtest: resolveProxy：--shop 配它自己的代理 ⇒ 通过
+ok 308 - resolveProxy：--shop 配它自己的代理 ⇒ 通过
+  ---
+  duration_ms: 0.0513
+  type: 'test'
+  ...
+# Subtest: resolveProxy：不给 --proxy ⇒ 回落商家浏览器默认端口（与采集脚本同口径）
+ok 309 - resolveProxy：不给 --proxy ⇒ 回落商家浏览器默认端口（与采集脚本同口径）
+  ---
+  duration_ms: 0.1183
+  type: 'test'
+  ...
+# Subtest: locateStagePage：给站点提示时按主机精确匹配
+ok 310 - locateStagePage：给站点提示时按主机精确匹配
+  ---
+  duration_ms: 0.1666
+  type: 'test'
+  ...
+# Subtest: locateStagePage：同主机多于一个 ⇒ 不猜（停手）
+ok 311 - locateStagePage：同主机多于一个 ⇒ 不猜（停手）
+  ---
+  duration_ms: 0.2099
+  type: 'test'
+  ...
+# Subtest: locateStagePage：找不到该主机 ⇒ 如实报，不回落第一个页签
+ok 312 - locateStagePage：找不到该主机 ⇒ 如实报，不回落第一个页签
+  ---
+  duration_ms: 0.2167
+  type: 'test'
+  ...
+# Subtest: locateStagePage：没有阶段提示且页签多于一个 ⇒ 不猜
+ok 313 - locateStagePage：没有阶段提示且页签多于一个 ⇒ 不猜
+  ---
+  duration_ms: 0.102
+  type: 'test'
+  ...
+# Subtest: locateStagePage：没有阶段提示但恰好一个非 about: 页 ⇒ 用它
+ok 314 - locateStagePage：没有阶段提示但恰好一个非 about: 页 ⇒ 用它
+  ---
+  duration_ms: 0.0449
+  type: 'test'
+  ...
+# Subtest: locateStagePage：空/全 about: ⇒ 停手（读不到不等于修第一个）
+ok 315 - locateStagePage：空/全 about: ⇒ 停手（读不到不等于修第一个）
+  ---
+  duration_ms: 0.0331
+  type: 'test'
+  ...
+# Subtest: renderRepairReport：把动作/目标/结论/证据都写进人读正文
+ok 316 - renderRepairReport：把动作/目标/结论/证据都写进人读正文
+  ---
+  duration_ms: 0.0876
+  type: 'test'
+  ...
+# Subtest: 退出码口径：三个值互不相同且都是整数
+ok 317 - 退出码口径：三个值互不相同且都是整数
+  ---
+  duration_ms: 0.0837
+  type: 'test'
+  ...
+# Subtest: applyRepairAction：readTargets 收到的是整个 args 对象（不是代理地址字符串）
+ok 318 - applyRepairAction：readTargets 收到的是整个 args 对象（不是代理地址字符串）
+  ---
+  duration_ms: 1.5478
+  type: 'test'
+  ...
+# Subtest: applyRepairAction：readTargets 契约不符（把 args 当字符串拼进 URL）⇒ 退 3 而不是静默
+ok 319 - applyRepairAction：readTargets 契约不符（把 args 当字符串拼进 URL）⇒ 退 3 而不是静默
+  ---
+  duration_ms: 0.1048
+  type: 'test'
+  ...
+# Subtest: applyRepairAction：RESET_PAGES 不需要目标页（归位本身就是去找页）
+ok 320 - applyRepairAction：RESET_PAGES 不需要目标页（归位本身就是去找页）
+  ---
+  duration_ms: 0.0596
+  type: 'test'
+  ...
+# [驱动] 告警没送出去 —— 现在只有屏幕知道这一轮失败了，必须有人接手（见上面的投递收据）。日志在 evidence/multi-shop-2026-09-19
+# [驱动] 告警没送出去 —— 现在只有屏幕知道这一轮失败了，必须有人接手（见上面的投递收据）。
+# [里可林淘宝]   停手时页面停在：生意参谋工作页=0  阿里妈妈报表页=1（共 2 个页签）
+# [里可林淘宝]     · 不属于期望清单：https://sycm.taobao.com/lyone/auto_analysis/datafetch/index.htm?taskId=1
+# [里可林淘宝]   【假回位】
+# [里可林淘宝]   回位后 生意参谋工作页 恰好一个
+# [里可林淘宝]   停手时页面停在：生意参谋工作页=0  阿里妈妈报表页=0（共 1 个页签）
+# [里可林淘宝]     · 不属于期望清单：https://sycm.taobao.com/lyone/auto_analysis/datafetch/index.htm?taskId=1
+# [里可林淘宝]   回位没做成：回位后仍不是恰好一个性能页（2 个）
+# [里可林淘宝]   停手时读不到页面（代理连不上）—— 回位这一支先当学不到，下面照样试一次
+# [里可林淘宝]   【假回位】
+# [里可林淘宝]   回位后 生意参谋工作页 是 读不到（代理连不上） 个（回位前 读不到 个） —— 下一轮仍然会从这个起点开始，先看现场
+# [代理] 连接层失败（第 1/3 次）：fetch failed｜cause=ECONNREFUSED → 1.5s 后重发 http://127.0.0.1:1/targets
+# Subtest: 驱动：阶段顺序与 SOP §10.1 逐字一致（回位在第 4 步之后、回填之前）
+ok 321 - 驱动：阶段顺序与 SOP §10.1 逐字一致（回位在第 4 步之后、回填之前）
+  ---
+  duration_ms: 1.7129
+  type: 'test'
+  ...
+# Subtest: 驱动：有脚本的带脚本；没脚本的必须声明自己那一支（否则阶段会报 ok 却什么也没做）
+ok 322 - 驱动：有脚本的带脚本；没脚本的必须声明自己那一支（否则阶段会报 ok 却什么也没做）
+  ---
+  duration_ms: 0.3005
+  type: 'test'
+  ...
+# Subtest: 驱动：每个带脚本的阶段都自带 --date 与 --proxy（不靠调用方 shell 里恰好有什么）
+ok 323 - 驱动：每个带脚本的阶段都自带 --date 与 --proxy（不靠调用方 shell 里恰好有什么）
+  ---
+  duration_ms: 0.1023
+  type: 'test'
+  ...
+# Subtest: 驱动：采集/回填/回位打这家店自己的代理，推送/回读打商家浏览器代理（飞书页只在那一个浏览器里）
+ok 324 - 驱动：采集/回填/回位打这家店自己的代理，推送/回读打商家浏览器代理（飞书页只在那一个浏览器里）
+  ---
+  duration_ms: 0.1835
+  type: 'test'
+  ...
+# Subtest: 驱动：每家店的审计身份互不相同，且没有一家被写成日报链那一组
+ok 325 - 驱动：每家店的审计身份互不相同，且没有一家被写成日报链那一组
+  ---
+  duration_ms: 0.4381
+  type: 'test'
+  ...
+# Subtest: 驱动：三个写入方的 --shop-key 是同一个值且各只出现一次
+ok 326 - 驱动：三个写入方的 --shop-key 是同一个值且各只出现一次
+  ---
+  duration_ms: 0.1311
+  type: 'test'
+  ...
+# Subtest: 驱动：采集段的三个身份期望值来自登记表，且每家给的都逐字对得上
+ok 327 - 驱动：采集段的三个身份期望值来自登记表，且每家给的都逐字对得上
+  ---
+  duration_ms: 0.704
+  type: 'test'
+  ...
+# Subtest: 驱动：shop-report 阶段必须带 --shop-key（行标题登记表按运营叫法查，页头名查不到）
+ok 328 - 驱动：shop-report 阶段必须带 --shop-key（行标题登记表按运营叫法查，页头名查不到）
+  ---
+  duration_ms: 0.1461
+  type: 'test'
+  ...
+# Subtest: 驱动：三种模式的写入口径（排练两个写入方都干跑；verify 只核对；commit 才写）
+ok 329 - 驱动：三种模式的写入口径（排练两个写入方都干跑；verify 只核对；commit 才写）
+  ---
+  duration_ms: 0.3238
+  type: 'test'
+  ...
+# Subtest: 驱动：历史日回填降级开关默认关、只在显式打开时透传，且不污染别的阶段
+ok 330 - 驱动：历史日回填降级开关默认关、只在显式打开时透传，且不污染别的阶段
+  ---
+  duration_ms: 0.642
+  type: 'test'
+  ...
+# Subtest: 驱动：未知模式 / 错日期 / verify 缺 expectedBeforeCount / 未登记的店，一律抛错不静默
+ok 331 - 驱动：未知模式 / 错日期 / verify 缺 expectedBeforeCount / 未登记的店，一律抛错不静默
+  ---
+  duration_ms: 0.3794
+  type: 'test'
+  ...
+# Subtest: 驱动：身份齐全的店都能构造出完整阶段；身份缺的当场抛且点名缺哪一项
+ok 332 - 驱动：身份齐全的店都能构造出完整阶段；身份缺的当场抛且点名缺哪一项
+  ---
+  duration_ms: 0.124
+  type: 'test'
+  ...
+# Subtest: 驱动：体检的期望页面用**路径级**片段，且与落位脚本的 SITES 同源
+ok 333 - 驱动：体检的期望页面用**路径级**片段，且与落位脚本的 SITES 同源
+  ---
+  duration_ms: 0.1752
+  type: 'test'
+  ...
+# Subtest: 驱动：体检结论只有「明确 ok:true」才放行，读不出来算不放行
+ok 334 - 驱动：体检结论只有「明确 ok:true」才放行，读不出来算不放行
+  ---
+  duration_ms: 0.0556
+  type: 'test'
+  ...
+# Subtest: 驱动：从采集脚本的 stdout 里抓得到两条产物路径（含 [fetch] 那种带前缀的行）
+ok 335 - 驱动：从采集脚本的 stdout 里抓得到两条产物路径（含 [fetch] 那种带前缀的行）
+  ---
+  duration_ms: 0.2374
+  type: 'test'
+  ...
+# Subtest: 驱动：产物路径的抓取格式与两个采集脚本里的打印模板真的对得上
+ok 336 - 驱动：产物路径的抓取格式与两个采集脚本里的打印模板真的对得上
+  ---
+  duration_ms: 1.575
+  type: 'test'
+  ...
+# Subtest: 驱动：源产物路径是替换而不是追加（两份真相不许同时留在参数表里）
+ok 337 - 驱动：源产物路径是替换而不是追加（两份真相不许同时留在参数表里）
+  ---
+  duration_ms: 0.2036
+  type: 'test'
+  ...
+# Subtest: 驱动：源产物路径只给一半 / 都不给 / 文件不存在，一律抛错
+ok 338 - 驱动：源产物路径只给一半 / 都不给 / 文件不存在，一律抛错
+  ---
+  duration_ms: 0.1516
+  type: 'test'
+  ...
+# Subtest: 驱动 CLI：--commit 与 --verify-existing 互斥，源产物路径必须成对，未知参数不吞
+ok 339 - 驱动 CLI：--commit 与 --verify-existing 互斥，源产物路径必须成对，未知参数不吞
+  ---
+  duration_ms: 0.3046
+  type: 'test'
+  ...
+# Subtest: 驱动 CLI：--only 里出现拼错的阶段名必须当场抛错，不许静默跳过整轮
+ok 340 - 驱动 CLI：--only 里出现拼错的阶段名必须当场抛错，不许静默跳过整轮
+  ---
+  duration_ms: 0.1317
+  type: 'test'
+  ...
+# Subtest: 驱动：STAGE_NAMES 与真实的阶段表逐字一致（否则合法值清单自己会造出「拼错就等于没事」）
+ok 341 - 驱动：STAGE_NAMES 与真实的阶段表逐字一致（否则合法值清单自己会造出「拼错就等于没事」）
+  ---
+  duration_ms: 0.0823
+  type: 'test'
+  ...
+# Subtest: 驱动：--date 认字面量 yesterday，按 Asia/Shanghai 解析（跨零点不漂）
+ok 342 - 驱动：--date 认字面量 yesterday，按 Asia/Shanghai 解析（跨零点不漂）
+  ---
+  duration_ms: 11.3241
+  type: 'test'
+  ...
+# Subtest: 驱动 CLI：--date 走同一条解析，缺了就抛（默认不放宽）
+ok 343 - 驱动 CLI：--date 走同一条解析，缺了就抛（默认不放宽）
+  ---
+  duration_ms: 0.3132
+  type: 'test'
+  ...
+# Subtest: 驱动：每个阶段都有面向人的中文名（告警正文里不许出现英文阶段名）
+ok 344 - 驱动：每个阶段都有面向人的中文名（告警正文里不许出现英文阶段名）
+  ---
+  duration_ms: 0.2095
+  type: 'test'
+  ...
+# Subtest: ⑨b：默认（不给开关）一个字都不改 —— 有需要人的失败就照旧发告警
+ok 345 - ⑨b：默认（不给开关）一个字都不改 —— 有需要人的失败就照旧发告警
+  ---
+  duration_ms: 0.2759
+  type: 'test'
+  ...
+# Subtest: ⑨b：整批失败都「agent 能救」⇒ 拦住告警并给出派单
+ok 346 - ⑨b：整批失败都「agent 能救」⇒ 拦住告警并给出派单
+  ---
+  duration_ms: 0.2219
+  type: 'test'
+  ...
+# Subtest: ⑨b：只要有一家「只能人上」⇒ 不许拦，整批照旧叫人
+ok 347 - ⑨b：只要有一家「只能人上」⇒ 不许拦，整批照旧叫人
+  ---
+  duration_ms: 0.0958
+  type: 'test'
+  ...
+# Subtest: ⑨b：一家都不够格时不 defer（那正是叫人场合，不是「拦下来但没派单」）
+ok 348 - ⑨b：一家都不够格时不 defer（那正是叫人场合，不是「拦下来但没派单」）
+  ---
+  duration_ms: 0.0542
+  type: 'test'
+  ...
+# Subtest: ⑨b：全绿时闸门不参与（没有失败就没有「要不要叫人」这回事）
+ok 349 - ⑨b：全绿时闸门不参与（没有失败就没有「要不要叫人」这回事）
+  ---
+  duration_ms: 0.0911
+  type: 'test'
+  ...
+# Subtest: ⑨b：整轮被体检拦住（failed 为空、roundBlocked）时不许 defer
+ok 350 - ⑨b：整轮被体检拦住（failed 为空、roundBlocked）时不许 defer
+  ---
+  duration_ms: 0.0522
+  type: 'test'
+  ...
+# Subtest: ⑨b：CLI 开关默认关，给了才开
+ok 351 - ⑨b：CLI 开关默认关，给了才开
+  ---
+  duration_ms: 0.0387
+  type: 'test'
+  ...
+# Subtest: 驱动：告警说的「第 N 步」与日志文件上的编号对得上
+ok 352 - 驱动：告警说的「第 N 步」与日志文件上的编号对得上
+  ---
+  duration_ms: 0.0847
+  type: 'test'
+  ...
+# Subtest: 驱动的失败分类：体检拦住 / 重跑撞上已有行 / 阶段报错，三类必须分开
+ok 353 - 驱动的失败分类：体检拦住 / 重跑撞上已有行 / 阶段报错，三类必须分开
+  ---
+  duration_ms: 0.1921
+  type: 'test'
+  ...
+# Subtest: 驱动：运营账号等待项不计入失败，但保留在汇总并可恢复
+ok 354 - 驱动：运营账号等待项不计入失败，但保留在汇总并可恢复
+  ---
+  duration_ms: 0.1349
+  type: 'test'
+  ...
+# Subtest: 告警：标题自带主体名，正文说清哪几家没跑完、停在哪一步、哪几家已收完、哪几家一步没跑
+ok 355 - 告警：标题自带主体名，正文说清哪几家没跑完、停在哪一步、哪几家已收完、哪几家一步没跑
+  ---
+  duration_ms: 0.929
+  type: 'test'
+  ...
+# Subtest: 告警：每条结论都有自己的「原因 + 下一步」，下一步只写收信人真能做的
+ok 356 - 告警：每条结论都有自己的「原因 + 下一步」，下一步只写收信人真能做的
+  ---
+  duration_ms: 0.3516
+  type: 'test'
+  ...
+# Subtest: 告警：PAGE_OBSTRUCTED 的判据是那个**机器标记**，不是措辞猜测
+ok 357 - 告警：PAGE_OBSTRUCTED 的判据是那个**机器标记**，不是措辞猜测
+  ---
+  duration_ms: 0.0957
+  type: 'test'
+  ...
+# Subtest: 告警：文案里不许出现英文阶段名、结论代号、内部术语，也不许出现路径/命令行/主机名/账号名
+ok 358 - 告警：文案里不许出现英文阶段名、结论代号、内部术语，也不许出现路径/命令行/主机名/账号名
+  ---
+  duration_ms: 1.8068
+  type: 'test'
+  ...
+# Subtest: 告警：缺 shopKeys 直接抛（那一行静默消失过，所以不留退化余地）
+ok 359 - 告警：缺 shopKeys 直接抛（那一行静默消失过，所以不留退化余地）
+  ---
+  duration_ms: 0.2594
+  type: 'test'
+  ...
+# Subtest: 驱动：每个生成告警的调用点都真的把 shopKeys 与登录态结论接上了（接线判据）
+ok 360 - 驱动：每个生成告警的调用点都真的把 shopKeys 与登录态结论接上了（接线判据）
+  ---
+  duration_ms: 0.7625
+  type: 'test'
+  ...
+# Subtest: 告警：查过登录态、有店掉了 ⇒ 改成「去登录」，不再叫人去开页面
+ok 361 - 告警：查过登录态、有店掉了 ⇒ 改成「去登录」，不再叫人去开页面
+  ---
+  duration_ms: 0.1683
+  type: 'test'
+  ...
+# Subtest: 告警：这一家是「页面不齐」判下来的、而它的登录掉了 ⇒ 这一家的结论也要改成「去登录」
+ok 362 - 告警：这一家是「页面不齐」判下来的、而它的登录掉了 ⇒ 这一家的结论也要改成「去登录」
+  ---
+  duration_ms: 0.1681
+  type: 'test'
+  ...
+# Subtest: 告警：没查过登录态 ⇒ 如实说「没查过」，不许装作查过、也不许说「都不缺」
+ok 363 - 告警：没查过登录态 ⇒ 如实说「没查过」，不许装作查过、也不许说「都不缺」
+  ---
+  duration_ms: 0.1013
+  type: 'test'
+  ...
+# Subtest: 告警：查了、都在登录态 ⇒ 明确说「问题不在登录上」（省掉一趟白跑的浏览器）
+ok 364 - 告警：查了、都在登录态 ⇒ 明确说「问题不在登录上」（省掉一趟白跑的浏览器）
+  ---
+  duration_ms: 0.0701
+  type: 'test'
+  ...
+# Subtest: 告警：查过但没有结论 / 结论读不到 ⇒ 如实说「不知道是不是掉登录」
+ok 365 - 告警：查过但没有结论 / 结论读不到 ⇒ 如实说「不知道是不是掉登录」
+  ---
+  duration_ms: 0.1081
+  type: 'test'
+  ...
+# Subtest: 告警：登录态结论只留本轮要跑的那几家（分批时不许点名别的店）
+ok 366 - 告警：登录态结论只留本轮要跑的那几家（分批时不许点名别的店）
+  ---
+  duration_ms: 0.0937
+  type: 'test'
+  ...
+# Subtest: 跑前登录态结论的读取：不给＝没查、读不到＝没结论、读到＝只留业务能用的字段
+ok 367 - 跑前登录态结论的读取：不给＝没查、读不到＝没结论、读到＝只留业务能用的字段
+  ---
+  duration_ms: 9.2381
+  type: 'test'
+  ...
+# Subtest: 驱动：不给登录态结论时，roundFailureSummary 的输出**逐字不变**
+ok 368 - 驱动：不给登录态结论时，roundFailureSummary 的输出**逐字不变**
+  ---
+  duration_ms: 0.281
+  type: 'test'
+  ...
+# Subtest: 驱动 CLI：--login-preflight 要一个路径，缺值当场抛（不许静默折成「没查」）
+ok 369 - 驱动 CLI：--login-preflight 要一个路径，缺值当场抛（不许静默折成「没查」）
+  ---
+  duration_ms: 0.1293
+  type: 'test'
+  ...
+# Subtest: 告警：技术字段在**生成处**就被拦（而不是等渲染时静默丢掉或被原样发出去）
+ok 370 - 告警：技术字段在**生成处**就被拦（而不是等渲染时静默丢掉或被原样发出去）
+  ---
+  duration_ms: 0.2176
+  type: 'test'
+  ...
+# Subtest: 告警：全绿时生成告警要当场抛错（成功时不许叫人）
+ok 371 - 告警：全绿时生成告警要当场抛错（成功时不许叫人）
+  ---
+  duration_ms: 0.0717
+  type: 'test'
+  ...
+# Subtest: 驱动：--notify 只在 --commit 那一档投递；排练/只读核对的失败不进飞书
+ok 372 - 驱动：--notify 只在 --commit 那一档投递；排练/只读核对的失败不进飞书
+  ---
+  duration_ms: 0.0936
+  type: 'test'
+  ...
+# Subtest: 驱动：打印路径一次投递都不发生，且打印的是真渲染器的输出
+ok 373 - 驱动：打印路径一次投递都不发生，且打印的是真渲染器的输出
+  ---
+  duration_ms: 21.2773
+  type: 'test'
+  ...
+# Subtest: 驱动：action=off 时**一个字都不发**（这条判据必须活在出口里，不许只挂在调用点）
+ok 374 - 驱动：action=off 时**一个字都不发**（这条判据必须活在出口里，不许只挂在调用点）
+  ---
+  duration_ms: 2.3065
+  type: 'test'
+  ...
+# Subtest: 驱动：真正投递时走既有的通知出口，且「没送达」要被当回事
+ok 375 - 驱动：真正投递时走既有的通知出口，且「没送达」要被当回事
+  ---
+  duration_ms: 218.4257
+  type: 'test'
+  ...
+# Subtest: 驱动：跑前环境自检要把「宿主掐断」与「数据问题」当场分开
+ok 376 - 驱动：跑前环境自检要把「宿主掐断」与「数据问题」当场分开
+  ---
+  duration_ms: 0.2072
+  type: 'test'
+  ...
+# Subtest: 驱动：环境自检的探针必须探「管道 stdin」那一形态，且只许跑一个什么都不做的子进程
+ok 377 - 驱动：环境自检的探针必须探「管道 stdin」那一形态，且只许跑一个什么都不做的子进程
+  ---
+  duration_ms: 0.0785
+  type: 'test'
+  ...
+# Subtest: 驱动：两个同步子进程调用点必须显式声明 stdio，且 stdin 不许是管道（源码级接线判据）
+ok 378 - 驱动：两个同步子进程调用点必须显式声明 stdio，且 stdin 不许是管道（源码级接线判据）
+  ---
+  duration_ms: 1.6828
+  type: 'test'
+  ...
+# Subtest: 驱动：重复的那条只打在本机日志里，一次投递都不发生；且只有真送出去才记时间
+ok 379 - 驱动：重复的那条只打在本机日志里，一次投递都不发生；且只有真送出去才记时间
+  ---
+  duration_ms: 182.6261
+  type: 'test'
+  ...
+# Subtest: 失败收尾：页面快照按期望清单数，并把「不属于期望清单」的那些页单独列出来
+ok 380 - 失败收尾：页面快照按期望清单数，并把「不属于期望清单」的那些页单独列出来
+  ---
+  duration_ms: 0.6943
+  type: 'test'
+  ...
+# Subtest: 失败收尾：回位判定只看回位之后那份快照，读不到一律不算回位成功
+ok 381 - 失败收尾：回位判定只看回位之后那份快照，读不到一律不算回位成功
+  ---
+  duration_ms: 0.4087
+  type: 'test'
+  ...
+# Subtest: 失败收尾：先取证再处置、回位后断言、回位失败不抛也不盖原来那个错
+ok 382 - 失败收尾：先取证再处置、回位后断言、回位失败不抛也不盖原来那个错
+  ---
+  duration_ms: 9.7016
+  type: 'test'
+  ...
+# Subtest: 失败收尾：驱动里真的接上了「记下原错 → 取证回位 → 才停整轮」（接线判据）
+ok 383 - 失败收尾：驱动里真的接上了「记下原错 → 取证回位 → 才停整轮」（接线判据）
+  ---
+  duration_ms: 0.9047
+  type: 'test'
+  ...
+# Subtest: 驱动：浏览器键 → 代理端口只认登记表，认不出来当场抛（回落一次就是往别的浏览器上写）
+ok 384 - 驱动：浏览器键 → 代理端口只认登记表，认不出来当场抛（回落一次就是往别的浏览器上写）
+  ---
+  duration_ms: 0.2136
+  type: 'test'
+  ...
+# Subtest: 驱动：体检真的接上了「先归位、再检查」，归位结论进了 summary（接线判据）
+ok 385 - 驱动：体检真的接上了「先归位、再检查」，归位结论进了 summary（接线判据）
+  ---
+  duration_ms: 0.873
+  type: 'test'
+  ...
+# Subtest: 代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发）
+ok 386 - 代理重试判据：只有「没拿到 HTTP 应答」才重发（连接层 / 超时重发，4xx/5xx 不重发）
+  ---
+  duration_ms: 0.7254
+  type: 'test'
+  ...
+# Subtest: 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避
+ok 387 - 代理重试接线：proxyJson 真的用了那条判据，且有次数上限与退避
+  ---
+  duration_ms: 0.6847
+  type: 'test'
+  ...
+# Subtest: 自动修复接线：execRepair 必须把 cause 原样转给 applyRepairAction
+ok 388 - 自动修复接线：execRepair 必须把 cause 原样转给 applyRepairAction
+  ---
+  duration_ms: 0.625
+  type: 'test'
+  ...
+# [代理] 连接层失败（第 2/3 次）：fetch failed｜cause=ECONNREFUSED → 1.5s 后重发 http://127.0.0.1:1/targets
+# Subtest: 代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因
+ok 389 - 代理重试：不可重试的失败原样上抛，重试用尽的失败要带次数与原因
+  ---
+  duration_ms: 3013.5279
+  type: 'test'
+  ...
+# Subtest: 接线：告警决策里真的有分诊闸门，且它按「需人处数」放行/拦截
+ok 390 - 接线：告警决策里真的有分诊闸门，且它按「需人处数」放行/拦截
+  ---
+  duration_ms: 1.0183
+  type: 'test'
+  ...
+# Subtest: 分诊判定：09-27 那轮的真实形状（两家 DUPLICATE_TARGET）⇒ 零处需人 ⇒ 不发打扰
+ok 391 - 分诊判定：09-27 那轮的真实形状（两家 DUPLICATE_TARGET）⇒ 零处需人 ⇒ 不发打扰
+  ---
+  duration_ms: 0.2639
+  type: 'test'
+  ...
+# Subtest: 分诊判定：只要有一家是真问题（如掉登录）⇒ 必须叫人，绝不静默
+ok 392 - 分诊判定：只要有一家是真问题（如掉登录）⇒ 必须叫人，绝不静默
+  ---
+  duration_ms: 0.071
+  type: 'test'
+  ...
+# Subtest: 接线：驱动在失败路径上真的产出修复请求单（源码级扫描，防「函数写了但没接」）
+ok 393 - 接线：驱动在失败路径上真的产出修复请求单（源码级扫描，防「函数写了但没接」）
+  ---
+  duration_ms: 0.7334
+  type: 'test'
+  ...
+# Subtest: buildRepairRequest：已知成因（PAGE_OBSTRUCTED）⇒ 带候选菜单与重试阶段
+ok 394 - buildRepairRequest：已知成因（PAGE_OBSTRUCTED）⇒ 带候选菜单与重试阶段
+  ---
+  duration_ms: 2.5545
+  type: 'test'
+  ...
+# Subtest: buildRepairRequest：DUPLICATE_TARGET 也给候选（交给人），且不假装要重试
+ok 395 - buildRepairRequest：DUPLICATE_TARGET 也给候选（交给人），且不假装要重试
+  ---
+  duration_ms: 2.3456
+  type: 'test'
+  ...
+# Subtest: buildRepairRequest：把感知层的三个产物路径带进单子（agent 要读的是完整事实）
+ok 396 - buildRepairRequest：把感知层的三个产物路径带进单子（agent 要读的是完整事实）
+  ---
+  duration_ms: 1.8931
+  type: 'test'
+  ...
+# Subtest: buildRepairRequest：现场是登录页时，planNote 指出来（但不改候选）
+ok 397 - buildRepairRequest：现场是登录页时，planNote 指出来（但不改候选）
+  ---
+  duration_ms: 1.7701
+  type: 'test'
+  ...
+# Subtest: buildRepairRequest：认不出的成因 ⇒ 空候选（不猜动作），但单子照样落盘
+ok 398 - buildRepairRequest：认不出的成因 ⇒ 空候选（不猜动作），但单子照样落盘
+  ---
+  duration_ms: 1.6532
+  type: 'test'
+  ...
+# Subtest: buildRepairRequest：落盘失败不抛（主线已经失败了，不能再制造一个错误）
+ok 399 - buildRepairRequest：落盘失败不抛（主线已经失败了，不能再制造一个错误）
+  ---
+  duration_ms: 0.1672
+  type: 'test'
+  ...
+# Subtest: buildRepairRequest：没有 logDir 也能返回对象（只是不落盘）
+ok 400 - buildRepairRequest：没有 logDir 也能返回对象（只是不落盘）
+  ---
+  duration_ms: 0.0572
+  type: 'test'
+  ...
+# Subtest: parseArgs：--auto-repair 默认关（这是一条会动页面的路径，默认必须是「什么都不做」）
+ok 401 - parseArgs：--auto-repair 默认关（这是一条会动页面的路径，默认必须是「什么都不做」）
+  ---
+  duration_ms: 0.0482
+  type: 'test'
+  ...
+# Subtest: parseArgs：--auto-repair 打开了它，--auto-repair-max-rounds 给出配额
+ok 402 - parseArgs：--auto-repair 打开了它，--auto-repair-max-rounds 给出配额
+  ---
+  duration_ms: 0.0347
+  type: 'test'
+  ...
+# Subtest: parseArgs：--auto-repair-max-rounds 只收非负整数（负数/小数/乱写一律拒）
+ok 403 - parseArgs：--auto-repair-max-rounds 只收非负整数（负数/小数/乱写一律拒）
+  ---
+  duration_ms: 0.0943
+  type: 'test'
+  ...
+# Subtest: executeRepairCandidate：没有候选 ⇒ 如实说「没得修」，不猜一个动作出来
+ok 404 - executeRepairCandidate：没有候选 ⇒ 如实说「没得修」，不猜一个动作出来
+  ---
+  duration_ms: 0.128
+  type: 'test'
+  ...
+# Subtest: executeRepairCandidate：没有注入 exec ⇒ 报接线漏了（而不是静默什么都不做）
+ok 405 - executeRepairCandidate：没有注入 exec ⇒ 报接线漏了（而不是静默什么都不做）
+  ---
+  duration_ms: 0.0545
+  type: 'test'
+  ...
+# Subtest: executeRepairCandidate：exec 抛错也不抛出去（主线已经失败了，不能再换一个错误）
+ok 406 - executeRepairCandidate：exec 抛错也不抛出去（主线已经失败了，不能再换一个错误）
+  ---
+  duration_ms: 0.1093
+  type: 'test'
+  ...
+# Subtest: executeRepairCandidate：只试候选里的第一个，而且用 req 的 shopKey/stage 去执行
+ok 407 - executeRepairCandidate：只试候选里的第一个，而且用 req 的 shopKey/stage 去执行
+  ---
+  duration_ms: 0.0703
+  type: 'test'
+  ...
+# Subtest: executeRepairCandidate：候选是对象数组（生产形状）时，exec 收到的必须是动作名
+ok 408 - executeRepairCandidate：候选是对象数组（生产形状）时，exec 收到的必须是动作名
+  ---
+  duration_ms: 0.0589
+  type: 'test'
+  ...
+# Subtest: executeRepairCandidate：候选形状不合法 ⇒ 当场抛（不猜动作、不静默落空）
+ok 409 - executeRepairCandidate：候选形状不合法 ⇒ 当场抛（不猜动作、不静默落空）
+  ---
+  duration_ms: 0.0778
+  type: 'test'
+  ...
+# Subtest: autoRepairAndRetry：gaveUp 文案不许印 [object Object]（候选没试完时）
+ok 410 - autoRepairAndRetry：gaveUp 文案不许印 [object Object]（候选没试完时）
+  ---
+  duration_ms: 0.232
+  type: 'test'
+  ...
+# Subtest: autoRepairAndRetry：对象候选用掉一个就摘掉一个，同一个动作不试第二遍
+ok 411 - autoRepairAndRetry：对象候选用掉一个就摘掉一个，同一个动作不试第二遍
+  ---
+  duration_ms: 0.2184
+  type: 'test'
+  ...
+# Subtest: autoRepairAndRetry：修复表没登记的成因一个字都不动（登录掉了不自动去点登录）
+ok 412 - autoRepairAndRetry：修复表没登记的成因一个字都不动（登录掉了不自动去点登录）
+  ---
+  duration_ms: 0.1265
+  type: 'test'
+  ...
+# Subtest: 互锁：修复表给候选的成因，就是自动修复会去修的成因（同一个来源，不许两处判）
+ok 413 - 互锁：修复表给候选的成因，就是自动修复会去修的成因（同一个来源，不许两处判）
+  ---
+  duration_ms: 0.1052
+  type: 'test'
+  ...
+# Subtest: autoRepairAndRetry：maxRounds=0 ⇒ 直接放弃（配额为零）
+ok 414 - autoRepairAndRetry：maxRounds=0 ⇒ 直接放弃（配额为零）
+  ---
+  duration_ms: 0.0651
+  type: 'test'
+  ...
+# Subtest: autoRepairAndRetry：修成了 ⇒ 重试失败的那一步，且只重试那一步
+ok 415 - autoRepairAndRetry：修成了 ⇒ 重试失败的那一步，且只重试那一步
+  ---
+  duration_ms: 0.1724
+  type: 'test'
+  ...
+# Subtest: autoRepairAndRetry：动作没落地 ⇒ 换下一个候选，但**不重试阶段**（原样再来一遍正是要消灭的）
+ok 416 - autoRepairAndRetry：动作没落地 ⇒ 换下一个候选，但**不重试阶段**（原样再来一遍正是要消灭的）
+  ---
+  duration_ms: 0.3213
+  type: 'test'
+  ...
+# Subtest: autoRepairAndRetry：同一个动作不试第二遍（把页面反复重载会把状态拖更差）
+ok 417 - autoRepairAndRetry：同一个动作不试第二遍（把页面反复重载会把状态拖更差）
+  ---
+  duration_ms: 0.1199
+  type: 'test'
+  ...
+# Subtest: autoRepairAndRetry：修好了但重试还是失败，且候选耗尽 ⇒ 停手，如实说「试过什么」
+ok 418 - autoRepairAndRetry：修好了但重试还是失败，且候选耗尽 ⇒ 停手，如实说「试过什么」
+  ---
+  duration_ms: 0.0834
+  type: 'test'
+  ...
+# Subtest: autoRepairAndRetry：请求单里没给 retryStage ⇒ 不猜（认不出来就不重试）
+ok 419 - autoRepairAndRetry：请求单里没给 retryStage ⇒ 不猜（认不出来就不重试）
+  ---
+  duration_ms: 0.0622
+  type: 'test'
+  ...
+# Subtest: autoRepairAndRetry：候选本身为空 ⇒ 明确放弃（成因未登记到修复表）
+ok 420 - autoRepairAndRetry：候选本身为空 ⇒ 明确放弃（成因未登记到修复表）
+  ---
+  duration_ms: 0.0466
+  type: 'test'
+  ...
+# Subtest: autoRepairAndRetry：回环自己炸了也不抛 —— 主线失败语义原样保留
+ok 421 - autoRepairAndRetry：回环自己炸了也不抛 —— 主线失败语义原样保留
+  ---
+  duration_ms: 0.113
+  type: 'test'
+  ...
+# Subtest: 接线守卫：main 里 autoRepairAndRetry 真的被调用，且排在 recoverFailedShop 之前
+ok 422 - 接线守卫：main 里 autoRepairAndRetry 真的被调用，且排在 recoverFailedShop 之前
+  ---
+  duration_ms: 0.6387
+  type: 'test'
+  ...
+# Subtest: 接线守卫：修复后的重试用的是「按名字重跑」，而不是另建一份阶段表
+ok 423 - 接线守卫：修复后的重试用的是「按名字重跑」，而不是另建一份阶段表
+  ---
+  duration_ms: 0.5674
+  type: 'test'
+  ...
+# Subtest: 整轮被挡的真因：归位记录停在登录墙上 ⇒ ROUND_LOGIN_WALL（用本轮真实现场）
+ok 424 - 整轮被挡的真因：归位记录停在登录墙上 ⇒ ROUND_LOGIN_WALL（用本轮真实现场）
+  ---
+  duration_ms: 0.1889
+  type: 'test'
+  ...
+# Subtest: 整轮被挡的真因：不是登录墙 ⇒ ROUND_BLOCKED；体检通过 ⇒ null；读不到现场 ⇒ 落回旧口径
+ok 425 - 整轮被挡的真因：不是登录墙 ⇒ ROUND_BLOCKED；体检通过 ⇒ null；读不到现场 ⇒ 落回旧口径
+  ---
+  duration_ms: 0.0663
+  type: 'test'
+  ...
+# Subtest: 告警：整轮被挡、真因是共用窗口掉登录 ⇒ 说去登录；不再叫人补页、不再给那条内部片段
+ok 426 - 告警：整轮被挡、真因是共用窗口掉登录 ⇒ 说去登录；不再叫人补页、不再给那条内部片段
+  ---
+  duration_ms: 0.3607
+  type: 'test'
+  ...
+# Subtest: 告警：共用窗口掉登录时的「原因」只读一遍 —— 括号里补新信息，不复述
+ok 427 - 告警：共用窗口掉登录时的「原因」只读一遍 —— 括号里补新信息，不复述
+  ---
+  duration_ms: 0.0852
+  type: 'test'
+  ...
+# Subtest: 告警：老 summary（没有 roundCause 字段）逐字不变 —— 仍按「页面不齐」叫人补页
+ok 428 - 告警：老 summary（没有 roundCause 字段）逐字不变 —— 仍按「页面不齐」叫人补页
+  ---
+  duration_ms: 0.0665
+  type: 'test'
+  ...
+# Subtest: 驱动：体检落盘带上 roundCause / missingPages（驻留那一步在别的进程里，只能读落盘的）
+ok 429 - 驱动：体检落盘带上 roundCause / missingPages（驻留那一步在别的进程里，只能读落盘的）
+  ---
+  duration_ms: 0.6119
+  type: 'test'
+  ...
+# Subtest: 登记表：13 行，运营叫法与页头店名都唯一
+ok 430 - 登记表：13 行，运营叫法与页头店名都唯一
+  ---
+  duration_ms: 0.7047
+  type: 'test'
+  ...
+# Subtest: 登记表与「照抄读回的原文」是双射：既没抄错，也没漏行
+ok 431 - 登记表与「照抄读回的原文」是双射：既没抄错，也没漏行
+  ---
+  duration_ms: 0.6923
+  type: 'test'
+  ...
+# Subtest: 平台后缀与 platform 字段一致；未知后缀当场抛错
+ok 432 - 平台后缀与 platform 字段一致；未知后缀当场抛错
+  ---
+  duration_ms: 0.2524
+  type: 'test'
+  ...
+# Subtest: 诚实性：已实测的行字段齐全，未实测的行整行为 null
+ok 433 - 诚实性：已实测的行字段齐全，未实测的行整行为 null
+  ---
+  duration_ms: 0.4844
+  type: 'test'
+  ...
+# Subtest: 隔离 profile：键唯一、值唯一、与登记表逐键一致，三张清单互相自洽
+ok 434 - 隔离 profile：键唯一、值唯一、与登记表逐键一致，三张清单互相自洽
+  ---
+  duration_ms: 0.2705
+  type: 'test'
+  ...
+# Subtest: 未登记的店铺一律抛错（fail-closed），不回落成「不核对」
+ok 435 - 未登记的店铺一律抛错（fail-closed），不回落成「不核对」
+  ---
+  duration_ms: 0.09
+  type: 'test'
+  ...
+# Subtest: expectArgs：13 家三样都齐，缺字段即抛错的那条 fail-closed 分支仍在源码里
+ok 436 - expectArgs：13 家三样都齐，缺字段即抛错的那条 fail-closed 分支仍在源码里
+  ---
+  duration_ms: 0.5128
+  type: 'test'
+  ...
+# Subtest: 把登记表接回真实判据：逐店自比必须过
+ok 437 - 把登记表接回真实判据：逐店自比必须过
+  ---
+  duration_ms: 0.4205
+  type: 'test'
+  ...
+# Subtest: 把登记表接回真实判据：跨店比对必须停，而且要点名期望/实际两侧
+ok 438 - 把登记表接回真实判据：跨店比对必须停，而且要点名期望/实际两侧
+  ---
+  duration_ms: 1.9056
+  type: 'test'
+  ...
+# Subtest: describeIdentity 给出人读摘要，未实测/非实测的部分要显式标出来
+ok 439 - describeIdentity 给出人读摘要，未实测/非实测的部分要显式标出来
+  ---
+  duration_ms: 0.6524
+  type: 'test'
+  ...
+# Subtest: 打印器：可粘贴内容只走 stdout，提示走 stderr；require 不满足即非零退出
+ok 440 - 打印器：可粘贴内容只走 stdout，提示走 stderr；require 不满足即非零退出
+  ---
+  duration_ms: 2673.8983
+  type: 'test'
+  ...
+# Subtest: 登记表与文档里的四处名字对不上的坑：会员名与店名不同名是**正常**的
+ok 441 - 登记表与文档里的四处名字对不上的坑：会员名与店名不同名是**正常**的
+  ---
+  duration_ms: 0.6972
+  type: 'test'
+  ...
+# Subtest: 证据目录的店铺键：与源产物店名一致才放行，一致就返回登记行
+ok 442 - 证据目录的店铺键：与源产物店名一致才放行，一致就返回登记行
+  ---
+  duration_ms: 0.1635
+  type: 'test'
+  ...
+# Subtest: 证据目录的店铺键：错标签一律抛错并点名两边（原样比，不做相似度猜）
+ok 443 - 证据目录的店铺键：错标签一律抛错并点名两边（原样比，不做相似度猜）
+  ---
+  duration_ms: 0.1936
+  type: 'test'
+  ...
+1..443
+# tests 443
+# suites 0
+# pass 443
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5885.2637

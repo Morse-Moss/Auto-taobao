@@ -68,7 +68,14 @@ function parseArgs(argv) {
     autoRepair: false, autoRepairMaxRounds: null,
     // ⑨b（2026-09-29 加）：告警闸门「先让 agent 试一下，再叫人」。**默认关** ——
     // 它只有配合会话侧派单才有意义（脚本自己没有 `Agent` 工具），所以要与会话侧约定好再开。
-    deferAgentActionableAlert: false };
+    deferAgentActionableAlert: false,
+    // `merchantLabel` **默认开**（2026-10-06 加）。它给**共用商家浏览器**挂一个窗口标识页，
+    // 于是窗口标题里写着「商家浏览器（日报共用） · 日报采集窗口」。
+    // 为什么默认开：晚报/登录告警里那句「去共用窗口」要在机器前**有落点** —— 店铺窗口的名字
+    // 是店名，而共用窗口不属于任何一家店，没有店名可用（用户原话：「我就特意设计了标识页，
+    // 让用户知道是哪个窗口」）。它只影响窗口上写什么字，碰不到任何采集页面。
+    // `--no-merchant-label` 是一键退回的开关（退回＝那扇窗没有名字）。
+    merchantLabel: true };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--print') options.print = true;
@@ -78,6 +85,8 @@ function parseArgs(argv) {
     else if (arg === '--allow-missing-peer') options.allowMissingPeer = true;
     else if (arg === '--no-auto-login') options.autoLogin = false;
     else if (arg === '--no-hold') options.hold = false;
+    // 共用窗口标识页的开关（默认开，见上面 merchantLabel 的注释）。
+    else if (arg === '--no-merchant-label') options.merchantLabel = false;
     // 让系统自己按修复请求单修一次再重试（默认关，见上面 autoRepair 的注释）。
     else if (arg === '--auto-repair') options.autoRepair = true;
     // ⑨b：把「先派 agent、不先叫人」这个意图透传到链（两层都要能收，见 daily-job-plan 的注释）。
@@ -103,7 +112,7 @@ function parseArgs(argv) {
       }
       options.batches = value;
     } else if (arg === '--help' || arg === '-h') options.help = true;
-    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-hold --auto-repair --auto-repair-max-rounds --defer-agent-actionable-alert --date --shops --only --batches）` };
+    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-hold --no-merchant-label --auto-repair --auto-repair-max-rounds --defer-agent-actionable-alert --date --shops --only --batches）` };
   }
   return { options };
 }
@@ -158,6 +167,9 @@ async function main(argv) {
       // ⑨b：「先派 agent、不先叫人」那一条的**起点**。漏了它同样是静默的：
       // 链那一步少一个开关、失败时仍直接发飞书，而日志里看不出「本该先交给 agent」。
       deferAgentActionableAlert: options.deferAgentActionableAlert,
+      // 「共用窗口要有名字」那一条的**起点**（2026-10-06 加）。漏了它的症状是静默的：
+      // 那一步不进计划、日志里少一行，而「告警说去共用窗口」在机器前又一次没有落点。
+      merchantLabel: options.merchantLabel,
       resolvedDate: date,
     });
   } catch (error) {

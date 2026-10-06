@@ -5,12 +5,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  LABEL_PAGE_NAME, LABEL_PAGE_PATH, LOGIN_PAGE_PATTERNS, PRUNE_POLICY, TAB_KINDS, WINDOW_TITLE_SUFFIX,
-  classifyShopTabs, describeTab, ensureLabelTabOn, isLabelTab, labelPageUrlFor, leftoverTabs, loginStateHint,
-  looksLikeLoginPage, memberNameFor, memberVerdictFor, parseCli, prunePlan, pruneTabsOn,
-  readLoggedInMemberOn, tabKindOf, windowTitleFor,
+  LABEL_PAGE_NAME, LABEL_PAGE_PATH, LOGIN_PAGE_PATTERNS, PRUNE_POLICY, SHARED_LABEL_SUBJECTS, TAB_KINDS,
+  WINDOW_TITLE_SUFFIX, classifyShopTabs, describeTab, ensureLabelTabOn, isLabelTab, labelPageUrlFor,
+  leftoverTabs, loginStateHint, looksLikeLoginPage, memberNameFor, memberVerdictFor, parseCli, prunePlan,
+  pruneTabsOn, readLoggedInMemberOn, sharedSubjectOf, sharedWindowTitleFor, tabKindOf, windowTitleFor,
 } from './shop-window-label.mjs';
-import { SHOP_BROWSERS } from './browser-ports.mjs';
+import { PROJECT_PORTS, SHOP_BROWSERS } from './browser-ports.mjs';
 import { SHOP_IDENTITIES } from '../skills/sycm-alimama-daily-report/scripts/shop-identities.mjs';
 // 只读「页面实际登的是谁」用的表达式。**必须从采集链那一份 import**：本用例有一条断言
 // 把「脚本发的 body 逐字等于它」钉住 —— 另写一份选择器在这里就当场红。
@@ -20,7 +20,7 @@ import { alimamaIdentityExpression } from '../skills/sycm-alimama-daily-report/s
 //   · 「脚本写了 ?k= 但页面从不读它」⇒ 这一格永远是空的；
 //   · 「页面读了 ?k= 但脚本从不写它」⇒ 页面拿到的是 null。
 // 写成一份共享常量而不是各写一行字面量：否则新增参数时只改一处，另一处会**静默**放过。
-const LABEL_URL_KEYS = ['actual', 'member', 'ok', 'port', 'shop', 'state'];
+const LABEL_URL_KEYS = ['actual', 'member', 'ok', 'port', 'shared', 'shop', 'state'];
 
 // 真实页签清单：逐字取自 evidence/multi-shop-run-2026-09-18/15-identity-recheck.txt（2026-09-18 实测）。
 // 用实测值而不是编的 URL，是为了让分类判据真的对着现场。
@@ -46,6 +46,61 @@ test('窗口标题必须带店名：四家店的标题互不相同（否则收�
 
 test('没有店名的标题一律抛错，不给一个「看起来标过了」的默认标题', () => {
   for (const bad of [null, undefined, '', '   ']) assert.throws(() => windowTitleFor(bad), /需要一个店名/u);
+});
+
+// ---------------------------------------------------------------------------
+// 共用窗口（不是某家店）。2026-10-06 加 —— 用户原话「我就特意设计了标识页，让用户知道是哪个窗口」。
+// 守的是三件事：① 它的标题与**每一家店**的标题都不同（否则「找共用窗口」根本不可执行）；
+// ② 未登记的目标抛错、不回落（回落到店铺实例 = 把标签贴到别家窗户上，窗口上还看不出来）；
+// ③ 页面真的按共用那一档渲染（不是靠「不满足条件就空白」蒙过去）。
+// ---------------------------------------------------------------------------
+test('共用窗口的标题必须与每一家店的标题都不同（否则「找共用窗口」这句话不可执行）', () => {
+  const merchant = sharedSubjectOf('merchant');
+  assert.equal(merchant.instance, 'dailyReport', '共用窗口指的必须是那个共享实例（dailyReport）');
+  assert.equal(merchant.browserPort, PROJECT_PORTS.dailyReportBrowser);
+  assert.equal(merchant.proxyPort, PROJECT_PORTS.dailyReportProxy);
+  const title = sharedWindowTitleFor('merchant');
+  assert.equal(title, `${merchant.displayName}${WINDOW_TITLE_SUFFIX}`);
+  // 关键：标题里**不许**出现任何一家店的名字 —— 那正是「把标签贴错窗口」。
+  for (const shop of Object.keys(SHOP_BROWSERS)) {
+    assert.equal(title.includes(shop), false, `共用窗口的标题里出现了店名「${shop}」`);
+  }
+  const shopTitles = Object.keys(SHOP_BROWSERS).map(windowTitleFor);
+  assert.equal(shopTitles.includes(title), false, '共用窗口的标题与某家店的标题撞了');
+  // 也不许与「没给店名时」的退化说辞撞上。
+  assert.match(title, /日报采集窗口$/u);
+});
+
+test('共用目标：未登记的一律抛错，绝不回落成某个店铺实例', () => {
+  assert.throws(() => sharedSubjectOf('nope'), /未登记的共用窗口标识目标/u);
+  assert.throws(() => sharedSubjectOf(''), /未登记的共用窗口标识目标/u);
+  assert.throws(() => sharedWindowTitleFor('merchant2'), /未登记的共用窗口标识目标/u);
+  assert.deepEqual(Object.keys(SHARED_LABEL_SUBJECTS), ['merchant'], '共用目标目前只登记了商人浏览器这一个');
+});
+
+test('CLI：--subject 与 --only 互斥，未登记的 subject 在解析期就抛', () => {
+  const ok = parseCli(['--commit', '--front', '--subject', 'merchant']);
+  assert.equal(ok.subject, 'merchant');
+  assert.equal(ok.only, null);
+  assert.equal(ok.commit, true);
+  assert.equal(ok.label, true, '不带 --prune 时默认就是挂标签页');
+  // 同时给两个 ⇒ 必然有一个被静默忽略，而忽略哪个都不会报错（只会挂错窗口）⇒ 当场拒绝。
+  assert.throws(() => parseCli(['--only', '盖文淘宝', '--subject', 'merchant']), /互斥/u);
+  assert.throws(() => parseCli(['--subject', 'nope']), /未登记的共用窗口标识目标/u);
+  // 不带 --subject 时行为逐字不变（老用法）。
+  assert.equal(parseCli(['--only', '盖文淘宝']).subject, null);
+});
+
+test('共用窗口的页面必须按共用那一档渲染（不能靠「不满足条件就空白」蒙过去）', () => {
+  const html = readFileSync(LABEL_PAGE_PATH, 'utf8');
+  assert.match(html, /\.get\('shared'\)/u, '页面没有读 shared ⇒ 共用窗口会被渲染成「某家店」');
+  assert.match(html, /if\s*\(shared\)/u, '页面没有共用那一档的分叉');
+  // 说清「不属于任何一家店」这句话必须真的落进页面元素里（只写注释不算）。
+  assert.match(html, /getElementById\('kind'\)[\s\S]{0,120}textContent/u,
+    '那句「不属于任何一家店」没有写进页面元素 ⇒ 窗口上还是分不出它和店窗口');
+  assert.match(html, /不属于任何一家店/u, '页面上没有把「共用」这件事说出来');
+  // 只看不用 `shared` 的普通形态：不带 shared 时仍要说「给这家店用的」（老行为不许被改掉）。
+  assert.match(html, /这个浏览器窗口是给这家店用的/u);
 });
 
 test('标签页 URL：中文店名要编码、端口带上、没量到状态就整条不带 state', () => {
@@ -466,10 +521,19 @@ test('标签页 URL 的参数名必须与页面读的参数名一一对得上', 
   const html = readFileSync(LABEL_PAGE_PATH, 'utf8');
   const read = new Set([...html.matchAll(/\.get\('([A-Za-z]+)'\)/gu)].map((m) => m[1]));
   // 用「状态齐全」的那一份 URL 来算脚本会写哪些键（`ok` 只在 true 时才写，所以要用 ok:true 取样）
-  const written = new Set(new URL(labelPageUrlFor({
+  const shopUrl = new URL(labelPageUrlFor({
     shop: '盖文淘宝', port: 19033, state: '需要登录', ok: true, member: '随心品质定制:阿彦',
     actual: '随心品质定制:阿彦',
-  })).searchParams.keys());
+  }));
+  // 2026-10-06 加：`shared=1` **只在共用窗口那一档**才写 ⇒ 采样若只取店铺形态，
+  // 这一条就会红成「页面读了 shared、脚本从不写」——而那不是缺陷，是采样不全。
+  // 反过来同样危险：只取共用形态会放过「店铺那一档漏写某键」。所以两种形态都要取。
+  const sharedUrl = new URL(labelPageUrlFor({
+    shop: sharedSubjectOf('merchant').displayName,
+    port: PROJECT_PORTS.dailyReportBrowser,
+    shared: true,
+  }));
+  const written = new Set([...shopUrl.searchParams.keys(), ...sharedUrl.searchParams.keys()]);
 
   for (const key of written) {
     assert.ok(read.has(key), `脚本写了 ?${key}= 但页面里没有任何地方读它 ⇒ 这一格永远是空的`);
@@ -477,6 +541,12 @@ test('标签页 URL 的参数名必须与页面读的参数名一一对得上', 
   for (const key of read) {
     assert.ok(written.has(key), `页面里读了 ?${key}= 但脚本从不写它 ⇒ 页面拿到的是 null`);
   }
+  // 两档的**互斥**也要钉住：共用档不带店名之外的那几个（member/actual/state/ok 都不该有），
+  // 店铺档不许出现 shared —— 出现任何一边都说明「两种窗口渲染成了同一种」。
+  assert.ok(sharedUrl.searchParams.has('shared'), '共用窗口的 URL 必须带 shared=1（否则页面仍按「某家店」渲染）');
+  assert.equal(sharedUrl.searchParams.has('member'), false, '共用窗口不该带 member（它不在店铺登记表里）');
+  assert.equal(sharedUrl.searchParams.has('actual'), false, '共用窗口不该带 actual（不查店铺会员名）');
+  assert.equal(shopUrl.searchParams.has('shared'), false, '店铺窗口不许带 shared=1（那会把它说成共用窗口）');
   assert.deepEqual([...read].sort(), LABEL_URL_KEYS);
 });
 
@@ -581,8 +651,15 @@ test('窗口上必须明说「两套名字是同一家店」，而且两个名�
   assert.match(block, /shop/u, '要把飞书叫法（大标题那个）写进这句话里');
   assert.match(block, /member/u, '要把会员名写进这句话里');
   // 与上面两行同一口径：缺一个就整行不显示 —— 半句话（「飞书里叫 X」但没有会员名）比不显示更误导。
-  assert.match(block, /if\s*\(shop\s*&&\s*member/u,
+  // 2026-10-06 放宽成「可带一个 !shared 前置」：共用窗口（共用商家浏览器）**确实不是某家店**，
+  // 它必须走另一套文案（见下面那条断言）。但「两个名字都量到才显示」这条口径本身不变 ——
+  // 所以这里只允许那个前置，不许把 `shop && member` 这条条件本身删掉。
+  assert.match(block, /if\s*\((!shared\s*&&\s*)?shop\s*&&\s*member/u,
     '两个名字都量到才显示；只量到一个时写半句会让人以为「另一套名字不存在」');
+  // 共用那一档必须**显式**分叉：把 `!shared` 写在条件里却不为共用窗口另写文案，
+  // 结果是共用窗口上的别名行整行空白 —— 而那一行恰恰是「怎么认出共用窗口」的唯一落点。
+  assert.match(block, /if\s*\(shared\)/u,
+    '共用窗口必须显式走另一套文案，不能靠「不满足 if 就整行空白」蒙过去');
   assert.equal(/id="alias"[^>]*>[^<]+</u.test(html), false, '这一行同样不许把店名/账号写死在 HTML 里');
   // 这一行不许出现凭据面（这个 URL 会进浏览历史）
   assert.equal(/password|密码/u.test(block), false, '这里只许放名字，不许放密码');
@@ -766,10 +843,19 @@ test('标签页 URL 里只许出现账号名，绝不许出现密码（这个 UR
     actual: '随心品质定制:阿彦',
   });
   const keys = [...new URL(url).searchParams.keys()].sort();
-  assert.deepEqual(keys, LABEL_URL_KEYS,
-    '标签页 URL 的键集合是封闭的：多一个键就等于多一个可能漏凭据的口子');
+  // 键集合是**封闭**的：任何一档写出来的键都必须落在 `LABEL_URL_KEYS` 里
+  //（多一个键就等于多一个可能漏凭据的口子）。
+  // 2026-10-06 起不再断言「单份 URL 逐字相等」：`shared` 与 `member`/`actual` 互斥，
+  // 没有任何一份 URL 会同时带全 —— 于是改成「两档的并集必须恰好等于全量键集」，
+  // 既守住封闭性，也守住「登记了却从来没人写」的那种死键。
+  const sharedUrl = new URL(labelPageUrlFor({
+    shop: sharedSubjectOf('merchant').displayName, port: PROJECT_PORTS.dailyReportBrowser, shared: true,
+  }));
+  const union = [...new Set([...keys, ...sharedUrl.searchParams.keys()])].sort();
+  assert.deepEqual(union, LABEL_URL_KEYS,
+    '两档合起来必须恰好覆盖全量键集：多一个键 = 可能漏凭据的口子，少一个键 = 登记了却没人写');
   const suspicious = /pass|pwd|secret|token|credential|cookie/iu;
-  for (const key of keys) assert.equal(suspicious.test(key), false, `键名可疑：${key}`);
+  for (const key of union) assert.equal(suspicious.test(key), false, `键名可疑：${key}`);
   // 页面上也不许有读密码的入口
   const html = readFileSync(LABEL_PAGE_PATH, 'utf8');
   for (const key of new Set([...html.matchAll(/\.get\('([A-Za-z]+)'\)/gu)].map((m) => m[1]))) {

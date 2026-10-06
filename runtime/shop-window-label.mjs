@@ -17,7 +17,7 @@
 //   2) **只用各店自己的代理**（`/targets` `/navigate` `/new`），不直连调试端口 ——
 //      裸 CDP 端口在 2026-09-18 实测「页面上什么都有，脚本一个也连不上」。
 //   3) **默认不动任何东西**：CLI 不带 `--commit` 时只打印「哪台缺标签页 / 现在有哪些页签」。
-import { SHOP_BROWSERS, shopBrowserKeys } from './browser-ports.mjs';
+import { PROJECT_PORTS, SHOP_BROWSERS, shopBrowserKeys } from './browser-ports.mjs';
 // 会员名从「店铺身份登记表」读 —— 那是唯一来源（逐字抄自运营的店铺底单，见 shop-identities.mjs）。
 import { SHOP_IDENTITIES } from '../skills/sycm-alimama-daily-report/scripts/shop-identities.mjs';
 // 「页面**实际登的是谁**」怎么读，不在这里另写一份 —— 复用采集链唯一那份判据（collect-core.mjs）。
@@ -41,6 +41,57 @@ export function windowTitleFor(shop) {
   const name = String(shop ?? '').trim();
   if (!name) throw new Error('windowTitleFor 需要一个店名 —— 没有店名的标题等于没标');
   return `${name}${WINDOW_TITLE_SUFFIX}`;
+}
+
+/**
+ * **共用实例**（不是某一家店）的窗口标识（2026-10-06 加）。
+ *
+ * 为什么需要（用户原话：「我就特意设计了标识页，让用户知道是哪个窗口」）：
+ * 标识页这套机制原先只覆盖**店铺实例**（一店一个窗口，标题写着店名）。而日报链上还有
+ * **一个共用实例** —— 商家浏览器（19022，`dailyReport`）：生意参谋工作页与飞书
+ * 「各店铺日报」底单页跑在它上面，所以**它一掉登录，五家店一家都不开跑**。
+ * 于是告警面对一个答不出来的问题：「去哪一扇窗？」五台窗口长得一模一样，
+ * 而店名偏偏指不到那扇共用窗户上 —— 它不属于任何一家店。
+ *
+ * 复用的是**同一套**机制（`windowTitleFor` + `labelPageUrlFor` + `ensureLabelTabOn`），
+ * 不是另造一套命名：标题后缀一样、页面是同一个文件、页签分类照样认它是 `label`。
+ * 只有两处不同：
+ *   · 页面上的称呼是「共用窗口」，不是「这家店」；
+ *   · 它没有会员名那一行（`memberNameFor` 查的是店铺登记表，共用实例不在里面）。
+ *
+ * `instance` 是浏览器实例的键，端口从 `PROJECT_PORTS` 取 —— 数字不在这里抄第二份。
+ */
+export const SHARED_LABEL_SUBJECTS = Object.freeze({
+  merchant: Object.freeze({
+    key: 'merchant',
+    // 写进窗口标题与标识页的那一行字。**不许**写成某家店的名字 —— 那正是「把标签贴错窗口」。
+    displayName: '商家浏览器（日报共用）',
+    instance: 'dailyReport',
+    browserPort: PROJECT_PORTS.dailyReportBrowser,
+    proxyPort: PROJECT_PORTS.dailyReportProxy,
+    // 告警里指路用的那一句（与 `windowTitleFor` 拼出来的一致，这里只给出便于文案复用）。
+    note: '生意参谋工作页与飞书「各店铺日报」底单页都开在它里面；各店自己的窗口里没有这张表',
+  }),
+});
+
+/**
+ * 取一个共用窗口标识目标。
+ *
+ * 未登记的键**抛错**、不回落：回落会把「共用窗口」的标识挂到某家店的实例上，
+ * 而那种错在窗口上是看不出来的（页面上照样写着店名，只是挂错了窗口）。
+ */
+export function sharedSubjectOf(key) {
+  const name = String(key ?? '').trim();
+  const found = SHARED_LABEL_SUBJECTS[name];
+  if (!found) {
+    throw new Error(`未登记的共用窗口标识目标「${key}」；已登记：${Object.keys(SHARED_LABEL_SUBJECTS).join(' / ')}`);
+  }
+  return found;
+}
+
+/** 共用窗口的标题（若之后要把它写进告警文案，从这里取，不要在别处再拼一次）。 */
+export function sharedWindowTitleFor(key) {
+  return windowTitleFor(sharedSubjectOf(key).displayName);
 }
 
 /**
@@ -107,12 +158,16 @@ export function memberVerdictFor({ expected = null, actual = null } = {}) {
 // 标签页的 URL。`state` / `member` / `actual` 都是可选的：量到就带上，量不到就**整个参数不带**，
 // 页面上那一行也就不显示 —— 不写「未知」去占位，那会让人以为量过了。
 export function labelPageUrlFor({
-  shop, port = null, state = null, ok = null, member = null, actual = null, pagePath = LABEL_PAGE_PATH,
+  shop, port = null, state = null, ok = null, member = null, actual = null, shared = false, pagePath = LABEL_PAGE_PATH,
 } = {}) {
   const name = String(shop ?? '').trim();
   if (!name) throw new Error('labelPageUrlFor 需要一个店名');
   const query = new URLSearchParams({ shop: name });
   if (port !== null && port !== undefined && port !== '') query.set('port', String(port));
+  // 共用窗口（不是某家店，2026-10-06）。页面上那句「这个浏览器窗口是给这家店用的」
+  // 必须换掉 —— 否则它会对着一扇**不属于任何一家店**的窗口说它是某家店的窗口，
+  // 而那句话正是这个页面存在的全部理由。只多带一个参数，不加第二个页面文件。
+  if (shared === true) query.set('shared', '1');
   const memberText = String(member ?? '').trim();
   if (memberText) query.set('member', memberText);
   // 实际登录的会员名（**读页面得来**，不是登记表里的期望值）。与 `member` 同一口径：量到才带。
@@ -433,6 +488,7 @@ export async function ensureLabelTabOn({
   ok = null,
   member = null,
   actual = null,
+  shared = false,
   fetchImpl = fetch,
   // 回读预算：与 `pruneTabsOn` 同一口径，因为关完之后**都要等一拍再确认**
   // （返回值不可信；但读一遍也不可信 —— 真机上 `about:blank` 从 `/close` 到消失要 270ms）。
@@ -443,7 +499,7 @@ export async function ensureLabelTabOn({
   const targets = await readTargets(proxyUrl, fetchImpl);
   const classified = classifyShopTabs(targets);
   const labels = classified.filter((t) => t.kind === 'label');
-  const url = labelPageUrlFor({ shop, port, state, ok, member, actual });
+  const url = labelPageUrlFor({ shop, port, state, ok, member, actual, shared });
 
   if (labels.length > 1) {
     // 收敛成一个（2026-09-23 用户拍板原话：「**有两个肯定不行只保留一个标识**」）。
@@ -657,7 +713,7 @@ export async function pruneTabsOn({
 export function parseCli(argv) {
   const opts = {
     commit: false, prune: false, label: null, front: false,
-    only: null, state: null, ok: null, member: null, help: false,
+    only: null, subject: null, state: null, ok: null, member: null, help: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -667,11 +723,12 @@ export function parseCli(argv) {
     if (token === '--label') { opts.label = true; continue; }
     if (token === '--front') { opts.front = true; continue; }
     if (token === '--help' || token === '-h') { opts.help = true; continue; }
-    const flags = ['--only', '--state', '--ok', '--member'];
+    const flags = ['--only', '--subject', '--state', '--ok', '--member'];
     if (!flags.includes(token)) throw new Error(`Unknown argument: ${token}`);
     const value = argv[i + 1];
     if (value === undefined || value.startsWith('--')) throw new Error(`${token} requires a value`);
     if (token === '--only') opts.only = value;
+    if (token === '--subject') opts.subject = value;
     if (token === '--state') opts.state = value;
     if (token === '--member') opts.member = value;
     if (token === '--ok') opts.ok = value === '1' || value === 'true';
@@ -688,6 +745,15 @@ export function parseCli(argv) {
   if (opts.only !== null && !shopBrowserKeys().includes(opts.only)) {
     throw new Error(`Unknown --only ${opts.only} (known: ${shopBrowserKeys().join(' / ')})`);
   }
+  // `--only <店名>`（店铺实例）与 `--subject <共用目标>`（共用实例）**互斥**。
+  // 两者都能给出「挂哪个窗口」，同时给必然有一个被静默忽略 —— 而忽略哪一个都不会报错，
+  // 只会把标识挂到另一扇窗户上，看起来完全正常。所以这里当场拒绝，不猜。
+  if (opts.subject !== null && opts.only !== null) {
+    throw new Error('--only 与 --subject 互斥：一个命令只挂一个窗口（店铺实例用 --only，共用实例用 --subject）');
+  }
+  // 未登记的共用目标当场抛错（`sharedSubjectOf` 自己会抛）；这里先跑一次是为了让错误
+  // 发生在**解析期**，而不是等 report 循环里才炸。
+  if (opts.subject !== null) sharedSubjectOf(opts.subject);
   return opts;
 }
 
@@ -704,35 +770,55 @@ const MEMBER_VERDICT_TEXT = Object.freeze({
 async function main() {
   const opts = parseCli(process.argv.slice(2));
   if (opts.help) {
-    console.log('node runtime/shop-window-label.mjs [--commit] [--front] [--only 店名] [--state 文本] [--ok 1|0]');
+    console.log('node runtime/shop-window-label.mjs [--commit] [--front] [--only 店名 | --subject 共用目标] [--state 文本] [--ok 1|0]');
     console.log('  （不带 --prune 时：挂/更新标签页；带 --prune 时只清页签，两者都要写 --label --prune）');
+    console.log('  --only 店名       ：店铺实例（一店一个窗口）。');
+    console.log(`  --subject 共用目标 ：共用实例，目前只有 ${Object.keys(SHARED_LABEL_SUBJECTS).join(' / ')} —— 它不属于任何一家店。`);
     return;
   }
-  const shops = opts.only ? [opts.only] : shopBrowserKeys();
-  const report = { commit: opts.commit, prune: opts.prune, label: opts.label, shops: {} };
+  // 目标清单：店铺实例（一店一个）与**共用实例**（目前只有共用商家浏览器）走**同一条**挂标签页的路。
+  // 加上共用这一支的理由就是告警答不出「去哪一扇窗」—— 而共用窗口**没有店名可用**，
+  // 所以它必须有自己的、能写进标题与页面的名字（见 `SHARED_LABEL_SUBJECTS`）。
+  const labelTargets = opts.subject !== null
+    ? [{ shop: sharedSubjectOf(opts.subject).displayName, entry: sharedSubjectOf(opts.subject), shared: true }]
+    : (opts.only ? [opts.only] : shopBrowserKeys()).map((shop) => ({ shop, entry: SHOP_BROWSERS[shop], shared: false }));
+  const report = {
+    commit: opts.commit, prune: opts.prune, label: opts.label,
+    ...(opts.subject !== null ? { subject: opts.subject } : {}),
+    shops: {},
+  };
   let failed = 0;
 
-  for (const shop of shops) {
-    const entry = SHOP_BROWSERS[shop];
+  for (const { shop, entry, shared } of labelTargets) {
     const proxyUrl = `http://127.0.0.1:${entry.proxyPort}`;
     try {
       const targets = await readTargets(proxyUrl, fetch);
       const classified = classifyShopTabs(targets);
       const labels = classified.filter((t) => t.kind === 'label');
       const hint = loginStateHint(classified);
+      // 会员名只对**店铺实例**有意义（它来自店铺登记表）。共用实例不在那张表里 ——
+      // 不是「没登记」，而是这个问题对共用窗口根本不成立，所以这里给 `null` 而不是去查一个查不到的表。
+      const memberName = shared ? null : memberNameFor(shop);
       const row = {
+        ...(shared ? { shared: true } : {}),
         browserPort: entry.browserPort,
         proxyPort: entry.proxyPort,
         windowTitle: windowTitleFor(shop),
         // 核对用：这一行把「窗口标题上的运营叫法」与「运营同事手里那个会员名」摆在一起。
         // 只读报告就有，不需要 `--commit` —— 因为「哪一组账号是哪一家」是随时会问的问题。
-        memberName: memberNameFor(shop),
+        memberName,
         labelTabs: labels.length,
         tabs: classified.map(describeTab),
         leftover: leftoverTabs(classified).map(describeTab),
       };
       // 登录提示只挂在这一行上。它不改任何行为，只回答用户那句「也没有登录」。
-      if (hint) row.loginHint = `这家店还没登录：看到登录页的是 ${hint.sites.join('、')}`;
+      // 共用窗口的措辞要分开：它不是「这家店」—— 说「这家店还没登录」会让人去各店的窗口里找，
+      // 而这一台掉了登录是**五家一起停**（见 `SHARED_LABEL_SUBJECTS` 的说明）。
+      if (hint) {
+        row.loginHint = shared
+          ? `这个共用窗口还没登录：看到登录页的是 ${hint.sites.join('、')}（它一掉登录，五家店一家都不会开跑）`
+          : `这家店还没登录：看到登录页的是 ${hint.sites.join('、')}`;
+      }
 
       // 顺序说明：清理排在「挂标签页」**之前**（2026-09-18 拆开关时就定下的结构，见上面 parseCli 那段）。
       // 所以在 `--label --prune --commit` 这种组合下，空白页会**先**被关掉，
@@ -759,14 +845,20 @@ async function main() {
         const state = opts.state ?? hint?.state ?? null;
         const ok = opts.ok !== null ? opts.ok : (hint ? hint.ok : null);
         // 会员名从登记表读 —— 它存在的理由就是「让人把窗口和手里的账号对上」。
-        const member = opts.member ?? memberNameFor(shop);
+        // 共用窗口不在那张表里（见上面 `memberName`），所以这一格它是 `null`。
+        const member = shared ? null : (opts.member ?? memberName);
         // 实际登的是谁：**读页面**得来（读不到就是 null，页面上那一行整个不显示）。
         // 这里刻意不提供手工入口 —— 这一格的全部价值在于它是机器读出来的。
-        const reading = await readLoggedInMemberOn({ proxyUrl, targets, fetchImpl: fetch });
+        // 共用窗口**不查**：那份读法是阿里妈妈会员名的（看 `alimamaIdentityExpression`），
+        // 而共用窗口上开着的是生意参谋工作页 —— 拿一份不对题的判据去读，只会读出
+        // 「没读到」并把它当成一个结论。所以这里显式短路，并如实说明为什么没有那一行。
+        const reading = shared
+          ? { memberName: null, reason: '这是共用窗口，不查店铺会员名' }
+          : await readLoggedInMemberOn({ proxyUrl, targets, fetchImpl: fetch });
         const actual = reading.memberName;
         const verdict = memberVerdictFor({ expected: member, actual });
         const result = await ensureLabelTabOn({
-          proxyUrl, shop, port: entry.browserPort, state, ok, member, actual,
+          proxyUrl, shop, port: entry.browserPort, state, ok, member, actual, shared,
         });
         row.labelTab = {
           ok: result.ok,
@@ -806,7 +898,9 @@ async function main() {
           ? '没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）'
           : `${state}（来源：${explicit ? '--state 参数' : '从页签 URL 读出来'}）`;
         row.labelMember = member === null
-          ? '登记表里没有这家店的会员名 ⇒ 标签页上不显示这一行'
+          ? (shared
+            ? '这是共用窗口，没有店铺会员名这一说 ⇒ 标签页上不显示这一行'
+            : '登记表里没有这家店的会员名 ⇒ 标签页上不显示这一行')
           : member;
         row.labelActual = actual === null
           ? `没读到实际登录的会员名 ⇒ 标签页上不显示这一行（${reading.reason ?? '原因未知'}）`
@@ -821,11 +915,16 @@ async function main() {
         row.needsLabelTab = labels.length === 0;
         // 只读报告也读一次「实际登的是谁」：用户问的「哪台登的是谁」正是这一格，
         // 而 /eval 是只读的（表达式只读文本、不点任何控件）—— 报告模式不必因为它是 POST 就回避。
-        const reading = await readLoggedInMemberOn({ proxyUrl, targets, fetchImpl: fetch });
-        const verdict = memberVerdictFor({ expected: memberNameFor(shop), actual: reading.memberName });
-        row.actualMember = reading.memberName === null
-          ? `没读到（${reading.reason ?? '原因未知'}）`
-          : `${reading.memberName}（${MEMBER_VERDICT_TEXT[verdict] ?? verdict}）`;
+        // 共用窗口同样短路（理由同上面挂标签页那一支：那份读法是阿里妈妈会员名的，不对题）。
+        if (shared) {
+          row.actualMember = '这是共用窗口，不查店铺会员名';
+        } else {
+          const reading = await readLoggedInMemberOn({ proxyUrl, targets, fetchImpl: fetch });
+          const verdict = memberVerdictFor({ expected: memberName, actual: reading.memberName });
+          row.actualMember = reading.memberName === null
+            ? `没读到（${reading.reason ?? '原因未知'}）`
+            : `${reading.memberName}（${MEMBER_VERDICT_TEXT[verdict] ?? verdict}）`;
+        }
       }
 
       report.shops[shop] = row;

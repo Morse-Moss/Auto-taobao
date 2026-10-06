@@ -59,6 +59,14 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   // 与驱动都要用它，留在任何一侧的另一侧都会成环。它本身只依赖 date-picker 与 runtime/feishu-targets，
   // 是一条干净的 skills → runtime，不扩大交付形态的锁定面。
   'skills/sycm-alimama-daily-report/scripts/expected-pages.mjs',
+  // 2026-10-06 新增一条：`login-merchant-core.mjs`（登录告警的纯逻辑那一半）import 了
+  // `runtime/shop-window-label.mjs` 的 `sharedSubjectOf`。理由是**告警里那句指路必须与写到
+  // 窗口上的标题同源**：共用窗口（商家浏览器，19022/19023）也有标识页了（见 daily-job-plan.mjs
+  // 的 `label-merchant-window`），告警要说「标题写着「商家浏览器（日报共用）」的那个窗口」——
+  // 各写一份字符串，改一处就静默落空（症状：照着做也找不到窗口，且没有任何报错）。
+  // 方向是干净的 skills → runtime：`SHARED_LABEL_SUBJECTS` 是纯常量表，不反向依赖 skills。
+  // 同目录的 `login-merchant-core.test.mjs` 早就在这条边界上（它 import 同一文件的 `windowTitleFor`）。
+  'skills/sycm-alimama-daily-report/scripts/login-merchant-core.mjs',
   'skills/sycm-alimama-daily-report/scripts/login-merchant-core.test.mjs',
   'skills/sycm-alimama-daily-report/scripts/login-merchant.mjs',
   'skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs',

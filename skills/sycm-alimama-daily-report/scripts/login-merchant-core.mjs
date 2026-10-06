@@ -5,6 +5,10 @@
 // 期望账号的唯一来源（身份守卫要用）。这份登记表本身是纯数据、无副作用，与「core 要可离线测」
 // 不冲突 —— 同目录的 check-login-shops-core.mjs 早就这么 import 了。
 import { shopIdentity } from './shop-identities.mjs';
+// 「共用窗口叫什么」只有一处实现（`runtime/shop-window-label.mjs` 的 `SHARED_LABEL_SUBJECTS`）。
+// 告警里那句「标题写着「X」的窗口」必须与**真的写到窗口上的那个标题**同源 ——
+// 各写一份字符串，改一处就静默落空（症状是「照着做也找不到窗口」，没有任何报错）。
+import { sharedSubjectOf } from '../../../runtime/shop-window-label.mjs';
 
 // 登录入口候选表（2026-09-23 加）。**顺序即优先级，逐条打开试到浏览器肯填为止。**
 //
@@ -788,13 +792,24 @@ const ACTION_BY_VERDICT = Object.freeze({
 });
 
 // 把 `{窗口}` 换成收信人真的能在机器上认出来的说法。
+//
+// 2026-10-06 改（用户原话：「你发给飞书的报警是什么东西，一堆专业术语，你让业务人员怎么处理」）：
+// 原先「没有店名」那一支写的是「**那台电脑的**浏览器窗口」。那句话在告警里没有落点 ——
+// 收信人面前可能是五台长得一样的窗口，他没有任何办法从这句话里知道该动哪一扇。
+// 现在**没有店名时改用共用窗口的名字指路**：共用商家浏览器也有标识页了
+// （`runtime/shop-window-label.mjs` 的 `SHARED_LABEL_SUBJECTS`），窗口标题里真的写着那个名字，
+// 所以这句话可以**承诺一个写在标题上的名字**，而不是一句「那台电脑」。
+//
+// 两种说法的形状刻意保持一致（都引号引起来、都说「任务栏里就能看到」）：
+// 收信人只需要学会一种找法。店铺那一档引的是**店名**（标题是「店名 · 日报采集窗口」），
+// 所以那边同样只引店名 —— 判据是「承诺的名字必须是窗口标题的开头」（见对应用例）。
+export const SHARED_WINDOW_NAME = sharedSubjectOf('merchant').displayName;
+
 export function resolveAction(verdict, shopName = null) {
   const template = ACTION_BY_VERDICT[verdict] ?? '人工处理后再跑这一轮。';
   // 有店名时用**窗口标题**指路。括号里那句「任务栏里就能看到」是给非技术收信人看的 ——
   // 他可能不知道「窗口标题」是什么，但知道去任务栏哪一行找。
-  const where = shopName
-    ? `标题写着「${shopName}」的那个浏览器窗口（任务栏里就能看到）`
-    : '那台电脑的浏览器窗口';
+  const where = `标题写着「${shopName ?? SHARED_WINDOW_NAME}」的那个浏览器窗口（任务栏里就能看到）`;
   return template.replace('{窗口}', where);
 }
 
@@ -836,12 +851,43 @@ export function localDateStamp(date) {
 // 但收信人看不到最关键的「哪台机器、哪个配置」）。
 //
 // 这里**永远不接收也不渲染凭据**：reason 只允许是本脚本自己产出的说明文字。
+//
+// **2026-10-06：`machine` 与 `browserProfile` 不再进告警。**
+// 为什么（用户原话：「你发给飞书的报警是什么东西，一堆专业术语，你让业务人员怎么处理」）：
+// 收信人是业务人员，而 `机器：DESKTOP-KJP4RA5` 与 `浏览器配置：D:\Retire\edge-...profile`
+// 对他们不是指路、是噪音 —— 他们既不知道 hostname 是什么，也不该去动一个浏览器 profile。
+// 那两行原先存在，是因为「去哪一台机器」当时没有别的落点；而现在那个落点已经有了：
+// **窗口标题**（`resolveAction` 会说「标题写着「X」的那个浏览器窗口」，而那个标题
+// 由 `runtime/shop-window-label.mjs` 真的写到窗口上，共用窗口也不例外）。
+// ⇒ 技术串从此留在 job.log 与回执里，不进任何一条给业务人员看的消息。
+//
+// 下面那条 `assertBusinessReadable` 是**形状判据**：它拦住「以后又有人把技术串加回来」，
+// 而不是靠写的人记得（同一个形状判据在 `run-multi-shop-day.mjs` 里早就有一份 ——
+// 这条登录告警是当时漏掉的一处）。
+const FORBIDDEN_ALERT_KEYS = Object.freeze(['machine', 'browserProfile', 'hostname', 'profile', 'logDir', 'evidence']);
+export function assertBusinessReadable(alert) {
+  const seen = [];
+  const walk = (value, at) => {
+    if (!value || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value)) {
+      // 用「包含」而不是「相等」：`machineName` / `hostname2` 这类变体照样是技术串。
+      const hit = FORBIDDEN_ALERT_KEYS.find((bad) => key.toLowerCase().includes(bad));
+      if (hit) seen.push(`${at}${key}`);
+      walk(child, `${at}${key}.`);
+    }
+  };
+  walk(alert, '');
+  if (seen.length) {
+    throw new Error(`登录告警里出现了给技术同学看的字段（收信人是业务人员）：${seen.join('、')}。`
+      + '技术串请写进回执与 job.log，不要进这条消息。');
+  }
+  return alert;
+}
+
 export function buildLoginAlert({
   verdict,
   detail = null,
   sites = [],
-  machine = null,
-  browserProfile = null,
   shopName = null,
   now = () => new Date(),
 } = {}) {
@@ -851,12 +897,18 @@ export function buildLoginAlert({
   const when = now();
   const labels = sites.map((key) => SITES[key]?.label).filter(Boolean);
   const plainReason = REASON_BY_VERDICT[verdict] ?? '这一步需要人来做。';
-  return {
+  return assertBusinessReadable({
     type: 'LOGIN_REQUIRED',
     severity: 'ERROR',
     // 标题自带店名：收信人扫一眼就知道「哪家店要我干什么」，不必点开正文找。
     // 这也让 `TITLE_BY_TYPE` 那张通用表只在「没给 title」的旧来源上继续生效。
-    title: shopName ? `${shopName} 需要你登录一次` : '需要你登录一次',
+    //
+    // 没有店名时（2026-10-06 改）：说 **共用窗口**，不再只说一句「需要你登录一次」。
+    // 理由与 2026-09-18 那条一模一样（用户原话「我不知道是哪一个店铺的浏览器需要登录」）——
+    // 只写「需要你登录一次」而不说哪扇窗，收信人仍然要自己猜；而这一档对应的是
+    // **共用商家浏览器**（全链只有它有整轮级体检，也只有它在 `--shop` 缺省时被体检）。
+    // 名字从 `SHARED_WINDOW_NAME` 取（＝标识页真的写在窗口标题上的那个名字），不在这里另拼一份。
+    title: shopName ? `${shopName} 需要你登录一次` : `${SHARED_WINDOW_NAME} 需要你登录一次`,
     // 同一家店同一天只叫一次：alertId 是可被调用方拿去去重的锚（同日重复失败不会刷屏）。
     //
     // **店名必须进这个锚**（2026-09-18 修）：原先只含站点，于是五家店同一天共用
@@ -878,10 +930,11 @@ export function buildLoginAlert({
       // 刻意**不放链接**（2026-09-19）：点 http 链接会走系统默认浏览器，
       // 到不了这个 profile 的 Edge 实例（见本节头部那条实测）。
       // 入口由脚本自己开：登录页会被打开在那个窗口里并置前，正文只说去哪个窗口。
-      machine,
-      browserProfile,
+      //
+      // 刻意**不放机器名与浏览器配置**（2026-10-06）：理由见上面那段长注释。
+      // 收信人按**窗口标题**找，不按 hostname / 盘符路径找。
     },
-  };
+  });
 }
 
 // 「这家店用哪个浏览器 profile」——**必须是选出来的，不是回落出来的**。
@@ -919,20 +972,22 @@ export function profileForShop({ shop = null, shops = null, fallback = null } = 
 export function alertForRun({
   args = {},
   receipt = {},
-  machine = null,
-  shops = null,
-  fallbackProfile = null,
   now = () => new Date(),
 } = {}) {
   const verdict = receipt?.verdict ?? null;
   const mode = args?.notify ?? 'auto';
   if (!shouldNotify({ verdict, commit: args?.commit === true, mode })) return null;
+  // ⚠️ 2026-10-06：`machine` / `browserProfile` **不再经过这里**。
+  //   · 它们原先由本函数算出来塞进告警 —— 而收信人是业务人员，那两行是噪音（见 `buildLoginAlert`）；
+  //   · 它们的新落点是**回执**（`receipt.tech`），由 IO 脚本 `login-merchant.mjs` 写进 job.log；
+  //   · 因此本函数现在是**纯的**：不给它机器名、它也不碰调用方的对象。
+  // 与 `profileForShop` 的接线**没有断**：那一步移到 IO 脚本里了（`profileForShop` 的两条
+  // fail-closed 仍然是「发消息之前」的闸门），并由一条源码级判据盯着「IO 脚本真的调了它」
+  // —— 否则「忘传店名 ⇒ 静默退回共用配置」那条通道会重新打开，而它不会报任何错。
   return buildLoginAlert({
     verdict,
     detail: receipt?.detail ?? null,
     sites: args?.sites ?? [],
-    machine,
-    browserProfile: profileForShop({ shop: args?.shop ?? null, shops, fallback: fallbackProfile }),
     shopName: args?.shop ?? null,
     now,
   });

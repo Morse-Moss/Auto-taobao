@@ -8,7 +8,8 @@ import {
   ATTEMPT_OUTCOMES, CONFIRM_ACTION_TEXTS, CONFIRM_SCREEN_EXPRESSION, FILLED_VERDICTS,
   FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION,
   LOGIN_PAGE_PROMISED_VERDICTS, LOGIN_TARGETS, LOGIN_URL_CANDIDATES, NOTIFY_MODES, OUTCOME_TO_VERDICT,
-  REASON_BY_VERDICT, SITES, TAOBAO_LOGIN_URL, VERDICTS, VERDICTS_NEEDING_HUMAN, absentSites, alertForRun,
+  REASON_BY_VERDICT, SHARED_WINDOW_NAME, SITES, TAOBAO_LOGIN_URL, VERDICTS, VERDICTS_NEEDING_HUMAN,
+  absentSites, alertForRun, assertBusinessReadable,
   buildLoginAlert, captchaVisible, centerOf, detectConfirmScreen, detectLoginDetour, expectedMemberFor,
   finalLoginVerdict,
   isTaobaoLoginUrl, judgeFilled, judgeShopTarget, judgeSubmitOutcome, loggedOutSites, loginFormVisible,
@@ -232,14 +233,12 @@ test('buildLoginAlert：拿到「不需要人」的结论就抛，不生成一�
   assert.throws(() => buildLoginAlert({ verdict: 'ALREADY_LOGGED_IN' }), /不需要人处理/u);
 });
 
-test('告警真渲染一遍：指路、机器、浏览器配置、下一步都在（键名写错会被白名单静默丢掉）', () => {
+test('告警真渲染一遍：指路、下一步都在，且**机器名/浏览器配置一行都没有**（2026-10-06 起）', () => {
   const alert = buildLoginAlert({
     verdict: 'NO_SAVED_CREDENTIAL',
     detail: '这个窗口的密码库里没有这家店的密码',
     sites: ['sycm', 'alimama'],
     shopName: '里可林家居:阿彦',
-    machine: 'DEPLOY-01',
-    browserProfile: 'D:/Retire/edge-profiles/likelin-home',
     now: () => new Date('2026-09-18T14:30:00+08:00'),
   });
   const rendered = renderAlertText(alert);
@@ -252,8 +251,13 @@ test('告警真渲染一遍：指路、机器、浏览器配置、下一步都�
   assert.match(rendered, /下一步：登录页已经开在标题写着「里可林家居:阿彦」的那个浏览器窗口/u,
     '入口改由脚本自己开 ⇒ 正文必须说清登录页开在哪个窗口、去那里做什么');
   assert.match(rendered, /对象：生意参谋 \/ 阿里妈妈/u, '站点没渲染出来');
-  assert.match(rendered, /机器：DEPLOY-01/u, '缺了「哪台机器」，收信人还得先找机器');
-  assert.match(rendered, /浏览器配置：D:\/Retire\/edge-profiles\/likelin-home/u, '缺了「哪个配置」，人不知道该动哪个浏览器');
+  // 2026-10-06 翻转：这两行**必须不在**。理由见 `buildLoginAlert` 那段注释 ——
+  // 收信人是业务人员，hostname 与盘符路径对他们不是指路、是噪音（用户原话
+  // 「你发给飞书的报警是什么东西，一堆专业术语，你让业务人员怎么处理」）。
+  // 指路改由**窗口标题**承担（上面那条断言），技术串留在回执与 job.log 里。
+  assert.equal(rendered.includes('机器：'), false, '又出现了「机器：」这一行 —— 业务收信人看不懂 hostname');
+  assert.equal(rendered.includes('浏览器配置：'), false, '又出现了「浏览器配置：」这一行 —— 那是盘符路径，业务收信人不该去动它');
+  assert.equal(rendered.includes('D:\\'), false, '正文里出现了盘符路径 ⇒ 技术串漏进了给业务人员看的消息');
   assert.match(rendered, /原因：这个浏览器里没有存这家店的账号密码/u, '「原因」要写人话，不是结论代号');
   assert.match(rendered, /下一步：.+人工登录一次/u, '「下一步」必须是一句能照着做的事');
 });
@@ -319,7 +323,7 @@ test('告警对象里不许再带 loginUrl —— 那条链接只会把人带到
 
 test('告警里不含任何凭据面：没有密码/账号字段，也没有登录表单的状态', () => {
   const alert = buildLoginAlert({
-    verdict: 'CAPTCHA_REQUIRED', detail: '出现滑块', sites: ['sycm'], machine: 'M', browserProfile: 'P',
+    verdict: 'CAPTCHA_REQUIRED', detail: '出现滑块', sites: ['sycm'],
   });
   const flat = JSON.stringify(alert);
   for (const forbidden of ['password', 'fm-login', 'credential', 'autofill', 'valueLen', 'idLen']) {
@@ -327,8 +331,46 @@ test('告警里不含任何凭据面：没有密码/账号字段，也没有登�
   }
   // 只允许白名单里的 source 键（多出来的会被渲染器丢掉，等于白填）
   // 2026-09-19：`loginUrl` 已从这条契约里去掉（点链接到不了目标窗口，见上面那条用例）。
+  // 2026-10-06：`machine` / `browserProfile` 也从这条契约里去掉 —— 收信人是业务人员，
+  // 那两行对他们是指路噪音（见 `buildLoginAlert` 那段注释）。键集合**收窄**，不是放宽：
+  // 这条断言是「source 只许有这几个键」的封条，多一个键就当场红。
   assert.deepEqual(Object.keys(alert.source).sort(),
-    ['browserProfile', 'machine', 'shopName', 'targetLabel']);
+    ['shopName', 'targetLabel']);
+});
+
+test('形状判据：技术串一旦被加回告警，构造时就当场抛错（不靠写的人记得）', () => {
+  // 2026-10-06 加。它守的是「今天删掉的那两行别在三个月后被好心加回来」——
+  // 用例只在 CI 红，而这条消息可能先被手跑发出去（`run-multi-shop-day.mjs` 那边
+  // 早就为此立过一条同样的形状判据，本条登录告警是当时漏掉的一处）。
+  for (const bad of [
+    { source: { machine: 'M' } },
+    { source: { browserProfile: 'P' } },
+    { source: { machineName: 'M' } }, // 变体也要拦住（用「包含」而不是「相等」）
+    { tech: { hostname: 'h' } },
+    { source: { profile: 'p' } },
+  ]) {
+    assert.throws(() => assertBusinessReadable({ title: 'x', ...bad }), /给技术同学看的字段/u,
+      `这种形状该被拦住：${JSON.stringify(bad)}`);
+  }
+  assert.ok(assertBusinessReadable({ title: 'x', source: { shopName: 's', targetLabel: 't' } }),
+    '正常形状不许被拦（否则会误伤，而误伤的后果是告警发不出去）');
+  // 它必须**接在构造路径上**：只定义不接线 = 一条永远绿的判据（本仓库反复记过这条）。
+  const source = readFileSync(new URL('./login-merchant-core.mjs', import.meta.url), 'utf8');
+  assert.match(source, /return\s+assertBusinessReadable\(\{/u,
+    '判据没接在 buildLoginAlert 的返回路径上 ⇒ 加回技术串也不会红');
+});
+
+test('接线（源码级）：IO 脚本真的调了 profileForShop（搬走之后闸门不许跟着消失）', () => {
+  // `profileForShop` 的两条 fail-closed 是「接线接错了」的唯一闸门。2026-10-06 这次
+  // 把它的**调用点**从 core 的 alertForRun 搬到了 IO 脚本的 deliverAlert 里（因为告警不再带
+  // 机器/配置了）—— 于是「以后有人顺手删掉这次调用」就成了新的静默失败通道。
+  // 这条判据盯的就是那个调用点。判据本身在 core（`profileForShop` 直接有用例），这里只盯接线。
+  const source = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
+  const code = source.replace(/^\s*\/\/.*$/gmu, '');
+  assert.match(code, /browserProfile:\s*profileForShop\(/u,
+    'IO 脚本没有调 profileForShop ⇒ 「忘传店名就静默退回共用配置」那条通道重新打开，且不会报错');
+  assert.match(code, /receipt\.tech\s*=/u,
+    '机器名/配置没有落进回执 ⇒ 技术串既不在告警里、也不在日志里，等于彻底丢了');
 });
 
 test('alertId 是「同站点同一天一条」——它是去重的锚，不能每次都变', () => {
@@ -401,22 +443,34 @@ test('alertForRun：带 --shop 时，告警必须点名是哪一家店', () => {
   assert.ok(alert, '「真的试过且没成」却不发告警');
   assert.match(rendered(alert), /盖文淘宝 需要你登录一次/u, '标题没点名店铺 —— 收信人无法据此行动');
   assert.match(rendered(alert), /店铺：盖文淘宝/u, '正文里没有独立的「店铺」一行');
-  assert.match(rendered(alert), /浏览器配置：D:\/Retire\/edge-profiles\/suixin-custom/u,
-    '浏览器配置必须是这家店自己的 profile；写成日报那个 profile 等于四个窗口长得一样，等于没给');
+  // 2026-10-06 翻转：店里那条「浏览器配置：D:/...」的断言改成反向 —— 指路改由**窗口标题**承担
+  // （告警说「标题写着「盖文淘宝」的那个窗口」，而那个标题真的写在窗口上）。
+  assert.match(rendered(alert), /标题写着「盖文淘宝」的那个浏览器窗口/u,
+    '正文没有把「去哪一扇窗」落到窗口标题上');
+  assert.equal(rendered(alert).includes('浏览器配置：'), false,
+    '又出现了「浏览器配置：」—— 那是盘符路径，业务收信人不该去动它');
 });
 
-test('alertForRun：没给 --shop 时行为与加店名之前逐字相同（旧来源不受影响）', () => {
+test('alertForRun：没给 --shop 时点名**共用窗口**（2026-10-06 改；不再是「那台电脑」）', () => {
   const alert = alertForRun({
     args: { sites: ['sycm', 'alimama'], commit: true, notify: 'auto' },
     receipt: { verdict: 'NO_SAVED_CREDENTIAL' },
     fallbackProfile: 'D:/Retire/edge-daily-report-profile',
     now: () => new Date('2026-09-18T11:02:00+08:00'),
   });
-  assert.equal(alert.title, '需要你登录一次');
+  assert.equal(alert.title, `${SHARED_WINDOW_NAME} 需要你登录一次`,
+    '没给店名时的标题必须点名**共用窗口** —— 只说「需要你登录一次」等于让收信人自己猜哪扇窗');
   assert.equal(alert.source.shopName, null);
-  assert.equal(alert.source.browserProfile, 'D:/Retire/edge-daily-report-profile', '没给店名时才回落到日报那个 profile');
+  // 2026-10-06 翻转：原先这里断言 `source.browserProfile` 回落到日报那个 profile。
+  // 现在**不再有这一个字段**；没给店名时的那句话改成点名**共用窗口**（窗口标题里的那个名字）。
+  assert.equal(alert.source.browserProfile, undefined, '机器/浏览器配置不许再进告警');
+  assert.equal(alert.source.machine, undefined);
   assert.equal(alert.alertId, 'sycm-login-sycm-alimama-20260918', '缺店名时 alertId 必须保持旧格式');
   assert.equal(rendered(alert).includes('店铺：'), false, '没有店名时不该多出一行空的「店铺：」');
+  // 「那台电脑」是改之前那句没有落点的说法 —— 现在必须点名共用窗口。
+  assert.equal(rendered(alert).includes('那台电脑'), false, '还在说「那台电脑的浏览器窗口」—— 那句话在告警里没有落点');
+  assert.match(rendered(alert), /标题写着「.+」的那个浏览器窗口/u,
+    '没给店名时必须改用**共用窗口**的标题指路（那扇窗真的有标识页）');
 });
 
 test('profileForShop：四家店各自指向自己的 profile，谁也不是日报那个', () => {
@@ -489,7 +543,7 @@ test('告警里不许让人去做收信人做不到的事（截图、本地路�
   }
 });
 
-test('「下一步」必须能定位到哪一个窗口：用店名，而不是「上面那个窗口」', () => {
+test('「下一步」必须能定位到哪一个窗口：有店名用店名，没店名用共用窗口', () => {
   // 用户原话：「我不知道是哪一个店铺的浏览器需要登录」。原文案「在上面那个浏览器窗口里」
   // 里的「上面那个」在告警里根本没有指代对象 —— 四台浏览器长得一模一样，人到了机器前还得猜。
   for (const verdict of VERDICTS_NEEDING_HUMAN) {
@@ -497,10 +551,29 @@ test('「下一步」必须能定位到哪一个窗口：用店名，而不是�
     assert.equal(withShop.includes('{窗口}'), false, `${verdict} 的占位符没被替换掉`);
     assert.equal(withShop.includes('上面那个'), false, `${verdict} 还在说「上面那个窗口」`);
     assert.match(withShop, /标题写着「科塔淘宝」的那个浏览器窗口/u, `${verdict} 的下一步没有落到具体窗口上`);
+    // 2026-10-06 翻转：原先这里断言「无店名时不许承诺标题里写着」—— 那是在共用窗口还没有
+    // 标识页的时候定的。现在共用窗口**真的有名字**（`SHARED_WINDOW_NAME`，由标识页写到标题上），
+    // 所以那一档反过来必须点名它，否则收信人又回到「那台电脑是哪台」。
     const withoutShop = resolveAction(verdict, null);
     assert.equal(withoutShop.includes('{窗口}'), false, `${verdict} 无店名时占位符没被替换`);
-    assert.equal(withoutShop.includes('标题写着'), false, `${verdict} 没店名时不该承诺「标题里写着」`);
+    assert.match(withoutShop, /标题写着「.+」的那个浏览器窗口/u,
+      `${verdict} 没店名时也要落到一扇**有名字的**窗口上（共用窗口有标识页）`);
+    assert.equal(withoutShop.includes('那台电脑'), false, `${verdict} 无店名时还在说「那台电脑」`);
+    // 无店名时**不许**点名某家店 —— 共用窗口不属于任何一家店，点名店铺会把人送去错的窗口。
+    assert.equal(withoutShop.includes('科塔淘宝'), false, `${verdict} 无店名时点名了某家店`);
   }
+});
+
+test('没店名时告警承诺的那个名字，必须与共用窗口标识页写在标题上的名字一致', () => {
+  // 与下面那条店铺版同一回事：分开看都对，合起来才成立。任一边单独改了，指路就落空 ——
+  // 而落空的症状是「照做也找不到窗口」，不会有任何报错。
+  const promised = resolveAction('NEEDS_LOGIN', null).match(/标题写着「(.+?)」/u)?.[1] ?? null;
+  assert.ok(promised, '没店名时的「下一步」没有承诺任何窗口名字');
+  // 窗口标题＝`windowTitleFor(displayName)` ＝ `名字 · 日报采集窗口`，
+  // 所以承诺的名字必须是那个标题的**开头**（店铺那一档用的是同一条口径）。
+  assert.ok(windowTitleFor(promised).startsWith(promised),
+    `共用窗口的标题必须以告警承诺的那个名字开头：承诺「${promised}」，标题「${windowTitleFor(promised)}」`);
+  assert.equal(promised, SHARED_WINDOW_NAME, '告警承诺的名字必须是标识页登记的那个（唯一来源）');
 });
 
 test('告警里那句「标题写着「X」」必须与窗口标题真的对得上（两条腿绑在一起）', () => {
@@ -785,13 +858,13 @@ test('WRONG_ACCOUNT 要叫人，且告警点名到店：静默登成别家是这
     detail: '这家店该填的是「随心品质定制:阿彦」，浏览器填进来的却是「盖文旗舰店:阿彦」—— 系统没有提交。',
     sites: ['sycm', 'alimama'],
     shopName: '盖文淘宝',
-    machine: 'DEPLOY-01',
-    browserProfile: 'D:/Retire/edge-profiles/suixin-custom',
     now: () => new Date('2026-09-23T10:00:00+08:00'),
   });
   const text = renderAlertText(alert);
   assert.match(text, /【需要处理】盖文淘宝 需要你登录一次/u);
-  assert.match(text, /浏览器配置：D:\/Retire\/edge-profiles\/suixin-custom/u);
+  // 2026-10-06 翻转：原先断言「浏览器配置：D:/...」在正文里；现在它**必须不在**。
+  assert.equal(text.includes('浏览器配置：'), false, '技术串又进了给业务人员的消息');
+  assert.match(text, /标题写着「盖文淘宝」的那个浏览器窗口/u, '点名到店的落点是**窗口标题**');
   assert.equal(alert.alertId, 'sycm-login-盖文淘宝-sycm-alimama-20260923');
 });
 

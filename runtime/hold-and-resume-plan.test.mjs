@@ -444,7 +444,10 @@ test('CLI：退出码口径只有一处（入口拿 4 把整轮翻绿，其余�
 test('接线：定时计划里真的有「驻留」这一步，且它只在链失败时才执行', () => {
   const plan = buildJobPlan({ resolvedDate: '2026-09-25', artifactsDir: 'D:\\repo\\evidence\\daily-job-2026-09-25' });
   const names = plan.steps.map((step) => step.name);
-  assert.deepEqual(names, ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'chain', 'hold-and-resume']);
+  // 2026-10-06 加 `label-merchant-window`：共用窗口（19022/19023）也有了标识页，
+  // 排在起实例之后、登录取证之前。这里跟着改是**登记动作**，不是为了让红灯变绿。
+  assert.deepEqual(names,
+    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login', 'chain', 'hold-and-resume']);
   const hold = plan.holdStep;
   assert.ok(hold, '计划里没有驻留那一步 ⇒ 「留窗口给人」一次也不会发生');
   assert.equal(hold.onlyWhenChainFailed, true, '链成功的那一天它不许执行（默认行为必须逐字不变）');

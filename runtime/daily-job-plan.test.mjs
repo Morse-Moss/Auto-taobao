@@ -20,23 +20,36 @@ import { SHARED_INSTANCE_KEYS } from './batch-plan.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 const argsOf = (plan, name) => plan.steps.find((s) => s.name === name).args;
+// 按**名字**取步骤，不按下标。2026-10-06 加了一步之后，一批按下标写的断言全红了 ——
+// 而它们红的理由与它们要守的东西无关（守的是「分批替换链」「commit 必须传下去」，
+// 却因为「链现在是第 5 个而不是第 4 个」而红）。按下标还会让下一个人**改数字**而不是想清楚，
+// 所以这里统一改成按名字取：判据只对「那一步」说话。
+const stepOf = (plan, name) => {
+  const found = plan.steps.find((s) => s.name === name);
+  if (!found) throw new Error(`计划里没有名为 ${name} 的步骤；实际：${plan.steps.map((s) => s.name).join(' / ')}`);
+  return found;
+};
 
-test('四步的顺序是「先保证实例在 → 再看一眼登录态 → 再修共享实例的会话 → 再跑链」', () => {
+test('五步的顺序是「先保证实例在 → 给共用窗口挂标识 → 再看一眼登录态 → 再修共享实例的会话 → 再跑链」', () => {
   // 反过来（先跑链）时，链的第 0 步体检会整轮拦下并发一条**本可以不出**的告警；
   // 告警这个通道被无谓地用一次就少一次可信度。
   // 而登录态体检必须排在**起实例之后**：实例不在时它一个页面都读不到，只留下一片「读不到」。
   // 2026-09-25 加的第三步（共享商家浏览器守卫）也必须排在链之前：链的**整轮级体检**跑在
   // 那台实例上，它挂掉的处置是「整轮不跑」—— 守卫晚一步，五家店就一家都不开跑。
+  // 2026-10-06 加的第二步（共用窗口标识页）同样要排在链之前：它是「告警说去共用窗口」
+  // 这句话的**前提**，越早挂上，后面任何一步失败时告警就已经有落点了。
   const plan = buildJobPlan();
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'chain']);
+    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login', 'chain']);
   assert.equal(plan.steps[0].blocking, false, '起实例失败不该阻断链：权威判据在链的体检里');
+  assert.equal(plan.steps[1].blocking, false,
+    '挂标识页不是闸门：它只决定窗口上写什么字，挂不上照样收数据');
   // 登录态体检**不是闸门**：它的三个退出码只落进日志，不许拦住链 ——
   // 冷启动之后页面还没归位时它会判「没结论」，而那是链的归位会自己解决的事。
-  assert.equal(plan.steps[1].blocking, false, '登录态体检不该阻断链（它不是「今天能不能写」的判据）');
-  assert.equal(plan.steps[2].blocking, false,
+  assert.equal(plan.steps[2].blocking, false, '登录态体检不该阻断链（它不是「今天能不能写」的判据）');
+  assert.equal(plan.steps[3].blocking, false,
     '共享实例守卫也不是闸门：它没登成时，链自己那一次整轮级体检会如实报「整轮不跑」并告警');
-  assert.equal(plan.steps[3].blocking, true);
+  assert.equal(plan.steps[4].blocking, true);
 });
 
 test('登录态体检那一步：只读、且指定店铺时只体检那几家', () => {
@@ -123,17 +136,20 @@ test('/TR 只拉起一个入口（三步由它自己按顺序执行，日志也�
 // 「起这一批 → 挂标识页 → 跑这一批 → 停这一批」。它一旦被误开，代价是**定时链的行为变了**
 // 而没人知道 —— 所以第一条判据就是「不传 `--batches` 时，渲染出来的命令逐字不变」。
 // ---------------------------------------------------------------------------
-test('不启用分批时，四步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）', () => {
+test('不启用分批时，五步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）', () => {
   const plan = buildJobPlan();
   assert.equal(plan.batches, null);
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'chain']);
+    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login', 'chain']);
 
   // 逐字比较：跟上一次「没有分批这个概念」时渲染出来的那几行比。
   // 用固定期望值而不是「再跑一次自己」，否则这类断言永远绿（自己等于自己）。
   const render = (p) => p.steps.map((s) => renderCommand(s, { nodeExe: 'N', repoRoot: 'R' }));
   assert.deepEqual(render(plan), [
     'N R\\scripts\\start-all.mjs',
+    // 2026-10-06 加：共用窗口的标识页。这一行**必须**排在实例起来之后（否则只读到「连不上代理」），
+    // 且只点共用实例那一个 —— 店铺实例的首屏在冷启动时就已经是各自标识页了。
+    'N R\\runtime\\shop-window-label.mjs --commit --front --subject merchant',
     'N R\\skills\\sycm-alimama-daily-report\\scripts\\check-login-shops.mjs',
     // 2026-09-25 新加的那一步：默认（`autoLogin` 未打开）必须是**只读档**，
     // 且 `--notify` 必须是 `off`（login-merchant 自己的默认值是 `auto`，会把告警投出去）。
@@ -147,9 +163,9 @@ test('启用分批：它**替换**链那一步（不是并排），参数只带�
   const plan = buildJobPlan({ batches: 2 });
   assert.equal(plan.batches, 2);
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'ensure-merchant-login', 'batch-chain'],
+    ['ensure-instances', 'label-merchant-window', 'ensure-merchant-login', 'batch-chain'],
     '两条一起跑会让同一家店被驱动两次 —— 必须是替换关系');
-  const step = plan.steps[2];
+  const step = stepOf(plan, 'batch-chain');
   assert.match(step.file, /scripts\/run-batches\.mjs$/u);
   assert.equal(step.blocking, true);
   assert.deepEqual(step.args, ['--date', 'yesterday', '--batch-size', '2', '--commit', '--notify-print']);
@@ -160,15 +176,15 @@ test('启用分批：它**替换**链那一步（不是并排），参数只带�
 test('启用分批时 `--commit` 必须显式传下去（漏了它就变成「排练」，而日志看不出异常）', () => {
   // 分批驱动自己的默认是排练（不写飞书）；定时任务的职责是写下今天的数据。
   // 这条是**静默降级**里最贵的一种：不报错、不告警、日志里那句「模式」也照旧。
-  assert.ok(buildJobPlan({ batches: 2 }).steps[2].args.includes('--commit'),
+  assert.ok(stepOf(buildJobPlan({ batches: 2 }), 'batch-chain').args.includes('--commit'),
     '定时形态必须带 --commit，否则整轮不写飞书而没人会发现');
 });
 
 test('启用分批：告警出口与降级开关照旧按需转发', () => {
   const plan = buildJobPlan({ batches: 3, notify: true, keepGoing: true });
-  assert.deepEqual(plan.steps[2].args,
+  assert.deepEqual(stepOf(plan, 'batch-chain').args,
     ['--date', 'yesterday', '--batch-size', '3', '--commit', '--notify', '--keep-going']);
-  assert.deepEqual(buildJobPlan({ batches: 3, shops: ['科塔淘宝'] }).steps[2].args,
+  assert.deepEqual(stepOf(buildJobPlan({ batches: 3, shops: ['科塔淘宝'] }), 'batch-chain').args,
     ['--date', 'yesterday', '--batch-size', '3', '--commit', '--notify-print', '--shops', '科塔淘宝']);
 });
 
@@ -202,10 +218,10 @@ test('跑前登录态结论真的交给链了：② 出 JSON、③ 收路径（�
   // ③ 收的是一个**路径**，而且由计划自己算出（spawn 那一刻补会让打印与执行不一致）。
   assert.deepEqual(argsOf(plan, 'chain').slice(-2), [LOGIN_PREFLIGHT_FLAG, ARTIFACT_PATH]);
   // 「打印出来的必须是真正执行的」：渲染出来的那一行必须带着真实路径。
-  assert.match(renderCommand(plan.steps[3], { nodeExe: 'N', repoRoot: 'R' }),
+  assert.match(renderCommand(stepOf(plan, 'chain'), { nodeExe: 'N', repoRoot: 'R' }),
     /--login-preflight D:\\repo\\evidence\\daily-job-2026-09-22\\login-preflight\.json/u);
   // 它仍然**不是闸门**（这一步的结论丢了，链照样跑）。
-  assert.equal(plan.steps[1].blocking, false);
+  assert.equal(stepOf(plan, 'login-preflight').blocking, false);
 });
 
 test('不给证据目录时：不许凭空造一个路径，也不许给链加参数', () => {
@@ -216,6 +232,44 @@ test('不给证据目录时：不许凭空造一个路径，也不许给链加�
   assert.equal(buildJobPlan().steps.find((s) => s.name === 'login-preflight').artifactPath, undefined);
 });
 
+// ---------------------------------------------------------------------------
+// 共用窗口的标识页（2026-10-06 加）。用户原话：「我就特意设计了标识页，让用户知道是哪个窗口」。
+//
+// 守三件事：① 默认在、可关；② 关掉之后**只少这一步**、其余逐字不变；
+// ③ 真实调用点（`scripts/run-daily-job.mjs`）真的把开关透传进来 —— 漏传的症状是静默的
+// （那一步干脆不进计划，日志里少一行，而「告警说去共用窗口」又一次没有落点）。
+// ---------------------------------------------------------------------------
+test('共用窗口标识页：默认在（排在实例起来之后），--no-merchant-label 可整个关掉', () => {
+  const on = buildJobPlan({ artifactsDir: ARTIFACTS_DIR });
+  const step = stepOf(on, 'label-merchant-window');
+  assert.match(step.file, /runtime\/shop-window-label\.mjs$/u, '复用的是店铺标识页那一套脚本，不是另写的');
+  assert.deepEqual(step.args, ['--commit', '--front', '--subject', 'merchant']);
+  assert.equal(step.blocking, false, '挂标识页只是给人看的：挂不上照样收数据，不许挡住后面的步骤');
+  // 顺序：实例起来之后。实例不在时它只会读到「连不上代理」。
+  assert.ok(on.steps.findIndex((s) => s.name === 'label-merchant-window')
+    > on.steps.findIndex((s) => s.name === 'ensure-instances'), '标识页要排在起实例之后');
+  // 分批与非分批**都要有**：那台实例是共用的，两种形态都靠它跑整轮级体检。
+  assert.ok(buildJobPlan({ batches: 5 }).steps.some((s) => s.name === 'label-merchant-window'),
+    '分批形态下同样要挂 —— 共用实例在两种形态里都是链的整轮级体检的落点');
+
+  const off = buildJobPlan({ merchantLabel: false });
+  assert.equal(off.merchantLabelStep, null);
+  assert.equal(off.steps.some((s) => s.name === 'label-merchant-window'), false);
+  // 「关掉」只该少这一步：其余步骤逐字不变（否则「关一个开关」会连带改掉别的东西）。
+  assert.deepEqual(off.steps.map((s) => s.name),
+    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'chain']);
+});
+
+test('接线（源码级）：真实调用点真的把 merchantLabel 透传进计划（漏传是静默的）', () => {
+  // 这条守的是「契约齐、测试绿、接线没接上」那一类：纯函数给得再对，
+  // 入口不把开关交给它，那一步就永远不进计划，而日志里只表现为「少一行」。
+  const source = readFileSync(new URL('../scripts/run-daily-job.mjs', import.meta.url), 'utf8');
+  assert.match(source, /merchantLabel:\s*options\.merchantLabel/u,
+    '入口没有把 merchantLabel 交给 buildJobPlan ⇒ 共用窗口永远拿不到标识页');
+  assert.match(source, /'--no-merchant-label'/u,
+    '入口没有解析 --no-merchant-label ⇒ 运维没有一键退回的开关');
+});
+
 test('分批那一档：整轮的逐店预检**不进计划**，结论交接全在分批驱动内部完成', () => {
   const plan = buildJobPlan({ batches: 2, artifactsDir: ARTIFACTS_DIR });
   // 这一步带 `--login` 时必然白跑（店铺实例要等各批自己的 `start` 才起）—— 见计划里那段长注释。
@@ -224,10 +278,10 @@ test('分批那一档：整轮的逐店预检**不进计划**，结论交接全�
   // 这里生成的那份没有任何人读 —— 而「写了没人读的文件」正是后来人会照着接错的地方。
   assert.equal(plan.steps.some((s) => s.artifactPath), false, '分批档里不生成结论文件');
   // run-batches.mjs 自己不认这个参数，给了会当场报未知参数（比静默无效更难查）。
-  assert.equal(plan.steps[2].args.includes(LOGIN_PREFLIGHT_FLAG), false);
+  assert.equal(stepOf(plan, 'batch-chain').args.includes(LOGIN_PREFLIGHT_FLAG), false);
   // 逐批那份结论由分批驱动自己生成（见下面「宿主（分批链）也接上了」那条真跑判据）。
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'ensure-merchant-login', 'batch-chain']);
+    ['ensure-instances', 'label-merchant-window', 'ensure-merchant-login', 'batch-chain']);
 });
 
 // ---------------------------------------------------------------------------
