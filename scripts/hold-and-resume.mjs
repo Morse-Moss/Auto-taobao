@@ -30,12 +30,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PROJECT_PORTS, shopBrowserKeys, shopInstance } from '../runtime/browser-ports.mjs';
+import { PROJECT_PORTS, collectingShopKeys, shopInstance } from '../runtime/browser-ports.mjs';
 import { HOLD_EXIT } from '../runtime/daily-job-plan.mjs';
 import { pagesMatching } from '../runtime/target-url-match.mjs';
 import {
-  DEFAULT_HOLD_UNTIL, STATUS_EVERY_MS, buildResumeArgv, closeOutNotice, deadlineReached,
-  holdDecision, holdStatusLine, judgeProbes, minutesOfDay, parseClock, pollSecondsFor,
+  DEFAULT_HOLD_HOURS, STATUS_EVERY_MS, buildBatchResumeArgv, buildResumeArgv, closeOutNotice,
+  deadlineReachedAt, holdDecision, holdStatusLine, judgeProbes, pollSecondsFor, resolveHoldDeadline,
   resumeFloorFor, resumeResultNotice, resumeStageListFrom, unfixableShopsOf,
 } from '../runtime/hold-and-resume-plan.mjs';
 import { overlayScanExpression } from '../skills/sycm-alimama-daily-report/scripts/collect-core.mjs';
@@ -56,33 +56,55 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '..');
 const NODE = process.execPath;
 const CHAIN = path.join(REPO_ROOT, 'skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs');
+// 分批形态的续跑入口（2026-10-06 加）：分批下店铺实例是按批起停的，直连链会在「实例不在」的
+// 现场上开跑（见 `buildBatchResumeArgv` 的注释）。
+const BATCH_DRIVER = path.join(REPO_ROOT, 'scripts/run-batches.mjs');
 const STOP_ALL = path.join(REPO_ROOT, 'scripts/stop-all.mjs');
 const log = (...parts) => console.log(...parts);
 const delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
-export function parseArgs(argv) {
-  const args = { date: null, summary: null, shops: null, until: DEFAULT_HOLD_UNTIL, pollSeconds: null,
-    once: false, resume: true, release: true, notify: true, notifyPrint: false };
+export function parseArgs(argv, { now = new Date() } = {}) {
+  const args = { date: null, summary: null, shops: null, until: null, holdHours: DEFAULT_HOLD_HOURS,
+    pollSeconds: null, once: false, resume: true, release: true, notify: true, notifyPrint: false,
+    // 分批形态（2026-10-06 加）：续跑的入口是**分批驱动本身**，不是链（见 buildBatchResumeArgv）。
+    resumeViaBatches: false, batchSize: null, resumeLogs: null };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     if (key === '--date') args.date = argv[++i];
     else if (key === '--summary') args.summary = argv[++i];
     else if (key === '--shops') args.shops = String(argv[++i] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     else if (key === '--until') args.until = argv[++i];
+    else if (key === '--hold-hours') args.holdHours = Number(argv[++i]);
     else if (key === '--poll-seconds') args.pollSeconds = Number(argv[++i]);
     else if (key === '--once') args.once = true;
     else if (key === '--no-resume') args.resume = false;
     else if (key === '--no-release') args.release = false;
     else if (key === '--no-notify') args.notify = false;
     else if (key === '--notify-print') { args.notifyPrint = true; }
-    else return { error: `未知参数 ${key}（可用：--date --summary --shops --until --poll-seconds --once --no-resume --no-release --no-notify --notify-print）` };
+    else if (key === '--resume-via-batches') args.resumeViaBatches = true;
+    else if (key === '--batch-size') args.batchSize = Number(argv[++i]);
+    else if (key === '--resume-logs') args.resumeLogs = argv[++i];
+    else return { error: `未知参数 ${key}（可用：--date --summary --shops --until --hold-hours --poll-seconds `
+      + '--once --no-resume --no-release --no-notify --notify-print --resume-via-batches --batch-size --resume-logs）' };
   }
   if (!args.date) return { error: '必须给 --date（驻留的是哪一天的日报）' };
-  const clock = parseClock(args.until);
-  if (!clock.ok) return { error: clock.error };
-  args.untilMinutes = clock.minutes;
+  // 截止时间：默认是**时段**（`--hold-hours`），`--until HH:MM` 是人显式要一个钟点时的备用口径。
+  // 解析放在这里、值算成绝对时间戳 —— 判据不许在循环里现读时钟（读两次就会漂）。
+  const deadline = resolveHoldDeadline({ now, until: args.until, hours: args.holdHours });
+  if (!deadline.ok) return { error: deadline.error };
+  args.deadlineMs = deadline.deadlineMs;
+  args.untilText = deadline.untilText;
+  args.deadlineSource = deadline.source;
   if (args.pollSeconds !== null && !(Number.isInteger(args.pollSeconds) && args.pollSeconds > 0)) {
     return { error: `--poll-seconds 要一个正整数（收到 ${args.pollSeconds}）` };
+  }
+  if (args.resumeViaBatches) {
+    // 分批续跑必须知道「每批几家」——分批驱动没有默认值可用在这一档上（它自己有默认 5，
+    // 但续跑要复现的是**原来那一轮**的分批方式；给错了会让「一批五家」变成别的切法，
+    // 而它跑起来不会报错，只是现场与原轮不同）。
+    if (!Number.isInteger(args.batchSize) || args.batchSize < 1) {
+      return { error: `--resume-via-batches 必须配一个 ≥1 的整数 --batch-size（收到 ${JSON.stringify(args.batchSize)}）` };
+    }
   }
   args.summary = args.summary ?? path.join(REPO_ROOT, 'evidence', `multi-shop-${args.date}`, 'summary.json');
   return args;
@@ -191,8 +213,34 @@ function makeDispatcher({ notify, notifyPrint }) {
   return (alert) => dispatchRoundAlert({ alert, dispatch, logDir: null, log });
 }
 
-function runResume({ date, shops, stages }) {
-  const argv = buildResumeArgv({ chainScript: CHAIN, date, shops, stages, notify: true });
+/**
+ * 续跑命令行的**唯一**分叉点（纯函数，供用例断言）。
+ *
+ * 两条路只差入口脚本，其余同源：
+ *   · 定时链（不分批）：直连链，点名只补失败的那几家、从停下的那一步跑到结尾
+ *     （`buildResumeArgv`，含 `--shops` / `--only`）；
+ *   · 分批形态：入口回到**分批驱动本身**（`buildBatchResumeArgv`）——那一档里店铺实例
+ *     是按批起停的，链跑完之后每一批的 `stop` 已经把它们放掉了，直连链只会在
+ *     「实例不在」的现场上再撞一次同一堵墙。也正因为如此，`--only`（阶段级筛选）
+ *     在这一档没有对应概念，只能整链重跑。
+ *
+ * `--no-hold` 由 `buildBatchResumeArgv` 默认带上：续跑若再撞上整轮被挡，它应当退 1 结束，
+ * 而不是「驻留套驻留」（第二层等的是另一份结论，而第一层的 `--date/--summary` 已经过期）。
+ */
+export function resumeArgvFor(args, { shops = null, stages = null } = {}) {
+  if (!args.resumeViaBatches) {
+    return buildResumeArgv({ chainScript: CHAIN, date: args.date, shops, stages, notify: true });
+  }
+  if (Array.isArray(stages) && stages.length) {
+    log('[驻留] 注意：分批形态的续跑不吃阶段筛选（分批驱动没有 --only）—— 按整链重跑这一批。');
+  }
+  return buildBatchResumeArgv({
+    batchScript: BATCH_DRIVER, date: args.date, batchSize: args.batchSize,
+    shops, logs: args.resumeLogs, notify: true, noHold: true,
+  });
+}
+
+function runResume(argv) {
   log(`[驻留] 续跑：${NODE} ${argv.join(' ')}`);
   // `stdio` 必须显式写成 `['ignore','pipe','pipe']`：本机宿主沙箱对「给子进程管道 stdin 的同步 spawn」
   // 直接回 EBUSY，而带 `input:` 或缺省 stdio 都是那一形态（2026-09-24/25 两轮实测）。
@@ -238,7 +286,10 @@ async function main() {
 
   const failed = failedShopsOf(summary);
   const roundBlocked = summary?.round?.healthCheckDaily?.ok === false;
-  const shopKeys = args.shops ?? shopBrowserKeys();
+  // 默认名单取**参与采集**的那些（`collectingShopKeys()`），不是登记表全量。
+  // 用登记表全量的症状 2026-10-06 实测到过：收尾告警把 13 家店全点了出来，
+  // 而那一轮只有 8 家在采、其中 5 家在这次分批里 —— 收信人会以为「13 家全缺数据」。
+  const shopKeys = args.shops ?? collectingShopKeys();
   const humanCauses = [...HUMAN_REQUIRED_CAUSES];
   // 2026-09-29：驻留判据的第二路 —— 脚本自己修不动的那几家（见 `unfixableShopsOf`）。
   // 它让「修不动就驻留等 agent」这条链成立：现场留着，修复 agent 才有东西可修。
@@ -246,8 +297,13 @@ async function main() {
 
   // 整轮被挡时先探一次商家浏览器，好把「掉登录」与「页面真缺」分开说（这是 09-25 那次报错归因错的根因）。
   const roundProbe = roundBlocked ? await probeMerchantBrowser() : null;
+  // 真因**优先读落盘的那一个**（链第 0 步写进 `summary.round.healthCheckDaily.roundCause`，2026-10-06）。
+  // 为什么不让探针当唯一判据：探针只在**那台共用浏览器还活着**时才答得出，而「要不要驻留」
+  // 这个决定不该依赖「它此刻在不在」—— 落盘的那一个在整轮被挡那一刻就已经写下来了。
+  // 探针仍然要跑：它回答的是另一个问题（「人处理完了没有」），那个必须看现场。
+  const persistedCause = roundBlocked ? (summary?.round?.healthCheckDaily?.roundCause ?? null) : null;
   const roundCause = roundBlocked
-    ? (isLoginWallText(roundProbe?.why) ? 'NEEDS_LOGIN' : 'ROUND_BLOCKED')
+    ? (persistedCause ?? (isLoginWallText(roundProbe?.why) ? 'ROUND_LOGIN_WALL' : 'ROUND_BLOCKED'))
     : null;
 
   const decision = holdDecision({ failed, roundBlocked, roundCause, humanCauses, unfixableShops });
@@ -274,7 +330,9 @@ async function main() {
   const pollSeconds = args.pollSeconds ?? pollSecondsFor(decision.causes);
   const now = new Date();
   log(`[驻留] 需要人：${decision.roundLevel ? '整轮（商家浏览器）' : subjects.join('、')}`);
-  log(`[驻留] 截止 ${args.until}（现在 ${now.toTimeString().slice(0, 5)}）｜轮询 ${pollSeconds} 秒一次`);
+  log(`[驻留] 截止 ${args.untilText}（现在 ${now.toTimeString().slice(0, 5)}）`
+    + `｜口径：${args.deadlineSource === 'clock' ? '--until 指定的钟点' : `从现在起挂 ${args.holdHours} 小时`}`
+    + `｜轮询 ${pollSeconds} 秒一次`);
   log(`[驻留] 续跑范围：${decision.resumeShops ? decision.resumeShops.join('、') : '整轮（不给 --shops）'}`
     + `｜阶段：${stages ? stages.join(',') : '不点名（整链）'}`
     + `${floorStage ? `｜起点下探到 ${floorStage}（人碰过页面，日期落位要重做）` : ''}`);
@@ -311,12 +369,12 @@ async function main() {
     const verdict = judgeProbes(probes);
     if (Date.now() - lastStatusAt >= STATUS_EVERY_MS) {
       lastStatusAt = Date.now();
-      log(holdStatusLine({ at: new Date(), waitedMs: Date.now() - startedAt, until: args.until, probes }));
+      log(holdStatusLine({ at: new Date(), waitedMs: Date.now() - startedAt, until: args.untilText, probes }));
     }
     if (verdict.ready) {
       log(`[驻留] 判据转正 ⇒ ${args.resume ? '开始续跑' : '（--no-resume：只报告，不续跑）'}`);
       if (!args.resume) { process.exitCode = HOLD_EXIT.NO_HOLD; return; }
-      const status = runResume({ date: args.date, shops: decision.resumeShops, stages });
+      const status = runResume(resumeArgvFor(args, { shops: decision.resumeShops, stages }));
       const ok = status === 0;
       dispatch(resumeResultNotice({
         date: args.date, shops: decision.resumeShops ?? shopKeys, ok,
@@ -326,10 +384,13 @@ async function main() {
       process.exitCode = ok ? HOLD_EXIT.RESUMED_OK : HOLD_EXIT.RESUME_FAILED;
       return;
     }
-    if (deadlineReached({ nowMinutes: minutesOfDay(new Date()), untilMinutes: args.untilMinutes })) {
-      log(`[驻留] 到 ${args.until} 还没等到 ⇒ 收尾`);
+    // 到点判据用**绝对时间戳**（`deadlineReachedAt`），不用「当天第几分钟」：
+    // 跨零点时后者会翻转（23:00 挂 4 小时会被算成「早就到点了」）。
+    if (deadlineReachedAt({ nowMs: Date.now(), deadlineMs: args.deadlineMs })) {
+      log(`[驻留] 到 ${args.untilText} 还没等到 ⇒ 收尾`);
       dispatch(closeOutNotice({
-        date: args.date, subjects: subjects.length ? subjects : shopKeys, until: args.until, createdAt: new Date(),
+        date: args.date, subjects: subjects.length ? subjects : shopKeys, until: args.untilText,
+        createdAt: new Date(),
       }));
       if (args.release) releaseShops(decision.resumeShops ?? []);
       process.exitCode = HOLD_EXIT.TIMED_OUT;

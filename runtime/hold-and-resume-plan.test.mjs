@@ -9,15 +9,17 @@
 // **两条通知的字段名必须落在渲染白名单里**（否则那一行会被静默吞掉，本地看着对、飞书里少一行）。
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import { READABLE_SOURCE_KEYS } from './notify-feishu-core.mjs';
 import { HOLD_EXIT, buildHoldResumeArgs, buildJobPlan, shouldRunStep } from './daily-job-plan.mjs';
 import {
-  DEFAULT_HOLD_UNTIL, DEFAULT_POLL_SECONDS, POLL_SECONDS_BY_CAUSE, PROBE_STATES, RESUME_FLOOR_BY_CAUSE,
-  buildResumeArgv, closeOutNotice, deadlineReached, holdDecision, holdStatusLine, judgeProbes,
-  minutesOfDay, parseClock, pollSecondsFor, resumeFloorFor, resumeResultNotice, resumeStageListFrom,
-  unfixableShopsOf,
+  DEFAULT_HOLD_HOURS, DEFAULT_POLL_SECONDS, POLL_SECONDS_BY_CAUSE, PROBE_STATES, RESUME_FLOOR_BY_CAUSE,
+  buildBatchResumeArgv, buildResumeArgv, closeOutNotice, deadlineReachedAt, formatClock, holdDecision,
+  holdStatusLine, judgeProbes, minutesOfDay, parseClock, pollSecondsFor, resolveHoldDeadline,
+  resumeFloorFor, resumeResultNotice, resumeStageListFrom, unfixableShopsOf,
 } from './hold-and-resume-plan.mjs';
+import { batchRoundBlockOf } from './batch-plan.mjs';
 import { failedShopsOf, parseArgs as parseHoldArgs } from '../scripts/hold-and-resume.mjs';
 
 const STAGES = ['health-check', 'alimama-date', 'promotion-submit', 'sycm-date', 'shop-report',
@@ -34,17 +36,68 @@ test('截止时间：只认 HH:MM，格式不对**不回落**（回落成 0 会�
     assert.equal(parseClock(bad).ok, false, `${JSON.stringify(bad)} 应当被拒`);
     assert.ok(parseClock(bad).error, '拒的时候要给一句人话');
   }
-  assert.equal(DEFAULT_HOLD_UNTIL, '12:00');
+});
+
+test('截止时间默认是**时段**，不是绝对钟点（绝对钟点在 15:30 的排期下当场就过期了）', () => {
+  // 2026-10-06 的真实缺陷：默认值是绝对钟点 '12:00'，而日报定时排在 15:30 ⇒ 驻留每一轮启动时
+  // 那个钟点早就过了 ⇒ 首次判「到点」⇒ 退出码 3、一秒都没等。「挂住等人」从未发生过一次。
+  assert.equal(typeof DEFAULT_HOLD_HOURS, 'number', '默认口径必须是「挂几小时」这个数，而不是一个钟点');
+  assert.ok(DEFAULT_HOLD_HOURS > 0);
+
+  const now = new Date(2026, 9, 6, 15, 30, 0);           // 生产那一刻：15:30
+  const byDuration = resolveHoldDeadline({ now });
+  assert.equal(byDuration.ok, true);
+  assert.equal(byDuration.source, 'duration');
+  assert.equal(byDuration.untilText,
+    formatClock(new Date(now.getTime() + DEFAULT_HOLD_HOURS * 3_600_000)),
+    `默认挂 ${DEFAULT_HOLD_HOURS} 小时 ⇒ 截止时刻必须是「现在 + ${DEFAULT_HOLD_HOURS} 小时」`);
+  // 关键判据：**不是**立刻到点。这正是那次缺陷的形态（旧绝对钟点下这一步就是 true）。
+  assert.equal(deadlineReachedAt({ nowMs: now.getTime(), deadlineMs: byDuration.deadlineMs }), false,
+    '默认口径下绝不是「立刻到点」—— 旧绝对钟点下这一步是 true，而那正是「一秒没等」的形态');
+
+  // 跨零点不许翻转：23:00 挂 4 小时是「明天的 03:00」，不能因为「当天第几分钟」而变成早就到点。
+  const lateNight = new Date(2026, 9, 6, 23, 0, 0);
+  const wrapped = resolveHoldDeadline({ now: lateNight });
+  assert.equal(deadlineReachedAt({ nowMs: lateNight.getTime(), deadlineMs: wrapped.deadlineMs }), false);
+
+  // `--hold-hours` 是那个旋钮，且非法值当场拒（不回落 —— 回落成 0 也是一次都不等）。
+  assert.equal(resolveHoldDeadline({ now, hours: 1 }).ok, true);
+  for (const bad of [0, -1, 'abc', null]) {
+    assert.equal(resolveHoldDeadline({ now, hours: bad }).ok, false, `hours=${JSON.stringify(bad)} 应当被拒`);
+  }
+  // `undefined` 不是「非法值」而是「没给」⇒ 走默认值（默认参数的口径，别把它当成拒绝）。
+  assert.equal(resolveHoldDeadline({ now, hours: undefined }).ok, true);
+});
+
+test('--until 显式给的**已经过去**的钟点当场拒（静默地立刻超时正是要治的那个形态）', () => {
+  const now = new Date(2026, 9, 6, 15, 30, 0);
+  const past = resolveHoldDeadline({ now, until: '12:00' });
+  assert.equal(past.ok, false);
+  assert.match(past.error, /今天已经过了/u);
+  // 错误里要直接告诉人「要挂一段时间该写什么」——省掉一次来回。
+  assert.match(past.error, /--hold-hours/u);
+
+  // 还没到的钟点照常收；边界（正好现在）算「已经过了」，因为它的效果同样是「一秒不等」。
+  const future = resolveHoldDeadline({ now, until: '19:30' });
+  assert.equal(future.ok, true);
+  assert.equal(future.source, 'clock');
+  assert.equal(future.untilText, '19:30');
+  assert.equal(deadlineReachedAt({ nowMs: now.getTime(), deadlineMs: future.deadlineMs }), false);
+  assert.equal(resolveHoldDeadline({ now, until: '15:30' }).ok, false, '正好现在 ＝ 一秒不等 ⇒ 也算已过');
+
+  // 格式不对仍然走 parseClock 的那句人话（不是这一层新编一句）。
+  assert.match(resolveHoldDeadline({ now, until: '25:00' }).error, /超出范围/u);
 });
 
 test('到点判据：`>=` 而不是 `>`（正好那一刻就该收尾，不许再多挂一轮）', () => {
-  assert.equal(deadlineReached({ nowMinutes: 719, untilMinutes: 720 }), false);
-  assert.equal(deadlineReached({ nowMinutes: 720, untilMinutes: 720 }), true);
-  assert.equal(deadlineReached({ nowMinutes: 721, untilMinutes: 720 }), true);
+  assert.equal(deadlineReachedAt({ nowMs: 719, deadlineMs: 720 }), false);
+  assert.equal(deadlineReachedAt({ nowMs: 720, deadlineMs: 720 }), true);
+  assert.equal(deadlineReachedAt({ nowMs: 721, deadlineMs: 720 }), true);
   // 分钟数与本地时钟同一把尺子（`parseClock('12:00').minutes` 与它比才有意义）。
   const noon = new Date(2026, 8, 26, 12, 0, 0);
   assert.equal(minutesOfDay(noon), 720);
-  assert.equal(deadlineReached({ nowMinutes: minutesOfDay(noon), untilMinutes: parseClock('12:00').minutes }), true);
+  assert.equal(parseClock('12:00').minutes, 720);
+  assert.equal(formatClock(noon), '12:00');
 });
 
 // ---------------------------------------------------------------------------
@@ -261,7 +314,7 @@ test('驻留状态行：带时间、已等多久、等到几点，以及每个�
 // ---------------------------------------------------------------------------
 const WHITELISTED = new Set(READABLE_SOURCE_KEYS.map(([key]) => key));
 const NOTICES = () => [
-  ['到点没等到人', closeOutNotice({ date: '2026-09-26', subjects: ['科塔淘宝'] })],
+  ['到点没等到人', closeOutNotice({ date: '2026-09-26', subjects: ['科塔淘宝'], until: '19:30' })],
   ['续跑成功', resumeResultNotice({ date: '2026-09-26', shops: ['科塔淘宝'], ok: true })],
   ['续跑失败', resumeResultNotice({ date: '2026-09-26', shops: ['科塔淘宝'], ok: false, detail: '退出码 1' })],
 ];
@@ -333,15 +386,36 @@ test('CLI：--date 必给（不给它拼不出结论路径），--until 格式�
   assert.match(parseHoldArgs(['--date', '2026-09-25', '--until', '25:00']).error, /超出范围/u);
   assert.match(parseHoldArgs(['--date', '2026-09-25', '--poll-seconds', '0']).error, /正整数/u);
   assert.match(parseHoldArgs(['--date', '2026-09-25', '--wat']).error, /未知参数/u);
-  const ok = parseHoldArgs(['--date', '2026-09-25', '--once']);
+  const ok = parseHoldArgs(['--date', '2026-09-25', '--once'], { now: new Date(2026, 9, 6, 15, 30, 0) });
   assert.equal(ok.date, '2026-09-25');
-  assert.equal(ok.untilMinutes, 720, '默认等到当天 12:00');
+  // 默认是「从现在起挂 N 小时」，**不是**某个写死的钟点 —— 写死钟点在生产排期下当场过期
+  // （2026-10-06 实测：15:30 跑、默认 12:00 ⇒ 一秒没等就退 3）。
+  assert.equal(ok.deadlineSource, 'duration');
+  assert.equal(ok.untilText, '19:30', '15:30 起挂 4 小时 ⇒ 19:30');
   assert.equal(ok.once, true);
   assert.equal(ok.resume, true);
   assert.equal(ok.release, true);
   assert.equal(ok.notify, true, '命令行直接跑这一档默认发告警；定时链那一路会显式压成 --no-notify');
+  assert.equal(ok.resumeViaBatches, false, '不给就是定时链那条老口径（直连链）');
   // 结论文件的默认落点由 --date 拼出来（不给 --summary 时）。
   assert.match(ok.summary.replaceAll('\\', '/'), /evidence\/multi-shop-2026-09-25\/summary\.json$/u);
+});
+
+test('CLI：--until 给了一个**已经过去**的钟点 ⇒ 当场拒（静默地立刻超时正是要治的那个形态）', () => {
+  const now = new Date(2026, 9, 6, 15, 30, 0);
+  assert.match(parseHoldArgs(['--date', '2026-09-25', '--until', '12:00'], { now }).error, /今天已经过了/u);
+  const ok = parseHoldArgs(['--date', '2026-09-25', '--until', '19:30'], { now });
+  assert.equal(ok.deadlineSource, 'clock');
+  assert.equal(ok.untilText, '19:30');
+});
+
+test('CLI：分批续跑必须带 --batch-size（那一档没有可用的默认值，给错会让现场与原轮不同）', () => {
+  const base = ['--date', '2026-09-25'];
+  assert.match(parseHoldArgs([...base, '--resume-via-batches']).error, /--batch-size/u);
+  assert.match(parseHoldArgs([...base, '--resume-via-batches', '--batch-size', '0']).error, /--batch-size/u);
+  const ok = parseHoldArgs([...base, '--resume-via-batches', '--batch-size', '5']);
+  assert.equal(ok.resumeViaBatches, true);
+  assert.equal(ok.batchSize, 5);
 });
 
 test('CLI：逐店失败的归一化用的是**链自己的**分类器（不在这里另写一份判据）', () => {
@@ -409,14 +483,87 @@ test('接线：`--will-resume` 跟着「这一轮会不会驻留」走（承诺�
   }
 });
 
-test('接线：分批形态**明确不驻留**（刻意的缺口，要有名字而不是静默少一段）', () => {
-  // 分批存在的理由就是「跑完一批就把它放掉，把内存让给下一批」，与「按住几家窗口几小时」
-  // 在同一条命令里直接冲突，且「剩下那几批还跑不跑」没有设计过。
-  // 生产路径（不带 --batches）不受影响。
+test('接线：分批形态的驻留**在分批驱动内部**（进不了本计划，但那个事实要有名字）', () => {
+  // 2026-09-26~10-06 之间这里记的是「刻意不驻留」的缺口。补上之后：分批这一档**有**驻留，
+  // 落点在 scripts/run-batches.mjs（在**被挡的那一批**就地收手 → 转 `hold-and-resume.mjs`）。
+  // 所以本计划里看不到那一步是对的 —— 但它不能与「分批这一档根本不驻留」长得一样，
+  // 于是有一个具名的返回值给 `--print` 用。
   const plan = buildJobPlan({ batches: 2, resolvedDate: '2026-09-25', artifactsDir: 'D:\\repo\\e' });
-  assert.equal(plan.batchWithoutHold, true);
+  assert.equal(plan.batchHoldInline, true);
   assert.equal(plan.holdStep, null);
   assert.equal(plan.steps.some((step) => step.name === 'hold-and-resume'), false);
+  // 开关必须转发下去：漏了它，命令行写了 `--no-hold` 分批那一档还会照旧挂住（静默失效）。
+  const chainOf = (p) => p.steps.find((step) => step.name === 'batch-chain');
+  assert.equal(chainOf(plan).args.includes('--no-hold'), false, '默认开 ⇒ 不给 --no-hold');
+  const off = buildJobPlan({ batches: 2, resolvedDate: '2026-09-25', artifactsDir: 'D:\\repo\\e', hold: false });
+  assert.equal(off.batchHoldInline, false);
+  assert.equal(chainOf(off).args.includes('--no-hold'), true);
+});
+
+test('接线（源码级）：分批驱动真的会在整轮被挡时**停下来**并**转驻留**（删掉任一半都要红）', async () => {
+  // 为什么只能扫源码：要真跑这条路径必须**起浏览器**（ensure-shared + 每批的 start），
+  // 而「未经许可绝不起停存活进程」是硬规则 ⇒ 离线拿不到那条端到端的证据。
+  // 所以这里守住三件**必须同时存在**的事（函数级用例全绿 ≠ 接线接上了，本仓已吃过三次）：
+  //   ① 读**链自己落盘**的结论（判据不许在这里另发明）；
+  //   ② 就地停手（剩下的批次不跑 —— 整轮被挡对每一批是同一个结论）；
+  //   ③ 把现场交给**同一个** `hold-and-resume.mjs`，且续跑回到分批驱动、带上 `--no-hold`。
+  const src = await readFile(new URL('../scripts/run-batches.mjs', import.meta.url), 'utf8');
+  assert.match(src, /readBatchRoundBlock\(batchSummary\)/u,
+    '① 必须读链落盘的那份结论（不读 ⇒ 永远判不出「整轮被挡」）');
+  assert.match(src, /batchRoundBlockOf/u, '① 判据用纯函数，不在这里另写一份');
+  assert.match(src, /blocked = \{ batch: batch\.index, summaryPath: batchSummary, cause: roundBlock\.cause \};\s*\n\s*break;/u,
+    '② 读到整轮被挡之后必须**停止后面的批次**（只记不停 ⇒ 剩余批次照旧白起白停并重复告警）');
+  assert.match(src, /runBatchHold\(/u, '③ 必须真的去驻留');
+  assert.match(src, /'--resume-via-batches', '--batch-size', String\(batchSize\)/u,
+    '③ 续跑必须回到**分批驱动**（直连链会在「实例不在」的现场上开跑）');
+  assert.match(src, /const recovered = holdStatus === HOLD_EXIT\.RESUMED_OK;/u,
+    '③ 只有「续跑真的成功」才允许把整轮翻回 0（与 run-daily-job 同一条纪律）');
+  assert.match(src, /return recovered \|\| hardFail === 0 \? 0 : 1;/u, '③ 退出码必须读那个结论');
+  // 反面：整个文件里不许出现第二个驻留实现（两套判据迟早漂成两边结论不同）。
+  // 只数**带引号的字面量**（注释里提到那个文件名是允许的、而且是有意的）。
+  const holdLiterals = src.match(/'scripts\/hold-and-resume\.mjs'/gu) ?? [];
+  assert.equal(holdLiterals.length, 1, `驻留只许有一个调用点（找到 ${holdLiterals.length} 处）`);
+});
+
+test('接线（源码级）：`--no-hold` 真的被转发到分批驱动，不是只在计划里记一笔', async () => {
+  const src = await readFile(new URL('../runtime/daily-job-plan.mjs', import.meta.url), 'utf8');
+  assert.match(src, /if \(!hold\) args\.push\('--no-hold'\);/u,
+    '漏了这一句 ⇒ 命令行写了 --no-hold、分批那一档照旧挂住（静默失效）');
+  // 三个批次开关必须都在同一个函数里转发（autoRepair / deferAgentActionableAlert / hold —— 前两个是旧账）。
+  for (const flag of ['--auto-repair', '--defer-agent-actionable-alert', '--no-hold']) {
+    assert.ok(src.includes(flag), `分批参数表里缺 ${flag}`);
+  }
+});
+
+test('分批续跑：入口是**分批驱动**（直连链会在「实例不在」的现场上开跑），且带上 --no-hold 防递归', () => {
+  const argv = buildBatchResumeArgv({
+    batchScript: 'D:\\repo\\scripts\\run-batches.mjs', date: '2026-10-05', batchSize: 5, notify: true,
+  });
+  assert.equal(argv[0], 'D:\\repo\\scripts\\run-batches.mjs');
+  assert.deepEqual(argv.slice(1, 3), ['--date', '2026-10-05']);
+  assert.equal(argv.includes('--commit'), true);
+  assert.equal(argv.includes('--batch-size'), true);
+  assert.equal(argv[argv.indexOf('--batch-size') + 1], '5');
+  assert.equal(argv.includes('--notify'), true);
+  // 防「驻留套驻留」：续跑再撞上整轮被挡时必须退 1 结束，而不是再挂一轮。
+  assert.equal(argv.includes('--no-hold'), true, '防「驻留套驻留」：续跑必须带 --no-hold（第二层等的是另一份结论）');
+  // 分批驱动没有 `--only`（阶段级筛选在「一批」这个粒度上没有意义）⇒ 续跑也不许给。
+  assert.equal(argv.includes('--only'), false);
+  // 不给 `--notify` ⇒ 落到 `--notify-print`（与整条链的默认口径一致：只打印、不投递）。
+  assert.equal(buildBatchResumeArgv({ batchScript: 'x', date: 'd', batchSize: 2, notify: false }).includes('--notify-print'), true);
+  assert.equal(buildBatchResumeArgv({ batchScript: 'x', date: 'd', batchSize: 2, notify: false }).includes('--notify'), false);
+});
+
+test('分批：整轮被挡的判据读**链自己落盘的结论**，老 summary 落回旧口径', () => {
+  const withCause = { round: { healthCheckDaily: { ok: false, roundCause: 'ROUND_LOGIN_WALL', missingPages: ['生意参谋工作页'] } } };
+  assert.deepEqual(batchRoundBlockOf(withCause), { cause: 'ROUND_LOGIN_WALL', missingPages: ['生意参谋工作页'] });
+  // 老 summary（没有 roundCause 字段）⇒ 逐字退回旧口径，且 missingPages 归一成 null（不是 []）。
+  assert.deepEqual(batchRoundBlockOf({ round: { healthCheckDaily: { ok: false } } }),
+    { cause: 'ROUND_BLOCKED', missingPages: null });
+  // 体检过了 / 没有这一段 / 空对象 ⇒ 都不是「整轮被挡」，照常跑下一批。
+  for (const s of [{ round: { healthCheckDaily: { ok: true } } }, { round: {} }, {}, undefined, null]) {
+    assert.equal(batchRoundBlockOf(s), null, `${JSON.stringify(s)} 不该被判成整轮被挡`);
+  }
 });
 
 test('接线：入口那一步「该不该执行」的判据是纯函数（写在入口里会测不到，而写反了两头都错）', () => {

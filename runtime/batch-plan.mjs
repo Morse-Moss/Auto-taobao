@@ -330,6 +330,34 @@ export function describeBatch(batch, total) {
   return `第 ${batch.index}/${total} 批：${batch.shops.join('、')}`;
 }
 
+/**
+ * 这一批的链是不是**整轮被挡**（不是「它自己哪一家失败」）。纯函数。
+ *
+ * 为什么必须把这两种分开（2026-10-05/06 的真实事故）：整轮被挡的成因**只有两种** ——
+ * 共用商家浏览器掉登录、或它那两页真的缺 —— 而**两种都不是这一批的事**：
+ * 链的整轮级体检跑在共用实例上（`expectedPagesForDailyBrowser()`），它对每一批给出的是
+ * **同一个**结论。所以「第一批被挡」就等于「后面每一批都会被挡」。
+ * 实测凭据：`evidence/batches-2026-10-05/batches.log` —— b1 与 b2 **逐字**停在同一步同一句
+ * （`TARGET_PAGE_MISSING` + `from=...custom/login.htm?_target=...`）。
+ *
+ * 于是分批驱动可以据此**提前收手**：剩下的批次跑也没用，只会把每批的实例白起一次白停一次，
+ * 并各发一条同样的告警。停在这里、把现场交给驻留（`scripts/hold-and-resume.mjs`）才是对的。
+ *
+ * 真因**优先读链落盘的那一个**（`round.healthCheckDaily.roundCause`，2026-10-06 加：
+ * `ROUND_LOGIN_WALL` 共用窗口掉登录 / `ROUND_BLOCKED` 页面真的缺）；老 summary 没有那个字段时
+ * 落回 `ROUND_BLOCKED` —— 与加这个字段之前逐字相同。
+ *
+ * 返回 `null`（不是整轮被挡 ⇒ 照常跑下一批）或 `{ cause, missingPages }`。
+ */
+export function batchRoundBlockOf(summary) {
+  const health = summary?.round?.healthCheckDaily;
+  if (health?.ok !== false) return null;
+  return {
+    cause: health.roundCause ?? 'ROUND_BLOCKED',
+    missingPages: Array.isArray(health.missingPages) ? health.missingPages : null,
+  };
+}
+
 /** 这一批会不会碰到**不该采**的店铺（开跑前的一道自检；不通过就别起浏览器）。
  *  两个集合可注入，同 `resolveShopNames` 的理由（分支的活体样本已随空表清空）。 */
 export function assertBatchCoversRegistry(batch, { registered = shopBrowserKeys(), collecting = collectingShopKeys() } = {}) {

@@ -1,0 +1,41 @@
+[驻留] 目标日 2026-10-05｜逐店失败 0 家｜整轮被挡=true
+[驻留] 需要人：整轮（商家浏览器）
+[驻留] 截止 16:14（现在 16:14）｜口径：从现在起挂 0.002 小时｜轮询 5 秒一次
+[驻留] 续跑范围：整轮（不给 --shops）｜阶段：不点名（整链）
+[驻留] 到 16:14 还没等到 ⇒ 收尾
+[驱动] 告警文案（收信人看到的）：
+【需要处理】里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝、网林淘宝、里可林天猫、网林家居的日报还缺着：等到 16:14 也没等到处理
+对象：日报一轮
+店铺：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝、网林淘宝、里可林天猫、网林家居
+数据周期：2026-10-05
+任务：各店铺日报
+原因：这一轮的浏览器窗口一直留着没关，等到 16:14 还是没等到人来处理，所以按约定把窗口放掉、这一轮结束了，这一天的数据还是没有进飞书。
+下一步：需要重新跑一次这一天的采集。这一次不用赶时间了 —— 上一轮的窗口已经释放。
+时间：2026-10-06 16:14
+告警编号：daily-hold-20261005
+[驱动] （--notify-print：只打印、不投递）
+EXIT=3
+
+=== 计时对照（同一份结论、同一个 --no-release/--notify-print）===
+$ node scripts/hold-and-resume.mjs --date 2026-10-05 --summary evidence/batches-2026-10-05/b1/summary.json --hold-hours 0.005 --poll-seconds 5 --no-release --notify-print
+EXIT=3  实际等待=21秒（--hold-hours 0.005 = 18 秒；多出的 3 秒是 5 秒轮询粒度的向上取整 + 首轮探针）
+
+=== 旧形态（HEAD 9e292cf）为什么是零等待：代码级取证 ===
+18:export const DEFAULT_HOLD_UNTIL = '12:00';
+50:export function deadlineReached({ nowMinutes, untilMinutes }) {
+HEAD 版 buildHoldResumeArgs 只拼 --date/--summary/--notify*，从不传 --until：
+export function buildHoldResumeArgs({ date, summary = null, notify = false, notifyPrint = false } = {}) {
+  if (!date) throw new Error('buildHoldResumeArgs 需要 date（已解析好的那一天；给字面量 yesterday 会拼出不存在的结论路径）');
+  const args = ['--date', String(date)];
+  if (summary) args.push('--summary', String(summary));
+  if (notify && notifyPrint) {
+    // 与 buildJobPlan 里那条互斥同源：两个出口同时给时 `--notify-print` 会赢，
+    // 于是「我要发飞书」这层意图被静默丢掉。
+    throw new Error('--notify 与 --notify-print 互斥：告警出口只能有一个');
+  }
+  args.push(notify ? '--notify' : (notifyPrint ? '--notify-print' : '--no-notify'));
+  return args;
+⇒ 截止恒为 12:00，而定时任务是 15:30 起跑 ⇒ 首轮 deadlineReached(now>=720) 即真 ⇒ 打印「到 12:00 还没等到」立刻退出（EXIT=3），实际等待 0 秒。
+  HEAD@9e292cf runtime/hold-and-resume-plan.mjs:18  export const DEFAULT_HOLD_UNTIL = '12:00';
+  HEAD@9e292cf runtime/hold-and-resume-plan.mjs:50  export function deadlineReached({ nowMinutes, untilMinutes }) {
+  HEAD@9e292cf scripts/run-batches.mjs:（全文无 hold-and-resume 字样 ⇒ 分批那一档根本没有驻留）  

@@ -14,8 +14,22 @@
 //   （`runtime/batch-plan.mjs` 记着这条实测）。所以「保住窗口」唯一可靠的形态是**这一轮不结束** ——
 //   驻留进程活着，窗口就活着。这也是本模块存在的理由。
 
-/** 驻留的默认截止时间（当天几点几分）。 */
-export const DEFAULT_HOLD_UNTIL = '12:00';
+/**
+ * 驻留默认挂**多久**（小时）—— 时段，不是「等到当天某个钟点」。
+ *
+ * 为什么必须从绝对钟点改成时段（2026-10-06 实测的缺陷）：原来的默认值是一个**绝对钟点** `'12:00'`，
+ * 而日报定时排在 **15:30**。于是驻留进程每一轮启动时那个钟点**早就过了**，循环第一次判「到点」，
+ * 退出码 3、**一秒都没等**。实测（真实 summary，`--no-notify --no-release`）：
+ *   `[驻留] 截止 12:00（现在 16:01）｜轮询 120 秒一次`
+ *   `[驻留] 到 12:00 还没等到 ⇒ 收尾`
+ *   ⇒ 退出码 3（TIMED_OUT），等待 0 秒。
+ * 结论：**「挂住等人处理」这条能力在 15:30 的排期下从未发生过一次**，
+ * 而 `--print` 与日志都还在说「默认等到当天 12:00」—— 一句做不到的承诺。
+ *
+ * 绝对钟点这条口径保留（`--until HH:MM`，人显式给），但**已经过去的钟点当场拒**：
+ * 静默地「立刻超时」正是上面那个缺陷的形态，而它看起来完全正常。
+ */
+export const DEFAULT_HOLD_HOURS = 4;
 
 /**
  * 轮询间隔按**判据的成本与噪声**分，不按「统一一个好记的数」：
@@ -26,6 +40,11 @@ export const POLL_SECONDS_BY_CAUSE = Object.freeze({
   PAGE_OBSTRUCTED: 30,
   NEEDS_LOGIN: 120,
   ROUND_BLOCKED: 120,
+  // 整轮被挡的**具体**成因：共用窗口自己掉登录（2026-10-06 单列，见 run-multi-shop-day 的
+  // `roundCauseOf`）。间隔与 `NEEDS_LOGIN` 一样取 120 秒 —— 它探的是同一个东西
+  // （那台共用浏览器上还停不停在登录页），而「探得勤」对登录探针是负收益（可能触发风控）。
+  // 漏了这条不会有任何报错，只会静默落回 `DEFAULT_POLL_SECONDS`（60 秒）—— 探得更勤但没意义。
+  ROUND_LOGIN_WALL: 120,
 });
 export const DEFAULT_POLL_SECONDS = 60;
 /** 驻留期间往日志写一行状态的间隔（不许静默）。 */
@@ -46,9 +65,55 @@ export function minutesOfDay(date) {
   return date.getHours() * 60 + date.getMinutes();
 }
 
-/** 到点了吗。 */
-export function deadlineReached({ nowMinutes, untilMinutes }) {
-  return nowMinutes >= untilMinutes;
+/** `Date` → `'HH:MM'`（本地时钟）。只用于**显示**（日志与告警），判据一律用毫秒时间戳。 */
+export function formatClock(date) {
+  const at = date instanceof Date ? date : new Date(date);
+  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * 算出「驻留挂到什么时候」。**纯函数**：只读传入的 `now`，不读时钟、不产生副作用。
+ *
+ * 两种给法，二选一：
+ *   · 不给 `until` ⇒ 用**时段**（`hours`，默认 `DEFAULT_HOLD_HOURS`）。这是生产走的那一档，
+ *     它与「任务几点跑」无关 —— 排期从早上挪到下午、或从下午挪到夜里，都不用改配置。
+ *   · 给了 `until`（`'HH:MM'`）⇒ 用**今天的那个钟点**。人排查时想要「就挂到 17:30」时才用。
+ *
+ * **已经过去的钟点当场拒**，不静默超时：`--until` 指的是今天，而给一个已经过去的钟点，
+ * 效果是「驻留立刻结束、一秒不等」—— 正是这次要治的那个形态（它看起来一切正常）。
+ * 拒的时候把「要用时段该写什么」一起写进错误里，省掉一次来回。
+ *
+ * 返回 `{ ok:false, error }` 或 `{ ok:true, deadlineMs, untilText, source }`。
+ * `deadlineMs` 是**绝对毫秒时间戳**（不用「当天第几分钟」：跨零点时那个口径会翻转，
+ * 23:00 挂 4 小时会被算成「早就到点了」）。
+ */
+export function resolveHoldDeadline({ now = new Date(), until = null, hours = DEFAULT_HOLD_HOURS } = {}) {
+  if (until !== null && until !== undefined && until !== '') {
+    const clock = parseClock(until);
+    if (!clock.ok) return { ok: false, error: clock.error };
+    const at = new Date(now.getTime());
+    at.setHours(Math.floor(clock.minutes / 60), clock.minutes % 60, 0, 0);
+    if (at.getTime() <= now.getTime()) {
+      return {
+        ok: false,
+        error: `--until ${until} 今天已经过了（现在 ${formatClock(now)}）。--until 指的是**今天**这个钟点，`
+          + '给一个已经过去的钟点会让驻留立刻超时、一秒都不等 —— 这正是 2026-10-06 查出来的那个缺陷。'
+          + `要「从现在起挂一段时间」请用 --hold-hours N（默认 ${DEFAULT_HOLD_HOURS} 小时）。`,
+      };
+    }
+    return { ok: true, deadlineMs: at.getTime(), untilText: formatClock(at), source: 'clock' };
+  }
+  const value = Number(hours);
+  if (!Number.isFinite(value) || value <= 0) {
+    return { ok: false, error: `--hold-hours 要一个正数（收到 ${JSON.stringify(hours)}）` };
+  }
+  const at = new Date(now.getTime() + Math.round(value * 3_600_000));
+  return { ok: true, deadlineMs: at.getTime(), untilText: formatClock(at), source: 'duration' };
+}
+
+/** 到点了吗。毫秒口径（与 `resolveHoldDeadline` 同一把尺子）。 */
+export function deadlineReachedAt({ nowMs, deadlineMs }) {
+  return Number(nowMs) >= Number(deadlineMs);
 }
 
 /**
@@ -205,6 +270,37 @@ export function buildResumeArgv({ chainScript, date, shops = null, stages = null
   return argv;
 }
 
+/**
+ * **分批形态**下续跑的命令行：入口是**分批驱动本身**，不是链。
+ *
+ * 为什么不能沿用 `buildResumeArgv`（直连链）：分批形态下**店铺实例是按批起停的**
+ * （`runtime/batch-plan.mjs` 的设计约束③：起与停作用在同一组目标上）。整轮被挡那一轮里，
+ * 链跑完之后每一批自己的 `stop` 已经把那几家放掉了 ⇒ 直连链的续跑会在「实例不在」的现场上开跑，
+ * 而它的第 0 步体检只会再报一次同样的错。所以续跑必须回到**分批驱动**：
+ * 由它重新按批起实例、按批跑、按批释放。
+ *
+ * `--no-hold`（`noHold`，默认开）是**防递归**的那一下：续跑本身若又撞上整轮被挡，
+ * 它应当老老实实退 1 结束，而不是再挂一轮 —— 那会变成「驻留套驻留」，
+ * 而第一层驻留的 `--date`/`--summary` 已经过期，第二层等的是另一份结论。
+ *
+ * `--date` 必须给**已经解析好的那一天**（同 `buildHoldResumeArgs` 的理由）：
+ * 续跑可能发生在跨零点之后，字面量 `yesterday` 那一刻会解析成另一天。
+ *
+ * 刻意**不传** `--only`（阶段级筛选）：分批驱动没有这个概念（它自己按批分配证据目录）。
+ * 整轮被挡那一档本来也没有逐店阶段可点。
+ */
+export function buildBatchResumeArgv({
+  batchScript, date, batchSize = null, shops = null, logs = null, notify = true, noHold = true,
+} = {}) {
+  const argv = [batchScript, '--date', date, '--commit'];
+  if (batchSize !== null && batchSize !== undefined) argv.push('--batch-size', String(batchSize));
+  argv.push(notify ? '--notify' : '--notify-print');
+  if (Array.isArray(shops) && shops.length) argv.push('--shops', shops.join(','));
+  if (logs) argv.push('--logs', logs);
+  if (noHold) argv.push('--no-hold');
+  return argv;
+}
+
 /** 一次探测的全部结论。`state` 只允许这三种，第四种会被判成配置错误。 */
 export const PROBE_STATES = Object.freeze(['ready', 'waiting', 'unknown']);
 
@@ -267,18 +363,22 @@ function noticeBase({ type, severity, title, alertId, fingerprint, date, targetL
  * 到点还没人来：**必须发**。驻留结束时窗口会被释放，而那之后人就再也接不上手了 ——
  * 静默释放等于「人以为还有现场，其实没了」。
  */
-export function closeOutNotice({ date, subjects = [], until = DEFAULT_HOLD_UNTIL, targetLabel = '日报一轮', createdAt } = {}) {
+export function closeOutNotice({ date, subjects = [], until = null, targetLabel = '日报一轮', createdAt } = {}) {
   const who = subjects.length ? subjects.join('、') : '这一轮';
+  // 截止时间是**算出来的**（`resolveHoldDeadline` 给出 `untilText`），不在这里回落到一个写死的钟点 ——
+  // 写死的那个（旧的 `'12:00'`）与实际挂到的时刻不是一回事，而这条通知的作用恰恰是告诉人「几点了」。
+  // 调用方没给就退成一句不含数字的话：宁可少一个数字，也不写一个错的。
+  const deadlineText = until ?? '约定时间';
   return noticeBase({
     type: 'DAILY_HOLD_TIMEOUT',
     severity: 'ERROR',
-    title: `${who}的日报还缺着：等到 ${until} 也没等到处理`,
+    title: `${who}的日报还缺着：等到 ${deadlineText} 也没等到处理`,
     alertId: `daily-hold-${String(date).replace(/-/gu, '')}`,
     fingerprint: 'HOLD_TIMEOUT',
     date,
     targetLabel,
     shopNames: subjects,
-    reason: `这一轮的浏览器窗口一直留着没关，等到 ${until} 还是没等到人来处理，所以按约定把窗口放掉、这一轮结束了，这一天的数据还是没有进飞书。`,
+    reason: `这一轮的浏览器窗口一直留着没关，等到 ${deadlineText} 还是没等到人来处理，所以按约定把窗口放掉、这一轮结束了，这一天的数据还是没有进飞书。`,
     action: '需要重新跑一次这一天的采集。这一次不用赶时间了 —— 上一轮的窗口已经释放。',
     createdAt,
   });

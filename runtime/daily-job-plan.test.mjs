@@ -380,12 +380,19 @@ test('宿主（定时链）：--no-hold 一键退回旧行为（一个字符都�
   assert.match(text, /run-multi-shop-day\.mjs --date 2026-09-22 --commit/u);
 });
 
-test('宿主（定时链）：分批那一档**不驻留**，而且这件事在 --print 里被说出来（缺口要有名字）', () => {
-  // 分批存在的理由就是「跑完一批就放掉、把内存让给下一批」，与「按住几家窗口几小时」冲突。
+test('宿主（定时链）：分批那一档的驻留**在分批驱动内部**，`--print` 必须把这件事说出来', () => {
+  // 2026-09-26~10-06 之间这一档是「刻意不驻留」的缺口。补上之后：驻留落在分批驱动内部
+  // （被挡的那一批就地收手 → 转 hold-and-resume），所以计划里**看不到**那一步是对的 ——
+  // 但它不能与「分批这一档根本没驻留」长得一样，否则读 `--print` 的人会得出错误结论。
   const text = runHostPrint('run-daily-job.mjs', ['--date', '2026-09-22', '--batches', '2']);
-  assert.doesNotMatch(text, /hold-and-resume\.mjs/u);
-  assert.doesNotMatch(text, /--will-resume/u);
-  assert.match(text, /不驻留/u, '缺口必须被打印出来，否则读 --print 的人以为它接上了');
+  assert.doesNotMatch(text, /hold-and-resume\.mjs/u, '它不该作为本计划的一步出现');
+  assert.doesNotMatch(text, /--will-resume/u, '链那一步不该承诺「系统会自己续跑」');
+  assert.match(text, /驻留\*\*在分批驱动内部\*\*/u, '落点要说出来');
+  assert.match(text, /--no-hold/u, '一键退回的开关也要说出来');
+  // 关掉之后必须说「不驻留」，不能两种状态打同一句话。
+  const off = runHostPrint('run-daily-job.mjs', ['--date', '2026-09-22', '--batches', '2', '--no-hold']);
+  assert.match(off, /不驻留/u);
+  assert.doesNotMatch(off, /驻留\*\*在分批驱动内部\*\*/u);
 });
 
 // 上面那些源码扫描与纯函数判据只能证明「字符串在那儿」。真正要守的是「宿主跑起来之后」——

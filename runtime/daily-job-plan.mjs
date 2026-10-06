@@ -246,6 +246,13 @@ export function buildBatchChainArgs({
   // ⑨b（2026-09-29 补）：分批形态也要能转发告警闸门开关。漏接的症状与 `--auto-repair`
   // 那次完全相同 —— 「命令行给了、run-daily-job 也收下了，但每一批的链都没收到」。
   deferAgentActionableAlert = false,
+  // `hold`（2026-10-06 补）：**分批形态的驻留开关必须也转发下去**，理由与上面两个开关逐字相同。
+  //
+  // 为什么分批这一档的驻留要落在**分批驱动里**而不是在这里多加一步：分批是逐批跑的，
+  // 而整轮被挡对每一批给出的是同一个结论 ⇒ 在这里加一步的话，剩下的批次会先各起一遍、
+  // 各停一遍、各发一条同样的告警，然后才轮到驻留。落点在 `scripts/run-batches.mjs`（就地在被挡那一批收手）。
+  // 于是这一个参数的作用是「告诉分批驱动：被挡时要不要挂住等人」，而不是「要不要加一步」。
+  hold = true,
 } = {}) {
   const args = ['--date', dateInput, '--batch-size', String(batches)];
   // `--commit` 必须由这里显式给：分批驱动自己的默认是**排练**（不写飞书），
@@ -258,6 +265,9 @@ export function buildBatchChainArgs({
   if (allowMissingPeer) args.push(CHAIN_FLAGS.allowMissingPeer);
   if (autoRepair) args.push(CHAIN_FLAGS.autoRepair);
   if (deferAgentActionableAlert) args.push(CHAIN_FLAGS.deferAgentActionableAlert);
+  // `--no-hold`：只在**关掉**时给（`run-batches` 的默认与这里一致＝开）。
+  // 两个方向都要接上：漏了这一句的症状是「命令行写了 --no-hold，分批那一档照旧挂住」。
+  if (!hold) args.push('--no-hold');
   if (autoRepairMaxRounds !== null && autoRepairMaxRounds !== undefined) {
     // 值与 `chainArgs` 那条路径保持一致：转成字符串再给（`spawn` 拼参数时非字符串会被隐式转换）。
     args.push(CHAIN_VALUED.autoRepairMaxRounds, String(autoRepairMaxRounds));
@@ -404,7 +414,7 @@ export function buildJobPlan(options = {}) {
       file: JOB_FILES.batchChain,
       args: buildBatchChainArgs({
         dateInput, notify, keepGoing, allowMissingPeer, shops, batches, commit: true,
-        autoRepair, autoRepairMaxRounds, deferAgentActionableAlert,
+        autoRepair, autoRepairMaxRounds, deferAgentActionableAlert, hold,
       }),
       note: `分批跑（每批 ${batches} 家）：起这一批 → 查本批登录 → 挂店铺标识页 → 跑这一批 → 停这一批（**一律释放**）`,
       blocking: true,
@@ -417,11 +427,15 @@ export function buildJobPlan(options = {}) {
       blocking: true,
     };
 
-  // 驻留那一步（2026-09-26 加）。三个只在特定条件下才加进计划的理由：
+  // 驻留那一步（2026-09-26 加）。两个只在特定条件下才加进计划的理由：
   //   · `resolvedDate` 没给 ⇒ 不加（用例与排查直接调本函数时不需要它，见上面那个参数）；
   //   · `--no-hold` ⇒ 不加（运维一键退回旧行为）；
-  //   · **分批形态 ⇒ 不加**，这一条是刻意的、有理由的（见下面 `holdStep` 里的长注释），
-  //     不是漏改 —— 它同时由 `batchHolds` 这个返回值暴露出来，让调用方与人看得见。
+  //   · **分批形态 ⇒ 不进本计划**（2026-10-06 起仍然如此，但**不再是缺口**）：
+  //     那一档的驻留发生在 `scripts/run-batches.mjs` 内部 —— 它在**被挡的那一批就地收手**
+  //     （剩下的批次跑也没用，它们会撞同一堵墙），然后把现场交给**同一个** `hold-and-resume.mjs`。
+  //     为什么不在这里加一步：这一步排在 `batch-chain` 之后，那时**全部批次已经跑完了** ——
+  //     每批各起一遍、各停一遍、各发一条同样的告警，然后才轮到驻留，人早被重复消息淹了。
+  //     所以「分批形态有没有驻留」的答案是**有**，落点在分批驱动里（下面的 `batchHoldInline` 说出来）。
   const holdStep = willHold
     ? {
       name: 'hold-and-resume',
@@ -518,13 +532,12 @@ export function buildJobPlan(options = {}) {
   return {
     dateInput,
     batches: batches ?? null,
-    // 分批形态**不驻留**（2026-09-26 的已知缺口，刻意留名不静默）：
-    // 那个形态的存在理由就是「跑完一批就把它放掉，把内存让给下一批」，而驻留恰恰要
-    // 把某几家的窗口按住几小时不放 —— 两者在同一条命令里直接冲突，且「剩下那几批还跑不跑」
-    // 也没有设计过。与其顺手加一个没有调用点的分支（`--batches` 默认关闭 ⇒ 永远没人真跑到），
-    // 不如把它写成一条具名的缺口，等要真用分批形态时单独设计。
-    // 生产路径（`scripts/run-daily-job.mjs` 不带 `--batches`）不受这条影响。
-    batchWithoutHold: batchMode && hold,
+    // 分批形态的驻留**在分批驱动内部**（`scripts/run-batches.mjs`：被挡的那一批就地收手 → 转驻留），
+    // 所以它不进本计划（`holdStep` 为 null），但这个事实必须**有名字**、并且能被 `--print` 说出来 ——
+    // 否则「计划里看不到驻留那一步」与「分批这一档根本不驻留」在日志里长得一样。
+    // 2026-09-26~10-06 之间它叫 `batchWithoutHold`（当时那确实是刻意留下的缺口）；
+    // 2026-10-06 补上之后改成本名：**分批这一档有驻留，只是落点不在这个计划里**。
+    batchHoldInline: batchMode && hold,
     holdStep,
     steps: [
       ensureInstancesStep,

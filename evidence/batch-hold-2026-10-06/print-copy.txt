@@ -1,0 +1,106 @@
+=== 分批驱动 --print（默认：驻留）===
+[批次] 版本：sycm-automation 1.7.11
+[批次] 目标日：2026-10-05 → 2026-10-05；每批 5 家；共 2 批；模式：排练（不写飞书）；跑完释放
+[批次] ensure-shared: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+        保证共享实例在（dailyReport）—— 推送段与回读段跑在它上面；整轮都不停它
+[批次] 整轮被挡怎么办：**留住现场等人**（跑到哪一批被挡就停在哪一批，剩余批次不再跑；人处理完自动按批重跑一遍）
+[批次] 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝
+   * start: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+        起这一批 5 家（幂等：已就位的不碰）
+     login-preflight: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+        跑前登录守卫（**会碰页面**：掉登录的当场用浏览器密码库登一次，没成才叫人）—— 查的是**这一批**这几家（`--shops` 只给本批，结论也只交给本批的链）
+        结论落：evidence/batches-2026-10-05/login-preflight-b1.json
+     label:里可林淘宝: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+        给 里可林淘宝 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:网林天猫: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+        给 网林天猫 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:盖文淘宝: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+        给 盖文淘宝 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:盖文天猫: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+        给 盖文天猫 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:科塔淘宝: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+        给 科塔淘宝 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+   * chain: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-10-05 --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --notify-print --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-05\login-preflight-b1.json --logs evidence\batches-2026-10-05\b1
+        跑这一批：体检 → 采集 → 推送 → 回填 → 回读（只跑 里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝）
+     stop: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+        停这一批（只停本批店铺的浏览器与代理；商家浏览器与竞品链一律不动）
+[批次] 第 2/2 批：网林淘宝、里可林天猫、网林家居
+   * start: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 网林淘宝,里可林天猫,网林家居
+        起这一批 3 家（幂等：已就位的不碰）
+     login-preflight: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 网林淘宝,里可林天猫,网林家居 --json
+        跑前登录守卫（**会碰页面**：掉登录的当场用浏览器密码库登一次，没成才叫人）—— 查的是**这一批**这几家（`--shops` 只给本批，结论也只交给本批的链）
+        结论落：evidence/batches-2026-10-05/login-preflight-b2.json
+     label:网林淘宝: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林淘宝
+        给 网林淘宝 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:里可林天猫: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林天猫
+        给 里可林天猫 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:网林家居: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林家居
+        给 网林家居 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+   * chain: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-10-05 --shops 网林淘宝,里可林天猫,网林家居 --notify-print --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-05\login-preflight-b2.json --logs evidence\batches-2026-10-05\b2
+        跑这一批：体检 → 采集 → 推送 → 回填 → 回读（只跑 网林淘宝、里可林天猫、网林家居）
+     stop: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 网林淘宝,里可林天猫,网林家居
+        停这一批（只停本批店铺的浏览器与代理；商家浏览器与竞品链一律不动）
+[批次] 只打印模式：没有起任何进程、没有跑链、没有停任何东西。
+
+=== 分批驱动 --print（--no-hold）===
+[批次] 版本：sycm-automation 1.7.11
+[批次] 目标日：2026-10-05 → 2026-10-05；每批 5 家；共 2 批；模式：排练（不写飞书）；跑完释放
+[批次] ensure-shared: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+        保证共享实例在（dailyReport）—— 推送段与回读段跑在它上面；整轮都不停它
+[批次] 整轮被挡怎么办：不驻留（--no-hold）：发完告警就结束，窗口随本轮命令一起回收
+[批次] 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝
+   * start: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+        起这一批 5 家（幂等：已就位的不碰）
+     login-preflight: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+        跑前登录守卫（**会碰页面**：掉登录的当场用浏览器密码库登一次，没成才叫人）—— 查的是**这一批**这几家（`--shops` 只给本批，结论也只交给本批的链）
+        结论落：evidence/batches-2026-10-05/login-preflight-b1.json
+     label:里可林淘宝: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+        给 里可林淘宝 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:网林天猫: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+        给 网林天猫 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:盖文淘宝: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+        给 盖文淘宝 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:盖文天猫: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+        给 盖文天猫 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:科塔淘宝: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+        给 科塔淘宝 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+   * chain: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-10-05 --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --notify-print --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-05\login-preflight-b1.json --logs evidence\batches-2026-10-05\b1
+        跑这一批：体检 → 采集 → 推送 → 回填 → 回读（只跑 里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝）
+     stop: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+        停这一批（只停本批店铺的浏览器与代理；商家浏览器与竞品链一律不动）
+[批次] 第 2/2 批：网林淘宝、里可林天猫、网林家居
+   * start: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 网林淘宝,里可林天猫,网林家居
+        起这一批 3 家（幂等：已就位的不碰）
+     login-preflight: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 网林淘宝,里可林天猫,网林家居 --json
+        跑前登录守卫（**会碰页面**：掉登录的当场用浏览器密码库登一次，没成才叫人）—— 查的是**这一批**这几家（`--shops` 只给本批，结论也只交给本批的链）
+        结论落：evidence/batches-2026-10-05/login-preflight-b2.json
+     label:网林淘宝: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林淘宝
+        给 网林淘宝 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:里可林天猫: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林天猫
+        给 里可林天猫 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+     label:网林家居: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林家居
+        给 网林家居 挂/更新窗口标识页（已有就地更新；没有才接管空白页，顺带置前）
+   * chain: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-10-05 --shops 网林淘宝,里可林天猫,网林家居 --notify-print --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-05\login-preflight-b2.json --logs evidence\batches-2026-10-05\b2
+        跑这一批：体检 → 采集 → 推送 → 回填 → 回读（只跑 网林淘宝、里可林天猫、网林家居）
+     stop: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 网林淘宝,里可林天猫,网林家居
+        停这一批（只停本批店铺的浏览器与代理；商家浏览器与竞品链一律不动）
+[批次] 只打印模式：没有起任何进程、没有跑链、没有停任何东西。
+
+=== 定时入口 --print（分批那一档）===
+[定时] 版本：sycm-automation 1.7.11
+[定时] 目标日字面量：2026-10-05（由驱动按 Asia/Shanghai 解析，这里不自己算）
+[定时] 实际会解析成：2026-10-05  ← 只用来给你看一眼；真跑时由驱动在那一刻重新解析（跨零点不漂）
+[定时] 分批跑：每批 5 家 —— 起这一批 → 查本批登录 → 挂店铺标识页 → 跑 → 停这一批（**一律释放**：链成功、链失败、链没跑到，都放）
+[定时] 边界：窗口留不留得住取决于用什么托住 —— 要真的留到人来看，得同时给 --no-release 与 scripts/start-all-hold.mjs（缺一不可）；人不在现场时，可查的证据是证据目录里的日志（batches.log ＋ 链自己的体检原始输出）。
+  ensure-instances: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+     只起共享实例（dailyReport），**一个店铺实例都不起** ——店铺实例由每一批自己的 start 起、stop 停（分批的意义就在这里）
+  ensure-merchant-login: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\login-merchant.mjs --commit --target sycm --notify off
+     共享商家浏览器登录守卫（**会碰页面**：生意参谋掉登录时用浏览器密码库登一次）—— 它是链的整轮级体检唯一的前置：这一台没登成，全部店铺**一家都不会开跑**（登不进去时按整轮的告警口径叫人）
+* batch-chain: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date 2026-10-05 --batch-size 5 --commit --notify-print
+     分批跑（每批 5 家）：起这一批 → 查本批登录 → 挂店铺标识页 → 跑这一批 → 停这一批（**一律释放**）
+[定时] 分批跑的驻留**在分批驱动内部**（不在这个计划里，所以上面看不到那一步）：跑到哪一批被挡就停在哪一批（剩下的批次不跑 —— 整轮被挡对每一批是同一个结论，继续跑只会白起白停并重复告警），把共用窗口留住等人处理，人处理完**自动按批重跑一遍**。要关掉给 --no-hold。
+[定时] 只打印模式：没有起任何进程、也没有跑链。
+
+=== 定时入口 --print --no-hold（证明透传到分批驱动）===
+* batch-chain: C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date 2026-10-05 --batch-size 5 --commit --notify-print --no-hold
+[定时] 分批跑这一档**不驻留**（给了 --no-hold）：整轮被挡时发完告警本轮就结束，窗口随命令结束一起被回收。
