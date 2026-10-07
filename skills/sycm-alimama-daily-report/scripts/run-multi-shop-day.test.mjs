@@ -5,6 +5,9 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { BROWSER_IDS, PROJECT_PORTS, ROUTES, shopBrowserKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
+// 体检 finding 的**编号**是机器判据（`shopFailureCause` 按它分流），所以样例里也用常量而不是字面量：
+// 写死字符串的话，编号改名那天样例仍然「是」那一类，而归因函数已经不认得它了。
+import { HEALTH_CODES } from '../../../runtime/xws-platform-health-preflight.mjs';
 import { renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
 import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
 // 「这一天的源表里没有日期行」这个机器标记的**唯一来源**。样例里必须用它而不是写死字面量 ——
@@ -16,7 +19,7 @@ import { WAITING_OPERATOR_ACCOUNT_SHOPS, waitingOperatorAccountRecord } from '..
 import { planRepair } from './repair-actions.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { IDENTITY_SHOP_HEADER_VERIFIED_SHOPS, shopIdentity } from './shop-identities.mjs';
-import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, roundCauseOf, roundMissingPagesOf, shopFailureCause, stageLabelOf, stageNumber, withSourcePaths } from './run-multi-shop-day.mjs';
+import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, makeLoginWallFinder, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, roundCauseOf, roundMissingPagesOf, shopFailureCause, stageLabelOf, stageNumber, stageSelected, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -2075,4 +2078,95 @@ test('驱动：体检落盘带上 roundCause / missingPages（驻留那一步在
   const block = src.slice(src.indexOf('summary.round.healthCheckDaily = {'), src.indexOf('if (roundHealth.status !== 0)'));
   assert.match(block, /roundCause: roundCauseOf\(/u, '真因必须落盘，否则 hold 与复盘都读不到');
   assert.match(block, /missingPages: roundMissingPagesOf\(/u, '缺哪几页要落盘（告警要拿它挡住「去补页」）');
+});
+
+// ── 2026-10-07：缺陷 ㉘（`--only` 跳不过 push）──────────────────────────────────────────────
+//
+// 现场：`--only health-check,sycm-date-again,backfill` 补回填时，push 明明会被跳过，
+// 但它的源产物守卫写在 `run()` **之前**的外层循环里 ⇒ 因为本轮没跑采集段（`record.source` 空）
+// 而抛「没有拿到 shopXlsxPath / promotionZipPath」⇒ 整家店死在 push 之前，
+// 且日志里连「7. push」都不打印（让人以为卡在别处）。
+
+test('㉘：`stageSelected` 是 `--only` 的唯一点名判据（缺省与边界的口径要写死）', () => {
+  // 不给 `--only` = 全跑；`null` 与 `undefined` 都必须等价（调用方两处都可能传空）。
+  assert.equal(stageSelected(null, 'push'), true);
+  assert.equal(stageSelected(undefined, 'push'), true);
+  assert.equal(stageSelected(['backfill'], 'push'), false);
+  assert.equal(stageSelected(['push'], 'push'), true);
+});
+
+test('㉘：源码级 —— 「跳过」与「push 的源产物守卫」必须用同一个判据', () => {
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  assert.match(src, /if \(!stageSelected\(args\.only, stage\.stage\)\) \{/u,
+    'run() 里的跳过必须走 stageSelected');
+  assert.match(src, /if \(stage\.stage === 'push' && stageSelected\(args\.only, 'push'\)\) \{/u,
+    'push 的源产物守卫必须受 --only 约束，否则被跳过的阶段仍然会执行前置校验');
+  // 反向断言：不许再出现「只看 args.only 不看 stageSelected」的那种写法 ——
+  // 两处各写一遍 `only.includes(...)` 正是这次漂移的成因。
+  assert.doesNotMatch(src, /args\.only && !args\.only\.includes\(/u);
+});
+
+// ── 2026-10-07：缺陷 ③ 的**逐店**那一半（TARGET_PAGE_MISSING 归因错）────────────────────────
+
+test('③：第 0 步被登录墙挡住 ⇒ 结论是 NEEDS_LOGIN（下一步是登录，不是补页）', () => {
+  const cause = shopFailureCause({
+    failedStage: 'health-check',
+    failureOutput: '体检未通过：阻断 1 项',
+    stages: [{ stage: 'health-check', blockingCodes: [HEALTH_CODES.TARGET_PAGE_LOGIN_WALL] }],
+  });
+  assert.equal(cause, 'NEEDS_LOGIN');
+  // 光改结论还不够：驻留与「要不要人」只认 HUMAN_REQUIRED_CAUSES，不进这个集合等于没改。
+  assert.ok(HUMAN_REQUIRED_CAUSES.includes('NEEDS_LOGIN'));
+});
+
+test('③：第 0 步被挡但**不是**登录墙 ⇒ 仍旧 SHOP_BLOCKED（不许把「页面真的缺」也一起改判）', () => {
+  assert.equal(shopFailureCause({
+    failedStage: 'health-check',
+    stages: [{ stage: 'health-check', blockingCodes: [HEALTH_CODES.TARGET_PAGE_MISSING] }],
+  }), 'SHOP_BLOCKED');
+  // 老 summary / 造出来的样例没有 blockingCodes 这一栏 ⇒ 逐字落回旧口径。
+  assert.equal(shopFailureCause({ failedStage: 'health-check' }), 'SHOP_BLOCKED');
+});
+
+test('③：整轮被挡时，体检 finding 本身就能把真因判成 ROUND_LOGIN_WALL（不必等归位留下 from）', () => {
+  const findings = [{ code: HEALTH_CODES.TARGET_PAGE_LOGIN_WALL }];
+  assert.equal(roundCauseOf({ ok: false, normalize: { actions: [] }, findings }), 'ROUND_LOGIN_WALL');
+  // 没有这条证据就落回 ROUND_BLOCKED —— 「读不到不下结论」的老口径不变。
+  assert.equal(roundCauseOf({ ok: false, normalize: { actions: [] } }), 'ROUND_BLOCKED');
+  assert.equal(roundCauseOf({ ok: false, normalize: { actions: [] }, findings: [] }), 'ROUND_BLOCKED');
+});
+
+test('③：makeLoginWallFinder 只认「本站点的登录页」，不认工作页、也不认别的站点的登录页', () => {
+  const find = makeLoginWallFinder();
+  const sycm = siteAdapter('sycm').urlFragment;
+  const alimama = siteAdapter('alimama').urlFragment;
+  // 两个站点的未登录形态都取实测值（见 login-merchant-core 的 SITES）。
+  assert.ok(find({ fragment: sycm, targets: [{ url: 'https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop' }] }));
+  assert.ok(find({ fragment: alimama, targets: [{ url: 'https://one.alimama.com/index.html#!/login/index' }] }));
+  // 工作页 ≠ 登录页。
+  assert.equal(find({ fragment: sycm, targets: [{ url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop' }] }), null);
+  // **宿主必须对上**：阿里妈妈的登录页不能被当成生意参谋的登录墙（反过来同理）。
+  assert.equal(find({ fragment: sycm, targets: [{ url: 'https://one.alimama.com/index.html#!/login/index' }] }), null);
+  // 片段认不出宿主 ⇒ 返回 null（＝「判不出来」，落回 TARGET_PAGE_MISSING，不冒充登录墙）。
+  assert.equal(find({ fragment: 'example.com/x', targets: [] }), null);
+});
+
+test('③：源码级 —— 三层接线都必须接上（判据全绿但没接上，是本仓吃过三次的亏）', () => {
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  // ① 体检工厂必须真的拿到判据：只写一个没人传的函数名，等于这条判据从未生效。
+  const factory = src.slice(src.indexOf('const check = createPlatformHealthCheck({'));
+  assert.match(factory.slice(0, 400), /isLoginWall: makeLoginWallFinder\(\)/u,
+    'createPlatformHealthCheck 没有拿到 isLoginWall ⇒ 判据写了也不会被调用');
+  // ② 拦截项的**编号**必须落进收据：`shopFailureCause` 就是按它分流的。
+  assert.match(src, /blockingCodes: result\.detail\?\.blocking\?\.map\(\(finding\) => finding\.code\) \?\? null,/u,
+    'blockingCodes 没有落进 record.stages ⇒ 归因函数读不到，结论永远落回 SHOP_BLOCKED');
+  // ③ 归因函数必须真的读它（而不是只留了个字段）。
+  const cause = src.slice(src.indexOf("if (r.failedStage === 'health-check') {"));
+  assert.match(cause.slice(0, 700), /item\.blockingCodes/u,
+    'shopFailureCause 没有读 blockingCodes');
+  assert.match(cause.slice(0, 700), /HEALTH_CODES\.TARGET_PAGE_LOGIN_WALL/u,
+    'shopFailureCause 没有把登录墙分出来');
+  // ④ 整轮那条也要拿到 findings（否则共用窗口掉登录时仍可能落回「页面不齐」）。
+  assert.match(src, /findings: roundHealth\.detail\?\.findings/u,
+    'roundCauseOf 没有拿到体检 findings');
 });

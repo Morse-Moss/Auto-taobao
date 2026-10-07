@@ -81,7 +81,7 @@ import { normalizePages } from '../../../runtime/page-normalize.mjs';
 // 会报出错误的位置、`judgeResetLanded` 也会判错。判据必须与体检、落位同源。
 import { urlMatchesFragment } from '../../../runtime/target-url-match.mjs';
 import { READABLE_SOURCE_KEYS, renderAlertText } from '../../../runtime/notify-feishu-core.mjs';
-import { createPlatformHealthCheck } from '../../../runtime/xws-platform-health-preflight.mjs';
+import { HEALTH_CODES, createPlatformHealthCheck } from '../../../runtime/xws-platform-health-preflight.mjs';
 // 日期原语（`shiftIso`/`shanghaiToday`/`resolveTargetDate`）的 import 挪到下面
 // 「目标日：只有一个来源」那一段 —— 那里也是它们的转出口，两处写会看着像两份来源。
 // 平台词表（`sites` → 中文页名）的唯一来源。告警里说「哪个后台掉登录」时必须用它，
@@ -236,6 +236,23 @@ export const FAILURE_CAUSES = Object.freeze(
 export const HUMAN_REQUIRED_CAUSES = Object.freeze(['NEEDS_LOGIN', 'PAGE_OBSTRUCTED']);
 
 /**
+ * `--only` 的点名判据：**只此一处实现**。
+ *
+ * 为什么必须抽成函数（2026-10-07 缺陷 ㉘）：`--only` 原先只在 `run()` 内部生效，
+ * 而 `push` 的源产物守卫（`withSourcePaths`）写在**调用 `run()` 之前的外层循环里** ——
+ * 于是「只想补回填」时（`--only health-check,sycm-date-again,backfill`），push 明明会被跳过，
+ * 守卫却照样先跑一遍，因为 `record.source` 里没有本轮的产物而抛
+ * 「没有拿到 shopXlsxPath / promotionZipPath」⇒ **整家店在 push 之前就死了**，
+ * 而且日志里连「7. push」那一行都不打印（让人以为卡在别处）。
+ *
+ * 抽成同一个函数的理由与其余判据一致：两处各写一遍 `only.includes(...)` 就是两个事实，
+ * 改动一处就漂移 —— 而这次的漂移形态是「被跳过的阶段仍然被执行前置校验」。
+ */
+export function stageSelected(only, name) {
+  return !only || only.includes(name);
+}
+
+/**
  * 一家店的失败是哪一类。
  *
  * **成因不同、要做的事不同，就必须分开**：收信人照着一条对不上现场的建议去做，
@@ -286,7 +303,20 @@ export function shopFailureCause(record) {
   //   ③ 分诊会把它落回「要人处理」，而它其实是**已经修好的那一步**（`ensure-inquiry-rows`）没跑成功。
   // 刻意**不**把它放进 `HUMAN_REQUIRED_CAUSES`：窗口留住没有用 —— 没有哪一页需要人碰。
   if (String(r.failureOutput ?? '').includes(INQUIRY_ROW_MISSING_TOKEN)) return 'INQUIRY_ROW_MISSING';
-  if (r.failedStage === 'health-check') return 'SHOP_BLOCKED';
+  // 2026-10-07 加（缺陷 ③ 的**逐店**那一半）：第 0 步体检被挡时，先分清是「**掉登录**」
+  // 还是「页面真的缺」。这两件事的下一步相反 —— 掉登录要去登录（重开页面只会再落回登录页），
+  // 缺页才要去补页。而在此之前两者都落 `SHOP_BLOCKED`，收信人拿到的下一步是去补页。
+  //
+  // 现场（补科塔淘宝 10-06）：店铺那台实例掉登录后，生意参谋页被踢到 `custom/login.htm?_target=…`，
+  // 结构判据不算它命中 ⇒ 报 `TARGET_PAGE_MISSING`「目标页面不在这个浏览器里」。
+  // 判据用体检 finding 的**编号**（`blockingCodes`），不用措辞 —— 本项目在 `.includes('…')` 上吃过亏。
+  if (r.failedStage === 'health-check') {
+    const codes = (Array.isArray(r.stages) ? r.stages : [])
+      .filter((item) => item?.stage === 'health-check')
+      .flatMap((item) => (Array.isArray(item.blockingCodes) ? item.blockingCodes : []));
+    if (codes.includes(HEALTH_CODES.TARGET_PAGE_LOGIN_WALL)) return 'NEEDS_LOGIN';
+    return 'SHOP_BLOCKED';
+  }
   if (r.failedStage === 'push'
     && /duplicate daily report row exists/u.test(String(r.failureOutput ?? ''))) return 'DUPLICATE_TARGET';
   return 'STAGE_FAILED';
@@ -375,6 +405,41 @@ export function buildRepairRequest({ shopKey, stage = null, error = null, percep
 }
 
 /**
+ * 给体检层用的**登录墙**判据（缺陷 ③ 的逐店那一半，2026-10-07 加）。
+ *
+ * 现场：店铺自己那台实例掉登录后，生意参谋页被平台踢到
+ * `sycm.taobao.com/custom/login.htm?_target=…`。而「页签属于哪个期望页面」是**结构判据**
+ * （`pagesMatching`，见 `runtime/target-url-match.mjs` 文件头）——它刻意**不**把 `_target=`
+ * 里的地址算作命中，否则登录跳转页会被当成工作页 ⇒ 判成「不唯一」。这个设计是对的，
+ * 副作用是：掉登录在体检里长成了「目标页找到 0 个」⇒ 报 `TARGET_PAGE_MISSING`
+ * 「目标页面不在这个浏览器里…采集会从落位那一步就失败」，把排查引向页面。
+ * 2026-10-07 补科塔淘宝 10-06 时就是这么被指错方向的（重开页面会被再送回登录页）。
+ *
+ * 判据**不在这里另写**：用 `login-merchant-core.mjs` 的 `SITES[].loggedOut` ——
+ * 那是 2026-09-23 实测出来的未登录 URL 形态（生意参谋 `/custom/login.htm`，
+ * 阿里妈妈 `#!/login/index`），是这条链上「掉登录」的唯一定义处。
+ *
+ * 「宿主是谁」由片段里的 `pageMatch` 决定，也不另立一张表：`SITES` 里每个站点自己带着它。
+ *
+ * 返回的函数收到 `{ fragment, targets }`，命中返回 `{ url, site }`，否则 `null`。
+ * 读了但没命中 = 不是登录墙（落回 `TARGET_PAGE_MISSING`），不是「不知道」。
+ */
+export function makeLoginWallFinder() {
+  return ({ fragment, targets } = {}) => {
+    const text = String(fragment ?? '');
+    const entry = Object.entries(SITES).find(([, cfg]) => text.includes(cfg.pageMatch));
+    if (!entry) return null;
+    const [siteKey, cfg] = entry;
+    const list = Array.isArray(targets) ? targets : [];
+    const hit = list.find((target) => {
+      const url = String(target?.url ?? '');
+      return url.includes(cfg.pageMatch) && cfg.loggedOut.test(url);
+    });
+    return hit ? { url: String(hit.url), site: siteKey } : null;
+  };
+}
+
+/**
  * 「整轮被挡」的**真因**（2026-10-06 加）。纯函数，输入就是体检那一步留下的 `detail` 与 `normalize`。
  *
  * 为什么必须有它（2026-10-06 的真实事故）：整轮被挡时，告警的结论改判**只**照跑前那一次
@@ -390,8 +455,14 @@ export function buildRepairRequest({ shopKey, stage = null, error = null, percep
  * 返回：`null`（体检通过）｜`'ROUND_LOGIN_WALL'`｜`'ROUND_BLOCKED'`。
  * **读不到 `from` 一律落回 `ROUND_BLOCKED`**：缺证据不下结论，宁可给旧口径也不编一个。
  */
-export function roundCauseOf({ ok, normalize } = {}) {
+export function roundCauseOf({ ok, normalize, findings = null } = {}) {
   if (ok !== false) return null;
+  // ① 第一手证据（2026-10-07 加）：体检层自己已经把这一次判成了登录墙。
+  //    它比下面那条更直接 —— 那条要等归位真的动过一次手才留得下 `from`。
+  const byFinding = (Array.isArray(findings) ? findings : [])
+    .some((finding) => finding?.code === HEALTH_CODES.TARGET_PAGE_LOGIN_WALL);
+  if (byFinding) return 'ROUND_LOGIN_WALL';
+  // ② 旧口径（2026-10-06）：归位记录里 `reclaim` 的 `from` 就是「那个页签当时实际停在哪」。
   const actions = Array.isArray(normalize?.actions) ? normalize.actions : [];
   const onLoginWall = actions.some((action) => isSycmLoginWallUrl(action?.from));
   return onLoginWall ? 'ROUND_LOGIN_WALL' : 'ROUND_BLOCKED';
@@ -1714,7 +1785,8 @@ async function main() {
     // 而它在**另一个进程**里，只能读落盘的东西；② 事后复盘时「这一轮到底是哪种被挡」
     // 必须能从证据里读出来，否则人只能再跑一次体检去猜。
     // 判据是纯函数 `roundCauseOf`，输入就是这一步手里的 `detail` 与 `normalize`。
-    roundCause: roundCauseOf({ ok: roundHealth.detail?.ok, normalize: roundHealth.normalize }),
+    roundCause: roundCauseOf({ ok: roundHealth.detail?.ok, normalize: roundHealth.normalize,
+      findings: roundHealth.detail?.findings }),
     missingPages: roundMissingPagesOf(roundHealth.normalize),
   };
   if (roundHealth.status !== 0) {
@@ -1752,7 +1824,7 @@ async function main() {
     const run = async (stage) => {
       index += 1;
       const withIndex = { ...stage, index };
-      if (args.only && !args.only.includes(stage.stage)) {
+      if (!stageSelected(args.only, stage.stage)) {
         console.log(`[${key}] ${index}. ${stage.stage} —— 跳过（--only 没点名）`);
         return { status: 0, skipped: true, stdout: '', logPath: null };
       }
@@ -1770,6 +1842,10 @@ async function main() {
         // 体检到底拦在哪一条，要跟着收据一起留下来：告警里那句「哪一页不齐」就是从这儿来的。
         // 不记的话，收信人只能看到「体检没过」，还得自己去翻日志（＝太笼统）。
         blockingDetails: result.detail?.blocking?.map((finding) => finding.detail) ?? null,
+        // 拦截项的**编号**也要留（2026-10-07 加）：`blockingDetails` 只有人话，而
+        // `shopFailureCause` 要按编号分流（`TARGET_PAGE_LOGIN_WALL` ⇒ 下一步是登录而不是补页）。
+        // 只看人话就得在归因处再猜一次措辞 —— 本项目在 `.includes('…')` 上吃过的亏已经够多。
+        blockingCodes: result.detail?.blocking?.map((finding) => finding.code) ?? null,
         // 体检那一支的归位结论（别的阶段是 null）：它回答「这次的不齐是本来就坏、还是脚本修好的」。
         pageNormalize: result.normalize?.verdict?.detail ?? null });
       return result;
@@ -1838,8 +1914,11 @@ async function main() {
         // `--shop-xlsx` / `--promotion-zip` 在 run-daily-report.mjs 里是必填参数，
         // 「只读核对就不给源文件」会让 push 直接 missing required argument —— 那就不是只读，
         // 而是连核对都没跑。所以 verify 与 commit 一样要带上采集段的产物路径。
+        // ⚠️ 只有**这一步真的会跑**时才需要源产物（2026-10-07 缺陷 ㉘）：
+        // `--only` 没点名 push 时它会被 `run()` 直接跳过，此时提前去要那两个路径
+        // 只会让整家店死在 push 之前。判据与 `run()` 里的跳过**同一处实现**（`stageSelected`）。
         let argv = stage.argv;
-        if (stage.stage === 'push') {
+        if (stage.stage === 'push' && stageSelected(args.only, 'push')) {
           const sources = explicitSources.shopXlsx
             ? explicitSources
             : { shopXlsx: record.source.shopXlsx, promotionZip: record.source.promotionZip };
@@ -2129,6 +2208,9 @@ async function runHealthCheck({ shopKey, stage, logDir, repoRoot, browserKey = n
     const check = createPlatformHealthCheck({
       browserKey: key,
       expectedPages: pages,
+      // 「目标页 0 命中」要能分清「页面真的缺」与「掉登录被踢到登录页」——
+      // 判据由调用方注入（站点登录页形态住在 login-merchant-core 的 SITES 里，是唯一来源）。
+      isLoginWall: makeLoginWallFinder(),
     });
     result = await check({});
     const warnings = result.findings.filter((finding) => !finding.blocking);

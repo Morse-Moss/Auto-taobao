@@ -69,6 +69,11 @@ export const HEALTH_REASONS = Object.freeze({
   BROWSER_DEBUG_PORT: 'BROWSER_DEBUG_PORT',           // 复用既有：端口不可用/被别的东西占着
   EGRESS_PROXY_UNREACHABLE: 'EGRESS_PROXY_UNREACHABLE', // 新增：出网代理不通报
   TARGET_PAGE_MISSING: 'TARGET_PAGE_MISSING',         // 新增：目标页面不在，或多于一个
+  // 2026-10-07 新增：目标页 0 命中，但同一个浏览器里停着它的**登录页**。
+  // 复用诊断层已有的 `LOGIN_REQUIRED`（`round-notify-policy.mjs` 里已有结论：
+  // 「插件或平台登录已失效 / 在同一个浏览器配置里重新登录」）——这是同一种现场，
+  // 新造一个词只会让运营多认一个词、还少一处已写好的下一步。
+  LOGIN_REQUIRED: 'LOGIN_REQUIRED',
 });
 
 export const HEALTH_CODES = Object.freeze({
@@ -83,6 +88,10 @@ export const HEALTH_CODES = Object.freeze({
   TARGET_PAGE_MISSING: 'TARGET_PAGE_MISSING',
   TARGET_PAGE_AMBIGUOUS: 'TARGET_PAGE_AMBIGUOUS',
   TARGET_PAGE_UNREADABLE: 'TARGET_PAGE_UNREADABLE',
+  // 2026-10-07 新增。**与 `TARGET_PAGE_MISSING` 分开的唯二理由**：下一步动作不同
+  // （去登录 vs 去补页）。混在一个 code 里，收信人拿到的是「按 SOP 重开目标页面」——
+  // 而重开只会再一次落到登录页。2026-10-07 科塔淘宝 10-06 那次就是这么被指错方向的。
+  TARGET_PAGE_LOGIN_WALL: 'TARGET_PAGE_LOGIN_WALL',
 });
 
 // 每层的实现状态。**未实现必须写明卡在哪**，否则下一个人只能靠猜。
@@ -164,7 +173,18 @@ export function classifyBrowserPort({ inspection, expectedProfile, port } = {}) 
 // 目标页面：按 URL 片段数一遍，必须**恰好**每个站一个。
 // 判据取自已经在跑的 `date-picker.resolveTarget`（同一个片段、同样「恰好一个」的口径），
 // 页面片段由调用方注入，避免在第二处再写一遍。
-export function classifyExpectedPages({ targets, expectedPages, readable = true } = {}) {
+//
+// `isLoginWall`（2026-10-07 加）同样是**注入**的，理由与 `expectedPages` 一字不差：
+// 「某个 URL 是不是这个站点的登录页」是**平台知识**，而本模块是机制层 —— 认识它就等于把
+// 站点词表抄进 runtime，改一处漂移一处。调用方（日报链）从 `login-merchant-core.mjs` 的
+// `SITES` 取，那是**实测过的**未登录 URL 形态，不是猜的选择器。
+//
+// 为什么需要它（缺陷 ③ 的逐店那一半，2026-10-07 科塔淘宝 10-06 现场）：掉登录之后，
+// 生意参谋页被平台踢到 `custom/login.htm?_target=…`，而 `pagesMatching` 是**结构判据**、
+// 刻意不把 `_target=` 里的地址算作命中 ⇒ 目标页「找到 0 个」⇒ 报 `TARGET_PAGE_MISSING`
+// （正文「目标页面不在这个浏览器里…采集会从落位那一步就失败」）。真因是登录墙，
+// 而这条文案把排查引向页面：重开页面会被再送回登录页，白跑一趟。
+export function classifyExpectedPages({ targets, expectedPages, readable = true, isLoginWall = null } = {}) {
   const findings = [];
   if (!Array.isArray(expectedPages) || expectedPages.length === 0) return findings;
   if (!readable) {
@@ -186,6 +206,29 @@ export function classifyExpectedPages({ targets, expectedPages, readable = true 
     if (!fragment) continue;
     const hits = pagesMatching(list, fragment);
     if (hits.length === 1) continue;
+    if (hits.length === 0 && typeof isLoginWall === 'function') {
+      // 「0 命中」有两种成因，先问证据再下结论。读不到登录页（返回 null/抛）= 不下这个结论，
+      // 落到下面的 `TARGET_PAGE_MISSING` —— 缺证据不下结论，与本文件头第 1 条同一条纪律。
+      let wall = null;
+      try {
+        wall = isLoginWall({ page, fragment, targets: list });
+      } catch {
+        wall = null;
+      }
+      if (wall) {
+        findings.push({
+          layer: HEALTH_LAYERS.ENVIRONMENT,
+          code: HEALTH_CODES.TARGET_PAGE_LOGIN_WALL,
+          state: HEALTH_STATES.AUTH_REQUIRED,
+          reason: HEALTH_REASONS.LOGIN_REQUIRED,
+          detail: `目标页面「${name}」不见了，但同一个浏览器里停着它的登录页（${String(wall.url ?? wall)}）`
+            + ' —— 这是**登录墙**，不是页面不齐：重开页面只会再落到登录页。'
+            + '先去这个浏览器配置里重新登录（店铺实例可用 login-merchant 自动登），登录后再跑。',
+          blocking: true,
+        });
+        continue;
+      }
+    }
     findings.push({
       layer: HEALTH_LAYERS.ENVIRONMENT,
       code: hits.length === 0 ? HEALTH_CODES.TARGET_PAGE_MISSING : HEALTH_CODES.TARGET_PAGE_AMBIGUOUS,
@@ -442,6 +485,9 @@ export function createPlatformHealthCheck(options = {}) {
     // 两个都不给 = 不检查页面数量，这件事会在收据的 note 里以「没跑这一小项」的形态可见。
     expectedPages = null,
     routeKey = null,
+    // 「某个 URL 是不是这个站点的登录页」由调用方注入（理由见 `classifyExpectedPages`）。
+    // 不给 ⇒ 退回旧口径（0 命中一律报 `TARGET_PAGE_MISSING`），与加这个选项之前逐字相同。
+    isLoginWall = null,
     egressProxy = process.env.PROJECT_EGRESS_PROXY ?? null,
     // 给了它才算「真的证明过一次出网」；不给就只探端口，并如实报「未证明」。
     egressProbeUrl = process.env.PROJECT_EGRESS_PROBE_URL ?? null,
@@ -496,7 +542,7 @@ export function createPlatformHealthCheck(options = {}) {
     if (pages.length > 0) {
       try {
         const targets = await readTargetsImpl(proxyUrl, timeoutMs);
-        findings.push(...classifyExpectedPages({ targets, expectedPages: pages, readable: true }));
+        findings.push(...classifyExpectedPages({ targets, expectedPages: pages, readable: true, isLoginWall }));
       } catch {
         findings.push(...classifyExpectedPages({ targets: [], expectedPages: pages, readable: false }));
       }

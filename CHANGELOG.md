@@ -15,6 +15,44 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.7.15] - 2026-10-07
+
+用户指令（原话）：「修复这些问题，然后收尾吧」。修的是**当天真机上撞出来的两个缺陷**：
+③ 的逐店那一半（`TARGET_PAGE_MISSING` 归因错）与 ㉘（`--only` 跳不过 `push`）。
+
+### 修 ③（逐店那一半）：第 0 步被登录墙挡住时，不再报「页面不齐」
+- **现场**：补科塔淘宝 10-06 时，店铺那台实例掉登录 ⇒ 生意参谋页被平台踢到
+  `sycm.taobao.com/custom/login.htm?_target=…` ⇒ 链停在第 0 步，报
+  `TARGET_PAGE_MISSING`「目标页面不在这个浏览器里…采集会从落位那一步就失败」。
+  **真因是登录墙**，而这条文案把排查引向页面 —— 重开页面只会再落到登录页（白跑一趟）。
+- **为什么会长成这样**：认页面用的是**结构判据**（`pagesMatching`，查询串与 hash 不参与匹配），
+  它刻意不把 `_target=` 里的地址算作命中 —— 这个设计是对的（否则登录跳转页会被当成工作页，
+  报「不唯一」，2026-09-17 与 09-22 各坑过一次）。副作用就是掉登录长成了「0 命中」。
+- **改法**：`classifyExpectedPages` 在「0 命中」时先问一次注入进来的 `isLoginWall`。
+  命中 ⇒ 发新编号 `TARGET_PAGE_LOGIN_WALL` / 理由 `LOGIN_REQUIRED` / 状态 `AUTH_REQUIRED`；
+  没命中或判据自己抛错 ⇒ **逐字落回旧口径**（缺证据不下结论，与本模块文件头第 1 条同一条纪律）。
+  「哪个 URL 是这个站点的登录页」是**平台知识**，由调用方注入（与 `expectedPages` 同一套注入模式），
+  取值来自 `login-merchant-core.mjs` 的 `SITES[].loggedOut`（2026-09-23 实测值，唯一定义处），
+  机制层不抄站点词表。
+- **归因跟着改**：`record.stages[].blockingCodes` 开始记录拦截项的**编号**；
+  `shopFailureCause` 见到登录墙 ⇒ 结论 `NEEDS_LOGIN`（下一步＝去登录；它在 `HUMAN_REQUIRED_CAUSES` 里，
+  驻留与「要不要人」都跟着对）。`roundCauseOf` 也优先读体检 findings（原先只能等归位留下 `from`）。
+- **验证到什么程度**：仅离线判据 —— `runtime/xws-platform-health-preflight.test.mjs` 新增 6 条、
+  技能侧新增 7 条（含一条**接线**断言：工厂真的拿到 `isLoginWall`、编号真的落进收据、
+  归因函数真的读它、`roundCauseOf` 真的拿到 findings）。8 条突变逐条改坏源码，
+  确认**指名的那条**用例变红（`tmp/mutation-verify-2026-10-07.mjs`，`ALL_GOOD`）。
+  真机依据是同日的现场（科塔淘宝 10-06 那两次跑），见 1.7.14 条目。
+
+### 修 ㉘：`--only` 没点名 `push` 时，不再被 push 的源产物守卫拦下整家店
+- **现场**：`--only health-check,sycm-date-again,backfill` 想只补回填，7 家**全部**死在
+  「没有拿到 shopXlsxPath / promotionZipPath」，而且日志里连「7. push」都没打印（让人以为卡在别处）。
+- **根因**：push 的前置守卫 `withSourcePaths` 写在**外层循环里**，排在 `run()`（`--only` 的跳过在里面）
+  **之前** ⇒ 被跳过的阶段照跑前置校验。
+- **改法**：抽 `stageSelected(only, name)` 作 `--only` 的**唯一点名判据**，守卫与跳过共用它；
+  守卫加上 `&& stageSelected(args.only, 'push')`。跳过某一步就不该为它要产物。
+- **验证**：仅离线判据 —— 新增 2 条（语义边界 + 一条源码级反断言：不许再出现
+  「只看 `args.only`」的写法），突变验证覆盖。
+
 ## [1.7.14] - 2026-10-07
 
 用户指令（原话）：「要补齐销售一部的数据二部先别动」。

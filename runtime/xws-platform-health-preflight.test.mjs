@@ -487,3 +487,84 @@ test('CLI：环境有问题退出 2 并给出人话；全绿退出 0', async () 
   // 即使全绿，也必须点名「哪几层没检查过」。
   assert.match(payload.note, /未实现的层/u);
 });
+
+// ── 2026-10-07 新增：目标页 0 命中时，先分清「页面真的缺」与「掉登录被踢到登录页」────────────
+//
+// 这是缺陷 ③ 的**逐店**那一半（整轮那一半 2026-10-06 已修）。现场：补科塔淘宝 10-06 时，
+// 店铺那台实例掉登录，生意参谋页被踢到 `custom/login.htm?_target=…`；因为认页面是**结构判据**
+// （`pagesMatching` 刻意不把 `_target=` 里的地址算命中），它表现成「目标页找到 0 个」⇒
+// 旧口径报 `TARGET_PAGE_MISSING`「目标页面不在这个浏览器里…采集会从落位那一步就失败」，
+// 于是排查从页面开始 —— 而重开页面只会再落到登录页。
+//
+// 判据是**注入**的（`isLoginWall`）：认识「哪个 URL 是这个站点的登录页」是平台知识，
+// 抄进机制层就是第二个事实。下面几条把两个方向都钉住：命中了要改口，**没命中/读不到要原样落回**。
+
+const SYCM_EXPECTED_PAGE = Object.freeze({
+  name: '生意参谋工作页',
+  urlFragment: 'sycm.taobao.com/qos/service/frame/shop/performance',
+});
+// ⚠️ `type: 'page'` 不能少：`pagesMatching` 只认页签（与旧口径一致），少了它连「页面在」都算不出来。
+const SYCM_LOGIN_TARGET = Object.freeze({
+  type: 'page',
+  url: 'https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop',
+});
+const SYCM_WORK_TARGET = Object.freeze({
+  type: 'page',
+  url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop',
+});
+
+test('体检：目标页 0 命中、但列表里停着它的登录页 ⇒ 报登录墙，不再下「页面不齐」的结论', () => {
+  const findings = classifyExpectedPages({
+    targets: [SYCM_LOGIN_TARGET],
+    expectedPages: [SYCM_EXPECTED_PAGE],
+    isLoginWall: () => ({ url: SYCM_LOGIN_TARGET.url }),
+  });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].code, HEALTH_CODES.TARGET_PAGE_LOGIN_WALL);
+  assert.equal(findings[0].reason, HEALTH_REASONS.LOGIN_REQUIRED);
+  assert.equal(findings[0].state, HEALTH_STATES.AUTH_REQUIRED);
+  assert.equal(findings[0].blocking, true);
+  assert.match(findings[0].detail, /登录墙/u);
+  // 关键：**不能**同时留着旧那句 —— 两句矛盾的下一步会让收信人挑错那条去做。
+  assert.doesNotMatch(findings[0].detail, /目标页面不在这个浏览器里/u);
+});
+
+test('体检：登录墙判据说「不是」时，逐字落回旧口径（这是回归保护，不是重复断言）', () => {
+  const findings = classifyExpectedPages({
+    targets: [{ type: 'page', url: 'https://sycm.taobao.com/qos/service/frame/shop/other' }],
+    expectedPages: [SYCM_EXPECTED_PAGE],
+    isLoginWall: () => null,
+  });
+  assert.equal(findings[0].code, HEALTH_CODES.TARGET_PAGE_MISSING);
+  assert.equal(findings[0].reason, HEALTH_REASONS.TARGET_PAGE_MISSING);
+});
+
+test('体检：不给 isLoginWall ⇒ 与加这个选项之前逐字相同（默认不变）', () => {
+  const withOut = classifyExpectedPages({ targets: [SYCM_LOGIN_TARGET], expectedPages: [SYCM_EXPECTED_PAGE] });
+  assert.equal(withOut[0].code, HEALTH_CODES.TARGET_PAGE_MISSING);
+  assert.equal(withOut[0].state, HEALTH_STATES.AUTH_UNKNOWN);
+});
+
+test('体检：登录墙判据自己抛错 ⇒ 落回 TARGET_PAGE_MISSING（缺证据不下结论）', () => {
+  const findings = classifyExpectedPages({
+    targets: [SYCM_LOGIN_TARGET],
+    expectedPages: [SYCM_EXPECTED_PAGE],
+    isLoginWall: () => { throw new Error('probe blew up'); },
+  });
+  assert.equal(findings[0].code, HEALTH_CODES.TARGET_PAGE_MISSING);
+});
+
+test('体检：页面**在**的时候一次都不问登录墙（判据不许在正常路径上白跑）', () => {
+  let asked = 0;
+  const findings = classifyExpectedPages({
+    targets: [SYCM_WORK_TARGET],
+    expectedPages: [SYCM_EXPECTED_PAGE],
+    isLoginWall: () => { asked += 1; return null; },
+  });
+  assert.equal(findings.length, 0);
+  assert.equal(asked, 0);
+});
+
+test('体检：新理由 LOGIN_REQUIRED 在通知判据表里有结论（反向守住，别靠人记得补表）', () => {
+  assert.deepEqual(missingPolicyKeys([HEALTH_REASONS.LOGIN_REQUIRED]), []);
+});
