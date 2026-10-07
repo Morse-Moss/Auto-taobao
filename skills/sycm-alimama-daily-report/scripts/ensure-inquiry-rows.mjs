@@ -22,17 +22,23 @@
  *     ⇒ **整批一行都不建**（半路建一半会让状态更难说清，而「建了一半」在表上与「建完了」长得一样）。
  *   · **独立回读**：写完**重新拉一次全表**再断言，不信写入响应（本仓吃过太多次「自己说成了」）。
  *
- * ── 为什么默认是**全部 13 家登记店**（`shopBrowserKeys()`）而不是参与采集的 8 家 ──
- * 行骨架回答的是「这张表**声明**了哪些店铺」——它的「店铺」单选选项恰好是 13 项，
- * 历史预建行也按 13 家铺；而 `collectingShopKeys()`（8 家＝销售1部，销售2部整部门停采）
- * 回答的是「今天采不采」。两者只在停采时不同，而**停采是临时的**（恢复只需删一行配置）。
- * 若按 8 家铺，恢复采集那天会先缺 5 家的行、再补；按 13 家铺则不用管这件事。
- * 要收窄就显式给 `--shops`（`run-daily-job.mjs --shops` 会原样转过来）。
+ * ── 目标范围（用户 2026-10-07 晚拍板：「要补齐销售一部的数据，二部先别动」）──
+ * 默认＝`collectingShopKeys()`（8 家 ＝ 销售1部）。**不是** `shopBrowserKeys()`（13 家 ＝ 登记表全量）。
+ *
+ * 为什么从 13 家收到 8 家：行骨架回答的是「这张表的值该由谁写」。销售2部那 5 家整部门停采
+ * （`SHOPS_NOT_COLLECTING_YET`），按 13 家铺 ＝ **每天往二部那 5 行写两列、然后它们永远空着**
+ * —— 那本身就是「在动二部」。用户口径：二部先别动，所以默认收成「参与采集的那 8 家」，
+ * 与链上其它步骤同源（`collectingShopKeys()`）。
+ * 二部并不是被封禁：要临时给它们建行，显式点名即可（`--shops 保拉淘宝,…`），
+ * 只是不再有「不给参数就把 13 家顺手铺了」这条默认路径。
+ * 认下的代价：二部将来恢复采集那天，得先点一次 `--shops` 把它们那几天的行补上 ——
+ * 比「默认每天都在动二部」更小的意外。
  *
  * ── 用法 ────────────────────────────────────────────────────────────────
  *   node …/ensure-inquiry-rows.mjs --date 2026-10-06            # 排练：只算该建哪些，一个字节都不写
  *   node …/ensure-inquiry-rows.mjs --date 2026-10-06 --commit   # 真建（缺几行建几行）
  *   node …/ensure-inquiry-rows.mjs --date yesterday --commit --shops 科塔淘宝
+ *   node …/ensure-inquiry-rows.mjs --date yesterday --commit --shops 保拉淘宝,保拉天猫   # 点名二部（临时）
  *   node …/ensure-inquiry-rows.mjs --date 2026-10-06 --commit --evidence evidence/daily-job-2026-10-06
  * 退出码：0＝目标行的状态已确认（本来就齐 / 建好并回读通过）；1＝失败；2＝用法错误。
  */
@@ -42,7 +48,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { dailyReportTargets, loadFeishuCredentials } from '../../../runtime/feishu-targets.mjs';
-import { shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
+import { shopBrowserKeys, collectingShopKeys } from '../../../runtime/browser-ports.mjs';
 import { reportDateEpoch } from './daily-report-core.mjs';
 import { resolveTargetDate } from './date-picker.mjs';
 import {
@@ -77,17 +83,23 @@ function parseArgs(argv) {
   return { args };
 }
 
-/** 目标店铺名单：显式给了 `--shops` 就用它，否则＝**全部登记店**（见文件头那段口径）。 */
-function resolveTargetShops(args) {
-  const registered = shopBrowserKeys();
-  if (!args.shops) return registered;
-  const unknown = args.shops.filter((shop) => !registered.includes(shop));
+/**
+ * 目标店铺名单（**纯函数**：两个名单都由参数注入，才能离线断言范围口径而不起任何东西）。
+ *
+ * 默认 ＝ `collectingShopKeys()`（参与采集的 8 家 ＝ 销售1部），见文件头「目标范围」那段。
+ * 显式给了 `shops` 就用它 —— 但仍必须是**已登记**的店（含二部，保留临时点名的能力）；
+ * 顺序按登记表，不按调用方给的顺序：同一件事的产物形状不该随命令行写法而变。
+ */
+export function resolveTargetShops(shops, deps = {}) {
+  const registered = deps.registered ?? shopBrowserKeys();
+  const collecting = deps.collecting ?? collectingShopKeys();
+  if (!shops || shops.length === 0) return [...collecting];
   // 未登记的店名一律拒：它多半是笔误，而「按笔误建行」的后果是平台侧悄悄多出一个选项。
+  const unknown = shops.filter((shop) => !registered.includes(shop));
   if (unknown.length) {
     throw new Error(`--shops 里有未登记的店铺：${unknown.join(' / ')}；已登记：${registered.join(' / ')}`);
   }
-  // 顺序按登记表，不按调用方给的顺序：同一件事的产物形状不该随命令行写法而变。
-  return registered.filter((shop) => args.shops.includes(shop));
+  return registered.filter((shop) => shops.includes(shop));
 }
 
 async function main() {
@@ -99,7 +111,7 @@ async function main() {
   // 否则会「给 A 日建行、链往 B 日回填」—— 而两边都不报错，只是回填永远 got 0。
   const reportDate = resolveTargetDate(args.reportDate);
   const epoch = reportDateEpoch(reportDate);
-  const targets = resolveTargetShops(args);
+  const targets = resolveTargetShops(args.shops);
   const evidenceDir = args.evidence
     ? path.resolve(args.evidence)
     : path.join(REPO_ROOT, 'evidence', `inquiry-rows-${reportDate}`);
