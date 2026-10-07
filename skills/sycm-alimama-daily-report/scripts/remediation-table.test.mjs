@@ -110,3 +110,18 @@ test('平台无此行那条也是 silent（2026-10-06 加）：它是不叫人**
   // 不止一条告警，还有每天早上白挂几小时 —— 所以这一条不许被「顺手改成 human」。
   assert.match(plan.why, /变不出来/u, '要说清「谁都变不出这一行」，否则下一个人会以为可以重试出来');
 });
+
+test('飞书缺行那条是 human（与「平台没出数」那条相反）：一个能补、一个变不出来', () => {
+  // 两条成因长得像（都表现为「询单量那一格是空的」），处置**相反** —— 这正是它们必须分开的原因：
+  //   · SOURCE_NO_ROW_FOR_DATE —— 平台那一天没有出数，谁都不用动 ⇒ silent（不叫人**也**不驻留）；
+  //   · INQUIRY_ROW_MISSING    —— 飞书那张表缺这一天的行，补一行就好 ⇒ human（要人看一眼，
+  //     为什么「建行」那一步没成功）。
+  // 反过来（把它也标成 silent）的代价是：自己的修复步骤失败了，却静默放掉，谁也发现不了。
+  const plan = lookupRemediation('INQUIRY_ROW_MISSING');
+  assert.equal(plan.known, true);
+  assert.equal(plan.notifyLevel, 'human');
+  assert.notEqual(plan.notifyLevel, lookupRemediation('SOURCE_NO_ROW_FOR_DATE').notifyLevel,
+    '两条的处置不许一样（一样就没必要分成两类）');
+  assert.match(plan.why, /建|补/u, '要说清「这一条是可以补的」，否则下一个人会当成无解缺口放掉');
+  assert.match(plan.verify, /恰好一行/u, '判定要可核对：建完重跑后该日该店恰好一行');
+});

@@ -98,7 +98,7 @@ import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
 // 「这一天的源表里根本没有日期行」这个机器标记的**唯一来源**（产出在 inquiry-core 的
 // `describeDateRowGap`）。消费方 import 它、不写字面量 —— 理由同上：两边各写一份，
 // 改名那天会静默漂成「这一类又归回兜底」，而兜底那一档会叫人 + 驻留，代价是白挂几小时。
-import { SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inquiry-core.mjs';
+import { INQUIRY_ROW_MISSING_TOKEN, SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inquiry-core.mjs';
 // 「数据已核对、仅截图缺失」这个退出码的**唯一来源**（定义在 readback 那边）。
 // 同样不写字面量 4：两边各写一份，哪天改了就会静默失配成「又变回真故障」。
 import { SCREENSHOT_INCOMPLETE_EXIT_CODE } from './readback-daily-report.mjs';
@@ -213,7 +213,7 @@ export function stageNumber(key, stage) {
  */
 export const FAILURE_CAUSES = Object.freeze(
   ['ROUND_BLOCKED', 'ROUND_LOGIN_WALL', 'SHOP_BLOCKED', 'NEEDS_LOGIN', 'DUPLICATE_TARGET', 'SHOP_FUNC_NO_PERMISSION',
-    'PAGE_OBSTRUCTED', 'SOURCE_NO_ROW_FOR_DATE', 'STAGE_FAILED'],
+    'PAGE_OBSTRUCTED', 'SOURCE_NO_ROW_FOR_DATE', 'INQUIRY_ROW_MISSING', 'STAGE_FAILED'],
 );
 
 /**
@@ -275,6 +275,17 @@ export function shopFailureCause(record) {
   //   ③ 分诊按 `STAGE_FAILED` 落「要人处理」+ 驻留判据按「空菜单」落「脚本自修不动」⇒
   //      为一件不需要人做的事把窗口白挂几小时。
   if (String(r.failureOutput ?? '').includes(SOURCE_NO_ROW_FOR_DATE_TOKEN)) return 'SOURCE_NO_ROW_FOR_DATE';
+  // 2026-10-07 加：**飞书侧**这一天的行还没建出来（与上面那一条是相反的一件事）。
+  //
+  // 判据同样是确定性标记（`inquiry-core` 的 `describeFeishuRowGap` 只在「候选行数＝0」时写它）。
+  // 为什么必须单列（2026-10-06 现场：8 家店前 9 步全部成功、第 10 步全部 `got 0`）：
+  //   ① 落回 `STAGE_FAILED` 的告警会说「这一轮不需要你在浏览器里做什么…把这条消息转给技术同学」，
+  //      而真因与浏览器无关（那张表少了一行，而且**这一步本可以自动补**）；
+  //   ② 自进化菜单按 `STAGE_FAILED` 会派 `REAPPLY_DATES`/`RELOAD_PAGE` 去动页面 —— 全是白跑
+  //      （2026-10-06 那次真跑的证据：8 家各烧掉一轮 `--auto-repair`，8 份请求单全给的是页面动作）；
+  //   ③ 分诊会把它落回「要人处理」，而它其实是**已经修好的那一步**（`ensure-inquiry-rows`）没跑成功。
+  // 刻意**不**把它放进 `HUMAN_REQUIRED_CAUSES`：窗口留住没有用 —— 没有哪一页需要人碰。
+  if (String(r.failureOutput ?? '').includes(INQUIRY_ROW_MISSING_TOKEN)) return 'INQUIRY_ROW_MISSING';
   if (r.failedStage === 'health-check') return 'SHOP_BLOCKED';
   if (r.failedStage === 'push'
     && /duplicate daily report row exists/u.test(String(r.failureOutput ?? ''))) return 'DUPLICATE_TARGET';
@@ -545,6 +556,11 @@ const REASON_BY_CAUSE = Object.freeze({
   // 而那正是把注意力磨没的方式（同 DUPLICATE_TARGET 那一类的理由）。
   SOURCE_NO_ROW_FOR_DATE: '这家店在生意参谋里的「询单到付款」这一张表，这一天平台自己就没有出数据（表格显示「暂无数据」），'
     + '所以「询单量 / 同层同行询单量」这两列这一天是空的，其余字段都写进去了。',
+  // 2026-10-07 加。与上面那一条是**相反**的一件事：这一个的数据采到了（底单那一行已经写进去），
+  // 只是飞书那张表里这一天的这一行**还没建出来**，没地方写。所以措辞必须与「平台没出数」分开 ——
+  // 混成一句的话，收信人会以为「这一天本来就没数」，而实际是「少建了一行、补上就好」。
+  INQUIRY_ROW_MISSING: '这一天的数据采集是好的（底单那一行已经写进飞书了），但「各店铺数据日报」那张表里'
+    + '这一天的这一行还没有建出来，所以「询单量 / 同层同行询单量」这两列没地方写。',
   STAGE_FAILED: '这家店跑到一半停住了，这一天的数据没进飞书。',
 });
 
@@ -610,6 +626,13 @@ const ACTION_BY_CAUSE = Object.freeze({
   SOURCE_NO_ROW_FOR_DATE: (ctx) => `不用处理：${ctx.date} 这一天，这一家在平台上的「询单到付款」表本身就显示「暂无数据」，`
     + '所以只有「询单量 / 同层同行询单量」这两列是空的，其余字段都已经写进飞书了。'
     + '不用重跑，也不用找技术同学 —— 这一天不会再跑出数来。',
+  // 2026-10-07 加。**不用在浏览器里做什么**（这一条最容易被照着老习惯做错）：采集这一轮是好的，
+  // 刷新、重新登录、补页面对它都没有用。要做的是把那一行建出来 —— 而那是系统每日任务里的一步，
+  // 所以正确的下一步是转给技术同学，不是让业务同事去表里手抄一行（手抄会把日期格式写错，
+  // 而写错之后回填照样报「找不到行」，多绕一圈）。
+  INQUIRY_ROW_MISSING: () => '不用在浏览器里做什么（刷新、重新登录、补页面都没用 —— 这一轮采集是好的）。'
+    + '要把「各店铺数据日报」里这一天的这一行建出来：那是系统每日任务里的一步，本该开跑前就做好，'
+    + '缺了就说明那一步没成功。把这条消息转给技术同学就行，不用你动手。',
   STAGE_FAILED: () => '这一轮不需要你在浏览器里做什么。'
     + '如果到今天下班前飞书里还是缺这一天的数据，就把这条消息转给技术同学，让他去看。',
 });

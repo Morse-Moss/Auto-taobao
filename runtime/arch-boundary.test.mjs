@@ -54,6 +54,16 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs',
   'skills/sycm-alimama-daily-report/scripts/daily-report-audit.test.mjs',
   'skills/sycm-alimama-daily-report/scripts/date-picker.mjs',
+  // 2026-10-07 新增：**补飞书询单表行骨架那一步**（`ensure-inquiry-rows.mjs`）。
+  // 它 import 两处 runtime：① `browser-ports.mjs` 的 `shopBrowserKeys()` ——
+  // 「这张表声明了哪些店铺」的唯一登记表（13 家）；② `feishu-targets.mjs` 的
+  // `dailyReportTargets` / `loadFeishuCredentials` —— base/表 id 与凭据路径的唯一来源
+  //（同这一族所有写飞书的脚本，绝不把 tenant token 或 base id 抄进本仓）。
+  // 方向是干净的 skills → runtime（两个都是机制层叶子）。
+  // 为什么它必须是 scripts/ 下的独立脚本、而不是并进链的某一步：建行是**日级**动作
+  //（一天一次、只补缺的行），而链是**逐店**跑的 —— 并进去就会变成每家店各建一遍，
+  // 而且缺行这件事在「哪一家」这个粒度上没有意义。
+  'skills/sycm-alimama-daily-report/scripts/ensure-inquiry-rows.mjs',
   // 2026-09-21 新增：**期望页面清单的唯一来源**。它必须留在能力目录里，不能抽到 runtime/ ——
   // 抽过去就让它自己变成 runtime → skills（就是下面那条「业务倒灌机制层」），而 shop-pages.mjs
   // 与驱动都要用它，留在任何一侧的另一侧都会成环。它本身只依赖 date-picker 与 runtime/feishu-targets，

@@ -12,7 +12,7 @@ import { reportDateEpoch } from './daily-report-core.mjs';
 import { buildEnvironment, dirHasEntries, evidenceBaseDir, resolveEvidenceDir } from './daily-report-runtime.mjs';
 import { assertEvidenceShopKey } from './shop-identities.mjs';
 import { assertShopIdentity, sycmShopIdentityExpression } from './collect-core.mjs';
-import { classifyInquiryWrite, extractInquiryMetrics, findDailyStoreRow } from './inquiry-core.mjs';
+import { classifyInquiryWrite, describeFeishuRowGap, extractInquiryMetrics, findDailyStoreRow, resolveShopOptionId } from './inquiry-core.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -100,35 +100,12 @@ function withoutInquiryFields(fields) {
   return Object.fromEntries(Object.entries(fields ?? {}).filter(([name]) => !WRITTEN_FIELDS.includes(name)));
 }
 
-// 把某个字段的 `property.options` 读成 id→name 表：**唯一来源是 API**，不在代码里抄第二份。
+// 「读选项表」与「运营店名 → 选项 id」这两件事**已抽到 `inquiry-core.mjs`**（2026-10-07 搬的）。
 //
-// 为什么不塞进 `client.listFields()`：那个方法的返回形状被多处 `deepEqual` 逐字断言，
-// 多带一个 `property` 就会让那些用例变红。`client.listFieldItems()` 是给需要选项表的调用方开的。
-//
-// 这一段要处理「选项列表可能超过一页」——少读一页不会抛错，只会安静地少认几家店。
-async function listFieldOptions(client, fieldName) {
-  const items = await client.listFieldItems();
-  const field = items.find((item) => item.field_name === fieldName);
-  return (field?.property?.options ?? []).filter((option) => option?.id);
-}
-
-/**
- * 「运营店名」→「SingleSelect 选项 id」。
- *
- * 找不到时**返回 null 而不是抛错**：这个函数只服务于「多认一种形态」，
- * 而旧行为（只认店名）永远是正确的一支。抛错会把一次可降级的匹配失败升级成整轮停摆。
- * 但两种找不到要分开写日志：**选项表里没有任何同类店名**（判据本身可能过期）
- * 与 **选项名与店名不同名**（有人改过选项名）——它们的处置完全不同。
- */
-async function resolveShopOptionId(client, shop) {
-  const options = await listFieldOptions(client, '店铺');
-  const exact = options.filter((option) => option.name === shop);
-  if (exact.length === 1) return exact[0].id;
-  if (exact.length > 1) {
-    throw new Error(`店铺选项里 ${JSON.stringify(shop)} 出现 ${exact.length} 次，选项表本身有重名`);
-  }
-  return null;
-}
+// 为什么搬走：建行骨架那个新脚本（`ensure-inquiry-rows.mjs`）要用**同一份**判据 ——
+// 两份实现漂开的那天，症状是「建行时认得出这家店、回填时认不出」，而且两边都不报错。
+// 本文件里那两处调用点、以及产物字段（`matchedBy` / `shopOptionId`）与从前逐字相同：
+// 搬迁不许改行为（解析结果一样、抛错条件一样、返回值一样）。
 
 // 审计：**这是补上的缺口**（2026-09-17 复盘）。
 //
@@ -196,8 +173,14 @@ async function main() {
   const epoch = reportDateEpoch(args.reportDate);
   const picked = findDailyStoreRow(beforeRecords, epoch, args.shop, { optionId: shopOptionId });
   if (!picked.record) {
-    // 报错里要带「候选几个」：0 个＝这一天没有我方的行；>1 个＝同日同店出现多行（更该炸）。
-    throw new Error(`expected one Feishu row for ${args.shop} / ${epoch}, got ${picked.candidateCount}`);
+    // 报错里要带「候选几个」：0 个＝这一天没有我方的行（**行骨架缺失**，2026-10-07 起单列一类，
+    // 并带上处置）；>1 个＝同日同店出现多行（更该炸，且要人核对）。
+    // 措辞由 `inquiry-core.describeFeishuRowGap` 给：链的分类器按那个标记认这一类，
+    // 两处各写一句就会漂 —— 漂开那天这一档又落回兜底，去浏览器里找一堆不存在的原因。
+    throw new Error(describeFeishuRowGap({
+      shop: args.shop, reportDate: args.reportDate, reportDateEpoch: epoch,
+      candidateCount: picked.candidateCount,
+    }));
   }
   const before = picked.record;
   const disposition = classifyInquiryWrite(before.fields, metrics);

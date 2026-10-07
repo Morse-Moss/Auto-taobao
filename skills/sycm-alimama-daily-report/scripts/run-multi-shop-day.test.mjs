@@ -10,7 +10,7 @@ import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
 // 「这一天的源表里没有日期行」这个机器标记的**唯一来源**。样例里必须用它而不是写死字面量 ——
 // 理由同下面 PAGE_OBSTRUCTED 那条注释：写死的话，改名那天样例仍然「是」那一类，
 // 而分类器已经不认得它了 ⇒ 用例全绿而什么都没守住（2026-10-06 加这一类时踩的正是这个点）。
-import { SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inquiry-core.mjs';
+import { INQUIRY_ROW_MISSING_TOKEN, SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inquiry-core.mjs';
 import { triageFailures } from './remediation-table.mjs';
 import { WAITING_OPERATOR_ACCOUNT_SHOPS, waitingOperatorAccountRecord } from '../../../runtime/daily-report-shop-gates.mjs';
 import { planRepair } from './repair-actions.mjs';
@@ -720,6 +720,43 @@ test('告警：SOURCE_NO_ROW_FOR_DATE 的判据是那个**机器标记**，不�
   assert.equal(HUMAN_REQUIRED_CAUSES.includes('SOURCE_NO_ROW_FOR_DATE'), false);
 });
 
+test('告警：INQUIRY_ROW_MISSING 的判据也是那个**机器标记**（2026-10-07 加）', () => {
+  // 2026-10-06 现场：8 家店前 9 步全部成功（含 push 写底单），第 10 步 backfill 全部 `got 0`。
+  // 真因是飞书那张表缺这一天的行（运营侧预建、只铺到 10-05），而仓库里当时没有任何步骤会建行。
+  assert.equal(shopFailureCause(failedAt('backfill',
+    `Error: ${INQUIRY_ROW_MISSING_TOKEN} 询单表里这一天没有这一家的行（行骨架缺失，不是源表读不到）`
+    + '｜店铺="里可林淘宝"｜日期=2026-10-06｜候选行数=0｜处置：先建行（ensure-inquiry-rows.mjs --date <日> --commit），再重跑这一步')),
+  'INQUIRY_ROW_MISSING');
+  // 反面①：与上面那一档**不许互相命中**（判据都是 `includes`，串了就会两边都判错，
+  // 而这两类的处置正好相反：一个谁都变不出来、一个补一行就好）。
+  assert.notEqual(shopFailureCause(failedAt('backfill', INQUIRY_ROW_MISSING_TOKEN)), 'SOURCE_NO_ROW_FOR_DATE');
+  assert.notEqual(shopFailureCause(failedAt('backfill', SOURCE_NO_ROW_FOR_DATE_TOKEN)), 'INQUIRY_ROW_MISSING');
+  // 反面②：同日同店**多行**那句话**不带**这个标记（它是相反的现场：多了行不是少了行）⇒ 落回兜底。
+  assert.equal(shopFailureCause(failedAt('backfill',
+    'Error: expected one Feishu row for 科塔淘宝 / 1791216000000, got 2（同日同店出现多行，需人核对）')),
+  'STAGE_FAILED');
+  // 反面③：不在 `HUMAN_REQUIRED_CAUSES` 里 —— 没有哪一页需要人碰，驻留对它是纯浪费。
+  assert.equal(HUMAN_REQUIRED_CAUSES.includes('INQUIRY_ROW_MISSING'), false);
+  // 它在闭集里（漏登记的后果是「查表永远命中不了」而告警照发）。
+  assert.ok(FAILURE_CAUSES.includes('INQUIRY_ROW_MISSING'));
+});
+
+test('INQUIRY_ROW_MISSING 的修复请求单：候选为空、但**不是**「谁都不用动」', () => {
+  // 这一条与 SOURCE_NO_ROW_FOR_DATE 的差别全在这里：两者候选都为空（页面动作都不对症），
+  // 但前者**要人看一眼**（`noActionRequired=false`），后者不用（`=true`）。
+  // 若把它也标成「不用处理」，那是把自己的修复步骤失败静默放掉。
+  const dir = mkdtempSync(path.join(tmpdir(), 'sycm-repair-rows-'));
+  const req = buildRepairRequest({
+    shopKey: SHOP, stage: 'backfill',
+    error: `Error: ${INQUIRY_ROW_MISSING_TOKEN} 询单表里这一天没有这一家的行｜候选行数=0`,
+    logDir: dir, writeFile: writeFileSync,
+  });
+  assert.equal(req.cause, 'INQUIRY_ROW_MISSING');
+  assert.deepEqual(req.candidates, [], '页面动作对它一个都不对症，不许硬塞一个候选进去凑数');
+  assert.equal(req.noActionRequired, false, '它需要人看一眼（为什么建行那一步没成功），不许标成「谁都不用动」');
+  assert.equal(req.retryStage, 'backfill', '修完要重试的正是失败的那一步');
+});
+
 test('buildRepairRequest：不需任何人处理的成因必须自己说出来（那是不驻留的判据）', () => {
   // 2026-10-05 `网林家居` 的事故链：平台无行 ⇒ 修复表没有候选 ⇒ `gaveUp` 非空 ⇒
   // `unfixableShopsOf` 把它当成「脚本自修不动」⇒ 驻留 4 小时等一个不存在的人。
@@ -769,6 +806,13 @@ test('告警：文案里不许出现英文阶段名、结论代号、内部术�
       shops: { 网林家居: failedAt('backfill', `Error: ${SOURCE_NO_ROW_FOR_DATE_TOKEN} 这一天的源表里没有日期行`
         + `（生意参谋「询单到付款」对该店该日返回的是空态，不是读不到）`
         + `｜日期列原值=["暂无数据","汇总值"]｜日期行数=0｜期望=2026-09-19`) } },
+    // 2026-10-07 加。同上：样例必须**带上那个机器标记**（用常量）——
+    // 不带它就会被归回 `STAGE_FAILED`，这一条于是变成「用兜底文案考兜底文案」。
+    // 现场取自 2026-10-06 的真机输出（8 家店第 10 步全部 got 0）。
+    INQUIRY_ROW_MISSING: { round: { healthCheckDaily: { ok: true } },
+      shops: { 里可林淘宝: failedAt('backfill', `Error: ${INQUIRY_ROW_MISSING_TOKEN} 询单表里这一天没有这一家的行`
+        + `（行骨架缺失，不是源表读不到）｜店铺="里可林淘宝"｜日期=2026-10-06｜候选行数=0`
+        + `｜处置：先建行（ensure-inquiry-rows.mjs --date <日> --commit），再重跑这一步`) } },
   };
   assert.deepEqual(Object.keys(cases).sort(), [...FAILURE_CAUSES].sort(),
     '每一条结论都要在这里被渲染一次（漏一条 = 新一类术语味告警没人守）');

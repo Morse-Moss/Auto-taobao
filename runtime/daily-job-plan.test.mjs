@@ -12,7 +12,7 @@ import path from 'node:path';
 
 import {
   JOB_FILES, LOGIN_PREFLIGHT_ARTIFACT, LOGIN_PREFLIGHT_FLAG, MERCHANT_LOGIN_SITE, buildJobPlan,
-  buildLoginPreflightArgs, buildMerchantLoginGuardArgs, renderCommand, renderJobEntryCommand,
+  buildEnsureInquiryRowsArgs, buildLoginPreflightArgs, buildMerchantLoginGuardArgs, renderCommand, renderJobEntryCommand,
 } from './daily-job-plan.mjs';
 import { collectingShopKeys } from './browser-ports.mjs';
 // 共享实例名单的单一来源：分批形态下第 ① 步只起它（见 2026-09-30 修的那个缺陷）。
@@ -30,7 +30,7 @@ const stepOf = (plan, name) => {
   return found;
 };
 
-test('五步的顺序是「先保证实例在 → 给共用窗口挂标识 → 再看一眼登录态 → 再修共享实例的会话 → 再跑链」', () => {
+test('六步的顺序是「先保证实例在 → 给共用窗口挂标识 → 再看一眼登录态 → 再修共享实例的会话 → 再补行骨架 → 再跑链」', () => {
   // 反过来（先跑链）时，链的第 0 步体检会整轮拦下并发一条**本可以不出**的告警；
   // 告警这个通道被无谓地用一次就少一次可信度。
   // 而登录态体检必须排在**起实例之后**：实例不在时它一个页面都读不到，只留下一片「读不到」。
@@ -38,18 +38,18 @@ test('五步的顺序是「先保证实例在 → 给共用窗口挂标识 → �
   // 那台实例上，它挂掉的处置是「整轮不跑」—— 守卫晚一步，五家店就一家都不开跑。
   // 2026-10-06 加的第二步（共用窗口标识页）同样要排在链之前：它是「告警说去共用窗口」
   // 这句话的**前提**，越早挂上，后面任何一步失败时告警就已经有落点了。
+  // 2026-10-07 加的最后一步（补飞书询单表的行骨架）排在链**之前、其余一切之后**：
+  // 它建的是链第 10 步回填要写的那一行，越晚建越贴近真正需要它的那一刻。
   const plan = buildJobPlan();
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login', 'chain']);
-  assert.equal(plan.steps[0].blocking, false, '起实例失败不该阻断链：权威判据在链的体检里');
-  assert.equal(plan.steps[1].blocking, false,
-    '挂标识页不是闸门：它只决定窗口上写什么字，挂不上照样收数据');
-  // 登录态体检**不是闸门**：它的三个退出码只落进日志，不许拦住链 ——
-  // 冷启动之后页面还没归位时它会判「没结论」，而那是链的归位会自己解决的事。
-  assert.equal(plan.steps[2].blocking, false, '登录态体检不该阻断链（它不是「今天能不能写」的判据）');
-  assert.equal(plan.steps[3].blocking, false,
-    '共享实例守卫也不是闸门：它没登成时，链自己那一次整轮级体检会如实报「整轮不跑」并告警');
-  assert.equal(plan.steps[4].blocking, true);
+    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login',
+      'ensure-inquiry-rows', 'chain']);
+  // 按**名字**取步骤判 blocking，不按下标：下标会让下一个人（以及这次的加法）只改数字而不想清楚。
+  for (const name of ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login', 'ensure-inquiry-rows']) {
+    assert.equal(stepOf(plan, name).blocking, false,
+      `${name} 不该阻断链：权威判据在链的体检里，在这里截断只会让告警少一层信息`);
+  }
+  assert.equal(stepOf(plan, 'chain').blocking, true);
 });
 
 test('登录态体检那一步：只读、且指定店铺时只体检那几家', () => {
@@ -136,11 +136,12 @@ test('/TR 只拉起一个入口（三步由它自己按顺序执行，日志也�
 // 「起这一批 → 挂标识页 → 跑这一批 → 停这一批」。它一旦被误开，代价是**定时链的行为变了**
 // 而没人知道 —— 所以第一条判据就是「不传 `--batches` 时，渲染出来的命令逐字不变」。
 // ---------------------------------------------------------------------------
-test('不启用分批时，五步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）', () => {
+test('不启用分批时，六步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）', () => {
   const plan = buildJobPlan();
   assert.equal(plan.batches, null);
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login', 'chain']);
+    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login',
+      'ensure-inquiry-rows', 'chain']);
 
   // 逐字比较：跟上一次「没有分批这个概念」时渲染出来的那几行比。
   // 用固定期望值而不是「再跑一次自己」，否则这类断言永远绿（自己等于自己）。
@@ -154,6 +155,10 @@ test('不启用分批时，五步与从前**逐字相同**（默认关闭是硬�
     // 2026-09-25 新加的那一步：默认（`autoLogin` 未打开）必须是**只读档**，
     // 且 `--notify` 必须是 `off`（login-merchant 自己的默认值是 `auto`，会把告警投出去）。
     'N R\\skills\\sycm-alimama-daily-report\\scripts\\login-merchant.mjs --check-only --target sycm --notify off',
+    // 2026-10-07 加：补飞书询单表的行骨架。`--commit` 必须**显式**给 ——
+    // 那个脚本自己的默认是排练（一个字节都不写），漏了这句会静默地「一行都没建」。
+    // 证据目录没给时**不给 `--evidence`**（由脚本自己挑一个兜底目录），见下一条用例。
+    'N R\\skills\\sycm-alimama-daily-report\\scripts\\ensure-inquiry-rows.mjs --date yesterday --commit',
     'N R\\skills\\sycm-alimama-daily-report\\scripts\\run-multi-shop-day.mjs --date yesterday --commit --notify-print',
   ]);
   assert.doesNotMatch(render(plan).join(' '), /run-batches\.mjs/u, '默认这一档里不许出现分批驱动');
@@ -163,7 +168,7 @@ test('启用分批：它**替换**链那一步（不是并排），参数只带�
   const plan = buildJobPlan({ batches: 2 });
   assert.equal(plan.batches, 2);
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'label-merchant-window', 'ensure-merchant-login', 'batch-chain'],
+    ['ensure-instances', 'label-merchant-window', 'ensure-merchant-login', 'ensure-inquiry-rows', 'batch-chain'],
     '两条一起跑会让同一家店被驱动两次 —— 必须是替换关系');
   const step = stepOf(plan, 'batch-chain');
   assert.match(step.file, /scripts\/run-batches\.mjs$/u);
@@ -257,7 +262,7 @@ test('共用窗口标识页：默认在（排在实例起来之后），--no-mer
   assert.equal(off.steps.some((s) => s.name === 'label-merchant-window'), false);
   // 「关掉」只该少这一步：其余步骤逐字不变（否则「关一个开关」会连带改掉别的东西）。
   assert.deepEqual(off.steps.map((s) => s.name),
-    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'chain']);
+    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'ensure-inquiry-rows', 'chain']);
 });
 
 test('接线（源码级）：真实调用点真的把 merchantLabel 透传进计划（漏传是静默的）', () => {
@@ -268,6 +273,81 @@ test('接线（源码级）：真实调用点真的把 merchantLabel 透传进�
     '入口没有把 merchantLabel 交给 buildJobPlan ⇒ 共用窗口永远拿不到标识页');
   assert.match(source, /'--no-merchant-label'/u,
     '入口没有解析 --no-merchant-label ⇒ 运维没有一键退回的开关');
+});
+
+// ---------------------------------------------------------------------------
+// 补飞书询单表的行骨架（2026-10-07 加）。
+//
+// 要治的事：2026-10-06 那一轮 8 家店前 9 步全部成功（含第 7 步 push 写底单），
+// 第 10 步 `backfill` **8 家全部** `got 0` —— 根因是那张表的日期行一直是**运营侧预建**的
+// （铺到 10-05），而链的回填只更新、不新建。这是「外部依赖没落进流程」，
+// 不修就每天可能全挂，而挂的位置离真因隔着好几层。
+// 这里守四件事：默认在（含分批形态）／`--commit` 显式传／证据目录与 --shops 的转发／一键退回。
+// ---------------------------------------------------------------------------
+test('补行骨架那一步：默认在、排在链之前、两种形态都有、且**不是闸门**', () => {
+  const on = buildJobPlan({ artifactsDir: ARTIFACTS_DIR });
+  const step = stepOf(on, 'ensure-inquiry-rows');
+  assert.match(step.file, /skills\/sycm-alimama-daily-report\/scripts\/ensure-inquiry-rows\.mjs$/u);
+  assert.equal(step.blocking, false,
+    '它失败时正确的处置不是「今天不采集」：采集与推送跟这一行无关，只有第 10 步回填需要它，'
+    + '而回填可以事后补跑；当闸门会把「一张表少一行」升级成「一天的数据一条都不采」');
+  // 顺序：排在链之前（它建的正是链第 10 步要写的那一行），且排在**其余一切之后**。
+  assert.ok(on.steps.findIndex((s) => s.name === 'ensure-inquiry-rows')
+    < on.steps.findIndex((s) => s.name === 'chain'), '必须在链之前');
+  assert.ok(on.steps.findIndex((s) => s.name === 'ensure-inquiry-rows')
+    > on.steps.findIndex((s) => s.name === 'ensure-merchant-login'), '排在最后一个前置步骤之后');
+  // 生产跑的是分批那一档（`--batches`），所以这一步必须在分批形态里也在 ——
+  // 它是**日级**的，与批次粒度无关，也不该在每个批里各建一遍。
+  assert.ok(buildJobPlan({ batches: 5 }).steps.some((s) => s.name === 'ensure-inquiry-rows'),
+    '分批形态下同样要补 —— 否则生产形态（--batches）里这条修复等于没接上');
+  assert.equal(buildJobPlan({ batches: 5 }).steps.filter((s) => s.name === 'ensure-inquiry-rows').length, 1,
+    '只该出现一次：建行是日级动作，不是每批一次');
+});
+
+test('补行骨架：`--commit` 必须显式给（漏了它＝静默地一行都不建）', () => {
+  // 脚本自己的默认是**排练**（一个字节都不写）。定时任务的职责是「把今天该有的行准备好」，
+  // 而漏这一句的症状是静默的：脚本照跑、日志照打 `DRY_RUN_READY`，只是没建，
+  // 链照样在 backfill 全挂 —— 与本条要治的那个形态逐字相同。
+  assert.ok(stepOf(buildJobPlan(), 'ensure-inquiry-rows').args.includes('--commit'));
+  assert.ok(stepOf(buildJobPlan({ batches: 5 }), 'ensure-inquiry-rows').args.includes('--commit'));
+  // 参数构造器本身不许替调用方默认打开写入（它会真的写飞书）。
+  assert.deepEqual(buildEnsureInquiryRowsArgs({ dateInput: 'yesterday' }), ['--date', 'yesterday']);
+});
+
+test('补行骨架：日期给**字面量**（与链同一口径）、证据目录给了才带、--shops 点名时才收窄', () => {
+  // 给字面量的理由：它要建的正是「链接下来会往哪一天回填」的那一行，而链拿的也是字面量、
+  // 由它在那一刻自己解析。给一个算好的日期，等于让两次不同的时钟去保证「同一天」。
+  assert.deepEqual(stepOf(buildJobPlan(), 'ensure-inquiry-rows').args,
+    ['--date', 'yesterday', '--commit']);
+  assert.deepEqual(stepOf(buildJobPlan({ artifactsDir: ARTIFACTS_DIR }), 'ensure-inquiry-rows').args,
+    ['--date', 'yesterday', '--commit', '--evidence', ARTIFACTS_DIR],
+    '证据目录给了才带 --evidence（由它决定收据落在哪；不给时由脚本挑兜底目录）');
+  assert.deepEqual(stepOf(buildJobPlan({ shops: ['科塔淘宝'] }), 'ensure-inquiry-rows').args,
+    ['--date', 'yesterday', '--shops', '科塔淘宝', '--commit'],
+    '点名了只跑某几家时，建行也要收窄 —— 否则一次排查会顺手在飞书里多建 12 行');
+  // 不点名时**不给** `--shops`：由脚本按全部登记店自己枚举（口径见脚本文件头）。
+  assert.equal(stepOf(buildJobPlan(), 'ensure-inquiry-rows').args.includes('--shops'), false);
+});
+
+test('补行骨架：--no-ensure-inquiry-rows 一键退回（只少这一步，其余逐字不变）', () => {
+  const off = buildJobPlan({ ensureInquiryRows: false, artifactsDir: ARTIFACTS_DIR });
+  assert.equal(off.ensureInquiryRowsStep, null);
+  assert.equal(off.steps.some((s) => s.name === 'ensure-inquiry-rows'), false);
+  assert.deepEqual(off.steps.map((s) => s.name),
+    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login', 'chain']);
+  // 分批形态同样能关（否则「一键退回」在生产形态上不成立）。
+  assert.equal(buildJobPlan({ batches: 5, ensureInquiryRows: false }).steps
+    .some((s) => s.name === 'ensure-inquiry-rows'), false);
+});
+
+test('接线（源码级）：真实调用点真的把 ensureInquiryRows 透传进计划（漏传是静默的）', () => {
+  // 同 merchantLabel 那条：纯函数给得再对，入口不把开关交给它，那一步就永远不进计划，
+  // 而日志里只表现为「少一行」—— 这正是本条要治的形态（功能建了、没接上）。
+  const source = readFileSync(new URL('../scripts/run-daily-job.mjs', import.meta.url), 'utf8');
+  assert.match(source, /ensureInquiryRows:\s*options\.ensureInquiryRows/u,
+    '入口没有把 ensureInquiryRows 交给 buildJobPlan ⇒ 飞书询单表的行骨架永远补不上');
+  assert.match(source, /'--no-ensure-inquiry-rows'/u,
+    '入口没有解析 --no-ensure-inquiry-rows ⇒ 运维没有一键退回的开关');
 });
 
 test('分批那一档：整轮的逐店预检**不进计划**，结论交接全在分批驱动内部完成', () => {
@@ -281,7 +361,7 @@ test('分批那一档：整轮的逐店预检**不进计划**，结论交接全�
   assert.equal(stepOf(plan, 'batch-chain').args.includes(LOGIN_PREFLIGHT_FLAG), false);
   // 逐批那份结论由分批驱动自己生成（见下面「宿主（分批链）也接上了」那条真跑判据）。
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'label-merchant-window', 'ensure-merchant-login', 'batch-chain']);
+    ['ensure-instances', 'label-merchant-window', 'ensure-merchant-login', 'ensure-inquiry-rows', 'batch-chain']);
 });
 
 // ---------------------------------------------------------------------------

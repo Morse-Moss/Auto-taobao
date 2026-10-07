@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { classifyInquiryWrite, describeDateRowGap, extractInquiryMetrics, findDailyStoreRow, selectDailyStoreRecord, SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inquiry-core.mjs';
+import { classifyInquiryWrite, describeDateRowGap, describeFeishuRowGap, extractInquiryMetrics, findDailyStoreRow, INQUIRY_ROW_MISSING_TOKEN, pickShopOptionId, planInquiryRowSkeleton, selectDailyStoreRecord, shopOptionsOf, SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inquiry-core.mjs';
 
 // ---------------------------------------------------------------------------
 // 「这一天的源表里没有日期行」必须与「结构异常」分开（2026-10-06 修 ㉕）
@@ -176,4 +176,101 @@ test('降级写入只认「询单量」，且要求同行那一格保持空白',
   assert.throws(() => classifyInquiryWrite({ 询单量: 11 }, metrics), /does not match source/u);
   // 降级模式下同行那一格若已有值，说明状态不可解释
   assert.throws(() => classifyInquiryWrite({ 询单量: 10, 同层同行询单量: 36 }, metrics), /is not blank/u);
+});
+
+// ---------------------------------------------------------------------------
+// 行骨架：飞书侧「这一天的行还没建出来」（2026-10-07 修 ㉗）
+// ---------------------------------------------------------------------------
+// 2026-10-06 现场：8 家店前 9 步跑完（`push` 写底单全部成功），第 10 步 `backfill` 全报
+// `expected one Feishu row for X / <epoch>, got 0`。根因是这张表的日期行由**运营侧预建**
+// （只铺到 10-05），仓库里没有任何脚本会建行 —— 两句措辞把两种相反成因压成了一句：
+//   · 源表空态（`SOURCE_NO_ROW_FOR_DATE`）＝ 谁都不用动，变不出来；
+//   · 飞书缺行（`INQUIRY_ROW_MISSING`）＝ 建一行就好，**能自动修**。
+test('两个标记不是同一个字符串：一个说「平台没有数」，一个说「飞书还没建行」', () => {
+  assert.notEqual(INQUIRY_ROW_MISSING_TOKEN, SOURCE_NO_ROW_FOR_DATE_TOKEN);
+  assert.equal(SOURCE_NO_ROW_FOR_DATE_TOKEN.includes(INQUIRY_ROW_MISSING_TOKEN), false,
+    '一个标记不许是另一个的子串：链的分类器用 includes 判，子串会让两类互相命中');
+  assert.equal(INQUIRY_ROW_MISSING_TOKEN.includes(SOURCE_NO_ROW_FOR_DATE_TOKEN), false);
+});
+
+test('缺行那句话带机器标记 + 现场值 + 处置（读证据的人不必再去翻代码）', () => {
+  const gap = describeFeishuRowGap({ shop: '里可林淘宝', reportDate: '2026-10-06', reportDateEpoch: 1791216000000, candidateCount: 0 });
+  assert.ok(gap.includes(INQUIRY_ROW_MISSING_TOKEN), `缺行要带标记，否则链会把它归回兜底：${gap}`);
+  assert.match(gap, /"里可林淘宝"/u);
+  assert.match(gap, /日期=2026-10-06/u);
+  assert.match(gap, /候选行数=0/u);
+  assert.match(gap, /ensure-inquiry-rows/u, '处置要写在错误里：它是唯一可自动执行的那一步');
+});
+
+test('同日同店多行**不带**缺行标记：那是相反的现场，混成一类会让人去补一行', () => {
+  const gap = describeFeishuRowGap({ shop: '科塔淘宝', reportDate: '2026-10-06', reportDateEpoch: 1791216000000, candidateCount: 2 });
+  assert.equal(gap.includes(INQUIRY_ROW_MISSING_TOKEN), false, `>1 行不许带缺行标记：${gap}`);
+  assert.match(gap, /got 2/u);
+  assert.match(gap, /需人核对/u);
+});
+
+test('shopOptionsOf / pickShopOptionId：从 API 返回的原始条目里取选项表', () => {
+  // 形状逐字取自 `FeishuClient.listFieldItems()`（键是 snake_case 的 `field_name`，
+  // 选项在 `property.options`）—— 2026-10-07 实测踩过一次「按驼峰读、结果全是 undefined」。
+  const items = [
+    { field_name: '日期', type: 5 },
+    { field_name: '店铺', type: 3, property: { options: [
+      { id: 'optRbz0AFD', name: '网林家居' },
+      { id: 'optFFaXJeh', name: '盖文淘宝' },
+      { name: '没有 id 的脏条目（要被滤掉）' },
+    ] } },
+  ];
+  const options = shopOptionsOf(items, '店铺');
+  assert.deepEqual(options.map((o) => o.name), ['网林家居', '盖文淘宝']);
+  assert.equal(pickShopOptionId(options, '网林家居'), 'optRbz0AFD');
+  // 找不到返回 null（**不抛**）：调用方要按「可降级」还是「fail-closed」自己决定
+  assert.equal(pickShopOptionId(options, '科塔淘宝'), null);
+  // 重名必须抛：两个 id 里挑一个就是猜，猜错会把别家的行写坏
+  assert.throws(() => pickShopOptionId([...options, { id: 'optX', name: '网林家居' }], '网林家居'), /出现 2 次/u);
+  // 字段不在 / 没给 options 都不许抛（读不到就退化成「没有选项表」）
+  assert.deepEqual(shopOptionsOf([{ field_name: '日期', type: 5 }], '店铺'), []);
+  assert.deepEqual(shopOptionsOf(null, '店铺'), []);
+});
+
+test('planInquiryRowSkeleton 把三堆分开：已建 / 要建 / 多行（多行不是「已建」）', () => {
+  const epoch = 1791216000000;
+  const records = [
+    { record_id: 'r1', fields: { 日期: epoch, 店铺: '里可林淘宝' } },
+    // 选项 id 形态：09-28 那批真实存在过的存法，建行与回填必须**同时**认得出来
+    { record_id: 'r2', fields: { 日期: epoch, 店铺: 'optFFaXJeh' } },
+    // 多行：同日同店两条
+    { record_id: 'r3', fields: { 日期: epoch, 店铺: '科塔淘宝' } },
+    { record_id: 'r4', fields: { 日期: epoch, 店铺: '科塔淘宝' } },
+    // 别的日期不许算进来
+    { record_id: 'r5', fields: { 日期: epoch - 86400000, 店铺: '网林天猫' } },
+  ];
+  const plan = planInquiryRowSkeleton({
+    records, reportDateEpoch: epoch,
+    shops: ['里可林淘宝', '盖文淘宝', '科塔淘宝', '网林天猫'],
+    optionIdByShop: { 盖文淘宝: 'optFFaXJeh' },
+  });
+  assert.deepEqual(plan.present.map((item) => [item.shop, item.matchedBy]),
+    [['里可林淘宝', 'shop-name'], ['盖文淘宝', 'field-option-id']]);
+  assert.deepEqual(plan.missing, ['网林天猫']);
+  assert.deepEqual(plan.duplicated, [{ shop: '科塔淘宝', candidateCount: 2 }]);
+});
+
+test('建行与回填用的是**同一个**匹配判据（两处各写一份 = 一边建一边回填不上）', () => {
+  const epoch = 7;
+  const records = [{ record_id: 'x', fields: { 日期: epoch, 店铺: 'optnF3h5i7' } }];
+  // 不传选项 id：骨架判「缺」，而回填也认不出来 ⇒ 一致（这就是 09-28 之前的行为）
+  assert.deepEqual(planInquiryRowSkeleton({ records, reportDateEpoch: epoch, shops: ['科塔淘宝'] }).missing, ['科塔淘宝']);
+  assert.equal(findDailyStoreRow(records, epoch, '科塔淘宝').candidateCount, 0);
+  // 传了选项 id：骨架判「已在」，回填也认得出来 ⇒ 一致
+  assert.deepEqual(planInquiryRowSkeleton({
+    records, reportDateEpoch: epoch, shops: ['科塔淘宝'], optionIdByShop: { 科塔淘宝: 'optnF3h5i7' },
+  }).missing, []);
+  assert.equal(findDailyStoreRow(records, epoch, '科塔淘宝', { optionId: 'optnF3h5i7' }).candidateCount, 1);
+});
+
+test('骨架空输入不崩（拿它算「全都没有」而不是「全都没查」）', () => {
+  assert.deepEqual(planInquiryRowSkeleton({ records: [], reportDateEpoch: 1, shops: [] }),
+    { present: [], missing: [], duplicated: [] });
+  assert.deepEqual(planInquiryRowSkeleton(),
+    { present: [], missing: [], duplicated: [] });
 });

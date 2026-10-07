@@ -81,6 +81,18 @@ export const JOB_FILES = Object.freeze({
   // 在机器前是一个没有落点的说法（五台窗口长得一模一样）。挂上标识页之后，
   // 窗口标题里就写着「商家浏览器（日报共用） · 日报采集窗口」，任务栏上一眼可辨。
   windowLabel: 'runtime/shop-window-label.mjs',
+  // 询单表的「行骨架」（2026-10-07 加）。
+  //
+  // 为什么必须有它：链的第 10 步 `backfill`（询单回填）是**更新**已有行 ——
+  // 它从不建行。而那张表（飞书「各店铺数据日报」）的日期行一直是**运营侧预建**的
+  //（`docs/ops/PROJECT-BROWSER-AND-PORTS.md` 第 62 行：预建行铺到 10-05），
+  // 仓库里没有任何一步管它。结果 2026-10-06 那次：8 家店前 9 步全部成功
+  //（含第 7 步 `push` 写底单），第 10 步 8 家**全部** `got 0` —— 一个外部依赖没落进流程，
+  // 每天都可能全挂，而挂的位置离真因（没有行）隔着好几层。
+  //
+  // 它**不碰浏览器**：只读写飞书（建 (日期, 店铺) 两列的一行，其余 31 列是派生列）。
+  // 所以它排在链之前靠后的位置 —— 越晚建、越贴近真正需要它的那一步。
+  ensureInquiryRows: 'skills/sycm-alimama-daily-report/scripts/ensure-inquiry-rows.mjs',
 });
 
 /**
@@ -150,6 +162,29 @@ export function buildMerchantLoginGuardArgs({ login = false, notify = false } = 
     '--target', MERCHANT_LOGIN_SITE,
     '--notify', login && notify ? 'auto' : 'off',
   ];
+}
+
+/**
+ * 「补行骨架」那一步（`ensure-inquiry-rows.mjs`）的参数。**纯函数**（离线可断言）。
+ *
+ * 四个参数的取舍：
+ *   · `--date` 给**字面量**（`yesterday`）而不是已解析的那一天：这一步要建的正是
+ *     「链接下来会往哪一天回填」的那一行，而链那一步拿的就是字面量、由它在那一刻自己解析。
+ *     给它一个算好的日期，等于把「同一天」这件事交给两次不同的时钟去保证。
+ *     （对比：`hold-and-resume` 那一步必须给算好的日期，因为它要**拼路径**，两种口径不冲突。）
+ *   · `--commit` 由调用方**显式**给：脚本自己的默认是**排练**（一个字节都不写），
+ *     而定时任务的职责是「把今天该有的行准备好」。漏了这一句的症状是静默的 ——
+ *     脚本照跑、日志照打 `DRY_RUN_READY`，只是**一行都没建**，而链照样在 backfill 全挂。
+ *   · `--evidence` 只在有人给证据目录时才带：它决定收据落在哪。
+ *   · `--shops` 只在调用方点名时才带：不点名＝脚本按**全部登记店**（13 家）自己枚举
+ *     （口径与理由写在 `ensure-inquiry-rows.mjs` 的文件头）。
+ */
+export function buildEnsureInquiryRowsArgs({ dateInput = 'yesterday', shops = null, commit = false, evidence = null } = {}) {
+  const args = ['--date', dateInput];
+  if (shops && shops.length > 0) args.push('--shops', shops.join(','));
+  if (commit) args.push('--commit');
+  if (evidence) args.push('--evidence', String(evidence));
+  return args;
 }
 
 /**
@@ -350,6 +385,13 @@ export function buildJobPlan(options = {}) {
     // 而它只影响窗口上写什么字：不开标识页数据照样收，开了也不会碰任何采集页面。
     // 给 `--no-merchant-label` 让运维一键退回旧行为（旧行为＝那扇窗没有名字）。
     merchantLabel = true,
+    // `ensureInquiryRows`（2026-10-07 加）：跑链之前先把飞书询单表**这一天的行骨架**补齐。
+    // **默认开** —— 它是 2026-10-06 那次「8 家全挂在第 10 步」的直接修法：
+    // 那张表的日期行一直是运营侧预建的，而链的回填只更新、不新建
+    //（见 `JOB_FILES.ensureInquiryRows` 与大段注释）。
+    // 默认开的另一个理由：它**只补缺的行**、已经是幂等的，正常那轮的动作是「什么都不做」。
+    // 给 `--no-ensure-inquiry-rows` 让运维一键退回旧行为（退回＝那一天的行得有人先建好）。
+    ensureInquiryRows = true,
   } = options;
 
   // 「分批跑」是一个**显式**开关（提前算出来，因为「结论交给谁」在下面要用到它）。
@@ -566,6 +608,30 @@ export function buildJobPlan(options = {}) {
   // 不是整轮的常量。
   // 「整轮视角的那一条记录」由 job.log 里每一步的原始输出承担，不值得用一个会误报的步骤去换。
 
+  // 补「这一天的行骨架」（2026-10-07 加）。**两种形态都要有** —— 生产跑的是 `--batches` 那一档，
+  // 而这一步是**日级**的（与批次粒度无关）：分批驱动本身不管这事，也不该在每个批里各建一遍。
+  //
+  // 为什么 `blocking: false`：它失败时正确的处置不是「今天不采集」，而是**照常采集**。
+  // 采集与推送（前 7 步）跟这一行没有任何关系，只有第 10 步回填需要它 ——
+  // 而回填是**可以事后补跑**的：把行建出来、再只重跑那几家就行（2026-10-06 的现场就是这么处理的）。
+  // 反过来把它当闸门，代价是「因为一张飞书表少了一行，这一天的数据一条都不采」——
+  // 那是把小问题升级成业务停摆。
+  const ensureInquiryRowsStep = ensureInquiryRows
+    ? {
+      name: 'ensure-inquiry-rows',
+      file: JOB_FILES.ensureInquiryRows,
+      args: buildEnsureInquiryRowsArgs({
+        dateInput, shops, commit: true, evidence: artifactsDir ?? null,
+      }),
+      note: '把飞书「各店铺数据日报」里**这一天的行**补齐（只写「日期＋店铺」两列，其余是派生列）'
+        + '—— 缺行时链的第 10 步回填会 8 家全挂，而根因隔着好几层；已经是幂等的：'
+        + '本来就齐的那一天它什么都不做',
+      // 不是闸门（理由见上面那段注释）：它失败时链照跑，缺口由链自己的失败分类
+      //（`INQUIRY_ROW_MISSING`）如实报出来，而不是在这里截断整轮采集。
+      blocking: false,
+    }
+    : null;
+
   return {
     dateInput,
     batches: batches ?? null,
@@ -579,6 +645,9 @@ export function buildJobPlan(options = {}) {
     // 共用窗口标识那一步（不给时 `null`）。与 `holdStep` 同一条理由：数组里看不到它时，
     // 「没加」这件事要有一个可断言的落点，否则「计划里没有」与「这一步压根不存在」长得一样。
     merchantLabelStep,
+    // 补行骨架那一步（不给时 `null`）。同一条理由：数组里看不到它时，「没加」这件事
+    // 要有一个可断言的落点，否则它会被后来的人当成「这一步被删掉了」。
+    ensureInquiryRowsStep,
     steps: [
       ensureInstancesStep,
       // 共用窗口的标识页（2026-10-06 加）。排在实例起来之后、其余一切之前 ——
@@ -615,6 +684,10 @@ export function buildJobPlan(options = {}) {
         // 在这里截断只会让告警少一层信息，而不会让链条走上正确的分支。
         blocking: false,
       },
+      // 补行骨架（2026-10-07 加）：排在链**之前**、其余一切之后 ——
+      // 它建的是链第 10 步要写的那一行，越晚建越贴近真正需要它的那一刻。
+      // 两种形态（全链 / 分批）都走这一步：它是**日级**的，与批次粒度无关。
+      ...(ensureInquiryRowsStep ? [ensureInquiryRowsStep] : []),
       chainStep,
       // 驻留那一步排在链**之后**（`null` 时展开为空 —— 计划数组的形状随之而变，
       // 但「链之后还有没有东西」这件事在返回值里也有一份 `holdStep` 可直接断言）。

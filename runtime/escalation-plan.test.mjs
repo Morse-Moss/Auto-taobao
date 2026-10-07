@@ -297,3 +297,28 @@ test('接线（源码级）：日期口径**复用**链那一份，且不是 imp
   assert.equal(/^import[^\n]*run-multi-shop-day/mu.test(source), false,
     '本模块出现了从驱动 import 的语句 ⇒ 成环');
 });
+
+test('INQUIRY_ROW_MISSING 不许派给修复 agent（2026-10-07 定；不是纸面推论，是真跑烧过一轮）', () => {
+  // 2026-10-06 那轮：8 家店第 10 步回填全部 `got 0`，真因是飞书那张表缺这一天的行。
+  // 因为当时它落回兜底 `STAGE_FAILED`（在 `AGENT_PREFERRED_CAUSES` 里），
+  // 8 家各烧掉一轮自动修复、8 份请求单给的全是 `REAPPLY_DATES`/`RELOAD_PAGE` ——
+  // 一处也没碰到真因。所以它必须**不在** `AGENT_PREFERRED_CAUSES` 里，
+  // 且候选为空时要如实判成「不是 agent 的活」（交给人 + 修那条建行的步骤），而不是「派个 agent 去试」。
+  assert.equal(AGENT_PREFERRED_CAUSES.includes('INQUIRY_ROW_MISSING'), false,
+    'agent 手上只有页面动作，对「飞书少一行」一个都不对症');
+  const plan = buildEscalationPlan({
+    summary: { date: '2026-10-06', shops: { 里可林淘宝: shopRecord({
+      failedStage: 'backfill', repairRequest: { cause: 'INQUIRY_ROW_MISSING', candidates: [] },
+    }) } },
+  });
+  assert.equal(plan.needsAgent, false, '候选为空 + 不在 agent 能干的范围 ⇒ 不许派 agent（派了也是白烧一轮）');
+  assert.equal(plan.targets.length, 0);
+  // 反面：兜底类同样候选为空时**要**派（那时现场还没被救过，agent 值得一试）——
+  // 两类的差别只在成因，不在候选是不是空。
+  const fallback = buildEscalationPlan({
+    summary: { date: '2026-10-06', shops: { 里可林淘宝: shopRecord({
+      failedStage: 'backfill', repairRequest: { cause: 'STAGE_FAILED', candidates: [] },
+    }) } },
+  });
+  assert.equal(fallback.needsAgent, true, '兜底类候选为空时仍要派 agent（它与「策略性不要 agent」不是一回事）');
+});

@@ -15,6 +15,60 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.7.13] - 2026-10-07
+
+用户指令（原话）：「新建日期行这个可以加入自动化流程，你给出这个问题的解决方案」→ 看完方案后「全按建议」。
+本版把「飞书询单表这一天的行骨架」从**人工预建**接成定时链的一步，并把它的缺失单列成一类失败。
+
+### 修：飞书询单表缺「这一天的行」⇒ 8 家店回填全挂（㉗）
+- **现象**（2026-10-06 真跑：`evidence/daily-job-2026-10-06/job.log`、`evidence/batches-2026-10-06/`）：
+  两批 8 家店跑完前 9 步（第 7 步 `push` 写底单**全部成功**，收据都是 `COMMITTED_AND_VERIFIED`），
+  第 10 步 `backfill` **8 家全部** `expected one Feishu row for <店> / <epoch>, got 0`；
+  科塔淘宝另外停在第 2 步（`HTTP 400 alimama filter bar not ready; triggers=0`）。
+- **根因**：`run-inquiry-backfill.mjs` 只**更新**已有行、**从不建行**；而「各店铺数据日报」的日期行
+  一直是**运营侧预建**的（`docs/ops/PROJECT-BROWSER-AND-PORTS.md` 第 62 行记着只铺到 10-05），
+  仓库里没有任何一步管它 ⇒ 一个外部依赖没落进流程，每天都可能全挂，而报错位置离真因隔着好几层
+  （「页面读不到」「登录掉了」这两个方向都被排除过一遍，结论都不是）。
+  本版新脚本的**只读排练**为证（不带 `--commit`）：`10-05` = 13 家全部已齐；`10-06` = 0 家已齐、13 家全缺。
+- **修法**（四块，缺一块都只是「看着像修好了」）：
+  1. 新增 `skills/sycm-alimama-daily-report/scripts/ensure-inquiry-rows.mjs`：**日级、幂等**，
+     只写 `日期`＋`店铺` 两列（其余 31 列是 Lookup(`19`)/Formula(`20`) 派生列、不可写；
+     行一在、底单数据一推上去它们自己解析出值）。默认**排练**，`--commit` 才写。
+     写前 fail-closed 断言：表名＝`各店铺数据日报`、`日期` type 5、`店铺` type 3、
+     目标店在「店铺」选项里**必须存在**（写一个不存在的店名，平台可能静默新建一个选项 ⇒
+     表里多出一家谁也不认识的店，且看起来完全正常）。写后**独立回读**再断言。
+     同日同店多行 ⇒ **整批一行都不建**（半路建一半会让状态更难说清）。
+  2. 抽共用叶子：`listFieldOptions` / `resolveShopOptionId` 从 `run-inquiry-backfill.mjs`
+     搬进 `inquiry-core.mjs`。建行与回填必须用**同一份**判据认「这一行在不在」；
+     两份实现漂开的症状是「一边建、一边回填不上」，而两边都不报错。搬迁不改行为。
+  3. 接进计划：`runtime/daily-job-plan.mjs` 加 `JOB_FILES.ensureInquiryRows` 与一步
+     `ensure-inquiry-rows`，**全链与 `--batches` 两种形态都有**（它是日级动作，与批次粒度无关，
+     也不该在每个批里各建一遍），排在链之前、其余前置步骤之后；`blocking: false` ——
+     它失败时正确的处置是**照常采集**、事后把行建出来再只补跑回填，而不是让这一天的数据一条都不采。
+     `--commit` 由计划显式给（脚本自己默认排练；漏这一句会静默地「一行都没建」）。
+     `scripts/run-daily-job.mjs` 默认开、`--no-ensure-inquiry-rows` 一键退回。
+  4. 单列失败成因 `INQUIRY_ROW_MISSING`：回填那句「候选行数＝0」现在带机器标记
+     （由 `inquiry-core.describeFeishuRowGap` 产出，错误里**直接写出处置**）；
+     链的 `shopFailureCause` 认识它，并登记进 `REASON_BY_CAUSE` / `ACTION_BY_CAUSE` /
+     `REMEDIATION_TABLE`（`notifyLevel: 'human'` —— 与 `SOURCE_NO_ROW_FOR_DATE` **相反**：
+     那一条谁都变不出来，这一条补一行就好，所以不许静默）。
+     **刻意不进** `AGENT_PREFERRED_CAUSES`：修复 agent 手上只有页面动作，对它一个都不对症 ——
+     这不是纸面推论，2026-10-06 那次 8 家各烧掉一轮 `--auto-repair`，
+     8 份修复请求单给的全是 `REAPPLY_DATES` / `RELOAD_PAGE`。也不进 `HUMAN_REQUIRED_CAUSES`
+     （没有哪一页需要人碰，驻留对它是纯浪费）。
+- **验证到什么程度**：
+  - **只读真机排练**（本版脚本，不带 `--commit`，一个字节都没写）：`--date 2026-10-06`
+    → `targets: 13 / presentCount: 0 / missing: 13`；`--date 2026-10-05`
+    → `presentCount: 13 / missing: [] / created: []`（幂等那一支也走通了）。
+    表名、两个字段类型、13 个选项的真实存在都被断言过。
+  - **离线**：`inquiry-core` 19、`remediation-table` 14、`run-multi-shop-day` 113、
+    `daily-job-plan` 51、`escalation-plan` 22、`arch-boundary` 3 —— 全绿。
+  - **尚未做（不在本版内）**：真建 10-06 那 13 行、以及补跑那 7 家的回填。那是本版交付之后单独执行的一步。
+
+### 不变
+- 没有改任何浏览器相关的逻辑：`--batches` 的起停与释放口径、共享窗口登录守卫、
+  告警闸门（`--defer-agent-actionable-alert`）与驻留判据一个字都没动。
+
 ## [1.7.12] - 2026-10-06
 
 用户指令（原话）：「那你推荐的改，然后网林这个你告诉我缺什么？」—— 指的是 2026-10-05 那一轮

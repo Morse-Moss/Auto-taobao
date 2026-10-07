@@ -465,8 +465,11 @@ test('接线：定时计划里真的有「驻留」这一步，且它只在链�
   const names = plan.steps.map((step) => step.name);
   // 2026-10-06 加 `label-merchant-window`：共用窗口（19022/19023）也有了标识页，
   // 排在起实例之后、登录取证之前。这里跟着改是**登记动作**，不是为了让红灯变绿。
+  // 2026-10-07 加 `ensure-inquiry-rows`：补飞书询单表这一天的行骨架，排在链之前、
+  // 其余前置步骤之后（它建的正是链第 10 步回填要写的那一行）。同样是登记动作。
   assert.deepEqual(names,
-    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login', 'chain', 'hold-and-resume']);
+    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login',
+      'ensure-inquiry-rows', 'chain', 'hold-and-resume']);
   const hold = plan.holdStep;
   assert.ok(hold, '计划里没有驻留那一步 ⇒ 「留窗口给人」一次也不会发生');
   assert.equal(hold.onlyWhenChainFailed, true, '链成功的那一天它不许执行（默认行为必须逐字不变）');
