@@ -52,7 +52,8 @@ async function main(argv = process.argv.slice(2)) {
     validateExportRows(source.headers, source.rows, { kind: kind === 'keyword' ? '关键词' : '人群', expectedColumns, date: args.date });
     const tableId = target.tables?.[kind];
     if (!tableId || !target.baseToken) throw new Error(`推广日报 ${kind} 目标未完整配置（需要 baseToken 与 tables.${kind}）`);
-    const client = new FeishuClient({ appId: credentials.FEISHU_APP_ID, appSecret: credentials.FEISHU_APP_SECRET, appToken: target.baseToken, tableId });
+    // loadFeishuCredentials() 的稳定返回契约是 appId/appSecret；不要绕过配置层读取旧字段名。
+    const client = new FeishuClient({ appId: credentials.appId, appSecret: credentials.appSecret, appToken: target.baseToken, tableId });
     const fieldItems = await client.listFieldItems();
     const targetFields = new Map(fieldItems.map((f) => [f.field_name, f.type]));
     const existing = await client.listRecords(); const existingKeys = new Set(existing.map((r) => promotionIdempotencyKey(r.fields ?? {}, { shop: args.shop, kind })));

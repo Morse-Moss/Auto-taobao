@@ -189,8 +189,15 @@ test('日报目标指向用户 2026-09-30 指定的 base「各店铺日报 副�
     ['baseToken', 'inquiryTable', 'sourceBaseName', 'sourceTable', 'sourceView']);
 });
 
-test('推广日报目标未登记时必须 fail-closed，不得回落到日报或商品表', () => {
-  assert.throws(() => promotionDailyTargets('kcne'), /Promotion-daily target is not configured/u);
+test('推广日报目标指向销售一部已确认 Base 与两张表', () => {
+  const target = promotionDailyTargets('kcne');
+  assert.equal(target.baseToken, 'Cqavb19NlaMUIIswp5IcMHWCnKb');
+  assert.equal(target.baseName, '10月推广数据-销售1部');
+  assert.deepEqual(target.tables, {
+    keyword: 'tblbSGMO2apOKuAZ',
+    audience: 'tblyjD5058Mjbmcv',
+  });
+  assert.deepEqual(target.sourceContracts, { keywordColumns: 75, audienceColumns: 71 });
 });
 
 test('商品数据三张目标表属于用户授权的商品数据 base', () => {

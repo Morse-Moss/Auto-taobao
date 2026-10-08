@@ -89,8 +89,18 @@ export const PROFILES = Object.freeze({
       sourceView: 'vewwg0rhjo',
       inquiryTable: 'tblqF2YD2VfmKP4C',
     }),
-    // 推广日报目标必须由运营确认后登记；未登记时所有真实导入 fail-closed。
-    promotionDaily: null,
+    // 2026-10-08：运营确认销售一部推广日报 Base「10月推广数据-销售1部」。
+    // 两张表字段已通过已登录页面只读核对，并与人工下载的关键词/人群 CSV 表头按名称对齐。
+    promotionDaily: Object.freeze({
+      baseToken: 'Cqavb19NlaMUIIswp5IcMHWCnKb',
+      baseName: '10月推广数据-销售1部',
+      tables: Object.freeze({
+        keyword: 'tblbSGMO2apOKuAZ',
+        audience: 'tblyjD5058Mjbmcv',
+      }),
+      // 目标表额外保留的店铺/主图字段由导入器跳过；日期和指标字段按名称匹配。
+      sourceContracts: Object.freeze({ keywordColumns: 75, audienceColumns: 71 }),
+    }),
     // ⚠️ 2026-09-30 起：**新代码不要再用这一格**。商品数据已改成「月份 × 部门」分 base，见下方
     // PRODUCT_DATA_MONTH_BASES 与 `productDataTargetsForShop(店铺, 数据日期)`。
     // 这一格保留的原因有二：① 它就是「2026-09 × 销售1部」那个条目（测试断言两者同源，
