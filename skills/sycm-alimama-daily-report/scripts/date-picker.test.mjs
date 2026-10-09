@@ -416,6 +416,70 @@ test('落位：读数本来就是目标日时不重载（行为与从前逐字�
   } finally { stub.restore(); }
 });
 
+// 2026-10-07 现场（`evidence/batches-2026-10-07/b2/网林家居/09-sycm-date-again.txt`）：
+// 页签定位报 `sycm tab 询单到付款: point (492,277) is covered by TD` —— 而**同一个坐标**
+// 在几秒后点得到（修复 agent 重放该阶段，trace 里 point 逐字相同、一次就过）。
+// 错的是那一瞬的 DOM（页签刚被 sycm-reset 送回入口、SPA 正在重挂载），不是坐标、不是判据。
+// 下面两条按现场序列回放：先「量到被压住」再「量到」⇒ 必须判成功且留痕；一直压着 ⇒ 报错要说清预算。
+test('落位：页签第一次量到「被压住」要重试，不许当场判整步失败', async () => {
+  const stub = stubProxy({
+    targets: SYCM_TARGET,
+    evalResults: [
+      { state: sycmState('统计时间 2026-09-20', ['业绩分析']) },           // 1 动作前读取：本来就是目标日
+      { error: 'sycm tab 询单到付款: point (492,277) is covered by TD' },  // 2 页签定位第 1 次：被压住
+      { state: { active: false, point: [492, 277] } },                     // 3 页签定位第 2 次：量到了
+      { state: sycmState('统计时间 2026-09-20', ['询单到付款']) },          // 4 点完页签后的复核
+      { state: { point: [821, 162] } },                                    // 5 预设表达式
+      { state: sycmState('统计时间 2026-09-20', ['询单到付款']) },          // 6 settle 第 1 轮
+    ],
+  });
+  try {
+    const result = await applyDate(sycmPresetCase);
+    assert.equal(result.status, 'APPLIED');
+    const retried = result.trace.find((step) => step.step === 'locate-retried');
+    assert.ok(retried, '重试过就要留痕 —— 否则「这一步为什么慢」只能靠复现');
+    assert.equal(retried.label, 'sycm tab 询单到付款');
+    assert.equal(retried.reads, 2);
+    assert.match(retried.lastError, /covered by TD/u, '上一次为什么读不到要带出来');
+    assert.deepEqual(result.trace.find((step) => step.step === 'tab').point, [492, 277],
+      '重试拿到的还是那个点 —— 坐标从来没错过，错的是那一刻的 DOM');
+  } finally { stub.restore(); }
+});
+
+test('落位：页签一直量不到 ⇒ 报错要说清试了几次、间隔多久、最后一次为什么', async () => {
+  const stub = stubProxy({
+    targets: SYCM_TARGET,
+    evalResults: [
+      { state: sycmState('统计时间 2026-09-20', ['业绩分析']) },
+      { error: 'sycm tab 询单到付款: point (492,277) is covered by TD' },  // 之后每一轮都是这句
+    ],
+  });
+  try {
+    await assert.rejects(() => applyDate({ ...sycmPresetCase, settleAttempts: 3 }), (error) => {
+      assert.match(error.message, /sycm tab 询单到付款: 定位重试 3 次仍失败/u);
+      assert.match(error.message, /每次间隔 1ms/u, '预算要写在报错里，别让人猜等过多久');
+      assert.match(error.message, /covered by TD/u, '最后一次读不到的原因要带出来');
+      return true;
+    });
+    assert.equal(stub.evalCalls(), 4, '重试次数由 settleAttempts 决定（1 次动作前读取 + 3 次定位）');
+  } finally { stub.restore(); }
+});
+
+// 源码级接线守卫：这一次修的是**位置**（单发 → 有界重试），上面两条行为用例按住的是结果。
+// 位置一旦退回去，行为用例会因为「第一次恰好量到」而全绿 —— 正是本仓吃过多次的那种假绿。
+test('落位：页签定位必须走有界重试，不许退回单发 evaluate', () => {
+  const source = readFileSync(path.join(import.meta.dirname, 'date-picker.mjs'), 'utf8');
+  assert.equal(/await evaluate\(proxy, page, sycmTabExpression\(/u.test(source), false,
+    '页签定位不能再是单发 evaluate —— 一瞬的遮挡会把整步判死（2026-10-07 网林家居）');
+  assert.match(source, /expression: sycmTabExpression\(expectTab\)/u, '要把它交给重试那一层');
+  assert.match(source, /attempts: settleAttempts, ms: settleMs/u, '预算沿用 settle 那一把尺子，不新造数字');
+  assert.match(source, /if \(attempt > 0\) say\('locate-retried'/u, '重试要留痕');
+  // 判据本身要抓得住那种写法，否则它只是装饰。
+  assert.ok(/await evaluate\(proxy, page, sycmTabExpression\(/u
+    .test('const tab = await evaluate(proxy, page, sycmTabExpression(expectTab));'),
+  '判据失效了：拿真的违规写法都测不出来');
+});
+
 test('落位：重载之后读数仍不对 ⇒ 报错要排除「页面过期」这个成因', async () => {
   const stub = stubProxy({
     targets: SYCM_TARGET,

@@ -61,6 +61,22 @@
 
 ## 修复 agent 该做什么（按顺序）
 
+0. **先确认这家店的实例还在，不在就把它拉起来。**（2026-10-09 加，**别跳**）
+   `--batches` 形态**每一批跑完就释放**，而 `stop` 用的是与 `start` **同一份 `--only` 名单**
+   —— **失败的那一家也在释放名单里**。所以「脚本驻留不退出、窗口留着、现场就在」那句话
+   只在**非分批**形态成立；生产跑的正是 `--batches`。
+   判据不能靠记忆，只能回读：`curl -s -m 5 http://127.0.0.1:<该店代理端口>/targets`
+   （端口从 `runtime/browser-ports.mjs` 的 `shopInstance(店).proxyPort` 取，或直接用
+   `97-repair-request.json` 里 `instancePrecondition.checkCommand`）。
+   - 有输出（一个 JSON 数组）⇒ 实例在，直接做第 1 步。
+   - 连不上 ⇒ 先 `node scripts/start-all-hold.mjs --only <店>` 把它拉起来（**后台托住**，
+     普通 `start-all.mjs` 起完就退、窗口留不住），再用 `Get-NetTCPConnection -LocalPort <端口> -State Listen`
+     **读两遍**确认在听，然后才做第 1 步。
+   - **为什么这一步是硬要求**：`--proxy` 是唯一的实例选择器（见 `repair-shop-stage.mjs` 头部纪律），
+     代理连不上时页面动作一个都执行不到，而脚本会如实报 `读不到页签（代理连不上）` 退 3。
+     2026-09-28~10-07 共 27 份修复报告里**有 20 份**的结论是「现场已不在 ⇒ 未执行任何修复动作 ⇒ 转人」
+     —— 那是**动作还没试就判了转人**，把一件纯机械的事报成了「需人」。10-07 网林家居那次能救回来，
+     正是因为 agent 自己补做了这一步。
 1. 读 `evidence/multi-shop-<目标日>/<店>/97-repair-request.json`（修复请求单）。
    里面已给：`cause`、`stage`、`candidates`（含每个动作的 `why` 与 `mutating`）、
    `statePath`（完整现场事实）、`screenshotPath`、`retryStage`、`execHint`。
@@ -98,6 +114,9 @@
 
 - 不改 `.workbuddy/` 下任何东西（只在 `evidence/` 里写）。
 - 不重启/停止任何存活进程、容器、浏览器实例（修复动作本身就是脚本接口，不需要重启）。
+  **注意这一条不禁止「把已经停掉的实例拉起来」**：第 0 步的 `start-all-hold.mjs` 是幂等的
+  （实例已在位时不碰它），它拉起的是一个已经不在的实例，不是重启一个存活的服务。
+  边界仍然是：**已经在跑的东西一个都不要动**。
 - 动仓库代码前先 `git log -1`；提交走**显式路径**、绝不 `-A`；
   别的会话在改的文件一个字都不要碰。
 - 修复动作本身有闭集（`DISMISS_OVERLAYS` / `RESET_PAGES` / `RELOAD_PAGE` / `REAPPLY_DATES`），

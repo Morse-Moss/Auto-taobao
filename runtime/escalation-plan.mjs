@@ -203,6 +203,12 @@ export function classifyShopEscalation({ shop, record, unfixable = new Set(), su
     statePath: record?.repairRequest?.statePath ?? null,
     screenshotPath: record?.repairRequest?.screenshotPath ?? null,
     execHint: record?.repairRequest?.execHint ?? null,
+    // 2026-10-09 加：**动手前先确认这家店的实例还在**（请求单里那一份，原样带过来）。
+    // 为什么必须在派单里也出现：`--batches` 每批跑完就释放，而 `stop` 用的是与 `start`
+    // 同一份 `--only` 名单 ⇒ 失败的那家也在释放名单里。实测 27 份修复报告里 20 份的结论是
+    // 「现场已不在 ⇒ 未执行任何修复动作 ⇒ 转人」—— 那是**动作还没试就判了转人**，
+    // 而作业指导书里没有「先把实例拉起来」这一步。老 summary 没有这个字段 ⇒ 原样给 null。
+    instancePrecondition: record?.repairRequest?.instancePrecondition ?? null,
     candidates: (record?.repairRequest?.candidates ?? []).map((c) => c.action),
     reasons,
     logDir: dir,
@@ -231,7 +237,12 @@ export function buildEscalationPlan({ summary = {}, summaryPath = null, cardPath
     targets,
     // 会话侧照着这一条干（自包含，不要求会话去读别的文件才知道怎么做）。
     handoff: targets.length
-      ? '按 docs/ops/REPAIR-AGENT-HANDOFF.md 派一个**后台修复 agent**：读 repairRequestPath 与 statePath → 从 candidates 里挑一个动作 → 先 --dry-run 再真跑 repair-shop-stage.mjs → 回读并重试失败那一步 → 全过程写进 logDir 的 97-repair-agent-report.md。修不动才发飞书叫人。'
+      ? '按 docs/ops/REPAIR-AGENT-HANDOFF.md 派一个**后台修复 agent**：'
+        // 2026-10-09 加的第一步 —— 它是上面那条 HANDOFF 的第 0 步，也是 20/27 份修复报告
+        // 止步的地方（`--batches` 每批释放 ⇒ 到场时实例已停 ⇒ 页面动作一个也执行不到）。
+        + '**先确认该店实例还在**（跑 target 里的 `instancePrecondition.checkCommand`；'
+        + '连不上就先跑它的 `startCommand` 把它拉起来并回读端口，再往下做）→ '
+        + '读 repairRequestPath 与 statePath → 从 candidates 里挑一个动作 → 先 --dry-run 再真跑 repair-shop-stage.mjs → 回读并重试失败那一步 → 全过程写进 logDir 的 97-repair-agent-report.md。修不动才发飞书叫人。'
       : '这一轮不需要修复 agent。',
   };
 }
@@ -307,6 +318,12 @@ function main() {
     console.log(`[派单]   ${t.shop}：${t.cause ?? '(成因未知)'}（停在第 ${t.stage ?? '?'} 步）`);
     for (const r of t.reasons) console.log(`[派单]       · ${r}`);
     console.log(`[派单]       候选：${t.candidates.length ? t.candidates.join(' / ') : '(空菜单)'}｜证据目录 ${t.logDir ?? '?'}`);
+    // 「先确认实例」这两行必须打出来：`--batches` 形态下 agent 到场时实例多半已经被放掉了，
+    // 而这一步不做的话，候选动作一个都执行不到（27 份修复报告里 20 份就停在这里）。
+    if (t.instancePrecondition) {
+      console.log(`[派单]       动手前先确认实例还在：${t.instancePrecondition.checkCommand}`);
+      console.log(`[派单]       连不上就先拉起它：${t.instancePrecondition.startCommand}`);
+    }
   }
   console.log(`[派单] ${plan.handoff}`);
 }

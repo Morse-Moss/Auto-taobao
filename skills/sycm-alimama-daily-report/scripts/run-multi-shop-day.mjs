@@ -323,6 +323,43 @@ export function shopFailureCause(record) {
 }
 
 /**
+ * 「动手之前先把实例确认到」——写进修复请求单的那几行（2026-10-09 加）。
+ *
+ * 为什么必须有它：`--batches` 形态**每一批跑完就释放**（`runtime/batch-plan.mjs` 的
+ * `releaseAfterBatch`：链成功、链失败、链压根没跑到，一律释放；而 `stop` 用的是与 `start`
+ * **同一份 `--only` 名单** ⇒ 失败的那一家也在释放名单里）。第②层（修复 agent）的作业指导书
+ * 却假定「脚本侧驻留不退出、窗口留着、现场就在」—— 那个前提**只在非分批形态成立**
+ * （`run-daily-job.mjs` 不带 `--batches` 时确实没有 stop 步）。
+ *
+ * 实测代价（只读统计 `evidence/` 下各轮的 `97-repair-agent-report.md`，09-28~10-07 共 27 份）：
+ * **20 份**的结论是「现场已不在 ⇒ 未执行任何修复动作 ⇒ 转人」，也就是**动作还没试就判了转人**。
+ * 而 10-07 网林家居之所以能救回来，是因为那个 agent **自己即兴补了一句**
+ * `start-all-hold.mjs --only …` —— 这一步原先不在指导书里，换个人/换个更严格的读法就会停手。
+ *
+ * 为什么写成「先确认」而**不**断言「已经被释放」：
+ * 这张单子是**链跑到一半**写的，那一刻实例还活着；真正被释放是在这一批结束之后。
+ * 而且给了 `--no-release` 时实例**不会**被放掉 —— 写「已被释放」在那种情况下就是假话，
+ * 而本仓最贵的一类错误正是「说了一句不对的话」。所以给的是**可回读的判据**（代理在不在听）。
+ *
+ * 「先确认」不是礼貌，是防串店：`--proxy` 是唯一的实例选择器（见 `repair-shop-stage.mjs`
+ * 头部的纪律），代理连不上时它会回落到**商家浏览器默认端口** —— 那是对着**另一台**做事。
+ */
+export function buildInstancePrecondition(shopKey) {
+  const proxyPort = shopInstance(shopKey).proxyPort;
+  return {
+    why: `这一批跑完可能已经把这家店的浏览器放掉了（--batches 每批都释放，失败的那家也在名单里）。`
+      + '代理连不上时任何页面修复动作都执行不到，而 --proxy 是唯一的实例选择器 —— '
+      + '不先确认就可能对着别的一台做事。',
+    checkCommand: `curl -s -m 5 http://127.0.0.1:${proxyPort}/targets`,
+    // start-all 是**幂等**的：实例已在位时它不碰它 ⇒ 这条命令在「还在」的情况下也安全。
+    // 用 hold 形态是因为普通 start-all 起完就退、宿主会回收整棵进程树，窗口留不到 agent 干完。
+    startCommand: `node scripts/start-all-hold.mjs --only ${shopKey}`,
+    note: '先跑 checkCommand：有输出（一个 JSON 数组）就是还在，直接执行 execHint；'
+      + '连不上就先跑 startCommand 把它拉起来（后台托住），确认再执行 execHint。',
+  };
+}
+
+/**
  * 一次失败 → 一份**修复请求单**（2026-09-29 加）。纯函数 + 一处落盘，永不抛。
  *
  * 它是「自进化回环」的中间产物：链接三方 ——
@@ -390,6 +427,10 @@ export function buildRepairRequest({ shopKey, stage = null, error = null, percep
       // logDir 认不出来就**不给 --log-dir**（写 `<stage>` 比写一个像路径的垃圾更诚实，
       // 也避免调用方把提示当命令直接粘贴执行）。
       + (logDir ? ` --log-dir ${path.relative(REPO_ROOT, logDir)}` : ''),
+    // 2026-10-09 加：**执行任何修复动作之前，先把实例确认到**（判据与理由见上面那个函数）。
+    // 落在单子里而不是只写在作业指导书里 —— 这张单子是 agent 到场后第一件读的东西，
+    // 20/27 份修复报告「现场已不在 ⇒ 转人」说明只靠文档不够。
+    instancePrecondition: buildInstancePrecondition(shopKey),
   };
   if (typeof writeFile === 'function' && logDir) {
     try {
@@ -991,7 +1032,9 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
     // 挑哪个候选按表里的顺序（表本身就是「先试哪个」的排序）。
     else if (key === '--auto-repair') args.autoRepair = true;
     // 一轮里最多自动修几次（防止「修不好 → 重试 → 又失败 → 又修」在原地打转）。
-    // 默认 1：一次修不好就停手交人 —— 修两次还不行说明这条成因不在表里能覆盖的范围内。
+    // 默认见 `DEFAULT_AUTO_REPAIR_MAX_ROUNDS`（2026-10-09 起是 2＝菜单一次试完）。
+    // 不给它时**不是**「一次修不好就停手」—— 那个默认值会让每个成因的第 2 个候选
+    // 永远轮不到（`REPAIR_TABLE` 每条都是两个候选），收据里留下「候选还剩 …」。
     else if (key === '--auto-repair-max-rounds') {
       const value = Number(argv[++i]);
       if (!Number.isInteger(value) || value < 0) {
@@ -1457,10 +1500,24 @@ export function probeSyncSpawnSanity({ spawn = spawnSync, node = NODE } = {}) {
 }
 
 /**
- * 一轮里最多自动修几次。**默认 1**（见 `--auto-repair-max-rounds` 的注释）。
+ * 一轮里最多自动修几次。**默认 2**（见 `--auto-repair-max-rounds` 的注释）。
  * 导出是为了让测试与调用方读同一个数，而不是各自写一遍。
+ *
+ * ── 2026-10-09：1 → 2，因为 1 让「候选还没试完就用完配额」变成**结构性**的 ──────────
+ * 判据是这张表本身：`REPAIR_TABLE`（repair-actions.mjs）里**每个成因都给两个**候选
+ * （STAGE_FAILED → REAPPLY_DATES/RELOAD_PAGE，PAGE_OBSTRUCTED → DISMISS_OVERLAYS/RELOAD_PAGE，
+ * SHOP_BLOCKED → RESET_PAGES/RELOAD_PAGE）。而 `autoRepairAndRetry` 的循环是**一个候选吃一轮**，
+ * 于是一旦配额 < 菜单长度，第 2 个候选**永远轮不到**，摘要里留下
+ * `用完 1 轮（候选还剩 RELOAD_PAGE）`。
+ * 这不是理论：2026-10-07 两家失败店（网林家居、网林天猫）的收据逐字就是这句；
+ * 而网林家居最后正是靠 `RELOAD_PAGE`（被第①层漏掉的那一个）救回来的 ——
+ * 第②层的 agent 补做了第①层没做到的那一下。
+ * 更糟的是首位候选 `REAPPLY_DATES` 按实现**恒返回 `applied:false`**（它只是叫你去重跑落位），
+ * 所以那唯一一轮经常被一个「设计上不可能生效」的动作吃掉。
+ * 取 2＝「菜单一次试完」，于是停手条件回到它该有的那个（候选耗尽），而不是一个比菜单还小的配额。
+ * `run-multi-shop-day.test.mjs` 里有一条守卫把「配额 ≥ 最长菜单」钉住（加候选忘了加配额会红）。
  */
-export const DEFAULT_AUTO_REPAIR_MAX_ROUNDS = 1;
+export const DEFAULT_AUTO_REPAIR_MAX_ROUNDS = 2;
 
 /**
  * 把候选动作归一成**动作名字符串**。

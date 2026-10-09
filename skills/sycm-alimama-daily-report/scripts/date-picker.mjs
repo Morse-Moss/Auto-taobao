@@ -455,6 +455,40 @@ async function waitForReadableState({ proxy, site, targetId, attempts, ms }) {
   return { state: null, readFailures, lastError, reads: attempts };
 }
 
+// 「量一个点」这类页面读取的**有界重试**：只在抛错时重试，成功即返回。
+//
+// 为什么必须有它（2026-10-07 现场，`evidence/batches-2026-10-07/b2/网林家居/09-sycm-date-again.txt`）：
+// 生意参谋页签的定位原先是一次性 `evaluate` ⇒ 量到「这个点被别人压着」当场判整步失败
+// （`sycm tab 询单到付款: point (492,277) is covered by TD`）。而**同一个坐标**在几秒后点得到
+// —— 修复 agent 重放该阶段时，trace 里是 `alreadyActive:false, point:[492,277]`（逐字相同）、一次就过。
+// 也就是说错的是那一瞬的 DOM（页签刚被 `sycm-reset` 送回入口、SPA 正在重挂载），
+// 不是坐标、不是判据：`aim()` 的命中复核做对了它该做的事（把「点了空气」变成显式报错），
+// 缺的是**没人重试**。全仓 `is covered by` 只出现过这一次，是竞态而不是稳定几何缺陷。
+//
+// 预算刻意**沿用 settle 的那把尺子**（`settleAttempts × settleMs`），不新造第二个数字：
+// 要等的就是「页签被送回入口之后 SPA 重挂载」那个窗口，与日期读数要等的窗口同源。
+// 第一次尝试**不等待**（与改动前的时延逐字相同），只在重试之间等。
+//
+// ⚠️ 边界（有意为之，不是漏了）：只有**页签**这一步走这个重试。同族的按钮定位
+// （`sycmButtonExpression`：预设「1天」/「自定义」）仍是单发 —— 它们没有失败样本，
+// 而且它们点下去之后立刻就是 `settle`（读数会把没落位读出来）。要扩到它们，先有现场再说。
+async function locateWithRetry({ proxy, targetId, expression, attempts, ms, label, say }) {
+  let lastError = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (attempt > 0) await delay(ms);
+    try {
+      const value = await evaluate(proxy, targetId, expression);
+      if (attempt > 0) say('locate-retried', { label, reads: attempt + 1, lastError });
+      return value;
+    } catch (error) {
+      lastError = String(error?.message ?? error).split('\n')[0].slice(0, 200);
+    }
+  }
+  // 重试耗尽 ⇒ 报错里必须留着「试了几次、每次间隔多久、最后一次为什么读不到」。
+  // 只报一句「定位失败」会让人分不清「页面真的没有这个元素」与「预算太短」。
+  throw new Error(`${label}: 定位重试 ${attempts} 次仍失败（每次间隔 ${ms}ms）；lastError=${lastError}`);
+}
+
 // ---------------------------------------------------------------- 「这个功能在不在这个账号上」
 
 // 失败也要有**确定性名字**。没有名字的失败会落进分类链的兜底那一档，把
@@ -747,7 +781,10 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
   // sycm 第一件事是确认页签。页签错了，日期控件就是「另一套」：
   // 汇总分析下「1天」按钮存在但不可见，只有 日/月/自定义，硬点会点到别的东西。
   if (expectTab) {
-    const tab = await evaluate(proxy, page, sycmTabExpression(expectTab));
+    // 走 `locateWithRetry` 而不是单发 evaluate：这一步紧跟 `sycm-reset` 的跨文档导航，
+    // 页签条与内容表正在重挂载，量到「被压住」是竞态而不是结论（详见那个函数的注释）。
+    const tab = await locateWithRetry({ proxy, targetId: page, expression: sycmTabExpression(expectTab),
+      attempts: settleAttempts, ms: settleMs, label: `sycm tab ${expectTab}`, say });
     say('tab', { expectTab, alreadyActive: tab.active, point: tab.point });
     if (!tab.active) {
       await clickPoint(proxy, page, tab.point);

@@ -1592,6 +1592,31 @@ test('buildRepairRequest：已知成因（PAGE_OBSTRUCTED）⇒ 带候选菜单�
   assert.ok(req.path, '单子应已落盘并带回相对路径');
 });
 
+test('buildRepairRequest：单子里带「动手前先确认实例还在」，且端口与 execHint 指向同一台', () => {
+  // 为什么必须落进**单子**而不只写在作业指导书里（2026-10-09）：27 份修复报告里 20 份的结论是
+  // 「现场已不在 ⇒ 未执行任何修复动作 ⇒ 转人」—— 那是**动作还没试就判了转人**。
+  // 请求单是 agent 到场后第一件读的东西，所以判据要在这里；而端口必须**只来自登记表**：
+  // `--proxy` 是唯一的实例选择器，代理连不上时 repair-shop-stage 会回落到商家浏览器默认端口
+  // —— 那是对着**另一台**做事。所以这里既钉「有这一段」，也钉「两处端口是同一个」。
+  const dir = mkdtempSync(path.join(tmpdir(), 'repair-req-'));
+  const req = buildRepairRequest({
+    shopKey: '里可林淘宝', stage: 'sycm-date-again',
+    error: 'point (492,277) is covered by TD', perception: null, logDir: dir,
+  });
+  const pre = req.instancePrecondition;
+  assert.ok(pre, '请求单必须带 instancePrecondition（缺了它 agent 可能对着别的一台做事）');
+  const proxyMatch = req.execHint.match(/--proxy http:\/\/127\.0\.0\.1:(\d+)/u);
+  assert.ok(proxyMatch, 'execHint 里应当有 --proxy（这条判据得先有对照物）');
+  const port = proxyMatch[1];
+  assert.match(pre.checkCommand, new RegExp(`^curl -s -m 5 http://127\\.0\\.0\\.1:${port}/targets$`, 'u'),
+    `checkCommand 要探这家店自己的代理端口（execHint 用的是 ${port}）；两处漂开＝确认了一台、修的是另一台`);
+  assert.match(pre.startCommand, new RegExp(`start-all-hold\\.mjs --only 里可林淘宝$`, 'u'),
+    'startCommand 要拉起这家店，且用 hold 形态（普通 start-all 起完就退、窗口留不住）');
+  // why / note 是给 agent 读的话，不能是空壳。
+  assert.match(pre.why, /--batches/u, 'why 要说清为什么：分批形态每批都会释放，失败那家也在释放名单里');
+  assert.match(pre.note, /checkCommand/u, 'note 要给出可照做的顺序，而不是只描述问题');
+});
+
 test('buildRepairRequest：DUPLICATE_TARGET 也给候选（交给人），且不假装要重试', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'repair-req-'));
   const req = buildRepairRequest({
@@ -1851,6 +1876,41 @@ test('autoRepairAndRetry：maxRounds=0 ⇒ 直接放弃（配额为零）', asyn
   assert.equal(trace.rescued, false);
   assert.match(trace.gaveUp, /maxRounds<=0/u);
   assert.equal(trace.rounds.length, 0);
+});
+
+test('配额 ≥ 最长菜单：默认轮数要够把任何成因的候选各试一次（加候选忘了加配额会红）', () => {
+  // 2026-10-07 两家失败店（网林家居、网林天猫）的收据逐字是「用完 1 轮（候选还剩 RELOAD_PAGE）」
+  // —— 配额比菜单小，第 2 个候选**永远轮不到**；而网林家居最后正是靠被漏掉的 `RELOAD_PAGE`
+  // 救回来的（第②层的 agent 补做了第①层没做到的那一下）。再加一条：首位候选 `REAPPLY_DATES`
+  // 按实现恒返回 `applied:false`，所以那唯一一轮经常被一个「设计上不可能生效」的动作吃掉。
+  // 于是把「默认配额 ≥ 任何成因的菜单长度」钉在这里：谁往 REPAIR_TABLE 加第三个候选、
+  // 却不抬 DEFAULT_AUTO_REPAIR_MAX_ROUNDS ⇒ 这条红。
+  let maxMenu = 0;
+  let worst = null;
+  for (const cause of FAILURE_CAUSES) {
+    const menu = planRepair({ cause, stage: 'shop-report' }).candidates.length;
+    if (menu > maxMenu) { maxMenu = menu; worst = cause; }
+  }
+  assert.ok(maxMenu >= 2, `最长菜单只有 ${maxMenu} ⇒ 样本不对，这条会退化成永真检查（先确认 REPAIR_TABLE 还在）`);
+  assert.ok(DEFAULT_AUTO_REPAIR_MAX_ROUNDS >= maxMenu,
+    `默认配额 ${DEFAULT_AUTO_REPAIR_MAX_ROUNDS} < 最长菜单 ${maxMenu}（${worst}）⇒ 那个候选永远轮不到`);
+});
+
+test('autoRepairAndRetry：不给 maxRounds（＝生产路径）时，两个候选要真的各吃一次', async () => {
+  // 上一条守的是**常量**，这一条守的是**行为**。改动前默认配额是 1 ⇒ 这里 actions 只会是
+  // ['REAPPLY_DATES']、gaveUp 会是「用完 1 轮（候选还剩 RELOAD_PAGE）」—— 正是 10-07 的收据。
+  const actions = [];
+  const trace = await autoRepairAndRetry({
+    shopKey: SHOP, logDir: '/tmp/x',
+    req: { shopKey: SHOP, stage: 'promotion-fetch', cause: 'STAGE_FAILED', retryStage: 'promotion-fetch',
+      candidates: ['REAPPLY_DATES', 'RELOAD_PAGE'] },
+    runStage: async () => ({ status: 1 }), // 重试永远失败 ⇒ 候选会一路试完
+    exec: async (o) => { actions.push(o.action); return { applied: true }; },
+    log: () => {},
+  });
+  assert.deepEqual(actions, ['REAPPLY_DATES', 'RELOAD_PAGE'],
+    '默认配额必须够把 STAGE_FAILED 的两个候选都试一次（把它改回 1 就会在这里红）');
+  assert.equal(trace.gaveUp, '候选动作已全部试过');
 });
 
 test('autoRepairAndRetry：修成了 ⇒ 重试失败的那一步，且只重试那一步', async () => {

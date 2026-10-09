@@ -134,6 +134,52 @@ test('派单带上现场路径与 execHint（会话侧照着就能干，不用�
   assert.match(t.logDir, /科塔淘宝$/u);
 });
 
+test('派单带上「动手前先确认实例还在」（问题单里那一份原样带过来；老 summary 没有 ⇒ null）', () => {
+  // 2026-10-09 加。为什么在**派单**这一层也要有：`--batches` 每批跑完就释放，而 stop 用的是
+  // 与 start 同一份 `--only` 名单 ⇒ 失败的那家也在释放名单里。27 份修复报告里 20 份的结论是
+  // 「现场已不在 ⇒ 未执行任何修复动作 ⇒ 转人」—— 动作还没试就判了转人。
+  const pre = {
+    why: '分批形态每批都释放，失败那家也在名单里',
+    checkCommand: 'curl -s -m 5 http://127.0.0.1:19044/targets',
+    startCommand: 'node scripts/start-all-hold.mjs --only 科塔淘宝',
+    note: '先跑 checkCommand',
+  };
+  const plan = buildEscalationPlan({
+    summary: { date: '2026-10-09', shops: { 科塔淘宝: shopRecord({
+      failedStage: 'sycm-date-again',
+      repairRequest: { cause: 'STAGE_FAILED', candidates: [{ action: 'RELOAD_PAGE' }], instancePrecondition: pre },
+    }) } },
+  });
+  assert.deepEqual(plan.targets[0].instancePrecondition, pre,
+    '请求单里那一份要**原样**带进派单（不在这里重造一份，否则两处会漂开）');
+  // 老 summary（该字段落地之前的盘）没有这一段 ⇒ 必须如实给 null，不能凭店名现造一个假的。
+  const legacy = buildEscalationPlan({
+    summary: { date: '2026-09-28', shops: { 科塔淘宝: shopRecord({
+      failedStage: 'promotion-fetch',
+      repairRequest: { cause: 'STAGE_FAILED', candidates: [{ action: 'RELOAD_PAGE' }] },
+    }) } },
+  });
+  assert.equal(legacy.targets[0].instancePrecondition, null, '老 summary 没有该字段 ⇒ 原样 null（不许猜）');
+});
+
+test('派单的 handoff 第一步是「先确认该店实例还在」，且 CLI 打印路径真的用它', () => {
+  const plan = buildEscalationPlan({
+    summary: { date: '2026-10-09', shops: { 科塔淘宝: shopRecord({
+      failedStage: 'sycm-date-again',
+      repairRequest: { cause: 'STAGE_FAILED', candidates: [{ action: 'RELOAD_PAGE' }] },
+    }) } },
+  });
+  assert.equal(plan.needsAgent, true);
+  assert.match(plan.handoff, /先确认该店实例还在/u,
+    'handoff 是会话侧照着干的那一条 —— 少了这一步，agent 到场时实例已被 --batches 释放、动作一个都执行不到');
+  assert.match(plan.handoff, /instancePrecondition\.checkCommand/u, '要指到 target 里那个可回读的命令');
+  assert.match(plan.handoff, /startCommand/u, '连不上时要给拉起命令');
+  // 接线守卫：人手动跑 `--date` 时的逐店打印也要把它打出来（否则只有 --json 才有这一步）。
+  const src = readFileSync(new URL('./escalation-plan.mjs', import.meta.url), 'utf8');
+  assert.match(src, /t\.instancePrecondition\.checkCommand/u, 'CLI 打印路径要真的用它');
+  assert.match(src, /t\.instancePrecondition\.startCommand/u, 'CLI 打印路径要真的用它');
+});
+
 test('派单是 JSON 可序列化的（会话侧要能直接解析）', () => {
   const plan = buildEscalationPlan({
     summary: { date: '2026-09-28', shops: { A: shopRecord({
