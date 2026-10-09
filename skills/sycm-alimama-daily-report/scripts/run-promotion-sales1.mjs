@@ -12,7 +12,7 @@ const DRIVER = path.join(HERE, 'run-promotion-daily-report.mjs');
 const IMPORTER = path.join(HERE, 'import-promotion-daily-report.mjs');
 const SALES1 = Object.freeze(['里可林淘宝', '网林天猫', '盖文淘宝', '盖文天猫', '科塔淘宝', '网林淘宝', '里可林天猫', '网林家居']);
 
-export function promotionSales1Plan({ shops = SALES1, batchSize = 2 } = {}) {
+export function promotionSales1Plan({ shops = SALES1, batchSize = 5 } = {}) {
   const allowed = new Set(collectingShopKeys());
   const unknown = shops.filter((shop) => !allowed.has(shop) || !SALES1.includes(shop));
   if (unknown.length) throw new Error(`推广日报店铺不在销售一部采集范围：${unknown.join('、')}`);
@@ -21,7 +21,7 @@ export function promotionSales1Plan({ shops = SALES1, batchSize = 2 } = {}) {
 }
 
 function parse(argv) {
-  const out = { date: null, shops: SALES1, batchSize: 2, apply: false, downloads: null, evidence: 'evidence/promotion-sales1' };
+  const out = { date: null, shops: SALES1, batchSize: 5, apply: false, downloads: null, evidence: 'evidence/promotion-sales1' };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     if (key === '--date') out.date = argv[++i];
