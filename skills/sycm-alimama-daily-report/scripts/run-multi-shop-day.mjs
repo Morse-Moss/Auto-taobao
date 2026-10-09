@@ -319,6 +319,21 @@ export function shopFailureCause(record) {
   }
   if (r.failedStage === 'push'
     && /duplicate daily report row exists/u.test(String(r.failureOutput ?? ''))) return 'DUPLICATE_TARGET';
+  // 2026-10-10 加（缺陷 ㉝ 的「逐店 · 链中间」那一半）：**失败那一刻页面停在登录墙上** ⇒
+  // 这一家的问题是**登录**，不是页面、不是数据、更不是「不明原因」。
+  //
+  // 现场（2026-10-08 网林天猫，停在第 2 步 `alimama-date`）：阿里妈妈被踢到 `…#!/login/index`，
+  // 而阶段自己的 stdout/stderr 里**一个字都没有那个 URL**（它只报 `state did not settle to <日期>`）
+  // ⇒ 只读 `failureOutput` 判不出来。URL 只活在感知层的产物里
+  //（`98-failure-state.txt` 的「URL：」那一行，来源＝`FAILURE_STATE_EXPRESSION` 的 `location.href`）。
+  // 所以判据取自 `record.perception.state.url` —— 那是**同一次失败**留下的现场，不是另一次。
+  //
+  // 为什么必须单列（而不是留在兜底 `STAGE_FAILED`）：两者要做的事**相反** ——
+  // 兜底那一档给的是页面动作／转技术同学，而这一档要给的是「去登录那个后台」；
+  // 而且 `STAGE_FAILED` 会让自进化菜单派 `REAPPLY_DATES`/`RELOAD_PAGE` 去动页面，全是白跑
+  //（2026-10-08 那次 agent 实测：两个候选都试过、两次重试均 exit 1）。与 ⑳ 的方向也相反：
+  // ⑳ 是「宽正则把登录跳转页当掉登录」的假红，本条是「真掉登录被判成页面问题」的假绿归因。
+  if (loginWallOf({ url: r.perception?.state?.url })) return 'NEEDS_LOGIN';
   return 'STAGE_FAILED';
 }
 
@@ -470,14 +485,65 @@ export function makeLoginWallFinder() {
     const text = String(fragment ?? '');
     const entry = Object.entries(SITES).find(([, cfg]) => text.includes(cfg.pageMatch));
     if (!entry) return null;
-    const [siteKey, cfg] = entry;
-    const list = Array.isArray(targets) ? targets : [];
-    const hit = list.find((target) => {
-      const url = String(target?.url ?? '');
-      return url.includes(cfg.pageMatch) && cfg.loggedOut.test(url);
-    });
-    return hit ? { url: String(hit.url), site: siteKey } : null;
+    const [siteKey] = entry;
+    // 判据本体只有一处（`loginWallOf`）；这里只负责「先按片段锁定是哪一家店/哪个站点」。
+    const found = loginWallOf({ targets, siteKeys: [siteKey] });
+    return found ? { url: found.url, site: found.site } : null;
   };
+}
+
+/**
+ * 「给定的 URL 里有没有哪一个正停在登录墙上」。**纯函数**（2026-10-10 加）。
+ *
+ * 为什么需要它、与 `makeLoginWallFinder` 的分工：
+ *   · 那个函数回答的是**体检层**的问题 ——「我按这个片段查到的那一个站点，它的页签是不是
+ *     被踢回登录页了」。它要求调用方**先说清是哪个站点**（`fragment`），所以只有体检那一次
+ *     调用用得上。
+ *   · 而失败归因面对的是 `alimama-date` 这类**链中间**的失败：那一刻根本不知道是哪个站点
+ *     掉的，只知道「页面停在一个登录墙上」。所以这里换成「对所有登记站点一起判」。
+ *   两者共用同一份判据（站点表的 `pageMatch` + `loggedOut`，唯一来源＝`login-merchant-core` 的
+ *   `SITES`），调用点**不另写正则** —— 两边各写一份，平台改版那天会漂成「同一种现场两个结论」，
+ *   而两边看着都能自证（本仓吃过这个亏）。
+ *
+ * 读到了、没命中 ＝ **不是登录墙**（调用方落回它原来的口径），不是「不知道」。
+ *
+ * @param {{targets?: Array<{url?:string}>|null, url?: string|null, siteKeys?: string[]|null}} o
+ * @returns {{site: string, url: string}|null}
+ */
+export function loginWallOf({ targets = null, url = null, siteKeys = null } = {}) {
+  const wanted = Array.isArray(siteKeys) && siteKeys.length > 0 ? siteKeys : Object.keys(SITES);
+  const candidates = [];
+  if (url) candidates.push(String(url));
+  for (const target of (Array.isArray(targets) ? targets : [])) {
+    const value = String(target?.url ?? '');
+    if (value) candidates.push(value);
+  }
+  for (const candidate of candidates) {
+    for (const siteKey of wanted) {
+      const cfg = SITES[siteKey];
+      if (!cfg) continue;
+      if (candidate.includes(cfg.pageMatch) && cfg.loggedOut.test(candidate)) {
+        return { site: siteKey, url: candidate };
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * 读「这一家店此刻有没有哪个站点停在登录墙上」。**永不抛**（读不到＝ null）。
+ *
+ * 只在**失败那一刻**调用：那时阶段自己留下的 stdout/stderr 里往往一个字都没有那个 URL
+ *（2026-10-08 网林天猫的第 2 步只报 `alimama: state did not settle to <日期>`），
+ * 而页签自己的 URL 就是最直接的事实来源（代理的 `/targets` 是只读 GET）。
+ * 判据走 `loginWallOf`（唯一来源），这里只负责取数。
+ */
+export function readLoginWallViaProxy({ proxy, readTargets = null } = {}) {
+  const read = readTargets ?? (() => proxyJson(`${proxy}/targets`));
+  return Promise.resolve()
+    .then(() => read())
+    .then((targets) => loginWallOf({ targets }))
+    .catch(() => null);
 }
 
 /**
@@ -999,7 +1065,7 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
     only: null, logs: null, downloads: null, shopXlsx: null, promotionZip: null,
     allowMissingPeer: false, notify: false, notifyPrint: false, loginPreflight: null, willResume: false,
     autoRepair: false, autoRepairMaxRounds: DEFAULT_AUTO_REPAIR_MAX_ROUNDS,
-    deferAgentActionableAlert: false };
+    deferAgentActionableAlert: false, reloginOnWall: false };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     // 原样收下，出了循环再解析（`--date yesterday` 要用「这一刻」的时钟算，只算一次）。
@@ -1053,6 +1119,20 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
     // 都落在「agent 能救」时**才不发飞书，并把派单落成 `escalation-handoff.json`；
     // 只要有一家只能人上，照旧发、且文案里仍然点名到店（fail-closed）。
     else if (key === '--defer-agent-actionable-alert') args.deferAgentActionableAlert = true;
+    // 2026-10-10 加：**链中间撞到登录墙就地补登一次**，成功就重试该步、顺着往下跑。
+    //
+    // 为什么必须有它（缺陷 ㉝ 的另一半）：整轮唯一会去登的地方是分批开跑**之前**那一次
+    // `login-preflight`（结论落 `login-preflight-b<N>.json`），而那是一次性的 ——
+    // 会话在它之后掉线时（2026-10-08 网林天猫：07:34 判 `ALL_IN`、07:36:57 就落登录墙），
+    // 余下 11 步里**没有任何一步会回头看登录态** ⇒ 一份存好的密码从头到尾没被调用过。
+    //
+    // 为什么默认关：它与 `--auto-repair` 同一条理由 —— 这是一条**会真的动页面、会提交表单**
+    // 的路径，而每一次登录提交都是一次账号动作（平台风控看的正是同一出口 IP 短时间内的登录次数）。
+    // 打开它是必须说出口的决定。宿主（`scripts/run-daily-job.mjs`）默认打开，
+    // 并给了 `--no-relogin-on-wall` 让运维一键退回。
+    //
+    // 上限是硬的：**每家店每轮最多一次**（见下面那个 `reloginUsed`），不是「失败一次试一次」。
+    else if (key === '--relogin-on-wall') args.reloginOnWall = true;
     else if (key === '--only') args.only = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
     else if (key === '--logs') args.logs = argv[++i];
     // 跑前登录态结论（`check-login-shops.mjs --json` 写出来的那个文件）。**只在给的时候读**：
@@ -1716,6 +1796,67 @@ export async function autoRepairAndRetry({ shopKey, logDir, req, maxRounds = DEF
   }
 }
 
+/**
+ * 用链自己的登录脚本给**这一家店**补登一次（2026-10-10 加）。**永不抛**。
+ *
+ * 为什么复用 `login-merchant.mjs` 而不在这里再写一次表单动作：那是**同一件事**，而且它已经
+ * 带着三条 fail-closed 纪律（拿不到 `:autofill` 就停、撞验证码/滑块就停、点了没离开登录页
+ * 就如实说没成）和「连着试会把账号锁住、所以不重试」的那条判据。另写一份＝把这三条各写第二遍，
+ * 而漂开的那天没人看得出来（症状是「同一种现场两个结论」）。
+ *
+ * `--notify off` 是**刻意的**：告警出口由链自己那一个统一决定（本仓纪律 ——
+ * 「不传 `--notify` 就不该有任何东西发出去」对每一个出口都成立）。开着它会在补登没成时
+ * 又发一条飞书，而链稍后还会按分诊结论发它自己的那一条 ⇒ 同一个现场收到两条消息。
+ *
+ * `--proxy` 与 `--shop` **必须成对**：`--proxy` 是唯一的实例选择器，两者对不上时
+ * `login-merchant.mjs` 什么都不碰就停（见它文件头）。这里两个值都取自登记表，
+ * 所以天然一致；借这一条也把「对着别的一台做事」这条串店风险关掉。
+ *
+ * `stdio` 与 `runStage` 逐字一致（`stdin: 'ignore'`）：本机宿主沙箱对「给子进程管道 stdin 的
+ * 同步 spawn」直接回 `EBUSY`，那不是业务问题。理由与排除过程见 TOOLING-NOTES。
+ *
+ * @returns {{attempted:boolean, ok:boolean, verdict:string|null, exitCode:number|null, error:string|null, note:string}}
+ */
+function reloginShop({ shopKey, wall = null, logDir = null }) {
+  const note = () => `用浏览器密码库补登一次（站点＝${wall?.site ?? '未知'}）`;
+  const proxyPort = shopInstance(shopKey).proxyPort;
+  const scriptPath = path.join(REPO_ROOT, 'skills/sycm-alimama-daily-report/scripts/login-merchant.mjs');
+  const argv = ['--commit', '--proxy', `http://127.0.0.1:${proxyPort}`, '--shop', shopKey, '--notify', 'off'];
+  const command = `${NODE} ${formatArgv([scriptPath, ...argv])}`;
+  const record = { attempted: true, ok: false, verdict: null, exitCode: null, error: null,
+    note: note(), command, proxyPort };
+  let result = null;
+  try {
+    result = spawnSync(NODE, [scriptPath, ...argv], {
+      cwd: REPO_ROOT, encoding: 'utf8',
+      // stdin 只能是 `'ignore'` —— 与 `runStage` 同一条（沙箱下 `'pipe'` 必回 EBUSY）。
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env },
+    });
+  } catch (error) {
+    record.error = String(error?.message ?? error);
+    return record;
+  }
+  record.exitCode = result.status ?? null;
+  if (result.error) record.error = String(result.error.message ?? result.error);
+  const stdout = String(result.stdout ?? '');
+  // 结论只认回执里的 `verdict`（脚本自己的词表），**不从人话里猜**。
+  // 两站点都在登录态时它给 `LOGGED_IN`；`PARTIAL`（只进去一个）按「没成」处理 ——
+  // 这一家的链两个后台都要用，缺一个照样跑不下去。
+  try {
+    const parsed = JSON.parse(stdout.slice(stdout.indexOf('{')));
+    record.verdict = parsed?.verdict ?? null;
+  } catch { record.verdict = null; }
+  record.ok = record.verdict === 'LOGGED_IN';
+  if (logDir) {
+    const outPath = path.join(logDir, '96-relogin.json');
+    const text = `${JSON.stringify({ ...record, wall,
+      stdout: stdout.slice(-2000), stderr: String(result.stderr ?? '').slice(-2000) }, null, 2)}\n`;
+    try { writeFileSync(outPath, text, 'utf8'); record.logPath = path.relative(REPO_ROOT, outPath); } catch { /* 证据写不下不改变结论 */ }
+  }
+  return record;
+}
+
 function runStage(shopKey, stage, { repoRoot, logDir }) {
   const log = (line) => console.log(`[${shopKey}] ${line}`);
   const outPath = path.join(logDir, `${String(stage.index).padStart(2, '0')}-${stage.stage}.txt`);
@@ -1965,6 +2106,12 @@ async function main() {
       return out;
     };
 
+    // 「登录墙就地补登」这一家店是否已经用过（2026-10-10 加）。**每家店每轮最多一次** ——
+    // 每一次登录提交都是一次账号动作，平台风控看的正是「同一出口 IP 短时间内的登录次数」，
+    // 所以这里不是「失败一次试一次」，而是一次性的机会。声明在这一层（而不是 try 里面）
+    // 是为了让它在整条店铺链上只有一个实例。
+    let reloginUsed = false;
+
     try {
       for (const stage of stages) {
         // 采集段产出的两条路径要在 push 之前填进参数。**三种模式都要填**：
@@ -1987,7 +2134,7 @@ async function main() {
           }
           argv = withSourcePaths(stage.argv, sources);
         }
-        const result = await run({ ...stage, argv });
+        let result = await run({ ...stage, argv });
         // **退出码 4 = 数据已核对、仅佐证（截图）不完整**，只可能来自 readback（2026-09-28 加）。
         // 它不是数据故障：`independent-readback.json` 已落盘、两张表的结论都在里面。
         // 原先它和真故障共用 exit 1，导致「这一家其实写进去了」与「这一家没写进去」
@@ -2003,6 +2150,50 @@ async function main() {
           console.error(`[${key}]   ⚠️ 第 ${stage.stage} 步：数据已核对，仅截图缺失`
             + '（计入 evidenceIncomplete，不判失败）');
           continue;
+        }
+        // ⑤ **撞到登录墙就地补登一次**（2026-10-10 加，默认关：`--relogin-on-wall`）。
+        //
+        // 补的是一个**结构性缺口**：整轮唯一会去登的地方是分批开跑**之前**那一次
+        // `login-preflight`（`scripts/run-batches.mjs` 写死 `login: true`），而那是一次性的 ——
+        // 会话在它之后掉线（2026-10-08 网林天猫：07:34 判 `ALL_IN`、07:36:57 就落登录墙），
+        // 余下 11 步里**没有任何一步会回头看登录态** ⇒ 一份存好的密码从头到尾没被调用过。
+        //
+        // 落点刻意在**这一家自己的链里**（不是整轮一次）：掉登录是**店级**事实，
+        // 而且只有走到这一步才知道「是哪个站点掉的」。重试的是**同一步**（`stage`），
+        // 成功就顺着 `for` 继续往下 —— 不另起一轮、不重跑已经成功的步骤
+        //（重跑会重复下载、重复提交，都是白付的代价）。
+        //
+        // 三条硬约束：
+        //   · **每家店每轮最多一次**（`reloginUsed`）：登录提交是账号动作，反复试会锁号。
+        //   · `--notify off`：告警出口由链自己那一个统一决定（见 `reloginShop`）。
+        //   · 补登没成**一个字段都不改**：照旧走下面那条失败路径，分诊与告警口径原样不变。
+        //
+        // 判据取自**页签自己的 URL**（只读 `/targets`），不是从人话里猜 —— 阶段自己的
+        // stdout/stderr 里往往一个字都没有那个 URL（2026-10-08 的第 2 步只报
+        // `alimama: state did not settle to <日期>`）。判据本体＝`loginWallOf`（唯一来源）。
+        if (result.status !== 0 && args.reloginOnWall && !reloginUsed) {
+          const wall = await readLoginWallViaProxy({
+            proxy: `http://127.0.0.1:${shopInstance(key).proxyPort}`,
+          });
+          if (wall) {
+            reloginUsed = true;
+            console.error(`[${key}]   ⚠️ 第 ${stage.stage} 步失败，且页面停在 ${wall.site} 的登录墙上`
+              + ' —— 就地补登一次（每家店每轮只此一次）');
+            record.relogin = reloginShop({ shopKey: key, wall, logDir: shopLogDir });
+            if (record.relogin.ok) {
+              const retried = await run({ ...stage, argv });
+              record.relogin.retry = { stage: stage.stage, status: retried.status ?? null };
+              if (retried.status === 0) {
+                result = retried;
+                console.log(`[${key}]   ✅ 补登成功，重试第 ${stage.stage} 步通过 —— 这一家继续往下跑`);
+              } else {
+                console.error(`[${key}]   补登成功但重试第 ${stage.stage} 步仍失败（exit ${retried.status}）`);
+              }
+            } else {
+              console.error(`[${key}]   补登没成（${record.relogin.verdict ?? record.relogin.error ?? '未说明'}）`
+                + ' —— 按既有失败路径处理');
+            }
+          }
         }
         if (result.status !== 0) {
           record.status = 'failed';

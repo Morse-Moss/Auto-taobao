@@ -15,6 +15,61 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.7.16] - 2026-10-10
+
+用户指令（原话）：「按你推荐的执行」。修的是 **2026-10-08 定时跑暴露的那个真缺口**：
+掉登录被归成兜底 `STAGE_FAILED`（缺陷 ㉝），而且链里**没有任何一步会回头补登**。
+
+### 归因：失败那一刻停在登录墙上 ⇒ `NEEDS_LOGIN`（不再是兜底 `STAGE_FAILED`）
+- **现场**：2026-10-08 网林天猫停在第 2 步 `alimama-date`，页面被踢到
+  `one.alimama.com/index.html#!/login/index`；链把它落成兜底 `STAGE_FAILED`，
+  告警不点名「去哪台登哪个后台」，而自进化菜单按兜底派 `REAPPLY_DATES`/`RELOAD_PAGE`
+  去动页面 —— 2026-10-09 那次 agent 实测：两个候选都试过、两次重试均 exit 1，全是白跑。
+- **为什么原先判不出来**：阶段自己的 stdout/stderr 里**一个字都没有那个 URL**
+  （它只报 `alimama: state did not settle to <日期>`）⇒ 只读 `failureOutput` 判不出。
+  URL 只活在感知层产物里（`98-failure-state.txt` 的「URL：」那一行，来源＝`location.href`）。
+- **改法**：新增纯函数 `loginWallOf({ targets, url, siteKeys })` ——「对所有登记站点一起判」，
+  判据仍取 `login-merchant-core.mjs` 的 `SITES`（`pageMatch` + `loggedOut`，唯一来源），
+  调用点不另写正则；`shopFailureCause` 在兜底那句之前读 `record.perception.state.url` 分流。
+  `makeLoginWallFinder` 改成它的薄封装（行为逐字不变，用例盯住）。
+- **优先级**：仍**不盖过** `SHOP_FUNC_NO_PERMISSION`、`PAGE_OBSTRUCTED`、`SOURCE_NO_ROW_FOR_DATE`、
+  `INQUIRY_ROW_MISSING`、体检那一支与 push 的 `DUPLICATE_TARGET` —— 那几类的处置与它相反。
+
+### 补登点：链中间撞到登录墙，就地补登一次再重试该步（`--relogin-on-wall`）
+- **补的是什么缺口**：整轮唯一会去登的地方是分批开跑**之前**那一次 `login-preflight`
+  （`scripts/run-batches.mjs` 写死 `login: true`），而它是**一次性的**。会话在它之后掉线时
+  （2026-10-08：07:34 判 `ALL_IN`、07:36:57 就落登录墙），余下 11 步里没有任何一步回头看登录态
+  ⇒ **一份存好的密码从头到尾没被调用过**。
+- **行为**：某一步失败且页签确实停在登录墙上时，用链自己那条登录路径
+  （`login-merchant.mjs --commit --proxy <店代理> --shop <店> --notify off`）补登一次；
+  成功则**重试同一步**，通过就顺着 `for` 继续往下（不另起一轮、不重跑已成功的步骤）。
+  补登没成 ⇒ **一个字段都不改**，照旧走原来的失败路径。
+- **上限是硬的**：**每家店每轮最多一次**（`reloginUsed`）。每一次登录提交都是一次账号动作，
+  平台风控看的正是「同一出口 IP 短时间内的登录次数」，所以不是「失败一次试一次」。
+- **告警出口只有一个**：补登子进程固定 `--notify off`，不发第二条飞书（本仓纪律）。
+- **开关与默认值**：链那一层 `--relogin-on-wall` **默认关**（它会真的提交登录表单，
+  属「必须说出口的决定」）；宿主 `scripts/run-daily-job.mjs` **默认开**，
+  配 `--no-relogin-on-wall` 一键退回（退回＝与从前逐字相同）。
+  三跳全部接通：`run-daily-job` → `daily-job-plan`（`CHAIN_FLAGS` + `buildBatchChainArgs`）
+  → `run-batches` → 链。
+
+### 验证到什么程度
+- **仅离线判据**：技能组 `run-multi-shop-day.test.mjs` **130/130 全绿**（含新增 6 条：
+  `loginWallOf` 正反例用 2026-10-08 的**真实现场 URL 原值**、`makeLoginWallFinder` 重构防回归、
+  `shopFailureCause` 分流与「不许盖过更高优先级」、`--relogin-on-wall` 默认关、
+  以及一条**整条接线**的源码判据）；runtime `daily-job-plan.test.mjs` 新增 6 条三跳判据。
+- **接线以 `--print` 真跑验证**（只打印、不执行）：分批形态 chain 参数为
+  `--date 2026-10-08 --batch-size 5 --commit --notify --relogin-on-wall`；
+  非分批形态为 `… --commit --notify --relogin-on-wall --login-preflight <路径> --will-resume`；
+  加 `--no-relogin-on-wall` 后逐字不含它。
+- **未做真机验收**：这条路径要等下一次真的掉登录时才会走到（那是好事）。
+  `login-merchant.mjs` 在 havanaone 表单上「点击未被当成真实提交」（㉞，成因未定死）
+  ⇒ 补登**可能仍然进不去**，此时它的价值是「多一次机会 + 归因正确」，
+  不是「从此不用人登」。这一点写在这里，免得下次误以为它承诺了无人值守。
+- **已知与本版无关的一处红**：`runtime/arch-boundary.test.mjs` 现在报三个
+  `promotion-daily-report` 系文件未登记 —— 那是**另一条开发线**在工作区里的未提交改动
+  （`git status` 可见，mtime 2026-10-09 13:03–23:15），不是本版引入的。
+
 ## [1.7.15] - 2026-10-07
 
 用户指令（原话）：「修复这些问题，然后收尾吧」。修的是**当天真机上撞出来的两个缺陷**：

@@ -63,6 +63,9 @@ function parseArgs(argv) {
     allowMissingPeer: false, notify: false, notifyPrint: false, logs: null, print: false,
     autoRepair: false, autoRepairMaxRounds: null, workflow: 'daily-report',
     deferAgentActionableAlert: false,
+    // `--relogin-on-wall`（2026-10-10 加）：分批形态下**必须转发**，理由与上面两个开关逐字相同
+    // —— 生产跑的正是 `--batches`，不转发等于「命令行给了它、每一批的链却都没收到」。
+    reloginOnWall: false,
     release: true,
     // `hold` **默认开**（2026-10-06 加，与定时链 `run-daily-job.mjs` 的默认值一致）。
     //
@@ -88,6 +91,9 @@ function parseArgs(argv) {
     // 被静默丢掉 —— 与 `--auto-repair` 同一个坑（命令行给了它、每一批的链却都没生效，
     // 日志里一个字都不提示）。
     else if (arg === '--defer-agent-actionable-alert') options.deferAgentActionableAlert = true;
+    // `--relogin-on-wall`（2026-10-10）：链中间撞到登录墙就地补登一次。同 `--auto-repair`
+    // 的理由，这一句不写就等于「生产形态下这条修复一次也不会生效」。
+    else if (arg === '--relogin-on-wall') options.reloginOnWall = true;
     else if (arg === '--auto-repair-max-rounds') {
       const raw = argv[++i];
       const n = Number(raw);
@@ -131,6 +137,8 @@ function chainArgsFor(options) {
   if (options.autoRepair) args.push('--auto-repair');
   // ⑨b：同 `--auto-repair` 的理由 —— 不转发就等于「给了它、每批都没生效」。
   if (options.deferAgentActionableAlert) args.push('--defer-agent-actionable-alert');
+  // `--relogin-on-wall`（2026-10-10）：同理由，**不转发就等于这条修复生产形态下从不生效**。
+  if (options.reloginOnWall) args.push('--relogin-on-wall');
   if (options.autoRepairMaxRounds !== null && options.autoRepairMaxRounds !== undefined) {
     args.push('--auto-repair-max-rounds', String(options.autoRepairMaxRounds));
   }

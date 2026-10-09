@@ -70,6 +70,17 @@ function parseArgs(argv) {
     // ⑨b（2026-09-29 加）：告警闸门「先让 agent 试一下，再叫人」。**默认关** ——
     // 它只有配合会话侧派单才有意义（脚本自己没有 `Agent` 工具），所以要与会话侧约定好再开。
     deferAgentActionableAlert: false,
+    // `reloginOnWall` **默认开**（2026-10-10 加，理由与 `autoLogin` 同源、与 `autoRepair` 刻意不同）：
+    //   · 它补的是一个**已经实测过的结构性缺口**，不是「也许会有用」的一条路 ——
+    //     链里唯一会去登的地方是分批开跑**之前**那一次 `login-preflight`，而它是一次性的；
+    //     会话在那之后掉线时（2026-10-08 网林天猫：07:34 判 `ALL_IN`、07:36:57 就落登录墙），
+    //     余下 11 步里没有任何一步回头看登录态 ⇒ 一份存好的密码从头到尾没被调用过。
+    //   · 它的**上限是硬的**：每家店每轮最多一次（见链里的 `reloginUsed`），
+    //     而且只在「页面确实停在登录墙上」时才触发（判据是页签 URL，不是猜）。
+    //   · 它不是 `autoRepair` 那种「在别人页面上动手」的动作：它走的是链**自己那条**
+    //     登录路径（`login-merchant.mjs`），带着它原有的三条 fail-closed 纪律。
+    // `--no-relogin-on-wall` 是一键退回的开关（退回＝与从前逐字相同：只靠分批前那一次）。
+    reloginOnWall: true,
     // `merchantLabel` **默认开**（2026-10-06 加）。它给**共用商家浏览器**挂一个窗口标识页，
     // 于是窗口标题里写着「商家浏览器（日报共用） · 日报采集窗口」。
     // 为什么默认开：晚报/登录告警里那句「去共用窗口」要在机器前**有落点** —— 店铺窗口的名字
@@ -91,6 +102,8 @@ function parseArgs(argv) {
     else if (arg === '--keep-going') options.keepGoing = true;
     else if (arg === '--allow-missing-peer') options.allowMissingPeer = true;
     else if (arg === '--no-auto-login') options.autoLogin = false;
+    // 2026-10-10 加：链中间撞到登录墙就地补登一次（默认开，见上面 `reloginOnWall` 的注释）。
+    else if (arg === '--no-relogin-on-wall') options.reloginOnWall = false;
     else if (arg === '--no-hold') options.hold = false;
     // 共用窗口标识页的开关（默认开，见上面 merchantLabel 的注释）。
     else if (arg === '--no-merchant-label') options.merchantLabel = false;
@@ -121,7 +134,7 @@ function parseArgs(argv) {
       }
       options.batches = value;
     } else if (arg === '--help' || arg === '-h') options.help = true;
-    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-hold --no-merchant-label --no-ensure-inquiry-rows --auto-repair --auto-repair-max-rounds --defer-agent-actionable-alert --date --shops --only --batches）` };
+    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-relogin-on-wall --no-hold --no-merchant-label --no-ensure-inquiry-rows --auto-repair --auto-repair-max-rounds --defer-agent-actionable-alert --date --shops --only --batches）` };
   }
   return { options };
 }
@@ -131,7 +144,7 @@ async function main(argv) {
   if (parsed.error) { console.error(parsed.error); return 2; }
   const { options } = parsed;
   if (options.help) {
-    console.log('node scripts/run-daily-job.mjs [--print] [--notify|--notify-print] [--date yesterday] [--shops a,b] [--only 阶段名] [--batches N] [--no-auto-login] [--no-ensure-inquiry-rows]');
+    console.log('node scripts/run-daily-job.mjs [--print] [--notify|--notify-print] [--date yesterday] [--shops a,b] [--only 阶段名] [--batches N] [--no-auto-login] [--no-relogin-on-wall] [--no-ensure-inquiry-rows]');
     return 0;
   }
 
@@ -176,6 +189,10 @@ async function main(argv) {
       // ⑨b：「先派 agent、不先叫人」那一条的**起点**。漏了它同样是静默的：
       // 链那一步少一个开关、失败时仍直接发飞书，而日志里看不出「本该先交给 agent」。
       deferAgentActionableAlert: options.deferAgentActionableAlert,
+      // 「链中间撞到登录墙就地补登一次」那一条的**起点**（2026-10-10 加）。
+      // 漏了它的症状与 `autoLogin` / `autoRepair` **完全同一种**：链那一步少一个开关、
+      // 掉登录时仍只靠分批前那一次（早已用掉的）机会，而日志里看不出「本该去补登却没补」。
+      reloginOnWall: options.reloginOnWall,
       // 「共用窗口要有名字」那一条的**起点**（2026-10-06 加）。漏了它的症状是静默的：
       // 那一步不进计划、日志里少一行，而「告警说去共用窗口」在机器前又一次没有落点。
       merchantLabel: options.merchantLabel,

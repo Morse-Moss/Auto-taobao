@@ -754,3 +754,52 @@ test('第二跳：scripts/run-batches.mjs 认 --auto-repair 并把它转发给�
   assert.match(src, /options\.autoRepairMaxRounds/u, '配额也要转发');
 });
 
+// --- --relogin-on-wall：链中间撞到登录墙就地补登一次（2026-10-10 加）---------------
+//
+// 走的是与 `--auto-repair` / `--defer-agent-actionable-alert` **逐字相同**的那条三跳链
+// （plan → run-batches → run-multi-shop-day），所以用同一组判据钉住它。
+// 为什么必须三跳全钉：生产形态就是 `--batches`，任何一跳漏接的症状都是
+// 「命令行给了它、真正跑的那条路上一次也没生效」，而日志里一个字都不提示。
+test('--relogin-on-wall 打开时，链那一步拿到它（不分批那一跳）', () => {
+  const plan = buildJobPlan({ reloginOnWall: true });
+  const args = argsOf(plan, 'chain');
+  assert.ok(args.includes('--relogin-on-wall'), `链那一步必须拿到它，实际：${args.join(' ')}`);
+});
+
+test('--relogin-on-wall 不开时，链那一步**逐字**不含它（默认关闭是硬保证）', () => {
+  const args = argsOf(buildJobPlan({}), 'chain');
+  assert.doesNotMatch(args.join(' '), /--relogin-on-wall/u, '默认必须什么都不做（它会真的提交登录表单）');
+});
+
+test('分批形态：--relogin-on-wall 打开时，batch-chain 那一步拿到它（第二跳）', () => {
+  const plan = buildJobPlan({ dateInput: 'yesterday', batches: 5, reloginOnWall: true,
+    resolvedDate: '2026-10-08', artifactsDir: 'evidence/daily-job-2026-10-08' });
+  const step = plan.steps.find((s) => s.name === 'batch-chain');
+  assert.ok(step, '分批形态必须用 batch-chain 这一步');
+  assert.ok(step.args.includes('--relogin-on-wall'), `batch-chain 必须拿到它，实际：${step.args.join(' ')}`);
+});
+
+test('分批形态：不带它时 batch-chain **逐字**不含它（默认不变）', () => {
+  const plan = buildJobPlan({ dateInput: 'yesterday', batches: 5,
+    resolvedDate: '2026-10-08', artifactsDir: 'evidence/daily-job-2026-10-08' });
+  const step = plan.steps.find((s) => s.name === 'batch-chain');
+  assert.doesNotMatch(step.args.join(' '), /--relogin-on-wall/u, '默认关闭必须在不分批形态之外也成立');
+});
+
+test('第二跳：scripts/run-batches.mjs 认 --relogin-on-wall 并转发给链（源码判据）', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts', 'run-batches.mjs'), 'utf8');
+  assert.match(src, /arg === '--relogin-on-wall'/u, 'run-batches 必须接受它（否则分批驱动当场报未知参数）');
+  assert.match(src, /if \(options\.reloginOnWall\) args\.push\('--relogin-on-wall'\)/u,
+    'run-batches 必须把它转发给链 —— 不转发就是「给了开关、生产形态下每批都没生效」');
+});
+
+test('第三跳：scripts/run-daily-job.mjs 收下它并透传进计划（源码判据）', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts', 'run-daily-job.mjs'), 'utf8');
+  assert.match(src, /arg === '--no-relogin-on-wall'/u, 'run-daily-job 必须给一键退回的开关');
+  assert.match(src, /reloginOnWall: options\.reloginOnWall/u, '必须透传进计划');
+  // 默认值是**开**（与 autoLogin 同源的理由：掉登录是常态，而这一次机会在整轮里只有一次），
+  // 但要有一条明确的退回路径 —— 两件事必须同时成立。
+  assert.match(src, /reloginOnWall: true/u, '入口默认值必须是开（否则这条修复只在不分批时才生效）');
+});
+
+

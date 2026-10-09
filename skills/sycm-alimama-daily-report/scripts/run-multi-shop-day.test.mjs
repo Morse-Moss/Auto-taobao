@@ -19,7 +19,7 @@ import { WAITING_OPERATOR_ACCOUNT_SHOPS, waitingOperatorAccountRecord } from '..
 import { planRepair } from './repair-actions.mjs';
 import { siteAdapter } from './date-picker.mjs';
 import { IDENTITY_SHOP_HEADER_VERIFIED_SHOPS, shopIdentity } from './shop-identities.mjs';
-import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, makeLoginWallFinder, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, roundCauseOf, roundMissingPagesOf, shopFailureCause, stageLabelOf, stageNumber, stageSelected, withSourcePaths } from './run-multi-shop-day.mjs';
+import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, loginWallOf, makeLoginWallFinder, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, roundCauseOf, roundMissingPagesOf, shopFailureCause, stageLabelOf, stageNumber, stageSelected, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -2230,3 +2230,127 @@ test('③：源码级 —— 三层接线都必须接上（判据全绿但没接
   assert.match(src, /findings: roundHealth\.detail\?\.findings/u,
     'roundCauseOf 没有拿到体检 findings');
 });
+
+// ---------------------------------------------------------------------------
+// 登录墙的**链中间**归因 + 就地补登（2026-10-10 加，缺陷 ㉝ 的另一半）
+// ---------------------------------------------------------------------------
+
+// 2026-10-08 网林天猫的真实现场原值（`evidence/batches-2026-10-08/b1/网林天猫/98-failure-state.txt`
+// 的「URL：」那一行）。用原值而不是编一个「像登录页」的串：这条判据的意义就在于认得**平台真的会
+// 把我们送到哪**，自造的样例只能证明我们自己写的正则自洽。
+const REAL_SYCM_WALL = 'https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop';
+const REAL_ALIMAMA_WALL = 'https://one.alimama.com/index.html#!/login/index?mxredirectUrl=%23!%2Freport%2Faccount%3FrptType%3Daccount';
+
+test('loginWallOf：认得出平台真实会送到的两个站点登录墙（判据来自 SITES，不是自造正则）', () => {
+  assert.deepEqual(loginWallOf({ url: REAL_SYCM_WALL }), { site: 'sycm', url: REAL_SYCM_WALL });
+  assert.deepEqual(loginWallOf({ url: REAL_ALIMAMA_WALL }), { site: 'alimama', url: REAL_ALIMAMA_WALL });
+  // 页签列表那一支（链中间读的是 `/targets`，不是感知层的 state.url）。
+  assert.equal(loginWallOf({ targets: [{ url: 'about:blank' }, { url: REAL_ALIMAMA_WALL }] })?.site, 'alimama');
+});
+
+test('loginWallOf：正常页面**必须**判「不是登录墙」（否则每次失败都会去提交一次登录）', () => {
+  // 这两条是同一批证据里的正常地址：链跑成功那些轮的阿里妈妈报表页与生意参谋后台首页。
+  assert.equal(loginWallOf({ url: 'https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-08' }), null);
+  assert.equal(loginWallOf({ url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop' }), null);
+  // 空输入＝**不知道**，也落回 null（这一档由调用方保持它原来的口径，不许凭空变成「掉登录」）。
+  assert.equal(loginWallOf({}), null);
+  assert.equal(loginWallOf(), null);
+  assert.equal(loginWallOf({ url: '' }), null);
+  assert.equal(loginWallOf({ targets: [] }), null);
+  // 别的站点（竞品链那台）不在这张表里 ⇒ 不判 —— 这条判据只服务日报两个后台。
+  assert.equal(loginWallOf({ url: 'https://www.taobao.com/member/login.jhtml' }), null);
+});
+
+test('makeLoginWallFinder 的行为在抽走判据本体之后逐字不变（防重构回归）', () => {
+  const find = makeLoginWallFinder();
+  // ⚠️ `fragment` 必须是**真的会传进来的那个值**（`expectedPagesForShop()` 的 `urlFragment`
+  // ＝站点适配器的片段，形如 `sycm.taobao.com/qos/service/frame/shop/performance`）——
+  // 它靠 `fragment.includes(pageMatch)` 挑站点，给个光秃秃的 `'sycm'` 一个站点都挑不出来、
+  // 函数恒返回 null，而那是「判据没生效」而不是「没有登录墙」。这条先钉住这个前提本身。
+  assert.equal(find({ fragment: 'sycm', targets: [{ url: REAL_SYCM_WALL }] }), null,
+    'fragment 不含 pageMatch ⇒ 挑不出站点（这一档必须落在体检原来的口径上）');
+  // 命中：片段说 sycm、页签也确实是 sycm 的登录墙。
+  assert.deepEqual(find({ fragment: 'sycm.taobao.com/qos/service/frame/shop/performance', targets: [{ url: REAL_SYCM_WALL }] }),
+    { url: REAL_SYCM_WALL, site: 'sycm' });
+  // 片段说得出来但页签里没有那家的登录墙 ⇒ null（不是「默认命中」）。
+  assert.equal(find({ fragment: 'sycm.taobao.com/qos/service/frame/shop/performance', targets: [{ url: REAL_ALIMAMA_WALL }] }), null);
+  assert.equal(find({ fragment: 'one.alimama.com', targets: [{ url: REAL_SYCM_WALL }] }), null);
+  // 片段本身不指向任何登记站点 ⇒ null（这一类必须落回 TARGET_PAGE_MISSING，不是「不知道」）。
+  assert.equal(find({ fragment: '不存在的站点', targets: [{ url: REAL_SYCM_WALL }] }), null);
+  assert.equal(find({}), null);
+});
+
+test('shopFailureCause：失败那一刻停在登录墙上 ⇒ NEEDS_LOGIN（不再是兜底 STAGE_FAILED）', () => {
+  // 2026-10-08 网林天猫的真实形状：停在第 2 步，阶段自己的 stdout/stderr 里**没有那个 URL**
+  //（只报 `state did not settle to <日期>`），URL 只在感知层的产物里。
+  const record = {
+    status: 'failed',
+    failedStage: 'alimama-date',
+    failureOutput: 'Error: alimama: state did not settle to 2026-10-08（读了 16 次 × 1200ms）',
+    stages: [],
+    perception: { ok: true, state: { url: REAL_ALIMAMA_WALL, title: '万相台无界版' } },
+  };
+  assert.equal(shopFailureCause(record), 'NEEDS_LOGIN');
+  // 修之前它落的是兜底 —— 这条断言就是「这次修的是什么」本身。
+  assert.equal(shopFailureCause({ ...record, perception: null }), 'STAGE_FAILED');
+  // 反面：页面在正常报表页上失败时**不许**被判成登录（否则每次失败都会去提交一次登录）。
+  assert.equal(shopFailureCause({ ...record, perception: { ok: true, state: { url: 'https://one.alimama.com/index.html#!/report/account?rptType=account' } } }),
+    'STAGE_FAILED');
+  // 它是「要人」的那一集（驻留/续跑的理由），与 PAGE_OBSTRUCTED 同级。
+  assert.equal(HUMAN_REQUIRED_CAUSES.includes('NEEDS_LOGIN'), true);
+});
+
+test('shopFailureCause：登录墙的判据**不许盖过**更高优先级的结论', () => {
+  // 订购不在账号上：决定的是「要不要去平台」，别的结论照着做都没用。
+  assert.equal(shopFailureCause({
+    failedStage: 'sycm-date', failureOutput: 'SHOP_FUNC_NO_PERMISSION: code=5903',
+    perception: { state: { url: REAL_SYCM_WALL } },
+  }), 'SHOP_FUNC_NO_PERMISSION');
+  // 「这一天已经写过了」：正确处置是**什么都不做**，不是叫人去登录。
+  assert.equal(shopFailureCause({
+    failedStage: 'push', failureOutput: 'duplicate daily report row exists: rec1',
+    perception: { state: { url: REAL_SYCM_WALL } },
+  }), 'DUPLICATE_TARGET');
+  // 体检那一支有它自己更精确的判据（blockingCodes），不许被这一条顶掉。
+  assert.equal(shopFailureCause(failedAt('health-check')), 'SHOP_BLOCKED');
+});
+
+test('parseArgs：--relogin-on-wall 默认关（它会真的提交登录表单，默认必须是「什么都不做」）', () => {
+  assert.equal(parseArgs(['--date', DATE]).reloginOnWall, false);
+  assert.equal(parseArgs(['--date', DATE, '--relogin-on-wall']).reloginOnWall, true);
+});
+
+test('接线：登录墙归因与就地补登必须**整条接通**（少一段就是这个修复从未生效）', () => {
+  const repoRoot = path.resolve(SCRIPTS_DIR, '..', '..', '..');
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  // ① 归因读的是感知层的 URL（那是**同一次失败**留下的现场）。
+  assert.match(src, /if \(loginWallOf\(\{ url: r\.perception\?\.state\?\.url \}\)\) return 'NEEDS_LOGIN';/u,
+    'shopFailureCause 没有按登录墙分流 ⇒ 归因仍落兜底 STAGE_FAILED');
+  // ② 链中间真的去读页签 URL，而不是只判一次就完事。
+  assert.match(src, /const wall = await readLoginWallViaProxy\(\{/u,
+    '失败路径没有去读页签 URL ⇒ 补登永远触发不了');
+  // ③ 补登走的是链自己那条登录路径，且**压掉它自己的告警出口**（本仓纪律：出口只有一个）。
+  assert.match(src, /'--commit', '--proxy', `http:\/\/127\.0\.0\.1:\$\{proxyPort\}`, '--shop', shopKey, '--notify', 'off'/u,
+    'reloginShop 没有走 login-merchant 那条路径／没有压掉 --notify');
+  // ④ 上限是硬的：每家店每轮最多一次。
+  assert.match(src, /let reloginUsed = false;/u, '缺少「每家店每轮最多一次」的那个闸');
+  assert.match(src, /args\.reloginOnWall && !reloginUsed/u, '补登没有被 reloginUsed 挡住');
+  // ⑤ 补登成功要**重试同一步**并顺着往下跑（不是只重试一步就收工）。
+  assert.match(src, /const retried = await run\(\{ \.\.\.stage, argv \}\);/u, '补登成功后没有重试失败的那一步');
+  // ⑥ 宿主那三跳都要把开关带过去 —— 少任何一跳，生产形态（--batches）下这条修复都是死的。
+  const job = readFileSync(path.join(repoRoot, 'scripts/run-daily-job.mjs'), 'utf8');
+  assert.match(job, /reloginOnWall: options\.reloginOnWall,/u, 'run-daily-job 没有把它传给 buildJobPlan');
+  assert.match(job, /else if \(arg === '--no-relogin-on-wall'\) options\.reloginOnWall = false;/u,
+    'run-daily-job 缺少一键退回的开关');
+  const plan = readFileSync(path.join(repoRoot, 'runtime/daily-job-plan.mjs'), 'utf8');
+  assert.match(plan, /reloginOnWall: '--relogin-on-wall',/u, 'daily-job-plan 的 CHAIN_FLAGS 里没有它（非分批形态会漏）');
+  assert.match(plan, /if \(reloginOnWall\) args\.push\(CHAIN_FLAGS\.reloginOnWall\);/u,
+    'daily-job-plan 的 buildBatchChainArgs 没有转发它（分批形态会漏）');
+  assert.match(plan, /deferAgentActionableAlert, hold, reloginOnWall,/u, 'buildJobPlan 没有把它传进 buildBatchChainArgs');
+  const batches = readFileSync(path.join(repoRoot, 'scripts/run-batches.mjs'), 'utf8');
+  assert.match(batches, /else if \(arg === '--relogin-on-wall'\) options\.reloginOnWall = true;/u,
+    'run-batches 不认这个开关 ⇒ 分批驱动会当场报未知参数');
+  assert.match(batches, /if \(options\.reloginOnWall\) args\.push\('--relogin-on-wall'\);/u,
+    'run-batches 收了但不转发 ⇒ 每一批的链都没收到（与 --auto-repair 当年的坑同形）');
+});
+

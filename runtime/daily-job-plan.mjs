@@ -259,6 +259,11 @@ const CHAIN_FLAGS = Object.freeze({
   // ⑨b（2026-09-29 加）：告警闸门「先让 agent 试一下，再叫人」。**默认关**，同 `autoRepair`
   // 的理由 —— 它改变的是「这一轮要不要打扰人」，属于口径决定，不能由这一层替人默认打开。
   deferAgentActionableAlert: '--defer-agent-actionable-alert',
+  // 链中间撞到登录墙就地补登一次（2026-10-10 加）。**默认关**，同 `autoRepair` 的理由
+  // 而且更硬：它**会真的提交登录表单**，而每一次提交都是一次账号动作。
+  // 打开它的决定由宿主（`scripts/run-daily-job.mjs`，默认开、配 `--no-relogin-on-wall`）来做，
+  // 这一层只负责**转发**它 —— 不替调用方默认打开。
+  reloginOnWall: '--relogin-on-wall',
   // 由 `buildJobPlan` 按「这一轮会不会转入驻留」自己决定加不加，**不**透传调用方的开关
   // （它不是一个「可选开关」，而是「谁会接手」这件事的结论）。
   willResume: '--will-resume',
@@ -290,6 +295,10 @@ export function buildBatchChainArgs({
   // ⑨b（2026-09-29 补）：分批形态也要能转发告警闸门开关。漏接的症状与 `--auto-repair`
   // 那次完全相同 —— 「命令行给了、run-daily-job 也收下了，但每一批的链都没收到」。
   deferAgentActionableAlert = false,
+  // `--relogin-on-wall`（2026-10-10 补）：分批形态也要能转发链中间那次补登。
+  // 漏接的症状与上面两个开关**逐字相同**（生产形态就是 `--batches`，所以漏了它
+  // 等于「这条修复在真正跑的那条路上一次也不会生效」，而日志里没有一行提示）。
+  reloginOnWall = false,
   // `hold`（2026-10-06 补）：**分批形态的驻留开关必须也转发下去**，理由与上面两个开关逐字相同。
   //
   // 为什么分批这一档的驻留要落在**分批驱动里**而不是在这里多加一步：分批是逐批跑的，
@@ -309,6 +318,7 @@ export function buildBatchChainArgs({
   if (allowMissingPeer) args.push(CHAIN_FLAGS.allowMissingPeer);
   if (autoRepair) args.push(CHAIN_FLAGS.autoRepair);
   if (deferAgentActionableAlert) args.push(CHAIN_FLAGS.deferAgentActionableAlert);
+  if (reloginOnWall) args.push(CHAIN_FLAGS.reloginOnWall);
   // `--no-hold`：只在**关掉**时给（`run-batches` 的默认与这里一致＝开）。
   // 两个方向都要接上：漏了这一句的症状是「命令行写了 --no-hold，分批那一档照旧挂住」。
   if (!hold) args.push('--no-hold');
@@ -362,6 +372,12 @@ export function buildJobPlan(options = {}) {
     // ⑨b（2026-09-29 加）：告警闸门「先让 agent 试一下，再叫人」。**默认关**，
     // 与 `autoRepair` 同一个理由（改变的是「要不要打扰人」，必须说出口）。
     deferAgentActionableAlert = false,
+    // `reloginOnWall`（2026-10-10 加）：链中间撞到登录墙时要不要**就地补登一次**。
+    // **默认关**（与新能力默认关的既有纪律一致，而且它比 `autoRepair` 更硬：会真的提交登录表单），
+    // 由宿主显式打开 —— `scripts/run-daily-job.mjs` 默认打开，配 `--no-relogin-on-wall` 一键退回。
+    // 为什么默认关而不是默认开：这个模块也被用例与排查直接调用，而带它的那一步会碰页面、会提交，
+    // 让「碰页面」变成调用方要说的话。上限是硬的（每家店每轮一次，见链里的 `reloginUsed`）。
+    reloginOnWall = false,
     // `autoLogin`（2026-09-23 加）：跑前那一步要不要「掉了就自己登一次」。
     // **默认关**（与「新能力默认关」的既有纪律一致），由宿主显式打开：
     //   `scripts/run-daily-job.mjs` 默认打开（用户 2026-09-23 明确授权自动登录），
@@ -470,7 +486,7 @@ export function buildJobPlan(options = {}) {
       file: JOB_FILES.batchChain,
       args: buildBatchChainArgs({
         dateInput, notify, keepGoing, allowMissingPeer, shops, batches, commit: true,
-        autoRepair, autoRepairMaxRounds, deferAgentActionableAlert, hold,
+        autoRepair, autoRepairMaxRounds, deferAgentActionableAlert, hold, reloginOnWall,
       }),
       note: `分批跑（每批 ${batches} 家）：起这一批 → 查本批登录 → 挂店铺标识页 → 跑这一批 → 停这一批（**一律释放**）`,
       blocking: true,
