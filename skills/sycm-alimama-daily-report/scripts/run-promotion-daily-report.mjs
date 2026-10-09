@@ -69,8 +69,15 @@ async function readTasks(proxy, target, kind) {
 async function readState(proxy, target) {
   return evalOn(proxy, target, `(() => JSON.stringify({href: location.href, text: document.body.innerText || '', triggers: [...document.querySelectorAll('.mx-trigger')].map((e) => (e.textContent || '').replace(/\\s+/g, ' ').trim()), dimensions: [...document.querySelectorAll('input[type=checkbox]')].map((e) => ({value: e.value, checked: e.checked}))}))()`);
 }
+export function dimensionTriggerExpression() {
+  return `(() => { const nodes=[...document.querySelectorAll('.mx-trigger,button,[role="button"],[class*="trigger"],[class*="select"]')]; const e=nodes.find((x)=>(x.textContent||'').replace(/\\s+/g,' ').includes('维度')); if (!e) return false; e.click(); return true; })()`;
+}
 async function setAllDimensions(proxy, target, kind) {
-  const opened = await evalOn(proxy, target, `(() => { const e = [...document.querySelectorAll('.mx-trigger')].find((x) => (x.textContent || '').includes('维度')); if (!e) return false; e.click(); return true; })()`);
+  let opened = false;
+  for (let attempt = 0; attempt < 20 && !opened; attempt += 1) {
+    opened = await evalOn(proxy, target, dimensionTriggerExpression());
+    if (!opened) await sleep(1000);
+  }
   if (!opened) throw new Error('找不到关键词数据明细维度选择器');
   const result = await evalOn(proxy, target, `(() => { const boxes = [...document.querySelectorAll('input[type=checkbox]')].filter((x) => x.closest('[role=dialog],.oui-dialog,.next-overlay')); if (!boxes.length) return {ok:false, reason:'dimension-checkbox-missing'}; boxes.forEach((x) => { const label=(x.parentElement?.textContent||'')+(x.nextElementSibling?.textContent||''); const wanted=${JSON.stringify(kind === 'audience' ? ['主题','时间','计划'] : [])}; if (!wanted.length || wanted.some((w) => label.includes(w))) { if (!x.checked) x.click(); } }); const ok = [...document.querySelectorAll('button')].find((x) => (x.textContent || '').trim() === '确定'); if (!ok) return {ok:false, reason:'confirm-missing'}; ok.click(); return {ok:true, count:boxes.length}; })()`);
   if (!result?.ok) throw new Error(`设置关键词维度全选失败: ${result?.reason ?? 'unknown'}`);

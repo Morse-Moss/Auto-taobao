@@ -20,7 +20,7 @@ export function promotionSales1Plan({ shops = SALES1 } = {}) {
   return shops.length ? [shops] : [];
 }
 
-function parse(argv) {
+export function parsePromotionSales1Args(argv) {
   const out = { date: null, shops: SALES1, apply: false, downloads: null, evidence: 'evidence/promotion-sales1' };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
@@ -32,7 +32,7 @@ function parse(argv) {
     else if (key === '--plan') out.plan = true;
     else throw new Error(`unknown argument: ${key}`);
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/u.test(out.date ?? '')) throw new Error('--date 必须是 YYYY-MM-DD');
+  out.date = resolveTargetDate(out.date);
   return out;
 }
 
@@ -58,8 +58,7 @@ function zipFrom(output, kind) {
 }
 
 export function runPromotionSales1(argv = process.argv.slice(2)) {
-  const args = parse(argv);
-  args.date = resolveTargetDate(args.date);
+  const args = parsePromotionSales1Args(argv);
   const batches = promotionSales1Plan({ shops: args.shops });
   if (args.plan) {
     console.log(JSON.stringify({ date: args.date, batches, mode: 'plan', apply: args.apply }, null, 2));

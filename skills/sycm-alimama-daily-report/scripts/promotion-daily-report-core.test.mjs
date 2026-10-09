@@ -5,6 +5,14 @@ import {
   uniqueNewKeywordTask, validateKeywordReportState, validateAudienceReportState, buildAudienceReportUrl,
   AUDIENCE_TASK_RE, AUDIENCE_ZIP_RE, uniqueNewAudienceTask, validateExportRows, buildFeishuFields,
 } from './promotion-daily-report-core.mjs';
+import { dimensionTriggerExpression } from './run-promotion-daily-report.mjs';
+
+test('维度选择器兼容平台更新后的按钮和 role=button 标记', () => {
+  const expression = dimensionTriggerExpression();
+  assert.match(expression, /querySelectorAll\('[^']*button/u);
+  assert.match(expression, /role="button"/u);
+  assert.match(expression, /维度/u);
+});
 
 test('builds the keyword report URL with requested filters', () => {
   const url = buildKeywordReportUrl('2026-09-30');
