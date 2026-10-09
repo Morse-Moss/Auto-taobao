@@ -6,29 +6,28 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { collectingShopKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { expectArgs, shopIdentity } from './shop-identities.mjs';
+import { resolveTargetDate } from './run-multi-shop-day.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DRIVER = path.join(HERE, 'run-promotion-daily-report.mjs');
 const IMPORTER = path.join(HERE, 'import-promotion-daily-report.mjs');
 const SALES1 = Object.freeze(['里可林淘宝', '网林天猫', '盖文淘宝', '盖文天猫', '科塔淘宝', '网林淘宝', '里可林天猫', '网林家居']);
 
-export function promotionSales1Plan({ shops = SALES1, batchSize = 5 } = {}) {
+export function promotionSales1Plan({ shops = SALES1 } = {}) {
   const allowed = new Set(collectingShopKeys());
   const unknown = shops.filter((shop) => !allowed.has(shop) || !SALES1.includes(shop));
   if (unknown.length) throw new Error(`推广日报店铺不在销售一部采集范围：${unknown.join('、')}`);
-  if (!Number.isInteger(batchSize) || batchSize < 1) throw new Error('--batch-size 必须是正整数');
-  return Array.from({ length: Math.ceil(shops.length / batchSize) }, (_, i) => shops.slice(i * batchSize, (i + 1) * batchSize));
+  return shops.length ? [shops] : [];
 }
 
 function parse(argv) {
-  const out = { date: null, shops: SALES1, batchSize: 5, apply: false, downloads: null, evidence: 'evidence/promotion-sales1' };
+  const out = { date: null, shops: SALES1, apply: false, downloads: null, evidence: 'evidence/promotion-sales1' };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     if (key === '--date') out.date = argv[++i];
     else if (key === '--shops') out.shops = String(argv[++i] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-    else if (key === '--batch-size') out.batchSize = Number(argv[++i]);
     else if (key === '--downloads') out.downloads = path.resolve(argv[++i]);
-    else if (key === '--evidence') out.evidence = path.resolve(argv[++i]);
+    else if (key === '--evidence' || key === '--logs') out.evidence = path.resolve(argv[++i]);
     else if (key === '--commit') out.apply = true;
     else if (key === '--plan') out.plan = true;
     else throw new Error(`unknown argument: ${key}`);
@@ -60,7 +59,8 @@ function zipFrom(output, kind) {
 
 export function runPromotionSales1(argv = process.argv.slice(2)) {
   const args = parse(argv);
-  const batches = promotionSales1Plan({ shops: args.shops, batchSize: args.batchSize });
+  args.date = resolveTargetDate(args.date);
+  const batches = promotionSales1Plan({ shops: args.shops });
   if (args.plan) {
     console.log(JSON.stringify({ date: args.date, batches, mode: 'plan', apply: args.apply }, null, 2));
     return 0;
@@ -79,7 +79,8 @@ export function runPromotionSales1(argv = process.argv.slice(2)) {
         const audienceTask = taskFrom(audienceSubmit, 'audience'); record.stages.push('audience-submit');
         const keywordZip = zipFrom(run(args, { shop, kind: 'keyword', phase: 'fetch', task: keywordTask, identity }), 'keyword'); record.stages.push('keyword-fetch');
         const audienceZip = zipFrom(run(args, { shop, kind: 'audience', phase: 'fetch', task: audienceTask, identity }), 'audience'); record.stages.push('audience-fetch');
-        const importer = spawnSync(process.execPath, [IMPORTER, '--date', args.date, '--shop', shop, '--keyword', keywordZip, '--audience', audienceZip, ...(args.apply ? ['--apply'] : [])], { encoding: 'utf8' });
+        const shopEvidence = path.join(args.evidence, shop);
+        const importer = spawnSync(process.execPath, [IMPORTER, '--date', args.date, '--shop', shop, '--keyword', keywordZip, '--audience', audienceZip, '--evidence', shopEvidence, ...(args.apply ? ['--apply'] : [])], { encoding: 'utf8' });
         if (importer.status !== 0) throw new Error(importer.stderr || importer.stdout || '导入失败');
         record.status = 'ok'; record.stages.push('import');
       } catch (error) { record.error = error.message; }

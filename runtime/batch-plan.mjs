@@ -242,7 +242,11 @@ export function batchOnlyArgs(batch) {
  *   chain  —— 唯一判「这一批成不成」的那一步；
  *   stop   —— 显式带 `--yes`（stop-all 的默认是只打印；在编排里只打印等于没释放）。
  */
-export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = [], logsDir = null, loginStep = null } = {}) {
+export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = [], logsDir = null, loginStep = null, workflow = 'daily-report' } = {}) {
+  if (!['daily-report', 'promotion-daily'].includes(workflow)) throw new Error(`未知 workflow：${workflow}`);
+  const chainFile = workflow === 'promotion-daily'
+    ? 'skills/sycm-alimama-daily-report/scripts/run-promotion-sales1.mjs'
+    : BATCH_FILES.chain;
   return [
     {
       name: 'start',
@@ -271,7 +275,7 @@ export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = []
     })),
     {
       name: 'chain',
-      file: BATCH_FILES.chain,
+      file: chainFile,
       // `--logs` 写在这里而不是由 IO 层在 spawn 那一刻补：**打印出来的必须是真正执行的**
       // （本仓库吃过这个亏 —— 打印与执行不一样时，事后照打印的那行手工复现会得到另一个结果）。
       // 一批一个子目录：链把 summary.json 写在 `--logs` 根上，共用一个根会互相覆盖。

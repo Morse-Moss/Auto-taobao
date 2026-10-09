@@ -182,6 +182,24 @@ test('一个批次：起 → 挂标识页（每家一条）→ 跑 → 停（不
     '只有「起」与「跑链」是致命的；挂标识页失败、停失败都不许挡下一批');
 });
 
+test('推广日报复用同一批次生命周期，但链入口切到推广编排器', () => {
+  const batch = planBatches({ size: 5 }).batches[0];
+  const steps = buildBatchSteps(batch, { workflow: 'promotion-daily', dateInput: 'yesterday', chainArgs: ['--commit'] });
+  const chain = steps.find((step) => step.name === 'chain');
+  assert.match(chain.file, /run-promotion-sales1\.mjs$/u);
+  assert.equal(chain.args[0], '--date');
+  assert.equal(chain.args[2], '--shops');
+  assert.equal(chain.args[3], batch.shops.join(','));
+  assert.ok(chain.args.includes('--commit'));
+  assert.equal(steps.find((step) => step.name === 'start').args[1], batch.shops.join(','));
+  assert.equal(steps.find((step) => step.name === 'stop').args[2], batch.shops.join(','));
+});
+
+test('未知 workflow 在批次计划阶段 fail-closed', () => {
+  const batch = planBatches({ size: 1 }).batches[0];
+  assert.throws(() => buildBatchSteps(batch, { workflow: 'promotion' }), /未知 workflow/u);
+});
+
 test('起与停作用在同一组目标上（同一个变量渲染，不给「起 3 家停 2 家」留缝）', () => {
   for (const size of [1, 2, 3, 5]) {
     for (const batch of planBatches({ size }).batches) {
@@ -380,4 +398,3 @@ test('结论交给**每一批**的链，且每批拿到的是各自独立的参�
   assert.equal(new Set(chains.map((c) => c.args)).size, chains.length);
   assert.notEqual(chains[0].args, chains[1].args);
 });
-

@@ -61,7 +61,7 @@ function parseArgs(argv) {
   const options = {
     dateInput: 'yesterday', batchSize: null, shops: null, commit: false, keepGoing: false,
     allowMissingPeer: false, notify: false, notifyPrint: false, logs: null, print: false,
-    autoRepair: false, autoRepairMaxRounds: null,
+    autoRepair: false, autoRepairMaxRounds: null, workflow: 'daily-report',
     deferAgentActionableAlert: false,
     release: true,
     // `hold` **默认开**（2026-10-06 加，与定时链 `run-daily-job.mjs` 的默认值一致）。
@@ -98,13 +98,14 @@ function parseArgs(argv) {
     }
     else if (arg === '--batch-size') options.batchSize = argv[++i];
     else if (arg === '--date') options.dateInput = argv[++i];
+    else if (arg === '--workflow') options.workflow = argv[++i];
     else if (arg === '--logs') options.logs = argv[++i];
     else if (arg === '--shops') options.shops = String(argv[++i] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--help' || arg === '-h') options.help = true;
     else {
       return {
         error: `未知参数 ${arg}（可用：--print --commit --no-release --no-hold --batch-size N --date <日> `
-          + '--shops a,b --keep-going --allow-missing-peer --auto-repair --auto-repair-max-rounds N '
+          + '--shops a,b --workflow daily-report|promotion-daily --keep-going --allow-missing-peer --auto-repair --auto-repair-max-rounds N '
           + '--defer-agent-actionable-alert --notify|--notify-print --logs <目录>）',
       };
     }
@@ -233,20 +234,25 @@ async function main(argv) {
     steps: buildBatchSteps(batch, {
       dateInput: options.dateInput,
       // 本批的链读**本批自己**那份结论（路径逐批不同，`--logs` 也是各自一份）。
-      chainArgs: [...chainArgsFor(options), LOGIN_PREFLIGHT_FLAG, loginArtifactFor(batch)],
+      workflow: options.workflow,
+      chainArgs: options.workflow === 'promotion-daily'
+        ? ['--commit']
+        : [...chainArgsFor(options), LOGIN_PREFLIGHT_FLAG, loginArtifactFor(batch)],
       logsDir: path.relative(REPO_ROOT, path.join(evidenceRoot, `b${batch.index}`)),
       loginStep: loginStepFor(batch),
     }),
   }));
-  const sharedStep = buildSharedStep();
+  const sharedStep = options.workflow === 'promotion-daily' ? null : buildSharedStep();
 
   if (options.print) {
     console.log(`[批次] 版本：${versionLineSafe()}`);
     console.log(`[批次] 目标日：${options.dateInput} → ${date}；每批 ${size} 家；共 ${plan.total} 批`
       + `；模式：${options.commit ? '写飞书（--commit）' : '排练（不写飞书）'}`
       + `；跑完${options.release ? '释放' : '不释放（--no-release）'}`);
-    console.log(`[批次] ${sharedStep.name}: ${renderCommand(sharedStep, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
-    console.log(`        ${sharedStep.note}`);
+    if (sharedStep) {
+      console.log(`[批次] ${sharedStep.name}: ${renderCommand(sharedStep, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
+      console.log(`        ${sharedStep.note}`);
+    } else console.log('[批次] promotion-daily：不启动日报共享商家浏览器，推广 Base 由推广导入器直接写入');
     // 驻留这件事必须出现在 `--print` 里：它是「人要不要守着」的决定性信息，
     // 而 `--print` 是人确认「将要执行什么」的唯一凭据（缺了它，人以为跑完就完事）。
     console.log(`[批次] 整轮被挡怎么办：${options.hold
@@ -289,7 +295,7 @@ async function main(argv) {
 
   // 整轮一次：共享实例（商家浏览器）。它不在任何一批里，也**永远不会被释放** ——
   // 推送段与回读段跑在它上面，停掉它等于把这一轮的产物链路掐断。
-  {
+  if (sharedStep) {
     log(`--- ${sharedStep.name}：${renderCommand(sharedStep, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
     const result = spawnSync(NODE, [path.join(REPO_ROOT, sharedStep.file), ...sharedStep.args], {
       cwd: REPO_ROOT, stdio: ['ignore', logFd, logFd], encoding: 'utf8',
