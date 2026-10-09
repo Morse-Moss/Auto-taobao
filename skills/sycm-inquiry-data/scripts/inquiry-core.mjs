@@ -80,3 +80,20 @@ export function planInquiryImport({ rows, existing = [] }) {
 }
 
 export function readInquiryRows(file, date, sourceShop, readXls) { return parseInquiryRows(readXls(file), date, sourceShop); }
+
+// ---------------------------------------------------------------------------
+// 「商品分析 → 商品咨询分析」两级入口的**轮询决策**（采集脚本 collect-inquiry-report.mjs 用）
+// ---------------------------------------------------------------------------
+// 这两级入口是 SPA 渲染出来的：页面刚导航完时，父菜单和子入口**都读不到**。
+// 2026-10-09 网林天猫真机复现（同批另 4 家成；该店 10-05/10-06/10-07 三轮也都成 ⇒ 间歇、非永久）；
+// 事后只读复读：`readyState=complete` 时父菜单命中 1 个、子入口 0 个；点一下父菜单后子入口立刻出现。
+// 原版的病根是「进轮询前只点一次父菜单」——点空一次（元素还没渲染出来）就再也没有第二次机会，
+// 于是必然轮询到超时。所以决策必须是**三态且每一轮重判**：
+//   done        子入口已出现 ⇒ 结束轮询；
+//   click-parent 父菜单在、子入口不在 ⇒ **重新**点父菜单（幂等；这一步就是原版缺的那一下）；
+//   wait        父菜单也还没渲染出来 ⇒ 只等，不许盲点（点了也不会有反应，还会掩盖真错）。
+export function planEntryPollStep({ hasInquiry, hasParent } = {}) {
+  if (hasInquiry) return 'done';
+  if (hasParent) return 'click-parent';
+  return 'wait';
+}
