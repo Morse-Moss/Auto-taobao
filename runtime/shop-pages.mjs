@@ -32,7 +32,8 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { siteAdapter } from '../skills/sycm-alimama-daily-report/scripts/date-picker.mjs';
-import { SITES } from '../skills/sycm-alimama-daily-report/scripts/login-merchant-core.mjs';
+// 2026-10-10：`SITES`（login-merchant-core 那份）曾用于取阿里妈妈开页地址，现改用 date-picker 的
+// `siteAdapter('alimama').entryUrl`（那份 `SITES` 里才有 `entryUrl`，且它才是报表路由地址）⇒ 这个 import 已无引用。
 // 期望页面清单住在这个叶子模块里（2026-09-21 从驱动抽出）。**从驱动 import 会成环**：
 // 驱动现在要用补页那一套（失败路径收尾、体检归位），而成环之后那些都加不进来。
 import { expectedPagesForDailyBrowser, expectedPagesForShop } from '../skills/sycm-alimama-daily-report/scripts/expected-pages.mjs';
@@ -74,7 +75,13 @@ export function buildUrlByName() {
   const { host } = getProfile();
   return {
     生意参谋工作页: siteAdapter('sycm').entryUrl,
-    阿里妈妈报表页: SITES.alimama.probeUrl,
+    // 2026-10-10 修 ㊵：这里原来写的是 `SITES.alimama.probeUrl` —— 那是 `login-merchant-core` 的**登录探测地址**（首页）。
+    // 阿里妈妈是哈希路由 SPA，「从首页整页导航进报表路由」这一步会被吃掉 hash（实测见
+    // date-picker 的 enterAlimamaReportRoute 注释）⇒ 页建出来停在首页、筛选栏只有 4 个
+    // ⇒ 第 2 步 `alimama-date` 五家店齐挂。开页要用 date-picker 侧的 `entryUrl`（报表路由）。
+    // ⚠️ `entryUrl` 只在 date-picker 的 `SITES` 里（login-merchant-core 那个 `SITES` 是另一份、没有它），
+    // 所以这里走 `siteAdapter`，别再 import 错的 SITES。
+    阿里妈妈报表页: siteAdapter('alimama').entryUrl,
     飞书底单页: `https://${host}/base/${targets.baseToken}?table=${targets.sourceTable}&view=${targets.sourceView}`,
   };
 }

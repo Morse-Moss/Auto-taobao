@@ -402,12 +402,75 @@ const SYCM_PANEL_EXPRESSION = `(() => {
   });
 })()`;
 
+// ---------------------------------------------------------------- 阿里妈妈日期面板（2026-10-10 新增）
+//
+// 背景（缺陷 ㊵）：`route:'url-hash'` 这条策略是 2026-09-16 定的，当时 URL 的
+// `startTime/endTime` 确实能设日期（evidence/alimama-cold-mount-2026-09-20/03-hash-change-inplace.txt）。
+// 2026-10-10 实测平台已改：把页签导航到带 `startTime=2026-10-10&endTime=2026-10-10` 的报表 URL，
+// 标题进对了报表页、触发器 11 个，但**日期触发器显示 `过去 7 天`、页面明写「数据范围为：2026-10-03至2026-10-09」**；
+// 连 `location.replace()` 硬重载也一样。⇒ URL 参数已完全不被理会。
+//
+// 真正管用的路径是**点面板**（同日实测）：
+//   点日期触发器 ⇒ 出现 `.mx-output-bottom` 面板（`快捷日期：昨日/过去7天/上周/过去15天/本月/过去30天/上月` + `确定`）
+//   点「昨日」⇒ 点「确定」 ⇒ href 变成 `startTime=2026-10-09&endTime=2026-10-09`、触发器显示 `昨日`、
+//   页面「数据范围为：2026-10-09至2026-10-09」。**因果方向是「面板 → URL」。**
+//
+// 这套控件是 `mx-*` 家族（`mx-output-bottom / mx-output-open`），**不是** sycm 那套 `.oui-date-picker-menu`，
+// 所以不能复用 SYCM_PANEL_EXPRESSION，另写两个表达式。
+
+// 打开阿里妈妈日期面板：定位日期触发器（`.mx-trigger` 里文字是日期样或「过去 N 天」的那个）。
+const ALIMAMA_OPEN_DATE_EXPRESSION = `(() => {
+  ${SYCM_PRELUDE}
+  const DATE_LIKE = /\\d{4}-\\d{2}-\\d{2}|昨日|今日|过去\\s*\\d+\\s*天|上周|本月|上月/u;
+  const el = one([...document.querySelectorAll('.mx-trigger')]
+    .filter((node) => rendered(node) && DATE_LIKE.test(clean(node.textContent))), 'alimama date trigger');
+  return JSON.stringify({ text: clean(el.textContent), point: aim(el, 'alimama date trigger') });
+})()`;
+
+// 读面板并算出「目标日」的可点位置。
+// 面板结构（2026-10-10 实测）：`.mx-output-bottom.mx-output-open`
+//   选择日期： 2026-10-03 - 昨日
+//   快捷日期： 昨日 / 过去 7 天 / 上周 / 过去 15 天 / 本月 / 过去 30 天 / 上月
+//   确定 / 取消
+// 目标日＝昨日时点「快捷日期：昨日」；否则只能走「选择日期」两侧的日期输入（本轮未实测，先只支持昨日）。
+const ALIMAMA_PANEL_EXPRESSION = `(() => {
+  ${SYCM_PRELUDE}
+  const panel = [...document.querySelectorAll('.mx-output-bottom')].filter((el) => rendered(el))[0];
+  if (!panel) throw new Error('alimama date panel is not open');
+  // 「快捷日期：」后面那一排 preset：先找到含该字样的最内层容器，再取其中的叶子按钮。
+  const quickLabel = [...panel.querySelectorAll('*')]
+    .filter((el) => rendered(el) && clean(el.textContent).startsWith('快捷日期'))[0] || null;
+  const presets = (quickLabel ? [...quickLabel.querySelectorAll('*')] : [])
+    .filter((el) => rendered(el) && el.children.length === 0 && clean(el.textContent) !== '')
+    .map((el) => ({ text: clean(el.textContent), ...(() => { const p = pointOf(el); return { x: p[0], y: p[1] }; })() }));
+  const hitTest = (el) => { const p = pointOf(el);
+    const hit = document.elementFromPoint(p[0], p[1]);
+    return !!hit && (hit === el || el.contains(hit) || hit.contains(el)); };
+  const confirmEl = [...panel.querySelectorAll('*')]
+    .filter((el) => rendered(el) && el.children.length === 0 && clean(el.textContent) === '确定')[0] || null;
+  return JSON.stringify({
+    range: clean((panel.querySelector('.mx-output-list, [class*=footer]') || panel).textContent).slice(0, 200),
+    presets,
+    confirm: confirmEl ? { x: pointOf(confirmEl)[0], y: pointOf(confirmEl)[1], hitOk: hitTest(confirmEl) } : null,
+  });
+})()`;
+
 const SITES = Object.freeze({
   alimama: {
     label: '阿里妈妈 / 营销场景报表',
     urlFragment: 'one.alimama.com',
     route: 'url-hash',
     defaultExpectTab: null,
+    // 开页 URL：**报表路由**，不是首页（2026-10-10 修 ㊵ 加）。
+    // 原来开页用的是登录探测地址 `login-merchant-core.mjs` 的 `probeUrl = …/index.html`（首页），
+    // 而首页被整页导航送进报表路由时 SPA 会把 hash 吃掉（见 `enterAlimamaReportRoute` 上方）——
+    // 「页建出来是首页」正是 10-10 五家店齐挂的起点。这里给一个专供开页的报表地址。
+    // 日期先给当天（页面自己会解析），任务真正要的那一天由 `applyDate` 再落一遍，不依赖这里的默认值。
+    entryUrl: buildAlimamaUrl({ requested: shanghaiToday() }),
+    // ⚠️ 不要动 `urlFragment`：「阿里妈妈报表页在不在」的判据仍按域名。
+    // `runtime/target-url-match.mjs` 的 `urlMatchesFragment` 刻意丢掉 `?`/`#` 之后的内容，
+    // 写 `…#!/report` 会被削成 `…/index.html`，与首页一起命中 ⇒ 收紧无效。
+    // 「首页被算成报表页」那条假绿要改那个函数的口径，属独立改动（本文件不管）。
   },
   sycm: {
     label: '生意参谋 / 店铺绩效',
@@ -463,6 +526,104 @@ async function clickPoint(proxy, targetId, point) {
 async function navigate(proxy, targetId, url) {
   return proxyJson(`${proxy}/navigate?target=${encodeURIComponent(targetId)}&url=${encodeURIComponent(url)}`,
     { method: 'POST', body: '' });
+}
+
+// 阿里妈妈是**哈希路由的 SPA**，「进报表页」这件事**不能靠整页导航**。
+//
+// 2026-10-10 真机复现（缺陷 ㊵，现场＝里可林淘宝 / 19041）：
+//   页签从 `login-merchant-core.mjs` 的 `probeUrl = https://one.alimama.com/index.html`（**首页**）建出来，
+//   对它发 `Page.navigate(…/index.html#!/report/account?…)`：
+//     · 接口回 HTTP 200（**看着成功**）
+//     · 但逐秒读 40 次：`href` 恒为 `…/index.html`、`hash` 恒空、`title` 恒 `首页_万相台无界版`、
+//       `.mx-trigger` 恒 4（全是首页的筛选栏）⇒ **hash 被 SPA 冲掉，整页导航根本没进报表路由**
+//   改成**页内直接 `location.hash = "#!/report/account?…"`**：5 秒后 `title = 营销场景报表_万相台无界版`、
+//   `.mx-trigger` = 11 ⇒ 同一条路由，页内改 hash 进得去、整页导航进不去。
+//
+// 所以这一步做成两段：先试整页导航（对「页签压根不在这台机器/这个 host」的情形仍然对），
+// 再**回读 `title` 确认真的到了报表页**；没到就用页内改 hash 兜底，并**再回读一次**。
+// 判据用 `title`（报表页标题不同）而不是「导航有没有报错」—— 上面那条证明了导航不报错也会没进去。
+const ALIMAMA_HOME_TITLES = Object.freeze(['首页_万相台无界版', '首页']);
+export function isAlimamaReportRoute(url) {
+  return /one\.alimama\.com\/index\.html#!\/report/u.test(String(url ?? ''));
+}
+
+async function readDocTitle(proxy, targetId) {
+  try {
+    const payload = await proxyJson(`${proxy}/eval?target=${encodeURIComponent(targetId)}`,
+      { method: 'POST', body: 'JSON.stringify({ t: document.title, h: location.href })' });
+    const value = payload?.value ?? payload;
+    return typeof value === 'string' ? JSON.parse(value) : null;
+  } catch { return null; }
+}
+
+// 设页内 hash（不经过 evaluate：那条路会把返回值当 JSON 解析，这里只要「发出去」）。
+async function setHashInPage(proxy, targetId, hash) {
+  try {
+    await proxyJson(`${proxy}/eval?target=${encodeURIComponent(targetId)}`,
+      { method: 'POST', body: `location.hash = ${JSON.stringify(hash)}; 'ok'` });
+    return null;
+  } catch (error) { return String(error?.message ?? error).split('\n')[0].slice(0, 160); }
+}
+
+// 把阿里妈妈页签送进报表路由，并**回读自证**。返回最终读到的 {title,href}（读不到就是 null）。
+//
+// 判据只认一条：**回读的 `document.title` 不是首页标题**。为什么不用「URL 里有没有 `#!`」：
+// 2026-10-10 实测，被 SPA 吃掉 hash 的那一刻 `location.href` 可能短暂带着 `#!` 而后又回落，
+// 而 `title` 稳稳定在 `首页_万相台无界版`（40 秒逐秒读，一次没变）。
+//
+// 读不到 `title`（代理抖/页面在导航中）**不能当成「还在首页」**：那会让我们多改一次 hash，
+// 而多这一次本身无害（幂等），但如果连 hash 也写不进去，就把「读不到」误报成「落位失败」。
+// 所以读不到时**重试若干次**；仍读不到就如实返回 null，交给调用方的 settle 去断言（它才是判据）。
+export async function enterAlimamaReportRoute({ proxy, targetId, url, say, attempts = 3, ms = 800 } = {}) {
+  say?.('navigate', { url });
+  await navigate(proxy, targetId, url);
+  await delay(1500);
+  let seen = await readDocTitle(proxy, targetId);
+  for (let i = 0; i < attempts && !seen; i += 1) { await delay(ms); seen = await readDocTitle(proxy, targetId); }
+  if (seen && !ALIMAMA_HOME_TITLES.includes(seen.t)) return seen;
+  // 没读到（seen=null）或确实停在首页 ⇒ 页内改 hash 兜底（这是这条 SPA 认的进法）。
+  const hashAt = url.indexOf('#!');
+  if (hashAt < 0) return seen ?? null;
+  say?.('navigate-hash-fallback', { from: seen?.h ?? null, sawHome: seen ? seen.t : null, hash: url.slice(hashAt) });
+  const hashError = await setHashInPage(proxy, targetId, url.slice(hashAt));
+  await delay(1500);
+  const after = await readDocTitle(proxy, targetId);
+  if (after) return after;
+  for (let i = 0; i < attempts && !after; i += 1) { await delay(ms); }
+  const final = await readDocTitle(proxy, targetId);
+  return final ?? (seen ? { ...seen, hashError } : (hashError ? { t: null, h: null, hashError } : null));
+}
+
+// 用「点面板」把阿里妈妈报表页的日期设到目标日（2026-10-10 新增，㊵ 的正解）。
+//
+// 只在「目标日＝昨日」时走快捷日期；其它历史日需要操作面板里的日期输入（本轮未实测，先不做，
+// 由调用方在 URL 落位后仍对不上时如实报错，不假装成功）。
+// 返回 { applied, preset, confirmed }；任何一步不成立都抛（不吞错）。
+export async function applyAlimamaDateViaPanel({ proxy, targetId, requested, yesterday, say } = {}) {
+  const wantPreset = requested === yesterday ? '昨日' : null;
+  if (!wantPreset) {
+    throw new Error(`alimama date panel：本轮只实现了「昨日」快捷档；目标 ${requested} ≠ 昨日 ${yesterday}`);
+  }
+  say?.('panel-open', { wantPreset });
+  const opened = await evaluate(proxy, targetId, ALIMAMA_OPEN_DATE_EXPRESSION);
+  await delay(1200);
+  await clickPoint(proxy, targetId, opened.point);
+  await delay(1500);
+  const panel = await evaluate(proxy, targetId, ALIMAMA_PANEL_EXPRESSION);
+  say?.('panel-read', { range: panel.range, presets: panel.presets.map((p) => p.text) });
+  const preset = panel.presets.find((p) => p.text === wantPreset);
+  if (!preset) {
+    throw new Error(`alimama date panel：快捷日期里没有「${wantPreset}」；`
+      + `实到 ${JSON.stringify(panel.presets.map((p) => p.text))}`);
+  }
+  await clickPoint(proxy, targetId, [preset.x, preset.y]);
+  await delay(1200);
+  if (!panel.confirm || !panel.confirm.hitOk) {
+    throw new Error(`alimama date panel：「确定」不可点（${JSON.stringify(panel.confirm)}）`);
+  }
+  await clickPoint(proxy, targetId, [panel.confirm.x, panel.confirm.y]);
+  await delay(1500);
+  return { applied: wantPreset, preset: wantPreset, confirmed: true };
 }
 
 // 让页面**真的重新加载**一遍。
@@ -777,9 +938,33 @@ async function runApplyDate({ proxy, site, targetId, requested, mode: requestedM
 
   if (site === 'alimama') {
     const url = buildAlimamaUrl({ requested });
-    say('navigate', { url });
-    await navigate(proxy, page, url);
-    const settled = await settle('alimama');
+    // 整页导航在这条哈希路由上会被冲掉（㊵）⇒ 由 enterAlimamaReportRoute 做「页内改 hash」兜底并回读自证。
+    const landed = await enterAlimamaReportRoute({ proxy, targetId: page, url, say });
+    trace.push({ step: 'enter-report-route', landed });
+    // 主路径仍是「navigate 到带日期参数的报表 URL」——2026-10-10 复核实测：页签**已经在报表路由**时，
+    // 日期参数一直好使（10-05/10-06/10-01 都落对了）。真正坏掉的只是「从首页进去」那一步，
+    // 而它在上面 `enterAlimamaReportRoute` 里已经补上。
+    // 面板路径（`applyAlimamaDateViaPanel`）作为**后备**：只有 navigate 之后确实没落上（settle 抛）才走。
+    // ⚠️ 后备失败时**必须原样抛回主路径那个错**：那个错里带着「读了几次、最后一次读到什么」
+    // （settle 的报错是本项目诊断失败的核心载体），拿一个面板错盖掉它＝把现场丢了。
+    let settled;
+    try {
+      settled = await settle('alimama');
+    } catch (primaryError) {
+      say('url-fallback-to-panel', { reason: String(primaryError?.message ?? primaryError).split('\n')[0].slice(0, 200) });
+      try {
+        const viaPanel = await applyAlimamaDateViaPanel({
+          proxy, targetId: page, requested, yesterday: resolved.yesterday, say,
+        });
+        trace.push({ step: 'panel-apply', viaPanel });
+      } catch (panelError) {
+        // 面板也失败：把面板的错附在主错的 trace 上，但**抛主错**（保留 settle 的诊断）。
+        say('panel-fallback-failed', { reason: String(panelError?.message ?? panelError).split('\n')[0].slice(0, 200) });
+        primaryError.trace = primaryError.trace ?? trace;
+        throw primaryError;
+      }
+      settled = await settle('alimama');
+    }
     say('settled', { applied: settled.applied });
     return finish(before.applied === settled.applied ? 'REAPPLIED' : 'APPLIED', settled);
   }

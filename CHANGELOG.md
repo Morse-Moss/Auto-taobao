@@ -15,6 +15,59 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.7.22] - 2026-10-10
+
+用户指令「按照你的推荐立刻去修复」。上一轮 5 家店全停在**第 2 步 `alimama-date`**，报的都是
+同一句 `alimama filter bar not ready; triggers=4`。本轮把它复现、定性、修掉，并在真机上验证。
+
+### 改了什么
+
+**阿里妈妈报表页：从首页进报表路由会被 SPA 吃掉（缺陷 ㊵）**
+
+- 现场：`one.alimama.com/index.html`（**首页**）上做 `/navigate` 到
+  `…/index.html#!/report/account?…`，返回 HTTP 200，但 **SPA 把 hash 丢了** —— `href` 停在
+  `…/index.html`、`hash` 为空、`title` 停在 `首页_万相台无界版`、`.mx-trigger` **连续 40 秒
+  卡在 4**（逐秒探测）。而链条的 `READ_EXPRESSIONS.alimama` 要求 `triggers.length >= 6` ⇒
+  第 2 步直接失败。**根因是「首页 → 报表路由」这第一次进入被 SPA 吸收，不是日期参数被平台废弃。**
+- `date-picker.mjs` 新增 `enterAlimamaReportRoute()`：`navigate` →**回读 `document.title` 自证**
+  → 若仍在首页则**页内改 `location.hash` 兜底** → 再回读。导航进入成功就不写 hash。
+- 同时新增 **`mx-*` 日期面板兜底** `applyAlimamaDateViaPanel()`：阿里妈妈的日期面板是
+  `mx-output-bottom` 组件（**不是**生意参谋那套 `.oui-date-picker-menu`），点日期触发器打开
+  → 读「快捷日期」（昨日／过去 7 天／…）→ 点目标档 → 点「确定」。**已实测这条路
+  能改 URL**：点「昨日」+「确定」后 `href` 变成 `startTime=2026-10-09&endTime=2026-10-09`、
+  触发器变「昨日」、`数据范围为：2026-10-09至2026-10-09` —— 因果是**面板 → URL**。
+- 页面创建地址修正：`SITES.alimama` 新增 `entryUrl = buildAlimamaUrl({requested: shanghaiToday()})`
+  （**报表路由**），`runtime/shop-pages.mjs` 的 `阿里妈妈报表页` 改用 `siteAdapter('alimama').entryUrl`。
+  原来它用的是 `login-merchant-core.mjs` 的 `probeUrl = 'https://one.alimama.com/index.html'`
+  ——那是**登录探针用的首页**，新建出来的工作页天生停在首页，正是本缺陷的入口。
+- ⚠️ **不要动 `SITES.alimama.urlFragment`**：`runtime/target-url-match.mjs` 的
+  `urlMatchesFragment()` **刻意丢掉 `?`/`#` 之后的内容**，写 `…#!/report` 会被削成
+  `…/index.html`、反而继续匹配首页。`expected-pages.mjs` 因此只加注释不改片段
+  （「首页也算报表页在位」这个是**另一个改动**，要动 `target-url-match.mjs` 的口径）。
+
+### 为什么改
+
+- 连续两轮的失败签名一模一样（`triggers=4`），说明不是偶发。逐秒探测 40 条读数
+  （`evidence/probe-alimama-2026-10-10/`）把它从「猜」变成「量出来的」。
+- 一条**自我更正**记录在 `04-platform-change.md`：最初判「平台不再认 `startTime/endTime`」是
+  **错的** —— 后续在**已在报表路由**的页签上测 10-05／10-06（`/navigate`）、10-01
+  （`location.replace`）**都正确生效**。真正的缺陷面很窄：**只有「从首页第一次进报表路由」这一步**。
+
+### 验证到什么程度
+
+- **真机端到端**（里可林淘宝，proxy 19041／debug 19031）：从 10-10 那个失败状态出发，
+  `date-picker.mjs --site alimama --date 2026-10-09 --proxy …:19041` ⇒ `status: APPLIED`、
+  `observedAfter: 昨日`、trace 里 `enter-report-route.landed.t = 营销场景报表_万相台无界版`；
+  **独立回读**（不看 summary）`数据范围为：2026-10-09至2026-10-09`。
+- **页面创建那半边**：关掉旧页签、用新 `entryUrl` 形状新建 ⇒ 开页即落在
+  `营销场景报表_万相台无界版`（报表路由），随后的 applyDate 作为**活 hash 变更**正确落日期。
+- 离线：`date-picker.test.mjs` **44/44**（新增 4 条行为级：导航没进 ⇒ hash 兜底并回读自证／
+  导航进了 ⇒ 不写 hash／单次读失败 ≠ 「还在首页」／`isAlimamaReportRoute` 正反）；
+  `shop-pages` + `expected-pages` **45/45**；阿里妈妈 skill 组 **529/529**；runtime 全量 **1077/1078**
+  （唯一 1 红是**别人的在飞改动**造成的 `arch-boundary` 基线，已复核不是本节改动）。
+- **突变验证**：把 hash 兜底里 `const hashAt = -1` 写死 ⇒ **恰好**新增那条
+  「整页导航没进 ⇒ 页内改 hash 兜底」变红且点名自己；还原后全绿。
+
 ## [1.7.21] - 2026-10-10
 
 用户指令：「把 2026-10-10 的 8 家店常规日报也跑一遍」。这一轮**跑挂了**（5 家全停在

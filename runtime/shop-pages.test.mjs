@@ -61,7 +61,10 @@ test('buildUrlByName：飞书页带 table/view，且字段名来自权威（不�
   assert.match(urls.飞书底单页, /^https:\/\/[^/]+\/base\/[^?]+\?table=[^&]+&view=[^&]+$/u);
   assert.doesNotMatch(urls.飞书底单页, /table=undefined|view=undefined/u, '字段名猜错会建出 undefined 页且不报错');
   assert.ok(urls.生意参谋工作页.startsWith('http'), '生意参谋页 URL 必须来自 date-picker 的 entryUrl');
-  assert.ok(urls.阿里妈妈报表页.startsWith('http'), '阿里妈妈页 URL 必须来自 login-merchant-core 的 probeUrl');
+  // 2026-10-10 修 ㊵：阿里妈妈开页地址从「登录探测地址（首页）」改成「报表路由」——
+  // 拿首页当开页地址会把页签建在首页，第 2 步 alimama-date 必挂（五家店齐挂的那一轮）。
+  assert.match(urls.阿里妈妈报表页, /^https:\/\/one\.alimama\.com\/index\.html#!\/report/u,
+    '阿里妈妈开页地址必须是报表路由，不能是首页');
 });
 
 test('planPageActions：已有 / 多于一个（只报）/ 同主机一页都没有时缺（补）', () => {

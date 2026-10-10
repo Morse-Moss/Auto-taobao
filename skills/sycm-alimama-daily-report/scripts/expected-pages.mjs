@@ -25,6 +25,11 @@ import { dailyReportTargets } from '../../../runtime/feishu-targets.mjs';
 export function expectedPagesForShop() {
   return [
     { name: '生意参谋工作页', urlFragment: siteAdapter('sycm').urlFragment },
+    // 2026-10-10 注（㊵）：判据仍用域名片段 —— **不能**收紧成 `…#!/report`。
+    // `runtime/target-url-match.mjs` 的 `urlMatchesFragment` **刻意丢掉 `?` 与 `#` 之后的内容**
+    // （那是为了不把生意参谋的登录跳转页误认成工作页），所以带 hash 的片段会被削成
+    // `one.alimama.com/index.html`，首页照样命中 ⇒ 收紧无效，反而给以后埋一个「以为收紧了」的错觉。
+    // 「首页被算成报表页已在」这条假绿**仍然存在**，正解要动 `target-url-match.mjs` 的口径，属独立改动。
     { name: '阿里妈妈报表页', urlFragment: siteAdapter('alimama').urlFragment },
   ];
 }

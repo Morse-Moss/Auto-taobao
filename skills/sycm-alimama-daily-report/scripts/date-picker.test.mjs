@@ -5,7 +5,8 @@ import test from 'node:test';
 
 import {
   applyDate,
-  assertAlimamaState, BLOCKED_BY_OVERLAY_TOKEN, buildAlimamaUrl, extractIsoDates, isFuncPermissionDenied, isSingleDaySelection,
+  assertAlimamaState, BLOCKED_BY_OVERLAY_TOKEN, buildAlimamaUrl, enterAlimamaReportRoute, extractIsoDates,
+  isAlimamaReportRoute, isFuncPermissionDenied, isSingleDaySelection,
   needsStaleReload, SHOP_FUNC_NO_PERMISSION,
   resolveAppliedDate, resolveDateMode, resolveTarget, resolveTargetDate, selectDayHits, shiftIso, shiftMonth,
   siteAdapter, TARGET_DATE_LITERALS,
@@ -218,10 +219,16 @@ test('落位认不出页面时按 entryUrl 回位，且只动同一主机下那�
   assert.equal(calls.filter((call) => call.includes('/navigate')).length, 0, '不明确时一次导航都不许发');
 });
 
-// 阿里妈妈没有回位地址（它本来就在自己的页面上，靠 URL hash 认）—— 别给它编一个。
-test('只有生意参谋登记了回位地址', () => {
+// 两个站点各自登记回位地址（2026-10-10 改）。
+// 原先是「阿里妈妈没有回位地址（它本来就在自己的页面上，靠 URL hash 认）—— 别给它编一个」。
+// ㊵ 真机复现推翻了这个前提：阿里妈妈页签**从首页建出来**时，整页导航进报表路由会被 SPA 吃掉 hash
+// ⇒ 它需要一个「回位到报表路由」的地址，与生意参谋需要「回位到工作页」是同一件事。
+// 判据仍要钉住**回位地址必须是对应站点的真地址**（不能填错站、不能填成首页）：
+test('两个站点各自登记回位地址（且都得是各自站点的真地址）', () => {
   assert.match(siteAdapter('sycm').entryUrl, /sycm\.taobao\.com/u);
-  assert.equal(siteAdapter('alimama').entryUrl, undefined);
+  // 阿里妈妈的回位地址必须是**报表路由**，不能是首页（首页正是 ㊵ 的成因）。
+  assert.match(siteAdapter('alimama').entryUrl, /one\.alimama\.com\/index\.html#!\/report/u);
+  assert.match(siteAdapter('alimama').entryUrl, /rptType=account/u, '缺报表必带的参数');
 });
 
 // ------------------------------------------------- 落位重试（2026-09-20 现场修的一处）
@@ -248,7 +255,8 @@ function stubProxy({ evalResults, targets = [{ type: 'page', targetId: 'alimama-
   const realFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
     const text = String(url);
-    calls.push({ url: text, body: init?.body ?? null });
+    const body = init?.body ?? null;
+    calls.push({ url: text, body });
     const respond = (ok, status, payload) => ({
       ok, status, text: async () => JSON.stringify(payload), json: async () => payload,
     });
@@ -260,6 +268,13 @@ function stubProxy({ evalResults, targets = [{ type: 'page', targetId: 'alimama-
     // 阿里妈妈那条路靠 navigate，用不到它。
     if (text.includes('/clickPoint')) return respond(true, 200, { ok: true });
     if (text.includes('/eval')) {
+      // `enterAlimamaReportRoute`（2026-10-10 修 ㊵ 加）会先回读 `document.title` 自证「进没进报表路由」。
+      // 这类读取**不吃 evalResults 的序列**（它问的是与落位无关的另一件事），否则每条落位用例的
+      // 队列都要为它前置一格 —— 那就是「测试在替实现算账」，实现一改测试就假红。
+      // 统一回答「已在报表页」，让 settle 的序列与从前逐字一致。
+      if (String(body ?? '').includes('document.title') && String(body ?? '').includes('location.href')) {
+        return respond(true, 200, { value: JSON.stringify({ t: '营销场景报表_万相台无界版', h: 'https://one.alimama.com/index.html#!/report/account' }) });
+      }
       const result = evalResults[Math.min(evalIndex, evalResults.length - 1)];
       evalIndex += 1;
       if (result.error) return respond(false, 400, { error: result.error });
@@ -310,7 +325,13 @@ test('落位：一直读不到时，报错要点名「读了几次、最后一�
       assert.match(error.message, /triggers=0/u, '最后一次读不到的原因要带出来');
       assert.match(error.message, /diagnostic=\{"phase":"filter-bar","status":"not-rendered"/u,
         '失败收据要区分筛选条始终未渲染');
-      assert.equal(error.trace.at(-1).step, 'navigate', 'trace 仍要停在最后一步');
+      // trace 要停在**真正最后做的那一步**。2026-10-10 加 `enterAlimamaReportRoute` 与面板后备之后，
+      // 末尾是 `panel-fallback-failed`（主 settle 失败 → 试面板 → 面板也失败 → 抛主错）。
+      assert.equal(error.trace.at(-1).step, 'panel-fallback-failed', 'trace 仍要停在最后一步');
+      const steps = error.trace.map((step) => step.step);
+      assert.ok(steps.indexOf('navigate') >= 0, 'naviagte 这一步不能丢');
+      assert.ok(steps.indexOf('url-fallback-to-panel') > steps.indexOf('navigate'),
+        '面板后备只在主路径落位失败之后才走');
       return true;
     });
   } finally { stub.restore(); }
@@ -736,4 +757,94 @@ test('遮挡标记（行为级）：点到的是自己 ⇒ 顺利返回坐标，
   const got = callAim({ blockerCovers: true, hitIsSelf: true });
   assert.equal(got.ok, true, '命中自己的时候本来就不该抛错（这一条是给上面两条做对照的）');
   assert.deepEqual(got.point, [495, 278], '返回的是元素中心点');
+});
+
+// ------------------------------------------------- 进报表路由（2026-10-10 修 ㊵）
+//
+// 现场：五家店齐挂 `alimama-date`，页面停在**首页**（`.mx-trigger` 只有 4 个，判据要 ≥6）。
+// 成因：冷启动的页签建自 `probeUrl`（首页），而「从首页整页导航进报表路由」这一步会被 SPA 吃掉 hash。
+// 修法：`enterAlimamaReportRoute()` —— navigate 之后**回读 `document.title`** 自证；
+// 还在首页就**页内改 hash**兜底，再回读。这里用假代理把三条路径都跑一遍。
+
+function stubRouteProxy({ titles, hashLands = true }) {
+  const realFetch = globalThis.fetch;
+  const calls = [];
+  let titleIndex = 0;
+  globalThis.fetch = async (url, init) => {
+    const text = String(url);
+    const body = init?.body ?? null;
+    calls.push({ url: text, body: String(body) });
+    const respond = (ok, status, payload) => ({ ok, status, text: async () => JSON.stringify(payload), json: async () => payload });
+    if (text.includes('/navigate')) return respond(true, 200, { frameId: 'p' });
+    if (text.includes('/eval')) {
+      if (String(body).includes('document.title')) {
+        const t = titles[Math.min(titleIndex, titles.length - 1)];
+        titleIndex += 1;
+        if (t && t.error) return respond(false, 400, { error: t.error });
+        return respond(true, 200, { value: JSON.stringify({ t: t.t, h: t.h }) });
+      }
+      // 页内改 hash
+      if (!hashLands) return respond(false, 400, { error: 'cannot set hash' });
+      return respond(true, 200, { value: 'ok' });
+    }
+    throw new Error(`stub 没实现这个口子：${text}`);
+  };
+  return { calls, titleReads: () => titleIndex, restore: () => { globalThis.fetch = realFetch; } };
+}
+
+const REPORT_URL = buildAlimamaUrl({ requested: '2026-10-09' });
+
+test('进报表路由（行为级）：整页导航没进 ⇒ 页内改 hash 兜底，再回读自证', async () => {
+  // 第 1 次回读：还在首页（hash 被吃了）；改 hash 后回读：报表页。
+  const stub = stubRouteProxy({ titles: [
+    { t: '首页_万相台无界版', h: 'https://one.alimama.com/index.html' },
+    { t: '营销场景报表_万相台无界版', h: 'https://one.alimama.com/index.html#!/report/account' },
+  ] });
+  const steps = [];
+  try {
+    const landed = await enterAlimamaReportRoute({ proxy: 'http://127.0.0.1:1', targetId: 'p',
+      url: REPORT_URL, say: (s) => steps.push(s), attempts: 1, ms: 1 });
+    assert.equal(landed.t, '营销场景报表_万相台无界版', '最终要落在报表页');
+    assert.ok(steps.includes('navigate-hash-fallback'), '停在首页时必须走 hash 兜底');
+    // 兜底那一步写的必须是**页内**（body 是 location.hash 赋值），不是又一次 navigate
+    const hashCall = stub.calls.find((c) => c.body.includes('location.hash ='));
+    assert.ok(hashCall, '要发一次页内 location.hash');
+    assert.match(hashCall.body, /#!\/report/u, 'hash 要用报表路由那段');
+  } finally { stub.restore(); }
+});
+
+test('进报表路由（行为级）：整页导航就进了 ⇒ 不写 hash，一个字都不多说', async () => {
+  const stub = stubRouteProxy({ titles: [
+    { t: '营销场景报表_万相台无界版', h: 'https://one.alimama.com/index.html#!/report/account' },
+  ] });
+  const steps = [];
+  try {
+    const landed = await enterAlimamaReportRoute({ proxy: 'http://127.0.0.1:1', targetId: 'p',
+      url: REPORT_URL, say: (s) => steps.push(s), attempts: 1, ms: 1 });
+    assert.equal(landed.t, '营销场景报表_万相台无界版');
+    assert.equal(steps.includes('navigate-hash-fallback'), false, '已经进去了就别再改 hash');
+    assert.equal(stub.calls.some((c) => c.body.includes('location.hash =')), false);
+    assert.equal(stub.titleReads(), 1, '一次回读就够，不必重试');
+  } finally { stub.restore(); }
+});
+
+test('进报表路由（行为级）：一次读不到不算「还在首页」—— 重试后读到报表页就收工', async () => {
+  // 第 1 次读失败（代理抖/页面在导航中），第 2 次读到报表页。
+  const stub = stubRouteProxy({ titles: [
+    { error: 'target not ready' },
+    { t: '营销场景报表_万相台无界版', h: 'https://one.alimama.com/index.html#!/report/account' },
+  ] });
+  const steps = [];
+  try {
+    const landed = await enterAlimamaReportRoute({ proxy: 'http://127.0.0.1:1', targetId: 'p',
+      url: REPORT_URL, say: (s) => steps.push(s), attempts: 3, ms: 1 });
+    assert.equal(landed.t, '营销场景报表_万相台无界版');
+    assert.equal(steps.includes('navigate-hash-fallback'), false,
+      '读不到 ≠ 还在首页 —— 不许因为一次读失败就多改一次 hash（那是把「读不到」误判成「落在首页」）');
+  } finally { stub.restore(); }
+});
+
+test('isAlimamaReportRoute：只认报表路由那段', () => {
+  assert.equal(isAlimamaReportRoute('https://one.alimama.com/index.html#!/report/account?rptType=account'), true);
+  assert.equal(isAlimamaReportRoute('https://one.alimama.com/index.html'), false, '首页不算报表路由');
 });
