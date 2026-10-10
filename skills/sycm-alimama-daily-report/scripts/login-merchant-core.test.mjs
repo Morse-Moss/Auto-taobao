@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import vm from 'node:vm';
 
 import {
   AGREEMENT_VERDICTS, ATTEMPT_OUTCOMES, CONFIRM_ACTION_TEXTS, CONFIRM_SCREEN_EXPRESSION, FILLED_VERDICTS,
@@ -108,12 +109,16 @@ test('sitesNeedingLogin：只有「确认已登录」才算通过 —— 读不�
   assert.deepEqual(sitesNeedingLogin({}), []);
 });
 
-test('captchaVisible：三种载体任一可见即为真（SOP §10.2 停手交人的判据）', () => {
+test('captchaVisible：四种载体任一可见即为真（SOP §10.2 停手交人的判据）', () => {
   assert.equal(captchaVisible({}), false);
   assert.equal(captchaVisible({ sliderVisible: true }), true);
   assert.equal(captchaVisible({ captchaInputVisible: true }), true);
   assert.equal(captchaVisible({ checkcode: { visible: true } }), true);
   assert.equal(captchaVisible({ checkcode: { visible: false }, sliderVisible: false, captchaInputVisible: false }), false);
+  // 2026-10-10 加：读不到内容的、地址/标题像风控页的 iframe 也算一条（fail-closed）。
+  // 「读不到」不许被当成「没有验证码」——那正是网林天猫被误判成「密码不对」的成因。
+  assert.equal(captchaVisible({ captchaFrame: { src: 'https://login.taobao.com/.../punish', title: '验证码拦截' } }), true);
+  assert.equal(captchaVisible({ checkcode: { visible: false }, captchaFrame: null }), false);
 });
 
 test('登录表单表达式：只认那五个具名元素（id 来自实测），并且读的是 DOM 值不是视觉', () => {
@@ -122,6 +127,99 @@ test('登录表单表达式：只认那五个具名元素（id 来自实测）�
   }
   assert.ok(FORM_STATE_EXPRESSION.includes("matches(':autofill')"), '必须读 :autofill（用来判断密码库里有没有凭据）');
   assert.ok(FORM_STATE_EXPRESSION.includes('valueLen'), '必须读 value 长度（这才是「值落地了没有」的判据）');
+});
+
+// ---------------------------------------------------------------------------
+// 2026-10-10：滑块在**同源 iframe 内部** —— 把那个表达式放进 vm 里**真跑**一遍。
+// 只做字符串断言（includes x/y）证明不了它会跑、也证明不了它认得出 iframe 里的滑块；
+// 而这条判据一旦静默失效，症状是「平台明明要滑块，脚本说是密码不对」——最贵的那种。
+// ---------------------------------------------------------------------------
+const SLIDER_SEL = '#nc_1_wrapper, .nc-container, .nc_scale';
+const CAPTCHA_INPUT_SEL = '#nc_1_captcha_input';
+
+const fakeEl = ({ value = '', checked = false, autofill = false, w = 300, h = 40 } = {}) => ({
+  value,
+  checked,
+  matches: (s) => (s === ':autofill' ? autofill : false),
+  getBoundingClientRect: () => ({ x: 10, y: 20, width: w, height: h }),
+});
+const nodeList = (arr) => {
+  const o = { length: arr.length };
+  arr.forEach((v, i) => { o[i] = v; });
+  return o;
+};
+const fakeDoc = ({ slider = null, input = null, frames = [] } = {}) => ({
+  querySelector: (sel) => {
+    if (sel === SLIDER_SEL) return slider;
+    if (sel === CAPTCHA_INPUT_SEL) return input;
+    if (sel === '#fm-login-id' || sel === '#fm-login-password' || sel === 'button.fm-submit') return fakeEl();
+    return null;
+  },
+  querySelectorAll: (sel) => (sel === 'iframe' ? nodeList(frames) : nodeList([])),
+});
+const fakeFrame = ({ src = '', title = '', doc = null, crossOrigin = false } = {}) => {
+  const f = { src, getAttribute: (n) => (n === 'src' ? src : n === 'title' ? title : null), contentDocument: doc };
+  if (crossOrigin) {
+    Object.defineProperty(f, 'contentDocument', { get() { throw new Error('SecurityError'); } });
+  }
+  return f;
+};
+const runFormState = (doc) => JSON.parse(vm.runInNewContext(FORM_STATE_EXPRESSION, {
+  document: doc,
+  location: { href: 'https://login.taobao.com/havanaone/login/login.htm?bizName=taobao' },
+}));
+
+test('表单状态表达式：干净登录页不许被读成「要验证」（四个信号全空）', () => {
+  const s = runFormState(fakeDoc());
+  assert.equal(s.sliderVisible, false);
+  assert.equal(s.captchaInputVisible, false);
+  assert.equal(s.captchaFrame, null);
+  assert.equal(captchaVisible(s), false);
+  assert.ok('captchaFrame' in s, '回执/告警要读它 —— 字段名不许改名或消失');
+});
+
+test('表单状态表达式：同源 iframe 内部的滑块必须被认出来（2026-10-08 网林天猫的真因）', () => {
+  const inner = fakeDoc({ slider: fakeEl({ w: 370, h: 34 }) });
+  const s = runFormState(fakeDoc({
+    frames: [fakeFrame({
+      src: 'https://login.taobao.com//havanaone/loginLegacy/password/login.do/_____tmd_____/punish?x5s=1',
+      title: '验证码拦截',
+      doc: inner,
+    })],
+  }));
+  assert.equal(s.sliderVisible, true, '同源 iframe 里的滑块没被算进来 ⇒ 回归');
+  assert.equal(captchaVisible(s), true);
+});
+
+test('表单状态表达式：同源 iframe 内的滑块 0 尺寸（不可见）时不算数', () => {
+  const inner = fakeDoc({ slider: fakeEl({ w: 0, h: 0 }) });
+  const s = runFormState(fakeDoc({ frames: [fakeFrame({ src: 'https://login.taobao.com/x', doc: inner })] }));
+  assert.equal(s.sliderVisible, false);
+  assert.equal(captchaVisible(s), false);
+});
+
+test('表单状态表达式：读不到内容的 iframe，地址/标题像风控页 ⇒ 留线索并判有验证码', () => {
+  const s = runFormState(fakeDoc({
+    frames: [fakeFrame({
+      src: 'https://login.taobao.com/_____tmd_____/punish?x5s=1',
+      title: '验证码拦截',
+      crossOrigin: true,
+    })],
+  }));
+  assert.ok(s.captchaFrame, '读不到内容的同源失败必须是「留线索」而不是「没有」');
+  assert.equal(captchaVisible(s), true);
+});
+
+test('表单状态表达式：读不到内容的 iframe 但地址/标题无关时不误报', () => {
+  const s = runFormState(fakeDoc({ frames: [fakeFrame({ src: 'https://example.com/widget.html', title: '广告位', crossOrigin: true })] }));
+  assert.equal(s.captchaFrame, null);
+  assert.equal(captchaVisible(s), false);
+});
+
+test('表单状态表达式：结构上必须扫 iframe（删掉它就会重新变成「看不见滑块」）', () => {
+  assert.ok(FORM_STATE_EXPRESSION.includes("querySelectorAll('iframe')"), '必须遍历 iframe');
+  assert.ok(FORM_STATE_EXPRESSION.includes('contentDocument'), '必须尝试读同源 iframe');
+  assert.ok(FORM_STATE_EXPRESSION.includes('captchaFrame'), '必须给出 captchaFrame 线索字段');
 });
 
 test('主脚本用到的结论词都在 VERDICTS 里（拼错一个词就是一次静默降级）', () => {

@@ -151,6 +151,16 @@ export const VERDICTS = Object.freeze([
 
 // 读登录表单的真实状态。判据一律取 DOM 值，不取视觉
 //（2026-09-18 实测：截图里账号框已经画出「盖文旗舰店 阿彦」，但 el.value 是空串）。
+//
+// 2026-10-10 改（**滑块要在同源 iframe 里找**）：淘宝风控把 nc 滑块放在一个 iframe 内部 ——
+// 实测 src 含 `_____tmd_____/punish`、`<title>验证码拦截</title>`，
+// 而它**只在点过「登录」之后**才被拉起（09:42 冷启动实测：刚打开的登录页里什么都没有）。
+// 旧版只 `document.querySelector` 顶层那三个选择器 ⇒ iframe 内的滑块**一条都命中不了**
+// ⇒ `captchaVisible()` 恒 false ⇒ 不报 `CAPTCHA_REQUIRED`，反而继续提交、被平台静默拒掉、
+// 最后归因成「可能密码不对」（2026-10-08 网林天猫就是这条误归因，见 MEMORY/待修 ㉟）。
+// 现在：顶层与**同源** iframe 一起查（那个 punish 页与登录页同源，`contentDocument` 可读）。
+// 读不到内容的 iframe 只记一条线索（见 `captchaFrame`），不据此断言 —— 「读不到」不是「没有」，
+// 但也不该被当成「没验证码」的凭据，所以它单独成一个字段，由 `captchaVisible` 决定怎么用。
 export const FORM_STATE_EXPRESSION = `(() => {
   const pick = (sel) => {
     const el = document.querySelector(sel);
@@ -164,8 +174,40 @@ export const FORM_STATE_EXPRESSION = `(() => {
       visible: r.width > 0 && r.height > 0,
     };
   };
-  const wrapper = document.querySelector('#nc_1_wrapper, .nc-container, .nc_scale');
-  const wrapperRect = wrapper ? wrapper.getBoundingClientRect() : null;
+  const SLIDER_SEL = '#nc_1_wrapper, .nc-container, .nc_scale';
+  const CAPTCHA_INPUT_SEL = '#nc_1_captcha_input';
+  const isVisible = (el) => {
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  };
+  const readDoc = (doc) => ({
+    slider: isVisible(doc.querySelector(SLIDER_SEL)),
+    input: isVisible(doc.querySelector(CAPTCHA_INPUT_SEL)),
+  });
+  const top = readDoc(document);
+  let sliderInFrame = false;
+  let inputInFrame = false;
+  let captchaFrame = null;
+  const frames = document.querySelectorAll('iframe');
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
+    const src = String(f.getAttribute('src') || f.src || '');
+    const title = String(f.getAttribute('title') || '');
+    let doc = null;
+    try { doc = f.contentDocument || null; } catch (e) { doc = null; }
+    if (doc) {
+      const inner = readDoc(doc);
+      if (inner.slider) sliderInFrame = true;
+      if (inner.input) inputInFrame = true;
+    } else {
+      const sig = src + ' ' + title;
+      if (sig.indexOf('_____tmd_____') >= 0 || sig.indexOf('/punish') >= 0
+          || sig.indexOf('nocaptcha') >= 0 || sig.indexOf('验证码') >= 0) {
+        captchaFrame = { src: src.slice(0, 160), title: title.slice(0, 60) };
+      }
+    }
+  }
   return JSON.stringify({
     href: location.href,
     id: pick('#fm-login-id'),
@@ -173,13 +215,9 @@ export const FORM_STATE_EXPRESSION = `(() => {
     checkcode: pick('#fm-login-checkcode'),
     agreement: pick('#fm-agreement-checkbox'),
     submit: pick('button.fm-submit'),
-    sliderVisible: !!wrapperRect && wrapperRect.width > 0 && wrapperRect.height > 0,
-    captchaInputVisible: (() => {
-      const el = document.querySelector('#nc_1_captcha_input');
-      if (!el) return false;
-      const r = el.getBoundingClientRect();
-      return r.width > 0 && r.height > 0;
-    })(),
+    sliderVisible: top.slider || sliderInFrame,
+    captchaInputVisible: top.input || inputInFrame,
+    captchaFrame: captchaFrame,
   });
 })()`;
 
@@ -519,9 +557,21 @@ export function loggedOutSites(siteStates = {}) {
     .map(([key]) => key);
 }
 
-// 验证码/滑块是否显形（三种载体任一可见即为真）。
+// 验证码/滑块是否显形（四种载体任一即为真）。
+//
+// 2026-10-10 加第四种 `captchaFrame`：滑块可以在**同源 iframe 内部**
+// （那条已经并进 `sliderVisible`/`captchaInputVisible`，见 `FORM_STATE_EXPRESSION`）；
+// 而**读不到内容**的 iframe 若地址/标题明确像风控页（`_____tmd_____` / `/punish` /
+// `nocaptcha` / 标题含「验证码」），也判有验证码。这是一次 fail-closed 的方向选择：
+// 把「读不到」判成「有验证码」，最坏是**多叫一次人**（页面原样留着、什么都没坏）；
+// 判成「没有」则会继续提交、被平台静默拒掉、再被归因成「密码不对」——那正是这次要治的病。
 export function captchaVisible(state) {
-  return Boolean(state?.sliderVisible || state?.captchaInputVisible || state?.checkcode?.visible);
+  return Boolean(
+    state?.sliderVisible
+    || state?.captchaInputVisible
+    || state?.checkcode?.visible
+    || state?.captchaFrame,
+  );
 }
 
 // 「这一页上有一套能填的登录表单吗」——账号框与密码框都真的占了位。

@@ -15,6 +15,51 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.7.17] - 2026-10-10
+
+用户指令：「按你推荐的执行」（承接同一天上一条授权「你去删，然后你重跑这两家的登录」）。
+修的是 **2026-10-08 网林天猫卡了半个月的那个真因**（缺陷 ㉟）：**滑块长在 iframe 里，脚本的判据看不见它**。
+
+### 归因：验证码显形 ⇒ `CAPTCHA_REQUIRED`，不再写成「可能密码不对」
+- **现场**：登录页顶层文档里有一个 iframe
+  `https://login.taobao.com//havanaone/loginLegacy/password/login.do/_____tmd_____/punish?x5s=…`，
+  `<title>验证码拦截</title>`，**与登录页同源**（`contentDocument` 可读）；
+  iframe 内手柄 = `SPAN#nc_1_n1z.nc_iconfont.btn_slide`，提示「向右滑动验证」。
+- **为什么原先判不出来**：`FORM_STATE_EXPRESSION` 只在**顶层文档**查
+  `#nc_1_wrapper, .nc-container, .nc_scale` ⇒ iframe 内的滑块**一条都命中不了**
+  ⇒ `captchaVisible()` 恒 false ⇒ 不报 `CAPTCHA_REQUIRED`，而是继续提交、被平台静默拒掉，
+  最后归因成 `LOGIN_NOT_CONFIRMED`（「可能是密码不对，也可能是平台要求额外验证」）
+  —— **一条把排查方向指反的归因**（围着密码查了两天，现场其实是一个风控页）。
+- **它为什么必然漏**：滑块是**点过「登录」之后**才被风控拉起的（09:42 冷启动实测：
+  刚打开的登录页上什么都没有），而那一版只在**提交前**查一次 ⇒ 时机上不可能看到它。
+- **改法（两处，都在判据层、都离线可测）**：
+  1. `FORM_STATE_EXPRESSION` 改为**顶层与同源 iframe 一起查**（`contentDocument`，跨源 try/catch）；
+     读不到内容的 iframe 若地址/标题明确像风控页（`_____tmd_____` / `/punish` / `nocaptcha` / 「验证码」），
+     留一条线索到新字段 `captchaFrame`。
+  2. `captchaVisible()` 增加第四种载体 `captchaFrame`；`login-merchant.mjs` 第六步在
+     `stillOnLogin` 分支里**再回读一次**表单状态，有验证码就报 `CAPTCHA_REQUIRED`
+     （detail 说明「账号密码已经填在页面上了，请在窗口里把验证做完」），
+     只有确实没有验证码才落 `LOGIN_NOT_CONFIRMED`。
+- **方向选择（写明白）**：`captchaFrame` 是 **fail-closed** —— 把「读不到」判成「有验证码」，
+  最坏是多叫一次人；判成「没有」就会继续提交、被静默拒掉、再被误归因，那正是要治的病。
+
+### 验证到什么程度（说实话）
+- **离线判据**：`login-merchant-core.test.mjs` **72/72 通过**（新增 7 条：把那个表达式放进
+  `node:vm` 沙箱**真跑**，覆盖干净页 / 同源 iframe 内滑块 / 同源 iframe 内 0 尺寸滑块 /
+  跨源风控 iframe / 跨源无关 iframe / 结构守卫）。
+- **突变验证**（`tmp/mutation-check-captcha.mjs`）：把两处修复分别改坏一次，两次都**判红且点名到
+  期望的那条用例**，跑完按 sha256 还原一致（`6fbffd97f9ee08d4`）。
+- **回归面**：`skills/sycm-alimama-daily-report/scripts/*.test.mjs` **511/511**；
+  `runtime/*.test.mjs` **1073/1074** —— 唯一那条红是另一条开发线新增的三个
+  `*promotion-daily-report*` / `run-promotion-sales1.mjs` 未在 `SKILLS_TO_RUNTIME` 登记，
+  与本批无关（那几个文件一个字没碰）。
+- **未做真机验收**：本批是判据修复，**要等下一次平台真的拉起滑块**才会走到那段新代码。
+  真机现场证据＝2026-10-08（已归档在当日实录与 `LOGIN-NOTES.md`）。
+- ⚠️ 顺带纠正一条跑法：**这个 skill 的 `scripts/*.test.mjs` 要从仓库根跑**
+  （`node --test "skills/sycm-alimama-daily-report/scripts/*.test.mjs"`）。
+  从 skill 目录里跑会有 3 条**假红** —— 那几个用例用 `fs.readFile('./skills/…')` 相对路径读源码，
+  CWD 一变就 ENOENT（实测：同一条命令从仓库根 11/11、从 skill 目录 8/11）。
+
 ## [1.7.16] - 2026-10-10
 
 用户指令（原话）：「按你推荐的执行」。修的是 **2026-10-08 定时跑暴露的那个真缺口**：

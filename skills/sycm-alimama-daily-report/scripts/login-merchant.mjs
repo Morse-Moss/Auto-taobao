@@ -20,7 +20,11 @@
 // fail-closed 的三处（踩过就明白为什么必须有）：
 //   - 拿不到 `:autofill`（= 密码库里没有这份凭据）⇒ 报 NO_SAVED_CREDENTIAL 停下，**不去猜账号密码**；
 //   - 图片验证码 / 滑块显形（rect 非零）⇒ 报 CAPTCHA_REQUIRED 停下，**不硬闯**（这是 SOP §10.2 的纪律）；
-//   - 点了登录但页面没离开登录页 ⇒ 报 LOGIN_NOT_CONFIRMED，如实说没成，不假装成功。
+//     2026-10-10 起这一条要**查两遍**：提交前一次、提交后一次。因为淘宝风控的滑块
+//     **只在点过「登录」之后**才被拉起，而且它长在一个 iframe 内部（`_____tmd_____/punish`，
+//     2026-10-08 网林天猫的现场）。只查提交前那一次 ⇒ 恒判「没有验证码」⇒ 继续提交、
+//     被平台静默拒掉 ⇒ 归因成「可能密码不对」，把排查方向指反。
+//   - 点了登录但页面没离开登录页、且页面上也**没有**验证码 ⇒ 报 LOGIN_NOT_CONFIRMED，如实说没成，不假装成功。
 //
 // 需要人处理时会**发飞书提醒**（2026-09-18 接）：复用既有的三跳链
 // `runtime/notify-feishu.mjs`，告警里写清「哪台机器、哪个浏览器配置、下一步做什么」。
@@ -555,6 +559,7 @@ async function attempt() {
     // **不换下一条地址继续试** —— 换掉会把已经弹出来的验证码页丢掉（见本步头部第 2 条纪律）。
     const captcha = captchaVisible(state);
     receipt.login.captcha = captcha;
+    receipt.login.captchaFrame = state.captchaFrame ?? null;
     if (captcha) {
       receipt.login.shots = await shot(args, targetId, 'login-captcha');
       receipt.verdict = 'CAPTCHA_REQUIRED';
@@ -673,6 +678,21 @@ async function attempt() {
         + '所以没有替你点。请在那个窗口里手点一次（点完就进后台了）。';
       return finish(receipt, 2);
     } else if (outcome.stillOnLogin) {
+      // 2026-10-10 加：**先看是不是平台把滑块/验证码拉起来了**，再看是不是密码的事。
+      // 为什么必须在这里再看一次：滑块是点过「登录」**之后**才被风控拉起的
+      // （09:42 冷启动实测：刚打开的登录页上什么都没有），所以第四步那次检查**必然看不到它**。
+      // 不看这一次，就会把「要滑滑块」写成「可能密码不对」—— 一条把排查方向指反的归因
+      // （2026-10-08 网林天猫：围着密码查了两天，现场其实是一个 iframe 里的风控页）。
+      const afterSubmitState = await evalOn(args, targetId, FORM_STATE)
+        .then((t) => JSON.parse(t)).catch(() => null);
+      receipt.login.captchaAfterSubmit = afterSubmitState ? captchaVisible(afterSubmitState) : null;
+      receipt.login.captchaFrameAfterSubmit = afterSubmitState?.captchaFrame ?? null;
+      if (afterSubmitState && captchaVisible(afterSubmitState)) {
+        receipt.verdict = 'CAPTCHA_REQUIRED';
+        receipt.detail = '点了「登录」之后平台拉起了滑块/验证码 —— 账号密码已经填在页面上了，'
+          + '请在那个窗口里把验证做完。系统不替你硬闯：硬闯会被平台静默拒掉，再被记成「密码不对」。';
+        return finish(receipt, 2);
+      }
       receipt.verdict = 'LOGIN_NOT_CONFIRMED';
       receipt.detail = '页面还停在登录页 —— 可能是密码不对，也可能是平台要求额外验证。系统没有再试一遍（连着试会把账号锁住）。';
       return finish(receipt, 2);
