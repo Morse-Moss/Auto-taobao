@@ -1632,6 +1632,37 @@ test('buildRepairRequest：已知成因（PAGE_OBSTRUCTED）⇒ 带候选菜单�
   assert.ok(req.path, '单子应已落盘并带回相对路径');
 });
 
+test('buildRepairRequest：归类看的是 failureOutput（含 stderr），不是 error.message（2026-10-10 补跑实测）', () => {
+  // 现场（2026-10-10 17:47 补跑 盖文淘宝 2026-10-09）：`97-repair-request.json` 写的是
+  // `cause: STAGE_FAILED`、候选 `[REAPPLY_DATES, RELOAD_PAGE]`，而**同目录** `04-sycm-date.txt`
+  // 的 stderr 里明明有 `[BLOCKED_BY_OVERLAY 遮挡层=DIV.ant-…]` —— 标记写对了、归类没看到它。
+  // 真因：`error.message` 只有驱动包的那一句 `阶段 sycm-date 失败（exit 1）`，
+  // 标记只在**子进程 stderr** 里（被收进 `record.failureOutput`）。
+  // 这条用例钉死「归类必须吃 failureOutput」；错了就会退回「㊲ 白修、候选里没有 DISMISS_OVERLAYS」。
+  const dir = mkdtempSync(path.join(tmpdir(), 'repair-req-'));
+  const wrapper = '阶段 sycm-date 失败（exit 1）';           // ← error.message 的真实形态
+  const stderr = 'Error: sycm tab 询单到付款: 定位重试 16 次仍失败；'
+    + `lastError=… point (492,277) is covered by SPAN.goods-subIndex-text [${BLOCKED_BY_OVERLAY_TOKEN} 遮挡层=DIV.ant-modal-wrap]`;
+
+  // ① 只给 error（旧行为）⇒ 标记看不到 ⇒ 兜底 STAGE_FAILED（这正是本轮踩的坑）
+  const blind = buildRepairRequest({ shopKey: '盖文淘宝', stage: 'sycm-date', error: wrapper, logDir: dir });
+  assert.equal(blind.cause, 'STAGE_FAILED');
+  assert.deepEqual(blind.candidates.map((c) => c.action), ['REAPPLY_DATES', 'RELOAD_PAGE']);
+
+  // ② 给了 failureOutput ⇒ 归类看见标记 ⇒ PAGE_OBSTRUCTED ⇒ 唯一对症的 DISMISS_OVERLAYS 进菜单
+  const fixed = buildRepairRequest({
+    shopKey: '盖文淘宝', stage: 'sycm-date', error: wrapper, failureOutput: `${wrapper}\n${stderr}`, logDir: dir,
+  });
+  assert.equal(fixed.cause, 'PAGE_OBSTRUCTED');
+  assert.deepEqual(fixed.candidates.map((c) => c.action), ['DISMISS_OVERLAYS', 'RELOAD_PAGE'],
+    '归因对了，候选菜单里才会有 DISMISS_OVERLAYS（否则 --auto-repair 与 agent 都修不动这一类）');
+
+  // ③ 接线守卫：驱动那一次调用**必须真的把 failureOutput 传下去**，否则上面这条修复等于没接
+  const source = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  assert.match(source, /record\.repairRequest = buildRepairRequest\(\{[\s\S]{0,400}?failureOutput:\s*record\.failureOutput/u,
+    '驱动调用 buildRepairRequest 时必须传 failureOutput（漏了它 ⇒ 归因退回 STAGE_FAILED，㊲ 白修）');
+});
+
 test('buildRepairRequest：单子里带「动手前先确认实例还在」，且端口与 execHint 指向同一台', () => {
   // 为什么必须落进**单子**而不只写在作业指导书里（2026-10-09）：27 份修复报告里 20 份的结论是
   // 「现场已不在 ⇒ 未执行任何修复动作 ⇒ 转人」—— 那是**动作还没试就判了转人**。

@@ -15,6 +15,42 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.7.20] - 2026-10-10
+
+1.7.19 把 ㊲ 修成「`date-picker` 在抛错那一刻给「被全屏层压住」写上确定性标记、
+`shopFailureCause` 认这个标记」。**补跑当场证明：判据写对了，但接线只接了一半。**
+
+### 改了什么
+
+**归因的输入取错了字段（缺陷 ㊲ 的「接线」那一半）**
+
+- `buildRepairRequest()` 归类时读的是传进来的 `error`，而驱动那一次调用传的是
+  `error.message` —— 它的真实形态只有驱动自己包的那一句 **`阶段 sycm-date 失败（exit 1）`**。
+  那个 `[BLOCKED_BY_OVERLAY …]` 标记**只出现在子进程 stderr 里**（被 `record.failureOutput` 收走、
+  也写进了 `04-<stage>.txt`）。于是分类器**根本看不到标记** ⇒ 落兜底 `STAGE_FAILED` ⇒
+  候选还是 `[REAPPLY_DATES, RELOAD_PAGE]`、`DISMISS_OVERLAYS` 仍不在菜单里 —— **1.7.19 白修**。
+- 修法：`buildRepairRequest` 新增 `failureOutput` 参数（归类用它；缺省回落到 `error`，
+  只传 `error` 的老调用方与既有用例行为不变），驱动调用处传 `record.failureOutput ?? null`。
+
+### 为什么改
+
+- 现场证据（2026-10-10 17:47 补跑 盖文淘宝 2026-10-09）：`97-repair-request.json` 写的是
+  `cause: STAGE_FAILED`、候选 `[REAPPLY_DATES, RELOAD_PAGE]`；而**同目录** `04-sycm-date.txt`
+  的 stderr 里明明有 `[BLOCKED_BY_OVERLAY 遮挡层=DIV.ant-…]`。
+  **「现场说遮挡、单子说 STAGE_FAILED」＝归因与证据不是同一个来源。**
+- 这是本项目吃过四次的那一类（函数级用例全绿 ≠ 接线接上了）：㊲ 的判据有源码级与行为级用例、
+  也过了突变，**但没有一条用例钉住「驱动调用时把哪个字段传下去」**。
+
+### 验证到什么程度
+
+- 本 skill **521/521**（新增 1 条：既断言「只给 error ⇒ 退回 STAGE_FAILED」、
+  又断言「给了 failureOutput ⇒ PAGE_OBSTRUCTED 且菜单里有 DISMISS_OVERLAYS」，
+  再钉住驱动调用处必须传 `failureOutput`）；定向驱动套件 **134/134**。
+- **突变验证**：把调用处的 `failureOutput: record.failureOutput ?? null` 那一行删掉 ⇒
+  新增那条用例**变红且点名**；恢复后全绿。
+- ⚠️ **真机未跑**：本条是补跑当场暴露、当场修的，**修完尚未再跑一次真机**。
+  （1.7.19/1.7.20 合计的效果要在下一轮真跑里才算验过。）
+
 ## [1.7.19] - 2026-10-10
 
 用户指令：「全修复然后补跑」（承接前一条「1.救回后续跑后续的步骤 2.补跑」与四条吐槽：

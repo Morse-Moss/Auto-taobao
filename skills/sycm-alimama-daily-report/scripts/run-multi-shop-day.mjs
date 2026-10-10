@@ -408,15 +408,28 @@ export function buildInstancePrecondition(shopKey) {
  * **本函数不做任何动作、不改退出码、不进告警**：它只在证据目录里多写一个文件。
  * 默认不自动执行任何修复 —— 执行由 `--auto-repair`（或外部 agent）显式触发。
  *
- * @param {{shopKey:string, stage:string|null, error:string, perception:object|null,
- *          logDir:string, writeFile?:Function}} o
+ * @param {{shopKey:string, stage:string|null, error:string, failureOutput?:string|null,
+ *          perception:object|null, logDir:string, writeFile?:Function}} o
  * @returns {object} 请求单（同时已落盘；落盘失败只记 `writeError`，不抛）
  */
-export function buildRepairRequest({ shopKey, stage = null, error = null, perception = null,
-  logDir, writeFile = writeFileSync } = {}) {
+export function buildRepairRequest({ shopKey, stage = null, error = null, failureOutput = null,
+  perception = null, logDir, writeFile = writeFileSync } = {}) {
   // 成因由**同一个分类器**给（`shopFailureCause`）—— 不在这里重判一遍。
   // 重判就是两套分类，而修复请求单最怕的就是「单子上的成因与告警里的成因不是同一个」。
-  const cause = shopFailureCause({ failedStage: stage, failureOutput: String(error ?? '') });
+  //
+  // ⚠️ 2026-10-10 修一个真缺陷（㊲ 的**接线**那一半，补跑当场实测）：
+  //   归类必须用**失败现场那段完整文本**（`record.failureOutput`，含子进程 stderr），
+  //   **不是** `error.message`。理由：`error.message` 只有驱动自己包的那一句
+  //   `阶段 sycm-date 失败（exit 1）`（`run-multi-shop-day.mjs` 抛错处），
+  //   而 `date-picker` 写下的 `[BLOCKED_BY_OVERLAY …]` 标记**只出现在子进程 stderr 里**
+  //   （被 `record.failureOutput` 收走、也被写进 `04-<stage>.txt`）。
+  //   用 `error.message` 归类 ⇒ 分类器根本看不到标记 ⇒ 落 `STAGE_FAILED` ⇒
+  //   候选里没有 `DISMISS_OVERLAYS`（㊲ 白修）。现场证据：2026-10-10 17:47 那次补跑，
+  //   `97-repair-request.json` 写的是 `cause: STAGE_FAILED`，
+  //   而同目录 `04-sycm-date.txt` 的 stderr 里明明有 `[BLOCKED_BY_OVERLAY 遮挡层=DIV.ant-…]`。
+  //   `failureOutput` 缺省回落到 `error`，让只传 `error` 的调用方（与既有用例）行为不变。
+  const causeText = String((failureOutput ?? error) ?? '');
+  const cause = shopFailureCause({ failedStage: stage, failureOutput: causeText });
   const plan = planRepair({ cause, stage, state: perception?.state ?? null });
   const request = {
     at: new Date().toISOString(),
@@ -2288,6 +2301,10 @@ async function main() {
       //    而修复请求单要引用的正是「失败那一刻的现场」。
       record.repairRequest = buildRepairRequest({
         shopKey: key, stage: record.failedStage ?? null, error: error.message,
+        // ⚠️ 必须把 `record.failureOutput`（含子进程 stderr）也传下去：归类要看的标记
+        //   （`BLOCKED_BY_OVERLAY` 等）只活在 stderr 里，不在 `error.message` 里。
+        //   2026-10-10 补跑实测：漏传这一个参数 ⇒ 单子上的成因与告警里的成因不是同一个（㊲ 白修）。
+        failureOutput: record.failureOutput ?? null,
         perception: record.perception, logDir: shopLogDir,
       });
       // ④ **agent 修复回环**（2026-09-29 加，默认关）：按请求单挑一个候选动作 → 执行 → 重试该阶段。
