@@ -21,6 +21,7 @@ import {
 } from './hold-and-resume-plan.mjs';
 import { batchRoundBlockOf } from './batch-plan.mjs';
 import { failedShopsOf, parseArgs as parseHoldArgs } from '../scripts/hold-and-resume.mjs';
+import { buildBatchHoldArgv } from '../scripts/run-batches.mjs';
 
 const STAGES = ['health-check', 'alimama-date', 'promotion-submit', 'sycm-date', 'shop-report',
   'promotion-fetch', 'push', 'sycm-reset', 'sycm-date-again', 'backfill', 'readback'];
@@ -558,6 +559,44 @@ test('接线（源码级）：`--no-hold` 真的被转发到分批驱动，不�
   for (const flag of ['--auto-repair', '--defer-agent-actionable-alert', '--no-hold']) {
     assert.ok(src.includes(flag), `分批参数表里缺 ${flag}`);
   }
+});
+
+test('接线（行为级）：分批驱动给驻留的**每一个开关**，驻留自己都认 —— 用对面的参数校验器当裁判', () => {
+  // 2026-10-10 真机事故（缺陷 ㊴）：`runBatchHold` 在开告警时传的是 `--notify`，而
+  // `hold-and-resume.mjs` **没有**这个参数 ⇒ 驻留在参数校验那一行退 2，一行状态都没打印。
+  // 后果：㊳ 的「不释放、把现场留给修复 agent／人」整条落空 —— 判断说了不释放，但命令随即
+  // 结束、宿主回收整棵进程树，窗口全丢。**这是「转人工等于没转」的第二条根因**（第一条是 ㊳ 本身）。
+  //
+  // 为什么这条用例必须长这样（而不是断言源码里写着 `--notify-print`）：传参这件事的对错**不是由
+  // 本文件决定的**，是由对面认不认决定的。所以判据就是「把构造出来的参数喂给对面的 `parseArgs`，
+  // 它得能解析成功」。这样以后无论哪边改参数名，只要两边对不上，这里立刻红。
+  const base = { date: '2026-10-10', summaryPath: 'D:\\repo\\evidence\\batches-2026-10-10\\b1\\summary.json',
+    batchSize: 5, shops: ['里可林淘宝', '网林天猫'] };
+  const cases = [
+    { label: '开告警（定时/手工默认）', opts: { notify: true, notifyPrint: false } },
+    { label: '只打印不投递', opts: { notify: true, notifyPrint: true } },
+    { label: '关告警', opts: { notify: false, notifyPrint: false } },
+  ];
+  for (const { label, opts } of cases) {
+    const args = buildBatchHoldArgv({ ...base, ...opts });
+    const parsed = parseHoldArgs(args);
+    // 成功时它**直接返回 args 本体**（失败才返回 `{ error }`）—— 所以「有没有 error」就是成功判据。
+    assert.equal(parsed.error, undefined,
+      `${label}：驻留不认我传的参数 —— ${parsed.error ?? ''}（传给它的原样：${args.join(' ')}）`);
+    // 除了「它认」，还要「意思对」：notify 的三种出口不许漂。
+    assert.equal(parsed.notify, opts.notify, `${label}：投递开关被传错了`);
+    assert.equal(parsed.notifyPrint, opts.notifyPrint, `${label}：只打印开关被传错了`);
+    // 续跑必须回到分批驱动（直连链会在「实例不在」的现场上开跑）。
+    assert.equal(parsed.resumeViaBatches, true, `${label}：没带 --resume-via-batches`);
+    assert.equal(parsed.batchSize, base.batchSize, `${label}：批次大小没传对`);
+    assert.deepEqual(parsed.shops, base.shops, `${label}：店名单没传对`);
+  }
+  // 反面证据（守住这条用例真在防那件事）：绝不能退回 `--notify` —— 对面不认它。
+  const withNotify = buildBatchHoldArgv({ ...base, notify: true, notifyPrint: false });
+  assert.equal(withNotify.includes('--notify'), false,
+    '`--notify` 是链那边的开关，驻留不认；给了它整条驻留会静默退 2');
+  assert.equal(parseHoldArgs([...withNotify, '--notify']).error !== undefined, true,
+    '前提校验：对面确实不认 --notify（若不认这件事变了，这条用例的立论要重写）');
 });
 
 test('分批续跑：入口是**分批驱动**（直连链会在「实例不在」的现场上开跑），且带上 --no-hold 防递归', () => {

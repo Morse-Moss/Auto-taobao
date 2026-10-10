@@ -212,17 +212,39 @@ function batchUnfixableShops(file) {
  * 续跑带 `--resume-via-batches`：分批下店铺实例是**按批起停**的，直连链会在「实例不在」的
  * 现场上开跑（见 `buildBatchResumeArgv`）。驻留那一侧会再带上 `--no-hold` 防「驻留套驻留」。
  */
-function runBatchHold({ date, summaryPath, batchSize, shops, notify, notifyPrint, logFd, log }) {
-  const holdFile = 'scripts/hold-and-resume.mjs';
+/**
+ * 构造给 `hold-and-resume.mjs` 的参数（**纯函数、导出**）。
+ *
+ * 为什么单独抽出来并导出：2026-10-10 的缺陷 ㊴ 就是**参数名传错**（给了一个对面不认识的
+ * `--notify`），而它只会在**整轮被挡**时暴露一次 —— 那是最难真机复现的一刻。抽成纯函数之后，
+ * 用例可以直接拿它的输出喂给 `hold-and-resume.mjs` **自己的**参数校验器，让对面当裁判：
+ * 「我传的每一个开关，对面真的认」这件事就变成一条可离线跑的判据，不用等下一次真机翻车。
+ *
+ * 三个出口的给法**跟链那边不一样**，别照抄：`hold-and-resume.mjs` 的 `notify` 默认就是 `true`，
+ * 它只提供 `--no-notify`（关）与 `--notify-print`（只打印不投递）——**没有** `--notify` 这个参数。
+ * 所以 notify 为真时**什么都不传**，退回它的默认（真投递）。
+ */
+export function buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify, notifyPrint }) {
   const args = [
     '--date', date,
     '--summary', summaryPath,
     '--resume-via-batches', '--batch-size', String(batchSize),
-    // 三个出口只给一个（同 daily-job-plan 与 run-batches 自己的口径）：
-    // 不给 `--notify` 时给 `--notify-print`（用真渲染器打印文案，一次投递都不发生）。
-    notify ? '--notify' : (notifyPrint ? '--notify-print' : '--no-notify'),
   ];
+  // 2026-10-10 真机踩坑（缺陷 ㊴）：这里原先写的是 `notify ? '--notify' : …`，于是**只要开了告警**
+  // （定时/手工默认都开），驻留就在参数校验那一行直接退 2（`未知参数 --notify`），一行状态都没打印。
+  // 后果是 ㊳ 的「不释放、把窗口留给修复 agent／人」**整条落空**：判断那半边说了「不释放」，
+  // 但这一轮命令随即结束、宿主回收整棵进程树 ⇒ 窗口全丢，人来了也没现场可看。
+  // 也就是说 ㊳ 从 2026-10-10 `a5a52b2` 起在真机上一次都没生效过（第一次触发就撞上这个 bug）。
+  // 教训与 ㊲ 同源：**判据/传参对了不算数，得看调用侧真传了什么、对面真认不认**。
+  if (notifyPrint) args.push('--notify-print');
+  else if (!notify) args.push('--no-notify');
   if (Array.isArray(shops) && shops.length) args.push('--shops', shops.join(','));
+  return args;
+}
+
+function runBatchHold({ date, summaryPath, batchSize, shops, notify, notifyPrint, logFd, log }) {
+  const holdFile = 'scripts/hold-and-resume.mjs';
+  const args = buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify, notifyPrint });
   log(`--- hold-and-resume：${renderCommand({ file: holdFile, args }, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
   // stdio 直接接 logFd（**不用 pipe**）：驻留可能挂几个小时，期间它会往 stdout 写状态行 ——
   // pipe 一旦没人读、缓冲区满了就会把子进程堵死，而 `spawnSync` 要等它退出才回来 ⇒ 假死。
