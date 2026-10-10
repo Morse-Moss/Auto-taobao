@@ -14,7 +14,9 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  try: text=raw.decode('utf-8-sig')
  except UnicodeDecodeError: text=raw.decode('gb18030')
  rows=list(csv.reader(io.StringIO(text.lstrip('\\ufeff'))))
- print(json.dumps({'csvName':n,'headers':rows[0],'rows':rows[1:]},ensure_ascii=False))`;
+ rows=[row for row in rows[1:] if any(str(cell).strip() for cell in row)]
+ headers=list(csv.reader(io.StringIO(text.lstrip('\\ufeff'))))[0]
+ print(json.dumps({'csvName':n,'headers':headers,'rows':rows},ensure_ascii=False))`;
 
 function parse(argv) {
   const o = { apply: false, evidence: 'evidence/promotion-daily-import', files: {}, profile: null, shop: null };
@@ -48,8 +50,9 @@ async function main(argv = process.argv.slice(2)) {
   const receipt = { mode: args.apply ? 'apply' : 'dry-run', date: args.date, shop: args.shop, profile, tables: {}, sources: {} };
   for (const kind of ['keyword', 'audience']) {
     const source = readZip(args.files[kind]);
-    const expectedColumns = kind === 'keyword' ? 75 : 71;
-    validateExportRows(source.headers, source.rows, { kind: kind === 'keyword' ? '关键词' : '人群', expectedColumns, date: args.date });
+    // 阿里妈妈关键词报表近期新增两列；历史 75 列和当前 77 列均可导入，未知列仍由目标字段映射过滤。
+    const expectedColumns = kind === 'keyword' ? [75, 77] : [71, 73, 75];
+    validateExportRows(source.headers, source.rows, { kind: kind === 'keyword' ? '关键词' : '人群', expectedColumns, date: args.date, allowEmpty: kind === 'keyword' });
     const tableId = target.tables?.[kind];
     if (!tableId || !target.baseToken) throw new Error(`推广日报 ${kind} 目标未完整配置（需要 baseToken 与 tables.${kind}）`);
     // loadFeishuCredentials() 的稳定返回契约是 appId/appSecret；不要绕过配置层读取旧字段名。

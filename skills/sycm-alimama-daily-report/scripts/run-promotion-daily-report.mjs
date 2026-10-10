@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
+import { pendingForKind, readLedger } from './promotion-task-ledger.mjs';
+import { judgeResume, recordSubmitted, writeLedger } from './promotion-task-ledger.mjs';
 import {
   alimamaIdentityExpression, assertMemberIdentity, defaultDownloadsDir,
   listDownloads, newEntries,
@@ -10,6 +13,7 @@ import {
   buildKeywordReportUrl, KEYWORD_TASK_RE, KEYWORD_ZIP_RE,
   uniqueNewKeywordTask, validateKeywordReportState, validateAudienceReportState, buildAudienceReportUrl,
   AUDIENCE_TASK_RE, AUDIENCE_ZIP_RE, uniqueNewAudienceTask,
+  reusablePromotionTask,
 } from './promotion-daily-report-core.mjs';
 
 const LIST_URL = 'https://one.alimama.com/index.html#!/report/download-list';
@@ -37,7 +41,7 @@ async function findPage(proxy) {
   return pages[0].targetId;
 }
 function parse(argv) {
-  const out = { date: null, shop: null, task: null, kind: 'keyword', phase: 'submit', downloads: defaultDownloadsDir(), proxy: null, reportUrl: null, locateOnly: false, expectMember: null, expectMemberId: null };
+  const out = { date: null, shop: null, task: null, kind: 'keyword', phase: 'submit', downloads: defaultDownloadsDir(), proxy: null, reportUrl: null, ledger: path.resolve('runtime/promotion-task-ledger.json'), locateOnly: false, expectMember: null, expectMemberId: null };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     if (key === '--date') out.date = argv[++i];
@@ -46,6 +50,7 @@ function parse(argv) {
     else if (key === '--kind') out.kind = argv[++i];
     else if (key === '--phase') out.phase = argv[++i];
     else if (key === '--downloads') out.downloads = path.resolve(argv[++i]);
+    else if (key === '--ledger') out.ledger = path.resolve(argv[++i]);
     else if (key === '--proxy') out.proxy = argv[++i];
     else if (key === '--report-url') out.reportUrl = argv[++i];
     else if (key === '--expect-member') out.expectMember = argv[++i];
@@ -66,11 +71,15 @@ async function readTasks(proxy, target, kind) {
   const re = kind === 'audience' ? AUDIENCE_TASK_RE : KEYWORD_TASK_RE;
   return evalOn(proxy, target, `JSON.stringify([...new Set([...document.querySelectorAll('*')].filter((e) => e.children.length === 0 && ${re}.test(e.textContent.trim())).map((e) => e.textContent.trim()))])`);
 }
+async function readTaskRows(proxy, target, kind) {
+  const re = kind === 'audience' ? AUDIENCE_TASK_RE : KEYWORD_TASK_RE;
+  return evalOn(proxy, target, `(() => { const pattern=${re}; const rangePattern=/(\\d{4}-\\d{2}-\\d{2})\\s*至\\s*(\\d{4}-\\d{2}-\\d{2})/; const seen=new Set(); return JSON.stringify([...document.querySelectorAll('tr')].map((tr)=>{const text=(tr.innerText||'').replace(/\\s+/g,' ').trim(); const match=[...tr.querySelectorAll('*')].find((e)=>e.children.length===0&&pattern.test((e.textContent||'').trim())); const name=(match?.textContent||'').trim(); const range=text.match(rangePattern); return {name,rangeStart:range?.[1]||null,rangeEnd:range?.[2]||null,status:text.includes('生成成功')?'生成成功':text.includes('生成失败')?'生成失败':'生成中'};}).filter((row)=>row.name&&(!seen.has(row.name)&&seen.add(row.name))) )})()`);
+}
 async function readState(proxy, target) {
   return evalOn(proxy, target, `(() => JSON.stringify({href: location.href, text: document.body.innerText || '', triggers: [...document.querySelectorAll('.mx-trigger')].map((e) => (e.textContent || '').replace(/\\s+/g, ' ').trim()), dimensions: [...document.querySelectorAll('input[type=checkbox]')].map((e) => ({value: e.value, checked: e.checked}))}))()`);
 }
 export function dimensionTriggerExpression() {
-  return `(() => { const nodes=[...document.querySelectorAll('.mx-trigger,button,[role="button"],[class*="trigger"],[class*="select"]')]; const e=nodes.find((x)=>(x.textContent||'').replace(/\\s+/g,' ').includes('维度')); if (!e) return false; e.click(); return true; })()`;
+  return `(() => { const text=[...document.querySelectorAll('*')].find((x)=>(x.textContent||'').trim()==='维度'); if (!text) return false; const e=text.closest('button,[role="button"],[class*="trigger"],[class*="select"]')||text.parentElement||text; e.click(); return true; })()`;
 }
 async function setAllDimensions(proxy, target, kind) {
   let opened = false;
@@ -79,7 +88,12 @@ async function setAllDimensions(proxy, target, kind) {
     if (!opened) await sleep(1000);
   }
   if (!opened) throw new Error('找不到关键词数据明细维度选择器');
-  const result = await evalOn(proxy, target, `(() => { const boxes = [...document.querySelectorAll('input[type=checkbox]')].filter((x) => x.closest('[role=dialog],.oui-dialog,.next-overlay')); if (!boxes.length) return {ok:false, reason:'dimension-checkbox-missing'}; boxes.forEach((x) => { const label=(x.parentElement?.textContent||'')+(x.nextElementSibling?.textContent||''); const wanted=${JSON.stringify(kind === 'audience' ? ['主题','时间','计划'] : [])}; if (!wanted.length || wanted.some((w) => label.includes(w))) { if (!x.checked) x.click(); } }); const ok = [...document.querySelectorAll('button')].find((x) => (x.textContent || '').trim() === '确定'); if (!ok) return {ok:false, reason:'confirm-missing'}; ok.click(); return {ok:true, count:boxes.length}; })()`);
+  let result = null;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    result = await evalOn(proxy, target, `(() => { const visible=(x)=>{const r=x.getBoundingClientRect();return r.width>0&&r.height>0}; const boxes=[...document.querySelectorAll('input[type=checkbox]')].filter(visible); if (!boxes.length) return {ok:false, reason:'dimension-checkbox-missing'}; const wanted=${JSON.stringify(kind === 'audience' ? ['promotion','date','campaign'] : [])}; boxes.forEach((x) => { const label=(x.parentElement?.textContent||'')+(x.nextElementSibling?.textContent||''); if (!wanted.length || wanted.includes(x.value) || wanted.some((w) => label.includes(w)) || label.includes('全选')) { if (!x.checked) x.click(); } }); const ok = [...document.querySelectorAll('button')].find((x) => visible(x) && (x.textContent || '').trim() === '确定'); if (!ok) return {ok:false, reason:'confirm-missing'}; ok.click(); return {ok:true, count:boxes.length}; })()`);
+    if (result?.ok) break;
+    await sleep(250);
+  }
   if (!result?.ok) throw new Error(`设置关键词维度全选失败: ${result?.reason ?? 'unknown'}`);
   await sleep(1800);
 }
@@ -96,10 +110,14 @@ async function submit(proxy, target, kind) {
 }
 async function fetchTask(proxy, target, task, downloads, kind) {
   await navigate(proxy, target, LIST_URL);
-  const row = await evalOn(proxy, target, `(() => { const n=[...document.querySelectorAll('*')].find((e)=>(e.textContent||'').trim()===${JSON.stringify(task)}&&e.children.length===0); const tr=n?.closest('tr'); const box=tr?.querySelector('input[type=checkbox]'); if(!box)return null; const r=box.getBoundingClientRect(); return {center:[Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)],checked:box.checked}; })()`);
+  const rowExpression = `(() => { const n=[...document.querySelectorAll('td,th,span,div')].find((e)=>(e.textContent||'').trim()===${JSON.stringify(task)}&&e.children.length===0); const tr=n?.closest('tr'); const box=tr?.querySelector('input[type=checkbox]'); if(!box)return null; const r=box.getBoundingClientRect(); return {center:[Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)],checked:box.checked}; })()`;
+  let row = null;
+  for (let attempt = 0; attempt < 15 && !row; attempt += 1) { row = await evalOn(proxy, target, rowExpression); if (!row) await sleep(1000); }
   if (!row) throw new Error(`找不到关键词报表任务 ${task}`);
   if (!row.checked) { await request(proxy, `/clickPoint?target=${encodeURIComponent(target)}`, { method: 'POST', body: JSON.stringify({ x: row.center[0], y: row.center[1] }) }); await sleep(900); }
-  const point = await evalOn(proxy, target, `(() => { const n=[...document.querySelectorAll('*')].find((e)=>(e.textContent||'').trim()===${JSON.stringify(task)}&&e.children.length===0); const a=n?.closest('tr')?.nextElementSibling; const e=[...(a?.querySelectorAll('*')||[])].find((x)=>(x.textContent||'').trim()==='下载'&&x.getBoundingClientRect().width>0); if(!e)return null; const b=e.closest('button')||e; const r=b.getBoundingClientRect(); return [Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)]; })()`);
+  const pointExpression = `(() => { const visible=(x)=>{const r=x.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(x).visibility!=='hidden'}; const n=[...document.querySelectorAll('td,th,span,div')].find((e)=>(e.textContent||'').trim()===${JSON.stringify(task)}&&e.children.length===0); const tr=n?.closest('tr'); const body=tr?.parentElement; const isOp=(x)=>x?.matches('tr[mx-stickytable-operation^="line"]'); const a=(isOp(tr?.nextElementSibling)&&tr.nextElementSibling)||[...(body?.querySelectorAll('tr[mx-stickytable-operation^="line"]')||[])].find((x)=>x.previousElementSibling===tr); const e=[...(a?.querySelectorAll('button,a,[role="button"],span,div')||[])].find((x)=>(x.textContent||'').trim()==='下载'&&visible(x)); if(!e)return null; const b=e.closest('button,a,[role="button"]')||e; const r=b.getBoundingClientRect(); return [Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)]; })()`;
+  let point = null;
+  for (let attempt = 0; attempt < 20 && !point; attempt += 1) { point = await evalOn(proxy, target, pointExpression); if (!point) await sleep(1000); }
   if (!point) throw new Error(`关键词报表任务 ${task} 尚未出现下载入口`);
   const zipRe = kind === 'audience' ? AUDIENCE_ZIP_RE : KEYWORD_ZIP_RE;
   const before = listDownloads(downloads, zipRe).map((item) => item.name);
@@ -116,11 +134,40 @@ async function main() {
   if (args.phase === 'fetch') {
     const taskRe = args.kind === 'audience' ? AUDIENCE_TASK_RE : KEYWORD_TASK_RE;
     if (!args.task || !taskRe.test(args.task)) throw new Error('--phase fetch 需要匹配 kind 的任务名');
-    const file = await fetchTask(args.proxy, target, args.task, args.downloads, args.kind);
+    const driver = path.join(path.dirname(fileURLToPath(import.meta.url)), 'collect-promotion-report.mjs');
+    const sharedFetch = spawnSync(process.execPath, [driver, '--phase', 'fetch', '--date', args.date,
+      '--report-kind', args.kind, '--shop-key', args.shop, '--proxy', args.proxy,
+      '--expect-member', args.expectMember, '--expect-member-id', args.expectMemberId,
+      '--task', args.task, '--ledger', args.ledger, '--downloads', args.downloads,
+    ], { encoding: 'utf8' });
+    if (sharedFetch.status !== 0) throw new Error(sharedFetch.stderr || sharedFetch.stdout || '共享日报取件流程失败');
+    const file = sharedFetch.stdout.match(/promotionZipPath = (.+)/u)?.[1]?.trim();
+    if (!file) throw new Error(`共享日报取件未返回落盘文件路径：${sharedFetch.stdout}`);
     console.log(`[下载] ${args.kind}ZipPath = ${file}`);
     return;
   }
-  const before = await readTasks(args.proxy, target, args.kind);
+  // 任务差集基线必须从下载任务管理读取；当前页可能是 SYCM 或阿里妈妈首页，
+  // 在那里读到空数组会把已有同日任务误判成新提交，或导致新任务无法唯一确认。
+  await navigate(args.proxy, target, LIST_URL);
+  const beforeRows = await readTaskRows(args.proxy, target, args.kind);
+  const before = beforeRows.map((row) => row.name);
+  if (!args.shop) throw new Error('--shop is required for shared task-ledger recovery');
+  const ledger = readLedger(args.ledger);
+  const resume = judgeResume({ ledger, date: args.date, shop: args.shop, list: beforeRows, kind: args.kind });
+  const pending = pendingForKind(ledger, { date: args.date, shop: args.shop, kind: args.kind });
+  let task = null;
+  if (resume.action === 'block') throw new Error(`任务恢复核验失败：${resume.reason}`);
+  if (resume.action === 'reuse') {
+    task = pending.find((entry) => beforeRows.some((row) => row.name === entry.taskName && row.rangeStart === args.date && row.rangeEnd === args.date && row.status === '生成成功'))?.taskName ?? null;
+    if (!task) throw new Error(`台账有待取任务但列表不满足日期/状态复用条件：${resume.reason}`);
+    console.log(`[复用] ${args.kind}TaskName = ${task}`);
+  } else {
+  // 台账已结清时仍优先复用平台上同一业务日的成功任务，避免重跑把同一日报重复提交。
+  const existing = reusablePromotionTask(beforeRows, { kind: args.kind, date: args.date });
+  if (existing) {
+    task = existing;
+    console.log(`[复用] ${args.kind}TaskName = ${task}（平台已有同日生成成功任务，跳过提交）`);
+  } else {
   await navigate(args.proxy, target, args.reportUrl ?? (args.kind === 'audience' ? buildAudienceReportUrl(args.date) : buildKeywordReportUrl(args.date)));
   const dimensions = await setAllDimensions(args.proxy, target, args.kind);
   const state = await readState(args.proxy, target);
@@ -129,8 +176,26 @@ async function main() {
   if (args.locateOnly) return;
   await submit(args.proxy, target, args.kind);
   await navigate(args.proxy, target, LIST_URL);
-  const after = await readTasks(args.proxy, target, args.kind);
-  const task = args.kind === 'audience' ? uniqueNewAudienceTask(before, after) : uniqueNewKeywordTask(before, after);
+  let after = [];
+  let afterRows = [];
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    afterRows = await readTaskRows(args.proxy, target, args.kind);
+    after = afterRows.map((row) => row.name);
+    try {
+      const reusable = reusablePromotionTask(afterRows, { kind: args.kind, date: args.date });
+      task = reusable ?? (args.kind === 'audience' ? uniqueNewAudienceTask(before, after) : uniqueNewKeywordTask(before, after));
+      const row = afterRows.find((candidate) => candidate.name === task);
+      if (!row) throw new Error(`新增任务 ${task} 未能从目标任务行读取`);
+      writeLedger(args.ledger, recordSubmitted(readLedger(args.ledger), { date: args.date, shop: args.shop, taskName: task, proxy: args.proxy, kind: args.kind }));
+      break;
+    } catch (error) {
+      if (attempt === 19) throw error;
+      await sleep(4000);
+      await navigate(args.proxy, target, LIST_URL);
+    }
+  }
+  }
+  }
   console.log(`[提交] ${args.kind}TaskName = ${task}`);
   console.log('[下一步] 等任务变为生成成功后运行 --phase fetch --task ' + task);
 }
