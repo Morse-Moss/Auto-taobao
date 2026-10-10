@@ -1361,8 +1361,14 @@ test('失败收尾：驱动里真的接上了「记下原错 → 取证回位 �
   // 2026-09-25 起默认值是「继续跑其余店」，所以这里钉的是那个**显式的**停整轮分支
   // （`--stop-on-first-failure`）—— 判据的本意没变：收尾必须排在「停整轮」之前，
   // 排在后面就等于「唯一失败的那一家不被收尾」。
-  const stopAt = source.indexOf('if (args.stopOnFirstFailure)');
+  //
+  // 2026-10-10 缺陷 ㊱ 续跑改造：收尾与停整轮都加了 `record.status !== 'ok'` 这个守卫 ——
+  // 「自修救回并续跑成功」的那一家不是失败态，既不需要回位、也不该被判成失败而停整轮。
+  // 所以这里不再逐字匹配整行，而是钉那个**关键判据**：两处都必须守 `status !== 'ok'`。
+  const stopAt = source.indexOf('if (args.stopOnFirstFailure');
   assert.ok(stopAt > 0, '找不到「停整轮」那个显式分支了 —— 判据要跟着改，不能静默失效');
+  assert.match(source.slice(stopAt, stopAt + 120), /record\.status !== 'ok'/u,
+    '停整轮必须只在「真的还是失败态」时触发 —— 救回并续跑成功的那家不该停整轮');
   assert.ok(errAt > 0 && assignAt > errAt, '收尾必须在记下 original error 之后（否则盖掉真因）');
   assert.ok(stopAt > assignAt, '收尾必须在「停整轮」之前 —— 放后面等于唯一失败的那家不被收尾');
   // 反向判据：旧的默认值写法不许再回来。
@@ -2037,6 +2043,50 @@ test('接线守卫：修复后的重试用的是「按名字重跑」，而不�
   assert.match(main, /const stages = buildShopStages\(key,/u);
   const buildCount = (main.match(/buildShopStages\(key,/gu) ?? []).length;
   assert.equal(buildCount, 1, `main 里 buildShopStages(key,…) 只该出现一次，实际 ${buildCount} 次`);
+});
+
+// ---------------------------------------------------------------------------
+// ㊱（2026-10-10）：自修「救回」后必须**续跑余下阶段**，不能原地按成功收尾
+//
+// 病根：`autoRepairAndRetry` 内部只重试了失败的那一步，回到 main 后旧实现直接
+// `record.status='ok'` 就 `continue` —— 第 N+1..11 步一步都没跑，而汇总里这家是 ok。
+// 症状是「整轮跑完、退出码 0、汇总全 ok，底单里却静默缺行」，而且 `escalation-plan.mjs`
+// 只收 `status!=='ok'` ⇒ 连派单都收不到，缺口对整条三层降级链完全隐形。
+// 这两条判据钉的是「接线接上了」——纯函数用例全绿也拦不住调用点根本没续跑。
+test('㊱ 接线守卫：救回成功后真的会「从失败那一步的下一步」续跑（不是原地收尾）', () => {
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  const mainAt = src.indexOf('async function main()');
+  assert.ok(mainAt > 0, 'main 应当还在');
+  const main = src.slice(mainAt);
+  // 首跑与续跑共用同一段实现（接线只有一处，判据才不会漂开）。
+  assert.match(main, /const runStagesFrom = async \(list\) =>/u,
+    '首跑与续跑必须共用同一段阶段执行器，否则两处的 --only/守卫/补登判据迟早漂开');
+  // 救回那一支里必须出现「切片续跑」，而不是只有一行「按成功收尾」的日志。
+  const rescuedAt = main.indexOf('if (loop.rescued)');
+  assert.ok(rescuedAt > 0, '找不到救回分支');
+  const rescuedBlock = main.slice(rescuedAt, main.indexOf("record.recovery = await recoverFailedShop("));
+  assert.match(rescuedBlock, /const resumeStages = stages\.slice\(resumeAt \+ 1\)/u,
+    '救回后必须从 retryStage 的**下一步**切片续跑（slice(resumeAt+1)），不能重放已成功的步骤');
+  assert.match(rescuedBlock, /await runStagesFrom\(resumeStages\)/u,
+    '切片必须真的被执行 —— 只算出切片而不跑，正是 ㊱ 的老毛病换了个写法');
+  // 续跑起点按**阶段名**在阶段表里定位，不写死数字下标（阶段表变了会静默指错）。
+  assert.match(rescuedBlock, /stages\.findIndex\(\(s\) => s\.stage === retryStageName\)/u,
+    '续跑起点必须按阶段名定位，不猜下标');
+  // 找不到起点 ⇒ 留痕、不猜：`rescueResume.error` 必须落在 record 上（可查）。
+  assert.match(rescuedBlock, /record\.rescueResume = \{ from: retryStageName, ran: \[\], error:/u,
+    '起点认不出来时必须留痕（rescueResume.error），不能静默当成跑完');
+});
+
+test('㊱ 接线守卫：成功续跑的那家不再走「收尾回位」与「停整轮」（它不是失败态）', () => {
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  // 收尾回位与停整轮都必须守 `record.status !== 'ok'` —— 否则「救回并续跑成功」的那家
+  // 会被当成失败去回位、去连带停掉整轮（续跑成功＝没失败）。
+  const recoveryAt = src.indexOf('if (record.status !== \'ok\') {\n        record.recovery = await recoverFailedShop(');
+  assert.ok(recoveryAt > 0, '失败收尾回位必须只在真的失败态时跑（救回成功的不该被回位）');
+  const stopAt = src.indexOf('if (args.stopOnFirstFailure');
+  assert.ok(stopAt > 0, '找不到停整轮分支');
+  assert.match(src.slice(stopAt, stopAt + 120), /record\.status !== 'ok'/u,
+    '停整轮必须只在真的失败态时触发');
 });
 
 // ---------------------------------------------------------------------------

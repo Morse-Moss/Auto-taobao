@@ -2019,101 +2019,11 @@ async function main() {
     // argv/env**（含 push 的源文件路径），否则重试就变成了「用一份不同的参数再跑一遍」。
     const stages = buildShopStages(key, { date: args.date, mode, expectedBeforeCount: args.verifyExisting, downloads,
       allowMissingPeer: args.allowMissingPeer });
-    const run = async (stage) => {
-      index += 1;
-      const withIndex = { ...stage, index };
-      if (!stageSelected(args.only, stage.stage)) {
-        console.log(`[${key}] ${index}. ${stage.stage} —— 跳过（--only 没点名）`);
-        return { status: 0, skipped: true, stdout: '', logPath: null };
-      }
-      console.log(`[${key}] ${index}. ${stage.stage} —— ${stage.note}`);
-      let result;
-      if (withIndex.ownAction === 'health') {
-        result = await runHealthCheck({ shopKey: key, stage: withIndex, logDir: shopLogDir, repoRoot: REPO_ROOT });
-      } else if (withIndex.ownAction === 'reset') {
-        result = await runReset(key, withIndex, { logDir: shopLogDir, repoRoot: REPO_ROOT });
-      } else {
-        result = runStage(key, withIndex, { repoRoot: REPO_ROOT, logDir: shopLogDir });
-      }
-      record.stages.push({ stage: stage.stage, status: result.status, skipped: Boolean(result.skipped),
-        logPath: result.logPath ?? null, argv: stage.argv,
-        // 体检到底拦在哪一条，要跟着收据一起留下来：告警里那句「哪一页不齐」就是从这儿来的。
-        // 不记的话，收信人只能看到「体检没过」，还得自己去翻日志（＝太笼统）。
-        blockingDetails: result.detail?.blocking?.map((finding) => finding.detail) ?? null,
-        // 拦截项的**编号**也要留（2026-10-07 加）：`blockingDetails` 只有人话，而
-        // `shopFailureCause` 要按编号分流（`TARGET_PAGE_LOGIN_WALL` ⇒ 下一步是登录而不是补页）。
-        // 只看人话就得在归因处再猜一次措辞 —— 本项目在 `.includes('…')` 上吃过的亏已经够多。
-        blockingCodes: result.detail?.blocking?.map((finding) => finding.code) ?? null,
-        // 体检那一支的归位结论（别的阶段是 null）：它回答「这次的不齐是本来就坏、还是脚本修好的」。
-        pageNormalize: result.normalize?.verdict?.detail ?? null });
-      return result;
-    };
-    // 按**名字**重跑一个阶段（自动修复用）。找不到就如实报，不猜一个阶段出来跑。
-    // 名字比对用 `stage.stage`（闭集里那 11 个），不用下标 —— 下标会在阶段表变化时静默指错。
-    const runNamedStage = async (name) => {
-      const stage = stages.find((s) => s.stage === name);
-      if (!stage) {
-        console.error(`[${key}] 自动修复要重试 ${name}，但这一家的阶段表里没有这一步 —— 不猜，停手`);
-        return { status: 1, skipped: true, why: `阶段表里没有 ${name}` };
-      }
-      // push 阶段的源文件路径要照旧填上（与首跑同一份 argv）。
-      let argv = stage.argv;
-      if (stage.stage === 'push') {
-        argv = withSourcePaths(stage.argv, explicitSources.shopXlsx
-          ? explicitSources
-          : { shopXlsx: record.source.shopXlsx, promotionZip: record.source.promotionZip });
-      }
-      return run({ ...stage, argv });
-    };
-    // 修复动作的执行器：把「挑好的动作」交给 repair-shop-stage 的**纯函数**执行，
-    // 在这一层注入而不是在驱动里再 spawn 一次子进程（多一层子进程 = 多一种静默失败）。
-    //
-    // ⚠️ `cause` 必须**原样转下去**（2026-10-02 修）：`applyRepairAction` 内部用
-    //   `planRepair({ cause, stage, state })` 反查 `STAGE_PAGE_HINT`，拿到 `stageHint` 才能
-    //   定位「该修哪一页」。原先这里把 `cause` 漏了（上游 `executeRepairCandidate` 已经
-    //   把 `cause` 传进来了，见本文件 `cause: req?.cause ?? null`）⇒ `REPAIR_TABLE[undefined]`
-    //   恒为 undefined ⇒ `stageHint` 恒为 null ⇒ 每个 `非 RESET_PAGES` 的动作都报
-    //   「找不到要修的那一页：没有阶段页提示、且窗口里有 N 个页签 ⇒ 不猜要修哪一页」，
-    //   自动修复因此**只剩 RESET_PAGES 一个候选能用**（2026-10-01 目标日 10-01 那轮三家店
-    //   的 `autoRepair.rounds[].detail` 逐字相同，都卡在这一句）。
-    const execRepair = async ({ shopKey, stage, cause, action, log }) => {
-      const proxy = `http://127.0.0.1:${shopInstance(shopKey).proxyPort}`;
-      const { applyRepairAction } = await import('./repair-shop-stage.mjs');
-      const out = await applyRepairAction(
-        { shop: shopKey, proxy, stage, cause, action, logDir: shopLogDir },
-        // ⚠️ 契约以 `applyRepairAction` 为准：它调的是 `readTargets(args)`（传**整个 args
-        //   对象**）并读回 `{ ok, targets, error }`（见 repair-shop-stage.mjs:294）。
-        //   2026-09-29 真机排练实测到的坑：原先这里抄的是 `captureFailureState` 的注入形状
-        //   ——`(base) => proxyJson(\`${base}/targets\`)`，其中 `base` 是**代理地址字符串**。
-        //   两种同名函数、两种契约，抄错了不会报错：`readTargets` 拿到的是 `[object Object]`，
-        //   拼出 `[object Object]/targets` ⇒ 每个非 `RESET_PAGES` 的动作都报
-        //   「读不到页签（代理连不上）」、退 3，而 `RESET_PAGES` 因为不读页签反而「正常」。
-        //   ⇒ 修复层看起来修好了（有动作执行），实际只有第一个候选能用。
-        //   正确写法（2026-09-29 真机排练复验：RELOAD_PAGE / DISMISS_OVERLAYS 都能定位到页）：
-        //   注意第二个参数是一个**完整对象** `{ readTargets, log }`；`readTargets` 收到的是
-        //   **整个 args 对象**（`a.proxy` 才是代理地址），不是代理地址字符串。
-        {
-          readTargets: async (a) => {
-            try {
-              return { ok: true, targets: await proxyJson(`${a.proxy}/targets`), error: null };
-            } catch (error) {
-              return { ok: false, targets: null, error: String(error?.message ?? error) };
-            }
-          },
-          log,
-        },
-      );
-      return out;
-    };
-
-    // 「登录墙就地补登」这一家店是否已经用过（2026-10-10 加）。**每家店每轮最多一次** ——
-    // 每一次登录提交都是一次账号动作，平台风控看的正是「同一出口 IP 短时间内的登录次数」，
-    // 所以这里不是「失败一次试一次」，而是一次性的机会。声明在这一层（而不是 try 里面）
-    // 是为了让它在整条店铺链上只有一个实例。
-    let reloginUsed = false;
-
-    try {
-      for (const stage of stages) {
+    // 一家店的「把一批阶段按顺序跑完」这一段**只此一份实现**（2026-10-10，缺陷 ㊱）：
+    // 首跑与「自修救回后续跑」都调它，判据（`--only` 跳过、push 源产物守卫、登录墙补登、
+    // exit 4 记 evidenceIncomplete、成功时回收 source 路径、失败时抛错）两处不会漂开。
+    const runStagesFrom = async (list) => {
+      for (const stage of list) {
         // 采集段产出的两条路径要在 push 之前填进参数。**三种模式都要填**：
         // `--shop-xlsx` / `--promotion-zip` 在 run-daily-report.mjs 里是必填参数，
         // 「只读核对就不给源文件」会让 push 直接 missing required argument —— 那就不是只读，
@@ -2227,6 +2137,102 @@ async function main() {
           }
         }
       }
+    };
+    const run = async (stage) => {
+      index += 1;
+      const withIndex = { ...stage, index };
+      if (!stageSelected(args.only, stage.stage)) {
+        console.log(`[${key}] ${index}. ${stage.stage} —— 跳过（--only 没点名）`);
+        return { status: 0, skipped: true, stdout: '', logPath: null };
+      }
+      console.log(`[${key}] ${index}. ${stage.stage} —— ${stage.note}`);
+      let result;
+      if (withIndex.ownAction === 'health') {
+        result = await runHealthCheck({ shopKey: key, stage: withIndex, logDir: shopLogDir, repoRoot: REPO_ROOT });
+      } else if (withIndex.ownAction === 'reset') {
+        result = await runReset(key, withIndex, { logDir: shopLogDir, repoRoot: REPO_ROOT });
+      } else {
+        result = runStage(key, withIndex, { repoRoot: REPO_ROOT, logDir: shopLogDir });
+      }
+      record.stages.push({ stage: stage.stage, status: result.status, skipped: Boolean(result.skipped),
+        logPath: result.logPath ?? null, argv: stage.argv,
+        // 体检到底拦在哪一条，要跟着收据一起留下来：告警里那句「哪一页不齐」就是从这儿来的。
+        // 不记的话，收信人只能看到「体检没过」，还得自己去翻日志（＝太笼统）。
+        blockingDetails: result.detail?.blocking?.map((finding) => finding.detail) ?? null,
+        // 拦截项的**编号**也要留（2026-10-07 加）：`blockingDetails` 只有人话，而
+        // `shopFailureCause` 要按编号分流（`TARGET_PAGE_LOGIN_WALL` ⇒ 下一步是登录而不是补页）。
+        // 只看人话就得在归因处再猜一次措辞 —— 本项目在 `.includes('…')` 上吃过的亏已经够多。
+        blockingCodes: result.detail?.blocking?.map((finding) => finding.code) ?? null,
+        // 体检那一支的归位结论（别的阶段是 null）：它回答「这次的不齐是本来就坏、还是脚本修好的」。
+        pageNormalize: result.normalize?.verdict?.detail ?? null });
+      return result;
+    };
+    // 按**名字**重跑一个阶段（自动修复用）。找不到就如实报，不猜一个阶段出来跑。
+    // 名字比对用 `stage.stage`（闭集里那 11 个），不用下标 —— 下标会在阶段表变化时静默指错。
+    const runNamedStage = async (name) => {
+      const stage = stages.find((s) => s.stage === name);
+      if (!stage) {
+        console.error(`[${key}] 自动修复要重试 ${name}，但这一家的阶段表里没有这一步 —— 不猜，停手`);
+        return { status: 1, skipped: true, why: `阶段表里没有 ${name}` };
+      }
+      // push 阶段的源文件路径要照旧填上（与首跑同一份 argv）。
+      let argv = stage.argv;
+      if (stage.stage === 'push') {
+        argv = withSourcePaths(stage.argv, explicitSources.shopXlsx
+          ? explicitSources
+          : { shopXlsx: record.source.shopXlsx, promotionZip: record.source.promotionZip });
+      }
+      return run({ ...stage, argv });
+    };
+    // 修复动作的执行器：把「挑好的动作」交给 repair-shop-stage 的**纯函数**执行，
+    // 在这一层注入而不是在驱动里再 spawn 一次子进程（多一层子进程 = 多一种静默失败）。
+    //
+    // ⚠️ `cause` 必须**原样转下去**（2026-10-02 修）：`applyRepairAction` 内部用
+    //   `planRepair({ cause, stage, state })` 反查 `STAGE_PAGE_HINT`，拿到 `stageHint` 才能
+    //   定位「该修哪一页」。原先这里把 `cause` 漏了（上游 `executeRepairCandidate` 已经
+    //   把 `cause` 传进来了，见本文件 `cause: req?.cause ?? null`）⇒ `REPAIR_TABLE[undefined]`
+    //   恒为 undefined ⇒ `stageHint` 恒为 null ⇒ 每个 `非 RESET_PAGES` 的动作都报
+    //   「找不到要修的那一页：没有阶段页提示、且窗口里有 N 个页签 ⇒ 不猜要修哪一页」，
+    //   自动修复因此**只剩 RESET_PAGES 一个候选能用**（2026-10-01 目标日 10-01 那轮三家店
+    //   的 `autoRepair.rounds[].detail` 逐字相同，都卡在这一句）。
+    const execRepair = async ({ shopKey, stage, cause, action, log }) => {
+      const proxy = `http://127.0.0.1:${shopInstance(shopKey).proxyPort}`;
+      const { applyRepairAction } = await import('./repair-shop-stage.mjs');
+      const out = await applyRepairAction(
+        { shop: shopKey, proxy, stage, cause, action, logDir: shopLogDir },
+        // ⚠️ 契约以 `applyRepairAction` 为准：它调的是 `readTargets(args)`（传**整个 args
+        //   对象**）并读回 `{ ok, targets, error }`（见 repair-shop-stage.mjs:294）。
+        //   2026-09-29 真机排练实测到的坑：原先这里抄的是 `captureFailureState` 的注入形状
+        //   ——`(base) => proxyJson(\`${base}/targets\`)`，其中 `base` 是**代理地址字符串**。
+        //   两种同名函数、两种契约，抄错了不会报错：`readTargets` 拿到的是 `[object Object]`，
+        //   拼出 `[object Object]/targets` ⇒ 每个非 `RESET_PAGES` 的动作都报
+        //   「读不到页签（代理连不上）」、退 3，而 `RESET_PAGES` 因为不读页签反而「正常」。
+        //   ⇒ 修复层看起来修好了（有动作执行），实际只有第一个候选能用。
+        //   正确写法（2026-09-29 真机排练复验：RELOAD_PAGE / DISMISS_OVERLAYS 都能定位到页）：
+        //   注意第二个参数是一个**完整对象** `{ readTargets, log }`；`readTargets` 收到的是
+        //   **整个 args 对象**（`a.proxy` 才是代理地址），不是代理地址字符串。
+        {
+          readTargets: async (a) => {
+            try {
+              return { ok: true, targets: await proxyJson(`${a.proxy}/targets`), error: null };
+            } catch (error) {
+              return { ok: false, targets: null, error: String(error?.message ?? error) };
+            }
+          },
+          log,
+        },
+      );
+      return out;
+    };
+
+    // 「登录墙就地补登」这一家店是否已经用过（2026-10-10 加）。**每家店每轮最多一次** ——
+    // 每一次登录提交都是一次账号动作，平台风控看的正是「同一出口 IP 短时间内的登录次数」，
+    // 所以这里不是「失败一次试一次」，而是一次性的机会。声明在这一层（而不是 try 里面）
+    // 是为了让它在整条店铺链上只有一个实例。
+    let reloginUsed = false;
+
+    try {
+      await runStagesFrom(stages);
       record.status = 'ok';
     } catch (error) {
       record.error = error.message;
@@ -2284,12 +2290,52 @@ async function main() {
         if (loop.rescued) {
           // 救回来了：这一家不再是失败态。`stages` 里那几条失败记录**留着**（它们是事实），
           // 但 overall 状态按成功算 —— 这正是「修完再试」与「重试」的区别所在。
+          //
+          // ⚠️ **必须续跑失败那一步之后的余下阶段**（2026-10-10 修缺陷 ㊱）。
+          //
+          // 旧实现到这里就 `console.log('…按成功收尾')` 然后 `continue` 了 —— 只重试了
+          // 失败的那一步（`autoRepairAndRetry` 内部跑的），**第 N+1..11 步一步都没跑**，
+          // 而 `record.status` 已经是 `ok`。于是一整轮「跑完、退出码 0、汇总全 ok」，
+          // 底单里却**静默缺行**：2026-10-09 那轮 `盖文淘宝` 在第 4 步被救回（后面 5-11 全没跑）、
+          // `网林家居` 在第 2 步被救回（后面 3-11 全没跑），两家都没有 `07-push` 产物、
+          // 底单里也没有它们那一行 —— 而 `summary.json` 两家都是 `status=ok`。
+          // 更糟的是 `escalation-plan.mjs` 只收 `status!=='ok'` ⇒ 连派单也收不到，
+          // 这个缺口对整条三层降级链是**完全隐形**的。
+          //
+          // 修法：救回后**不原样重放已成功的步骤**，而是从失败那一步的**下一步**接着跑到第 11 步。
+          // 判据是 `retryStage`（＝`req.retryStage`，与 `autoRepairAndRetry` 里重试的那一步同源）——
+          // 在 `stages` 里按**阶段名**定位下标（不用固定数字，阶段表变了也不会指错）。
+          // 这一段与首跑共用同一个 `runStagesFrom`，`--only` 跳过、push 源产物守卫、
+          // 登录墙补登、exit 4、失败抛错等判据两处不会漂开。
+          const rescuedFrom = record.failedStage ?? null;
+          const retryStageName = record.repairRequest?.retryStage
+            ?? record.repairRequest?.stage ?? rescuedFrom;
           record.status = 'ok';
-          record.rescuedFrom = record.failedStage ?? null;
+          record.rescuedFrom = rescuedFrom;
           record.rescuedBy = loop.rounds.at(-1)?.action ?? null;
           delete record.failedStage;
           delete record.error;
-          console.log(`[${key}]   ✅ 自动修复后重试成功（${record.rescuedBy}）—— 这一家按成功收尾`);
+          console.log(`[${key}]   ✅ 自动修复后重试成功（${record.rescuedBy}）—— 接着从下一步跑完余下阶段`);
+          const resumeAt = stages.findIndex((s) => s.stage === retryStageName);
+          if (resumeAt < 0) {
+            // 认不出失败那一步在阶段表里的位置 ⇒ 不猜一个下标出来跑（猜错会漏跑或多跑）。
+            // 如实留痕并把这家的续跑标记成未完成 —— 上面的 `status='ok'` 保持不变
+            //（失败那一步确实被救回了），但这一条缺口**必须可查**，不能再静默。
+            record.rescueResume = { from: retryStageName, ran: [], error:
+              `阶段表里找不到 ${retryStageName}，不猜续跑起点` };
+            console.error(`[${key}]   ⚠️ 续跑起点 ${retryStageName} 在阶段表里找不到 —— 不猜，续跑这一步留痕不执行`);
+          } else {
+            const resumeStages = stages.slice(resumeAt + 1);
+            const before = record.stages.length;
+            // 续跑段自己抛错就照旧走失败路径（下面那个 catch）：这时 `failedStage` 会被重新写上，
+            // 于是这一家**不会**被当成「全绿」—— 正是我们要的（续跑里再失败就是真失败）。
+            await runStagesFrom(resumeStages);
+            record.rescueResume = {
+              from: retryStageName,
+              ran: record.stages.slice(before).map((entry) => entry.stage),
+            };
+            console.log(`[${key}]   续跑完成：${record.rescueResume.ran.join('、') || '（没有余下阶段）'}`);
+          }
         } else {
           console.log(`[${key}]   自动修复没救回来：${loop.gaveUp ?? loop.error ?? '未说明'}`);
         }
@@ -2297,7 +2343,14 @@ async function main() {
       // ② 再收尾：把「停手时页面停在哪」记下来，再把它送回中性态（证据先于处置，
       // 见 recoverFailedShop 的三条纪律）。位置**刻意放在「停整轮」之前** —— 放到之后的话，
       // 默认策略下断掉整个 for 循环，而唯一失败的那一家恰恰就是不会被收尾的那一家。
-      record.recovery = await recoverFailedShop({ shopKey: key, logDir: shopLogDir, repoRoot: REPO_ROOT });
+      //
+      // ⚠️ **只在真的还是失败态时收尾**（2026-10-10，缺陷 ㊱ 的续跑改造带来的边界）：
+      //    自修救回并续跑成功之后，这一家已经是 `ok` —— 既没有「停手时页面」需要回位，
+      //    也不该被 `--stop-on-first-failure` 判成失败而停整轮。判据用 `status !== 'ok'`，
+      //    与上面那一支（失败态才置 `failed`／被救回才置 `ok`）是同一个字段，不另立判据。
+      if (record.status !== 'ok') {
+        record.recovery = await recoverFailedShop({ shopKey: key, logDir: shopLogDir, repoRoot: REPO_ROOT });
+      }
       // 一家店失败之后要不要继续跑其余店。**2026-09-25 把默认值翻了**（旧默认＝停整轮）。
       //
       // 旧默认的理由是「出了问题就别继续写」，但实测下来它的代价远大于收益：
@@ -2310,7 +2363,8 @@ async function main() {
       //   ③ 继续跑不会让失败变安静：轮末照旧 `anyFailed` ⇒ 退出码 1 ＋ 一条**点名到店**的告警
       //      （文案见 buildRoundFailureAlert）。失败该报还是报，只是不再连坐。
       // 所以默认改成「一家失败不带走其余」；要退回旧行为用显式的 `--stop-on-first-failure`。
-      if (args.stopOnFirstFailure) {
+      // 「救回并续跑成功」不是失败 ⇒ 不触发停整轮（判据同上，用 `status !== 'ok'`）。
+      if (args.stopOnFirstFailure && record.status !== 'ok') {
         console.error(`[驱动] --stop-on-first-failure：停整轮（默认是继续跑其余店）。已跑的店记在 ${path.relative(REPO_ROOT, logRoot)}。`);
         break;
       }
