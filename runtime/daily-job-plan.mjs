@@ -488,7 +488,11 @@ export function buildJobPlan(options = {}) {
         dateInput, notify, keepGoing, allowMissingPeer, shops, batches, commit: true,
         autoRepair, autoRepairMaxRounds, deferAgentActionableAlert, hold, reloginOnWall,
       }),
-      note: `分批跑（每批 ${batches} 家）：起这一批 → 查本批登录 → 挂店铺标识页 → 跑这一批 → 停这一批（**一律释放**）`,
+      // 2026-10-10（1.7.19，㊳）：这句原先写「一律释放」，与 `releaseAfterBatch` 的新口径**不一致**了
+      // —— 新口径是「链非 0 **且**这一批有修不动的店 ⇒ 不释放（留窗口给人）」。文案跟着改，
+      // 别让排练输出继续骗人（用户最恨「输出跟代码不是一回事」）。
+      note: `分批跑（每批 ${batches} 家）：起这一批 → 查本批登录 → 挂店铺标识页 → 跑这一批 → 停这一批`
+        + '（成功/没跑到链/没人要看现场 ⇒ 释放；**链失败且有店修不动 ⇒ 不释放，留窗口给人**；`--release-on-failure` 退回旧「一律释放」）',
       blocking: true,
     }
     : {
