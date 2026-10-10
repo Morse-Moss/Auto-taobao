@@ -1,0 +1,24 @@
+
+===== 2026-10-10T13:38:39.557Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site alimama --date 2026-10-10 --proxy http://127.0.0.1:19042
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: alimama: state did not settle to 2026-10-10（读了 16 次 × 1200ms；其中读不到 16 次）; lastReadError=proxy http://127.0.0.1:19042/eval?target=91B2CECA1350B1CFDE8EAB469350E54B failed: HTTP 400 Error: alimama date trigger ambiguous: []     at <anonymous>:8:38     at <anonymous>:10:5; diagnostic={"phase":"date-trigger","status":"not-rendered-or-ambiguous","detail":"proxy http://127.0.0.1:19042/eval?target=91B2CECA1350B1CFDE8EAB469350E54B failed: HTTP 400 Error: alimama date trigger ambiguous: []     at <anonymous>:8:38     at <anonymous>:10:5"}; last=null
+    at settle (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:747:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:782:21)
+    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:659:12)
+TRACE [
+  {
+    "step": "read-before-skipped",
+    "tolerated": true,
+    "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
+    "detail": "proxy http://127.0.0.1:19042/eval?target=91B2CECA1350B1CFDE8EAB469350E54B failed: HTTP 400 Error: alimama filter bar not ready; triggers=3     at <anonymous>:6:"
+  },
+  {
+    "step": "navigate",
+    "url": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-10&endTime=2026-10-10&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day"
+  }
+]

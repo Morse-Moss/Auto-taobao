@@ -1,0 +1,219 @@
+=== 导航前页签 ===
+  CDE39670D9D4BB52AB9EDE8ED20F5B44 | 里可林淘宝 · 日报采集窗口 | file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031
+  B97C426E1C90C6832E995C3EFA3A1136 | 首页_万相台无界版 | https://one.alimama.com/index.html
+
+阿里妈妈页签 = B97C426E1C90C6832E995C3EFA3A1136
+  当前 URL = https://one.alimama.com/index.html
+
+=== 导航前读数 ===
+{
+ "href": "https://one.alimama.com/index.html",
+ "readyState": "complete",
+ "title": "首页_万相台无界版",
+ "trigCount": 4,
+ "trig": [
+  "广告引导点击量",
+  " 今日",
+  " 昨日 ",
+  "转化统计方式 末次点击归因"
+ ],
+ "dateLike": [
+  " 今日",
+  " 昨日 "
+ ],
+ "resCount": 105,
+ "res": [
+  {
+   "n": "report.json?bizCode=universalBP&channelK",
+   "ms": 117,
+   "size": 416
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 41,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 38,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 43,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 42,
+   "size": 0
+  },
+  {
+   "n": "report.json?bizCode=universalBP&channelK",
+   "ms": 122,
+   "size": 416
+  },
+  {
+   "n": "1791597085_6.ts",
+   "ms": 62,
+   "size": 0
+  },
+  {
+   "n": "ts?url=https%3A%2F%2Fshuyuanrecord.taoba",
+   "ms": 48,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 39,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 38,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 39,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 39,
+   "size": 0
+  }
+ ]
+}
+
+=== navigate → 报表页 ===
+  https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-10&endTime=2026-10-10&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day
+  navigate HTTP 200
+
+=== 导航后逐秒读（40 次）===
+   1s  triggers=4  readyState=complete  res=106  title=首页_万相台无界版
+   2s  triggers=4  readyState=complete  res=106  title=首页_万相台无界版
+   3s  triggers=4  readyState=complete  res=106  title=首页_万相台无界版
+   4s  triggers=4  readyState=complete  res=106  title=首页_万相台无界版
+   5s  triggers=4  readyState=complete  res=110  title=首页_万相台无界版
+   6s  triggers=4  readyState=complete  res=110  title=首页_万相台无界版
+   7s  triggers=4  readyState=complete  res=110  title=首页_万相台无界版
+   8s  triggers=4  readyState=complete  res=110  title=首页_万相台无界版
+   9s  triggers=4  readyState=complete  res=110  title=首页_万相台无界版
+  10s  triggers=4  readyState=complete  res=110  title=首页_万相台无界版
+  11s  triggers=4  readyState=complete  res=114  title=首页_万相台无界版
+  12s  triggers=4  readyState=complete  res=114  title=首页_万相台无界版
+  13s  triggers=4  readyState=complete  res=116  title=首页_万相台无界版
+  14s  triggers=4  readyState=complete  res=116  title=首页_万相台无界版
+  15s  triggers=4  readyState=complete  res=116  title=首页_万相台无界版
+  16s  triggers=4  readyState=complete  res=116  title=首页_万相台无界版
+  17s  triggers=4  readyState=complete  res=116  title=首页_万相台无界版
+  18s  triggers=4  readyState=complete  res=120  title=首页_万相台无界版
+  19s  triggers=4  readyState=complete  res=120  title=首页_万相台无界版
+  20s  triggers=4  readyState=complete  res=120  title=首页_万相台无界版
+  21s  triggers=4  readyState=complete  res=120  title=首页_万相台无界版
+  22s  triggers=4  readyState=complete  res=120  title=首页_万相台无界版
+  23s  triggers=4  readyState=complete  res=120  title=首页_万相台无界版
+  24s  triggers=4  readyState=complete  res=124  title=首页_万相台无界版
+  25s  triggers=4  readyState=complete  res=124  title=首页_万相台无界版
+  26s  triggers=4  readyState=complete  res=124  title=首页_万相台无界版
+  27s  triggers=4  readyState=complete  res=124  title=首页_万相台无界版
+  28s  triggers=4  readyState=complete  res=124  title=首页_万相台无界版
+  29s  triggers=4  readyState=complete  res=124  title=首页_万相台无界版
+  30s  triggers=4  readyState=complete  res=126  title=首页_万相台无界版
+  31s  triggers=4  readyState=complete  res=130  title=首页_万相台无界版
+  32s  triggers=4  readyState=complete  res=130  title=首页_万相台无界版
+  33s  triggers=4  readyState=complete  res=130  title=首页_万相台无界版
+  34s  triggers=4  readyState=complete  res=130  title=首页_万相台无界版
+  35s  triggers=4  readyState=complete  res=130  title=首页_万相台无界版
+  36s  triggers=4  readyState=complete  res=130  title=首页_万相台无界版
+  37s  triggers=4  readyState=complete  res=134  title=首页_万相台无界版
+  38s  triggers=4  readyState=complete  res=134  title=首页_万相台无界版
+  39s  triggers=4  readyState=complete  res=134  title=首页_万相台无界版
+  40s  triggers=4  readyState=complete  res=134  title=首页_万相台无界版
+
+  最终读数（原样）:
+{
+ "href": "https://one.alimama.com/index.html",
+ "readyState": "complete",
+ "title": "首页_万相台无界版",
+ "trigCount": 4,
+ "trig": [
+  "广告引导点击量",
+  " 今日",
+  " 昨日 ",
+  "转化统计方式 末次点击归因"
+ ],
+ "dateLike": [
+  " 今日",
+  " 昨日 "
+ ],
+ "resCount": 134,
+ "res": [
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 39,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 41,
+   "size": 0
+  },
+  {
+   "n": "ts?url=https%3A%2F%2Fshuyuanrecord.taoba",
+   "ms": 45,
+   "size": 0
+  },
+  {
+   "n": "1791597118_8.ts",
+   "ms": 50,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 38,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 43,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 43,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 43,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 38,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 43,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 43,
+   "size": 0
+  },
+  {
+   "n": "alimama_bp.4.2",
+   "ms": 41,
+   "size": 0
+  }
+ ]
+}
+
+=== 汇总 ===
+  triggers 序列：4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4
+  最小=4 最大=4 末值=4
+  是否曾达到 6（判据要求）: 否
