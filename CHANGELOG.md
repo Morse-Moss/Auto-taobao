@@ -15,6 +15,92 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.0] - 2026-10-10
+
+架构优化执行规格（`docs/ops/SYSTEM-ARCHITECTURE-OPTIMIZATION-EXECUTION-SPEC-2026-10-10.md`）
+P1/P2/P3 的统一入口与回执接线。三个新模块（workflow-catalog / run-receipt-v1 / run-root）由本轮
+新增，本条记录把它们接进现有入口的最小接线改动。
+
+### 改了什么
+
+- **workflow-catalog 工作流登记契约（spec §4）**：`runtime/workflow-catalog.mjs` 登记四条主流程
+  （daily-report / promotion-daily / product-daily / weekly-report），未登记的 workflow 立即硬失败、
+  绝不回退 daily-report；`run-batches` 启动时自检登记表并从 `entry.batch` 解析链入口。
+- **run-receipt-v1 统一回执与五条状态轴（spec §6）**：`runtime/run-receipt-v1.mjs` 落地
+  execution / evidence / humanGate / lease / publication 五条状态轴的统一回执。如实表述：
+  **execution / evidence / publication 三轴已落字段并被入口填写；humanGate / lease 两轴
+  以闭合集常量占位、未接真实载体**。rounds → 回执的映射抽成纯函数
+  `runtime/batch-rounds-receipt.mjs`（I/O 留在 scripts 薄壳）：驻留终态
+  （TIMED_OUT / RESUME_FAILED / NO_HOLD / NO_VERDICT）⇒ FAILED —— **PAUSED 在 finalize
+  时刻不可达**（run-batches 的驻留是同步子进程，finalize 时驻留必已终止）；RESUMED_OK ⇒
+  SUCCEEDED；失败店清单只收逐店 unfixable 名单，读不到时 shops=[]（不把整批成功店伪标成
+  失败店）；apply ⇒ chain 步 publication=UNKNOWN、dry-run ⇒ NOT_REQUESTED。取舍：回执
+  生成失败只打 stderr 警告、不落盘、不改业务退出码（compat 优先）；`release.observed`
+  永不写 true —— 释放只认独立两次端口回读，回执里没做就记 `observed:false + status:UNKNOWN`，
+  不假装观察到。`validateRunReceipt` 补跨轴校验（SUCCEEDED ⇒ shops 空 + failureClass null）
+  与 shops / artifacts 元素形状校验。
+- **batches.json 入册带 size 与 sha256（spec §7.3）**：`run-batches` 落盘 batches.json 后
+  回读真实字节计算 size 与 sha256，`appendArtifact` 只收结构化 `{path, size, sha256}`
+  对象（裸字符串不再接受）；读文件与算哈希留在 scripts 薄壳。
+- **dry-run 不再写飞书询单行骨架**：daily-job-plan 的 ensure-inquiry-rows 步改为
+  `mode !== 'dry-run'` 才带 `--commit`（该脚本不带 `--commit` 时是只读核对，收据记
+  DRY_RUN_READY、不报错、不落行）；apply / 缺省与旧输出逐字一致。
+- **--notify 静默丢弃要出声**：promotion-daily 档链入口不转发通知开关，
+  `run-batches --notify --workflow promotion-daily` 启动时打显式警告行（失败告警不会自动
+  投递飞书，以运行汇报为准）；daily-report 档链会转发、不打警告。
+- **启动自检缩小爆炸半径**：`run-batches` 启动只校验本次请求的 workflow（getWorkflow +
+  entry.batch 文件存在性硬校验），全量 validateCatalogEntries 不再是启动硬门槛 —— 一条
+  无关登记项的笔误不应拦下今天本可照跑的日报；登记表整体合法性由
+  workflow-catalog.test.mjs 守。
+- **help 修字**：run-batches usage 行加回 `[--commit]`（兼容期参数，漏印会让运维以为
+  只剩 --mode）。
+- **run-root 运行根目录治理（spec §7）**：`runtime/run-root.mjs` 落地
+  `<run-root>/<workflow>/<target-date>/<run-id>/` 布局与 manifest；`run-batches` 新增
+  `--evidence-root`（优先级：实参 > `SYCM_RUN_ROOT` > 机器级外部目录），manifest 记录实际证据根
+  （兼容期旧路径）与保留级别（成功 30 天/失败 180 天/不自动删）。旧 evidence 路径照旧可读，不搬数据。
+- **--mode 统一入口与 --commit 兼容转换（spec §5.1）**：`run-batches` 与 `run-daily-job` 均接受
+  `--mode dry-run|apply`；`--commit` 等价 `--mode apply` 并打印转换提示；`--mode dry-run` 与
+  `--commit` 同给矛盾 ⇒ 退 2；解析规则抽成纯函数 `resolveRunMode`（workflow-catalog）。
+  `run-batches` 缺省模式为登记项 `manualDefault`（dry-run）；**`run-daily-job` 缺省维持
+  apply（写）** —— 它是定时任务宿主，daily-job-plan 对链/分批一直无条件给 --commit，本轮不动这个默认。
+- **推广日报不再被公共层隐式强制写入**：删掉 `run-batches` 原 L309-312 对 promotion-daily 的
+  无条件 `['--commit']`；两档统一为 `mode==='apply' ⇒ 链参数含 --commit`。链子进程命令面不变
+  （run-multi-shop-day / run-promotion-sales1 只认 --commit，--mode 不下传）。
+- **run-batches 从 catalog 解析入口**：`buildBatchSteps` 新增可选 `chainFile`（缺省与旧硬编码
+  逐字一致），`run-batches` 传 `getWorkflow(workflow).entry.batch`。
+- 早间调度定稿：新增 `docs/ops/DAILY-FLOW-SCHEDULE.md`（**推广 07:00 / 商品 10:00 不动 /
+  日报 11:30** —— 推广抢在最前出昨日数据，商品维持既有档位，日报避开前两条的浏览器与登录态
+  争用）。
+
+### 遗留
+
+- **推广日报链侧无 apply 门控**：mode → `--commit` 的转换只发生在公共层
+  （run-batches / run-daily-job），链入口 run-promotion-sales1 自身不感知 mode；
+  绕过公共层直接调链时没有第二道门（回执的 publication 轴也只到 UNKNOWN 为止）。
+- **promotion 档不转发 --notify**：链入口不转发通知开关，失败告警不会自动投递飞书；
+  run-batches 已在该组合下打显式警告（以运行汇报为准），链侧转发待后续批次。
+- **回执 artifacts 目前只登记 batches.json**（含 size 与 sha256）；各步骤的逐份证据
+  文件（截图 / 收据 / summary）未逐一入册，level2 证据清单待后续批次补。
+- **商品日报回执接线推迟**：`scripts/run-product-data-job.mjs` 当前被并行开发线持有（工作区
+  modified，本轮禁碰），product-daily 仅在 catalog 登记，未做统一回执接线。
+- `run-daily-job --mode dry-run` 只作用到链/分批与询单行骨架那一层；窗口标识页、商家登录
+  守卫等前置步骤仍按各自默认执行。全链 dry-run 化待后续批次。
+- run-batches 的统一回执里「失败店清单」点名到店依赖 summary 的 unfixable 名单，
+  读不到时 shops=[]（不点名、不伪标）。
+- 周报（weekly-report）登记入口指向被跟踪的 `runtime/run-weekly-collection.mjs`；并行线的
+  `run-weekly-workflow.mjs` 合入后如入口切换，改 catalog 字符串即可。
+
+### 验证
+
+- 仅离线判据 + `--print` 基线对比：六组基线（rb-daily-noflag/commit、rb-promo-noflag/commit、
+  rdj-noflag/commit）中，noflag 组逐字节一致；commit 组仅新增转换提示行；rb-promo-noflag 的
+  差异仅为链参数不再含 --commit（即修复目标本身）。注意：rdj-commit 的**基线**是「未知参数
+  --commit」退 2（run-daily-job 此前不接受该参数），新行为是转换提示 + 与 noflag 一致的计划。
+- `node --test runtime/workflow-catalog.test.mjs runtime/run-receipt-v1.test.mjs runtime/run-root.test.mjs
+  runtime/batch-plan.test.mjs runtime/daily-job-plan.test.mjs runtime/hold-and-resume-plan.test.mjs
+  runtime/run-batches-cli.test.mjs runtime/batch-rounds-receipt.test.mjs runtime/version-consistency.test.mjs`
+  全绿；版本一致性测试全绿。统一回执的真机落盘（run-root 目录、manifest）尚未在真实 apply 轮次验证。
+
 ## [1.7.22] - 2026-10-10
 
 用户指令「按照你的推荐立刻去修复」。上一轮 5 家店全停在**第 2 步 `alimama-date`**，报的都是

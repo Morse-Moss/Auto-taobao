@@ -40,6 +40,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import crypto from 'node:crypto';
 
 import {
   DEFAULT_BATCH_SIZE, batchLoginArtifactName, batchRoundBlockOf, buildBatchSteps, buildLoginPreflightStep,
@@ -56,6 +57,19 @@ import {
 // （而漂开的症状是静默的 —— 驻留说「要留现场」，释放那边说「没失败」，两边各自都"对"）。
 import { unfixableShopsOf } from '../runtime/hold-and-resume-plan.mjs';
 import { versionLineSafe } from '../runtime/version.mjs';
+// 工作流登记表（spec §4/§5，2026-10-10 接入）：启动时校验「这个 workflow 登记过没有」，
+// 并从登记项解析链入口（entry.batch）与模式缺省（mode.manualDefault）——
+// 未登记 ⇒ 立即硬失败，**绝不回退 daily-report**（回退的表现是「跑完了但跑的是另一条流程」）。
+// ⚠️ 启动硬门槛只做 getWorkflow + **本次请求的 workflow** 入口文件存在性（2026-10-10 对抗
+// 审查 E 项收窄）：全量 validateCatalogEntries 不在启动时跑 —— 否则 weekly 的入口文件丢了
+// 也会拦死日报（爆炸半径错位）；登记表的整体合法性由 runtime/workflow-catalog.test.mjs 守。
+import { getWorkflow, resolveRunMode } from '../runtime/workflow-catalog.mjs';
+// 统一运行回执（spec §6，run-receipt-v1）与运行根目录（spec §7，run-root）—— 2026-10-10 接入。
+// rounds → 回执的映射抽在 runtime/batch-rounds-receipt.mjs（纯函数，2026-10-10 对抗审查 A 项）：
+// 这里只负责喂 plain data（含逐店 unfixable 名单与 batches.json 的 size/sha256）与落盘。
+import { buildRunReceiptFromRounds } from '../runtime/batch-rounds-receipt.mjs';
+import { writeRunReceipt } from '../runtime/run-receipt-v1.mjs';
+import { buildRunLayout, ensureRunLayout, resolveRunRoot, writeManifest } from '../runtime/run-root.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
@@ -66,6 +80,15 @@ function parseArgs(argv) {
     dateInput: 'yesterday', batchSize: null, shops: null, commit: false, keepGoing: false,
     allowMissingPeer: false, notify: false, notifyPrint: false, logs: null, print: false,
     autoRepair: false, autoRepairMaxRounds: null, workflow: 'daily-report',
+    // `--mode`（2026-10-10 加，spec §5.1 统一入口）：dry-run|apply。解析规则在
+    // runtime/workflow-catalog.mjs 的 resolveRunMode（纯函数）—— 显式 mode 赢；
+    // --commit 等价 apply（兼容期，打印转换提示）；矛盾（dry-run + --commit）退 2；
+    // 都没给 ⇒ 登记项的 mode.manualDefault（dry-run）。
+    mode: null,
+    // `--evidence-root`（2026-10-10 加，spec §5.1/§7.2）：统一回执/manifest 落的运行根目录。
+    // 注意它**不改变**链自己的证据目录（evidence/batches-<日>，batches.json 仍落那里）——
+    // 迁移纪律（spec §7.3）：先支持新目录并保留旧路径兼容读取，不在同一变更里搬数据。
+    evidenceRoot: null,
     deferAgentActionableAlert: false,
     // `--relogin-on-wall`（2026-10-10 加）：分批形态下**必须转发**，理由与上面两个开关逐字相同
     // —— 生产跑的正是 `--batches`，不转发等于「命令行给了它、每一批的链却都没收到」。
@@ -116,12 +139,20 @@ function parseArgs(argv) {
     else if (arg === '--batch-size') options.batchSize = argv[++i];
     else if (arg === '--date') options.dateInput = argv[++i];
     else if (arg === '--workflow') options.workflow = argv[++i];
+    else if (arg === '--mode') {
+      const raw = argv[++i];
+      if (raw !== 'dry-run' && raw !== 'apply') {
+        return { error: `--mode 只能是 dry-run|apply，收到 ${JSON.stringify(raw)}` };
+      }
+      options.mode = raw;
+    }
+    else if (arg === '--evidence-root') options.evidenceRoot = argv[++i];
     else if (arg === '--logs') options.logs = argv[++i];
     else if (arg === '--shops') options.shops = String(argv[++i] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--help' || arg === '-h') options.help = true;
     else {
       return {
-        error: `未知参数 ${arg}（可用：--print --commit --no-release --release-on-failure --no-hold --batch-size N --date <日> `
+        error: `未知参数 ${arg}（可用：--print --commit --mode dry-run|apply --evidence-root <目录> --no-release --release-on-failure --no-hold --batch-size N --date <日> `
           + '--shops a,b --workflow daily-report|promotion-daily --keep-going --allow-missing-peer --auto-repair --auto-repair-max-rounds N '
           + '--relogin-on-wall --defer-agent-actionable-alert --notify|--notify-print --logs <目录>）',
       };
@@ -261,9 +292,56 @@ async function main(argv) {
   if (parsed.error) { console.error(parsed.error); return 2; }
   const { options } = parsed;
   if (options.help) {
-    console.log('node scripts/run-batches.mjs [--print] [--commit] [--no-release] [--batch-size N] '
+    // [--commit]（2026-10-10 对抗审查 F 项补回）：兼容期参数 —— 等价 --mode apply（会打转换提示）。
+    console.log('node scripts/run-batches.mjs [--print] [--mode dry-run|apply] [--commit] [--evidence-root <目录>] [--no-release] [--batch-size N] '
       + '[--date yesterday] [--shops a,b] [--logs 目录]');
     return 0;
+  }
+
+  // ── 启动自检（spec §4.3/§11，2026-10-10 加；同日对抗审查 E 项收窄爆炸半径）────
+  // ① workflow 必须已登记：未登记 ⇒ 立即硬失败、绝不回退 daily-report。
+  // ② **本次请求的 workflow** 的链入口文件必须存在（这是马上要起进程的那个文件）。
+  // 两件事都必须发生在**起任何进程之前**——错跑一条流程比立刻失败贵一个量级。
+  // 刻意不做全量 validateCatalogEntries：别的 workflow（如 weekly）入口丢了不该拦死日报；
+  // 登记表整体合法性由测试层（runtime/workflow-catalog.test.mjs）守。
+  let entry;
+  try {
+    entry = getWorkflow(options.workflow);
+    const chainFile = entry.entry?.batch;
+    if (typeof chainFile !== 'string' || !chainFile.endsWith('.mjs')
+      || !fs.existsSync(path.join(REPO_ROOT, chainFile))) {
+      throw new Error(`工作流 ${options.workflow} 的链入口文件不存在或非法：${JSON.stringify(chainFile ?? null)}`
+        + ' —— 先在 runtime/workflow-catalog.mjs 核对 entry.batch');
+    }
+  } catch (error) {
+    console.error(`${error.message}`);
+    return 2;
+  }
+
+  // ── 模式解析（spec §5.1，2026-10-10 加）────────────────────────────────
+  // 规则的单一来源是 runtime/workflow-catalog.mjs 的 resolveRunMode（纯函数、有用例）：
+  // 显式 --mode 赢；--commit ⇒ apply（兼容期，必须打一行转换提示）；
+  // --mode dry-run + --commit 矛盾 ⇒ 退 2；都没给 ⇒ 登记项的 manualDefault（dry-run）。
+  let modeState;
+  try {
+    modeState = resolveRunMode({ modeArg: options.mode, commitFlag: options.commit, entry });
+  } catch (error) {
+    console.error(`${error.message}`);
+    return 2;
+  }
+  const mode = modeState.mode;
+  // 兼容期转换提示：--print 与真跑都打（打印的必须是真正执行的，转换也是执行事实的一部分）。
+  if (modeState.convertedFromCommit) {
+    console.log('[mode] --commit 已转换为 --mode apply（兼容期）');
+  }
+
+  // ── --notify 静默丢弃要出声（2026-10-10 对抗审查 D 项）────────────────────
+  // promotion-daily 档的链参数**不转发通知开关**（run-promotion-sales1 不认 --notify/--notify-print，
+  // 见下面 batches 那段 chainArgs 的构造）—— 调用方给了 --notify 却没有一个字提示的话，
+  // 「失败告警会自动投递飞书」就成了一个没人兑现过的默认预期。出声，把预期纠回来：
+  // 失败告警以**运行汇报**为准。--print 与真跑都打（同转换提示的纪律）。
+  if ((options.notify || options.notifyPrint) && options.workflow === 'promotion-daily') {
+    console.log('[notify] 本工作流的链入口不转发通知开关，失败告警不会自动投递飞书——请以运行汇报为准');
   }
 
   // 切批这一步的所有拒绝都必须发生在**起任何进程之前**：名字拼错、家数非法时，
@@ -307,9 +385,17 @@ async function main(argv) {
       dateInput: options.dateInput,
       // 本批的链读**本批自己**那份结论（路径逐批不同，`--logs` 也是各自一份）。
       workflow: options.workflow,
+      // 链入口从登记表解析（spec P2）：entry.batch 是单一来源（batch-plan 只认注入的这份字符串）。
+      chainFile: entry.entry.batch,
+      // 模式 ⇒ 链参数里有没有 --commit（2026-10-10 修掉的原 L309-312：
+      // promotion-daily 曾被公共层**无条件**塞 ['--commit']，不看调用方给没给 ——
+      // 那正是 spec §5.1「公共入口不得对某一条业务线无条件强制 apply」要治的病）。
+      // 两档统一：apply ⇒ 含 --commit；dry-run ⇒ 不含。
+      // ⚠️ 链子进程（run-multi-shop-day / run-promotion-sales1）不认识 --mode，
+      // 命令面只能继续用 --commit —— mode 是**本层**的概念，不下传。
       chainArgs: options.workflow === 'promotion-daily'
-        ? ['--commit']
-        : [...chainArgsFor(options), LOGIN_PREFLIGHT_FLAG, loginArtifactFor(batch)],
+        ? (mode === 'apply' ? ['--commit'] : [])
+        : [...chainArgsFor({ ...options, commit: mode === 'apply' }), LOGIN_PREFLIGHT_FLAG, loginArtifactFor(batch)],
       logsDir: path.relative(REPO_ROOT, path.join(evidenceRoot, `b${batch.index}`)),
       loginStep: loginStepFor(batch),
     }),
@@ -319,7 +405,7 @@ async function main(argv) {
   if (options.print) {
     console.log(`[批次] 版本：${versionLineSafe()}`);
     console.log(`[批次] 目标日：${options.dateInput} → ${date}；每批 ${size} 家；共 ${plan.total} 批`
-      + `；模式：${options.commit ? '写飞书（--commit）' : '排练（不写飞书）'}`
+      + `；模式：${mode === 'apply' ? '写飞书（--commit）' : '排练（不写飞书）'}`
       + `；跑完${options.release ? '释放' : '不释放（--no-release）'}`);
     if (sharedStep) {
       console.log(`[批次] ${sharedStep.name}: ${renderCommand(sharedStep, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
@@ -357,7 +443,7 @@ async function main(argv) {
 
   log(`版本：${versionLineSafe()}`);
   log(`=== 分批跑开始：目标日 ${options.dateInput} → ${date}；每批 ${size} 家；共 ${plan.total} 批`
-    + `；模式 ${options.commit ? 'commit（会写飞书）' : 'rehearse（不写飞书）'} ===`);
+    + `；模式 ${mode === 'apply' ? 'commit（会写飞书）' : 'rehearse（不写飞书）'} ===`);
   log(`本批证据根：${path.relative(REPO_ROOT, evidenceRoot).replaceAll('\\', '/')}`);
 
   const rounds = [];
@@ -560,7 +646,7 @@ async function main(argv) {
   const recovered = holdStatus === HOLD_EXIT.RESUMED_OK;
   const index = {
     version: versionLineSafe(),
-    date, dateInput: options.dateInput, mode: options.commit ? 'commit' : 'rehearse',
+    date, dateInput: options.dateInput, mode: mode === 'apply' ? 'commit' : 'rehearse',
     batchSize: size, evidenceRoot: path.relative(REPO_ROOT, evidenceRoot).replaceAll('\\', '/'),
     release: options.release,
     // 驻留要留痕：停在第几批、结论文件在哪、驻留退出码是多少。
@@ -578,6 +664,60 @@ async function main(argv) {
     rounds,
   };
   fs.writeFileSync(path.join(evidenceRoot, 'batches.json'), `${JSON.stringify(index, null, 1)}\n`, 'utf8');
+
+  // ── 统一回执（run-receipt-v1，spec §6，2026-10-10 加；同日对抗审查 A/B 项整改）──
+  // 落点：与 batches.json 同一处（批次循环结束之后），blocked/驻留路径也会走到这里。
+  // 映射本体抽在 runtime/batch-rounds-receipt.mjs（纯函数，判据见其文件头三条纪律：
+  // 驻留终态 ⇒ FAILED / PAUSED 不可达；失败店只收逐店名单，不把整批成功店伪标成失败店；
+  // apply 下 chain 步 publication=UNKNOWN —— 真实写入但未独立回读）。这里只负责
+  // 喂 plain data（逐店 unfixable 名单、batches.json 的 size/sha256）与落盘。
+  //
+  // 两条取舍（写死在这里，报告里也如实说）：
+  //   ① **compat 优先**：回执生成失败 ⇒ stderr 打醒目警告、**绝不写一份自称成功的回执**、
+  //      也不改变业务退出码 —— 回执是第二格式（spec §6.1），它坏了不该把跑成的业务轮次
+  //      染红、更不该把跑失败的轮次洗绿。spec §11「统一回执生成失败时不得把旧收据标成成功」
+  //      由「抛错即不落盘」（writeRunReceipt 写前校验）+ 这里的 try/catch 共同保证。
+  //      batches.json 在 try **之外**落盘 —— 它是第一收据，回执坏不坏都保得住。
+  //   ② **release.observed 永不为 true**：本仓纪律 —— 释放只认独立两次端口回读，
+  //      回执生成这一步没做回读，就不许假装观察到（observed:false + status:UNKNOWN/HELD
+  //      由映射模块统一给出）。
+  try {
+    // batches.json 的证据工件描述（spec §7.3：文件大小、哈希，对抗审查 B 项）——
+    // 对**落盘的同一份字节**算，不对「将要写的内容」算：回执里记的必须是已发生的事实。
+    const batchesJsonPath = path.join(evidenceRoot, 'batches.json');
+    const batchesJsonText = fs.readFileSync(batchesJsonPath, 'utf8');
+    const batchesArtifact = {
+      path: path.relative(REPO_ROOT, batchesJsonPath).replaceAll('\\', '/'),
+      size: Buffer.byteLength(batchesJsonText, 'utf8'),
+      sha256: crypto.createHash('sha256').update(batchesJsonText, 'utf8').digest('hex'),
+    };
+    const receipt = buildRunReceiptFromRounds({
+      entry, targetDate: date, mode, batchSize: size,
+      // 逐店 unfixable 名单在这里读（I/O 留在薄壳），映射模块只收 plain data；
+      // 成功的批不读（链退出码 0 ⇒ 该批对失败店清单无贡献）。
+      rounds: rounds.map((round) => ({
+        ...round,
+        unfixable: round.chainStatus === 0 ? [] : batchUnfixableShops(path.join(evidenceRoot, `b${round.index}`, 'summary.json')),
+      })),
+      blocked, holdEnabled: options.hold, holdStatus, hardFail,
+      batchesArtifact,
+    });
+    const runRoot = resolveRunRoot({ cliRoot: options.evidenceRoot, envRoot: process.env.SYCM_RUN_ROOT });
+    const layout = ensureRunLayout(buildRunLayout(runRoot, entry.id, date, receipt.runId));
+    writeRunReceipt(layout.receiptFile, receipt);
+    // manifest 记**实际证据根**（链/batches.json 落的旧路径 —— spec §7.3 迁移纪律：
+    // 回执必须记录实际证据根路径与保留级别；retention 用 run-root 的默认值，成功 30/失败 180/不自动删）。
+    writeManifest(layout.manifestFile, {
+      workflow: entry.id, workflowVersion: entry.version, targetDate: date, runId: receipt.runId, mode,
+      notes: `实际证据根（兼容期旧路径，batches.json/链产物落这里）：${
+        path.relative(REPO_ROOT, evidenceRoot).replaceAll('\\', '/')}`,
+    });
+    log(`[run-receipt-v1] 统一回执已落 ${path.relative(REPO_ROOT, layout.receiptFile).replaceAll('\\', '/')}`
+      + `；manifest ${path.relative(REPO_ROOT, layout.manifestFile).replaceAll('\\', '/')}`);
+  } catch (error) {
+    // 绝不写一份自称成功的回执（上面的构造抛错 ⇒ 什么都没落盘），也不改业务退出码。
+    console.error(`[run-receipt-v1] 生成失败: ${error && error.message ? error.message : error}`);
+  }
 
   log(`=== 分批跑结束：${rounds.filter((r) => r.chainStatus === 0).length}/${plan.total} 批成功；`
     + `释放 ${rounds.filter((r) => typeof r.steps.stop === 'number').length} 批；明细 ${path.join(path.relative(REPO_ROOT, evidenceRoot), 'batches.json').replaceAll('\\', '/')} ===`);

@@ -38,6 +38,9 @@ import { pathToFileURL } from 'node:url';
 
 import { HOLD_EXIT, buildJobPlan, renderCommand, shouldRunStep } from '../runtime/daily-job-plan.mjs';
 import { versionLineSafe } from '../runtime/version.mjs';
+// 统一入口的模式解析（spec §5.1，2026-10-10 加）：--commit 兼容转换 / --mode 显式给 / 矛盾退 2。
+// 登记表只用来取 daily-report 的 manualDefault（矛盾判据在 resolveRunMode 里）。
+import { getWorkflow, resolveRunMode } from '../runtime/workflow-catalog.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
 import { acquireWorkflowLock, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
 import { createWorkflowReceipt, writeWorkflowReceipt } from '../runtime/workflow-receipt.mjs';
@@ -93,7 +96,13 @@ function parseArgs(argv) {
     // 那张表的日期行一直是运营侧预建的，而链的回填只更新、不新建（见 daily-job-plan 的注释）。
     // 它只补缺的行，正常那轮的动作是「什么都不做」，所以默认开的代价接近零。
     // `--no-ensure-inquiry-rows` 是一键退回的开关（退回＝那一天的行得有人先建好）。
-    ensureInquiryRows: true };
+    ensureInquiryRows: true,
+    // `mode` / `commit` / `evidenceRoot`（2026-10-10 加，spec §5.1 统一入口）：
+    // `--commit` 原先**不被本入口接受**（未知参数退 2）；现在兼容收下 ⇒ 转成 mode=apply
+    // 并打一行转换提示。`--mode dry-run|apply` 是新命令面。**都没给 ⇒ 维持今天的默认＝
+    // apply（写飞书）**—— daily-job-plan 对链/分批一直无条件给 --commit（定时任务的职责
+    // 就是写下今天的数据），这个默认不许被本轮悄悄翻成 dry-run。
+    mode: null, commit: false, evidenceRoot: null };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--print') options.print = true;
@@ -113,6 +122,17 @@ function parseArgs(argv) {
     else if (arg === '--auto-repair') options.autoRepair = true;
     // ⑨b：把「先派 agent、不先叫人」这个意图透传到链（两层都要能收，见 daily-job-plan 的注释）。
     else if (arg === '--defer-agent-actionable-alert') options.deferAgentActionableAlert = true;
+    // 2026-10-10 加（spec §5.1）：--commit 兼容收下（原先是不认识 的未知参数）⇒ 转 mode=apply。
+    else if (arg === '--commit') options.commit = true;
+    else if (arg === '--mode') {
+      const raw = argv[++i];
+      if (raw !== 'dry-run' && raw !== 'apply') {
+        return { error: `--mode 只能是 dry-run|apply，收到 ${JSON.stringify(raw)}` };
+      }
+      options.mode = raw;
+    }
+    // 统一回执/manifest 的运行根目录（只透传给分批那一步 —— run-batches 认它）。
+    else if (arg === '--evidence-root') options.evidenceRoot = argv[++i];
     else if (arg === '--auto-repair-max-rounds') {
       const raw = argv[++i];
       const value = Number(raw);
@@ -134,7 +154,7 @@ function parseArgs(argv) {
       }
       options.batches = value;
     } else if (arg === '--help' || arg === '-h') options.help = true;
-    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-relogin-on-wall --no-hold --no-merchant-label --no-ensure-inquiry-rows --auto-repair --auto-repair-max-rounds --defer-agent-actionable-alert --date --shops --only --batches）` };
+    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-relogin-on-wall --no-hold --no-merchant-label --no-ensure-inquiry-rows --auto-repair --auto-repair-max-rounds --defer-agent-actionable-alert --mode dry-run|apply --commit --evidence-root <目录> --date --shops --only --batches）` };
   }
   return { options };
 }
@@ -144,9 +164,35 @@ async function main(argv) {
   if (parsed.error) { console.error(parsed.error); return 2; }
   const { options } = parsed;
   if (options.help) {
-    console.log('node scripts/run-daily-job.mjs [--print] [--notify|--notify-print] [--date yesterday] [--shops a,b] [--only 阶段名] [--batches N] [--no-auto-login] [--no-relogin-on-wall] [--no-ensure-inquiry-rows]');
+    console.log('node scripts/run-daily-job.mjs [--print] [--notify|--notify-print] [--date yesterday] [--shops a,b] [--only 阶段名] [--batches N] [--mode dry-run|apply] [--evidence-root <目录>] [--no-auto-login] [--no-relogin-on-wall] [--no-ensure-inquiry-rows]');
     return 0;
   }
+
+  // ── 模式解析（spec §5.1，2026-10-10 加）─────────────────────────────────
+  // 规则（resolveRunMode，纯函数）：显式 --mode 赢；--commit ⇒ apply（兼容期，打转换提示）；
+  // --mode dry-run + --commit 矛盾 ⇒ 退 2。
+  // **都没给 ⇒ apply（维持今天的默认）**：本入口是定时任务的宿主，daily-job-plan 对链/分批
+  // 一直无条件给 --commit（L460/L488 的既有事实）——「定时任务写下今天的数据」这个默认
+  // 不许被本轮接线悄悄翻掉。所以这里的缺省不走 manualDefault（那是 run-batches 这类
+  // 通用入口的缺省），而是显式 apply。
+  let mode;
+  if (options.mode !== null || options.commit) {
+    try {
+      const resolved = resolveRunMode({
+        modeArg: options.mode, commitFlag: options.commit, entry: getWorkflow('daily-report'),
+      });
+      mode = resolved.mode;
+      if (resolved.convertedFromCommit) {
+        console.log('[mode] --commit 已转换为 --mode apply（兼容期）');
+      }
+    } catch (error) {
+      console.error(`${error.message}`);
+      return 2;
+    }
+  } else {
+    mode = 'apply';
+  }
+  if (options.mode !== null) console.log(`[mode] --mode ${mode}（显式给定）`);
 
   // 传了 --notify-print 就不要再从环境里读默认值：两者互斥由 buildJobPlan 当场拦。
   //
@@ -200,6 +246,9 @@ async function main(argv) {
       // 漏了它的症状是静默的：那一步不进计划、日志里少一行，
       // 而链的第 10 步回填会在缺行的那一天 8 家全挂 —— 挂的位置离真因隔着好几层。
       ensureInquiryRows: options.ensureInquiryRows,
+      // 模式与运行根目录（2026-10-10 加，spec §5.1）：mode 缺省（apply）时计划与从前逐字相同。
+      mode,
+      evidenceRoot: options.evidenceRoot,
       resolvedDate: date,
     });
   } catch (error) {

@@ -286,6 +286,14 @@ const CHAIN_VALUED = Object.freeze({ shops: '--shops', only: '--only', logs: '--
 export function buildBatchChainArgs({
   dateInput = 'yesterday', notify = false, keepGoing = false, allowMissingPeer = false,
   shops = null, batches = null, commit = false,
+  // `mode`（2026-10-10 加，spec §5.1 统一入口）：解析后的 dry-run|apply，**可选**。
+  // 给了 ⇒ mode 赢（apply ⇒ --commit；dry-run ⇒ 不给）；没给 ⇒ 与今天逐字一致
+  // （由 `commit` 决定，buildJobPlan 对分批那一步仍传 commit: true —— 定时任务的默认是写）。
+  // 注意下传的旗标仍然是 `--commit`：run-batches 认 --mode，但**链子进程**不认，
+  // 这一层给 run-batches 的命令面维持原样（--mode 解析发生在 run-batches 那一层）。
+  mode = null,
+  // `evidenceRoot`（2026-10-10 加）：`--evidence-root` 的透传 —— 统一回执/manifest 的运行根目录。
+  evidenceRoot = null,
   // `--auto-repair`（2026-09-29 补）：分批形态也要能转发。
   // ⚠️ 这一条曾**漏掉**，症状是「命令行给了 --auto-repair、run-daily-job 也收下了，
   //   但每一批的链都没收到」⇒ 生产形态（`--batches`）下「脚本自己修」这一层**永远不执行**，
@@ -312,7 +320,11 @@ export function buildBatchChainArgs({
   // 而定时任务的职责就是「写下今天的数据」。漏了这一句，行为会从「写飞书」
   // 悄悄变成「什么都不写」，而日志里那句「模式 commit」不会有任何异常 ——
   // 这是本条最危险的一处静默降级，所以它有一条专门的用例。
-  if (commit) args.push('--commit');
+  // （2026-10-10 加 `mode`：显式给了 mode ⇒ mode 赢 —— dry-run 是调用方**说出口**的排练意图，
+  //   不许被这里的默认悄悄翻回写。没给 mode ⇒ 与从前逐字相同。）
+  if (mode === 'apply') args.push('--commit');
+  else if (mode == null && commit) args.push('--commit');
+  if (evidenceRoot) args.push('--evidence-root', String(evidenceRoot));
   args.push(notify ? CHAIN_FLAGS.notify : CHAIN_FLAGS.notifyPrint);
   if (keepGoing) args.push(CHAIN_FLAGS.keepGoing);
   if (allowMissingPeer) args.push(CHAIN_FLAGS.allowMissingPeer);
@@ -408,6 +420,17 @@ export function buildJobPlan(options = {}) {
     // 默认开的另一个理由：它**只补缺的行**、已经是幂等的，正常那轮的动作是「什么都不做」。
     // 给 `--no-ensure-inquiry-rows` 让运维一键退回旧行为（退回＝那一天的行得有人先建好）。
     ensureInquiryRows = true,
+    // `mode`（2026-10-10 加，spec §5.1 统一入口）：解析后的 dry-run|apply，**可选**。
+    // **缺省 ⇒ 与今天逐字相同**（链与分批都无条件 --commit —— 定时任务的职责就是写下
+    // 今天的数据，这是本入口一直以来的默认）。给了 ⇒ mode 赢：dry-run 时链/分批都不带
+    // --commit（排练），**询单行骨架那一步也不带 --commit**（2026-10-10 对抗审查 C 项：
+    // dry-run 不得写飞书 —— 它不带 --commit 的行为是「只读核对不建行」）；apply 时与缺省
+    // 逐字相同。矛盾检测（--mode dry-run + --commit）在宿主（run-daily-job）用
+    // resolveRunMode 完成，本层只收已解析的结果。
+    mode = null,
+    // `evidenceRoot`（2026-10-10 加）：`--evidence-root` 的透传，只作用于分批那一步
+    // （run-batches 用它决定统一回执/manifest 的运行根目录）。非分批的链不认识这个参数。
+    evidenceRoot = null,
   } = options;
 
   // 「分批跑」是一个**显式**开关（提前算出来，因为「结论交给谁」在下面要用到它）。
@@ -457,7 +480,10 @@ export function buildJobPlan(options = {}) {
   // 而漂出来的症状是「链的告警承诺系统会自己续跑，而根本没有驻留进程」。
   const willHold = !batchMode && hold && Boolean(resolvedDate) && Boolean(artifactsDir);
 
-  const chainArgs = ['--date', dateInput, '--commit'];
+  const chainArgs = ['--date', dateInput];
+  // `--commit` 今天无条件给（定时任务的默认＝写）。`mode` 显式给了 ⇒ mode 赢：
+  // dry-run 不给（调用方说出口的排练意图不许被默认翻回写）；apply 与缺省逐字相同。
+  if (mode == null || mode === 'apply') chainArgs.push('--commit');
   // 默认把文案落进日志（有人翻得到、但没有任何东西被发出去）。
   chainArgs.push(notify ? CHAIN_FLAGS.notify : CHAIN_FLAGS.notifyPrint);
   for (const [key, flag] of Object.entries(CHAIN_FLAGS)) {
@@ -487,6 +513,7 @@ export function buildJobPlan(options = {}) {
       args: buildBatchChainArgs({
         dateInput, notify, keepGoing, allowMissingPeer, shops, batches, commit: true,
         autoRepair, autoRepairMaxRounds, deferAgentActionableAlert, hold, reloginOnWall,
+        mode, evidenceRoot,
       }),
       // 2026-10-10（1.7.19，㊳）：这句原先写「一律释放」，与 `releaseAfterBatch` 的新口径**不一致**了
       // —— 新口径是「链非 0 **且**这一批有修不动的店 ⇒ 不释放（留窗口给人）」。文案跟着改，
@@ -636,16 +663,24 @@ export function buildJobPlan(options = {}) {
   // 而回填是**可以事后补跑**的：把行建出来、再只重跑那几家就行（2026-10-06 的现场就是这么处理的）。
   // 反过来把它当闸门，代价是「因为一张飞书表少了一行，这一天的数据一条都不采」——
   // 那是把小问题升级成业务停摆。
+  //
+  // `--commit` 跟着 mode 走（2026-10-10 对抗审查 C 项，spec §5.2「dry-run 不得写飞书」）：
+  // mode='dry-run' ⇒ **不带** --commit —— ensure-inquiry-rows 不带 --commit 的行为是
+  // 「只读核对不建行」（收据 status=DRY_RUN_READY，一个字节都不写飞书，读它自己的代码确认过）；
+  // mode 缺省 / 'apply' ⇒ 照旧带 --commit（与今天逐字相同 —— 定时任务的职责是把今天该有的行准备好）。
   const ensureInquiryRowsStep = ensureInquiryRows
     ? {
       name: 'ensure-inquiry-rows',
       file: JOB_FILES.ensureInquiryRows,
       args: buildEnsureInquiryRowsArgs({
-        dateInput, shops, commit: true, evidence: artifactsDir ?? null,
+        dateInput, shops, commit: mode !== 'dry-run', evidence: artifactsDir ?? null,
       }),
       note: '把飞书「各店铺数据日报」里**这一天的行**补齐（只写「日期＋店铺」两列，其余是派生列）'
         + '—— 缺行时链的第 10 步回填会 8 家全挂，而根因隔着好几层；已经是幂等的：'
-        + '本来就齐的那一天它什么都不做',
+        + '本来就齐的那一天它什么都不做'
+        + (mode === 'dry-run'
+          ? '；**dry-run：不带 --commit，只核对不建行**（缺行也不写飞书，收据记 DRY_RUN_READY）'
+          : ''),
       // 不是闸门（理由见上面那段注释）：它失败时链照跑，缺口由链自己的失败分类
       //（`INQUIRY_ROW_MISSING`）如实报出来，而不是在这里截断整轮采集。
       blocking: false,

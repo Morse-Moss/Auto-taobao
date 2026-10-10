@@ -12,7 +12,7 @@ import path from 'node:path';
 
 import {
   JOB_FILES, LOGIN_PREFLIGHT_ARTIFACT, LOGIN_PREFLIGHT_FLAG, MERCHANT_LOGIN_SITE, buildJobPlan,
-  buildEnsureInquiryRowsArgs, buildLoginPreflightArgs, buildMerchantLoginGuardArgs, renderCommand, renderJobEntryCommand,
+  buildBatchChainArgs, buildEnsureInquiryRowsArgs, buildLoginPreflightArgs, buildMerchantLoginGuardArgs, renderCommand, renderJobEntryCommand,
 } from './daily-job-plan.mjs';
 import { collectingShopKeys } from './browser-ports.mjs';
 // 共享实例名单的单一来源：分批形态下第 ① 步只起它（见 2026-09-30 修的那个缺陷）。
@@ -312,6 +312,17 @@ test('补行骨架：`--commit` 必须显式给（漏了它＝静默地一行都
   assert.ok(stepOf(buildJobPlan({ batches: 5 }), 'ensure-inquiry-rows').args.includes('--commit'));
   // 参数构造器本身不许替调用方默认打开写入（它会真的写飞书）。
   assert.deepEqual(buildEnsureInquiryRowsArgs({ dateInput: 'yesterday' }), ['--date', 'yesterday']);
+});
+
+test('补行骨架：mode=dry-run ⇒ 不带 --commit（只核对不建行）；apply/缺省 ⇒ 照旧带', () => {
+  // dry-run 不得写飞书（spec §5.2）：ensure-inquiry-rows 不带 --commit 时是只读核对
+  // （收据记 DRY_RUN_READY、不报错、不落行），缺行留给 apply 那一趟补。
+  assert.equal(stepOf(buildJobPlan({ mode: 'dry-run' }), 'ensure-inquiry-rows').args.includes('--commit'), false);
+  assert.ok(stepOf(buildJobPlan({ mode: 'apply' }), 'ensure-inquiry-rows').args.includes('--commit'));
+  // 缺省路径（不带 mode 参数）必须与既有行为逐字一致——既有断言（本文件上方）守的就是这条。
+  assert.ok(stepOf(buildJobPlan(), 'ensure-inquiry-rows').args.includes('--commit'));
+  // 分批形态下 mode 同样生效（生产档 --batches + dry-run 也不许写飞书）。
+  assert.equal(stepOf(buildJobPlan({ batches: 5, mode: 'dry-run' }), 'ensure-inquiry-rows').args.includes('--commit'), false);
 });
 
 test('补行骨架：日期给**字面量**（与链同一口径）、证据目录给了才带、--shops 点名时才收窄', () => {
@@ -851,4 +862,74 @@ test('接线③：releaseAfterBatch 的「失败且有修不动的店 ⇒ 不释
   assert.match(src, /if \(!unfixable\.length\)/u, '没有修不动的店时要放行（判据取反写成一个 if，别漏）');
   assert.match(src, /holdsForRepair: true/u, '不释放那一档要显式标出「是为了留给人修」，否则下游分不清它与 --no-release');
   assert.match(src, /releaseOnFailure/u, '要有退回旧口径的逃生阀');
+});
+
+// ---------------------------------------------------------------------------
+// --mode / --evidence-root（2026-10-10 加，spec §5.1 统一入口的最小接线）。
+//
+// 钉四件事：
+//   ① mode 缺省 ⇒ 与今天**逐字相同**（链与分批都带 --commit —— 定时任务的默认是写，
+//      这是本入口一直以来的行为，本轮接线不许悄悄翻掉）；
+//   ② mode='apply' ⇒ 与缺省逐字相同（显式说 apply 与默认是同一件事）；
+//   ③ mode='dry-run' ⇒ 链与分批都**不带** --commit（调用方说出口的排练意图不许被
+//      默认翻回写 —— 这正是「推广日报被公共层隐式强制写入」那一类病的反面）；
+//   ④ evidenceRoot 只透传给分批那一步（run-batches 认它；非分批的链不认识这个参数）。
+// ---------------------------------------------------------------------------
+test('mode 缺省 ⇒ 链与分批都与今天逐字相同（默认＝写，不许被接线悄悄翻掉）', () => {
+  assert.ok(argsOf(buildJobPlan(), 'chain').includes('--commit'), '非分批：缺省必须仍带 --commit');
+  const batch = stepOf(buildJobPlan({ batches: 2 }), 'batch-chain');
+  assert.ok(batch.args.includes('--commit'), '分批：缺省必须仍带 --commit');
+});
+
+test('mode=apply ⇒ 与缺省逐字相同（显式 apply 就是默认那件事）', () => {
+  const plain = stepOf(buildJobPlan({ batches: 2 }), 'batch-chain').args;
+  const apply = stepOf(buildJobPlan({ batches: 2, mode: 'apply' }), 'batch-chain').args;
+  assert.deepEqual(apply, plain);
+  assert.ok(argsOf(buildJobPlan({ mode: 'apply' }), 'chain').includes('--commit'));
+});
+
+test('mode=dry-run ⇒ 链与分批都不带 --commit（排练意图不许被默认翻回写）', () => {
+  assert.equal(argsOf(buildJobPlan({ mode: 'dry-run' }), 'chain').includes('--commit'), false,
+    '非分批：dry-run 时链不许带 --commit');
+  const batch = stepOf(buildJobPlan({ batches: 2, mode: 'dry-run' }), 'batch-chain');
+  assert.equal(batch.args.includes('--commit'), false, '分批：dry-run 时 run-batches 不许收到 --commit');
+});
+
+test('evidenceRoot 只透传给分批那一步（非分批的链不认识这个参数）', () => {
+  const batch = stepOf(buildJobPlan({ batches: 2, evidenceRoot: 'D:/runs' }), 'batch-chain');
+  assert.ok(batch.args.includes('--evidence-root'), '分批：--evidence-root 必须传下去');
+  assert.equal(batch.args[batch.args.indexOf('--evidence-root') + 1], 'D:/runs');
+  assert.equal(argsOf(buildJobPlan({ evidenceRoot: 'D:/runs' }), 'chain').includes('--evidence-root'), false,
+    '非分批的链（run-multi-shop-day）不认这个参数，给了就是未知参数退 2');
+});
+
+test('buildBatchChainArgs：mode 给了 ⇒ mode 赢；没给 ⇒ 与旧 commit 参数逐字一致', () => {
+  // 没给 mode：旧的 commit 参数原样起作用（兼容旧调用方）。
+  assert.deepEqual(
+    buildBatchChainArgs({ dateInput: 'yesterday', batches: 2, commit: true }),
+    ['--date', 'yesterday', '--batch-size', '2', '--commit', '--notify-print'],
+  );
+  assert.deepEqual(
+    buildBatchChainArgs({ dateInput: 'yesterday', batches: 2, commit: false }),
+    ['--date', 'yesterday', '--batch-size', '2', '--notify-print'],
+  );
+  // 给了 mode：apply ⇒ --commit（与 commit:true 逐字相同）；dry-run ⇒ 不给（即使 commit:true）。
+  assert.deepEqual(
+    buildBatchChainArgs({ dateInput: 'yesterday', batches: 2, commit: false, mode: 'apply' }),
+    ['--date', 'yesterday', '--batch-size', '2', '--commit', '--notify-print'],
+  );
+  assert.deepEqual(
+    buildBatchChainArgs({ dateInput: 'yesterday', batches: 2, commit: true, mode: 'dry-run' }),
+    ['--date', 'yesterday', '--batch-size', '2', '--notify-print'],
+    'mode 赢 —— 调用方说出口的 dry-run 不许被旧默认翻回写',
+  );
+});
+
+test('接线（源码级）：run-daily-job 真的把 mode/evidenceRoot 透传进计划（漏传是静默的）', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts/run-daily-job.mjs'), 'utf8');
+  assert.match(src, /mode,\n\s+evidenceRoot: options\.evidenceRoot,/u,
+    '入口必须把解析后的 mode 与 evidenceRoot 交给 buildJobPlan');
+  assert.match(src, /resolveRunMode/u, '模式解析必须走 resolveRunMode（单一来源，不许在入口重写一套）');
+  assert.match(src, /'--commit'/u, '入口必须接受 --commit（兼容期）');
+  assert.match(src, /mode = 'apply'/u, '都没给时必须显式落 apply（维持今天的默认＝写）');
 });

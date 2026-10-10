@@ -1,0 +1,15 @@
+# 日报相关三条流程的统一早间调度（2026-10-10 定稿）
+
+| 顺序 | 流程 | 每日执行时间 | 命令（定时任务原样执行） | 与上一条的间隔 |
+|---|---|---|---|---|
+| 1 | 推广日报（promotion-daily） | 07:00 | `node scripts/run-batches.mjs --workflow promotion-daily --date yesterday --batch-size 5 --mode apply --notify` | — |
+| 2 | 商品数据（product-daily） | 10:00（维持原时段不动） | `node scripts/run-product-data-job.mjs --date yesterday --commit --notify --batches 5 --skip-promotion` | 3 小时 |
+| 3 | 日报（daily-report） | 11:30 | `node scripts/run-daily-job.mjs --date yesterday --batches 5 --notify --auto-repair --mode apply` | 1 小时 30 分 |
+
+时间安排理由（数据可用性与资源竞争双约束）：
+
+- 三条链共用店铺浏览器与商家浏览器，且商品/日报共用同一把全局运行锁（`runtime/.workflow-locks/merchant-automation.json`），必须串行；间隔按各链实测耗时（推广 3-7 分钟、商品 11-13 分钟、日报 25-60 分钟）留足冗余。
+- 推广日报放 07:00：三链里最短（3-7 分钟），放最前让昨日推广数据最早落表，人工上午即可核对。早间可用性侧证：日报链（含阿里妈妈推广步骤）在 07:39-09:54 有成功实证（`evidence/daily-job-2026-10-09`）。如实注明的风险：推广链自身历史真实运行均在 12:53 之后，且 07:00 在阿里妈妈推广 CSV 静止点（11:20 硬边界）之前 —— 首轮 1-2 天需人工核对写入值是否偏低（同日低值无法重推，需先删行）。
+- 商品数据维持 10:00：该时段已被每日定时任务长期验证，零风险不动。
+- 日报放 11:30：避开前两条的浏览器与登录态争用 —— 前两条最晚 10:15 左右收尾（商品 11-13 分钟），全局锁已释放；日报最坏 2.4 小时也在 14:00 前收尾，下午仍有充足时间人工处置；且此刻阿里妈妈 CSV 已过 11:20 静止点，日报链里的推广步骤取到的是静止数据。
+- 全部时间在配置处（WorkBuddy 自动化任务的 rrule）与本文件双重注明；调整时两处同步改。

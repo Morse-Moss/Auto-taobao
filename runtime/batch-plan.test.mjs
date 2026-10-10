@@ -14,6 +14,7 @@ import path from 'node:path';
 
 import { collectingShopKeys, shopBrowserKeys, SHOPS_NOT_COLLECTING_YET } from './browser-ports.mjs';
 import { SHOP_DEPARTMENTS } from './feishu-targets.mjs';
+import { WORKFLOW_CATALOG } from './workflow-catalog.mjs';
 import {
   BATCH_FILES, BATCH_SIZE_BY_MEMORY, DEFAULT_BATCH_SIZE, SHARED_INSTANCE_KEYS, assertBatchCoversRegistry,
   batchLoginArtifactName, batchableShopKeys, buildBatchSteps, buildLoginPreflightStep, buildSharedStep,
@@ -198,6 +199,45 @@ test('推广日报复用同一批次生命周期，但链入口切到推广编�
 test('未知 workflow 在批次计划阶段 fail-closed', () => {
   const batch = planBatches({ size: 1 }).batches[0];
   assert.throws(() => buildBatchSteps(batch, { workflow: 'promotion' }), /未知 workflow/u);
+});
+
+// ---------------------------------------------------------------------------
+// chainFile 注入口（2026-10-10 加，spec P2：run-batches 从 workflow-catalog 解析入口）。
+//
+// 钉三件事：① catalog 的 entry.batch 传进去之后，产出的 chain 步骤文件与它**逐字相等**
+// （「登记表说了算」是硬保证，不是注释里的承诺）；② 不传 chainFile 时行为与旧硬编码
+// **逐字相同**（旧调用方零改动）；③ 传入的 chainFile 优先于 workflow 分支的硬编码。
+// ---------------------------------------------------------------------------
+test('chainFile 注入：catalog 的 entry.batch 传入后，chain 步骤文件与它逐字相等', () => {
+  const batch = planBatches({ size: 1 }).batches[0];
+  for (const id of ['daily-report', 'promotion-daily']) {
+    const catalogFile = WORKFLOW_CATALOG[id].entry.batch;
+    const chain = buildBatchSteps(batch, { workflow: id, chainFile: catalogFile })
+      .find((step) => step.name === 'chain');
+    assert.equal(chain.file, catalogFile,
+      `[${id}] catalog 的 entry.batch 传入后 chain 步骤必须逐字用它 —— 否则「登记表是单一来源」是句空话`);
+  }
+});
+
+test('chainFile 缺省：行为与旧硬编码逐字相同（不传就回到今天的两条映射）', () => {
+  const batch = planBatches({ size: 1 }).batches[0];
+  assert.equal(
+    buildBatchSteps(batch, { workflow: 'daily-report' }).find((s) => s.name === 'chain').file,
+    BATCH_FILES.chain,
+    '缺省时 daily-report 仍用 BATCH_FILES.chain',
+  );
+  assert.equal(
+    buildBatchSteps(batch, { workflow: 'promotion-daily' }).find((s) => s.name === 'chain').file,
+    'skills/sycm-alimama-daily-report/scripts/run-promotion-sales1.mjs',
+    '缺省时 promotion-daily 仍用硬编码的 run-promotion-sales1.mjs',
+  );
+});
+
+test('chainFile 显式传入时优先于 workflow 分支的硬编码', () => {
+  const batch = planBatches({ size: 1 }).batches[0];
+  const chain = buildBatchSteps(batch, { workflow: 'daily-report', chainFile: 'skills/x/probe-chain.mjs' })
+    .find((s) => s.name === 'chain');
+  assert.equal(chain.file, 'skills/x/probe-chain.mjs', '给了 chainFile 就必须用它');
 });
 
 test('起与停作用在同一组目标上（同一个变量渲染，不给「起 3 家停 2 家」留缝）', () => {
