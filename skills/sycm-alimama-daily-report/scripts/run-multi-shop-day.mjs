@@ -171,7 +171,7 @@ export { expectedPagesForDailyBrowser, expectedPagesForShop };
 // （`classifyShopEscalation`），反向再 import 就成环。（口径与做法完全照 `expected-pages.mjs` 那次。）
 // **既 import 又 export**（不是 `export … from`）：本文件内部还在用 `resolveTargetDate`，
 // 而 `export … from` 只转不落地、不产生本地绑定 —— 只转的话那一处调用会直接 ReferenceError。
-import { resolveTargetDate, TARGET_DATE_LITERALS } from './date-picker.mjs';
+import { BLOCKED_BY_OVERLAY_TOKEN, resolveTargetDate, TARGET_DATE_LITERALS } from './date-picker.mjs';
 
 export { resolveTargetDate, TARGET_DATE_LITERALS };
 
@@ -281,6 +281,22 @@ export function shopFailureCause(record) {
   // 为什么必须单列：兜底那句的下一步是「这一轮不需要你在浏览器里做什么」，而这一类的下一步
   // 恰恰**相反** —— 要人去把那一层关掉（2026-09-26 早上科塔就是这么被报错的）。
   if (String(r.failureOutput ?? '').includes(OVERLAY_NOT_DISMISSED_TOKEN)) return 'PAGE_OBSTRUCTED';
+  // ── 2026-10-10 加第二条判据：**要点的东西被一个盖住视口的层挡住了** ──────────────
+  // 为什么必须有第二条（2026-10-09 盖文淘宝现场）：“优惠竞争力下降提醒”那个 antd 弹窗
+  // 盖住了「询单到付款」页签，`date-picker` 的 `aim()` 抛的是
+  // `point (492,277) is covered by SPAN.goods-subIndex-text` —— 一句看不出成因的话。
+  // 上面那条 `OVERLAY_NOT_DISMISSED` 只在**采集段走完"扫-选-点-回读"整套流程**时才写，
+  // 而 `date-picker` 那一步压根不走那套流程 ⇒ 失败落进兜底 `STAGE_FAILED` ⇒
+  // 候选成了 `REAPPLY_DATES`（设计上恒 `applied:false`，是个报告者）与 `RELOAD_PAGE`，
+  // **唯一对症的 `DISMISS_OVERLAYS` 根本没进菜单**（它在 `REPAIR_TABLE[PAGE_OBSTRUCTED]` 里）。
+  // 于是 `--auto-repair` 两轮全空、派 agent 也只能从同样的候选里挑 ⇒ 自动化对这类失败无解。
+  //
+  // 判据是**抛出侧写下的确定性标记**（`date-picker.BLOCKED_BY_OVERLAY_TOKEN`）：
+  // `aim()` 在抛错那一刻手里就有 `hit`，当场就能回答「挡住它的东西是不是一个盖住视口的层」。
+  // 刻意**不**在上层猜措辞、也不靠"感知层里有个像弹窗的层"这种间接推断 ——
+  // 前者措辞一改就静默失效，后者会把「页面上有个静态 dialog 容器」也算进来。
+  // 标记从 date-picker import，不抄字面量。
+  if (String(r.failureOutput ?? '').includes(BLOCKED_BY_OVERLAY_TOKEN)) return 'PAGE_OBSTRUCTED';
   // 2026-10-06 加：源表里**这一天的日期行一个都没有**（空态），不是「读不到」、更不是「数据是 0」。
   // 判据是**确定性标记**（`inquiry-core` 的 `describeDateRowGap` 只在「0 个日期行」这一种情况下写它），
   // 不是靠在这里猜措辞。
@@ -417,6 +433,10 @@ export function buildRepairRequest({ shopKey, stage = null, error = null, percep
     stateSummary: perception?.state
       ? { url: perception.state.url ?? null, title: perception.state.title ?? null,
         viewport: perception.state.viewport ?? null,
+        // 2026-10-10：`overlayCount` 只说明「页面上有几个像弹窗的东西」，推不出「它正挡着事」。
+        // 那个「正不正挡着」的结论**不在这里另算**：它是 `shopFailureCause` 那一条
+        // `BLOCKED_BY_OVERLAY` 判据的活儿，来源是 `date-picker.aim()` 抛错那一刻的证据，
+        // 也跟着 `cause` 一起进了这张单子 —— 在这里再数一遍层只会多出第二套判据。
         overlayCount: (perception.state.dialogs ?? []).length }
       : null,
     candidates: plan.candidates,

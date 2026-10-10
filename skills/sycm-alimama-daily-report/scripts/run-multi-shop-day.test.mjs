@@ -17,7 +17,7 @@ import { INQUIRY_ROW_MISSING_TOKEN, SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inqui
 import { triageFailures } from './remediation-table.mjs';
 import { WAITING_OPERATOR_ACCOUNT_SHOPS, waitingOperatorAccountRecord } from '../../../runtime/daily-report-shop-gates.mjs';
 import { planRepair } from './repair-actions.mjs';
-import { siteAdapter } from './date-picker.mjs';
+import { BLOCKED_BY_OVERLAY_TOKEN, siteAdapter } from './date-picker.mjs';
 import { IDENTITY_SHOP_HEADER_VERIFIED_SHOPS, shopIdentity } from './shop-identities.mjs';
 import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, loginWallOf, makeLoginWallFinder, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, roundCauseOf, roundMissingPagesOf, shopFailureCause, stageLabelOf, stageNumber, stageSelected, withSourcePaths } from './run-multi-shop-day.mjs';
 
@@ -707,6 +707,40 @@ test('告警：PAGE_OBSTRUCTED 的判据是那个**机器标记**，不是措辞
     `SHOP_FUNC_NO_PERMISSION\n${OVERLAY_NOT_DISMISSED_TOKEN}\n`)), 'SHOP_FUNC_NO_PERMISSION');
   // 人在浏览器里做的事只对这两类有意义（其余类别不驻留、不续跑）。
   assert.deepEqual([...HUMAN_REQUIRED_CAUSES], ['NEEDS_LOGIN', 'PAGE_OBSTRUCTED']);
+});
+
+// 2026-10-10 加：`PAGE_OBSTRUCTED` 的**第二条**判据 —— 「要点的东西被一个盖住视口的层挡住了」。
+//
+// 为什么必须与上面那条分开守：上面那条读的是 `OVERLAY_NOT_DISMISSED`（只有采集段走完
+// 「扫-选-点-回读」整套流程才写），而 `date-picker` 那一步压根不走那套流程 ——
+// 它抛的是 `aim()` 里那句 `point (x,y) is covered by …`。两条判据的**产出方不是同一个**，
+// 所以一条绿不代表另一条接上了（本仓吃过多次「函数级用例全绿 ≠ 接线接上了」）。
+test('告警：PAGE_OBSTRUCTED 的第二条判据 ＝ date-picker 写下的遮挡标记（2026-10-09 盖文淘宝现场）', () => {
+  // 现场逐字复刻：`aim()` 在「命中了别人、且往上找到一个盖住 ≥85% 视口的 fixed/absolute 层」时
+  // 把标记拼进原错误串（`BLOCKED_BY_OVERLAY_TOKEN` 从 date-picker import，不写字面量 ——
+  // 写死的话，改成别的名字那天样例仍然「是」那一类，而分类器已经不认得它了）。
+  assert.equal(shopFailureCause(failedAt('sycm-date',
+    `Error: sycm tab 询单到付款: 定位重试 16 次仍失败（每次间隔 1200ms）；lastError=`
+    + `HTTP 400 Error: sycm tab 询单到付款: point (492,277) is covered by SPAN.goods-subIndex-text`
+    + ` [${BLOCKED_BY_OVERLAY_TOKEN} 遮挡层=DIV.ant-modal-wrap]`)),
+  'PAGE_OBSTRUCTED',
+  '这一类的下一步是**去把那一层关掉**（DISMISS_OVERLAYS 就在 PAGE_OBSTRUCTED 的候选里），'
+    + '归进兜底 STAGE_FAILED 就等于把唯一对症的动作挡在菜单外');
+  // 反面：**没有**那个标记时（普通的坐标遮挡、竞态、点了别的元素）必须落回兜底 ——
+  // 否则每一次 `is covered by` 都会被报成「去关弹窗」，而多数是竞态、重试就好。
+  assert.equal(shopFailureCause(failedAt('sycm-date',
+    'Error: sycm tab 询单到付款: point (492,277) is covered by TD')), 'STAGE_FAILED');
+  // 它也**不许**盖过 SHOP_FUNC_NO_PERMISSION（那一档决定「要不要去平台」，优先级恒最高）。
+  assert.equal(shopFailureCause(failedAt('sycm-date',
+    `SHOP_FUNC_NO_PERMISSION\n${BLOCKED_BY_OVERLAY_TOKEN}\n`)), 'SHOP_FUNC_NO_PERMISSION');
+  // 判据必须**引用常量**（驱动 import 它）—— 驱动里出现字面量就是没引用常量，改名那天会静默失效。
+  const code = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8')
+    .replace(/^\s*\/\/.*$/gmu, '');
+  assert.equal(/'BLOCKED_BY_OVERLAY'/.test(code), false,
+    '驱动里出现了字面量 ⇒ 该处没引用常量（症状是同一种失败又开始落兜底，而告警照发）');
+  assert.match(code, /\.includes\(BLOCKED_BY_OVERLAY_TOKEN\)/u, '判据要真的引用那个常量');
+  // 它进 HUMAN_REQUIRED_CAUSES 那一集（与上面那条共用 PAGE_OBSTRUCTED），所以驻留/续跑对它成立。
+  assert.equal(HUMAN_REQUIRED_CAUSES.includes('PAGE_OBSTRUCTED'), true);
 });
 
 test('告警：SOURCE_NO_ROW_FOR_DATE 的判据是那个**机器标记**，不是措辞猜测', () => {

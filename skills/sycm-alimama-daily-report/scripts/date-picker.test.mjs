@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import {
   applyDate,
-  assertAlimamaState, buildAlimamaUrl, extractIsoDates, isFuncPermissionDenied, isSingleDaySelection,
+  assertAlimamaState, BLOCKED_BY_OVERLAY_TOKEN, buildAlimamaUrl, extractIsoDates, isFuncPermissionDenied, isSingleDaySelection,
   needsStaleReload, SHOP_FUNC_NO_PERMISSION,
   resolveAppliedDate, resolveDateMode, resolveTarget, resolveTargetDate, selectDayHits, shiftIso, shiftMonth,
   siteAdapter, TARGET_DATE_LITERALS,
@@ -572,12 +572,168 @@ test('目标日：认不出来的取值当场抛错并列出允许的写法（�
 
 test('接线（源码级）：驱动只**转出**，不再自己定义（两处定义 ＝ 等着漂开）', () => {
   const driver = readFileSync(path.join(import.meta.dirname, 'run-multi-shop-day.mjs'), 'utf8');
-  assert.match(driver, /import \{ resolveTargetDate, TARGET_DATE_LITERALS \} from '\.\/date-picker\.mjs';/u,
+  // 只钉「从叶子里取」这件事本身，不钉括号里恰好是哪几个名字 ——
+  // 2026-10-10：叶子上多导出了一个 `BLOCKED_BY_OVERLAY_TOKEN`（遮挡归因用），
+  // 这条守卫当时写成逐字匹配整行 ⇒ 加一个 import 名字就红，红的原因与它要守的东西无关。
+  // 「哪几个名字」由**每个名字自己的用例**去守（这里是下面那两条 + 各自的出口用例）。
+  assert.match(driver, /import \{[^}]*\bresolveTargetDate\b[^}]*\} from '\.\/date-picker\.mjs';/u,
     '驱动没有从叶子里 import ⇒ 要么定义又长回来了、要么转出口断了');
+  assert.match(driver, /import \{[^}]*\bTARGET_DATE_LITERALS\b[^}]*\} from '\.\/date-picker\.mjs';/u,
+    'TARGET_DATE_LITERALS 也要从叶子里取');
   assert.match(driver, /export \{ resolveTargetDate, TARGET_DATE_LITERALS \};/u,
     '转出口没了 ⇒ 依赖「resolveTargetDate 来自驱动」的调用方会当场断');
   // 只扫**语句形态**：注释里必然要写清「搬过家、为什么搬」，那种出现是应该保留的。
   const code = driver.replace(/^\s*\/\/.*$/gmu, '');
   assert.equal(/export function resolveTargetDate/u.test(code), false, '驱动里又长出一份实现');
   assert.equal(/export const TARGET_DATE_LITERALS = /u.test(code), false, '驱动里又长出一份字面量表');
+});
+
+// ------------------------------------- 「被一个盖住视口的层挡住」的机器标记（2026-10-10）
+//
+// 现场：2026-10-09 盖文淘宝，`date-picker` 的 `aim()` 抛
+// `point (492,277) is covered by SPAN.goods-subIndex-text` —— 一句看不出成因的话；
+// 链的 `shopFailureCause` 因此归进兜底 `STAGE_FAILED`，候选菜单只剩
+// `REAPPLY_DATES`（设计上恒 applied:false）与 `RELOAD_PAGE`，
+// 唯一对症的 `DISMISS_OVERLAYS` 根本没进菜单 ⇒ `--auto-repair` 两轮全空、派 agent 也修不了。
+//
+// 这一节钉三件事：
+//   ① 名字本身是跨文件的约定（驱动 import 它来分档），别改名、别在驱动里另写字面量；
+//   ② 判据必须由**抛出侧**在那一刻下（`aim()` 手里有 `hit`），不许上层猜措辞；
+//   ③ 那个 0.85 的门槛与 `collect-core.OVERLAY_MIN_COVERAGE` **同源**（复制的数值不是 import，
+//      因为 `SYCM_PRELUDE` 是注入页面的字符串）—— 所以必须有一条守卫把两个数字钉成相等。
+
+test('遮挡标记：名字是跨文件约定、且驱动 import 它而不是另写字面量', () => {
+  assert.equal(BLOCKED_BY_OVERLAY_TOKEN, 'BLOCKED_BY_OVERLAY', '这个名字被驱动用来分档，改名会让那一类静默回到兜底');
+  const driver = readFileSync(path.join(import.meta.dirname, 'run-multi-shop-day.mjs'), 'utf8');
+  assert.match(driver, /import \{[^}]*\bBLOCKED_BY_OVERLAY_TOKEN\b[^}]*\} from '\.\/date-picker\.mjs';/u,
+    '驱动要从叶子里 import 这个名字 —— 不 import 就是 ReferenceError；抄字面量就是等着漂开');
+  // 驱动里只许出现**一次** `'BLOCKED_BY_OVERLAY'` 这种字符串字面量（就是它自己的用例），
+  // 绝不许出现在 `shopFailureCause` 的判据行里 —— 那一行必须引用常量。
+  const code = driver.replace(/^\s*\/\/.*$/gmu, '');
+  assert.equal(/'BLOCKED_BY_OVERLAY'/.test(code), false,
+    '驱动里出现了字面量 ⇒ 该处没引用常量（改名那天会静默失效，症状是同一种失败又开始落兜底）');
+  assert.match(code, /\.includes\(BLOCKED_BY_OVERLAY_TOKEN\)/u, '判据要真的引用那个常量');
+});
+
+test('遮挡标记：判定在**抛出侧**（aim 那一刻），且门槛与 collect-core 的 0.85 相等', () => {
+  const source = readFileSync(path.join(import.meta.dirname, 'date-picker.mjs'), 'utf8');
+  // ① 判定写在 aim 里、且紧挨着「命中了别人」那一步（不是事后另起一处猜）。
+  const aimStart = source.indexOf('const aim = (el, label) => {');
+  assert.ok(aimStart > 0, '找不到 aim()（改代码时请同步这条判据）');
+  const aimEnd = source.indexOf('\n  };\n', aimStart);
+  const aimBody = source.slice(aimStart, aimEnd);
+  assert.match(aimBody, /document\.elementFromPoint\(x, y\)/u, 'aim 里要拿命中点');
+  assert.match(aimBody, /\bBLOCKED_BY_OVERLAY_TOKEN\b/u, '标记要在 aim 里拼进错误串 —— 只有这里手里有 hit');
+  // ② 向上找祖先、按「宽高都盖住视口」判，而不是「有没有 dialog 这个标签」。
+  assert.match(aimBody, /node\.parentElement/u, '要从命中点往上找，才判得出「盖住整屏的层」');
+  assert.match(aimBody, /position !== 'fixed' && cs\.position !== 'absolute'/u,
+    '只认 fixed／absolute 的层 —— 静态容器不该被算成遮挡');
+  // ③ 门槛同源：本文件的 COVERAGE 必须与 collect-core 的 OVERLAY_MIN_COVERAGE 逐字相等。
+  const coreSource = readFileSync(path.join(import.meta.dirname, 'collect-core.mjs'), 'utf8');
+  const coreMatch = coreSource.match(/OVERLAY_MIN_COVERAGE\s*=\s*([0-9.]+)/u);
+  assert.ok(coreMatch, '找不到 collect-core 的 OVERLAY_MIN_COVERAGE');
+  const mineMatch = aimBody.match(/const COVERAGE = ([0-9.]+)/u);
+  assert.ok(mineMatch, '找不到 date-picker 侧的 COVERAGE 常数');
+  assert.equal(mineMatch[1], coreMatch[1],
+    `两处门槛必须相等（date-picker=${mineMatch[1]} collect-core=${coreMatch[1]}）—— `
+    + '漂开就会出现「这边说被弹窗挡住、那边扫不出弹窗」的自相矛盾');
+});
+
+
+// 行为级：**真的把注入页面的那段脚本跑一遍**（假 DOM），而不是只看它长什么样。
+//
+// 为什么必须补这一条（突变验证抓出来的）：上面两条全是源码级 —— 它们能证明「代码里有这句话」，
+// 但证明不了「这句话真的会被执行到、且真的把标记拼进错误串」。实测把 `blocker ? … : …` 的
+// 条件改成恒 `false`（等于标记永远不写），上面两条**照样全绿** —— 那正是「判据写成装饰」的形态。
+//
+// 做法：把 `SYCM_PRELUDE` 这段模板串从源码里取出来（它内部没有反引号、也没有 `${}` 插值，
+// 只有 `\\s` 这种正则转义，所以取出来原样即是一段合法 JS），在一个假的 window/document 上
+// `new Function` 跑一遍，再调它里面的 `aim()`，断言抛出的错误串里带不带标记。
+//
+// 假 DOM 只实现 aim() 真正用到的几个口子（getBoundingClientRect / getComputedStyle /
+// elementFromPoint / parentElement / scrollIntoView），够跑这条判据即可 —— 不引 jsdom 这种重依赖。
+function loadSycmPrelude() {
+  const src = readFileSync(path.join(import.meta.dirname, 'date-picker.mjs'), 'utf8');
+  const start = src.indexOf('const SYCM_PRELUDE = `');
+  assert.ok(start > 0, '找不到 SYCM_PRELUDE（改代码时请同步这条判据）');
+  const open = src.indexOf('`', start);
+  const close = src.indexOf('`;\n', open);
+  assert.ok(close > open, '找不到 SYCM_PRELUDE 模板串的结尾');
+  // 源码切片拿到的是**未求值**的模板原文 —— 里面若写着 `${X}` 这里仍是字面 `${X}`，
+  // 而运行期注入页面时它已被替换成 X 的值。所以这里要把插值**照着做一遍**，
+  // 否则「标记是不是真的进了字符串」这条最关键的判据会被一个假的 `${…}` 骗过去。
+  // 只处理这一处插值（prelude 里当前只有它一处），并断言它确实被处理到了 ——
+  // 将来 prelude 里多了别的插值，这条断言会提醒同步（而不是静默漏掉）。
+  const raw = src.slice(open + 1, close);
+  const withToken = raw.replace(/\$\{BLOCKED_BY_OVERLAY_TOKEN\}/gu, BLOCKED_BY_OVERLAY_TOKEN);
+  assert.notEqual(withToken, raw, 'prelude 里没有 ${BLOCKED_BY_OVERLAY_TOKEN} 插值 —— '
+    + '要么标记没被插进页面字符串（运行期会是 ReferenceError），要么写法变了、这条用例该同步');
+  assert.equal(/\$\{/u.test(withToken), false, 'prelude 里还有别的未处理插值 —— 请同步 loadSycmPrelude');
+  return withToken;
+}
+
+// 造一个假 DOM 环境：一个「页签」（小矩形）、一个遮挡层（可大可小、可 fixed 可 static）。
+function fakeSycmDom({ blockerCovers, blockerPosition = 'absolute', hitIsSelf = false } = {}) {
+  const VW = 1506; const VH = 642;
+  const mk = (tag, cls, rect, style) => {
+    const node = {
+      tagName: tag, className: cls, textContent: '', style,
+      getBoundingClientRect: () => rect,
+      scrollIntoView() {},
+      contains: (n) => n === node,
+      _parent: null,
+    };
+    Object.defineProperty(node, 'parentElement', { get() { return this._parent; } });
+    return node;
+  };
+  const tab = mk('DIV', 'ant-tabs-tab', { x: 480, y: 270, width: 30, height: 16, left: 480, top: 270, right: 510, bottom: 286 },
+    { visibility: 'visible', display: 'block', opacity: '1', position: 'static' });
+  const blockerRect = blockerCovers
+    ? { x: 0, y: 0, width: 1502, height: 642, left: 0, top: 0, right: 1502, bottom: 642 }
+    : { x: 470, y: 265, width: 50, height: 26, left: 470, top: 265, right: 520, bottom: 291 };
+  const blocker = mk('DIV', 'ant-modal-wrap', blockerRect,
+    { visibility: 'visible', display: 'block', opacity: '1', position: blockerPosition });
+  const bodyNode = mk('BODY', '', { x: 0, y: 0, width: VW, height: VH, left: 0, top: 0, right: VW, bottom: VH },
+    { visibility: 'visible', display: 'block', opacity: '1', position: 'static' });
+  tab._parent = blocker; // 命中点往上找会先碰到 blocker
+  const win = { innerWidth: VW, innerHeight: VH };
+  const doc = { body: bodyNode, elementFromPoint: () => (hitIsSelf ? tab : blocker) };
+  const getComputedStyle = (n) => n.style;
+  return { tab, blocker, win, doc, getComputedStyle };
+}
+
+/** 把 prelude 跑起来，调它的 aim()，返回「抛出的错误消息」或「成功」的坐标。 */
+function callAim({ blockerCovers, blockerPosition, hitIsSelf }) {
+  const prelude = loadSycmPrelude();
+  const env = fakeSycmDom({ blockerCovers, blockerPosition, hitIsSelf });
+  const fn = new Function('window', 'document', 'getComputedStyle', `${prelude}
+    return aim;`);
+  const aim = fn(env.win, env.doc, env.getComputedStyle);
+  try {
+    return { ok: true, point: aim(env.tab, 'sycm tab 询单到付款') };
+  } catch (error) {
+    return { ok: false, message: String(error?.message ?? error) };
+  }
+}
+
+test('遮挡标记（行为级）：遮挡层盖住视口 ⇒ aim 的报错里真的带上了标记', () => {
+  const got = callAim({ blockerCovers: true, blockPosition: 'absolute', hitIsSelf: false });
+  assert.equal(got.ok, false, '被遮挡时必须抛错（这一条测的就是那句话）');
+  assert.match(got.message, /is covered by DIV\.ant-modal-wrap/u, '照旧要报出遮挡物是谁（旧措辞不许丢）');
+  assert.match(got.message, new RegExp(`\\[${BLOCKED_BY_OVERLAY_TOKEN} 遮挡层=DIV\\.ant-modal-wrap\\]`, 'u'),
+    '遮挡层盖住视口时要拼上标记 + 遮挡层是谁 —— 链靠它把这一类归成 PAGE_OBSTRUCTED');
+});
+
+test('遮挡标记（行为级）：遮挡物**不**盖视口 ⇒ 报错里不带标记（照旧只报遮挡物是谁）', () => {
+  const got = callAim({ blockerCovers: false, hitIsSelf: false });
+  assert.equal(got.ok, false, '被遮挡时仍然抛错');
+  assert.match(got.message, /is covered by DIV\.ant-modal-wrap/u);
+  assert.equal(got.message.includes(BLOCKED_BY_OVERLAY_TOKEN), false,
+    '普通遮挡（坐标竞态、点了别的元素）不许被报成「去关弹窗」—— 归错档会让收信人白跑一趟');
+});
+
+test('遮挡标记（行为级）：点到的是自己 ⇒ 顺利返回坐标，一个字都不多说', () => {
+  const got = callAim({ blockerCovers: true, hitIsSelf: true });
+  assert.equal(got.ok, true, '命中自己的时候本来就不该抛错（这一条是给上面两条做对照的）');
+  assert.deepEqual(got.point, [495, 278], '返回的是元素中心点');
 });

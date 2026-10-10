@@ -242,6 +242,34 @@ const READ_EXPRESSIONS = Object.freeze({
   })()`,
 });
 
+// 「要点的那个东西被一个**盖住视口的层**挡住了」这件事的**机器标记**（2026-10-10 加）。
+//
+// ⚠️ 声明位置：必须**在 `SYCM_PRELUDE` 之前**。理由见下面 `aim()` 里那一处 ——
+// 那个标记要**插值**进注入页面的字符串（`${BLOCKED_BY_OVERLAY_TOKEN}`），而模板串是在
+// 模块顶层、按书写顺序求值的 ⇒ 常量写在它后面会踩 TDZ（`Cannot access before initialization`）。
+// 这不是排版洁癖：这一条正是被行为级用例抓出来的（原先把常量写在文件后半，且**误以为是**变量引用）。
+//
+// 为什么单给它一个名字（2026-10-09 盖文淘宝现场）：“优惠竞争力下降提醒”那个 antd 弹窗
+// 盖住了「询单到付款」页签，`aim()` 抛的是 `sycm tab 询单到付款: point (492,277) is covered by
+// SPAN.goods-subIndex-text` —— 一句**看不出成因**的话。链的 `shopFailureCause` 因此把它归进
+// 兜底 `STAGE_FAILED`，候选菜单成了 `REAPPLY_DATES`（设计上恒 `applied:false`，是个报告者）
+// 与 `RELOAD_PAGE`，两个都不是这把锁的钥匙；**唯一对症的 `DISMISS_OVERLAYS` 根本没进菜单**
+// （它在 `REPAIR_TABLE[PAGE_OBSTRUCTED]` 里，而归因没走到那一档）。
+// 结果：`--auto-repair` 两轮全空、派 agent 也只能从同样的候选里挑 ⇒ 自动化对这类失败**无解**，
+// 每次都只能等人。这与 `SHOP_FUNC_NO_PERMISSION` 是同一条教训的第二次：
+// **没有名字的失败会被归错档，而归错档的代价是「要做的事完全不同」。**
+//
+// 判据必须是**确定性的**，不能靠上层猜措辞（措辞一改判据就静默失效，而失效的样子是
+// 「归到兜底」，看起来与"本来就没弹窗"一模一样）。所以判定放在**抛出侧** ——
+// `aim()` 在抛错那一刻手里就有 `hit`（谁挡住了），当场就能回答「它是不是一个盖住视口的层」。
+//
+// ⚠️ 与 `collect-core.OVERLAY_MIN_COVERAGE` 是**同一个门槛**（0.85），有意为之：
+// 两处必须同源，否则会出现「这边说是弹窗、那边扫不出弹窗」的自相矛盾。
+// 这里写的是**复制的数值**而不是 import —— `SYCM_PRELUDE` 是注入到页面里的字符串，
+// 不能 import；但 `date-picker.test.mjs` 有一条守卫把这两个数值钉成相等；另有一条**行为级**
+// 用例真跑这段 prelude，钉住「标记真的会被拼进错误串」。
+export const BLOCKED_BY_OVERLAY_TOKEN = 'BLOCKED_BY_OVERLAY';
+
 // 页面内共用前置。三个实测坑都在这里一次性处理：
 //   1. innerText 对「1天/按7天为周期/按30天为周期」返回空串（textContent 正常）→ 一律用 textContent；
 //   2. 元素可能落在视口外（实测视口 1031x667，自定义按钮在 x=1035）→ 真实鼠标点击会静默落空，
@@ -272,8 +300,28 @@ const SYCM_PRELUDE = `
     const [x, y] = pointOf(el);
     const hit = document.elementFromPoint(x, y);
     if (!hit || !(hit === el || el.contains(hit) || hit.contains(el))) {
-      throw new Error(label + ': point (' + x + ',' + y + ') is covered by '
-        + (hit ? hit.tagName + '.' + String(hit.className || '').slice(0, 40) : 'nothing'));
+      // 2026-10-10：命中别人时，**当场判定挡住它的东西是不是一个盖住视口的层**。
+      // 是的话在报错里带上确定性标记，让链能把这一类归成 PAGE_OBSTRUCTED
+      // （详见本文件 BLOCKED_BY_OVERLAY_TOKEN 的注释：归错档的代价是"唯一对症的动作进不了菜单"）。
+      // 判据与 collect-core.overlayScanExpression 的几何那条**同源**：从命中点往上找，
+      // 谁盖住了视口（宽高都 ≥ 视口的 0.85）就算谁。找不到 ⇒ 照旧只报遮挡物是谁（不改旧措辞）。
+      const COVERAGE = 0.85;
+      const vw = window.innerWidth, vh = window.innerHeight;
+      let blocker = null;
+      for (let node = hit; node && node !== document.body; node = node.parentElement) {
+        const cs = getComputedStyle(node);
+        if (cs.position !== 'fixed' && cs.position !== 'absolute') continue;
+        const b = node.getBoundingClientRect();
+        if (b.width < vw * COVERAGE || b.height < vh * COVERAGE) continue;
+        blocker = node;
+        break;
+      }
+      const covered = (hit ? hit.tagName + '.' + String(hit.className || '').slice(0, 40) : 'nothing');
+      throw new Error(label + ': point (' + x + ',' + y + ') is covered by ' + covered
+        + (blocker
+          ? ' [${BLOCKED_BY_OVERLAY_TOKEN} 遮挡层='
+            + blocker.tagName + '.' + String(blocker.className || '').slice(0, 60) + ']'
+          : ''));
     }
     return [x, y];
   };

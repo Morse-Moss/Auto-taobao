@@ -51,6 +51,10 @@ import {
 import {
   HOLD_EXIT, JOB_FILES, LOGIN_PREFLIGHT_FLAG, buildLoginPreflightArgs, renderCommand,
 } from '../runtime/daily-job-plan.mjs';
+// 「脚本自修没救回来、且确实需要人看现场」那几家 —— 判据的**唯一来源**在 runtime 侧的
+// `unfixableShopsOf`。这里只调用、不重算：重算一次就是第二个判据，迟早与驻留那边漂开
+// （而漂开的症状是静默的 —— 驻留说「要留现场」，释放那边说「没失败」，两边各自都"对"）。
+import { unfixableShopsOf } from '../runtime/hold-and-resume-plan.mjs';
 import { versionLineSafe } from '../runtime/version.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
 
@@ -67,6 +71,12 @@ function parseArgs(argv) {
     // —— 生产跑的正是 `--batches`，不转发等于「命令行给了它、每一批的链却都没收到」。
     reloginOnWall: false,
     release: true,
+    // `--release-on-failure`（2026-10-10 加）：**失败时也照旧释放**。
+    //
+    // 默认已经改成「失败且还有要人看现场的店 ⇒ 不释放、转驻留」。这个开关是**逃生口**：
+    // 有人需要用旧口径（比如机器内存紧张、或那一轮的失败已被确认无需现场）。
+    // 与 `--no-hold` 一样只在**关掉新行为**时给，默认值就是新行为。
+    releaseOnFailure: false,
     // `hold` **默认开**（2026-10-06 加，与定时链 `run-daily-job.mjs` 的默认值一致）。
     //
     // 为什么这一档必须有它：生产跑的正是 `--batches`，而 2026-10-05 那一轮 8 家店一家没跑、
@@ -85,6 +95,7 @@ function parseArgs(argv) {
     else if (arg === '--notify') options.notify = true;
     else if (arg === '--notify-print') options.notifyPrint = true;
     else if (arg === '--no-release') options.release = false;
+    else if (arg === '--release-on-failure') options.releaseOnFailure = true;
     else if (arg === '--no-hold') options.hold = false;
     else if (arg === '--auto-repair') options.autoRepair = true;
     // ⑨b（2026-09-29）：分批形态下**必须转发**，否则这个开关在「跑完释放」的生产形态里
@@ -110,9 +121,9 @@ function parseArgs(argv) {
     else if (arg === '--help' || arg === '-h') options.help = true;
     else {
       return {
-        error: `未知参数 ${arg}（可用：--print --commit --no-release --no-hold --batch-size N --date <日> `
+        error: `未知参数 ${arg}（可用：--print --commit --no-release --release-on-failure --no-hold --batch-size N --date <日> `
           + '--shops a,b --workflow daily-report|promotion-daily --keep-going --allow-missing-peer --auto-repair --auto-repair-max-rounds N '
-          + '--defer-agent-actionable-alert --notify|--notify-print --logs <目录>）',
+          + '--relogin-on-wall --defer-agent-actionable-alert --notify|--notify-print --logs <目录>）',
       };
     }
   }
@@ -152,6 +163,37 @@ function readBatchRoundBlock(file) {
     return batchRoundBlockOf(JSON.parse(fs.readFileSync(file, 'utf8')));
   } catch {
     return null;
+  }
+}
+
+/** 读一批的 summary.json（原始对象）。读不到返回 null —— 「读不到」不构成任何结论。 */
+function readBatchSummary(file) {
+  if (!fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 这一批里「脚本自修没救回来、且确实需要人/agent 看现场」的那几家（2026-10-10 加）。
+ *
+ * 判据**不在这里发明**：直接调 runtime 侧的 `unfixableShopsOf` —— 它同时是
+ * `hold-and-resume.mjs` 的判据来源。两处用同一个函数是**有意**的：
+ *   · 释放那边说「不释放（因为 X 家要人看）」，驻留那边说「不用驻留（因为一家都不需要人）」，
+ *     这两句话同时出现就是自相矛盾，而它们本可以用同一个判据避免。
+ * 读不到 summary ⇒ 返回空数组 ⇒ 行为回到旧口径（照旧释放）。理由与
+ * `readBatchRoundBlock` 逐字相同：「读不到」不构成「有失败」的证据，而提前不释放
+ * 会留下一批没人需要看的空窗口。
+ */
+function batchUnfixableShops(file) {
+  const summary = readBatchSummary(file);
+  if (!summary) return [];
+  try {
+    return unfixableShopsOf(summary);
+  } catch {
+    return [];
   }
 }
 
@@ -328,11 +370,25 @@ async function main(argv) {
     for (const step of steps) {
       // 释放那一段：**先把判决算出来**，不该释放时连 stop 都不执行 ——
       // 执行了就会在日志里留下一份「将停谁」的计划，事后翻日志的人会以为释放发生过。
-      // 判决所需的唯一输入是链的退出码，而它在 stop 之前就已经有了。
+      // 判决所需的输入是链的退出码 + 本批 summary 里「有没有要人看现场的失败」，
+      // 两者在 stop 之前都已经有了。
+      // ⚠️ 2026-10-10：`unfixableShops` 只影响**失败时**那一档；成功时 releaseAfterBatch
+      // 在读它之前就已经返回「释放」⇒ 全绿路径的内存行为逐字不变（这是有意的：
+      // 定时链在正常情况下不该因为这条改动多留一个窗口）。
       if (step.name === 'stop') {
+        const batchSummaryPath = path.join(evidenceRoot, `b${batch.index}`, 'summary.json');
+        const unfixableShops = round.chainStatus === 0 ? [] : batchUnfixableShops(batchSummaryPath);
         round.decision = options.release === false
           ? { release: false, why: '命令行给了 --no-release：整轮都不释放' }
-          : releaseAfterBatch({ chainStatus: round.chainStatus });
+          : releaseAfterBatch({
+            chainStatus: round.chainStatus,
+            unfixableShops,
+            releaseOnFailure: options.releaseOnFailure === true,
+          });
+        if (unfixableShops.length) {
+          log(`[批次] 这一批里「脚本自修没救回来」的：${unfixableShops.join('、')}`
+            + ` —— ${round.decision.release ? '但仍释放' : '因此**不释放**，留给修复 agent／人'}`);
+        }
         if (round.decision.release === false) {
           log(`--- stop：跳过 —— ${round.decision.why}`);
           round.steps.stop = 'skipped';
@@ -383,10 +439,15 @@ async function main(argv) {
 
     if (round.chainStatus !== 0) hardFail += 1;
     if (round.decision?.release === false && round.steps.stop === 'skipped') {
-      // 只有 `--no-release` 才走得到这里。说清是「不主动释放」，**不是**「窗口留着」——
-      // 后一句在非 hold 形态下是做不到的（见 batch-plan.mjs 的 releaseAfterBatch）。
+      // 走到这里有两档：`--no-release`（整轮不释放）与新的「本批有要人看现场的失败」。
+      // 无论哪一档都要说清「不主动释放」**不等于**「窗口一定活着」—— 真正把它留住的是
+      // 下面那一步转驻留（不结束这一轮）；只不释放、又马上结束命令的话，
+      // 宿主照样回收进程树，而日志里那句「不释放」会让人以为现场还在。这个假绿的代价
+      // 正是 2026-10-10 用户抓到的那件事（「你关了，人来了也不知道是什么问题」）。
       log(`[批次] 这一批不主动释放：${round.decision.why}；`
-        + '注意这不等于窗口还在（start-all 起完就退，宿主会回收整棵进程树）');
+        + (round.decision.holdsForRepair
+          ? '接着转驻留把这一轮挂住（不结束命令，窗口才真的留得住）'
+          : '注意这不等于窗口还在（start-all 起完就退，宿主会回收整棵进程树）'));
     }
 
     rounds.push(round);
@@ -417,9 +478,29 @@ async function main(argv) {
       break;
     }
     if (round.chainStatus !== 0) {
+      // ── 2026-10-10 加：**逐店**失败也要转驻留 ──────────────────────────────
+      // 这一段原先只有一句「照常跑下一批」。缺的那一块正是用户点出来的：
+      // 「为什么没有托住页面，而是全部关了？不然转人工有什么用呢？」
+      // 驻留（`hold-and-resume.mjs`）建了、判据（`unfixableShopsOf`）也写对了，
+      // 但它**只被整轮被挡那一档调起** ⇒ 单店失败一路走到「照旧释放」，现场被 taskkill 拆干净，
+      // 人到了只剩一张告警文案。判据与动作早就存在，缺的是把这一档也接上。
+      //
+      // 为什么只在这一批**确实有**「脚本自修没救回来」的店时才挂住：驻留会**把整轮停在这里等人**，
+      // 对一批「失败但不需要人看」的（比如同日去重、平台空态）挂住就是白挂几小时。
+      // 所以闸门用的是同一个 `unfixableShopsOf`（与释放判据同源）。
+      // 挂住之后剩下的批次**不跑了**：驻留结束时会把 `--shops` 那几家按批重跑，
+      // 而这里若继续跑后面的批次，会与驻留的续跑撞车、也会把内存白花一轮。
+      const unfixable = batchUnfixableShops(batchSummary);
+      if (unfixable.length) {
+        log(`[批次] 这一批里「脚本自修没救回来」的：${unfixable.join('、')}`
+          + ' —— 这几家的现场要留给修复 agent／人 ⇒ 停在这里转驻留（剩下的批次不跑了）。');
+        blocked = { batch: batch.index, summaryPath: batchSummary, cause: 'UNFIXABLE_SHOPS' };
+        break;
+      }
       // 链失败但**不是**整轮被挡（比如这一批里某一家店自己停了）⇒ 照常跑下一批，
       // 并说清为什么不收手 —— 否则日志里「失败了却继续」看起来像漏判。
-      log('[批次] 这一批的链失败了，但不是整轮被挡（共用窗口的体检过了）⇒ 照常跑下一批。');
+      log('[批次] 这一批的链失败了，但不是整轮被挡、也没有「脚本自修没救回来」的店'
+        + '（不需要人看现场）⇒ 照常跑下一批。');
     }
   }
 

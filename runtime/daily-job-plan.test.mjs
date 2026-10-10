@@ -803,3 +803,52 @@ test('第三跳：scripts/run-daily-job.mjs 收下它并透传进计划（源码
 });
 
 
+
+// --- 「失败的那一家不许把现场拆掉」：释放判决与驻留闸门（2026-10-10 加）-------------
+//
+// 用户 2026-10-10 的原话：「为什么没有托住页面，而是全部关了？不然转人工有什么用呢？
+// 你关了，人来了也不知道是什么问题」。
+//
+// 现场（`evidence/batches-2026-10-09/batches.log`）：盖文淘宝 停在第 4 步（被一个盖住视口的
+// antd 弹窗挡住），脚本自修两轮没救回来，然后日志里是
+//   `--- stop：…stop-all.mjs --yes --only 盖文淘宝` / `taskkill /PID 45144 /T /F` /
+//   `这一批没跑成（链退出码 1）—— 照旧释放（用户 2026-09-23：每一轮跑完都要释放）`。
+// 于是「转人工」的告警送到时，人打开窗口只见一个被 taskkill 拆空的壳。
+//
+// 根因不是判据缺失：`hold-and-resume.mjs` 的 `unfixableShopsOf` 早就写对了，驻留动作也建了，
+// 但它**只被「整轮被挡」那一档调起** ⇒ 单店失败一路落到「照旧释放」。
+// 下面这一组把三处接线全钉住（判据 → 释放判决 → 驻留闸门），因为
+// 「函数级用例全绿 ≠ 接线接上了」在本仓已经吃过三次。
+
+test('接线①：run-batches 的释放判决把「要人看现场的店」传给 releaseAfterBatch', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts/run-batches.mjs'), 'utf8');
+  // 判据不许在 run-batches 里另发明：它必须调 runtime 侧的同一个 `unfixableShopsOf`。
+  assert.match(src, /import \{[^}]*unfixableShopsOf[^}]*\} from '\.\.\/runtime\/hold-and-resume-plan\.mjs'/u,
+    '释放判决与驻留闸门必须同源 —— 各写一套判据，迟早出现「一边说不释放、一边说不用驻留」的自相矛盾');
+  assert.match(src, /batchUnfixableShops\(batchSummaryPath\)/u, 'stop 之前要把本批的「修不动的店」读出来');
+  assert.match(src, /unfixableShops,/u, 'releaseAfterBatch 必须收到它 —— 不传就等于判决永远看到空名单');
+  assert.match(src, /releaseOnFailure: options\.releaseOnFailure === true/u, '逃生阀也要传下去');
+});
+
+test('接线②：逐店失败（非整轮被挡）也必须转驻留，不许一路「照旧释放」', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts/run-batches.mjs'), 'utf8');
+  // 找「链退出码非 0」那一段（整轮被挡分支的后面），里面必须有一个「有修不动的店 ⇒ 转驻留」的分支。
+  const at = src.indexOf("if (round.chainStatus !== 0) {\n      // ── 2026-10-10");
+  assert.ok(at > 0, '找不到「逐店失败也要转驻留」那一段（改代码时请同步这条判据）');
+  const tail = src.slice(at, at + 1600);
+  assert.match(tail, /batchUnfixableShops\(batchSummary\)/u, '这一段要读本批的「修不动的店」');
+  assert.match(tail, /if \(unfixable\.length\)/u, '有修不动的店时要收手');
+  assert.match(tail, /cause: 'UNFIXABLE_SHOPS'/u,
+    '收手时要记下成因 —— 否则事后翻 `blocked` 只知道「停了」，不知道「为什么停」');
+  assert.match(tail, /blocked = \{[^}]*summaryPath: batchSummary/u, '要把这一批的 summary 交给驻留');
+  assert.match(tail, /break;/u, '驻留会把剩下的批次按批重跑 ⇒ 这里必须 break，否则与续跑撞车');
+  // 反面：没有修不动的店时**必须**照常跑下一批（否则一批里有「谁都不用动」的失败就会白挂几小时）。
+  assert.match(tail, /照常跑下一批/u, '不需要人看现场的失败不许把整轮挂住');
+});
+
+test('接线③：releaseAfterBatch 的「失败且有修不动的店 ⇒ 不释放」这一档真的存在', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'runtime/batch-plan.mjs'), 'utf8');
+  assert.match(src, /if \(!unfixable\.length\)/u, '没有修不动的店时要放行（判据取反写成一个 if，别漏）');
+  assert.match(src, /holdsForRepair: true/u, '不释放那一档要显式标出「是为了留给人修」，否则下游分不清它与 --no-release');
+  assert.match(src, /releaseOnFailure/u, '要有退回旧口径的逃生阀');
+});

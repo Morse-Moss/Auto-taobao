@@ -260,24 +260,38 @@ test('计划指向的文件都真实存在（脚本被改名时不许静默生�
 // 旧的「失败不释放」不是被证伪，而是**兑现不了**：批次的 start 走 scripts/start-all.mjs
 // （起完就退），宿主在命令结束时回收的是整棵进程树 ⇒ 那批窗口在命令结束 0.26 秒后就连同
 // 启动器一起没了（真机实测）。于是「不释放」的真实效果只有两个：内存没省下来、现场也没留住。
-test('该不该释放：一律释放 —— 链成功、链失败、链根本没跑到，都放', () => {
-  for (const chainStatus of [0, 1, 2, 3, null, undefined]) {
+test('该不该释放：全绿放、没跑到链放；**失败且有要人看现场的店 ⇒ 不放**（2026-10-10 新口径）', () => {
+  // 全绿与「没跑到链」这两档与从前逐字相同 —— 定时链在正常路径上的内存行为不该变。
+  for (const chainStatus of [0, null, undefined]) {
     assert.equal(releaseAfterBatch({ chainStatus }).release, true,
-      `链退出码 ${chainStatus} 时没有释放 —— 用户 2026-09-23：每一轮跑完都要释放浏览器资源`);
+      `链退出码 ${chainStatus} 时没有释放 —— 成功/没跑到链两档照旧释放`);
   }
-  // 三档的「为什么放」必须各自不同：那一行是日志里唯一能复查这是哪种情况的东西。
+  // 失败档**分两种**，判据是本批有没有「脚本自修没救回来」的店：
+  //   没有 ⇒ 照旧释放（这条失败不需要人看现场，留着窗口是白占内存）；
+  //   有   ⇒ **不释放**（用户 2026-10-10：转人工的前提是现场还在）。
+  assert.equal(releaseAfterBatch({ chainStatus: 1, unfixableShops: [] }).release, true,
+    '失败但没有需要人看现场的店 ⇒ 照旧释放（与旧口径一致）');
+  const held = releaseAfterBatch({ chainStatus: 1, unfixableShops: ['盖文淘宝'] });
+  assert.equal(held.release, false, '失败且有要人看现场的店 ⇒ 必须不释放，否则现场被拆、转人工无意义');
+  // `holdsForRepair` 是调用方用来区分「不释放是为了转驻留」与「运维给了 --no-release」的字段：
+  // 两者的下一步完全不同（前者的窗口真留得住，后者会随命令结束被宿主回收）。
+  assert.equal(held.holdsForRepair, true, '要人看现场那一档必须带 holdsForRepair（调用方据此去转驻留）');
+  // 逃生口：显式退回旧口径。
+  assert.equal(releaseAfterBatch({ chainStatus: 1, unfixableShops: ['盖文淘宝'], releaseOnFailure: true }).release,
+    true, '--release-on-failure 必须能退回旧行为');
+  // 失败档的 why 要**点名被留住的店名**：那一行是日志里唯一能复查「为什么这次没释放」的东西，
+  // 只说「有失败」而不说「是哪几家」，事后翻日志的人还得再去开 summary.json。
+  assert.match(held.why, /盖文淘宝/u, '要说清是哪几家把窗口留住了');
+  assert.match(held.why, /不释放/u, '要说清「不释放」这个决定本身');
+
+  // 三档的 why 必须各自不同：那一行是日志里唯一能复查这是哪种情况的东西。
   const why = [releaseAfterBatch({ chainStatus: 0 }).why,
-    releaseAfterBatch({ chainStatus: 1 }).why,
+    releaseAfterBatch({ chainStatus: 1, unfixableShops: [] }).why,
     releaseAfterBatch({ chainStatus: null }).why];
   assert.equal(new Set(why).size, 3, '三档的 reason 逐字相同的话，日志里看不出是哪种情况');
 
-  // 失败那一档必须点名**唯一**能真把窗口留住的组合，否则「我要去看现场」是一句空话。
-  const failed = releaseAfterBatch({ chainStatus: 1 });
-  assert.match(failed.why, /start-all-hold\.mjs/u, '必须点名能真把实例托住的那条路');
-  assert.match(failed.why, /--no-release/u, '两个条件缺一不可 —— 只给 --no-release 留不住窗口');
-  assert.match(failed.why, /释放/u, '要说清「照旧释放」这个决定本身');
   // 旧口径的残骸不许留：`caveat` 一旦还在，读日志的人就会以为「不释放＝窗口还在」。
-  assert.equal(failed.caveat, undefined, 'caveat 是旧口径的字段，一律释放之后它不该再存在');
+  assert.equal(held.caveat, undefined, 'caveat 是更旧口径的字段，一律不该再存在');
   assert.equal(releaseAfterBatch({ chainStatus: 0 }).caveat, undefined);
 });
 

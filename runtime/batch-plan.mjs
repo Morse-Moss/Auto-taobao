@@ -299,33 +299,67 @@ export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = []
 /**
  * 这一轮跑完之后，**该不该发起释放**。
  *
- * **2026-09-23 用户第二次拍板，口径改了**：原话「**每一轮跑完要释放浏览器资源**」。
- * 旧口径（只在成功时释放，失败时留着现场等人看）作废，理由是那条承诺本来就兑现不了：
- * 本文件批次里的 `start` 走 `scripts/start-all.mjs`（**起完就退**），而宿主在命令结束时
- * 回收的是**整棵进程树** ⇒ 「不释放」只等于「我不去停它」，**不等于「它还活着」**。
- * 真机实测（2026-09-23，`evidence/batches-2026-09-22/batches.log`）：那批窗口在命令结束
- * **0.26 秒**后就连同启动器一起没了，只留下代理 —— 看起来像「停了一半」，其实是被连根回收。
- * 于是「失败不释放」的真实效果只有两个：**内存没省下来**、**排查现场也没留住**。
+ * ── 2026-10-10 第三次改口径（用户原话：「为什么没有托住页面，而是全部关了？
+ *    不然转人工有什么用呢？你关了，人来了也不知道是什么问题」）────────────────────
+ * 现行规则：**链退出码非 0 且这一批里还有「没救回来的失败」⇒ 不释放**，
+ * 把现场留给修复 agent／人；其余情况照旧释放（全绿释放、没跑到链释放）。
+ * 用户显式要退回旧行为时给 `--release-on-failure`。
  *
- * 现在：**一律释放**（链成功、链失败、链根本没跑到，都释放）。
- *   · 要看失败现场 ⇒ 用 `--no-release`（CLI 的开关）**并且**用
- *     `scripts/start-all-hold.mjs` 在后台把实例托住 —— 两件缺一不可，只给 `--no-release`
- *     会得到「以为窗口还在、其实已经没了」。
- *   · 释放能不能真落地仍由 `stop-all.mjs` 的三类证据决定（foreign / unconfirmed 一律拒停）。
- *     本函数只回答「要不要发起」，不回答「能不能停」—— 两件事混在一起会写出「以为停了、其实拒停」。
+ * 为什么这次推翻 2026-09-23 那条「一律释放」：那条的理由是**技术上留不住**
+ * （`start-all.mjs` 起完就退、宿主回收整棵进程树）—— 但那个前提在**分批形态下不成立**：
+ * 分批的 `start` 走的是同一个 start，可**这一批的 stop 是主动 `taskkill /T /F`**
+ * （实测 `evidence/batches-2026-10-09/batches.log`：`taskkill /PID 103064 /T /F`、
+ * `已停 browser pid=45144`）。也就是说窗口不是「被宿主回收所以留不住」，
+ * 是**我们自己杀掉它的**。既然杀是我们发出的，「留」就只要不杀即可 —— 前提已被证伪，
+ * 那条口径的依据也随之消失。
+ *
+ * ⚠️ 但「不杀」仍然**不等于**「窗口一定活着」：宿主在命令结束时回收进程树这条仍然成立。
+ * 所以这里的返回值只是「**要不要发起**释放」这一个事实，**不承诺窗口还在**。
+ * 真正把现场留住靠的是**不结束这一轮**（驻留）—— 也就是 `run-batches.mjs`
+ * 在「本批有未修复失败」时转 `hold-and-resume.mjs`。两者是配套的：
+ *   驻留管「这一轮不结束」；本函数管「我这一批不去停它」。
+ * 只做前者会在驻留结束时留下一个已经死掉的窗口（假绿），只做后者会留下一个被宿主回收的窗口
+ * （也是假绿）—— 所以判据在这里、动作在驻留，两边必须同时成立。
+ *
+ * 释放能不能真落地仍由 `stop-all.mjs` 的三类证据决定（foreign / unconfirmed 一律拒停）。
+ * 本函数只回答「要不要发起」，不回答「能不能停」—— 两件事混在一起会写出「以为停了、其实拒停」。
+ *
+ * @param {{chainStatus?:number|null, unfixableShops?:string[], releaseOnFailure?:boolean}} o
+ *   `unfixableShops`：脚本自修没救回来、且**确实需要人/agent 看现场**的那几家
+ *   （调用方用 `unfixableShopsOf` 算，本函数不重算 —— 那条判据的唯一来源在
+ *   `runtime/hold-and-resume-plan.mjs`，在这里再写一遍迟早漂开）。
  */
-export function releaseAfterBatch({ chainStatus } = {}) {
+export function releaseAfterBatch({ chainStatus, unfixableShops = [], releaseOnFailure = false } = {}) {
   if (chainStatus === null || chainStatus === undefined) {
     return { release: true, why: '这一批没跑到链（上一步就失败/被跳过）：没有现场可看，收掉' };
   }
   if (Number(chainStatus) === 0) {
     return { release: true, why: '这一批全绿：按计划收掉，把内存让给下一批' };
   }
+  const unfixable = Array.isArray(unfixableShops) ? unfixableShops.filter(Boolean) : [];
+  if (releaseOnFailure) {
+    return {
+      release: true,
+      why: `这一批没跑成（链退出码 ${chainStatus}），但给了 --release-on-failure ⇒ 照旧释放`
+        + '（旧口径；要留现场就去掉这个开关）',
+    };
+  }
+  if (!unfixable.length) {
+    return {
+      release: true,
+      why: `这一批没跑成（链退出码 ${chainStatus}），但**没有需要人看现场的失败**`
+        + '（脚本自修没救回来、且不是"谁都不用动"的那一类）⇒ 照旧释放',
+    };
+  }
   return {
-    release: true,
-    why: `这一批没跑成（链退出码 ${chainStatus}）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；`
-      + '要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，'
-      + '只给 --no-release 留不住窗口',
+    release: false,
+    // `holdsForRepair`：调用方据此知道「不释放是为了转驻留把现场留住」，
+    // 而不是「运维给了 --no-release、本轮随处结束」。两者在日志里必须能分开 ——
+    // 前者的下一步是驻留，后者必须显式提醒「这不等于窗口还在」。
+    holdsForRepair: true,
+    why: `这一批没跑成（链退出码 ${chainStatus}），且 ${unfixable.join('、')} 的现场还没被修好 `
+      + '⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。'
+      + '要退回旧行为给 --release-on-failure。',
   };
 }
 
