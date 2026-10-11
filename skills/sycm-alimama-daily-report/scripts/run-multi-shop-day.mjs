@@ -120,6 +120,13 @@ import {
   waitingOperatorAccountRecord,
 } from '../../../runtime/daily-report-shop-gates.mjs';
 import { writeDownloadManifest } from '../../../runtime/daily-report-download-manifest.mjs';
+// 统一 summary schema（三链对齐 P1 迁移第 2 步，2026-10-11）：并写统一字段（version/workflow/
+// shop/evidence/failureClass/noActionRequired/autoRepair.attempted）＋ 落盘前写入时校验。
+// 方向是干净的 skills → runtime 叶子：校验器零 import、纯函数、不含任何业务判据
+// （分诊表/修复表都在 skills 侧，见 runtime/unified-summary-schema.mjs 文件头纪律）。
+// 旧字段一个不动（repairRequest.noActionRequired 等原样保留）——绞杀者迁移的并写期，
+// 消费方继续读旧路径，观察期满两轮后再切（草案第四节）。
+import { UNIFIED_SUMMARY_VERSION, validateSummary } from '../../../runtime/unified-summary-schema.mjs';
 // 「失败 → 该试哪些修复动作」的候选菜单（2026-09-29）。它把感知层的事实与分诊表的方向
 // 合成一份**给 agent 看的修复请求单**（97-repair-request.json）：
 //   分诊表说「这一类值得重试」，但没说「重试之前要对页面做什么」；本模块补上那一半。
@@ -491,6 +498,75 @@ export function buildRepairRequest({ shopKey, stage = null, error = null, failur
     }
   }
   return request;
+}
+
+/**
+ * 统一 summary 字段并写（三链对齐 P1 迁移第 2 步，2026-10-11，拍板七项全按推荐）。
+ *
+ * 治的病：九个下游消费方（unfixableShopsOf / failedShopsOf / classifyShopEscalation …）全部
+ * 长在日报链的私有字段路径上，2026-10-11 07:00 推广轮 8 家全败却「照常释放」的直接成因
+ * 就是它不落 summary.json ⇒ 释放判定恒读「无失败」（草案 1.1）。本函数把统一 schema 的
+ * 字段**并写**进既有 summary：**旧字段一个不动**（repairRequest.noActionRequired /
+ * repairRequest.cause / failedStage / failureOutput 等原样保留），消费方观察期内继续读旧路径。
+ *
+ * 新增字段（草案 3.2/3.3，口径见 runtime/unified-summary-schema.mjs）：
+ *   · 顶层：version（'unified-summary-v1'，拍板 6.4-A 三链同串）、workflow（'daily-report'）；
+ *   · 逐店（pending 除外——初值 {status:'pending',…} 一个不动，校验器已豁免）：
+ *     shop＝map 键（不变量 1）、evidence＝该店证据目录（相对仓库根，与落盘日志里
+ *     `<--logs 根>/<店名>` 同一款拼法，status 为 ok/failed/waiting 都补——agent 到场
+ *     第一件事靠它指路，成功店与 waiting 店现状没有任何字段指路）；
+ *   · 失败店：failureClass＝`shopFailureCause` 对该记录**写时算**的结果（推导函数一行不动，
+ *     只把执行时机从消费方读时挪到写时——「同一失败两个读者两种归因」的漂移面被删掉，
+ *     草案 6.1-A）、noActionRequired＝与 repairRequest.noActionRequired 同源同值
+ *     （值的唯一构造点仍是 buildRepairRequest 里那张分诊表，这里只落位到记录顶层，
+ *     拍板 6.3-A；双写期间两处必须相等——「不算两份事实」的前提，守卫测试钉住）；
+ *   · autoRepair 存在时：attempted 布尔（发起过至少一次修复尝试＝rounds 非空或
+ *     gaveUp 非空或 rescued——区分「修过没救回来」与「压根没修」）。
+ *
+ * waiting 店的 evidence 在**这里**（汇总处）补而不是改 gates 构造器：构造器
+ * `waitingOperatorAccountRecord` 不知道 logs 根（它在 runtime、拿不到本轮 --logs），
+ * 改它就得把路径参数穿进 runtime——破坏面大且方向反了；这里手里就有 logRoot，一行完事。
+ *
+ * 纯函数（只改传入对象，不碰盘、不抛）；导出供离线用例喂样本。
+ */
+export function applyUnifiedSummaryFields(summary, { logRoot, repoRoot = REPO_ROOT } = {}) {
+  summary.version = UNIFIED_SUMMARY_VERSION;
+  summary.workflow = 'daily-report';
+  for (const [key, record] of Object.entries(summary.shops ?? {})) {
+    // pending 是「还没跑完」的初值，不是结论——mid-run 落盘形态一个不动（校验器已豁免）。
+    if (!record || record.status === 'pending') continue;
+    record.shop = key;
+    record.evidence = path.relative(repoRoot, path.join(logRoot, key));
+    if (record.status === 'failed') {
+      // 物化：分类器仍是同一个 shopFailureCause，只是从「读时现算」变「写时落定」。
+      record.failureClass = shopFailureCause(record);
+      // 同源同值：值仍来自 buildRepairRequest 的分诊表（notifyLevel==='silent'），
+      // 这里把它从 repairRequest 提升到记录顶层（拍板 6.3-A）。repairRequest.noActionRequired
+      // 是布尔（buildRepairRequest:468 恒写），`=== true` 保形不保值变换。
+      record.noActionRequired = record.repairRequest?.noActionRequired === true;
+    }
+    if (record.autoRepair != null) {
+      const auto = record.autoRepair;
+      auto.attempted = (Array.isArray(auto.rounds) && auto.rounds.length > 0)
+        || (typeof auto.gaveUp === 'string' && auto.gaveUp.length > 0)
+        || auto.rescued === true;
+    }
+  }
+  return summary;
+}
+
+/**
+ * 写入时校验（拍板 6.7-A，随第 2 步一起上）：落盘前调 validateSummary，
+ * 不过 ⇒ **照样落盘**（证据优先——格式问题不许升级成丢整轮结论，草案 5.2）
+ * ＋ stderr 醒目警告（含 errors 的 path/rule 摘要）。守卫测试随后会咬住同一批错。
+ */
+function warnSummarySchemaViolations(summary, where) {
+  const { ok, errors } = validateSummary(summary);
+  if (ok) return;
+  console.error(`[驱动] ⚠️ summary 未过统一 schema 校验（${where}）—— 证据优先，照样落盘：`);
+  for (const { path: at, rule, message } of errors) {
+    console.error(`[驱动]   ⚠️ ${at || '(顶层)'}［${rule}］${message}`);
+  }
 }
 
 /**
@@ -2024,6 +2100,10 @@ async function main() {
     console.error('[驱动] 商家浏览器体检未通过 ⇒ 整轮不跑（推送段与回读段都要用它）。'
       + `详见 ${roundHealth.logPath}`);
     summary.finishedAt = new Date().toISOString();
+    // 统一字段并写＋写入时校验（迁移第 2 步）：整轮被挡落盘的 summary 也带统一字段
+    // （此刻 shops 还是空对象，只有顶层 version/workflow）。
+    applyUnifiedSummaryFields(summary, { logRoot });
+    warnSummarySchemaViolations(summary, '整轮被挡收尾');
     writeFileSync(path.join(logRoot, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
     process.exitCode = 1;
     if (alertDispatch.action !== 'off') {
@@ -2421,6 +2501,10 @@ async function main() {
   }
 
   summary.finishedAt = new Date().toISOString();
+  // 统一字段并写＋写入时校验（迁移第 2 步）：shop/evidence/failureClass/noActionRequired/
+  // autoRepair.attempted 在这里物化——所有店都已收尾，此刻的记录就是终态。
+  applyUnifiedSummaryFields(summary, { logRoot });
+  warnSummarySchemaViolations(summary, '正常收尾');
   const summaryPath = path.join(logRoot, 'summary.json');
   writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
   console.log('\n[驱动] 汇总：');

@@ -15,11 +15,13 @@ import { OVERLAY_NOT_DISMISSED_TOKEN } from './collect-core.mjs';
 // 而分类器已经不认得它了 ⇒ 用例全绿而什么都没守住（2026-10-06 加这一类时踩的正是这个点）。
 import { INQUIRY_ROW_MISSING_TOKEN, SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inquiry-core.mjs';
 import { triageFailures } from './remediation-table.mjs';
-import { WAITING_OPERATOR_ACCOUNT_SHOPS, waitingOperatorAccountRecord } from '../../../runtime/daily-report-shop-gates.mjs';
+import { WAITING_OPERATOR_ACCOUNT, WAITING_OPERATOR_ACCOUNT_SHOPS, waitingOperatorAccountRecord } from '../../../runtime/daily-report-shop-gates.mjs';
+// 统一 summary schema 校验器（三链对齐 P1 迁移第 2 步）：并写后的构建输出必须过它。
+import { validateSummary } from '../../../runtime/unified-summary-schema.mjs';
 import { planRepair } from './repair-actions.mjs';
 import { BLOCKED_BY_OVERLAY_TOKEN, siteAdapter } from './date-picker.mjs';
 import { IDENTITY_SHOP_HEADER_VERIFIED_SHOPS, shopIdentity } from './shop-identities.mjs';
-import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, loginWallOf, makeLoginWallFinder, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, roundCauseOf, roundMissingPagesOf, shopFailureCause, stageLabelOf, stageNumber, stageSelected, withSourcePaths } from './run-multi-shop-day.mjs';
+import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, applyUnifiedSummaryFields, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, loginWallOf, makeLoginWallFinder, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, roundCauseOf, roundMissingPagesOf, shopFailureCause, stageLabelOf, stageNumber, stageSelected, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -2467,5 +2469,123 @@ test('接线：登录墙归因与就地补登必须**整条接通**（少一段�
     'run-batches 不认这个开关 ⇒ 分批驱动会当场报未知参数');
   assert.match(batches, /if \(options\.reloginOnWall\) args\.push\('--relogin-on-wall'\);/u,
     'run-batches 收了但不转发 ⇒ 每一批的链都没收到（与 --auto-repair 当年的坑同形）');
+});
+
+// ---------------------------------------------------------------------------
+// 统一 summary schema 并写（三链对齐 P1 迁移第 2 步，2026-10-11）
+// 口径：docs/ops/UNIFIED-SUMMARY-SCHEMA-DRAFT-2026-10-11.md 第三节字段表＋第四节步骤 2；
+// 纪律：旧字段一个不动、只新增；消费方观察期内继续读旧路径（绞杀者迁移）。
+// ---------------------------------------------------------------------------
+
+// 失败店样本的公共骨架：failureOutput 里带确定性标记，shopFailureCause 才有非兜底的归因可算
+// （用 BLOCKED_BY_OVERLAY_TOKEN——2026-10-10 缺陷㊲ 那条判据；物化值必须跟着它走，
+// 突变验证把物化改坏时红的正是「写时算=读时算」那条断言）。
+const mkUnifiedFailedRecord = ({ stage = 'sycm-date', failureOutput }) => ({
+  status: 'failed',
+  stages: [{ stage, status: 1, skipped: false, logPath: `evidence/x/${SHOP}/04-${stage}.txt`,
+    argv: [], blockingDetails: null, blockingCodes: null, pageNormalize: null }],
+  source: {},
+  failedStage: stage,
+  failureOutput,
+  error: `阶段 ${stage} 失败（exit 1）`,
+  repairRequest: buildRepairRequest({ shopKey: SHOP, stage, error: `阶段 ${stage} 失败（exit 1）`, failureOutput }),
+});
+
+test('并写自洽：顶层 noActionRequired === repairRequest.noActionRequired；物化 failureClass === shopFailureCause 现算（写时算=读时算）', () => {
+  const logRoot = path.join(REPO_ROOT, 'evidence', 'multi-shop-2099-01-01');
+  const blocked = mkUnifiedFailedRecord({
+    failureOutput: `Error: point (492,277) is covered by SPAN.x ${BLOCKED_BY_OVERLAY_TOKEN}`,
+  });
+  const duplicate = mkUnifiedFailedRecord({
+    stage: 'push',
+    failureOutput: 'duplicate daily report row exists: 目标日已有行',
+  });
+  applyUnifiedSummaryFields(
+    { date: '2099-01-01', mode: 'rehearse', startedAt: '2099-01-01T00:00:00.000Z', round: {},
+      shops: { 甲店: blocked, 乙店: duplicate } },
+    { logRoot },
+  );
+  for (const [name, record] of [['甲店', blocked], ['乙店', duplicate]]) {
+    // 「写时算=读时算」：物化的 failureClass 必须等于消费方（failedShopsOf 等）读时现算的结果。
+    assert.equal(record.failureClass, shopFailureCause(record),
+      `${name}：物化 failureClass 与 shopFailureCause 现算不一致（写时算≠读时算）`);
+    // 双写期间两处必须相等——「不算两份事实」的前提（草案第四节）。
+    assert.equal(record.noActionRequired, record.repairRequest.noActionRequired,
+      `${name}：顶层 noActionRequired 与 repairRequest.noActionRequired 不一致`);
+    // 与修复单子上的成因是同一个（buildRepairRequest 内部调的就是同一个分类器）。
+    assert.equal(record.failureClass, record.repairRequest.cause,
+      `${name}：物化 failureClass 与单子上的 cause 不一致`);
+  }
+  assert.equal(blocked.failureClass, 'PAGE_OBSTRUCTED');
+  assert.equal(blocked.noActionRequired, false); // PAGE_OBSTRUCTED 不是 silent 档 ⇒ 要人
+  assert.equal(duplicate.failureClass, 'DUPLICATE_TARGET');
+  assert.equal(duplicate.noActionRequired, true); // DUPLICATE_TARGET 是 silent 档（2026-10-06）
+  // autoRepair.attempted：rescued / gaveUp 非空 / 压根没发起，三态各钉一条。
+  const rescuedShop = { status: 'ok', stages: [], source: {},
+    autoRepair: { enabled: true, rounds: [{ round: 1 }], rescued: true, gaveUp: null } };
+  const gaveUpShop = { ...mkUnifiedFailedRecord({ failureOutput: `Error: x ${BLOCKED_BY_OVERLAY_TOKEN}` }),
+    autoRepair: { enabled: true, rounds: [], rescued: false,
+      gaveUp: '成因 X 在修复表里没有候选动作（不猜动作，交给人）' } };
+  const neverRanShop = { ...mkUnifiedFailedRecord({ failureOutput: `Error: x ${BLOCKED_BY_OVERLAY_TOKEN}` }),
+    autoRepair: { enabled: true, rounds: [], rescued: false, gaveUp: null } };
+  applyUnifiedSummaryFields({ shops: { a: rescuedShop, b: gaveUpShop, c: neverRanShop } }, { logRoot });
+  assert.equal(rescuedShop.autoRepair.attempted, true, 'rescued ⇒ attempted=true（b1 盖文淘宝形态）');
+  assert.equal(gaveUpShop.autoRepair.attempted, true, 'gaveUp 非空 ⇒ attempted=true');
+  assert.equal(neverRanShop.autoRepair.attempted, false, 'rounds 空＋gaveUp 空＋未救回 ⇒ attempted=false（压根没修）');
+});
+
+test('统一 schema 并写：构建路径的输出过 validateSummary（ok/failed/waiting/pending 四形态）', () => {
+  const logRoot = path.join(REPO_ROOT, 'evidence', 'multi-shop-2099-01-01');
+  const okShop = { status: 'ok', stages: [], source: {} };
+  const failedShop = mkUnifiedFailedRecord({
+    failureOutput: `Error: point (1,2) is covered by DIV.x ${BLOCKED_BY_OVERLAY_TOKEN}`,
+  });
+  // waiting 记录：gates 构造器不知道 logs 根（它在 runtime、拿不到本轮 --logs），所以
+  // evidence 由汇总处的并写补——形状按 waitingOperatorAccountRecord 逐字构造（该名单
+  // 2026-10-05 已清空，直接调构造器会拿到 null）。
+  const waitingShop = {
+    status: 'waiting', state: WAITING_OPERATOR_ACCOUNT, resumable: true, failedStage: 'shop-report',
+    reason: '生意参谋日报需要运营账号处理，开发侧暂缓该店日报流程。', owner: '运营',
+    resumeWhen: '运营更换并确认可用账号后，从日报店铺状态登记移除该店铺。',
+    stages: [], source: {}, shop: '网林家居',
+  };
+  const pendingShop = { status: 'pending', stages: [], source: {} };
+  const summary = { date: '2099-01-01', mode: 'rehearse', startedAt: '2099-01-01T00:00:00.000Z',
+    round: {}, shops: { [SHOP]: okShop, 盖文淘宝: failedShop, 网林家居: waitingShop, 科塔淘宝: pendingShop } };
+  applyUnifiedSummaryFields(summary, { logRoot });
+  // 统一字段落位：顶层 version/workflow、逐店 shop/evidence（与落盘日志同款拼法）。
+  assert.equal(summary.version, 'unified-summary-v1');
+  assert.equal(summary.workflow, 'daily-report');
+  assert.equal(okShop.shop, SHOP);
+  assert.equal(okShop.evidence, path.join('evidence', 'multi-shop-2099-01-01', SHOP));
+  assert.equal(waitingShop.evidence, path.join('evidence', 'multi-shop-2099-01-01', '网林家居'));
+  assert.equal(waitingShop.shop, '网林家居'); // shop 原样保留（gates 构造器本来就带）
+  assert.equal(failedShop.failureClass, 'PAGE_OBSTRUCTED');
+  assert.equal(failedShop.noActionRequired, false);
+  assert.deepEqual(pendingShop, { status: 'pending', stages: [], source: {} }, 'pending 初值一个不动');
+  // 并写后的构建输出必须过统一校验器（守卫：迁移第 2 步的契约形状）。
+  assert.deepEqual(validateSummary(summary), { ok: true, errors: [] });
+});
+
+test('统一 schema 并写接线（源码级）：两个 summary 落盘点前都「先并写、再校验、再落盘」；并写函数是声明式（无 TDZ 面）', () => {
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  // 1.8.2 的教训：纯函数全绿但 main() 一进就 TDZ。两个函数都是**函数声明**（hoisted），
+  // 不是 const 箭头——main 里调用它们没有 TDZ 面。
+  assert.match(src, /export function applyUnifiedSummaryFields\(/u,
+    '并写函数必须是函数声明（hoisted），不许改成 const 箭头');
+  assert.match(src, /function warnSummarySchemaViolations\(/u,
+    '写入时校验必须是函数声明（hoisted）');
+  // summary.json 有且只有两个落盘点（整轮被挡收尾 / 正常收尾）——每一处都必须先并写、
+  // 再校验、再落盘。「判据全绿但没接上」是本仓吃过三次的亏，接线用源码级断言钉死。
+  const writes = [...src.matchAll(/writeFileSync\((?:path\.join\(logRoot, 'summary\.json'\)|summaryPath)/gu)];
+  assert.equal(writes.length, 2, `summary.json 的落盘点应有且只有 2 处（收到 ${writes.length}）`);
+  for (const [i, match] of writes.entries()) {
+    const before = src.slice(Math.max(0, match.index - 800), match.index);
+    const applyAt = before.indexOf('applyUnifiedSummaryFields(summary, { logRoot });');
+    const warnAt = before.indexOf('warnSummarySchemaViolations(summary,');
+    assert.ok(applyAt !== -1, `第 ${i + 1} 个落盘点前没有调 applyUnifiedSummaryFields（并写没接上）`);
+    assert.ok(warnAt !== -1, `第 ${i + 1} 个落盘点前没有调 warnSummarySchemaViolations（写入时校验没接上）`);
+    assert.ok(applyAt < warnAt, `第 ${i + 1} 个落盘点：并写必须在校验之前（校验的是并写后的形状）`);
+  }
 });
 

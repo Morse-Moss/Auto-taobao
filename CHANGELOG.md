@@ -15,6 +15,44 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.4] - 2026-10-11
+
+三链对齐 P1 绞杀者迁移第 2 步：日报链并写统一字段＋rescued 豁免＋写入时校验。
+**旧字段一个不动**（repairRequest.noActionRequired / repairRequest.cause / failedStage /
+failureOutput 原样保留），九个消费方观察期内继续读旧路径；单 commit 可 revert。
+rescued 豁免经用户拍板（2026-10-11「按推荐执行」）：自修救回店保留审计痕迹合法。
+
+### 改了什么
+
+- `run-multi-shop-day.mjs` **纯新增 84 行、零删改**：`applyUnifiedSummaryFields`（导出纯函数，
+  顶层 version/workflow；逐店补 shop=键、evidence=证据目录相对路径；失败店物化
+  failureClass＝shopFailureCause 写时算、noActionRequired 提升顶层与 repairRequest 内同源同值；
+  autoRepair.attempted 显式布尔；pending 初值跳过）＋ `warnSummarySchemaViolations`（写入时
+  校验，不过⇒照样落盘＋stderr 警告）。两个落盘点（整轮被挡 :2100 / 正常收尾 :2501）均按
+  「先并写→再校验→再落盘」接线。waiting 店 evidence 在汇总处补（gates 构造器拿不到 logs 根，
+  改它破坏面大且方向反）。
+- `runtime/unified-summary-schema.mjs`：INV2 加 rescued 豁免——status='ok' 且
+  autoRepair.rescued===true 时仅 repairRequest/autoRepair 的存在性检查豁免（豁免面按 b1 盖文
+  淘宝实档划：error/failedStage 救回时已被链上删除、failureClass 从未落档，故照旧红）；
+  INV4/candidates 检查照跑。
+- 测试：unified-summary-schema.test.mjs 17 用例（日报迁移仪表欠 11 条断言→全绿清零；新增
+  rescued 救回店夹具＋反例「不是救回的成功店带失败痕迹仍红」）；run-multi-shop-day.test.mjs
+  新增并写自洽用例（物化 failureClass＝shopFailureCause 现算、顶层 noActionRequired＝
+  repairRequest 内同值、构建输出过 validateSummary）＋**源码级接线守卫**（两落盘点前 800 字符
+  内必含并写→校验→落盘三步——1.8.2 TDZ 教训的对策）。
+
+### 验证
+
+- skills 定向组 537/537（基线 534＋新增 3）；runtime 定向 17/17；runtime 全组 1178 用例
+  1177 绿，唯一红仍为 arch-boundary 预存在欠登记（4 个推广链 skills 文件，内容与动工前
+  逐字一致；arch-boundary.test.mjs 未触碰）。
+- 突变两处点名红：failureClass 物化改坏（子代理）红在「写时算≠读时算」断言；rescued 豁免
+  关闭（主线独立复核）红在救回店夹具 INV2。均 sha256 还原核对逐字节一致。
+- 历史预检（主线独立复现）：applyUnifiedSummaryFields 喂三份真实历史 summary（b1 救回轮/
+  b2 全 ok 轮/10-09 失败轮）再校验，三份全 GREEN。
+- **仅离线判据**：并写逻辑未在真机跑过（无不起浏览器能到落盘点的形态）；真机验证窗口＝
+  2026-10-12 11:30 定时轮，产物应过校验且写入时零警告。
+
 ## [1.8.3] - 2026-10-11
 
 三链对齐 P1 绞杀者迁移第 1 步：统一 summary schema 校验器先行落库。草案七项待拍板

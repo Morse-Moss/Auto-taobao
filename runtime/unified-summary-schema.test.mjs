@@ -9,14 +9,17 @@
 //      evidence 是会被人翻动的运行产物，守卫的输入必须钉死）。
 //      · 日报链：2026-10-11 白天这轮的 b2（startedAt=2026-10-11T03:40:11Z、finishedAt=03:49:57Z，
 //        业务日 2026-10-10；同目录 b1 的 summary.json 经查同样是今天这轮——startedAt=03:54:55Z——
-//        但其中盖文淘宝是「自修救回」形态（status:'ok' + 保留 repairRequest/autoRepair），
-//        按草案不变量 2 的字面口径它红且**迁移后也不会清零**（第 2 步旧字段一个不动），
-//        这是留给第 2 步拍板的已知冲突，见校验器文件头注记——故不进本仪表夹具）。
+//        其中盖文淘宝是「自修救回」形态（status:'ok' + 保留 repairRequest/autoRepair），已按
+//        2026-10-11 拍板的 rescued 豁免单独成夹具（见下方「rescued 救回店」用例）。
 //        b2 全是 ok 店，为把「失败店 / waiting 店」的现状形状也钉进迁移仪表，补两条真实形状记录：
 //        失败店＝evidence/multi-shop-2026-10-09/summary.json 的盖文淘宝（最近一份带失败店的日报
 //        summary，startedAt=2026-10-10T08:51:28Z）；waiting 店＝runtime/daily-report-shop-gates.mjs
 //        的 waitingOperatorAccountRecord 形状（2026-10-05 该名单已清空，evidence 里已无真实
 //        waiting 样本，形状按源码逐字构造，店名取历史上在册的里可林淘宝）。
+//        **第 2 步（2026-10-11）起，本日报夹具已换成「并写后形状」**：顶层补 version/workflow、
+//        逐店补 shop/evidence、失败店补 failureClass/noActionRequired——手工按
+//        run-multi-shop-day.mjs 的 applyUnifiedSummaryFields 并写逻辑改的**离线等价形状**，
+//        不是真产物；真产物验证在 2026-10-12 11:30 定时轮，产物落盘后与本校验器核对。
 //      · 推广链：2026-10-10 23:02 那轮（07:00 事故轮的补跑，8 家全败）逐店记录，摘自
 //        evidence/promotion-batches-2026-10-10/batches.log——那一轮跑在 P0-3 合入**之前**，
 //        只往 stdout 打 JSON、没落 summary.json；本夹具＝该轮真实记录 + P0-3
@@ -28,8 +31,9 @@
 //      「违反」形态——waiting 记录缺 error/failureClass/repairRequest 是**合法**的——
 //      用绿样本把豁免钉住，突变验证短路豁免时该用例变红）。
 //
-// 「迁移仪表」：样本 a 的两条欠字段断言就是仪表盘——迁移第 2 步（日报链并写）与第 3 步
-// （推广链并写）落地后，把新产物形状并进这两个夹具、重跑本文件，欠字段清单清零才算完成。
+// 「迁移仪表」：样本 a 的欠字段断言就是仪表盘。**日报链已于第 2 步（2026-10-11）清零**
+// （夹具换成并写后形状，断言改全绿）；推广链仍是第 3 步的仪表——14 条欠字段断言原样保留，
+// 第 3 步并写落地后把新产物形状并进夹具、清单清零才算完成。
 // 断言用 {path, rule} 投影做精确等式：多一条=误伤现状合法形态，少一条=守卫没咬住。
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,9 +45,14 @@ import {
 const projection = (errors) => errors.map(({ path, rule }) => ({ path, rule }));
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 样本 a-1：日报链真实样本（字面量固化；来源见文件头）
+// 样本 a-1：日报链真实样本（字面量固化；来源见文件头）。
+// 第 2 步（2026-10-11）起为「并写后形状」：在 2026-10-11 这轮的真实记录之上，按
+// applyUnifiedSummaryFields 的并写逻辑补统一字段（version/workflow/shop/evidence/
+// failureClass/noActionRequired）——离线等价形状，真产物验证在 2026-10-12 11:30 轮。
 // ─────────────────────────────────────────────────────────────────────────────
 const DAILY_REPORT_REAL_SAMPLE = {
+  version: 'unified-summary-v1',
+  workflow: 'daily-report',
   date: '2026-10-10',
   mode: 'commit',
   startedAt: '2026-10-11T03:40:11.993Z',
@@ -62,9 +71,11 @@ const DAILY_REPORT_REAL_SAMPLE = {
   },
   shops: {
     // ok 店：evidence/batches-2026-10-10/b2/summary.json 网林淘宝原样（stages 裁剪到 2 条，
-    // stage 对象字段形状保真）。现状 ok 店没有 shop/failureClass/evidence/noActionRequired。
+    // stage 对象字段形状保真）＋ 并写补的 shop/evidence。
     网林淘宝: {
+      shop: '网林淘宝',
       status: 'ok',
+      evidence: 'evidence\\batches-2026-10-10\\b2\\网林淘宝',
       stages: [
         {
           stage: 'health-check', status: 0, skipped: false,
@@ -88,9 +99,11 @@ const DAILY_REPORT_REAL_SAMPLE = {
         promotionManifest: 'D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-10\\b2\\网林淘宝\\promotion-report-manifest.json',
       },
     },
-    // ok 店：b2 里可林天猫原样（同上裁剪）。
+    // ok 店：b2 里可林天猫原样（同上裁剪）＋ 并写补的 shop/evidence。
     里可林天猫: {
+      shop: '里可林天猫',
       status: 'ok',
+      evidence: 'evidence\\batches-2026-10-10\\b2\\里可林天猫',
       stages: [
         {
           stage: 'health-check', status: 0, skipped: false,
@@ -114,8 +127,8 @@ const DAILY_REPORT_REAL_SAMPLE = {
         promotionManifest: 'D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-10\\b2\\里可林天猫\\promotion-report-manifest.json',
       },
     },
-    // waiting 店：waitingOperatorAccountRecord 形状（runtime/daily-report-shop-gates.mjs:33-47 逐字）。
-    // 注意它**带** shop 字段——日报链只有 waiting 记录带，其余记录靠 map 键。
+    // waiting 店：waitingOperatorAccountRecord 形状（runtime/daily-report-shop-gates.mjs:33-47 逐字）
+    // ＋ 并写在汇总处补的 evidence（shop 它本来就带——日报链只有 waiting 记录带）。
     里可林淘宝: {
       status: 'waiting',
       state: 'WAITING_OPERATOR_ACCOUNT',
@@ -127,11 +140,19 @@ const DAILY_REPORT_REAL_SAMPLE = {
       stages: [],
       source: {},
       shop: '里可林淘宝',
+      evidence: 'evidence\\batches-2026-10-10\\b2\\里可林淘宝',
     },
     // 失败店：evidence/multi-shop-2026-10-09/summary.json 盖文淘宝原样
-    // （perception 裁掉巨型 DOM 转储 state 字段，其余字段形状保真；repairRequest 逐字照录）。
+    // （perception 裁掉巨型 DOM 转储 state 字段，其余字段形状保真；repairRequest 逐字照录）
+    // ＋ 并写补的 shop/evidence/failureClass/noActionRequired。failureClass='STAGE_FAILED'
+    // ＝ shopFailureCause 对这份记录现算的结果（其 failureOutput 里没有 OVERLAY/BLOCKED
+    // 标记，2026-10-10 之前 date-picker 还不写 BLOCKED_BY_OVERLAY_TOKEN）。
     盖文淘宝: {
+      shop: '盖文淘宝',
       status: 'failed',
+      evidence: 'evidence\\multi-shop-2026-10-09\\盖文淘宝',
+      failureClass: 'STAGE_FAILED',
+      noActionRequired: false,
       stages: [
         {
           stage: 'health-check', status: 0, skipped: false,
@@ -235,6 +256,101 @@ const DAILY_REPORT_REAL_SAMPLE = {
     },
   },
   finishedAt: '2026-10-11T03:49:57.640Z',
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 样本 a-1b：日报链 rescued 救回店（evidence/batches-2026-10-10/b1/summary.json 盖文淘宝，
+// 2026-10-11 04:04 这轮的真实记录裁剪固化：stages/source 裁空、repairRequest 保留真实形状
+// （candidates 裁到 2 条原样）、autoRepair 两轮原样）。并写前它按 INV2 字面口径红；
+// 2026-10-11 拍板 rescued 豁免后全绿。attempted:true 是第 2 步并写补的字段
+// （applyUnifiedSummaryFields 对存在的 autoRepair 物化），这里按并写后形状固化。
+// ─────────────────────────────────────────────────────────────────────────────
+const DAILY_REPORT_RESCUED_SAMPLE = {
+  version: 'unified-summary-v1',
+  workflow: 'daily-report',
+  date: '2026-10-10',
+  mode: 'commit',
+  startedAt: '2026-10-11T03:54:55.000Z',
+  round: null,
+  shops: {
+    盖文淘宝: {
+      shop: '盖文淘宝',
+      status: 'ok',
+      evidence: 'evidence\\batches-2026-10-10\\b1\\盖文淘宝',
+      failureOutput: '\nError: sycm tab 询单到付款: 定位重试 16 次仍失败（每次间隔 1200ms）；'
+        + 'lastError=proxy http://127.0.0.1:19043/eval?target=5229137FE13273B15EB73EDDA4B19B27 '
+        + 'failed: HTTP 400 Error: sycm tab 询单到付款: point (492,277) is covered by '
+        + 'SPAN.goods-subIndex-text [BLOCKED_BY_OVERLAY 遮挡层=DIV.ant\n',
+      blockingDetails: null,
+      repairRequest: {
+        at: '2026-10-11T04:04:03.315Z',
+        shopKey: '盖文淘宝',
+        stage: 'sycm-date',
+        cause: 'PAGE_OBSTRUCTED',
+        error: '阶段 sycm-date 失败（exit 1）',
+        statePath: 'evidence\\batches-2026-10-10\\b1\\盖文淘宝\\98-failure-state.json',
+        stateTextPath: 'evidence\\batches-2026-10-10\\b1\\盖文淘宝\\98-failure-state.txt',
+        screenshotPath: 'evidence\\batches-2026-10-10\\b1\\盖文淘宝\\98-failure-page.png',
+        stateSummary: {
+          url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop',
+          title: '生意参谋 - 零售电商大数据产品平台',
+          viewport: { w: 1506, h: 642, dpr: 1.25, scrollY: 0 },
+          overlayCount: 2,
+        },
+        candidates: [
+          {
+            action: 'DISMISS_OVERLAYS',
+            mutating: true,
+            why: '平台的全屏弹窗可能正盖住整页、让控件点不到；关掉它再重试。',
+          },
+          {
+            action: 'RELOAD_PAGE',
+            mutating: true,
+            why: '这一份渲染上元素不理会点击（本项目实测过的形态）；真重载换个新现场再试。',
+          },
+        ],
+        planNote: null,
+        stageHint: 'sycm',
+        noActionRequired: false,
+        retryStage: 'sycm-date',
+      },
+      autoRepair: {
+        enabled: true,
+        cause: 'PAGE_OBSTRUCTED',
+        stage: 'sycm-date',
+        maxRounds: 2,
+        rounds: [
+          {
+            round: 1,
+            action: 'DISMISS_OVERLAYS',
+            applied: false,
+            retry: { attempted: false, why: '修复动作没落地，不重试阶段（避免原样再来一遍）' },
+            detail: '试过 1 种关法都没关掉',
+            error: null,
+          },
+          {
+            round: 2,
+            action: 'RELOAD_PAGE',
+            applied: true,
+            retry: { attempted: true, stage: 'sycm-date', status: 0 },
+            detail: '页面已重载并就绪',
+            error: null,
+          },
+        ],
+        rescued: true,
+        gaveUp: null,
+        error: null,
+        attempted: true,
+      },
+      rescuedFrom: 'sycm-date',
+      rescuedBy: 'RELOAD_PAGE',
+      rescueResume: {
+        from: 'sycm-date',
+        ran: ['shop-report', 'promotion-fetch', 'push', 'sycm-reset', 'sycm-date-again', 'backfill', 'readback'],
+      },
+    },
+  },
+  finishedAt: '2026-10-11T04:09:00.000Z',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -407,30 +523,40 @@ const PRODUCT_MINIMAL = {
 // 样本 a：真实样本的欠字段清单断言（迁移仪表）
 // ─────────────────────────────────────────────────────────────────────────────
 
-test('真实样本·日报链：欠字段清单恰好等于下列 11 条（迁移仪表：第 2 步并写后重跑本用例，清单清零才算完成）', () => {
+test('真实样本·日报链：并写后形状全绿（第 2 步迁移仪表已清零，2026-10-11）', () => {
   const { ok, errors } = validateSummary(DAILY_REPORT_REAL_SAMPLE);
+  assert.deepEqual({ ok, errors }, { ok: true, errors: [] });
+});
+
+test('rescued 豁免·救回店夹具全绿（b1 盖文淘宝真实形状＋并写补的 attempted；2026-10-11 拍板）', () => {
+  // 救回店＝status:'ok' 且 autoRepair.rescued===true，保留 repairRequest/autoRepair 作审计痕迹。
+  // 豁免只放开 INV2 对这两个字段的存在性检查；INV4（autoRepair 形状含 attempted）、
+  // candidates 必须数组，照跑且必须过。
+  const { ok, errors } = validateSummary(DAILY_REPORT_RESCUED_SAMPLE);
+  assert.deepEqual({ ok, errors }, { ok: true, errors: [] });
+});
+
+test('rescued 豁免·反例：ok 店带 repairRequest 但 autoRepair.rescued 不为 true ⇒ INV2 照红', () => {
+  // 不是救回的成功店带失败痕迹（没开 --auto-repair、或修过但没救回且 status 已翻 ok 的
+  // 非法形态）不在豁免面上——豁免面按现状真实留档划，只认 rescued===true。
+  const summary = counterBase({
+    甲店: {
+      shop: '甲店', status: 'ok', evidence: 'evidence/x/甲店',
+      repairRequest: { candidates: [] }, // 带 repairRequest 但没有 autoRepair ⇒ 不豁免
+    },
+    乙店: {
+      shop: '乙店', status: 'ok', evidence: 'evidence/x/乙店',
+      repairRequest: { candidates: [] },
+      autoRepair: { gaveUp: null, attempted: true, rescued: false }, // rescued 不为 true ⇒ 不豁免
+    },
+  });
+  const { ok, errors } = validateSummary(summary);
   assert.equal(ok, false);
   assert.deepEqual(projection(errors), [
-    { path: 'version', rule: 'FIELD' }, // 缺 version
-    { path: 'workflow', rule: 'FIELD' }, // 缺 workflow
-    { path: 'shops.网林淘宝.shop', rule: 'INV1' }, // ok 店缺 shop（现状键即店名）
-    { path: 'shops.网林淘宝.evidence', rule: 'FIELD' },
-    { path: 'shops.里可林天猫.shop', rule: 'INV1' },
-    { path: 'shops.里可林天猫.evidence', rule: 'FIELD' },
-    // waiting 店：shop 已带（不变量 1 过）；缺 error/failureClass/repairRequest 豁免（不变量 7）⇒ 只欠 evidence
-    { path: 'shops.里可林淘宝.evidence', rule: 'FIELD' },
-    // 失败店：现状 repairRequest 在（candidates 非空数组，无 candidates 报错），欠 shop/evidence/failureClass/noActionRequired
-    { path: 'shops.盖文淘宝.shop', rule: 'INV1' },
-    { path: 'shops.盖文淘宝.evidence', rule: 'FIELD' },
-    { path: 'shops.盖文淘宝.failureClass', rule: 'INV3' }, // 现状藏在 repairRequest.cause，未物化
-    { path: 'shops.盖文淘宝.noActionRequired', rule: 'FIELD' }, // 现状长在 repairRequest 里（6.3-A：提升到记录顶层）
+    { path: 'shops.甲店.repairRequest', rule: 'INV2' },
+    { path: 'shops.乙店.repairRequest', rule: 'INV2' },
+    { path: 'shops.乙店.autoRepair', rule: 'INV2' },
   ]);
-  // 「无一条误伤现状合法形态」由上面的精确等式一并钉住：
-  //   waiting 店缺 error/failureClass/repairRequest 没有产生任何报错；ok 店不带 repairRequest/autoRepair
-  //   没有 INV2 报错；失败店的非空 candidates 没有报错；error 为字符串没有类型报错。
-  for (const { message } of errors) {
-    assert.ok(typeof message === 'string' && message.length > 0, '每条错误都必须带能定位的人话 message');
-  }
 });
 
 test('真实样本·推广链：欠字段清单恰好等于下列 14 条（迁移仪表：第 3 步并写后重跑本用例，清单清零才算完成）', () => {

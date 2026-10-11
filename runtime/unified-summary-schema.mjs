@@ -27,11 +27,14 @@
 // 因此 pending 与 waiting 同样豁免失败必填项（shop/evidence 也豁免：初值里确实没有）；
 // 若带了这些字段，仍按通用形状检查（shop 要与键一致、candidates 要是数组）。
 //
-// 已知的现状冲突（留给迁移第 2 步定夺，本步如实按草案钉）：日报链「自修救回」的店
-// status 已翻 'ok' 但保留 repairRequest/autoRepair 作为审计痕迹（2026-10-11 b1 盖文淘宝）
-// ——按不变量 2 的字面口径这是红的。消费方（unfixableShopsOf）先查 status==='ok' 就跳过，
-// 所以这些字段对判据无害；但契约上「成功店必须无失败信号」与「保留修复审计痕迹」
-// 二者只能留一个，第 2 步并写时必须拍板（清字段，或给不变量 2 加 rescued 豁免）。
+// rescued 豁免（已拍板：2026-10-11 用户确认，随迁移第 2 步生效）：日报链「自修救回」的店
+// status 已翻 'ok' 但保留失败信号作审计痕迹。豁免依据＝现状实档（evidence/batches-2026-10-10/b1
+// 盖文淘宝）：救回店保留 repairRequest 与 autoRepair（rescued:true），而 error/failedStage
+// 被链上删除、failureClass 从未落档 ⇒ 豁免面只划这两个字段的存在性检查（INV2），
+// error/failureClass 出现在 ok 店上仍红。豁免只放开 INV2 的存在性检查，其余检查照跑：
+// autoRepair 形状（INV4，含第 2 步补的 attempted）、repairRequest.candidates 必须是数组。
+// 反例防线：status='ok' 带 repairRequest 但 autoRepair.rescued 不为 true（不是救回的
+// 成功店带失败痕迹）不豁免，INV2 照红。
 
 /** 统一版本串（拍板 6.4-A：三链同串，守卫靠它分流新旧格式）。 */
 export const UNIFIED_SUMMARY_VERSION = 'unified-summary-v1';
@@ -148,11 +151,15 @@ function validateShopRecord(key, record, fail) {
   }
 
   // ── 不变量 2：status==='ok' ⇒ 失败信号四件套必须缺席或 null ──
+  // rescued 豁免（已拍板，2026-10-11 用户确认）：自修救回的店保留 repairRequest/autoRepair
+  // 作审计痕迹 ⇒ 仅这两个字段的存在性检查豁免；error/failureClass 现状不留档，照旧红。
   if (status === 'ok') {
+    const rescuedOk = record.autoRepair?.rescued === true;
     for (const field of FAILURE_SIGNAL_FIELDS) {
+      if (rescuedOk && (field === 'repairRequest' || field === 'autoRepair')) continue;
       if (record[field] !== undefined && record[field] !== null) {
         fail(at(field), 'INV2',
-          `status=ok 但带 ${field}（不变量 2：成功店不得带失败信号；自修救回的审计痕迹见本文件头部注记）`);
+          `status=ok 但带 ${field}（不变量 2：成功店不得带失败信号；rescued 豁免仅限 repairRequest/autoRepair，见文件头注记）`);
       }
     }
   }
