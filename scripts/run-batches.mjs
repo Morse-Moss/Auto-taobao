@@ -352,35 +352,9 @@ async function main(argv) {
     console.log('[notify] 排练（dry-run）不转发 --notify：失败告警只在写数据的 apply 轮投递');
   }
 
-  // ── 互斥锁（P0-4，2026-10-11）──────────────────────────────────────────────
-  // 与 run-daily-job / run-product-data-job 同一把 merchant-automation：三条链共享浏览器
-  // 资源，互斥单位是「机器上的采集」。三个例外不抢：
-  //   ① --print / 计划形态（无副作用）；
-  //   ② 宿主已持锁（SYCM_WORKFLOW_LOCK_HELD 由 run-daily-job 拿锁后设置、子进程继承）；
-  //   ③ 本进程自己抢到锁后也设置它——驻留的自动续跑（spawn 的 run-batches）继承后跳过，
-  //     否则续跑必撞父进程还持有的锁、busy 退 1，驻留的「人处理完自动补」整条落空。
-  let workflowLock = null;
-  if (!options.print) {
-    if (process.env.SYCM_WORKFLOW_LOCK_HELD === WORKFLOW_LOCK_NAME) {
-      log('[锁] 上层已持有 merchant-automation 运行锁（本进程是子步）⇒ 不重复抢');
-    } else {
-      try {
-        workflowLock = acquireWorkflowLock(WORKFLOW_LOCK_NAME, `run-batches:${options.workflow}`, {
-          directory: path.join(REPO_ROOT, 'runtime', '.workflow-locks'),
-        });
-      } catch (error) {
-        log(`运行锁冲突：${error.message}；持有者=${JSON.stringify(error.lock ?? null)}`
-          + `（同机另一条采集流程正在跑：日报/商品/推广共用浏览器资源，等它结束再试）`);
-        return 1;
-      }
-      process.env.SYCM_WORKFLOW_LOCK_HELD = WORKFLOW_LOCK_NAME;
-      process.once('exit', () => workflowLock.release());
-      if (workflowLock.staleReclaimed) {
-        log(`[锁] 回收过期锁：原持有者=${workflowLock.reclaimedFrom?.owner ?? '未知'}`
-          + `、pid=${workflowLock.reclaimedFrom?.pid ?? '未知'}（该进程已不在）`);
-      }
-    }
-  }
+  // ⚠️ 互斥锁块（P0-4）本应排在这里，但 `const log` 声明在下方 ⇒ 非 `--print` 真跑时
+  // 会在 `log(...)` 处抛 `ReferenceError: Cannot access 'log' before initialization`。
+  // 2026-10-11 修：把整块下移到 `log` 就绪之后（它只需排在**起任何进程之前**即可）。
 
   // 切批这一步的所有拒绝都必须发生在**起任何进程之前**：名字拼错、家数非法时，
   // 一个浏览器都不该被起 —— 那正是「静默漏做」最贵的形态（跑完了，但有两家没被处理）。
@@ -481,6 +455,39 @@ async function main(argv) {
     fs.writeSync(logFd, text);
     process.stdout.write(text);
   };
+
+  // ── 互斥锁（P0-4，2026-10-11；位置修正 2026-10-11）──────────────────────────
+  // 与 run-daily-job / run-product-data-job 同一把 merchant-automation：三条链共享浏览器
+  // 资源，互斥单位是「机器上的采集」。三个例外不抢：
+  //   ① --print / 计划形态（无副作用）；
+  //   ② 宿主已持锁（SYCM_WORKFLOW_LOCK_HELD 由 run-daily-job 拿锁后设置、子进程继承）；
+  //   ③ 本进程自己抢到锁后也设置它——驻留的自动续跑（spawn 的 run-batches）继承后跳过，
+  //     否则续跑必撞父进程还持有的锁、busy 退 1，驻留的「人处理完自动补」整条落空。
+  // ⚠️ 必须在 `const log` 定义**之后**：原先它排在 log 之前，非 `--print` 真跑一进来就
+  //    抛 TDZ `ReferenceError: Cannot access 'log' before initialization`（1.8.1 引入的回归）。
+  //    它只需排在**起任何进程之前**，所以放在这里（批循环之前）完全等价。
+  let workflowLock = null;
+  if (!options.print) {
+    if (process.env.SYCM_WORKFLOW_LOCK_HELD === WORKFLOW_LOCK_NAME) {
+      log('[锁] 上层已持有 merchant-automation 运行锁（本进程是子步）⇒ 不重复抢');
+    } else {
+      try {
+        workflowLock = acquireWorkflowLock(WORKFLOW_LOCK_NAME, `run-batches:${options.workflow}`, {
+          directory: path.join(REPO_ROOT, 'runtime', '.workflow-locks'),
+        });
+      } catch (error) {
+        log(`运行锁冲突：${error.message}；持有者=${JSON.stringify(error.lock ?? null)}`
+          + `（同机另一条采集流程正在跑：日报/商品/推广共用浏览器资源，等它结束再试）`);
+        return 1;
+      }
+      process.env.SYCM_WORKFLOW_LOCK_HELD = WORKFLOW_LOCK_NAME;
+      process.once('exit', () => workflowLock.release());
+      if (workflowLock.staleReclaimed) {
+        log(`[锁] 回收过期锁：原持有者=${workflowLock.reclaimedFrom?.owner ?? '未知'}`
+          + `、pid=${workflowLock.reclaimedFrom?.pid ?? '未知'}（该进程已不在）`);
+      }
+    }
+  }
 
   log(`版本：${versionLineSafe()}`);
   log(`=== 分批跑开始：目标日 ${options.dateInput} → ${date}；每批 ${size} 家；共 ${plan.total} 批`

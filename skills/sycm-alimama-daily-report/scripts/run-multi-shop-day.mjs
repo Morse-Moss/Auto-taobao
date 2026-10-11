@@ -2151,24 +2151,10 @@ async function main() {
           if (tail.length) console.error(`[${key}]   stderr 尾部：\n${tail.map((l) => `      ${l}`).join('\n')}`);
           throw new Error(`阶段 ${stage.stage} 失败（exit ${result.status ?? result.signal}）`);
         }
-        if (stage.stage === 'shop-report') {
-          record.source.shopXlsx = findPath(result.stdout, 'shopXlsxPath');
-          if (record.source.shopXlsx) {
-            record.source.shopReportManifest = path.join(shopLogDir, 'shop-report-manifest.json');
-            writeDownloadManifest({ outputPath: record.source.shopReportManifest, filePath: record.source.shopXlsx,
-              reportType: 'shop-report', date: args.date, shop: key, member: shopIdentity(key).alimamaMemberName });
-            console.log(`[${key}]   店铺工作簿 = ${record.source.shopXlsx}`);
-          }
-        }
-        if (stage.stage === 'promotion-fetch') {
-          record.source.promotionZip = findPath(result.stdout, 'promotionZipPath');
-          if (record.source.promotionZip) {
-            record.source.promotionManifest = path.join(shopLogDir, 'promotion-report-manifest.json');
-            writeDownloadManifest({ outputPath: record.source.promotionManifest, filePath: record.source.promotionZip,
-              reportType: 'promotion-report', date: args.date, shop: key, member: shopIdentity(key).alimamaMemberName });
-            console.log(`[${key}]   推广 zip = ${record.source.promotionZip}`);
-          }
-        }
+        // 采集段产物路径的回填**已移到 `run()` 里**（2026-10-11）：放在这里的话，
+        // 「自修救回后重试」那条路（走 `runNamedStage` → `run()`，不经本循环体）不回填，
+        // 续跑到 push 时 `withSourcePaths` 会收到「只有 --shop-xlsx」并抛错、打断整批链。
+        // 单一实现在 `run()`，首跑与重试共用。
       }
     };
     const run = async (stage) => {
@@ -2198,6 +2184,32 @@ async function main() {
         blockingCodes: result.detail?.blocking?.map((finding) => finding.code) ?? null,
         // 体检那一支的归位结论（别的阶段是 null）：它回答「这次的不齐是本来就坏、还是脚本修好的」。
         pageNormalize: result.normalize?.verdict?.detail ?? null });
+      // 采集段产物路径的**唯一回填点**（2026-10-11 移到这里，缺陷 ㊱ 续跑改造的接线缺口）：
+      // 首跑（runStagesFrom）与自修救回后的重试（runNamedStage）都经过 `run()`，
+      // 两处共用同一实现、不会再漂开。原先只长在 runStagesFrom 的循环体里 ⇒ 重试
+      // promotion-fetch 成功后 `record.source.promotionZip` 仍是空 ⇒ 续跑到 push 时
+      // `withSourcePaths` 收到「只有 --shop-xlsx」抛错，把整批链打断（2026-10-11 11:33 那轮）。
+      // 只在**这一步真的成功且没被 `--only` 跳过**时回填 —— 失败/跳过都没有产物路径可记。
+      if (!result.skipped && result.status === 0) {
+        if (stage.stage === 'shop-report') {
+          record.source.shopXlsx = findPath(result.stdout, 'shopXlsxPath');
+          if (record.source.shopXlsx) {
+            record.source.shopReportManifest = path.join(shopLogDir, 'shop-report-manifest.json');
+            writeDownloadManifest({ outputPath: record.source.shopReportManifest, filePath: record.source.shopXlsx,
+              reportType: 'shop-report', date: args.date, shop: key, member: shopIdentity(key).alimamaMemberName });
+            console.log(`[${key}]   店铺工作簿 = ${record.source.shopXlsx}`);
+          }
+        }
+        if (stage.stage === 'promotion-fetch') {
+          record.source.promotionZip = findPath(result.stdout, 'promotionZipPath');
+          if (record.source.promotionZip) {
+            record.source.promotionManifest = path.join(shopLogDir, 'promotion-report-manifest.json');
+            writeDownloadManifest({ outputPath: record.source.promotionManifest, filePath: record.source.promotionZip,
+              reportType: 'promotion-report', date: args.date, shop: key, member: shopIdentity(key).alimamaMemberName });
+            console.log(`[${key}]   推广 zip = ${record.source.promotionZip}`);
+          }
+        }
+      }
       return result;
     };
     // 按**名字**重跑一个阶段（自动修复用）。找不到就如实报，不猜一个阶段出来跑。

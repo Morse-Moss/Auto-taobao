@@ -15,6 +15,43 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.2] - 2026-10-11
+
+1.8.1 回归热修：两个 P0「接线」缺陷把日报分批链整条打灭（详见 `PROJECT-NOTES.md` ㊷㊸）。
+触发＝11:30 定时轮首跑：`scripts/run-batches.mjs` 一进 `main()` 即抛 TDZ，整链一行未跑、
+飞书零写入；根因修复后补跑，8 家全部写成（底单/询单表 2026-10-10 各 8 行）。
+两个缺陷都在 1.8.1 自报的「定向 192/192 全绿」之下漏网 —— 判据全是纯函数/源码级，
+没有一条钉到「`main()` 真跑时这段代码能否执行到」。
+
+### 改了什么
+
+**㊷ `scripts/run-batches.mjs`：互斥锁块排在 `const log` 声明之前（TDZ）**
+
+- 现象：非 `--print` 真跑一进 `main()` 第 365 行即抛
+  `ReferenceError: Cannot access 'log' before initialization`；`--print` 因在更早处 `return`、
+  锁块又被 `if(!options.print)` 跳过 ⇒ `--print` 与纯函数用例都覆盖不到。
+- 修法：把锁块下移到 `log` 就绪之后、批循环之前（它只需排在「起任何进程之前」，语义等价）。
+
+**㊸ `run-multi-shop-day.mjs`：自修救回后续跑时源产物路径只填了一半**
+
+- 现象：自修重试 `promotion-fetch` 成功后，续跑到 `push` 抛
+  `源产物路径只给了一半（只有 --shop-xlsx）`（`withSourcePaths`），把整批链打断（第一批 5 家全没写）。
+- 根因：`record.source` 回填只长在 `runStagesFrom` 循环体里，而自修重试走
+  `runNamedStage → run()`，绕过回填 ⇒ `record.source.promotionZip` 恒空
+  （10-10 `139c112` 修 ㊱ 那次续跑改造留下的接线缺口）。
+- 修法：回填移进 `run()` 作单一实现（`!result.skipped && result.status === 0` 才记），首跑与重试共用。
+
+### 验证到什么程度
+
+- 定向离线用例：`runtime/run-batches-cli.test.mjs` ＋ `runtime/workflow-lock.test.mjs` 14/14；
+  `skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.test.mjs` 134/134；`node --check` 过。
+- **真机过**：11:30 定时轮重跑 + 补跑第一批 5 家全绿（`evidence/batches-2026-10-10/batches.log`、
+  `evidence/daily-job-2026-10-10/`）；盖文淘宝实证走通被修的续跑路径（自修救回 `sycm-date` →
+  续跑 7 步含 `push`）。底单/询单表 2026-10-10 各 8 行（独立回读）。
+- **未跑 `test:staged`**：本次改了 skill 的实现文件 ⇒ 按 AGENTS.md 会拉起该 skill 整套
+  （含 7.6 小时量级的 E2E），且当天下午有客户演示、机器待交付 ⇒ 只跑定向用例，不盲等全量。
+  需要该结论时单独 `npm run test:staged --budget-seconds=...` 跑。
+
 ## [1.8.1] - 2026-10-11
 
 07:00 推广轮生产事故（缺陷㊶）止血批次。用户授权总执行人重构（「你现在就专心给我重构，
