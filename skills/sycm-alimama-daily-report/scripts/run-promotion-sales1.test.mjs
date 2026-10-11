@@ -10,6 +10,7 @@ import {
 import { READABLE_SOURCE_KEYS } from '../../../runtime/notify-feishu-core.mjs';
 import { unfixableShopsOf } from '../../../runtime/hold-and-resume-plan.mjs';
 import { failedShopsOf } from '../../../scripts/hold-and-resume.mjs';
+import { validateSummary } from '../../../runtime/unified-summary-schema.mjs';
 
 test('推广入口保留公共批次顺序，不在入口内切批', () => {
   assert.deepEqual(promotionSales1Plan({ shops: ['里可林淘宝', '网林天猫', '盖文淘宝'] }), [
@@ -95,13 +96,18 @@ test('deliverPromotionAlert：投递成功才记账，送失败不记账（防�
 // P0-3：链级 summary 的判据对接——「我们构造的字段，对面的判据真的认」。这条用例防的正是
 // 07:00 那种「链说失败了、下游判据全瞎 ⇒ 恒判没有要人看的失败 ⇒ 照旧释放」的断裂：
 // 推广链 summary 的失败店必须被 unfixableShopsOf / failedShopsOf 同时点名。
+// 迁移第 3 步（2026-10-11）起：buildPromotionSummary 并写统一字段，evidenceRoot 必传，
+// version/workflow 断言随拍板换成统一串。
+const PROMOTION_EVIDENCE_ROOT = path.resolve('evidence/promotion-sales1-2026-10-10');
+
 test('buildPromotionSummary：失败店被释放/驻留两侧判据同时点名（跨模块对接）', () => {
   const results = [
     { batch: 1, shop: '里可林淘宝', status: 'ok', stages: ['keyword-submit', 'import'] },
     { batch: 1, shop: '网林天猫', status: 'failed', stages: ['keyword-submit'], error: '采集失败：关键词报表提交任务无法唯一确认' },
   ];
-  const summary = buildPromotionSummary({ date: '2026-10-10', results });
-  assert.equal(summary.version, 'promotion-sales1-summary-v1');
+  const summary = buildPromotionSummary({ date: '2026-10-10', results, evidenceRoot: PROMOTION_EVIDENCE_ROOT });
+  assert.equal(summary.version, 'unified-summary-v1'); // 拍板 6.4-A：三链同串（旧串 promotion-sales1-summary-v1 已随第 3 步废弃）
+  assert.equal(summary.workflow, 'promotion-daily'); // 迁移第 3 步：哪条链写的，驻留续跑与统一回执都读它
   // 成功店不带 repairRequest（不是失败，不进「要人看」名单）。
   assert.equal(summary.shops['里可林淘宝'].repairRequest, undefined);
   // 失败店带空候选（推广链无脚本自修能力 ⇒ 「脚本修不动」是现状事实）。
@@ -112,7 +118,70 @@ test('buildPromotionSummary：失败店被释放/驻留两侧判据同时点名�
   const failed = failedShopsOf(summary);
   assert.deepEqual(failed.map((item) => item.shop), ['网林天猫']);
   // 全成功 ⇒ 两边都空（不误驻留、不误拦释放）。
-  const allOk = buildPromotionSummary({ date: '2026-10-10', results: [results[0]] });
+  const allOk = buildPromotionSummary({ date: '2026-10-10', results: [results[0]], evidenceRoot: PROMOTION_EVIDENCE_ROOT });
   assert.deepEqual(unfixableShopsOf(allOk), []);
   assert.deepEqual(failedShopsOf(allOk), []);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 统一 summary schema 并写（三链对齐 P1 迁移第 3 步，2026-10-11）：离线用例先钉，
+// 真机验证窗口＝2026-10-12 07:00 定时轮（07:00 事故轮的同位窗口）。
+// ─────────────────────────────────────────────────────────────────────────────
+
+// a. 并写后的构建输出必须过统一校验器全绿（ok 店走完五阶段＋失败店空菜单，真实参数形状）。
+test('buildPromotionSummary 并写后形状过 validateSummary 全绿（ok 店五阶段＋失败店空菜单）', () => {
+  const results = [
+    { batch: 1, shop: '里可林淘宝', status: 'ok', stages: ['keyword-submit', 'audience-submit', 'keyword-fetch', 'audience-fetch', 'import'] },
+    { batch: 1, shop: '网林天猫', status: 'failed', stages: [], error: '采集失败：关键词报表提交任务无法唯一确认' },
+  ];
+  const summary = buildPromotionSummary({ date: '2026-10-10', results, evidenceRoot: PROMOTION_EVIDENCE_ROOT });
+  assert.deepEqual(validateSummary(summary), { ok: true, errors: [] });
+});
+
+// b. 并写自洽：失败店 failureClass 恒最小档、noActionRequired 恒 false、autoRepair 恒显式 null、
+//    evidence 与 :208 现有拼法（`<--evidence 根>/<店>` 相对仓库根）一致；ok 店只补 evidence。
+test('buildPromotionSummary 并写自洽：失败店恒 STAGE_FAILED/false/null，evidence 与现有拼法一致', () => {
+  const results = [
+    { batch: 1, shop: '里可林淘宝', status: 'ok', stages: ['keyword-submit', 'import'] },
+    { batch: 1, shop: '网林天猫', status: 'failed', stages: ['keyword-submit'], error: '采集失败：人群报表提交任务无法唯一确认' },
+  ];
+  const { shops } = buildPromotionSummary({ date: '2026-10-10', results, evidenceRoot: PROMOTION_EVIDENCE_ROOT });
+  const failed = shops['网林天猫'];
+  assert.equal(failed.failureClass, 'STAGE_FAILED'); // 最小档分类器（草案 6.1）：推广链尚无逐店分诊判据
+  assert.equal(failed.noActionRequired, false); // 空菜单＝需要人看现场，失败店恒要人看
+  assert.ok(failed.autoRepair === null, 'autoRepair 必须显式 null（不许 {} 也不许缺——gaveUp 判据靠 typeof 区分「没跑」与「跑过」）');
+  assert.deepEqual(failed.repairRequest, { candidates: [] }); // P0-3 空菜单形态一个不动
+  // evidence 与 run() 侧 shopEvidence 同款拼法（path.join(args.evidence, shop)），相对仓库根。
+  assert.equal(failed.evidence, path.join('evidence', 'promotion-sales1-2026-10-10', '网林天猫'));
+  assert.equal(shops['里可林淘宝'].evidence, path.join('evidence', 'promotion-sales1-2026-10-10', '里可林淘宝'));
+  // ok 店：evidence 补上，失败信号三件套不落（与日报链第 2 步实现口径一致）。
+  const okShop = shops['里可林淘宝'];
+  assert.equal('failureClass' in okShop, false);
+  assert.equal('noActionRequired' in okShop, false);
+  assert.equal('autoRepair' in okShop, false);
+  // 旧字段一个不动：batch/shop/status/stages 原样。
+  assert.equal(okShop.batch, 1);
+  assert.equal(okShop.shop, '里可林淘宝');
+  assert.deepEqual(okShop.stages, ['keyword-submit', 'import']);
+});
+
+// c. 源码级接线守卫（照 1.8.4 日报链 run-multi-shop-day.test.mjs 的做法）：1.8.2 式
+//    「纯函数全绿但 main() 接线断掉」的漏网对策——落盘点个数与实际一致，且每一处前
+//    必含「构造（并写）→ 校验」两步、顺序固定。
+test('统一 schema 并写接线（源码级）：唯一 summary 落盘点前「先构造并写、再校验、再落盘」', () => {
+  const src = fs.readFileSync(new URL('./run-promotion-sales1.mjs', import.meta.url), 'utf8');
+  // 并写构造与写入时校验都必须是函数声明（hoisted），不许改成 const 箭头——main 里调用无 TDZ 面。
+  assert.match(src, /export function buildPromotionSummary\(/u, '并写构造必须是函数声明（hoisted）');
+  assert.match(src, /function warnSummarySchemaViolations\(/u, '写入时校验必须是函数声明（hoisted）');
+  // summary.json 有且只有 1 个落盘点（fs.writeFileSync(alertPath…) 是告警临时文件，不算）。
+  const writes = [...src.matchAll(/fs\.writeFileSync\(summaryPath/gu)];
+  assert.equal(writes.length, 1, `summary.json 的落盘点应有且只有 1 处（收到 ${writes.length}）`);
+  for (const [i, match] of writes.entries()) {
+    const before = src.slice(Math.max(0, match.index - 800), match.index);
+    const buildAt = before.indexOf('buildPromotionSummary({ date: args.date, results, evidenceRoot: args.evidence })');
+    const warnAt = before.indexOf('warnSummarySchemaViolations(summary,');
+    assert.ok(buildAt !== -1, `第 ${i + 1} 个落盘点前没有调 buildPromotionSummary（并写没接上）`);
+    assert.ok(warnAt !== -1, `第 ${i + 1} 个落盘点前没有调 warnSummarySchemaViolations（写入时校验没接上）`);
+    assert.ok(buildAt < warnAt, `第 ${i + 1} 个落盘点：并写必须在校验之前（校验的是并写后的形状）`);
+  }
 });

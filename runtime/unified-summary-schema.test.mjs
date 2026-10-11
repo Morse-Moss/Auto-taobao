@@ -22,18 +22,21 @@
 //        不是真产物；真产物验证在 2026-10-12 11:30 定时轮，产物落盘后与本校验器核对。
 //      · 推广链：2026-10-10 23:02 那轮（07:00 事故轮的补跑，8 家全败）逐店记录，摘自
 //        evidence/promotion-batches-2026-10-10/batches.log——那一轮跑在 P0-3 合入**之前**，
-//        只往 stdout 打 JSON、没落 summary.json；本夹具＝该轮真实记录 + P0-3
-//        buildPromotionSummary 的包装形状（失败店补 repairRequest:{candidates:[]}）。
-//        evidence/ 下目前尚无 P0-3 之后的真实 summary.json 产物；第 3 步并写后用真产物替换。
+//        只往 stdout 打 JSON、没落 summary.json；本夹具＝该轮真实记录 + buildPromotionSummary
+//        的包装形状。**第 3 步（2026-10-11）起，本推广夹具已换成「并写后形状」**：顶层补
+//        version=unified-summary-v1/workflow、逐店补 evidence、失败店补 failureClass/
+//        noActionRequired/autoRepair:null——手工按 run-promotion-sales1.mjs 的并写逻辑改的
+//        **离线等价形状**，不是真产物；真产物验证在 2026-10-12 07:00 定时轮，产物落盘后与
+//        本校验器核对。
 //   b. 三链最小合法夹具：每链一份手写最小 summary，validateSummary 必须全绿——
 //      「三条链都能通过同一份 schema」的直接证据。
 //   c. 反例夹具：违反 3.4 七条不变量的样本逐条点名红（不变量 7 是豁免性条款，无可红的
 //      「违反」形态——waiting 记录缺 error/failureClass/repairRequest 是**合法**的——
 //      用绿样本把豁免钉住，突变验证短路豁免时该用例变红）。
 //
-// 「迁移仪表」：样本 a 的欠字段断言就是仪表盘。**日报链已于第 2 步（2026-10-11）清零**
-// （夹具换成并写后形状，断言改全绿）；推广链仍是第 3 步的仪表——14 条欠字段断言原样保留，
-// 第 3 步并写落地后把新产物形状并进夹具、清单清零才算完成。
+// 「迁移仪表」：样本 a 的欠字段断言就是仪表盘。**日报链已于第 2 步（2026-10-11）清零、
+// 推广链已于第 3 步（2026-10-11）清零**（两链夹具都换成并写后形状，欠字段断言改全绿；
+// 推广真产物验证在 2026-10-12 07:00 定时轮）。
 // 断言用 {path, rule} 投影做精确等式：多一条=误伤现状合法形态，少一条=守卫没咬住。
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -354,13 +357,17 @@ const DAILY_REPORT_RESCUED_SAMPLE = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 样本 a-2：推广链样本（2026-10-10 23:02 轮真实记录 + P0-3 包装形状；来源见文件头）
+// 样本 a-2：推广链样本（2026-10-10 23:02 轮真实记录 + 第 3 步并写后形状；来源见文件头）
 // ─────────────────────────────────────────────────────────────────────────────
 const PROMOTION_REAL_SAMPLE = {
-  version: 'promotion-sales1-summary-v1',
+  version: 'unified-summary-v1',
+  workflow: 'promotion-daily',
   date: '2026-10-10',
   shops: {
-    // 失败店：真实记录原样（status 初值即 'failed'——fail-closed 默认；P0-3 给失败店补 repairRequest:{candidates:[]}）。
+    // 失败店：真实记录原样（status 初值即 'failed'——fail-closed 默认）＋ 第 3 步并写补的
+    // evidence/failureClass('STAGE_FAILED' 最小档)/noActionRequired(false)/autoRepair(null)；
+    // repairRequest:{candidates:[]} 是 P0-3 形态保留。evidence 按记录的 batch:1 对应
+    // run-batches 的 b1 目录拼（`<--evidence 根>/<店>` 相对仓库根，Windows 反斜杠保真）。
     里可林淘宝: {
       batch: 1,
       shop: '里可林淘宝',
@@ -371,6 +378,10 @@ const PROMOTION_REAL_SAMPLE = {
         + '"关键词报表_20261009_183418"],"after":["关键词报表_20261010_185450","关键词报表_20261010_180928",'
         + '"关键词报表_20261010_180156","关键词报表_20261009_225312","关键词报表_20261009_183418"],"added":[]}\n',
       repairRequest: { candidates: [] },
+      evidence: 'evidence\\promotion-batches-2026-10-10\\b1\\里可林淘宝',
+      failureClass: 'STAGE_FAILED',
+      noActionRequired: false,
+      autoRepair: null,
     },
     网林天猫: {
       batch: 1,
@@ -380,6 +391,10 @@ const PROMOTION_REAL_SAMPLE = {
       error: '采集失败：关键词报表提交任务无法唯一确认: {"before":["关键词报表_20261010_181020",'
         + '"关键词报表_20261010_180245"],"after":["关键词报表_20261010_181020","关键词报表_20261010_180245"],"added":[]}\n',
       repairRequest: { candidates: [] },
+      evidence: 'evidence\\promotion-batches-2026-10-10\\b1\\网林天猫',
+      failureClass: 'STAGE_FAILED',
+      noActionRequired: false,
+      autoRepair: null,
     },
     盖文淘宝: {
       batch: 1,
@@ -389,6 +404,10 @@ const PROMOTION_REAL_SAMPLE = {
       error: '采集失败：关键词报表提交任务无法唯一确认: {"before":["关键词报表_20261010_181112",'
         + '"关键词报表_20261010_180334"],"after":["关键词报表_20261010_181112","关键词报表_20261010_180334"],"added":[]}\n',
       repairRequest: { candidates: [] },
+      evidence: 'evidence\\promotion-batches-2026-10-10\\b1\\盖文淘宝',
+      failureClass: 'STAGE_FAILED',
+      noActionRequired: false,
+      autoRepair: null,
     },
     // 第二批的网林家居：跑完了 keyword-submit 才败在人群报表——stages 非空的真实形态。
     网林家居: {
@@ -399,6 +418,10 @@ const PROMOTION_REAL_SAMPLE = {
       error: '采集失败：人群报表提交任务无法唯一确认: {"before":["人群报表_20261010_195500"],'
         + '"after":["人群报表_20261010_195500"],"added":[]}\n',
       repairRequest: { candidates: [] },
+      evidence: 'evidence\\promotion-batches-2026-10-10\\b1\\网林家居',
+      failureClass: 'STAGE_FAILED',
+      noActionRequired: false,
+      autoRepair: null,
     },
   },
 };
@@ -559,31 +582,14 @@ test('rescued 豁免·反例：ok 店带 repairRequest 但 autoRepair.rescued �
   ]);
 });
 
-test('真实样本·推广链：欠字段清单恰好等于下列 14 条（迁移仪表：第 3 步并写后重跑本用例，清单清零才算完成）', () => {
+test('真实样本·推广链：并写后形状全绿（第 3 步迁移仪表已清零，2026-10-11）', () => {
+  // 夹具＝2026-10-10 23:02 轮真实记录 + buildPromotionSummary 第 3 步并写逻辑的**离线等价形状**
+  // （顶层 version=unified-summary-v1/workflow、逐店 evidence、失败店 failureClass/
+  // noActionRequired:false/autoRepair:null）。此前这里的 14 条欠字段断言（version INV6、
+  // workflow FIELD、四家失败店各欠 evidence/failureClass/noActionRequired）已随并写清零。
+  // 真产物验证在 2026-10-12 07:00 定时轮（07:00 事故轮的同位窗口），产物落盘后与本校验器核对。
   const { ok, errors } = validateSummary(PROMOTION_REAL_SAMPLE);
-  assert.equal(ok, false);
-  assert.deepEqual(projection(errors), [
-    { path: 'version', rule: 'INV6' }, // 现值 promotion-sales1-summary-v1 是并写期前的旧串，第 3 步换 unified-summary-v1
-    { path: 'workflow', rule: 'FIELD' }, // 缺 workflow
-    // 四家失败店形状一致（shop/batch 已带、status 初值即 failed、repairRequest:{candidates:[]} 是 P0-3 形态），
-    // 各欠 evidence / failureClass / noActionRequired：
-    { path: 'shops.里可林淘宝.evidence', rule: 'FIELD' },
-    { path: 'shops.里可林淘宝.failureClass', rule: 'INV3' },
-    { path: 'shops.里可林淘宝.noActionRequired', rule: 'FIELD' },
-    { path: 'shops.网林天猫.evidence', rule: 'FIELD' },
-    { path: 'shops.网林天猫.failureClass', rule: 'INV3' },
-    { path: 'shops.网林天猫.noActionRequired', rule: 'FIELD' },
-    { path: 'shops.盖文淘宝.evidence', rule: 'FIELD' },
-    { path: 'shops.盖文淘宝.failureClass', rule: 'INV3' },
-    { path: 'shops.盖文淘宝.noActionRequired', rule: 'FIELD' },
-    { path: 'shops.网林家居.evidence', rule: 'FIELD' },
-    { path: 'shops.网林家居.failureClass', rule: 'INV3' },
-    { path: 'shops.网林家居.noActionRequired', rule: 'FIELD' },
-  ]);
-  // 空菜单 candidates 是契约形态（unfixableShopsOf 的第二判据），不得报错；error 为字符串不得报错。
-  for (const { message } of errors) {
-    assert.ok(typeof message === 'string' && message.length > 0);
-  }
+  assert.deepEqual({ ok, errors }, { ok: true, errors: [] });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

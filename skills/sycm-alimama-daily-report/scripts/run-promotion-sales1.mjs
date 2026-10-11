@@ -8,11 +8,13 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { collectingShopKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from '../../../runtime/alert-throttle.mjs';
+import { validateSummary, UNIFIED_SUMMARY_VERSION } from '../../../runtime/unified-summary-schema.mjs';
 import { expectArgs, shopIdentity } from './shop-identities.mjs';
 import { pendingForKind, readLedger } from './promotion-task-ledger.mjs';
 import { resolveTargetDate } from './run-multi-shop-day.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(HERE, '../../..');
 const DRIVER = path.join(HERE, 'run-promotion-daily-report.mjs');
 const IMPORTER = path.join(HERE, 'import-promotion-daily-report.mjs');
 const NOTIFY_CLI = path.resolve('runtime/notify-feishu.mjs');
@@ -128,15 +130,53 @@ function zipFrom(output, kind) {
 // 失败店带 `repairRequest: { candidates: [] }`：推广链**没有脚本自修能力**，任何失败都满足
 // 「脚本修不动 ⇒ 需要人看现场」的判据语义（unfixableShopsOf 的空候选分支），这正是现状事实——
 // 到 P1 统一 summary schema、接入修复内核后，这里换成真实的候选清单。
-export function buildPromotionSummary({ date, results } = {}) {
+//
+// 统一字段并写（三链对齐 P1 迁移第 3 步，2026-10-11，拍板七项全按推荐；同款做法见日报链第 2 步
+// run-multi-shop-day.mjs 的 applyUnifiedSummaryFields）：**旧字段一个不动**（batch/shop/status/
+// stages/error/recovery/repairRequest.candidates 原样保留），只新增——
+//   · 顶层：version 换统一串（拍板 6.4-A 三链同串，常量 import 自校验器）、workflow='promotion-daily'；
+//   · 逐店：evidence＝该店证据目录相对仓库根（与下面 importer 落盘用的 `<--evidence 根>/<店>`
+//     同一款拼法；ok 店也补——agent 到场第一件事靠它指路，成功店现状没有任何字段指路）；
+//   · 失败店：failureClass 恒 'STAGE_FAILED'（**最小档分类器**，草案 6.1 允许「先全部落
+//     STAGE_FAILED 档，字段不能缺」——推广链尚无逐店分诊判据，细化留给后续，不发明新业务判据）、
+//     noActionRequired:false（空菜单＝需要人看现场，失败店恒要人看）、autoRepair:null
+//     （显式落 null：没跑过修复就是 null，不许 {} 也不许缺——unfixableShopsOf 的 gaveUp
+//     判据靠 typeof 区分「没跑」与「跑过」）。
+// 推广链没有 pending 形态（初值即 'failed'，fail-closed），无 pending 豁免问题。
+export function buildPromotionSummary({ date, results, evidenceRoot, repoRoot = REPO_ROOT } = {}) {
   const records = Array.isArray(results) ? results : [];
+  const evidenceOf = (shop) => path.relative(repoRoot, path.join(evidenceRoot, shop));
   return {
-    version: 'promotion-sales1-summary-v1',
+    version: UNIFIED_SUMMARY_VERSION,
+    workflow: 'promotion-daily',
     date,
-    shops: Object.fromEntries(records.map((record) => [record.shop, record?.status === 'ok'
-      ? record
-      : { ...record, repairRequest: { candidates: [] } }])),
+    shops: Object.fromEntries(records.map((record) => {
+      // ok 店：只补 evidence，失败信号字段（failureClass/noActionRequired/autoRepair）不落。
+      if (record?.status === 'ok') return [record.shop, { ...record, evidence: evidenceOf(record.shop) }];
+      // 失败店：P0-3 的空菜单形态保留，统一字段按上面注记补齐。
+      return [record.shop, {
+        ...record,
+        evidence: evidenceOf(record.shop),
+        failureClass: 'STAGE_FAILED',
+        noActionRequired: false,
+        autoRepair: null,
+        repairRequest: { candidates: [] },
+      }];
+    })),
   };
+}
+
+// 写入时校验（拍板 6.7-A，随迁移第 3 步一起上）：落盘前调 validateSummary，不过 ⇒ **照样落盘**
+// （证据优先——格式问题不许升级成丢整轮结论，草案 5.2）＋ stderr 醒目警告（path/rule 摘要），
+// 守卫测试随后会咬住同一批错。与日报链第 2 步 warnSummarySchemaViolations 同款（本地复制，
+// 不 import skills 侧——skills 文件之间非必需不互相 import）。
+function warnSummarySchemaViolations(summary, where) {
+  const { ok, errors } = validateSummary(summary);
+  if (ok) return;
+  console.error(`[推广] ⚠️ summary 未过统一 schema 校验（${where}）—— 证据优先，照样落盘：`);
+  for (const { path: at, rule, message } of errors) {
+    console.error(`[推广]   ⚠️ ${at || '(顶层)'}［${rule}］${message}`);
+  }
 }
 
 export function runPromotionSales1(argv = process.argv.slice(2)) {
@@ -176,9 +216,13 @@ export function runPromotionSales1(argv = process.argv.slice(2)) {
   }
   // 链级 summary 落盘（P0-3）：判据构造在 buildPromotionSummary（纯函数，有用例钉），
   // 这里只负责写文件——路径与 run-batches 释放判定读的 `--logs 根/summary.json` 对齐。
+  // 并写→校验→落盘（迁移第 3 步）：统一字段在 buildPromotionSummary 构造期并写，
+  // 落盘前过 validateSummary（不过⇒照样落盘＋stderr 警告），再写文件。
   fs.mkdirSync(args.evidence, { recursive: true });
+  const summary = buildPromotionSummary({ date: args.date, results, evidenceRoot: args.evidence });
+  warnSummarySchemaViolations(summary, '推广链收尾');
   const summaryPath = path.join(args.evidence, 'summary.json');
-  fs.writeFileSync(summaryPath, JSON.stringify(buildPromotionSummary({ date: args.date, results }), null, 2), 'utf8');
+  fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2), 'utf8');
   console.log(`[summary] 已落 ${summaryPath}`);
   // 失败出口（P0-2）：apply 且 --notify 时，失败才投递飞书告警（去重、成功才记账）。
   // dry-run 不投：没写数据就不该惊动人。全成功也不投。

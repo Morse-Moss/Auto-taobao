@@ -15,6 +15,38 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.5] - 2026-10-11
+
+三链对齐 P1 绞杀者迁移第 3 步：推广链并写统一字段＋写入时校验。**旧字段一个不动**
+（batch/shop/status/stages/error/recovery/repairRequest.candidates 原样保留），单 commit 可
+revert。真机验证窗口＝2026-10-12 07:00 推广定时轮（与 P0 四件真机验收同场）。
+
+### 改了什么
+
+- `run-promotion-sales1.mjs`（+50/-6，删改行全是构造表达式重写、旧字段语义零丢失）：
+  buildPromotionSummary 并写统一字段——version 换 `unified-summary-v1`（旧串
+  `promotion-sales1-summary-v1` 经 grep 全仓无生产读者，仅测试断言随本步更新）、
+  workflow='promotion-daily'、逐店补 evidence（与 importer 落盘同款 `<--evidence 根>/<店>`
+  拼法）；失败店补 failureClass='STAGE_FAILED'（**最小档分类器**，草案 6.1 允许——推广链尚无
+  逐店分诊判据，不发明新业务判据，细化留后续）、noActionRequired:false（空菜单＝需要人看
+  现场）、autoRepair:null（显式 null，区分「没跑过修复」与「跑过」）。签名新增 evidenceRoot
+  必传参数（调用方仅 main＋测试，已全部核清无漏传）。
+- 写入时校验（照第 2 步模式）：本地 warnSummarySchemaViolations（不 import skills 侧），
+  main 收尾按「构造并写→校验→落盘」接线（:221-226）。
+- 测试：run-promotion-sales1.test.mjs 新增 3 用例（validateSummary 全绿、并写自洽、
+  **源码级接线守卫**：唯一落盘点＋窗口内三步顺序＋两函数须为函数声明防 TDZ）；
+  unified-summary-schema.test.mjs 推广夹具换并写后形状，**欠 14 条断言清零**，日报夹具与
+  rescued 用例零改动。
+
+### 验证
+
+- skills 定向组 540/540（基线 537＋新增 3）；runtime 全组 1178 用例 1177 绿，唯一红仍为
+  arch-boundary 预存在欠登记（内容与动工前逐字一致，arch-boundary.test.mjs 未触碰）。
+- 突变两处点名红：删 failureClass 物化（子代理）红在「全绿＋自洽」两用例；删 main 里
+  校验调用（主线独立复核）红在源码级接线守卫用例——接线守卫真的在咬。均 sha256 还原
+  核对逐字节一致。
+- **仅离线判据**；真机验证＝10-12 07:00 轮产物应过校验且写入时零警告。
+
 ## [1.8.4] - 2026-10-11
 
 三链对齐 P1 绞杀者迁移第 2 步：日报链并写统一字段＋rescued 豁免＋写入时校验。
