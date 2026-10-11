@@ -11,9 +11,9 @@ import {
 } from './collect-core.mjs';
 import {
   buildKeywordReportUrl, KEYWORD_TASK_RE, KEYWORD_ZIP_RE,
-  uniqueNewKeywordTask, validateKeywordReportState, validateAudienceReportState, buildAudienceReportUrl,
-  AUDIENCE_TASK_RE, AUDIENCE_ZIP_RE, uniqueNewAudienceTask,
-  reusablePromotionTask,
+  validateKeywordReportState, validateAudienceReportState, buildAudienceReportUrl,
+  AUDIENCE_TASK_RE, AUDIENCE_ZIP_RE,
+  confirmSubmittedTask,
 } from './promotion-daily-report-core.mjs';
 
 const LIST_URL = 'https://one.alimama.com/index.html#!/report/download-list';
@@ -41,7 +41,7 @@ async function findPage(proxy) {
   return pages[0].targetId;
 }
 function parse(argv) {
-  const out = { date: null, shop: null, task: null, kind: 'keyword', phase: 'submit', downloads: defaultDownloadsDir(), proxy: null, reportUrl: null, ledger: path.resolve('runtime/promotion-task-ledger.json'), locateOnly: false, expectMember: null, expectMemberId: null };
+  const out = { date: null, shop: null, task: null, kind: 'keyword', phase: 'submit', downloads: defaultDownloadsDir(), proxy: null, reportUrl: null, ledger: path.resolve('runtime/promotion-task-ledger.json'), locateOnly: false, expectMember: null, expectMemberId: null, submitConfirmTimeoutMs: 15 * 60 * 1000 };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     if (key === '--date') out.date = argv[++i];
@@ -56,9 +56,11 @@ function parse(argv) {
     else if (key === '--expect-member') out.expectMember = argv[++i];
     else if (key === '--expect-member-id') out.expectMemberId = argv[++i];
     else if (key === '--locate-only') out.locateOnly = true;
+    else if (key === '--submit-confirm-timeout-ms') out.submitConfirmTimeoutMs = Number(argv[++i]);
     else throw new Error(`unknown argument ${key}`);
   }
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(out.date ?? '')) throw new Error('--date must be YYYY-MM-DD');
+  if (!Number.isFinite(out.submitConfirmTimeoutMs) || out.submitConfirmTimeoutMs <= 0) throw new Error('--submit-confirm-timeout-ms must be a positive integer');
   return out;
 }
 async function identity(proxy, target, args) {
@@ -139,18 +141,17 @@ async function main() {
       '--report-kind', args.kind, '--shop-key', args.shop, '--proxy', args.proxy,
       '--expect-member', args.expectMember, '--expect-member-id', args.expectMemberId,
       '--task', args.task, '--ledger', args.ledger, '--downloads', args.downloads,
-    ], { encoding: 'utf8' });
+    ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
     if (sharedFetch.status !== 0) throw new Error(sharedFetch.stderr || sharedFetch.stdout || '共享日报取件流程失败');
     const file = sharedFetch.stdout.match(/promotionZipPath = (.+)/u)?.[1]?.trim();
     if (!file) throw new Error(`共享日报取件未返回落盘文件路径：${sharedFetch.stdout}`);
     console.log(`[下载] ${args.kind}ZipPath = ${file}`);
     return;
   }
-  // 任务差集基线必须从下载任务管理读取；当前页可能是 SYCM 或阿里妈妈首页，
-  // 在那里读到空数组会把已有同日任务误判成新提交，或导致新任务无法唯一确认。
+  // 任务基线必须从下载任务管理读取；当前页可能是 SYCM 或阿里妈妈首页，在那里读到空数组
+  // 会让复用判据（reusable/resume）漏掉已有同日任务、从而多做一次不必要的重复提交。
   await navigate(args.proxy, target, LIST_URL);
   const beforeRows = await readTaskRows(args.proxy, target, args.kind);
-  const before = beforeRows.map((row) => row.name);
   if (!args.shop) throw new Error('--shop is required for shared task-ledger recovery');
   const ledger = readLedger(args.ledger);
   const resume = judgeResume({ ledger, date: args.date, shop: args.shop, list: beforeRows, kind: args.kind });
@@ -176,23 +177,27 @@ async function main() {
   if (args.locateOnly) return;
   await submit(args.proxy, target, args.kind);
   await navigate(args.proxy, target, LIST_URL);
-  let after = [];
-  let afterRows = [];
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    afterRows = await readTaskRows(args.proxy, target, args.kind);
-    after = afterRows.map((row) => row.name);
-    try {
-      const reusable = reusablePromotionTask(afterRows, { kind: args.kind, date: args.date });
-      task = reusable ?? (args.kind === 'audience' ? uniqueNewAudienceTask(before, after) : uniqueNewKeywordTask(before, after));
-      const row = afterRows.find((candidate) => candidate.name === task);
-      if (!row) throw new Error(`新增任务 ${task} 未能从目标任务行读取`);
+  // ㊶（2026-10-11）根修：确认判据从「列表差集恰好新增 1 条」改为「按业务日定位生成成功任务」。
+  // 差集判据在 10-10 晚、10-11 早两轮实测里一律读不到刚提交的新任务（提交本身全部成功、任务
+  // 生成成功，只是进入列表视图要平台异步刷新，原 20×4s 等待窗不够，最长实测 13 分钟才可见）。
+  // 走到这里的前提是 before 阶段 reusable 判据未命中（否则上面已复用跳过提交），因此提交后
+  // 列表里出现的「本业务日 + 本 kind + 生成成功」任务就是本轮结果；多条时取最新，与复用同口径。
+  const confirmDeadline = Date.now() + args.submitConfirmTimeoutMs;
+  let lastRows = [];
+  for (;;) {
+    const rows = await readTaskRows(args.proxy, target, args.kind);
+    lastRows = rows;
+    const confirmed = confirmSubmittedTask({ rows, kind: args.kind, date: args.date });
+    if (confirmed) {
+      task = confirmed;
       writeLedger(args.ledger, recordSubmitted(readLedger(args.ledger), { date: args.date, shop: args.shop, taskName: task, proxy: args.proxy, kind: args.kind }));
       break;
-    } catch (error) {
-      if (attempt === 19) throw error;
-      await sleep(4000);
-      await navigate(args.proxy, target, LIST_URL);
     }
+    if (Date.now() >= confirmDeadline) {
+      throw new Error(`${args.kind === 'audience' ? '人群' : '关键词'}报表提交后 ${Math.round(args.submitConfirmTimeoutMs / 60000)} 分钟内未在下载列表确认到业务日 ${args.date} 的生成成功任务；最后一次读到的任务行：${JSON.stringify(lastRows)}`);
+    }
+    await sleep(5000);
+    await navigate(args.proxy, target, LIST_URL);
   }
   }
   }

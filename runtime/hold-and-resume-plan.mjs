@@ -307,9 +307,14 @@ export function buildResumeArgv({ chainScript, date, shops = null, stages = null
  * 整轮被挡那一档本来也没有逐店阶段可点。
  */
 export function buildBatchResumeArgv({
-  batchScript, date, batchSize = null, shops = null, logs = null, notify = true, noHold = true,
+  batchScript, date, batchSize = null, shops = null, logs = null, notify = true, noHold = true, workflow = null,
 } = {}) {
   const argv = [batchScript, '--date', date, '--commit'];
+  // `--workflow`（P0-3，2026-10-11）：续跑必须回到**发起驻留的那条流程**。run-batches 的
+  // workflow 缺省是 daily-report——不传的话，推广日报失败转驻留后的自动续跑会跑成日报链
+  // （跑错流程比不续跑贵一个量级：起对的浏览器、跑错的链、写错的数据）。
+  // 缺省不传＝维持旧行为（daily-report），显式给才加。
+  if (workflow) argv.push('--workflow', workflow);
   if (batchSize !== null && batchSize !== undefined) argv.push('--batch-size', String(batchSize));
   argv.push(notify ? '--notify' : '--notify-print');
   if (Array.isArray(shops) && shops.length) argv.push('--shops', shops.join(','));

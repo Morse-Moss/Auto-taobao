@@ -67,7 +67,10 @@ export function parseArgs(argv, { now = new Date() } = {}) {
   const args = { date: null, summary: null, shops: null, until: null, holdHours: DEFAULT_HOLD_HOURS,
     pollSeconds: null, once: false, resume: true, release: true, notify: true, notifyPrint: false,
     // 分批形态（2026-10-06 加）：续跑的入口是**分批驱动本身**，不是链（见 buildBatchResumeArgv）。
-    resumeViaBatches: false, batchSize: null, resumeLogs: null };
+    resumeViaBatches: false, batchSize: null, resumeLogs: null,
+    // `--workflow`（P0-3，2026-10-11）：发起驻留的是哪条流程，续跑就回哪条。
+    // 缺省 null ＝ 不给 run-batches 传 --workflow（＝它的缺省 daily-report，旧行为逐字不变）。
+    workflow: null };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     if (key === '--date') args.date = argv[++i];
@@ -84,8 +87,9 @@ export function parseArgs(argv, { now = new Date() } = {}) {
     else if (key === '--resume-via-batches') args.resumeViaBatches = true;
     else if (key === '--batch-size') args.batchSize = Number(argv[++i]);
     else if (key === '--resume-logs') args.resumeLogs = argv[++i];
+    else if (key === '--workflow') args.workflow = argv[++i];
     else return { error: `未知参数 ${key}（可用：--date --summary --shops --until --hold-hours --poll-seconds `
-      + '--once --no-resume --no-release --no-notify --notify-print --resume-via-batches --batch-size --resume-logs）' };
+      + '--once --no-resume --no-release --no-notify --notify-print --resume-via-batches --batch-size --resume-logs --workflow）' };
   }
   if (!args.date) return { error: '必须给 --date（驻留的是哪一天的日报）' };
   // 截止时间：默认是**时段**（`--hold-hours`），`--until HH:MM` 是人显式要一个钟点时的备用口径。
@@ -237,6 +241,9 @@ export function resumeArgvFor(args, { shops = null, stages = null } = {}) {
   return buildBatchResumeArgv({
     batchScript: BATCH_DRIVER, date: args.date, batchSize: args.batchSize,
     shops, logs: args.resumeLogs, notify: true, noHold: true,
+    // 续跑回到发起驻留的那条流程（P0-3）：不传 ⇒ run-batches 缺省 daily-report，
+    // 推广日报的驻留会把续跑跑成日报链。
+    workflow: args.workflow ?? null,
   });
 }
 

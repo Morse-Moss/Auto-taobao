@@ -64,6 +64,13 @@ import { versionLineSafe } from '../runtime/version.mjs';
 // 审查 E 项收窄）：全量 validateCatalogEntries 不在启动时跑 —— 否则 weekly 的入口文件丢了
 // 也会拦死日报（爆炸半径错位）；登记表的整体合法性由 runtime/workflow-catalog.test.mjs 守。
 import { getWorkflow, resolveRunMode } from '../runtime/workflow-catalog.mjs';
+// 互斥锁（P0-4，2026-10-11）：推广 07:00 轮直连本入口时**没有任何锁**（run-daily-job 的锁
+// 在宿主层，直连绕过了它）⇒ 手动并发触发两条链会撞同店代理端口。本入口自己抢——与
+// run-daily-job / run-product-data-job 同一把（merchant-automation：三条链共享浏览器资源，
+// 互斥单位是「机器上的采集」，不是「某条流程」）。
+// 重入保护：抢到锁的进程设 SYCM_WORKFLOW_LOCK_HELD；宿主（run-daily-job）拿锁后也设——
+// 子进程与驻留续跑继承它 ⇒ 跳过抢锁，不会自己撞自己（父进程还持着锁，第二个必 busy）。
+import { acquireWorkflowLock, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
 // 统一运行回执（spec §6，run-receipt-v1）与运行根目录（spec §7，run-root）—— 2026-10-10 接入。
 // rounds → 回执的映射抽在 runtime/batch-rounds-receipt.mjs（纯函数，2026-10-10 对抗审查 A 项）：
 // 这里只负责喂 plain data（含逐店 unfixable 名单与 batches.json 的 size/sha256）与落盘。
@@ -255,7 +262,7 @@ function batchUnfixableShops(file) {
  * 它只提供 `--no-notify`（关）与 `--notify-print`（只打印不投递）——**没有** `--notify` 这个参数。
  * 所以 notify 为真时**什么都不传**，退回它的默认（真投递）。
  */
-export function buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify, notifyPrint }) {
+export function buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify, notifyPrint, workflow = null }) {
   const args = [
     '--date', date,
     '--summary', summaryPath,
@@ -270,12 +277,15 @@ export function buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify
   if (notifyPrint) args.push('--notify-print');
   else if (!notify) args.push('--no-notify');
   if (Array.isArray(shops) && shops.length) args.push('--shops', shops.join(','));
+  // `--workflow`（P0-3，2026-10-11）：发起驻留的是哪条流程就传哪条——驻留的自动续跑回到
+  // **同一条流程**（buildBatchResumeArgv）。不传 ⇒ 对面缺省 daily-report（旧行为逐字不变）。
+  if (workflow && workflow !== 'daily-report') args.push('--workflow', workflow);
   return args;
 }
 
-function runBatchHold({ date, summaryPath, batchSize, shops, notify, notifyPrint, logFd, log }) {
+function runBatchHold({ date, summaryPath, batchSize, shops, notify, notifyPrint, workflow, logFd, log }) {
   const holdFile = 'scripts/hold-and-resume.mjs';
-  const args = buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify, notifyPrint });
+  const args = buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify, notifyPrint, workflow });
   log(`--- hold-and-resume：${renderCommand({ file: holdFile, args }, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
   // stdio 直接接 logFd（**不用 pipe**）：驻留可能挂几个小时，期间它会往 stdout 写状态行 ——
   // pipe 一旦没人读、缓冲区满了就会把子进程堵死，而 `spawnSync` 要等它退出才回来 ⇒ 假死。
@@ -335,13 +345,41 @@ async function main(argv) {
     console.log('[mode] --commit 已转换为 --mode apply（兼容期）');
   }
 
-  // ── --notify 静默丢弃要出声（2026-10-10 对抗审查 D 项）────────────────────
-  // promotion-daily 档的链参数**不转发通知开关**（run-promotion-sales1 不认 --notify/--notify-print，
-  // 见下面 batches 那段 chainArgs 的构造）—— 调用方给了 --notify 却没有一个字提示的话，
-  // 「失败告警会自动投递飞书」就成了一个没人兑现过的默认预期。出声，把预期纠回来：
-  // 失败告警以**运行汇报**为准。--print 与真跑都打（同转换提示的纪律）。
-  if ((options.notify || options.notifyPrint) && options.workflow === 'promotion-daily') {
-    console.log('[notify] 本工作流的链入口不转发通知开关，失败告警不会自动投递飞书——请以运行汇报为准');
+  // ── promotion-daily 的 --notify 转发（P0-2，2026-10-11）────────────────────
+  // run-promotion-sales1 已认 --notify（失败才投递飞书告警、去重、成功才记账），
+  // 本层照常转发；dry-run 不转——没写数据就不该惊动人（链内同口径）。
+  if (options.notify && options.workflow === 'promotion-daily' && mode !== 'apply') {
+    console.log('[notify] 排练（dry-run）不转发 --notify：失败告警只在写数据的 apply 轮投递');
+  }
+
+  // ── 互斥锁（P0-4，2026-10-11）──────────────────────────────────────────────
+  // 与 run-daily-job / run-product-data-job 同一把 merchant-automation：三条链共享浏览器
+  // 资源，互斥单位是「机器上的采集」。三个例外不抢：
+  //   ① --print / 计划形态（无副作用）；
+  //   ② 宿主已持锁（SYCM_WORKFLOW_LOCK_HELD 由 run-daily-job 拿锁后设置、子进程继承）；
+  //   ③ 本进程自己抢到锁后也设置它——驻留的自动续跑（spawn 的 run-batches）继承后跳过，
+  //     否则续跑必撞父进程还持有的锁、busy 退 1，驻留的「人处理完自动补」整条落空。
+  let workflowLock = null;
+  if (!options.print) {
+    if (process.env.SYCM_WORKFLOW_LOCK_HELD === WORKFLOW_LOCK_NAME) {
+      log('[锁] 上层已持有 merchant-automation 运行锁（本进程是子步）⇒ 不重复抢');
+    } else {
+      try {
+        workflowLock = acquireWorkflowLock(WORKFLOW_LOCK_NAME, `run-batches:${options.workflow}`, {
+          directory: path.join(REPO_ROOT, 'runtime', '.workflow-locks'),
+        });
+      } catch (error) {
+        log(`运行锁冲突：${error.message}；持有者=${JSON.stringify(error.lock ?? null)}`
+          + `（同机另一条采集流程正在跑：日报/商品/推广共用浏览器资源，等它结束再试）`);
+        return 1;
+      }
+      process.env.SYCM_WORKFLOW_LOCK_HELD = WORKFLOW_LOCK_NAME;
+      process.once('exit', () => workflowLock.release());
+      if (workflowLock.staleReclaimed) {
+        log(`[锁] 回收过期锁：原持有者=${workflowLock.reclaimedFrom?.owner ?? '未知'}`
+          + `、pid=${workflowLock.reclaimedFrom?.pid ?? '未知'}（该进程已不在）`);
+      }
+    }
   }
 
   // 切批这一步的所有拒绝都必须发生在**起任何进程之前**：名字拼错、家数非法时，
@@ -393,8 +431,11 @@ async function main(argv) {
       // 两档统一：apply ⇒ 含 --commit；dry-run ⇒ 不含。
       // ⚠️ 链子进程（run-multi-shop-day / run-promotion-sales1）不认识 --mode，
       // 命令面只能继续用 --commit —— mode 是**本层**的概念，不下传。
+      // promotion-daily（P0-2，2026-10-11）：apply 且 --notify 时转发 --notify
+      // （run-promotion-sales1 已认：失败才投递飞书、去重、成功才记账）；
+      // dry-run 不转——没写数据不该惊动人。
       chainArgs: options.workflow === 'promotion-daily'
-        ? (mode === 'apply' ? ['--commit'] : [])
+        ? [...(mode === 'apply' ? ['--commit'] : []), ...(mode === 'apply' && options.notify ? ['--notify'] : [])]
         : [...chainArgsFor({ ...options, commit: mode === 'apply' }), LOGIN_PREFLIGHT_FLAG, loginArtifactFor(batch)],
       logsDir: path.relative(REPO_ROOT, path.join(evidenceRoot, `b${batch.index}`)),
       loginStep: loginStepFor(batch),
@@ -620,7 +661,8 @@ async function main(argv) {
         + '窗口留不留得住取决于这一轮进程不结束 —— 驻留就是「这一轮不结束」这件事本身。');
       holdStatus = runBatchHold({
         date, summaryPath: blocked.summaryPath, batchSize: size,
-        shops: options.shops, notify: options.notify, notifyPrint: options.notifyPrint, logFd, log,
+        shops: options.shops, notify: options.notify, notifyPrint: options.notifyPrint,
+        workflow: options.workflow, logFd, log,
       });
       if (holdStatus === HOLD_EXIT.RESUMED_OK) {
         log('[批次] 人处理完了、自动续跑成功 ⇒ 这一轮的缺口补上了，整轮退出码记 0'

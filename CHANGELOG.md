@@ -15,6 +15,79 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.1] - 2026-10-11
+
+07:00 推广轮生产事故（缺陷㊶）止血批次。用户授权总执行人重构（「你现在就专心给我重构，
+授权给你」），按三链对齐方案（`docs/ops/THREE-CHAIN-ALIGNMENT-AND-REFACTOR-PLAN-2026-10-11.md`）
+执行 P0 四件＋验收门＋schema 蓝图。事故定性：推广链是「只接外壳、没接内核的薄壳链」——
+已跑通的失败处理流程（感知→分诊→修复→转 agent→告警）一处都没复用，因为内核全部长在
+日报链私有文件里，没有物理载体可 import。
+
+### 改了什么
+
+**P0-1 缺陷㊶ 根修：提交确认判据从「列表差集」改为「按业务日定位生成成功任务」**
+
+- 事故现场：07:00 推广轮 8 家全报 `added=[]` 失败。实测提交一律真成功、任务生成成功，
+  但新任务进列表视图要平台异步刷新（原 20×4s 等待窗不够，最长实测 13 分钟），差集判据
+  把成功一律误报成失败。
+- `promotion-daily-report-core.mjs` 新增 `confirmSubmittedTask`（复用 `reusablePromotionTask`
+  口径：业务日 rangeStart/rangeEnd===date＋status==='生成成功'，多条取最新）。
+- `run-promotion-daily-report.mjs` 确认循环重写：轮询任务列表→命中即记账；新增
+  `--submit-confirm-timeout-ms`（默认 15 分钟，正整数校验），到点抛错并附最后读到的任务行；
+  spawnSync 全部带 `stdio: ['ignore','pipe','pipe']`（EBUSY 假红防患，`import-promotion-daily-report.mjs`
+  的 ZIP 解析同修）。
+
+**P0-2 推广链接入告警（失败才投递）**
+
+- `run-promotion-sales1.mjs` 新增 `buildPromotionRoundAlert` / `deliverPromotionAlert`：
+  `--alert-file` 文件投递（不走 stdin 管道，EBUSY 教训）、`resolveAlertDedup` 指纹去重、
+  投递成功才记账（送失败不记账防自挡）、source 只用 READABLE_SOURCE_KEYS 白名单键、
+  不带机器名/盘符；`--notify` 开关。
+- `scripts/run-batches.mjs`：apply 且 `--notify` 时向链转发（dry-run 不带且出声说明，
+  删旧「不转发通知」警告）。
+
+**P0-3 释放兜底：无托住信号的失败轮不释放改驻留**
+
+- 推广链此前不落 summary.json ⇒ `unfixableShopsOf` 恒空 ⇒ 失败轮恒释放。修：
+  `run-promotion-sales1.mjs` 每轮落 summary.json 到 evidence 目录（失败店带
+  `repairRequest: { candidates: [] }`，语义＝脚本修不动、要人看现场）——
+  unfixableShopsOf / failedShopsOf / hold 决策整条判据链自动归位。
+- 驻留续跑修：`runtime/hold-and-resume-plan.mjs` 的 `buildBatchResumeArgv` / `buildBatchHoldArgv`
+  透传 `--workflow`（原先缺省 daily-report ⇒ 推广链驻留续跑会跑成日报链）；
+  `scripts/hold-and-resume.mjs` 加 `--workflow` 参数。
+
+**P0-4 推广链互斥锁**
+
+- `scripts/run-batches.mjs` 直连入口自己抢 `merchant-automation` 单锁（三条链共享浏览器
+  资源，互斥单位是「机器上的采集」；直连原先绕过宿主层锁 ⇒ 手动并发会撞同店代理端口）。
+  `SYCM_WORKFLOW_LOCK_HELD` 环境变量重入保护：抢到者与宿主 `run-daily-job.mjs` 都设，
+  子进程/驻留续跑继承跳过；冲突退 1。
+
+**验收门与蓝图（文档）**
+
+- `AGENTS.md` 新增「Failure-exit gate」小节：任何链接入生产调度前必须答失败出口四问
+  （会不会告警／会不会自修／修不动会不会托住／summary 有没有 unfixable 信号）＋
+  机制/判据分离检查（新链自己实现 escalation/notify/repair 而非 import 即不过审）。
+- `docs/ops/UNIFIED-SUMMARY-SCHEMA-DRAFT-2026-10-11.md`：三链统一 summary schema 草案
+  （P1 蓝图：现状矩阵／统一字段表／绞杀者迁移／守卫设计）。
+
+### 为什么改
+
+- 四件都是 07:00 事故里「失败发生时系统什么都不做」的直接止血：误报（P0-1）、无告警
+  （P0-2）、误释放（P0-3）、无互斥（P0-4）。内核抽取（把失败处理从日报链私有文件搬进
+  共享层）走绞杀者模式放 P2，本批先把四个出口补上并用验收门挡住下一批薄壳链。
+
+### 验证到什么程度
+
+- 定向测试 192/192 全绿（推广链侧 22/22、runtime 侧 170/170；原始输出
+  `.tmp-verify/skills-side.txt` / `.tmp-verify/runtime-side.txt`，node 22.22.2-6 仓库根跑）。
+- 突变抽查两处均被精准击杀：`confirmSubmittedTask` 改坏 ⇒ 「㊶ 判据」用例红
+  （actual 拿到非本业务日旧任务）；`buildPromotionSummary` 去掉失败店 repairRequest ⇒
+  「跨模块对接」用例红（actual=undefined）。还原后 sha256 与留底逐字节一致，另复跑
+  22/22 确认还原干净（`.tmp-verify/skills-side-post-restore.txt`）。
+- **仅离线判据**：未做真机整轮验证——明日 07:00 定时轮即为真机验收（告警链路、
+  释放驻留、互斥锁全部以真机轮为准）。
+
 ## [1.8.0] - 2026-10-10
 
 架构优化执行规格（`docs/ops/SYSTEM-ARCHITECTURE-OPTIMIZATION-EXECUTION-SPEC-2026-10-10.md`）

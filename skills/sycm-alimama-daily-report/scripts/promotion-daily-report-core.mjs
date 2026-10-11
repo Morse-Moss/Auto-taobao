@@ -68,6 +68,15 @@ export function reusablePromotionTask(rows = [], { kind, date } = {}) {
   return matches.map((row) => row.name).sort().at(-1);
 }
 
+// ㊶（2026-10-11）根修的判据封装：提交后的「成功」定义＝平台上存在一份本业务日、本 kind、
+// 生成成功的报表任务——而不是「列表差集恰好新增 1 条」。差集判据在 10-10 晚与 10-11 早两轮
+// 实测里一律读不到刚提交的新任务（提交本身全部成功，任务进列表视图要平台异步刷新，等待窗
+// 远超原 20×4s）。与 reusablePromotionTask 同口径（多条业务等价取最新）；单独导出是为了把
+// 「提交确认判据」这个契约钉成一个可测的点，CLI 与测试都只认这里。
+export function confirmSubmittedTask({ rows = [], kind = null, date = null } = {}) {
+  return reusablePromotionTask(rows, { kind, date });
+}
+
 export function validateExportRows(headers, rows, { kind, expectedColumns, date, allowEmpty = false }) {
   const allowedColumns = Array.isArray(expectedColumns) ? expectedColumns : [expectedColumns];
   if (!Array.isArray(headers) || !allowedColumns.includes(headers.length)) {

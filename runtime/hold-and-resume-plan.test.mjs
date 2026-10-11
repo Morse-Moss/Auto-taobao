@@ -599,6 +599,21 @@ test('接线（行为级）：分批驱动给驻留的**每一个开关**，驻�
     '前提校验：对面确实不认 --notify（若不认这件事变了，这条用例的立论要重写）');
 });
 
+// P0-3（2026-10-11）：发起驻留的是哪条流程，驻留参数就要带上哪条——续跑才能回到同一条。
+// 对面（scripts/hold-and-resume.mjs 的 parseArgs）必须认 --workflow，缺省不传＝旧行为。
+test('分批驻留参数透传 --workflow：对面认、续跑拿得到', () => {
+  const base = { date: '2026-10-10', summaryPath: 'evidence/x/summary.json', batchSize: 5, shops: ['网林天猫'] };
+  const args = buildBatchHoldArgv({ ...base, notify: true, notifyPrint: false, workflow: 'promotion-daily' });
+  const parsed = parseHoldArgs(args);
+  assert.equal(parsed.error, undefined, `驻留不认 --workflow —— ${parsed.error ?? ''}（原样：${args.join(' ')}）`);
+  assert.equal(parsed.workflow, 'promotion-daily', 'workflow 必须被驻留收到（续跑回同一条流程的依据）');
+  // daily-report 不传（它的缺省就是 daily-report，传了是冗余但无害——钉「非 daily 才传」的省略行为）。
+  const dailyArgs = buildBatchHoldArgv({ ...base, notify: true, notifyPrint: false, workflow: 'daily-report' });
+  assert.equal(dailyArgs.includes('--workflow'), false, 'daily-report 是对面缺省，不传（旧行为不变）');
+  const legacyArgs = buildBatchHoldArgv({ ...base, notify: true, notifyPrint: false });
+  assert.equal(legacyArgs.includes('--workflow'), false, '不给 workflow＝旧行为，一个字都不多');
+});
+
 test('分批续跑：入口是**分批驱动**（直连链会在「实例不在」的现场上开跑），且带上 --no-hold 防递归', () => {
   const argv = buildBatchResumeArgv({
     batchScript: 'D:\\repo\\scripts\\run-batches.mjs', date: '2026-10-05', batchSize: 5, notify: true,
@@ -616,6 +631,17 @@ test('分批续跑：入口是**分批驱动**（直连链会在「实例不在�
   // 不给 `--notify` ⇒ 落到 `--notify-print`（与整条链的默认口径一致：只打印、不投递）。
   assert.equal(buildBatchResumeArgv({ batchScript: 'x', date: 'd', batchSize: 2, notify: false }).includes('--notify-print'), true);
   assert.equal(buildBatchResumeArgv({ batchScript: 'x', date: 'd', batchSize: 2, notify: false }).includes('--notify'), false);
+});
+
+// P0-3（2026-10-11）：续跑必须回到**发起驻留的那条流程**。run-batches 的 workflow 缺省是
+// daily-report——不透传的话，推广日报失败转驻留后的自动续跑会跑成日报链（起对的浏览器、
+// 跑错的链）。缺省不传＝旧行为逐字不变，这条也钉住（不许把缺省变成隐式 daily-report 字面量）。
+test('分批续跑透传 --workflow：给了就带上，不给维持旧行为（一个字都不多）', () => {
+  const withFlow = buildBatchResumeArgv({ batchScript: 'x', date: '2026-10-10', batchSize: 5, notify: true, workflow: 'promotion-daily' });
+  assert.equal(withFlow[withFlow.indexOf('--workflow') + 1], 'promotion-daily', '给了 workflow 必须带上，否则推广链驻留的续跑跑成日报链');
+  assert.equal(withFlow.includes('--commit'), true, 'workflow 与 commit 并存（续跑是真写）');
+  const withoutFlow = buildBatchResumeArgv({ batchScript: 'x', date: '2026-10-10', batchSize: 5, notify: true });
+  assert.equal(withoutFlow.includes('--workflow'), false, '不给就不传（旧行为逐字不变：靠 run-batches 自己的缺省）');
 });
 
 test('分批：整轮被挡的判据读**链自己落盘的结论**，老 summary 落回旧口径', () => {

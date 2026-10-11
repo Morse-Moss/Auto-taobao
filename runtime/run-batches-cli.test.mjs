@@ -118,23 +118,32 @@ test('d. daily-report --commit 开关：加了链命令含 --commit，不加则�
   });
 });
 
-// e. --notify 静默丢弃要出声（2026-10-10 对抗审查 D 项）：promotion-daily 的链参数
-//    不转发通知开关 —— 调用方给了 --notify 时 stdout 必须打一行醒目警告，
-//    否则「失败告警会自动投递飞书」成了没人兑现过的默认预期。
-//    daily-report 档链参数**会**转发 --notify/--notify-print ⇒ 不许打这行（打了就是误报）。
-test('e. promotion-daily --notify ⇒ stdout 含「不转发通知开关」警告；daily-report --notify 不打这行', () => {
+// e. --notify 转发（P0-2，2026-10-11 重写）：run-promotion-sales1 已认 --notify
+//    （失败才投递飞书、去重、成功才记账）⇒ apply 轮链命令必须带 --notify；
+//    dry-run 轮不转（没写数据不该惊动人）且 stdout 打一行说明。旧警告「本工作流的链入口
+//    不转发通知开关」已随转发落地而废除——它再出现就是回退。
+test('e. promotion-daily --notify：apply 轮链命令带 --notify；dry-run 轮不转且出声说明', () => {
   withTempRoot((root) => {
-    const promo = runCli(['--workflow', 'promotion-daily', '--date', '2026-10-09',
-      '--batch-size', '5', '--notify', '--print', '--evidence-root', root]);
-    assert.equal(promo.status, 0, `status=${promo.status} stderr=${promo.stderr}`);
-    assert.match(promo.stdout, /\[notify\] 本工作流的链入口不转发通知开关，失败告警不会自动投递飞书——请以运行汇报为准/u,
-      `给了 --notify 但链不转发时必须出声。实际：\n${promo.stdout}`);
+    const apply = runCli(['--workflow', 'promotion-daily', '--date', '2026-10-09',
+      '--batch-size', '5', '--commit', '--notify', '--print', '--evidence-root', root]);
+    assert.equal(apply.status, 0, `status=${apply.status} stderr=${apply.stderr}`);
+    const applyLines = chainLines(apply.stdout, 'run-promotion-sales1.mjs');
+    assert.ok(applyLines.length > 0, '计划里必须有 chain 步骤');
+    assert.ok(applyLines.some((l) => l.includes('--notify') && l.includes('--commit')),
+      `apply + --notify 下链命令必须同时含 --commit 与 --notify。实际：\n${applyLines.join('\n')}`);
+    assert.doesNotMatch(apply.stdout, /本工作流的链入口不转发通知开关/u,
+      '旧警告已废除（链入口现在认 --notify），它再出现就是回退。');
 
-    const daily = runCli(['--workflow', 'daily-report', '--date', '2026-10-09',
+    const dry = runCli(['--workflow', 'promotion-daily', '--date', '2026-10-09',
       '--batch-size', '5', '--notify', '--print', '--evidence-root', root]);
-    assert.equal(daily.status, 0, `status=${daily.status} stderr=${daily.stderr}`);
-    assert.doesNotMatch(daily.stdout, /\[notify\]/u,
-      `daily-report 的链参数会转发通知开关，这行警告打了就是误报。实际：\n${daily.stdout}`);
+    assert.equal(dry.status, 0, `status=${dry.status} stderr=${dry.stderr}`);
+    const dryLines = chainLines(dry.stdout, 'run-promotion-sales1.mjs');
+    for (const line of dryLines) {
+      assert.ok(!line.includes('--notify'),
+        `dry-run 轮链命令不许带 --notify（没写数据不该惊动人）。实际：${line}`);
+    }
+    assert.match(dry.stdout, /排练（dry-run）不转发 --notify/u,
+      `dry-run + --notify 必须出声说明。实际：\n${dry.stdout}`);
     assert.deepEqual(readdirSync(root), [], '--print 不得落盘');
   });
 });

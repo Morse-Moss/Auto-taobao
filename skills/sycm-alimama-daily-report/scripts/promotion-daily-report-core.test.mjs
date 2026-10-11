@@ -4,7 +4,7 @@ import {
   buildKeywordReportUrl, KEYWORD_TASK_RE, KEYWORD_ZIP_RE,
   uniqueNewKeywordTask, validateKeywordReportState, validateAudienceReportState, buildAudienceReportUrl,
   AUDIENCE_TASK_RE, AUDIENCE_ZIP_RE, uniqueNewAudienceTask, validateExportRows, buildFeishuFields,
-  reusablePromotionTask,
+  reusablePromotionTask, confirmSubmittedTask,
 } from './promotion-daily-report-core.mjs';
 import { dimensionTriggerExpression } from './run-promotion-daily-report.mjs';
 
@@ -22,12 +22,30 @@ test('维度操作包含条件等待，避免弹层异步渲染竞态', async ()
   assert.match(source, /await sleep\(250\)/u);
 });
 
-test('提交入口包含任务列表轮询，避免任务创建延迟导致误报', async () => {
+test('提交入口按业务日确认生成成功任务（㊶ 根修：不再用列表差集判成功）', async () => {
   const source = await import('node:fs/promises').then((fs) => fs.readFile('./skills/sycm-alimama-daily-report/scripts/run-promotion-daily-report.mjs', 'utf8'));
-  assert.match(source, /for \(let attempt = 0; attempt < 20; attempt \+= 1\)/u);
-  assert.match(source, /uniqueNewAudienceTask\(before, after\)/u);
-  assert.match(source, /await sleep\(4000\)/u);
+  assert.match(source, /confirmSubmittedTask\(\{ rows, kind: args\.kind, date: args\.date \}\)/u);
+  assert.match(source, /submitConfirmTimeoutMs/u);
   assert.match(source, /await navigate\(args\.proxy, target, LIST_URL\);\s+const beforeRows = await readTaskRows/u);
+  // 差集判据已在 10-10/10-11 两轮实测里被证伪（提交成功但一律读不到新任务），不许回流。
+  assert.doesNotMatch(source, /uniqueNew(?:Keyword|Audience)Task\(before, after\)/u);
+});
+
+test('confirmSubmittedTask：提交成功的判据＝本业务日生成成功任务（多条取最新）', () => {
+  const rows = [
+    { name: '关键词报表_20261010_180156', rangeStart: '2026-10-09', rangeEnd: '2026-10-09', status: '生成成功' },
+    { name: '关键词报表_20261011_072240', rangeStart: '2026-10-10', rangeEnd: '2026-10-10', status: '生成成功' },
+    { name: '关键词报表_20261011_073000', rangeStart: '2026-10-10', rangeEnd: '2026-10-10', status: '生成成功' },
+  ];
+  // 目标业务日 10-10 有两条成功任务 ⇒ 取最新（与 reusable 同口径，业务等价）。
+  assert.equal(confirmSubmittedTask({ rows, kind: 'keyword', date: '2026-10-10' }), '关键词报表_20261011_073000');
+  // 任务已出现但仍在生成中 ⇒ 不算成功，继续等。
+  assert.equal(confirmSubmittedTask({ rows: [{ name: '关键词报表_20261011_072240', rangeStart: '2026-10-10', rangeEnd: '2026-10-10', status: '生成中' }], kind: 'keyword', date: '2026-10-10' }), null);
+  // 列表里只有别的业务日的成功任务（10-10 白天那批跑的是业务日 09）⇒ 不命中。
+  assert.equal(confirmSubmittedTask({ rows: [rows[0]], kind: 'keyword', date: '2026-10-10' }), null);
+  // kind 不同（人群 vs 关键词）⇒ 不命中。
+  assert.equal(confirmSubmittedTask({ rows, kind: 'audience', date: '2026-10-10' }), null);
+  assert.equal(confirmSubmittedTask({ rows: [], kind: 'keyword', date: '2026-10-10' }), null);
 });
 
 test('下载入口以同一 tbody 的操作行定位并轮询显形', async () => {

@@ -334,6 +334,10 @@ async function main(argv) {
     return 1;
   }
   process.once('exit', () => workflowLock.release());
+  // P0-4（2026-10-11）：把「我已持锁」写给子进程看。分批那一步（run-batches）自己也会抢
+  // 同一把锁——没有这个标记，它必撞我们还持有的锁、busy 退 1，分批形态整条落空。
+  // 子进程（含驻留续跑）继承 env ⇒ 跳过抢锁；手工直连 run-batches 的进程没有这个 env ⇒ 照抢。
+  process.env.SYCM_WORKFLOW_LOCK_HELD = WORKFLOW_LOCK_NAME;
   // 回收要留痕：静默自愈会让人以为「本来就没锁」，而上一次是被硬杀的事实就此消失。
   if (workflowLock.staleReclaimed) {
     log(`回收过期锁：原持有者=${workflowLock.reclaimedFrom?.owner ?? '未知'}、pid=${workflowLock.reclaimedFrom?.pid ?? '未知'}（该进程已不在）`);
