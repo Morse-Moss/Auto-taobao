@@ -2,7 +2,7 @@
 
 日期：2026-10-11
 作者：schema-drafter（按《三链对齐与系统重构方案》P1-5 起草）
-状态：**草案，待拍板**。本轮只出文档，不改任何代码。
+状态：**已拍板，进入施工**（2026-10-11 用户确认七项全按推荐）。本轮只出文档，不改任何代码。
 配套文档：`docs/ops/THREE-CHAIN-ALIGNMENT-AND-REFACTOR-PLAN-2026-10-11.md`（口径以它为准，本文不发明新口径，只把「统一 summary schema」这一条展开成可施工的字段表与迁移步骤）。
 
 ---
@@ -217,6 +217,8 @@ P0-3 已止血：`run-promotion-sales1.mjs` 的 `buildPromotionSummary`（run-pr
 ---
 
 ## 六、待拍板项（每项给选项＋推荐，可一键回答）
+
+> **拍板结果（2026-10-11 16:30，用户确认「全按推荐」）**：6.1-A 写时物化｜6.2-A 四值枚举 ok/failed/pending/waiting｜6.3-A `noActionRequired` 提升 shops[] 顶层｜6.4-A 三链同串 `'unified-summary-v1'`｜6.5-A 不加顶层 rounds 聚合｜6.6-A 商品链 summary 落 `evidence/product-data-job-<日>/<runId>/summary.json`｜6.7-A 写入时校验随迁移第 2 步一起上。七项全部生效，按第四节绞杀者六步施工。
 
 ### 6.1 `failureClass` 物化还是读时推导？
 

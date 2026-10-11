@@ -15,6 +15,42 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.3] - 2026-10-11
+
+三链对齐 P1 绞杀者迁移第 1 步：统一 summary schema 校验器先行落库。草案七项待拍板
+（`docs/ops/UNIFIED-SUMMARY-SCHEMA-DRAFT-2026-10-11.md` 第六节）经用户确认全按推荐：
+failureClass 写时物化 / status 四值枚举 / noActionRequired 提升 shops[] 顶层 / 三链同串
+`unified-summary-v1` / 不加顶层 rounds 聚合 / 商品链 summary 落 runId 目录 / 写入时校验
+随迁移第 2 步上。拍板结果已写入草案第六节头部，草案状态改「已拍板，进入施工」。
+
+### 改了什么
+
+- 新增 `runtime/unified-summary-schema.mjs`（221 行）：`validateSummary(summary)→{ok,errors[]}`
+  纯函数，**零 import**（不 import skills、不 import runtime 兄弟模块），fail-closed（任何
+  坏输入返回结构化错误、绝不抛异常）。实现草案 3.4 七条不变量 + 字段表必填项；一处显式
+  扩展：pending 初值与 waiting 同样豁免失败必填项（中断轮落下的 mid-run summary 是真实
+  产物，不该红）。schema 内零业务判据（分诊表/修复表/店铺名单都不进）。
+- 新增 `runtime/unified-summary-schema.test.mjs`（661 行、15 用例）：
+  1. 真实历史样本迁移仪表 2 条——日报链（2026-10-11 b2 + 10-09 失败店 + waiting 形状）欠
+     11 条字段、推广链（10-10 23:02 轮真实记录 + P0-3 包装）欠 14 条，**精确等式断言**；
+     第 2/3 步并写后重跑同用例、清单清零才算迁移完成。
+  2. 三链最小合法夹具 3 条全绿（含 ok/失败空菜单/waiting/pending 四形态）。
+  3. 反例 7 条逐条点名红（INV1–INV6 各一条 + INV7 豁免钉住）+ fail-closed 2 条 + 词表 1 条。
+- 已知冲突留第 2 步拍板（校验器文件头注记）：「自修救回」店 status='ok' 但保留
+  repairRequest/autoRepair 审计痕迹，按不变量 2 字面口径红且并写后不清零——届时二选一：
+  救回时清失败字段，或加 rescued 豁免。
+
+### 验证
+
+- 定向组 `node --test runtime/unified-summary-schema.test.mjs`：15/15 绿（主线亲跑）。
+- 全定向组 `node --test "runtime/*.test.mjs"`：1176 用例 1175 绿，唯一红为 arch-boundary
+  「skills→runtime 依赖清单」欠登记 4 个 skills 文件（run-promotion-sales1 等，P0-3 及
+  在途工作所致的预存在红，与本交付的零依赖新文件无关，已独立核实其报错内容）。
+- 突变三处点名红：短路 INV3（子代理）红在不变量 3 用例；日报夹具失败店补 failureClass
+  （子代理）红在迁移仪表精确等式；短路 INV5（主线独立复核）红在不变量 5 用例。三处均
+  sha256 还原核对逐字节一致，还原后 15/15 恢复全绿。
+- 仅离线判据；不动任何生产代码（两个纯新增文件），无真机面。
+
 ## [1.8.2] - 2026-10-11
 
 1.8.1 回归热修：两个 P0「接线」缺陷把日报分批链整条打灭（详见 `PROJECT-NOTES.md` ㊷㊸）。
