@@ -15,6 +15,24 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.10] - 2026-10-13
+
+`check:head` 补上 `sycm-export-search-rank` 组。1.8.9 修的那个「生产代码从来没成功过」的
+静默失效正好落在这个 skill，而它此前**不在闸门覆盖范围内**——一个刚证明过会静默坏的组
+没进门，闸门就留着洞。该组一轮约 6 秒，没有理由不跑。
+
+### 改了什么
+
+- `scripts/check-head.mjs` 的 `GROUPS` 加 `skills:sycm-export-search-rank`（`--skill=` 等号形式，
+  与另外三组同一写法）。它需要的 `verify-export-pair.py`／`write-workbook.py` 均已被 git 跟踪，
+  干净检出自给自足（`git ls-files` 已核）。
+
+### 验证
+
+- 该组可被单独选出：`run-test-suite.mjs skills --skill=sycm-export-search-rank --dry-run`
+  ⇒ `skills: 4`，四个文件全在该目录下（预检可通过）。
+- 对 1.8.10 的全量 `check:head`（五组）见当次 evidence 目录。
+
 ## [1.8.9] - 2026-10-13
 
 `check:head` 自己的一个静默失效 ＋ 三个叶子测试的 EBUSY 假红（其中一个往下挖出一个真生产 bug）。

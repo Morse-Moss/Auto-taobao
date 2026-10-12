@@ -46,6 +46,9 @@ const STDIO = ['ignore', 'pipe', 'pipe'];
 // 「日报链 + 它旁边那两条链 + runtime」，也就是最可能被一次改动打到的地方。
 // 判据是「改动面」，不是「图省事」—— 漏跑一组不会让 check:head 假绿，只会让它漏报，
 // 所以范围写成一个显式清单，改范围要改这里。
+// `sycm-export-search-rank` 是 1.8.9 加的：它刚出了一个「生产代码从来没成功过、
+// 且错误路径自己抛 TypeError 埋掉成因」的静默失效（见 CHANGELOG 1.8.9），
+// 而它一轮只要 6 秒左右 —— 这种「便宜且刚证明过会静默坏」的组没有理由不进门。
 //
 // ⚠️ `--skill` 只能写成 `--skill=<名字>`（等号形式）。run-test-suite.mjs 的解析是
 // `argv.find((v) => v.startsWith('--skill='))`：写成空格形式（`'--skill', 'X'`）它
@@ -57,6 +60,7 @@ const GROUPS = Object.freeze([
   { name: 'skills:sycm-alimama-daily-report', args: ['skills', '--skill=sycm-alimama-daily-report', '--concurrency=1'] },
   { name: 'skills:sycm-promotion-data', args: ['skills', '--skill=sycm-promotion-data', '--concurrency=1'] },
   { name: 'skills:sycm-inquiry-data', args: ['skills', '--skill=sycm-inquiry-data', '--concurrency=1'] },
+  { name: 'skills:sycm-export-search-rank', args: ['skills', '--skill=sycm-export-search-rank', '--concurrency=1'] },
 ]);
 
 const only = (() => {
