@@ -1,0 +1,83 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-10\\2026-10-10-20261011021148519-61a610c2\\盖文天猫\\inquiry.xls",
+  "shop": "盖文天猫",
+  "date": "2026-10-10",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 11,
+  "existingRows": 241,
+  "plannedRows": 11,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-10",
+      "productId": "916640272254",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-10",
+      "productId": "892895965277",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-10",
+      "productId": "892968829257",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-10",
+      "productId": "916176821993",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-10",
+      "productId": "1068512256128",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-10",
+      "productId": "864189269914",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-10",
+      "productId": "892288895799",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-10",
+      "productId": "1051578909809",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-10",
+      "productId": "1049844283314",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-10",
+      "productId": "892968685760",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-10",
+      "productId": "920624885754",
+      "shop": "盖文天猫"
+    }
+  ],
+  "recordIds": [
+    "reczz28Lw3Cf6J65",
+    "reczz28Lw3Cf4new",
+    "reczz28Lw3Cf4pta",
+    "reczz28Lw3Cf2ww3",
+    "reczz28Lw3Cf6f4A",
+    "reczz28Lw3Cf2z9A",
+    "reczz28Lw3Cf32wG",
+    "reczz28Lw3Cf64EU",
+    "reczz28Lw3Cf61KZ",
+    "reczz28Lw3Cf4vy8",
+    "reczz28Lw3Cf3yzQ"
+  ],
+  "afterRows": 252
+}

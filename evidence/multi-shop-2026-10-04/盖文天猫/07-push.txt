@@ -1,0 +1,34 @@
+
+===== 2026-10-05T10:29:40.242Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-04 --proxy http://127.0.0.1:19023 --shop-key 盖文天猫 --commit --shop-xlsx "C:\Users\Administrator\Downloads\活动-店铺-整体-近30天_20261005_5101fe58498b2d2694371a0b05f989f3 (2).xlsx" --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261005_182916.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 盖文天猫 ↔ 源产物店名 盖文旗舰店 一致（证据目录 daily-report-2026-10-04-盖文天猫）
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "reczz28JhFVbHC9T",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-04-盖文天猫\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-04-盖文天猫",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 2206,
+  "recordCountAfter": 2207,
+  "verifiedFields": 241,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 241,
+    "shopName": "盖文旗舰店",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1791043200000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---
+[留空] UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）
+[留空] 无线端UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）
+[audit] 未写入（不影响本次结论）：append failed: connect ECONNREFUSED 127.0.0.1:5432

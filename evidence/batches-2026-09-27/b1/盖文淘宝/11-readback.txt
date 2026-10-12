@@ -1,0 +1,33 @@
+
+===== 2026-09-28T07:41:42.621Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\readback-daily-report.mjs --date 2026-09-27 --proxy http://127.0.0.1:19023 --shop-key 盖文淘宝
+exit=1 signal= error=none
+--- stdout ---
+readbackPath = D:\Retire\sycm-automation\evidence\daily-report-2026-09-27-盖文淘宝\independent-readback.json
+底单: recordsNum=1926（这是**页面模型**里的值，可能落后于服务端） loaded=1926 命中 2026-09-27=2
+询单表: recordsNum=2197（这是**页面模型**里的值，可能落后于服务端） loaded=2197 命中 2026-09-27=12
+  ⚠️ 底单「店铺」2/2 行没有值（口径 reportDate=2026-09-27） — Lookup-key-absent-from-page-model｜页面模型在 record.fields 里根本不带这个派生字段（Lookup / type 19）⇒ 该列在回读里必然为空，不能读成「当天没写进去」；权威可读值见同表的「店铺名称」
+  ⚠️ 询单表「询单量」11/12 行没有值（口径 reportDate=2026-09-27） — null-in-page-model
+  ⚠️ 询单表「同层同行询单量」11/12 行没有值（口径 reportDate=2026-09-27） — null-in-page-model
+  2026-09-27 | 里可林淘宝 | recvtXfc9GZUXy | 询单量=— | 同层同行=—
+  2026-09-27 | 保拉淘宝 | recvtXfc9GQTtS | 询单量=— | 同层同行=—
+  2026-09-27 | 安比淘宝 | recvtXfc9G6r0V | 询单量=— | 同层同行=—
+  2026-09-27 | 科塔淘宝 | recvtXfc9G626b | 询单量=— | 同层同行=—
+  2026-09-27 | 网林淘宝 | recvtXfc9GcGVF | 询单量=— | 同层同行=—
+  2026-09-27 | 盖文天猫 | recvtXeON8MlM3 | 询单量=— | 同层同行=—
+  2026-09-27 | 科塔龙头店 | recvtXfc9GFOQ4 | 询单量=— | 同层同行=—
+  2026-09-27 | 安比龙头店 | recvtXfc9GZK6I | 询单量=— | 同层同行=—
+  2026-09-27 | 网林天猫 | recvtXfc9GpIYb | 询单量=— | 同层同行=—
+  2026-09-27 | 保拉天猫 | recvtXfc9GCVbC | 询单量=— | 同层同行=—
+  2026-09-27 | 盖文淘宝 | recvtXfc9GKpzA | 询单量=4 | 同层同行=5
+  2026-09-27 | 里可林天猫 | recvtXfc9G1Ppq | 询单量=— | 同层同行=—
+  screenshot(source) → 缺失（见上面 [screenshot] 警告；数据回读不受影响）
+  screenshot(inquiry) → D:\Retire\sycm-automation\evidence\daily-report-2026-09-27-盖文淘宝\feishu-inquiry-table-after-backfill.png
+页面已留在：https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+
+--- stderr ---
+[screenshot] 截图失败：CDP 命令超时: Page.captureScreenshot（数据回读不受影响，照常继续；产物里 screenshots 那一项会写成 null）
+
+[不完整] 数据回读已核对并落盘：D:\Retire\sycm-automation\evidence\daily-report-2026-09-27-盖文淘宝\independent-readback.json
+[不完整] 但有 1 张截图没取到：底单（CDP 命令超时: Page.captureScreenshot）
+[不完整] 截图是佐证不是判据，缺它不影响上面的数据结论；本阶段仍按失败退出，好让人知道这一轮的证据不完整。

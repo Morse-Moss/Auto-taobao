@@ -1,0 +1,58 @@
+{
+  "mode": "APPLIED_AND_VERIFIED",
+  "appToken": "HdBhbttB5aScbasWJAMc0gGXnpe",
+  "currentTable": {
+    "id": "tblZm3TgV4V1IhZw",
+    "name": "关键词分析 V1（2026-09-26）",
+    "batchNumber": 9
+  },
+  "historyTable": {
+    "id": "tbl7HbH11JsQx6FL",
+    "name": "关键词历史总表 V1"
+  },
+  "latestBatchNumbers": [
+    8,
+    9
+  ],
+  "ignoredBatchNumbers": [
+    2
+  ],
+  "planned": {
+    "historyFieldsToCreate": 0,
+    "historyFieldsToUpdate": 0,
+    "historyValidityToWrite": 0,
+    "historySnapshotsToWrite": 1,
+    "currentCountsToWrite": 0,
+    "historySnapshotCellsByField": {
+      "优先级": 1,
+      "A级达标": 1
+    },
+    "currentSnapshotCellsByField": {}
+  },
+  "visualization": {
+    "source": "关键词历史总表 V1",
+    "currentBatchNumber": 9,
+    "markerField": "本期标记",
+    "snapshotFields": [
+      "标准归并词",
+      "是否重点词",
+      "优先级"
+    ]
+  },
+  "pending": {
+    "historySnapshots": 0,
+    "currentCounts": 0
+  },
+  "backup": {
+    "file": "D:\\Retire\\sycm-automation\\runtime\\keyword-analysis-backups\\decision-history-before-20260927T113102Z.json",
+    "sha256": "08831d9de297845880c2464e914ccb1e70943a86e1f2f2fb1194fb7c5521b43f"
+  },
+  "verification": {
+    "historyFieldsCreated": 0,
+    "historyFieldsUpdated": 0,
+    "historyRecordsWritten": 1,
+    "currentRecordsWritten": 0,
+    "currentPeriodRows": 300
+  },
+  "afterDigest": "4113e3e21e05b4829acac96afcff84e88ed4105533b422b75a07198513ccb689"
+}

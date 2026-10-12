@@ -1,0 +1,34 @@
+{
+  "mode": "dry-run",
+  "date": "2026-10-09",
+  "shop": "网林天猫",
+  "profile": "kcne",
+  "tables": {
+    "keyword": {
+      "tableId": "tblbSGMO2apOKuAZ",
+      "beforeRows": 918,
+      "plannedRows": 21,
+      "skippedRows": 0
+    },
+    "audience": {
+      "tableId": "tblyjD5058Mjbmcv",
+      "beforeRows": 873,
+      "plannedRows": 18,
+      "skippedRows": 0
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261010_181112.zip",
+      "csvName": "关键词报表_20261010_181112.csv",
+      "rows": 21,
+      "columns": 77
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261010_191411.zip",
+      "csvName": "人群报表_20261010_191411.csv",
+      "rows": 18,
+      "columns": 75
+    }
+  }
+}

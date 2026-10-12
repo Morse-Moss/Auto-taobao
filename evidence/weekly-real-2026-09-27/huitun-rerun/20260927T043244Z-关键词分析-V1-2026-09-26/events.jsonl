@@ -1,0 +1,6 @@
+{"at":"2026-09-27T04:32:44.578Z","event":"PROXY_READY","browser":"edge-daily-report"}
+{"at":"2026-09-27T04:32:44.580Z","event":"START","tableId":"tblZm3TgV4V1IhZw","tableName":"关键词分析 V1（2026-09-26）","apply":true}
+{"at":"2026-09-27T04:32:47.932Z","event":"QUEUE_READY","candidates":1,"keywords":["新型泡澡浴缸"]}
+{"at":"2026-09-27T04:32:47.934Z","event":"RESULTS_REUSED","resultsPath":"D:\\Retire\\sycm-automation\\evidence\\weekly-real-2026-09-27\\huitun-rerun\\20260927T043135Z-关键词分析-V1-2026-09-26\\results.json"}
+{"at":"2026-09-27T04:32:50.792Z","event":"BACKUP_WRITTEN","path":"D:\\Retire\\sycm-automation\\evidence\\weekly-real-2026-09-27\\huitun-rerun\\20260927T043244Z-关键词分析-V1-2026-09-26\\before-backfill-20260927T043250Z.json","sha256":"888a185b87883d409b34b60973661c030753b12d353a55dcfb7600ad2a81a9ca"}
+{"at":"2026-09-27T04:32:50.793Z","event":"APPLY_STARTED","records":1,"fields":["灰豚话题浏览量"]}

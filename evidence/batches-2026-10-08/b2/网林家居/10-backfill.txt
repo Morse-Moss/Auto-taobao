@@ -1,0 +1,12 @@
+
+===== 2026-10-09T07:55:03.491Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-inquiry-backfill.mjs --date 2026-10-08 --proxy http://127.0.0.1:19062 --source-shop 网林定制家居 --shop 网林家居 --shop-key 网林家居 --commit
+exit=1 signal= error=none
+--- stdout ---
+[身份] 生意参谋页头 = "网林定制家居"（原始 "网林定制家居 主店"）｜期望 "网林定制家居" ✓
+
+--- stderr ---
+Error: SOURCE_NO_ROW_FOR_DATE 这一天的源表里没有日期行（生意参谋「询单到付款」对该店该日返回的是空态，不是读不到）｜日期列原值=["暂无数据","汇总值","平均值","全店汇总值","全店平均值","同行同层优秀","同行同层均值"]｜日期行数=0｜期望=2026-10-08
+    at extractInquiryMetrics (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/inquiry-core.mjs:91:11)
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:147:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

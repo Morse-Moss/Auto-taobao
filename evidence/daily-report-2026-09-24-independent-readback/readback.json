@@ -1,0 +1,127 @@
+{
+  "readAt": "2026-09-25T13:27:50.846Z",
+  "reportDate": "2026-09-24",
+  "channel": "OpenAPI（非浏览器，与链第 11 步不同通路）",
+  "baseToken": "PTfHbPt9EaIzddsfL8Jcj238nrb",
+  "source": {
+    "table": "tblkY3W8tnPWPcnh",
+    "total": 1914,
+    "onDay": 4,
+    "shops": [
+      {
+        "recordId": "recvweMxKRIrkN",
+        "shop": "里可林家居"
+      },
+      {
+        "recordId": "recvweNrFZxjBd",
+        "shop": "盖文全卫定制"
+      },
+      {
+        "recordId": "recvweOb6N7U6q",
+        "shop": "盖文旗舰店"
+      },
+      {
+        "recordId": "recvweORb16KAY",
+        "shop": "科塔全卫定制"
+      }
+    ]
+  },
+  "inquiry": {
+    "table": "tblUnwn05vl8Wik9",
+    "total": 2197,
+    "onDay": 12,
+    "rows": [
+      {
+        "recordId": "recvtXeLhcuYMV",
+        "shop": "盖文天猫",
+        "inquiry": "17",
+        "peer": "29"
+      },
+      {
+        "recordId": "recvtXfapnm4Co",
+        "shop": "里可林淘宝",
+        "inquiry": "4",
+        "peer": "5"
+      },
+      {
+        "recordId": "recvtXfapnwH6f",
+        "shop": "里可林天猫",
+        "inquiry": "",
+        "peer": ""
+      },
+      {
+        "recordId": "recvtXfapnR6Xd",
+        "shop": "网林天猫",
+        "inquiry": "",
+        "peer": ""
+      },
+      {
+        "recordId": "recvtXfapnI2XX",
+        "shop": "盖文淘宝",
+        "inquiry": "4",
+        "peer": "5"
+      },
+      {
+        "recordId": "recvtXfapnSjfR",
+        "shop": "网林淘宝",
+        "inquiry": "",
+        "peer": ""
+      },
+      {
+        "recordId": "recvtXfapnKxyj",
+        "shop": "科塔淘宝",
+        "inquiry": "2",
+        "peer": "5"
+      },
+      {
+        "recordId": "recvtXfapnB8x2",
+        "shop": "保拉淘宝",
+        "inquiry": "",
+        "peer": ""
+      },
+      {
+        "recordId": "recvtXfapn6Jnt",
+        "shop": "保拉天猫",
+        "inquiry": "",
+        "peer": ""
+      },
+      {
+        "recordId": "recvtXfapnE3sQ",
+        "shop": "安比龙头店",
+        "inquiry": "",
+        "peer": ""
+      },
+      {
+        "recordId": "recvtXfapnVqE4",
+        "shop": "科塔龙头店",
+        "inquiry": "",
+        "peer": ""
+      },
+      {
+        "recordId": "recvtXfapnUVVx",
+        "shop": "安比淘宝",
+        "inquiry": "",
+        "peer": ""
+      }
+    ]
+  },
+  "pinned": {
+    "found": true,
+    "date": "2026-09-20",
+    "shop": "科塔淘宝",
+    "inquiry": "7",
+    "peer": ""
+  },
+  "criterion": {
+    "expectSourceRows": 5,
+    "srcShopsWritten": [
+      "里可林淘宝",
+      "盖文淘宝",
+      "盖文天猫",
+      "科塔淘宝"
+    ],
+    "shopsMissingFields": [
+      "网林天猫"
+    ]
+  }
+}

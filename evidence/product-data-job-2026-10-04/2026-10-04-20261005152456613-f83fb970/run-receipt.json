@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-04-20261005152456613-f83fb970",
+  "date": "2026-10-04",
+  "status": "FAILED",
+  "startedAt": "2026-10-05T15:24:56.617Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "SKIPPED"
+    }
+  ],
+  "shops": [
+    "盖文天猫",
+    "网林天猫"
+  ],
+  "failure": {
+    "class": "HUMAN_REQUIRED",
+    "reason": "PLATFORM_OR_HUMAN_GATE",
+    "message": "本轮不完整（1 处）：盖文天猫/登录 未通过（掉登录=阿里妈妈）"
+  },
+  "failedStage": "login",
+  "finishedAt": "2026-10-05T15:27:11.864Z"
+}

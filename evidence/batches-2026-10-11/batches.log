@@ -1,0 +1,1661 @@
+[2026-10-11T23:07:28.934Z] [锁] 上层已持有 merchant-automation 运行锁（本进程是子步）⇒ 不重复抢
+[2026-10-11T23:07:28.935Z] 版本：sycm-automation 1.8.5
+[2026-10-11T23:07:28.935Z] === 分批跑开始：目标日 2026-10-11 → 2026-10-11；每批 5 家；共 1 批；模式 commit（会写飞书） ===
+[2026-10-11T23:07:28.935Z] 本批证据根：evidence/batches-2026-10-11
+[2026-10-11T23:07:28.935Z] --- 第 1/1 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 ---
+[2026-10-11T23:07:28.935Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[起齐] 目标 5 个实例（来源：runtime/browser-ports.mjs）
+  · 里可林淘宝  起前:ready  已就位，不动
+  · 网林天猫  起前:ready  已就位，不动
+  · 盖文淘宝  起前:ready  已就位，不动
+  · 盖文天猫  起前:ready  已就位，不动
+  · 科塔淘宝  起前:ready  已就位，不动
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-11T23:07:29.119Z] --- start 退出码=0
+[2026-10-11T23:07:29.119Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+[归位] 里可林淘宝（代理 19041）：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[归位] 网林天猫（代理 19042）：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[归位] 盖文淘宝（代理 19043）：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[归位] 盖文天猫（代理 19045）：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[归位] 科塔淘宝（代理 19044）：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+{
+ "machine": "DESKTOP-KJP4RA5",
+ "verdict": "ALL_IN",
+ "autoLogin": true,
+ "normalize": {
+  "asked": true,
+  "shops": [
+   {
+    "shop": "里可林淘宝",
+    "proxyPort": 19041,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   },
+   {
+    "shop": "网林天猫",
+    "proxyPort": 19042,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   },
+   {
+    "shop": "盖文淘宝",
+    "proxyPort": 19043,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   },
+   {
+    "shop": "盖文天猫",
+    "proxyPort": 19045,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   },
+   {
+    "shop": "科塔淘宝",
+    "proxyPort": 19044,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   }
+  ]
+ },
+ "roundNotify": {
+  "status": "SKIPPED",
+  "reason": "这一轮没有「确定要人处理」的店（读不到不算要人；链的第 0 步会先补页面）"
+ },
+ "needHuman": [],
+ "unknown": [],
+ "checked": 5,
+ "rows": [
+  {
+   "shop": "里可林淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "网林天猫",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "盖文淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "盖文天猫",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "科塔淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  }
+ ]
+}
+[2026-10-11T23:09:41.001Z] --- login-preflight 结论已落 evidence/batches-2026-10-11/login-preflight-b1.json（4063 字节；本批的链会读它）
+[2026-10-11T23:09:41.002Z] --- login-preflight 退出码=0
+[2026-10-11T23:09:41.002Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "里可林淘宝": {
+   "browserPort": 19031,
+   "proxyPort": 19041,
+   "windowTitle": "里可林淘宝 · 日报采集窗口",
+   "memberName": "里可林家居:小嘉",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031&member=%E9%87%8C%E5%8F%AF%E6%9E%97%E5%AE%B6%E5%B1%85%3A%E5%B0%8F%E5%98%89&actual=%E9%87%8C%E5%8F%AF%E6%9E%97%E5%AE%B6%E5%B1%85%3A%E5%B0%8F%E5%98%89",
+    "千牛工作台（预留槽位，日报链不读）  https://myseller.taobao.com/home.htm/QnworkbenchHome/"
+   ],
+   "leftover": [
+    "千牛工作台（预留槽位，日报链不读）  https://myseller.taobao.com/home.htm/QnworkbenchHome/"
+   ],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "1B5D45FACA3F017CA4B46E3B85E8451C",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "里可林家居:小嘉",
+   "labelActual": "里可林家居:小嘉（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-11T23:09:41.181Z] --- label:里可林淘宝 退出码=0
+[2026-10-11T23:09:41.181Z] --- label:网林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "网林天猫": {
+   "browserPort": 19032,
+   "proxyPort": 19042,
+   "windowTitle": "网林天猫 · 日报采集窗口",
+   "memberName": "网林家居旗舰店:饺子",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032&member=%E7%BD%91%E6%9E%97%E5%AE%B6%E5%B1%85%E6%97%97%E8%88%B0%E5%BA%97%3A%E9%A5%BA%E5%AD%90&actual=%E7%BD%91%E6%9E%97%E5%AE%B6%E5%B1%85%E6%97%97%E8%88%B0%E5%BA%97%3A%E9%A5%BA%E5%AD%90"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "A4865B2BE5EC6171CD0713A42C736C6D",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "网林家居旗舰店:饺子",
+   "labelActual": "网林家居旗舰店:饺子（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-11T23:09:41.346Z] --- label:网林天猫 退出码=0
+[2026-10-11T23:09:41.347Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "盖文淘宝": {
+   "browserPort": 19033,
+   "proxyPort": 19043,
+   "windowTitle": "盖文淘宝 · 日报采集窗口",
+   "memberName": "随心品质定制:小嘉",
+   "labelTabs": 1,
+   "tabs": [
+    "千牛工作台（预留槽位，日报链不读）  https://myseller.taobao.com/home.htm/QnworkbenchHome/",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&member=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E5%B0%8F%E5%98%89&actual=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E5%B0%8F%E5%98%89",
+    "工作页（链路要用）  https://one.alimama.com/index.html"
+   ],
+   "leftover": [
+    "千牛工作台（预留槽位，日报链不读）  https://myseller.taobao.com/home.htm/QnworkbenchHome/"
+   ],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "EEDDBFA5D98897C57DA213C84F5343E1",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "随心品质定制:小嘉",
+   "labelActual": "随心品质定制:小嘉（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-11T23:09:41.524Z] --- label:盖文淘宝 退出码=0
+[2026-10-11T23:09:41.524Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "盖文天猫": {
+   "browserPort": 19035,
+   "proxyPort": 19045,
+   "windowTitle": "盖文天猫 · 日报采集窗口",
+   "memberName": "盖文旗舰店:小瓜",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035&member=%E7%9B%96%E6%96%87%E6%97%97%E8%88%B0%E5%BA%97%3A%E5%B0%8F%E7%93%9C&actual=%E7%9B%96%E6%96%87%E6%97%97%E8%88%B0%E5%BA%97%3A%E5%B0%8F%E7%93%9C"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "F7844C07423B14AD5632AEEEC0AE541E",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "盖文旗舰店:小瓜",
+   "labelActual": "盖文旗舰店:小瓜（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-11T23:09:41.693Z] --- label:盖文天猫 退出码=0
+[2026-10-11T23:09:41.693Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "科塔淘宝": {
+   "browserPort": 19034,
+   "proxyPort": 19044,
+   "windowTitle": "科塔淘宝 · 日报采集窗口",
+   "memberName": "j873522735:小瓜",
+   "labelTabs": 1,
+   "tabs": [
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%A7%91%E5%A1%94%E6%B7%98%E5%AE%9D&port=19034&member=j873522735%3A%E5%B0%8F%E7%93%9C&actual=j873522735%3A%E5%B0%8F%E7%93%9C",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "工作页（链路要用）  https://one.alimama.com/index.html"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "60D80C7CC077977494E7802FE02B1756",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "j873522735:小瓜",
+   "labelActual": "j873522735:小瓜（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-11T23:09:41.980Z] --- label:科塔淘宝 退出码=0
+[2026-10-11T23:09:41.980Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-promotion-sales1.mjs --date 2026-10-11 --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --commit --notify --logs evidence\batches-2026-10-11\b1
+{
+  "batch": 1,
+  "shop": "里可林淘宝",
+  "status": "failed",
+  "stages": [],
+  "error": "采集失败：reusablePromotionTask is not defined\n"
+}
+{
+  "batch": 1,
+  "shop": "网林天猫",
+  "status": "failed",
+  "stages": [],
+  "error": "采集失败：reusablePromotionTask is not defined\n"
+}
+{
+  "batch": 1,
+  "shop": "盖文淘宝",
+  "status": "failed",
+  "stages": [],
+  "error": "采集失败：reusablePromotionTask is not defined\n"
+}
+{
+  "batch": 1,
+  "shop": "盖文天猫",
+  "status": "failed",
+  "stages": [],
+  "error": "采集失败：reusablePromotionTask is not defined\n"
+}
+{
+  "batch": 1,
+  "shop": "科塔淘宝",
+  "status": "failed",
+  "stages": [],
+  "error": "采集失败：reusablePromotionTask is not defined\n"
+}
+[summary] 已落 D:\Retire\sycm-automation\evidence\batches-2026-10-11\b1\summary.json
+{
+  "notify": {
+    "delivered": false,
+    "suppressed": true,
+    "reason": "同一条告警 2 分钟前刚发过（窗口 6 小时），不重复发"
+  }
+}
+[2026-10-11T23:09:56.154Z] --- chain 退出码=1
+[2026-10-11T23:09:56.154Z] [批次] 这一批里「脚本自修没救回来」的：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 —— 因此**不释放**，留给修复 agent／人
+[2026-10-11T23:09:56.154Z] --- stop：跳过 —— 这一批没跑成（链退出码 1），且 里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。
+[2026-10-11T23:09:56.155Z] [批次] 这一批不主动释放：这一批没跑成（链退出码 1），且 里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。；接着转驻留把这一轮挂住（不结束命令，窗口才真的留得住）
+[2026-10-11T23:09:56.155Z] --- 第 1/1 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 小结：链退出码=1；stop（释放窗口）=未跑；这一批没跑成（链退出码 1），且 里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。
+[2026-10-11T23:09:56.155Z] [批次] 这一批里「脚本自修没救回来」的：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 —— 这几家的现场要留给修复 agent／人 ⇒ 停在这里转驻留（剩下的批次不跑了）。
+[2026-10-11T23:09:56.155Z] [批次] 整轮被挡，但给了 --no-hold ⇒ 不驻留：发完告警本轮就结束，窗口随命令结束一起被回收（要现场得自己另起 start-all-hold.mjs 托住）。
+[2026-10-11T23:09:56.161Z] [run-receipt-v1] 统一回执已落 ../sycm-automation-runs/promotion-daily/2026-10-11/promotion-daily-2026-10-11-122c4d71-9034-465d-a02c-73fee80226a7/run-receipt.json；manifest ../sycm-automation-runs/promotion-daily/2026-10-11/promotion-daily-2026-10-11-122c4d71-9034-465d-a02c-73fee80226a7/manifest.json
+[2026-10-11T23:09:56.161Z] === 分批跑结束：0/1 批成功；释放 0 批；明细 evidence/batches-2026-10-11/batches.json ===
+[2026-10-11T23:09:56.161Z] [批次] 本轮在**第 1 批**停手（整轮被挡：UNFIXABLE_SHOPS）—— 只跑了 1/1 批，剩余批次**没有跑**（它们会撞同一堵墙）；驻留退出码=未跑。
+[2026-10-12T00:29:21.024Z] 版本：sycm-automation 1.8.5
+[2026-10-12T00:29:21.024Z] === 分批跑开始：目标日 yesterday → 2026-10-11；每批 5 家；共 2 批；模式 commit（会写飞书） ===
+[2026-10-12T00:29:21.024Z] 本批证据根：evidence/batches-2026-10-11
+[2026-10-12T00:29:21.024Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 ---
+[2026-10-12T00:29:21.024Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[起齐] 目标 5 个实例（来源：runtime/browser-ports.mjs）
+  · 里可林淘宝  起前:missing  两样都没有，起一整套
+      已起 browser pid=94844  日志 runtime/start-stop-logs/2026-10-12T00-29-21/里可林淘宝-browser.log
+      已起 proxy pid=104332  日志 runtime/start-stop-logs/2026-10-12T00-29-21/里可林淘宝-proxy.log
+      起后:ready
+  · 网林天猫  起前:missing  两样都没有，起一整套
+      已起 browser pid=100424  日志 runtime/start-stop-logs/2026-10-12T00-29-21/网林天猫-browser.log
+      已起 proxy pid=42832  日志 runtime/start-stop-logs/2026-10-12T00-29-21/网林天猫-proxy.log
+      起后:ready
+  · 盖文淘宝  起前:missing  两样都没有，起一整套
+      已起 browser pid=108860  日志 runtime/start-stop-logs/2026-10-12T00-29-21/盖文淘宝-browser.log
+      已起 proxy pid=101392  日志 runtime/start-stop-logs/2026-10-12T00-29-21/盖文淘宝-proxy.log
+      起后:ready
+  · 盖文天猫  起前:missing  两样都没有，起一整套
+      已起 browser pid=15488  日志 runtime/start-stop-logs/2026-10-12T00-29-21/盖文天猫-browser.log
+      已起 proxy pid=125256  日志 runtime/start-stop-logs/2026-10-12T00-29-21/盖文天猫-proxy.log
+      起后:ready
+  · 科塔淘宝  起前:missing  两样都没有，起一整套
+      已起 browser pid=60540  日志 runtime/start-stop-logs/2026-10-12T00-29-21/科塔淘宝-browser.log
+      已起 proxy pid=76532  日志 runtime/start-stop-logs/2026-10-12T00-29-21/科塔淘宝-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-12T00:29:32.758Z] --- start 退出码=0
+[2026-10-12T00:29:32.759Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+[归位] 里可林淘宝（代理 19041）：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）　动作 生意参谋工作页:create 阿里妈妈报表页:create
+[归位] 网林天猫（代理 19042）：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）　动作 生意参谋工作页:create 阿里妈妈报表页:create
+[归位] 盖文淘宝（代理 19043）：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）　动作 生意参谋工作页:create 阿里妈妈报表页:create
+[归位] 盖文天猫（代理 19045）：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）　动作 生意参谋工作页:create 阿里妈妈报表页:create
+[归位] 科塔淘宝（代理 19044）：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）　动作 生意参谋工作页:create 阿里妈妈报表页:create
+{
+ "machine": "DESKTOP-KJP4RA5",
+ "verdict": "ALL_IN",
+ "autoLogin": true,
+ "normalize": {
+  "asked": true,
+  "shops": [
+   {
+    "shop": "里可林淘宝",
+    "proxyPort": 19041,
+    "ok": true,
+    "changed": true,
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": [
+     "生意参谋工作页:create",
+     "阿里妈妈报表页:create"
+    ]
+   },
+   {
+    "shop": "网林天猫",
+    "proxyPort": 19042,
+    "ok": true,
+    "changed": true,
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": [
+     "生意参谋工作页:create",
+     "阿里妈妈报表页:create"
+    ]
+   },
+   {
+    "shop": "盖文淘宝",
+    "proxyPort": 19043,
+    "ok": true,
+    "changed": true,
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": [
+     "生意参谋工作页:create",
+     "阿里妈妈报表页:create"
+    ]
+   },
+   {
+    "shop": "盖文天猫",
+    "proxyPort": 19045,
+    "ok": true,
+    "changed": true,
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": [
+     "生意参谋工作页:create",
+     "阿里妈妈报表页:create"
+    ]
+   },
+   {
+    "shop": "科塔淘宝",
+    "proxyPort": 19044,
+    "ok": true,
+    "changed": true,
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": [
+     "生意参谋工作页:create",
+     "阿里妈妈报表页:create"
+    ]
+   }
+  ]
+ },
+ "roundNotify": {
+  "status": "SKIPPED",
+  "reason": "这一轮没有「确定要人处理」的店（读不到不算要人；链的第 0 步会先补页面）"
+ },
+ "needHuman": [],
+ "unknown": [],
+ "checked": 5,
+ "rows": [
+  {
+   "shop": "里可林淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "网林天猫",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "盖文淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "盖文天猫",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "科塔淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  }
+ ]
+}
+[2026-10-12T00:32:22.001Z] --- login-preflight 结论已落 evidence/batches-2026-10-11/login-preflight-b1.json（4683 字节；本批的链会读它）
+[2026-10-12T00:32:22.001Z] --- login-preflight 退出码=0
+[2026-10-12T00:32:22.001Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "里可林淘宝": {
+   "browserPort": 19031,
+   "proxyPort": 19041,
+   "windowTitle": "里可林淘宝 · 日报采集窗口",
+   "memberName": "里可林家居:小嘉",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "991A064684ABF4381435D366CC74A52E",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "里可林家居:小嘉",
+   "labelActual": "里可林家居:小嘉（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T00:32:22.865Z] --- label:里可林淘宝 退出码=0
+[2026-10-12T00:32:22.865Z] --- label:网林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "网林天猫": {
+   "browserPort": 19032,
+   "proxyPort": 19042,
+   "windowTitle": "网林天猫 · 日报采集窗口",
+   "memberName": "网林家居旗舰店:饺子",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "4DF3173C362BA0D9273A87ACF785D11B",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "网林家居旗舰店:饺子",
+   "labelActual": "网林家居旗舰店:饺子（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T00:32:23.430Z] --- label:网林天猫 退出码=0
+[2026-10-12T00:32:23.430Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "盖文淘宝": {
+   "browserPort": 19033,
+   "proxyPort": 19043,
+   "windowTitle": "盖文淘宝 · 日报采集窗口",
+   "memberName": "随心品质定制:小嘉",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033",
+    "工作页（链路要用）  https://one.alimama.com/index.html"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "E6B8008046362F953CB401BF00D74F28",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "随心品质定制:小嘉",
+   "labelActual": "随心品质定制:小嘉（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T00:32:23.992Z] --- label:盖文淘宝 退出码=0
+[2026-10-12T00:32:23.992Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "盖文天猫": {
+   "browserPort": 19035,
+   "proxyPort": 19045,
+   "windowTitle": "盖文天猫 · 日报采集窗口",
+   "memberName": "盖文旗舰店:小瓜",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "399F45BE0246F8D08F2B33F7857F5625",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "盖文旗舰店:小瓜",
+   "labelActual": "盖文旗舰店:小瓜（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T00:32:24.513Z] --- label:盖文天猫 退出码=0
+[2026-10-12T00:32:24.513Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "科塔淘宝": {
+   "browserPort": 19034,
+   "proxyPort": 19044,
+   "windowTitle": "科塔淘宝 · 日报采集窗口",
+   "memberName": "j873522735:小瓜",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%A7%91%E5%A1%94%E6%B7%98%E5%AE%9D&port=19034",
+    "工作页（链路要用）  https://one.alimama.com/index.html"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "213561DD850C88F76B078BD051076801",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "j873522735:小瓜",
+   "labelActual": "j873522735:小瓜（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T00:32:25.142Z] --- label:科塔淘宝 退出码=0
+[2026-10-12T00:32:25.142Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-promotion-sales1.mjs --date yesterday --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --commit --notify --logs evidence\batches-2026-10-11\b1
+{
+  "batch": 1,
+  "shop": "里可林淘宝",
+  "status": "ok",
+  "stages": [
+    "keyword-submit",
+    "audience-submit",
+    "keyword-fetch",
+    "audience-fetch",
+    "import"
+  ]
+}
+{
+  "batch": 1,
+  "shop": "网林天猫",
+  "status": "ok",
+  "stages": [
+    "keyword-submit",
+    "audience-submit",
+    "keyword-fetch",
+    "audience-fetch",
+    "import"
+  ]
+}
+{
+  "batch": 1,
+  "shop": "盖文淘宝",
+  "status": "failed",
+  "stages": [
+    "keyword-submit"
+  ],
+  "error": "采集失败：人群报表提交后 15 分钟内未在下载列表确认到业务日 2026-10-11 的生成成功任务；最后一次读到的任务行：[{\"name\":\"人群报表_20261011_080558\",\"rangeStart\":\"2026-10-10\",\"rangeEnd\":\"2026-10-10\",\"status\":\"生成成功\"},{\"name\":\"人群报表_20261010_191411\",\"rangeStart\":\"2026-10-09\",\"rangeEnd\":\"2026-10-09\",\"status\":\"生成成功\"}]\n"
+}
+{
+  "batch": 1,
+  "shop": "盖文天猫",
+  "status": "failed",
+  "stages": [],
+  "error": "采集失败：关键词报表提交后 15 分钟内未在下载列表确认到业务日 2026-10-11 的生成成功任务；最后一次读到的任务行：[{\"name\":\"关键词报表_20261011_084928\",\"rangeStart\":\"2026-10-10\",\"rangeEnd\":\"2026-10-10\",\"status\":\"生成成功\"},{\"name\":\"关键词报表_20261010_181204\",\"rangeStart\":\"2026-10-09\",\"rangeEnd\":\"2026-10-09\",\"status\":\"生成成功\"},{\"name\":\"关键词报表_20261010_180423\",\"rangeStart\":\"2026-10-09\",\"rangeEnd\":\"2026-10-09\",\"status\":\"生成成功\"}]\n"
+}
+{
+  "batch": 1,
+  "shop": "科塔淘宝",
+  "status": "failed",
+  "stages": [],
+  "error": "采集失败：关键词报表提交后 15 分钟内未在下载列表确认到业务日 2026-10-11 的生成成功任务；最后一次读到的任务行：[{\"name\":\"关键词报表_20261011_071424\",\"rangeStart\":\"2026-10-10\",\"rangeEnd\":\"2026-10-10\",\"status\":\"生成成功\"},{\"name\":\"关键词报表_20261010_181255\",\"rangeStart\":\"2026-10-09\",\"rangeEnd\":\"2026-10-09\",\"status\":\"生成成功\"},{\"name\":\"关键词报表_20261010_180512\",\"rangeStart\":\"2026-10-09\",\"rangeEnd\":\"2026-10-09\",\"status\":\"生成成功\"}]\n"
+}
+[summary] 已落 D:\Retire\sycm-automation\evidence\batches-2026-10-11\b1\summary.json
+{
+  "notify": {
+    "delivered": true,
+    "suppressed": false
+  }
+}
+[2026-10-12T01:22:07.154Z] --- chain 退出码=1
+[2026-10-12T01:22:07.158Z] [批次] 这一批里「脚本自修没救回来」的：盖文淘宝、盖文天猫、科塔淘宝 —— 因此**不释放**，留给修复 agent／人
+[2026-10-12T01:22:07.158Z] --- stop：跳过 —— 这一批没跑成（链退出码 1），且 盖文淘宝、盖文天猫、科塔淘宝 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。
+[2026-10-12T01:22:07.158Z] [批次] 这一批不主动释放：这一批没跑成（链退出码 1），且 盖文淘宝、盖文天猫、科塔淘宝 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。；接着转驻留把这一轮挂住（不结束命令，窗口才真的留得住）
+[2026-10-12T01:22:07.158Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 小结：链退出码=1；stop（释放窗口）=未跑；这一批没跑成（链退出码 1），且 盖文淘宝、盖文天猫、科塔淘宝 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。
+[2026-10-12T01:22:07.159Z] [批次] 这一批里「脚本自修没救回来」的：盖文淘宝、盖文天猫、科塔淘宝 —— 这几家的现场要留给修复 agent／人 ⇒ 停在这里转驻留（剩下的批次不跑了）。
+[2026-10-12T01:22:07.159Z] [批次] 整轮被挡 ⇒ 转驻留（第 1 批的结论 evidence/batches-2026-10-11/b1/summary.json）：把共用窗口留住等人处理，人处理完**自动按批重跑一遍**（挂多久由驻留那一步自己决定并打印）。窗口留不留得住取决于这一轮进程不结束 —— 驻留就是「这一轮不结束」这件事本身。
+[2026-10-12T01:22:07.159Z] --- hold-and-resume：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\hold-and-resume.mjs --date 2026-10-11 --summary D:\Retire\sycm-automation\evidence\batches-2026-10-11\b1\summary.json --resume-via-batches --batch-size 5 --workflow promotion-daily
+[驻留] 目标日 2026-10-11｜逐店失败 3 家｜整轮被挡=false
+[驻留]   盖文淘宝：STAGE_FAILED（停在第 ? 步）
+[驻留]   盖文天猫：STAGE_FAILED（停在第 ? 步）
+[驻留]   科塔淘宝：STAGE_FAILED（停在第 ? 步）
+[驻留] 脚本自修没救回来的：盖文淘宝、盖文天猫、科塔淘宝（现场留着，等修复 agent／人）
+[驻留] 需要人：盖文淘宝、盖文天猫、科塔淘宝
+[驻留] 截止 13:22（现在 09:22）｜口径：从现在起挂 4 小时｜轮询 60 秒一次
+[驻留] 续跑范围：盖文淘宝、盖文天猫、科塔淘宝｜阶段：不点名（整链）
+[驻留] 判据转正 ⇒ 开始续跑
+[驻留] 续跑：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date 2026-10-11 --commit --workflow promotion-daily --batch-size 5 --notify --shops 盖文淘宝,盖文天猫,科塔淘宝 --no-hold
+[2026-10-12T01:22:07.775Z] [锁] 上层已持有 merchant-automation 运行锁（本进程是子步）⇒ 不重复抢
+[2026-10-12T01:22:07.776Z] 版本：sycm-automation 1.8.5
+[2026-10-12T01:22:07.776Z] === 分批跑开始：目标日 2026-10-11 → 2026-10-11；每批 5 家；共 1 批；模式 commit（会写飞书） ===
+[2026-10-12T01:22:07.776Z] 本批证据根：evidence/batches-2026-10-11
+[2026-10-12T01:22:07.776Z] --- 第 1/1 批：盖文淘宝、盖文天猫、科塔淘宝 ---
+[2026-10-12T01:22:07.776Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 盖文淘宝,盖文天猫,科塔淘宝
+[起齐] 目标 3 个实例（来源：runtime/browser-ports.mjs）
+  · 盖文淘宝  起前:ready  已就位，不动
+  · 盖文天猫  起前:ready  已就位，不动
+  · 科塔淘宝  起前:ready  已就位，不动
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-12T01:22:08.102Z] --- start 退出码=0
+[2026-10-12T01:22:08.102Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 盖文淘宝,盖文天猫,科塔淘宝 --json
+[归位] 盖文淘宝（代理 19043）：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[归位] 盖文天猫（代理 19045）：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[归位] 科塔淘宝（代理 19044）：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+{
+ "machine": "DESKTOP-KJP4RA5",
+ "verdict": "ALL_IN",
+ "autoLogin": true,
+ "normalize": {
+  "asked": true,
+  "shops": [
+   {
+    "shop": "盖文淘宝",
+    "proxyPort": 19043,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   },
+   {
+    "shop": "盖文天猫",
+    "proxyPort": 19045,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   },
+   {
+    "shop": "科塔淘宝",
+    "proxyPort": 19044,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   }
+  ]
+ },
+ "roundNotify": {
+  "status": "SKIPPED",
+  "reason": "这一轮没有「确定要人处理」的店（读不到不算要人；链的第 0 步会先补页面）"
+ },
+ "needHuman": [],
+ "unknown": [],
+ "checked": 3,
+ "rows": [
+  {
+   "shop": "盖文淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "盖文天猫",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "科塔淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  }
+ ]
+}
+[2026-10-12T01:23:21.178Z] --- login-preflight 结论已落 evidence/batches-2026-10-11/login-preflight-b1.json（2577 字节；本批的链会读它）
+[2026-10-12T01:23:21.178Z] --- login-preflight 退出码=0
+[2026-10-12T01:23:21.178Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "盖文淘宝": {
+   "browserPort": 19033,
+   "proxyPort": 19043,
+   "windowTitle": "盖文淘宝 · 日报采集窗口",
+   "memberName": "随心品质定制:小嘉",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&member=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E5%B0%8F%E5%98%89&actual=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E5%B0%8F%E5%98%89",
+    "工作页（链路要用）  https://one.alimama.com/index.html"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "E6B8008046362F953CB401BF00D74F28",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "随心品质定制:小嘉",
+   "labelActual": "随心品质定制:小嘉（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T01:23:22.088Z] --- label:盖文淘宝 退出码=0
+[2026-10-12T01:23:22.088Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "盖文天猫": {
+   "browserPort": 19035,
+   "proxyPort": 19045,
+   "windowTitle": "盖文天猫 · 日报采集窗口",
+   "memberName": "盖文旗舰店:小瓜",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035&member=%E7%9B%96%E6%96%87%E6%97%97%E8%88%B0%E5%BA%97%3A%E5%B0%8F%E7%93%9C&actual=%E7%9B%96%E6%96%87%E6%97%97%E8%88%B0%E5%BA%97%3A%E5%B0%8F%E7%93%9C",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "399F45BE0246F8D08F2B33F7857F5625",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "盖文旗舰店:小瓜",
+   "labelActual": "盖文旗舰店:小瓜（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T01:23:22.726Z] --- label:盖文天猫 退出码=0
+[2026-10-12T01:23:22.726Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "科塔淘宝": {
+   "browserPort": 19034,
+   "proxyPort": 19044,
+   "windowTitle": "科塔淘宝 · 日报采集窗口",
+   "memberName": "j873522735:小瓜",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%A7%91%E5%A1%94%E6%B7%98%E5%AE%9D&port=19034&member=j873522735%3A%E5%B0%8F%E7%93%9C&actual=j873522735%3A%E5%B0%8F%E7%93%9C",
+    "工作页（链路要用）  https://one.alimama.com/index.html"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "213561DD850C88F76B078BD051076801",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "j873522735:小瓜",
+   "labelActual": "j873522735:小瓜（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T01:23:23.803Z] --- label:科塔淘宝 退出码=0
+[2026-10-12T01:23:23.804Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-promotion-sales1.mjs --date 2026-10-11 --shops 盖文淘宝,盖文天猫,科塔淘宝 --commit --notify --logs evidence\batches-2026-10-11\b1
+{
+  "batch": 1,
+  "shop": "盖文淘宝",
+  "status": "ok",
+  "stages": [
+    "keyword-submit",
+    "audience-submit",
+    "keyword-fetch",
+    "audience-fetch",
+    "import"
+  ],
+  "recovery": {
+    "keywordPending": [
+      "关键词报表_20261012_083605"
+    ],
+    "audiencePending": []
+  }
+}
+{
+  "batch": 1,
+  "shop": "盖文天猫",
+  "status": "failed",
+  "stages": [
+    "keyword-submit"
+  ],
+  "error": "采集失败：人群报表提交后 15 分钟内未在下载列表确认到业务日 2026-10-11 的生成成功任务；最后一次读到的任务行：[{\"name\":\"人群报表_20261011_085024\",\"rangeStart\":\"2026-10-10\",\"rangeEnd\":\"2026-10-10\",\"status\":\"生成成功\"},{\"name\":\"人群报表_20261010_191506\",\"rangeStart\":\"2026-10-09\",\"rangeEnd\":\"2026-10-09\",\"status\":\"生成成功\"}]\n"
+}
+{
+  "batch": 1,
+  "shop": "科塔淘宝",
+  "status": "failed",
+  "stages": [
+    "keyword-submit",
+    "audience-submit"
+  ],
+  "error": "采集失败：\n采集失败：补提交结果核不清（看了 10 次）：提交之后列表里没有多出任何任务（提交前 5 条） ⇒ 平台可能没接受这次提交，或同名任务被合并；**不能**当成提交成功 ⇒ 不往台账里记一笔来路不明的任务（记了就等于替下一轮编了一个判据）\n\n"
+}
+[summary] 已落 D:\Retire\sycm-automation\evidence\batches-2026-10-11\b1\summary.json
+{
+  "notify": {
+    "delivered": true,
+    "suppressed": false
+  }
+}
+[2026-10-12T01:44:52.548Z] --- chain 退出码=1
+[2026-10-12T01:44:52.550Z] [批次] 这一批里「脚本自修没救回来」的：盖文天猫、科塔淘宝 —— 因此**不释放**，留给修复 agent／人
+[2026-10-12T01:44:52.550Z] --- stop：跳过 —— 这一批没跑成（链退出码 1），且 盖文天猫、科塔淘宝 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。
+[2026-10-12T01:44:52.550Z] [批次] 这一批不主动释放：这一批没跑成（链退出码 1），且 盖文天猫、科塔淘宝 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。；接着转驻留把这一轮挂住（不结束命令，窗口才真的留得住）
+[2026-10-12T01:44:52.550Z] --- 第 1/1 批：盖文淘宝、盖文天猫、科塔淘宝 小结：链退出码=1；stop（释放窗口）=未跑；这一批没跑成（链退出码 1），且 盖文天猫、科塔淘宝 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。
+[2026-10-12T01:44:52.550Z] [批次] 这一批里「脚本自修没救回来」的：盖文天猫、科塔淘宝 —— 这几家的现场要留给修复 agent／人 ⇒ 停在这里转驻留（剩下的批次不跑了）。
+[2026-10-12T01:44:52.550Z] [批次] 整轮被挡，但给了 --no-hold ⇒ 不驻留：发完告警本轮就结束，窗口随命令结束一起被回收（要现场得自己另起 start-all-hold.mjs 托住）。
+[2026-10-12T01:44:52.566Z] [run-receipt-v1] 统一回执已落 ../sycm-automation-runs/promotion-daily/2026-10-11/promotion-daily-2026-10-11-8db4b0e3-b7ef-4acf-a14a-08bd8e5ff060/run-receipt.json；manifest ../sycm-automation-runs/promotion-daily/2026-10-11/promotion-daily-2026-10-11-8db4b0e3-b7ef-4acf-a14a-08bd8e5ff060/manifest.json
+[2026-10-12T01:44:52.566Z] === 分批跑结束：0/1 批成功；释放 0 批；明细 evidence/batches-2026-10-11/batches.json ===
+[2026-10-12T01:44:52.566Z] [批次] 本轮在**第 1 批**停手（整轮被挡：UNFIXABLE_SHOPS）—— 只跑了 1/1 批，剩余批次**没有跑**（它们会撞同一堵墙）；驻留退出码=未跑。
+[驻留] 续跑退出码=1｜尾部：[2026-10-12T01:44:52.566Z] [run-receipt-v1] 统一回执已落 ../sycm-automation-runs/promotion-daily/2026-10-11/promotion-daily-2026-10-11-8db4b0e3-b7ef-4acf-a14a-08bd8e5ff060/run-receipt.json；manifest ../sycm-automation-runs/promotion-daily/2026-10-
+[驱动] 告警文案（收信人看到的）：
+【需要处理】盖文淘宝、盖文天猫、科塔淘宝的推广日报自动续跑没成功
+对象：推广日报一轮
+店铺：盖文淘宝、盖文天猫、科塔淘宝
+数据周期：2026-10-11
+任务：推广日报
+原因：上一轮停住的那几家，系统自己重跑了一次仍没跑完（退出码 1）。
+下一步：同一家店不会再自动重跑第二次。这一次的现场在窗口里，需要技术同学看一下。
+时间：2026-10-12 09:44
+告警编号：promotion-hold-resume-failed-20261011
+[驱动] 告警投递退出码=0：{
+  "version": "feishu-notify-receipt-v1",
+  "status": "SENT",
+  "channel": "app",
+  "alertId": "promotion-hold-resume-failed-20261011",
+  "sentAt": "2026-10-12T01:44:52.892Z",
+  "attempts": [
+    {
+      "channel": "app",
+      "ok": true,
+      "target": "ou_e254f8d7d91a042b31fcd59299a1a4a9",
+    
+[驻留] 释放：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe scripts\stop-all.mjs --yes --only 盖文淘宝,盖文天猫,科塔淘宝
+[驻留] 释放退出码=0｜[停] 目标 3 个实例
+  · 盖文淘宝
+      将停 proxy pid=101392  ← 端口在听、进程命令行是 start-shop-proxy.mjs 盖文淘宝
+         taskkill /PID 101392 /T /F
+      将停 browser pid=108860  ← CDP 自证 profile 一致；杀启动器 108860（连带浏览器进程树与保活进程）
+[驻留] 提醒：释放的结论不要只看退出码，判「放掉没有」要回读端口。
+[2026-10-12T01:45:08.132Z] --- hold-and-resume 退出码=1
+[2026-10-12T01:45:08.132Z] [批次] 人处理完了、但自动续跑仍没成功 ⇒ 不再自动重试第二次，需要技术同学看现场。
+[2026-10-12T01:45:08.150Z] [run-receipt-v1] 统一回执已落 ../sycm-automation-runs/promotion-daily/2026-10-11/promotion-daily-2026-10-11-1de16d67-0b49-4f7c-a7bc-a637b6ee880e/run-receipt.json；manifest ../sycm-automation-runs/promotion-daily/2026-10-11/promotion-daily-2026-10-11-1de16d67-0b49-4f7c-a7bc-a637b6ee880e/manifest.json
+[2026-10-12T01:45:08.150Z] === 分批跑结束：0/2 批成功；释放 0 批；明细 evidence/batches-2026-10-11/batches.json ===
+[2026-10-12T01:45:08.150Z] [批次] 本轮在**第 1 批**停手（整轮被挡：UNFIXABLE_SHOPS）—— 只跑了 1/2 批，剩余批次**没有跑**（它们会撞同一堵墙）；驻留退出码=1。
+[2026-10-12T03:32:27.802Z] [锁] 上层已持有 merchant-automation 运行锁（本进程是子步）⇒ 不重复抢
+[2026-10-12T03:32:27.802Z] 版本：sycm-automation 1.8.6
+[2026-10-12T03:32:27.802Z] === 分批跑开始：目标日 yesterday → 2026-10-11；每批 5 家；共 2 批；模式 commit（会写飞书） ===
+[2026-10-12T03:32:27.802Z] 本批证据根：evidence/batches-2026-10-11
+[2026-10-12T03:32:27.802Z] --- ensure-shared：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 商家浏览器（日报/周表/灰豚）  起前:ready  已就位，不动
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-12T03:32:27.980Z] --- ensure-shared 退出码=0
+[2026-10-12T03:32:27.980Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 ---
+[2026-10-12T03:32:27.980Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[起齐] 目标 5 个实例（来源：runtime/browser-ports.mjs）
+  · 里可林淘宝  起前:missing  两样都没有，起一整套
+      已起 browser pid=66500  日志 runtime/start-stop-logs/2026-10-12T03-32-28/里可林淘宝-browser.log
+      已起 proxy pid=56868  日志 runtime/start-stop-logs/2026-10-12T03-32-28/里可林淘宝-proxy.log
+      起后:ready
+  · 网林天猫  起前:missing  两样都没有，起一整套
+      已起 browser pid=140448  日志 runtime/start-stop-logs/2026-10-12T03-32-28/网林天猫-browser.log
+      已起 proxy pid=79708  日志 runtime/start-stop-logs/2026-10-12T03-32-28/网林天猫-proxy.log
+      起后:ready
+  · 盖文淘宝  起前:missing  两样都没有，起一整套
+      已起 browser pid=65780  日志 runtime/start-stop-logs/2026-10-12T03-32-28/盖文淘宝-browser.log
+      已起 proxy pid=30020  日志 runtime/start-stop-logs/2026-10-12T03-32-28/盖文淘宝-proxy.log
+      起后:ready
+  · 盖文天猫  起前:missing  两样都没有，起一整套
+      已起 browser pid=98612  日志 runtime/start-stop-logs/2026-10-12T03-32-28/盖文天猫-browser.log
+      已起 proxy pid=18796  日志 runtime/start-stop-logs/2026-10-12T03-32-28/盖文天猫-proxy.log
+      起后:ready
+  · 科塔淘宝  起前:missing  两样都没有，起一整套
+      已起 browser pid=113812  日志 runtime/start-stop-logs/2026-10-12T03-32-28/科塔淘宝-browser.log
+      已起 proxy pid=80824  日志 runtime/start-stop-logs/2026-10-12T03-32-28/科塔淘宝-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-12T03:32:38.468Z] --- start 退出码=0
+[2026-10-12T03:32:38.468Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+[归位] 里可林淘宝（代理 19041）：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）　动作 生意参谋工作页:create 阿里妈妈报表页:create
+[归位] 网林天猫（代理 19042）：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）　动作 生意参谋工作页:create 阿里妈妈报表页:create
+[归位] 盖文淘宝（代理 19043）：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）　动作 生意参谋工作页:create 阿里妈妈报表页:create
+[归位] 盖文天猫（代理 19045）：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）　动作 生意参谋工作页:create 阿里妈妈报表页:create
+[归位] 科塔淘宝（代理 19044）：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）　动作 生意参谋工作页:create 阿里妈妈报表页:create
+{
+ "machine": "DESKTOP-KJP4RA5",
+ "verdict": "ALL_IN",
+ "autoLogin": true,
+ "normalize": {
+  "asked": true,
+  "shops": [
+   {
+    "shop": "里可林淘宝",
+    "proxyPort": 19041,
+    "ok": true,
+    "changed": true,
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": [
+     "生意参谋工作页:create",
+     "阿里妈妈报表页:create"
+    ]
+   },
+   {
+    "shop": "网林天猫",
+    "proxyPort": 19042,
+    "ok": true,
+    "changed": true,
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": [
+     "生意参谋工作页:create",
+     "阿里妈妈报表页:create"
+    ]
+   },
+   {
+    "shop": "盖文淘宝",
+    "proxyPort": 19043,
+    "ok": true,
+    "changed": true,
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": [
+     "生意参谋工作页:create",
+     "阿里妈妈报表页:create"
+    ]
+   },
+   {
+    "shop": "盖文天猫",
+    "proxyPort": 19045,
+    "ok": true,
+    "changed": true,
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": [
+     "生意参谋工作页:create",
+     "阿里妈妈报表页:create"
+    ]
+   },
+   {
+    "shop": "科塔淘宝",
+    "proxyPort": 19044,
+    "ok": true,
+    "changed": true,
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": [
+     "生意参谋工作页:create",
+     "阿里妈妈报表页:create"
+    ]
+   }
+  ]
+ },
+ "roundNotify": {
+  "status": "SKIPPED",
+  "reason": "这一轮没有「确定要人处理」的店（读不到不算要人；链的第 0 步会先补页面）"
+ },
+ "needHuman": [],
+ "unknown": [],
+ "checked": 5,
+ "rows": [
+  {
+   "shop": "里可林淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "网林天猫",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "盖文淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "盖文天猫",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "科塔淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  }
+ ]
+}
+[2026-10-12T03:35:01.049Z] --- login-preflight 结论已落 evidence/batches-2026-10-11/login-preflight-b1.json（4683 字节；本批的链会读它）
+[2026-10-12T03:35:01.049Z] --- login-preflight 退出码=0
+[2026-10-12T03:35:01.049Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "里可林淘宝": {
+   "browserPort": 19031,
+   "proxyPort": 19041,
+   "windowTitle": "里可林淘宝 · 日报采集窗口",
+   "memberName": "里可林家居:小嘉",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "319A48EA0C30C84E30D7823AFE594A23",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "里可林家居:小嘉",
+   "labelActual": "里可林家居:小嘉（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T03:35:01.234Z] --- label:里可林淘宝 退出码=0
+[2026-10-12T03:35:01.234Z] --- label:网林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "网林天猫": {
+   "browserPort": 19032,
+   "proxyPort": 19042,
+   "windowTitle": "网林天猫 · 日报采集窗口",
+   "memberName": "网林家居旗舰店:饺子",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032",
+    "工作页（链路要用）  https://one.alimama.com/index.html"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "CCC0892B9880B17AA7ADFD06BABD85A8",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "网林家居旗舰店:饺子",
+   "labelActual": "网林家居旗舰店:饺子（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T03:35:01.414Z] --- label:网林天猫 退出码=0
+[2026-10-12T03:35:01.414Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "盖文淘宝": {
+   "browserPort": 19033,
+   "proxyPort": 19043,
+   "windowTitle": "盖文淘宝 · 日报采集窗口",
+   "memberName": "随心品质定制:小嘉",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033",
+    "工作页（链路要用）  https://one.alimama.com/index.html"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "33804FD968282DB39D817B3BD2183176",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "随心品质定制:小嘉",
+   "labelActual": "随心品质定制:小嘉（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T03:35:01.608Z] --- label:盖文淘宝 退出码=0
+[2026-10-12T03:35:01.608Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "盖文天猫": {
+   "browserPort": 19035,
+   "proxyPort": 19045,
+   "windowTitle": "盖文天猫 · 日报采集窗口",
+   "memberName": "盖文旗舰店:小瓜",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "4DB8233D2DEF6FD8DF27F00D554583CB",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "盖文旗舰店:小瓜",
+   "labelActual": "盖文旗舰店:小瓜（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T03:35:01.779Z] --- label:盖文天猫 退出码=0
+[2026-10-12T03:35:01.779Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "科塔淘宝": {
+   "browserPort": 19034,
+   "proxyPort": 19044,
+   "windowTitle": "科塔淘宝 · 日报采集窗口",
+   "memberName": "j873522735:小瓜",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://one.alimama.com/index.html",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%A7%91%E5%A1%94%E6%B7%98%E5%AE%9D&port=19034",
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "BC1C03F97975954DC4AF7B29716EF232",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "j873522735:小瓜",
+   "labelActual": "j873522735:小瓜（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-12T03:35:01.944Z] --- label:科塔淘宝 退出码=0
+[2026-10-12T03:35:01.944Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --commit --notify --auto-repair --relogin-on-wall --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-11\login-preflight-b1.json --logs evidence\batches-2026-10-11\b1
+[驱动] 环境自检：宿主没有掐断同步子进程（管道 stdin 可用）—— 这一轮不会因 EBUSY 失败。
+[驱动] 目标日 2026-10-11｜模式 commit｜店铺 5 家：里可林淘宝 / 网林天猫 / 盖文淘宝 / 盖文天猫 / 科塔淘宝
+[驱动] （--date yesterday 按 Asia/Shanghai 解析成 2026-10-11）
+[驱动] 日志根 D:\Retire\sycm-automation\evidence\batches-2026-10-11\b1
+[驱动] 跑前登录态结论 D:\Retire\sycm-automation\evidence\batches-2026-10-11\login-preflight-b1.json ⇒ ALL_IN（掉登录 0 家／没结论 0 家）
+[驱动] 本机 DESKTOP-KJP4RA5
+[驱动] --commit：会真的写飞书。目标日已有行会硬重复停止（先按 §9.3 删那天）。
+[驱动] 出错时：--notify 且 --commit
+[驱动]   里可林淘宝 | 页头店名 里可林家居 | 会员 里可林家居:小嘉 2350600069
+[驱动]   网林天猫 | 页头店名 网林家居旗舰店 | 会员 网林家居旗舰店:饺子 7314426323
+[驱动]   盖文淘宝 | 页头店名 盖文全卫定制 | 会员 随心品质定制:小嘉 887360146
+[驱动]   盖文天猫 | 页头店名 盖文旗舰店 | 会员 盖文旗舰店:小瓜 2995200080
+[驱动]   科塔淘宝 | 页头店名 科塔全卫定制 | 会员 j873522735:小瓜 412070158
+[一轮]   归位：已归位（生意参谋工作页=1  飞书底单页=0 → 生意参谋工作页=1  飞书底单页=1）
+[一轮]     [归位] 飞书底单页：create
+[一轮]   体检通过：阻断 0 项，告警 1 项
+[一轮]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[一轮]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[里可林淘宝] 1. health-check —— 体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个
+[里可林淘宝]   归位：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[里可林淘宝]   体检通过：阻断 0 项，告警 1 项
+[里可林淘宝]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[里可林淘宝]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[里可林淘宝] 2. alimama-date —— 阿里妈妈落位（日期全在 URL hash 里，navigate 即落位）
+[里可林淘宝] 3. promotion-submit —— 提交推广报表生成任务（之后平台要生成几分钟，中途用第 3/4 步填掉）
+[里可林淘宝] 4. sycm-date —— 生意参谋落位（切页签到 询单到付款 再定日期）
+[里可林淘宝] 5. shop-report —— 点开日报预览并下载店铺工作簿（会把这个页签留在预览页）
+[里可林淘宝] shopXlsxPath = C:\Users\Administrator\Downloads\日报_20261012_6e084ff8251d468d6ead4fd386d07bed.xlsx
+[里可林淘宝]   店铺工作簿 = C:\Users\Administrator\Downloads\日报_20261012_6e084ff8251d468d6ead4fd386d07bed.xlsx
+[里可林淘宝] 6. promotion-fetch —— 取推广 zip（先断言任务行是「生成成功」，再真实点复选框）
+[里可林淘宝] [fetch] promotionZipPath = C:\Users\Administrator\Downloads\营销场景报表_20261012_113520.zip
+[里可林淘宝]   推广 zip = C:\Users\Administrator\Downloads\营销场景报表_20261012_113520.zip
+[里可林淘宝] 7. push —— 推送（会写底单新增一行）
+[里可林淘宝] [shop-key] 里可林淘宝 ↔ 源产物店名 里可林家居 一致（证据目录 daily-report-2026-10-11-里可林淘宝）
+[里可林淘宝] 8. sycm-reset —— 生意参谋回位：把被第 4 步带走的那个页签送回 qos/.../shop/performance（驱动自己导航）
+[代理] 连接层失败（第 1/3 次）：fetch failed｜cause=ECONNABORTED → 1.5s 后重发 http://127.0.0.1:19041/targets
+[代理] 第 2 次才通：http://127.0.0.1:19041/targets
+[里可林淘宝]   回位：把 https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&la 送回 https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+[里可林淘宝] 9. sycm-date-again —— 回位会重置页签与日期 ⇒ 必须重跑落位，否则回填报 expected one 当日询单人数 table, got 0
+[里可林淘宝] 10. backfill —— 询单回填（写两个字段）
+[里可林淘宝] 11. readback —— 独立回读 + 截图（换一条通路读同一个事实）
+[网林天猫] 1. health-check —— 体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个
+[网林天猫]   归位：本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）
+[网林天猫]   体检通过：阻断 0 项，告警 1 项
+[网林天猫]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[网林天猫]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[网林天猫] 2. alimama-date —— 阿里妈妈落位（日期全在 URL hash 里，navigate 即落位）
+[网林天猫] 3. promotion-submit —— 提交推广报表生成任务（之后平台要生成几分钟，中途用第 3/4 步填掉）
+[网林天猫] 4. sycm-date —— 生意参谋落位（切页签到 询单到付款 再定日期）
+[网林天猫] 5. shop-report —— 点开日报预览并下载店铺工作簿（会把这个页签留在预览页）
+[网林天猫] shopXlsxPath = C:\Users\Administrator\Downloads\日报_20261012_65141cc3c0fd0c526f65e7da28ff800b.xlsx
+[网林天猫]   店铺工作簿 = C:\Users\Administrator\Downloads\日报_20261012_65141cc3c0fd0c526f65e7da28ff800b.xlsx
+[网林天猫] 6. promotion-fetch —— 取推广 zip（先断言任务行是「生成成功」，再真实点复选框）
+[网林天猫] [fetch] promotionZipPath = C:\Users\Administrator\Downloads\营销场景报表_20261012_114211.zip
+[网林天猫]   推广 zip = C:\Users\Administrator\Downloads\营销场景报表_20261012_114211.zip
+[网林天猫] 7. push —— 推送（会写底单新增一行）

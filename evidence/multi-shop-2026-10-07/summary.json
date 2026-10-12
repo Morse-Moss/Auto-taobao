@@ -1,0 +1,821 @@
+{
+  "date": "2026-10-07",
+  "mode": "rehearse",
+  "startedAt": "2026-10-09T09:47:00.488Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 0,
+      "logPath": "evidence\\multi-shop-2026-10-07\\00-health-check-daily.txt",
+      "ok": true,
+      "blocking": [],
+      "blockingDetails": [],
+      "normalize": "本来就在位（生意参谋工作页=1  飞书底单页=1）",
+      "normalizeChanged": false,
+      "roundCause": null,
+      "missingPages": []
+    }
+  },
+  "shops": {
+    "网林家居": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "sycm-date",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\multi-shop-2026-10-07\\网林家居\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-10-07",
+            "--proxy",
+            "http://127.0.0.1:19062"
+          ],
+          "blockingDetails": null,
+          "blockingCodes": null,
+          "pageNormalize": null
+        }
+      ],
+      "source": {},
+      "failedStage": "sycm-date",
+      "failureOutput": "\nError: proxy http://127.0.0.1:19062/eval?target=F50A392EC11C128491273E688B243C7C failed: HTTP 400 Error: sycm button 自定义: point (1040,162) is covered by IMG.     at aim (<anonymous>:27:13)     at <anonymous>:36:34     at <anonymous>:37:3\n    at proxyJson (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:396:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async evaluate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:402:19)\n    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:819:20)\n    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:611:12)\nTRACE [\n  {\n    \"step\": \"tab\",\n    \"expectTab\": \"询单到付款\",\n    \"alreadyActive\": true,\n    \"point\": [\n      472,\n      277\n    ]\n  }\n]\n",
+      "blockingDetails": null,
+      "error": "阶段 sycm-date 失败（exit 1）",
+      "perception": {
+        "ok": true,
+        "files": {
+          "stateJson": "D:\\Retire\\sycm-automation\\evidence\\multi-shop-2026-10-07\\网林家居\\98-failure-state.json",
+          "stateText": "D:\\Retire\\sycm-automation\\evidence\\multi-shop-2026-10-07\\网林家居\\98-failure-state.txt",
+          "screenshot": "D:\\Retire\\sycm-automation\\evidence\\multi-shop-2026-10-07\\网林家居\\98-failure-page.png"
+        },
+        "state": {
+          "capturedAt": "2026-10-09T09:47:01.030Z",
+          "url": "https://one.alimama.com/index.html",
+          "title": "首页_万相台无界版",
+          "viewport": {
+            "w": 1506,
+            "h": 642,
+            "dpr": 1.25,
+            "scrollY": 0
+          },
+          "visibleText": "首页 推广  万相贯通  报表  洞察  创意  工具  账户  AI小万  新人手册  快捷入口  消息中心 网林定制家居:小瓜 ID：1731780198  投「趋势速递」 立即解锁【行业趋势报告】 投「趋势速递」 投「趋势明星」 立即查看 立即查看 投「趋势速递」 投「趋势明星」 投「趋势明星」    新建计划 1 投放中 0 预算已撞线 0 预算即将撞线 1 宝贝异常 0 创意异常 0 待支付 0 营销安全 规则  专属权益 万相贯通 先成交后扣费 额外赠送100元流量 立即下单 营销雷达 您的今日营销建议已送达，速速来查收吧 账户可用预算(元)  全新升级 50 40% 预算花费率：今日消耗/账户可用预算 查看构成 今日重点建议·成交加速流量礼包 未领取 高ROI计划设【自动规则】调预算，防止停投，达标即送平均10%流量扶持。 立即领取 1个计划存在「成本异常」 AI小万建议 人群计划：83216145697昨日成本有调优潜力，立即使用【小万护航】诊断调优，计划平均成本降低20%+ 一键优化 计划 1个大件爆品秋上新转化兑现场景开启！ 大件爆品高客单兑现 近7日CVR环比提升，秋上新流量红利期，需立即启用人资产转化，全力兑现高客单！ 全力兑现  推荐宝贝：1 商品 【竞争必备】类目高活人群 抢占流量先机 本类目下高活跃但未购的潜力消费者，是竞对防守必争人群，触达后能够显著加速转化！ 一键触达 商品 短视频新客流量福利 新客首单仅需1元 可享2000流量 1 元 短视频流量卡 立即领取 搜索CTR双降，优化流量 流量质量风险 自然搜索CTR落后同行58.22%且环比下滑，流量承接存风险，建议投放人群推广-获取成交量，同行投放效果好，平均CTR4% 去提升点击  推荐宝贝：1 商品 IPV低于店均，挖掘流量潜力 流量增长潜力 起步期IPV低于店均0.56%，但环比已回升，流量仍有增长空间，建议加大引流，建议投放关键词推广-稳定投产比，同行投放效果好，品均每天额外获得7次展现 一键拿量  推荐宝贝：1 商品 新品快速起量 新品快速起量 适合销量较少的新品，定向投放店铺老客，快速积累新品销量与评价。 优化提效 商品 2个动销品转化掉队！ 转化落后预警 近7日访客周环比增长最多120%，但转化率落后同行。大件决策周期长，急需借趋势词精准触达意向人群促成交！ 抢占趋势促成交  推荐宝贝：2 能力 优质新品打爆 优质新品打爆 跟投竞品/店内爆款，抢占优质人群，快速积累新品数据，缩短冷启周期 优化提效 商品  详情 成交加速流量礼包 流量扶持活动 多个商品昨日点击表现亮眼！对比同行同叶子类目相似品，竞争力数据一目了然。 立即领取 能力 新品高热度流量 新品高热度流量 抓住新品相关消费趋势，匹配高流量高热度的关键词，快速提升新品搜索流量与成交。 优化提效 商品 新品高热度流量 新品高热度流量 抓住新品相关消费趋势，匹配高流量高热度的关键词，快速提升新品搜索流量与成交。 优化提效 商品 秋冬降温趋势专题 趋势速递 气温往下走，秋冬换季生意机会往上涨！ 立即查看 趋势 趋势明星六大榜单上线 趋势明星 双维推荐精准锁定，智能匹配最适合你的趋势主题！入群:104005081385 投「趋势明星」 趋势 优质新品打爆 优质新品打爆 跟投竞品/店内爆款，抢占优质人群，快速积累新品数据，缩短冷启周期 优化提效 商品 店铺高价值新客成交 高价值新客成交 人群方舟-提升首购人群，靶向高价值人群刺激首单购买夺增量GMV！ 立获增量 能力 您的店铺有待测「潜力新品」 挖掘新品机会 您的店铺有待测「潜力新品」，点击领取运营秘籍，快速打造爆款！ 立即投放 能力 趋势明星趋势买词上线 趋势明星 智能拓展趋势流量；专属结案报表实时解读投放数据，入群:104005081385 投「趋势明星」 趋势 全国降温囤暖潮 趋势速递 入秋全国降温，保暖全品类囤货需求集中释放，成为各行业高效转化窗口！ 投「趋势速递」 趋势 新版趋势明星全新上线 趋势明星 实战趋势榜单×趋势易感人群x 趋势买词&结案能力，入群:104005081385 投「趋势明星」 趋势    1 2 3 4 5  账户整体 货品全站推广 关键词推广 人群推广 店铺直达 内容营销 线索推广 以下实时数据不包含超播全站推广、超值券、确定性保障套餐包  首页意见箱 反馈赢权益  查看实时报表  一句话生成专属看板，快用万能查数  新建计划 查看计划  今日  对比  昨日  转化统计方式 末次点击归因   展现量  210 133 对比昨日 +57.89% 点击量  3 4 对比昨日 -25% 花费(元)  20.17 29.47 对比昨日 -31.56% 点击率  1.43% 3.01% 对比昨日 -52.49% 平均点击花费(元)  6.72 7.37 对比昨日 -8.82% 总成交金额(元)  0.00 0.00 对比昨日 - 总成交笔数  0 0 对比昨日 - 点击转化率  0.00% 0.00% 对比昨日 - 总购物车数  0 1 对比昨日 - 收藏宝贝数  0 0 对比昨日 - 收藏店铺数  0 0 对比昨日 - 总收藏数  0 0 对比昨日 - 宝贝收藏成本(元)  - - 对比昨日 -  1 2 3    展开详情  时间 展现量 点击量 花费(元) 点击率 平均点击花费(元) 总成交金额(元) 总成交笔数 点击转化率 总购物车数 收藏宝贝数 收藏店铺数 总收藏数 宝贝收藏成本(元) 00:00 0 0 0 0 0.00 0.00 0.00% 0.00% 0.00 0.00 0.00 0.00 0 0 0.00% 0.00% 0 0 0 0 0 0 0 0 0.00 0.00 01:00 0 0 0 0 0.00 0.00 0.00% 0.00% 0.00 0.00 0.00 0.00 0 0 0.00% 0.00% 0 0 0 0 0 0 0 0 0.00 0.00 02:00 0 0 0 0 0.00 0.00 0.00% 0.00% 0.00 0.00 0.00 0.00 0 0 0.00% 0.00% 0 0 0 0 0 0 0 0 0.00 0.00 03:00 0 0 0 0 0.00 0.00 0.00% 0.00% 0.00 0.00 0.00 0.00 0 0 0.00% 0.00% 0 0 0 0 0 0 0 0 0.00 0.00 04:00 0 0 0 0 0.00 0.00 0.00% 0.00% 0.00 0.00 0.00 0.00 0 0 0.00% 0.00% 0 0 0 0 0 0 0 0 0.00 0.00 05:00 0 0 0 0 0.00 0.00 0.00% 0.00% 0.00 0.00 0.00 0.00 0 0 0.00% 0.00% 0 0 0 0 0 0 0 0 0.00 0.00 06:00 0 0 0 0 0.00 0.00 0.00% 0.00% 0.00",
+          "dialogs": [],
+          "interactive": [
+            {
+              "tag": "A",
+              "id": null,
+              "text": "",
+              "cls": "",
+              "rect": {
+                "x": 24,
+                "y": 13,
+                "w": 253,
+                "h": 32
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": "首页",
+              "cls": "asiYysrPty",
+              "rect": {
+                "x": 289,
+                "y": 19,
+                "w": 28,
+                "h": 19
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": "推广",
+              "cls": "asiYysrPty",
+              "rect": {
+                "x": 357,
+                "y": 19,
+                "w": 28,
+                "h": 19
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": "万相贯通",
+              "cls": "asiYysrPty",
+              "rect": {
+                "x": 445,
+                "y": 19,
+                "w": 56,
+                "h": 19
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": "报表",
+              "cls": "asiYysrPty",
+              "rect": {
+                "x": 561,
+                "y": 19,
+                "w": 28,
+                "h": 19
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": "洞察",
+              "cls": "asiYysrPty",
+              "rect": {
+                "x": 649,
+                "y": 19,
+                "w": 28,
+                "h": 19
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": "创意",
+              "cls": "asiYysrPty",
+              "rect": {
+                "x": 737,
+                "y": 19,
+                "w": 28,
+                "h": 19
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": "工具",
+              "cls": "asiYysrPty",
+              "rect": {
+                "x": 825,
+                "y": 19,
+                "w": 28,
+                "h": 19
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": "账户",
+              "cls": "asiYysrPty",
+              "rect": {
+                "x": 913,
+                "y": 19,
+                "w": 28,
+                "h": 19
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": " 新人手册",
+              "cls": "wO_WXeCbiG wO_WXeCbiI",
+              "rect": {
+                "x": 1132,
+                "y": 6,
+                "w": 56,
+                "h": 48
+              }
+            },
+            {
+              "tag": "A",
+              "id": "mx_111_pop",
+              "text": " 消息中心",
+              "cls": "icQRQlrwb mxgc-popover",
+              "rect": {
+                "x": 1272,
+                "y": 11,
+                "w": 48,
+                "h": 38
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "投「趋势速递」",
+              "cls": "asiYysrPaY    asiYysrPbe-normal asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": -3316,
+                "y": 98,
+                "w": 148,
+                "h": 32
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "立即解锁【行业趋势报告】",
+              "cls": "asiYysrPaY    asiYysrPbe-normal asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": -1847,
+                "y": 98,
+                "w": 218,
+                "h": 32
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "投「趋势速递」",
+              "cls": "asiYysrPaY    asiYysrPbe-normal asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": -379,
+                "y": 98,
+                "w": 148,
+                "h": 32
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "投「趋势明星」",
+              "cls": "asiYysrPaY    asiYysrPbe-normal asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 2559,
+                "y": 98,
+                "w": 148,
+                "h": 32
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "立即查看",
+              "cls": "asiYysrPaY    asiYysrPbe-normal asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 4028,
+                "y": 98,
+                "w": 106,
+                "h": 32
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "立即查看",
+              "cls": "asiYysrPaY    asiYysrPbe-normal asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 5497,
+                "y": 98,
+                "w": 106,
+                "h": 32
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "投「趋势速递」",
+              "cls": "asiYysrPaY    asiYysrPbe-normal asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 6965,
+                "y": 98,
+                "w": 148,
+                "h": 32
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "投「趋势明星」",
+              "cls": "asiYysrPaY    asiYysrPbe-normal asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 8434,
+                "y": 98,
+                "w": 148,
+                "h": 32
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "投「趋势明星」",
+              "cls": "asiYysrPaY    asiYysrPbe-normal asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 9903,
+                "y": 98,
+                "w": 148,
+                "h": 32
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": " 新建计划",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom  ",
+              "rect": {
+                "x": 40,
+                "y": 197,
+                "w": 92,
+                "h": 24
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": "规则 ",
+              "cls": "asiYysrPak   ",
+              "rect": {
+                "x": 176,
+                "y": 285,
+                "w": 40,
+                "h": 18
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": "额外赠送100元流量",
+              "cls": "color-f ml4 blod",
+              "rect": {
+                "x": 420,
+                "y": 328,
+                "w": 105,
+                "h": 16
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "立即下单",
+              "cls": "asiYysrPaY    asiYysrPbe-normal asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 560,
+                "y": 308,
+                "w": 72,
+                "h": 32
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "50",
+              "cls": "asiYysrPak   ",
+              "rect": {
+                "x": 40,
+                "y": 513,
+                "w": 18,
+                "h": 18
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "查看构成",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 40,
+                "y": 571,
+                "w": 74,
+                "h": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "立即领取",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 289,
+                "y": 579,
+                "w": 74,
+                "h": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "一键优化",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 53,
+                "y": 783,
+                "w": 74,
+                "h": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "全力兑现",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 318,
+                "y": 779,
+                "w": 74,
+                "h": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "一键触达",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 607,
+                "y": 783,
+                "w": 74,
+                "h": 24
+              }
+            },
+            {
+              "tag": "A",
+              "id": null,
+              "text": "立即领取",
+              "cls": "asiYysrPaY    asiYysrPbe-normal asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 1032,
+                "y": 723,
+                "w": 72,
+                "h": 32
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "去提升点击",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 1162,
+                "y": 779,
+                "w": 86,
+                "h": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "一键拿量",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 1439,
+                "y": 779,
+                "w": 74,
+                "h": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "优化提效",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 1716,
+                "y": 783,
+                "w": 74,
+                "h": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "抢占趋势促成交",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 1993,
+                "y": 779,
+                "w": 110,
+                "h": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "优化提效",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 2270,
+                "y": 783,
+                "w": 74,
+                "h": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": " 详情",
+              "cls": "asiYysrPak   ",
+              "rect": {
+                "x": 2739,
+                "y": 650,
+                "w": 44,
+                "h": 18
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "立即领取",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 2548,
+                "y": 783,
+                "w": 74,
+                "h": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "优化提效",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 2825,
+                "y": 783,
+                "w": 74,
+                "h": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "id": null,
+              "text": "优化提效",
+              "cls": "asiYysrPaY    asiYysrPbe-small asiYysrPbe-custom-gradient  ",
+              "rect": {
+                "x": 3102,
+                "y": 783,
+                "w": 74,
+                "h": 24
+              }
+            }
+          ],
+          "domSummary": {
+            "totalElements": 4403,
+            "counts": {
+              "HTML": 1,
+              "HEAD": 1,
+              "META": 8,
+              "TITLE": 1,
+              "LINK": 3,
+              "STYLE": 120,
+              "SCRIPT": 17,
+              "BODY": 1,
+              "svg": 1,
+              "symbol": 183,
+              "path": 284,
+              "DIV": 1972,
+              "A": 82,
+              "IMG": 56,
+              "I": 119,
+              "SPAN": 996,
+              "BUTTON": 65,
+              "B": 3,
+              "TABLE": 3,
+              "THEAD": 1,
+              "TR": 48,
+              "TH": 14,
+              "TBODY": 3,
+              "TD": 405,
+              "COLGROUP": 2,
+              "COL": 6,
+              "H4": 3,
+              "STRONG": 4,
+              "IFRAME": 1
+            },
+            "containers": [
+              {
+                "tag": "DIV",
+                "id": "app",
+                "cls": "",
+                "rect": {
+                  "x": 0,
+                  "y": 0,
+                  "w": 1501,
+                  "h": 2459
+                }
+              },
+              {
+                "tag": "DIV",
+                "id": "universalBP_punish",
+                "cls": "",
+                "rect": {
+                  "x": 0,
+                  "y": 0,
+                  "w": 1501,
+                  "h": 0
+                }
+              },
+              {
+                "tag": "DIV",
+                "id": "universalBP_common_topbar",
+                "cls": "",
+                "rect": {
+                  "x": 0,
+                  "y": 0,
+                  "w": 1501,
+                  "h": 0
+                }
+              },
+              {
+                "tag": "DIV",
+                "id": "universalBP_common_layout",
+                "cls": "",
+                "rect": {
+                  "x": 0,
+                  "y": 0,
+                  "w": 1501,
+                  "h": 2459
+                }
+              },
+              {
+                "tag": "DIV",
+                "id": "mx_61",
+                "cls": "",
+                "rect": {
+                  "x": 0,
+                  "y": 0,
+                  "w": 1501,
+                  "h": 58
+                }
+              },
+              {
+                "tag": "DIV",
+                "id": "mx_78",
+                "cls": "asiYysrPtK",
+                "rect": {
+                  "x": 973,
+                  "y": 5,
+                  "w": 504,
+                  "h": 49
+                }
+              },
+              {
+                "tag": "DIV",
+                "id": "ai_analyst_entrance",
+                "cls": "wO_WXeCbiE",
+                "rect": {
+                  "x": 973,
+                  "y": 6,
+                  "w": 147,
+                  "h": 48
+                }
+              },
+              {
+                "tag": "DIV",
+                "id": "ai_analyst_entrance_xiaowan_entrance",
+                "cls": "",
+                "rect": {
+                  "x": 973,
+                  "y": 6,
+                  "w": 147,
+                  "h": 52
+                }
+              },
+              {
+                "tag": "DIV",
+                "id": "mx_157",
+                "cls": " ivthphphZU",
+                "rect": {
+                  "x": 1064,
+                  "y": 6,
+                  "w": 56,
+                  "h": 48
+                }
+              },
+              {
+                "tag": "SPAN",
+                "id": "mx_687",
+                "cls": "mxgc-icon mxgc-iconfont-wrapper",
+                "rect": {
+                  "x": 1083,
+                  "y": 11,
+                  "w": 18,
+                  "h": 18
+                }
+              }
+            ]
+          },
+          "tables": [
+            {
+              "rows": 24,
+              "cols": 14,
+              "rect": {
+                "x": 40,
+                "y": 933,
+                "w": 440,
+                "h": 1146
+              },
+              "visible": true
+            },
+            {
+              "rows": 13,
+              "cols": 3,
+              "rect": {
+                "x": 492,
+                "y": 1271,
+                "w": 289,
+                "h": 742
+              },
+              "visible": true
+            },
+            {
+              "rows": 10,
+              "cols": 3,
+              "rect": {
+                "x": 827,
+                "y": 1271,
+                "w": 289,
+                "h": 750
+              },
+              "visible": true
+            }
+          ]
+        },
+        "errors": [],
+        "shopKey": "网林家居",
+        "stage": "sycm-date"
+      },
+      "repairRequest": {
+        "at": "2026-10-09T09:47:06.949Z",
+        "shopKey": "网林家居",
+        "stage": "sycm-date",
+        "cause": "STAGE_FAILED",
+        "error": "阶段 sycm-date 失败（exit 1）",
+        "statePath": "evidence\\multi-shop-2026-10-07\\网林家居\\98-failure-state.json",
+        "stateTextPath": "evidence\\multi-shop-2026-10-07\\网林家居\\98-failure-state.txt",
+        "screenshotPath": "evidence\\multi-shop-2026-10-07\\网林家居\\98-failure-page.png",
+        "stateSummary": {
+          "url": "https://one.alimama.com/index.html",
+          "title": "首页_万相台无界版",
+          "viewport": {
+            "w": 1506,
+            "h": 642,
+            "dpr": 1.25,
+            "scrollY": 0
+          },
+          "overlayCount": 0
+        },
+        "candidates": [
+          {
+            "action": "REAPPLY_DATES",
+            "mutating": true,
+            "why": "页面上的日期筛选可能已经不在目标日（重载/人动过之后常见）；重新落位再试。"
+          },
+          {
+            "action": "RELOAD_PAGE",
+            "mutating": true,
+            "why": "这一份渲染上元素不理会点击（本项目实测过的形态）；真重载换个新现场再试。"
+          }
+        ],
+        "planNote": null,
+        "stageHint": "sycm",
+        "noActionRequired": false,
+        "retryStage": "sycm-date",
+        "execHint": "node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 网林家居 --proxy http://127.0.0.1:19062 --stage sycm-date --cause STAGE_FAILED --action <候选动作> --log-dir evidence\\multi-shop-2026-10-07\\网林家居",
+        "instancePrecondition": {
+          "why": "这一批跑完可能已经把这家店的浏览器放掉了（--batches 每批都释放，失败的那家也在名单里）。代理连不上时任何页面修复动作都执行不到，而 --proxy 是唯一的实例选择器 —— 不先确认就可能对着别的一台做事。",
+          "checkCommand": "curl -s -m 5 http://127.0.0.1:19062/targets",
+          "startCommand": "node scripts/start-all-hold.mjs --only 网林家居",
+          "note": "先跑 checkCommand：有输出（一个 JSON 数组）就是还在，直接执行 execHint；连不上就先跑 startCommand 把它拉起来（后台托住），确认再执行 execHint。"
+        },
+        "path": "evidence\\multi-shop-2026-10-07\\网林家居\\97-repair-request.json"
+      },
+      "recovery": {
+        "at": "2026-10-09T09:47:06.950Z",
+        "proxyPort": 19062,
+        "leftAt": {
+          "tabs": 3,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 1
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": [
+            "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%AE%B6%E5%B1%85&port=19052"
+          ]
+        },
+        "action": "none",
+        "after": {
+          "tabs": 3,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 1
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": [
+            "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%AE%B6%E5%B1%85&port=19052"
+          ]
+        },
+        "restored": true,
+        "detail": "回位后 生意参谋工作页 恰好一个",
+        "error": null,
+        "logPath": "evidence\\multi-shop-2026-10-07\\网林家居\\99-recovery.txt"
+      }
+    }
+  },
+  "finishedAt": "2026-10-09T09:47:06.957Z"
+}

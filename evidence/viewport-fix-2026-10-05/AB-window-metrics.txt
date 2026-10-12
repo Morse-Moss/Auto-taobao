@@ -1,0 +1,22 @@
+# 2026-10-05 视口 A/B 真机取证（一次性实例：未登记端口 + D:/Retire/probe-viewport/ 临时 profile）
+# 机器：物理屏由强制=1 那行读出 2800x2000；Edge 主窗口判据 = chrome高(outer-inner) ≈ 90px
+
+########## control   args=[--window-size=1528,732] ##########
+  edge://sync-confirmation-dialog/
+    title="我们现在正在你的所有设备上同步你的浏览数据"
+    视口 500x450 | 外框 525x495 | chrome高=45 | dpr=1.25 | screen=1536x864 | avail=1536x816
+  about:blank
+    title="about:blank"
+    视口 1506x642 | 外框 1529x733 | chrome高=91 | dpr=1.25 | screen=1536x864 | avail=1536x816
+
+########## force125   args=[--window-size=1528,732 --force-device-scale-factor=1.25] ##########
+  edge://sync-confirmation-dialog/
+    title="我们现在正在你的所有设备上同步你的浏览数据"
+    视口 500x450 | 外框 525x495 | chrome高=45 | dpr=1.25 | screen=1228x691 | avail=1536x816
+  about:blank
+    title="about:blank"
+    视口 1506x642 | 外框 1529x733 | chrome高=91 | dpr=1.25 | screen=1228x691 | avail=1536x816
+
+########## 收尾：探针端口是否已释放 ##########
+19997 已释放
+19998 仍在监听

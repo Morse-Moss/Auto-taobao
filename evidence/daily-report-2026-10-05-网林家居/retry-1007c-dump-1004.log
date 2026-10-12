@@ -1,0 +1,152 @@
+=== run at 2026-10-07 08:36:38 +0800 ===
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 网林家居  起前:missing  两样都没有，起一整套
+      已起 browser pid=141364  日志 runtime/start-stop-logs/2026-10-07T00-36-39/网林家居-browser.log
+      已起 proxy pid=39980  日志 runtime/start-stop-logs/2026-10-07T00-36-39/网林家居-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+start exit=0
+pages done
+[等待 1] readyState=complete 页签 4 个（还没有「询单到付款」）
+[就绪] 第 2 次读到：readyState=complete 页签 12 个，含「询单到付款」
+       页签：智能问数 / 找功能 / 问指标 / 找商品 / 业绩分析 / 专项分析 / 商品分析 / 售后分析 / 汇总分析 / 询单到下单 / 下单到付款 / 询单到付款
+wait exit=0
+########## 对照日 2026-10-04（已知有数据）##########
+picker exit=0
+[targets] 生意参谋工作页 1 张
+  targetId=3D5BDB3C460F14F13A5E5B6251A749AD url=https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+{
+ "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+ "title": "生意参谋 - 零售电商大数据产品平台",
+ "readyState": "complete",
+ "activeTabs": [
+  "智能问数",
+  "业绩分析",
+  "询单到付款"
+ ],
+ "含当日询单人数表的张数": 1,
+ "表总数": 3,
+ "tables": [
+  {
+   "index": 0,
+   "headerCount": 9,
+   "headers": [
+    "日期",
+    "延 询单人数",
+    "当日询单人数",
+    "当日付款人数",
+    "当日付款金额",
+    "延 最终付款人数",
+    "延 最终付款金额",
+    "询单当日付款转化率",
+    "延 询单最终付款转化率"
+   ],
+   "rowCount": 3,
+   "hasInquiryHeader": true,
+   "日期列下标": 0,
+   "日期列原值": [
+    "2026-10-04",
+    "汇总值",
+    "平均值"
+   ],
+   "命中日期形状的行数": 1,
+   "第一列原值": [
+    "2026-10-04",
+    "汇总值",
+    "平均值"
+   ],
+   "前3行": [
+    [
+     "2026-10-04",
+     "1",
+     "1",
+     "0",
+     "0.00",
+     "0",
+     "0.00",
+     "0.00%",
+     "0.00%"
+    ],
+    [
+     "汇总值",
+     "1",
+     "1",
+     "0",
+     "0.00",
+dump exit=0
+########## 回到目标日 2026-10-05 ##########
+picker exit=0
+[targets] 生意参谋工作页 1 张
+  targetId=3D5BDB3C460F14F13A5E5B6251A749AD url=https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+{
+ "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+ "title": "生意参谋 - 零售电商大数据产品平台",
+ "readyState": "complete",
+ "activeTabs": [
+  "智能问数",
+  "业绩分析",
+  "询单到付款"
+ ],
+ "含当日询单人数表的张数": 1,
+ "表总数": 3,
+ "tables": [
+  {
+   "index": 0,
+   "headerCount": 9,
+   "headers": [
+    "日期",
+    "延 询单人数",
+    "当日询单人数",
+    "当日付款人数",
+    "当日付款金额",
+    "延 最终付款人数",
+    "延 最终付款金额",
+    "询单当日付款转化率",
+    "延 询单最终付款转化率"
+   ],
+   "rowCount": 3,
+   "hasInquiryHeader": true,
+   "日期列下标": 0,
+   "日期列原值": [
+    "暂无数据",
+    "汇总值",
+    "平均值"
+   ],
+   "命中日期形状的行数": 0,
+   "第一列原值": [
+    "暂无数据",
+    "汇总值",
+    "平均值"
+   ],
+   "前3行": [
+    [
+     "暂无数据"
+    ],
+    [
+     "汇总值",
+     "0",
+     "—",
+     "—",
+     "—",
+     "延迟统计",
+     "延迟统计",
+     "—",
+     "—"
+    ],
+    [
+     "平均值",
+     "0",
+dump exit=0
+[停] 目标 1 个实例
+  · 网林家居
+      将停 proxy pid=39980  ← 端口在听、进程命令行是 start-shop-proxy.mjs 网林家居
+         taskkill /PID 39980 /T /F
+      将停 browser pid=141364  ← CDP 自证 profile 一致；杀启动器 141364（连带浏览器进程树与保活进程）
+         taskkill /PID 141364 /T /F
+      已停 proxy pid=39980
+      已停 browser pid=141364
+      停后盘点到:missing
+stop exit=0
+=== done 2026-10-07 08:37:09 +0800 ===
+done

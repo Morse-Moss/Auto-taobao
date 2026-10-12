@@ -1,0 +1,18 @@
+
+===== 2026-09-30T10:25:55.455Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-09-29 --proxy http://127.0.0.1:19023 --shop-key 保拉淘宝 --commit --shop-xlsx "C:\Users\Administrator\Downloads\日报_20260930_2126a56c37577d49332c487be702f3dc (1).xlsx" --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20260930_182511.zip
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: source extraction failed: E:\AI\Python\Lib\site-packages\openpyxl\styles\stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+Traceback (most recent call last):
+  File "D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\extract-sources.py", line 68, in <module>
+    main()
+  File "D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\extract-sources.py", line 33, in main
+    raise ValueError(f'expected 119 shop columns, got {len(rows[0]) if rows else 0}')
+ValueError: expected 119 shop columns, got 6
+    at extractSources (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:237:34)
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:384:18)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

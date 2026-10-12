@@ -1,0 +1,45 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-28\\2026-09-28-20260929140655885-4e37fb70\\盖文淘宝\\inquiry.xls",
+  "shop": "盖文淘宝",
+  "date": "2026-09-28",
+  "sourceRows": 5,
+  "existingRows": 1064,
+  "plannedRows": 5,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-09-28",
+      "productId": "1067982912308",
+      "shop": "盖文淘宝"
+    },
+    {
+      "date": "2026-09-28",
+      "productId": "941483727985",
+      "shop": "盖文淘宝"
+    },
+    {
+      "date": "2026-09-28",
+      "productId": "934584303052",
+      "shop": "盖文淘宝"
+    },
+    {
+      "date": "2026-09-28",
+      "productId": "984629587967",
+      "shop": "盖文淘宝"
+    },
+    {
+      "date": "2026-09-28",
+      "productId": "1067978768943",
+      "shop": "盖文淘宝"
+    }
+  ],
+  "recordIds": [
+    "reczz28HNujJMBtp",
+    "reczz28HNujJMSkF",
+    "reczz28HNujJMPDi",
+    "reczz28HNujJK9XT",
+    "reczz28HNujJMNn3"
+  ],
+  "afterRows": 1069
+}

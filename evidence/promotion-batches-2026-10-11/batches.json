@@ -1,0 +1,47 @@
+{
+ "version": "sycm-automation 1.8.5",
+ "date": "2026-10-11",
+ "dateInput": "yesterday",
+ "mode": "commit",
+ "batchSize": 5,
+ "evidenceRoot": "evidence/promotion-batches-2026-10-11",
+ "release": true,
+ "hold": {
+  "holdEnabled": true,
+  "blockedBatch": 1,
+  "summary": "evidence/promotion-batches-2026-10-11/b1/summary.json",
+  "cause": "UNFIXABLE_SHOPS",
+  "exitCode": 1,
+  "recovered": false
+ },
+ "rounds": [
+  {
+   "index": 1,
+   "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝"
+   ],
+   "steps": {
+    "start": 0,
+    "login-preflight": 0,
+    "label:里可林淘宝": 0,
+    "label:网林天猫": 0,
+    "label:盖文淘宝": 0,
+    "label:盖文天猫": 0,
+    "label:科塔淘宝": 0,
+    "chain": 1,
+    "stop": "skipped"
+   },
+   "chainStatus": 1,
+   "release": null,
+   "decision": {
+    "release": false,
+    "holdsForRepair": true,
+    "why": "这一批没跑成（链退出码 1），且 里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。"
+   }
+  }
+ ]
+}

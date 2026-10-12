@@ -1,0 +1,4 @@
+停手时页面停在：生意参谋工作页=1  阿里妈妈报表页=1（共 3 个页签）
+  · 不属于期望清单：file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&por
+回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop）
+回位后 生意参谋工作页 恰好一个

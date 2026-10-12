@@ -1,0 +1,12 @@
+
+===== 2026-09-30T10:14:56.689Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-09-29 --proxy http://127.0.0.1:19023 --shop-key 网林天猫 --commit --shop-xlsx "C:\Users\Administrator\Downloads\日报_20260930_65141cc3c0fd0c526f65e7da28ff800b (1).xlsx" --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20260930_173155.zip
+exit=1 signal= error=none
+--- stdout ---
+[shop-key] 网林天猫 ↔ 源产物店名 网林家居旗舰店 一致（证据目录 daily-report-2026-09-29-网林天猫-rerun4）
+
+--- stderr ---
+Error: duplicate daily report row exists: recvwF81kIzLOH
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:453:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+[audit] 未写入（不影响本次结论）：append failed: connect ECONNREFUSED 127.0.0.1:5432

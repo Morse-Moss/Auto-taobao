@@ -1,0 +1,36 @@
+{
+  "ok": false,
+  "action": "RELOAD_PAGE",
+  "stage": "backfill",
+  "cause": "STAGE_FAILED",
+  "shop": "盖文天猫",
+  "proxy": "http://127.0.0.1:19045",
+  "dryRun": false,
+  "applied": false,
+  "detail": "读不到页签（代理连不上）：fetch failed",
+  "targetId": null,
+  "targetUrl": null,
+  "startedAt": "2026-10-07T08:02:10.398Z",
+  "finishingAt": "2026-10-07T08:02:10.417Z",
+  "error": null,
+  "plan": {
+    "cause": "STAGE_FAILED",
+    "stage": "backfill",
+    "stageHint": "sycm",
+    "candidates": [
+      {
+        "action": "REAPPLY_DATES",
+        "mutating": true,
+        "why": "页面上的日期筛选可能已经不在目标日（重载/人动过之后常见）；重新落位再试。"
+      },
+      {
+        "action": "RELOAD_PAGE",
+        "mutating": true,
+        "why": "这一份渲染上元素不理会点击（本项目实测过的形态）；真重载换个新现场再试。"
+      }
+    ],
+    "known": true,
+    "note": null
+  },
+  "exitCode": 3
+}

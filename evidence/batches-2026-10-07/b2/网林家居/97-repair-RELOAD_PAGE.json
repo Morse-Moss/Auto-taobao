@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "action": "RELOAD_PAGE",
+  "stage": "sycm-date-again",
+  "cause": "STAGE_FAILED",
+  "shop": "网林家居",
+  "proxy": "http://127.0.0.1:19062",
+  "dryRun": false,
+  "applied": true,
+  "detail": "页面已重载并就绪",
+  "targetId": "D658E718CC077E160D2142DF2BB8F08B",
+  "targetUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+  "startedAt": "2026-10-08T08:04:57.443Z",
+  "finishingAt": "2026-10-08T08:04:58.607Z",
+  "error": null,
+  "plan": {
+    "cause": "STAGE_FAILED",
+    "stage": "sycm-date-again",
+    "stageHint": "sycm",
+    "candidates": [
+      {
+        "action": "REAPPLY_DATES",
+        "mutating": true,
+        "why": "页面上的日期筛选可能已经不在目标日（重载/人动过之后常见）；重新落位再试。"
+      },
+      {
+        "action": "RELOAD_PAGE",
+        "mutating": true,
+        "why": "这一份渲染上元素不理会点击（本项目实测过的形态）；真重载换个新现场再试。"
+      }
+    ],
+    "known": true,
+    "note": null
+  },
+  "evidence": {
+    "before": {
+      "href": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+      "readyState": "complete"
+    },
+    "reloadSettled": true
+  },
+  "exitCode": 0
+}

@@ -1,0 +1,86 @@
+{
+  "mode": "APPLIED_AND_VERIFIED",
+  "appToken": "HdBhbttB5aScbasWJAMc0gGXnpe",
+  "source": {
+    "csv": "D:\\Retire\\sycm-automation\\evidence\\weekly-real-2026-09-27\\sycm\\ordinary-bathtub-week-20260926.csv",
+    "xlsx": "D:\\Retire\\sycm-automation\\evidence\\weekly-real-2026-09-27\\sycm\\ordinary-bathtub-week-20260926.xlsx",
+    "proof": {
+      "status": "success",
+      "period": "7天",
+      "startDate": "2026-09-20",
+      "endDate": "2026-09-26",
+      "dayCount": 7,
+      "dateRange": "2026-09-20 ~ 2026-09-26",
+      "rowCount": 300,
+      "rankRange": "1-300",
+      "pageSizes": "50/50/50/50/50/50",
+      "csvSha256": "6DEEDC37E3C25E8F8E0751F8830D49EA6F024D57CB572BB87D215EA8DD7CC287",
+      "xlsxSha256": "928536B7E4CB41192FD3F0C80466AE5579DA8F82F10F8157588172F3DBF7F350"
+    },
+    "rows": 300,
+    "firstRank": "1",
+    "lastRank": "300"
+  },
+  "weekly": {
+    "tableId": "tblZm3TgV4V1IhZw",
+    "tableName": "关键词分析 V1（2026-09-26）",
+    "existingRows": 300
+  },
+  "history": {
+    "tableId": "tbl7HbH11JsQx6FL",
+    "priorRows": 2367,
+    "currentBatchRows": 300,
+    "expectedAfter": 2667
+  },
+  "keywordLibrary": {
+    "existingRows": 511,
+    "missingRows": 0
+  },
+  "batch": {
+    "previous": 8,
+    "current": 9,
+    "collectionDate": "2026-09-26",
+    "priorBlankCollectionDates": 300
+  },
+  "plannedPreviousBatchUpdates": 0,
+  "batchValidity": {
+    "fieldsToCreate": 0,
+    "invalidBatchNumber": null,
+    "invalidBatchRowsExpected": 0,
+    "invalidRowsToMark": 0,
+    "blankLegacyRowsLeftUnverified": 0
+  },
+  "backup": {
+    "file": "D:\\Retire\\sycm-automation\\runtime\\keyword-analysis-backups\\weekly-base-before-20260927T102613Z.json",
+    "sha256": "7c3f2a73ccfe37db4cf05870245d5e42c6b5912a2e044f04eb47ef9513a753a2"
+  },
+  "writes": {
+    "libraryCreated": 0,
+    "weeklyCreated": 0,
+    "previousHistoryBatchUpdated": 0,
+    "invalidHistoryBatchMarked": 0,
+    "historyFieldsCreated": 0,
+    "historyCreated": 0
+  },
+  "verified": {
+    "weeklyRows": 300,
+    "historyRows": 2667,
+    "historyBatchRows": {
+      "1": 300,
+      "2": 267,
+      "3": 300,
+      "4": 300,
+      "5": 300,
+      "6": 300,
+      "7": 300,
+      "8": 300,
+      "9": 300
+    },
+    "invalidBatchRows": 267,
+    "validBatchRows": 2400,
+    "unverifiedBatchRows": 0,
+    "keywordLibraryRows": 511,
+    "protectedPreviousWeekUnchanged": true,
+    "priorCollectionDateInvented": false
+  }
+}

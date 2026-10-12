@@ -1,0 +1,20 @@
+===================== CMD: skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 盖文天猫 --proxy http://127.0.0.1:19045 --stage backfill --cause STAGE_FAILED --action REAPPLY_DATES --log-dir evidence/batches-2026-10-06/b1/盖文天猫 --dry-run =====================
+[修复] REAPPLY_DATES｜盖文天猫@http://127.0.0.1:19045｜阶段 backfill
+[修复] 证据 = evidence\batches-2026-10-06\b1\盖文天猫\97-repair.txt
+[修复] ❌ 未应用：读不到页签（代理连不上）：fetch failed
+exit=3
+===================== CMD: skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 盖文天猫 --proxy http://127.0.0.1:19045 --stage backfill --cause STAGE_FAILED --action REAPPLY_DATES --log-dir evidence/batches-2026-10-06/b1/盖文天猫 =====================
+[修复] REAPPLY_DATES｜盖文天猫@http://127.0.0.1:19045｜阶段 backfill
+[修复] 证据 = evidence\batches-2026-10-06\b1\盖文天猫\97-repair.txt
+[修复] ❌ 未应用：读不到页签（代理连不上）：fetch failed
+exit=3
+===================== CMD: skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 盖文天猫 --proxy http://127.0.0.1:19045 --stage backfill --cause STAGE_FAILED --action RELOAD_PAGE --log-dir evidence/batches-2026-10-06/b1/盖文天猫 --dry-run =====================
+[修复] RELOAD_PAGE｜盖文天猫@http://127.0.0.1:19045｜阶段 backfill
+[修复] 证据 = evidence\batches-2026-10-06\b1\盖文天猫\97-repair.txt
+[修复] ❌ 未应用：读不到页签（代理连不上）：fetch failed
+exit=3
+===================== CMD: skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 盖文天猫 --proxy http://127.0.0.1:19045 --stage backfill --cause STAGE_FAILED --action RELOAD_PAGE --log-dir evidence/batches-2026-10-06/b1/盖文天猫 =====================
+[修复] RELOAD_PAGE｜盖文天猫@http://127.0.0.1:19045｜阶段 backfill
+[修复] 证据 = evidence\batches-2026-10-06\b1\盖文天猫\97-repair.txt
+[修复] ❌ 未应用：读不到页签（代理连不上）：fetch failed
+exit=3

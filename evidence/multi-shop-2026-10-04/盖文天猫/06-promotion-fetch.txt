@@ -1,0 +1,48 @@
+
+===== 2026-10-05T10:28:40.640Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase fetch --date 2026-10-04 --proxy http://127.0.0.1:19045 --expect-shop 盖文旗舰店 --expect-member 盖文旗舰店:小瓜 --expect-member-id 2995200080
+exit=0 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 7E2A537FE1356B2F81D7931635F388B2｜phase=fetch｜目标日 2026-10-04
+[身份] 阿里妈妈会员 = "盖文旗舰店:小瓜" ID="2995200080"（这一页不显示店铺名，只有会员名）｜期望 "盖文旗舰店:小瓜" / 2995200080 ✓
+[fetch] 下载任务管理｜已有 zip 175 个｜目录 C:\Users\Administrator\Downloads
+[fetch] 列表读到 6 条任务（目标日按「日期范围」列认，不按任务名认）
+[fetch] 注意：台账里还挂着 5 笔别的目标日的未取任务（2026-09-29 营销场景报表_20260930_164050、2026-09-30 营销场景报表_20261001_154005、2026-10-01 营销场景报表_20261002_153729、2026-10-02 营销场景报表_20261003_153845、2026-10-03 营销场景报表_20261004_153734） —— 不拦本轮，但要知道它们在平台上没被取走
+[fetch] 日期范围等于 2026-10-04 的任务共 1 条（营销场景报表_20261005_153822）⇒ 逐条试，哪条落盘用哪条
+[fetch] 目标任务行 = 第 1 行｜生成成功 营销场景报表_20261005_153822 30天累计数据 2026-10-04至2026-10-04 2026-10-05
+[fetch] 真实鼠标点它的复选框 (143,278) → {"clicked":true,"target":"7E2A537FE1356B2F81D7931635F388B2","x":143,"y":278}
+[fetch] 第 1/6 次点击没生效（回读 checked=false）
+[fetch] 真实鼠标点它的复选框 (143,278) → {"clicked":true,"target":"7E2A537FE1356B2F81D7931635F388B2","x":143,"y":278}
+[fetch] 第 2/6 次点击没生效（回读 checked=false）
+[fetch] 真实鼠标点它的复选框 (143,278) → {"clicked":true,"target":"7E2A537FE1356B2F81D7931635F388B2","x":143,"y":278}
+[fetch] 第 3/6 次点击没生效（回读 checked=false）
+[fetch] 真实鼠标点它的复选框 (143,278) → {"clicked":true,"target":"7E2A537FE1356B2F81D7931635F388B2","x":143,"y":278}
+[fetch] 第 4/6 次点击没生效（回读 checked=false）
+[fetch] 真实鼠标点它的复选框 (143,278) → {"clicked":true,"target":"7E2A537FE1356B2F81D7931635F388B2","x":143,"y":278}
+[fetch] 第 5/6 次点击没生效（回读 checked=false）
+[fetch] 真实鼠标点它的复选框 (143,278) → {"clicked":true,"target":"7E2A537FE1356B2F81D7931635F388B2","x":143,"y":278}
+[fetch] 第 6/6 次点击没生效（回读 checked=false）
+[fetch] 候选 营销场景报表_20261005_153822 没取到：勾选 营销场景报表_20261005_153822 失败（试了 6 次都回读 checked=false；最后一次中心命中 INPUT.asiYysfafM ）—— 它的操作行不会显形，取件必然落空，停在这里比继续更省事
+[fetch] 候选全试完没落盘（营销场景报表_20261005_153822→勾选 营销场景报表_20261005_153822 失败（试了 6 次都回读 checked=false；最后一次中心命中 INPUT.asiYysfafM ）—— 它的操作行不会显形，取件必然落空，停在这里比继续更省事）⇒ 补提交一条同目标日的任务，再逐条试一次
+[submit] 页面 = https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-04&endTime=2026-10-04&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day&isRequestedQztDefaultSet=1｜正文 3070 字符
+[submit] 候选 1 个，取文档序第一个（SPAN，其可点祖先是 BUTTON，点击靠冒泡触发）
+[遮挡] 全屏层 DIV#wrapper_dlg_774(data-owner-id=app) z=99999，rect=[0,0,1528,732]，层内可点小控件 2/2 个，选中 SPAN#mx_777「」于 (1092,126)
+[遮挡] 回读：全屏层剩 2 个（["DIV#mask_dlg_774 z=99998","DIV#wrapper_dlg_774 z=99999"]）｜目标可点=false ⇒ 还在挡（层还剩 2 个且目标仍不可点）
+[遮挡] 回读：全屏层剩 0 个｜目标可点=true ⇒ 不再挡事（全屏层已归零）
+[submit] 重新定位「下载报表」：候选 1 个，tag=SPAN，rect=undefined（未说明原因）
+[submit] 滚动后复核通过（y=360（中心点命中））→ 点击 → {"clicked":true,"tag":"SPAN","text":"下载报表"}
+[submit] 等到「确定」(#0)，第 2 次轮询命中｜视口 [1528,732]｜确定@[505,624,24,12]可点 取消@[565,614,64,32]可点 → {"clicked":true,"tag":"SPAN","text":"确定"}
+[submit] 提交后提示 = ""
+[fetch] 补提交成功：营销场景报表_20261005_182916（列表里恰好多出 1 条：营销场景报表_20261005_182916；台账已记）
+[fetch] 补提交后重读列表：7 条
+[fetch] 日期范围等于 2026-10-04 的任务共 2 条（营销场景报表_20261005_182916、营销场景报表_20261005_153822）⇒ 逐条试，哪条落盘用哪条
+[fetch] 目标任务行 = 第 1 行｜生成成功 营销场景报表_20261005_182916 30天累计数据 2026-10-04至2026-10-04 2026-10-05
+[fetch] 真实鼠标点它的复选框 (143,342) → {"clicked":true,"target":"7E2A537FE1356B2F81D7931635F388B2","x":143,"y":342}
+[fetch] 回读 checked=true，当前勾选 = [1]
+[fetch] 入口 = 第 2 行（正是该任务行的操作行）｜rect=[136,370,50,24]，center=[161,382]｜操作行内叶子 1 个
+[fetch] 复核通过（y=370（中心点命中））→ 真实鼠标点击 (161,382) → {"clicked":true,"target":"7E2A537FE1356B2F81D7931635F388B2","x":161,"y":382}
+[fetch] 新文件：营销场景报表_20261005_182916.zip（809 bytes）
+[fetch] promotionZipPath = C:\Users\Administrator\Downloads\营销场景报表_20261005_182916.zip
+[fetch] 台账已标为已取：2026-10-04 的 营销场景报表_20261005_182916（该目标日全部未取记录一起结清）
+
+--- stderr ---

@@ -1,0 +1,94 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-07_2026-10-07 (1).xls",
+  "shop": "网林天猫",
+  "date": "2026-10-07",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 13,
+  "existingRows": 709,
+  "plannedRows": 13,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "900840227318"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "923336705176"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "955518602686"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "976064603975"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "977271829805"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "983637449275"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "1002790238345"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "1060911657748"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "1060913369469"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "1071284033110"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "1072247628377"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "1083847067443"
+    },
+    {
+      "date": "2026-10-07",
+      "shop": "网林天猫",
+      "productId": "1083847599252"
+    }
+  ],
+  "recordIds": [
+    "reczz28KkIEDShr9",
+    "reczz28KkIEDRCRr",
+    "reczz28KkIEDVBib",
+    "reczz28KkIEDU6yN",
+    "reczz28KkIEDV3qR",
+    "reczz28KkIEDUWLS",
+    "reczz28KkIEDTorb",
+    "reczz28KkIEDUIxW",
+    "reczz28KkIEDTZyc",
+    "reczz28KkIEDRJIg",
+    "reczz28KkIEDV9k4",
+    "reczz28KkIEDUW5Q",
+    "reczz28KkIEDSRHG"
+  ],
+  "afterRows": 722
+}

@@ -1,0 +1,20 @@
+
+===== 2026-10-06T13:50:59.745Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase fetch --date 2026-10-05 --proxy http://127.0.0.1:19060 --expect-shop 网林全卫定制 --expect-member 网林卫浴:小慧 --expect-member-id 1510910194
+exit=0 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 A653F5D9FB563E61F3ADE4DA5E9E0F56｜phase=fetch｜目标日 2026-10-05
+[身份] 阿里妈妈会员 = "网林卫浴:小慧" ID="1510910194"（这一页不显示店铺名，只有会员名）｜期望 "网林卫浴:小慧" / 1510910194 ✓
+[fetch] 下载任务管理｜已有 zip 181 个｜目录 C:\Users\Administrator\Downloads
+[fetch] 列表读到 9 条任务（目标日按「日期范围」列认，不按任务名认）
+[fetch] 日期范围等于 2026-10-05 的任务共 1 条（营销场景报表_20261006_215028）⇒ 逐条试，哪条落盘用哪条
+[fetch] 目标任务行 = 第 1 行｜生成成功 营销场景报表_20261006_215028 30天累计数据 2026-10-05至2026-10-05 2026-10-06
+[fetch] 真实鼠标点它的复选框 (143,342) → {"clicked":true,"target":"A653F5D9FB563E61F3ADE4DA5E9E0F56","x":143,"y":342}
+[fetch] 回读 checked=true，当前勾选 = [1]
+[fetch] 入口 = 第 2 行（正是该任务行的操作行）｜rect=[136,370,50,24]，center=[161,382]｜操作行内叶子 1 个
+[fetch] 复核通过（y=370（中心点命中））→ 真实鼠标点击 (161,382) → {"clicked":true,"target":"A653F5D9FB563E61F3ADE4DA5E9E0F56","x":161,"y":382}
+[fetch] 新文件：营销场景报表_20261006_215028.zip（826 bytes）
+[fetch] promotionZipPath = C:\Users\Administrator\Downloads\营销场景报表_20261006_215028.zip
+[fetch] 台账已标为已取：2026-10-05 的 营销场景报表_20261006_215028（该目标日全部未取记录一起结清）
+
+--- stderr ---

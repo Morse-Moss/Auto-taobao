@@ -1,0 +1,29 @@
+
+===== 2026-10-12T03:44:30.490Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\readback-daily-report.mjs --date 2026-10-11 --proxy http://127.0.0.1:19023 --shop-key 网林天猫
+exit=4 signal= error=none
+--- stdout ---
+readbackPath = D:\Retire\sycm-automation\evidence\daily-report-2026-10-11-网林天猫\independent-readback.json
+底单: recordsNum=2257（这是**页面模型**里的值，可能落后于服务端） loaded=2257 命中 2026-10-11=2
+询单表: recordsNum=2317（这是**页面模型**里的值，可能落后于服务端） loaded=2317 命中 2026-10-11=8
+  ⚠️ 底单「店铺」2/2 行没有值（口径 reportDate=2026-10-11） — Lookup-key-absent-from-page-model｜页面模型在 record.fields 里根本不带这个派生字段（Lookup / type 19）⇒ 该列在回读里必然为空，不能读成「当天没写进去」；权威可读值见同表的「店铺名称」
+  ⚠️ 询单表「询单量」6/8 行没有值（口径 reportDate=2026-10-11） — null-in-page-model
+  ⚠️ 询单表「同层同行询单量」6/8 行没有值（口径 reportDate=2026-10-11） — null-in-page-model
+  2026-10-11 | 里可林天猫 | reczz28MLrX1yPDw | 询单量=— | 同层同行=—
+  2026-10-11 | 科塔淘宝 | reczz28MLrX20M8y | 询单量=— | 同层同行=—
+  2026-10-11 | 里可林淘宝 | reczz28MLrX1x5rD | 询单量=7 | 同层同行=6
+  2026-10-11 | 网林天猫 | reczz28MLrX1wpDS | 询单量=6 | 同层同行=14
+  2026-10-11 | 网林淘宝 | reczz28MLrX20JKd | 询单量=— | 同层同行=—
+  2026-10-11 | 网林家居 | reczz28MLrX1zjGS | 询单量=— | 同层同行=—
+  2026-10-11 | 盖文天猫 | reczz28MLrX1xmzd | 询单量=— | 同层同行=—
+  2026-10-11 | 盖文淘宝 | reczz28MLrX20cwp | 询单量=— | 同层同行=—
+  screenshot(source) → 缺失（见上面 [screenshot] 警告；数据回读不受影响）
+  screenshot(inquiry) → D:\Retire\sycm-automation\evidence\daily-report-2026-10-11-网林天猫\feishu-inquiry-table-after-backfill.png
+页面已留在：https://kcne618basvj.feishu.cn/base/RjKcb3isDaVn1GsoVJfc7Ykknyg?table=tblIuAX4nPc1zDOO&view=vewwg0rhjo
+
+--- stderr ---
+[screenshot] 截图失败：CDP 命令超时: Page.captureScreenshot（数据回读不受影响，照常继续；产物里 screenshots 那一项会写成 null）
+
+[不完整] 数据回读已核对并落盘：D:\Retire\sycm-automation\evidence\daily-report-2026-10-11-网林天猫\independent-readback.json
+[不完整] 但有 1 张截图没取到：底单（CDP 命令超时: Page.captureScreenshot）
+[不完整] 截图是佐证不是判据，缺它不影响上面的数据结论；本阶段按「数据已核对、仅佐证不完整」退出（码 4，与真数据故障的 1 区分开）。

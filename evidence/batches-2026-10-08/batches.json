@@ -1,0 +1,33 @@
+{
+ "version": "sycm-automation 1.7.17",
+ "date": "2026-10-08",
+ "dateInput": "2026-10-08",
+ "mode": "commit",
+ "batchSize": 5,
+ "evidenceRoot": "evidence/batches-2026-10-08",
+ "release": true,
+ "hold": null,
+ "rounds": [
+  {
+   "index": 1,
+   "shops": [
+    "网林天猫",
+    "网林家居"
+   ],
+   "steps": {
+    "start": 0,
+    "login-preflight": 0,
+    "label:网林天猫": 0,
+    "label:网林家居": 0,
+    "chain": 1,
+    "stop": 0
+   },
+   "chainStatus": 1,
+   "release": null,
+   "decision": {
+    "release": true,
+    "why": "这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口"
+   }
+  }
+ ]
+}

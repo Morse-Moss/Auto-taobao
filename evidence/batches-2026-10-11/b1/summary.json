@@ -1,0 +1,59 @@
+{
+  "version": "unified-summary-v1",
+  "workflow": "promotion-daily",
+  "date": "2026-10-11",
+  "shops": {
+    "盖文淘宝": {
+      "batch": 1,
+      "shop": "盖文淘宝",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "recovery": {
+        "keywordPending": [
+          "关键词报表_20261012_083605"
+        ],
+        "audiencePending": []
+      },
+      "evidence": "evidence\\batches-2026-10-11\\b1\\盖文淘宝"
+    },
+    "盖文天猫": {
+      "batch": 1,
+      "shop": "盖文天猫",
+      "status": "failed",
+      "stages": [
+        "keyword-submit"
+      ],
+      "error": "采集失败：人群报表提交后 15 分钟内未在下载列表确认到业务日 2026-10-11 的生成成功任务；最后一次读到的任务行：[{\"name\":\"人群报表_20261011_085024\",\"rangeStart\":\"2026-10-10\",\"rangeEnd\":\"2026-10-10\",\"status\":\"生成成功\"},{\"name\":\"人群报表_20261010_191506\",\"rangeStart\":\"2026-10-09\",\"rangeEnd\":\"2026-10-09\",\"status\":\"生成成功\"}]\n",
+      "evidence": "evidence\\batches-2026-10-11\\b1\\盖文天猫",
+      "failureClass": "STAGE_FAILED",
+      "noActionRequired": false,
+      "autoRepair": null,
+      "repairRequest": {
+        "candidates": []
+      }
+    },
+    "科塔淘宝": {
+      "batch": 1,
+      "shop": "科塔淘宝",
+      "status": "failed",
+      "stages": [
+        "keyword-submit",
+        "audience-submit"
+      ],
+      "error": "采集失败：\n采集失败：补提交结果核不清（看了 10 次）：提交之后列表里没有多出任何任务（提交前 5 条） ⇒ 平台可能没接受这次提交，或同名任务被合并；**不能**当成提交成功 ⇒ 不往台账里记一笔来路不明的任务（记了就等于替下一轮编了一个判据）\n\n",
+      "evidence": "evidence\\batches-2026-10-11\\b1\\科塔淘宝",
+      "failureClass": "STAGE_FAILED",
+      "noActionRequired": false,
+      "autoRepair": null,
+      "repairRequest": {
+        "candidates": []
+      }
+    }
+  }
+}

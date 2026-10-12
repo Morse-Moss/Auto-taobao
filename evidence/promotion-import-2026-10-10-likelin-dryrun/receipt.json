@@ -1,0 +1,34 @@
+{
+  "mode": "dry-run",
+  "date": "2026-10-09",
+  "shop": "里可林淘宝",
+  "profile": "kcne",
+  "tables": {
+    "keyword": {
+      "tableId": "tblbSGMO2apOKuAZ",
+      "beforeRows": 633,
+      "plannedRows": 43,
+      "skippedRows": 0
+    },
+    "audience": {
+      "tableId": "tblyjD5058Mjbmcv",
+      "beforeRows": 780,
+      "plannedRows": 19,
+      "skippedRows": 0
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261010_185450.zip",
+      "csvName": "关键词报表_20261010_185450.csv",
+      "rows": 43,
+      "columns": 77
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261010_182018.zip",
+      "csvName": "人群报表_20261010_182018.csv",
+      "rows": 19,
+      "columns": 75
+    }
+  }
+}

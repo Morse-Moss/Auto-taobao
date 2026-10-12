@@ -1,0 +1,36 @@
+{
+  "ok": false,
+  "action": "RELOAD_PAGE",
+  "stage": "health-check",
+  "cause": "SHOP_BLOCKED",
+  "shop": "网林家居",
+  "proxy": "http://127.0.0.1:19062",
+  "dryRun": true,
+  "applied": false,
+  "detail": "读不到页签（代理连不上）：fetch failed",
+  "targetId": null,
+  "targetUrl": null,
+  "startedAt": "2026-10-05T07:49:20.970Z",
+  "finishingAt": "2026-10-05T07:49:20.999Z",
+  "error": null,
+  "plan": {
+    "cause": "SHOP_BLOCKED",
+    "stage": "health-check",
+    "stageHint": null,
+    "candidates": [
+      {
+        "action": "RESET_PAGES",
+        "mutating": false,
+        "why": "页签可能被前一步带走或漂到别处；按期望清单归位再重试。"
+      },
+      {
+        "action": "RELOAD_PAGE",
+        "mutating": true,
+        "why": "这一份渲染上元素不理会点击（本项目实测过的形态）；真重载换个新现场再试。"
+      }
+    ],
+    "known": true,
+    "note": null
+  },
+  "exitCode": 3
+}

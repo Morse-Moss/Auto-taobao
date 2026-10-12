@@ -1,0 +1,157 @@
+{
+  "ok": false,
+  "runId": "215a5ab1-1c19-4bb1-b537-6d83752d5454",
+  "capability": "sycm.feishu.weekly@1.1.0",
+  "entry": "scripts/adapter.feishu-weekly.mjs",
+  "mode": "commit",
+  "gate": {
+    "status": "APPROVED",
+    "decision": "ALLOW_WITH_APPROVAL",
+    "riskClass": "HIGH",
+    "lane": "sycm/bathtub-industry/sycm/operator/local/sycm.feishu.weekly",
+    "operator": "codex-real-run"
+  },
+  "collect": {
+    "stage": "COLLECT",
+    "attemptId": "run-muj8wk2l",
+    "artifactPath": "D:\\Retire\\sycm-automation\\runtime\\sop-runtime\\scheduled-muj8wk2d\\evidence\\215a5ab1-1c19-4bb1-b537-6d83752d5454\\sycm-weekly-source.bin",
+    "sha256": "03bafd24b86563d6b8c8b66fc189e63c96fa339f08c4922ea212f0ae34faa352",
+    "rowCount": 300,
+    "artifactId": "sycm-weekly-source",
+    "validators": [
+      "source_identity:ok",
+      "scope_match:ok",
+      "structure:ok",
+      "row_count:ok",
+      "digest:ok",
+      "contiguous_prefix:ok",
+      "artifact_integrity:ok",
+      "adapter:ok"
+    ],
+    "validationSource": "manifest:sycm.feishu.weekly@1.1.0",
+    "contextAfterCollect": {
+      "schemaVersion": "sop-context-v1",
+      "taskId": "sycm.feishu.weekly-1.1.0",
+      "runId": "215a5ab1-1c19-4bb1-b537-6d83752d5454",
+      "workflow": "sycm.feishu.weekly",
+      "capability": "sycm.feishu.weekly",
+      "stage": "COLLECT",
+      "stepId": null,
+      "attemptId": "run-muj8wk2l",
+      "executionStatus": "RUNNING",
+      "evidenceStatus": "VALIDATED",
+      "humanGateStatus": "APPROVED",
+      "leaseStatus": "RELEASED",
+      "publicationStatus": "NOT_REQUESTED",
+      "verifiedCursor": null,
+      "artifactCount": 1,
+      "evidenceRefCount": 1,
+      "sideEffectRefCount": 0,
+      "blocker": null,
+      "nextAction": "PREPARE_COMMIT",
+      "contextVersion": 6
+    }
+  },
+  "publish": {
+    "verdict": "REJECTED",
+    "commitKey": "32658593cf9a50f8fc6fe98b67b3e83b",
+    "error": "Stage failed (update-weekly-base.mjs, exit 1): Feishu API failed: GET /bitable/v1/apps/HdBhbttB5aScbasWJAMc0gGXnpe/tables?page_size=100 403 91403 Forbidden",
+    "context": {
+      "schemaVersion": "sop-context-v1",
+      "taskId": "sycm.feishu.weekly-1.1.0",
+      "runId": "215a5ab1-1c19-4bb1-b537-6d83752d5454",
+      "parentRunId": null,
+      "idempotencyKey": "sop:sycm.feishu.weekly-1.1.0:sycm.feishu.weekly:sycm:bathtub-industry:sycm:operator:default",
+      "workflow": "sycm.feishu.weekly",
+      "capability": "sycm.feishu.weekly",
+      "identity": {
+        "tenantId": "sycm",
+        "storeId": "bathtub-industry",
+        "platform": "sycm",
+        "accountId": "operator",
+        "browserProfileId": "local",
+        "contractVersion": "sycm-weekly-v1"
+      },
+      "stage": "COLLECT",
+      "stepId": null,
+      "attemptId": "run-muj8wk2l",
+      "target": null,
+      "executionStatus": "FAILED",
+      "evidenceStatus": "VALIDATED",
+      "humanGateStatus": "APPROVED",
+      "leaseStatus": "RELEASED",
+      "publicationStatus": "READY",
+      "sideEffects": [
+        "browser_read",
+        "local_parse",
+        "local_artifact",
+        "feishu_write"
+      ],
+      "verifiedCursor": null,
+      "retryBudget": {
+        "transientExternal": 3
+      },
+      "retryUsed": {
+        "transientExternal": 0
+      },
+      "artifacts": [
+        {
+          "artifactId": "sycm-weekly-source",
+          "kind": "json",
+          "sha256": "03bafd24b86563d6b8c8b66fc189e63c96fa339f08c4922ea212f0ae34faa352",
+          "path": "D:\\Retire\\sycm-automation\\runtime\\sop-runtime\\scheduled-muj8wk2d\\evidence\\215a5ab1-1c19-4bb1-b537-6d83752d5454\\sycm-weekly-source.bin"
+        }
+      ],
+      "evidenceRefs": [
+        {
+          "evidenceId": "sycm-weekly-source",
+          "digest": "sha256:03bafd24b86563d6b8c8b66fc189e63c96fa339f08c4922ea212f0ae34faa352"
+        }
+      ],
+      "sideEffectRefs": [],
+      "decisions": [
+        {
+          "kind": "APPROVAL",
+          "operator": "codex-real-run",
+          "note": "two-stage runner",
+          "at": "2026-09-27T03:14:53.464Z"
+        },
+        {
+          "kind": "PUBLICATION",
+          "status": "READY",
+          "commitKey": null,
+          "at": "2026-09-27T03:14:54.213Z"
+        },
+        {
+          "kind": "PUBLICATION",
+          "status": "REJECTED",
+          "commitKey": "32658593cf9a50f8fc6fe98b67b3e83b",
+          "at": "2026-09-27T03:14:58.595Z",
+          "detail": "Stage failed (update-weekly-base.mjs, exit 1): Feishu API failed: GET /bitable/v1/apps/HdBhbttB5aScbasWJAMc0gGXnpe/tables?page_size=100 403 91403 Forbidden"
+        }
+      ],
+      "blocker": {
+        "class": "CAPABILITY_DEGRADED",
+        "detail": "capability degraded, stop this version: Stage failed (update-weekly-base.mjs, exit 1): Feishu API failed: GET /bitable/v1/apps/HdBhbttB5aScbasWJAMc0gGXnpe/tables?page_size=100 403 91403 Forbidden",
+        "at": "2026-09-27T03:14:58.595Z"
+      },
+      "nextAction": "TERMINAL",
+      "queue": {
+        "priority": 0,
+        "notBefore": null,
+        "deadlineAt": null,
+        "enqueuedAt": "2026-09-27T03:14:53.462Z",
+        "attempts": 0
+      },
+      "contextVersion": 9,
+      "updatedAt": "2026-09-27T03:14:58.595Z",
+      "lane": "sycm/bathtub-industry/sycm/operator/local/sycm.feishu.weekly",
+      "isWrite": true
+    }
+  },
+  "publicationStatus": "READY",
+  "executionStatus": null,
+  "nextAction": "TERMINAL",
+  "cursorAdvanced": false,
+  "verifiedCursor": null
+}

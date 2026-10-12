@@ -1,0 +1,32 @@
+
+===== 2026-10-09T07:44:13.072Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-08 --proxy http://127.0.0.1:19023 --shop-key 科塔淘宝 --commit --shop-xlsx C:\Users\Administrator\Downloads\店铺数据日报_20261009_8903471d5657b8875620a116960da9bc.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261009_154329.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 科塔淘宝 ↔ 源产物店名 科塔全卫定制 一致（证据目录 daily-report-2026-10-08-科塔淘宝）
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "reczz28LEZIlu8xD",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-08-科塔淘宝\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-08-科塔淘宝",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 2234,
+  "recordCountAfter": 2235,
+  "verifiedFields": 247,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 247,
+    "shopName": "科塔全卫定制",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1791388800000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---
+[audit] 未写入（不影响本次结论）：append failed: connect ECONNREFUSED 127.0.0.1:5432

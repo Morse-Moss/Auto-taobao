@@ -1,0 +1,88 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-06_2026-10-06 (1).xls",
+  "shop": "网林天猫",
+  "date": "2026-10-06",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 12,
+  "existingRows": 483,
+  "plannedRows": 12,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "1083847599252"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "923336705176"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "950546756416"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "955518602686"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "976539362164"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "977271829805"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "982883522589"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "983637449275"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "1060913369469"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "1071284033110"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "1072247628377"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "网林天猫",
+      "productId": "1083847067443"
+    }
+  ],
+  "recordIds": [
+    "reczz28KLsbNEVka",
+    "reczz28KLsbNGaUx",
+    "reczz28KLsbNE0ai",
+    "reczz28KLsbNELVb",
+    "reczz28KLsbNH9Wr",
+    "reczz28KLsbNHXqr",
+    "reczz28KLsbNFegP",
+    "reczz28KLsbNG9M4",
+    "reczz28KLsbNFz2w",
+    "reczz28KLsbNG6f8",
+    "reczz28KLsbNExqo",
+    "reczz28KLsbNEBjo"
+  ],
+  "afterRows": 495
+}

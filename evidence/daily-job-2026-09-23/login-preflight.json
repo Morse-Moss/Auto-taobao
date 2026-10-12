@@ -1,0 +1,181 @@
+{
+ "machine": "DESKTOP-KJP4RA5",
+ "verdict": "INCONCLUSIVE",
+ "autoLogin": true,
+ "needHuman": [],
+ "unknown": [
+  {
+   "shop": "里可林淘宝",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "网林天猫",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "盖文淘宝",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "盖文天猫",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  },
+  {
+   "shop": "科塔淘宝",
+   "sites": [
+    "sycm",
+    "alimama"
+   ]
+  }
+ ],
+ "checked": 5,
+ "rows": [
+  {
+   "shop": "里可林淘宝",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "MAIN_SESSION_ONLY",
+   "detail": "打开登录页后，页面落到了 myseller.taobao.com —— 说明淘宝主站的会话还在。",
+   "notify": {
+    "mode": "auto",
+    "alertId": "sycm-login-里可林淘宝-sycm-alimama-20260924",
+    "status": "SENT",
+    "exitCode": 0
+   },
+   "childExitCode": 2,
+   "probeError": null
+  },
+  {
+   "shop": "网林天猫",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "MAIN_SESSION_ONLY",
+   "detail": "打开登录页后，页面落到了 myseller.taobao.com —— 说明淘宝主站的会话还在。",
+   "notify": {
+    "mode": "auto",
+    "alertId": "sycm-login-网林天猫-sycm-alimama-20260924",
+    "status": "SENT",
+    "exitCode": 0
+   },
+   "childExitCode": 2,
+   "probeError": null
+  },
+  {
+   "shop": "盖文淘宝",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "MAIN_SESSION_ONLY",
+   "detail": "打开登录页后，页面落到了 myseller.taobao.com —— 说明淘宝主站的会话还在。",
+   "notify": {
+    "mode": "auto",
+    "alertId": "sycm-login-盖文淘宝-sycm-alimama-20260924",
+    "status": "SENT",
+    "exitCode": 0
+   },
+   "childExitCode": 2,
+   "probeError": null
+  },
+  {
+   "shop": "盖文天猫",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "MAIN_SESSION_ONLY",
+   "detail": "打开登录页后，页面落到了 myseller.taobao.com —— 说明淘宝主站的会话还在。",
+   "notify": {
+    "mode": "auto",
+    "alertId": "sycm-login-盖文天猫-sycm-alimama-20260924",
+    "status": "SENT",
+    "exitCode": 0
+   },
+   "childExitCode": 2,
+   "probeError": null
+  },
+  {
+   "shop": "科塔淘宝",
+   "verdict": "UNKNOWN",
+   "sites": {
+    "sycm": "UNREADABLE",
+    "alimama": "UNREADABLE"
+   },
+   "needsLogin": [],
+   "unreadable": [
+    "sycm",
+    "alimama"
+   ],
+   "href": {
+    "sycm": null,
+    "alimama": null
+   },
+   "scriptVerdict": "MAIN_SESSION_ONLY",
+   "detail": "打开登录页后，页面落到了 myseller.taobao.com —— 说明淘宝主站的会话还在。",
+   "notify": {
+    "mode": "auto",
+    "alertId": "sycm-login-科塔淘宝-sycm-alimama-20260924",
+    "status": "SENT",
+    "exitCode": 0
+   },
+   "childExitCode": 2,
+   "probeError": null
+  }
+ ]
+}

@@ -1,0 +1,35 @@
+2026-09-25 各轮登录预检结论（按时间顺序，全部 +08）
+来源：evidence/batches-2026-09-24/batches.log（原文）与 evidence/daily-job-2026-09-24/job.log（上午那批）
+
+上午（定时任务，08:14–12:12）：7 次预检，网林天猫全部 ALREADY_LOGGED_IN（→ 没有走登录流程）
+  00:14:42Z / 00:32:38Z / 00:55:57Z / 01:26:10Z / 01:28:54Z / 03:53:11Z / 04:12:45Z
+
+傍晚到夜里（分批补跑）：
+  19:17:33  里可林淘宝   ALL_IN
+  19:18:31  网林天猫     NEEDS_LOGIN      ← 第 1 次自动登录：LOGIN_NOT_CONFIRMED
+  19:19:08  盖文淘宝     ALL_IN
+  19:19:33  盖文天猫     ALL_IN
+  19:19:58  科塔淘宝     ALL_IN
+  19:25:32  里可林淘宝   ALL_IN
+  19:25:51  网林天猫     NEEDS_LOGIN      ← 第 2 次：LOGIN_NOT_CONFIRMED
+  19:26:23  盖文淘宝     ALL_IN
+  19:26:41  盖文天猫     ALL_IN
+  19:26:58  科塔淘宝     ALL_IN
+  19:59:48  里可林淘宝   ALL_IN
+  20:01:19  网林天猫     NEEDS_LOGIN      ← 第 3 次：LOGIN_NOT_CONFIRMED
+  20:01:59  盖文淘宝     ALL_IN
+  20:08:44  盖文天猫     INCONCLUSIVE     （CDP eval 超时，与登录无关）
+  20:10:47  科塔淘宝     INCONCLUSIVE     （同上）
+  21:11:26  里可林淘宝   ALL_IN
+  21:14:50  网林天猫     NEEDS_LOGIN      ← 第 4 次：LOGIN_NOT_CONFIRMED
+  21:15:17  盖文淘宝     ALL_IN
+  21:18:08  盖文天猫     ALL_IN
+  21:20:56  科塔淘宝     ALL_IN
+
+scriptVerdict 取值分布（batches.log 全量计数）：
+  ALREADY_LOGGED_IN 13 / LOGGED_IN 1 / LOGIN_NOT_CONFIRMED 4 / STOP_AND_ALERT 2
+  那 2 个 STOP_AND_ALERT 属于盖文天猫(19045)与科塔淘宝(19044)，成因是
+  `CDP 命令超时: Runtime.evaluate`（HTTP 500），与登录问题无关，别把它算到网林头上。
+
+结论：今天真正被调用「凭据自动登录」的只有网林天猫一家，4 次全部 LOGIN_NOT_CONFIRMED；
+其余四家每次都 ALREADY_LOGGED_IN（会话本来就还在，没有走登录流程）。

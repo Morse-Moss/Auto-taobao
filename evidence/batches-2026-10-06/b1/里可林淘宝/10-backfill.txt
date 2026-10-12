@@ -1,0 +1,12 @@
+
+===== 2026-10-07T07:36:06.229Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-inquiry-backfill.mjs --date 2026-10-06 --proxy http://127.0.0.1:19041 --source-shop 里可林家居 --shop 里可林淘宝 --shop-key 里可林淘宝 --commit
+exit=1 signal= error=none
+--- stdout ---
+[身份] 生意参谋页头 = "里可林家居"（原始 "里可林家居 主店"）｜期望 "里可林家居" ✓
+[店铺] "里可林淘宝" → 选项 id "optnIqwuUN"
+
+--- stderr ---
+Error: expected one Feishu row for 里可林淘宝 / 1791216000000, got 0
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:200:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

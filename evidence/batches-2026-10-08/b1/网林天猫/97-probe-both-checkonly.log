@@ -1,0 +1,35 @@
+{
+ "proxy": "http://127.0.0.1:19042",
+ "commit": false,
+ "notify": {
+  "mode": "off",
+  "status": "SKIPPED",
+  "reason": "mode_or_not_attempted"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": false,
+   "href": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  },
+  "alimama": {
+   "label": "阿里妈妈",
+   "loggedIn": false,
+   "href": "https://one.alimama.com/index.html#!/login/index",
+   "reason": null
+  }
+ },
+ "login": null,
+ "session": {
+  "shop": "网林天猫",
+  "proxyPort": 19042,
+  "judged": true
+ },
+ "verdict": "NEEDS_LOGIN",
+ "detail": "要留意的是：生意参谋（被踢回登录页）、阿里妈妈（被踢回登录页）。",
+ "tech": {
+  "machine": "DESKTOP-KJP4RA5",
+  "browserProfile": "D:/Retire/edge-profiles/wanglin-flagship"
+ }
+}

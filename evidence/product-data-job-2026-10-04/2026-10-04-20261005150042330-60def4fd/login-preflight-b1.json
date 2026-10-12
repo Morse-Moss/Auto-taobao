@@ -1,0 +1,198 @@
+{
+ "machine": "DESKTOP-KJP4RA5",
+ "verdict": "NEEDS_LOGIN",
+ "autoLogin": true,
+ "normalize": {
+  "asked": true,
+  "shops": [
+   {
+    "shop": "里可林淘宝",
+    "proxyPort": 19041,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   },
+   {
+    "shop": "网林天猫",
+    "proxyPort": 19042,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   },
+   {
+    "shop": "盖文淘宝",
+    "proxyPort": 19043,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   },
+   {
+    "shop": "盖文天猫",
+    "proxyPort": 19045,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   },
+   {
+    "shop": "科塔淘宝",
+    "proxyPort": 19044,
+    "ok": true,
+    "changed": false,
+    "detail": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": []
+   }
+  ]
+ },
+ "roundNotify": {
+  "status": "SENT",
+  "alertId": "sycm-login-round-20261005",
+  "receipt": {
+   "version": "feishu-notify-receipt-v1",
+   "status": "SENT",
+   "channel": "app",
+   "alertId": "sycm-login-round-20261005",
+   "sentAt": "2026-10-05T15:06:11.042Z",
+   "attempts": [
+    {
+     "channel": "app",
+     "ok": true,
+     "target": "ou_e254f8d7d91a042b31fcd59299a1a4a9",
+     "messageId": "om_x100b630f80e520a4df933213c862084"
+    }
+   ]
+  }
+ },
+ "needHuman": [
+  {
+   "shop": "盖文天猫",
+   "sites": [
+    "alimama"
+   ]
+  }
+ ],
+ "unknown": [],
+ "checked": 5,
+ "rows": [
+  {
+   "shop": "里可林淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "网林天猫",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "盖文淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  },
+  {
+   "shop": "盖文天猫",
+   "verdict": "NEEDS_LOGIN",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_OUT"
+   },
+   "needsLogin": [
+    "alimama"
+   ],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html#!/login/index"
+   },
+   "scriptVerdict": "MAIN_SESSION_ONLY",
+   "detail": "打开登录页后，页面落到了 myseller.taobao.com —— 说明淘宝主站的会话还在。",
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "mode_or_not_attempted"
+   },
+   "childExitCode": 2,
+   "probeError": null
+  },
+  {
+   "shop": "科塔淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  }
+ ]
+}

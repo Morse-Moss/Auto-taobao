@@ -1,0 +1,593 @@
+{
+  "value": {
+    "capturedAt": "2026-10-05T07:39:10.227Z",
+    "url": "https://one.alimama.com/index.html#!/report/download-list",
+    "title": "下载任务管理_万相台无界版",
+    "viewport": {
+      "w": 1506,
+      "h": 642,
+      "dpr": 1.25,
+      "scrollY": 0
+    },
+    "visibleText": "首页 推广  报表  洞察  创意  工具  账户  AI小万  新人手册  快捷入口  消息中心 盖文旗舰店:小瓜 ID：2995200080  基础报表  场景结案  下载管理   场景结案下载  下载任务管理  下载任务管理  2026-09-05 至 今日   当任务包含较大数据量时，生成完成最长需要10分钟，您可以稍后点击报表页面右上角【下载任务管理】，查看生成结果并下载。注意：下载的文件中数据行随机排序，数据本身完整且正确，您可手动在EXCEL中调整为所需顺序。相应字段计算公式分母为0时，下载数据报表中显示 \\N ，对应报表页面中字段展示为 - ，并非系统bug。 刷新表格 批量删除 状态 文件名称 归因周期 日期范围 创建日期 生成成功 营销场景报表_20261005_153822 30天累计数据 2026-10-04至2026-10-04 2026-10-05 下载 导入超级表格 AI分析 删除 生成成功 营销场景报表_20261004_153734 30天累计数据 2026-10-03至2026-10-03 2026-10-04 生成成功 营销场景报表_20261003_153845 30天累计数据 2026-10-02至2026-10-02 2026-10-03 生成成功 营销场景报表_20261002_153729 30天累计数据 2026-10-01至2026-10-01 2026-10-02 生成成功 营销场景报表_20261001_154005 30天累计数据 2026-09-30至2026-09-30 2026-10-01 生成成功 人群报表_20261001_104239 30天累计数据 2026-09-30至2026-09-30 2026-10-01 生成成功 人群报表_20261001_101755 30天累计数据 2026-09-30至2026-09-30 2026-10-01 生成成功 关键词报表_20261001_093702 30天累计数据 2026-09-30至2026-09-30 2026-10-01 生成成功 营销场景报表_20260930_164050 30天累计数据 2026-09-29至2026-09-29 2026-09-30 生成成功 人群报表_20260929_101513 15天累计数据 2026-09-22至2026-09-28 2026-09-29 生成成功 人群报表_20260929_101313 15天累计数据 2026-09-22至2026-09-28 2026-09-29 生成成功 关键词报表_20260929_093210 15天累计数据 2026-09-22至2026-09-28 2026-09-29 共 12 项数据 20条/页   1  跳至 页 跳转 关于阿里妈妈 联系客服 开放平台 廉正举报 意见反馈 举报中心 法律声明及隐私权政策 © 2007-现在 阿里妈妈版权所有 浙公网安备 33010002000075号 增值电信业务经营许可证：浙B2-20070195 在线客服 添加小二 直播带教 换季新品数据诊断与冷启起量  有新消息 消息中心 更多消息 日常公告 系统消息 上线 「万相点睛」突破传统局限，精准捕获蓝海机会！ 活动 双11预热激励加码！全站推平台推荐商品9月专属活动，单商最高返1.5万！ 【重要通知】全局优选起量下线公告 上线 低效品不再愁！货品全站推“安心转投”全量上线，智能托管助力店铺ROI稳步提升 升级 拿量更有底气！货品全站推全店「成本保障」正式上线，智能赔付让拿量更安心！ 1秒后关闭浮层 立即关闭",
+    "dialogs": [],
+    "interactive": [
+      {
+        "tag": "A",
+        "id": null,
+        "text": "",
+        "cls": "",
+        "rect": {
+          "x": 24,
+          "y": 13,
+          "w": 253,
+          "h": 32
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "首页",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 289,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "推广",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 357,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "报表",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 445,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "洞察",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 533,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "创意",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 621,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "工具",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 709,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "账户",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 797,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": " 新人手册",
+        "cls": "wO_WXasbiF wO_WXasbiH",
+        "rect": {
+          "x": 1135,
+          "y": 7,
+          "w": 56,
+          "h": 44
+        }
+      },
+      {
+        "tag": "A",
+        "id": "mx_248_pop",
+        "text": " 消息中心",
+        "cls": "icQRQlrwb mxgc-popover",
+        "rect": {
+          "x": 1275,
+          "y": 10,
+          "w": 48,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "基础报表 ",
+        "cls": "bXMILLqiFi   parent-close ",
+        "rect": {
+          "x": 16,
+          "y": 74,
+          "w": 80,
+          "h": 20
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "场景结案 ",
+        "cls": "bXMILLqiFi   parent-close ",
+        "rect": {
+          "x": 16,
+          "y": 110,
+          "w": 80,
+          "h": 20
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "下载管理 ",
+        "cls": "bXMILLqiFi  bXMILLqiFl   bXMILLqiFm ",
+        "rect": {
+          "x": 16,
+          "y": 146,
+          "w": 80,
+          "h": 20
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": " 场景结案下载",
+        "cls": "bXMILLqiFn   child-expand ",
+        "rect": {
+          "x": 16,
+          "y": 174,
+          "w": 80,
+          "h": 44
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": " 下载任务管理",
+        "cls": "bXMILLqiFn  bXMILLqiFr   child-expand ",
+        "rect": {
+          "x": 16,
+          "y": 226,
+          "w": 80,
+          "h": 44
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "刷新表格",
+        "cls": "asiYysfaaV    asiYysfabb-normal asiYysfabb-custom  ",
+        "rect": {
+          "x": 136,
+          "y": 211,
+          "w": 74,
+          "h": 32
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "批量删除",
+        "cls": "asiYysfaaV    asiYysfabf  asiYysfabb-normal asiYysfabb-custom  ",
+        "rect": {
+          "x": 226,
+          "y": 211,
+          "w": 74,
+          "h": 32
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "asiYysfaaV    asiYysfabb-small asiYysfabb-custom-gradient  ",
+        "rect": {
+          "x": 136,
+          "y": 370,
+          "w": 50,
+          "h": 24
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "导入超级表格",
+        "cls": "asiYysfaaV    asiYysfabb-small asiYysfabb-custom  ",
+        "rect": {
+          "x": 194,
+          "y": 370,
+          "w": 98,
+          "h": 24
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "删除",
+        "cls": "asiYysfaaV    asiYysfabb-small asiYysfabb-custom  ",
+        "rect": {
+          "x": 303,
+          "y": 370,
+          "w": 50,
+          "h": 24
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "",
+        "cls": "mx-iconfont-line asiYysfazI  asiYysfazK ",
+        "rect": {
+          "x": 1213,
+          "y": 874,
+          "w": 16,
+          "h": 32
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "1",
+        "cls": "asiYysfazL asiYysfazH asiYysfazM",
+        "rect": {
+          "x": 1237,
+          "y": 874,
+          "w": 32,
+          "h": 32
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "",
+        "cls": "mx-iconfont-line asiYysfazI  asiYysfazK ",
+        "rect": {
+          "x": 1277,
+          "y": 874,
+          "w": 16,
+          "h": 32
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "跳转",
+        "cls": "asiYysfaaV    asiYysfabb-normal asiYysfabb-custom  ",
+        "rect": {
+          "x": 1397,
+          "y": 874,
+          "w": 64,
+          "h": 32
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "关于阿里妈妈",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 534,
+          "y": 946,
+          "w": 80,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "联系客服",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 614,
+          "y": 946,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "开放平台",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 678,
+          "y": 946,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "廉正举报",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 742,
+          "y": 946,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "意见反馈",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 806,
+          "y": 946,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "举报中心",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 870,
+          "y": 946,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "法律声明及隐私权政策",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 934,
+          "y": 946,
+          "w": 128,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 767,
+          "y": 974,
+          "w": 36,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "浙公网安备 33010002000075号",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 803,
+          "y": 974,
+          "w": 206,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "增值电信业务经营许可证：浙B2-20070195",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 682,
+          "y": 1002,
+          "w": 232,
+          "h": 28
+        }
+      }
+    ],
+    "domSummary": {
+      "totalElements": 1381,
+      "counts": {
+        "HTML": 1,
+        "HEAD": 1,
+        "META": 8,
+        "TITLE": 1,
+        "LINK": 3,
+        "STYLE": 134,
+        "SCRIPT": 16,
+        "BODY": 1,
+        "svg": 1,
+        "symbol": 183,
+        "path": 284,
+        "DIV": 160,
+        "A": 52,
+        "IMG": 12,
+        "I": 51,
+        "SPAN": 293,
+        "BUTTON": 39,
+        "TABLE": 2,
+        "THEAD": 1,
+        "TR": 25,
+        "TH": 6,
+        "INPUT": 14,
+        "COLGROUP": 1,
+        "COL": 6,
+        "TBODY": 1,
+        "TD": 84,
+        "IFRAME": 1
+      },
+      "containers": [
+        {
+          "tag": "DIV",
+          "id": "app",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 1058
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "universalBP_punish",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 0
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "universalBP_common_topbar",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 0
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "universalBP_common_layout",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 1058
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_61",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 58
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_74",
+          "cls": "asiYysfatH",
+          "rect": {
+            "x": 1079,
+            "y": 7,
+            "w": 398,
+            "h": 44
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "ai_analyst_entrance",
+          "cls": "",
+          "rect": {
+            "x": 1079,
+            "y": 7,
+            "w": 44,
+            "h": 44
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "ai_analyst_entrance_xiaowan_entrance",
+          "cls": "",
+          "rect": {
+            "x": 1079,
+            "y": 7,
+            "w": 44,
+            "h": 44
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_459",
+          "cls": " ivthphhSa_M",
+          "rect": {
+            "x": 1079,
+            "y": 7,
+            "w": 44,
+            "h": 44
+          }
+        },
+        {
+          "tag": "SPAN",
+          "id": "mx_653",
+          "cls": "mxgc-icon mxgc-iconfont-wrapper",
+          "rect": {
+            "x": 1092,
+            "y": 10,
+            "w": 18,
+            "h": 18
+          }
+        }
+      ]
+    },
+    "tables": [
+      {
+        "rows": 0,
+        "cols": 6,
+        "rect": {
+          "x": 112,
+          "y": 260,
+          "w": 1373,
+          "h": 60
+        },
+        "visible": true
+      },
+      {
+        "rows": 24,
+        "cols": 6,
+        "rect": {
+          "x": 112,
+          "y": 320,
+          "w": 1373,
+          "h": 537
+        },
+        "visible": true
+      }
+    ]
+  }
+}

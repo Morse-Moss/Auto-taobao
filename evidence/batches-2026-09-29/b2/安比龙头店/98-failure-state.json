@@ -1,0 +1,634 @@
+{
+  "value": {
+    "capturedAt": "2026-09-30T08:55:13.839Z",
+    "url": "https://sycm.taobao.com/lyone/auto_analysis/my_space?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common",
+    "title": "瓴羊One·分析",
+    "viewport": {
+      "w": 1506,
+      "h": 642,
+      "dpr": 1.25,
+      "scrollY": 0
+    },
+    "visibleText": "个人空间 公共空间 返回旧版 BI报表 取数报表 您暂未添加任何报表，请新建取数 店铺经营核心日报 时间周期：自然日 时间范围：最近30日 报表指标：60个 访客数 直播间访客数 短视频访客数 图文访客数 店铺页访客数 更多指标 预览 加入我的报表 下载 商品经营投产比核心日报 时间周期：自然日 时间范围：最近30日 报表指标：129个 商品ID 商品名称 品牌名称 一级类目名称 二级类目名称 更多指标 预览 加入我的报表 下载 本月至今店铺经营达成情况 时间周期：汇总 时间范围：月初累计 报表指标：21个 支付件数 支付金额 访客数 商品访客数 支付转化率 客单价 更多指标 预览 加入我的报表 下载 店铺类目结构日报 时间周期：自然日 时间范围：最近30日 报表指标：13个 一级类目名称 二级类目名称 类目名称 类目层级 访客数 更多指标 预览 加入我的报表 下载 店铺人群结构日报 时间周期：自然日 时间范围：最近30日 报表指标：22个 整体-访客数 整体-支付人数 整体-支付金额 更多指标 预览 加入我的报表 下载 店铺会员运营核心日报 时间周期：自然日 时间范围：最近30日 报表指标：5个 会员总数 新增会员数 活跃会员数 会员成交金额 更多指标 预览 加入我的报表 下载 店铺流量核心日报 时间周期：自然日 时间范围：最近30日 报表指标：11个 来源类型 访客数 收藏人数 加购人数 支付买家数 支付金额 更多指标 预览 加入我的报表 下载 店铺流量来源构成日报 时间周期：自然日 时间范围：最近30日 报表指标：19个 流量时期 来源类型 上级来源名称 来源名称 来源层级 访客数 更多指标 预览 加入我的报表 下载 店铺流量来源详情日报 时间周期：自然日 时间范围：最近30日 报表指标：18个 流量时期 来源类型 上级来源名称 来源名称 来源层级 来源明细ID 更多指标 预览 加入我的报表 下载 店铺分人群流量来源构成日报 时间周期：自然日 时间范围：最近30日 报表指标：20个 人群类型 流量时期 来源类型 上级来源名称 来源名称 来源层级 更多指标 预览 加入我的报表 下载 客户构成核心日报 时间周期：自然日 时间范围：最近30日 报表指标：43个 用户数 未购买用户数 已购用户数 新访客&引导进店用户数 更多指标 预览 加入我的报表 下载 商品整体效果日报 时间周期：自然日 时间范围：最近30日 报表指标：29个 商品ID 商品名称 商品状态 一级类目名称 二级类目名称 更多指标 预览 加入我的报表 下载 商品SKU效果日报 时间周期：自然日 时间范围：最近30日 报表指标：8个 商品ID 商品名称 SKU ID SKU名称 加购件数 更多指标 预览 加入我的报表 下载 商品流量来源构成日报 时间周期：自然日 时间范围：最近30日 报表指标：15个 流量时期 商品ID 上级来源名称 来源名称 来源层级 访客数 更多指标 预览 加入我的报表 下载 商品流量来源详情日报 时间周期：自然日 时间范围：最近30日 报表指标：15个 流量时期 商品ID 上级来源名称 来源名称 来源层级 来源明细ID 更多指标 预览 加入我的报表 下载 商品分人群流量来源日报 时间周期：自然日 时间范围：最近30日 报表指标：15个 流量时期 人群类型 商品ID 上级来源名称 来源名称 来源层级 更多指标 预览 加入我的报表 下载 店铺经营核心月报 时间周期：自然月 时间范围：最近6月 报表指标：102个 访客数 直播间访客数 短视频访客数 图文访客数 店铺页访客数 更多指标 预览 加入我的报表 下载 店铺流量来源构成月报 时间周期：自然月 时间范围：最近6月 报表指标：19个 流量时期 来源类型 上级来源名称 来源名称 来源层级 访客数 更多指标 预览 加入我的报表 下载 商品整体效果月报 时间周期：自然月 时间范围：最近6月 报表指标：49个 商品ID 商品名称 商品状态 一级类目名称 二级类目名称 更多指标 预览 加入我的报表 下载 商品流量来源构成月报 时间周期：自然月 时间范围：最近6月 报表指标：15个 流量时期 商品ID 上级来源名称 来源名称 来源层级 访客数 更多指标 预览 加入我的报表 下载 商品流量来源构成月报旧 时间周期：自然月 时间范围：最近6月 报表指标：24个 商品ID 商品名称 来源类型 流量来源 来源层级 归属原则 更多指标 预览 加入我的报表 下载 店铺流量来源构成月报旧 时间周期：自然月 时间范围：最近6月 报表指标：23个 父流量来源 流量来源 来源层级 归属原则 访客数 新访客数 更多指标 预览 加入我的报表 下载",
+    "dialogs": [],
+    "interactive": [
+      {
+        "tag": "DIV",
+        "id": "rc-tabs-0-tab-personal",
+        "text": "个人空间",
+        "cls": "dt-oui-tabs-tab-btn",
+        "rect": {
+          "x": 30,
+          "y": 20,
+          "w": 56,
+          "h": 21
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "rc-tabs-0-tab-common",
+        "text": "公共空间",
+        "cls": "dt-oui-tabs-tab-btn",
+        "rect": {
+          "x": 118,
+          "y": 20,
+          "w": 56,
+          "h": 21
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "rc-tabs-1-tab-analyse",
+        "text": "BI报表",
+        "cls": "dt-oui-tabs-tab-btn",
+        "rect": {
+          "x": 28,
+          "y": 104,
+          "w": 41,
+          "h": 21
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "rc-tabs-1-tab-fetch",
+        "text": "取数报表",
+        "cls": "dt-oui-tabs-tab-btn",
+        "rect": {
+          "x": 101,
+          "y": 104,
+          "w": 56,
+          "h": 21
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-default dt-oui-btn-icon-only dt-oui-input-searc",
+        "rect": {
+          "x": 159,
+          "y": 148,
+          "w": 28,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "",
+        "cls": "dt-oui-btn-icon",
+        "rect": {
+          "x": 166,
+          "y": 154,
+          "w": 14,
+          "h": 14
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "取数",
+        "cls": "",
+        "rect": {
+          "x": 816,
+          "y": 304,
+          "w": 24,
+          "h": 16
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "预览",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 70,
+          "y": 645,
+          "w": 24,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 179,
+          "y": 645,
+          "w": 72,
+          "h": 18
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-text lyone-template-item-footer-btn",
+        "rect": {
+          "x": 336,
+          "y": 640,
+          "w": 26,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "预览",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 462,
+          "y": 645,
+          "w": 24,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 571,
+          "y": 645,
+          "w": 72,
+          "h": 18
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-text lyone-template-item-footer-btn",
+        "rect": {
+          "x": 728,
+          "y": 640,
+          "w": 26,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "预览",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 854,
+          "y": 645,
+          "w": 24,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 963,
+          "y": 645,
+          "w": 72,
+          "h": 18
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-text lyone-template-item-footer-btn",
+        "rect": {
+          "x": 1120,
+          "y": 640,
+          "w": 26,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "预览",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 70,
+          "y": 905,
+          "w": 24,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 179,
+          "y": 905,
+          "w": 72,
+          "h": 18
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-text lyone-template-item-footer-btn",
+        "rect": {
+          "x": 336,
+          "y": 900,
+          "w": 26,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "预览",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 462,
+          "y": 905,
+          "w": 24,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 571,
+          "y": 905,
+          "w": 72,
+          "h": 18
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-text lyone-template-item-footer-btn",
+        "rect": {
+          "x": 728,
+          "y": 900,
+          "w": 26,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "预览",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 854,
+          "y": 905,
+          "w": 24,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 963,
+          "y": 905,
+          "w": 72,
+          "h": 18
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-text lyone-template-item-footer-btn",
+        "rect": {
+          "x": 1120,
+          "y": 900,
+          "w": 26,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "预览",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 70,
+          "y": 1165,
+          "w": 24,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 179,
+          "y": 1165,
+          "w": 72,
+          "h": 18
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-text lyone-template-item-footer-btn",
+        "rect": {
+          "x": 336,
+          "y": 1160,
+          "w": 26,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "预览",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 462,
+          "y": 1165,
+          "w": 24,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 571,
+          "y": 1165,
+          "w": 72,
+          "h": 18
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-text lyone-template-item-footer-btn",
+        "rect": {
+          "x": 728,
+          "y": 1160,
+          "w": 26,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "预览",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 854,
+          "y": 1165,
+          "w": 24,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 963,
+          "y": 1165,
+          "w": 72,
+          "h": 18
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-text lyone-template-item-footer-btn",
+        "rect": {
+          "x": 1120,
+          "y": 1160,
+          "w": 26,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "预览",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 70,
+          "y": 1425,
+          "w": 24,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 179,
+          "y": 1425,
+          "w": 72,
+          "h": 18
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-text lyone-template-item-footer-btn",
+        "rect": {
+          "x": 336,
+          "y": 1420,
+          "w": 26,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "预览",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 462,
+          "y": 1425,
+          "w": 24,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "lyone-template-item-footer-btn",
+        "rect": {
+          "x": 571,
+          "y": 1425,
+          "w": 72,
+          "h": 18
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-text lyone-template-item-footer-btn",
+        "rect": {
+          "x": 728,
+          "y": 1420,
+          "w": 26,
+          "h": 28
+        }
+      }
+    ],
+    "domSummary": {
+      "totalElements": 7733,
+      "counts": {
+        "HTML": 1,
+        "HEAD": 1,
+        "STYLE": 55,
+        "SCRIPT": 22,
+        "META": 11,
+        "TITLE": 1,
+        "LINK": 6,
+        "BODY": 1,
+        "svg": 32,
+        "symbol": 2632,
+        "path": 4159,
+        "DIV": 391,
+        "SPAN": 369,
+        "BUTTON": 25,
+        "IMG": 2,
+        "INPUT": 1,
+        "P": 1,
+        "A": 1,
+        "use": 22
+      },
+      "containers": [
+        {
+          "tag": "DIV",
+          "id": "root",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 2538
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "op-sycm-content-body",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 2538
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "op-sycm-content",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 2538
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "op-sycm-content-right sycm-iframe",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 2538
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "dt-oui-spin-nested-loading op-sycm-content-right-spinning css-8e7wia",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 2538
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "dt-oui-spin-container",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 2538
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "rc-tabs-0-tab-personal",
+          "cls": "dt-oui-tabs-tab-btn",
+          "rect": {
+            "x": 30,
+            "y": 20,
+            "w": 56,
+            "h": 21
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "rc-tabs-0-tab-common",
+          "cls": "dt-oui-tabs-tab-btn",
+          "rect": {
+            "x": 118,
+            "y": 20,
+            "w": 56,
+            "h": 21
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "dt-oui-tabs-content-holder",
+          "rect": {
+            "x": 30,
+            "y": 60,
+            "w": 144,
+            "h": 0
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "dt-oui-tabs-content dt-oui-tabs-content-top",
+          "rect": {
+            "x": 30,
+            "y": 60,
+            "w": 144,
+            "h": 0
+          }
+        }
+      ]
+    },
+    "tables": []
+  }
+}

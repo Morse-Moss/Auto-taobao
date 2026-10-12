@@ -1,0 +1,48 @@
+=== run at 2026-10-06 22:05:47 +0800 ===
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 网林家居  起前:missing  两样都没有，起一整套
+      已起 browser pid=139128  日志 runtime/start-stop-logs/2026-10-06T14-05-47/网林家居-browser.log
+      已起 proxy pid=132200  日志 runtime/start-stop-logs/2026-10-06T14-05-47/网林家居-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+exit=0
+shop-pages exit=2
+########## date=2026-10-05 ##########
+--- date-picker ---
+  "mode": "preset",
+  "observedAfter": "统计时间 2026-10-05",
+  "status": "APPLIED",
+    "observedAfterReload": "统计时间 2026-10-05",
+      "observedAfterReload": "统计时间 2026-10-05",
+picker_exit=0
+--- dump ---
+  header= ["日期", "延 询单人数", "当日询单人数", "当日付款人数", "当日付款金额", "延 最终付款人数", "延 最终付款金额", "询单当日付款转化率", "延 询单最终付款转化率"]
+  rowCount= 7  命中日期行数= 0
+  日期列= ["暂无数据", "汇总值", "平均值", "全店汇总值", "全店平均值", "同行同层优秀", "同行同层均值"]
+  第二列= [null]
+dump_exit=0
+########## date=2026-10-04 ##########
+--- date-picker ---
+  "mode": "explicit",
+  "observedAfter": "统计时间 2026-10-04",
+  "status": "APPLIED",
+picker_exit=0
+--- dump ---
+  header= ["日期", "延 询单人数", "当日询单人数", "当日付款人数", "当日付款金额", "延 最终付款人数", "延 最终付款金额", "询单当日付款转化率", "延 询单最终付款转化率"]
+  rowCount= 3  命中日期行数= 1
+  日期列= ["2026-10-04", "汇总值", "平均值"]
+  第二列= ["1"]
+dump_exit=0
+########## date=2026-10-03 ##########
+--- date-picker ---
+  "mode": "explicit",
+  "observedAfter": "统计时间 2026-10-03",
+  "status": "APPLIED",
+picker_exit=0
+--- dump ---
+  header= ["日期", "延 询单人数", "当日询单人数", "当日付款人数", "当日付款金额", "延 最终付款人数", "延 最终付款金额", "询单当日付款转化率", "延 询单最终付款转化率"]
+  rowCount= 3  命中日期行数= 0
+  日期列= ["暂无数据", "汇总值", "平均值"]
+  第二列= [null]
+dump_exit=0

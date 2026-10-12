@@ -1,0 +1,51 @@
+[2026-10-09T02:04:04.153Z] 商品数据自动采集开始：yesterday → 2026-10-08；8 店；分 2 批（每批最多 5 家，**每批跑完立刻释放**）；底单串行、询单/推广并行；模式 commit；**推广段有意跳过**（推广线在分支开发中（feature/alimama-keyword-report），本阶段有意跳过）
+[2026-10-09T02:04:04.154Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝；5 家：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝
+[2026-10-09T02:04:05.246Z] 视口回读通过：里可林淘宝=1506x642、网林天猫=1506x642、盖文淘宝=1506x642、盖文天猫=1506x642、科塔淘宝=1506x642
+[2026-10-09T02:07:37.690Z] [底单] 里可林淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-08_2026-10-08.xls
+[2026-10-09T02:07:44.500Z] [底单] 网林天猫 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-08_2026-10-08 (1).xls
+[2026-10-09T02:07:50.759Z] [底单] 盖文淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-08_2026-10-08 (2).xls
+[2026-10-09T02:08:00.460Z] [底单] 盖文天猫 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-08_2026-10-08 (3).xls
+[2026-10-09T02:08:09.672Z] [底单] 科塔淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-08_2026-10-08 (4).xls
+[2026-10-09T02:08:18.089Z] [询单] 里可林淘宝 已落盘 D:\Retire\sycm-automation\evidence\product-data-job-2026-10-08\2026-10-08-20261009020403152-b8207a10\里可林淘宝\inquiry.xls
+[2026-10-09T02:08:58.158Z] [询单] 网林天猫 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14
+if(!first.hasInquiry){const inquiryDeadline=Date.now()+30000; let entered=false; let sawPage=false; while(!entered && Date.now()<inquiryDeadline){await delay(1000); const p=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com')); if(!p)continue; sawPage=true; page=p; entered=await evalOn(o.proxy,p.targetId,"(()=>{const e=[...document.querySelectorAll('a,span,div')].find(x=>(x.innerText||x.textContent||'').trim()==='商品咨询分析');if(!e)return false;e.click();return true})()");} if(!entered)throw new Error(sawPage?'找不到商品咨询分析入口（轮询 30s 仍未出现）':'商品分析点击后找不到生意参谋页面'); await delay(2000);}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ^
+
+Error: 找不到商品咨询分析入口（轮询 30s 仍未出现）
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:14:556
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-10-09T02:09:03.537Z] [询单] 盖文淘宝 已落盘 D:\Retire\sycm-automation\evidence\product-data-job-2026-10-08\2026-10-08-20261009020403152-b8207a10\盖文淘宝\inquiry.xls
+[2026-10-09T02:09:08.238Z] [询单] 盖文天猫 已落盘 D:\Retire\sycm-automation\evidence\product-data-job-2026-10-08\2026-10-08-20261009020403152-b8207a10\盖文天猫\inquiry.xls
+[2026-10-09T02:09:13.316Z] [询单] 科塔淘宝 已落盘 D:\Retire\sycm-automation\evidence\product-data-job-2026-10-08\2026-10-08-20261009020403152-b8207a10\科塔淘宝\inquiry.xls
+[2026-10-09T02:09:35.505Z] [导入] 里可林淘宝 底单已写入
+[2026-10-09T02:09:49.880Z] [导入] 里可林淘宝 询单已写入
+[2026-10-09T02:10:06.908Z] [导入] 网林天猫 底单已写入
+[2026-10-09T02:10:26.874Z] [导入] 盖文淘宝 底单已写入
+[2026-10-09T02:10:38.585Z] [导入] 盖文淘宝 询单已写入
+[2026-10-09T02:10:57.384Z] [导入] 盖文天猫 底单已写入
+[2026-10-09T02:11:09.520Z] [导入] 盖文天猫 询单已写入
+[2026-10-09T02:11:28.988Z] [导入] 科塔淘宝 底单已写入
+[2026-10-09T02:11:41.572Z] [导入] 科塔淘宝 询单已写入
+[2026-10-09T02:11:41.573Z] [导入] 推广段有意跳过：推广线在分支开发中（feature/alimama-keyword-report），本阶段有意跳过
+[2026-10-09T02:13:03.937Z] 浏览器已释放并完成端口二次回读（里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝）
+[2026-10-09T02:13:03.938Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居；3 家：网林淘宝、里可林天猫、网林家居
+[2026-10-09T02:13:04.205Z] 视口回读通过：网林淘宝=1506x642、里可林天猫=1506x642、网林家居=1506x642
+[2026-10-09T02:14:23.737Z] [底单] 网林淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-08_2026-10-08 (5).xls
+[2026-10-09T02:14:29.875Z] [底单] 里可林天猫 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-08_2026-10-08 (6).xls
+[2026-10-09T02:14:36.068Z] [底单] 网林家居 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-08_2026-10-08 (7).xls
+[2026-10-09T02:14:43.641Z] [询单] 网林淘宝 已落盘 D:\Retire\sycm-automation\evidence\product-data-job-2026-10-08\2026-10-08-20261009020403152-b8207a10\网林淘宝\inquiry.xls
+[2026-10-09T02:14:51.215Z] [询单] 里可林天猫 已落盘 D:\Retire\sycm-automation\evidence\product-data-job-2026-10-08\2026-10-08-20261009020403152-b8207a10\里可林天猫\inquiry.xls
+[2026-10-09T02:14:58.471Z] [询单] 网林家居 已落盘 D:\Retire\sycm-automation\evidence\product-data-job-2026-10-08\2026-10-08-20261009020403152-b8207a10\网林家居\inquiry.xls
+[2026-10-09T02:15:18.509Z] [导入] 网林淘宝 底单已写入
+[2026-10-09T02:15:29.344Z] [导入] 网林淘宝 询单已写入
+[2026-10-09T02:15:49.070Z] [导入] 里可林天猫 底单已写入
+[2026-10-09T02:16:01.287Z] [导入] 里可林天猫 询单已写入
+[2026-10-09T02:16:21.150Z] [导入] 网林家居 底单已写入
+[2026-10-09T02:16:29.535Z] [导入] 网林家居 询单已写入
+[2026-10-09T02:16:29.536Z] [导入] 推广段有意跳过：推广线在分支开发中（feature/alimama-keyword-report），本阶段有意跳过
+[2026-10-09T02:17:23.821Z] 浏览器已释放并完成端口二次回读（网林淘宝,里可林天猫,网林家居）
+[2026-10-09T02:17:23.826Z] 失败：本轮不完整（1 处）：网林天猫/询单 未采集（FAILED/UNCLASSIFIED；停在哪一段=inquiry-import）
+[2026-10-09T02:17:25.972Z] 告警投递：SENT（exit 0）
+[2026-10-09T02:17:25.973Z] 商品数据自动采集结束：退出码 1

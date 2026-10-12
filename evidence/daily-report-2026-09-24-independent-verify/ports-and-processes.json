@@ -1,0 +1,299 @@
+{
+  "at": "2026-09-25T14:31:18.032Z",
+  "atLocal": "2026-09-25 22:31:18",
+  "host": "127.0.0.1",
+  "ports": [
+    {
+      "port": 19022,
+      "first": {
+        "port": 19022,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19022,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    },
+    {
+      "port": 19023,
+      "first": {
+        "port": 19023,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19023,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    },
+    {
+      "port": 19031,
+      "first": {
+        "port": 19031,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19031,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    },
+    {
+      "port": 19032,
+      "first": {
+        "port": 19032,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19032,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    },
+    {
+      "port": 19033,
+      "first": {
+        "port": 19033,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19033,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    },
+    {
+      "port": 19034,
+      "first": {
+        "port": 19034,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19034,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    },
+    {
+      "port": 19035,
+      "first": {
+        "port": 19035,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19035,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    },
+    {
+      "port": 19041,
+      "first": {
+        "port": 19041,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19041,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    },
+    {
+      "port": 19042,
+      "first": {
+        "port": 19042,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19042,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    },
+    {
+      "port": 19043,
+      "first": {
+        "port": 19043,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19043,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    },
+    {
+      "port": 19044,
+      "first": {
+        "port": 19044,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19044,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    },
+    {
+      "port": 19045,
+      "first": {
+        "port": 19045,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "second": {
+        "port": 19045,
+        "listening": false,
+        "reason": "ECONNREFUSED"
+      },
+      "occupied": false
+    }
+  ],
+  "occupied": [],
+  "free": [
+    19022,
+    19023,
+    19031,
+    19032,
+    19033,
+    19034,
+    19035,
+    19041,
+    19042,
+    19043,
+    19044,
+    19045
+  ],
+  "msedge": {
+    "totalMsedge": 13,
+    "distinctProfiles": [
+      {
+        "profile": "(无 --user-data-dir)",
+        "total": 11,
+        "main": 1,
+        "children": 10,
+        "pids": [
+          64332,
+          33500,
+          58496,
+          31520,
+          34968,
+          63788,
+          41048,
+          42448,
+          53244,
+          54620,
+          68888
+        ]
+      },
+      {
+        "profile": "C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User",
+        "total": 1,
+        "main": 0,
+        "children": 1,
+        "pids": [
+          55520
+        ]
+      },
+      {
+        "profile": "D:/Retire/edge-profiles/suixin-custom",
+        "total": 1,
+        "main": 1,
+        "children": 0,
+        "pids": [
+          48328
+        ]
+      }
+    ],
+    "all": [
+      {
+        "pid": 64332,
+        "profile": null,
+        "type": "browser(main)"
+      },
+      {
+        "pid": 55520,
+        "profile": "C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User",
+        "type": "crashpad-handler"
+      },
+      {
+        "pid": 33500,
+        "profile": null,
+        "type": "gpu-process"
+      },
+      {
+        "pid": 58496,
+        "profile": null,
+        "type": "utility"
+      },
+      {
+        "pid": 31520,
+        "profile": null,
+        "type": "utility"
+      },
+      {
+        "pid": 34968,
+        "profile": null,
+        "type": "utility"
+      },
+      {
+        "pid": 63788,
+        "profile": null,
+        "type": "utility"
+      },
+      {
+        "pid": 41048,
+        "profile": null,
+        "type": "utility"
+      },
+      {
+        "pid": 42448,
+        "profile": null,
+        "type": "utility"
+      },
+      {
+        "pid": 53244,
+        "profile": null,
+        "type": "renderer"
+      },
+      {
+        "pid": 48328,
+        "profile": "D:/Retire/edge-profiles/suixin-custom",
+        "type": "browser(main)"
+      },
+      {
+        "pid": 54620,
+        "profile": null,
+        "type": "renderer"
+      },
+      {
+        "pid": 68888,
+        "profile": null,
+        "type": "renderer"
+      }
+    ]
+  }
+}

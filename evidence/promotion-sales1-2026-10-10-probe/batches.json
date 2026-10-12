@@ -1,0 +1,31 @@
+{
+ "version": "sycm-automation 1.7.20",
+ "date": "2026-10-09",
+ "dateInput": "yesterday",
+ "mode": "commit",
+ "batchSize": 5,
+ "evidenceRoot": "evidence/promotion-sales1-2026-10-10-probe",
+ "release": true,
+ "hold": null,
+ "rounds": [
+  {
+   "index": 1,
+   "shops": [
+    "里可林淘宝"
+   ],
+   "steps": {
+    "start": 3221226505,
+    "login-preflight": 0,
+    "label:里可林淘宝": 0,
+    "chain": 1,
+    "stop": 0
+   },
+   "chainStatus": 1,
+   "release": null,
+   "decision": {
+    "release": true,
+    "why": "这一批没跑成（链退出码 1），但**没有需要人看现场的失败**（脚本自修没救回来、且不是\"谁都不用动\"的那一类）⇒ 照旧释放"
+   }
+  }
+ ]
+}

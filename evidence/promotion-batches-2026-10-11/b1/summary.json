@@ -1,0 +1,77 @@
+{
+  "version": "unified-summary-v1",
+  "workflow": "promotion-daily",
+  "date": "2026-10-11",
+  "shops": {
+    "里可林淘宝": {
+      "batch": 1,
+      "shop": "里可林淘宝",
+      "status": "failed",
+      "stages": [],
+      "error": "采集失败：reusablePromotionTask is not defined\n",
+      "evidence": "evidence\\promotion-batches-2026-10-11\\b1\\里可林淘宝",
+      "failureClass": "STAGE_FAILED",
+      "noActionRequired": false,
+      "autoRepair": null,
+      "repairRequest": {
+        "candidates": []
+      }
+    },
+    "网林天猫": {
+      "batch": 1,
+      "shop": "网林天猫",
+      "status": "failed",
+      "stages": [],
+      "error": "采集失败：reusablePromotionTask is not defined\n",
+      "evidence": "evidence\\promotion-batches-2026-10-11\\b1\\网林天猫",
+      "failureClass": "STAGE_FAILED",
+      "noActionRequired": false,
+      "autoRepair": null,
+      "repairRequest": {
+        "candidates": []
+      }
+    },
+    "盖文淘宝": {
+      "batch": 1,
+      "shop": "盖文淘宝",
+      "status": "failed",
+      "stages": [],
+      "error": "采集失败：reusablePromotionTask is not defined\n",
+      "evidence": "evidence\\promotion-batches-2026-10-11\\b1\\盖文淘宝",
+      "failureClass": "STAGE_FAILED",
+      "noActionRequired": false,
+      "autoRepair": null,
+      "repairRequest": {
+        "candidates": []
+      }
+    },
+    "盖文天猫": {
+      "batch": 1,
+      "shop": "盖文天猫",
+      "status": "failed",
+      "stages": [],
+      "error": "采集失败：reusablePromotionTask is not defined\n",
+      "evidence": "evidence\\promotion-batches-2026-10-11\\b1\\盖文天猫",
+      "failureClass": "STAGE_FAILED",
+      "noActionRequired": false,
+      "autoRepair": null,
+      "repairRequest": {
+        "candidates": []
+      }
+    },
+    "科塔淘宝": {
+      "batch": 1,
+      "shop": "科塔淘宝",
+      "status": "failed",
+      "stages": [],
+      "error": "采集失败：reusablePromotionTask is not defined\n",
+      "evidence": "evidence\\promotion-batches-2026-10-11\\b1\\科塔淘宝",
+      "failureClass": "STAGE_FAILED",
+      "noActionRequired": false,
+      "autoRepair": null,
+      "repairRequest": {
+        "candidates": []
+      }
+    }
+  }
+}

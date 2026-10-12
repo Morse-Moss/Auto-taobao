@@ -1,0 +1,36 @@
+{
+  "ok": false,
+  "action": "RESET_PAGES",
+  "stage": "health-check",
+  "cause": "SHOP_BLOCKED",
+  "shop": "盖文淘宝",
+  "proxy": "http://127.0.0.1:19043",
+  "dryRun": true,
+  "applied": false,
+  "detail": "排练（--dry-run）：会执行 RESET_PAGES，一个写请求都不发",
+  "targetId": null,
+  "targetUrl": null,
+  "startedAt": "2026-10-02T08:13:03.225Z",
+  "finishingAt": "2026-10-02T08:13:03.226Z",
+  "error": null,
+  "plan": {
+    "cause": "SHOP_BLOCKED",
+    "stage": "health-check",
+    "stageHint": null,
+    "candidates": [
+      {
+        "action": "RESET_PAGES",
+        "mutating": false,
+        "why": "页签可能被前一步带走或漂到别处；按期望清单归位再重试。"
+      },
+      {
+        "action": "RELOAD_PAGE",
+        "mutating": true,
+        "why": "这一份渲染上元素不理会点击（本项目实测过的形态）；真重载换个新现场再试。"
+      }
+    ],
+    "known": true,
+    "note": null
+  },
+  "exitCode": 0
+}

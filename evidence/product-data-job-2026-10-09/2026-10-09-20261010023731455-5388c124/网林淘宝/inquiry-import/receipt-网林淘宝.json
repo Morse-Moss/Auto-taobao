@@ -1,0 +1,47 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-09\\2026-10-09-20261010023731455-5388c124\\网林淘宝\\inquiry.xls",
+  "shop": "网林淘宝",
+  "date": "2026-10-09",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 5,
+  "existingRows": 216,
+  "plannedRows": 5,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-09",
+      "productId": "968804072669",
+      "shop": "网林淘宝"
+    },
+    {
+      "date": "2026-10-09",
+      "productId": "693366609819",
+      "shop": "网林淘宝"
+    },
+    {
+      "date": "2026-10-09",
+      "productId": "1067219197192",
+      "shop": "网林淘宝"
+    },
+    {
+      "date": "2026-10-09",
+      "productId": "982348868132",
+      "shop": "网林淘宝"
+    },
+    {
+      "date": "2026-10-09",
+      "productId": "984050918945",
+      "shop": "网林淘宝"
+    }
+  ],
+  "recordIds": [
+    "reczz28LY357hWss",
+    "reczz28LY357gNtx",
+    "reczz28LY357flcb",
+    "reczz28LY357fXkI",
+    "reczz28LY357hePy"
+  ],
+  "afterRows": 221
+}

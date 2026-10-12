@@ -1,0 +1,75 @@
+{
+  "at": "2026-09-25T14:32:10.051Z",
+  "atLocal": "2026-09-25 22:32:10",
+  "port": 19033,
+  "connects": [
+    {
+      "host": "127.0.0.1",
+      "listening": false,
+      "reason": "ECONNREFUSED"
+    },
+    {
+      "host": "::1",
+      "listening": false,
+      "reason": "ECONNREFUSED"
+    },
+    {
+      "host": "localhost",
+      "listening": false,
+      "reason": "ECONNREFUSED"
+    }
+  ],
+  "versions": {
+    "v4": {
+      "ok": false,
+      "error": "ECONNREFUSED"
+    },
+    "v6": {
+      "ok": false,
+      "error": "ECONNREFUSED"
+    }
+  },
+  "netTcpConnection": {
+    "status": 0,
+    "stdout": "[]",
+    "stderr": ""
+  },
+  "profiles": [
+    {
+      "dir": "D:/Retire/edge-profiles/suixin-custom",
+      "exists": false,
+      "content": null,
+      "mtime": null
+    },
+    {
+      "dir": "D:/Retire/edge-profiles/likelin-home",
+      "exists": false,
+      "content": null,
+      "mtime": null
+    },
+    {
+      "dir": "D:/Retire/edge-profiles/wanglin-flagship",
+      "exists": false,
+      "content": null,
+      "mtime": null
+    },
+    {
+      "dir": "D:/Retire/edge-profiles/gaiwen-flagship",
+      "exists": false,
+      "content": null,
+      "mtime": null
+    },
+    {
+      "dir": "D:/Retire/edge-profiles/shop-j873522735",
+      "exists": false,
+      "content": null,
+      "mtime": null
+    },
+    {
+      "dir": "D:/Retire/edge-daily-report-profile",
+      "exists": false,
+      "content": null,
+      "mtime": null
+    }
+  ]
+}

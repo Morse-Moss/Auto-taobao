@@ -1,0 +1,20 @@
+
+===== 2026-09-24T00:29:05.266Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-inquiry-backfill.mjs --date 2026-09-23 --proxy http://127.0.0.1:19044 --source-shop 科塔全卫定制 --shop 科塔淘宝 --shop-key 科塔淘宝 --commit
+exit=0 signal= error=none
+--- stdout ---
+[身份] 生意参谋页头 = "科塔全卫定制"（原始 "科塔全卫定制 主店"）｜期望 "科塔全卫定制" ✓
+[audit] 已记 inquiry-backfill/ok id=93
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-23-科塔淘宝\\inquiry-backfill-receipt.json",
+  "recordId": "recvtXf9WJU7YK",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-23-科塔淘宝",
+  "values": {
+    "询单量": 8,
+    "同层同行询单量": 5
+  },
+  "unchangedOtherFields": true
+}
+
+--- stderr ---

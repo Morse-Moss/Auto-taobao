@@ -1,0 +1,330 @@
+=== run at 2026-10-07 08:35:38 +0800 ===
+=== 1 start-all --only 网林家居 ===
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 网林家居  起前:missing  两样都没有，起一整套
+      已起 browser pid=116792  日志 runtime/start-stop-logs/2026-10-07T00-35-38/网林家居-browser.log
+      已起 proxy pid=134564  日志 runtime/start-stop-logs/2026-10-07T00-35-38/网林家居-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+exit=0
+=== 2 shop-pages --open ===
+[工作页] 补齐模式；14 个后台
+  商家浏览器（日报（生意参谋 + 万相台/阿里妈妈 + 飞书））  代理 19023  生意参谋工作页=1  飞书底单页=1
+  连不上 里可林淘宝（代理 19041）：fetch failed
+  连不上 网林天猫（代理 19042）：fetch failed
+  连不上 盖文淘宝（代理 19043）：fetch failed
+  连不上 盖文天猫（代理 19045）：fetch failed
+  连不上 科塔淘宝（代理 19044）：fetch failed
+  连不上 网林淘宝（代理 19060）：fetch failed
+  连不上 里可林天猫（代理 19061）：fetch failed
+  网林家居  代理 19062  生意参谋工作页=1  阿里妈妈报表页=1  ← 生意参谋工作页:create 阿里妈妈报表页:create
+  连不上 保拉淘宝（代理 19063）：fetch failed
+  连不上 保拉天猫（代理 19064）：fetch failed
+  连不上 安比龙头店（代理 19065）：fetch failed
+  连不上 科塔龙头店（代理 19066）：fetch failed
+  连不上 安比淘宝（代理 19067）：fetch failed
+  [连不上] 里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝、网林淘宝、里可林天猫、保拉淘宝、保拉天猫、安比龙头店、科塔龙头店、安比淘宝 —— 代理没起，先起代理
+[判据] 有未就位项（见上）
+exit=2
+=== 3 等页面加载完（有界，最多 120s）===
+[等待 1] readyState=interactive 页签 4 个（还没有「询单到付款」）
+[就绪] 第 2 次读到：readyState=complete 页签 12 个，含「询单到付款」
+       页签：智能问数 / 找功能 / 问指标 / 找商品 / 业绩分析 / 专项分析 / 商品分析 / 售后分析 / 汇总分析 / 询单到下单 / 下单到付款 / 询单到付款
+exit=0
+=== 4 date-picker sycm 2026-10-05 ===
+{
+  "site": "sycm",
+  "requested": "2026-10-05",
+  "mode": "explicit",
+  "route": "preset-or-calendar",
+  "targetId": "978E51119509EB60FDD6C5B31EBB6BB3",
+  "observedBefore": "统计时间 2026-10-06",
+  "observedAfter": "统计时间 2026-10-05",
+  "filters": null,
+  "tabs": [
+    "智能问数",
+    "找功能",
+    "问指标",
+    "找商品",
+    "业绩分析",
+    "专项分析",
+    "商品分析",
+    "售后分析",
+    "汇总分析",
+    "询单到下单",
+    "下单到付款",
+    "询单到付款"
+  ],
+  "activeTabs": [
+    "智能问数",
+    "业绩分析",
+    "询单到付款"
+  ],
+  "status": "APPLIED",
+  "presetWasNoop": null,
+  "pageReload": null,
+  "trace": [
+    {
+      "step": "tab",
+      "expectTab": "询单到付款",
+      "alreadyActive": false,
+      "point": [
+        492,
+        277
+      ]
+    },
+    {
+      "step": "tab-activated",
+      "activeTabs": [
+        "智能问数",
+        "业绩分析",
+        "询单到付款"
+      ]
+    },
+    {
+      "step": "open-explicit",
+      "point": [
+        1322,
+        162
+      ]
+    },
+    {
+      "step": "panel",
+      "shown": [
+        "2026-10",
+        "2026-10"
+      ],
+      "selection": "已选择：2026-10-05 至 2026-10-06",
+      "hits": [
+        "5",
+        "5"
+      ]
+    },
+    {
+      "step": "click-day",
+      "block": 0,
+      "text": "5",
+      "point": [
+        858,
+        298
+      ]
+    },
+    {
+      "step": "click-day",
+      "block": 1,
+      "text": "5",
+      "point": [
+        1116,
+        298
+      ]
+    },
+    {
+      "step": "selection-settled",
+      "selection": "已选择：2026-10-05 至 2026-10-05",
+      "clicks": 2
+    },
+    {
+      "step": "confirm",
+      "selection": "已选择：2026-10-05 至 2026-10-05",
+      "point": [
+        1304,
+        446
+      ]
+    },
+    {
+      "step": "settled",
+      "applied": "2026-10-05"
+    }
+  ]
+}
+exit=0
+=== 5 dump (只读) ===
+[targets] 生意参谋工作页 1 张
+  targetId=978E51119509EB60FDD6C5B31EBB6BB3 url=https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+{
+ "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+ "title": "生意参谋 - 零售电商大数据产品平台",
+ "readyState": "complete",
+ "activeTabs": [
+  "智能问数",
+  "业绩分析",
+  "询单到付款"
+ ],
+ "含当日询单人数表的张数": 1,
+ "表总数": 3,
+ "tables": [
+  {
+   "index": 0,
+   "headerCount": 9,
+   "headers": [
+    "日期",
+    "延 询单人数",
+    "当日询单人数",
+    "当日付款人数",
+    "当日付款金额",
+    "延 最终付款人数",
+    "延 最终付款金额",
+    "询单当日付款转化率",
+    "延 询单最终付款转化率"
+   ],
+   "rowCount": 3,
+   "hasInquiryHeader": true,
+   "日期列下标": 0,
+   "日期列原值": [
+    "暂无数据",
+    "汇总值",
+    "平均值"
+   ],
+   "命中日期形状的行数": 0,
+   "第一列原值": [
+    "暂无数据",
+    "汇总值",
+    "平均值"
+   ],
+   "前3行": [
+    [
+     "暂无数据"
+    ],
+    [
+     "汇总值",
+     "0",
+     "—",
+     "—",
+     "—",
+     "延迟统计",
+     "延迟统计",
+     "—",
+     "—"
+    ],
+    [
+     "平均值",
+     "0",
+     "—",
+     "—",
+     "—",
+     "延迟统计",
+     "延迟统计",
+     "—",
+     "延迟统计"
+    ]
+   ]
+  },
+  {
+   "index": 1,
+   "headerCount": 0,
+   "headers": [],
+   "rowCount": 6,
+   "hasInquiryHeader": false,
+   "日期列下标": -1,
+   "日期列原值": null,
+   "命中日期形状的行数": null,
+   "第一列原值": [
+    "一",
+    "28",
+    "5",
+    "12",
+    "19",
+    "26"
+   ],
+   "前3行": [
+    [
+     "一",
+     "二",
+     "三",
+     "四",
+     "五",
+     "六",
+     "日"
+    ],
+    [
+     "28",
+     "29",
+     "30",
+     "1",
+     "2",
+     "3",
+     "4"
+    ],
+    [
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10",
+     "11"
+    ]
+   ]
+  },
+  {
+   "index": 2,
+   "headerCount": 0,
+   "headers": [],
+   "rowCount": 6,
+   "hasInquiryHeader": false,
+   "日期列下标": -1,
+   "日期列原值": null,
+   "命中日期形状的行数": null,
+   "第一列原值": [
+    "一",
+    "28",
+    "5",
+    "12",
+    "19",
+    "26"
+   ],
+   "前3行": [
+    [
+     "一",
+     "二",
+     "三",
+     "四",
+     "五",
+     "六",
+     "日"
+    ],
+    [
+     "28",
+     "29",
+     "30",
+     "1",
+     "2",
+     "3",
+     "4"
+    ],
+    [
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10",
+     "11"
+    ]
+   ]
+  }
+ ]
+}
+exit=0
+=== 6 backfill 干跑 ===
+[身份] 生意参谋页头 = "网林定制家居"（原始 "网林定制家居 主店"）｜期望 "网林定制家居" ✓
+Error: SOURCE_NO_ROW_FOR_DATE 这一天的源表里没有日期行（生意参谋「询单到付款」对该店该日返回的是空态，不是读不到）｜日期列原值=["暂无数据","汇总值","平均值"]｜日期行数=0｜期望=2026-10-05
+    at extractInquiryMetrics (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/inquiry-core.mjs:72:11)
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:170:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+exit=1
+=== 7 跳过真写（干跑非 0）===
+=== 8 stop-all --only 网林家居 --yes ===
+[停] 目标 1 个实例
+  · 网林家居
+      将停 proxy pid=134564  ← 端口在听、进程命令行是 start-shop-proxy.mjs 网林家居
+         taskkill /PID 134564 /T /F
+      将停 browser pid=116792  ← CDP 自证 profile 一致；杀启动器 116792（连带浏览器进程树与保活进程）
+         taskkill /PID 116792 /T /F
+      已停 proxy pid=134564
+      已停 browser pid=116792
+      停后盘点到:missing
+exit=0
+=== done 2026-10-07 08:36:05 +0800 ===
+done

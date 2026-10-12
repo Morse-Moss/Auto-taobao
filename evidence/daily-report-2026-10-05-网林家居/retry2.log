@@ -1,0 +1,255 @@
+=== run at 2026-10-06 22:05:04 +0800 ===
+=== 1 scripts/start-all --only 网林家居 ===
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 网林家居  起前:missing  两样都没有，起一整套
+      已起 browser pid=73408  日志 runtime/start-stop-logs/2026-10-06T14-05-05/网林家居-browser.log
+      已起 proxy pid=132628  日志 runtime/start-stop-logs/2026-10-06T14-05-05/网林家居-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+exit=0
+=== 2 shop-pages --open ===
+[工作页] 补齐模式；14 个后台
+  商家浏览器（日报（生意参谋 + 万相台/阿里妈妈 + 飞书））  代理 19023  生意参谋工作页=1  飞书底单页=1
+  连不上 里可林淘宝（代理 19041）：fetch failed
+  连不上 网林天猫（代理 19042）：fetch failed
+  连不上 盖文淘宝（代理 19043）：fetch failed
+  连不上 盖文天猫（代理 19045）：fetch failed
+  连不上 科塔淘宝（代理 19044）：fetch failed
+  连不上 网林淘宝（代理 19060）：fetch failed
+  连不上 里可林天猫（代理 19061）：fetch failed
+  网林家居  代理 19062  生意参谋工作页=1  阿里妈妈报表页=1  ← 生意参谋工作页:create 阿里妈妈报表页:create
+  连不上 保拉淘宝（代理 19063）：fetch failed
+  连不上 保拉天猫（代理 19064）：fetch failed
+  连不上 安比龙头店（代理 19065）：fetch failed
+  连不上 科塔龙头店（代理 19066）：fetch failed
+  连不上 安比淘宝（代理 19067）：fetch failed
+  [连不上] 里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝、网林淘宝、里可林天猫、保拉淘宝、保拉天猫、安比龙头店、科塔龙头店、安比淘宝 —— 代理没起，先起代理
+[判据] 有未就位项（见上）
+exit=2
+=== 3 date-picker sycm 2026-10-05 ===
+{
+  "site": "sycm",
+  "requested": "2026-10-05",
+  "mode": "preset",
+  "route": "preset-or-calendar",
+  "targetId": "65BBA7041E22A807123787B52686E574",
+  "observedBefore": null,
+  "observedAfter": "统计时间 2026-10-05",
+  "filters": null,
+  "tabs": [
+    "智能问数",
+    "找功能",
+    "问指标",
+    "找商品",
+    "业绩分析",
+    "专项分析",
+    "商品分析",
+    "售后分析",
+    "汇总分析",
+    "询单到下单",
+    "下单到付款",
+    "询单到付款"
+  ],
+  "activeTabs": [
+    "智能问数",
+    "业绩分析",
+    "询单到付款"
+  ],
+  "status": "APPLIED",
+  "presetWasNoop": null,
+  "pageReload": {
+    "reloadError": null,
+    "observedAfterReload": "统计时间 2026-10-05",
+    "readFailures": 1,
+    "reads": 2,
+    "lastReadError": null
+  },
+  "trace": [
+    {
+      "step": "read-before-skipped",
+      "tolerated": true,
+      "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
+      "detail": "proxy http://127.0.0.1:19062/eval?target=65BBA7041E22A807123787B52686E574 failed: HTTP 400 Error: sycm date readout count=0     at <anonymous>:4:35     at <anon"
+    },
+    {
+      "step": "reload-stale-page",
+      "observedBeforeReload": null,
+      "requested": "2026-10-05"
+    },
+    {
+      "step": "reloaded",
+      "reloadError": null,
+      "observedAfterReload": "统计时间 2026-10-05",
+      "readFailures": 1,
+      "reads": 2,
+      "lastReadError": null
+    },
+    {
+      "step": "tab",
+      "expectTab": "询单到付款",
+      "alreadyActive": false,
+      "point": [
+        492,
+        277
+      ]
+    },
+    {
+      "step": "tab-activated",
+      "activeTabs": [
+        "智能问数",
+        "业绩分析",
+        "询单到付款"
+      ]
+    },
+    {
+      "step": "click-preset",
+      "text": "1天",
+      "point": [
+        1081,
+        162
+      ]
+    },
+    {
+      "step": "settled",
+      "applied": "2026-10-05"
+    }
+  ]
+}
+exit=0
+=== 4 dump inquiry table (read-only) ===
+[targets] 生意参谋工作页 1 张
+  targetId=65BBA7041E22A807123787B52686E574 url=https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+{
+ "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+ "title": "生意参谋 - 零售电商大数据产品平台",
+ "readyState": "complete",
+ "activeTabs": [
+  "智能问数",
+  "业绩分析",
+  "询单到付款"
+ ],
+ "含当日询单人数表的张数": 1,
+ "表总数": 2,
+ "tables": [
+  {
+   "index": 0,
+   "headerCount": 9,
+   "headers": [
+    "日期",
+    "延 询单人数",
+    "当日询单人数",
+    "当日付款人数",
+    "当日付款金额",
+    "延 最终付款人数",
+    "延 最终付款金额",
+    "询单当日付款转化率",
+    "延 询单最终付款转化率"
+   ],
+   "rowCount": 7,
+   "hasInquiryHeader": true,
+   "日期列下标": 0,
+   "日期列原值": [
+    "暂无数据",
+    "汇总值",
+    "平均值",
+    "全店汇总值",
+    "全店平均值",
+    "同行同层优秀",
+    "同行同层均值"
+   ],
+   "命中日期形状的行数": 0,
+   "第一列原值": [
+    "暂无数据",
+    "汇总值",
+    "平均值",
+    "全店汇总值",
+    "全店平均值",
+    "同行同层优秀",
+    "同行同层均值"
+   ],
+   "前3行": [
+    [
+     "暂无数据"
+    ],
+    [
+     "汇总值",
+     "延迟统计",
+     "—",
+     "—",
+     "—",
+     "延迟统计",
+     "延迟统计",
+     "—",
+     "—"
+    ],
+    [
+     "平均值",
+     "延迟统计",
+     "—",
+     "—",
+     "—",
+     "延迟统计",
+     "延迟统计",
+     "—",
+     "延迟统计"
+    ]
+   ]
+  },
+  {
+   "index": 1,
+   "headerCount": 0,
+   "headers": [],
+   "rowCount": 6,
+   "hasInquiryHeader": false,
+   "日期列下标": -1,
+   "日期列原值": null,
+   "命中日期形状的行数": null,
+   "第一列原值": [
+    "一",
+    "28",
+    "5",
+    "12",
+    "19",
+    "26"
+   ],
+   "前3行": [
+    [
+     "一",
+     "二",
+     "三",
+     "四",
+     "五",
+     "六",
+     "日"
+    ],
+    [
+     "28",
+     "29",
+     "30",
+     "1",
+     "2",
+     "3",
+     "4"
+    ],
+    [
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10",
+     "11"
+    ]
+   ]
+  }
+ ]
+}
+exit=0
+=== 5 run-inquiry-backfill --commit ===
+[身份] 生意参谋页头 = "网林定制家居"（原始 "网林定制家居 主店"）｜期望 "网林定制家居" ✓
+Error: inquiry source must contain exactly one daily date row
+    at extractInquiryMetrics (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/inquiry-core.mjs:30:37)
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:170:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+BACKFILL_EXIT=1

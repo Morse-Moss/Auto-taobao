@@ -1,0 +1,79 @@
+{
+  "mode": "apply",
+  "date": "2026-10-09",
+  "shop": "盖文淘宝",
+  "profile": "kcne",
+  "tables": {
+    "keyword": {
+      "tableId": "tblbSGMO2apOKuAZ",
+      "beforeRows": 773,
+      "plannedRows": 21,
+      "skippedRows": 0,
+      "recordIds": [
+        "reczz28LgwETwGil",
+        "reczz28LgwETy9lw",
+        "reczz28LgwETvMXU",
+        "reczz28LgwETySL1",
+        "reczz28LgwETvhL0",
+        "reczz28LgwETwdtm",
+        "reczz28LgwETvnyj",
+        "reczz28LgwETy3KJ",
+        "reczz28LgwETyEcR",
+        "reczz28LgwETxcOX",
+        "reczz28LgwETuYje",
+        "reczz28LgwETy30B",
+        "reczz28LgwETuh7Q",
+        "reczz28LgwETxKaT",
+        "reczz28LgwETw0GK",
+        "reczz28LgwETvbtJ",
+        "reczz28LgwETxJw6",
+        "reczz28LgwETxx4T",
+        "reczz28LgwETyT73",
+        "reczz28LgwETutPh",
+        "reczz28LgwETvkta"
+      ],
+      "afterRows": 794
+    },
+    "audience": {
+      "tableId": "tblyjD5058Mjbmcv",
+      "beforeRows": 837,
+      "plannedRows": 18,
+      "skippedRows": 0,
+      "recordIds": [
+        "reczz28LgwPNk3Jv",
+        "reczz28LgwPNmCfM",
+        "reczz28LgwPNibLi",
+        "reczz28LgwPNibkf",
+        "reczz28LgwPNkPs4",
+        "reczz28LgwPNlcIX",
+        "reczz28LgwPNkVZH",
+        "reczz28LgwPNkRNr",
+        "reczz28LgwPNlxkq",
+        "reczz28LgwPNj36m",
+        "reczz28LgwPNkWLB",
+        "reczz28LgwPNjr1P",
+        "reczz28LgwPNlwzt",
+        "reczz28LgwPNjveT",
+        "reczz28LgwPNm3Ol",
+        "reczz28LgwPNkHei",
+        "reczz28LgwPNmRAF",
+        "reczz28LgwPNiaxI"
+      ],
+      "afterRows": 855
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261010_181112.zip",
+      "csvName": "关键词报表_20261010_181112.csv",
+      "rows": 21,
+      "columns": 77
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261010_191411.zip",
+      "csvName": "人群报表_20261010_191411.csv",
+      "rows": 18,
+      "columns": 75
+    }
+  }
+}

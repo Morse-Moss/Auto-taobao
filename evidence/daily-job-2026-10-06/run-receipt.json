@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "workflow": "daily-report",
+  "runId": "daily-2026-10-06-5000",
+  "date": "2026-10-06",
+  "status": "FAILED",
+  "startedAt": "2026-10-07T07:31:12.599Z",
+  "stages": [
+    {
+      "name": "ensure-instances",
+      "status": "PENDING"
+    },
+    {
+      "name": "label-merchant-window",
+      "status": "PENDING"
+    },
+    {
+      "name": "ensure-merchant-login",
+      "status": "PENDING"
+    },
+    {
+      "name": "batch-chain",
+      "status": "PENDING"
+    }
+  ],
+  "finishedAt": "2026-10-07T07:52:10.380Z",
+  "exitCode": 1
+}

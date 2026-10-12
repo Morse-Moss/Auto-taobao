@@ -1,0 +1,16 @@
+
+===== 2026-10-10T03:32:42.541Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-shop-report.mjs --date 2026-10-08 --proxy http://127.0.0.1:19062 --shop-key 网林家居 --expect-shop 网林定制家居 --expect-member 网林定制家居:小瓜 --expect-member-id 1731780198
+exit=1 signal= error=none
+--- stdout ---
+[0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）
+[身份] 生意参谋店铺名 = "网林定制家居"（主店）｜期望 "网林定制家居" ✓
+      → 生意参谋页 E192289452C6CBDC18F30A705B62444C｜已有日报 xlsx 198 个｜下载目录 C:\Users\Administrator\Downloads｜身份核对=已做
+[1/4] 再进 自助分析 · 公共空间
+[2/4] 2.5s：预览按钮 2 个，日报行 #0（命中复核=true，视口内=true）
+[2/4] 点开「日报」预览（#0）→ {"clicked":true,"tag":"A","text":"预览"}
+[3/4] 3s：统计区间=["2026-10-09","2026-10-09"]｜下载按钮=true
+
+--- stderr ---
+
+采集失败：统计区间 2026-10-09 ~ 2026-10-09 不含目标日 2026-10-08：这份工作簿用不了，停

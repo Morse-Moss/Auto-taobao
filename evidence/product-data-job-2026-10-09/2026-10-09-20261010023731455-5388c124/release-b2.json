@@ -1,0 +1,46 @@
+[停] 目标 3 个实例
+  · 网林淘宝
+      将停 proxy pid=4168  ← 端口在听、进程命令行是 start-shop-proxy.mjs 网林淘宝
+         taskkill /PID 4168 /T /F
+      将停 browser pid=125828  ← CDP 自证 profile 一致；没找到启动器，按浏览器主进程停
+         taskkill /PID 125828 /T /F
+      已停 proxy pid=4168
+      已停 browser pid=125828
+      停后盘点到:missing
+  · 里可林天猫
+      将停 proxy pid=55856  ← 端口在听、进程命令行是 start-shop-proxy.mjs 里可林天猫
+         taskkill /PID 55856 /T /F
+      将停 browser pid=45252  ← CDP 自证 profile 一致；没找到启动器，按浏览器主进程停
+         taskkill /PID 45252 /T /F
+      已停 proxy pid=55856
+      已停 browser pid=45252
+      停后盘点到:missing
+  · 网林家居
+      将停 proxy pid=142636  ← 端口在听、进程命令行是 start-shop-proxy.mjs 网林家居
+         taskkill /PID 142636 /T /F
+      将停 browser pid=40984  ← CDP 自证 profile 一致；没找到启动器，按浏览器主进程停
+         taskkill /PID 40984 /T /F
+      已停 proxy pid=142636
+      已停 browser pid=40984
+      停后盘点到:missing
+{
+  "shops": [
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "stopExitCode": 0,
+  "checks": [
+    {
+      "attempt": 1,
+      "listening": 0,
+      "error": null
+    },
+    {
+      "attempt": 2,
+      "listening": 0,
+      "error": null
+    }
+  ],
+  "released": true
+}

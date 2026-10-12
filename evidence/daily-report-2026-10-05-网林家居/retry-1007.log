@@ -1,0 +1,81 @@
+=== run at 2026-10-07 08:34:49 +0800 ===
+=== 1 start-all --only 网林家居 ===
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 网林家居  起前:missing  两样都没有，起一整套
+      已起 browser pid=30656  日志 runtime/start-stop-logs/2026-10-07T00-34-49/网林家居-browser.log
+      已起 proxy pid=127048  日志 runtime/start-stop-logs/2026-10-07T00-34-49/网林家居-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+exit=0
+=== 2 shop-pages --open ===
+[工作页] 补齐模式；14 个后台
+  商家浏览器（日报（生意参谋 + 万相台/阿里妈妈 + 飞书））  代理 19023  生意参谋工作页=1  飞书底单页=1
+  连不上 里可林淘宝（代理 19041）：fetch failed
+  连不上 网林天猫（代理 19042）：fetch failed
+  连不上 盖文淘宝（代理 19043）：fetch failed
+  连不上 盖文天猫（代理 19045）：fetch failed
+  连不上 科塔淘宝（代理 19044）：fetch failed
+  连不上 网林淘宝（代理 19060）：fetch failed
+  连不上 里可林天猫（代理 19061）：fetch failed
+  网林家居  代理 19062  生意参谋工作页=1  阿里妈妈报表页=1  ← 生意参谋工作页:create 阿里妈妈报表页:create
+  连不上 保拉淘宝（代理 19063）：fetch failed
+  连不上 保拉天猫（代理 19064）：fetch failed
+  连不上 安比龙头店（代理 19065）：fetch failed
+  连不上 科塔龙头店（代理 19066）：fetch failed
+  连不上 安比淘宝（代理 19067）：fetch failed
+  [连不上] 里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝、网林淘宝、里可林天猫、保拉淘宝、保拉天猫、安比龙头店、科塔龙头店、安比淘宝 —— 代理没起，先起代理
+[判据] 有未就位项（见上）
+exit=2
+=== 3 date-picker sycm 2026-10-05 ===
+Error: proxy http://127.0.0.1:19062/eval?target=D270AB4DAA1B11211C8F9A2E932F41FA failed: HTTP 400 Error: sycm tab 询单到付款 count=0     at one (<anonymous>:12:37)     at <anonymous>:34:14     at <anonymous>:40:3
+    at proxyJson (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:396:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async evaluate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:402:19)
+    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:750:17)
+    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:577:12)
+TRACE [
+  {
+    "step": "read-before-skipped",
+    "tolerated": true,
+    "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
+    "detail": "proxy http://127.0.0.1:19062/eval?target=D270AB4DAA1B11211C8F9A2E932F41FA failed: HTTP 400 Error: sycm date readout count=0     at <anonymous>:4:35     at <anon"
+  }
+]
+exit=1
+=== 4 dump (只读) ===
+[targets] 生意参谋工作页 1 张
+  targetId=D270AB4DAA1B11211C8F9A2E932F41FA url=https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+{
+ "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+ "title": "生意参谋 - 零售电商大数据产品平台",
+ "readyState": "interactive",
+ "activeTabs": [
+  "智能问数"
+ ],
+ "含当日询单人数表的张数": 0,
+ "表总数": 0,
+ "tables": []
+}
+exit=0
+=== 5 backfill 干跑 ===
+Error: Error: expected one 当日询单人数 table, got 0     at <anonymous>:21:36     at <anonymous>:32:5
+    at proxyJson (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:56:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async readSycmTable (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:93:19)
+    at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:158:18)
+exit=1
+=== 6 跳过真写（干跑非 0）===
+=== 7 stop-all --only 网林家居 --yes ===
+[停] 目标 1 个实例
+  · 网林家居
+      将停 proxy pid=127048  ← 端口在听、进程命令行是 start-shop-proxy.mjs 网林家居
+         taskkill /PID 127048 /T /F
+      将停 browser pid=30656  ← CDP 自证 profile 一致；杀启动器 30656（连带浏览器进程树与保活进程）
+         taskkill /PID 30656 /T /F
+      已停 proxy pid=127048
+      未停 browser pid=30656  ERROR: The process with PID 144140 (child process of PID 95268) could not be terminated.
+      停后盘点到:missing
+exit=0
+=== done 2026-10-07 08:35:06 +0800 ===
+log written: evidence/daily-report-2026-10-05-网林家居/retry-1007.log

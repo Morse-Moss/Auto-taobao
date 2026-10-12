@@ -1,0 +1,738 @@
+[2026-10-05T03:18:27.541Z] 版本：sycm-automation 1.7.11
+[2026-10-05T03:18:27.542Z] === 定时任务开始（目标日字面量 yesterday → 2026-10-04）===
+[2026-10-05T03:18:27.542Z] [定时] 分批跑：每批 5 家（跑完释放这一批；链失败则不主动释放）
+[2026-10-05T03:18:27.542Z] [定时] 边界：批次里的 start 是 scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，所以这批窗口活不过本轮命令；「不主动释放」只是「我不去停它」，不等于「窗口还在」。要留窗口给人排查，必须另起 scripts/start-all-hold.mjs 把本批实例托住。
+[2026-10-05T03:18:27.542Z] 日志：D:\Retire\sycm-automation\evidence\daily-job-2026-10-04\job.log
+[2026-10-05T03:18:27.543Z] --- ensure-instances：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 商家浏览器（日报/周表/灰豚）  起前:missing  两样都没有，起一整套
+      已起 browser pid=12396  日志 runtime/start-stop-logs/2026-10-05T03-18-27/dailyReport-browser.log
+      已起 proxy pid=132972  日志 runtime/start-stop-logs/2026-10-05T03-18-27/dailyReport-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-05T03:18:30.183Z] --- ensure-instances 退出码=0
+[2026-10-05T03:18:30.187Z] --- ensure-merchant-login：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\login-merchant.mjs --commit --target sycm --notify auto
+{
+ "proxy": "http://127.0.0.1:19023",
+ "commit": true,
+ "notify": {
+  "mode": "auto",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": false,
+   "href": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null,
+   "loggedInAfter": true,
+   "hrefAfter": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+  }
+ },
+ "login": {
+  "attempts": [
+   {
+    "id": "havanaone",
+    "url": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+    "opened": true,
+    "navigated": false,
+    "href": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+    "autofill": {
+     "id": true,
+     "password": true
+    },
+    "gesturePoint": [
+     925,
+     331
+    ],
+    "afterGesture": {
+     "idLen": 8,
+     "passwordLen": 9
+    },
+    "guard": {
+     "verdict": "UNKNOWN",
+     "expected": null,
+     "filled": "里可林家居:阿彦"
+    }
+   }
+  ],
+  "expectedMember": null,
+  "guardBasis": "no_expected_member",
+  "targetId": "2006E13AA9A623BA24417F7EC606178A",
+  "candidate": "havanaone",
+  "urlBefore": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+  "guard": {
+   "verdict": "UNKNOWN",
+   "expected": null,
+   "filled": "里可林家居:阿彦"
+  },
+  "captcha": false,
+  "agreementChecked": true,
+  "agreement": {
+   "autoAccepted": true,
+   "agreedAt": "2026-10-05T03:18:46.700Z",
+   "checkedAfter": true,
+   "text": null
+  },
+  "submitPoint": [
+   925,
+   499
+  ],
+  "urlAfter": "https://myseller.taobao.com/home.htm/QnworkbenchHome/",
+  "shots": null,
+  "submitOutcome": "NONE"
+ },
+ "session": {
+  "shop": null,
+  "proxyPort": 19023,
+  "judged": false
+ },
+ "verdict": "LOGGED_IN"
+}
+[2026-10-05T03:18:58.739Z] --- ensure-merchant-login 退出码=0
+[2026-10-05T03:18:58.741Z] --- batch-chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date yesterday --batch-size 5 --commit --notify --auto-repair
+[2026-10-05T03:18:59.070Z] 版本：sycm-automation 1.7.11
+[2026-10-05T03:18:59.070Z] === 分批跑开始：目标日 yesterday → 2026-10-04；每批 5 家；共 2 批；模式 commit（会写飞书） ===
+[2026-10-05T03:18:59.070Z] 本批证据根：evidence/batches-2026-10-04
+[2026-10-05T03:18:59.070Z] --- ensure-shared：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[2026-10-05T03:18:59.435Z] --- ensure-shared 退出码=0
+[2026-10-05T03:18:59.435Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 ---
+[2026-10-05T03:18:59.435Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T03:19:10.020Z] --- start 退出码=0
+[2026-10-05T03:19:10.021Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+[2026-10-05T03:22:54.208Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b1.json（5269 字节；本批的链会读它）
+[2026-10-05T03:22:54.208Z] --- login-preflight 退出码=2
+[2026-10-05T03:22:54.208Z] [批次] 注意：login-preflight 不是「全在登录态」（退出码 2）—— 不阻断，链的告警会点名是哪家店的哪个后台。
+[2026-10-05T03:22:54.208Z] [批次] 注意：login-preflight 没成功（退出码 2）—— 不阻断（窗口标识页只影响人看不看得懂，不影响数据）。
+[2026-10-05T03:22:54.208Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+[2026-10-05T03:22:54.951Z] --- label:里可林淘宝 退出码=0
+[2026-10-05T03:22:54.951Z] --- label:网林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+[2026-10-05T03:22:55.485Z] --- label:网林天猫 退出码=0
+[2026-10-05T03:22:55.485Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+[2026-10-05T03:22:56.271Z] --- label:盖文淘宝 退出码=0
+[2026-10-05T03:22:56.271Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+[2026-10-05T03:22:57.202Z] --- label:盖文天猫 退出码=0
+[2026-10-05T03:22:57.202Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+[2026-10-05T03:22:57.849Z] --- label:科塔淘宝 退出码=0
+[2026-10-05T03:22:57.849Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b1.json --logs evidence\batches-2026-10-04\b1
+[2026-10-05T03:25:22.738Z] --- chain 退出码=1
+[2026-10-05T03:25:22.740Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T03:26:03.878Z] --- stop 退出码=0
+[2026-10-05T03:26:03.878Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T03:26:03.879Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 ---
+[2026-10-05T03:26:03.879Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T03:26:10.342Z] --- start 退出码=0
+[2026-10-05T03:26:10.342Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 网林淘宝,里可林天猫,网林家居 --json
+[2026-10-05T03:27:55.656Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b2.json（2966 字节；本批的链会读它）
+[2026-10-05T03:27:55.656Z] --- login-preflight 退出码=0
+[2026-10-05T03:27:55.656Z] --- label:网林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林淘宝
+[2026-10-05T03:27:56.017Z] --- label:网林淘宝 退出码=0
+[2026-10-05T03:27:56.017Z] --- label:里可林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林天猫
+[2026-10-05T03:27:56.403Z] --- label:里可林天猫 退出码=0
+[2026-10-05T03:27:56.403Z] --- label:网林家居：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林家居
+[2026-10-05T03:27:56.913Z] --- label:网林家居 退出码=0
+[2026-10-05T03:27:56.913Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --shops 网林淘宝,里可林天猫,网林家居 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b2.json --logs evidence\batches-2026-10-04\b2
+[2026-10-05T03:29:00.459Z] --- chain 退出码=1
+[2026-10-05T03:29:00.459Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T03:29:24.331Z] --- stop 退出码=0
+[2026-10-05T03:29:24.331Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T03:29:24.363Z] === 分批跑结束：0/2 批成功；释放 2 批；明细 evidence/batches-2026-10-04/batches.json ===
+[2026-10-05T03:29:24.482Z] --- batch-chain 退出码=1
+[2026-10-05T03:29:24.521Z] === 定时任务结束：全链退出码=1；证据目录 evidence/multi-shop-2026-10-04/ ===
+[2026-10-05T03:43:00.102Z] 版本：sycm-automation 1.7.11
+[2026-10-05T03:43:00.103Z] === 定时任务开始（目标日字面量 yesterday → 2026-10-04）===
+[2026-10-05T03:43:00.103Z] [定时] 分批跑：每批 5 家（跑完释放这一批；链失败则不主动释放）
+[2026-10-05T03:43:00.103Z] [定时] 边界：批次里的 start 是 scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，所以这批窗口活不过本轮命令；「不主动释放」只是「我不去停它」，不等于「窗口还在」。要留窗口给人排查，必须另起 scripts/start-all-hold.mjs 把本批实例托住。
+[2026-10-05T03:43:00.103Z] 日志：D:\Retire\sycm-automation\evidence\daily-job-2026-10-04\job.log
+[2026-10-05T03:43:00.103Z] --- ensure-instances：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 商家浏览器（日报/周表/灰豚）  起前:missing  两样都没有，起一整套
+      已起 browser pid=123436  日志 runtime/start-stop-logs/2026-10-05T03-43-00/dailyReport-browser.log
+      已起 proxy pid=132916  日志 runtime/start-stop-logs/2026-10-05T03-43-00/dailyReport-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-05T03:43:02.704Z] --- ensure-instances 退出码=0
+[2026-10-05T03:43:02.706Z] --- ensure-merchant-login：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\login-merchant.mjs --commit --target sycm --notify auto
+{
+ "proxy": "http://127.0.0.1:19023",
+ "commit": true,
+ "notify": {
+  "mode": "auto",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": true,
+   "href": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  }
+ },
+ "login": null,
+ "session": {
+  "shop": null,
+  "proxyPort": 19023,
+  "judged": false
+ },
+ "verdict": "ALREADY_LOGGED_IN"
+}
+[2026-10-05T03:43:09.290Z] --- ensure-merchant-login 退出码=0
+[2026-10-05T03:43:09.290Z] --- batch-chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date yesterday --batch-size 5 --commit --notify --auto-repair
+[2026-10-05T03:43:09.601Z] 版本：sycm-automation 1.7.11
+[2026-10-05T03:43:09.602Z] === 分批跑开始：目标日 yesterday → 2026-10-04；每批 5 家；共 2 批；模式 commit（会写飞书） ===
+[2026-10-05T03:43:09.602Z] 本批证据根：evidence/batches-2026-10-04
+[2026-10-05T03:43:09.602Z] --- ensure-shared：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[2026-10-05T03:43:10.008Z] --- ensure-shared 退出码=0
+[2026-10-05T03:43:10.008Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 ---
+[2026-10-05T03:43:10.008Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T03:43:18.679Z] --- start 退出码=0
+[2026-10-05T03:43:18.679Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+[2026-10-05T03:45:50.044Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b1.json（4411 字节；本批的链会读它）
+[2026-10-05T03:45:50.044Z] --- login-preflight 退出码=2
+[2026-10-05T03:45:50.044Z] [批次] 注意：login-preflight 不是「全在登录态」（退出码 2）—— 不阻断，链的告警会点名是哪家店的哪个后台。
+[2026-10-05T03:45:50.044Z] [批次] 注意：login-preflight 没成功（退出码 2）—— 不阻断（窗口标识页只影响人看不看得懂，不影响数据）。
+[2026-10-05T03:45:50.044Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+[2026-10-05T03:45:50.473Z] --- label:里可林淘宝 退出码=0
+[2026-10-05T03:45:50.474Z] --- label:网林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+[2026-10-05T03:45:50.889Z] --- label:网林天猫 退出码=0
+[2026-10-05T03:45:50.889Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+[2026-10-05T03:45:51.371Z] --- label:盖文淘宝 退出码=0
+[2026-10-05T03:45:51.371Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+[2026-10-05T03:45:51.795Z] --- label:盖文天猫 退出码=0
+[2026-10-05T03:45:51.796Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+[2026-10-05T03:45:52.209Z] --- label:科塔淘宝 退出码=0
+[2026-10-05T03:45:52.210Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b1.json --logs evidence\batches-2026-10-04\b1
+[2026-10-05T03:48:11.258Z] --- chain 退出码=1
+[2026-10-05T03:48:11.258Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T03:48:49.339Z] --- stop 退出码=0
+[2026-10-05T03:48:49.340Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T03:48:49.340Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 ---
+[2026-10-05T03:48:49.340Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T03:48:55.889Z] --- start 退出码=0
+[2026-10-05T03:48:55.889Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 网林淘宝,里可林天猫,网林家居 --json
+[2026-10-05T03:50:15.444Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b2.json（2831 字节；本批的链会读它）
+[2026-10-05T03:50:15.444Z] --- login-preflight 退出码=0
+[2026-10-05T03:50:15.444Z] --- label:网林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林淘宝
+[2026-10-05T03:50:15.797Z] --- label:网林淘宝 退出码=0
+[2026-10-05T03:50:15.797Z] --- label:里可林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林天猫
+[2026-10-05T03:50:16.166Z] --- label:里可林天猫 退出码=0
+[2026-10-05T03:50:16.166Z] --- label:网林家居：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林家居
+[2026-10-05T03:50:16.617Z] --- label:网林家居 退出码=0
+[2026-10-05T03:50:16.617Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --shops 网林淘宝,里可林天猫,网林家居 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b2.json --logs evidence\batches-2026-10-04\b2
+[2026-10-05T03:51:15.591Z] --- chain 退出码=1
+[2026-10-05T03:51:15.591Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T03:51:35.254Z] --- stop 退出码=0
+[2026-10-05T03:51:35.254Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T03:51:35.277Z] === 分批跑结束：0/2 批成功；释放 2 批；明细 evidence/batches-2026-10-04/batches.json ===
+[2026-10-05T03:51:35.300Z] --- batch-chain 退出码=1
+[2026-10-05T03:51:35.340Z] === 定时任务结束：全链退出码=1；证据目录 evidence/multi-shop-2026-10-04/ ===
+[2026-10-05T04:01:19.896Z] 版本：sycm-automation 1.7.11
+[2026-10-05T04:01:19.896Z] === 定时任务开始（目标日字面量 yesterday → 2026-10-04）===
+[2026-10-05T04:01:19.896Z] [定时] 分批跑：每批 5 家（跑完释放这一批；链失败则不主动释放）
+[2026-10-05T04:01:19.896Z] [定时] 边界：批次里的 start 是 scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，所以这批窗口活不过本轮命令；「不主动释放」只是「我不去停它」，不等于「窗口还在」。要留窗口给人排查，必须另起 scripts/start-all-hold.mjs 把本批实例托住。
+[2026-10-05T04:01:19.896Z] 日志：D:\Retire\sycm-automation\evidence\daily-job-2026-10-04\job.log
+[2026-10-05T04:01:19.896Z] --- ensure-instances：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 商家浏览器（日报/周表/灰豚）  起前:missing  两样都没有，起一整套
+      已起 browser pid=140864  日志 runtime/start-stop-logs/2026-10-05T04-01-20/dailyReport-browser.log
+      已起 proxy pid=138680  日志 runtime/start-stop-logs/2026-10-05T04-01-20/dailyReport-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-05T04:01:22.333Z] --- ensure-instances 退出码=0
+[2026-10-05T04:01:22.333Z] --- ensure-merchant-login：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\login-merchant.mjs --commit --target sycm --notify auto
+{
+ "proxy": "http://127.0.0.1:19023",
+ "commit": true,
+ "notify": {
+  "mode": "auto",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": true,
+   "href": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  }
+ },
+ "login": null,
+ "session": {
+  "shop": null,
+  "proxyPort": 19023,
+  "judged": false
+ },
+ "verdict": "ALREADY_LOGGED_IN"
+}
+[2026-10-05T04:01:28.797Z] --- ensure-merchant-login 退出码=0
+[2026-10-05T04:01:28.797Z] --- batch-chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date yesterday --batch-size 5 --commit --notify --auto-repair
+[2026-10-05T04:01:29.103Z] 版本：sycm-automation 1.7.11
+[2026-10-05T04:01:29.104Z] === 分批跑开始：目标日 yesterday → 2026-10-04；每批 5 家；共 2 批；模式 commit（会写飞书） ===
+[2026-10-05T04:01:29.104Z] 本批证据根：evidence/batches-2026-10-04
+[2026-10-05T04:01:29.104Z] --- ensure-shared：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[2026-10-05T04:01:29.443Z] --- ensure-shared 退出码=0
+[2026-10-05T04:01:29.443Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 ---
+[2026-10-05T04:01:29.444Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T04:01:37.982Z] --- start 退出码=0
+[2026-10-05T04:01:37.982Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+[2026-10-05T04:04:12.677Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b1.json（4783 字节；本批的链会读它）
+[2026-10-05T04:04:12.677Z] --- login-preflight 退出码=2
+[2026-10-05T04:04:12.677Z] [批次] 注意：login-preflight 不是「全在登录态」（退出码 2）—— 不阻断，链的告警会点名是哪家店的哪个后台。
+[2026-10-05T04:04:12.677Z] [批次] 注意：login-preflight 没成功（退出码 2）—— 不阻断（窗口标识页只影响人看不看得懂，不影响数据）。
+[2026-10-05T04:04:12.677Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+[2026-10-05T04:04:13.125Z] --- label:里可林淘宝 退出码=0
+[2026-10-05T04:04:13.126Z] --- label:网林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+[2026-10-05T04:04:13.530Z] --- label:网林天猫 退出码=0
+[2026-10-05T04:04:13.530Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+[2026-10-05T04:04:13.951Z] --- label:盖文淘宝 退出码=0
+[2026-10-05T04:04:13.951Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+[2026-10-05T04:04:14.465Z] --- label:盖文天猫 退出码=0
+[2026-10-05T04:04:14.465Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+[2026-10-05T04:04:14.872Z] --- label:科塔淘宝 退出码=0
+[2026-10-05T04:04:14.872Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b1.json --logs evidence\batches-2026-10-04\b1
+[2026-10-05T04:06:05.203Z] --- chain 退出码=1
+[2026-10-05T04:06:05.203Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T04:06:40.209Z] --- stop 退出码=0
+[2026-10-05T04:06:40.209Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T04:06:40.209Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 ---
+[2026-10-05T04:06:40.209Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T04:06:47.044Z] --- start 退出码=0
+[2026-10-05T04:06:47.044Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 网林淘宝,里可林天猫,网林家居 --json
+[2026-10-05T04:08:03.025Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b2.json（2955 字节；本批的链会读它）
+[2026-10-05T04:08:03.025Z] --- login-preflight 退出码=0
+[2026-10-05T04:08:03.025Z] --- label:网林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林淘宝
+[2026-10-05T04:08:03.424Z] --- label:网林淘宝 退出码=0
+[2026-10-05T04:08:03.424Z] --- label:里可林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林天猫
+[2026-10-05T04:08:03.887Z] --- label:里可林天猫 退出码=0
+[2026-10-05T04:08:03.887Z] --- label:网林家居：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林家居
+[2026-10-05T04:08:04.335Z] --- label:网林家居 退出码=0
+[2026-10-05T04:08:04.335Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --shops 网林淘宝,里可林天猫,网林家居 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b2.json --logs evidence\batches-2026-10-04\b2
+[2026-10-05T04:09:08.264Z] --- chain 退出码=1
+[2026-10-05T04:09:08.264Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T04:09:32.799Z] --- stop 退出码=0
+[2026-10-05T04:09:32.799Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T04:09:32.822Z] === 分批跑结束：0/2 批成功；释放 2 批；明细 evidence/batches-2026-10-04/batches.json ===
+[2026-10-05T04:09:32.845Z] --- batch-chain 退出码=1
+[2026-10-05T04:09:32.884Z] === 定时任务结束：全链退出码=1；证据目录 evidence/multi-shop-2026-10-04/ ===
+[2026-10-05T04:46:12.673Z] 版本：sycm-automation 1.7.11
+[2026-10-05T04:46:12.674Z] === 定时任务开始（目标日字面量 2026-10-04 → 2026-10-04）===
+[2026-10-05T04:46:12.674Z] [定时] 分批跑：每批 5 家（跑完释放这一批；链失败则不主动释放）
+[2026-10-05T04:46:12.674Z] [定时] 边界：批次里的 start 是 scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，所以这批窗口活不过本轮命令；「不主动释放」只是「我不去停它」，不等于「窗口还在」。要留窗口给人排查，必须另起 scripts/start-all-hold.mjs 把本批实例托住。
+[2026-10-05T04:46:12.674Z] 日志：D:\Retire\sycm-automation\evidence\daily-job-2026-10-04\job.log
+[2026-10-05T04:46:12.674Z] --- ensure-instances：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 商家浏览器（日报/周表/灰豚）  起前:missing  两样都没有，起一整套
+      已起 browser pid=123112  日志 runtime/start-stop-logs/2026-10-05T04-46-12/dailyReport-browser.log
+      已起 proxy pid=115560  日志 runtime/start-stop-logs/2026-10-05T04-46-12/dailyReport-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-05T04:46:15.036Z] --- ensure-instances 退出码=0
+[2026-10-05T04:46:15.036Z] --- ensure-merchant-login：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\login-merchant.mjs --commit --target sycm --notify auto
+{
+ "proxy": "http://127.0.0.1:19023",
+ "commit": true,
+ "notify": {
+  "mode": "auto",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": true,
+   "href": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  }
+ },
+ "login": null,
+ "session": {
+  "shop": null,
+  "proxyPort": 19023,
+  "judged": false
+ },
+ "verdict": "ALREADY_LOGGED_IN"
+}
+[2026-10-05T04:46:21.479Z] --- ensure-merchant-login 退出码=0
+[2026-10-05T04:46:21.480Z] --- batch-chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date 2026-10-04 --batch-size 5 --commit --notify --auto-repair
+[2026-10-05T04:46:21.772Z] 版本：sycm-automation 1.7.11
+[2026-10-05T04:46:21.774Z] === 分批跑开始：目标日 2026-10-04 → 2026-10-04；每批 5 家；共 2 批；模式 commit（会写飞书） ===
+[2026-10-05T04:46:21.774Z] 本批证据根：evidence/batches-2026-10-04
+[2026-10-05T04:46:21.774Z] --- ensure-shared：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[2026-10-05T04:46:22.146Z] --- ensure-shared 退出码=0
+[2026-10-05T04:46:22.146Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 ---
+[2026-10-05T04:46:22.146Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T04:46:30.720Z] --- start 退出码=0
+[2026-10-05T04:46:30.721Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+[2026-10-05T04:49:02.836Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b1.json（4907 字节；本批的链会读它）
+[2026-10-05T04:49:02.836Z] --- login-preflight 退出码=2
+[2026-10-05T04:49:02.836Z] [批次] 注意：login-preflight 不是「全在登录态」（退出码 2）—— 不阻断，链的告警会点名是哪家店的哪个后台。
+[2026-10-05T04:49:02.836Z] [批次] 注意：login-preflight 没成功（退出码 2）—— 不阻断（窗口标识页只影响人看不看得懂，不影响数据）。
+[2026-10-05T04:49:02.836Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+[2026-10-05T04:49:03.229Z] --- label:里可林淘宝 退出码=0
+[2026-10-05T04:49:03.230Z] --- label:网林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+[2026-10-05T04:49:03.636Z] --- label:网林天猫 退出码=0
+[2026-10-05T04:49:03.636Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+[2026-10-05T04:49:04.071Z] --- label:盖文淘宝 退出码=0
+[2026-10-05T04:49:04.071Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+[2026-10-05T04:49:04.488Z] --- label:盖文天猫 退出码=0
+[2026-10-05T04:49:04.488Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+[2026-10-05T04:49:04.866Z] --- label:科塔淘宝 退出码=0
+[2026-10-05T04:49:04.866Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-10-04 --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b1.json --logs evidence\batches-2026-10-04\b1
+[2026-10-05T04:51:30.629Z] --- chain 退出码=1
+[2026-10-05T04:51:30.629Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T04:52:05.000Z] --- stop 退出码=0
+[2026-10-05T04:52:05.000Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T04:52:05.000Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 ---
+[2026-10-05T04:52:05.000Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T04:52:16.497Z] --- start 退出码=0
+[2026-10-05T04:52:16.497Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 网林淘宝,里可林天猫,网林家居 --json
+[2026-10-05T04:53:34.790Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b2.json（2955 字节；本批的链会读它）
+[2026-10-05T04:53:34.790Z] --- login-preflight 退出码=0
+[2026-10-05T04:53:34.790Z] --- label:网林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林淘宝
+[2026-10-05T04:53:35.291Z] --- label:网林淘宝 退出码=0
+[2026-10-05T04:53:35.291Z] --- label:里可林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林天猫
+[2026-10-05T04:53:35.767Z] --- label:里可林天猫 退出码=0
+[2026-10-05T04:53:35.767Z] --- label:网林家居：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林家居
+[2026-10-05T04:53:36.332Z] --- label:网林家居 退出码=0
+[2026-10-05T04:53:36.332Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-10-04 --shops 网林淘宝,里可林天猫,网林家居 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b2.json --logs evidence\batches-2026-10-04\b2
+[2026-10-05T04:54:51.916Z] --- chain 退出码=1
+[2026-10-05T04:54:51.917Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T04:55:15.251Z] --- stop 退出码=0
+[2026-10-05T04:55:15.251Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T04:55:15.274Z] === 分批跑结束：0/2 批成功；释放 2 批；明细 evidence/batches-2026-10-04/batches.json ===
+[2026-10-05T04:55:15.299Z] --- batch-chain 退出码=1
+[2026-10-05T04:55:15.339Z] === 定时任务结束：全链退出码=1；证据目录 evidence/multi-shop-2026-10-04/ ===
+[2026-10-05T05:15:47.718Z] 版本：sycm-automation 1.7.11
+[2026-10-05T05:15:47.719Z] === 定时任务开始（目标日字面量 2026-10-04 → 2026-10-04）===
+[2026-10-05T05:15:47.719Z] [定时] 分批跑：每批 5 家（跑完释放这一批；链失败则不主动释放）
+[2026-10-05T05:15:47.719Z] [定时] 边界：批次里的 start 是 scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，所以这批窗口活不过本轮命令；「不主动释放」只是「我不去停它」，不等于「窗口还在」。要留窗口给人排查，必须另起 scripts/start-all-hold.mjs 把本批实例托住。
+[2026-10-05T05:15:47.719Z] 日志：D:\Retire\sycm-automation\evidence\daily-job-2026-10-04\job.log
+[2026-10-05T05:15:47.720Z] --- ensure-instances：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 商家浏览器（日报/周表/灰豚）  起前:missing  两样都没有，起一整套
+      已起 browser pid=126204  日志 runtime/start-stop-logs/2026-10-05T05-15-47/dailyReport-browser.log
+      已起 proxy pid=140684  日志 runtime/start-stop-logs/2026-10-05T05-15-47/dailyReport-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-05T05:15:50.217Z] --- ensure-instances 退出码=0
+[2026-10-05T05:15:50.217Z] --- ensure-merchant-login：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\login-merchant.mjs --commit --target sycm --notify auto
+{
+ "proxy": "http://127.0.0.1:19023",
+ "commit": true,
+ "notify": {
+  "mode": "auto",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": true,
+   "href": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  }
+ },
+ "login": null,
+ "session": {
+  "shop": null,
+  "proxyPort": 19023,
+  "judged": false
+ },
+ "verdict": "ALREADY_LOGGED_IN"
+}
+[2026-10-05T05:15:56.617Z] --- ensure-merchant-login 退出码=0
+[2026-10-05T05:15:56.618Z] --- batch-chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date 2026-10-04 --batch-size 5 --commit --notify --auto-repair
+[2026-10-05T05:15:57.217Z] 版本：sycm-automation 1.7.11
+[2026-10-05T05:15:57.225Z] === 分批跑开始：目标日 2026-10-04 → 2026-10-04；每批 5 家；共 2 批；模式 commit（会写飞书） ===
+[2026-10-05T05:15:57.225Z] 本批证据根：evidence/batches-2026-10-04
+[2026-10-05T05:15:57.225Z] --- ensure-shared：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[2026-10-05T05:15:57.966Z] --- ensure-shared 退出码=0
+[2026-10-05T05:15:57.966Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 ---
+[2026-10-05T05:15:57.967Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T05:16:09.610Z] --- start 退出码=0
+[2026-10-05T05:16:09.610Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+[2026-10-05T05:18:55.587Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b1.json（4908 字节；本批的链会读它）
+[2026-10-05T05:18:55.587Z] --- login-preflight 退出码=2
+[2026-10-05T05:18:55.587Z] [批次] 注意：login-preflight 不是「全在登录态」（退出码 2）—— 不阻断，链的告警会点名是哪家店的哪个后台。
+[2026-10-05T05:18:55.587Z] [批次] 注意：login-preflight 没成功（退出码 2）—— 不阻断（窗口标识页只影响人看不看得懂，不影响数据）。
+[2026-10-05T05:18:55.587Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+[2026-10-05T05:18:56.030Z] --- label:里可林淘宝 退出码=0
+[2026-10-05T05:18:56.031Z] --- label:网林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+[2026-10-05T05:18:56.521Z] --- label:网林天猫 退出码=0
+[2026-10-05T05:18:56.522Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+[2026-10-05T05:18:57.085Z] --- label:盖文淘宝 退出码=0
+[2026-10-05T05:18:57.085Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+[2026-10-05T05:18:57.664Z] --- label:盖文天猫 退出码=0
+[2026-10-05T05:18:57.664Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+[2026-10-05T05:18:58.168Z] --- label:科塔淘宝 退出码=0
+[2026-10-05T05:18:58.168Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-10-04 --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b1.json --logs evidence\batches-2026-10-04\b1
+[2026-10-05T05:24:38.840Z] --- chain 退出码=1
+[2026-10-05T05:24:38.841Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T05:25:16.542Z] --- stop 退出码=0
+[2026-10-05T05:25:16.542Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T05:25:16.542Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 ---
+[2026-10-05T05:25:16.542Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T05:25:23.042Z] --- start 退出码=0
+[2026-10-05T05:25:23.042Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 网林淘宝,里可林天猫,网林家居 --json
+[2026-10-05T05:26:37.823Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b2.json（2955 字节；本批的链会读它）
+[2026-10-05T05:26:37.823Z] --- login-preflight 退出码=0
+[2026-10-05T05:26:37.823Z] --- label:网林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林淘宝
+[2026-10-05T05:26:38.221Z] --- label:网林淘宝 退出码=0
+[2026-10-05T05:26:38.221Z] --- label:里可林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林天猫
+[2026-10-05T05:26:38.669Z] --- label:里可林天猫 退出码=0
+[2026-10-05T05:26:38.669Z] --- label:网林家居：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林家居
+[2026-10-05T05:26:39.062Z] --- label:网林家居 退出码=0
+[2026-10-05T05:26:39.062Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-10-04 --shops 网林淘宝,里可林天猫,网林家居 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b2.json --logs evidence\batches-2026-10-04\b2
+[2026-10-05T05:30:11.566Z] --- chain 退出码=1
+[2026-10-05T05:30:11.566Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T05:30:31.016Z] --- stop 退出码=0
+[2026-10-05T05:30:31.016Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T05:30:31.038Z] === 分批跑结束：0/2 批成功；释放 2 批；明细 evidence/batches-2026-10-04/batches.json ===
+[2026-10-05T05:30:31.056Z] --- batch-chain 退出码=1
+[2026-10-05T05:30:31.095Z] === 定时任务结束：全链退出码=1；证据目录 evidence/multi-shop-2026-10-04/ ===
+[2026-10-05T05:35:47.713Z] 运行锁冲突：workflow lock busy: merchant-automation；持有者={"version":1,"name":"merchant-automation","owner":"daily-report","runId":"133884-1791177347716","acquiredAt":"2026-10-05T05:15:47.716Z","pid":133884}
+[2026-10-05T05:36:38.859Z] 版本：sycm-automation 1.7.11
+[2026-10-05T05:36:38.860Z] === 定时任务开始（目标日字面量 2026-10-04 → 2026-10-04）===
+[2026-10-05T05:36:38.860Z] [定时] 分批跑：每批 5 家（跑完释放这一批；链失败则不主动释放）
+[2026-10-05T05:36:38.860Z] [定时] 边界：批次里的 start 是 scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，所以这批窗口活不过本轮命令；「不主动释放」只是「我不去停它」，不等于「窗口还在」。要留窗口给人排查，必须另起 scripts/start-all-hold.mjs 把本批实例托住。
+[2026-10-05T05:36:38.860Z] 日志：D:\Retire\sycm-automation\evidence\daily-job-2026-10-04\job.log
+[2026-10-05T05:36:38.860Z] --- ensure-instances：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 商家浏览器（日报/周表/灰豚）  起前:missing  两样都没有，起一整套
+      已起 browser pid=137940  日志 runtime/start-stop-logs/2026-10-05T05-36-39/dailyReport-browser.log
+      已起 proxy pid=28452  日志 runtime/start-stop-logs/2026-10-05T05-36-39/dailyReport-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-05T05:36:41.329Z] --- ensure-instances 退出码=0
+[2026-10-05T05:36:41.329Z] --- ensure-merchant-login：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\login-merchant.mjs --commit --target sycm --notify off
+{
+ "proxy": "http://127.0.0.1:19023",
+ "commit": true,
+ "notify": {
+  "mode": "off",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": true,
+   "href": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  }
+ },
+ "login": null,
+ "session": {
+  "shop": null,
+  "proxyPort": 19023,
+  "judged": false
+ },
+ "verdict": "ALREADY_LOGGED_IN"
+}
+[2026-10-05T05:36:48.623Z] --- ensure-merchant-login 退出码=0
+[2026-10-05T05:36:48.623Z] --- batch-chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date 2026-10-04 --batch-size 5 --commit --notify-print --auto-repair --shops 里可林淘宝
+[2026-10-05T05:36:48.896Z] 版本：sycm-automation 1.7.11
+[2026-10-05T05:36:48.897Z] === 分批跑开始：目标日 2026-10-04 → 2026-10-04；每批 5 家；共 1 批；模式 commit（会写飞书） ===
+[2026-10-05T05:36:48.897Z] 本批证据根：evidence/batches-2026-10-04
+[2026-10-05T05:36:48.897Z] --- ensure-shared：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[2026-10-05T05:36:49.271Z] --- ensure-shared 退出码=0
+[2026-10-05T05:36:49.271Z] --- 第 1/1 批：里可林淘宝 ---
+[2026-10-05T05:36:49.271Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝
+[2026-10-05T05:36:51.664Z] --- start 退出码=0
+[2026-10-05T05:36:51.665Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝 --json
+[2026-10-05T05:37:03.344Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b1.json（1227 字节；本批的链会读它）
+[2026-10-05T05:37:03.344Z] --- login-preflight 退出码=0
+[2026-10-05T05:37:03.344Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+[2026-10-05T05:37:03.745Z] --- label:里可林淘宝 退出码=0
+[2026-10-05T05:37:03.745Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-10-04 --shops 里可林淘宝 --commit --notify-print --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b1.json --logs evidence\batches-2026-10-04\b1
+[2026-10-05T05:39:12.531Z] --- chain 退出码=0
+[2026-10-05T05:39:12.531Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 里可林淘宝
+[2026-10-05T05:39:20.687Z] --- stop 退出码=0
+[2026-10-05T05:39:20.688Z] --- 第 1/1 批：里可林淘宝 小结：链退出码=0；stop（释放窗口）=退出码 0；这一批全绿：按计划收掉，把内存让给下一批
+[2026-10-05T05:39:20.707Z] === 分批跑结束：1/1 批成功；释放 1 批；明细 evidence/batches-2026-10-04/batches.json ===
+[2026-10-05T05:39:20.724Z] --- batch-chain 退出码=0
+[2026-10-05T05:39:20.763Z] === 定时任务结束：全链退出码=0；证据目录 evidence/multi-shop-2026-10-04/ ===
+[2026-10-05T05:40:12.136Z] 版本：sycm-automation 1.7.11
+[2026-10-05T05:40:12.137Z] === 定时任务开始（目标日字面量 2026-10-04 → 2026-10-04）===
+[2026-10-05T05:40:12.137Z] [定时] 分批跑：每批 5 家（跑完释放这一批；链失败则不主动释放）
+[2026-10-05T05:40:12.137Z] [定时] 边界：批次里的 start 是 scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，所以这批窗口活不过本轮命令；「不主动释放」只是「我不去停它」，不等于「窗口还在」。要留窗口给人排查，必须另起 scripts/start-all-hold.mjs 把本批实例托住。
+[2026-10-05T05:40:12.137Z] 日志：D:\Retire\sycm-automation\evidence\daily-job-2026-10-04\job.log
+[2026-10-05T05:40:12.137Z] --- ensure-instances：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 商家浏览器（日报/周表/灰豚）  起前:missing  两样都没有，起一整套
+      已起 browser pid=140752  日志 runtime/start-stop-logs/2026-10-05T05-40-12/dailyReport-browser.log
+      已起 proxy pid=137264  日志 runtime/start-stop-logs/2026-10-05T05-40-12/dailyReport-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-05T05:40:14.514Z] --- ensure-instances 退出码=0
+[2026-10-05T05:40:14.514Z] --- ensure-merchant-login：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\login-merchant.mjs --commit --target sycm --notify off
+{
+ "proxy": "http://127.0.0.1:19023",
+ "commit": true,
+ "notify": {
+  "mode": "off",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": true,
+   "href": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  }
+ },
+ "login": null,
+ "session": {
+  "shop": null,
+  "proxyPort": 19023,
+  "judged": false
+ },
+ "verdict": "ALREADY_LOGGED_IN"
+}
+[2026-10-05T05:40:20.780Z] --- ensure-merchant-login 退出码=0
+[2026-10-05T05:40:20.780Z] --- batch-chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date 2026-10-04 --batch-size 5 --commit --notify-print --auto-repair --shops 网林天猫,盖文淘宝,盖文天猫,科塔淘宝,网林淘宝,里可林天猫,网林家居
+[2026-10-05T05:40:21.036Z] 版本：sycm-automation 1.7.11
+[2026-10-05T05:40:21.038Z] === 分批跑开始：目标日 2026-10-04 → 2026-10-04；每批 5 家；共 2 批；模式 commit（会写飞书） ===
+[2026-10-05T05:40:21.038Z] 本批证据根：evidence/batches-2026-10-04
+[2026-10-05T05:40:21.038Z] --- ensure-shared：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[2026-10-05T05:40:21.352Z] --- ensure-shared 退出码=0
+[2026-10-05T05:40:21.352Z] --- 第 1/2 批：网林天猫、盖文淘宝、盖文天猫、科塔淘宝、网林淘宝 ---
+[2026-10-05T05:40:21.352Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 网林天猫,盖文淘宝,盖文天猫,科塔淘宝,网林淘宝
+[2026-10-05T05:40:31.912Z] --- start 退出码=0
+[2026-10-05T05:40:31.912Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 网林天猫,盖文淘宝,盖文天猫,科塔淘宝,网林淘宝 --json
+[2026-10-05T05:43:03.419Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b1.json（4902 字节；本批的链会读它）
+[2026-10-05T05:43:03.419Z] --- login-preflight 退出码=2
+[2026-10-05T05:43:03.419Z] [批次] 注意：login-preflight 不是「全在登录态」（退出码 2）—— 不阻断，链的告警会点名是哪家店的哪个后台。
+[2026-10-05T05:43:03.419Z] [批次] 注意：login-preflight 没成功（退出码 2）—— 不阻断（窗口标识页只影响人看不看得懂，不影响数据）。
+[2026-10-05T05:43:03.419Z] --- label:网林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+[2026-10-05T05:43:03.805Z] --- label:网林天猫 退出码=0
+[2026-10-05T05:43:03.805Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+[2026-10-05T05:43:04.199Z] --- label:盖文淘宝 退出码=0
+[2026-10-05T05:43:04.199Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+[2026-10-05T05:43:04.577Z] --- label:盖文天猫 退出码=0
+[2026-10-05T05:43:04.577Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+[2026-10-05T05:43:04.935Z] --- label:科塔淘宝 退出码=0
+[2026-10-05T05:43:04.935Z] --- label:网林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林淘宝
+[2026-10-05T05:43:05.410Z] --- label:网林淘宝 退出码=0
+[2026-10-05T05:43:05.410Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-10-04 --shops 网林天猫,盖文淘宝,盖文天猫,科塔淘宝,网林淘宝 --commit --notify-print --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b1.json --logs evidence\batches-2026-10-04\b1
+[2026-10-05T05:51:39.750Z] --- chain 退出码=1
+[2026-10-05T05:51:39.750Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 网林天猫,盖文淘宝,盖文天猫,科塔淘宝,网林淘宝
+[2026-10-05T05:52:12.430Z] --- stop 退出码=0
+[2026-10-05T05:52:12.430Z] --- 第 1/2 批：网林天猫、盖文淘宝、盖文天猫、科塔淘宝、网林淘宝 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T05:52:12.430Z] --- 第 2/2 批：里可林天猫、网林家居 ---
+[2026-10-05T05:52:12.430Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林天猫,网林家居
+[2026-10-05T05:52:16.860Z] --- start 退出码=0
+[2026-10-05T05:52:16.860Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林天猫,网林家居 --json
+[2026-10-05T05:52:58.755Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b2.json（2091 字节；本批的链会读它）
+[2026-10-05T05:52:58.755Z] --- login-preflight 退出码=0
+[2026-10-05T05:52:58.755Z] --- label:里可林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林天猫
+[2026-10-05T05:52:59.133Z] --- label:里可林天猫 退出码=0
+[2026-10-05T05:52:59.134Z] --- label:网林家居：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林家居
+[2026-10-05T05:52:59.528Z] --- label:网林家居 退出码=0
+[2026-10-05T05:52:59.529Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date 2026-10-04 --shops 里可林天猫,网林家居 --commit --notify-print --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b2.json --logs evidence\batches-2026-10-04\b2
+[2026-10-05T05:55:52.904Z] --- chain 退出码=1
+[2026-10-05T05:55:52.904Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 里可林天猫,网林家居
+[2026-10-05T05:56:06.834Z] --- stop 退出码=0
+[2026-10-05T05:56:06.834Z] --- 第 2/2 批：里可林天猫、网林家居 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T05:56:06.853Z] === 分批跑结束：0/2 批成功；释放 2 批；明细 evidence/batches-2026-10-04/batches.json ===
+[2026-10-05T05:56:06.876Z] --- batch-chain 退出码=1
+[2026-10-05T05:56:06.915Z] === 定时任务结束：全链退出码=1；证据目录 evidence/multi-shop-2026-10-04/ ===
+[2026-10-05T07:30:56.916Z] 版本：sycm-automation 1.7.11
+[2026-10-05T07:30:56.917Z] === 定时任务开始（目标日字面量 yesterday → 2026-10-04）===
+[2026-10-05T07:30:56.917Z] [定时] 分批跑：每批 5 家（跑完释放这一批；链失败则不主动释放）
+[2026-10-05T07:30:56.917Z] [定时] 边界：批次里的 start 是 scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，所以这批窗口活不过本轮命令；「不主动释放」只是「我不去停它」，不等于「窗口还在」。要留窗口给人排查，必须另起 scripts/start-all-hold.mjs 把本批实例托住。
+[2026-10-05T07:30:56.917Z] 日志：D:\Retire\sycm-automation\evidence\daily-job-2026-10-04\job.log
+[2026-10-05T07:30:56.917Z] --- ensure-instances：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 商家浏览器（日报/周表/灰豚）  起前:missing  两样都没有，起一整套
+      已起 browser pid=51940  日志 runtime/start-stop-logs/2026-10-05T07-30-57/dailyReport-browser.log
+      已起 proxy pid=132072  日志 runtime/start-stop-logs/2026-10-05T07-30-57/dailyReport-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+[2026-10-05T07:30:59.582Z] --- ensure-instances 退出码=0
+[2026-10-05T07:30:59.582Z] --- ensure-merchant-login：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\login-merchant.mjs --commit --target sycm --notify auto
+{
+ "proxy": "http://127.0.0.1:19023",
+ "commit": true,
+ "notify": {
+  "mode": "auto",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": true,
+   "href": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  }
+ },
+ "login": null,
+ "session": {
+  "shop": null,
+  "proxyPort": 19023,
+  "judged": false
+ },
+ "verdict": "ALREADY_LOGGED_IN"
+}
+[2026-10-05T07:31:06.678Z] --- ensure-merchant-login 退出码=0
+[2026-10-05T07:31:06.678Z] --- batch-chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date yesterday --batch-size 5 --commit --notify --auto-repair
+[2026-10-05T07:31:06.894Z] 版本：sycm-automation 1.7.11
+[2026-10-05T07:31:06.895Z] === 分批跑开始：目标日 yesterday → 2026-10-04；每批 5 家；共 2 批；模式 commit（会写飞书） ===
+[2026-10-05T07:31:06.895Z] 本批证据根：evidence/batches-2026-10-04
+[2026-10-05T07:31:06.895Z] --- ensure-shared：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[2026-10-05T07:31:07.063Z] --- ensure-shared 退出码=0
+[2026-10-05T07:31:07.063Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 ---
+[2026-10-05T07:31:07.063Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T07:31:15.937Z] --- start 退出码=0
+[2026-10-05T07:31:15.937Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+[2026-10-05T07:33:37.677Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b1.json（4647 字节；本批的链会读它）
+[2026-10-05T07:33:37.678Z] --- login-preflight 退出码=0
+[2026-10-05T07:33:37.678Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+[2026-10-05T07:33:37.984Z] --- label:里可林淘宝 退出码=0
+[2026-10-05T07:33:37.984Z] --- label:网林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+[2026-10-05T07:33:38.245Z] --- label:网林天猫 退出码=0
+[2026-10-05T07:33:38.245Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+[2026-10-05T07:33:38.599Z] --- label:盖文淘宝 退出码=0
+[2026-10-05T07:33:38.599Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+[2026-10-05T07:33:38.983Z] --- label:盖文天猫 退出码=0
+[2026-10-05T07:33:38.984Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+[2026-10-05T07:33:39.257Z] --- label:科塔淘宝 退出码=0
+[2026-10-05T07:33:39.258Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b1.json --logs evidence\batches-2026-10-04\b1
+[2026-10-05T07:40:43.293Z] --- chain 退出码=1
+[2026-10-05T07:40:43.294Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-05T07:41:11.053Z] --- stop 退出码=0
+[2026-10-05T07:41:11.053Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T07:41:11.053Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 ---
+[2026-10-05T07:41:11.053Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T07:41:15.278Z] --- start 退出码=0
+[2026-10-05T07:41:15.278Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 网林淘宝,里可林天猫,网林家居 --json
+[2026-10-05T07:42:30.902Z] --- login-preflight 结论已落 evidence/batches-2026-10-04/login-preflight-b2.json（3178 字节；本批的链会读它）
+[2026-10-05T07:42:30.902Z] --- login-preflight 退出码=3
+[2026-10-05T07:42:30.902Z] [批次] 注意：login-preflight 不是「全在登录态」（退出码 3）—— 不阻断，链的告警会点名是哪家店的哪个后台。
+[2026-10-05T07:42:30.902Z] [批次] 注意：login-preflight 没成功（退出码 3）—— 不阻断（窗口标识页只影响人看不看得懂，不影响数据）。
+[2026-10-05T07:42:30.902Z] --- label:网林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林淘宝
+[2026-10-05T07:42:31.073Z] --- label:网林淘宝 退出码=0
+[2026-10-05T07:42:31.073Z] --- label:里可林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林天猫
+[2026-10-05T07:42:31.233Z] --- label:里可林天猫 退出码=0
+[2026-10-05T07:42:31.233Z] --- label:网林家居：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林家居
+[2026-10-05T07:42:31.512Z] --- label:网林家居 退出码=0
+[2026-10-05T07:42:31.513Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-multi-shop-day.mjs --date yesterday --shops 网林淘宝,里可林天猫,网林家居 --commit --notify --auto-repair --login-preflight D:\Retire\sycm-automation\evidence\batches-2026-10-04\login-preflight-b2.json --logs evidence\batches-2026-10-04\b2
+[2026-10-05T07:45:46.530Z] --- chain 退出码=1
+[2026-10-05T07:45:46.530Z] --- stop：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 网林淘宝,里可林天猫,网林家居
+[2026-10-05T07:46:03.283Z] --- stop 退出码=0
+[2026-10-05T07:46:03.283Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口
+[2026-10-05T07:46:03.288Z] === 分批跑结束：0/2 批成功；释放 2 批；明细 evidence/batches-2026-10-04/batches.json ===
+[2026-10-05T07:46:03.313Z] --- batch-chain 退出码=1
+[2026-10-05T07:46:03.314Z] === 定时任务结束：全链退出码=1；证据目录 evidence/multi-shop-2026-10-04/ ===

@@ -1,0 +1,103 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-09-28_2026-09-28 (1).xls",
+  "shop": "网林天猫",
+  "sourceRows": 15,
+  "existingRows": 4927,
+  "plannedRows": 15,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "944130346200"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "1071284033110"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "1072247628377"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "1083847067443"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "1083847599252"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "1060913369469"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "922798558877"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "923336705176"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "949986121977"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "955514866223"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "976064603975"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "976593634003"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "977271829805"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "983637449275"
+    },
+    {
+      "date": "2026-09-28",
+      "shop": "网林天猫",
+      "productId": "1003593529956"
+    }
+  ],
+  "recordIds": [
+    "reczz28HNtbgYnlL",
+    "reczz28HNtbgXWtO",
+    "reczz28HNtbgXvgv",
+    "reczz28HNtbgXWGI",
+    "reczz28HNtbgXShY",
+    "reczz28HNtbgZaEM",
+    "reczz28HNtbgYfr3",
+    "reczz28HNtbgY3Il",
+    "reczz28HNtbgXJXZ",
+    "reczz28HNtbgaeJ9",
+    "reczz28HNtbgY7cb",
+    "reczz28HNtbgZYsq",
+    "reczz28HNtbgaZpT",
+    "reczz28HNtbga9si",
+    "reczz28HNtbgZPhl"
+  ],
+  "afterRows": 4942
+}

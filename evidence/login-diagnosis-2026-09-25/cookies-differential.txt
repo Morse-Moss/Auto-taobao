@@ -1,0 +1,26 @@
+只读：各 profile 的 Cookies 库里还剩哪些 taobao/tmall/alimama 会话标记
+（只读 name/host/过期/是否持久，不读值）
+时间：2026-09-25 22:41 (+08)
+探针：probe-cookies-differential.mjs（node --experimental-sqlite）
+
+== 网林天猫（原库）taobao/tmall/alimama cookie 共 45 条
+   sgcookie           .taobao.com              持久=1 有过期=1 到期=2027-09-23
+   _tb_token_         .alimama.com / .taobao.com / one.alimama.com
+   cookie2            .alimama.com / .taobao.com
+   lgc                .alimama.com
+   sn                 .alimama.com        ← 只有阿里妈妈有，.taobao.com 上没有
+   （没有 unb；没有任何 .tmall.com / .tmall.hk 的 cookie）
+
+== 里可林淘宝（原库）共 94 条
+   sn / unb / cookie2 / lgc / _tb_token_ / cancelledSubSites 在 .taobao.com、.tmall.com、.tmall.hk 上齐
+   sgcookie .taobao.com 到期 2027-09-25
+
+== 盖文淘宝（原库）共 96 条      同里可林，sn/unb 齐
+== 盖文天猫（原库）共 95 条      同里可林，sn/unb 齐
+== 科塔淘宝（原库）共 95 条      同里可林，sn/unb 齐
+== 商家浏览器（原库）共 87 条    sn/unb 齐
+
+判据解读：`sn`（主账号:子账号）与 `unb`（数字账号 id）是这两个站点的身份键。
+网林天猫连身份键都没有 ⇒ 它的登录态是真的不在了；其余四家在磁盘上仍有身份键。
+注意：四家「磁盘上还有身份键」只是**暗示**下次启动可能仍是登录态（预测），不是事实 ——
+真正算数的是浏览器起来之后由预检读出来的结果。

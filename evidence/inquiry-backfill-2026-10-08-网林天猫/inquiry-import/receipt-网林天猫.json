@@ -1,0 +1,41 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\inquiry-backfill-2026-10-08-网林天猫\\inquiry.xls",
+  "shop": "网林天猫",
+  "date": "2026-10-08",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 4,
+  "existingRows": 177,
+  "plannedRows": 4,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-08",
+      "productId": "1060913369469",
+      "shop": "网林天猫"
+    },
+    {
+      "date": "2026-10-08",
+      "productId": "977271829805",
+      "shop": "网林天猫"
+    },
+    {
+      "date": "2026-10-08",
+      "productId": "923336705176",
+      "shop": "网林天猫"
+    },
+    {
+      "date": "2026-10-08",
+      "productId": "976064603975",
+      "shop": "网林天猫"
+    }
+  ],
+  "recordIds": [
+    "reczz28L9pF10Mmp",
+    "reczz28L9pF11nV9",
+    "reczz28L9pF1114m",
+    "reczz28L9pF10fcm"
+  ],
+  "afterRows": 181
+}

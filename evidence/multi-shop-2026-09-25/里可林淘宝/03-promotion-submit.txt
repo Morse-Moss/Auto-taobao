@@ -1,0 +1,19 @@
+
+===== 2026-09-26T00:17:48.764Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase submit --date 2026-09-25 --proxy http://127.0.0.1:19041 --expect-shop 里可林家居 --expect-member 里可林家居:阿彦 --expect-member-id 2350600069
+exit=0 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 BE25C7102931C8A9E83EB9C1EB0EC71B｜phase=submit｜目标日 2026-09-25
+[身份] 阿里妈妈会员 = "里可林家居:阿彦" ID="2350600069"（这一页不显示店铺名，只有会员名）｜期望 "里可林家居:阿彦" / 2350600069 ✓
+[submit] 台账里没有 2026-09-25 这家店的未取任务 ⇒ 照常提交
+[submit] 页面 = https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-09-25&endTime=2026-09-25&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day&isRequestedQztDefaultSet=1｜正文 3330 字符
+[submit] 候选 1 个，取文档序第一个（SPAN，其可点祖先是 BUTTON，点击靠冒泡触发）
+[遮挡] 全屏层 DIV#wrapper_dlg_2936(data-owner-id=universalBP_tool_auto_dlg) z=99999，rect=[0,0,1442,686]，层内可点小控件 20/20 个，选中 SPAN#mx_2939「」于 (1167,167)，已按黑名单排除 ["一键报名"]
+[遮挡] 关后回读：全屏层剩 0 个｜目标可点=true ⇒ 已关掉
+[submit] 滚动后复核通过（y=337（中心点命中））→ 点击 → {"clicked":true,"tag":"SPAN","text":"下载报表"}
+[submit] 等到「确定」(#0)，第 2 次轮询命中｜视口 [1442,686]｜确定@[463,601,24,12]可点 取消@[523,591,64,32]可点 → {"clicked":true,"tag":"SPAN","text":"确定"}
+[submit] 提交后提示 = ""
+[submit] promotionTaskName = 营销场景报表_20260926_081805（列表里恰好多出 1 条：营销场景报表_20260926_081805；台账已记：D:\Retire\sycm-automation\runtime\promotion-task-ledger.json）
+[submit] 下一步：等它「生成成功」后跑 --phase fetch（提示语里说数据量大时最长 10 分钟）
+
+--- stderr ---

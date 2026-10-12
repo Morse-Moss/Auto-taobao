@@ -1,0 +1,21 @@
+
+===== 2026-09-29T13:48:20.048Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-inquiry-backfill.mjs --date 2026-09-28 --proxy http://127.0.0.1:19042 --source-shop 网林家居旗舰店 --shop 网林天猫 --shop-key 网林天猫 --commit
+exit=0 signal= error=none
+--- stdout ---
+[身份] 生意参谋页头 = "网林家居旗舰店"（原始 "网林家居旗舰店 主店"）｜期望 "网林家居旗舰店" ✓
+[店铺] "网林天猫" → 选项 id "optUKhpHUN"
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-28-网林天猫\\inquiry-backfill-receipt.json",
+  "recordId": "reczz28HKFEfr5Jr",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-28-网林天猫",
+  "values": {
+    "询单量": 4,
+    "同层同行询单量": 13
+  },
+  "unchangedOtherFields": true
+}
+
+--- stderr ---
+[audit] 未写入（不影响本次结论）：append failed: connect ECONNREFUSED 127.0.0.1:5432

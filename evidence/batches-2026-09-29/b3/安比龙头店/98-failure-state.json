@@ -1,0 +1,688 @@
+{
+  "value": {
+    "capturedAt": "2026-09-30T10:29:36.729Z",
+    "url": "https://one.alimama.com/index.html#!/report/download-list",
+    "title": "下载任务管理_万相台无界版",
+    "viewport": {
+      "w": 1506,
+      "h": 642,
+      "dpr": 1.25,
+      "scrollY": 0
+    },
+    "visibleText": "首页 推广  报表  洞察  创意  工具  账户  AI小万  新人手册  快捷入口  消息中心 tb720555516:泡芙 ID：4611324807  基础报表  场景结案  下载管理   场景结案下载  下载任务管理  下载任务管理  2026-08-31 至 今日   当任务包含较大数据量时，生成完成最长需要10分钟，您可以稍后点击报表页面右上角【下载任务管理】，查看生成结果并下载。注意：下载的文件中数据行随机排序，数据本身完整且正确，您可手动在EXCEL中调整为所需顺序。相应字段计算公式分母为0时，下载数据报表中显示 \\N ，对应报表页面中字段展示为 - ，并非系统bug。 刷新表格 批量删除 状态 文件名称 归因周期 日期范围 创建日期 生成成功 营销场景报表_20260930_165425 30天累计数据 2026-09-29至2026-09-29 2026-09-30 下载 删除 生成成功 营销场景报表_20260921_102627 30天累计数据 2026-09-14至2026-09-20 2026-09-21 生成成功 商品报表_20260919_000707 30天累计数据 2026-08-20至2026-09-18 2026-09-19 共 3 项数据 20条/页   1  跳至 页 跳转 关于阿里妈妈 联系客服 开放平台 廉正举报 意见反馈 举报中心 法律声明及隐私权政策 © 2007-现在 阿里妈妈版权所有 浙公网安备 33010002000075号 增值电信业务经营许可证：浙B2-20070195 在线客服 直播带教 抢跑双11-非标场景推广与大促关键词攻防  有新消息 消息中心 更多消息 日常公告 系统消息 上线 「万相点睛」突破传统局限，精准捕获蓝海机会！ 上线 低效品不再愁！货品全站推“安心转投”全量上线，智能托管助力店铺ROI稳步提升 升级 拿量更有底气！货品全站推全店「成本保障」正式上线，智能赔付让拿量更安心！ 上线 解锁全店分组新玩法！多计划组独立调控，精准分配预算，让每一分投入都更高效！ 升级 商家必备神器！试试最大化拿量「周期套餐包」！智能分配预算，拿量更稳更久！ 1秒后关闭浮层 立即关闭  规则 30 营销服务 精准投流  + 权益投放  + 营销场域   当您勾选营销服务后，平台会动态智能调控/报入营销活动，保障商品全域GMV最大化 查看推广氛围 + 添加商品 3 / 30 商品按照优惠价*费率进行扣费，多sku商品按sku优惠价生效，修改优惠价，可前往「万相贯通」添加商品页面 商品 设置优惠价 设置商品费率 全部移除 冷启商品 多档费率加速商品冷启 安比全铜暗装浴室淋浴龙头家用酒店浴缸边冷热双控水龙头手持花洒 商品ID:834578708173 758元~868元 前5单： % · 限5单 高费率提转化 流量助推   投产比2.5，每单托管成本 303.2 元 销量累计期 5单以上： % · 不限单数 推荐  投产比6.7  待冷启商品渡过冷启销量累积期后将展示周期订单预估  移除 冷启商品 多档费率加速商品冷启 安比落地式缸边龙头酒店浴室浴缸单把双控冷热水全铜龙头花洒套装 商品ID:809148462788 910元~1318元 前5单： % · 限5单 高费率提转化 流量助推   投产比2.5，每单托管成本 364 元 销量累计期 5单以上： % · 不限单数 推荐  投产比6.7  待冷启商品渡过冷启销量累积期后将展示周期订单预估  移除 安比全铜落地式浴缸龙头立式卫生间浴室缸边冷热水龙头花洒套装 商品ID:808846051596 极速爆单 818元~1068元 30%  投产比 3.3 ， 预估成交订单量 8~12 极速爆单+2% 推荐 自定义费率 % 移除 已阅读并同意 《万相贯通软件服务协议（原淘宝营销托管服务协议）》 0元开启",
+    "dialogs": [],
+    "interactive": [
+      {
+        "tag": "A",
+        "id": null,
+        "text": "",
+        "cls": "",
+        "rect": {
+          "x": 24,
+          "y": 13,
+          "w": 253,
+          "h": 32
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "首页",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 289,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "推广",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 357,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "报表",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 445,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "洞察",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 533,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "创意",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 621,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "工具",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 709,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "账户",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 797,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": " 新人手册",
+        "cls": "wO_WXasbiF wO_WXasbiH",
+        "rect": {
+          "x": 1122,
+          "y": 7,
+          "w": 56,
+          "h": 44
+        }
+      },
+      {
+        "tag": "A",
+        "id": "mx_407_pop",
+        "text": " 消息中心",
+        "cls": "icQRQlrwb mxgc-popover",
+        "rect": {
+          "x": 1262,
+          "y": 10,
+          "w": 48,
+          "h": 38
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "基础报表 ",
+        "cls": "bXMILLqiFi   parent-close ",
+        "rect": {
+          "x": 16,
+          "y": 74,
+          "w": 80,
+          "h": 20
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "场景结案 ",
+        "cls": "bXMILLqiFi   parent-close ",
+        "rect": {
+          "x": 16,
+          "y": 110,
+          "w": 80,
+          "h": 20
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "下载管理 ",
+        "cls": "bXMILLqiFi  bXMILLqiFl   bXMILLqiFm ",
+        "rect": {
+          "x": 16,
+          "y": 146,
+          "w": 80,
+          "h": 20
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": " 场景结案下载",
+        "cls": "bXMILLqiFn   child-expand ",
+        "rect": {
+          "x": 16,
+          "y": 174,
+          "w": 80,
+          "h": 44
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": " 下载任务管理",
+        "cls": "bXMILLqiFn  bXMILLqiFr   child-expand ",
+        "rect": {
+          "x": 16,
+          "y": 226,
+          "w": 80,
+          "h": 44
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "刷新表格",
+        "cls": "asiYysfaaV    asiYysfabb-normal asiYysfabb-custom  ",
+        "rect": {
+          "x": 136,
+          "y": 211,
+          "w": 74,
+          "h": 32
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "批量删除",
+        "cls": "asiYysfaaV    asiYysfabf  asiYysfabb-normal asiYysfabb-custom  ",
+        "rect": {
+          "x": 226,
+          "y": 211,
+          "w": 74,
+          "h": 32
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载",
+        "cls": "asiYysfaaV    asiYysfabb-small asiYysfabb-custom-gradient  ",
+        "rect": {
+          "x": 136,
+          "y": 370,
+          "w": 50,
+          "h": 24
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "删除",
+        "cls": "asiYysfaaV    asiYysfabb-small asiYysfabb-custom  ",
+        "rect": {
+          "x": 197,
+          "y": 370,
+          "w": 50,
+          "h": 24
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "",
+        "cls": "mx-iconfont-line asiYysfazI  asiYysfazK ",
+        "rect": {
+          "x": 1208,
+          "y": 501,
+          "w": 16,
+          "h": 32
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "1",
+        "cls": "asiYysfazL asiYysfazH asiYysfazM",
+        "rect": {
+          "x": 1232,
+          "y": 501,
+          "w": 32,
+          "h": 32
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "",
+        "cls": "mx-iconfont-line asiYysfazI  asiYysfazK ",
+        "rect": {
+          "x": 1272,
+          "y": 501,
+          "w": 16,
+          "h": 32
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "跳转",
+        "cls": "asiYysfaaV    asiYysfabb-normal asiYysfabb-custom  ",
+        "rect": {
+          "x": 1392,
+          "y": 501,
+          "w": 64,
+          "h": 32
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "关于阿里妈妈",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 532,
+          "y": 573,
+          "w": 80,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "联系客服",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 612,
+          "y": 573,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "开放平台",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 676,
+          "y": 573,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "廉正举报",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 740,
+          "y": 573,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "意见反馈",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 804,
+          "y": 573,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "举报中心",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 868,
+          "y": 573,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "法律声明及隐私权政策",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 932,
+          "y": 573,
+          "w": 128,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 765,
+          "y": 601,
+          "w": 36,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "浙公网安备 33010002000075号",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 801,
+          "y": 601,
+          "w": 206,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "增值电信业务经营许可证：浙B2-20070195",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 680,
+          "y": 629,
+          "w": 232,
+          "h": 28
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": "mx_2777",
+        "text": "",
+        "cls": " asiYysfagz  mxgc-btn-link",
+        "rect": {
+          "x": 1243,
+          "y": 24,
+          "w": 16,
+          "h": 16
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": "mx_2781",
+        "text": "",
+        "cls": "asiYysfabs  asiYysfabr  ",
+        "rect": {
+          "x": 1243,
+          "y": 24,
+          "w": 16,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "规则",
+        "cls": "dZGuKQnPRV fl",
+        "rect": {
+          "x": 219,
+          "y": 24,
+          "w": 36,
+          "h": 24
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "+ 添加商品 3 / 30",
+        "cls": "dZGuKQnPW    dZGuKQnPac-normal dZGuKQnPac-custom-gradient  ",
+        "rect": {
+          "x": 533,
+          "y": 164,
+          "w": 123,
+          "h": 32
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "安比全铜暗装浴室淋浴龙头家用酒店浴缸边冷热双控水龙头手持花洒",
+        "cls": "dZGuKQnPND color-3",
+        "rect": {
+          "x": 615,
+          "y": 360,
+          "w": 170,
+          "h": 24
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "安比落地式缸边龙头酒店浴室浴缸单把双控冷热水全铜龙头花洒套装",
+        "cls": "dZGuKQnPND color-3",
+        "rect": {
+          "x": 615,
+          "y": 564,
+          "w": 170,
+          "h": 24
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "安比全铜落地式浴缸龙头立式卫生间浴室缸边冷热水龙头花洒套装",
+        "cls": "dZGuKQnPND color-3",
+        "rect": {
+          "x": 615,
+          "y": 708,
+          "w": 170,
+          "h": 24
+        }
+      }
+    ],
+    "domSummary": {
+      "totalElements": 1509,
+      "counts": {
+        "HTML": 1,
+        "HEAD": 1,
+        "META": 8,
+        "TITLE": 1,
+        "LINK": 3,
+        "STYLE": 175,
+        "SCRIPT": 29,
+        "BODY": 1,
+        "svg": 1,
+        "symbol": 183,
+        "path": 284,
+        "DIV": 291,
+        "A": 58,
+        "IMG": 16,
+        "I": 65,
+        "SPAN": 290,
+        "BUTTON": 12,
+        "TABLE": 4,
+        "THEAD": 2,
+        "TR": 11,
+        "TH": 10,
+        "INPUT": 13,
+        "COLGROUP": 2,
+        "COL": 10,
+        "TBODY": 2,
+        "TD": 33,
+        "IFRAME": 1,
+        "LABEL": 2
+      },
+      "containers": [
+        {
+          "tag": "DIV",
+          "id": "app",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1496,
+            "h": 685
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "universalBP_punish",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1496,
+            "h": 0
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "universalBP_common_topbar",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1496,
+            "h": 0
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "universalBP_common_layout",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1496,
+            "h": 685
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_61",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1496,
+            "h": 58
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_74",
+          "cls": "asiYysfatH",
+          "rect": {
+            "x": 1066,
+            "y": 7,
+            "w": 405,
+            "h": 44
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "ai_analyst_entrance",
+          "cls": "",
+          "rect": {
+            "x": 1066,
+            "y": 7,
+            "w": 44,
+            "h": 44
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "ai_analyst_entrance_xiaowan_entrance",
+          "cls": "",
+          "rect": {
+            "x": 1066,
+            "y": 7,
+            "w": 44,
+            "h": 44
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_1184",
+          "cls": " ivthphhSa_M",
+          "rect": {
+            "x": 1066,
+            "y": 7,
+            "w": 44,
+            "h": 44
+          }
+        },
+        {
+          "tag": "SPAN",
+          "id": "mx_2439",
+          "cls": "mxgc-icon mxgc-iconfont-wrapper",
+          "rect": {
+            "x": 1079,
+            "y": 10,
+            "w": 18,
+            "h": 18
+          }
+        }
+      ]
+    },
+    "tables": [
+      {
+        "rows": 0,
+        "cols": 6,
+        "rect": {
+          "x": 112,
+          "y": 260,
+          "w": 1368,
+          "h": 60
+        },
+        "visible": true
+      },
+      {
+        "rows": 6,
+        "cols": 6,
+        "rect": {
+          "x": 112,
+          "y": 320,
+          "w": 1368,
+          "h": 165
+        },
+        "visible": true
+      },
+      {
+        "rows": 0,
+        "cols": 4,
+        "rect": {
+          "x": 533,
+          "y": 209,
+          "w": 1060,
+          "h": 60
+        },
+        "visible": true
+      },
+      {
+        "rows": 3,
+        "cols": 4,
+        "rect": {
+          "x": 533,
+          "y": 269,
+          "w": 1060,
+          "h": 526
+        },
+        "visible": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{"at":"2026-09-27T04:31:35.632Z","event":"PROXY_READY","browser":"edge-daily-report"}
+{"at":"2026-09-27T04:31:35.633Z","event":"START","tableId":"tblZm3TgV4V1IhZw","tableName":"关键词分析 V1（2026-09-26）","apply":false}
+{"at":"2026-09-27T04:31:41.128Z","event":"QUEUE_READY","candidates":1,"keywords":["新型泡澡浴缸"]}
+{"at":"2026-09-27T04:31:45.194Z","event":"PLATFORM_READY","platform":"灰豚数据红薯版"}
+{"at":"2026-09-27T04:31:49.628Z","event":"TOPIC_ENTRY_CLICKED","attempt":1,"x":96,"y":350}
+{"at":"2026-09-27T04:31:49.773Z","event":"TOPIC_SEARCH_READY","url":"https://xhs.huitun.com/#/anchor/anchor_topic"}
+{"at":"2026-09-27T04:31:49.774Z","event":"QUERY_STARTED","keyword":"新型泡澡浴缸"}
+{"at":"2026-09-27T04:31:52.786Z","event":"QUERY_DONE","keyword":"新型泡澡浴缸","status":"NO_EXACT_TOPIC","topic":null,"viewsRaw":"没有找到话题~~点击这里","views":0}
+{"at":"2026-09-27T04:31:52.787Z","event":"RESULTS_WRITTEN","resultsPath":"D:\\Retire\\sycm-automation\\evidence\\weekly-real-2026-09-27\\huitun-rerun\\20260927T043135Z-关键词分析-V1-2026-09-26\\results.json","count":1}
+{"at":"2026-09-27T04:31:55.344Z","event":"DRY_RUN_READY","plannedRecordUpdates":1,"runDir":"D:\\Retire\\sycm-automation\\evidence\\weekly-real-2026-09-27\\huitun-rerun\\20260927T043135Z-关键词分析-V1-2026-09-26"}

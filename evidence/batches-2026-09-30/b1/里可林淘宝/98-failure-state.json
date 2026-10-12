@@ -1,0 +1,560 @@
+{
+  "value": {
+    "capturedAt": "2026-10-01T07:36:05.025Z",
+    "url": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "title": "生意参谋",
+    "viewport": {
+      "w": 1506,
+      "h": 642,
+      "dpr": 1.25,
+      "scrollY": 0
+    },
+    "visibleText": "生意参谋 官方动态 从流量到客户，生意参谋5.0重磅升级 商品价格分析，发挥价格优势 内容升级，像商品一样运营内容 常见问题 客户板块新手使用指南 生意参谋数据违规处罚规则 生意参谋普惠降费常见问题 成功故事 “客户为王”时代下的经营变革 全新客户视角，解锁6大运营新思路 生意参谋数据化运营案例 阿里巴巴集团|阿里巴巴国际站|阿里巴巴中国站|全球速卖通|淘宝网|天猫|聚划算|一淘|阿里妈妈|阿里云计算|云OS|万网|中国雅虎|支付宝 增值电信业务经营许可证：浙B2-20080224关于淘宝合作伙伴营销中心联系客服开放平台诚征英才联系我们网站地图法律声明© 2019 Taobao.com 版权所有",
+    "dialogs": [],
+    "interactive": [
+      {
+        "tag": "A",
+        "id": null,
+        "text": "",
+        "cls": "bg",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1491,
+          "h": 500
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "从流量到客户，生意参谋5.0重磅升级",
+        "cls": "",
+        "rect": {
+          "x": 146,
+          "y": 576,
+          "w": 197,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "商品价格分析，发挥价格优势",
+        "cls": "",
+        "rect": {
+          "x": 146,
+          "y": 602,
+          "w": 156,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "内容升级，像商品一样运营内容",
+        "cls": "",
+        "rect": {
+          "x": 146,
+          "y": 628,
+          "w": 168,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "客户板块新手使用指南",
+        "cls": "",
+        "rect": {
+          "x": 572,
+          "y": 576,
+          "w": 120,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "生意参谋数据违规处罚规则",
+        "cls": "",
+        "rect": {
+          "x": 572,
+          "y": 602,
+          "w": 144,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "生意参谋普惠降费常见问题",
+        "cls": "",
+        "rect": {
+          "x": 572,
+          "y": 628,
+          "w": 144,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "“客户为王”时代下的经营变革",
+        "cls": "",
+        "rect": {
+          "x": 998,
+          "y": 576,
+          "w": 168,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "全新客户视角，解锁6大运营新思路",
+        "cls": "",
+        "rect": {
+          "x": 998,
+          "y": 602,
+          "w": 187,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "生意参谋数据化运营案例",
+        "cls": "",
+        "rect": {
+          "x": 998,
+          "y": 628,
+          "w": 132,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "阿里巴巴集团",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 335,
+          "y": 700,
+          "w": 72,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "阿里巴巴国际站",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 419,
+          "y": 700,
+          "w": 84,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "阿里巴巴中国站",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 515,
+          "y": 700,
+          "w": 84,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "全球速卖通",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 611,
+          "y": 700,
+          "w": 60,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "淘宝网",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 683,
+          "y": 700,
+          "w": 36,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "天猫",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 731,
+          "y": 700,
+          "w": 24,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "聚划算",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 767,
+          "y": 700,
+          "w": 36,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "一淘",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 815,
+          "y": 700,
+          "w": 24,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "阿里妈妈",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 851,
+          "y": 700,
+          "w": 48,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "阿里云计算",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 911,
+          "y": 700,
+          "w": 60,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "云OS",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 984,
+          "y": 700,
+          "w": 29,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "万网",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 1024,
+          "y": 700,
+          "w": 24,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "中国雅虎",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 1061,
+          "y": 700,
+          "w": 48,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "支付宝",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 1121,
+          "y": 700,
+          "w": 36,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "浙B2-20080224",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 438,
+          "y": 718,
+          "w": 88,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "关于淘宝",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 534,
+          "y": 718,
+          "w": 48,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "合作伙伴",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 590,
+          "y": 718,
+          "w": 48,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "营销中心",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 646,
+          "y": 718,
+          "w": 48,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "联系客服",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 702,
+          "y": 718,
+          "w": 48,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "开放平台",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 758,
+          "y": 718,
+          "w": 48,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "诚征英才",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 814,
+          "y": 718,
+          "w": 48,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "联系我们",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 870,
+          "y": 718,
+          "w": 48,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "网站地图",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 926,
+          "y": 718,
+          "w": 48,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "法律声明",
+        "cls": "ebase-link-third",
+        "rect": {
+          "x": 982,
+          "y": 718,
+          "w": 48,
+          "h": 16
+        }
+      }
+    ],
+    "domSummary": {
+      "totalElements": 292,
+      "counts": {
+        "HTML": 1,
+        "HEAD": 1,
+        "STYLE": 165,
+        "SCRIPT": 17,
+        "META": 8,
+        "TITLE": 1,
+        "LINK": 2,
+        "BODY": 1,
+        "DIV": 29,
+        "H1": 1,
+        "SPAN": 5,
+        "A": 34,
+        "IMG": 1,
+        "IFRAME": 1,
+        "UL": 3,
+        "LI": 9,
+        "B": 13
+      },
+      "containers": [
+        {
+          "tag": "BODY",
+          "id": null,
+          "cls": "esycm-wrapper login-page-new",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1491,
+            "h": 642
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "app",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1491,
+            "h": 642
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "carousel-content",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1491,
+            "h": 500
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "login-new-top-container",
+          "rect": {
+            "x": 126,
+            "y": 95,
+            "w": 1240,
+            "h": 310
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "login-new-top-container-input",
+          "rect": {
+            "x": 1006,
+            "y": 95,
+            "w": 360,
+            "h": 310
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "alibaba-login-iframe",
+          "cls": "iframe-loaded",
+          "rect": {
+            "x": 1036,
+            "y": 119,
+            "w": 300,
+            "h": 246
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "alibaba-login-iframe-loading",
+          "cls": "",
+          "rect": {
+            "x": 1036,
+            "y": 119,
+            "w": 300,
+            "h": 0
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "help-container",
+          "rect": {
+            "x": 126,
+            "y": 518,
+            "w": 388,
+            "h": 151
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "help-container-title",
+          "rect": {
+            "x": 146,
+            "y": 538,
+            "w": 348,
+            "h": 33
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "help-container",
+          "rect": {
+            "x": 552,
+            "y": 518,
+            "w": 388,
+            "h": 151
+          }
+        }
+      ]
+    },
+    "tables": []
+  }
+}

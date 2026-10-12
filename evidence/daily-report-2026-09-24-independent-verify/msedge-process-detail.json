@@ -1,0 +1,160 @@
+{
+  "at": "2026-09-25T14:31:47.244Z",
+  "atLocal": "2026-09-25 22:31:47",
+  "count": 13,
+  "error": null,
+  "mains": [
+    {
+      "pid": 64332,
+      "ppid": 18476,
+      "created": "/Date(1790122132326)/",
+      "profile": null,
+      "type": "main",
+      "remoteDebugPort": null,
+      "cmdLen": 124,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --flag-switches-begin --flag-switches-end --no-startup-window"
+    },
+    {
+      "pid": 48328,
+      "ppid": 14356,
+      "created": "/Date(1790254281029)/",
+      "profile": "D:/Retire/edge-profiles/suixin-custom",
+      "type": "main",
+      "remoteDebugPort": 19033,
+      "cmdLen": 176,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --user-data-dir=D:/Retire/edge-profiles/suixin-custom --remote-debugging-port=19033 --disable-sync --no-first-run"
+    }
+  ],
+  "all": [
+    {
+      "pid": 64332,
+      "ppid": 18476,
+      "created": "/Date(1790122132326)/",
+      "profile": null,
+      "type": "main",
+      "remoteDebugPort": null,
+      "cmdLen": 124,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --flag-switches-begin --flag-switches-end --no-startup-window"
+    },
+    {
+      "pid": 55520,
+      "ppid": 64332,
+      "created": "/Date(1790122132428)/",
+      "profile": "C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User",
+      "type": "crashpad-handler",
+      "remoteDebugPort": null,
+      "cmdLen": 664,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --type=crashpad-handler \"--user-data-dir=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data\" /prefetch:4 --monitor-self-annotation=ptype=crashpad-handler \"--database=C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\Edge\\User Data\\Crashpad\" --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=150.0.7871.115 \"--annotation=exe=C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --annotation=plat=Win64 --annotation=prod=Edge --annotation=ver=150.0.4078.65 --initial-client-data=0x264,0x268,0x26c,0x260,0x120,0x7ff9f62edcf0,0x7ff9f62edcfc,0x7ff9f62edd08"
+    },
+    {
+      "pid": 33500,
+      "ppid": 64332,
+      "created": "/Date(1790122132718)/",
+      "profile": null,
+      "type": "gpu-process",
+      "remoteDebugPort": null,
+      "cmdLen": 618,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --type=gpu-process --gpu-preferences=UAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAOAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAABgAAAAAAAAAGAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --startup-read-main-dll --metrics-shmem-handle=2708,i,9199678704252569258,12998027182243978149,262144 --field-trial-handle=3096,i,4195067978815950321,6056177949798070680,262144 --variations-seed-version --pseudonymization-salt-handle=3136,i,4293197061496483789,2798025359240394588,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=3196 /prefetch:2"
+    },
+    {
+      "pid": 58496,
+      "ppid": 64332,
+      "created": "/Date(1790122132726)/",
+      "profile": null,
+      "type": "utility",
+      "remoteDebugPort": null,
+      "cmdLen": 545,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=zh-CN --service-sandbox-type=none --startup-read-main-dll --metrics-shmem-handle=3376,i,15574285854512252977,4567224247637134460,524288 --field-trial-handle=3096,i,4195067978815950321,6056177949798070680,262144 --variations-seed-version --pseudonymization-salt-handle=3136,i,4293197061496483789,2798025359240394588,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=3320 /prefetch:11"
+    },
+    {
+      "pid": 31520,
+      "ppid": 64332,
+      "created": "/Date(1790122132787)/",
+      "profile": null,
+      "type": "utility",
+      "remoteDebugPort": null,
+      "cmdLen": 549,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=zh-CN --service-sandbox-type=service --startup-read-main-dll --metrics-shmem-handle=3324,i,17072894382285512222,12906361371975001335,524288 --field-trial-handle=3096,i,4195067978815950321,6056177949798070680,262144 --variations-seed-version --pseudonymization-salt-handle=3136,i,4293197061496483789,2798025359240394588,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=3736 /prefetch:13"
+    },
+    {
+      "pid": 34968,
+      "ppid": 64332,
+      "created": "/Date(1790122192721)/",
+      "profile": null,
+      "type": "utility",
+      "remoteDebugPort": null,
+      "cmdLen": 607,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --type=utility --utility-sub-type=compatibility_weboc.mojom.CompatibilityService --lang=zh-CN --service-sandbox-type=none --video-capture-use-gpu-memory-buffer --ssd-no-pressure-read-main-dll --metrics-shmem-handle=7724,i,8212163536988878557,804284524039836190,524288 --field-trial-handle=3096,i,4195067978815950321,6056177949798070680,262144 --variations-seed-version --pseudonymization-salt-handle=3136,i,4293197061496483789,2798025359240394588,4 --trace-process-track-uuid=3190708996619331833 --mojo-platform-channel-handle=7792 /prefetch:14"
+    },
+    {
+      "pid": 63788,
+      "ppid": 64332,
+      "created": "/Date(1790126160131)/",
+      "profile": null,
+      "type": "utility",
+      "remoteDebugPort": null,
+      "cmdLen": 651,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --type=utility --utility-sub-type=edge_search_indexer.mojom.SearchIndexerInterfaceBroker --lang=zh-CN --service-sandbox-type=search_indexer --message-loop-type-ui --video-capture-use-gpu-memory-buffer --ssd-no-pressure-read-main-dll --metrics-shmem-handle=8212,i,12152319257567105755,12585556940716171206,524288 --field-trial-handle=3096,i,4195067978815950321,6056177949798070680,262144 --variations-seed-version --pseudonymization-salt-handle=3136,i,4293197061496483789,2798025359240394588,4 --trace-process-track-uuid=3190709005052708474 --mojo-platform-channel-handle=8564 /prefetch:14"
+    },
+    {
+      "pid": 41048,
+      "ppid": 64332,
+      "created": "/Date(1790132034366)/",
+      "profile": null,
+      "type": "utility",
+      "remoteDebugPort": null,
+      "cmdLen": 580,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --type=utility --utility-sub-type=audio.mojom.AudioService --lang=zh-CN --service-sandbox-type=audio --video-capture-use-gpu-memory-buffer --skip-read-main-dll --metrics-shmem-handle=10392,i,17884563928653368861,15103987135163271776,524288 --field-trial-handle=3096,i,4195067978815950321,6056177949798070680,262144 --variations-seed-version --pseudonymization-salt-handle=3136,i,4293197061496483789,2798025359240394588,4 --trace-process-track-uuid=3190709017234252511 --mojo-platform-channel-handle=10368 /prefetch:12"
+    },
+    {
+      "pid": 42448,
+      "ppid": 64332,
+      "created": "/Date(1790132034366)/",
+      "profile": null,
+      "type": "utility",
+      "remoteDebugPort": null,
+      "cmdLen": 593,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --type=utility --utility-sub-type=video_capture.mojom.VideoCaptureService --lang=zh-CN --service-sandbox-type=none --video-capture-use-gpu-memory-buffer --skip-read-main-dll --metrics-shmem-handle=10404,i,17562387733181262024,8760713869388602859,524288 --field-trial-handle=3096,i,4195067978815950321,6056177949798070680,262144 --variations-seed-version --pseudonymization-salt-handle=3136,i,4293197061496483789,2798025359240394588,4 --trace-process-track-uuid=3190709018171294360 --mojo-platform-channel-handle=10444 /prefetch:14"
+    },
+    {
+      "pid": 53244,
+      "ppid": 64332,
+      "created": "/Date(1790215508604)/",
+      "profile": null,
+      "type": "renderer",
+      "remoteDebugPort": null,
+      "cmdLen": 731,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --type=renderer --pdf-upsell-enabled --video-capture-use-gpu-memory-buffer --lang=zh-CN --js-flags --device-scale-factor=1.75 --num-raster-threads=3 --enable-main-frame-before-activation --renderer-client-id=124 --time-ticks-at-unix-epoch=-1789694227440239 --launch-time-ticks=521283002033 --skip-read-main-dll --metrics-shmem-handle=13708,i,10009517732451020802,13859983062591085698,2097152 --field-trial-handle=3096,i,4195067978815950321,6056177949798070680,262144 --variations-seed-version --pseudonymization-salt-handle=3136,i,4293197061496483789,2798025359240394588,4 --trace-process-track-uuid=3190709102505060770 --mojo-platform-channel-handle=11896 /prefetch:1"
+    },
+    {
+      "pid": 48328,
+      "ppid": 14356,
+      "created": "/Date(1790254281029)/",
+      "profile": "D:/Retire/edge-profiles/suixin-custom",
+      "type": "main",
+      "remoteDebugPort": 19033,
+      "cmdLen": 176,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --user-data-dir=D:/Retire/edge-profiles/suixin-custom --remote-debugging-port=19033 --disable-sync --no-first-run"
+    },
+    {
+      "pid": 54620,
+      "ppid": 64332,
+      "created": "/Date(1790338311478)/",
+      "profile": null,
+      "type": "renderer",
+      "remoteDebugPort": null,
+      "cmdLen": 729,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --type=renderer --pdf-upsell-enabled --video-capture-use-gpu-memory-buffer --lang=zh-CN --js-flags --device-scale-factor=1.75 --num-raster-threads=3 --enable-main-frame-before-activation --renderer-client-id=208 --time-ticks-at-unix-epoch=-1789694227440239 --launch-time-ticks=644087701436 --skip-read-main-dll --metrics-shmem-handle=4424,i,12764740982928360421,18063865480195210761,2097152 --field-trial-handle=3096,i,4195067978815950321,6056177949798070680,262144 --variations-seed-version --pseudonymization-salt-handle=3136,i,4293197061496483789,2798025359240394588,4 --trace-process-track-uuid=3190709181216576086 --mojo-platform-channel-handle=7460 /prefetch:1"
+    },
+    {
+      "pid": 68888,
+      "ppid": 64332,
+      "created": "/Date(1790338311522)/",
+      "profile": null,
+      "type": "renderer",
+      "remoteDebugPort": null,
+      "cmdLen": 728,
+      "cmd": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --type=renderer --pdf-upsell-enabled --video-capture-use-gpu-memory-buffer --lang=zh-CN --js-flags --device-scale-factor=1.75 --num-raster-threads=3 --enable-main-frame-before-activation --renderer-client-id=209 --time-ticks-at-unix-epoch=-1789694227440239 --launch-time-ticks=644087709798 --skip-read-main-dll --metrics-shmem-handle=7276,i,3236115851684779987,3522027143800389072,2097152 --field-trial-handle=3096,i,4195067978815950321,6056177949798070680,262144 --variations-seed-version --pseudonymization-salt-handle=3136,i,4293197061496483789,2798025359240394588,4 --trace-process-track-uuid=3190709182153617935 --mojo-platform-channel-handle=12992 /prefetch:1"
+    }
+  ]
+}

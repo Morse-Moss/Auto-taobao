@@ -1,10 +1,10 @@
 {
   "version": 1,
   "workflow": "daily-report",
-  "runId": "daily-2026-10-10-107376",
+  "runId": "daily-2026-10-10-126744",
   "date": "2026-10-10",
-  "status": "FAILED",
-  "startedAt": "2026-10-10T14:20:39.035Z",
+  "status": "COMPLETED",
+  "startedAt": "2026-10-11T03:52:02.198Z",
   "stages": [
     {
       "name": "ensure-instances",
@@ -27,6 +27,6 @@
       "status": "PENDING"
     }
   ],
-  "finishedAt": "2026-10-10T14:21:49.818Z",
-  "exitCode": 1
+  "finishedAt": "2026-10-11T04:15:11.023Z",
+  "exitCode": 0
 }

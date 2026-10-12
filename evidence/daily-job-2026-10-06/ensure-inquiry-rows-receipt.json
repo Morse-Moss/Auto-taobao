@@ -1,0 +1,108 @@
+{
+  "mode": "commit",
+  "at": "2026-10-07T09:00:37.994Z",
+  "reportDate": "2026-10-06",
+  "dateEpoch": 1791216000000,
+  "base": {
+    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
+    "name": "各店铺日报 副本"
+  },
+  "table": {
+    "tableId": "tblqF2YD2VfmKP4C",
+    "name": "各店铺数据日报"
+  },
+  "fields": {
+    "日期": 5,
+    "店铺": 3
+  },
+  "writtenFields": [
+    "日期",
+    "店铺"
+  ],
+  "targets": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居",
+    "保拉淘宝",
+    "保拉天猫",
+    "安比龙头店",
+    "科塔龙头店",
+    "安比淘宝"
+  ],
+  "present": [
+    {
+      "shop": "里可林淘宝",
+      "recordId": "reczz28KSmuKEsvb",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林天猫",
+      "recordId": "reczz28KSmuKFdVm",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "盖文淘宝",
+      "recordId": "reczz28KSmuKHTkr",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "盖文天猫",
+      "recordId": "reczz28KSmuKEXu1",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "科塔淘宝",
+      "recordId": "reczz28KSmuKEnwJ",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林淘宝",
+      "recordId": "reczz28KSmuKGCwm",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "里可林天猫",
+      "recordId": "reczz28KSmuKEL3X",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林家居",
+      "recordId": "reczz28KSmuKEPSN",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "保拉淘宝",
+      "recordId": "reczz28KSmuKFLH6",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "保拉天猫",
+      "recordId": "reczz28KSmuKHjdi",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "安比龙头店",
+      "recordId": "reczz28KSmuKEWPJ",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "科塔龙头店",
+      "recordId": "reczz28KSmuKFgTD",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "安比淘宝",
+      "recordId": "reczz28KSmuKDnmn",
+      "matchedBy": "shop-name"
+    }
+  ],
+  "missing": [],
+  "status": "ALREADY_PRESENT",
+  "created": [],
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-job-2026-10-06\\ensure-inquiry-rows-plan.json"
+}

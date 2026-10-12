@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-05T14:12:06.404Z",
+  "date": "2026-10-04",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "product": {
+    "table": "productTable",
+    "tableId": "tbley1xD9wDfQheX",
+    "totalRows": 1,
+    "onDateCount": 0,
+    "onDateRows": []
+  },
+  "inquiry": {
+    "table": "inquiryTable",
+    "tableId": "tblenEzSMpp5RTQb",
+    "totalRows": 1,
+    "onDateCount": 0,
+    "onDateRows": []
+  }
+}

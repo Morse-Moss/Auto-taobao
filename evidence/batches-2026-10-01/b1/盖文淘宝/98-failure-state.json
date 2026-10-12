@@ -1,0 +1,647 @@
+{
+  "value": {
+    "capturedAt": "2026-10-02T07:36:38.906Z",
+    "url": "https://one.alimama.com/index.html#!/login/index",
+    "title": "万相台无界版",
+    "viewport": {
+      "w": 1454,
+      "h": 642,
+      "dpr": 1.25,
+      "scrollY": 0
+    },
+    "visibleText": "首页 立即登录 阿里妈妈万相台AI无界升级亮相 全域运营助力经营提效 更聪明、更全能、更可靠的超级经营智能体 查看详情  商家复杂的经营问题 我能给你新答案 更聪明 AI大模型更理解 消费者和商家经营诉求 更全能 人、词、货、直播、短视频、创意 多场景解决方案 更可靠 领先可控的AI-Agent 贯穿经营全链路 阿里妈妈超级经营智能体 6大核心场景 货品全站推 关键词推广 人群推广 店铺直达 内容营销 线索推广 货品全站推 货品全站推付免联动盘活全局 付费撬动免费，获取全淘系的流量及生意，带动商品成交额提升 立即开始体验 学习资源 关键词推广教程 为您精细讲解如何在关键词场景下完成推广 查看详情 达摩盘MTA能力全新上线 达摩盘MTA能力全新上线-助力商家618渠道组合提效 查看详情 消费者洞察报告解读（上） 本视频由阿里妈妈小二深度解读以消费者为中心基于搜索路径行为的营销闭环解决方案 查看详情 优秀案例 母婴行业双11预售超100%增长的生意秘籍 这曾是一个消费者相对狭窄、周期短暂的行业赛道。但近几年，随着\"三孩政策\"及配套支持政策的公布，以及更多细分垂直需求升级，母婴行业的发展也不容小觑。 50% 消费者周增长率 79% 预售支付 查看详情 新品飞车加速器 新品飞车通过机制扶持、专属创意、新品人群、人群沉淀等多种政策，加速新品冷启动，缩短新品冷启动时间 2W+ 新品收藏加购量 27.76% 新品收藏加购率 查看详情 德芙跨界新品上市如何赢得年轻女性消费者？ 为了提供更年轻化愉悦产品体验，德芙推出了一系列面向年轻女性消费者的跨界新产品——甜甜圈造型巧克力和波波巧珍珠奶茶巧克力。 如何助燃新品上市，找到打动消费者的新品特点，以及找到线上的目标沟通人群？ +12% 点击率 2倍+ 互动率 查看详情 随时与我们取得联系 袋小蜜智能服务助理将随时为您服务 点击咨询 官网服务电话·0571-88157999 开启您的营销推广 立即登录 还没有淘宝账号？立即注册> 关于阿里妈妈 联系客服 开放平台 廉正举报 意见反馈 举报中心 法律声明及隐私权政策 阿里巴巴集团 淘宝网 天猫 聚划算 全球速卖通 阿里巴巴国际交易市场 1688 阿里妈妈 飞猪 阿里云计算 一淘 万网 高德 UC 友盟 大麦 钉钉 支付宝 优酷 阿里安全 阿里影业 阿里体育 网商银行 © 2007-现在 阿里妈妈版权所有 浙公网安备 33010002000075号 增值电信业务经营许可证：浙B2-20070195",
+    "dialogs": [],
+    "interactive": [
+      {
+        "tag": "A",
+        "id": null,
+        "text": "",
+        "cls": "",
+        "rect": {
+          "x": 84,
+          "y": 13,
+          "w": 253,
+          "h": 32
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "首页",
+        "cls": "asiYysfatv",
+        "rect": {
+          "x": 349,
+          "y": 19,
+          "w": 28,
+          "h": 19
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "立即登录",
+        "cls": "asiYysfaaV    asiYysfabb-normal asiYysfabb-custom-gradient  ",
+        "rect": {
+          "x": 1242,
+          "y": 13,
+          "w": 74,
+          "h": 32
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "阿里妈妈万相台AI无界升级亮相 全域运营助力经营提效 更聪明、更全能、更可靠的超级经营智能体 查看详情 ",
+        "cls": "bokmXvdGV  bokmXvdGW ",
+        "rect": {
+          "x": 84,
+          "y": 58,
+          "w": 1280,
+          "h": 432
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "text": "查看详情 ",
+        "cls": "btn bokmXvdEB bokmXvdHd",
+        "rect": {
+          "x": 84,
+          "y": 354,
+          "w": 187,
+          "h": 42
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "立即开始体验",
+        "cls": "asiYysfaaV    asiYysfabb-normal asiYysfabb-custom-gradient  ",
+        "rect": {
+          "x": 204,
+          "y": 1345,
+          "w": 158,
+          "h": 42
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "text": "查看详情",
+        "cls": "btn asiYysfain",
+        "rect": {
+          "x": 190,
+          "y": 1902,
+          "w": 305,
+          "h": 40
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "text": "查看详情",
+        "cls": "btn asiYysfain",
+        "rect": {
+          "x": 571,
+          "y": 1902,
+          "w": 305,
+          "h": 40
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "text": "查看详情",
+        "cls": "btn asiYysfain",
+        "rect": {
+          "x": 953,
+          "y": 1902,
+          "w": 305,
+          "h": 40
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "text": "查看详情",
+        "cls": "btn asiYysfain",
+        "rect": {
+          "x": 190,
+          "y": 2441,
+          "w": 305,
+          "h": 40
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "text": "查看详情",
+        "cls": "btn asiYysfain",
+        "rect": {
+          "x": 571,
+          "y": 2441,
+          "w": 305,
+          "h": 40
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "text": "查看详情",
+        "cls": "btn asiYysfain",
+        "rect": {
+          "x": 953,
+          "y": 2441,
+          "w": 305,
+          "h": 40
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "点击咨询",
+        "cls": "asiYysfaaV    asiYysfabb-normal asiYysfabb-custom-gradient  ",
+        "rect": {
+          "x": 646,
+          "y": 2636,
+          "w": 157,
+          "h": 42
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "立即登录",
+        "cls": "asiYysfaaV    asiYysfabb-normal asiYysfabb-custom-gradient  ",
+        "rect": {
+          "x": 584,
+          "y": 2783,
+          "w": 280,
+          "h": 42
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "立即注册>",
+        "cls": "link-brand",
+        "rect": {
+          "x": 744,
+          "y": 2836,
+          "w": 57,
+          "h": 16
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "关于阿里妈妈",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 460,
+          "y": 2917,
+          "w": 80,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "联系客服",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 540,
+          "y": 2917,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "开放平台",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 604,
+          "y": 2917,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "廉正举报",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 668,
+          "y": 2917,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "意见反馈",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 732,
+          "y": 2917,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "举报中心",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 796,
+          "y": 2917,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "法律声明及隐私权政策",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 860,
+          "y": 2917,
+          "w": 128,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "阿里巴巴集团",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 358,
+          "y": 2945,
+          "w": 80,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "淘宝网",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 438,
+          "y": 2945,
+          "w": 52,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "天猫",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 490,
+          "y": 2945,
+          "w": 40,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "聚划算",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 530,
+          "y": 2945,
+          "w": 52,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "全球速卖通",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 582,
+          "y": 2945,
+          "w": 76,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "阿里巴巴国际交易市场",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 658,
+          "y": 2945,
+          "w": 136,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "1688",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 794,
+          "y": 2945,
+          "w": 44,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "阿里妈妈",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 838,
+          "y": 2945,
+          "w": 64,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "飞猪",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 902,
+          "y": 2945,
+          "w": 40,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "阿里云计算",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 942,
+          "y": 2945,
+          "w": 76,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "一淘",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 1018,
+          "y": 2945,
+          "w": 40,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "万网",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 1058,
+          "y": 2945,
+          "w": 32,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "高德",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 462,
+          "y": 2973,
+          "w": 32,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "UC",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 494,
+          "y": 2973,
+          "w": 33,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "友盟",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 526,
+          "y": 2973,
+          "w": 40,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "大麦",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 566,
+          "y": 2973,
+          "w": 40,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "钉钉",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 606,
+          "y": 2973,
+          "w": 40,
+          "h": 28
+        }
+      },
+      {
+        "tag": "A",
+        "id": null,
+        "text": "支付宝",
+        "cls": "asiYysfaql",
+        "rect": {
+          "x": 646,
+          "y": 2973,
+          "w": 52,
+          "h": 28
+        }
+      }
+    ],
+    "domSummary": {
+      "totalElements": 379,
+      "counts": {
+        "HTML": 1,
+        "HEAD": 1,
+        "META": 8,
+        "TITLE": 1,
+        "LINK": 1,
+        "STYLE": 42,
+        "SCRIPT": 13,
+        "BODY": 1,
+        "DIV": 179,
+        "A": 37,
+        "IMG": 9,
+        "SPAN": 65,
+        "BUTTON": 4,
+        "I": 7,
+        "IFRAME": 2,
+        "BR": 3,
+        "TABLE": 1,
+        "TBODY": 1,
+        "TR": 1,
+        "TD": 2
+      },
+      "containers": [
+        {
+          "tag": "DIV",
+          "id": "app",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1448,
+            "h": 3069
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "empty_vf_",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1448,
+            "h": 3069
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_24",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1448,
+            "h": 3069
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_51",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1448,
+            "h": 58
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_144",
+          "cls": "asiYysfatH",
+          "rect": {
+            "x": 1242,
+            "y": 13,
+            "w": 122,
+            "h": 32
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_52",
+          "cls": "clearfix",
+          "rect": {
+            "x": 0,
+            "y": 58,
+            "w": 1448,
+            "h": 432
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_93",
+          "cls": "mxgc-carousel bokmXvdGL",
+          "rect": {
+            "x": 0,
+            "y": 58,
+            "w": 1448,
+            "h": 432
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "swiper-container",
+          "rect": {
+            "x": 0,
+            "y": 58,
+            "w": 1448,
+            "h": 432
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "swiper-wrapper",
+          "rect": {
+            "x": 0,
+            "y": 58,
+            "w": 1448,
+            "h": 432
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "mx_94",
+          "cls": "",
+          "rect": {
+            "x": 1014,
+            "y": 74,
+            "w": 350,
+            "h": 404
+          }
+        }
+      ]
+    },
+    "tables": [
+      {
+        "rows": 1,
+        "cols": 2,
+        "rect": {
+          "x": 164,
+          "y": 1087,
+          "w": 1120,
+          "h": 381
+        },
+        "visible": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+修复动作：RESET_PAGES（排练）
+店：盖文淘宝｜阶段：health-check｜成因：SHOP_BLOCKED
+目标页：(未定位)
+结论：未应用｜排练（--dry-run）：会执行 RESET_PAGES，一个写请求都不发

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-04-20261005153716345-c3303bad",
+  "date": "2026-10-04",
+  "status": "COMPLETED",
+  "startedAt": "2026-10-05T15:37:16.348Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "SKIPPED"
+    }
+  ],
+  "shops": [
+    "盖文天猫"
+  ],
+  "failure": null,
+  "failedStage": null,
+  "finishedAt": "2026-10-05T15:38:24.025Z"
+}

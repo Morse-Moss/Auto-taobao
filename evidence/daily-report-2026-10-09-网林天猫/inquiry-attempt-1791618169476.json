@@ -1,0 +1,232 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-10-09",
+  "shop": "网林天猫",
+  "environment": {
+    "computedAt": "2026-10-10T07:42:49.475Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19042",
+    "browserPort": {
+      "port": 19032,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19042,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-wanglin-flagship",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop wanglin-flagship)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-09-网林天猫",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
+    "tableId": "tblqF2YD2VfmKP4C",
+    "tableName": "各店铺数据日报",
+    "recordId": "reczz28LcsYkM7JC",
+    "matchedBy": "shop-name",
+    "shopOptionId": "optUKhpHUN"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "sourceShop": "网林家居旗舰店",
+    "identityRaw": "网林家居旗舰店 主店",
+    "identityCandidates": [
+      "网林家居旗舰店 主店",
+      "网林家居旗舰店 主店",
+      "网林家居旗舰店 主店"
+    ],
+    "headers": [
+      "日期",
+      "延 询单人数",
+      "当日询单人数",
+      "当日付款人数",
+      "当日付款金额",
+      "延 最终付款人数",
+      "延 最终付款金额",
+      "询单当日付款转化率",
+      "延 询单最终付款转化率"
+    ],
+    "rows": [
+      [
+        "2026-10-09",
+        "延迟统计",
+        "6",
+        "2",
+        "9,732.00",
+        "延迟统计",
+        "延迟统计",
+        "33.33%",
+        "延迟统计"
+      ],
+      [
+        "汇总值",
+        "延迟统计",
+        "6",
+        "2",
+        "9,732.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "平均值",
+        "延迟统计",
+        "6",
+        "2",
+        "9,732.00",
+        "延迟统计",
+        "延迟统计",
+        "33.33%",
+        "延迟统计"
+      ],
+      [
+        "全店汇总值",
+        "延迟统计",
+        "6",
+        "2",
+        "9,732.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "全店平均值",
+        "延迟统计",
+        "6",
+        "2",
+        "9,732.00",
+        "延迟统计",
+        "延迟统计",
+        "33.33%",
+        "延迟统计"
+      ],
+      [
+        "同行同层优秀",
+        "延迟统计",
+        "29",
+        "7",
+        "3,298.00",
+        "延迟统计",
+        "延迟统计",
+        "40.00%",
+        "延迟统计"
+      ],
+      [
+        "同行同层均值",
+        "延迟统计",
+        "14",
+        "3",
+        "776.13",
+        "延迟统计",
+        "延迟统计",
+        "22.22%",
+        "延迟统计"
+      ]
+    ]
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 6,
+    "同层同行询单量": 14
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "reczz28LcsYkM7JC",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 6,
+      "同层同行询单量": 14
+    },
+    "matchedBy": "shop-name"
+  },
+  "before": {
+    "fields": {
+      "人群PPC": 3.17129032258065,
+      "人群ROI": 0,
+      "人群加购成本": null,
+      "人群加购数": [
+        0
+      ],
+      "人群成交金额": [
+        0
+      ],
+      "人群收加率": 0.0645161290322581,
+      "人群收藏数": [
+        2
+      ],
+      "人群点击量": [
+        31
+      ],
+      "人群花费": [
+        98.31
+      ],
+      "人群询单量": [
+        3
+      ],
+      "关键词PPC": 1.85185185185185,
+      "关键词ROI": 103.48,
+      "关键词加购人数": [
+        0
+      ],
+      "关键词加购成本": null,
+      "关键词成交金额": [
+        5174
+      ],
+      "关键词收加率": 0,
+      "关键词收藏人数": [
+        0
+      ],
+      "关键词点击量": [
+        27
+      ],
+      "关键词花费": [
+        50
+      ],
+      "关键词询单量": [
+        1
+      ],
+      "同层同行询单量": null,
+      "实际支付金额": 9732,
+      "店铺": "网林天猫",
+      "店铺加购人数": [
+        0
+      ],
+      "店铺收加率": 0.036144578313253,
+      "店铺收藏人数": [
+        3
+      ],
+      "推广花费合计": 148.31,
+      "支付金额": [
+        9732
+      ],
+      "数据月份": 10,
+      "日期": 1791475200000,
+      "补单金额": null,
+      "访客数": [
+        83
+      ],
+      "询单量": null
+    },
+    "id": "reczz28LcsYkM7JC",
+    "record_id": "reczz28LcsYkM7JC"
+  }
+}

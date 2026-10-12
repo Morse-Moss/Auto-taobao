@@ -1,0 +1,59 @@
+{
+ "proxy": "http://127.0.0.1:19042",
+ "commit": false,
+ "notify": {
+  "mode": "off",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": false,
+   "href": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null
+  },
+  "alimama": {
+   "label": "阿里妈妈",
+   "loggedIn": false,
+   "href": "https://one.alimama.com/index.html#!/login/index",
+   "reason": null
+  }
+ },
+ "login": {
+  "attempts": [
+   {
+    "id": "havanaone",
+    "url": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+    "opened": true,
+    "navigated": false,
+    "href": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+    "autofill": {
+     "id": true,
+     "password": true
+    },
+    "gesturePoint": [
+     672,
+     321
+    ]
+   }
+  ],
+  "expectedMember": "网林家居旗舰店:阿彦",
+  "guardBasis": null,
+  "targetId": "3B608CAACC5AAA0901332920CEC76F55",
+  "candidate": "havanaone",
+  "urlBefore": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+  "gesturePoint": [
+   672,
+   321
+  ],
+  "shots": "D:\\Retire\\sycm-automation\\evidence\\login-diagnosis-2026-09-25\\wanglin-manual-login\\login-before-commit.png"
+ },
+ "session": {
+  "shop": "网林天猫",
+  "proxyPort": 19042,
+  "judged": true
+ },
+ "verdict": "READY_TO_GESTURE",
+ "detail": "检测到浏览器填充预览态；加 --commit 才会补可信手势并提交。"
+}

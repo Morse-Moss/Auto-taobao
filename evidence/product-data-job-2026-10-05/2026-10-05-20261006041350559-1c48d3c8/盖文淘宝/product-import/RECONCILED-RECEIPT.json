@@ -1,0 +1,316 @@
+{
+  "receiptKind": "RECONCILED",
+  "notice": "本文件不是导入脚本的原始产出。原始运行（runId 同上目录）的收据未落盘：写记录成功后，写后回读收到 HTML 响应而抛错，收据落盘那一步没被执行。本文件由事后独立回读重建，仅用于对账；不得当作原始收据。",
+  "source": "C:/Users/Administrator/Downloads/【生意参谋平台】商品_全部_2026-10-05_2026-10-05 (2).xls",
+  "shop": "盖文淘宝",
+  "date": "2026-10-05",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 54,
+  "existingRows": 245,
+  "plannedRows": 54,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "934584303052"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "1086538660377"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "1084458662063"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "616624637544"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "616731469371"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "617149791732"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "617982840884"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "618540426267"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "626416584466"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "628635582165"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "637215495170"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "645211502294"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "672215008417"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "673269899450"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "707584704263"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "711296481823"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "712966491973"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "763091092720"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "786176778070"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "786744519409"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "786814978897"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "786847120778"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "786858641200"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "811688970608"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "812627436494"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "815585711050"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "815994451049"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "816409756097"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "816422480230"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "816717464107"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "839577599073"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "839907129192"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "934597255966"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "934626015547"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "935028090106"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "935582057711"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "936116836826"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "941483727985"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "941522803652"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "966190023966"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "968959471679"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "968966515823"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "970166693668"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "970170969213"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "970791708993"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "984626535153"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "984629587967"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "989306354714"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "999955737494"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "1067013817808"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "1067978768943"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "1067982912308"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "1082409557282"
+    },
+    {
+      "date": "2026-10-05",
+      "shop": "盖文淘宝",
+      "productId": "1083422716340"
+    }
+  ],
+  "recordIds": null,
+  "recordIdsNote": "原始响应里的 recordIds 随进程一起丢失，无法重建。",
+  "afterRows": 299,
+  "reconciledAt": "2026-10-06T04:48:24.049Z",
+  "reconciledBy": "agent:接线员",
+  "anchors": {
+    "existingRows": {
+      "value": 245,
+      "from": "网林天猫/product-import/receipt.json → afterRows（本次导入的直接前驱观测）"
+    },
+    "afterRows": {
+      "value": 299,
+      "from": "盖文天猫/product-import/receipt.json → existingRows（本次导入的直接后继观测）"
+    },
+    "delta": 54
+  },
+  "verification": {
+    "method": "按业务键（统计日期 + 商品ID）现场回读交叉核对",
+    "baseOnDateRows": 243,
+    "sourceIdsChecked": 54,
+    "missingIds": 0,
+    "missingSample": []
+  },
+  "originalFailure": {
+    "stage": "product-import",
+    "childExitCode": 1,
+    "stderrExcerpt": "导入失败：Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "logRef": "tmp/product-run-20261006.log:395（子进程 stderr 直通父进程日志）",
+    "classification": "UNKNOWN_WRITE",
+    "note": "写入已发生、失败在写后的 afterRows 回读；同日去重闸门会让重跑新增 0 行，故不重试。"
+  }
+}

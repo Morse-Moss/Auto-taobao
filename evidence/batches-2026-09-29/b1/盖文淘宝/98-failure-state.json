@@ -1,0 +1,111 @@
+{
+  "value": {
+    "capturedAt": "2026-09-30T10:16:44.062Z",
+    "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&member=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E5%B0%8F%E7%93%9C&actual=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E5%B0%8F%E7%93%9C",
+    "title": "盖文淘宝 · 日报采集窗口",
+    "viewport": {
+      "w": 1506,
+      "h": 642,
+      "dpr": 1.25,
+      "scrollY": 0
+    },
+    "visibleText": "这个浏览器窗口是给这家店用的 盖文淘宝 会员名 随心品质定制:小瓜 实际登录 随心品质定制:小瓜（与登记表一致） 同一个店的两个名字：飞书里叫「盖文淘宝」，这个窗口登的会员名是「随心品质定制:小瓜」。 调试端口 19033 这个窗口如果被要求登录，请在本窗口（不是别的窗口）里登录上面这家店的账号， 登完请点浏览器提示里的「保存」把密码存下来 —— 存过之后系统下次就能自己登。 没被要求登录就不用管它。",
+    "dialogs": [],
+    "interactive": [],
+    "domSummary": {
+      "totalElements": 20,
+      "counts": {
+        "HTML": 1,
+        "HEAD": 1,
+        "META": 1,
+        "TITLE": 1,
+        "STYLE": 1,
+        "BODY": 1,
+        "DIV": 8,
+        "B": 3,
+        "BR": 2,
+        "SCRIPT": 1
+      },
+      "containers": [
+        {
+          "tag": "DIV",
+          "id": "shop",
+          "cls": "v",
+          "rect": {
+            "x": 625,
+            "y": 166,
+            "w": 256,
+            "h": 85
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "member",
+          "cls": "m",
+          "rect": {
+            "x": 638,
+            "y": 279,
+            "w": 231,
+            "h": 26
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "actual",
+          "cls": "x ok",
+          "rect": {
+            "x": 548,
+            "y": 312,
+            "w": 411,
+            "h": 26
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "alias",
+          "cls": "a",
+          "rect": {
+            "x": 415,
+            "y": 346,
+            "w": 676,
+            "h": 26
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "port",
+          "cls": "n",
+          "rect": {
+            "x": 688,
+            "y": 372,
+            "w": 130,
+            "h": 24
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "state",
+          "cls": "s",
+          "rect": {
+            "x": 753,
+            "y": 410,
+            "w": 0,
+            "h": 0
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": "hint",
+          "cls": "w",
+          "rect": {
+            "x": 451,
+            "y": 436,
+            "w": 604,
+            "h": 84
+          }
+        }
+      ]
+    },
+    "tables": []
+  }
+}

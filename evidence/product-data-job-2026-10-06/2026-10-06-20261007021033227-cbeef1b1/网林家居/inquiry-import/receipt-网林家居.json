@@ -1,0 +1,23 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-06\\2026-10-06-20261007021033227-cbeef1b1\\网林家居\\inquiry.xls",
+  "shop": "网林家居",
+  "date": "2026-10-06",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 1,
+  "existingRows": 99,
+  "plannedRows": 1,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-06",
+      "productId": "1077063041893",
+      "shop": "网林家居"
+    }
+  ],
+  "recordIds": [
+    "reczz28KLy736HVD"
+  ],
+  "afterRows": 100
+}

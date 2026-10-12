@@ -1,0 +1,232 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-09-30",
+  "shop": "网林淘宝",
+  "environment": {
+    "computedAt": "2026-10-01T07:48:17.423Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19060",
+    "browserPort": {
+      "port": 19050,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19060,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-wanglin-taobao",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop wanglin-taobao)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-30-网林淘宝",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
+    "tableId": "tblqF2YD2VfmKP4C",
+    "tableName": "各店铺数据日报",
+    "recordId": "recvtXfdEwIBEc",
+    "matchedBy": "shop-name",
+    "shopOptionId": "optllhAK2o"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "sourceShop": "网林全卫定制",
+    "identityRaw": "网林全卫定制 主店",
+    "identityCandidates": [
+      "网林全卫定制 主店",
+      "网林全卫定制 主店",
+      "网林全卫定制 主店"
+    ],
+    "headers": [
+      "日期",
+      "延 询单人数",
+      "当日询单人数",
+      "当日付款人数",
+      "当日付款金额",
+      "延 最终付款人数",
+      "延 最终付款金额",
+      "询单当日付款转化率",
+      "延 询单最终付款转化率"
+    ],
+    "rows": [
+      [
+        "2026-09-30",
+        "延迟统计",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "汇总值",
+        "延迟统计",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "平均值",
+        "延迟统计",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "全店汇总值",
+        "延迟统计",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "全店平均值",
+        "延迟统计",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "同行同层优秀",
+        "延迟统计",
+        "11",
+        "3",
+        "1,114.50",
+        "延迟统计",
+        "延迟统计",
+        "50.00%",
+        "延迟统计"
+      ],
+      [
+        "同行同层均值",
+        "延迟统计",
+        "5",
+        "1",
+        "92.00",
+        "延迟统计",
+        "延迟统计",
+        "16.67%",
+        "延迟统计"
+      ]
+    ]
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 3,
+    "同层同行询单量": 5
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "recvtXfdEwIBEc",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 3,
+      "同层同行询单量": 5
+    },
+    "matchedBy": "shop-name"
+  },
+  "before": {
+    "fields": {
+      "人群PPC": 0.762741935483871,
+      "人群ROI": 0,
+      "人群加购成本": 9.458,
+      "人群加购数": [
+        5
+      ],
+      "人群成交金额": [
+        0
+      ],
+      "人群收加率": 0.145161290322581,
+      "人群收藏数": [
+        4
+      ],
+      "人群点击量": [
+        62
+      ],
+      "人群花费": [
+        47.29
+      ],
+      "人群询单量": [
+        0
+      ],
+      "关键词PPC": 0.628064516129032,
+      "关键词ROI": 0,
+      "关键词加购人数": [
+        3
+      ],
+      "关键词加购成本": 32.45,
+      "关键词成交金额": [
+        0
+      ],
+      "关键词收加率": 0.0451612903225806,
+      "关键词收藏人数": [
+        4
+      ],
+      "关键词点击量": [
+        155
+      ],
+      "关键词花费": [
+        97.35
+      ],
+      "关键词询单量": [
+        1
+      ],
+      "同层同行询单量": null,
+      "实际支付金额": 0,
+      "店铺": "网林淘宝",
+      "店铺加购人数": [
+        13
+      ],
+      "店铺收加率": 0.0202286719437115,
+      "店铺收藏人数": [
+        10
+      ],
+      "推广花费合计": 144.64,
+      "支付金额": [
+        0
+      ],
+      "数据月份": 9,
+      "日期": 1790697600000,
+      "补单金额": null,
+      "访客数": [
+        1137
+      ],
+      "询单量": null
+    },
+    "id": "recvtXfdEwIBEc",
+    "record_id": "recvtXfdEwIBEc"
+  }
+}

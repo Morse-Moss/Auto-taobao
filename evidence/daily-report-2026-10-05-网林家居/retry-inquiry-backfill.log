@@ -1,0 +1,157 @@
+=== 1 start-all --only 网林家居 ===
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 网林家居  起前:missing  两样都没有，起一整套
+      已起 browser pid=103156  日志 runtime/start-stop-logs/2026-10-06T14-00-54/网林家居-browser.log
+      已起 proxy pid=22996  日志 runtime/start-stop-logs/2026-10-06T14-00-54/网林家居-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+=== 2 shop-pages --open --only 网林家居 ===
+未知参数 --only；可用：--open --json（不带 --open 时只盘点，不写）
+=== 3 date-picker sycm 2026-10-05 ===
+Error: expected one sycm page on http://127.0.0.1:19062, got 0
+    at resolveTarget (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:561:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:597:28)
+    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:577:12)
+TRACE [
+  {
+    "step": "shop-func-permission-probe",
+    "site": "sycm",
+    "phase": "resolve-target-missed",
+    "got": 0,
+    "asked": false,
+    "why": "没有可在其上查询的生意参谋页面（试了 0 张）：none"
+  }
+]
+=== 4 run-inquiry-backfill --commit ===
+Error: expected one SYCM shop-performance page, got 0
+    at discoverSycmTarget (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:64:35)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async readSycmTable (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:69:18)
+    at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:158:18)
+BACKFILL_EXIT=1
+
+########## 第 2 次尝试（去掉 --only）##########
+=== 1 start-all --only 网林家居 ===
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 网林家居  起前:missing  两样都没有，起一整套
+      已起 browser pid=48184  日志 runtime/start-stop-logs/2026-10-06T14-01-08/网林家居-browser.log
+      已起 proxy pid=134700  日志 runtime/start-stop-logs/2026-10-06T14-01-08/网林家居-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+=== 2 shop-pages --open ===
+[工作页] 补齐模式；14 个后台
+  商家浏览器（日报（生意参谋 + 万相台/阿里妈妈 + 飞书））  代理 19023  生意参谋工作页=1  飞书底单页=1
+  连不上 里可林淘宝（代理 19041）：fetch failed
+  连不上 网林天猫（代理 19042）：fetch failed
+  连不上 盖文淘宝（代理 19043）：fetch failed
+  连不上 盖文天猫（代理 19045）：fetch failed
+  连不上 科塔淘宝（代理 19044）：fetch failed
+  连不上 网林淘宝（代理 19060）：fetch failed
+  连不上 里可林天猫（代理 19061）：fetch failed
+  网林家居  代理 19062  生意参谋工作页=1  阿里妈妈报表页=1  ← 生意参谋工作页:create 阿里妈妈报表页:create
+  连不上 保拉淘宝（代理 19063）：fetch failed
+  连不上 保拉天猫（代理 19064）：fetch failed
+  连不上 安比龙头店（代理 19065）：fetch failed
+  连不上 科塔龙头店（代理 19066）：fetch failed
+  连不上 安比淘宝（代理 19067）：fetch failed
+  [连不上] 里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝、网林淘宝、里可林天猫、保拉淘宝、保拉天猫、安比龙头店、科塔龙头店、安比淘宝 —— 代理没起，先起代理
+[判据] 有未就位项（见上）
+=== 3 date-picker sycm 2026-10-05 ===
+{
+  "site": "sycm",
+  "requested": "2026-10-05",
+  "mode": "preset",
+  "route": "preset-or-calendar",
+  "targetId": "7CB8396C14CA3D55FF5ADFAD24A0E1BD",
+  "observedBefore": null,
+  "observedAfter": "统计时间 2026-10-05",
+  "filters": null,
+  "tabs": [
+    "智能问数",
+    "找功能",
+    "问指标",
+    "找商品",
+    "业绩分析",
+    "专项分析",
+    "商品分析",
+    "售后分析",
+    "汇总分析",
+    "询单到下单",
+    "下单到付款",
+    "询单到付款"
+  ],
+  "activeTabs": [
+    "智能问数",
+    "业绩分析",
+    "询单到付款"
+  ],
+  "status": "APPLIED",
+  "presetWasNoop": null,
+  "pageReload": {
+    "reloadError": null,
+    "observedAfterReload": "统计时间 2026-10-05",
+    "readFailures": 1,
+    "reads": 2,
+    "lastReadError": null
+  },
+  "trace": [
+    {
+      "step": "read-before-skipped",
+      "tolerated": true,
+      "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
+      "detail": "proxy http://127.0.0.1:19062/eval?target=7CB8396C14CA3D55FF5ADFAD24A0E1BD failed: HTTP 400 Error: sycm date readout count=0     at <anonymous>:4:35     at <anon"
+    },
+    {
+      "step": "reload-stale-page",
+      "observedBeforeReload": null,
+      "requested": "2026-10-05"
+    },
+    {
+      "step": "reloaded",
+      "reloadError": null,
+      "observedAfterReload": "统计时间 2026-10-05",
+      "readFailures": 1,
+      "reads": 2,
+      "lastReadError": null
+    },
+    {
+      "step": "tab",
+      "expectTab": "询单到付款",
+      "alreadyActive": false,
+      "point": [
+        492,
+        277
+      ]
+    },
+    {
+      "step": "tab-activated",
+      "activeTabs": [
+        "智能问数",
+        "业绩分析",
+        "询单到付款"
+      ]
+    },
+    {
+      "step": "click-preset",
+      "text": "1天",
+      "point": [
+        1081,
+        162
+      ]
+    },
+    {
+      "step": "settled",
+      "applied": "2026-10-05"
+    }
+  ]
+}
+=== 4 run-inquiry-backfill --commit ===
+[身份] 生意参谋页头 = "网林定制家居"（原始 "网林定制家居 主店"）｜期望 "网林定制家居" ✓
+Error: inquiry source must contain exactly one daily date row
+    at extractInquiryMetrics (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/inquiry-core.mjs:30:37)
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:170:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+BACKFILL_EXIT=1

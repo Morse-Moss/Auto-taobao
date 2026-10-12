@@ -1,0 +1,11 @@
+
+===== 2026-09-30T10:17:01.324Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase submit --date 2026-09-29 --proxy http://127.0.0.1:19044 --expect-shop 科塔全卫定制 --expect-member j873522735:小瓜 --expect-member-id 412070158
+exit=1 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 705A07FA9B3B767368FCF45FE7072278｜phase=submit｜目标日 2026-09-29
+[身份] 阿里妈妈会员 = "j873522735:小瓜" ID="412070158"（这一页不显示店铺名，只有会员名）｜期望 "j873522735:小瓜" / 412070158 ✓
+
+--- stderr ---
+
+采集失败：提交前核对未通过：台账记着 2026-09-29 已提交 营销场景报表_20260930_164204，但它已不在下载任务列表里（列表现有 0 条） ⇒ 无法确认平台那边这一笔还在不在，核不清就不提交（先人工看一眼「下载任务管理」）

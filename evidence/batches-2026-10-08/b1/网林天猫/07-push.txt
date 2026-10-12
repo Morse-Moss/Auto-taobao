@@ -1,0 +1,32 @@
+
+===== 2026-10-10T03:29:41.762Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-08 --proxy http://127.0.0.1:19023 --shop-key 网林天猫 --commit --shop-xlsx C:\Users\Administrator\Downloads\日报_20261010_65141cc3c0fd0c526f65e7da28ff800b.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261010_112854.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 网林天猫 ↔ 源产物店名 网林家居旗舰店 一致（证据目录 daily-report-2026-10-08-网林天猫）
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "reczz28LYmKyhYIr",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-08-网林天猫\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-08-网林天猫",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 2238,
+  "recordCountAfter": 2239,
+  "verifiedFields": 238,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 238,
+    "shopName": "网林家居旗舰店",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1791388800000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---
+[audit] 未写入（不影响本次结论）：append failed: connect ECONNREFUSED 127.0.0.1:5432

@@ -1,0 +1,66 @@
+{
+  "mode": "apply",
+  "date": "2026-10-10",
+  "shop": "网林天猫",
+  "profile": "kcne",
+  "tables": {
+    "keyword": {
+      "tableId": "tblbSGMO2apOKuAZ",
+      "beforeRows": 1159,
+      "plannedRows": 11,
+      "skippedRows": 0,
+      "recordIds": [
+        "reczz28LuX0mtMb8",
+        "reczz28LuX0mw3UV",
+        "reczz28LuX0mwNlQ",
+        "reczz28LuX0mteDB",
+        "reczz28LuX0mtWF8",
+        "reczz28LuX0mwBtU",
+        "reczz28LuX0muv5c",
+        "reczz28LuX0mtbRs",
+        "reczz28LuX0msZnV",
+        "reczz28LuX0mvgc2",
+        "reczz28LuX0msaYO"
+      ],
+      "afterRows": 1170
+    },
+    "audience": {
+      "tableId": "tblyjD5058Mjbmcv",
+      "beforeRows": 1069,
+      "plannedRows": 15,
+      "skippedRows": 0,
+      "recordIds": [
+        "reczz28LuXF0Z8OP",
+        "reczz28LuXF0biuV",
+        "reczz28LuXF0a5vL",
+        "reczz28LuXF0aqUY",
+        "reczz28LuXF0b6kk",
+        "reczz28LuXF0bkQG",
+        "reczz28LuXF0bKiP",
+        "reczz28LuXF0cSw6",
+        "reczz28LuXF0akXL",
+        "reczz28LuXF0Zhib",
+        "reczz28LuXF0baYV",
+        "reczz28LuXF0cJ5I",
+        "reczz28LuXF0ZeNp",
+        "reczz28LuXF0aCLQ",
+        "reczz28LuXF0aONO"
+      ],
+      "afterRows": 1084
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261011_070741.zip",
+      "csvName": "关键词报表_20261011_070741.csv",
+      "rows": 11,
+      "columns": 75
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261011_084218.zip",
+      "csvName": "人群报表_20261011_084218.csv",
+      "rows": 15,
+      "columns": 73
+    }
+  }
+}

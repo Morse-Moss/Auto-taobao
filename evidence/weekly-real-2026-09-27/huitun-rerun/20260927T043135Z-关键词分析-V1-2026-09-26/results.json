@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "platform": "灰豚数据红薯版",
+    "page": "话题搜索",
+    "url": "https://xhs.huitun.com/#/anchor/anchor_topic",
+    "match_rule": "去除话题首尾#后与搜索词完全一致；不累加相近话题",
+    "collected_at": "2026-09-27T04:31:52.786Z"
+  },
+  "target": {
+    "tableId": "tblZm3TgV4V1IhZw",
+    "tableName": "关键词分析 V1（2026-09-26）",
+    "queueFingerprint": "1b4fe857351459d096bdec840d3372e66b97965cf645406311d43387f72fb79c"
+  },
+  "items": [
+    {
+      "keyword": "新型泡澡浴缸",
+      "status": "NO_EXACT_TOPIC",
+      "topic": null,
+      "viewsRaw": "没有找到话题~~点击这里",
+      "views": 0
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+修复动作：REAPPLY_DATES
+店：网林家居｜阶段：sycm-date-again｜成因：STAGE_FAILED
+目标页：https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+结论：未应用｜日期需要重新落位（sycm）—— 请重试该站点的落位阶段来完成，本动作不重复实现落位
+证据：{"needsRetryStage":"sycm-date"}

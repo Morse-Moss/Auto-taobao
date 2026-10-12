@@ -1,0 +1,23 @@
+
+===== 2026-10-02T07:37:43.386Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-shop-report.mjs --date 2026-10-01 --proxy http://127.0.0.1:19045 --expect-shop 盖文旗舰店 --expect-member 盖文旗舰店:小瓜 --expect-member-id 2995200080
+exit=1 signal= error=none
+--- stdout ---
+[0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）
+[身份] 生意参谋店铺名 = "盖文旗舰店"（主店）｜期望 "盖文旗舰店" ✓
+      → 生意参谋页 8245AA89485F50A6214EFFBCA160E533｜已有日报 xlsx 140 个｜下载目录 C:\Users\Administrator\Downloads｜身份核对=已做
+[1/4] 再进 自助分析 · 公共空间
+[2/4] 2.5s：预览按钮 1 个
+[2/4] 5s：预览按钮 1 个
+[2/4] 7.5s：预览按钮 1 个
+[2/4] 10s：预览按钮 1 个
+[2/4] 12.5s：预览按钮 1 个
+[2/4] 15s：预览按钮 1 个
+[2/4] 17.5s：预览按钮 1 个
+[2/4] 20s：预览按钮 1 个
+[2/4] 22.5s：预览按钮 1 个
+[2/4] 25s：预览按钮 1 个
+
+--- stderr ---
+
+采集失败：等不到「日报」这一行的预览按钮

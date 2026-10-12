@@ -1,0 +1,19 @@
+一次性实例（真机 A/B）：浏览器端口 :19997（未登记）｜profile=D:/Retire/sycm-automation/tmp/probe-efp-20261005
+判据源码：broken 版替换了 5 处 doc.elementFromPoint → win.elementFromPoint
+导航到 https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-04&endTime=2026-10-04&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day
+[第 1 轮] url=https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-04&e｜title=营销场景报表_万相台无界版｜视口=1506x642/dpr1.25｜候选=1
+滚动到目标：{"ok":true,"matches":1}
+
+===== 同一现场、同一目标、两版判据 =====
+  broken（win.elementFromPoint）: {"ok":false,"reason":"not-hit","matches":1,"hiddenSiblings":0,"y":314,"inViewport":true,"rect":[1400,314,48,12],"inViewportSamples":25,"insideSamples":0,"firstHit":null,"centerIsSelf":false,"viewport":[1506,642],"inScope":"outer","blocker":null}
+  fixed （doc.elementFromPoint）: {"ok":true,"reason":null,"matches":1,"hiddenSiblings":0,"y":314,"inViewport":true,"rect":[1400,314,48,12],"inViewportSamples":25,"insideSamples":20,"firstHit":[1424,320],"centerIsSelf":true,"viewport":[1506,642],"inScope":"outer","blocker":null}
+[收尾] taskkill 退出码=0（这不是释放判据）
+[收尾] 端口回读 19997 = FREE
+
+===== 逐项断言 =====
+  PASS  broken 版确实只改了命中判据那几处 — 替换 5 处
+  PASS  浏览器调试端口 60s 内就绪 — Edg/150.0.4078.65
+  PASS  页面上找到「下载报表」候选 — found=1 tag=SPAN
+  PASS  broken 版当场复现线上失败（ok=false / insideSamples=0） — ok=false insideSamples=0 reason=not-hit blocker=null
+  PASS  fixed 版当场判通过（ok=true / insideSamples>0） — ok=true insideSamples=20 inScope=outer rect=[1400,314,48,12] viewport=[1506,642]
+  PASS  两版都报不出「遮挡物」—— 说明线上那句「没有遮挡物」也是这个缺陷的产物 — broken.blocker=null fixed.blocker=null

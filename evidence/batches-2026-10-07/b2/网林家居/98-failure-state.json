@@ -1,0 +1,591 @@
+{
+  "capturedAt": "2026-10-08T07:58:09.853Z",
+  "url": "https://one.alimama.com/index.html#!/report/download-list",
+  "title": "下载任务管理_万相台无界版",
+  "viewport": {
+    "w": 1506,
+    "h": 642,
+    "dpr": 1.25,
+    "scrollY": 0
+  },
+  "visibleText": "首页 推广  万相贯通  报表  洞察  创意  工具  账户  AI小万  新人手册  快捷入口  消息中心 网林定制家居:小瓜 ID：1731780198  基础报表  场景结案  下载管理   场景结案下载  下载任务管理  下载任务管理  2026-09-08 至 今日   当任务包含较大数据量时，生成完成最长需要10分钟，您可以稍后点击报表页面右上角【下载任务管理】，查看生成结果并下载。注意：下载的文件中数据行随机排序，数据本身完整且正确，您可手动在EXCEL中调整为所需顺序。相应字段计算公式分母为0时，下载数据报表中显示 \\N ，对应报表页面中字段展示为 - ，并非系统bug。 刷新表格 批量删除 状态 文件名称 归因周期 日期范围 创建日期 生成成功 营销场景报表_20261008_155635 30天累计数据 2026-10-07至2026-10-07 2026-10-08 下载 删除 生成成功 营销场景报表_20261007_155010 30天累计数据 2026-10-06至2026-10-06 2026-10-07 生成成功 营销场景报表_20261006_215616 30天累计数据 2026-10-05至2026-10-05 2026-10-06 生成成功 营销场景报表_20261005_182538 30天累计数据 2026-10-04至2026-10-04 2026-10-05 生成成功 营销场景报表_20261005_164053 30天累计数据 2026-10-04至2026-10-04 2026-10-05 生成成功 营销场景报表_20261005_132917 30天累计数据 2026-10-04至2026-10-04 2026-10-05 共 6 项数据 20条/页   1  跳至 页 跳转 关于阿里妈妈 联系客服 开放平台 廉正举报 意见反馈 举报中心 法律声明及隐私权政策 © 2007-现在 阿里妈妈版权所有 浙公网安备 33010002000075号 增值电信业务经营许可证：浙B2-20070195 在线客服 直播带教 直播中 蓄水双11-非标大促爆品选品与货盘布局   消息中心 更多消息 日常公告 系统消息 上线 「万相点睛」超越经验边界，智赢蓝海新增量！ 关键词推广最低日预算调整说明 您的优惠券仅剩3天到期，请尽快查看！ 上线 「万相点睛」突破传统局限，精准捕获蓝海机会！ 重要 【新产品资讯】「万相贯通」产品上线公告 1秒后关闭浮层 立即关闭",
+  "dialogs": [],
+  "interactive": [
+    {
+      "tag": "A",
+      "id": null,
+      "text": "",
+      "cls": "",
+      "rect": {
+        "x": 24,
+        "y": 13,
+        "w": 253,
+        "h": 32
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "首页",
+      "cls": "asiYysnOty",
+      "rect": {
+        "x": 289,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "推广",
+      "cls": "asiYysnOty",
+      "rect": {
+        "x": 357,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "万相贯通",
+      "cls": "asiYysnOty",
+      "rect": {
+        "x": 445,
+        "y": 19,
+        "w": 56,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "报表",
+      "cls": "asiYysnOty",
+      "rect": {
+        "x": 561,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "洞察",
+      "cls": "asiYysnOty",
+      "rect": {
+        "x": 649,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "创意",
+      "cls": "asiYysnOty",
+      "rect": {
+        "x": 737,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "工具",
+      "cls": "asiYysnOty",
+      "rect": {
+        "x": 825,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "账户",
+      "cls": "asiYysnOty",
+      "rect": {
+        "x": 913,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 新人手册",
+      "cls": "wO_WXVbiG wO_WXVbiI",
+      "rect": {
+        "x": 1132,
+        "y": 6,
+        "w": 56,
+        "h": 48
+      }
+    },
+    {
+      "tag": "A",
+      "id": "mx_120_pop",
+      "text": " 消息中心",
+      "cls": "icQRQlrwb mxgc-popover",
+      "rect": {
+        "x": 1272,
+        "y": 11,
+        "w": 48,
+        "h": 38
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "基础报表 ",
+      "cls": "bXMILLqiFi   parent-close ",
+      "rect": {
+        "x": 16,
+        "y": 74,
+        "w": 80,
+        "h": 20
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "场景结案 ",
+      "cls": "bXMILLqiFi   parent-close ",
+      "rect": {
+        "x": 16,
+        "y": 110,
+        "w": 80,
+        "h": 20
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "下载管理 ",
+      "cls": "bXMILLqiFi  bXMILLqiFl   bXMILLqiFm ",
+      "rect": {
+        "x": 16,
+        "y": 146,
+        "w": 80,
+        "h": 20
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 场景结案下载",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 16,
+        "y": 174,
+        "w": 80,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 下载任务管理",
+      "cls": "bXMILLqiFn  bXMILLqiFr   child-expand ",
+      "rect": {
+        "x": 16,
+        "y": 226,
+        "w": 80,
+        "h": 44
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "刷新表格",
+      "cls": "asiYysnOaY    asiYysnObe-normal asiYysnObe-custom  ",
+      "rect": {
+        "x": 136,
+        "y": 211,
+        "w": 74,
+        "h": 32
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "批量删除",
+      "cls": "asiYysnOaY    asiYysnObe-normal asiYysnObe-custom  ",
+      "rect": {
+        "x": 226,
+        "y": 211,
+        "w": 74,
+        "h": 32
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "下载",
+      "cls": "asiYysnOaY    asiYysnObe-small asiYysnObe-custom-gradient  ",
+      "rect": {
+        "x": 136,
+        "y": 370,
+        "w": 50,
+        "h": 24
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "删除",
+      "cls": "asiYysnOaY    asiYysnObe-small asiYysnObe-custom  ",
+      "rect": {
+        "x": 197,
+        "y": 370,
+        "w": 50,
+        "h": 24
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "",
+      "cls": "mx-iconfont-line asiYysnOzL  asiYysnOzN ",
+      "rect": {
+        "x": 1213,
+        "y": 625,
+        "w": 16,
+        "h": 32
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "1",
+      "cls": "asiYysnOzO asiYysnOzK asiYysnOzP",
+      "rect": {
+        "x": 1237,
+        "y": 625,
+        "w": 32,
+        "h": 32
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "",
+      "cls": "mx-iconfont-line asiYysnOzL  asiYysnOzN ",
+      "rect": {
+        "x": 1277,
+        "y": 625,
+        "w": 16,
+        "h": 32
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "跳转",
+      "cls": "asiYysnOaY    asiYysnObe-normal asiYysnObe-custom  ",
+      "rect": {
+        "x": 1397,
+        "y": 625,
+        "w": 64,
+        "h": 32
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "关于阿里妈妈",
+      "cls": "asiYysnOqo",
+      "rect": {
+        "x": 534,
+        "y": 697,
+        "w": 80,
+        "h": 28
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "联系客服",
+      "cls": "asiYysnOqo",
+      "rect": {
+        "x": 614,
+        "y": 697,
+        "w": 64,
+        "h": 28
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "开放平台",
+      "cls": "asiYysnOqo",
+      "rect": {
+        "x": 678,
+        "y": 697,
+        "w": 64,
+        "h": 28
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "廉正举报",
+      "cls": "asiYysnOqo",
+      "rect": {
+        "x": 742,
+        "y": 697,
+        "w": 64,
+        "h": 28
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "意见反馈",
+      "cls": "asiYysnOqo",
+      "rect": {
+        "x": 806,
+        "y": 697,
+        "w": 64,
+        "h": 28
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "举报中心",
+      "cls": "asiYysnOqo",
+      "rect": {
+        "x": 870,
+        "y": 697,
+        "w": 64,
+        "h": 28
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "法律声明及隐私权政策",
+      "cls": "asiYysnOqo",
+      "rect": {
+        "x": 934,
+        "y": 697,
+        "w": 128,
+        "h": 28
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "",
+      "cls": "asiYysnOqo",
+      "rect": {
+        "x": 767,
+        "y": 725,
+        "w": 36,
+        "h": 28
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "浙公网安备 33010002000075号",
+      "cls": "asiYysnOqo",
+      "rect": {
+        "x": 803,
+        "y": 725,
+        "w": 206,
+        "h": 28
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "增值电信业务经营许可证：浙B2-20070195",
+      "cls": "asiYysnOqo",
+      "rect": {
+        "x": 682,
+        "y": 753,
+        "w": 232,
+        "h": 28
+      }
+    }
+  ],
+  "domSummary": {
+    "totalElements": 1159,
+    "counts": {
+      "HTML": 1,
+      "HEAD": 1,
+      "META": 8,
+      "TITLE": 1,
+      "LINK": 3,
+      "STYLE": 128,
+      "SCRIPT": 17,
+      "BODY": 1,
+      "svg": 1,
+      "symbol": 183,
+      "path": 284,
+      "DIV": 159,
+      "A": 53,
+      "IMG": 11,
+      "I": 47,
+      "SPAN": 165,
+      "BUTTON": 15,
+      "TABLE": 2,
+      "THEAD": 1,
+      "TR": 13,
+      "TH": 6,
+      "INPUT": 8,
+      "COLGROUP": 1,
+      "COL": 6,
+      "TBODY": 1,
+      "TD": 42,
+      "IFRAME": 1
+    },
+    "containers": [
+      {
+        "tag": "DIV",
+        "id": "app",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1501,
+          "h": 809
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "universalBP_punish",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1501,
+          "h": 0
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "universalBP_common_topbar",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1501,
+          "h": 0
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "universalBP_common_layout",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1501,
+          "h": 809
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "mx_61",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1501,
+          "h": 58
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "mx_74",
+        "cls": "asiYysnOtK",
+        "rect": {
+          "x": 973,
+          "y": 5,
+          "w": 504,
+          "h": 49
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "ai_analyst_entrance",
+        "cls": "wO_WXVbiE",
+        "rect": {
+          "x": 973,
+          "y": 6,
+          "w": 147,
+          "h": 48
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "ai_analyst_entrance_xiaowan_entrance",
+        "cls": "",
+        "rect": {
+          "x": 973,
+          "y": 6,
+          "w": 147,
+          "h": 52
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "mx_157",
+        "cls": " ivthphopa_O",
+        "rect": {
+          "x": 1064,
+          "y": 6,
+          "w": 56,
+          "h": 48
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": "mx_301",
+        "cls": "mxgc-icon mxgc-iconfont-wrapper",
+        "rect": {
+          "x": 1083,
+          "y": 11,
+          "w": 18,
+          "h": 18
+        }
+      }
+    ]
+  },
+  "tables": [
+    {
+      "rows": 0,
+      "cols": 6,
+      "rect": {
+        "x": 112,
+        "y": 260,
+        "w": 1373,
+        "h": 60
+      },
+      "visible": true
+    },
+    {
+      "rows": 12,
+      "cols": 6,
+      "rect": {
+        "x": 112,
+        "y": 320,
+        "w": 1373,
+        "h": 289
+      },
+      "visible": true
+    }
+  ]
+}

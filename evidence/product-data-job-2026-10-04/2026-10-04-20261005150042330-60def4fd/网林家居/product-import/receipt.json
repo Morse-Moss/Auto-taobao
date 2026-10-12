@@ -1,0 +1,14 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-04_2026-10-04 (9).xls",
+  "shop": "网林家居",
+  "date": "2026-10-04",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 5,
+  "existingRows": 161,
+  "plannedRows": 0,
+  "mode": "apply",
+  "manifest": [],
+  "recordIds": [],
+  "afterRows": 161
+}

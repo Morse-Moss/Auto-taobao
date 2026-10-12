@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-01",
+  "mode": "commit",
+  "startedAt": "2026-10-02T07:51:27.594Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 0,
+      "logPath": "evidence\\batches-2026-10-01\\b3\\00-health-check-daily.txt",
+      "ok": true,
+      "blocking": [],
+      "blockingDetails": [],
+      "normalize": "本来就在位（生意参谋工作页=1  飞书底单页=1）",
+      "normalizeChanged": false
+    }
+  },
+  "shops": {
+    "安比龙头店": {
+      "status": "waiting",
+      "state": "WAITING_OPERATOR_ACCOUNT",
+      "resumable": true,
+      "failedStage": "shop-report",
+      "reason": "生意参谋日报需要运营账号处理，开发侧暂缓该店日报流程。",
+      "owner": "运营",
+      "resumeWhen": "运营更换并确认可用账号后，从日报店铺状态登记移除该店铺。",
+      "stages": [],
+      "source": {},
+      "shop": "安比龙头店"
+    },
+    "科塔龙头店": {
+      "status": "waiting",
+      "state": "WAITING_OPERATOR_ACCOUNT",
+      "resumable": true,
+      "failedStage": "shop-report",
+      "reason": "生意参谋日报需要运营账号处理，开发侧暂缓该店日报流程。",
+      "owner": "运营",
+      "resumeWhen": "运营更换并确认可用账号后，从日报店铺状态登记移除该店铺。",
+      "stages": [],
+      "source": {},
+      "shop": "科塔龙头店"
+    },
+    "安比淘宝": {
+      "status": "waiting",
+      "state": "WAITING_OPERATOR_ACCOUNT",
+      "resumable": true,
+      "failedStage": "shop-report",
+      "reason": "生意参谋日报需要运营账号处理，开发侧暂缓该店日报流程。",
+      "owner": "运营",
+      "resumeWhen": "运营更换并确认可用账号后，从日报店铺状态登记移除该店铺。",
+      "stages": [],
+      "source": {},
+      "shop": "安比淘宝"
+    }
+  },
+  "finishedAt": "2026-10-02T07:51:27.633Z"
+}

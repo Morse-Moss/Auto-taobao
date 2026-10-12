@@ -1,0 +1,118 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-11_2026-10-11 (1).xls",
+  "shop": "网林天猫",
+  "date": "2026-10-11",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 17,
+  "existingRows": 1702,
+  "plannedRows": 17,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "1072247628377"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "923336705176"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "923791888580"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "944130346200"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "948903663291"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "976064603975"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "976539362164"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "976593634003"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "977271829805"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "982883522589"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "1002790238345"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "1003593529956"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "1060911657748"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "1060913369469"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "1071284033110"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "1083847067443"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "网林天猫",
+      "productId": "1083847599252"
+    }
+  ],
+  "recordIds": [
+    "reczz28MKYxBBsFl",
+    "reczz28MKYxBBEcC",
+    "reczz28MKYxBAfWY",
+    "reczz28MKYxBAZWV",
+    "reczz28MKYxB9icZ",
+    "reczz28MKYxBAUZ9",
+    "reczz28MKYxB8L82",
+    "reczz28MKYxB7n0l",
+    "reczz28MKYxB9YYG",
+    "reczz28MKYxB9tWn",
+    "reczz28MKYxB7vzB",
+    "reczz28MKYxBB8m4",
+    "reczz28MKYxB9ahT",
+    "reczz28MKYxB8c1D",
+    "reczz28MKYxB8PZP",
+    "reczz28MKYxB9YGd",
+    "reczz28MKYxB85tZ"
+  ],
+  "afterRows": 1719
+}

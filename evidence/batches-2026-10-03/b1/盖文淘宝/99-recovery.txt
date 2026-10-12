@@ -1,0 +1,6 @@
+停手时页面停在：生意参谋工作页=0  阿里妈妈报表页=1（共 4 个页签）
+  · 不属于期望清单：file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&por
+  · 不属于期望清单：https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new
+  · 不属于期望清单：https://login.taobao.com/havanaone/login/login.htm?bizName=taobao
+回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/serv）
+回位后 生意参谋工作页 是 0 个（回位前 0 个） —— 下一轮仍然会从这个起点开始，先看现场

@@ -1,0 +1,15 @@
+﻿{
+    "at":  "2026-09-25T22:33:36",
+    "conns":  [
+
+              ],
+    "proc":  {
+                 "Id":  48328,
+                 "ProcessName":  "msedge",
+                 "Threads":  1,
+                 "Handles":  1248,
+                 "WorkingSet64":  32768,
+                 "StartTime":  "\/Date(1790254281029)\/",
+                 "Responding":  true
+             }
+}

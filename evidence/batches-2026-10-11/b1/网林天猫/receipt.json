@@ -1,0 +1,65 @@
+{
+  "mode": "apply",
+  "date": "2026-10-11",
+  "shop": "网林天猫",
+  "profile": "kcne",
+  "tables": {
+    "keyword": {
+      "tableId": "tblbSGMO2apOKuAZ",
+      "beforeRows": 1563,
+      "plannedRows": 11,
+      "skippedRows": 0,
+      "recordIds": [
+        "reczz28MIrVSvfF5",
+        "reczz28MIrVSydoS",
+        "reczz28MIrVSxiMd",
+        "reczz28MIrVSxH39",
+        "reczz28MIrVSy9Z7",
+        "reczz28MIrVT0qQQ",
+        "reczz28MIrVT180E",
+        "reczz28MIrVT1Cev",
+        "reczz28MIrVSyiMn",
+        "reczz28MIrVSzkNH",
+        "reczz28MIrVSyS4G"
+      ],
+      "afterRows": 1574
+    },
+    "audience": {
+      "tableId": "tblyjD5058Mjbmcv",
+      "beforeRows": 1377,
+      "plannedRows": 14,
+      "skippedRows": 0,
+      "recordIds": [
+        "reczz28MIrlZXdeQ",
+        "reczz28MIrlZVk5A",
+        "reczz28MIrlZZJAv",
+        "reczz28MIrlZVi2S",
+        "reczz28MIrlZXGbf",
+        "reczz28MIrlZYgfZ",
+        "reczz28MIrlZZ9Gu",
+        "reczz28MIrlZWo9h",
+        "reczz28MIrlZW6oF",
+        "reczz28MIrlZXkdJ",
+        "reczz28MIrlZWZQ5",
+        "reczz28MIrlZVsKE",
+        "reczz28MIrlZYzJA",
+        "reczz28MIrlZZdOp"
+      ],
+      "afterRows": 1391
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261012_083422.zip",
+      "csvName": "关键词报表_20261012_083422.csv",
+      "rows": 11,
+      "columns": 75
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261012_083441.zip",
+      "csvName": "人群报表_20261012_083441.csv",
+      "rows": 14,
+      "columns": 73
+    }
+  }
+}

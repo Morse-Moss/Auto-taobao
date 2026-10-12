@@ -1,0 +1,12 @@
+
+===== 2026-09-30T10:28:52.495Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase submit --date 2026-09-29 --proxy http://127.0.0.1:19065 --expect-shop 安比全卫定制 --expect-member tb720555516:泡芙 --expect-member-id 4611324807
+exit=0 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 57CBBFF2E05BAFBBC9CBFFB1187C37E8｜phase=submit｜目标日 2026-09-29
+[身份] 阿里妈妈会员 = "tb720555516:泡芙" ID="4611324807"（这一页不显示店铺名，只有会员名）｜期望 "tb720555516:泡芙" / 4611324807 ✓
+[submit] 台账记着 2026-09-29 已提交过 营销场景报表_20260930_165425，且它仍在下载任务列表里（列表 2 条） ⇒ 跳过提交，直接取件（不再对平台产生第二次副作用）
+[submit] promotionTaskName = 营销场景报表_20260930_165425
+[submit] 未点击任何东西（这一目标日的副作用已经产生过了，不再产生第二次）
+
+--- stderr ---

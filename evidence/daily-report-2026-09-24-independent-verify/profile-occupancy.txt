@@ -1,0 +1,14 @@
+profile 占用判定（只读：打开 Default/Network/Cookies）
+时间：2026-09-25 22:37 (+08)
+判据来源：skills/browser-instance-inventory —— 打不开（EBUSY）＝有浏览器正在用；读得开＝没有进程占着这个 profile。
+
+suixin-custom（盖文淘宝）        可读  size=86016
+likelin-home（里可林淘宝）        可读  size=81920
+wanglin-flagship（网林天猫）      可读  size=81920
+gaiwen-flagship（盖文天猫）       可读  size=106496
+shop-j873522735（科塔淘宝）       可读  size=81920
+edge-daily-report-profile（日报）  可读
+
+结论：六个 profile 都读得开 ⇒ 按这条判据，没有浏览器正在使用它们。
+注意这条**不能**反推「进程已退出」：同一时刻 PID 48328 仍然存活（命令行带 suixin-custom + 19033），
+只是它是 1 线程 / 32 KB / 0 TCP 的空壳，没有占住 profile。

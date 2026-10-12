@@ -1,0 +1,7 @@
+停手时页面停在：生意参谋工作页=0  阿里妈妈报表页=1（共 4 个页签）
+  · 不属于期望清单：file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%AE%B6%E5%B1%85&por
+  · 不属于期望清单：https://sycm.taobao.com/adm/v3/micro/auto_analysis/my_space#/monitor
+  · 不属于期望清单：https://sycm.taobao.com/lyone/auto_analysis/my_space?insertType=sycm&layoutHide=1&useDebug=false&activeKey=com
+回位没做成：生意参谋页的样子不是我预期的，回位不敢乱动。同主机 2 个页面：
+  · https://sycm.taobao.com/adm/v3/micro/auto_analysis/my_space#/monitor
+  · https://sycm.taobao.com/lyone/auto_analysis/my_space?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common

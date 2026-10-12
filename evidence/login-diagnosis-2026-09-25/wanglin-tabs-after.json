@@ -1,0 +1,45 @@
+[
+  {
+    "targetId": "B30C2310536738E9D67CE6C61F77496D",
+    "type": "page",
+    "title": "生意参谋",
+    "url": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "attached": true,
+    "canAccessOpener": false,
+    "browserContextId": "D5DB2013865F425E1735E6992A5B4B1D",
+    "pid": 68440,
+    "automationLabel": "生意参谋工作页"
+  },
+  {
+    "targetId": "479A8CE93BCFEA584C0DC4FB897FE3DA",
+    "type": "page",
+    "title": "网林天猫 · 日报采集窗口",
+    "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19032",
+    "attached": false,
+    "canAccessOpener": false,
+    "browserContextId": "D5DB2013865F425E1735E6992A5B4B1D",
+    "pid": 0
+  },
+  {
+    "targetId": "24F64051453A1E71F9D87C789F106243",
+    "type": "page",
+    "title": "万相台无界版",
+    "url": "https://one.alimama.com/index.html#!/login/index",
+    "attached": true,
+    "canAccessOpener": false,
+    "browserContextId": "D5DB2013865F425E1735E6992A5B4B1D",
+    "pid": 60784,
+    "automationLabel": "阿里妈妈报表页"
+  },
+  {
+    "targetId": "3B608CAACC5AAA0901332920CEC76F55",
+    "type": "page",
+    "title": "登录",
+    "url": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+    "attached": true,
+    "canAccessOpener": false,
+    "browserContextId": "D5DB2013865F425E1735E6992A5B4B1D",
+    "pid": 56136,
+    "automationLabel": "taobao-login"
+  }
+]

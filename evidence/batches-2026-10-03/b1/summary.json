@@ -1,0 +1,1468 @@
+{
+  "date": "2026-10-03",
+  "mode": "commit",
+  "startedAt": "2026-10-04T07:34:38.593Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 0,
+      "logPath": "evidence\\batches-2026-10-03\\b1\\00-health-check-daily.txt",
+      "ok": true,
+      "blocking": [],
+      "blockingDetails": [],
+      "normalize": "已归位（生意参谋工作页=1  飞书底单页=0 → 生意参谋工作页=1  飞书底单页=1）",
+      "normalizeChanged": true
+    }
+  },
+  "shops": {
+    "里可林淘宝": {
+      "status": "waiting",
+      "state": "WAITING_OPERATOR_ACCOUNT",
+      "resumable": true,
+      "failedStage": "shop-report",
+      "reason": "生意参谋日报需要运营账号处理，开发侧暂缓该店日报流程。",
+      "owner": "运营",
+      "resumeWhen": "运营更换并确认可用账号后，从日报店铺状态登记移除该店铺。",
+      "stages": [],
+      "source": {},
+      "shop": "里可林淘宝"
+    },
+    "网林天猫": {
+      "status": "ok",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\网林天猫\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": [],
+          "pageNormalize": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）"
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\网林天猫\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19042"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\网林天猫\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--expect-shop",
+            "网林家居旗舰店",
+            "--expect-member",
+            "网林家居旗舰店:饺子",
+            "--expect-member-id",
+            "7314426323"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\网林天猫\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19042"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "shop-report",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\网林天猫\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--expect-shop",
+            "网林家居旗舰店",
+            "--expect-member",
+            "网林家居旗舰店:饺子",
+            "--expect-member-id",
+            "7314426323"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "promotion-fetch",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\网林天猫\\06-promotion-fetch.txt",
+          "argv": [
+            "--phase",
+            "fetch",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--expect-shop",
+            "网林家居旗舰店",
+            "--expect-member",
+            "网林家居旗舰店:饺子",
+            "--expect-member-id",
+            "7314426323"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "push",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\网林天猫\\07-push.txt",
+          "argv": [
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "网林天猫",
+            "--commit",
+            "--shop-xlsx",
+            "C:\\Users\\Administrator\\Downloads\\日报_20261004_65141cc3c0fd0c526f65e7da28ff800b.xlsx",
+            "--promotion-zip",
+            "C:\\Users\\Administrator\\Downloads\\营销场景报表_20261004_153454.zip"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "sycm-reset",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\网林天猫\\08-sycm-reset.txt",
+          "argv": [],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "sycm-date-again",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\网林天猫\\09-sycm-date-again.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19042"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "backfill",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\网林天猫\\10-backfill.txt",
+          "argv": [
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19042",
+            "--source-shop",
+            "网林家居旗舰店",
+            "--shop",
+            "网林天猫",
+            "--shop-key",
+            "网林天猫",
+            "--commit"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "readback",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\网林天猫\\11-readback.txt",
+          "argv": [
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "网林天猫"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        }
+      ],
+      "source": {
+        "shopXlsx": "C:\\Users\\Administrator\\Downloads\\日报_20261004_65141cc3c0fd0c526f65e7da28ff800b.xlsx",
+        "shopReportManifest": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-03\\b1\\网林天猫\\shop-report-manifest.json",
+        "promotionZip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20261004_153454.zip",
+        "promotionManifest": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-03\\b1\\网林天猫\\promotion-report-manifest.json"
+      }
+    },
+    "盖文淘宝": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 2,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\盖文淘宝\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": [
+            "目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。"
+          ],
+          "pageNormalize": "归位后仍不齐（生意参谋工作页=0  阿里妈妈报表页=1）"
+        }
+      ],
+      "source": {},
+      "failedStage": "health-check",
+      "failureOutput": "归位：归位后仍不齐（生意参谋工作页=0  阿里妈妈报表页=1）\n  [归位] 生意参谋工作页：reclaim\n体检未通过：阻断 1 项，告警 1 项\n  [阻断] TARGET_PAGE_MISSING：目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。\n  [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。\n  已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；未通过 1 项：TARGET_PAGE_MISSING；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）\n\n{\n  \"normalize\": {\n    \"proxyPort\": 19043,\n    \"dry\": false,\n    \"before\": [\n      {\n        \"page\": \"生意参谋工作页\",\n        \"count\": 0\n      },\n      {\n        \"page\": \"阿里妈妈报表页\",\n        \"count\": 1\n      }\n    ],\n    \"after\": [\n      {\n        \"page\": \"生意参谋工作页\",\n        \"count\": 0\n      },\n      {\n        \"page\": \"阿里妈妈报表页\",\n        \"count\": 1\n      }\n    ],\n    \"changed\": false,\n    \"actions\": [\n      {\n        \"page\": \"生意参谋工作页\",\n        \"action\": \"reclaim\",\n        \"found\": 0,\n        \"url\": \"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop\",\n        \"from\": \"https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop\",\n        \"targetId\": \"B2E13087A840DA3C22ECB2B70957A5F8\",\n        \"status\": 200\n      },\n      {\n        \"page\": \"阿里妈妈报表页\",\n        \"action\": \"already-one\",\n        \"found\": 1\n      }\n    ],\n    \"requests\": [\n      {\n        \"kind\": \"navigate\",\n        \"page\": \"生意参谋工作页\"\n      }\n    ],\n    \"settleReads\": 3,\n    \"verdict\": {\n      \"ok\": false,\n      \"changed\": false,\n      \"notDone\": [],\n      \"detail\": \"归位后仍不齐（生意参谋工作页=0  阿里妈妈报表页=1）\"\n    }\n  },\n  \"check\": {\n    \"version\": \"xws-platform-health-preflight-v1\",\n    \"ok\": false,\n    \"findings\": [\n      {\n        \"layer\": \"ENVIRONMENT\",\n        \"code\": \"TARGET_PAGE_MISSING\",\n        \"state\": \"AUTH_UNKNOWN\",\n        \"reason\": \"TARGET_PAGE_MISSING\",\n        \"detail\": \"目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。\",\n        \"blocking\": true\n      },\n      {\n        \"layer\": \"ENVIRONMENT\",\n        \"code\": \"EGRESS_PROXY_NOT_DECLARED\",\n        \"state\": \"AUTH_UNKNOWN\",\n        \"reason\": null,\n        \"detail\": \"没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。\",\n        \"blocking\": false\n      }\n    ],\n    \"blocking\": [\n      {\n        \"layer\": \"ENVIRONMENT\",\n        \"code\": \"TARGET_PAGE_MISSING\",\n        \"state\": \"AUTH_UNKNOWN\",\n        \"reason\": \"TARGET_PAGE_MISSING\",\n        \"detail\": \"目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。\",\n        \"blocking\": true\n      }\n    ],\n    \"note\": \"已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；未通过 1 项：TARGET_PAGE_MISSING；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）\",\n    \"layers\": {\n      \"IDENTITY\": \"NOT_IMPLEMENTED\",\n      \"ENVIRONMENT\": \"CHECKED\",\n      \"SESSION\": \"NOT_IMPLEMENTED\",\n      \"END_TO_END\": \"NOT_IMPLEMENTED\"\n    },\n    \"checkedAt\": \"2026-10-04T07:37:16.969Z\"\n  }\n}\n",
+      "blockingDetails": [
+        "目标页面「生意参谋工作页」不在这个浏览器里（按片段 sycm.taobao.com/qos/service/frame/shop/performance 找到 0 个）；采集会从落位那一步就失败。"
+      ],
+      "error": "阶段 health-check 失败（exit 2）",
+      "perception": {
+        "ok": true,
+        "files": {
+          "stateJson": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-03\\b1\\盖文淘宝\\98-failure-state.json",
+          "stateText": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-03\\b1\\盖文淘宝\\98-failure-state.txt",
+          "screenshot": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-03\\b1\\盖文淘宝\\98-failure-page.png"
+        },
+        "state": {
+          "value": {
+            "capturedAt": "2026-10-04T07:37:16.975Z",
+            "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&member=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E5%B0%8F%E7%93%9C&state=%E9%9C%80%E8%A6%81%E7%99%BB%E5%BD%95",
+            "title": "盖文淘宝 · 日报采集窗口",
+            "viewport": {
+              "w": 1506,
+              "h": 642,
+              "dpr": 1.25,
+              "scrollY": 0
+            },
+            "visibleText": "这个浏览器窗口是给这家店用的 盖文淘宝 会员名 随心品质定制:小瓜 同一个店的两个名字：飞书里叫「盖文淘宝」，这个窗口登的会员名是「随心品质定制:小瓜」。 调试端口 19033 需要登录 请在本窗口（不是别的窗口）里登录上面这家店的账号， 登录页就在本标签页右边那一个里。 登完请点浏览器提示里的「保存」把密码存下来 —— 存过之后系统下次就能自己登。",
+            "dialogs": [],
+            "interactive": [],
+            "domSummary": {
+              "totalElements": 20,
+              "counts": {
+                "HTML": 1,
+                "HEAD": 1,
+                "META": 1,
+                "TITLE": 1,
+                "STYLE": 1,
+                "BODY": 1,
+                "DIV": 8,
+                "B": 3,
+                "BR": 2,
+                "SCRIPT": 1
+              },
+              "containers": [
+                {
+                  "tag": "DIV",
+                  "id": "shop",
+                  "cls": "v",
+                  "rect": {
+                    "x": 625,
+                    "y": 168,
+                    "w": 256,
+                    "h": 85
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "member",
+                  "cls": "m",
+                  "rect": {
+                    "x": 638,
+                    "y": 281,
+                    "w": 231,
+                    "h": 26
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "actual",
+                  "cls": "x",
+                  "rect": {
+                    "x": 753,
+                    "y": 307,
+                    "w": 0,
+                    "h": 0
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "alias",
+                  "cls": "a",
+                  "rect": {
+                    "x": 415,
+                    "y": 315,
+                    "w": 676,
+                    "h": 26
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "port",
+                  "cls": "n",
+                  "rect": {
+                    "x": 688,
+                    "y": 341,
+                    "w": 130,
+                    "h": 24
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "state",
+                  "cls": "s bad",
+                  "rect": {
+                    "x": 709,
+                    "y": 379,
+                    "w": 88,
+                    "h": 29
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "hint",
+                  "cls": "w",
+                  "rect": {
+                    "x": 451,
+                    "y": 434,
+                    "w": 604,
+                    "h": 84
+                  }
+                }
+              ]
+            },
+            "tables": []
+          }
+        },
+        "errors": [],
+        "shopKey": "盖文淘宝",
+        "stage": "health-check"
+      },
+      "repairRequest": {
+        "at": "2026-10-04T07:37:17.020Z",
+        "shopKey": "盖文淘宝",
+        "stage": "health-check",
+        "cause": "SHOP_BLOCKED",
+        "error": "阶段 health-check 失败（exit 2）",
+        "statePath": "evidence\\batches-2026-10-03\\b1\\盖文淘宝\\98-failure-state.json",
+        "stateTextPath": "evidence\\batches-2026-10-03\\b1\\盖文淘宝\\98-failure-state.txt",
+        "screenshotPath": "evidence\\batches-2026-10-03\\b1\\盖文淘宝\\98-failure-page.png",
+        "stateSummary": {
+          "url": null,
+          "title": null,
+          "viewport": null,
+          "overlayCount": 0
+        },
+        "candidates": [
+          {
+            "action": "RESET_PAGES",
+            "mutating": false,
+            "why": "页签可能被前一步带走或漂到别处；按期望清单归位再重试。"
+          },
+          {
+            "action": "RELOAD_PAGE",
+            "mutating": true,
+            "why": "这一份渲染上元素不理会点击（本项目实测过的形态）；真重载换个新现场再试。"
+          }
+        ],
+        "planNote": null,
+        "stageHint": null,
+        "retryStage": "health-check",
+        "execHint": "node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 盖文淘宝 --proxy http://127.0.0.1:19043 --stage health-check --cause SHOP_BLOCKED --action <候选动作> --log-dir evidence\\batches-2026-10-03\\b1\\盖文淘宝",
+        "path": "evidence\\batches-2026-10-03\\b1\\盖文淘宝\\97-repair-request.json"
+      },
+      "autoRepair": {
+        "enabled": true,
+        "cause": "SHOP_BLOCKED",
+        "stage": "health-check",
+        "maxRounds": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "action": "RESET_PAGES",
+            "applied": false,
+            "retry": {
+              "attempted": false,
+              "why": "修复动作没落地，不重试阶段（避免原样再来一遍）"
+            },
+            "detail": "归位后仍不齐（生意参谋工作页=0  阿里妈妈报表页=1）",
+            "error": null
+          }
+        ],
+        "rescued": false,
+        "gaveUp": "用完 1 轮（候选还剩 RELOAD_PAGE）",
+        "error": null
+      },
+      "recovery": {
+        "at": "2026-10-04T07:37:18.568Z",
+        "proxyPort": 19043,
+        "leftAt": {
+          "tabs": 4,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 0
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": [
+            "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&member=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E5%B0%8F%E7%93%9C&state=%E9%9C%80%E8%A6%81%E7%99%BB%E5%BD%95",
+            "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+            "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao"
+          ]
+        },
+        "action": "none",
+        "after": {
+          "tabs": 4,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 0
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": [
+            "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E6%B7%98%E5%AE%9D&port=19033&member=%E9%9A%8F%E5%BF%83%E5%93%81%E8%B4%A8%E5%AE%9A%E5%88%B6%3A%E5%B0%8F%E7%93%9C&state=%E9%9C%80%E8%A6%81%E7%99%BB%E5%BD%95",
+            "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+            "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao"
+          ]
+        },
+        "restored": false,
+        "detail": "回位后 生意参谋工作页 是 0 个（回位前 0 个） —— 下一轮仍然会从这个起点开始，先看现场",
+        "error": null,
+        "logPath": "evidence\\batches-2026-10-03\\b1\\盖文淘宝\\99-recovery.txt"
+      }
+    },
+    "盖文天猫": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\盖文天猫\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": [],
+          "pageNormalize": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）"
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\盖文天猫\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19045"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\盖文天猫\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19045",
+            "--expect-shop",
+            "盖文旗舰店",
+            "--expect-member",
+            "盖文旗舰店:小瓜",
+            "--expect-member-id",
+            "2995200080"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\盖文天猫\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19045"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "shop-report",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\盖文天猫\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19045",
+            "--expect-shop",
+            "盖文旗舰店",
+            "--expect-member",
+            "盖文旗舰店:小瓜",
+            "--expect-member-id",
+            "2995200080"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        }
+      ],
+      "source": {},
+      "failedStage": "shop-report",
+      "failureOutput": "[0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）\n[身份] 生意参谋店铺名 = \"盖文旗舰店\"（主店）｜期望 \"盖文旗舰店\" ✓\n      → 生意参谋页 75D0A63A72CDA42A9E10A8AC380A48B9｜已有日报 xlsx 151 个｜下载目录 C:\\Users\\Administrator\\Downloads｜身份核对=已做\n[1/4] 再进 自助分析 · 公共空间\n[2/4] 2.5s：预览按钮 1 个\n[2/4] 5s：预览按钮 1 个\n[2/4] 7.5s：预览按钮 1 个\n[2/4] 10s：预览按钮 1 个\n[2/4] 12.5s：预览按钮 1 个\n[2/4] 15s：预览按钮 1 个\n[2/4] 17.5s：预览按钮 1 个\n[2/4] 20s：预览按钮 1 个\n[2/4] 22.5s：预览按钮 1 个\n[2/4] 25s：预览按钮 1 个\n\n\n采集失败：等不到「日报」这一行的预览按钮\n",
+      "blockingDetails": null,
+      "error": "阶段 shop-report 失败（exit 1）",
+      "perception": {
+        "ok": true,
+        "files": {
+          "stateJson": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-03\\b1\\盖文天猫\\98-failure-state.json",
+          "stateText": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-03\\b1\\盖文天猫\\98-failure-state.txt",
+          "screenshot": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-03\\b1\\盖文天猫\\98-failure-page.png"
+        },
+        "state": {
+          "value": {
+            "capturedAt": "2026-10-04T07:38:22.152Z",
+            "url": "https://one.alimama.com/index.html#!/report/download-list",
+            "title": "下载任务管理_万相台无界版",
+            "viewport": {
+              "w": 1506,
+              "h": 642,
+              "dpr": 1.25,
+              "scrollY": 0
+            },
+            "visibleText": "首页 推广  报表  洞察  创意  工具  账户  AI小万  新人手册  快捷入口  消息中心 盖文旗舰店:小瓜 ID：2995200080  基础报表  场景结案  下载管理   场景结案下载  下载任务管理  下载任务管理  2026-09-04 至 今日   当任务包含较大数据量时，生成完成最长需要10分钟，您可以稍后点击报表页面右上角【下载任务管理】，查看生成结果并下载。注意：下载的文件中数据行随机排序，数据本身完整且正确，您可手动在EXCEL中调整为所需顺序。相应字段计算公式分母为0时，下载数据报表中显示 \\N ，对应报表页面中字段展示为 - ，并非系统bug。 刷新表格 批量删除 状态 文件名称 归因周期 日期范围 创建日期 生成成功 营销场景报表_20261004_153734 30天累计数据 2026-10-03至2026-10-03 2026-10-04 下载 导入超级表格 AI分析 删除 生成成功 营销场景报表_20261003_153845 30天累计数据 2026-10-02至2026-10-02 2026-10-03 生成成功 营销场景报表_20261002_153729 30天累计数据 2026-10-01至2026-10-01 2026-10-02 生成成功 营销场景报表_20261001_154005 30天累计数据 2026-09-30至2026-09-30 2026-10-01 生成成功 人群报表_20261001_104239 30天累计数据 2026-09-30至2026-09-30 2026-10-01 生成成功 人群报表_20261001_101755 30天累计数据 2026-09-30至2026-09-30 2026-10-01 生成成功 关键词报表_20261001_093702 30天累计数据 2026-09-30至2026-09-30 2026-10-01 生成成功 营销场景报表_20260930_164050 30天累计数据 2026-09-29至2026-09-29 2026-09-30 生成成功 人群报表_20260929_101513 15天累计数据 2026-09-22至2026-09-28 2026-09-29 生成成功 人群报表_20260929_101313 15天累计数据 2026-09-22至2026-09-28 2026-09-29 生成成功 关键词报表_20260929_093210 15天累计数据 2026-09-22至2026-09-28 2026-09-29 共 11 项数据 20条/页   1  跳至 页 跳转 关于阿里妈妈 联系客服 开放平台 廉正举报 意见反馈 举报中心 法律声明及隐私权政策 © 2007-现在 阿里妈妈版权所有 浙公网安备 33010002000075号 增值电信业务经营许可证：浙B2-20070195 在线客服 添加小二 直播带教 降温放量节奏与预算分配  有新消息 消息中心 更多消息 日常公告 系统消息 上线 「万相点睛」突破传统局限，精准捕获蓝海机会！ 活动 双11预热激励加码！全站推平台推荐商品9月专属活动，单商最高返1.5万！ 【重要通知】全局优选起量下线公告 上线 低效品不再愁！货品全站推“安心转投”全量上线，智能托管助力店铺ROI稳步提升 升级 拿量更有底气！货品全站推全店「成本保障」正式上线，智能赔付让拿量更安心！ 1秒后关闭浮层 立即关闭",
+            "dialogs": [],
+            "interactive": [
+              {
+                "tag": "A",
+                "id": null,
+                "text": "",
+                "cls": "",
+                "rect": {
+                  "x": 24,
+                  "y": 13,
+                  "w": 253,
+                  "h": 32
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "首页",
+                "cls": "asiYysfatv",
+                "rect": {
+                  "x": 289,
+                  "y": 19,
+                  "w": 28,
+                  "h": 19
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "推广",
+                "cls": "asiYysfatv",
+                "rect": {
+                  "x": 357,
+                  "y": 19,
+                  "w": 28,
+                  "h": 19
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "报表",
+                "cls": "asiYysfatv",
+                "rect": {
+                  "x": 445,
+                  "y": 19,
+                  "w": 28,
+                  "h": 19
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "洞察",
+                "cls": "asiYysfatv",
+                "rect": {
+                  "x": 533,
+                  "y": 19,
+                  "w": 28,
+                  "h": 19
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "创意",
+                "cls": "asiYysfatv",
+                "rect": {
+                  "x": 621,
+                  "y": 19,
+                  "w": 28,
+                  "h": 19
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "工具",
+                "cls": "asiYysfatv",
+                "rect": {
+                  "x": 709,
+                  "y": 19,
+                  "w": 28,
+                  "h": 19
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "账户",
+                "cls": "asiYysfatv",
+                "rect": {
+                  "x": 797,
+                  "y": 19,
+                  "w": 28,
+                  "h": 19
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": " 新人手册",
+                "cls": "wO_WXasbiF wO_WXasbiH",
+                "rect": {
+                  "x": 1135,
+                  "y": 7,
+                  "w": 56,
+                  "h": 44
+                }
+              },
+              {
+                "tag": "A",
+                "id": "mx_248_pop",
+                "text": " 消息中心",
+                "cls": "icQRQlrwb mxgc-popover",
+                "rect": {
+                  "x": 1275,
+                  "y": 10,
+                  "w": 48,
+                  "h": 38
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "基础报表 ",
+                "cls": "bXMILLqiFi   parent-close ",
+                "rect": {
+                  "x": 16,
+                  "y": 74,
+                  "w": 80,
+                  "h": 20
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "场景结案 ",
+                "cls": "bXMILLqiFi   parent-close ",
+                "rect": {
+                  "x": 16,
+                  "y": 110,
+                  "w": 80,
+                  "h": 20
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "下载管理 ",
+                "cls": "bXMILLqiFi  bXMILLqiFl   bXMILLqiFm ",
+                "rect": {
+                  "x": 16,
+                  "y": 146,
+                  "w": 80,
+                  "h": 20
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": " 场景结案下载",
+                "cls": "bXMILLqiFn   child-expand ",
+                "rect": {
+                  "x": 16,
+                  "y": 174,
+                  "w": 80,
+                  "h": 44
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": " 下载任务管理",
+                "cls": "bXMILLqiFn  bXMILLqiFr   child-expand ",
+                "rect": {
+                  "x": 16,
+                  "y": 226,
+                  "w": 80,
+                  "h": 44
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "id": null,
+                "text": "刷新表格",
+                "cls": "asiYysfaaV    asiYysfabb-normal asiYysfabb-custom  ",
+                "rect": {
+                  "x": 136,
+                  "y": 211,
+                  "w": 74,
+                  "h": 32
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "id": null,
+                "text": "批量删除",
+                "cls": "asiYysfaaV    asiYysfabf  asiYysfabb-normal asiYysfabb-custom  ",
+                "rect": {
+                  "x": 226,
+                  "y": 211,
+                  "w": 74,
+                  "h": 32
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "id": null,
+                "text": "下载",
+                "cls": "asiYysfaaV    asiYysfabb-small asiYysfabb-custom-gradient  ",
+                "rect": {
+                  "x": 136,
+                  "y": 370,
+                  "w": 50,
+                  "h": 24
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "id": null,
+                "text": "导入超级表格",
+                "cls": "asiYysfaaV    asiYysfabb-small asiYysfabb-custom  ",
+                "rect": {
+                  "x": 194,
+                  "y": 370,
+                  "w": 98,
+                  "h": 24
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "id": null,
+                "text": "删除",
+                "cls": "asiYysfaaV    asiYysfabb-small asiYysfabb-custom  ",
+                "rect": {
+                  "x": 303,
+                  "y": 370,
+                  "w": 50,
+                  "h": 24
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "",
+                "cls": "mx-iconfont-line asiYysfazI  asiYysfazK ",
+                "rect": {
+                  "x": 1213,
+                  "y": 832,
+                  "w": 16,
+                  "h": 32
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "1",
+                "cls": "asiYysfazL asiYysfazH asiYysfazM",
+                "rect": {
+                  "x": 1237,
+                  "y": 832,
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "",
+                "cls": "mx-iconfont-line asiYysfazI  asiYysfazK ",
+                "rect": {
+                  "x": 1277,
+                  "y": 832,
+                  "w": 16,
+                  "h": 32
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "id": null,
+                "text": "跳转",
+                "cls": "asiYysfaaV    asiYysfabb-normal asiYysfabb-custom  ",
+                "rect": {
+                  "x": 1397,
+                  "y": 832,
+                  "w": 64,
+                  "h": 32
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "关于阿里妈妈",
+                "cls": "asiYysfaql",
+                "rect": {
+                  "x": 534,
+                  "y": 904,
+                  "w": 80,
+                  "h": 28
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "联系客服",
+                "cls": "asiYysfaql",
+                "rect": {
+                  "x": 614,
+                  "y": 904,
+                  "w": 64,
+                  "h": 28
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "开放平台",
+                "cls": "asiYysfaql",
+                "rect": {
+                  "x": 678,
+                  "y": 904,
+                  "w": 64,
+                  "h": 28
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "廉正举报",
+                "cls": "asiYysfaql",
+                "rect": {
+                  "x": 742,
+                  "y": 904,
+                  "w": 64,
+                  "h": 28
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "意见反馈",
+                "cls": "asiYysfaql",
+                "rect": {
+                  "x": 806,
+                  "y": 904,
+                  "w": 64,
+                  "h": 28
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "举报中心",
+                "cls": "asiYysfaql",
+                "rect": {
+                  "x": 870,
+                  "y": 904,
+                  "w": 64,
+                  "h": 28
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "法律声明及隐私权政策",
+                "cls": "asiYysfaql",
+                "rect": {
+                  "x": 934,
+                  "y": 904,
+                  "w": 128,
+                  "h": 28
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "",
+                "cls": "asiYysfaql",
+                "rect": {
+                  "x": 767,
+                  "y": 932,
+                  "w": 36,
+                  "h": 28
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "浙公网安备 33010002000075号",
+                "cls": "asiYysfaql",
+                "rect": {
+                  "x": 803,
+                  "y": 932,
+                  "w": 206,
+                  "h": 28
+                }
+              },
+              {
+                "tag": "A",
+                "id": null,
+                "text": "增值电信业务经营许可证：浙B2-20070195",
+                "cls": "asiYysfaql",
+                "rect": {
+                  "x": 682,
+                  "y": 960,
+                  "w": 232,
+                  "h": 28
+                }
+              }
+            ],
+            "domSummary": {
+              "totalElements": 1356,
+              "counts": {
+                "HTML": 1,
+                "HEAD": 1,
+                "META": 8,
+                "TITLE": 1,
+                "LINK": 3,
+                "STYLE": 137,
+                "SCRIPT": 16,
+                "BODY": 1,
+                "svg": 1,
+                "symbol": 183,
+                "path": 284,
+                "DIV": 160,
+                "A": 52,
+                "IMG": 12,
+                "I": 50,
+                "SPAN": 279,
+                "BUTTON": 36,
+                "TABLE": 2,
+                "THEAD": 1,
+                "TR": 23,
+                "TH": 6,
+                "INPUT": 13,
+                "COLGROUP": 1,
+                "COL": 6,
+                "TBODY": 1,
+                "TD": 77,
+                "IFRAME": 1
+              },
+              "containers": [
+                {
+                  "tag": "DIV",
+                  "id": "app",
+                  "cls": "",
+                  "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "w": 1501,
+                    "h": 1016
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "universalBP_punish",
+                  "cls": "",
+                  "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "w": 1501,
+                    "h": 0
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "universalBP_common_topbar",
+                  "cls": "",
+                  "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "w": 1501,
+                    "h": 0
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "universalBP_common_layout",
+                  "cls": "",
+                  "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "w": 1501,
+                    "h": 1016
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "mx_61",
+                  "cls": "",
+                  "rect": {
+                    "x": 0,
+                    "y": 0,
+                    "w": 1501,
+                    "h": 58
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "mx_74",
+                  "cls": "asiYysfatH",
+                  "rect": {
+                    "x": 1079,
+                    "y": 7,
+                    "w": 398,
+                    "h": 44
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "ai_analyst_entrance",
+                  "cls": "",
+                  "rect": {
+                    "x": 1079,
+                    "y": 7,
+                    "w": 44,
+                    "h": 44
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "ai_analyst_entrance_xiaowan_entrance",
+                  "cls": "",
+                  "rect": {
+                    "x": 1079,
+                    "y": 7,
+                    "w": 44,
+                    "h": 44
+                  }
+                },
+                {
+                  "tag": "DIV",
+                  "id": "mx_593",
+                  "cls": " ivthphhSa_M",
+                  "rect": {
+                    "x": 1079,
+                    "y": 7,
+                    "w": 44,
+                    "h": 44
+                  }
+                },
+                {
+                  "tag": "SPAN",
+                  "id": "mx_882",
+                  "cls": "mxgc-icon mxgc-iconfont-wrapper",
+                  "rect": {
+                    "x": 1092,
+                    "y": 10,
+                    "w": 18,
+                    "h": 18
+                  }
+                }
+              ]
+            },
+            "tables": [
+              {
+                "rows": 0,
+                "cols": 6,
+                "rect": {
+                  "x": 112,
+                  "y": 260,
+                  "w": 1373,
+                  "h": 60
+                },
+                "visible": true
+              },
+              {
+                "rows": 22,
+                "cols": 6,
+                "rect": {
+                  "x": 112,
+                  "y": 320,
+                  "w": 1373,
+                  "h": 496
+                },
+                "visible": true
+              }
+            ]
+          }
+        },
+        "errors": [],
+        "shopKey": "盖文天猫",
+        "stage": "shop-report"
+      },
+      "repairRequest": {
+        "at": "2026-10-04T07:38:26.936Z",
+        "shopKey": "盖文天猫",
+        "stage": "shop-report",
+        "cause": "STAGE_FAILED",
+        "error": "阶段 shop-report 失败（exit 1）",
+        "statePath": "evidence\\batches-2026-10-03\\b1\\盖文天猫\\98-failure-state.json",
+        "stateTextPath": "evidence\\batches-2026-10-03\\b1\\盖文天猫\\98-failure-state.txt",
+        "screenshotPath": "evidence\\batches-2026-10-03\\b1\\盖文天猫\\98-failure-page.png",
+        "stateSummary": {
+          "url": null,
+          "title": null,
+          "viewport": null,
+          "overlayCount": 0
+        },
+        "candidates": [
+          {
+            "action": "REAPPLY_DATES",
+            "mutating": true,
+            "why": "页面上的日期筛选可能已经不在目标日（重载/人动过之后常见）；重新落位再试。"
+          },
+          {
+            "action": "RELOAD_PAGE",
+            "mutating": true,
+            "why": "这一份渲染上元素不理会点击（本项目实测过的形态）；真重载换个新现场再试。"
+          }
+        ],
+        "planNote": null,
+        "stageHint": "sycm",
+        "retryStage": "shop-report",
+        "execHint": "node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 盖文天猫 --proxy http://127.0.0.1:19045 --stage shop-report --cause STAGE_FAILED --action <候选动作> --log-dir evidence\\batches-2026-10-03\\b1\\盖文天猫",
+        "path": "evidence\\batches-2026-10-03\\b1\\盖文天猫\\97-repair-request.json"
+      },
+      "autoRepair": {
+        "enabled": true,
+        "cause": "STAGE_FAILED",
+        "stage": "shop-report",
+        "maxRounds": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "action": "REAPPLY_DATES",
+            "applied": false,
+            "retry": {
+              "attempted": false,
+              "why": "修复动作没落地，不重试阶段（避免原样再来一遍）"
+            },
+            "detail": "日期需要重新落位（sycm）—— 请重试该站点的落位阶段来完成，本动作不重复实现落位",
+            "error": null
+          }
+        ],
+        "rescued": false,
+        "gaveUp": "用完 1 轮（候选还剩 RELOAD_PAGE）",
+        "error": null
+      },
+      "recovery": {
+        "at": "2026-10-04T07:38:26.943Z",
+        "proxyPort": 19045,
+        "leftAt": {
+          "tabs": 3,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 0
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": [
+            "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035&member=%E7%9B%96%E6%96%87%E6%97%97%E8%88%B0%E5%BA%97%3A%E5%B0%8F%E7%93%9C&actual=%E7%9B%96%E6%96%87%E6%97%97%E8%88%B0%E5%BA%97%3A%E5%B0%8F%E7%93%9C",
+            "https://sycm.taobao.com/lyone/auto_analysis/my_space?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common"
+          ]
+        },
+        "action": "navigated",
+        "after": {
+          "tabs": 3,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 1
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": [
+            "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035&member=%E7%9B%96%E6%96%87%E6%97%97%E8%88%B0%E5%BA%97%3A%E5%B0%8F%E7%93%9C&actual=%E7%9B%96%E6%96%87%E6%97%97%E8%88%B0%E5%BA%97%3A%E5%B0%8F%E7%93%9C"
+          ]
+        },
+        "restored": true,
+        "detail": "回位后 生意参谋工作页 恰好一个",
+        "error": null,
+        "logPath": "evidence\\batches-2026-10-03\\b1\\盖文天猫\\99-recovery.txt"
+      }
+    },
+    "科塔淘宝": {
+      "status": "ok",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\科塔淘宝\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": [],
+          "pageNormalize": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）"
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\科塔淘宝\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19044"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\科塔淘宝\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--expect-shop",
+            "科塔全卫定制",
+            "--expect-member",
+            "j873522735:小瓜",
+            "--expect-member-id",
+            "412070158"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\科塔淘宝\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19044"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "shop-report",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\科塔淘宝\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--expect-shop",
+            "科塔全卫定制",
+            "--expect-member",
+            "j873522735:小瓜",
+            "--expect-member-id",
+            "412070158"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "promotion-fetch",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\科塔淘宝\\06-promotion-fetch.txt",
+          "argv": [
+            "--phase",
+            "fetch",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--expect-shop",
+            "科塔全卫定制",
+            "--expect-member",
+            "j873522735:小瓜",
+            "--expect-member-id",
+            "412070158"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "push",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\科塔淘宝\\07-push.txt",
+          "argv": [
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "科塔淘宝",
+            "--commit",
+            "--shop-xlsx",
+            "C:\\Users\\Administrator\\Downloads\\店铺数据日报_20261004_8903471d5657b8875620a116960da9bc.xlsx",
+            "--promotion-zip",
+            "C:\\Users\\Administrator\\Downloads\\营销场景报表_20261004_153851.zip"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "sycm-reset",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\科塔淘宝\\08-sycm-reset.txt",
+          "argv": [],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "sycm-date-again",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\科塔淘宝\\09-sycm-date-again.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19044"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "backfill",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\科塔淘宝\\10-backfill.txt",
+          "argv": [
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19044",
+            "--source-shop",
+            "科塔全卫定制",
+            "--shop",
+            "科塔淘宝",
+            "--shop-key",
+            "科塔淘宝",
+            "--commit"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "readback",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-03\\b1\\科塔淘宝\\11-readback.txt",
+          "argv": [
+            "--date",
+            "2026-10-03",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "科塔淘宝"
+          ],
+          "blockingDetails": null,
+          "pageNormalize": null
+        }
+      ],
+      "source": {
+        "shopXlsx": "C:\\Users\\Administrator\\Downloads\\店铺数据日报_20261004_8903471d5657b8875620a116960da9bc.xlsx",
+        "shopReportManifest": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-03\\b1\\科塔淘宝\\shop-report-manifest.json",
+        "promotionZip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20261004_153851.zip",
+        "promotionManifest": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-03\\b1\\科塔淘宝\\promotion-report-manifest.json"
+      }
+    }
+  },
+  "finishedAt": "2026-10-04T07:40:57.244Z"
+}

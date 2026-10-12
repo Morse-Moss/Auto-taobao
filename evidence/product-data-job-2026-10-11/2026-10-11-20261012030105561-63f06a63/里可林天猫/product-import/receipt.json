@@ -1,0 +1,172 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-11_2026-10-11 (8).xls",
+  "shop": "里可林天猫",
+  "date": "2026-10-11",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 26,
+  "existingRows": 1888,
+  "plannedRows": 26,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "895693458464"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "896511976754"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "900563040245"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "920480411930"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "920484835293"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "920837010920"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "930608567031"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "947257935805"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "947262215522"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "948325829872"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "956038251826"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "956515434166"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "984833395937"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "985382542905"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "986961507830"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "986962995766"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "988952164909"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "1059959030470"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "1060956357037"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "1060958281567"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "1062274529546"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "1066521430805"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "1068487532758"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "1072607923083"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "1074476005201"
+    },
+    {
+      "date": "2026-10-11",
+      "shop": "里可林天猫",
+      "productId": "1081120000333"
+    }
+  ],
+  "recordIds": [
+    "reczz28MLLu18Kme",
+    "reczz28MLLu19J0M",
+    "reczz28MLLu1De6x",
+    "reczz28MLLu1ArAN",
+    "reczz28MLLu1BXyi",
+    "reczz28MLLu1CDhL",
+    "reczz28MLLu1Av8v",
+    "reczz28MLLu1CtoJ",
+    "reczz28MLLu1ByIq",
+    "reczz28MLLu1DsDP",
+    "reczz28MLLu1DsbX",
+    "reczz28MLLu1Bh7n",
+    "reczz28MLLu1DxQP",
+    "reczz28MLLu1D9U6",
+    "reczz28MLLu1CaL9",
+    "reczz28MLLu1EKiZ",
+    "reczz28MLLu1CUJN",
+    "reczz28MLLu1BiB4",
+    "reczz28MLLu1DhJr",
+    "reczz28MLLu1C9ur",
+    "reczz28MLLu1D2j0",
+    "reczz28MLLu1CAg3",
+    "reczz28MLLu1AcTC",
+    "reczz28MLLu1CZgx",
+    "reczz28MLLu1D6o7",
+    "reczz28MLLu1BjIT"
+  ],
+  "afterRows": 1914
+}

@@ -1,0 +1,60 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-10-10",
+  "shop": "网林家居",
+  "environment": {
+    "computedAt": "2026-10-11T03:49:22.774Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19062",
+    "browserPort": {
+      "port": 19052,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19062,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-wanglin-custom",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop wanglin-custom)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-10-网林家居",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
+    "tableId": "tblqF2YD2VfmKP4C",
+    "tableName": "各店铺数据日报",
+    "recordId": "reczz28Lj3SX5pyx",
+    "matchedBy": "shop-name",
+    "shopOptionId": "optRbz0AFD"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "shop": "网林定制家居",
+    "column": "当日询单人数",
+    "dateRow": "2026-10-10",
+    "benchmarkRow": "同行同层均值",
+    "peerBenchmark": "PEER_AVAILABLE",
+    "rows": 7
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 2,
+    "同层同行询单量": 6
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  }
+}

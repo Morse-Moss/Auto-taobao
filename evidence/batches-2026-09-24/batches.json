@@ -1,0 +1,106 @@
+{
+ "version": "sycm-automation 1.7.3",
+ "date": "2026-09-24",
+ "dateInput": "2026-09-24",
+ "mode": "commit",
+ "batchSize": 1,
+ "evidenceRoot": "evidence/batches-2026-09-24",
+ "release": true,
+ "rounds": [
+  {
+   "index": 1,
+   "shops": [
+    "里可林淘宝"
+   ],
+   "steps": {
+    "start": 0,
+    "login-preflight": 0,
+    "label:里可林淘宝": 0,
+    "chain": 0,
+    "stop": 0
+   },
+   "chainStatus": 0,
+   "release": null,
+   "decision": {
+    "release": true,
+    "why": "这一批全绿：按计划收掉，把内存让给下一批"
+   }
+  },
+  {
+   "index": 2,
+   "shops": [
+    "网林天猫"
+   ],
+   "steps": {
+    "start": 0,
+    "login-preflight": 2,
+    "label:网林天猫": 0,
+    "chain": 1,
+    "stop": 0
+   },
+   "chainStatus": 1,
+   "release": null,
+   "decision": {
+    "release": true,
+    "why": "这一批没跑成（链退出码 1）—— **照旧释放**（用户 2026-09-23：每一轮跑完都要释放）；要留现场得同时给 --no-release 并在后台用 scripts/start-all-hold.mjs 托住实例，只给 --no-release 留不住窗口"
+   }
+  },
+  {
+   "index": 3,
+   "shops": [
+    "盖文淘宝"
+   ],
+   "steps": {
+    "start": 0,
+    "login-preflight": 0,
+    "label:盖文淘宝": 0,
+    "chain": 0,
+    "stop": 0
+   },
+   "chainStatus": 0,
+   "release": null,
+   "decision": {
+    "release": true,
+    "why": "这一批全绿：按计划收掉，把内存让给下一批"
+   }
+  },
+  {
+   "index": 4,
+   "shops": [
+    "盖文天猫"
+   ],
+   "steps": {
+    "start": 0,
+    "login-preflight": 0,
+    "label:盖文天猫": 0,
+    "chain": 0,
+    "stop": 0
+   },
+   "chainStatus": 0,
+   "release": null,
+   "decision": {
+    "release": true,
+    "why": "这一批全绿：按计划收掉，把内存让给下一批"
+   }
+  },
+  {
+   "index": 5,
+   "shops": [
+    "科塔淘宝"
+   ],
+   "steps": {
+    "start": 0,
+    "login-preflight": 0,
+    "label:科塔淘宝": 0,
+    "chain": 0,
+    "stop": 0
+   },
+   "chainStatus": 0,
+   "release": null,
+   "decision": {
+    "release": true,
+    "why": "这一批全绿：按计划收掉，把内存让给下一批"
+   }
+  }
+ ]
+}

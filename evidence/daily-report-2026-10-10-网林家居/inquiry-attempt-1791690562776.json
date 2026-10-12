@@ -1,0 +1,220 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-10-10",
+  "shop": "网林家居",
+  "environment": {
+    "computedAt": "2026-10-11T03:49:22.774Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19062",
+    "browserPort": {
+      "port": 19052,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19062,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-wanglin-custom",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop wanglin-custom)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-10-网林家居",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
+    "tableId": "tblqF2YD2VfmKP4C",
+    "tableName": "各店铺数据日报",
+    "recordId": "reczz28Lj3SX5pyx",
+    "matchedBy": "shop-name",
+    "shopOptionId": "optRbz0AFD"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "sourceShop": "网林定制家居",
+    "identityRaw": "网林定制家居 主店",
+    "identityCandidates": [
+      "网林定制家居 主店",
+      "网林定制家居 主店",
+      "网林定制家居 主店"
+    ],
+    "headers": [
+      "日期",
+      "延 询单人数",
+      "当日询单人数",
+      "当日付款人数",
+      "当日付款金额",
+      "延 最终付款人数",
+      "延 最终付款金额",
+      "询单当日付款转化率",
+      "延 询单最终付款转化率"
+    ],
+    "rows": [
+      [
+        "2026-10-10",
+        "0",
+        "2",
+        "0",
+        "0.00",
+        "0",
+        "0.00",
+        "0.00%",
+        "0.00%"
+      ],
+      [
+        "汇总值",
+        "延迟统计",
+        "2",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "平均值",
+        "延迟统计",
+        "2",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "全店汇总值",
+        "延迟统计",
+        "2",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "全店平均值",
+        "延迟统计",
+        "2",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "同行同层优秀",
+        "延迟统计",
+        "14",
+        "4",
+        "1,465.50",
+        "延迟统计",
+        "延迟统计",
+        "50.00%",
+        "延迟统计"
+      ],
+      [
+        "同行同层均值",
+        "延迟统计",
+        "6",
+        "1",
+        "198.00",
+        "延迟统计",
+        "延迟统计",
+        "20.00%",
+        "延迟统计"
+      ]
+    ]
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 2,
+    "同层同行询单量": 6
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "reczz28Lj3SX5pyx",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 2,
+      "同层同行询单量": 6
+    },
+    "matchedBy": "shop-name"
+  },
+  "before": {
+    "fields": {
+      "人群PPC": 4.45888888888889,
+      "人群ROI": 0,
+      "人群加购成本": null,
+      "人群加购数": [
+        0
+      ],
+      "人群成交金额": [
+        0
+      ],
+      "人群收加率": 0,
+      "人群收藏数": [
+        0
+      ],
+      "人群点击量": [
+        9
+      ],
+      "人群花费": [
+        40.13
+      ],
+      "人群询单量": [
+        0
+      ],
+      "关键词PPC": null,
+      "关键词ROI": null,
+      "关键词加购人数": null,
+      "关键词加购成本": null,
+      "关键词成交金额": null,
+      "关键词收加率": null,
+      "关键词收藏人数": null,
+      "关键词点击量": null,
+      "关键词花费": null,
+      "关键词询单量": null,
+      "同层同行询单量": null,
+      "实际支付金额": 400,
+      "店铺": "网林家居",
+      "店铺加购人数": [
+        2
+      ],
+      "店铺收加率": 0.107142857142857,
+      "店铺收藏人数": [
+        1
+      ],
+      "推广花费合计": 40.13,
+      "支付金额": [
+        400
+      ],
+      "数据月份": 10,
+      "日期": 1791561600000,
+      "补单金额": null,
+      "访客数": [
+        28
+      ],
+      "询单量": null
+    },
+    "id": "reczz28Lj3SX5pyx",
+    "record_id": "reczz28Lj3SX5pyx"
+  }
+}

@@ -1,0 +1,226 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-06_2026-10-06.xls",
+  "shop": "里可林淘宝",
+  "date": "2026-10-06",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 35,
+  "existingRows": 448,
+  "plannedRows": 35,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "669240905644"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "714114643551"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "811597731796"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "853240152045"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "857762185721"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "900187942643"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "1049693059005"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "1050449486940"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "1050452734313"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "672340446178"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "809230030923"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "670960606510"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "674522592816"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "689304101208"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "709535195028"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "741220719302"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "741787810774"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "747649450577"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "785853120776"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "811604099117"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "815994827536"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "828067515165"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "828457549127"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "830916050194"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "831308036175"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "831310400739"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "833209513207"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "852589747620"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "852709742611"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "852725602271"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "853011405745"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "901050372335"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "904698837927"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "905103792812"
+    },
+    {
+      "date": "2026-10-06",
+      "shop": "里可林淘宝",
+      "productId": "905104856942"
+    }
+  ],
+  "recordIds": [
+    "reczz28KLsEwn9dq",
+    "reczz28KLsEwlpEt",
+    "reczz28KLsEwoohy",
+    "reczz28KLsEwnIwg",
+    "reczz28KLsEwmpBN",
+    "reczz28KLsEwo3wE",
+    "reczz28KLsEwlQqX",
+    "reczz28KLsEwneEo",
+    "reczz28KLsEwlpAB",
+    "reczz28KLsEwp39X",
+    "reczz28KLsEwmzqs",
+    "reczz28KLsEwndO7",
+    "reczz28KLsEwl1vH",
+    "reczz28KLsEwn6AW",
+    "reczz28KLsEwoV6l",
+    "reczz28KLsEwkwkg",
+    "reczz28KLsEwnTZ0",
+    "reczz28KLsEwmQdG",
+    "reczz28KLsEwn9On",
+    "reczz28KLsEwmpXt",
+    "reczz28KLsEwnk48",
+    "reczz28KLsEwnqoP",
+    "reczz28KLsEwmUaz",
+    "reczz28KLsEwl6Iw",
+    "reczz28KLsEwowkT",
+    "reczz28KLsEwmZBg",
+    "reczz28KLsEwl0fz",
+    "reczz28KLsEwn9Rk",
+    "reczz28KLsEwnzH1",
+    "reczz28KLsEwm40C",
+    "reczz28KLsEwoOot",
+    "reczz28KLsEwmVM0",
+    "reczz28KLsEwmOfj",
+    "reczz28KLsEwmmXw",
+    "reczz28KLsEwmfLr"
+  ],
+  "afterRows": 483
+}

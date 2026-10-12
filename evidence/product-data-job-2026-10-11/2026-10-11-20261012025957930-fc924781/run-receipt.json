@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-11-20261012025957930-fc924781",
+  "date": "2026-10-11",
+  "status": "COMPLETED",
+  "startedAt": "2026-10-12T02:59:57.932Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "SKIPPED"
+    }
+  ],
+  "shops": [
+    "里可林天猫"
+  ],
+  "failure": null,
+  "failedStage": null,
+  "finishedAt": "2026-10-12T03:00:57.526Z"
+}

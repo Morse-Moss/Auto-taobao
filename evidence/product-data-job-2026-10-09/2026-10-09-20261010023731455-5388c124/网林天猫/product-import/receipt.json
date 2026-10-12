@@ -1,0 +1,106 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-09_2026-10-09 (1).xls",
+  "shop": "网林天猫",
+  "date": "2026-10-09",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 15,
+  "existingRows": 1198,
+  "plannedRows": 15,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "977271829805"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "897126873385"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "923336705176"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "923791888580"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "943715195278"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "976064603975"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "976539362164"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "982339763079"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "983637449275"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "1002790238345"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "1003593529956"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "1060913369469"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "1071284033110"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "1072247628377"
+    },
+    {
+      "date": "2026-10-09",
+      "shop": "网林天猫",
+      "productId": "1083847599252"
+    }
+  ],
+  "recordIds": [
+    "reczz28LXxSrsRhv",
+    "reczz28LXxSrpi7R",
+    "reczz28LXxSrq0WY",
+    "reczz28LXxSrp6GD",
+    "reczz28LXxSrsI83",
+    "reczz28LXxSrrCb4",
+    "reczz28LXxSrqnpb",
+    "reczz28LXxSrstlv",
+    "reczz28LXxSrrN4j",
+    "reczz28LXxSrr6Op",
+    "reczz28LXxSrtA39",
+    "reczz28LXxSrt9I8",
+    "reczz28LXxSrqLoi",
+    "reczz28LXxSrrC26",
+    "reczz28LXxSrrCDB"
+  ],
+  "afterRows": 1213
+}

@@ -1,0 +1,17 @@
+[
+  {
+    "shop": "里可林天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"里可林天猫\",\"date\":\"2026-10-10\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-10_2026-10-10 (7).xls\",\"bytes\":43008}\n",
+      "err": ""
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-10_2026-10-10 (7).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"里可林天猫\",\n  \"date\": \"2026-10-10\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-10\\\\2026-10-10-20261011023345370-6c324424\\\\里可林天猫\\\\inquiry.xls\",\n  \"bytes\": 14336,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261010&dateRange=1d&orderBy=cstCnt&startDate=20261010&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-10\\2026-10-10-20261011023345370-6c324424\\里可林天猫\\inquiry.xls"
+  }
+]

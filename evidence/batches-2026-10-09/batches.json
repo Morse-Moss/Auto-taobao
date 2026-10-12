@@ -1,0 +1,31 @@
+{
+ "version": "sycm-automation 1.7.20",
+ "date": "2026-10-09",
+ "dateInput": "2026-10-09",
+ "mode": "commit",
+ "batchSize": 5,
+ "evidenceRoot": "evidence/batches-2026-10-09",
+ "release": true,
+ "hold": null,
+ "rounds": [
+  {
+   "index": 1,
+   "shops": [
+    "盖文淘宝"
+   ],
+   "steps": {
+    "start": 0,
+    "login-preflight": 0,
+    "label:盖文淘宝": 0,
+    "chain": 0,
+    "stop": 0
+   },
+   "chainStatus": 0,
+   "release": null,
+   "decision": {
+    "release": true,
+    "why": "这一批全绿：按计划收掉，把内存让给下一批"
+   }
+  }
+ ]
+}

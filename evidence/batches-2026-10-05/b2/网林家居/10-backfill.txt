@@ -1,0 +1,12 @@
+
+===== 2026-10-06T13:57:49.698Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-inquiry-backfill.mjs --date 2026-10-05 --proxy http://127.0.0.1:19062 --source-shop 网林定制家居 --shop 网林家居 --shop-key 网林家居 --commit
+exit=1 signal= error=none
+--- stdout ---
+[身份] 生意参谋页头 = "网林定制家居"（原始 "网林定制家居 主店"）｜期望 "网林定制家居" ✓
+
+--- stderr ---
+Error: inquiry source must contain exactly one daily date row
+    at extractInquiryMetrics (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/inquiry-core.mjs:30:37)
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs:170:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

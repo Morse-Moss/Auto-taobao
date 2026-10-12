@@ -1,0 +1,35 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-06\\2026-10-06-20261007021033227-cbeef1b1\\里可林淘宝\\inquiry.xls",
+  "shop": "里可林淘宝",
+  "date": "2026-10-06",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 3,
+  "existingRows": 64,
+  "plannedRows": 3,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-06",
+      "productId": "741220719302",
+      "shop": "里可林淘宝"
+    },
+    {
+      "date": "2026-10-06",
+      "productId": "809230030923",
+      "shop": "里可林淘宝"
+    },
+    {
+      "date": "2026-10-06",
+      "productId": "672340446178",
+      "shop": "里可林淘宝"
+    }
+  ],
+  "recordIds": [
+    "reczz28KLsPvsv84",
+    "reczz28KLsPvuMTA",
+    "reczz28KLsPvtPIZ"
+  ],
+  "afterRows": 67
+}

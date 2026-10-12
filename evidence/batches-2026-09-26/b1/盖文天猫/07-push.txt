@@ -1,0 +1,32 @@
+
+===== 2026-09-27T11:00:47.747Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-09-26 --proxy http://127.0.0.1:19023 --shop-key 盖文天猫 --commit --shop-xlsx "C:\Users\Administrator\Downloads\日报_20260927_adc987ef8d0897700e42dcf1427605b3 (1).xlsx" --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20260927_185959.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 盖文天猫 ↔ 源产物店名 盖文旗舰店 一致（证据目录 daily-report-2026-09-26-盖文天猫）
+[audit] 已记 push/ok id=135
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "recvwpWpguZ5Fw",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-26-盖文天猫\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-09-26-盖文天猫",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 1922,
+  "recordCountAfter": 1923,
+  "verifiedFields": 249,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 249,
+    "shopName": "盖文旗舰店",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1790352000000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---

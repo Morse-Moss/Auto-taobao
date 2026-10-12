@@ -1,6 +1,6 @@
 {
   "mode": "commit",
-  "at": "2026-10-10T14:21:03.147Z",
+  "at": "2026-10-11T03:52:24.982Z",
   "reportDate": "2026-10-10",
   "dateEpoch": 1791561600000,
   "base": {
@@ -20,12 +20,36 @@
     "店铺"
   ],
   "targets": [
-    "里可林淘宝"
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝"
   ],
   "present": [
     {
       "shop": "里可林淘宝",
       "recordId": "reczz28Lj3SX3W0f",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林天猫",
+      "recordId": "reczz28Lj3SX48uR",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "盖文淘宝",
+      "recordId": "reczz28Lj3SX4t2Q",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "盖文天猫",
+      "recordId": "reczz28Lj3SX4vZM",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "科塔淘宝",
+      "recordId": "reczz28Lj3SX6h3V",
       "matchedBy": "shop-name"
     }
   ],

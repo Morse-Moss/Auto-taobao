@@ -1,0 +1,20 @@
+===================== CMD: skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 里可林淘宝 --proxy http://127.0.0.1:19041 --stage backfill --cause STAGE_FAILED --action REAPPLY_DATES --log-dir evidence/batches-2026-10-06/b1/里可林淘宝 --dry-run =====================
+[修复] REAPPLY_DATES｜里可林淘宝@http://127.0.0.1:19041｜阶段 backfill
+[修复] 证据 = evidence\batches-2026-10-06\b1\里可林淘宝\97-repair.txt
+[修复] ❌ 未应用：读不到页签（代理连不上）：fetch failed
+exit=3
+===================== CMD: skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 里可林淘宝 --proxy http://127.0.0.1:19041 --stage backfill --cause STAGE_FAILED --action REAPPLY_DATES --log-dir evidence/batches-2026-10-06/b1/里可林淘宝 =====================
+[修复] REAPPLY_DATES｜里可林淘宝@http://127.0.0.1:19041｜阶段 backfill
+[修复] 证据 = evidence\batches-2026-10-06\b1\里可林淘宝\97-repair.txt
+[修复] ❌ 未应用：读不到页签（代理连不上）：fetch failed
+exit=3
+===================== CMD: skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 里可林淘宝 --proxy http://127.0.0.1:19041 --stage backfill --cause STAGE_FAILED --action RELOAD_PAGE --log-dir evidence/batches-2026-10-06/b1/里可林淘宝 --dry-run =====================
+[修复] RELOAD_PAGE｜里可林淘宝@http://127.0.0.1:19041｜阶段 backfill
+[修复] 证据 = evidence\batches-2026-10-06\b1\里可林淘宝\97-repair.txt
+[修复] ❌ 未应用：读不到页签（代理连不上）：fetch failed
+exit=3
+===================== CMD: skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 里可林淘宝 --proxy http://127.0.0.1:19041 --stage backfill --cause STAGE_FAILED --action RELOAD_PAGE --log-dir evidence/batches-2026-10-06/b1/里可林淘宝 =====================
+[修复] RELOAD_PAGE｜里可林淘宝@http://127.0.0.1:19041｜阶段 backfill
+[修复] 证据 = evidence\batches-2026-10-06\b1\里可林淘宝\97-repair.txt
+[修复] ❌ 未应用：读不到页签（代理连不上）：fetch failed
+exit=3

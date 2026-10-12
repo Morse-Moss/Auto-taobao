@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-09",
+  "mode": "commit",
+  "startedAt": "2026-10-10T08:23:52.678Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 0,
+      "logPath": "evidence\\batches-2026-10-09\\b2\\00-health-check-daily.txt",
+      "ok": true,
+      "blocking": [],
+      "blockingDetails": [],
+      "normalize": "本来就在位（生意参谋工作页=1  飞书底单页=1）",
+      "normalizeChanged": false,
+      "roundCause": null,
+      "missingPages": []
+    }
+  },
+  "shops": {
+    "里可林天猫": {
+      "status": "ok",
+      "stages": [
+        {
+          "stage": "readback",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-09\\b2\\里可林天猫\\11-readback.txt",
+          "argv": [
+            "--date",
+            "2026-10-09",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "里可林天猫"
+          ],
+          "blockingDetails": null,
+          "blockingCodes": null,
+          "pageNormalize": null
+        }
+      ],
+      "source": {
+        "shopXlsx": null,
+        "promotionZip": null
+      }
+    }
+  },
+  "finishedAt": "2026-10-10T08:24:12.085Z"
+}

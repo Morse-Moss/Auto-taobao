@@ -1,0 +1,196 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-08_2026-10-08 (6).xls",
+  "shop": "里可林天猫",
+  "date": "2026-10-08",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 30,
+  "existingRows": 1130,
+  "plannedRows": 30,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "895693458464"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "896511976754"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "920480411930"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "920837010920"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "930608567031"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "931011870565"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "931564121968"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "947257935805"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "947262215522"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "948325829872"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "956479675812"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "956484287594"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "956515434166"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "957163473664"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "957167085119"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "958198216200"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "985382542905"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "986961507830"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "986962995766"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "988952164909"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "1059959030470"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "1060956357037"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "1060958281567"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "1062267053572"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "1062274529546"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "1066521430805"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "1068487532758"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "1072607923083"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "1074476005201"
+    },
+    {
+      "date": "2026-10-08",
+      "shop": "里可林天猫",
+      "productId": "1081120000333"
+    }
+  ],
+  "recordIds": [
+    "reczz28L8xt75PHO",
+    "reczz28L8xt74EqA",
+    "reczz28L8xt74moM",
+    "reczz28L8xt7484B",
+    "reczz28L8xt75nMl",
+    "reczz28L8xt73puH",
+    "reczz28L8xt73mEp",
+    "reczz28L8xt72iCx",
+    "reczz28L8xt74og3",
+    "reczz28L8xt75pAi",
+    "reczz28L8xt74BKF",
+    "reczz28L8xt74mV6",
+    "reczz28L8xt749ui",
+    "reczz28L8xt72p5b",
+    "reczz28L8xt71x7f",
+    "reczz28L8xt74N3N",
+    "reczz28L8xt73MvG",
+    "reczz28L8xt747On",
+    "reczz28L8xt73hzy",
+    "reczz28L8xt74a5a",
+    "reczz28L8xt758Zo",
+    "reczz28L8xt73ZKy",
+    "reczz28L8xt75iO4",
+    "reczz28L8xt73W1D",
+    "reczz28L8xt7520Y",
+    "reczz28L8xt72A9X",
+    "reczz28L8xt75ZvS",
+    "reczz28L8xt74bQu",
+    "reczz28L8xt72J4m",
+    "reczz28L8xt73duq"
+  ],
+  "afterRows": 1160
+}

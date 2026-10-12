@@ -1,0 +1,28 @@
+
+===== 2026-09-29T13:46:15.424Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\readback-daily-report.mjs --date 2026-09-28 --proxy http://127.0.0.1:19023 --shop-key 里可林淘宝
+exit=0 signal= error=none
+--- stdout ---
+readbackPath = D:\Retire\sycm-automation\evidence\daily-report-2026-09-28-里可林淘宝\independent-readback.json
+底单: recordsNum=1930（这是**页面模型**里的值，可能落后于服务端） loaded=1930 命中 2026-09-28=1
+询单表: recordsNum=2197（这是**页面模型**里的值，可能落后于服务端） loaded=2197 命中 2026-09-28=12
+  ⚠️ 底单「店铺」1/1 行没有值（口径 reportDate=2026-09-28） — Lookup-key-absent-from-page-model｜页面模型在 record.fields 里根本不带这个派生字段（Lookup / type 19）⇒ 该列在回读里必然为空，不能读成「当天没写进去」；权威可读值见同表的「店铺名称」
+  ⚠️ 询单表「询单量」9/12 行没有值（口径 reportDate=2026-09-28） — null-in-page-model
+  ⚠️ 询单表「同层同行询单量」9/12 行没有值（口径 reportDate=2026-09-28） — null-in-page-model
+  2026-09-28 | optllhAK2o | reczz28HKFEfoczA | 询单量=— | 同层同行=—
+  2026-09-28 | optU1M49NJ | reczz28HKFEfrOCI | 询单量=— | 同层同行=—
+  2026-09-28 | optFFaXJeh | reczz28HKFEfqcpo | 询单量=5 | 同层同行=6
+  2026-09-28 | optMNT1l94 | reczz28HKFEfqYwH | 询单量=— | 同层同行=—
+  2026-09-28 | optnIqwuUN | reczz28HKFEfp2ZS | 询单量=5 | 同层同行=6
+  2026-09-28 | optnF3h5i7 | reczz28HKFEfrxSS | 询单量=— | 同层同行=—
+  2026-09-28 | optIYzOzu2 | reczz28HKFEfoVac | 询单量=16 | 同层同行=34
+  2026-09-28 | optUKhpHUN | reczz28HKFEfr5Jr | 询单量=— | 同层同行=—
+  2026-09-28 | optd3cotzq | reczz28HKFEfrpmE | 询单量=— | 同层同行=—
+  2026-09-28 | optRry7sLK | reczz28HKFEfquYo | 询单量=— | 同层同行=—
+  2026-09-28 | optldTjNbD | reczz28HKFEfpF5X | 询单量=— | 同层同行=—
+  2026-09-28 | optUI2OU6r | reczz28HKFEfre6o | 询单量=— | 同层同行=—
+  screenshot(source) → D:\Retire\sycm-automation\evidence\daily-report-2026-09-28-里可林淘宝\feishu-source-table-after-push.png
+  screenshot(inquiry) → D:\Retire\sycm-automation\evidence\daily-report-2026-09-28-里可林淘宝\feishu-inquiry-table-after-backfill.png
+页面已留在：https://kcne618basvj.feishu.cn/base/PTfHbPt9EaIzddsfL8Jcj238nrb?table=tblkY3W8tnPWPcnh&view=vewwg0rhjo
+
+--- stderr ---

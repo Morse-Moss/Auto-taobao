@@ -1,0 +1,22 @@
+独立回读 2026-09-25T13:27:50.846Z（通路：OpenAPI）
+底单：总 1914 条；2026-09-24 命中 4 条
+  · recvweMxKRIrkN 店铺名称=里可林家居
+  · recvweNrFZxjBd 店铺名称=盖文全卫定制
+  · recvweOb6N7U6q 店铺名称=盖文旗舰店
+  · recvweORb16KAY 店铺名称=科塔全卫定制
+询单表：总 2197 条；2026-09-24 命中 12 条
+  · recvtXeLhcuYMV 盖文天猫 询单量=17 同层同行询单量=29
+  · recvtXfapnm4Co 里可林淘宝 询单量=4 同层同行询单量=5
+  · recvtXfapnwH6f 里可林天猫 询单量=（空） 同层同行询单量=（空）
+  · recvtXfapnR6Xd 网林天猫 询单量=（空） 同层同行询单量=（空）
+  · recvtXfapnI2XX 盖文淘宝 询单量=4 同层同行询单量=5
+  · recvtXfapnSjfR 网林淘宝 询单量=（空） 同层同行询单量=（空）
+  · recvtXfapnKxyj 科塔淘宝 询单量=2 同层同行询单量=5
+  · recvtXfapnB8x2 保拉淘宝 询单量=（空） 同层同行询单量=（空）
+  · recvtXfapn6Jnt 保拉天猫 询单量=（空） 同层同行询单量=（空）
+  · recvtXfapnE3sQ 安比龙头店 询单量=（空） 同层同行询单量=（空）
+  · recvtXfapnVqE4 科塔龙头店 询单量=（空） 同层同行询单量=（空）
+  · recvtXfapnUVVx 安比淘宝 询单量=（空） 同层同行询单量=（空）
+钉住的 09-20 科塔淘宝 recvtXf8pkKky0：日期=2026-09-20 店铺=科塔淘宝 询单量=7 同层同行询单量=（空）
+五家里两列都有值的：里可林淘宝 / 盖文淘宝 / 盖文天猫 / 科塔淘宝
+五家里两列为空的：网林天猫

@@ -1,0 +1,130 @@
+[2026-10-10T10:19:55.256Z] 版本：sycm-automation 1.7.20
+[2026-10-10T10:19:55.257Z] === 分批跑开始：目标日 yesterday → 2026-10-09；每批 5 家；共 1 批；模式 commit（会写飞书） ===
+[2026-10-10T10:19:55.258Z] 本批证据根：evidence/promotion-sales1-2026-10-10-probe
+[2026-10-10T10:19:55.258Z] --- 第 1/1 批：里可林淘宝 ---
+[2026-10-10T10:19:55.258Z] --- start：D:\Nodejs\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝
+[起齐] 目标 1 个实例（来源：runtime/browser-ports.mjs）
+  · 里可林淘宝  起前:missing  两样都没有，起一整套
+      已起 browser pid=94192  日志 runtime/start-stop-logs/2026-10-10T10-19-55/里可林淘宝-browser.log
+      已起 proxy pid=68424  日志 runtime/start-stop-logs/2026-10-10T10-19-55/里可林淘宝-proxy.log
+      起后:ready
+[判据] 目标全部就位
+       复核：node runtime/browser-inventory.mjs
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94
+[2026-10-10T10:19:57.543Z] --- start 退出码=3221226505
+[2026-10-10T10:19:57.543Z] [批次] 注意：这一批没起齐 —— 仍然跑链，因为链自己的体检会给出更准的原因。
+[2026-10-10T10:19:57.544Z] --- login-preflight：D:\Nodejs\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝 --json
+[归位] 里可林淘宝（代理 19041）：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）　动作 生意参谋工作页:create 阿里妈妈报表页:create
+{
+ "machine": "DESKTOP-KJP4RA5",
+ "verdict": "ALL_IN",
+ "autoLogin": true,
+ "normalize": {
+  "asked": true,
+  "shops": [
+   {
+    "shop": "里可林淘宝",
+    "proxyPort": 19041,
+    "ok": true,
+    "changed": true,
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
+    "actions": [
+     "生意参谋工作页:create",
+     "阿里妈妈报表页:create"
+    ]
+   }
+  ]
+ },
+ "roundNotify": {
+  "status": "SKIPPED",
+  "reason": "这一轮没有「确定要人处理」的店（读不到不算要人；链的第 0 步会先补页面）"
+ },
+ "needHuman": [],
+ "unknown": [],
+ "checked": 1,
+ "rows": [
+  {
+   "shop": "里可林淘宝",
+   "verdict": "OK",
+   "sites": {
+    "sycm": "LOGGED_IN",
+    "alimama": "LOGGED_IN"
+   },
+   "needsLogin": [],
+   "unreadable": [],
+   "href": {
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
+   },
+   "scriptVerdict": "ALREADY_LOGGED_IN",
+   "detail": null,
+   "notify": {
+    "mode": "off",
+    "status": "SKIPPED",
+    "reason": "verdict_needs_no_human"
+   },
+   "childExitCode": 0,
+   "probeError": null
+  }
+ ]
+}
+[2026-10-10T10:20:08.644Z] --- login-preflight 结论已落 evidence/promotion-sales1-2026-10-10-probe/login-preflight-b1.json（1227 字节；本批的链会读它）
+[2026-10-10T10:20:08.644Z] --- login-preflight 退出码=0
+[2026-10-10T10:20:08.645Z] --- label:里可林淘宝：D:\Nodejs\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+{
+ "commit": true,
+ "prune": false,
+ "label": true,
+ "shops": {
+  "里可林淘宝": {
+   "browserPort": 19031,
+   "proxyPort": 19041,
+   "windowTitle": "里可林淘宝 · 日报采集窗口",
+   "memberName": "里可林家居:小嘉",
+   "labelTabs": 1,
+   "tabs": [
+    "工作页（链路要用）  https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "窗口标签页（写着这是哪家店）  file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031",
+    "工作页（链路要用）  https://one.alimama.com/index.html"
+   ],
+   "leftover": [],
+   "labelTab": {
+    "ok": true,
+    "reused": true,
+    "targetId": "1C89BD2B02EB29B3BA3F9653901CA7CB",
+    "pinned": true
+   },
+   "labelState": "没读到登录状态 ⇒ 标签页上不显示状态行（不写占位）",
+   "labelMember": "里可林家居:小嘉",
+   "labelActual": "里可林家居:小嘉（与登记表一致）",
+   "fronted": true
+  }
+ },
+ "failed": 0
+}
+[2026-10-10T10:20:08.790Z] --- label:里可林淘宝 退出码=0
+[2026-10-10T10:20:08.790Z] --- chain：D:\Nodejs\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-promotion-sales1.mjs --date yesterday --shops 里可林淘宝 --commit --logs evidence\promotion-sales1-2026-10-10-probe\b1
+{
+  "batch": 1,
+  "shop": "里可林淘宝",
+  "status": "failed",
+  "stages": [
+    "keyword-submit"
+  ],
+  "error": "采集失败：人群报表提交任务无法唯一确认: {\"before\":[\"人群报表_20261009_225729\",\"人群报表_20261009_225320\"],\"after\":[\"人群报表_20261009_225729\",\"人群报表_20261009_225320\"],\"added\":[]}\n"
+}
+[2026-10-10T10:21:03.112Z] --- chain 退出码=1
+[2026-10-10T10:21:03.112Z] --- stop：D:\Nodejs\node.exe D:\Retire\sycm-automation\scripts\stop-all.mjs --yes --only 里可林淘宝
+[停] 目标 1 个实例
+  · 里可林淘宝
+      将停 proxy pid=68424  ← 端口在听、进程命令行是 start-shop-proxy.mjs 里可林淘宝
+         taskkill /PID 68424 /T /F
+      将停 browser pid=94192  ← CDP 自证 profile 一致；杀启动器 94192（连带浏览器进程树与保活进程）
+         taskkill /PID 94192 /T /F
+      已停 proxy pid=68424
+      已停 browser pid=94192
+      停后盘点到:missing
+[2026-10-10T10:21:06.555Z] --- stop 退出码=0
+[2026-10-10T10:21:06.555Z] --- 第 1/1 批：里可林淘宝 小结：链退出码=1；stop（释放窗口）=退出码 0；这一批没跑成（链退出码 1），但**没有需要人看现场的失败**（脚本自修没救回来、且不是"谁都不用动"的那一类）⇒ 照旧释放
+[2026-10-10T10:21:06.555Z] [批次] 这一批的链失败了，但不是整轮被挡、也没有「脚本自修没救回来」的店（不需要人看现场）⇒ 照常跑下一批。
+[2026-10-10T10:21:06.556Z] === 分批跑结束：0/1 批成功；释放 1 批；明细 evidence/promotion-sales1-2026-10-10-probe/batches.json ===

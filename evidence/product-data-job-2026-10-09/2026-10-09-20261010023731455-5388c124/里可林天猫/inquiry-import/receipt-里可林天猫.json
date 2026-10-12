@@ -1,0 +1,47 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-09\\2026-10-09-20261010023731455-5388c124\\里可林天猫\\inquiry.xls",
+  "shop": "里可林天猫",
+  "date": "2026-10-09",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 5,
+  "existingRows": 221,
+  "plannedRows": 5,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-09",
+      "productId": "986961507830",
+      "shop": "里可林天猫"
+    },
+    {
+      "date": "2026-10-09",
+      "productId": "1068487532758",
+      "shop": "里可林天猫"
+    },
+    {
+      "date": "2026-10-09",
+      "productId": "948325829872",
+      "shop": "里可林天猫"
+    },
+    {
+      "date": "2026-10-09",
+      "productId": "920480411930",
+      "shop": "里可林天猫"
+    },
+    {
+      "date": "2026-10-09",
+      "productId": "947257935805",
+      "shop": "里可林天猫"
+    }
+  ],
+  "recordIds": [
+    "reczz28LY3SoawIv",
+    "reczz28LY3SoaJrb",
+    "reczz28LY3SoZ3wk",
+    "reczz28LY3SoZkcp",
+    "reczz28LY3SoYzrj"
+  ],
+  "afterRows": 226
+}

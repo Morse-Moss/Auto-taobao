@@ -1,0 +1,18 @@
+{
+  "severity": "ERROR",
+  "title": "商品数据采集未完成（2026-10-04）",
+  "targetLabel": "2026-10-04 8 家店铺商品数据",
+  "period": "2026-10-04",
+  "capability": "商品数据采集与导入",
+  "machine": "DESKTOP-KJP4RA5",
+  "reason": "HUMAN_REQUIRED/PLATFORM_OR_HUMAN_GATE：本轮不完整（2 处）：盖文天猫/登录 未通过（掉登录=阿里妈妈）；网林天猫/询单 未采集",
+  "action": "打开 D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-04\\2026-10-04-20261005150042330-60def4fd 看 job.log 与 collection.json，确认停在哪家店哪一段；证据齐了再决定是否重跑该日",
+  "evidence": {
+    "runReceipt": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-04\\2026-10-04-20261005150042330-60def4fd\\run-receipt.json",
+    "collection": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-04\\2026-10-04-20261005150042330-60def4fd\\collection.json",
+    "jobLog": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-04\\2026-10-04-20261005150042330-60def4fd\\job.log"
+  },
+  "createdAt": "2026-10-05T15:13:45.934Z",
+  "alertId": "product-data-2026-10-04",
+  "runId": "2026-10-04-20261005150042330-60def4fd"
+}

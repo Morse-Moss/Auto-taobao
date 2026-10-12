@@ -1,0 +1,34 @@
+
+===== 2026-10-03T07:50:13.008Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-3\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-02 --proxy http://127.0.0.1:19023 --shop-key 里可林天猫 --commit --shop-xlsx C:\Users\Administrator\Downloads\日报_20261003_ea518aea3e2d36f77a19921be585653d.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261003_154929.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 里可林天猫 ↔ 源产物店名 里可林旗舰店 一致（证据目录 daily-report-2026-10-02-里可林天猫）
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "reczz28IrT2mmrJz",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-02-里可林天猫\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-02-里可林天猫",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 2194,
+  "recordCountAfter": 2195,
+  "verifiedFields": 241,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 241,
+    "shopName": "里可林旗舰店",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1790870400000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---
+[留空] UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）
+[留空] 无线端UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）
+[audit] 未写入（不影响本次结论）：append failed: connect ECONNREFUSED 127.0.0.1:5432

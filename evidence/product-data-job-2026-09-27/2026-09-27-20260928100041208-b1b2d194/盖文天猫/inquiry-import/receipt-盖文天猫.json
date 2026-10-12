@@ -1,0 +1,99 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-09-27\\2026-09-27-20260928100041208-b1b2d194\\盖文天猫\\inquiry.xls",
+  "shop": "盖文天猫",
+  "date": "2026-09-27",
+  "sourceRows": 14,
+  "existingRows": 1036,
+  "plannedRows": 14,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-09-27",
+      "productId": "916640272254",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "892895965277",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "920624885754",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "864189269914",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "1049844283314",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "864193973384",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "829909153276",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "1068512256128",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "1051578909809",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "921054352086",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "892968685760",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "818382625543",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "892968829257",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-09-27",
+      "productId": "892288895799",
+      "shop": "盖文天猫"
+    }
+  ],
+  "recordIds": [
+    "recvwvAopSQFq9",
+    "recvwvAopScGxy",
+    "recvwvAopSiv1n",
+    "recvwvAopSq8QY",
+    "recvwvAopSvzDV",
+    "recvwvAopSWXn5",
+    "recvwvAopSZ1Fu",
+    "recvwvAopSfE8B",
+    "recvwvAopSdpW3",
+    "recvwvAopSX62B",
+    "recvwvAopS9oqS",
+    "recvwvAopSgWXE",
+    "recvwvAopS56Xo",
+    "recvwvAopSFshn"
+  ],
+  "afterRows": 1050
+}

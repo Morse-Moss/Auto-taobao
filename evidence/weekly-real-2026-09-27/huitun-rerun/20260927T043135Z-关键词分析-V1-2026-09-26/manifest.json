@@ -1,0 +1,25 @@
+{
+  "status": "DRY_RUN_READY",
+  "runId": "20260927T043135Z-关键词分析-V1-2026-09-26",
+  "target": {
+    "tableId": "tblZm3TgV4V1IhZw",
+    "tableName": "关键词分析 V1（2026-09-26）"
+  },
+  "fieldCount": 29,
+  "recordCount": 300,
+  "resultsPath": "D:\\Retire\\sycm-automation\\evidence\\weekly-real-2026-09-27\\huitun-rerun\\20260927T043135Z-关键词分析-V1-2026-09-26\\results.json",
+  "plannedRecordUpdates": 1,
+  "results": [
+    {
+      "keyword": "新型泡澡浴缸",
+      "status": "NO_EXACT_TOPIC",
+      "topic": null,
+      "viewsRaw": "没有找到话题~~点击这里",
+      "contentHeat": "高",
+      "views": 0,
+      "expectedPriority": "B-持续观察",
+      "willWrite": true
+    }
+  ],
+  "runDir": "D:\\Retire\\sycm-automation\\evidence\\weekly-real-2026-09-27\\huitun-rerun\\20260927T043135Z-关键词分析-V1-2026-09-26"
+}

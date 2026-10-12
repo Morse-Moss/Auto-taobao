@@ -1,0 +1,5 @@
+修复动作：RELOAD_PAGE
+店：网林家居｜阶段：backfill｜成因：STAGE_FAILED
+目标页：https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+结论：已应用｜页面已重载并就绪
+证据：{"before":{"href":"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","readyState":"complete"},"reloadSettled":true}

@@ -1,0 +1,4 @@
+修复动作：RELOAD_PAGE（排练）
+店：科塔淘宝｜阶段：shop-report｜成因：STAGE_FAILED
+目标页：(未定位)
+结论：未应用｜读不到页签（代理连不上）：fetch failed

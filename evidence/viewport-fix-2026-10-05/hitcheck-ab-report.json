@@ -1,0 +1,67 @@
+{
+ "fatal": null,
+ "page": {
+  "url": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-04&endTime=2026-10-04&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day&isRequestedQztDefaultSet=1",
+  "title": "营销场景报表_万相台无界版",
+  "iw": 1506,
+  "ih": 642,
+  "dpr": 1.25
+ },
+ "locate": {
+  "found": 1,
+  "tag": "SPAN",
+  "clickableAncestor": "BUTTON"
+ },
+ "broken": {
+  "ok": false,
+  "reason": "not-hit",
+  "matches": 1,
+  "hiddenSiblings": 0,
+  "y": 314,
+  "inViewport": true,
+  "rect": [
+   1400,
+   314,
+   48,
+   12
+  ],
+  "inViewportSamples": 25,
+  "insideSamples": 0,
+  "firstHit": null,
+  "centerIsSelf": false,
+  "viewport": [
+   1506,
+   642
+  ],
+  "inScope": "outer",
+  "blocker": null
+ },
+ "fixed": {
+  "ok": true,
+  "reason": null,
+  "matches": 1,
+  "hiddenSiblings": 0,
+  "y": 314,
+  "inViewport": true,
+  "rect": [
+   1400,
+   314,
+   48,
+   12
+  ],
+  "inViewportSamples": 25,
+  "insideSamples": 20,
+  "firstHit": [
+   1424,
+   320
+  ],
+  "centerIsSelf": true,
+  "viewport": [
+   1506,
+   642
+  ],
+  "inScope": "outer",
+  "blocker": null
+ },
+ "portAfter": "FREE"
+}

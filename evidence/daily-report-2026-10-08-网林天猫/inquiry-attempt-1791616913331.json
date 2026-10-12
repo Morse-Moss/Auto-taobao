@@ -1,0 +1,193 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-10-08",
+  "shop": "网林天猫",
+  "environment": {
+    "computedAt": "2026-10-10T07:21:53.328Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19042",
+    "browserPort": {
+      "port": 19022,
+      "source": "registry-default",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19023,
+      "source": "registry-default",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-daily-report",
+      "source": "registry-default"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (daily report)",
+      "source": "registry-default"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-08-网林天猫",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
+    "tableId": "tblqF2YD2VfmKP4C",
+    "tableName": "各店铺数据日报",
+    "recordId": "reczz28LELBmGVZr",
+    "matchedBy": "shop-name",
+    "shopOptionId": "optUKhpHUN"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "sourceShop": "网林家居旗舰店",
+    "identityRaw": "网林家居旗舰店 主店",
+    "identityCandidates": [
+      "网林家居旗舰店 主店",
+      "网林家居旗舰店 主店",
+      "网林家居旗舰店 主店"
+    ],
+    "headers": [
+      "日期",
+      "延 询单人数",
+      "当日询单人数",
+      "当日付款人数",
+      "当日付款金额",
+      "延 最终付款人数",
+      "延 最终付款金额",
+      "询单当日付款转化率",
+      "延 询单最终付款转化率"
+    ],
+    "rows": [
+      [
+        "2026-10-08",
+        "3",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "汇总值",
+        "3",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "平均值",
+        "3",
+        "3",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ]
+    ]
+  },
+  "degraded": {
+    "code": "PEER_UNAVAILABLE",
+    "reason": "SYCM 自定义日期模式下表格不含「同行同层均值」行（预设「1天」才有）",
+    "omittedFields": [
+      "同层同行询单量"
+    ],
+    "sourceRowCount": 3
+  },
+  "values": {
+    "询单量": 3
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "reczz28LELBmGVZr",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 3
+    },
+    "matchedBy": "shop-name"
+  },
+  "before": {
+    "fields": {
+      "人群PPC": 3.6736,
+      "人群ROI": 0,
+      "人群加购成本": null,
+      "人群加购数": [
+        0
+      ],
+      "人群成交金额": [
+        0
+      ],
+      "人群收加率": 0,
+      "人群收藏数": [
+        0
+      ],
+      "人群点击量": [
+        25
+      ],
+      "人群花费": [
+        91.84
+      ],
+      "人群询单量": [
+        0
+      ],
+      "关键词PPC": 1.47058823529412,
+      "关键词ROI": 0,
+      "关键词加购人数": [
+        4
+      ],
+      "关键词加购成本": 12.5,
+      "关键词成交金额": [
+        0
+      ],
+      "关键词收加率": 0.117647058823529,
+      "关键词收藏人数": [
+        0
+      ],
+      "关键词点击量": [
+        34
+      ],
+      "关键词花费": [
+        50
+      ],
+      "关键词询单量": [
+        3
+      ],
+      "同层同行询单量": null,
+      "实际支付金额": 528,
+      "店铺": "网林天猫",
+      "店铺加购人数": [
+        4
+      ],
+      "店铺收加率": 0.0576923076923077,
+      "店铺收藏人数": [
+        2
+      ],
+      "推广花费合计": 141.84,
+      "支付金额": [
+        528
+      ],
+      "数据月份": 10,
+      "日期": 1791388800000,
+      "补单金额": null,
+      "访客数": [
+        104
+      ],
+      "询单量": null
+    },
+    "id": "reczz28LELBmGVZr",
+    "record_id": "reczz28LELBmGVZr"
+  }
+}

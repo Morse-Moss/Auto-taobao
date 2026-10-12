@@ -1,0 +1,49 @@
+[驱动] 环境自检：宿主没有掐断同步子进程（管道 stdin 可用）—— 这一轮不会因 EBUSY 失败。
+[驱动] 目标日 2026-10-08｜模式 rehearse｜店铺 1 家：网林天猫
+[驱动] 日志根 D:\Retire\sycm-automation\evidence\multi-shop-2026-10-08
+[驱动] 没有给 --login-preflight：这一轮没查过登录态（告警里会如实这么写）。
+[驱动] 本机 DESKTOP-KJP4RA5
+[驱动] 排练模式：采集是真的，两个写入方都是干跑，不写飞书。
+[驱动]   网林天猫 | 页头店名 网林家居旗舰店 | 会员 网林家居旗舰店:饺子 7314426323
+[一轮]   归位：本来就在位（生意参谋工作页=1  飞书底单页=1）
+[一轮]   体检通过：阻断 0 项，告警 1 项
+[一轮]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[一轮]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[网林天猫] 1. health-check —— 体检：这家店的浏览器在不在、profile 对不对、两个必需页面各恰好一个
+[网林天猫]   归位：已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）
+[网林天猫]     [归位] 生意参谋工作页：create
+[网林天猫]     [归位] 阿里妈妈报表页：create
+[网林天猫]   体检通过：阻断 0 项，告警 1 项
+[网林天猫]     [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
+[网林天猫]     已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
+[网林天猫] 2. alimama-date —— 阿里妈妈落位（日期全在 URL hash 里，navigate 即落位）
+[网林天猫]   stderr 尾部：
+      TRACE [
+        {
+          "step": "read-before-skipped",
+          "tolerated": true,
+          "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
+          "detail": "proxy http://127.0.0.1:19042/eval?target=D8FE2E062547666438ACF3E8C10AB290 failed: HTTP 400 Error: alimama filter bar not ready; triggers=0     at <anonymous>:6:"
+        },
+        {
+          "step": "navigate",
+          "url": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-08&endTime=2026-10-08&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day"
+        }
+      ]
+[网林天猫] 停在这一步：阶段 alimama-date 失败（exit 1）
+[代理] 连接层失败（第 1/3 次）：fetch failed｜cause=ECONNRESET → 1.5s 后重发 http://127.0.0.1:19042/targets
+[代理] 第 2 次才通：http://127.0.0.1:19042/targets
+[代理] 连接层失败（第 1/3 次）：The operation was aborted due to timeout → 1.5s 后重发 http://127.0.0.1:19042/screenshot?target=D8FE2E062547666438ACF3E8C10AB290&file=D%3A%5CRetire%5Csycm-automation%5Cevidence%5Cmulti-shop-2026-10-08%5C%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB%5C98-failure-page.png
+[代理] 第 2 次才通：http://127.0.0.1:19042/screenshot?target=D8FE2E062547666438ACF3E8C10AB290&file=D%3A%5CRetire%5Csycm-automation%5Cevidence%5Cmulti-shop-2026-10-08%5C%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB%5C98-failure-page.png
+[网林天猫]   现场截图 = D:\Retire\sycm-automation\evidence\multi-shop-2026-10-08\网林天猫\98-failure-page.png
+[网林天猫]   现场事实 = D:\Retire\sycm-automation\evidence\multi-shop-2026-10-08\网林天猫\98-failure-state.txt
+[网林天猫]   停手时页面停在：生意参谋工作页=0  阿里妈妈报表页=1（共 3 个页签）
+[网林天猫]     · 不属于期望清单：file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%A4%A9%E7%8C%AB&por
+[网林天猫]     · 不属于期望清单：https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new
+[网林天猫]   回位：不需要 —— 已经恰好一个性能页（https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/serv）
+[网林天猫]   回位后 生意参谋工作页 是 0 个（回位前 0 个） —— 下一轮仍然会从这个起点开始，先看现场
+
+[驱动] 汇总：
+  网林天猫：failed（停在 alimama-date） —— 阶段 alimama-date 失败（exit 1）
+[驱动] 明细 evidence\multi-shop-2026-10-08\summary.json
+[驱动] 分诊：1 处失败 —— 需人 1 处（网林天猫@STAGE_FAILED）；不需要人 0 处

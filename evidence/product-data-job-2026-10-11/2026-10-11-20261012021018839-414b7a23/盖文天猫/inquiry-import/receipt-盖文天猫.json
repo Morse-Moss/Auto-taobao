@@ -1,0 +1,101 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-11\\2026-10-11-20261012021018839-414b7a23\\盖文天猫\\inquiry.xls",
+  "shop": "盖文天猫",
+  "date": "2026-10-11",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 14,
+  "existingRows": 277,
+  "plannedRows": 14,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-11",
+      "productId": "892895965277",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "1051578909809",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "1049844283314",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "916640272254",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "951281441115",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "1068512256128",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "892968829257",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "818382625543",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "864193973384",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "989842848665",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "916176821993",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "1051835541078",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "695175666038",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-11",
+      "productId": "892968685760",
+      "shop": "盖文天猫"
+    }
+  ],
+  "recordIds": [
+    "reczz28MKaAmx5kL",
+    "reczz28MKaAmwahU",
+    "reczz28MKaAmvIO4",
+    "reczz28MKaAmuGLN",
+    "reczz28MKaAmw2Xg",
+    "reczz28MKaAmucl6",
+    "reczz28MKaAmwcaz",
+    "reczz28MKaAmwjdS",
+    "reczz28MKaAmxDbN",
+    "reczz28MKaAmvraN",
+    "reczz28MKaAmvcV4",
+    "reczz28MKaAmv1ji",
+    "reczz28MKaAmvH8v",
+    "reczz28MKaAmvGqd"
+  ],
+  "afterRows": 291
+}

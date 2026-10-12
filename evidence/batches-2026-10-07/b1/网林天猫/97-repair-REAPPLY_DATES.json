@@ -1,0 +1,39 @@
+{
+  "ok": false,
+  "action": "REAPPLY_DATES",
+  "stage": "backfill",
+  "cause": "STAGE_FAILED",
+  "shop": "网林天猫",
+  "proxy": "http://127.0.0.1:19042",
+  "dryRun": false,
+  "applied": false,
+  "detail": "日期需要重新落位（sycm）—— 请重试该站点的落位阶段来完成，本动作不重复实现落位",
+  "targetId": "25C69800D97E627B4212C69E579E094A",
+  "targetUrl": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+  "startedAt": "2026-10-08T08:08:46.455Z",
+  "finishingAt": "2026-10-08T08:08:46.507Z",
+  "error": null,
+  "plan": {
+    "cause": "STAGE_FAILED",
+    "stage": "backfill",
+    "stageHint": "sycm",
+    "candidates": [
+      {
+        "action": "REAPPLY_DATES",
+        "mutating": true,
+        "why": "页面上的日期筛选可能已经不在目标日（重载/人动过之后常见）；重新落位再试。"
+      },
+      {
+        "action": "RELOAD_PAGE",
+        "mutating": true,
+        "why": "这一份渲染上元素不理会点击（本项目实测过的形态）；真重载换个新现场再试。"
+      }
+    ],
+    "known": true,
+    "note": null
+  },
+  "evidence": {
+    "needsRetryStage": "sycm-date"
+  },
+  "exitCode": 1
+}

@@ -1,0 +1,232 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-10-08",
+  "shop": "里可林淘宝",
+  "environment": {
+    "computedAt": "2026-10-09T07:36:23.942Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19041",
+    "browserPort": {
+      "port": 19031,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19041,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-likelin-home",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop likelin-home)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-08-里可林淘宝",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
+    "tableId": "tblqF2YD2VfmKP4C",
+    "tableName": "各店铺数据日报",
+    "recordId": "reczz28LELBmJ4tj",
+    "matchedBy": "shop-name",
+    "shopOptionId": "optnIqwuUN"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "sourceShop": "里可林家居",
+    "identityRaw": "里可林家居 主店",
+    "identityCandidates": [
+      "里可林家居 主店",
+      "里可林家居 主店",
+      "里可林家居 主店"
+    ],
+    "headers": [
+      "日期",
+      "延 询单人数",
+      "当日询单人数",
+      "当日付款人数",
+      "当日付款金额",
+      "延 最终付款人数",
+      "延 最终付款金额",
+      "询单当日付款转化率",
+      "延 询单最终付款转化率"
+    ],
+    "rows": [
+      [
+        "2026-10-08",
+        "延迟统计",
+        "8",
+        "1",
+        "300.00",
+        "延迟统计",
+        "延迟统计",
+        "12.50%",
+        "延迟统计"
+      ],
+      [
+        "汇总值",
+        "延迟统计",
+        "8",
+        "1",
+        "300.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "平均值",
+        "延迟统计",
+        "8",
+        "1",
+        "300.00",
+        "延迟统计",
+        "延迟统计",
+        "12.50%",
+        "延迟统计"
+      ],
+      [
+        "全店汇总值",
+        "延迟统计",
+        "8",
+        "1",
+        "300.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "全店平均值",
+        "延迟统计",
+        "8",
+        "1",
+        "300.00",
+        "延迟统计",
+        "延迟统计",
+        "12.50%",
+        "延迟统计"
+      ],
+      [
+        "同行同层优秀",
+        "延迟统计",
+        "15",
+        "4",
+        "1,507.00",
+        "延迟统计",
+        "延迟统计",
+        "50.00%",
+        "延迟统计"
+      ],
+      [
+        "同行同层均值",
+        "延迟统计",
+        "7",
+        "1",
+        "222.70",
+        "延迟统计",
+        "延迟统计",
+        "20.00%",
+        "延迟统计"
+      ]
+    ]
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 8,
+    "同层同行询单量": 7
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "reczz28LELBmJ4tj",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 8,
+      "同层同行询单量": 7
+    },
+    "matchedBy": "shop-name"
+  },
+  "before": {
+    "fields": {
+      "人群PPC": 2.04081632653061,
+      "人群ROI": 0,
+      "人群加购成本": 25,
+      "人群加购数": [
+        4
+      ],
+      "人群成交金额": [
+        0
+      ],
+      "人群收加率": 0.122448979591837,
+      "人群收藏数": [
+        2
+      ],
+      "人群点击量": [
+        49
+      ],
+      "人群花费": [
+        100
+      ],
+      "人群询单量": [
+        1
+      ],
+      "关键词PPC": 0.785275590551181,
+      "关键词ROI": 0,
+      "关键词加购人数": [
+        7
+      ],
+      "关键词加购成本": 14.2471428571429,
+      "关键词成交金额": [
+        0
+      ],
+      "关键词收加率": 0.094488188976378,
+      "关键词收藏人数": [
+        5
+      ],
+      "关键词点击量": [
+        127
+      ],
+      "关键词花费": [
+        99.73
+      ],
+      "关键词询单量": [
+        1
+      ],
+      "同层同行询单量": null,
+      "实际支付金额": 300,
+      "店铺": "里可林淘宝",
+      "店铺加购人数": [
+        16
+      ],
+      "店铺收加率": 0.0971223021582734,
+      "店铺收藏人数": [
+        11
+      ],
+      "推广花费合计": 199.73,
+      "支付金额": [
+        300
+      ],
+      "数据月份": 10,
+      "日期": 1791388800000,
+      "补单金额": null,
+      "访客数": [
+        278
+      ],
+      "询单量": null
+    },
+    "id": "reczz28LELBmJ4tj",
+    "record_id": "reczz28LELBmJ4tj"
+  }
+}

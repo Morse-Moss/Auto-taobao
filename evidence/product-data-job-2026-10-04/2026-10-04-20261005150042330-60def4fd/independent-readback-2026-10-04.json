@@ -1,0 +1,897 @@
+{
+  "at": "2026-10-05T15:14:22.798Z",
+  "date": "2026-10-04",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "product": {
+    "table": "productTable",
+    "tableId": "tbley1xD9wDfQheX",
+    "totalRows": 161,
+    "onDateCount": 160,
+    "onDateRows": [
+      {
+        "recordId": "reczz28Jl92wLVUp",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wI42P",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wKBsA",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wI7GF",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wK9y3",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wLZDd",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wL74H",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wK8xN",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wKHM7",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wHibJ",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wL3oX",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wKswf",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wLJSF",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wJxDo",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wLIc7",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wIX0e",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wIGSE",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wJSwS",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wL9LO",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wJAC9",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wJxTc",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wKT3Y",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wImSo",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wJBDa",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wIGgj",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wJVUU",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wHoEx",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wJo0P",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wHxop",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wLJGh",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl92wKIqj",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5VFEF",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5VucM",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5X3jc",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5XDWP",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5UcYZ",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5UxR2",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5UYjt",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5WE30",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5WpX7",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5U8By",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5TVly",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5WfDa",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5VFnG",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5WYeH",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5VRhL",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5TBzb",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5VRE1",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5TC0Q",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5WjqN",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9K5XL34",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9ZCdmX0",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9ZCaxdN",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9ZCcnhC",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9ZCcZyu",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jl9ZCaeaG",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqCY5x",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jlyzq8lK9",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jlyzq9dUr",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqBRQF",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqBr6O",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jlyzq8sRk",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jlyzq9P0e",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqCQNq",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqC3HV",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jlyzq9pLx",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jlyzq8Yyx",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jlyzq8qgQ",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqCWNw",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqC9x6",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqAKCD",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqB65h",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jlyzq9OXZ",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqBxA6",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28Jlyzq9fId",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqCCJI",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqCU3k",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlyzqCPz1",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMGcbP",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMHBf1",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMHD0o",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMIJuB",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMJBxu",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMGhKn",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMInqn",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMHNEF",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMGouo",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMGayG",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMFlIO",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMGsBf",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMIxdI",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMFz86",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMJH0C",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzJMHNb5",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoJGzZ",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoJRxC",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoHndo",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoHxTE",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoGtCW",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoGsj7",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoIt4X",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoGAjj",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoG6RN",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoGI7t",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoHVuv",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoIfHx",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoG6Mg",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoHCKt",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoHPbe",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoNgdZ",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoJs2P",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoM4XH",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoNu5e",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoMchh",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoMQu4",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoKmIB",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoNghz",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoMnbV",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoJrZn",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoKXbX",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoNpbW",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoMMTY",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoNliK",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoNNrw",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoNZgW",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoNDkG",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoJwZy",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoMdrf",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoKlkH",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoNRF0",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoL3mz",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzSoLOBN",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO6z1F",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO6GGJ",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO5Pt3",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO7weC",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO5Yqi",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO5gb4",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO7Gbi",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO97OU",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO6r9U",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO7gbi",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO5VNb",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO5jbH",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO8nPx",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO8397",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO6xdY",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO8D8i",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO5GSC",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO6u8w",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO8nEk",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO5tMe",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO5Usu",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO80sX",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO9F8t",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO8Qf7",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO8MvL",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO5jmf",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO7TMk",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      },
+      {
+        "recordId": "reczz28JlzmO8gc0",
+        "viaField": "统计日期",
+        "shop": 1791043200000
+      }
+    ]
+  },
+  "inquiry": {
+    "table": "inquiryTable",
+    "tableId": "tblenEzSMpp5RTQb",
+    "totalRows": 16,
+    "onDateCount": 15,
+    "onDateRows": [
+      {
+        "recordId": "reczz28Jl9Bs6vIn",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28Jl9Bs8bRP",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28Jl9RfKDle",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28Jl9RfJIzX",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28Jl9gLGNue",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28Jlz9p3QkK",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28Jlz9p5NMu",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28Jlz9p4ZUs",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28Jlz9p2aMz",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28Jlz9p5wyJ",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28Jlzd8nwOO",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28JlzvUancy",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28JlzvUdFTD",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28JlzvUcKOT",
+        "viaField": "数据日期",
+        "shop": null
+      },
+      {
+        "recordId": "reczz28JlzvUazaE",
+        "viaField": "数据日期",
+        "shop": null
+      }
+    ]
+  }
+}

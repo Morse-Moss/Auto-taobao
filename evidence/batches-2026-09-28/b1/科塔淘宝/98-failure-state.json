@@ -1,0 +1,35 @@
+{
+  "value": {
+    "capturedAt": "2026-09-29T11:13:41.309Z",
+    "url": "edge://downloads-hub/",
+    "title": "下载",
+    "viewport": {
+      "w": 360,
+      "h": 258,
+      "dpr": 1.25,
+      "scrollY": 0
+    },
+    "visibleText": "已删除文件",
+    "dialogs": [],
+    "interactive": [],
+    "domSummary": {
+      "totalElements": 55,
+      "counts": {
+        "HTML": 1,
+        "HEAD": 1,
+        "META": 1,
+        "TITLE": 1,
+        "LINK": 13,
+        "STYLE": 1,
+        "BODY": 1,
+        "DOWNLOADS-HUB-APP": 1,
+        "P": 1,
+        "F-TEMPLATE": 16,
+        "TEMPLATE": 16,
+        "SCRIPT": 2
+      },
+      "containers": []
+    },
+    "tables": []
+  }
+}

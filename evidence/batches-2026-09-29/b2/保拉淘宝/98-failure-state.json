@@ -1,0 +1,217 @@
+{
+  "value": {
+    "capturedAt": "2026-09-30T10:25:57.709Z",
+    "url": "https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common&reportId=4309929&type=preview",
+    "title": "瓴羊One·分析",
+    "viewport": {
+      "w": 1506,
+      "h": 642,
+      "dpr": 1.25,
+      "scrollY": 0
+    },
+    "visibleText": "返回 | 预览报表 数据来源： 电商后台-天猫淘宝-生意参谋 数据维度： 店铺-整体 统计日期： 2026-08-31～2026-09-29 更新设置： 自动更新-最近30天 统计日期 店铺名称 访客数 商品浏览量 商品收藏买家数 加购人数 2026-09-29 Paola Lenti保拉伦蒂 2,252 3,757 16 33 2026-09-28 Paola Lenti保拉伦蒂 1,846 3,166 13 33 2026-09-27 Paola Lenti保拉伦蒂 1,923 2,983 14 23 2026-09-26 Paola Lenti保拉伦蒂 2,084 3,367 15 22 2026-09-25 Paola Lenti保拉伦蒂 2,040 3,425 13 23 2026-09-24 Paola Lenti保拉伦蒂 1,721 2,821 16 27 2026-09-23 Paola Lenti保拉伦蒂 1,976 3,096 30 17 2026-09-22 Paola Lenti保拉伦蒂 2,050 3,449 13 34 2026-09-21 Paola Lenti保拉伦蒂 1,817 3,071 22 31 2026-09-20 Paola Lenti保拉伦蒂 2,385 3,956 22 32 2026-09-19 Paola Lenti保拉伦蒂 1,715 2,966 24 38 2026-09-18 Paola Lenti保拉伦蒂 1,547 2,637 14 36 2026-09-17 Paola Lenti保拉伦蒂 1,858 3,426 21 37 2026-09-16 Paola Lenti保拉伦蒂 1,950 3,606 18 36 2026-09-15 Paola Lenti保拉伦蒂 2,145 3,545 22 27 2026-09-14 Paola Lenti保拉伦蒂 2,062 3,532 23 23 2026-09-13 Paola Lenti保拉伦蒂 2,257 3,918 35 43 2026-09-12 Paola Lenti保拉伦蒂 1,792 3,106 21 26 2026-09-11 Paola Lenti保拉伦蒂 2,664 4,103 22 39 2026-09-10 Paola Lenti保拉伦蒂 2,562 3,997 20 35 2026-09-09 Paola Lenti保拉伦蒂 1,505 2,734 18 26 2026-09-08 Paola Lenti保拉伦蒂 1,859 3,254 26 29 2026-09-07 Paola Lenti保拉伦蒂 1,885 3,107 24 32 2026-09-06 Paola Lenti保拉伦蒂 2,065 3,415 20 33 2026-09-05 Paola Lenti保拉伦蒂 1,916 3,382 24 28 2026-09-04 Paola Lenti保拉伦蒂 1,822 3,147 18 33 2026-09-03 Paola Lenti保拉伦蒂 2,076 3,486 24 36 2026-09-02 Paola Lenti保拉伦蒂 1,383 2,375 19 28 2026-09-01 Paola Lenti保拉伦蒂 1,563 2,687 36 29 2026-08-31 Paola Lenti保拉伦蒂 1,795 3,273 17 32 下载报表 加入我的报表 加入在线表格 共30条数据，预览最多显示前30条数据",
+    "dialogs": [],
+    "interactive": [
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "下载报表",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-primary dt-oui-btn-background-ghost",
+        "rect": {
+          "x": 590,
+          "y": 598,
+          "w": 80,
+          "h": 28
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "加入我的报表",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-primary dt-oui-btn-background-ghost",
+        "rect": {
+          "x": 677,
+          "y": 598,
+          "w": 104,
+          "h": 28
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "id": null,
+        "text": "加入在线表格",
+        "cls": "dt-oui-btn css-8e7wia dt-oui-btn-primary",
+        "rect": {
+          "x": 789,
+          "y": 598,
+          "w": 122,
+          "h": 28
+        }
+      }
+    ],
+    "domSummary": {
+      "totalElements": 7211,
+      "counts": {
+        "HTML": 1,
+        "HEAD": 1,
+        "STYLE": 56,
+        "SCRIPT": 21,
+        "META": 11,
+        "TITLE": 1,
+        "LINK": 6,
+        "BODY": 1,
+        "svg": 10,
+        "symbol": 2632,
+        "path": 4156,
+        "DIV": 53,
+        "SPAN": 18,
+        "use": 3,
+        "TABLE": 2,
+        "COLGROUP": 2,
+        "COL": 7,
+        "THEAD": 1,
+        "TR": 32,
+        "TH": 6,
+        "TD": 187,
+        "TBODY": 1,
+        "BUTTON": 3
+      },
+      "containers": [
+        {
+          "tag": "DIV",
+          "id": "root",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 700
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "op-sycm-content-body",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 698
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "op-sycm-content",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 698
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "op-sycm-content-right sycm-iframe",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 698
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "dt-oui-spin-nested-loading op-sycm-content-right-spinning css-8e7wia",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 698
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "dt-oui-spin-container",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 698
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "jycm-page-container",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 638
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "dt-oui-row dt-oui-row-space-between dt-oui-row-middle jycm-page-container-header",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "w": 1501,
+            "h": 45
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "jycm-page-container-header-left",
+          "rect": {
+            "x": 28,
+            "y": 20,
+            "w": 183,
+            "h": 25
+          }
+        },
+        {
+          "tag": "DIV",
+          "id": null,
+          "cls": "jycm-page-container-title",
+          "rect": {
+            "x": 28,
+            "y": 20,
+            "w": 133,
+            "h": 25
+          }
+        }
+      ]
+    },
+    "tables": [
+      {
+        "rows": 0,
+        "cols": 7,
+        "rect": {
+          "x": 28,
+          "y": 107,
+          "w": 1445,
+          "h": 41
+        },
+        "visible": true
+      },
+      {
+        "rows": 31,
+        "cols": 6,
+        "rect": {
+          "x": 28,
+          "y": 148,
+          "w": 1439,
+          "h": 1224
+        },
+        "visible": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+[停] 目标 5 个实例
+  · 里可林淘宝
+      将停 proxy pid=30212  ← 端口在听、进程命令行是 start-shop-proxy.mjs 里可林淘宝
+         taskkill /PID 30212 /T /F
+      将停 browser pid=66008  ← CDP 自证 profile 一致；杀启动器 66008（连带浏览器进程树与保活进程）
+         taskkill /PID 66008 /T /F
+      已停 proxy pid=30212
+      已停 browser pid=66008
+      停后盘点到:missing
+  · 网林天猫
+      将停 proxy pid=60792  ← 端口在听、进程命令行是 start-shop-proxy.mjs 网林天猫
+         taskkill /PID 60792 /T /F
+      将停 browser pid=39248  ← CDP 自证 profile 一致；杀启动器 39248（连带浏览器进程树与保活进程）
+         taskkill /PID 39248 /T /F
+      已停 proxy pid=60792
+      已停 browser pid=39248
+      停后盘点到:missing
+  · 盖文淘宝
+      将停 proxy pid=53008  ← 端口在听、进程命令行是 start-shop-proxy.mjs 盖文淘宝
+         taskkill /PID 53008 /T /F
+      将停 browser pid=60328  ← CDP 自证 profile 一致；杀启动器 60328（连带浏览器进程树与保活进程）
+         taskkill /PID 60328 /T /F
+      已停 proxy pid=53008
+      已停 browser pid=60328
+      停后盘点到:missing
+  · 盖文天猫
+      将停 proxy pid=46688  ← 端口在听、进程命令行是 start-shop-proxy.mjs 盖文天猫
+         taskkill /PID 46688 /T /F
+      将停 browser pid=53100  ← CDP 自证 profile 一致；杀启动器 53100（连带浏览器进程树与保活进程）
+         taskkill /PID 53100 /T /F
+      已停 proxy pid=46688
+      已停 browser pid=53100
+      停后盘点到:missing
+  · 科塔淘宝
+      将停 proxy pid=42944  ← 端口在听、进程命令行是 start-shop-proxy.mjs 科塔淘宝
+         taskkill /PID 42944 /T /F
+      将停 browser pid=64624  ← CDP 自证 profile 一致；杀启动器 64624（连带浏览器进程树与保活进程）
+         taskkill /PID 64624 /T /F
+      已停 proxy pid=42944
+      已停 browser pid=64624
+      停后盘点到:missing
+{
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝"
+  ],
+  "stopExitCode": 0,
+  "checks": [
+    {
+      "attempt": 1,
+      "listening": 0,
+      "error": null
+    },
+    {
+      "attempt": 2,
+      "listening": 0,
+      "error": null
+    }
+  ],
+  "released": true
+}

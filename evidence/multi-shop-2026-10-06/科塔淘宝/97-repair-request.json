@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-07T12:21:39.317Z",
+  "shopKey": "科塔淘宝",
+  "stage": "health-check",
+  "cause": "SHOP_BLOCKED",
+  "error": "阶段 health-check 失败（exit 2）",
+  "statePath": "evidence\\multi-shop-2026-10-06\\科塔淘宝\\98-failure-state.json",
+  "stateTextPath": "evidence\\multi-shop-2026-10-06\\科塔淘宝\\98-failure-state.txt",
+  "screenshotPath": "evidence\\multi-shop-2026-10-06\\科塔淘宝\\98-failure-page.png",
+  "stateSummary": {
+    "url": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "title": "生意参谋",
+    "viewport": {
+      "w": 1506,
+      "h": 642,
+      "dpr": 1.25,
+      "scrollY": 0
+    },
+    "overlayCount": 0
+  },
+  "candidates": [
+    {
+      "action": "RELOAD_PAGE",
+      "mutating": true,
+      "why": "这一份渲染上元素不理会点击（本项目实测过的形态）；真重载换个新现场再试。"
+    },
+    {
+      "action": "RESET_PAGES",
+      "mutating": false,
+      "why": "页签可能被前一步带走或漂到别处；按期望清单归位再重试。"
+    }
+  ],
+  "planNote": "现场是登录页 ⇒ 页面类修复（关遮挡/重载/落位）都不会有效，真正要做的是登录。",
+  "stageHint": null,
+  "noActionRequired": false,
+  "retryStage": "health-check",
+  "execHint": "node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 科塔淘宝 --proxy http://127.0.0.1:19044 --stage health-check --cause SHOP_BLOCKED --action <候选动作> --log-dir evidence\\multi-shop-2026-10-06\\科塔淘宝"
+}
