@@ -3,7 +3,7 @@
   "workflow": "daily-report",
   "runId": "daily-2026-10-11-76804",
   "date": "2026-10-11",
-  "status": "RUNNING",
+  "status": "COMPLETED",
   "startedAt": "2026-10-12T03:30:46.533Z",
   "stages": [
     {
@@ -26,5 +26,7 @@
       "name": "batch-chain",
       "status": "PENDING"
     }
-  ]
+  ],
+  "finishedAt": "2026-10-12T04:15:18.363Z",
+  "exitCode": 0
 }

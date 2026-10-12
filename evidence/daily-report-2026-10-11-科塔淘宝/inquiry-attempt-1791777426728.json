@@ -1,135 +1,42 @@
 {
-  "status": "WRITE_OUTCOME_UNKNOWN",
-  "plan": {
-    "mode": "commit",
-    "reportDate": "2026-10-11",
-    "shop": "科塔淘宝",
-    "environment": {
-      "computedAt": "2026-10-12T03:57:06.727Z",
-      "node": "v22.22.2",
-      "proxyUrl": "http://127.0.0.1:19044",
-      "browserPort": {
-        "port": 19034,
-        "source": "env",
-        "registryDefault": 19022
-      },
-      "proxyPort": {
-        "port": 19044,
-        "source": "env",
-        "registryDefault": 19023
-      },
-      "browserId": {
-        "id": "edge-shop-j873522735",
-        "source": "env"
-      },
-      "browserLabel": {
-        "id": "Microsoft Edge (shop j873522735)",
-        "source": "env"
-      }
+  "mode": "commit",
+  "reportDate": "2026-10-11",
+  "shop": "科塔淘宝",
+  "environment": {
+    "computedAt": "2026-10-12T03:57:06.727Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19044",
+    "browserPort": {
+      "port": 19034,
+      "source": "env",
+      "registryDefault": 19022
     },
-    "evidence": {
-      "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-11-科塔淘宝",
-      "generation": 1,
-      "reason": "latest"
+    "proxyPort": {
+      "port": 19044,
+      "source": "env",
+      "registryDefault": 19023
     },
-    "target": {
-      "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
-      "tableId": "tblqF2YD2VfmKP4C",
-      "tableName": "各店铺数据日报",
-      "recordId": "reczz28MLrX20M8y",
-      "matchedBy": "shop-name",
-      "shopOptionId": "optnF3h5i7"
+    "browserId": {
+      "id": "edge-shop-j873522735",
+      "source": "env"
     },
-    "source": {
-      "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
-      "shop": "科塔全卫定制",
-      "column": "当日询单人数",
-      "dateRow": "2026-10-11",
-      "benchmarkRow": "同行同层均值",
-      "peerBenchmark": "PEER_AVAILABLE",
-      "rows": 7
-    },
-    "degraded": null,
-    "values": {
-      "询单量": 6,
-      "同层同行询单量": 10
-    },
-    "prewrite": {
-      "disposition": "WRITE_REQUIRED",
-      "询单量": null,
-      "同层同行询单量": null
+    "browserLabel": {
+      "id": "Microsoft Edge (shop j873522735)",
+      "source": "env"
     }
   },
-  "before": {
-    "fields": {
-      "人群PPC": 0.694285714285714,
-      "人群ROI": 0,
-      "人群加购成本": 8.1,
-      "人群加购数": [
-        6
-      ],
-      "人群成交金额": [
-        0
-      ],
-      "人群收加率": 0.157142857142857,
-      "人群收藏数": [
-        5
-      ],
-      "人群点击量": [
-        70
-      ],
-      "人群花费": [
-        48.6
-      ],
-      "人群询单量": [
-        0
-      ],
-      "关键词PPC": 0.530973451327434,
-      "关键词ROI": 0,
-      "关键词加购人数": [
-        11
-      ],
-      "关键词加购成本": 5.45454545454545,
-      "关键词成交金额": [
-        0
-      ],
-      "关键词收加率": 0.0973451327433628,
-      "关键词收藏人数": [
-        0
-      ],
-      "关键词点击量": [
-        113
-      ],
-      "关键词花费": [
-        60
-      ],
-      "关键词询单量": [
-        2
-      ],
-      "同层同行询单量": null,
-      "实际支付金额": 0,
-      "店铺": "科塔淘宝",
-      "店铺加购人数": [
-        27
-      ],
-      "店铺收加率": 0.0519951632406288,
-      "店铺收藏人数": [
-        16
-      ],
-      "推广花费合计": 108.6,
-      "支付金额": [
-        0
-      ],
-      "数据月份": 10,
-      "日期": 1791648000000,
-      "补单金额": null,
-      "访客数": [
-        827
-      ],
-      "询单量": null
-    },
-    "id": "reczz28MLrX20M8y",
-    "record_id": "reczz28MLrX20M8y"
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-11-科塔淘宝",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
+    "tableId": "tblqF2YD2VfmKP4C",
+    "tableName": "各店铺数据日报",
+    "recordId": "reczz28MLrX20M8y",
+    "matchedBy": "shop-name",
+    "shopOptionId": "optnF3h5i7"
   },
   "source": {
     "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
@@ -230,5 +137,96 @@
         "延迟统计"
       ]
     ]
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 6,
+    "同层同行询单量": 10
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "reczz28MLrX20M8y",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 6,
+      "同层同行询单量": 10
+    },
+    "matchedBy": "shop-name"
+  },
+  "before": {
+    "fields": {
+      "人群PPC": 0.694285714285714,
+      "人群ROI": 0,
+      "人群加购成本": 8.1,
+      "人群加购数": [
+        6
+      ],
+      "人群成交金额": [
+        0
+      ],
+      "人群收加率": 0.157142857142857,
+      "人群收藏数": [
+        5
+      ],
+      "人群点击量": [
+        70
+      ],
+      "人群花费": [
+        48.6
+      ],
+      "人群询单量": [
+        0
+      ],
+      "关键词PPC": 0.530973451327434,
+      "关键词ROI": 0,
+      "关键词加购人数": [
+        11
+      ],
+      "关键词加购成本": 5.45454545454545,
+      "关键词成交金额": [
+        0
+      ],
+      "关键词收加率": 0.0973451327433628,
+      "关键词收藏人数": [
+        0
+      ],
+      "关键词点击量": [
+        113
+      ],
+      "关键词花费": [
+        60
+      ],
+      "关键词询单量": [
+        2
+      ],
+      "同层同行询单量": null,
+      "实际支付金额": 0,
+      "店铺": "科塔淘宝",
+      "店铺加购人数": [
+        27
+      ],
+      "店铺收加率": 0.0519951632406288,
+      "店铺收藏人数": [
+        16
+      ],
+      "推广花费合计": 108.6,
+      "支付金额": [
+        0
+      ],
+      "数据月份": 10,
+      "日期": 1791648000000,
+      "补单金额": null,
+      "访客数": [
+        827
+      ],
+      "询单量": null
+    },
+    "id": "reczz28MLrX20M8y",
+    "record_id": "reczz28MLrX20M8y"
   }
 }
