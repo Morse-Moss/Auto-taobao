@@ -964,7 +964,11 @@ export const REASON_BY_VERDICT = Object.freeze({
 // 去重随之失效（症状：同一天叫两次，而两次看起来都「合理地」发了）。
 export function localDateStamp(date) {
   const pad = (n) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
+  // 统计口径一律 +08（与底单「统计日期」同一纪律）：先换算到东八区再取年月日，
+  // 保证 CI（UTC runner）与本机（+08）对同一时刻拼出同一个锚。机器本地时区取的话，
+  // UTC 上「23:59+08」与「次日 00:01+08」会落进同一天 ⇒ 去重锚失效（2026-10-12 CI 实证）。
+  const shifted = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  return `${shifted.getUTCFullYear()}${pad(shifted.getUTCMonth() + 1)}${pad(shifted.getUTCDate())}`;
 }
 
 // 拼一条告警对象。字段名必须落在 `runtime/notify-feishu-core.mjs` 的
