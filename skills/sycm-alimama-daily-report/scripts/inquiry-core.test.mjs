@@ -85,6 +85,29 @@ test('默认对缺失的同行基准 fail-closed，显式关闭才降级为 PEER
     '2026-09-14', { peerBenchmarkRequired: false }), /got 2/u);
 });
 
+// 用户 2026-10-10 口径：「有数据就填，没有就空着也可以，不用标记为失败需要补」。
+// 链（`run-inquiry-backfill.mjs`）显式打开 `sourceEmptyAllowed` 之后，空态不再抛错、不再让那一步失败。
+test('sourceEmptyAllowed：空态降级成「留空、不失败」，且只放行 0 行这一种形态', () => {
+  const empty = {
+    headers: ['日期', '当日询单人数', '当日付款人数'],
+    rows: [['暂无数据', '-', '-'], ['汇总值', '-', '-'], ['平均值', '-', '-']],
+  };
+  // 默认仍然 fail-closed —— 不传这个开关时，参数表与从前逐字相同
+  assert.throws(() => extractInquiryMetrics(empty, '2026-10-05'), /SOURCE_NO_ROW_FOR_DATE/u);
+  assert.deepEqual(extractInquiryMetrics(empty, '2026-10-05', { sourceEmptyAllowed: true }),
+    { inquiry: null, peerInquiry: null, peerBenchmark: 'SOURCE_EMPTY' });
+  // 「>1 个日期行」是日期筛选选成区间的结构异常 ⇒ 任何模式下都要炸，不许被这条降级一起吞掉
+  const twoRows = { headers: ['日期', '当日询单人数'], rows: [['2026-10-05', '1'], ['2026-10-04', '2']] };
+  assert.throws(() => extractInquiryMetrics(twoRows, '2026-10-05',
+    { sourceEmptyAllowed: true, peerBenchmarkRequired: false }), /exactly one daily/u);
+  // 有数据时照旧正常取数（降级只影响空态那一支，碰不到正常路径）
+  const normal = { headers: ['日期', '当日询单人数'],
+    rows: [['2026-10-05', '3'], ['汇总值', '3'], ['平均值', '3']] };
+  assert.deepEqual(extractInquiryMetrics(normal, '2026-10-05',
+    { sourceEmptyAllowed: true, peerBenchmarkRequired: false }),
+  { inquiry: 3, peerInquiry: null, peerBenchmark: 'PEER_UNAVAILABLE' });
+});
+
 test('selects exactly one Feishu row by date and shop', () => {
   const records = [
     { record_id: 'a', fields: { 日期: 1, 店铺: '盖文天猫' } },

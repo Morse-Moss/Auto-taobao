@@ -82,12 +82,24 @@ export function describeDateRowGap({ rows = [], dateIndex = -1, reportDate = nul
 
 export function extractInquiryMetrics(table, reportDate, options = {}) {
   const peerBenchmarkRequired = options.peerBenchmarkRequired !== false;
+  // 「平台这一天就没有出这一行」（表格显示「暂无数据」）算不算正常。**默认关** ——
+  // 不传时参数表与从前逐字相同（空态照旧 fail-closed，见下面那条用例的注释）。
+  // 定时链显式打开它（`run-inquiry-backfill.mjs` 传 `sourceEmptyAllowed: true`），口径取自用户 2026-10-10：
+  // 「有数据就填，没有就空着也可以，不用标记为失败需要补」——空态**不是**「脚本读不到」，
+  // 它是数据源的事实，重试/修页面/人去平台都变不出来，所以不该让整条链为它收场成失败。
+  //
+  // ⚠️ 它**只**放行「0 个日期行」这一种形态。「>1 个日期行」照旧抛错：那是日期筛选被选成
+  // 区间的结构异常（选错时缺的是**范围**，不是数据），必须有人去看，不许被这一条一起吞掉。
+  const sourceEmptyAllowed = options.sourceEmptyAllowed === true;
   const headers = table?.headers ?? [];
   const rows = table?.rows ?? [];
   const dateIndex = exactIndex(headers, '日期', 'header');
   const inquiryIndex = exactIndex(headers, '当日询单人数', 'header');
   const datedRows = rows.filter(row => /^\d{4}-\d{2}-\d{2}$/u.test(cell(row[dateIndex])));
   if (datedRows.length !== 1) {
+    if (datedRows.length === 0 && sourceEmptyAllowed) {
+      return { inquiry: null, peerInquiry: null, peerBenchmark: 'SOURCE_EMPTY' };
+    }
     throw new Error(describeDateRowGap({ rows, dateIndex, reportDate, count: datedRows.length }));
   }
   const dateRow = exactRow(rows, dateIndex, reportDate, 'date');

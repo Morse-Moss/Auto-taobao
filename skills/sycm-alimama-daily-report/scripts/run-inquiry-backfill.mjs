@@ -145,7 +145,36 @@ async function main() {
   // 不核的话会出现「目录叫 A 店、写进去的是 B 店那一行」——从文件名上完全看不出来。
   if (args.shopKey) assertEvidenceShopKey(args.shopKey, { shopKey: args.shop });
   const metrics = extractInquiryMetrics(source, args.reportDate,
-    { peerBenchmarkRequired: !args.allowMissingPeer });
+    { peerBenchmarkRequired: !args.allowMissingPeer, sourceEmptyAllowed: true });
+
+  // 平台这一天没有出这一行（表格「暂无数据」）⇒ **空态不是失败**（用户 2026-10-10 口径：
+  // 「有数据就填，没有就空着也可以，不用标记为失败需要补」）。
+  // 这里直接收工：不碰飞书、退出码 0，并把「为什么是空的」连同现场行数落成产物。
+  //
+  // 为什么放在读飞书**之前**：空态与飞书那一行在不在无关 —— 它缺的是**源数据**，不是落点。
+  // 为写两个空值去读一次远端表，既没有意义，又会在飞书侧读不到时把一个「已知无解」的空态
+  // 装扮成另一个失败（正是本项目那条老病根「把读不到当成掉了」的又一变体）。
+  if (metrics.peerBenchmark === 'SOURCE_EMPTY') {
+    const plan = {
+      mode: args.commit ? 'commit' : 'dry-run', reportDate: args.reportDate, shop: args.shop,
+      environment: buildEnvironment({
+        proxyUrl: args.proxy,
+        ports: { browser: PROJECT_PORTS.dailyReportBrowser, proxy: PROJECT_PORTS.dailyReportProxy },
+        identities: { id: BROWSER_IDS.dailyReport, label: BROWSER_LABELS.dailyReport },
+      }),
+      evidence: { outputDir: args.outputDir, generation: resolved.generation, reason: resolved.reason },
+      status: 'SOURCE_EMPTY_LEFT_BLANK',
+      source: { url: source.url, shop: source.sourceShop, column: '当日询单人数',
+        dateRow: args.reportDate, peerBenchmark: metrics.peerBenchmark, rows: (source.rows ?? []).length },
+      values: { 询单量: null, 同层同行询单量: null },
+      note: '生意参谋「询单到付款」对该店该日返回空态（表格「暂无数据」）⇒ 两格留空：不写、不算失败、不叫人。',
+    };
+    const planPath = path.join(args.outputDir, 'inquiry-backfill-plan.json');
+    writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
+    console.log(JSON.stringify({ status: plan.status, planPath, outputDir: args.outputDir,
+      values: plan.values, sourceRows: plan.source.rows }, null, 2));
+    return;
+  }
 
   const clientModule = await import(pathToFileURL(path.join(REPO_ROOT,
     'skills', 'xws-to-feishu-base', 'scripts', 'feishu-client.mjs')));
