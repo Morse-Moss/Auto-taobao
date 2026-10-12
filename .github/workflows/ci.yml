@@ -92,8 +92,12 @@ jobs:
           #   sycm-alimama-daily-report   4.3 s   (70 tests)
           #   xws-faq-operator            1.7 s   (16 tests)
           #   xws-sku-collection          1.7 s   (26 tests)
+          # 2026-10-12: 90 min proved too small — every run since 10-06 died at
+          # exactly 1h30m (run 38135519746 et al), which both hid real failures
+          # behind the timeout and made the workflow wall-clock 1.5h+. Raised to
+          # 180; if it still times out, split prepare-flow into its own job.
           - skill: xws-export-market-analysis
-            timeout: 90
+            timeout: 180
           - skill: huitun-to-feishu-keyword-heat
             timeout: 40
           - skill: sycm-export-search-rank

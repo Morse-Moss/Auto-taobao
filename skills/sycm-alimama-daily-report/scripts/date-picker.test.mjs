@@ -674,7 +674,8 @@ test('遮挡标记：判定在**抛出侧**（aim 那一刻），且门槛与 co
 // 假 DOM 只实现 aim() 真正用到的几个口子（getBoundingClientRect / getComputedStyle /
 // elementFromPoint / parentElement / scrollIntoView），够跑这条判据即可 —— 不引 jsdom 这种重依赖。
 function loadSycmPrelude() {
-  const src = readFileSync(path.join(import.meta.dirname, 'date-picker.mjs'), 'utf8');
+  // LF 归一化：干净检出（CI／git worktree）可能是 CRLF，而下面找模板串结尾的针点带 \n —— 不归一会在 CI 假红（2026-10-12 实证）。
+  const src = readFileSync(path.join(import.meta.dirname, 'date-picker.mjs'), 'utf8').replace(/\r\n/g, '\n');
   const start = src.indexOf('const SYCM_PRELUDE = `');
   assert.ok(start > 0, '找不到 SYCM_PRELUDE（改代码时请同步这条判据）');
   const open = src.indexOf('`', start);

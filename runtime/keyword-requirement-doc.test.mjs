@@ -40,7 +40,8 @@ const VERBATIM_LINES = Object.freeze([
 ]);
 
 function transcriptionBlock() {
-  const doc = readFileSync(DOC_PATH, 'utf8');
+  // LF 归一化：干净检出（CI／git worktree）可能是 CRLF，而下面的 /```text\n/ 针点带 \n —— 不归一会在 CI 假红（2026-10-12 实证）。
+  const doc = readFileSync(DOC_PATH, 'utf8').replace(/\r\n/g, '\n');
   const block = doc.match(/## 1\. 逐字转写[\s\S]*?```text\n([\s\S]*?)```/u);
   assert.ok(block, '需求文件里找不到 §1 逐字转写的 ```text 代码块');
   return block[1];

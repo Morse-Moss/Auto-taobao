@@ -2145,7 +2145,8 @@ test('㊱ 接线守卫：救回成功后真的会「从失败那一步的下一�
 });
 
 test('㊱ 接线守卫：成功续跑的那家不再走「收尾回位」与「停整轮」（它不是失败态）', () => {
-  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  // LF 归一化：干净检出（CI／git worktree）可能是 CRLF，而本测试的针点带 \n —— 不归一会在 CI 假红（2026-10-12 实证）。
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8').replace(/\r\n/g, '\n');
   // 收尾回位与停整轮都必须守 `record.status !== 'ok'` —— 否则「救回并续跑成功」的那家
   // 会被当成失败去回位、去连带停掉整轮（续跑成功＝没失败）。
   const recoveryAt = src.indexOf('if (record.status !== \'ok\') {\n        record.recovery = await recoverFailedShop(');

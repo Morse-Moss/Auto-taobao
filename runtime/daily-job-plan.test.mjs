@@ -842,7 +842,8 @@ test('接线①：run-batches 的释放判决把「要人看现场的店」传�
 });
 
 test('接线②：逐店失败（非整轮被挡）也必须转驻留，不许一路「照旧释放」', () => {
-  const src = readFileSync(path.join(REPO_ROOT, 'scripts/run-batches.mjs'), 'utf8');
+  // LF 归一化：干净检出（CI／git worktree）可能是 CRLF，而下面的针点带 \n —— 不归一会在 CI 假红（2026-10-12 实证，run 38135519746）。
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts/run-batches.mjs'), 'utf8').replace(/\r\n/g, '\n');
   // 找「链退出码非 0」那一段（整轮被挡分支的后面），里面必须有一个「有修不动的店 ⇒ 转驻留」的分支。
   const at = src.indexOf("if (round.chainStatus !== 0) {\n      // ── 2026-10-10");
   assert.ok(at > 0, '找不到「逐店失败也要转驻留」那一段（改代码时请同步这条判据）');
@@ -926,7 +927,8 @@ test('buildBatchChainArgs：mode 给了 ⇒ mode 赢；没给 ⇒ 与旧 commit 
 });
 
 test('接线（源码级）：run-daily-job 真的把 mode/evidenceRoot 透传进计划（漏传是静默的）', () => {
-  const src = readFileSync(path.join(REPO_ROOT, 'scripts/run-daily-job.mjs'), 'utf8');
+  // LF 归一化：同上 —— 针点 /mode,\n…/ 带 \n，CRLF 检出下假红。
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts/run-daily-job.mjs'), 'utf8').replace(/\r\n/g, '\n');
   assert.match(src, /mode,\n\s+evidenceRoot: options\.evidenceRoot,/u,
     '入口必须把解析后的 mode 与 evidenceRoot 交给 buildJobPlan');
   assert.match(src, /resolveRunMode/u, '模式解析必须走 resolveRunMode（单一来源，不许在入口重写一套）');
