@@ -1,12 +1,61 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync, statSync } from 'node:fs';
+// 商品底单采集 CLI —— 只做「解析参数 + 接线」，编排与判据都在 `collect-product-core.mjs`。
+//
+// 接线图（改之前先看 `collect-product-core.mjs` 顶部那段「为什么」）：
+//   · 代理端口 → `shopInstance(shop).proxyPort`（登记表是唯一来源，不许在这里写第二份）
+//   · 店铺身份的期望值 → `SHOP_IDENTITIES[].sycmHeader`（页头显示名与来源表全称可能不同，用实测值）
+//   · 下载目录 → 由浏览器 profile 的 `download.default_directory` 决定，即 `%USERPROFILE%\Downloads`。
+//     别再传 `--downloads <证据目录>`：2026-09-27 就是这么传的，结果「下载其实成功了、脚本盯错目录」
+//     ⇒ 五家全部报「下载超时」。
+//   · 失败现场 → `--evidence`（默认 `<repo>/evidence/product-collect-failures/`，按 `日期-店铺` 命名）。
+//     留默认值是因为上层 `scripts/run-product-data-job.mjs` 目前不传这个参数；等它有位置时把逐店
+//     证据目录透传进来即可，这里一个字都不用改。
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { PROJECT_PORTS, shopInstance } from '../../../runtime/browser-ports.mjs';
+import { shopInstance } from '../../../runtime/browser-ports.mjs';
 import { SHOP_IDENTITIES } from '../../sycm-alimama-daily-report/scripts/shop-identities.mjs';
+import { collectProductReport, DEFAULT_ATTEMPTS, DEFAULT_DOWNLOAD_TIMEOUT_MS } from './collect-product-core.mjs';
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-function parseArgs(argv) { const out = { shop: null, date: new Date(Date.now() - 86400000).toISOString().slice(0, 10), downloads: path.join(process.env.USERPROFILE || process.env.HOME, 'Downloads') }; for (let i=0;i<argv.length;i+=1) { const k=argv[i]; if (k==='--shop') out.shop=argv[++i]; else if (k==='--date') out.date=argv[++i]; else if (k==='--downloads') out.downloads=path.resolve(argv[++i]); else throw new Error(`unknown argument ${k}`); } if (!out.shop) throw new Error('--shop is required'); return out; }
-async function req(proxy, endpoint, init) { const r=await fetch(`${proxy}${endpoint}`,init); const t=await r.text(); if(!r.ok) throw new Error(`${endpoint} HTTP ${r.status} ${t.slice(0,200)}`); return JSON.parse(t); }
-async function main() { const args=parseArgs(process.argv.slice(2)); const shop=shopInstance(args.shop); const proxy=`http://127.0.0.1:${shop.proxyPort}`; const expected=SHOP_IDENTITIES.find((x)=>x.key===args.shop)?.sycmHeader; const targets=await req(proxy,'/targets'); const pages=targets.filter((x)=>x.type==='page'&&(String(x.url).includes('sycm.taobao.com/qos/service/frame/shop/performance')||String(x.url).includes('sycm.taobao.com/cc/item_rank'))); if(pages.length!==1) throw new Error(`expected one SYCM work page, got ${pages.length}`); let target=pages[0].targetId; const identity=await req(proxy,`/eval?target=${encodeURIComponent(target)}`,{method:'POST',body:`JSON.stringify({shop:[...document.querySelectorAll('a,span,div')].map(x=>(x.innerText||x.textContent||'').trim()).find(x=>x===${JSON.stringify(expected)})||''})`}); const identityValue=typeof identity.value==='string'?JSON.parse(identity.value):identity.value; if(identityValue?.shop!==expected) throw new Error(`shop identity mismatch: expected ${expected}`); await req(proxy,`/navigate?target=${encodeURIComponent(target)}&url=${encodeURIComponent('https://sycm.taobao.com/cc/item_rank')}`); const clickDay = async () => { const r = await req(proxy,`/eval?target=${encodeURIComponent(target)}`,{method:'POST',body:`(()=>{const b=[...document.querySelectorAll('button,[role=button],a,span')].find(x=>(x.innerText||x.textContent||'').trim()==='日');if(!b)return false;b.click();return true})()`}); return r.value === true; }; let dayClicked = false; const dayDeadline = Date.now() + 30000; while (!dayClicked && Date.now() < dayDeadline) { dayClicked = await clickDay(); if (!dayClicked) await sleep(1000); } if (!dayClicked) throw new Error('日按钮未找到（轮询 30s 仍未渲染）'); const readState = async () => { const s = await req(proxy,`/eval?target=${encodeURIComponent(target)}`,{method:'POST',body:'JSON.stringify({url:location.href,text:document.body.innerText.slice(0,600),download:!!document.querySelector("a.sycm-traced-download-text")})'}); return typeof s.value === 'string' ? JSON.parse(s.value) : s.value; }; let stateValue = null; let ready = false; const readyDeadline = Date.now() + 30000; while (!ready && Date.now() < readyDeadline) { await sleep(2000); stateValue = await readState(); ready = String(stateValue.url).includes('dateType=day') && String(stateValue.url).includes(args.date) && !!stateValue.download; } if (!ready) throw new Error(`商品排行日期或下载按钮未就绪: ${JSON.stringify(stateValue)}`); const before=new Set(readdirSync(args.downloads).filter((n)=>n.startsWith('【生意参谋平台】商品_全部_'))); await req(proxy,`/eval?target=${encodeURIComponent(target)}`,{method:'POST',body:"(()=>{const e=document.querySelector('a.sycm-traced-download-text');if(!e)return false;e.click();return true})()"}); const deadline=Date.now()+30000; while(Date.now()<deadline){await sleep(2000);const fresh=readdirSync(args.downloads).filter((n)=>n.startsWith('【生意参谋平台】商品_全部_')&&!before.has(n)).map((n)=>({name:n,mtime:statSync(path.join(args.downloads,n)).mtimeMs}));if(fresh.length){fresh.sort((a,b)=>b.mtime-a.mtime);const file=path.join(args.downloads,fresh[0].name);console.log(JSON.stringify({shop:args.shop,date:args.date,file,bytes:statSync(file).size}));return;}} throw new Error('下载超时'); }
-main().catch((e)=>{console.error(`采集失败：${e.message}`);process.exitCode=1});
+const REPO_ROOT = path.resolve(import.meta.dirname, '../../..');
+
+function parseArgs(argv) {
+  const out = {
+    shop: null,
+    date: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
+    downloads: path.join(process.env.USERPROFILE || process.env.HOME, 'Downloads'),
+    evidence: path.join(REPO_ROOT, 'evidence/product-collect-failures'),
+    attempts: DEFAULT_ATTEMPTS,
+    downloadTimeoutMs: DEFAULT_DOWNLOAD_TIMEOUT_MS,
+  };
+  for (let i = 0; i < argv.length; i += 1) {
+    const flag = argv[i];
+    if (flag === '--shop') out.shop = argv[++i];
+    else if (flag === '--date') out.date = argv[++i];
+    else if (flag === '--downloads') out.downloads = path.resolve(argv[++i]);
+    else if (flag === '--evidence') out.evidence = path.resolve(argv[++i]);
+    else if (flag === '--attempts') out.attempts = Number(argv[++i]);
+    else if (flag === '--download-timeout-ms') out.downloadTimeoutMs = Number(argv[++i]);
+    else throw new Error(`unknown argument ${flag}`);
+  }
+  if (!out.shop) throw new Error('--shop is required');
+  return out;
+}
+
+const args = parseArgs(process.argv.slice(2));
+const expectedIdentity = SHOP_IDENTITIES.find((entry) => entry.key === args.shop)?.sycmHeader;
+
+collectProductReport({
+  proxy: `http://127.0.0.1:${shopInstance(args.shop).proxyPort}`,
+  shop: args.shop,
+  date: args.date,
+  downloads: args.downloads,
+  expectedIdentity,
+  evidenceDir: args.evidence,
+  attempts: args.attempts,
+  downloadTimeoutMs: args.downloadTimeoutMs,
+  log: (line) => console.error(line),
+}).then((result) => {
+  console.log(JSON.stringify({ shop: result.shop, date: result.date, file: result.file, bytes: result.bytes }));
+}).catch((error) => {
+  console.error(`采集失败：${error.message}`);
+  process.exitCode = 1;
+});

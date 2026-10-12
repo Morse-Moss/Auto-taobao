@@ -61,3 +61,25 @@ node scripts/release-product-data-browsers.mjs --shops 里可林淘宝,网林天
 - `scripts/run-batches.mjs`：批次生命周期模板；商品流程应采用同样的启动、登录、工作、释放顺序。
 
 2026-09-26 五店真实运行最初漏掉释放阶段：导入成功后浏览器和代理仍在监听，随后才执行 stop-all 并做两次端口回读。问题记录在 `evidence/product-five-run-2026-09-25/browser-release.json`。
+
+## 已知间歇故障：下载点击没有产生下载请求（2026-10-12 起自带重试与现场）
+
+真机取证：2026-10-12 里可林天猫报 `采集失败：下载超时`，翻**浏览器自己的**下载历史库
+（`edge-profiles/<店>/Default/History` 的 `downloads` 表）才查明——那家店当天**一条下载记录都没有**，
+而同批另外 7 家各有一条完整记录 ⇒ 那次点击根本没触发下载。同一家店同一天稍后重跑，第一次点击就成功
+⇒ 这是**间歇性**的，不是店家或页面的永久缺陷。也正因为如此，**把等待时间放宽并不解决问题**
+（文件不是晚到，是压根没被请求）。
+
+现在采集脚本（`collect-product-core.mjs`）自带三件事，判定与重试都不再沉默：
+
+- 每次点击都读返回值并记进现场（`clicked:false` ＝ 点的那一刻锚点已经不在）；
+- 最多重试 3 次，每次**重新导航**拿一张干净的页（SPA 陈旧 DOM 是本仓老坑）；
+- 三次都失败时把现场写到 `--evidence`（默认 `<repo>/evidence/product-collect-failures/`），
+  文件名 `<日期>-<店铺>.failure.json` / `.failure.png`，里面有每轮读数、Downloads 目录快照、页签清单与截图。
+
+遇到同类告警的正确动作：先看现场 JSON 里 `attempts[].clicked`。全是 `true` ⇒ 平台侧没受理这次导出；
+出现 `false` ⇒ 锚点在点击时消失。两种都**直接重跑该店**（脚本自己会重试），
+不要读成「这家店没数据」，也不要连试自动登录。若同一家店连续两天在同一阶段失败 ⇒ 人工在该店窗口看一眼页面状态。
+
+`--attempts` / `--download-timeout-ms` / `--evidence` 都是可选开关，默认值即上述行为；上层
+`scripts/run-product-data-job.mjs` 目前不传它们。
