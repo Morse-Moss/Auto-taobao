@@ -17,6 +17,7 @@ import {
   describeHitMiss, describeHitPass, describeOverlayAttempt, hitCheckExpression, listDownloads, newEntries,
   parseCollectArgs, pickNewest, scrollIntoViewExpression, shopReportNamePattern, sycmShopIdentityExpression,
 } from './collect-core.mjs';
+import { captureCollectorFailureScene } from './collect-failure-scene.mjs';
 
 // 已验证的报表定义 id（SOP §3）；它进文件名哈希，变了就说明取的不是同一份报表。
 const KNOWN_REPORT_ID = '4300764';
@@ -219,14 +220,7 @@ async function clickVerified(args, targetId, { selector, label, scroll }) {
   return `${describeHitPass(hit)} → ${(await click(args, targetId, selector)).slice(0, 80)}`;
 }
 
-async function main() {
-  const args = parseCollectArgs(process.argv.slice(2), { reportId: KNOWN_REPORT_ID, flags: ['--locate-only'] });
-  args.proxy = args.proxy ?? `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
-  args.downloads = path.resolve(args.downloads ?? defaultDownloadsDir());
-  if (args.reportId !== KNOWN_REPORT_ID) {
-    throw new Error(`报表定义 id 变了（${args.reportId} ≠ ${KNOWN_REPORT_ID}）：确认取的是同一份日报报表再继续`);
-  }
-
+async function run(args) {
   const targetId = await findSycmPage(args);
   await bringToFront(args, targetId);
 
@@ -417,6 +411,36 @@ async function main() {
     console.log(`      等待下载… ${Math.round((args.timeoutMs - (deadline - Date.now())) / 1000)}s`);
   }
   throw new Error(`${args.timeoutMs}ms 内没等到新的店铺报表：判据取文件系统，页面说「已触发下载」不算数`);
+}
+
+/**
+ * CLI 入口：解析参数 → 跑 → **失败时采一次现场**再往上抛。
+ *
+ * 为什么现场采在这里而不是 `main().catch()` 里（2026-10-13）：采现场要 `args.proxy`
+ * 与 `args.logDir`，而那两个在 `main()` 里才算出来；在 catch 里再算一遍就是第二处解析。
+ * 更重要的顺序理由：**先采现场、再抛**。抛出去之后页面可能被下一步导航走，
+ * 那一刻的 DOM/截图就没了 —— 与编排层那条「必须在 recoverFailedShop 之前」是同一条纪律。
+ *
+ * `--log-dir` 不给 ⇒ 不采（整轮跑时编排层自己会采，这里不重复拍一遍），且会打印一句说明。
+ */
+async function main() {
+  const args = parseCollectArgs(process.argv.slice(2), { reportId: KNOWN_REPORT_ID, flags: ['--locate-only'] });
+  args.proxy = args.proxy ?? `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
+  args.downloads = path.resolve(args.downloads ?? defaultDownloadsDir());
+  if (args.reportId !== KNOWN_REPORT_ID) {
+    throw new Error(`报表定义 id 变了（${args.reportId} ≠ ${KNOWN_REPORT_ID}）：确认取的是同一份日报报表再继续`);
+  }
+  try {
+    await run(args);
+  } catch (error) {
+    await captureCollectorFailureScene({
+      proxy: args.proxy, logDir: args.logDir, stage: 'shop-report', pageHint: 'sycm',
+      error: error.message,
+      // 一店多名是常态 ⇒ 优先运营叫法（`--shop-key`），没有才用页头店名。只用于给现场标一个名字。
+      shopKey: args.shopKey ?? args.expectShop ?? null,
+    });
+    throw error;
+  }
 }
 
 // 被 import 时不执行 CLI（同 collect-promotion-report.mjs / readback-daily-report.mjs 的写法）。

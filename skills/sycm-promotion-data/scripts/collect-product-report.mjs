@@ -6,9 +6,11 @@ import { SHOP_IDENTITIES } from '../../sycm-alimama-daily-report/scripts/shop-id
 import { alimamaIdentityExpression, assertMemberIdentity, createOverlayDismisser, defaultDownloadsDir, listDownloads, newEntries, overlayAfterExpression, overlayScanExpression, pickOverlayCloseCandidate } from '../../sycm-alimama-daily-report/scripts/collect-core.mjs';
 import { buildProductReportUrl, PRODUCT_TASK_PREFIX, PRODUCT_TASK_RE, PRODUCT_ZIP_RE, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
 import { nextDownloadAction } from './download-retry-core.mjs';
+// 失败现场（2026-10-13 加，㊶）：单独跑这个脚本时，`商品报表下载超时: xxx` 不再只留一句符号。
+import { captureCollectorFailureScene } from '../../sycm-alimama-daily-report/scripts/collect-failure-scene.mjs';
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-function args(argv) { const o = { date: null, shop: null, task: null, downloads: defaultDownloadsDir(), locateOnly: false }; for (let i=0;i<argv.length;i+=1) { const k=argv[i]; if(k==='--date')o.date=argv[++i]; else if(k==='--shop')o.shop=argv[++i]; else if(k==='--task')o.task=argv[++i]; else if(k==='--downloads')o.downloads=path.resolve(argv[++i]); else if(k==='--locate-only')o.locateOnly=true; else throw Error(`unknown argument ${k}`); } if(!/^\d{4}-\d{2}-\d{2}$/u.test(o.date??''))throw Error('--date must be YYYY-MM-DD'); if(!o.shop)throw Error('--shop is required'); return o; }
+function args(argv) { const o = { date: null, shop: null, task: null, downloads: defaultDownloadsDir(), logDir: null, locateOnly: false }; for (let i=0;i<argv.length;i+=1) { const k=argv[i]; if(k==='--date')o.date=argv[++i]; else if(k==='--shop')o.shop=argv[++i]; else if(k==='--task')o.task=argv[++i]; else if(k==='--downloads')o.downloads=path.resolve(argv[++i]); else if(k==='--log-dir')o.logDir=argv[++i]; else if(k==='--locate-only')o.locateOnly=true; else throw Error(`unknown argument ${k}`); } if(!/^\d{4}-\d{2}-\d{2}$/u.test(o.date??''))throw Error('--date must be YYYY-MM-DD'); if(!o.shop)throw Error('--shop is required'); return o; }
 async function request(proxy, endpoint, init) { const r=await fetch(`${proxy}${endpoint}`, init); const t=await r.text(); if(!r.ok)throw Error(`${endpoint} HTTP ${r.status} ${t.slice(0,200)}`); try{return JSON.parse(t)}catch{return t} }
 async function evalOn(proxy, target, expression) { const x=await request(proxy,`/eval?target=${encodeURIComponent(target)}`,{method:'POST',body:expression}); return typeof x.value==='string' ? (()=>{try{return JSON.parse(x.value)}catch{return x.value}})() : x.value; }
 async function click(proxy,target,selector) { return request(proxy,`/click?target=${encodeURIComponent(target)}`,{method:'POST',body:selector}); }
@@ -83,5 +85,20 @@ async function fetchTask(proxy,target,task,downloads,meta={}) {
   }
   throw Error(`商品报表下载未完成: ${task}`);
 }
-async function main(){const o=args(process.argv.slice(2));const inst=shopInstance(o.shop);const proxy=`http://127.0.0.1:${inst.proxyPort}`;let target=await findPage(proxy);await identity(proxy,target,o.shop);if(o.task){target=await navigateDownloadList(proxy,target);await fetchTask(proxy,target,o.task,o.downloads,{shop:o.shop,date:o.date});return;}target=await navigateDownloadList(proxy,target);const before=await readProductTasks(proxy,target);await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent(buildProductReportUrl(o.date))}`);await sleep(6500);target=await findPage(proxy);await setPlanDimension(proxy,target);const checked=await state(proxy,target,o.date);validateProductReportState(checked,o.date);console.log(`[校验] 商品报表 / ${o.date} / 商品+计划 ✓`);if(o.locateOnly){console.log('[排练] 未提交下载');return;}const task=await submit(proxy,target,before);target=await findPage(proxy);await fetchTask(proxy,target,task,o.downloads,{shop:o.shop,date:o.date});}
+async function run(o){const inst=shopInstance(o.shop);const proxy=`http://127.0.0.1:${inst.proxyPort}`;let target=await findPage(proxy);await identity(proxy,target,o.shop);if(o.task){target=await navigateDownloadList(proxy,target);await fetchTask(proxy,target,o.task,o.downloads,{shop:o.shop,date:o.date});return;}target=await navigateDownloadList(proxy,target);const before=await readProductTasks(proxy,target);await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent(buildProductReportUrl(o.date))}`);await sleep(6500);target=await findPage(proxy);await setPlanDimension(proxy,target);const checked=await state(proxy,target,o.date);validateProductReportState(checked,o.date);console.log(`[校验] 商品报表 / ${o.date} / 商品+计划 ✓`);if(o.locateOnly){console.log('[排练] 未提交下载');return;}const task=await submit(proxy,target,before);target=await findPage(proxy);await fetchTask(proxy,target,task,o.downloads,{shop:o.shop,date:o.date});}
+// CLI 入口（2026-10-13 加失败现场，㊶）：**先采现场、再抛** —— 抛出去之后页面可能被导航走，
+// 那一刻的 DOM/截图就没了（与日报链编排层同一条纪律）。`--log-dir` 不给 ⇒ 不采
+// （商品链那一轮由编排层自己采，别重复拍一遍），且会打印一句说明。
+async function main(){
+  const o=args(process.argv.slice(2));
+  const inst=shopInstance(o.shop);
+  try{ await run(o); }
+  catch(e){
+    await captureCollectorFailureScene({
+      proxy:`http://127.0.0.1:${inst.proxyPort}`, logDir:o.logDir, stage:'product-report', pageHint:'alimama',
+      error:e.message, shopKey:o.shop,
+    });
+    throw e;
+  }
+}
 main().catch(e=>{console.error(`采集失败：${e.message}`);process.exitCode=1});

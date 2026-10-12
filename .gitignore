@@ -143,3 +143,10 @@ evidence/**/xws-sku-payload-*.txt
 # 2026-10-12：sop-runtime 的一次性调度收据（scheduled-<id>/two-stage-receipt.json＋evidence/）
 # ——是运行产物不是源码；同类目录没有 tracked 先例，新的不许再进来。
 runtime/sop-runtime/scheduled-*/
+
+# 2026-10-13：`npm run check:head` 的逐次运行日志（evidence/head-check-<sha>-<时间戳>/）。
+# 与 /tmp/、draft_*_folder/ 同一条口径：它是**本机**跑闸门的原始输出，随跑随生成；
+# 要留档就整份复制到 evidence/<轮次>/ 再提交（那份才是可核的）。
+# 不忽略它的话，每跑一次 check:head 就往 git status 里添一个目录，
+# 把真正的源码漂移淹在噪音里（HEAD-VS-WORKTREE 事故的土壤之一）。
+evidence/head-check-*/

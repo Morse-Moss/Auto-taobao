@@ -51,6 +51,15 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/sycm-alimama-daily-report/scripts/check-login-shops-core.test.mjs',
   'skills/sycm-alimama-daily-report/scripts/check-login-shops.mjs',
   'skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs',
+  // 2026-10-13 新增：失败现场的**感知层**（`failure-perception.mjs`）import 了
+  // `runtime/target-url-match.mjs` 的 `pagesMatching` —— 为了按站点提示挑「该拍哪一页」。
+  // 此前它恒取「第一个非 about 页签」，而店铺实例的第一个正是**店铺标识页**
+  // （`runtime/shop-window-label.html`）⇒ promotion-fetch 失败时现场拍的是标识页、
+  // 文件在且 `ok:true`、内容却与出事的那一页无关
+  // （实证：`evidence/batches-2026-10-10/b1/里可林淘宝/98-failure-state.txt` 的 URL）。
+  // 页签归属判据全仓只有那一处实现，在这里另写一套 includes 就是第二个事实。
+  // 方向是干净的 skills → runtime（叶子，只做 URL 结构匹配，不反向依赖 skills）。
+  'skills/sycm-alimama-daily-report/scripts/failure-perception.mjs',
   // 2026-10-06 推广日报复用主线目标配置与 Feishu 客户端；两条入口的跨目录依赖显式登记。
   // 2026-10-12 恢复这两条（此前的工作区改动删了登记，但两个文件至今仍 import runtime/* ——
   // 删登记＝守卫必红）；并补登 1.8.1(9a3285b) 起实际存在的编排器两条：
@@ -81,6 +90,12 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   // 为什么断言要 import 真名单而不是抄一份字符串：抄一份的话，名单一改这条用例照样绿 ——
   // 它守的就是「默认口径来自那唯一一处」，抄本身就是被守的那件事。
   'skills/sycm-alimama-daily-report/scripts/ensure-inquiry-rows.test.mjs',
+  // 2026-10-13 新增：**参数契约守卫**（`collector-arg-contract.test.mjs`）。它 import
+  // `runtime/browser-ports.mjs` 的 `collectingShopKeys()` 当断言输入 —— 与上一条同源：
+  // 抄一份名单字符串的话，名单一改这条用例照样绿，而它守的就是「参与采集的口径来自那唯一一处」。
+  // 它核对的是「编排层 `buildShopStages` 真实传给每个采集脚本的每个参数，对面都认得、也都真的用」
+  // —— 契约第 2 类（认了却不用 ⇒ 传了与没传结果逐字一样，且两边都不报错）。
+  'skills/sycm-alimama-daily-report/scripts/collector-arg-contract.test.mjs',
   // 2026-09-21 新增：**期望页面清单的唯一来源**。它必须留在能力目录里，不能抽到 runtime/ ——
   // 抽过去就让它自己变成 runtime → skills（就是下面那条「业务倒灌机制层」），而 shop-pages.mjs
   // 与驱动都要用它，留在任何一侧的另一侧都会成环。它本身只依赖 date-picker 与 runtime/feishu-targets，

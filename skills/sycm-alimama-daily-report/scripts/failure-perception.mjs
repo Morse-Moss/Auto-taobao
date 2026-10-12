@@ -21,7 +21,17 @@
  *
  * 注意：本模块**不改任何既有失败语义**。它只在「已经确定失败」之后被调用一次，
  * 追加两个产物文件，不写 `failedStage`、不改退出码、不进告警文案。
+ *
+ * 2026-10-12 补第四条纪律（同一立场，来自真实现场）：
+ *   4) **拍对页**。取哪个页签不是细节 —— 店铺实例的第一个非 `about:` 页签是**店铺标识页**
+ *      （`runtime/shop-window-label.html`），于是 `promotion-fetch` 失败时采到的会是那一页：
+ *      现场文件在、`ok:true`、内容却与出事的那一页无关（实证见
+ *      `evidence/batches-2026-10-10/b1/里可林淘宝/98-failure-state.txt` 的 URL）。
+ *      「没人查」从来不是这类缺陷拖着的理由，是**采错了页**。现在按调用方给的站点提示取页
+ *      （`pickFailureTarget`），取不到才退回历史行为，并把「这一页是怎么选中的」写进产物。
  */
+import { siteAdapter } from './date-picker.mjs';
+import { pagesMatching } from '../../../runtime/target-url-match.mjs';
 
 /**
  * 在页面里取「失败现场」的 JS 表达式。
@@ -153,7 +163,7 @@ export function unwrapEvalValue(raw, { maxDepth = 4 } = {}) {
  * 为什么要人读版：JSON 是给下一次执行/agent 用的，txt 是给人巡场时 30 秒看懂的。
  * 两者都要，缺一个就还得靠对话补。
  */
-export function renderFailureStateText(state, { shopKey = null, stage = null, error = null } = {}) {
+export function renderFailureStateText(state, { shopKey = null, stage = null, error = null, selected = null } = {}) {
   if (!state) return '(没能取到页面现场)\n';
   const lines = [];
   lines.push(`店：${shopKey ?? '?'}`);
@@ -161,6 +171,18 @@ export function renderFailureStateText(state, { shopKey = null, stage = null, er
   lines.push(`失败原因（符号）：${error ?? '?'}`);
   lines.push(`页面：${state.title ?? '?'}`);
   lines.push(`URL：${state.url ?? '?'}`);
+  // 「这一页是怎么选中的」必须写在人读版里：2026-10-12 之前这里只会印 URL，
+  // 而 URL 是店铺标识页时，读的人无从知道「拍错页了」—— 只能以为出事的那一页长这样。
+  if (selected) {
+    const how = selected.how === 'pageHint'
+      ? `按站点提示「${selected.pageHint}」选中（片段 ${selected.fragment}）`
+      : selected.how === 'firstNonAboutPage'
+        ? `第一个非 about 页签${selected.fragment ? `（给了提示「${selected.pageHint}」但没挑到该站点的页）` : ''}`
+        : '没选到页签';
+    lines.push(`现场页签：${how}`);
+  } else {
+    lines.push('现场页签：（没记）');
+  }
   if (state.viewport) {
     lines.push(`视口：${state.viewport.w}x${state.viewport.h}（dpr=${state.viewport.dpr}，滚动=${state.viewport.scrollY}）`);
   }
@@ -188,6 +210,64 @@ export function renderFailureStateText(state, { shopKey = null, stage = null, er
 }
 
 /**
+ * 站点标签 → 该站点的 URL 片段。
+ *
+ * 唯一来源是 `date-picker.mjs` 的 `siteAdapter` —— **不在这里抄第二份字符串**：
+ * 抄一份的漂开症状是「感知层去拍另一家站点的页面」，而那正是本模块 2026-10-12 要治的病，
+ * 用同样的手法再犯一次没有说服力。认不出来的标签返回 `null`（调用点按「没给提示」处理）。
+ */
+export function siteFragmentFor(site) {
+  try {
+    return siteAdapter(String(site ?? '')).urlFragment ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 从 `/targets` 的结果里挑「这一份失败现场该拍哪一页」。
+ *
+ * 为什么不能一直取 `pages[0]`（2026-10-12 实证）：店铺实例的**第一个**非 `about:` 页签是
+ * 店铺标识页（`runtime/shop-window-label.html`），于是 `promotion-fetch` 失败时采到的
+ * 是那一页 —— 现场文件在、`ok:true`、内容却与出事的那一页无关，
+ * `evidence/batches-2026-10-10/b1/里可林淘宝/98-failure-state.txt` 的 URL 逐字是证据。
+ * 而「没人查」从来不是原因：现场一直在采，只是**采错了页**。
+ *
+ * 取页顺序（写清楚，别让人以为它总能选对）：
+ *   ① 给了 `pageHint`（站点标签）⇒ 用 `runtime/target-url-match.mjs` 的 `pagesMatching`
+ *      挑该站点的页 —— 那是全仓唯一的页签归属判据，不在这里另写一套 includes；
+ *   ② ① 挑不到（那一页不在、被导航走了）⇒ 退回「第一个非 `about:` 页签」（历史行为逐字不变）；
+ *   ③ 连非 `about:` 页签都没有 ⇒ 挑第一个页签，让调用点去报「读不到任何页签」。
+ *
+ * `how` 一路带到返回值里：调用点必须能说清「这一页是按提示选的还是退回的」——
+ * 分不清这两者，下一次诊断又会回到靠猜。
+ *
+ * @param {Array<object>} targets 代理 `/targets` 的结果
+ * @param {{pageHint?: string|null}} [o] pageHint 是站点标签（`alimama` / `sycm`），
+ *        来源是 `repair-actions.mjs` 的 `STAGE_PAGE_HINT`，不是页面知识。
+ * @returns {{target: object|null, how: 'pageHint'|'firstNonAboutPage'|'none',
+ *            pageHint: string|null, fragment: string|null}}
+ */
+export function pickFailureTarget(targets, { pageHint = null } = {}) {
+  const list = Array.isArray(targets) ? targets : [];
+  const pages = list.filter((t) => t?.type === 'page' && !String(t.url ?? '').startsWith('about:'));
+  const fragment = siteFragmentFor(pageHint);
+  if (fragment) {
+    const matched = pagesMatching(list, fragment);
+    if (matched.length > 0) {
+      return { target: matched[0], how: 'pageHint', pageHint: String(pageHint), fragment };
+    }
+  }
+  const fallback = pages[0] ?? list[0] ?? null;
+  return {
+    target: fallback,
+    how: fallback ? 'firstNonAboutPage' : 'none',
+    pageHint: pageHint ?? null,
+    fragment: fragment ?? null,
+  };
+}
+
+/**
  * 一次失败现场的采集动作。**永不抛**：三项各自 `{ ok, ... }`。
  *
  * @param {object}   o
@@ -196,6 +276,9 @@ export function renderFailureStateText(state, { shopKey = null, stage = null, er
  * @param {string}   o.shopKey
  * @param {string}   o.stage        失败阶段名
  * @param {string}   o.error        主线的失败原因（只记录，不改写）
+ * @param {string}   [o.pageHint]   站点标签（`alimama` / `sycm`）—— 该拍哪一站的页。
+ *                                  来源是 `repair-actions.mjs` 的 `STAGE_PAGE_HINT`；
+ *                                  不给就走历史行为（第一个非 `about:` 页签）。
  * @param {Function} [o.readTargets] 读代理 /targets（可注入，离线可断言）
  * @param {Function} [o.evalInPage] 在页面里执行表达式（可注入）
  * @param {Function} [o.screenshot] 取截图（可注入）
@@ -204,22 +287,34 @@ export function renderFailureStateText(state, { shopKey = null, stage = null, er
  * @returns {Promise<object>} { ok, files, state, errors } —— 结构固定，便于断言
  */
 export async function captureFailureState({
-  proxy, logDir, shopKey = null, stage = null, error = null,
+  proxy, logDir, shopKey = null, stage = null, error = null, pageHint = null,
   readTargets, evalInPage, screenshot, writeFile = null, log = console.log,
 } = {}) {
   const fsWrite = writeFile ?? (await import('node:fs')).writeFileSync;
   const path = await import('node:path');
-  const result = { ok: false, files: {}, state: null, errors: [], shopKey, stage };
+  const result = { ok: false, files: {}, state: null, errors: [], shopKey, stage, selected: null };
 
-  // 目标页：优先「当前活着的、非 about:blank 的第一个页签」。
-  // 取不到就整段降级 —— 但**记下来**，绝不静默变空。
+  // 目标页：按调用方给的站点提示挑该站点的页（`pickFailureTarget`），挑不到才退回
+  // 「第一个非 about: 页签」这个历史行为。取不到就整段降级 —— 但**记下来**，绝不静默变空。
   let targetId = null;
   try {
     const targets = await readTargets(proxy);
-    const pages = (targets ?? []).filter((t) => t.type === 'page' && !String(t.url ?? '').startsWith('about:'));
-    const picked = pages[0] ?? (targets ?? [])[0] ?? null;
-    targetId = picked?.targetId ?? null;
+    const selection = pickFailureTarget(targets, { pageHint });
+    result.selected = {
+      targetId: selection.target?.targetId ?? null,
+      url: selection.target?.url ?? null,
+      how: selection.how,
+      pageHint: selection.pageHint ?? null,
+      fragment: selection.fragment ?? null,
+    };
+    targetId = selection.target?.targetId ?? null;
     if (!targetId) result.errors.push('读不到任何页签（代理连不上或浏览器没有页面）');
+    else if (selection.how === 'firstNonAboutPage' && selection.fragment) {
+      // 给了提示却挑不到那一站 ⇒ 页面不在（被导航走了/还没起来）。这不是错，但必须说：
+      // 否则下一次诊断又会把「拍的是标识页」当成「页面正常」。
+      log(`[${shopKey ?? '?'}]   ⚠️ 按站点提示「${selection.pageHint}」没挑到页签，`
+        + `退回第一个非 about 页签（${String(selection.target?.url ?? '?').slice(0, 80)}）`);
+    }
   } catch (err) {
     result.errors.push(`读页签失败：${String(err?.message ?? err)}`);
   }
@@ -249,7 +344,7 @@ export async function captureFailureState({
       fsWrite(jsonPath, `${JSON.stringify(result.state, null, 2)}\n`, 'utf8');
       result.files.stateJson = jsonPath;
       const txtPath = path.join(logDir, '98-failure-state.txt');
-      fsWrite(txtPath, renderFailureStateText(result.state, { shopKey, stage, error }), 'utf8');
+      fsWrite(txtPath, renderFailureStateText(result.state, { shopKey, stage, error, selected: result.selected }), 'utf8');
       result.files.stateText = txtPath;
     } catch (err) {
       result.errors.push(`写现场产物失败：${String(err?.message ?? err)}`);

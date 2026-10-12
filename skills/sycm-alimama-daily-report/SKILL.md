@@ -34,6 +34,7 @@ node skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs --pha
 - Promotion report is two phases because the platform may take up to ten minutes to generate the file: `submit` clicks `下载报表 → 确定`, `fetch` goes to 下载任务管理 and clicks the task's `下载`. The run order keeps that wait behind other steps instead of idling in front of it.
 - Add `--locate-only` to either script to run every lookup and hit-check **without clicking anything** — safe to repeat, and the way to prove the selectors still match before a real run.
 - `fetch` takes the newest task in the list (never filtered by "today": the date inside a task name is the export date, not the reporting date). Pass `--task <name>` when the list is ambiguous.
+- **Running one of these scripts on its own** (not through `run-multi-shop-day.mjs`)? Add `--log-dir <目录>`: on failure it then drops a `98-failure-state.json` / `.txt` / `.png` into that directory — what the page actually looked like at the moment it failed. Without it nothing is captured, because the whole-round runner already captures the scene itself and capturing twice is waste. Either way it prints one line saying which of the two happened, so "no scene" never looks like "scene not needed".
 
 ## Date Placement
 

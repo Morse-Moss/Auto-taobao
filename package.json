@@ -1,6 +1,6 @@
 {
   "name": "sycm-automation",
-  "version": "1.8.7",
+  "version": "1.8.8",
   "private": true,
   "type": "module",
   "engines": {
@@ -8,6 +8,7 @@
   },
   "scripts": {
     "check:fast": "node scripts/check-fast.mjs",
+    "check:head": "node scripts/check-head.mjs",
     "check:staged": "node scripts/check-fast.mjs --staged",
     "check:delivery": "node scripts/delivery-status.mjs",
     "test:offline": "node scripts/run-offline-self-tests.mjs",

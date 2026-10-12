@@ -31,6 +31,8 @@ import {
 // 报表页 URL 形状只有 date-picker 那份实现（含场景编码与归因参数）。路由复位要重新导航到
 // 同一个报表页，所以这里**取它**而不是再抄一份 —— 抄一份就会在下次改 URL 时漂移。
 import { buildAlimamaUrl } from './date-picker.mjs';
+// 失败现场（2026-10-13 加，㊶）：单独跑这个脚本时，`30000ms 内没等到新 zip` 不再只留一句符号。
+import { captureCollectorFailureScene } from './collect-failure-scene.mjs';
 // 推广任务台账（2026-09-21 晚加）：任务名只有导出日、没有目标日 ⇒「取哪一条」不许猜。
 // 提交段把「亲眼看它多出来哪一条」记进台账；取件段**按业务日给候选**（不是只认台账那一笔）
 // —— 2026-10-05 改成候选集，理由见 judgeFetchCandidates 的文件头。
@@ -1014,6 +1016,24 @@ async function selectTargetRow(args, targetId, taskName, firstRow) {
     + `最后一次中心命中 ${described(row)}）—— 它的操作行不会显形，取件必然落空，停在这里比继续更省事`);
 }
 
+async function run(args) {
+  const targetId = await findAlimamaPage(args);
+  await bringToFront(args, targetId);
+  console.log(`[0/2] 阿里妈妈页 ${targetId}｜phase=${args.phase}｜目标日 ${args.date}`);
+  // 身份核对必须在任何点击/导航之前：两个阶段都从它开始。
+  await assertAlimamaIdentity(args, targetId);
+  if (args.phase === 'submit') await phaseSubmit(args, targetId);
+  else await phaseFetch(args, targetId);
+}
+
+/**
+ * CLI 入口：解析参数 → 跑 → **失败时采一次现场**再往上抛。
+ *
+ * 2026-10-13 加（待修清单 ㊶）。这个脚本正是缺陷⑤的所在：`30000ms 内没等到新 zip`
+ * 这种失败以前只留一句符号，而符号不说明阿里妈妈那一页当时长什么样 ⇒ 判因只能靠人肉复现。
+ * 纪律与编排层同一条：**先采现场、再抛**（抛出去之后页面可能被导航走，现场就没了）。
+ * `--log-dir` 不给 ⇒ 不采（整轮跑时编排层自己会采，别重复拍一遍），且会打印一句说明。
+ */
 async function main() {
   const args = parseCollectArgs(process.argv.slice(2),
     { phases: ['submit', 'fetch'], flags: ['--locate-only'] });
@@ -1022,13 +1042,17 @@ async function main() {
   if (args.reportKind) args.expectShop = args.shopKey;
   args.proxy = args.proxy ?? `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
   args.downloads = path.resolve(args.downloads ?? defaultDownloadsDir());
-  const targetId = await findAlimamaPage(args);
-  await bringToFront(args, targetId);
-  console.log(`[0/2] 阿里妈妈页 ${targetId}｜phase=${args.phase}｜目标日 ${args.date}`);
-  // 身份核对必须在任何点击/导航之前：两个阶段都从它开始。
-  await assertAlimamaIdentity(args, targetId);
-  if (args.phase === 'submit') await phaseSubmit(args, targetId);
-  else await phaseFetch(args, targetId);
+  try {
+    await run(args);
+  } catch (error) {
+    await captureCollectorFailureScene({
+      proxy: args.proxy, logDir: args.logDir, stage: 'promotion-fetch', pageHint: 'alimama',
+      error: error.message,
+      // 一店多名是常态 ⇒ 优先运营叫法（`--shop-key`）。只用于给现场标一个名字。
+      shopKey: args.shopKey ?? null,
+    });
+    throw error;
+  }
 }
 
 // 被 import 时不执行 CLI（同 readback-daily-report.mjs 的写法）。

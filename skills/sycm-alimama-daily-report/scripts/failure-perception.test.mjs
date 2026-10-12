@@ -6,7 +6,9 @@ import path from 'node:path';
 import {
   FAILURE_STATE_EXPRESSION,
   captureFailureState,
+  pickFailureTarget,
   renderFailureStateText,
+  siteFragmentFor,
   unwrapEvalValue,
 } from './failure-perception.mjs';
 
@@ -206,4 +208,108 @@ test('人读文本不吞关键事实：遮挡层/视口/可见元素都在', () 
     '99999', '1178x460', '下载报表', '796,0,45x26']) {
     assert.ok(txt.includes(needle), `人读文本缺：${needle}`);
   }
+});
+
+// ---------------------------------------------------------------- 拍对页（2026-10-13）
+//
+// 真实现场（这条用例存在的全部理由）：店铺实例的**第一个**非 `about:` 页签是店铺标识页
+// （`runtime/shop-window-label.html`），于是 `promotion-fetch` 失败时，旧代码采到的
+// 就是那一页 —— 文件在、`ok:true`、内容却与出事的那一页无关：
+//   evidence/batches-2026-10-10/b1/里可林淘宝/98-failure-state.txt
+//     URL：file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=里可林淘宝&port=19031
+// 「没人查」从来不是这条缺陷拖着的理由，是**采错了页**。下面这一族钉住「按站点提示取页」。
+
+test('pickFailureTarget：给了站点提示时挑该站点的页，不被标识页抢走', () => {
+  const targets = [
+    { type: 'page', targetId: 'LABEL', url: 'file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031' },
+    { type: 'page', targetId: 'ALIMAMA', url: 'https://one.alimama.com/index.html#!/report/account' },
+    { type: 'page', targetId: 'SYCM', url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop' },
+  ];
+  const alimama = pickFailureTarget(targets, { pageHint: 'alimama' });
+  assert.equal(alimama.target.targetId, 'ALIMAMA');
+  assert.equal(alimama.how, 'pageHint');
+  const sycm = pickFailureTarget(targets, { pageHint: 'sycm' });
+  assert.equal(sycm.target.targetId, 'SYCM');
+  assert.equal(sycm.how, 'pageHint');
+});
+
+test('pickFailureTarget：没有提示时逐字保持历史行为（第一个非 about 页签）', () => {
+  const targets = [
+    { type: 'page', targetId: 'BLANK', url: 'about:blank' },
+    { type: 'page', targetId: 'LABEL', url: 'file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=x&port=19031' },
+    { type: 'page', targetId: 'ALIMAMA', url: 'https://one.alimama.com/index.html' },
+  ];
+  const picked = pickFailureTarget(targets, {});
+  assert.equal(picked.target.targetId, 'LABEL', '不给提示就还是老样子 —— 不许悄悄改默认行为');
+  assert.equal(picked.how, 'firstNonAboutPage');
+  assert.equal(picked.fragment, null, '没有提示就没有片段，别假装有');
+});
+
+test('pickFailureTarget：给了提示但那一站的页不在 ⇒ 退回第一个非 about 页签，且 how 说清是退回的', () => {
+  const targets = [
+    { type: 'page', targetId: 'LABEL', url: 'file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=x&port=19031' },
+  ];
+  const picked = pickFailureTarget(targets, { pageHint: 'alimama' });
+  assert.equal(picked.target.targetId, 'LABEL');
+  assert.equal(picked.how, 'firstNonAboutPage');
+  assert.equal(picked.fragment, 'one.alimama.com', '片段要留着，调用点才能说「提示了却没挑到」');
+});
+
+test('pickFailureTarget：一个页签都没有 ⇒ how=none，不猜', () => {
+  assert.equal(pickFailureTarget([], { pageHint: 'alimama' }).how, 'none');
+  assert.equal(pickFailureTarget(null, { pageHint: 'alimama' }).how, 'none');
+  assert.equal(pickFailureTarget([{ type: 'page', targetId: 'B', url: 'about:blank' }], { pageHint: 'alimama' }).target.targetId, 'B',
+    '连非 about 页签都没有时，退回第一个页签，让调用点去报「读不到任何页签」');
+});
+
+test('siteFragmentFor：片段只从 date-picker 的 siteAdapter 取，认不出的标签返回 null', () => {
+  assert.equal(siteFragmentFor('alimama'), 'one.alimama.com');
+  assert.equal(siteFragmentFor('sycm'), 'sycm.taobao.com/qos/service/frame/shop/performance');
+  assert.equal(siteFragmentFor('不存在的站点'), null);
+  assert.equal(siteFragmentFor(null), null);
+});
+
+test('captureFailureState：pageHint 真的传到选页上（拍的是出事那一站，不是标识页）', async () => {
+  const dir = makeDir();
+  try {
+    let usedTarget = null;
+    const result = await captureFailureState({
+      proxy: 'http://127.0.0.1:19041', logDir: dir, shopKey: '里可林淘宝', stage: 'promotion-fetch',
+      error: '30000ms 内没等到新 zip',
+      pageHint: 'alimama',
+      readTargets: async () => ([
+        { type: 'page', targetId: 'LABEL', url: 'file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=x&port=19031' },
+        { type: 'page', targetId: 'ALIMAMA', url: 'https://one.alimama.com/index.html#!/report/account' },
+      ]),
+      evalInPage: async (proxy, targetId) => { usedTarget = targetId; return { value: JSON.stringify(sampleState) }; },
+      screenshot: async () => {},
+      log: () => {},
+    });
+    assert.equal(usedTarget, 'ALIMAMA', '拍错页就等于白采 —— 这条钉的是「采到的那一页」');
+    assert.equal(result.selected.how, 'pageHint');
+    assert.equal(result.selected.url, 'https://one.alimama.com/index.html#!/report/account');
+    const txt = readFileSync(result.files.stateText, 'utf8');
+    assert.match(txt, /现场页签：按站点提示「alimama」选中/, '人读版必须说清这一页是怎么选中的');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('captureFailureState：提示了却没挑到那一站 ⇒ 留一条告警，且人读版写明是退回的', async () => {
+  const dir = makeDir();
+  try {
+    const lines = [];
+    const result = await captureFailureState({
+      proxy: 'http://127.0.0.1:19041', logDir: dir, shopKey: '网林天猫', stage: 'promotion-fetch',
+      error: 'x', pageHint: 'alimama',
+      readTargets: async () => ([
+        { type: 'page', targetId: 'LABEL', url: 'file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=x&port=19031' },
+      ]),
+      evalInPage: async () => ({ value: JSON.stringify(sampleState) }),
+      screenshot: async () => {},
+      log: (line) => lines.push(line),
+    });
+    assert.equal(result.selected.how, 'firstNonAboutPage');
+    assert.ok(lines.some((line) => /没挑到页签/.test(line)), lines.join('｜'));
+    const txt = readFileSync(result.files.stateText, 'utf8');
+    assert.match(txt, /给了提示「alimama」但没挑到该站点的页/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

@@ -969,6 +969,11 @@ export function parseCollectArgs(argv, options = {}) {
     // 2026-10-05 加。旧调用点（手工排查只给 --expect-shop）不受影响。
     shopKey: null,
     reportKind: null,
+    // 失败现场的产物目录（2026-10-13 加，待修清单 ㊶）。**给了才采**：整轮跑时编排层
+    // `run-multi-shop-day.mjs` 已经采过一遍，叶子再采就是同一件事做两遍；单独跑这个脚本
+    // （手工补跑、一次性排查）时给上它，失败才不至于只留一句符号。
+    // 不采的那一档会打印一句说明 —— 静默跳过会让「没现场」与「不需要现场」长得一样。
+    logDir: null,
     timeoutMs: options.timeoutMs ?? 30000, reportId: options.reportId ?? null,
     // 等阿里妈妈把推广报表「生成成功」的预算。**与 timeoutMs 分开**：timeoutMs 是「点了下载之后
     // 等文件落盘」，这个是「平台自己在生成」；一个开关管两件事正是本项目已经栽过的形态。
@@ -1005,6 +1010,7 @@ export function parseCollectArgs(argv, options = {}) {
     else if (key === '--expect-member-id') args.expectMemberId = next();
     else if (key === '--shop-key') args.shopKey = next();
     else if (key === '--report-kind') args.reportKind = next();
+    else if (key === '--log-dir') args.logDir = next();
     // 布尔开关里**唯一一个「默认开、写出来反而要取反」**的：`--no-duplicate-retry`。
     // 单独放在这里而不是走下面那条 allowed 白名单，是因为白名单只支持「出现即为 true」，
     // 表达不了「默认 true、显式关掉」。

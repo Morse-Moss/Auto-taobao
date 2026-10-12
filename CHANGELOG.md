@@ -15,6 +15,64 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.8] - 2026-10-13
+
+失败现场「拍错页」的根修 ＋ 三个叶子采集脚本补现场 ＋ 两条新闸门（`check:head`、参数契约守卫）。
+这一版的定位是「把三类静默失效各自变成一个会红的东西」——它们的共同病根是同一个家族：
+**把「读不到」当成「不存在」**。现场采错页 ⇒ 看着像页面正常；参数收了不用 ⇒ 看着像传过了；
+测试跑在工作区 ⇒ 看着像全绿。
+
+### 改了什么
+
+- **感知层选页：按站点提示取页（缺陷⑤的第一块拼图）**。`failure-perception.mjs` 新增
+  `pickFailureTarget(targets, { pageHint })` 与 `siteFragmentFor(site)`：给了站点标签就用
+  `runtime/target-url-match.mjs` 的 `pagesMatching` 挑那一站的页，挑不到才退回「第一个非 `about:`
+  页签」（历史行为逐字不变）。`how`（`pageHint` / `firstNonAboutPage` / `none`）一路带进返回值与人读版，
+  读的人从此能说清「这一页是怎么选中的」。`run-multi-shop-day.mjs` 传
+  `pageHint: STAGE_PAGE_HINT[record.failedStage] ?? null`（认不出来的阶段给 null ⇒ 退回历史行为）。
+  为什么要修：10-10 那次 `promotion-fetch` 失败的现场，URL 是**店铺标识页**
+  （`runtime/shop-window-label.html`）而不是阿里妈妈页 —— 现场文件在、`ok:true`、内容却与出事那一页无关
+  （`evidence/batches-2026-10-10/b1/里可林淘宝/98-failure-state.txt`）。缺陷⑤「未定位」不是因为没人查，
+  是**现场本来就没对准页**。
+- **三个叶子采集脚本补「失败现场」（待修清单 ㊶）**。新增 `collect-failure-scene.mjs`：把三个代理调用
+  （`/targets`、`/eval`、`/screenshot`）接上 `captureFailureState`，**永不抛**（连 `log` 自己抛了都兜住 ——
+  stdout 管道被关时 `console.log` 真的会抛 EPIPE，那不是假想）。`collect-shop-report.mjs`、
+  `collect-promotion-report.mjs`、`sycm-promotion-data/collect-product-report.mjs` 的 CLI 入口改成
+  「解析 → 跑 → **先采现场再抛**」：采现场要 `proxy` 与 `logDir`，而那两个在入口里才算出来；
+  顺序理由与编排层同一条（抛出去之后页面可能被导航走，那一刻的 DOM/截图就没了）。
+  `--log-dir` 不给 ⇒ 不采，且打印一句说明（整轮跑时编排层自己会采，别重复拍一遍）——
+  静默跳过会让「没现场」与「不需要现场」长得一样。
+- **新闸门一：`check:head`（干净检出下真跑一遍）**。`scripts/check-head.mjs` ＋ `npm run check:head`：
+  临时 `git worktree add --detach` 出 HEAD 的干净副本 → 在**那个目录**里跑定向组（runtime ＋ 日报链 ＋
+  商品链 ＋ 询单链）→ 删掉。一个字节都不碰正在编辑的工作区（本仓常有未提交改动，那是别人或我自己
+  正在做的事）。`node_modules` 默认用 **junction** 链进去（不需要管理员权限、离线可用、秒级）；
+  `--npm-ci` 可真装一遍。它补的缺口写清楚：`runtime/head-loadable.test.mjs` 只挡「缺导出」那一类
+  （那一类在模块链接期就炸），而「参数收了却不用」「三态没认全」「步骤顺序反了」要跑起来才暴露，
+  而跑起来跑的永远是工作区。
+- **新闸门二：参数契约守卫（契约第 2 类）**。`collector-arg-contract.test.mjs`：拿 `buildShopStages`
+  **真实传的 argv**，逐个核对「对面认得吗、真的用吗」。判据取真实 argv 而不是「被调方声明的参数表」——
+  声明表答的是「我能收什么」，契约要答的是「你传给我的每一个我都处理了」；拿声明表核对会让
+  `collect-shop-report.mjs` 背上一堆共用 parser 里它根本用不到的参数，那是假红。
+  首跑抓到一个真事并登记在白名单里：`collect-promotion-report.mjs` 收了 `--expect-shop` 却只有一处赋值
+  （`if (args.reportKind) args.expectShop = args.shopKey;`）、无人读 —— 阿里妈妈那一页不显示店铺名，
+  这一侧的闸门是会员名，那行赋值因此是死代码（**候选清理项，本轮未改行为**）。
+- `collect-core.mjs` 的 `parseCollectArgs` 新增可选 `--log-dir`（失败现场产物目录；不给＝不采）。
+- `runtime/arch-boundary.test.mjs` 显式登记两条新的 skills → runtime 依赖（`failure-perception.mjs` 引
+  `target-url-match.mjs` 挑页；`collector-arg-contract.test.mjs` 引 `browser-ports.mjs` 取参与采集名单），
+  各带理由。
+
+### 验证
+
+- 新增/改动用例：`failure-perception.test.mjs` 11 → 18；`collect-failure-scene.test.mjs` 5 条
+  （**起真 HTTP 服务当代理**，钉住 URL/方法/body/挑中的页签，而不是把三个调用点 mock 掉 ——
+  mock 只能证明「调用侧以为自己在传什么」，证明不了「对面真认不认」）；
+  `collector-arg-contract.test.mjs` 7 条（5 条合成样本钉判据本身 ＋ 真文件核对 ＋ 一条**反面对照**：
+  拿真文件喂一个对面不认的参数，证明守卫真能红）。
+- 日报链 ＋ 商品链既有用例 **565/565 绿**（`node --test skills/sycm-alimama-daily-report/scripts/*.test.mjs skills/sycm-promotion-data/scripts/*.test.mjs`）。
+- `runtime/arch-boundary.test.mjs` 3/3 绿。
+- **仅离线判据**：感知层选页与失败现场出口都没有真机验证 —— 要等下一次 `promotion-fetch` 失败自然发生
+  （那时 `98-failure-state.txt` 的「现场页签」一行会直接说明挑对没挑对）。
+
 ## [1.8.7] - 2026-10-12
 
 10-10 17:13 起休眠的 xws 链整批落地（19 个工作区文件，两日未提交）＋落地过程里挖出的两处真缺陷修复。

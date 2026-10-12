@@ -132,7 +132,7 @@ import { UNIFIED_SUMMARY_VERSION, validateSummary } from '../../../runtime/unifi
 //   分诊表说「这一类值得重试」，但没说「重试之前要对页面做什么」；本模块补上那一半。
 // **它只给候选、不做决定** —— 决定权（挑哪个动作、要不要换下一个）留给 agent。
 // 这也是本模块零 import 的原因：它不依赖链里的任何东西，所以不引入第二套分类。
-import { planRepair } from './repair-actions.mjs';
+import { planRepair, STAGE_PAGE_HINT } from './repair-actions.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -2372,6 +2372,12 @@ async function main() {
         logDir: shopLogDir,
         shopKey: key,
         stage: record.failedStage ?? null,
+        // 该拍哪一站的页（2026-10-13 加）。不传的话感知层恒取「第一个非 about 页签」，
+        // 而店铺实例的第一个是**店铺标识页** ⇒ 现场拍错页、`ok:true`、内容却与出事那一页无关
+        // （实证 evidence/batches-2026-10-10/b1/里可林淘宝/98-failure-state.txt）。
+        // STAGE_PAGE_HINT 是「这一步的页面在哪一站」的唯一来源（repair-actions.mjs），
+        // 认不出来的阶段给 null ⇒ 感知层退回历史行为，不会比现在更差。
+        pageHint: STAGE_PAGE_HINT[record.failedStage] ?? null,
         error: error.message,
         readTargets: (base) => proxyJson(`${base}/targets`),
         evalInPage: (base, targetId, expression) => proxyJson(
