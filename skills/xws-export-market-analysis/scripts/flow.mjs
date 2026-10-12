@@ -88,7 +88,7 @@ export function parseOptions(argv, env = process.env) {
     exportModes: ["csv", "xlsx-images"],
     outputDir: "",
     pollMs: 8_000,
-    stallMs: 120_000,
+    stallMs: 180_000,
     fromTaobaoHome: true,
     allowTrial: false,
     exportPartialOnStall: false,

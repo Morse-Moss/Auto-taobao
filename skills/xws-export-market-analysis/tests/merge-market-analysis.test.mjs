@@ -52,7 +52,7 @@ test("rebuilds an XLSX with images from the ordered merged CSV", async () => {
       "spec.loader.exec_module(module)",
       "module.make_self_test_fixture(Path(sys.argv[2]))",
     ].join(";");
-    const fixtureResult = spawnSync(python, [...prefix, "-c", fixtureScript, validator, fixture], { encoding: "utf8" });
+    const fixtureResult = spawnSync(python, [...prefix, "-c", fixtureScript, validator, fixture], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
     assert.equal(fixtureResult.status, 0, fixtureResult.stderr || fixtureResult.stdout);
     const outputCsv = path.join(temp, "merged.csv");
     const outputXlsx = path.join(temp, "merged.xlsx");
@@ -65,11 +65,11 @@ test("rebuilds an XLSX with images from the ordered merged CSV", async () => {
       "--output-csv", outputCsv,
       "--output-xlsx", outputXlsx,
       "--require-images",
-    ], { encoding: "utf8" });
+    ], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
     assert.equal(mergeResult.status, 0, mergeResult.stderr || mergeResult.stdout);
     const merged = JSON.parse(mergeResult.stdout.trim());
     assert.equal(merged.rows, 2);
-    const validation = spawnSync(python, [...prefix, validator, "--csv", outputCsv, "--xlsx", outputXlsx, "--require-images"], { encoding: "utf8" });
+    const validation = spawnSync(python, [...prefix, validator, "--csv", outputCsv, "--xlsx", outputXlsx, "--require-images"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
     assert.equal(validation.status, 0, validation.stderr || validation.stdout);
     assert.equal(JSON.parse(validation.stdout).validation.embedded_media, 2);
     assert.match(await readFile(outputCsv, "utf8"), /https:\/\/item\.taobao\.com\/item\.htm\?id=2/u);

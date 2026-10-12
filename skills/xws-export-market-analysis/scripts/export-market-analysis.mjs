@@ -66,7 +66,7 @@ Options:
   --export-partial-on-stall  Save the currently collected rows when collection stalls
   --prepare-only          Configure the task and stop before starting collection
   --poll-seconds N        Progress polling interval, minimum 2 (default: 8)
-  --stall-seconds N       No-progress threshold, minimum 60 (default: 120)
+  --stall-seconds N       No-progress threshold, minimum 60 (default: 180)
   --proxy URL             CDP proxy URL (default: this project's competitor-chain Proxy in
                           runtime/browser-ports.mjs)
   --self-test             Run network-free checks
@@ -284,6 +284,46 @@ export async function cleanupOwnedTargets(proxy, runMarker, targetIds = ownedTar
     }
   } finally {
     ownedTargets.delete(runMarker);
+  }
+  return { closed, failed };
+}
+
+// 回收异常终止或旧版本遗留的无主淘宝搜索页。运行锁保证同一买家浏览器不会并发采集。
+export async function cleanupSearchTargets(proxy, { passes = 3, settleMs = 250 } = {}) {
+  const closed = [];
+  const failed = [];
+  const rounds = Math.max(1, Number.isInteger(passes) ? passes : 3);
+  for (let round = 0; round < rounds; round += 1) {
+    let targets;
+    try { targets = await listTargets(proxy); } catch (error) {
+      failed.push({ targetId: null, error: String(error?.message ?? error) });
+      break;
+    }
+    const searchTargets = targets.filter((item) => {
+      if (!isPage(item)) return false;
+      try { const url = new URL(item.url); return url.origin === SEARCH_ORIGIN && url.pathname === "/search"; } catch { return false; }
+    });
+    if (!searchTargets.length) break;
+    for (const target of searchTargets) {
+      try {
+        await request(proxy, `/close?target=${encodeURIComponent(target.targetId)}`);
+        if (!closed.includes(target.targetId)) closed.push(target.targetId);
+      } catch (error) {
+        failed.push({ targetId: target.targetId, error: String(error?.message ?? error) });
+      }
+    }
+    if (round + 1 < rounds && settleMs > 0) await sleep(settleMs);
+  }
+  if (failed.length === 0) {
+    try {
+      const remaining = (await listTargets(proxy)).filter((item) => {
+        if (!isPage(item)) return false;
+        try { const url = new URL(item.url); return url.origin === SEARCH_ORIGIN && url.pathname === "/search"; } catch { return false; }
+      });
+      for (const target of remaining) failed.push({ targetId: target.targetId, error: "search target remained after cleanup passes" });
+    } catch (error) {
+      failed.push({ targetId: null, error: String(error?.message ?? error) });
+    }
   }
   return { closed, failed };
 }
@@ -1973,7 +2013,7 @@ function runPythonValidation(options, csv, xlsx, requireImages) {
   const args = [...prefix, path.join(SCRIPT_DIR, "validate-output.py"), "--csv", csv.path];
   if (xlsx) args.push("--xlsx", xlsx.path);
   if (requireImages) args.push("--require-images");
-  const result = spawnSync(python, args, { encoding: "utf8", maxBuffer: 2 * 1024 * 1024, timeout: 120_000 });
+  const result = spawnSync(python, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 2 * 1024 * 1024, timeout: 120_000 });
   if (result.error) throw new Error(`output validator failed to run: ${result.error.message}`);
   const output = String(result.stdout || "").trim();
   let parsed;
@@ -2089,6 +2129,8 @@ async function adoptLiveResult(options, runId, runDir, outputDir, log) {
 }
 
 async function runUnlocked(options) {
+  // 健康闸门没过 ⇒ finally 里也不许碰 /targets（「零目标发现」退出契约）。
+  let proxyAccepted = false;
   const outputDir = path.resolve(options.outputDir || DEFAULT_OUTPUT_DIR);
   const runId = `${new Date().toISOString().replace(/[-:.TZ]/gu, "").slice(0, 14)}-${options.keyword.replace(/[^\w\u4e00-\u9fff]+/gu, "-")}`;
   const runtimeRoot = process.env.XWS_RUNTIME_DIR || path.join(PROJECT_ROOT, "runtime", "xws-runs");
@@ -2121,6 +2163,12 @@ async function runUnlocked(options) {
     // 而竞品链（甲）的代理自报 `edge-isolated` —— 裸跑时那个默认值会让健康检查硬失败。
     assertProxyBrowserHealth(proxyHealth, process.env.XWS_BROWSER_ID || BROWSER_IDS.competitor);
   await log("PROXY_READY", { browser: proxyHealth.browser.id });
+  proxyAccepted = true;
+  // 健康闸门已过才允许碰 /targets：坏代理必须「零目标发现」退出（prepare-flow 契约）。
+  const staleSearchCleanup = await cleanupSearchTargets(options.proxy);
+  if (staleSearchCleanup.closed.length || staleSearchCleanup.failed.length) {
+    await log("STALE_SEARCH_TARGETS_CLEANED", staleSearchCleanup);
+  }
   if (options.adoptLiveResult) {
     return adoptLiveResult(options, runId, runDir, outputDir, log);
   }
@@ -2235,8 +2283,9 @@ async function runUnlocked(options) {
   return manifest;
   } finally {
     const cleanup = await cleanupOwnedTargets(options.proxy, runId);
-    if (cleanup.closed.length || cleanup.failed.length) {
-      await log("TARGETS_CLEANED", cleanup);
+    const searchCleanup = proxyAccepted ? await cleanupSearchTargets(options.proxy) : { closed: [], failed: [] };
+    if (cleanup.closed.length || cleanup.failed.length || searchCleanup.closed.length || searchCleanup.failed.length) {
+      await log("TARGETS_CLEANED", { owned: cleanup, search: searchCleanup });
     }
   }
 }

@@ -99,7 +99,7 @@ parts are merged by product link and re-ranked before a final CSV/XLSX is publis
 
 ```powershell
 node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\run-adaptive-export.mjs" `
-  --keyword "浴缸" --pages 1-40 --frequency 30-45 --stall-seconds 300 `
+  --keyword "浴缸" --pages 1-40 --frequency 30-45 --stall-seconds 180 `
   --channel all --sort sales --price 0-unlimited --export csv,xlsx-images `
   --checkpoint "D:\Retire\sycm-automation\runtime\xws-bathtub-adaptive-20260903-checkpoint.json" `
   --output-dir "C:\Users\Administrator\Downloads"
@@ -111,7 +111,7 @@ To continue a prior task, reuse the complete collection options and explicitly n
 
 ```powershell
 node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\run-adaptive-export.mjs" `
-  --keyword "浴缸" --pages 1-40 --frequency 30-45 --stall-seconds 300 `
+  --keyword "浴缸" --pages 1-40 --frequency 30-45 --stall-seconds 180 `
   --channel all --sort sales --price 0-unlimited --export csv,xlsx-images `
   --checkpoint "D:\Retire\sycm-automation\runtime\xws-bathtub-adaptive-20260903-checkpoint.json" `
   --output-dir "C:\Users\Administrator\Downloads" `
@@ -126,7 +126,7 @@ For a new collection, the supervisor must create the authoritative run and start
 
 ```powershell
 node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\supervise-adaptive-export.mjs" `
-  --new --keyword "浴缸" --pages 1-40 --frequency 30-45 --stall-seconds 300 `
+  --new --keyword "浴缸" --pages 1-40 --frequency 30-45 --stall-seconds 180 `
   --channel all --sort sales --price 0-unlimited --export csv,xlsx-images `
   --checkpoint "D:\Retire\sycm-automation\runtime\xws-bathtub-adaptive-checkpoint.json" `
   --output-dir "C:\Users\Administrator\Downloads" --watch --poll-seconds 5
@@ -146,7 +146,7 @@ checkpoint JSON and keeps completed segment artifacts, but it is not the default
 
 ```powershell
 node "D:\Retire\sycm-automation\skills\xws-export-market-analysis\scripts\run-segmented-export.mjs" `
-  --keyword "浴缸" --pages 1-40 --segment-size 8 --frequency 30-45 `
+  --keyword "浴缸" --pages 1-40 --segment-size 8 --frequency 30-45 --stall-seconds 180 `
   --channel all --sort sales --price 0-unlimited --export csv,xlsx-images `
   --checkpoint "D:\Retire\sycm-automation\runtime\xws-bathtub-checkpoint.json" `
   --output-dir "C:\Users\Administrator\Downloads" --allow-trial
@@ -180,8 +180,8 @@ The event log (`events.jsonl`) and manifest use these states/events:
 
 Risk markers transition to `HUMAN_REQUIRED`. A collection with no changed completed-page, row-count, or completion signature for the stall threshold transitions to `STALLED` and records a best-effort screenshot. A current-range no-progress stall with persisted attempt evidence may be resumed by the adaptive supervisor; deadline, risk, artifact-settlement, and generic failure states remain terminal.
 
-Defaults for a single run are an 8-second progress poll and a 120-second continuous no-progress threshold. The
-adaptive runner uses a conservative 300-second stall threshold and a page-count and frequency-derived overall
+Defaults for a single run and the adaptive/segmented runners are an 8-second progress poll and a 180-second continuous no-progress threshold. The
+adaptive runner derives its overall deadline from page count and frequency while using the same 180-second stall threshold.
 wall-clock deadline.
 A slow Xiaowangshen response is supervised by one process, not by repeated browser clicks. Its checkpoint stores
 the requested range, each attempted tail, verified page progress, diagnostics, and validated partial artifacts.

@@ -14,7 +14,7 @@ function inspectWindowsProcess(pid) {
     "-NoProfile", "-NonInteractive", "-Command",
     "$p = Get-Process -Id $args[0] -ErrorAction SilentlyContinue; if ($null -eq $p) { exit 2 }; $p.StartTime.ToUniversalTime().ToString('o')",
     String(pid),
-  ], { encoding: "utf8", windowsHide: true });
+  ], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
   if (result.status === 2) return { state: "dead", startedAt: null };
   if (result.status !== 0) return { state: "unknown", startedAt: null };
   const startedAt = normalizeStartTime(result.stdout.trim());
@@ -22,7 +22,7 @@ function inspectWindowsProcess(pid) {
 }
 
 function inspectUnixProcess(pid) {
-  const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8" });
+  const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   if (result.status !== 0 || !result.stdout.trim()) return { state: "dead", startedAt: null };
   const startedAt = normalizeStartTime(result.stdout.trim());
   return startedAt ? { state: "alive", startedAt } : { state: "unknown", startedAt: null };

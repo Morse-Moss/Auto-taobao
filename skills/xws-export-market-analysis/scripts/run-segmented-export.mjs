@@ -26,7 +26,7 @@ Options:
   --pages START-END       Page range (default: 1-40)
   --segment-size N        Pages per segment (default: 8)
   --frequency MIN-MAX     Seconds between page requests (default: 30-45)
-  --stall-seconds N       No-progress threshold per segment (default: 300)
+  --stall-seconds N       No-progress threshold per segment (default: 180)
   --channel all|taobao|tmall
   --sort relevance|sales|credit|price-low|price-high
   --price MIN-unlimited|MIN-MAX

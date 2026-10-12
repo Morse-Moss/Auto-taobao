@@ -38,7 +38,7 @@ export function parseSegmentOptions(argv, env = process.env) {
     pages: { start: 1, end: 40 },
     segmentSize: 8,
     frequency: { min: 30, max: 45 },
-    stallSeconds: 300,
+    stallSeconds: 180,
     channel: "all",
     sort: "sales",
     price: "0-unlimited",

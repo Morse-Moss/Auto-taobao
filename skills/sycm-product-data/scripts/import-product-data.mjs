@@ -16,5 +16,39 @@ function args(argv) { const out = { files: [], shop: null, date: null, apply: fa
 // 2026-09-27 实测：这处裸 `spawnSync` 让五家店的底单与询单**全部**导入失败（四轮跑，飞书零写入）。
 function rowsFromXls(file) { const script = path.join(import.meta.dirname, 'read-product-xls.py'); const result = spawnSync(process.env.PYTHON || 'py', ['-3', script, file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); if(result.status!==0)throw new Error(`XLS parser failed：${result.stderr?.trim() || result.error?.message || `exit ${result.status}`}`); return JSON.parse(result.stdout); }
 function csvLine(row) { return row.map((value) => { const text=String(value ?? ''); return /[",\n]/u.test(text) ? `"${text.replaceAll('"','""')}"` : text; }).join(','); }
-async function main(){const options=args(process.argv.slice(2));const raw=rowsFromXls(options.files[0]);if(raw.length<6||raw[4].length!==PRODUCT_HEADERS.length)throw new Error('商品报表缺少 38 列标准表头');const parsed=raw.slice(5).filter((row)=>row.length===PRODUCT_HEADERS.length&&/^\d{4}-\d{2}-\d{2}$/u.test(row[0])).map((row)=>({header:PRODUCT_HEADERS,row,sourceShop:options.shop}));const {appId,appSecret}=loadFeishuCredentials('kcne');const target=productDataTargetsForShop(options.shop,options.date,'kcne');const client=new FeishuClient({appId,appSecret,appToken:target.baseToken,tableId:target.productTable});const existing=await client.listRecords();const plan=planProductImport({rows:parsed,existing});mkdirSync(options.evidence,{recursive:true});const receipt={source:options.files[0],shop:options.shop,date:options.date,base:target.baseName,baseToken:target.baseToken,sourceRows:parsed.length,existingRows:existing.length,plannedRows:plan.records.length,mode:options.apply?'apply':'dry-run',manifest:plan.manifest};if(options.apply){const ids=[];for(let i=0;i<plan.records.length;i+=500)ids.push(...await client.batchCreateRecords(plan.records.slice(i,i+500)));receipt.recordIds=ids;receipt.afterRows=(await client.listRecords()).length;}writeFileSync(path.join(options.evidence,'receipt.json'),JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt,null,2));}
+async function main(){
+  const options=args(process.argv.slice(2));
+  const raw=rowsFromXls(options.files[0]);
+  if(raw.length<6||raw[4].length!==PRODUCT_HEADERS.length)throw new Error('商品报表缺少 38 列标准表头');
+  const parsed=raw.slice(5).filter((row)=>row.length===PRODUCT_HEADERS.length&&/^\d{4}-\d{2}-\d{2}$/u.test(row[0])).map((row)=>({header:PRODUCT_HEADERS,row,sourceShop:options.shop}));
+  const {appId,appSecret}=loadFeishuCredentials('kcne');
+  const target=productDataTargetsForShop(options.shop,options.date,'kcne');
+  const client=new FeishuClient({appId,appSecret,appToken:target.baseToken,tableId:target.productTable});
+  const existing=await client.listRecords();
+  const plan=planProductImport({rows:parsed,existing});
+  mkdirSync(options.evidence,{recursive:true});
+  const receiptPath=path.join(options.evidence,'receipt.json');
+  const receipt={source:options.files[0],shop:options.shop,date:options.date,base:target.baseName,baseToken:target.baseToken,sourceRows:parsed.length,existingRows:existing.length,plannedRows:plan.records.length,mode:options.apply?'apply':'dry-run',manifest:plan.manifest};
+  const flush=()=>writeFileSync(receiptPath,JSON.stringify(receipt,null,2));
+  if(!options.apply){flush();console.log(JSON.stringify(receipt,null,2));return;}
+  const ids=[];
+  for(let i=0;i<plan.records.length;i+=500)ids.push(...await client.batchCreateRecords(plan.records.slice(i,i+500)));
+  receipt.recordIds=ids;
+  // **写已经发生 ⇒ 立刻落收据**，再去做「写后回读行数」这件锦上添花的事。
+  // 2026-10-06 盖文淘宝/底单 实测：写后回读收到 HTML（网关/限流页）而抛错，而收据落盘排在它后面
+  // ⇒ 数据一行不少、却一个收据都没有 ⇒ 调用方只能把这次导入记成「失败」。
+  flush();
+  try{receipt.afterRows=(await client.listRecords()).length;flush();}
+  catch(error){
+    receipt.readbackError=String(error?.message??error);
+    flush();
+    // 退出码 **2 ＝「写入已发生、写后回读失败」**（UNKNOWN_WRITE），与 1（真的没写成）分开报。
+    // 调用方据此走「先回读再决定要不要重试」；盲目重跑会撞同日去重闸门、得 0 行。
+    console.error(`导入已写入但写后回读失败（UNKNOWN_WRITE，退出码 2）：${receipt.readbackError}`);
+    console.log(JSON.stringify(receipt,null,2));
+    process.exitCode=2;
+    return;
+  }
+  console.log(JSON.stringify(receipt,null,2));
+}
 main().catch((e)=>{console.error(`导入失败：${e.message}`);process.exitCode=1});

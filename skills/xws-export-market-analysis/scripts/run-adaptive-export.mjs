@@ -36,6 +36,7 @@ const VALIDATOR = path.join(SCRIPT_DIR, "validate-output.py");
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const NO_PROGRESS_STALL = "Xiaowangshen made no page progress before the stall threshold";
+const PYTHON_UTF8_ENV = { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" };
 
 export function requireDatabaseUrl(env = process.env) {
   const value = String(env.XWS_DATABASE_URL || "").trim();
@@ -236,7 +237,7 @@ Options:
   --keyword TEXT          Required keyword
   --pages START-END       Page range (default: 1-40)
   --frequency MIN-MAX     Seconds between page requests (default: 30-45)
-  --stall-seconds N       No-progress threshold (default: 300); no total runtime limit
+  --stall-seconds N       No-progress threshold (default: 180); no total runtime limit
   --channel all|taobao|tmall
   --sort relevance|sales|credit|price-low|price-high
   --price MIN-unlimited|MIN-MAX
@@ -324,8 +325,21 @@ function runOutputValidation(csv, xlsx, requireImages) {
   const args = [...prefix, VALIDATOR, "--csv", csv.path];
   if (xlsx) args.push("--xlsx", xlsx.path);
   if (requireImages) args.push("--require-images");
-  return new Promise((resolve, reject) => {
-    const child = spawn(python, args, { stdio: ["ignore", "pipe", "pipe"] });
+  const settle = async () => {
+    const paths = [csv?.path, xlsx?.path].filter(Boolean);
+    let previous = "";
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const signature = (await Promise.all(paths.map(async (file) => {
+        const details = await stat(file);
+        return `${file}:${details.size}:${details.mtimeMs}`;
+      }))).join("|");
+      if (signature === previous) return;
+      previous = signature;
+      await sleep(500);
+    }
+  };
+  const runOnce = () => new Promise((resolve, reject) => {
+    const child = spawn(python, args, { env: PYTHON_UTF8_ENV, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -337,6 +351,14 @@ function runOutputValidation(csv, xlsx, requireImages) {
       if (code !== 0 || result?.ok !== true) return reject(new Error(result?.error || "output validation failed"));
       resolve(result);
     });
+  });
+  // XLSX is produced by a separate download/merge process.  A validator
+  // launched immediately after the merge can briefly observe a partially
+  // written ZIP and emit a traceback instead of JSON.  Retry once after a
+  // short settle window before declaring the run failed.
+  return settle().then(runOnce).catch(async (firstError) => {
+    await settle();
+    try { return await runOnce(); } catch { throw firstError; }
   });
 }
 
@@ -939,7 +961,7 @@ function childExitCode(status) {
 
 async function runMerger(args) {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [MERGER, ...args], { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(process.execPath, [MERGER, ...args], { env: PYTHON_UTF8_ENV, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -953,7 +975,7 @@ function buildMergedWorkbook(csvPath, xlsxPath, sourceXlsxFiles = []) {
   const prefix = process.env.XWS_PYTHON || process.platform !== "win32" ? [] : ["-3"];
   const args = [...prefix, path.join(SCRIPT_DIR, "merge-market-analysis.py"), "--csv", csvPath, "--output-xlsx", xlsxPath];
   for (const file of sourceXlsxFiles) args.push("--source-xlsx", file);
-  const result = spawnSync(python, args, { encoding: "utf8", maxBuffer: 2 * 1024 * 1024, timeout: 300_000 });
+  const result = spawnSync(python, args, { env: PYTHON_UTF8_ENV, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 2 * 1024 * 1024, timeout: 300_000 });
   if (result.error) throw new Error(`merged workbook builder failed to run: ${result.error.message}`);
   const output = String(result.stdout || "").trim();
   let parsed;

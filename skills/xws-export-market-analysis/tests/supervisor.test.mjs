@@ -21,7 +21,7 @@ const identity = {
   exportModes: ["csv", "xlsx-images"],
   outputDir: "C:/Users/Administrator/Downloads",
   allowTrial: false,
-  stallSeconds: 300,
+  stallSeconds: 180,
 };
 
 function run(status, checkpoint = {}) {
@@ -50,7 +50,7 @@ test("parses a fresh supervised adaptive collection contract", () => {
     "--sort", "sales",
     "--price", "0-unlimited",
     "--export", "csv,xlsx-images",
-    "--stall-seconds", "300",
+    "--stall-seconds", "180",
     "--output-dir", "C:/Users/Administrator/Downloads",
     "--checkpoint", "C:/state/bathtub.json",
     "--proxy", "http://127.0.0.1:3456",
@@ -70,7 +70,7 @@ test("parses a fresh supervised adaptive collection contract", () => {
       "--sort", "sales",
       "--price", "0-unlimited",
       "--export", "csv,xlsx-images",
-      "--stall-seconds", "300",
+      "--stall-seconds", "180",
       "--output-dir", "C:/Users/Administrator/Downloads",
     ],
   });
@@ -185,7 +185,7 @@ test("rebuilds the immutable adaptive contract for a PostgreSQL resume", () => {
     "--sort", "sales",
     "--price", "0-unlimited",
     "--export", "csv,xlsx-images",
-    "--stall-seconds", "300",
+    "--stall-seconds", "180",
     "--proxy", "http://127.0.0.1:3456",
     "--output-dir", "C:/Users/Administrator/Downloads",
     "--checkpoint", "C:/state/run-1.json",

@@ -19,6 +19,8 @@ import {
 import { detectRiskMarkers, parseProgressText } from "./flow.mjs";
 import { buildAdaptiveIdentity } from "./run-adaptive-export.mjs";
 import { acquireMarketAnalysisLock } from "./runtime-lock.mjs";
+import { cleanupSearchTargets } from "./export-market-analysis.mjs";
+import { runXwsLogin } from "../../../runtime/xws-login.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const RUNNER = path.join(SCRIPT_DIR, "run-adaptive-export.mjs");
@@ -29,6 +31,7 @@ const RECOVERABLE_FAILED_ERRORS = new Set([
   "Could not select Xiaowangshen radio: radio label missing",
   "Timed out waiting for Xiaowangshen filters to settle",
   "Xiaowangshen configuration did not match the requested contract",
+  "Timed out waiting for a new Taobao home tab to finish loading",
 ]);
 const RECOVERABLE_FAILED_ERROR_PREFIXES = [
   "Xiaowangshen configuration did not match the requested contract:",
@@ -416,6 +419,7 @@ export async function superviseAdaptiveRunOnce({
   const get = state.getAdaptiveRun || getAdaptiveRun;
   const createRun = state.createAdaptiveRun || createAdaptiveRun;
   const inspect = state.inspectBrowserAttempt || inspectBrowserAttempt;
+  const cleanupSearch = state.cleanupSearchTargets || cleanupSearchTargets;
   const acquireRuntime = state.acquireRuntime || (() => acquireMarketAnalysisLock(env));
   const acquireDatabase = state.acquireAdaptiveLock || acquireAdaptiveLock;
   const id = create ? "" : requiredText(runId, "runId");
@@ -445,10 +449,24 @@ export async function superviseAdaptiveRunOnce({
       throw error;
     }
     if (create) {
-      const existing = await inspect({
+      let existing = await inspect({
         proxy: proxy || spec.proxy,
         identity: spec.identity,
       });
+      if (existing.action === "HUMAN_REQUIRED" && existing.reason === "LOGIN_REQUIRED") {
+        const login = await runXwsLogin({ proxy: proxy || spec.proxy, commit: true, notifyOnFailure: true });
+        if (login.status === "ALREADY_LOGGED_IN") {
+          const afterLogin = await inspect({ proxy: proxy || spec.proxy, identity: spec.identity });
+          if (afterLogin.action === "NONE") {
+            // Login state is now ready; proceed with creating the run below.
+            existing = afterLogin;
+          } else {
+            return { action: "STOPPED", runId: null, status: "HUMAN_REQUIRED", error: "browser still requires human intervention after Xiaowangshen login", login, ...afterLogin };
+          }
+        } else {
+          return { action: "STOPPED", runId: null, status: "HUMAN_REQUIRED", error: "browser requires human intervention after Xiaowangshen login attempt", login };
+        }
+      }
       if (existing.action !== "NONE") {
         return {
           action: "STOPPED",
@@ -483,6 +501,15 @@ export async function superviseAdaptiveRunOnce({
       proxy: proxy || checkpointRuntime(current).proxy,
       identity: identityOf(current),
     });
+    if (browser.action === "HUMAN_REQUIRED" && browser.reason === "LOGIN_REQUIRED") {
+      const login = await runXwsLogin({ proxy: proxy || checkpointRuntime(current).proxy, commit: true, notifyOnFailure: true });
+      if (login.status === "ALREADY_LOGGED_IN") {
+        const afterLogin = await inspect({ proxy: proxy || checkpointRuntime(current).proxy, identity: identityOf(current) });
+        if (afterLogin.action !== "NONE") return { action: "STOPPED", runId: currentId, status: "HUMAN_REQUIRED", error: "browser still requires human intervention after Xiaowangshen login", login, ...afterLogin };
+      } else {
+        return { action: "STOPPED", runId: currentId, status: "HUMAN_REQUIRED", error: "browser requires human intervention after Xiaowangshen login attempt", login };
+      }
+    }
     if (browser.action === "WAITING_FOR_BROWSER") {
       return { ...browser, runId: currentId };
     }
@@ -515,12 +542,25 @@ export async function superviseAdaptiveRunOnce({
       proxy: proxy || spec?.proxy,
       adoptLiveResult: !create && browser.action === "ADOPT_LIVE_RESULT",
     });
-    const child = await spawnRunner(args, {
-      ...env,
-      XWS_ADAPTIVE_SUPERVISOR_OWNER: "1",
-      XWS_ADAPTIVE_SUPERVISOR_RUN_ID: currentId,
-    });
-    return { action: "SPAWNED", runId: currentId, ...child };
+    let cleanup = null;
+    let child;
+    try {
+      child = await spawnRunner(args, {
+        ...env,
+        XWS_ADAPTIVE_SUPERVISOR_OWNER: "1",
+        XWS_ADAPTIVE_SUPERVISOR_RUN_ID: currentId,
+      });
+    } finally {
+      // The child normally drains its own targets in finally.  The supervisor
+      // also drains after process exit because a killed/crashed child cannot run
+      // finally, and a late target replacement can land after the first sweep.
+      try {
+        cleanup = await cleanupSearch(proxy || checkpointRuntime(current)?.proxy || spec?.proxy);
+      } catch (error) {
+        cleanup = { closed: [], failed: [{ targetId: null, error: String(error?.message ?? error) }] };
+      }
+    }
+    return { action: "SPAWNED", runId: currentId, ...child, cleanup };
   } finally {
     if (database) await database.release();
     if (runtime) await runtime.release();

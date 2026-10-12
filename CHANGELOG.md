@@ -15,6 +15,52 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.7] - 2026-10-12
+
+10-10 17:13 起休眠的 xws 链整批落地（19 个工作区文件，两日未提交）＋落地过程里挖出的两处真缺陷修复。
+这一版的定位是「把工作区与 HEAD 对齐」：落地前 HEAD 上 `product-data-import-outcome-wiring` 与
+`arch-boundary` 两个守卫在干净检出下是红的（用例已提交、实现半边在工作区——半提交的又一次发作，
+这次在 push 前抓住）。
+
+### 改了什么
+
+- **xws 链失速阈值统一 300→180 秒**：`SKILL.md`、`run-collection-host` 默认值、`supervise-collection`
+  注释、exporter/runner 的 `--stall-seconds` 默认值全部对齐；单跑默认 120 秒不变，文档同步。
+- `supervise-adaptive-export` 新增 `cleanupSearchTargets()`：多遍回收**无主**的淘宝搜索页（异常终止或
+  旧版本遗留），收完复核、残留记 failed；事件 `STALE_SEARCH_TARGETS_CLEANED`／并入 `TARGETS_CLEANED`。
+  运行锁仍保证同一买家浏览器不并发采集。
+- `export-market-analysis` 的 XLSX 校验器：校验器紧跟合并进程启动时可能读到**写了一半的 ZIP** 而吐
+  traceback ⇒ 先等产物尺寸稳定（settle）再跑；失败隔一个 settle 窗口**重试一次**。python 子进程统一
+  `PYTHONIOENCODING/PYTHONUTF8`（`PYTHON_UTF8_ENV`）。
+- `feishu-client`：非 JSON 响应（网关 5xx／限流拦截页这类 HTML）不再走 `response.json()` 抛「Unexpected
+  token '<'」——先取正文再解析，错误信息保留 **HTTP 状态码**＋160 字符正文摘要（2026-10-06 盖文淘宝/
+  底单 写后回读收到 HTML、判因只剩一句语法错误的实证）。
+- `import-product-data`：**写已发生 ⇒ 立刻落收据**，再做写后回读；回读失败退 **2（UNKNOWN_WRITE）**
+  与退 1（真没写成）分开——修「数据一行不少、却一个收据都没有、调用方只能记失败」（2026-10-06 实测）。
+- **`spawnSync` 全量补 `stdio: ["ignore","pipe","pipe"]`（15 处）**：裸 `spawnSync`（默认全管道）在受限
+  环境（宿主沙箱）必炸 EBUSY——实测校验器全部拒跑、每个下载落盘用例被迫烧满 1 小时 deadline；与
+  2026-09-27 商品导入真机事故同型。覆盖 4 个脚本（exporter 校验器、adaptive 合并器、merge、
+  runtime-lock）与 5 个测试文件。
+- **修休眠流自己引入的契约破坏**：`cleanupSearchTargets` 原被插在 `runUnlocked` 第一行——在 /health
+  闸门**之前**就碰 /targets，且异常路径 finally 里也无条件清扫 ⇒ 「坏代理必须零目标发现退出」的
+  prepare-flow 契约红（非 Edge／断连两个守卫用例实测 /targets 被调 4 次）。修＝清理挪到 PROXY_READY
+  之后＋`proxyAccepted` 旗标护栏（闸门没过，finally 也不许碰 /targets）。
+- **恢复被误删的配置守卫**：休眠流曾删掉「推广日报目标指向销售一部已确认 Base 与两张表」用例且无
+  迁移去向（HEAD 上该用例本为绿）——恢复，防止 `feishu-targets.mjs` 与断言漂移。
+
+### 验证
+
+- `xws-export-market-analysis` 全量（skills 离线套件，2026-10-12 主树）：快文件 6 个 112 用例
+  104 过／0 挂／8 跳；`prepare-flow` 38/38（约 20 分钟）。修复过程定点验证：毒跑用例
+  （下载落盘全流程）补 stdio 后 45 秒过（修前同用例烧满 60 分钟 deadline）；非 Edge／断连
+  两个守卫用例修挪位＋旗标后过（修前 /targets 被调 4 次）。
+- 其它腿（同日主树）：`xws-to-feishu-base` 103/103、runtime 三件 39/39（含恢复的推广日报目标守卫，
+  22/22）、`sycm-product-data` 12/12、`version-consistency` 6/6、`check:fast --all` PASS。
+- 干净 worktree 复现（b558c86，装齐依赖）：`check:fast` PASS、`test:offline` 零 not-ok、
+  `test:runtime` 1240 用例仅剩 2 失败，均为本批落地对象（`arch-boundary` 登记、商品收据时序）——
+  主树以休眠版文件验证同两文件 9/9。
+- **仅离线判据**；xws 链真机验收待下一轮真实导出任务。
+
 ## [1.8.6] - 2026-10-12
 
 2026-10-12 07:00 推广定时轮真机事故（跑在 1.8.5 上）的三处根修。**这一版不引入任何新能力** ——

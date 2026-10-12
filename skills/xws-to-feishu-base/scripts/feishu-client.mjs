@@ -1,5 +1,8 @@
 const API_ROOT = 'https://open.feishu.cn/open-apis';
 
+// 非 JSON 响应（网关 5xx、限流/拦截页这类 HTML）在错误信息里留一小段正文，够定位就行。
+function describeBody(text) { return `non-JSON body: ${String(text ?? '').replace(/\s+/gu, ' ').slice(0, 160)}`; }
+
 export class FeishuClient {
   #token = null;
 
@@ -11,6 +14,19 @@ export class FeishuClient {
     this.transport = transport;
   }
 
+  /**
+   * 响应解析的统一入口：**先取正文、再尝试解析**。
+   *
+   * 不能直接写 `await response.json()`：服务端（或中间的网关 / 限流拦截页）回 HTML 时，
+   * `json()` 抛的是 `Unexpected token '<', "<!DOCTYPE "...`，**把真实 HTTP 状态码一起吞掉** ——
+   * 事后只剩一句语法错误，无法区分 429 限流还是 502/503 网关故障。
+   * 2026-10-06 商品链实测：盖文淘宝/底单 写成功、写后回读收到 HTML，判因时就只剩这一句。
+   */
+  async #readPayload(response) {
+    const text = await response.text();
+    try { return { payload: JSON.parse(text), text }; } catch { return { payload: null, text }; }
+  }
+
   async #tenantToken() {
     if (this.#token) return this.#token;
     const response = await this.transport(`${API_ROOT}/auth/v3/tenant_access_token/internal`, {
@@ -18,9 +34,9 @@ export class FeishuClient {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ app_id: this.appId, app_secret: this.appSecret }),
     });
-    const payload = await response.json();
-    if (!response.ok || payload.code !== 0) {
-      throw new Error(`Feishu authentication failed: ${response.status} ${payload.code ?? ''} ${payload.msg ?? ''}`.trim());
+    const { payload, text } = await this.#readPayload(response);
+    if (!payload || !response.ok || payload.code !== 0) {
+      throw new Error(`Feishu authentication failed: ${response.status} ${payload ? `${payload.code ?? ''} ${payload.msg ?? ''}` : describeBody(text)}`.trim());
     }
     this.#token = payload.tenant_access_token ?? payload.data?.tenant_access_token;
     if (!this.#token) throw new Error('Feishu authentication returned no tenant access token');
@@ -33,9 +49,9 @@ export class FeishuClient {
       ...init,
       headers: { Authorization: `Bearer ${token}`, ...(init.headers ?? {}) },
     });
-    const payload = await response.json();
-    if (!response.ok || payload.code !== 0) {
-      throw new Error(`Feishu API failed: ${response.status} ${payload.code ?? ''} ${payload.msg ?? ''}`.trim());
+    const { payload, text } = await this.#readPayload(response);
+    if (!payload || !response.ok || payload.code !== 0) {
+      throw new Error(`Feishu API failed: ${response.status} ${payload ? `${payload.code ?? ''} ${payload.msg ?? ''}` : describeBody(text)}`.trim());
     }
     return payload.data ?? {};
   }

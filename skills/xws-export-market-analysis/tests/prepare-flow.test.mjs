@@ -11,6 +11,7 @@ import vm from "node:vm";
 import {
   buildPartialStallManifest,
   cleanupOwnedTargets,
+  cleanupSearchTargets,
   closeExportIntent,
   configurationContractDiff,
   openExportIntent,
@@ -121,6 +122,34 @@ test("closes only targets owned by the terminal run marker", async () => {
   }
 });
 
+test("drains search tabs across asynchronous target replacement and preserves non-search tabs", async () => {
+  const originalFetch = globalThis.fetch;
+  const closed = [];
+  let listCalls = 0;
+  const search = (targetId) => ({ targetId, type: "page", url: `https://s.taobao.com/search?q=${targetId}` });
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === "/targets") {
+      listCalls += 1;
+      if (listCalls === 1) return new Response(JSON.stringify([search("old"), { targetId: "home", type: "page", url: "https://xiaowangshen.com/" }]));
+      if (listCalls === 2) return new Response(JSON.stringify([search("replacement"), { targetId: "home", type: "page", url: "https://xiaowangshen.com/" }]));
+      return new Response(JSON.stringify([{ targetId: "home", type: "page", url: "https://xiaowangshen.com/" }]));
+    }
+    if (parsed.pathname === "/close") {
+      closed.push(parsed.searchParams.get("target"));
+      return new Response(JSON.stringify({ success: true }));
+    }
+    throw new Error(`unexpected endpoint ${parsed.pathname}`);
+  };
+  try {
+    const result = await cleanupSearchTargets("http://127.0.0.1:3457", { passes: 3, settleMs: 0 });
+    assert.deepEqual(result, { closed: ["old", "replacement"], failed: [] });
+    assert.deepEqual(closed, ["old", "replacement"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("partial stall export intent uses a bounded settlement deadline", async () => {
   const runDir = await mkdtemp(path.join(os.tmpdir(), "xws-partial-intent-"));
   try {
@@ -131,7 +160,7 @@ test("partial stall export intent uses a bounded settlement deadline", async () 
       sort: "sales",
       price: { min: 0, max: null },
       frequency: { min: 30, max: 45 },
-      stallSeconds: 300,
+      stallSeconds: 180,
       allowTrial: false,
       exportModes: ["csv", "xlsx-images"],
     };
@@ -382,7 +411,7 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
           "spec.loader.exec_module(module)",
           "module.make_self_test_fixture(Path(sys.argv[2]))",
         ].join(";");
-        const fixture = spawnSync(python, [...pythonPrefix, "-c", fixtureScript, validator, path.dirname(outputPath)], { encoding: "utf8" });
+        const fixture = spawnSync(python, [...pythonPrefix, "-c", fixtureScript, validator, path.dirname(outputPath)], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
         if (fixture.status !== 0) {
           response.statusCode = 500;
           response.end(JSON.stringify({ error: fixture.stderr || fixture.stdout }));
@@ -666,7 +695,7 @@ function startFakeProxy({ full = false, outputPath = "", liveResult = false, sta
           "spec.loader.exec_module(module)",
           "module.make_self_test_fixture(Path(sys.argv[2]))",
         ].join(";");
-        const fixture = spawnSync(python, [...pythonPrefix, "-c", fixtureScript, validator, path.dirname(outputPath)], { encoding: "utf8" });
+        const fixture = spawnSync(python, [...pythonPrefix, "-c", fixtureScript, validator, path.dirname(outputPath)], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
         if (fixture.status !== 0) {
           response.statusCode = 500;
           response.end(JSON.stringify({ error: fixture.stderr || fixture.stdout }));
@@ -1110,7 +1139,7 @@ test("rejects an export intent when the export action never starts", async () =>
     assert.equal(intent.status, "REJECTED");
     assert.equal(intent.reason, "export_action_failed");
     assert.equal(intent.options.frequency.min, 10);
-    assert.equal(intent.options.stallSeconds, 120);
+    assert.equal(intent.options.stallSeconds, 180);
     assert.equal(intent.options.allowTrial, false);
   } finally {
     await rm(output, { recursive: true, force: true });

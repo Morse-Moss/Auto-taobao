@@ -47,7 +47,7 @@ const DEFAULTS = {
   keyword: '浴缸',
   pages: '40',
   frequency: '30-45',
-  stallSeconds: '300',
+  stallSeconds: '180',
   channel: 'all',
   sort: 'sales',
   price: '0-unlimited',

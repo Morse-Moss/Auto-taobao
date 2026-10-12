@@ -282,7 +282,7 @@ export function parseAdaptiveOptions(argv, env = process.env) {
     forwarded.push(token);
   }
   if (!forwarded.includes("--frequency")) forwarded.push("--frequency", "30-45");
-  if (!forwarded.includes("--stall-seconds")) forwarded.push("--stall-seconds", "300");
+  if (!forwarded.includes("--stall-seconds")) forwarded.push("--stall-seconds", "180");
   const base = parseOptions(forwarded, env);
   if (adoptLiveResult && (!resume || !runId)) {
     throw new Error("adopt-live-result requires --resume and --run-id");

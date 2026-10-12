@@ -177,7 +177,7 @@ test("parses adaptive options without a fixed total runtime or segment size", ()
   const options = parseAdaptiveOptions(["--keyword", "浴缸"]);
   assert.deepEqual(options.pages, { start: 1, end: 40 });
   assert.deepEqual(options.frequency, { min: 30, max: 45 });
-  assert.equal(options.stallSeconds, 300);
+  assert.equal(options.stallSeconds, 180);
   assert.equal(options.resume, false);
   assert.equal("segmentSize" in options, false);
   assert.equal(options.exportPartialOnStall, true);
@@ -227,7 +227,7 @@ test("fresh adaptive tasks ignore no history and refuse to overwrite an existing
       sort: "sales",
       price: { min: 0, max: null },
       exportModes: ["csv", "xlsx-images"],
-      stallSeconds: 300,
+      stallSeconds: 180,
     }),
   };
   const checkpoint = createAdaptiveCheckpoint(expected);
@@ -258,7 +258,7 @@ test("only explicit resume loads verified progress and rejects contract mismatch
       sort: "sales",
       price: { min: 0, max: null },
       exportModes: ["csv", "xlsx-images"],
-      stallSeconds: 300,
+      stallSeconds: 180,
     }),
   };
   const checkpoint = createAdaptiveCheckpoint(expected);
@@ -296,7 +296,7 @@ test("rejects an unversioned RUNNING checkpoint with no attempt evidence", () =>
       sort: "sales",
       price: { min: 0, max: null },
       exportModes: ["csv"],
-      stallSeconds: 300,
+      stallSeconds: 180,
     }),
   };
   const checkpoint = createAdaptiveCheckpoint(expected);
@@ -321,7 +321,7 @@ test("explicit resume rejects a FAILED checkpoint without persisted attempt evid
       sort: "sales",
       price: { min: 0, max: null },
       exportModes: ["csv"],
-      stallSeconds: 300,
+      stallSeconds: 180,
     }),
   };
   const checkpoint = createAdaptiveCheckpoint(expected);
@@ -350,7 +350,7 @@ test("explicit resume retries a no-progress STALLED checkpoint", () => {
       sort: "sales",
       price: { min: 0, max: null },
       exportModes: ["csv"],
-      stallSeconds: 300,
+      stallSeconds: 180,
     }),
   };
   const checkpoint = createAdaptiveCheckpoint(expected);
@@ -382,7 +382,7 @@ test("explicit resume reopens a HUMAN_REQUIRED checkpoint after the control is c
       sort: "sales",
       price: { min: 0, max: null },
       exportModes: ["csv"],
-      stallSeconds: 300,
+      stallSeconds: 180,
     }),
   };
   const checkpoint = createAdaptiveCheckpoint(expected);
@@ -441,7 +441,7 @@ test("includes output directory in the immutable run identity", () => {
     exportModes: ["csv", "xlsx-images"],
     outputDir: path.resolve("C:/Downloads/xws"),
     allowTrial: false,
-    stallSeconds: 300,
+    stallSeconds: 180,
   });
 });
 
@@ -518,7 +518,7 @@ test("creates a fresh PostgreSQL run with its initial checkpoint atomically", as
       exportModes: ["csv"],
       outputDir: "C:/Downloads",
       allowTrial: false,
-      stallSeconds: 300,
+      stallSeconds: 180,
     }),
   };
   const calls = [];
@@ -553,7 +553,7 @@ test("validates final merged CSV and XLSX contents before recording artifacts", 
       "spec.loader.exec_module(module)",
       "module.make_self_test_fixture(Path(sys.argv[2]))",
     ].join(";");
-    const fixture = spawnSync(python, [...pythonPrefix, "-c", fixtureScript, validator, directory], { encoding: "utf8" });
+    const fixture = spawnSync(python, [...pythonPrefix, "-c", fixtureScript, validator, directory], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
     assert.equal(fixture.status, 0, fixture.stderr || fixture.stdout);
     const csv = path.join(directory, "fixture.csv");
     const xlsx = path.join(directory, "fixture.xlsx");
@@ -679,7 +679,7 @@ test("revalidates PostgreSQL part artifacts before advancing a resumed cursor", 
       exportModes: ["csv"],
       outputDir: "C:/Downloads",
       allowTrial: false,
-      stallSeconds: 300,
+      stallSeconds: 180,
     }),
   };
   const saved = createAdaptiveCheckpoint(expected);
@@ -720,7 +720,7 @@ test("reads resume state only from PostgreSQL and rejects a missing run", async 
       sort: "sales",
       price: { min: 0, max: null },
       exportModes: ["csv"],
-      stallSeconds: 300,
+      stallSeconds: 180,
       outputDir: "C:/Downloads",
       allowTrial: false,
     }),

@@ -136,7 +136,12 @@ function runPythonMerge(options) {
   const args = [...prefix, path.join(SCRIPT_DIR, "merge-market-analysis.py"), "--csv", options.outputCsv, "--output-xlsx", options.outputXlsx];
   for (const file of options.xlsx) args.push("--source-xlsx", file);
   if (options.requireImages) args.push("--require-images");
-  const result = spawnSync(executable, args, { encoding: "utf8", maxBuffer: 2 * 1024 * 1024 });
+  const result = spawnSync(executable, args, {
+    env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" },
+    stdio: ["ignore", "pipe", "pipe"],
+    encoding: "utf8",
+    maxBuffer: 2 * 1024 * 1024,
+  });
   const output = String(result.stdout || "").trim();
   let parsed;
   try { parsed = JSON.parse(output); } catch { throw new Error(`xlsx merger returned invalid JSON: ${String(result.stderr || output).slice(0, 500)}`); }

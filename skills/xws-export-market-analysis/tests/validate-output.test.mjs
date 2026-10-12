@@ -10,7 +10,7 @@ const python = process.env.XWS_PYTHON || (process.platform === "win32" ? "py" : 
 const pythonPrefix = process.env.XWS_PYTHON || process.platform !== "win32" ? [] : ["-3"];
 
 test("output validator self-test covers CSV, XLSX, links, and embedded images", () => {
-  const result = spawnSync(python, [...pythonPrefix, validator, "--self-test"], { encoding: "utf8" });
+  const result = spawnSync(python, [...pythonPrefix, validator, "--self-test"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const output = JSON.parse(result.stdout);
   assert.equal(output.ok, true);
@@ -28,7 +28,7 @@ test("numeric normalization does not collapse different integer values", () => {
     "s.loader.exec_module(m)",
     "assert m.normalize('10') != m.normalize('1')",
   ].join(";");
-  const result = spawnSync(python, [...pythonPrefix, "-c", script], { encoding: "utf8" });
+  const result = spawnSync(python, [...pythonPrefix, "-c", script], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
@@ -46,6 +46,6 @@ test("output validator accepts the observed payment-count header variant", () =>
     "r[3]='https://item.taobao.com/item.htm?id=1'",
     "assert m.validate_rows(h,[r])['rows']==1",
   ].join(";");
-  const result = spawnSync(python, [...pythonPrefix, "-c", script], { encoding: "utf8" });
+  const result = spawnSync(python, [...pythonPrefix, "-c", script], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });

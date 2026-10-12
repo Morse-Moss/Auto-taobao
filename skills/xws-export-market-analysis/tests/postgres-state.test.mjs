@@ -98,7 +98,7 @@ test("fresh adaptive runs may repeat an immutable collection contract", integrat
       exportModes: ["csv"],
       outputDir: "C:/test-output",
       allowTrial: false,
-      stallSeconds: 300,
+      stallSeconds: 180,
     };
     const first = await createAdaptiveRun(pool, identity);
     const second = await createAdaptiveRun(pool, identity);
