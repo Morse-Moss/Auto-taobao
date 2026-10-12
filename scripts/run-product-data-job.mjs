@@ -58,6 +58,33 @@ const STAGE_OF_MESSAGE = [
   [/登录预检/u, 'login'],
 ];
 function stageFromMessage(message) { return STAGE_OF_MESSAGE.find(([pattern]) => pattern.test(String(message)))?.[1] ?? null; }
+// 导入子进程退出码的**唯一**翻译处（底单与询单同一口径，不许各写一份）。
+// 需要单独看的是 2：**写入已发生、写后回读失败**（UNKNOWN_WRITE）—— 数据已经在表里，
+// 重跑会撞同日去重闸门、得 0 行，所以它和 1（真的没写成）对操作者的含义完全不同。
+// 缺口文案里的「底单／询单」决定 `failedStage` 归因；「未知」决定 `classifyWorkflowError`
+// 把它归到 UNKNOWN_WRITE，而不是 FAILED/UNCLASSIFIED（见 runtime/workflow-receipt.mjs）。
+function importOutcomeOf(shop, stage, code) {
+  if (code === 0) return { gap: null, line: `[导入] ${shop} ${stage}已写入` };
+  if (code === 2) return { gap: `${shop}/${stage} 写入已发生但写后回读未知（UNKNOWN_WRITE）`, line: `[导入] ${shop} ${stage}写入已发生、写后回读失败（UNKNOWN_WRITE；exit 2）` };
+  return { gap: `${shop}/${stage} 导入失败`, line: `[导入] ${shop} ${stage}失败（exit ${code}）` };
+}
+// 采集失败的**原因**必须跟着缺口一起报出去（2026-10-12 加）。
+// 为什么：这条链原先只写「<店>/底单 未采集」，把采集子进程那句 `下载超时` 留在 job.log 里就丢了 ——
+// 于是**可重试的外部故障**在收据上退化成 `FAILED/UNCLASSIFIED`：看告警的人分不清该重跑还是该叫人。
+// 缺口文案是本链唯一会被 `classifyWorkflowError` 读到的现场（`runtime/workflow-receipt.mjs` 的正则），
+// 所以原因必须落在它**里面**，只落 job.log 不够。与上面 `importOutcomeOf` 是同一条设计：
+// 阶段名（底单／询单／推广）管归因，原因词（超时／下载…）管分类。
+// 压成一行并截断：它还要进告警载荷的 `reason` 字段，不收整段 stderr。
+function collectFailureNote(error) {
+  const text = String(error ?? '').split(/\r?\n/u).map((line) => line.trim()).filter(Boolean).join(' ');
+  if (!text) return '';
+  return text.length > 160 ? `${text.slice(0, 160)}…` : text;
+}
+// 三条「未采集」缺口文案的**唯一**拼接处：没原因就退回老文案（不留尾随冒号）。
+function collectGapOf(shop, stage, reason) {
+  const note = collectFailureNote(reason);
+  return note ? `${shop}/${stage} 未采集：${note}` : `${shop}/${stage} 未采集`;
+}
 
 /**
  * 失败时叫人（只在给了 `--notify` 时；成功不叫 —— 与日报链同一口径）。
@@ -268,7 +295,11 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
       // 它的缺口已经在上面记过 `登录 未通过`，这里不重复记，也不进阶段二。
       if (blocked.has(shop)) { item.stoppedAt = 'login'; continue; }
       ensureDir(path.join(evidence, shop));
-      const product = await run(PRODUCT_JOB_FILES.productCollect, ['--shop', shop, '--date', date], { capture: true });
+      // `--evidence`：把这一家的**采集失败现场**（`<日>-<店>.failure.json` / `.failure.png`）放进本轮
+      // 证据目录，而不是采集脚本那个默认的 `evidence/product-collect-failures/`。
+      // 为什么必须穿进去：默认目录是「跨轮共用、只按店/日命名」的，两轮同店同日会互相覆盖，
+      // 而本链一次失败的全部意义就在于「留下这一次的现场」—— 落错地方等于没留。
+      const product = await run(PRODUCT_JOB_FILES.productCollect, ['--shop', shop, '--date', date, '--evidence', path.join(evidence, shop, 'product-collect')], { capture: true });
       item.product = product; item.productFile = jsonTail(product.out)?.file ?? null;
       if (product.code !== 0 || !item.productFile) { item.stoppedAt = 'product-collect'; item.error = (product.err || product.out || '').trim(); log(`[底单] ${shop} 失败：${item.error || '未返回文件'}（exit ${product.code}）`); }
       else log(`[底单] ${shop} 已采集 ${item.productFile}`);
@@ -305,17 +336,17 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
       // 登录预检剔掉的店在采集段已经记过缺口，这里不再记「底单/询单 未采集」——
       // 同一件事记两条会让收据里的缺口数虚高，归因也会被带到 `product-import` 上（它其实停在登录）。
       if (blocked.has(item.shop)) continue;
-      if (!item.productFile) { gaps.push(`${item.shop}/底单 未采集`); continue; }
+      if (!item.productFile) { gaps.push(collectGapOf(item.shop, '底单', item.error)); continue; }
       const r = await run(PRODUCT_JOB_FILES.productImport, ['--file', item.productFile, '--shop', item.shop, '--date', date, ...common, '--evidence', path.join(evidence, item.shop, 'product-import')]);
-      if (r.code !== 0) { gaps.push(`${item.shop}/底单 导入失败`); log(`[导入] ${item.shop} 底单失败（exit ${r.code}）`); } else log(`[导入] ${item.shop} 底单已写入`);
-      if (!item.inquiryFile || !fs.existsSync(item.inquiryFile)) gaps.push(`${item.shop}/询单 未采集`);
-      else { const q = await run(PRODUCT_JOB_FILES.inquiryImport, ['--file', item.inquiryFile, '--date', date, '--shop', item.shop, ...common, '--evidence', path.join(evidence, item.shop, 'inquiry-import')]); if (q.code !== 0) { gaps.push(`${item.shop}/询单 导入失败`); log(`[导入] ${item.shop} 询单失败（exit ${q.code}）`); } else log(`[导入] ${item.shop} 询单已写入`); }
+      const rd = importOutcomeOf(item.shop, '底单', r.code); if (rd.gap) gaps.push(rd.gap); log(rd.line);
+      if (!item.inquiryFile || !fs.existsSync(item.inquiryFile)) gaps.push(collectGapOf(item.shop, '询单', item.error));
+      else { const q = await run(PRODUCT_JOB_FILES.inquiryImport, ['--file', item.inquiryFile, '--date', date, '--shop', item.shop, ...common, '--evidence', path.join(evidence, item.shop, 'inquiry-import')]); const qd = importOutcomeOf(item.shop, '询单', q.code); if (qd.gap) gaps.push(qd.gap); log(qd.line); }
       // 有意跳过的段**不记缺口** —— 与下面 catch 段那句逐字同口径。
       // （2026-10-05 修：这一行原先漏了 `skipPromotion`，于是 `--skip-promotion` 的那一轮
       //   即使收据里推广段已经正确记成 SKIPPED，整轮也会被自己这条缺口判成失败 ——
       //   实测形态见 evidence/product-data-job-2026-10-04/…/run-receipt.json 的「13 处」，
       //   其中 3 条就是「推广 未采集」。带 `--skip-promotion` 的定时入口默认就会撞上它。）
-      if (!options.skipPromotion && !item.promotionFile) gaps.push(`${item.shop}/推广 未采集`);
+      if (!options.skipPromotion && !item.promotionFile) gaps.push(collectGapOf(item.shop, '推广', item.error));
     }
     // 推广：这一批齐时按小手册的形状做一次批量调用（收据落 `promotion-import/receipt.json`）；
     // 有人缺 ZIP 或批量失败时退成逐店导入（收据落 `promotion-import/<店>/`），把能写的先写掉。
@@ -361,10 +392,10 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
     // 所以这里按「实到手的东西」补记缺口；用 addGap 去重，避免与导入段已经记过的重复。
     const addGap = (gap) => { if (!gaps.includes(gap)) gaps.push(gap); };
     for (const item of results) {
-      if (!item.productFile) addGap(`${item.shop}/底单 未采集`);
-      if (!item.inquiryFile || !fs.existsSync(item.inquiryFile)) addGap(`${item.shop}/询单 未采集`);
+      if (!item.productFile) addGap(collectGapOf(item.shop, '底单', item.error));
+      if (!item.inquiryFile || !fs.existsSync(item.inquiryFile)) addGap(collectGapOf(item.shop, '询单', item.error));
       // 有意跳过的段**不记缺口** —— 否则整轮会被自己的闸门判成失败，而闸门是配置、不是故障。
-      if (!options.skipPromotion && !item.promotionFile) addGap(`${item.shop}/推广 未采集`);
+      if (!options.skipPromotion && !item.promotionFile) addGap(collectGapOf(item.shop, '推广', item.error));
     }
     log(`${batched ? `[批次] ${describeBatch(round, rounds.length)} ` : ''}未完成：${error.message}`
       + `（${outcome.failure.class}/${outcome.failure.reason}；停在哪一段=${outcome.failedStage ?? '未知'}）`);
@@ -469,6 +500,13 @@ async function main(argv) {
 }
 if (pathToFileURL(process.argv[1]).href === import.meta.url) process.exit(await main(process.argv.slice(2)));
 export { main, parseArgs };
+// 导入退出码的翻译函数也导出**只为离线用例**：`exit 2 ⇒ UNKNOWN_WRITE` 这条契约要是错了，
+// 后果是「数据已经在表里、却被记成真的没写」（或反过来），两种都不会自己报错。
+export { importOutcomeOf };
+// 采集缺口的拼接函数也导出**只为离线用例**（守卫 `runtime/product-data-collect-gap-reason.test.mjs`）：
+// 「缺口文案 → classifyWorkflowError」这条接线只靠两个字（超时／下载…），改错一个字不会报错，
+// 只会把**可重试的外部故障**报成 `FAILED/UNCLASSIFIED`（2026-10-11 里可林天猫那次就是这个形态）。
+export { collectFailureNote, collectGapOf };
 // 登录预检的三个纯函数导出**只为离线用例**（守卫 `runtime/product-data-login-preflight-wiring.test.mjs`）：
 // 「哪几家被剔除」「要不要先补页」这两条判断的错法都是**静默**的（剔除多了少采一家、
 // 剔除少了白跑一家，两种都不会报错），所以它们必须有一条离线判据钉住，而不是只靠真机。
