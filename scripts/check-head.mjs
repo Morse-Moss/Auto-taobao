@@ -12,6 +12,8 @@
  * 变成一条命令，提交前就能红，不用等几小时后的 CI。
  *
  * 做法：`git worktree add --detach <临时目录> HEAD` ⇒ 在**那个目录**里跑定向组 ⇒ 删掉。
+ * 每组开跑前先用对面的 `--dry-run` 预检「筛选真的生效了」—— 治的是 `--skill` 写成
+ * 空格形式被静默忽略、那一组偷偷跑全部测试（2026-10-13 实测，20 分钟 1143 条）。
  * 为什么用 worktree 而不是 `git stash`：stash 会动正在编辑的工作区（本仓常有未提交改动，
  * 那是别人或我自己正在做的事），worktree 一个字节都不碰它。
  *
@@ -44,11 +46,17 @@ const STDIO = ['ignore', 'pipe', 'pipe'];
 // 「日报链 + 它旁边那两条链 + runtime」，也就是最可能被一次改动打到的地方。
 // 判据是「改动面」，不是「图省事」—— 漏跑一组不会让 check:head 假绿，只会让它漏报，
 // 所以范围写成一个显式清单，改范围要改这里。
+//
+// ⚠️ `--skill` 只能写成 `--skill=<名字>`（等号形式）。run-test-suite.mjs 的解析是
+// `argv.find((v) => v.startsWith('--skill='))`：写成空格形式（`'--skill', 'X'`）它
+// **静默不过滤**，那一组会把全部 skill 测试都跑掉。2026-10-13 实测踩到：20 分钟、
+// 1143 条，还混进别的 skill 的红，报出来却像「这一组红了」。下面的预检（preflight）
+// 会在开跑前把这种写法治成硬失败，但写法本身先写对。
 const GROUPS = Object.freeze([
   { name: 'runtime', args: ['runtime', '--concurrency=1'] },
-  { name: 'skills:sycm-alimama-daily-report', args: ['skills', '--skill', 'sycm-alimama-daily-report', '--concurrency=1'] },
-  { name: 'skills:sycm-promotion-data', args: ['skills', '--skill', 'sycm-promotion-data', '--concurrency=1'] },
-  { name: 'skills:sycm-inquiry-data', args: ['skills', '--skill', 'sycm-inquiry-data', '--concurrency=1'] },
+  { name: 'skills:sycm-alimama-daily-report', args: ['skills', '--skill=sycm-alimama-daily-report', '--concurrency=1'] },
+  { name: 'skills:sycm-promotion-data', args: ['skills', '--skill=sycm-promotion-data', '--concurrency=1'] },
+  { name: 'skills:sycm-inquiry-data', args: ['skills', '--skill=sycm-inquiry-data', '--concurrency=1'] },
 ]);
 
 const only = (() => {
@@ -70,6 +78,36 @@ function run(command, args, cwd) {
     stderr: String(result.stderr ?? ''),
     error: result.error ?? null,
   };
+}
+
+// 开跑前的预检：拿对面的 `--dry-run` 确认「这一组的筛选真的生效了」。
+// 治的是 2026-10-13 实测踩到的坑——`--skill` 写成空格形式时 run-test-suite 静默不过滤，
+// 那一组把全部 skill 测试都跑了（20 分钟、1143 条，还混进别的 skill 的红），
+// 而 Summary 报出来像「这一组红了」。dry-run 秒回，且用的是对面自己的解析器当裁判。
+// 返回 null = 通过；返回字符串 = 失败原因（调用方要硬失败，不许带着疑点跑 20 分钟）。
+function preflight(group, cwd) {
+  const suite = group.args[0];
+  const dry = run(process.execPath, [path.join('scripts', 'run-test-suite.mjs'), ...group.args, '--dry-run'], cwd);
+  if (dry.status !== 0) {
+    return `预检失败：dry-run 退出 ${dry.status}\n${(dry.stdout + dry.stderr).trim().slice(-600)}`;
+  }
+  const lines = dry.stdout.split(/\r?\n/);
+  const header = lines.map((line) => line.trim()).find((line) => new RegExp(`^${suite}:\\s+\\d+$`, 'u').test(line));
+  const count = header ? Number(header.split(':')[1]) : NaN;
+  if (!Number.isFinite(count) || count === 0) {
+    return `预检失败：dry-run 没列出文件（计数行：${header ?? '没找到'}）—— 筛选条件可能把整个组都滤空了`;
+  }
+  const skillIndex = group.args.findIndex((arg) => arg.startsWith('--skill='));
+  if (skillIndex === -1) return null;
+  const expectedPrefix = `skills/${group.args[skillIndex].slice('--skill='.length)}/`;
+  const files = lines.map((line) => line.trim()).filter((line) => line.startsWith('skills/'));
+  const strays = files.filter((file) => !file.startsWith(expectedPrefix));
+  if (strays.length > 0) {
+    return `预检失败：筛选没生效 —— dry-run 列出 ${files.length} 个文件，其中 ${strays.length} 个不在 ${expectedPrefix} 下`
+      + `（头几个：${strays.slice(0, 3).join('、')}）。最可能是 --skill 写成了空格形式；`
+      + 'run-test-suite 只认 --skill=<名字>，空格形式会被静默忽略、变成跑全部。';
+  }
+  return null;
 }
 
 const head = run('git', ['rev-parse', '--short', 'HEAD'], root);
@@ -139,6 +177,14 @@ try {
 
   for (const group of selected) {
     const logFile = path.join(logRoot, `${group.name.replace(/[:/]/gu, '_')}.log`);
+    const blocked = preflight(group, worktree);
+    if (blocked) {
+      console.error(`==> [${group.name}] ${blocked}`);
+      console.error(`==> check:head 预检就没过，一个测试都没跑；完整上下文见 ${logFile}`);
+      fs.writeFileSync(logFile, `[preflight blocked]\n${blocked}\n`, 'utf8');
+      exitCode = 1;
+      break;
+    }
     console.log(`==> [${group.name}] node scripts/run-test-suite.mjs ${group.args.join(' ')}`);
     const result = run(process.execPath, [path.join('scripts', 'run-test-suite.mjs'), ...group.args], worktree);
     fs.writeFileSync(logFile, `${result.stdout}\n${result.stderr}\n[exit ${result.status}]\n`, 'utf8');

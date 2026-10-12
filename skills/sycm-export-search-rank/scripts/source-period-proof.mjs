@@ -24,6 +24,8 @@ export async function verifyExportPair({ csv, xlsx, expectedEndDate }) {
   }
   const script = path.join(path.dirname(fileURLToPath(import.meta.url)), 'verify-export-pair.py');
   const python = findPython();
+  // stdio 必须显式 ['ignore','pipe','pipe']：宿主对「给子进程管道 stdin 的同步 spawn」
+  // 直接回 EBUSY（status 变 null）——同 import-promotion-daily-report.mjs:41。
   const result = spawnSync(python.command, [
     ...python.args,
     script,
@@ -33,10 +35,15 @@ export async function verifyExportPair({ csv, xlsx, expectedEndDate }) {
   ], {
     encoding: 'utf8',
     windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
   });
   if (result.status !== 0) {
-    let message = result.stderr.trim() || result.stdout.trim() || `Verifier exited with status ${result.status}`;
+    // spawn 失败时（EBUSY / ENOENT…）`stderr`/`stdout` 是 undefined，
+    // 早先这里是 `result.stderr.trim()` ⇒ 错误处理自己抛 TypeError，
+    // 把「为什么没验成」埋得一个字节都不剩。先兜住，再把成因带进消息。
+    let message = (result.stderr ?? '').trim() || (result.stdout ?? '').trim()
+      || (result.error ? `verifier 没起来：${result.error.code ?? result.error.message}` : `Verifier exited with status ${result.status}`);
     try { message = JSON.parse(message).message ?? message; } catch { /* Keep verifier output. */ }
     throw new Error(message);
   }

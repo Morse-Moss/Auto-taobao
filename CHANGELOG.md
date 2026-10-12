@@ -15,6 +15,51 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.9] - 2026-10-13
+
+`check:head` 自己的一个静默失效 ＋ 三个叶子测试的 EBUSY 假红（其中一个往下挖出一个真生产 bug）。
+起因是给 1.8.8 的 `check:head` 跑第一次全量验证：它跑了 20 分钟、1143 条，报出来 3 红 ——
+而那 3 条**不在它声明要跑的那一组里**。
+
+### 改了什么
+
+- **`check:head` 的 `--skill` 写成空格形式 ⇒ 静默不过滤（1.8.8 自带缺陷，已修）**。
+  `run-test-suite.mjs` 的解析是 `argv.find((v) => v.startsWith('--skill='))`，只认等号形式；
+  空格形式（`'--skill', 'X'`）被静默忽略，那一组把**全部 75 个 skill 测试**都跑了。
+  症状不只是慢：混进别家 skill 的红，报出来却像「这一组红了」—— 正是本仓反复吃亏的
+  「把读不到/跑多了当成没问题」家族。三处已改回 `--skill=<名字>`。
+- **每组开跑前加 dry-run 预检（防复发，不只是修这一次）**。用对面的 `--dry-run` 列出
+  这一组真正会跑的文件：计数为 0 ⇒ 硬失败；`--skill=` 组的文件出现目录外杂项 ⇒ 硬失败，
+  并直接点明「最可能是 --skill 写成了空格形式」。预检秒回，失败时一个测试都不跑。
+- **三个测试文件的 spawnSync 补 `stdio: ['ignore','pipe','pipe']`**（EBUSY 假红）。
+  本机宿主对「给子进程管道 stdin 的同步 spawn」确定性回 EBUSY（`status` 变 `null`，
+  实测：关掉会话沙箱也一样，所以不是沙箱问题）。仓库早有此惯例与带日期的注释
+  （`import-promotion-daily-report.mjs:41`，2026-10-11），这两处是漏网的。
+- **`source-period-proof.mjs` 的真生产 bug（往下挖出来的，已修）**：`verifyExportPair` 的
+  spawnSync 同样没给 stdio ⇒ 在这台机器上**从来没成功过**；更糟的是失败路径
+  `result.stderr.trim()` 在 spawn 失败时 stderr 是 `undefined` ⇒ 错误处理自己抛 TypeError，
+  把「为什么没验成」埋得一个字节不剩。两处一起修：补 stdio，消息改为兜住 undefined 并带上
+  `result.error.code`（EBUSY 会原样出现在消息里）。
+
+### 为什么这样改
+
+`check:head` 是 1.8.8 新加的闸门，它的全部价值在于「可信」—— 一次 20 分钟的误导性红，
+比没有闸门更糟（训练人忽略它）。所以修的不只是那三个字符，而是把「筛选没生效」变成
+跑之前的硬失败。EBUSY 三处则是同一家族的第 N 次发作：错误路径自己先死、成因被埋。
+
+### 验证
+
+- `skills/sycm-export-search-rank` 42/42（修前 39/42；三条红同根，前两条 EBUSY、
+  第三条是 EBUSY 治好后往下漏出的 `verifyExportPair` 真 bug）。
+- 预检行为实测：等号形式 ⇒ `skills: 23` 全在对的目录下、通过；空格形式 ⇒ `skills: 75`
+  混进别家、被前缀检查硬拦（消息里直接点明写法问题）。
+- 同步 spawn 的 EBUSY 边界实测：默认 stdio / `input:` 选项都中招；`stdio:'ignore'` 与
+  `['ignore','pipe','pipe']` 均正常；`execSync`/`execFileSync` 同样中招。
+- 全仓扫描（`git ls-files --cached --others --exclude-standard`）：80 处 child_process
+  调用没显式 stdio，其中同步的约 15 处 —— 除已修的 3 处外均**未被离线用例执行到**
+  （本次误跑的全量 skill 套件 1143 条只红这 3 条即证），列为待办不在本轮动。
+- `check:head` 对 1.8.9 提交的全量复跑见当次 evidence 目录。
+
 ## [1.8.8] - 2026-10-13
 
 失败现场「拍错页」的根修 ＋ 三个叶子采集脚本补现场 ＋ 两条新闸门（`check:head`、参数契约守卫）。

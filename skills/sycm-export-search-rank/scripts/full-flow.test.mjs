@@ -156,7 +156,12 @@ test("stops when the visible category is not ordinary bathtub", async () => {
 });
 
 test("official exporter exposes the from-home workflow", () => {
-  const result = spawnSync(process.execPath, [path.join(SCRIPT_DIR, "export-search-rank.mjs"), "--help"], { encoding: "utf8" });
+  // stdio 必须显式 ['ignore','pipe','pipe']：宿主对「给子进程管道 stdin 的同步 spawn」
+  // 直接回 EBUSY（status 变 null，看起来像脚本崩了）——同 import-promotion-daily-report.mjs:41。
+  const result = spawnSync(process.execPath, [path.join(SCRIPT_DIR, "export-search-rank.mjs"), "--help"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
   assert.equal(result.status, 0);
   assert.match(result.stdout, /--from-home/u);
 });
@@ -354,7 +359,12 @@ test("refuses to continue when seven-day selection cannot be verified", async ()
 });
 
 test("official exporter documents the fixed seven-day contract", () => {
-  const result = spawnSync(process.execPath, [path.join(SCRIPT_DIR, "export-search-rank.mjs"), "--help"], { encoding: "utf8" });
+  // stdio 必须显式 ['ignore','pipe','pipe']：宿主对「给子进程管道 stdin 的同步 spawn」
+  // 直接回 EBUSY（status 变 null，看起来像脚本崩了）——同 import-promotion-daily-report.mjs:41。
+  const result = spawnSync(process.execPath, [path.join(SCRIPT_DIR, "export-search-rank.mjs"), "--help"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
   assert.equal(result.status, 0);
   assert.match(result.stdout, /--period 7d/u);
   assert.match(result.stdout, /end date of the 7-day reporting window/u);

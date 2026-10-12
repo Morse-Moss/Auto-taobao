@@ -48,8 +48,11 @@ async function makePair(directory) {
   await writeFile(payload, JSON.stringify({ metadata, rows }), 'utf8');
   await writeFile(csv, `\uFEFF排名,搜索词,搜索人气,点击率,支付转化率\r\n1,浴缸,5000 ~ 1万,59%,1% ~ 2.5%\r\n2,小浴缸,150 ~ 300,61%,-\r\n`, 'utf8');
   const python = pythonCommand();
+  // stdio 必须显式 ['ignore','pipe','pipe']：宿主对「给子进程管道 stdin 的同步 spawn」
+  // 直接回 EBUSY（status 变 null，看起来像脚本崩了）——同 import-promotion-daily-report.mjs:41。
   const result = spawnSync(python.command, [...python.args, path.join(SCRIPT_DIR, 'write-workbook.py'), payload, xlsx], {
     encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return { csv, xlsx };
