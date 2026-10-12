@@ -126,6 +126,7 @@ runtime/.collect-child-pid
 runtime/.collect-exit-code
 runtime/.collection-host-heartbeat
 runtime/.collection-host.pid
+runtime/.workflow-locks/
 
 # 小旺神复制的原始 SKU payload —— skills/xws-sku-collection/SKILL.md 的 Safety Contract
 # 明文要求「不得打印、提交或上传」，它是本地受保护的证据。
@@ -133,3 +134,12 @@ runtime/.collection-host.pid
 # 2026-09-21 的决定是**先不动它们** —— 改写已被跟踪的历史文件，风险大于收益；
 # 但**新的不许再进来**（这条规则只管未跟踪文件，正是想要的效果）。
 evidence/**/xws-sku-payload-*.txt
+
+# 2026-10-12 大扫除：探针/对账脚本的临时落盘（.tmp-portcheck.txt、.tmp-procs*.txt、
+# .tmp-verify/ 这类）——反复生成、绝不该进库；以前没忽略导致它们常年挂在 git status 里，
+# 把真正的源码漂移淹在噪音里（HEAD-VS-WORKTREE 事故的土壤之一）。
+/.tmp-*
+
+# 2026-10-12：sop-runtime 的一次性调度收据（scheduled-<id>/two-stage-receipt.json＋evidence/）
+# ——是运行产物不是源码；同类目录没有 tracked 先例，新的不许再进来。
+runtime/sop-runtime/scheduled-*/
