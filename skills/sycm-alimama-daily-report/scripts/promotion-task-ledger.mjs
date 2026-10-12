@@ -22,7 +22,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 
-import { PROMOTION_TASK_PATTERN } from './collect-core.mjs';
+const REPORT_TASK_PATTERN = /^(?:营销场景报表|关键词报表|人群报表)_\d{8}_\d{6}$/u;
 
 export const LEDGER_VERSION = 1;
 
@@ -71,7 +71,7 @@ export function parseLedger(text, { file = null } = {}) {
     if (!record || typeof record !== 'object') throw new Error(`${where} 的${at}不是对象`);
     if (!DATE_RE.test(String(record.date ?? ''))) throw new Error(`${where} 的${at} date 不是 YYYY-MM-DD`);
     if (!String(record.shop ?? '').trim()) throw new Error(`${where} 的${at}缺 shop`);
-    if (!PROMOTION_TASK_PATTERN.test(String(record.taskName ?? ''))) {
+    if (!REPORT_TASK_PATTERN.test(String(record.taskName ?? ''))) {
       throw new Error(`${where} 的${at} taskName 不是任务名形状：${JSON.stringify(record.taskName)}`);
     }
   }
@@ -107,13 +107,13 @@ export function writeLedger(file, ledger, {
 }
 
 /** 提交段观察到「列表里多出来一条」时记一笔。返回**新**台账（不改入参）。 */
-export function recordSubmitted(ledger, { date, shop, taskName, proxy = null, at } = {}) {
+export function recordSubmitted(ledger, { date, shop, taskName, proxy = null, at, kind = 'promotion' } = {}) {
   if (!DATE_RE.test(String(date ?? ''))) throw new Error(`recordSubmitted 需要目标日（YYYY-MM-DD），收到 ${JSON.stringify(date)}`);
   if (!String(shop ?? '').trim()) throw new Error('recordSubmitted 需要店铺标识');
-  if (!PROMOTION_TASK_PATTERN.test(String(taskName ?? ''))) {
+  if (!REPORT_TASK_PATTERN.test(String(taskName ?? ''))) {
     throw new Error(`recordSubmitted 的 taskName 不是任务名形状：${JSON.stringify(taskName)}`);
   }
-  return { ...ledger, records: [...ledger.records, { date, shop, taskName, proxy, submittedAt: at ?? null, consumedAt: null }] };
+  return { ...ledger, records: [...ledger.records, { date, shop, taskName, proxy, kind, submittedAt: at ?? null, consumedAt: null }] };
 }
 
 /**
@@ -121,7 +121,7 @@ export function recordSubmitted(ledger, { date, shop, taskName, proxy = null, at
  * 否则台账会假装那天从没提交过，下一轮又会去提交一次。
  */
 export function recordConsumed(ledger, { date, shop, taskName, at } = {}) {
-  if (!PROMOTION_TASK_PATTERN.test(String(taskName ?? ''))) {
+  if (!REPORT_TASK_PATTERN.test(String(taskName ?? ''))) {
     throw new Error(`recordConsumed 的 taskName 不是任务名形状：${JSON.stringify(taskName)}`);
   }
   const hit = ledger.records.findIndex((record) => record.date === date
@@ -142,10 +142,10 @@ export function recordConsumed(ledger, { date, shop, taskName, at } = {}) {
  *
  * 安全性仍然来自调用顺序：先落盘、后结清（与 recordConsumed 同一条纪律）。
  */
-export function recordConsumedAll(ledger, { date, shop, taskName = null, at = null } = {}) {
+export function recordConsumedAll(ledger, { date, shop, taskName = null, at = null, kind = null } = {}) {
   const stamp = at ?? new Date().toISOString();
   const records = ledger.records.map((record) => (
-    record.date === date && record.shop === shop && !record.consumedAt
+    record.date === date && record.shop === shop && !record.consumedAt && (kind === null || (record.kind ?? 'promotion') === kind)
       ? { ...record, consumedAt: stamp }
       : record));
   // 与 recordConsumed 同一条 upsert 纪律：`--task` 显式指定、或列表里的候选本来就没记过时，
@@ -154,7 +154,7 @@ export function recordConsumedAll(ledger, { date, shop, taskName = null, at = nu
     ? records.some((record) => record.date === date && record.shop === shop && record.taskName === taskName)
     : true;
   if (!known) {
-    return { ...ledger, records: [...records, { date, shop, taskName, proxy: null, submittedAt: null, consumedAt: stamp }] };
+    return { ...ledger, records: [...records, { date, shop, taskName, kind: kind ?? 'promotion', proxy: null, submittedAt: null, consumedAt: stamp }] };
   }
   return { ...ledger, records };
 }
@@ -162,6 +162,10 @@ export function recordConsumedAll(ledger, { date, shop, taskName = null, at = nu
 /** 这一目标日、这家店还没取过的任务。 */
 export function pendingFor(ledger, { date, shop } = {}) {
   return ledger.records.filter((record) => record.date === date && record.shop === shop && !record.consumedAt);
+}
+
+export function pendingForKind(ledger, { date, shop, kind = 'promotion' } = {}) {
+  return pendingFor(ledger, { date, shop }).filter((record) => (record.kind ?? 'promotion') === kind);
 }
 
 /** 同一家店、别的目标日还挂着的未取任务（只报不拦，见文件头）。 */
@@ -179,7 +183,7 @@ export function staleFor(ledger, { date, shop } = {}) {
  */
 const asNames = (value) => (Array.isArray(value) ? value : [])
   .map((item) => (typeof item === 'string' ? item : item?.name))
-  .filter((name) => PROMOTION_TASK_PATTERN.test(String(name)));
+  .filter((name) => REPORT_TASK_PATTERN.test(String(name)));
 
 export function describeStale(stale = []) {
   if (!stale.length) return null;
@@ -191,10 +195,10 @@ export function describeStale(stale = []) {
  * 提交段：先判「这一目标日是不是已经提交过、只是没取」。
  * 返回 `reuse`（跳过提交）/ `submit`（照常提交）/ `block`（核不清，不动）。
  */
-export function judgeResume({ ledger, date, shop, list = [] } = {}) {
+export function judgeResume({ ledger, date, shop, list = [], kind = 'promotion' } = {}) {
   if (!DATE_RE.test(String(date ?? ''))) throw new Error(`judgeResume 需要目标日（YYYY-MM-DD），收到 ${JSON.stringify(date)}`);
   const names = asNames(list);
-  const pending = pendingFor(ledger, { date, shop });
+  const pending = pendingForKind(ledger, { date, shop, kind });
   const stale = staleFor(ledger, { date, shop });
   if (pending.length > 0) {
     // 「同一目标日记着多笔」现在**不再等于核不清**：2026-10-05 起允许在取件失败后
@@ -267,9 +271,9 @@ export function judgeSubmitOutcome({ before = [], after = [] } = {}) {
  * （2026-10-05 业务方实测），一条通道坏了要能换一条。换哪条都不会写错日子 ——
  * 因为候选之间**业务日相同**，这一点由上面那条判据保证，不由「它排第几行」保证。
  */
-export function judgeFetchCandidates({ ledger, date, shop, rows = [], explicit = null } = {}) {
+export function judgeFetchCandidates({ ledger, date, shop, rows = [], explicit = null, kind = 'promotion' } = {}) {
   if (!DATE_RE.test(String(date ?? ''))) throw new Error(`judgeFetchCandidates 需要目标日（YYYY-MM-DD），收到 ${JSON.stringify(date)}`);
-  const parsed = normalizeTaskRows(rows);
+  const parsed = normalizeTaskRows(rows, kind);
   const hint = describeRows(parsed);
   if (explicit) {
     const hit = parsed.find((row) => row.name === explicit);
@@ -293,7 +297,7 @@ export function judgeFetchCandidates({ ledger, date, shop, rows = [], explicit =
   const candidates = withRange.filter((row) => row.rangeStart === date && row.rangeEnd === date)
     .map((row) => row.name);
   if (!candidates.length) {
-    const pending = pendingFor(ledger, { date, shop });
+    const pending = pendingForKind(ledger, { date, shop, kind });
     return { ok: false, taskNames: [],
       reason: `列表里没有日期范围等于 ${date} 的任务（${hint}）`
         + (pending.length ? `；台账里记着 ${date} 的未取任务 ${pending.map((record) => record.taskName).join('、')}` : '')
@@ -308,7 +312,8 @@ export function judgeFetchCandidates({ ledger, date, shop, rows = [], explicit =
  * 裸名字（老调用点与用例传的形态）**没有日期范围**，因此不会成为候选，只会出现在提示里 ——
  * 这是刻意的：读不到业务日的行，没有资格被当成「这一天的数据」。
  */
-function normalizeTaskRows(rows) {
+function normalizeTaskRows(rows, kind = 'promotion') {
+  const pattern = taskPatternForKind(kind);
   return (Array.isArray(rows) ? rows : [])
     .map((row) => (typeof row === 'string'
       ? { name: row.trim(), rangeStart: null, rangeEnd: null }
@@ -317,7 +322,13 @@ function normalizeTaskRows(rows) {
         rangeStart: row?.rangeStart ?? null,
         rangeEnd: row?.rangeEnd ?? null,
       }))
-    .filter((row) => PROMOTION_TASK_PATTERN.test(row.name));
+    .filter((row) => pattern.test(row.name));
+}
+
+export function taskPatternForKind(kind = 'promotion') {
+  if (kind === 'keyword') return /^关键词报表_\d{8}_\d{6}$/u;
+  if (kind === 'audience') return /^人群报表_\d{8}_\d{6}$/u;
+  return /^营销场景报表_\d{8}_\d{6}$/u;
 }
 
 /** 错误信息要给出「现场长什么样」：前几条任务名 + 它们的日期范围。 */

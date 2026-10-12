@@ -36,10 +36,13 @@ import { buildAlimamaUrl } from './date-picker.mjs';
 // —— 2026-10-05 改成候选集，理由见 judgeFetchCandidates 的文件头。
 import {
   describeStale, judgeFetchCandidates, judgeResume, judgeSubmitOutcome,
-  ledgerScope, pendingFor, readLedger, recordConsumedAll, recordSubmitted, staleFor, writeLedger,
+  ledgerScope, pendingFor, pendingForKind, readLedger, recordConsumedAll, recordSubmitted, staleFor, writeLedger, taskPatternForKind,
 } from './promotion-task-ledger.mjs';
+import { KEYWORD_TASK_RE, KEYWORD_ZIP_RE, AUDIENCE_TASK_RE, AUDIENCE_ZIP_RE } from './promotion-daily-report-core.mjs';
 
 const ALIMAMA_LIST_URL = 'https://one.alimama.com/index.html#!/report/download-list';
+const taskPattern = (args) => args.reportKind ? (args.reportKind === 'keyword' ? KEYWORD_TASK_RE : AUDIENCE_TASK_RE) : PROMOTION_TASK_PATTERN;
+const zipPattern = (args) => args.reportKind ? (args.reportKind === 'keyword' ? KEYWORD_ZIP_RE : AUDIENCE_ZIP_RE) : PROMOTION_ZIP_PATTERN;
 
 // 台账默认落在仓库根的 runtime/ —— 与 alert-throttle.json 同一个位置：它俩都是**跨轮状态**，
 // 不是某一轮的产物，所以不放 evidence/（那里按约定是「只读的历史证据」，不做活输入）。
@@ -420,7 +423,7 @@ async function locateDownloadReportReady(args, targetId, { attempts = 3 } = {}) 
  */
 async function readTaskRows(args, targetId) {
   const read = await evalOn(args, targetId, `(() => {
-    const pattern = ${PROMOTION_TASK_PATTERN.toString()};
+    const pattern = ${taskPattern(args).toString()};
     const rangePattern = /(\\d{4}-\\d{2}-\\d{2})\\s*至\\s*(\\d{4}-\\d{2}-\\d{2})/;
     const leaves = [...document.querySelectorAll('*')]
       .filter((el) => el.children.length === 0 && pattern.test(el.textContent.trim()));
@@ -570,7 +573,7 @@ async function phaseSubmit(args, targetId) {
   // 0) 先看「下载任务管理」：这一目标日是不是已经提交过、只是没取。
   //    放在点击之前是刻意的 —— 判在点击之前，才谈得上「不产生第二次副作用」，有顺序判据钉着。
   const listBefore = await openTaskList(args, targetId);
-  const resume = judgeResume({ ledger: readLedger(ledgerFile), date: args.date, shop, list: listBefore });
+  const resume = judgeResume({ ledger: readLedger(ledgerFile), date: args.date, shop, list: listBefore, kind: args.reportKind ?? 'promotion' });
   const staleNote = describeStale(resume.stale);
   if (staleNote) console.log(`[submit] 注意：${staleNote}`);
   if (resume.action === 'block') throw new Error(`提交前核对未通过：${resume.reason}`);
@@ -591,7 +594,7 @@ async function phaseSubmit(args, targetId) {
       + ' ⇒ 不往台账里记一笔来路不明的任务（记了就等于替下一轮编了一个判据）');
   }
   writeLedger(ledgerFile, recordSubmitted(readLedger(ledgerFile), {
-    date: args.date, shop, taskName: observed.taskName, proxy: args.proxy, at: new Date().toISOString(),
+    date: args.date, shop, taskName: observed.taskName, proxy: args.proxy, kind: args.reportKind ?? 'promotion', at: new Date().toISOString(),
   }));
   console.log(`[submit] promotionTaskName = ${observed.taskName}（${observed.reason}；台账已记：${ledgerFile}）`);
   console.log('[submit] 下一步：等它「生成成功」后跑 --phase fetch（提示语里说数据量大时最长 10 分钟）');
@@ -684,7 +687,7 @@ export async function waitForDownloadEntry(args, targetId, wanted, deps = {}) {
 async function phaseFetch(args, targetId) {
   const ledgerFile = args.ledger ?? DEFAULT_LEDGER_FILE;
   const shop = ledgerScope(args);
-  const before = listDownloads(args.downloads, PROMOTION_ZIP_PATTERN).map((entry) => entry.name);
+  const before = listDownloads(args.downloads, zipPattern(args)).map((entry) => entry.name);
   console.log(`[fetch] 下载任务管理｜已有 zip ${before.length} 个｜目录 ${args.downloads}`);
   const rows = await openTaskList(args, targetId);
   console.log(`[fetch] 列表读到 ${rows.length} 条任务（目标日按「日期范围」列认，不按任务名认）`);
@@ -695,7 +698,7 @@ async function phaseFetch(args, targetId) {
   // 候选**可以不止一条**：同一目标日补提交过就会有两条，它们数据等价（判据在 judgeFetchCandidates）。
   const staleNote = describeStale(staleFor(readLedger(ledgerFile), { date: args.date, shop }));
   if (staleNote) console.log(`[fetch] 注意：${staleNote}`);
-  const decision = judgeFetchCandidates({ ledger: readLedger(ledgerFile), date: args.date, shop, rows, explicit: args.task });
+  const decision = judgeFetchCandidates({ ledger: readLedger(ledgerFile), date: args.date, shop, rows, explicit: args.task, kind: args.reportKind ?? 'promotion' });
   if (!decision.ok) throw new Error(`取件前核对未通过：${decision.reason}`);
   console.log(`[fetch] ${decision.reason}`);
 
@@ -723,7 +726,9 @@ async function phaseFetch(args, targetId) {
   // 补过一次之后那里会有 ≥2 笔（提交段与补提交段各记一笔），再进来就知道该停了。
   // 用台账而不是新加一个内存标记：它是**跨轮状态**，重跑同一目标日时这个上限仍然成立
   // （否则「重跑一次」就成了「再补一次」，当天会在平台上堆出一串任务）。
-  const pending = pendingFor(readLedger(ledgerFile), { date: args.date, shop });
+  const pending = args.reportKind
+    ? pendingForKind(readLedger(ledgerFile), { date: args.date, shop, kind: args.reportKind })
+    : pendingFor(readLedger(ledgerFile), { date: args.date, shop });
   if (pending.length > 1) {
     throw new Error(`这一目标日已有 ${pending.length} 笔未取任务（说明补提交过了），候选仍全部取不到：${exhausted}`
       + ' ⇒ 停手。再生成一条不会变好（业务方口径：这是**位置性**的坏任务，同一天再加也还是坏）——'
@@ -738,13 +743,13 @@ async function phaseFetch(args, targetId) {
       + ' ⇒ 不往台账里记一笔来路不明的任务（记了就等于替下一轮编了一个判据）');
   }
   writeLedger(ledgerFile, recordSubmitted(readLedger(ledgerFile), {
-    date: args.date, shop, taskName: observed.taskName, proxy: args.proxy, at: new Date().toISOString(),
+    date: args.date, shop, taskName: observed.taskName, proxy: args.proxy, kind: args.reportKind ?? 'promotion', at: new Date().toISOString(),
   }));
   console.log(`[fetch] 补提交成功：${observed.taskName}（${observed.reason}；台账已记）`);
 
   const rows2 = await openTaskList(args, targetId);
   console.log(`[fetch] 补提交后重读列表：${rows2.length} 条`);
-  const second = judgeFetchCandidates({ ledger: readLedger(ledgerFile), date: args.date, shop, rows: rows2 });
+  const second = judgeFetchCandidates({ ledger: readLedger(ledgerFile), date: args.date, shop, rows: rows2, kind: args.reportKind ?? 'promotion' });
   if (!second.ok) throw new Error(`补提交后仍核不到目标日的候选：${second.reason}`);
   console.log(`[fetch] ${second.reason}`);
   const retry = await tryCandidates(args, targetId, second.taskNames, before);
@@ -920,9 +925,9 @@ async function fetchCandidate(args, targetId, wanted, before, row, candidates) {
     const deadline = Date.now() + args.timeoutMs;
     while (Date.now() < deadline) {
       await delay(3000);
-      const fresh = newEntries(before, listDownloads(args.downloads, PROMOTION_ZIP_PATTERN).map((entry) => entry.name));
+      const fresh = newEntries(before, listDownloads(args.downloads, zipPattern(args)).map((entry) => entry.name));
       if (fresh.length) {
-        const newest = pickNewest(listDownloads(args.downloads, PROMOTION_ZIP_PATTERN)
+        const newest = pickNewest(listDownloads(args.downloads, zipPattern(args))
           .filter((entry) => fresh.includes(entry.name)));
         // 落盘的那一份必须是**这一目标日的候选之一** —— 页面上「下载」按钮并没有「下载哪一条」
         // 的显式表述（靠的是哪一行被激活），万一落到别的任务上，就要在这里抓住，而不是拿一份错的
@@ -941,7 +946,7 @@ async function fetchCandidate(args, targetId, wanted, before, row, candidates) {
         // 用 recordConsumedAll 而不是 recordConsumed：同一目标日补提交出来的那几条**数据等价**，
         // 取到一条就说明这一天的数据到手了；只标那一条会让兄弟记录一直挂着，下一轮再点一次同一份数据。
         writeLedger(ledgerFile, recordConsumedAll(readLedger(ledgerFile), {
-          date: args.date, shop, taskName: wanted, at: new Date().toISOString(),
+          date: args.date, shop, taskName: wanted, kind: args.reportKind ?? 'promotion', at: new Date().toISOString(),
         }));
         console.log(`[fetch] 台账已标为已取：${args.date} 的 ${wanted}（该目标日全部未取记录一起结清）`);
         return { ok: true, name: newest.name, path: path.join(args.downloads, newest.name) };
@@ -1012,6 +1017,9 @@ async function selectTargetRow(args, targetId, taskName, firstRow) {
 async function main() {
   const args = parseCollectArgs(process.argv.slice(2),
     { phases: ['submit', 'fetch'], flags: ['--locate-only'] });
+  if (args.reportKind && !['keyword', 'audience'].includes(args.reportKind)) throw new Error('--report-kind must be keyword|audience');
+  if (args.reportKind && !args.shopKey) throw new Error('--report-kind requires --shop-key <store key>');
+  if (args.reportKind) args.expectShop = args.shopKey;
   args.proxy = args.proxy ?? `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
   args.downloads = path.resolve(args.downloads ?? defaultDownloadsDir());
   const targetId = await findAlimamaPage(args);

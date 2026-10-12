@@ -55,6 +55,14 @@ navigate 当刷新」（三家店被确认判据误杀）、一处告警口径�
   全链写入（证据 `evidence/batches-2026-10-11/b1/`）。真重载那处修复对**已启动**的驱动进程无效
   （node 启动即加载模块），故 10-12 那轮里 09:22 起的续跑仍跑旧码；真假两可的真机验收要等下一轮
   新起的驱动。
+- **补齐（2026-10-12 追加提交）**：`ef629d0`（10-10「fix: stabilize promotion daily report collection」）
+  是一次半提交 —— 消费侧进了 git、供给侧四件没进，导致 1.8.1 起 `HEAD` 上推广链
+  `import { pendingForKind }` 链接期即 `SyntaxError`（干净 clone 不可运行；CI 10-11 run 38135519746
+  的日报链 job 里白纸黑字）。本批把供给侧四件落库：`promotion-task-ledger.mjs`（`pendingForKind`/
+  `taskPatternForKind` 导出＋kind 穿参＋`REPORT_TASK_PATTERN` 放宽到三类任务名）、`collect-core.mjs`
+  （`--report-kind` 参数解析）、`collect-promotion-report.mjs`（keyword/audience 模式与校验）、
+  `promotion-task-ledger.test.mjs`（kind 隔离用例）。逐字核对过与 `ef629d0` 消费侧严格配套、无夹带；
+  定向组 544/544。
 
 ## [1.8.5] - 2026-10-11
 

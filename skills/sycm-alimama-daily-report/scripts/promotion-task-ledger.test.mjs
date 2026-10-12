@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   LEDGER_VERSION, describeStale, emptyLedger, judgeFetchCandidates, judgeResume, judgeSubmitOutcome,
-  ledgerScope, parseLedger, pendingFor, readLedger, recordConsumed, recordConsumedAll, recordSubmitted,
+  ledgerScope, parseLedger, pendingFor, pendingForKind, readLedger, recordConsumed, recordConsumedAll, recordSubmitted, taskPatternForKind,
   staleFor, writeLedger,
 } from './promotion-task-ledger.mjs';
 
@@ -39,6 +39,22 @@ test('台账解析：坏掉的台账一律抛，绝不当成空台账', () => {
   const ok = parseLedger(JSON.stringify(ledgerWith(pendingRecord(T1))));
   assert.equal(ok.records.length, 1);
   assert.equal(ok.records[0].taskName, T1);
+});
+
+test('公共任务台账可记录并隔离营销、关键词、人群任务', () => {
+  const keyword = '关键词报表_20261010_180156';
+  const audience = '人群报表_20261010_180300';
+  const ledger = recordSubmitted(recordSubmitted(emptyLedger(), {
+    date: DATE, shop: SHOP, taskName: keyword, kind: 'keyword',
+  }), { date: DATE, shop: SHOP, taskName: audience, kind: 'audience' });
+  assert.equal(parseLedger(JSON.stringify(ledger)).records.length, 2);
+  assert.equal(judgeResume({ ledger, date: DATE, shop: SHOP, list: [keyword, audience], kind: 'keyword' }).taskName, keyword);
+  assert.equal(judgeResume({ ledger, date: DATE, shop: SHOP, list: [keyword, audience], kind: 'audience' }).taskName, audience);
+  assert.equal(judgeResume({ ledger, date: DATE, shop: SHOP, list: [keyword, audience], kind: 'promotion' }).action, 'submit');
+  assert.equal(pendingForKind(ledger, { date: DATE, shop: SHOP, kind: 'keyword' }).length, 1);
+  assert.deepEqual(judgeFetchCandidates({ ledger, date: DATE, shop: SHOP, kind: 'keyword', rows: [{name: keyword,rangeStart: DATE,rangeEnd: DATE}] }).taskNames, [keyword]);
+  assert.equal(taskPatternForKind('audience').test(audience), true);
+  assert.equal(taskPatternForKind('promotion').test(T1), true);
 });
 
 test('读台账：文件不存在＝还没记过；文件在但读坏了＝抛', () => {
