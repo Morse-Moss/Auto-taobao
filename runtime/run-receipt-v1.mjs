@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
+import { isValidCodeFingerprintShape } from './code-fingerprint.mjs';
+
 /**
  * 统一运行回执（run-receipt-v1）——见 docs/ops/SYSTEM-ARCHITECTURE-OPTIMIZATION-EXECUTION-SPEC-2026-10-10.md §6。
  *
@@ -48,12 +50,15 @@ function assertIn(values, value, label) {
 }
 
 /** 构造 spec §6.2 最小结构回执骨架，execution 初始 RUNNING，finishedAt 留待 finalize。 */
-export function createRunReceipt({ workflow, workflowVersion, targetDate, mode, batchSize, runId }) {
+export function createRunReceipt({ workflow, workflowVersion, targetDate, mode, batchSize, runId, codeFingerprint = null }) {
   if (!workflow || typeof workflow !== 'string') throw new Error(`invalid workflow.id: ${JSON.stringify(workflow)}`);
   if (!workflowVersion || !SEMVER_RE.test(workflowVersion)) throw new Error(`invalid workflow.version: ${JSON.stringify(workflowVersion)}`);
   if (!ISO_DATE_RE.test(String(targetDate ?? ''))) throw new Error(`invalid targetDate: ${JSON.stringify(targetDate)}`);
   if (mode !== 'dry-run' && mode !== 'apply') throw new Error(`invalid mode: ${JSON.stringify(mode)}`);
   if (!Number.isInteger(batchSize) || batchSize <= 0) throw new Error(`invalid batchSize: ${JSON.stringify(batchSize)}`);
+  if (codeFingerprint !== null && !isValidCodeFingerprintShape(codeFingerprint)) {
+    throw new Error(`invalid codeFingerprint: must be { gitHead, dirtyCount, dirtySha256 } (each nullable), got ${JSON.stringify(codeFingerprint)}`);
+  }
   const finalRunId = runId || `${workflow}-${targetDate}-${crypto.randomUUID()}`;
   if (typeof finalRunId !== 'string' || !finalRunId) throw new Error(`invalid runId: ${JSON.stringify(runId)}`);
   return {
@@ -63,6 +68,9 @@ export function createRunReceipt({ workflow, workflowVersion, targetDate, mode, 
     targetDate,
     mode,
     batchSize,
+    // 2026-10-12 加（HEAD-VS-WORKTREE 事故止血第 3 件）：起跑那一刻的代码版本指纹。
+    // 缺省 null（采集失败或调用方没接），校验层允许 null 也允许合法形状，不许别的。
+    codeFingerprint,
     execution: 'RUNNING',
     batches: [],
     shops: [],
@@ -184,6 +192,12 @@ export function validateRunReceipt(receipt) {
   if (!Array.isArray(receipt.batches)) fail('batches must be an array');
   if (!Array.isArray(receipt.shops)) fail('shops must be an array');
   if (!Array.isArray(receipt.artifacts)) fail('artifacts must be an array');
+  // 代码版本指纹（2026-10-12 加）：缺省 null 合法（老回执/采集失败），但给了就必须是合法形状
+  // —— 半截指纹（比如只有 dirtyCount 没有 gitHead）比没有更误导，当场点名拒绝。
+  if (receipt.codeFingerprint !== null && receipt.codeFingerprint !== undefined
+    && !isValidCodeFingerprintShape(receipt.codeFingerprint)) {
+    fail(`codeFingerprint must be null or { gitHead, dirtyCount, dirtySha256 } (each nullable), got ${JSON.stringify(receipt.codeFingerprint)}`);
+  }
   // shops 元素类型（2026-10-10 对抗审查 A3 加）：全字符串 —— 混进对象/数字要在点名处被拒，
   // 否则「失败店清单」里一个非字符串元素会静默穿透到收信人那端。
   receipt.shops?.forEach?.((shop, si) => {

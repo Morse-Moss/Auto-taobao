@@ -73,11 +73,12 @@ import {
 export function buildRunReceiptFromRounds({
   entry, targetDate, mode, batchSize, runId = null,
   rounds = [], blocked = null, holdEnabled = false, holdStatus = null, hardFail = 0,
-  batchesArtifact = null,
+  batchesArtifact = null, codeFingerprint = null,
 } = {}) {
   const receipt = createRunReceipt({
     workflow: entry.id, workflowVersion: entry.version, targetDate, mode, batchSize,
     ...(runId ? { runId } : {}),
+    ...(codeFingerprint ? { codeFingerprint } : {}),
   });
 
   const recovered = holdStatus === HOLD_EXIT.RESUMED_OK;

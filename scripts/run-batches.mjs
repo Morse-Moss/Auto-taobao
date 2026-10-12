@@ -76,6 +76,7 @@ import { acquireWorkflowLock, WORKFLOW_LOCK_NAME } from '../runtime/workflow-loc
 // 这里只负责喂 plain data（含逐店 unfixable 名单与 batches.json 的 size/sha256）与落盘。
 import { buildRunReceiptFromRounds } from '../runtime/batch-rounds-receipt.mjs';
 import { writeRunReceipt } from '../runtime/run-receipt-v1.mjs';
+import { collectCodeFingerprint } from '../runtime/code-fingerprint.mjs';
 import { buildRunLayout, ensureRunLayout, resolveRunRoot, writeManifest } from '../runtime/run-root.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
 
@@ -750,6 +751,9 @@ async function main(argv) {
       })),
       blocked, holdEnabled: options.hold, holdStatus, hardFail,
       batchesArtifact,
+      // 代码版本指纹（2026-10-12 加）：记下「这轮跑的是哪个 HEAD＋多脏的工作区」，
+      // 事后对账不用再靠进程创建时间倒推（HEAD-VS-WORKTREE 事故的教训）。
+      codeFingerprint: collectCodeFingerprint({ cwd: REPO_ROOT }),
     });
     const runRoot = resolveRunRoot({ cliRoot: options.evidenceRoot, envRoot: process.env.SYCM_RUN_ROOT });
     const layout = ensureRunLayout(buildRunLayout(runRoot, entry.id, date, receipt.runId));

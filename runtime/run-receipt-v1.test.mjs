@@ -281,3 +281,32 @@ test.after(() => {
     // 清理失败不影响测试结论；tmpdir 由系统回收。
   }
 });
+
+// ---------------------------------------------------------------------------
+// codeFingerprint（2026-10-12 加，HEAD-VS-WORKTREE 事故止血第 3 件）
+// 钉三件事：① 合法指纹原样入回执且过校验；② 半截/坏形状当场点名拒绝
+// （半截指纹比没有更误导）；③ 缺省 null 合法（老回执与采集失败不许被罚）。
+// ---------------------------------------------------------------------------
+test('codeFingerprint：合法指纹原样入回执并通过校验', () => {
+  const fp = { gitHead: 'a'.repeat(40), dirtyCount: 3, dirtySha256: 'b'.repeat(64) };
+  const receipt = makeReceipt({ codeFingerprint: fp });
+  assert.deepEqual(receipt.codeFingerprint, fp);
+  assert.deepEqual(validateRunReceipt(receipt), []);
+});
+
+test('codeFingerprint：半截/坏形状在 create 与 validate 两处都要被点名拒绝', () => {
+  assert.throws(() => makeReceipt({ codeFingerprint: { gitHead: 'a'.repeat(40) } }),
+    /invalid codeFingerprint/u, '缺 dirtyCount/dirtySha256 的半截指纹要在构造期拒');
+  assert.throws(() => makeReceipt({ codeFingerprint: { gitHead: 'short', dirtyCount: 0, dirtySha256: null } }),
+    /invalid codeFingerprint/u, 'gitHead 不是 40 hex 要拒');
+  const bad = makeReceipt();
+  bad.codeFingerprint = { gitHead: null, dirtyCount: -1, dirtySha256: null };
+  const errors = validateRunReceipt(bad);
+  assert.ok(errors.some((e) => e.includes('codeFingerprint')), '负数 dirtyCount 要在校验期被点名');
+});
+
+test('codeFingerprint：缺省 null 合法（采集失败/老回执不许被罚）', () => {
+  const receipt = makeReceipt();
+  assert.equal(receipt.codeFingerprint, null);
+  assert.deepEqual(validateRunReceipt(receipt), []);
+});
