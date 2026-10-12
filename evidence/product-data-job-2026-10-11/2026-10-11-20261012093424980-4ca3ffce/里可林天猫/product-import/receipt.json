@@ -1,0 +1,12 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-11_2026-10-11 (9).xls",
+  "shop": "里可林天猫",
+  "date": "2026-10-11",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 26,
+  "existingRows": 1914,
+  "plannedRows": 0,
+  "mode": "dry-run",
+  "manifest": []
+}
