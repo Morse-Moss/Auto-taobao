@@ -15,6 +15,47 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.6] - 2026-10-12
+
+2026-10-12 07:00 推广定时轮真机事故（跑在 1.8.5 上）的三处根修。**这一版不引入任何新能力** ——
+全是「上一版本该跑通、真机一跑就现形」的补丁：一处漏 import（整轮秒死、零写入）、一处把「同 URL
+navigate 当刷新」（三家店被确认判据误杀）、一处告警口径写死「日报」（推广链驻留却发「日报补跑
+失败」）。三处互不相干，可分别 revert。
+
+### 改了什么
+
+- `run-promotion-daily-report.mjs` 补 `reusablePromotionTask` 进 core import（**整轮秒死的根因**）：
+  该名在第 167 行被调用、而 import 名单里没有它。`node --check` 只查语法，查不出「引用了没导入的
+  名字」，于是 5 家店在真机上全部秒死在 `reusablePromotionTask is not defined`、零任务提交零写入。
+  配套加**接线守卫**用例：runner 引用到的每个 core 导出，必须出现在它自己那条 core import 名单里。
+- 列表页的「刷新」改成**真重载**：确认循环最后一步原来是 `await navigate(args.proxy, target, LIST_URL)`，
+  而目标 URL 与当前 URL 相同时 navigate 是**同文档导航、浏览器什么都不做** ⇒ 列表永远停在提交后
+  第一次渲染那一版，晚几秒才生成成功的任务一条都读不到 ⇒ 判「15 分钟未确认」⇒ 整家店误杀
+  （10-12 盖文淘宝/盖文天猫/科塔淘宝 三家实证；平台侧任务其实早就生成成功）。改为复用项目已有的
+  `collect-core.createPageReloader`（自带等就绪，免得重载打断 eval 上下文后读到空白页、把「还没
+  渲染」误判成「控件不存在」），并抽出 `openFreshTaskList = navigate + 真重载`，统一三处「读列表」
+  点（复用基线、提交前、提交后确认）—— 少走这一步的代价不是「慢」：基线读旧会漏掉已有同日任务、
+  多做一次重复提交；确认读旧会误杀整家店。
+- 驻留/续跑告警口径按**发起驻留的那条流程**取：新增 `noticeLabelsForWorkflow()`，`closeOutNotice`/
+  `resumeResultNotice` 的标题/对象/任务/`capability` 按 workflow 换词，缺省日报口径逐字不变；
+  `alertId` 一并分域（原来两条链共用 `daily-hold-*`）。顺带修掉一个真 bug：同一天里推广的驻留会
+  把自己 6 小时去重窗里的**日报**那条（指纹同为 `HOLD_TIMEOUT`）压掉 —— 一条真正要人看的消息
+  一个字都发不出去。调用侧 `hold-and-resume.mjs` 两处 dispatch 传 `...noticeLabelsForWorkflow(args.workflow)`。
+- 测试：`promotion-daily-report-core.test.mjs` 新增 4 用例（接线守卫、确认循环真重载回归钉、真重载器
+  行为、`openFreshTaskList` 三处读取点＋裸 navigate 计数），并把既有的 10-11 用例「提交入口按业务日
+  确认生成成功任务」的钉法同步改到 `openFreshTaskList`；`hold-and-resume-plan.test.mjs` 新增 3 用例
+  （口径函数缺省不变、推广口径与编号分域、调用侧源码级接线守卫）。
+
+### 验证
+
+- 定向组：`promotion-daily-report-core.test.mjs` 19/19、`hold-and-resume-plan.test.mjs` 44/44，全绿。
+- 突变验证（离线，均以 sha256 还原核对逐字节一致）：去掉 `reusablePromotionTask` 的 import ⇒ 接线
+  守卫红且点名该符号；把确认循环那句 `reloadListPage` 换回 `navigate` ⇒ 回归钉红。
+- **真机部分验证**：漏 import 已由 08:29 手动重跑证明消除 —— 里可林淘宝全链 5 步写入飞书、网林天猫
+  全链写入（证据 `evidence/batches-2026-10-11/b1/`）。真重载那处修复对**已启动**的驱动进程无效
+  （node 启动即加载模块），故 10-12 那轮里 09:22 起的续跑仍跑旧码；真假两可的真机验收要等下一轮
+  新起的驱动。
+
 ## [1.8.5] - 2026-10-11
 
 三链对齐 P1 绞杀者迁移第 3 步：推广链并写统一字段＋写入时校验。**旧字段一个不动**

@@ -6,14 +6,14 @@ import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import { pendingForKind, readLedger } from './promotion-task-ledger.mjs';
 import { judgeResume, recordSubmitted, writeLedger } from './promotion-task-ledger.mjs';
 import {
-  alimamaIdentityExpression, assertMemberIdentity, defaultDownloadsDir,
+  alimamaIdentityExpression, assertMemberIdentity, createPageReloader, defaultDownloadsDir,
   listDownloads, newEntries,
 } from './collect-core.mjs';
 import {
   buildKeywordReportUrl, KEYWORD_TASK_RE, KEYWORD_ZIP_RE,
   validateKeywordReportState, validateAudienceReportState, buildAudienceReportUrl,
   AUDIENCE_TASK_RE, AUDIENCE_ZIP_RE,
-  confirmSubmittedTask,
+  confirmSubmittedTask, reusablePromotionTask,
 } from './promotion-daily-report-core.mjs';
 
 const LIST_URL = 'https://one.alimama.com/index.html#!/report/download-list';
@@ -33,6 +33,19 @@ async function evalOn(proxy, target, expression) {
 async function navigate(proxy, target, url) {
   await request(proxy, `/navigate?target=${encodeURIComponent(target)}&url=${encodeURIComponent(url)}`, { method: 'POST', body: '' });
   await sleep(2500);
+}
+// 列表页的「真刷新」。为什么不能拿 `navigate` 顶：目标 URL 与当前 URL 相同时它是同文档导航，
+// 浏览器什么都不做 —— 交付里只能用真重载（`collect-core.createPageReloader`，自带「等就绪」，
+// 免得重载打断 eval 上下文后读到空白页、把「还没渲染」误判成「没有这个控件」）。
+const reloadListPage = createPageReloader({ evalOn, delay: sleep, log: (message) => console.log(message) });
+// 「要读列表，就先走这一下」——三个读取点（复用基线、提交前、提交后确认）统一用它。
+// 为什么要两步：`navigate` 只在**路由真的变了**时才有效（从报表路由回列表路由时它是真导航），
+// 而当前页已经在列表路由时它是空操作 —— 于是读到的会是上一次渲染的快照。少了这一步的代价不是
+// 「慢」：复用基线读旧 ⇒ 漏掉已有同日任务、多做一次重复提交；确认读旧 ⇒ 把已生成成功的任务判成
+// 「15 分钟未确认」、整家店误杀（2026-10-12 三家店实证）。
+async function openFreshTaskList(proxy, target) {
+  await navigate(proxy, target, LIST_URL);
+  await reloadListPage(proxy, target);
 }
 async function findPage(proxy) {
   const targets = await request(proxy, '/targets');
@@ -111,7 +124,7 @@ async function submit(proxy, target, kind) {
   throw new Error('关键词报表下载弹窗未出现可点击的确定');
 }
 async function fetchTask(proxy, target, task, downloads, kind) {
-  await navigate(proxy, target, LIST_URL);
+  await openFreshTaskList(proxy, target);
   const rowExpression = `(() => { const n=[...document.querySelectorAll('td,th,span,div')].find((e)=>(e.textContent||'').trim()===${JSON.stringify(task)}&&e.children.length===0); const tr=n?.closest('tr'); const box=tr?.querySelector('input[type=checkbox]'); if(!box)return null; const r=box.getBoundingClientRect(); return {center:[Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)],checked:box.checked}; })()`;
   let row = null;
   for (let attempt = 0; attempt < 15 && !row; attempt += 1) { row = await evalOn(proxy, target, rowExpression); if (!row) await sleep(1000); }
@@ -150,7 +163,8 @@ async function main() {
   }
   // 任务基线必须从下载任务管理读取；当前页可能是 SYCM 或阿里妈妈首页，在那里读到空数组
   // 会让复用判据（reusable/resume）漏掉已有同日任务、从而多做一次不必要的重复提交。
-  await navigate(args.proxy, target, LIST_URL);
+  // 而「页签就在列表路由」时只 navigate 是读不到真值的（同 URL ＝ 空操作）⇒ 基线也必须真刷新。
+  await openFreshTaskList(args.proxy, target);
   const beforeRows = await readTaskRows(args.proxy, target, args.kind);
   if (!args.shop) throw new Error('--shop is required for shared task-ledger recovery');
   const ledger = readLedger(args.ledger);
@@ -176,7 +190,7 @@ async function main() {
   console.log(`[校验] 阿里妈妈${args.kind === 'audience' ? '人群' : '关键词'}报表 / ${args.date} / 维度设置 ✓`);
   if (args.locateOnly) return;
   await submit(args.proxy, target, args.kind);
-  await navigate(args.proxy, target, LIST_URL);
+  await openFreshTaskList(args.proxy, target);
   // ㊶（2026-10-11）根修：确认判据从「列表差集恰好新增 1 条」改为「按业务日定位生成成功任务」。
   // 差集判据在 10-10 晚、10-11 早两轮实测里一律读不到刚提交的新任务（提交本身全部成功、任务
   // 生成成功，只是进入列表视图要平台异步刷新，原 20×4s 等待窗不够，最长实测 13 分钟才可见）。
@@ -197,7 +211,14 @@ async function main() {
       throw new Error(`${args.kind === 'audience' ? '人群' : '关键词'}报表提交后 ${Math.round(args.submitConfirmTimeoutMs / 60000)} 分钟内未在下载列表确认到业务日 ${args.date} 的生成成功任务；最后一次读到的任务行：${JSON.stringify(lastRows)}`);
     }
     await sleep(5000);
-    await navigate(args.proxy, target, LIST_URL);
+    // 2026-10-12 真机误杀实证（本循环原来的最后一步是 `await navigate(args.proxy, target, LIST_URL)`）：
+    // 目标 URL 与当前 URL **相同**时 navigate 是「同文档导航」，浏览器什么都不做 —— 这条规矩
+    // 本项目 09-21 就在 `date-picker` 里踩过、`collect-core.createPageReloader` 的注释里也写着。
+    // 后果不是「慢一点」，而是**列表永远停在提交后第一次渲染那一版**：晚几秒才变成生成成功的任务
+    // 一条都读不到 ⇒ 判「15 分钟内未确认」⇒ 这家店被误杀。10-12 那轮盖文淘宝（人群 083624）、
+    // 盖文天猫（关键词 085140）、科塔淘宝 三家都是这么被判死的，平台侧任务其实早就生成成功。
+    // 换成**真重载**才谈得上「再读一次列表」（重载会打断 eval 上下文，reloader 自带等就绪）。
+    await reloadListPage(args.proxy, target);
   }
   }
   }

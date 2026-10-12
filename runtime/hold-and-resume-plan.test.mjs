@@ -16,7 +16,7 @@ import { HOLD_EXIT, buildHoldResumeArgs, buildJobPlan, shouldRunStep } from './d
 import {
   DEFAULT_HOLD_HOURS, DEFAULT_POLL_SECONDS, POLL_SECONDS_BY_CAUSE, PROBE_STATES, RESUME_FLOOR_BY_CAUSE,
   buildBatchResumeArgv, buildResumeArgv, closeOutNotice, deadlineReachedAt, formatClock, holdDecision,
-  holdStatusLine, judgeProbes, minutesOfDay, parseClock, pollSecondsFor, resolveHoldDeadline,
+  holdStatusLine, judgeProbes, minutesOfDay, noticeLabelsForWorkflow, parseClock, pollSecondsFor, resolveHoldDeadline,
   resumeFloorFor, resumeResultNotice, resumeStageListFrom, unfixableShopsOf,
 } from './hold-and-resume-plan.mjs';
 import { batchRoundBlockOf } from './batch-plan.mjs';
@@ -678,4 +678,47 @@ test('接线：入口真的把「哪一天」与「证据目录」交给计划�
   assert.equal(buildHoldResumeArgs({ date: '2026-09-25' }).length > 0, true);
   assert.throws(() => buildHoldResumeArgs({}), /需要 date/u);
   assert.throws(() => buildHoldResumeArgs({ date: '2026-09-25', notify: true, notifyPrint: true }), /互斥/u);
+});
+
+// ---------------------------------------------------------------------------
+// 告警口径按流程走（2026-10-12 真机事故：推广链驻留，发出去的却是「日报补跑失败」）
+// ---------------------------------------------------------------------------
+test('口径函数：缺省仍是日报逐字不变，只有明确给 promotion-daily 才换词', () => {
+  assert.deepEqual(noticeLabelsForWorkflow(null), { scope: 'daily', noun: '日报', capability: '各店铺日报' });
+  assert.deepEqual(noticeLabelsForWorkflow(undefined), { scope: 'daily', noun: '日报', capability: '各店铺日报' });
+  assert.deepEqual(noticeLabelsForWorkflow('daily-report'), { scope: 'daily', noun: '日报', capability: '各店铺日报' });
+  assert.deepEqual(noticeLabelsForWorkflow('promotion-daily'), { scope: 'promotion', noun: '推广日报', capability: '推广日报' });
+});
+
+test('推广链驻留/续跑的两条通知说「推广日报」，且编号与日报那条不同（同一天不许互压去重窗）', () => {
+  const labels = noticeLabelsForWorkflow('promotion-daily');
+  const promotionResume = resumeResultNotice({ date: '2026-10-11', shops: ['里可林淘宝'], ok: false, detail: '退出码 1', ...labels });
+  const promotionHold = closeOutNotice({ date: '2026-10-11', subjects: ['里可林淘宝'], until: '11:07', ...labels });
+  const dailyResume = resumeResultNotice({ date: '2026-10-11', shops: ['里可林淘宝'], ok: false, detail: '退出码 1' });
+  const dailyHold = closeOutNotice({ date: '2026-10-11', subjects: ['里可林淘宝'], until: '11:07' });
+  assert.match(promotionResume.title, /推广日报自动续跑没成功/u);
+  assert.equal(promotionResume.source.capability, '推广日报');
+  assert.equal(promotionResume.source.targetLabel, '推广日报一轮');
+  assert.equal(promotionHold.title.includes('推广日报'), true);
+  // 同一天里两条链各自要人看，编号必须分域：共用 `daily-hold-*` 时，后到的那条会被前一条
+  // 6 小时去重窗压掉（指纹同为 HOLD_TIMEOUT），而它恰恰是唯一提醒人的那条。
+  assert.equal(promotionResume.alertId, 'promotion-hold-resume-failed-20261011');
+  assert.equal(promotionHold.alertId, 'promotion-hold-20261011');
+  assert.notEqual(promotionResume.alertId, dailyResume.alertId);
+  assert.notEqual(promotionHold.alertId, dailyHold.alertId);
+  // 缺省口径一字不变（回归钉）：日报那条仍是原来的编号与措辞。
+  assert.equal(dailyResume.alertId, 'daily-hold-resume-failed-20261011');
+  assert.equal(dailyHold.alertId, 'daily-hold-20261011');
+  assert.match(dailyResume.title, /的日报自动续跑没成功/u);
+});
+
+test('调用侧真传了口径：hold-and-resume.mjs 两处 dispatch 都按 --workflow 取名（源码级接线守卫）', async () => {
+  const fs = await import('node:fs/promises');
+  const source = await fs.readFile('./scripts/hold-and-resume.mjs', 'utf8');
+  assert.match(source, /dispatch\(resumeResultNotice\(\{[\s\S]*?noticeLabelsForWorkflow\(args\.workflow\)/u,
+    '续跑结果那条没按 --workflow 取口径 ⇒ 推广链驻留又会发成「日报」');
+  assert.match(source, /dispatch\(closeOutNotice\(\{[\s\S]*?noticeLabelsForWorkflow\(args\.workflow\)/u,
+    '到点收尾那条没按 --workflow 取口径');
+  assert.equal([...source.matchAll(/noticeLabelsForWorkflow\(args\.workflow\)/gu)].length, 2,
+    '两条通知都要传，漏一条等于那条还在说日报');
 });

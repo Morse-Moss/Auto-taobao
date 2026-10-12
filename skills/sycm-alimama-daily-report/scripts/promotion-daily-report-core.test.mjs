@@ -26,7 +26,11 @@ test('提交入口按业务日确认生成成功任务（㊶ 根修：不再用�
   const source = await import('node:fs/promises').then((fs) => fs.readFile('./skills/sycm-alimama-daily-report/scripts/run-promotion-daily-report.mjs', 'utf8'));
   assert.match(source, /confirmSubmittedTask\(\{ rows, kind: args\.kind, date: args\.date \}\)/u);
   assert.match(source, /submitConfirmTimeoutMs/u);
-  assert.match(source, /await navigate\(args\.proxy, target, LIST_URL\);\s+const beforeRows = await readTaskRows/u);
+  // 2026-10-12 改钉：原来这条钉的是 `await navigate(args.proxy, target, LIST_URL);` 紧接基线读取 ——
+  // 而那句话在「页签已在列表路由」时是空操作（同 URL ＝ 同文档导航），基线读到的会是旧快照，
+  // 复用判据就会漏掉已有同日任务、多做一次重复提交。现在读列表前统一走 `openFreshTaskList`
+  //（= 落路由 + 真重载），所以钉法跟着改成「基线读取的前一步是它」。
+  assert.match(source, /await openFreshTaskList\(args\.proxy, target\);\s+const beforeRows = await readTaskRows/u);
   // 差集判据已在 10-10/10-11 两轮实测里被证伪（提交成功但一律读不到新任务），不许回流。
   assert.doesNotMatch(source, /uniqueNew(?:Keyword|Audience)Task\(before, after\)/u);
 });
@@ -149,4 +153,65 @@ test('允许关键词推广当天无数据，保留表头作为合法空报表',
   assert.equal(validateExportRows(headers, [], {
     kind: '关键词', expectedColumns: [75, 77], date: '2026-09-30', allowEmpty: true,
   }).rows, 0);
+});
+
+// 2026-10-12 真机事故（1.8.5，07:00 推广轮）：runner 在 167 行调了 `reusablePromotionTask`，
+// 而 core 的 import 块里没导这个名字 ⇒ 5 家店全部秒死在 `reusablePromotionTask is not defined`。
+// `node --check` 只查语法、查不出「引用了没导入的名字」，所以这条必须由用例钉住：
+// 凡是 runner 引用到的 core 导出，就必须出现在它自己那条 core import 的名单里。
+test('runner 引用到的每个 core 导出都已导入（防 ReferenceError 只在真机才现形）', async () => {
+  const fs = await import('node:fs/promises');
+  const core = await import('./promotion-daily-report-core.mjs');
+  const source = await fs.readFile('./skills/sycm-alimama-daily-report/scripts/run-promotion-daily-report.mjs', 'utf8');
+  const importMatch = source.match(/import\s*\{([^{}]*)\}\s*from\s*'\.\/promotion-daily-report-core\.mjs'/u);
+  assert.ok(importMatch, 'runner 必须有一条从 promotion-daily-report-core.mjs 导入的 import');
+  const imported = new Set(importMatch[1].split(',').map((name) => name.trim()).filter(Boolean));
+  const body = source.replace(importMatch[0], '');
+  const missing = Object.keys(core).filter((name) => new RegExp(`\\b${name}\\b`, 'u').test(body) && !imported.has(name));
+  assert.deepEqual(missing, [], `runner 用了但没 import 的 core 导出：${missing.join('、')}`);
+});
+
+// 2026-10-12 真机误杀（同日三家店）：确认循环原来拿 `navigate(LIST_URL)` 当「刷新列表」，而目标 URL
+// 与当前 URL 相同时 navigate 是**同文档导航**、浏览器什么都不做 ⇒ 列表永远停在提交后第一次渲染那
+// 一版，晚几秒才生成成功的任务一条都读不到 ⇒ 判「15 分钟内未确认」。那条规矩本项目早就写过
+//（`collect-core.createPageReloader` 注释、`date-picker` 09-21 教训），所以这里钉死：刷新只能是真重载。
+test('确认循环的刷新必须走真重载，不许拿 navigate 顶（同 URL navigate 是空操作）', async () => {
+  const fs = await import('node:fs/promises');
+  const source = await fs.readFile('./skills/sycm-alimama-daily-report/scripts/run-promotion-daily-report.mjs', 'utf8');
+  assert.match(source, /createPageReloader/u, 'runner 必须用上项目已有的真重载器');
+  assert.match(source, /const reloadListPage = createPageReloader\(\{ evalOn, delay: sleep/u,
+    '重载器必须接本文件的 evalOn 与 sleep（接错等于没重载）');
+  assert.match(source, /await sleep\(5000\);\s*\/\/[\s\S]*?await reloadListPage\(args\.proxy, target\);/u,
+    '确认循环里 sleep 之后必须是对列表页的真重载');
+  // 回归钉：原来那句「同 URL navigate」不许回流。
+  assert.doesNotMatch(source, /await sleep\(5000\);\s*\n\s*await navigate\(args\.proxy, target, LIST_URL\);/u,
+    '又用 navigate 到同一个 URL 当刷新了 —— 那是空操作，会再次误杀整家店');
+});
+
+test('对面认不认：真重载器确实会调 location.reload 并等到页面就绪才回', async () => {
+  const { createPageReloader, reloadPageExpression } = await import('./collect-core.mjs');
+  assert.match(reloadPageExpression(), /window\.location\.reload\(\)/u);
+  const seen = [];
+  const reloader = createPageReloader({
+    evalOn: async (_proxy, _target, expression) => {
+      seen.push(expression);
+      return expression.includes('readyState') ? { readyState: 'complete', title: '下载任务管理' } : { reloading: true };
+    },
+    delay: async () => {},
+    log: () => {},
+  });
+  assert.equal(await reloader('http://127.0.0.1:19043', 'target-1'), true);
+  assert.match(seen[0], /window\.location\.reload\(\)/u, '第一步必须是重载');
+  assert.ok(seen.some((expression) => expression.includes('readyState')), '重载后必须等就绪，否则会读到空白页');
+});
+
+test('读列表前的刷新统一走 openFreshTaskList（navigate + 真重载），三处读取点都不许退回裸 navigate', async () => {
+  const fs = await import('node:fs/promises');
+  const source = await fs.readFile('./skills/sycm-alimama-daily-report/scripts/run-promotion-daily-report.mjs', 'utf8');
+  assert.match(source, /async function openFreshTaskList\(proxy, target\) \{\s*await navigate\(proxy, target, LIST_URL\);\s*await reloadListPage\(proxy, target\);/u,
+    'openFreshTaskList 必须 = 落路由 + 真重载');
+  assert.equal([...source.matchAll(/await openFreshTaskList\(/gu)].length, 3,
+    '复用基线、提交后确认、取件三处读取点都要走它');
+  const bare = [...source.matchAll(/await navigate\((?:args\.)?proxy, target, LIST_URL\);/gu)].length;
+  assert.equal(bare, 1, `只允许 openFreshTaskList 内部那一句（同 URL 时 navigate 是空操作）；实际 ${bare} 处`);
 });

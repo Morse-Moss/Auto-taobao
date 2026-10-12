@@ -36,6 +36,7 @@ import { pagesMatching } from '../runtime/target-url-match.mjs';
 import {
   DEFAULT_HOLD_HOURS, STATUS_EVERY_MS, buildBatchResumeArgv, buildResumeArgv, closeOutNotice,
   deadlineReachedAt, holdDecision, holdStatusLine, judgeProbes, pollSecondsFor, resolveHoldDeadline,
+  noticeLabelsForWorkflow,
   resumeFloorFor, resumeResultNotice, resumeStageListFrom, unfixableShopsOf,
 } from '../runtime/hold-and-resume-plan.mjs';
 import { overlayScanExpression } from '../skills/sycm-alimama-daily-report/scripts/collect-core.mjs';
@@ -386,6 +387,7 @@ async function main() {
       dispatch(resumeResultNotice({
         date: args.date, shops: decision.resumeShops ?? shopKeys, ok,
         detail: ok ? null : `退出码 ${status}`, createdAt: new Date(),
+        ...noticeLabelsForWorkflow(args.workflow),
       }));
       if (args.release) releaseShops(decision.resumeShops ?? []);
       process.exitCode = ok ? HOLD_EXIT.RESUMED_OK : HOLD_EXIT.RESUME_FAILED;
@@ -398,6 +400,7 @@ async function main() {
       dispatch(closeOutNotice({
         date: args.date, subjects: subjects.length ? subjects : shopKeys, until: args.untilText,
         createdAt: new Date(),
+        ...noticeLabelsForWorkflow(args.workflow),
       }));
       if (args.release) releaseShops(decision.resumeShops ?? []);
       process.exitCode = HOLD_EXIT.TIMED_OUT;
