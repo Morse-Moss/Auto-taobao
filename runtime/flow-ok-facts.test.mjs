@@ -7,7 +7,7 @@
 // 跨店去重取并集**——求和会把同一个事实数 N 遍（那天底单被说成 36 行，实际 8 行）。
 
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
@@ -137,6 +137,13 @@ describe('dailyOkFacts：两张表都是全店共一张 ⇒ 跨店按 recordId �
       writeJson(path.join(`${base}-rerun2`, 'independent-readback.json'), {
         tables: { source: { onDateCount: 1, onDateCountIsLowerBound: false, onDateRows: [row('recA')] } },
       });
+      // CI 的快速文件系统上，两次写可能落在同一毫秒 ⇒ latestReadback 的「严格大于」
+      // 会出现平手、而先写到者（base，0 行）胜出。显式钉 mtime（base 旧、rerun2 新），
+      // 让这条用例验的是「按 mtime 取新」这个口径本身，而不是碰时间的运气
+      // （2026-10-13 CI 实证：不钉就是偶发红）。
+      const now = Date.now() / 1000;
+      utimesSync(path.join(base, 'independent-readback.json'), now - 60, now - 60);
+      utimesSync(path.join(`${base}-rerun2`, 'independent-readback.json'), now, now);
       const facts = dailyOkFacts({ root, date: '2026-10-12', shops: ['盖文淘宝'] });
       assert.deepEqual(facts.tables, [{ name: '底单', rows: 1 }]);
     } finally {
