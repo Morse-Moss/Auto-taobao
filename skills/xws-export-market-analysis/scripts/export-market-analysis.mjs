@@ -2013,7 +2013,7 @@ function runPythonValidation(options, csv, xlsx, requireImages) {
   const args = [...prefix, path.join(SCRIPT_DIR, "validate-output.py"), "--csv", csv.path];
   if (xlsx) args.push("--xlsx", xlsx.path);
   if (requireImages) args.push("--require-images");
-  const result = spawnSync(python, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 2 * 1024 * 1024, timeout: 120_000 });
+  const result = spawnSync(python, args, { env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" }, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 2 * 1024 * 1024, timeout: 120_000 });
   if (result.error) throw new Error(`output validator failed to run: ${result.error.message}`);
   const output = String(result.stdout || "").trim();
   let parsed;

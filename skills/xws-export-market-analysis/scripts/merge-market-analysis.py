@@ -5,12 +5,23 @@ import csv
 import io
 import json
 import os
+import sys
 import tempfile
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.drawing.image import Image as WorksheetImage
 from PIL import Image
+
+
+# 2026-10-13：同 validate-output.py —— 非中文区域的 Windows 上 stdout 默认 cp1252，
+# print(json.dumps(..., ensure_ascii=False)) 打中文会抛 UnicodeEncodeError；调用方一律
+# 按 UTF-8 读我们的输出，这里显式钉住输出编码。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
 
 
 def read_csv(path):

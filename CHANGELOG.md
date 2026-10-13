@@ -15,6 +15,54 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.14] - 2026-10-13
+
+修 CI 那个「3 小时被 cancel」的长杆作业。根因一句话：**Python 在非中文区域的 Windows 上
+按 cp1252 输出，打不出中文**；校验器一崩，CLI 就把候选判成失败，然后一直等到 60 分钟的下载
+deadline —— 每个这样的用例烧掉一小时，整条作业在 180 分钟超时被 cancel。
+
+### 改了什么
+
+- `skills/xws-export-market-analysis/scripts/validate-output.py` 与 `merge-market-analysis.py`：
+  模块头部把 `sys.stdout` / `sys.stderr` 显式 `reconfigure(encoding="utf-8")`（`import sys` 同步补上）。
+  这两处末尾都用 `print(json.dumps(..., ensure_ascii=False))` 输出含中文的 JSON。
+- `skills/xws-export-market-analysis/scripts/export-market-analysis.mjs` 的 `runPythonValidation`：
+  补上 `env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" }`。
+  同一个 skill 里 `merge-market-analysis.mjs:139` 与 `run-adaptive-export.mjs` 早就这么写了，
+  只有这一个调用点漏了 —— 同一类缺陷活了第三处。
+- 新增 `skills/xws-export-market-analysis/tests/validator-encoding.test.mjs`：把「子进程被强制成
+  cp1252 时，两个校验器仍必须吐出可解析、中文未被降级的 JSON」钉成判据。
+
+### 为什么改
+
+CI（GitHub 的 windows runner，英文区域）上三条红，全是同一个编码问题：
+
+| CI 用例 | 现象 | 修复前耗时 |
+| --- | --- | --- |
+| #136 rebuilds an XLSX with images ... | python 校验器直接抛 `'charmap' codec can't encode characters` | 1.3 s（快红）|
+| #154 full flow retries a missed start click ... | 校验器崩 ⇒ 候选被拒 ⇒ 等到 deadline | **3635 s** |
+| #155 adopts a complete live result ... | 同上 | **3602 s** |
+
+链路是：下载采纳路径（`export-market-analysis.mjs:1813` 的 `runPythonValidation`）抛错以后被
+`waitForDownload`（`:1720`）记为 `EXPORT_CANDIDATE_REJECTED` 并继续轮询，直到模块常量
+`EXPORT_SETTLEMENT_MS = 60 * 60 * 1000` 耗尽才报 "Timed out waiting for .csv download"。
+本机（默认 utf-8）不复现，所以本地一直绿 —— 这是**只在非 utf-8 默认编码的 Windows 上才发作**
+的真缺陷，客户的机器若是英文区域同样会中招，不只是 CI 的事。
+
+### 验证到什么程度
+
+- **本地复现（决定性）**：把父进程环境设成 `PYTHONIOENCODING=cp1252` 即可复刻 runner。
+  修复前 `node --test .../merge-market-analysis.test.mjs` 的 #3 报出与 CI 逐字相同的
+  `'charmap' codec can't encode characters`；修复后同一命令 **3/3 过**。
+- 两条长挂用例在**有界**子进程里重跑（同样 cp1252）：#154 **44.6 s 通过**（原 3635 s）、
+  #155 **11.2 s 通过**（原 3602 s）。
+- 整个 skill 套件（`run-test-suite.mjs skills --skill=xws-export-market-analysis`，cp1252）：
+  **206 / 206 / 0**，1268.3 秒。新增的 `validator-encoding.test.mjs` 在套件启动后才创建，
+  未进这一轮，单独跑 **2/2 过**。
+- 突变验证：把两个脚本的 `reconfigure` 改成 no-op ⇒ `validator-encoding.test.mjs` 两条
+  **按预期红**并打出 `charmap` 错；还原后 sha256 逐字节一致、复跑全绿。
+- 真机判据＝push 后的 CI run（见提交）。
+
 ## [1.8.13] - 2026-10-13
 
 把「调度时间」在文档里对齐到宿主实际登记值：推广 07:00 / 商品 10:00 / **日报 11:00**。

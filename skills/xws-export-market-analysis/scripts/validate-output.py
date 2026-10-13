@@ -5,6 +5,7 @@ import csv
 import hashlib
 import io
 import json
+import sys
 import tempfile
 import zipfile
 from decimal import Decimal, InvalidOperation
@@ -13,6 +14,19 @@ from pathlib import Path
 from openpyxl import Workbook, load_workbook
 from openpyxl.drawing.image import Image as WorksheetImage
 from PIL import Image
+
+
+# 2026-10-13：CI（GitHub 的 windows runner，非中文区域）上 stdout 默认是 cp1252，
+# 末尾几处 print(json.dumps(..., ensure_ascii=False)) 一遇到中文就抛 UnicodeEncodeError
+# （'charmap' codec can't encode characters ...）。CLI 于是把这次校验判成失败、候选被拒，
+# 一直等到 60 分钟下载 deadline 才报 "Timed out waiting for .csv download" —— 也就是那条
+# 「3 小时被 cancel」的长杆作业。所有调用方（Node 侧 spawnSync/spawn）都以 UTF-8 读我们的
+# 输出，所以这里把 stdout/stderr 显式钉成 UTF-8，不再依赖运行环境的默认编码。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
 
 
 HEADERS = [
