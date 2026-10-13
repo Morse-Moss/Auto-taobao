@@ -1,0 +1,80 @@
+{
+  "mode": "apply",
+  "date": "2026-10-12",
+  "shop": "盖文淘宝",
+  "profile": "kcne",
+  "tables": {
+    "keyword": {
+      "tableId": "tblbSGMO2apOKuAZ",
+      "beforeRows": 1651,
+      "plannedRows": 22,
+      "skippedRows": 0,
+      "recordIds": [
+        "reczz28MfvCqkIB6",
+        "reczz28MfvCqijio",
+        "reczz28MfvCqjBJ1",
+        "reczz28MfvCqgd3E",
+        "reczz28MfvCqjinf",
+        "reczz28MfvCqh8GE",
+        "reczz28MfvCqhxsx",
+        "reczz28MfvCqhcRI",
+        "reczz28MfvCqiahF",
+        "reczz28MfvCqk5ig",
+        "reczz28MfvCqjjVO",
+        "reczz28MfvCqjIpe",
+        "reczz28MfvCqhLuZ",
+        "reczz28MfvCqgS7k",
+        "reczz28MfvCqi3FN",
+        "reczz28MfvCqhgRF",
+        "reczz28MfvCqgXF6",
+        "reczz28MfvCqhGEF",
+        "reczz28MfvCqiuQR",
+        "reczz28MfvCqjL86",
+        "reczz28MfvCqiDLU",
+        "reczz28MfvCqikJ8"
+      ],
+      "afterRows": 1673
+    },
+    "audience": {
+      "tableId": "tblyjD5058Mjbmcv",
+      "beforeRows": 1442,
+      "plannedRows": 18,
+      "skippedRows": 0,
+      "recordIds": [
+        "reczz28MfvSnBctK",
+        "reczz28MfvSnDZSb",
+        "reczz28MfvSnDQGk",
+        "reczz28MfvSnDn6L",
+        "reczz28MfvSnB5X0",
+        "reczz28MfvSnBybV",
+        "reczz28MfvSn9vxN",
+        "reczz28MfvSnCZ0F",
+        "reczz28MfvSnCCCA",
+        "reczz28MfvSnClhg",
+        "reczz28MfvSnCPvW",
+        "reczz28MfvSnDUOS",
+        "reczz28MfvSnDMTG",
+        "reczz28MfvSnDHrt",
+        "reczz28MfvSnAogT",
+        "reczz28MfvSnClml",
+        "reczz28MfvSnDfiY",
+        "reczz28MfvSnC0E4"
+      ],
+      "afterRows": 1460
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261013_070753.zip",
+      "csvName": "关键词报表_20261013_070753.csv",
+      "rows": 22,
+      "columns": 77
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261013_070818.zip",
+      "csvName": "人群报表_20261013_070818.csv",
+      "rows": 18,
+      "columns": 75
+    }
+  }
+}

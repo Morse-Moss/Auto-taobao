@@ -1,0 +1,220 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-12_2026-10-12 (4).xls",
+  "shop": "科塔淘宝",
+  "date": "2026-10-12",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 34,
+  "existingRows": 2057,
+  "plannedRows": 34,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "979725604879"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "684065559945"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "693005811111"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "696004439009"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "696005955159"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "740966020301"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "741343639206"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "741346591301"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "763838115770"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "764794215705"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "764798363045"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "774506252696"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "774513391992"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "835382217191"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "835556236871"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "907312974889"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "907565287913"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "907608207639"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "966736258939"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "966741886876"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "967422729815"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "967771709101"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "968035800449"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "980149022296"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "980882573522"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "981539656451"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "981545180389"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "1000557201429"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "1000560121460"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "1001284104332"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "1001288220039"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "1067453541327"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "1068399220031"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "科塔淘宝",
+      "productId": "1076811236588"
+    }
+  ],
+  "recordIds": [
+    "reczz28Mj4CEy1mK",
+    "reczz28Mj4CEyvfl",
+    "reczz28Mj4CEvQ3S",
+    "reczz28Mj4CExBp1",
+    "reczz28Mj4CEz7bA",
+    "reczz28Mj4CExjE7",
+    "reczz28Mj4CExj80",
+    "reczz28Mj4CExUqN",
+    "reczz28Mj4CEypHo",
+    "reczz28Mj4CEzDfL",
+    "reczz28Mj4CEzRH7",
+    "reczz28Mj4CEzGpv",
+    "reczz28Mj4CExARQ",
+    "reczz28Mj4CEz2GL",
+    "reczz28Mj4CEwI9F",
+    "reczz28Mj4CEy8QV",
+    "reczz28Mj4CEw2zF",
+    "reczz28Mj4CEvW9d",
+    "reczz28Mj4CEwWBy",
+    "reczz28Mj4CEyO4M",
+    "reczz28Mj4CExHyV",
+    "reczz28Mj4CEwFlF",
+    "reczz28Mj4CEyGNH",
+    "reczz28Mj4CEvbZ8",
+    "reczz28Mj4CEx921",
+    "reczz28Mj4CExYo7",
+    "reczz28Mj4CEw3ga",
+    "reczz28Mj4CExAN3",
+    "reczz28Mj4CEvKdi",
+    "reczz28Mj4CEvYmd",
+    "reczz28Mj4CExDCf",
+    "reczz28Mj4CEy3tN",
+    "reczz28Mj4CEzHBi",
+    "reczz28Mj4CEwMxI"
+  ],
+  "afterRows": 2091
+}

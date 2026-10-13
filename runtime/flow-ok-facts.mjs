@@ -39,19 +39,38 @@ function latestReadback(baseDir) {
   return best ? readJson(best.file) : null;
 }
 
+/** 一份回读里该日的行 ⇒ recordId 集合（没有 recordId 的老工件返回空集）。 */
+function onDateIds(rows) {
+  const ids = new Set();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (row && typeof row.recordId === 'string' && row.recordId) ids.add(row.recordId);
+  }
+  return ids;
+}
+
 /**
- * 日报链的完成事实：底单行数（各店回读命中数之和）与询单表行数（该日行数）。
+ * 日报链的完成事实：底单行数与询单表行数。
  *
- * 三个口径：
- *   ① 询单表是**按日期 × 店铺**一行 ⇒ 该日行数是「一天一张」的事实，任一家店的回读
- *      都能读到同一个数，所以取各家读数里的**最大值**（不是求和 —— 求和会翻 8 倍）；
- *   ② 任一回读的行集不齐（`onDateCountIsLowerBound`）⇒ 那个数字只是下界，
- *      **不计入**（宁少说一行，不把一个下界说成结论）；
- *   ③ 缺文件的店不计入：读不到 = 没有结论，不补 0。
+ * 两张表都是**全店共一张**（底单 = 「总数据来源底单」tblIuAX4nPc1zDOO；询单表按
+ * 日期 × 店铺一行）：一家店的回读读到的是**整张表在该日的行**，不是「我自己写的
+ * 那一行」。2026-10-12 实测：8 家店的底单 onDateCount 是 1/3/4/8/7/6/2/5（求和 36），
+ * 而盖文淘宝那份的 3 行里躺着的是里可林家居 / 盖文全卫定制 / 网林家居旗舰店 ——
+ * 各家回读时页面模型加载进度不同（loadedRows 不同），**同一个事实被数了 8 遍**，
+ * 每遍数量还不一样。求和（1.8.11 的口径）于是把「底单 8 行」说成了「36 行」。
+ *
+ * 所以口径是**跨店按 recordId 去重取并集**（不是求和、也不是取任一份）：
+ *   ① 并集 = 真的行数（2026-10-12 实测并集 8，与「一家一日一行」一致）；
+ *      询单表同理（它也是共表，8 家的读数都是 8、行是同一批 recordId）；
+ *   ② 老工件没有 onDateRows ⇒ 退回 onDateCount 取**最大值**（不求和）；
+ *   ③ 任一回读的行集不齐（`onDateCountIsLowerBound`）⇒ 那个数字只是下界，
+ *      **整家不计入**（宁少说一行，不把一个下界说成结论）；
+ *   ④ 缺文件的店不计入：读不到 = 没有结论，不补 0。
  */
 export function dailyOkFacts({ root, date, shops = [] }) {
-  const source = { name: '底单', rows: 0 };
-  let inquiryRows = 0;
+  const sourceIds = new Set();
+  const inquiryIds = new Set();
+  let sourceFallback = 0;
+  let inquiryFallback = 0;
   const missing = [];
   for (const shop of shops) {
     const readback = latestReadback(path.join(root, 'evidence', `daily-report-${date}-${shop}`));
@@ -59,15 +78,27 @@ export function dailyOkFacts({ root, date, shops = [] }) {
     const sourceTable = tables?.source ?? null;
     const inquiryTable = tables?.inquiry ?? null;
     if (!sourceTable || sourceTable.onDateCountIsLowerBound) { missing.push(shop); continue; }
-    source.rows += Number(sourceTable.onDateCount) || 0;
+    const ids = onDateIds(sourceTable.onDateRows);
+    if (ids.size > 0) {
+      for (const id of ids) sourceIds.add(id);
+    } else {
+      sourceFallback = Math.max(sourceFallback, Number(sourceTable.onDateCount) || 0);
+    }
     if (inquiryTable && !inquiryTable.onDateCountIsLowerBound) {
-      inquiryRows = Math.max(inquiryRows, Number(inquiryTable.onDateCount) || 0);
+      const inquiryShopIds = onDateIds(inquiryTable.onDateRows);
+      if (inquiryShopIds.size > 0) {
+        for (const id of inquiryShopIds) inquiryIds.add(id);
+      } else {
+        inquiryFallback = Math.max(inquiryFallback, Number(inquiryTable.onDateCount) || 0);
+      }
     }
   }
+  const sourceRows = sourceIds.size > 0 ? sourceIds.size : sourceFallback;
+  const inquiryRows = inquiryIds.size > 0 ? inquiryIds.size : inquiryFallback;
   // 只列**真有行**的表：0 行的「底单 0 行」出现在完成通知里是一句误导
   // （收信人会以为表建了、只是空的）。一家都没读到时 tables 就是空数组。
   const tables = [];
-  if (source.rows > 0) tables.push({ name: source.name, rows: source.rows });
+  if (sourceRows > 0) tables.push({ name: '底单', rows: sourceRows });
   if (inquiryRows > 0) tables.push({ name: '询单表', rows: inquiryRows });
   return { tables, missing };
 }

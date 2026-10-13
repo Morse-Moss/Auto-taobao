@@ -1,0 +1,304 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-12_2026-10-12 (2).xls",
+  "shop": "盖文淘宝",
+  "date": "2026-10-12",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 48,
+  "existingRows": 1955,
+  "plannedRows": 48,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "637215495170"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "815585711050"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "1084458662063"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "611953366240"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "616449116020"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "616624637544"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "617149791732"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "617153827745"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "617982840884"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "622212119184"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "628635582165"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "645211502294"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "675197745387"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "712966491973"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "786176778070"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "786814978897"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "786847120778"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "786858641200"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "812627436494"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "815994451049"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "815998071581"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "816409756097"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "816422480230"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "816717464107"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "839907129192"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "934584303052"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "934597255966"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "935028090106"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "935051778879"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "935582057711"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "936116836826"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "941483727985"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "941522803652"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "968959471679"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "968966515823"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "970166693668"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "970170969213"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "970791708993"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "984629587967"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "989306354714"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "990735880893"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "999955737494"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "1067013817808"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "1067978768943"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "1067982912308"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "1082409557282"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "1083422716340"
+    },
+    {
+      "date": "2026-10-12",
+      "shop": "盖文淘宝",
+      "productId": "1086538660377"
+    }
+  ],
+  "recordIds": [
+    "reczz28Mj3C44VHe",
+    "reczz28Mj3C44O9d",
+    "reczz28Mj3C44VFI",
+    "reczz28Mj3C43e1F",
+    "reczz28Mj3C430ub",
+    "reczz28Mj3C43kD7",
+    "reczz28Mj3C43zw6",
+    "reczz28Mj3C4421T",
+    "reczz28Mj3C450CP",
+    "reczz28Mj3C44JgE",
+    "reczz28Mj3C46ssP",
+    "reczz28Mj3C45dZ7",
+    "reczz28Mj3C43tXr",
+    "reczz28Mj3C44TtT",
+    "reczz28Mj3C42uQ1",
+    "reczz28Mj3C46WDk",
+    "reczz28Mj3C45XRb",
+    "reczz28Mj3C439Io",
+    "reczz28Mj3C43JAE",
+    "reczz28Mj3C443wi",
+    "reczz28Mj3C46MGr",
+    "reczz28Mj3C46p3B",
+    "reczz28Mj3C43f6j",
+    "reczz28Mj3C46Urx",
+    "reczz28Mj3C44FkL",
+    "reczz28Mj3C44SYJ",
+    "reczz28Mj3C44g8n",
+    "reczz28Mj3C46c6a",
+    "reczz28Mj3C46mC0",
+    "reczz28Mj3C43zfk",
+    "reczz28Mj3C46NtO",
+    "reczz28Mj3C45bgu",
+    "reczz28Mj3C439pt",
+    "reczz28Mj3C44hvY",
+    "reczz28Mj3C44mI4",
+    "reczz28Mj3C45Mym",
+    "reczz28Mj3C46bDU",
+    "reczz28Mj3C43asQ",
+    "reczz28Mj3C46XjO",
+    "reczz28Mj3C45yUR",
+    "reczz28Mj3C444eg",
+    "reczz28Mj3C45j7N",
+    "reczz28Mj3C44qLH",
+    "reczz28Mj3C46b3j",
+    "reczz28Mj3C42upw",
+    "reczz28Mj3C43fvo",
+    "reczz28Mj3C45S8R",
+    "reczz28Mj3C45d7d"
+  ],
+  "afterRows": 2003
+}
