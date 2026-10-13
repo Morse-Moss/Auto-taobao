@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  TECH_BLOCK_TITLE,
+  TITLE_BY_TYPE,
   createTokenProvider,
   deliverAlert,
   formatLocalTime,
@@ -96,6 +98,63 @@ test('renderAlertText 对 INFO 用「提示」而不是「需要处理」', () =
   const rendered = renderAlertText({ type: 'XWS_LOGIN_RESOLVED', severity: 'INFO' });
   assert.ok(rendered.startsWith('【提示】'));
   assert.match(rendered, /小旺神登录已恢复/u);
+});
+
+// ---------------------------------------------------------------------------
+// 两段式告警：业务第一段 + 「以下是给技术同学的定位信息」（2026-10-13）
+// ---------------------------------------------------------------------------
+
+test('技术定位块：固定小标题 + 5 键白名单，且只在整个块有值时才输出', () => {
+  const rendered = renderAlertText({
+    ...sampleAlert,
+    tech: {
+      runId: '2026-10-12-x', evidenceDir: 'evidence/daily-job-2026-10-12',
+      stage: '05-shop-report', exitCode: '1', version: '1.8.11',
+    },
+  });
+  assert.match(rendered, /以下是给技术同学的定位信息/u, '第二段必须有固定小标题（业务段不许混进技术串）');
+  assert.match(rendered, /runId：2026-10-12-x/u);
+  assert.match(rendered, /证据目录：evidence\/daily-job-2026-10-12/u);
+  assert.match(rendered, /机读阶段名：05-shop-report/u);
+  assert.match(rendered, /退出码：1/u);
+  assert.match(rendered, /版本：1\.8\.11/u);
+});
+
+test('技术定位块：小标题出现在业务第一段**之后**（顺序反了就成了前言不搭后语）', () => {
+  const rendered = renderAlertText({
+    ...sampleAlert, tech: { runId: 'r1' },
+  });
+  assert.equal(rendered.indexOf('小旺神登录已失效') < rendered.indexOf('以下是给技术同学的定位信息'), true);
+  assert.equal(rendered.indexOf('告警编号') < rendered.indexOf('以下是给技术同学的定位信息'), true);
+});
+
+test('技术定位块：一个值都没有时不挂空段（调用方据此不挂这个块）', () => {
+  const rendered = renderAlertText({ ...sampleAlert, tech: {} });
+  assert.doesNotMatch(rendered, /以下是给技术同学的定位信息/u);
+  const renderedNull = renderAlertText({ ...sampleAlert, tech: null });
+  assert.doesNotMatch(renderedNull, /以下是给技术同学的定位信息/u);
+  // 完成通知（成功）根本不带 tech ⇒ 也没有第二段。
+  const okNotice = renderAlertText({ severity: 'INFO', title: '【店铺日报】采集完成（统计日 2026-10-12）', reason: '8/8 家全部收齐。', action: '无需处理。' });
+  assert.doesNotMatch(okNotice, /以下是给技术同学的定位信息/u);
+});
+
+test('技术定位块：缺值的键整行不输出（空值不是零）', () => {
+  const rendered = renderAlertText({ ...sampleAlert, tech: { runId: 'r1', stage: '  ' } });
+  assert.match(rendered, /runId：r1/u);
+  assert.doesNotMatch(rendered, /机读阶段名/u);
+});
+
+test('新增的四个 type 在通用标题表里也有兜底（漏给 title 也不至于露出机读码）', () => {
+  // 统一预警机制（2026-10-13）新增的四个 type。调用方**都必须**给带流程名与日期的
+  // 显式标题（那张表给不出日期）；这里钉的是第二道防线：万一漏了，收信人看到的
+  // 是一句人话，而不是 DAILY_ROUND_FAILED 这种机读码。
+  assert.equal(TITLE_BY_TYPE.DAILY_ROUND_FAILED, '店铺日报没收完');
+  assert.equal(TITLE_BY_TYPE.DAILY_HOLD_TIMEOUT, '驻留等到截止仍没人处理');
+  assert.equal(TITLE_BY_TYPE.PROMOTION_ROUND_FAILED, '推广日报没收完');
+  assert.equal(TITLE_BY_TYPE.ROUND_RESOLVED, '之前的异常已恢复');
+  for (const type of Object.keys(TITLE_BY_TYPE)) {
+    assert.doesNotMatch(TITLE_BY_TYPE[type], /^[A-Z][A-Z0-9_]+$/u, `${type} 的兜底标题本身成了机读码`);
+  }
 });
 
 test('redactSensitive 遮住应用 ID、Bearer 与长令牌', () => {

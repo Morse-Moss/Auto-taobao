@@ -127,6 +127,21 @@ import { writeDownloadManifest } from '../../../runtime/daily-report-download-ma
 // 旧字段一个不动（repairRequest.noActionRequired 等原样保留）——绞杀者迁移的并写期，
 // 消费方继续读旧路径，观察期满两轮后再切（草案第四节）。
 import { UNIFIED_SUMMARY_VERSION, validateSummary } from '../../../runtime/unified-summary-schema.mjs';
+// 全仓统一提醒词表（2026-10-13）。三张 daily 词表 + 两个闭集**住在那里**，本文件转出：
+// 判据只能有一个落点，而 skills 下的模块不许被 runtime 反向依赖 ⇒ 数据住 runtime。
+// `remediation-table.test.mjs` / `repair-actions.test.mjs` / `scripts/hold-and-resume.mjs`
+// 从本文件 import `FAILURE_CAUSES` / `HUMAN_REQUIRED_CAUSES` 的写法一行不用改。
+import {
+  DAILY_ACTION_BY_CAUSE,
+  DAILY_FAILURE_CAUSES,
+  DAILY_HUMAN_REQUIRED_CAUSES,
+  DAILY_REASON_BY_CAUSE,
+  DAILY_RESUME_SENTENCE,
+  buildTechBlock,
+} from '../../../runtime/alert-copy.mjs';
+// 版本号（技术定位块的「版本」那一行）。读不到时 `currentVersion()` 自己给一句
+// 「读不到版本号文件」的说明，不猜、不编一个号出来。
+import { currentVersion } from '../../../runtime/version.mjs';
 // 「失败 → 该试哪些修复动作」的候选菜单（2026-09-29）。它把感知层的事实与分诊表的方向
 // 合成一份**给 agent 看的修复请求单**（97-repair-request.json）：
 //   分诊表说「这一类值得重试」，但没说「重试之前要对页面做什么」；本模块补上那一半。
@@ -214,33 +229,15 @@ export function stageNumber(key, stage) {
 
 // ---------------------------------------------------------------- 出错了怎么叫人
 
-/**
- * 结论的闭集。分类函数、原因表、下一步表必须覆盖**同一个**集合 —— 漏一条的症状是
- * 「这个结论悄悄退化成兜底文案」，而告警照发不误、看起来一切正常。
- */
-export const FAILURE_CAUSES = Object.freeze(
-  ['ROUND_BLOCKED', 'ROUND_LOGIN_WALL', 'SHOP_BLOCKED', 'NEEDS_LOGIN', 'DUPLICATE_TARGET', 'SHOP_FUNC_NO_PERMISSION',
-    'PAGE_OBSTRUCTED', 'SOURCE_NO_ROW_FOR_DATE', 'INQUIRY_ROW_MISSING', 'STAGE_FAILED'],
-);
+// 结论闭集与「需要人」子集：**唯一定义在 `runtime/alert-copy.mjs`**（2026-10-13 全仓统一词表）。
+// 这里保留同名导出，只为不改既有调用方的 import（链内部用的是 alert-copy 那一份）。
+export const FAILURE_CAUSES = DAILY_FAILURE_CAUSES;
+export const HUMAN_REQUIRED_CAUSES = DAILY_HUMAN_REQUIRED_CAUSES;
 
-/**
- * **逐店**的失败里，哪几种只有人动手才能解除（驻留与自动续跑只对这几类开，其余照旧「跑完就结束」）。
- *
- * 为什么必须是一个具名常量而不是各调用方各写一份：驻留拿它决定「这一轮要不要一直活着」，
- * 写错方向的代价是**对称**的 —— 多算一类 ⇒ 每天早上把机器白挂几小时；少算一类 ⇒
- * 人到了现场而窗口已经被收走（2026-09-25、09-26 连着两天都是后者）。
- * 它是 `FAILURE_CAUSES` 的子集，由加载期那条互锁与用例一起钉住。
- *
- * 刻意不在里面：
- *   · `SHOP_FUNC_NO_PERMISSION` —— 要人去生意参谋把「店铺绩效」的订购找回来，不是浏览器里的事；
- *   · `DUPLICATE_TARGET` —— 不用做任何事（那天飞书里已经有数据）；
- *   · `SOURCE_NO_ROW_FOR_DATE`（2026-10-06 加）—— 同样**不用做任何事**：平台那一天没有这一行，
- *     重试/修页面/人去平台都变不出来。把它放进驻留等于每天早上白挂几小时等一个不存在的人；
- *   · `STAGE_FAILED` —— 兜底类，成因不明；对它开驻留等于「每天挂几小时等一个没人知道要不要人的东西」；
- *   · `ROUND_BLOCKED` —— 它**不是逐店**结论。整轮被挡要不要人由 `runtime/hold-and-resume-plan.mjs`
- *     的 `holdDecision` 单独判（那两种成因 —— 掉登录 / 页面真缺 —— 都只有人能解除，所以一律算需要人）。
- */
-export const HUMAN_REQUIRED_CAUSES = Object.freeze(['NEEDS_LOGIN', 'PAGE_OBSTRUCTED']);
+// 三张词表同样住在 alert-copy 的 daily 分支（一字未改地搬过去）。本地别名保持链内可读。
+const REASON_BY_CAUSE = DAILY_REASON_BY_CAUSE;
+const RESUME_SENTENCE = DAILY_RESUME_SENTENCE;
+const ACTION_BY_CAUSE = DAILY_ACTION_BY_CAUSE;
 
 /**
  * `--only` 的点名判据：**只此一处实现**。
@@ -806,141 +803,11 @@ export function readLoginPreflight(filePath) {
   }
 }
 
-// 收信人在这里看到的每一个词都要是「他明天还会看到的东西」：窗口标题（`运营叫法 · 日报采集窗口`）、
-// 飞书里那张表、生意参谋/阿里妈妈两个后台的中文页名。**不写**英文阶段名、不写我们的结论代号、
-// 不写「重试/自愈」这类没实现的行为（承诺兑现不了比不说更糟）。
-//
-// 2026-09-21 追加一条硬口径：**技术串不进业务消息**。起因是首次定时真跑发出去的那条消息 ——
-// 术语表全绿，正文里却带着 `evidence\multi-shop-2026-09-20`、一整条
-// `node …/run-multi-shop-day.mjs --date … --commit --notify`、机器名 `DESKTOP-…`、告警编号，
-// 业务人员照样看不懂。判据是「形状」不是「词表」（见 driver 的用例），
-// 技术信息一律留在驱动自己的 stdout 与 job.log 里 —— 那里才是给技术同学看的。
-const REASON_BY_CAUSE = Object.freeze({
-  ROUND_BLOCKED: '整轮没开跑：那个开着飞书「各店铺日报」的浏览器窗口里，页面不齐。',
-  // 2026-10-06 单列一类。它是 `ROUND_BLOCKED` 的**孪生形态**：现场看起来一模一样
-  // （第 0 步体检报「生意参谋工作页不在这个浏览器里」），但要做的事**相反** ——
-  // 这一类去开页面是白跑（开了也被平台送回登录页），要做的是登一次。
-  //
-  // 为什么不能并进 `NEEDS_LOGIN`：那个结论说的是「**这家店**自己的窗口掉登录」，
-  // 下一步写的是「打开这几家店各自的窗口、用这家店自己的账号登、别在别的窗口里登」——
-  // 而这里是**共用窗口**的商家号掉登录，是**一次**登录，店名指路会把人指到错的窗口上。
-  // 成因不同、要做的事不同 ⇒ 必须分开（同 SKILL `operator-alert-plain-language` §4）。
-  ROUND_LOGIN_WALL: '整轮没开跑：那个共用窗口自己掉登录了 —— 采集页面一打开就被平台送回登录页，'
-    + '所以这几家一起没跑起来。',
-  SHOP_BLOCKED: '这家店的专用窗口里页面不齐，所以这家店一步都没跑。',
-  // 2026-09-23 单列一类，因为它的下一步与「页面不齐」**相反**：掉登录时页面开几个都会被
-  // 平台送回登录页，叫人去开页面等于让他白跑一趟（这正是这条分类要治的那个形态）。
-  // 它**不由 shopFailureCause 产出** —— 它的判据不在 `summary` 里，而在跑前那一次只读体检的
-  // 结论里（`--login-preflight`）。所以它只可能出现在「结论文件确实读过」的时候。
-  NEEDS_LOGIN: '这家店的后台掉登录了 —— 采集页面一打开就被平台送回了登录页，开几个都一样，所以没跑成。',
-  DUPLICATE_TARGET: '这一天飞书里已经有数据了，脚本按「不许写第二遍」停住了。',
-  SHOP_FUNC_NO_PERMISSION: '这家店在生意参谋里的「店铺绩效」现在不在账号上（平台按店铺开通的一项），所以采集页面一打开就被平台送回首页，这一天的数据没进飞书。',
-  // 2026-09-26 加。为什么必须与兜底那句分开：兜底说的是「不需要你在浏览器里做什么」，
-  // 而这一类的下一步**就是要人去点一下**。字面上还得让收信人知道「那层不是他做错了什么」。
-  PAGE_OBSTRUCTED: '这家店的页面上弹出了一个盖住整页的活动弹窗，脚本按过 Esc、也按过「关闭」这一类按钮，都没能把它关掉，所以停在那儿没往下跑，这一天的数据没进飞书。',
-  // 2026-10-06 加。与兜底那句 STAGE_FAILED 的差别是**要不要打扰人**：兜底要人（成因不明），
-  // 这一条谁都不用动。所以它不能并进 FOR 兜底 —— 并进去就会「每天都为一件不存在的事叫人一次」，
-  // 而那正是把注意力磨没的方式（同 DUPLICATE_TARGET 那一类的理由）。
-  SOURCE_NO_ROW_FOR_DATE: '这家店在生意参谋里的「询单到付款」这一张表，这一天平台自己就没有出数据（表格显示「暂无数据」），'
-    + '所以「询单量 / 同层同行询单量」这两列这一天是空的，其余字段都写进去了。',
-  // 2026-10-07 加。与上面那一条是**相反**的一件事：这一个的数据采到了（底单那一行已经写进去），
-  // 只是飞书那张表里这一天的这一行**还没建出来**，没地方写。所以措辞必须与「平台没出数」分开 ——
-  // 混成一句的话，收信人会以为「这一天本来就没数」，而实际是「少建了一行、补上就好」。
-  INQUIRY_ROW_MISSING: '这一天的数据采集是好的（底单那一行已经写进飞书了），但「各店铺数据日报」那张表里'
-    + '这一天的这一行还没有建出来，所以「询单量 / 同层同行询单量」这两列没地方写。',
-  STAGE_FAILED: '这家店跑到一半停住了，这一天的数据没进飞书。',
-});
-
-// 下一步只写**收信人真能做**的，不写我们内部的排查动作（翻日志、跑命令）。
-//
-// 也**不写猜测的病因**：2026-09-21 那条把「最常见的是那个窗口的登录掉了」当成了既定原因，
-// 而现场是「生意参谋页面停在昨天的渲染上」—— 照着做的收信人白跑一趟浏览器去登录，问题不会好。
-// 成因不同、要做的事就不同（同 SKILL `operator-alert-plain-language` §4 的「结论判错」），
-// 所以宁可不给具体动作，也不给一个可能是错的。
-//
-// 2026-09-26 加：「做完不用回复、系统会自己继续」这句话**只在真的有驻留进程时才能说**。
-// 定时任务（`scripts/run-daily-job.mjs`）会在链因「需要人」失败后转入驻留并自动续跑；
-// 而手工直接跑这条链不会有驻留 ⇒ 那种情况下承诺「系统会自己继续」就是一句兑现不了的假话
-//（本仓纪律：文案承诺错了比不说更贵）。所以由调用方用 `--will-resume` 说了才算数。
-const RESUME_SENTENCE = Object.freeze({
-  PAGE_OBSTRUCTED: '关掉之后不用回复、也不用重跑：这一轮的窗口留在原地，系统会自己接着把这家店剩下的步骤跑完。',
-  NEEDS_LOGIN: '登录好之后不用回复、也不用重跑：这一轮的窗口留在原地，系统会自己接着把这家店剩下的步骤跑完。',
-  // 整轮被挡 ⇒ 续跑是**整轮重跑**（一批都没成，没有「剩下的步骤」可言），
-  // 所以这一句刻意不写「这家店」。
-  ROUND_LOGIN_WALL: '登录好之后不用回复、也不用重跑：系统会自己接着把这一轮的店铺重跑一遍。',
-});
-
-const ACTION_BY_CAUSE = Object.freeze({
-  ROUND_BLOCKED: () => '打开那个开着飞书「各店铺日报」的浏览器窗口，把这两页各开一个（只留一个，多开同样会报错）：'
-    + '生意参谋的「店铺」工作页、飞书「各店铺日报」底单页。开好后告诉技术同学重跑一次。',
-  // 指路只能指**业务人员看得见的东西**：那扇窗口里开着飞书「各店铺日报」那张表，
-  // 而这张表只在共用窗口里开着（各店自己的窗口没有它）⇒ 这句话能唯一定位到那扇窗口。
-  // ⚠️ 刻意**不写窗口标题**：共用窗口现在没有标识页（标识页机制只覆盖各店自己的窗口），
-  // 写一个任务栏上并不存在的标题，等于让收信人满地找不到。
-  // ⚠️ 也刻意不写机器名与 profile 路径：那是给技术同学的信息，业务人员拿它找不到窗口。
-  ROUND_LOGIN_WALL: (ctx) => '打开那扇开着飞书「各店铺日报」表格的浏览器窗口 —— 就是共用窗口，'
-    + '它里面开着「各店铺日报」这张表，各店自己的窗口里都没有这张表。'
-    + '在这个窗口里把「生意参谋」重新登录一次（登录时点浏览器提示里的「保存密码」）。'
-    + '只登这一处就够，不用去各店自己的窗口里登。'
-    + (ctx.willResume ? RESUME_SENTENCE.ROUND_LOGIN_WALL : '登录好之后告诉技术同学重跑一次。'),
-  SHOP_BLOCKED: (ctx) => `打开这几家店各自的日报采集窗口（窗口标题里写着店名，例如「${ctx.shops[0] ?? '店名'} · 日报采集窗口」），`
-    + '把缺的页面补上：生意参谋的工作页、阿里妈妈报表页各一个（多开同样会报错）。补好后告诉技术同学重跑一次。',
-  // 与 SHOP_BLOCKED 的差别只有一处，但那一处决定收信人要不要跑一趟：**掉登录时页面是补不上的**
-  // （补了也被弹回登录页）。所以这一类的动作是「登录」，而且要说清只在**这家店自己的**窗口里登
-  // —— 一店一套登录态，登错了窗口等于把另一家店顶掉（那会造出比原故障更难查的现场）。
-  NEEDS_LOGIN: (ctx) => {
-    const which = (ctx.needLogin ?? []).length ? ctx.needLogin : ctx.shops;
-    return `打开这几家店各自的日报采集窗口（窗口标题里写着店名，例如「${which?.[0] ?? '店名'} · 日报采集窗口」），`
-      + '用这家店自己的账号重新登录一次 —— 只在这一家店自己的窗口里登，别在别的窗口里登'
-      + '（每个窗口是它自己那套登录态）。'
-      + (ctx.willResume ? RESUME_SENTENCE.NEEDS_LOGIN : '登录好之后告诉技术同学重跑一次。');
-  },
-  // 2026-09-26 加。要写的只有三件事：哪扇窗、关什么、关完要不要回复。
-  // 「关什么」必须给出**页面上真有**的两种形态（右上角的叉 / 它自己的关闭按钮），
-  // 因为这一层的 id 与文案每次都不一样（实测过 2936/925/694/624 四种形态）。
-  PAGE_OBSTRUCTED: (ctx) => `打开「${ctx.shops[0] ?? '这家店'}」的日报采集窗口，把盖住整个页面的那个弹窗关掉`
-    + '（点它右上角的叉，或者它自己那个「关闭」「我知道了」按钮）—— 登录是好的，不用重新登录。'
-    + (ctx.willResume ? RESUME_SENTENCE.PAGE_OBSTRUCTED : '关掉之后告诉技术同学重跑这一家。'),
-  DUPLICATE_TARGET: (ctx) => `不用处理：${ctx.date} 的数据已经在飞书里了。`
-    + '只有确实要重写时才需要先删掉那一天的记录再跑。',
-  SHOP_FUNC_NO_PERMISSION: (ctx) => `这一轮不需要你在浏览器里做什么 —— 刷新、重新登录都没用，不是登录的问题。`
-    + `要恢复得把「${ctx.shops[0] ?? '这家店'}」在生意参谋里的「店铺绩效」这一项开通找回来`
-    + '（生意参谋里的服务市场，看「我的订购」那一项是否到期，或直接找平台客服）。'
-    + '在找回来之前，这家店每天都会停在这一步；其余店铺不受影响。',
-  // 2026-10-06 加。措辞的落点只有一个：**别让人为这件事做任何动作**（含「转给技术同学」）。
-  // 为什么明写「不用找技术同学」：兜底那句的最后一句就是「把这条消息转给技术同学」，
-  // 而技术同学到了现场也做不了任何事（平台那一天不出数）⇒ 那是一次纯浪费的转派。
-  SOURCE_NO_ROW_FOR_DATE: (ctx) => `不用处理：${ctx.date} 这一天，这一家在平台上的「询单到付款」表本身就显示「暂无数据」，`
-    + '所以只有「询单量 / 同层同行询单量」这两列是空的，其余字段都已经写进飞书了。'
-    + '不用重跑，也不用找技术同学 —— 这一天不会再跑出数来。',
-  // 2026-10-07 加。**不用在浏览器里做什么**（这一条最容易被照着老习惯做错）：采集这一轮是好的，
-  // 刷新、重新登录、补页面对它都没有用。要做的是把那一行建出来 —— 而那是系统每日任务里的一步，
-  // 所以正确的下一步是转给技术同学，不是让业务同事去表里手抄一行（手抄会把日期格式写错，
-  // 而写错之后回填照样报「找不到行」，多绕一圈）。
-  INQUIRY_ROW_MISSING: () => '不用在浏览器里做什么（刷新、重新登录、补页面都没用 —— 这一轮采集是好的）。'
-    + '要把「各店铺数据日报」里这一天的这一行建出来：那是系统每日任务里的一步，本该开跑前就做好，'
-    + '缺了就说明那一步没成功。把这条消息转给技术同学就行，不用你动手。',
-  STAGE_FAILED: () => '这一轮不需要你在浏览器里做什么。'
-    + '如果到今天下班前飞书里还是缺这一天的数据，就把这条消息转给技术同学，让他去看。',
-});
-
-// 三张表互锁（**加载期**就查）：新增一个结论却忘了给它原因/下一步，模块直接起不来。
-// 放到运行期才发现的写法（比如只在告警里兜底）会让收信人收到一条对不上现场的消息，
-// 而那条消息看起来完全正常。
-for (const [tableName, table] of [['REASON_BY_CAUSE', REASON_BY_CAUSE], ['ACTION_BY_CAUSE', ACTION_BY_CAUSE]]) {
-  const absent = FAILURE_CAUSES.filter((cause) => !table[cause]);
-  if (absent.length) {
-    throw new Error(`${tableName} 少了这些结论：${absent.join(' / ')}（收信人会看到一句对不上现场的兜底文案）`);
-  }
-}
-
-// 「需要人」那一集必须是结论闭集的**子集**（同样是加载期查）。
-// 多写一个不存在的值的症状是「驻留永远不触发」或「触发了但没人知道为什么」，两种都不报错 ——
-// 而驻留是**唯一**能保住窗口的形态，它悄悄不触发就等于回到「人赶到时窗口已经没了」。
-const strayHuman = HUMAN_REQUIRED_CAUSES.filter((cause) => !FAILURE_CAUSES.includes(cause));
-if (strayHuman.length) {
-  throw new Error(`HUMAN_REQUIRED_CAUSES 里有不在结论闭集里的值：${strayHuman.join(' / ')}`);
-}
+// 收信人在这里看到的每一个词（原因/下一步/续跑承诺）**唯一定义在
+// `runtime/alert-copy.mjs` 的 daily 分支**（2026-10-13 全仓统一词表，原样搬过去、一字未改，
+// 连同它们上面那几条「为什么必须单列一类」的注释）。搬移的理由：判据只能有一个落点，
+// 而 skills 下的模块不许被 runtime 反向依赖 ⇒ 数据住 runtime，链这边用别名。
+// 本文件顶部有它们的三张互锁（加载期就查：少一条结论模块直接起不来）。
 
 /** 收信人看到的「哪家店、停在哪一步」。店名后面带上**他在浏览器里能看到的登录名**，方便对上窗口。 */
 export function describeShopFailure(key, record, { cause = null } = {}) {
@@ -1034,7 +901,7 @@ function loginPreflightLines(login, { needLogin = [], unknown = [], roundBlocked
  * 那会让文案退到「这一轮没有先查登录态」那一句（见 loginPreflightLines），而不是安静地少说
  * 一件事 —— 「没查」与「查了没问题」在收信人眼里必须是两句不同的话。
  */
-export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPreflight = null, willResume = false, now = () => new Date() }) {
+export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPreflight = null, willResume = false, tech = null, now = () => new Date() }) {
   const view = roundFailureSummary(summary, { loginPreflight });
   if (!view.any) throw new Error('这一轮没有失败却要生成告警（调用方的判定错误）—— 成功时不许叫人');
   // `shopKeys` **必填**（这一轮该跑哪几家，从配置来），缺了直接抛。
@@ -1100,9 +967,12 @@ export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPr
   const alert = {
     type: 'DAILY_ROUND_FAILED',
     severity: 'ERROR',
+    // 标题第一段固定是流程名（2026-10-13 用户定稿第 3 条）：收信人扫一眼就知道
+    // 「是哪条流程的事」，不必点开正文猜。方框词与 capability 的运营叫法同源
+    // （`runtime/alert-copy.mjs` 的 FLOWS['daily-report']）。
     title: view.roundBlocked
-      ? `全部店铺的日报都没跑起来（统计日 ${date}）`
-      : `${subject}的日报没收完（统计日 ${date}）`,
+      ? `【店铺日报】全部店铺没收完（统计日 ${date}）`
+      : `【店铺日报】${subject}没收完（统计日 ${date}）`,
     // 同一天同一轮共用一条锚；**是否重复投递由调用方的 resolveAlertDedup 判**（投递链本身不去重）。
     alertId: `daily-round-${date.replace(/-/gu, '')}`,
     // 指纹只服务于「同一天重复失败要不要再发一条」：停的地方没变才算重复。
@@ -1114,14 +984,17 @@ export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPr
     reason,
     action: [...new Set(actions)].join('\n'),
     source: {
-      targetLabel: `日报一轮 · ${total} 家店`,
+      targetLabel: `店铺日报一轮 · ${total} 家店`,
       period: `统计日 ${date}`,
-      capability: '各店铺日报',
+      capability: '店铺日报',
       shopName: failedNames.length ? failedNames.join('、') : null,
     },
-    // **故意不给** machine / 机器、evidence / 运行日志目录：它们是技术串，不该出现在业务消息里
-    // （白名单只约束键，值一旦给了就会原样渲染出去）。技术同学从驱动的 stdout 与 job.log 里看，
-    // 那里会把这条告警的正文、日志目录、机器名完整打出来。
+    // 技术定位块（两段式的第二段，2026-10-13）：**调用方给才挂**。这里只透传，
+    // 形状由 `buildTechBlock` 校验（白名单 5 键、值里不许有机器名）。
+    // 业务第一段里**故意不给** machine / 机器、evidence / 运行日志目录 ——
+    // 它们是技术串，不该出现在业务消息里（白名单只约束键，值一旦给了就会原样渲染出去）。
+    // 技术同学从驱动的 stdout 与 job.log 里看，那里会把这条告警的正文、日志目录完整打出来。
+    ...(tech ? { tech } : {}),
   };
   assertAlertIsBusinessReadable(alert);
   return alert;
@@ -1131,6 +1004,11 @@ export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPr
 // （`machine`/`browserProfile`/`loginUrl`）。所以「不给这些字段」这件事必须**在生成处拦**，
 // 不能只靠用例：用例只在 CI 时红，而这条消息可能先被手跑发出去（2026-09-21 就是这么漏的）。
 // 判据是**形状**：任何一层出现这些键名即当场抛错，而不是渲染时静默丢掉或原样发出去。
+//
+// 2026-10-13 起有一个**唯一的例外子树**：`tech`（技术定位块）。它是两段式告警的第二段，
+// 本来就是给技术同学的 —— 里面放证据目录、机读阶段名、退出码都是设计如此。
+// 但**机器名仍然不放**（`buildTechBlock` 在生成处连查两遍：键在白名单 / 值里没有机器名），
+// 所以这里对 tech 子树的判据只剩「键必须在技术白名单里」，交由 `buildTechBlock` 保证。
 const FORBIDDEN_ALERT_KEYS = Object.freeze(['machine', 'browserProfile', 'evidence', 'logDir', 'hostname', 'profile']);
 const READABLE_SOURCE_KEY_NAMES = new Set(READABLE_SOURCE_KEYS.map(([key]) => key));
 
@@ -1139,6 +1017,9 @@ export function assertAlertIsBusinessReadable(alert) {
   const walk = (value, at) => {
     if (!value || typeof value !== 'object') return;
     for (const [key, child] of Object.entries(value)) {
+      // 技术定位块整棵子树跳过（它是第二段，不是业务第一段）；块内的键由
+      // `buildTechBlock` 的白名单校验，这里再查一遍就是两个事实。
+      if (at === '' && key === 'tech') continue;
       // 用「包含」而不是「相等」：`machineName` / `hostname2` 这类变体照样是技术串。
       const hit = FORBIDDEN_ALERT_KEYS.find((bad) => key.toLowerCase().includes(bad));
       if (hit) seen.push(`${at}${key}`);
@@ -1155,6 +1036,27 @@ export function assertAlertIsBusinessReadable(alert) {
     throw new Error(`告警的 source 里有渲染器不认识的键（${unknown.join('、')}）—— `
       + '它们会被白名单静默丢掉：收信人看不到，而你以为发出去了。要么改白名单，要么别给。');
   }
+}
+
+/**
+ * 失败告警的**技术定位块**（两段式的第二段，2026-10-13）。
+ *
+ * 只放 `buildTechBlock` 白名单里的五个键，且**不放机器名**（单机无定位价值；
+ * 2026-10-06 已定「按窗口标题找，不按 hostname 找」）。缺值的键整行不输出。
+ *
+ * `exitCode` 由调用方给：两个调用点都在 `process.exitCode = 1` 落定之后才走到这里，
+ * 所以「1」是这一轮真实的退出码，不是猜的。
+ */
+function roundTechBlock({ summary, logRoot, exitCode = 1 }) {
+  const failedStages = [...new Set(Object.values(summary?.shops ?? {})
+    .map((record) => record?.failedStage)
+    .filter(Boolean))];
+  return buildTechBlock({
+    evidenceDir: path.relative(REPO_ROOT, logRoot).replaceAll('\\', '/'),
+    stage: failedStages.join(','),
+    exitCode,
+    version: currentVersion(),
+  });
 }
 
 /**
@@ -2108,7 +2010,8 @@ async function main() {
     process.exitCode = 1;
     if (alertDispatch.action !== 'off') {
       dispatchRoundAlert({
-        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight, willResume: args.willResume }),
+        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight,
+          willResume: args.willResume, tech: roundTechBlock({ summary, logRoot }) }),
         dispatch: alertDispatch, logDir: path.relative(REPO_ROOT, logRoot),
       });
     }
@@ -2570,7 +2473,8 @@ async function main() {
         + '（会话侧照它派后台修复 agent；agent 也修不动才发飞书）');
     } else if (alertDispatch.action !== 'off') {
       dispatchRoundAlert({
-        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight, willResume: args.willResume }),
+        alert: buildRoundFailureAlert({ date: args.date, summary, shopKeys: shops, loginPreflight,
+          willResume: args.willResume, tech: roundTechBlock({ summary, logRoot }) }),
         dispatch: alertDispatch, logDir: path.relative(REPO_ROOT, logRoot),
       });
     } else if (args.notify || args.notifyPrint) {

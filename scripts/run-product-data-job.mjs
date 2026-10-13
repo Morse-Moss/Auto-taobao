@@ -8,10 +8,17 @@ import { buildProductJobPlan, PRODUCT_JOB_FILES, SKIP_PROMOTION_REASON } from '.
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
 import { acquireWorkflowLock, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
 import crypto from 'node:crypto';
-import os from 'node:os';
 import { classifyWorkflowError, createWorkflowReceipt, writeWorkflowReceipt } from '../runtime/workflow-receipt.mjs';
 import { runEnvironmentPreflight } from '../runtime/environment-preflight.mjs';
 import { readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from '../runtime/alert-throttle.mjs';
+// 全仓统一提醒词表（2026-10-13）：兜底文案 + 技术定位块构造。
+import { buildFlowOkAlert, buildTechBlock, flowFallbackCopy } from '../runtime/alert-copy.mjs';
+// 收集完成提醒的「数字从哪来」：两个导入器的写后回读收据。
+import { productOkFacts } from '../runtime/flow-ok-facts.mjs';
+// 投递公共出口（去重 → 落临时文件 → 起 CLI → 只认真送出去才记账）。
+import { dispatchAlert } from '../runtime/deliver-alert.mjs';
+// 版本号（技术定位块的「版本」那一行）。
+import { currentVersion } from '../runtime/version.mjs';
 // 分批的「该切成几批、每批跑哪几家」**唯一口径**在 `runtime/batch-plan.mjs`（纯函数、有离线判据）：
 // 与日报链共用同一层，**不在这里再写一份切法** —— 两处实现最后一定不一致，而切错了只会**静默漏做**
 // （跑完了，但有两家没被处理）。逐批登录结论的文件名同样从那里取（`batchLoginArtifactName`）。
@@ -87,36 +94,58 @@ function collectGapOf(shop, stage, reason) {
 }
 
 /**
- * 失败时叫人（只在给了 `--notify` 时；成功不叫 —— 与日报链同一口径）。
+ * 失败时叫人（只在给了 `--notify` 时；成功不叫 —— 与日报链同一口径，
+ * 成功的「请查收」由本文件收尾那段发，走 `buildFlowOkAlert`）。
  *
  * 三个不能省的点：
  *   ① 去重走公共模块 `runtime/alert-throttle.mjs`（别再各自抄一份）；指纹里含「停在哪一段」，
  *      同一编号但停的地方变了算新信息，不该被挡掉。
  *   ② 投递结论以 CLI 收据为准（SENT / DEDUPED / FAILED / NOT_CONFIGURED），**只真送出去了才记账** ——
  *      送失败还记账，会让下一次重跑被自己的记录挡掉。
- *   ③ 告警载荷同时落盘成 `alert.json`，收信人照着能自己去看证据目录。
+ *   ③ 告警载荷同时落盘成 `alert.json`，收件人照着能自己去看证据目录。
+ *
+ * 2026-10-13 统一预警机制（修已知缺陷 ㉒）：业务第一段**不再带盘符路径、
+ * job.log/collection.json 文件名、机器名与 `FAILED/UNCLASSIFIED/product-import` 这类机读码** ——
+ * 那一版消息只有写它的人看得懂。现在业务段＝「哪一天 + 一句人话 + 现场原话（截断）」，
+ * 技术段＝固定小标题「以下是给技术同学的定位信息」+ 五个白名单键（runId/证据目录/
+ * 机读阶段名/退出码/版本），**仍然不放机器名**（按窗口标题找，不按 hostname 找）。
  */
 async function notifyFailure({ date, runId, evidence, failure, failedStage, log, shopCount = null }) {
-  const alertId = `product-data-${date}`;
+  const alertId = `product-round-${String(date).replace(/-/gu, '')}`;
   const fingerprint = `${failure?.class ?? 'FAILED'}|${failure?.reason ?? 'UNKNOWN'}|${failedStage ?? '-'}`;
   const decision = resolveAlertDedup({ previous: readAlertThrottleEntry({ alertId }), alertId, fingerprint });
   if (!decision.send) { log(`告警未发（去重）：${decision.reason}`); return { status: 'DEDUPED', reason: decision.reason }; }
+  const copy = flowFallbackCopy('product-daily');
+  // 现场原话（缺口清单/异常消息）保留在业务段里，但压到 300 字：它是收信人判断
+  // 「卡在哪一家哪一段」的唯一线索，而整段 stderr 对运营没有意义。
+  const specifics = String(failure?.message ?? '').replace(/\s+/gu, ' ').trim().slice(0, 300);
   const alertFile = path.join(evidence, 'alert.json');
   fs.writeFileSync(alertFile, `${JSON.stringify({
+    type: 'PRODUCT_ROUND_FAILED',
     severity: 'ERROR',
-    title: `商品数据采集未完成（${date}）`,
+    title: `【商品数据】没收齐（统计日 ${date}）`,
+    // 同一天同一轮共用一条锚；是否重复投递由 resolveAlertDedup 判（指纹变＝停的地方变了＝再发）。
+    alertId,
+    fingerprint,
+    createdAt: new Date().toISOString(),
     // 家数从计划里来，不写死：2026-09-30 起是「参与采集」的店铺数（12），
     // 而写死「五家」的旧文案在扩编之后就是一句假话 —— 收信人会按错误的家数去找缺口。
-    targetLabel: `${date} ${shopCount === null ? '' : `${shopCount} 家`}店铺商品数据`,
-    period: date,
-    capability: '商品数据采集与导入',
-    machine: os.hostname(),
-    reason: `${failure?.class ?? 'FAILED'}/${failure?.reason ?? 'UNKNOWN'}：${failure?.message ?? '未知原因'}`,
-    action: `打开 ${evidence} 看 job.log 与 collection.json，确认停在哪家店哪一段；证据齐了再决定是否重跑该日`,
-    evidence: { runReceipt: path.join(evidence, 'run-receipt.json'), collection: path.join(evidence, 'collection.json'), jobLog: path.join(evidence, 'job.log') },
-    createdAt: new Date().toISOString(),
-    alertId,
-    runId,
+    source: {
+      targetLabel: `${date} ${shopCount === null ? '' : `${shopCount} 家`}店铺商品数据`,
+      period: date,
+      capability: '商品数据',
+    },
+    reason: [copy.reason, specifics].filter(Boolean).join(''),
+    action: copy.action,
+    // 技术定位块（两段式第二段）。故意**不放机器名**：单机无定位价值，
+    // 且 2026-10-06 已定「按窗口标题找，不按 hostname 找」。
+    tech: buildTechBlock({
+      runId,
+      evidenceDir: path.relative(ROOT, evidence).replaceAll('\\', '/'),
+      stage: failedStage,
+      exitCode: 1,
+      version: currentVersion(),
+    }),
   }, null, 2)}\n`);
   const sent = await run('runtime/notify-feishu.mjs', ['--alert-file', alertFile], { capture: true });
   // 送成功时收据在 stdout；送失败时 CLI 把收据打到 stderr 并以非零退出码收场。
@@ -495,6 +524,29 @@ async function main(argv) {
     receipt.failure = failure; receipt.failedStage = failedStage; receipt.finishedAt = new Date().toISOString();
     writeWorkflowReceipt(receiptPath, receipt);
     if (options.notify && status !== 0) { try { await notifyFailure({ date, runId, evidence, failure, failedStage, log, shopCount: plan.shops.length }); } catch (error) { log(`告警投递自身出错：${error.message}`); } }
+    // 收集完成提醒（2026-10-13 统一预警机制，用户定稿第 1/5 条）：**整轮成功时**才发，
+    // 且只提醒业务人员查收（纯业务、不带技术定位块）；排练（dry-run）不投。
+    // 数字来自两个导入器的 `receipt.json`（写后回读），不来自本文件的自报成功计数；
+    // 读不到收据的店不计入、也不补 0 —— 有店读不到就整条不发（fail-closed）。
+    if (options.notify && options.commit && status === 0) {
+      const facts = productOkFacts({ evidence, shops: plan.shops });
+      if (facts.missing.length === 0) {
+        const alert = buildFlowOkAlert({
+          flow: 'product-daily', date, shops: plan.shops, okCount: plan.shops.length, total: plan.shops.length,
+          tables: facts.tables,
+        });
+        log(`[完成提醒] ${alert.title}`);
+        const delivery = dispatchAlert({ alert, action: 'send', log });
+        receipt.completionNotice = {
+          alertId: alert.alertId, delivered: delivery.delivered, suppressed: delivery.suppressed,
+          reason: delivery.reason, tables: facts.tables,
+        };
+        writeWorkflowReceipt(receiptPath, receipt);
+      } else {
+        log(`[完成提醒] 未发：${facts.missing.length} 家店读不到导入收据（${facts.missing.join('、')}）`
+          + ' —— 不把「没核对」说成「收齐了」。');
+      }
+    }
   }
   log(`商品数据自动采集结束：退出码 ${status}`); return status;
 }

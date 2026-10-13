@@ -362,7 +362,7 @@ export function holdStatusLine({ at, waitedMs = 0, until, probes = [], resumed =
 // `runtime/notify-feishu-core.mjs` 的 `READABLE_SOURCE_KEYS` 白名单里，否则那一行会被**静默丢掉**。
 // 措辞口径同链上那一条：只用业务词（店名、窗口标题、飞书里的表名），不写英文阶段名、不写路径与命令。
 
-function noticeBase({ type, severity, title, alertId, fingerprint, date, targetLabel, shopNames, reason, action, createdAt, capability = '各店铺日报' }) {
+function noticeBase({ type, severity, title, alertId, fingerprint, date, targetLabel, shopNames, reason, action, createdAt, capability = '店铺日报' }) {
   return {
     type,
     severity,
@@ -391,19 +391,30 @@ function noticeBase({ type, severity, title, alertId, fingerprint, date, targetL
  * 6 小时去重窗里的**另一条链**（fingerprint 同为 `HOLD_TIMEOUT`）压掉 —— 一条真正要人看的
  * 消息一个字都发不出去（同一个编号两件事要撞，同 `resumeResultNotice` 里记的那次教训）。
  *
- * 缺省仍是日报口径，逐字不变；只有明确传了 workflow 才换词。
+ * 2026-10-13 起标题第一段固定是流程名（用户定稿第 3 条）：`prefix` 就是那个方框词，
+ * `noun` 是标题里指这一份数据时的短名（「盖文淘宝的推广日报还缺着」）。
+ * `capability` 与 `targetLabel` 一律用运营叫法（「各店铺日报」→「店铺日报」；
+ * `对象：店铺日报一轮` 与日报链 `buildRoundFailureAlert` 的 `targetLabel` 逐字一致）。
+ *
+ * 缺省仍是日报口径（`noun`/编号/指纹逐字不变）；只有明确传了 workflow 才换词。
  */
 export function noticeLabelsForWorkflow(workflow) {
   return workflow === 'promotion-daily'
-    ? { scope: 'promotion', noun: '推广日报', capability: '推广日报' }
-    : { scope: 'daily', noun: '日报', capability: '各店铺日报' };
+    ? {
+      scope: 'promotion', noun: '推广日报', capability: '推广日报',
+      prefix: '【推广日报】', targetLabel: '推广日报一轮',
+    }
+    : {
+      scope: 'daily', noun: '日报', capability: '店铺日报',
+      prefix: '【店铺日报】', targetLabel: '店铺日报一轮',
+    };
 }
 
 /**
  * 到点还没人来：**必须发**。驻留结束时窗口会被释放，而那之后人就再也接不上手了 ——
  * 静默释放等于「人以为还有现场，其实没了」。
  */
-export function closeOutNotice({ date, subjects = [], until = null, scope = 'daily', noun = '日报', capability = '各店铺日报', targetLabel = `${noun}一轮`, createdAt } = {}) {
+export function closeOutNotice({ date, subjects = [], until = null, scope = 'daily', noun = '日报', capability = '店铺日报', prefix = '【店铺日报】', targetLabel = '店铺日报一轮', createdAt } = {}) {
   const who = subjects.length ? subjects.join('、') : '这一轮';
   // 截止时间是**算出来的**（`resolveHoldDeadline` 给出 `untilText`），不在这里回落到一个写死的钟点 ——
   // 写死的那个（旧的 `'12:00'`）与实际挂到的时刻不是一回事，而这条通知的作用恰恰是告诉人「几点了」。
@@ -412,7 +423,7 @@ export function closeOutNotice({ date, subjects = [], until = null, scope = 'dai
   return noticeBase({
     type: 'DAILY_HOLD_TIMEOUT',
     severity: 'ERROR',
-    title: `${who}的${noun}还缺着：等到 ${deadlineText} 也没等到处理`,
+    title: `${prefix}${who}的${noun}还缺着：等到 ${deadlineText} 也没等到处理`,
     alertId: `${scope}-hold-${String(date).replace(/-/gu, '')}`,
     fingerprint: 'HOLD_TIMEOUT',
     date,
@@ -435,13 +446,13 @@ export function closeOutNotice({ date, subjects = [], until = null, scope = 'dai
  * 之后的**失败**就会被自己的成功记录挡掉 —— 一条真正需要人看的消息**一个字都发不出去**，
  * 而日志里只留一句「这一条没往外发」。同一个事实两处实现要漂，这里是同一个编号两件事要撞。
  */
-export function resumeResultNotice({ date, shops = [], ok = false, detail = null, scope = 'daily', noun = '日报', capability = '各店铺日报', targetLabel = `${noun}一轮`, createdAt } = {}) {
+export function resumeResultNotice({ date, shops = [], ok = false, detail = null, scope = 'daily', noun = '日报', capability = '店铺日报', prefix = '【店铺日报】', targetLabel = '店铺日报一轮', createdAt } = {}) {
   const who = shops.length ? shops.join('、') : '这一轮';
   const stamp = String(date).replace(/-/gu, '');
   return noticeBase({
     type: ok ? 'DAILY_HOLD_RESUMED' : 'DAILY_HOLD_RESUME_FAILED',
     severity: ok ? 'INFO' : 'ERROR',
-    title: ok ? `${who}的${noun}已经补上了` : `${who}的${noun}自动续跑没成功`,
+    title: ok ? `${prefix}${who}的${noun}已经补上了` : `${prefix}${who}的${noun}自动续跑没成功`,
     alertId: ok ? `${scope}-hold-resumed-${stamp}` : `${scope}-hold-resume-failed-${stamp}`,
     fingerprint: ok ? 'HOLD_RESUMED' : 'HOLD_RESUME_FAILED',
     date,

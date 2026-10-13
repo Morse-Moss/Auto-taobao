@@ -57,6 +57,10 @@ import {
 // （而漂开的症状是静默的 —— 驻留说「要留现场」，释放那边说「没失败」，两边各自都"对"）。
 import { unfixableShopsOf } from '../runtime/hold-and-resume-plan.mjs';
 import { versionLineSafe } from '../runtime/version.mjs';
+// 收集完成提醒（2026-10-13 统一预警机制）：成功的那一天只提醒业务人员查收。
+import { buildFlowOkAlert } from '../runtime/alert-copy.mjs';
+import { dailyOkFacts, promotionOkFacts, readSummaries } from '../runtime/flow-ok-facts.mjs';
+import { dispatchAlert } from '../runtime/deliver-alert.mjs';
 // 工作流登记表（spec §4/§5，2026-10-10 接入）：启动时校验「这个 workflow 登记过没有」，
 // 并从登记项解析链入口（entry.batch）与模式缺省（mode.manualDefault）——
 // 未登记 ⇒ 立即硬失败，**绝不回退 daily-report**（回退的表现是「跑完了但跑的是另一条流程」）。
@@ -779,6 +783,46 @@ async function main(argv) {
       + `${rounds.length}/${plan.total} 批，剩余批次**没有跑**（它们会撞同一堵墙）；`
       + `驻留退出码=${holdStatus ?? '未跑'}。`);
   }
+
+  // 收集完成提醒（2026-10-13 统一预警机制，用户定稿第 1/5 条）。
+  //
+  // 为什么挂在**分批驱动**而不是链里：链每批被调用一次（b1 三家、b2 五家），
+  // 挂在链里会按批发两条、指纹还不同（3/3 与 5/5）⇒ 去重挡不住第二条。
+  // 驱动整轮只到这里一次，且 `plan.shops` 正是这一轮实际跑的那几家。
+  //
+  // 三条口径：
+  //   ① **只在整轮成功时发**（recovered 或 hardFail===0，与下面的退出码同源），
+  //      且只提醒业务人员查收（纯业务、不带技术定位块）；
+  //      排练（dry-run）不投 —— 没写数据就不该惊动人（与链内失败告警同一口径）；
+  //   ② 数字来自**独立回读工件**（日报＝各店 independent-readback.json；
+  //      推广＝各店导入器 receipt.json 的写后回读），不来自链的自报成功计数；
+  //   ③ 读不到工件的店不计入、也不补 0 —— 有店读不到就整条不发（fail-closed）。
+  // daily-report 形态下 `run-daily-job.mjs` 收尾也会发同一锚（`daily-ok-<日>`）的同一条，
+  // 由去重挡住第二次（同一编号 + 同一指纹）。
+  const batchesOk = recovered || hardFail === 0;
+  if (batchesOk && options.notify && mode === 'apply') {
+    const shops = plan.shops ?? [];
+    if (shops.length >= 1) {
+      const facts = options.workflow === 'promotion-daily'
+        ? promotionOkFacts({
+          root: REPO_ROOT,
+          summaries: readSummaries(rounds.map((round) => path.join(evidenceRoot, `b${round.index}`, 'summary.json'))),
+        })
+        : dailyOkFacts({ root: REPO_ROOT, date, shops });
+      if (facts.missing.length === 0) {
+        const alert = buildFlowOkAlert({
+          flow: options.workflow, date, shops, okCount: shops.length, total: shops.length,
+          tables: facts.tables, recovered,
+        });
+        log(`[完成提醒] ${alert.title}`);
+        dispatchAlert({ alert, action: 'send', log });
+      } else {
+        log(`[完成提醒] 未发：${facts.missing.length} 家店读不到回读工件（${facts.missing.join('、')}）`
+          + ' —— 不把「没核对」说成「收齐了」。');
+      }
+    }
+  }
+
   fs.closeSync(logFd);
   return recovered || hardFail === 0 ? 0 : 1;
 }

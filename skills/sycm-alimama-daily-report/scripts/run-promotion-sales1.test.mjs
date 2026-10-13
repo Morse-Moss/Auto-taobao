@@ -44,15 +44,22 @@ test('buildPromotionRoundAlert：全成功不告警，有失败才构造', () =>
   assert.equal(alert.type, 'PROMOTION_ROUND_FAILED');
   assert.equal(alert.alertId, 'promotion-round-20261010');
   assert.match(alert.fingerprint, /网林天猫@keyword-submit/u);
-  assert.match(alert.title, /推广日报没收完（业务日 2026-10-10）/u);
-  assert.match(alert.reason, /网林天猫：采集失败/u);
+  assert.match(alert.title, /【推广日报】网林天猫没收完（业务日 2026-10-10）/u, '标题第一段是流程名，再点名哪家店、哪一天');
+  // 业务第一段不再裸塞 `record.error`（2026-10-13）：那往往是半句英文栈或内部代号，
+  // 只有写它的人看得懂。现在正文＝「哪几家没跑完 + 一句人话」，原始错误进技术定位块。
+  assert.match(alert.reason, /没跑完 1 家：网林天猫/u);
+  assert.match(alert.reason, /推广报表没采到或没写进飞书/u);
+  assert.equal(alert.reason.includes('采集失败'), false, '原始错误串不该进业务第一段');
   // 告警纪律：source 只许白名单键，且不带机器名/盘符/内部路径。
   for (const key of Object.keys(alert.source)) {
     assert.ok(READABLE_SOURCE_KEYS.some(([allowed]) => allowed === key), `source 键 ${key} 不在渲染白名单`);
   }
   assert.equal(alert.source.machine, undefined);
   assert.equal(JSON.stringify(alert).includes('D:\\'), false);
-  assert.match(alert.action, /下载任务管理/u);
+  // 下一步不再写 `start-all --only <店>` 这类命令（2026-10-13）：收信人是运营，不是技术同学。
+  // 命令与机读阶段名只出现在技术定位块与 job.log 里。
+  assert.match(alert.action, /转给技术同学/u);
+  assert.equal(alert.action.includes('start-all'), false, '技术命令不该进业务第一段');
 });
 
 test('deliverPromotionAlert：投递成功才记账，送失败不记账（防自挡）', () => {

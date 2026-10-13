@@ -22,8 +22,15 @@
 
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+// 全仓统一提醒词表（2026-10-13）：流程登记、完成通知构造、兜底文案、技术定位块。
+import { buildFlowOkAlert, buildTechBlock, flowFallbackCopy } from './alert-copy.mjs';
+// 告警去重（同一条编号在时间窗内不重复发）的唯一实现。
+import { readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from './alert-throttle.mjs';
+// 版本号（技术定位块的「版本」那一行）。
+import { currentVersion } from './version.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(HERE, '..');
@@ -169,25 +176,62 @@ async function main() {
   Object.assign(receipt, { merged: { ok: mergedOk, csv: mergedCsv, xlsx: mergedOk ? mergedXlsx : null } });
   writeFileSync(path.join(HERE, '.weekly-collection-receipt.json'), JSON.stringify(receipt, null, 2));
 
-  // 收尾告警：真发飞书时把「覆盖了哪些段、缺了哪些段、产物在哪」一次讲清。
-  const alert = {
-    severity: failures.length ? 'ERROR' : 'INFO',
-    title: failures.length
-      ? `竞品周采集部分失败：${options.label}`
-      : `竞品周采集完成：${options.label}`,
-    source: { targetLabel: options.label, capability: 'xws.export.market-analysis' },
-    reason: `成功 ${collected.length}/${options.ranges.length} 段；失败段：${failures.map((f) => `${f.range}（${f.reason}）`).join('、') || '无'}`,
-    action: failures.length ? '查看 .weekly-collection-receipt.json 与各段 checkpoint，重跑失败段' : '可继续建周表与导入',
-    evidence: { ranges: receipt.ranges.join(','), mergedXlsx: receipt.merged.xlsx ?? '', failures: failures.map((f) => f.range) },
-    createdAt: new Date().toISOString(),
-    alertId: `weekly-collect-${Date.now()}`,
-  };
-  const payload = JSON.stringify(alert);
+  // 收尾告警（2026-10-13 统一预警机制）：**成功与失败分开**——
+  //   · 成功 ⇒ 只提醒业务人员查收（纯业务、不带技术定位块），编号 `weekly-ok-<业务日>`；
+  //   · 失败 ⇒ 两段式（业务第一段 + 「以下是给技术同学的定位信息」），编号 `weekly-round-<业务日>`。
+  // 去重走公共模块（只认真送出去才记账）；投递走**临时文件**不走 stdin（EBUSY 教训，
+  // 同日报链 2026-09-25 修：spawnSync 带 stdin 管道会 EBUSY）。
+  const businessDay = (() => {
+    const at = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+  })();
+  const throttleFile = path.join(HERE, 'alert-throttle.json');
+  const merged = receipt.merged ?? {};
+  const failed = Array.isArray(receipt.failures) ? receipt.failures : [];
+  const alert = failed.length || !merged.ok
+    ? {
+      type: 'WEEKLY_ROUND_FAILED',
+      severity: 'ERROR',
+      title: `【周报】没收齐（${businessDay}）`,
+      alertId: `weekly-round-${businessDay.replace(/-/gu, '')}`,
+      fingerprint: failed.map((f) => f.range).join('|') || 'merge-failed',
+      createdAt: new Date().toISOString(),
+      source: { targetLabel: options.label, period: businessDay, capability: '周报' },
+      reason: `${flowFallbackCopy('weekly-report').reason}缺的页段：${failed.map((f) => `${f.range}（${f.reason}）`).join('、') || '无'}。`,
+      action: flowFallbackCopy('weekly-report').action,
+      tech: buildTechBlock({
+        evidenceDir: path.relative(PROJECT_ROOT, path.join(HERE, '.weekly-collection-receipt.json')).replaceAll('\\', '/'),
+        stage: failed.map((f) => `range-${f.range}`).join(','),
+        exitCode: 1,
+        version: currentVersion(),
+      }),
+    }
+    : buildFlowOkAlert({
+      flow: 'weekly-report',
+      date: businessDay,
+      okCount: collected.length,
+      total: options.ranges.length,
+      tables: [{ name: '竞品采集页段', rows: collected.length }],
+    });
+  const dedup = resolveAlertDedup({
+    previous: readAlertThrottleEntry({ file: throttleFile, alertId: alert.alertId }),
+    alertId: alert.alertId, fingerprint: alert.fingerprint,
+  });
   if (!options.notify) {
-    log(`DRY-RUN 收尾告警：${payload.slice(0, 400)}`);
+    log(`DRY-RUN 收尾告警：${JSON.stringify(alert).slice(0, 400)}`);
+  } else if (!dedup.send) {
+    log(`收尾告警未发（去重）：${dedup.reason}`);
   } else {
-    const sent = spawnSync(process.execPath, [NOTIFY_CLI], { input: payload, cwd: PROJECT_ROOT, encoding: 'utf8', timeout: 60_000 });
-    log(`收尾告警投递退出码=${sent.status}：${String(sent.stdout || sent.stderr).slice(0, 300)}`);
+    const alertPath = path.join(os.tmpdir(), `weekly-collect-alert-${process.pid}.json`);
+    writeFileSync(alertPath, JSON.stringify(alert), 'utf8');
+    const sent = spawnSync(process.execPath, [NOTIFY_CLI, '--alert-file', alertPath], { cwd: PROJECT_ROOT, encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] });
+    const out = String(sent.stdout || sent.stderr || '').trim();
+    log(`收尾告警投递退出码=${sent.status}：${out.slice(0, 300)}`);
+    // 只有真送出去才记账：送失败还记账，会让下一次重跑被自己的记录挡掉。
+    if (sent.status === 0 && /"status"\s*:\s*"SENT"/u.test(out)) {
+      writeAlertThrottle({ alertId: alert.alertId, fingerprint: alert.fingerprint, sentAt: new Date().toISOString() }, throttleFile);
+    }
   }
 
   process.exit(failures.length || !mergedOk ? 1 : 0);

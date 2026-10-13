@@ -525,10 +525,10 @@ test('buildRoundLoginAlert：一条说清哪几家、哪个后台、去哪几个
   // 编号同一天只有一条（去重能不能生效的前提），且与逐店那条**刻意不同**。
   assert.equal(alert.alertId, 'sycm-login-round-20260924');
   assert.equal(alert.type, 'LOGIN_REQUIRED');
-  assert.match(alert.title, /2 家店需要你登录一次/u, '标题要带家数：收信人一眼看出今天要动几台机器');
+  assert.match(alert.title, /【店铺日报】2 家店需要你登录一次/u, '标题第一段是流程名，还要带家数：收信人一眼看出今天要动几台机器');
 
   const text = renderAlertText(alert);
-  assert.match(text, /【需要处理】2 家店需要你登录一次/u);
+  assert.match(text, /【需要处理】【店铺日报】2 家店需要你登录一次/u);
   assert.match(text, /· 里可林淘宝（阿里妈妈）/u, '要逐店点名**哪个后台**，不能只说「有一家掉了」');
   assert.match(text, /· 盖文天猫（生意参谋、阿里妈妈）/u);
   assert.match(text, /告警编号：sycm-login-round-20260924/u, '事后对账只有编号与时间能引用');
@@ -541,7 +541,7 @@ test('buildRoundLoginAlert：一条说清哪几家、哪个后台、去哪几个
   assert.match(alert.fingerprint, /里可林淘宝:alimama/u);
   const smaller = buildRoundLoginAlert({ rows: [rows[1]], judged: judgePreflight([rows[1]]), now: () => new Date('2026-09-24T09:20:00+08:00') });
   assert.notEqual(smaller.fingerprint, alert.fingerprint, '要人的那几家变了 ⇒ 指纹必须变（否则新信息会被当成重复挡掉）');
-  assert.equal(smaller.title, '盖文天猫 需要你登录一次', '只有一家时标题直接写店名');
+  assert.equal(smaller.title, '【店铺日报】盖文天猫 需要你登录一次', '只有一家时标题直接写店名（流程名在前）');
 
   // 不需要人时**当场抛**：不该叫人的时候发一条，就是在教收信人忽略这个通道。
   assert.throws(() => buildRoundLoginAlert({ rows, judged: judgePreflight([judgeShopReceipt({ shop: '盖文天猫', receipt: both(true, true) })]) }),

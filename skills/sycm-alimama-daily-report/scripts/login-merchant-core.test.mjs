@@ -342,7 +342,7 @@ test('告警真渲染一遍：指路、下一步都在，且**机器名/浏览�
   const rendered = renderAlertText(alert);
   assert.match(rendered, /【需要处理】/u, 'severity=ERROR 必须渲染成「需要处理」而不是「提示」');
   // 2026-09-18：标题改成自带店名的人话（用户反馈「太笼统」），不再借用通用标题表的「平台登录已失效」
-  assert.match(rendered, /【需要处理】里可林家居:阿彦 需要你登录一次/u);
+  assert.match(rendered, /【需要处理】【店铺日报】里可林家居:阿彦 需要你登录一次/u);
   // 2026-09-19：这里原先是「必须给出可点的登录入口」。那条规范被实测证伪，所以改成断言它的反面。
   assert.equal(/https?:\/\//u.test(rendered), false,
     '正文里不该再有链接：点 http 链接会跳到系统默认浏览器，到不了这个窗口');
@@ -539,7 +539,7 @@ test('alertForRun：带 --shop 时，告警必须点名是哪一家店', () => {
     now: () => new Date('2026-09-18T11:02:00+08:00'),
   });
   assert.ok(alert, '「真的试过且没成」却不发告警');
-  assert.match(rendered(alert), /盖文淘宝 需要你登录一次/u, '标题没点名店铺 —— 收信人无法据此行动');
+  assert.match(rendered(alert), /【店铺日报】盖文淘宝 需要你登录一次/u, '标题没点名店铺 —— 收信人无法据此行动');
   assert.match(rendered(alert), /店铺：盖文淘宝/u, '正文里没有独立的「店铺」一行');
   // 2026-10-06 翻转：店里那条「浏览器配置：D:/...」的断言改成反向 —— 指路改由**窗口标题**承担
   // （告警说「标题写着「盖文淘宝」的那个窗口」，而那个标题真的写在窗口上）。
@@ -556,7 +556,7 @@ test('alertForRun：没给 --shop 时点名**共用窗口**（2026-10-06 改；�
     fallbackProfile: 'D:/Retire/edge-daily-report-profile',
     now: () => new Date('2026-09-18T11:02:00+08:00'),
   });
-  assert.equal(alert.title, `${SHARED_WINDOW_NAME} 需要你登录一次`,
+  assert.equal(alert.title, `【店铺日报】${SHARED_WINDOW_NAME} 需要你登录一次`,
     '没给店名时的标题必须点名**共用窗口** —— 只说「需要你登录一次」等于让收信人自己猜哪扇窗');
   assert.equal(alert.source.shopName, null);
   // 2026-10-06 翻转：原先这里断言 `source.browserProfile` 回落到日报那个 profile。
@@ -959,7 +959,7 @@ test('WRONG_ACCOUNT 要叫人，且告警点名到店：静默登成别家是这
     now: () => new Date('2026-09-23T10:00:00+08:00'),
   });
   const text = renderAlertText(alert);
-  assert.match(text, /【需要处理】盖文淘宝 需要你登录一次/u);
+  assert.match(text, /【需要处理】【店铺日报】盖文淘宝 需要你登录一次/u);
   // 2026-10-06 翻转：原先断言「浏览器配置：D:/...」在正文里；现在它**必须不在**。
   assert.equal(text.includes('浏览器配置：'), false, '技术串又进了给业务人员的消息');
   assert.match(text, /标题写着「盖文淘宝」的那个浏览器窗口/u, '点名到店的落点是**窗口标题**');

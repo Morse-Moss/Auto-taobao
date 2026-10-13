@@ -55,6 +55,17 @@ export const TITLE_BY_TYPE = Object.freeze({
   COMMIT_UNKNOWN: '外部写入结果未知，需要人工对账（不要重跑）',
   BUG: '疑似系统自身缺陷，自动化已停止',
   BUDGET_EXHAUSTED: '自动重试次数已用尽',
+  // ── 2026-10-13 统一预警机制：四条流程的 type（标题第一段另有【流程名】前缀，
+  //    这里只兜「没给显式 title」的旧来源）────────────────────────────────────
+  DAILY_ROUND_FAILED: '店铺日报没收完',
+  DAILY_HOLD_TIMEOUT: '驻留等到截止仍没人处理',
+  DAILY_HOLD_RESUMED: '驻留后自动续跑成功',
+  DAILY_HOLD_RESUME_FAILED: '驻留后自动续跑没成功',
+  PROMOTION_ROUND_FAILED: '推广日报没收完',
+  PRODUCT_ROUND_FAILED: '商品数据没收完',
+  WEEKLY_ROUND_FAILED: '周报采集没收完',
+  FLOW_COMPLETED: '流程数据已收齐',
+  ROUND_RESOLVED: '之前的异常已恢复',
 });
 
 // 只渲染白名单里的键。**白名单而不是黑名单**：source 是调用方填的自由对象，
@@ -86,6 +97,26 @@ export const READABLE_SOURCE_KEYS = Object.freeze([
   ['capability', '任务'],
   ['machine', '机器'],
   ['browserProfile', '浏览器配置'],
+]);
+
+// ── 技术定位块（2026-10-13 统一预警机制，两段式告警的第二段）──────────────────
+// 失败告警 = 第一段业务语言（上面的 source 白名单 + reason + action）+
+// 第二段「以下是给技术同学的定位信息」。两段服务的收信人不同，所以字段也分开：
+//   · 业务段用 `READABLE_SOURCE_KEYS`（9 键，全部是运营叫法）；
+//   · 技术段用下面这 5 键，**白名单而不是黑名单**（同 source 的理由：
+//     source 是调用方填的自由对象，黑名单意味着以后谁往里塞一个键它就会出现在告警里）。
+//
+// 刻意**不放机器名**：单机部署没有定位价值，而 2026-10-06 已定「按窗口标题找，
+// 不按 hostname 找」。`buildTechBlock`（runtime/alert-copy.mjs）在生成处连查两遍
+// （键必须在白名单 / 值里不许出现机器名），所以渲染层这里只负责输出。
+export const TECH_BLOCK_TITLE = '以下是给技术同学的定位信息';
+export const TECH_BLOCK_KEYS = Object.freeze(['runId', 'evidenceDir', 'stage', 'exitCode', 'version']);
+export const TECH_BLOCK_LABELS = Object.freeze([
+  ['runId', 'runId'],
+  ['evidenceDir', '证据目录'],
+  ['stage', '机读阶段名'],
+  ['exitCode', '退出码'],
+  ['version', '版本'],
 ]);
 
 function text(value) {
@@ -151,6 +182,18 @@ export function renderAlertText(alert) {
   }
   body += line('时间', formatLocalTime(alert?.createdAt));
   body += line('告警编号', alert?.alertId);
+  // 技术定位块：**固定小标题 + 5 键白名单**，只在整个块至少有一个值时才输出。
+  // 缺值的键整行不输出（同业务段：空值不是零，缺字段就整行不输出）。
+  // 成功通知**不带这个块**（那是给业务收信人的；2026-10-13 用户定稿第 1 条）——
+  // 调用方不挂 `tech` 就没有第二段，渲染层不替任何人决定要不要挂。
+  const tech = alert?.tech;
+  if (tech && typeof tech === 'object') {
+    let techBody = '';
+    for (const [key, label] of TECH_BLOCK_LABELS) {
+      techBody += line(label, tech?.[key]);
+    }
+    if (techBody) body += `\n${TECH_BLOCK_TITLE}\n${techBody}`;
+  }
   return redactSensitive(`${head}${resolveAlertTitle(alert)}\n${body}`.trimEnd());
 }
 

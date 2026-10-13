@@ -629,7 +629,7 @@ test('驱动：运营账号等待项不计入失败，但保留在汇总并可�
 test('告警：标题自带主体名，正文说清哪几家没跑完、停在哪一步、哪几家已收完、哪几家一步没跑', () => {
   const text = renderedAlert(mixedSummary());
   assert.match(text, /【需要处理】/u, '有失败必须是「需要处理」，不是「提示」');
-  assert.match(text, /【需要处理】2 家店的日报没收完（统计日 2026-09-19）/u, '标题要自带主体名与是哪一天');
+  assert.match(text, /【需要处理】【店铺日报】2 家店没收完（统计日 2026-09-19）/u, '标题要自带主体名与是哪一天');
   assert.match(text, /没跑完 2 家：/u);
   assert.match(text, /网林天猫—— 停在第 5 步（下载店铺日报）/u,
     '店名要能让人对上窗口；**账号名（`网林家居旗舰店:阿彦`）不进业务消息** —— 见下面「形状」那条');
@@ -638,7 +638,7 @@ test('告警：标题自带主体名，正文说清哪几家没跑完、停在�
   // 「没跑完 1 家」与「另外 4 家一步都没跑」是两件事。少写这一行，收信人会以为今天收工了。
   assert.match(text, /另外 2 家今天一步都没跑/u, '默认「第一家失败即停整轮」⇒ 必须说清还有几家今天压根没开跑');
   assert.match(text, /盖文淘宝、盖文天猫/u);
-  assert.match(text, /对象：日报一轮 · 5 家店/u, '家数要来自配置（这一轮该跑几家），不是从记录条数数出来的');
+  assert.match(text, /对象：店铺日报一轮 · 5 家店/u, '家数要来自配置（这一轮该跑几家），不是从记录条数数出来的');
   assert.match(text, /告警编号：daily-round-20260919/u, '事后对账只有编号与时间能引用，不能省');
 
   // 整轮没跑起来是另一种情形：主语是「全部店铺」，而且要说清是哪一页不齐。
@@ -648,8 +648,8 @@ test('告警：标题自带主体名，正文说清哪几家没跑完、停在�
     round: { healthCheckDaily: { ok: false, blockingDetails: ['目标页面「飞书底单页」不在这个浏览器里（找到 0 个）；采集会从落位那一步就失败。'] } },
     shops: {},
   });
-  assert.match(blocked, /全部店铺的日报都没跑起来（统计日 2026-09-19）/u);
-  assert.match(blocked, /对象：日报一轮 · 5 家店/u, '家数要来自配置（这一轮该跑几家），不是从记录条数数出来的');
+  assert.match(blocked, /【店铺日报】全部店铺没收完（统计日 2026-09-19）/u);
+  assert.match(blocked, /对象：店铺日报一轮 · 5 家店/u, '家数要来自配置（这一轮该跑几家），不是从记录条数数出来的');
   assert.match(blocked, /目标页面「飞书底单页」不在这个浏览器里/u, '要指名道姓说缺哪一页，不能只说「体检没过」');
   assert.match(blocked, /飞书「各店铺日报」底单页/u, '下一步要说清去哪开、开哪两页');
   assert.equal(blocked.includes('另外'), false, '整轮没开跑时不存在「另外几家没跑」—— 全部都没跑，别写重');
@@ -1140,7 +1140,7 @@ test('驱动：打印路径一次投递都不发生，且打印的是真渲染�
   assert.equal(calls, 0, '--notify-print 绝不许真的投递');
   assert.deepEqual(result, { delivered: false, printed: true });
   const printed = lines.join('\n');
-  assert.ok(printed.includes('【需要处理】2 家店的日报没收完'), '打印的必须是真渲染器的输出，不是自己拼的一份');
+  assert.ok(printed.includes('【需要处理】【店铺日报】2 家店没收完'), '打印的必须是真渲染器的输出，不是自己拼的一份');
   assert.ok(printed.includes('daily-round-20260919'));
 });
 
@@ -1281,7 +1281,7 @@ test('驱动：重复的那条只打在本机日志里，一次投递都不发�
     throttleFile, now: () => new Date('2026-09-20T02:30:00Z'), log: (line) => lines.push(line) });
   assert.deepEqual(second, { delivered: false, suppressed: true, reason: second.reason });
   assert.equal(calls, 1, '窗口内不许再投递一次');
-  assert.ok(lines.join('\n').includes('【需要处理】2 家店的日报没收完'), '被挡下的那条也要留下完整文案');
+  assert.ok(lines.join('\n').includes('【需要处理】【店铺日报】2 家店没收完'), '被挡下的那条也要留下完整文案');
 
   // 没送出去**不许记账**：记了，下一次真跑就会被自己的记录挡掉（静默漏报）。
   const failedFile = tmpThrottle();

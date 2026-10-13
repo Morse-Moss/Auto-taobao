@@ -344,7 +344,7 @@ test('通知：source 的键必须都在白名单里（漏一个 ⇒ 收信人�
     for (const key of Object.keys(notice.source)) {
       assert.ok(WHITELISTED.has(key), `${name} 的 source.${key} 不在白名单里 ⇒ 这一行会被静默丢掉`);
     }
-    assert.equal(notice.source.targetLabel, '日报一轮');
+    assert.equal(notice.source.targetLabel, '店铺日报一轮');
     assert.equal(notice.source.period, '2026-09-26');
     assert.equal(notice.source.shopName, '科塔淘宝');
     // 两条都得有编号与指纹：没有编号就没法去重，没有指纹就没法判「同一处再出问题」。
@@ -683,11 +683,16 @@ test('接线：入口真的把「哪一天」与「证据目录」交给计划�
 // ---------------------------------------------------------------------------
 // 告警口径按流程走（2026-10-12 真机事故：推广链驻留，发出去的却是「日报补跑失败」）
 // ---------------------------------------------------------------------------
-test('口径函数：缺省仍是日报逐字不变，只有明确给 promotion-daily 才换词', () => {
-  assert.deepEqual(noticeLabelsForWorkflow(null), { scope: 'daily', noun: '日报', capability: '各店铺日报' });
-  assert.deepEqual(noticeLabelsForWorkflow(undefined), { scope: 'daily', noun: '日报', capability: '各店铺日报' });
-  assert.deepEqual(noticeLabelsForWorkflow('daily-report'), { scope: 'daily', noun: '日报', capability: '各店铺日报' });
-  assert.deepEqual(noticeLabelsForWorkflow('promotion-daily'), { scope: 'promotion', noun: '推广日报', capability: '推广日报' });
+test('口径函数：缺省仍是日报口径，只有明确给 promotion-daily 才换词', () => {
+  // 2026-10-13 统一预警机制：capability/targetLabel 改成运营叫法、标题加流程名前缀
+  // （用户定稿第 3 条）。noun/编号域/指纹仍逐字不变 —— 变的只是「怎么称呼这条流程」。
+  const daily = { scope: 'daily', noun: '日报', capability: '店铺日报', prefix: '【店铺日报】', targetLabel: '店铺日报一轮' };
+  assert.deepEqual(noticeLabelsForWorkflow(null), daily);
+  assert.deepEqual(noticeLabelsForWorkflow(undefined), daily);
+  assert.deepEqual(noticeLabelsForWorkflow('daily-report'), daily);
+  assert.deepEqual(noticeLabelsForWorkflow('promotion-daily'), {
+    scope: 'promotion', noun: '推广日报', capability: '推广日报', prefix: '【推广日报】', targetLabel: '推广日报一轮',
+  });
 });
 
 test('推广链驻留/续跑的两条通知说「推广日报」，且编号与日报那条不同（同一天不许互压去重窗）', () => {

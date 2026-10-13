@@ -249,7 +249,9 @@ export function buildRoundLoginAlert({ rows = [], judged = judgePreflight(rows),
   const alert = {
     type: 'LOGIN_REQUIRED',
     severity: 'ERROR',
-    title: shops.length === 1 ? `${shops[0]} 需要你登录一次` : `${shops.length} 家店需要你登录一次`,
+    // 标题第一段固定是流程名（2026-10-13 用户定稿第 3 条）：跑前登录体检是店铺日报
+    // 这条流程的第 0 步，收信人扫一眼就知道是哪条流程的事。
+    title: shops.length === 1 ? `【店铺日报】${shops[0]} 需要你登录一次` : `【店铺日报】${shops.length} 家店需要你登录一次`,
     // 同一轮同一天共用一条锚（`sycm-login-round-<日期戳>`）：**这是去重能不能生效的前提**
     // （投递链本身不去重，只认调用方传进来的编号）。日期戳来自 login-merchant-core 的
     // `localDateStamp` —— 不在这里再拼一份，两份日期戳会在同一天里拼出两个锚。
@@ -269,8 +271,8 @@ export function buildRoundLoginAlert({ rows = [], judged = judgePreflight(rows),
       + needHuman.map((item) => `· ${item.shop}：${resolveAction(rowOf(item.shop)?.scriptVerdict ?? 'NEEDS_LOGIN', null)}`)
         .join('\n'),
     source: {
-      targetLabel: `日报跑前登录体检 · ${shops.length} 家店`,
-      capability: '各店铺日报',
+      targetLabel: `店铺日报跑前登录体检 · ${shops.length} 家店`,
+      capability: '店铺日报',
       shopName: shops.join('、'),
     },
   };

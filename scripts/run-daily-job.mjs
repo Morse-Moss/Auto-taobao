@@ -38,6 +38,11 @@ import { pathToFileURL } from 'node:url';
 
 import { HOLD_EXIT, buildJobPlan, renderCommand, shouldRunStep } from '../runtime/daily-job-plan.mjs';
 import { versionLineSafe } from '../runtime/version.mjs';
+// 收集完成提醒（2026-10-13 统一预警机制）：成功的那一天只提醒业务人员查收。
+import { buildFlowOkAlert } from '../runtime/alert-copy.mjs';
+import { dailyOkFacts } from '../runtime/flow-ok-facts.mjs';
+import { dispatchAlert } from '../runtime/deliver-alert.mjs';
+import { collectingShopKeys } from '../runtime/browser-ports.mjs';
 // 统一入口的模式解析（spec §5.1，2026-10-10 加）：--commit 兼容转换 / --mode 显式给 / 矛盾退 2。
 // 登记表只用来取 daily-report 的 manualDefault（矛盾判据在 resolveRunMode 里）。
 import { getWorkflow, resolveRunMode } from '../runtime/workflow-catalog.mjs';
@@ -426,6 +431,47 @@ async function main(argv) {
   runReceipt.status = finalStatus === 0 ? (recovered ? 'RECOVERED' : 'COMPLETED') : 'FAILED';
   runReceipt.finishedAt = new Date().toISOString();
   runReceipt.exitCode = finalStatus;
+
+  // 收集完成提醒（2026-10-13 统一预警机制，用户定稿第 1/5 条）。
+  //
+  // 三条口径：
+  //   ① **只在整轮成功时发**，且只提醒业务人员查收（纯业务、不带技术定位块）——
+  //      失败的那一天由链自己的告警说，那边是两段式；
+  //      排练（dry-run）不投 —— 没写数据就不该惊动人（与链内失败告警同一口径）；
+  //   ② 数字来自**独立回读工件**（`runtime/flow-ok-facts.mjs` 读各店
+  //      `independent-readback.json`），不来自链的自报成功计数；
+  //   ③ 读不到回读工件的店**不计入、也不补 0** —— 一家都读不到就整条不发
+  //      （fail-closed：不能把「没核对」说成「收齐了」），只在日志里留一句。
+  // 排在写回执**之前**：这条发没发、结论是什么，要落在同一份回执里（事后复盘的第一份证据）。
+  // 分批形态下 `run-batches` 自己也会发同一锚（`daily-ok-<日>`）的同一条，
+  // 由去重挡住第二次（同一编号 + 同一指纹）。
+  if (finalStatus === 0 && mode === 'apply') {
+    const shops = options.shops
+      ? String(options.shops).split(',').map((name) => name.trim()).filter(Boolean)
+      : collectingShopKeys();
+    if (shops.length >= 1) {
+      const facts = dailyOkFacts({ root: REPO_ROOT, date, shops });
+      if (facts.missing.length === 0) {
+        const alert = buildFlowOkAlert({
+          flow: 'daily-report', date, shops, okCount: shops.length, total: shops.length,
+          tables: facts.tables, recovered,
+        });
+        log(`[完成提醒] ${alert.title}`);
+        const delivery = dispatchAlert({
+          alert, action: options.notify ? 'send' : 'off', log,
+        });
+        runReceipt.completionNotice = {
+          alertId: alert.alertId, delivered: delivery.delivered, suppressed: delivery.suppressed,
+          reason: delivery.reason, tables: facts.tables,
+        };
+      } else {
+        log(`[完成提醒] 未发：${facts.missing.length} 家店读不到独立回读工件（${facts.missing.join('、')}）`
+          + ' —— 不把「没核对」说成「收齐了」。');
+        runReceipt.completionNotice = { sent: false, reason: 'readback-missing', missing: facts.missing };
+      }
+    }
+  }
+
   writeWorkflowReceipt(receiptPath, runReceipt);
   log(`=== 定时任务结束：全链退出码=${finalStatus}`
     + `${recovered ? `（链那一步当时是 ${chainStatus}，经自动续跑后补上）` : ''}`

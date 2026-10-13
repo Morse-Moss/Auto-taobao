@@ -7,6 +7,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { collectingShopKeys, shopInstance } from '../../../runtime/browser-ports.mjs';
+import { flowFallbackCopy, buildTechBlock } from '../../../runtime/alert-copy.mjs';
+import { currentVersion } from '../../../runtime/version.mjs';
 import { readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from '../../../runtime/alert-throttle.mjs';
 import { validateSummary, UNIFIED_SUMMARY_VERSION } from '../../../runtime/unified-summary-schema.mjs';
 import { expectArgs, shopIdentity } from './shop-identities.mjs';
@@ -22,28 +24,38 @@ const SALES1 = Object.freeze(['里可林淘宝', '网林天猫', '盖文淘宝',
 
 // 推广链的飞书告警（P0-2，2026-10-11）：失败才投递、投递前去重、成功才记账——手法逐字对齐
 // 日报链 run-multi-shop-day.mjs 的 sendRoundAlert（--alert-file 走文件不走 stdin 管道、stdio
-// 显式 ['ignore','pipe','pipe'] 防 EBUSY、throttle 只认「真送出去」）。告警纪律同源：文案不带
-// 机器名、盘符路径与内部代号；收信人要的下一步（去哪看、怎么拉起现场）写成可照做的动作。
-export function buildPromotionRoundAlert({ date, results, now = () => new Date() } = {}) {
+// 显式 ['ignore','pipe','pipe'] 防 EBUSY、throttle 只认「真送出去」）。
+//
+// 2026-10-13 统一预警机制改造（用户定稿三条）：
+//   ① 标题第一段固定【推广日报】—— 收信人扫一眼就知道是哪条流程的事；
+//   ② 业务第一段**不再裸塞 `record.error`**（那往往是半句英文栈或内部代号），改成
+//      「哪几家没跑完 + 一句人话」；技术细节进第二段技术定位块（`tech`）；
+//   ③ 下一步不再写 `start-all --only <店>` 这类命令 —— 收信人是运营，不是技术同学。
+//      命令留给技术定位块与 job.log，业务段只写「转给技术同学」。
+export function buildPromotionRoundAlert({ date, results, tech = null, now = () => new Date() } = {}) {
   const records = Array.isArray(results) ? results : [];
   const failed = records.filter((record) => record?.status !== 'ok');
   if (!failed.length) return null;
+  const copy = flowFallbackCopy('promotion-daily');
+  const shops = failed.map((record) => record.shop).filter(Boolean);
   return {
     type: 'PROMOTION_ROUND_FAILED',
     severity: 'ERROR',
-    title: `推广日报没收完（业务日 ${date}）`,
+    title: `【推广日报】${shops.length === 1 ? shops[0] : `${shops.length} 家店`}没收完（业务日 ${date}）`,
     // 同一天同一轮共用一条锚；是否重复投递由 resolveAlertDedup 判（指纹变＝停的地方变了＝再发）。
     alertId: `promotion-round-${String(date ?? '').replace(/-/gu, '')}`,
     fingerprint: failed.map((record) => `${record.shop}@${record.stages?.at(-1) ?? 'start'}`).join('|'),
     createdAt: now().toISOString(),
-    reason: failed.map((record) => `${record.shop}：${String(record.error ?? '未知失败').slice(0, 200)}`).join('\n').slice(0, 2000),
-    action: '看运行日志里的逐店失败详情；窗口若已释放，用 start-all --only <店> 拉起后到阿里妈妈「下载任务管理」人工核对同业务日任务状态。',
+    reason: `没跑完 ${failed.length} 家：${shops.join('、')}。${copy.reason}`,
+    action: copy.action,
     source: {
       targetLabel: `推广日报一轮 · ${records.length} 家店`,
       period: `业务日 ${date}`,
       capability: '推广日报',
-      shopName: failed.map((record) => record.shop).join('、'),
+      shopName: shops.join('、'),
     },
+    // 技术定位块（两段式第二段）：机读阶段名/证据目录/退出码/版本。调用方不给就不挂。
+    ...(tech ? { tech } : {}),
   };
 }
 
@@ -227,7 +239,18 @@ export function runPromotionSales1(argv = process.argv.slice(2)) {
   // 失败出口（P0-2）：apply 且 --notify 时，失败才投递飞书告警（去重、成功才记账）。
   // dry-run 不投：没写数据就不该惊动人。全成功也不投。
   if (args.notify && args.apply) {
-    const alert = buildPromotionRoundAlert({ date: args.date, results });
+    // 技术定位块（两段式第二段）：「哪家店停在哪一步」用机读阶段名写全，
+    // 证据目录指向本轮 evidence 根。业务第一段看不到这些。
+    const tech = buildTechBlock({
+      evidenceDir: path.relative(REPO_ROOT, args.evidence).replaceAll('\\', '/'),
+      stage: results
+        .filter((record) => record?.status !== 'ok')
+        .map((record) => `${record.shop}@${record.stages?.at(-1) ?? 'start'}`)
+        .join(','),
+      exitCode: 1,
+      version: currentVersion(),
+    });
+    const alert = buildPromotionRoundAlert({ date: args.date, results, tech });
     const delivery = deliverPromotionAlert({ alert, throttleFile: path.resolve('runtime/alert-throttle.json') });
     console.log(JSON.stringify({ notify: delivery }, null, 2));
   }

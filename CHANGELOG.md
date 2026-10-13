@@ -15,6 +15,47 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.8.11] - 2026-10-13
+
+统一飞书预警机制（设计文档 `docs/ops/FEISHU-ALERT-UNIFIED-DESIGN.md`，用户 2026-10-13 五问定稿）。
+一句话：**四条流程各叫各的名字，成功只提醒业务查收，失败才带技术定位块**。
+
+### 改了什么
+
+- 新增 `runtime/alert-copy.mjs`（全仓统一提醒词表）：`FLOWS` 四条流程登记（店铺日报／推广日报／
+  商品数据／周报，标题方框词 + 周期叫法 + 编号前缀）、`buildFlowOkAlert`（完成通知，纯业务）、
+  `buildTechBlock`（技术定位块，5 键白名单、**不放机器名**）、`dailyCauseCopy` 与从日报链
+  **原样并入**的三张词表（11 类结论各有各的措辞，重写只会引入漂移）、其余三链的兜底文案、
+  加载期三张表互锁。日报链 `run-multi-shop-day.mjs` 保留同名 re-export。
+- 渲染层 `runtime/notify-feishu-core.mjs`：`TITLE_BY_TYPE` 补四项（`DAILY_ROUND_FAILED` /
+  `DAILY_HOLD_TIMEOUT` / `PROMOTION_ROUND_FAILED` / `ROUND_RESOLVED`）；`renderAlertText` 新增
+  技术段 —— `alert.tech` 存在时输出固定小标题「以下是给技术同学的定位信息」+ 白名单 5 键，
+  整个块无值时不挂空段。
+- 四条链接线：日报链四条告警构造器标题统一加【店铺日报】、`capability` 改运营叫法、
+  失败告警挂 tech 块（`roundTechBlock`，不含机器名）；推广链 reason 不再裸塞 `record.error`、
+  action 去掉 `start-all` 命令；商品链修已知缺陷 ㉒（去盘符路径／job.log 文件名／机器名／
+  机读码，业务段＝人话＋现场原话截断）；周报链 `capability` 与 `alertId` 归一
+  （`weekly-collect-<时间戳>` → `weekly-round-<业务日>`，接进去重与记账）。
+- 新增收集完成提醒（用户定稿第 1/5 条）：四条链收尾各挂一处，**只在整轮成功时**发、
+  纯业务不带技术块，数字来自**独立回读工件**（`runtime/flow-ok-facts.mjs`：日报＝各店
+  `independent-readback.json`，推广＝导入器 `receipt.json` 写后回读，商品＝两个导入器收据），
+  读不到工件的店不计入也不补 0，一家读不到就整条不发。投递走新公共出口
+  `runtime/deliver-alert.mjs`（`dispatchAlert`：去重 → `--alert-file` 不走 stdin → stdio 显式
+  → 只认真送出去才记账）。
+- 驻留/续跑两条通知（`runtime/hold-and-resume-plan.mjs`）按流程取口径之外，标题也加流程名前缀。
+
+### 验证
+
+- 定向组全绿：`runtime/*.test.mjs` 1251 过、`skills/sycm-alimama-daily-report/scripts/*.test.mjs`
+  563 过（版本 1.8.11 工作区）。新增 4 个测试文件：`alert-copy.test.mjs`（24）、
+  `flow-ok-facts.test.mjs`（9）、`deliver-alert.test.mjs`（10）、
+  `flow-ok-notice-wiring.test.mjs`（6，源码级接线守卫）、
+  `alert-type-title-guard.test.mjs`（6，全仓 type 标题闭集守卫）。
+- 突变验证 4 条全红后恢复：删词表一项（加载期互锁抛）、删 `TITLE_BY_TYPE` 一项（新守卫与
+  XWS 守卫双红）、去掉日报标题流程名（链用例 3 红）、摘掉日报完成提醒分支（接线守卫红）。
+- **仅离线判据**：完成提醒与两段式告警尚未在真机发过；下一次定时跑（15:30 日报）是第一场
+  真机验收，证据看 `evidence/daily-job-<日>/` 的 `completionNotice` 与 job.log。
+
 ## [1.8.10] - 2026-10-13
 
 `check:head` 补上 `sycm-export-search-rank` 组。1.8.9 修的那个「生产代码从来没成功过」的
