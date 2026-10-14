@@ -24,11 +24,15 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs
 import { spawn, spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 // 全仓统一提醒词表（2026-10-13）：流程登记、完成通知构造、兜底文案、技术定位块。
 import { buildFlowOkAlert, buildTechBlock, flowFallbackCopy } from './alert-copy.mjs';
 // 告警去重（同一条编号在时间窗内不重复发）的唯一实现。
 import { readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from './alert-throttle.mjs';
+// 起跑前登录态预检（2026-10-14）：小旺神会话过期时，十个段会逐个跑到「点市场分析」
+// 才人道中止（run4 实测：6 段全废、每段白烧 20~60 秒，且段级告警因 EBUSY 一条都没到）。
+// 预检只读、撞见登录墙就让驱动停在那之前，并由预检自己发飞书叫人。
+import { shouldAbortForLogin } from './xws-weekly-login-preflight.mjs';
 // 版本号（技术定位块的「版本」那一行）。
 import { currentVersion } from './version.mjs';
 
@@ -37,6 +41,7 @@ const PROJECT_ROOT = path.resolve(HERE, '..');
 const HOST = path.join(HERE, 'run-collection-host.mjs');
 const MERGER = path.join(PROJECT_ROOT, 'skills/xws-export-market-analysis/scripts/merge-market-analysis.mjs');
 const NOTIFY_CLI = path.join(HERE, 'notify-feishu.mjs');
+const LOGIN_PREFLIGHT = path.join(HERE, 'xws-weekly-login-preflight.mjs');
 
 const STDOUT_FILE = path.join(HERE, '.collect-stdout.log');
 const DRIVER_LOG = path.join(HERE, '.weekly-collection.log');
@@ -92,6 +97,49 @@ export function lastAdaptiveDone(logText) {
   try { return JSON.parse(matches.at(-1)); } catch { return null; }
 }
 
+// 起跑前登录态预检的一步（2026-10-14）。守两条既有纪律：
+//   ① EBUSY：stdio 显式 ['ignore','pipe','pipe']，绝不依赖 stdin 管道传参
+//      （预检的入参全走 argv，它的告警自己走 --alert-file，本驱动不碰它 stdin）；
+//   ② fail-closed 的反面是「读不到不冒充」：预检没返回可解析结论 ⇒ PREFLIGHT_UNREADABLE，
+//      非阻断放行（宿主 health 与监督环在后面兜底，且它们现在的告警是通的）。
+export function runLoginPreflightStep(options, { spawnImpl = spawnSync } = {}) {
+  const argv = [
+    LOGIN_PREFLIGHT,
+    '--proxy', options.proxy,
+    // 静默必须显式：驱动 dry-run 时预检也不叫人（--no-notify），否则「彩排」会真发飞书。
+    ...(options.notify ? [] : ['--no-notify']),
+  ];
+  const result = spawnImpl(process.execPath, argv, {
+    cwd: PROJECT_ROOT,
+    encoding: 'utf8',
+    timeout: 60_000,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const stdout = String(result.stdout ?? '');
+  // 预检把结论 JSON 打到 stdout（**pretty 多行**，`JSON.stringify(result, null, 2)`）。
+  // 2026-10-14 活体接线验证抓到的真 bug：原实现只取最后一行 ⇒ 多行 JSON 的最后一行是 `}`，
+  // 解析必失败 ⇒ LOGIN_REQUIRED 被误判成 PREFLIGHT_UNREADABLE ⇒ 驱动照样起段，
+  // 登录墙前白烧一段（正是本预检要防的事）。所以先按整块试，再按最后一行试。
+  const trimmed = stdout.trim();
+  let parsed = null;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    try {
+      parsed = JSON.parse(trimmed.split(/\r?\n/u).filter(Boolean).at(-1) ?? '');
+    } catch {
+      parsed = null;
+    }
+  }
+  if (!parsed?.status) {
+    return {
+      status: 'PREFLIGHT_UNREADABLE',
+      reason: `预检没有返回可解析结论（exit=${result.status ?? 'null'} spawn错误=${result.error?.code ?? '-'}）：${(stdout || String(result.stderr ?? '')).slice(0, 200)}`,
+    };
+  }
+  return parsed;
+}
+
 function log(line) {
   const text = `[${new Date().toISOString()}] ${line}\n`;
   try { appendFileSync(DRIVER_LOG, text); } catch { /* 日志写不了不阻塞采集 */ }
@@ -126,6 +174,32 @@ async function main() {
   const options = parseDriverArgs(process.argv.slice(2));
   writeFileSync(DRIVER_LOG, '');
   log(`周采集驱动启动 ranges=${options.ranges.map((r) => r.id).join(',')} 投递=${options.notify ? '飞书' : 'dry-run'}`);
+
+  // 起跑前登录态预检：登录墙在位就不起任何一段（run4 的教训：十段全废＋告警还没到）。
+  const preflight = runLoginPreflightStep(options);
+  if (shouldAbortForLogin(preflight.status)) {
+    log(`登录态预检未通过，放弃起段：${preflight.status} ${preflight.reason}`);
+    const receipt = {
+      version: 'weekly-collection-receipt-v1',
+      at: new Date().toISOString(),
+      ranges: options.ranges.map((r) => r.id),
+      notify: options.notify ? 'feishu' : 'dry-run',
+      collected: [],
+      failures: [{
+        range: 'preflight',
+        code: 2,
+        csv: null,
+        xlsx: null,
+        reason: `登录态预检：${preflight.reason}`,
+      }],
+      preflight,
+    };
+    writeFileSync(path.join(HERE, '.weekly-collection-receipt.json'), JSON.stringify(receipt, null, 2));
+    // 刻意**不发**收尾告警：预检已经把人叫到了（同一次故障两条告警就是轰炸）。
+    // 预检自身是 --no-notify（dry-run）时同理：彩排不往外发任何东西。
+    process.exit(1);
+  }
+  log(`登录态预检：${preflight.status} ${preflight.reason}`);
 
   const collected = [];
   const failures = [];
@@ -237,7 +311,13 @@ async function main() {
   process.exit(failures.length || !mergedOk ? 1 : 0);
 }
 
-main().catch((error) => {
-  log(`fatal: ${error.message}`);
-  process.exit(1);
-});
+// isMain 守卫（2026-10-14 加）：否则测试一 import 本模块就会带着 node --test 的 argv
+// 跑 main() ⇒ parseDriverArgs 抛「--ranges is required」⇒ process.exit(1) 把测试进程带走。
+// 与 xws-sku-auth-preflight / xws-weekly-login-preflight 同一形状。
+const isMain = process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
+if (isMain) {
+  main().catch((error) => {
+    log(`fatal: ${error.message}`);
+    process.exit(1);
+  });
+}

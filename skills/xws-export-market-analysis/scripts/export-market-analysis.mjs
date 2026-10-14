@@ -514,7 +514,10 @@ async function inspectPlugin(proxy, target) {
   })()`);
 }
 
-function isXiaowangshenLoginTarget(target) {
+// 导出给周报竞品链的登录态预检用（runtime/xws-weekly-login-preflight.mjs）：
+// 「哪个页签是小旺神登录页」「这段文本是不是已登录账号页」是**平台判据**，
+// 只许有一份 —— 预检重新抄一遍就会漂移（改一处忘另一处的坑本项目踩过多次）。
+export function isXiaowangshenLoginTarget(target) {
   if (!isPage(target)) return false;
   try {
     const url = new URL(target.url);
@@ -522,6 +525,14 @@ function isXiaowangshenLoginTarget(target) {
   } catch {
     return false;
   }
+}
+
+// 已登录账号页的可见文本判据（与 ensurePluginSession 逐字一致）：必须有「退出」
+// **且**有账号类型标记。小旺神登录成功后 URL 仍停在 /user/base-login，
+// 所以 URL 不足以判登录（ensurePluginSession 文件头同一条理由）。
+export function isLoggedInAccountText(text) {
+  const value = String(text ?? "");
+  return /退出/u.test(value) && /(普通用户|专业版|账号安全)/u.test(value);
 }
 
 async function ensurePluginSession(proxy, stage) {
@@ -533,7 +544,7 @@ async function ensurePluginSession(proxy, stage) {
   // Xiaowangshen keeps the /user/base-login path after a successful QR/account
   // login. The authenticated account page exposes the account and a logout
   // action, so URL alone is not sufficient to classify it as a login wall.
-  if (/退出/u.test(text) && /(普通用户|专业版|账号安全)/u.test(text)) return;
+  if (isLoggedInAccountText(text)) return;
   throw humanRequired(`${stage} requires Xiaowangshen login`, {
     stage,
     targetId: loginTarget.targetId,

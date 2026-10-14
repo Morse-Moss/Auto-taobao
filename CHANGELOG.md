@@ -15,6 +15,58 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.9.2] - 2026-10-14
+
+周报竞品链「告警发不出去」与「登录态没有起跑前检查」两个病的同一次修复。
+触发事件：2026-10-14 竞品周采 run4 —— 小旺神会话过期，十个段里跑完的六个全部人道中止，
+而五条段级告警**一条都没到飞书**（spawnSync 带 stdin 管道在宿主沙箱下必 EBUSY）。
+
+### 改了什么
+
+- `runtime/supervise-collection.mjs`（`deliver`）：投递形状从
+  `spawnSync(node, [NOTIFY_CLI], { input: payload })` 改为
+  `spawnSync(node, [NOTIFY_CLI, '--alert-file', <临时文件>], { stdio: ['ignore','pipe','pipe'] })`。
+  `input:` 隐含 stdin 管道、而 spawnSync 缺省 stdio 就是三根管道 ⇒ 宿主沙箱下必炸
+  EBUSY（status=null、stdout/stderr=undefined）。这是 1.7.1 在日报链一次修掉 5 处的**同一款坑**，
+  当时漏了本文件；run4 的代价是 5 次「告警未送达（exit=null）：undefined」。
+  同时把 `result.error.code` 打进日志 —— 原来那行字把「通道坏了」伪装成「没配置」。
+- `runtime/xws-weekly-login-preflight.mjs`（新增）：周报竞品链的起跑前登录态预检。
+  只读（GET /targets + /eval 读可见文本，不点不导航），判据从
+  `export-market-analysis.mjs` 导入（`isXiaowangshenLoginTarget` / `isLoggedInAccountText`，
+  与 `ensurePluginSession` 同一对，不重抄）。登录墙 ⇒ LOGIN_REQUIRED（阻断＋飞书叫人，
+  动作文案含「扫码后关掉残留登录页签」）；已登录账号页 ⇒ READY；没有小旺神页签 /
+  页签读不到 / 代理读不到 ⇒ 非阻断放行并如实记账（「读不到」不冒充通过也不冒充登录墙）。
+  去重与恢复通知按 SKU 链既有形状（同 type 同原因 DEDUPED，READY 后补 RESOLVED）。
+- `runtime/run-weekly-collection.mjs`：段循环前插预检一步。LOGIN_REQUIRED ⇒ 不起任何段、
+  写收据、退出 1，且**刻意不发**收尾告警（预检已经把人叫到了，同一次故障两条就是轰炸）；
+  预检读不到（PREFLIGHT_UNREADABLE）⇒ 放行（宿主 health 与监督环兜底）。驱动 dry-run 时
+  给预检传 `--no-notify`（彩排不许真发飞书）。`main()` 加 isMain 守卫（否则测试一 import
+  就带着 node --test 的 argv 跑主流程、exit 1 把测试进程带走）。
+- `skills/xws-export-market-analysis/scripts/export-market-analysis.mjs`：把
+  `isXiaowangshenLoginTarget` 与登录态文本判据导出（`isLoggedInAccountText`），
+  `ensurePluginSession` 改调它 —— 行为逐字不变，只为判据只有一份。
+
+### 为什么改
+
+- 告警链是建好的，但投递通道坏了：出事时飞书安静，人只能靠翻 `.collection-host.log` 发现。
+- 登录态原来没有任何起跑前检查：会话过期后十段逐个白烧 20~60 秒才人道中止，
+  run4 六个段全废就这么来的。
+
+### 验证到什么程度（说实话）
+
+- 离线：`supervise-collection.test.mjs` 22/22（新增 4 条钉投递形状：
+  argv 必含 `--alert-file`、不许有 `input`、stdio 必为 `['ignore','pipe','pipe']`、
+  EBUSY 形状返回 1）；`xws-weekly-login-preflight.test.mjs` 17/17；
+  `run-weekly-collection.test.mjs` 8/8；`skills/xws-export-market-analysis/tests/adaptive.test.mjs` 64/64。
+- 真机（只读，未发任何飞书）：对活体买家浏览器跑预检 ⇒ LOGIN_REQUIRED（2/2 登录页签是墙，
+  与人工探针结论一致），退出码 2；驱动 dry-run 接线验证 ⇒ 0.4 秒判出、弃跑、一段未起、
+  收据落盘。**这一轮还抓到一个真 bug**：预检 CLI 打的是 pretty 多行 JSON，驱动原只取最后一行
+  ⇒ LOGIN_REQUIRED 被误判成 PREFLIGHT_UNREADABLE、照样起段白烧一段；已修（整块优先解析），
+  并用多行形状的用例钉住。
+- `prepare-flow.test.mjs`：子用例 16/16 通过；文件级在本机沙箱超时属**既有环境问题**
+  （HEAD 原版同样超时，已对照；单跑末用例 41s 通过）。
+- **没有**真发过飞书（对外发送未获授权）；登录态恢复后的真实投递待用户扫码后随重跑验证。
+
 ## [1.9.1] - 2026-10-14
 
 1.9.0 推上去之后 CI 红了：`fast-gate` 与 `skill-tests (sycm-alimama-daily-report)` 各挂一条。

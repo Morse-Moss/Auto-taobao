@@ -35,8 +35,9 @@
 // 退出码：0 = 正常收尾（COMPLETED）；1 = 异常收尾（FAILED / SUSPECT_STALLED / UNKNOWN）。
 // 告警投递本身「没发出去」由 notify-feishu.mjs 保证非零退出码。
 
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -319,25 +320,55 @@ function buildAlert({ status, detail, options, eventInfo }) {
   };
 }
 
-function deliver(alert, dryRun) {
+// 投递通道的**唯一**调用形状（2026-10-14 修；这是 1.7.1 同款坑漏在这条链上的网点）。
+//
+// 病史：原实现是 `spawnSync(process.execPath, [NOTIFY_CLI], { input: payload, … })`。
+// `input:` 隐含一根 stdin 管道，而 spawnSync 的 stdio 缺省就是三根管道 ⇒ 宿主沙箱下
+// **必炸 EBUSY**（libuv UV_EBUSY，errno=-4082；1~4ms 就返回，status=null、
+// stdout/stderr 都是 undefined）。2026-10-14 竞品周采 run4 的实测代价：6 个失败段里
+// 5 次段级告警全部「告警未送达（exit=null）：undefined」——飞书上一条都没到，
+// 而日志里那行字看不出是「通道坏了」还是「没配」。同款坑 1.7.1 在日报链一次修了 5 处
+// （TOOLING-NOTES.md「EBUSY」条），当时漏了本文件。
+//
+// 修法与仓库既有样板逐字一致（run-weekly-collection.mjs 收尾告警、run-multi-shop-day.mjs
+// 的 dispatchRoundAlert，1.7.1 均已落地）：告警落临时文件，用 notify-feishu.mjs 本来就有的
+// `--alert-file` 传，stdio 显式 `['ignore','pipe','pipe']`。实测同一坏状态下该形状拿到
+// DRY_RUN 收据（TOOLING-NOTES.md）。**别再改回 `input:` 或裸 spawnSync 缺省 stdio。**
+export function deliver(alert, dryRun, spawnImpl = spawnSync, tmpDir = os.tmpdir()) {
   const payload = JSON.stringify(alert);
   if (dryRun) {
     console.log('[supervise] DRY-RUN 告警:\n' + payload);
     return 0;
   }
-  const result = spawnSync(process.execPath, [NOTIFY_CLI], {
-    input: payload,
-    cwd: PROJECT_ROOT,
-    encoding: 'utf8',
-    timeout: 60_000,
-  });
-  const receipt = (result.stdout || '').trim();
-  if (result.status !== 0) {
-    console.error(`[supervise] 告警未送达（exit=${result.status}）：${receipt || result.stderr}`);
-  } else {
-    console.log(`[supervise] 告警已送达：${receipt.slice(0, 200)}`);
+  const alertFile = path.join(tmpDir, `supervise-alert-${process.pid}-${Date.now()}.json`);
+  try {
+    writeFileSync(alertFile, payload, 'utf8');
+    const result = spawnImpl(process.execPath, [NOTIFY_CLI, '--alert-file', alertFile], {
+      cwd: PROJECT_ROOT,
+      encoding: 'utf8',
+      timeout: 60_000,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const receipt = String(result.stdout || result.stderr || '').trim();
+    if (result.error) {
+      // 起进程本身就失败（EBUSY/EINVAL/ENOENT…）：status 是 null、stdout/stderr 是 undefined。
+      // 必须把 error.code 打出来 —— 原来那行 "exit=null：undefined" 把通道故障伪装成了
+      // 「没配置」，而这两件事的处置完全不同（一个是环境限制、一个是缺凭据）。
+      console.error(`[supervise] 告警未送达（spawn 失败 ${result.error.code ?? '?'}）：${String(result.error.message ?? '').slice(0, 200)}`);
+      return 1;
+    }
+    if (result.status !== 0) {
+      console.error(`[supervise] 告警未送达（exit=${result.status}）：${receipt.slice(0, 300)}`);
+    } else {
+      console.log(`[supervise] 告警已送达：${receipt.slice(0, 200)}`);
+    }
+    return result.status ?? 1;
+  } catch (error) {
+    console.error(`[supervise] 告警投递自身出错：${String(error?.message ?? error).slice(0, 300)}`);
+    return 1;
+  } finally {
+    try { unlinkSync(alertFile); } catch { /* 临时文件清不掉不影响主流程 */ }
   }
-  return result.status ?? 1;
 }
 
 async function main() {

@@ -1,12 +1,13 @@
 // 采集监督环的离线测试。判据是 fail-closed 的，所以每条"负面"分支都要有对应用例。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
   PHASE_BUDGETS,
   classify,
+  deliver,
   discoverRunDir,
   isProcessAlive,
   phaseBudget,
@@ -270,4 +271,70 @@ test('shouldDeliver: 静默必须显式声明，默认什么都不静默', () =>
   assert.equal(shouldDeliver('COMPLETED'), true);
   assert.equal(shouldDeliver('COMPLETED', { quietCompleted: false }), true);
   assert.equal(shouldDeliver('COMPLETED', { quietCompleted: true }), false);
+});
+
+// ── deliver：投递通道形状的回归（2026-10-14，EBUSY 漏网点） ─────────────────────
+// 病史：原实现 `spawnSync(node, [NOTIFY_CLI], { input: payload })` —— `input:` 隐含 stdin
+// 管道，宿主沙箱下必 EBUSY（status=null、stdout/stderr=undefined）。2026-10-14 竞品周采
+// run4：5 次段级告警全部「未送达（exit=null）：undefined」，飞书一条都没到。
+// 下面几条把「落临时文件 + --alert-file + stdio ignore/pipe/pipe」这个形状钉死：
+// 谁改回 `input:` 或裸 spawnSync 缺省 stdio，这些用例就红。
+
+const fakeSpawn = (result) => {
+  const calls = [];
+  const impl = (...args) => { calls.push(args); return result; };
+  return { impl, calls };
+};
+
+test('deliver: 走 --alert-file 临时文件，不碰 stdin 管道（EBUSY 回归）', () => {
+  const tmp = mkdtempSync(path.join(os.tmpdir(), 'supervise-deliver-'));
+  try {
+    const { impl, calls } = fakeSpawn({ status: 0, stdout: '{"status":"SENT"}' });
+    const code = deliver({ alertId: 'a-1', title: 't' }, false, impl, tmp);
+    assert.equal(code, 0);
+    assert.equal(calls.length, 1);
+    const [command, argv, options] = calls[0];
+    assert.equal(command, process.execPath);
+    // 告警必须经 --alert-file 传：argv 里有它，且**没有**任何把 JSON 送进 stdin 的形状。
+    assert.ok(argv.includes('--alert-file'), 'argv 必须包含 --alert-file');
+    assert.equal('input' in options, false, '不许用 input:（那隐含 stdin 管道，沙箱下 EBUSY）');
+    assert.deepEqual(options.stdio, ['ignore', 'pipe', 'pipe']);
+    // 临时文件确实写了合法 JSON，且投递结束后被清掉。
+    const alertFile = argv[argv.indexOf('--alert-file') + 1];
+    assert.equal(existsSync(alertFile), false, '投递结束必须清掉临时 alert 文件');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('deliver: spawn 自身失败（EBUSY 形状）时返回 1 且不冒充成功', () => {
+  const tmp = mkdtempSync(path.join(os.tmpdir(), 'supervise-deliver-'));
+  try {
+    // 与 2026-10-14 实测逐字同形：status=null、stdout/stderr undefined、error.code=EBUSY。
+    const { impl } = fakeSpawn({ status: null, signal: null, error: Object.assign(new Error('spawnSync EBUSY'), { code: 'EBUSY' }) });
+    assert.equal(deliver({ alertId: 'a-2' }, false, impl, tmp), 1);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('deliver: CLI 非零退出（没发出去）时返回非零', () => {
+  const tmp = mkdtempSync(path.join(os.tmpdir(), 'supervise-deliver-'));
+  try {
+    const { impl } = fakeSpawn({ status: 1, stdout: '{"status":"FAILED"}', stderr: '' });
+    assert.equal(deliver({ alertId: 'a-3' }, false, impl, tmp), 1);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('deliver: dry-run 不起进程、直接返回 0', () => {
+  const tmp = mkdtempSync(path.join(os.tmpdir(), 'supervise-deliver-'));
+  try {
+    const { impl, calls } = fakeSpawn({ status: 0 });
+    assert.equal(deliver({ alertId: 'a-4' }, true, impl, tmp), 0);
+    assert.equal(calls.length, 0);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });
