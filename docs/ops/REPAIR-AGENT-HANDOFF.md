@@ -61,17 +61,26 @@
 
 ## 修复 agent 该做什么（按顺序）
 
-0. **先确认这家店的实例还在，不在就把它拉起来。**（2026-10-09 加，**别跳**）
+0. **先确认这台实例还在，不在就把它拉起来。**（2026-10-09 加，**别跳**）
    `--batches` 形态**每一批跑完就释放**，而 `stop` 用的是与 `start` **同一份 `--only` 名单**
    —— **失败的那一家也在释放名单里**。所以「脚本驻留不退出、窗口留着、现场就在」那句话
    只在**非分批**形态成立；生产跑的正是 `--batches`。
-   判据不能靠记忆，只能回读：`curl -s -m 5 http://127.0.0.1:<该店代理端口>/targets`
-   （端口从 `runtime/browser-ports.mjs` 的 `shopInstance(店).proxyPort` 取，或直接用
-   `97-repair-request.json` 里 `instancePrecondition.checkCommand`）。
+
+   ⚠️ **「确认哪一台」随阶段变**（2026-10-14 加；10-13 那天正是栽在这里）：这条链是
+   「一店一实例 + 一台共用实例」混跑的 —— **第 7 步 `push` 与第 11 步 `readback` 跑在
+   19022/19023 那台共用商家浏览器上**（它们的作业对象是五家店共用的那一页飞书底单），
+   其余九个阶段跑在这家店自己的实例上。10-13 网林淘宝那次失败的是 `readback`，
+   而当时的单子叫 agent 去确认的却是这家店自己的实例 —— 与失败无关的那一台。
+
+   判据不要自己推，**直接读**：`97-repair-request.json` 的 `instancePrecondition.checkCommand`
+   与 `.startCommand` —— 它们已经按阶段算好，里面那台就是对的。
    - 有输出（一个 JSON 数组）⇒ 实例在，直接做第 1 步。
-   - 连不上 ⇒ 先 `node scripts/start-all-hold.mjs --only <店>` 把它拉起来（**后台托住**，
-     普通 `start-all.mjs` 起完就退、窗口留不住），再用 `Get-NetTCPConnection -LocalPort <端口> -State Listen`
-     **读两遍**确认在听，然后才做第 1 步。
+   - 连不上 ⇒ 跑 `instancePrecondition.startCommand` 把它拉起来（**后台托住**，普通
+     `start-all.mjs` 起完就退、窗口留不住），再用
+     `Get-NetTCPConnection -LocalPort <端口> -State Listen` **读两遍**确认在听，然后才做第 1 步。
+     ⚠️ 共用阶段那条命令是 `node scripts/start-all-hold.mjs --only dailyReport`，**不是**
+     `--only <店>`：`--only <店>` 起的是这家店自己的实例，起不到共用那台上
+     —— 照着跑完会以为「实例已就位」，而那是最坏的一种错觉。
    - **为什么这一步是硬要求**：`--proxy` 是唯一的实例选择器（见 `repair-shop-stage.mjs` 头部纪律），
      代理连不上时页面动作一个都执行不到，而脚本会如实报 `读不到页签（代理连不上）` 退 3。
      2026-09-28~10-07 共 27 份修复报告里**有 20 份**的结论是「现场已不在 ⇒ 未执行任何修复动作 ⇒ 转人」
@@ -86,11 +95,24 @@
    `cause` 与 `stage` 为准**，把截图当辅助证据。
 3. 从 `candidates` 里**挑一个**动作（只能挑菜单里的，不能发明动作名）。挑的依据是现场事实，
    不是猜。菜单为空 ⇒ 跳第 6 步（转人）。
-4. 执行：照 `execHint` 的形状调
-   `node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop <店> --proxy <该店代理> --stage <阶段> --cause <成因> --action <动作> --log-dir <该店证据目录>`
-   - 先加 `--dry-run` 排练一次（一个写请求都不发），确认目标页认得出来，再去掉 `--dry-run` 真跑。
-   - `--proxy` 必须与该店匹配（`runtime/browser-ports.mjs` 的 `shopInstance().proxyPort`）；
-     两者对不上脚本会停手。
+   - 菜单为空**不等于**现场信息为空：单子里的 `stageHint`（阶段作业在哪一页）与
+     `statePath` 指的完整现场仍然可用 —— 你被派来修**根因**时看的正是它们
+     （2026-10-14 起 `stageHint` 只取决于**阶段**，不再因为「成因没登记修法」而一起变成 null）。
+4. 执行：照 `execHint` 的形状调（**`execHint` 里的 `--proxy` 已按阶段算好，照抄即可**）
+   `node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop <店> --proxy <该阶段那台> --stage <阶段> --cause <成因> --action <动作> --log-dir <该店证据目录>`
+   - 先加 `--dry-run` 排练一次（一个写请求都不发），确认**目标页认得出来**（排练会打出目标页 URL），
+     再去掉 `--dry-run` 真跑。
+   - `--proxy` 与店名的对应关系**按阶段定**，唯一口径在
+     `skills/sycm-alimama-daily-report/scripts/stage-browsers.mjs` 的 `proxyForStage()`：
+     `push` / `readback` ⇒ 共用商家浏览器 `19023`；其余阶段 ⇒ 这家店自己的
+     `shopInstance(店).proxyPort`。两者对不上脚本会**停手**（这是设计，不是故障 —— 见
+     `resolveProxy`）；照 `execHint` 抄就不会撞上它。
+   - 目标页由**阶段**决定（`repair-actions.mjs` 的 `STAGE_PAGE_HINT`）：`push`/`readback` 的目标页
+     是那一页**飞书底单**，其余阶段是 alimama / sycm 站点。匹配出来多于一个页或一个都没有时，
+     脚本**不猜**，如实报「找不到要修的那一页」。
+   - ⚠️ **判「修对了页」看的是目标页 URL，不是 `applied:true`**：10-13 那次动作
+     `applied:true`，而它动的是**店铺标识页**（`file:///…/label.html?…`）—— 页错了，动作当然成功。
+     排练打出来的那个 URL 若是标识页或登录页，就是页错了，先回去查 `--proxy`。
 5. 动作 `applied === true` ⇒ 重试失败那一步（`run-daily-job.mjs --date <目标日> --shops <该店>`
    ＋ 只跑失败起点之后的阶段）。回读底单行数确认真的写进去了。
    - 动作没落地（`applied !== true`）⇒ 换下一个候选，不重试阶段（原样再来一遍不算修复）。

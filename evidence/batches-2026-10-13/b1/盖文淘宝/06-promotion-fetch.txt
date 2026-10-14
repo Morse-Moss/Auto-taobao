@@ -1,0 +1,37 @@
+
+===== 2026-10-14T03:18:13.471Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase fetch --date 2026-10-13 --proxy http://127.0.0.1:19043 --expect-shop 盖文全卫定制 --expect-member 随心品质定制:小嘉 --expect-member-id 887360146
+exit=0 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 9396F0E0C72238D773E122124A3DD5B5｜phase=fetch｜目标日 2026-10-13
+[身份] 阿里妈妈会员 = "随心品质定制:小嘉" ID="887360146"（这一页不显示店铺名，只有会员名）｜期望 "随心品质定制:小嘉" / 887360146 ✓
+[fetch] 下载任务管理｜已有 zip 245 个｜目录 C:\Users\Administrator\Downloads
+[fetch] 列表读到 9 条任务（目标日按「日期范围」列认，不按任务名认）
+[fetch] 日期范围等于 2026-10-13 的任务共 1 条（营销场景报表_20261014_111742）⇒ 逐条试，哪条落盘用哪条
+[fetch] 目标任务行 = 第 1 行｜生成成功 营销场景报表_20261014_111742 30天累计数据 2026-10-13至2026-10-13 2026-10-14
+[fetch] 真实鼠标点它的复选框 (143,342) → {"clicked":true,"target":"9396F0E0C72238D773E122124A3DD5B5","x":143,"y":342}
+[fetch] 回读 checked=true，当前勾选 = [1]
+[fetch] 候选 营销场景报表_20261014_111742 没取到：等了 10000ms（25 次）仍找不到 营销场景报表_20261014_111742 的下载入口（action-row-hidden，操作行=第 2 行，操作行 display=none，操作行内「下载」叶子=1，操作行文本="下载 删除"）
+[fetch] 候选全试完没落盘（营销场景报表_20261014_111742→等了 10000ms（25 次）仍找不到 营销场景报表_20261014_111742 的下载入口（action-row-hidden，操作行=第 2 行，操作行 display=none，操作行内「下载」叶子=1，操作行文本="下载 删除"））⇒ 补提交一条同目标日的任务，再逐条试一次
+[submit] 页面 = https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-13&endTime=2026-10-13&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day&isRequestedQztDefaultSet=1｜正文 2950 字符
+[submit] 候选 1 个，取文档序第一个（SPAN，其可点祖先是 BUTTON，点击靠冒泡触发）
+[遮挡] 全屏层 DIV#wrapper_dlg_747(data-owner-id=app) z=99999，rect=[0,0,1506,642]，层内可点小控件 24/112 个，选中 SPAN#mx_750「」于 (1251,32)
+[遮挡] 回读：全屏层剩 2 个（["DIV#mask_dlg_747 z=99998","DIV#wrapper_dlg_747 z=99999"]）｜目标可点=false ⇒ 还在挡（层还剩 2 个且目标仍不可点）
+[遮挡] 回读：全屏层剩 0 个｜目标可点=true ⇒ 不再挡事（全屏层已归零）
+[submit] 重新定位「下载报表」：候选 1 个，tag=SPAN，rect=undefined（未说明原因）
+[submit] 滚动后复核通过（y=314（中心点命中））→ 点击 → {"clicked":true,"tag":"SPAN","text":"下载报表"}
+[submit] 等到「确定」(#0)，第 2 次轮询命中｜视口 [1506,642]｜确定@[495,543,24,12]可点 取消@[555,533,64,32]可点 → {"clicked":true,"tag":"SPAN","text":"确定"}
+[submit] 提交后提示 = ""
+[fetch] 补提交成功：营销场景报表_20261014_111846（列表里恰好多出 1 条：营销场景报表_20261014_111846；台账已记）
+[fetch] 补提交后重读列表：9 条
+[fetch] 日期范围等于 2026-10-13 的任务共 2 条（营销场景报表_20261014_111846、营销场景报表_20261014_111742）⇒ 逐条试，哪条落盘用哪条
+[fetch] 目标任务行 = 第 1 行｜生成成功 营销场景报表_20261014_111846 30天累计数据 2026-10-13至2026-10-13 2026-10-14
+[fetch] 真实鼠标点它的复选框 (143,342) → {"clicked":true,"target":"9396F0E0C72238D773E122124A3DD5B5","x":143,"y":342}
+[fetch] 回读 checked=true，当前勾选 = [1]
+[fetch] 入口 = 第 2 行（正是该任务行的操作行）｜rect=[136,370,50,24]，center=[161,382]｜操作行内叶子 1 个
+[fetch] 复核通过（y=370（中心点命中））→ 真实鼠标点击 (161,382) → {"clicked":true,"target":"9396F0E0C72238D773E122124A3DD5B5","x":161,"y":382}
+[fetch] 新文件：营销场景报表_20261014_111846.zip（796 bytes）
+[fetch] promotionZipPath = C:\Users\Administrator\Downloads\营销场景报表_20261014_111846.zip
+[fetch] 台账已标为已取：2026-10-13 的 营销场景报表_20261014_111846（该目标日全部未取记录一起结清）
+
+--- stderr ---

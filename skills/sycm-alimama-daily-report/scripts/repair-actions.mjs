@@ -96,6 +96,15 @@ export const STAGE_PAGE_HINT = Object.freeze({
   'shop-report': 'sycm',
   'sycm-reset': 'sycm',
   backfill: 'sycm',
+  // 2026-10-14 加。这两个阶段的目标页是**五家店共用的那一页飞书底单**
+  // （跑在共用商家浏览器 19022/19023 上，见 `stage-browsers.mjs`）。
+  //
+  // 为什么必须有这两条（实测缺口，报告在 `evidence/batches-2026-10-13/b2/网林淘宝/`）：
+  // 缺了它时 `planRepair` 对 `readback` 给 `stageHint: null` ⇒ 执行侧只能退化成
+  // 「窗口里恰好一个页就用那一个」⇒ 那一轮它退到了**店铺标识页**上 ——
+  // 动作执行成功（`applied:true`），而动不到真正出问题的那一页。
+  push: 'feishu',
+  readback: 'feishu',
 });
 
 /**
@@ -108,6 +117,9 @@ export const STAGE_PAGE_HINT = Object.freeze({
  *   ① 认不出的成因 ⇒ `candidates: []`、`known: false`。**不猜动作**（见纪律 3）。
  *   ② 成因认识但当前阶段没有页面提示 ⇒ 候选照给，但 `stageHint: null`；
  *      执行侧要能处理「没有提示」这一档（如实记「不知道修哪一页」，而不是随便挑一页）。
+ *      ⚠️ **反之不成立**（2026-10-14 改）：`stageHint` 只取决于**阶段**，与「成因认不认得」无关。
+ *      ① 那一档原先也把它写成 null ⇒ 把「这个成因没登记修法」当成了「不知道修哪一页」，
+ *      而后者是执行侧唯一的准头来源（混起来的后果见函数体里那段注释）。
  *   ③ 若调用方传了现场事实（`state`），**把明显的矛盾指出来**（如「现场是登录页」却想重载），
  *      但仍不替 agent 否决 —— 只多给一个 `note`，让 agent 自己判。
  *
@@ -119,7 +131,15 @@ export function planRepair({ cause = null, stage = null, state = null } = {}) {
   const actions = REPAIR_TABLE[cause];
   if (!actions) {
     return {
-      cause: cause ?? null, stage: stage ?? null, stageHint: null, candidates: [], known: false,
+      // 2026-10-14 改（**认不出成因 ≠ 不知道修哪一页**）：
+      // `stageHint` 只取决于**阶段**，原先这里恒写 null，把两件事混成了一件 ——
+      // 「这个成因没登记修法」与「这个阶段的作业在哪一页上」是**互相独立**的两个事实。
+      // 混起来的后果与这一批要治的病同形：执行侧拿不到提示 ⇒ `locateStagePage` 退化成
+      // 「窗口里恰好一个页就用它」⇒ 动到**别的页**上（`applied:true` 而目标页纹丝没动）。
+      // 而它偏偏在最需要准头的时候发生：**遇到没登记过的新故障**（那正是要派 agent 的情形）。
+      // 「不猜动作」这条安全方向逐字未变：候选仍然为空，agent 只能从自己读到的现场去挑。
+      cause: cause ?? null, stage: stage ?? null, stageHint: STAGE_PAGE_HINT[stage] ?? null,
+      candidates: [], known: false,
       note: cause
         ? `成因「${cause}」没有登记修法 ⇒ 不给候选（不猜动作），交给人。`
         : '没给成因 ⇒ 不给候选（不猜动作），交给人。',

@@ -1,0 +1,11 @@
+
+===== 2026-10-14T03:40:18.107Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\readback-daily-report.mjs --date 2026-10-13 --proxy http://127.0.0.1:19023 --shop-key 网林淘宝
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: expected one Feishu page for target base, got 0
+    at discoverFeishuPage (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs:104:35)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs:338:16)

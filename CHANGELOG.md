@@ -15,6 +15,78 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.9.0] - 2026-10-14
+
+目标日 2026-10-13 那一轮日报连发两条告警、其中一家店停在第 11 步。查下来不是四个故障点，
+而是**四个「本该有人保证、却没有任何一步负责」的环节**：共用商家浏览器的窗口被挤小之后没有人
+负责把它摆正；登录这条路在点下去之前不问「点得到吗」；修复动作落在**另一页**上却报 `applied:true`；
+告警去重看的是「停在哪儿」而不是「要做什么」。本批次逐个补上保证人。
+
+### 改了什么
+
+- **第 0 步新增视口闸门**（`runtime/shop-viewport-gate.mjs`、`daily-job-plan.mjs`、`batch-plan.mjs`、
+  `run-batches.mjs`）：每一批在 `start` 之后、登录之前量一次窗口视口，低于 1200×600 就停下并说清
+  「太窄」还是「太矮」，不再往下跑。**读不到按红处理**（`VIEWPORT_UNREADABLE`）——
+  「读不到」不等于「达标」。非分批形态把共用商家浏览器与 8 家店铺实例一起量；分批形态量共用那台。
+- **共用商家浏览器启动后归位窗口**（新增 `runtime/browser-window-bounds.mjs`，由
+  `start-project-browser.mjs` 在 REUSE 与 READY 两条分支上调用）：CDP
+  `Browser.getWindowForTarget` / `setWindowBounds` 把它摆回登记尺寸（容差 16px）。只对共用商家浏览器
+  生效；它与竞品浏览器的 argv **逐字未变**（`browser-ports.test.mjs` 守着）。
+- **登录前先量视口**（`login-merchant-core.mjs` / `login-merchant.mjs` / `check-login-shops-core.mjs`）：
+  `judgeViewportForClick()` 排在**所有**坐标点击之前（手势、协议勾选、提交、确认页）；不达标就退 2、
+  一个点都不发，并把实测读数写进收据。两个新结论词 `VIEWPORT_TOO_NARROW` / `VIEWPORT_TOO_SHORT`
+  同时登记进词表、要叫人表、下一步表、原因表。阈值**不在这里重抄**，从机制层 import（有源码层断言钉住）。
+- **修复层作用域对齐**（新增 `stage-browsers.mjs`；改 `repair-actions.mjs`、`expected-pages.mjs`、
+  `repair-shop-stage.mjs`、`run-multi-shop-day.mjs`）：`push` / `readback` 的作业对象是共用那一页
+  飞书底单、跑在共用商家浏览器上 —— 这条事实原先只活在驱动的 stage 表里，而链**外**还有三处
+  （派单单子的 `execHint`、`instancePrecondition`、自动修复的 `execRepair`）各自按「店名 ⇒ 这家店的
+  代理」取实例；`resolveProxy` 的一致性闸门又**无条件**禁止「`--shop X` + 共用代理」这一组 ⇒
+  修复动作永远指不到真正出问题的那台。现在答案只有一处（`proxyForStage`）。同一批还有两处：
+  `locateStagePage` 改走 `runtime/target-url-match.mjs` 的 `pagesMatching`（结构判据，不再整串
+  `includes`）；`buildShopStages` 加一条互锁 —— 阶段表的 `CDP_PROXY_PORT` 与 `stageUsesSharedPage()`
+  的声明不一致就**当场抛**，而不是让修复层悄悄落回店铺实例。
+- **`planRepair` 不再把「认不出成因」当成「不知道修哪一页」**（`repair-actions.mjs`）：
+  未登记成因那一支原先也把 `stageHint` 写成 `null`。两者是独立事实 —— 候选仍然为空（**不猜动作**
+  这条安全方向逐字未变），但阶段提示照给。注意**这条今天只用于诊断与请求单定位**：
+  指导书写着「候选菜单为空 ⇒ 转人」，所以它不会让 agent 多执行一个动作。
+- **告警指纹改成根因集合**（`run-multi-shop-day.mjs`）：`ROUND_BLOCKED:<轮级成因>` / `SHOP_LEVEL`
+  ＋ 去重排序的成因集合，替掉原先的 `店@阶段`。理由：这条告警的「下一步」是按**成因**给的
+  （`ACTION_BY_CAUSE`），所以「要做的事有没有变」只能由成因集合回答。代价写在代码注释里：
+  同一个成因换一家店发作，6 小时内不再发一条。
+- 新增两个用例文件：`runtime/browser-window-bounds.test.mjs`、
+  `skills/sycm-alimama-daily-report/scripts/stage-browsers.test.mjs`；`arch-boundary.test.mjs` 的
+  `SKILLS_TO_RUNTIME` 登记表补 3 条（两个新叶子与两个新用例文件）。
+
+### 为什么改
+
+- **视口**：`evidence/daily-job-2026-10-13/job.log` 里那次登录失败，量到的窗口是 692×307
+  （视口 670×216），而脚本按坐标点 `[535,499]` 提交 —— 那个点落在窗口外面，所以「点了」等于没点。
+  收据写的却是「可能是密码不对」，**密码、滑块、协议三样都是好的**。而窗口怎么变小的？没有任何一步
+  负责它：`SHOP_BROWSER_EXTRA_ARGS` 只管店铺实例，共用商家浏览器从一开始就没有尺寸保证人。
+- **修复层**：`evidence/batches-2026-10-13/b2/网林淘宝/97-repair-agent-report.md` 里，agent 复现了
+  三处框架缺口（缺 `STAGE_PAGE_HINT` 条目、三处按店名取实例、`resolveProxy` 禁止共用代理组合），
+  并**明确声明**它自己那次 `RELOAD_PAGE` 不是救回原因（它落在店铺标识页上）。
+- **告警指纹**：`evidence/batches-2026-10-13/batches.log` 里同一天两条 `daily-round-20261013`
+  共用一条锚、各发一次 —— 那两条的成因**确实不同**，所以当时发得对；但旧指纹的第一段是笼统的
+  `ROUND_BLOCKED`（不带成因），意味着「共用窗口掉登录」与「页面真的不在」这两种要人做的事完全不同的
+  情形会落进**同一个指纹**、第二条被静默挡掉。漏发比刷屏坏，而且从日志上看不出来。
+  指纹的「位置」那一半同样要收：同一个根因换一家店、换一个步骤发作，不该算新信息。
+
+### 验证到什么程度
+
+- **仅离线判据**：定向组 **642 pass / 0 fail**（`evidence/viewport-and-repair-scope-2026-10-14/targeted-tests.txt`，
+  末尾 `EXIT=0`）；三个突变台共 **20 处变异全部按预期变红**、且每次都在断言之前把源文件
+  **逐字节还原**（`mutations-login-window-gate.txt` 7 处、`mutations-repair-scope.txt` 9 处、
+  `mutations-alert-fingerprint.txt` 4 处，三份末尾都是 `EXIT=0`）。
+- **本批次没有真机运行**：视口闸门与窗口归位**一次都没在真机上跑过**，登录侧闸门也一样
+  （`--dry-run` 不做任何点击）。按约定，驻留窗口期不手工重跑日报链、也不起停任何进程。
+  **下一个 11:00 定时轮是这套改动第一次真机接触**，要盯 `evidence/daily-job-<日>/viewport.json`
+  与 `job.log` 里那一行闸门输出。
+- **没有真发过飞书**：指纹改判只用临时节流文件离线验过（`dispatchRoundAlert` + `mkdtemp`），
+  刻意不写 `runtime/alert-throttle.json`（那会让真跑的那一轮被自己的测试挡住）。
+- 现场证据、未修清单（`readback` 仍无 `ensureTargetPage` 自愈等）与可重跑的复核命令：
+  `evidence/viewport-and-repair-scope-2026-10-14/VERIFICATION.md`。目标日 10-13 那一轮的证据同批提交。
+
 ## [1.8.14] - 2026-10-13
 
 修 CI 那个「3 小时被 cancel」的长杆作业。根因一句话：**Python 在非中文区域的 Windows 上

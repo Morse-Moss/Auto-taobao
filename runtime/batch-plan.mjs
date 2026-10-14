@@ -233,6 +233,15 @@ export function batchOnlyArgs(batch) {
  * 一个批次的命令。返回顺序**就是执行顺序**，每一步都带 `blocking`：
  *   start  —— 失败则**仍然继续**（链的第 0 步体检会给出更准的原因：哪一页不齐、哪一家连不上），
  *             但**仍然发起释放**（别留半批占内存）；
+ *   viewport —— **视口回读闸门**（2026-10-14 加，可空）。**必须紧排在 `start` 之后**：
+ *             它的形状与参数由调用方注入（唯一来源是 runtime/daily-job-plan.mjs 的
+ *             `buildViewportGateStep` / `buildViewportGateArgs`）。两条理由：
+ *               ① 实例没起就读不到东西（同 login 那一条，且它会重试 5 次才判 `UNREADABLE`）；
+ *               ② 必须排在 login **之前** —— 2026-10-14 那次故障的形态正是「窗口被夹窄 ⇒
+ *                  登录表单落在视口外 ⇒ 坐标点击全部落空 ⇒ 静默判没登上」；排在 login 之后，
+ *                  量到的是一个已经被点过一轮的窗口，量了也晚。
+ *             它 `blocking: false`（同 `start` 的去势口径：链的第 0 步体检才是权威判据），
+ *             但读数会在链开跑前落进证据目录 —— 那是这类故障唯一的直接证据。
  *   login  —— **跑前登录守卫**（2026-09-23 加，可空）。**必须排在 `start` 之后**：
  *             带 `--login` 时它要开那几家店自己的浏览器，实例没起就只能读到 `HTTP 500`。
  *             它 `blocking: false`（不是闸门），但结论会落成文件交给本批的链。
@@ -242,7 +251,7 @@ export function batchOnlyArgs(batch) {
  *   chain  —— 唯一判「这一批成不成」的那一步；
  *   stop   —— 显式带 `--yes`（stop-all 的默认是只打印；在编排里只打印等于没释放）。
  */
-export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = [], logsDir = null, loginStep = null, workflow = 'daily-report', chainFile = null } = {}) {
+export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = [], logsDir = null, loginStep = null, viewportStep = null, workflow = 'daily-report', chainFile = null } = {}) {
   if (!['daily-report', 'promotion-daily'].includes(workflow)) throw new Error(`未知 workflow：${workflow}`);
   // `chainFile`（2026-10-10 加，spec P2「run-batches 从 catalog 解析入口」）：
   // 由调用方传入时**优先于**下面那两条硬编码 —— run-batches 传的是
@@ -259,6 +268,9 @@ export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = []
       blocking: true,
       note: `起这一批 ${batch.shops.length} 家（幂等：已就位的不碰）`,
     },
+    // 起完**立刻**回读视口，再查登录态（2026-10-14 加）：视口不达标时坐标点击必然落空，
+    // 所以「窗口多大」这件事必须在任何一次登录尝试**之前**就有读数。
+    ...(viewportStep ? [viewportStep] : []),
     // 起完再查登录态：这一步带 `--login` 时会开这几家店自己的页面，实例没起就白查
     // （2026-09-23 实测：排在 start 之前 ⇒ 五家全 `HTTP 500` ⇒ 自动登录一次机会都没有）。
     ...(loginStep ? [loginStep] : []),

@@ -129,7 +129,11 @@ export const BROWSER_PROFILES = Object.freeze({
 // 取件入口那一处同理（点击后重排，操作行没在采样那一瞬显形）。
 // 钉成与历史成功轮一致的值，把「窗口多大」从随机变量变成常量。
 // 只作用于店铺 profile ⇒ 两个老浏览器 argv 仍逐字不变。
-export const SHOP_BROWSER_WINDOW_SIZE = '--window-size=1528,732';
+// 窗口尺寸的**数值**形态（2026-10-14 抽出来）：`--window-size` 的字符串由它派生，
+// 于是「启动器 argv」与「起后用 CDP 归位」两处不会各写一个 1528。
+export const BROWSER_WINDOW_BOUNDS = Object.freeze({ left: 40, top: 40, width: 1528, height: 732 });
+export const SHOP_BROWSER_WINDOW_SIZE =
+  `--window-size=${BROWSER_WINDOW_BOUNDS.width},${BROWSER_WINDOW_BOUNDS.height}`;
 //
 // **强制缩放（2026-10-05 加，同日真机 A/B 取证）—— 让上面那个 1528 真的是 1528。**
 //

@@ -10,13 +10,18 @@ import {
   FORM_STATE_EXPRESSION, LOGIN_ID_VALUE_EXPRESSION,
   LOGIN_PAGE_PROMISED_VERDICTS, LOGIN_TARGETS, LOGIN_URL_CANDIDATES, NOTIFY_MODES, OUTCOME_TO_VERDICT,
   REASON_BY_VERDICT, SHARED_WINDOW_NAME, SITES, TAOBAO_LOGIN_URL, VERDICTS, VERDICTS_NEEDING_HUMAN,
+  VIEWPORT_CLICK_VERDICTS,
   absentSites, agreementSatisfied, alertForRun, assertBusinessReadable,
   buildLoginAlert, captchaVisible, centerOf, detectConfirmScreen, detectLoginDetour, expectedMemberFor,
   finalLoginVerdict,
-  isTaobaoLoginUrl, judgeAgreement, judgeFilled, judgeShopTarget, judgeSubmitOutcome, loggedOutSites, loginFormVisible,
+  isTaobaoLoginUrl, judgeAgreement, judgeFilled, judgeShopTarget, judgeSubmitOutcome, judgeViewportForClick,
+  loggedOutSites, loginFormVisible,
   needsHuman, parseArgs,
   profileForShop, proxyPortOf, resolveAction, shopForProxy, shouldNotify, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
+// 阈值**从机制层 import**，不在这里抄数字：这条闸门的判据只有那一个实现
+//（`runtime/shop-viewport-gate.mjs`），抄一份的话「改了一处、另一处留在旧值」不会有人知道。
+import { SHOP_VIEWPORT_MIN_HEIGHT, SHOP_VIEWPORT_MIN_WIDTH } from '../../../runtime/shop-viewport-gate.mjs';
 // 用**真的那份登记表**（不是测试自己造的假表）来验「哪家店 → 哪个 profile」：
 // 造一张假表只能证明这个函数会查表，证明不了四家店各自指向自己的 profile。
 import { SHOP_BROWSERS } from '../../../runtime/browser-ports.mjs';
@@ -164,10 +169,19 @@ const fakeFrame = ({ src = '', title = '', doc = null, crossOrigin = false } = {
   }
   return f;
 };
-const runFormState = (doc) => JSON.parse(vm.runInNewContext(FORM_STATE_EXPRESSION, {
-  document: doc,
-  location: { href: 'https://login.taobao.com/havanaone/login/login.htm?bizName=taobao' },
-}));
+// 沙箱里**必须给一个 `window`**（2026-10-14 加）：表达式现在会读
+// `window.innerWidth/innerHeight/devicePixelRatio`（登录前那道窗口闸门要用它的读数）。
+// 不给的话它在 vm 里当场 `window is not defined` —— 这一组用例守的是「这个表达式真的会跑」，
+// 红在语法之外的地方等于没守。默认值取**历史成功轮的实测视口**（1506 宽，见
+// `runtime/shop-viewport-gate.mjs` 头部那段依据），所以「干净登录页」那条用例顺带证明了
+// 一份正常读数不会被判成「窗口太小」。
+const runFormState = (doc, { width = 1506, height = 900, dpr = 1.25 } = {}) => JSON.parse(
+  vm.runInNewContext(FORM_STATE_EXPRESSION, {
+    document: doc,
+    location: { href: 'https://login.taobao.com/havanaone/login/login.htm?bizName=taobao' },
+    window: { innerWidth: width, innerHeight: height, devicePixelRatio: dpr },
+  }),
+);
 
 test('表单状态表达式：干净登录页不许被读成「要验证」（四个信号全空）', () => {
   const s = runFormState(fakeDoc());
@@ -176,6 +190,10 @@ test('表单状态表达式：干净登录页不许被读成「要验证」（�
   assert.equal(s.captchaFrame, null);
   assert.equal(captchaVisible(s), false);
   assert.ok('captchaFrame' in s, '回执/告警要读它 —— 字段名不许改名或消失');
+  // 顺带：同一次读取里带回的窗口读数必须在，且喂给闸门之后是「能点」
+  //（这条把「表达式真的带回了它」与「判据真的认它」两条腿绑在一起）。
+  assert.deepEqual(s.viewport, { width: 1506, height: 900, dpr: 1.25 });
+  assert.equal(judgeViewportForClick(s.viewport).blocksClick, false);
 });
 
 test('表单状态表达式：同源 iframe 内部的滑块必须被认出来（2026-10-08 网林天猫的真因）', () => {
@@ -1195,4 +1213,115 @@ test('接线：协议没勾上时**不许提交**，回执也不许写没发生�
   // ③ 回执只许在**回读确实为 true** 时写同意时刻
   assert.match(code, /autoAccepted: agreementOk/u, 'autoAccepted 又变回写死的 true 了');
   assert.match(code, /agreedAt: agreementOk \?/u, 'agreedAt 又变回无条件写入 ⇒ 凭据可以是假的');
+});
+
+// ---------------------------------------------------------------------------
+// 2026-10-14：**按坐标点下去之前先量窗口**（窗口太小 ⇒ 点空 ⇒ 被写成「密码不对」）
+// ---------------------------------------------------------------------------
+//
+// 这一组守的是那一天的病：共用商家浏览器的窗口被夹到 692x307（视口 670x216），
+// 三处坐标点击全落在窗口外面，而回执写出来的是 `LOGIN_NOT_CONFIRMED`「可能是密码不对」。
+// 判据只有一条（窗口够不够大），但它的**两半**必须都在：
+//   ① 判据本身（`judgeViewportForClick`，数字来自机制层）；
+//   ② 主脚本真的在点之前问过它，且真的会拦住（退出码 2 ⇒ 上游判这一家没成）。
+
+test('窗口闸门：阈值与判据都来自机制层那一份（不是一个抄来的数字）', () => {
+  const exact = { width: SHOP_VIEWPORT_MIN_WIDTH, height: SHOP_VIEWPORT_MIN_HEIGHT };
+  // 报回来的阈值必须就是机制层那两个常量（抄一份的话，这里会因为两个数不一样而红）
+  assert.deepEqual(judgeViewportForClick(exact).threshold, exact);
+  assert.equal(judgeViewportForClick(exact).blocksClick, false, '刚好等于阈值就得算够（阈值是底线，不是下限之上）');
+  assert.equal(judgeViewportForClick({ width: SHOP_VIEWPORT_MIN_WIDTH - 1, height: 900 }).blocksClick, true);
+  assert.equal(judgeViewportForClick({ width: 1600, height: SHOP_VIEWPORT_MIN_HEIGHT - 1 }).blocksClick, true);
+  // ⚠️ 上面那几条**证明不了**「没有另抄一份」：把 threshold 写成字面量 1200/600 时它们照样绿
+  //（两个数今天恰好相等）。这条只能由源码级判据守 —— 突变验证实测过（把 threshold 换成字面量，
+  // 上面三条一条都不红）。所以下面两句是必须的，不是重复。
+  const core = readFileSync(new URL('./login-merchant-core.mjs', import.meta.url), 'utf8');
+  assert.ok(core.includes('threshold: { width: SHOP_VIEWPORT_MIN_WIDTH, height: SHOP_VIEWPORT_MIN_HEIGHT }'),
+    '阈值必须引用机制层那两个常量 —— 写成 1200/600 的话，机制层改值这边不会跟着动');
+  assert.ok(core.includes('judgeShopViewport({ width, height })'),
+    '判据必须调机制层那份（`judgeShopViewport`），不许在这里重写一遍 1200/600 的比较');
+});
+
+test('窗口闸门：三个出口各有明确的处置（合起来就是一个「点不到」＝回到 10-14 那天）', () => {
+  const narrow = judgeViewportForClick({ width: 1114, height: 700 });
+  assert.equal(narrow.blocksClick, true);
+  assert.equal(narrow.verdict, 'VIEWPORT_TOO_NARROW');
+  assert.match(narrow.detail, /1114/u, 'detail 必须带上这次真的量到了多少');
+
+  const short = judgeViewportForClick({ width: 1506, height: 599 });
+  assert.equal(short.blocksClick, true);
+  assert.equal(short.verdict, 'VIEWPORT_TOO_SHORT');
+
+  // 10-14 那次真实读数：670x216 —— 两个都不达标。机制层的 `judgeShopViewport` **先比宽**，
+  // 所以报出来的是「窄」。这不是错，是刻意的：两个词的动作完全相同（把窗口铺满屏幕），
+  // 而 detail 里两个数字都在。写下来是为了将来没人把它当 bug「修」成分两个词或换顺序。
+  const incident = judgeViewportForClick({ width: 670, height: 216 });
+  assert.equal(incident.verdict, 'VIEWPORT_TOO_NARROW');
+  assert.match(incident.detail, /670/u);
+  assert.equal(incident.width, 670);
+  assert.equal(incident.height, 216);
+
+  // 「读不到」：**不拦、也不升级成判决词**。理由写在 `judgeViewportForClick` 头注里 ——
+  // 这一层不是量尺那一层（计划里的 `viewport-gate` 步骤才是），把一个「没量到」写成
+  // 「窗口太小」是编事实，而拿它拦住一次本来能成的登录，代价比放过更大。
+  for (const unreadable of [null, undefined, {}, { width: 'x', height: 'y' }, { width: NaN, height: NaN }]) {
+    const r = judgeViewportForClick(unreadable);
+    assert.equal(r.blocksClick, false, `${JSON.stringify(unreadable)} 不该拦 —— 那是「没量到」，不是「太小」`);
+    assert.equal(r.verdict, null, `${JSON.stringify(unreadable)} 不该被写成一条判决词`);
+    assert.equal(r.reason, 'VIEWPORT_UNREADABLE', '但读数仍要如实标成「读不到」，别假装它达标了');
+    assert.equal(r.ok, false, '「读不到」也不许报成达标（那是本仓反复在治的病根）');
+  }
+});
+
+test('窗口太小：两个词都得登记齐（词表 / 要叫人 / 下一步 / 原因）', () => {
+  // 词表**逐个点名**，不用它自己枚举：枚举的写法下「少登记一个词」会让循环一起变短、
+  // 用例照样绿（突变验证实测过）。这张表只有两个词，点名比自省更结实。
+  assert.deepEqual([...VIEWPORT_CLICK_VERDICTS], ['VIEWPORT_TOO_NARROW', 'VIEWPORT_TOO_SHORT']);
+  for (const word of ['VIEWPORT_TOO_NARROW', 'VIEWPORT_TOO_SHORT']) {
+    assert.ok(VERDICTS.includes(word), `${word} 不在 VERDICTS ⇒ 拼错一个词就是一次静默降级`);
+    assert.ok(VERDICTS_NEEDING_HUMAN.includes(word), `${word} 不叫人 ⇒ 那台机器上的窗口没人去拉大`);
+    assert.equal(needsHuman(word), true);
+    // 它**不**承诺「登录页开着」（那条承诺由 LOGIN_PAGE_PROMISED_VERDICTS 管，
+    // 只收「逐条试收尾会当场把页导回去」的两条）—— 这一条要人做的第一件事是动窗口。
+    assert.equal(LOGIN_PAGE_PROMISED_VERDICTS.includes(word), false);
+    assert.equal(resolveAction(word, '科塔淘宝').startsWith('登录页已经开在'), false);
+    assert.equal(resolveAction(word, '科塔淘宝').includes('{窗口}'), false, '占位符没被替换');
+  }
+  // 两条的「原因」必须分开写：机器侧成因与排查方向不同（换屏/缩放 vs 窗口被压扁）。
+  assert.notEqual(REASON_BY_VERDICT.VIEWPORT_TOO_NARROW, REASON_BY_VERDICT.VIEWPORT_TOO_SHORT);
+  // **不许提密码**：10-14 那次真正写出来的就是「可能是密码不对」，把收信人指反了方向。
+  for (const word of ['VIEWPORT_TOO_NARROW', 'VIEWPORT_TOO_SHORT']) {
+    assert.equal(REASON_BY_VERDICT[word].includes('密码'), false);
+    assert.equal(resolveAction(word, null).includes('密码'), false);
+    assert.match(resolveAction(word, null), /铺满屏幕/u, '「下一步」得是一句照着做就能做完的话');
+  }
+});
+
+test('窗口闸门：主脚本**在第一次坐标点击之前**问它，且真的会拦住（退出码 2）', () => {
+  const code = readFileSync(new URL('./login-merchant.mjs', import.meta.url), 'utf8');
+  const gateDecl = code.indexOf('const viewport = judgeViewportForClick(');
+  assert.ok(gateDecl > 0, '主脚本根本没问窗口多大 —— 那正是 10-14 那天的形态');
+  // 位置：在「这一页确实是登录页、且有可填表单」之后，在**第一次**坐标点击之前。
+  const formOk = code.lastIndexOf('if (!loginFormVisible(state))', gateDecl);
+  assert.ok(formOk > 0 && formOk < gateDecl, '闸门跑在「页面到底是不是登录页」之前 ⇒ 判不成的页面也会报「窗口太小」');
+  const firstClick = code.indexOf('await clickPoint(args, targetId, point[0]', gateDecl);
+  assert.ok(firstClick > gateDecl, '闸门排在第一次坐标点击之后 ⇒ 点了才发现点不到');
+  // 条件本身必须是真的。只查「赋值在不在」不够（突变验证实测过：条件换成 if(false) 时
+  // 赋值那行还在源码里，只查它的用例照样绿）。
+  assert.ok(code.includes('if (args.commit && viewport.blocksClick)'),
+    '闸门条件变了 ⇒ 要么排练档被误拦，要么 commit 档没拦住');
+  const gateBlock = code.slice(gateDecl, firstClick);
+  assert.ok(gateBlock.includes("receipt.verdict = 'VIEWPORT_TOO_NARROW'"), '窄那一档没有判决词');
+  assert.ok(gateBlock.includes("receipt.verdict = 'VIEWPORT_TOO_SHORT'"), '矮那一档没有判决词');
+  assert.ok(gateBlock.includes('return finish(receipt, 2)'), '闸门返回的不是失败退出码 ⇒ 上游会把它记成成功');
+  assert.ok(gateBlock.includes('receipt.detail'), '回执里没有这一次的读数 ⇒ 事后还是推不出真因');
+  // 判决词**字面**出现（`login-merchant-core.test.mjs` 上面那条「主脚本用到的词都在 VERDICTS 里」
+  // 靠扫字面量工作；改成 `receipt.verdict = viewport.verdict` 会让那条守卫看不见它们）。
+  for (const word of ['VIEWPORT_TOO_NARROW', 'VIEWPORT_TOO_SHORT']) {
+    assert.ok(new RegExp(`receipt\\.verdict = '${word}'`, 'u').test(code), `${word} 不是字面赋值的 ⇒ 词表守卫会空转`);
+  }
+  // 读数只读一次、且与表单状态同源：表达式里真的带回了它。
+  assert.ok(FORM_STATE_EXPRESSION.includes('window.innerWidth'), '表单状态表达式没带回窗口宽');
+  assert.ok(FORM_STATE_EXPRESSION.includes('window.innerHeight'), '表单状态表达式没带回窗口高');
+  assert.ok(code.includes('judgeViewportForClick(state.viewport)'), '主脚本没有把这次读取里的窗口读数喂给闸门');
 });

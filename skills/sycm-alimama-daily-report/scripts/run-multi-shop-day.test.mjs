@@ -1290,6 +1290,87 @@ test('驱动：重复的那条只打在本机日志里，一次投递都不发�
   assert.throws(() => readFileSync(failedFile, 'utf8'), '投递失败不该留节流记录');
 });
 
+// ------------------------------------------- 告警指纹＝根因集合（2026-10-14 改）
+//
+// 指纹要回答的问题只有一个：**「同一天这一条要不要再发」**。判据换过一次，方向是
+// 「从**停的位置**改成**根因集合**」—— 因为这条告警的下一步是按成因给的
+// （`ACTION_BY_CAUSE`），所以「要做的事有没有变」只能由成因集合回答。
+// 下面四条两两成对：**该压的压、该发的发**，缺任何一半都可能把漏发换成刷屏、或反过来。
+
+const roundBlocked = (roundCause = null) => ({
+  round: { healthCheckDaily: { ok: false, roundCause,
+    missingPages: roundCause === 'ROUND_LOGIN_WALL' ? ['生意参谋工作页'] : [],
+    blockingDetails: ['目标页面「生意参谋工作页」不在这个浏览器里（找到 0 个）'] } },
+  shops: {},
+});
+const shopLevel = (shops) => ({ round: { healthCheckDaily: { ok: true } }, shops });
+
+test('指纹：轮级两种不同成因 ⇒ 不同指纹（旧指纹把它们抹成同一个 ⇒ 第二条会被静默挡掉）', () => {
+  // 这两类轮级成因要人做的事**完全不同**：掉登录 ⇒ 去那个共用窗口登一次；页面真不在 ⇒ 补页。
+  // 旧指纹的第一段是笼统的 `ROUND_BLOCKED`（不带成因）⇒ 两者逐字相同 ⇒ 6 小时内第二条被
+  // 「同一条告警 N 分钟前刚发过」挡掉。漏发比刷屏坏得多，而且从日志上看不出来。
+  const loginWall = buildAlert(roundBlocked('ROUND_LOGIN_WALL'));
+  const missing = buildAlert(roundBlocked(null));
+  assert.equal(loginWall.fingerprint, 'ROUND_BLOCKED:ROUND_LOGIN_WALL');
+  assert.equal(missing.fingerprint, 'ROUND_BLOCKED:ROUND_BLOCKED');
+  assert.notEqual(loginWall.fingerprint, missing.fingerprint,
+    '两种轮级成因必须落成两个指纹 —— 否则第二条永远发不出去');
+});
+
+test('指纹：轮级成因不同时，窗口内也要发第二条告警（漏发 > 刷屏）', () => {
+  const throttleFile = tmpThrottle();
+  let calls = 0;
+  const spawnOk = () => { calls += 1; return { status: 0, stdout: '{"status":"SENT"}' }; };
+  const t0 = new Date('2026-09-20T02:00:00Z');
+  const at = (minutes) => () => new Date(t0.getTime() + minutes * 60_000);
+  const send = (summary, minutes) => dispatchRoundAlert({
+    alert: buildAlert(summary), dispatch: { action: 'send', why: 'x' }, spawn: spawnOk,
+    throttleFile, now: at(minutes), log: () => {},
+  });
+  assert.equal(send(roundBlocked('ROUND_LOGIN_WALL'), 0).delivered, true);
+  assert.equal(calls, 1);
+  assert.equal(send(roundBlocked(null), 30).delivered, true, '成因变了 ⇒ 要做的事变了 ⇒ 必须真的再发一条');
+  assert.equal(calls, 2, '窗口内、成因不同：必须真投递第二次（旧指纹在这里只会投递一次）');
+});
+
+test('指纹：同一个根因换了店、换了步骤 ⇒ 指纹不变（这才叫「一个根因只叫人一次」）', () => {
+  const dup = 'Error: duplicate daily report row exists: r1\n';
+  const one = buildAlert(shopLevel({ 科塔淘宝: failedAt('push', dup) }));
+  assert.equal(one.fingerprint, 'SHOP_LEVEL|DUPLICATE_TARGET');
+  assert.ok(!one.fingerprint.includes('@'), '指纹里不该再有「店@阶段」—— 位置不是「要做的事」');
+  // 换一家店、同一个根因（注意：`duplicate …` 只在 `push` 阶段才归成 DUPLICATE_TARGET，
+  // 别拿别的阶段当夹具 —— 那样测的是另一件事）。
+  assert.equal(buildAlert(shopLevel({ 网林天猫: failedAt('push', dup) })).fingerprint, one.fingerprint,
+    '同一个根因换一家店不该算新信息（旧指纹会在这里再发一条）');
+  // 换一个有步骤意义的兜底根因：两家店停在不同步骤、归成同一个成因。
+  const a = buildAlert(shopLevel({ 科塔淘宝: failedAt('shop-report', 'Error: expected one download button, got 0\n') }));
+  const b = buildAlert(shopLevel({ 网林天猫: failedAt('readback', 'Error: expected one Feishu page for target base, got 0\n') }));
+  assert.equal(a.fingerprint, 'SHOP_LEVEL|STAGE_FAILED');
+  assert.equal(b.fingerprint, a.fingerprint, '同上：换了步骤但要做的事没变 ⇒ 不是新信息');
+});
+
+test('指纹：成因集合与店铺出现顺序无关（去重 + 排序）', () => {
+  const dup = 'Error: duplicate daily report row exists: r1\n';
+  const noPerm = 'Error: SHOP_FUNC_NO_PERMISSION: 平台答复 code=5903 No Buy Func Permission\n';
+  const forward = buildAlert(shopLevel({ 科塔淘宝: failedAt('push', dup), 网林天猫: failedAt('sycm-date', noPerm) }));
+  const reversed = buildAlert(shopLevel({ 网林天猫: failedAt('sycm-date', noPerm), 科塔淘宝: failedAt('push', dup) }));
+  assert.equal(forward.fingerprint, 'SHOP_LEVEL|DUPLICATE_TARGET|SHOP_FUNC_NO_PERMISSION');
+  assert.equal(reversed.fingerprint, forward.fingerprint,
+    '同一组成因换个店序不该看成两条（summary 里 shops 的键序不是业务事实）');
+  // 去重那一半：两家店同一个成因，集合里只出现一次。
+  const twice = buildAlert(shopLevel({ 科塔淘宝: failedAt('push', dup), 网林天猫: failedAt('push', dup) }));
+  assert.equal(twice.fingerprint, 'SHOP_LEVEL|DUPLICATE_TARGET');
+});
+
+test('指纹：成因集合变了（多一类）⇒ 指纹就变 ⇒ 当成新信息再发一条', () => {
+  const dup = 'Error: duplicate daily report row exists: r1\n';
+  const noPerm = 'Error: SHOP_FUNC_NO_PERMISSION: 平台答复 code=5903 No Buy Func Permission\n';
+  const only = buildAlert(shopLevel({ 科塔淘宝: failedAt('push', dup) }));
+  const both = buildAlert(shopLevel({ 科塔淘宝: failedAt('push', dup), 网林天猫: failedAt('sycm-date', noPerm) }));
+  assert.notEqual(both.fingerprint, only.fingerprint,
+    '多出一类要人做的事 ⇒ 必须再发一条（这条守的是「压过头」，与上面「该压的压」是一对）');
+});
+
 // ------------------------------------------- 失败路径的收尾（2026-09-21 补，第一性原理那一轮的落地）
 
 const SYCM_OK_URL = 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop';
@@ -1688,6 +1769,68 @@ test('buildRepairRequest：单子里带「动手前先确认实例还在」，�
   // why / note 是给 agent 读的话，不能是空壳。
   assert.match(pre.why, /--batches/u, 'why 要说清为什么：分批形态每批都会释放，失败那家也在释放名单里');
   assert.match(pre.note, /checkCommand/u, 'note 要给出可照做的顺序，而不是只描述问题');
+});
+
+test('驱动：阶段表里 push/readback 真挂在共用实例上、其余真挂在这家店的实例上', () => {
+  // 这是互锁的**输入面**：`buildShopStages` 会拿真实阶段表去核 `stageUsesSharedPage()` 的声明
+  // （见下一条）。这里先把事实钉住 —— 若哪天有人把 `readback` 的 `dailyEnv` 改回 `shopEnv`，
+  // 互锁会抛、这条也会红，两处都指向同一件事。
+  const stages = byStage(stagesOf());
+  const sharedPort = String(PROJECT_PORTS.dailyReportProxy);
+  const ownPort = String(shopInstance(SHOP).proxyPort);
+  assert.notEqual(sharedPort, ownPort, '共用实例与店铺实例不该是同一个端口，否则这条用例证明不了什么');
+  for (const stage of ['push', 'readback']) {
+    assert.equal(stages[stage].env.CDP_PROXY_PORT, sharedPort, `${stage} 的作业对象在共用窗口里`);
+  }
+  for (const stage of SHOP_STAGES) {
+    assert.equal(stages[stage].env.CDP_PROXY_PORT, ownPort, `${stage} 该跑在「${SHOP}」这家店自己的浏览器上`);
+  }
+  // 两份清单加起来必须**恰好**是全部 11 个阶段：漏一个就会有人既不在共用组也不在店铺组，
+  // 而那种阶段在「按阶段选 proxy」的唯一口径里会静默落回共用的默认分支。
+  assert.deepEqual([...SHOP_STAGES, ...DAILY_STAGES].sort(), [...EXPECTED_ORDER].sort());
+});
+
+test('接线：驱动对「阶段表 vs stage-browsers 声明」有互锁（漂了当场抛，不是让修复层落回店铺实例）', () => {
+  // 为什么必须有：这条规则被链**外面**三处复用（派单单子的 execHint / instancePrecondition、
+  // 自动修复的 execRepair）。三处各自算一遍 ⇒ 漂开时**每一处都不报错**，
+  // 只是修复动作指向另一台浏览器（2026-10-13 网林淘宝 readback 的直接成因）。
+  const source = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8');
+  assert.match(source, /import \{ proxyForStage, stageUsesSharedPage \} from '\.\/stage-browsers\.mjs'/u,
+    '唯一口径必须从 stage-browsers.mjs 取，不许在本文件里另写一份');
+  assert.match(source, /const onSharedProxy = item\.env\.CDP_PROXY_PORT === String\(PROJECT_PORTS\.dailyReportProxy\)/u,
+    '互锁要拿 argv/env 里**真实用的那个端口**去比，不是拿另一个声明去比');
+  assert.match(source, /if \(stageUsesSharedPage\(item\.stage\) !== onSharedProxy\)/u,
+    '漂移必须当场抛：只写在注释里的约定，下一次改动就会漂开');
+});
+
+test('buildRepairRequest：共用阶段（readback）的单子指向共用商家浏览器，不是这家店的实例', () => {
+  // 10-13 实测的形态：`readback` 失败（跑在 19023 上），而单子的 execHint 写着这家店自己的代理，
+  // `instancePrecondition` 还叫 agent 去确认那台无关的实例在不在。两处一起把修复钉死在
+  // 「动不到目标页」的地方。下面同时钉住 execHint 与 instancePrecondition 两处。
+  const dir = mkdtempSync(path.join(tmpdir(), 'repair-req-'));
+  const sharedPort = String(PROJECT_PORTS.dailyReportProxy);
+  const ownPort = String(shopInstance('网林淘宝').proxyPort);
+  const shared = buildRepairRequest({
+    shopKey: '网林淘宝', stage: 'readback',
+    error: 'expected one Feishu page for target base, got 0', perception: null, logDir: dir,
+  });
+  assert.match(shared.execHint, new RegExp(`--proxy http://127\\.0\\.0\\.1:${sharedPort}(\\s|$)`, 'u'),
+    `readback 跑在共用商家浏览器上 ⇒ 提示必须指到 ${sharedPort}`);
+  assert.match(shared.execHint, /--action <候选动作>/u, '仍然只给动作占位符，不替 agent 定动作');
+  const pre = shared.instancePrecondition;
+  assert.equal(pre.checkCommand, `curl -s -m 5 http://127.0.0.1:${sharedPort}/targets`,
+    '要确认的是共用那台 —— 确认了一台、修的是另一台，是这条链最贵的一类错');
+  assert.equal(pre.startCommand, 'node scripts/start-all-hold.mjs --only dailyReport',
+    '共用实例由整轮第 0 步 / `--only dailyReport` 负责；写一条起不到目标的命令比不写更坏');
+  assert.match(pre.why, /共用/u, 'why 要说清「这次确认的是共用那一台」，否则读单子的人以为还是店铺实例');
+
+  // 对照面：同一个店名、非共用阶段 ⇒ 两处都指回这家店自己的实例。
+  // 没有这个对照，「共用阶段指对了」可能只是碰巧（比如恒取某个端口）。
+  const own = buildRepairRequest({
+    shopKey: '网林淘宝', stage: 'backfill', error: 'x', perception: null, logDir: dir,
+  });
+  assert.match(own.execHint, new RegExp(`--proxy http://127\\.0\\.0\\.1:${ownPort}(\\s|$)`, 'u'));
+  assert.equal(own.instancePrecondition.startCommand, 'node scripts/start-all-hold.mjs --only 网林淘宝');
 });
 
 test('buildRepairRequest：DUPLICATE_TARGET 也给候选（交给人），且不假装要重试', () => {

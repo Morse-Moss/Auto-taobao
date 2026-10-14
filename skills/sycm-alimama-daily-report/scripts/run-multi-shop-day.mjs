@@ -148,6 +148,9 @@ import { currentVersion } from '../../../runtime/version.mjs';
 // **它只给候选、不做决定** —— 决定权（挑哪个动作、要不要换下一个）留给 agent。
 // 这也是本模块零 import 的原因：它不依赖链里的任何东西，所以不引入第二套分类。
 import { planRepair, STAGE_PAGE_HINT } from './repair-actions.mjs';
+// 「哪个阶段跑在哪台浏览器上」的唯一口径（2026-10-14 加）。链外还有三处要用同一个答案，
+// 所以它必须是一个能被 import 的叶子，而不是只活在本文件 stage 表里的两个局部变量。
+import { proxyForStage, stageUsesSharedPage } from './stage-browsers.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -379,16 +382,30 @@ export function shopFailureCause(record) {
  * 「先确认」不是礼貌，是防串店：`--proxy` 是唯一的实例选择器（见 `repair-shop-stage.mjs`
  * 头部的纪律），代理连不上时它会回落到**商家浏览器默认端口** —— 那是对着**另一台**做事。
  */
-export function buildInstancePrecondition(shopKey) {
-  const proxyPort = shopInstance(shopKey).proxyPort;
+export function buildInstancePrecondition({ shopKey, stage = null } = {}) {
+  // 2026-10-14：**按阶段选实例**（规则唯一实现在 `stage-browsers.mjs`）。
+  // 原先这里恒取 `shopInstance(shopKey).proxyPort`，于是 `readback` 失败时单子叫 agent 去
+  // 确认**店铺实例**在不在 —— 而失败那一步跑在共用商家浏览器上，与那一台无关。
+  // 「先确认再动手」这条纪律本身没变，变的是「确认哪一台」。
+  const proxy = proxyForStage({ stage, shopKey });
+  const shared = stageUsesSharedPage(stage);
   return {
-    why: `这一批跑完可能已经把这家店的浏览器放掉了（--batches 每批都释放，失败的那家也在名单里）。`
-      + '代理连不上时任何页面修复动作都执行不到，而 --proxy 是唯一的实例选择器 —— '
-      + '不先确认就可能对着别的一台做事。',
-    checkCommand: `curl -s -m 5 http://127.0.0.1:${proxyPort}/targets`,
+    why: shared
+      ? `阶段「${stage}」跑在**共用商家浏览器**上（五家店共用那一页飞书底单），不是这家店自己的实例。`
+        + '这一批跑完可能已经把实例放掉了（--batches 每批都释放），而代理连不上时任何页面修复动作都执行不到 —— '
+        + '不先确认就可能对着别的一台做事。'
+      : `这一批跑完可能已经把这家店的浏览器放掉了（--batches 每批都释放，失败的那家也在名单里）。`
+        + '代理连不上时任何页面修复动作都执行不到，而 --proxy 是唯一的实例选择器 —— '
+        + '不先确认就可能对着别的一台做事。',
+    checkCommand: `curl -s -m 5 ${proxy}/targets`,
     // start-all 是**幂等**的：实例已在位时它不碰它 ⇒ 这条命令在「还在」的情况下也安全。
     // 用 hold 形态是因为普通 start-all 起完就退、宿主会回收整棵进程树，窗口留不到 agent 干完。
-    startCommand: `node scripts/start-all-hold.mjs --only ${shopKey}`,
+    // ⚠️ 共用阶段**不点店铺名**：`--only <店>` 起的是那家店自己的实例，起不到共用浏览器上
+    //    （共用实例由整轮的第 0 步 / `start-all.mjs --only dailyReport` 负责）。
+    //    写一条起不到目标的命令比不写更坏：agent 照着跑完会以为「实例已就位」。
+    startCommand: shared
+      ? 'node scripts/start-all-hold.mjs --only dailyReport'
+      : `node scripts/start-all-hold.mjs --only ${shopKey}`,
     note: '先跑 checkCommand：有输出（一个 JSON 数组）就是还在，直接执行 execHint；'
       + '连不上就先跑 startCommand 把它拉起来（后台托住），确认再执行 execHint。',
   };
@@ -473,8 +490,14 @@ export function buildRepairRequest({ shopKey, stage = null, error = null, failur
     // 修完要重试哪一步：失败的那一步。认不出来（stage 为空）就如实置 null，不猜。
     retryStage: stage ?? null,
     // 一条可直接照抄的命令（**不自动执行**）。agent 挑好 candidate 后把它填进 --action。
+    //
+    // 2026-10-14：`--proxy` **按阶段选**（`stage-browsers.mjs` 是唯一口径）。
+    // 原先这里恒取「这家店自己的代理」，于是 `readback` 失败时这条命令指着的浏览器
+    // **不是**出问题的那一台 —— 而 `repair-shop-stage.mjs` 的一致性闸门又要求
+    // 「--shop 与 --proxy 对得上」，于是 agent 连「改成共用那台」都做不到（会当场被拦）。
+    // 两者一起把修复钉死在**动不到目标页**的地方（10-13 网林淘宝实证）。
     execHint: `node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs`
-      + ` --shop ${shopKey} --proxy http://127.0.0.1:${shopInstance(shopKey).proxyPort}`
+      + ` --shop ${shopKey} --proxy ${proxyForStage({ stage, shopKey })}`
       + ` --stage ${stage ?? '<stage>'} --cause ${cause} --action <候选动作>`
       // logDir 认不出来就**不给 --log-dir**（写 `<stage>` 比写一个像路径的垃圾更诚实，
       // 也避免调用方把提示当命令直接粘贴执行）。
@@ -482,7 +505,8 @@ export function buildRepairRequest({ shopKey, stage = null, error = null, failur
     // 2026-10-09 加：**执行任何修复动作之前，先把实例确认到**（判据与理由见上面那个函数）。
     // 落在单子里而不是只写在作业指导书里 —— 这张单子是 agent 到场后第一件读的东西，
     // 20/27 份修复报告「现场已不在 ⇒ 转人」说明只靠文档不够。
-    instancePrecondition: buildInstancePrecondition(shopKey),
+    // 2026-10-14：它也跟着阶段走（共用阶段要确认的是共用那台，不是店铺实例）。
+    instancePrecondition: buildInstancePrecondition({ shopKey, stage }),
   };
   if (typeof writeFile === 'function' && logDir) {
     try {
@@ -937,6 +961,8 @@ export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPr
     : null;
   const subject = view.roundBlocked ? '全部店铺' : failedNames.length === 1 ? failedNames[0] : `${failedNames.length} 家店`;
   const causes = [...new Set([...(blockedCause ? [blockedCause] : []), ...view.failed.map(causeOf)])];
+  // 指纹用的成因集合：**去重 + 排序**（与失败店的出现顺序无关 —— 同一组成因换个店序不该看成两条）。
+  const causeSet = [...new Set(view.failed.map(causeOf))].sort();
   // 默认「第一家失败即停整轮」⇒ 只写「没跑完 1 家」会被读成「其余几家都收好了」。
   // 2026-09-21 那条正是这个形态：对象写「日报一轮 · 5 家店」，原因写「没跑完 1 家」，
   // 而实际是**其余 4 家一步都没跑**。少写这一行，等于让收信人以为今天收工了。
@@ -975,10 +1001,27 @@ export function buildRoundFailureAlert({ date, summary, shopKeys = null, loginPr
       : `【店铺日报】${subject}没收完（统计日 ${date}）`,
     // 同一天同一轮共用一条锚；**是否重复投递由调用方的 resolveAlertDedup 判**（投递链本身不去重）。
     alertId: `daily-round-${date.replace(/-/gu, '')}`,
-    // 指纹只服务于「同一天重复失败要不要再发一条」：停的地方没变才算重复。
+    // 指纹只服务于「同一天这一条要不要再发」。判据是**根因集合**，不是**停的位置**（2026-10-14 改）。
+    //
+    // 为什么换：这条告警的「下一步」是按**成因**给的（上面 `ACTION_BY_CAUSE[cause]`），
+    // 所以「要做的事有没有变」这件事只能由成因集合回答。原先的指纹是 `店@阶段`，两个方向都错：
+    //   ① **轮级那一段被抹成笼统的 `ROUND_BLOCKED`**（不带成因）⇒ 两种不同的轮级成因落进
+    //      同一个指纹 ⇒ 6 小时内第二条被**静默挡掉**。这是漏发，比刷屏坏得多：这两类成因要人
+    //      做的事完全不同（共用窗口掉登录 ⇒ 去那个窗口登一次；页面真的不在 ⇒ 补页）。
+    //      真现场：`evidence/batches-2026-10-13/batches.log` 里那两条 `daily-round-20261013`
+    //      一条是掉登录、一条是店级 readback —— 成因确实不同，所以当时两条都发出去了；
+    //      而「两条不同成因的轮级告警」这一形态，旧指纹是挡得掉的（判据看不出它们不同）。
+    //   ② 用位置当指纹 ⇒ 同一个根因**换一家店、或换一个步骤**发作就算「新信息」再发一条。
+    // 现在：`ROUND_BLOCKED:<轮级成因>` / `SHOP_LEVEL` ＋ **去重 + 排序**的店级成因集合
+    // （排序是为了与店铺的出现顺序无关：同一组成因换个店序不该看成两条）。
+    //
+    // 代价（写出来，免得以后有人以为它漏了）：同一个成因**换一家店**发作，6 小时内不会再发一条
+    // —— 那家店的名字只在第一条消息里出现过。这是有意的取舍：这个通道的职责是「叫人动手」，
+    // 不是「逐家记账」；逐家状态在 `summary.json` 与飞书底单里都查得到。
+    // 两个安全阀：窗口是 6 小时（过了就重发）；alertId 一天一换（第二天必然重发）。
     fingerprint: [
-      view.roundBlocked ? 'ROUND_BLOCKED' : 'SHOP_LEVEL',
-      ...view.failed.map((item) => `${item.key}@${item.record?.failedStage ?? '?'}`),
+      view.roundBlocked ? `ROUND_BLOCKED:${blockedCause ?? 'UNKNOWN'}` : 'SHOP_LEVEL',
+      ...causeSet,
     ].join('|'),
     createdAt: when.toISOString(),
     reason,
@@ -1302,6 +1345,26 @@ export function buildShopStages(shopKey, options) {
   if (produced.join(',') !== STAGE_NAMES.join(',')) {
     throw new Error('阶段表与 STAGE_NAMES 漂移了：\n'
       + `  实际产出 ${produced.join(',')}\n  常量     ${STAGE_NAMES.join(',')}`);
+  }
+
+  // 与「哪些阶段跑在共用商家浏览器上」互锁（2026-10-14 加）。
+  //
+  // 为什么要有它：这条规则原先只活在上面的 stage 表里（两处 `add(..., dailyProxy)`），
+  // 而链**外面**还有三处在用同一个问题的答案（派单单子的 execHint / instancePrecondition、
+  // 自动修复的 execRepair）。三处各自算一遍 ⇒ 一旦漂开，修复动作会指向**另一台**浏览器，
+  // 而且**每一处都不会报错**（10-13 网林淘宝那次的直接成因）。
+  // 现在答案只有一处（`stage-browsers.mjs` 的 `stageUsesSharedPage`），这里拿真实阶段表去核它：
+  //   · 声明「跑在共用实例上」的阶段，argv/env 里必须真的是共用端口；
+  //   · 其余阶段必须真的是这家店自己的端口。
+  // 任一条不成立就当场抛 —— 而不是让修复层悄悄落回店铺实例。
+  for (const item of stages) {
+    const onSharedProxy = item.env.CDP_PROXY_PORT === String(PROJECT_PORTS.dailyReportProxy);
+    if (stageUsesSharedPage(item.stage) !== onSharedProxy) {
+      throw new Error(`阶段「${item.stage}」的实例归属与 stage-browsers.mjs 的声明漂移了：\n`
+        + `  阶段表用的是 ${item.env.CDP_PROXY_PORT}（${onSharedProxy ? '共用商家浏览器' : '这家店自己的浏览器'}）\n`
+        + `  声明说它${stageUsesSharedPage(item.stage) ? '跑在共用商家浏览器上' : '不跑在共用商家浏览器上'}\n`
+        + '处置：两边一起改（这条规则被链外的三处复用，漂开时修复动作会指向另一台浏览器且不报错）。');
+    }
   }
 
   return stages;
@@ -2224,7 +2287,9 @@ async function main() {
     //   自动修复因此**只剩 RESET_PAGES 一个候选能用**（2026-10-01 目标日 10-01 那轮三家店
     //   的 `autoRepair.rounds[].detail` 逐字相同，都卡在这一句）。
     const execRepair = async ({ shopKey, stage, cause, action, log }) => {
-      const proxy = `http://127.0.0.1:${shopInstance(shopKey).proxyPort}`;
+      // 2026-10-14：**按阶段选实例**。原先恒取这家店自己的代理 ⇒ `readback` 失败的自动修复
+      // 会去动店铺实例（10-13 实测：动作落在店铺标识页上，`applied:true` 而目标页纹丝没动）。
+      const proxy = proxyForStage({ stage, shopKey });
       const { applyRepairAction } = await import('./repair-shop-stage.mjs');
       const out = await applyRepairAction(
         { shop: shopKey, proxy, stage, cause, action, logDir: shopLogDir },

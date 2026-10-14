@@ -17,13 +17,20 @@
 //
 // 「读不到」**不等于**「达标」：读失败会重试有限次，仍读不到判 `VIEWPORT_UNREADABLE` 并按红处理。
 // 「读不到就当没事」正是本仓反复在治的那个病根（把读不到当成掉了／不存在）。
-import { shopInstance } from './browser-ports.mjs';
+import { PROJECT_PORTS, shopInstance } from './browser-ports.mjs';
 
 export const SHOP_VIEWPORT_MIN_WIDTH = 1200;
 export const SHOP_VIEWPORT_MIN_HEIGHT = 600;
 export const VIEWPORT_READ_ATTEMPTS = 5;
 export const VIEWPORT_READ_INTERVAL_MS = 800;
 export const VIEWPORT_EVAL_TIMEOUT_MS = 8000;
+
+/** 退出码口径（2026-10-14 抽出来，让调用方不必各写一份）：
+ *  0＝全达标｜2＝量到了、就是不达标（查屏幕与缩放）｜3＝读不到、没有结论（查实例）。 */
+export const VIEWPORT_EXIT_CODES = Object.freeze({ OK: 0, TOO_SMALL: 2, UNREADABLE: 3 });
+
+/** 共用商家浏览器在视口读数里显示成什么。它是唯一那个不属于任何一家店的实例。 */
+export const SHARED_BROWSER_VIEWPORT_LABEL = '共用商家浏览器';
 
 /** 页面里返回**字符串**（代理会把 `Runtime.evaluate` 的返回值原样放进 `value`，所以再 parse 一层）。 */
 export const VIEWPORT_EXPRESSION =
@@ -70,18 +77,25 @@ async function getJson(url, { fetchImpl = fetch, timeoutMs = VIEWPORT_EVAL_TIMEO
 const delay = (ms) => new Promise((done) => { setTimeout(done, ms); });
 
 /**
- * 读一家店的视口。**带重试**：刚 `start-all` 完的实例首屏还在加载，
- * 第一次 eval 可能打在一个还没有文档的页签上 —— 那是「还没好」，不是「不达标」。
+ * 读**任意一个**实例的视口（按代理端口）。
+ *
+ * 为什么抽成这一层（2026-10-14）：原来只有「按店名读」—— `readShopViewport` 里直接
+ * `shopInstance(shop).proxyPort`。而 2026-10-14 那次故障出在**共用商家浏览器 19023** 上，
+ * 它不是任何一家店 ⇒ 旧函数读不到它，于是这条链唯一那个「会走坐标点击登录」的实例
+ * 从来没有视口读数。判据本来就只有一条（读 innerWidth/innerHeight），不该因为「不是店」
+ * 就少一个入口。
+ *
+ * **带重试**：刚起完的实例首屏还在加载，第一次 eval 可能打在一个还没有文档的页签上
+ * —— 那是「还没好」，不是「不达标」。
  *
  * 每一轮重新取 `/targets`（`targetId` 会变，别存下来用第二次）；
  * 页签挑 `type === 'page'` 且不是 devtools 的第一个。
  */
-export async function readShopViewport({
-  shop, fetchImpl = fetch, attempts = VIEWPORT_READ_ATTEMPTS,
+export async function readViewportAtProxy({
+  proxyPort, label = null, fetchImpl = fetch, attempts = VIEWPORT_READ_ATTEMPTS,
   intervalMs = VIEWPORT_READ_INTERVAL_MS, sleep = delay,
 } = {}) {
-  const instance = shopInstance(shop);
-  const base = `http://127.0.0.1:${instance.proxyPort}`;
+  const base = `http://127.0.0.1:${proxyPort}`;
   let lastError = null;
   let reading = null;
   let targetId = null;
@@ -113,10 +127,19 @@ export async function readShopViewport({
   }
   const verdict = judgeShopViewport(reading ?? {});
   return {
-    shop, proxyPort: instance.proxyPort, targetId,
+    shop: label, proxyPort, targetId,
     width: reading?.width ?? null, height: reading?.height ?? null, dpr: reading?.dpr ?? null,
     readError: lastError, verdict,
   };
+}
+
+/**
+ * 读一家店的视口。判据与读数都走 `readViewportAtProxy`（一处实现），
+ * 这里只负责把「店名」翻成「这个店自己的代理端口」。
+ */
+export async function readShopViewport({ shop, ...options } = {}) {
+  const instance = shopInstance(shop);
+  return readViewportAtProxy({ proxyPort: instance.proxyPort, label: shop, ...options });
 }
 
 /**
@@ -129,11 +152,59 @@ export async function checkShopViewports({ shops = [], ...options } = {}) {
   return { ...summarizeShopViewports(entries), entries };
 }
 
+/**
+ * 按「一对一的实例清单」读 —— 每项是 `{ proxyPort, label }`。
+ * 与 `checkShopViewports` 共用同一份判据与汇总，只是允许清单里出现**不是店**的实例
+ * （如共用商家浏览器）。这条入口是 2026-10-14 那次故障的直接修法。
+ */
+export async function checkProxyViewports({ targets = [], ...options } = {}) {
+  const entries = [];
+  for (const target of targets) {
+    entries.push(await readViewportAtProxy({ proxyPort: target.proxyPort, label: target.label ?? null, ...options }));
+  }
+  return { ...summarizeShopViewports(entries), entries };
+}
+
+/**
+ * 一行一个实例的读数（**给人读的那一份**）。抽出来是因为它现在有**两个出口**（见 `main`）：
+ * `--json` 时 JSON 走 stdout（编排层把它接成工件文件），人读的这几行走 stderr（编排层把它接进日志）。
+ */
+export function viewportLines(summary) {
+  return (summary?.entries ?? []).map((entry) => `${entry.verdict.ok ? 'PASS' : 'FAIL'} `
+    + `${entry.shop ?? `:${entry.proxyPort}`}: ${entry.verdict.detail}`
+    + `${entry.readError ? `（${entry.readError}）` : ''}`);
+}
+
 /** 把结论压成一句人话（日志与异常都用它，避免两处措辞漂移）。 */
 export function describeViewportFailure(summary) {
   return summary.failed
-    .map((entry) => `${entry.shop}=${entry.verdict.reason}${entry.readError ? `（${entry.readError}）` : ''}`)
+    .map((entry) => `${entry.shop ?? `:${entry.proxyPort}`}=${entry.verdict.reason}${entry.readError ? `（${entry.readError}）` : ''}`)
     .join('；');
+}
+
+/**
+ * 纯判据：这份汇总该退什么码。
+ *
+ * 三档分得开是因为**下一步动作不同**：
+ *   0 = 全达标；
+ *   2 = 至少一家**量到了**、就是不达标 ⇒ 查屏幕与缩放（这是「今天真的会出事」那一档）；
+ *   3 = 没有一家量到不达标，但至少一家**读不到** ⇒ 没有结论，去查实例。
+ * 「读不到」不许退成 0（那正是本仓反复在治的病根），也不该混进 2 ——
+ * 报一个量出来的数字和报「我读不到」对操作者是两件事。
+ */
+export function viewportExitCode(summary) {
+  if (summary?.ok) return VIEWPORT_EXIT_CODES.OK;
+  const failed = summary?.failed ?? [];
+  const measured = failed.some((entry) => entry.verdict?.reason !== 'VIEWPORT_UNREADABLE');
+  return measured ? VIEWPORT_EXIT_CODES.TOO_SMALL : VIEWPORT_EXIT_CODES.UNREADABLE;
+}
+
+/** `--proxy` 既收裸端口（19023）也收完整 URL（http://127.0.0.1:19023）。认不出来返回 null。 */
+export function parseProxyPort(value) {
+  const text = String(value ?? '').trim();
+  const match = text.match(/(?:^|:)(\d{1,5})\/?$/u);
+  const port = match ? Number(match[1]) : Number(text);
+  return Number.isInteger(port) && port > 0 && port <= 65535 ? port : null;
 }
 
 const isMain = Boolean(process.argv[1]) && process.argv[1].replace(/\\/gu, '/').endsWith('shop-viewport-gate.mjs');
@@ -141,16 +212,46 @@ const isMain = Boolean(process.argv[1]) && process.argv[1].replace(/\\/gu, '/').
 async function main() {
   const args = process.argv.slice(2);
   const asJson = args.includes('--json');
-  const idx = args.indexOf('--shops');
-  const shops = idx >= 0 ? String(args[idx + 1] ?? '').split(',').map((x) => x.trim()).filter(Boolean) : [];
-  if (!shops.length) {
-    console.error('用法：node runtime/shop-viewport-gate.mjs --shops 店A,店B [--json]');
-    return 2;
+  const readOption = (name) => {
+    const idx = args.indexOf(name);
+    return idx >= 0 ? args[idx + 1] : null;
+  };
+  const shops = String(readOption('--shops') ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  const proxyRaw = readOption('--proxy');
+  const label = readOption('--label');
+
+  const targets = shops.map((shop) => ({ proxyPort: shopInstance(shop).proxyPort, label: shop }));
+  if (proxyRaw !== null) {
+    const proxyPort = parseProxyPort(proxyRaw);
+    if (proxyPort === null) {
+      // 例子里的端口**刻意用一个不属于本项目的数字**：本仓有守卫禁止把登记端口写成字面量
+      // （`browser-ports.test.mjs`），usage 文案也算 —— 换成登记表里的真端口会被当场判红。
+      console.error(`--proxy 要一个端口或 URL（如 9000 / http://127.0.0.1:9000），收到 ${JSON.stringify(proxyRaw)}`);
+      return VIEWPORT_EXIT_CODES.TOO_SMALL;
+    }
+    targets.push({ proxyPort, label: label ?? null });
   }
-  const summary = await checkShopViewports({ shops });
-  if (asJson) console.log(JSON.stringify(summary, null, 2));
-  else for (const entry of summary.entries) console.log(`${entry.verdict.ok ? 'PASS' : 'FAIL'} ${entry.shop}: ${entry.verdict.detail}${entry.readError ? `（${entry.readError}）` : ''}`);
-  return summary.ok ? 0 : 2;
+  if (!targets.length) {
+    console.error('用法：node runtime/shop-viewport-gate.mjs --shops 店A,店B [--json]');
+    console.error('      node runtime/shop-viewport-gate.mjs --proxy <代理端口> [--label 共用商家浏览器] [--json]');
+    console.error('      （两者可以一起给：先读这几家店，再读那个按端口指定的实例）');
+    return VIEWPORT_EXIT_CODES.TOO_SMALL;
+  }
+
+  const summary = await checkProxyViewports({ targets });
+  // 两个出口**刻意分开**（2026-10-14）：编排层把 stdout 接成工件文件（`viewport.json`），
+  // 而人翻的日志接 stderr。若 `--json` 时只往 stdout 写 JSON，那么：
+  //   ① 日志里就只剩一段 JSON（阅读成本高），或者更糟 —— 编排层若只把 stdout 落文件、不回显，
+  //      那个读数的**唯一直接证据**就只剩一个文件，而事后翻日志的人看不到它。
+  // 分开口之后：工件是纯 JSON（可被程序读），日志里既有 JSON 也有人读的那几行。
+  const lines = viewportLines(summary);
+  if (asJson) {
+    console.log(JSON.stringify(summary, null, 2));
+    for (const line of lines) console.error(line);
+  } else {
+    for (const line of lines) console.log(line);
+  }
+  return viewportExitCode(summary);
 }
 
 if (isMain) process.exit(await main());

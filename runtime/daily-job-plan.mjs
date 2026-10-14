@@ -37,6 +37,14 @@ import path from 'node:path';
 // 依赖方向（见 runtime/arch-boundary.test.mjs 与本文件头那段）；而 `batch-plan.mjs` 是一个
 // **同目录的纯函数计划模块**，import 它是「同一层里不写第二个事实」，方向与代价都不同。
 import { SHARED_INSTANCE_KEYS } from './batch-plan.mjs';
+// 视口闸门那一步（2026-10-14 加）要两样东西，都在同目录的机制层里：
+//   · `browser-ports.mjs` 的 `PROJECT_PORTS`（共用商家浏览器那个代理端口）与 `collectingShopKeys()`
+//     （「参与采集的是哪几家」—— 与链、与补行骨架、与分批切批用的是同一个口径）；
+//   · `shop-viewport-gate.mjs` 的 `SHARED_BROWSER_VIEWPORT_LABEL`（那台实例在读数里叫什么）。
+// 两者都不是能力脚本（不是 `skills/` 下的可执行文件），方向与代价都不同 —— 同上面那段
+// 关于 `batch-plan.mjs` 的理由：**同一个事实不写第二遍**，标签串各写一份，改一处就静默落空。
+import { PROJECT_PORTS, collectingShopKeys } from './browser-ports.mjs';
+import { SHARED_BROWSER_VIEWPORT_LABEL } from './shop-viewport-gate.mjs';
 
 export const JOB_FILES = Object.freeze({
   ensureInstances: 'scripts/start-all.mjs',
@@ -81,8 +89,21 @@ export const JOB_FILES = Object.freeze({
   // 在机器前是一个没有落点的说法（五台窗口长得一模一样）。挂上标识页之后，
   // 窗口标题里就写着「商家浏览器（日报共用） · 日报采集窗口」，任务栏上一眼可辨。
   windowLabel: 'runtime/shop-window-label.mjs',
-  // 询单表的「行骨架」（2026-10-07 加）。
+  // 视口回读闸门（2026-10-14 加）。**它治的是一个已经发作过的病**：
+  // 2026-10-14 10:21/10:27 两轮，共用商家浏览器（19022/19023）的窗口被夹到 692x307
+  //（视口 670x216），登录表单落在视口**下方** ⇒ `login-merchant.mjs` 那几次坐标点击
+  // 全部点在窗口外 ⇒ 静默判「没登上」⇒ 链的整轮级体检不过 ⇒ 8 家一家都没开跑。
+  // 而当时**没有任何一步量过窗口多大** —— 那句 `loggedIn=false` 与真因之间隔着一整条链。
   //
+  // 为什么这台实例的窗口会缩：它**是唯一那个不带 `--window-size` 的实例**
+  //（`SHOP_BROWSER_EXTRA_ARGS` 只作用于店铺 profile，两条老命令行的 argv 由
+  // `browser-ports.test.mjs` 钉住「逐字不变」）⇒ 窗口多大完全取决于上次退出时的存档。
+  // 于是「同一台实例、两条路都通、只有走登录那条会炸」这种形态可以潜伏很久。
+  //
+  // 这一步只**量**、不修（修在 `runtime/start-project-browser.mjs` 的 `normalizeSharedWindow`，
+  // 起实例时就归位；量出来的数字是那一步到底有没有生效的唯一凭据）。
+  shopViewportGate: 'runtime/shop-viewport-gate.mjs',
+  // 询单表的「行骨架」（2026-10-07 加）。
   // 为什么必须有它：链的第 10 步 `backfill`（询单回填）是**更新**已有行 ——
   // 它从不建行。而那张表（飞书「各店铺数据日报」）的日期行一直是**运营侧预建**的
   //（`docs/ops/PROJECT-BROWSER-AND-PORTS.md` 第 62 行：预建行铺到 10-05），
@@ -104,6 +125,69 @@ export const JOB_FILES = Object.freeze({
  */
 export const LOGIN_PREFLIGHT_ARTIFACT = 'login-preflight.json';
 export const LOGIN_PREFLIGHT_FLAG = '--login-preflight';
+
+/**
+ * 视口闸门那一步的**产物名**与**参数**（2026-10-14 加）。两个调用点共用一份：
+ * 定时链（本文件）与分批驱动（`scripts/run-batches.mjs`，每一批一份）。
+ *
+ * 为什么产物名要有一个常量：与 `LOGIN_PREFLIGHT_ARTIFACT` 同一条理由 ——
+ * 它是「事后能不能找到那份读数」这件事的唯一依据；两处各写一个字符串，
+ * 改一处的那天另一处就静默写进另一个文件名，而**没人会读到一个不存在的文件**这件事
+ * 不会有任何报错。
+ *
+ * `--shops` 与 `--proxy` **可以一起给**（闸门的用法里写明）：先读这几家店，再读那个按端口
+ * 指定的实例。这正是日报链需要的形状 —— 共用商家浏览器不是任何一家店，
+ * 只按店名读的那条路**永远读不到它**，而这次出事的就是它。
+ */
+export const VIEWPORT_ARTIFACT_NAME = 'viewport.json';
+
+/** 分批形态下每一批那一份读数的文件名（逐批不同，同 `batchLoginArtifactName` 的理由）。 */
+export function batchViewportArtifactName(index) {
+  return `viewport-b${index}.json`;
+}
+
+/** `--proxy` 收裸端口也收 URL（闸门自己解析）；这里只做字符串化，不替它判合法性。 */
+export function buildViewportGateArgs({ shops = null, proxyPort = null, label = null, json = false } = {}) {
+  const args = [];
+  if (shops && shops.length > 0) args.push('--shops', shops.join(','));
+  if (proxyPort !== null && proxyPort !== undefined) {
+    args.push('--proxy', String(proxyPort));
+    if (label) args.push('--label', String(label));
+  }
+  if (json) args.push('--json');
+  return args;
+}
+
+/**
+ * 视口闸门那一步的**形状**（2026-10-14 加）。**纯函数**（离线可断言）。
+ *
+ * `blocking: false` —— 与它前面的那三步（起实例 / 挂标识 / 跑前登录）同一条理由：
+ * 链的第 0 步体检才是「今天能不能写」的权威判据。在这里截断只会让告警少一层信息
+ * （而链自己会在采集段如实报出来）。
+ *
+ * ⚠️ 但它**不是「不重要」**：这个读数是「窗口被夹窄」这类故障的唯一直接证据，
+ * 而这类故障此前只会以一句 `loggedIn=false` 的形式出现。所以它的 `note` 必须写清
+ * 「读数落哪儿、不达标会怎样」—— `--print` 是人确认「将要执行什么」的唯一凭据。
+ *
+ * 位置是**硬要求**：必须排在**任何一条登录路径之前**（共用商家浏览器的登录守卫、
+ * 逐店登录守卫）。排在之后，读到的是一个**已经被坐标点击折腾过**的窗口，
+ * 而那时故障已经发生了 —— 量了也晚了。
+ */
+export function buildViewportGateStep({ file = JOB_FILES.shopViewportGate, args = [], artifactPath = null } = {}) {
+  const targets = [];
+  if (args.includes('--shops')) targets.push('这几家店自己的窗口');
+  if (args.includes('--proxy')) targets.push(`共用商家浏览器（${SHARED_BROWSER_VIEWPORT_LABEL}）`);
+  return {
+    name: 'viewport-gate',
+    file,
+    args,
+    ...(artifactPath ? { artifactPath } : {}),
+    blocking: false,
+    note: `起完实例就回读每个窗口的视口（${targets.join('＋') || '按参数指定'}）——`
+      + '它是「窗口被夹窄」这类故障的唯一直接证据（症状长成一句 loggedIn=false）'
+      + '；读数不论达不达标都落盘，不达标只记日志、不截断（链自己的体检才是权威判据）',
+  };
+}
 
 /**
  * 跑前登录态体检那一步的参数。**两个调用点共用一份**。
@@ -455,6 +539,11 @@ export function buildJobPlan(options = {}) {
     ? path.join(artifactsDir, LOGIN_PREFLIGHT_ARTIFACT)
     : null;
 
+  // 视口读数落哪儿。与登录结论**刻意不同**：分批形态下它照样落盘 ——
+  // 这一步读的是**共用商家浏览器**（整轮只有一台，不存在「这是哪一批的读数」这个问题），
+  // 而那一台恰恰是 2026-10-14 出事的那个实例。
+  const viewportArtifactFile = artifactsDir ? path.join(artifactsDir, VIEWPORT_ARTIFACT_NAME) : null;
+
   // 告警出口必须恰好一个：两个都传会让驱动那边 `--notify-print` 赢（resolveAlertDispatch 的顺序），
   // 于是「我要发飞书」这个意图被静默丢掉。与其指望调用方记得，不如在这里当场拦住。
   if (notify && notifyPrint) {
@@ -613,6 +702,29 @@ export function buildJobPlan(options = {}) {
     }
     : null;
 
+  // 视口回读闸门（2026-10-14 加）。**排在任何一条登录路径之前** —— 这是它唯一的硬位置要求。
+  //
+  // 为什么必须在登录之前：2026-10-14 那次故障的形态是「窗口被夹窄 ⇒ 登录表单落在视口外 ⇒
+  // 坐标点击全部落空 ⇒ 静默判没登上」。排在登录之后，量到的是一个**已经被点过一轮**的窗口，
+  // 而故障那时已经发生了 —— 量了也晚。排在之前，日记里就有一行「窗口多大」，
+  // 与随后那句 `loggedIn=false` 并排出现，真因不再需要人来推。
+  //
+  // 为什么分批形态下**只读共用实例**：店铺实例要等每一批自己的 `start` 才起，
+  // 此刻按店名读只会得到一片 `VIEWPORT_UNREADABLE` —— 那是**本可以不出**的噪声，
+  // 而且它会以「这几家店视口读不到」的形式出现（看起来像真的坏了）。
+  // 同一件事的权威落点在分批驱动里：每一批 `start` 之后各读那一批（见 `scripts/run-batches.mjs`）。
+  // 这条理由与 `loginPreflightStep` 在分批形态下不进计划**逐字同源**。
+  const viewportGateStep = buildViewportGateStep({
+    file: JOB_FILES.shopViewportGate,
+    args: buildViewportGateArgs({
+      shops: batchMode ? null : (shops ?? collectingShopKeys()),
+      proxyPort: PROJECT_PORTS.dailyReportProxy,
+      label: SHARED_BROWSER_VIEWPORT_LABEL,
+      json: Boolean(viewportArtifactFile),
+    }),
+    artifactPath: viewportArtifactFile,
+  });
+
   // 跑前登录态体检 / 跑前登录守卫（`autoLogin` 打开时同时是后者）。**分批形态下不进计划**
   // （2026-09-30 改；原先照跑，理由是「排在 ensure-instances 之后，那时（七个）实例都起来了，
   // 前提成立」—— 而那个前提正是本轮修掉的那个缺陷）。
@@ -700,6 +812,10 @@ export function buildJobPlan(options = {}) {
     // 共用窗口标识那一步（不给时 `null`）。与 `holdStep` 同一条理由：数组里看不到它时，
     // 「没加」这件事要有一个可断言的落点，否则「计划里没有」与「这一步压根不存在」长得一样。
     merchantLabelStep,
+    // 视口闸门那一步（**始终存在**，与上面两步不同 —— 它读的是整轮那台共用实例，
+    // 两个形态都需要它）。落在这里的理由同 `holdStep`：数组里看不到它时，
+    // 「没加」这件事要有一个可断言的落点。
+    viewportGateStep,
     // 补行骨架那一步（不给时 `null`）。同一条理由：数组里看不到它时，「没加」这件事
     // 要有一个可断言的落点，否则它会被后来的人当成「这一步被删掉了」。
     ensureInquiryRowsStep,
@@ -708,6 +824,9 @@ export function buildJobPlan(options = {}) {
       // 共用窗口的标识页（2026-10-06 加）。排在实例起来之后、其余一切之前 ——
       // 它是「告警说去哪扇窗」的**前提**，越早挂上，后面任何一步失败时告警就已经有落点了。
       ...(merchantLabelStep ? [merchantLabelStep] : []),
+      // 视口闸门（2026-10-14 加）。排在**任何登录路径之前**（理由见上面那一段）：
+      // 它量的是「这扇窗现在多大」，而那正是坐标点击登录成不成的先决条件。
+      viewportGateStep,
       // 分批形态下这一步**不进计划**（2026-09-30 改；两条理由写在上面 `loginPreflightStep`
       // 之前那段注释里：它带 `--login` 时必然只读到「连不上端口」，且会把 12 家店的登录提交
       // 一次性排进队列）。逐批那一条（`start` 之后、`chain` 之前）才是权威的那一条。

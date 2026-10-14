@@ -69,7 +69,8 @@ import {
   absentSites, alertForRun,
   agreementSatisfied, captchaVisible, centerOf, detectLoginDetour, expectedMemberFor, finalLoginVerdict,
   isTaobaoLoginUrl, judgeAgreement,
-  judgeFilled, judgeShopTarget, judgeSubmitOutcome, loggedOutSites, loginFormVisible, needsHuman, parseArgs,
+  judgeFilled, judgeShopTarget, judgeSubmitOutcome, judgeViewportForClick, loggedOutSites,
+  loginFormVisible, needsHuman, parseArgs,
   profileForShop, sitesNeedingLogin,
 } from './login-merchant-core.mjs';
 
@@ -497,6 +498,51 @@ async function attempt() {
       continue;
     }
     attempt.autofill = { id: state.id?.autofill ?? null, password: state.password?.autofill ?? null };
+
+    // 第三步之前：**先量窗口**（2026-10-14 加）。
+    //
+    // 这条闸门治的是一个已经发作过的病：那一天（回执在 `evidence/daily-job-2026-10-13/`，
+    // 目录名是**目标日**）共用商家浏览器的窗口被夹到 692x307（视口 670x216），
+    // 表单落到视口下面 ⇒ 下面每一次 `clickPoint` 都点在窗口外面、页面 DOM 一动没动，
+    // 而链上留下的字是 `LOGIN_NOT_CONFIRMED`「可能是密码不对」—— 密码、滑块、协议
+    // 一个字都没错，真因（窗口太小）与那句话之间隔着一整条链。
+    //
+    // 判据与读数**都不在这里**：口径复用 `runtime/shop-viewport-gate.mjs` 那唯一一份
+    // （1200x600），core 的 `judgeViewportForClick` 头注写着两条取舍
+    // （「没量到」不拦、也不把它升级成判决词）。
+    //
+    // 位置的两条理由：
+    //   ① 排在「这一页确实是登录页、且有可填的表单」**之后** —— 否则一个本来就不该点的页面
+    //      （DETOUR / NO_FORM）会报出一条「窗口太小」，把「判不成」说成环境坏了；
+    //   ② 排在**所有**坐标点击之前。本文件四处点击（补手势 / 勾协议 / 点登录 / 点中间屏）
+    //      全在这条循环的同一次迭代里依次发生，窗口不会中途变大 ⇒ 一道闸全盖住。
+    //
+    // 只读排练（不带 `--commit`）**不拦**：那一档一次坐标点击都不做（四处点击全在 commit 分支里），
+    // 拦下来只会把一条本来绿着的排练判红 —— 而排练的全部价值就是「没登也把现在什么情况说清楚」。
+    // 两种情形都**如实记进回执**（`receipt.login.viewport`），排练的人翻日志也看得到这个读数。
+    const viewport = judgeViewportForClick(state.viewport);
+    attempt.viewport = viewport;
+    receipt.login.viewport = viewport;
+    if (args.commit && viewport.blocksClick) {
+      receipt.login.candidate = candidate.id;
+      receipt.login.urlBefore = state.href;
+      // detail 只补**这一次**的读数与「系统因此做了什么」（措辞纪律见 core 的
+      // `REASON_BY_VERDICT` 头注：静态原因与 detail 各自都通顺、合起来才是病）。
+      receipt.detail = `量到的窗口是 ${viewport.width}x${viewport.height}（宽×高），`
+        + `低于 ${viewport.threshold.width}x${viewport.threshold.height} 的底线 —— `
+        + '系统因此没有往下点，也就没有提交。';
+      receipt.login.shots = await shot(args, targetId, 'login-viewport-too-small');
+      // 两个判决词**字面写在这里**，不写成 `receipt.verdict = viewport.verdict`：
+      // `login-merchant-core.test.mjs` 扫的就是「主脚本产出过哪些词」，从读数里转一手
+      // 那条守卫就再也看不见主脚本会不会真的产出它了 —— 而「词表里有、脚本从不产生」
+      // 正是它要治的病。
+      if (viewport.reason === 'VIEWPORT_TOO_SHORT') {
+        receipt.verdict = 'VIEWPORT_TOO_SHORT';
+      } else {
+        receipt.verdict = 'VIEWPORT_TOO_NARROW';
+      }
+      return finish(receipt, 2);
+    }
 
     // 第三步：值已经在 DOM 里就直接用；否则补一次可信手势把浏览器的填充「敲实」。
     if ((state.id?.valueLen ?? 0) === 0) {

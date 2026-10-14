@@ -11,10 +11,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import {
-  JOB_FILES, LOGIN_PREFLIGHT_ARTIFACT, LOGIN_PREFLIGHT_FLAG, MERCHANT_LOGIN_SITE, buildJobPlan,
-  buildBatchChainArgs, buildEnsureInquiryRowsArgs, buildLoginPreflightArgs, buildMerchantLoginGuardArgs, renderCommand, renderJobEntryCommand,
+  JOB_FILES, LOGIN_PREFLIGHT_ARTIFACT, LOGIN_PREFLIGHT_FLAG, MERCHANT_LOGIN_SITE, VIEWPORT_ARTIFACT_NAME,
+  batchViewportArtifactName, buildJobPlan, buildBatchChainArgs, buildEnsureInquiryRowsArgs, buildLoginPreflightArgs,
+  buildMerchantLoginGuardArgs, buildViewportGateArgs, buildViewportGateStep, renderCommand, renderJobEntryCommand,
 } from './daily-job-plan.mjs';
-import { collectingShopKeys } from './browser-ports.mjs';
+import { PROJECT_PORTS, collectingShopKeys } from './browser-ports.mjs';
+import { SHARED_BROWSER_VIEWPORT_LABEL, VIEWPORT_EXIT_CODES, viewportLines } from './shop-viewport-gate.mjs';
 // 共享实例名单的单一来源：分批形态下第 ① 步只起它（见 2026-09-30 修的那个缺陷）。
 import { SHARED_INSTANCE_KEYS } from './batch-plan.mjs';
 
@@ -30,7 +32,7 @@ const stepOf = (plan, name) => {
   return found;
 };
 
-test('六步的顺序是「先保证实例在 → 给共用窗口挂标识 → 再看一眼登录态 → 再修共享实例的会话 → 再补行骨架 → 再跑链」', () => {
+test('七步的顺序是「先保证实例在 → 给共用窗口挂标识 → 量视口 → 再看一眼登录态 → 再修共享实例的会话 → 再补行骨架 → 再跑链」', () => {
   // 反过来（先跑链）时，链的第 0 步体检会整轮拦下并发一条**本可以不出**的告警；
   // 告警这个通道被无谓地用一次就少一次可信度。
   // 而登录态体检必须排在**起实例之后**：实例不在时它一个页面都读不到，只留下一片「读不到」。
@@ -38,14 +40,18 @@ test('六步的顺序是「先保证实例在 → 给共用窗口挂标识 → �
   // 那台实例上，它挂掉的处置是「整轮不跑」—— 守卫晚一步，五家店就一家都不开跑。
   // 2026-10-06 加的第二步（共用窗口标识页）同样要排在链之前：它是「告警说去共用窗口」
   // 这句话的**前提**，越早挂上，后面任何一步失败时告警就已经有落点了。
+  // 2026-10-14 加的第三步（视口回读闸门）位置是**硬要求**：必须在**任何一条登录路径之前**
+  //（逐店登录守卫、共享实例守卫都在它后面）—— 它量的是「这扇窗现在多大」，
+  // 而那正是坐标点击能不能点中的先决条件；排在之后，量到的是一个已经被点过一轮的窗口。
   // 2026-10-07 加的最后一步（补飞书询单表的行骨架）排在链**之前、其余一切之后**：
   // 它建的是链第 10 步回填要写的那一行，越晚建越贴近真正需要它的那一刻。
   const plan = buildJobPlan();
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login',
+    ['ensure-instances', 'label-merchant-window', 'viewport-gate', 'login-preflight', 'ensure-merchant-login',
       'ensure-inquiry-rows', 'chain']);
   // 按**名字**取步骤判 blocking，不按下标：下标会让下一个人（以及这次的加法）只改数字而不想清楚。
-  for (const name of ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login', 'ensure-inquiry-rows']) {
+  for (const name of ['ensure-instances', 'label-merchant-window', 'viewport-gate', 'login-preflight',
+    'ensure-merchant-login', 'ensure-inquiry-rows']) {
     assert.equal(stepOf(plan, name).blocking, false,
       `${name} 不该阻断链：权威判据在链的体检里，在这里截断只会让告警少一层信息`);
   }
@@ -135,22 +141,33 @@ test('/TR 只拉起一个入口（三步由它自己按顺序执行，日志也�
 // 背景：用户要「跑完释放」，因为「全部店铺都不释放，电脑性能撑不住」。分批驱动的语义是
 // 「起这一批 → 挂标识页 → 跑这一批 → 停这一批」。它一旦被误开，代价是**定时链的行为变了**
 // 而没人知道 —— 所以第一条判据就是「不传 `--batches` 时，渲染出来的命令逐字不变」。
+// （2026-10-14：这一档**有意**多了一行 `viewport-gate`，见下面用例里那段说明；
+//   「分批开关本身不许改这一档」这条判据本身没有任何放宽。）
 // ---------------------------------------------------------------------------
-test('不启用分批时，六步与从前**逐字相同**（默认关闭是硬保证，不是注释里的承诺）', () => {
+test('不启用分批时，渲染出来的命令**除了那一条有意新增的视口回读**之外逐字不变', () => {
   const plan = buildJobPlan();
   assert.equal(plan.batches, null);
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login',
+    ['ensure-instances', 'label-merchant-window', 'viewport-gate', 'login-preflight', 'ensure-merchant-login',
       'ensure-inquiry-rows', 'chain']);
 
   // 逐字比较：跟上一次「没有分批这个概念」时渲染出来的那几行比。
   // 用固定期望值而不是「再跑一次自己」，否则这类断言永远绿（自己等于自己）。
+  // 2026-10-14 唯一有意加进来的那一行是 `viewport-gate`（用户拍板「全按建议」，建议原文：
+  // 「视口闸门接到日报链吗？建议接，并且把共用商家浏览器（19022/19023）纳入判据」）
+  // —— **其余每一行逐字未动**，而这正是本用例真正要守的东西：接线不许顺手改掉别的东西。
   const render = (p) => p.steps.map((s) => renderCommand(s, { nodeExe: 'N', repoRoot: 'R' }));
   assert.deepEqual(render(plan), [
     'N R\\scripts\\start-all.mjs',
     // 2026-10-06 加：共用窗口的标识页。这一行**必须**排在实例起来之后（否则只读到「连不上代理」），
     // 且只点共用实例那一个 —— 店铺实例的首屏在冷启动时就已经是各自标识页了。
     'N R\\runtime\\shop-window-label.mjs --commit --front --subject merchant',
+    // 2026-10-14 加：视口回读闸门。不带证据目录时**不给 `--json`** —— `--json` 会取代那份
+    // 逐行读数，而没人接它时那几行正是日志里唯一能看的东西。
+    // 目标＝参与采集的 8 家店 ＋ 共用商家浏览器（按端口 19023 指名：它不属于任何一家店，
+    // 而只按店名读的那条路**永远读不到它**，这次出事的恰恰是它）。
+    'N R\\runtime\\shop-viewport-gate.mjs --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝,网林淘宝,里可林天猫,网林家居'
+      + ' --proxy 19023 --label 共用商家浏览器',
     'N R\\skills\\sycm-alimama-daily-report\\scripts\\check-login-shops.mjs',
     // 2026-09-25 新加的那一步：默认（`autoLogin` 未打开）必须是**只读档**，
     // 且 `--notify` 必须是 `off`（login-merchant 自己的默认值是 `auto`，会把告警投出去）。
@@ -168,7 +185,7 @@ test('启用分批：它**替换**链那一步（不是并排），参数只带�
   const plan = buildJobPlan({ batches: 2 });
   assert.equal(plan.batches, 2);
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'label-merchant-window', 'ensure-merchant-login', 'ensure-inquiry-rows', 'batch-chain'],
+    ['ensure-instances', 'label-merchant-window', 'viewport-gate', 'ensure-merchant-login', 'ensure-inquiry-rows', 'batch-chain'],
     '两条一起跑会让同一家店被驱动两次 —— 必须是替换关系');
   const step = stepOf(plan, 'batch-chain');
   assert.match(step.file, /scripts\/run-batches\.mjs$/u);
@@ -262,7 +279,7 @@ test('共用窗口标识页：默认在（排在实例起来之后），--no-mer
   assert.equal(off.steps.some((s) => s.name === 'label-merchant-window'), false);
   // 「关掉」只该少这一步：其余步骤逐字不变（否则「关一个开关」会连带改掉别的东西）。
   assert.deepEqual(off.steps.map((s) => s.name),
-    ['ensure-instances', 'login-preflight', 'ensure-merchant-login', 'ensure-inquiry-rows', 'chain']);
+    ['ensure-instances', 'viewport-gate', 'login-preflight', 'ensure-merchant-login', 'ensure-inquiry-rows', 'chain']);
 });
 
 test('接线（源码级）：真实调用点真的把 merchantLabel 透传进计划（漏传是静默的）', () => {
@@ -345,7 +362,7 @@ test('补行骨架：--no-ensure-inquiry-rows 一键退回（只少这一步，�
   assert.equal(off.ensureInquiryRowsStep, null);
   assert.equal(off.steps.some((s) => s.name === 'ensure-inquiry-rows'), false);
   assert.deepEqual(off.steps.map((s) => s.name),
-    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login', 'chain']);
+    ['ensure-instances', 'label-merchant-window', 'viewport-gate', 'login-preflight', 'ensure-merchant-login', 'chain']);
   // 分批形态同样能关（否则「一键退回」在生产形态上不成立）。
   assert.equal(buildJobPlan({ batches: 5, ensureInquiryRows: false }).steps
     .some((s) => s.name === 'ensure-inquiry-rows'), false);
@@ -367,12 +384,16 @@ test('分批那一档：整轮的逐店预检**不进计划**，结论交接全�
   assert.equal(plan.steps.some((s) => s.name === 'login-preflight'), false,
     '分批档里不该有整轮的逐店预检：那一刻 12 家店的调试端口一个都没开');
   // 这里生成的那份没有任何人读 —— 而「写了没人读的文件」正是后来人会照着接错的地方。
-  assert.equal(plan.steps.some((s) => s.artifactPath), false, '分批档里不生成结论文件');
+  // 2026-10-14 收窄成「点名的那一份」：分批档下唯一的工件是**视口读数**，而它是**有意**生成的
+  // —— 它读的是共用商家浏览器（整轮一台，不存在「这是哪一批的读数」），而落盘这件事与
+  // 「谁去读它」无关（它是给人看的证据）。登录结论那份仍然不许生成（它确实没人读）。
+  assert.deepEqual(plan.steps.filter((s) => s.artifactPath).map((s) => s.name), ['viewport-gate'],
+    '分批档里唯一的工件只能是视口读数；登录结论那份没人读，不许生成');
   // run-batches.mjs 自己不认这个参数，给了会当场报未知参数（比静默无效更难查）。
   assert.equal(stepOf(plan, 'batch-chain').args.includes(LOGIN_PREFLIGHT_FLAG), false);
   // 逐批那份结论由分批驱动自己生成（见下面「宿主（分批链）也接上了」那条真跑判据）。
   assert.deepEqual(plan.steps.map((s) => s.name),
-    ['ensure-instances', 'label-merchant-window', 'ensure-merchant-login', 'ensure-inquiry-rows', 'batch-chain']);
+    ['ensure-instances', 'label-merchant-window', 'viewport-gate', 'ensure-merchant-login', 'ensure-inquiry-rows', 'batch-chain']);
 });
 
 // ---------------------------------------------------------------------------
@@ -934,4 +955,159 @@ test('接线（源码级）：run-daily-job 真的把 mode/evidenceRoot 透传�
   assert.match(src, /resolveRunMode/u, '模式解析必须走 resolveRunMode（单一来源，不许在入口重写一套）');
   assert.match(src, /'--commit'/u, '入口必须接受 --commit（兼容期）');
   assert.match(src, /mode = 'apply'/u, '都没给时必须显式落 apply（维持今天的默认＝写）');
+});
+
+// ---------------------------------------------------------------------------
+// 视口回读闸门（2026-10-14 加）。
+//
+// 要治的那件事（一次性把「为什么今天突然坏」与「为什么没人看出来」两件事都解释清楚）：
+//   10:21 / 10:27 两轮，共用商家浏览器（19022/19023）的窗口被夹到 692x307（视口 670x216）
+//   ⇒ 登录表单落在视口**下方** ⇒ `login-merchant.mjs` 那几次坐标点击全部点在窗口外
+//   ⇒ 静默判「没登上」⇒ 链的整轮级体检不过 ⇒ 8 家一家都没开跑。
+//   而当时**没有任何一步量过窗口多大**：那句 `loggedIn=false` 与真因之间隔着一整条链。
+//
+// 为什么这台实例的窗口会缩：它**是唯一那个不带 `--window-size` 的实例**
+// （`SHOP_BROWSER_EXTRA_ARGS` 只作用于店铺 profile；两条老命令行的 argv 由 browser-ports.test.mjs
+//  钉住「逐字不变」）⇒ 窗口多大完全取决于上次退出时的存档。于是这台实例可以一直「能用」，
+// 直到某一天第一次走「登录」那条路才炸 —— 而 10-11、10-12 恰好都没有走那条路。
+//
+// 下面钉四件事：① 默认在、两个形态都在、且**不是闸门**；
+// ② 目标清单里有那台**不属于任何一家店**的共用实例（按端口指名）；
+// ③ 位置：**排在任何一条登录路径之前**；④ 两个宿主真的把它接上（防「函数全绿、没人调」）。
+// ---------------------------------------------------------------------------
+test('视口闸门：默认在、两种形态都在、且不是闸门（它只量、不截断）', () => {
+  const on = buildJobPlan({ artifactsDir: ARTIFACTS_DIR });
+  const step = stepOf(on, 'viewport-gate');
+  assert.equal(step.file, JOB_FILES.shopViewportGate);
+  assert.equal(step.blocking, false,
+    '它不该阻断链：权威判据在链的体检里；它要做的是把「窗口多大」这个数字**留进证据**，'
+    + '而不是替链决定今天跑不跑（截断只会让告警少一层信息）');
+  // 分批与非分批**都要有**：它读的是整轮那台共用实例，而两种形态都要跑链的整轮级体检。
+  for (const plan of [on, buildJobPlan({ batches: 5, artifactsDir: ARTIFACTS_DIR })]) {
+    assert.equal(plan.steps.filter((s) => s.name === 'viewport-gate').length, 1,
+      '这一步只该出现一次（共用实例整轮只有一台）');
+  }
+  // 读数不论达不达标都落盘：它是「窗口多大」唯一的直接证据，达标那天的读数是基准。
+  assert.equal(step.artifactPath, path.join(ARTIFACTS_DIR, VIEWPORT_ARTIFACT_NAME));
+  // 不给证据目录时不给 `--json` —— `--json` 会取代那份逐行读数，而没人接它时
+  // 那几行正是日志里唯一能看的东西。
+  assert.equal(argsOf(buildJobPlan(), 'viewport-gate').includes('--json'), false);
+  assert.equal(argsOf(on, 'viewport-gate').includes('--json'), true);
+});
+
+test('视口闸门的目标清单：参与采集的 8 家 ＋ **共用商家浏览器**（按端口指名）', () => {
+  // 那台实例不属于任何一家店 ⇒ 只按店名读的那条路**永远读不到它**，
+  // 而这次出事的恰恰是它。所以「按端口读」必须真的在命令行上。
+  const args = argsOf(buildJobPlan(), 'viewport-gate');
+  assert.deepEqual(args.slice(0, 2), ['--shops', collectingShopKeys().join(',')],
+    '非分批那一档要连店铺实例一起量（那时它们都已经起来了）');
+  assert.equal(args[args.indexOf('--proxy') + 1], String(PROJECT_PORTS.dailyReportProxy),
+    '共用实例的端口只许从登记表取（browser-ports.mjs）—— 写一个字面量就是第二个事实');
+  assert.equal(args[args.indexOf('--label') + 1], SHARED_BROWSER_VIEWPORT_LABEL,
+    '标签串必须是视口闸门那一份（各写一份字符串，改一处就静默落空）');
+  // 分批那一档**只**读共用实例：店铺实例要等每一批自己的 start 才起，
+  // 此刻按店名读只会得到一片 UNREADABLE —— 那是本可以不出的噪声（同 login-preflight 的理由）。
+  const batched = argsOf(buildJobPlan({ batches: 5 }), 'viewport-gate');
+  assert.equal(batched.includes('--shops'), false, '分批档不许在这里点名店铺（实例还没起）');
+  assert.equal(batched[batched.indexOf('--proxy') + 1], String(PROJECT_PORTS.dailyReportProxy),
+    '分批档读的仍然是那台共用实例（两种形态读的是同一个数字）');
+});
+
+test('视口闸门的位置：**排在任何一条登录路径之前**（排在之后，量到的是一个已被点过一轮的窗口）', () => {
+  const names = buildJobPlan().steps.map((s) => s.name);
+  const gate = names.indexOf('viewport-gate');
+  assert.ok(gate > names.indexOf('ensure-instances'), '实例没起就读不到东西（它会重试 5 次才判 UNREADABLE）');
+  for (const loginish of ['login-preflight', 'ensure-merchant-login', 'chain']) {
+    assert.ok(gate < names.indexOf(loginish),
+      `视口闸门必须排在 ${loginish} 之前 —— 它量的是「坐标点击能不能点中」的先决条件`);
+  }
+  // 分批形态下同样成立（那里唯一的登录路径就是链与它自己的逐批守卫）。
+  const batched = buildJobPlan({ batches: 5 }).steps.map((s) => s.name);
+  assert.ok(batched.indexOf('viewport-gate') < batched.indexOf('ensure-merchant-login'));
+  assert.ok(batched.indexOf('viewport-gate') < batched.indexOf('batch-chain'));
+});
+
+test('视口闸门的参数构造器：只给店就只读店；两个都给就两样都读；默认不给 --json', () => {
+  assert.deepEqual(buildViewportGateArgs({}), []);
+  assert.deepEqual(buildViewportGateArgs({ shops: ['科塔淘宝'] }), ['--shops', '科塔淘宝']);
+  assert.deepEqual(buildViewportGateArgs({ proxyPort: 19023, label: '共用商家浏览器' }),
+    ['--proxy', '19023', '--label', '共用商家浏览器']);
+  assert.deepEqual(buildViewportGateArgs({ shops: ['科塔淘宝'], proxyPort: 19023, label: 'X', json: true }),
+    ['--shops', '科塔淘宝', '--proxy', '19023', '--label', 'X', '--json']);
+  // 不给 label 时不许凭空造一个（那会让日志里出现一个没人认识的名字）。
+  assert.deepEqual(buildViewportGateArgs({ proxyPort: 19023 }), ['--proxy', '19023']);
+});
+
+test('视口闸门的步骤形状：默认文件就是登记表里那一个；不给 artifactPath 就不带这个字段', () => {
+  const bare = buildViewportGateStep({ args: ['--shops', 'x'] });
+  assert.equal(bare.file, JOB_FILES.shopViewportGate);
+  assert.equal(bare.name, 'viewport-gate');
+  assert.equal(bare.blocking, false);
+  assert.equal('artifactPath' in bare, false, '不给就不许冒出这个字段（`--print` 会照着它打一行假路径）');
+  // `--print` 是人确认「将要执行什么」的唯一凭据 ⇒ 说明里必须点出「量的是谁」。
+  assert.match(bare.note, /这几家店自己的窗口/u);
+  assert.match(buildViewportGateStep({ args: ['--proxy', '19023'] }).note, /共用商家浏览器/u);
+});
+
+test('分批形态的读数文件名逐批不同（共用一个名字时后一批会盖掉前一批）', () => {
+  assert.equal(batchViewportArtifactName(1), 'viewport-b1.json');
+  assert.notEqual(batchViewportArtifactName(1), batchViewportArtifactName(2));
+  // 与登录结论那份**不重名**（重名就是互相覆盖，而两边都「文件在」）。
+  assert.notEqual(batchViewportArtifactName(1), 'login-preflight-b1.json');
+});
+
+test('闸门的人读输出：一行一个实例，读不到时把错误也带上（不是静默放过）', () => {
+  const lines = viewportLines({ entries: [
+    { shop: '里可林淘宝', proxyPort: 19041, verdict: { ok: true, detail: '视口 1506x642' } },
+    { shop: SHARED_BROWSER_VIEWPORT_LABEL, proxyPort: 19023,
+      verdict: { ok: false, reason: 'VIEWPORT_TOO_SHORT', detail: '视口高 216 < 阈值 600' } },
+    { shop: '网林天猫', proxyPort: 19042, verdict: { ok: false, reason: 'VIEWPORT_UNREADABLE', detail: '视口读数缺失' },
+      readError: 'fetch failed' },
+  ] });
+  assert.equal(lines.length, 3);
+  assert.match(lines[0], /^PASS 里可林淘宝/u);
+  assert.match(lines[1], /^FAIL 共用商家浏览器: 视口高 216 < 阈值 600$/u);
+  assert.match(lines[2], /fetch failed/u);
+});
+
+test('退出码口径：0 全达标｜2 量到了就是不达标｜3 读不到（三档分开，因为下一步动作不同）', () => {
+  assert.deepEqual(VIEWPORT_EXIT_CODES, { OK: 0, TOO_SMALL: 2, UNREADABLE: 3 });
+});
+
+test('命令行契约（真起一次，对死端口）：stdout 是纯 JSON、人读的那几行走 stderr', () => {
+  // 为什么值得真起一次：编排层把 **stdout** 接成工件文件（`viewport.json`），
+  // 而人翻的是日志（stderr）。两者一旦混在一个通道里，就会出现「工件里混着人话、
+  // JSON.parse 当场炸」或者「日志里只剩一段 JSON」—— 而这两种都不会有任何报错。
+  // 端口用 1（连接立即被拒），所以这里不碰任何真实例、也不碰任何登记端口。
+  const result = spawnSync(process.execPath,
+    [path.join(REPO_ROOT, 'runtime', 'shop-viewport-gate.mjs'), '--proxy', '1', '--label', 'X', '--json'],
+    { encoding: 'utf8', cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+  // 「读不到」必须退 3（不许退 0 —— 那正是本仓反复在治的病根：把读不到当成没事）。
+  assert.equal(result.status, VIEWPORT_EXIT_CODES.UNREADABLE,
+    `读不到时应当退 ${VIEWPORT_EXIT_CODES.UNREADABLE}，实际 ${result.status}；stderr=${result.stderr}`);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.ok, false);
+  assert.equal(parsed.entries[0].verdict.reason, 'VIEWPORT_UNREADABLE');
+  assert.equal(parsed.entries[0].proxyPort, 1);
+  assert.match(result.stderr, /FAIL X: /u, '人读的那一行必须走 stderr（日志那一侧）');
+  assert.doesNotMatch(result.stdout, /PASS |FAIL /u, 'stdout 必须是纯 JSON（它会被落成工件文件）');
+});
+
+test('接线（源码级）：两个宿主都真的把闸门接上了（防「函数全绿、没人调」）', () => {
+  // 本仓已经吃过三次「判据写好、用例全绿、但那条判据根本没被主链调用」的亏
+  // （最近一次是 2026-09-29 的 `--auto-repair`）。所以这里对这种「新增一步」
+  // 一律加一条**调用侧**的判据。
+  const batches = readFileSync(path.join(REPO_ROOT, 'scripts', 'run-batches.mjs'), 'utf8');
+  assert.match(batches, /buildViewportGateStep/u, '分批链没把闸门那一步接进去 ⇒ 生产形态下永远没有读数');
+  assert.match(batches, /viewportStep: viewportStepFor\(batch\)/u, '构造了却没交给 buildBatchSteps —— 等于没接');
+  assert.match(batches, /batchViewportArtifactName/u, '每批一份读数（共用名字会让后一批盖掉前一批）');
+  // 分批驱动的**工件捕获**不许再按名字写死（写死的话新加的那一份会被静默接进日志、永远不落盘）。
+  assert.match(batches, /const captureArtifact = Boolean\(step\.artifactPath\)/u,
+    '工件捕获必须按「有没有 artifactPath」判，不许按步骤名判');
+  // 定时链那条不用源码判据：它的步骤由同一份计划直接生成，上面几条已经钉住了。
+  const planSrc = readFileSync(path.join(REPO_ROOT, 'runtime', 'daily-job-plan.mjs'), 'utf8');
+  assert.match(planSrc, /viewportGateStep,/u, '计划必须把它放进 steps（只定义不放进数组＝死代码）');
+  assert.match(planSrc, /shopViewportGate: 'runtime\/shop-viewport-gate\.mjs'/u);
+  assert.match(readFileSync(path.join(REPO_ROOT, 'runtime', 'batch-plan.mjs'), 'utf8'),
+    /\.\.\.\(viewportStep \? \[viewportStep\] : \[\]\)/u, '批次步骤里要真的插进去（并排在 start 之后）');
 });

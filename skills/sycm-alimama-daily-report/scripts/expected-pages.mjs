@@ -34,9 +34,24 @@ export function expectedPagesForShop() {
   ];
 }
 
+/**
+ * 飞书底单页的匹配片段（`feishu.cn/base/<baseToken>`）。**唯一来源**。
+ *
+ * 为什么抽成函数而不是上面的常量：base 由 `dailyReportTargets()` 在**运行时**解析
+ * （租户可用环境变量 `SYCM_FEISHU_PROFILE` 切换）。写成模块级常量会把「导入那一刻的租户」
+ * 冻住，之后换租户的调用就会静默匹配到一个已经不存在的 base —— 而症状是
+ * 「窗口里找不到飞书页」，看起来与「页面真的被切走了」一模一样。
+ *
+ * 第二个用它的地方是修复执行侧（`repair-shop-stage.mjs` 的 `locateStagePage`）：
+ * 它要按阶段提示定位「该修哪一页」，而 `feishu` 这个提示对应的就是这一页。
+ */
+export function feishuDailyPageFragment() {
+  return `feishu.cn/base/${dailyReportTargets().baseToken}`;
+}
+
 export function expectedPagesForDailyBrowser() {
   return [
     { name: '生意参谋工作页', urlFragment: siteAdapter('sycm').urlFragment },
-    { name: '飞书底单页', urlFragment: `feishu.cn/base/${dailyReportTargets().baseToken}` },
+    { name: '飞书底单页', urlFragment: feishuDailyPageFragment() },
   ];
 }

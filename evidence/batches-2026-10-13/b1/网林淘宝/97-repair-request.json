@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-14T03:52:06.628Z",
+  "shopKey": "网林淘宝",
+  "stage": "push",
+  "cause": "DUPLICATE_TARGET",
+  "error": "阶段 push 失败（exit 1）",
+  "statePath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\98-failure-state.json",
+  "stateTextPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\98-failure-state.txt",
+  "screenshotPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\98-failure-page.png",
+  "stateSummary": {
+    "url": "edge://downloads-hub/",
+    "title": "下载",
+    "viewport": {
+      "w": 360,
+      "h": 426,
+      "dpr": 1.25,
+      "scrollY": 0
+    },
+    "overlayCount": 0
+  },
+  "candidates": [],
+  "planNote": "成因「DUPLICATE_TARGET」没有登记修法 ⇒ 不给候选（不猜动作），交给人。",
+  "stageHint": null,
+  "noActionRequired": true,
+  "retryStage": "push",
+  "execHint": "node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 网林淘宝 --proxy http://127.0.0.1:19060 --stage push --cause DUPLICATE_TARGET --action <候选动作> --log-dir evidence\\batches-2026-10-13\\b1\\网林淘宝",
+  "instancePrecondition": {
+    "why": "这一批跑完可能已经把这家店的浏览器放掉了（--batches 每批都释放，失败的那家也在名单里）。代理连不上时任何页面修复动作都执行不到，而 --proxy 是唯一的实例选择器 —— 不先确认就可能对着别的一台做事。",
+    "checkCommand": "curl -s -m 5 http://127.0.0.1:19060/targets",
+    "startCommand": "node scripts/start-all-hold.mjs --only 网林淘宝",
+    "note": "先跑 checkCommand：有输出（一个 JSON 数组）就是还在，直接执行 execHint；连不上就先跑 startCommand 把它拉起来（后台托住），确认再执行 execHint。"
+  }
+}

@@ -47,13 +47,18 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
-import { PROJECT_PORTS, shopInstance, shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
+import { shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
 import { normalizePages } from '../../../runtime/page-normalize.mjs';
+// 「页签属于哪个目标页面」的**唯一判据**（2026-10-14 起本文件也用它）。
+// 原先这里是自己写的 `.includes(主机)` —— 那正是 `runtime/target-url-match.mjs` 建库时
+// 要治的那个口径：整串 includes 会把「目标地址躺在查询参数里」的**登录跳转页**算成工作页。
+import { pagesMatching } from '../../../runtime/target-url-match.mjs';
 import {
   createOverlayDismisser, createPageReloader, overlayScanExpression,
 } from './collect-core.mjs';
-import { expectedPagesForShop } from './expected-pages.mjs';
+import { expectedPagesForShop, feishuDailyPageFragment } from './expected-pages.mjs';
 import { PAGE_MUTATING_ACTIONS, REPAIR_ACTIONS, planRepair } from './repair-actions.mjs';
+import { describeStageBrowser, proxyForStage } from './stage-browsers.mjs';
 
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('../../..', import.meta.url)));
 const delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -120,30 +125,42 @@ async function readTargetUrls(args) {
 }
 
 /**
- * 找到这个动作要修的那一页。判据是**语义标签 + 站点主机**，不是写死的 targetId
+ * 找到这个动作要修的那一页。判据是**语义标签 + 站点片段**，不是写死的 targetId
  * （targetId 每次冷启动都会变，绝不能持久化）。
  *
  * 返回 `{ ok, targetId, url }` 或 `{ ok:false, reason }`。**认不出来就如实说**，
  * 绝不回落到「第一个页签」—— 那会对着别的店的窗口做事。
  */
+// 阶段提示（`repair-actions.mjs` 的 `STAGE_PAGE_HINT` 值）→ 该站点的匹配片段。
+//
+// 前两条是**主机级**片段（片段里没有 `/` ⇒ `urlMatchesFragment` 只比主机）：
+// 修复的目标页可能已经漂到同站的别的路径上（那正是要修的情形之一），所以这里刻意不收窄到具体页面。
+// 第三条来自 `expected-pages.mjs` 的**唯一来源**，且必须**每次调用时求值** ——
+// 它由 `dailyReportTargets()` 在运行时解析租户（可用环境变量切换），写成模块级常量会把
+// 「导入那一刻的租户」冻住（症状：窗口里找不到飞书页，看起来像页面真被切走了）。
+function fragmentForHint(hint) {
+  if (hint === 'alimama') return 'one.alimama.com';
+  if (hint === 'sycm') return 'sycm.taobao.com';
+  if (hint === 'feishu') return feishuDailyPageFragment();
+  return null;
+}
+
 export function locateStagePage({ targets = [], stageHint = null } = {}) {
   if (!Array.isArray(targets) || targets.length === 0) return { ok: false, reason: 'no-targets' };
   const pages = targets.filter((t) => t.type === 'page' && !String(t.url ?? '').startsWith('about:'));
   if (!pages.length) return { ok: false, reason: 'no-page-targets' };
-  const byHost = {
-    alimama: 'one.alimama.com',
-    sycm: 'sycm.taobao.com',
-  };
-  const host = stageHint ? byHost[stageHint] : null;
-  if (!host) {
+  const fragment = stageHint ? fragmentForHint(stageHint) : null;
+  if (!fragment) {
     // 没有阶段提示时不猜：只接受「恰好一个非 about: 页」这一种情形，否则停手。
     if (pages.length === 1) return { ok: true, targetId: pages[0].targetId, url: String(pages[0].url) };
     return { ok: false, reason: `没有阶段页提示、且窗口里有 ${pages.length} 个页签 ⇒ 不猜要修哪一页` };
   }
-  const matches = pages.filter((t) => String(t.url ?? '').includes(host));
+  // 归属判据走**全仓唯一那一份**（`pagesMatching`）：主机相同（允许子域）、路径按结构比，
+  // 查询串与 hash 不参与 —— 于是「目标地址躺在 `?_target=` 里的登录跳转页」不再假命中。
+  const matches = pagesMatching(pages, fragment);
   if (matches.length === 1) return { ok: true, targetId: matches[0].targetId, url: String(matches[0].url) };
-  if (matches.length === 0) return { ok: false, reason: `窗口里找不到 ${host} 的页` };
-  return { ok: false, reason: `窗口里有 ${matches.length} 个 ${host} 的页 ⇒ 不猜要修哪一个` };
+  if (matches.length === 0) return { ok: false, reason: `窗口里找不到符合「${fragment}」的页` };
+  return { ok: false, reason: `窗口里有 ${matches.length} 个页都符合「${fragment}」⇒ 不猜要修哪一个` };
 }
 
 /** 解析 CLI 参数。**闭集校验**：动作名不在闭集里当场抛（不静默变「什么也没做」）。 */
@@ -182,16 +199,25 @@ export function parseRepairArgs(argv) {
  * 为什么必须有：`--proxy` 是唯一的实例选择器（`--shop` 只写名字）。两者对不上时脚本
  * 什么都不碰就停 —— 2026-09-22 那次「五家体检其实都打在同一个实例上」就是这么发生的。
  * 不给 `--proxy` 时回落到商家浏览器默认端口（与 collect-promotion 同一口径）。
+ *
+ * 2026-10-14 改（**按阶段选实例**，规则唯一实现在 `stage-browsers.mjs`）：
+ *   · `push` / `readback` 的作业对象是**五家店共用的那一页飞书底单**，跑在共用商家浏览器上。
+ *     在改之前，一致性闸门**无条件**要求「`--shop X` ⇒ 这家店自己的代理」，于是
+ *     「`--shop 网林淘宝 --proxy 19023`」这一组被当场判为「对不上」⇒ 修复动作**永远指不到
+ *     真正出问题的那台浏览器**（10-13 那次的 `readback` 失败就是这么修的：动作落在了店铺
+ *     标识页上，见 `evidence/batches-2026-10-13/b2/网林淘宝/97-repair-agent-report.md`）。
+ *   · 另一半同样要收：**给了店名、又没给 `--proxy`** 时，非共用阶段回落到**这家店自己的**代理，
+ *     而不是共用那台（原先一律回落共用 ⇒ 一个「对不上就停手」的闸门旁边留着一条不用对就能走的路）。
+ *   · 没给店名的裸调用**逐字不变**（回落共用）—— 那是 `--shop` 出现之前的老用法。
  */
 export function resolveProxy(args) {
-  const fallback = `http://127.0.0.1:${PROJECT_PORTS.dailyReportProxy}`;
-  const proxy = args.proxy ?? fallback;
-  if (args.shop && shopBrowserKeys().includes(args.shop) && args.proxy) {
-    const expected = `http://127.0.0.1:${shopInstance(args.shop).proxyPort}`;
-    if (proxy !== expected) {
-      throw new Error(`--shop ${args.shop} 与 --proxy ${proxy} 对不上（这家店自己的代理是 ${expected}）`
-        + ' —— 两者对不上时脚本什么都不碰就停');
-    }
+  const named = Boolean(args.shop) && shopBrowserKeys().includes(args.shop);
+  // 判据只有一处（`stage-browsers.mjs`）：本文件不重写「哪些阶段是共用的」。
+  const expected = proxyForStage({ stage: args.stage, shopKey: named ? args.shop : null });
+  const proxy = args.proxy ?? expected;
+  if (named && args.proxy && proxy !== expected) {
+    throw new Error(`--shop ${args.shop} 与 --proxy ${proxy} 对不上（${describeStageBrowser({ stage: args.stage, shopKey: args.shop })}）`
+      + ' —— 两者对不上时脚本什么都不碰就停');
   }
   return proxy;
 }

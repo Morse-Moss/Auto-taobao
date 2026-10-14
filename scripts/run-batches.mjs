@@ -50,7 +50,8 @@ import {
 // 不各写一份：漂出来的症状是静默的 —— 链那边参数没少、只是永远读不到结论。
 // 产物名**不从这里取**：分批形态每批一份（`batchLoginArtifactName`），共用一个常量正是要治的那个病。
 import {
-  HOLD_EXIT, JOB_FILES, LOGIN_PREFLIGHT_FLAG, buildLoginPreflightArgs, renderCommand,
+  HOLD_EXIT, JOB_FILES, LOGIN_PREFLIGHT_FLAG, batchViewportArtifactName, buildLoginPreflightArgs,
+  buildViewportGateArgs, buildViewportGateStep, renderCommand,
 } from '../runtime/daily-job-plan.mjs';
 // 「脚本自修没救回来、且确实需要人看现场」那几家 —— 判据的**唯一来源**在 runtime 侧的
 // `unfixableShopsOf`。这里只调用、不重算：重算一次就是第二个判据，迟早与驻留那边漂开
@@ -396,6 +397,26 @@ async function main(argv) {
     artifactPath: loginArtifactFor(batch),
   });
 
+  // 视口闸门：**每一批** `start` 之后各读一次本批那几家（2026-10-14 加）。
+  //
+  // 为什么是「每一批」而不是「整轮一次」：读的是**这一批的浏览器起没起、窗口多大**，
+  // 而那是**批次相关**的事实，不是整轮的常量 —— 与 `loginStepFor` 上面那条注释同一条理由
+  // （2026-09-23 那次就是把这个事实当成全局常量，于是五个实例还没起就去查，得到五行 `HTTP 500`）。
+  //
+  // 共用商家浏览器（19022/19023）**不在这里读**：它由整轮那一步 `ensure-shared` 起、
+  // 整轮不停，读数落在定时链的计划里（`daily-job-plan.mjs` 的 `viewport-gate` 那一步，
+  // 产物 `evidence/daily-job-<日>/viewport.json`）。在这里再读一遍就是同一个数字写两个地方。
+  //
+  // 位置是硬要求：它必须排在**任何登录路径之前**（`loginStep` 也是登录路径）。
+  // 2026-10-14 的故障形态就是「窗口被夹窄 ⇒ 登录表单落在视口外 ⇒ 坐标点击全部落空 ⇒
+  // 静默判没登上」，排在 login 之后量到的是一个已经被点过一轮的窗口。
+  const viewportArtifactFor = (batch) => path.join(evidenceRoot, batchViewportArtifactName(batch.index));
+  const viewportStepFor = (batch) => buildViewportGateStep({
+    file: JOB_FILES.shopViewportGate,
+    args: buildViewportGateArgs({ shops: batch.shops, json: true }),
+    artifactPath: viewportArtifactFor(batch),
+  });
+
   const batches = plan.batches.map((batch) => ({
     batch,
     steps: buildBatchSteps(batch, {
@@ -418,6 +439,7 @@ async function main(argv) {
         : [...chainArgsFor({ ...options, commit: mode === 'apply' }), LOGIN_PREFLIGHT_FLAG, loginArtifactFor(batch)],
       logsDir: path.relative(REPO_ROOT, path.join(evidenceRoot, `b${batch.index}`)),
       loginStep: loginStepFor(batch),
+      viewportStep: viewportStepFor(batch),
     }),
   }));
   const sharedStep = options.workflow === 'promotion-daily' ? null : buildSharedStep();
@@ -557,9 +579,11 @@ async function main(argv) {
         }
       }
       log(`--- ${step.name}：${renderCommand(step, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
-      // 登录守卫那一步的 stdout 要**单独接出来落成文件**（本批的链把它当参数读），
-      // 同时回显进日志 —— 「当时到底打了什么」这条证据不能只留在文件里（下一批会盖掉它）。
-      const captureArtifact = step.name === 'login-preflight' && Boolean(step.artifactPath);
+      // 带 `artifactPath` 的那一步，stdout 要**单独接出来落成文件**，同时回显进日志 ——
+      // 「当时到底打了什么」这条证据不能只留在文件里（下一批会盖掉它）。
+      // 判据从「是 login-preflight」放宽成「有 artifactPath」（2026-10-14 加视口读数那一份）：
+      // 按名字写死的话，新加的那一份会被静默接进日志、**永远不落盘**，而它看起来完全正常。
+      const captureArtifact = Boolean(step.artifactPath);
       const result = spawnSync(NODE, [path.join(REPO_ROOT, step.file), ...step.args], {
         cwd: REPO_ROOT,
         stdio: captureArtifact ? ['ignore', 'pipe', logFd] : ['ignore', logFd, logFd],
@@ -570,8 +594,11 @@ async function main(argv) {
         const stdout = result.stdout ?? '';
         fs.writeFileSync(step.artifactPath, stdout, 'utf8');
         if (stdout) fs.writeSync(logFd, stdout);
+        // 字节数也记：写成 0 字节与「写出来了但里面是空的」是两件事，事后只有这个数能分辨。
+        // 「谁会读它」按名字分别说 —— 登录结论是本批的链当参数读，而视口读数**没有下游读它**，
+        // 它是给人看的证据（写「链会读它」就是把一句假话打进日志）。
         log(`--- ${step.name} 结论已落 ${path.relative(REPO_ROOT, step.artifactPath).replaceAll('\\', '/')}`
-          + `（${Buffer.byteLength(stdout, 'utf8')} 字节；本批的链会读它）`);
+          + `（${Buffer.byteLength(stdout, 'utf8')} 字节${step.name === 'login-preflight' ? '；本批的链会读它' : ''}）`);
       }
       log(`--- ${step.name} 退出码=${status}`);
       round.steps[step.name] = status;
@@ -593,8 +620,12 @@ async function main(argv) {
         // 它会给出更准的原因（哪一页不齐、哪一家连不上）。在这里截断只会少一层信息。
         log('[批次] 注意：这一批没起齐 —— 仍然跑链，因为链自己的体检会给出更准的原因。');
       }
-      if (!step.blocking && status !== 0 && step.name !== 'stop') {
-        log(`[批次] 注意：${step.name} 没成功（退出码 ${status}）—— 不阻断（窗口标识页只影响人看不看得懂，不影响数据）。`);
+      if (!step.blocking && status !== 0 && step.name !== 'stop' && step.name !== 'login-preflight') {
+        const why = step.name === 'viewport-gate'
+          ? '它不截断（链的第 0 步体检才是权威判据），读数已落证据目录 —— 窗口被夹窄时，'
+            + '采集里那些按坐标点击的步骤会静默落空（2026-10-14 的形态），这个数字是唯一的直接证据'
+          : '窗口标识页只影响人看不看得懂，不影响数据';
+        log(`[批次] 注意：${step.name} 没成功（退出码 ${status}）—— 不阻断（${why}）。`);
       }
     }
 

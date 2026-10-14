@@ -54,9 +54,22 @@ test('已知成因：返回候选菜单，且格式正确（含 mutating 标记�
 test('未知成因：返回空候选且 known=false —— 默认不猜动作（安全方向）', () => {
   const plan = planRepair({ cause: 'SOMETHING_NEW', stage: 'push', state: null });
   assert.equal(plan.known, false);
-  assert.deepEqual(plan.candidates, []);
-  assert.equal(plan.stageHint, null);
+  assert.deepEqual(plan.candidates, [], '认不出成因就不给动作 —— 这条安全方向没有变');
+  // 2026-10-14 改：这一格**不再恒为 null**。
+  // 「这个成因没登记修法」与「这个阶段的作业在哪一页上」是两个独立事实，原先被混成一件：
+  // 执行侧拿不到提示 ⇒ `locateStagePage` 退化成「窗口里恰好一个页就用它」⇒ 动到**别的页**上
+  // （`applied:true` 而目标页纹丝没动）。而它偏偏在最需要准头的时候发生 —— 遇到没登记过的
+  // **新故障**，那正是要派 agent 的情形。候选仍然为空，所以 agent 也没被多给任何权限。
+  assert.equal(plan.stageHint, 'feishu',
+    'push 跑在共用窗口的飞书底单页上；「哪一页」只取决于阶段，与成因认不认得无关');
   assert.match(plan.note, /没有登记修法/u);
+});
+
+test('未知成因 + 认不出的阶段 ⇒ stageHint 仍是 null（两条都不猜）', () => {
+  const plan = planRepair({ cause: 'SOMETHING_NEW', stage: '没有这个阶段', state: null });
+  assert.equal(plan.stageHint, null, '阶段认不出来就没有提示 —— 这里不许回落成某个默认站点');
+  const noStage = planRepair({ cause: 'SOMETHING_NEW', state: null });
+  assert.equal(noStage.stageHint, null);
 });
 
 test('没给成因：同样空候选、known=false，且 note 说明「没给成因」', () => {
@@ -107,10 +120,19 @@ test('互锁会咬：塞一个闭集外的动作名，validateRepairActions 报�
   assert.deepEqual(errors, [], '真表本身必须无错（上面那条只是演示拼错的判据）');
 });
 
-test('STAGE_PAGE_HINT 的值只用语义标签（alimama/sycm），不掺选择器或 URL', () => {
-  const allowed = new Set(['alimama', 'sycm']);
+test('STAGE_PAGE_HINT 的值只用语义标签（alimama/sycm/feishu），不掺选择器或 URL', () => {
+  // 2026-10-14 加 `feishu`：push 与 readback 的目标页是**五家店共用那一页飞书底单**。
+  // 加它之前 `planRepair` 对 readback 给 `stageHint: null`，执行侧只能退化成「窗口里恰好一个页
+  // 就用那一个」⇒ 10-13 那轮退到**店铺标识页**上（动作 applied:true 而动不到目标页）。
+  // 允许集合**必须逐个点名**：它守的是「提示只写语义标签」这条形状，
+  // 写成 `new Set(Object.values(STAGE_PAGE_HINT))` 就等于把这条守卫变成同义反复。
+  const allowed = new Set(['alimama', 'sycm', 'feishu']);
   for (const [stage, hint] of Object.entries(STAGE_PAGE_HINT)) {
     assert.ok(allowed.has(hint), `阶段 ${stage} 的提示「${hint}」不是允许的语义标签`);
+  }
+  // 每个共享阶段都要有提示（缺了就是「不猜要修哪一页」那一档）
+  for (const stage of ['push', 'readback']) {
+    assert.equal(STAGE_PAGE_HINT[stage], 'feishu', `${stage} 没有飞书页提示 ⇒ 修复又会落到别页上`);
   }
 });
 

@@ -9,6 +9,14 @@ import { shopIdentity } from './shop-identities.mjs';
 // 告警里那句「标题写着「X」的窗口」必须与**真的写到窗口上的那个标题**同源 ——
 // 各写一份字符串，改一处就静默落空（症状是「照着做也找不到窗口」，没有任何报错）。
 import { sharedSubjectOf } from '../../../runtime/shop-window-label.mjs';
+// 「窗口够不够大」这件事的唯一实现也在机制层（`runtime/shop-viewport-gate.mjs`，那条计划里的
+// `viewport-gate` 步骤用的就是它）。这里 import 的是**判据本身**，不是阈值数字 ——
+// 在本文件里抄一份 `1200/600` 的话，将来改阈值会只改一处、另一处静默留在旧值上，
+// 而症状是「这条闸门哪天开始形同虚设」，不会有任何报错。
+// 方向是干净的 skills → runtime（那个叶子只依赖 `browser-ports.mjs`，不反向依赖 skills）。
+import {
+  SHOP_VIEWPORT_MIN_HEIGHT, SHOP_VIEWPORT_MIN_WIDTH, judgeShopViewport,
+} from '../../../runtime/shop-viewport-gate.mjs';
 
 // 登录入口候选表（2026-09-23 加）。**顺序即优先级，逐条打开试到浏览器肯填为止。**
 //
@@ -146,6 +154,28 @@ export const VERDICTS = Object.freeze([
   //   · 这一条是「**这一层没有结论**」——它不进 `VERDICTS_NEEDING_HUMAN`，退出码 3（不是 2），
   //     也不产生任何告警。判据是「读不到」，不是「掉登录」。
   'PAGES_ABSENT',
+  // 2026-10-14 加。**这两个词治的是一个已经发作过的、隔了一整条链的病。**
+  //
+  // 现场：2026-10-14 10:21 那一轮，回执在 `evidence/daily-job-2026-10-13/job.log`
+  // （目录名是**目标日**，不是跑的那一天 —— 这一点本身就值得写下来）。
+  // 共用商家浏览器（19022/19023）的窗口被夹到 692x307（视口 670x216）。
+  // 那份回执里有三条读数，**单独看每一条都解释不了故障**，合起来才指向真因：
+  //   · `gesturePoint:[535,331]` 且 `afterGesture:{idLen:8,passwordLen:9}` —— 补手势那一下看起来成了；
+  //   · `agreement.via = 『domClick』` —— 勾协议那次**坐标点击没勾上**，是随后补的 DOM 点击救回来的；
+  //   · `submitPoint:[535,499]` → `submitOutcome = 『NONE』` → `urlAfter` 与提交前逐字相同。
+  // 499 > 216 ⇒ 「点登录」那一下落在视口**外面**，什么都没发生。
+  // 于是写出来的是 `LOGIN_NOT_CONFIRMED`「可能是密码不对，也可能是平台要求额外验证」——
+  // 而密码、滑块、协议**一个字都没错**，错的是窗口大小。收信人照着那句话去查密码，方向正好反。
+  // 更贵的是：从这条回执反推到「窗口 670x216」，当时要靠人翻一整条链。
+  //
+  // 为什么分两个词、而不是合成一个 `VIEWPORT_TOO_SMALL`：**成因与排查方向不同**。
+  // 太窄指向「换过屏 / 缩放变了 / 窗口被拖到另一块屏」，太矮指向「窗口被压扁 / 远程桌面的
+  // 分辨率被改小」—— 而这两件事在机器前要动的东西不一样。它们的**动作**碰巧相同（把窗口拉到
+  // 最大），所以 `ACTION_BY_VERDICT` 里那两句是同一句；但「原因」必须分开写。
+  //
+  // 阈值与读数口径**不在这里**：判据来自 `runtime/shop-viewport-gate.mjs`（唯一实现）。
+  'VIEWPORT_TOO_NARROW',
+  'VIEWPORT_TOO_SHORT',
   'STOP_AND_ALERT',
 ]);
 
@@ -161,6 +191,16 @@ export const VERDICTS = Object.freeze([
 // 现在：顶层与**同源** iframe 一起查（那个 punish 页与登录页同源，`contentDocument` 可读）。
 // 读不到内容的 iframe 只记一条线索（见 `captchaFrame`），不据此断言 —— 「读不到」不是「没有」，
 // 但也不该被当成「没验证码」的凭据，所以它单独成一个字段，由 `captchaVisible` 决定怎么用。
+//
+// 2026-10-14 加 `viewport`（宽/高/像素比）：**顺带**把窗口视口的读数带回来。
+// 为什么不另起一次 /eval 专门去量：这条读数是「按坐标点下去可不可信」的前提，而它与表单状态
+// 是**同一次可信读取**（同一次求值、同一个文档、同一个时刻）。另起一次就多出一个失败面，
+// 而那个失败面会以「视口读不到」的形式出现 —— 一个本来不必存在的未知。
+// 它只有宽高与像素比，**没有任何凭据面**（与上面刻意只给长度、不给值，是同一套纪律）。
+// 它**不**回答「某个具体坐标落在视口里没有」：那要拿 rect 与高度比，而阈值本身已留余量，
+// 多一条判据就多一个可能误拦的地方（见 `judgeViewportForClick` 头部那两条取舍）。
+// ⚠️ 这一段是 JS 注释、在模板字符串**外面**；往这个表达式里面写注释会被当成页面代码，
+// 而注释里的反引号会当场结束模板字符串（2026-10-14 踩过：`SyntaxError: Unexpected identifier`）。
 export const FORM_STATE_EXPRESSION = `(() => {
   const pick = (sel) => {
     const el = document.querySelector(sel);
@@ -218,6 +258,7 @@ export const FORM_STATE_EXPRESSION = `(() => {
     sliderVisible: top.slider || sliderInFrame,
     captchaInputVisible: top.input || inputInFrame,
     captchaFrame: captchaFrame,
+    viewport: { width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio },
   });
 })()`;
 
@@ -268,6 +309,47 @@ export function judgeFilled({ filled = null, expected = null } = {}) {
   if (text.length === 0) return 'EMPTY';
   // 逐字比对，不做大小写/空白归一：账号是可打印字符串，而「差不多」在这里就等于「登错家」。
   return text === expected ? 'ACCEPT' : 'WRONG_ACCOUNT';
+}
+
+// ---------------------------------------------------------------------------
+// 「按坐标点下去之前，窗口够不够大」（2026-10-14 加）
+// ---------------------------------------------------------------------------
+//
+// 这一节存在的唯一理由：这个脚本**每一个动作都是按坐标点的**（补手势、勾协议、点登录、
+// 点中间屏），而坐标点在窗口之外时**什么都不会发生、也不会报错** —— 页面照旧停在那里，
+// 于是一条环境问题被写成了一条登录问题（现场与实测读数见 VERDICTS 里那两个词的头注）。
+//
+// 判据**不在这里实现**：`runtime/shop-viewport-gate.mjs` 的 `judgeShopViewport` 是唯一那份
+// （1200x600，两端的实测依据也写在那里：历史成功轮 1506、被夹窄时 1114）。这里只做两件事：
+//   ① 把它翻成「能不能往下点」（`blocksClick`）；
+//   ② 把它翻成回执里的判决词。
+//
+// **取舍：只有「量到了、就是不达标」才拦。**
+//   · `VIEWPORT_UNREADABLE`（没有读数）**不拦**，且**不**升级成判决词 ——
+//     这一层不是量尺那一层（计划里的 `viewport-gate` 步骤才是权威那一道，它读不到就判红）。
+//     在这里把一个「读不到」写成「窗口太小」是编事实；而把它拦下来，代价是**一次本来能成的登录
+//     被一句没有依据的话挡住**，且告警会指向一个不存在的问题。
+//     回执里仍然如实记下这个读数（`reason: 'VIEWPORT_UNREADABLE'`），谁翻回执都看得见它没量到。
+//   · 判据**不**扩成「某个具体坐标落在视口里没有」。那要拿 `rect` 与高度比，而阈值 1200x600 本身
+//     已经留了余量：多一条判据就多一个可能误拦的地方，而误拦的代价同样是「挡住一次能成的登录」。
+export const VIEWPORT_CLICK_VERDICTS = Object.freeze(['VIEWPORT_TOO_NARROW', 'VIEWPORT_TOO_SHORT']);
+
+export function judgeViewportForClick(viewport = null) {
+  const read = viewport ?? {};
+  const width = Number.isFinite(read.width) ? read.width : null;
+  const height = Number.isFinite(read.height) ? read.height : null;
+  const base = judgeShopViewport({ width, height });
+  const blocksClick = VIEWPORT_CLICK_VERDICTS.includes(base.reason);
+  return {
+    ok: base.ok,                                   // 达到底线
+    blocksClick,                                   // 量到了且太小 ⇒ 不许按坐标点
+    reason: base.reason,                           // 三个词之一（含 VIEWPORT_UNREADABLE）
+    verdict: blocksClick ? base.reason : null,     // 回执里的判决词；「没量到」时是 null（不编）
+    width,
+    height,
+    threshold: { width: SHOP_VIEWPORT_MIN_WIDTH, height: SHOP_VIEWPORT_MIN_HEIGHT },
+    detail: base.detail,                           // 「视口宽 670 < 阈值 1200」这种带数字的一句
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -826,6 +908,13 @@ export const VERDICTS_NEEDING_HUMAN = Object.freeze([
   // 为什么必须叫人而不是静默：不叫人就等于「这一轮什么都不说地少登一个站点」，
   // 而下游看到的是「页面不齐 / 页面不齐的告警」（10-05 现场），根因被埋掉。
   'AGREEMENT_REQUIRED',
+  // 2026-10-14 加。窗口太小 ⇒ **只能人到那台机器前把窗口拉回正常大小**（脚本能改浏览器里的
+  // 一切，改不了它自己的窗口大小；`start-project-browser.mjs` 那条归位只负责把「共享实例」
+  // 恢复到登记尺寸，而人手动把它拖小之后、在下一轮归位之前它就是这个样子）。
+  // 为什么不静默降级：静默的后果已经实测过一整天（那条链上一共只有一句「没登上」，
+  // 真因隔了一整条链才被推出来）—— 见 VERDICTS 里那两个词的头注。
+  'VIEWPORT_TOO_NARROW',
+  'VIEWPORT_TOO_SHORT',
 ]);
 // ⚠️ `PAGES_ABSENT` 刻意**不在**上面这张表里（2026-09-24）：它是「这一层没有结论」，
 // 不是「要人做什么」。放进去的症状已经实测过一次 —— 冷启动后的预检并发 5 条告警，
@@ -908,6 +997,15 @@ const ACTION_BY_VERDICT = Object.freeze({
   // 与前三句同形：这一支是在点「登录」**之前**返回的，登录页确实还停在原地，所以可以承诺「登录页开着」。
   AGREEMENT_REQUIRED: '登录页已经开在{窗口}了，账号密码也替你已经填好。'
     + '把页面上「已阅读并同意以下协议」那一行勾上，然后点「登录」。',
+  // 2026-10-14 加。**两条共用一句**：要人做的动作确实是同一件（把窗口铺满屏幕）——
+  // 太窄与太矮都是它治好的。两个词分开的理由在「原因」那一侧（机器侧成因与排查方向不同），
+  // 不在这里；而合成一句动作**不等于**合成一个结论词。
+  //
+  // 刻意**不从**「登录页已经开在」开头：这一条要人做的第一件事是动窗口，不是看页面。
+  // （「登录页开着」这句承诺归 `LOGIN_PAGE_PROMISED_VERDICTS` 管，那条名单只收
+  //  「逐条试收尾时会当场把页导回去」的两条 —— 与这里无关，别顺手加进去。）
+  VIEWPORT_TOO_NARROW: '去{窗口}，把窗口铺满屏幕（双击窗口最上面那一条就行），再重跑这一轮。',
+  VIEWPORT_TOO_SHORT: '去{窗口}，把窗口铺满屏幕（双击窗口最上面那一条就行），再重跑这一轮。',
 });
 
 // 把 `{窗口}` 换成收信人真的能在机器上认出来的说法。
@@ -951,6 +1049,12 @@ export const REASON_BY_VERDICT = Object.freeze({
   STOP_AND_ALERT: '系统在动手之前停住了。',
   // 只说「出了什么事」。**不许提密码**：这一条存在的全部意义就是把「协议没勾上」与「密码不对」分开。
   AGREEMENT_REQUIRED: '登录页上「已阅读并同意以下协议」那一行没有被勾上，系统就没有替你提交。',
+  // 2026-10-14 加。**这两条也不许提密码**，理由与上一条同源、而且已经真的发作过：
+  // 10-14 那一轮实际写出来的原因正是「可能是密码不对，也可能是平台要求额外验证」，
+  // 而当时密码、滑块、协议一个字都没错 —— 收信人被指去查密码，方向正好相反。
+  // 阈值数字不进这里（那是「这一次量到多少」，属于 detail 的增量信息）。
+  VIEWPORT_TOO_NARROW: '这个浏览器窗口现在太窄，页面上的按钮有一部分落在窗口外面，系统点不到它。',
+  VIEWPORT_TOO_SHORT: '这个浏览器窗口现在太矮，登录表单的下半截落在窗口外面，系统点不到「登录」按钮。',
 });
 
 // [已删] `loginUrlFor()` —— 告警不再给链接。

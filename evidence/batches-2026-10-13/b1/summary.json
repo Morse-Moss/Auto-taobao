@@ -1,0 +1,306 @@
+{
+  "date": "2026-10-13",
+  "mode": "commit",
+  "startedAt": "2026-10-14T03:49:42.898Z",
+  "round": {
+    "healthCheckDaily": {
+      "status": 0,
+      "logPath": "evidence\\batches-2026-10-13\\b1\\00-health-check-daily.txt",
+      "ok": true,
+      "blocking": [],
+      "blockingDetails": [],
+      "normalize": "已归位（生意参谋工作页=0  飞书底单页=1 → 生意参谋工作页=1  飞书底单页=1）",
+      "normalizeChanged": true,
+      "roundCause": null,
+      "missingPages": []
+    }
+  },
+  "shops": {
+    "网林淘宝": {
+      "status": "failed",
+      "stages": [
+        {
+          "stage": "health-check",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\01-health-check.txt",
+          "argv": [],
+          "blockingDetails": [],
+          "blockingCodes": [],
+          "pageNormalize": "本来就在位（生意参谋工作页=1  阿里妈妈报表页=1）"
+        },
+        {
+          "stage": "alimama-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\02-alimama-date.txt",
+          "argv": [
+            "--site",
+            "alimama",
+            "--date",
+            "2026-10-13",
+            "--proxy",
+            "http://127.0.0.1:19060"
+          ],
+          "blockingDetails": null,
+          "blockingCodes": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "promotion-submit",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\03-promotion-submit.txt",
+          "argv": [
+            "--phase",
+            "submit",
+            "--date",
+            "2026-10-13",
+            "--proxy",
+            "http://127.0.0.1:19060",
+            "--expect-shop",
+            "网林全卫定制",
+            "--expect-member",
+            "网林卫浴:小慧",
+            "--expect-member-id",
+            "1510910194"
+          ],
+          "blockingDetails": null,
+          "blockingCodes": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "sycm-date",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\04-sycm-date.txt",
+          "argv": [
+            "--site",
+            "sycm",
+            "--date",
+            "2026-10-13",
+            "--proxy",
+            "http://127.0.0.1:19060"
+          ],
+          "blockingDetails": null,
+          "blockingCodes": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "shop-report",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\05-shop-report.txt",
+          "argv": [
+            "--date",
+            "2026-10-13",
+            "--proxy",
+            "http://127.0.0.1:19060",
+            "--shop-key",
+            "网林淘宝",
+            "--expect-shop",
+            "网林全卫定制",
+            "--expect-member",
+            "网林卫浴:小慧",
+            "--expect-member-id",
+            "1510910194"
+          ],
+          "blockingDetails": null,
+          "blockingCodes": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "promotion-fetch",
+          "status": 0,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\06-promotion-fetch.txt",
+          "argv": [
+            "--phase",
+            "fetch",
+            "--date",
+            "2026-10-13",
+            "--proxy",
+            "http://127.0.0.1:19060",
+            "--expect-shop",
+            "网林全卫定制",
+            "--expect-member",
+            "网林卫浴:小慧",
+            "--expect-member-id",
+            "1510910194"
+          ],
+          "blockingDetails": null,
+          "blockingCodes": null,
+          "pageNormalize": null
+        },
+        {
+          "stage": "push",
+          "status": 1,
+          "skipped": false,
+          "logPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\07-push.txt",
+          "argv": [
+            "--date",
+            "2026-10-13",
+            "--proxy",
+            "http://127.0.0.1:19023",
+            "--shop-key",
+            "网林淘宝",
+            "--commit",
+            "--shop-xlsx",
+            "C:\\Users\\Administrator\\Downloads\\日报_20261014_1442937a949c530fdf7741076d82c6d7 (1).xlsx",
+            "--promotion-zip",
+            "C:\\Users\\Administrator\\Downloads\\营销场景报表_20261014_113559 (1).zip"
+          ],
+          "blockingDetails": null,
+          "blockingCodes": null,
+          "pageNormalize": null
+        }
+      ],
+      "source": {
+        "shopXlsx": "C:\\Users\\Administrator\\Downloads\\日报_20261014_1442937a949c530fdf7741076d82c6d7 (1).xlsx",
+        "shopReportManifest": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-13\\b1\\网林淘宝\\shop-report-manifest.json",
+        "promotionZip": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20261014_113559 (1).zip",
+        "promotionManifest": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-13\\b1\\网林淘宝\\promotion-report-manifest.json"
+      },
+      "failedStage": "push",
+      "failureOutput": "[shop-key] 网林淘宝 ↔ 源产物店名 网林全卫定制 一致（证据目录 daily-report-2026-10-13-网林淘宝）\n\nError: duplicate daily report row exists: reczz28N92FCBVnE\n    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:453:32)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n[audit] 未写入（不影响本次结论）：append failed: connect ECONNREFUSED 127.0.0.1:5432\n",
+      "blockingDetails": null,
+      "error": "阶段 push 失败（exit 1）",
+      "perception": {
+        "ok": true,
+        "files": {
+          "stateJson": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-13\\b1\\网林淘宝\\98-failure-state.json",
+          "stateText": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-13\\b1\\网林淘宝\\98-failure-state.txt",
+          "screenshot": "D:\\Retire\\sycm-automation\\evidence\\batches-2026-10-13\\b1\\网林淘宝\\98-failure-page.png"
+        },
+        "state": {
+          "capturedAt": "2026-10-14T03:52:06.599Z",
+          "url": "edge://downloads-hub/",
+          "title": "下载",
+          "viewport": {
+            "w": 360,
+            "h": 426,
+            "dpr": 1.25,
+            "scrollY": 0
+          },
+          "visibleText": "已删除文件",
+          "dialogs": [],
+          "interactive": [],
+          "domSummary": {
+            "totalElements": 55,
+            "counts": {
+              "HTML": 1,
+              "HEAD": 1,
+              "META": 1,
+              "TITLE": 1,
+              "LINK": 13,
+              "STYLE": 1,
+              "BODY": 1,
+              "DOWNLOADS-HUB-APP": 1,
+              "P": 1,
+              "F-TEMPLATE": 16,
+              "TEMPLATE": 16,
+              "SCRIPT": 2
+            },
+            "containers": []
+          },
+          "tables": []
+        },
+        "errors": [],
+        "shopKey": "网林淘宝",
+        "stage": "push",
+        "selected": {
+          "targetId": "FB4AB11EB951EB300E4CBB48103626AD",
+          "url": "edge://downloads-hub/",
+          "how": "firstNonAboutPage",
+          "pageHint": null,
+          "fragment": null
+        }
+      },
+      "repairRequest": {
+        "at": "2026-10-14T03:52:06.628Z",
+        "shopKey": "网林淘宝",
+        "stage": "push",
+        "cause": "DUPLICATE_TARGET",
+        "error": "阶段 push 失败（exit 1）",
+        "statePath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\98-failure-state.json",
+        "stateTextPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\98-failure-state.txt",
+        "screenshotPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\98-failure-page.png",
+        "stateSummary": {
+          "url": "edge://downloads-hub/",
+          "title": "下载",
+          "viewport": {
+            "w": 360,
+            "h": 426,
+            "dpr": 1.25,
+            "scrollY": 0
+          },
+          "overlayCount": 0
+        },
+        "candidates": [],
+        "planNote": "成因「DUPLICATE_TARGET」没有登记修法 ⇒ 不给候选（不猜动作），交给人。",
+        "stageHint": null,
+        "noActionRequired": true,
+        "retryStage": "push",
+        "execHint": "node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 网林淘宝 --proxy http://127.0.0.1:19060 --stage push --cause DUPLICATE_TARGET --action <候选动作> --log-dir evidence\\batches-2026-10-13\\b1\\网林淘宝",
+        "instancePrecondition": {
+          "why": "这一批跑完可能已经把这家店的浏览器放掉了（--batches 每批都释放，失败的那家也在名单里）。代理连不上时任何页面修复动作都执行不到，而 --proxy 是唯一的实例选择器 —— 不先确认就可能对着别的一台做事。",
+          "checkCommand": "curl -s -m 5 http://127.0.0.1:19060/targets",
+          "startCommand": "node scripts/start-all-hold.mjs --only 网林淘宝",
+          "note": "先跑 checkCommand：有输出（一个 JSON 数组）就是还在，直接执行 execHint；连不上就先跑 startCommand 把它拉起来（后台托住），确认再执行 execHint。"
+        },
+        "path": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\97-repair-request.json"
+      },
+      "recovery": {
+        "at": "2026-10-14T03:52:06.629Z",
+        "proxyPort": 19060,
+        "leftAt": {
+          "tabs": 4,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 0
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": [
+            "edge://downloads-hub/",
+            "https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common&reportId=4306121&type=preview",
+            "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E6%B7%98%E5%AE%9D&port=19050&member=%E7%BD%91%E6%9E%97%E5%8D%AB%E6%B5%B4%3A%E5%B0%8F%E6%85%A7&actual=%E7%BD%91%E6%9E%97%E5%8D%AB%E6%B5%B4%3A%E5%B0%8F%E6%85%A7"
+          ]
+        },
+        "action": "navigated",
+        "after": {
+          "tabs": 4,
+          "slots": [
+            {
+              "page": "生意参谋工作页",
+              "count": 1
+            },
+            {
+              "page": "阿里妈妈报表页",
+              "count": 1
+            }
+          ],
+          "foreign": [
+            "edge://downloads-hub/",
+            "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E6%B7%98%E5%AE%9D&port=19050&member=%E7%BD%91%E6%9E%97%E5%8D%AB%E6%B5%B4%3A%E5%B0%8F%E6%85%A7&actual=%E7%BD%91%E6%9E%97%E5%8D%AB%E6%B5%B4%3A%E5%B0%8F%E6%85%A7"
+          ]
+        },
+        "restored": true,
+        "detail": "回位后 生意参谋工作页 恰好一个",
+        "error": null,
+        "logPath": "evidence\\batches-2026-10-13\\b1\\网林淘宝\\99-recovery.txt"
+      },
+      "shop": "网林淘宝",
+      "evidence": "evidence\\batches-2026-10-13\\b1\\网林淘宝",
+      "failureClass": "DUPLICATE_TARGET",
+      "noActionRequired": true
+    }
+  },
+  "finishedAt": "2026-10-14T03:52:10.472Z",
+  "version": "unified-summary-v1",
+  "workflow": "daily-report"
+}

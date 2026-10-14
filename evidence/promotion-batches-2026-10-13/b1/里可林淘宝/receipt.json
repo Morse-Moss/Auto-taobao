@@ -1,0 +1,103 @@
+{
+  "mode": "apply",
+  "date": "2026-10-13",
+  "shop": "里可林淘宝",
+  "profile": "kcne",
+  "tables": {
+    "keyword": {
+      "tableId": "tblbSGMO2apOKuAZ",
+      "beforeRows": 1902,
+      "plannedRows": 44,
+      "skippedRows": 0,
+      "recordIds": [
+        "reczz28N4QTq1zFT",
+        "reczz28N4QTq28lT",
+        "reczz28N4QTq1DG6",
+        "reczz28N4QTq3b7o",
+        "reczz28N4QTq1tOj",
+        "reczz28N4QTq24Ik",
+        "reczz28N4QTq3Xib",
+        "reczz28N4QTq3XRg",
+        "reczz28N4QTq3k6z",
+        "reczz28N4QTq2WQO",
+        "reczz28N4QTq2kmm",
+        "reczz28N4QTq39Qy",
+        "reczz28N4QTq0OqF",
+        "reczz28N4QTq2kcT",
+        "reczz28N4QTq04g7",
+        "reczz28N4QTq3MoY",
+        "reczz28N4QTq0FN9",
+        "reczz28N4QTq0rek",
+        "reczz28N4QTpzxZF",
+        "reczz28N4QTq0NYx",
+        "reczz28N4QTq3Jcj",
+        "reczz28N4QTq3zM5",
+        "reczz28N4QTpzy9b",
+        "reczz28N4QTq1DFt",
+        "reczz28N4QTq3f3d",
+        "reczz28N4QTq024S",
+        "reczz28N4QTq391v",
+        "reczz28N4QTq2rOj",
+        "reczz28N4QTq1scg",
+        "reczz28N4QTq0nY5",
+        "reczz28N4QTq353a",
+        "reczz28N4QTq3CKF",
+        "reczz28N4QTq2932",
+        "reczz28N4QTq1Qr3",
+        "reczz28N4QTq45BF",
+        "reczz28N4QTq0a7o",
+        "reczz28N4QTq0dFe",
+        "reczz28N4QTq3szT",
+        "reczz28N4QTq3pXL",
+        "reczz28N4QTq1tWR",
+        "reczz28N4QTq0IJu",
+        "reczz28N4QTq2nnj",
+        "reczz28N4QTq2b7R",
+        "reczz28N4QTq2bUY"
+      ],
+      "afterRows": 1946
+    },
+    "audience": {
+      "tableId": "tblyjD5058Mjbmcv",
+      "beforeRows": 1615,
+      "plannedRows": 19,
+      "skippedRows": 0,
+      "recordIds": [
+        "reczz28N4RXSoJDg",
+        "reczz28N4RXSqM41",
+        "reczz28N4RXSp9Tf",
+        "reczz28N4RXSqtdy",
+        "reczz28N4RXSrAwC",
+        "reczz28N4RXSqwrA",
+        "reczz28N4RXSovOT",
+        "reczz28N4RXSrRsW",
+        "reczz28N4RXSpncx",
+        "reczz28N4RXSqsXD",
+        "reczz28N4RXSruQo",
+        "reczz28N4RXSqyeq",
+        "reczz28N4RXSqz74",
+        "reczz28N4RXSq4RE",
+        "reczz28N4RXSpUvj",
+        "reczz28N4RXSqqQm",
+        "reczz28N4RXSo4PU",
+        "reczz28N4RXSqC5o",
+        "reczz28N4RXSw613"
+      ],
+      "afterRows": 1634
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261014_070609.zip",
+      "csvName": "关键词报表_20261014_070609.csv",
+      "rows": 44,
+      "columns": 77
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261014_070622.zip",
+      "csvName": "人群报表_20261014_070622.csv",
+      "rows": 19,
+      "columns": 75
+    }
+  }
+}

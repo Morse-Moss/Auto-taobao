@@ -119,10 +119,32 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   // 方向是干净的 skills → runtime（两个都是机制层叶子）。它本身**零判断**（判断留给 agent），
   // 所以它不是「业务倒灌机制层」，只是把一个既有机制接到一条新的调用路径上。
   'skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs',
+  // 2026-10-14 新增：`repair-shop-stage.test.mjs` 开始 import `browser-ports.mjs` 与
+  // `expected-pages.mjs`。「按阶段选实例」的用例必须拿**登记表里的真实值**（共用 19023 /
+  // 店铺自己的端口 / 飞书片段的 baseToken）去断言：把端口抄进用例，断言会为了错误的理由变绿
+  // —— 它证明了「等于我抄的那个数」，而不是「等于登记表说的那一台」。
+  'skills/sycm-alimama-daily-report/scripts/repair-shop-stage.test.mjs',
   'skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs',
   'skills/sycm-alimama-daily-report/scripts/run-inquiry-backfill.mjs',
   'skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs',
   'skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.test.mjs',
+  // 2026-10-14 新增：`stage-browsers.mjs` —— 「某个阶段跑在哪一台浏览器上」的唯一实现。
+  //
+  // 为什么它必须存在、且必须这样 import：这条链是「一店一实例 + 一台共用实例」混跑的，
+  // 九个阶段在店铺实例上，`push` / `readback` 在两个阶段在**共用商家浏览器**上
+  // （作业对象是五家店共用那一页飞书底单）。这条规则原先只活在驱动 stage 表里，
+  // 而链外还有三处要用同一个答案（派单单子的 execHint / instancePrecondition、
+  // 自动修复的 execRepair）⇒ 修复动作会指向**另一台**浏览器，且三处都不报错
+  // （2026-10-13 网林淘宝 readback 那轮实证：动作 applied:true，却落在店铺标识页上）。
+  // 它 import 的是 `browser-ports.mjs`（机制层叶子：端口与 profile 的登记表，不反向依赖 skills），
+  // 方向是干净的 skills → runtime；与同目录的 `expected-pages.mjs` / `ensure-inquiry-rows.mjs`
+  // 是同一族用法（机制层叶子 + 业务侧决定用哪个）。**不是**把业务逻辑倒灌进 runtime：
+  // 「哪些阶段是共享的」是这条链的业务事实，所以它留在能力目录里。
+  'skills/sycm-alimama-daily-report/scripts/stage-browsers.mjs',
+  // 2026-10-14 新增：`stage-browsers.test.mjs`。理由同上一条（拿登记表的值断言，不抄端口），
+  // 外加一条只有它能做的检查：**剥掉注释后**，`stage-browsers.mjs` 里不许出现端口字面量 ——
+  // 值级断言抓不住「把 19023 抄进代码」这一类（抄的值今天恰好等于登记表）。
+  'skills/sycm-alimama-daily-report/scripts/stage-browsers.test.mjs',
   'skills/sycm-export-search-rank/scripts/adapter.search-rank.test.mjs',
   'skills/sycm-export-search-rank/scripts/export-search-rank.mjs',
   'skills/sycm-to-feishu-base/scripts/adapter.feishu-weekly.mjs',

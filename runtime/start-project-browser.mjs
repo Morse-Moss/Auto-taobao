@@ -31,6 +31,7 @@ import {
   ACCOUNT_KINDS,
   BROWSER_ACCOUNT,
   BROWSER_PROFILES,
+  BROWSER_WINDOW_BOUNDS,
   PROJECT_PORTS,
   buildBrowserLaunchArgs,
   classifyPortUsage,
@@ -42,6 +43,7 @@ import {
   resolvePort,
   retiredPortNumbers,
 } from './browser-ports.mjs';
+import { applyWindowBounds, describeWindowBounds } from './browser-window-bounds.mjs';
 
 const EDGE = process.env.PROJECT_BROWSER_EXE || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const PROFILE = process.env.PROJECT_BROWSER_PROFILE || BROWSER_PROFILES.competitor;
@@ -83,6 +85,29 @@ async function waitForDevTools(timeoutMs = 30000) {
 // 保活：父进程退出会让子进程一起被回收，端口随即对会话内不可见。
 function keepAlive() {
   setInterval(() => {}, 60000);
+}
+
+// 窗口归位（2026-10-14 加）。**只作用于共用商家浏览器**（dailyReport）：
+//   · 它的 argv 里既没有 `--window-size` 也没有 `--force-device-scale-factor`（那两个老浏览器的
+//     argv 被 browser-ports.test.mjs 断言「逐字不变」，不许为这件事拆掉那条防串号的约束）；
+//   · 而它恰恰是**唯一会走坐标点击登录**的那个实例（login-merchant.mjs 的 gesturePoint / 提交点）。
+//     窗口一小，登录表单落到折叠线下、点击打在视口外 ⇒ 报「没登上」而不是「窗口太小」。
+// 2026-10-14 真机：10:21 / 10:27 两轮整轮被挡，10:52 手工设成 1528x732 后同一脚本同一账号一次通过。
+// 店铺实例与竞品浏览器**不动**：店铺实例的尺寸已经由 argv 钉死（并另有视口闸门复核），
+// 竞品链不在本次故障的范围内，没有证据支持去改它。
+//
+// 失败**不致命**：兜底是 `runtime/shop-viewport-gate.mjs`（它读页面里的 innerWidth/innerHeight，
+// 那才是真判据）。这里失败只报事实 —— 让启动器跟着失败，等于把「窗口小」升级成「实例起不来」。
+async function normalizeSharedWindow() {
+  if (BROWSER_KEY !== 'dailyReport') return;
+  const result = await applyWindowBounds({ port: PORT });
+  if (result.ok) {
+    console.log(`[browser] 窗口归位：${result.detail}`);
+  } else {
+    console.warn(`[browser] 窗口归位没做成（${result.reason}）：${result.detail}`);
+    console.warn(`[browser] 期望 ${describeWindowBounds(BROWSER_WINDOW_BOUNDS)}；`
+      + '这一步不是闸门 —— 真正的判据是随后的视口回读（runtime/shop-viewport-gate.mjs）。');
+  }
 }
 
 // 同一个 profile 是否已经在**另一个端口**上跑着？返回找到的端口（可能不止一个）。
@@ -142,6 +167,7 @@ console.log(describeExpectedLogin());
 
 if (usage.verdict === 'ours') {
   console.log(`[browser] REUSE ${describeOccupant(inspection)} port=${PORT}（profile 与期望一致，无需重复启动）`);
+  await normalizeSharedWindow();
   keepAlive();
 } else if (usage.verdict === 'foreign') {
   console.error(`[browser] 拒绝启动：端口 ${PORT} 已被另一个 profile 的浏览器占用。`);
@@ -177,6 +203,7 @@ if (usage.verdict === 'ours') {
   try {
     const v = await waitForDevTools();
     console.log(`[browser] READY ${v.Browser} on ${PORT}`);
+    await normalizeSharedWindow();
   } catch (error) {
     console.error(`[browser] ${error.message}`);
     // 端口始终没起来时把真正的原因补上：同 profile 的另一个实例把请求接管了。
