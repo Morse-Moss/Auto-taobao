@@ -15,6 +15,56 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.9.1] - 2026-10-14
+
+1.9.0 推上去之后 CI 红了：`fast-gate` 与 `skill-tests (sycm-alimama-daily-report)` 各挂一条。
+两条都不是新知识，而是**已经写在 `AGENTS.md` 里、这一批却没照做**的规矩 —— 属于执行漏洞，不是设计漏洞。
+修完在**真 CRLF 检出**里先复现、再复验。
+
+### 改了什么
+
+- `skills/sycm-alimama-daily-report/scripts/stage-browsers.test.mjs`：剥注释的分行改成
+  `split(/\r?\n/)`（原先写的是 `split('\n')`）。这是仓库里**已有**的写法 ——
+  `runtime/browser-ports.test.mjs` 的 `stripComments()` 就是这么写的，本批次没有沿用它。
+- `runtime/hold-and-resume-plan.test.mjs`：把新增的第 0 步 `viewport-gate` 补进被钉住的步骤序列
+  （1.9.0 加了这一步，只改了 `runtime/daily-job-plan.test.mjs`，漏了这一处）。
+- 上一条的两个文件里各加一段指向对方的注释：同一份步骤序列**钉在两处**，加/挪步骤时两处都要改。
+
+### 为什么改
+
+- **① EOL（`AGENTS.md`「Line-ending note」明文要求：每个源码级断言都必须在匹配前
+  `replace(/\r\n/g, '\n')`）。** CI 的 Windows runner 以 **CRLF** 检出，而本机工作区是 LF。
+  用 `split('\n')` 配 `/\/\/.*$/` 时，行尾那个 `\r` 会让 `$` 失配 ⇒ **注释压根没被剥掉**，
+  而注释里恰好写着端口号 `19060` ⇒ 「代码里不许出现端口字面量」这条断言**本机绿、CI 红**。
+  实测对照（同一个文件、同一段代码）：LF 下 `MATCHES null`，CRLF 下
+  `MATCHES ['19023', '19060', '19060']`。这类断言唯一的自动发现者就是 CI 本身，本机看不见。
+- **② 同一份事实钉在两处，改一处就会红在另一处。** 步骤序列在
+  `runtime/daily-job-plan.test.mjs`（含分批形态，多条）与 `runtime/hold-and-resume-plan.test.mjs`
+  （单跑形态，一条）里各钉一份。1.9.0 只改了前者 ⇒ CI `Full unit tests (main)` 红在
+  `not ok 509 - 接线：定时计划里真的有「驻留」这一步…`（差集就是多出来的 `viewport-gate`）。
+- 两条合起来的教训与前一批同一族：**「本机全绿」不是判据，「在被验收的那个环境里全绿」才是**。
+
+### 验证到什么程度
+
+- 用 `git worktree` 拉了一个**全新检出**做排练（本机 `core.autocrlf = true` ⇒ 该检出是纯 CRLF，
+  与 CI 同条件；已实测确认 `runtime/daily-job-plan.mjs` 883 处 CRLF、0 处裸 LF；并给该检出接上
+  `node_modules` 联接，免得「裸检出缺依赖」混进结果里）：
+  - **先复现**（在未修的 1.9.0 内容上跑）：红的两条**用例名与 CI 报的逐字相同** ——
+    `接线：定时计划里真的有「驻留」这一步，且它只在链失败时才执行`、
+    `接线：共用端口来自 browser-ports，本文件里不许出现第二个 19023`。
+    序号不同（排练里是 `not ok 29` / `not ok 52`，CI 里是 `not ok 509` / `not ok 594`），
+    因为排练只跑了那两个文件、CI 跑的是整套 —— 序号是整套里的位置。**判据是名字，不是编号。**
+  - **再复验**（把修好的文件按 CRLF 放回）：日报技能集整集 **594 tests / 594 pass / 0 fail**；
+    `unit` 套件 **1322 tests / 1321 pass / 1 skipped / 0 fail**（`UNIT_EXIT=0`）——
+    同一套在 CI 上是 `1322 / 1320 / 1 fail`，那一条就是上面这个 `viewport-gate`。
+  - 原始输出：`crlf-rehearsal-before.txt`（修前两条红）、`crlf-rehearsal-after-tests.txt`、
+    `crlf-rehearsal-after-skills.txt`、`crlf-rehearsal-unit.txt`；过程与踩坑见 `CRLF-REHEARSAL.md`。
+- **仍未做**：仓库级 `.gitattributes` 统一 EOL —— `AGENTS.md` 明确要求等工作区干净后再做，
+  且有别的会话在改文件时重归一化会吞掉他们的改动，不在本批。
+- **未加自动化守卫**：这类「只在 CRLF 下红」的断言目前**没有**静态守卫，唯一能抓到它的是 CI。
+  要不要补一道守卫，列进待决问题。
+- 本批没有真机运行、没有真发过飞书。
+
 ## [1.9.0] - 2026-10-14
 
 目标日 2026-10-13 那一轮日报连发两条告警、其中一家店停在第 11 步。查下来不是四个故障点，
@@ -86,6 +136,11 @@
   刻意不写 `runtime/alert-throttle.json`（那会让真跑的那一轮被自己的测试挡住）。
 - 现场证据、未修清单（`readback` 仍无 `ensureTargetPage` 自愈等）与可重跑的复核命令：
   `evidence/viewport-and-repair-scope-2026-10-14/VERIFICATION.md`。目标日 10-13 那一轮的证据同批提交。
+
+> **更正（2026-10-14，见 [1.9.1]）**：上面「642 pass / 0 fail」是在**本机（LF）**工作区跑的，
+> 推上去之后 CI 红了 —— `fast-gate` 与 `skill-tests (sycm-alimama-daily-report)` 各挂一条，
+> 两条都是**只在 CRLF 检出下才发作**的问题（一处 EOL 脆弱的源码级断言、一处漏改的步骤序列钉子）。
+> 结论：本条的「定向组全绿」**不构成交付判据**，交付判据是在 CI 那个环境里全绿。已由 [1.9.1] 修复。
 
 ## [1.8.14] - 2026-10-13
 

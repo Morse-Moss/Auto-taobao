@@ -45,6 +45,9 @@ test('七步的顺序是「先保证实例在 → 给共用窗口挂标识 → �
   // 而那正是坐标点击能不能点中的先决条件；排在之后，量到的是一个已经被点过一轮的窗口。
   // 2026-10-07 加的最后一步（补飞书询单表的行骨架）排在链**之前、其余一切之后**：
   // 它建的是链第 10 步回填要写的那一行，越晚建越贴近真正需要它的那一刻。
+  //
+  // ⚠️ 同一份序列在 `runtime/hold-and-resume-plan.test.mjs` 里**也钉着一份**。加/挪步骤时
+  // 两处都要改 —— 2026-10-14 那一批就是因为只改了本文件，push 后 CI 红在那边（本地全绿）。
   const plan = buildJobPlan();
   assert.deepEqual(plan.steps.map((s) => s.name),
     ['ensure-instances', 'label-merchant-window', 'viewport-gate', 'login-preflight', 'ensure-merchant-login',

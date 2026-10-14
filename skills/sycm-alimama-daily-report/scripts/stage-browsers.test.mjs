@@ -100,13 +100,20 @@ test('接线：共用端口来自 browser-ports，本文件里不许出现第二
   // 只有登记表哪天变了才会露出来（那时已经晚了）。所以这里查**源码层**：
   // 剥掉注释后，代码里必须引用登记表常量，且不许有 5 位端口字面量。
   //
-  // 剥注释必须避开一件事：URL 里的 `http://` 也含 `//`。所以行注释的判据是
-  // 「`//` 前面那个字符不是 `:`」—— 一刀切 `//.*` 会把 `http://…` 之后整行删掉，
-  // 于是「必须引用 PROJECT_PORTS」这条断言永远红（这个坑当场踩过一次）。
+  // 剥注释必须避开两件事：
+  //  ① URL 里的 `http://` 也含 `//`。所以行注释的判据是「`//` 前面那个字符不是 `:`」
+  //     —— 一刀切 `//.*` 会把 `http://…` 之后整行删掉，于是「必须引用 PROJECT_PORTS」
+  //     这条断言永远红（这个坑当场踩过一次）。
+  //  ② **换行符**（2026-10-14 被 CI 抓到的那个）：CI 的 Windows runner 以 **CRLF** 检出
+  //     （`core.autocrlf=true`），而本机工作区是 LF。用 `split('\n')` + `/\/\/.*$/` 时，
+  //     行尾那个 `\r` 会让 `$` 失配 ⇒ 注释压根没被剥掉，而注释里恰好写着端口号
+  //     ⇒ 本机绿、CI 红。实测对照：LF 下 `MATCHES null`，CRLF 下 `MATCHES ['19023','19060','19060']`。
+  //     所以这里照 **`runtime/browser-ports.test.mjs` 的 `stripComments()` 既有口径**写
+  //     `split(/\r?\n/)`（AGENTS.md「Line-ending note」：每个源码级断言都必须对 EOL 免疫）。
   const raw = readFileSync(path.join(SCRIPTS_DIR, 'stage-browsers.mjs'), 'utf8');
   const code = raw
     .replace(/\/\*[\s\S]*?\*\//gu, '')
-    .split('\n')
+    .split(/\r?\n/u)
     .map((line) => line.replace(/(^|[^:])\/\/.*$/u, '$1'))
     .join('\n');
   assert.match(code, /PROJECT_PORTS\.dailyReportProxy/u,

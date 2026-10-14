@@ -468,9 +468,15 @@ test('接线：定时计划里真的有「驻留」这一步，且它只在链�
   // 排在起实例之后、登录取证之前。这里跟着改是**登记动作**，不是为了让红灯变绿。
   // 2026-10-07 加 `ensure-inquiry-rows`：补飞书询单表这一天的行骨架，排在链之前、
   // 其余前置步骤之后（它建的正是链第 10 步回填要写的那一行）。同样是登记动作。
+  // 2026-10-14 加 `viewport-gate`：量一遍共用窗口的视口。硬位置要求是**任何登录路径之前**
+  //（窗口被夹窄时登录表单落在视口外、坐标点击全落空，排后面量到的已经是故障后的窗口）。
+  // 同样是登记动作，不是为了让红灯变绿。
+  //
+  // ⚠️ 同一份序列在 `runtime/daily-job-plan.test.mjs` 里也钉着（那里还钉分批形态）。
+  // 加/挪步骤时**两处都要改** —— 2026-10-14 就是这么漏掉本文件的：只改了那边，CI 才红。
   assert.deepEqual(names,
-    ['ensure-instances', 'label-merchant-window', 'login-preflight', 'ensure-merchant-login',
-      'ensure-inquiry-rows', 'chain', 'hold-and-resume']);
+    ['ensure-instances', 'label-merchant-window', 'viewport-gate', 'login-preflight',
+      'ensure-merchant-login', 'ensure-inquiry-rows', 'chain', 'hold-and-resume']);
   const hold = plan.holdStep;
   assert.ok(hold, '计划里没有驻留那一步 ⇒ 「留窗口给人」一次也不会发生');
   assert.equal(hold.onlyWhenChainFailed, true, '链成功的那一天它不许执行（默认行为必须逐字不变）');

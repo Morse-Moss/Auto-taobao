@@ -1,0 +1,382 @@
+TAP version 13
+# Subtest: 截止时间：只认 HH:MM，格式不对**不回落**（回落成 0 会让驻留立刻结束）
+ok 1 - 截止时间：只认 HH:MM，格式不对**不回落**（回落成 0 会让驻留立刻结束）
+  ---
+  duration_ms: 1.2534
+  type: 'test'
+  ...
+# Subtest: 截止时间默认是**时段**，不是绝对钟点（绝对钟点在 15:30 的排期下当场就过期了）
+ok 2 - 截止时间默认是**时段**，不是绝对钟点（绝对钟点在 15:30 的排期下当场就过期了）
+  ---
+  duration_ms: 0.282
+  type: 'test'
+  ...
+# Subtest: --until 显式给的**已经过去**的钟点当场拒（静默地立刻超时正是要治的那个形态）
+ok 3 - --until 显式给的**已经过去**的钟点当场拒（静默地立刻超时正是要治的那个形态）
+  ---
+  duration_ms: 0.6094
+  type: 'test'
+  ...
+# Subtest: 到点判据：`>=` 而不是 `>`（正好那一刻就该收尾，不许再多挂一轮）
+ok 4 - 到点判据：`>=` 而不是 `>`（正好那一刻就该收尾，不许再多挂一轮）
+  ---
+  duration_ms: 0.1007
+  type: 'test'
+  ...
+# Subtest: 不需要人时**绝不驻留**：默认行为必须与从前逐字相同
+ok 5 - 不需要人时**绝不驻留**：默认行为必须与从前逐字相同
+  ---
+  duration_ms: 0.2365
+  type: 'test'
+  ...
+# Subtest: 需要人时：点名那几家，且续跑**只补那几家**（整轮重跑会撞同一天+同店铺的查重键）
+ok 6 - 需要人时：点名那几家，且续跑**只补那几家**（整轮重跑会撞同一天+同店铺的查重键）
+  ---
+  duration_ms: 0.1401
+  type: 'test'
+  ...
+# Subtest: unfixableShopsOf：只认「脚本自己修不动」的两个字段，其余一律不算
+ok 7 - unfixableShopsOf：只认「脚本自己修不动」的两个字段，其余一律不算
+  ---
+  duration_ms: 0.2086
+  type: 'test'
+  ...
+# Subtest: unfixableShopsOf：status=ok 的店不进（修好了就不该再占用修复 agent）
+ok 8 - unfixableShopsOf：status=ok 的店不进（修好了就不该再占用修复 agent）
+  ---
+  duration_ms: 0.2072
+  type: 'test'
+  ...
+# Subtest: unfixableShopsOf：「谁都不用动」的失败不进这一路（否则白挂几小时等一个不存在的人）
+ok 9 - unfixableShopsOf：「谁都不用动」的失败不进这一路（否则白挂几小时等一个不存在的人）
+  ---
+  duration_ms: 0.3089
+  type: 'test'
+  ...
+# Subtest: holdDecision 扩容：unfixableShops 与 humanCauses **取并集**，且去重、保持顺序
+ok 10 - holdDecision 扩容：unfixableShops 与 humanCauses **取并集**，且去重、保持顺序
+  ---
+  duration_ms: 0.2605
+  type: 'test'
+  ...
+# Subtest: holdDecision 默认不变：不给 unfixableShops 时行为与从前逐字相同
+ok 11 - holdDecision 默认不变：不给 unfixableShops 时行为与从前逐字相同
+  ---
+  duration_ms: 0.129
+  type: 'test'
+  ...
+# Subtest: holdDecision：unfixableShops 里的店名不在 failed 里 ⇒ 不点名（不凭空造一家出来）
+ok 12 - holdDecision：unfixableShops 里的店名不在 failed 里 ⇒ 不点名（不凭空造一家出来）
+  ---
+  duration_ms: 0.0583
+  type: 'test'
+  ...
+# Subtest: 整轮被挡**一律算需要人**，且**不能点名**（不给 --shops 就是整轮重跑）
+ok 13 - 整轮被挡**一律算需要人**，且**不能点名**（不给 --shops 就是整轮重跑）
+  ---
+  duration_ms: 0.0635
+  type: 'test'
+  ...
+# Subtest: 轮询间隔按成因分：取**最勤**的那个（多成因时以最敏感的那条判据为准）
+ok 14 - 轮询间隔按成因分：取**最勤**的那个（多成因时以最敏感的那条判据为准）
+  ---
+  duration_ms: 0.0727
+  type: 'test'
+  ...
+# Subtest: 续跑起点：从失败那一步跑到结尾，且 **health-check 永远带上**
+ok 15 - 续跑起点：从失败那一步跑到结尾，且 **health-check 永远带上**
+  ---
+  duration_ms: 0.0912
+  type: 'test'
+  ...
+# Subtest: 认不出阶段名 ⇒ 返回 null（不点名＝整链），绝不猜一个起点
+ok 16 - 认不出阶段名 ⇒ 返回 null（不点名＝整链），绝不猜一个起点
+  ---
+  duration_ms: 0.0718
+  type: 'test'
+  ...
+# Subtest: 起点下探：人碰过页面 ⇒ 退到 alimama-date（日期落位要重做），而且**只许往前、不许往后**
+ok 17 - 起点下探：人碰过页面 ⇒ 退到 alimama-date（日期落位要重做），而且**只许往前、不许往后**
+  ---
+  duration_ms: 0.1071
+  type: 'test'
+  ...
+# Subtest: 续跑的命令行：带上 --commit 与目标日，只补那几家那几步
+ok 18 - 续跑的命令行：带上 --commit 与目标日，只补那几家那几步
+  ---
+  duration_ms: 0.176
+  type: 'test'
+  ...
+# Subtest: 判据转正：只有「一个都没在等、也没有读不到」才算好了；**空集不算好**
+ok 19 - 判据转正：只有「一个都没在等、也没有读不到」才算好了；**空集不算好**
+  ---
+  duration_ms: 0.1121
+  type: 'test'
+  ...
+# Subtest: 驻留状态行：带时间、已等多久、等到几点，以及每个对象的现状（不许静默）
+ok 20 - 驻留状态行：带时间、已等多久、等到几点，以及每个对象的现状（不许静默）
+  ---
+  duration_ms: 0.2441
+  type: 'test'
+  ...
+# Subtest: 通知：source 的键必须都在白名单里（漏一个 ⇒ 收信人看不到那一行，而本地看着完全正常）
+ok 21 - 通知：source 的键必须都在白名单里（漏一个 ⇒ 收信人看不到那一行，而本地看着完全正常）
+  ---
+  duration_ms: 0.2197
+  type: 'test'
+  ...
+# Subtest: 通知：三条各有各的编号，且续跑成功/失败**不许共用同一个指纹**
+ok 22 - 通知：三条各有各的编号，且续跑成功/失败**不许共用同一个指纹**
+  ---
+  duration_ms: 0.0956
+  type: 'test'
+  ...
+# Subtest: 通知：文案是给运营看的 —— 不出现阶段名/结论代号/路径/命令行/链接/账号名
+ok 23 - 通知：文案是给运营看的 —— 不出现阶段名/结论代号/路径/命令行/链接/账号名
+  ---
+  duration_ms: 0.6713
+  type: 'test'
+  ...
+# Subtest: CLI：--date 必给（不给它拼不出结论路径），--until 格式当场校验
+ok 24 - CLI：--date 必给（不给它拼不出结论路径），--until 格式当场校验
+  ---
+  duration_ms: 0.3488
+  type: 'test'
+  ...
+# Subtest: CLI：--until 给了一个**已经过去**的钟点 ⇒ 当场拒（静默地立刻超时正是要治的那个形态）
+ok 25 - CLI：--until 给了一个**已经过去**的钟点 ⇒ 当场拒（静默地立刻超时正是要治的那个形态）
+  ---
+  duration_ms: 0.0935
+  type: 'test'
+  ...
+# Subtest: CLI：分批续跑必须带 --batch-size（那一档没有可用的默认值，给错会让现场与原轮不同）
+ok 26 - CLI：分批续跑必须带 --batch-size（那一档没有可用的默认值，给错会让现场与原轮不同）
+  ---
+  duration_ms: 0.0686
+  type: 'test'
+  ...
+# Subtest: CLI：逐店失败的归一化用的是**链自己的**分类器（不在这里另写一份判据）
+ok 27 - CLI：逐店失败的归一化用的是**链自己的**分类器（不在这里另写一份判据）
+  ---
+  duration_ms: 0.2144
+  type: 'test'
+  ...
+# Subtest: CLI：退出码口径只有一处（入口拿 4 把整轮翻绿，其余一律保持链的结论）
+ok 28 - CLI：退出码口径只有一处（入口拿 4 把整轮翻绿，其余一律保持链的结论）
+  ---
+  duration_ms: 0.0487
+  type: 'test'
+  ...
+# Subtest: 接线：定时计划里真的有「驻留」这一步，且它只在链失败时才执行
+not ok 29 - 接线：定时计划里真的有「驻留」这一步，且它只在链失败时才执行
+  ---
+  duration_ms: 1.3311
+  type: 'test'
+  location: 'D:\\Retire\\sycm-crlf-probe\\runtime\\hold-and-resume-plan.test.mjs:464:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+        'ensure-instances',
+        'label-merchant-window',
+    +   'viewport-gate',
+        'login-preflight',
+        'ensure-merchant-login',
+        'ensure-inquiry-rows',
+        'chain',
+        'hold-and-resume'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 'ensure-instances'
+    1: 'label-merchant-window'
+    2: 'login-preflight'
+    3: 'ensure-merchant-login'
+    4: 'ensure-inquiry-rows'
+    5: 'chain'
+    6: 'hold-and-resume'
+  actual:
+    0: 'ensure-instances'
+    1: 'label-merchant-window'
+    2: 'viewport-gate'
+    3: 'login-preflight'
+    4: 'ensure-merchant-login'
+    5: 'ensure-inquiry-rows'
+    6: 'chain'
+    7: 'hold-and-resume'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/Retire/sycm-crlf-probe/runtime/hold-and-resume-plan.test.mjs:471:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: 接线：没有具体某一天时**不加**这一步（给字面量 yesterday 会拼出不存在的结论路径）
+ok 30 - 接线：没有具体某一天时**不加**这一步（给字面量 yesterday 会拼出不存在的结论路径）
+  ---
+  duration_ms: 0.3484
+  type: 'test'
+  ...
+# Subtest: 接线：`--will-resume` 跟着「这一轮会不会驻留」走（承诺系统会自己续跑就必须真有驻留）
+ok 31 - 接线：`--will-resume` 跟着「这一轮会不会驻留」走（承诺系统会自己续跑就必须真有驻留）
+  ---
+  duration_ms: 0.275
+  type: 'test'
+  ...
+# Subtest: 接线：分批形态的驻留**在分批驱动内部**（进不了本计划，但那个事实要有名字）
+ok 32 - 接线：分批形态的驻留**在分批驱动内部**（进不了本计划，但那个事实要有名字）
+  ---
+  duration_ms: 0.1279
+  type: 'test'
+  ...
+# Subtest: 接线（源码级）：分批驱动真的会在整轮被挡时**停下来**并**转驻留**（删掉任一半都要红）
+ok 33 - 接线（源码级）：分批驱动真的会在整轮被挡时**停下来**并**转驻留**（删掉任一半都要红）
+  ---
+  duration_ms: 10.0618
+  type: 'test'
+  ...
+# Subtest: 接线（源码级）：`--no-hold` 真的被转发到分批驱动，不是只在计划里记一笔
+ok 34 - 接线（源码级）：`--no-hold` 真的被转发到分批驱动，不是只在计划里记一笔
+  ---
+  duration_ms: 0.8045
+  type: 'test'
+  ...
+# Subtest: 接线（行为级）：分批驱动给驻留的**每一个开关**，驻留自己都认 —— 用对面的参数校验器当裁判
+ok 35 - 接线（行为级）：分批驱动给驻留的**每一个开关**，驻留自己都认 —— 用对面的参数校验器当裁判
+  ---
+  duration_ms: 0.2977
+  type: 'test'
+  ...
+# Subtest: 分批驻留参数透传 --workflow：对面认、续跑拿得到
+ok 36 - 分批驻留参数透传 --workflow：对面认、续跑拿得到
+  ---
+  duration_ms: 0.0901
+  type: 'test'
+  ...
+# Subtest: 分批续跑：入口是**分批驱动**（直连链会在「实例不在」的现场上开跑），且带上 --no-hold 防递归
+ok 37 - 分批续跑：入口是**分批驱动**（直连链会在「实例不在」的现场上开跑），且带上 --no-hold 防递归
+  ---
+  duration_ms: 0.1131
+  type: 'test'
+  ...
+# Subtest: 分批续跑透传 --workflow：给了就带上，不给维持旧行为（一个字都不多）
+ok 38 - 分批续跑透传 --workflow：给了就带上，不给维持旧行为（一个字都不多）
+  ---
+  duration_ms: 0.0397
+  type: 'test'
+  ...
+# Subtest: 分批：整轮被挡的判据读**链自己落盘的结论**，老 summary 落回旧口径
+ok 39 - 分批：整轮被挡的判据读**链自己落盘的结论**，老 summary 落回旧口径
+  ---
+  duration_ms: 0.2694
+  type: 'test'
+  ...
+# Subtest: 接线：入口那一步「该不该执行」的判据是纯函数（写在入口里会测不到，而写反了两头都错）
+ok 40 - 接线：入口那一步「该不该执行」的判据是纯函数（写在入口里会测不到，而写反了两头都错）
+  ---
+  duration_ms: 0.1051
+  type: 'test'
+  ...
+# Subtest: 接线：入口真的把「哪一天」与「证据目录」交给计划了（漏一个就静默少一段）
+ok 41 - 接线：入口真的把「哪一天」与「证据目录」交给计划了（漏一个就静默少一段）
+  ---
+  duration_ms: 0.3483
+  type: 'test'
+  ...
+# Subtest: 口径函数：缺省仍是日报口径，只有明确给 promotion-daily 才换词
+ok 42 - 口径函数：缺省仍是日报口径，只有明确给 promotion-daily 才换词
+  ---
+  duration_ms: 0.0731
+  type: 'test'
+  ...
+# Subtest: 推广链驻留/续跑的两条通知说「推广日报」，且编号与日报那条不同（同一天不许互压去重窗）
+ok 43 - 推广链驻留/续跑的两条通知说「推广日报」，且编号与日报那条不同（同一天不许互压去重窗）
+  ---
+  duration_ms: 0.0994
+  type: 'test'
+  ...
+# Subtest: 调用侧真传了口径：hold-and-resume.mjs 两处 dispatch 都按 --workflow 取名（源码级接线守卫）
+ok 44 - 调用侧真传了口径：hold-and-resume.mjs 两处 dispatch 都按 --workflow 取名（源码级接线守卫）
+  ---
+  duration_ms: 2.4721
+  type: 'test'
+  ...
+# Subtest: SHARED_PAGE_STAGES：闭集逐字为 push / readback（顺序即登记顺序）
+ok 45 - SHARED_PAGE_STAGES：闭集逐字为 push / readback（顺序即登记顺序）
+  ---
+  duration_ms: 0.9423
+  type: 'test'
+  ...
+# Subtest: stageUsesSharedPage：两个共用阶段为真，其余（含认不出的）一律为假
+ok 46 - stageUsesSharedPage：两个共用阶段为真，其余（含认不出的）一律为假
+  ---
+  duration_ms: 0.1799
+  type: 'test'
+  ...
+# Subtest: proxyForStage：共用阶段与店名无关，恒指共用商家浏览器
+ok 47 - proxyForStage：共用阶段与店名无关，恒指共用商家浏览器
+  ---
+  duration_ms: 0.093
+  type: 'test'
+  ...
+# Subtest: proxyForStage：非共用阶段 + 登记表里的店名 ⇒ 这家店自己的代理
+ok 48 - proxyForStage：非共用阶段 + 登记表里的店名 ⇒ 这家店自己的代理
+  ---
+  duration_ms: 0.0737
+  type: 'test'
+  ...
+# Subtest: proxyForStage：裸调用与未登记的店名 ⇒ 回落共用（旧口径逐字保留）
+ok 49 - proxyForStage：裸调用与未登记的店名 ⇒ 回落共用（旧口径逐字保留）
+  ---
+  duration_ms: 0.0533
+  type: 'test'
+  ...
+# Subtest: proxyForStage：返回完整 URL，且端口只来自登记表（不自己拼第二个数字）
+ok 50 - proxyForStage：返回完整 URL，且端口只来自登记表（不自己拼第二个数字）
+  ---
+  duration_ms: 0.1793
+  type: 'test'
+  ...
+# Subtest: describeStageBrowser：要能回答「那台是谁的」，不能只给一个端口号
+ok 51 - describeStageBrowser：要能回答「那台是谁的」，不能只给一个端口号
+  ---
+  duration_ms: 0.1639
+  type: 'test'
+  ...
+# Subtest: 接线：共用端口来自 browser-ports，本文件里不许出现第二个 19023
+not ok 52 - 接线：共用端口来自 browser-ports，本文件里不许出现第二个 19023
+  ---
+  duration_ms: 0.7208
+  type: 'test'
+  location: 'D:\\Retire\\sycm-crlf-probe\\skills\\sycm-alimama-daily-report\\scripts\\stage-browsers.test.mjs:98:1'
+  failureType: 'testCodeFailure'
+  error: '代码里不该出现端口字面量：登记表换了端口，抄死的那个不会跟着变，而症状是「修复动作指向一台不存在的浏览器」'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///D:/Retire/sycm-crlf-probe/skills/sycm-alimama-daily-report/scripts/stage-browsers.test.mjs:114:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..52
+# tests 52
+# suites 0
+# pass 50
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 583.8045
