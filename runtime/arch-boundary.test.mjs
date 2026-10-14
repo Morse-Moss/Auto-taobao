@@ -242,6 +242,14 @@ const RUNTIME_TO_SKILLS = Object.freeze([
   'runtime/sync-latest-ab-to-main.mjs',
   'runtime/sync-weekly-sku-history.mjs',
   'runtime/update-competitor-class-labels.mjs',
+  // 2026-10-14 新增：周报竞品链起跑前登录态预检。它 import 的是
+  // `export-market-analysis.mjs` 的两个**判据函数**（isXiaowangshenLoginTarget /
+  // isLoggedInAccountText）——「哪个页签是小旺神登录页、什么文本算已登录」是平台判据，
+  // 只许有一份（ensurePluginSession 在用的同一对）；在 runtime 重抄一遍就是等着两边漂移，
+  // 而漂移的症状是「预检说没掉登录、采集段却撞墙」。与 escalation-plan.mjs 复用
+  // date-picker.resolveTargetDate 同型：runtime → skills 的**复用**，不是业务倒灌。
+  // 预检的其余部分（投递形状、去重、恢复通知、退出码）都是机制层，留在 runtime。
+  'runtime/xws-weekly-login-preflight.mjs',
   'runtime/xws-sku-dry-run-core.mjs',
   'runtime/xws-sku-dry-run-core.test.mjs',
   'runtime/xws-sku-payload-parser.mjs',

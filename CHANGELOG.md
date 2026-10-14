@@ -15,6 +15,39 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.9.3] - 2026-10-14
+
+1.9.2 推上去后 CI 的 `fast-gate` 红了：**两条守卫**点名 1.9.2 的新代码没登记。
+都不是新知识，是仓库既有的「新枚举/新跨目录依赖必须显式登记」规矩 —— 属于执行漏洞。
+两条都在本机全量 `runtime` 套件上先复现（`not ok 35` / `not ok 80`）、修完复验（1351/1351）。
+
+### 改了什么
+
+- `runtime/notify-feishu-core.mjs`（`TITLE_BY_TYPE`）与 `runtime/alert-copy.mjs`（`ALERT_TYPES`）：
+  登记 1.9.2 新引入的两个告警 type —— `XWS_WEEKLY_LOGIN_REQUIRED` / `XWS_WEEKLY_LOGIN_RESOLVED`。
+  标题在通用表里**带链名**（「竞品周采集起跑前检出」），与 SKU 链同病的 `XWS_LOGIN_REQUIRED`
+  分开：两条链的登录失效互不顶掉（竞品挂了不该顶掉 SKU 的恢复通知，反之同理），去重按 type 成对。
+- `runtime/arch-boundary.test.mjs`（`RUNTIME_TO_SKILLS` 清单）：登记
+  `runtime/xws-weekly-login-preflight.mjs`，理由写进注释 —— 它 import 的是
+  `export-market-analysis.mjs` 的两个**判据函数**（平台知识只许有一份，runtime 重抄就会漂移，
+   漂移症状是「预检说没掉登录、采集段却撞墙」），与 `escalation-plan.mjs` 复用
+  `date-picker.resolveTargetDate` 同型：runtime → skills 是**复用**，不是业务倒灌；
+  预检的投递/去重/退出码都是机制层，留在 runtime。
+
+### 为什么改
+
+守卫的原文要求：新告警 type 不进 `ALERT_TYPES` 就红（「否则它的标题没人管」）；
+新跨目录依赖不登记就红（「新增应当先问一句该不该留在能力目录里，而不是直接登记」）。
+问题问过了，答案写在注释里。
+
+### 验证到什么程度（说实话）
+
+- 本机全量 `runtime` 套件（`scripts/run-test-suite.mjs runtime --concurrency=1`）：
+  修前 1349/1351（`alert-type-title-guard` 与 `arch-boundary` 各一条红，均点名新文件）；
+  修后 **1351/1351 通过，退出码 0**。证据：`tmp/weekly-preflight/runtime-suite-192-20261014.txt`。
+- 1.9.2 的 CI run `38541203330`：`fast-gate` failure（即本版本修的那两条），
+  其余 job success。1.9.3 推完后看新 run 结论。
+
 ## [1.9.2] - 2026-10-14
 
 周报竞品链「告警发不出去」与「登录态没有起跑前检查」两个病的同一次修复。

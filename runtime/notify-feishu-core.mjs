@@ -44,6 +44,10 @@ const MISSING_SCOPE_HINT =
 export const TITLE_BY_TYPE = Object.freeze({
   XWS_LOGIN_REQUIRED: '小旺神登录已失效',
   XWS_LOGIN_RESOLVED: '小旺神登录已恢复',
+  // 2026-10-14 新增（周报竞品链起跑前登录态预检）：与 SKU 链那两个同源但**不同链**——
+  // 收信人要看出「这是竞品周采集这一轮的事」，所以标题里带链名，不共用 SKU 的词。
+  XWS_WEEKLY_LOGIN_REQUIRED: '小旺神登录已失效（竞品周采集起跑前检出）',
+  XWS_WEEKLY_LOGIN_RESOLVED: '小旺神登录已恢复（竞品周采集）',
   XWS_ACCOUNT_MISMATCH: '小旺神登录的账号不对',
   XWS_AUTH_UNKNOWN: '读不出小旺神的登录结论（按不放行处理）',
   XWS_PLUGIN_NOT_READY: '小旺神插件没就绪',

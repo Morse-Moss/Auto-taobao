@@ -300,6 +300,11 @@ export const ALERT_TYPES = Object.freeze({
   // —— 小旺神 / 商品采集链（runtime/xws-*.mjs，标题走通用表）——
   XWS_LOGIN_REQUIRED: Object.freeze({ title: 'table', note: '小旺神登录失效；收信人＝运营' }),
   XWS_LOGIN_RESOLVED: Object.freeze({ title: 'table', note: '小旺神登录恢复；收信人＝运营' }),
+  // 2026-10-14 新增：周报竞品链起跑前登录态预检（runtime/xws-weekly-login-preflight.mjs）。
+  // 与上面 SKU 链那两个**同病不同链**：标题在通用表里带链名，去重按 type 成对，
+  // 两条链的登录失效互不顶掉（竞品挂了不该把 SKU 的恢复通知顶掉，反之同理）。
+  XWS_WEEKLY_LOGIN_REQUIRED: Object.freeze({ title: 'table', note: '竞品周采集起跑前检出小旺神登录失效；收信人＝运营' }),
+  XWS_WEEKLY_LOGIN_RESOLVED: Object.freeze({ title: 'table', note: '竞品周采集的小旺神登录态已恢复；收信人＝运营' }),
   XWS_ACCOUNT_MISMATCH: Object.freeze({ title: 'table', note: '小旺神登录账号不对；收信人＝运营' }),
   XWS_AUTH_UNKNOWN: Object.freeze({ title: 'table', note: '读不出登录结论（按不放行处理）；收信人＝运营' }),
   XWS_PLUGIN_NOT_READY: Object.freeze({ title: 'table', note: '小旺神插件没就绪；收信人＝运营' }),
