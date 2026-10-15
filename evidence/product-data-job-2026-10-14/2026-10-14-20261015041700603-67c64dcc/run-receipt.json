@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-14-20261015041700603-67c64dcc",
+  "date": "2026-10-14",
+  "status": "COMPLETED",
+  "startedAt": "2026-10-15T04:17:00.605Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "SKIPPED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "failure": null,
+  "failedStage": null,
+  "finishedAt": "2026-10-15T04:30:20.950Z",
+  "completionNotice": {
+    "alertId": "product-ok-20261014",
+    "delivered": true,
+    "suppressed": false,
+    "reason": null,
+    "tables": [
+      {
+        "name": "商品底单",
+        "rows": 237
+      },
+      {
+        "name": "商品询单",
+        "rows": 39
+      }
+    ]
+  }
+}

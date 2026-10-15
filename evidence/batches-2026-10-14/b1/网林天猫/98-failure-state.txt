@@ -1,0 +1,11 @@
+店：网林天猫
+停在哪一步：shop-report
+失败原因（符号）：阶段 shop-report 失败（exit 1）
+页面：日报_20261015_65141cc3c0fd0c526f65e7da28ff800b.xlsx
+URL：https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Fone-fetch-report.oss-cn-zhangjiakou.aliyuncs.com%2Freports%2F2219095772127%2Freport%2F202610%2F%25E6%2597%25A5%25E6%258A%25A5_20261015_65141cc3c0fd0c526f65e7da28ff800b.xlsx%3FExpires%3D1792047573%26OSSAccessKeyId%3DLTAI5t6Ra3JTBxbA2mkDoCSn%26Signature%3DTkizJLDR1R2CTiNaQTRVHObTcok%253D&wdOrigin=BROWSELINK
+现场页签：第一个非 about 页签（给了提示「sycm」但没挑到该站点的页）
+视口：1506x594（dpr=1.25，滚动=0）
+遮挡层：无
+可见元素（0 个）：
+页面可见文本（前 600 字）：
+  

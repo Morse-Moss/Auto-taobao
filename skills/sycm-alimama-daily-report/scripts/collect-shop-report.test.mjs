@@ -132,3 +132,28 @@ test('接线守卫：调用点不许把判据再包成 RegExp/字符串 —— �
   assert.match(codeOnly, /pickDailyPreview\(\s*state\.info/u,
     '调用点必须走 pickDailyPreview');
 });
+
+test('接线守卫（四）：直下通道必须真接上 —— 装仪表先于点击、两条通道都落 shopXlsxPath', () => {
+  // 2026-10-15：平台把日报导出改成在线预览、文件不落盘 ⇒ 只等文件系统就是
+  // 8 家店 × 3 轮全败的那个超时。这条守卫钉的是**调用点**：
+  // 仪表装晚了（URL 已过有效期/页面已导航走）＝ 直下通道形同虚设，
+  // 而症状与「没这条通道」逐字一样（都是超时）—— 正是本项目最反复的那类静默失败。
+  const source = readFileSync(new URL('./collect-shop-report.mjs', import.meta.url), 'utf8');
+  const codeOnly = source
+    .split('\n')
+    .filter((line) => !/^\s*(\/\/|\*|\/\*)/u.test(line))
+    .map((line) => line.replace(/\/\/.*$/u, ''))
+    .join('\n');
+  const installAt = codeOnly.indexOf('installDirectDownloadCaptureExpression()');
+  const clickAt = codeOnly.indexOf("label: '下载报表按钮'");
+  assert.ok(installAt >= 0, '调用点必须装直下通道仪表');
+  assert.ok(clickAt >= 0, '找不到下载按钮的点击点（守卫自身失效？）');
+  assert.ok(installAt < clickAt, '仪表必须装在点「下载报表」之前：签名 URL 有时效，装晚了抓不到');
+  assert.match(codeOnly, /readDirectDownloadUrlsExpression\(\)/u, '轮询里必须读页面记到的 URL');
+  assert.match(codeOnly, /pickDirectDownloadUrl\(\s*candidates,\s*reportPattern\s*\)/u,
+    '挑候选必须带店家的 reportPattern：不带的挑法会把不明文件当成日报');
+  assert.match(codeOnly, /fetchDirectDownload\(\{\s*url:\s*candidate,\s*dir:\s*args\.downloads,\s*pattern:\s*reportPattern\s*\}\)/u,
+    '直取必须落进 args.downloads、并用同一个 reportPattern 当最后一道门');
+  assert.equal((codeOnly.match(/shopXlsxPath = /gu) ?? []).length, 2,
+    '老通道与新通道都必须打 shopXlsxPath —— 下游 run-multi-shop-day 只认这一句，少一条那个通道就取不到件');
+});

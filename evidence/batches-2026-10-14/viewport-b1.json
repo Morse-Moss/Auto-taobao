@@ -1,16 +1,45 @@
 {
-  "ok": true,
+  "ok": false,
   "threshold": {
     "width": 1200,
     "height": 600
   },
-  "checked": 2,
-  "failed": [],
+  "checked": 5,
+  "failed": [
+    {
+      "shop": "盖文天猫",
+      "proxyPort": 19045,
+      "targetId": "CAC52CFF5426CE12B6580C9F2DBA5FDC",
+      "width": null,
+      "height": null,
+      "dpr": null,
+      "readError": "The operation was aborted due to timeout",
+      "verdict": {
+        "ok": false,
+        "reason": "VIEWPORT_UNREADABLE",
+        "detail": "视口读数缺失（width=null、height=null）"
+      }
+    }
+  ],
   "entries": [
     {
       "shop": "里可林淘宝",
       "proxyPort": 19041,
-      "targetId": "B97386D840407A2A72E972EA698A8766",
+      "targetId": "543620A734BA6321FF4AC1B3C54BFC67",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    },
+    {
+      "shop": "网林天猫",
+      "proxyPort": 19042,
+      "targetId": "A22E53131B674FC45E81D21B1FE321FB",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,
@@ -24,7 +53,35 @@
     {
       "shop": "盖文淘宝",
       "proxyPort": 19043,
-      "targetId": "BDAB0BC8639CBD7E9E0269FB8379090C",
+      "targetId": "717EF5EDAF38E92FF734B8A8ACB9EBCE",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    },
+    {
+      "shop": "盖文天猫",
+      "proxyPort": 19045,
+      "targetId": "CAC52CFF5426CE12B6580C9F2DBA5FDC",
+      "width": null,
+      "height": null,
+      "dpr": null,
+      "readError": "The operation was aborted due to timeout",
+      "verdict": {
+        "ok": false,
+        "reason": "VIEWPORT_UNREADABLE",
+        "detail": "视口读数缺失（width=null、height=null）"
+      }
+    },
+    {
+      "shop": "科塔淘宝",
+      "proxyPort": 19044,
+      "targetId": "2CA924021336F2CF3F130EC204E66E69",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,

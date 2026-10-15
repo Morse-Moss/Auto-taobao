@@ -1,0 +1,15 @@
+店：里可林天猫
+停在哪一步：shop-report
+失败原因（符号）：阶段 shop-report 失败（exit 1）
+页面：瓴羊One·分析
+URL：https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common&reportId=4306031&type=preview
+现场页签：第一个非 about 页签（给了提示「sycm」但没挑到该站点的页）
+视口：1506x642（dpr=1.25，滚动=58）
+遮挡层：无
+表格：2行x1列
+可见元素（3 个）：
+  · BUTTON "下载报表" rect=590,334,80x28
+  · BUTTON "加入我的报表" rect=677,334,104x28
+  · BUTTON "加入在线表格" rect=789,334,122x28
+页面可见文本（前 600 字）：
+  返回 | 预览报表 数据来源： 电商后台-天猫淘宝-生意参谋 数据维度： 店铺-整体 统计日期： 2026-09-15～2026-10-14 更新设置： 自动更新-最近30天 暂无数据 下载报表 加入我的报表 加入在线表格 共0条数据，预览最多显示前30条数据

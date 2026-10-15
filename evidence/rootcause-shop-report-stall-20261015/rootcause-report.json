@@ -1,0 +1,298 @@
+{
+  "shop": "网林天猫",
+  "proxy": "19042",
+  "steps": [],
+  "preview": {
+    "href": "https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common&reportId=4306105&type=preview",
+    "range": [
+      "2026-09-15",
+      "2026-10-14"
+    ],
+    "hasButton": true,
+    "disabled": false
+  },
+  "A": {
+    "click": {
+      "clicked": true,
+      "tag": "SPAN",
+      "text": "下载报表"
+    },
+    "watch": [
+      {
+        "at": "10s",
+        "downloadsToday": 15,
+        "tabs": 4
+      },
+      {
+        "at": "20s",
+        "downloadsToday": 15,
+        "tabs": 4
+      },
+      {
+        "at": "30s",
+        "downloadsToday": 15,
+        "tabs": 4
+      },
+      {
+        "at": "40s",
+        "downloadsToday": 15,
+        "tabs": 4
+      },
+      {
+        "at": "50s",
+        "downloadsToday": 15,
+        "tabs": 4
+      },
+      {
+        "at": "60s",
+        "downloadsToday": 15,
+        "tabs": 4
+      }
+    ],
+    "net": [
+      {
+        "k": "fetch",
+        "url": "//sycm.taobao.com/lyone/fetchData/download.json?reportId=4306105",
+        "status": 200
+      },
+      {
+        "k": "fetch",
+        "url": "//sycm.taobao.com/lyone/fetchData/queryDownloadUrl.json?reportId=4306105",
+        "status": 200
+      },
+      {
+        "k": "fetch",
+        "url": "//sycm.taobao.com/lyone/fetchData/queryDownloadUrl.json?reportId=4306105",
+        "status": 200
+      }
+    ],
+    "console": [],
+    "dom": [
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据来源：  电商后台-天猫淘宝-生意参谋"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据维度：  店铺-整体"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "统计日期：  2026-09-15～2026-10-14"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "更新设置：  自动更新-最近30天"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据来源：  电商后台-天猫淘宝-生意参谋"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据维度：  店铺-整体"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "统计日期：  2026-09-15～2026-10-14"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "更新设置：  自动更新-最近30天"
+      }
+    ],
+    "popups": [],
+    "anchors": [
+      {
+        "href": "https://one-fetch-report.oss-cn-zhangjiakou.aliyuncs.com/reports/2219095772127/report/202610/%E6%97%A5%E6%8A%A5_20261015_65141cc3c0fd0c526f65e7da28ff800b.xlsx?Expires=1792052246&OSSAccessKeyId=LTAI5t6",
+        "download": ""
+      }
+    ],
+    "routes": [],
+    "errors": [],
+    "newFiles": 0
+  },
+  "B": {
+    "click": {
+      "clicked": true,
+      "x": 629.6000366210938,
+      "y": 611.6000366210938,
+      "tag": "SPAN",
+      "text": "下载报表"
+    },
+    "watch": [
+      {
+        "at": "10s",
+        "downloadsToday": 15,
+        "tabs": 5
+      },
+      {
+        "at": "20s",
+        "downloadsToday": 15,
+        "tabs": 5
+      },
+      {
+        "at": "30s",
+        "downloadsToday": 15,
+        "tabs": 5
+      },
+      {
+        "at": "40s",
+        "downloadsToday": 15,
+        "tabs": 5
+      },
+      {
+        "at": "50s",
+        "downloadsToday": 15,
+        "tabs": 5
+      },
+      {
+        "at": "60s",
+        "downloadsToday": 15,
+        "tabs": 5
+      }
+    ],
+    "net": [
+      {
+        "k": "fetch",
+        "url": "//sycm.taobao.com/lyone/fetchData/download.json?reportId=4306105",
+        "status": 200
+      },
+      {
+        "k": "fetch",
+        "url": "//sycm.taobao.com/lyone/fetchData/queryDownloadUrl.json?reportId=4306105",
+        "status": 200
+      },
+      {
+        "k": "fetch",
+        "url": "//sycm.taobao.com/lyone/fetchData/queryDownloadUrl.json?reportId=4306105",
+        "status": 200
+      },
+      {
+        "k": "fetch",
+        "url": "//sycm.taobao.com/lyone/fetchData/download.json?reportId=4306105",
+        "status": 200
+      },
+      {
+        "k": "fetch",
+        "url": "//sycm.taobao.com/lyone/fetchData/queryDownloadUrl.json?reportId=4306105",
+        "status": 200
+      },
+      {
+        "k": "fetch",
+        "url": "//sycm.taobao.com/lyone/fetchData/queryDownloadUrl.json?reportId=4306105",
+        "status": 200
+      },
+      {
+        "k": "fetch",
+        "url": "https://umdcv4.taobao.com/repWd.json?e=2072&sv=199&pv=234&pn=sycm.taobao.com&biz=0&bx-umidtoken=T2gAZ2XV8pZxT0an1M9AgWQK0yuYzZkL0HEyvG2fopNmCBzJPRVcVF51VUj_nRHjZb8=&tid=NdB_lYXtsc3AmpeadtDoi7ZGkb8q6cqxwwRW9rMB_1BSNJ-5EX1S1HnwGHv-pZuf&tk=zEr",
+        "status": 200
+      }
+    ],
+    "console": [],
+    "dom": [
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据来源：  电商后台-天猫淘宝-生意参谋"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据维度：  店铺-整体"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "统计日期：  2026-09-15～2026-10-14"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "更新设置：  自动更新-最近30天"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据来源：  电商后台-天猫淘宝-生意参谋"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据维度：  店铺-整体"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "统计日期：  2026-09-15～2026-10-14"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "更新设置：  自动更新-最近30天"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据来源：  电商后台-天猫淘宝-生意参谋"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据维度：  店铺-整体"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "统计日期：  2026-09-15～2026-10-14"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "更新设置：  自动更新-最近30天"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据来源：  电商后台-天猫淘宝-生意参谋"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "数据维度：  店铺-整体"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "统计日期：  2026-09-15～2026-10-14"
+      },
+      {
+        "tag": "DIV",
+        "cls": "dt-oui-col dt-oui-col-6 css-8e7wia",
+        "text": "更新设置：  自动更新-最近30天"
+      }
+    ],
+    "popups": [],
+    "anchors": [
+      {
+        "href": "https://one-fetch-report.oss-cn-zhangjiakou.aliyuncs.com/reports/2219095772127/report/202610/%E6%97%A5%E6%8A%A5_20261015_65141cc3c0fd0c526f65e7da28ff800b.xlsx?Expires=1792052246&OSSAccessKeyId=LTAI5t6",
+        "download": ""
+      },
+      {
+        "href": "https://one-fetch-report.oss-cn-zhangjiakou.aliyuncs.com/reports/2219095772127/report/202610/%E6%97%A5%E6%8A%A5_20261015_65141cc3c0fd0c526f65e7da28ff800b.xlsx?Expires=1792052307&OSSAccessKeyId=LTAI5t6",
+        "download": ""
+      }
+    ],
+    "routes": [],
+    "errors": [],
+    "newFiles": 0
+  }
+}

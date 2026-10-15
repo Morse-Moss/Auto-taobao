@@ -1,0 +1,46 @@
+{
+  "version": "unified-summary-v1",
+  "workflow": "promotion-daily",
+  "date": "2026-10-14",
+  "shops": {
+    "网林淘宝": {
+      "batch": 1,
+      "shop": "网林淘宝",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "evidence": "evidence\\promotion-batches-2026-10-14-b2backfill\\b1\\网林淘宝"
+    },
+    "里可林天猫": {
+      "batch": 1,
+      "shop": "里可林天猫",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "evidence": "evidence\\promotion-batches-2026-10-14-b2backfill\\b1\\里可林天猫"
+    },
+    "网林家居": {
+      "batch": 1,
+      "shop": "网林家居",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "evidence": "evidence\\promotion-batches-2026-10-14-b2backfill\\b1\\网林家居"
+    }
+  }
+}

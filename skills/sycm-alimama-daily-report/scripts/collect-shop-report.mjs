@@ -18,6 +18,10 @@ import {
   parseCollectArgs, pickNewest, scrollIntoViewExpression, shopReportNamePattern, sycmShopIdentityExpression,
 } from './collect-core.mjs';
 import { captureCollectorFailureScene } from './collect-failure-scene.mjs';
+import {
+  fetchDirectDownload, installDirectDownloadCaptureExpression,
+  pickDirectDownloadUrl, readDirectDownloadUrlsExpression,
+} from './shop-report-direct-download.mjs';
 
 // 已验证的报表定义 id（SOP §3）；它进文件名哈希，变了就说明取的不是同一份报表。
 const KNOWN_REPORT_ID = '4300764';
@@ -393,11 +397,23 @@ async function run(args) {
     return;
   }
 
+  // 直下通道的页面仪表必须**赶在点击之前**装上（2026-10-15）：
+  // 平台 10-14 中午起把日报导出改成「OSS 生成 + Office Viewer 新标签页预览」，
+  // 文件永不落盘 ⇒ 只等文件系统就是 8 家店 × 3 轮全败的那个超时。
+  // 签名 URL 只在页面上存在有限时间，装晚了就什么都抓不到。
+  console.log('[4/4] 装直下通道仪表（平台 10-15 起把日报导出改成在线预览，文件不落盘）');
+  await evalOn(args, targetId, installDirectDownloadCaptureExpression());
+
   console.log('[4/4] 点「下载报表」');
   console.log(`      → ${await clickVerified(args, targetId,
     { selector: '[data-collect-download="1"]', label: '下载报表按钮', scroll: true })}`);
 
+  // 两条通道**并行**等，谁先来用谁（2026-10-15）：
+  //   A. 老通道：浏览器把文件直接下进下载目录（平台若回滚直接落盘，这条路仍有效）；
+  //   B. 新通道：页面里出现 OSS 签名 URL ⇒ Node 侧直取落盘（预览形态下的唯一出路）。
+  // 只等 A 就是今早全败的原因；只等 B 则平台一回滚就瞎 —— 所以两边都等。
   const deadline = Date.now() + args.timeoutMs;
+  let directError = null;
   while (Date.now() < deadline) {
     await delay(3000);
     const fresh = newEntries(before, listDownloads(args.downloads, reportPattern).map((entry) => entry.name));
@@ -408,9 +424,27 @@ async function run(args) {
       console.log(`      shopXlsxPath = ${path.join(args.downloads, newest.name)}`);
       return;
     }
-    console.log(`      等待下载… ${Math.round((args.timeoutMs - (deadline - Date.now())) / 1000)}s`);
+    const candidates = await evalOn(args, targetId, readDirectDownloadUrlsExpression());
+    const candidate = pickDirectDownloadUrl(candidates, reportPattern);
+    if (candidate) {
+      try {
+        const saved = await fetchDirectDownload({ url: candidate, dir: args.downloads, pattern: reportPattern });
+        console.log(`      直下 URL 已捕获 → 新文件：${saved.name}（${saved.size} bytes）`);
+        console.log(`      shopXlsxPath = ${saved.path}`);
+        return;
+      } catch (error) {
+        // 直下失败不当场抛：老通道可能还会落盘（平台回滚、或签名刚过期），继续等到截止。
+        // 失败原因必须留下来 —— 超时报错只写「没等到」会把人带去查错的方向。
+        directError = error.message;
+        console.log(`      直下失败（继续等文件通道）：${error.message}`);
+      }
+    }
+    console.log(`      等待下载… ${Math.round((args.timeoutMs - (deadline - Date.now())) / 1000)}s`
+      + `｜直下候选 ${Array.isArray(candidates) ? candidates.length : 0} 个`);
   }
-  throw new Error(`${args.timeoutMs}ms 内没等到新的店铺报表：判据取文件系统，页面说「已触发下载」不算数`);
+  throw new Error(`${args.timeoutMs}ms 内没等到新的店铺报表：文件系统没有新文件`
+    + (directError ? `，直下通道抓到 URL 但失败（${directError}）` : '，页面也没给出可直下的 URL')
+    + '（判据取文件系统+直下 URL 双通道，页面说「已触发下载」不算数）');
 }
 
 /**

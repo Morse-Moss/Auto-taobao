@@ -1,0 +1,204 @@
+{
+  "capturedAt": "2026-10-15T06:41:18.375Z",
+  "url": "https://sycm.taobao.com/lyone/auto_analysis/datafetch/report_generation?insertType=sycm&layoutHide=1&useDebug=false&activeKey=common&reportId=4306031&type=preview",
+  "title": "瓴羊One·分析",
+  "viewport": {
+    "w": 1506,
+    "h": 642,
+    "dpr": 1.25,
+    "scrollY": 58
+  },
+  "visibleText": "返回 | 预览报表 数据来源： 电商后台-天猫淘宝-生意参谋 数据维度： 店铺-整体 统计日期： 2026-09-15～2026-10-14 更新设置： 自动更新-最近30天 暂无数据 下载报表 加入我的报表 加入在线表格 共0条数据，预览最多显示前30条数据",
+  "dialogs": [],
+  "interactive": [
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "下载报表",
+      "cls": "dt-oui-btn css-8e7wia dt-oui-btn-primary dt-oui-btn-background-ghost",
+      "rect": {
+        "x": 590,
+        "y": 334,
+        "w": 80,
+        "h": 28
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "加入我的报表",
+      "cls": "dt-oui-btn css-8e7wia dt-oui-btn-primary dt-oui-btn-background-ghost",
+      "rect": {
+        "x": 677,
+        "y": 334,
+        "w": 104,
+        "h": 28
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "加入在线表格",
+      "cls": "dt-oui-btn css-8e7wia dt-oui-btn-primary",
+      "rect": {
+        "x": 789,
+        "y": 334,
+        "w": 122,
+        "h": 28
+      }
+    }
+  ],
+  "domSummary": {
+    "totalElements": 6980,
+    "counts": {
+      "HTML": 1,
+      "HEAD": 1,
+      "STYLE": 56,
+      "SCRIPT": 21,
+      "META": 11,
+      "TITLE": 1,
+      "LINK": 6,
+      "BODY": 1,
+      "svg": 10,
+      "symbol": 2632,
+      "path": 4156,
+      "DIV": 48,
+      "SPAN": 18,
+      "use": 3,
+      "TABLE": 1,
+      "COLGROUP": 1,
+      "THEAD": 1,
+      "TR": 3,
+      "TD": 3,
+      "TBODY": 1,
+      "IMG": 1,
+      "P": 1,
+      "BUTTON": 3
+    },
+    "containers": [
+      {
+        "tag": "DIV",
+        "id": "root",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": -58,
+          "w": 1501,
+          "h": 700
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "op-sycm-content-body",
+        "rect": {
+          "x": 0,
+          "y": -58,
+          "w": 1501,
+          "h": 437
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "op-sycm-content",
+        "rect": {
+          "x": 0,
+          "y": -58,
+          "w": 1501,
+          "h": 437
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "op-sycm-content-right sycm-iframe",
+        "rect": {
+          "x": 0,
+          "y": -58,
+          "w": 1501,
+          "h": 437
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "dt-oui-spin-nested-loading op-sycm-content-right-spinning css-8e7wia",
+        "rect": {
+          "x": 0,
+          "y": -58,
+          "w": 1501,
+          "h": 437
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "dt-oui-spin-container",
+        "rect": {
+          "x": 0,
+          "y": -58,
+          "w": 1501,
+          "h": 437
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "jycm-page-container",
+        "rect": {
+          "x": 0,
+          "y": -58,
+          "w": 1501,
+          "h": 377
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "dt-oui-row dt-oui-row-space-between dt-oui-row-middle jycm-page-container-header",
+        "rect": {
+          "x": 0,
+          "y": -58,
+          "w": 1501,
+          "h": 45
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "jycm-page-container-header-left",
+        "rect": {
+          "x": 28,
+          "y": -38,
+          "w": 183,
+          "h": 25
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "jycm-page-container-title",
+        "rect": {
+          "x": 28,
+          "y": -38,
+          "w": 133,
+          "h": 25
+        }
+      }
+    ]
+  },
+  "tables": [
+    {
+      "rows": 2,
+      "cols": 1,
+      "rect": {
+        "x": 28,
+        "y": 49,
+        "w": 1459,
+        "h": 244
+      },
+      "visible": true
+    }
+  ]
+}

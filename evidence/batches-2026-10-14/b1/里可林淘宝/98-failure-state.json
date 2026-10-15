@@ -1,0 +1,623 @@
+{
+  "capturedAt": "2026-10-15T06:28:48.409Z",
+  "url": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-14&endTime=2026-10-14&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day",
+  "title": "营销场景报表_万相台无界版",
+  "viewport": {
+    "w": 1506,
+    "h": 642,
+    "dpr": 1.25,
+    "scrollY": 0
+  },
+  "visibleText": "首页 推广  报表  洞察  创意  工具  账户  AI小万  新人手册  快捷入口  消息中心 里可林家居:小嘉 ID：2350600069  基础报表   营销场景报表  计划报表  人群报表  商品报表  内容报表  AI查数 万能查数  创意报表  地域报表  实时报表  单元报表  关键词报表  权益报表 场景结案  下载管理   在线客服 添加小二 直播带教 直播中 双11蓄水预热-非标人群攻防与关键词抢量    货品全站推广新客福利 投放立享专属流量扶持！ 稳定交付ROI 全站AI效果智达，付免联动撬动淘系搜推流量，保障投放效果 新客流量扶持 新客期专属权益，创建优质货品计划享20%以上全域流量扶持 自然流量助推 投放「平台推荐」商品，采纳系统出价， 至高享30%额外流量助推 无成交赔付 新客首单保障，投放3天无成交得平台赔付优惠券，投放更安心 添加商品  添加商品 1 / 1 清空 宝贝信息 价格 销量 库存 发布日期 全部移除 Nicoline彩色水晶台上盆卫生间洗手盆洗脸盆艺术创意透明树脂面盆 宝贝ID：905103792812 ¥2,560.00 7 1,089 2025-03-31 移除 出价方式 控投产比投放 系统将尽可能按照您设定的净目标投产比优化，提升净成交金额 最大化拿量 系统将在您设定的预算下，最大化本品的直接净成交金额 出价升级，最大化成交 净目标投产比 商品昨日搜索曝光量低于100，同行同层平均目标投产比为4.98，建议净投产比设置不超过4.98（相当于总投产比6.42），获取更多曝光，可享成本保障 4.98 成本保障 预计曝光量+19% 自定义  基于历史退款率，相当于总目标投产比6.42 预算类型 不限预算 每日预算 专属权益 15天扶持特权  新客期单单享扶持，新客专属助推 无成交赔付  新客首单保障，3天无成交必赔 立即下单 消息中心 更多消息 日常公告 系统消息 升级 邀您优先体验升级版「万相点睛」2期！ 上线 「万相点睛」破局经验依赖，掘金蓝海增量! 策略 大促开卖！超级短视频「黄金10小时」抢量指南 大促 双11抢量错过等一年！「最大化拿量」全域高效转化，抢占生意爆发！ 上线 重磅升级！货品全站推「控全站费比」上线，成交更确定，速来体验开启！ 1秒后关闭浮层 立即关闭",
+  "dialogs": [
+    {
+      "tag": "DIV",
+      "id": null,
+      "cls": " dialog-header display-flex align-c wO_WXoXRe ",
+      "z": "auto",
+      "rect": {
+        "x": 509,
+        "y": 0,
+        "w": 774,
+        "h": 65
+      },
+      "text": ""
+    },
+    {
+      "tag": "DIV",
+      "id": null,
+      "cls": "flex-1 scroll-y dialog-body",
+      "z": "auto",
+      "rect": {
+        "x": 509,
+        "y": 65,
+        "w": 774,
+        "h": 558
+      },
+      "text": "添加商品  添加商品 1 / 1 清空 宝贝信息 价格 销量 库存 发布日期 全部移除 Nicoline彩色水晶台上盆卫生间洗手盆洗脸盆艺术创意透明树脂面盆 宝贝ID：905103792812 ¥2,560.00 7 1,089 2025-03-31 移除 出价方式 控投产比投放 系统将尽可能按照您设定的净目标投产比"
+    },
+    {
+      "tag": "DIV",
+      "id": null,
+      "cls": "dialog-footer wO_WXoXRm wO_WXoXRr-right",
+      "z": "auto",
+      "rect": {
+        "x": 509,
+        "y": 623,
+        "w": 774,
+        "h": 65
+      },
+      "text": "立即下单"
+    }
+  ],
+  "interactive": [
+    {
+      "tag": "A",
+      "id": null,
+      "text": "",
+      "cls": "",
+      "rect": {
+        "x": 24,
+        "y": 13,
+        "w": 253,
+        "h": 32
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "首页",
+      "cls": "asiYysfSty",
+      "rect": {
+        "x": 289,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "推广",
+      "cls": "asiYysfSty",
+      "rect": {
+        "x": 357,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "报表",
+      "cls": "asiYysfSty",
+      "rect": {
+        "x": 445,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "洞察",
+      "cls": "asiYysfSty",
+      "rect": {
+        "x": 533,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "创意",
+      "cls": "asiYysfSty",
+      "rect": {
+        "x": 621,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "工具",
+      "cls": "asiYysfSty",
+      "rect": {
+        "x": 709,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "账户",
+      "cls": "asiYysfSty",
+      "rect": {
+        "x": 797,
+        "y": 19,
+        "w": 28,
+        "h": 19
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 新人手册",
+      "cls": "wO_WXoXbju wO_WXoXbjw",
+      "rect": {
+        "x": 1136,
+        "y": 6,
+        "w": 56,
+        "h": 48
+      }
+    },
+    {
+      "tag": "A",
+      "id": "mx_136_pop",
+      "text": " 消息中心",
+      "cls": "icQRQlrpb mxgc-popover",
+      "rect": {
+        "x": 1276,
+        "y": 11,
+        "w": 48,
+        "h": 38
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "基础报表 ",
+      "cls": "bXMILLqiFi  bXMILLqiFl   bXMILLqiFm ",
+      "rect": {
+        "x": 0,
+        "y": 74,
+        "w": 96,
+        "h": 20
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 营销场景报表",
+      "cls": "bXMILLqiFn  bXMILLqiFr   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 102,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 计划报表",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 154,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 人群报表",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 206,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 商品报表",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 258,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 内容报表",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 310,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " AI查数 万能查数",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 362,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 创意报表",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 414,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 地域报表",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 466,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 实时报表",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 518,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 单元报表",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 570,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 关键词报表",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 622,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": " 权益报表",
+      "cls": "bXMILLqiFn   child-expand ",
+      "rect": {
+        "x": 0,
+        "y": 674,
+        "w": 96,
+        "h": 44
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "场景结案 ",
+      "cls": "bXMILLqiFi   parent-close ",
+      "rect": {
+        "x": 0,
+        "y": 734,
+        "w": 96,
+        "h": 20
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "下载管理 ",
+      "cls": "bXMILLqiFi   parent-close ",
+      "rect": {
+        "x": 0,
+        "y": 770,
+        "w": 96,
+        "h": 20
+      }
+    },
+    {
+      "tag": "SPAN",
+      "id": "mx_123",
+      "text": "",
+      "cls": " asiYysfSgC  mxgc-btn-link",
+      "rect": {
+        "x": 1243,
+        "y": 24,
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": "mx_127",
+      "text": "",
+      "cls": "asiYysfSbv  asiYysfSbu  ",
+      "rect": {
+        "x": 1243,
+        "y": 24,
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": " 添加商品 1 / 1",
+      "cls": "asiYysfSaY    asiYysfSbe-normal asiYysfSbe-custom-gradient  ",
+      "rect": {
+        "x": 613,
+        "y": 81,
+        "w": 121,
+        "h": 32
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "清空",
+      "cls": "asiYysfSak   ",
+      "rect": {
+        "x": 746,
+        "y": 88,
+        "w": 24,
+        "h": 18
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "全部移除",
+      "cls": "asiYysfSak   ",
+      "rect": {
+        "x": 1173,
+        "y": 151,
+        "w": 48,
+        "h": 18
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "Nicoline彩色水晶台上盆卫生间洗手盆洗脸盆艺术创意透明树脂面盆",
+      "cls": "asiYysfSCc",
+      "rect": {
+        "x": 693,
+        "y": 208,
+        "w": 164,
+        "h": 18
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "移除",
+      "cls": "asiYysfSak   ",
+      "rect": {
+        "x": 1173,
+        "y": 218,
+        "w": 24,
+        "h": 18
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "立即下单",
+      "cls": "asiYysfSaY    asiYysfSbe-normal asiYysfSbe-custom-gradient  ",
+      "rect": {
+        "x": 1153,
+        "y": 640,
+        "w": 106,
+        "h": 32
+      }
+    }
+  ],
+  "domSummary": {
+    "totalElements": 1283,
+    "counts": {
+      "HTML": 1,
+      "HEAD": 1,
+      "META": 8,
+      "TITLE": 1,
+      "LINK": 3,
+      "STYLE": 156,
+      "SCRIPT": 17,
+      "BODY": 1,
+      "svg": 1,
+      "symbol": 183,
+      "path": 284,
+      "DIV": 305,
+      "A": 41,
+      "IMG": 23,
+      "I": 43,
+      "SPAN": 170,
+      "PICTURE": 1,
+      "SOURCE": 2,
+      "IFRAME": 1,
+      "BUTTON": 6,
+      "BR": 1,
+      "TABLE": 2,
+      "THEAD": 1,
+      "TR": 2,
+      "TH": 6,
+      "COLGROUP": 1,
+      "COL": 6,
+      "TBODY": 1,
+      "TD": 6,
+      "LABEL": 4,
+      "INPUT": 5
+    },
+    "containers": [
+      {
+        "tag": "DIV",
+        "id": "app",
+        "cls": "wO_WXoXy",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1501,
+          "h": 732
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "universalBP_punish",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1501,
+          "h": 0
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "universalBP_common_topbar",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1501,
+          "h": 0
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "universalBP_common_layout",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1501,
+          "h": 732
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "mx_61",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1501,
+          "h": 58
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "mx_96",
+        "cls": "asiYysfStK",
+        "rect": {
+          "x": 857,
+          "y": 5,
+          "w": 620,
+          "h": 49
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "ai_analyst_entrance",
+        "cls": "wO_WXoXbjs",
+        "rect": {
+          "x": 857,
+          "y": 6,
+          "w": 267,
+          "h": 48
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "ai_analyst_entrance_xiaowan_entrance",
+        "cls": "",
+        "rect": {
+          "x": 857,
+          "y": 6,
+          "w": 267,
+          "h": 52
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "mx_315",
+        "cls": " ivthphihZZ",
+        "rect": {
+          "x": 1068,
+          "y": 6,
+          "w": 56,
+          "h": 48
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": "mx_1091",
+        "cls": "mxgc-icon mxgc-iconfont-wrapper",
+        "rect": {
+          "x": 1087,
+          "y": 11,
+          "w": 18,
+          "h": 18
+        }
+      }
+    ]
+  },
+  "tables": [
+    {
+      "rows": 0,
+      "cols": 6,
+      "rect": {
+        "x": 613,
+        "y": 130,
+        "w": 724,
+        "h": 60
+      },
+      "visible": true
+    },
+    {
+      "rows": 1,
+      "cols": 6,
+      "rect": {
+        "x": 613,
+        "y": 190,
+        "w": 724,
+        "h": 73
+      },
+      "visible": true
+    }
+  ]
+}
