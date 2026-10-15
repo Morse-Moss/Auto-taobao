@@ -96,6 +96,13 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   // 它核对的是「编排层 `buildShopStages` 真实传给每个采集脚本的每个参数，对面都认得、也都真的用」
   // —— 契约第 2 类（认了却不用 ⇒ 传了与没传结果逐字一样，且两边都不报错）。
   'skills/sycm-alimama-daily-report/scripts/collector-arg-contract.test.mjs',
+  // 2026-10-15 新增：**推广日报对账门** CLI（`check-promotion-completeness.mjs`）。
+  // 它 import 两处 runtime：① `browser-ports.mjs` 的 `collectingShopKeys()` —— 对账分母
+  // 「参与采集的 8 家」的唯一来源（抄一份名单字符串，名单一改分母就成了第二个事实）；
+  // ② `feishu-targets.mjs` 的 `activeProfileName`/`loadFeishuCredentials`/`promotionDailyTargets`
+  // —— 读飞书做独立回读时的目标与凭据唯一来源（同这一族所有读写飞书的脚本，
+  // 绝不把 tenant token 或 base id 抄进本仓）。方向是干净的 skills → runtime（都是机制层叶子）。
+  'skills/sycm-alimama-daily-report/scripts/check-promotion-completeness.mjs',
   // 2026-09-21 新增：**期望页面清单的唯一来源**。它必须留在能力目录里，不能抽到 runtime/ ——
   // 抽过去就让它自己变成 runtime → skills（就是下面那条「业务倒灌机制层」），而 shop-pages.mjs
   // 与驱动都要用它，留在任何一侧的另一侧都会成环。它本身只依赖 date-picker 与 runtime/feishu-targets，
