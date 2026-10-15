@@ -13,6 +13,7 @@ import { readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from '.
 import { validateSummary, UNIFIED_SUMMARY_VERSION } from '../../../runtime/unified-summary-schema.mjs';
 import { expectArgs, shopIdentity } from './shop-identities.mjs';
 import { pendingForKind, readLedger } from './promotion-task-ledger.mjs';
+import { promotionFailureClass } from './promotion-daily-report-core.mjs';
 import { resolveTargetDate } from './run-multi-shop-day.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -134,6 +135,35 @@ function zipFrom(output, kind) {
   return match[1].trim();
 }
 
+// ── 店级有界重试（2026-10-15，用户拍板「加」）──────────────────────────────────
+// 为什么必须有：2026-10-15 07:00 轮，里可林淘宝（阿里妈妈页未就绪）与盖文淘宝（维度选择器
+// 未渲染）都是冷页瞬态——驻留 4 分钟后重跑同两家全绿。「重试能救的失败」此前被直接判成
+// 「需要人看现场」，送进一个探针只认登录墙的驻留里，等一个不会来的人。
+// 安全依据（三条，写在这里给后人核对）：
+//   · submit 重跑不会重复提交——驱动先读任务列表、复用同业务日已生成成功的任务
+//    （reusablePromotionTask，1.8.6 根修）；换通道的「每业务日 1 次补提交」配额不受影响
+//    （重试的是同一个失败阶段，不会走进 fetch 的换通道分支）。
+//   · fetch 重跑按已确认的任务名取件，幂等。
+//   · import 有幂等键去重（promotionIdempotencyKey），重跑不重复写飞书。
+// 纯函数（run/sleep/log 全注入），真机接线在 runPromotionSales1 的 runWithRetry。
+export function runStageWithRetry({ stage, run, sleep, log = () => {}, maxAttempts = 3, backoffMs = 30_000 } = {}) {
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) throw new Error(`maxAttempts 要 ≥1 的整数：${maxAttempts}`);
+  if (!(Number.isFinite(backoffMs) && backoffMs >= 0)) throw new Error(`backoffMs 要 ≥0：${backoffMs}`);
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return run(attempt);
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxAttempts) {
+        log(`[重试] ${stage} 第 ${attempt}/${maxAttempts} 次尝试失败：${String(error?.message ?? error).slice(0, 160)} ⇒ 退避 ${Math.round(backoffMs / 1000)}s 后重试同一阶段`);
+        sleep(backoffMs);
+      }
+    }
+  }
+  throw lastError;
+}
+
 // 链级 summary（P0-3，2026-10-11）：run-batches 的释放判定与驻留判据（unfixableShopsOf /
 // failedShopsOf）读的都是 `--logs` 目录下的 summary.json——推广链原先只往 stdout 打逐店 JSON、
 // 从不落这个文件 ⇒ 下游判据全瞎 ⇒ 失败轮恒判「没有需要人看现场的失败」⇒ 照旧释放、现场被清
@@ -149,8 +179,9 @@ function zipFrom(output, kind) {
 //   · 顶层：version 换统一串（拍板 6.4-A 三链同串，常量 import 自校验器）、workflow='promotion-daily'；
 //   · 逐店：evidence＝该店证据目录相对仓库根（与下面 importer 落盘用的 `<--evidence 根>/<店>`
 //     同一款拼法；ok 店也补——agent 到场第一件事靠它指路，成功店现状没有任何字段指路）；
-//   · 失败店：failureClass 恒 'STAGE_FAILED'（**最小档分类器**，草案 6.1 允许「先全部落
-//     STAGE_FAILED 档，字段不能缺」——推广链尚无逐店分诊判据，细化留给后续，不发明新业务判据）、
+//   · 失败店：failureClass＝promotionFailureClass 按错误文本里的**确定性标记**分类
+//    （2026-10-15 起：登录墙标记 ⇒ NEEDS_LOGIN，其余 ⇒ STAGE_FAILED——判据不猜措辞，
+//     标记由抛错侧写进文本；此前恒 STAGE_FAILED 的「最小档分类器」正式退役）、
 //     noActionRequired:false（空菜单＝需要人看现场，失败店恒要人看）、autoRepair:null
 //     （显式落 null：没跑过修复就是 null，不许 {} 也不许缺——unfixableShopsOf 的 gaveUp
 //     判据靠 typeof 区分「没跑」与「跑过」）。
@@ -166,10 +197,12 @@ export function buildPromotionSummary({ date, results, evidenceRoot, repoRoot = 
       // ok 店：只补 evidence，失败信号字段（failureClass/noActionRequired/autoRepair）不落。
       if (record?.status === 'ok') return [record.shop, { ...record, evidence: evidenceOf(record.shop) }];
       // 失败店：P0-3 的空菜单形态保留，统一字段按上面注记补齐。
+      // failureClass（2026-10-15）：由 promotionFailureClass 按错误文本里的确定性标记分类
+      // （登录墙 ⇒ NEEDS_LOGIN，其余 STAGE_FAILED）——不再恒 STAGE_FAILED。
       return [record.shop, {
         ...record,
         evidence: evidenceOf(record.shop),
-        failureClass: 'STAGE_FAILED',
+        failureClass: promotionFailureClass(record.error),
         noActionRequired: false,
         autoRepair: null,
         repairRequest: { candidates: [] },
@@ -205,20 +238,33 @@ export function runPromotionSales1(argv = process.argv.slice(2)) {
       const identityArgs = expectArgs(shop, { require: ['member'] });
       if (!identity.alimamaMemberId || identityArgs.missing.includes('member')) throw new Error(`${shop} 缺少阿里妈妈身份登记`);
       const record = { batch: batchIndex + 1, shop, status: 'failed', stages: [] };
+      // 同步退避：Atomics.wait 不起子进程、不把本链异步化（全链是 spawnSync 同步形态）。
+      const syncSleep = (ms) => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
+      const runWithRetry = (stage, invoke) => {
+        let attempts = 0;
+        const output = runStageWithRetry({
+          stage,
+          run: () => { attempts += 1; return invoke(); },
+          sleep: syncSleep,
+          log: (line) => console.log(line),
+        });
+        if (attempts > 1) record.retries = [...(record.retries ?? []), { stage, attempts }];
+        return output;
+      };
       try {
         const ledgerPath = args.ledger ?? path.resolve('runtime/promotion-task-ledger.json');
         const ledger = readLedger(ledgerPath);
         const keywordPending = pendingForKind(ledger, { date: args.date, shop, kind: 'keyword' });
         const audiencePending = pendingForKind(ledger, { date: args.date, shop, kind: 'audience' });
         if (keywordPending.length || audiencePending.length) record.recovery = { keywordPending: keywordPending.map((r) => r.taskName), audiencePending: audiencePending.map((r) => r.taskName) };
-        const keywordSubmit = run(args, { shop, kind: 'keyword', phase: 'submit', identity });
+        const keywordSubmit = runWithRetry('keyword-submit', () => run(args, { shop, kind: 'keyword', phase: 'submit', identity }));
         const keywordTask = taskFrom(keywordSubmit, 'keyword'); record.stages.push('keyword-submit');
-        const audienceSubmit = run(args, { shop, kind: 'audience', phase: 'submit', identity });
+        const audienceSubmit = runWithRetry('audience-submit', () => run(args, { shop, kind: 'audience', phase: 'submit', identity }));
         const audienceTask = taskFrom(audienceSubmit, 'audience'); record.stages.push('audience-submit');
-        const keywordZip = zipFrom(run(args, { shop, kind: 'keyword', phase: 'fetch', task: keywordTask, identity }), 'keyword'); record.stages.push('keyword-fetch');
-        const audienceZip = zipFrom(run(args, { shop, kind: 'audience', phase: 'fetch', task: audienceTask, identity }), 'audience'); record.stages.push('audience-fetch');
+        const keywordZip = zipFrom(runWithRetry('keyword-fetch', () => run(args, { shop, kind: 'keyword', phase: 'fetch', task: keywordTask, identity })), 'keyword'); record.stages.push('keyword-fetch');
+        const audienceZip = zipFrom(runWithRetry('audience-fetch', () => run(args, { shop, kind: 'audience', phase: 'fetch', task: audienceTask, identity })), 'audience'); record.stages.push('audience-fetch');
         const shopEvidence = path.join(args.evidence, shop);
-        const importer = spawnSync(process.execPath, [IMPORTER, '--date', args.date, '--shop', shop, '--keyword', keywordZip, '--audience', audienceZip, '--evidence', shopEvidence, ...(args.apply ? ['--apply'] : [])], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+        const importer = runWithRetry('import', () => spawnSync(process.execPath, [IMPORTER, '--date', args.date, '--shop', shop, '--keyword', keywordZip, '--audience', audienceZip, '--evidence', shopEvidence, ...(args.apply ? ['--apply'] : [])], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
         if (importer.status !== 0) throw new Error(importer.stderr || importer.stdout || '导入失败');
         record.status = 'ok'; record.stages.push('import');
       } catch (error) { record.error = error.message; }

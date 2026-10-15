@@ -77,6 +77,20 @@ export function confirmSubmittedTask({ rows = [], kind = null, date = null } = {
   return reusablePromotionTask(rows, { kind, date });
 }
 
+// ── 失败分类（2026-10-15，对账门与驻留收窄共用）────────────────────────────────
+// 判据纪律与 SHOP_FUNC_NO_PERMISSION / OVERLAY_NOT_DISMISSED 同款：**确定性标记**，
+// 由抛错那一侧写进错误文本（唯一生产者＝run-promotion-daily-report.mjs 的 findPage），
+// 上层只认标记、绝不猜措辞。为什么必须有它：推广链此前所有失败一律落 STAGE_FAILED
+//（P0-3 的「最小档分类器」），于是「阿里妈妈掉登录」（要人、驻留探针会等它）与
+//「冷页没就绪」（脚本退避重试就能好）长成同一张脸 —— 2026-10-15 07:00 轮两家冷页失败
+// 被送进驻留、等一个探针永远探不到的人，就是这笔账。
+export const PROMOTION_LOGIN_WALL_TOKEN = 'PROMOTION_ALIMAMA_LOGIN_WALL';
+
+/** 失败文本 → 统一 failureClass（闭合集：NEEDS_LOGIN｜STAGE_FAILED）。 */
+export function promotionFailureClass(errorText) {
+  return String(errorText ?? '').includes(PROMOTION_LOGIN_WALL_TOKEN) ? 'NEEDS_LOGIN' : 'STAGE_FAILED';
+}
+
 export function validateExportRows(headers, rows, { kind, expectedColumns, date, allowEmpty = false }) {
   const allowedColumns = Array.isArray(expectedColumns) ? expectedColumns : [expectedColumns];
   if (!Array.isArray(headers) || !allowedColumns.includes(headers.length)) {
@@ -132,6 +146,12 @@ export function promotionIdempotencyKey(fields, { shop = null, kind = null } = {
   ]);
 }
 
+/** 飞书「日期」字段的存储值（毫秒时间戳，UTC-8 对齐）——写入与对账两侧的唯一算法来源。 */
+export function promotionDateTimestamp(date) {
+  const [year, month, day] = String(date).split('-').map(Number);
+  return Date.UTC(year, month - 1, day) - 8 * 3600 * 1000;
+}
+
 export function buildFeishuFields(headers, values, targetFields) {
   const fields = {};
   for (const [index, sourceName] of headers.entries()) {
@@ -140,8 +160,7 @@ export function buildFeishuFields(headers, values, targetFields) {
     if (value === '' || value === null || value === undefined) continue;
     const type = targetFields.get(sourceName);
     if (sourceName === '日期') {
-      const [year, month, day] = String(value).split('-').map(Number);
-      fields[sourceName] = Date.UTC(year, month - 1, day) - 8 * 3600 * 1000;
+      fields[sourceName] = promotionDateTimestamp(value);
     } else if (type === 2 && /^-?\d+(?:\.\d+)?$/u.test(String(value).trim())) {
       fields[sourceName] = Number(value);
     } else fields[sourceName] = value;

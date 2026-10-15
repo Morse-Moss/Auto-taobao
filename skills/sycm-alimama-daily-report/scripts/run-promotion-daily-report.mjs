@@ -14,7 +14,9 @@ import {
   validateKeywordReportState, validateAudienceReportState, buildAudienceReportUrl,
   AUDIENCE_TASK_RE, AUDIENCE_ZIP_RE,
   confirmSubmittedTask, reusablePromotionTask,
+  PROMOTION_LOGIN_WALL_TOKEN,
 } from './promotion-daily-report-core.mjs';
+import { isLoginWallUrl } from './login-merchant-core.mjs';
 
 const LIST_URL = 'https://one.alimama.com/index.html#!/report/download-list';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -50,7 +52,16 @@ async function openFreshTaskList(proxy, target) {
 async function findPage(proxy) {
   const targets = await request(proxy, '/targets');
   const pages = targets.filter((item) => item.type === 'page' && String(item.url).includes('one.alimama.com'));
-  if (pages.length !== 1) throw new Error(`expected one alimama page, got ${pages.length}`);
+  if (pages.length !== 1) {
+    // 登录墙是「要人」的那一类（驻留的探针会等它、告警会叫人），必须在抛错那一刻把身份说清：
+    // 上层分类（core 侧按标记归类，见 promotion-daily-report-core.mjs）只认这个确定性标记，不猜措辞。
+    // 冷页没就绪则不带标记，由链内有界重试自己救（2026-10-15）。
+    const onWall = targets.filter((item) => item.type === 'page' && isLoginWallUrl(String(item.url)));
+    if (onWall.length) {
+      throw new Error(`${PROMOTION_LOGIN_WALL_TOKEN}：阿里妈妈页停在登录墙上（expected one alimama page, got ${pages.length}）`);
+    }
+    throw new Error(`expected one alimama page, got ${pages.length}`);
+  }
   return pages[0].targetId;
 }
 function parse(argv) {

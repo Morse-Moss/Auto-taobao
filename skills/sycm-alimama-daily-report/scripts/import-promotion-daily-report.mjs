@@ -54,7 +54,9 @@ async function main(argv = process.argv.slice(2)) {
     const source = readZip(args.files[kind]);
     // 阿里妈妈关键词报表近期新增两列；历史 75 列和当前 77 列均可导入，未知列仍由目标字段映射过滤。
     const expectedColumns = kind === 'keyword' ? [75, 77] : [71, 73, 75];
-    validateExportRows(source.headers, source.rows, { kind: kind === 'keyword' ? '关键词' : '人群', expectedColumns, date: args.date, allowEmpty: kind === 'keyword' });
+    // 2026-10-15（用户拍板）：两种报表都允许空表——「平台显示暂无数据」是真实业务形态，
+    // 空≠失败；不填 0 的纪律不变（空态由对账门单列为「低量待确认」，不当成功也不当故障）。
+    validateExportRows(source.headers, source.rows, { kind: kind === 'keyword' ? '关键词' : '人群', expectedColumns, date: args.date, allowEmpty: true });
     const tableId = target.tables?.[kind];
     if (!tableId || !target.baseToken) throw new Error(`推广日报 ${kind} 目标未完整配置（需要 baseToken 与 tables.${kind}）`);
     // loadFeishuCredentials() 的稳定返回契约是 appId/appSecret；不要绕过配置层读取旧字段名。
@@ -68,7 +70,13 @@ async function main(argv = process.argv.slice(2)) {
       if (existingKeys.has(k) || seen.has(k)) continue; seen.add(k); planned.push(fields);
     }
     receipt.sources[kind] = { file: args.files[kind], csvName: source.csvName, rows: source.rows.length, columns: source.headers.length };
-    receipt.tables[kind] = { tableId, beforeRows: existing.length, plannedRows: planned.length, skippedRows: source.rows.length - planned.length };
+    // 2026-10-15：捕获该店 CSV 实测的「主体ID」去重集合并落进回执——这是对账门人群归属的唯一
+    // 真实来源（一店多主体是常态：2026-10-14 实测 5 家各 5-11 个主体ID；关键词报表无此列记空数组，不猜）。
+    const subjectCol = source.headers.indexOf('主体ID');
+    const subjectIds = subjectCol >= 0
+      ? [...new Set(source.rows.map((values) => String(values[subjectCol] ?? '').trim()).filter(Boolean))].sort()
+      : [];
+    receipt.tables[kind] = { tableId, beforeRows: existing.length, plannedRows: planned.length, skippedRows: source.rows.length - planned.length, subjectIds };
     if (args.apply && planned.length) {
       const ids = []; for (let i = 0; i < planned.length; i += 500) ids.push(...await client.batchCreateRecords(planned.slice(i, i + 500)));
       const after = await client.listRecords(); const written = new Set(ids); const reread = after.filter((r) => written.has(r.record_id));

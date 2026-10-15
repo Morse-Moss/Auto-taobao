@@ -15,6 +15,60 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.9.5] - 2026-10-15
+
+推广日报链 07:00 轮（业务日 2026-10-14）暴露三处设计缺陷：批 1 两家冷页瞬态失败且链内
+无重试；批 2 三家（网林淘宝、里可林天猫、网林家居）整批未跑，却被回执 SUCCEEDED、告警
+「已恢复」、驻留 RESUMED_OK 三个**过程信号**接力洗绿——整条链没有任何一环对「目标日
+数据在飞书到底齐不齐」做**结果核验**。本批只动推广链自身（`skills/sycm-alimama-daily-report/`），
+11:00 日报链共享的 `run-batches.mjs` 等编排代码零改动（手术推迟到 1.9.6）。五项均用户拍板。
+
+### 改了什么
+
+- **对账门（拍板「要」）**：新增 `promotion-completeness-core.mjs`（纯函数判据：分母
+  `collectingShopKeys()` 8 家 × 2 表 × 回执事实 × 飞书独立回读；verdict 闭合集
+  VERIFIED／VERIFIED_BY_ROUND_COUNT／ZERO_CONFIRMED／MISSING／UNVERIFIED／MISMATCH）与
+  CLI `check-promotion-completeness.mjs`（默认同时扫 promotion-batches-<日> 与驻留污染的
+  batches-<日> 两个证据根；退出码 0 齐／1 缺口）。「真实为空」单列 ZERO_CONFIRMED，交人工
+  确认一次，不算成功也不算故障（拍板「真实为空就为空」，不填 0 的纪律不变）。
+- **店级有界重试（拍板「加」）**：`run-promotion-sales1.mjs` 新增纯函数 `runStageWithRetry`
+  （最多 3 次、30s 同步退避），链内五阶段全部走它；重试痕迹落在 `record.retries`。
+- **失败分类**：`promotion-daily-report-core.mjs` 新增 `PROMOTION_LOGIN_WALL_TOKEN` 与
+  `promotionFailureClass`（登录墙 → NEEDS_LOGIN，其余 STAGE_FAILED）；驱动的 `findPage`
+  在页数异常时检测登录墙并抛带 token 的错误——供 1.9.6 驻留触发收窄用。
+- **空表放行（拍板「做」）**：导入器 `validateExportRows` 对两种报表都 `allowEmpty: true`
+  （「平台显示暂无数据」是真实业务形态，空 ≠ 失败）。
+- **日期时间戳同源**：`promotionDateTimestamp` 成为「日期」字段唯一算法来源
+  （Date.UTC(y,m-1,d)−8h），写入侧不再各写各的。
+- **人群归属修正（对账门首跑暴露）**：实测定死「主体ID 是**行级维度、一店多主体**」（5 家
+  各 5-11 个、跨店不相交；按店主体集合求和逐家与回执吻合 13/20/80/18/18，总 149＝飞书当日
+  行数）；阿里妈妈**会员ID 与主体ID 是不同标识空间**，用会员ID 归属把 5 家全判 MISMATCH。
+  修法＝导入器从该店 CSV 实测捕获 `subjectIds` 落进回执（归属唯一真实来源）；对账门按
+  「店主体集合」对当日行求和；旧回执无 subjectIds 时回退 recordIds 独立回读——顺带修掉
+  该回退路径查错表的接线 bug（人群 recordIds 误拿去关键词表比对，恒 UNVERIFIED）。
+
+### 为什么改
+
+07:00 轮的失败链路＝冷页瞬态无重试可扛＋修复表无候选＋`unfixable 即 break`（批 1 两家
+不可修 ⇒ 批 2 整批不跑）。更深的病根：execution、告警文案、驻留恢复判据全部建立在
+**过程信号**上，而「收据 COMMITTED_AND_VERIFIED 也会假绿」是本仓已知纪律——只有
+「分母 × 飞书独立回读」的结果对账才是可信判据。重试/分类器是对「瞬态失败」的第一道
+防线，对账门是对「一切防线都漏了」的最后闸门，两者互补不互替。
+
+### 验证到什么程度（说实话）
+
+- 离线：推广 skill 全套 **616/616 绿**（从仓库根跑；含对账门 15 条判据用例与 2 条源码级
+  接线守卫）；突变 3+3 全部被守卫**点名抓红**（`tmp/mutation-verify-1.9.5.mjs`、
+  `tmp/mutation-verify-subjectids.mjs`，finally 逐字节还原 sha 一致）。
+- 真机：对账门在真实 2026-10-14 数据上实跑（`--date 2026-10-14`，退出码 1）——已跑 5 家
+  10 单元全 VERIFIED（关键词 199 行、人群 149 行，recordIds 独立回读全命中），并**正确点名
+  批 2 三家 6 个 MISSING**（正是早上被三个过程信号洗绿的缺口）；人群归属修正后 MISMATCH
+  全部消除，逐店主体集合行数与回执吻合。
+- 未做（1.9.6，等 11:00 日报链跑完再动共享代码）：`run-batches` 逐店 unfixable 不再挡
+  剩余批、驻留触发收窄到 NEEDS_LOGIN、对账门驱动轮终态与告警、店级 stop、
+  `--resume-logs` 透传；双 fetch 合并发等另行立项。
+- 证据：`evidence/promotion-batches-2026-10-14/`、`evidence/batches-2026-10-14/`。
+
 ## [1.9.4] - 2026-10-15
 
 周报竞品链 2026-10-14 全量重跑（`run-weekly-collection.mjs`，十段 40 页）暴露的**第三处

@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   promotionSales1Plan, parsePromotionSales1Args,
-  buildPromotionRoundAlert, deliverPromotionAlert, buildPromotionSummary,
+  buildPromotionRoundAlert, deliverPromotionAlert, buildPromotionSummary, runStageWithRetry,
 } from './run-promotion-sales1.mjs';
 import { READABLE_SOURCE_KEYS } from '../../../runtime/notify-feishu-core.mjs';
 import { unfixableShopsOf } from '../../../runtime/hold-and-resume-plan.mjs';
@@ -145,16 +145,18 @@ test('buildPromotionSummary 并写后形状过 validateSummary 全绿（ok 店�
   assert.deepEqual(validateSummary(summary), { ok: true, errors: [] });
 });
 
-// b. 并写自洽：失败店 failureClass 恒最小档、noActionRequired 恒 false、autoRepair 恒显式 null、
+// b. 并写自洽：失败店 failureClass 按确定性标记分类、noActionRequired 恒 false、autoRepair 恒显式 null、
 //    evidence 与 :208 现有拼法（`<--evidence 根>/<店>` 相对仓库根）一致；ok 店只补 evidence。
-test('buildPromotionSummary 并写自洽：失败店恒 STAGE_FAILED/false/null，evidence 与现有拼法一致', () => {
+test('buildPromotionSummary 并写自洽：失败店分类走 promotionFailureClass，evidence 与现有拼法一致', () => {
   const results = [
     { batch: 1, shop: '里可林淘宝', status: 'ok', stages: ['keyword-submit', 'import'] },
     { batch: 1, shop: '网林天猫', status: 'failed', stages: ['keyword-submit'], error: '采集失败：人群报表提交任务无法唯一确认' },
+    { batch: 1, shop: '盖文淘宝', status: 'failed', stages: [], error: 'PROMOTION_ALIMAMA_LOGIN_WALL：阿里妈妈页停在登录墙上（expected one alimama page, got 0）' },
   ];
   const { shops } = buildPromotionSummary({ date: '2026-10-10', results, evidenceRoot: PROMOTION_EVIDENCE_ROOT });
   const failed = shops['网林天猫'];
-  assert.equal(failed.failureClass, 'STAGE_FAILED'); // 最小档分类器（草案 6.1）：推广链尚无逐店分诊判据
+  assert.equal(failed.failureClass, 'STAGE_FAILED'); // 无标记的失败仍落 STAGE_FAILED（不猜措辞）
+  assert.equal(shops['盖文淘宝'].failureClass, 'NEEDS_LOGIN'); // 登录墙确定性标记 ⇒ NEEDS_LOGIN（2026-10-15）
   assert.equal(failed.noActionRequired, false); // 空菜单＝需要人看现场，失败店恒要人看
   assert.ok(failed.autoRepair === null, 'autoRepair 必须显式 null（不许 {} 也不许缺——gaveUp 判据靠 typeof 区分「没跑」与「跑过」）');
   assert.deepEqual(failed.repairRequest, { candidates: [] }); // P0-3 空菜单形态一个不动
@@ -191,4 +193,58 @@ test('统一 schema 并写接线（源码级）：唯一 summary 落盘点前「
     assert.ok(warnAt !== -1, `第 ${i + 1} 个落盘点前没有调 warnSummarySchemaViolations（写入时校验没接上）`);
     assert.ok(buildAt < warnAt, `第 ${i + 1} 个落盘点：并写必须在校验之前（校验的是并写后的形状）`);
   }
+});
+
+// ── 店级有界重试（2026-10-15，用户拍板「加」）──────────────────────────────────
+test('runStageWithRetry：第 2 次成功 ⇒ 返回输出、退避恰一次、日志点名阶段', () => {
+  const sleeps = []; const logs = []; let calls = 0;
+  const out = runStageWithRetry({
+    stage: 'keyword-submit',
+    run: () => { calls += 1; if (calls === 1) throw new Error('expected one alimama page, got 0'); return 'TASK_NAME=x'; },
+    sleep: (ms) => sleeps.push(ms),
+    log: (line) => logs.push(line),
+  });
+  assert.equal(out, 'TASK_NAME=x');
+  assert.equal(calls, 2);
+  assert.deepEqual(sleeps, [30_000], '默认退避 30s、且只在两次尝试之间睡一次');
+  assert.equal(logs.length, 1);
+  assert.match(logs[0], /keyword-submit 第 1\/3 次尝试失败/u);
+  assert.match(logs[0], /expected one alimama page/u);
+});
+
+test('runStageWithRetry：3 次全失败 ⇒ 抛最后一次的错，退避恰两次', () => {
+  const sleeps = []; let calls = 0;
+  assert.throws(() => runStageWithRetry({
+    stage: 'import',
+    run: () => { calls += 1; throw new Error(`失败${calls}`); },
+    sleep: (ms) => sleeps.push(ms),
+  }), /失败3$/u, '抛的必须是最后一次的错');
+  assert.equal(calls, 3);
+  assert.deepEqual(sleeps, [30_000, 30_000]);
+});
+
+test('runStageWithRetry：一次成功不睡不记日志；参数非法当场抛', () => {
+  const sleeps = []; const logs = [];
+  runStageWithRetry({ stage: 'x', run: () => 'ok', sleep: (ms) => sleeps.push(ms), log: (l) => logs.push(l) });
+  assert.deepEqual(sleeps, []); assert.deepEqual(logs, []);
+  assert.throws(() => runStageWithRetry({ stage: 'x', run: () => 'ok', sleep: () => {}, maxAttempts: 0 }), /maxAttempts 要 ≥1/u);
+  assert.throws(() => runStageWithRetry({ stage: 'x', run: () => 'ok', sleep: () => {}, backoffMs: -1 }), /backoffMs 要 ≥0/u);
+});
+
+// 接线守卫（源码级，照 2d 教训「判据必须被真实调用」）：真机的五个阶段调用点必须全走重试包装，
+// 且重试包装必须把 attempts 写进 record.retries——「函数全绿但 main() 没接上」是本仓已发作过的病。
+test('重试接线（源码级）：五个阶段调用点全走 runWithRetry，attempts>1 落 record.retries', () => {
+  const src = fs.readFileSync(new URL('./run-promotion-sales1.mjs', import.meta.url), 'utf8');
+  const wired = [...src.matchAll(/runWithRetry\('([a-z-]+)'/gu)].map((m) => m[1]);
+  assert.deepEqual([...wired].sort(), ['audience-fetch', 'audience-submit', 'import', 'keyword-fetch', 'keyword-submit'].sort(),
+    `五个阶段调用点必须全部走 runWithRetry（收到 ${wired.join(',')}）`);
+  const retryAt = src.indexOf('const runWithRetry = (stage, invoke) =>');
+  const recordAt = src.indexOf("const record = { batch: batchIndex + 1, shop, status: 'failed', stages: [] };");
+  const callAt = src.indexOf("const keywordSubmit = runWithRetry('keyword-submit'");
+  assert.ok(recordAt !== -1 && retryAt > recordAt, 'runWithRetry 必须定义在 record 之后（闭包要记 attempts 进这份 record）');
+  assert.ok(callAt > retryAt, '阶段调用必须在包装定义之后');
+  assert.match(src, /record\.retries = \[\.\.\.\(record\.retries \?\? \[\]\), \{ stage, attempts \}\];/u,
+    'attempts>1 必须落 record.retries（否则重试发生过但 summary 里无痕）');
+  // 退避不许起子进程、不许异步化：Atomics.wait 是本链同步形态下唯一的无副作用同步睡。
+  assert.match(src, /Atomics\.wait\(new Int32Array\(new SharedArrayBuffer\(4\)\), 0, 0, ms\);/u);
 });

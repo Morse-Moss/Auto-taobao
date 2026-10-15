@@ -215,3 +215,33 @@ test('读列表前的刷新统一走 openFreshTaskList（navigate + 真重载）
   const bare = [...source.matchAll(/await navigate\((?:args\.)?proxy, target, LIST_URL\);/gu)].length;
   assert.equal(bare, 1, `只允许 openFreshTaskList 内部那一句（同 URL 时 navigate 是空操作）；实际 ${bare} 处`);
 });
+
+// ── 失败分类与日期时间戳（2026-10-15）──────────────────────────────────────────
+test('promotionFailureClass：只认确定性标记，不猜措辞', async () => {
+  const core = await import('./promotion-daily-report-core.mjs');
+  assert.equal(core.promotionFailureClass(`${core.PROMOTION_LOGIN_WALL_TOKEN}：阿里妈妈页停在登录墙上（expected one alimama page, got 0）`), 'NEEDS_LOGIN');
+  assert.equal(core.promotionFailureClass('expected one alimama page, got 0'), 'STAGE_FAILED');
+  assert.equal(core.promotionFailureClass('找不到关键词数据明细维度选择器'), 'STAGE_FAILED');
+  assert.equal(core.promotionFailureClass(null), 'STAGE_FAILED');
+});
+
+test('promotionDateTimestamp＝buildFeishuFields 的唯一算法来源（写入侧与对账侧不漂移）', async () => {
+  const core = await import('./promotion-daily-report-core.mjs');
+  // 与 2026-10-14 实际写入值同式：Date.UTC(y, m-1, d) - 8h。
+  assert.equal(core.promotionDateTimestamp('2026-10-14'), Date.UTC(2026, 9, 14) - 8 * 3600 * 1000);
+  // 写入侧真的走它：对同一日期，buildFeishuFields 产出的「日期」字段＝promotionDateTimestamp。
+  const targetFields = new Map([['日期', 5], ['词ID/词包ID', 1]]);
+  const fields = core.buildFeishuFields(['日期', '词ID/词包ID'], ['2026-10-14', '123'], targetFields);
+  assert.equal(fields['日期'], core.promotionDateTimestamp('2026-10-14'));
+});
+
+// 接线守卫（源码级）：导入器对两种报表都必须放行空表（2026-10-15 用户拍板「真实为空就为空」），
+// 不许退回 allowEmpty: kind === 'keyword'。扫描目标＝import-promotion-daily-report.mjs 的调用点。
+test('导入器空表放行（源码级）：两种报表 allowEmpty 恒 true', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync(new URL('./import-promotion-daily-report.mjs', import.meta.url), 'utf8');
+  const calls = [...src.matchAll(/validateExportRows\(/gu)];
+  assert.equal(calls.length, 1, `导入器只应有 1 个 validateExportRows 调用点（收到 ${calls.length}）`);
+  assert.match(src, /allowEmpty: true/u, '调用点必须 allowEmpty: true（空表＝真实业务形态，不填 0）');
+  assert.equal(src.includes("allowEmpty: kind === 'keyword'"), false, '不许退回「只放行关键词」的旧口径');
+});

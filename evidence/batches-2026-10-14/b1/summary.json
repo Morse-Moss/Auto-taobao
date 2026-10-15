@@ -1,0 +1,33 @@
+{
+  "version": "unified-summary-v1",
+  "workflow": "promotion-daily",
+  "date": "2026-10-14",
+  "shops": {
+    "里可林淘宝": {
+      "batch": 1,
+      "shop": "里可林淘宝",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "evidence": "evidence\\batches-2026-10-14\\b1\\里可林淘宝"
+    },
+    "盖文淘宝": {
+      "batch": 1,
+      "shop": "盖文淘宝",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "evidence": "evidence\\batches-2026-10-14\\b1\\盖文淘宝"
+    }
+  }
+}
