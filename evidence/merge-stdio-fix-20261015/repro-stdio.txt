@@ -1,0 +1,2 @@
+DEFAULT  status= null error= EBUSY stdout= undefined stderr= undefined
+EXPLICIT status= 0 error= null stdout= "{\"ok\":true,\"from\":\"child\"}" stderr= ""

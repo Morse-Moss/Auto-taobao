@@ -170,6 +170,32 @@ function runHost(range, options) {
   });
 }
 
+// 合并十段产物（**必须**走这里，别再内联 spawnSync）：这条链唯一被宿主沙箱掐死过的地方。
+// 2026-10-15 实测复现：合并处漏写 stdio ⇒ 默认 stdio（stdin 是管道）在沙箱下 spawnSync 直接
+// EBUSY ⇒ status=null、stdout/stderr 全 undefined ⇒ 十段白采、合并永远报「失败：undefined」。
+// 与 1.7.1（notify）/ 1.9.2（supervise deliver）同一病根，是那两次修复漏掉的第三处调用点。
+export function runMergeStep(collected, { mergedCsv, spawnImpl = spawnSync, projectRoot = PROJECT_ROOT } = {}) {
+  if (!mergedCsv) throw new Error('runMergeStep: mergedCsv is required');
+  const mergedXlsx = mergedCsv.replace(/\.csv$/u, '.xlsx');
+  const mergeArgs = [];
+  for (const part of collected) mergeArgs.push('--csv', part.csv);
+  mergeArgs.push('--output-csv', mergedCsv);
+  for (const part of collected) mergeArgs.push('--xlsx', part.xlsx);
+  mergeArgs.push('--output-xlsx', mergedXlsx, '--require-images');
+  const result = spawnImpl(process.execPath, [MERGER, ...mergeArgs], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+    timeout: 600_000,
+    // stdio 必须显式写、且 stdin 只能是 'ignore'：默认值恰是被宿主沙箱掐断的那一形态（stdin 管道）。
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const stdout = String(result.stdout || '');
+  const json = stdout.trim().split(/\r?\n/u).filter(Boolean).at(-1) ?? '';
+  const ok = result.status === 0 && /"ok":\s*true/u.test(json);
+  return { ok, mergedCsv, mergedXlsx, json, stdout, stderr: String(result.stderr || '') };
+}
+
 async function main() {
   const options = parseDriverArgs(process.argv.slice(2));
   writeFileSync(DRIVER_LOG, '');
@@ -235,19 +261,12 @@ async function main() {
   }
 
   const mergedCsv = path.join(HERE, `weekly-merged-${Date.now()}.csv`);
-  const mergedXlsx = mergedCsv.replace(/\.csv$/u, '.xlsx');
-  const mergeArgs = [];
-  for (const part of collected) mergeArgs.push('--csv', part.csv);
-  mergeArgs.push('--output-csv', mergedCsv);
-  for (const part of collected) mergeArgs.push('--xlsx', part.xlsx);
-  mergeArgs.push('--output-xlsx', mergedXlsx, '--require-images');
-  log(`合并 ${collected.length} 段 → ${mergedXlsx}`);
-  const merge = spawnSync(process.execPath, [MERGER, ...mergeArgs], { cwd: PROJECT_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 600_000 });
-  const mergeJson = String(merge.stdout || '').trim().split(/\r?\n/u).filter(Boolean).at(-1) ?? '';
-  const mergedOk = merge.status === 0 && /"ok":\s*true/u.test(mergeJson);
-  log(`合并 ${mergedOk ? '成功' : '失败'}：${mergedOk ? mergeJson.slice(0, 300) : String(merge.stderr || merge.stdout).slice(0, 400)}`);
+  log(`合并 ${collected.length} 段 → ${mergedCsv.replace(/\.csv$/u, '.xlsx')}`);
+  const mergeResult = runMergeStep(collected, { mergedCsv });
+  const mergedOk = mergeResult.ok;
+  log(`合并 ${mergedOk ? '成功' : '失败'}：${mergedOk ? mergeResult.json.slice(0, 300) : String(mergeResult.stderr || mergeResult.stdout).slice(0, 400)}`);
 
-  Object.assign(receipt, { merged: { ok: mergedOk, csv: mergedCsv, xlsx: mergedOk ? mergedXlsx : null } });
+  Object.assign(receipt, { merged: { ok: mergedOk, csv: mergedCsv, xlsx: mergedOk ? mergeResult.mergedXlsx : null } });
   writeFileSync(path.join(HERE, '.weekly-collection-receipt.json'), JSON.stringify(receipt, null, 2));
 
   // 收尾告警（2026-10-13 统一预警机制）：**成功与失败分开**——

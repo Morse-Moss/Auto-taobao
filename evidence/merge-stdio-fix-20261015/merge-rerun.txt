@@ -1,0 +1,7 @@
+collected 段数= 10
+产物存在= true
+status= 0 error= null
+stdout= {"ok":true,"csv":"D:\\Retire\\sycm-automation\\runtime\\weekly-merged-1791994250176.csv","xlsx":{"ok":true,"path":"D:\\Retire\\sycm-automation\\runtime\\weekly-merged-1791994250176.xlsx","rows":1540,"images":1538,"missingImages":2},"rows":1540,"duplicatesRemoved":94}
+
+stderr= 
+mergedCsv 生成= true  mergedXlsx 生成= true

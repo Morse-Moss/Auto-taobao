@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { lastAdaptiveDone, parseDriverArgs, parseRanges, runLoginPreflightStep } from './run-weekly-collection.mjs';
+import { lastAdaptiveDone, parseDriverArgs, parseRanges, runLoginPreflightStep, runMergeStep } from './run-weekly-collection.mjs';
 
 const fakeSpawn = (result) => {
   const calls = [];
@@ -86,4 +86,45 @@ test('parseDriverArgs: 必填项与 notify 开关', () => {
   assert.equal(options.notify, true);
   assert.equal(options.outputDir, 'C:/Users/Administrator/Downloads');
   assert.throws(() => parseDriverArgs(['--ranges', '1-4']), /required/u);
+});
+
+test('runMergeStep: 合并子进程 stdio 守 EBUSY 纪律（stdin 必须 ignore）', () => {
+  // 2026-10-15 真机暴露：合并处漏写 stdio ⇒ 默认 stdio（stdin 为管道）在宿主沙箱下
+  // spawnSync 直接 EBUSY ⇒ status=null、stdout/stderr 全 undefined ⇒ 十段采齐也永远报
+  // 「失败：undefined」（jURWle：段 1-4~37-40 全 code=0，合并 2 毫秒暴死）。
+  // 与 1.7.1/1.9.2 同一病根，是那两次修复漏掉的第三处调用点 —— 这条把调用形状钉死。
+  const { impl, calls } = fakeSpawn({ status: 0, stdout: `${JSON.stringify({ ok: true, rows: 1540 })}\n` });
+  const result = runMergeStep(
+    [{ range: '1-4', csv: 'C:/x/a.csv', xlsx: 'C:/x/a.xlsx' }],
+    { mergedCsv: 'C:/out/merged.csv', spawnImpl: impl },
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.mergedXlsx, 'C:/out/merged.xlsx');
+  assert.equal(calls.length, 1);
+  const [command, argv, options] = calls[0];
+  assert.equal(command, process.execPath);
+  assert.ok(argv.some((item) => item.endsWith('merge-market-analysis.mjs')), '必须调合并器');
+  assert.ok(argv.includes('--csv') && argv.includes('--xlsx'), '十段 csv/xlsx 都要传');
+  assert.ok(argv.includes('--require-images'), '带图合同不能省');
+  assert.equal('input' in options, false, '不许用 input:（stdin 管道，沙箱下 EBUSY）');
+  assert.deepEqual(options.stdio, ['ignore', 'pipe', 'pipe']);
+});
+
+test('runMergeStep: 合并非零退出 ⇒ ok=false，不假绿', () => {
+  const { impl } = fakeSpawn({ status: 1, stdout: '', stderr: 'xlsx merge failed' });
+  const result = runMergeStep(
+    [{ range: '1-4', csv: 'a.csv', xlsx: 'a.xlsx' }],
+    { mergedCsv: 'C:/out/m.csv', spawnImpl: impl },
+  );
+  assert.equal(result.ok, false);
+});
+
+test('runMergeStep: spawn 起不来（EBUSY 形状）⇒ ok=false，不假绿', () => {
+  const { impl } = fakeSpawn({ status: null, error: Object.assign(new Error('spawnSync EBUSY'), { code: 'EBUSY' }) });
+  const result = runMergeStep(
+    [{ range: '1-4', csv: 'a.csv', xlsx: 'a.xlsx' }],
+    { mergedCsv: 'C:/out/m.csv', spawnImpl: impl },
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.json, '');
 });

@@ -15,6 +15,41 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.9.4] - 2026-10-15
+
+周报竞品链 2026-10-14 全量重跑（`run-weekly-collection.mjs`，十段 40 页）暴露的**第三处
+EBUSY 调用点**：十段全部采成（`code=0`、合计 1634 行、带图 xlsx 齐），最后一步「合并」却
+2 毫秒暴死、日志只打出「合并 失败：undefined」，整轮退出码 1 —— 采了半天判失败。
+
+### 改了什么
+
+- `runtime/run-weekly-collection.mjs`：把合并步骤从 `main()` 里内联的 `spawnSync` 抽成可测的
+  `runMergeStep(collected, { mergedCsv, spawnImpl })`，并给它**显式** `stdio: ['ignore','pipe','pipe']`。
+  原调用漏写 `stdio` ⇒ 默认 `stdio` 的 stdin 是**管道**（恰是宿主沙箱会掐断的那一形态）。
+- `runtime/run-weekly-collection.test.mjs`：新增 3 条 —— ① 钉 `runMergeStep` 调用形状
+  （`stdio` 显式、stdin 必须 `ignore`、不许用 `input:`、`--require-images` 不能省）；
+  ② 合并非零退出 ⇒ `ok=false`；③ spawn 起不来（EBUSY 形状）⇒ `ok=false`、`json` 为空。
+
+### 为什么改
+
+同一病根第四次发作（1.7.1 日报链 5 处、1.9.2 supervise `deliver()`、本次合并）。宿主沙箱下
+`spawnSync` 带 stdin 管道直接 `EBUSY`：`status=null`、`stdout/stderr` 全 `undefined` —— 于是
+`String(merge.stderr || merge.stdout)` 只打出 `undefined`。1.9.2 修 notify 时只改了投递那一处，
+合并这处**从未被任何用例钉过**（预检那处有、合并这处没有），所以漏网。
+
+### 验证到什么程度（说实话）
+
+- 最小差分复现（`tmp/merge-stdio-repro.mjs`）：同一条子进程命令，默认 stdio ⇒
+  `status=null / error=EBUSY / stdout=undefined`；显式 `['ignore','pipe','pipe']` ⇒ `status=0`。
+  两种形态唯一变量就是 stdio。
+- 修复后按「修正路径」补跑合并（`tmp/merge-fixed-run.mjs`，镜像 `runMergeStep`）：十段产物合并
+  成功，产出 `runtime/weekly-merged-1791994250176.csv/.xlsx`，**1540 行、带图 1538、缺图 2
+  （在容差内）**。
+- 定向用例 `node --test runtime/run-weekly-collection.test.mjs`：修后 11/11 通过；突变
+  （stdin `ignore`→`pipe`）**只**第 9 条转红、还原后 11/11 —— 判据名精确命中，未误伤。
+- ⚠️ 本次**未**重跑整条驱动（重跑＝重采，采集是实时快照）。合并这处修复的活体验证＝上面那次
+  「按修正路径补跑」；下次整轮重跑会走这条路径。
+
 ## [1.9.3] - 2026-10-14
 
 1.9.2 推上去后 CI 的 `fast-gate` 红了：**两条守卫**点名 1.9.2 的新代码没登记。
