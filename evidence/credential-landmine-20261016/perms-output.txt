@@ -1,0 +1,22 @@
+kcne token: OK
+（注册表读取失败： Cannot read properties of undefined (reading 'slice') ）
+
+日报（对照·已知非协作者）
+  token=RqzrbD4zIalzjxsSGcbcUPTpnKc
+  协作者接口 → HTTP 403 code=1063004 User has no share permission
+  app 信息   → HTTP 200 code=0 success
+推广1部 promotionDaily
+  token=CjLsb7qXRaeaC6srePtcLBkInTh
+  协作者接口 → HTTP 403 code=1063004 User has no share permission
+  app 信息   → HTTP 200 code=0 success
+商品1部（rcnb）
+  token=LQgZbi78oaAmIYsc4urcwk9rnNf
+  协作者接口 → HTTP 403 code=1063004 User has no share permission
+  app 信息   → HTTP 403 code=91403 Forbidden
+商品2部（rcnb）
+  token=LLWcbIuVFaBm6yshX9Xc8DFZn9d
+  协作者接口 → HTTP 403 code=1063004 User has no share permission
+  app 信息   → HTTP 200 code=0 success
+
+（对照口径：日报 base 已知 kcne 只有链接分享级只读 ⇒ 写入 403/91403。
+ 若商品/推广 base 的协作者接口与日报 base 同形，则写入大概率同样被拒。）
