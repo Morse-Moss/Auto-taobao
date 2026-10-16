@@ -13,3 +13,10 @@ node skills/sycm-promotion-data/scripts/collect-product-report.mjs --shop 盖文
 ```
 
 This report's CSV schema can differ between Taobao and Tmall. Preserve each downloaded source as-is and compare each shop to its own reference before importing. Do not route these files through the unrelated 71-column 营销场景报表 importer.
+
+导入（2026-10-16 起 `--date` 必填）：导入器按「店铺 × 数据日期」解析落点 base（与商品底单/询单同一套月份×部门注册表），缺参抛错、绝不回落到上个月——10 月整月推广缺失的根因就是旧版读单对象目标、永远写进 9 月已关账的 base。一批多个 `--file/--shop` 会按 baseToken 分组写入与回读。
+
+```powershell
+node skills/sycm-promotion-data/scripts/import-promotion-data.mjs --file "C:\...\商品报表_xxx.zip" --shop 盖文天猫 --date 2026-10-14
+node skills/sycm-promotion-data/scripts/import-promotion-data.mjs --file "C:\...\商品报表_xxx.zip" --shop 盖文天猫 --date 2026-10-14 --apply
+```

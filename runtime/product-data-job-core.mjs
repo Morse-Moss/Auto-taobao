@@ -17,23 +17,21 @@ export const PRODUCT_JOB_FILES = Object.freeze({
 });
 
 /**
- * 「本阶段不做推广」的闸门（2026-10-05 加）。
+ * 「本阶段不做推广」的紧急开关（2026-10-05 加闸门，2026-10-16 恢复默认）。
  *
- * 为什么要有它：推广链**还在分支开发**（`feature/alimama-keyword-report`，未吸收进 main），
- * 而这条链的推广段（`import-promotion-data.mjs`）取的还是 profile 上那份**旧的单对象**目标 ——
- * 它指向 9 月的商品 base。10 月跑它会把 10 月的推广行写进**已经关账的 9 月表**，
+ * 历史：推广段的导入目标（import-promotion-data.mjs）曾长期读 profile 上那份**旧的单对象**
+ * 目标 —— 指向 9 月的商品 base。10 月跑它会把 10 月的推广行写进**已经关账的 9 月表**，
  * 而收据上完全看不出来（同日重复行闸门也拦不住：那是另一张表的去重）。
  *
- * 做成**显式开关**、而不是先把那段代码删掉，理由有三：
- *   · 跳过是**可见的**：收据里那段记 `SKIPPED`（**不是** PENDING、更不是 FAILED），日志也点名说是有意跳过；
- *   · 不带这个开关 ⇒ 与改动前**逐字相同**的行为（推广照采照导），回滚不需要改代码；
- *   · 定时入口默认带上它 —— 无人值守那条路上有个会把数据写到错 base 的段，默认必须是「不做」。
+ * 2026-10-16 用户拍板恢复：导入器已改成按（店铺, 数据日期）解析 base（与底单/询单同款），
+ * 批量路径也已按部门分组（修掉「一次调用跨部门写错 base」的缺陷）⇒ 闸门**默认关闭**
+ * （renderProductJobEntry 不再渲染 --skip-promotion），只作为人工熔断保留：
+ * 真出现导入目标异常时，手工带上它把这段停掉，收据记 SKIPPED。
  *
- * 推广链接上 main 之后，把 `renderProductJobEntry` 的默认值翻过来，
- * 并同步改 `product-data-job-core.test.mjs` 里那条「定时入口必须带 --skip-promotion」的断言 ——
- * 那条断言就是这条闸门的到期提醒，别让它悄悄留在生产里。
+ * 为什么保留开关而不是删掉代码：跳过是**可见的**（收据记 `SKIPPED`，不是 PENDING 也不是
+ * FAILED）；不带这个开关 ⇒ 与恢复后逐字相同的行为，回滚不需要改代码。
  */
-export const SKIP_PROMOTION_REASON = '推广线在分支开发中（feature/alimama-keyword-report），本阶段有意跳过';
+export const SKIP_PROMOTION_REASON = '推广段人工熔断开关（默认关闭；仅当推广导入目标异常时手工传入）';
 
 export function buildProductJobPlan({ dateInput = 'yesterday', shops = null, commit = true, skipPromotion = false,
   registered = shopBrowserKeys(), collecting = collectingShopKeys() } = {}) {
@@ -55,7 +53,7 @@ export function buildProductJobPlan({ dateInput = 'yesterday', shops = null, com
     reportOrder: ['product', 'inquiry', 'promotion'], commit, skipPromotion };
 }
 
-export function renderProductJobEntry({ nodeExe = process.execPath, repoRoot = path.resolve(import.meta.dirname, '..'), dateInput = 'yesterday', commit = true, batches = DEFAULT_BATCH_SIZE, skipPromotion = true } = {}) {
+export function renderProductJobEntry({ nodeExe = process.execPath, repoRoot = path.resolve(import.meta.dirname, '..'), dateInput = 'yesterday', commit = true, batches = DEFAULT_BATCH_SIZE, skipPromotion = false } = {}) {
   const quote = (value) => `"${String(value).replaceAll('"', '\\"')}"`;
   const args = [quote(path.join(repoRoot, 'scripts', 'run-product-data-job.mjs')), '--date', dateInput];
   if (commit) args.push('--commit');
@@ -65,8 +63,9 @@ export function renderProductJobEntry({ nodeExe = process.execPath, repoRoot = p
   // 所以「分批」这件事必须出现在这里，否则定时那条路永远回到全量常驻。
   // 传 `batches: null` 可以显式渲染出「不分批」的那条命令（排查用）。
   if (batches !== null && batches !== undefined) args.push('--batches', String(batches));
-  // 推广段默认跳过（2026-10-05）：理由见 `SKIP_PROMOTION_REASON`。
-  // 传 `skipPromotion: false` 可以显式渲染出「照旧做推广」的那条命令（推广链接上之后就是新默认值）。
+  // 推广段默认**照旧做**（2026-10-16 恢复）：导入器已按（店铺, 数据日期）解析 base、
+  // 批量路径已按部门分组，闸门只剩人工熔断一个用途 —— 见 SKIP_PROMOTION_REASON。
+  // 传 `skipPromotion: true` 可显式渲染出「本阶段不做推广」的那条命令（应急用）。
   if (skipPromotion) args.push('--skip-promotion');
   return [quote(nodeExe), ...args].join(' ');
 }

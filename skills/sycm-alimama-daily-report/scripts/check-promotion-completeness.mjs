@@ -76,7 +76,8 @@ async function main(argv) {
   const units = expectedUnits({ shops: shopList });
 
   const activeProfile = profile ?? activeProfileName();
-  const target = promotionDailyTargets(activeProfile);
+  // 按月解析（2026-10-16）：与导入器同一口径，缺月 fail-closed，不回落上个月。
+  const target = promotionDailyTargets(activeProfile, date);
   const credentials = loadFeishuCredentials(activeProfile);
   if (!target.baseToken) { console.error(`推广日报目标未完整配置（profile=${activeProfile}）`); return 2; }
   const feishuRecords = {};
