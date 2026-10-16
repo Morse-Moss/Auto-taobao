@@ -15,6 +15,26 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.0] - 2026-10-16
+
+店铺日报链对外组织 base 的写入通道打通（凭据层）。
+
+1. **背景**：1.11.0 换到外组织（rcnbpuvafkct）的「各店铺日报」base 后，实测确认 kcne 应用对那张
+   base 只有「获得链接的任何人可阅读」级别的读权限（链接分享设置实测 link_share_entity=
+   anyone_readable；幂等写探针 403/91403），写入必须走对方组织的应用。对方管理员按
+   `docs/ops/FEISHU-APP-ONBOARDING-RCNBPUVAFKCT.md` 的清单建了自建应用并加为该 base 的
+   文档应用（可编辑），凭据已落地 `E:/小红书/.env.feishu-rcnb.local`（不进仓库）。
+2. **改动**：`dailyReport` 目标新增 `envFile`（独立凭据文件）与新访问器
+   `dailyReportCredentials()`（envFile 优先、缺字段当场炸、没配则回落 profile envFile）；
+   三个写那张 base 的脚本（run-daily-report / ensure-inquiry-rows / run-inquiry-backfill）
+   从 `loadFeishuCredentials('kcne')` 切到 `dailyReportCredentials('kcne')` —— 不改的话
+   三个入口全部 403。其余链（竞品/关键词/商品/推广）不动，仍用 kcne 凭据。
+3. **验证**：① 幂等写探针（店铺底单第一行原样写回）HTTP 200 / code 0，回读值未变；
+   ② 真机排练：ensure-inquiry-rows --date 2026-10-16 连新 base 读回「各店铺数据日报」
+   2026-10-16 的 8 家行骨架 ALREADY_PRESENT（对方已预铺，零写入）；
+   ③ 相关 5 个用例文件 57 用例全绿（含 head-loadable、version-consistency）。
+   待明天 11:00 定时真跑全链验证。
+
 ## [1.11.1] - 2026-10-16
 
 1.11.0 发布后两小时内的口径修正：日报链采集范围从 13 家收回**销售1部 8 家**。

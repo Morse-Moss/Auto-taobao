@@ -105,6 +105,12 @@ export const PROFILES = Object.freeze({
       // 这张 base 的归属租户 host（kcne 的 profile host 打不开它）。浏览器侧开底单页用它，
       // 见 shop-pages.mjs buildUrlByName；API 侧永远走 open.feishu.cn，与此无关。
       host: 'rcnbpuvafkct.feishu.cn',
+      // **独立凭据**（2026-10-16）：这张 base 在别的组织，kcne 应用对它只有链接分享级只读
+      // （实测写 403/91403）；写入必须走对方组织的自建应用（对方管理员 2026-10-16 建的
+      // cli_aa5b5b983dfadc2c，已加为文档应用·可编辑，写探针 200/code 0 已验证）。
+      // 凭据文件不进仓库；读取走 dailyReportCredentials()，别在脚本里再写 loadFeishuCredentials('kcne')
+      // —— 那是本租户的凭据，写这张表会 403。
+      envFile: 'E:/小红书/.env.feishu-rcnb.local',
     }),
     // 2026-10-08：运营确认销售一部推广日报 Base「10月推广数据-销售1部」。
     // 两张表字段已通过已登录页面只读核对，并与人工下载的关键词/人群 CSV 表头按名称对齐。
@@ -238,6 +244,23 @@ export function dailyReportTargets(name) {
   const target = getProfile(name).dailyReport;
   if (!target) throw new Error(`Daily-report target is not configured for profile: ${resolveProfileName(name)}`);
   return target;
+}
+
+/**
+ * 店铺日报 base 的凭据（2026-10-16）：dailyReport.envFile 优先（跨租户 base 用对方组织的应用），
+ * 没配则回落 profile 自己的 envFile（同租户时代的旧行为）。
+ * 读写这张 base 的脚本一律用它，不要直接 loadFeishuCredentials('kcne')。
+ */
+export function dailyReportCredentials(name, { read = readFileSync } = {}) {
+  const target = dailyReportTargets(name);
+  const file = target.envFile ?? envFilePath(name);
+  const values = parseEnvFile(read(file, 'utf8'));
+  const appId = values.FEISHU_APP_ID;
+  const appSecret = values.FEISHU_APP_SECRET;
+  if (!appId || !appSecret) {
+    throw new Error(`env file ${file} must define FEISHU_APP_ID and FEISHU_APP_SECRET`);
+  }
+  return { appId, appSecret, file, values };
 }
 
 // 推广日报的飞书目标：「月份 × 部门」注册表（2026-10-16 加，与商品数据链同款机制）。

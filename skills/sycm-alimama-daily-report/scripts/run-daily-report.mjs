@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { dailyReportTargets, loadFeishuCredentials } from '../../../runtime/feishu-targets.mjs';
+import { dailyReportCredentials, dailyReportTargets } from '../../../runtime/feishu-targets.mjs';
 import { BROWSER_IDS, BROWSER_LABELS, PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import { appendAudit, describeAuditRow } from '../../../runtime/daily-report-audit.mjs';
 import { buildCombinedFields, reportDateEpoch, summarizeSourceDates, valuesEqual } from './daily-report-core.mjs';
@@ -416,7 +416,9 @@ async function main() {
       : null;
 
   const clientModule = await import(pathToFileURL(path.join(REPO_ROOT, 'skills', 'xws-to-feishu-base', 'scripts', 'feishu-client.mjs')));
-  const credentials = loadFeishuCredentials('kcne');
+  // 2026-10-16：日报 base 在外组织（rcnbpuvafkct），写入必须用对方组织的应用凭据；
+  // kcne 应用对那张表只有链接分享级只读（写 403/91403）。
+  const credentials = dailyReportCredentials('kcne');
   const client = new clientModule.FeishuClient({ appId: credentials.appId, appSecret: credentials.appSecret,
     appToken: args.appToken, tableId: args.tableId });
   const tables = await client.listTables();

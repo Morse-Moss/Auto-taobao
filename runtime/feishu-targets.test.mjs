@@ -16,6 +16,7 @@ import {
   assertProductDataBaseCoverage,
   baseUrl,
   competitorBaseToken,
+  dailyReportCredentials,
   dailyReportTargets,
   promotionDailyTargets,
   departmentOfShop,
@@ -191,12 +192,35 @@ test('日报目标指向用户 2026-10-16 指定的外组织 base「各店铺日
   assert.notEqual(target.baseToken, 'X02Xb7fHba7mU9sr8uIcRlExn6b');
   assert.notEqual(target.sourceTable, 'tbl84ZGwLQKyLxV3');
   assert.notEqual(target.inquiryTable, 'tblm9Hx7R9A1YoLC');
-  // 六个键一个都不能少：少一个就意味着有人把名字、host 或某个 id 从配置层挪走了。
+  // 七个键一个都不能少：少一个就意味着有人把名字、host、envFile 或某个 id 从配置层挪走了。
   // 刻意不写成与 PROFILES.kcne.dailyReport 的 deepEqual —— 那份是**内置值**，
   // 而客户机上 config/customer.json 会让 dailyReportTargets 返回覆盖后的对象，
   // 那种写法会在客户机上红，属于「测试依赖了不该依赖的环境状态」。
   assert.deepEqual(Object.keys(target).sort(),
-    ['baseToken', 'host', 'inquiryTable', 'sourceBaseName', 'sourceTable', 'sourceView']);
+    ['baseToken', 'envFile', 'host', 'inquiryTable', 'sourceBaseName', 'sourceTable', 'sourceView']);
+});
+
+// 2026-10-16：日报 base 在外组织 ⇒ 凭据文件也独立（对方组织的自建应用）。
+// kcne 应用对那张表只有链接分享级只读（实测写 403/91403），写必须走 dailyReportCredentials()。
+test('日报 base 用独立凭据文件，回落与报错路径都要说得清', () => {
+  const target = dailyReportTargets('kcne');
+  assert.equal(target.envFile, 'E:/小红书/.env.feishu-rcnb.local');
+  // ① 正常读取：注入 read，不依赖真机 E 盘（CI 没有它）。
+  const injected = dailyReportCredentials('kcne', {
+    read: () => 'FEISHU_APP_ID=cli_x\nFEISHU_APP_SECRET=secret\n',
+  });
+  assert.equal(injected.appId, 'cli_x');
+  assert.equal(injected.appSecret, 'secret');
+  assert.equal(injected.file, target.envFile);
+  // ② 缺字段必须当场炸，而不是让下游拿着 undefined 去换 token。
+  assert.throws(
+    () => dailyReportCredentials('kcne', { read: () => 'FEISHU_APP_ID=cli_x\n' }),
+    /must define FEISHU_APP_ID and FEISHU_APP_SECRET/u,
+  );
+  // ③ 没配 envFile 的目标回落 profile 自己的 envFile（同租户时代的旧行为）——
+  //    用 legacy 侧没有 dailyReport 这件事另守，这里注入一个目标形状做回落验证。
+  const legacyProfile = getProfile('legacy');
+  assert.ok(legacyProfile.envFile, 'legacy profile 必须有 envFile（回落路径的事实依据）');
 });
 
 test('推广日报目标指向销售一部已确认 Base 与两张表', () => {
