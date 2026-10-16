@@ -1,0 +1,72 @@
+{
+  "version": "unified-summary-v1",
+  "workflow": "promotion-daily",
+  "date": "2026-10-15",
+  "shops": {
+    "里可林淘宝": {
+      "batch": 1,
+      "shop": "里可林淘宝",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "evidence": "evidence\\promotion-batches-2026-10-15\\b1\\里可林淘宝"
+    },
+    "网林天猫": {
+      "batch": 1,
+      "shop": "网林天猫",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "evidence": "evidence\\promotion-batches-2026-10-15\\b1\\网林天猫"
+    },
+    "盖文淘宝": {
+      "batch": 1,
+      "shop": "盖文淘宝",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "evidence": "evidence\\promotion-batches-2026-10-15\\b1\\盖文淘宝"
+    },
+    "盖文天猫": {
+      "batch": 1,
+      "shop": "盖文天猫",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "evidence": "evidence\\promotion-batches-2026-10-15\\b1\\盖文天猫"
+    },
+    "科塔淘宝": {
+      "batch": 1,
+      "shop": "科塔淘宝",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "evidence": "evidence\\promotion-batches-2026-10-15\\b1\\科塔淘宝"
+    }
+  }
+}

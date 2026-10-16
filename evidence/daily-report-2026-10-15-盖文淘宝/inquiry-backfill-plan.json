@@ -3,7 +3,7 @@
   "reportDate": "2026-10-15",
   "shop": "盖文淘宝",
   "environment": {
-    "computedAt": "2026-10-16T04:33:31.379Z",
+    "computedAt": "2026-10-16T10:11:00.644Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19043",
     "browserPort": {
@@ -31,10 +31,10 @@
     "reason": "latest"
   },
   "target": {
-    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
-    "tableId": "tblqF2YD2VfmKP4C",
+    "appToken": "RqzrbD4zIalzjxsSGcbcUPTpnKc",
+    "tableId": "tblLYwJTSLqTGVSC",
     "tableName": "各店铺数据日报",
-    "recordId": "reczz28NvWwqVRSR",
+    "recordId": "reczz28JboVWuqvG",
     "matchedBy": "shop-name",
     "shopOptionId": "optFFaXJeh"
   },
@@ -53,8 +53,8 @@
     "同层同行询单量": 11
   },
   "prewrite": {
-    "disposition": "WRITE_REQUIRED",
-    "询单量": null,
-    "同层同行询单量": null
+    "disposition": "ALREADY_VERIFIED",
+    "询单量": "8",
+    "同层同行询单量": "11"
   }
 }

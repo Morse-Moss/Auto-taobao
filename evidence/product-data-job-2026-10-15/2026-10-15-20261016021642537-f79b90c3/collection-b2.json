@@ -1,0 +1,47 @@
+[
+  {
+    "shop": "网林淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林淘宝\",\"date\":\"2026-10-15\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-15_2026-10-15 (10).xls\",\"bytes\":59904}\n",
+      "err": "[底单] 网林淘宝 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-15_2026-10-15 (10).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林淘宝\",\n  \"date\": \"2026-10-15\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-15\\\\2026-10-15-20261016021642537-f79b90c3\\\\网林淘宝\\\\inquiry.xls\",\n  \"bytes\": 14336,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261015&dateRange=1d&orderBy=cstCnt&startDate=20261015&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-15\\2026-10-15-20261016021642537-f79b90c3\\网林淘宝\\inquiry.xls"
+  },
+  {
+    "shop": "里可林天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"里可林天猫\",\"date\":\"2026-10-15\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-15_2026-10-15 (11).xls\",\"bytes\":36352}\n",
+      "err": "[底单] 里可林天猫 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-15_2026-10-15 (11).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"里可林天猫\",\n  \"date\": \"2026-10-15\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-15\\\\2026-10-15-20261016021642537-f79b90c3\\\\里可林天猫\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261015&dateRange=1d&orderBy=cstCnt&startDate=20261015&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-15\\2026-10-15-20261016021642537-f79b90c3\\里可林天猫\\inquiry.xls"
+  },
+  {
+    "shop": "网林家居",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林家居\",\"date\":\"2026-10-15\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-15_2026-10-15 (12).xls\",\"bytes\":19456}\n",
+      "err": "[底单] 网林家居 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-15_2026-10-15 (12).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林家居\",\n  \"date\": \"2026-10-15\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-15\\\\2026-10-15-20261016021642537-f79b90c3\\\\网林家居\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261015&dateRange=1d&orderBy=cstCnt&startDate=20261015&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-15\\2026-10-15-20261016021642537-f79b90c3\\网林家居\\inquiry.xls"
+  }
+]

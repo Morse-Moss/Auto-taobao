@@ -30,9 +30,9 @@
    {
     "shop": "网林家居",
     "proxyPort": 19062,
-    "ok": false,
+    "ok": true,
     "changed": true,
-    "detail": "归位后仍不齐（生意参谋工作页=0  阿里妈妈报表页=1）",
+    "detail": "已归位（生意参谋工作页=0  阿里妈妈报表页=0 → 生意参谋工作页=1  阿里妈妈报表页=1）",
     "actions": [
      "生意参谋工作页:create",
      "阿里妈妈报表页:create"
@@ -104,10 +104,10 @@
    "needsLogin": [],
    "unreadable": [],
    "href": {
-    "sycm": "https://sycm.taobao.com/custom/login.htm?_target=http://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
-    "alimama": "https://one.alimama.com/index.html#!/login/index"
+    "sycm": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "alimama": "https://one.alimama.com/index.html"
    },
-   "scriptVerdict": "LOGGED_IN",
+   "scriptVerdict": "ALREADY_LOGGED_IN",
    "detail": null,
    "notify": {
     "mode": "off",

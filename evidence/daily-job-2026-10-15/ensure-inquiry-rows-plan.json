@@ -1,14 +1,14 @@
 {
   "mode": "commit",
-  "at": "2026-10-16T05:05:21.015Z",
+  "at": "2026-10-16T09:52:04.985Z",
   "reportDate": "2026-10-15",
   "dateEpoch": 1791993600000,
   "base": {
-    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
-    "name": "各店铺日报 副本"
+    "appToken": "RqzrbD4zIalzjxsSGcbcUPTpnKc",
+    "name": "各店铺日报"
   },
   "table": {
-    "tableId": "tblqF2YD2VfmKP4C",
+    "tableId": "tblLYwJTSLqTGVSC",
     "name": "各店铺数据日报"
   },
   "fields": {
@@ -21,17 +21,53 @@
   ],
   "targets": [
     "里可林淘宝",
-    "科塔淘宝"
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
   ],
   "present": [
     {
       "shop": "里可林淘宝",
-      "recordId": "reczz28NvWwqV2lD",
+      "recordId": "reczz28JboVWw0dB",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林天猫",
+      "recordId": "reczz28JboVWvl7s",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "盖文淘宝",
+      "recordId": "reczz28JboVWuqvG",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "盖文天猫",
+      "recordId": "reczz28JbmlNoxTl",
       "matchedBy": "shop-name"
     },
     {
       "shop": "科塔淘宝",
-      "recordId": "reczz28NvWwqT5Ft",
+      "recordId": "reczz28JboVWtg1I",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林淘宝",
+      "recordId": "reczz28JboVWu7JT",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "里可林天猫",
+      "recordId": "reczz28JboVWsuLS",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林家居",
+      "recordId": "reczz28JboVWsa2p",
       "matchedBy": "shop-name"
     }
   ],

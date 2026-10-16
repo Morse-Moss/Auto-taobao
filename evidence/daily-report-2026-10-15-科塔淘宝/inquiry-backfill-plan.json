@@ -3,7 +3,7 @@
   "reportDate": "2026-10-15",
   "shop": "科塔淘宝",
   "environment": {
-    "computedAt": "2026-10-16T05:12:46.238Z",
+    "computedAt": "2026-10-16T10:19:12.624Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19044",
     "browserPort": {
@@ -31,10 +31,10 @@
     "reason": "latest"
   },
   "target": {
-    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
-    "tableId": "tblqF2YD2VfmKP4C",
+    "appToken": "RqzrbD4zIalzjxsSGcbcUPTpnKc",
+    "tableId": "tblLYwJTSLqTGVSC",
     "tableName": "各店铺数据日报",
-    "recordId": "reczz28NvWwqT5Ft",
+    "recordId": "reczz28JboVWtg1I",
     "matchedBy": "shop-name",
     "shopOptionId": "optnF3h5i7"
   },
@@ -53,8 +53,8 @@
     "同层同行询单量": 11
   },
   "prewrite": {
-    "disposition": "WRITE_REQUIRED",
-    "询单量": null,
-    "同层同行询单量": null
+    "disposition": "ALREADY_VERIFIED",
+    "询单量": "3",
+    "同层同行询单量": "11"
   }
 }

@@ -1,18 +1,18 @@
 
-===== 2026-10-16T05:08:09.097Z =====
-$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-15 --proxy http://127.0.0.1:19023 --shop-key 里可林淘宝 --commit --shop-xlsx C:\Users\Administrator\Downloads\日报_20261016_6e084ff8251d468d6ead4fd386d07bed.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261016_130722.zip
+===== 2026-10-16T09:57:58.943Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-15 --proxy http://127.0.0.1:19023 --shop-key 里可林淘宝 --commit --shop-xlsx C:\Users\Administrator\Downloads\日报_20261016_6e084ff8251d468d6ead4fd386d07bed.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261016_175712.zip
 exit=0 signal= error=none
 --- stdout ---
 [shop-key] 里可林淘宝 ↔ 源产物店名 里可林家居 一致（证据目录 daily-report-2026-10-15-里可林淘宝）
-[audit] 已记 push/ok id=158
+[audit] 已记 push/ok id=162
 {
   "status": "COMMITTED_AND_VERIFIED",
-  "recordId": "reczz28NxeUnECiA",
+  "recordId": "reczz28O2b4gXoJf",
   "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-15-里可林淘宝\\receipt.json",
   "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-15-里可林淘宝",
   "evidenceGeneration": 1,
-  "recordCountBefore": 2289,
-  "recordCountAfter": 2290,
+  "recordCountBefore": 2377,
+  "recordCountAfter": 2378,
   "verifiedFields": 242,
   "derivedReadbackAttempts": 1,
   "checks": {

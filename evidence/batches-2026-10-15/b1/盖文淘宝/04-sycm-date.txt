@@ -1,5 +1,5 @@
 
-===== 2026-10-16T04:30:30.842Z =====
+===== 2026-10-16T10:08:11.682Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site sycm --date 2026-10-15 --proxy http://127.0.0.1:19043
 exit=0 signal= error=none
 --- stdout ---
@@ -8,7 +8,7 @@ exit=0 signal= error=none
   "requested": "2026-10-15",
   "mode": "preset",
   "route": "preset-or-calendar",
-  "targetId": "73310A1CDE46A255246AB538461F067C",
+  "targetId": "F75CAFA917CB36354FCCC97F97C52ACF",
   "observedBefore": "统计时间 2026-10-15",
   "observedAfter": "统计时间 2026-10-15",
   "filters": null,

@@ -1,10 +1,34 @@
 
-===== 2026-10-16T03:33:53.553Z =====
-$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-15 --proxy http://127.0.0.1:19023 --shop-key 网林淘宝 --commit --shop-xlsx C:\Users\Administrator\Downloads\日报_20261016_1442937a949c530fdf7741076d82c6d7.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261016_113305.zip
-exit=1 signal= error=none
+===== 2026-10-16T10:22:56.137Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-15 --proxy http://127.0.0.1:19023 --shop-key 网林淘宝 --commit --shop-xlsx C:\Users\Administrator\Downloads\日报_20261016_1442937a949c530fdf7741076d82c6d7.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261016_182211.zip
+exit=0 signal= error=none
 --- stdout ---
+[shop-key] 网林淘宝 ↔ 源产物店名 网林全卫定制 一致（证据目录 daily-report-2026-10-15-网林淘宝）
+[audit] 已记 push/ok id=172
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "reczz28O310eXlCr",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-15-网林淘宝\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-15-网林淘宝",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 2382,
+  "recordCountAfter": 2383,
+  "verifiedFields": 241,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 241,
+    "shopName": "网林全卫定制",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1791993600000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
 
 --- stderr ---
-Error: 落位到源表之后，页面模型一直没加载出表 tblIuAX4nPc1zDOO（等了 20 次、每次 1000ms，最后一次看到的是 "table-not-loaded"）｜落位目标 https://kcne618basvj.feishu.cn/base/RjKcb3isDaVn1GsoVJfc7Ykknyg?table=tblIuAX4nPc1zDOO&view=vewwg0rhjo
-    at ensureTargetPage (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:161:11)
-    at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:382:3)
+[留空] UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）
+[留空] 无线端UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）

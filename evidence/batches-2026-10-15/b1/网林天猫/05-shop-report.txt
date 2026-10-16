@@ -1,0 +1,20 @@
+
+===== 2026-10-16T10:03:59.801Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-shop-report.mjs --date 2026-10-15 --proxy http://127.0.0.1:19042 --shop-key 网林天猫 --expect-shop 网林家居旗舰店 --expect-member 网林家居旗舰店:饺子 --expect-member-id 7314426323
+exit=0 signal= error=none
+--- stdout ---
+[0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）
+[身份] 生意参谋店铺名 = "网林家居旗舰店"（主店）｜期望 "网林家居旗舰店" ✓
+      → 生意参谋页 0A8B777C8849B42A0DD007AE70AFB82B｜已有日报 xlsx 242 个｜下载目录 C:\Users\Administrator\Downloads｜身份核对=已做
+[1/4] 再进 自助分析 · 公共空间
+[2/4] 2.5s：预览按钮 1 个，日报行 #0（命中复核=true，视口内=true）
+[2/4] 点开「日报」预览（#0）→ {"clicked":true,"tag":"A","text":"预览"}
+[3/4] 3s：统计区间=["2026-09-16","2026-10-15"]｜下载按钮=true
+[3/4] 统计区间 2026-09-16 ~ 2026-10-15 含目标日 2026-10-15 ✓
+[4/4] 装直下通道仪表（平台 10-15 起把日报导出改成在线预览，文件不落盘）
+[4/4] 点「下载报表」
+      → y=601（中心点命中） → {"clicked":true,"tag":"SPAN","text":"下载报表"}
+      直下 URL 已捕获 → 新文件：日报_20261016_65141cc3c0fd0c526f65e7da28ff800b.xlsx（19791 bytes）
+      shopXlsxPath = C:\Users\Administrator\Downloads\日报_20261016_65141cc3c0fd0c526f65e7da28ff800b.xlsx
+
+--- stderr ---

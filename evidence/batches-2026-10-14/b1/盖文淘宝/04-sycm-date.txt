@@ -1,15 +1,15 @@
 
-===== 2026-10-15T06:30:47.757Z =====
+===== 2026-10-16T01:35:55.236Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site sycm --date 2026-10-14 --proxy http://127.0.0.1:19043
 exit=0 signal= error=none
 --- stdout ---
 {
   "site": "sycm",
   "requested": "2026-10-14",
-  "mode": "preset",
+  "mode": "explicit",
   "route": "preset-or-calendar",
-  "targetId": "78DE7747855DC120D9F1EE70C7D7A5C8",
-  "observedBefore": "统计时间 2026-10-14",
+  "targetId": "E07A5C1C455AC42248C63CCCF53C666C",
+  "observedBefore": "统计时间 2026-10-15",
   "observedAfter": "统计时间 2026-10-14",
   "filters": null,
   "tabs": [
@@ -32,7 +32,7 @@ exit=0 signal= error=none
     "询单到付款"
   ],
   "status": "APPLIED",
-  "presetWasNoop": true,
+  "presetWasNoop": null,
   "pageReload": null,
   "trace": [
     {
@@ -53,11 +53,53 @@ exit=0 signal= error=none
       ]
     },
     {
-      "step": "click-preset",
-      "text": "1天",
+      "step": "open-explicit",
       "point": [
-        1081,
+        1322,
         162
+      ]
+    },
+    {
+      "step": "panel",
+      "shown": [
+        "2026-10",
+        "2026-10"
+      ],
+      "selection": "已选择：2026-10-14 至 2026-10-15",
+      "hits": [
+        "14",
+        "14"
+      ]
+    },
+    {
+      "step": "click-day",
+      "block": 0,
+      "text": "14",
+      "point": [
+        926,
+        329
+      ]
+    },
+    {
+      "step": "click-day",
+      "block": 1,
+      "text": "14",
+      "point": [
+        1184,
+        329
+      ]
+    },
+    {
+      "step": "selection-settled",
+      "selection": "已选择：2026-10-14 至 2026-10-14",
+      "clicks": 2
+    },
+    {
+      "step": "confirm",
+      "selection": "已选择：2026-10-14 至 2026-10-14",
+      "point": [
+        1304,
+        446
       ]
     },
     {

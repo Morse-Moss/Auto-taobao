@@ -2,7 +2,7 @@
   "mode": "api-commit",
   "reportDate": "2026-10-15",
   "environment": {
-    "computedAt": "2026-10-16T04:55:11.910Z",
+    "computedAt": "2026-10-16T10:29:44.334Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19023",
     "browserPort": {
@@ -43,7 +43,7 @@
     },
     "promotion": {
       "column": "日期",
-      "csvName": "营销场景报表_20261016_125426.csv",
+      "csvName": "营销场景报表_20261016_182859.csv",
       "observedDates": [
         "2026-10-15"
       ],
@@ -54,19 +54,19 @@
     "allMatchDate": true
   },
   "target": {
-    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
-    "tableId": "tblIuAX4nPc1zDOO",
+    "appToken": "RqzrbD4zIalzjxsSGcbcUPTpnKc",
+    "tableId": "tbl6EDMzzaYUVvVC",
     "viewId": "vewwg0rhjo",
-    "baseName": "各店铺日报 副本",
+    "baseName": "各店铺日报",
     "tableName": "总数据来源底单"
   },
   "source": {
     "shopFile": "C:\\Users\\Administrator\\Downloads\\店铺日报_20261016_defbfd5f1fef2520bec4b10726fe5a41.xlsx",
-    "shopSha256": "e643172c3bd77fa014059a5731c3c11e6debdd0799e566de7ab4d8d90772f9fb",
+    "shopSha256": "8e6d5d4db0054b7976f3b59a3860d639dceec8892b3006537cbb0b91bb064b0e",
     "shopWorkbookRows": 2,
-    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20261016_125426.zip",
-    "promotionSha256": "9c2fe889559b3a2beab87dd3d91ced46c4adb83957854527a3543d269f0dd470",
-    "promotionCsv": "营销场景报表_20261016_125426.csv"
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20261016_182859.zip",
+    "promotionSha256": "38f20912a39afa510a88589f72ad59ee3716bd39432869981acfd95d458c6bc4",
+    "promotionCsv": "营销场景报表_20261016_182859.csv"
   },
   "checks": {
     "visibleFields": 265,
@@ -257,6 +257,6 @@
     "会员成交笔数 (1)": 0,
     "成交人数 (1)": 0,
     "自然流量转化金额 (1)": 0,
-    "自然流量曝光量 (1)": 0
+    "自然流量曝光量 (1)": 19
   }
 }

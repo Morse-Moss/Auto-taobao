@@ -1,0 +1,86 @@
+{
+  "mode": "apply",
+  "date": "2026-10-15",
+  "shop": "里可林淘宝",
+  "profile": "kcne",
+  "tables": {
+    "keyword": {
+      "tableId": "tblbSGMO2apOKuAZ",
+      "beforeRows": 2513,
+      "plannedRows": 26,
+      "skippedRows": 0,
+      "subjectIds": [],
+      "recordIds": [
+        "reczz28NrSj4Tqr5",
+        "reczz28NrSj4Tj63",
+        "reczz28NrSj4U0u9",
+        "reczz28NrSj4WlEt",
+        "reczz28NrSj4TxSK",
+        "reczz28NrSj4UWSK",
+        "reczz28NrSj4TWZ6",
+        "reczz28NrSj4UxLs",
+        "reczz28NrSj4Wy15",
+        "reczz28NrSj4XGPA",
+        "reczz28NrSj4VWFz",
+        "reczz28NrSj4X8Y5",
+        "reczz28NrSj4TYcm",
+        "reczz28NrSj4TbCc",
+        "reczz28NrSj4V8rL",
+        "reczz28NrSj4UbM2",
+        "reczz28NrSj4UhrH",
+        "reczz28NrSj4X92X",
+        "reczz28NrSj4TZda",
+        "reczz28NrSj4Uowl",
+        "reczz28NrSj4WHyH",
+        "reczz28NrSj4UyCP",
+        "reczz28NrSj4TSsW",
+        "reczz28NrSj4WHPK",
+        "reczz28NrSj4TySk",
+        "reczz28NrSj4X2bo"
+      ],
+      "afterRows": 2539
+    },
+    "audience": {
+      "tableId": "tblyjD5058Mjbmcv",
+      "beforeRows": 2045,
+      "plannedRows": 12,
+      "skippedRows": 0,
+      "subjectIds": [
+        "669240905644",
+        "672340446178",
+        "714114643551",
+        "741220719302",
+        "811597731796"
+      ],
+      "recordIds": [
+        "reczz28NrTARH89F",
+        "reczz28NrTARFlWQ",
+        "reczz28NrTARFzM0",
+        "reczz28NrTARGbTz",
+        "reczz28NrTARFYvS",
+        "reczz28NrTARIWsL",
+        "reczz28NrTARFplK",
+        "reczz28NrTARFiEN",
+        "reczz28NrTARFejj",
+        "reczz28NrTARGxvx",
+        "reczz28NrTARGYlf",
+        "reczz28NrTARILie"
+      ],
+      "afterRows": 2057
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261016_070418.zip",
+      "csvName": "关键词报表_20261016_070418.csv",
+      "rows": 26,
+      "columns": 77
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261016_070431.zip",
+      "csvName": "人群报表_20261016_070431.csv",
+      "rows": 12,
+      "columns": 75
+    }
+  }
+}

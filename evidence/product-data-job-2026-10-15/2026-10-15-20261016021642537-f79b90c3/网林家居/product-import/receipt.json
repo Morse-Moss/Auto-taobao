@@ -1,0 +1,46 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-15_2026-10-15 (12).xls",
+  "shop": "网林家居",
+  "date": "2026-10-15",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 5,
+  "existingRows": 2869,
+  "plannedRows": 5,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-15",
+      "shop": "网林家居",
+      "productId": "677980783860"
+    },
+    {
+      "date": "2026-10-15",
+      "shop": "网林家居",
+      "productId": "1076026074700"
+    },
+    {
+      "date": "2026-10-15",
+      "shop": "网林家居",
+      "productId": "1077063041893"
+    },
+    {
+      "date": "2026-10-15",
+      "shop": "网林家居",
+      "productId": "1078064196622"
+    },
+    {
+      "date": "2026-10-15",
+      "shop": "网林家居",
+      "productId": "1078065212901"
+    }
+  ],
+  "recordIds": [
+    "reczz28NuvmzCng6",
+    "reczz28NuvmzCmeq",
+    "reczz28NuvmzCn7L",
+    "reczz28NuvmzCviR",
+    "reczz28NuvmzCDFt"
+  ],
+  "afterRows": 2874
+}

@@ -2,7 +2,7 @@
   "mode": "api-commit",
   "reportDate": "2026-10-15",
   "environment": {
-    "computedAt": "2026-10-16T04:43:41.656Z",
+    "computedAt": "2026-10-16T10:26:48.878Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19023",
     "browserPort": {
@@ -43,7 +43,7 @@
     },
     "promotion": {
       "column": "日期",
-      "csvName": "营销场景报表_20261016_124249.csv",
+      "csvName": "营销场景报表_20261016_182559.csv",
       "observedDates": [
         "2026-10-15"
       ],
@@ -54,19 +54,19 @@
     "allMatchDate": true
   },
   "target": {
-    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
-    "tableId": "tblIuAX4nPc1zDOO",
+    "appToken": "RqzrbD4zIalzjxsSGcbcUPTpnKc",
+    "tableId": "tbl6EDMzzaYUVvVC",
     "viewId": "vewwg0rhjo",
-    "baseName": "各店铺日报 副本",
+    "baseName": "各店铺日报",
     "tableName": "总数据来源底单"
   },
   "source": {
     "shopFile": "C:\\Users\\Administrator\\Downloads\\日报_20261016_ea518aea3e2d36f77a19921be585653d.xlsx",
-    "shopSha256": "6bd912043c1173b7e0be12b46c2e1ca4be656e62d60b42b7168e939d766ba8dc",
+    "shopSha256": "40ad1ccce96b1cf3d1ba8eb31fef8afaa9304056e75a7539493893fb28697f63",
     "shopWorkbookRows": 31,
-    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20261016_124249.zip",
-    "promotionSha256": "31b3be8f3e6dc439682c9fc508a19fb94b597428e1c7a475e5a8e0fab1ef26ca",
-    "promotionCsv": "营销场景报表_20261016_124249.csv"
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\营销场景报表_20261016_182559.zip",
+    "promotionSha256": "dff6ba552a841436d281c336d5eda4cfe1af716bda1ae393d505733170aed010",
+    "promotionCsv": "营销场景报表_20261016_182559.csv"
   },
   "checks": {
     "visibleFields": 265,
@@ -259,7 +259,7 @@
     "会员成交笔数": 0,
     "成交人数": 0,
     "自然流量转化金额": 0,
-    "自然流量曝光量": 0,
+    "自然流量曝光量": 143,
     "人群推广日期": 1791993600000,
     "场景ID (1)": 372,
     "场景名字 (1)": "人群推广",
@@ -320,12 +320,12 @@
     "会员成交笔数 (1)": 0,
     "成交人数 (1)": 0,
     "自然流量转化金额 (1)": 0,
-    "自然流量曝光量 (1)": 0
+    "自然流量曝光量 (1)": 264
   },
   "status": "COMMITTED_AND_VERIFIED",
-  "recordId": "reczz28NxEnFRN8f",
-  "recordCountBefore": 2287,
-  "recordCountAfter": 2288,
+  "recordId": "reczz28O34sYxugT",
+  "recordCountBefore": 2383,
+  "recordCountAfter": 2384,
   "verifiedFields": 240,
   "derivedShop": [
     "optUI2OU6r"

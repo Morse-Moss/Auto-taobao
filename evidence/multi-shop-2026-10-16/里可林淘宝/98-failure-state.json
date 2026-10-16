@@ -1,0 +1,43 @@
+{
+  "capturedAt": "2026-10-16T09:40:55.722Z",
+  "url": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-16&endTime=2026-10-16&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day",
+  "title": "营销场景报表_万相台无界版",
+  "viewport": {
+    "w": 1506,
+    "h": 642,
+    "dpr": 1.25,
+    "scrollY": 0
+  },
+  "visibleText": "",
+  "dialogs": [],
+  "interactive": [],
+  "domSummary": {
+    "totalElements": 45,
+    "counts": {
+      "HTML": 1,
+      "HEAD": 1,
+      "META": 8,
+      "TITLE": 1,
+      "LINK": 1,
+      "STYLE": 19,
+      "SCRIPT": 9,
+      "BODY": 1,
+      "DIV": 3,
+      "IFRAME": 1
+    },
+    "containers": [
+      {
+        "tag": "DIV",
+        "id": "app",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1506,
+          "h": 0
+        }
+      }
+    ]
+  },
+  "tables": []
+}

@@ -1,15 +1,15 @@
 
-===== 2026-10-15T06:32:11.816Z =====
+===== 2026-10-16T01:41:27.636Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site sycm --date 2026-10-14 --proxy http://127.0.0.1:19045
 exit=0 signal= error=none
 --- stdout ---
 {
   "site": "sycm",
   "requested": "2026-10-14",
-  "mode": "preset",
+  "mode": "explicit",
   "route": "preset-or-calendar",
-  "targetId": "F0C733DD72724A37C2E3208C4FFECAA8",
-  "observedBefore": null,
+  "targetId": "DD857F953F6E70CE300FBF29B246AFB6",
+  "observedBefore": "统计时间 2026-10-15",
   "observedAfter": "统计时间 2026-10-14",
   "filters": null,
   "tabs": [
@@ -33,33 +33,8 @@ exit=0 signal= error=none
   ],
   "status": "APPLIED",
   "presetWasNoop": null,
-  "pageReload": {
-    "reloadError": null,
-    "observedAfterReload": "统计时间 2026-10-14",
-    "readFailures": 5,
-    "reads": 6,
-    "lastReadError": null
-  },
+  "pageReload": null,
   "trace": [
-    {
-      "step": "read-before-skipped",
-      "tolerated": true,
-      "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
-      "detail": "proxy http://127.0.0.1:19045/eval?target=F0C733DD72724A37C2E3208C4FFECAA8 failed: HTTP 400 Error: sycm date readout count=0     at <anonymous>:4:35     at <anon"
-    },
-    {
-      "step": "reload-stale-page",
-      "observedBeforeReload": null,
-      "requested": "2026-10-14"
-    },
-    {
-      "step": "reloaded",
-      "reloadError": null,
-      "observedAfterReload": "统计时间 2026-10-14",
-      "readFailures": 5,
-      "reads": 6,
-      "lastReadError": null
-    },
     {
       "step": "tab",
       "expectTab": "询单到付款",
@@ -78,11 +53,53 @@ exit=0 signal= error=none
       ]
     },
     {
-      "step": "click-preset",
-      "text": "1天",
+      "step": "open-explicit",
       "point": [
-        1081,
+        1322,
         162
+      ]
+    },
+    {
+      "step": "panel",
+      "shown": [
+        "2026-10",
+        "2026-10"
+      ],
+      "selection": "已选择：2026-10-14 至 2026-10-15",
+      "hits": [
+        "14",
+        "14"
+      ]
+    },
+    {
+      "step": "click-day",
+      "block": 0,
+      "text": "14",
+      "point": [
+        926,
+        329
+      ]
+    },
+    {
+      "step": "click-day",
+      "block": 1,
+      "text": "14",
+      "point": [
+        1184,
+        329
+      ]
+    },
+    {
+      "step": "selection-settled",
+      "selection": "已选择：2026-10-14 至 2026-10-14",
+      "clicks": 2
+    },
+    {
+      "step": "confirm",
+      "selection": "已选择：2026-10-14 至 2026-10-14",
+      "point": [
+        1304,
+        446
       ]
     },
     {

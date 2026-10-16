@@ -1,0 +1,15 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-15\\2026-10-15-20261016021642537-f79b90c3\\里可林淘宝\\inquiry.xls",
+  "shop": "里可林淘宝",
+  "date": "2026-10-15",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "FhCUbn7vVaEc26sRjMAccQJAn5e",
+  "sourceRows": 3,
+  "existingRows": 439,
+  "plannedRows": 0,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [],
+  "recordIds": [],
+  "afterRows": 439
+}

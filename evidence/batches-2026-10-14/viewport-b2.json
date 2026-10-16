@@ -10,7 +10,7 @@
     {
       "shop": "网林淘宝",
       "proxyPort": 19060,
-      "targetId": "A34A4080C09F98EE6C16D952AF1F74B9",
+      "targetId": "DE03D365150961E42D4B243683D0B041",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,
@@ -24,7 +24,7 @@
     {
       "shop": "里可林天猫",
       "proxyPort": 19061,
-      "targetId": "0D7FF2AB16D07183DC761DFC6095E66D",
+      "targetId": "5F05F2E8F38588053941A95CF0CA8D1D",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,
@@ -38,15 +38,15 @@
     {
       "shop": "网林家居",
       "proxyPort": 19062,
-      "targetId": "672A5645CF3470122474A7151A3573AC",
+      "targetId": "8B0167C813E0000ED675EDDCF79C9FA2",
       "width": 1506,
-      "height": 643,
+      "height": 642,
       "dpr": 1.25,
       "readError": null,
       "verdict": {
         "ok": true,
         "reason": null,
-        "detail": "视口 1506x643"
+        "detail": "视口 1506x642"
       }
     }
   ]

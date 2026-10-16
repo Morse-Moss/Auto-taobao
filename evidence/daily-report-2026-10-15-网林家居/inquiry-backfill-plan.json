@@ -3,7 +3,7 @@
   "reportDate": "2026-10-15",
   "shop": "网林家居",
   "environment": {
-    "computedAt": "2026-10-16T04:56:39.958Z",
+    "computedAt": "2026-10-16T10:30:57.395Z",
     "node": "v22.22.2",
     "proxyUrl": "http://127.0.0.1:19062",
     "browserPort": {
@@ -31,10 +31,10 @@
     "reason": "latest"
   },
   "target": {
-    "appToken": "RjKcb3isDaVn1GsoVJfc7Ykknyg",
-    "tableId": "tblqF2YD2VfmKP4C",
+    "appToken": "RqzrbD4zIalzjxsSGcbcUPTpnKc",
+    "tableId": "tblLYwJTSLqTGVSC",
     "tableName": "各店铺数据日报",
-    "recordId": "reczz28NvWwqRfUI",
+    "recordId": "reczz28JboVWsa2p",
     "matchedBy": "shop-name",
     "shopOptionId": "optRbz0AFD"
   },

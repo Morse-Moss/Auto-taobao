@@ -1,18 +1,18 @@
 
-===== 2026-10-16T05:11:23.451Z =====
-$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-15 --proxy http://127.0.0.1:19023 --shop-key 科塔淘宝 --commit --shop-xlsx C:\Users\Administrator\Downloads\店铺数据日报_20261016_8903471d5657b8875620a116960da9bc.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261016_131037.zip
+===== 2026-10-16T10:16:56.936Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-15 --proxy http://127.0.0.1:19023 --shop-key 科塔淘宝 --commit --shop-xlsx C:\Users\Administrator\Downloads\店铺数据日报_20261016_8903471d5657b8875620a116960da9bc.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261016_181612.zip
 exit=0 signal= error=none
 --- stdout ---
 [shop-key] 科塔淘宝 ↔ 源产物店名 科塔全卫定制 一致（证据目录 daily-report-2026-10-15-科塔淘宝）
-[audit] 已记 push/ok id=160
+[audit] 已记 push/ok id=170
 {
   "status": "COMMITTED_AND_VERIFIED",
-  "recordId": "reczz28Nxhm0SJCL",
+  "recordId": "reczz28O2ufybOyF",
   "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-15-科塔淘宝\\receipt.json",
   "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-15-科塔淘宝",
   "evidenceGeneration": 1,
-  "recordCountBefore": 2290,
-  "recordCountAfter": 2291,
+  "recordCountBefore": 2381,
+  "recordCountAfter": 2382,
   "verifiedFields": 238,
   "derivedReadbackAttempts": 1,
   "checks": {

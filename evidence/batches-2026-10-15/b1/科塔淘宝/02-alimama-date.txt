@@ -1,5 +1,5 @@
 
-===== 2026-10-16T05:10:15.865Z =====
+===== 2026-10-16T10:15:41.842Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site alimama --date 2026-10-15 --proxy http://127.0.0.1:19044
 exit=0 signal= error=none
 --- stdout ---
@@ -8,7 +8,7 @@ exit=0 signal= error=none
   "requested": "2026-10-15",
   "mode": "preset",
   "route": "url-hash",
-  "targetId": "5F4BBCDF34EAD04B0618E7BDDAFC4070",
+  "targetId": "01B2DBD4BB4C05F19D6FBBC924C117FC",
   "observedBefore": null,
   "observedAfter": " 昨日",
   "filters": [
@@ -34,7 +34,7 @@ exit=0 signal= error=none
       "step": "read-before-skipped",
       "tolerated": true,
       "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
-      "detail": "proxy http://127.0.0.1:19044/eval?target=5F4BBCDF34EAD04B0618E7BDDAFC4070 failed: HTTP 400 Error: alimama filter bar not ready; triggers=3     at <anonymous>:6:"
+      "detail": "proxy http://127.0.0.1:19044/eval?target=01B2DBD4BB4C05F19D6FBBC924C117FC failed: HTTP 400 Error: alimama filter bar not ready; triggers=3     at <anonymous>:6:"
     },
     {
       "step": "navigate",
@@ -44,8 +44,14 @@ exit=0 signal= error=none
       "step": "enter-report-route",
       "landed": {
         "t": "营销场景报表_万相台无界版",
-        "h": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-15&endTime=2026-10-15&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day&isRequestedQztDefaultSet=1"
+        "h": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-15&endTime=2026-10-15&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day"
       }
+    },
+    {
+      "step": "settle-retried",
+      "label": "alimama",
+      "reads": 3,
+      "readFailures": 2
     },
     {
       "step": "settled",

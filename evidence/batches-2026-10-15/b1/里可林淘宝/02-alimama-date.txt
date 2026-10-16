@@ -1,5 +1,5 @@
 
-===== 2026-10-16T05:06:24.613Z =====
+===== 2026-10-16T09:56:51.647Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site alimama --date 2026-10-15 --proxy http://127.0.0.1:19041
 exit=0 signal= error=none
 --- stdout ---
@@ -8,7 +8,7 @@ exit=0 signal= error=none
   "requested": "2026-10-15",
   "mode": "preset",
   "route": "url-hash",
-  "targetId": "8375A9F509BDEE9ABB5C3B83AABAE406",
+  "targetId": "A4AD787C0AE1BD885BA82A6CCCCEDB07",
   "observedBefore": null,
   "observedAfter": " 昨日",
   "filters": [
@@ -34,7 +34,7 @@ exit=0 signal= error=none
       "step": "read-before-skipped",
       "tolerated": true,
       "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
-      "detail": "proxy http://127.0.0.1:19041/eval?target=8375A9F509BDEE9ABB5C3B83AABAE406 failed: HTTP 400 Error: alimama filter bar not ready; triggers=4     at <anonymous>:6:"
+      "detail": "proxy http://127.0.0.1:19041/eval?target=A4AD787C0AE1BD885BA82A6CCCCEDB07 failed: HTTP 400 Error: alimama filter bar not ready; triggers=5     at <anonymous>:6:"
     },
     {
       "step": "navigate",

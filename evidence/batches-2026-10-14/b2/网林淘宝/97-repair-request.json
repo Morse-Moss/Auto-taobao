@@ -1,15 +1,15 @@
 {
-  "at": "2026-10-15T06:40:05.169Z",
+  "at": "2026-10-16T01:50:03.982Z",
   "shopKey": "网林淘宝",
-  "stage": "shop-report",
+  "stage": "sycm-date",
   "cause": "STAGE_FAILED",
-  "error": "阶段 shop-report 失败（exit 1）",
+  "error": "阶段 sycm-date 失败（exit 1）",
   "statePath": "evidence\\batches-2026-10-14\\b2\\网林淘宝\\98-failure-state.json",
   "stateTextPath": "evidence\\batches-2026-10-14\\b2\\网林淘宝\\98-failure-state.txt",
   "screenshotPath": "evidence\\batches-2026-10-14\\b2\\网林淘宝\\98-failure-page.png",
   "stateSummary": {
-    "url": "https://one.alimama.com/index.html#!/report/download-list",
-    "title": "下载任务管理_万相台无界版",
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "title": "生意参谋 - 零售电商大数据产品平台",
     "viewport": {
       "w": 1506,
       "h": 642,
@@ -33,8 +33,8 @@
   "planNote": null,
   "stageHint": "sycm",
   "noActionRequired": false,
-  "retryStage": "shop-report",
-  "execHint": "node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 网林淘宝 --proxy http://127.0.0.1:19060 --stage shop-report --cause STAGE_FAILED --action <候选动作> --log-dir evidence\\batches-2026-10-14\\b2\\网林淘宝",
+  "retryStage": "sycm-date",
+  "execHint": "node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 网林淘宝 --proxy http://127.0.0.1:19060 --stage sycm-date --cause STAGE_FAILED --action <候选动作> --log-dir evidence\\batches-2026-10-14\\b2\\网林淘宝",
   "instancePrecondition": {
     "why": "这一批跑完可能已经把这家店的浏览器放掉了（--batches 每批都释放，失败的那家也在名单里）。代理连不上时任何页面修复动作都执行不到，而 --proxy 是唯一的实例选择器 —— 不先确认就可能对着别的一台做事。",
     "checkCommand": "curl -s -m 5 http://127.0.0.1:19060/targets",

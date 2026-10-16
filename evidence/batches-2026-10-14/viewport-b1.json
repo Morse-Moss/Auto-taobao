@@ -1,31 +1,16 @@
 {
-  "ok": false,
+  "ok": true,
   "threshold": {
     "width": 1200,
     "height": 600
   },
   "checked": 5,
-  "failed": [
-    {
-      "shop": "盖文天猫",
-      "proxyPort": 19045,
-      "targetId": "CAC52CFF5426CE12B6580C9F2DBA5FDC",
-      "width": null,
-      "height": null,
-      "dpr": null,
-      "readError": "The operation was aborted due to timeout",
-      "verdict": {
-        "ok": false,
-        "reason": "VIEWPORT_UNREADABLE",
-        "detail": "视口读数缺失（width=null、height=null）"
-      }
-    }
-  ],
+  "failed": [],
   "entries": [
     {
       "shop": "里可林淘宝",
       "proxyPort": 19041,
-      "targetId": "543620A734BA6321FF4AC1B3C54BFC67",
+      "targetId": "1B0E317AD76D7D5021BD79E9333CA534",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,
@@ -39,7 +24,7 @@
     {
       "shop": "网林天猫",
       "proxyPort": 19042,
-      "targetId": "A22E53131B674FC45E81D21B1FE321FB",
+      "targetId": "AE0A92BCE30279E0579F0EE2729A6E51",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,
@@ -53,7 +38,7 @@
     {
       "shop": "盖文淘宝",
       "proxyPort": 19043,
-      "targetId": "717EF5EDAF38E92FF734B8A8ACB9EBCE",
+      "targetId": "EEDBFAA9D8CB271B769CAE6D71BF0B2F",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,
@@ -67,21 +52,21 @@
     {
       "shop": "盖文天猫",
       "proxyPort": 19045,
-      "targetId": "CAC52CFF5426CE12B6580C9F2DBA5FDC",
-      "width": null,
-      "height": null,
-      "dpr": null,
-      "readError": "The operation was aborted due to timeout",
+      "targetId": "533CC7A2619573CC3D69AFFB7D0A1FDF",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
       "verdict": {
-        "ok": false,
-        "reason": "VIEWPORT_UNREADABLE",
-        "detail": "视口读数缺失（width=null、height=null）"
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
       }
     },
     {
       "shop": "科塔淘宝",
       "proxyPort": 19044,
-      "targetId": "2CA924021336F2CF3F130EC204E66E69",
+      "targetId": "AB8F2C4B2CBB591D162CECE2F492208B",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,

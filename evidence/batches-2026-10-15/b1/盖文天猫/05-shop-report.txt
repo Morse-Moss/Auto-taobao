@@ -1,11 +1,11 @@
 
-===== 2026-10-16T04:35:43.142Z =====
+===== 2026-10-16T10:12:43.027Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-shop-report.mjs --date 2026-10-15 --proxy http://127.0.0.1:19045 --shop-key 盖文天猫 --expect-shop 盖文旗舰店 --expect-member 盖文旗舰店:小瓜 --expect-member-id 2995200080
 exit=0 signal= error=none
 --- stdout ---
 [0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）
 [身份] 生意参谋店铺名 = "盖文旗舰店"（主店）｜期望 "盖文旗舰店" ✓
-      → 生意参谋页 6A0475EFB7FD287F5834FC3A1C01CDCA｜已有日报 xlsx 253 个｜下载目录 C:\Users\Administrator\Downloads｜身份核对=已做｜按「盖文天猫」登记的行标题「活动-店铺-整体-近30天」认）
+      → 生意参谋页 E873D3418BEBA30BE109B1358EF055D7｜已有日报 xlsx 255 个｜下载目录 C:\Users\Administrator\Downloads｜身份核对=已做｜按「盖文天猫」登记的行标题「活动-店铺-整体-近30天」认）
 [1/4] 再进 自助分析 · 公共空间
 [2/4] 2.5s：预览按钮 1 个，日报行 #0（命中复核=true，视口内=true）
 [2/4] 点开「日报」预览（#0）→ {"clicked":true,"tag":"A","text":"预览"}
@@ -14,7 +14,7 @@ exit=0 signal= error=none
 [4/4] 装直下通道仪表（平台 10-15 起把日报导出改成在线预览，文件不落盘）
 [4/4] 点「下载报表」
       → y=601（中心点命中） → {"clicked":true,"tag":"SPAN","text":"下载报表"}
-      直下 URL 已捕获 → 新文件：活动-店铺-整体-近30天_20261016_5101fe58498b2d2694371a0b05f989f3.xlsx（21140 bytes）
+      直下 URL 已捕获 → 新文件：活动-店铺-整体-近30天_20261016_5101fe58498b2d2694371a0b05f989f3.xlsx（21138 bytes）
       shopXlsxPath = C:\Users\Administrator\Downloads\活动-店铺-整体-近30天_20261016_5101fe58498b2d2694371a0b05f989f3.xlsx
 
 --- stderr ---

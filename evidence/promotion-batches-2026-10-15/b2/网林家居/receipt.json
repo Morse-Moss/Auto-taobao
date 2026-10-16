@@ -1,0 +1,53 @@
+{
+  "mode": "apply",
+  "date": "2026-10-15",
+  "shop": "网林家居",
+  "profile": "kcne",
+  "tables": {
+    "keyword": {
+      "tableId": "tblbSGMO2apOKuAZ",
+      "beforeRows": 2801,
+      "plannedRows": 0,
+      "skippedRows": 0,
+      "subjectIds": []
+    },
+    "audience": {
+      "tableId": "tblyjD5058Mjbmcv",
+      "beforeRows": 2222,
+      "plannedRows": 9,
+      "skippedRows": 0,
+      "subjectIds": [
+        "1076026074700",
+        "1077063041893",
+        "1078064196622",
+        "1078065212901"
+      ],
+      "recordIds": [
+        "reczz28Nrhq7DgtW",
+        "reczz28Nrhq7GuNu",
+        "reczz28Nrhq7FHuY",
+        "reczz28Nrhq7E3wy",
+        "reczz28Nrhq7FGSH",
+        "reczz28Nrhq7EDJP",
+        "reczz28Nrhq7H4cY",
+        "reczz28Nrhq7DWqu",
+        "reczz28Nrhq7H75h"
+      ],
+      "afterRows": 2231
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261016_071837.zip",
+      "csvName": "关键词报表_20261016_071837.csv",
+      "rows": 0,
+      "columns": 77
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261016_071851.zip",
+      "csvName": "人群报表_20261016_071851.csv",
+      "rows": 9,
+      "columns": 75
+    }
+  }
+}

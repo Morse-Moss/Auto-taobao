@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-15T06:44:13.564Z",
+  "at": "2026-10-16T01:56:09.613Z",
   "shopKey": "网林家居",
   "stage": "shop-report",
   "cause": "STAGE_FAILED",
@@ -8,11 +8,11 @@
   "stateTextPath": "evidence\\batches-2026-10-14\\b2\\网林家居\\98-failure-state.txt",
   "screenshotPath": "evidence\\batches-2026-10-14\\b2\\网林家居\\98-failure-page.png",
   "stateSummary": {
-    "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%AE%B6%E5%B1%85&port=19052&member=%E7%BD%91%E6%9E%97%E5%AE%9A%E5%88%B6%E5%AE%B6%E5%B1%85%3A%E5%B0%8F%E7%93%9C&actual=%E7%BD%91%E6%9E%97%E5%AE%9A%E5%88%B6%E5%AE%B6%E5%B1%85%3A%E5%B0%8F%E7%93%9C",
-    "title": "网林家居 · 日报采集窗口",
+    "url": "https://one.alimama.com/index.html#!/report/download-list",
+    "title": "下载任务管理_万相台无界版",
     "viewport": {
       "w": 1506,
-      "h": 643,
+      "h": 642,
       "dpr": 1.25,
       "scrollY": 0
     },

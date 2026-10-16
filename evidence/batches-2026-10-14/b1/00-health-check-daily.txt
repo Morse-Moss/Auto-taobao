@@ -40,7 +40,7 @@
         "action": "create",
         "found": 0,
         "url": "https://kcne618basvj.feishu.cn/base/RjKcb3isDaVn1GsoVJfc7Ykknyg?table=tblIuAX4nPc1zDOO&view=vewwg0rhjo",
-        "targetId": "3CF8F05FE92F3DC2D26AFCCA290E56D6"
+        "targetId": "52C2698C06A28DA970DD92A363BC1A14"
       }
     ],
     "requests": [
@@ -78,6 +78,6 @@
       "SESSION": "NOT_IMPLEMENTED",
       "END_TO_END": "NOT_IMPLEMENTED"
     },
-    "checkedAt": "2026-10-15T06:28:12.958Z"
+    "checkedAt": "2026-10-16T01:26:34.403Z"
   }
 }

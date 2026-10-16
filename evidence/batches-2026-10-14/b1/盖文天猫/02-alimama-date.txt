@@ -1,21 +1,21 @@
 
-===== 2026-10-15T06:31:55.906Z =====
+===== 2026-10-16T01:41:13.027Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site alimama --date 2026-10-14 --proxy http://127.0.0.1:19045
 exit=0 signal= error=none
 --- stdout ---
 {
   "site": "alimama",
   "requested": "2026-10-14",
-  "mode": "preset",
+  "mode": "explicit",
   "route": "url-hash",
-  "targetId": "723C85906CE9E2BE4EDAD2843AD8D78D",
+  "targetId": "99E5BD0FC05499657CDD910B6800B2E3",
   "observedBefore": null,
-  "observedAfter": " 昨日",
+  "observedAfter": " 2026-10-14",
   "filters": [
     "关键词推广人群推广",
     "末次点击归因",
     "30天累计数据",
-    " 昨日",
+    " 2026-10-14",
     "分日",
     "全部计划",
     "周环比",
@@ -34,7 +34,7 @@ exit=0 signal= error=none
       "step": "read-before-skipped",
       "tolerated": true,
       "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
-      "detail": "proxy http://127.0.0.1:19045/eval?target=723C85906CE9E2BE4EDAD2843AD8D78D failed: HTTP 400 Error: alimama filter bar not ready; triggers=3     at <anonymous>:6:"
+      "detail": "proxy http://127.0.0.1:19045/eval?target=99E5BD0FC05499657CDD910B6800B2E3 failed: HTTP 400 Error: alimama filter bar not ready; triggers=3     at <anonymous>:6:"
     },
     {
       "step": "navigate",

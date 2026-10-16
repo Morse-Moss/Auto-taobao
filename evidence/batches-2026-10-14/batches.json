@@ -1,5 +1,5 @@
 {
- "version": "sycm-automation 1.9.5",
+ "version": "sycm-automation 1.9.6",
  "date": "2026-10-14",
  "dateInput": "2026-10-14",
  "mode": "commit",
@@ -19,7 +19,7 @@
    ],
    "steps": {
     "start": 0,
-    "viewport-gate": 3,
+    "viewport-gate": 0,
     "login-preflight": 0,
     "label:里可林淘宝": 0,
     "label:网林天猫": 0,

@@ -1,5 +1,4 @@
-归位：已归位（生意参谋工作页=1  飞书底单页=0 → 生意参谋工作页=1  飞书底单页=1）
-  [归位] 飞书底单页：create
+归位：本来就在位（生意参谋工作页=1  飞书底单页=1）
 体检通过：阻断 0 项，告警 1 项
   [告警] EGRESS_PROXY_NOT_DECLARED：没有声明出网代理，判不出浏览器走哪条路出网。浏览器默认跟随机器级系统代理，机器级代理不可达时**所有**页面都报 ERR_PROXY_CONNECTION_FAILED（2026-09-18 实测）。要么显式声明出网代理，要么启动浏览器时固定用 --no-proxy-server。
   已跑 ENVIRONMENT:port/ENVIRONMENT:pages/ENVIRONMENT:egress；通过（另有 1 项不阻断的告警）；未实现的层：IDENTITY/SESSION/END_TO_END（这几层**没有检查过**，不表示通过）
@@ -15,7 +14,7 @@
       },
       {
         "page": "飞书底单页",
-        "count": 0
+        "count": 1
       }
     ],
     "after": [
@@ -28,7 +27,7 @@
         "count": 1
       }
     ],
-    "changed": true,
+    "changed": false,
     "actions": [
       {
         "page": "生意参谋工作页",
@@ -37,24 +36,17 @@
       },
       {
         "page": "飞书底单页",
-        "action": "create",
-        "found": 0,
-        "url": "https://kcne618basvj.feishu.cn/base/RjKcb3isDaVn1GsoVJfc7Ykknyg?table=tblIuAX4nPc1zDOO&view=vewwg0rhjo",
-        "targetId": "C27FE2D6D51EEE91FD03C00567B39ED4"
+        "action": "already-one",
+        "found": 1
       }
     ],
-    "requests": [
-      {
-        "kind": "new",
-        "page": "飞书底单页"
-      }
-    ],
+    "requests": [],
     "settleReads": 1,
     "verdict": {
       "ok": true,
-      "changed": true,
+      "changed": false,
       "notDone": [],
-      "detail": "已归位（生意参谋工作页=1  飞书底单页=0 → 生意参谋工作页=1  飞书底单页=1）"
+      "detail": "本来就在位（生意参谋工作页=1  飞书底单页=1）"
     }
   },
   "check": {
@@ -78,6 +70,6 @@
       "SESSION": "NOT_IMPLEMENTED",
       "END_TO_END": "NOT_IMPLEMENTED"
     },
-    "checkedAt": "2026-10-16T05:06:24.571Z"
+    "checkedAt": "2026-10-16T09:56:51.553Z"
   }
 }

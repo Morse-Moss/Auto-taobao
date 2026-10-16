@@ -1,0 +1,28 @@
+
+===== 2026-10-16T01:41:52.026Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase fetch --date 2026-10-14 --proxy http://127.0.0.1:19045 --expect-shop 盖文旗舰店 --expect-member 盖文旗舰店:小瓜 --expect-member-id 2995200080
+exit=0 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 99E5BD0FC05499657CDD910B6800B2E3｜phase=fetch｜目标日 2026-10-14
+[身份] 阿里妈妈会员 = "盖文旗舰店:小瓜" ID="2995200080"（这一页不显示店铺名，只有会员名）｜期望 "盖文旗舰店:小瓜" / 2995200080 ✓
+[fetch] 下载任务管理｜已有 zip 257 个｜目录 C:\Users\Administrator\Downloads
+[fetch] 列表读到 9 条任务（目标日按「日期范围」列认，不按任务名认）
+[fetch] 注意：台账里还挂着 5 笔别的目标日的未取任务（2026-09-29 营销场景报表_20260930_164050、2026-09-30 营销场景报表_20261001_154005、2026-10-01 营销场景报表_20261002_153729、2026-10-02 营销场景报表_20261003_153845、2026-10-03 营销场景报表_20261004_153734） —— 不拦本轮，但要知道它们在平台上没被取走
+[fetch] 日期范围等于 2026-10-14 的任务共 1 条（营销场景报表_20261015_120714）⇒ 逐条试，哪条落盘用哪条
+[fetch] 目标任务行 = 第 5 行｜生成成功 营销场景报表_20261015_120714 30天累计数据 2026-10-14至2026-10-14 2026-10-15
+[fetch] 第 1/6 次：复选框中心被 DIV 挡住，等一会儿重试（不硬点 —— 这一页点错不报错）
+[遮挡] 全屏层 DIV#wrapper_dlg_260(data-owner-id=universalBP_tool_auto_dlg) z=99999，rect=[0,0,1506,642]，层内可点小控件 15/15 个，选中 SPAN#mx_263「」于 (1199,145)，已按黑名单排除 ["一键报名"]
+[遮挡] 回读：全屏层剩 2 个（["DIV#mask_dlg_260 z=99998","DIV#wrapper_dlg_260 z=99999"]）｜目标可点=null ⇒ 还在挡（层还剩 2 个且目标仍不可点）
+[遮挡] 回读：全屏层剩 0 个｜目标可点=null ⇒ 不再挡事（全屏层已归零）
+[fetch] 遮挡层已关掉，重新量到复选框中心 [143,465]（命中自己=true）
+[fetch] 真实鼠标点它的复选框 (143,465) → {"clicked":true,"target":"99E5BD0FC05499657CDD910B6800B2E3","x":143,"y":465}
+[fetch] 第 2/6 次点击没生效（回读 checked=false）
+[fetch] 真实鼠标点它的复选框 (143,425) → {"clicked":true,"target":"99E5BD0FC05499657CDD910B6800B2E3","x":143,"y":425}
+[fetch] 回读 checked=true，当前勾选 = [3]
+[fetch] 入口 = 第 6 行（正是该任务行的操作行）｜rect=[136,452,50,24]，center=[161,464]｜操作行内叶子 1 个
+[fetch] 复核通过（y=452（中心点命中））→ 真实鼠标点击 (161,464) → {"clicked":true,"target":"99E5BD0FC05499657CDD910B6800B2E3","x":161,"y":464}
+[fetch] 新文件：营销场景报表_20261015_120714.zip（804 bytes）
+[fetch] promotionZipPath = C:\Users\Administrator\Downloads\营销场景报表_20261015_120714.zip
+[fetch] 台账已标为已取：2026-10-14 的 营销场景报表_20261015_120714（该目标日全部未取记录一起结清）
+
+--- stderr ---

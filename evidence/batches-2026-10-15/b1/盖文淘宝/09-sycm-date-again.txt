@@ -1,5 +1,5 @@
 
-===== 2026-10-16T04:32:45.478Z =====
+===== 2026-10-16T10:10:28.007Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site sycm --date 2026-10-15 --proxy http://127.0.0.1:19043
 exit=0 signal= error=none
 --- stdout ---
@@ -8,8 +8,8 @@ exit=0 signal= error=none
   "requested": "2026-10-15",
   "mode": "preset",
   "route": "preset-or-calendar",
-  "targetId": "73310A1CDE46A255246AB538461F067C",
-  "observedBefore": null,
+  "targetId": "F75CAFA917CB36354FCCC97F97C52ACF",
+  "observedBefore": "统计时间 2026-10-15",
   "observedAfter": "统计时间 2026-10-15",
   "filters": null,
   "tabs": [
@@ -32,34 +32,9 @@ exit=0 signal= error=none
     "询单到付款"
   ],
   "status": "APPLIED",
-  "presetWasNoop": null,
-  "pageReload": {
-    "reloadError": null,
-    "observedAfterReload": "统计时间 2026-10-15",
-    "readFailures": 12,
-    "reads": 13,
-    "lastReadError": null
-  },
+  "presetWasNoop": true,
+  "pageReload": null,
   "trace": [
-    {
-      "step": "read-before-skipped",
-      "tolerated": true,
-      "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
-      "detail": "proxy http://127.0.0.1:19043/eval?target=73310A1CDE46A255246AB538461F067C failed: HTTP 400 Error: sycm date readout count=0     at <anonymous>:4:35     at <anon"
-    },
-    {
-      "step": "reload-stale-page",
-      "observedBeforeReload": null,
-      "requested": "2026-10-15"
-    },
-    {
-      "step": "reloaded",
-      "reloadError": null,
-      "observedAfterReload": "统计时间 2026-10-15",
-      "readFailures": 12,
-      "reads": 13,
-      "lastReadError": null
-    },
     {
       "step": "tab",
       "expectTab": "询单到付款",

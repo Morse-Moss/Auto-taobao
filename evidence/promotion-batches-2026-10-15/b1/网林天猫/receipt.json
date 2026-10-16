@@ -1,0 +1,71 @@
+{
+  "mode": "apply",
+  "date": "2026-10-15",
+  "shop": "网林天猫",
+  "profile": "kcne",
+  "tables": {
+    "keyword": {
+      "tableId": "tblbSGMO2apOKuAZ",
+      "beforeRows": 2539,
+      "plannedRows": 11,
+      "skippedRows": 0,
+      "subjectIds": [],
+      "recordIds": [
+        "reczz28NrUm0y8bt",
+        "reczz28NrUm0yfvI",
+        "reczz28NrUm0ybjd",
+        "reczz28NrUm0zUbv",
+        "reczz28NrUm0zCWQ",
+        "reczz28NrUm0xc6x",
+        "reczz28NrUm10uke",
+        "reczz28NrUm0ymXy",
+        "reczz28NrUm0z7mr",
+        "reczz28NrUm10MeK",
+        "reczz28NrUm0yVp8"
+      ],
+      "afterRows": 2550
+    },
+    "audience": {
+      "tableId": "tblyjD5058Mjbmcv",
+      "beforeRows": 2057,
+      "plannedRows": 12,
+      "skippedRows": 0,
+      "subjectIds": [
+        "1060913369469",
+        "1071284033110",
+        "1072247628377",
+        "923336705176",
+        "977271829805"
+      ],
+      "recordIds": [
+        "reczz28NrV8dVutc",
+        "reczz28NrV8dTwsj",
+        "reczz28NrV8dViMy",
+        "reczz28NrV8dWkaO",
+        "reczz28NrV8dUkpZ",
+        "reczz28NrV8dUxpF",
+        "reczz28NrV8dWiYV",
+        "reczz28NrV8dWzKE",
+        "reczz28NrV8dXBuy",
+        "reczz28NrV8dVqtt",
+        "reczz28NrV8dXFft",
+        "reczz28NrV8dVFiP"
+      ],
+      "afterRows": 2069
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261016_070613.zip",
+      "csvName": "关键词报表_20261016_070613.csv",
+      "rows": 11,
+      "columns": 75
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261016_070630.zip",
+      "csvName": "人群报表_20261016_070630.csv",
+      "rows": 12,
+      "columns": 73
+    }
+  }
+}

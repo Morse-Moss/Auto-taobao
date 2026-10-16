@@ -1,9 +1,9 @@
 
-===== 2026-10-15T06:32:00.407Z =====
+===== 2026-10-16T01:41:19.305Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase submit --date 2026-10-14 --proxy http://127.0.0.1:19045 --expect-shop 盖文旗舰店 --expect-member 盖文旗舰店:小瓜 --expect-member-id 2995200080
 exit=0 signal= error=none
 --- stdout ---
-[0/2] 阿里妈妈页 723C85906CE9E2BE4EDAD2843AD8D78D｜phase=submit｜目标日 2026-10-14
+[0/2] 阿里妈妈页 99E5BD0FC05499657CDD910B6800B2E3｜phase=submit｜目标日 2026-10-14
 [身份] 阿里妈妈会员 = "盖文旗舰店:小瓜" ID="2995200080"（这一页不显示店铺名，只有会员名）｜期望 "盖文旗舰店:小瓜" / 2995200080 ✓
 [submit] 注意：台账里还挂着 5 笔别的目标日的未取任务（2026-09-29 营销场景报表_20260930_164050、2026-09-30 营销场景报表_20261001_154005、2026-10-01 营销场景报表_20261002_153729、2026-10-02 营销场景报表_20261003_153845、2026-10-03 营销场景报表_20261004_153734） —— 不拦本轮，但要知道它们在平台上没被取走
 [submit] 台账记着 2026-10-14 已提交过 营销场景报表_20261015_120714，且它仍在下载任务列表里（列表 9 条） ⇒ 跳过提交，直接取件（不再对平台产生第二次副作用）

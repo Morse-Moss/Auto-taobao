@@ -1,30 +1,20 @@
 
-===== 2026-10-15T04:56:13.355Z =====
+===== 2026-10-16T01:27:32.742Z =====
 $ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-shop-report.mjs --date 2026-10-14 --proxy http://127.0.0.1:19041 --shop-key 里可林淘宝 --expect-shop 里可林家居 --expect-member 里可林家居:小嘉 --expect-member-id 2350600069
-exit=1 signal= error=none
+exit=0 signal= error=none
 --- stdout ---
 [0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）
 [身份] 生意参谋店铺名 = "里可林家居"（主店）｜期望 "里可林家居" ✓
-      → 生意参谋页 FDD379F0D6FBA986C6A59D1D6B565702｜已有日报 xlsx 235 个｜下载目录 C:\Users\Administrator\Downloads｜身份核对=已做
+      → 生意参谋页 2DEA1762150C4310935AC8F71CAD025B｜已有日报 xlsx 235 个｜下载目录 C:\Users\Administrator\Downloads｜身份核对=已做
 [1/4] 再进 自助分析 · 公共空间
 [2/4] 2.5s：预览按钮 2 个，日报行 #0（命中复核=true，视口内=true）
 [2/4] 点开「日报」预览（#0）→ {"clicked":true,"tag":"A","text":"预览"}
-[3/4] 3s：统计区间=["2026-09-15","2026-10-14"]｜下载按钮=true
-[3/4] 统计区间 2026-09-15 ~ 2026-10-14 含目标日 2026-10-14 ✓
+[3/4] 3s：统计区间=["2026-09-16","2026-10-15"]｜下载按钮=true
+[3/4] 统计区间 2026-09-16 ~ 2026-10-15 含目标日 2026-10-14 ✓
+[4/4] 装直下通道仪表（平台 10-15 起把日报导出改成在线预览，文件不落盘）
 [4/4] 点「下载报表」
       → y=601（中心点命中） → {"clicked":true,"tag":"SPAN","text":"下载报表"}
-      等待下载… 3s
-      等待下载… 6s
-      等待下载… 9s
-      等待下载… 12s
-      等待下载… 15s
-      等待下载… 18s
-      等待下载… 21s
-      等待下载… 24s
-      等待下载… 27s
-      等待下载… 30s
-[失败现场] 没给 --log-dir ⇒ 本轮不采（整轮跑时由编排层统一采，这里不重复拍一遍）
+      直下 URL 已捕获 → 新文件：日报_20261016_6e084ff8251d468d6ead4fd386d07bed.xlsx（19802 bytes）
+      shopXlsxPath = C:\Users\Administrator\Downloads\日报_20261016_6e084ff8251d468d6ead4fd386d07bed.xlsx
 
 --- stderr ---
-
-采集失败：30000ms 内没等到新的店铺报表：判据取文件系统，页面说「已触发下载」不算数
