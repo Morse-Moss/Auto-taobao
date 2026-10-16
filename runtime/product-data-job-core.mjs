@@ -33,8 +33,32 @@ export const PRODUCT_JOB_FILES = Object.freeze({
  */
 export const SKIP_PROMOTION_REASON = '推广段人工熔断开关（默认关闭；仅当推广导入目标异常时手工传入）';
 
+/**
+ * 商品数据链的「销售2部停采」名单（2026-10-16 加）。
+ *
+ * 背景：2026-10-16 日报链换到别的组织的 base，用户拍板「13 家全采集」⇒
+ * `browser-ports.mjs` 的 `SHOPS_NOT_COLLECTING_YET` 清空（13 家都算参与采集）。
+ * 但那次拍板**只放开店铺日报链**——商品数据链的销售2部维持 2026-10-05 的停采指令
+ * （「现在只动店铺日报」）。两条链共用 `collectingShopKeys()`，所以商品链的停采名单
+ * 落在这里：默认名单从 `collectingShopKeys()` 里再摘掉这 5 家。
+ * 要整链恢复时把这张表清空即可；要点名单跑某一家仍可走 `--shops`（会走下面的
+ * notCollecting 分支 fail-closed，这是有意的：商品链没恢复前点名二部的店必须先改这里）。
+ */
+export const PRODUCT_DATA_STOPPED_SHOPS = Object.freeze([
+  '保拉淘宝',
+  '保拉天猫',
+  '安比龙头店',
+  '科塔龙头店',
+  '安比淘宝',
+]);
+
+/** 商品数据链默认采集名单：`collectingShopKeys()` 摘掉商品链停采名单（见上）。 */
+export function productDataCollectingShopKeys() {
+  return collectingShopKeys().filter((shop) => !PRODUCT_DATA_STOPPED_SHOPS.includes(shop));
+}
+
 export function buildProductJobPlan({ dateInput = 'yesterday', shops = null, commit = true, skipPromotion = false,
-  registered = shopBrowserKeys(), collecting = collectingShopKeys() } = {}) {
+  registered = shopBrowserKeys(), collecting = productDataCollectingShopKeys() } = {}) {
   // 默认＝**参与采集**的店铺，不是登记表全部：登记表里可能还有没开始收集的空店
   // （2026-09-30 白天有 1 家，当晚用户拍板开 13 家后那张表清空）。把空店算进来会让登录预检
   // 多查一家、采集多起一家、导入多写一家 —— 而它三项都做不成，最后表现为「一条每天都会响的假告警」。
@@ -44,8 +68,12 @@ export function buildProductJobPlan({ dateInput = 'yesterday', shops = null, com
   if (!selected.length) throw new Error('shops must contain at least one shop');
   const notCollecting = selected.filter((shop) => !collecting.includes(shop) && registered.includes(shop));
   if (notCollecting.length) {
-    throw new Error(`这些店铺已登记但还没开始收集数据：${notCollecting.join(', ')}`
-      + '（见 runtime/browser-ports.mjs 的 SHOPS_NOT_COLLECTING_YET）');
+    const inProductStop = notCollecting.filter((shop) => PRODUCT_DATA_STOPPED_SHOPS.includes(shop));
+    const hint = inProductStop.length === notCollecting.length
+      ? '（商品数据链的销售2部停采中 —— 见 runtime/product-data-job-core.mjs 的 PRODUCT_DATA_STOPPED_SHOPS；'
+        + '要让商品链也采二部，先把那张表清空）'
+      : '（见 runtime/browser-ports.mjs 的 SHOPS_NOT_COLLECTING_YET）';
+    throw new Error(`这些店铺已登记但还没开始收集数据：${notCollecting.join(', ')}` + hint);
   }
   const unknown = selected.filter((shop) => !registered.includes(shop));
   if (unknown.length) throw new Error(`unknown shops: ${unknown.join(', ')}`);

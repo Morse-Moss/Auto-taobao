@@ -15,6 +15,28 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.11.0] - 2026-10-16
+
+店铺日报链换到外组织（rcnbpuvafkct 租户）的「各店铺日报」base，采集范围放开到 13 家（仅日报链）。
+
+1. **换 base**：`PROFILES.kcne.dailyReport` 五值换到 `RqzrbD4zIalzjxsSGcbcUPTpnKc`（外组织
+   「各店铺日报」），并新增 `host: 'rcnbpuvafkct.feishu.cn'` —— 跨租户 base 的浏览器侧底单页
+   必须用它自己的 host 打开（`shop-pages.mjs` 的 `buildUrlByName` 优先取它），API 侧不受影响
+   （永远走 open.feishu.cn，凭据仍是 kcne 应用）。判据＝底单行数与字段签名（265 字段逐字段
+   相同、店铺底单 13 行逐行相同、询单表多一个不影响写入的「父记录」字段），不是名字。
+   只读取证见 `D:/Retire/probe-20261016/`（跨租户应用可读已实测）。回滚＝五个值换回旧 base
+   （RjKcb3isDaVn1GsoVJfc7Ykknyg 那组，留在 feishu-targets.mjs 注释里）。
+   ⚠️ **写权限尚未验证**：协作者接口 403/1063004 ⇒ kcne 应用还不是该 base 协作者，切换真跑前
+   必须让新组织管理员把应用（cli_a96ee8749078dbcf）加为可编辑协作者并重跑幂等写探针。
+2. **13 家全采（仅日报链）**：`SHOPS_NOT_COLLECTING_YET` 清空（销售2部 5 家恢复采集）。
+   目标 base 每天在采的口径是 12 家（销售1部 7 家不含网林家居＋销售2部 5 家），本次按用户
+   拍板「13 家全采集」放开全部。商品数据链的销售2部维持 2026-10-05 停采 —— 停采名单挪到
+   `product-data-job-core.mjs` 的 `PRODUCT_DATA_STOPPED_SHOPS`（两条链共用
+   `collectingShopKeys()`，解耦后才做得到「只动日报链」）。
+3. 验证：runtime 组（1322 用例）与日报 skill 组（634 用例）全绿；`daily-job-plan` 里写死的
+   8 家视口闸门名单改为从 `collectingShopKeys()` 派生；`shop-pages` 用例补钉「底单页 host 必须
+   是 base 自己的 host」。真机（浏览器开外组织底单页、写探针、13 家试跑）待切换日执行。
+
 ## [1.10.0] - 2026-10-16
 
 10 月整月推广缺失的根因修复 + 补数前置改造。根因两条，同属「落点静默写飞」：

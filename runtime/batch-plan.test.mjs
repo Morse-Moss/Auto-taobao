@@ -45,22 +45,23 @@ test('「参与采集」是登记表的子集，没有店掉进缝里', () => {
   }
 });
 
-test('销售2部 5 家停采、销售1部 8 家在采（2026-10-05 用户指令钉住）', () => {
-  // 为什么单独钉一条：部门切分是**业务决定**，不是实现细节。上面那条只守「没掉缝里」，
-  // 守不住「停的是不是恰好那 5 家」—— 少停一家会变成静默的少采，多停一家会变成误伤。
+test('2026-10-16 用户拍板 13 家全采：销售2部恢复、销售1部仍在、商品链停采另守', () => {
+  // 为什么单独钉一条：部门切分是**业务决定**，不是实现细节。这条守住「放开的是不是恰好全部」
+  // —— 少放一家会变成静默的少采，多放一家（不存在）会被登记表守卫拦下。
+  // 2026-10-05 曾「销售二部的全停止」（ALL=销售1部 8 家），2026-10-16 换外组织日报 base 时
+  // 用户拍板「13 家全采集」⇒ SHOPS_NOT_COLLECTING_YET 清空，ALL 回到登记表全量。
+  // ⚠️ 那次只放开**店铺日报链**；商品数据链的销售2部停采在 product-data-job-core.mjs 的
+  // PRODUCT_DATA_STOPPED_SHOPS 里守（分批层不认识商品链的停采，本文件别去断言它）。
   const s2 = Object.entries(SHOP_DEPARTMENTS).filter(([, dept]) => dept === 'sales2').map(([k]) => k);
   const s1 = Object.entries(SHOP_DEPARTMENTS).filter(([, dept]) => dept === 'sales1').map(([k]) => k);
   assert.equal(s2.length, 5, '销售2部 5 家这个数变了 —— 部门表与本用例要一起更新');
   assert.equal(s1.length, 8, '销售1部 8 家这个数变了 —— 部门表与本用例要一起更新');
-  assert.equal(ALL.length, 8, '参与采集应当正好是销售1部 8 家');
-  for (const key of s2) {
-    assert.ok(!ALL.includes(key), `销售2部的「${key}」还在采集名单里 —— 停采指令没生效`);
+  assert.equal(ALL.length, 13, '参与采集应当正好是登记表全量 13 家');
+  for (const key of [...s1, ...s2]) {
+    assert.ok(ALL.includes(key), `「${key}」不在采集名单里 —— 13 家全采的口径破了`);
   }
-  for (const key of s1) {
-    assert.ok(ALL.includes(key), `销售1部的「${key}」被误踢出采集 —— 停采范围只该是销售2部`);
-  }
-  // 登记表本身不能动：实例侧（起停/登录/盘点/标签页）一律按登记表走，销售2部照样要能起实例。
-  assert.equal(REGISTERED.length, 13, '登记表应当仍是 13 家 —— 停采只动采集名单，不动登记表');
+  // 登记表本身不能动：实例侧（起停/登录/盘点/标签页）一律按登记表走。
+  assert.equal(REGISTERED.length, 13, '登记表应当仍是 13 家');
 });
 
 /**

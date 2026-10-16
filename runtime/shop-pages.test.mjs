@@ -50,7 +50,7 @@ test('assertCoverage：期望页面没有开页 URL 时必须抛错（不许建 
   assert.doesNotThrow(() => assertCoverage(plan, { 某个新页面: 'https://example.com' }));
 });
 
-test('buildUrlByName：飞书页带 table/view，且字段名来自权威（不是 tableId/viewId）', (t) => {
+test('buildUrlByName：飞书页带 table/view，且字段名来自权威（不是 tableId/viewId）', async (t) => {
   let urls;
   try {
     urls = buildUrlByName();
@@ -60,6 +60,16 @@ test('buildUrlByName：飞书页带 table/view，且字段名来自权威（不�
   }
   assert.match(urls.飞书底单页, /^https:\/\/[^/]+\/base\/[^?]+\?table=[^&]+&view=[^&]+$/u);
   assert.doesNotMatch(urls.飞书底单页, /table=undefined|view=undefined/u, '字段名猜错会建出 undefined 页且不报错');
+  // 2026-10-16：日报 base 换到外组织（rcnbpuvafkct）后，底单页必须用 base 自己的 host 打开
+  // —— profile 的 host（kcne）打开的是本租户同路径，页面不存在 ⇒ 体检报 PAGES_ABSENT。
+  // 这条就是防「targets.host 加了、buildUrlByName 没接上」的那一半接线。
+  const { dailyReportTargets } = await import('./feishu-targets.mjs');
+  const dailyTarget = dailyReportTargets();
+  if (dailyTarget.host) {
+    assert.ok(urls.飞书底单页.startsWith(`https://${dailyTarget.host}/`),
+      `飞书底单页必须开在日报 base 自己的 host（${dailyTarget.host}）上，实际：${urls.飞书底单页}`);
+  }
+  assert.ok(urls.飞书底单页.includes(`/base/${dailyTarget.baseToken}`), '底单页必须指向配置层登记的那张 base');
   assert.ok(urls.生意参谋工作页.startsWith('http'), '生意参谋页 URL 必须来自 date-picker 的 entryUrl');
   // 2026-10-10 修 ㊵：阿里妈妈开页地址从「登录探测地址（首页）」改成「报表路由」——
   // 拿首页当开页地址会把页签建在首页，第 2 步 alimama-date 必挂（五家店齐挂的那一轮）。

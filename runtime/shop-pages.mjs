@@ -82,7 +82,9 @@ export function buildUrlByName() {
     // ⚠️ `entryUrl` 只在 date-picker 的 `SITES` 里（login-merchant-core 那个 `SITES` 是另一份、没有它），
     // 所以这里走 `siteAdapter`，别再 import 错的 SITES。
     阿里妈妈报表页: siteAdapter('alimama').entryUrl,
-    飞书底单页: `https://${host}/base/${targets.baseToken}?table=${targets.sourceTable}&view=${targets.sourceView}`,
+    // 2026-10-16：日报 base 换到别的租户（rcnbpuvafkct）后，底单页必须用 base 自己的 host 打开
+    // —— profile 的 host（kcne）打开的是本租户的同名路径，页面不存在。API 侧不受影响（走 open.feishu.cn）。
+    飞书底单页: `https://${targets.host ?? host}/base/${targets.baseToken}?table=${targets.sourceTable}&view=${targets.sourceView}`,
   };
 }
 

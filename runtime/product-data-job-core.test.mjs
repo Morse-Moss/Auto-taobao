@@ -1,22 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { collectingShopKeys } from './browser-ports.mjs';
-import { buildProductJobPlan, renderProductJobEntry } from './product-data-job-core.mjs';
+import {
+  PRODUCT_DATA_STOPPED_SHOPS,
+  buildProductJobPlan,
+  productDataCollectingShopKeys,
+  renderProductJobEntry,
+} from './product-data-job-core.mjs';
 
 test('product job defaults to yesterday and covers all shops that actually collect, in parallel waves', () => {
   const plan = buildProductJobPlan();
   assert.equal(plan.dateInput, 'yesterday');
-  // 家数从**参与采集**的名单推，不写死（2026-09-30：5 → 12 家参与采集 ＋ 1 家待收集；
-  // 当晚用户拍板开 13 家后那张表清空 ⇒ 现在是 13 家全采）。
-  // 默认名单是 collectingShopKeys() 而不是 shopBrowserKeys()：登记表里可能还有没开始收集的空店，
-  // 空店算进来会让登录预检多查一家、采集多起一家、导入多写一家 —— 三项它都做不成。
-  assert.deepEqual(plan.shops, collectingShopKeys());
+  // 家数从**参与采集**的名单推，不写死。
+  // 默认名单是商品链自己的 productDataCollectingShopKeys()：
+  // 2026-10-16 日报链换外组织 base 时用户拍板「13 家全采」，但那只放开**店铺日报链**——
+  // 商品数据链的销售2部维持 2026-10-05 的停采（PRODUCT_DATA_STOPPED_SHOPS），
+  // 所以商品链默认＝collectingShopKeys()（13 家）再摘掉销售2部 5 家＝销售1部 8 家。
+  assert.deepEqual(plan.shops, productDataCollectingShopKeys());
+  assert.deepEqual(plan.shops, collectingShopKeys().filter((shop) => !PRODUCT_DATA_STOPPED_SHOPS.includes(shop)));
+  for (const shop of PRODUCT_DATA_STOPPED_SHOPS) {
+    assert.equal(plan.shops.includes(shop), false, `商品链停采名单里的「${shop}」不该出现在默认名单`);
+  }
   // ⚠️ 这条同时是一笔资源账：`parallelShopCount` 是「一次会起多少个实例」的**名义**值 ——
-  // 13 家 ＝ 13 个 Edge 实例 + 13 个代理进程同时活着（底单串行采集，但实例全起）。
-  // 2026-09-30 起入口给了 `--batches`（默认 5）：**真正同时开着的**是这个数除以批次大小，
+  // 8 家 ＝ 8 个 Edge 实例 + 8 个代理进程同时活着（底单串行采集，但实例全起）。
+  // 入口给了 `--batches`（默认 5）：**真正同时开着的**是这个数除以批次大小，
   // 由 `scripts/run-product-data-job.mjs` 的分批循环决定（切法只来自 `runtime/batch-plan.mjs`）。
   // 这条用例刻意继续钉 plan 的名义值：改口径要连它一起改，而不是让它跟着漂。
-  assert.equal(plan.parallelShopCount, collectingShopKeys().length);
+  assert.equal(plan.parallelShopCount, productDataCollectingShopKeys().length);
   assert.deepEqual(plan.reportOrder, ['product', 'inquiry', 'promotion']);
 });
 
@@ -32,8 +42,12 @@ test('product job plan rejects unknown / empty / not-yet-collecting shop selecti
     '已登记但没开始收集的店必须被拒，且理由不能混成 unknown shops');
   // 未登记走的是另一条报错 —— 两件事不许混。
   assert.throws(() => buildProductJobPlan({ shops: ['丁店'], registered, collecting }), /unknown shops/u);
-  // 注入口的默认值必须仍是真实登记表（本条防止注入口把生产路径改掉）。
-  assert.deepEqual(buildProductJobPlan().shops, collectingShopKeys());
+  // 注入口的默认值必须仍是真实登记表（本条防止注入口把生产路径改掉）：
+  // 2026-10-16 起商品链默认名单＝13 家摘掉商品链停采名单（销售2部 5 家）。
+  assert.deepEqual(buildProductJobPlan().shops, productDataCollectingShopKeys());
+  // 点名商品链停采名单里的店（已登记）也要被拒，且理由要指到那张表，别让人去翻 browser-ports。
+  assert.throws(() => buildProductJobPlan({ shops: ['保拉淘宝'] }), /PRODUCT_DATA_STOPPED_SHOPS/u,
+    '商品链停采的店被点名时，报错要说清停在哪张表');
 });
 
 test('scheduled entry targets the independent product-data job, commits yesterday, batches, and runs promotion', () => {

@@ -56,15 +56,16 @@ test('resolveTargetShops：未登记的店名 fail-closed，且错误里点名�
   });
 });
 
-test('真实登记表：默认范围＝collectingShopKeys()，且严格小于 shopBrowserKeys()', () => {
+test('真实登记表：默认范围＝collectingShopKeys()，2026-10-16 起＝登记表全量 13 家', () => {
   const registered = shopBrowserKeys();
   const collecting = collectingShopKeys();
   assert.deepEqual(resolveTargetShops(null), collecting);
-  assert.ok(collecting.length < registered.length,
-    '当前销售2部仍在停采；若某天两部都要采，这两条口径会相等 —— 那时这条断言要跟着改口径，不能默默放宽');
-  for (const key of registered.filter((k) => !collecting.includes(k))) {
-    assert.equal(resolveTargetShops(null).includes(key), false, `${key} 不该在默认范围里`);
-  }
+  // 2026-10-16 用户拍板「13 家全采集」（换日报 base 到外组织，目标 base 每天 12 家在采）
+  // ⇒ SHOPS_NOT_COLLECTING_YET 清空，两个口径相等。相等之后这条断言守的是
+  // 「有店被悄悄塞进/摘出名单」——曾经的严格小于已随口径变化，不能默默放宽成不含断言。
+  assert.equal(collecting.length, registered.length,
+    '当前口径＝13 家全采；若某天又要停采，这条要跟着改口径（见 runtime/browser-ports.mjs）');
+  assert.deepEqual(collecting, registered);
 });
 
 test('源码级：默认口径来自 collectingShopKeys，且没退回「不给参数就铺登记表全量」', async () => {

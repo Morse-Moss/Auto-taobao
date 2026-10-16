@@ -167,9 +167,10 @@ test('不启用分批时，渲染出来的命令**除了那一条有意新增的
     'N R\\runtime\\shop-window-label.mjs --commit --front --subject merchant',
     // 2026-10-14 加：视口回读闸门。不带证据目录时**不给 `--json`** —— `--json` 会取代那份
     // 逐行读数，而没人接它时那几行正是日志里唯一能看的东西。
-    // 目标＝参与采集的 8 家店 ＋ 共用商家浏览器（按端口 19023 指名：它不属于任何一家店，
-    // 而只按店名读的那条路**永远读不到它**，这次出事的恰恰是它）。
-    'N R\\runtime\\shop-viewport-gate.mjs --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝,网林淘宝,里可林天猫,网林家居'
+    // 目标＝参与采集的店（2026-10-16 起 13 家全采，名单从 collectingShopKeys() 派生——
+    // 写死字面量的话每次改口径这里都要跟着漏）＋ 共用商家浏览器（按端口 19023 指名：
+    // 它不属于任何一家店，而只按店名读的那条路**永远读不到它**，这次出事的恰恰是它）。
+    `N R\\runtime\\shop-viewport-gate.mjs --shops ${collectingShopKeys().join(',')}`
       + ' --proxy 19023 --label 共用商家浏览器',
     'N R\\skills\\sycm-alimama-daily-report\\scripts\\check-login-shops.mjs',
     // 2026-09-25 新加的那一步：默认（`autoLogin` 未打开）必须是**只读档**，

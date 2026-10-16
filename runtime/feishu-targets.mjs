@@ -79,15 +79,32 @@ export const PROFILES = Object.freeze({
     // OpenAPI 对它在四个相关 base 上逐个试过，一律回 `1254004 WrongTableId`；这个 base 实际只有
     // 7 张表（`tbl` 开头，逐张列在 base-inventory-20260930.json 里），也没有仪表盘。
     // 所以落位仍按**表名**取：底单＝总数据来源底单、询单＝各店铺数据日报。
+    // 2026-10-16：**用户指定换成别的组织（rcnbpuvafkct 租户）的「各店铺日报」**
+    // （RqzrbD4zIalzjxsSGcbcUPTpnKc，用户给的 URL：https://rcnbpuvafkct.feishu.cn/base/Rqz…）。
+    // 这张 base 与 kcne 不同租户 ⇒ 浏览器侧「飞书底单页」的 URL 必须用它自己的 host 打开
+    // （dailyReport.host，shop-pages.mjs 的 buildUrlByName 会优先用它）；
+    // OpenAPI 调用不受影响（永远打 open.feishu.cn，凭据仍是 kcne 应用）。
+    // 2026-10-16 只读取证（D:/Retire/probe-20261016/，全只读零写入）：
+    //   底单（tbl6EDMzzaYUVvVC）265 字段，与现 base 逐字段签名**完全相同**；
+    //   店铺底单（tbl0JHPZBUqSV00v）13 行，与现 base 逐行相同；
+    //   询单（tblLYwJTSLqTGVSC）34 字段，比现 base 多一个「父记录(18)」（按字段名写入，不受影响）；
+    //   底单每天 12 家（销售1部 7 家不含网林家居＋销售2部 5 家），198 个统计日；询单 214 日；
+    //   ⚠️ 询单表最近几日已出现网林家居行（13 家）。
+    //   ⚠️ 协作者接口 403/1063004 ⇒ kcne 应用**还不是协作者**，写权限未验证 ——
+    //   切换前必须让新组织管理员把 kcne 应用加为可编辑协作者并重跑幂等写探针（纪律：换 base 必须重新验证）。
+    // 回滚 = 把五个值换回（并同步 feishu-targets.test.mjs 的日报目标用例）：
+    //   RjKcb3isDaVn1GsoVJfc7Ykk / 各店铺日报 副本 / tblIuAX4nPc1zDOO / vewwg0rhjo / tblqF2YD2VfmKP4C / host 删掉
     dailyReport: Object.freeze({
-      baseToken: 'RjKcb3isDaVn1GsoVJfc7Ykknyg',
-      sourceBaseName: '各店铺日报 副本',
-      sourceTable: 'tblIuAX4nPc1zDOO',
-      // 新 base 的「总数据来源底单」**只有一个视图**，而且它的 id 与旧 base 那个逐字相同
-      // （vewwg0rhjo，2026-09-30 用 `GET …/tables/tblIuAX4nPc1zDOO/views` 读回）——
-      // 所以这一格这次不用改。别把它当成「配置没切」的证据：id 相同是读回来的事实。
+      baseToken: 'RqzrbD4zIalzjxsSGcbcUPTpnKc',
+      sourceBaseName: '各店铺日报',
+      sourceTable: 'tbl6EDMzzaYUVvVC',
+      // 新 base「总数据来源底单」只有一个视图（vewwg0rhjo「表格」，2026-10-16 GET …/views 读回）
+      // —— 与旧 base 的视图 id 逐字相同是巧合，这里存的是读回的事实，不是没切。
       sourceView: 'vewwg0rhjo',
-      inquiryTable: 'tblqF2YD2VfmKP4C',
+      inquiryTable: 'tblLYwJTSLqTGVSC',
+      // 这张 base 的归属租户 host（kcne 的 profile host 打不开它）。浏览器侧开底单页用它，
+      // 见 shop-pages.mjs buildUrlByName；API 侧永远走 open.feishu.cn，与此无关。
+      host: 'rcnbpuvafkct.feishu.cn',
     }),
     // 2026-10-08：运营确认销售一部推广日报 Base「10月推广数据-销售1部」。
     // 两张表字段已通过已登录页面只读核对，并与人工下载的关键词/人群 CSV 表头按名称对齐。

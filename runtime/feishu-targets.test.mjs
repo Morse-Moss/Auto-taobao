@@ -159,35 +159,44 @@ test('loadFeishuCredentials 只认 FEISHU_APP_ID / FEISHU_APP_SECRET', () => {
 // 这一次「副本」两个字不是判错：它才是全的那一张（底单 2184 vs 1934 行、店铺底单 13 vs 12 行，
 // 逐张表的行数与取证见 feishu-targets.mjs 的 dailyReport 注释）。
 //
-// 为什么这两条要单独钉：这几张 base 有 7 张同名表、其中 6 张逐表行数与字段签名完全相同，
+// 2026-10-16：**用户指定换成别的组织（rcnbpuvafkct 租户）的「各店铺日报」**（RqzrbD4z…）——
+// 这次跨租户，目标多一个 host 键；判据仍是底单行数与字段签名（265 字段逐字段相同，只读取证
+// D:/Retire/probe-20261016/），不是名字。
+//
+// 为什么这几条要单独钉：这几张 base 有 7 张同名表、其中 6 张逐表行数与字段签名完全相同，
 // 肉眼分辨不出；配置指错时**不会有任何东西报错**——链照跑、数据照写，只是写进了一个
 // 运营不看的 base 里。这正是「默认值即目标」（坑 35）的形状，所以默认值必须被断言钉住，
 // 而不是靠人记得。名字与 id 一起断言，是因为只改一个的话两边会互相矛盾。
-test('日报目标指向用户 2026-09-30 指定的 base「各店铺日报 副本」', () => {
+test('日报目标指向用户 2026-10-16 指定的外组织 base「各店铺日报」', () => {
   const target = dailyReportTargets('kcne');
-  assert.equal(target.baseToken, 'RjKcb3isDaVn1GsoVJfc7Ykknyg');
-  assert.equal(target.sourceTable, 'tblIuAX4nPc1zDOO');
+  assert.equal(target.baseToken, 'RqzrbD4zIalzjxsSGcbcUPTpnKc');
+  assert.equal(target.sourceTable, 'tbl6EDMzzaYUVvVC');
   assert.equal(target.sourceView, 'vewwg0rhjo');
-  assert.equal(target.inquiryTable, 'tblqF2YD2VfmKP4C');
+  assert.equal(target.inquiryTable, 'tblLYwJTSLqTGVSC');
+  // 跨租户 base：浏览器侧开底单页必须用它自己的 host（kcne 的 host 打不开）。
+  assert.equal(target.host, 'rcnbpuvafkct.feishu.cn');
   // 名字按「去空格」比较：接口读回的名字带尾随空格/中间空格，
   // 这种看不见的字符不能决定写的是哪一张 base（脚本里的比较用的是同一条规则）。
   const stripSpaces = value => String(value ?? '').replaceAll(' ', '');
-  assert.equal(stripSpaces(target.sourceBaseName), '各店铺日报副本');
-  // 上一任目标（2026-09-18…09-30 用的那张）留在测试里当反例：它的底单在 09-18…09-28
-  // 只剩每天 5 家，配回去等于把 12 家的历史写回一张缺数据的表。
+  assert.equal(stripSpaces(target.sourceBaseName), '各店铺日报');
+  // 上一任目标（2026-09-30…10-16 用的那张）留在测试里当反例：它是本租户的表，
+  // 配回去等于把数据写回旧组织，且底单每天 8 家的口径会跟目标 base 的 12 家错位。
+  assert.notEqual(target.baseToken, 'RjKcb3isDaVn1GsoVJfc7Ykknyg');
+  assert.notEqual(target.sourceTable, 'tblIuAX4nPc1zDOO');
+  assert.notEqual(target.inquiryTable, 'tblqF2YD2VfmKP4C');
+  // 再上一任（2026-09-18…09-30）与最早那任副本：同样是反例，别「看着眼熟」配回去。
   assert.notEqual(target.baseToken, 'PTfHbPt9EaIzddsfL8Jcj238nrb');
   assert.notEqual(target.sourceTable, 'tblkY3W8tnPWPcnh');
   assert.notEqual(target.inquiryTable, 'tblUnwn05vl8Wik9');
-  // 更早那一任副本（2026-09-18 之前指向的）：同样是反例，别「看着眼熟」配回来。
   assert.notEqual(target.baseToken, 'X02Xb7fHba7mU9sr8uIcRlExn6b');
   assert.notEqual(target.sourceTable, 'tbl84ZGwLQKyLxV3');
   assert.notEqual(target.inquiryTable, 'tblm9Hx7R9A1YoLC');
-  // 五个键一个都不能少：少一个就意味着有人把名字或某个 id 从配置层挪走了。
+  // 六个键一个都不能少：少一个就意味着有人把名字、host 或某个 id 从配置层挪走了。
   // 刻意不写成与 PROFILES.kcne.dailyReport 的 deepEqual —— 那份是**内置值**，
   // 而客户机上 config/customer.json 会让 dailyReportTargets 返回覆盖后的对象，
   // 那种写法会在客户机上红，属于「测试依赖了不该依赖的环境状态」。
   assert.deepEqual(Object.keys(target).sort(),
-    ['baseToken', 'inquiryTable', 'sourceBaseName', 'sourceTable', 'sourceView']);
+    ['baseToken', 'host', 'inquiryTable', 'sourceBaseName', 'sourceTable', 'sourceView']);
 });
 
 test('推广日报目标指向销售一部已确认 Base 与两张表', () => {

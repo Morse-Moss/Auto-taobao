@@ -361,15 +361,14 @@ export function shopBrowserKeys() {
  * `SHOP_DEPARTMENTS` 里 `sales2` 那组：保拉淘宝、保拉天猫、安比龙头店、科塔龙头店、安比淘宝）
  * 填进这张表。**两条采集链一起停**（日报链 + 商品数据链），实例侧不受影响。
  * 这不是「暂缓一家新店」，是**整部门停采**，所以下面那句「两者逐字相同」不再成立。
- * 恢复：把这 5 行删掉即可（表留着的意义正在这里）。
+ *
+ * 2026-10-16 用户拍板「13 家全采集」（换日报 base 到别的组织，目标 base 每天 12 家在采）⇒
+ * 这张表清空，`collectingShopKeys()` 回到与 `shopBrowserKeys()` 逐字相同（13 家）。
+ * ⚠️ 本次只放开**店铺日报链**：商品数据链的销售2部仍停 —— 那条链的停采名单挪到了
+ * `runtime/product-data-job-core.mjs` 的 `PRODUCT_DATA_STOPPED_SHOPS`（本次换 base 不动商品链）。
+ * 下次要整部门再停两条链时，把名单填回这里即可（表留着的意义正在这里）。
  */
-export const SHOPS_NOT_COLLECTING_YET = Object.freeze([
-  '保拉淘宝',
-  '保拉天猫',
-  '安比龙头店',
-  '科塔龙头店',
-  '安比淘宝',
-]);
+export const SHOPS_NOT_COLLECTING_YET = Object.freeze([]);
 
 /**
  * 参与采集的店铺（顺序＝登记表顺序）。
