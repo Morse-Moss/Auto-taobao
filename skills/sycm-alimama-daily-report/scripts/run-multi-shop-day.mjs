@@ -2324,55 +2324,74 @@ async function main() {
     // 是为了让它在整条店铺链上只有一个实例。
     let reloginUsed = false;
 
+    // 「这一家失败了」的登记动作：**现场事实**（感知层）+ **修复请求单**。抽成函数是为了让两条
+    // 失败路径走同一份实现 —— ① 首跑就失败（下面那个 catch 的入口）；② 自修救回后、**续跑段又失败**
+    //（2026-10-16 ㊷）。两处各抄一份的话迟早漂开 —— 本仓已因此吃过 ㊲ 那次亏：单子上的成因与告警里
+    // 的成因不是同一个。
+    //
+    // ⚠️ 约定：**它永不向外抛**。两个调用点都在 catch 块体内，而 catch 块体内再抛没有第二层接住
+    //    —— 异常会穿透 `main()`，把整批链打死（2026-10-16 实证，见续跑段那一段的注释）。
+    //    内部自带兜底：失败只记 `record.failureBookkeepingError`，主线失败原因一个字不改。
+    const settleShopFailure = async (error) => {
+      try {
+        // ① 先把**页面当时长什么样**落成事实（感知层，2026-09-28 加）。
+        //    顺序**必须**在 recoverFailedShop 之前：回位会把页面导航走，
+        //    那一刻的 DOM/截图就没了 —— 而它正是「符号 → 事实」翻译的唯一原料。
+        //    本调用**永不抛**（见 failure-perception 的三条纪律），所以它不会盖掉上面那个错；
+        //    它失败只会在 record 里留下 `perception.errors`，主线失败原因一个字不改。
+        record.perception = await captureFailureState({
+          proxy: `http://127.0.0.1:${shopInstance(key).proxyPort}`,
+          logDir: shopLogDir,
+          shopKey: key,
+          stage: record.failedStage ?? null,
+          // 该拍哪一站的页（2026-10-13 加）。不传的话感知层恒取「第一个非 about 页签」，
+          // 而店铺实例的第一个是**店铺标识页** ⇒ 现场拍错页、`ok:true`、内容却与出事那一页无关
+          // （实证 evidence/batches-2026-10-10/b1/里可林淘宝/98-failure-state.txt）。
+          // STAGE_PAGE_HINT 是「这一步的页面在哪一站」的唯一来源（repair-actions.mjs），
+          // 认不出来的阶段给 null ⇒ 感知层退回历史行为，不会比现在更差。
+          pageHint: STAGE_PAGE_HINT[record.failedStage] ?? null,
+          error: error.message,
+          readTargets: (base) => proxyJson(`${base}/targets`),
+          evalInPage: (base, targetId, expression) => proxyJson(
+            `${base}/eval?target=${encodeURIComponent(targetId)}`, { method: 'POST', body: expression },
+          ),
+          screenshot: async (base, targetId, file) => {
+            const payload = await proxyJson(`${base}/screenshot?target=${encodeURIComponent(targetId)}`
+              + `&file=${encodeURIComponent(file)}`);
+            return payload.saved;
+          },
+        });
+        // ③ 把「这次失败该怎么修」写成一份**给人/给 agent 看的修复请求单**（2026-09-29 加）。
+        //    它把前面两份原料合起来：
+        //      · 感知层给的事实（刚才落盘的 98-failure-state.json 内容，这里内联一份摘要）；
+        //      · 分诊表给的方向 + 修复表给的候选动作（planRepair 的菜单）。
+        //    **它只写文件、不做任何动作** —— 执行是 `repair-shop-stage.mjs` 的事，
+        //    判断（挑哪个候选）是 agent 的事。默认不自动执行，所以这一行不改变任何既有失败语义。
+        //    顺序在这里（感知之后、回位之前）：回位会把页面导航走，那之后现场事实就对不上了，
+        //    而修复请求单要引用的正是「失败那一刻的现场」。
+        record.repairRequest = buildRepairRequest({
+          shopKey: key, stage: record.failedStage ?? null, error: error.message,
+          // ⚠️ 必须把 `record.failureOutput`（含子进程 stderr）也传下去：归类要看的标记
+          //   （`BLOCKED_BY_OVERLAY` 等）只活在 stderr 里，不在 `error.message` 里。
+          //   2026-10-10 补跑实测：漏传这一个参数 ⇒ 单子上的成因与告警里的成因不是同一个（㊲ 白修）。
+          failureOutput: record.failureOutput ?? null,
+          perception: record.perception, logDir: shopLogDir,
+        });
+      } catch (bookkeepingError) {
+        record.failureBookkeepingError = String(bookkeepingError?.message ?? bookkeepingError);
+        console.error(`[${key}]   ⚠️ 失败登记本身出错（${record.failureBookkeepingError}）`
+          + ' —— 照旧按失败收尾，不猜、也不向外抛');
+      }
+    };
+
     try {
       await runStagesFrom(stages);
       record.status = 'ok';
     } catch (error) {
       record.error = error.message;
       console.error(`[${key}] 停在这一步：${error.message}`);
-      // ① 先把**页面当时长什么样**落成事实（感知层，2026-09-28 加）。
-      //    顺序**必须**在 recoverFailedShop 之前：回位会把页面导航走，
-      //    那一刻的 DOM/截图就没了 —— 而它正是「符号 → 事实」翻译的唯一原料。
-      //    本调用**永不抛**（见 failure-perception 的三条纪律），所以它不会盖掉上面那个错；
-      //    它失败只会在 record 里留下 `perception.errors`，主线失败原因一个字不改。
-      record.perception = await captureFailureState({
-        proxy: `http://127.0.0.1:${shopInstance(key).proxyPort}`,
-        logDir: shopLogDir,
-        shopKey: key,
-        stage: record.failedStage ?? null,
-        // 该拍哪一站的页（2026-10-13 加）。不传的话感知层恒取「第一个非 about 页签」，
-        // 而店铺实例的第一个是**店铺标识页** ⇒ 现场拍错页、`ok:true`、内容却与出事那一页无关
-        // （实证 evidence/batches-2026-10-10/b1/里可林淘宝/98-failure-state.txt）。
-        // STAGE_PAGE_HINT 是「这一步的页面在哪一站」的唯一来源（repair-actions.mjs），
-        // 认不出来的阶段给 null ⇒ 感知层退回历史行为，不会比现在更差。
-        pageHint: STAGE_PAGE_HINT[record.failedStage] ?? null,
-        error: error.message,
-        readTargets: (base) => proxyJson(`${base}/targets`),
-        evalInPage: (base, targetId, expression) => proxyJson(
-          `${base}/eval?target=${encodeURIComponent(targetId)}`, { method: 'POST', body: expression },
-        ),
-        screenshot: async (base, targetId, file) => {
-          const payload = await proxyJson(`${base}/screenshot?target=${encodeURIComponent(targetId)}`
-            + `&file=${encodeURIComponent(file)}`);
-          return payload.saved;
-        },
-      });
-      // ③ 把「这次失败该怎么修」写成一份**给人/给 agent 看的修复请求单**（2026-09-29 加）。
-      //    它把前面两份原料合起来：
-      //      · 感知层给的事实（刚才落盘的 98-failure-state.json 内容，这里内联一份摘要）；
-      //      · 分诊表给的方向 + 修复表给的候选动作（planRepair 的菜单）。
-      //    **它只写文件、不做任何动作** —— 执行是 `repair-shop-stage.mjs` 的事，
-      //    判断（挑哪个候选）是 agent 的事。默认不自动执行，所以这一行不改变任何既有失败语义。
-      //    顺序在这里（感知之后、回位之前）：回位会把页面导航走，那之后现场事实就对不上了，
-      //    而修复请求单要引用的正是「失败那一刻的现场」。
-      record.repairRequest = buildRepairRequest({
-        shopKey: key, stage: record.failedStage ?? null, error: error.message,
-        // ⚠️ 必须把 `record.failureOutput`（含子进程 stderr）也传下去：归类要看的标记
-        //   （`BLOCKED_BY_OVERLAY` 等）只活在 stderr 里，不在 `error.message` 里。
-        //   2026-10-10 补跑实测：漏传这一个参数 ⇒ 单子上的成因与告警里的成因不是同一个（㊲ 白修）。
-        failureOutput: record.failureOutput ?? null,
-        perception: record.perception, logDir: shopLogDir,
-      });
+      // ① 现场事实 + ③ 修复请求单：与「续跑段再失败」那条路径共用同一份实现。
+      await settleShopFailure(error);
       // ④ **agent 修复回环**（2026-09-29 加，默认关）：按请求单挑一个候选动作 → 执行 → 重试该阶段。
       //
       //   位置刻意在这里（请求单之后、回位之前）：修复要动的是**失败那一刻的页面**，
@@ -2430,14 +2449,37 @@ async function main() {
           } else {
             const resumeStages = stages.slice(resumeAt + 1);
             const before = record.stages.length;
-            // 续跑段自己抛错就照旧走失败路径（下面那个 catch）：这时 `failedStage` 会被重新写上，
-            // 于是这一家**不会**被当成「全绿」—— 正是我们要的（续跑里再失败就是真失败）。
-            await runStagesFrom(resumeStages);
-            record.rescueResume = {
-              from: retryStageName,
-              ran: record.stages.slice(before).map((entry) => entry.stage),
-            };
-            console.log(`[${key}]   续跑完成：${record.rescueResume.ran.join('、') || '（没有余下阶段）'}`);
+            // ⚠️ 这一段**必须自己接住**（2026-10-16 修缺陷 ㊷）。原注释「续跑段自己抛错就照旧走失败
+            //    路径（下面那个 catch）」写错了：**这里已经在那个 catch 体内**，再抛没有第二层接住。
+            //    异常会穿透 `main()`（顶层 `await main()` 没有 catch），把**整批链**打死。
+            //    2026-10-15 真机实证（`evidence/batches-2026-10-15/batches.log`）：
+            //      · b1 崩在 盖文淘宝 续跑段的 `shop-report` ⇒ 同批的 盖文天猫／科塔淘宝 **一步都没跑**；
+            //      · b2 崩在 网林淘宝 续跑段的 `readback` ⇒ 里可林天猫／网林家居 **一步都没跑**；
+            //      · 而且 `summary.json` 一个字都没写 ⇒ 释放判定读不到失败（判成「没人需要看现场」
+            //        照旧释放）、`escalation-plan.mjs` 退 1 读不到结论（三层降级第 1 步直接瞎掉）。
+            //    语义**不变**：续跑里再失败就是这一家真失败（`failedStage` 由 `runStagesFrom` 重新写上），
+            //    只是失败只带走这一家、不带走整批。
+            try {
+              await runStagesFrom(resumeStages);
+              record.rescueResume = {
+                from: retryStageName,
+                ran: record.stages.slice(before).map((entry) => entry.stage),
+              };
+              console.log(`[${key}]   续跑完成：${record.rescueResume.ran.join('、') || '（没有余下阶段）'}`);
+            } catch (resumeError) {
+              record.status = 'failed';
+              record.error = resumeError.message;
+              record.rescueResume = {
+                from: retryStageName,
+                ran: record.stages.slice(before).map((entry) => entry.stage),
+                error: resumeError.message,
+              };
+              console.error(`[${key}]   ⚠️ 救回后的续跑段又失败（${resumeError.message}）`
+                + ' —— 这一家按失败收尾；**本批其余店照常跑**（㊷：这里再抛会打死整批）');
+              // 现场事实与修复请求单按**续跑段那个**失败重做一遍：否则单子指的是已经被修好的那一步，
+              // 第 2 层 agent 会照着错的方向修。
+              await settleShopFailure(resumeError);
+            }
           }
         } else {
           console.log(`[${key}]   自动修复没救回来：${loop.gaveUp ?? loop.error ?? '未说明'}`);

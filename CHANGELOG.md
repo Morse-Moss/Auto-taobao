@@ -15,6 +15,54 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.9.7] - 2026-10-16
+
+目标日 2026-10-15 的日报定时轮（11:00）**只写成 1/8**。链崩在「自修救回后续跑余下阶段」那一段：
+那次续跑写在失败处理那个 `catch` 的**块体内**，它再抛时没有第二层接住 ⇒ 异常穿透 `main()`，
+**整批子进程当场崩** —— 该批剩下的店（b1 的盖文天猫／科塔淘宝、b2 的里可林天猫／网林家居）
+一步都没跑，`summary.json` 一个字都没写。连带三件事：`escalation-plan.mjs` 退 1（三层降级第 1 步
+直接瞎掉、本轮连派单都收不到）、释放判定把「读不到」读成「没人需要看现场」照旧释放（其中一家
+其实是登录墙，按「Failure-exit gate」第 3 条不该释放）、店铺级告警根本没发（链在 `dispatchRoundAlert`
+之前就崩了）。本批修掉这条穿透，并把「summary 读不到」这一档从 fail-open 翻成 fail-closed。
+
+### 改了什么
+
+- **㊷ 修异常穿透（`run-multi-shop-day.mjs`）**：续跑那一句 `await runStagesFrom(resumeStages)`
+  原先裸露在 catch 体内，现在包进自己的 `try/catch` —— 续跑再失败**只带走这一家**
+  （`status='failed'` + `rescueResume.error` 留痕），本批其余店照常跑。原注释「续跑段自己抛错
+  就照旧走失败路径（下面那个 catch）」逐字写错了（下面没有 catch），已改。
+- **失败登记抽成一处（`settleShopFailure`）**：现场事实（感知层）＋修复请求单原先只在首跑失败
+  那条路径上做；现在两条失败路径共用它，且它自带一层兜底（失败只记
+  `record.failureBookkeepingError`，**永不外抛**）。续跑失败时按**续跑段那个**失败重做一份 ——
+  否则修复请求单指的是已经被修好的那一步，第 2 层 agent 会照着错的方向修。
+- **fail-closed（`batch-plan.mjs` + `run-batches.mjs`）**：`releaseAfterBatch` 新增
+  `summaryUnreadable`。链非 0 且本批 `summary.json` 读不到 ⇒ **不释放**，日志里说清「判不出来」，
+  不再打出那句假话「没有需要人看现场的失败」。`--release-on-failure` 仍优先（显式要退回旧口径）。
+
+### 为什么这样改
+
+- 病根是「失败处理里的失败」：catch 块自己没兜底 ⇒ **一条失败路径的 bug 被放大成整批店的缺失**。
+  与 ㊱（救回后不续跑）是同一处的两个面，但危害更大：㊱ 是静默缺行，㊷ 是整批连证据都不落。
+- 「读不到」不等于「没有」：`unfixableShops` 是从 summary 里读出来的，读不到时的空数组**不是证据**。
+  拿它打印「没有需要人看现场的失败」正是本仓反复吃过的那个病根（读不到 ⇒ 当成不存在）。
+
+### 验证到什么程度
+
+- 离线：`runtime/batch-plan.test.mjs` + `runtime/daily-job-plan.test.mjs` +
+  `run-multi-shop-day.test.mjs` 共 **253/253** 退 0；全量 runtime 套件 **1363/1363** 退 0
+  （`node scripts/run-test-suite.mjs runtime --concurrency=1`，2 分 12 秒）。
+  ⚠️ **`npm run test:staged` 本轮没跑**：按仓库自己的记录，选中本 skill 的实现改动会跑**整份**
+  skill 套件（含 7 个各自等 60 分钟下载期限的端到端用例，实测 7.6 小时），且现在正要起一条
+  浏览器链。替代：直接跑了受影响的这两处（runtime 全量 + `run-multi-shop-day.test.mjs` 147/147）。
+- 突变验证 **6/6** 点名抓红（续跑不在 try 里／接住后不置 failed／不重做现场事实／拆掉登记兜底／
+  拆掉 fail-closed 分支／判出来但不传给判决函数），还原后 sha256 逐字节自证。
+  脚本 `tmp/mutation-2026-10-16-fix-42.mjs`。
+- ⚠️ **第一次写的两条守卫能被注释满足**（突变 M4 没变红：`record.failureBookkeepingError`
+  在注释里也出现过）⇒ 已改成钉代码行。记在这里，因为「用例全绿＋突变过了 ≠ 接线接上了」
+  在本仓已经发作过三次。
+- 真机：修复后重跑目标日 2026-10-15 的 7 家店铺实例（网林天猫因滑块验证留人工），
+  实测见当轮 `evidence/daily-job-2026-10-15/RUN-REPORT-*.md` 与 `evidence/batches-2026-10-15/`。
+
 ## [1.9.6] - 2026-10-15
 
 平台（生意参谋「自助分析·公共空间」）在 2026-10-14 中午之后把日报导出改成「OSS 生成 +

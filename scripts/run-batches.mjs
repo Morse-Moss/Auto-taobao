@@ -227,9 +227,11 @@ function readBatchSummary(file) {
  * `hold-and-resume.mjs` 的判据来源。两处用同一个函数是**有意**的：
  *   · 释放那边说「不释放（因为 X 家要人看）」，驻留那边说「不用驻留（因为一家都不需要人）」，
  *     这两句话同时出现就是自相矛盾，而它们本可以用同一个判据避免。
- * 读不到 summary ⇒ 返回空数组 ⇒ 行为回到旧口径（照旧释放）。理由与
- * `readBatchRoundBlock` 逐字相同：「读不到」不构成「有失败」的证据，而提前不释放
- * 会留下一批没人需要看的空窗口。
+ * 读不到 summary ⇒ 返回空数组。**注意这只对「本函数的返回值」成立**：释放判决那一档
+ * （2026-10-16 加）不再把「空数组」直接读成「没有要人看现场的店」—— 它会先分辨
+ * 「读到空名单」与「根本读不到」，后者走 fail-closed（不释放）。理由：`unfixableShops`
+ * 是从 summary 里读出来的，读不到时的空数组**不是证据**，拿它去打印
+ * 「没有需要人看现场的失败」是一句假话（2026-10-15 真机就是这么释放掉一个登录墙的）。
  */
 function batchUnfixableShops(file) {
   const summary = readBatchSummary(file);
@@ -561,12 +563,23 @@ async function main(argv) {
       if (step.name === 'stop') {
         const batchSummaryPath = path.join(evidenceRoot, `b${batch.index}`, 'summary.json');
         const unfixableShops = round.chainStatus === 0 ? [] : batchUnfixableShops(batchSummaryPath);
+        // 「链失败了、但这一批的 summary.json 根本读不到」（2026-10-16 加）。它与「读到空名单」
+        // 必须分开：`unfixableShops` 是从 summary 里读出来的，读不到时的空数组不是证据。
+        // 2026-10-15 真机：链在写完 summary 之前崩了，两批都被读成空名单 ⇒ 日志里打出
+        // 「没有需要人看现场的失败」、照旧释放 —— 而其中一家其实是登录墙。
+        const summaryUnreadable = round.chainStatus !== 0 && readBatchSummary(batchSummaryPath) === null;
+        if (summaryUnreadable) {
+          console.error(`[批次] ⚠️ 这一批的链失败了，但 ${path.relative(REPO_ROOT, batchSummaryPath).replaceAll('\\', '/')}`
+            + ' **读不到** ⇒ 判不出「有没有要人看现场的失败」。'
+            + '这不是「没人需要看现场」，是「判不出来」（按 fail-closed 处理）。');
+        }
         round.decision = options.release === false
           ? { release: false, why: '命令行给了 --no-release：整轮都不释放' }
           : releaseAfterBatch({
             chainStatus: round.chainStatus,
             unfixableShops,
             releaseOnFailure: options.releaseOnFailure === true,
+            summaryUnreadable,
           });
         if (unfixableShops.length) {
           log(`[批次] 这一批里「脚本自修没救回来」的：${unfixableShops.join('、')}`

@@ -889,6 +889,17 @@ test('接线③：releaseAfterBatch 的「失败且有修不动的店 ⇒ 不释
   assert.match(src, /releaseOnFailure/u, '要有退回旧口径的逃生阀');
 });
 
+test('接线④：「summary 读不到」与「读到空名单」在释放判决里必须分开传（2026-10-16 ㊷ 连带）', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts/run-batches.mjs'), 'utf8');
+  // 「读不到」的判据本体在 run-batches 里（文件在不在、能不能解析，只有它读得到）；
+  // 但必须**显式传给**判决函数 —— 只在本地判而不传，等于判决仍然看到空名单，
+  // 日志里照样会打出「没有需要人看现场的失败」那句假话（2026-10-15 真机）。
+  assert.match(src, /const summaryUnreadable = round\.chainStatus !== 0 && readBatchSummary\(batchSummaryPath\) === null/u,
+    '要先分辨「读到空名单」与「根本读不到」——空数组在两种情况下长得一样');
+  assert.match(src, /summaryUnreadable,/u, '分辨出来的事实必须传给 releaseAfterBatch');
+  assert.match(src, /判不出/u, '日志里要说清是「判不出来」，不许打成「没有需要人看现场的失败」');
+});
+
 // ---------------------------------------------------------------------------
 // --mode / --evidence-root（2026-10-10 加，spec §5.1 统一入口的最小接线）。
 //

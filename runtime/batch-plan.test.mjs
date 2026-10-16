@@ -335,6 +335,37 @@ test('该不该释放：全绿放、没跑到链放；**失败且有要人看现
   assert.equal(releaseAfterBatch({ chainStatus: 0 }).caveat, undefined);
 });
 
+// 2026-10-16（㊷ 的连带后果）：`unfixableShops` 是**从 summary 里读出来的**，所以
+// 「链失败了 + summary 读不到」这一档原先会被读成**空名单** ⇒ 打出
+// 「没有需要人看现场的失败」并照旧释放。**那句话是假的**：真实情况是「判不出来」。
+// 真机发生过一次（2026-10-15）：链在写完 summary 之前崩了，两批都照旧释放，
+// 而其中一家其实是登录墙 —— 按 AGENTS.md「Failure-exit gate」第 3 条不该释放。
+test('该不该释放：链失败了但 summary **读不到** ⇒ fail-closed 不释放（2026-10-16 ㊷ 连带）', () => {
+  const unknown = releaseAfterBatch({ chainStatus: 1, unfixableShops: [], summaryUnreadable: true });
+  assert.equal(unknown.release, false,
+    'summary 读不到就不许释放 —— 空名单不是证据，「判不出来」不等于「没人要看现场」');
+  assert.match(unknown.why, /读不到/u, '要说清是「读不到」这一档');
+  assert.match(unknown.why, /判不出/u, '要说清结论是判不出来，不是没有失败');
+  // 关键的反面：这一档**不许**打出「没有需要人看现场的失败」那句 —— 它正是要修的那句假话。
+  assert.doesNotMatch(unknown.why, /没有需要人看现场的失败/u,
+    '「没有需要人看现场的失败」在 summary 读不到时是假话，不许出现在 why 里');
+  // 全绿那一档不看它：summary 读不到与「这一批全绿」无关。
+  assert.equal(releaseAfterBatch({ chainStatus: 0, summaryUnreadable: true }).release, true,
+    '链全绿就该释放 —— 这一档与 summary 读不读得到无关');
+  // 缺省（不传）时逐字退回旧行为：现有调用方不受影响。
+  assert.equal(releaseAfterBatch({ chainStatus: 1, unfixableShops: [] }).release, true,
+    '不传 summaryUnreadable 时行为必须与从前逐字相同');
+  // 逃生阀优先：显式要退回旧口径就按它的意思来。
+  assert.equal(releaseAfterBatch({ chainStatus: 1, summaryUnreadable: true, releaseOnFailure: true }).release, true,
+    '--release-on-failure 是显式退回旧口径，优先级高于 fail-closed');
+  // 四档的 why 必须各自不同 —— 那一行是日志里唯一能复查这是哪种情况的东西。
+  const why = [releaseAfterBatch({ chainStatus: 0 }).why,
+    releaseAfterBatch({ chainStatus: 1, unfixableShops: [] }).why,
+    releaseAfterBatch({ chainStatus: 1, summaryUnreadable: true }).why,
+    releaseAfterBatch({ chainStatus: null }).why];
+  assert.equal(new Set(why).size, 4, '四档的 reason 逐字相同的话，日志里看不出是哪种情况');
+});
+
 test('批次的一行说明里同时有「第几批」与「哪几家」', () => {
   const plan = planBatches({ size: 2 });
   const batch = plan.batches[1];

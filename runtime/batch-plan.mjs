@@ -340,12 +340,23 @@ export function buildBatchSteps(batch, { dateInput = 'yesterday', chainArgs = []
  * 释放能不能真落地仍由 `stop-all.mjs` 的三类证据决定（foreign / unconfirmed 一律拒停）。
  * 本函数只回答「要不要发起」，不回答「能不能停」—— 两件事混在一起会写出「以为停了、其实拒停」。
  *
- * @param {{chainStatus?:number|null, unfixableShops?:string[], releaseOnFailure?:boolean}} o
+ * ⚠️ **`summaryUnreadable`（2026-10-16 加，修 ㊷ 的连带后果）**：`unfixableShops` 是**从 summary 里读出来的**，
+ * 所以「链失败了」＋「summary 读不到」这一档在过去会被读成**空名单** ⇒ 打出「没有需要人看现场的失败」
+ * 并照旧释放。**那句话是假的** —— 真实情况是「判不出来」，不是「没人要看现场」。
+ * 2026-10-15 真机就这么发生过一次：链在写完 summary 之前崩了（`run-multi-shop-day.mjs` 的续跑段抛错
+ * 穿透 catch），两批都照旧释放，而其中一家其实是登录墙、按 AGENTS.md「Failure-exit gate」第 3 条
+ * 不该释放。所以这一档改成 **fail-closed：不释放**。
+ * 与 `--release-on-failure` 的优先级：**显式开关优先** —— 它是运维明确要退回旧口径，按它的意思来。
+ *
+ * @param {{chainStatus?:number|null, unfixableShops?:string[], releaseOnFailure?:boolean,
+ *   summaryUnreadable?:boolean}} o
  *   `unfixableShops`：脚本自修没救回来、且**确实需要人/agent 看现场**的那几家
  *   （调用方用 `unfixableShopsOf` 算，本函数不重算 —— 那条判据的唯一来源在
  *   `runtime/hold-and-resume-plan.mjs`，在这里再写一遍迟早漂开）。
+ *   `summaryUnreadable`：链非 0 且这一批的 `summary.json` 读不到（文件不在或不是 JSON）。
  */
-export function releaseAfterBatch({ chainStatus, unfixableShops = [], releaseOnFailure = false } = {}) {
+export function releaseAfterBatch({ chainStatus, unfixableShops = [], releaseOnFailure = false,
+  summaryUnreadable = false } = {}) {
   if (chainStatus === null || chainStatus === undefined) {
     return { release: true, why: '这一批没跑到链（上一步就失败/被跳过）：没有现场可看，收掉' };
   }
@@ -361,6 +372,17 @@ export function releaseAfterBatch({ chainStatus, unfixableShops = [], releaseOnF
     };
   }
   if (!unfixable.length) {
+    // 判据的顺序在这里是**有意义**的：先看「读不到」，再看「读到空名单」。
+    // 两者打印出来的话几乎一样，含义却相反 —— 读不到 ⇒ 不许说「没有要人看现场的失败」。
+    if (summaryUnreadable) {
+      return {
+        release: false,
+        why: `这一批没跑成（链退出码 ${chainStatus}），而这一批的 summary.json **读不到**`
+          + ' ⇒ 判不出「有没有要人看现场的失败」⇒ fail-closed：**不释放**'
+          + '（这不是「没人需要看现场」，是「判不出来」）。'
+          + '要退回旧口径给 --release-on-failure。',
+      };
+    }
     return {
       release: true,
       why: `这一批没跑成（链退出码 ${chainStatus}），但**没有需要人看现场的失败**`

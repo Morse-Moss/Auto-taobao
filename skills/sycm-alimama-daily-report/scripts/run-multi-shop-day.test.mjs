@@ -2301,6 +2301,59 @@ test('㊱ 接线守卫：成功续跑的那家不再走「收尾回位」与「�
 });
 
 // ---------------------------------------------------------------------------
+// ㊷（2026-10-16）：自修「救回」后的**续跑段自己抛错**，不许穿透 catch 打死整批
+//
+// 病根：续跑那一句 `await runStagesFrom(resumeStages)` 写在**失败处理那个 catch 的块体内**。
+// 它再抛时没有第二层接住 —— 异常穿透 `main()`（顶层 `await main()` 没有 catch），
+// 于是**整批链当场崩**：该批剩下的店一步都不跑、`summary.json` 一个字都不写。
+// 真机实证（`evidence/batches-2026-10-15/batches.log`）：
+//   · b1 崩在 盖文淘宝 续跑段的 `shop-report` ⇒ 盖文天猫／科塔淘宝 连证据目录都没有；
+//   · b2 崩在 网林淘宝 续跑段的 `readback` ⇒ 里可林天猫／网林家居 一步没跑；
+//   · 连带后果：释放判定读成「没有需要人看现场的失败」照旧释放（其中一家其实是登录墙）、
+//     `escalation-plan.mjs` 退 1 读不到结论（三层降级第 1 步直接瞎掉）。
+// 这一条钉的是「那段代码必须自己接住」——函数级用例全绿也拦不住它。
+test('㊷ 接线守卫：救回后的续跑段必须自己接住错误（不许穿透 catch 打死整批）', () => {
+  // LF 归一化：干净检出（CI／git worktree）可能是 CRLF，而下面的针点带 \n —— 不归一会在 CI 假红。
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8').replace(/\r\n/g, '\n');
+  const rescuedAt = src.indexOf('if (loop.rescued)');
+  assert.ok(rescuedAt > 0, '找不到救回分支');
+  const rescuedBlock = src.slice(rescuedAt, src.indexOf('record.recovery = await recoverFailedShop('));
+  // ① 续跑必须包在 try 里，且 try 的第一条语句就是那次续跑。
+  assert.match(rescuedBlock, /try \{\n\s+await runStagesFrom\(resumeStages\);/u,
+    '续跑必须在自己的 try 里 —— 它已经在一个 catch 体内，再抛没有第二层接住，一家店能把整批打死');
+  // ② 接住之后要**按失败收尾**（续跑里再失败就是这一家真失败），而不是当成跑完。
+  const catchAt = rescuedBlock.indexOf('catch (resumeError) {');
+  assert.ok(catchAt > 0, '找不到 resumeError 的 catch —— 续跑抛错就会穿透出去（㊷）');
+  const handler = rescuedBlock.slice(catchAt, catchAt + 800);
+  // 针点必须钉在**代码**上，不能被注释满足 —— 2026-10-16 的突变验证抓到过第一次写法：
+  // `record.failureBookkeepingError` 那句在注释里也出现过，改坏代码时判据照样绿。
+  assert.match(handler, /catch \(resumeError\) \{\n\s+record\.status = 'failed';/u,
+    '续跑再失败 ⇒ 这一家必须当场记成 failed（不许留 ok），且这句要在 catch 的第一行');
+  assert.match(handler, /record\.rescueResume = \{[\s\S]{0,160}?error: resumeError\.message,/u,
+    '续跑失败也要留痕（rescueResume.error），不能静默');
+  assert.match(handler, /\n\s+await settleShopFailure\(resumeError\);/u,
+    '现场事实与修复请求单要按**续跑段那个**失败重做 —— 否则单子指的是已经被修好的那一步');
+  // 反面：兜底分支里不许再抛（那正是 ㊷ 的写法换了个地方）。
+  assert.doesNotMatch(handler, /\bthrow\b/u,
+    'catch 体内不许再抛 —— 没有第二层接住，整批会被一家店带走');
+  const retryCount = [...rescuedBlock.matchAll(/await runStagesFrom\(resumeStages\)/gu)].length;
+  assert.equal(retryCount, 1, `续跑那一句只该出现一次（收到 ${retryCount} 次）——多出来那句多半是裸的`);
+});
+
+test('㊷ 接线守卫：失败登记（settleShopFailure）自带兜底，且两条失败路径共用它', () => {
+  const src = readFileSync(path.join(SCRIPTS_DIR, 'run-multi-shop-day.mjs'), 'utf8').replace(/\r\n/g, '\n');
+  // 它自带一层 try/catch：两个调用点都在 catch 体内，它自己再抛就是同一个 ㊷。
+  assert.match(src, /const settleShopFailure = async \(error\) => \{\n\s+try \{/u,
+    '失败登记必须自带兜底（否则它抛错同样会穿透 catch）');
+  assert.match(src, /catch \(bookkeepingError\)/u, '兜底分支要把错误记在 record 上，不能吞掉');
+  // 同样钉代码不钉注释：注释里也写着这个字段名（2026-10-16 突变验证抓到过）。
+  assert.match(src, /record\.failureBookkeepingError = String\(/u, '兜底要留痕（可查），不许静默');
+  // 两条失败路径（首跑失败 / 续跑段再失败）**共用同一份实现** —— 各抄一份迟早漂开（㊲ 的教训）。
+  const calls = [...src.matchAll(/await settleShopFailure\(/gu)].length;
+  assert.equal(calls, 2, `settleShopFailure 应恰好被两处调用（首跑失败／续跑失败），实际 ${calls} 处`);
+});
+
+// ---------------------------------------------------------------------------
 // 2026-10-06：「整轮被挡」的真因 —— 共用窗口掉登录 vs 页面真的缺
 //
 // 起因是一次真实事故（目标日 2026-10-05）：两批都倒在第 0 步体检，飞书告警说的是
