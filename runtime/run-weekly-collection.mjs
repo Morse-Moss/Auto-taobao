@@ -70,11 +70,12 @@ export function parseRanges(spec) {
 }
 
 export function parseDriverArgs(argv) {
-  const options = { notify: false, label: '浴缸竞品周采集', pagesTotal: 40 };
+  const options = { notify: false, label: '浴缸竞品周采集', pagesTotal: 40, resume: false };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--notify') { options.notify = true; continue; }
     if (a === '--dry-run') { options.notify = false; continue; }
+    if (a === '--resume') { options.resume = true; continue; }
     const key = VALUE_OPTIONS.get(a);
     if (!key) throw new Error(`Unknown argument: ${a}`);
     const value = argv[i + 1];
@@ -87,6 +88,41 @@ export function parseDriverArgs(argv) {
   }
   options.ranges = parseRanges(options.ranges);
   return options;
+}
+
+// 续跑决策（纯函数）：同一轮（同 checkpoint 前缀）挂了重跑时，已采成的段直接复用，
+// 不重采。判据三条，缺一条都不复用：
+//   ① 显式给了 --resume（不猜意图：新一周本来就要新快照，不能因为前缀巧合就跳过）；
+//   ② 上一轮的收执在，且 checkpointPrefix 与本次逐字相同（前缀就是「哪一轮」的身份）；
+//   ③ 那段记录的 csv/xlsx 文件此刻仍在盘上（产物被清过就重采，不许拿不存在的路径糊弄）。
+export function planResume(ranges, { resume = false, prefix = '', receipt = null, exists = existsSync } = {}) {
+  if (!resume || !receipt || receipt.checkpointPrefix !== prefix) {
+    return { pending: ranges, reused: [] };
+  }
+  const done = new Map();
+  for (const part of Array.isArray(receipt.collected) ? receipt.collected : []) {
+    if (part?.range) done.set(part.range, part);
+  }
+  const pending = [];
+  const reused = [];
+  for (const range of ranges) {
+    const part = done.get(range.id);
+    if (part && part.csv && part.xlsx && exists(part.csv) && exists(part.xlsx)) {
+      reused.push({ range: range.id, csv: part.csv, xlsx: part.xlsx });
+    } else {
+      pending.push(range);
+    }
+  }
+  return { pending, reused };
+}
+
+// 读上一轮的收执（读不到就返回 null：没有历史不等于出错）。
+function readPreviousReceipt() {
+  try {
+    return JSON.parse(readFileSync(path.join(HERE, '.weekly-collection-receipt.json'), 'utf8'));
+  } catch {
+    return null;
+  }
 }
 
 // 段内产物从 ADAPTIVE_DONE 那行拿。它由采集器自己打到 stdout（也**只**打 stdout），
@@ -210,6 +246,8 @@ async function main() {
       at: new Date().toISOString(),
       ranges: options.ranges.map((r) => r.id),
       notify: options.notify ? 'feishu' : 'dry-run',
+      checkpointPrefix: options.checkpointPrefix,
+      resume: options.resume ? 'on' : 'off',
       collected: [],
       failures: [{
         range: 'preflight',
@@ -229,7 +267,32 @@ async function main() {
 
   const collected = [];
   const failures = [];
-  for (const range of options.ranges) {
+  const receipt = {
+    version: 'weekly-collection-receipt-v1',
+    at: new Date().toISOString(),
+    ranges: options.ranges.map((r) => r.id),
+    notify: options.notify ? 'feishu' : 'dry-run',
+    checkpointPrefix: options.checkpointPrefix,
+    resume: options.resume ? 'on' : 'off',
+    collected,
+    failures,
+  };
+  // 收执**逐段**落盘（不是只在结尾写）：驱动被 kill / 机器重启时不丢已采成的段，
+  // 重跑时 --resume 靠它判断该跳谁。这是「挂了不用十段重采」的前提。
+  const writeReceipt = () => writeFileSync(path.join(HERE, '.weekly-collection-receipt.json'), JSON.stringify(receipt, null, 2));
+
+  const { pending, reused } = planResume(options.ranges, {
+    resume: options.resume,
+    prefix: options.checkpointPrefix,
+    receipt: readPreviousReceipt(),
+  });
+  if (reused.length) {
+    log(`续跑复用已采成的 ${reused.length} 段：${reused.map((r) => r.range).join(',')}`);
+    for (const part of reused) collected.push({ range: part.range, csv: part.csv, xlsx: part.xlsx });
+    writeReceipt();
+  }
+
+  for (const range of pending) {
     log(`--- 段 ${range.id} 开始 ---`);
     const code = await runHost(range, options);
     let done = null;
@@ -243,20 +306,13 @@ async function main() {
     } else {
       failures.push({ range: range.id, code, csv, xlsx, reason: code === 0 ? '产物不全（缺 csv 或带图 xlsx）' : `采集退出码 ${code}` });
     }
+    receipt.at = new Date().toISOString();
+    writeReceipt();
   }
-
-  const receipt = {
-    version: 'weekly-collection-receipt-v1',
-    at: new Date().toISOString(),
-    ranges: options.ranges.map((r) => r.id),
-    notify: options.notify ? 'feishu' : 'dry-run',
-    collected,
-    failures,
-  };
 
   if (!collected.length) {
     log('没有任何一段产出可用产物，不合并。');
-    writeFileSync(path.join(HERE, '.weekly-collection-receipt.json'), JSON.stringify(receipt, null, 2));
+    writeReceipt();
     process.exit(1);
   }
 

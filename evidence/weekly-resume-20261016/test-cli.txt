@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: defaults to a network-free dry run
+ok 1 - defaults to a network-free dry run
+  ---
+  duration_ms: 0.9957
+  type: 'test'
+  ...
+# Subtest: requires an environment file for commit mode
+ok 2 - requires an environment file for commit mode
+  ---
+  duration_ms: 0.2774
+  type: 'test'
+  ...
+# Subtest: accepts explicit target preparation only with commit mode
+ok 3 - accepts explicit target preparation only with commit mode
+  ---
+  duration_ms: 0.0906
+  type: 'test'
+  ...
+# Subtest: extractManifest: 抽取子进程 stdio 守 EBUSY 纪律（stdin 必须 ignore）
+ok 4 - extractManifest: 抽取子进程 stdio 守 EBUSY 纪律（stdin 必须 ignore）
+  ---
+  duration_ms: 0.5262
+  type: 'test'
+  ...
+# Subtest: extractManifest: spawn 起不来（EBUSY 形状）⇒ 报错带得出原因，不是 undefined
+ok 5 - extractManifest: spawn 起不来（EBUSY 形状）⇒ 报错带得出原因，不是 undefined
+  ---
+  duration_ms: 0.1515
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1485.7672

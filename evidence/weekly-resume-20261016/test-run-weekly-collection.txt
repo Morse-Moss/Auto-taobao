@@ -1,0 +1,118 @@
+TAP version 13
+# Subtest: parseRanges: START-END 形式，非法输入直接拒
+ok 1 - parseRanges: START-END 形式，非法输入直接拒
+  ---
+  duration_ms: 2.8367
+  type: 'test'
+  ...
+# Subtest: lastAdaptiveDone: 从 stdout 里取最后一条 ADAPTIVE_DONE
+ok 2 - lastAdaptiveDone: 从 stdout 里取最后一条 ADAPTIVE_DONE
+  ---
+  duration_ms: 0.2253
+  type: 'test'
+  ...
+# Subtest: runLoginPreflightStep: 预检入参全走 argv，stdio 守 EBUSY 纪律
+ok 3 - runLoginPreflightStep: 预检入参全走 argv，stdio 守 EBUSY 纪律
+  ---
+  duration_ms: 0.227
+  type: 'test'
+  ...
+# Subtest: runLoginPreflightStep: 单行 JSON（包装器场景）也认
+ok 4 - runLoginPreflightStep: 单行 JSON（包装器场景）也认
+  ---
+  duration_ms: 0.1197
+  type: 'test'
+  ...
+# Subtest: runLoginPreflightStep: dry-run 驱动给预检显式静音
+ok 5 - runLoginPreflightStep: dry-run 驱动给预检显式静音
+  ---
+  duration_ms: 0.0953
+  type: 'test'
+  ...
+# Subtest: runLoginPreflightStep: 登录墙结论原样带回（驱动据此弃跑）
+ok 6 - runLoginPreflightStep: 登录墙结论原样带回（驱动据此弃跑）
+  ---
+  duration_ms: 0.0667
+  type: 'test'
+  ...
+# Subtest: runLoginPreflightStep: 预检起不来（EBUSY 形状）⇒ PREFLIGHT_UNREADABLE，非阻断
+ok 7 - runLoginPreflightStep: 预检起不来（EBUSY 形状）⇒ PREFLIGHT_UNREADABLE，非阻断
+  ---
+  duration_ms: 0.2124
+  type: 'test'
+  ...
+# Subtest: parseDriverArgs: 必填项与 notify 开关
+ok 8 - parseDriverArgs: 必填项与 notify 开关
+  ---
+  duration_ms: 0.2
+  type: 'test'
+  ...
+# Subtest: parseDriverArgs: --resume 旗标默认关、显式给才开
+ok 9 - parseDriverArgs: --resume 旗标默认关、显式给才开
+  ---
+  duration_ms: 0.2742
+  type: 'test'
+  ...
+# Subtest: planResume: 同前缀 + --resume，已采成且产物在盘的段直接复用
+ok 10 - planResume: 同前缀 + --resume，已采成且产物在盘的段直接复用
+  ---
+  duration_ms: 0.5709
+  type: 'test'
+  ...
+# Subtest: planResume: 前缀不同（新一轮）⇒ 一段都不复用
+ok 11 - planResume: 前缀不同（新一轮）⇒ 一段都不复用
+  ---
+  duration_ms: 0.1592
+  type: 'test'
+  ...
+# Subtest: planResume: 没给 --resume ⇒ 不猜意图，全段重采
+ok 12 - planResume: 没给 --resume ⇒ 不猜意图，全段重采
+  ---
+  duration_ms: 0.0518
+  type: 'test'
+  ...
+# Subtest: planResume: 没收执（首跑或收据被清）⇒ 全段重采
+ok 13 - planResume: 没收执（首跑或收据被清）⇒ 全段重采
+  ---
+  duration_ms: 0.0343
+  type: 'test'
+  ...
+# Subtest: planResume: 收执里有这段但产物不在盘 ⇒ 那段重采，不拿不存在的路径糊弄
+ok 14 - planResume: 收执里有这段但产物不在盘 ⇒ 那段重采，不拿不存在的路径糊弄
+  ---
+  duration_ms: 0.0583
+  type: 'test'
+  ...
+# Subtest: planResume: 收执里缺 csv 或 xlsx 记录的段 ⇒ 重采
+ok 15 - planResume: 收执里缺 csv 或 xlsx 记录的段 ⇒ 重采
+  ---
+  duration_ms: 0.0831
+  type: 'test'
+  ...
+# Subtest: runMergeStep: 合并子进程 stdio 守 EBUSY 纪律（stdin 必须 ignore）
+ok 16 - runMergeStep: 合并子进程 stdio 守 EBUSY 纪律（stdin 必须 ignore）
+  ---
+  duration_ms: 0.2507
+  type: 'test'
+  ...
+# Subtest: runMergeStep: 合并非零退出 ⇒ ok=false，不假绿
+ok 17 - runMergeStep: 合并非零退出 ⇒ ok=false，不假绿
+  ---
+  duration_ms: 0.0757
+  type: 'test'
+  ...
+# Subtest: runMergeStep: spawn 起不来（EBUSY 形状）⇒ ok=false，不假绿
+ok 18 - runMergeStep: spawn 起不来（EBUSY 形状）⇒ ok=false，不假绿
+  ---
+  duration_ms: 0.0572
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1188.2727

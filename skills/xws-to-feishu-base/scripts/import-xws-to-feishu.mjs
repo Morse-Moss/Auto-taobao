@@ -58,13 +58,23 @@ function parseEnvFile(path) {
   return values;
 }
 
-function extractManifest({ xlsx, outputDir, python }) {
+export function extractManifest({ xlsx, outputDir, python, spawnImpl = spawnSync }) {
   const script = resolve(scriptDir, 'extract_xws_xlsx.py');
   const command = python ?? (process.platform === 'win32' ? 'py' : 'python3');
   const args = [...(python || process.platform !== 'win32' ? [] : ['-3']), script, xlsx, outputDir];
-  const result = spawnSync(command, args, { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 });
+  // stdio 必须显式写、且 stdin 只能是 'ignore'：默认 stdio（stdin 是管道）在宿主沙箱下
+  // spawnSync 直接 EBUSY ⇒ status=null、stdout/stderr 全 undefined ⇒ 报错只剩
+  // 「Cannot read properties of undefined (reading 'trim')」。2026-10-16 导入实测撞上，
+  // 与 1.7.1 / 1.9.2 / 1.9.4 同一病根，第四处调用点。
+  const result = spawnImpl(command, args, {
+    encoding: 'utf8',
+    maxBuffer: 50 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   if (result.status !== 0) {
-    throw new Error(`XLSX extraction failed: ${(result.stderr || result.stdout).trim()}`);
+    const detail = result.stderr || result.stdout
+      || (result.error ? `spawn failed: ${result.error.code ?? result.error.message}` : '');
+    throw new Error(`XLSX extraction failed: ${String(detail).trim() || '(no output)'}`);
   }
   return JSON.parse(result.stdout);
 }

@@ -1,0 +1,15 @@
+PASS 去掉前缀判据（checkpointPrefix !== prefix）
+  转红: ["planResume: 前缀不同（新一轮）⇒ 一段都不复用"]（期望且仅期望: /前缀不同/）；仍绿: 5 条
+  还原自证: 逐字节一致
+PASS 去掉 --resume 判据
+  转红: ["planResume: 没给 --resume ⇒ 不猜意图，全段重采"]（期望且仅期望: /没给 --resume/）；仍绿: 5 条
+  还原自证: 逐字节一致
+PASS 去掉「产物在盘」判据
+  转红: ["planResume: 收执里有这段但产物不在盘 ⇒ 那段重采，不拿不存在的路径糊弄"]（期望且仅期望: /产物不在盘/）；仍绿: 5 条
+  还原自证: 逐字节一致
+PASS 去掉「收执里有 csv/xlsx 路径」判据
+  转红: ["planResume: 收执里缺 csv 或 xlsx 记录的段 ⇒ 重采"]（期望且仅期望: /缺 csv 或 xlsx 记录/）；仍绿: 5 条
+  还原自证: 逐字节一致
+还原后全量复跑: 全绿
+MUTATION-VERIFY-OK
+EXIT=0

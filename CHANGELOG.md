@@ -15,6 +15,60 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.9.8] - 2026-10-16
+
+本周竞品周表（`竞品周_2026-10-11_2026-10-17`）的正式导入卡在 dry-run：`extractManifest`
+的 spawnSync 漏写 stdio ⇒ 宿主沙箱下 stdin 管道直接 EBUSY ⇒ status=null、stdout/stderr
+全 undefined ⇒ `result.stderr || result.stdout` 取到 undefined，`.trim()` 把真因吞掉，
+只剩一句「Cannot read properties of undefined」。这是同一病根的**第四处**
+（1.7.1 notify / 1.9.2 supervise deliver / 1.9.4 合并），比前三次更早——dry-run 就崩。
+同批把周采集驱动的「整轮续跑」能力补上：这是挂每周一定时的前置开发项
+（提案 `evidence/weekly-scheduling-20261015/PROPOSAL.md` B 项）——否则定时跑崩一次
+就要十段全重采，白烧整个采集周期。
+
+### 改了什么
+
+- **导入器 EBUSY 修复（`import-xws-to-feishu.mjs`）**：`extractManifest` 改为导出函数、
+  单对象解构入参（`{ xlsx, outputDir, python, spawnImpl = spawnSync }`）、显式
+  `stdio: ['ignore', 'pipe', 'pipe']`；spawn 失败/非零退出时报错携带
+  `result.error.code`（EBUSY 形状须原样可见，不许再被 `.trim()` 吞）。
+- **周采集驱动续跑（`run-weekly-collection.mjs`）**：
+  - `parseDriverArgs` 新增 `--resume` 旗标（默认 false——不猜意图：新一周本来就要新快照）；
+  - 新增导出纯函数 `planResume(ranges, { resume, prefix, receipt, exists })`，
+    三条判据**缺一不复用**：显式 `--resume`、收执 `checkpointPrefix` 与本次逐字相同
+    （前缀＝「哪一轮」的身份）、该段 csv/xlsx 此刻仍在盘上（被清过就重采，
+    不许拿不存在的路径糊弄）；
+  - 新增 `readPreviousReceipt()`；`main()` 里收执提前构造并**逐段**落盘
+    （`runtime/.weekly-collection-receipt.json`）：驱动被 kill / 机器重启不丢已采成的段，
+    重跑时 `--resume` 靠它跳段；收执新增 `checkpointPrefix` / `resume` 字段。
+
+### 为什么这样改
+
+- 四处的共同形状：`spawnSync` 默认 stdio 的 stdin 是管道，宿主沙箱下一律 EBUSY。
+  前三处都是「跑通之后才炸」，这次是「门都进不去」——导入是周报链最后一环，
+  它崩了等于十段全白采。
+- 续跑判据故意收紧到三条全满足：前缀防「新一轮被旧收据带偏」；在盘判据防
+  「产物被清理后拿路径糊弄合并」。两条都是这个仓库反复吃过的「读不到当成不存在」
+  病根的变体。
+
+### 验证到什么程度
+
+- 定向测试：`runtime/run-weekly-collection.test.mjs` **18/18**（净增 7：
+  planResume 六条 + `--resume` 旗标一条）；`skills/xws-to-feishu-base/tests/cli.test.mjs`
+  **5/5**（净增 2：抽取子进程 stdio 形状、EBUSY 形状报错须带 `spawn failed: EBUSY`）。
+- 突变验证 **4/4** 点名抓红（去前缀判据 / 去 `--resume` 判据 / 去「产物在盘」判据 /
+  去「收执里有 csv/xlsx 路径」判据）：每次只有对应用例转红、其余不受影响，
+  还原后逐字节一致、全量复跑全绿。⚠️ 第一版第 4 条突变锚点选错（把 `exists(...)`
+  判据一起打掉，红了两条），修正锚点后 4/4——说明判据是真的在管事。
+- 全量 runtime 套件 **1363/1363** 退 0（1.9.6 基线 1354，净增 9＝本批新增用例；
+  与 1.9.7 同树跑过，编号不冲突）。
+- ⚠️ **续跑能力未经真机**：下一期 2026-10-19（周一）00:00 定时轮即是首次真机。
+- 本期竞品周表（`tblBowNVwjlj4MwG`）正式导入已过：26m37s、退出码 0、1540 行 /
+  1538 附件、周期戳 2026-10-11→10-17，**独立回读三项全对**（不依赖导入器自己的报告）。
+
+证据：`evidence/weekly-resume-20261016/`（README、两份定向测试原始输出、
+突变验证输出）。
+
 ## [1.9.7] - 2026-10-16
 
 目标日 2026-10-15 的日报定时轮（11:00）**只写成 1/8**。链崩在「自修救回后续跑余下阶段」那一段：

@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { lastAdaptiveDone, parseDriverArgs, parseRanges, runLoginPreflightStep, runMergeStep } from './run-weekly-collection.mjs';
+import { lastAdaptiveDone, parseDriverArgs, parseRanges, planResume, runLoginPreflightStep, runMergeStep } from './run-weekly-collection.mjs';
 
 const fakeSpawn = (result) => {
   const calls = [];
@@ -86,6 +86,73 @@ test('parseDriverArgs: 必填项与 notify 开关', () => {
   assert.equal(options.notify, true);
   assert.equal(options.outputDir, 'C:/Users/Administrator/Downloads');
   assert.throws(() => parseDriverArgs(['--ranges', '1-4']), /required/u);
+});
+
+test('parseDriverArgs: --resume 旗标默认关、显式给才开', () => {
+  const base = [
+    '--ranges', '1-4', '--output-dir', 'C:/x',
+    '--checkpoint-prefix', 'runtime/xws-weekly-20261019', '--proxy', 'http://127.0.0.1:3457',
+  ];
+  assert.equal(parseDriverArgs(base).resume, false, '不猜意图：默认全段重采');
+  assert.equal(parseDriverArgs([...base, '--resume']).resume, true);
+});
+
+// ---- planResume：续跑决策（2026-10-16）----
+// 三条判据缺一不复用：① 显式 --resume；② 收执 checkpointPrefix 逐字相同；
+// ③ 该段的 csv/xlsx 此刻仍在盘上。这一组用例把「什么情况下会白重采 / 拿糊弄路径」钉死。
+const RESUME_RANGES = [
+  { id: '1-4', start: 1, end: 4 },
+  { id: '5-8', start: 5, end: 8 },
+  { id: '9-12', start: 9, end: 12 },
+];
+const existsFor = (paths) => (candidate) => paths.includes(candidate);
+const RECEIPT = {
+  checkpointPrefix: 'runtime/xws-weekly-20261019',
+  collected: [
+    { range: '1-4', csv: 'C:/a/1-4.csv', xlsx: 'C:/a/1-4.xlsx' },
+    { range: '5-8', csv: 'C:/a/5-8.csv', xlsx: 'C:/a/5-8.xlsx' },
+  ],
+};
+
+test('planResume: 同前缀 + --resume，已采成且产物在盘的段直接复用', () => {
+  const exists = existsFor(['C:/a/1-4.csv', 'C:/a/1-4.xlsx', 'C:/a/5-8.csv', 'C:/a/5-8.xlsx']);
+  const { pending, reused } = planResume(RESUME_RANGES, { resume: true, prefix: 'runtime/xws-weekly-20261019', receipt: RECEIPT, exists });
+  assert.deepEqual(reused.map((r) => r.range), ['1-4', '5-8']);
+  assert.deepEqual(reused[0], { range: '1-4', csv: 'C:/a/1-4.csv', xlsx: 'C:/a/1-4.xlsx' });
+  assert.deepEqual(pending.map((r) => r.id), ['9-12']);
+});
+
+test('planResume: 前缀不同（新一轮）⇒ 一段都不复用', () => {
+  const { pending, reused } = planResume(RESUME_RANGES, { resume: true, prefix: 'runtime/xws-weekly-20261026', receipt: RECEIPT, exists: () => true });
+  assert.equal(reused.length, 0);
+  assert.deepEqual(pending.map((r) => r.id), ['1-4', '5-8', '9-12']);
+});
+
+test('planResume: 没给 --resume ⇒ 不猜意图，全段重采', () => {
+  const { pending, reused } = planResume(RESUME_RANGES, { resume: false, prefix: 'runtime/xws-weekly-20261019', receipt: RECEIPT, exists: () => true });
+  assert.equal(reused.length, 0);
+  assert.equal(pending.length, 3);
+});
+
+test('planResume: 没收执（首跑或收据被清）⇒ 全段重采', () => {
+  const { pending, reused } = planResume(RESUME_RANGES, { resume: true, prefix: 'runtime/xws-weekly-20261019', receipt: null, exists: () => true });
+  assert.equal(reused.length, 0);
+  assert.equal(pending.length, 3);
+});
+
+test('planResume: 收执里有这段但产物不在盘 ⇒ 那段重采，不拿不存在的路径糊弄', () => {
+  // 5-8 的带图 xlsx 被清理过：只剩 csv。缺 xlsx 就没有图，必须重采。
+  const exists = existsFor(['C:/a/1-4.csv', 'C:/a/1-4.xlsx', 'C:/a/5-8.csv']);
+  const { pending, reused } = planResume(RESUME_RANGES, { resume: true, prefix: 'runtime/xws-weekly-20261019', receipt: RECEIPT, exists });
+  assert.deepEqual(reused.map((r) => r.range), ['1-4']);
+  assert.deepEqual(pending.map((r) => r.id), ['5-8', '9-12']);
+});
+
+test('planResume: 收执里缺 csv 或 xlsx 记录的段 ⇒ 重采', () => {
+  const receipt = { checkpointPrefix: 'runtime/xws-weekly-20261019', collected: [{ range: '1-4', csv: 'C:/a/1-4.csv' }] };
+  const { pending, reused } = planResume(RESUME_RANGES, { resume: true, prefix: 'runtime/xws-weekly-20261019', receipt, exists: () => true });
+  assert.equal(reused.length, 0);
+  assert.deepEqual(pending.map((r) => r.id), ['1-4', '5-8', '9-12']);
 });
 
 test('runMergeStep: 合并子进程 stdio 守 EBUSY 纪律（stdin 必须 ignore）', () => {
