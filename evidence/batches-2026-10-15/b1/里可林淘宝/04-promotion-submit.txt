@@ -1,0 +1,11 @@
+
+===== 2026-10-16T04:29:40.245Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase submit --date 2026-10-15 --proxy http://127.0.0.1:19041 --expect-shop 里可林家居 --expect-member 里可林家居:小嘉 --expect-member-id 2350600069
+exit=1 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 ED9B7F7ED0C8180E6082AA6F0B97A6B1｜phase=submit｜目标日 2026-10-15
+[失败现场] 没给 --log-dir ⇒ 本轮不采（整轮跑时由编排层统一采，这里不重复拍一遍）
+
+--- stderr ---
+
+采集失败：阿里妈妈会员名身份读不到（期望「里可林家居:小嘉」）：拒绝在身份未知的页面上继续 —— 读到的原文在上面那行日志里，先确认窗口/代理对不对再说

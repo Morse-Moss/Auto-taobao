@@ -25,7 +25,7 @@ import {
   PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN, TASK_DOWNLOAD_MARK, alimamaIdentityExpression,
   assertMemberIdentity, checkboxStateExpression, createOverlayDismisser, createPageReloader, defaultDownloadsDir,
   describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, downloadEntryExpression,
-  hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest,
+  hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest, readAlimamaIdentitySettled,
   restoreCheckboxesExpression, scrollIntoViewExpression, targetRowExpression, taskNameOfZip,
 } from './collect-core.mjs';
 // 报表页 URL 形状只有 date-picker 那份实现（含场景编码与归因参数）。路由复位要重新导航到
@@ -124,7 +124,13 @@ async function findAlimamaPage(args) {
 // 为什么必须在这里拦：营销场景报表的 CSV **一个店铺身份字段都没有**（69 列全是场景与指标），
 // 取错窗口不会报错 —— 文件照样落盘、数字照样进飞书，事后从产物里查不出来。
 async function assertAlimamaIdentity(args, targetId) {
-  const identity = await evalOn(args, targetId, alimamaIdentityExpression());
+  // ⚠️ 2026-10-16 修：这里**不能**单次读。原来紧跟 bringToFront 只 `evalOn` 一次，页头（SPA 异步渲染）
+  // 还没画上去就当成「身份未知」fail-closed 抛掉 —— 现场证据见 evidence/batches-2026-10-15/b1/
+  // 里可林淘宝、科塔淘宝：失败快照（约 2.6 秒后）里同一页页头明明有期望身份。改用「读不到就重试」
+  // （`readAlimamaIdentitySettled`，与 date-picker 的 settle 同一把尺子）；仍读不到才由下面的断言抛。
+  const settled = await readAlimamaIdentitySettled(
+    () => evalOn(args, targetId, alimamaIdentityExpression()), { delay });
+  const identity = settled.identity ?? {};
   const check = assertMemberIdentity({
     expectedName: args.expectMember, expectedId: args.expectMemberId, observed: identity,
   });

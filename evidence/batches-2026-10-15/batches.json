@@ -1,0 +1,34 @@
+{
+ "version": "sycm-automation 1.9.8",
+ "date": "2026-10-15",
+ "dateInput": "2026-10-15",
+ "mode": "commit",
+ "batchSize": 5,
+ "evidenceRoot": "evidence/batches-2026-10-15",
+ "release": true,
+ "hold": null,
+ "rounds": [
+  {
+   "index": 1,
+   "shops": [
+    "里可林淘宝",
+    "科塔淘宝"
+   ],
+   "steps": {
+    "start": 0,
+    "viewport-gate": 0,
+    "login-preflight": 0,
+    "label:里可林淘宝": 0,
+    "label:科塔淘宝": 0,
+    "chain": 0,
+    "stop": 0
+   },
+   "chainStatus": 0,
+   "release": null,
+   "decision": {
+    "release": true,
+    "why": "这一批全绿：按计划收掉，把内存让给下一批"
+   }
+  }
+ ]
+}

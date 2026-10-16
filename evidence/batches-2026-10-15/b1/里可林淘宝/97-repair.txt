@@ -1,0 +1,4 @@
+修复动作：RELOAD_PAGE（排练）
+店：里可林淘宝｜阶段：promotion-submit｜成因：STAGE_FAILED
+目标页：(未定位)
+结论：未应用｜找不到要修的那一页：窗口里找不到符合「one.alimama.com」的页

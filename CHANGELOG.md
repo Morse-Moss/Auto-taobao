@@ -15,6 +15,49 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.9.9] - 2026-10-16
+
+日报链（目标日 2026-10-15）补跑时，`里可林淘宝` 与 `科塔淘宝` 双双停在第 3 步 `promotion-submit`，
+报「阿里妈妈会员名身份读不到」——而**失败后约 2.6 秒**拍的现场快照里，同一页页头恰恰写着期望的
+会员名与 ID（里可林「里可林家居:小嘉 ID：2350600069」、科塔「j873522735:小瓜 ID：412070158」）。
+判据读的是 `document.body.innerText`，页头是 SPA 异步渲染的，而身份读取是**单次读、无等待**、
+紧随 `bringToFront` 执行 ⇒ 撞上「页已经在报表路由上、页头还没画进 innerText」的竞态，
+把「读得太早」误判成「身份未知」fail-closed 抛掉。**这不是身份对不上，是读不到。**
+
+### 改了什么
+
+- `collect-core.mjs`：新增导出 `readAlimamaIdentitySettled(read, { attempts = 12, intervalMs = 1000, delay })`
+  ——把「单次读」换成「读到 `memberName`/`memberId` 任一即停，读不到就重试」，读满 `attempts`
+  仍读不到就把原值交回；`read` 抛错也计入重试，整轮都在抛则抛最后一次（区分「读不到页」与「身份未知」）。
+- `collect-promotion-report.mjs`：`assertAlimamaIdentity`（:126）改走它读取身份。
+  **闸门语义逐字未变**：仍由 `assertMemberIdentity` 在读到之后做 fail-closed 断言（身份未知照样停手）。
+- `collect-core.test.mjs`：补两条守卫——一条行为用例（第 N 次读到即停 / 始终读不到原样交回 /
+  read 抛错计入重试且全抛时抛最后一次 / 抛一次后读到仍成功），一条**源码守卫**
+  （阿里妈妈脚本的身份读取必须走 `readAlimamaIdentitySettled`；`assertAlimamaIdentity` 里
+  不许再出现裸 `await evalOn(... alimamaIdentityExpression())`）。
+
+### 为什么这样改
+
+- 「快照里有名字、判据读不到」说明问题在**读取时机**，不在判据本身 ⇒ 把等待加在读取侧即可，
+  不必放宽任何断言。放宽断言会把「真读错窗口 / 掉登录」也一起放过——那正是本仓库反复吃过的
+  「把读不到当成不存在 / 不匹配」病根的变体。
+- 与 `date-picker` 的 `settle` 同一把尺子（同一族问题同一处口径）。
+- 影响面只有这一处：读不到时的最坏等待由 0 变 12×1s，**失败方向不变**。兄弟脚本
+  `run-promotion-daily-report.mjs` 有同形单次读，但不在本报链路径上，**本轮未动**（不扩大改动面）。
+
+### 验证到什么程度
+
+- **真机**：两店各自重跑全链、11 个阶段 all-ok、`batch-chain 退出码 0`；
+  `03-promotion-submit.txt` 打出 `[身份] 阿里妈妈会员 = "里可林家居:小嘉" ID="2350600069"｜期望 … ✓`；
+  独立探针回读底单 2026-10-15 由 5 行 → **7 行**（新增 `里可林家居`、`科塔全卫定制`）。
+  动作台账与根因定位见 `evidence/batches-2026-10-15/b1/{里可林淘宝,科塔淘宝}/97-repair-agent-report.md`。
+- 定向：`node --test "skills/sycm-alimama-daily-report/scripts/*.test.mjs"` **634/634** 退 0
+  （净增 2 条）；会话侧独立复跑同数。
+- 突变：把脚本临时还原成 HEAD 的单次读版本 ⇒ 源码守卫转红（点名「没有走 `readAlimamaIdentitySettled`」）；
+  还原新版后恢复全绿 ⇒ 这条守卫确实在管事。
+
+证据：`evidence/batches-2026-10-15/`、`evidence/daily-job-2026-10-15/`。
+
 ## [1.9.8] - 2026-10-16
 
 本周竞品周表（`竞品周_2026-10-11_2026-10-17`）的正式导入卡在 dry-run：`extractManifest`

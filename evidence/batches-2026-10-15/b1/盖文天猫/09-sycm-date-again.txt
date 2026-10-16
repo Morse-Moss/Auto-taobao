@@ -1,0 +1,44 @@
+
+===== 2026-10-16T04:37:26.068Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site sycm --date 2026-10-15 --proxy http://127.0.0.1:19045
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: sycm: 重新加载页面后读数仍是 null，期望 2026-10-15。页面停在旧渲染这一种成因已排除 ⇒ 要么平台这一天还没有数，要么落位坏了（读不到 16 次；targetId=6A0475EFB7FD287F5834FC3A1C01CDCA）；平台的功能答复={"asked":true,"targetId":"6A0475EFB7FD287F5834FC3A1C01CDCA","href":"https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop","httpStatus":200,"code":0,"message":"操作成功","moduleCode":"sycm_v2_qos_shop_performance","raw":"{ \"code\":0, \"data\":{ \"accessLevel\":1, \"code\":\"sycm_v2_qos_shop_performance\", \"id\":11536, \"securityLevel\":1 }, \"message\":\"操作成功\" }"}
+    at runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:1007:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:820:12)
+TRACE [
+  {
+    "step": "read-before-skipped",
+    "tolerated": true,
+    "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
+    "detail": "proxy http://127.0.0.1:19045/eval?target=6A0475EFB7FD287F5834FC3A1C01CDCA failed: HTTP 400 Error: sycm date readout count=0     at <anonymous>:4:35     at <anon"
+  },
+  {
+    "step": "reload-stale-page",
+    "observedBeforeReload": null,
+    "requested": "2026-10-15"
+  },
+  {
+    "step": "reloaded",
+    "reloadError": null,
+    "observedAfterReload": null,
+    "readFailures": 16,
+    "reads": 16,
+    "lastReadError": "proxy http://127.0.0.1:19045/eval?target=6A0475EFB7FD287F5834FC3A1C01CDCA failed: HTTP 400 Error: sycm date readout count=0     at <anonymous>:4:35     at <anonymous>:14:5"
+  },
+  {
+    "step": "shop-func-permission-probe",
+    "requested": "2026-10-15",
+    "asked": true,
+    "targetId": "6A0475EFB7FD287F5834FC3A1C01CDCA",
+    "href": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "httpStatus": 200,
+    "code": 0,
+    "message": "操作成功",
+    "moduleCode": "sycm_v2_qos_shop_performance",
+    "raw": "{ \"code\":0, \"data\":{ \"accessLevel\":1, \"code\":\"sycm_v2_qos_shop_performance\", \"id\":11536, \"securityLevel\":1 }, \"message\":\"操作成功\" }"
+  }
+]

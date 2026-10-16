@@ -1,0 +1,155 @@
+diff --git a/skills/sycm-alimama-daily-report/scripts/collect-core.mjs b/skills/sycm-alimama-daily-report/scripts/collect-core.mjs
+index f5e9c90..b5e65f1 100644
+--- a/skills/sycm-alimama-daily-report/scripts/collect-core.mjs
++++ b/skills/sycm-alimama-daily-report/scripts/collect-core.mjs
+@@ -785,6 +785,46 @@ export function assertMemberIdentity({ expectedName, expectedId, observed } = {}
+   return { checked: true, results };
+ }
+ 
++// 「身份读不到」有两种完全不同的成因，必须分开：
++//   ① 真的不在这一页（读错窗口、掉登录）⇒ fail-closed，不许继续；
++//   ② 页头**还没渲染出来**（SPA 异步渲染）⇒ 读不到 ≠ 身份不对，等一会儿再读就有。
++// 这一条 helper 只为 ② 服务：把「单次读」换成「读不到就重试若干次」，仍读不到才把值交回去，
++// 由调用方的 fail-closed 断言（`assertMemberIdentity`）去抛 —— 闸门语义逐字未变。
++//
++// 为什么必须加（2026-10-16，现场见 evidence/batches-2026-10-15/b1/里可林淘宝 与 科塔淘宝）：
++// promotion-submit 一开跑就**紧随 bringToFront** 读会员名（`assertAlimamaIdentity`），读到空即抛
++// 「阿里妈妈会员名身份读不到」；而**失败后约 2.6 秒**拍的现场快照里，同一页页头明明写着期望身份
++// （里可林「里可林家居:小嘉 ID：2350600069」、科塔「j873522735:小瓜 ID：412070158」）。
++// 判据读的是 `document.body.innerText`，页头是异步渲染的 ⇒ 单次读会撞上「页在、字还没画上」的竞态。
++// 这与 date-picker 的 settle 是同一族问题，所以照同一把尺子「读不到就重试」。
++//
++// `read` 是「读一次并返回 {memberName, memberId}」的注入函数（便于离线断言）；
++// 读到 `memberName` 或 `memberId` 任一即算读到（判据表达式里两者同源，实务上同生同灭）。
++// read 抛错也计入重试（页面落定中途的 eval 失败同属「还没就绪」）；若整轮都在抛，抛最后一次的错
++// （那是「读不到页」而不是「身份未知」，不该被下面的失败方向盖掉）。
++export async function readAlimamaIdentitySettled(read, {
++  attempts = 12, intervalMs = 1000, delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }),
++} = {}) {
++  if (typeof read !== 'function') throw new Error('readAlimamaIdentitySettled 需要 read 函数');
++  let identity = null;
++  let lastError = null;
++  for (let attempt = 0; attempt < attempts; attempt += 1) {
++    try {
++      identity = await read();
++      lastError = null;
++    } catch (error) {
++      identity = null;
++      lastError = error;
++    }
++    if (identity?.memberName || identity?.memberId) {
++      return { identity, reads: attempt + 1, settled: true };
++    }
++    if (attempt < attempts - 1) await delay(intervalMs);
++  }
++  if (lastError) throw lastError;
++  return { identity, reads: attempts, settled: false };
++}
++
+ // ---------------------------------------------------------------------------
+ // 阿里妈妈「下载任务管理」取件的三段表达式（2026-09-17 改；此前那版模型是错的）
+ // ---------------------------------------------------------------------------
+diff --git a/skills/sycm-alimama-daily-report/scripts/collect-core.test.mjs b/skills/sycm-alimama-daily-report/scripts/collect-core.test.mjs
+index 7593f85..3d16f1b 100644
+--- a/skills/sycm-alimama-daily-report/scripts/collect-core.test.mjs
++++ b/skills/sycm-alimama-daily-report/scripts/collect-core.test.mjs
+@@ -13,7 +13,7 @@ import {
+   describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, describeOverlayScan,
+   downloadEntryExpression, hitCheckExpression, judgeOverlayAfter, listDownloads, newEntries, newestTaskName,
+   overlayAfterExpression, overlayScanExpression, pageReadyExpression, parseCollectArgs, pickNewest,
+-  pickOverlayCloseCandidate, pickOverlayCloseCandidates, reloadPageExpression,
++  pickOverlayCloseCandidate, pickOverlayCloseCandidates, readAlimamaIdentitySettled, reloadPageExpression,
+   restoreCheckboxesExpression, scrollIntoViewExpression, shopReportNamePattern,
+   sycmShopIdentityExpression, targetRowExpression, taskNameOfZip,
+   ALL_DOCS_EXPR, QUERY_ALL_DOCS_EXPR,
+@@ -935,6 +935,62 @@ test('两个采集脚本都必须核对身份，而且必须在点下载之前
+   assert.match(sycmShopIdentityExpression(), /主店\|子店/u, '店铺名的形态必须显式写在判据里');
+ });
+ 
++// 「身份读不到」有两种成因，helper 只为「页头还没渲染」这一种兜底；始终读不到必须原样交回，
++// 由调用方的 fail-closed 断言去抛 —— 闸门不许被这条重试松掉。
++// 2026-10-16 现场（evidence/batches-2026-10-15/b1/里可林淘宝、科塔淘宝）：promotion-submit 一开跑就
++// 紧随 bringToFront 单次读会员名，读到空即抛「会员名身份读不到」；而失败后约 2.6 秒拍的现场快照里，
++// 同一页页头明明有期望身份 ⇒ 这是一次「读得太早」的竞态，不是身份不对。
++test('会员名读不到时按 settle 重试：第 N 次读到就返回，始终读不到则原样返回（不掩盖 fail-closed）', async () => {
++  const sleep = [];
++  const delay = async (ms) => { sleep.push(ms); };
++  // 前两次读空（页头还没画上去），第三次读到 —— 正是现场那一族的形状。
++  const seq = [{ memberName: null, memberId: null }, {}, { memberName: '里可林家居:小嘉', memberId: '2350600069' }];
++  let calls = 0;
++  const settled = await readAlimamaIdentitySettled(async () => seq[Math.min(calls++, seq.length - 1)],
++    { delay, attempts: 12, intervalMs: 1000 });
++  assert.equal(settled.settled, true);
++  assert.equal(settled.reads, 3, '必须在第 3 次读到时就停，不许多读');
++  assert.equal(settled.identity.memberName, '里可林家居:小嘉');
++  assert.deepEqual(sleep, [1000, 1000], '两次读空之间各睡一次；命中后不再睡');
++
++  // 始终读不到 ⇒ settled=false、identity 原样带回（由调用方的 assertMemberIdentity 去抛）。
++  let always = 0;
++  const dead = await readAlimamaIdentitySettled(async () => { always += 1; return {}; },
++    { delay, attempts: 4, intervalMs: 500 });
++  assert.equal(dead.settled, false);
++  assert.equal(dead.reads, 4, '读满 attempts 才停');
++  assert.equal(always, 4);
++
++  // read 抛错计入重试；一路都在抛 ⇒ 抛最后一次（读不到页 ≠ 身份未知，不许被吞掉）。
++  await assert.rejects(
++    () => readAlimamaIdentitySettled(async () => { throw new Error('proxy eval failed'); },
++      { delay, attempts: 3, intervalMs: 1 }),
++    /proxy eval failed/u);
++  // 抛一次之后读到 ⇒ 照样成功（页面落定中途的 eval 失败同属「还没就绪」）。
++  let n = 0;
++  const recovered = await readAlimamaIdentitySettled(async () => {
++    n += 1;
++    if (n === 1) throw new Error('page navigating');
++    return { memberName: 'j873522735:小瓜', memberId: '412070158' };
++  }, { delay, attempts: 5, intervalMs: 1 });
++  assert.equal(recovered.settled, true);
++  assert.equal(recovered.reads, 2);
++});
++
++// 源码守卫：阿里妈妈采集脚本的身份读取**必须**走 settle 重试。
++// 这条用例在「单次读」那一版上会红 —— 正是它要钉死的那次回归（页头没渲染就判「身份读不到」）。
++test('阿里妈妈脚本的身份读取必须走 settle 重试（单次读那一版会红）', () => {
++  const promo = readScript('collect-promotion-report.mjs');
++  assert.match(promo, /readAlimamaIdentitySettled\(/u,
++    '阿里妈妈脚本的身份读取没有走 readAlimamaIdentitySettled —— 页头还没渲染时会被误判成「身份读不到」');
++  // 反面：assertAlimamaIdentity 里不许再出现「裸 await evalOn(... alimamaIdentityExpression())」的老写法。
++  const region = promo.slice(promo.indexOf('async function assertAlimamaIdentity'),
++    promo.indexOf('async function hitCheck'));
++  assert.ok(region.length > 0, '找不到 assertAlimamaIdentity 区间（判据失效了）');
++  assert.equal(/await evalOn\(args, targetId, alimamaIdentityExpression\(\)\)/u.test(region), false,
++    'assertAlimamaIdentity 又退回了单次读（裸 evalOn 读一次就断言）');
++});
++
+ // 「哪个页面才算生意参谋那个工作页」不许各写一份口径。
+ // 2026-09-18 实跑撞到的后果：collect-shop-report 原先只按**主机**匹配
+ // （`includes('sycm.taobao.com')`），而店铺浏览器里同主机下有两个页面
+diff --git a/skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs b/skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs
+index 1651c76..9b5f879 100644
+--- a/skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs
++++ b/skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs
+@@ -25,7 +25,7 @@ import {
+   PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN, TASK_DOWNLOAD_MARK, alimamaIdentityExpression,
+   assertMemberIdentity, checkboxStateExpression, createOverlayDismisser, createPageReloader, defaultDownloadsDir,
+   describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, downloadEntryExpression,
+-  hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest,
++  hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest, readAlimamaIdentitySettled,
+   restoreCheckboxesExpression, scrollIntoViewExpression, targetRowExpression, taskNameOfZip,
+ } from './collect-core.mjs';
+ // 报表页 URL 形状只有 date-picker 那份实现（含场景编码与归因参数）。路由复位要重新导航到
+@@ -124,7 +124,13 @@ async function findAlimamaPage(args) {
+ // 为什么必须在这里拦：营销场景报表的 CSV **一个店铺身份字段都没有**（69 列全是场景与指标），
+ // 取错窗口不会报错 —— 文件照样落盘、数字照样进飞书，事后从产物里查不出来。
+ async function assertAlimamaIdentity(args, targetId) {
+-  const identity = await evalOn(args, targetId, alimamaIdentityExpression());
++  // ⚠️ 2026-10-16 修：这里**不能**单次读。原来紧跟 bringToFront 只 `evalOn` 一次，页头（SPA 异步渲染）
++  // 还没画上去就当成「身份未知」fail-closed 抛掉 —— 现场证据见 evidence/batches-2026-10-15/b1/
++  // 里可林淘宝、科塔淘宝：失败快照（约 2.6 秒后）里同一页页头明明有期望身份。改用「读不到就重试」
++  // （`readAlimamaIdentitySettled`，与 date-picker 的 settle 同一把尺子）；仍读不到才由下面的断言抛。
++  const settled = await readAlimamaIdentitySettled(
++    () => evalOn(args, targetId, alimamaIdentityExpression()), { delay });
++  const identity = settled.identity ?? {};
+   const check = assertMemberIdentity({
+     expectedName: args.expectMember, expectedId: args.expectMemberId, observed: identity,
+   });

@@ -1,0 +1,10 @@
+
+===== 2026-10-16T03:33:53.553Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-15 --proxy http://127.0.0.1:19023 --shop-key 网林淘宝 --commit --shop-xlsx C:\Users\Administrator\Downloads\日报_20261016_1442937a949c530fdf7741076d82c6d7.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261016_113305.zip
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: 落位到源表之后，页面模型一直没加载出表 tblIuAX4nPc1zDOO（等了 20 次、每次 1000ms，最后一次看到的是 "table-not-loaded"）｜落位目标 https://kcne618basvj.feishu.cn/base/RjKcb3isDaVn1GsoVJfc7Ykknyg?table=tblIuAX4nPc1zDOO&view=vewwg0rhjo
+    at ensureTargetPage (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:161:11)
+    at async main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:382:3)

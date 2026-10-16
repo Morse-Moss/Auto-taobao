@@ -13,7 +13,7 @@ import {
   describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, describeOverlayScan,
   downloadEntryExpression, hitCheckExpression, judgeOverlayAfter, listDownloads, newEntries, newestTaskName,
   overlayAfterExpression, overlayScanExpression, pageReadyExpression, parseCollectArgs, pickNewest,
-  pickOverlayCloseCandidate, pickOverlayCloseCandidates, reloadPageExpression,
+  pickOverlayCloseCandidate, pickOverlayCloseCandidates, readAlimamaIdentitySettled, reloadPageExpression,
   restoreCheckboxesExpression, scrollIntoViewExpression, shopReportNamePattern,
   sycmShopIdentityExpression, targetRowExpression, taskNameOfZip,
   ALL_DOCS_EXPR, QUERY_ALL_DOCS_EXPR,
@@ -933,6 +933,62 @@ test('两个采集脚本都必须核对身份，而且必须在点下载之前�
       '身份判据写死了带哈希的类名，前端发版即失效');
   }
   assert.match(sycmShopIdentityExpression(), /主店\|子店/u, '店铺名的形态必须显式写在判据里');
+});
+
+// 「身份读不到」有两种成因，helper 只为「页头还没渲染」这一种兜底；始终读不到必须原样交回，
+// 由调用方的 fail-closed 断言去抛 —— 闸门不许被这条重试松掉。
+// 2026-10-16 现场（evidence/batches-2026-10-15/b1/里可林淘宝、科塔淘宝）：promotion-submit 一开跑就
+// 紧随 bringToFront 单次读会员名，读到空即抛「会员名身份读不到」；而失败后约 2.6 秒拍的现场快照里，
+// 同一页页头明明有期望身份 ⇒ 这是一次「读得太早」的竞态，不是身份不对。
+test('会员名读不到时按 settle 重试：第 N 次读到就返回，始终读不到则原样返回（不掩盖 fail-closed）', async () => {
+  const sleep = [];
+  const delay = async (ms) => { sleep.push(ms); };
+  // 前两次读空（页头还没画上去），第三次读到 —— 正是现场那一族的形状。
+  const seq = [{ memberName: null, memberId: null }, {}, { memberName: '里可林家居:小嘉', memberId: '2350600069' }];
+  let calls = 0;
+  const settled = await readAlimamaIdentitySettled(async () => seq[Math.min(calls++, seq.length - 1)],
+    { delay, attempts: 12, intervalMs: 1000 });
+  assert.equal(settled.settled, true);
+  assert.equal(settled.reads, 3, '必须在第 3 次读到时就停，不许多读');
+  assert.equal(settled.identity.memberName, '里可林家居:小嘉');
+  assert.deepEqual(sleep, [1000, 1000], '两次读空之间各睡一次；命中后不再睡');
+
+  // 始终读不到 ⇒ settled=false、identity 原样带回（由调用方的 assertMemberIdentity 去抛）。
+  let always = 0;
+  const dead = await readAlimamaIdentitySettled(async () => { always += 1; return {}; },
+    { delay, attempts: 4, intervalMs: 500 });
+  assert.equal(dead.settled, false);
+  assert.equal(dead.reads, 4, '读满 attempts 才停');
+  assert.equal(always, 4);
+
+  // read 抛错计入重试；一路都在抛 ⇒ 抛最后一次（读不到页 ≠ 身份未知，不许被吞掉）。
+  await assert.rejects(
+    () => readAlimamaIdentitySettled(async () => { throw new Error('proxy eval failed'); },
+      { delay, attempts: 3, intervalMs: 1 }),
+    /proxy eval failed/u);
+  // 抛一次之后读到 ⇒ 照样成功（页面落定中途的 eval 失败同属「还没就绪」）。
+  let n = 0;
+  const recovered = await readAlimamaIdentitySettled(async () => {
+    n += 1;
+    if (n === 1) throw new Error('page navigating');
+    return { memberName: 'j873522735:小瓜', memberId: '412070158' };
+  }, { delay, attempts: 5, intervalMs: 1 });
+  assert.equal(recovered.settled, true);
+  assert.equal(recovered.reads, 2);
+});
+
+// 源码守卫：阿里妈妈采集脚本的身份读取**必须**走 settle 重试。
+// 这条用例在「单次读」那一版上会红 —— 正是它要钉死的那次回归（页头没渲染就判「身份读不到」）。
+test('阿里妈妈脚本的身份读取必须走 settle 重试（单次读那一版会红）', () => {
+  const promo = readScript('collect-promotion-report.mjs');
+  assert.match(promo, /readAlimamaIdentitySettled\(/u,
+    '阿里妈妈脚本的身份读取没有走 readAlimamaIdentitySettled —— 页头还没渲染时会被误判成「身份读不到」');
+  // 反面：assertAlimamaIdentity 里不许再出现「裸 await evalOn(... alimamaIdentityExpression())」的老写法。
+  const region = promo.slice(promo.indexOf('async function assertAlimamaIdentity'),
+    promo.indexOf('async function hitCheck'));
+  assert.ok(region.length > 0, '找不到 assertAlimamaIdentity 区间（判据失效了）');
+  assert.equal(/await evalOn\(args, targetId, alimamaIdentityExpression\(\)\)/u.test(region), false,
+    'assertAlimamaIdentity 又退回了单次读（裸 evalOn 读一次就断言）');
 });
 
 // 「哪个页面才算生意参谋那个工作页」不许各写一份口径。

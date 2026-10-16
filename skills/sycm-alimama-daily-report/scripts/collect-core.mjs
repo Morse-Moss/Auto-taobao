@@ -785,6 +785,46 @@ export function assertMemberIdentity({ expectedName, expectedId, observed } = {}
   return { checked: true, results };
 }
 
+// 「身份读不到」有两种完全不同的成因，必须分开：
+//   ① 真的不在这一页（读错窗口、掉登录）⇒ fail-closed，不许继续；
+//   ② 页头**还没渲染出来**（SPA 异步渲染）⇒ 读不到 ≠ 身份不对，等一会儿再读就有。
+// 这一条 helper 只为 ② 服务：把「单次读」换成「读不到就重试若干次」，仍读不到才把值交回去，
+// 由调用方的 fail-closed 断言（`assertMemberIdentity`）去抛 —— 闸门语义逐字未变。
+//
+// 为什么必须加（2026-10-16，现场见 evidence/batches-2026-10-15/b1/里可林淘宝 与 科塔淘宝）：
+// promotion-submit 一开跑就**紧随 bringToFront** 读会员名（`assertAlimamaIdentity`），读到空即抛
+// 「阿里妈妈会员名身份读不到」；而**失败后约 2.6 秒**拍的现场快照里，同一页页头明明写着期望身份
+// （里可林「里可林家居:小嘉 ID：2350600069」、科塔「j873522735:小瓜 ID：412070158」）。
+// 判据读的是 `document.body.innerText`，页头是异步渲染的 ⇒ 单次读会撞上「页在、字还没画上」的竞态。
+// 这与 date-picker 的 settle 是同一族问题，所以照同一把尺子「读不到就重试」。
+//
+// `read` 是「读一次并返回 {memberName, memberId}」的注入函数（便于离线断言）；
+// 读到 `memberName` 或 `memberId` 任一即算读到（判据表达式里两者同源，实务上同生同灭）。
+// read 抛错也计入重试（页面落定中途的 eval 失败同属「还没就绪」）；若整轮都在抛，抛最后一次的错
+// （那是「读不到页」而不是「身份未知」，不该被下面的失败方向盖掉）。
+export async function readAlimamaIdentitySettled(read, {
+  attempts = 12, intervalMs = 1000, delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }),
+} = {}) {
+  if (typeof read !== 'function') throw new Error('readAlimamaIdentitySettled 需要 read 函数');
+  let identity = null;
+  let lastError = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      identity = await read();
+      lastError = null;
+    } catch (error) {
+      identity = null;
+      lastError = error;
+    }
+    if (identity?.memberName || identity?.memberId) {
+      return { identity, reads: attempt + 1, settled: true };
+    }
+    if (attempt < attempts - 1) await delay(intervalMs);
+  }
+  if (lastError) throw lastError;
+  return { identity, reads: attempts, settled: false };
+}
+
 // ---------------------------------------------------------------------------
 // 阿里妈妈「下载任务管理」取件的三段表达式（2026-09-17 改；此前那版模型是错的）
 // ---------------------------------------------------------------------------
