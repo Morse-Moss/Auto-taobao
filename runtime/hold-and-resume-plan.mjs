@@ -323,6 +323,54 @@ export function buildBatchResumeArgv({
   return argv;
 }
 
+/**
+ * 成因 → 只读「人处理完了没有」探针的种类（**唯一来源**）。
+ *
+ * 为什么必须有这张表（缺陷 ㊸，2026-10-16 查实）：选探针的那个三元表达式原先长这样 ——
+ *   `item.cause === 'PAGE_OBSTRUCTED' ? probeOverlay(...) : probeLogin(...)`
+ * 于是**除广告那一条外，所有成因都落登录探针**。而「修不动的店」那一路会把
+ * `STAGE_FAILED` 也拉进驻留（见 `holdDecision` 的 `unfixableShops`），
+ * 那种店的登录态本来就是好的 ⇒ 登录探针恒 `ready` ⇒ **首次探测就「判据转正」**。
+ * 实测（`evidence/batches-2026-10-11/batches.log`）：3 家 `STAGE_FAILED` 店，
+ * 「截止 13:22（现在 09:22）｜从现在起挂 4 小时」的下一行就是「判据转正 ⇒ 开始续跑」——
+ * 挂 4 小时形同虚设，续跑必然再撞同一堵墙。全仓搜「已等 N 分钟」状态行 0 条 ⇒
+ * 这条「挂住等人」的能力**一次都没真正发生过**。
+ *
+ * 口径：**只有真的有只读判据的成因才给探针**。
+ *   · `PAGE_OBSTRUCTED` → `overlay`：那一层盖住整页的弹窗还在不在（人关掉了没有）；
+ *   · `NEEDS_LOGIN`     → `login`：那台实例还停不停在登录页上（人登回来没有）。
+ * 这不是巧合 —— 它俩正是 `HUMAN_REQUIRED_CAUSES` 那两个：「只有人能解除」与
+ * 「有一个只读量能测出人做完了没有」是同一件事的两面（那条互锁由用例钉住）。
+ *
+ * 其余成因（`STAGE_FAILED` / `SHOP_BLOCKED` / …）**刻意不给探针**：没有任何只读量能回答
+ * 「人/agent 把那个页面现场处理完了没有」。调用方对这种成因落 `unknown`，
+ * 而 `judgeProbes` 里 `unknown` 与 `waiting` 一样**不算 ready** ⇒ 窗口留着（给 agent／人看现场），
+ * 但**绝不提前续跑**。宁可等到截止时间如实收尾，也不拿一个猜的「好了」去写飞书。
+ */
+export const PROBE_KIND_BY_CAUSE = Object.freeze({
+  PAGE_OBSTRUCTED: 'overlay',
+  NEEDS_LOGIN: 'login',
+});
+
+/** 成因 → 探针种类；**没有只读判据的成因返回 `null`**（调用方据此落 `unknown`）。 */
+export function probeKindForCause(cause) {
+  return PROBE_KIND_BY_CAUSE[cause] ?? null;
+}
+
+/**
+ * 「这个成因没有只读判据」时该落哪个探测结论 —— **`unknown`，不是 `ready`**。
+ *
+ * 放在纯函数层是为了能被用例与突变验证钉住：这一行的 `state` 一旦变成 `ready`，
+ * 「挂住等人」立刻退回 0 秒续跑（㊸ 的形态），而日志看起来完全正常。
+ */
+export function unprobedProbe(cause, subject) {
+  return {
+    subject,
+    state: 'unknown',
+    why: `成因 ${cause} 没有只读的「人处理完了」判据 ⇒ 不提前续跑（窗口留着给人／agent 看现场）`,
+  };
+}
+
 /** 一次探测的全部结论。`state` 只允许这三种，第四种会被判成配置错误。 */
 export const PROBE_STATES = Object.freeze(['ready', 'waiting', 'unknown']);
 

@@ -15,6 +15,33 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.1] - 2026-10-16
+
+修缺陷 ㊸：「挂住等人 ＋ 自动续跑」这条能力建成以来**一次都没真正发生过**（挂了 4 小时，第一次探测就续跑）。
+
+1. **背景**：`scripts/hold-and-resume.mjs` 选探针那一行原是个三元表达式 ——
+   `item.cause === 'PAGE_OBSTRUCTED' ? probeOverlay(...) : probeLogin(...)`，
+   于是**除广告（弹窗）那一条外，所有成因都落登录探针**。而「脚本自修没救回来的店」那一路
+   会把 `STAGE_FAILED` 也拉进驻留（`holdDecision` 的 `unfixableShops`），那种店的登录态本来就
+   正常 ⇒ 登录探针恒 `ready` ⇒ **首次探测即「判据转正」**。
+   实测（`evidence/batches-2026-10-11/batches.log`）：3 家 `STAGE_FAILED` 店，
+   「截止 13:22（现在 09:22）｜从现在起挂 4 小时」的下一行就是「判据转正 ⇒ 开始续跑」。
+   全仓搜驻留状态行（`[驻留] HH:MM:SS（已等 N 分钟…`）**0 条** ⇒ 8 次真实驻留无一活过 15 分钟。
+2. **改动**：把「哪个成因该问哪一种探针」收进纯函数层做**唯一来源**
+   （`hold-and-resume-plan.mjs` 的 `PROBE_KIND_BY_CAUSE` / `probeKindForCause`）：
+   只有**真有只读判据**的两类给探针 —— `PAGE_OBSTRUCTED`→`overlay`（那层弹窗还在不在）、
+   `NEEDS_LOGIN`→`login`（还停不停在登录页上）；其余成因一律 `null` ⇒ 落 `unknown`
+   （`unprobedProbe`），而 `judgeProbes` 里 `unknown` 与 `waiting` 一样**不算 ready**。
+   执行层只留一张 `PROBES_BY_KIND` 注册表，不再自己写三元、也不再回落到登录探针。
+   口径的理由：那两类恰是 `HUMAN_REQUIRED_CAUSES` 那两个 ——
+  「只有人能解除」与「有一个只读量能测出人做完了没有」是同一件事的两面（由用例互锁）。
+   没有判据的成因**宁可等到截止时间如实收尾，也不拿一个猜的「好了」去写飞书**。
+3. **验证**：① 新增 4 条用例（映射表 + 与 `DAILY_HUMAN_REQUIRED_CAUSES` 同集的互锁 +
+   `unknown` 行为 + 源码级接线守卫），`runtime/hold-and-resume-plan.test.mjs` 47/47 全绿；
+   ② 突变验证 4/4（执行层换回旧三元 / `unprobedProbe` 改成 `ready` / 删 `NEEDS_LOGIN` /
+   给 `STAGE_FAILED` 加探针 —— 每一个都让**指定那条**用例转红，还原后 sha256 逐字节一致、复跑全绿）；
+   ③ **仅离线判据**：真机「人处理完之后是否真的续跑成功」要等下一次真有驻留（且真有成因）才能验。
+
 ## [1.12.0] - 2026-10-16
 
 店铺日报链对外组织 base 的写入通道打通（凭据层）。

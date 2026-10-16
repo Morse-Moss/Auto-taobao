@@ -14,11 +14,13 @@ import { readFile } from 'node:fs/promises';
 import { READABLE_SOURCE_KEYS } from './notify-feishu-core.mjs';
 import { HOLD_EXIT, buildHoldResumeArgs, buildJobPlan, shouldRunStep } from './daily-job-plan.mjs';
 import {
-  DEFAULT_HOLD_HOURS, DEFAULT_POLL_SECONDS, POLL_SECONDS_BY_CAUSE, PROBE_STATES, RESUME_FLOOR_BY_CAUSE,
-  buildBatchResumeArgv, buildResumeArgv, closeOutNotice, deadlineReachedAt, formatClock, holdDecision,
-  holdStatusLine, judgeProbes, minutesOfDay, noticeLabelsForWorkflow, parseClock, pollSecondsFor, resolveHoldDeadline,
-  resumeFloorFor, resumeResultNotice, resumeStageListFrom, unfixableShopsOf,
+  DEFAULT_HOLD_HOURS, DEFAULT_POLL_SECONDS, POLL_SECONDS_BY_CAUSE, PROBE_KIND_BY_CAUSE, PROBE_STATES,
+  RESUME_FLOOR_BY_CAUSE, buildBatchResumeArgv, buildResumeArgv, closeOutNotice, deadlineReachedAt, formatClock,
+  holdDecision, holdStatusLine, judgeProbes, minutesOfDay, noticeLabelsForWorkflow, parseClock, pollSecondsFor,
+  probeKindForCause, resolveHoldDeadline, resumeFloorFor, resumeResultNotice, resumeStageListFrom,
+  unfixableShopsOf, unprobedProbe,
 } from './hold-and-resume-plan.mjs';
+import { DAILY_HUMAN_REQUIRED_CAUSES } from './alert-copy.mjs';
 import { batchRoundBlockOf } from './batch-plan.mjs';
 import { failedShopsOf, parseArgs as parseHoldArgs } from '../scripts/hold-and-resume.mjs';
 import { buildBatchHoldArgv } from '../scripts/run-batches.mjs';
@@ -318,6 +320,53 @@ test('判据转正：只有「一个都没在等、也没有读不到」才算�
   assert.equal(mixed.waiting.length, 1);
   assert.equal(mixed.unknown.length, 1);
   assert.equal(mixed.total, 3);
+});
+
+// ㊸（2026-10-16 查实）：选探针的口径只有一处 —— 且「没有只读判据的成因」必须落 unknown。
+// 这条判据判错的形态是「挂住等人」变成 0 秒续跑，而日志看起来完全正常（历史已发作）。
+test('选探针：只有**真有只读判据**的成因给探针，其余一律 null（㊸ 的根修）', () => {
+  assert.equal(probeKindForCause('PAGE_OBSTRUCTED'), 'overlay', '广告那条：看那一层弹窗还在不在');
+  assert.equal(probeKindForCause('NEEDS_LOGIN'), 'login', '登录那条：看那台实例还停不停在登录页上');
+  // 反面（缺陷 ㊸）：STAGE_FAILED 没有只读量能回答「人处理完了没有」⇒ 不许给探针，
+  // 更不许回落登录探针（那种店的登录态本来就正常 ⇒ 恒 ready ⇒ 0 秒续跑）。
+  for (const cause of ['STAGE_FAILED', 'SHOP_BLOCKED', 'ROUND_BLOCKED', 'SOURCE_NO_ROW_FOR_DATE',
+    'INQUIRY_ROW_MISSING', 'DUPLICATE_TARGET', 'SHOP_FUNC_NO_PERMISSION', 'ROUND_LOGIN_WALL',
+    '叫不出来', '', null, undefined]) {
+    assert.equal(probeKindForCause(cause), null, `成因 ${JSON.stringify(cause)} 不该有探针`);
+  }
+  // **互锁**：有探针的成因集必须与「只有人能解除」那句词表**同集**。两件事是同一件事的两面
+  //（有人能解除 ⇔ 有一个只读量能测出人做完了没有）；任一边单方面加减，这里立刻红 ——
+  // 不然新增成因会悄悄落进「恒 ready」或「永远等不到」。
+  assert.deepEqual(Object.keys(PROBE_KIND_BY_CAUSE).sort(), [...DAILY_HUMAN_REQUIRED_CAUSES].sort(),
+    'PROBE_KIND_BY_CAUSE 与 DAILY_HUMAN_REQUIRED_CAUSES 必须同集');
+});
+
+test('没有只读判据的成因 ⇒ 落 unknown（不是 ready）：挂住等人，绝不提前续跑', () => {
+  const probe = unprobedProbe('STAGE_FAILED', '盖文淘宝');
+  assert.equal(probe.subject, '盖文淘宝');
+  assert.equal(probe.state, 'unknown', '这一行的 state 一旦是 ready ⇒ ㊸ 立刻复发（0 秒续跑）');
+  assert.match(probe.why, /不提前续跑/u, '要有一句人话说明为什么不等它');
+  // 与判据层的行为对齐：unknown 与 waiting 一样**不算 ready** ⇒ 循环一直等到截止时间。
+  assert.equal(judgeProbes([probe]).ready, false);
+  assert.equal(judgeProbes([probe]).unknown.length, 1);
+  // 反面对照：真有判据的那两类才可能在「人做完了」之后转正。
+  assert.equal(judgeProbes([{ subject: '盖文淘宝', state: 'ready' }]).ready, true);
+});
+
+test('接线（源码级）：执行层选探针走 probeKindForCause，且不许回落到登录探针（㊸ 的钉子）', async () => {
+  // 为什么要扫源码：这条路径要真跑必须**起浏览器 + 有一轮真失败**（离线拿不到证据）；
+  // 而「函数全绿、调用侧仍用旧三元」正是本仓吃过三次的那类假绿。
+  const src = await readFile(new URL('../scripts/hold-and-resume.mjs', import.meta.url), 'utf8');
+  assert.match(src, /probeKindForCause\(item\.cause\)/u, '选探针必须走那个纯函数（唯一来源）');
+  assert.match(src, /const PROBES_BY_KIND = \{ overlay: probeOverlay, login: probeLogin \}/u,
+    '种类 → 实现 的注册表必须把两个探针都接上');
+  assert.match(src, /unprobedProbe\(item\.cause, item\.shop\)/u,
+    '没有探针的成因必须落 unprobedProbe（落空 ⇒ 该店连探测结论都没有）');
+  // 反面：旧三元（除广告外一律登录探针）不许回来 —— 它就是 ㊸ 本身。
+  assert.equal(src.includes("item.cause === 'PAGE_OBSTRUCTED'"), false,
+    '旧三元回来了 ⇒ STAGE_FAILED 那类又恒 ready、0 秒续跑');
+  const loginFallback = src.match(/await probeLogin\(item\.shop, proxyPort\)/gu) ?? [];
+  assert.equal(loginFallback.length, 0, '不许把登录探针当成「其余成因的兜底」');
 });
 
 test('驻留状态行：带时间、已等多久、等到几点，以及每个对象的现状（不许静默）', () => {

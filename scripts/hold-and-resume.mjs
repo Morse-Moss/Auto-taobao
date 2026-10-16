@@ -35,7 +35,8 @@ import { HOLD_EXIT } from '../runtime/daily-job-plan.mjs';
 import { pagesMatching } from '../runtime/target-url-match.mjs';
 import {
   DEFAULT_HOLD_HOURS, STATUS_EVERY_MS, buildBatchResumeArgv, buildResumeArgv, closeOutNotice,
-  deadlineReachedAt, holdDecision, holdStatusLine, judgeProbes, pollSecondsFor, resolveHoldDeadline,
+  deadlineReachedAt, holdDecision, holdStatusLine, judgeProbes, pollSecondsFor, probeKindForCause,
+  resolveHoldDeadline, unprobedProbe,
   noticeLabelsForWorkflow,
   resumeFloorFor, resumeResultNotice, resumeStageListFrom, unfixableShopsOf,
 } from '../runtime/hold-and-resume-plan.mjs';
@@ -345,17 +346,24 @@ async function main() {
     + `｜阶段：${stages ? stages.join(',') : '不点名（整链）'}`
     + `${floorStage ? `｜起点下探到 ${floorStage}（人碰过页面，日期落位要重做）` : ''}`);
 
-  const probeAll = async () => {
-    if (decision.roundLevel) return [roundProbe ?? await probeMerchantBrowser()];
-    const probes = [];
-    for (const item of failed.filter((entry) => subjects.includes(entry.shop))) {
-      const { proxyPort } = shopInstance(item.shop);
-      probes.push(item.cause === 'PAGE_OBSTRUCTED'
-        ? await probeOverlay(item.shop, proxyPort)
-        : await probeLogin(item.shop, proxyPort));
-    }
-    return probes;
-  };
+// 探针注册表：**种类 → 实现**。
+// 「这一次该问哪一种」是 `probeKindForCause` 的事（纯函数、有用例钉住，见 runtime/hold-and-resume-plan.mjs
+// 的 `PROBE_KIND_BY_CAUSE`）；这里只负责把那个名字映射成一个能跑的只读探针。
+// 找不到实现（成因没有只读判据）⇒ 走 `unprobedProbe` 落 `unknown`，**绝不**回落到登录探针 ——
+// 那正是缺陷 ㊸ 的形态（登录态正常 ⇒ 恒 ready ⇒ 0 秒续跑）。
+const PROBES_BY_KIND = { overlay: probeOverlay, login: probeLogin };
+
+const probeAll = async () => {
+  if (decision.roundLevel) return [roundProbe ?? await probeMerchantBrowser()];
+  const probes = [];
+  for (const item of failed.filter((entry) => subjects.includes(entry.shop))) {
+    const { proxyPort } = shopInstance(item.shop);
+    const kind = probeKindForCause(item.cause);
+    const probe = kind ? PROBES_BY_KIND[kind] : null;
+    probes.push(probe ? await probe(item.shop, proxyPort) : unprobedProbe(item.cause, item.shop));
+  }
+  return probes;
+};
 
   if (args.once) {
     const probes = await probeAll();
