@@ -225,11 +225,11 @@ test('日报 base 用独立凭据文件，回落与报错路径都要说得清',
 
 test('推广日报目标指向销售一部已确认 Base 与两张表', () => {
   const target = promotionDailyTargets('kcne');
-  assert.equal(target.baseToken, 'Cqavb19NlaMUIIswp5IcMHWCnKb');
+  assert.equal(target.baseToken, 'CjLsb7qXRaeaC6srePtcLBkInTh');
   assert.equal(target.baseName, '10月推广数据-销售1部');
   assert.deepEqual(target.tables, {
-    keyword: 'tblbSGMO2apOKuAZ',
-    audience: 'tblyjD5058Mjbmcv',
+    keyword: 'tblSPWt8ZBs0iL7f',
+    audience: 'tbl7CUAdPMKJwKYp',
   });
   assert.deepEqual(target.sourceContracts, { keywordColumns: 75, audienceColumns: 71 });
 });
@@ -239,13 +239,13 @@ test('推广日报目标指向销售一部已确认 Base 与两张表', () => {
 // —— 不报错、数据写进运营不看的表、收据还绿。所以缺月必须 fail-closed，且报错要说清怎么补。
 test('推广日报按月解析：10 月走注册表，11 月未登记一律抛错不回落', () => {
   const registered = promotionDailyTargets('kcne', '2026-10-08');
-  assert.equal(registered.baseToken, 'Cqavb19NlaMUIIswp5IcMHWCnKb');
+  assert.equal(registered.baseToken, 'CjLsb7qXRaeaC6srePtcLBkInTh');
   assert.deepEqual(registered.tables, {
-    keyword: 'tblbSGMO2apOKuAZ',
-    audience: 'tblyjD5058Mjbmcv',
+    keyword: 'tblSPWt8ZBs0iL7f',
+    audience: 'tbl7CUAdPMKJwKYp',
   });
   // 月份取**数据日期**：10-01 的数据进 10 月那张，不是「跑的那天」。
-  assert.equal(promotionDailyTargets('kcne', '2026-10-01').baseToken, 'Cqavb19NlaMUIIswp5IcMHWCnKb');
+  assert.equal(promotionDailyTargets('kcne', '2026-10-01').baseToken, 'CjLsb7qXRaeaC6srePtcLBkInTh');
   // 11 月还没登记 ⇒ 不许回落到 10 月（那会「跑成功但写进运营已经不看的那张表」）。
   assert.throws(() => promotionDailyTargets('kcne', '2026-11-01'), /2026-11/u,
     '新月份没登记时必须停 —— 回落到上个月是最贵的静默失败');
@@ -315,13 +315,13 @@ test('月份只认 YYYY-MM / YYYY-MM-DD，别的形状当场抛错', () => {
 
 test('按（数据日期 × 部门）解析目标：两个部门两张 base，且缺登记一律 fail-closed', () => {
   const s1 = productDataTargetsForShop('盖文淘宝', '2026-10-08', 'kcne');
-  assert.equal(s1.baseToken, 'FhCUbn7vVaEc26sRjMAccQJAn5e');
+  assert.equal(s1.baseToken, 'LQgZbi78oaAmIYsc4urcwk9rnNf');
   assert.equal(s1.baseName, '10月商品监控表-销售1部');
   const s2 = productDataTargetsForShop('保拉淘宝', '2026-10-08', 'kcne');
-  assert.equal(s2.baseToken, 'ZYwWbYP9fa5d3rsXX8IcKrkYnod');
-  // 2 部这张接口读回的名字带「副本」两个字，照抄 —— 它与 1 部那张是两个不同的 base
-  // （2026-09-30 用户给的《店铺账号信息表测试.xlsx》里给的链接就是这两个 token）。
-  assert.equal(s2.baseName, '10月商品监控表-销售2部 副本');
+  assert.equal(s2.baseToken, 'LLWcbIuVFaBm6yshX9Xc8DFZn9d');
+  // 2026-10-16 换到别的组织（rcnbpuvafkct）后，2 部这张的名字**不带「副本」**了
+  // （接口读回原文：10月商品监控表-销售2部）——旧 kcne 那张才带「副本」。
+  assert.equal(s2.baseName, '10月商品监控表-销售2部');
   // 两家店同一天必须落到两张不同的 base —— 这是「绝不串数据」在这条链上的判据化。
   assert.notEqual(s1.baseToken, s2.baseToken);
   assert.notEqual(s1.productTable, s2.productTable);

@@ -114,12 +114,17 @@ export const PROFILES = Object.freeze({
     }),
     // 2026-10-08：运营确认销售一部推广日报 Base「10月推广数据-销售1部」。
     // 两张表字段已通过已登录页面只读核对，并与人工下载的关键词/人群 CSV 表头按名称对齐。
+    // 2026-10-16：用户《店铺账号信息表》把 10 月推广（销售1部）改回**别的组织（rcnbpuvafkct）**
+    // 那张「10月推广数据-销售1部」（CjLsb7qXRaeaC6srePtcLBkInTh）——与店铺日报同组织。
+    // 旧值（本组织 kcne）留作回滚：Cqavb19NlaMUIIswp5IcMHWCnKb / keyword tblbSGMO2apOKuAZ /
+    // audience tblyjD5058Mjbmcv。两张表字段签名逐项相同（2026-10-16 只读比对：关键词 78 字段、
+    // 仅「加购成本」类型 1↔2），所以只换 id，写入逻辑不动。
     promotionDaily: Object.freeze({
-      baseToken: 'Cqavb19NlaMUIIswp5IcMHWCnKb',
+      baseToken: 'CjLsb7qXRaeaC6srePtcLBkInTh',
       baseName: '10月推广数据-销售1部',
       tables: Object.freeze({
-        keyword: 'tblbSGMO2apOKuAZ',
-        audience: 'tblyjD5058Mjbmcv',
+        keyword: 'tblSPWt8ZBs0iL7f',
+        audience: 'tbl7CUAdPMKJwKYp',
       }),
       // 目标表额外保留的店铺/主图字段由导入器跳过；日期和指标字段按名称匹配。
       sourceContracts: Object.freeze({ keywordColumns: 75, audienceColumns: 71 }),
@@ -276,12 +281,14 @@ export function dailyReportCredentials(name, { read = readFileSync } = {}) {
 // 而不是按店铺解析：2 部接入推广时，调用方按店铺部门分流，注册表加键即可。
 // 缺月一律抛错，**绝不回落到上个月**：回落会「跑成功但写进运营不看的表」。
 export const PROMOTION_DAILY_MONTH_BASES = Object.freeze({
+  // 2026-10-16 换组织：改用别的组织（rcnbpuvafkct）那张同名 base（与店铺日报同组织）。
+  // 回滚 = 换回 kcne 那张：Cqavb19NlaMUIIswp5IcMHWCnKb / tblbSGMO2apOKuAZ / tblyjD5058Mjbmcv。
   '2026-10:sales1': Object.freeze({
-    baseToken: 'Cqavb19NlaMUIIswp5IcMHWCnKb',
+    baseToken: 'CjLsb7qXRaeaC6srePtcLBkInTh',
     baseName: '10月推广数据-销售1部',
     tables: Object.freeze({
-      keyword: 'tblbSGMO2apOKuAZ',
-      audience: 'tblyjD5058Mjbmcv',
+      keyword: 'tblSPWt8ZBs0iL7f',
+      audience: 'tbl7CUAdPMKJwKYp',
     }),
   }),
 });
@@ -330,8 +337,8 @@ export function productDataTargets(name) {
 //
 // 现状（2026-09-30 只读取证，见 D:/Retire/probe-20260930/base-inventory-20260930.json）：
 //   2026-09 × sales1  DQ2DbRinJaDx8Ss4gVFczsTXn3d「9月商品监控表」  ← 至今没换过
-//   2026-10 × sales1  FhCUbn7vVaEc26sRjMAccQJAn5e「10月商品监控表-销售1部」
-//   2026-10 × sales2  ZYwWbYP9fa5d3rsXX8IcKrkYnod「10月商品监控表-销售2部 副本」
+//   2026-10 × sales1  LQgZbi78oaAmIYsc4urcwk9rnNf「10月商品监控表-销售1部」 ← 2026-10-16 换到 rcnb
+//   2026-10 × sales2  LLWcbIuVFaBm6yshX9Xc8DFZn9d「10月商品监控表-销售2部」 ← 2026-10-16 换到 rcnb（无「副本」）
 //   2026-09 × sales2  **不存在** —— 2 部是 10 月才有的，9 月只有一张不分部门的 base。
 // 10 月这两张在 2026-09-30 晚按用户给的《店铺账号信息表测试.xlsx》换过一次（那天表里
 // 「对应飞书商品表格链接」一栏从旧租户 rcnbpuvafkct 的 LQgZbi78oa…/LLWcbIuVFaB… 改成了
@@ -408,19 +415,26 @@ export const PRODUCT_DATA_MONTH_BASES = Object.freeze({
     inquiryTable: 'tbl1hHlRX0LYMvYY',
     promotionTable: 'tblaCPQMLWAq21Gw',
   }),
+  // 2026-10-16：用户最新《店铺账号信息表》把 10 月商品这两张**改回别的组织（rcnbpuvafkct）**。
+  // 与 2026-09-30 那次方向相反（那次是从 rcnb 改到 kcne）——旧 kcne 值留作回滚：
+  //   sales1 FhCUbn7vVaEc26sRjMAccQJAn5e / tbl8qe9nyUbhgD7x(看板) / tbley1xD9wDfQheX(商品) /
+  //          tblenEzSMpp5RTQb(询单) / tblC6QPcGOQu1D0T(推广)
+  //   sales2 ZYwWbYP9fa5d3rsXX8IcKrkYnod「10月商品监控表-销售2部 副本」/ tbllkWhKDQqGU9DT …
+  // 两张新 base 的三张被写表字段签名与 kcne 侧**逐项相同**（2026-10-16 只读比对，商品底单 73 字段），
+  // 所以只换 token 与表 id，写入逻辑不动。注意 sales2 这张在新组织里**不带「副本」**（照接口原文）。
   '2026-10:sales1': Object.freeze({
-    baseToken: 'FhCUbn7vVaEc26sRjMAccQJAn5e',
+    baseToken: 'LQgZbi78oaAmIYsc4urcwk9rnNf',
     baseName: '10月商品监控表-销售1部',
-    productTable: 'tbley1xD9wDfQheX',
-    inquiryTable: 'tblenEzSMpp5RTQb',
-    promotionTable: 'tblC6QPcGOQu1D0T',
+    productTable: 'tblvmGJfOL4OBYek',
+    inquiryTable: 'tblb1uK5zQYd8yOq',
+    promotionTable: 'tblDxXenp3vSg2SM',
   }),
   '2026-10:sales2': Object.freeze({
-    baseToken: 'ZYwWbYP9fa5d3rsXX8IcKrkYnod',
-    baseName: '10月商品监控表-销售2部 副本',
-    productTable: 'tbl1Y9pPDKigluLL',
-    inquiryTable: 'tblux0yx7kUaYD3h',
-    promotionTable: 'tbld7K4Fwy9ISh9R',
+    baseToken: 'LLWcbIuVFaBm6yshX9Xc8DFZn9d',
+    baseName: '10月商品监控表-销售2部',
+    productTable: 'tbllkWhKDQqGU9DT',
+    inquiryTable: 'tblomySKkoTFsatn',
+    promotionTable: 'tbl3SkayTTo9OlJo',
   }),
 });
 
