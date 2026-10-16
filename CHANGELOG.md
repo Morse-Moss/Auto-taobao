@@ -15,6 +15,59 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.10.0] - 2026-10-16
+
+10 月整月推广缺失的根因修复 + 补数前置改造。根因两条，同属「落点静默写飞」：
+
+1. 商品数据链的推广段（`import-promotion-data.mjs`）长期读 profile 上那份**单对象**目标，
+   永远指向 9 月已关账的 base。10 月跑它就会把 10 月数据写进 9 月表，而收据完全是绿的
+   （同日去重闸门只管本表，拦不住跨表）。2026-10-05 因此加 `--skip-promotion` 闸门整体停跑，
+   于是 10 月「商品推广数据底单」从建出来就是空表，看板引用它全是 0。
+2. 推广日报链（关键词/人群报表）的 `promotionDailyTargets` 同样是单对象 —— 运营 11 月换 base 之后
+   它会静默继续写 10 月那张，没有任何信号会响。
+
+本版把两条推广链的落点统一到「月份 × 部门」注册表（商品数据链 2026-09-30 已踩过并修掉同一形态，
+照同一模式办），`--skip-promotion` 从定时入口默认值去掉、降级为人工熔断；同时修掉商品报表校验器
+只认「昨日」回显的问题——它挡住了 10-08～10-14 这些补数日（那些日子页面回显具体日期，不回显「昨日」）。
+
+### 改了什么
+
+- **推广日报落点按月注册（`runtime/feishu-targets.mjs`）**：新增 `PROMOTION_DAILY_MONTH_BASES`
+  （当前仅 `2026-10:sales1` ＝「10月推广数据-销售1部」，含关键词/人群两张表）；
+  `promotionDailyTargets(name, dateInput, department='sales1')` 传日期走注册表、**缺月抛错不回落**；
+  不传日期走旧 profile 兼容路径（只给不按天跑的排查脚本）。
+- **推广导入器按（店铺, 数据日期）解析落点（`skills/sycm-promotion-data/scripts/import-promotion-data.mjs`）**：
+  `--date` 改为必填；一批多个 `--file/--shop` 按 baseToken 分组做「读既存/计划/写/回读」
+  （修掉 2026-09-30 记录在案的缺陷：一次 CLI 调用只建一个 base 目标，跨部门混批会有一半写进另一张表，
+  两边表结构逐字段相同、收据上看不出来）；dry-run 收据带 `observedDates`（从 ZIP 行内日期实测）
+  与 per-base 的 existing/planned 行数。
+- **闸门默认翻转 + 推广批量按部门分组（`runtime/product-data-job-core.mjs`、`scripts/run-product-data-job.mjs`）**：
+  `renderProductJobEntry` 默认不再渲染 `--skip-promotion`（人工熔断时才传）；
+  推广批量导入按 `departmentOfShop` 分组，组内同部门才共享一次调用。
+- **推广日报链两个调用点传日期（`check-promotion-completeness.mjs`、`import-promotion-daily-report.mjs`）**：
+  与导入器同一口径，缺月 fail-closed。
+- **商品报表校验器接受补数日回显（`skills/sycm-promotion-data/scripts/product-report-core.mjs`）**：
+  数据汇总周期的断言从「触发器必须含『昨日』」改为「含『昨日』或含目标日」。URL 里的
+  `startTime/endTime` 早已把日期钉死，这一条只验「UI 真的反映了那个日期」——每日采昨日时页面
+  回显「昨日」，补数日回显 `2026-09-14` 这样的具体日期（SOP §回填历史日、10-10 date-picker 探针
+  判据 `/\d{4}-\d{2}-\d{2}|昨日|今日/` 两处都是这个形状）。补两条测试：回填日放行；
+  「昨日」与目标日皆缺仍然 fail-closed。
+- **文档同步**：`skills/sycm-promotion-data/SKILL.md`（`--date` 必填的命令示例）、
+  `docs/ops/DAILY-FLOW-SCHEDULE.md`。
+
+### 验证到什么程度
+
+- 离线：`product-report-core` / `feishu-targets` / `product-data-job-core` / `promotion-completeness-core` /
+  `promotion-daily-report-core` / `promotion-task-ledger` / `run-promotion-sales1` / `version-consistency` /
+  `head-loadable` 单测全绿（`node --test` 逐文件跑，未跑 `test:staged` 全量——按 AGENTS.md 预算条款，
+  它会选中 e2e 浏览器套件、长时间占用浏览器，故改为直接跑受影响单测）。
+- 真机：盖文天猫 2026-10-14 **locate-only 通过**（阿里妈妈身份 盖文旗舰店:小瓜/2995200080 ✓；
+  商品报表 URL/日期/30 天累计/商品+计划维度 ✓；未提交下载），证据 `evidence/locate-only-2026-10-16/`。
+  同轮实测两条环境事实：① 本机沙箱在工具调用边界回收子进程树，「起实例」与「采集」必须同在单次调用内；
+  ② 冷启动的店铺浏览器只有 label 页签，需先用代理 `/new` 开阿里妈妈页签再采。
+- **未验证**：8 店 × 10-08～10-15 的补数采集与导入尚未开跑（本版之后的第一步）；
+  定时任务命令的更新（去掉 `--skip-promotion`）在本版合并进 main 之后单独做。
+
 ## [1.9.8] - 2026-10-16
 
 本周竞品周表（`竞品周_2026-10-11_2026-10-17`）的正式导入卡在 dry-run：`extractManifest`

@@ -28,6 +28,15 @@ test('只有商品报表、目标日期、双场景、30 天周期和商品+计�
     dimensions: [{ value: 'promotion', checked: true }, { value: 'campaign', checked: true }],
   };
   assert.equal(validateProductReportState(good, '2026-09-25').ok, true);
+  // 回填历史日：目标日不是「昨日」，数据汇总周期触发器回显具体日期而不是「昨日」
+  // （SOP §回填历史日；2026-10-16 盖文天猫真机 locate-only 实测：startTime=2026-10-14 时触发器就是 2026-10-14）
+  const backfill = {
+    ...good,
+    href: buildProductReportUrl('2026-10-08'),
+    text: '商品报表\n商品数据明细 数据范围为：2026-10-08至2026-10-08',
+    triggers: ['关键词推广 人群推广', '末次点击归因', '30天累计数据', '2026-10-08', '分天', '维度 商品'],
+  };
+  assert.equal(validateProductReportState(backfill, '2026-10-08').ok, true);
   for (const [key, value] of [
     ['href', 'https://one.alimama.com/index.html#!/report/account?rptType=account'],
     ['triggers', ['全部营销场景', '末次点击归因', '30天累计数据', '昨日', '分日', '维度 商品']],
@@ -35,6 +44,11 @@ test('只有商品报表、目标日期、双场景、30 天周期和商品+计�
   ]) {
     assert.throws(() => validateProductReportState({ ...good, [key]: value }, '2026-09-25'));
   }
+  // 日期既不是「昨日」也不是目标日 ⇒ 未落定，仍要 fail-closed
+  assert.throws(() => validateProductReportState(
+    { ...backfill, triggers: ['关键词推广 人群推广', '末次点击归因', '30天累计数据', '2026-10-07', '分天', '维度 商品'] },
+    '2026-10-08',
+  ), /日期未落定/u);
 });
 
 test('商品报表允许淘宝 76 列和天猫 78 列，拒绝营销场景 71 列', () => {

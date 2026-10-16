@@ -223,10 +223,53 @@ export function dailyReportTargets(name) {
   return target;
 }
 
-export function promotionDailyTargets(name) {
-  const target = getProfile(name).promotionDaily;
+// 推广日报的飞书目标：「月份 × 部门」注册表（2026-10-16 加，与商品数据链同款机制）。
+//
+// 为什么要有它：推广日报的 base 也是运营按月建的（10 月这张就叫「10月推广数据-销售1部」）。
+// 改造前 `promotionDailyTargets` 是**单对象**（读 profile 上那一格）⇒ 11 月运营换 base 之后，
+// 链会**静默继续写 10 月那张**：不报错、数据写飞、收据还是绿的 —— 比断供更危险，
+// 因为没有任何信号会响。商品数据链 2026-09-30 已经踩过并修掉了同一形态（见
+// PRODUCT_DATA_MONTH_BASES 的注释），这里照同一模式办。
+//
+// 键形状与商品链一致（`YYYY-MM:部门`）。当前推广日报只服务销售1部
+// （`collectingShopKeys()` 那 8 家；销售2部整部门停采，未涉及）—— 部门因此由链的身份决定，
+// 而不是按店铺解析：2 部接入推广时，调用方按店铺部门分流，注册表加键即可。
+// 缺月一律抛错，**绝不回落到上个月**：回落会「跑成功但写进运营不看的表」。
+export const PROMOTION_DAILY_MONTH_BASES = Object.freeze({
+  '2026-10:sales1': Object.freeze({
+    baseToken: 'Cqavb19NlaMUIIswp5IcMHWCnKb',
+    baseName: '10月推广数据-销售1部',
+    tables: Object.freeze({
+      keyword: 'tblbSGMO2apOKuAZ',
+      audience: 'tblyjD5058Mjbmcv',
+    }),
+  }),
+});
+
+/**
+ * 推广日报目标解析。传了 `dateInput` 就走按月注册表（缺月 fail-closed）；
+ * 不传则回落 profile 单对象（旧调用形态的兼容路径，只用于不按天跑的排查脚本）。
+ *
+ * 与 `productDataTargetsForShop` 的分工：那一支按**店铺**解析部门（一条链跑多家店），
+ * 这一支的部门由链的身份固定（推广日报当前就是 sales1 专用），所以签名是
+ * `(name, dateInput, department)` 而不是按店。
+ */
+export function promotionDailyTargets(name, dateInput, department = 'sales1') {
+  if (dateInput === null || dateInput === undefined) {
+    const legacy = getProfile(name).promotionDaily;
+    if (!legacy) {
+      throw new Error(`Promotion-daily target is not configured for profile: ${resolveProfileName(name)}; confirm Base/table ids first`);
+    }
+    return legacy;
+  }
+  const key = `${feishuMonthOf(dateInput)}:${department}`;
+  const target = PROMOTION_DAILY_MONTH_BASES[key];
   if (!target) {
-    throw new Error(`Promotion-daily target is not configured for profile: ${resolveProfileName(name)}; confirm Base/table ids first`);
+    throw new Error(`没有「${key.split(':')[0]}」×「${DEPARTMENT_LABELS[department] ?? department}」的推广日报 base`
+      + `（profile=${resolveProfileName(name)}，部门=${department}）；`
+      + `已登记：${Object.keys(PROMOTION_DAILY_MONTH_BASES).join(' / ')}`
+      + ' —— 新月份要先在飞书建好 base、再把它的 baseToken 与关键词/人群表 id 登记进 PROMOTION_DAILY_MONTH_BASES；'
+      + '不许回落到上个月（那样会「跑成功但写进运营不看的表」，而且收据上看不出来）');
   }
   return target;
 }

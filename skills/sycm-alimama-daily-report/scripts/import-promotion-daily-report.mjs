@@ -47,7 +47,8 @@ function readZip(file) {
 async function main(argv = process.argv.slice(2)) {
   const args = parse(argv); mkdirSync(args.evidence, { recursive: true });
   const profile = args.profile ?? activeProfileName();
-  const target = promotionDailyTargets(profile);
+  // 按月解析（2026-10-16）：推广日报的 base 由运营按月建，单对象目标会在换 base 后静默写飞。
+  const target = promotionDailyTargets(profile, args.date);
   const credentials = loadFeishuCredentials(profile);
   const receipt = { mode: args.apply ? 'apply' : 'dry-run', date: args.date, shop: args.shop, profile, tables: {}, sources: {} };
   for (const kind of ['keyword', 'audience']) {

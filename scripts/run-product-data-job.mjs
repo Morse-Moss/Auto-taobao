@@ -4,6 +4,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { shopBrowserKeys, shopInstance } from '../runtime/browser-ports.mjs';
+import { departmentOfShop } from '../runtime/feishu-targets.mjs';
 import { buildProductJobPlan, PRODUCT_JOB_FILES, SKIP_PROMOTION_REASON } from '../runtime/product-data-job-core.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
 import { acquireWorkflowLock, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
@@ -377,31 +378,37 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
       //   其中 3 条就是「推广 未采集」。带 `--skip-promotion` 的定时入口默认就会撞上它。）
       if (!options.skipPromotion && !item.promotionFile) gaps.push(collectGapOf(item.shop, '推广', item.error));
     }
-    // 推广：这一批齐时按小手册的形状做一次批量调用（收据落 `promotion-import/receipt.json`）；
+    // 推广：这一批齐时按**部门**分组后各组做一次批量调用（收据落 `promotion-import/<部门>/`）；
     // 有人缺 ZIP 或批量失败时退成逐店导入（收据落 `promotion-import/<店>/`），把能写的先写掉。
     //
-    // ⚠️ 未修的已知缺陷（2026-09-30 记录，**故意没动**）：下面那个批量调用把几家塞进**同一次**
-    // CLI 调用，而该进程只建一个 FeishuClient（一个 base）、只读那一个 base 的既存记录做去重。
-    // 商品数据已改成「按月 × 按部门」分 base（见 runtime/feishu-targets.mjs 的
-    // PRODUCT_DATA_MONTH_BASES），所以只要一轮里出现**跨部门**的两家店，批量这条路必然让
-    // 一半写进错的 base；拆开后去重集合也会跟着变。
-    // 2026-09-30 给这条链加了分批（每批默认 5 家）**不改变这个缺陷的性质**（一批里仍可能跨部门），
-    // 只是把「一轮几家」从 12 变成 5 —— 所以这一段仍然一行不改。
-    // 用户 2026-09-30 原话「推广数据这个流程我还没开发，你先放着不管，先全部注意商品数据」
-    // ⇒ 等推广链一起改造时把批量路径改成「按 (月,部门) 分组后各组一次调用」。
-    // 底单与询单不受影响：它们是**逐店一次调用**（上面那个循环里），各自按自己的店铺解析 base。
+    // 分组是 2026-10-16 修的已知缺陷（2026-09-30 记录、故意留到推广链改造时一起修）：
+    // 原来的批量路径把几家塞进**同一次** CLI 调用，而该进程只建一个 base 的目标
+    // ⇒ 一批里出现**跨部门**的两家店，就会有一半写进另一张 base（两边表结构逐字段相同，
+    // 收据上看不出来）。商品数据 2026-09-30 起就按「月 × 部门」分 base，这个缺陷从那天起
+    // 就是活的。现在按 `departmentOfShop(店)` 分组：组内同部门 ⇒ 同 base；
+    // `--date` 由总控统一传，导入器自己按（店, 日期）解析落点（import-promotion-data.mjs）。
+    // 底单与询单不受影响：它们本来就是逐店一次调用，各自按自己的店铺解析 base。
     // `--skip-promotion`：**连导入都不做**。这里必须一起跳过 —— 只跳采集不跳导入的话，
     // `promoReady` 会是空数组而静默走完，看起来一样，但收据里就没有任何「有意跳过」的痕迹。
     if (options.skipPromotion) {
       log(`[导入] 推广段有意跳过：${SKIP_PROMOTION_REASON}`);
     } else {
-      const importPromotionPerShop = async (items) => { for (const item of items) { const r = await run(PRODUCT_JOB_FILES.promotionImport, ['--file', item.promotionFile, '--shop', item.shop, ...common, '--evidence', path.join(evidence, 'promotion-import', item.shop)]); if (r.code !== 0) { gaps.push(`${item.shop}/推广 导入失败`); log(`[导入] ${item.shop} 推广失败（exit ${r.code}）`); } else log(`[导入] ${item.shop} 推广已写入`); } };
+      const importPromotionPerShop = async (items) => { for (const item of items) { const r = await run(PRODUCT_JOB_FILES.promotionImport, ['--file', item.promotionFile, '--shop', item.shop, '--date', date, ...common, '--evidence', path.join(evidence, 'promotion-import', item.shop)]); if (r.code !== 0) { gaps.push(`${item.shop}/推广 导入失败`); log(`[导入] ${item.shop} 推广失败（exit ${r.code}）`); } else log(`[导入] ${item.shop} 推广已写入`); } };
       const promoReady = results.filter((item) => item.promotionFile);
+      // 按部门分组：一次 CLI 调用只认一个 base，跨部门混在一组必错（见上面那段）。
+      const byDepartment = new Map();
+      for (const item of promoReady) {
+        const department = departmentOfShop(item.shop);
+        if (!byDepartment.has(department)) byDepartment.set(department, []);
+        byDepartment.get(department).push(item);
+      }
       if (promoReady.length === results.length) {
-        const promotionArgs = promoReady.flatMap((item) => ['--file', item.promotionFile, '--shop', item.shop]);
-        const promo = await run(PRODUCT_JOB_FILES.promotionImport, [...promotionArgs, ...common, '--evidence', path.join(evidence, 'promotion-import')]);
-        if (promo.code === 0) log(`[导入] 推广 ${promoReady.length} 家已批量写入`);
-        else { gaps.push('推广 批量导入失败'); await importPromotionPerShop(promoReady); }
+        for (const [department, items] of byDepartment) {
+          const promotionArgs = items.flatMap((item) => ['--file', item.promotionFile, '--shop', item.shop, '--date', date]);
+          const promo = await run(PRODUCT_JOB_FILES.promotionImport, [...promotionArgs, ...common, '--evidence', path.join(evidence, 'promotion-import', department)]);
+          if (promo.code === 0) log(`[导入] 推广 ${items.length} 家（${department}）已批量写入`);
+          else { gaps.push(`推广 批量导入失败（${department}）`); await importPromotionPerShop(items); }
+        }
       } else if (promoReady.length) {
         log(`[导入] 推广有 ${results.length - promoReady.length} 家未采到，改为逐店导入已采到的 ${promoReady.length} 家`);
         await importPromotionPerShop(promoReady);

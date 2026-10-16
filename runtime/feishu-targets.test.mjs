@@ -7,6 +7,7 @@ import {
   DEFAULT_PROFILE,
   DEPARTMENT_LABELS,
   PRODUCT_DATA_MONTH_BASES,
+  PROMOTION_DAILY_MONTH_BASES,
   PROFILES,
   PROFILE_ENV_VAR,
   SHOP_DEPARTMENTS,
@@ -200,6 +201,37 @@ test('推广日报目标指向销售一部已确认 Base 与两张表', () => {
   assert.deepEqual(target.sourceContracts, { keywordColumns: 75, audienceColumns: 71 });
 });
 
+// 推广日报的按月注册表（2026-10-16 加）。断供形态与商品链同族：base 由运营按月建
+// （这张就叫「10月推广数据-销售1部」），单对象目标在 11 月换 base 后会**静默写飞**
+// —— 不报错、数据写进运营不看的表、收据还绿。所以缺月必须 fail-closed，且报错要说清怎么补。
+test('推广日报按月解析：10 月走注册表，11 月未登记一律抛错不回落', () => {
+  const registered = promotionDailyTargets('kcne', '2026-10-08');
+  assert.equal(registered.baseToken, 'Cqavb19NlaMUIIswp5IcMHWCnKb');
+  assert.deepEqual(registered.tables, {
+    keyword: 'tblbSGMO2apOKuAZ',
+    audience: 'tblyjD5058Mjbmcv',
+  });
+  // 月份取**数据日期**：10-01 的数据进 10 月那张，不是「跑的那天」。
+  assert.equal(promotionDailyTargets('kcne', '2026-10-01').baseToken, 'Cqavb19NlaMUIIswp5IcMHWCnKb');
+  // 11 月还没登记 ⇒ 不许回落到 10 月（那会「跑成功但写进运营已经不看的那张表」）。
+  assert.throws(() => promotionDailyTargets('kcne', '2026-11-01'), /2026-11/u,
+    '新月份没登记时必须停 —— 回落到上个月是最贵的静默失败');
+  assert.throws(() => promotionDailyTargets('kcne', '2026-11-01'),
+    /PROMOTION_DAILY_MONTH_BASES/u, '报错要说清该怎么补：把新 base 登记进 PROMOTION_DAILY_MONTH_BASES');
+  // 部门写错同样当场停（推广日报当前只服务 sales1；2 部接入时加键即可）。
+  assert.throws(() => promotionDailyTargets('kcne', '2026-10-08', 'sales2'), /销售2部/u);
+});
+
+// 与商品链同一纪律：注册表与 profile 上那份单对象不许各自漂移（两份必有一处会抄错）。
+// 兼容路径（不传日期）继续读 profile 那份，所以两处必须同源。
+test('推广日报注册表 2026-10:sales1 与 profile 单对象同源（不许各自漂移）', () => {
+  const legacy = promotionDailyTargets('kcne');
+  const registered = PROMOTION_DAILY_MONTH_BASES['2026-10:sales1'];
+  assert.equal(legacy.baseToken, registered.baseToken);
+  assert.equal(legacy.baseName, registered.baseName);
+  assert.deepEqual(legacy.tables, registered.tables);
+});
+
 test('商品数据三张目标表属于用户授权的商品数据 base', () => {
   const target = productDataTargets('kcne');
   assert.deepEqual(target, {
@@ -318,11 +350,15 @@ test('profile 上那份单对象与注册表的 2026-09:sales1 同源（不许�
 
 // 这条守卫的形态与 `FOREIGN_PROXY_ALLOWED_FILES` 同一族：**把「故意没改」写下来**，
 // 而不是让「忘了改」与「决定不改」在代码里长得一模一样。
-test('底单/询单导入按（店铺, 日期）解析 base；推广是记录在案的例外', () => {
+// 2026-10-16：推广导入也改完了（按（店铺, 数据日期）解析 base）—— 从「故意例外」里移出，
+// 三个导入器现在同一口径。这也是 10 月整月推广缺失的根因修复：改造前它读 profile 单对象，
+// 永远指向 9 月已关账的 base，10 月 base 的「商品推广数据底单」从建出来就是空表。
+test('底单/询单/推广三个导入器都按（店铺, 日期）解析 base', () => {
   const read = (relative) => readFileSync(path.join(import.meta.dirname, '..', relative), 'utf8');
   for (const relative of [
     'skills/sycm-product-data/scripts/import-product-data.mjs',
     'skills/sycm-inquiry-data/scripts/import-inquiry-data.mjs',
+    'skills/sycm-promotion-data/scripts/import-promotion-data.mjs',
   ]) {
     const source = read(relative);
     assert.ok(source.includes('productDataTargetsForShop'),
@@ -330,11 +366,6 @@ test('底单/询单导入按（店铺, 日期）解析 base；推广是记录在
     assert.doesNotMatch(source, /\bproductDataTargets\b/u,
       `${relative} 还在用不认月份的旧入口（它永远指向 9 月那张）`);
   }
-  // 推广链：用户 2026-09-30 原话「推广数据这个流程我还没开发，你先放着不管」⇒ **故意**没改。
-  // 等推广链改造完（10 月推广已换成另一套 base 与两张不同形状的表），它必须一起改，届时这里会红。
-  const promotion = read('skills/sycm-promotion-data/scripts/import-promotion-data.mjs');
-  assert.match(promotion, /\bproductDataTargets\b/u,
-    '推广导入已经不用旧入口了 ⇒ 请把它从这条「故意例外」里移出去');
 });
 
 // 配套的静态守卫：脚本自己**不许**再写死任何一张 base 的名字。
