@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-15-20261016020413416-40d984ab",
+  "date": "2026-10-15",
+  "status": "FAILED",
+  "startedAt": "2026-10-16T02:04:13.417Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "PENDING"
+    },
+    {
+      "name": "inquiry",
+      "status": "PENDING"
+    },
+    {
+      "name": "promotion",
+      "status": "PENDING"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "failure": {
+    "category": "UNKNOWN_WRITE",
+    "note": "进程在批次1商品导入中途停止（job.log 最后一条：[导入] 网林天猫 底单已写入）。未自行收尾，故写入结果未知。"
+  },
+  "failedStage": "product",
+  "finishedAt": null,
+  "annotation": {
+    "by": "补数会话（推广回填）",
+    "at": "2026-10-16T08:41:25.660Z",
+    "note": "原状态为 RUNNING 残留（进程已死、无锁、端口全释放）。10:16 重跑（f79b90c3）已全量覆盖且去重验证通过：里可林淘宝/网林天猫 created=0 证明本运行的半写已落地并被正确识别，其余店本运行未及写入。本标注只改状态与失败字段，未动其他内容。"
+  }
+}
