@@ -1,0 +1,54 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017030520521-6570da99\\盖文淘宝\\inquiry.xls",
+  "shop": "盖文淘宝",
+  "date": "2026-10-16",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 6,
+  "existingRows": 782,
+  "plannedRows": 6,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-16",
+      "productId": "934584303052",
+      "shop": "盖文淘宝"
+    },
+    {
+      "date": "2026-10-16",
+      "productId": "1086538660377",
+      "shop": "盖文淘宝"
+    },
+    {
+      "date": "2026-10-16",
+      "productId": "1084458662063",
+      "shop": "盖文淘宝"
+    },
+    {
+      "date": "2026-10-16",
+      "productId": "815994451049",
+      "shop": "盖文淘宝"
+    },
+    {
+      "date": "2026-10-16",
+      "productId": "941483727985",
+      "shop": "盖文淘宝"
+    },
+    {
+      "date": "2026-10-16",
+      "productId": "970791708993",
+      "shop": "盖文淘宝"
+    }
+  ],
+  "recordIds": [
+    "reczz28OKEt5LDWF",
+    "reczz28OKEt5L8U1",
+    "reczz28OKEt5N1qT",
+    "reczz28OKEt5Lkmc",
+    "reczz28OKEt5KX7A",
+    "reczz28OKEt5LH44"
+  ],
+  "afterRows": 788
+}

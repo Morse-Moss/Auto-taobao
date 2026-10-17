@@ -1,0 +1,94 @@
+{
+  "mode": "apply",
+  "date": "2026-10-16",
+  "shop": "盖文淘宝",
+  "profile": "kcne",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "tables": {
+    "keyword": {
+      "tableId": "tblSPWt8ZBs0iL7f",
+      "beforeRows": 570,
+      "plannedRows": 22,
+      "skippedRows": 0,
+      "subjectIds": [],
+      "recordIds": [
+        "reczz28OL7z0Hq5S",
+        "reczz28OL7z0Geqs",
+        "reczz28OL7z0GgIX",
+        "reczz28OL7z0Gc94",
+        "reczz28OL7z0IyFc",
+        "reczz28OL7z0FsIS",
+        "reczz28OL7z0GmRJ",
+        "reczz28OL7z0IPqL",
+        "reczz28OL7z0Ibyt",
+        "reczz28OL7z0GvxU",
+        "reczz28OL7z0J2SO",
+        "reczz28OL7z0HEpS",
+        "reczz28OL7z0IV3P",
+        "reczz28OL7z0FXoh",
+        "reczz28OL7z0JFMq",
+        "reczz28OL7z0HR5M",
+        "reczz28OL7z0GOqX",
+        "reczz28OL7z0FjD6",
+        "reczz28OL7z0Fcgu",
+        "reczz28OL7z0IbjD",
+        "reczz28OL7z0HXZz",
+        "reczz28OL7z0FtCc"
+      ],
+      "afterRows": 592
+    },
+    "audience": {
+      "tableId": "tbl7CUAdPMKJwKYp",
+      "beforeRows": 711,
+      "plannedRows": 18,
+      "skippedRows": 0,
+      "subjectIds": [
+        "1084458662063",
+        "1086538660377",
+        "617149791732",
+        "645211502294",
+        "712966491973",
+        "934584303052",
+        "934597255966",
+        "970166693668",
+        "984629587967",
+        "999955737494"
+      ],
+      "recordIds": [
+        "reczz28OL8CtiDIL",
+        "reczz28OL8Ctin6Z",
+        "reczz28OL8CtkvEJ",
+        "reczz28OL8CtiRFs",
+        "reczz28OL8CtjFXU",
+        "reczz28OL8CthXHh",
+        "reczz28OL8CtlBSZ",
+        "reczz28OL8Cthn4K",
+        "reczz28OL8CthRiY",
+        "reczz28OL8CtjT98",
+        "reczz28OL8CtnBWM",
+        "reczz28OL8CtlJB2",
+        "reczz28OL8CtlRPY",
+        "reczz28OL8Ctll86",
+        "reczz28OL8CtpNKJ",
+        "reczz28OL8Ctnzcl",
+        "reczz28OL8CtoSj3",
+        "reczz28OL8Cto4vl"
+      ],
+      "afterRows": 729
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261017_120330.zip",
+      "csvName": "关键词报表_20261017_120330.csv",
+      "rows": 22,
+      "columns": 77
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261017_120541.zip",
+      "csvName": "人群报表_20261017_120541.csv",
+      "rows": 18,
+      "columns": 75
+    }
+  }
+}

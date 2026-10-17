@@ -1,0 +1,65 @@
+[
+  {
+    "shop": "网林淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林淘宝\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (13).xls\",\"bytes\":60928}\n",
+      "err": "[底单] 网林淘宝 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (13).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林淘宝\",\n  \"date\": \"2026-10-16\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-16\\\\2026-10-16-20261017030520521-6570da99\\\\网林淘宝\\\\inquiry.xls\",\n  \"bytes\": 14336,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261016&dateRange=1d&orderBy=cstCnt&startDate=20261016&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017030520521-6570da99\\网林淘宝\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 网林卫浴:小慧 / 1510910194 ✓\n[校验] 商品报表 / 2026-10-16 / 商品+计划 ✓\n[提交] 商品报表_20261017_112419\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261017_112419.zip (2514 bytes)\n{\"shop\":\"网林淘宝\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261017_112419.zip\",\"bytes\":2514,\"task\":\"商品报表_20261017_112419\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261017_112419.zip"
+  },
+  {
+    "shop": "里可林天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"里可林天猫\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (14).xls\",\"bytes\":45056}\n",
+      "err": "[底单] 里可林天猫 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (14).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"里可林天猫\",\n  \"date\": \"2026-10-16\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-16\\\\2026-10-16-20261017030520521-6570da99\\\\里可林天猫\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261016&dateRange=1d&orderBy=cstCnt&startDate=20261016&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017030520521-6570da99\\里可林天猫\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 里可林旗舰店:月饼 / 7449643996 ✓\n[校验] 商品报表 / 2026-10-16 / 商品+计划 ✓\n[提交] 商品报表_20261017_112507\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261017_112507.zip (1896 bytes)\n{\"shop\":\"里可林天猫\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261017_112507.zip\",\"bytes\":1896,\"task\":\"商品报表_20261017_112507\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261017_112507.zip"
+  },
+  {
+    "shop": "网林家居",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林家居\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (15).xls\",\"bytes\":19456}\n",
+      "err": "[底单] 网林家居 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (15).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林家居\",\n  \"date\": \"2026-10-16\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-16\\\\2026-10-16-20261017030520521-6570da99\\\\网林家居\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261016&dateRange=1d&orderBy=cstCnt&startDate=20261016&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017030520521-6570da99\\网林家居\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 网林定制家居:小瓜 / 1731780198 ✓\n[校验] 商品报表 / 2026-10-16 / 商品+计划 ✓\n[提交] 商品报表_20261017_112559\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261017_112559.zip (997 bytes)\n{\"shop\":\"网林家居\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261017_112559.zip\",\"bytes\":997,\"task\":\"商品报表_20261017_112559\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261017_112559.zip"
+  }
+]

@@ -36,3 +36,22 @@ export function uniqueNewProductTask(before = [], after = []) {
   if (added.length !== 1) throw new Error(`商品报表提交任务无法唯一确认: ${JSON.stringify({ before, after, added })}`);
   return added[0];
 }
+
+/**
+ * 同业务日重跑的自愈：平台对**相同参数**的重复提交不会再生成新任务
+ * （2026-10-17 实测：10:13 已经交过一次「10-16 / 商品+计划」，11:09 再交，
+ *  任务列表 after 与 before 逐项相同、added=[]），于是 `uniqueNewProductTask` 判「无法唯一确认」。
+ * 这种情况不是采集失败，而是「平台已经把这份报表交过了」——正确的处置是**复用那份任务**。
+ *
+ * 判据只用可核对的事实：任务名里的日期前缀等于**提交当天**（名字里的时间是提交时刻，不是数据日）。
+ * 复用**不保证**数据就是目标日（名字里看不出参数），所以调用方必须在导入前用
+ * `validatePromotionReport(..., { date })` 把数据日期钉死 —— 那是这条自愈的安全网。
+ *
+ * 有多个候选时取**最晚**那个（同一天里最后一次提交最接近本次参数）。
+ */
+export function reuseCandidateTask({ after = [], submittedOn } = {}) {
+  const today = String(submittedOn ?? '').replace(/-/gu, '');
+  if (!/^\d{8}$/u.test(today)) throw new Error(`reuseCandidateTask 需要提交当天日期（YYYY-MM-DD），收到 ${JSON.stringify(submittedOn)}`);
+  const sameDay = [...new Set(after)].filter((name) => PRODUCT_TASK_RE.test(name) && name.startsWith(`商品报表_${today}_`)).sort();
+  return sameDay.at(-1) ?? null;
+}

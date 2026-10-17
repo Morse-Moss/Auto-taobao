@@ -1,0 +1,170 @@
+[
+  {
+    "shop": "里可林淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"里可林淘宝\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16.xls\",\"bytes\":36352}\n",
+      "err": "[底单] 里可林淘宝 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16.xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"里可林淘宝\",\n  \"date\": \"2026-10-16\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-16\\\\2026-10-16-20261017020932095-91de724d\\\\里可林淘宝\\\\inquiry.xls\",\n  \"bytes\": 14336,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261016&dateRange=1d&orderBy=cstCnt&startDate=20261016&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017020932095-91de724d\\里可林淘宝\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 里可林家居:小嘉 / 2350600069 ✓\n[校验] 商品报表 / 2026-10-16 / 商品+计划 ✓\n[提交] 商品报表_20261017_101352\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261017_101352.zip (1873 bytes)\n{\"shop\":\"里可林淘宝\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261017_101352.zip\",\"bytes\":1873,\"task\":\"商品报表_20261017_101352\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261017_101352.zip"
+  },
+  {
+    "shop": "网林天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林天猫\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (1).xls\",\"bytes\":38912}\n",
+      "err": "[底单] 网林天猫 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (1).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林天猫\",\n  \"date\": \"2026-10-16\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-16\\\\2026-10-16-20261017020932095-91de724d\\\\网林天猫\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261016&dateRange=1d&orderBy=cstCnt&startDate=20261016&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017020932095-91de724d\\网林天猫\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 网林家居旗舰店:饺子 / 7314426323 ✓\n[校验] 商品报表 / 2026-10-16 / 商品+计划 ✓\n[提交] 商品报表_20261017_101435\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261017_101435.zip (1573 bytes)\n{\"shop\":\"网林天猫\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261017_101435.zip\",\"bytes\":1573,\"task\":\"商品报表_20261017_101435\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261017_101435.zip"
+  },
+  {
+    "shop": "盖文淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"盖文淘宝\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (2).xls\",\"bytes\":68096}\n",
+      "err": "[底单] 盖文淘宝 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (2).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"盖文淘宝\",\n  \"date\": \"2026-10-16\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-16\\\\2026-10-16-20261017020932095-91de724d\\\\盖文淘宝\\\\inquiry.xls\",\n  \"bytes\": 14848,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261016&dateRange=1d&orderBy=cstCnt&startDate=20261016&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017020932095-91de724d\\盖文淘宝\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 随心品质定制:小嘉 / 887360146 ✓\n[校验] 商品报表 / 2026-10-16 / 商品+计划 ✓\n[提交] 商品报表_20261017_101517\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261017_101517.zip (1818 bytes)\n{\"shop\":\"盖文淘宝\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261017_101517.zip\",\"bytes\":1818,\"task\":\"商品报表_20261017_101517\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261017_101517.zip"
+  },
+  {
+    "shop": "盖文天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"盖文天猫\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (3).xls\",\"bytes\":62464}\n",
+      "err": "[底单] 盖文天猫 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (3).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"盖文天猫\",\n  \"date\": \"2026-10-16\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-16\\\\2026-10-16-20261017020932095-91de724d\\\\盖文天猫\\\\inquiry.xls\",\n  \"bytes\": 16384,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261016&dateRange=1d&orderBy=cstCnt&startDate=20261016&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017020932095-91de724d\\盖文天猫\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 盖文旗舰店:小瓜 / 2995200080 ✓\n[校验] 商品报表 / 2026-10-16 / 商品+计划 ✓\n[提交] 商品报表_20261017_101600\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261017_101600.zip (2526 bytes)\n{\"shop\":\"盖文天猫\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261017_101600.zip\",\"bytes\":2526,\"task\":\"商品报表_20261017_101600\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261017_101600.zip"
+  },
+  {
+    "shop": "科塔淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"科塔淘宝\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (4).xls\",\"bytes\":43520}\n",
+      "err": "[底单] 科塔淘宝 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (4).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"科塔淘宝\",\n  \"date\": \"2026-10-16\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-16\\\\2026-10-16-20261017020932095-91de724d\\\\科塔淘宝\\\\inquiry.xls\",\n  \"bytes\": 14848,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261016&dateRange=1d&orderBy=cstCnt&startDate=20261016&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017020932095-91de724d\\科塔淘宝\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] j873522735:小瓜 / 412070158 ✓\n[校验] 商品报表 / 2026-10-16 / 商品+计划 ✓\n[提交] 商品报表_20261017_101643\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261017_101643.zip (2028 bytes)\n{\"shop\":\"科塔淘宝\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261017_101643.zip\",\"bytes\":2028,\"task\":\"商品报表_20261017_101643\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261017_101643.zip"
+  },
+  {
+    "shop": "网林淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林淘宝\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (5).xls\",\"bytes\":60928}\n",
+      "err": "[底单] 网林淘宝 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (5).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林淘宝\",\n  \"date\": \"2026-10-16\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-16\\\\2026-10-16-20261017020932095-91de724d\\\\网林淘宝\\\\inquiry.xls\",\n  \"bytes\": 14336,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261016&dateRange=1d&orderBy=cstCnt&startDate=20261016&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017020932095-91de724d\\网林淘宝\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 网林卫浴:小慧 / 1510910194 ✓\n[校验] 商品报表 / 2026-10-16 / 商品+计划 ✓\n[提交] 商品报表_20261017_102150\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261017_102150.zip (2514 bytes)\n{\"shop\":\"网林淘宝\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261017_102150.zip\",\"bytes\":2514,\"task\":\"商品报表_20261017_102150\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261017_102150.zip"
+  },
+  {
+    "shop": "里可林天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"里可林天猫\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (6).xls\",\"bytes\":45056}\n",
+      "err": "[底单] 里可林天猫 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (6).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"里可林天猫\",\n  \"date\": \"2026-10-16\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-16\\\\2026-10-16-20261017020932095-91de724d\\\\里可林天猫\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261016&dateRange=1d&orderBy=cstCnt&startDate=20261016&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017020932095-91de724d\\里可林天猫\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 里可林旗舰店:月饼 / 7449643996 ✓\n[校验] 商品报表 / 2026-10-16 / 商品+计划 ✓\n[提交] 商品报表_20261017_102239\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261017_102239.zip (1896 bytes)\n{\"shop\":\"里可林天猫\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261017_102239.zip\",\"bytes\":1896,\"task\":\"商品报表_20261017_102239\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261017_102239.zip"
+  },
+  {
+    "shop": "网林家居",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林家居\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (7).xls\",\"bytes\":19456}\n",
+      "err": "[底单] 网林家居 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-16_2026-10-16 (7).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林家居\",\n  \"date\": \"2026-10-16\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-16\\\\2026-10-16-20261017020932095-91de724d\\\\网林家居\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261016&dateRange=1d&orderBy=cstCnt&startDate=20261016&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-16\\2026-10-16-20261017020932095-91de724d\\网林家居\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 网林定制家居:小瓜 / 1731780198 ✓\n[校验] 商品报表 / 2026-10-16 / 商品+计划 ✓\n[提交] 商品报表_20261017_102320\n[遮挡] 全屏层 DIV#wrapper_dlg_4084(data-owner-id=app) z=99999，rect=[0,0,1501,642]，层内可点小控件 24/44 个，选中 SPAN#mx_4087「」于 (1251,32)，另有 1 个安全备选（按序试，封顶 3 个）\n[遮挡] 没有注入 pressEscape ⇒ 跳过 ESC 这一步（不假装试过）\n[遮挡] 回读：全屏层剩 0 个｜目标可点=null ⇒ 不再挡事（全屏层已归零）\n[下载重试] 已刷新任务管理页并重新发现 target=DEF443D9CEBE4E8B53E6379751EB3551\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261017_102320.zip (997 bytes)\n{\"shop\":\"网林家居\",\"date\":\"2026-10-16\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261017_102320.zip\",\"bytes\":997,\"task\":\"商品报表_20261017_102320\"}\n",
+      "err": "[下载重试] 商品报表_20261017_102320 第 1 次失败：下载任务页被平台遮挡层拦住（dismiss-overlay-and-refresh），已尝试安全关闭并刷新重试\n"
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261017_102320.zip"
+  }
+]

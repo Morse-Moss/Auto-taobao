@@ -1,0 +1,91 @@
+{
+  "mode": "apply",
+  "date": "2026-10-16",
+  "shop": "网林天猫",
+  "profile": "kcne",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "tables": {
+    "keyword": {
+      "tableId": "tblSPWt8ZBs0iL7f",
+      "beforeRows": 559,
+      "plannedRows": 11,
+      "skippedRows": 0,
+      "subjectIds": [],
+      "recordIds": [
+        "reczz28OL44pjNrj",
+        "reczz28OL44pkoug",
+        "reczz28OL44pi4Rd",
+        "reczz28OL44piUr1",
+        "reczz28OL44pkHbg",
+        "reczz28OL44piasq",
+        "reczz28OL44pjE5s",
+        "reczz28OL44pl4jg",
+        "reczz28OL44pijY5",
+        "reczz28OL44pjVYI",
+        "reczz28OL44phxb0"
+      ],
+      "afterRows": 570
+    },
+    "audience": {
+      "tableId": "tbl7CUAdPMKJwKYp",
+      "beforeRows": 685,
+      "plannedRows": 26,
+      "skippedRows": 0,
+      "subjectIds": [
+        "1060913369469",
+        "1071284033110",
+        "1072247628377",
+        "1089319851297",
+        "1090539219000",
+        "1090680322925",
+        "1090777050096",
+        "1091308189099",
+        "923336705176",
+        "977271829805"
+      ],
+      "recordIds": [
+        "reczz28OL4LB1qw2",
+        "reczz28OL4LB32qn",
+        "reczz28OL4LB4L3W",
+        "reczz28OL4LB16On",
+        "reczz28OL4LB4e60",
+        "reczz28OL4LB15oa",
+        "reczz28OL4LB4CLY",
+        "reczz28OL4LB28U4",
+        "reczz28OL4LB0rmA",
+        "reczz28OL4LB1IpX",
+        "reczz28OL4LB2Quy",
+        "reczz28OL4LB3In8",
+        "reczz28OL4LB4XWR",
+        "reczz28OL4LB4jUe",
+        "reczz28OL4LB3ryr",
+        "reczz28OL4LB2dlt",
+        "reczz28OL4LB28sG",
+        "reczz28OL4LB1WDD",
+        "reczz28OL4LB14xF",
+        "reczz28OL4LB2eWe",
+        "reczz28OL4LB2GxA",
+        "reczz28OL4LB3OgD",
+        "reczz28OL4LB1rH2",
+        "reczz28OL4LB45YB",
+        "reczz28OL4LB1dql",
+        "reczz28OL4LB2ypM"
+      ],
+      "afterRows": 711
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261017_120122.zip",
+      "csvName": "关键词报表_20261017_120122.csv",
+      "rows": 11,
+      "columns": 75
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261017_120201.zip",
+      "csvName": "人群报表_20261017_120201.csv",
+      "rows": 26,
+      "columns": 73
+    }
+  }
+}

@@ -1,0 +1,46 @@
+[停] 目标 3 个实例
+  · 网林淘宝
+      将停 proxy pid=44880  ← 端口在听、进程命令行是 start-shop-proxy.mjs 网林淘宝
+         taskkill /PID 44880 /T /F
+      将停 browser pid=141488  ← CDP 自证 profile 一致；杀启动器 141488（连带浏览器进程树与保活进程）
+         taskkill /PID 141488 /T /F
+      已停 proxy pid=44880
+      已停 browser pid=141488
+      停后盘点到:unconfirmed
+  · 里可林天猫
+      将停 proxy pid=86312  ← 端口在听、进程命令行是 start-shop-proxy.mjs 里可林天猫
+         taskkill /PID 86312 /T /F
+      将停 browser pid=97456  ← CDP 自证 profile 一致；杀启动器 97456（连带浏览器进程树与保活进程）
+         taskkill /PID 97456 /T /F
+      已停 proxy pid=86312
+      已停 browser pid=97456
+      停后盘点到:unconfirmed
+  · 网林家居
+      将停 proxy pid=53688  ← 端口在听、进程命令行是 start-shop-proxy.mjs 网林家居
+         taskkill /PID 53688 /T /F
+      将停 browser pid=68132  ← CDP 自证 profile 一致；杀启动器 68132（连带浏览器进程树与保活进程）
+         taskkill /PID 68132 /T /F
+      已停 proxy pid=53688
+      已停 browser pid=68132
+      停后盘点到:missing
+{
+  "shops": [
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "stopExitCode": 0,
+  "checks": [
+    {
+      "attempt": 1,
+      "listening": 0,
+      "error": null
+    },
+    {
+      "attempt": 2,
+      "listening": 0,
+      "error": null
+    }
+  ],
+  "released": true
+}

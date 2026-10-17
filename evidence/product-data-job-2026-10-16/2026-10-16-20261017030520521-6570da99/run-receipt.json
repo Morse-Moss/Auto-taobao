@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-16-20261017030520521-6570da99",
+  "date": "2026-10-16",
+  "status": "FAILED",
+  "startedAt": "2026-10-17T03:05:20.522Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "failure": {
+    "class": "TRANSIENT_EXTERNAL",
+    "reason": "EXTERNAL_RETRYABLE",
+    "message": "本轮不完整（2 处）：里可林淘宝/推广 未采集：采集失败：商品报表提交任务无法唯一确认: {\"before\":[\"商品报表_20261017_101352\",\"商品报表_20261016_150756\",\"商品报表_20261016_150723\",\"商品报表_20261016_150651\",\"商品报表_20261016_150616\",\"商品报表_2026101…；推广 批量导入失败（sales1）：file:///D:/Retire/sycm-automation/skills/xws-to-feishu-base/scripts/feishu-client.mjs:54 throw new Error(`Feishu API failed: ${response.status} ${payload ? `${p…"
+  },
+  "failedStage": "promotion-import",
+  "finishedAt": "2026-10-17T03:31:16.592Z"
+}

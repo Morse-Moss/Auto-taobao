@@ -18,13 +18,26 @@ export function promotionKey(row, headers) {
   ]));
 }
 
-export function validatePromotionReport(headers, rows) {
+export function validatePromotionReport(headers, rows, { date } = {}) {
   if (!Array.isArray(headers) || !headers.includes('日期') || !headers.includes('场景ID') || !headers.includes('计划ID')) {
     throw new Error('商品报表缺少日期/场景ID/计划ID表头');
   }
   if (![76, 78].includes(headers.length)) throw new Error(`不支持的商品报表列数: ${headers.length}`);
   const bad = rows.findIndex((row) => !Array.isArray(row) || row.length !== headers.length);
   if (bad >= 0) throw new Error(`商品报表第${bad + 2}行列数与表头不一致`);
+  // 数据日期必须**逐行**等于目标日（2026-10-17 加）。
+  // 为什么必须在这里钉，而不是「记一笔 observedDates 就算核对过了」：
+  // ① 商品链的同日重跑会复用平台上已存在的任务（见 product-report-core 的 reuseCandidateTask），
+  //    而任务名里只有提交时刻、看不出参数 ⇒ **同名任务完全可能装的是另一天的数据**；
+  // ② 导入器本身不按日期过滤行（幂等键含日期，所以错日期的行会被当成「新数据」整批写进去）。
+  // 少了这条，一次复用就能把 10-15 的推广数据写成 10-16 的，且收据上看不出任何异常。
+  if (date !== undefined && date !== null) {
+    const wrong = rows.findIndex((row) => String(row[0] ?? '').trim() !== date);
+    if (wrong >= 0) {
+      throw new Error(`商品报表数据日期不是目标日 ${date}：第${wrong + 1}行是 ${JSON.stringify(String(rows[wrong]?.[0] ?? ''))}`
+        + '（复用平台任务时最可能出现；不许把别的日期的数据写进目标日）');
+    }
+  }
   return { columns: headers.length, rows: rows.length };
 }
 export function buildPromotionFields(headers, values, targetNames) {

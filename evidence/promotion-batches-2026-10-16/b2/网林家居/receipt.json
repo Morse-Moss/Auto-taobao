@@ -1,0 +1,53 @@
+{
+  "mode": "apply",
+  "date": "2026-10-16",
+  "shop": "网林家居",
+  "profile": "kcne",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "tables": {
+    "keyword": {
+      "tableId": "tblSPWt8ZBs0iL7f",
+      "beforeRows": 823,
+      "plannedRows": 0,
+      "skippedRows": 0,
+      "subjectIds": []
+    },
+    "audience": {
+      "tableId": "tbl7CUAdPMKJwKYp",
+      "beforeRows": 860,
+      "plannedRows": 8,
+      "skippedRows": 0,
+      "subjectIds": [
+        "1076026074700",
+        "1077063041893",
+        "1078064196622",
+        "1078065212901"
+      ],
+      "recordIds": [
+        "reczz28OLR4xnDOb",
+        "reczz28OLR4xkGwQ",
+        "reczz28OLR4xjM4g",
+        "reczz28OLR4xmWqT",
+        "reczz28OLR4xmNiV",
+        "reczz28OLR4xjQE0",
+        "reczz28OLR4xky96",
+        "reczz28OLR4xkba1"
+      ],
+      "afterRows": 868
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261017_122105.zip",
+      "csvName": "关键词报表_20261017_122105.csv",
+      "rows": 0,
+      "columns": 77
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261017_122329.zip",
+      "csvName": "人群报表_20261017_122329.csv",
+      "rows": 8,
+      "columns": 75
+    }
+  }
+}

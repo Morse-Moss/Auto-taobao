@@ -24,7 +24,7 @@ const o=parse(process.argv.slice(2));
 // 「这张表里还没有」误判成「已写过」）。
 const sources=[]; const byBase=new Map();
 for(let i=0;i<o.files.length;i++){
-  const x=readZip(o.files[i]); validatePromotionReport(x.headers,x.rows);
+  const x=readZip(o.files[i]); validatePromotionReport(x.headers,x.rows,{date:o.date});
   const shop=o.shops[i]; const target=productDataTargetsForShop(shop,o.date,'kcne');
   sources.push({file:o.files[i],shop,rows:x.rows.length,columns:x.headers.length,csvName:x.csvName,headers:x.headers,base:target.baseName,baseToken:target.baseToken,tableId:target.promotionTable,observedDates:[...new Set(x.rows.map(r=>String(r[0]??'').trim()).filter(Boolean))]});
   if(!byBase.has(target.baseToken)) byBase.set(target.baseToken,{target,items:[]});

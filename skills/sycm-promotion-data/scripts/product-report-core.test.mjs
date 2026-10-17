@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildProductReportUrl, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
+import { buildProductReportUrl, reuseCandidateTask, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
 import { planPromotionImport, promotionKey, validatePromotionReport } from './promotion-core.mjs';
 
 test('商品报表 URL 固定到目标日、30 天累计和两个推广场景', () => {
@@ -18,6 +18,24 @@ test('商品报表 URL 固定到目标日、30 天累计和两个推广场景', 
 test('商品报表任务只接受下载前后列表差集里的唯一新任务', () => {
   assert.equal(uniqueNewProductTask(['商品报表_20260926_164524'], ['商品报表_20260926_175814', '商品报表_20260926_164524']), '商品报表_20260926_175814');
   assert.throws(() => uniqueNewProductTask([], ['商品报表_20260926_164524', '商品报表_20260926_165316']), /无法唯一确认/u);
+});
+
+// 同业务日重跑：平台对**相同参数**重复提交不再生成新任务 ⇒ added=[] ⇒ uniqueNewProductTask 抛错。
+// 这不是采集失败（平台早就把这份报表交过了），2026-10-17 真机发作过一次
+// （里可林淘宝/推广：10:13 交过「10-16」、11:09 再交，任务列表逐项相同）。
+test('同日重跑复用平台已在册的当日任务，取最晚一个', () => {
+  const tasks = ['商品报表_20261017_101352', '商品报表_20261017_090000', '商品报表_20261016_150756'];
+  // 名字里的日期是**提交当天**，不是数据日 ⇒ 只按「今天」前缀筛，绝不能跨天兜底
+  assert.equal(reuseCandidateTask({ after: tasks, submittedOn: '2026-10-17' }), '商品报表_20261017_101352');
+  assert.equal(reuseCandidateTask({ after: tasks, submittedOn: '2026-10-16' }), '商品报表_20261016_150756');
+  // 今天一份都没有 ⇒ null（调用方要抛原来那条「无法唯一确认」，不许拿昨天的顶）
+  assert.equal(reuseCandidateTask({ after: tasks, submittedOn: '2026-10-18' }), null);
+  // 非商品报表名字/形状不合规的一律不算候选
+  assert.equal(reuseCandidateTask({ after: ['商品报表_20261017_1013', '其它报表_20261017_101352', '商品报表_20261017101352'], submittedOn: '2026-10-17' }), null);
+  // 日期形状不对 ⇒ 抛错，不许静默当成「没有候选」（YYYYMMDD 这种已经收窄过的形状是允许的）
+  assert.throws(() => reuseCandidateTask({ after: tasks, submittedOn: '2026/10/17' }), /需要提交当天日期/u);
+  assert.throws(() => reuseCandidateTask({ after: tasks, submittedOn: '2026-1-7' }), /需要提交当天日期/u);
+  assert.throws(() => reuseCandidateTask({ after: tasks }), /需要提交当天日期/u);
 });
 
 test('只有商品报表、目标日期、双场景、30 天周期和商品+计划维度全匹配才放行', () => {
@@ -56,6 +74,21 @@ test('商品报表允许淘宝 76 列和天猫 78 列，拒绝营销场景 71 �
   assert.equal(validatePromotionReport([...base, ...Array(73).fill('指标')], [['2026-09-25', 'onebpSearch', 'p', ...Array(73).fill('0')]]).columns, 76);
   assert.equal(validatePromotionReport([...base, ...Array(75).fill('指标')], [['2026-09-25', 'onebpSearch', 'p', ...Array(75).fill('0')]]).columns, 78);
   assert.throws(() => validatePromotionReport([...base, ...Array(68).fill('指标')], [['2026-09-25', 'onebpSearch', 'p', ...Array(68).fill('0')]]), /不支持的商品报表列数/u);
+});
+
+// 逐行日期钉死（2026-10-17 加）：复用平台任务时任务名看不出参数，CSV 里却可能是**别的日期**；
+// 而幂等键含日期 ⇒ 错日期的行会被当成「新数据」整批写进去，收据上看不出任何异常。
+test('商品报表逐行校验数据日期等于目标日，错日期一律拒绝', () => {
+  const headers = ['日期', '场景ID', '计划ID', ...Array(73).fill('指标')];
+  const row = (date) => [date, '371', 'plan-1', ...Array(73).fill('0')];
+  assert.equal(validatePromotionReport(headers, [row('2026-10-16'), row('2026-10-16')], { date: '2026-10-16' }).rows, 2);
+  assert.throws(() => validatePromotionReport(headers, [row('2026-10-16'), row('2026-10-15')], { date: '2026-10-16' }), /数据日期不是目标日 2026-10-16/u);
+  // 一行都不许漏：只有一行且是错的也要拦
+  assert.throws(() => validatePromotionReport(headers, [row('2026-10-15')], { date: '2026-10-16' }), /第1行是 "2026-10-15"/u);
+  // 空日期也算不匹配（不能用「空就是没限制」放过去）
+  assert.throws(() => validatePromotionReport(headers, [row('')], { date: '2026-10-16' }), /数据日期不是目标日/u);
+  // 不传 date ⇒ 保持原有列数/行长校验语义（其它调用方不吃这条新约束）
+  assert.equal(validatePromotionReport(headers, [row('2026-10-15')]).rows, 1);
 });
 
 test('推广幂等键只包含报表行身份，不因指标变化而重复写入', () => {
