@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { FeishuClient } from '../../xws-to-feishu-base/scripts/feishu-client.mjs';
 import { buildFeishuFields, promotionIdempotencyKey, validateExportRows } from './promotion-daily-report-core.mjs';
-import { activeProfileName, loadFeishuCredentials, promotionDailyTargets } from '../../../runtime/feishu-targets.mjs';
+import { activeProfileName, promotionDailyTargets, targetCredentials } from '../../../runtime/feishu-targets.mjs';
 const PY = `import csv,io,json,sys,zipfile
 sys.stdout.reconfigure(encoding='utf-8')
 with zipfile.ZipFile(sys.argv[1]) as z:
@@ -49,8 +49,10 @@ async function main(argv = process.argv.slice(2)) {
   const profile = args.profile ?? activeProfileName();
   // 按月解析（2026-10-16）：推广日报的 base 由运营按月建，单对象目标会在换 base 后静默写飞。
   const target = promotionDailyTargets(profile, args.date);
-  const credentials = loadFeishuCredentials(profile);
-  const receipt = { mode: args.apply ? 'apply' : 'dry-run', date: args.date, shop: args.shop, profile, tables: {}, sources: {} };
+  // 凭据按**目标**取（2026-10-17）：10 月这张 base 在别的组织，kcne 应用对它只能读，
+  // 写会 403/1063004 —— 而且它死在 batchCreateRecords 或写后回读，容易被误读成 UNKNOWN_WRITE。
+  const credentials = targetCredentials(target, profile);
+  const receipt = { mode: args.apply ? 'apply' : 'dry-run', date: args.date, shop: args.shop, profile, credentialFile: credentials.file, tables: {}, sources: {} };
   for (const kind of ['keyword', 'audience']) {
     const source = readZip(args.files[kind]);
     // 阿里妈妈关键词报表近期新增两列；历史 75 列和当前 77 列均可导入，未知列仍由目标字段映射过滤。
@@ -60,7 +62,7 @@ async function main(argv = process.argv.slice(2)) {
     validateExportRows(source.headers, source.rows, { kind: kind === 'keyword' ? '关键词' : '人群', expectedColumns, date: args.date, allowEmpty: true });
     const tableId = target.tables?.[kind];
     if (!tableId || !target.baseToken) throw new Error(`推广日报 ${kind} 目标未完整配置（需要 baseToken 与 tables.${kind}）`);
-    // loadFeishuCredentials() 的稳定返回契约是 appId/appSecret；不要绕过配置层读取旧字段名。
+    // targetCredentials() 的稳定返回契约是 appId/appSecret；不要绕过配置层读取旧字段名。
     const client = new FeishuClient({ appId: credentials.appId, appSecret: credentials.appSecret, appToken: target.baseToken, tableId });
     const fieldItems = await client.listFieldItems();
     const targetFields = new Map(fieldItems.map((f) => [f.field_name, f.type]));

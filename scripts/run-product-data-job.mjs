@@ -4,7 +4,9 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { shopBrowserKeys, shopInstance } from '../runtime/browser-ports.mjs';
-import { departmentOfShop } from '../runtime/feishu-targets.mjs';
+import { departmentOfShop, productDataTargetsForShop, targetCredentials } from '../runtime/feishu-targets.mjs';
+import { describeTargetProbeFailures, probeFeishuTargets } from '../runtime/feishu-target-preflight.mjs';
+import { FeishuClient } from '../skills/xws-to-feishu-base/scripts/feishu-client.mjs';
 import { buildProductJobPlan, PRODUCT_JOB_FILES, SKIP_PROMOTION_REASON } from '../runtime/product-data-job-core.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
 import { acquireWorkflowLock, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
@@ -71,10 +73,21 @@ function stageFromMessage(message) { return STAGE_OF_MESSAGE.find(([pattern]) =>
 // 重跑会撞同日去重闸门、得 0 行，所以它和 1（真的没写成）对操作者的含义完全不同。
 // 缺口文案里的「底单／询单」决定 `failedStage` 归因；「未知」决定 `classifyWorkflowError`
 // 把它归到 UNKNOWN_WRITE，而不是 FAILED/UNCLASSIFIED（见 runtime/workflow-receipt.mjs）。
-function importOutcomeOf(shop, stage, code) {
+//
+// 2026-10-17 修：导入失败**必须带上子进程那句原话**（`reason`）。
+// 上一版只写「导入失败」四个字，于是 24 次导入全部 403/91403 的那一轮，
+// 收据归到 `FAILED/UNCLASSIFIED`，告警的 action 写着「这一轮不需要你在浏览器里做什么」，
+// 而真实成因是「凭据不对」。原因落在缺口文案里才算落到分类器手上（job.log 不算）。
+// 2 号（UNKNOWN_WRITE）**刻意不带原因**：它的既有文案已经明确表达「不知道写没写」，
+// 再掺一句 stderr 会把「权限拒绝」和「回读失败」搅在一起，反而改掉它该有的分类。
+function importOutcomeOf(shop, stage, code, reason) {
   if (code === 0) return { gap: null, line: `[导入] ${shop} ${stage}已写入` };
   if (code === 2) return { gap: `${shop}/${stage} 写入已发生但写后回读未知（UNKNOWN_WRITE）`, line: `[导入] ${shop} ${stage}写入已发生、写后回读失败（UNKNOWN_WRITE；exit 2）` };
-  return { gap: `${shop}/${stage} 导入失败`, line: `[导入] ${shop} ${stage}失败（exit ${code}）` };
+  const note = collectFailureNote(reason);
+  return {
+    gap: note ? `${shop}/${stage} 导入失败：${note}` : `${shop}/${stage} 导入失败`,
+    line: `[导入] ${shop} ${stage}失败（exit ${code}${note ? `；${note}` : ''}）`,
+  };
 }
 // 采集失败的**原因**必须跟着缺口一起报出去（2026-10-12 加）。
 // 为什么：这条链原先只写「<店>/底单 未采集」，把采集子进程那句 `下载超时` 留在 job.log 里就丢了 ——
@@ -83,9 +96,22 @@ function importOutcomeOf(shop, stage, code) {
 // 所以原因必须落在它**里面**，只落 job.log 不够。与上面 `importOutcomeOf` 是同一条设计：
 // 阶段名（底单／询单／推广）管归因，原因词（超时／下载…）管分类。
 // 压成一行并截断：它还要进告警载荷的 `reason` 字段，不收整段 stderr。
+//
+// 2026-10-17 加的两条过滤：子进程**未捕获异常**时，stderr 的头几行是「源码回显 + 调用栈」——
+//   file:///D:/…/feishu-client.mjs:54
+//         throw new Error(`Feishu API failed: ${response.status} ${payload ? …`);
+//         ^
+// 真正说明问题的是后面那行 `Error: Feishu API failed: 403 91403 Forbidden`。
+// 原先直接取前 160 字，预算全花在**模板源码**上：收据里留下的是
+// 「Feishu API failed: ${response.status}」，状态码一个都看不到，判据也就无从谈起。
 function collectFailureNote(error) {
-  const text = String(error ?? '').split(/\r?\n/u).map((line) => line.trim()).filter(Boolean).join(' ');
-  if (!text) return '';
+  const lines = String(error ?? '').split(/\r?\n/u).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return '';
+  const keep = (line) => !/^at\s/u.test(line) && !/^file:\/\//u.test(line) && !/^\^+$/u.test(line)
+    && !/^node:(?:internal|events|buffer)/u.test(line) && !/^Node\.js v/u.test(line)
+    && !/^throw new (?:new )?Error/u.test(line) && !/^await\s+import/u.test(line);
+  const cleaned = lines.filter(keep);
+  const text = (cleaned.length ? cleaned : lines).join(' ');
   return text.length > 160 ? `${text.slice(0, 160)}…` : text;
 }
 // 三条「未采集」缺口文案的**唯一**拼接处：没原因就退回老文案（不留尾随冒号）。
@@ -367,10 +393,10 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
       // 同一件事记两条会让收据里的缺口数虚高，归因也会被带到 `product-import` 上（它其实停在登录）。
       if (blocked.has(item.shop)) continue;
       if (!item.productFile) { gaps.push(collectGapOf(item.shop, '底单', item.error)); continue; }
-      const r = await run(PRODUCT_JOB_FILES.productImport, ['--file', item.productFile, '--shop', item.shop, '--date', date, ...common, '--evidence', path.join(evidence, item.shop, 'product-import')]);
-      const rd = importOutcomeOf(item.shop, '底单', r.code); if (rd.gap) gaps.push(rd.gap); log(rd.line);
+      const r = await run(PRODUCT_JOB_FILES.productImport, ['--file', item.productFile, '--shop', item.shop, '--date', date, ...common, '--evidence', path.join(evidence, item.shop, 'product-import')], { capture: true });
+      const rd = importOutcomeOf(item.shop, '底单', r.code, r.err); if (rd.gap) gaps.push(rd.gap); log(rd.line);
       if (!item.inquiryFile || !fs.existsSync(item.inquiryFile)) gaps.push(collectGapOf(item.shop, '询单', item.error));
-      else { const q = await run(PRODUCT_JOB_FILES.inquiryImport, ['--file', item.inquiryFile, '--date', date, '--shop', item.shop, ...common, '--evidence', path.join(evidence, item.shop, 'inquiry-import')]); const qd = importOutcomeOf(item.shop, '询单', q.code); if (qd.gap) gaps.push(qd.gap); log(qd.line); }
+      else { const q = await run(PRODUCT_JOB_FILES.inquiryImport, ['--file', item.inquiryFile, '--date', date, '--shop', item.shop, ...common, '--evidence', path.join(evidence, item.shop, 'inquiry-import')], { capture: true }); const qd = importOutcomeOf(item.shop, '询单', q.code, q.err); if (qd.gap) gaps.push(qd.gap); log(qd.line); }
       // 有意跳过的段**不记缺口** —— 与下面 catch 段那句逐字同口径。
       // （2026-10-05 修：这一行原先漏了 `skipPromotion`，于是 `--skip-promotion` 的那一轮
       //   即使收据里推广段已经正确记成 SKIPPED，整轮也会被自己这条缺口判成失败 ——
@@ -393,7 +419,7 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
     if (options.skipPromotion) {
       log(`[导入] 推广段有意跳过：${SKIP_PROMOTION_REASON}`);
     } else {
-      const importPromotionPerShop = async (items) => { for (const item of items) { const r = await run(PRODUCT_JOB_FILES.promotionImport, ['--file', item.promotionFile, '--shop', item.shop, '--date', date, ...common, '--evidence', path.join(evidence, 'promotion-import', item.shop)]); if (r.code !== 0) { gaps.push(`${item.shop}/推广 导入失败`); log(`[导入] ${item.shop} 推广失败（exit ${r.code}）`); } else log(`[导入] ${item.shop} 推广已写入`); } };
+      const importPromotionPerShop = async (items) => { for (const item of items) { const r = await run(PRODUCT_JOB_FILES.promotionImport, ['--file', item.promotionFile, '--shop', item.shop, '--date', date, ...common, '--evidence', path.join(evidence, 'promotion-import', item.shop)], { capture: true }); if (r.code !== 0) { const detail = importOutcomeOf(item.shop, '推广', r.code, r.err); gaps.push(detail.gap); log(detail.line); } else log(`[导入] ${item.shop} 推广已写入`); } };
       const promoReady = results.filter((item) => item.promotionFile);
       // 按部门分组：一次 CLI 调用只认一个 base，跨部门混在一组必错（见上面那段）。
       const byDepartment = new Map();
@@ -405,9 +431,20 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
       if (promoReady.length === results.length) {
         for (const [department, items] of byDepartment) {
           const promotionArgs = items.flatMap((item) => ['--file', item.promotionFile, '--shop', item.shop, '--date', date]);
-          const promo = await run(PRODUCT_JOB_FILES.promotionImport, [...promotionArgs, ...common, '--evidence', path.join(evidence, 'promotion-import', department)]);
+          const promo = await run(PRODUCT_JOB_FILES.promotionImport, [...promotionArgs, ...common, '--evidence', path.join(evidence, 'promotion-import', department)], { capture: true });
           if (promo.code === 0) log(`[导入] 推广 ${items.length} 家（${department}）已批量写入`);
-          else { gaps.push(`推广 批量导入失败（${department}）`); await importPromotionPerShop(items); }
+          // exit 2 ＝「写已经发生、写后回读失败」。**不许再逐店重试**：数据已进表，
+          // 重试只会撞幂等去重、得 0 行，还会把「0 行」写成一份看起来像「本来就没数据」的收据
+          // （2026-10-17 真机：3 家 46 行写进去了，收据却记成 plannedRows=0/duplicateRows=46）。
+          else if (promo.code === 2) {
+            gaps.push(`推广 批量写入已发生但写后回读未知（UNKNOWN_WRITE；${department}）`);
+            log(`[导入] 推广 ${items.length} 家（${department}）写入已发生、写后回读失败（UNKNOWN_WRITE；exit 2）`);
+          } else {
+            const note = collectFailureNote(promo.err);
+            gaps.push(`推广 批量导入失败（${department}）${note ? `：${note}` : ''}`);
+            log(`[导入] 推广 ${items.length} 家（${department}）批量导入失败（exit ${promo.code}${note ? `；${note}` : ''}）`);
+            await importPromotionPerShop(items);
+          }
         }
       } else if (promoReady.length) {
         log(`[导入] 推广有 ${results.length - promoReady.length} 家未采到，改为逐店导入已采到的 ${promoReady.length} 家`);
@@ -466,6 +503,35 @@ async function main(argv) {
     const preflight = runEnvironmentPreflight({ root: ROOT, workflow: 'product-data' });
     fs.writeFileSync(path.join(evidence, 'environment-preflight.json'), `${JSON.stringify(preflight, null, 2)}\n`);
     if (!preflight.ok) throw new Error(`环境预检失败：${preflight.checks.filter(check => !check.ok).map(check => check.name).join(', ')}`);
+    // 飞书目标「认不认这份凭据」的开工前体检（2026-10-17 加）。
+    // 环境预检只验「凭据文件存在」—— 文件在、appId 也对，但这张 base 根本不认它，照样全绿。
+    // 2026-10-17 那轮的代价是：8 家采集 15 分钟全部成功、24 次导入全部 403/91403、飞书零写入。
+    // 这里在**起浏览器之前**先问一次，把「跑一小时才发现」提前到「三秒就红」。
+    const probeTargets = new Map();
+    for (const shop of plan.shops) {
+      const target = productDataTargetsForShop(shop, date, 'kcne');
+      if (probeTargets.has(target.baseToken)) continue;
+      probeTargets.set(target.baseToken, {
+        label: `${target.baseName}（${departmentOfShop(shop)}）`,
+        baseToken: target.baseToken,
+        envFile: target.envFile,
+        tables: [
+          { name: '商品底单', tableId: target.productTable },
+          { name: '询单', tableId: target.inquiryTable },
+          ...(options.skipPromotion ? [] : [{ name: '推广', tableId: target.promotionTable }]),
+        ],
+      });
+    }
+    const targetProbe = await probeFeishuTargets({
+      targets: [...probeTargets.values()],
+      credentialsFor: (target) => targetCredentials(target, 'kcne'),
+      FeishuClient,
+    });
+    fs.writeFileSync(path.join(evidence, 'feishu-targets-preflight.json'), `${JSON.stringify(targetProbe, null, 2)}\n`);
+    if (targetProbe.blocking.length) {
+      throw new Error(`飞书目标预检失败：${describeTargetProbeFailures(targetProbe).join('；')}`);
+    }
+    log(`飞书目标预检：${targetProbe.targets.length} 张 base 共 ${targetProbe.targets.reduce((sum, entry) => sum + entry.tables.length, 0)} 张表，各自凭据都被认（${targetProbe.targets.map((entry) => entry.status).join('/')}）`);
     log(`商品数据自动采集开始：${logLine}；底单串行、询单/推广并行；模式 ${options.commit ? 'commit' : 'dry-run'}`
       + (options.skipPromotion ? `；**推广段有意跳过**（${SKIP_PROMOTION_REASON}）` : ''));
 

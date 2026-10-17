@@ -1,0 +1,122 @@
+{
+  "checkedAt": "2026-10-17T03:04:14.179Z",
+  "product": {
+    "label": "10月商品监控表-销售1部 / 商品底单",
+    "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+    "tableId": "tblvmGJfOL4OBYek",
+    "envFile": "E:/小红书/.env.feishu-rcnb.local",
+    "appId": "cli_aa5b5b983dfadc2c",
+    "read": {
+      "ok": true,
+      "fieldCount": 73
+    },
+    "recordCount": 3486,
+    "candidates": [
+      "商品ID",
+      "商品名称",
+      "-",
+      "当前在线",
+      "商品详情页跳出率",
+      "下单转化率",
+      "商品支付转化率",
+      "竞争力评分",
+      "搜索引导支付转化率",
+      "结构化详情引导转化率",
+      "结构化详情引导成交占比",
+      "字段 13",
+      "字段 18",
+      "字段 20",
+      "字段 25",
+      "字段 26"
+    ],
+    "write": {
+      "ok": true,
+      "recordId": "recvu1vYteiebg",
+      "field": "商品ID",
+      "sameValue": "591783333849",
+      "returnedIds": [
+        "recvu1vYteiebg"
+      ],
+      "readbackValue": "591783333849"
+    },
+    "status": "READ_WRITE_OK"
+  },
+  "inquiry": {
+    "label": "10月商品监控表-销售1部 / 询单",
+    "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+    "tableId": "tblb1uK5zQYd8yOq",
+    "envFile": "E:/小红书/.env.feishu-rcnb.local",
+    "mode": "read-only",
+    "status": "READ_OK",
+    "fieldCount": 39
+  },
+  "promotionInProduct": {
+    "label": "10月商品监控表-销售1部 / 推广底单",
+    "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+    "tableId": "tblDxXenp3vSg2SM",
+    "envFile": "E:/小红书/.env.feishu-rcnb.local",
+    "mode": "read-only",
+    "status": "READ_OK",
+    "fieldCount": 82
+  },
+  "promotionKeyword": {
+    "label": "10月推广数据-销售1部 / 关键词",
+    "baseToken": "CjLsb7qXRaeaC6srePtcLBkInTh",
+    "tableId": "tblSPWt8ZBs0iL7f",
+    "envFile": "E:/小红书/.env.feishu-rcnb.local",
+    "appId": "cli_aa5b5b983dfadc2c",
+    "read": {
+      "ok": true,
+      "fieldCount": 78
+    },
+    "recordCount": 516,
+    "candidates": [
+      "宝贝ID",
+      "场景名字",
+      "计划名字",
+      "单元名字",
+      "宝贝名称",
+      "词类型",
+      "词名字/词包名字",
+      "总成交成本",
+      "店铺收藏成本",
+      "总收藏加购成本",
+      "宝贝收藏加购成本",
+      "宝贝收藏成本",
+      "引导访问潜客占比",
+      "平均访问页面数",
+      "成交新客占比",
+      "人均成交笔数",
+      "人均成交金额"
+    ],
+    "write": {
+      "ok": true,
+      "recordId": "recvwzkR4CwE5k",
+      "field": "宝贝ID",
+      "sameValue": "892288895799",
+      "returnedIds": [
+        "recvwzkR4CwE5k"
+      ],
+      "readbackValue": "892288895799"
+    },
+    "status": "READ_WRITE_OK"
+  },
+  "promotionAudience": {
+    "label": "10月推广数据-销售1部 / 人群",
+    "baseToken": "CjLsb7qXRaeaC6srePtcLBkInTh",
+    "tableId": "tbl7CUAdPMKJwKYp",
+    "envFile": "E:/小红书/.env.feishu-rcnb.local",
+    "mode": "read-only",
+    "status": "READ_OK",
+    "fieldCount": 74
+  },
+  "september": {
+    "label": "9月商品监控表 / 商品底单",
+    "baseToken": "DQ2DbRinJaDx8Ss4gVFczsTXn3d",
+    "tableId": "tblzyf0oLvfbvN1l",
+    "envFile": "E:/小红书/.env.feishu-kcne.local",
+    "mode": "read-only",
+    "status": "READ_OK",
+    "fieldCount": 73
+  }
+}

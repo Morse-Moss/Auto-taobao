@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { importOutcomeOf } from '../scripts/run-product-data-job.mjs';
+import { importOutcomeOf, collectFailureNote } from '../scripts/run-product-data-job.mjs';
 import { classifyWorkflowError } from './workflow-receipt.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -66,4 +66,35 @@ test('结构：收据落盘必须排在「写后回读」之前', () => {
     '收据落盘排在了写后回读之后 ⇒ 回读一炸，这次「写成功」的导入就没有任何自证文件');
   assert.match(source, /process\.exitCode=2/u,
     '「写入已发生、写后回读失败」必须以 exit 2 收场，否则调用方分不清它与「真的没写成」');
+});
+
+// 2026-10-17 加：同一份纪律在**推广**导入器上原样复发（3 家 46 行写进去了、回读炸、
+// 收据没落盘 ⇒ 主链报「批量导入失败」再逐店重试 ⇒ 收据反而显示 plannedRows=0）。
+test('结构：推广导入器同样「先落收据、再回读」，回读失败以 exit 2 收场', () => {
+  const source = fs
+    .readFileSync(path.join(ROOT, 'skills/sycm-promotion-data/scripts/import-promotion-data.mjs'), 'utf8')
+    .replaceAll('\r\n', '\n');
+  const writeDone = source.indexOf('receipt.recordIds=ids;');
+  const readback = source.indexOf('receipt.afterRows={}');
+  const flushAfterWrite = source.indexOf('flush();', writeDone);
+  assert.ok(writeDone > 0 && readback > 0, '找不到写入/回读那两个锚点 —— 结构变了就要连这份守卫一起改');
+  assert.ok(flushAfterWrite > writeDone && flushAfterWrite < readback,
+    '推广导入器的收据落盘没有排在写后回读之前 ⇒ 回读一炸就什么自证都没有');
+  assert.match(source, /process\.exitCode=2/u,
+    '推广也必须把「写入已发生、写后回读失败」与「真的没写成」分成两个退出码');
+});
+
+test('原因提取要跳过源码回显，取到真正的 Error 那行（含状态码）', () => {
+  const stderr = [
+    'file:///D:/Retire/sycm-automation/skills/xws-to-feishu-base/scripts/feishu-client.mjs:54',
+    '      throw new Error(`Feishu API failed: ${response.status} ${payload ? `${payload.code ?? ""}` : describeBody(text)}`.trim());',
+    '      ^',
+    '',
+    'Error: Feishu API failed: 500 1254290 Too Many Requests',
+    '    at FeishuClient.#request (file:///D:/Retire/sycm-automation/skills/xws-to-feishu-base/scripts/feishu-client.mjs:54:13)',
+  ].join('\n');
+  const note = collectFailureNote(stderr);
+  assert.doesNotMatch(note, /\$\{response\.status\}/u,
+    '截断预算全花在模板源码上 ⇒ 收据里看不到状态码，判据就没了（2026-10-17 实测形态）');
+  assert.match(note, /Feishu API failed: 500/u);
 });

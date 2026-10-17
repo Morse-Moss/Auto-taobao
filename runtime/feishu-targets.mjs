@@ -122,6 +122,8 @@ export const PROFILES = Object.freeze({
     promotionDaily: Object.freeze({
       baseToken: 'CjLsb7qXRaeaC6srePtcLBkInTh',
       baseName: '10月推广数据-销售1部',
+      // 这张 base 也在别的组织（rcnbpuvafkct）⇒ 凭据必须用对方组织的应用（见 targetCredentials）。
+      envFile: 'E:/小红书/.env.feishu-rcnb.local',
       tables: Object.freeze({
         keyword: 'tblSPWt8ZBs0iL7f',
         audience: 'tbl7CUAdPMKJwKYp',
@@ -252,12 +254,23 @@ export function dailyReportTargets(name) {
 }
 
 /**
- * 店铺日报 base 的凭据（2026-10-16）：dailyReport.envFile 优先（跨租户 base 用对方组织的应用），
- * 没配则回落 profile 自己的 envFile（同租户时代的旧行为）。
- * 读写这张 base 的脚本一律用它，不要直接 loadFeishuCredentials('kcne')。
+ * **所有「写某张飞书 base」的动作唯一的取凭据入口**（2026-10-17 加）。
+ *
+ * 为什么必须按**目标**取，而不是按 profile 取：
+ * 2026-10-16 把 10 月的商品 base 与推广 base 换到别的组织（rcnbpuvafkct）后，
+ * 三张商品表 + 两张推广表仍然拿 kcne 的凭据去写 ⇒ 24 次导入全部 403/91403，
+ * 一行没写（证据 evidence/product-data-job-2026-10-16/…）。目标换了而凭据没跟着换，
+ * 是「配置改了一半」这类事故里最难自己发现的一种：收据上看是「导入失败」，看不出是「凭据不对」。
+ *
+ * 解析顺序：`target.envFile` → profile 自己的 envFile（同租户时代的旧行为，只为兼容
+ * 未登记 envFile 的旧目标）。**注册表里的新条目必须显式登记 envFile**，由
+ * `assertProductDataBaseCoverage` / `assertPromotionDailyBaseCoverage` 守着 ——
+ * 靠回落就是靠「刚好还是本租户」，而同一个文件名不会再提醒你目标已经跨组织了。
  */
-export function dailyReportCredentials(name, { read = readFileSync } = {}) {
-  const target = dailyReportTargets(name);
+export function targetCredentials(target, name, { read = readFileSync } = {}) {
+  if (!target || typeof target !== 'object') {
+    throw new Error('targetCredentials 需要一个目标对象（含 baseToken 的那份），收到 ' + JSON.stringify(target));
+  }
   const file = target.envFile ?? envFilePath(name);
   const values = parseEnvFile(read(file, 'utf8'));
   const appId = values.FEISHU_APP_ID;
@@ -266,6 +279,15 @@ export function dailyReportCredentials(name, { read = readFileSync } = {}) {
     throw new Error(`env file ${file} must define FEISHU_APP_ID and FEISHU_APP_SECRET`);
   }
   return { appId, appSecret, file, values };
+}
+
+/**
+ * 店铺日报 base 的凭据（2026-10-16）：dailyReport.envFile 优先（跨租户 base 用对方组织的应用），
+ * 没配则回落 profile 自己的 envFile（同租户时代的旧行为）。
+ * 读写这张 base 的脚本一律用它，不要直接 loadFeishuCredentials('kcne')。
+ */
+export function dailyReportCredentials(name, options = {}) {
+  return targetCredentials(dailyReportTargets(name), name, options);
 }
 
 // 推广日报的飞书目标：「月份 × 部门」注册表（2026-10-16 加，与商品数据链同款机制）。
@@ -286,6 +308,9 @@ export const PROMOTION_DAILY_MONTH_BASES = Object.freeze({
   '2026-10:sales1': Object.freeze({
     baseToken: 'CjLsb7qXRaeaC6srePtcLBkInTh',
     baseName: '10月推广数据-销售1部',
+    // 跨组织 base ⇒ 必填（不给就 fail-closed，见 assertPromotionDailyBaseCoverage）。
+    // 2026-10-17 实测：kcne 应用对这张只能读（链接分享级），写必 403/1063004。
+    envFile: 'E:/小红书/.env.feishu-rcnb.local',
     tables: Object.freeze({
       keyword: 'tblSPWt8ZBs0iL7f',
       audience: 'tbl7CUAdPMKJwKYp',
@@ -411,6 +436,9 @@ export const PRODUCT_DATA_MONTH_BASES = Object.freeze({
   '2026-09:sales1': Object.freeze({
     baseToken: 'DQ2DbRinJaDx8Ss4gVFczsTXn3d',
     baseName: '9月商品监控表',
+    // 本租户（kcne）的 base ⇒ 用 profile 自己的凭据文件。显式写出来而不是靠回落：
+    // 「不写就回落」正是 2026-10-16 那颗地雷的形状 —— 新条目忘了写，凭据就悄悄用了旧的。
+    envFile: 'E:/小红书/.env.feishu-kcne.local',
     productTable: 'tblzyf0oLvfbvN1l',
     inquiryTable: 'tbl1hHlRX0LYMvYY',
     promotionTable: 'tblaCPQMLWAq21Gw',
@@ -425,6 +453,9 @@ export const PRODUCT_DATA_MONTH_BASES = Object.freeze({
   '2026-10:sales1': Object.freeze({
     baseToken: 'LQgZbi78oaAmIYsc4urcwk9rnNf',
     baseName: '10月商品监控表-销售1部',
+    // ⚠️ 2026-10-16 换到 rcnbpuvafkct 组织后，kcne 应用对这张 base **连读都读不到**
+    // （实测 app 信息 / 表 / 字段 / 记录 全 403/91403）。凭据必须用对方组织的应用。
+    envFile: 'E:/小红书/.env.feishu-rcnb.local',
     productTable: 'tblvmGJfOL4OBYek',
     inquiryTable: 'tblb1uK5zQYd8yOq',
     promotionTable: 'tblDxXenp3vSg2SM',
@@ -432,6 +463,9 @@ export const PRODUCT_DATA_MONTH_BASES = Object.freeze({
   '2026-10:sales2': Object.freeze({
     baseToken: 'LLWcbIuVFaBm6yshX9Xc8DFZn9d',
     baseName: '10月商品监控表-销售2部',
+    // 同组织（rcnb）。销售2部当前在商品链停采名单里，但目标登记与凭据必须先对 ——
+    // 否则解停那天会以「采到了、写不进去」的形态失败。
+    envFile: 'E:/小红书/.env.feishu-rcnb.local',
     productTable: 'tbllkWhKDQqGU9DT',
     inquiryTable: 'tblomySKkoTFsatn',
     promotionTable: 'tbl3SkayTTo9OlJo',
@@ -523,6 +557,15 @@ export function assertProductDataBaseCoverage({
     for (const field of ['baseToken', 'baseName', 'productTable', 'inquiryTable']) {
       if (!entry?.[field]) problems.push(`「${key}」缺 ${field}`);
     }
+    // envFile 是**必填**（2026-10-17 加）：不写就回落到 profile 自己的凭据文件，
+    // 而跨组织的新 base 用本组织凭据写就是 403/91403（2026-10-16 真机发作，24/24 全灭）。
+    // 这条检查把「忘了写」从「跑一小时才发现」提前到「启动三秒就红」。
+    if (!entry?.envFile) {
+      problems.push(`「${key}」缺 envFile —— 跨组织 base 必须显式登记凭据文件`
+        + '（不写就会悄悄用本组织凭据去写别人的表，结果是采到了、写不进去）');
+    } else if (!/\.env\./u.test(entry.envFile)) {
+      problems.push(`「${key}」的 envFile=${JSON.stringify(entry.envFile)} 不像一个 .env 凭据文件路径`);
+    }
     for (const [field, pattern] of [['baseToken', /^[A-Za-z0-9]{20,}$/u], ['productTable', /^tbl[A-Za-z0-9]{10,}$/u],
       ['inquiryTable', /^tbl[A-Za-z0-9]{10,}$/u], ['promotionTable', /^tbl[A-Za-z0-9]{10,}$/u]]) {
       const value = entry?.[field];
@@ -548,6 +591,34 @@ export function assertProductDataBaseCoverage({
     throw new Error(`商品数据 base 注册表不自洽：\n- ${problems.join('\n- ')}`);
   }
   return { months, latest, departments: [...known].sort() };
+}
+
+/**
+ * 推广日报注册表的自洽体检（2026-10-17 加，与商品链同一条纪律）。
+ *
+ * 守的是同一件事：**每个登记条目都必须写明凭据文件**。2026-10-16 换组织后，
+ * 推广日报那条链会在 `batchCreateRecords` 才炸（读得到、写不了），
+ * 比商品链晚得多，也更容易被误读成「写后回读失败 = UNKNOWN_WRITE」而误重试。
+ */
+export function assertPromotionDailyBaseCoverage({ registry = PROMOTION_DAILY_MONTH_BASES } = {}) {
+  const problems = [];
+  for (const [key, entry] of Object.entries(registry)) {
+    if (!/^\d{4}-\d{2}:[a-z0-9]+$/u.test(key)) problems.push(`键「${key}」不是「YYYY-MM:部门」形状`);
+    if (!entry?.baseToken) problems.push(`「${key}」缺 baseToken`);
+    if (!entry?.baseName) problems.push(`「${key}」缺 baseName`);
+    for (const kind of ['keyword', 'audience']) {
+      if (!entry?.tables?.[kind]) problems.push(`「${key}」缺 tables.${kind}`);
+    }
+    if (!entry?.envFile) {
+      problems.push(`「${key}」缺 envFile —— 跨组织 base 必须显式登记凭据文件`);
+    } else if (!/\.env\./u.test(entry.envFile)) {
+      problems.push(`「${key}」的 envFile=${JSON.stringify(entry.envFile)} 不像一个 .env 凭据文件路径`);
+    }
+  }
+  if (problems.length > 0) {
+    throw new Error(`推广日报 base 注册表不自洽：\n- ${problems.join('\n- ')}`);
+  }
+  return { months: [...new Set(Object.keys(registry).map((key) => key.split(':')[0]))].sort() };
 }
 
 export function tableId(logicalName, name) {

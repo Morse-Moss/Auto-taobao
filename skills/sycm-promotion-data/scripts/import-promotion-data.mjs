@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { loadFeishuCredentials, productDataTargetsForShop } from '../../../runtime/feishu-targets.mjs';
+import { productDataTargetsForShop, targetCredentials } from '../../../runtime/feishu-targets.mjs';
 import { FeishuClient } from '../../xws-to-feishu-base/scripts/feishu-client.mjs';
 import { planPromotionImport, validatePromotionReport } from './promotion-core.mjs';
 
@@ -14,7 +14,7 @@ import { planPromotionImport, validatePromotionReport } from './promotion-core.m
 function parse(argv){const o={files:[],shops:[],apply:false,evidence:null,date:null};for(let i=0;i<argv.length;i++){if(argv[i]==='--file')o.files.push(argv[++i]);else if(argv[i]==='--shop')o.shops.push(argv[++i]);else if(argv[i]==='--apply')o.apply=true;else if(argv[i]==='--evidence')o.evidence=argv[++i];else if(argv[i]==='--date')o.date=argv[++i];else throw Error(`unknown argument ${argv[i]}`)}if(o.files.length!==o.shops.length||!o.files.length)throw Error('每个 --file 必须对应一个 --shop');if(!/^\d{4}-\d{2}-\d{2}$/u.test(o.date??''))throw Error('missing or invalid --date (expected YYYY-MM-DD)');o.evidence??=`evidence/promotion-import-${o.date}`;return o}
 function readZip(file){const r=spawnSync(process.env.PYTHON||'py',['-3','-c',`import zipfile,csv,json,sys,io\nsys.stdout.reconfigure(encoding='utf-8')\nz=sys.argv[1]\nwith zipfile.ZipFile(z) as a:\n n=[x for x in a.namelist() if x.lower().endswith('.csv')][0]\n t=a.read(n).decode('gb18030').lstrip('\\ufeff')\n rows=list(csv.reader(io.StringIO(t)))\nprint(json.dumps({'headers':rows[0],'rows':rows[1:],'csvName':n},ensure_ascii=False))`,file],{encoding:'utf8',stdio:['ignore','pipe','pipe']});if(r.status!==0)throw Error(`ZIP parse failed：${r.stderr?.trim()||r.error?.message||`exit ${r.status}`}`);return JSON.parse(r.stdout)}
 
-const o=parse(process.argv.slice(2)); const c=loadFeishuCredentials('kcne');
+const o=parse(process.argv.slice(2));
 
 // 每个 (file, shop) 先各自解析出自己的落点（base × 表）。一批店可能落在两张 base 里
 // （10 月起按部门分 base）⇒ 后面所有「读既存 / 计划 / 写 / 回读」都必须**按 base 分组**做：
@@ -33,6 +33,9 @@ for(let i=0;i<o.files.length;i++){
 
 const groups=[];
 for(const {target,items} of byBase.values()){
+  // 凭据按**组内的 base** 取（不是模块级取一次）：跨组织后同一批店可能落在不同组织的
+  // base 里，一个凭据写全部 = 一半 403（2026-10-16 商品链就是这么整批失败的）。
+  const c=targetCredentials(target,'kcne');
   const client=new FeishuClient({appId:c.appId,appSecret:c.appSecret,appToken:target.baseToken,tableId:target.promotionTable});
   const targetFields=await client.listFields(); const targetNames=targetFields.map(f=>f.fieldName);
   const existing=await client.listRecords();
@@ -42,18 +45,37 @@ for(const {target,items} of byBase.values()){
   for(const item of items){const key=item.headers.join('\u001f'); if(!byHeaders.has(key)) byHeaders.set(key,{headers:item.headers,rows:[]}); byHeaders.get(key).rows.push(...item.rows.map(values=>({values,shop:item.shop})));}
   for(const {headers,rows} of byHeaders.values()){
     const plan=planPromotionImport({rows:rows.map(r=>r.values),existing,headers,targetNames});
-    groups.push({target,client,existingRows:existing.length,records:plan.records,manifest:plan.manifest.map((m,index)=>({...m,shop:rows[index]?.shop??null}))});
+    groups.push({target,client,credentialFile:c.file,existingRows:existing.length,records:plan.records,manifest:plan.manifest.map((m,index)=>({...m,shop:rows[index]?.shop??null}))});
   }
 }
 
 mkdirSync(o.evidence,{recursive:true});
-const receipt={sources,paramDate:o.date,date:[...new Set(sources.flatMap(s=>s.observedDates))],mode:o.apply?'apply':'dry-run',sourceRows:sources.reduce((sum,s)=>sum+s.rows,0),existingRows:groups.reduce((sum,g)=>sum+g.existingRows,0),plannedRows:groups.reduce((sum,g)=>sum+g.records.length,0),duplicateRows:sources.reduce((sum,s)=>sum+s.rows,0)-groups.reduce((sum,g)=>sum+g.records.length,0),bases:groups.map(g=>({base:g.target.baseName,baseToken:g.target.baseToken,tableId:g.target.promotionTable,existingRows:g.existingRows,plannedRows:g.records.length})),manifest:groups.flatMap(g=>g.manifest)};
+const receipt={sources,paramDate:o.date,date:[...new Set(sources.flatMap(s=>s.observedDates))],mode:o.apply?'apply':'dry-run',sourceRows:sources.reduce((sum,s)=>sum+s.rows,0),existingRows:groups.reduce((sum,g)=>sum+g.existingRows,0),plannedRows:groups.reduce((sum,g)=>sum+g.records.length,0),duplicateRows:sources.reduce((sum,s)=>sum+s.rows,0)-groups.reduce((sum,g)=>sum+g.records.length,0),bases:groups.map(g=>({base:g.target.baseName,baseToken:g.target.baseToken,tableId:g.target.promotionTable,credentialFile:g.credentialFile,existingRows:g.existingRows,plannedRows:g.records.length})),manifest:groups.flatMap(g=>g.manifest)};
+const receiptPath=`${o.evidence}/receipt.json`;
+const flush=()=>{mkdirSync(o.evidence,{recursive:true});writeFileSync(receiptPath,JSON.stringify(receipt,null,2));};
 if(o.apply){
   const ids=[];
   for(const g of groups){for(let i=0;i<g.records.length;i+=500)ids.push(...await g.client.batchCreateRecords(g.records.slice(i,i+500)));}
   receipt.recordIds=ids;
+  // **写已经发生 ⇒ 立刻落收据**，再去做「写后回读行数」这件锦上添花的事。
+  // 与 import-product-data.mjs 2026-10-06 那条纪律同一份（那次是商品底单：写成功 → 回读炸 →
+  // 收据没落地 ⇒ 数据一行不少、却一个收据都没有 ⇒ 调用方只能把这次导入记成失败）。
+  // 2026-10-17 在**推广**上原样复发了：3 家（46 行）批量写入成功、随后 listRecords 回读炸，
+  // 收据没落盘 ⇒ 主链记成「推广 批量导入失败」，再逐店重试（幂等，0 行）⇒ 收据上反而是
+  // 「sourceRows 25 / plannedRows 0」，读起来像「本来就没新数据」。这是同一个坑的第二次。
+  flush();
   // 写后回读按 base 各自做：一个总数会把「A 表写成了、B 表没写成」盖住。
   receipt.afterRows={};
-  for(const g of groups) receipt.afterRows[g.target.baseToken]=(await g.client.listRecords()).length;
+  try{
+    for(const g of groups) receipt.afterRows[g.target.baseToken]=(await g.client.listRecords()).length;
+  }catch(error){
+    receipt.readbackError=String(error?.message??error);
+    flush();
+    console.error(`推广已写入但写后回读失败（UNKNOWN_WRITE，退出码 2）：${receipt.readbackError}`);
+    console.log(JSON.stringify(receipt,null,2));
+    // 退出码 **2 ＝「写入已发生、写后回读失败」**，与 1（真的没写成）分开报。
+    // 调用方据此走「先回读再决定要不要重试」，而不是把它当成一次普通失败去逐店重来。
+    process.exitCode=2;
+  }
 }
-writeFileSync(`${o.evidence}/receipt.json`,JSON.stringify(receipt,null,2)); console.log(JSON.stringify(receipt,null,2));
+flush(); console.log(JSON.stringify(receipt,null,2));

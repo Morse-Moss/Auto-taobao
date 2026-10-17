@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { collectingShopKeys } from '../../../runtime/browser-ports.mjs';
-import { activeProfileName, loadFeishuCredentials, promotionDailyTargets } from '../../../runtime/feishu-targets.mjs';
+import { activeProfileName, promotionDailyTargets, targetCredentials } from '../../../runtime/feishu-targets.mjs';
 import { FeishuClient } from '../../xws-to-feishu-base/scripts/feishu-client.mjs';
 import { expectedUnits, judgePromotionCompleteness, receiptFacts, shopSubjectSets } from './promotion-completeness-core.mjs';
 
@@ -78,7 +78,9 @@ async function main(argv) {
   const activeProfile = profile ?? activeProfileName();
   // 按月解析（2026-10-16）：与导入器同一口径，缺月 fail-closed，不回落上个月。
   const target = promotionDailyTargets(activeProfile, date);
-  const credentials = loadFeishuCredentials(activeProfile);
+  // 凭据按目标取（2026-10-17）：与导入器同一份凭据，避免「导入器用 A 组织凭据写、
+  // 对账器用 B 组织凭据读」⇒ 读回 0 行、却把「读不到」当成「没写」。
+  const credentials = targetCredentials(target, activeProfile);
   if (!target.baseToken) { console.error(`推广日报目标未完整配置（profile=${activeProfile}）`); return 2; }
   const feishuRecords = {};
   for (const kind of ['keyword', 'audience']) {

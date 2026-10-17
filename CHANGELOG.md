@@ -15,6 +15,38 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.2] - 2026-10-17
+
+修「凭据地雷」：商品链（含推广段）与推广日报链的四个写入口改为**按目标取凭据**。
+2026-10-17 10:04 那一轮是这个缺陷的第一次真机发作：8 家店铺三段采集 15 分钟全部成功、
+24 次导入全部 403/91403、飞书零写入，退出码 1，而收据把它归成 `FAILED/UNCLASSIFIED`
+（告警里还写着「这一轮不需要你在浏览器里做什么」）。
+
+1. **背景**：1.11.0/1.12.0 把 10 月的商品 base（1 部/2 部）与推广 base 换到外组织 rcnbpuvafkct，
+   目标 token 换对了、**凭据没跟着换** —— 四个写入口仍 `loadFeishuCredentials('kcne')`。
+   实测两套凭据对三张商品表：kcne 连 `listFields` 都 403/91403，rcnb 组织应用读 3486/774/1916 行全通。
+   环境预检没拦住，因为它只验「凭据文件存在」，不验「这张 base 认不认这份凭据」。
+2. **改动**：① `targetCredentials(target)` 成为「写某张 base 用谁的身份」的唯一入口
+   （`dailyReportCredentials` 改成它的薄包装）；② 商品 × 月份×部门 与 推广日报 × 月份 两张注册表
+   **每条都必须显式登记 `envFile`**（新增 `assertProductDataBaseCoverage` 的 envFile 检查与
+   `assertPromotionDailyBaseCoverage`），漏写就在启动时红，而不是跑一小时才发现；
+   ③ 四个写入口 + 推广对账器切到 `targetCredentials`，收据里记下 `credentialFile`；
+   ④ 新增开工前「目标 base 连通性预检」`runtime/feishu-target-preflight.mjs`，接在商品链
+   **起浏览器之前**：授权类拒绝（403/91403/1063004/Forbidden/无权限）当场拦下，
+   网络类不可达只记一笔不拦路（否则一次抖动就让整轮不采数据）；
+   ⑤ 导入失败的原因（子进程 stderr 那句原话）现在会落进缺口文案 —— 上一版只写「导入失败」四个字，
+   分类器于是只能归 `FAILED/UNCLASSIFIED`；同时 `classifyWorkflowError` 认 403/91403/1063004/凭据。
+   退出码 2（UNKNOWN_WRITE）**刻意不带原因**：它的文案本身已表达「不知道写没写」，
+   掺进 stderr 会把「权限拒绝」和「回读失败」搅在一起。
+3. **验证**：① 定向用例 662/662（四个写入口所在技能组）+ `runtime/*.test.mjs` 1332/1332，
+   含新增 6 条（注册表必填 envFile / targetCredentials 按目标取 / 四个写入口源码接线守卫 /
+   探针 AUTH vs UNREACHABLE / 授权类失败归 HUMAN_REQUIRED）；
+   ② 幂等写探针（原值写回 + 独立回读，`evidence/credential-fix-20261017/probe.json`）：
+   10月商品监控表-销售1部 商品底单 写回「商品ID」原值、回读一致；10月推广数据-销售1部 关键词
+   写回「宝贝ID」原值、回读一致；商品/询单/推广/人群四张表读字段全通；9月商品监控表仍走 kcne 凭据。
+   ③ 真机：`run-product-data-job.mjs --date yesterday --commit --notify --batches 5` 补跑 2026-10-16，
+   证据目录 `evidence/product-data-job-2026-10-16/<runId>/`。
+
 ## [1.12.1] - 2026-10-16
 
 修缺陷 ㊸：「挂住等人 ＋ 自动续跑」这条能力建成以来**一次都没真正发生过**（挂了 4 小时，第一次探测就续跑）。

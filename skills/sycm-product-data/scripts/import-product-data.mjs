@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { loadFeishuCredentials, productDataTargetsForShop } from '../../../runtime/feishu-targets.mjs';
+import { productDataTargetsForShop, targetCredentials } from '../../../runtime/feishu-targets.mjs';
 import { FeishuClient } from '../../xws-to-feishu-base/scripts/feishu-client.mjs';
 import { PRODUCT_HEADERS, planProductImport } from './product-core.mjs';
 
@@ -21,14 +21,16 @@ async function main(){
   const raw=rowsFromXls(options.files[0]);
   if(raw.length<6||raw[4].length!==PRODUCT_HEADERS.length)throw new Error('商品报表缺少 38 列标准表头');
   const parsed=raw.slice(5).filter((row)=>row.length===PRODUCT_HEADERS.length&&/^\d{4}-\d{2}-\d{2}$/u.test(row[0])).map((row)=>({header:PRODUCT_HEADERS,row,sourceShop:options.shop}));
-  const {appId,appSecret}=loadFeishuCredentials('kcne');
+  // 凭据按**目标**取（2026-10-17）：商品 base 按月 × 部门换，10 月起在别的组织，
+  // 用本组织 kcne 凭据连 listRecords 都 403/91403（2026-10-16 实测 24/24 全灭）。
   const target=productDataTargetsForShop(options.shop,options.date,'kcne');
+  const {appId,appSecret,file:credentialFile}=targetCredentials(target,'kcne');
   const client=new FeishuClient({appId,appSecret,appToken:target.baseToken,tableId:target.productTable});
   const existing=await client.listRecords();
   const plan=planProductImport({rows:parsed,existing});
   mkdirSync(options.evidence,{recursive:true});
   const receiptPath=path.join(options.evidence,'receipt.json');
-  const receipt={source:options.files[0],shop:options.shop,date:options.date,base:target.baseName,baseToken:target.baseToken,sourceRows:parsed.length,existingRows:existing.length,plannedRows:plan.records.length,mode:options.apply?'apply':'dry-run',manifest:plan.manifest};
+  const receipt={source:options.files[0],shop:options.shop,date:options.date,base:target.baseName,baseToken:target.baseToken,credentialFile,sourceRows:parsed.length,existingRows:existing.length,plannedRows:plan.records.length,mode:options.apply?'apply':'dry-run',manifest:plan.manifest};
   const flush=()=>writeFileSync(receiptPath,JSON.stringify(receipt,null,2));
   if(!options.apply){flush();console.log(JSON.stringify(receipt,null,2));return;}
   const ids=[];
