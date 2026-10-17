@@ -1,10 +1,10 @@
 {
   "version": 1,
   "workflow": "daily-report",
-  "runId": "daily-2026-10-16-37316",
+  "runId": "daily-2026-10-16-88384",
   "date": "2026-10-16",
-  "status": "RUNNING",
-  "startedAt": "2026-10-16T09:43:44.661Z",
+  "status": "COMPLETED",
+  "startedAt": "2026-10-16T23:03:28.257Z",
   "stages": [
     {
       "name": "ensure-instances",
@@ -30,5 +30,23 @@
       "name": "batch-chain",
       "status": "PENDING"
     }
-  ]
+  ],
+  "finishedAt": "2026-10-16T23:33:49.415Z",
+  "exitCode": 0,
+  "completionNotice": {
+    "alertId": "daily-ok-20261016",
+    "delivered": false,
+    "suppressed": true,
+    "reason": "同一条告警 0 分钟前刚发过（窗口 6 小时），不重复发",
+    "tables": [
+      {
+        "name": "底单",
+        "rows": 8
+      },
+      {
+        "name": "询单表",
+        "rows": 13
+      }
+    ]
+  }
 }

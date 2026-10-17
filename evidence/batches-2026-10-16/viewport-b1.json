@@ -10,7 +10,7 @@
     {
       "shop": "里可林淘宝",
       "proxyPort": 19041,
-      "targetId": "25AC4D5299FC0A24AAC69CB9D8F416DA",
+      "targetId": "33D34ACC9211BA1EE03B57C33C7D320F",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,
@@ -24,7 +24,7 @@
     {
       "shop": "网林天猫",
       "proxyPort": 19042,
-      "targetId": "40786ADE1DEACE024F22B7B1819297B6",
+      "targetId": "A791970392FB83AC4F8E74DE6391F3A5",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,
@@ -38,7 +38,7 @@
     {
       "shop": "盖文淘宝",
       "proxyPort": 19043,
-      "targetId": "0FA24F67F6EDB179C7F111A9D6343B21",
+      "targetId": "3EEE5FB0D36A5746DFB573C6B3767D38",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,
@@ -52,7 +52,7 @@
     {
       "shop": "盖文天猫",
       "proxyPort": 19045,
-      "targetId": "F0C4461326FA5B074BA7BB4918139875",
+      "targetId": "5A7C3E42BF1199E6C38C5206D2E1B88F",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,
@@ -66,7 +66,7 @@
     {
       "shop": "科塔淘宝",
       "proxyPort": 19044,
-      "targetId": "600919745EFDB03F0B3D5CE21D4BF11E",
+      "targetId": "48FA46C21FA149A72D56FD4816FA243B",
       "width": 1506,
       "height": 642,
       "dpr": 1.25,

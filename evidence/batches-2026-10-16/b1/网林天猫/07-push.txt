@@ -1,0 +1,32 @@
+
+===== 2026-10-16T23:11:44.557Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-16 --proxy http://127.0.0.1:19023 --shop-key 网林天猫 --commit --shop-xlsx C:\Users\Administrator\Downloads\日报_20261017_65141cc3c0fd0c526f65e7da28ff800b.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261017_071100.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 网林天猫 ↔ 源产物店名 网林家居旗舰店 一致（证据目录 daily-report-2026-10-16-网林天猫）
+[audit] 已记 push/ok id=180
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "reczz28OG6rPR8a0",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-16-网林天猫\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-16-网林天猫",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 2386,
+  "recordCountAfter": 2387,
+  "verifiedFields": 236,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 236,
+    "shopName": "网林家居旗舰店",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1792080000000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---
