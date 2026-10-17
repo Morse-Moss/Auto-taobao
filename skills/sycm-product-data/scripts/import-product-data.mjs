@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { productDataTargetsForShop, targetCredentials } from '../../../runtime/feishu-targets.mjs';
 import { FeishuClient } from '../../xws-to-feishu-base/scripts/feishu-client.mjs';
 import { PRODUCT_HEADERS, planProductImport } from './product-core.mjs';
+import { batchCreateWithLedger, writeFailureIsCertain } from '../../../runtime/import-write-ledger.mjs';
 
 // `--date` 是**必填**（2026-09-30 加）：商品数据的飞书 base 按月 × 按部门换，而这个脚本
 // 只拿得到 `--shop`（哪家店）。没有数据日期就无法解析出该写哪张 base ——
@@ -33,13 +34,22 @@ async function main(){
   const receipt={source:options.files[0],shop:options.shop,date:options.date,base:target.baseName,baseToken:target.baseToken,credentialFile,sourceRows:parsed.length,existingRows:existing.length,plannedRows:plan.records.length,mode:options.apply?'apply':'dry-run',manifest:plan.manifest};
   const flush=()=>writeFileSync(receiptPath,JSON.stringify(receipt,null,2));
   if(!options.apply){flush();console.log(JSON.stringify(receipt,null,2));return;}
-  const ids=[];
-  for(let i=0;i<plan.records.length;i+=500)ids.push(...await client.batchCreateRecords(plan.records.slice(i,i+500)));
-  receipt.recordIds=ids;
-  // **写已经发生 ⇒ 立刻落收据**，再去做「写后回读行数」这件锦上添花的事。
-  // 2026-10-06 盖文淘宝/底单 实测：写后回读收到 HTML（网关/限流页）而抛错，而收据落盘排在它后面
-  // ⇒ 数据一行不少、却一个收据都没有 ⇒ 调用方只能把这次导入记成「失败」。
-  flush();
+  // 逐批写入 + 每批落盘（2026-10-17 修，模块 runtime/import-write-ledger.mjs）：
+  // 原先 ids 攒在局部变量里、全部写完才赋值落盘 ⇒ 「第二批抛错」把第一批已写入的行一起丢掉，
+  // 收据文件一个都不生成。推广段当天就是这么丢掉 46 行的证据（sales1 目录空的）。
+  // **写已经发生 ⇒ 立刻落收据**（2026-10-06 那条纪律保留）：落盘排在「写后回读」之前。
+  let writeFailed=false;
+  try{
+    await batchCreateWithLedger({client,records:plan.records,receipt,flush});
+  }catch(error){
+    // 4xx（参数/权限/限流）＝确定性没写成 ⇒ 1；5xx/超时/网络 ⇒ 可能已写入 ⇒ 2（UNKNOWN_WRITE）。
+    flush();
+    const certain=writeFailureIsCertain(receipt.writeError);
+    console.error(`底单写入未完成（${certain?'确定性未写成，退出码 1':'可能已写入，UNKNOWN_WRITE 退出码 2'}）：${receipt.writeError}`
+      + `；已确认写入 ${receipt.recordIds.length} 行${receipt.writeBatches?`（${receipt.writeBatches} 批）`:''}`);
+    process.exitCode=certain?1:2;
+    writeFailed=true;
+  }
   try{receipt.afterRows=(await client.listRecords()).length;flush();}
   catch(error){
     receipt.readbackError=String(error?.message??error);
@@ -52,5 +62,6 @@ async function main(){
     return;
   }
   console.log(JSON.stringify(receipt,null,2));
+  if(writeFailed) return;
 }
 main().catch((e)=>{console.error(`导入失败：${e.message}`);process.exitCode=1});

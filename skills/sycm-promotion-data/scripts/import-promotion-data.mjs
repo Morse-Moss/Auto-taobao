@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { productDataTargetsForShop, targetCredentials } from '../../../runtime/feishu-targets.mjs';
 import { FeishuClient } from '../../xws-to-feishu-base/scripts/feishu-client.mjs';
 import { planPromotionImport, validatePromotionReport } from './promotion-core.mjs';
+import { batchCreateWithLedger, writeFailureIsCertain } from '../../../runtime/import-write-ledger.mjs';
 
 // `--date` 是**必填**（2026-10-16 加）：商品数据的飞书 base 按月 × 按部门换（见
 // `runtime/feishu-targets.mjs` 的 PRODUCT_DATA_MONTH_BASES），而这个脚本只拿得到 `--shop`
@@ -54,24 +55,36 @@ const receipt={sources,paramDate:o.date,date:[...new Set(sources.flatMap(s=>s.ob
 const receiptPath=`${o.evidence}/receipt.json`;
 const flush=()=>{mkdirSync(o.evidence,{recursive:true});writeFileSync(receiptPath,JSON.stringify(receipt,null,2));};
 if(o.apply){
-  const ids=[];
-  for(const g of groups){for(let i=0;i<g.records.length;i+=500)ids.push(...await g.client.batchCreateRecords(g.records.slice(i,i+500)));}
-  receipt.recordIds=ids;
-  // **写已经发生 ⇒ 立刻落收据**，再去做「写后回读行数」这件锦上添花的事。
-  // 与 import-product-data.mjs 2026-10-06 那条纪律同一份（那次是商品底单：写成功 → 回读炸 →
-  // 收据没落地 ⇒ 数据一行不少、却一个收据都没有 ⇒ 调用方只能把这次导入记成失败）。
-  // 2026-10-17 在**推广**上原样复发了：3 家（46 行）批量写入成功、随后 listRecords 回读炸，
-  // 收据没落盘 ⇒ 主链记成「推广 批量导入失败」，再逐店重试（幂等，0 行）⇒ 收据上反而是
-  // 「sourceRows 25 / plannedRows 0」，读起来像「本来就没新数据」。这是同一个坑的第二次。
-  flush();
+  let writeFailed=false;
+  // 逐批写入 + 每批落盘（2026-10-17 修）：原先 ids 攒在局部变量里、全部写完才赋值落盘，
+  // 于是「第二批抛错」把第一批已写入的行一起丢掉，收据文件**一个都不生成**
+  // （当天 `promotion-import/sales1/` 就是空目录）。现在任何时刻炸掉都留着「到那一刻为止
+  // 确认写进去的行」。模块：runtime/import-write-ledger.mjs。
+  try{
+    for(const g of groups) await batchCreateWithLedger({client:g.client,records:g.records,receipt,flush});
+  }catch(error){
+    // 写入阶段的失败也要分两类：4xx（参数/权限/限流）＝确定性没写成 ⇒ 1；
+    // 5xx/超时/网络/解析不出状态码 ⇒ **可能已经写入** ⇒ 2（UNKNOWN_WRITE，先回读再决定重试）。
+    // 2026-10-17 那趟就是这里退成了 1，主链据此逐店重试，收据反而变成「本来就没新数据」。
+    flush();
+    const certain=writeFailureIsCertain(receipt.writeError);
+    console.error(`推广写入未完成（${certain?'确定性未写成，退出码 1':'可能已写入，UNKNOWN_WRITE 退出码 2'}）：${receipt.writeError}`
+      + `；已确认写入 ${receipt.recordIds.length} 行${receipt.writeBatches?`（${receipt.writeBatches} 批）`:''}`);
+    console.log(JSON.stringify(receipt,null,2));
+    process.exitCode=certain?1:2;
+    writeFailed=true;
+  }
   // 写后回读按 base 各自做：一个总数会把「A 表写成了、B 表没写成」盖住。
+  // 写入阶段就让异常中断时仍做一次回读：那是「到底写了没写」唯一的现场判据，
+  // 而退出码 2 的处置本来就是「先回读再决定要不要重试」—— 这里把回读做在当场。
   receipt.afterRows={};
   try{
     for(const g of groups) receipt.afterRows[g.target.baseToken]=(await g.client.listRecords()).length;
   }catch(error){
     receipt.readbackError=String(error?.message??error);
     flush();
-    console.error(`推广已写入但写后回读失败（UNKNOWN_WRITE，退出码 2）：${receipt.readbackError}`);
+    if(writeFailed) console.error(`写入失败后回读也失败，结果仍未知：${receipt.readbackError}`);
+    else console.error(`推广已写入但写后回读失败（UNKNOWN_WRITE，退出码 2）：${receipt.readbackError}`);
     console.log(JSON.stringify(receipt,null,2));
     // 退出码 **2 ＝「写入已发生、写后回读失败」**，与 1（真的没写成）分开报。
     // 调用方据此走「先回读再决定要不要重试」，而不是把它当成一次普通失败去逐店重来。

@@ -106,3 +106,22 @@ test('完成通知一律不带技术定位块（用户定稿第 1 条：成功�
     }
   }
 });
+
+// 2026-10-17 加：失败告警在**同一业务日**只报一次（用户反馈「能修好的也提前报一遍，后来又报一遍」）。
+//
+// 真机形态：10-16 这天先停 product-import 发一条失败告警（02:24）、补跑那轮停 promotion-import
+// 又发一条（03:31），随后补齐再发一条「已恢复」—— 三条消息讲同一件事。
+// 判据分两端：
+//   ① 「同一业务日只报一次」的口径真的被传下去了（ignoreFingerprintChange）；
+//   ② 「已经恢复过、之后又坏了」仍要能发出去 —— 否则昨天好了今天坏会被自己的历史记录永久挡住。
+test('商品链：失败告警传了「同一业务日只报一次」，并区分「恢复过又重新坏」', () => {
+  const source = read(PRODUCT_JOB);
+  assert.match(source, /ignoreFingerprintChange/u,
+    '商品链没有把「同一业务日只报一次」传下去 ⇒ 停在另一段就会再发一条');
+  assert.match(source, /readAlertThrottleEntry\(\{ alertId: `product-ok-\$\{String\(date\)\.replace\(\/-\/gu, ''\)\}` \}\)/u,
+    '没有读「已恢复」那条记录 ⇒ 分不清「一直没好」和「好了又坏」');
+  const recovered = source.indexOf('recoveredSinceLastFailure');
+  assert.ok(recovered > 0, '找不到 recoveredSinceLastFailure 判据');
+  assert.match(source, /ignoreFingerprintChange: !recoveredSinceLastFailure/u,
+    '「恢复过又重新坏」时必须恢复正常判据（允许发），否则新故障会被历史记录挡住');
+});

@@ -52,36 +52,52 @@ test('接线：exit 1 的缺口仍归 FAILED，不被 UNKNOWN_WRITE 吞掉', () 
   assert.equal(classified.class, 'FAILED');
 });
 
-test('结构：收据落盘必须排在「写后回读」之前', () => {
-  // 2026-10-06 那次的根因就是这个顺序反了：写成功 → 回读炸 → 收据那行根本没跑到。
+test('结构：底单导入器不许自己攒 ids，回读必须排在写入之后', () => {
+  // 2026-10-06 那次的根因是「写成功 → 回读炸 → 收据那行根本没跑到」。
+  // 2026-10-17 发现同一条纪律还有下半截：**自己攒 ids**（`const ids=[]` + 循环 push）等于把
+  // 「已写」的证据押在「后面不再出错」上 —— 第二批一抛错，第一批的行连同收据一起消失
+  // （推广段当天就是这么丢掉 46 行的证据，`promotion-import/sales1/` 是空目录）。
   const source = fs
     .readFileSync(path.join(ROOT, 'skills/sycm-product-data/scripts/import-product-data.mjs'), 'utf8')
     .replaceAll('\r\n', '\n');
-  const writeDone = source.indexOf('receipt.recordIds=ids;');
-  const flushAfterWrite = source.indexOf('flush();', writeDone);
+  assert.doesNotMatch(source, /const ids=\[\]/u,
+    '导入器又在自己攒 ids 了 ⇒ 写入中途抛错会把「已确认写入的行」一起丢掉，改用 runtime/import-write-ledger.mjs');
+  const ledgerCall = source.indexOf('batchCreateWithLedger(');
   const readback = source.indexOf('receipt.afterRows=');
-  assert.ok(writeDone > 0 && readback > 0, '找不到写入/回读那两个锚点 —— 结构变了就要连这份守卫一起改');
-  assert.ok(flushAfterWrite > writeDone, '写完之后没有立刻落收据');
-  assert.ok(flushAfterWrite < readback,
-    '收据落盘排在了写后回读之后 ⇒ 回读一炸，这次「写成功」的导入就没有任何自证文件');
+  assert.ok(ledgerCall > 0 && readback > 0, '找不到写入/回读那两个锚点 —— 结构变了就要连这份守卫一起改');
+  assert.ok(ledgerCall < readback, '写后回读排在了逐批写入之前 —— 顺序反了');
   assert.match(source, /process\.exitCode=2/u,
     '「写入已发生、写后回读失败」必须以 exit 2 收场，否则调用方分不清它与「真的没写成」');
+  assert.match(source, /writeFailureIsCertain/u,
+    '写入阶段的失败也要分类：4xx＝确定没写成(1)，5xx/网络＝可能已写入(2)');
 });
 
-// 2026-10-17 加：同一份纪律在**推广**导入器上原样复发（3 家 46 行写进去了、回读炸、
-// 收据没落盘 ⇒ 主链报「批量导入失败」再逐店重试 ⇒ 收据反而显示 plannedRows=0）。
-test('结构：推广导入器同样「先落收据、再回读」，回读失败以 exit 2 收场', () => {
+// 2026-10-17 加：同一份纪律在**推广**导入器上原样复发（3 家 46 行写进去了、随后批量接口抛错、
+// 收据没落盘 ⇒ 主链报「批量导入失败、exit 1」⇒ 逐店重试 ⇒ 收据反而显示 plannedRows=0）。
+test('结构：推广导入器同样「逐批落盘、再回读」，且写入失败按 1/2 分类', () => {
   const source = fs
     .readFileSync(path.join(ROOT, 'skills/sycm-promotion-data/scripts/import-promotion-data.mjs'), 'utf8')
     .replaceAll('\r\n', '\n');
-  const writeDone = source.indexOf('receipt.recordIds=ids;');
+  assert.doesNotMatch(source, /const ids=\[\]/u,
+    '推广导入器又在自己攒 ids 了 ⇒ 中途抛错会把 46 行这种「已写入」的证据一起丢掉');
+  const ledgerCall = source.indexOf('batchCreateWithLedger(');
   const readback = source.indexOf('receipt.afterRows={}');
-  const flushAfterWrite = source.indexOf('flush();', writeDone);
-  assert.ok(writeDone > 0 && readback > 0, '找不到写入/回读那两个锚点 —— 结构变了就要连这份守卫一起改');
-  assert.ok(flushAfterWrite > writeDone && flushAfterWrite < readback,
-    '推广导入器的收据落盘没有排在写后回读之前 ⇒ 回读一炸就什么自证都没有');
-  assert.match(source, /process\.exitCode=2/u,
-    '推广也必须把「写入已发生、写后回读失败」与「真的没写成」分成两个退出码');
+  assert.ok(ledgerCall > 0 && readback > 0, '找不到写入/回读那两个锚点 —— 结构变了就要连这份守卫一起改');
+  assert.ok(ledgerCall < readback, '推广的写后回读排在了逐批写入之前');
+  assert.match(source, /process\.exitCode=certain\?1:2/u,
+    '写入阶段的失败没分类：4xx 与 5xx 混成一个退出码，调用方要么漏写要么重复写');
+});
+
+test('结构：询单与推广日报导入器也不许自己攒 ids（同病根第三、四例）', () => {
+  for (const rel of [
+    'skills/sycm-inquiry-data/scripts/import-inquiry-data.mjs',
+    'skills/sycm-alimama-daily-report/scripts/import-promotion-daily-report.mjs',
+  ]) {
+    const source = fs.readFileSync(path.join(ROOT, rel), 'utf8').replaceAll('\r\n', '\n');
+    assert.doesNotMatch(source, /const ids = \[\]|const ids=\[\]/u, `${rel} 仍在自己攒 ids`);
+    assert.match(source, /batchCreateWithLedger\(/u, `${rel} 没有接逐批落盘的写入账本`);
+    assert.match(source, /writeFailureIsCertain/u, `${rel} 没有区分「确定没写成」与「可能已写入」`);
+  }
 });
 
 test('原因提取要跳过源码回显，取到真正的 Error 那行（含状态码）', () => {

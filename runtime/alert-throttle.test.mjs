@@ -47,6 +47,34 @@ test('告警去重：同一条编号在时间窗内不重复发，但「停的�
     '记录的时间在未来（时钟回拨/手改过），不当作「刚发过」');
 });
 
+test('同一业务日只报一次失败（ignoreFingerprintChange）：停的地方变了也不再发', () => {
+  // 2026-10-17 真机形态：同一个业务日（10-16）先停 product-import 发了一条失败告警（02:24），
+  // 补跑那轮又停在 promotion-import（03:31）—— 指纹不同 ⇒ 旧口径「算新信息」⇒ 又发一条。
+  // 收信人看到的是「没收齐 → 还是没收齐」，而这两条要表达的是同一件事。
+  const now = new Date('2026-10-17T03:40:00Z');
+  const previous = {
+    alertId: 'product-round-20261016',
+    fingerprint: 'FAILED|UNCLASSIFIED|product-import',
+    sentAt: '2026-10-17T02:24:56Z',
+  };
+  const movedFingerprint = 'TRANSIENT_EXTERNAL|EXTERNAL_RETRYABLE|promotion-import';
+
+  const legacy = resolveAlertDedup({ previous, alertId: previous.alertId, fingerprint: movedFingerprint, now });
+  assert.equal(legacy.send, true, '不加这一档时它确实会再发一次 —— 这正是要砍掉的那条');
+
+  const once = resolveAlertDedup({ previous, alertId: previous.alertId, fingerprint: movedFingerprint, now, ignoreFingerprintChange: true });
+  assert.equal(once.send, false, '同一业务日已经报过一次、之后没恢复过 ⇒ 停在哪一段都不再重发');
+  assert.match(once.reason, /同一业务日只报一次/u, '不发也要说清为什么，否则排查的人以为去重坏了');
+  assert.match(once.reason, /promotion-import/u, '原因里要写明这一轮停在哪，信息不能丢');
+
+  // 过了窗口仍要发：那说明这一天还坏着、而且已经隔了很久
+  const later = new Date('2026-10-17T09:00:00Z');
+  assert.equal(resolveAlertDedup({ previous, alertId: previous.alertId, fingerprint: movedFingerprint, now: later, ignoreFingerprintChange: true }).send, true);
+
+  // 换一个业务日就是另一条
+  assert.equal(resolveAlertDedup({ previous, alertId: 'product-round-20261017', fingerprint: movedFingerprint, now, ignoreFingerprintChange: true }).send, true);
+});
+
 test('读记录：按编号取，不读文件顶层 —— 顶层那条可能是**另一条链**刚写的', () => {
   const file = tmpThrottle();
   writeAlertThrottle({ alertId: 'daily-round-20260924', fingerprint: 'ROUND', sentAt: '2026-09-24T01:00:00.000Z' }, file);

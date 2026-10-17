@@ -41,12 +41,23 @@ export const ALERT_THROTTLE_FILE = path.join(path.resolve(import.meta.dirname, '
  * 该不该发。**纯函数** —— 调用方把「上次那条记录」喂进来，它只回答发不发。
  *
  * `previous === null`（从没发过）⇒ 发。`alertId` 为空 ⇒ 发（没有编号就去重不了，宁可多发）。
+ *
+ * `ignoreFingerprintChange`（2026-10-17 加，默认 false 保持既有链行为）：
+ * 置 true 时，**同一个编号在窗口内一律不发**，不管指纹（停在哪一段）变没变。
+ *
+ * 为什么需要这一档：商品链在 2026-10-17 一天里给同一个业务日发了**两条失败告警**
+ * （第一轮停在 `product-import`、补跑那轮停在 `promotion-import`），收信人看到的是
+ * 「没收齐 → 还是没收齐 → 已恢复」三条消息讲同一件事。对收信人来说，**中途换了个地方停**
+ * 并不是新信息 —— 他要的是「要不要我动手」和「最后好没好」。
+ *
+ * 这一档**不能**顺手把「好了又坏」也挡掉，所以调用方要自己判：同编号的「已恢复」记录
+ * 晚于失败记录 ⇒ 说明这一轮是新故障，仍要发（见 `run-product-data-job.mjs` 的 notifyFailure）。
  */
 export function resolveAlertDedup({ previous = null, alertId = null, fingerprint = null,
-  now = new Date(), windowMs = 6 * 60 * 60 * 1000 } = {}) {
+  now = new Date(), windowMs = 6 * 60 * 60 * 1000, ignoreFingerprintChange = false } = {}) {
   if (!alertId) return { send: true, reason: '这条告警没有编号，不去重' };
   if (!previous || previous.alertId !== alertId) return { send: true, reason: '这个编号之前没发过' };
-  if (fingerprint && previous.fingerprint && previous.fingerprint !== fingerprint) {
+  if (!ignoreFingerprintChange && fingerprint && previous.fingerprint && previous.fingerprint !== fingerprint) {
     return { send: true, reason: '同一个编号，但这次停的地方变了 —— 算新信息' };
   }
   const ageMs = now.getTime() - new Date(previous.sentAt ?? 0).getTime();
@@ -55,7 +66,10 @@ export function resolveAlertDedup({ previous = null, alertId = null, fingerprint
     return { send: true, reason: `距上次已经 ${Math.round(ageMs / 60000)} 分钟，超过窗口` };
   }
   return { send: false,
-    reason: `同一条告警 ${Math.round(ageMs / 60000)} 分钟前刚发过（窗口 ${Math.round(windowMs / 3600000)} 小时），不重复发` };
+    reason: `同一条告警 ${Math.round(ageMs / 60000)} 分钟前刚发过（窗口 ${Math.round(windowMs / 3600000)} 小时），不重复发`
+      + (ignoreFingerprintChange && fingerprint && previous.fingerprint && previous.fingerprint !== fingerprint
+        ? `（这一轮停在 ${String(fingerprint).split('|').at(-1)}，与上次不同，但同一业务日只报一次）`
+        : '') };
 }
 
 /** 读整份状态。读不出来（文件不存在/坏 JSON）一律当「没记录过」——宁可多发。 */

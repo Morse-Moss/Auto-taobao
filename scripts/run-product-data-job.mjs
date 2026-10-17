@@ -140,7 +140,22 @@ function collectGapOf(shop, stage, reason) {
 async function notifyFailure({ date, runId, evidence, failure, failedStage, log, shopCount = null }) {
   const alertId = `product-round-${String(date).replace(/-/gu, '')}`;
   const fingerprint = `${failure?.class ?? 'FAILED'}|${failure?.reason ?? 'UNKNOWN'}|${failedStage ?? '-'}`;
-  const decision = resolveAlertDedup({ previous: readAlertThrottleEntry({ alertId }), alertId, fingerprint });
+  // 「同一业务日只报一次失败」（2026-10-17 加）：这一天已经报过一次、之后还没好过 ⇒ 不再发。
+  // 依据是 2026-10-17 的真机形态：同一个业务日先停 product-import 发一条、补跑那轮停
+  // promotion-import 又发一条（指纹不同 ⇒ 旧口径「算新信息」），收信人收到「没收齐 → 还是没收齐」，
+  // 而这两条要表达的其实是同一件事。
+  // 只有「已经发过完成/恢复、之后又坏了」才算新故障 —— 那种情况必须发，否则「昨天好了今天又坏」
+  // 会被自己的历史记录永久挡住。
+  const roundEntry = readAlertThrottleEntry({ alertId });
+  const okEntry = readAlertThrottleEntry({ alertId: `product-ok-${String(date).replace(/-/gu, '')}` });
+  const recoveredSinceLastFailure = Boolean(okEntry?.sentAt)
+    && (!roundEntry?.sentAt || new Date(okEntry.sentAt).getTime() > new Date(roundEntry.sentAt).getTime());
+  const decision = resolveAlertDedup({
+    previous: roundEntry, alertId, fingerprint,
+    // 已恢复过又重新坏 ⇒ 恢复正常判据（指纹变化算新信息也没意义，直接让它按窗口判）；
+    // 没恢复过 ⇒ 这一天的失败只报一次，停在哪一段都不再重发。
+    ignoreFingerprintChange: !recoveredSinceLastFailure,
+  });
   if (!decision.send) { log(`告警未发（去重）：${decision.reason}`); return { status: 'DEDUPED', reason: decision.reason }; }
   const copy = flowFallbackCopy('product-daily');
   // 现场原话（缺口清单/异常消息）保留在业务段里，但压到 300 字：它是收信人判断

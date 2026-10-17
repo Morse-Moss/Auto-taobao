@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { FeishuClient } from '../../xws-to-feishu-base/scripts/feishu-client.mjs';
 import { buildFeishuFields, promotionIdempotencyKey, validateExportRows } from './promotion-daily-report-core.mjs';
 import { activeProfileName, promotionDailyTargets, targetCredentials } from '../../../runtime/feishu-targets.mjs';
+import { batchCreateWithLedger, writeFailureIsCertain } from '../../../runtime/import-write-ledger.mjs';
 const PY = `import csv,io,json,sys,zipfile
 sys.stdout.reconfigure(encoding='utf-8')
 with zipfile.ZipFile(sys.argv[1]) as z:
@@ -81,13 +82,35 @@ async function main(argv = process.argv.slice(2)) {
       : [];
     receipt.tables[kind] = { tableId, beforeRows: existing.length, plannedRows: planned.length, skippedRows: source.rows.length - planned.length, subjectIds };
     if (args.apply && planned.length) {
-      const ids = []; for (let i = 0; i < planned.length; i += 500) ids.push(...await client.batchCreateRecords(planned.slice(i, i + 500)));
-      const after = await client.listRecords(); const written = new Set(ids); const reread = after.filter((r) => written.has(r.record_id));
-      if (reread.length !== ids.length) throw new Error(`${kind} 写入后回读数量不一致`);
-      receipt.tables[kind].recordIds = ids; receipt.tables[kind].afterRows = after.length;
+      // 逐批写入 + 每批落盘（2026-10-17 修，模块 runtime/import-write-ledger.mjs）：
+      // 原先 ids 攒在局部变量里、整份收据只在 main 末尾写一次 ⇒ 写入中途抛错就一个文件都没有
+      // （10-06 商品底单、10-17 推广段都是这个病根，这里是第三处）。
+      const flushReceipt = () => writeFileSync(path.join(args.evidence, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
+      const block = receipt.tables[kind];
+      try {
+        await batchCreateWithLedger({ client, records: planned, receipt, target: block, flush: flushReceipt });
+      } catch (error) {
+        // 确定性拒绝（4xx/权限/限流）⇒ 真的没写成；其余（5xx/超时/网络）⇒ 可能已写入，交外层按 2 收场。
+        error.writeFailureCertain = writeFailureIsCertain(block.writeError);
+        error.afterWrite = !error.writeFailureCertain;
+        throw error;
+      }
+      try {
+        const after = await client.listRecords(); const written = new Set(block.recordIds); const reread = after.filter((r) => written.has(r.record_id));
+        if (reread.length !== block.recordIds.length) throw new Error(`${kind} 写入后回读数量不一致`);
+        block.afterRows = after.length;
+      } catch (error) {
+        // 走到这里**已经写过了** ⇒ 不许报成「没写成」。
+        error.afterWrite = true;
+        flushReceipt();
+        throw error;
+      }
     }
   }
   writeFileSync(path.join(args.evidence, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
   console.log(JSON.stringify(receipt, null, 2));
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((error) => { console.error(`导入失败：${error.message}`); process.exitCode = 1; });
+// 退出码纪律（2026-10-17）：写入已经发生之后的任何异常（回读炸、数量不一致、5xx 写入中途抛错）
+// 一律按 **2 = UNKNOWN_WRITE** 收场；只有确定性拒绝（4xx/权限/限流，根本没写成）才是 1。
+// 混成一个 1，调用方就会去逐店重试，而那些数据其实已经在表里了。
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((error) => { console.error(`导入失败：${error.message}`); process.exitCode = error?.afterWrite === true ? 2 : 1; });
