@@ -1,0 +1,24 @@
+{
+  "alert": {
+    "type": "ROUND_RESOLVED",
+    "severity": "INFO",
+    "title": "【商品数据】已恢复（统计日 2026-10-16）",
+    "alertId": "product-ok-20261016",
+    "fingerprint": "8/8",
+    "createdAt": "2026-10-17T04:42:12.875Z",
+    "reason": "今天早些时候这一流程有一次没收齐，现在已全部收齐。8/8 家全部收齐。写了：商品底单 239 行、商品询单 37 行、推广底单 137 行。",
+    "action": "无需处理。",
+    "source": {
+      "targetLabel": "商品数据一轮 · 8 家店",
+      "period": "统计日 2026-10-16",
+      "capability": "商品数据",
+      "shopName": "里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝、网林淘宝、里可林天猫、网林家居"
+    }
+  },
+  "delivery": {
+    "delivered": true,
+    "suppressed": false,
+    "reason": null,
+    "receipt": "{\n  \"version\": \"feishu-notify-receipt-v1\",\n  \"status\": \"SENT\",\n  \"channel\": \"app\",\n  \"alertId\": \"product-ok-20261016\",\n  \"sentAt\": \"2026-10-17T04:42:13.164Z\",\n  \"attempts\": [\n    {\n      \"channel\": \"app\",\n      \"ok\": true,\n      \"target\": \"ou_e254f8d7d91a042b31fcd59299a1a4a9\",\n      \"messageId\": \"om"
+  }
+}
