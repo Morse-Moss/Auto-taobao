@@ -261,3 +261,91 @@ describe('readSummaries / batchDirs', () => {
     }
   });
 });
+
+// 2026-10-18 补：两张真实告警都在这儿翻过车，所以单开一组钉住。
+//
+// 现场：10:59 那条「采集完成（统计日 2026-10-17）」写的是
+//   「3/3 家全部收齐。写了：商品底单 0 行。」
+// 而那一轮真实写入是 底单 0 / 询单 0 / **推广 53 行**（同日重跑，前两张被去重闸门正确拦成 0）。
+// 两个错叠在一起：① 恒 push「商品底单」把 0 说出口；② 推广段根本没进统计。
+describe('productOkFacts：没写的表不许出现，写了推广要数出来', () => {
+  function seedRun(evidence, shops) {
+    for (const shop of shops) {
+      // 同日重跑的真实形状：底单/询单收据存在，但 plannedRows=0（去重闸门拦下）
+      writeJson(path.join(evidence, shop, 'product-import', 'receipt.json'), { plannedRows: 0, recordIds: [] });
+      writeJson(path.join(evidence, shop, 'inquiry-import', `receipt-${shop}.json`), { plannedRows: 0, recordIds: [] });
+    }
+  }
+
+  it('底单 0 行时不输出「商品底单 0 行」（不再无条件带这一行）', () => {
+    const root = tmpRoot();
+    try {
+      const evidence = path.join(root, 'evidence', 'product-data-job-2026-10-17', 'run-1');
+      seedRun(evidence, ['盖文淘宝', '科塔淘宝', '里可林天猫']);
+      const facts = productOkFacts({ evidence, shops: ['盖文淘宝', '科塔淘宝', '里可林天猫'] });
+      assert.deepEqual(facts.tables, [], `不该出现任何 0 行的表，实际 ${JSON.stringify(facts.tables)}`);
+      assert.deepEqual(facts.missing, []);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('推广段按部门收据的 sources 逐家归属并求和（53 行就是 53 行）', () => {
+    const root = tmpRoot();
+    try {
+      const shops = ['盖文淘宝', '科塔淘宝', '里可林天猫'];
+      const evidence = path.join(root, 'evidence', 'product-data-job-2026-10-17', 'run-1');
+      seedRun(evidence, shops);
+      writeJson(path.join(evidence, 'promotion-import', 'sales1', 'receipt.json'), {
+        plannedRows: 53,
+        recordIds: new Array(53).fill('rec'),
+        sources: [
+          { file: 'a.zip', shop: '盖文淘宝', rows: 16 },
+          { file: 'b.zip', shop: '科塔淘宝', rows: 24 },
+          { file: 'c.zip', shop: '里可林天猫', rows: 13 },
+        ],
+      });
+      const facts = productOkFacts({ evidence, shops });
+      assert.deepEqual(facts.tables, [{ name: '商品推广', rows: 53 }]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('逐店收据与部门收据同时存在时同一家只算一次（不翻倍）', () => {
+    const root = tmpRoot();
+    try {
+      const shops = ['盖文淘宝', '科塔淘宝'];
+      const evidence = path.join(root, 'evidence', 'product-data-job-2026-10-17', 'run-1');
+      seedRun(evidence, shops);
+      // 逐店落点（这一批有店缺 ZIP 时走的那条）
+      writeJson(path.join(evidence, 'promotion-import', '盖文淘宝', 'receipt.json'), { plannedRows: 16, recordIds: new Array(16).fill('rec') });
+      // 部门落点里又出现同一家 ⇒ 不能再加一遍
+      writeJson(path.join(evidence, 'promotion-import', 'sales1', 'receipt.json'), {
+        plannedRows: 40,
+        sources: [
+          { file: 'a.zip', shop: '盖文淘宝', rows: 16 },
+          { file: 'b.zip', shop: '科塔淘宝', rows: 24 },
+        ],
+      });
+      const facts = productOkFacts({ evidence, shops });
+      assert.deepEqual(facts.tables, [{ name: '商品推广', rows: 40 }], '16（逐店）+ 24（部门里的另一家）才是真值');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('底单真有行时照旧出现，且排在推广前面（顺序＝人读的顺序）', () => {
+    const root = tmpRoot();
+    try {
+      const shops = ['盖文淘宝'];
+      const evidence = path.join(root, 'evidence', 'product-data-job-2026-10-17', 'run-1');
+      writeJson(path.join(evidence, '盖文淘宝', 'product-import', 'receipt.json'), { plannedRows: 42, recordIds: new Array(42).fill('rec') });
+      writeJson(path.join(evidence, 'promotion-import', '盖文淘宝', 'receipt.json'), { plannedRows: 16, recordIds: new Array(16).fill('rec') });
+      const facts = productOkFacts({ evidence, shops });
+      assert.deepEqual(facts.tables, [{ name: '商品底单', rows: 42 }, { name: '商品推广', rows: 16 }]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});

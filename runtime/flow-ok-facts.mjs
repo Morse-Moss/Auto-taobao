@@ -134,33 +134,76 @@ export function promotionOkFacts({ root, summaries = [] }) {
 }
 
 /**
- * 商品链的完成事实：两个导入器的 `receipt.json`。
+ * 商品链的完成事实：三个导入器的 `receipt.json`。
  *
  * `evidence` 是**本轮运行目录**（`evidence/product-data-job-<日>/<runId>/`），
  * 逐店收据在它下面的 `<店>/product-import/receipt.json` 与 `<店>/inquiry-import/receipt-<店>.json`
  * （两个导入器各自的落名，见 import-product-data.mjs / import-inquiry-data.mjs）——
  * 这里按各自的真名读，不假设它们一致。推广段被有意跳过（`--skip-promotion`）时**没有收据**，
  * 那一行自然不出现在数字里（完成通知只说写过的表）。
+ *
+ * 2026-10-18 修两处（两张真实告警都踩过）：
+ *
+ *   ① **不再无条件带上「商品底单」**。旧实现 `tables = [{ name:'商品底单', rows: 0 }]` 是**恒**push 的，
+ *      于是同日重跑（底单被去重闸门拦成 0 行、只有推广真写了 53 行）那条完成提醒读起来是
+ *      「3/3 家全部收齐。写了：商品底单 0 行。」—— 收信人会以为整轮什么都没写。
+ *      同一个文件里 `dailyOkFacts` 早就写明「0 行的『底单 0 行』出现在完成通知里是一句误导」，
+ *      商品这一版当时没跟上。现在两张表都只在这轮真的写了行时才出现。
+ *   ② **推广段补进数字**。旧实现只读底单与询单两张收据，推广写了多少完全不进通知 ——
+ *      而补跑那种轮次恰恰是「底单 0、询单 0、推广 53」。数不出来就等于告诉收信人「没写东西」。
+ *
+ * 推广收据有**两种落点**（取决于这一批是不是齐）：整批齐 ⇒ `<部门>/receipt.json`（一份覆盖多家，
+ * `sources[]` 里逐家带 `rows`）；有一家缺 ZIP ⇒ 退成逐店 `<店>/receipt.json`。所以：
+ *   · 先按店读逐店收据；
+ *   · 再扫 `promotion-import/` 下**不是店名**的目录（部门），按 `sources[].shop` 逐家归属；
+ *     同一家只算一次（`addPromotion` 去重），避免「逐店 + 部门」两份同时存在时翻倍。
+ *   · 部门收据没有 `sources`（老工件）时整份算一次，用一个不和店名冲突的键。
  */
 export function productOkFacts({ evidence, shops = [] }) {
   let productRows = 0;
   let inquiryRows = 0;
   const missing = [];
+  const promotionRows = new Map();
+  const rowsOf = (receipt) => (Array.isArray(receipt?.recordIds)
+    ? receipt.recordIds.length
+    : Number(receipt?.plannedRows) || 0);
+  const addPromotion = (key, rows) => {
+    if (!key) return;
+    if (promotionRows.has(key)) return; // 同一家（或同一份部门收据）只算一次
+    promotionRows.set(key, Number(rows) || 0);
+  };
   for (const shop of shops) {
     const productReceipt = readJson(path.join(evidence, shop, 'product-import', 'receipt.json'));
     if (!productReceipt) { missing.push(shop); continue; }
-    productRows += Array.isArray(productReceipt.recordIds)
-      ? productReceipt.recordIds.length
-      : Number(productReceipt.plannedRows) || 0;
+    productRows += rowsOf(productReceipt);
     const inquiryReceipt = readJson(path.join(evidence, shop, 'inquiry-import', `receipt-${shop}.json`));
-    if (inquiryReceipt) {
-      inquiryRows += Array.isArray(inquiryReceipt.recordIds)
-        ? inquiryReceipt.recordIds.length
-        : Number(inquiryReceipt.plannedRows) || 0;
+    if (inquiryReceipt) inquiryRows += rowsOf(inquiryReceipt);
+    const promotionReceipt = readJson(path.join(evidence, 'promotion-import', shop, 'receipt.json'));
+    if (promotionReceipt) addPromotion(shop, rowsOf(promotionReceipt));
+  }
+  const promotionDir = path.join(evidence, 'promotion-import');
+  if (existsSync(promotionDir)) {
+    for (const entry of readdirSync(promotionDir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || shops.includes(entry.name)) continue; // 店名目录已在上面按店读过
+      const receipt = readJson(path.join(promotionDir, entry.name, 'receipt.json'));
+      if (!receipt) continue;
+      const sources = Array.isArray(receipt.sources) ? receipt.sources : [];
+      if (sources.length) {
+        for (const item of sources) {
+          // 只认本轮名册里的店：部门收据里出现别的部门/别的店的店时不往外报
+          if (item?.shop && shops.includes(item.shop)) addPromotion(item.shop, item.rows);
+        }
+      } else {
+        addPromotion(`department:${entry.name}`, rowsOf(receipt));
+      }
     }
   }
-  const tables = [{ name: '商品底单', rows: productRows }];
+  const promotionTotal = [...promotionRows.values()].reduce((sum, rows) => sum + rows, 0);
+  // 只列**真有行**的表：这一轮没写的表不出现（理由与 dailyOkFacts 同一句）。
+  const tables = [];
+  if (productRows > 0) tables.push({ name: '商品底单', rows: productRows });
   if (inquiryRows > 0) tables.push({ name: '商品询单', rows: inquiryRows });
+  if (promotionTotal > 0) tables.push({ name: '商品推广', rows: promotionTotal });
   return { tables, missing };
 }
 
