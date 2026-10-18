@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-17-20261018020412776-7f2b2a36",
+  "date": "2026-10-17",
+  "status": "FAILED",
+  "startedAt": "2026-10-18T02:04:12.777Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "failure": {
+    "class": "TRANSIENT_EXTERNAL",
+    "reason": "EXTERNAL_RETRYABLE",
+    "message": "本轮不完整（3 处）：盖文淘宝/推广 未采集：[下载重试] 商品报表_20261018_101216 第 1 次失败：商品报表下载超时: 商品报表_20261018_101216 [下载重试] 商品报表_20261018_101216 第 2 次失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh） [下载重试] 商品报表_…；科塔淘宝/推广 未采集：[下载重试] 商品报表_20261018_101653 第 1 次失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh） [下载重试] 商品报表_20261018_101653 第 2 次失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh…；里可林天猫/推广 未采集：[下载重试] 商品报表_20261018_102941 第 1 次失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh） [下载重试] 商品报表_20261018_102941 第 2 次失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh…"
+  },
+  "failedStage": "promotion-import",
+  "finishedAt": "2026-10-18T02:34:25.981Z"
+}

@@ -1,0 +1,230 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-17_2026-10-17 (5).xls",
+  "shop": "网林淘宝",
+  "date": "2026-10-17",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 35,
+  "existingRows": 3901,
+  "plannedRows": 35,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "649298817906"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "651381481552"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "655425771252"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "678591943726"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "692801937772"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "693366609819"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "700302477127"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "709122917206"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "884833126259"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "885555256795"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "891736894217"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "892244929743"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "896130277181"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "902054754329"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "902511113693"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "967502018098"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "968186165247"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "968187457862"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "968804072669"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "981679273634"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "981681257947"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "982348868132"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "982350728696"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "983494067536"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "984050918945"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "984053282396"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "984786645923"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "985457008489"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "1000943467051"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "1067206697783"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "1067219197192"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "1072703039130"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "1073556554116"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "1086953430900"
+    },
+    {
+      "date": "2026-10-17",
+      "shop": "网林淘宝",
+      "productId": "1088027953263"
+    }
+  ],
+  "recordIds": [
+    "reczz28Oi2NUCYJl",
+    "reczz28Oi2NUDddB",
+    "reczz28Oi2NUBl3z",
+    "reczz28Oi2NUF28J",
+    "reczz28Oi2NUCMPy",
+    "reczz28Oi2NUEEaM",
+    "reczz28Oi2NUD6mc",
+    "reczz28Oi2NUDXAt",
+    "reczz28Oi2NUCtgL",
+    "reczz28Oi2NUCoVZ",
+    "reczz28Oi2NUBz0b",
+    "reczz28Oi2NUC1hL",
+    "reczz28Oi2NUEUMf",
+    "reczz28Oi2NUF0KT",
+    "reczz28Oi2NUE6xY",
+    "reczz28Oi2NUDvjO",
+    "reczz28Oi2NUF5rm",
+    "reczz28Oi2NUDqIh",
+    "reczz28Oi2NUDcYr",
+    "reczz28Oi2NUCMXx",
+    "reczz28Oi2NUEmoh",
+    "reczz28Oi2NUBT1a",
+    "reczz28Oi2NUEEXV",
+    "reczz28Oi2NUCKiZ",
+    "reczz28Oi2NUBytY",
+    "reczz28Oi2NUELxt",
+    "reczz28Oi2NUBoch",
+    "reczz28Oi2NUESMF",
+    "reczz28Oi2NUDFLe",
+    "reczz28Oi2NUCxpS",
+    "reczz28Oi2NUCbik",
+    "reczz28Oi2NUE2DS",
+    "reczz28Oi2NUDMc6",
+    "reczz28Oi2NUCn7E",
+    "reczz28Oi2NUBzah"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 35,
+  "writeBatches": 1,
+  "afterRows": 3936
+}

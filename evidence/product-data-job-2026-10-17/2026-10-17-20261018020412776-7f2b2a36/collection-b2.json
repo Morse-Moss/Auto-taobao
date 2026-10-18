@@ -1,0 +1,67 @@
+[
+  {
+    "shop": "网林淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林淘宝\",\"date\":\"2026-10-17\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-17_2026-10-17 (5).xls\",\"bytes\":52736}\n",
+      "err": "[底单] 网林淘宝 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-17_2026-10-17 (5).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林淘宝\",\n  \"date\": \"2026-10-17\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-17\\\\2026-10-17-20261018020412776-7f2b2a36\\\\网林淘宝\\\\inquiry.xls\",\n  \"bytes\": 14848,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261017&dateRange=1d&orderBy=cstCnt&startDate=20261017&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-17\\2026-10-17-20261018020412776-7f2b2a36\\网林淘宝\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 网林卫浴:小慧 / 1510910194 ✓\n[校验] 商品报表 / 2026-10-17 / 商品+计划 ✓\n[提交] 商品报表_20261018_102728\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261018_102728.zip (2423 bytes)\n{\"shop\":\"网林淘宝\",\"date\":\"2026-10-17\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261018_102728.zip\",\"bytes\":2423,\"task\":\"商品报表_20261018_102728\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261018_102728.zip"
+  },
+  {
+    "shop": "里可林天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"里可林天猫\",\"date\":\"2026-10-17\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-17_2026-10-17 (6).xls\",\"bytes\":36352}\n",
+      "err": "[底单] 里可林天猫 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-17_2026-10-17 (6).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"里可林天猫\",\n  \"date\": \"2026-10-17\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-17\\\\2026-10-17-20261018020412776-7f2b2a36\\\\里可林天猫\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261017&dateRange=1d&orderBy=cstCnt&startDate=20261017&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-17\\2026-10-17-20261018020412776-7f2b2a36\\里可林天猫\\inquiry.xls",
+    "promotion": {
+      "code": 1,
+      "out": "[身份] 里可林旗舰店:月饼 / 7449643996 ✓\n[校验] 商品报表 / 2026-10-17 / 商品+计划 ✓\n[提交] 商品报表_20261018_102941\n[下载重试] 已刷新任务管理页并重新发现 target=878BEE17E2A7708CC0C27C77A89F2607\n[下载重试] 已刷新任务管理页并重新发现 target=878BEE17E2A7708CC0C27C77A89F2607\n[失败现场] 没给 --log-dir ⇒ 本轮不采（整轮跑时由编排层统一采，这里不重复拍一遍）\n",
+      "err": "[下载重试] 商品报表_20261018_102941 第 1 次失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\n[下载重试] 商品报表_20261018_102941 第 2 次失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\n[下载重试] 商品报表_20261018_102941 第 3 次失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\n采集失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）；重试记录=[{\"attempt\":1,\"target\":\"878BEE17E2A7708CC0C27C77A89F2607\",\"error\":\"真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\"},{\"attempt\":2,\"target\":\"878BEE17E2A7708CC0C27C77A89F2607\",\"error\":\"真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\"},{\"attempt\":3,\"target\":\"878BEE17E2A7708CC0C27C77A89F2607\",\"error\":\"真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\"}]\n"
+    },
+    "promotionFile": null,
+    "stoppedAt": "promotion-collect",
+    "error": "[下载重试] 商品报表_20261018_102941 第 1 次失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\n[下载重试] 商品报表_20261018_102941 第 2 次失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\n[下载重试] 商品报表_20261018_102941 第 3 次失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\n采集失败：真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）；重试记录=[{\"attempt\":1,\"target\":\"878BEE17E2A7708CC0C27C77A89F2607\",\"error\":\"真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\"},{\"attempt\":2,\"target\":\"878BEE17E2A7708CC0C27C77A89F2607\",\"error\":\"真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\"},{\"attempt\":3,\"target\":\"878BEE17E2A7708CC0C27C77A89F2607\",\"error\":\"真实点击后目标任务操作行仍未显形（reactivate-row-and-refresh）\"}]"
+  },
+  {
+    "shop": "网林家居",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林家居\",\"date\":\"2026-10-17\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-17_2026-10-17 (7).xls\",\"bytes\":19456}\n",
+      "err": "[底单] 网林家居 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-17_2026-10-17 (7).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林家居\",\n  \"date\": \"2026-10-17\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-17\\\\2026-10-17-20261018020412776-7f2b2a36\\\\网林家居\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261017&dateRange=1d&orderBy=cstCnt&startDate=20261017&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-17\\2026-10-17-20261018020412776-7f2b2a36\\网林家居\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 网林定制家居:小瓜 / 1731780198 ✓\n[校验] 商品报表 / 2026-10-17 / 商品+计划 ✓\n[提交] 商品报表_20261018_103036\n[遮挡] 全屏层 DIV#wrapper_dlg_3329(data-owner-id=app) z=99999，rect=[0,0,1501,642]，层内可点小控件 24/44 个，选中 SPAN#mx_3332「」于 (1251,32)，另有 1 个安全备选（按序试，封顶 3 个）\n[遮挡] 没有注入 pressEscape ⇒ 跳过 ESC 这一步（不假装试过）\n[遮挡] 回读：全屏层剩 0 个｜目标可点=null ⇒ 不再挡事（全屏层已归零）\n[下载重试] 已刷新任务管理页并重新发现 target=0CFDC117BF2A99FB09A128C1D3B95749\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261018_103036.zip (1006 bytes)\n{\"shop\":\"网林家居\",\"date\":\"2026-10-17\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261018_103036.zip\",\"bytes\":1006,\"task\":\"商品报表_20261018_103036\"}\n",
+      "err": "[下载重试] 商品报表_20261018_103036 第 1 次失败：下载任务页被平台遮挡层拦住（dismiss-overlay-and-refresh），已尝试安全关闭并刷新重试\n"
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261018_103036.zip"
+  }
+]

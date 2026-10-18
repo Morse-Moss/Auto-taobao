@@ -55,3 +55,58 @@ export function reuseCandidateTask({ after = [], submittedOn } = {}) {
   const sameDay = [...new Set(after)].filter((name) => PRODUCT_TASK_RE.test(name) && name.startsWith(`商品报表_${today}_`)).sort();
   return sameDay.at(-1) ?? null;
 }
+
+/** 任务行里「日期范围」列的形态（`2026-10-17至2026-10-17`）。读不到就返回 null，**不猜**。 */
+export const TASK_DATE_RANGE_RE = /(\d{4}-\d{2}-\d{2})\s*(?:至|~|～)\s*(\d{4}-\d{2}-\d{2})/u;
+
+export function taskDateRangeOf(rowText) {
+  const match = String(rowText ?? '').match(TASK_DATE_RANGE_RE);
+  return match ? { start: match[1], end: match[2] } : null;
+}
+
+/**
+ * 取件候选集（2026-10-18 加）：**任务只是通道**，业务要的是「目标日那份数据」。
+ *
+ * 背景（业务方 2026-10-05 口径，日报推广链早已落地，商品链这次才搬过来）：
+ * 平台存在「最新那条点了不落盘、紧挨着另一条能下、两条数据等价」的形态，所以通道坏了要能换
+ * 一条，而不是和某一条任务绑死。之前商品链只认 `uniqueNewProductTask` 那**一条**，
+ * 一条坏了整家就判死（2026-10-18 三家店就是这么缺的）。
+ *
+ * 判据优先级（只有这两条，绝不「取列表里最新那条」）：
+ *   ① `date-range`：行里读得到日期范围且**等于目标日** ⇒ 认这些行；
+ *   ② `submitted-day`：读不到日期范围（列没渲染）⇒ 退回「任务名的提交日＝提交当天」。
+ *      ⚠️ 这一条只保证「今天交的」，**不保证**参数是目标日 —— 所以下载回来仍必须由导入器
+ *      的 `validatePromotionReport(..., { date })` 逐行核日期。判据弱在哪，安全网就必须在哪。
+ *
+ * `submittedTask` 无论哪种判据都排在最前：它是本次提交**当场确认过**的任务名，最可信。
+ * 排序一律「新的在前」—— 补提交出来的那条比老的更可能正常渲染。
+ */
+export function pickFetchCandidates({ rows = [], date, submittedOn, submittedTask = null } = {}) {
+  const seed = submittedTask && PRODUCT_TASK_RE.test(String(submittedTask)) ? [submittedTask] : [];
+  const named = [...new Set(rows.map((row) => row?.name).filter((name) => PRODUCT_TASK_RE.test(String(name ?? ''))))];
+  const ranged = rows
+    .map((row) => ({ name: row?.name, range: taskDateRangeOf(row?.text) }))
+    .filter((entry) => entry.range && PRODUCT_TASK_RE.test(String(entry.name ?? '')));
+  // 只要**有任意一行**读得到日期范围，就说明这张列表暴露了这一列 ⇒ 一律按日期范围判，
+  // 哪怕一条都不等于目标日（那说明目标日那份根本不在列表里，该走补提交，而不是退回「今天交的」去猜）。
+  if (ranged.length) {
+    const byRange = [...new Set(ranged
+      .filter((entry) => entry.range.start === date && entry.range.end === date)
+      .map((entry) => entry.name))].sort().reverse();
+    return {
+      basis: 'date-range',
+      candidates: [...new Set([...seed, ...byRange])],
+      ignoredCount: named.filter((name) => !byRange.includes(name)).length,
+    };
+  }
+  const today = String(submittedOn ?? '').replace(/-/gu, '');
+  if (!/^\d{8}$/u.test(today)) {
+    throw new Error(`pickFetchCandidates 需要提交当天日期（YYYY-MM-DD），收到 ${JSON.stringify(submittedOn)}`);
+  }
+  const sameDay = named.filter((name) => name.startsWith(`商品报表_${today}_`)).sort().reverse();
+  return {
+    basis: 'submitted-day',
+    candidates: [...new Set([...seed, ...sameDay])],
+    ignoredCount: named.filter((name) => !sameDay.includes(name)).length,
+  };
+}

@@ -389,7 +389,11 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
       // 推广段：`--skip-promotion` 时**整段不跑**（连采集脚本都不起）—— 理由见 product-data-job-core
       // 的 `SKIP_PROMOTION_REASON`：它的导入目标还指向 9 月的 base，跑一次就是把 10 月数据写进关账的表。
       if (options.skipPromotion) continue;
-      const promotion = await run(PRODUCT_JOB_FILES.promotionCollect, ['--shop', shop, '--date', date], { capture: true });
+      // `--log-dir`（2026-10-18 补）：推广段的**采集失败现场**必须落进本轮证据目录。
+      // 之前这里只传 `--shop/--date` ⇒ 采集器打印「整轮跑时由编排层统一采」然后什么都不采，
+      // 而编排层也没有那一步 —— 结果是 2026-10-18 三家店缺推广时，既没有 DOM 也没有截图，
+      // 连「是勾选没生效还是操作行没展开」都判不出来。底单段（上一循环）一直是传 `--evidence` 的。
+      const promotion = await run(PRODUCT_JOB_FILES.promotionCollect, ['--shop', shop, '--date', date, '--log-dir', path.join(evidence, shop, 'promotion-collect')], { capture: true });
       item.promotion = promotion; item.promotionFile = jsonTail(promotion.out)?.file ?? null;
       if (promotion.code !== 0 || !item.promotionFile) { item.stoppedAt = 'promotion-collect'; item.error = (promotion.err || promotion.out || '').trim(); log(`[推广] ${shop} 失败：${item.error || '未返回文件'}（exit ${promotion.code}）`); }
       else log(`[推广] ${shop} 已采集 ${item.promotionFile}`);

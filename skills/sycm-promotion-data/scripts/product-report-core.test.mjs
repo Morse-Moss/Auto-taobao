@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildProductReportUrl, reuseCandidateTask, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
+import { buildProductReportUrl, pickFetchCandidates, reuseCandidateTask, taskDateRangeOf, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
 import { planPromotionImport, promotionKey, validatePromotionReport } from './promotion-core.mjs';
 
 test('商品报表 URL 固定到目标日、30 天累计和两个推广场景', () => {
@@ -105,4 +105,68 @@ test('主体 ID 按目标文本字段保留字符串', async () => {
   const fields = buildPromotionFields(['主体ID', '展现量'], ['1067978768943', '12'], ['主体ID', '展现量']);
   assert.equal(fields['主体ID'], '1067978768943');
   assert.equal(fields['展现量'], 12);
+});
+
+// ---- 取件候选集（2026-10-18）：补提交搬过来之后的判据 ----
+// 这一组钉的是「换通道」的地基：候选**只认日期范围等于目标日**，读不到日期范围才退回「提交当天」。
+// 判据错了的后果不是报错，而是**静默拿别天的数据**（任务名里没有业务日），所以每一条都要能红。
+
+test('日期范围：从任务行原文里读得出起止日，读不到就返回 null（不猜）', () => {
+  assert.deepEqual(taskDateRangeOf('商品报表_20261018_101216 2026-10-17至2026-10-17 生成成功'),
+    { start: '2026-10-17', end: '2026-10-17' });
+  assert.deepEqual(taskDateRangeOf('营销场景报表 2026-10-04 ~ 2026-10-05'), { start: '2026-10-04', end: '2026-10-05' });
+  assert.equal(taskDateRangeOf('商品报表_20261018_101216 生成成功'), null);
+  assert.equal(taskDateRangeOf(''), null);
+  // 单个日期不算日期范围：只看到一个日期就认，会把「开始日」当范围
+  assert.equal(taskDateRangeOf('2026-10-17 生成成功'), null);
+});
+
+test('候选集：日期范围等于目标日的行才进候选，别天的一条都不许混进来', () => {
+  const rows = [
+    { name: '商品报表_20261018_101216', text: '商品报表_20261018_101216 2026-10-17至2026-10-17 生成成功' },
+    { name: '商品报表_20261018_101300', text: '商品报表_20261018_101300 2026-10-17至2026-10-17 生成成功' },
+    { name: '商品报表_20261017_101352', text: '商品报表_20261017_101352 2026-10-16至2026-10-16 生成成功' },
+  ];
+  const picked = pickFetchCandidates({ rows, date: '2026-10-17', submittedOn: '2026-10-18' });
+  assert.equal(picked.basis, 'date-range');
+  // 新的在前：补提交出来的那条比老的更可能正常渲染
+  assert.deepEqual(picked.candidates, ['商品报表_20261018_101300', '商品报表_20261018_101216']);
+  assert.equal(picked.ignoredCount, 1);
+});
+
+test('候选集：本次提交当场确认过的任务名无论日期范围都排第一（它最可信）', () => {
+  const rows = [
+    { name: '商品报表_20261018_101300', text: '商品报表_20261018_101300 2026-10-17至2026-10-17 生成成功' },
+    { name: '商品报表_20261018_101216', text: '商品报表_20261018_101216 2026-10-17至2026-10-17 生成成功' },
+  ];
+  const picked = pickFetchCandidates({ rows, date: '2026-10-17', submittedOn: '2026-10-18', submittedTask: '商品报表_20261018_101200' });
+  assert.equal(picked.candidates[0], '商品报表_20261018_101200');
+  assert.equal(picked.candidates.length, 3);
+});
+
+test('候选集：读不到日期范围时退回「提交当天」，且只认提交当天（不是业务日）', () => {
+  const rows = [
+    { name: '商品报表_20261018_101216', text: '商品报表_20261018_101216 生成成功' },
+    { name: '商品报表_20261017_101352', text: '商品报表_20261017_101352 生成成功' },
+  ];
+  const picked = pickFetchCandidates({ rows, date: '2026-10-17', submittedOn: '2026-10-18' });
+  assert.equal(picked.basis, 'submitted-day');
+  assert.deepEqual(picked.candidates, ['商品报表_20261018_101216']);
+  assert.equal(picked.ignoredCount, 1);
+  // 反面：拿业务日当提交日筛 ⇒ 永远只筛到「昨天交的」那条，今天补提交出来的反而不在候选里
+  const wrong = pickFetchCandidates({ rows, date: '2026-10-17', submittedOn: '2026-10-17' });
+  assert.deepEqual(wrong.candidates, ['商品报表_20261017_101352']);
+});
+
+test('候选集：提交当天日期缺失就抛（不静默退化成空候选）', () => {
+  const rows = [{ name: '商品报表_20261018_101216', text: '商品报表_20261018_101216 生成成功' }];
+  assert.throws(() => pickFetchCandidates({ rows, date: '2026-10-17', submittedOn: undefined }), /提交当天日期/u);
+  assert.throws(() => pickFetchCandidates({ rows, date: '2026-10-17', submittedOn: '2026/10/18' }), /提交当天日期/u);
+});
+
+test('候选集：一条都不合格时返回空数组（由调用方决定补提交），不抛也不凑数', () => {
+  const rows = [{ name: '商品报表_20261017_101352', text: '商品报表_20261017_101352 2026-10-16至2026-10-16 生成成功' }];
+  const picked = pickFetchCandidates({ rows, date: '2026-10-17', submittedOn: '2026-10-18' });
+  assert.equal(picked.basis, 'date-range');
+  assert.deepEqual(picked.candidates, []);
 });

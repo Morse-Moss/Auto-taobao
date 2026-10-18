@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-17-20261018025002770-725e38f9",
+  "date": "2026-10-17",
+  "status": "COMPLETED",
+  "startedAt": "2026-10-18T02:50:02.771Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "COMPLETED"
+    }
+  ],
+  "shops": [
+    "盖文淘宝",
+    "科塔淘宝",
+    "里可林天猫"
+  ],
+  "failure": null,
+  "failedStage": null,
+  "finishedAt": "2026-10-18T02:59:25.675Z",
+  "completionNotice": {
+    "alertId": "product-ok-20261017",
+    "delivered": true,
+    "suppressed": false,
+    "reason": null,
+    "tables": [
+      {
+        "name": "商品底单",
+        "rows": 0
+      }
+    ]
+  }
+}
