@@ -33,7 +33,7 @@
 //
 // 用法：
 //   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs                 # 只检测，不点任何东西
-//   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --check-only    # 纯读：连登录页都不开
+//   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --check-only    # 只探登录态：不开登录页、不提交
 //   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --commit        # 真的走登录，失败会发飞书
 //   node skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --target sycm   # 只处理其中一个站点
 //   ... --notify dry                                                                  # 只渲染告警文案，不发
@@ -48,9 +48,16 @@
 //   只想看那个共用浏览器本身时**别给 `--shop`**（没给就不判，旧用法不变）。
 //
 // 说明：不带 --commit 时是**只读排练**（量坐标、回读状态、截图），可以用来判断「现在到底要不要登录」。
-// 而 `--check-only` 比它更严：**一个页面都不碰**（不开登录页、不量坐标），代价是它只能回答
+// 而 `--check-only` 比它更省：**不开登录页、不量坐标、不提交任何东西**，代价是它只能回答
 // 「在不在登录态」，不能接着往下走。多店逐店体检（`check-login-shops.mjs`）与定时链的
 // 跑前那一步用的就是它。
+//
+// ⚠️ 2026-10-18 改正：`--check-only` **不是「一个页面都不碰」**。它判「在不在登录态」的办法是
+// `siteLoggedIn()` —— 把该站点**已经有的那一页** `navigate` 到该站点的 `probeUrl`，等 5 秒，
+// 再读 `location.href`。所以它会动页面（把页签从报表路由挪到站点首页），只是不新建页签、
+// 不打字、不提交。别再用「纯读」描述它：2026-10-18 那次就是照这句话用，结果把失败现场的
+// 阿里妈妈页签从报表路由挪成了 `#!/login/index`（现场事实已先被感知层落盘，所以没丢，但事后
+// 无法再从那一页复读原始失败形态）。
 //
 // 2026-09-24 加：`--commit` 档在进登录流程**之前**会先判一次「窗口里到底有没有这两个后台的页面」
 // （core 的 `absentSites`）。两个站点都读不到、且没有一个是实锤掉登录时，报 `PAGES_ABSENT`、

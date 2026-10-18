@@ -15,6 +15,43 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.5] - 2026-10-18
+
+补上一个**已经发生过两次、每次都被判成「运营侧权限问题」而没人修**的坑：
+阿里妈妈的会话掉了，但页签 URL 还停在报表路由、**页面内容**被平台换成了兜底页
+（「抱歉，您查看的页面不存在或无权访问……子账号权限不全」）—— 补登闸门认不出这种形态，
+于是「就地补登」这条修复从来没被触发过，只剩两个页面级候选动作去撞，必然修不动。
+
+1. **判据补齐（`run-multi-shop-day.mjs`）**：`--relogin-on-wall` 原判据是 `loginWallOf()`
+   —— 它只认 `login/index` / `member/login` / `login.htm` 这类**地址**。兜底页是**同一地址换内容**，
+   地址判据永远命中不了，`wall=null` ⇒ 整段补登被跳过。现在改成三步：
+   ① 先照旧读页签 URL；② 判不出、且这一步属于某个登录站点（`reloginSiteForStage`，
+   唯一来源＝`repair-actions.mjs` 的 `STAGE_PAGE_HINT`）⇒ 跑一次**只读探针**
+   （`login-merchant.mjs --check-only --target <站点>`）；③ 只有在 `verdict==='NEEDS_LOGIN'`
+   **且该站点明确 `loggedIn===false`** 时才补登（`reloginWallFromProbe`）。
+   刻意不凭页面文案直连补登：真·子账号场景权限墙（2026-09-21 科塔那次）页面文案一模一样，
+   直连补登会把它当掉登录反复试、锁号；而「读不到」（`loggedIn===null`）也不算掉了。
+   探针结论落进 `summary.json` 的 `record.reloginProbe`，补登的判定来源落进 `record.relogin.source`
+   （`tab-url` / `read-only-probe`）——事后复盘「这次为什么补登/没补登」只认这两个字段。
+2. **两次真实事故的依据**：2026-10-04 盖文天猫、2026-10-18 里可林淘宝，同一天同一形态。
+   10-04 那次事后查到该店阿里妈妈页签停在 `#!/login/index`（`login-merchant-core` 的未登录签名），
+   当时却被写成「运营侧账号/权限问题」；10-18 这次用补充取证推翻同一假设：跑前预检 07:03 判
+   `alimama: LOGGED_IN`、07:05 阶段失败时已是兜底页；`--check-only` 报 `alimama.loggedIn=false`
+   且落 `#!/login/index`；补登**一次**后同一条 `date-picker --site alimama --date 2026-10-17`
+   直接 `exit 0 / status=APPLIED / settled 2026-10-17`（证据：
+   `evidence/batches-2026-10-17/b1/里可林淘宝/97-repair-agent-report.md`）。
+3. **改正一处写反的注释（`login-merchant.mjs`）**：文件头原写「`--check-only`：纯读，连登录页都不开」
+   「一个页面都不碰」，实际 `siteLoggedIn()` 会把该站点**已有的页签** `navigate` 到 `probeUrl` 再读
+   `location.href`。10-18 那次就是照这句话用的，结果把失败现场那页从报表路由挪成了 `#!/login/index`
+   （现场事实已先被感知层落盘，所以没丢，但事后无法再从那一页复读原始失败形态）。本次只改注释，
+   **不改行为**：改成「不开登录页、不量坐标、不提交，但会导航已有页签」。
+4. **验证（仅离线判据，未真机重跑）**：定向 `node --test skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.test.mjs`
+   ⇒ **152/152**，其中新增 5 条（阶段→站点映射、三分叉决定、回执→登录墙、探针命令形状与回执解析、
+   源码级接线）。突变验证 5/5 全部被点名抓住（去掉 probe 分叉 / 把读不到当掉了 / 探针结论不落证据 /
+   不记判定来源 / feishu 阶段也去探针），还原后源码 sha256 逐字节一致
+   （`40b9578e…3aba70`）。真机行为由 10-18 那次 agent 的手工等价操作间接证明（同一命令形状），
+   但**新版脚本本身没有在真机上跑过一轮**。
+
 ## [1.12.4] - 2026-10-17
 
 修两件「自己人骗自己人」的事：**收据在写入中途抛错时会整份消失**（于是「写了多少行」只能靠事后回读才知道），

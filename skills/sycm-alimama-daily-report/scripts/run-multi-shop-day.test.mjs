@@ -18,10 +18,10 @@ import { triageFailures } from './remediation-table.mjs';
 import { WAITING_OPERATOR_ACCOUNT, WAITING_OPERATOR_ACCOUNT_SHOPS, waitingOperatorAccountRecord } from '../../../runtime/daily-report-shop-gates.mjs';
 // 统一 summary schema 校验器（三链对齐 P1 迁移第 2 步）：并写后的构建输出必须过它。
 import { validateSummary } from '../../../runtime/unified-summary-schema.mjs';
-import { planRepair } from './repair-actions.mjs';
+import { planRepair, STAGE_PAGE_HINT } from './repair-actions.mjs';
 import { BLOCKED_BY_OVERLAY_TOKEN, siteAdapter } from './date-picker.mjs';
 import { IDENTITY_SHOP_HEADER_VERIFIED_SHOPS, shopIdentity } from './shop-identities.mjs';
-import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, applyUnifiedSummaryFields, buildRepairRequest, buildRoundFailureAlert, buildShopStages, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, loginWallOf, makeLoginWallFinder, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, roundCauseOf, roundMissingPagesOf, shopFailureCause, stageLabelOf, stageNumber, stageSelected, withSourcePaths } from './run-multi-shop-day.mjs';
+import { DEFAULT_AUTO_REPAIR_MAX_ROUNDS, FAILURE_CAUSES, HUMAN_REQUIRED_CAUSES, MODES, STAGE_LABELS, STAGE_NAMES, TARGET_DATE_LITERALS, assertAlertIsBusinessReadable, autoRepairAndRetry, applyUnifiedSummaryFields, buildRepairRequest, buildRoundFailureAlert, buildShopStages, decideReloginAttempt, describePageWhereabouts, describeShopFailure, dispatchRoundAlert, executeRepairCandidate, expectedPagesForDailyBrowser, expectedPagesForShop, findPath, healthStageStatus, judgeProxyRetryable, judgeResetLanded, loginWallOf, makeLoginWallFinder, normalizeLoginPreflight, parseArgs, planAlertDeferral, probeSiteSession, probeSyncSpawnSanity, proxyJson, proxyPortForBrowser, readLoginPreflight, recoverFailedShop, reloginSiteForStage, reloginWallFromProbe, resolveAlertDispatch, resolveTargetDate, roundFailureSummary, roundCauseOf, roundMissingPagesOf, shopFailureCause, stageLabelOf, stageNumber, stageSelected, withSourcePaths } from './run-multi-shop-day.mjs';
 
 const SCRIPTS_DIR = import.meta.dirname;
 const REPO_ROOT = path.resolve(SCRIPTS_DIR, '../../..');
@@ -2641,7 +2641,9 @@ test('接线：登录墙归因与就地补登必须**整条接通**（少一段�
   assert.match(src, /if \(loginWallOf\(\{ url: r\.perception\?\.state\?\.url \}\)\) return 'NEEDS_LOGIN';/u,
     'shopFailureCause 没有按登录墙分流 ⇒ 归因仍落兜底 STAGE_FAILED');
   // ② 链中间真的去读页签 URL，而不是只判一次就完事。
-  assert.match(src, /const wall = await readLoginWallViaProxy\(\{/u,
+  // 2026-10-18：`const wall` 改成 `let wall` —— URL 判不出时会被只读探针的结论覆盖（兜底页形态）。
+  // 这里只钉「失败路径真的去读了页签 URL」这件事本身，不钉绑定方式。
+  assert.match(src, /await readLoginWallViaProxy\(\{/u,
     '失败路径没有去读页签 URL ⇒ 补登永远触发不了');
   // ③ 补登走的是链自己那条登录路径，且**压掉它自己的告警出口**（本仓纪律：出口只有一个）。
   assert.match(src, /'--commit', '--proxy', `http:\/\/127\.0\.0\.1:\$\{proxyPort\}`, '--shop', shopKey, '--notify', 'off'/u,
@@ -2784,5 +2786,102 @@ test('统一 schema 并写接线（源码级）：两个 summary 落盘点前都
     assert.ok(warnAt !== -1, `第 ${i + 1} 个落盘点前没有调 warnSummarySchemaViolations（写入时校验没接上）`);
     assert.ok(applyAt < warnAt, `第 ${i + 1} 个落盘点：并写必须在校验之前（校验的是并写后的形状）`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// 2026-10-18：补登闸门认不出「兜底页」（页面不存在／无权访问）
+//
+// 真实事故：2026-10-04 盖文天猫、2026-10-18 里可林淘宝 两次都是**阿里妈妈会话掉了**，
+// 但页签 URL 还停在报表路由 —— `loginWallOf` 的 `loggedOut` 正则只认 `login/index` 这类地址，
+// 于是 `wall=null`、`--relogin-on-wall` 整段跳过，只剩两个页面级候选动作去撞，必然修不动。
+// ---------------------------------------------------------------------------
+
+test('reloginSiteForStage：阶段 → 登录站点，唯一来源是 STAGE_PAGE_HINT，feishu 与未登记阶段给 null', () => {
+  assert.equal(reloginSiteForStage('alimama-date'), 'alimama');
+  assert.equal(reloginSiteForStage('promotion-fetch'), 'alimama');
+  assert.equal(reloginSiteForStage('shop-report'), 'sycm');
+  assert.equal(reloginSiteForStage('backfill'), 'sycm');
+  // 这两个阶段跑在共用商家浏览器上，打的是飞书底单 —— 掉登录与它们无关，不许去探针
+  assert.equal(reloginSiteForStage('push'), null);
+  assert.equal(reloginSiteForStage('readback'), null);
+  assert.equal(reloginSiteForStage('not-a-stage'), null);
+  assert.equal(reloginSiteForStage(), null);
+  // 与 repair-actions 的表同源：改一边不改另一边会在这里红
+  assert.equal(reloginSiteForStage('alimama-date'), STAGE_PAGE_HINT['alimama-date']);
+  assert.equal(reloginSiteForStage('shop-report'), STAGE_PAGE_HINT['shop-report']);
+});
+
+test('decideReloginAttempt：三条分叉（skip / relogin / probe）', () => {
+  const base = { status: 1, reloginOnWall: true, reloginUsed: false };
+  // 步骤成功 ⇒ 什么都不做
+  assert.equal(decideReloginAttempt({ ...base, status: 0, siteHint: 'alimama' }), 'skip');
+  // 没开开关 / 本轮已补过 ⇒ 铺底口径不变
+  assert.equal(decideReloginAttempt({ ...base, reloginOnWall: false, siteHint: 'alimama' }), 'skip');
+  assert.equal(decideReloginAttempt({ ...base, reloginUsed: true, siteHint: 'alimama' }), 'skip');
+  // 页签 URL 已命中登录墙 ⇒ 老路径（直接补登）
+  assert.equal(decideReloginAttempt({ ...base, wall: { site: 'alimama', url: 'x' }, siteHint: 'alimama' }), 'relogin');
+  // URL 认不出但阶段属于某个登录站点 ⇒ 先探针
+  assert.equal(decideReloginAttempt({ ...base, siteHint: 'alimama' }), 'probe');
+  // 认不出站点（push/readback/未知阶段）⇒ 不探针、不补登
+  assert.equal(decideReloginAttempt({ ...base }), 'skip');
+});
+
+test('reloginWallFromProbe：只认 NEEDS_LOGIN 且该站点明确 loggedIn=false，读不到不算', () => {
+  const needs = { verdict: 'NEEDS_LOGIN', sites: { sycm: { loggedIn: true, href: 'a' }, alimama: { loggedIn: false, href: 'https://one.alimama.com/index.html#!/login/index' } } };
+  assert.deepEqual(reloginWallFromProbe({ receipt: needs, site: 'alimama' }),
+    { site: 'alimama', url: 'https://one.alimama.com/index.html#!/login/index' });
+  // 站点对不上（探的是 alimama，掉的是 sycm）⇒ 不补，交给老口径
+  assert.equal(reloginWallFromProbe({ receipt: needs, site: 'sycm' }), null);
+  // 判决词不是 NEEDS_LOGIN 一律不补：ALREADY_LOGGED_IN / PARTIAL / PAGES_ABSENT（退出码 3，页面没归位）/ STOP_AND_ALERT
+  for (const verdict of ['ALREADY_LOGGED_IN', 'PARTIAL', 'PAGES_ABSENT', 'STOP_AND_ALERT', null]) {
+    assert.equal(reloginWallFromProbe({ receipt: { ...needs, verdict }, site: 'alimama' }), null, `verdict=${verdict} 不该补登`);
+  }
+  // loggedIn=null 是「读不到」，不是「掉了」——本项目的头号错误就是把读不到当成掉了
+  assert.equal(reloginWallFromProbe({ receipt: { verdict: 'NEEDS_LOGIN', sites: { alimama: { loggedIn: null, href: 'x' } } }, site: 'alimama' }), null);
+  assert.equal(reloginWallFromProbe({}), null);
+  assert.equal(reloginWallFromProbe(), null);
+});
+
+test('probeSiteSession：探针命令形状（--check-only + 该站点的 --target）与回执解析', () => {
+  const calls = [];
+  const run = (cmd, args) => {
+    calls.push({ cmd, args });
+    return {
+      status: 0,
+      stdout: `[]\n${JSON.stringify({ verdict: 'NEEDS_LOGIN', sites: { alimama: { loggedIn: false, href: 'https://one.alimama.com/index.html#!/login/index' } } })}`,
+      stderr: '',
+    };
+  };
+  const record = probeSiteSession({ shopKey: '里可林淘宝', site: 'alimama', run });
+  assert.equal(record.ok, true);
+  assert.equal(record.receipt.verdict, 'NEEDS_LOGIN');
+  const args = calls[0].args;
+  // 必须是只读档：带 --check-only，不带 --commit（带错一次就是真提交一次登录）
+  assert.ok(args.includes('--check-only'), '探针必须是 --check-only');
+  assert.ok(!args.includes('--commit'), '探针绝不许带 --commit');
+  assert.equal(args[args.indexOf('--target') + 1], 'alimama');
+  assert.equal(args[args.indexOf('--shop') + 1], '里可林淘宝');
+  // --proxy 必须与该店匹配（唯一实例选择器）
+  assert.equal(args[args.indexOf('--proxy') + 1], `http://127.0.0.1:${shopInstance('里可林淘宝').proxyPort}`);
+  // 回执解析失败不许抛
+  const broken = probeSiteSession({ shopKey: '里可林淘宝', site: 'alimama', run: () => ({ status: 0, stdout: 'no json here', stderr: '' }) });
+  assert.equal(broken.ok, false);
+  assert.equal(broken.receipt, null);
+  const threw = probeSiteSession({ shopKey: '里可林淘宝', site: 'alimama', run: () => { throw new Error('EBUSY'); } });
+  assert.equal(threw.ok, false);
+  assert.match(String(threw.error), /EBUSY/u);
+});
+
+test('补登闸门接线：URL 判不出时**必须**先探针再补登（源码级，防「判据齐了但没接上」）', () => {
+  const src = readFileSync(new URL('./run-multi-shop-day.mjs', import.meta.url), 'utf8');
+  const gateAt = src.indexOf('if (result.status !== 0 && args.reloginOnWall && !reloginUsed) {');
+  assert.ok(gateAt > 0, '找不到补登闸门');
+  const gate = src.slice(gateAt, gateAt + 2600);
+  assert.match(gate, /const siteHint = reloginSiteForStage\(stage\.stage\);/u, '闸门没算站点');
+  assert.match(gate, /decideReloginAttempt\(\{[^}]*siteHint\s*\}\) === 'probe'/u, '闸门没走 probe 分支');
+  assert.match(gate, /probeSiteSession\(\{ shopKey: key, site: siteHint \}\)/u, '探针没带该店的 site');
+  assert.match(gate, /reloginWallFromProbe\(\{ receipt: probed\.receipt, site: siteHint \}\)/u, '探针结果没转成登录墙');
+  assert.match(gate, /record\.reloginProbe\s*=/u, '探针结论没落进证据（事后无法复盘为什么补登）');
+  assert.match(gate, /record\.relogin\.source = wallSource;/u, '没记「这次是怎么判出来的」');
 });
 

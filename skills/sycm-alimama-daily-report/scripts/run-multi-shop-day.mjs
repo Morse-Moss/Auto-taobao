@@ -677,6 +677,99 @@ export function readLoginWallViaProxy({ proxy, readTargets = null } = {}) {
 }
 
 /**
+ * 阶段名 → 该阶段用哪个登录站点（`sycm` / `alimama`），判不出来给 `null`。
+ *
+ * 唯一来源是 `repair-actions.mjs` 的 `STAGE_PAGE_HINT`（阶段 → 目标页标签），这里只做一次
+ * 「标签 → 登录站点」的映射，**不另写一张阶段表**。`feishu` 那两个阶段（push/readback）与
+ * 认不出的阶段一律返回 `null` ⇒ 不探针、不补登（它们的失败不是这两个后台的会话问题）。
+ */
+export function reloginSiteForStage(stage) {
+  const hint = STAGE_PAGE_HINT[String(stage ?? '')] ?? null;
+  return hint === 'sycm' || hint === 'alimama' ? hint : null;
+}
+
+/**
+ * 「这一次失败该不该走补登」——纯函数，把闸门的三条分叉钉死（可被用例与突变验证盯住）。
+ *
+ * - `skip`：没开开关 / 本轮已补过 / 步骤其实成功了 / 判不出站点且没有登录墙 ⇒ 什么都不做；
+ * - `relogin`：页签 URL 已经命中登录墙（老路径，判据＝`loginWallOf`）；
+ * - `probe`：URL 判据认不出（页面内容是兜底页也行），但这一步属于某个登录站点
+ *   ⇒ 先跑一次**只读探针**再决定（不凭页面文案直连补登，见补登闸门处的注释）。
+ */
+export function decideReloginAttempt({ status = null, reloginOnWall = false, reloginUsed = false, wall = null, siteHint = null } = {}) {
+  if (!reloginOnWall || reloginUsed) return 'skip';
+  if (status === 0) return 'skip';
+  if (wall) return 'relogin';
+  return siteHint ? 'probe' : 'skip';
+}
+
+/**
+ * 只读探针的回执 → 补登要用的「登录墙」。**永不抛**。
+ *
+ * 只认 `verdict === 'NEEDS_LOGIN'`：`ALREADY_LOGGED_IN` / `PARTIAL` / `PAGES_ABSENT` /
+ * `STOP_AND_ALERT` 都不是「这一份会话掉了」，尤其 `PAGES_ABSENT`（退出码 3）是「页面还没归位」——
+ * 那种情况补登也是白登。站点必须**明确 loggedIn === false** 才算，读到 `null`（读不到）不算：
+ * 本项目的头号错误就是把「读不到」当成「掉了」。
+ */
+export function reloginWallFromProbe({ receipt = null, site = null } = {}) {
+  const verdict = receipt?.verdict ?? null;
+  if (verdict !== 'NEEDS_LOGIN') return null;
+  const sites = receipt?.sites && typeof receipt.sites === 'object' ? receipt.sites : {};
+  const keys = site ? [site] : Object.keys(sites);
+  for (const key of keys) {
+    const entry = sites[key];
+    if (entry && entry.loggedIn === false) {
+      return { site: key, url: typeof entry.href === 'string' ? entry.href : null };
+    }
+  }
+  return null;
+}
+
+/**
+ * 跑一次**只读**登录探针（`login-merchant.mjs --check-only`），拿结构化回执。**永不抛**。
+ *
+ * ⚠️ 它名不副实：`--check-only` 会把该站点已有的页签 `navigate` 到 `probeUrl` 再读 `location.href`
+ * （`login-merchant.mjs` 的 `siteLoggedIn`），所以**会动页面**——只是在失败路径上跑一次、
+ * 且随后无论补不补登都会重新落位，代价可接受。这条事实原先在脚本注释里被写反，2026-10-18 已改正。
+ */
+export function probeSiteSession({ shopKey, site = null, run = null } = {}) {
+  const proxyPort = shopInstance(shopKey).proxyPort;
+  const scriptPath = path.join(REPO_ROOT, 'skills/sycm-alimama-daily-report/scripts/login-merchant.mjs');
+  const argv = ['--check-only', '--proxy', `http://127.0.0.1:${proxyPort}`, '--shop', shopKey, '--notify', 'off'];
+  if (site) argv.push('--target', site);
+  const spawn = run ?? ((cmd, args, options) => spawnSync(cmd, args, options));
+  const record = { attempted: true, ok: false, receipt: null, exitCode: null, error: null, command: `${NODE} ${formatArgv([scriptPath, ...argv])}` };
+  let result = null;
+  try {
+    result = spawn(NODE, [scriptPath, ...argv], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      // stdin 只能是 `'ignore'`（沙箱下 `'pipe'` 必回 EBUSY，与 `reloginShop`／`runStage` 同一条）。
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env },
+    });
+  } catch (error) {
+    record.error = String(error?.message ?? error);
+    return record;
+  }
+  record.exitCode = result?.status ?? null;
+  if (result?.error) record.error = String(result.error.message ?? result.error);
+  const stdout = String(result?.stdout ?? '');
+  const start = stdout.indexOf('{');
+  if (start >= 0) {
+    try {
+      record.receipt = JSON.parse(stdout.slice(start));
+      record.ok = true;
+    } catch (error) {
+      record.error = `回执不是 JSON：${String(error?.message ?? error)}`;
+    }
+  } else {
+    record.error = '探针没有输出回执';
+  }
+  return record;
+}
+
+/**
  * 「整轮被挡」的**真因**（2026-10-06 加）。纯函数，输入就是体检那一步留下的 `detail` 与 `normalize`。
  *
  * 为什么必须有它（2026-10-06 的真实事故）：整轮被挡时，告警的结论改判**只**照跑前那一次
@@ -2161,14 +2254,47 @@ async function main() {
         // stdout/stderr 里往往一个字都没有那个 URL（2026-10-08 的第 2 步只报
         // `alimama: state did not settle to <日期>`）。判据本体＝`loginWallOf`（唯一来源）。
         if (result.status !== 0 && args.reloginOnWall && !reloginUsed) {
-          const wall = await readLoginWallViaProxy({
+          const siteHint = reloginSiteForStage(stage.stage);
+          let wall = await readLoginWallViaProxy({
             proxy: `http://127.0.0.1:${shopInstance(key).proxyPort}`,
           });
+          let wallSource = wall ? 'tab-url' : null;
+          // 2026-10-18 加：URL 判据认不出、但**页面内容**已经变成「页面不存在或无权访问」时，
+          // 会话照样是掉了 —— 那一页是阿里妈妈的兜底页（同一 URL 换内容），`loggedOut` 正则
+          // （`login/index`/`member/login`/`login.htm`）永远命中不了它。
+          // 实测两次（2026-10-04 盖文天猫、2026-10-18 里可林淘宝），两次都是补登一次就好。
+          //
+          // 只补一次**只读探针**，不凭页面文案直接补登：真·子账号场景权限墙（2026-09-21 科塔那次）
+          // 页面文案一模一样，直连补登会把它当掉登录反复试、锁号。探针的 `verdict` 是唯一分叉点。
+          if (decideReloginAttempt({ status: result.status, reloginOnWall: args.reloginOnWall,
+            reloginUsed, wall, siteHint }) === 'probe') {
+            const probed = probeSiteSession({ shopKey: key, site: siteHint });
+            record.reloginProbe = {
+              site: siteHint,
+              ok: probed.ok,
+              verdict: probed.receipt?.verdict ?? null,
+              loggedIn: probed.receipt?.sites?.[siteHint]?.loggedIn ?? null,
+              href: probed.receipt?.sites?.[siteHint]?.href ?? null,
+              exitCode: probed.exitCode ?? null,
+              error: probed.error ?? null,
+            };
+            if (probed.ok) {
+              wall = reloginWallFromProbe({ receipt: probed.receipt, site: siteHint });
+              wallSource = wall ? 'read-only-probe' : null;
+            }
+            console.error(`[${key}]   这一页不是登录页 URL（判不出登录墙）⇒ 只读探针 ${siteHint}：`
+              + `verdict=${record.reloginProbe.verdict ?? '未知'}`
+              + `，loggedIn=${record.reloginProbe.loggedIn ?? '未知'}`
+              + `（${wall ? '判为掉会话，补登一次' : '不补登，按既有失败路径处理'}）`);
+          }
           if (wall) {
             reloginUsed = true;
             console.error(`[${key}]   ⚠️ 第 ${stage.stage} 步失败，且页面停在 ${wall.site} 的登录墙上`
               + ' —— 就地补登一次（每家店每轮只此一次）');
             record.relogin = reloginShop({ shopKey: key, wall, logDir: shopLogDir });
+            // 这一次补登是**怎么判出来的**（`tab-url`＝页签 URL 命中登录墙；`read-only-probe`＝
+            // URL 认不出、只读探针判出掉会话）。事后复盘「为什么这次补登了／没补登」只认它。
+            record.relogin.source = wallSource;
             if (record.relogin.ok) {
               const retried = await run({ ...stage, argv });
               record.relogin.retry = { stage: stage.stage, status: retried.status ?? null };
