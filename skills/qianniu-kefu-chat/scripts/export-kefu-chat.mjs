@@ -6,6 +6,7 @@
 //     [--week last-week | --date YYYY-MM-DD] \
 //     [--shops 盖文天猫,里可林天猫,网林天猫,里可林淘宝] \
 //     [--lookback-days 30] [--out <目录>] [--evidence <目录>] [--notify|--notify-dry-run]
+//     [--no-auto-login] [--rehearse-login]
 //
 // 设计要点（全部有实测依据，见 SKILL.md）：
 //   ① 会话列表按**创建时间**过滤且宽区间会被截断 ⇒ 回溯 + 窗口切 7 天一段查。
@@ -14,10 +15,14 @@
 //   ④ userId 取会话行的 userID.appUid；userNick 用 cntaobao<店铺全称>。
 //   ⑤ 单店失败不影响其他店；NEEDS_LOGIN / PAGES_ABSENT 退出码 3（要人）。
 //   ⑥ 不发静默失败：给了 --notify 就落 alert.json 走共享告警路径。
+//   ⑦ 掉登录 ⇒ 自动跑一次既有登录流程，然后**重新问一次聊天记录接口**才认（见 attemptShopLogin）。
 //
 // 环境前提：目标店铺浏览器与代理**已在运行**（本版不负责起停；批次壳负责起停是第二步）。
+// 掉登录时本脚本会调仓库既有的登录流程（见 attemptShopLogin），但它只覆盖生意参谋/阿里妈妈
+// 两个后台，所以「登录成功」之后**必须**回头再问一次聊天记录接口，不能拿它当结论。
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { SHOP_BROWSERS } from '../../../runtime/browser-ports.mjs';
 import { SHOP_IDENTITIES } from '../../sycm-alimama-daily-report/scripts/shop-identities.mjs';
@@ -25,7 +30,8 @@ import {
   APP_PATH_FRAGMENT, APP_URL, DEFAULT_LOOKBACK_DAYS, MTOP_API,
   buildListChunks, buildShopStats, buildUserNick, classifyDirection, agentNameOf,
   computeShopSideUids, conversationShopUid, conversationCid, dedupeConversations,
-  dedupeMessages, filterMessagesToWindow, formatShanghai, inferBuyerUid, normalizeMessage, notifyCommand,
+  dedupeMessages, filterMessagesToWindow, formatShanghai, inferBuyerUid, loginCommand,
+  normalizeMessage, notifyCommand, planLoginAttempt,
   resolveWeek,
   toIsoDate, transferNamesOf, isRobotCid,
 } from './kefu-chat-core.mjs';
@@ -44,7 +50,8 @@ const STALL_LIMIT = 3;
 function parseArgs(argv) {
   const out = {
     week: 'last-week', date: null, shops: DEFAULT_SHOPS, lookbackDays: DEFAULT_LOOKBACK_DAYS,
-    out: path.join(REPO_ROOT, 'output/kefu-chat'), evidence: null, notify: false, notifyDry: false, help: false,
+    out: path.join(REPO_ROOT, 'output/kefu-chat'), evidence: null, notify: false, notifyDry: false,
+    autoLogin: true, rehearseLogin: false, help: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -56,6 +63,11 @@ function parseArgs(argv) {
     else if (arg === '--evidence') out.evidence = path.resolve(String(argv[++i] ?? ''));
     else if (arg === '--notify') out.notify = true;
     else if (arg === '--notify-dry-run') { out.notify = true; out.notifyDry = true; }
+    else if (arg === '--no-auto-login') out.autoLogin = false;
+    // 强制走一次登录流程（不改变任何状态：账号本来就登着时，登录脚本会判 ALREADY_LOGGED_IN）。
+    // 存在的理由：这条分支在「大家都没掉登录」的日常里永远不会被执行，
+    // 而它恰恰是最容易写了没接上的那一种 —— 留一个开关，让接线能用真机证明一次。
+    else if (arg === '--rehearse-login') out.rehearseLogin = true;
     else if (arg === '--help' || arg === '-h') out.help = true;
     else throw new Error(`未知参数：${arg}`);
   }
@@ -148,6 +160,49 @@ async function probeLogin(ev, targetId, endMs) {
   return result;
 }
 
+// 掉登录时调的那条登录流程 —— 复用既有实现，不在这里重写一遍填表/滑块/协议。
+// 它只认生意参谋与阿里妈妈两个后台（`SITES` 里就这两个键），聊天记录页不在其中，
+// 所以它报「登上去了」并不等于聊天记录能用：调用方必须再探一次（见 collectShop）。
+const LOGIN_SCRIPT = path.join(REPO_ROOT, 'skills/sycm-alimama-daily-report/scripts/login-merchant.mjs');
+
+function attemptShopLogin(shop) {
+  const command = loginCommand({
+    nodePath: process.execPath,
+    loginScript: LOGIN_SCRIPT,
+    proxyPort: shop.proxyPort,
+    shopKey: shop.key,
+  });
+  const sent = spawnSync(command.file, command.args, command.options);
+  let receipt = null;
+  const stdout = String(sent.stdout ?? '').trim();
+  try { receipt = stdout ? JSON.parse(stdout) : null; } catch { receipt = null; }
+  return {
+    exitCode: sent.status,
+    receipt,
+    spawnError: sent.error ? String(sent.error.message) : null,
+    stderr: String(sent.stderr ?? '').trim().slice(0, 400),
+    raw: receipt ? null : stdout.slice(0, 400),
+  };
+}
+
+/**
+ * 登录之后把聊天记录页重新加载一次。
+ *
+ * 为什么非重载不可：登录换掉的是会话 cookie，而已经跑起来的单页应用把旧会话留在内存里，
+ * 光等它自己刷新可能永远等不到（表现就是「刚登完还是报会话过期」）。
+ * 导航中那一发 eval 报错是正常的（页面正在销毁），不算失败。
+ */
+async function reloadChatPage(shop, ev) {
+  try {
+    const tabs = await fetchJson(`http://127.0.0.1:${shop.proxyPort}/targets`, { timeoutMs: 5000 });
+    const hit = tabs.find((tab) => String(tab.url ?? '').includes(APP_PATH_FRAGMENT));
+    if (hit) await ev(hit.targetId, `location.replace(${JSON.stringify(APP_URL)});'nav'`);
+  } catch { /* 导航期间断开是预期现象 */ }
+  const targetId = await ensureTarget(shop);
+  await waitForMtopLib(ev, targetId, 20000);
+  return targetId;
+}
+
 const initExpr = (payload) => `window.__kf=${JSON.stringify(payload)};'init'`;
 
 const stepExpr = () => `(async function(){
@@ -237,11 +292,56 @@ async function collectShop(shop, week, options, evidenceDir) {
     return record;
   }
 
-  const login = await probeLogin(ev, targetId, week.endMs);
+  let login = await probeLogin(ev, targetId, week.endMs);
+  const loggedOut = login.ok !== true;
+
+  // 掉登录 ⇒ 交给既有登录流程试一次；`--rehearse-login` 则不管登没登都走一遍（只为证明接线通）。
+  if (options.rehearseLogin || (loggedOut && options.autoLogin)) {
+    const attempt = attemptShopLogin(shop);
+    const plan = planLoginAttempt(attempt);
+    record.login = {
+      attempted: true,
+      forced: options.rehearseLogin === true,
+      wasLoggedOut: loggedOut,
+      verdict: attempt.receipt?.verdict ?? null,
+      exitCode: attempt.exitCode,
+      detail: attempt.receipt?.detail ?? attempt.stderr ?? attempt.raw ?? null,
+      action: plan.action,
+    };
+    // 留证：登录回执落到证据目录（那份回执本身只记结构不记密码）。
+    if (attempt.receipt) {
+      fs.writeFileSync(
+        path.join(evidenceDir, `login-${shop.key}.json`),
+        `${JSON.stringify(attempt.receipt, null, 1)}\n`,
+      );
+    }
+    if (plan.action === 'RETRY') {
+      targetId = await reloadChatPage(shop, ev);
+      login = await probeLogin(ev, targetId, week.endMs);
+      if (login.ok !== true) {
+        // 这一条是整段的关键：登录脚本说成了，聊天记录接口却不认。
+        // 不许把它写成「登录失败」蒙过去，也不许当成功继续跑（会采出 0 场然后看着像「这周没聊天」）。
+        record.status = 'NEEDS_LOGIN';
+        record.error = `自动登录报了成功（${attempt.receipt?.verdict}），但聊天记录接口仍然拒绝：${String(login.code ?? '-')}`
+          + '（那条登录流程只验生意参谋/阿里妈妈两个后台，聊天记录域是另一套会话）';
+        return record;
+      }
+      record.login.effective = true;
+    } else if (loggedOut) {
+      // 只有「本来就掉登录」时才因登录没成而停手；排练档本来登着，
+      // 登录流程说什么都不该让这一轮失败（否则排练会制造假红）。
+      record.status = plan.status;
+      record.error = plan.reason;
+      return record;
+    }
+  }
+
   if (login.ok !== true) {
     const code = String(login.code ?? '');
     record.status = /SESSION_EXPIRED|SESSION|LOGIN/iu.test(code) ? 'NEEDS_LOGIN' : 'LIST_FAILED';
-    record.error = `聊天记录接口不可用：${code}`;
+    record.error = options.autoLogin
+      ? `聊天记录接口不可用，自动登录也没能解决：${code}`
+      : `聊天记录接口不可用（--no-auto-login 已关闭自动登录）：${code}`;
     return record;
   }
 
@@ -445,7 +545,6 @@ async function notify({ week, summaryFile, failed, paused, shops, dryRun = false
     },
   };
   fs.writeFileSync(alertFile, `${JSON.stringify(body, null, 2)}\n`);
-  const { spawnSync } = await import('node:child_process');
   const command = notifyCommand({
     nodePath: process.execPath,
     notifyScript: path.join(REPO_ROOT, 'runtime/notify-feishu.mjs'),
@@ -462,7 +561,7 @@ async function notify({ week, summaryFile, failed, paused, shops, dryRun = false
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
-    console.log('node skills/qianniu-kefu-chat/scripts/export-kefu-chat.mjs [--week last-week|--date YYYY-MM-DD] [--shops a,b] [--lookback-days 30] [--out dir] [--evidence dir] [--notify|--notify-dry-run]');
+    console.log('node skills/qianniu-kefu-chat/scripts/export-kefu-chat.mjs [--week last-week|--date YYYY-MM-DD] [--shops a,b] [--lookback-days 30] [--out dir] [--evidence dir] [--notify|--notify-dry-run] [--no-auto-login] [--rehearse-login]');
     return 0;
   }
   const week = resolveWeek({ date: options.date, lastWeek: options.date ? false : true });
@@ -488,6 +587,7 @@ async function main() {
     records.push(record);
     console.log(`[kefu] ${shop.fullName ?? shop.key}：${record.status}`
       + `${record.stats ? ` 会话 ${record.stats.sessions} 消息 ${record.stats.messages}` : ''}`
+      + `${record.login?.attempted ? `｜自动登录 ${record.login.verdict ?? '-'}${record.login.effective ? '（已生效）' : ''}` : ''}`
       + `${record.error ? ` —— ${record.error}` : ''}`);
   }
 

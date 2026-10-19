@@ -352,3 +352,85 @@ export function notifyCommand({ nodePath, notifyScript, alertFile, dryRun = fals
     options: { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
   };
 }
+
+// ---------------------------------------------------------------------------
+// 自动登录（2026-10-19 加）
+// ---------------------------------------------------------------------------
+//
+// 这一层只做**一件事**：把「聊天记录接口掉登录」接到仓库既有那条登录流程上
+// （`skills/sycm-alimama-daily-report/scripts/login-merchant.mjs`），
+// 然后**重新问一次聊天记录接口**。
+//
+// 为什么必须重新问、不能拿登录脚本的结论当结论（这是本段唯一重要的取舍）：
+// 那条脚本只验「生意参谋」和「阿里妈妈」两个后台（`SITES` 里就这两个键），
+// 而聊天记录页在 `market.m.taobao.com` —— 它**不在**那两个站点里。
+// 「两个后台都在登录态」只证明淘宝主站会话在，**不证明**聊天记录的会话能用。
+// 把它当结论，就会出现本仓反复出现过的那种假事实：结论看着确定，实际站点根本没验过。
+//
+// 因此 `ALREADY_LOGGED_IN` 在这里也只意味着「再去问一次」，不意味着「已经好了」。
+
+export const LOGIN_SUCCESS_VERDICTS = Object.freeze(['LOGGED_IN', 'ALREADY_LOGGED_IN']);
+
+/**
+ * 拼「跑一次登录脚本」那一跳。
+ *
+ * `--notify off` 是硬要求：登录脚本默认会往飞书发告警，而这条客服链的告警策略是
+ * 「由客服链自己的结论统一发」（且当前阶段用户明确要求先不发飞书）。
+ * 让子进程顺手发一条，会出现「客服链说没事、飞书却弹一条登录告警」的两套说法。
+ *
+ * `--commit` 是硬要求：不带它那条脚本是**只读排练**，只会量状态、返回 READY_TO_*，
+ * 看着像跑过、实际一个键都没按下去 —— 这正是「接线接上了但没生效」的经典形态。
+ */
+export function loginCommand({ nodePath, loginScript, proxyPort, shopKey }) {
+  return {
+    file: nodePath,
+    args: [
+      loginScript,
+      '--proxy', `http://127.0.0.1:${proxyPort}`,
+      '--shop', shopKey,
+      '--target', 'both',
+      '--commit',
+      '--notify', 'off',
+    ],
+    options: { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  };
+}
+
+/**
+ * 登录脚本跑完之后怎么走。三个出口，每个都对应一个明确的下一步：
+ *
+ *   `RETRY`  —— 它说成了（`LOGGED_IN` / `ALREADY_LOGGED_IN`）⇒ **重新问一次聊天记录接口**
+ *   `HUMAN`  —— 需要人（滑块、没存凭据、填成了别家、提交没生效…）⇒ 如实报，不重试
+ *   `HUMAN`  —— 脚本自己没跑通（退出码非 0/2、或回执解析不出来）⇒ 同样交人，但原因写清是脚本层
+ *
+ * 为什么 `HUMAN` 只有一种状态、原因却要分这么细：状态决定「链要不要停」，原因决定
+ * 「人去干什么」。合成一句「登录失败」的代价是收信人照着错的方向做（本仓已经因此
+ * 白查过一整天的「密码不对」，实际是窗口太小）。
+ */
+export function planLoginAttempt({ exitCode = null, receipt = null, spawnError = null } = {}) {
+  if (spawnError) {
+    return { action: 'HUMAN', status: 'NEEDS_LOGIN', reason: `登录脚本没启动起来：${spawnError}` };
+  }
+  if (exitCode !== 0 && exitCode !== 2) {
+    return {
+      action: 'HUMAN',
+      status: 'NEEDS_LOGIN',
+      reason: `登录脚本自身没跑通（退出码 ${exitCode ?? '未知'}）${receipt?.detail ? `：${receipt.detail}` : ''}`,
+    };
+  }
+  const verdict = receipt?.verdict ?? null;
+  if (!verdict) {
+    return { action: 'HUMAN', status: 'NEEDS_LOGIN', reason: '登录脚本没有给出结论（回执里没有 verdict）' };
+  }
+  if (LOGIN_SUCCESS_VERDICTS.includes(verdict)) {
+    return { action: 'RETRY', status: null, reason: null };
+  }
+  if (verdict === 'PARTIAL') {
+    return { action: 'HUMAN', status: 'NEEDS_LOGIN', reason: `登录只成了一半：${receipt?.detail ?? '有站点没进去'}` };
+  }
+  return {
+    action: 'HUMAN',
+    status: 'NEEDS_LOGIN',
+    reason: `自动登录没能完成：${verdict}${receipt?.detail ? ` —— ${receipt.detail}` : ''}`,
+  };
+}

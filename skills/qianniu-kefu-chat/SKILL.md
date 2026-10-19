@@ -14,7 +14,8 @@ description: Export per-shop 千牛 customer-service chat history for a natural 
 - 目标店铺浏览器与代理**已在运行**（端口来自 `runtime/browser-ports.mjs`，一店一 profile）。
   本版不负责起停；批次壳（`run-batches`）负责起停是接入第二步。
 - 店铺浏览器里的账号必须登录着（聊天记录域是 `market.m.taobao.com`，与日报链维护的
-  `myseller/sycm/alimama` 域**不是同一套登录态**，会单独过期）。
+  `myseller/sycm/alimama` 域**不是同一套登录态**，会单独过期）。掉登录时脚本会尝试自动恢复，
+  但那条登录流程只覆盖生意参谋/阿里妈妈，**恢复不了就如实报 `NEEDS_LOGIN`**（见下节）。
 - 店铺全称取 `skills/sycm-alimama-daily-report/scripts/shop-identities.mjs` 的 `fullName`。
 
 ## 接口与语义（2026-10-19 实测，别凭猜测改）
@@ -73,13 +74,39 @@ node skills/qianniu-kefu-chat/scripts/verify-pack.mjs --out output/kefu-chat/202
 
 跑批口径、交付物长什么样、怎么验收（独立复核命令）见 `docs/ops/KEFU-CHAT-WEEKLY.md`。
 
+## 自动登录（2026-10-19 加）
+
+探测到聊天记录接口不再认这个会话时，脚本会**自己调一次仓库既有的登录流程**
+（`skills/sycm-alimama-daily-report/scripts/login-merchant.mjs`），然后**重新问一次聊天记录接口**。
+
+```bash
+# 默认就开；关掉：
+node skills/qianniu-kefu-chat/scripts/export-kefu-chat.mjs --week last-week --no-auto-login
+# 强制走一遍登录流程（账号本来就登着时它只会判 ALREADY_LOGGED_IN，不改状态）——
+# 用来证明这条接线是通的，因为日常里它永远不会被执行：
+node skills/qianniu-kefu-chat/scripts/export-kefu-chat.mjs --week last-week --shops 里可林家居 --rehearse-login
+```
+
+**必须知道的一条**：那条登录流程只验「生意参谋」和「阿里妈妈」两个后台
+（它的 `SITES` 里就这两个键），而聊天记录页在 `market.m.taobao.com` —— **不在其中**。
+所以它报 `LOGGED_IN` / `ALREADY_LOGGED_IN` **不等于**聊天记录能用。本脚本据此设了三道：
+
+1. 它说成了 ⇒ **重新加载聊天记录页**（登录换掉的是 cookie，已跑起来的单页应用会把旧会话留在内存里）
+   并**再探一次**接口；
+2. 再探仍不认 ⇒ 报 `NEEDS_LOGIN`，原因写明「自动登录报了成功但接口仍拒绝」，**不继续采**
+   （否则会采出 0 场，看着像「这一周没人聊天」）；
+3. 它说要人（滑块、没存凭据、填成别家、提交没生效…）⇒ 原样把结论带进 `error`，只试这一次，不重试。
+
+子进程固定带 `--commit`（不带就只是只读排练，看着跑过实际一个键都没按）和 `--notify off`
+（不让它绕过本链的告警策略自己往飞书发）。登录回执落在证据目录 `login-<店铺键>.json`。
+
 ## 失败模式与处置
 
 | 状态 | 含义 | 处置 |
 |---|---|---|
 | `BROWSER_DOWN` | 端口连不上 | 先起该店浏览器（`start-all.mjs --only <店>`）；本脚本不代起 |
 | `PAGES_ABSENT` | 页面打开了但 `window.lib.mtop` 15 秒内不可用 | 人在该窗口看一眼；别连试 |
-| `NEEDS_LOGIN` | 接口返回会话过期 | **只能人工登录**，不要自动填账密 |
+| `NEEDS_LOGIN` | 接口返回会话过期，**自动登录也没能解决** | 看 `error` 里的登录结论；`CAPTCHA_REQUIRED` 等只能人工。**别连试**（连着试会锁号） |
 | `LIST_FAILED` | 列表接口报错（非会话过期） | 看错误码；网络类可重跑，风控类停下 |
 | `COLLECT_FAILED` | 有会话没采完 | 重跑幂等（按 cid 去重），不会产生重复行 |
 

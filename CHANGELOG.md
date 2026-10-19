@@ -15,6 +15,66 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.9] - 2026-10-19
+
+客服聊天记录链加**自动登录**：接口不再认会话时，自己调一次仓库既有的登录流程，然后回过头再问一次接口。
+
+**改了什么**
+
+1. 新增 `--no-auto-login`（关掉，默认是开）与 `--rehearse-login`（强制走一遍登录流程，用来证明接线通）。
+2. 采集脚本在探测到 `ok !== true` 时，以子进程调
+   `skills/sycm-alimama-daily-report/scripts/login-merchant.mjs --proxy <该店代理> --shop <该店> --target both --commit --notify off`，
+   回执落到证据目录 `login-<店铺键>.json`，结论进 `summary.json` 的 `shops[].login`。
+3. 纯判据进 core：`loginCommand`（拼那一跳）、`planLoginAttempt`（回执 → 下一步），各带用例。
+
+**为什么改**
+
+用户 2026-10-19 要求「要加自动登录的流程」。这条链此前掉登录只有一个出口：报 `NEEDS_LOGIN` 等人，
+而它跑在没人看着的时段，等于「掉一次就要人来一趟」。
+
+**这里唯一重要的取舍：登录脚本说成了，也不等于聊天记录能用**
+
+那条登录流程只验「生意参谋」和「阿里妈妈」两个后台（它的 `SITES` 里就这两个键），
+而聊天记录页在 `market.m.taobao.com` —— 不在其中。所以：
+
+- `LOGGED_IN` / `ALREADY_LOGGED_IN` 只被解释成「**再去问一次**」，不解释成「已经好了」；
+- 重问之前**先重新加载聊天记录页**（登录换的是 cookie，已跑起来的单页应用会把旧会话留在内存里）；
+- 重问仍不认 ⇒ 报 `NEEDS_LOGIN` 并写明「自动登录报了成功但接口仍拒绝」，**绝不继续采**
+  —— 否则会采出 0 场，而交付物看起来像「这一周没人聊天」；
+- 它说要人（滑块 / 没存凭据 / 填成别家 / 提交没生效）⇒ 原样把结论带进 `error`，**只试一次不重试**（连试会锁号）。
+
+子进程固定带 `--commit`（不带就只是只读排练，看着跑过其实一个键都没按）与 `--notify off`
+（不让它绕过本链的告警策略自己发飞书）。这两条都用例钉住了。
+
+**同时补上了新链的登记（不登记就是四条守卫同时红）**
+
+新增 skill 目录会触发仓库里的登记类守卫，逐条补：
+
+- `runtime/browser-ports.mjs`：`SITE_ACCOUNT` 加 `market.m.taobao.com`（merchant）；
+  `BROWSER_ACCOUNT` 加第三类 `shop` —— 它**不是一台**浏览器，而是「一店一浏览器」那一族（13 家店各自身份）。
+  不并进 `dailyReport`：并进去就等于宣称客服聊天记录跑在那台共用商家浏览器上，而事实是跑在各店自己的 profile 里。
+- `ROUTES` 加 `kefuChat` 路线（browser: shop，sites: market.m.taobao.com，skills: qianniu-kefu-chat）。
+- `runtime/arch-boundary.test.mjs` 的 `SKILLS_TO_RUNTIME` 加 `export-kefu-chat.mjs`
+  （它 import `browser-ports.mjs` 的 `SHOP_BROWSERS`）；只登记这一个 —— 打包与验收脚本一个 runtime 都不碰。
+- `runtime/operator-console/state.mjs`：`SITE_PLATFORM` / `PLATFORM_LABELS` 加 `kefuChat` 卡片。
+  刻意**不**复用挂着 `reserved`（「仓库内暂无调用方」）的千牛那张卡，否则那张卡就开始说假话。
+
+守卫结果：`browser-ports.test.mjs` 22/22；`arch-boundary.test.mjs` 与 `operator-console` 两个测试
+合计 37/37；另外 9 个引用端口模块的测试文件全绿。
+
+**验证到什么程度**
+
+- 离线：`kefu-chat-core.test.mjs` **24/24** 绿（新增 4 条）。
+- 对端参数实测：把 `loginCommand` 拼出来的那串参数原样喂给真实登录脚本，
+  它**没有报 Unknown argument**，stdout 是纯 JSON，`--notify off` 生效（回执 `notify.status=SKIPPED`），
+  退出码 3、`verdict=STOP_AND_ALERT, detail=fetch failed`（当时四家店浏览器/代理均已退出，端口全 DOWN）。
+- 用这份**真实回执**喂 `planLoginAttempt`：exit 3/0/2 三条都判 `HUMAN`（退出码 3 那条原因是
+  「登录脚本自身没跑通」），换成 `ALREADY_LOGGED_IN` 才判 `RETRY` —— 与设计一致。
+- **未验证（如实写在这里）**：「掉登录 → 登录成功 → 聊天记录会话恢复」这条端到端路径，
+  当时没有活着的店铺浏览器可动，一次都没真跑过。留给 `--rehearse-login` 在浏览器起着的时段验：
+  账号本来就登着时它只会判 `ALREADY_LOGGED_IN`，然后照常重探、照常采集，不改任何状态。
+- 本版**不发飞书**（用户明确「飞书先不发」）；`--notify` 的投递路径本次未改动。
+
 ## [1.12.8] - 2026-10-19
 
 新增 `skills/qianniu-kefu-chat/`：把「下载各店客服聊天记录」从一次性人工探索，沉淀成**可以每周手工执行**的一条链。

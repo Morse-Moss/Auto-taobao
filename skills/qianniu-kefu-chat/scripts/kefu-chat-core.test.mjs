@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import {
   DAY_MS, buildListChunks, buildShopStats, buildUserNick, classifyDirection, agentNameOf,
   computeShopSideUids, dedupeConversations, dedupeMessages, filterMessagesToWindow,
-  formatShanghai, inferBuyerUid, isRobotCid, isoWeekId, normalizeMessage, notifyCommand,
-  parseIsoDate, parseMessageText, resolveWeek,
+  formatShanghai, inferBuyerUid, isRobotCid, isoWeekId, loginCommand, normalizeMessage, notifyCommand,
+  parseIsoDate, parseMessageText, planLoginAttempt, resolveWeek,
   startOfWeek, toDateKey, toIsoDate, transferNamesOf,
 } from './kefu-chat-core.mjs';
 
@@ -191,4 +191,55 @@ test('notifyCommand：stdin 必须是 ignore，否则本机 spawnSync 会 EBUSY'
   assert.equal(command.options.stdio[0], 'ignore');
   assert.equal(command.options.stdio[1], 'pipe');
   assert.equal(command.options.encoding, 'utf8');
+});
+
+// 自动登录那一跳：只证明「登录脚本说成了」不够，必须回头再问聊天记录接口一次。
+test('planLoginAttempt：登录脚本说成了也只允许「再去问一次」，不是「已经好了」', () => {
+  for (const verdict of ['LOGGED_IN', 'ALREADY_LOGGED_IN']) {
+    const plan = planLoginAttempt({ exitCode: 0, receipt: { verdict } });
+    assert.equal(plan.action, 'RETRY', `${verdict} 必须回到聊天记录接口重新验`);
+    assert.equal(plan.status, null);
+  }
+});
+
+test('planLoginAttempt：需要人的结论一律如实带走原因，不重试', () => {
+  const captcha = planLoginAttempt({ exitCode: 2, receipt: { verdict: 'CAPTCHA_REQUIRED', detail: '要滑块' } });
+  assert.equal(captcha.action, 'HUMAN');
+  assert.equal(captcha.status, 'NEEDS_LOGIN');
+  assert.match(captcha.reason, /CAPTCHA_REQUIRED/u);
+  assert.match(captcha.reason, /要滑块/u);
+
+  const partial = planLoginAttempt({ exitCode: 2, receipt: { verdict: 'PARTIAL', detail: '阿里妈妈没进去' } });
+  assert.equal(partial.action, 'HUMAN');
+  assert.match(partial.reason, /一半/u);
+});
+
+test('planLoginAttempt：脚本层没跑通与「登录没成」分开报，别把前者说成后者', () => {
+  const crashed = planLoginAttempt({ exitCode: 3, receipt: { detail: 'Unknown argument' } });
+  assert.equal(crashed.action, 'HUMAN');
+  assert.match(crashed.reason, /登录脚本自身没跑通/u);
+  assert.match(crashed.reason, /退出码 3/u);
+
+  const noSpawn = planLoginAttempt({ exitCode: null, spawnError: 'EBUSY' });
+  assert.match(noSpawn.reason, /没启动起来/u);
+
+  const noVerdict = planLoginAttempt({ exitCode: 0, receipt: {} });
+  assert.match(noVerdict.reason, /没有给出结论/u);
+});
+
+test('loginCommand：--commit 与 --notify off 缺一不可', () => {
+  const command = loginCommand({ nodePath: 'node', loginScript: 'login.mjs', proxyPort: 19041, shopKey: '里可林淘宝' });
+  assert.equal(command.file, 'node');
+  // 不带 --commit 那条脚本只是只读排练 ⇒ 看着跑过、其实一个键都没按
+  assert.equal(command.args.includes('--commit'), true);
+  // 不带 --notify off 会绕过本链的告警策略，自己往飞书发一条
+  assert.deepEqual(command.args.slice(command.args.indexOf('--notify')), ['--notify', 'off']);
+  // 实例由 --proxy 选，店名只点名（本仓踩过「--shop 不切实例」）
+  assert.deepEqual(command.args.slice(command.args.indexOf('--proxy'), command.args.indexOf('--proxy') + 2),
+    ['--proxy', 'http://127.0.0.1:19041']);
+  assert.deepEqual(command.args.slice(command.args.indexOf('--shop'), command.args.indexOf('--shop') + 2),
+    ['--shop', '里可林淘宝']);
+  assert.equal(command.args.includes('--check-only'), false, '--check-only 一个页面都不碰，登不了');
+  assert.equal(command.args.includes('--dry-run'), false);
+  assert.equal(command.options.stdio[0], 'ignore');
 });

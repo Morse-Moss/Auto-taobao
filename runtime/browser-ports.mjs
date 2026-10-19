@@ -469,6 +469,8 @@ export const SITE_ACCOUNT = Object.freeze({
   'one.alimama.com': ACCOUNT_KINDS.merchant,
   'myseller.taobao.com': ACCOUNT_KINDS.merchant,
   'qianniu.taobao.com': ACCOUNT_KINDS.merchant,
+  // 2026-10-19 加：千牛「聊天记录查询」应用（客服聊天记录周更）就跑在这个域上。
+  'market.m.taobao.com': ACCOUNT_KINDS.merchant,
   'xhs.huitun.com': ACCOUNT_KINDS.independent,
   'dy.huitun.com': ACCOUNT_KINDS.independent,
   'feishu.cn': ACCOUNT_KINDS.independent,
@@ -478,6 +480,12 @@ export const SITE_ACCOUNT = Object.freeze({
 export const BROWSER_ACCOUNT = Object.freeze({
   competitor: ACCOUNT_KINDS.buyer,
   dailyReport: ACCOUNT_KINDS.merchant,
+  // 2026-10-19 加：第三类**不是一台**，而是「一店一浏览器」那一族（SHOP_BROWSERS 里 13 家店）。
+  // 为什么必须单列，而不是把它并进 dailyReport：并进去就等于宣称客服聊天记录跑在
+  // 那台共用商家浏览器上 —— 事实是它跑在各家店自己的 profile 里（一店一身份，
+  // 串了就会拿到别家店的聊天记录，而且不报错）。路线表宁可多一个族，
+  // 也不许写一个「看着像、实际不是」的值。
+  shop: ACCOUNT_KINDS.merchant,
 });
 
 // 路线表。`browser: null` ＝ 这条链不需要浏览器（纯接口），或归属尚未定 —— 那时必须显式带
@@ -555,6 +563,17 @@ export const ROUTES = Object.freeze({
     sites: Object.freeze(['myseller.taobao.com', 'qianniu.taobao.com']),
     needsExtension: null,
     skills: Object.freeze([]),
+  }),
+  // 2026-10-19 加：客服聊天记录周更（`skills/qianniu-kefu-chat`）。
+  // 与上面 sellerWorkbench 的区别：那个是「共用商家浏览器里的千牛后台」，
+  // 这条跑在**各店自己的浏览器**里 —— 因为聊天记录要按店取，一店一身份。
+  kefuChat: Object.freeze({
+    label: '客服聊天记录（千牛·聊天记录查询，一店一浏览器）',
+    browser: 'shop',
+    account: ACCOUNT_KINDS.merchant,
+    sites: Object.freeze(['market.m.taobao.com']),
+    needsExtension: null,
+    skills: Object.freeze(['qianniu-kefu-chat']),
   }),
 });
 

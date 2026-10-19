@@ -195,6 +195,13 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/xws-sku-collection/tests/adapter-sku-collection.test.mjs',
   'skills/xws-to-feishu-base/tests/adapter-feishu-import.test.mjs',
   'skills/xws-to-feishu-base/tests/import-failures.test.mjs',
+  // 2026-10-19 新增：客服聊天记录周更（`qianniu-kefu-chat`）的采集入口 import 了
+  // `runtime/browser-ports.mjs` 的 `SHOP_BROWSERS`（一店一代理端口的唯一来源）与店铺登记表。
+  // 为什么必须是这里的依赖而不是把它搬进 runtime：这条链是**业务**（按店取聊天记录），
+  // 端口/身份是机制层叶子，方向是干净的 skills → runtime。
+  // 为什么只登记这一个文件：另外两个脚本（打包、验收）只吃本地文件，一个 runtime 都不碰 ——
+  // 白名单里多写一行就等于宣称一个不存在的依赖。
+  'skills/qianniu-kefu-chat/scripts/export-kefu-chat.mjs',
 ]);
 
 const RUNTIME_TO_SKILLS = Object.freeze([

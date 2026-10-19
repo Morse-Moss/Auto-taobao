@@ -59,7 +59,28 @@ node skills/qianniu-kefu-chat/scripts/verify-pack.mjs --out output/kefu-chat/202
 `modifyTime` 不能用来预筛——它可能比真实末条**早最多 17 天**，据此跳过会漏数据。
 所以「抓了 67% 空会话」是这套口径的固有代价，不是可省的浪费。
 
-## 五、怎么判「这天/这周齐了」
+## 五、掉登录会自己救一次（2026-10-19 加）
+
+接口不认会话时，脚本会调仓库既有的登录流程（生意参谋/阿里妈妈那条），然后**重新加载聊天页并再探一次**。
+所以状态 `NEEDS_LOGIN` 的含义是「**自动登录也没救回来**」，不是「没试过」。
+
+三种处置要分清：
+
+| `error` 里出现 | 人要做的事 |
+| --- | --- |
+| `自动登录报了成功…但接口仍然拒绝` | 说明两个后台登上了、聊天记录这套会话没跟上 ⇒ 在那家店窗口里手工打开一次聊天记录页 |
+| `CAPTCHA_REQUIRED` / `WRONG_ACCOUNT` / `NO_SAVED_CREDENTIAL` | 去那家店窗口人工登录一次（滑块只能人做；填成别家是凭据混了） |
+| `登录脚本自身没跑通` | 先看证据目录里的 `login-<店铺键>.json`，多半是脚本层或连通性问题 |
+
+想在平时就证明这条接线通不通（不改任何状态）：
+
+```bash
+node skills/qianniu-kefu-chat/scripts/export-kefu-chat.mjs --date 2026-10-18 --shops 里可林家居 --rehearse-login
+```
+
+账号本来就登着时，登录脚本只会判 `ALREADY_LOGGED_IN`，然后照常重探、照常采集。
+
+## 六、怎么判「这天/这周齐了」
 
 **只看 `summary.json`**，别看控制台最后一行：
 
@@ -79,7 +100,7 @@ node skills/qianniu-kefu-chat/scripts/verify-pack.mjs --out output/kefu-chat/202
 2. `stats.first` / `stats.last` 应分别落在周的起止附近。某家店 `last` 停在周三，就是那天之后没采到。
 3. 每店消息条数应当与上周同量级；差一个数量级先怀疑登录态或页面变更，别直接交出去。
 
-## 六、交付物长什么样
+## 七、交付物长什么样
 
 `output/kefu-chat/<周号>/`
 
@@ -89,7 +110,7 @@ node skills/qianniu-kefu-chat/scripts/verify-pack.mjs --out output/kefu-chat/202
 - `<店>/全量数据-<店>-<周号>.json`：全字段，每条消息保留 `raw`。
 - `manifest.json`：机读汇总（跑批核对用）。
 
-## 七、还没做的（第二步）
+## 八、还没做的（第二步）
 
 按「先手工跑稳两周，再上调度」的顺序，这一版**故意没接**：
 

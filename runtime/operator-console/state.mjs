@@ -151,6 +151,10 @@ export const SITE_PLATFORM = Object.freeze({
   'one.alimama.com': 'alimama',
   'myseller.taobao.com': 'qianniu',
   'qianniu.taobao.com': 'qianniu',
+  // 2026-10-19 加：客服聊天记录周更跑在这个域上。刻意**不**并进 qianniu 那张卡 ——
+  // 那张卡挂着 `reserved`（「仓库内暂无调用方」），并进去就会出现「一张写着预留的卡，
+  // 底下却有链在跑」的假话。这里另起一张，卡面说的是这条链实际在做的事。
+  'market.m.taobao.com': 'kefuChat',
   'xhs.huitun.com': 'huitun',
   'dy.huitun.com': 'huitun',
   'feishu.cn': 'feishu',
@@ -165,6 +169,9 @@ export const PLATFORM_LABELS = Object.freeze({
   feishu: { title: '飞书网页', note: '用它自己的账号，与淘宝身份无关' },
   huitun: { title: '灰豚', note: '用它自己的账号，扫码 + 拼图验证' },
   qianniu: { title: '千牛 / 卖家工作台', note: '预留：仓库内暂无调用方', reserved: true },
+  // 2026-10-19 加：客服聊天记录（千牛·聊天记录查询）。它有自己的登录态，
+  // 与上面那张「预留」的千牛卡不是一回事，所以不共用卡片。
+  kefuChat: { title: '客服聊天记录', note: '千牛·聊天记录查询，一店一浏览器' },
 });
 
 // 状态词表与外观（照抄 docs/ops/OPERATOR-CONSOLE-INTERACTION.md §3.4 那张表）。
