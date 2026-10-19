@@ -150,3 +150,14 @@ runtime/sop-runtime/scheduled-*/
 # 不忽略它的话，每跑一次 check:head 就往 git status 里添一个目录，
 # 把真正的源码漂移淹在噪音里（HEAD-VS-WORKTREE 事故的土壤之一）。
 evidence/head-check-*/
+
+# 2026-10-19：交付产物目录（客服聊天记录周更等）。
+# 它由脚本每次重新生成、体积大（一周四家约 4MB），不是源码；
+# 仓库历史上 output/ 下 0 个 tracked 文件，补上忽略是为了避免每周跑完被顺手 git add -A 带进来。
+/output/
+
+# 2026-10-19：客服聊天记录周更的原始分片（evidence/kefu-chat-<周号>/raw/ 等）。
+# 一周四家约 67MB、几千个 part-*.json；它们是可重跑再生的只读采集产物
+# （同一周重跑按 cid 去重，结果一致），所以不进库。汇总与归一化结果随交付走 output/（也已忽略）。
+# 需要留档时整份复制到 evidence/<轮次>/ 再提交。
+evidence/kefu-chat-*/
