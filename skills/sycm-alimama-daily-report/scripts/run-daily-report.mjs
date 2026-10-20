@@ -54,6 +54,9 @@ function parseArgs(argv) {
     // 证据目录的店铺维度（运营叫法）。**不给时行为逐字不变**（仍落 daily-report-<日期>）；
     // 多店铺必须给 —— 否则四家串行会互相覆盖，见 daily-report-runtime.mjs 的 evidenceBaseDir。
     else if (key === '--shop-key') args.shopKey = argv[++index];
+    // 「平台当日确实没有推广数据」时按实际留空（业务口径 2026-10-20 拍板）。
+    // **默认关闭**：0 行与「数据还没出」在 CSV 层面同形，只有人先看过平台报表页才允许放行。
+    else if (key === '--allow-empty-promotion') args.allowEmptyPromotion = true;
     else if (key === '--app-token') args.appToken = argv[++index];
     else if (key === '--table-id') args.tableId = argv[++index];
     else if (key === '--view-id') args.viewId = argv[++index];
@@ -260,14 +263,22 @@ function buildRunEnvironment(args) {
 // 不说是哪个文件，得靠人回翻自己刚下载了什么。这里带文件名和两侧观察到的日期。
 function assertSourceDates(source, args) {
   const selfCheck = summarizeSourceDates(source, args.reportDate);
-  if (!selfCheck.allMatchDate) {
+  // 「推广 CSV 0 行（平台当日无数据）」是一种**被显式许可**的合法输入（2026-10-20，用户拍板：
+  // 没有就留空、不填 0）。但许可只对「空」这一种形态生效：
+  //   · 空 + 没加 --allow-empty-promotion ⇒ 照旧拦（默认不变）；
+  //   · 有行但日期不对（mismatched）⇒ 无论加不加开关都拦 —— 那是筛选失效/下错文件，与「没有数据」无关。
+  const promotionEmptyAllowed = selfCheck.promotion?.empty === true && args.allowEmptyPromotion === true;
+  if (!selfCheck.allMatchDate && !promotionEmptyAllowed) {
     throw new Error(
       `source date self-check failed for ${args.reportDate}`
       + `（shop=${JSON.stringify(selfCheck.shop)} ← ${path.basename(args.shopXlsx)}`
       + `；promotion=${JSON.stringify(selfCheck.promotion)} ← ${path.basename(args.promotionZip)}）`,
     );
   }
-  return selfCheck;
+  if (promotionEmptyAllowed) {
+    console.warn(`[留空] 推广报表 0 行且已显式放行（--allow-empty-promotion）⇒ ${args.reportDate} 的推广两段按实际留空`);
+  }
+  return { ...selfCheck, promotionEmptyAllowed };
 }
 
 function buildPlan(args, target, source, fields, sourceSelfChecks, evidence) {
@@ -295,6 +306,10 @@ function buildPlan(args, target, source, fields, sourceSelfChecks, evidence) {
       keywordSceneId: fields['场景ID'],
       audienceSceneId: fields['场景ID (1)'],
       dateEpoch: reportDateEpoch(args.reportDate),
+      // 「这一行的推广两段是**按实际留空**写进去的」—— 必须能在收据里独立读出来，
+      // 否则「平台当日没有推广」与「采集漏了推广」在事后只能靠翻日志分辨。
+      promotionEmptyAllowed: sourceSelfChecks?.promotionEmptyAllowed === true,
+      promotionState: sourceSelfChecks?.promotion?.state ?? null,
       targetOnlyPromotionFieldsBlank: ['原二级场景ID', '原二级场景名字', '原二级场景ID (1)', '原二级场景名字 (1)']
         .every(name => !Object.hasOwn(fields, name)),
     },
@@ -383,7 +398,8 @@ async function main() {
   const target = await inspectTarget(args);
   const source = extractSources(args);
   const sourceSelfChecks = assertSourceDates(source, args);
-  const fields = buildCombinedFields(source, target.fields, args.reportDate);
+  const fields = buildCombinedFields(source, target.fields, args.reportDate,
+    { allowEmptyPromotion: args.allowEmptyPromotion === true });
   // 目录名带店铺维度之后，**贴错标签比不贴标签更糟** ⇒ 动手之前先核一次：
   // 键必须是已登记的运营叫法，且必须与源 xlsx「店铺名称」列（＝本链唯一可靠的店铺身份来源）一致。
   // 放在这里是因为它是第一个「既拿到 fields、又还没建目录、也没碰远端」的位置。

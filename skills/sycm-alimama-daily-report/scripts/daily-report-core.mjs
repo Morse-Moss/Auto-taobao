@@ -136,12 +136,23 @@ const PROMOTION_SCENE_BLOCKS = Object.freeze([
  * 所以缺场景时必须打一行 warn 留痕（`[留空]`）。
  *
  * 仍然 fail-closed 的三种：
- *   ① 一个场景行都没有 ⇒ 这是采集链路整段失效，不是「这家店没开推广」；
+ *   ① 一个场景行都没有 ⇒ 默认仍拦（这是采集链路整段失效的常态形态）；
  *   ② 出现了不认识的场景 id ⇒ 报表定义变了（可能平台加了新场景），别硬塞进这两段里；
  *   ③ 同一个 id 出现两条 ⇒ 分不清该用哪一条。
+ *
+ * ⚠️ 2026-10-20 给 ① 开了一个**显式**的窄口（业务口径，用户拍板）：
+ * 「平台上确实没有推广数据，就按实际留空，不要填 0」。
+ * 触发条件必须同时满足两条，缺一不可：
+ *   · 调用方显式传 `allowEmptyPromotion: true`（CLI 上是 `--allow-empty-promotion`）；
+ *   · 本次推广 CSV 是 0 行（`source.promotion.rows.length === 0`）。
+ * 为什么不设成默认：0 行有两种成因 ——「这家店当天真的没投」与「平台数据还没出/还没静止」，
+ * 在 CSV 层面同形。默认放开就等于把「不知道」写成「当天没有」，而且同日早跑写进去的低值
+ * **当天无法重推**（只能先删那一天）。所以要人手先确认平台侧（报表页花费汇总是否全 0.00），
+ * 再显式放行这一次。
  */
-export function buildCombinedFields(source, visibleFields, reportDate) {
+export function buildCombinedFields(source, visibleFields, reportDate, options = {}) {
   if (visibleFields.length !== 265) throw new Error(`expected 265 visible Feishu fields, got ${visibleFields.length}`);
+  const allowEmptyPromotion = options.allowEmptyPromotion === true;
   const known = new Map(Object.values(SCENES).map((scene) => [scene.id, scene]));
   const rowsById = new Map();
   for (const row of source.promotion.rows) {
@@ -154,7 +165,13 @@ export function buildCombinedFields(source, visibleFields, reportDate) {
     rowsById.set(id, row);
   }
   if (rowsById.size === 0) {
-    throw new Error('promotion rows are empty —— 一个推广场景都没有，这是没采到数据（不是「这家店没开推广」）');
+    if (!allowEmptyPromotion) {
+      throw new Error('promotion rows are empty —— 一个推广场景都没有，这是没采到数据（不是「这家店没开推广」）'
+        + '；若平台侧确认当日确实无推广数据，加 --allow-empty-promotion 显式放行（推广两段留空，不写 0）');
+    }
+    // 留痕是硬要求：留空与「漏采集」在飞书页面上长得一模一样，这一行是唯一区分依据。
+    console.warn('[留空] 这份推广报表 0 行（平台当日无推广数据）⇒ 关键词推广/人群推广两段字段整段留空'
+      + '（人手显式放行：--allow-empty-promotion；不是采集漏，也没有写 0）');
   }
 
   const fields = { ...buildShopFields(source.shop, visibleFields.slice(2, 121), reportDate) };
@@ -165,8 +182,10 @@ export function buildCombinedFields(source, visibleFields, reportDate) {
     Object.assign(fields, buildPromotionFields(source.promotion.headers, row,
       visibleFields.slice(from, to), scene, reportDate));
   }
-  if (missing.length) {
+  if (missing.length && rowsById.size > 0) {
     // 必须留痕：留空与「没采到」在飞书页面上长得一样，这一行是两者唯一的区分依据。
+    // 0 行（刚刚那条 warn 已经说过「两段都空」）不再重复喊「缺 371 和 372」——
+    // 同一件事两条日志会让「这份报表是空的」和「这份报表少了两个场景」看起来像两回事。
     console.warn(`[留空] 这份推广报表里没有 ${missing.join('、')} 这一行 ⇒ 对应的 ${missing.length} 段字段整段留空`
       + '（是数据源没给这个场景，不是采集漏了）');
   }
@@ -224,10 +243,20 @@ export function summarizeSourceDates(source, reportDate) {
       targetRowCount: promotionRowDates.filter((value) => value === reportDate).length,
     },
   };
+  // 推广侧多一个「空」态（2026-10-20 加，业务口径：平台上确实没有就不写值）。
+  //
+  // 三种状态必须分开，不能都叫不匹配：
+  //   empty      —— CSV 只有表头、0 条数据行。平台当日没有推广数据（实测网林家居 2026-10-19：
+  //                 报表页「暂无数据 共 0 项数据」、账户总花费 0.00，两次独立生成的任务导出同一份空 CSV）。
+  //   mismatched —— 有数据行，但日期不等于目标日（或跨了多天）⇒ 筛选没生效/下错了文件，必须继续拦。
+  // 少了这个区分，`rowCount:0` 与 `筛选失效` 在证据里长得一样，只能靠人肉回翻。
+  selfCheck.promotion.empty = promotionRowDates.length === 0;
+  selfCheck.promotion.state = selfCheck.promotion.empty ? 'empty'
+    : (promotionDates.length === 1 && promotionDates[0] === reportDate ? 'matched' : 'mismatched');
   // 店铺侧：目标日必须恰好一行，且被取用的那一行就是它。
   selfCheck.shop.matches = selfCheck.shop.targetRowCount === 1 && matchedShopRow === reportDate;
   // 推广侧：ZIP 里只有一天的数据，且就是目标日（多天说明筛选没生效）。
-  selfCheck.promotion.matches = promotionDates.length === 1 && promotionDates[0] === reportDate;
+  selfCheck.promotion.matches = selfCheck.promotion.state === 'matched';
   selfCheck.allMatchDate = selfCheck.shop.matches && selfCheck.promotion.matches;
   return selfCheck;
 }

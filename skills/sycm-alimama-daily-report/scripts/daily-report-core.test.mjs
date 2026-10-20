@@ -236,3 +236,58 @@ test('buildCombinedFields：单场景放行（有几个场景写几个），一�
   const dup = makeCombined([['372', '人群推广'], ['372', '人群推广']]);
   assert.throws(() => buildCombinedFields(dup.source, dup.visibleFields, REPORT_DATE), /duplicate scene id/u);
 });
+
+// 2026-10-20：业务口径「平台上确实没有推广数据，就按实际留空，不要填 0」。
+// 实测来源：网林家居 2026-10-19 的推广 CSV 只有表头、0 条数据行（两次独立生成的任务
+// 导出同一份空 CSV），平台报表页本身显示「暂无数据 共 0 项数据」、账户总花费 0.00。
+// 这里要钉三件事：默认仍拦、显式放行后**只留空不写 0**、以及空与「日期不对」必须是两种态。
+test('0 行推广：默认仍 fail-closed，显式 allowEmptyPromotion 才留空（且不写 0）', () => {
+  const empty = makeCombined([]);
+
+  // ① 默认（不传 options）照旧拦 —— 这条是防「为了让今天跑通，把闸门默认放开」的退路。
+  assert.throws(() => buildCombinedFields(empty.source, empty.visibleFields, REPORT_DATE),
+    /一个推广场景都没有/u);
+
+  // ② 显式放行：推广两段整段不写（既不是 0，也不是空字符串），店铺段照常写。
+  const { value: fields, warnings } = captureWarn(() =>
+    buildCombinedFields(empty.source, empty.visibleFields, REPORT_DATE, { allowEmptyPromotion: true }));
+  assert.equal(fields['店铺字段1'], 0, '店铺段不受影响');
+  for (const name of ['场景ID', '场景ID (1)', '指标0', '关键词推广花费', '人群推广花费']) {
+    assert.equal(Object.hasOwn(fields, name), false, `${name} 必须整段不写（留空 ≠ 写 0）`);
+  }
+  assert.equal(JSON.stringify(fields).includes('"0"'), false, '不能把「没有」写成 0 值');
+  assert.equal(warnings.length, 1, '留空必须留痕：这是「平台没有」与「采集漏了」唯一的区分依据');
+  assert.match(warnings[0], /0 行/u);
+  assert.match(warnings[0], /不是采集漏/u);
+
+  // ③ 空 ≠ 日期不对：有数据行但日期不是目标日，即使显式放行也必须拦（那是下错文件/筛选失效）。
+  const wrongDate = makeCombined([]);
+  wrongDate.source.promotion.rows = [['2026-09-15', '371', '关键词推广',
+    ...Array.from({ length: 64 }, (_, index) => String(index)), '1', '2', '3', '4']];
+  const dateCheck = summarizeSourceDates(wrongDate.source, REPORT_DATE);
+  assert.equal(dateCheck.promotion.empty, false, '有行就不是空');
+  assert.equal(dateCheck.promotion.state, 'mismatched');
+  assert.throws(() => buildCombinedFields(wrongDate.source, wrongDate.visibleFields, REPORT_DATE,
+    { allowEmptyPromotion: true }), /unexpected 关键词推广 identity\/date/u,
+  '开关只对「空」生效，不能顺手放行日期错的报表');
+});
+
+test('自证：推广 0 行是 empty 态而不是 mismatched 态（两种成因必须分得开）', () => {
+  const emptySource = makeSource({ shopDates: ['2026-09-16'], promotionDates: [] });
+  const emptyCheck = summarizeSourceDates(emptySource, REPORT_DATE);
+  assert.equal(emptyCheck.promotion.empty, true);
+  assert.equal(emptyCheck.promotion.state, 'empty');
+  assert.equal(emptyCheck.promotion.rowCount, 0);
+  assert.deepEqual(emptyCheck.promotion.observedDates, []);
+  assert.equal(emptyCheck.promotion.matches, false, '空不等于匹配 —— 是否需要放行由调用方显式决定');
+  assert.equal(emptyCheck.shop.matches, true);
+  assert.equal(emptyCheck.allMatchDate, false);
+
+  const wrongSource = makeSource({ shopDates: ['2026-09-16'], promotionDates: ['2026-09-15'] });
+  const wrongCheck = summarizeSourceDates(wrongSource, REPORT_DATE);
+  assert.equal(wrongCheck.promotion.empty, false);
+  assert.equal(wrongCheck.promotion.state, 'mismatched');
+
+  const okSource = makeSource({ shopDates: ['2026-09-16'], promotionDates: [REPORT_DATE] });
+  assert.equal(summarizeSourceDates(okSource, REPORT_DATE).promotion.state, 'matched');
+});

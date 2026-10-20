@@ -15,6 +15,37 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.10] - 2026-10-20
+
+推广 CSV **0 行**从「结构性拦死」变成「可由人显式放行并按实际留空」—— 业务口径：平台上确实没有推广数据，就留空，不写 0。
+
+**改了什么**
+
+1. `daily-report-core.mjs` 的 `summarizeSourceDates` 把推广侧拆成**三种态**：`empty`（只有表头、0 条数据行）/ `mismatched`（有行但日期不等于目标日，或跨多天）/ `matched`。此前两种都表现为 `matches:false`，证据里分不出「平台当日没有」和「下错文件」。
+2. `buildCombinedFields(source, visibleFields, reportDate, options)` 新增 `options.allowEmptyPromotion`（默认 `false`）：
+   0 行 + 未放行 ⇒ 照旧 fail-closed；0 行 + 放行 ⇒ 关键词推广／人群推广两段**整段不写**（留空，不写 0、不写空串），店铺段照常映射，并打一条 `[留空]` warn 留痕。
+   同时把「缺某个场景」那条 warn 收在 `rowsById.size > 0` 里 —— 空报表不再额外喊一遍「缺 371 和 372」。
+3. `run-daily-report.mjs` 新增 CLI 开关 `--allow-empty-promotion`；`assertSourceDates` 只在「空 + 显式放行」时放行，**有行但日期不对时加不加开关都拦**；放行结论写进 `plan.checks.promotionEmptyAllowed` / `promotionState`，收据可独立读出这一行是「按实际留空」写进去的。
+
+**为什么改**
+
+2026-10-20 08:00 那轮日报，8 家里 7 家写成，`网林家居`（网林定制家居）卡在第 7 步 push，报 `source date self-check failed`：店铺工作簿 `matches:true`，推广 CSV `rowCount:0`。
+人工核查确认平台上确实没有：两次独立生成的任务（08:33:52 / 08:47:09）导出同一份 577 字节 zip、CSV 只有表头、解包 sha256 相同；只读回读阿里妈妈报表页显示「暂无数据 共 0 项数据」、账户总花费 0.00、各场景全 0.00。
+用户拍板口径：**关键词推广确实没有，按实际记录，没有就留空**。而原实现两道闸门都会拦（日期自证 + 「一个场景都没有」），这一行结构上写不进去。
+
+**刻意没有做的**
+
+- **没有把放行改成默认**。0 行有两种成因 ——「这家店当天真的没投」与「平台数据还没出／还没静止」——在 CSV 层面同形；同日早跑写进飞书的低值当天无法重推，只能先删那一天。所以必须人先看过平台报表页，再显式放行这一次。
+- **没有填 0**。0 行时推广族字段没有任何可信来源，写 0 等于把「不知道」写成「当天花费 0 元」，且是改口径。
+- 注意：店铺段自己的 `关键词推广花费` / `精准人群推广花费` 是**店铺报表源值**（本次为文本 "0"），与推广段留空是两件事、两列（推广段那几列带 ` (1)` 后缀），未做改动。
+
+**验证到什么程度**
+
+- 定向用例：`daily-report-core.test.mjs` 11/11、`collector-arg-contract.test.mjs` 7/7、`daily-report-runtime` + `daily-report-audit` + `repair-actions` 45/45。
+- 突变：把 `allowEmptyPromotion` 改成恒 `true` ⇒ 第 9、10 条用例当场变红（证明「默认仍拦」这条守卫是活的，不是空断言），已还原。
+- **真机证据**（不只是离线）：对 `网林家居 / 2026-10-19` 用 0 行 zip 先跑不带开关的 dry-run ⇒ 退出码 1、同一条报错、证据里已经带 `"empty":true,"state":"empty"`；再加 `--allow-empty-promotion` ⇒ 退出码 0、`promotionEmptyAllowed:true`、`payloadFields:116`（推广段 0 字段）。随后 `--commit` 真写：`COMMITTED_AND_VERIFIED`、`recordId=reczz28PTwFh3QVB`、2425→2426。独立回读（不经收据）：底单 2026-10-19 的 8 家参与采集店齐了，网林定制家居那一行即 `reczz28PTwFh3QVB`；逐字段读该记录，推广段 `关键词推广日期`／`关键词推广花费 (1)`／`关键词推广展现量`／`人群推广日期`／`场景ID`／`场景ID (1)` 全部「未设置」，字段数 118。
+- 证据目录：`evidence/daily-report-2026-10-19-网林家居/`（plan.json / receipt.json / paste.tsv）。
+
 ## [1.12.9] - 2026-10-19
 
 客服聊天记录链加**自动登录**：接口不再认会话时，自己调一次仓库既有的登录流程，然后回过头再问一次接口。
