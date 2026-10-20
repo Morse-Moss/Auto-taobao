@@ -92,7 +92,7 @@ function parseArgs(argv) {
   const options = {
     dateInput: 'yesterday', batchSize: null, shops: null, commit: false, keepGoing: false,
     allowMissingPeer: false, notify: false, notifyPrint: false, logs: null, print: false,
-    autoRepair: false, autoRepairMaxRounds: null, workflow: 'daily-report',
+    autoRepair: false, autoRepairMaxRounds: null, workflow: 'daily-report', allowEmptyPromotion: false,
     // `--mode`（2026-10-10 加，spec §5.1 统一入口）：dry-run|apply。解析规则在
     // runtime/workflow-catalog.mjs 的 resolveRunMode（纯函数）—— 显式 mode 赢；
     // --commit 等价 apply（兼容期，打印转换提示）；矛盾（dry-run + --commit）退 2；
@@ -141,6 +141,9 @@ function parseArgs(argv) {
     // `--relogin-on-wall`（2026-10-10）：链中间撞到登录墙就地补登一次。同 `--auto-repair`
     // 的理由，这一句不写就等于「生产形态下这条修复一次也不会生效」。
     else if (arg === '--relogin-on-wall') options.reloginOnWall = true;
+    // 「推广 CSV 0 行按实际留空」（2026-10-20）：默认关，显式给才开；必须同时转发给链
+    // （`chainArgsFor`）与驻留（`buildBatchHoldArgv` → 续跑），否则续跑会在同一道闸门上再挡一次。
+    else if (arg === '--allow-empty-promotion') options.allowEmptyPromotion = true;
     else if (arg === '--auto-repair-max-rounds') {
       const raw = argv[++i];
       const n = Number(raw);
@@ -194,6 +197,9 @@ function chainArgsFor(options) {
   if (options.deferAgentActionableAlert) args.push('--defer-agent-actionable-alert');
   // `--relogin-on-wall`（2026-10-10）：同理由，**不转发就等于这条修复生产形态下从不生效**。
   if (options.reloginOnWall) args.push('--relogin-on-wall');
+  // 「推广 CSV 0 行按实际留空」（2026-10-20）：同一条教训的第三次 —— 不转发就等于
+  // 命令行给了它、每批的链都没认，而日志一个字都不会提示。
+  if (options.allowEmptyPromotion) args.push('--allow-empty-promotion');
   if (options.autoRepairMaxRounds !== null && options.autoRepairMaxRounds !== undefined) {
     args.push('--auto-repair-max-rounds', String(options.autoRepairMaxRounds));
   }
@@ -270,7 +276,8 @@ function batchUnfixableShops(file) {
  * 它只提供 `--no-notify`（关）与 `--notify-print`（只打印不投递）——**没有** `--notify` 这个参数。
  * 所以 notify 为真时**什么都不传**，退回它的默认（真投递）。
  */
-export function buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify, notifyPrint, workflow = null }) {
+export function buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify, notifyPrint, workflow = null,
+  allowEmptyPromotion = false }) {
   const args = [
     '--date', date,
     '--summary', summaryPath,
@@ -288,12 +295,17 @@ export function buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify
   // `--workflow`（P0-3，2026-10-11）：发起驻留的是哪条流程就传哪条——驻留的自动续跑回到
   // **同一条流程**（buildBatchResumeArgv）。不传 ⇒ 对面缺省 daily-report（旧行为逐字不变）。
   if (workflow && workflow !== 'daily-report') args.push('--workflow', workflow);
+  // 「推广空就留空」的口径也要带进驻留：续跑回到 run-batches 时靠它复现原轮口径
+  // （`hold-and-resume.mjs` 认它，再经 `buildBatchResumeArgv` 传回本文件）。
+  if (allowEmptyPromotion) args.push('--allow-empty-promotion');
   return args;
 }
 
-function runBatchHold({ date, summaryPath, batchSize, shops, notify, notifyPrint, workflow, logFd, log }) {
+function runBatchHold({ date, summaryPath, batchSize, shops, notify, notifyPrint, workflow,
+  allowEmptyPromotion = false, logFd, log }) {
   const holdFile = 'scripts/hold-and-resume.mjs';
-  const args = buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify, notifyPrint, workflow });
+  const args = buildBatchHoldArgv({ date, summaryPath, batchSize, shops, notify, notifyPrint, workflow,
+    allowEmptyPromotion });
   log(`--- hold-and-resume：${renderCommand({ file: holdFile, args }, { nodeExe: NODE, repoRoot: REPO_ROOT })}`);
   // stdio 直接接 logFd（**不用 pipe**）：驻留可能挂几个小时，期间它会往 stdout 写状态行 ——
   // pipe 一旦没人读、缓冲区满了就会把子进程堵死，而 `spawnSync` 要等它退出才回来 ⇒ 假死。
@@ -718,7 +730,7 @@ async function main(argv) {
       holdStatus = runBatchHold({
         date, summaryPath: blocked.summaryPath, batchSize: size,
         shops: options.shops, notify: options.notify, notifyPrint: options.notifyPrint,
-        workflow: options.workflow, logFd, log,
+        workflow: options.workflow, allowEmptyPromotion: options.allowEmptyPromotion, logFd, log,
       });
       if (holdStatus === HOLD_EXIT.RESUMED_OK) {
         log('[批次] 人处理完了、自动续跑成功 ⇒ 这一轮的缺口补上了，整轮退出码记 0'

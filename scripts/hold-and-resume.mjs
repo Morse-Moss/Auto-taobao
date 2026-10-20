@@ -72,7 +72,10 @@ export function parseArgs(argv, { now = new Date() } = {}) {
     resumeViaBatches: false, batchSize: null, resumeLogs: null,
     // `--workflow`（P0-3，2026-10-11）：发起驻留的是哪条流程，续跑就回哪条。
     // 缺省 null ＝ 不给 run-batches 传 --workflow（＝它的缺省 daily-report，旧行为逐字不变）。
-    workflow: null };
+    workflow: null,
+    // 「推广 CSV 0 行按实际留空」的口径（2026-10-20）。驻留续跑必须复现原轮口径，
+    // 否则续跑在同一道闸门上再挡一次 —— 而那一轮之所以进驻留，往往正是因为差这一下。
+    allowEmptyPromotion: false };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     if (key === '--date') args.date = argv[++i];
@@ -90,8 +93,10 @@ export function parseArgs(argv, { now = new Date() } = {}) {
     else if (key === '--batch-size') args.batchSize = Number(argv[++i]);
     else if (key === '--resume-logs') args.resumeLogs = argv[++i];
     else if (key === '--workflow') args.workflow = argv[++i];
+    else if (key === '--allow-empty-promotion') args.allowEmptyPromotion = true;
     else return { error: `未知参数 ${key}（可用：--date --summary --shops --until --hold-hours --poll-seconds `
-      + '--once --no-resume --no-release --no-notify --notify-print --resume-via-batches --batch-size --resume-logs --workflow）' };
+      + '--once --no-resume --no-release --no-notify --notify-print --resume-via-batches --batch-size --resume-logs --workflow '
+      + '--allow-empty-promotion）' };
   }
   if (!args.date) return { error: '必须给 --date（驻留的是哪一天的日报）' };
   // 截止时间：默认是**时段**（`--hold-hours`），`--until HH:MM` 是人显式要一个钟点时的备用口径。
@@ -235,7 +240,8 @@ function makeDispatcher({ notify, notifyPrint }) {
  */
 export function resumeArgvFor(args, { shops = null, stages = null } = {}) {
   if (!args.resumeViaBatches) {
-    return buildResumeArgv({ chainScript: CHAIN, date: args.date, shops, stages, notify: true });
+    return buildResumeArgv({ chainScript: CHAIN, date: args.date, shops, stages, notify: true,
+      allowEmptyPromotion: args.allowEmptyPromotion });
   }
   if (Array.isArray(stages) && stages.length) {
     log('[驻留] 注意：分批形态的续跑不吃阶段筛选（分批驱动没有 --only）—— 按整链重跑这一批。');
@@ -246,6 +252,7 @@ export function resumeArgvFor(args, { shops = null, stages = null } = {}) {
     // 续跑回到发起驻留的那条流程（P0-3）：不传 ⇒ run-batches 缺省 daily-report，
     // 推广日报的驻留会把续跑跑成日报链。
     workflow: args.workflow ?? null,
+    allowEmptyPromotion: args.allowEmptyPromotion,
   });
 }
 

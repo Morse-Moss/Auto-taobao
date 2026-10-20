@@ -279,9 +279,13 @@ export function resumeFloorFor(causes = [], stageNames = []) {
  * 不如前者详细，但**是真的**。
  * 也刻意不传 `--will-resume`：续跑只做一次，之后不再驻留 ⇒ 承诺「系统会自己继续」会变成假话。
  */
-export function buildResumeArgv({ chainScript, date, shops = null, stages = null, notify = true } = {}) {
+export function buildResumeArgv({ chainScript, date, shops = null, stages = null, notify = true,
+  allowEmptyPromotion = false } = {}) {
   const argv = [chainScript, '--date', date, '--commit'];
   if (notify) argv.push('--notify');
+  // 续跑要复现原轮的「推广空就留空」口径：不传它，同一家店在续跑时会再撞一次同一道闸门
+  // （而原轮之所以进驻留，往往正是差这一下）⇒ 续跑变成必然失败的重复。
+  if (allowEmptyPromotion) argv.push('--allow-empty-promotion');
   if (Array.isArray(shops) && shops.length) argv.push('--shops', shops.join(','));
   if (Array.isArray(stages) && stages.length) argv.push('--only', stages.join(','));
   return argv;
@@ -308,8 +312,11 @@ export function buildResumeArgv({ chainScript, date, shops = null, stages = null
  */
 export function buildBatchResumeArgv({
   batchScript, date, batchSize = null, shops = null, logs = null, notify = true, noHold = true, workflow = null,
+  allowEmptyPromotion = false,
 } = {}) {
   const argv = [batchScript, '--date', date, '--commit'];
+  // 同 `buildResumeArgv`：口径要跟着原轮走，否则续跑会在同一道闸门上再挡一次。
+  if (allowEmptyPromotion) argv.push('--allow-empty-promotion');
   // `--workflow`（P0-3，2026-10-11）：续跑必须回到**发起驻留的那条流程**。run-batches 的
   // workflow 缺省是 daily-report——不传的话，推广日报失败转驻留后的自动续跑会跑成日报链
   // （跑错流程比不续跑贵一个量级：起对的浏览器、跑错的链、写错的数据）。

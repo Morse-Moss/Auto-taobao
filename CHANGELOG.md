@@ -15,6 +15,46 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.11] - 2026-10-20
+
+把 1.12.10 的 `--allow-empty-promotion` **接进整条定时链**（此前只到叶子脚本 `run-daily-report.mjs`：命令行给不给它，整链都收不到，遇到 0 行仍停在第 7 步 push）。
+
+**改了什么**
+
+按 `--auto-repair` / `--relogin-on-wall` 走过的那条多跳链，逐跳接上：
+
+1. `scripts/run-daily-job.mjs`：收下 `--allow-empty-promotion`，默认**关**，透传进计划。
+2. `runtime/daily-job-plan.mjs`：加进 `CHAIN_FLAGS`（不分批那一路靠它自动生效）+ `buildBatchChainArgs` 显式转发（分批那一路不遍历 `CHAIN_FLAGS`，因为它只认其中一部分开关）。
+3. `scripts/run-batches.mjs`：`parseArgs` 认它；`chainArgsFor` 转发给链；`buildBatchHoldArgv` 转发给驻留。
+4. `scripts/hold-and-resume.mjs`：`parseArgs` 认它，`resumeArgvFor` 传给两个续跑出口。
+5. `runtime/hold-and-resume-plan.mjs`：`buildResumeArgv` / `buildBatchResumeArgv` 都带上它。
+6. `skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs`：`parseArgs` 认它，`buildShopStages` 把它放进 `push` 步骤的 argv。
+
+**为什么改**
+
+1.12.10 只修到叶子。生产形态是 `--batches`，于是「命令行给了它、真正跑的那条路上一次也没生效」——这正是 `--auto-repair`（2026-09-29 补）与 `--relogin-on-wall`（2026-10-10 补）已经各栽过一次的同一种漏接，且症状都是静默的：日志里没有一行提示，表现只是「那一行永远缺着」，人会以为平台又没数据。
+
+续跑这一跳也刻意接上：驻留续跑若不带同一口径，同一家店会在续跑里再撞一次同一道闸门 —— 而那一轮之所以进驻留，往往正是因为差这一下。
+
+**默认仍关（三处都写了为什么）**
+
+0 行有两种成因 ——「这家店当天真的没投」与「平台数据还没出／还没静止」——在 CSV 层面同形；同日早跑写进飞书的低值当天无法重推（只能先删那一天）。所以放行必须是人看过平台报表页之后的**说出口的决定**，程序不替人默认。
+
+**验证到什么程度**
+
+- 离线用例：`runtime/daily-job-plan.test.mjs` 86/86（新增 8 条接线判据）、`hold-and-resume-plan` + `run-batches-cli` + `batch-plan` 合计 166/166。
+- 三条新判据的形状（不是「自己这边传了就算」）：
+  · 计划层真调 `buildJobPlan`，断言 chain / batch-chain 的 argv 含/不含它；
+  · 续跑层真调三个构造函数，并把 `buildBatchHoldArgv` 的输出**喂给 `hold-and-resume.mjs` 自己的 `parseArgs` 当裁判**（㊴ 那个坑的判据 —— 当年 `--notify` 就是「自己传了、对面不认」，驻留一个状态都没打印就退 2）；
+  · 末跳真调 `buildShopStages`，断言 `push` 步骤的 argv 含它。
+- 突变（证明判据不是空断言，两次都当场红、都已还原）：
+  · 删掉 `run-multi-shop-day.mjs` 里 pushArgs 那一行 ⇒ 末跳用例 `not ok 66`；
+  · 删掉 `run-batches.mjs` 的 `chainArgsFor` 那一行 ⇒ 第二跳用例 `not ok 63`。
+- **真机命令行证据**（`--print`，打印出来的就是真正会执行的）：
+  · `run-daily-job.mjs … --batches 5 --allow-empty-promotion --print` ⇒ batch-chain 那行结尾是 `… --auto-repair --relogin-on-wall --allow-empty-promotion`；不带时逐字不含。
+  · `run-batches.mjs … --allow-empty-promotion --print` ⇒ 两批的 `run-multi-shop-day.mjs` 命令行都带 `--allow-empty-promotion`。
+- 未跑 `npm run test:staged`（选中该 skill 的实现变更会跑整个 suite，7.6 h 且本机已知「跑完不退出」）；用上面的定向组 + 真机 `--print` 证据替代，没有用 `--no-verify` 绕过任何检查。
+
 ## [1.12.10] - 2026-10-20
 
 推广 CSV **0 行**从「结构性拦死」变成「可由人显式放行并按实际留空」—— 业务口径：平台上确实没有推广数据，就留空，不写 0。

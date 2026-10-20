@@ -348,6 +348,10 @@ const CHAIN_FLAGS = Object.freeze({
   // 打开它的决定由宿主（`scripts/run-daily-job.mjs`，默认开、配 `--no-relogin-on-wall`）来做，
   // 这一层只负责**转发**它 —— 不替调用方默认打开。
   reloginOnWall: '--relogin-on-wall',
+  // 「推广 CSV 0 行按实际留空」（2026-10-20 加）。**默认关**，同 `autoRepair` 的理由，
+  // 而且它改的是**写进飞书的数值形态**（留空 vs 不写这一行），比动页面更需要说出口：
+  // 0 行与「平台数据还没出」在 CSV 层面同形，同日早跑写进去的低值当天无法重推。
+  allowEmptyPromotion: '--allow-empty-promotion',
   // 由 `buildJobPlan` 按「这一轮会不会转入驻留」自己决定加不加，**不**透传调用方的开关
   // （它不是一个「可选开关」，而是「谁会接手」这件事的结论）。
   willResume: '--will-resume',
@@ -398,6 +402,10 @@ export function buildBatchChainArgs({
   // 各停一遍、各发一条同样的告警，然后才轮到驻留。落点在 `scripts/run-batches.mjs`（就地在被挡那一批收手）。
   // 于是这一个参数的作用是「告诉分批驱动：被挡时要不要挂住等人」，而不是「要不要加一步」。
   hold = true,
+  // `--allow-empty-promotion`（2026-10-20 补）：分批形态也要能转发。漏接的症状与
+  // `--auto-repair` / `--relogin-on-wall` **逐字相同** —— 命令行给了、run-daily-job 也收下了，
+  // 但每一批的链都没收到，而日志里没有一行提示。这一档又是定时任务真正走的那条路。
+  allowEmptyPromotion = false,
 } = {}) {
   const args = ['--date', dateInput, '--batch-size', String(batches)];
   // `--commit` 必须由这里显式给：分批驱动自己的默认是**排练**（不写飞书），
@@ -415,6 +423,7 @@ export function buildBatchChainArgs({
   if (autoRepair) args.push(CHAIN_FLAGS.autoRepair);
   if (deferAgentActionableAlert) args.push(CHAIN_FLAGS.deferAgentActionableAlert);
   if (reloginOnWall) args.push(CHAIN_FLAGS.reloginOnWall);
+  if (allowEmptyPromotion) args.push(CHAIN_FLAGS.allowEmptyPromotion);
   // `--no-hold`：只在**关掉**时给（`run-batches` 的默认与这里一致＝开）。
   // 两个方向都要接上：漏了这一句的症状是「命令行写了 --no-hold，分批那一档照旧挂住」。
   if (!hold) args.push('--no-hold');
@@ -515,6 +524,10 @@ export function buildJobPlan(options = {}) {
     // `evidenceRoot`（2026-10-10 加）：`--evidence-root` 的透传，只作用于分批那一步
     // （run-batches 用它决定统一回执/manifest 的运行根目录）。非分批的链不认识这个参数。
     evidenceRoot = null,
+    // `allowEmptyPromotion`（2026-10-20 加）：「推广 CSV 0 行 ⇒ 按实际留空」。**默认关**。
+    // 非分批那一路靠 `CHAIN_FLAGS` 的遍历自动生效；分批那一路要显式转给 `buildBatchChainArgs`
+    //（那一档不遍历 CHAIN_FLAGS，因为它只认其中一部分开关）。
+    allowEmptyPromotion = false,
   } = options;
 
   // 「分批跑」是一个**显式**开关（提前算出来，因为「结论交给谁」在下面要用到它）。
@@ -602,7 +615,7 @@ export function buildJobPlan(options = {}) {
       args: buildBatchChainArgs({
         dateInput, notify, keepGoing, allowMissingPeer, shops, batches, commit: true,
         autoRepair, autoRepairMaxRounds, deferAgentActionableAlert, hold, reloginOnWall,
-        mode, evidenceRoot,
+        mode, evidenceRoot, allowEmptyPromotion,
       }),
       // 2026-10-10（1.7.19，㊳）：这句原先写「一律释放」，与 `releaseAfterBatch` 的新口径**不一致**了
       // —— 新口径是「链非 0 **且**这一批有修不动的店 ⇒ 不释放（留窗口给人）」。文案跟着改，

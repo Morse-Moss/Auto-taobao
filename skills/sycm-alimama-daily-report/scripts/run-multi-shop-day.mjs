@@ -1212,7 +1212,7 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
     only: null, logs: null, downloads: null, shopXlsx: null, promotionZip: null,
     allowMissingPeer: false, notify: false, notifyPrint: false, loginPreflight: null, willResume: false,
     autoRepair: false, autoRepairMaxRounds: DEFAULT_AUTO_REPAIR_MAX_ROUNDS,
-    deferAgentActionableAlert: false, reloginOnWall: false };
+    deferAgentActionableAlert: false, reloginOnWall: false, allowEmptyPromotion: false };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     // 原样收下，出了循环再解析（`--date yesterday` 要用「这一刻」的时钟算，只算一次）。
@@ -1226,6 +1226,13 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
     else if (key === '--will-resume') args.willResume = true;
     // 历史日（不是「昨日」）的回填降级开关。**默认关**，见 buildShopStages 里 backfill 那段。
     else if (key === '--allow-missing-peer') args.allowMissingPeer = true;
+    // 2026-10-20 加：**推广 CSV 0 行时按实际留空**（业务口径，用户拍板「没有就留空」）。
+    //
+    // 为什么默认关：0 行有两种成因 ——「这家店当天真的没投」与「平台数据还没出／还没静止」——
+    // 在 CSV 层面同形；同日早跑写进飞书的低值当天无法重推（只能先删那一天）。
+    // 要它就得显式给，且给之前人应当已经看过平台报表页的花费汇总。
+    // 它只放行「空」：「有行但日期不对」仍然拦，那是下错文件/筛选失效，与「没有数据」无关。
+    else if (key === '--allow-empty-promotion') args.allowEmptyPromotion = true;
     else if (key === '--shops') args.shops = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
     else if (key === '--commit') args.commit = true;
     else if (key === '--verify-existing') args.verifyExisting = Number(argv[++i]);
@@ -1331,7 +1338,7 @@ export const parseArgs = (argv, { now = new Date() } = {}) => {
  */
 export function buildShopStages(shopKey, options) {
   const { date, mode, shopXlsx = null, promotionZip = null, expectedBeforeCount = null,
-    downloads = null, allowMissingPeer = false } = options;
+    downloads = null, allowMissingPeer = false, allowEmptyPromotion = false } = options;
   if (!MODES.includes(mode)) {
     throw new Error(`未知模式 ${JSON.stringify(mode)}：只认 ${MODES.join(' / ')}`
       + ' —— 不能默默当排练跑（那样会「以为在提交、其实只是干跑」）');
@@ -1398,6 +1405,9 @@ export function buildShopStages(shopKey, options) {
   if (promotionZip) pushArgs.push('--promotion-zip', promotionZip);
   if (mode === 'commit') pushArgs.push('--commit');
   else if (mode === 'verify') pushArgs.push('--verify-existing', '--expected-before-count', String(expectedBeforeCount));
+  // 只透传，不在这一层做判断：放不放行由 `run-daily-report.mjs` 的 `assertSourceDates` 与
+  // `buildCombinedFields` 拿「是否真的空」再判一次（两处都要，缺一处就会「过了一道又撞另一道」）。
+  if (allowEmptyPromotion) pushArgs.push('--allow-empty-promotion');
   add('push', 'run-daily-report.mjs', pushArgs, dailyEnv,
     mode === 'commit' ? '推送（会写底单新增一行）'
       : mode === 'verify' ? '推送段的**只读核对**：核那一行还在、字段还对（不写）'
@@ -2190,7 +2200,7 @@ async function main() {
     // **阶段表只建一次**：自动修复要「重试失败的那一步」，它必须拿到**与首跑完全相同的
     // argv/env**（含 push 的源文件路径），否则重试就变成了「用一份不同的参数再跑一遍」。
     const stages = buildShopStages(key, { date: args.date, mode, expectedBeforeCount: args.verifyExisting, downloads,
-      allowMissingPeer: args.allowMissingPeer });
+      allowMissingPeer: args.allowMissingPeer, allowEmptyPromotion: args.allowEmptyPromotion });
     // 一家店的「把一批阶段按顺序跑完」这一段**只此一份实现**（2026-10-10，缺陷 ㊱）：
     // 首跑与「自修救回后续跑」都调它，判据（`--only` 跳过、push 源产物守卫、登录墙补登、
     // exit 4 记 evidenceIncomplete、成功时回收 source 路径、失败时抛错）两处不会漂开。

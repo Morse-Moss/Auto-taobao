@@ -56,6 +56,10 @@ const NODE = process.execPath;
 
 function parseArgs(argv) {
   const options = { notify: false, notifyPrint: false, keepGoing: false, allowMissingPeer: false, print: false, batches: null,
+    // 「推广 CSV 0 行 ⇒ 按实际留空」（2026-10-20 加，用户拍板「没有就留空」）。**默认关**：
+    // 0 行与「平台数据还没出／还没静止」在 CSV 层面同形，同日早跑写进去的低值当天无法重推
+    //（只能先删那一天）。要它就得显式给，且给之前人应当已经看过平台报表页的花费汇总。
+    allowEmptyPromotion: false,
     // `autoLogin` **默认开**（2026-09-23 用户明确授权自动登录后翻的默认值，原话
     // 「可以自动登录把项目规则改了」）。理由不是「方便」，而是**掉登录的成因已经查清**：
     // 淘宝系的登录键（`cookie2` / `_tb_token_`）是**会话级 cookie**，浏览器进程一结束就丢，
@@ -115,6 +119,8 @@ function parseArgs(argv) {
     else if (arg === '--notify-print') options.notifyPrint = true;
     else if (arg === '--keep-going') options.keepGoing = true;
     else if (arg === '--allow-missing-peer') options.allowMissingPeer = true;
+    // 「推广 CSV 0 行时按实际留空」（2026-10-20 加，默认关，理由见上面那个默认值处的注释）。
+    else if (arg === '--allow-empty-promotion') options.allowEmptyPromotion = true;
     else if (arg === '--no-auto-login') options.autoLogin = false;
     // 2026-10-10 加：链中间撞到登录墙就地补登一次（默认开，见上面 `reloginOnWall` 的注释）。
     else if (arg === '--no-relogin-on-wall') options.reloginOnWall = false;
@@ -159,7 +165,7 @@ function parseArgs(argv) {
       }
       options.batches = value;
     } else if (arg === '--help' || arg === '-h') options.help = true;
-    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --no-auto-login --no-relogin-on-wall --no-hold --no-merchant-label --no-ensure-inquiry-rows --auto-repair --auto-repair-max-rounds --defer-agent-actionable-alert --mode dry-run|apply --commit --evidence-root <目录> --date --shops --only --batches）` };
+    else return { error: `未知参数 ${arg}（可用：--print --notify --notify-print --keep-going --allow-missing-peer --allow-empty-promotion --no-auto-login --no-relogin-on-wall --no-hold --no-merchant-label --no-ensure-inquiry-rows --auto-repair --auto-repair-max-rounds --defer-agent-actionable-alert --mode dry-run|apply --commit --evidence-root <目录> --date --shops --only --batches）` };
   }
   return { options };
 }
@@ -255,6 +261,10 @@ async function main(argv) {
       mode,
       evidenceRoot: options.evidenceRoot,
       resolvedDate: date,
+      // 「推广 CSV 0 行 ⇒ 按实际留空」那一条的**起点**（2026-10-20 加）。
+      // 漏了它的症状与 `autoRepair` / `reloginOnWall` 逐字相同：链那一步少一个开关、
+      // 遇到 0 行仍停在第 7 步 push，而日志里看不出「本该留空却没留」。
+      allowEmptyPromotion: options.allowEmptyPromotion,
     });
   } catch (error) {
     // 计划本身不合法时给一句人话 + 用法错误码；把栈打给操作者没有用（他不是来读栈的）。

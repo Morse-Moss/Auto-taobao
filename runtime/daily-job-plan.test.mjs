@@ -838,6 +838,100 @@ test('第三跳：scripts/run-daily-job.mjs 收下它并透传进计划（源码
   assert.match(src, /reloginOnWall: true/u, '入口默认值必须是开（否则这条修复只在不分批时才生效）');
 });
 
+// --- --allow-empty-promotion：推广 CSV 0 行时按实际留空（2026-10-20 加）-------------
+//
+// 走的是与 `--auto-repair` / `--relogin-on-wall` **同一条多跳链**：
+//   run-daily-job → daily-job-plan → (run-batches → hold-and-resume →) run-multi-shop-day → run-daily-report
+// 任何一跳漏接的症状都是「命令行给了它、真正跑的那条路上一次也没生效」，而日志里一个字都不提示。
+// 这一条比前面几个更要紧：它改的是**写进飞书的数值形态**（留空 vs 整行写不进去），
+// 漏接的表现是「那一行永远缺着」，而人只会以为「平台又没数据」。
+//
+// 判据分三层：① 计划层真调出来的 argv；② 续跑/驻留那两个构造函数真调出来的 argv，
+// 并把结果**喂给对面自己的 parseArgs 当裁判**（记忆里的第三次教训：只钉自己这边传了什么不够，
+// 还得让对面说它认）；③ 最末一跳（run-multi-shop-day → run-daily-report）真调 buildShopStages。
+test('--allow-empty-promotion 打开时，链那一步拿到它（不分批那一跳）', () => {
+  const args = argsOf(buildJobPlan({ allowEmptyPromotion: true }), 'chain');
+  assert.ok(args.includes('--allow-empty-promotion'), `链那一步必须拿到它，实际：${args.join(' ')}`);
+});
+
+test('--allow-empty-promotion 不开时，链那一步**逐字**不含它（默认关闭是硬保证）', () => {
+  const args = argsOf(buildJobPlan({}), 'chain');
+  assert.doesNotMatch(args.join(' '), /--allow-empty-promotion/u,
+    '默认必须什么都不做：0 行与「平台数据还没出」同形，同日写进去的低值当天无法重推');
+});
+
+test('分批形态：--allow-empty-promotion 打开时，batch-chain 那一步拿到它（第二跳）', () => {
+  const plan = buildJobPlan({ dateInput: 'yesterday', batches: 5, allowEmptyPromotion: true,
+    resolvedDate: '2026-10-08', artifactsDir: 'evidence/daily-job-2026-10-08' });
+  const step = plan.steps.find((s) => s.name === 'batch-chain');
+  assert.ok(step, '分批形态必须用 batch-chain 这一步');
+  assert.ok(step.args.includes('--allow-empty-promotion'), `batch-chain 必须拿到它，实际：${step.args.join(' ')}`);
+});
+
+test('分批形态：不带它时 batch-chain **逐字**不含它（默认不变）', () => {
+  const plan = buildJobPlan({ dateInput: 'yesterday', batches: 5,
+    resolvedDate: '2026-10-08', artifactsDir: 'evidence/daily-job-2026-10-08' });
+  const step = plan.steps.find((s) => s.name === 'batch-chain');
+  assert.doesNotMatch(step.args.join(' '), /--allow-empty-promotion/u, '默认关闭必须在不分批形态之外也成立');
+});
+
+test('第二跳：run-batches 认 --allow-empty-promotion，且**两条出口**都转发（源码判据）', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts', 'run-batches.mjs'), 'utf8');
+  assert.match(src, /arg === '--allow-empty-promotion'/u, 'run-batches 必须接受它（否则分批驱动当场报未知参数）');
+  assert.match(src, /if \(options\.allowEmptyPromotion\) args\.push\('--allow-empty-promotion'\)/u,
+    'run-batches 必须把它转发给**链** —— 不转发就是「给了开关、生产形态下每批都没生效」');
+  assert.match(src, /allowEmptyPromotion: options\.allowEmptyPromotion, logFd, log/u,
+    '也要转给**驻留**：否则续跑回到 run-batches 时不带它，同一家店在续跑里再挡一次');
+});
+
+test('第三跳：run-daily-job 收下它并透传进计划（源码判据）', () => {
+  const src = readFileSync(path.join(REPO_ROOT, 'scripts', 'run-daily-job.mjs'), 'utf8');
+  assert.match(src, /arg === '--allow-empty-promotion'/u, 'run-daily-job 必须收下它');
+  assert.match(src, /allowEmptyPromotion: options\.allowEmptyPromotion/u, '必须透传进计划');
+  assert.match(src, /allowEmptyPromotion: false/u, '入口默认值必须是关（0 行有两种成因，不能由程序替人默认放行）');
+});
+
+test('续跑：三个参数构造函数都带上它，且 hold-and-resume **自己的** parseArgs 认', async () => {
+  const plan = await import('./hold-and-resume-plan.mjs');
+  const holdModule = await import('../scripts/hold-and-resume.mjs');
+
+  const direct = plan.buildResumeArgv({ chainScript: 'chain.mjs', date: '2026-10-19',
+    allowEmptyPromotion: true });
+  assert.ok(direct.includes('--allow-empty-promotion'), `不分批续跑必须带上，实际：${direct.join(' ')}`);
+
+  const batch = plan.buildBatchResumeArgv({ batchScript: 'batches.mjs', date: '2026-10-19',
+    batchSize: 5, allowEmptyPromotion: true });
+  assert.ok(batch.includes('--allow-empty-promotion'), `分批续跑必须带上，实际：${batch.join(' ')}`);
+
+  const holdArgv = plan.buildBatchResumeArgv({ batchScript: 'batches.mjs', date: '2026-10-19', batchSize: 5 });
+  assert.doesNotMatch(holdArgv.join(' '), /--allow-empty-promotion/u, '不给时逐字不含（默认不变）');
+
+  // ② 让对面当裁判：buildBatchHoldArgv 生成的那串，必须被 hold-and-resume 自己的 parseArgs 收下。
+  //    这一条正是 ㊴ 那个坑的判据 —— 当年 `--notify` 就是「自己这边传了、对面不认」，
+  //    驻留一个状态都没打印就退 2。
+  const { buildBatchHoldArgv } = await import('../scripts/run-batches.mjs');
+  const holdForResume = buildBatchHoldArgv({ date: '2026-10-19', summaryPath: 'evidence/x/summary.json',
+    batchSize: 5, shops: null, notify: true, notifyPrint: false, allowEmptyPromotion: true });
+  assert.ok(holdForResume.includes('--allow-empty-promotion'), '驻留那一步必须带上它');
+  const parsed = holdModule.parseArgs(holdForResume);
+  assert.equal(parsed.error, undefined, `hold-and-resume 必须认这个参数，实际：${parsed.error}`);
+  assert.equal(parsed.allowEmptyPromotion, true,
+    '对面不只是「不报错」，还得真的把它存成一个为真的开关（parseArgs 成功时返回的就是 args 本身）');
+});
+
+test('末跳：run-multi-shop-day 把它放进 push 步骤的 argv（真调 buildShopStages）', async () => {
+  const { buildShopStages } = await import('../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs');
+  const on = buildShopStages('网林家居', { date: '2026-10-19', mode: 'commit', allowEmptyPromotion: true });
+  const push = on.find((s) => s.stage === 'push');
+  assert.ok(push, '必须找得到 push 这一步');
+  assert.ok(push.argv.includes('--allow-empty-promotion'),
+    `push 那一步必须拿到它（否则 run-daily-report 仍会 fail-closed），实际：${push.argv.join(' ')}`);
+
+  const off = buildShopStages('网林家居', { date: '2026-10-19', mode: 'commit' });
+  const pushOff = off.find((s) => s.stage === 'push');
+  assert.doesNotMatch(pushOff.argv.join(' '), /--allow-empty-promotion/u, '默认不带（改口径必须说出口）');
+});
+
 
 
 // --- 「失败的那一家不许把现场拆掉」：释放判决与驻留闸门（2026-10-10 加）-------------
