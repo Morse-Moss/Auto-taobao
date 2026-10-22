@@ -1469,10 +1469,16 @@ test('两个采集脚本都接上了关遮挡，且报错里说清「关遮挡�
 
   // 「重载一次再走一遍」只允许加在**阿里妈妈侧**：生意参谋那一侧没有现场证据，
   // 不给它加「主动重载」这种带副作用的动作（多一处就是超出授权的行为）。
-  // 阿里妈妈侧现在是 2 处，都是**同一条理由**（把现场重置成干净的一份再走一遍）：
+  // 阿里妈妈侧现在是 3 处，都是**同一条理由**（把现场重置成干净的一份再走一遍）：
   //   ① hitCheckDismissingOverlay 里「关不掉 ⇒ 重载后再走一遍」（2026-09-26）；
-  //   ② reopenTaskList 里「换候选之前重置列表页」（2026-10-05，取件逐条试）。
-  assert.equal((promotion.match(/await reloadAndSettle\(/gu) ?? []).length, 2);
+  //   ② reopenTaskList 里「换候选之前重置列表页」（2026-10-05，取件逐条试）；
+  //   ③ openTaskList 里「导航到列表后、读之前真重载一次」（2026-10-22）。
+  //      ③ 的现场：同 URL navigate 是同文档导航、浏览器什么都不做 ⇒ 读到的是提交后
+  //      第一次渲染的旧列表。11:00 轮网林淘宝因此判「列表里没有目标日的任务」→ 走换通道
+  //      补提交 → 基线还是旧列表 → 「补提交结果核不清」→ 整店失败，而平台上那两条任务
+  //      早就生成成功（当天手工只读核对过）。守卫在 promotion-fetch-wait.test.mjs 里
+  //      另有一条专钉「reloadAndSettle 必须在 navigateTo 之后、readTaskRows 之前」。
+  assert.equal((promotion.match(/await reloadAndSettle\(/gu) ?? []).length, 3);
   assert.equal((shop.match(/createPageReloader\(/gu) ?? []).length, 0,
     '生意参谋侧不许接重载：没有现场证据就加副作用动作，等于把一次失败变成一次未知');
 });

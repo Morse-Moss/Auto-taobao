@@ -116,3 +116,50 @@ test('整页重载后必须重新定位目标（重载会冲掉 data- 标记）'
   assert.match(call, /locateDownloadReportReady\(/u,
     'reLocate 回调必须真的重新定位（要调 locateDownloadReportReady）');
 });
+
+/**
+ * 2026-10-22 真机误杀后补：**取件段读下载任务列表之前必须真重载**。
+ *
+ * 缺陷形态：`openTaskList` 只做 `navigateTo(LIST_URL)` + sleep + 读。
+ * 目标 URL 与当前 URL 相同时，navigate 是「同文档导航」，浏览器什么都不做 ⇒
+ * 读到的是这一屏**上一次渲染的那一版**，提交后刚生成成功的任务一条都读不到。
+ *
+ * 现场（2026-10-22 11:00 轮，网林淘宝，目标日 10-21）：
+ *   提交段（走 openFreshTaskList = navigate + 真重载）已确认
+ *   关键词报表_20261022_113048 / 人群报表_20261022_113102「生成成功」并写进台账；
+ *   取件段从 openTaskList 进来，读到旧列表 ⇒ 判「没有日期范围等于 2026-10-21 的任务」
+ *   ⇒ 换通道补提交 ⇒ 基线还是旧列表 ⇒ 「补提交结果核不清（看了 10 次）」⇒ 整店 STAGE_FAILED。
+ *   **任务在平台上早就生成成功，飞书一个字没写。**
+ *
+ * 同一个坑的另外两次：09-21 date-picker、10-12 提交确认循环（驱动那边已修真重载）。
+ * 这条守卫读源码断言「openTaskList 的读之前有 reloadAndSettle」——守的是**编排顺序**，
+ * 靠跑真实页面验证成本太高（要真起浏览器、真提交、真等平台）。
+ */
+test('取件段读任务列表前必须真重载（同 URL navigate 是空操作）', () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8');
+
+  const judge = (text) => {
+    const start = text.indexOf('async function openTaskList');
+    if (start < 0) return null;
+    const rest = text.slice(start, start + 900);
+    const endMark = rest.indexOf('\n}');
+    const body = endMark > 0 ? rest.slice(0, endMark) : rest;
+    const navAt = body.indexOf('navigateTo(');
+    const reloadAt = body.indexOf('reloadAndSettle(');
+    const readAt = body.indexOf('readTaskRows(');
+    if (navAt < 0 || readAt < 0) return null;
+    // 判据：导航之后、读之前，必须有一次真重载。
+    return reloadAt > navAt && reloadAt < readAt;
+  };
+
+  assert.equal(judge(src), true,
+    'openTaskList 必须在 navigateTo 之后、readTaskRows 之前调用 reloadAndSettle —— '
+    + '否则同 URL navigate 是空操作，读到的是旧列表（2026-10-22 网林淘宝就是这么被误杀的）');
+
+  // 反向自证：把这次加的那行重载删掉，判据必须转红。
+  const broken = src.replace(/^  \/\/ 真重载：重载会打断 eval 上下文[\s\S]{0,200}?await reloadAndSettle\(args, targetId\);\n/mu, '');
+  assert.notEqual(broken, src, '反向自证没生效：没匹配到 openTaskList 里那行 reloadAndSettle（源码形状变了？）');
+  assert.equal(judge(broken), false,
+    '守卫自证失败：去掉真重载后判据仍为真 ⇒ 判据没在判东西');
+});

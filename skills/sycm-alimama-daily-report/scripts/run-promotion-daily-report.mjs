@@ -215,7 +215,11 @@ async function main() {
     const confirmed = confirmSubmittedTask({ rows, kind: args.kind, date: args.date });
     if (confirmed) {
       task = confirmed;
-      writeLedger(args.ledger, recordSubmitted(readLedger(args.ledger), { date: args.date, shop: args.shop, taskName: task, proxy: args.proxy, kind: args.kind }));
+      // `at` 必须传（2026-10-22 补）：`recordSubmitted` 对 `at` 的缺省是 **null**，而取件段
+      // 的 upsert（recordConsumed 找不到就插一笔）落出来的也是 `submittedAt:null`。
+      // 两处都不传，台账上「提交段写过」与「只取过件」就长成同一张脸 —— 10-22 查网林淘宝
+      // 那次误杀时，正是靠「这两条 submittedAt 是 null、而其余 7 家也有 null」绕了两轮才对上账。
+      writeLedger(args.ledger, recordSubmitted(readLedger(args.ledger), { date: args.date, shop: args.shop, taskName: task, proxy: args.proxy, kind: args.kind, at: new Date().toISOString() }));
       break;
     }
     if (Date.now() >= confirmDeadline) {

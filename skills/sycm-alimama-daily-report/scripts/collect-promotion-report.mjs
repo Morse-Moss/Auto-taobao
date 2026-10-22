@@ -451,10 +451,30 @@ async function readTaskRows(args, targetId) {
   return read.rows || [];
 }
 
-/** 导航到下载任务列表并读一次（任务名 + 日期范围）。 */
+/**
+ * 导航到下载任务列表并读一次（任务名 + 日期范围）。
+ *
+ * ⚠️ 读之前必须**真重载**，不能只 navigate（2026-10-22 根修，代价是一次误杀）：
+ * 目标 URL 与当前 URL **相同**时，navigate 是「同文档导航」——浏览器什么都不做。
+ * 于是读到的永远是**这一屏上一次渲染的那一版**：提交后才生成成功的任务一条都读不到。
+ *
+ * 这不是理论风险，是今天真打出来的：2026-10-22 11:00 轮网林淘宝，提交段（走
+ * `openFreshTaskList` = navigate + 真重载）已经确认到「关键词报表_20261022_113048 /
+ * 人群报表_20261022_113102 生成成功」并记进台账；紧接着取件段从这里进来，只 navigate，
+ * 读到的是提交后第一次渲染的旧列表 ⇒ 判「列表里没有日期范围等于 2026-10-21 的任务」
+ * ⇒ 走换通道补提交 ⇒ 补提交再等 10 次差集，基线同样是旧列表 ⇒ 判「补提交结果核不清」
+ * ⇒ 整店 STAGE_FAILED。同轮里可林淘宝也抛过一模一样那句、重试就过了，证明提交本身没坏。
+ *
+ * 同一个坑本项目踩过三次：09-21 的 date-picker、10-12 的提交确认循环（驱动脚本
+ * run-promotion-daily-report.mjs 的注释有完整账）、以及这里。驱动那边已改成真重载，
+ * **共享取件这条路上漏了** —— 这就是那个「只在出事时才走的路径等于没修」的样本。
+ * 修法就一句：跟提交段用同一套（navigate → 真重载 → 再读）。
+ */
 async function openTaskList(args, targetId, { settleMs = 7000 } = {}) {
   await navigateTo(args, targetId, ALIMAMA_LIST_URL);
   await delay(settleMs);
+  // 真重载：重载会打断 eval 上下文，reloader 自带等就绪，所以重载后不必再额外 sleep。
+  await reloadAndSettle(args, targetId);
   return readTaskRows(args, targetId);
 }
 

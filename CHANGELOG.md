@@ -15,6 +15,31 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.12] - 2026-10-22
+
+修掉「推广取件段读到陈旧任务列表 ⇒ 假判无候选 ⇒ 走换通道补提交 ⇒ 判核不清 ⇒ 整店 STAGE_FAILED」这条链。核心只有一句：**同 URL 的 navigate 是同文档导航，浏览器什么都不做**。
+
+**改了什么**
+
+1. `skills/sycm-alimama-daily-report/scripts/collect-promotion-report.mjs`：`openTaskList`（共享取件段读下载任务列表的唯一入口）在 `navigateTo` 之后、`readTaskRows` 之前补一次 `reloadAndSettle`，与提交段 `openFreshTaskList`（navigate + 真重载）对齐。
+2. `skills/sycm-alimama-daily-report/scripts/run-promotion-daily-report.mjs`：提交段 `recordSubmitted` 补传 `at`。此前两处都不传，`recordSubmitted` 的缺省是 `null`、取件段 `recordConsumed` 的 upsert 也落 `submittedAt:null` ⇒ 台账上「提交段写过」与「只取过件」长成同一张脸。
+
+**为什么改**
+
+2026-10-22 11:00 轮，8 家里 7 家成功，网林淘宝（目标日 2026-10-21）失败。提交段已确认 `关键词报表_20261022_113048`、`人群报表_20261022_113102` 生成成功并写进台账；取件段进来后只 navigate，读到提交后第一次渲染的旧列表 ⇒ 判「没有日期范围等于 2026-10-21 的任务」⇒ 走换通道补提交 ⇒ 补提交的差集基线同样是旧列表 ⇒ 抛「补提交结果核不清（看了 10 次）」⇒ 整店失败，飞书一个字没写。
+
+四条证据把它钉死在取件段：① 报错来自补提交分支而非首提；② 同轮里可林淘宝在 b1 抛过一模一样那句、重试就过，所以「平台不接受补提交」不成立；③ 台账形态用真实模块复跑，唯一来源是驱动第 218 行不带 `at`，而它只在 `confirmSubmittedTask` 非空（要求 `status==='生成成功'` 且范围等于目标日）时才执行；④ 提交段有真重载、取件段没有；`git log -S` 追到 `59e418d`（2026-09-21）引入即无重载。
+
+同一个坑本项目已踩四次：09-21 date-picker、10-12 提交确认循环、10-22 共享取件，加上本次。前三次修的都是「当时出事那条路」，共享取件这条没修 —— 这是「只在出事时才走的路径等于没修」的样本。
+
+**验证到什么程度**
+
+- 真机：平台上两条任务的现场核对为 `2026-10-21~2026-10-21`、状态**生成成功**（起窗口 + navigate + 真重载后读，17 行里两条都在）。
+- 真机补跑：`run-promotion-sales1.mjs --date 2026-10-21 --shops 网林淘宝 --commit --notify` 退出码 0，五阶段全过，写入 kw 51 / au 33（证据 `evidence/promotion-sales1-2026-10-21-backfill/`）。
+- 独立回读飞书：补跑 kw 51/51、au 33/33 日期全落 2026-10-21；当天 8 家合计 kw 303 / au 218，与 10-20 轮的 303 / 213 量级吻合。
+- 离线判据：该技能定向 `644/644` 全绿。新增守卫两条 —— `promotion-fetch-wait.test.mjs` 断言 `openTaskList` 里 `reloadAndSettle` 必须落在 `navigateTo` 之后、`readTaskRows` 之前（带反向自证：删掉那行判据必须转红）；`collect-core.test.mjs` 把阿里妈妈侧 `reloadAndSettle` 计数从 2 改到 3 并写清第三条的理由。
+- 突变验证：删掉新增的 `reloadAndSettle` ⇒ 上述两条守卫同时转红，还原后回到 644/644。
+
 ## [1.12.11] - 2026-10-20
 
 把 1.12.10 的 `--allow-empty-promotion` **接进整条定时链**（此前只到叶子脚本 `run-daily-report.mjs`：命令行给不给它，整链都收不到，遇到 0 行仍停在第 7 步 push）。
