@@ -73,3 +73,32 @@ test('接线：collect-product-report 的 run() 与 submit() 参数名对得上'
   assert.deepEqual(params, ['proxy', 'target', 'before', 'submittedOn'],
     'submit 的形参名/顺序变了，调用侧还在按位置传 ⇒ 自愈会拿到 undefined 或拿反');
 });
+
+// ---------------------------------------------------------------- 提交后轮询的接线（2026-10-19）
+//
+// 为什么也要钉：`pollNewProductTask` 是纯函数（好测），但真会静默失效的是接线 ——
+// 只要调用侧还留着「睡死 5 秒 → 读一次」，轮询就白写；或者读了但没把结果交给
+// `uniqueNewProductTask`，判据就还在用旧快照。2026-10-19 网林家居就是这么栽的。
+
+test('结构：采集侧真的用轮询读任务列表，且结果交回判据（不留「睡死 5 秒读一次」）', () => {
+  const source = read(COLLECTOR);
+  assert.match(source, /import \{[^}]*\bpollNewProductTask\b[^}]*\} from '\.\/product-report-core\.mjs'/u,
+    '没有从 product-report-core 引入 pollNewProductTask');
+  const pollCall = source.indexOf('pollNewProductTask({before,read:()=>readProductTasks(proxy,target)');
+  assert.ok(pollCall > 0,
+    '轮询调用点变了或没传 before/read —— 它必须带「提交前的列表」和「真读一次列表」这两个输入');
+  const useAfter = source.indexOf('const after=polled.after', pollCall);
+  assert.ok(useAfter > pollCall,
+    '轮询读到的列表没交回 uniqueNewProductTask ⇒ 判据还在用旧快照，轮询等于没接');
+  // 反面：旧的「固定睡 5 秒 + 只读一次」必须彻底消失，否则两种口径同时在
+  assert.doesNotMatch(source, /await sleep\(5000\); ?const after=await readProductTasks/u,
+    '还留着「睡死 5 秒读一次」的旧写法 —— 它与轮询并存时，读得早仍会判成「平台没生成」');
+});
+
+test('结构：轮询超时不抛，超时要说出来（不许静默当成「平台没生成」）', () => {
+  const source = read(COLLECTOR);
+  const polled = source.indexOf('const polled=await pollNewProductTask(');
+  assert.ok(polled > 0, '找不到轮询调用');
+  const timeoutLog = source.indexOf('polled.timedOut', polled);
+  assert.ok(timeoutLog > polled, '超时了却什么都不打印 ⇒ 事后没法区分「没生成」与「读得早」');
+});

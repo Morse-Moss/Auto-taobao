@@ -15,6 +15,37 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.13] - 2026-10-23
+
+商品数据链的一批**判据修复**：把「读得太早 / 读得太窄」当成「平台上没有」的四处病根逐个拆掉，并把告警业务段改成点名到店到段。这批改动发生在 2026-10-19 ~ 10-22，此前一直留在工作区未提交、也未登记版本；本版一次性收口。
+
+**改了什么**
+
+1. `skills/sycm-promotion-data/scripts/report-ready-core.mjs`（新）：报表页就绪判据 + 有界轮询 `pollReportReady`。`ready` = `.mx-trigger` 里已能看到「维度」触发器（就是要点的那个元素本身），`table` = 骨架在长，`empty` = 还没开始画。**不要求表格有行** —— 某店当日 0 投放是合法形态，要求有行会把「确实没数据」判成「没就绪」。
+2. `skills/sycm-promotion-data/scripts/download-entry-core.mjs`（新）：下载入口候选的**排序 + 失败描述** `rankDownloadCandidates` / `describeDownloadFailure`。文字「包含」下载即算候选，精确相等只用于排序；尺寸 >0 且中心点在视口内才入选；命中判定一律交给浏览器 `elementFromPoint`，不在 node 侧做几何推算。
+3. `skills/sycm-promotion-data/scripts/product-report-core.mjs`：新增 `pollNewProductTask` —— 提交后**有界轮询**（30s / 2s）等新任务出现，一出现立刻返回，超时不抛、把最后读数交回调用方。把「读得太早」这一种成因从根上去掉。
+4. `skills/sycm-promotion-data/scripts/promotion-core.mjs`：`validatePromotionReport` 认「每一行都是空行」为**合法的零数据形态**，返回 `{rows:0, empty:true, blankRows}`，不再抛「行列数与表头不一致」。只要出现一行既有长度又不等于表头，仍走原抛错分支 —— 截断的坏文件拿不到这张免死金牌。
+5. `runtime/product-alert-copy.mjs`（新）：告警业务段文案抽成纯函数（`describeGapsByStage` / `describePhenomena` / `describeNextAction` / `plainFailureClass`），由 `scripts/run-product-data-job.mjs` 接线。业务段从「一句兜底 + 整段缺口原文」改成**按段点名「哪几家缺哪一段」**，动作段按失败分类给不同下一步。
+6. `skills/sycm-alimama-daily-report/scripts/failure-perception.mjs`：`captureFailureState` 落盘前先 `mkdirSync(dirname, {recursive:true})`。商品链的 `logDir` 是 `<shop>/promotion-collect`，那个目录只有采到文件之后才会存在 ⇒ 提交阶段失败时根本不存在，`writeFileSync` 直接 ENOENT，现场 JSON 与人读文本一起丢。
+7. `skills/sycm-promotion-data/scripts/import-promotion-data.mjs`：认第 4 条的 `verdict.empty`，写入 0 行并记 `emptyReport`，汇总时单独列 `emptyReports`（不算缺口）。
+
+**为什么改**
+
+四处现场各不相同，但病根同一条 —— 把「我们的读法不够宽/不够久」当成「平台上不存在」：
+
+- 2026-10-20 里可林天猫报「商品报表任务下载入口不可见」，同一份现场里报表已渲染 35 行、URL 日期正确、遮挡层 0。旧判据压了三个窄条件（叶子节点 + 文字恰好等于「下载」+ 宽度>0），antd/React 页面把文字包进 span 就不成立。
+- 2026-10-22 网林天猫：URL 日期完全正确，但整页只剩 257 个 DIV、1 个 TR、0 个「维度」字样 —— 报表骨架还没渲出来，就被「固定睡眠 6.5 秒 + 判据只跑一次」判死。
+- 2026-10-19 网林家居：提交后只读一次列表，`before` 与 `after` 逐项相同、`added=[]`，链判「平台没生成新任务」。而「读得太早」与「平台真没受理」在那一刻长得一模一样，现场取证又恰好因目录不存在而失败（第 6 条）⇒ 这个判断当时谁也无法复核。
+- 2026-10-20 网林家居：推广 ZIP 只有 596 B，解包是「78 列表头 + 一个空行」，Python `csv.reader` 为那个空行产出空数组 `[]` ⇒ 被「行列数不一致」判成坏文件，而批量导入会把整批（另外两家有数据的店）一起打掉。**平台导出零数据是合法形态，不是文件损坏。**
+- 告警文案：用户原话「告警文案需要更加符合问题，而不是卡在第几步」⇒ 业务段点名到「哪几家缺哪一段」，动作段只在**确定**不用人动手时才说「这一轮不需要你在浏览器里做什么」（`HUMAN_REQUIRED` 时人恰恰得去点一下，那句安慰会把人拦住）。
+
+**验证到什么程度**
+
+- 离线判据（本次提交前在 2026-10-23 重跑，全绿）：`product-report-core` + `promotion-empty-report` + `download-entry-core` + `download-entry-wiring` + `report-ready-core` = **57/57**；`product-alert-copy` + `product-report-reuse-wiring` = **15/15**。
+- 接线核对（不是只靠用例绿）：`download-entry-core` / `report-ready-core` 真被 `collect-product-report.mjs` import 并调用；`product-alert-copy` 真被 `run-product-data-job.mjs` import；`pollNewProductTask` 真在 `submit()` 里调用；`verdict.empty` 真在 `import-promotion-data.mjs` 里被认。
+- **仅离线判据**：本版提交时未重跑真机。各条的现场证据在上面逐条指向的 `evidence/` 目录里，但「修完之后真机还犯不犯」要靠下一轮定时任务验证，不能拿离线绿当结论。
+- 顺手清掉一处改动尾巴：`collect-product-report.mjs` 里新判据之后原有的 `if(!point)throw Error('商品报表任务下载入口不可见')` 已成不可达死代码，删除（行为不变，两行都在判同一个 `!point`，留着只会让下一个读代码的人不知道哪个生效）。
+
 ## [1.12.12] - 2026-10-22
 
 修掉「推广取件段读到陈旧任务列表 ⇒ 假判无候选 ⇒ 走换通道补提交 ⇒ 判核不清 ⇒ 整店 STAGE_FAILED」这条链。核心只有一句：**同 URL 的 navigate 是同文档导航，浏览器什么都不做**。

@@ -16,6 +16,9 @@ import { runEnvironmentPreflight } from '../runtime/environment-preflight.mjs';
 import { readAlertThrottleEntry, resolveAlertDedup, writeAlertThrottle } from '../runtime/alert-throttle.mjs';
 // 全仓统一提醒词表（2026-10-13）：兜底文案 + 技术定位块构造。
 import { buildFlowOkAlert, buildTechBlock, flowFallbackCopy } from '../runtime/alert-copy.mjs';
+// 业务段文案的纯函数（2026-10-22 抽出）：点名哪几家缺哪一段 / 把机读分类翻成人话 / 给下一步。
+// 抽到 runtime/ 是为了能离线验（`product-alert-copy.test.mjs`），不必真发一条告警来验文案。
+import { describeGapsByStage, describeNextAction, describePhenomena, plainFailureClass } from '../runtime/product-alert-copy.mjs';
 // 收集完成提醒的「数字从哪来」：两个导入器的写后回读收据。
 import { productOkFacts } from '../runtime/flow-ok-facts.mjs';
 // 投递公共出口（去重 → 落临时文件 → 起 CLI → 只认真送出去才记账）。
@@ -120,6 +123,10 @@ function collectGapOf(shop, stage, reason) {
   return note ? `${shop}/${stage} 未采集：${note}` : `${shop}/${stage} 未采集`;
 }
 
+// 失败告警的业务段文案（2026-10-22 抽出到 runtime/product-alert-copy.mjs，有离线用例）。
+// 用户原话：「告警文案需要更加符合问题，而不是卡在第几步」——
+// 业务段点名到「哪几家缺哪一段」，技术段保留机读代号但配一句人话现象。
+
 /**
  * 失败时叫人（只在给了 `--notify` 时；成功不叫 —— 与日报链同一口径，
  * 成功的「请查收」由本文件收尾那段发，走 `buildFlowOkAlert`）。
@@ -136,8 +143,12 @@ function collectGapOf(shop, stage, reason) {
  * 那一版消息只有写它的人看得懂。现在业务段＝「哪一天 + 一句人话 + 现场原话（截断）」，
  * 技术段＝固定小标题「以下是给技术同学的定位信息」+ 五个白名单键（runId/证据目录/
  * 机读阶段名/退出码/版本），**仍然不放机器名**（按窗口标题找，不按 hostname 找）。
+ *
+ * 2026-10-22 再改（用户：「告警文案需要更加符合问题，而不是卡在第几步」）：
+ *   业务段从「一句兜底 + 整段缺口原文」改成**按段分组的点名**（缺哪几家哪一段），
+ *   动作段带上「这一次缺的能不能自己补」，技术段把「停在哪一段」翻译成哪家店、什么现象。
  */
-async function notifyFailure({ date, runId, evidence, failure, failedStage, log, shopCount = null }) {
+async function notifyFailure({ date, runId, evidence, failure, failedStage, log, shopCount = null, gaps = [] }) {
   const alertId = `product-round-${String(date).replace(/-/gu, '')}`;
   const fingerprint = `${failure?.class ?? 'FAILED'}|${failure?.reason ?? 'UNKNOWN'}|${failedStage ?? '-'}`;
   // 「同一业务日只报一次失败」（2026-10-17 加）：这一天已经报过一次、之后还没好过 ⇒ 不再发。
@@ -158,9 +169,21 @@ async function notifyFailure({ date, runId, evidence, failure, failedStage, log,
   });
   if (!decision.send) { log(`告警未发（去重）：${decision.reason}`); return { status: 'DEDUPED', reason: decision.reason }; }
   const copy = flowFallbackCopy('product-daily');
-  // 现场原话（缺口清单/异常消息）保留在业务段里，但压到 300 字：它是收信人判断
-  // 「卡在哪一家哪一段」的唯一线索，而整段 stderr 对运营没有意义。
+  // 业务段：先点名「哪几家缺哪一段」（这是收信人唯一真正要读的一句），再补一句「为什么 / 要不要人处理」。
+  // 不再把整段缺口原文塞进业务段 —— 那是机读码，属于技术段。
+  const gapSummary = describeGapsByStage(gaps);
   const specifics = String(failure?.message ?? '').replace(/\s+/gu, ' ').trim().slice(0, 300);
+  const reason = [
+    gapSummary ? `统计日 ${date} 缺：${gapSummary}。` : copy.reason,
+    `原因归类：${plainFailureClass(failure?.class)}。`,
+  ].join('');
+  // 技术段用的人话现象（放在 tech.message 之外的一行，跟着业务段尾巴走）：
+  // 「停在哪一段＝inquiry-import」是内部代号，技术同学也要对着证据目录才能翻译；
+  // 这里直接给「哪几家、哪一段、平台当时的样子」。
+  const phenomenon = describePhenomena(gaps);
+  // 动作段：按分类给不同的下一步。「这一轮不需要你在浏览器里做什么」只在**确定**不用人动手时出现，
+  // 否则那句安慰会把人拦住（HUMAN_REQUIRED 时人恰恰得去点一下）。
+  const action = describeNextAction(failure?.class);
   const alertFile = path.join(evidence, 'alert.json');
   fs.writeFileSync(alertFile, `${JSON.stringify({
     type: 'PRODUCT_ROUND_FAILED',
@@ -177,10 +200,11 @@ async function notifyFailure({ date, runId, evidence, failure, failedStage, log,
       period: date,
       capability: '商品数据',
     },
-    reason: [copy.reason, specifics].filter(Boolean).join(''),
-    action: copy.action,
+    reason: [reason, phenomenon || specifics].filter(Boolean).join(''),
+    action,
     // 技术定位块（两段式第二段）。故意**不放机器名**：单机无定位价值，
     // 且 2026-10-06 已定「按窗口标题找，不按 hostname 找」。
+    // `stage` 仍是机读阶段名（它就是给技术同学定位用的），另在 message 里放一句人话现象。
     tech: buildTechBlock({
       runId,
       evidenceDir: path.relative(ROOT, evidence).replaceAll('\\', '/'),
@@ -615,7 +639,7 @@ async function main(argv) {
     receipt.status = status === 0 ? 'COMPLETED' : 'FAILED';
     receipt.failure = failure; receipt.failedStage = failedStage; receipt.finishedAt = new Date().toISOString();
     writeWorkflowReceipt(receiptPath, receipt);
-    if (options.notify && status !== 0) { try { await notifyFailure({ date, runId, evidence, failure, failedStage, log, shopCount: plan.shops.length }); } catch (error) { log(`告警投递自身出错：${error.message}`); } }
+    if (options.notify && status !== 0) { try { await notifyFailure({ date, runId, evidence, failure, failedStage, log, shopCount: plan.shops.length, gaps }); } catch (error) { log(`告警投递自身出错：${error.message}`); } }
     // 收集完成提醒（2026-10-13 统一预警机制，用户定稿第 1/5 条）：**整轮成功时**才发，
     // 且只提醒业务人员查收（纯业务、不带技术定位块）；排练（dry-run）不投。
     // 数字来自两个导入器的 `receipt.json`（写后回读），不来自本文件的自报成功计数；

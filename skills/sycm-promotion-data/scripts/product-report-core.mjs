@@ -110,3 +110,40 @@ export function pickFetchCandidates({ rows = [], date, submittedOn, submittedTas
     ignoredCount: named.filter((name) => !sameDay.includes(name)).length,
   };
 }
+
+/**
+ * 提交后**有界轮询**等新任务出现（2026-10-19 加）。
+ *
+ * 为什么不是「睡死 5 秒读一次」：2026-10-19 网林家居那轮，提交后只读了一次列表
+ * （`sleep(2500)` → 跳「下载列表」→ `sleep(5000)` → 读一次），结果 `before` 与 `after`
+ * 逐项相同、`added=[]`，链判「平台没生成新任务」。但**「读得太早」和「平台真没受理」
+ * 在那一刻长得一模一样**，而现场取证又恰好失败（见 failure-perception 的目录修复），
+ * 于是这个判断谁也没法复核。轮询能把「早」这一种成因从根上去掉：
+ * 只要它在 30 秒内出现，我们就是拿事实说话，而不是拿一次快照猜。
+ *
+ * 三条性质由测试钉住：
+ *   1. 一出现新任务**立刻**返回（不为了等满 30 秒而空转）；
+ *   2. 超时**不抛**，把最后一次读到的列表交回去 —— 由调用方按既有语义判「平台没生成」；
+ *   3. `before` 里已有的名字**永远不算新任务**（差集口径与 `uniqueNewProductTask` 一致）。
+ *
+ * `read` / `delay` / `now` 都可注入：真机用真时钟，用例用假时钟（否则一条用例要等 30 秒）。
+ */
+export async function pollNewProductTask({
+  before = [], read, timeoutMs = 30000, intervalMs = 2000, delay, now = Date.now,
+} = {}) {
+  if (typeof read !== 'function') throw new Error('pollNewProductTask 需要 read()（读一次任务名列表）');
+  if (!(timeoutMs >= 0)) throw new Error(`pollNewProductTask 的 timeoutMs 必须是非负数，收到 ${JSON.stringify(timeoutMs)}`);
+  const wait = delay ?? ((ms) => new Promise((resolve) => { setTimeout(resolve, ms); }));
+  const prior = new Set(before);
+  const deadline = now() + timeoutMs;
+  let reads = 0;
+  for (;;) {
+    const after = (await read()) ?? [];
+    reads += 1;
+    const added = [...new Set(after)]
+      .filter((name) => PRODUCT_TASK_RE.test(String(name ?? '')) && !prior.has(name));
+    if (added.length > 0) return { after, added, reads, timedOut: false };
+    if (now() >= deadline) return { after, added: [], reads, timedOut: true };
+    await wait(intervalMs);
+  }
+}

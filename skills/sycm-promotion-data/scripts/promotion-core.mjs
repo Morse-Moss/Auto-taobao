@@ -23,6 +23,26 @@ export function validatePromotionReport(headers, rows, { date } = {}) {
     throw new Error('商品报表缺少日期/场景ID/计划ID表头');
   }
   if (![76, 78].includes(headers.length)) throw new Error(`不支持的商品报表列数: ${headers.length}`);
+  // 「平台导出零数据」是一个**合法形态**，不是文件损坏（2026-10-21 加）。
+  //
+  // 现场：2026-10-20 网林家居的推广 ZIP 只有 596 B，解包后是「78 列表头 + 一个空行」，
+  // 文件以 `\n\n` 结尾。Python `csv.reader` 会为这个空行产出一个**空数组 `[]`**，
+  // 于是下面那条「行列数与表头不一致」把**一天的正常空数据**判成了坏文件 ——
+  // 而且这个错在批量导入时会把整批（另外两家有数据的店）一起打掉。
+  //
+  // 判据必须区分三件事，它们的现场长得很像但处置完全不同：
+  //   ① 零数据（本店当天没投放）⇒ 合法的空报表，写入 0 行、收据记 empty，**不算缺口**；
+  //   ② 文件截断（真损坏）    ⇒ 该抛错，绝不能当成「今天没数据」静默吞掉；
+  //   ③ 行内字段缺失          ⇒ 该抛错。
+  // 所以「空」只在**每一行都是空行**时才成立：只要出现一行既有长度又不等于表头，
+  // 就仍然走原来的抛错分支。空行本身不接受任何非零长度 —— 单行缺一半列的那种坏文件
+  // 不可能拿到「空」这个免死金牌。
+  const blank = (row) => !Array.isArray(row) || row.length === 0;
+  if (rows.length > 0 && rows.every(blank)) {
+    // 日期校验对空集恒真：没有行就没有「错日期的行」，不需要额外分支。
+    return { columns: headers.length, rows: 0, empty: true, blankRows: rows.length };
+  }
+  // 混进空行也不接受：空行在中间意味着文件被截断或被追加了垃圾。
   const bad = rows.findIndex((row) => !Array.isArray(row) || row.length !== headers.length);
   if (bad >= 0) throw new Error(`商品报表第${bad + 2}行列数与表头不一致`);
   // 数据日期必须**逐行**等于目标日（2026-10-17 加）。

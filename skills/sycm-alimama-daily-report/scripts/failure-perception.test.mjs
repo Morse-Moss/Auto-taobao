@@ -313,3 +313,49 @@ test('captureFailureState：提示了却没挑到那一站 ⇒ 留一条告警�
     assert.match(txt, /给了提示「alimama」但没挑到该站点的页/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+// ---------------------------------------------------------------- 目录不存在（2026-10-19）
+//
+// 真事：商品链把 logDir 传成 `<shop>/promotion-collect`，而这个目录只有采到文件才有东西落进去
+// ⇒ 提交阶段就失败时它不存在，writeFileSync 直接 ENOENT，现场 JSON 与人读文本一起丢。
+// 2026-10-19 网林家居/推广 就是这样丢的证据：报告里只剩「写现场产物失败」+「截图 500」，
+// 于是「平台没受理」与「读太早」再也分不开。判据＝目录不存在也必须落下来。
+
+test('logDir 的下层目录不存在时也要把现场落下来（不许 ENOENT 丢证）', async () => {
+  const dir = makeDir();
+  try {
+    const logDir = path.join(dir, 'promotion-collect'); // 故意不建
+    assert.equal(existsSync(logDir), false, '前提：这个目录本来不存在');
+    const result = await captureFailureState({
+      proxy: 'http://127.0.0.1:19062', logDir, shopKey: '网林家居', stage: 'promotion-collect',
+      error: '采集失败：商品报表提交任务无法唯一确认',
+      readTargets: async () => ([{ type: 'page', targetId: 'T1', url: 'https://one.alimama.com/index.html#!/report/download-list' }]),
+      evalInPage: async () => ({ value: JSON.stringify(sampleState) }),
+      screenshot: async () => {},
+      log: () => {},
+    });
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.errors, [], `不该再有「写现场产物失败」：${result.errors.join('｜')}`);
+    assert.ok(existsSync(result.files.stateJson), '现场 JSON 必须落盘');
+    assert.ok(existsSync(result.files.stateText), '人读文本必须落盘');
+    assert.match(readFileSync(result.files.stateText, 'utf8'), /停在哪一步：promotion-collect/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('建目录失败也不许盖掉主因：照样返回对象、把原因记进 errors', async () => {
+  const dir = makeDir();
+  try {
+    const result = await captureFailureState({
+      proxy: 'http://127.0.0.1:19062', logDir: path.join(dir, 'nope'), shopKey: '网林家居', stage: 'promotion-collect',
+      error: '主因',
+      readTargets: async () => ([{ type: 'page', targetId: 'T1', url: 'https://one.alimama.com/index.html#!/report/download-list' }]),
+      evalInPage: async () => ({ value: JSON.stringify(sampleState) }),
+      screenshot: async () => {},
+      mkdir: () => { throw new Error('EACCES: 无权限'); },
+      log: () => {},
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.state.url, sampleState.url);
+    assert.ok(result.errors.some((line) => /写现场产物失败.*EACCES/u.test(line)), result.errors.join('｜'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

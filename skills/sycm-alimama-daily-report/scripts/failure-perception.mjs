@@ -283,14 +283,17 @@ export function pickFailureTarget(targets, { pageHint = null } = {}) {
  * @param {Function} [o.evalInPage] 在页面里执行表达式（可注入）
  * @param {Function} [o.screenshot] 取截图（可注入）
  * @param {Function} [o.writeFile]  落盘（可注入）
+ * @param {Function} [o.mkdir]      建目录（可注入；默认 recursive）
  * @param {Function} [o.log]        打印
  * @returns {Promise<object>} { ok, files, state, errors } —— 结构固定，便于断言
  */
 export async function captureFailureState({
   proxy, logDir, shopKey = null, stage = null, error = null, pageHint = null,
-  readTargets, evalInPage, screenshot, writeFile = null, log = console.log,
+  readTargets, evalInPage, screenshot, writeFile = null, mkdir = null, log = console.log,
 } = {}) {
-  const fsWrite = writeFile ?? (await import('node:fs')).writeFileSync;
+  const fsMod = await import('node:fs');
+  const fsWrite = writeFile ?? fsMod.writeFileSync;
+  const fsMkdir = mkdir ?? fsMod.mkdirSync;
   const path = await import('node:path');
   const result = { ok: false, files: {}, state: null, errors: [], shopKey, stage, selected: null };
 
@@ -340,7 +343,13 @@ export async function captureFailureState({
   // 落盘 JSON + 人读文本（写不下也没关系，记进 errors）。
   if (result.state) {
     try {
+      // 目录不存在就先建（2026-10-19 修）。商品链把 logDir 传成 `<shop>/promotion-collect`，
+      // 而那个目录只有**采到文件之后**才会有东西落进去 ⇒ 提交阶段就失败时它根本不存在，
+      // `writeFileSync` 直接 ENOENT，现场 JSON 与人读文本一起丢（网林家居/推广 就是这么丢的：
+      // 报告里只剩「写现场产物失败」和「截图 500」，于是「平台没受理」与「读太早」再也分不开）。
+      // 建目录失败也不许盖掉主因 —— 落进 errors，继续走既有降级路径。
       const jsonPath = path.join(logDir, '98-failure-state.json');
+      fsMkdir(path.dirname(jsonPath), { recursive: true });
       fsWrite(jsonPath, `${JSON.stringify(result.state, null, 2)}\n`, 'utf8');
       result.files.stateJson = jsonPath;
       const txtPath = path.join(logDir, '98-failure-state.txt');

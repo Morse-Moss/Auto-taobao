@@ -1,7 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildProductReportUrl, pickFetchCandidates, reuseCandidateTask, taskDateRangeOf, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
+import { buildProductReportUrl, pickFetchCandidates, pollNewProductTask, reuseCandidateTask, taskDateRangeOf, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
 import { planPromotionImport, promotionKey, validatePromotionReport } from './promotion-core.mjs';
+
+/** 依次吐出给定列表；允许多读（读完最后一个就一直重复它），并数出被读了几次。 */
+function mkSequenceReader(pages) {
+  let i = 0;
+  const read = async () => pages[Math.min(i++, pages.length - 1)];
+  read.calls = () => i;
+  return read;
+}
 
 test('商品报表 URL 固定到目标日、30 天累计和两个推广场景', () => {
   const url = new URL(buildProductReportUrl('2026-09-25'));
@@ -169,4 +177,63 @@ test('候选集：一条都不合格时返回空数组（由调用方决定补�
   const picked = pickFetchCandidates({ rows, date: '2026-10-17', submittedOn: '2026-10-18' });
   assert.equal(picked.basis, 'date-range');
   assert.deepEqual(picked.candidates, []);
+});
+
+// ---------------------------------------------------------------- 提交后轮询（2026-10-19）
+//
+// 真事：2026-10-19 网林家居/推广「提交后 before 与 after 逐项相同、added=[]」。
+// 当时的实现是「跳下载列表 → 睡死 5 秒 → 只读一次」，于是「读得太早」和
+// 「平台真没受理」在证据上长得一模一样（现场取证又恰好失败）。
+// 这一族判据钉住轮询的三条性质：出现即返回、超时不抛、差集口径与 uniqueNewProductTask 一致。
+
+test('提交后轮询：新任务一出现立刻返回，不为等满超时而空转', async () => {
+  let t = 1000;
+  const read = mkSequenceReader([
+    ['商品报表_20261018_103036'],
+    ['商品报表_20261018_103036'],
+    ['商品报表_20261019_102512', '商品报表_20261018_103036'],
+    ['不该再读第四次'],
+  ]);
+  const got = await pollNewProductTask({
+    before: ['商品报表_20261018_103036'], read,
+    timeoutMs: 30000, intervalMs: 2000,
+    delay: async (ms) => { t += ms; }, now: () => t,
+  });
+  assert.equal(got.timedOut, false);
+  assert.deepEqual(got.added, ['商品报表_20261019_102512']);
+  assert.equal(got.reads, 3, `出现后必须停读，实际读了 ${got.reads} 次`);
+});
+
+test('提交后轮询：超时不抛，把最后一次读到的列表交回去（由调用方按既有语义判）', async () => {
+  let t = 0;
+  const read = mkSequenceReader([['商品报表_20261018_103036']]);
+  const got = await pollNewProductTask({
+    before: ['商品报表_20261018_103036'], read,
+    timeoutMs: 5000, intervalMs: 2000,
+    delay: async (ms) => { t += ms; }, now: () => t,
+  });
+  assert.equal(got.timedOut, true);
+  assert.deepEqual(got.added, []);
+  assert.deepEqual(got.after, ['商品报表_20261018_103036']);
+  assert.ok(got.reads >= 2, `轮询次数 ${got.reads} 太少，等同没轮询`);
+});
+
+test('提交后轮询：before 里已有的名字永远不算新任务（差集口径与 uniqueNewProductTask 一致）', async () => {
+  let t = 0;
+  const read = mkSequenceReader([
+    ['商品报表_20261018_103036', '商品报表_20261018_103036'],
+    ['商品报表_20261018_103036'],
+  ]);
+  const got = await pollNewProductTask({
+    before: ['商品报表_20261018_103036'], read,
+    timeoutMs: 2000, intervalMs: 1000,
+    delay: async (ms) => { t += ms; }, now: () => t,
+  });
+  assert.equal(got.timedOut, true);
+  assert.deepEqual(got.added, []);
+});
+
+test('提交后轮询：没给 read 就抛（不许静默当成「平台没生成」）', async () => {
+  await assert.rejects(() => pollNewProductTask({ before: [] }), /需要 read\(\)/u);
+  await assert.rejects(() => pollNewProductTask({ before: [], read: async () => [], timeoutMs: -1 }), /必须是负数|必须是非负数/u);
 });

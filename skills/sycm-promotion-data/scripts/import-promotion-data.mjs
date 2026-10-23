@@ -25,11 +25,18 @@ const o=parse(process.argv.slice(2));
 // 「这张表里还没有」误判成「已写过」）。
 const sources=[]; const byBase=new Map();
 for(let i=0;i<o.files.length;i++){
-  const x=readZip(o.files[i]); validatePromotionReport(x.headers,x.rows,{date:o.date});
+  const x=readZip(o.files[i]);
+  // 空报表（表头 + 空行）是**合法的零数据**，不是坏文件：validate 返回 empty:true 而不是抛错。
+  // 这里的 rows 必须换成 0，否则下面的 observedDates / duplicateRows 会把那一条空行算成一行数据。
+  const verdict=validatePromotionReport(x.headers,x.rows,{date:o.date});
+  const dataRows=verdict.empty?[]:x.rows;
   const shop=o.shops[i]; const target=productDataTargetsForShop(shop,o.date,'kcne');
-  sources.push({file:o.files[i],shop,rows:x.rows.length,columns:x.headers.length,csvName:x.csvName,headers:x.headers,base:target.baseName,baseToken:target.baseToken,tableId:target.promotionTable,observedDates:[...new Set(x.rows.map(r=>String(r[0]??'').trim()).filter(Boolean))]});
+  sources.push({file:o.files[i],shop,rows:dataRows.length,columns:x.headers.length,csvName:x.csvName,headers:x.headers,base:target.baseName,baseToken:target.baseToken,tableId:target.promotionTable,observedDates:[...new Set(dataRows.map(r=>String(r[0]??'').trim()).filter(Boolean))],
+    // 空报表在收据里必须**留下痕迹**：只报 rows:0 的话，读的人分不清「当天真的没投放」
+    // 和「文件是空的/没解开」，而这两种情况的后续动作完全不同。
+    ...(verdict.empty?{emptyReport:true,blankRows:verdict.blankRows}:{})});
   if(!byBase.has(target.baseToken)) byBase.set(target.baseToken,{target,items:[]});
-  byBase.get(target.baseToken).items.push({shop,rows:x.rows,headers:x.headers});
+  byBase.get(target.baseToken).items.push({shop,rows:dataRows,headers:x.headers});
 }
 
 const groups=[];
@@ -51,7 +58,11 @@ for(const {target,items} of byBase.values()){
 }
 
 mkdirSync(o.evidence,{recursive:true});
-const receipt={sources,paramDate:o.date,date:[...new Set(sources.flatMap(s=>s.observedDates))],mode:o.apply?'apply':'dry-run',sourceRows:sources.reduce((sum,s)=>sum+s.rows,0),existingRows:groups.reduce((sum,g)=>sum+g.existingRows,0),plannedRows:groups.reduce((sum,g)=>sum+g.records.length,0),duplicateRows:sources.reduce((sum,s)=>sum+s.rows,0)-groups.reduce((sum,g)=>sum+g.records.length,0),bases:groups.map(g=>({base:g.target.baseName,baseToken:g.target.baseToken,tableId:g.target.promotionTable,credentialFile:g.credentialFile,existingRows:g.existingRows,plannedRows:g.records.length})),manifest:groups.flatMap(g=>g.manifest)};
+const receipt={sources,paramDate:o.date,date:[...new Set(sources.flatMap(s=>s.observedDates))],mode:o.apply?'apply':'dry-run',sourceRows:sources.reduce((sum,s)=>sum+s.rows,0),existingRows:groups.reduce((sum,g)=>sum+g.existingRows,0),plannedRows:groups.reduce((sum,g)=>sum+g.records.length,0),duplicateRows:sources.reduce((sum,s)=>sum+s.rows,0)-groups.reduce((sum,g)=>sum+g.records.length,0),bases:groups.map(g=>({base:g.target.baseName,baseToken:g.target.baseToken,tableId:g.target.promotionTable,credentialFile:g.credentialFile,existingRows:g.existingRows,plannedRows:g.records.length})),manifest:groups.flatMap(g=>g.manifest),
+  // 空报表清单（2026-10-21 加）：这一批里有哪几家是「平台导出 0 行」。
+  // 退出码仍然是 0 —— 零数据不是失败；但要让人一眼看出「写得少」是因为真没数据，
+  // 而不是采集或写入漏了（主链据此不再把它们算成缺口）。
+  ...(sources.some(s=>s.emptyReport)?{emptyReports:sources.filter(s=>s.emptyReport).map(s=>({shop:s.shop,file:s.file}))}:{})};
 const receiptPath=`${o.evidence}/receipt.json`;
 const flush=()=>{mkdirSync(o.evidence,{recursive:true});writeFileSync(receiptPath,JSON.stringify(receipt,null,2));};
 if(o.apply){

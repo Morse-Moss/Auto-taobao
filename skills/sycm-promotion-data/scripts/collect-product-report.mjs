@@ -4,8 +4,12 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { PROJECT_PORTS, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { SHOP_IDENTITIES } from '../../sycm-alimama-daily-report/scripts/shop-identities.mjs';
 import { alimamaIdentityExpression, assertMemberIdentity, createOverlayDismisser, defaultDownloadsDir, listDownloads, newEntries, overlayAfterExpression, overlayScanExpression, pickOverlayCloseCandidate } from '../../sycm-alimama-daily-report/scripts/collect-core.mjs';
-import { buildProductReportUrl, PRODUCT_TASK_PREFIX, PRODUCT_TASK_RE, PRODUCT_ZIP_RE, pickFetchCandidates, reuseCandidateTask, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
+import { buildProductReportUrl, PRODUCT_TASK_PREFIX, PRODUCT_TASK_RE, PRODUCT_ZIP_RE, pickFetchCandidates, pollNewProductTask, reuseCandidateTask, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
 import { nextDownloadAction } from './download-retry-core.mjs';
+// 下载入口的判据（2026-10-21 抽出）：纯函数，有离线用例，见 download-entry-core.mjs 文件头。
+import { describeDownloadFailure, rankDownloadCandidates } from './download-entry-core.mjs';
+// 报表页就绪的判据（2026-10-22 抽出）：同一次真机事故的另一半，见 report-ready-core.mjs 文件头。
+import { describeReportReadyFailure, pollReportReady } from './report-ready-core.mjs';
 // 失败现场（2026-10-13 加，㊶）：单独跑这个脚本时，`商品报表下载超时: xxx` 不再只留一句符号。
 import { captureCollectorFailureScene } from '../../sycm-alimama-daily-report/scripts/collect-failure-scene.mjs';
 
@@ -16,6 +20,9 @@ async function evalOn(proxy, target, expression) { const x=await request(proxy,`
 async function click(proxy,target,selector) { return request(proxy,`/click?target=${encodeURIComponent(target)}`,{method:'POST',body:selector}); }
 async function clickPoint(proxy,target,point) { return request(proxy,`/clickPoint?target=${encodeURIComponent(target)}`,{method:'POST',body:JSON.stringify({x:point[0],y:point[1]})}); }
 async function state(proxy,target,date) { return evalOn(proxy,target,`(() => JSON.stringify({href:location.href,text:document.body.innerText.slice(-9000),triggers:[...document.querySelectorAll('.mx-trigger')].map(x=>(x.innerText||'').trim()),dimensions:[...document.querySelectorAll('input[type=checkbox]')].map(x=>({value:x.value,checked:x.checked}))}))()`); }
+// 报表骨架读数（2026-10-22）：只为「等就绪」服务，所以读得很浅 —— 触发器文案 + 表格行数 + 网址。
+// 不读 body.innerText 全量：页面还没渲出来时读到的是空壳，读全量只会让 `state()` 的判据更难解释。
+async function readReportSkeleton(proxy,target) { return evalOn(proxy,target,`(()=>{const t=document.body.innerText||'';const tables=[...document.querySelectorAll('table')].map(x=>x.querySelectorAll('tbody tr').length);return JSON.stringify({href:location.href,triggers:[...document.querySelectorAll('.mx-trigger')].map(x=>(x.innerText||'').trim()),rows:tables.length?Math.max(...tables):0,hasDimensionText:t.includes('维度'),dimInputs:document.querySelectorAll('input[type=checkbox]').length})})()`); }
 async function findPage(proxy) { const ts=await request(proxy,'/targets'); const pages=ts.filter(x=>x.type==='page'&&String(x.url).includes('one.alimama.com')); if(pages.length!==1)throw Error(`expected one alimama page, got ${pages.length}`); return pages[0].targetId; }
 async function identity(proxy,target,shop) { const row=SHOP_IDENTITIES.find(x=>x.key===shop); if(!row?.alimamaMemberName)throw Error(`未登记阿里妈妈身份: ${shop}`); const got=await evalOn(proxy,target,alimamaIdentityExpression()); assertMemberIdentity({expectedName:row.alimamaMemberName,expectedId:row.alimamaMemberId,observed:got}); console.log(`[身份] ${got.memberName} / ${got.memberId} ✓`); }
 async function setPlanDimension(proxy,target) { const opened=await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('.mx-trigger')].find(x=>(x.innerText||'').includes('维度 商品'));if(!e)return false;e.click();return true})()`); if(!opened)throw Error('找不到商品数据明细维度选择器'); let changed; const deadline=Date.now()+5000; while(Date.now()<deadline){changed=await evalOn(proxy,target,`(()=>{const p=document.querySelector('input[type=checkbox][value="promotion"]');const c=document.querySelector('input[type=checkbox][value="campaign"]');if(!p||!c)return {ok:false,reason:'dimension-checkbox-missing'};if(!p.checked)p.click();if(!c.checked)c.click();const ok=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='确定');if(!ok)return {ok:false,reason:'confirm-missing'};ok.click();return {ok:true}})()`); if(changed?.ok||changed?.reason==='confirm-missing')break; await sleep(250); } if(!changed?.ok)throw Error(`设置商品+计划维度失败: ${changed?.reason}`); await sleep(2500); }
@@ -26,7 +33,7 @@ async function readProductTasks(proxy,target) { return evalOn(proxy,target,`[...
  * 同一条任务在展开后会有多行都含任务名 ⇒ 按名字去重，留**第一次**出现的那行（即任务行本身）。
  */
 async function readProductTaskRows(proxy,target) { const rows=await evalOn(proxy,target,`[...document.querySelectorAll('tr')].map(tr=>{const t=(tr.innerText||'').replace(/\\s+/g,' ').trim();const m=t.match(/商品报表_\\d{8}_\\d{6}/u);return m?{name:m[0],text:t.slice(0,400)}:null}).filter(Boolean)`); const seen=new Set(); return (rows||[]).filter(r=>{if(seen.has(r.name))return false;seen.add(r.name);return true}); }
-async function submit(proxy,target,before,submittedOn) { const clicked=await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='下载报表');if(!e)return false;e.click();return true})()`); if(!clicked)throw Error('商品报表找不到下载报表按钮'); let confirmed=false; for(let round=0;round<2&&!confirmed;round+=1){ if(round>0){await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='下载报表');if(!e)return false;e.click();return true})()`);} const confirmDeadline=Date.now()+20000; while(!confirmed&&Date.now()<confirmDeadline){ await sleep(1000); confirmed=await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button,span,a,div')].find(x=>x.children.length===0&&/^(确定|确认)$/.test((x.innerText||'').trim())&&x.getBoundingClientRect().width>0);if(!e)return false;e.click();return true})()`); } } if(!confirmed)throw Error('商品报表下载弹窗没有可点击确定（轮询 40s 仍未出现）'); await sleep(2500); await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent('https://one.alimama.com/index.html#!/report/download-list')}`); await sleep(5000); const after=await readProductTasks(proxy,target); let task; try{ task=uniqueNewProductTask(before,after); console.log(`[提交] ${task}`); }catch(error){ const reused=reuseCandidateTask({after,submittedOn}); if(!reused)throw error; task=reused; console.log(`[提交] 平台未生成新任务（同参数已交过），复用同日在册任务 ${task}；数据日期由导入器按 --date 校验`); } return task; }
+async function submit(proxy,target,before,submittedOn) { const clicked=await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='下载报表');if(!e)return false;e.click();return true})()`); if(!clicked)throw Error('商品报表找不到下载报表按钮'); let confirmed=false; for(let round=0;round<2&&!confirmed;round+=1){ if(round>0){await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='下载报表');if(!e)return false;e.click();return true})()`);} const confirmDeadline=Date.now()+20000; while(!confirmed&&Date.now()<confirmDeadline){ await sleep(1000); confirmed=await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button,span,a,div')].find(x=>x.children.length===0&&/^(确定|确认)$/.test((x.innerText||'').trim())&&x.getBoundingClientRect().width>0);if(!e)return false;e.click();return true})()`); } } if(!confirmed)throw Error('商品报表下载弹窗没有可点击确定（轮询 40s 仍未出现）'); await sleep(2500); await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent('https://one.alimama.com/index.html#!/report/download-list')}`); await sleep(2000); const polled=await pollNewProductTask({before,read:()=>readProductTasks(proxy,target),timeoutMs:30000,intervalMs:2000,delay:sleep}); const after=polled.after; if(polled.timedOut)console.log(`[提交] 轮询 30s（读了 ${polled.reads} 次）仍没看到新任务，按「平台未生成」继续判`); let task; try{ task=uniqueNewProductTask(before,after); console.log(`[提交] ${task}`); }catch(error){ const reused=reuseCandidateTask({after,submittedOn}); if(!reused)throw error; task=reused; console.log(`[提交] 平台未生成新任务（同参数已交过），复用同日在册任务 ${task}；数据日期由导入器按 --date 校验`); } return task; }
 async function waitForTaskReady(proxy,target,task,timeoutMs=180000) { const deadline=Date.now()+timeoutMs; let last=''; while(Date.now()<deadline){ const rows=await evalOn(proxy,target,`[...document.querySelectorAll('tr')].map(tr=>(tr.innerText||'').replace(/\\s+/g,' ').trim()).filter(text=>text.includes(${JSON.stringify(task)}))`); last=rows[0]||'missing'; if(/生成成功/u.test(last))return last; if(/生成失败|失败/u.test(last))throw Error(`商品报表任务生成失败: ${last}`); await sleep(5000); } throw Error(`商品报表生成等待超时（${timeoutMs}ms）: ${last}`); }
 async function navigateDownloadList(proxy,target) {
   await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent('https://one.alimama.com/index.html#!/report/download-list')}`);
@@ -70,8 +77,17 @@ async function fetchOneTask(proxy,target,task,downloads,meta={}) {
   const actionVisible = await evalOn(proxy,target,`(()=>{const n=[...document.querySelectorAll('*')].find(x=>x.children.length===0&&(x.innerText||'').trim()===${JSON.stringify(task)});const a=n?.closest('tr')?.nextElementSibling;return !!a&&getComputedStyle(a).display!=='none'})()`);
   if(!activated||!actionVisible){const decision=nextDownloadAction({taskReady:true,actionVisible:false});throw Error(`真实点击后目标任务操作行仍未显形（${decision.action}）`);}
   await sleep(800);
-  const point=await evalOn(proxy,target,`(()=>{const n=[...document.querySelectorAll('*')].find(x=>x.children.length===0&&(x.innerText||'').trim()===${JSON.stringify(task)});const tr=n&&n.closest('tr');const a=tr&&tr.nextElementSibling;const e=a&&[...a.querySelectorAll('*')].find(x=>x.children.length===0&&(x.innerText||'').trim()==='下载'&&x.getBoundingClientRect().width>0);if(!e)return null;const b=e.closest('button')||e;const r=b.getBoundingClientRect();const cx=Math.round(r.x+r.width/2),cy=Math.round(r.y+r.height/2),hit=document.elementFromPoint(cx,cy);return {point:[cx,cy],hit:!!hit,targetHit:!!hit&&(hit===b||b.contains(hit)||hit.contains(b))}})()`);
-  if(!point)throw Error('商品报表任务下载入口不可见');
+  const probe=await evalOn(proxy,target,`(()=>{const n=[...document.querySelectorAll('*')].find(x=>x.children.length===0&&(x.innerText||'').trim()===${JSON.stringify(task)});const tr=n&&n.closest('tr');const a=tr&&tr.nextElementSibling;if(!a)return {ok:false,reason:'no-action-row'};const cands=[...a.querySelectorAll('*')].filter(x=>(x.textContent||'').includes('下载')).slice(0,20).map(x=>{const b=x.closest('button')||x.closest('a')||x;const r=b.getBoundingClientRect();return {text:(b.textContent||'').trim().slice(0,40),rect:{x:r.x,y:r.y,w:r.width,h:r.height}};});return {ok:true,cands,vw:innerWidth,vh:innerHeight};})()`);
+  // 2026-10-21：判据搬到 node 侧（download-entry-core.mjs），页面侧只负责「取候选 + 报视口」。
+  // 旧内联版要求「叶子节点 + 文字恰好等于下载 + 宽度>0」，平台层级一变就假红
+  // （10-20 里可林天猫：现场报表已渲染 35 行、无遮挡层，却报「下载入口不可见」）。
+  if(!probe||!probe.ok){throw Error(`商品报表任务行下方没有操作行（task=${task}）`);}
+  const ranking=rankDownloadCandidates(probe.cands??[],{viewport:{width:probe.vw??0,height:probe.vh??0}});
+  // 候选按优先级排好，逐个交给浏览器 elementFromPoint 复核，命中即点。
+  // 不在这里做几何推算的命中判断 —— 那等于用一个模型代替浏览器说自己点到了。
+  let point=null;
+  if(ranking.ok){for(const cand of ranking.candidates){const hit=await evalOn(proxy,target,`(()=>{const h=document.elementFromPoint(${cand.point[0]},${cand.point[1]});return {hit:!!h,tag:h?h.tagName:null}})()`);if(hit?.hit){point={point:cand.point,hit:true,targetHit:true};break;}}}
+  if(!point)throw Error(`商品报表下载入口不可用：${ranking.ok?`${ranking.candidates.length} 个候选都没命中（被别的元素盖住）`:describeDownloadFailure(ranking)}`);
   if(!point.targetHit){
     const dismissed=await dismissOverlay(proxy,target,'button');
     if(dismissed?.dismissed)throw Error('下载入口曾被平台遮挡层拦截，已关闭遮挡层并刷新重试');
@@ -131,7 +147,14 @@ async function produceTask(proxy,o) {
   let target = await navigateDownloadList(proxy, await findPage(proxy));
   const before = await readProductTasks(proxy,target);
   await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent(buildProductReportUrl(o.date))}`);
-  await sleep(6500);
+  // 2026-10-22 修：原来是「固定睡眠 6.5 秒」之后就 `setPlanDimension`，而它在找不到
+  // `.mx-trigger` 时**立刻 throw** ⇒ 「等 6.5 秒」+「判据只跑一次」= 报表骨架渲染慢一点就整家判死。
+  // 现场见 report-ready-core.mjs 文件头（网林天猫：URL 日期对，但页面只剩 257 个 DIV、0 个「维度」）。
+  // 现在改成就绪轮询：等**要点的那个元素**出现为止，超时把「看到了什么」写进报错。
+  const ready = await pollReportReady({ read:()=>readReportSkeleton(proxy,target), timeoutMs:25000, intervalMs:1500, delay:sleep });
+  if (ready.step !== 'ready') {
+    throw Error(`${describeReportReadyFailure(ready)}（${o.date}；最后网址 ${ready.state?.href ? '在报表页' : '不在报表页'}）`);
+  }
   target=await findPage(proxy);
   await setPlanDimension(proxy,target);
   const checked=await state(proxy,target,o.date);
