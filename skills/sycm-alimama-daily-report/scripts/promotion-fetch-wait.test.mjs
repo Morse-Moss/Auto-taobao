@@ -139,12 +139,19 @@ test('取件段读任务列表前必须真重载（同 URL navigate 是空操作
   const here = path.dirname(fileURLToPath(import.meta.url));
   const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8');
 
-  const judge = (text) => {
+  // 函数体边界按「独占一行的 `}`」取，不再用固定 900 字窗口 ——
+  // 2026-10-23 给这个函数加了「读不到再等一屏」的循环后，窗口法会把 readTaskRows 切到窗口外。
+  const bodyOf = (text) => {
     const start = text.indexOf('async function openTaskList');
     if (start < 0) return null;
-    const rest = text.slice(start, start + 900);
-    const endMark = rest.indexOf('\n}');
-    const body = endMark > 0 ? rest.slice(0, endMark) : rest;
+    const rest = text.slice(start);
+    const endMark = rest.indexOf('\n}\n');
+    return endMark > 0 ? rest.slice(0, endMark) : rest;
+  };
+
+  const judge = (text) => {
+    const body = bodyOf(text);
+    if (body === null) return null;
     const navAt = body.indexOf('navigateTo(');
     const reloadAt = body.indexOf('reloadAndSettle(');
     const readAt = body.indexOf('readTaskRows(');
@@ -162,4 +169,34 @@ test('取件段读任务列表前必须真重载（同 URL navigate 是空操作
   assert.notEqual(broken, src, '反向自证没生效：没匹配到 openTaskList 里那行 reloadAndSettle（源码形状变了？）');
   assert.equal(judge(broken), false,
     '守卫自证失败：去掉真重载后判据仍为真 ⇒ 判据没在判东西');
+});
+
+/**
+ * 2026-10-23 真机两次误杀后补：**读一次 0 行不等于「列表是空的」**。
+ *
+ * 缺陷形态：`openTaskList` 重载后**只读一次**就返回。而重载只等到 readyState=complete，
+ * 任务表格是重载之后异步拉的 ⇒ 读到 0 行，调用方把它读成「判据失效（页面结构可能变了）」
+ * ⇒ 整店 STAGE_FAILED；同一刻页面上 营销场景报表_20261023_082019 / 2026-10-22至2026-10-22 /
+ * 生成成功 都在（证据：evidence/batches-2026-10-22/b1/科塔淘宝/06/07-promotion-fetch.txt）。
+ * 另一半：重载偶尔把 hash 路由丢掉、落回首页（07 的标题从「下载任务管理_万相台无界版」
+ * 变成「万相台无界版」），那一屏再怎么读都是 0 行 ⇒ 要能补一次导航。
+ *
+ * 守的是**形状**：读之后必须还有「等一屏再读」，且路由丢了要重新导航。
+ */
+test('取件段读任务列表：读到 0 行要再等一屏重读，路由丢了要补导航', () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8');
+  const start = src.indexOf('async function openTaskList');
+  assert.ok(start > 0, '找不到 openTaskList —— 名字变了的话这条用例要跟着更新');
+  const rest = src.slice(start);
+  const endMark = rest.indexOf('\n}\n');
+  const body = endMark > 0 ? rest.slice(0, endMark) : rest;
+
+  const reads = [...body.matchAll(/readTaskRows\(/gu)].length;
+  assert.ok(reads >= 2, 'openTaskList 里必须至少读两次（首读 + 等一屏后重读）—— 只读一次就是本次缺陷的形态');
+  assert.match(body, /rows\.length === 0/u, '循环条件必须盯住「读到 0 行」这个情形');
+  assert.match(body, /!href\.includes\('download-list'\)/u, '路由丢了（落回首页）时必须能认出来');
+  assert.match(body, /navigateTo\(/gu, '要么首读前导航、要么补导航 —— 总得有一次导航');
+  assert.ok(body.lastIndexOf('navigateTo(') > body.indexOf('reloadAndSettle('),
+    '重新导航必须在重载之后（补导航是「重载把路由丢了」的修法）');
 });

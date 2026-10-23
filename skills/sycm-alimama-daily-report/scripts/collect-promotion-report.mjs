@@ -470,12 +470,33 @@ async function readTaskRows(args, targetId) {
  * **共享取件这条路上漏了** —— 这就是那个「只在出事时才走的路径等于没修」的样本。
  * 修法就一句：跟提交段用同一套（navigate → 真重载 → 再读）。
  */
-async function openTaskList(args, targetId, { settleMs = 7000 } = {}) {
+async function openTaskList(args, targetId, { settleMs = 7000, waitAttempts = 5, waitMs = 2000 } = {}) {
   await navigateTo(args, targetId, ALIMAMA_LIST_URL);
   await delay(settleMs);
   // 真重载：重载会打断 eval 上下文，reloader 自带等就绪，所以重载后不必再额外 sleep。
   await reloadAndSettle(args, targetId);
-  return readTaskRows(args, targetId);
+  // 2026-10-23 根修（科塔淘宝 10-22 轮真机打出两次）：重载只等到 readyState=complete，
+  // 而任务表格是**重载之后**异步拉的 ⇒ 紧接着读一次会读到 0 行，判据把 0 行读成
+  // 「判据失效」⇒ 整店 STAGE_FAILED，而任务其实早已生成成功（本次 营销场景报表_20261023_082019）。
+  // 另一半更硬：重载偶尔会把 hash 路由丢掉、落回首页（07-promotion-fetch.txt 里标题从
+  // 「下载任务管理_万相台无界版」变成「万相台无界版」就是这次），那一屏永远等不出行。
+  // 所以：读不到就等一屏再读；确认路由丢了就补一次导航（只补一次，不无限重导航）。
+  let rows = await readTaskRows(args, targetId);
+  let renavigated = false;
+  for (let attempt = 1; attempt <= waitAttempts && rows.length === 0; attempt += 1) {
+    const href = await evalOn(args, targetId, 'location.href').catch(() => null);
+    if (!renavigated && typeof href === 'string' && !href.includes('download-list')) {
+      renavigated = true;
+      console.log(`[fetch] 重载后不在下载任务管理（${href}）→ 重新导航再读`);
+      await navigateTo(args, targetId, ALIMAMA_LIST_URL);
+      await delay(settleMs);
+    } else {
+      console.log(`[fetch] 列表这一屏还没渲染出行（第 ${attempt} 次读）→ ${waitMs / 1000}s 后再读`);
+      await delay(waitMs);
+    }
+    rows = await readTaskRows(args, targetId);
+  }
+  return rows;
 }
 
 /**
