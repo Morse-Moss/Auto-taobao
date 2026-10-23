@@ -132,14 +132,44 @@ test('结构特征任一命中即算在页；三者都没有才算没到', () =>
   assert.equal(isInquiryPage(), false, '读数缺失按最保守处理');
 });
 
-test('页面侧的结构词表与 node 侧逐字一致（两处都写死了，必须互锁）', () => {
-  // 页面侧那段是拼进 JS 表达式的字符串，node 侧函数 import 不进去；唯一来源在 inquiry-core。
-  // 这里按 `'词'` 的字面形状比，不按变量名比 —— 表达式里是 ${PAGE_MARKER_EXPR} 展开后的结果。
+// 2026-10-23 重写。上一版断的是「源文件里有 ${PAGE_MARKER_EXPR} 这串字」——
+// 而双引号字符串里那段字**正因为不插值才会原样存在** ⇒ 它把 bug 当成了合规证据
+// （1.12.14 上线后询单 8/8 全灭，报 `SyntaxError: Unexpected token '{'`，这些用例全绿）。
+// 现在改成钉「展开后真正发给页面的那段 JS」：必须能解析、必须带上词表、必须用对正文变量名。
+const MARKER_EXPR_OF = (varName) => INQUIRY_PAGE_MARKERS.map((marker) => `${varName}.includes(${JSON.stringify(marker)})`).join('||');
+
+function literalOf(name) {
+  const matched = COLLECT_SOURCE.match(new RegExp(`const ${name}\\s*=(\\s*\`[^\`]*\`|\\s*"[^"]*"|\\s*'[^']*');`, 'u'));
+  assert.ok(matched, `找不到 ${name} 的定义 —— 结构变了就要连这份守卫一起改`);
+  return matched[1].trim();
+}
+
+test('页面侧的结构词表真的展开进了表达式（不是只在源文件里出现过）', () => {
   for (const marker of INQUIRY_PAGE_MARKERS) {
     assert.ok(COLLECT_SOURCE.includes(`'${marker}'`), `页面侧词表缺少「${marker}」—— 改词表只改一处会静默失效`);
   }
-  assert.ok(COLLECT_SOURCE.includes('pageMarker:(${PAGE_MARKER_EXPR})'), 'READ_ENTRY_STATE 必须真的用上结构词表');
-  assert.ok(COLLECT_SOURCE.includes('${PAGE_MARKER_EXPR}'), 'READ_PAGE_STATE 也必须用同一份词表（同一病根有两个出口）');
+  // 入口那段还会插值 INQUIRY_PARENT / INQUIRY_ENTRY，一并按源文件里的值绑定进求值作用域。
+  const evalLiteral = (name) => new Function(`return ${literalOf(name)}`)();
+  const bindings = {
+    PAGE_MARKER_EXPR: MARKER_EXPR_OF('t'),
+    PAGE_MARKER_EXPR_TEXT: MARKER_EXPR_OF('text'),
+    INQUIRY_PARENT: evalLiteral('INQUIRY_PARENT'),
+    INQUIRY_ENTRY: evalLiteral('INQUIRY_ENTRY'),
+  };
+  const names = Object.keys(bindings);
+  // 两段页面表达式的正文变量名不同（入口那段是 `t`、页面读取那段是 `text`）
+  for (const [name, varName] of [['READ_ENTRY_STATE', 't'], ['READ_PAGE_STATE', 'text']]) {
+    const raw = literalOf(name);
+    assert.equal(raw[0], '`',
+      `${name} 必须用反引号模板：双引号里 \${...} 不会插值，页面会收到字面量并回 400（2026-10-23 询单 8/8 全灭的直接原因）`);
+    const expanded = new Function(...names, `return ${raw}`)(...names.map((key) => bindings[key]));
+    assert.doesNotMatch(expanded, /\$\{/u, `${name} 里还留着没展开的 \${...} —— 页面侧必然 SyntaxError`);
+    for (const marker of INQUIRY_PAGE_MARKERS) {
+      assert.ok(expanded.includes(`${varName}.includes(${JSON.stringify(marker)})`),
+        `${name} 的正文变量名是 ${varName}，词表必须按这个变量名展开（写死 t. 会 ReferenceError，且只在这条判据要救的现场发作）`);
+    }
+    assert.doesNotThrow(() => new Function(`return ${expanded}`), `${name} 展开后必须是一段能解析的 JS`);
+  }
 });
 
 test('两处「在询单页」判定都修了（只修入口那处会换个地方再红一次）', () => {

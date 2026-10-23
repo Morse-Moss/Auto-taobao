@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { collectFailureNote, collectGapOf } from '../scripts/run-product-data-job.mjs';
+import { collectFailureNote, collectGapOf, stageReasonOf } from '../scripts/run-product-data-job.mjs';
 import { classifyWorkflowError } from './workflow-receipt.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -65,16 +65,43 @@ test('反例：老文案（只有「未采集」）必然退化成 FAILED/UNCLAS
 
 test('接线：六条缺口真把采集原因传进来了（函数写了不接等于没写）', () => {
   const source = readSource(ENTRY);
-  for (const stage of ['底单', '询单', '推广']) {
-    assert.ok(source.includes(`collectGapOf(item.shop, '${stage}', item.error)`),
-      `${stage} 的缺口没有把 item.error 递进来 ⇒ 缺口又会退回没有原因的四个字`);
+  // 2026-10-23 起原因按段取（`stageReasonOf`），不再一律 `item.error`：
+  // 那一个字段存的是「这一家第一段失败的报错」，后面的段没跑时会把前一段的报错抄一遍。
+  for (const [label, key] of [['底单', 'product'], ['询单', 'inquiry'], ['推广', 'promotion']]) {
+    assert.ok(source.includes(`collectGapOf(item.shop, '${label}', stageReasonOf(item, '${key}'))`),
+      `${label} 的缺口没有取本段原因 ⇒ 没跑过的段会抄上一段的报错，或者缺口又退回没有原因的四个字`);
   }
   // 采集段三条 + catch 补记段三条 = 六条。数目变了说明有人加了新缺口而没想清楚归因与分类。
   const wired = [...source.matchAll(/collectGapOf\(item\.shop,/gu)].length;
   assert.equal(wired, 6, `缺口拼接处应当恰好 6 处（采集段 3 + catch 补记段 3），实际 ${wired} 处`);
+  // 每条链都有两处（正常段 + catch 补记段），**一处都不许退回**读共享 item.error：
+  // 只查「出现过」会被「改了一处、另一处还是旧的」蒙过去（2026-10-23 突变 M3 就是这么漏的）。
+  for (const key of ['product', 'inquiry', 'promotion']) {
+    const uses = [...source.matchAll(new RegExp(`stageReasonOf\\(item, '${key}'\\)`, 'gu'))].length;
+    assert.equal(uses, 2, `「${key}」的缺口应当 2 处都按段取原因，实际 ${uses} 处`);
+  }
+  const legacy = [...source.matchAll(/collectGapOf\(item\.shop, '[^']+', item\.error\)/gu)].length;
+  assert.equal(legacy, 0, `还有 ${legacy} 处缺口在读共享的 item.error ⇒ 没跑过的段会抄上一段的报错`);
   // 归因与收据的状态判定锚在「底单」两个字上：带上原因后这两个字必须还在。
   assert.ok(source.includes("gaps.some((gap) => gap.includes('底单')) ? 'FAILED' : 'COMPLETED'"),
     '归因锚点「底单」不见了 —— 改文案改掉了判据');
+});
+
+test('按段取原因：没跑过的段不抄上一段的报错（2026-10-23 实测 11 处缺口里 3 处是重数）', () => {
+  // 真实形态：批 2 三家底单成功、询单在第一次读取就炸，推广根本没走到。
+  const stoppedAtInquiry = { stoppedAt: 'inquiry-collect', error: '询单炸了', inquiryError: '询单炸了' };
+  assert.equal(stageReasonOf(stoppedAtInquiry, 'inquiry'), '询单炸了');
+  assert.equal(stageReasonOf(stoppedAtInquiry, 'promotion'), '本轮未走到（前一段未成）',
+    '推广没尝试就必须写「未走到」；抄询单的报错会让人以为推广也跑了并失败');
+  // 旧写法（直接读 item.error）在这里拿到的是询单那句 —— 这就是被修掉的错。
+  assert.equal(stoppedAtInquiry.error, '询单炸了', '反例：item.error 只有一个，按段取才不会串');
+
+  // 段自己失败：用它自己的报错。
+  const promotionFailed = { stoppedAt: 'promotion-collect', error: '询单炸了', promotionError: '任务列表未渲染' };
+  assert.equal(stageReasonOf(promotionFailed, 'promotion'), '任务列表未渲染');
+
+  // 段跑成了：不编原因。
+  assert.equal(stageReasonOf({ productFile: 'a.xls' }, 'product'), '');
 });
 
 test('结构：采集调用必须把 --evidence 指到本轮证据目录', () => {

@@ -40,7 +40,13 @@ const INQUIRY_ENTRY = '商品咨询分析';
 // 词表的唯一来源是 `inquiry-core.mjs` 的 `INQUIRY_PAGE_MARKERS`；`inquiry-core.test.mjs`
 // 有一条判据逐字比对这两处，改一处忘另一处会立刻变红。
 const PAGE_MARKERS = ['统计时间', '询单人数'];
-const PAGE_MARKER_EXPR = PAGE_MARKERS.map((marker) => `t.includes(${JSON.stringify(marker)})`).join('||');
+// 词表要拼进两段不同的页面表达式，而它们的正文变量名不一样（`READ_ENTRY_STATE` 用 `t`、
+// `READ_PAGE_STATE` 用 `text`）⇒ 这里必须按变量名生成，不能写死一个。
+// 2026-10-23：原来写死 `t.`，在 `READ_PAGE_STATE` 里就变成引用不存在的 `t`
+// ⇒ 只要正文里搜不到「商品咨询分析」（正是这条判据要救的那一现场）就抛 `ReferenceError: t is not defined`。
+const markersExprOf = (varName) => PAGE_MARKERS.map((marker) => `${varName}.includes(${JSON.stringify(marker)})`).join('||');
+const PAGE_MARKER_EXPR = markersExprOf('t');
+const PAGE_MARKER_EXPR_TEXT = markersExprOf('text');
 const READ_ENTRY_STATE = `(()=>{const t=document.body.innerText||'';const uniq=[...new Set([...document.querySelectorAll('a,span,div')].map(x=>(x.innerText||x.textContent||'').trim()))].filter(Boolean);return JSON.stringify({shop:(t.match(/(?:生意参谋\\n)([^\\n]+)/)||[])[1]||'',hasParent:t.includes(${JSON.stringify(INQUIRY_PARENT)}),hasInquiry:t.includes(${JSON.stringify(INQUIRY_ENTRY)}),exactInquiry:uniq.filter((s)=>s===${JSON.stringify(INQUIRY_ENTRY)}).length,pageMarker:(${PAGE_MARKER_EXPR}),statDate:(t.match(/统计时间\\s*(\\d{4}-\\d{2}-\\d{2})/)||[])[1]||'',url:location.href,readyState:document.readyState})})()`;
 const clickByText = (needle) => `(()=>{const e=[...document.querySelectorAll('a,span,div')].find(x=>(x.innerText||x.textContent||'').trim()===${JSON.stringify(needle)});if(!e)return false;e.click();return true})()`;
 
@@ -87,7 +93,11 @@ if (!isInquiryPage(entryState)) {
   await delay(2000);
 }
 page=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com')); if(!page)throw new Error('询单报表页不可用');
-const READ_PAGE_STATE="(()=>{const text=document.body.innerText||'';const shop=(text.match(/(?:生意参谋\\n)([^\\n]+)/)||[])[1]||'';const day=[...document.querySelectorAll('button,a,span')].find(e=>(e.innerText||e.textContent||'').trim()==='日');const link=[...document.querySelectorAll('a.lowcode-service-download-btn')][0];let f=link&&link[Object.keys(link).find(k=>k.startsWith('__reactInternal'))];while(f&&!((f.memoizedProps||{}).link))f=f.return;return JSON.stringify({shop,hasInquiry:(text.includes('商品咨询分析')||(${PAGE_MARKER_EXPR})),date:(text.match(/统计时间\\s*(\\d{4}-\\d{2}-\\d{2})/)||[])[1]||'',daySelected:!!day,link:f?.memoizedProps?.link||''})})()";
+// ⚠️ 这行**必须是反引号模板**：`${PAGE_MARKER_EXPR}` 要在 node 侧就展开成词表再发给页面。
+// 2026-10-23 真机：写成双引号字符串 ⇒ 不插值 ⇒ 页面收到字面 `${PAGE_MARKER_EXPR}`
+// ⇒ `$` 当标识符、紧跟 `{` ⇒ `SyntaxError: Unexpected token '{'` ⇒ 代理 400 ⇒ 询单 8/8 全灭。
+// 只读复现：取出该字面量后 `new Function('return ' + expr)` 报的就是同一句。
+const READ_PAGE_STATE=`(()=>{const text=document.body.innerText||'';const shop=(text.match(/(?:生意参谋\\n)([^\\n]+)/)||[])[1]||'';const day=[...document.querySelectorAll('button,a,span')].find(e=>(e.innerText||e.textContent||'').trim()==='日');const link=[...document.querySelectorAll('a.lowcode-service-download-btn')][0];let f=link&&link[Object.keys(link).find(k=>k.startsWith('__reactInternal'))];while(f&&!((f.memoizedProps||{}).link))f=f.return;return JSON.stringify({shop,hasInquiry:(text.includes('商品咨询分析')||(${PAGE_MARKER_EXPR_TEXT})),date:(text.match(/统计时间\\s*(\\d{4}-\\d{2}-\\d{2})/)||[])[1]||'',daySelected:!!day,link:f?.memoizedProps?.link||''})})()`;
 // ⚠️ 这里的 `hasInquiry` 与上面 `READ_ENTRY_STATE` 共用同一份结构词表（`PAGE_MARKER_EXPR`）：
 // 两处都拿「正文里有『商品咨询分析』」当「在询单页」，2026-10-22 现场证明那条文案判据会整页读不到。
 // 只修入口那处、留着这里 ⇒ 入口放行后立刻在下一步以「页面状态不满足：{hasInquiry:false}」再红一次，
