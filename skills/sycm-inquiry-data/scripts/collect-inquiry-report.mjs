@@ -5,7 +5,7 @@ import { SHOP_BROWSERS, shopInstance } from '../../../runtime/browser-ports.mjs'
 import { SHOP_IDENTITIES } from '../../sycm-alimama-daily-report/scripts/shop-identities.mjs';
 // 轮询的三态决策是纯函数、有离线判据（`planEntryPollStep`）—— 它钉的正是原版那个病根：
 // 「父菜单在、子入口不在」时**每一轮都要重新点父菜单**，而不是只在进循环前点一次。
-import { planEntryPollStep } from './inquiry-core.mjs';
+import { planEntryPollStep, pollInquiryLink, isInquiryPage } from './inquiry-core.mjs';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 function parse(argv) { const o={}; for(let i=0;i<argv.length;i+=1){if(argv[i]==='--proxy')o.proxy=argv[++i];else if(argv[i]==='--shop')o.shop=argv[++i];else if(argv[i]==='--date')o.date=argv[++i];else if(argv[i]==='--out')o.out=argv[++i];else throw new Error(`unknown argument ${argv[i]}`);} if(!o.proxy||!o.shop||!o.date||!o.out)throw new Error('--proxy --shop --date --out are required'); return o; }
@@ -36,7 +36,12 @@ const targets=JSON.parse(await req(`${o.proxy}/targets`)); let page=targets.find
 // 上层链的证据目录因此自动带上它。以前这条支路「失败只留一句符号」，判因只能靠人肉复现。
 const INQUIRY_PARENT = '商品分析';
 const INQUIRY_ENTRY = '商品咨询分析';
-const READ_ENTRY_STATE = `(()=>{const t=document.body.innerText||'';const uniq=[...new Set([...document.querySelectorAll('a,span,div')].map(x=>(x.innerText||x.textContent||'').trim()))].filter(Boolean);return JSON.stringify({shop:(t.match(/(?:生意参谋\\n)([^\\n]+)/)||[])[1]||'',hasParent:t.includes(${JSON.stringify(INQUIRY_PARENT)}),hasInquiry:t.includes(${JSON.stringify(INQUIRY_ENTRY)}),exactInquiry:uniq.filter((s)=>s===${JSON.stringify(INQUIRY_ENTRY)}).length,url:location.href,readyState:document.readyState})})()`;
+// 页面侧没法 import `hasInquiryPageMarker`（它在 node 里），所以这里**展开同一份词表**。
+// 词表的唯一来源是 `inquiry-core.mjs` 的 `INQUIRY_PAGE_MARKERS`；`inquiry-core.test.mjs`
+// 有一条判据逐字比对这两处，改一处忘另一处会立刻变红。
+const PAGE_MARKERS = ['统计时间', '询单人数'];
+const PAGE_MARKER_EXPR = PAGE_MARKERS.map((marker) => `t.includes(${JSON.stringify(marker)})`).join('||');
+const READ_ENTRY_STATE = `(()=>{const t=document.body.innerText||'';const uniq=[...new Set([...document.querySelectorAll('a,span,div')].map(x=>(x.innerText||x.textContent||'').trim()))].filter(Boolean);return JSON.stringify({shop:(t.match(/(?:生意参谋\\n)([^\\n]+)/)||[])[1]||'',hasParent:t.includes(${JSON.stringify(INQUIRY_PARENT)}),hasInquiry:t.includes(${JSON.stringify(INQUIRY_ENTRY)}),exactInquiry:uniq.filter((s)=>s===${JSON.stringify(INQUIRY_ENTRY)}).length,pageMarker:(${PAGE_MARKER_EXPR}),statDate:(t.match(/统计时间\\s*(\\d{4}-\\d{2}-\\d{2})/)||[])[1]||'',url:location.href,readyState:document.readyState})})()`;
 const clickByText = (needle) => `(()=>{const e=[...document.querySelectorAll('a,span,div')].find(x=>(x.innerText||x.textContent||'').trim()===${JSON.stringify(needle)});if(!e)return false;e.click();return true})()`;
 
 async function writeFailureSnapshot({ proxy, note, reading }) {
@@ -52,28 +57,49 @@ async function writeFailureSnapshot({ proxy, note, reading }) {
 }
 
 // 先给页面一点渲染时间（原版在这里死等 500ms —— 实测不够），再进「读 → 必要时重点父菜单」的循环。
+//
+// 2026-10-22 修：进入判据从「正文里有『商品咨询分析』这几个字」改成 `isInquiryPage`（结构特征，
+// 见 `inquiry-core.mjs` 的长注释）。原来的写法在页面**已经进了询单页**时也会判负
+// （10-22 里可林天猫现场：三个 Tab 都在、数据已渲染，整页正文却搜不到那两个词），
+// 于是轮询空转 30 秒后报「找不到入口」——把人指到「入口没渲染」上。
+// 「要不要点父菜单」仍然由 `planEntryPollStep` 决定，它看的是父菜单/子入口文案，
+// 与「到没到页」是两件事，不该共用一条判据。
 await delay(1500);
 let entryState = await evalOn(o.proxy, page.targetId, READ_ENTRY_STATE);
-if (planEntryPollStep(entryState) !== 'done') {
+if (!isInquiryPage(entryState)) {
   const inquiryDeadline = Date.now() + 30000; let entered = false; let sawPage = false;
   while (!entered && Date.now() < inquiryDeadline) {
     const p = (JSON.parse(await req(`${o.proxy}/targets`))).find((t) => t.type === 'page' && String(t.url).includes('sycm.taobao.com'));
     if (!p) { await delay(1000); continue; }
     sawPage = true; page = p;
     entryState = await evalOn(o.proxy, p.targetId, READ_ENTRY_STATE);
+    // 已经在询单页 ⇒ 立刻收工；否则再决定要不要点父菜单。
+    if (isInquiryPage(entryState)) { entered = true; break; }
     const step = planEntryPollStep(entryState);
-    if (step === 'done') { entered = true; break; }
     // 每一轮都重试父菜单：点空一次不该让这一轮注定失败（原版的病根就在这里）。
     if (step === 'click-parent') await evalOn(o.proxy, p.targetId, clickByText(INQUIRY_PARENT));
     await delay(1000);
   }
   if (!entered) {
-    await writeFailureSnapshot({ proxy: o.proxy, note: sawPage ? '轮询 30s 内未出现商品咨询分析入口' : '商品分析点击后找不到生意参谋页面', reading: entryState });
+    await writeFailureSnapshot({ proxy: o.proxy, note: sawPage ? '轮询 30s 内未进入商品咨询分析页（结构特征与 Tab 文案都没读到）' : '商品分析点击后找不到生意参谋页面', reading: entryState });
     throw new Error(sawPage ? '找不到商品咨询分析入口（轮询 30s 仍未出现）' : '商品分析点击后找不到生意参谋页面');
   }
   await delay(2000);
 }
 page=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com')); if(!page)throw new Error('询单报表页不可用');
-const state=await evalOn(o.proxy,page.targetId,"(()=>{const text=document.body.innerText||'';const shop=(text.match(/(?:生意参谋\\n)([^\\n]+)/)||[])[1]||'';const day=[...document.querySelectorAll('button,a,span')].find(e=>(e.innerText||e.textContent||'').trim()==='日');const link=[...document.querySelectorAll('a.lowcode-service-download-btn')][0];let f=link&&link[Object.keys(link).find(k=>k.startsWith('__reactInternal'))];while(f&&!((f.memoizedProps||{}).link))f=f.return;return JSON.stringify({shop,hasInquiry:text.includes('商品咨询分析'),date:(text.match(/统计时间\\s*(\\d{4}-\\d{2}-\\d{2})/)||[])[1]||'',daySelected:!!day,link:f?.memoizedProps?.link||''})})()");
-const expectedShop=SHOP_IDENTITIES.find((x)=>x.key===o.shop)?.sycmHeader; const identityOk=expectedShop&&state.shop.includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足：${JSON.stringify(state)}`);
+const READ_PAGE_STATE="(()=>{const text=document.body.innerText||'';const shop=(text.match(/(?:生意参谋\\n)([^\\n]+)/)||[])[1]||'';const day=[...document.querySelectorAll('button,a,span')].find(e=>(e.innerText||e.textContent||'').trim()==='日');const link=[...document.querySelectorAll('a.lowcode-service-download-btn')][0];let f=link&&link[Object.keys(link).find(k=>k.startsWith('__reactInternal'))];while(f&&!((f.memoizedProps||{}).link))f=f.return;return JSON.stringify({shop,hasInquiry:(text.includes('商品咨询分析')||(${PAGE_MARKER_EXPR})),date:(text.match(/统计时间\\s*(\\d{4}-\\d{2}-\\d{2})/)||[])[1]||'',daySelected:!!day,link:f?.memoizedProps?.link||''})})()";
+// ⚠️ 这里的 `hasInquiry` 与上面 `READ_ENTRY_STATE` 共用同一份结构词表（`PAGE_MARKER_EXPR`）：
+// 两处都拿「正文里有『商品咨询分析』」当「在询单页」，2026-10-22 现场证明那条文案判据会整页读不到。
+// 只修入口那处、留着这里 ⇒ 入口放行后立刻在下一步以「页面状态不满足：{hasInquiry:false}」再红一次，
+// 看起来像换了个新毛病，其实是同一个病根的第二个出口。
+// 2026-10-21：原来这里只读一次就判死。link 是 React fiber 的 memoizedProps.link（导出接口 URL），
+// 要等报表数据请求回来才被填 ——「入口 DOM 出现」≠「数据请求完成」，只读一次必然偶发假红
+// （2026-10-20 网林家居当场读到 link=""，19 分钟后同样的店同样命令一次成功）。
+const polled=await pollInquiryLink({read:async()=>{const p2=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com'));if(!p2)return {};page=p2;return await evalOn(o.proxy,p2.targetId,READ_PAGE_STATE);},expectedDate:o.date});
+const state=polled.state;
+// 轮询读数进现场：把「根本没读」和「读了十几次还是空」区分开（原版这两种都是同一句报错）。
+if(polled.step!=='done')state.linkReads=polled.reads;
+const expectedShop=SHOP_IDENTITIES.find((x)=>x.key===o.shop)?.sycmHeader; // 轮询可能一次都没读到页面（页签消失）⇒ state 是 {}，
+// 直接读 state.shop.includes 会抛 TypeError，把「页签没了」伪装成脚本崩溃。这里用 String() 兜住，报错仍是「店铺身份不符：」。
+const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面）'}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
 const result=await evalOn(o.proxy,page.targetId,`fetch(${JSON.stringify(state.link)},{credentials:'include'}).then(async r=>{const b=new Uint8Array(await r.arrayBuffer());let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode(...b.subarray(i,i+0x8000));return JSON.stringify({status:r.status,type:r.headers.get('content-type'),b64:btoa(s)})})`); if(result.status!==200)throw new Error(`导出接口返回 ${result.status}`); mkdirSync(path.dirname(o.out),{recursive:true}); writeFileSync(o.out,Buffer.from(result.b64,'base64')); console.log(JSON.stringify({shop:o.shop,date:o.date,out:path.resolve(o.out),bytes:Buffer.byteLength(result.b64,'base64'),endpoint:state.link},null,2));

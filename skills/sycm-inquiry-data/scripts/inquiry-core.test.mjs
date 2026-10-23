@@ -57,7 +57,7 @@ test('列名与形状都认不出时，报错必须带上实际表头（别再�
 // 所以要钉两件事：① 决策本身（纯函数）；② 采集脚本确实把决策接进了**循环体**（不是循环之前）。
 import fs from 'node:fs';
 import path from 'node:path';
-import { planEntryPollStep } from './inquiry-core.mjs';
+import { planEntryPollStep, isInquiryPage, INQUIRY_PAGE_MARKERS } from './inquiry-core.mjs';
 
 test('入口轮询决策：子入口在=结束；父菜单在=重点父菜单（原版缺的就是这一下）；都读不到=只等，不盲点', () => {
   assert.equal(planEntryPollStep({ hasInquiry: true, hasParent: true }), 'done');
@@ -85,4 +85,80 @@ test('入口找不到时「先落现场、再抛错」，顺序不能反', () =>
   assert.ok(snapshotAt >= 0, '失败路径必须留现场：这条支路以前只留一句符号，判因只能靠人肉复现');
   assert.ok(throwAt > snapshotAt, '快照要写在 throw 之前 —— 顺序反了就等于没有现场');
   assert.ok(/failure\.json/u.test(COLLECT_SOURCE), '快照落在 <out>.failure.json（--out 旁），上层链的证据目录才会自动带上它');
+});
+
+// ---------------------------------------------------------------------------
+// 2026-10-22 补：判据「测的是什么」的回归钉子
+// ---------------------------------------------------------------------------
+// 起因（真机，`evidence/product-data-job-2026-10-21/2026-10-21-20261022021253864-e1dbdbf9/`）：
+// 盖文天猫、里可林天猫询单双双报「找不到商品咨询分析入口（轮询 30s 仍未出现）」，
+// 而里可林天猫的失败截图证明**页面已经进了「商品咨询分析」标签、数据也渲染出来了**
+// （统计时间 2026-10-21、三个 Tab 都在、下载按钮在、商品表格 4+ 行）——
+// 整页 `innerText` 里却一次「商品咨询分析」都搜不到，`hasInquiry=false`。
+// 原判据把「某个 Tab 的文案今天在不在」当成了「我在不在询单页」，平台一改文案就静默失效，
+// 而失败文案仍然把人指向「入口没渲染」。
+//
+// 现在只认结构特征。下面这条用例的读数**逐字取自那次现场**（hasInquiry=false 但统计时间在）。
+const REGRESSION_READING_2026_10_22 = Object.freeze({
+  shop: '里可林旗舰店',
+  hasParent: true,
+  hasInquiry: false,
+  exactInquiry: 0,
+  pageMarker: true,
+  statDate: '2026-10-21',
+  url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop',
+  readyState: 'complete',
+});
+
+test('2026-10-22 现场：已进询单页但正文搜不到「商品咨询分析」⇒ 必须判「已在页」', () => {
+  assert.equal(isInquiryPage(REGRESSION_READING_2026_10_22), true,
+    '这条就是那次假红的原样读数 —— 判负说明又把「Tab 文案」当成了「到没到页」');
+});
+
+test('「到没到页」与「要不要点父菜单」是两件事，绝不共用一条判据', () => {
+  // 同一次读数：入口决策说「点父菜单」（子入口文案确实没看到），到页判定说「已经在页」。
+  // 两者同时成立不矛盾 —— 硬把 isInquiryPage 接回 planEntryPollStep 就会在页内空转到超时。
+  assert.equal(planEntryPollStep(REGRESSION_READING_2026_10_22), 'click-parent');
+  assert.equal(isInquiryPage(REGRESSION_READING_2026_10_22), true);
+});
+
+test('结构特征任一命中即算在页；三者都没有才算没到', () => {
+  assert.equal(isInquiryPage({ pageMarker: true }), true, '统计时间/询单人数任一在即可');
+  assert.equal(isInquiryPage({ hasInquiry: true }), true, '文案判据保留，只是不再单独承担判定');
+  assert.equal(isInquiryPage({ statDate: '2026-10-21' }), true, '页面侧算出 statDate 也算数');
+  assert.equal(isInquiryPage({ statDate: '统计时间 2026-10-21' }), true, '整段文本也认');
+  assert.equal(isInquiryPage({ hasParent: true, hasInquiry: false, pageMarker: false, statDate: '' }), false,
+    '父菜单在、但没有任何询单页特征是「真的没到页」');
+  assert.equal(isInquiryPage(), false, '读数缺失按最保守处理');
+});
+
+test('页面侧的结构词表与 node 侧逐字一致（两处都写死了，必须互锁）', () => {
+  // 页面侧那段是拼进 JS 表达式的字符串，node 侧函数 import 不进去；唯一来源在 inquiry-core。
+  // 这里按 `'词'` 的字面形状比，不按变量名比 —— 表达式里是 ${PAGE_MARKER_EXPR} 展开后的结果。
+  for (const marker of INQUIRY_PAGE_MARKERS) {
+    assert.ok(COLLECT_SOURCE.includes(`'${marker}'`), `页面侧词表缺少「${marker}」—— 改词表只改一处会静默失效`);
+  }
+  assert.ok(COLLECT_SOURCE.includes('pageMarker:(${PAGE_MARKER_EXPR})'), 'READ_ENTRY_STATE 必须真的用上结构词表');
+  assert.ok(COLLECT_SOURCE.includes('${PAGE_MARKER_EXPR}'), 'READ_PAGE_STATE 也必须用同一份词表（同一病根有两个出口）');
+});
+
+test('两处「在询单页」判定都修了（只修入口那处会换个地方再红一次）', () => {
+  // READ_PAGE_STATE 里的 `hasInquiry:text.includes('商品咨询分析')` 是同一病根的第二个出口：
+  // 入口放行后立刻在「页面状态不满足」上再红一次，看起来像新毛病。
+  assert.doesNotMatch(
+    COLLECT_SOURCE,
+    /hasInquiry:text\.includes\('商品咨询分析'\)/u,
+    'READ_PAGE_STATE 不许退回只认文案的旧写法',
+  );
+});
+
+test('采集脚本的入口判定真的调用了 isInquiryPage（纯函数对了但没人调用＝没修）', () => {
+  // 突变验证暴露过这个洞（2026-10-22 M1）：把调用点改回 `planEntryPollStep(...) !== 'done'`，
+  // 纯函数的用例照样全绿 —— 因为那些用例只测纯函数本身，测不到「谁在使用它」。
+  // 这一条盯的是调用侧：入口判定必须走 isInquiryPage，且循环体里每轮也用它。
+  const callSites = COLLECT_SOURCE.match(/isInquiryPage\(/gu) ?? [];
+  assert.ok(callSites.length >= 2, `isInquiryPage 至少要在「进循环前」和「循环体内」各调用一次，实际 ${callSites.length} 次`);
+  assert.match(COLLECT_SOURCE, /if \(!isInquiryPage\(entryState\)\) \{/u, '入口闸门必须用 isInquiryPage，不许退回「子入口文案在不在」');
+  const loopBody = COLLECT_SOURCE.match(/while \(!entered && Date\.now\(\) < inquiryDeadline\) \{([\s\S]*?)\n  \}/u)?.[1] ?? '';
+  assert.ok(loopBody.includes('isInquiryPage(entryState)'), '循环体里每轮都必须重新判「到没到页」');
 });

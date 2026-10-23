@@ -97,3 +97,101 @@ export function planEntryPollStep({ hasInquiry, hasParent } = {}) {
   if (hasParent) return 'click-parent';
   return 'wait';
 }
+
+// ---------------------------------------------------------------------------
+// 「已进入商品咨询分析页」的判据（2026-10-22 加）
+// ---------------------------------------------------------------------------
+// 病根：原判据是 `body.innerText.includes('商品咨询分析')`。那是**左侧 Tab 的文字**，
+// 但它不是稳定的页面特征 —— 2026-10-22 里可林天猫现场（`inquiry.xls.failure.png`）证明：
+// 页面**已经进了「商品咨询分析」标签、数据也渲染出来了**（统计时间 2026-10-21、
+// 「商品咨询分析/商品推荐分析/商品销售分析」三个 Tab 都在、下载按钮在、商品表格 4+ 行），
+// 可整页 innerText 里**一次「商品咨询分析」都搜不到** ⇒ 判据自己判负，轮询空转到 30s。
+// 也就是说：那条判据测的不是「我在不在询单页」，而是「某个 Tab 的文案今天在不在」，
+// 平台一改文案/改成图标 + tooltip，判据就静默失效 —— 而失败文案仍然是
+// 「找不到商品咨询分析入口」，把人指到「入口没渲染」上去（我上一轮就是这么误判的）。
+//
+// 现在只认**报表本身的结构特征**，三选一即可（任一出现即认定已在询单页）：
+//   · `统计时间 <日期>`  —— 询单报表页头，与后面 `READ_PAGE_STATE` 的日期解析同一套正则；
+//   · `询单人数`           —— 询单报表专属列名（商品底单/推广报表都没有这一列）；
+//   · `商品咨询分析`       —— 保留原来的文案判据，它没有错，只是**不够**。
+// Tab 文案与父菜单 `商品分析` 只用于「要不要再点一下父菜单」（`planEntryPollStep`），
+// 不再用于判定「到没到页」。两条判据分工不同，别再把它们合并回一条。
+const PAGE_TITLE_PATTERN = /统计时间\s*(\d{4}-\d{2}-\d{2})/u;
+export const INQUIRY_PAGE_MARKERS = Object.freeze(['统计时间', '询单人数']);
+
+/** 读字符串里是否出现某个 marker（纯函数，供 node 侧与页面侧共用同一份词表）。 */
+export function hasInquiryPageMarker(text) {
+  const body = String(text ?? '');
+  return INQUIRY_PAGE_MARKERS.some((marker) => body.includes(marker)) || body.includes('商品咨询分析');
+}
+
+/**
+ * 把一次页面读数判成「在不在询单页」。
+ *
+ * 入参就是采集脚本里 `READ_ENTRY_STATE` 的返回（`hasInquiry` / `pageMarker` / `statDate`）。
+ * `pageMarker` 是页面侧用 `hasInquiryPageMarker` 算好的布尔值 —— 页面侧拿不到这个函数，
+ * 所以两边**共用同一份词表**（`INQUIRY_PAGE_MARKERS`）而共用不了函数体，改词表只改一处。
+ */
+export function isInquiryPage({ hasInquiry, pageMarker, statDate } = {}) {
+  if (pageMarker === true) return true;
+  if (hasInquiry === true) return true;
+  // statDate 在页面侧是「已解析出的 YYYY-MM-DD」，在测试/其它调用方也可能直接传整段文本 ⇒ 两种都认。
+  const text = String(statDate ?? '');
+  return PAGE_TITLE_PATTERN.test(text) || /^\d{4}-\d{2}-\d{2}$/u.test(text);
+}
+
+/** 从页面正文里取统计日期（`统计时间 2026-10-21`）。取不到返回空串。 */
+export function readStatDate(text) {
+  return String(text ?? '').match(PAGE_TITLE_PATTERN)?.[1] ?? '';
+}
+
+// ---------------------------------------------------------------------------
+// 「导出链接」的轮询决策（2026-10-21 加）
+// ---------------------------------------------------------------------------
+// 现场：2026-10-20 网林家居。入口找到了、身份对、统计日期对、「日」按钮也在，唯独
+// `link` 是空串 —— 而原版脚本**只读一次**就判死（`if(...!state.link) throw`）。
+//
+// 为什么会空：`link` 取自 React fiber 的 `memoizedProps.link`，它是导出接口的 URL，
+// 要等报表数据请求回来、组件重新渲染之后才会被填进 props。
+// **「入口 DOM 出现」不等于「数据请求完成」** —— 原版把异步填充的字段当成同步可读的用，
+// 所以判据本身就会偶发假红。
+//
+// 19 分钟后同一家店、同一条命令就成功了（`link` 有值、8 行写入），这就是竞态而不是配置问题的铁证。
+//
+// 三态（每一轮重判，与入口轮询同一套风格）：
+//   done        拿到 link ⇒ 立刻结束，不为等满窗口空转；
+//   wrong-date  日期不是目标日 ⇒ **立刻失败**，这是真错，等下去也不会变；
+//   wait        其余（link 为空）⇒ 继续等。
+//
+// 为什么先判日期再判 link：两者同时不满足时，先报日期能省掉一整个轮询窗口，
+// 且「日期错」远比「link 慢」值得马上让人看见。身份不符同理，由调用方在读之前就判掉。
+export function planLinkPollStep({ link, date, expectedDate } = {}) {
+  if (expectedDate && date && date !== expectedDate) return 'wrong-date';
+  if (String(link ?? '').trim()) return 'done';
+  return 'wait';
+}
+
+/**
+ * 有界轮询等 `link` 出现。`read` / `delay` / `now` 可注入 ⇒ 用例用假时钟，不必真等 20 秒。
+ *
+ * 超时**不抛**，把最后一次读数交回去 —— 由调用方用同一套文案报错（保留原来的可见症状），
+ * 同时能在现场里带上「读了几次」，把「根本没读」和「读了十几次还是空」区分开。
+ */
+export async function pollInquiryLink({
+  read, expectedDate, timeoutMs = 20000, intervalMs = 1000, delay, now = Date.now,
+} = {}) {
+  if (typeof read !== 'function') throw new Error('pollInquiryLink 需要 read()（读一次页面状态）');
+  if (!(timeoutMs >= 0)) throw new Error(`pollInquiryLink 的 timeoutMs 必须是非负数，收到 ${JSON.stringify(timeoutMs)}`);
+  const wait = delay ?? ((ms) => new Promise((resolve) => { setTimeout(resolve, ms); }));
+  const deadline = now() + timeoutMs;
+  let reads = 0; let last = null;
+  for (;;) {
+    last = (await read()) ?? {};
+    reads += 1;
+    const step = planLinkPollStep({ link: last.link, date: last.date, expectedDate });
+    if (step === 'done') return { state: last, reads, timedOut: false, step };
+    if (step === 'wrong-date') return { state: last, reads, timedOut: false, step };
+    if (now() >= deadline) return { state: last, reads, timedOut: true, step };
+    await wait(intervalMs);
+  }
+}
