@@ -57,11 +57,14 @@ test('列名与形状都认不出时，报错必须带上实际表头（别再�
 // 所以要钉两件事：① 决策本身（纯函数）；② 采集脚本确实把决策接进了**循环体**（不是循环之前）。
 import fs from 'node:fs';
 import path from 'node:path';
-import { planEntryPollStep, isInquiryPage, INQUIRY_PAGE_MARKERS } from './inquiry-core.mjs';
+import { planEntryPollStep, isInquiryPage, INQUIRY_PAGE_MARKERS, alignExportUrlDate } from './inquiry-core.mjs';
 
-test('入口轮询决策：子入口在=结束；父菜单在=重点父菜单（原版缺的就是这一下）；都读不到=只等，不盲点', () => {
-  assert.equal(planEntryPollStep({ hasInquiry: true, hasParent: true }), 'done');
-  assert.equal(planEntryPollStep({ hasInquiry: true, hasParent: false }), 'done');
+test('入口轮询决策：到报表=结束；子项可见=点子项；父菜单在=点父菜单；都读不到=只等', () => {
+  assert.equal(planEntryPollStep({ pageMarker: true }), 'done', '询单人数在＝报表已加载');
+  assert.equal(planEntryPollStep({ downloadBtn: 1 }), 'done', '导出按钮在＝报表已加载');
+  // 2026-10-23：父菜单展开后「商品咨询分析」文案就在了，但报表没加载 ⇒ 必须再点一下子项。
+  assert.equal(planEntryPollStep({ hasInquiry: true, hasParent: true }), 'click-entry');
+  assert.equal(planEntryPollStep({ hasInquiry: true, hasParent: false }), 'click-entry');
   assert.equal(planEntryPollStep({ hasInquiry: false, hasParent: true }), 'click-parent');
   assert.equal(planEntryPollStep({ hasInquiry: false, hasParent: false }), 'wait');
   assert.equal(planEntryPollStep(), 'wait', '读数缺失（例如被截断）时按最保守处理：什么都不点');
@@ -74,6 +77,7 @@ test('采集脚本把决策接进了轮询循环体（每一轮重判）；退�
   assert.ok(loopBody.length > 0, '找不到轮询循环体 —— 结构变了就更新这条判据，别让它静默失效');
   assert.ok(loopBody.includes('planEntryPollStep(entryState)'), '循环体里必须每一轮重判');
   assert.ok(loopBody.includes("step === 'click-parent'"), '「父菜单在、子入口不在」必须点父菜单 —— 这就是 2026-10-09 丢掉的那一下');
+  assert.ok(loopBody.includes("step === 'click-entry'"), '「子项文案在、报表没加载」必须点子项 —— 2026-10-23 8/8 家就是卡在这一步没点');
   assert.ok(COLLECT_SOURCE.includes("from './inquiry-core.mjs'"), '决策只有一处实现，不许在脚本里再抄一份');
 });
 
@@ -118,18 +122,48 @@ test('2026-10-22 现场：已进询单页但正文搜不到「商品咨询分析
 test('「到没到页」与「要不要点父菜单」是两件事，绝不共用一条判据', () => {
   // 同一次读数：入口决策说「点父菜单」（子入口文案确实没看到），到页判定说「已经在页」。
   // 两者同时成立不矛盾 —— 硬把 isInquiryPage 接回 planEntryPollStep 就会在页内空转到超时。
-  assert.equal(planEntryPollStep(REGRESSION_READING_2026_10_22), 'click-parent');
   assert.equal(isInquiryPage(REGRESSION_READING_2026_10_22), true);
+  // 父菜单展开、子项文案在、但报表还没加载 ⇒ 决策必须继续点（不是 done）
+  const expandedOnly = { hasParent: true, hasInquiry: true, pageMarker: false, downloadBtn: 0 };
+  assert.equal(isInquiryPage(expandedOnly), false, '文案在 ≠ 报表在');
+  assert.equal(planEntryPollStep(expandedOnly), 'click-entry', '这时必须点开子项，否则导出按钮永远不出现');
 });
 
-test('结构特征任一命中即算在页；三者都没有才算没到', () => {
-  assert.equal(isInquiryPage({ pageMarker: true }), true, '统计时间/询单人数任一在即可');
-  assert.equal(isInquiryPage({ hasInquiry: true }), true, '文案判据保留，只是不再单独承担判定');
-  assert.equal(isInquiryPage({ statDate: '2026-10-21' }), true, '页面侧算出 statDate 也算数');
-  assert.equal(isInquiryPage({ statDate: '统计时间 2026-10-21' }), true, '整段文本也认');
-  assert.equal(isInquiryPage({ hasParent: true, hasInquiry: false, pageMarker: false, statDate: '' }), false,
-    '父菜单在、但没有任何询单页特征是「真的没到页」');
+test('结构特征任一命中即算在页；一个都没有才算没到', () => {
+  assert.equal(isInquiryPage({ pageMarker: true }), true, '询单人数在就算在页');
+  assert.equal(isInquiryPage({ downloadBtn: 1 }), true, '导出按钮在场＝报表工具条已渲染，比文案硬');
+  assert.equal(isInquiryPage({ hasInquiry: true }), false,
+    '左侧「商品咨询分析」文案在 ≠ 报表在（父菜单一展开它就在，2026-10-23 实测）');
+  assert.equal(isInquiryPage({ hasParent: true, hasInquiry: false, pageMarker: false }), false,
+    '父菜单在、但没有任何报表特征是「真的没到页」');
   assert.equal(isInquiryPage(), false, '读数缺失按最保守处理');
+});
+
+test('导出地址的日期必须对齐到目标日（补跑别的日期时不能照抄页面上那一天）', () => {
+  const fromPage = '/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261022&dateRange=1d&orderBy=cstCnt&startDate=20261022&order=desc&itemId=&excludeDates=';
+  const aligned = alignExportUrlDate(fromPage, '2026-10-21');
+  assert.match(aligned, /startDate=20261021/u, '起始日没对齐 ⇒ 导出的是页面那天的数据，写进飞书就是错日');
+  assert.match(aligned, /endDate=20261021/u);
+  assert.match(aligned, /orderBy=cstCnt/u, '其余参数必须原样保留（排序/维度变了行就对不上了）');
+  // 没有日期参数就原样返回，不猜、不拼。
+  const noDate = '/csp/api/x/export.json?dateType=day';
+  assert.equal(alignExportUrlDate(noDate, '2026-10-21'), noDate);
+  // 绝对地址保持绝对；空值不报错。
+  assert.match(alignExportUrlDate('https://sycm.taobao.com/a/export.json?startDate=20261022&endDate=20261022', '2026-10-21'), /^https:\/\/sycm\.taobao\.com\/a\/export\.json\?startDate=20261021/u);
+  assert.equal(alignExportUrlDate('', '2026-10-21'), '');
+  assert.equal(alignExportUrlDate(fromPage, 'not-a-date'), fromPage);
+});
+
+test('2026-10-23 现场：业绩总览页也带「统计时间」⇒ 它绝不能当成「已在询单页」', () => {
+  // 真机只读探针（网林淘宝）：总览页 统计时间=在、询单人数=不在、下载按钮 0 个；
+  // 点一下「商品分析」后 询单人数=在、下载按钮 1 个、表格 18 行。
+  // 旧判据把「统计时间」当结构特征 ⇒ 轮询在总览页就收工、从不点菜单、下载按钮永远不在
+  // ⇒ 导出地址恒为空，8/8 家全报「页面状态不满足：{"link":""}」。
+  const overview = { hasParent: true, hasInquiry: false, pageMarker: false, statDate: '2026-10-22', downloadBtn: 0 };
+  assert.equal(isInquiryPage(overview), false, '总览页判成在页＝这一轮必然白跑');
+  assert.equal(isInquiryPage({ statDate: '2026-10-22' }), false, 'statDate 只用来读日期，不参与到页判定');
+  assert.equal(isInquiryPage({ statDate: '统计时间 2026-10-22' }), false, '整段文本同样不算');
+  assert.equal(planEntryPollStep(overview), 'click-parent', '总览页上必须允许点父菜单进子页');
 });
 
 // 2026-10-23 重写。上一版断的是「源文件里有 ${PAGE_MARKER_EXPR} 这串字」——
@@ -145,10 +179,10 @@ function literalOf(name) {
 }
 
 test('页面侧的结构词表真的展开进了表达式（不是只在源文件里出现过）', () => {
-  for (const marker of INQUIRY_PAGE_MARKERS) {
-    assert.ok(COLLECT_SOURCE.includes(`'${marker}'`), `页面侧词表缺少「${marker}」—— 改词表只改一处会静默失效`);
-  }
-  // 入口那段还会插值 INQUIRY_PARENT / INQUIRY_ENTRY，一并按源文件里的值绑定进求值作用域。
+  // 2026-10-23 第二现场：上一版这里只查「词表里每一项在源文件里出现过」——
+  // 单向 includes 查不出**多出来的**那一项。脚本里那会儿还留着 `['统计时间','询单人数']`，
+  // 而 `统计时间` 每个业绩页都有 ⇒ 入口闸门在总览页就判真、轮询循环一次没进、8/8 家全灭。
+  // 现在改成整串比对展开后的表达式：多一项、少一项、顺序变了，全都立刻变红。
   const evalLiteral = (name) => new Function(`return ${literalOf(name)}`)();
   const bindings = {
     PAGE_MARKER_EXPR: MARKER_EXPR_OF('t'),
@@ -164,12 +198,36 @@ test('页面侧的结构词表真的展开进了表达式（不是只在源文�
       `${name} 必须用反引号模板：双引号里 \${...} 不会插值，页面会收到字面量并回 400（2026-10-23 询单 8/8 全灭的直接原因）`);
     const expanded = new Function(...names, `return ${raw}`)(...names.map((key) => bindings[key]));
     assert.doesNotMatch(expanded, /\$\{/u, `${name} 里还留着没展开的 \${...} —— 页面侧必然 SyntaxError`);
-    for (const marker of INQUIRY_PAGE_MARKERS) {
-      assert.ok(expanded.includes(`${varName}.includes(${JSON.stringify(marker)})`),
-        `${name} 的正文变量名是 ${varName}，词表必须按这个变量名展开（写死 t. 会 ReferenceError，且只在这条判据要救的现场发作）`);
-    }
+    assert.ok(expanded.includes(MARKER_EXPR_OF(varName)),
+      `${name} 的词表必须与 INQUIRY_PAGE_MARKERS 逐项一致（正文变量名是 ${varName}，写死 t. 会 ReferenceError）`);
     assert.doesNotThrow(() => new Function(`return ${expanded}`), `${name} 展开后必须是一段能解析的 JS`);
   }
+});
+
+test('页面侧词表只有一个来源：从 inquiry-core 导入，不许在采集脚本里再抄一份', () => {
+  // 「同一份词表活在两处」正是这次 8/8 全灭的成因：core 改了、脚本那份没改，而守卫又只单向查。
+  assert.match(COLLECT_SOURCE, /\bINQUIRY_PAGE_MARKERS\b/u, '采集脚本必须导入 INQUIRY_PAGE_MARKERS');
+  assert.match(COLLECT_SOURCE, /from '\.\/inquiry-core\.mjs'/u);
+  assert.doesNotMatch(COLLECT_SOURCE, /const PAGE_MARKERS\s*=\s*\[/u,
+    '不许再写一份词表字面量 —— 改一处忘另一处会静默失效（2026-10-23 实测）');
+});
+
+test('脚本自己算出来的那段词表表达式，必须与 INQUIRY_PAGE_MARKERS 完全一致', () => {
+  // 上一条只查「有没有本地字面量」。`INQUIRY_PAGE_MARKERS.concat(['统计时间'])` 这种写法能绕过它，
+  // 而上面那条整串比对又是**把标准词表当参数注入**去求值字面量的 ⇒ 同样测不到脚本自身算出来的那份。
+  // 这一条真去执行脚本里 `markersExprOf` 的定义体，把 INQUIRY_PAGE_MARKERS 绑成标准值，看它算出什么。
+  const body = COLLECT_SOURCE.match(/const markersExprOf = \(varName\) =>([\s\S]*?);\n/u)?.[1];
+  assert.ok(body, '找不到 markersExprOf 的定义 —— 结构变了就连这条判据一起改');
+  let computed;
+  try {
+    const build = new Function('INQUIRY_PAGE_MARKERS', `return (varName) =>${body}`)(INQUIRY_PAGE_MARKERS);
+    computed = build('t');
+  } catch (error) {
+    assert.fail(`脚本里的词表没走 INQUIRY_PAGE_MARKERS（求值就抛了：${error?.message}）—— `
+      + '这就是 2026-10-23 8/8 全灭的成因：本地那份多带了「统计时间」，总览页就被判成已在询单页');
+  }
+  assert.equal(computed, MARKER_EXPR_OF('t'),
+    '脚本算出来的词表与 INQUIRY_PAGE_MARKERS 不一致 —— 多一项就会在总览页提前放行（实测 8/8 全灭）');
 });
 
 test('两处「在询单页」判定都修了（只修入口那处会换个地方再红一次）', () => {

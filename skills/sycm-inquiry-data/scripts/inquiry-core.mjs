@@ -92,8 +92,13 @@ export function readInquiryRows(file, date, sourceShop, readXls) { return parseI
 //   done        子入口已出现 ⇒ 结束轮询；
 //   click-parent 父菜单在、子入口不在 ⇒ **重新**点父菜单（幂等；这一步就是原版缺的那一下）；
 //   wait        父菜单也还没渲染出来 ⇒ 只等，不许盲点（点了也不会有反应，还会掩盖真错）。
-export function planEntryPollStep({ hasInquiry, hasParent } = {}) {
-  if (hasInquiry) return 'done';
+export function planEntryPollStep({ hasInquiry, hasParent, pageMarker, downloadBtn } = {}) {
+  // 2026-10-23：`hasInquiry`（左侧「商品咨询分析」这行文案）在**父菜单展开后**就成了 true，
+  // 而报表还没加载 ⇒ 原来据此 return 'done' 会让循环在报表打开之前收工（下载按钮 0 个）。
+  // 所以「到没到报表」只看结构特征（询单人数 / 导出按钮），文案只回答「子项能不能点」。
+  const onReport = pageMarker === true || Number(downloadBtn ?? 0) > 0;
+  if (onReport) return 'done';
+  if (hasInquiry) return 'click-entry';
   if (hasParent) return 'click-parent';
   return 'wait';
 }
@@ -116,8 +121,16 @@ export function planEntryPollStep({ hasInquiry, hasParent } = {}) {
 //   · `商品咨询分析`       —— 保留原来的文案判据，它没有错，只是**不够**。
 // Tab 文案与父菜单 `商品分析` 只用于「要不要再点一下父菜单」（`planEntryPollStep`），
 // 不再用于判定「到没到页」。两条判据分工不同，别再把它们合并回一条。
+// 2026-10-23 再修：词表原来含 `统计时间`，而**每个生意参谋业绩页都有「统计时间」**
+// ⇒ 总览页就被判成「已在询单页」，轮询立刻收工、从不点「商品分析」，
+// 于是 `a.lowcode-service-download-btn` 根本不在页面上、导出链接恒为空：
+// 8/8 家全部报「页面状态不满足：{"hasInquiry":true,"date":"...","link":""}」。
+// 真机只读探针（网林淘宝，2026-10-23）：
+//   业绩总览页：统计时间=true、询单人数=false、下载按钮 0 个；
+//   点一下「商品分析」后：询单人数=true、下载按钮 1 个、表格 18 行。
+// ⇒ `询单人数` 与「下载按钮在场」才是询单报表独有的结构特征；`统计时间` 只用来读日期。
 const PAGE_TITLE_PATTERN = /统计时间\s*(\d{4}-\d{2}-\d{2})/u;
-export const INQUIRY_PAGE_MARKERS = Object.freeze(['统计时间', '询单人数']);
+export const INQUIRY_PAGE_MARKERS = Object.freeze(['询单人数']);
 
 /** 读字符串里是否出现某个 marker（纯函数，供 node 侧与页面侧共用同一份词表）。 */
 export function hasInquiryPageMarker(text) {
@@ -128,16 +141,43 @@ export function hasInquiryPageMarker(text) {
 /**
  * 把一次页面读数判成「在不在询单页」。
  *
- * 入参就是采集脚本里 `READ_ENTRY_STATE` 的返回（`hasInquiry` / `pageMarker` / `statDate`）。
+ * 入参就是采集脚本里 `READ_ENTRY_STATE` 的返回（`hasInquiry` / `pageMarker` / `statDate` / `downloadBtn`）。
  * `pageMarker` 是页面侧用 `hasInquiryPageMarker` 算好的布尔值 —— 页面侧拿不到这个函数，
  * 所以两边**共用同一份词表**（`INQUIRY_PAGE_MARKERS`）而共用不了函数体，改词表只改一处。
+ *
+ * ⚠️ `statDate`（统计时间）**不参与**这条判定：它在业绩总览页上也有，
+ * 拿它当「已在询单页」的证据会让轮询在总览页就收工（2026-10-23 实测 8/8 家）。
  */
-export function isInquiryPage({ hasInquiry, pageMarker, statDate } = {}) {
+export function isInquiryPage({ pageMarker, downloadBtn } = {}) {
+  // 2026-10-23 再收：`hasInquiry`（左侧「商品咨询分析」文案）**不能**算「已在页」——
+  // 父菜单一展开，这行文案就在了，而报表还没加载、导出按钮 0 个 ⇒ 8/8 家读到 link="".
+  // 只承认两件报表级事实：专属列名「询单人数」、导出按钮在场。
   if (pageMarker === true) return true;
-  if (hasInquiry === true) return true;
-  // statDate 在页面侧是「已解析出的 YYYY-MM-DD」，在测试/其它调用方也可能直接传整段文本 ⇒ 两种都认。
-  const text = String(statDate ?? '');
-  return PAGE_TITLE_PATTERN.test(text) || /^\d{4}-\d{2}-\d{2}$/u.test(text);
+  return Number(downloadBtn ?? 0) > 0;
+}
+
+/**
+ * 把导出接口 URL 的日期对齐到目标日（2026-10-23 加）。
+ *
+ * 平台把导出地址从 React props 挪进了 `cacheParse`，那里带着**当时页面那一天**的
+ * `startDate/endDate`（形如 `20261022`）。补跑别的日期时不能照抄 —— 那样会导出一份
+ * 日期不对的文件，而导入端的去重键是（统计日期+商品ID），写进去就成了错日数据。
+ * 没有这两个参数就原样返回（不猜）。
+ */
+export function alignExportUrlDate(url, date) {
+  const raw = String(url ?? '');
+  const iso = String(date ?? '').trim();
+  if (!raw || !/^\d{4}-\d{2}-\d{2}$/u.test(iso)) return raw;
+  const compact = iso.replaceAll('-', '');
+  const absolute = /^https?:\/\//iu.test(raw);
+  let parsed;
+  try { parsed = new URL(raw, 'https://sycm.taobao.com'); } catch { return raw; }
+  let touched = false;
+  for (const key of ['startDate', 'endDate']) {
+    if (parsed.searchParams.has(key)) { parsed.searchParams.set(key, compact); touched = true; }
+  }
+  if (!touched) return raw;
+  return absolute ? `${parsed.origin}${parsed.pathname}${parsed.search}` : `${parsed.pathname}${parsed.search}`;
 }
 
 /** 从页面正文里取统计日期（`统计时间 2026-10-21`）。取不到返回空串。 */

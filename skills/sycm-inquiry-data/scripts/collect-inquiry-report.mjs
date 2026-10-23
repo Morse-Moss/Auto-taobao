@@ -5,7 +5,7 @@ import { SHOP_BROWSERS, shopInstance } from '../../../runtime/browser-ports.mjs'
 import { SHOP_IDENTITIES } from '../../sycm-alimama-daily-report/scripts/shop-identities.mjs';
 // 轮询的三态决策是纯函数、有离线判据（`planEntryPollStep`）—— 它钉的正是原版那个病根：
 // 「父菜单在、子入口不在」时**每一轮都要重新点父菜单**，而不是只在进循环前点一次。
-import { planEntryPollStep, pollInquiryLink, isInquiryPage } from './inquiry-core.mjs';
+import { planEntryPollStep, pollInquiryLink, isInquiryPage, alignExportUrlDate, INQUIRY_PAGE_MARKERS } from './inquiry-core.mjs';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 function parse(argv) { const o={}; for(let i=0;i<argv.length;i+=1){if(argv[i]==='--proxy')o.proxy=argv[++i];else if(argv[i]==='--shop')o.shop=argv[++i];else if(argv[i]==='--date')o.date=argv[++i];else if(argv[i]==='--out')o.out=argv[++i];else throw new Error(`unknown argument ${argv[i]}`);} if(!o.proxy||!o.shop||!o.date||!o.out)throw new Error('--proxy --shop --date --out are required'); return o; }
@@ -36,19 +36,36 @@ const targets=JSON.parse(await req(`${o.proxy}/targets`)); let page=targets.find
 // 上层链的证据目录因此自动带上它。以前这条支路「失败只留一句符号」，判因只能靠人肉复现。
 const INQUIRY_PARENT = '商品分析';
 const INQUIRY_ENTRY = '商品咨询分析';
-// 页面侧没法 import `hasInquiryPageMarker`（它在 node 里），所以这里**展开同一份词表**。
-// 词表的唯一来源是 `inquiry-core.mjs` 的 `INQUIRY_PAGE_MARKERS`；`inquiry-core.test.mjs`
-// 有一条判据逐字比对这两处，改一处忘另一处会立刻变红。
-const PAGE_MARKERS = ['统计时间', '询单人数'];
+// 页面侧没法 import `hasInquiryPageMarker`（函数体进不了页面表达式），所以这里**展开同一份词表**。
+// ⚠️ 词表**只能**从 `inquiry-core.mjs` 的 `INQUIRY_PAGE_MARKERS` 导入，绝不许在这里再写一份字面量。
+// 2026-10-23 的第二现场就是这么来的：`inquiry-core.mjs` 已把词表收窄成 `['询单人数']`，
+// 而这里还留着一份 `['统计时间','询单人数']` ⇒ `统计时间` 在**业绩总览页**上必然存在
+// ⇒ 进轮询前那次 `isInquiryPage` 直接判真 ⇒ 循环一次都没进（连调试行都没打印）
+// ⇒ 从不点「商品分析」⇒ 导出按钮恒 0、`link` 恒空，8/8 家全灭。
+// 当时的守卫只查「词表里每一项在源文件里出现过」（单向 includes），多出来的那项查不出来 ——
+// 和 ㊹ 是同一个反模式。现在词表只有一个来源，多抄一份会被用例当场拦下。
 // 词表要拼进两段不同的页面表达式，而它们的正文变量名不一样（`READ_ENTRY_STATE` 用 `t`、
 // `READ_PAGE_STATE` 用 `text`）⇒ 这里必须按变量名生成，不能写死一个。
 // 2026-10-23：原来写死 `t.`，在 `READ_PAGE_STATE` 里就变成引用不存在的 `t`
 // ⇒ 只要正文里搜不到「商品咨询分析」（正是这条判据要救的那一现场）就抛 `ReferenceError: t is not defined`。
-const markersExprOf = (varName) => PAGE_MARKERS.map((marker) => `${varName}.includes(${JSON.stringify(marker)})`).join('||');
+const markersExprOf = (varName) => INQUIRY_PAGE_MARKERS.map((marker) => `${varName}.includes(${JSON.stringify(marker)})`).join('||');
 const PAGE_MARKER_EXPR = markersExprOf('t');
 const PAGE_MARKER_EXPR_TEXT = markersExprOf('text');
-const READ_ENTRY_STATE = `(()=>{const t=document.body.innerText||'';const uniq=[...new Set([...document.querySelectorAll('a,span,div')].map(x=>(x.innerText||x.textContent||'').trim()))].filter(Boolean);return JSON.stringify({shop:(t.match(/(?:生意参谋\\n)([^\\n]+)/)||[])[1]||'',hasParent:t.includes(${JSON.stringify(INQUIRY_PARENT)}),hasInquiry:t.includes(${JSON.stringify(INQUIRY_ENTRY)}),exactInquiry:uniq.filter((s)=>s===${JSON.stringify(INQUIRY_ENTRY)}).length,pageMarker:(${PAGE_MARKER_EXPR}),statDate:(t.match(/统计时间\\s*(\\d{4}-\\d{2}-\\d{2})/)||[])[1]||'',url:location.href,readyState:document.readyState})})()`;
+const READ_ENTRY_STATE = `(()=>{const t=document.body.innerText||'';const uniq=[...new Set([...document.querySelectorAll('a,span,div')].map(x=>(x.innerText||x.textContent||'').trim()))].filter(Boolean);return JSON.stringify({shop:(t.match(/(?:生意参谋\\n)([^\\n]+)/)||[])[1]||'',hasParent:t.includes(${JSON.stringify(INQUIRY_PARENT)}),hasInquiry:t.includes(${JSON.stringify(INQUIRY_ENTRY)}),exactInquiry:uniq.filter((s)=>s===${JSON.stringify(INQUIRY_ENTRY)}).length,pageMarker:(${PAGE_MARKER_EXPR}),downloadBtn:document.querySelectorAll('a.lowcode-service-download-btn').length,statDate:(t.match(/统计时间\\s*(\\d{4}-\\d{2}-\\d{2})/)||[])[1]||'',url:location.href,readyState:document.readyState})})()`;
 const clickByText = (needle) => `(()=>{const e=[...document.querySelectorAll('a,span,div')].find(x=>(x.innerText||x.textContent||'').trim()===${JSON.stringify(needle)});if(!e)return false;e.click();return true})()`;
+
+// 页签选择器（2026-10-23 加，这是 8/8 家读到 link="" 的**主因**）：
+// 一个店铺实例里经常同时开着两个 sycm 页签 —— 商品排行 `/cc/item_rank` 和业绩页 `.../performance`。
+// 商品排行页的左侧导航里**同样**有「商品分析 → 商品咨询分析」这行文案，但**没有导出按钮**。
+// 「取第一个 sycm 页签」的做法因此会读到排行页：判据说「已进询单页」，导出按钮却恒为 0，
+// 而真正的业绩页就在旁边（真机：链里 8/8 家失败、我用单页签实例跑同一个脚本却一次成功）。
+// ⇒ 任何「读页面」的地方都必须锁业绩页，只有找不到业绩页时才退回第一个 sycm 页签。
+function pickWorkPage(targets) {
+  const pages = (targets ?? []).filter((t) => t.type === 'page');
+  return pages.find((t) => String(t.url).includes('sycm.taobao.com/qos/service/frame/shop/performance'))
+    ?? pages.find((t) => String(t.url).includes('sycm.taobao.com'))
+    ?? null;
+}
 
 async function writeFailureSnapshot({ proxy, note, reading }) {
   const pages = await (async () => { try { return (JSON.parse(await req(`${proxy}/targets`))).filter((t) => t.type === 'page').map((t) => ({ targetId: t.targetId, url: String(t.url) })); } catch { return []; } })();
@@ -75,15 +92,18 @@ let entryState = await evalOn(o.proxy, page.targetId, READ_ENTRY_STATE);
 if (!isInquiryPage(entryState)) {
   const inquiryDeadline = Date.now() + 30000; let entered = false; let sawPage = false;
   while (!entered && Date.now() < inquiryDeadline) {
-    const p = (JSON.parse(await req(`${o.proxy}/targets`))).find((t) => t.type === 'page' && String(t.url).includes('sycm.taobao.com'));
+    const p = pickWorkPage(JSON.parse(await req(`${o.proxy}/targets`)));
     if (!p) { await delay(1000); continue; }
     sawPage = true; page = p;
     entryState = await evalOn(o.proxy, p.targetId, READ_ENTRY_STATE);
     // 已经在询单页 ⇒ 立刻收工；否则再决定要不要点父菜单。
     if (isInquiryPage(entryState)) { entered = true; break; }
     const step = planEntryPollStep(entryState);
-    // 每一轮都重试父菜单：点空一次不该让这一轮注定失败（原版的病根就在这里）。
+    // 每一轮都重试：点空一次不该让这一轮注定失败（原版的病根就在这里）。
+    // `click-entry` 是 2026-10-23 加的一步：父菜单展开后能看到「商品咨询分析」这行文案，
+    // 但报表默认不一定加载 —— 必须真的把它点开，否则永远读不到导出按钮。
     if (step === 'click-parent') await evalOn(o.proxy, p.targetId, clickByText(INQUIRY_PARENT));
+    else if (step === 'click-entry') await evalOn(o.proxy, p.targetId, clickByText(INQUIRY_ENTRY));
     await delay(1000);
   }
   if (!entered) {
@@ -92,12 +112,18 @@ if (!isInquiryPage(entryState)) {
   }
   await delay(2000);
 }
-page=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com')); if(!page)throw new Error('询单报表页不可用');
+page=pickWorkPage(JSON.parse(await req(`${o.proxy}/targets`))); if(!page)throw new Error('询单报表页不可用');
 // ⚠️ 这行**必须是反引号模板**：`${PAGE_MARKER_EXPR}` 要在 node 侧就展开成词表再发给页面。
 // 2026-10-23 真机：写成双引号字符串 ⇒ 不插值 ⇒ 页面收到字面 `${PAGE_MARKER_EXPR}`
 // ⇒ `$` 当标识符、紧跟 `{` ⇒ `SyntaxError: Unexpected token '{'` ⇒ 代理 400 ⇒ 询单 8/8 全灭。
 // 只读复现：取出该字面量后 `new Function('return ' + expr)` 报的就是同一句。
-const READ_PAGE_STATE=`(()=>{const text=document.body.innerText||'';const shop=(text.match(/(?:生意参谋\\n)([^\\n]+)/)||[])[1]||'';const day=[...document.querySelectorAll('button,a,span')].find(e=>(e.innerText||e.textContent||'').trim()==='日');const link=[...document.querySelectorAll('a.lowcode-service-download-btn')][0];let f=link&&link[Object.keys(link).find(k=>k.startsWith('__reactInternal'))];while(f&&!((f.memoizedProps||{}).link))f=f.return;return JSON.stringify({shop,hasInquiry:(text.includes('商品咨询分析')||(${PAGE_MARKER_EXPR_TEXT})),date:(text.match(/统计时间\\s*(\\d{4}-\\d{2}-\\d{2})/)||[])[1]||'',daySelected:!!day,link:f?.memoizedProps?.link||''})})()`;
+// 导出地址的取法（2026-10-23 重写）：平台不再把 URL 放在 `props.link` 上。
+// 真机只读探针（网林淘宝）：下载按钮的 props 只有 className/onClick/children，
+// 整条祖先链都没有 `link`；地址出现在祖先的 `cacheParse` 里，形如
+//   /csp/api/cst/item/shop/list/export.json?dateType=day&startDate=20261022&endDate=20261022&...
+// 所以改成「沿祖先链扫字符串 props，找到第一个含 export.json? 的片段」，找不到才落空。
+// 日期对齐交给 node 侧 `alignExportUrlDate`（页面里那份带的是「当时那一天」）。
+const READ_PAGE_STATE=`(()=>{const text=document.body.innerText||'';const shop=(text.match(/(?:生意参谋\\n)([^\\n]+)/)||[])[1]||'';const day=[...document.querySelectorAll('button,a,span')].find(e=>(e.innerText||e.textContent||'').trim()==='日');const btn=[...document.querySelectorAll('a.lowcode-service-download-btn')][0];let link='';let linkSource='';if(btn){const key=Object.keys(btn).find(k=>k.startsWith('__reactInternal')||k.startsWith('__reactFiber'));let f=key?btn[key]:null;let d=0;while(f&&d<18&&!link){const ps=f.memoizedProps||{};if(typeof ps.link==='string'&&ps.link.includes('export.json')){link=ps.link;linkSource='props.link';}if(!link){for(const v of Object.values(ps)){if(typeof v!=='string')continue;const m=v.match(new RegExp('[/][^"\\\\s]*export[.]json[?][^"\\\\s]*'));if(m){link=m[0];linkSource='props.scan';break;}}}f=f.return;d+=1;}}return JSON.stringify({shop,hasInquiry:(text.includes('商品咨询分析')||(${PAGE_MARKER_EXPR_TEXT})),date:(text.match(/统计时间\\s*(\\d{4}-\\d{2}-\\d{2})/)||[])[1]||'',daySelected:!!day,downloadBtn:document.querySelectorAll('a.lowcode-service-download-btn').length,link,linkSource})})()`;
 // ⚠️ 这里的 `hasInquiry` 与上面 `READ_ENTRY_STATE` 共用同一份结构词表（`PAGE_MARKER_EXPR`）：
 // 两处都拿「正文里有『商品咨询分析』」当「在询单页」，2026-10-22 现场证明那条文案判据会整页读不到。
 // 只修入口那处、留着这里 ⇒ 入口放行后立刻在下一步以「页面状态不满足：{hasInquiry:false}」再红一次，
@@ -105,11 +131,14 @@ const READ_PAGE_STATE=`(()=>{const text=document.body.innerText||'';const shop=(
 // 2026-10-21：原来这里只读一次就判死。link 是 React fiber 的 memoizedProps.link（导出接口 URL），
 // 要等报表数据请求回来才被填 ——「入口 DOM 出现」≠「数据请求完成」，只读一次必然偶发假红
 // （2026-10-20 网林家居当场读到 link=""，19 分钟后同样的店同样命令一次成功）。
-const polled=await pollInquiryLink({read:async()=>{const p2=(JSON.parse(await req(`${o.proxy}/targets`))).find((t)=>t.type==='page'&&String(t.url).includes('sycm.taobao.com'));if(!p2)return {};page=p2;return await evalOn(o.proxy,p2.targetId,READ_PAGE_STATE);},expectedDate:o.date});
+const polled=await pollInquiryLink({read:async()=>{const p2=pickWorkPage(JSON.parse(await req(`${o.proxy}/targets`)));if(!p2)return {};page=p2;return await evalOn(o.proxy,p2.targetId,READ_PAGE_STATE);},expectedDate:o.date});
 const state=polled.state;
 // 轮询读数进现场：把「根本没读」和「读了十几次还是空」区分开（原版这两种都是同一句报错）。
 if(polled.step!=='done')state.linkReads=polled.reads;
 const expectedShop=SHOP_IDENTITIES.find((x)=>x.key===o.shop)?.sycmHeader; // 轮询可能一次都没读到页面（页签消失）⇒ state 是 {}，
 // 直接读 state.shop.includes 会抛 TypeError，把「页签没了」伪装成脚本崩溃。这里用 String() 兜住，报错仍是「店铺身份不符：」。
 const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面）'}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
-const result=await evalOn(o.proxy,page.targetId,`fetch(${JSON.stringify(state.link)},{credentials:'include'}).then(async r=>{const b=new Uint8Array(await r.arrayBuffer());let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode(...b.subarray(i,i+0x8000));return JSON.stringify({status:r.status,type:r.headers.get('content-type'),b64:btoa(s)})})`); if(result.status!==200)throw new Error(`导出接口返回 ${result.status}`); mkdirSync(path.dirname(o.out),{recursive:true}); writeFileSync(o.out,Buffer.from(result.b64,'base64')); console.log(JSON.stringify({shop:o.shop,date:o.date,out:path.resolve(o.out),bytes:Buffer.byteLength(result.b64,'base64'),endpoint:state.link},null,2));
+// 导出地址里的日期是「页面当时那一天」，补跑时必须对齐到目标日，否则文件日期不对、
+// 而导入端去重键是（统计日期+商品ID）⇒ 会写进错日的数据。对齐是纯函数，有离线判据。
+const exportUrl=alignExportUrlDate(state.link,o.date); if(!exportUrl)throw new Error(`导出地址为空（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
+const result=await evalOn(o.proxy,page.targetId,`fetch(${JSON.stringify(exportUrl)},{credentials:'include'}).then(async r=>{const b=new Uint8Array(await r.arrayBuffer());let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode(...b.subarray(i,i+0x8000));return JSON.stringify({status:r.status,type:r.headers.get('content-type'),b64:btoa(s)})})`); if(result.status!==200)throw new Error(`导出接口返回 ${result.status}（${exportUrl.slice(0,120)}）`); mkdirSync(path.dirname(o.out),{recursive:true}); writeFileSync(o.out,Buffer.from(result.b64,'base64')); console.log(JSON.stringify({shop:o.shop,date:o.date,out:path.resolve(o.out),bytes:Buffer.byteLength(result.b64,'base64'),endpoint:exportUrl,linkSource:state.linkSource},null,2));
