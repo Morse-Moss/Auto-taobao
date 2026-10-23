@@ -335,6 +335,58 @@ describe('productOkFacts：没写的表不许出现，写了推广要数出来',
     }
   });
 
+  it('分批形态：b1/b2/b3 三份部门收据都要读，只读最后一份就是少报 100 行', () => {
+    // 2026-10-23 真机：2026-10-22 那轮 8 店 3 批，完成提醒报「商品推广 17 行」，
+    // 而独立回读三张表真值是 117 行 —— 差的 100 行就在被覆盖掉的前两批收据里。
+    // 现场：`promotion-import/sales1/receipt.json` 只有最后一批（里可林天猫 17、网林家居 0）。
+    const root = tmpRoot();
+    try {
+      const shops = ['里可林淘宝', '网林天猫', '盖文淘宝', '盖文天猫', '科塔淘宝', '网林淘宝', '里可林天猫', '网林家居'];
+      const evidence = path.join(root, 'evidence', 'product-data-job-2026-10-22', 'run-1');
+      seedRun(evidence, shops);
+      const batches = [
+        [['里可林淘宝', 16], ['网林天猫', 30], ['盖文淘宝', 28]],
+        [['盖文天猫', 15], ['科塔淘宝', 11], ['网林淘宝', 0]],
+        [['里可林天猫', 17], ['网林家居', 0]],
+      ];
+      batches.forEach((items, index) => {
+        const sources = items.map(([shop, rows]) => ({ file: `${shop}.zip`, shop, rows }));
+        const total = items.reduce((sum, [, rows]) => sum + rows, 0);
+        writeJson(path.join(evidence, 'promotion-import', 'sales1', `b${index + 1}`, 'receipt.json'), {
+          plannedRows: total,
+          recordIds: new Array(total).fill('rec'),
+          sources,
+        });
+      });
+      const facts = productOkFacts({ evidence, shops });
+      assert.deepEqual(facts.tables, [{ name: '商品推广', rows: 117 }],
+        '三批之和才是真值；只读 b3 会得到 17，与回读差 100 行且不会自己报错');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('分批形态里同一家出现在两份收据时不翻倍', () => {
+    const root = tmpRoot();
+    try {
+      const shops = ['盖文淘宝', '科塔淘宝'];
+      const evidence = path.join(root, 'evidence', 'product-data-job-2026-10-22', 'run-1');
+      seedRun(evidence, shops);
+      writeJson(path.join(evidence, 'promotion-import', 'sales1', 'b1', 'receipt.json'), {
+        plannedRows: 16, recordIds: new Array(16).fill('rec'),
+        sources: [{ file: 'a.zip', shop: '盖文淘宝', rows: 16 }],
+      });
+      writeJson(path.join(evidence, 'promotion-import', 'sales1', 'b2', 'receipt.json'), {
+        plannedRows: 40, recordIds: new Array(40).fill('rec'),
+        sources: [{ file: 'a.zip', shop: '盖文淘宝', rows: 16 }, { file: 'b.zip', shop: '科塔淘宝', rows: 24 }],
+      });
+      const facts = productOkFacts({ evidence, shops });
+      assert.deepEqual(facts.tables, [{ name: '商品推广', rows: 40 }], '16 + 24，不是 56');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('底单真有行时照旧出现，且排在推广前面（顺序＝人读的顺序）', () => {
     const root = tmpRoot();
     try {

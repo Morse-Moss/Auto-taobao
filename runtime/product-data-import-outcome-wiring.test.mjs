@@ -114,3 +114,29 @@ test('原因提取要跳过源码回显，取到真正的 Error 那行（含状�
     '截断预算全花在模板源码上 ⇒ 收据里看不到状态码，判据就没了（2026-10-17 实测形态）');
   assert.match(note, /Feishu API failed: 500/u);
 });
+
+// ---------------------------------------------------------------------------
+// 2026-10-23：推广收据的**落盘位置**（不只是内容）
+// ---------------------------------------------------------------------------
+// 真机：2026-10-22 那轮 8 店 3 批，完成提醒报「商品推广 17 行」，独立回读真值 117 行。
+// 差的那 100 行不是没写进去，而是**收据被后一批覆盖了** —— 导入器固定写 `--evidence` 下的
+// `receipt.json`，而分批时每批都用同一个部门目录。收据内容对、落点错，两种错法都静默。
+// 所以这里钉两件事：链给推广导入器的 `--evidence` 必须带批次目录；读取侧必须认得这种布局。
+test('推广收据按批落目录：分批时 --evidence 必须带批次段（否则后一批覆盖前一批）', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'scripts', 'run-product-data-job.mjs'), 'utf8').replaceAll('\r\n', '\n');
+  const def = source.match(/const promoEvidence = \(\.\.\.segments\) =>([\s\S]*?);\n/u)?.[1] ?? '';
+  assert.ok(def.length > 0, '找不到 promoEvidence 的定义 —— 结构变了就连这条判据一起改');
+  assert.match(def, /\btag\b/u, '没把批次 tag 拼进 --evidence ⇒ 每批都写同一个 receipt.json');
+  // 两个调用点：部门批量调用 + 逐店兜底。少一处就有一条支路还在覆盖。
+  // （定义那行是 `const promoEvidence = (...`，名字后面不是括号，所以不会被这个正则数进去。）
+  const uses = source.match(/'--evidence',\s*promoEvidence\(/gu) ?? [];
+  assert.equal(uses.length, 2, `两条 --evidence 支路都必须走 promoEvidence，实际 ${uses.length} 处`);
+  assert.doesNotMatch(source, /'--evidence',\s*path\.join\(evidence, 'promotion-import'/u,
+    '不许再有第二份拼接方式 —— 两条支路各拼各的，改一处忘另一处正是这次少报 100 行的形态');
+});
+
+test('读取侧认得批次布局（写 b1 读不到就等于没修）', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'runtime', 'flow-ok-facts.mjs'), 'utf8').replaceAll('\r\n', '\n');
+  assert.match(source, /promotionReceiptFiles/u, '取数必须走统一的收据枚举，不许只 readJson 一份 receipt.json');
+  assert.match(source, /\^b\\d\+\$/u, '要认得 `b<N>/receipt.json` 这一层');
+});

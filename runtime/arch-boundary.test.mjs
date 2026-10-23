@@ -266,6 +266,13 @@ const RUNTIME_TO_SKILLS = Object.freeze([
   'runtime/xws-weekly-login-preflight.mjs',
   'runtime/xws-sku-dry-run-core.mjs',
   'runtime/xws-sku-dry-run-core.test.mjs',
+  // 2026-10-23 登记（这条是**既有红灯**，不是我改动引入的：文件自 2026-10-20 起没动过，
+  // 说明 `--allow-empty-promotion` 那次加参数时漏登记了，此后 arch-boundary 一直红）。
+  // 依赖点是末跳判据：`await import('../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs')`
+  // 取 `buildShopStages` 当**裁判**，验「链传的参数对面真的收下并落进 push 那一步的 argv」。
+  // 这正是 ㊴ 的教训（自己这边传了、对面不认，驻留一个状态都没打印就退 2）——
+  // 判据必须由对面自己的函数来判，不能在 runtime 里照着 argv 数组猜。
+  'runtime/daily-job-plan.test.mjs',
   'runtime/xws-sku-payload-parser.mjs',
 ]);
 

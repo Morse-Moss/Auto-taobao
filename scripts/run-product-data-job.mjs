@@ -479,7 +479,13 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
     if (options.skipPromotion) {
       log(`[导入] 推广段有意跳过：${SKIP_PROMOTION_REASON}`);
     } else {
-      const importPromotionPerShop = async (items) => { for (const item of items) { const r = await run(PRODUCT_JOB_FILES.promotionImport, ['--file', item.promotionFile, '--shop', item.shop, '--date', date, ...common, '--evidence', path.join(evidence, 'promotion-import', item.shop)], { capture: true }); if (r.code !== 0) { const detail = importOutcomeOf(item.shop, '推广', r.code, r.err); gaps.push(detail.gap); log(detail.line); } else log(`[导入] ${item.shop} 推广已写入`); } };
+      // 推广收据**必须按批分目录**（2026-10-23 修）：导入器把收据固定写成 `--evidence` 下的
+      // `receipt.json`，而分批形态下每批都用同一个部门目录 ⇒ **后一批覆盖前一批**，
+      // 最后只剩最后一批（实测：完成提醒报「商品推广 17 行」，回读真值 117 行）。
+      // 分批时加一层 `b<N>`（与 `collection-b1.json` / `release-b1.json` 同一套命名），
+      // 不分批时保持原样（一次性运行只有一份收据，没有覆盖问题，也就不动既有证据布局）。
+      const promoEvidence = (...segments) => path.join(evidence, 'promotion-import', ...segments, ...(tag ? [tag] : []));
+      const importPromotionPerShop = async (items) => { for (const item of items) { const r = await run(PRODUCT_JOB_FILES.promotionImport, ['--file', item.promotionFile, '--shop', item.shop, '--date', date, ...common, '--evidence', promoEvidence(item.shop)], { capture: true }); if (r.code !== 0) { const detail = importOutcomeOf(item.shop, '推广', r.code, r.err); gaps.push(detail.gap); log(detail.line); } else log(`[导入] ${item.shop} 推广已写入`); } };
       const promoReady = results.filter((item) => item.promotionFile);
       // 按部门分组：一次 CLI 调用只认一个 base，跨部门混在一组必错（见上面那段）。
       const byDepartment = new Map();
@@ -491,7 +497,7 @@ async function runRound({ round, rounds, batched, evidence, date, options, log, 
       if (promoReady.length === results.length) {
         for (const [department, items] of byDepartment) {
           const promotionArgs = items.flatMap((item) => ['--file', item.promotionFile, '--shop', item.shop, '--date', date]);
-          const promo = await run(PRODUCT_JOB_FILES.promotionImport, [...promotionArgs, ...common, '--evidence', path.join(evidence, 'promotion-import', department)], { capture: true });
+          const promo = await run(PRODUCT_JOB_FILES.promotionImport, [...promotionArgs, ...common, '--evidence', promoEvidence(department)], { capture: true });
           if (promo.code === 0) log(`[导入] 推广 ${items.length} 家（${department}）已批量写入`);
           // exit 2 ＝「写已经发生、写后回读失败」。**不许再逐店重试**：数据已进表，
           // 重试只会撞幂等去重、得 0 行，还会把「0 行」写成一份看起来像「本来就没数据」的收据

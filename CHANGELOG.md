@@ -15,6 +15,45 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.17] - 2026-10-23
+
+修「推广收据被批覆盖」，并给一条**既有红灯**补登记。这一版不改采集行为，改的是「写进去多少行」这件事**能不能被读对**。
+
+**为什么改**
+
+1.12.16 那轮 8 店 3 批跑完，完成提醒写「商品推广 17 行」，而独立回读三张表真值是 117 行。
+差的 100 行不是没写进去 —— `import-promotion-data.mjs` 把收据固定写成 `--evidence` 下的 `receipt.json`，
+而分批形态下**每批都用同一个部门目录** ⇒ 后一批覆盖前一批，只剩最后一批（`sources` 里只有里可林天猫 17、网林家居 0）。
+
+收据内容是对的、落点错了，两头都静默：写的时候不报错，读的时候也不报错，只是数字变小。
+而完成提醒是给业务人员看的唯一数字来源。
+
+**改了什么**
+
+- 链（`scripts/run-product-data-job.mjs`）在分批时把推广的 `--evidence` 下沉一层 `b<N>`
+  （与 `collection-b1.json` / `release-b1.json` 同一套命名）：`promotion-import/<部门>/b<N>/receipt.json`。
+  两条支路（部门批量、逐店兜底）都走同一个 `promoEvidence()`，不许各拼一份。不分批时不加这一层（一次性运行没有覆盖问题，也不动既有证据布局）。
+- 取数（`runtime/flow-ok-facts.mjs`）新增 `promotionReceiptFiles(dir)`：目录直下的 `receipt.json`（老工件）
+  与 `b<N>/receipt.json`（分批）都认；逐店收据多份时求和，部门收据逐个文件按 `sources[].shop` 归属。
+  老工件没有 `sources` 时整份算一次，键里带批次目录名 —— 否则 b1/b2/b3 撞同一个键、只算第一份。
+
+**顺带**
+
+- `runtime/arch-boundary.test.mjs` 的 `RUNTIME_TO_SKILLS` 补登记 `runtime/daily-job-plan.test.mjs`。
+  这条是**既有红灯**：该文件自 2026-10-20 起没动过，`--allow-empty-promotion` 那次加参数时漏登记，
+  此后 arch-boundary 一直是红的（本轮开始修时就复现了，不是新改动引入）。理由写进登记处：
+  它取 `buildShopStages` 当**裁判**，验「链传的参数对面真的收下」。
+
+**验证到什么程度**
+
+- 新增用例：`flow-ok-facts.test.mjs` 加两条（三批 16+30+28+15+11+0+17+0 = 117 必须读成 117；
+  同一家出现在两份收据时不翻倍）；`product-data-import-outcome-wiring.test.mjs` 加两条接线判据
+  （分批时 `--evidence` 必须带批次段、两条支路都要走它；读取侧必须认得 `b<N>` 这一层）。
+- 突变：M6（去掉 `tag` 段）+ M7（读取侧不认 `b<N>`）⇒ 三条用例变红并点名（共 28 条里 3 红）。
+- 离线：`flow-ok-facts` 17/17、`flow-ok-notice-wiring` 6/6、`product-data-import-outcome-wiring` 11/11、
+  `arch-boundary` 3/3。
+- **真机未验**：下一轮 10:00 定时任务是这条改动的第一次真跑（判据＝完成提醒的推广行数与独立回读一致）。
+
 ## [1.12.16] - 2026-10-23
 
 把询单采集的**判据**从「文案在不在」改成「报表在不在」，并且**收掉了词表的第二份拷贝**。

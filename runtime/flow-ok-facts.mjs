@@ -159,6 +159,28 @@ export function promotionOkFacts({ root, summaries = [] }) {
  *     同一家只算一次（`addPromotion` 去重），避免「逐店 + 部门」两份同时存在时翻倍。
  *   · 部门收据没有 `sources`（老工件）时整份算一次，用一个不和店名冲突的键。
  */
+/**
+ * 某个推广收据目录下的**所有**收据文件。
+ *
+ * 2026-10-23 修：分批形态（`--batches N`）下每批都调一次推广导入器，而它把收据固定写成
+ * `--evidence` 下的 `receipt.json` ⇒ 后一批覆盖前一批，**只留最后一批**
+ * （实测：完成提醒报「商品推广 17 行」，独立回读真值 117 行 —— 差 100 行）。
+ * 现在链分批时把 `--evidence` 下沉一层 `b<N>`（与 `collection-b1.json` 同一套命名），
+ * 这里两种布局都认：目录直下的 `receipt.json`（不分批，老工件）＋ `b<N>/receipt.json`（分批）。
+ */
+function promotionReceiptFiles(dir) {
+  if (!existsSync(dir)) return [];
+  const files = [];
+  const flat = path.join(dir, 'receipt.json');
+  if (existsSync(flat)) files.push(flat);
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !/^b\d+$/u.test(entry.name)) continue;
+    const nested = path.join(dir, entry.name, 'receipt.json');
+    if (existsSync(nested)) files.push(nested);
+  }
+  return files;
+}
+
 export function productOkFacts({ evidence, shops = [] }) {
   let productRows = 0;
   let inquiryRows = 0;
@@ -178,23 +200,30 @@ export function productOkFacts({ evidence, shops = [] }) {
     productRows += rowsOf(productReceipt);
     const inquiryReceipt = readJson(path.join(evidence, shop, 'inquiry-import', `receipt-${shop}.json`));
     if (inquiryReceipt) inquiryRows += rowsOf(inquiryReceipt);
-    const promotionReceipt = readJson(path.join(evidence, 'promotion-import', shop, 'receipt.json'));
-    if (promotionReceipt) addPromotion(shop, rowsOf(promotionReceipt));
+    const promotionFiles = promotionReceiptFiles(path.join(evidence, 'promotion-import', shop));
+    // 逐店收据一份一次调用 ⇒ 同一家可能有多份（分批时一店只落一批，理论上仍是一份）。
+    // 求和而不是只读第一份：漏读一份就是少报行数，而少报不会自己报错。
+    const shopPromotionRows = promotionFiles.reduce((sum, file) => sum + rowsOf(readJson(file)), 0);
+    if (promotionFiles.length) addPromotion(shop, shopPromotionRows);
   }
   const promotionDir = path.join(evidence, 'promotion-import');
   if (existsSync(promotionDir)) {
     for (const entry of readdirSync(promotionDir, { withFileTypes: true })) {
       if (!entry.isDirectory() || shops.includes(entry.name)) continue; // 店名目录已在上面按店读过
-      const receipt = readJson(path.join(promotionDir, entry.name, 'receipt.json'));
-      if (!receipt) continue;
-      const sources = Array.isArray(receipt.sources) ? receipt.sources : [];
-      if (sources.length) {
-        for (const item of sources) {
-          // 只认本轮名册里的店：部门收据里出现别的部门/别的店的店时不往外报
-          if (item?.shop && shops.includes(item.shop)) addPromotion(item.shop, item.rows);
+      for (const file of promotionReceiptFiles(path.join(promotionDir, entry.name))) {
+        const receipt = readJson(file);
+        if (!receipt) continue;
+        const sources = Array.isArray(receipt.sources) ? receipt.sources : [];
+        if (sources.length) {
+          for (const item of sources) {
+            // 只认本轮名册里的店：部门收据里出现别的部门/别的店的店时不往外报
+            if (item?.shop && shops.includes(item.shop)) addPromotion(item.shop, item.rows);
+          }
+        } else {
+          // 老工件没有 `sources` ⇒ 整份算一次。键要带上批次目录名，否则 b1/b2/b3 三份会
+          // 撞同一个键、只算第一份（这正是「少报行数不会自己报错」的形态）。
+          addPromotion(`department:${entry.name}:${path.basename(path.dirname(file))}`, rowsOf(receipt));
         }
-      } else {
-        addPromotion(`department:${entry.name}`, rowsOf(receipt));
       }
     }
   }
