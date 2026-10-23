@@ -1,0 +1,15 @@
+
+===== 2026-10-23T00:14:53.003Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase fetch --date 2026-10-22 --proxy http://127.0.0.1:19043 --expect-shop 盖文全卫定制 --expect-member 随心品质定制:小嘉 --expect-member-id 887360146
+exit=1 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 A7F530A24DA4AF603DF07273A9B39574｜phase=fetch｜目标日 2026-10-22
+[身份] 阿里妈妈会员 = "随心品质定制:小嘉" ID="887360146"（这一页不显示店铺名，只有会员名）｜期望 "随心品质定制:小嘉" / 887360146 ✓
+[fetch] 下载任务管理｜已有 zip 333 个｜目录 C:\Users\Administrator\Downloads
+[遮挡] 已重载页面（下载任务管理_万相台无界版）—— 在新现场上再走一遍
+[fetch] 列表读到 0 条任务（目标日按「日期范围」列认，不按任务名认）
+[失败现场] 没给 --log-dir ⇒ 本轮不采（整轮跑时由编排层统一采，这里不重复拍一遍）
+
+--- stderr ---
+
+采集失败：取件前核对未通过：列表里读到 0 条任务名，但没有一条能读出「日期范围」列 ⇒ 判据失效（页面结构可能变了），停下来看一眼「下载任务管理」；不退回按任务名猜

@@ -1,0 +1,95 @@
+
+===== 2026-10-23T01:08:46.286Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site sycm --date 2026-10-22 --proxy http://127.0.0.1:19062
+exit=0 signal= error=none
+--- stdout ---
+{
+  "site": "sycm",
+  "requested": "2026-10-22",
+  "mode": "preset",
+  "route": "preset-or-calendar",
+  "targetId": "6AEDEC1F07E75AB61C6E63BE9474D72C",
+  "observedBefore": null,
+  "observedAfter": "统计时间 2026-10-22",
+  "filters": null,
+  "tabs": [
+    "智能问数",
+    "找功能",
+    "问指标",
+    "找商品",
+    "业绩分析",
+    "专项分析",
+    "商品分析",
+    "售后分析",
+    "汇总分析",
+    "询单到下单",
+    "下单到付款",
+    "询单到付款"
+  ],
+  "activeTabs": [
+    "智能问数",
+    "业绩分析",
+    "询单到付款"
+  ],
+  "status": "APPLIED",
+  "presetWasNoop": null,
+  "pageReload": {
+    "reloadError": "proxy http://127.0.0.1:19062/eval?target=6AEDEC1F07E75AB61C6E63BE9474D72C failed: HTTP 500 CDP 命令超时: Runtime.evaluate",
+    "observedAfterReload": "统计时间 2026-10-22",
+    "readFailures": 7,
+    "reads": 8,
+    "lastReadError": null
+  },
+  "trace": [
+    {
+      "step": "read-before-skipped",
+      "tolerated": true,
+      "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
+      "detail": "proxy http://127.0.0.1:19062/eval?target=6AEDEC1F07E75AB61C6E63BE9474D72C failed: HTTP 500 CDP 命令超时: Runtime.evaluate"
+    },
+    {
+      "step": "reload-stale-page",
+      "observedBeforeReload": null,
+      "requested": "2026-10-22"
+    },
+    {
+      "step": "reloaded",
+      "reloadError": "proxy http://127.0.0.1:19062/eval?target=6AEDEC1F07E75AB61C6E63BE9474D72C failed: HTTP 500 CDP 命令超时: Runtime.evaluate",
+      "observedAfterReload": "统计时间 2026-10-22",
+      "readFailures": 7,
+      "reads": 8,
+      "lastReadError": null
+    },
+    {
+      "step": "tab",
+      "expectTab": "询单到付款",
+      "alreadyActive": false,
+      "point": [
+        492,
+        277
+      ]
+    },
+    {
+      "step": "tab-activated",
+      "activeTabs": [
+        "智能问数",
+        "业绩分析",
+        "询单到付款"
+      ]
+    },
+    {
+      "step": "click-preset",
+      "text": "1天",
+      "point": [
+        1081,
+        162
+      ]
+    },
+    {
+      "step": "settled",
+      "applied": "2026-10-22"
+    }
+  ]
+}
+
+--- stderr ---

@@ -1,0 +1,54 @@
+{
+  "mode": "commit",
+  "at": "2026-10-23T00:53:51.537Z",
+  "reportDate": "2026-10-22",
+  "dateEpoch": 1792598400000,
+  "base": {
+    "appToken": "RqzrbD4zIalzjxsSGcbcUPTpnKc",
+    "name": "各店铺日报"
+  },
+  "table": {
+    "tableId": "tblLYwJTSLqTGVSC",
+    "name": "各店铺数据日报"
+  },
+  "fields": {
+    "日期": 5,
+    "店铺": 3
+  },
+  "writtenFields": [
+    "日期",
+    "店铺"
+  ],
+  "targets": [
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "present": [
+    {
+      "shop": "科塔淘宝",
+      "recordId": "reczz28JbomCr1Qb",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林淘宝",
+      "recordId": "reczz28JbomCrt64",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "里可林天猫",
+      "recordId": "reczz28JbomCpDq9",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林家居",
+      "recordId": "reczz28JbomCrq51",
+      "matchedBy": "shop-name"
+    }
+  ],
+  "missing": [],
+  "status": "ALREADY_PRESENT",
+  "created": [],
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-job-2026-10-22\\ensure-inquiry-rows-plan.json"
+}

@@ -1,0 +1,236 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-10-22",
+  "shop": "科塔淘宝",
+  "environment": {
+    "computedAt": "2026-10-23T00:58:50.538Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19044",
+    "browserPort": {
+      "port": 19034,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19044,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-j873522735",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop j873522735)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-22-科塔淘宝",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "RqzrbD4zIalzjxsSGcbcUPTpnKc",
+    "tableId": "tblLYwJTSLqTGVSC",
+    "tableName": "各店铺数据日报",
+    "recordId": "reczz28JbomCr1Qb",
+    "matchedBy": "shop-name",
+    "shopOptionId": "optnF3h5i7"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "sourceShop": "科塔全卫定制",
+    "identityRaw": "科塔全卫定制 主店",
+    "identityCandidates": [
+      "科塔全卫定制 主店",
+      "科塔全卫定制 主店",
+      "科塔全卫定制 主店"
+    ],
+    "headers": [
+      "日期",
+      "延 询单人数",
+      "当日询单人数",
+      "当日付款人数",
+      "当日付款金额",
+      "延 最终付款人数",
+      "延 最终付款金额",
+      "询单当日付款转化率",
+      "延 询单最终付款转化率"
+    ],
+    "rows": [
+      [
+        "2026-10-22",
+        "延迟统计",
+        "6",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "汇总值",
+        "延迟统计",
+        "6",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "平均值",
+        "延迟统计",
+        "6",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "全店汇总值",
+        "延迟统计",
+        "8",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "全店平均值",
+        "延迟统计",
+        "8",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "同行同层优秀",
+        "延迟统计",
+        "23",
+        "6",
+        "3,118.04",
+        "延迟统计",
+        "延迟统计",
+        "42.22%",
+        "延迟统计"
+      ],
+      [
+        "同行同层均值",
+        "延迟统计",
+        "12",
+        "2",
+        "810.48",
+        "延迟统计",
+        "延迟统计",
+        "22.22%",
+        "延迟统计"
+      ]
+    ]
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 6,
+    "同层同行询单量": 12
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "reczz28JbomCr1Qb",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 6,
+      "同层同行询单量": 12
+    },
+    "matchedBy": "shop-name"
+  },
+  "before": {
+    "fields": {
+      "人群PPC": 0.602409638554217,
+      "人群ROI": 0,
+      "人群加购成本": 10,
+      "人群加购数": [
+        5
+      ],
+      "人群成交金额": [
+        0
+      ],
+      "人群收加率": 0.072289156626506,
+      "人群收藏数": [
+        1
+      ],
+      "人群点击量": [
+        83
+      ],
+      "人群花费": [
+        50
+      ],
+      "人群询单量": [
+        0
+      ],
+      "关键词PPC": 0.724024390243902,
+      "关键词ROI": 0,
+      "关键词加购人数": [
+        6
+      ],
+      "关键词加购成本": 9.895,
+      "关键词成交金额": [
+        0
+      ],
+      "关键词收加率": 0.121951219512195,
+      "关键词收藏人数": [
+        4
+      ],
+      "关键词点击量": [
+        82
+      ],
+      "关键词花费": [
+        59.37
+      ],
+      "关键词询单量": [
+        0
+      ],
+      "实际支付金额": 2534,
+      "店铺": "科塔淘宝",
+      "店铺加购人数": [
+        19
+      ],
+      "店铺收加率": 0.0288966725043783,
+      "店铺收藏人数": [
+        14
+      ],
+      "推广花费合计": 109.37,
+      "支付金额": [
+        2534
+      ],
+      "数据月份": 10,
+      "日期": 1792598400000,
+      "父记录": [
+        {
+          "table_id": "tblLYwJTSLqTGVSC",
+          "text_arr": [],
+          "type": "text"
+        }
+      ],
+      "访客数": [
+        1142
+      ]
+    },
+    "id": "reczz28JbomCr1Qb",
+    "record_id": "reczz28JbomCr1Qb"
+  }
+}

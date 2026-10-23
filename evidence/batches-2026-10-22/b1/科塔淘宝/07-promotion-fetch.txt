@@ -1,0 +1,16 @@
+
+===== 2026-10-23T00:21:07.727Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase fetch --date 2026-10-22 --proxy http://127.0.0.1:19044 --expect-shop 科塔全卫定制 --expect-member j873522735:小瓜 --expect-member-id 412070158
+exit=1 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 3AB6B15A8ED73AF608D83F0226EB4E7A｜phase=fetch｜目标日 2026-10-22
+[身份] 阿里妈妈会员 = "j873522735:小瓜" ID="412070158"（这一页不显示店铺名，只有会员名）｜期望 "j873522735:小瓜" / 412070158 ✓
+[fetch] 下载任务管理｜已有 zip 335 个｜目录 C:\Users\Administrator\Downloads
+[遮挡] 已重载页面（万相台无界版）—— 在新现场上再走一遍
+[fetch] 列表读到 0 条任务（目标日按「日期范围」列认，不按任务名认）
+[fetch] 注意：台账里还挂着 4 笔别的目标日的未取任务（2026-09-29 营销场景报表_20260930_164204、2026-09-30 营销场景报表_20261001_154059、2026-10-01 营销场景报表_20261002_153908、2026-10-14 营销场景报表_20261015_130237） —— 不拦本轮，但要知道它们在平台上没被取走
+[失败现场] 没给 --log-dir ⇒ 本轮不采（整轮跑时由编排层统一采，这里不重复拍一遍）
+
+--- stderr ---
+
+采集失败：取件前核对未通过：列表里读到 0 条任务名，但没有一条能读出「日期范围」列 ⇒ 判据失效（页面结构可能变了），停下来看一眼「下载任务管理」；不退回按任务名猜

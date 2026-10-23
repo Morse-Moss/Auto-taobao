@@ -1,0 +1,22 @@
+
+===== 2026-10-23T00:07:44.534Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-promotion-report.mjs --phase submit --date 2026-10-22 --proxy http://127.0.0.1:19041 --expect-shop 里可林家居 --expect-member 里可林家居:小嘉 --expect-member-id 2350600069
+exit=0 signal= error=none
+--- stdout ---
+[0/2] 阿里妈妈页 83CEB4C2B9CE8665C965A9E989B6CACD｜phase=submit｜目标日 2026-10-22
+[身份] 阿里妈妈会员 = "里可林家居:小嘉" ID="2350600069"（这一页不显示店铺名，只有会员名）｜期望 "里可林家居:小嘉" / 2350600069 ✓
+[遮挡] 已重载页面（下载任务管理_万相台无界版）—— 在新现场上再走一遍
+[submit] 注意：台账里还挂着 1 笔别的目标日的未取任务（2026-09-29 营销场景报表_20260930_173044） —— 不拦本轮，但要知道它们在平台上没被取走
+[submit] 台账里没有 2026-10-22 这家店的未取任务 ⇒ 照常提交
+[submit] 页面 = https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-22&endTime=2026-10-22&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day&isRequestedQztDefaultSet=1｜正文 3227 字符
+[submit] 页面上有上一轮留下的弹窗（候选 ["确定","取消"]） → 先点「取消」关掉它，再走正常流程
+[submit] 候选 1 个，取文档序第一个（SPAN，其可点祖先是 BUTTON，点击靠冒泡触发）
+[submit] 滚动后复核通过（y=314（中心点命中））→ 点击 → {"clicked":true,"tag":"SPAN","text":"下载报表"}
+[submit] 等到「确定」(#0)，第 2 次轮询命中｜视口 [1506,642]｜确定@[495,579,24,12]可点 取消@[555,569,64,32]可点 → {"clicked":true,"tag":"SPAN","text":"确定"}
+[submit] 提交后提示 = ""
+[遮挡] 已重载页面（万相台无界版）—— 在新现场上再走一遍
+[submit] 第 1/10 次看列表：提交前读到 7 条任务名、提交后一条都读不到 ⇒ 这不是「没有新增」，是这一次读数不成立（这一屏没落在「下载任务管理」上，或列表还没渲染出来）（提交前 7 条、这一次读到 0 条）→ 6s 后重载再看
+[submit] promotionTaskName = 营销场景报表_20261023_080803（列表里恰好多出 1 条：营销场景报表_20261023_080803；台账已记：D:\Retire\sycm-automation\runtime\promotion-task-ledger.json）
+[submit] 下一步：等它「生成成功」后跑 --phase fetch（提示语里说数据量大时最长 10 分钟）
+
+--- stderr ---
