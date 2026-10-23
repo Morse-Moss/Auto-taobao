@@ -1,0 +1,100 @@
+{
+  "mode": "apply",
+  "date": "2026-10-21",
+  "shop": "网林天猫",
+  "profile": "kcne",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "tables": {
+    "keyword": {
+      "tableId": "tblSPWt8ZBs0iL7f",
+      "beforeRows": 2086,
+      "plannedRows": 11,
+      "skippedRows": 0,
+      "subjectIds": [],
+      "recordIds": [
+        "reczz28QIqlMQnOa",
+        "reczz28QIqlMOJDz",
+        "reczz28QIqlMQVbg",
+        "reczz28QIqlMNxuB",
+        "reczz28QIqlMOzFy",
+        "reczz28QIqlMOmZ4",
+        "reczz28QIqlMQoMY",
+        "reczz28QIqlMQilm",
+        "reczz28QIqlMPhRO",
+        "reczz28QIqlMOgsm",
+        "reczz28QIqlMOrNs"
+      ],
+      "writeStarted": true,
+      "plannedWriteRows": 11,
+      "writeBatches": 1,
+      "afterRows": 2097
+    },
+    "audience": {
+      "tableId": "tbl7CUAdPMKJwKYp",
+      "beforeRows": 1788,
+      "plannedRows": 29,
+      "skippedRows": 0,
+      "subjectIds": [
+        "1060913369469",
+        "1071284033110",
+        "1072247628377",
+        "1089319851297",
+        "1090539219000",
+        "1090680322925",
+        "1090777050096",
+        "1091308189099",
+        "923336705176",
+        "977271829805"
+      ],
+      "recordIds": [
+        "reczz28QIrXEeyfM",
+        "reczz28QIrXEesar",
+        "reczz28QIrXEen3t",
+        "reczz28QIrXEgF7N",
+        "reczz28QIrXEg7rJ",
+        "reczz28QIrXEdN9l",
+        "reczz28QIrXEfO0S",
+        "reczz28QIrXEfVjn",
+        "reczz28QIrXEfSgr",
+        "reczz28QIrXEftbF",
+        "reczz28QIrXEfqFp",
+        "reczz28QIrXEfMHg",
+        "reczz28QIrXEeWHl",
+        "reczz28QIrXEfIxs",
+        "reczz28QIrXEgR0a",
+        "reczz28QIrXEh4n1",
+        "reczz28QIrXEeDtL",
+        "reczz28QIrXEeSzB",
+        "reczz28QIrXEgKWO",
+        "reczz28QIrXEdKA3",
+        "reczz28QIrXEgoy8",
+        "reczz28QIrXEdtwz",
+        "reczz28QIrXEgdEd",
+        "reczz28QIrXEdYZ9",
+        "reczz28QIrXEeesq",
+        "reczz28QIrXEgREO",
+        "reczz28QIrXEfNTC",
+        "reczz28QIrXEgZDe",
+        "reczz28QIrXEgCNf"
+      ],
+      "writeStarted": true,
+      "plannedWriteRows": 29,
+      "writeBatches": 1,
+      "afterRows": 1817
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261022_110909.zip",
+      "csvName": "关键词报表_20261022_110909.csv",
+      "rows": 11,
+      "columns": 75
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261022_110958.zip",
+      "csvName": "人群报表_20261022_110958.csv",
+      "rows": 29,
+      "columns": 73
+    }
+  }
+}

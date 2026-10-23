@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "threshold": {
+    "width": 1200,
+    "height": 600
+  },
+  "checked": 3,
+  "failed": [],
+  "entries": [
+    {
+      "shop": "网林淘宝",
+      "proxyPort": 19060,
+      "targetId": "00F96DD86C2656572B4DB40AFD79C5F6",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    },
+    {
+      "shop": "里可林天猫",
+      "proxyPort": 19061,
+      "targetId": "03FCE7655E8371E316B87AE5A490D057",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    },
+    {
+      "shop": "网林家居",
+      "proxyPort": 19062,
+      "targetId": "BF6ABC5CE18BF1CFD1E891EE7D2EE89F",
+      "width": 1528,
+      "height": 732,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1528x732"
+      }
+    }
+  ]
+}

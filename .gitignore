@@ -161,3 +161,24 @@ evidence/head-check-*/
 # （同一周重跑按 cid 去重，结果一致），所以不进库。汇总与归一化结果随交付走 output/（也已忽略）。
 # 需要留档时整份复制到 evidence/<轮次>/ 再提交。
 evidence/kefu-chat-*/
+
+# 2026-10-23：飞书底单的**全表快照**（写前基线，单份 20 MB 级）。
+# 同一目录里真正可核的那几份已经随轮次提交：当日行快照（几十 KB）、写前/写后指纹、
+# delta-detail 与写入收据。全表快照只是它们的**可重取来源**，保留它等于每天往库里塞 20 MB。
+# 不忽略它的话，每轮核查都会在 git status 里留一个永远不该提交的大文件。
+evidence/**/daily-table-*.json
+
+# 2026-10-23：PPT 工具（slidep）的逐次运行日志与命令流水，属于**本机** scratch，
+# 与 /tmp/、draft_*_folder/、evidence/head-check-*/ 同一条口径：要留档就复制到
+# evidence/<轮次>/ 再提交，那份才可核。
+/.slidep/
+
+# 2026-10-23：生图产物（商业产品摄影等）。它不是本仓库（生意参谋采集/导入）的交付物，
+# 属于另一个项目的素材；留在工作区可看，但不进这个库。
+/generated-images/
+
+# 2026-10-23：PPT 工具在 evidence/<轮次>/ 下留下的**缓存与运行日志**
+# （`.cache/media/{icons,images}`、`.slidep/`）。理由同上一条：scratch 不进库。
+# 注意上一版只写了根目录的 `/.slidep/`，漏了嵌套位置 —— 这条按任意层级匹配。
+.cache/
+**/.slidep/

@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "workflow": "daily-report",
+  "runId": "daily-2026-10-21-141580",
+  "date": "2026-10-21",
+  "status": "COMPLETED",
+  "startedAt": "2026-10-22T00:02:51.928Z",
+  "stages": [
+    {
+      "name": "ensure-instances",
+      "status": "PENDING"
+    },
+    {
+      "name": "label-merchant-window",
+      "status": "PENDING"
+    },
+    {
+      "name": "viewport-gate",
+      "status": "PENDING"
+    },
+    {
+      "name": "ensure-merchant-login",
+      "status": "PENDING"
+    },
+    {
+      "name": "ensure-inquiry-rows",
+      "status": "PENDING"
+    },
+    {
+      "name": "batch-chain",
+      "status": "PENDING"
+    }
+  ],
+  "finishedAt": "2026-10-22T00:33:00.655Z",
+  "exitCode": 0,
+  "completionNotice": {
+    "alertId": "daily-ok-20261021",
+    "delivered": false,
+    "suppressed": true,
+    "reason": "同一条告警 0 分钟前刚发过（窗口 6 小时），不重复发",
+    "tables": [
+      {
+        "name": "底单",
+        "rows": 8
+      },
+      {
+        "name": "询单表",
+        "rows": 13
+      }
+    ]
+  }
+}

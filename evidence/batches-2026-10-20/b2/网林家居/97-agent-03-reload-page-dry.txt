@@ -1,0 +1,4 @@
+[修复] RELOAD_PAGE｜网林家居@http://127.0.0.1:19023｜阶段 push
+[修复] 目标页 = https://rcnbpuvafkct.feishu.cn/base/RqzrbD4zIalzjxsSGcbcUPTpnKc?table=tbl6EDMzzaYUVvVC&view=vewwg0rhjo
+[修复] 证据 = evidence\batches-2026-10-20\b2\网林家居\97-repair.txt
+[修复] ❌ 未应用：排练（--dry-run）：会执行 RELOAD_PAGE 于 https://rcnbpuvafkct.feishu.cn/base/RqzrbD4zIalzjxsSGcbcUPTpnKc?table=tbl6EDMzzaYUVvVC&view=vewwg0rhjo，一个写请求都不发

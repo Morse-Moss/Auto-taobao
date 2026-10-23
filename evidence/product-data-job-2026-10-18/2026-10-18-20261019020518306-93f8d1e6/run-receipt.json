@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-18-20261019020518306-93f8d1e6",
+  "date": "2026-10-18",
+  "status": "FAILED",
+  "startedAt": "2026-10-19T02:05:18.307Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "failure": {
+    "class": "TRANSIENT_EXTERNAL",
+    "reason": "EXTERNAL_RETRYABLE",
+    "message": "本轮不完整（1 处）：网林家居/推广 未采集：采集失败：商品报表提交任务无法唯一确认: {\"before\":[\"商品报表_20261018_103036\",\"商品报表_20261017_112559\",\"商品报表_20261017_102320\",\"商品报表_20261016_154154\",\"商品报表_20261016_154121\",\"商品报表_2026101…"
+  },
+  "failedStage": "promotion-import",
+  "finishedAt": "2026-10-19T02:29:12.991Z"
+}

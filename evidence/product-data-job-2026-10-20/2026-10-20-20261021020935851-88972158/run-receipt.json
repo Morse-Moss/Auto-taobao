@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-20-20261021020935851-88972158",
+  "date": "2026-10-20",
+  "status": "FAILED",
+  "startedAt": "2026-10-21T02:09:35.852Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "FAILED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "failure": {
+    "class": "TRANSIENT_EXTERNAL",
+    "reason": "EXTERNAL_RETRYABLE",
+    "message": "本轮不完整（5 处）：盖文淘宝/询单 未采集：Error: 找不到商品咨询分析入口（轮询 30s 仍未出现）；盖文淘宝/推广 未采集：Error: 找不到商品咨询分析入口（轮询 30s 仍未出现）；里可林天猫/推广 未采集：[候选] 商品报表_20261021_103449 第 1 次取不到：商品报表任务下载入口不可见 采集失败：/eval?target=827D49E71A8F0D24D3EA48328B3F4F5F HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}；网林家居/询单 未采集：const expectedShop=SHOP_IDENTITIES.find((x)=>x.key===o.shop)?.sycmHeader; const identityOk=expectedShop&&state.shop.includes(expectedShop); if(!identityOk)throw…；网林家居/推广 未采集：const expectedShop=SHOP_IDENTITIES.find((x)=>x.key===o.shop)?.sycmHeader; const identityOk=expectedShop&&state.shop.includes(expectedShop); if(!identityOk)throw…"
+  },
+  "failedStage": "inquiry-import",
+  "finishedAt": "2026-10-21T02:40:47.081Z"
+}

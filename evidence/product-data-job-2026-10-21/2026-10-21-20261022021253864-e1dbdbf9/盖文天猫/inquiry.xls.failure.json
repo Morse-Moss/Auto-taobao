@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-22T02:21:52.249Z",
+  "shop": "盖文天猫",
+  "date": "2026-10-21",
+  "note": "轮询 30s 内未出现商品咨询分析入口",
+  "expectation": {
+    "parent": "商品分析",
+    "entry": "商品咨询分析"
+  },
+  "reading": {
+    "shop": "盖文旗舰店",
+    "hasParent": false,
+    "hasInquiry": false,
+    "exactInquiry": 0,
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "readyState": "interactive"
+  },
+  "pages": [
+    {
+      "targetId": "53D9FA35620944ACF4729B23ADF4F250",
+      "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+    },
+    {
+      "targetId": "D825181DB8E7E6A07AAF656E93A5BDA3",
+      "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%9B%96%E6%96%87%E5%A4%A9%E7%8C%AB&port=19035"
+    },
+    {
+      "targetId": "1B5989CE6F3777B9114E8889B27659DD",
+      "url": "https://one.alimama.com/index.html"
+    }
+  ],
+  "screenshot": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-21\\2026-10-21-20261022021253864-e1dbdbf9\\盖文天猫\\inquiry.xls.failure.png"
+}

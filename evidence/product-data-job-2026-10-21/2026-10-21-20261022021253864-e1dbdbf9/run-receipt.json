@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-21-20261022021253864-e1dbdbf9",
+  "date": "2026-10-21",
+  "status": "FAILED",
+  "startedAt": "2026-10-22T02:12:53.865Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "FAILED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "failure": {
+    "class": "FAILED",
+    "reason": "UNCLASSIFIED",
+    "message": "本轮不完整（5 处）：网林天猫/推广 未采集：采集失败：找不到商品数据明细维度选择器；盖文天猫/询单 未采集：Error: 找不到商品咨询分析入口（轮询 30s 仍未出现）；盖文天猫/推广 未采集：Error: 找不到商品咨询分析入口（轮询 30s 仍未出现）；里可林天猫/询单 未采集：Error: 找不到商品咨询分析入口（轮询 30s 仍未出现）；里可林天猫/推广 未采集：Error: 找不到商品咨询分析入口（轮询 30s 仍未出现）"
+  },
+  "failedStage": "inquiry-import",
+  "finishedAt": "2026-10-22T02:43:23.893Z"
+}

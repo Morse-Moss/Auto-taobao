@@ -1,0 +1,81 @@
+{
+  "ok": true,
+  "threshold": {
+    "width": 1200,
+    "height": 600
+  },
+  "checked": 5,
+  "failed": [],
+  "entries": [
+    {
+      "shop": "里可林淘宝",
+      "proxyPort": 19041,
+      "targetId": "0AC82CA4CFFE85067AE246286AE854B1",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    },
+    {
+      "shop": "网林天猫",
+      "proxyPort": 19042,
+      "targetId": "4245F58D64CE8897BE1436295C58C47B",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    },
+    {
+      "shop": "盖文淘宝",
+      "proxyPort": 19043,
+      "targetId": "8ED371EF639CDC0B9F937ADFA9316333",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    },
+    {
+      "shop": "盖文天猫",
+      "proxyPort": 19045,
+      "targetId": "676226E7955B3F7F8C8ADB133E7362BC",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    },
+    {
+      "shop": "科塔淘宝",
+      "proxyPort": 19044,
+      "targetId": "E8079B41B8576CDD423E8B9EB2693558",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    }
+  ]
+}

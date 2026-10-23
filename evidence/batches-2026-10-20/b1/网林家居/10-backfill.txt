@@ -1,0 +1,18 @@
+
+===== 2026-10-21T01:26:56.664Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-inquiry-backfill.mjs --date 2026-10-20 --proxy http://127.0.0.1:19062 --source-shop 网林定制家居 --shop 网林家居 --shop-key 网林家居 --commit
+exit=0 signal= error=none
+--- stdout ---
+[身份] 生意参谋页头 = "网林定制家居"（原始 "网林定制家居 主店"）｜期望 "网林定制家居" ✓
+{
+  "status": "SOURCE_EMPTY_LEFT_BLANK",
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-20-网林家居\\inquiry-backfill-plan.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-20-网林家居",
+  "values": {
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "sourceRows": 7
+}
+
+--- stderr ---

@@ -1,0 +1,33 @@
+
+===== 2026-10-20T00:31:38.020Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-19 --proxy http://127.0.0.1:19023 --shop-key 里可林天猫 --commit --shop-xlsx C:\Users\Administrator\Downloads\日报_20261020_ea518aea3e2d36f77a19921be585653d.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261020_083051.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 里可林天猫 ↔ 源产物店名 里可林旗舰店 一致（证据目录 daily-report-2026-10-19-里可林天猫）
+[audit] 已记 push/ok id=235
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "reczz28PT4a4hI2i",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-19-里可林天猫\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-19-里可林天猫",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 2424,
+  "recordCountAfter": 2425,
+  "verifiedFields": 238,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 238,
+    "shopName": "里可林旗舰店",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1792339200000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---
+[留空] PC端人均浏览量：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）

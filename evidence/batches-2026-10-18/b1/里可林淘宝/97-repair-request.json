@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-18T23:06:49.857Z",
+  "shopKey": "里可林淘宝",
+  "stage": "push",
+  "cause": "STAGE_FAILED",
+  "error": "阶段 push 失败（exit 1）",
+  "statePath": "evidence\\batches-2026-10-18\\b1\\里可林淘宝\\98-failure-state.json",
+  "stateTextPath": "evidence\\batches-2026-10-18\\b1\\里可林淘宝\\98-failure-state.txt",
+  "screenshotPath": "evidence\\batches-2026-10-18\\b1\\里可林淘宝\\98-failure-page.png",
+  "stateSummary": {
+    "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E6%B7%98%E5%AE%9D&port=19031&member=%E9%87%8C%E5%8F%AF%E6%9E%97%E5%AE%B6%E5%B1%85%3A%E5%B0%8F%E5%98%89&actual=%E9%87%8C%E5%8F%AF%E6%9E%97%E5%AE%B6%E5%B1%85%3A%E5%B0%8F%E5%98%89",
+    "title": "里可林淘宝 · 日报采集窗口",
+    "viewport": {
+      "w": 1506,
+      "h": 642,
+      "dpr": 1.25,
+      "scrollY": 0
+    },
+    "overlayCount": 0
+  },
+  "candidates": [
+    {
+      "action": "REAPPLY_DATES",
+      "mutating": true,
+      "why": "页面上的日期筛选可能已经不在目标日（重载/人动过之后常见）；重新落位再试。"
+    },
+    {
+      "action": "RELOAD_PAGE",
+      "mutating": true,
+      "why": "这一份渲染上元素不理会点击（本项目实测过的形态）；真重载换个新现场再试。"
+    }
+  ],
+  "planNote": null,
+  "stageHint": "feishu",
+  "noActionRequired": false,
+  "retryStage": "push",
+  "execHint": "node skills/sycm-alimama-daily-report/scripts/repair-shop-stage.mjs --shop 里可林淘宝 --proxy http://127.0.0.1:19023 --stage push --cause STAGE_FAILED --action <候选动作> --log-dir evidence\\batches-2026-10-18\\b1\\里可林淘宝",
+  "instancePrecondition": {
+    "why": "阶段「push」跑在**共用商家浏览器**上（五家店共用那一页飞书底单），不是这家店自己的实例。这一批跑完可能已经把实例放掉了（--batches 每批都释放），而代理连不上时任何页面修复动作都执行不到 —— 不先确认就可能对着别的一台做事。",
+    "checkCommand": "curl -s -m 5 http://127.0.0.1:19023/targets",
+    "startCommand": "node scripts/start-all-hold.mjs --only dailyReport",
+    "note": "先跑 checkCommand：有输出（一个 JSON 数组）就是还在，直接执行 execHint；连不上就先跑 startCommand 把它拉起来（后台托住），确认再执行 execHint。"
+  }
+}

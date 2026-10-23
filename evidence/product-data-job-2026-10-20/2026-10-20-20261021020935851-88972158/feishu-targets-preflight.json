@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "checkedAt": "2026-10-21T02:09:38.508Z",
+  "ok": true,
+  "blocking": [],
+  "targets": [
+    {
+      "label": "10月商品监控表-销售1部（sales1）",
+      "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+      "envFile": "E:/小红书/.env.feishu-rcnb.local",
+      "tables": [
+        {
+          "name": "商品底单",
+          "tableId": "tblvmGJfOL4OBYek",
+          "status": "OK",
+          "fieldCount": 73
+        },
+        {
+          "name": "询单",
+          "tableId": "tblb1uK5zQYd8yOq",
+          "status": "OK",
+          "fieldCount": 39
+        },
+        {
+          "name": "推广",
+          "tableId": "tblDxXenp3vSg2SM",
+          "status": "OK",
+          "fieldCount": 82
+        }
+      ],
+      "status": "OK"
+    }
+  ]
+}

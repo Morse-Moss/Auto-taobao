@@ -1,0 +1,725 @@
+{
+  "capturedAt": "2026-10-20T00:27:57.112Z",
+  "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+  "title": "生意参谋 - 零售电商大数据产品平台",
+  "viewport": {
+    "w": 1506,
+    "h": 642,
+    "dpr": 1.25,
+    "scrollY": 0
+  },
+  "visibleText": "生意参谋 网林全卫定制 主店 距大促还有11:32:12 惠商 我的 帮助 退出 生意参谋 首页 营销 交易 流量 客户 商品 服务 内容 市场 自助分析 业务专区 服务 考核 真实体验分 客服 核心监控 实时咨询 店铺绩效 客服绩效 绩效明细 自制报表 售后服务 物流 物流洞察 配置管理新手引导指南文档 统计时间 2026-10-19 日月自定义 过滤部分时间段 业绩分析 专项分析 商品分析 售后分析 汇总分析 询单到下单 下单到付款 询单到付款 下载 店铺 客服 静默 日期 浏览量 访客数 销售人数 销售额 订单数 销售量 全店成交转化率 callin转化率 成功退款金额 净销售额 2026-10-19 3,053 1,902 0 0.00 0 0 0.00% 0.37% 0.00 0.00 汇总值 3,053 1,902 0 0.00 0 0 — — 0.00 0.00 平均值 3,053 1,902 0 0.00 0 0 0.00% 0.37% 0.00 0.00 全店汇总值 0 0 0 0.00 0 0 — — — — 全店平均值 0 0 0 0.00 0 0 0.00% 0.00% — — 同行同层优秀 1,062 460 14 2,318.00 17 84 9.29% 15.00% — 2,116.00 同行同层均值 343 136 3 770.19 3 9 2.44% 5.60% 0.00 650.61 共 1 条 上一页 1 下一页 10 条/页 分析图表: 浏览量 阿里巴巴集团|阿里巴巴国际站|阿里巴巴中国站|全球速卖通|淘宝网|天猫|聚划算|一淘|阿里妈妈|阿里云计算|云OS|万网|中国雅虎|支付宝 增值电信业务经营许可证：浙B2-20080224关于淘宝合作伙伴营销中心联系客服开放平台诚征英才联系我们网站地图法律声明© 2019 Taobao.com 版权所有 千牛 反馈 sentinelStart 优惠竞争力下降提醒 2个商品大促优惠投入疑似变差预警 0个商品大促优惠投入疑似变差 商品信息2 优惠竞争力状态 风险预警 网林极简窄边洗手盆挂墙式人造石洗脸盆一体成型独立式洗漱盆定制 商品ID：982348868132 优惠投入未来差 商品优惠投入下降 网林半圆弧型人造石洗手盆酒店卫生间民宿挂墙式洗脸盆洗漱盆定制 商品ID：981681257947 优惠投入未来差 商品优惠投入下降 商品信息2 网林极简窄边洗手盆挂墙式人造石洗脸盆一体成型独立式洗漱盆定制 商品ID：982348868132 网林半圆弧型人造石洗手盆酒店卫生间民宿挂墙式洗脸盆洗漱盆定制 商品ID：981681257947 调整优惠 sentinelEnd",
+  "dialogs": [
+    {
+      "tag": "DIV",
+      "id": null,
+      "cls": "ant-modal-mask",
+      "z": "1000",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1502,
+        "h": 642
+      },
+      "text": ""
+    },
+    {
+      "tag": "DIV",
+      "id": null,
+      "cls": "ant-modal-wrap high-price",
+      "z": "1000",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1502,
+        "h": 642
+      },
+      "text": "sentinelStart 优惠竞争力下降提醒 2个商品大促优惠投入疑似变差预警 0个商品大促优惠投入疑似变差 商品信息2 优惠竞争力状态 风险预警 网林极简窄边洗手盆挂墙式人造石洗脸盆一体成型独立式洗漱盆定制 商品ID：982348868132 优惠投入未来差 商品优惠投入下降 网林半圆弧型人造石洗手盆酒店卫生间民宿"
+    }
+  ],
+  "interactive": [
+    {
+      "tag": "A",
+      "id": null,
+      "text": "生意参谋",
+      "cls": "ebase-frame-header-logo",
+      "rect": {
+        "x": 47,
+        "y": 20,
+        "w": 135,
+        "h": 30
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "网林全卫定制 主店",
+      "cls": "src-opEbase-redux-layouts-Frame-module-header-2pend",
+      "rect": {
+        "x": 197,
+        "y": 10,
+        "w": 198,
+        "h": 50
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "",
+      "cls": "ant-btn ant-input-search-button ant-btn-primary",
+      "rect": {
+        "x": 1242,
+        "y": 16,
+        "w": 40,
+        "h": 32
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "惠商",
+      "cls": "ebase-frame-header-userLink",
+      "rect": {
+        "x": 1299,
+        "y": 7,
+        "w": 24,
+        "h": 46
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "我的",
+      "cls": "ebase-frame-header-userLink",
+      "rect": {
+        "x": 1339,
+        "y": 7,
+        "w": 24,
+        "h": 46
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "帮助",
+      "cls": "ebase-frame-header-userLink",
+      "rect": {
+        "x": 1379,
+        "y": 7,
+        "w": 24,
+        "h": 46
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "退出",
+      "cls": "ebase-frame-header-userLink",
+      "rect": {
+        "x": 1427,
+        "y": 7,
+        "w": 24,
+        "h": 46
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "生意参谋",
+      "cls": "ebase-frame-header-logo",
+      "rect": {
+        "x": 47,
+        "y": 74,
+        "w": 135,
+        "h": 21
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "首页",
+      "cls": "top-name-wrapper",
+      "rect": {
+        "x": 47,
+        "y": 60,
+        "w": 32,
+        "h": 50
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "营销",
+      "cls": "top-name-wrapper",
+      "rect": {
+        "x": 126,
+        "y": 60,
+        "w": 32,
+        "h": 50
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "交易",
+      "cls": "top-name-wrapper",
+      "rect": {
+        "x": 205,
+        "y": 60,
+        "w": 32,
+        "h": 50
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "流量",
+      "cls": "top-name-wrapper",
+      "rect": {
+        "x": 332,
+        "y": 60,
+        "w": 32,
+        "h": 50
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "客户",
+      "cls": "top-name-wrapper",
+      "rect": {
+        "x": 411,
+        "y": 60,
+        "w": 32,
+        "h": 50
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "商品",
+      "cls": "top-name-wrapper",
+      "rect": {
+        "x": 538,
+        "y": 60,
+        "w": 32,
+        "h": 50
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "服务",
+      "cls": "top-name-wrapper",
+      "rect": {
+        "x": 617,
+        "y": 60,
+        "w": 32,
+        "h": 50
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "内容",
+      "cls": "top-name-wrapper",
+      "rect": {
+        "x": 696,
+        "y": 60,
+        "w": 32,
+        "h": 50
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "市场",
+      "cls": "top-name-wrapper",
+      "rect": {
+        "x": 823,
+        "y": 60,
+        "w": 32,
+        "h": 50
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "自助分析",
+      "cls": "top-name-wrapper",
+      "rect": {
+        "x": 950,
+        "y": 60,
+        "w": 64,
+        "h": 50
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "业务专区",
+      "cls": "top-name-wrapper",
+      "rect": {
+        "x": 1061,
+        "y": 60,
+        "w": 64,
+        "h": 50
+      }
+    },
+    {
+      "tag": "A",
+      "id": "csp-guide-config-manage",
+      "text": "配置管理",
+      "cls": "Guide_cspGuideConfigManage__1Z2RH",
+      "rect": {
+        "x": 780,
+        "y": 148,
+        "w": 90,
+        "h": 28
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "新手引导",
+      "cls": "",
+      "rect": {
+        "x": 882,
+        "y": 154,
+        "w": 66,
+        "h": 16
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "指南文档",
+      "cls": "",
+      "rect": {
+        "x": 960,
+        "y": 154,
+        "w": 66,
+        "h": 16
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "",
+      "cls": "ant-btn oui-canary-btn ant-btn-primary ant-btn-sm",
+      "rect": {
+        "x": 1054,
+        "y": 149,
+        "w": 45,
+        "h": 26
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "",
+      "cls": "ant-btn oui-canary-btn ant-btn-sm",
+      "rect": {
+        "x": 1104,
+        "y": 149,
+        "w": 54,
+        "h": 26
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "",
+      "cls": "ant-btn oui-canary-btn ant-btn-sm",
+      "rect": {
+        "x": 1162,
+        "y": 149,
+        "w": 60,
+        "h": 26
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "日",
+      "cls": "ant-btn oui-canary-btn ant-btn-sm",
+      "rect": {
+        "x": 1227,
+        "y": 149,
+        "w": 28,
+        "h": 26
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "月",
+      "cls": "ant-btn oui-canary-btn ant-btn-sm",
+      "rect": {
+        "x": 1260,
+        "y": 149,
+        "w": 28,
+        "h": 26
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "自定义",
+      "cls": "ant-btn oui-canary-btn ant-btn-sm",
+      "rect": {
+        "x": 1292,
+        "y": 149,
+        "w": 52,
+        "h": 26
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "过滤部分时间段",
+      "cls": "ant-btn",
+      "rect": {
+        "x": 1349,
+        "y": 149,
+        "w": 100,
+        "h": 26
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "rc-tabs-0-tab-yjfx",
+      "text": "业绩分析",
+      "cls": "ant-tabs-tab-btn",
+      "rect": {
+        "x": 220,
+        "y": 199,
+        "w": 56,
+        "h": 22
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "rc-tabs-0-tab-zxfx",
+      "text": "专项分析",
+      "cls": "ant-tabs-tab-btn",
+      "rect": {
+        "x": 340,
+        "y": 199,
+        "w": 56,
+        "h": 22
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "rc-tabs-0-tab-spfx",
+      "text": "商品分析",
+      "cls": "ant-tabs-tab-btn",
+      "rect": {
+        "x": 460,
+        "y": 199,
+        "w": 56,
+        "h": 22
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "rc-tabs-0-tab-shfx",
+      "text": "售后分析",
+      "cls": "ant-tabs-tab-btn",
+      "rect": {
+        "x": 580,
+        "y": 199,
+        "w": 56,
+        "h": 22
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "rc-tabs-1-tab-hzfx",
+      "text": "汇总分析",
+      "cls": "ant-tabs-tab-btn",
+      "rect": {
+        "x": 204,
+        "y": 266,
+        "w": 56,
+        "h": 22
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "rc-tabs-1-tab-xddxd",
+      "text": "询单到下单",
+      "cls": "ant-tabs-tab-btn",
+      "rect": {
+        "x": 281,
+        "y": 266,
+        "w": 70,
+        "h": 22
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "rc-tabs-1-tab-xddfk1",
+      "text": "下单到付款",
+      "cls": "ant-tabs-tab-btn",
+      "rect": {
+        "x": 372,
+        "y": 266,
+        "w": 70,
+        "h": 22
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "rc-tabs-1-tab-xddfk2",
+      "text": "询单到付款",
+      "cls": "ant-tabs-tab-btn",
+      "rect": {
+        "x": 462,
+        "y": 266,
+        "w": 70,
+        "h": 22
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "下载",
+      "cls": "TwoLevelNavigation_link__30GZ2",
+      "rect": {
+        "x": 1414,
+        "y": 271,
+        "w": 40,
+        "h": 12
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "上一页",
+      "cls": "ant-pagination-item-link",
+      "rect": {
+        "x": 1230,
+        "y": 655,
+        "w": 50,
+        "h": 24
+      }
+    },
+    {
+      "tag": "A",
+      "id": null,
+      "text": "1",
+      "cls": "",
+      "rect": {
+        "x": 1286,
+        "y": 656,
+        "w": 19,
+        "h": 22
+      }
+    }
+  ],
+  "domSummary": {
+    "totalElements": 1681,
+    "counts": {
+      "HTML": 1,
+      "HEAD": 1,
+      "META": 11,
+      "STYLE": 307,
+      "LINK": 15,
+      "SCRIPT": 57,
+      "TITLE": 1,
+      "BODY": 1,
+      "svg": 54,
+      "symbol": 1,
+      "path": 58,
+      "INPUT": 7,
+      "DIV": 319,
+      "SECTION": 4,
+      "H1": 2,
+      "A": 79,
+      "SPAN": 430,
+      "I": 29,
+      "BUTTON": 16,
+      "IMG": 21,
+      "UL": 7,
+      "LI": 35,
+      "ASIDE": 1,
+      "P": 8,
+      "H5": 1,
+      "FOOTER": 1,
+      "g": 2,
+      "LABEL": 3,
+      "TABLE": 4,
+      "COLGROUP": 3,
+      "COL": 5,
+      "THEAD": 3,
+      "TR": 21,
+      "TH": 22,
+      "TBODY": 4,
+      "TD": 131,
+      "TFOOT": 1,
+      "CANVAS": 1,
+      "B": 13,
+      "IFRAME": 1
+    },
+    "containers": [
+      {
+        "tag": "BODY",
+        "id": null,
+        "cls": "esycm-wrapper",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1502,
+          "h": 642
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "app",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1498,
+          "h": 1262
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "src-opEbase-redux-layouts-Frame-module-NewFrame-BLSTp esycm-wrapper view-mode-s ",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1498,
+          "h": 1262
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "double-eleven2-preheat-wrapper",
+        "rect": {
+          "x": 417,
+          "y": 11,
+          "w": 135,
+          "h": 0
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": null,
+        "cls": "count-down-wrapper",
+        "rect": {
+          "x": 454,
+          "y": 4,
+          "w": 160,
+          "h": 51
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "cls": "inner-wrapper",
+        "rect": {
+          "x": 518,
+          "y": 35,
+          "w": 67,
+          "h": 18
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "cls": "number-wrapper",
+        "rect": {
+          "x": 518,
+          "y": 36,
+          "w": 15,
+          "h": 16
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "cls": "number-wrapper",
+        "rect": {
+          "x": 536,
+          "y": 36,
+          "w": 15,
+          "h": 16
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "cls": "number-wrapper",
+        "rect": {
+          "x": 555,
+          "y": 36,
+          "w": 15,
+          "h": 16
+        }
+      },
+      {
+        "tag": "SPAN",
+        "id": null,
+        "cls": "ant-input-search ant-input-search-enter-button ant-input-affix-wrapper",
+        "rect": {
+          "x": 982,
+          "y": 16,
+          "w": 300,
+          "h": 32
+        }
+      }
+    ]
+  },
+  "tables": [
+    {
+      "rows": 2,
+      "cols": 11,
+      "rect": {
+        "x": 205,
+        "y": 348,
+        "w": 1250,
+        "h": 287
+      },
+      "visible": true
+    },
+    {
+      "rows": 2,
+      "cols": 3,
+      "rect": {
+        "x": 421,
+        "y": 209,
+        "w": 660,
+        "h": 156
+      },
+      "visible": true
+    },
+    {
+      "rows": 2,
+      "cols": 1,
+      "rect": {
+        "x": 421,
+        "y": 209,
+        "w": 356,
+        "h": 156
+      },
+      "visible": true
+    },
+    {
+      "rows": 6,
+      "cols": 7,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+      },
+      "visible": false
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "mode": "apply",
+  "date": "2026-10-19",
+  "shop": "网林家居",
+  "profile": "kcne",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "tables": {
+    "keyword": {
+      "tableId": "tblSPWt8ZBs0iL7f",
+      "beforeRows": 1739,
+      "plannedRows": 0,
+      "skippedRows": 0,
+      "subjectIds": []
+    },
+    "audience": {
+      "tableId": "tbl7CUAdPMKJwKYp",
+      "beforeRows": 1556,
+      "plannedRows": 0,
+      "skippedRows": 0,
+      "subjectIds": []
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261020_115911.zip",
+      "csvName": "关键词报表_20261020_115911.csv",
+      "rows": 0,
+      "columns": 77
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261020_115933.zip",
+      "csvName": "人群报表_20261020_115933.csv",
+      "rows": 0,
+      "columns": 75
+    }
+  }
+}

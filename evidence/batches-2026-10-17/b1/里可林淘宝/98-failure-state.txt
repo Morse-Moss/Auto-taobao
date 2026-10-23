@@ -1,0 +1,13 @@
+店：里可林淘宝
+停在哪一步：alimama-date
+失败原因（符号）：阶段 alimama-date 失败（exit 1）
+页面：万相台无界版
+URL：https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-17&endTime=2026-10-17&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day
+现场页签：按站点提示「alimama」选中（片段 one.alimama.com）
+视口：1506x642（dpr=1.25，滚动=0）
+遮挡层：无
+可见元素（2 个）：
+  · A "回到首页" rect=647,384,96x32
+  · BUTTON "返回上一页" rect=763,384,96x32
+页面可见文本（前 600 字）：
+  抱歉，您查看的页面不存在或无权访问。 如果您使用淘宝子账号登录，可能因权限不全导致落到本页面。请联系您的主账号确认是否已经为您授权所访问的场景权限，并于授权后重新登录one.alimama.com。 回到首页 返回上一页

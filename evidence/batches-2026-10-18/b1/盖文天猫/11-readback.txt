@@ -1,0 +1,29 @@
+
+===== 2026-10-19T00:46:26.724Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\readback-daily-report.mjs --date 2026-10-18 --proxy http://127.0.0.1:19023 --shop-key 盖文天猫
+exit=0 signal= error=none
+--- stdout ---
+readbackPath = D:\Retire\sycm-automation\evidence\daily-report-2026-10-18-盖文天猫\independent-readback.json
+底单: recordsNum=2408（这是**页面模型**里的值，可能落后于服务端） loaded=2408 命中 2026-10-18=4
+询单表: recordsNum=2602（这是**页面模型**里的值，可能落后于服务端） loaded=2602 命中 2026-10-18=13
+  ⚠️ 底单「店铺」4/4 行没有值（口径 reportDate=2026-10-18） — Lookup-key-absent-from-page-model｜页面模型在 record.fields 里根本不带这个派生字段（Lookup / type 19）⇒ 该列在回读里必然为空，不能读成「当天没写进去」；权威可读值见同表的「店铺名称」
+  ⚠️ 询单表「询单量」9/13 行没有值（口径 reportDate=2026-10-18） — null-in-page-model
+  ⚠️ 询单表「同层同行询单量」9/13 行没有值（口径 reportDate=2026-10-18） — null-in-page-model
+  2026-10-18 | 科塔龙头店 | reczz28JbobNi91j | 询单量=— | 同层同行=—
+  2026-10-18 | 网林淘宝 | reczz28JbobNjiTf | 询单量=— | 同层同行=—
+  2026-10-18 | 里可林天猫 | reczz28JbobNiXGd | 询单量=— | 同层同行=—
+  2026-10-18 | 保拉天猫 | reczz28JbobNinde | 询单量=— | 同层同行=—
+  2026-10-18 | 网林家居 | reczz28JbobNgW2b | 询单量=— | 同层同行=—
+  2026-10-18 | 安比龙头店 | reczz28JbobNihPj | 询单量=— | 同层同行=—
+  2026-10-18 | 安比淘宝 | reczz28JbobNjKZp | 询单量=— | 同层同行=—
+  2026-10-18 | 里可林淘宝 | reczz28JbobNi6G8 | 询单量=7 | 同层同行=6
+  2026-10-18 | 科塔淘宝 | reczz28JbobNikkp | 询单量=— | 同层同行=—
+  2026-10-18 | 保拉淘宝 | reczz28JbobNii9b | 询单量=— | 同层同行=—
+  2026-10-18 | 盖文天猫 | reczz28JbmxKtO8t | 询单量=14 | 同层同行=37
+  2026-10-18 | 网林天猫 | reczz28JbobNj1FK | 询单量=3 | 同层同行=13
+  2026-10-18 | 盖文淘宝 | reczz28JbobNhZlb | 询单量=6 | 同层同行=10
+  screenshot(source) → D:\Retire\sycm-automation\evidence\daily-report-2026-10-18-盖文天猫\feishu-source-table-after-push.png
+  screenshot(inquiry) → D:\Retire\sycm-automation\evidence\daily-report-2026-10-18-盖文天猫\feishu-inquiry-table-after-backfill.png
+页面已留在：https://rcnbpuvafkct.feishu.cn/base/RqzrbD4zIalzjxsSGcbcUPTpnKc?table=tbl6EDMzzaYUVvVC&view=vewwg0rhjo
+
+--- stderr ---

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>经营数据诊断报告</title>
+<style>
+  :root{
+    --ink:#171a1f; --muted:#5f6772; --line:#dfe3e8; --paper:#fff;
+    --navy:#1f3a5f; --navy-l:#3f628f; --gold:#b7862f; --red:#b5482f; --green:#2f6b4f;
+    --wash:#f4f6f8; --red-w:#fdf4f2; --green-w:#f1f7f3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#e9edf1;color:var(--ink);font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",system-ui,sans-serif;font-size:13.5px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  .page{max-width:960px;margin:30px auto;background:var(--paper);padding:54px 58px 40px;box-shadow:0 1px 3px rgba(20,30,45,.08),0 14px 36px rgba(20,30,45,.07)}
+  .kicker{font-size:11px;letter-spacing:.2em;color:var(--navy);text-transform:uppercase;margin-bottom:12px}
+  h1{font-size:27px;line-height:1.3;margin:0 0 10px;font-weight:600;letter-spacing:.01em}
+  .sub{color:var(--muted);font-size:12.5px;margin-bottom:22px}
+  .verdict{background:var(--navy);color:#fff;padding:20px 24px;margin:0 0 26px;border-radius:2px}
+  .verdict .lab{font-size:11px;letter-spacing:.16em;opacity:.72;margin-bottom:6px}
+  .verdict .txt{font-size:19px;line-height:1.5;font-weight:500}
+  .verdict .txt em{font-style:normal;color:#f2c96b}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:30px}
+  .kpi{padding:16px 14px 14px;border-right:1px solid var(--line)}
+  .kpi:last-child{border-right:none}
+  .kpi .v{font-size:25px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums}
+  .kpi .v small{font-size:13px;font-weight:500;margin-left:2px}
+  .kpi .l{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.45}
+  .kpi.bad .v{color:var(--red)}
+  .kpi.good .v{color:var(--green)}
+  h2{font-size:15px;margin:32px 0 4px;font-weight:600;display:flex;align-items:baseline;gap:10px}
+  h2 .n{color:var(--navy);font-size:12px;letter-spacing:.1em;font-weight:600}
+  .q{color:var(--muted);font-size:12px;margin:0 0 12px}
+  .so-what{background:var(--wash);border-left:3px solid var(--navy);padding:11px 15px;font-size:12.8px;margin:10px 0 4px;border-radius:1px}
+  .so-what b{color:var(--navy)}
+  figure{margin:6px 0 0}
+  figcaption{font-size:11px;color:var(--muted);margin-top:6px}
+  /* bar rows */
+  .bars{margin:8px 0 2px}
+  .row{display:grid;grid-template-columns:112px 1fr 86px;align-items:center;gap:10px;margin:7px 0}
+  .row .nm{font-size:12px;text-align:right;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .track{position:relative;height:15px;background:#f0f2f4;border-radius:1px}
+  .row .bar{position:absolute;top:0;height:15px;border-radius:1px}
+  .row .bar.b1{background:var(--navy-l);opacity:.92}
+  .row .bar.b2{background:var(--gold)}
+  .row .val{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .legend{display:flex;gap:18px;font-size:11.5px;color:var(--muted);margin:2px 0 8px 122px}
+  .legend i{display:inline-block;width:9px;height:9px;margin-right:5px;border-radius:1px;vertical-align:middle}
+  /* stacked */
+  .stack{display:flex;height:30px;border-radius:1px;overflow:hidden;margin:10px 0 4px;font-size:11px;color:#fff}
+  .stack div{display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+  .stack .s1{background:var(--navy)}
+  .stack .s2{background:var(--navy-l)}
+  .stack .s3{background:#c9908a}
+  .stack .s4{background:var(--red)}
+  .stack-label{display:flex;font-size:11.5px;color:var(--muted);margin-bottom:2px}
+  .stack-label span{font-variant-numeric:tabular-nums}
+  /* funnel */
+  .funnel{margin:10px 0 4px}
+  .fstep{display:grid;grid-template-columns:76px 1fr;gap:12px;align-items:center;margin:6px 0}
+  .fstep .fn{font-size:12px;color:var(--muted);text-align:right}
+  .fstep .fw{position:relative}
+  .fstep .fb{height:34px;background:var(--navy);border-radius:1px;display:flex;align-items:center;padding-left:12px;color:#fff;font-size:12px;font-variant-numeric:tabular-nums}
+  .fstep .rate{font-size:11.5px;color:var(--red);margin-left:10px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  .card{background:var(--wash);padding:14px 16px;border-radius:2px}
+  .card .t{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .card .big{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+  .card .big small{font-size:12px;font-weight:500}
+  /* actions */
+  .acts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+  .act{border:1px solid var(--line);padding:15px 16px;border-radius:2px}
+  .act .h{font-size:13px;font-weight:600;margin-bottom:6px}
+  .act .h span{display:inline-block;width:19px;height:19px;border-radius:50%;background:var(--navy);color:#fff;font-size:11px;line-height:19px;text-align:center;margin-right:7px;font-weight:600}
+  .act p{margin:0;font-size:12.3px;color:#333}
+  .act .tgt{margin-top:8px;font-size:11.5px;color:var(--navy);border-top:1px dashed var(--line);padding-top:7px}
+  .foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.75}
+  .foot b{color:var(--ink);font-weight:600}
+  @media print{
+    body{background:#fff}
+    .page{box-shadow:none;margin:0;max-width:none;padding:16mm 14mm}
+    h2{break-after:avoid}
+    figure,.acts,.so-what,.verdict{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="kicker">经营数据诊断 · 内部</div>
+  <h1>钱花在了哪里，为什么没有变成增长</h1>
+  <div class="sub">数据区间 2026-09-19 至 10-18 · 12 家店铺 · 7412 行底单 · 独立回读</div>
+
+  <div class="verdict">
+    <div class="lab">核心判断</div>
+    <div class="txt">不是流量不够。是流量和预算，<em>都投在了转化接不住的地方</em>。<br>把资源从转化差的店与品，挪到转化好的店与品——<em>不需要新增一分钱</em>。</div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v">80.0<small>万元</small></div><div class="l">12 家店近 30 天支付金额</div></div>
+    <div class="kpi bad"><div class="v">2.96</div><div class="l">整体推广投产比<br>盈亏线约 3.33（按毛利 30%）</div></div>
+    <div class="kpi bad"><div class="v">61.7<small>%</small></div><div class="l">推广预算花在瘦狗商品<br>只换回 1.9% 成交</div></div>
+    <div class="kpi bad"><div class="v">81.4<small>%</small></div><div class="l">流量给了洗手盆类<br>只换回 33.6% 成交</div></div>
+  </div>
+
+  <h2><span class="n">图 1</span>店铺定位：谁在浪费流量，谁缺流量</h2>
+  <p class="q">横轴 流量倍数（相对店均），纵轴 转化倍数，圆点大小 = GMV 贡献。看四个角。</p>
+  <figure>
+    <svg viewBox="0 0 800 470" width="100%" role="img" aria-label="店铺四象限定位图">
+      <rect x="80" y="50" width="358" height="243" fill="#f1f7f3"/>
+      <rect x="438" y="50" width="322" height="243" fill="#f4f8fb"/>
+      <rect x="80" y="293" width="358" height="127" fill="#f7f8f9"/>
+      <rect x="438" y="293" width="322" height="127" fill="#fdf4f2"/>
+
+      <text x="92" y="68" font-size="11" fill="#2f6b4f">转化高 · 缺流量</text>
+      <text x="748" y="66" font-size="11" fill="#1f3a5f" text-anchor="end">转化高 · 流量足</text>
+      <text x="748" y="412" font-size="11" fill="#b5482f" text-anchor="end">流量多 · 转化差</text>
+
+      <line x1="438" y1="50" x2="438" y2="420" stroke="#b9c2cb" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="80" y1="293" x2="760" y2="293" stroke="#b9c2cb" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="434" y="440" font-size="10.5" fill="#8b949e" text-anchor="middle">1.0 ×</text>
+      <text x="72" y="297" font-size="10.5" fill="#8b949e" text-anchor="end">1.0 ×</text>
+
+      <line x1="80" y1="420" x2="760" y2="420" stroke="#c9d0d7"/>
+      <line x1="80" y1="50" x2="80" y2="420" stroke="#c9d0d7"/>
+      <text x="420" y="458" font-size="11" fill="#5f6772" text-anchor="middle">流量倍数（访客 / 店均）→</text>
+      <text x="34" y="235" font-size="11" fill="#5f6772" text-anchor="middle" transform="rotate(-90 34 235)">转化倍数（转化率 / 店均）→</text>
+
+      <g font-size="11">
+        <circle cx="336" cy="157" r="13" fill="#1f3a5f" opacity=".9"/>
+        <text x="350" y="161" fill="#171a1f">盖文旗舰店</text>
+
+        <circle cx="652" cy="335" r="9" fill="#b5482f" opacity=".85"/>
+        <text x="664" y="339" fill="#171a1f">Paola Lenti</text>
+
+        <circle cx="304" cy="240" r="7" fill="#3f628f" opacity=".85"/>
+        <text x="315" y="236" fill="#171a1f">保拉伦蒂旗舰</text>
+
+        <circle cx="252" cy="71" r="7" fill="#2f6b4f" opacity=".9"/>
+        <text x="263" y="75" fill="#171a1f">科塔建材卫浴</text>
+
+        <circle cx="409" cy="258" r="6.5" fill="#3f628f" opacity=".85"/>
+        <text x="420" y="262" fill="#171a1f">安比定制家居</text>
+
+        <circle cx="738" cy="362" r="6.5" fill="#b5482f" opacity=".85"/>
+        <text x="728" y="366" fill="#171a1f" text-anchor="end">盖文全卫定制</text>
+
+        <circle cx="532" cy="343" r="6" fill="#b5482f" opacity=".8"/>
+        <text x="521" y="337" fill="#171a1f" text-anchor="end">科塔全卫定制</text>
+
+        <circle cx="252" cy="97" r="5.5" fill="#2f6b4f" opacity=".9"/>
+        <text x="263" y="101" fill="#171a1f">安比全卫定制</text>
+
+        <circle cx="219" cy="137" r="5.5" fill="#2f6b4f" opacity=".9"/>
+        <text x="230" y="141" fill="#171a1f">网林家居旗舰</text>
+
+        <circle cx="289" cy="266" r="5.5" fill="#7a8a9a" opacity=".85"/>
+        <text x="300" y="270" fill="#171a1f">里可林家居</text>
+
+        <circle cx="236" cy="250" r="5" fill="#7a8a9a" opacity=".85"/>
+        <text x="225" y="254" fill="#171a1f" text-anchor="end">里可林旗舰</text>
+
+        <circle cx="535" cy="351" r="5" fill="#b5482f" opacity=".8"/>
+        <text x="547" y="365" fill="#171a1f">网林全卫定制</text>
+      </g>
+    </svg>
+    <figcaption>坐标轴按平方根缩放，避免低值区挤成一团；虚线为店均水平 1.0×。</figcaption>
+  </figure>
+  <div class="so-what"><b>所以呢：</b>红色区四家店（Paola、盖文全卫、科塔全卫、网林全卫）拿走 76% 的访客，转化只有店均的三分之一到五分之一；绿色区四家店转化是店均 4 到 7.5 倍，几乎拿不到流量。这不是运营努力问题，是流量分配问题。</div>
+
+  <h2><span class="n">图 2</span>同一笔流量，两种命运</h2>
+  <p class="q">左边三家拿走了大部分访客却做不出 GMV；右边三家相反。长度 = 占比。</p>
+  <div class="bars">
+    <div class="legend"><span><i style="background:#3f628f"></i>访客占比</span><span><i style="background:#b7862f"></i>GMV 占比</span></div>
+    <div class="row"><div class="nm">盖文全卫定制</div><div class="track"><div class="bar b1" style="width:78.1%"></div></div><div class="val">28.1%</div></div>
+    <div class="row"><div class="nm"></div><div class="track"><div class="bar b2" style="width:19.2%"></div></div><div class="val">6.9%</div></div>
+    <div class="row"><div class="nm">Paola Lenti</div><div class="track"><div class="bar b1" style="width:58.9%"></div></div><div class="val">21.2%</div></div>
+    <div class="row"><div class="nm"></div><div class="track"><div class="bar b2" style="width:38.9%"></div></div><div class="val">14.0%</div></div>
+    <div class="row"><div class="nm">网林全卫定制</div><div class="track"><div class="bar b1" style="width:37.2%"></div></div><div class="val">13.4%</div></div>
+    <div class="row"><div class="nm"></div><div class="track"><div class="bar b2" style="width:9.7%"></div></div><div class="val">3.5%</div></div>
+    <div class="row"><div class="nm">盖文旗舰店</div><div class="track"><div class="bar b1" style="width:11.7%"></div></div><div class="val">4.2%</div></div>
+    <div class="row"><div class="nm"></div><div class="track"><div class="bar b2" style="width:76.1%"></div></div><div class="val">27.4%</div></div>
+    <div class="row"><div class="nm">科塔建材卫浴</div><div class="track"><div class="bar b1" style="width:5.3%"></div></div><div class="val">1.9%</div></div>
+    <div class="row"><div class="nm"></div><div class="track"><div class="bar b2" style="width:21.4%"></div></div><div class="val">7.7%</div></div>
+    <div class="row"><div class="nm">网林家居旗舰</div><div class="track"><div class="bar b1" style="width:3.6%"></div></div><div class="val">1.3%</div></div>
+    <div class="row"><div class="nm"></div><div class="track"><div class="bar b2" style="width:13.3%"></div></div><div class="val">4.8%</div></div>
+  </div>
+  <div class="so-what"><b>所以呢：</b>盖文全卫定制吃掉 28.1% 的访客、只贡献 6.9% 的 GMV；盖文旗舰店相反，4.2% 的访客做出 27.4% 的 GMV。流量从前者挪一部分给后者，GMV 就会变，不需要买新流量。</div>
+
+  <h2><span class="n">图 3</span>品类漏斗：断在加购，不在支付</h2>
+  <p class="q">全店 18 个业务日累计。条宽按平方根缩放以便阅读，标注比例为真实值。</p>
+  <div class="funnel">
+    <div class="fstep"><div class="fn">访客</div><div class="fw"><div class="fb" style="width:100%">109,658 人</div></div></div>
+    <div class="fstep"><div class="fn">加购</div><div class="fw"><div class="fb" style="width:14%">2,264 人<span class="rate">加购率 2.07%</span></div></div></div>
+    <div class="fstep"><div class="fn">支付买家</div><div class="fw"><div class="fb" style="width:8%">175 人<span class="rate">访客→支付 0.16%</span></div></div></div>
+  </div>
+  <div class="two" style="margin-top:14px">
+    <div class="card">
+      <div class="t">洗手盆 / 台盆类（207 个商品）</div>
+      <div class="big">81.4<small>% 访客</small> → 33.6<small>% 成交</small></div>
+      <div style="font-size:12px;color:#333;margin-top:6px">加购率 1.29%｜支付转化 0.062%｜访客价值 1.07 元</div>
+    </div>
+    <div class="card" style="background:#f1f7f3">
+      <div class="t">浴缸类（235 个商品）</div>
+      <div class="big">18.6<small>% 访客</small> → 66.4<small>% 成交</small></div>
+      <div style="font-size:12px;color:#333;margin-top:6px">加购率 5.41%｜支付转化 0.51%｜访客价值 9.20 元</div>
+    </div>
+  </div>
+  <div class="so-what"><b>所以呢：</b>断崖在"访客到加购"这一层，不是付款环节。洗手盆类加购率只有浴缸的四分之一、访客价值只有九分之一。这是详情页、价格、评价的承接问题，不是结算流程问题。</div>
+
+  <h2><span class="n">图 4</span>商品结构：5% 的商品，做出 81% 的生意</h2>
+  <p class="q">462 个在售商品按支付金额排序（ABC 分类）。</p>
+  <div style="font-size:11.5px;color:var(--muted);margin-bottom:6px"><b style="color:#1f3a5f">A 类 25 个（5.4%）</b>　<b style="color:#3f628f">B 类 17 个（3.7%）</b>　<b style="color:#b5482f">C 类 420 个（90.9%）</b></div>
+  <div class="stack">
+    <div class="s1" style="width:81%">81% 成交</div>
+    <div class="s2" style="width:14%">14%</div>
+    <div class="s3" style="width:5%"></div>
+  </div>
+  <div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">条长 = 成交金额贡献（A + B + C = 100%）。</div>
+  <div class="two">
+    <div class="card"><div class="t">C 类商品（长尾）</div><div class="big">420 <small>个</small></div><div style="font-size:12px;color:#333;margin-top:6px">吃掉 53.6% 的访客，只贡献 5% 成交；其中 <b>371 个商品 18 天零支付</b>，仍在占流量位。</div></div>
+    <div class="card" style="background:#f1f7f3"><div class="t">A 类商品（核心）</div><div class="big">25 <small>个</small></div><div style="font-size:12px;color:#333;margin-top:6px">贡献 81% 成交、只用了 16.5% 的访客。前三是盖文深泡一体浴缸、盖文鹅蛋型浴缸、盖文小户型坐式浴缸。</div></div>
+  </div>
+  <div class="so-what"><b>所以呢：</b>90.9% 的商品是长尾，其中 371 个零支付商品还在分流流量。A 类只有 25 个，却扛起 81% 的生意——保供和流量位应该优先给它们。</div>
+
+  <h2><span class="n">图 5</span>预算流向：61.7% 的钱，换回 1.9% 的成交</h2>
+  <p class="q">95 个有花费的推广商品，按成交规模与投产比分四象限（波士顿矩阵）。</p>
+  <div style="font-size:11.5px;color:var(--muted);margin-bottom:6px"><b style="color:#1f3a5f">明星 13 个</b>　<b style="color:#3f628f">问题 5 个</b>　<b style="color:#b5482f">瘦狗 77 个</b></div>
+  <div class="stack">
+    <div class="s1" style="width:33%">33% 预算</div>
+    <div class="s2" style="width:5.4%"></div>
+    <div class="s4" style="width:61.6%">61.7% 预算</div>
+  </div>
+  <div style="font-size:11.5px;color:var(--muted);margin-top:10px;margin-bottom:6px">成交贡献：<b style="color:#1f3a5f">明星 91.7%</b>　<b style="color:#3f628f">问题 6.4%</b>　<b style="color:#b5482f">瘦狗 1.9%</b></div>
+  <div class="stack" style="height:24px">
+    <div class="s1" style="width:91.7%">91.7%</div>
+    <div class="s2" style="width:6.4%"></div>
+    <div class="s4" style="width:1.9%"></div>
+  </div>
+  <div style="font-size:11.5px;color:var(--muted);margin:6px 0 12px">上条 = 预算占比，下条 = 成交贡献。</div>
+  <div class="so-what"><b>所以呢：</b>13 个明星商品（科塔半嵌入挂墙盆 ROI 76.1、网林挂墙洗脸盆 54.8、盖文人造绮美石浴缸 27.2）只拿 33% 预算，做出 91.7% 成交；77 个瘦狗商品拿 61.7% 预算，换回 1.9%。金牛象限为零——没有"卖得多却亏钱"的品，问题纯粹是钱花错了地方。</div>
+
+  <h2><span class="n">下一步</span>四个动作，全部不新增预算</h2>
+  <div class="acts">
+    <div class="act">
+      <div class="h"><span>1</span>预算再分配</div>
+      <p>瘦狗商品预算从 61.7% 压到 30% 以内，释放约 5,000 元 / 18 天，转向 13 个明星商品。</p>
+      <div class="tgt">目标：整体投产比 3.21 → 4.0 以上</div>
+    </div>
+    <div class="act">
+      <div class="h"><span>2</span>C 类清退</div>
+      <p>371 个零支付商品建立清退清单，逐批下线或合并；25 个 A 类商品保供、保流量位。</p>
+      <div class="tgt">目标：C 类占用的访客从 53.6% 降到 40% 以下</div>
+    </div>
+    <div class="act">
+      <div class="h"><span>3</span>洗手盆承接专项</div>
+      <p>针对访客 TOP20 但加购率低的洗手盆商品，按详情页、价格、评价三要素逐品排查。</p>
+      <div class="tgt">目标：加购率 1.29% → 2.5%，两周后复测</div>
+    </div>
+    <div class="act">
+      <div class="h"><span>4</span>店铺流量再平衡</div>
+      <p>流量型四店做转化专项（详情页、客服响应）；效率型四店争取更多流量入口与预算倾斜。</p>
+      <div class="tgt">目标：流量型四店转化率翻倍，效率型四店访客提升 30%</div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <b>口径与出处</b>　店铺级：日报底单表 tbl6EDMzzaYUVvVC，2026-09-19 至 10-18，360 行，12 家有效店铺（另有 1 家数据仅 4 天，未参与拆解）。商品级：商品底单 tblvmGJfOL4OBYek，2026-10-01 至 10-18，462 个商品。推广级：推广底单 tblDxXenp3vSg2SM，2026-10-01 至 10-18，95 个有花费商品。<br>
+    <b>方法</b>　GMV 三因子拆解（流量 × 转化率 × 客单价）、漏斗分析、ABC 分类（帕累托 80/15/5）、波士顿矩阵（成交规模 × 投产比）。RFM 客户分层暂不可用——缺客户 ID 与订单明细。<br>
+    <b>数据纪律</b>　平台成交类字段存在 T+N 延迟，全部结论取多日累计，不使用单日快照；任一数字可按店铺、商品、日期回溯。分析脚本 tmp/boss-methods-analysis.mjs 可复跑。
+  </div>
+
+</div>
+</body>
+</html>

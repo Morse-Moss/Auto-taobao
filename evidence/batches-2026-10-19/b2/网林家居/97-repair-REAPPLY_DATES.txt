@@ -1,0 +1,5 @@
+修复动作：REAPPLY_DATES
+店：网林家居｜阶段：push｜成因：STAGE_FAILED
+目标页：https://rcnbpuvafkct.feishu.cn/base/RqzrbD4zIalzjxsSGcbcUPTpnKc?table=tbl6EDMzzaYUVvVC&view=vewwg0rhjo
+结论：未应用｜日期需要重新落位（feishu）—— 请重试该站点的落位阶段来完成，本动作不重复实现落位
+证据：{"needsRetryStage":"sycm-date"}

@@ -1,0 +1,18 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-21\\2026-10-21-20261022021253864-e1dbdbf9\\网林家居\\inquiry.xls",
+  "shop": "网林家居",
+  "date": "2026-10-21",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 0,
+  "existingRows": 976,
+  "plannedRows": 0,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [],
+  "recordIds": [],
+  "writeStarted": true,
+  "plannedWriteRows": 0,
+  "afterRows": 976
+}

@@ -1,0 +1,34 @@
+{
+  "version": "unified-summary-v1",
+  "workflow": "promotion-daily",
+  "date": "2026-10-21",
+  "shops": {
+    "网林淘宝": {
+      "batch": 1,
+      "shop": "网林淘宝",
+      "status": "ok",
+      "stages": [
+        "keyword-submit",
+        "audience-submit",
+        "keyword-fetch",
+        "audience-fetch",
+        "import"
+      ],
+      "recovery": {
+        "keywordPending": [
+          "关键词报表_20261022_113048"
+        ],
+        "audiencePending": [
+          "人群报表_20261022_113102"
+        ]
+      },
+      "retries": [
+        {
+          "stage": "keyword-submit",
+          "attempts": 2
+        }
+      ],
+      "evidence": "evidence\\promotion-sales1-2026-10-21-backfill\\网林淘宝"
+    }
+  }
+}

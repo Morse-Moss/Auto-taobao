@@ -1,0 +1,23 @@
+[
+  {
+    "shop": "网林家居",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林家居\",\"date\":\"2026-10-18\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-18_2026-10-18 (8).xls\",\"bytes\":18432}\n",
+      "err": "[底单] 网林家居 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-18_2026-10-18 (8).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林家居\",\n  \"date\": \"2026-10-18\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-18\\\\2026-10-18-20261019024014372-75ce031b\\\\网林家居\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261018&dateRange=1d&orderBy=cstCnt&startDate=20261018&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-18\\2026-10-18-20261019024014372-75ce031b\\网林家居\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 网林定制家居:小瓜 / 1731780198 ✓\n[校验] 商品报表 / 2026-10-18 / 商品+计划 ✓\n[提交] 商品报表_20261019_104103\n[候选] 判据=date-range｜1 条：商品报表_20261019_104103｜按判据排除 11 条\n[遮挡] 全屏层 DIV#wrapper_dlg_860(data-owner-id=app) z=99999，rect=[0,0,1506,642]，层内可点小控件 6/6 个，选中 SPAN「关闭」于 (558,589)，另有 1 个安全备选（按序试，封顶 3 个），已按黑名单排除 [\"立即报名\"]\n[遮挡] 没有注入 pressEscape ⇒ 跳过 ESC 这一步（不假装试过）\n[遮挡] 回读：全屏层剩 0 个｜目标可点=null ⇒ 不再挡事（全屏层已归零）\n[候选] 商品报表_20261019_104103 是遮挡层拦下的（已关闭）⇒ 刷新后重试同一条一次\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261019_104103.zip (978 bytes)\n{\"shop\":\"网林家居\",\"date\":\"2026-10-18\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261019_104103.zip\",\"bytes\":978,\"task\":\"商品报表_20261019_104103\"}\n",
+      "err": "[候选] 商品报表_20261019_104103 第 1 次取不到：下载任务页被平台遮挡层拦住（dismiss-overlay-and-refresh），已尝试安全关闭并刷新重试\n"
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261019_104103.zip"
+  }
+]

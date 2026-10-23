@@ -1,0 +1,21 @@
+[
+  {
+    "shop": "网林淘宝",
+    "product": {
+      "code": 1,
+      "out": "",
+      "err": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}\n"
+    },
+    "productFile": null,
+    "stoppedAt": "product-collect",
+    "error": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}"
+  },
+  {
+    "shop": "里可林天猫",
+    "stoppedAt": "login"
+  },
+  {
+    "shop": "网林家居",
+    "stoppedAt": "login"
+  }
+]

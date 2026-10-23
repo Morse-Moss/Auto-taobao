@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-18-20261019024014372-75ce031b",
+  "date": "2026-10-18",
+  "status": "COMPLETED",
+  "startedAt": "2026-10-19T02:40:14.373Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "COMPLETED"
+    }
+  ],
+  "shops": [
+    "网林家居"
+  ],
+  "failure": null,
+  "failedStage": null,
+  "finishedAt": "2026-10-19T02:43:00.020Z",
+  "completionNotice": {
+    "alertId": "product-ok-20261018",
+    "delivered": true,
+    "suppressed": false,
+    "reason": null,
+    "tables": [
+      {
+        "name": "商品推广",
+        "rows": 4
+      }
+    ]
+  }
+}

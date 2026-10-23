@@ -1,0 +1,120 @@
+{
+ "proxy": "http://127.0.0.1:19041",
+ "commit": true,
+ "notify": {
+  "mode": "off",
+  "status": "SKIPPED",
+  "reason": "verdict_needs_no_human"
+ },
+ "sites": {
+  "sycm": {
+   "label": "生意参谋",
+   "loggedIn": true,
+   "href": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+   "reason": null,
+   "loggedInAfter": true,
+   "hrefAfter": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+  },
+  "alimama": {
+   "label": "阿里妈妈",
+   "loggedIn": false,
+   "href": "https://one.alimama.com/index.html#!/login/index",
+   "reason": null,
+   "loggedInAfter": true,
+   "hrefAfter": "https://one.alimama.com/index.html"
+  }
+ },
+ "login": {
+  "attempts": [
+   {
+    "id": "havanaone",
+    "url": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+    "opened": true,
+    "navigated": false,
+    "href": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+    "autofill": {
+     "id": true,
+     "password": true
+    },
+    "viewport": {
+     "ok": true,
+     "blocksClick": false,
+     "reason": null,
+     "verdict": null,
+     "width": 1506,
+     "height": 642,
+     "threshold": {
+      "width": 1200,
+      "height": 600
+     },
+     "detail": "视口 1506x642"
+    },
+    "gesturePoint": [
+     954,
+     331
+    ],
+    "afterGesture": {
+     "idLen": 8,
+     "passwordLen": 8
+    },
+    "guard": {
+     "verdict": "ACCEPT",
+     "expected": "里可林家居:小嘉",
+     "filled": "里可林家居:小嘉"
+    }
+   }
+  ],
+  "expectedMember": "里可林家居:小嘉",
+  "guardBasis": null,
+  "targetId": "A62DE59A831125CA9CDA5CDB3E06A773",
+  "viewport": {
+   "ok": true,
+   "blocksClick": false,
+   "reason": null,
+   "verdict": null,
+   "width": 1506,
+   "height": 642,
+   "threshold": {
+    "width": 1200,
+    "height": 600
+   },
+   "detail": "视口 1506x642"
+  },
+  "candidate": "havanaone",
+  "urlBefore": "https://login.taobao.com/havanaone/login/login.htm?bizName=taobao",
+  "guard": {
+   "verdict": "ACCEPT",
+   "expected": "里可林家居:小嘉",
+   "filled": "里可林家居:小嘉"
+  },
+  "captcha": false,
+  "captchaFrame": null,
+  "agreementChecked": true,
+  "agreement": {
+   "autoAccepted": true,
+   "agreedAt": "2026-10-17T23:24:51.971Z",
+   "checkedBefore": false,
+   "checkedAfter": true,
+   "via": "clickPoint",
+   "verdict": "CLICKED_THEN_CHECKED",
+   "text": "*已阅读并同意以下协议淘宝平台服务协议、隐私权政策、法律声明、支付宝及客户端服务协议"
+  },
+  "submitPoint": [
+   954,
+   499
+  ],
+  "urlAfter": "https://myseller.taobao.com/home.htm/QnworkbenchHome/",
+  "shots": null,
+  "submitOutcome": "NONE"
+ },
+ "session": {
+  "shop": "里可林淘宝",
+  "proxyPort": 19041,
+  "judged": true
+ },
+ "verdict": "LOGGED_IN",
+ "tech": {
+  "machine": "DESKTOP-KJP4RA5",
+  "browserProfile": "D:/Retire/edge-profiles/likelin-home"
+ }
+}

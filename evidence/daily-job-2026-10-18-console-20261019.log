@@ -1,0 +1,19 @@
+[mode] --mode apply（显式给定）
+[2026-10-18T23:01:47.105Z] 版本：sycm-automation 1.12.7
+[2026-10-18T23:01:47.105Z] === 定时任务开始（目标日字面量 yesterday → 2026-10-18）===
+[2026-10-18T23:01:47.105Z] [定时] 分批跑：每批 5 家（**每一批跑完都释放**：成功、失败、没跑到，都放）
+[2026-10-18T23:01:47.105Z] [定时] 整轮被挡的处置：就地停手 + 留住现场等人（驻留在分批驱动内部；人处理完自动按批重跑一遍）。
+[2026-10-18T23:01:47.105Z] [定时] 边界：批次里的 start 是 scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，所以这批窗口活不过本轮命令；「不主动释放」只是「我不去停它」，不等于「窗口还在」。要留窗口给人排查，必须另起 scripts/start-all-hold.mjs 把本批实例托住。
+[2026-10-18T23:01:47.105Z] 日志：D:\Retire\sycm-automation\evidence\daily-job-2026-10-18\job.log
+[2026-10-18T23:01:47.105Z] --- ensure-instances：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[2026-10-18T23:01:49.713Z] --- ensure-instances 退出码=0
+[2026-10-18T23:01:49.713Z] --- label-merchant-window：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --subject merchant
+[2026-10-18T23:01:54.438Z] --- label-merchant-window 退出码=0
+[2026-10-18T23:01:54.438Z] --- viewport-gate：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-viewport-gate.mjs --proxy 19023 --label 共用商家浏览器 --json
+[2026-10-18T23:01:54.801Z] --- viewport-gate 结论已落 evidence/daily-job-2026-10-18/viewport.json（452 字节；链那一步会读它）
+[2026-10-18T23:01:54.801Z] --- viewport-gate 退出码=0
+[2026-10-18T23:01:54.801Z] --- ensure-merchant-login：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\login-merchant.mjs --commit --target sycm --notify auto
+[2026-10-18T23:02:00.909Z] --- ensure-merchant-login 退出码=0
+[2026-10-18T23:02:00.910Z] --- ensure-inquiry-rows：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\ensure-inquiry-rows.mjs --date yesterday --commit --evidence D:\Retire\sycm-automation\evidence\daily-job-2026-10-18
+[2026-10-18T23:02:31.048Z] --- ensure-inquiry-rows 退出码=0
+[2026-10-18T23:02:31.048Z] --- batch-chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date yesterday --batch-size 5 --commit --notify --auto-repair --relogin-on-wall

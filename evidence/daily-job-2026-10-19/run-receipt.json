@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "workflow": "daily-report",
+  "runId": "daily-2026-10-19-101228",
+  "date": "2026-10-19",
+  "status": "RUNNING",
+  "startedAt": "2026-10-20T00:01:24.759Z",
+  "stages": [
+    {
+      "name": "ensure-instances",
+      "status": "PENDING"
+    },
+    {
+      "name": "label-merchant-window",
+      "status": "PENDING"
+    },
+    {
+      "name": "viewport-gate",
+      "status": "PENDING"
+    },
+    {
+      "name": "ensure-merchant-login",
+      "status": "PENDING"
+    },
+    {
+      "name": "ensure-inquiry-rows",
+      "status": "PENDING"
+    },
+    {
+      "name": "batch-chain",
+      "status": "PENDING"
+    }
+  ]
+}

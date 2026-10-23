@@ -1,0 +1,37 @@
+
+===== 2026-10-21T01:24:43.577Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-20 --proxy http://127.0.0.1:19023 --shop-key 网林家居 --commit --allow-empty-promotion --shop-xlsx C:\Users\Administrator\Downloads\店铺日报_20261021_defbfd5f1fef2520bec4b10726fe5a41.xlsx --promotion-zip "C:\Users\Administrator\Downloads\营销场景报表_20261021_082925 (1).zip"
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 网林家居 ↔ 源产物店名 网林定制家居 一致（证据目录 daily-report-2026-10-20-网林家居）
+[audit] 已记 push/ok id=252
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "reczz28PsWMLOfbd",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-20-网林家居\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-20-网林家居",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 2440,
+  "recordCountAfter": 2441,
+  "verifiedFields": 116,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 0,
+    "payloadFields": 116,
+    "shopName": "网林定制家居",
+    "dateEpoch": 1792425600000,
+    "promotionEmptyAllowed": true,
+    "promotionState": "empty",
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---
+[留空] 推广报表 0 行且已显式放行（--allow-empty-promotion）⇒ 2026-10-20 的推广两段按实际留空
+[留空] 这份推广报表 0 行（平台当日无推广数据）⇒ 关键词推广/人群推广两段字段整段留空（人手显式放行：--allow-empty-promotion；不是采集漏，也没有写 0）
+[留空] PC端人均浏览量：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）
+[留空] UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）
+[留空] 无线端UV价值：数据源给的是文本标记 NULL，数字字段存不下 ⇒ 该格留空（不是 0）

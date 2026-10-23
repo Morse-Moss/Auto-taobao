@@ -1,0 +1,34 @@
+
+===== 2026-10-22T00:07:33.485Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-21 --proxy http://127.0.0.1:19023 --shop-key 里可林淘宝 --commit --allow-empty-promotion --shop-xlsx C:\Users\Administrator\Downloads\日报_20261022_6e084ff8251d468d6ead4fd386d07bed.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261022_080648.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 里可林淘宝 ↔ 源产物店名 里可林家居 一致（证据目录 daily-report-2026-10-21-里可林淘宝）
+[audit] 已记 push/ok id=253
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "reczz28QFjXIT9qN",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-21-里可林淘宝\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-21-里可林淘宝",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 2446,
+  "recordCountAfter": 2447,
+  "verifiedFields": 219,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 219,
+    "shopName": "里可林家居",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1792512000000,
+    "promotionEmptyAllowed": false,
+    "promotionState": "matched",
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---

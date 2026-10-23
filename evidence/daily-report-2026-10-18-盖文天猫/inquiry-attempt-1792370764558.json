@@ -1,0 +1,236 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-10-18",
+  "shop": "盖文天猫",
+  "environment": {
+    "computedAt": "2026-10-19T00:46:04.557Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19045",
+    "browserPort": {
+      "port": 19035,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19045,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-gaiwen-flagship",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop gaiwen-flagship)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-18-盖文天猫",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "target": {
+    "appToken": "RqzrbD4zIalzjxsSGcbcUPTpnKc",
+    "tableId": "tblLYwJTSLqTGVSC",
+    "tableName": "各店铺数据日报",
+    "recordId": "reczz28JbmxKtO8t",
+    "matchedBy": "shop-name",
+    "shopOptionId": "optIYzOzu2"
+  },
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "sourceShop": "盖文旗舰店",
+    "identityRaw": "盖文旗舰店 主店",
+    "identityCandidates": [
+      "盖文旗舰店 主店",
+      "盖文旗舰店 主店",
+      "盖文旗舰店 主店"
+    ],
+    "headers": [
+      "日期",
+      "延 询单人数",
+      "当日询单人数",
+      "当日付款人数",
+      "当日付款金额",
+      "延 最终付款人数",
+      "延 最终付款金额",
+      "询单当日付款转化率",
+      "延 询单最终付款转化率"
+    ],
+    "rows": [
+      [
+        "2026-10-18",
+        "延迟统计",
+        "14",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "汇总值",
+        "延迟统计",
+        "14",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "平均值",
+        "延迟统计",
+        "14",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "全店汇总值",
+        "延迟统计",
+        "18",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "—",
+        "—"
+      ],
+      [
+        "全店平均值",
+        "延迟统计",
+        "18",
+        "0",
+        "0.00",
+        "延迟统计",
+        "延迟统计",
+        "0.00%",
+        "延迟统计"
+      ],
+      [
+        "同行同层优秀",
+        "延迟统计",
+        "76",
+        "21",
+        "5,136.81",
+        "延迟统计",
+        "延迟统计",
+        "35.71%",
+        "延迟统计"
+      ],
+      [
+        "同行同层均值",
+        "延迟统计",
+        "37",
+        "5",
+        "1,556.56",
+        "延迟统计",
+        "延迟统计",
+        "18.18%",
+        "延迟统计"
+      ]
+    ]
+  },
+  "degraded": null,
+  "values": {
+    "询单量": 14,
+    "同层同行询单量": 37
+  },
+  "prewrite": {
+    "disposition": "WRITE_REQUIRED",
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "status": "COMMITTED_AND_VERIFIED",
+  "verified": {
+    "recordId": "reczz28JbmxKtO8t",
+    "unchangedOtherFields": true,
+    "values": {
+      "询单量": 14,
+      "同层同行询单量": 37
+    },
+    "matchedBy": "shop-name"
+  },
+  "before": {
+    "fields": {
+      "人群PPC": 2.82608695652174,
+      "人群ROI": 0,
+      "人群加购成本": 17.3333333333333,
+      "人群加购数": [
+        15
+      ],
+      "人群成交金额": [
+        0
+      ],
+      "人群收加率": 0.228260869565217,
+      "人群收藏数": [
+        6
+      ],
+      "人群点击量": [
+        92
+      ],
+      "人群花费": [
+        260
+      ],
+      "人群询单量": [
+        0
+      ],
+      "关键词PPC": 1.41118644067797,
+      "关键词ROI": 0,
+      "关键词加购人数": [
+        8
+      ],
+      "关键词加购成本": 31.2225,
+      "关键词成交金额": [
+        0
+      ],
+      "关键词收加率": 0.0564971751412429,
+      "关键词收藏人数": [
+        2
+      ],
+      "关键词点击量": [
+        177
+      ],
+      "关键词花费": [
+        249.78
+      ],
+      "关键词询单量": [
+        0
+      ],
+      "实际支付金额": 0,
+      "店铺": "盖文天猫",
+      "店铺加购人数": [
+        31
+      ],
+      "店铺收加率": 0.1,
+      "店铺收藏人数": [
+        9
+      ],
+      "推广花费合计": 509.78,
+      "支付金额": [
+        0
+      ],
+      "数据月份": 10,
+      "日期": 1792252800000,
+      "父记录": [
+        {
+          "table_id": "tblLYwJTSLqTGVSC",
+          "text_arr": [],
+          "type": "text"
+        }
+      ],
+      "访客数": [
+        400
+      ]
+    },
+    "id": "reczz28JbmxKtO8t",
+    "record_id": "reczz28JbmxKtO8t"
+  }
+}

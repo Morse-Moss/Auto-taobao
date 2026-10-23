@@ -1,0 +1,94 @@
+{
+  "capturedAt": "2026-10-17T23:06:02.661Z",
+  "url": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-17&endTime=2026-10-17&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day",
+  "title": "万相台无界版",
+  "viewport": {
+    "w": 1506,
+    "h": 642,
+    "dpr": 1.25,
+    "scrollY": 0
+  },
+  "visibleText": "抱歉，您查看的页面不存在或无权访问。 如果您使用淘宝子账号登录，可能因权限不全导致落到本页面。请联系您的主账号确认是否已经为您授权所访问的场景权限，并于授权后重新登录one.alimama.com。 回到首页 返回上一页",
+  "dialogs": [],
+  "interactive": [
+    {
+      "tag": "A",
+      "id": null,
+      "text": "回到首页",
+      "cls": "asiYysfSaY    asiYysfSbe-normal asiYysfSbe-custom-gradient  ",
+      "rect": {
+        "x": 647,
+        "y": 384,
+        "w": 96,
+        "h": 32
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": null,
+      "text": "返回上一页",
+      "cls": "asiYysfSaY    asiYysfSbe-normal asiYysfSbe-custom  ",
+      "rect": {
+        "x": 763,
+        "y": 384,
+        "w": 96,
+        "h": 32
+      }
+    }
+  ],
+  "domSummary": {
+    "totalElements": 85,
+    "counts": {
+      "HTML": 1,
+      "HEAD": 1,
+      "META": 8,
+      "TITLE": 1,
+      "LINK": 1,
+      "STYLE": 43,
+      "SCRIPT": 12,
+      "BODY": 1,
+      "DIV": 6,
+      "IMG": 1,
+      "SPAN": 7,
+      "A": 1,
+      "BUTTON": 1,
+      "IFRAME": 1
+    },
+    "containers": [
+      {
+        "tag": "DIV",
+        "id": "app",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1506,
+          "h": 436
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "mx_173",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 1506,
+          "h": 436
+        }
+      },
+      {
+        "tag": "DIV",
+        "id": "mx_176",
+        "cls": "mxgc-effects-notice",
+        "rect": {
+          "x": 203,
+          "y": 340,
+          "w": 1101,
+          "h": 20
+        }
+      }
+    ]
+  },
+  "tables": []
+}

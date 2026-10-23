@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>经营数据诊断报告｜2026-10-19</title>
+<style>
+  :root{
+    --ink:#15181d; --muted:#5f6975; --line:#dde2e8; --navy:#1b3557; --navy2:#42648f;
+    --gold:#a97b28; --red:#ae4128; --green:#2c6349; --wash:#f4f6f8;
+    --redw:#fbf3f0; --greenw:#f0f6f2; --grey:#b9c0c8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#e6eaee;color:var(--ink);
+    font-family:"Noto Sans SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+    font-size:12.4px;line-height:1.72;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums}
+  .sheet{width:210mm;min-height:297mm;margin:0 auto 22px;background:#fff;
+    padding:14mm 15mm 11mm;box-shadow:0 1px 3px rgba(20,30,45,.08),0 12px 30px rgba(20,30,45,.09);
+    display:flex;flex-direction:column;position:relative}
+  .sheet:first-child{margin-top:22px}
+
+  .ph{display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:15px;
+    font-size:10.3px;color:var(--muted);letter-spacing:.06em}
+  .ph b{color:var(--navy);font-weight:600;letter-spacing:.1em}
+
+  .sec{font-size:10.4px;font-weight:600;letter-spacing:.2em;color:var(--gold);margin-bottom:7px}
+  h1.tt{font-size:23px;line-height:1.38;margin:0 0 9px;font-weight:600;letter-spacing:-.2px}
+  .dk{margin:0 0 15px;padding-left:11px;border-left:2px solid var(--gold);
+      font-size:11.8px;color:var(--muted);line-height:1.68}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .kpi{padding:13px 12px 12px;border-right:1px solid var(--line)}
+  .kpi:last-child{border-right:0}
+  .kpi .v{font-size:21px;font-weight:600;line-height:1.2;letter-spacing:-.3px}
+  .kpi.bad .v{color:var(--red)}
+  .kpi .u{font-size:11px;font-weight:500;margin-left:1px;letter-spacing:0}
+  .kpi .l{font-size:10.6px;color:var(--muted);margin-top:5px;line-height:1.55}
+
+  .bluf{background:var(--navy);color:#fff;padding:15px 18px;margin:15px 0 0}
+  .bluf .lab{font-size:10px;letter-spacing:.2em;opacity:.72;margin-bottom:6px}
+  .bluf .tx{font-size:14.2px;line-height:1.62;font-weight:500}
+  .bluf .tx em{font-style:normal;color:#f0c76a;font-weight:600}
+
+  .finds{margin-top:15px;border-top:1px solid var(--line)}
+  .find{display:grid;grid-template-columns:52px 1fr;gap:13px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .find .fk{font-size:10.6px;font-weight:600;color:var(--gold);letter-spacing:.16em;padding-top:2px}
+  .find p{margin:0;font-size:12.3px;line-height:1.68}
+  .find b{font-weight:600}
+
+  .ask{background:var(--wash);border-left:3px solid var(--navy);padding:12px 15px;margin-top:14px}
+  .ask .t{font-size:11.4px;font-weight:600;color:var(--navy);margin-bottom:7px;letter-spacing:.04em}
+  .ask ol{margin:0;padding-left:17px}
+  .ask li{font-size:11.8px;line-height:1.66;margin-bottom:5px}
+  .ask li:last-child{margin-bottom:0}
+  .ask b{font-weight:600;color:var(--navy)}
+
+  .agenda{margin-top:15px;padding-top:11px;border-top:1px solid var(--line)}
+  .agenda .at{font-size:10.3px;letter-spacing:.16em;color:var(--gold);font-weight:600;margin-bottom:7px}
+  .ag{display:grid;grid-template-columns:1fr 1fr;gap:5px 20px}
+  .ag div{font-size:10.6px;line-height:1.5;color:var(--muted)}
+  .ag div.w{grid-column:1/-1}
+  .ag b{color:var(--gold);font-weight:600;margin-right:6px;font-size:11px}
+  .ag s{text-decoration:none;color:var(--ink);font-weight:600;margin-right:5px}
+
+  .ex{font-size:11.6px;font-weight:600;margin:13px 0 6px;color:var(--ink)}
+  .ex span{color:var(--muted);font-weight:400;font-size:10.6px}
+
+  .hw{margin-top:auto;padding-top:9px;border-top:1px dashed var(--line);
+      font-size:9.9px;color:var(--muted);line-height:1.68}
+  .hw b{color:var(--ink);font-weight:600}
+
+  .lg{display:flex;gap:18px;font-size:10.4px;color:var(--muted);margin:0 0 4px;flex-wrap:wrap}
+  .lg i{display:inline-block;width:9px;height:9px;margin-right:5px;vertical-align:middle}
+  .cap{font-size:10.3px;color:var(--muted);margin:6px 0 0;line-height:1.62}
+  .cap b{color:var(--ink)}
+
+  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:13px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:12px}
+  .card{background:var(--wash);padding:11px 13px}
+  .card.hi{background:var(--greenw)}
+  .card.lo{background:var(--redw)}
+  .card .t{font-size:10.4px;color:var(--muted);margin-bottom:4px;letter-spacing:.04em}
+  .card .big{font-size:15.5px;font-weight:600;line-height:1.42}
+  .three .card .big{font-size:13.2px}
+  .card .d{font-size:10.9px;color:#2c333c;margin-top:4px;line-height:1.6}
+
+  .strip{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:12px}
+  .strip div{padding:8px 12px;border-right:1px solid var(--line)}
+  .strip div:last-child{border-right:0}
+  .strip .k{display:block;font-size:10.2px;color:var(--muted);margin-bottom:2px}
+  .strip .v{font-size:13.2px;font-weight:600;font-variant-numeric:tabular-nums}
+
+  .acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .act{border:1px solid var(--line);padding:11px 13px}
+  .act .h{font-size:12.1px;font-weight:600;margin-bottom:5px;line-height:1.45}
+  .act .h span{display:inline-block;width:16px;height:16px;background:var(--navy);color:#fff;
+      font-size:9.6px;line-height:16px;text-align:center;margin-right:6px;font-weight:600;vertical-align:1px}
+  .act p{margin:0;font-size:10.9px;color:#2c333c;line-height:1.6}
+  .act .k{margin-top:6px;padding-top:5px;border-top:1px dashed var(--line);font-size:10.4px;color:var(--navy)}
+  .act .k b{font-weight:600}
+
+  .risks{margin-top:8px}
+  .risk{padding:11px 0;border-bottom:1px solid var(--line)}
+  .risk:first-child{border-top:1px solid var(--line)}
+  .risk .h{font-size:11.9px;font-weight:600;margin-bottom:4px;color:var(--navy)}
+  .risk .h s{text-decoration:none;color:var(--gold);margin-right:6px}
+  .risk p{margin:0;font-size:11.4px;line-height:1.68}
+
+  table{width:100%;border-collapse:collapse;font-size:10.9px;margin:6px 0 0}
+  th{text-align:left;font-weight:600;color:var(--navy);border-bottom:1px solid var(--navy);
+     padding:5px 6px 4px;font-size:10.2px;letter-spacing:.03em;background:#fff}
+  td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.56}
+  td.n{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  th.n{text-align:right}
+  tr:last-child td{border-bottom:0}
+  table.tb td{padding:4px 6px;font-size:10.3px}
+  table.tb th{padding:4px 6px;font-size:9.9px}
+  table.tight td{padding:2.6px 6px}
+  .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:1px}
+  .g-lo{background:#ae4128}.g-mid{background:#9aa4b0}.g-hi{background:#2c6349}
+  .neg{color:var(--red)}.pos{color:var(--green)}
+
+  @media print{
+    @page{size:A4;margin:0}
+    body{background:#fff}
+    .sheet{width:auto;min-height:288mm;margin:0;box-shadow:none;page-break-after:always;padding:13mm 14mm 9mm}
+    .sheet:last-child{page-break-after:auto}
+    h1.tt,.sec{break-after:avoid}
+    .kpi,.card,.act,.bluf,.ask,figure,table,.risk,.strip{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= 第 1 页 · 结论 ================= -->
+<div class="sheet" id="p1">
+  <div class="ph"><span><b>经营数据诊断</b>　2026-10-19</span><span>第 1 页 / 共 9 页</span></div>
+
+  <div class="sec">一 · 结论</div>
+  <h1 class="tt">近 18 天成交 49.0 万元、退款 10.2 万元；<br>广告回报 2.81 倍低于回本线，瓶颈不在客流，在分配</h1>
+  <p class="dk">数据区间 2026-10-01 至 10-18，18 天日期齐全　·　日报表 13 家店，12 家进入分析　·　9,872 行自动采集记录</p>
+
+  <div class="kpis">
+    <div class="kpi">
+      <div class="v num">49.0<span class="u">万元</span></div>
+      <div class="l">近 18 天销售额（行业里称 GMV，即顾客实付金额），12 家店合计</div>
+    </div>
+    <div class="kpi bad">
+      <div class="v num">2.81<span class="u">倍</span></div>
+      <div class="l">每 1 元广告费换回的销售额；毛利率低于 35.6% 即亏损，扣退款后回本线升到 44.8%</div>
+    </div>
+    <div class="kpi bad">
+      <div class="v num">20.8<span class="u">%</span></div>
+      <div class="l">退款金额占销售额的比例，18 天退回 10.2 万元</div>
+    </div>
+    <div class="kpi bad">
+      <div class="v num">62.2<span class="u">%</span></div>
+      <div class="l">79 个低效商品占用的推广费比例，仅换回 1.9% 的推广成交</div>
+    </div>
+  </div>
+
+  <div class="bluf">
+    <div class="lab">结论</div>
+    <div class="tx">不是客人不够，是客人和广告费都投在了接不住的地方。<em>把存量重新分配，不需要新增一分钱预算。</em></div>
+  </div>
+
+  <div class="finds">
+    <div class="find">
+      <div class="fk">人</div>
+      <p><b>72.7% 的客人进了 4 家最不会成交的店</b>，这 4 家的成交率只有 12 家店平均的 22%–40%；而成交率是平均 3.85–6.96 倍的另外 4 家，只分到 9.9% 的客人。同一批流量，两组的成交率平均差 15 倍以上。</p>
+    </div>
+    <div class="find">
+      <div class="fk">货</div>
+      <p><b>5.3% 的商品做出 80.5% 的销售额</b>，425 个长尾商品分走 53.5% 的客人、只做出 4.7% 的销售额；468 个商品里，<b>18 天卖出过东西的只有 92 个</b>。</p>
+    </div>
+    <div class="find">
+      <div class="fk">钱</div>
+      <p><b>62.2% 的推广费投在 79 个低效商品上，每 1 元只换回 0.10 元</b>；13 个高效商品每 1 元换回 9.12 元，却只拿到 32.4% 的推广费。钱和效果是反着分的。</p>
+    </div>
+  </div>
+
+  <div class="ask">
+    <div class="t">需要你决定的两件事</div>
+    <ol>
+      <li><b>我们的毛利率是多少。</b>回本线由它决定：毛利率 25% 需换回 4.00 倍、30% 需 3.33 倍、40% 需 2.50 倍。现在的 2.81 倍，只有毛利率高于 35.6% 时才不亏；把 20.8% 的退款算进去，实际只有 2.23 倍，要 44.8% 的毛利率才打平——这个数只有你能给，第 7 页按四种毛利率把结论都算好了。</li>
+      <li><b>是否同意用一半低效商品的推广费做两周试验。</b>约每月 1.4 万元，从低效商品挪到高效商品，总预算不变，随时可回退。</li>
+    </ol>
+  </div>
+
+  <div class="agenda">
+    <div class="at">九页的结构</div>
+    <div class="ag">
+      <div><b>一</b><s>结论</s>现状、三条依据、两个待定</div>
+      <div><b>二</b><s>客人在哪家店</s>72.7% 的客人只换来 30.5%</div>
+      <div><b>三</b><s>商品怎么排</s>5.3% 的商品做出 80.5%</div>
+      <div><b>四</b><s>客人在哪一步走掉</s>洗手盆加购率只有浴缸的四分之一</div>
+      <div><b>五</b><s>钱花在哪</s>62.2% 的推广费投在低效商品</div>
+      <div><b>六</b><s>做什么</s>四个动作、五个验收数字</div>
+      <div><b>七</b><s>前提与风险</s>毛利率、退款、数据边界</div>
+      <div><b>八</b><s>数据底账</s>18 天全不全、12 家店是不是齐的</div>
+      <div class="w"><b>九</b><s>口径与方法</s>名词解释、分析方法、哪些数字是算出来的</div>
+    </div>
+  </div>
+
+  <div class="hw"><b>读数说明</b>　每页标题就是该页结论，按"先结论、后证据"排列；第 7 页写明结论成立的前提，第 8 页是数据底账（每个数字从哪张表来、缺了哪天、有没有重复），第 9 页是可复核的口径。</div>
+</div>
+
+<!-- ================= 第 2 页 · 店铺 ================= -->
+<div class="sheet" id="p2">
+  <div class="ph"><span><b>经营数据诊断</b>　2026-10-19</span><span>第 2 页 / 共 9 页</span></div>
+
+  <div class="sec">二 · 客人在哪家店</div>
+  <h1 class="tt">72.7% 的客人只换来 30.5% 的销售额</h1>
+  <p class="dk">12 家店，近 18 天。柱长是"销售额占比减客人占比"：向右，说明这家店把分到的客人变成了更多钱；向左，说明客人在浪费。</p>
+
+  <div class="lg">
+    <span><i style="background:#1b3557"></i>向右 = 客人被用好了</span>
+    <span><i style="background:#ae4128"></i>向左 = 客人在浪费</span>
+    <span>柱长 = 销售额占比 − 客人占比，单位是百分点</span>
+  </div>
+
+  <svg viewBox="0 0 800 386" width="100%" role="img" aria-label="各店铺销售额占比与客人占比之差">
+    <g stroke="#eef1f4" stroke-dasharray="3 4">
+      <line x1="220" y1="30" x2="220" y2="352"/><line x1="330" y1="30" x2="330" y2="352"/>
+      <line x1="440" y1="30" x2="440" y2="352"/><line x1="550" y1="30" x2="550" y2="352"/>
+      <line x1="660" y1="30" x2="660" y2="352"/>
+    </g>
+    <line x1="440" y1="30" x2="440" y2="360" stroke="#8f99a5" stroke-width="1.2"/>
+
+    <g font-size="11.4" fill="#2c333c" text-anchor="end">
+      <text x="142" y="58">盖文旗舰店</text>
+      <text x="142" y="84">科塔建材卫浴</text>
+      <text x="142" y="110">网林家居旗舰店</text>
+      <text x="142" y="136">安比全卫定制</text>
+      <text x="142" y="162">保拉伦蒂旗舰店</text>
+      <text x="142" y="188">里可林旗舰店</text>
+      <text x="142" y="214">里可林家居</text>
+      <text x="142" y="240">安比定制家居</text>
+      <text x="142" y="266">科塔全卫定制</text>
+      <text x="142" y="292">网林全卫定制</text>
+      <text x="142" y="318">Paola Lenti保拉伦蒂</text>
+      <text x="142" y="344">盖文全卫定制</text>
+    </g>
+
+    <g fill="#1b3557">
+      <rect x="440" y="47" width="235.4" height="14"/>
+      <rect x="440" y="73" width="69.3" height="14"/>
+      <rect x="440" y="99" width="57.2" height="14"/>
+      <rect x="440" y="125" width="47.3" height="14"/>
+      <rect x="440" y="151" width="45.1" height="14"/>
+      <rect x="440" y="177" width="20.9" height="14"/>
+      <rect x="440" y="203" width="17.6" height="14"/>
+    </g>
+    <g fill="#ae4128">
+      <rect x="411.4" y="229" width="28.6" height="14"/>
+      <rect x="380.6" y="255" width="59.4" height="14"/>
+      <rect x="344.3" y="281" width="95.7" height="14"/>
+      <rect x="326.7" y="307" width="113.3" height="14"/>
+      <rect x="244.2" y="333" width="195.8" height="14"/>
+    </g>
+
+    <g font-size="11" fill="#1b3557">
+      <text x="683" y="58">+21.4</text>
+      <text x="517" y="84">+6.3</text>
+      <text x="505" y="110">+5.2</text>
+      <text x="495" y="136">+4.3</text>
+      <text x="493" y="162">+4.1</text>
+      <text x="469" y="188">+1.9</text>
+      <text x="466" y="214">+1.6</text>
+    </g>
+    <g font-size="11" fill="#ae4128" text-anchor="end">
+      <text x="236" y="344">−17.8</text>
+      <text x="319" y="318">−10.3</text>
+      <text x="336" y="292">−8.7</text>
+      <text x="373" y="266">−5.4</text>
+      <text x="403" y="240">−2.6</text>
+    </g>
+
+    <g font-size="10" fill="#8f99a5" text-anchor="middle">
+      <text x="220" y="380">−20</text><text x="330" y="380">−10</text><text x="440" y="380">0</text>
+      <text x="550" y="380">+10</text><text x="660" y="380">+20</text>
+    </g>
+  </svg>
+
+  <div class="strip">
+    <div><span class="k">接不住的 4 家</span><span class="v">72.7% → 30.5%</span></div>
+    <div><span class="k">中间的 4 家</span><span class="v">17.4% → 22.4%</span></div>
+    <div><span class="k">会卖的 4 家</span><span class="v">9.9% → 47.1%</span></div>
+  </div>
+
+  <div class="ex" style="margin-top:12px">12 家店的明细 <span>（客人怎么分、销售额怎么来）</span></div>
+  <table class="tb tight">
+    <colgroup><col style="width:27%"><col style="width:10%"><col style="width:12%"><col style="width:13%"><col style="width:10%"><col style="width:16%"><col style="width:12%"></colgroup>
+    <tr><th>店铺</th><th>分组</th><th class="n">客人占比</th><th class="n">销售额占比</th><th class="n">差额</th><th class="n">每千次进店成交</th><th class="n">客单价</th></tr>
+    <tr><td>盖文旗舰店</td><td><i class="dot g-hi"></i>会卖</td><td class="n">4.4%</td><td class="n">25.8%</td><td class="n pos">+21.4</td><td class="n">6.35 单</td><td class="n">3,083</td></tr>
+    <tr><td>科塔建材卫浴</td><td><i class="dot g-hi"></i>会卖</td><td class="n">2.2%</td><td class="n">8.5%</td><td class="n pos">+6.3</td><td class="n">11.47 单</td><td class="n">1,127</td></tr>
+    <tr><td>网林家居旗舰店</td><td><i class="dot g-hi"></i>会卖</td><td class="n">1.3%</td><td class="n">6.5%</td><td class="n pos">+5.2</td><td class="n">8.76 单</td><td class="n">1,863</td></tr>
+    <tr><td>安比全卫定制</td><td><i class="dot g-hi"></i>会卖</td><td class="n">2.0%</td><td class="n">6.3%</td><td class="n pos">+4.3</td><td class="n">9.79 单</td><td class="n">1,104</td></tr>
+    <tr><td>保拉伦蒂旗舰店</td><td><i class="dot g-mid"></i>中间</td><td class="n">3.5%</td><td class="n">7.6%</td><td class="n pos">+4.1</td><td class="n">2.92 单</td><td class="n">2,499</td></tr>
+    <tr><td>里可林旗舰店</td><td><i class="dot g-mid"></i>中间</td><td class="n">1.7%</td><td class="n">3.6%</td><td class="n pos">+1.9</td><td class="n">2.76 单</td><td class="n">2,539</td></tr>
+    <tr><td>里可林家居</td><td><i class="dot g-mid"></i>中间</td><td class="n">3.1%</td><td class="n">4.7%</td><td class="n pos">+1.6</td><td class="n">2.47 单</td><td class="n">2,106</td></tr>
+    <tr><td>安比定制家居</td><td><i class="dot g-mid"></i>中间</td><td class="n">9.1%</td><td class="n">6.5%</td><td class="n neg">−2.6</td><td class="n">1.89 单</td><td class="n">1,280</td></tr>
+    <tr><td>科塔全卫定制</td><td><i class="dot g-lo"></i>接不住</td><td class="n">12.4%</td><td class="n">7.0%</td><td class="n neg">−5.4</td><td class="n">0.66 单</td><td class="n">2,856</td></tr>
+    <tr><td>网林全卫定制</td><td><i class="dot g-lo"></i>接不住</td><td class="n">13.5%</td><td class="n">4.8%</td><td class="n neg">−8.7</td><td class="n">0.66 单</td><td class="n">1,795</td></tr>
+    <tr><td>Paola Lenti保拉伦蒂</td><td><i class="dot g-lo"></i>接不住</td><td class="n">21.8%</td><td class="n">11.5%</td><td class="n neg">−10.3</td><td class="n">0.66 单</td><td class="n">2,694</td></tr>
+    <tr><td>盖文全卫定制</td><td><i class="dot g-lo"></i>接不住</td><td class="n">25.0%</td><td class="n">7.2%</td><td class="n neg">−17.8</td><td class="n">0.36 单</td><td class="n">2,709</td></tr>
+  </table>
+
+  <p class="cap">客单价 1,104–3,083 元，最高最低差 2.8 倍；成交率 0.36‰–11.47‰，相差 32 倍。<b>差距主要在成交，不在定价</b>——所以先修转化，比先调价格更对。</p>
+
+  <div class="hw"><b>口径</b>　客人占比 = 该店 18 天访客数 ÷ 12 家店合计；销售额占比同理；"每千次进店成交"= 支付买家数 ÷ 访客数 × 1,000。访客数按日累加，同一顾客跨天来访会重复计入，只用于店与店横向比较。<b>12 家里有 5 家不是本系统采集的</b>（销售 2 部），其中 2 家各缺 10-17 一天；另有 1 家新店仅 4 天、0 成交未纳入。完整对账见第 8 页。</div>
+</div>
+
+<!-- ================= 第 3 页 · 商品 ================= -->
+<div class="sheet" id="p3">
+  <div class="ph"><span><b>经营数据诊断</b>　2026-10-19</span><span>第 3 页 / 共 9 页</span></div>
+
+  <div class="sec">三 · 商品怎么排</div>
+  <h1 class="tt">5.3% 的商品做出 80.5% 的销售额，<br>425 个长尾商品分走 53.5% 的客人</h1>
+  <p class="dk">468 个商品，18 天（10-01 至 10-18）。按销售额从高到低排队，累计做到 80% 的为主力，80%–95% 为补充，其余为长尾。</p>
+
+  <div class="lg">
+    <span><i style="background:#1b3557"></i>主力 25 个（5.3%）</span>
+    <span><i style="background:#42648f"></i>补充 18 个（3.8%）</span>
+    <span><i style="background:#b9c0c8"></i>长尾 425 个（90.8%）</span>
+  </div>
+
+  <svg viewBox="0 0 800 384" width="100%" role="img" aria-label="商品数量、客人与销售额的三条对比">
+    <g font-size="11.6" fill="#2c333c" text-anchor="end">
+      <text x="138" y="88">商品数</text><text x="138" y="106" font-size="10.2" fill="#8f99a5">468 个</text>
+      <text x="138" y="200">客人</text><text x="138" y="218" font-size="10.2" fill="#8f99a5">107,570 次</text>
+      <text x="138" y="312">销售额</text><text x="138" y="330" font-size="10.2" fill="#8f99a5">28.0 万元</text>
+    </g>
+
+    <rect x="150" y="60" width="32.5" height="64" fill="#1b3557"/>
+    <rect x="182.5" y="60" width="23.4" height="64" fill="#42648f"/>
+    <rect x="205.9" y="60" width="554.1" height="64" fill="#c8ced5"/>
+    <text x="483" y="97" font-size="11.8" fill="#4a525c" text-anchor="middle">90.8% 的商品</text>
+
+    <rect x="150" y="172" width="98.2" height="64" fill="#1b3557"/>
+    <rect x="248.2" y="172" width="185.4" height="64" fill="#42648f"/>
+    <rect x="433.6" y="172" width="326.4" height="64" fill="#c8ced5"/>
+    <text x="199" y="209" font-size="11.4" fill="#fff" text-anchor="middle">16.1%</text>
+    <text x="341" y="209" font-size="11.4" fill="#fff" text-anchor="middle">30.4%</text>
+    <text x="597" y="209" font-size="11.8" fill="#4a525c" text-anchor="middle">53.5% 的客人</text>
+
+    <rect x="150" y="284" width="491.1" height="64" fill="#1b3557"/>
+    <rect x="641.1" y="284" width="89.7" height="64" fill="#42648f"/>
+    <rect x="730.8" y="284" width="28.5" height="64" fill="#c8ced5"/>
+    <text x="396" y="321" font-size="11.8" fill="#fff" text-anchor="middle">80.5% 的销售额</text>
+    <text x="686" y="321" font-size="10.8" fill="#fff" text-anchor="middle">14.7%</text>
+
+    <g stroke="#ffffff" stroke-width="1">
+      <line x1="182.5" y1="60" x2="182.5" y2="124"/><line x1="248.2" y1="172" x2="248.2" y2="236"/>
+      <line x1="641.1" y1="284" x2="641.1" y2="348"/>
+    </g>
+
+    <line x1="150" y1="366" x2="760" y2="366" stroke="#dde2e8"/>
+    <text x="150" y="380" font-size="9.8" fill="#8f99a5">三种颜色在三条里的宽度不同，就是资源错配的全部内容</text>
+  </svg>
+
+  <div class="three">
+    <div class="card hi">
+      <div class="t">主力商品 25 个（5.3%）</div>
+      <div class="big num">16.1% 客人 → 80.5% 销售额</div>
+      <div class="d">缺货、断推广位都会直接掉销售额。</div>
+    </div>
+    <div class="card">
+      <div class="t">补充商品 18 个（3.8%）</div>
+      <div class="big num">30.4% 客人 → 14.7% 销售额</div>
+      <div class="d">每 2 个客人才换 1 份销售，性价比偏低。</div>
+    </div>
+    <div class="card lo">
+      <div class="t">长尾商品 425 个（90.8%）</div>
+      <div class="big num">53.5% 客人 → 4.7% 销售额</div>
+      <div class="d">其中 376 个这 18 天一笔没成交。</div>
+    </div>
+  </div>
+
+  <div class="ex" style="margin-top:12px">425 个长尾商品是谁 <span>（不是没货，是这些货没被运营起来）</span></div>
+  <table class="tb">
+    <colgroup><col style="width:22%"><col style="width:14%"><col style="width:13%"><col style="width:17%"><col style="width:17%"><col style="width:17%"></colgroup>
+    <tr><th>长尾里的品类</th><th class="n">商品数</th><th class="n">占长尾</th><th class="n">18 天进店</th><th class="n">18 天销售额</th><th class="n">零成交</th></tr>
+    <tr><td>洗手盆类</td><td class="n">181 个</td><td class="n">42.6%</td><td class="n">46,159</td><td class="n">1,714 元</td><td class="n">173 个</td></tr>
+    <tr><td>浴缸类</td><td class="n">218 个</td><td class="n">51.3%</td><td class="n">11,276</td><td class="n">9,432 元</td><td class="n">182 个</td></tr>
+    <tr><td>其他</td><td class="n">26 个</td><td class="n">6.1%</td><td class="n">137</td><td class="n">2,166 元</td><td class="n">21 个</td></tr>
+  </table>
+
+  <p class="cap">长尾里一半是浴缸（218 个）——<b>不是没有好货，是这些货没被运营起来</b>。反差最大的是洗手盆：181 个长尾链接分走 <b>46,159 次进店（占全部客人的 42.9%）</b>，18 天只做出 1,714 元，平均每次进店 0.04 元。</p>
+
+  <p class="cap">468 个商品里，<b>18 天真正卖出过东西的只有 92 个（19.7%）</b>，其余 376 个一件没卖。行业里把这种分布叫二八法则（帕累托分析）：通常 20% 的商品做出 80% 的销售额；我们的比例更极端，5.3% 就做出了 80.5%。销售额前三的商品合计占 22.6%（第 3 名 18,780 元）。</p>
+
+  <div class="hw"><b>口径</b>　一个商品链接算一个商品（表里 468 个商品ID，同名不同链接分开计）。商品明细 18 天合计 28.0 万元，<b>相当于本系统在采的 8 家店同 18 天销售额 29.2 万元的 96.1%</b>，剩下 3.9% 是无法归到单品的成交（顾客直接进店成交、跨商品下单等）。它只占 12 家店同 18 天 49.0 万元的 57.2%，差额来自不在采集范围的另外 5 家店——<b>是范围问题，不是数据缺失</b>。商品表没有店铺字段，本页是这 8 家店合在一起的分布，不能拆到单店。部分商品在商品表记 0 成交、在广告后台却有成交（链接拆分所致），下不下线要先核对链接。</div>
+</div>
+
+<!-- ================= 第 4 页 · 品类与流失 ================= -->
+<div class="sheet" id="p4">
+  <div class="ph"><span><b>经营数据诊断</b>　2026-10-19</span><span>第 4 页 / 共 9 页</span></div>
+
+  <div class="sec">四 · 客人在哪一步走掉</div>
+  <h1 class="tt">81.0% 的客人被引向洗手盆，<br>这个品类每 100 个客人只有 1.3 个加购物车</h1>
+  <p class="dk">18 天，107,570 次进店 → 2,237 次加购（2.08%）→ 173 笔成交（0.16%）。流失发生在商品页，不在付款页。</p>
+
+  <svg viewBox="0 0 800 314" width="100%" role="img" aria-label="进店到成交的流失过程">
+    <g font-size="11.6" fill="#2c333c" text-anchor="end">
+      <text x="128" y="60">进店</text>
+      <text x="128" y="152">加购物车</text>
+      <text x="128" y="244">成交</text>
+    </g>
+    <rect x="140" y="26" width="620" height="52" fill="#1b3557"/>
+    <text x="156" y="58" font-size="12.6" fill="#fff">107,570 次进店</text>
+
+    <rect x="140" y="118" width="89.4" height="52" fill="#42648f"/>
+    <text x="243" y="150" font-size="12.4" fill="#2c333c">2,237 次加购　<tspan fill="#ae4128" font-weight="600">保留 2.08%</tspan></text>
+
+    <rect x="140" y="210" width="24.9" height="52" fill="#ae4128"/>
+    <text x="179" y="242" font-size="12.4" fill="#2c333c">173 笔成交　<tspan fill="#ae4128" font-weight="600">保留 7.73%</tspan></text>
+
+    <g font-size="10.8" fill="#8f99a5">
+      <text x="140" y="98">这一段少了 105,333 次（97.9%）</text>
+      <text x="140" y="190">这一段少了 2,064 人（92.3%）</text>
+      <text x="760" y="302" text-anchor="end">条长按平方根缩放，比例以数字为准</text>
+    </g>
+  </svg>
+
+  <p class="cap" style="margin-top:10px">换成更好记的说法：<b>每 1,000 次进店，只有 20.8 人把商品放进购物车，最后成交 1.6 笔。</b>98% 的客人在"进店到加购"这一段就离开了；一旦加进购物车，7.7% 会成交——付款环节没有堵点。</p>
+
+  <div class="two">
+    <div class="card lo">
+      <div class="t">洗手盆类 208 个商品</div>
+      <div class="big num">81.0% 的客人 → 33.1% 的销售额</div>
+      <div class="d">加购率 1.30%（每 100 个客人 1.3 个加购）<br>每次进店平均带来 1.07 元</div>
+    </div>
+    <div class="card hi">
+      <div class="t">浴缸类 239 个商品</div>
+      <div class="big num">18.9% 的客人 → 65.3% 的销售额</div>
+      <div class="d">加购率 5.40%（每 100 个客人 5.4 个加购）<br>每次进店平均带来 8.99 元，是洗手盆的 8.4 倍</div>
+    </div>
+  </div>
+
+  <div class="ex" style="margin-top:12px">两类商品放在一起比 <span>（同一平台、同一批流量、同一批客服）</span></div>
+  <table class="tb">
+    <colgroup><col style="width:20%"><col style="width:13%"><col style="width:14%"><col style="width:14%"><col style="width:15%"><col style="width:11%"><col style="width:13%"></colgroup>
+    <tr><th>品类</th><th class="n">客人占比</th><th class="n">销售额占比</th><th class="n">每百人加购</th><th class="n">每千次成交</th><th class="n">客单价</th><th class="n">每次进店带来</th></tr>
+    <tr><td>洗手盆类（208 个）</td><td class="n">81.0%</td><td class="n">33.1%</td><td class="n">1.30 人</td><td class="n">0.62 单</td><td class="n">1,719 元</td><td class="n">1.07 元</td></tr>
+    <tr><td>浴缸类（239 个）</td><td class="n">18.9%</td><td class="n">65.3%</td><td class="n">5.40 人</td><td class="n">5.06 单</td><td class="n">1,777 元</td><td class="n">8.99 元</td></tr>
+  </table>
+
+  <p class="cap">两类商品的客单价几乎一样（1,719 元 对 1,777 元），每千次进店的成交却差 8.2 倍。<b>"洗手盆便宜所以随便看看"解释不了这个差距</b>，差别只能来自商品页本身：主图、价格带、评价、详情。</p>
+
+  <div class="ask" style="margin-top:12px">
+    <div class="t">把洗手盆的加购率修到 2.0%，会发生什么</div>
+    <ol>
+      <li>洗手盆类 18 天有 87,090 次进店、1,130 次加购、54 笔成交、9.28 万元销售额。</li>
+      <li>加购率从 1.30% 提到 2.0%，同样这批客人会多做约 <b>612 次加购</b>；按当前"加购到成交"的比例折算，<b>多约 29 笔成交、约 5.0 万元销售额</b>。</li>
+      <li>不需要买新流量，只需要改商品页。两周能改完前 20 个，第 4 周复测加购率。</li>
+    </ol>
+  </div>
+
+  <div class="hw"><b>口径</b>　漏斗三步分别取商品明细表的商品访客数、商品加购人数、支付买家数；"保留"= 后一步人数 ÷ 前一步人数。品类按商品标题关键词划分：洗手盆类含洗手盆、洗脸盆、台盆、洗漱盆、立柱盆、面盆；浴缸类含浴缸、浴盆、浴池。两类合计 447 个商品，占 468 个的 95.5%。测算用类目自身数据（不是全店平均），属静态折算，实际会有折损。</div>
+</div>
+
+<!-- ================= 第 5 页 · 广告费 ================= -->
+<div class="sheet" id="p5">
+  <div class="ph"><span><b>经营数据诊断</b>　2026-10-19</span><span>第 5 页 / 共 9 页</span></div>
+
+  <div class="sec">五 · 钱花在哪</div>
+  <h1 class="tt">62.2% 的推广费花在 79 个低效商品上，只换回 1.9% 的推广成交</h1>
+  <p class="dk">18 天能对到具体商品的推广费 2.76 万元，覆盖 97 个在投商品。按"卖得多不多"和"每 1 元换回多少"分成三类。</p>
+
+  <div class="lg">
+    <span><i style="background:#1b3557"></i>高效商品 13 个</span>
+    <span><i style="background:#42648f"></i>待观察 5 个</span>
+    <span><i style="background:#ae4128"></i>低效商品 79 个</span>
+  </div>
+
+  <svg viewBox="0 0 800 250" width="100%" role="img" aria-label="推广费与推广成交的分配对比">
+    <g font-size="11.6" fill="#2c333c" text-anchor="end">
+      <text x="148" y="76">推广费</text><text x="148" y="94" font-size="10.2" fill="#8f99a5">2.76 万元</text>
+      <text x="148" y="176">推广成交</text><text x="148" y="194" font-size="10.2" fill="#8f99a5">8.88 万元</text>
+    </g>
+
+    <rect x="160" y="56" width="191.2" height="44" fill="#1b3557"/>
+    <rect x="351.2" y="56" width="31.9" height="44" fill="#42648f"/>
+    <rect x="383.1" y="56" width="367.0" height="44" fill="#ae4128"/>
+    <text x="256" y="84" font-size="11.8" fill="#fff" text-anchor="middle">32.4%</text>
+    <text x="566" y="84" font-size="11.8" fill="#fff" text-anchor="middle">62.2%</text>
+    <text x="367" y="50" font-size="10.4" fill="#42648f" text-anchor="middle">5.4%</text>
+
+    <rect x="160" y="156" width="541.0" height="44" fill="#1b3557"/>
+    <rect x="701.0" y="156" width="37.8" height="44" fill="#42648f"/>
+    <rect x="738.8" y="156" width="11.2" height="44" fill="#ae4128"/>
+    <text x="430" y="184" font-size="11.8" fill="#fff" text-anchor="middle">91.7%</text>
+
+    <g stroke="#ffffff" stroke-width="1">
+      <line x1="351.2" y1="56" x2="351.2" y2="100"/><line x1="701.0" y1="156" x2="701.0" y2="200"/>
+    </g>
+
+    <g font-size="10.4" fill="#8f99a5">
+      <text x="160" y="128">上面一条是钱怎么分</text>
+      <text x="160" y="228">下面一条是成交怎么来：末端 8.3% 来自 84 个商品（79 个低效 + 5 个待观察）</text>
+    </g>
+  </svg>
+
+  <div class="three">
+    <div class="card hi">
+      <div class="t">高效商品 13 个</div>
+      <div class="big num">每 1 元换回 9.12 元</div>
+      <div class="d">花 0.89 万元，换回 8.14 万元。回报最高三个：科塔半嵌入挂墙洗手盆 80.12 元、网林一体挂墙洗脸盆 54.77 元、盖文人造绮美石浴缸 27.23 元。</div>
+    </div>
+    <div class="card">
+      <div class="t">待观察 5 个</div>
+      <div class="big num">每 1 元换回 3.83 元</div>
+      <div class="d">花 0.15 万元，换回 0.57 万元。卖得还不多，但回报健康，逐步加量测试。</div>
+    </div>
+    <div class="card lo">
+      <div class="t">低效商品 79 个</div>
+      <div class="big num">每 1 元换回 0.10 元</div>
+      <div class="d">花 1.72 万元，换回 0.17 万元，其中 72 个一单没成。</div>
+    </div>
+  </div>
+
+  <div class="ex" style="margin-top:12px">停投先从这里下手 <span>（79 个低效里花费最高的 5 个，占低效推广费 25.6%）</span></div>
+  <table class="tb">
+    <colgroup><col style="width:46%"><col style="width:18%"><col style="width:18%"><col style="width:18%"></colgroup>
+    <tr><th>商品</th><th class="n">18 天花费</th><th class="n">换回成交</th><th class="n">每 1 元换回</th></tr>
+    <tr><td>Nicoline 洞石浴缸（艺术款）</td><td class="n">1,179 元</td><td class="n">0 元</td><td class="n">0.00 元</td></tr>
+    <tr><td>网林窄边洗脸盆（挂墙储物）</td><td class="n">959 元</td><td class="n">300 元</td><td class="n">0.31 元</td></tr>
+    <tr><td>Gavin 小户型浴缸（深泡）</td><td class="n">892 元</td><td class="n">300 元</td><td class="n">0.34 元</td></tr>
+    <tr><td>Nicoline 哑光粉色浴缸（双人）</td><td class="n">692 元</td><td class="n">0 元</td><td class="n">0.00 元</td></tr>
+    <tr><td>盖文水立方艺术浴缸</td><td class="n">664 元</td><td class="n">50 元</td><td class="n">0.08 元</td></tr>
+  </table>
+
+  <div class="ask" style="margin-top:12px">
+    <div class="t">把这笔钱挪一半，会发生什么</div>
+    <ol>
+      <li>把低效商品的推广费砍一半，<b>8,580 元/18 天（约每月 1.4 万元）</b>，挪给 13 个高效商品。</li>
+      <li>按这 18 天的历史回报静态折算：低效端少约 860 元成交，高效端多约 7.8 万元成交，<b>净增约 7.74 万元</b>，相当于这 18 天商品层销售额的 27.6%。</li>
+      <li>这是静态推算，不是预测。前提是高效商品的库存和页面还能承接多出来的流量；接不住会打折，但把每 1 元只换回 0.10 元的钱挪走，这一步本身不会亏。</li>
+    </ol>
+  </div>
+
+  <div class="hw"><b>口径</b>　分类界线：横线取有成交商品的中位数 2,500 元，竖线取"每 1 元换回 1 元"。零成交商品一律归入低效（花了钱没成交）。97 个在投商品里没有"卖得多但亏钱"的一类，说明问题不在定价，在投放分配。<b>本页只覆盖能对到具体商品的推广费 2.76 万元，相当于本系统在采 8 家店同 18 天广告花费 2.79 万元的 98.9%</b>；剩下 1.1% 是店铺层面推广，现有数据未拆到单品。销售 2 部的 5 家店不在采集范围，本页不含。</div>
+</div>
+
+<!-- ================= 第 6 页 · 动作 ================= -->
+<div class="sheet" id="p6">
+  <div class="ph"><span><b>经营数据诊断</b>　2026-10-19</span><span>第 6 页 / 共 9 页</span></div>
+
+  <div class="sec">六 · 做什么</div>
+  <h1 class="tt">四个动作都不加预算，两周后用五个数字验收</h1>
+  <p class="dk">前五页说明钱和客人放错了位置，这一页说怎么挪。每个动作给出负责人角色、起始时间和要看的那个数。</p>
+
+  <div class="acts">
+    <div class="act">
+      <div class="h"><span>1</span>把推广费从低效商品挪给高效商品</div>
+      <p>79 个低效商品的预算先砍一半，加给 13 个高效商品；每周看一次两端回报，连续两周低于 1 元的直接停投。</p>
+      <div class="k"><b>运营</b>　本周开始　·　看：低效商品推广费占比 62.2% → 35% 以内</div>
+    </div>
+    <div class="act">
+      <div class="h"><span>2</span>清理 425 个长尾商品</div>
+      <p>376 个零成交商品分批下线或合并为多规格链接；25 个主力商品单独保库存、保推广位，不再和长尾抢流量。</p>
+      <div class="k"><b>运营</b>　一个月内分批　·　看：长尾商品占用客人 53.5% → 40% 以内</div>
+    </div>
+    <div class="act">
+      <div class="h"><span>3</span>重做客人最多的 20 个洗手盆商品页</div>
+      <p>按客人量排序取前 20 个，逐个查主图、价格带、评价数量、详情页卖点，找出加购率只有 1.30% 的原因再改。</p>
+      <div class="k"><b>运营 + 设计</b>　两周内出第一版　·　看：加购率 1.30% → 2.0% 以上</div>
+    </div>
+    <div class="act">
+      <div class="h"><span>4</span>按成交能力重新分配客人</div>
+      <p>接不住的 4 家先修转化（商品页、客服响应速度、询单承接）；会卖的 4 家加流量入口和推广位，让它们多接客。</p>
+      <div class="k"><b>运营</b>　一个月内　·　看：接不住的 4 家每千次进店成交 0.56 → 0.7 单</div>
+    </div>
+  </div>
+
+  <div class="ex" style="margin-top:13px">四周排期 <span>（第 2 周与第 4 周各复测一次）</span></div>
+  <svg viewBox="0 0 800 176" width="100%" role="img" aria-label="四个动作的四周排期">
+    <g font-size="10.4" fill="#8f99a5" text-anchor="middle">
+      <text x="312" y="16">第 1 周</text><text x="437" y="16">第 2 周</text>
+      <text x="562" y="16">第 3 周</text><text x="687" y="16">第 4 周</text>
+    </g>
+    <g stroke="#eef1f4">
+      <line x1="375" y1="24" x2="375" y2="152"/><line x1="500" y1="24" x2="500" y2="152"/>
+      <line x1="625" y1="24" x2="625" y2="152"/><line x1="750" y1="24" x2="750" y2="152"/>
+    </g>
+    <g font-size="11" fill="#2c333c" text-anchor="end">
+      <text x="240" y="46">① 推广费重分配</text>
+      <text x="240" y="80">② 清理长尾商品</text>
+      <text x="240" y="114">③ 重做洗手盆商品页</text>
+      <text x="240" y="148">④ 客人重新分配</text>
+    </g>
+    <rect x="250" y="34" width="500" height="16" fill="#1b3557"/>
+    <rect x="250" y="68" width="500" height="16" fill="#42648f"/>
+    <rect x="250" y="102" width="250" height="16" fill="#a97b28"/>
+    <rect x="375" y="136" width="375" height="16" fill="#2c6349"/>
+    <g fill="#ae4128">
+      <circle cx="500" cy="24" r="3.4"/><circle cx="750" cy="24" r="3.4"/>
+    </g>
+    <text x="500" y="170" font-size="9.8" fill="#ae4128" text-anchor="middle">复测</text>
+    <text x="750" y="170" font-size="9.8" fill="#ae4128" text-anchor="middle">复测</text>
+  </svg>
+
+  <div class="ex" style="margin-top:10px">两周后拿这五个数字验收 <span>（同口径复算，不改统计方法）</span></div>
+  <table>
+    <colgroup><col style="width:31%"><col style="width:17%"><col style="width:20%"><col></colgroup>
+    <tr><th>数字</th><th class="n">现在</th><th class="n">两周后目标</th><th>说明</th></tr>
+    <tr><td>近 18 天销售额</td><td class="n">49.0 万元</td><td class="n">不低于 49 万元</td><td>先不跌，再谈涨</td></tr>
+    <tr><td>每 1 元广告费换回</td><td class="n">2.81 元</td><td class="n">3.2 元以上</td><td>毛利率若低于 30%，目标要相应上调</td></tr>
+    <tr><td>低效商品推广费占比</td><td class="n">62.2%</td><td class="n">≤ 35%</td><td>这是唯一由我们完全控制的数字</td></tr>
+    <tr><td>洗手盆加购率</td><td class="n">1.30%</td><td class="n">≥ 2.0%</td><td>只改商品页、不投新流量</td></tr>
+    <tr><td>长尾商品占用客人</td><td class="n">53.5%</td><td class="n">≤ 40%</td><td>反映商品结构调整是否落地</td></tr>
+  </table>
+
+  <p class="cap">判定规则（建议，阈值可再定）：五个数字里三个以上改善、且销售额没有下降，就继续加码；改善不到两个，说明方向不对，换下一条。两周复测一次，不用等一个月才知道有没有用。</p>
+
+  <div class="hw"><b>为什么是这四个</b>　前五页的证据指向同一个结论：现有客人和预算的分配效率有 3–8 倍的差距。四个动作分别对应客人（④）、商品（②）、商品页（③）、预算（①），互不重叠，且都不需要新增预算。若毛利率显著高于 35.6%（见第 7 页），第①步应改为"加大高效商品的投放"而不是"砍低效"，顺序会变。</div>
+</div>
+
+<!-- ================= 第 7 页 · 前提与风险 ================= -->
+<div class="sheet" id="p7">
+  <div class="ph"><span><b>经营数据诊断</b>　2026-10-19</span><span>第 7 页 / 共 9 页</span></div>
+
+  <div class="sec">七 · 前提与风险</div>
+  <h1 class="tt">结论成立要三个前提，第一个只有你能给：我们的毛利率</h1>
+  <p class="dk">这一页写清楚这份分析在什么情况下不成立，避免拿错的结论去做决策。</p>
+
+  <div class="risks">
+    <div class="risk">
+      <div class="h"><s>01</s>毛利率决定"广告到底赚不赚钱"，退款率会把它推得更高</div>
+      <p>18 天广告共花 <b>4.0 万元</b>，带回 <b>11.3 万元</b>成交，也就是每 1 元换回 2.81 元。只有当毛利率高于 35.6%（1 ÷ 2.81）时，这点广告费才不亏。但 18 天里有 20.8% 的成交被退回去了：扣掉退款，每 1 元广告费实际只换回约 2.23 元，回本线升到 44.8%。四种毛利率下结论完全不同，下表已经算好——你只需要给出实际的那个数。</p>
+    </div>
+  </div>
+
+  <table>
+    <colgroup><col style="width:12%"><col style="width:16%"><col style="width:30%"><col></colgroup>
+    <tr><th>毛利率</th><th>回本线</th><th>现在 2.81 倍的实际结果</th><th>广告该怎么做</th></tr>
+    <tr><td>25%</td><td>4.00 倍</td><td>每投 1 元亏 0.30 元</td><td>低效投放砍到三成以内，只保高效商品</td></tr>
+    <tr><td>30%</td><td>3.33 倍</td><td>每投 1 元亏 0.16 元</td><td>同第 6 页：先砍一半试两周</td></tr>
+    <tr><td>35%</td><td>2.86 倍</td><td>基本打平（每 1 元亏 0.02 元）</td><td>按第 6 页四个动作执行</td></tr>
+    <tr><td>40%</td><td>2.50 倍</td><td>每投 1 元赚 0.12 元</td><td>反过来：加大高效商品投放，低效只做清理</td></tr>
+  </table>
+  <p class="cap">上表按含退款的成交额算。<b>若按扣退款后的 2.23 倍算，四行结论全部只会更差，不会更好</b>——毛利率 40% 也只是勉强打平。</p>
+
+  <div class="risks" style="margin-top:12px">
+    <div class="risk">
+      <div class="h"><s>02</s>重分配测算假设高效商品还接得住</div>
+      <p>第 5 页"净增 7.74 万元"是静态折算，假设高效商品的库存、页面、客服还能接住多出来的流量。接不住，增量会打折。但把每 1 元只换回 0.10 元的钱挪走这一步，本身不会亏——最坏情况是没效果，不是变差。</p>
+    </div>
+    <div class="risk">
+      <div class="h"><s>03</s>数据边界：五条已知偏差，四条不改变方向</div>
+      <p>商品明细只覆盖本系统在采的 8 家店；访客数按日累加会重复计入；平台成交金额有 T+1 到 T+3 延迟；销售额没有扣退款；没有订单级明细。这五条各自影响多大、会不会翻结论，见下表。此前用单日数据得出的"人群推广该减半"的结论已被推翻，就是延迟这一条造成的。</p>
+    </div>
+  </div>
+
+  <div class="ex" style="margin-top:12px">这些偏差会不会推翻结论 <span>（逐条判断，不含糊）</span></div>
+  <table class="tb">
+    <colgroup><col style="width:27%"><col style="width:36%"><col></colgroup>
+    <tr><th>已知偏差</th><th>对数字的影响</th><th>会不会改变结论</th></tr>
+    <tr><td>商品明细只含在采的 8 家店</td><td>第 3–5 页只说明这 8 家，不能外推到 12 家</td><td>不会：另 5 家的店铺层数据同样显示成交率偏低</td></tr>
+    <tr><td>访客数按日累加</td><td>成交率被低估（分母偏大）</td><td>不会：真实成交率只会更高</td></tr>
+    <tr><td>平台 T+1 至 T+3 延迟</td><td>最近几天数值偏低</td><td>不会：全部结论用多日累计</td></tr>
+    <tr><td>销售额未扣 20.8% 退款</td><td>净销售额 38.8 万元，广告回报降到 2.23 倍</td><td>不会：只会让"广告不赚钱"更确定</td></tr>
+    <tr><td>没有客户明细与订单明细</td><td>看不到老客复购与客户分层</td><td>会：这块结论暂缺，下面单独说明</td></tr>
+  </table>
+
+  <p class="cap">还有一件没做的事：这份报告没有做客户分层分析（行业里叫 RFM——按最近一次购买、购买频率、消费金额给客户分级）。原因是现有数据只有每日汇总，没有客户明细和订单明细，做不出来。在补齐之前，不对"老客复购""会员价值"下任何结论——那需要平台后台的订单级数据，属于下一步可以补的能力。</p>
+
+  <div class="hw"><b>怎么用这一页</b>　汇报时把 01 条当问题直接问：只要拿到毛利率，第 1 页"广告是否亏损"就能从区间判断变成确定判断，第 6 页第①个动作的方向也能定下来（砍低效，还是加高效）。02、03 条是提前把可能的反驳讲清楚，避免会上被问住。</div>
+</div>
+
+<!-- ================= 第 8 页 · 数据底账 ================= -->
+<div class="sheet" id="p8">
+  <style>#p8 .tb td,#p8 .tb th{padding:3px 6px}</style>
+  <div class="ph"><span><b>经营数据诊断</b>　2026-10-19</span><span>第 8 页 / 共 9 页</span></div>
+
+  <div class="sec">八 · 数据底账</div>
+  <h1 class="tt">18 天里有 16 个店×日没数据，都不是本系统丢的；<br>13 家可用 12 家，商品与推广表没有店铺维度</h1>
+  <p class="dk">回答三个问题：数字从哪来、是不是完整的 12 家店、10-01 至 10-18 这 18 天全不全。全部为只读接口读回的实测值，不是估算：四张表共 9,872 行，<b>去重去空后 9,729 行可用</b>（剔除 107 行重复写入、9 行无日期；商品表另有 27 行是 10-19，不在 18 天内）。</p>
+
+  <div class="ex" style="margin-top:2px">四张表从哪来 <span>（飞书多维表格，由本系统自动采集写入）</span></div>
+  <table class="tb">
+    <colgroup><col style="width:14%"><col style="width:15%"><col style="width:13%"><col style="width:20%"><col></colgroup>
+    <tr><th>数据表</th><th class="n">行数 → 去重后</th><th>日期范围</th><th>一行代表什么</th><th>重复与缺口</th></tr>
+    <tr><td>店铺日报</td><td class="n">2,433 → 2,426</td><td>04-01 起</td><td>一家店一天</td><td>1 行重复；6 行无日期；3 家共缺 16 个店×日</td></tr>
+    <tr><td>商品数据</td><td class="n">4,221 → 4,107</td><td>10-01 起</td><td>一个商品一天</td><td>重复写入丢 86 行；1 行无日期；27 行是 10-19，不在窗口</td></tr>
+    <tr><td>推广数据</td><td class="n">2,327 → 2,305</td><td>10-01 起</td><td>一个商品一个场景一天</td><td>去重丢 20 行；2 行无日期</td></tr>
+    <tr><td>询单数据</td><td class="n">891 → 891</td><td>—</td><td>一家店一天（未使用）</td><td>—</td></tr>
+  </table>
+
+  <div class="ex">18 天 × 13 家店，逐格对账 <span>（深色 = 有数据；红色 = 销售 2 部缺 10-17；灰色 = 新店 10-15 才接入，不是缺数据）</span></div>
+  <svg viewBox="0 0 800 252" width="100%" role="img" aria-label="13 家店 18 天数据覆盖矩阵">
+    <g font-size="10.6" fill="#2c333c" text-anchor="end">
+      <text x="145" y="39.9">盖文旗舰店</text>
+      <text x="145" y="55.2">Paola Lenti保拉伦蒂</text>
+      <text x="145" y="70.5">保拉伦蒂旗舰店</text>
+      <text x="145" y="85.8">科塔建材卫浴</text>
+      <text x="145" y="101.1">安比定制家居</text>
+      <text x="145" y="116.4">盖文全卫定制</text>
+      <text x="145" y="131.7">科塔全卫定制</text>
+      <text x="145" y="147">安比全卫定制</text>
+      <text x="145" y="162.3">网林家居旗舰店</text>
+      <text x="145" y="177.6">里可林家居</text>
+      <text x="145" y="192.9">里可林旗舰店</text>
+      <text x="145" y="208.2">网林全卫定制</text>
+      <text x="145" y="223.5" fill="#8f99a5">网林定制家居</text>
+    </g>
+
+    <g fill="#1b3557">
+      <rect x="150" y="34" width="582" height="8"/>
+      <rect x="150" y="79.9" width="582" height="8"/>
+      <rect x="150" y="95.2" width="582" height="8"/>
+      <rect x="150" y="110.5" width="582" height="8"/>
+      <rect x="150" y="125.8" width="582" height="8"/>
+      <rect x="150" y="141.1" width="582" height="8"/>
+      <rect x="150" y="156.4" width="582" height="8"/>
+      <rect x="150" y="171.7" width="582" height="8"/>
+      <rect x="150" y="187" width="582" height="8"/>
+      <rect x="150" y="202.3" width="582" height="8"/>
+      <rect x="150" y="49.3" width="517.3" height="8"/>
+      <rect x="150" y="64.6" width="517.3" height="8"/>
+    </g>
+    <g fill="#e6c3bb" stroke="#ae4128" stroke-width="0.7">
+      <rect x="667.3" y="49.3" width="32.3" height="8"/>
+      <rect x="667.3" y="64.6" width="32.3" height="8"/>
+    </g>
+    <g fill="#1b3557">
+      <rect x="699.6" y="49.3" width="32.3" height="8"/>
+      <rect x="699.6" y="64.6" width="32.3" height="8"/>
+    </g>
+    <rect x="150" y="217.6" width="452.7" height="8" fill="#d7dbe0"/>
+    <rect x="602.7" y="217.6" width="129.3" height="8" fill="#6f7c8b"/>
+
+    <line x1="150" y1="254" x2="732" y2="254" stroke="#dde2e8"/>
+    <g font-size="9.4" fill="#8f99a5" text-anchor="middle">
+      <text x="166.2" y="242.8">10-01</text><text x="263.2" y="242.8">10-04</text><text x="360.1" y="242.8">10-07</text>
+      <text x="457.1" y="242.8">10-10</text><text x="554.1" y="242.8">10-13</text><text x="651.1" y="242.8">10-16</text>
+      <text x="715.8" y="242.8">10-18</text>
+    </g>
+  </svg>
+
+  <p class="cap">13 家 × 18 天 = 234 个店×日，实到 218 个。少的 16 个分两种：<b>Paola Lenti保拉伦蒂 1 天 + 保拉伦蒂旗舰店 1 天</b>（10-17，销售 2 部那条链没送到）；<b>网林定制家居 14 天</b>（新店，10-15 才上线，本来就没有）。本系统稳定采集的 7 家，18 天一天不缺。</p>
+
+  <div class="ex">这 13 家店怎么变成报告里的 12 家 <span>（商品与推广表没有店铺字段，拆不到单店）</span></div>
+  <table class="tb tight">
+    <colgroup><col style="width:26%"><col style="width:9%"><col style="width:14%"><col></colgroup>
+    <tr><th>口径</th><th class="n">店铺数</th><th class="n">18 天销售额</th><th>说明</th></tr>
+    <tr><td>日报表里出现的店铺</td><td class="n">13 家</td><td class="n">49.0 万元</td><td>第 2 页的上限</td></tr>
+    <tr><td><b>本报告分析用</b></td><td class="n">12 家</td><td class="n">49.0 万元</td><td>剔除网林定制家居：10-15 才接入，4 天、120 访客、0 成交</td></tr>
+    <tr><td>　其中销售 1 部（本系统采）</td><td class="n">7 家</td><td class="n">29.2 万元</td><td>占 59.6%；第 2 页分析的这 7 家</td></tr>
+    <tr><td>　其中销售 2 部（另一条流程）</td><td class="n">5 家</td><td class="n">19.8 万元</td><td>占 40.4%；本系统不采，<b>口径待对接</b></td></tr>
+    <tr><td>销售 1 部全部（含新店）</td><td class="n">8 家</td><td class="n">29.2 万元</td><td>第 3–5 页商品与推广数据的天花板</td></tr>
+  </table>
+
+  <div class="ex">哪些是采来的、哪些是算出来的、哪些是我们提议的 <span>（这三类不许混）</span></div>
+  <table class="tb tight">
+    <colgroup><col style="width:15%"><col style="width:43%"><col></colgroup>
+    <tr><th>类型</th><th>有哪些</th><th>怎么核对</th></tr>
+    <tr><td><b>采集来的</b></td><td>销售额、访客、加购、成交笔数、花费、推广成交、退款</td><td>按「店铺+日期」或「商品+日期」可查原始行</td></tr>
+    <tr><td><b>算出来的</b></td><td>占比、每千次成交、客单价、广告回报、分类、7.74 万元</td><td>公式在第 9 页，脚本留档，可重算</td></tr>
+    <tr><td><b>我们提议的</b></td><td>第 6 页五个目标值（3.2 倍、35%、2.0%、40%、49 万）</td><td>不是采集数据，是建议阈值，可以改</td></tr>
+  </table>
+
+  <div class="hw"><b>读取时间与可复核性</b>　以上均为 2026-10-20 经飞书只读接口读回的实测值；重算 <span class="num">report-audit-final18.mjs</span>、独立对账 <span class="num">report-data-audit.mjs</span>、<b>93 条断言与 72 格逐格比对 <span class="num">report-claims-check18.mjs</span> 全部通过</b>，一并留档。</div>
+</div>
+
+<!-- ================= 第 9 页 · 口径与方法 ================= -->
+<div class="sheet" id="p9">
+  <div class="ph"><span><b>经营数据诊断</b>　2026-10-19</span><span>第 9 页 / 共 9 页</span></div>
+
+  <div class="sec">九 · 口径与方法</div>
+  <h1 class="tt">报告里的每个词、每个公式，都在这一页写清楚</h1>
+  <p class="dk">这一页给要复核或要自己算一遍的人看；不看也不影响前八页的结论。</p>
+
+  <div class="ex" style="margin-top:2px">报告里的词是什么意思</div>
+  <table>
+    <colgroup><col style="width:22%"><col></colgroup>
+    <tr><td><b>销售额（GMV）</b></td><td>顾客实际支付的金额。行业里叫 GMV，英文 Gross Merchandise Volume 的缩写，中文是成交总额。本报告统一叫销售额，只在引用行业说法时提 GMV。注意：这是<b>未扣退款</b>的成交额。</td></tr>
+    <tr><td><b>退款率</b></td><td>统计期内退给顾客的钱 ÷ 同期销售额，18 天是 10.2 ÷ 49.0 = 20.8%。这是<b>同期口径</b>，不是最终退款率——退款有滞后，最后几天的成交还没到退款高发期。</td></tr>
+    <tr><td><b>广告回报</b></td><td>广告带来的销售额 ÷ 广告花费。花 1 元换回 2.81 元，回报就是 2.81 倍。扣掉退款后约 2.23 倍。</td></tr>
+    <tr><td><b>回本线</b></td><td>广告不亏不赚的那个回报值，等于 1 ÷ 毛利率。毛利率 30% 时回本线是 3.33 倍，低于它投广告就是倒贴。</td></tr>
+    <tr><td><b>毛利率</b></td><td>卖一件货，售价减掉进货成本后剩下的比例。它是判断广告赚不赚钱的唯一前提——本报告缺这个数，所以第 7 页把四种情况都算给你看。</td></tr>
+    <tr><td><b>进店次数（访客数）</b></td><td>一天里有几个人进店，按天累加。同一个人连着来三天算三次，所以它比"真实人数"偏大，只用来横向比店，不能当人数看。</td></tr>
+    <tr><td><b>成交率</b></td><td>每 1,000 次进店成交多少单。12 家店平均 1.6 单。</td></tr>
+    <tr><td><b>客单价</b></td><td>销售额 ÷ 成交单数。12 家店平均 2,044 元。</td></tr>
+    <tr><td><b>加购率</b></td><td>100 个进店客人里，有几个人把商品放进购物车。</td></tr>
+    <tr><td><b>访客价值</b></td><td>销售额 ÷ 进店次数，即平均每次进店带来多少钱。</td></tr>
+    <tr><td><b>主力 / 补充 / 长尾</b></td><td>按销售额排队，累计做到 80% 销售额的是主力，80%–95% 的是补充，其余是长尾。</td></tr>
+    <tr><td><b>高效 / 待观察 / 低效</b></td><td>把在投商品放到"卖得多不多"和"每 1 元换回多少"两个维度上分三类，决定加投、观察还是停投。</td></tr>
+    <tr><td><b>中位数</b></td><td>把数字从小到大排队，站在正中间的那个。它不会被个别极端值带偏，比平均数更适合当分界线。</td></tr>
+    <tr><td><b>T+1</b></td><td>平台的数据要等到第二天才齐，所以最后 1–3 天的数字会偏低，越靠近今天的数越不能当准。</td></tr>
+  </table>
+
+  <div class="ex">用了哪几种分析方法 <span>（都是行业里成熟的方法，不需要新工具）</span></div>
+  <table>
+    <colgroup><col style="width:22%"><col></colgroup>
+    <tr><td><b>销售额拆解</b></td><td>销售额 = 进店次数 × 成交率 × 客单价。用来判断一家店的短板是流量、成交还是定价。</td></tr>
+    <tr><td><b>漏斗分析</b></td><td>把进店、加购、成交排成一列，看哪一步掉得最多。本报告发现掉得最多的是"进店到加购"。</td></tr>
+    <tr><td><b>二八分级（帕累托 / ABC）</b></td><td>按贡献排队分成三段，分清哪些商品值得给资源、哪些在占地方。</td></tr>
+    <tr><td><b>四象限分析</b></td><td>用两个维度把在投商品分成四类（本报告只出现三类），决定预算该往哪边挪。</td></tr>
+    <tr><td><b>重分配测算</b></td><td>把低效端的预算按高效端的历史回报折算成增量，属于静态推算、不是预测，前提已写在第 7 页。</td></tr>
+  </table>
+
+  <div class="ex">几个容易算错的地方 <span>（我们怎么处理的）</span></div>
+  <table>
+    <colgroup><col style="width:22%"><col></colgroup>
+    <tr><td><b>重复写入</b></td><td>商品表 10-10、10-11 两天各有 40 余行被写了两次（数值完全一致）。若不去重，商品层销售额会虚高 2.4%、访客虚高 1.9%。已按「商品ID+日期」去重。</td></tr>
+    <tr><td><b>同一商品两个推广场景</b></td><td>同一个商品会在「人群推广」和「关键词推广」各有一行，这两行<b>不能合并</b>，否则会把两次投放算成一次。去重键是「主体ID+日期+场景+计划ID」。</td></tr>
+    <tr><td><b>中位数只在有成交的商品里取</b></td><td>零成交商品若参与取中位数，界线会被拉到 0，分类就失效了。所以中位数只取有成交的商品，结果是 2,500 元。</td></tr>
+  </table>
+
+  <div class="hw"><b>可复核性</b>　报告中每个数字都能按"店铺 + 日期"或"商品 + 日期"在飞书三张表里查到对应的原始行；分析脚本与中间结果一并留档在第 8 页末尾。所有比例保留一位小数，个别合计不等于 100% 是四舍五入所致。</div>
+</div>
+
+</body>
+</html>

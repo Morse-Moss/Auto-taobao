@@ -1,0 +1,18 @@
+
+===== 2026-10-18T23:12:09.972Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-18 --proxy http://127.0.0.1:19023 --shop-key 科塔淘宝 --commit --shop-xlsx C:\Users\Administrator\Downloads\店铺数据日报_20261019_8903471d5657b8875620a116960da9bc.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261019_071120.zip
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: source extraction failed: E:\AI\Python\Lib\site-packages\openpyxl\styles\stylesheet.py:237: UserWarning: Workbook contains no default style, apply openpyxl's default
+  warn("Workbook contains no default style, apply openpyxl's default")
+Traceback (most recent call last):
+  File "D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\extract-sources.py", line 68, in <module>
+    main()
+  File "D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\extract-sources.py", line 36, in main
+    raise ValueError(f'expected one shop row for {args.date}, got {len(matches)}')
+ValueError: expected one shop row for 2026-10-18, got 0
+    at extractSources (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:237:34)
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:384:18)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

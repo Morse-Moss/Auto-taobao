@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>电商经营数据自动化项目汇报</title>
+<style>
+  :root { --ink:#1a1d21; --muted:#5b6470; --line:#d9dee4; --accent:#1f3a5f; --wash:#f4f6f8; --warn:#8c3a2b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#eef1f4; color:var(--ink); font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",system-ui,sans-serif; font-size:13.5px; line-height:1.7; -webkit-font-smoothing:antialiased; }
+  .page { max-width:920px; margin:32px auto; background:#fff; padding:52px 60px 44px; box-shadow:0 1px 3px rgba(20,30,45,.08),0 12px 32px rgba(20,30,45,.06); }
+  .kicker { font-size:11.5px; letter-spacing:.18em; color:var(--accent); text-transform:uppercase; margin-bottom:12px; }
+  h1 { font-size:25px; line-height:1.35; margin:0 0 16px; font-weight:600; }
+  .meta { display:flex; flex-wrap:wrap; gap:6px 28px; padding:13px 0 16px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; }
+  .meta b { color:var(--ink); font-weight:500; }
+  h2 { font-size:15.5px; margin:32px 0 10px; padding-left:11px; border-left:3px solid var(--accent); font-weight:600; }
+  h2 span.num { color:var(--accent); margin-right:7px; }
+  p { margin:9px 0; }
+  strong { font-weight:600; }
+  table { width:100%; border-collapse:collapse; margin:12px 0 4px; font-size:12px; }
+  th { text-align:left; font-weight:600; color:var(--accent); background:var(--wash); padding:7px 9px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  td { padding:7px 9px; border-bottom:1px solid var(--line); vertical-align:top; }
+  td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  tr.low td { background:#fdf6f4; }
+  tr.high td { background:#f4f8f5; }
+  tr.tot td { font-weight:600; background:#fafbfc; }
+  .facts { margin:10px 0; padding-left:0; list-style:none; counter-reset:f; }
+  .facts li { counter-increment:f; position:relative; padding:10px 0 10px 40px; border-bottom:1px dashed var(--line); }
+  .facts li:last-child { border-bottom:none; }
+  .facts li::before { content:counter(f); position:absolute; left:0; top:12px; width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; font-size:11.5px; line-height:24px; text-align:center; font-weight:600; }
+  .note { background:var(--wash); border-left:3px solid var(--accent); padding:12px 16px; margin:14px 0; font-size:12.5px; }
+  .note p { margin:5px 0; }
+  .retract { background:#fdf6f4; border-left:3px solid var(--warn); padding:12px 16px; margin:14px 0; font-size:12.5px; }
+  ul.plain { margin:8px 0; padding-left:19px; }
+  ul.plain li { margin:6px 0; }
+  .appendix { margin-top:36px; padding-top:16px; border-top:1px solid var(--line); font-size:11.5px; color:var(--muted); line-height:1.75; }
+  .appendix h3 { font-size:12px; color:var(--ink); margin:0 0 7px; font-weight:600; letter-spacing:.06em; }
+  .appendix ul { margin:0; padding-left:17px; }
+  @media print { body { background:#fff; } .page { box-shadow:none; margin:0; max-width:none; padding:18mm 15mm; } h2 { break-after:avoid; } table, .note, .retract, .facts li { break-inside:avoid; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="kicker">经营数据汇报 · 内部</div>
+  <h1>电商经营数据自动化项目汇报</h1>
+  <div class="meta">
+    <div>汇报周期 <b>2026-09-20 至 2026-10-18</b></div>
+    <div>数据截至 <b>2026-10-19 独立回读</b></div>
+    <div>覆盖 <b>13 家店铺 · 近 30 天</b></div>
+  </div>
+
+  <h2><span class="num">01</span>项目现状</h2>
+  <p>8 家店铺（销售一部）的店铺日报、商品、推广三类经营数据，每天早 8 点自动采集并写入飞书，无需人工操作。数据表现在包含近 30 天、13 家店铺的经营明细（销售一部 8 家当前自动采集，其余为历史数据）。</p>
+  <table>
+    <thead><tr><th>数据表</th><th class="n">存量行数</th><th>记录维度</th><th>近 30 天覆盖</th></tr></thead>
+    <tbody>
+      <tr><td>日报底单</td><td class="n">2,418</td><td>每店铺每日经营全景（245 字段）</td><td>13 家店 × 30 天</td></tr>
+      <tr><td>商品底单</td><td class="n">4,194</td><td>每商品每日流量与成交</td><td>18 个业务日</td></tr>
+      <tr><td>推广底单</td><td class="n">2,327</td><td>每推广商品投放表现</td><td>18 个业务日</td></tr>
+      <tr><td>询单底单</td><td class="n">891</td><td>每商品咨询与询单成交</td><td>平台标注延迟统计</td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="num">02</span>按店铺看经营表现（近 30 天累计）</h2>
+  <table>
+    <thead>
+      <tr><th>店铺</th><th class="n">天数</th><th class="n">访客</th><th class="n">支付金额</th><th class="n">支付买家</th><th class="n">转化率</th><th class="n">推广花费</th><th class="n">推广成交</th><th class="n">投产比</th></tr>
+    </thead>
+    <tbody>
+      <tr class="high"><td>盖文旗舰店</td><td class="n">30</td><td class="n">10,732</td><td class="n">219,438</td><td class="n">70</td><td class="n">0.65%</td><td class="n">14,449</td><td class="n">71,578</td><td class="n">4.95</td></tr>
+      <tr class="low"><td>Paola Lenti 保拉伦蒂</td><td class="n">28</td><td class="n">53,797</td><td class="n">111,760</td><td class="n">37</td><td class="n">0.07%</td><td class="n">3,974</td><td class="n">0</td><td class="n">0</td></tr>
+      <tr><td>保拉伦蒂旗舰店</td><td class="n">28</td><td class="n">8,166</td><td class="n">67,264</td><td class="n">25</td><td class="n">0.31%</td><td class="n">5,184</td><td class="n">14,658</td><td class="n">2.83</td></tr>
+      <tr><td>科塔建材卫浴</td><td class="n">30</td><td class="n">4,793</td><td class="n">61,509</td><td class="n">55</td><td class="n">1.15%</td><td class="n">3,538</td><td class="n">13,927</td><td class="n">3.94</td></tr>
+      <tr><td>安比定制家居</td><td class="n">30</td><td class="n">17,825</td><td class="n">55,863</td><td class="n">44</td><td class="n">0.25%</td><td class="n">4,912</td><td class="n">16,481</td><td class="n">3.36</td></tr>
+      <tr class="low"><td>盖文全卫定制</td><td class="n">30</td><td class="n">71,125</td><td class="n">55,621</td><td class="n">23</td><td class="n">0.03%</td><td class="n">5,242</td><td class="n">9,961</td><td class="n">1.90</td></tr>
+      <tr class="high"><td>科塔全卫定制</td><td class="n">30</td><td class="n">33,643</td><td class="n">49,466</td><td class="n">19</td><td class="n">0.06%</td><td class="n">3,344</td><td class="n">26,694</td><td class="n">7.98</td></tr>
+      <tr><td>安比全卫定制</td><td class="n">30</td><td class="n">4,793</td><td class="n">43,544</td><td class="n">47</td><td class="n">0.98%</td><td class="n">4,027</td><td class="n">9,968</td><td class="n">2.48</td></tr>
+      <tr class="low"><td>网林家居旗舰店</td><td class="n">30</td><td class="n">3,178</td><td class="n">38,712</td><td class="n">24</td><td class="n">0.76%</td><td class="n">4,506</td><td class="n">5,674</td><td class="n">1.26</td></tr>
+      <tr><td>里可林家居</td><td class="n">30</td><td class="n">7,143</td><td class="n">38,298</td><td class="n">16</td><td class="n">0.22%</td><td class="n">5,816</td><td class="n">11,348</td><td class="n">1.95</td></tr>
+      <tr class="low"><td>里可林旗舰店</td><td class="n">30</td><td class="n">4,022</td><td class="n">30,722</td><td class="n">11</td><td class="n">0.27%</td><td class="n">6,441</td><td class="n">7,194</td><td class="n">1.12</td></tr>
+      <tr class="low"><td>网林全卫定制</td><td class="n">30</td><td class="n">34,007</td><td class="n">28,262</td><td class="n">15</td><td class="n">0.04%</td><td class="n">5,081</td><td class="n">9,908</td><td class="n">1.95</td></tr>
+      <tr><td>网林定制家居</td><td class="n">4</td><td class="n">120</td><td class="n">0</td><td class="n">0</td><td class="n">0%</td><td class="n">140</td><td class="n">0</td><td class="n">0</td></tr>
+      <tr class="tot"><td>合计</td><td class="n">—</td><td class="n">253,344</td><td class="n">800,459</td><td class="n">—</td><td class="n">—</td><td class="n">66,655</td><td class="n">197,391</td><td class="n">2.96</td></tr>
+    </tbody>
+  </table>
+
+  <ol class="facts">
+    <li><strong>流量与产出严重错配。</strong>Paola Lenti（53,797 访客）、盖文全卫定制（71,125 访客）、网林全卫定制（34,007 访客）三家合计 158,929 访客，占全部访客 63%，但只贡献 195,643 元支付，占总额 24%。转化率分别为 0.07%、0.03%、0.04%，为全店最低三家。</li>
+    <li><strong>推广回报两极分化。</strong>科塔全卫定制投产比 7.98、盖文旗舰店 4.95，两家贡献推广成交的 50%；里可林旗舰店 1.12、网林家居旗舰店 1.26、Paola Lenti 0（30 天推广成交为零，花费 3,974 元）处在另一端。</li>
+    <li><strong>最高产出用的是最少流量。</strong>支付金额最高的盖文旗舰店（219,438 元）访客仅 10,732，为 Paola Lenti 的五分之一。高客单店铺用少量流量做出最高产出。</li>
+    <li><strong>全店推广投产比 2.96，盈利与否取决于毛利率。</strong>若毛利率为 30%，推广投产比需高于 3.33 才能覆盖成本。需财务提供毛利率口径，本报告不作结论。</li>
+  </ol>
+
+  <h2><span class="num">03</span>按商品看投产比分层（近 30 天，95 个推广商品）</h2>
+  <p>高投产比商品，可加投（成交大于 1,000 元且花费大于 100 元）：</p>
+  <table>
+    <thead><tr><th>商品</th><th class="n">花费</th><th class="n">成交</th><th class="n">投产比</th></tr></thead>
+    <tbody>
+      <tr class="high"><td>网林一体式挂墙人造石洗脸盆</td><td class="n">118</td><td class="n">6,470</td><td class="n">54.8</td></tr>
+      <tr class="high"><td>盖文人造绮美石长方形一体浴缸</td><td class="n">241</td><td class="n">6,570</td><td class="n">27.2</td></tr>
+      <tr class="high"><td>科塔窄边带储物洗手盆</td><td class="n">331</td><td class="n">5,354</td><td class="n">16.2</td></tr>
+      <tr class="high"><td>盖文鹅蛋型独立式人造石浴缸</td><td class="n">827</td><td class="n">10,764</td><td class="n">13.0</td></tr>
+      <tr class="high"><td>盖文深泡坐式浴缸</td><td class="n">722</td><td class="n">8,698</td><td class="n">12.1</td></tr>
+      <tr class="high"><td>科塔挂墙式洗手盆</td><td class="n">230</td><td class="n">2,622</td><td class="n">11.4</td></tr>
+      <tr class="high"><td>Nicoline 粉色独立式浴缸</td><td class="n">351</td><td class="n">3,712</td><td class="n">10.6</td></tr>
+      <tr class="high"><td>盖文方形深泡一体浴缸</td><td class="n">920</td><td class="n">9,492</td><td class="n">10.3</td></tr>
+    </tbody>
+  </table>
+
+  <p>零成交商品，应停投或排查（按花费排序前六）：</p>
+  <table>
+    <thead><tr><th>商品</th><th class="n">花费</th><th class="n">点击</th><th class="n">连续投放天数</th></tr></thead>
+    <tbody>
+      <tr class="low"><td>Nicoline 设计师款洞石浴缸</td><td class="n">1,179</td><td class="n">480</td><td class="n">18</td></tr>
+      <tr class="low"><td>Nicoline 哑光粉色长方形浴缸</td><td class="n">692</td><td class="n">685</td><td class="n">18</td></tr>
+      <tr class="low"><td>科塔超窄边洗漱盆</td><td class="n">657</td><td class="n">1,202</td><td class="n">18</td></tr>
+      <tr class="low"><td>盖文侘寂风圆柱立柱盆</td><td class="n">648</td><td class="n">310</td><td class="n">12</td></tr>
+      <tr class="low"><td>Gavin 人造石 PMMA 双人浴缸</td><td class="n">557</td><td class="n">202</td><td class="n">18</td></tr>
+      <tr class="low"><td>网林方形深泡浴缸</td><td class="n">556</td><td class="n">326</td><td class="n">18</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><p>零成交商品共 <strong>70 个</strong>，累计花费 <strong>12,931 元</strong>，占推广总花费的 <strong>46.72%</strong>。这笔钱接近推广预算的一半，没有带回任何成交。</p></div>
+
+  <h2><span class="num">04</span>推广场景结论（修正）</h2>
+  <table>
+    <thead><tr><th>口径</th><th class="n">关键词花费</th><th class="n">关键词成交</th><th class="n">投产比</th><th class="n">人群花费</th><th class="n">人群成交</th><th class="n">投产比</th></tr></thead>
+    <tbody>
+      <tr><td>日报底单（30 天，13 店）</td><td class="n">35,933</td><td class="n">89,777</td><td class="n">2.50</td><td class="n">30,722</td><td class="n">107,614</td><td class="n">3.50</td></tr>
+      <tr><td>推广底单（18 天，95 商品）</td><td class="n">13,973</td><td class="n">37,732</td><td class="n">2.70</td><td class="n">13,706</td><td class="n">51,044</td><td class="n">3.72</td></tr>
+    </tbody>
+  </table>
+  <p>两套数据结论一致：人群推广的投产比高于关键词推广，预算接近对半分配是合理的。场景本身不是问题，问题在具体商品和店铺。</p>
+  <div class="retract">
+    <p><strong>结论修正：</strong>上一版报告曾建议“人群推广零成交、预算减半”，依据是 10-12 单日数据。该判断不成立，本版撤回。10-11 至 10-15 的连续零值是平台出数延迟造成的假象，多日累计后人群推广投产比为 3.50，高于关键词推广。</p>
+  </div>
+
+  <h2><span class="num">05</span>数据口径说明</h2>
+  <div class="note">
+    <p><strong>判据：</strong>10-18 商品支付金额 350 元，10-12 为 24,854 元，两日商品访客均在 6,000 至 7,600 量级。差异来自平台出数延迟，不是业务异常。</p>
+    <p><strong>执行规则：</strong>本报告所有推广与成交结论均取多日累计（18 天或 30 天），不使用任何单日成交快照；访客、点击、花费等流量类字段可按当日取用；询单底单因平台标注“延迟统计”，仅确认已采集，不作决策依据。</p>
+  </div>
+
+  <h2><span class="num">06</span>改进方向</h2>
+  <ul class="plain">
+    <li><strong>停投零成交商品，不砍场景。</strong>70 个零成交商品占推广预算 46.72%。建议按花费从高到低建立每周停投清单，先处理前六名（合计约 4,289 元 / 18 天），观察两周后整体投产比变化。</li>
+    <li><strong>加投高投产比商品。</strong>上表 8 个商品投产比 10 倍以上，合计花费仅 3,739 元。保持总预算不变，把零成交商品的预算转移到这批商品。</li>
+    <li><strong>三家高流量低转化店铺做专项。</strong>Paola Lenti、盖文全卫定制、网林全卫定制，访客合计占全店 63%，转化率 0.03% 至 0.07%。流量成本已经支付，问题在承接（详情页、价格、询单响应）。按店排查，一周后复测转化率。</li>
+    <li><strong>复核低投产比店铺的推广预算。</strong>里可林旗舰店 1.12、网林家居旗舰店 1.26、Paola Lenti 推广 30 天零成交（花费 3,974 元）。建议先冻结增量，查清原因后再恢复。</li>
+  </ul>
+
+  <h2><span class="num">07</span>后续待沟通事项</h2>
+  <ul class="plain">
+    <li><strong>验收标准。</strong>建议以“连续 4 周周报按时交付、每期不少于 3 条可执行结论”为基线，具体指标待沟通确定。</li>
+    <li><strong>周报机制。</strong>计划每周一上午 10 点前交付一屏以内的数据周报，内容固定为三个数、三个动作。</li>
+    <li><strong>毛利率口径。</strong>全店推广投产比 2.96，是否盈利取决于毛利率，需要财务提供口径才能判断推广整体是赚是亏。</li>
+  </ul>
+
+  <div class="appendix">
+    <h3>附录 · 数据出处</h3>
+    <ul>
+      <li>日报底单：飞书 base「各店铺日报」，表 tbl6EDMzzaYUVvVC，近 30 天 360 行，独立回读 2026-10-19。</li>
+      <li>商品底单 tblvmGJfOL4OBYek（4,194 行）；推广底单 tblDxXenp3vSg2SM（2,327 行）；询单底单 tblb1uK5zQYd8yOq（891 行）。</li>
+      <li>覆盖范围：销售一部 8 家当前自动采集；另 5 家为历史数据。</li>
+      <li>分析口径：成交类结论取多日累计（推广 18 个业务日、店铺 30 天）；流量类字段按当日取用。</li>
+      <li>可复核性：任一数字可按店铺、商品、日期在飞书底单表中回溯；分析脚本 tmp/boss-shop-analysis.mjs、tmp/boss-item-facts.mjs 可复跑。</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

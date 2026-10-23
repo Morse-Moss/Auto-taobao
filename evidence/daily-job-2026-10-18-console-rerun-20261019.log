@@ -1,0 +1,24 @@
+[mode] --mode apply（显式给定）
+[2026-10-19T00:31:18.262Z] 回收过期锁：原持有者=daily-report、pid=103956（该进程已不在）
+[2026-10-19T00:31:18.262Z] 版本：sycm-automation 1.12.7
+[2026-10-19T00:31:18.262Z] === 定时任务开始（目标日字面量 yesterday → 2026-10-18）===
+[2026-10-19T00:31:18.262Z] [定时] 分批跑：每批 5 家（**每一批跑完都释放**：成功、失败、没跑到，都放）
+[2026-10-19T00:31:18.262Z] [定时] 整轮被挡的处置：就地停手 + 留住现场等人（驻留在分批驱动内部；人处理完自动按批重跑一遍）。
+[2026-10-19T00:31:18.262Z] [定时] 边界：批次里的 start 是 scripts/start-all.mjs（起完就退）—— 宿主要在命令结束时回收整棵进程树，所以这批窗口活不过本轮命令；「不主动释放」只是「我不去停它」，不等于「窗口还在」。要留窗口给人排查，必须另起 scripts/start-all-hold.mjs 把本批实例托住。
+[2026-10-19T00:31:18.262Z] 日志：D:\Retire\sycm-automation\evidence\daily-job-2026-10-18\job.log
+[2026-10-19T00:31:18.262Z] --- ensure-instances：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only dailyReport
+[2026-10-19T00:31:20.773Z] --- ensure-instances 退出码=0
+[2026-10-19T00:31:20.773Z] --- label-merchant-window：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --subject merchant
+[2026-10-19T00:31:24.973Z] --- label-merchant-window 退出码=0
+[2026-10-19T00:31:24.973Z] --- viewport-gate：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-viewport-gate.mjs --proxy 19023 --label 共用商家浏览器 --json
+[2026-10-19T00:31:26.096Z] --- viewport-gate 结论已落 evidence/daily-job-2026-10-18/viewport.json（452 字节；链那一步会读它）
+[2026-10-19T00:31:26.096Z] --- viewport-gate 退出码=0
+[2026-10-19T00:31:26.096Z] --- ensure-merchant-login：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\login-merchant.mjs --commit --target sycm --notify auto
+[2026-10-19T00:31:34.253Z] --- ensure-merchant-login 退出码=0
+[2026-10-19T00:31:34.253Z] --- ensure-inquiry-rows：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\ensure-inquiry-rows.mjs --date yesterday --commit --evidence D:\Retire\sycm-automation\evidence\daily-job-2026-10-18
+[2026-10-19T00:31:54.590Z] --- ensure-inquiry-rows 退出码=0
+[2026-10-19T00:31:54.590Z] --- batch-chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\run-batches.mjs --date yesterday --batch-size 5 --commit --notify --auto-repair --relogin-on-wall
+[2026-10-19T01:01:45.625Z] --- batch-chain 退出码=0
+[2026-10-19T01:01:45.790Z] [完成提醒] 【店铺日报】采集完成（统计日 2026-10-18）
+[2026-10-19T01:01:45.791Z] 告警未发（去重）：同一条告警 0 分钟前刚发过（窗口 6 小时），不重复发（编号 daily-ok-20261018）
+[2026-10-19T01:01:45.792Z] === 定时任务结束：全链退出码=0；证据目录 evidence/multi-shop-2026-10-18/ ===

@@ -1,0 +1,83 @@
+<Slide style={{ width: '1280px', height: '720px', background: '#FFFFFF', fontFamily: 'Noto Sans SC', padding: '20px 64px', flexDirection: 'column' }}>
+        <Box style={{ height: '96px', flexDirection: 'column', justifyContent: 'center' }}>
+            <Text style={{ fontSize: '31px', fontWeight: 700, color: '#1B3557', lineHeight: 1.25 }}>两周后，用这五个数验收</Text>
+            <Text style={{ fontSize: '15px', color: '#5F6975', lineHeight: 1.4, marginTop: '6px' }}>这些是提议值，可以改；但必须可量、有期限、有人看。</Text>
+        </Box>
+        <Box style={{ height: '540px', flexDirection: 'column' }}>
+            <Box style={{ flexDirection: 'row', alignItems: 'center', height: '40px', width: '1152px', justifyContent: 'space-between', background: '#1B3557', borderBottom: '1px solid #DDE2E8',  paddingLeft: '8px', paddingRight: '8px' }}>
+            <Box style={{ width: '300px', flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12px', color: '#FFFFFF', fontWeight: 700 }}>指标</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12px', color: '#FFFFFF', fontWeight: 700 }}>现在</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12px', color: '#FFFFFF', fontWeight: 700 }}>两周后</Text>
+            </Box><Box style={{ width: '480px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12px', color: '#FFFFFF', fontWeight: 700 }}>依据 / 怎么动</Text>
+            </Box>
+        </Box>
+            <Box style={{ flexDirection: 'row', alignItems: 'center', height: '72px', width: '1152px', justifyContent: 'space-between', background: 'transparent', borderBottom: '1px solid #DDE2E8',  paddingLeft: '8px', paddingRight: '8px' }}>
+            <Box style={{ width: '300px', flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#15181D', fontWeight: 700 }}>每千次进店成交</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#5F6975', fontWeight: 400 }}>1.6 单</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#AE4128', fontWeight: 700 }}>2.0 单</Text>
+            </Box><Box style={{ width: '480px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#5F6975', fontWeight: 400 }}>把流量从最差 4 家店挪出来</Text>
+            </Box>
+        </Box>
+            <Box style={{ flexDirection: 'row', alignItems: 'center', height: '72px', width: '1152px', justifyContent: 'space-between', background: 'transparent', borderBottom: '1px solid #DDE2E8',  paddingLeft: '8px', paddingRight: '8px' }}>
+            <Box style={{ width: '300px', flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#15181D', fontWeight: 700 }}>洗手盆加购率</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#5F6975', fontWeight: 400 }}>1.30%</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#AE4128', fontWeight: 700 }}>2.00%</Text>
+            </Box><Box style={{ width: '480px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#5F6975', fontWeight: 400 }}>补 0.7 个百分点＝多 612 次加购</Text>
+            </Box>
+        </Box>
+            <Box style={{ flexDirection: 'row', alignItems: 'center', height: '72px', width: '1152px', justifyContent: 'space-between', background: 'transparent', borderBottom: '1px solid #DDE2E8',  paddingLeft: '8px', paddingRight: '8px' }}>
+            <Box style={{ width: '300px', flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#15181D', fontWeight: 700 }}>推广每 1 元成交</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#5F6975', fontWeight: 400 }}>3.22 倍</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#AE4128', fontWeight: 700 }}>4.00 倍</Text>
+            </Box><Box style={{ width: '480px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#5F6975', fontWeight: 400 }}>停投那 72 个零成交商品</Text>
+            </Box>
+        </Box>
+            <Box style={{ flexDirection: 'row', alignItems: 'center', height: '72px', width: '1152px', justifyContent: 'space-between', background: 'transparent', borderBottom: '1px solid #DDE2E8',  paddingLeft: '8px', paddingRight: '8px' }}>
+            <Box style={{ width: '300px', flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#15181D', fontWeight: 700 }}>低效推广花费占比</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#5F6975', fontWeight: 400 }}>62.2%</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#AE4128', fontWeight: 700 }}>≤40%</Text>
+            </Box><Box style={{ width: '480px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#5F6975', fontWeight: 400 }}>低效预算砍一半（8,580 元）</Text>
+            </Box>
+        </Box>
+            <Box style={{ flexDirection: 'row', alignItems: 'center', height: '72px', width: '1152px', justifyContent: 'space-between', background: 'transparent', borderBottom: '1px solid #DDE2E8',  paddingLeft: '8px', paddingRight: '8px' }}>
+            <Box style={{ width: '300px', flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#15181D', fontWeight: 700 }}>商品层成交（18 天）</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#5F6975', fontWeight: 400 }}>28.0万元</Text>
+            </Box><Box style={{ width: '150px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#AE4128', fontWeight: 700 }}>32 万元</Text>
+            </Box><Box style={{ width: '480px', flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <Text style={{ fontSize: '12.5px', color: '#5F6975', fontWeight: 400 }}>静态上限 35.8万元，先按 32 万报</Text>
+            </Box>
+        </Box>
+            <Box style={{ background: '#F4F6F8', borderLeft: '4px solid #A97B28', padding: '18px 22px', marginTop: '22px' }}>
+                <Text style={{ fontSize: '15px', color: '#15181D', lineHeight: 1.6 }}>
+                    五个数都在现有报表里能直接读出来，不需要新建口径。两周后拿这五个数对一次，就知道试跑成不成。
+                </Text>
+            </Box>
+        </Box>
+        <Box style={{ height: '40px', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: '13px', color: '#5F6975' }}>经营数据诊断 · 2026-10-20</Text>
+            <Text style={{ fontSize: '13px', color: '#5F6975' }}>10 / 13</Text>
+        </Box>
+    </Slide>

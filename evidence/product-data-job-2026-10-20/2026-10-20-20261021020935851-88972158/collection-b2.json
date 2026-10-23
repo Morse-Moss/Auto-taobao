@@ -1,0 +1,63 @@
+[
+  {
+    "shop": "网林淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林淘宝\",\"date\":\"2026-10-20\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-20_2026-10-20 (5).xls\",\"bytes\":48128}\n",
+      "err": "[底单] 网林淘宝 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-20_2026-10-20 (5).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林淘宝\",\n  \"date\": \"2026-10-20\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-20\\\\2026-10-20-20261021020935851-88972158\\\\网林淘宝\\\\inquiry.xls\",\n  \"bytes\": 14848,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261020&dateRange=1d&orderBy=cstCnt&startDate=20261020&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-20\\2026-10-20-20261021020935851-88972158\\网林淘宝\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 网林卫浴:小慧 / 1510910194 ✓\n[校验] 商品报表 / 2026-10-20 / 商品+计划 ✓\n[提交] 商品报表_20261021_103359\n[候选] 判据=date-range｜1 条：商品报表_20261021_103359｜按判据排除 4 条\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261021_103359.zip (2290 bytes)\n{\"shop\":\"网林淘宝\",\"date\":\"2026-10-20\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261021_103359.zip\",\"bytes\":2290,\"task\":\"商品报表_20261021_103359\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261021_103359.zip"
+  },
+  {
+    "shop": "里可林天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"里可林天猫\",\"date\":\"2026-10-20\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-20_2026-10-20 (6).xls\",\"bytes\":40960}\n",
+      "err": "[底单] 里可林天猫 第 1/3 次尝试未取到文件（点击返回值=true）\n[底单] 里可林天猫 第 2 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-20_2026-10-20 (6).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"里可林天猫\",\n  \"date\": \"2026-10-20\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-20\\\\2026-10-20-20261021020935851-88972158\\\\里可林天猫\\\\inquiry.xls\",\n  \"bytes\": 15360,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261020&dateRange=1d&orderBy=cstCnt&startDate=20261020&order=desc&itemId=&excludeDates=\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-20\\2026-10-20-20261021020935851-88972158\\里可林天猫\\inquiry.xls",
+    "promotion": {
+      "code": 1,
+      "out": "[身份] 里可林旗舰店:月饼 / 7449643996 ✓\n[校验] 商品报表 / 2026-10-20 / 商品+计划 ✓\n[提交] 商品报表_20261021_103449\n[候选] 判据=date-range｜1 条：商品报表_20261021_103449｜按判据排除 7 条\n[换通道] 1 条候选全取不到（商品报表_20261021_103449: 商品报表任务下载入口不可见）⇒ 补提交一条同目标日任务，再逐条试一次\n[里可林天猫]   现场截图 = D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-20\\2026-10-20-20261021020935851-88972158\\里可林天猫\\promotion-collect\\98-failure-page.png\n[里可林天猫]   现场事实 = D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-20\\2026-10-20-20261021020935851-88972158\\里可林天猫\\promotion-collect\\98-failure-state.txt\n",
+      "err": "[候选] 商品报表_20261021_103449 第 1 次取不到：商品报表任务下载入口不可见\n采集失败：/eval?target=827D49E71A8F0D24D3EA48328B3F4F5F HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}\n"
+    },
+    "promotionFile": null,
+    "stoppedAt": "promotion-collect",
+    "error": "[候选] 商品报表_20261021_103449 第 1 次取不到：商品报表任务下载入口不可见\n采集失败：/eval?target=827D49E71A8F0D24D3EA48328B3F4F5F HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}"
+  },
+  {
+    "shop": "网林家居",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林家居\",\"date\":\"2026-10-20\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-20_2026-10-20 (7).xls\",\"bytes\":18432}\n",
+      "err": "[底单] 网林家居 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-20_2026-10-20 (7).xls",
+    "inquiry": {
+      "code": 1,
+      "out": "",
+      "err": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:78\r\nconst expectedShop=SHOP_IDENTITIES.find((x)=>x.key===o.shop)?.sycmHeader; const identityOk=expectedShop&&state.shop.includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足：${JSON.stringify(state)}`);\r\n                                                                                                                                                                                                                                                                 ^\r\n\r\nError: 页面状态不满足：{\"shop\":\"网林定制家居\",\"hasInquiry\":true,\"date\":\"2026-10-20\",\"daySelected\":true,\"link\":\"\"}\r\n    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:78:258\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n\r\nNode.js v22.22.2\r\n"
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-20\\2026-10-20-20261021020935851-88972158\\网林家居\\inquiry.xls",
+    "stoppedAt": "inquiry-collect",
+    "error": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:78\r\nconst expectedShop=SHOP_IDENTITIES.find((x)=>x.key===o.shop)?.sycmHeader; const identityOk=expectedShop&&state.shop.includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足：${JSON.stringify(state)}`);\r\n                                                                                                                                                                                                                                                                 ^\r\n\r\nError: 页面状态不满足：{\"shop\":\"网林定制家居\",\"hasInquiry\":true,\"date\":\"2026-10-20\",\"daySelected\":true,\"link\":\"\"}\r\n    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:78:258\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n\r\nNode.js v22.22.2"
+  }
+]

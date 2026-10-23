@@ -1,0 +1,32 @@
+
+===== 2026-10-17T23:11:04.412Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-daily-report.mjs --date 2026-10-17 --proxy http://127.0.0.1:19023 --shop-key 盖文淘宝 --commit --shop-xlsx C:\Users\Administrator\Downloads\店铺日报_20261018_780c1f28297bd7f20298a08fa63cf36d.xlsx --promotion-zip C:\Users\Administrator\Downloads\营销场景报表_20261018_071020.zip
+exit=0 signal= error=none
+--- stdout ---
+[shop-key] 盖文淘宝 ↔ 源产物店名 盖文全卫定制 一致（证据目录 daily-report-2026-10-17-盖文淘宝）
+[audit] 已记 push/ok id=195
+{
+  "status": "COMMITTED_AND_VERIFIED",
+  "recordId": "reczz28OedDLOrbi",
+  "receiptPath": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-17-盖文淘宝\\receipt.json",
+  "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-17-盖文淘宝",
+  "evidenceGeneration": 1,
+  "recordCountBefore": 2397,
+  "recordCountAfter": 2398,
+  "verifiedFields": 239,
+  "derivedReadbackAttempts": 1,
+  "checks": {
+    "visibleFields": 265,
+    "shopColumns": 119,
+    "promotionColumns": 71,
+    "promotionRows": 2,
+    "payloadFields": 239,
+    "shopName": "盖文全卫定制",
+    "keywordSceneId": 371,
+    "audienceSceneId": 372,
+    "dateEpoch": 1792166400000,
+    "targetOnlyPromotionFieldsBlank": true
+  }
+}
+
+--- stderr ---

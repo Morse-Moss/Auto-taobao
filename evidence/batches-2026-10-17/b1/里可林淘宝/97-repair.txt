@@ -1,0 +1,4 @@
+修复动作：RELOAD_PAGE（排练）
+店：里可林淘宝｜阶段：alimama-date｜成因：STAGE_FAILED
+目标页：https://one.alimama.com/index.html
+结论：未应用｜排练（--dry-run）：会执行 RELOAD_PAGE 于 https://one.alimama.com/index.html，一个写请求都不发

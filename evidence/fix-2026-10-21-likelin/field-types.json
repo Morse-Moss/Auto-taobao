@@ -1,0 +1,376 @@
+[
+ {
+  "idx265": 126,
+  "key": "关键词推广展现量",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "1700"
+ },
+ {
+  "idx265": 127,
+  "key": "关键词推广点击量",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "90"
+ },
+ {
+  "idx265": 128,
+  "key": "关键词推广花费 (1)",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00"
+  },
+  "newValue": "98.81"
+ },
+ {
+  "idx265": 156,
+  "key": "总收藏加购成本",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00"
+  },
+  "newValue": "10.98"
+ },
+ {
+  "idx265": 158,
+  "key": "宝贝收藏加购成本",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00"
+  },
+  "newValue": "10.98"
+ },
+ {
+  "idx265": 160,
+  "key": "宝贝收藏成本",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.0"
+  },
+  "newValue": "49.41"
+ },
+ {
+  "idx265": 162,
+  "key": "加购成本",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00"
+  },
+  "newValue": "14.12"
+ },
+ {
+  "idx265": 195,
+  "key": "人群推广展现量",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "855"
+ },
+ {
+  "idx265": 196,
+  "key": "人群推广点击量",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "46"
+ },
+ {
+  "idx265": 197,
+  "key": "人群推广花费",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "100"
+ },
+ {
+  "idx265": 225,
+  "key": "总收藏加购成本 (1)",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00"
+  },
+  "newValue": "25"
+ },
+ {
+  "idx265": 227,
+  "key": "宝贝收藏加购成本 (1)",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00"
+  },
+  "newValue": "25"
+ },
+ {
+  "idx265": 229,
+  "key": "宝贝收藏成本 (1)",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "100"
+ },
+ {
+  "idx265": 231,
+  "key": "加购成本 (1)",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "33.33"
+ },
+ {
+  "idx265": 129,
+  "key": "关键词推广点击率",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00000"
+  },
+  "newValue": "0.05294"
+ },
+ {
+  "idx265": 130,
+  "key": "关键词推广平均点击花费",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00"
+  },
+  "newValue": "1.1"
+ },
+ {
+  "idx265": 131,
+  "key": "千次展现花费",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00"
+  },
+  "newValue": "58.12"
+ },
+ {
+  "idx265": 144,
+  "key": "关键词推广点击转化率",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "0"
+ },
+ {
+  "idx265": 145,
+  "key": "关键词推广投入产出比",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "0"
+ },
+ {
+  "idx265": 146,
+  "key": "含预售投产比",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "0"
+ },
+ {
+  "idx265": 151,
+  "key": "加购率",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00000"
+  },
+  "newValue": "0.07778"
+ },
+ {
+  "idx265": 161,
+  "key": "宝贝收藏率",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00000"
+  },
+  "newValue": "0.02222"
+ },
+ {
+  "idx265": 175,
+  "key": "入会率",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "0"
+ },
+ {
+  "idx265": 177,
+  "key": "引导访问率",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00000"
+  },
+  "newValue": "0.08765"
+ },
+ {
+  "idx265": 198,
+  "key": "人群推广点击率",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.0000"
+  },
+  "newValue": "0.0538"
+ },
+ {
+  "idx265": 199,
+  "key": "人群推广平均点击花费",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.0"
+  },
+  "newValue": "2.17"
+ },
+ {
+  "idx265": 200,
+  "key": "千次展现花费 (1)",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00"
+  },
+  "newValue": "116.96"
+ },
+ {
+  "idx265": 213,
+  "key": "人群推广点击转化率",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "0"
+ },
+ {
+  "idx265": 214,
+  "key": "人群推广投入产出比",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "0"
+ },
+ {
+  "idx265": 215,
+  "key": "含预售投产比 (1)",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "0"
+ },
+ {
+  "idx265": 220,
+  "key": "加购率 (1)",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.0"
+  },
+  "newValue": "0.06522"
+ },
+ {
+  "idx265": 230,
+  "key": "宝贝收藏率 (1)",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00"
+  },
+  "newValue": "0.02174"
+ },
+ {
+  "idx265": 244,
+  "key": "入会率 (1)",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0"
+  },
+  "newValue": "0"
+ },
+ {
+  "idx265": 246,
+  "key": "引导访问率 (1)",
+  "found": true,
+  "type": 2,
+  "ui_type": "Number",
+  "property": {
+   "formatter": "0.00000"
+  },
+  "newValue": "0.11462"
+ }
+]

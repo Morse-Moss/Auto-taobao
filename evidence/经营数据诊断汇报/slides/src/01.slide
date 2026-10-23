@@ -1,0 +1,40 @@
+<Slide style={{ width: '1280px', height: '720px', background: '#FFFFFF', fontFamily: 'Noto Sans SC', padding: '20px 64px', flexDirection: 'column' }}>
+        <Box style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: '52px' }}>
+            <Box style={{ width: '610px', flexDirection: 'column' }}>
+                <Box style={{ flexDirection: 'row', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+                    <Box style={{ width: '36px', height: '3px', background: '#A97B28' }} />
+                    <Text style={{ fontSize: '15px', color: '#A97B28', fontWeight: 600 }}>经营数据诊断</Text>
+                </Box>
+                <Text style={{ fontSize: '52px', fontWeight: 700, color: '#1B3557', lineHeight: 1.22 }}>
+                    近 18 天成交 49.0万元，<br />问题不在客流，在分配
+                </Text>
+                <Text style={{ fontSize: '17px', color: '#5F6975', lineHeight: 1.65, marginTop: '24px' }}>
+                    这份材料只回答三件事：<br />客人在哪家店、货在哪一步走掉、钱花在哪。<br />每件事都指到具体的店名和商品名。
+                </Text>
+            </Box>
+            <Box style={{ width: '440px', background: '#F4F6F8', padding: '34px 30px', flexDirection: 'column', gap: '26px' }}>
+                <Box style={{ flexDirection: 'column', gap: '6px' }}>
+                    <Text style={{ fontSize: '13px', color: '#5F6975' }}>18 天成交</Text>
+                    <Text style={{ fontSize: '34px', fontWeight: 700, color: '#1B3557' }}>49.0万元</Text>
+                </Box>
+                <Box style={{ height: '1px', background: '#DDE2E8' }} />
+                <Box style={{ flexDirection: 'column', gap: '6px' }}>
+                    <Text style={{ fontSize: '13px', color: '#5F6975' }}>退款</Text>
+                    <Text style={{ fontSize: '26px', fontWeight: 700, color: '#AE4128' }}>10.2万元　20.8%</Text>
+                </Box>
+                <Box style={{ height: '1px', background: '#DDE2E8' }} />
+                <Box style={{ flexDirection: 'column', gap: '6px' }}>
+                    <Text style={{ fontSize: '13px', color: '#5F6975' }}>广告花费 / 带回成交（18 天）</Text>
+                    <Text style={{ fontSize: '26px', fontWeight: 700, color: '#1B3557' }}>4.0万元　11.3万元</Text>
+                </Box>
+            </Box>
+        </Box>
+        <Box style={{ height: '40px', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: '13px', color: '#5F6975' }}>数据区间 2026-10-01 至 2026-10-18（18 天）　·　12 家店铺</Text>
+            <Text style={{ fontSize: '13px', color: '#5F6975' }}>快照 2026-10-20　·　全部指标同一窗口</Text>
+        </Box>
+        <Box style={{ height: '40px', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: '13px', color: '#5F6975' }}>经营数据诊断 · 2026-10-20</Text>
+            <Text style={{ fontSize: '13px', color: '#5F6975' }}>01 / 13</Text>
+        </Box>
+    </Slide>

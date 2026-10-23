@@ -1,0 +1,63 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-21\\2026-10-21-20261022021253864-e1dbdbf9\\网林淘宝\\inquiry.xls",
+  "shop": "网林淘宝",
+  "date": "2026-10-21",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 7,
+  "existingRows": 969,
+  "plannedRows": 7,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-21",
+      "productId": "968804072669",
+      "shop": "网林淘宝"
+    },
+    {
+      "date": "2026-10-21",
+      "productId": "1088027953263",
+      "shop": "网林淘宝"
+    },
+    {
+      "date": "2026-10-21",
+      "productId": "693366609819",
+      "shop": "网林淘宝"
+    },
+    {
+      "date": "2026-10-21",
+      "productId": "1086953430900",
+      "shop": "网林淘宝"
+    },
+    {
+      "date": "2026-10-21",
+      "productId": "1067206697783",
+      "shop": "网林淘宝"
+    },
+    {
+      "date": "2026-10-21",
+      "productId": "984050918945",
+      "shop": "网林淘宝"
+    },
+    {
+      "date": "2026-10-21",
+      "productId": "968187457862",
+      "shop": "网林淘宝"
+    }
+  ],
+  "recordIds": [
+    "reczz28QIJgnxVUO",
+    "reczz28QIJgnxzzD",
+    "reczz28QIJgnzvXD",
+    "reczz28QIJgnx0VJ",
+    "reczz28QIJgnycFG",
+    "reczz28QIJgo0Ktm",
+    "reczz28QIJgo0bFw"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 7,
+  "writeBatches": 1,
+  "afterRows": 976
+}

@@ -1,0 +1,78 @@
+{
+  "mode": "commit",
+  "at": "2026-10-20T00:02:34.439Z",
+  "reportDate": "2026-10-19",
+  "dateEpoch": 1792339200000,
+  "base": {
+    "appToken": "RqzrbD4zIalzjxsSGcbcUPTpnKc",
+    "name": "各店铺日报"
+  },
+  "table": {
+    "tableId": "tblLYwJTSLqTGVSC",
+    "name": "各店铺数据日报"
+  },
+  "fields": {
+    "日期": 5,
+    "店铺": 3
+  },
+  "writtenFields": [
+    "日期",
+    "店铺"
+  ],
+  "targets": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "present": [
+    {
+      "shop": "里可林淘宝",
+      "recordId": "reczz28JbodJ3UMs",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林天猫",
+      "recordId": "reczz28JbodJ1WJa",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "盖文淘宝",
+      "recordId": "reczz28JbodJ2iBx",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "盖文天猫",
+      "recordId": "reczz28Jbn22AMyU",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "科塔淘宝",
+      "recordId": "reczz28JbodJ0gQI",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林淘宝",
+      "recordId": "reczz28JbodJ3liL",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "里可林天猫",
+      "recordId": "reczz28JbodJ1OJP",
+      "matchedBy": "shop-name"
+    },
+    {
+      "shop": "网林家居",
+      "recordId": "reczz28JbodJ1mGN",
+      "matchedBy": "shop-name"
+    }
+  ],
+  "missing": [],
+  "status": "ALREADY_PRESENT",
+  "created": [],
+  "planPath": "D:\\Retire\\sycm-automation\\evidence\\daily-job-2026-10-19\\ensure-inquiry-rows-plan.json"
+}

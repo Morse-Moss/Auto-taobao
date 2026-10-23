@@ -1,0 +1,20 @@
+
+===== 2026-10-19T00:44:04.668Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\collect-shop-report.mjs --date 2026-10-18 --proxy http://127.0.0.1:19045 --shop-key 盖文天猫 --expect-shop 盖文旗舰店 --expect-member 盖文旗舰店:小瓜 --expect-member-id 2995200080
+exit=0 signal= error=none
+--- stdout ---
+[0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）
+[身份] 生意参谋店铺名 = "盖文旗舰店"（主店）｜期望 "盖文旗舰店" ✓
+      → 生意参谋页 717CB337B17B9D15D90815B109D4EDFE｜已有日报 xlsx 276 个｜下载目录 C:\Users\Administrator\Downloads｜身份核对=已做｜按「盖文天猫」登记的行标题「活动-店铺-整体-近30天」认）
+[1/4] 再进 自助分析 · 公共空间
+[2/4] 2.5s：预览按钮 1 个，日报行 #0（命中复核=true，视口内=true）
+[2/4] 点开「日报」预览（#0）→ {"clicked":true,"tag":"A","text":"预览"}
+[3/4] 3s：统计区间=["2026-09-19","2026-10-18"]｜下载按钮=true
+[3/4] 统计区间 2026-09-19 ~ 2026-10-18 含目标日 2026-10-18 ✓
+[4/4] 装直下通道仪表（平台 10-15 起把日报导出改成在线预览，文件不落盘）
+[4/4] 点「下载报表」
+      → y=601（中心点命中） → {"clicked":true,"tag":"SPAN","text":"下载报表"}
+      直下 URL 已捕获 → 新文件：活动-店铺-整体-近30天_20261019_5101fe58498b2d2694371a0b05f989f3.xlsx（21049 bytes）
+      shopXlsxPath = C:\Users\Administrator\Downloads\活动-店铺-整体-近30天_20261019_5101fe58498b2d2694371a0b05f989f3.xlsx
+
+--- stderr ---

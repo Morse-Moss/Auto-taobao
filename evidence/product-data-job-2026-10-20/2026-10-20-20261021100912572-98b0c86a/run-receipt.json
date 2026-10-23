@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-20-20261021100912572-98b0c86a",
+  "date": "2026-10-20",
+  "status": "FAILED",
+  "startedAt": "2026-10-21T10:09:12.573Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "盖文淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "failure": {
+    "class": "FAILED",
+    "reason": "UNCLASSIFIED",
+    "message": "本轮不完整（2 处）：推广 批量导入失败（sales1）：if (bad >= 0) throw new Error(`商品报表第${bad + 2}行列数与表头不一致`); Error: 商品报表第2行列数与表头不一致；网林家居/推广 导入失败：if (bad >= 0) throw new Error(`商品报表第${bad + 2}行列数与表头不一致`); Error: 商品报表第2行列数与表头不一致"
+  },
+  "failedStage": "promotion-import",
+  "finishedAt": "2026-10-21T10:21:13.945Z"
+}

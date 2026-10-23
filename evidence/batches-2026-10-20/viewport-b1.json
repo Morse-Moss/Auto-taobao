@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "threshold": {
+    "width": 1200,
+    "height": 600
+  },
+  "checked": 1,
+  "failed": [],
+  "entries": [
+    {
+      "shop": "网林家居",
+      "proxyPort": 19062,
+      "targetId": "2C91CEE9B325796ECDFD27E0E43858B3",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    }
+  ]
+}

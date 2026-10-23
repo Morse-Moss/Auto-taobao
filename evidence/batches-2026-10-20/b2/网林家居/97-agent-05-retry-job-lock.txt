@@ -1,0 +1,2 @@
+[mode] --mode apply（显式给定）
+[2026-10-21T00:36:10.741Z] 运行锁冲突：workflow lock busy: merchant-automation；持有者={"version":1,"name":"merchant-automation","owner":"daily-report","runId":"95844-1792540911631","acquiredAt":"2026-10-21T00:01:51.631Z","pid":95844}

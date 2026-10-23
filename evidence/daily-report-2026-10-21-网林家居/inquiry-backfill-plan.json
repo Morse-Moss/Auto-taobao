@@ -1,0 +1,47 @@
+{
+  "mode": "commit",
+  "reportDate": "2026-10-21",
+  "shop": "网林家居",
+  "environment": {
+    "computedAt": "2026-10-22T00:31:39.436Z",
+    "node": "v22.22.2",
+    "proxyUrl": "http://127.0.0.1:19062",
+    "browserPort": {
+      "port": 19052,
+      "source": "env",
+      "registryDefault": 19022
+    },
+    "proxyPort": {
+      "port": 19062,
+      "source": "env",
+      "registryDefault": 19023
+    },
+    "browserId": {
+      "id": "edge-shop-wanglin-custom",
+      "source": "env"
+    },
+    "browserLabel": {
+      "id": "Microsoft Edge (shop wanglin-custom)",
+      "source": "env"
+    }
+  },
+  "evidence": {
+    "outputDir": "D:\\Retire\\sycm-automation\\evidence\\daily-report-2026-10-21-网林家居",
+    "generation": 1,
+    "reason": "latest"
+  },
+  "status": "SOURCE_EMPTY_LEFT_BLANK",
+  "source": {
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "shop": "网林定制家居",
+    "column": "当日询单人数",
+    "dateRow": "2026-10-21",
+    "peerBenchmark": "SOURCE_EMPTY",
+    "rows": 7
+  },
+  "values": {
+    "询单量": null,
+    "同层同行询单量": null
+  },
+  "note": "生意参谋「询单到付款」对该店该日返回空态（表格「暂无数据」）⇒ 两格留空：不写、不算失败、不叫人。"
+}

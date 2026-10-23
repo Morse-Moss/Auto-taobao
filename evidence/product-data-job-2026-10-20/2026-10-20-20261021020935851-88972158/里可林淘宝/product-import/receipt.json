@@ -1,0 +1,194 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-20_2026-10-20.xls",
+  "shop": "里可林淘宝",
+  "date": "2026-10-20",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 29,
+  "existingRows": 4221,
+  "plannedRows": 29,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "809230030923"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "857762185721"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "853011405745"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "741220719302"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "714114643551"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "969313268004"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "669240905644"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "670960606510"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "672340446178"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "675026462589"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "689304101208"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "692177472734"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "709535195028"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "741907415238"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "747649450577"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "785853120776"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "811597731796"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "815994827536"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "828067515165"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "828457549127"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "831310400739"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "852589747620"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "852709742611"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "852725602271"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "905103792812"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "905104856942"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "1049693059005"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "1050449486940"
+    },
+    {
+      "date": "2026-10-20",
+      "shop": "里可林淘宝",
+      "productId": "1050452734313"
+    }
+  ],
+  "recordIds": [
+    "reczz28PtVjvrYo8",
+    "reczz28PtVjvrPrn",
+    "reczz28PtVjvtPVZ",
+    "reczz28PtVjvuWYE",
+    "reczz28PtVjvvL7b",
+    "reczz28PtVjvtPyM",
+    "reczz28PtVjvtVtx",
+    "reczz28PtVjvvBsa",
+    "reczz28PtVjvuQWx",
+    "reczz28PtVjvrhb4",
+    "reczz28PtVjvszAE",
+    "reczz28PtVjvrwMA",
+    "reczz28PtVjvsRXl",
+    "reczz28PtVjvsIzZ",
+    "reczz28PtVjvreeZ",
+    "reczz28PtVjvu2ZU",
+    "reczz28PtVjvtYn3",
+    "reczz28PtVjvuNwR",
+    "reczz28PtVjvrbXH",
+    "reczz28PtVjvsmYt",
+    "reczz28PtVjvuhoY",
+    "reczz28PtVjvvUXc",
+    "reczz28PtVjvry4I",
+    "reczz28PtVjvtLg9",
+    "reczz28PtVjvtzm7",
+    "reczz28PtVjvsyCo",
+    "reczz28PtVjvsiMI",
+    "reczz28PtVjvs8z2",
+    "reczz28PtVjvt7fs"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 29,
+  "writeBatches": 1,
+  "afterRows": 4250
+}

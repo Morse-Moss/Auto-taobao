@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-19-20261020020912175-0dafaf3f",
+  "date": "2026-10-19",
+  "status": "FAILED",
+  "startedAt": "2026-10-20T02:09:12.176Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "FAILED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "failure": {
+    "class": "HUMAN_REQUIRED",
+    "reason": "PLATFORM_OR_HUMAN_GATE",
+    "message": "本轮不完整（8 处）：里可林淘宝/底单 未采集：采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}；网林天猫/推广 未采集：采集失败：/eval?target=3637A0B3508A5C5F5B1F103BE07DD23A HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}；盖文淘宝/底单 未采集：采集失败：日按钮未找到（轮询 30s 仍未渲染）；盖文天猫/底单 未采集：采集失败：商品排行日期或下载按钮未就绪: {\"url\":\"https://sycm.taobao.com/cc/item_rank\",\"text\":\"生意参谋\\n盖文旗舰店\\n主店\\n惠商\\n我的\\n帮助\\n退出\\n生意参谋\",\"download\":false}；科塔淘宝/底单 未采集：采集失败：日按钮未找到（轮询 30s 仍未渲染）；里可林天猫/登录 未通过（读不到=生意参谋、阿里妈妈）；网林家居/登录 未通过（读不到=生意参谋、阿里妈妈）；网林淘宝/底单 未采集：采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}"
+  },
+  "failedStage": "login",
+  "finishedAt": "2026-10-20T02:36:57.259Z"
+}

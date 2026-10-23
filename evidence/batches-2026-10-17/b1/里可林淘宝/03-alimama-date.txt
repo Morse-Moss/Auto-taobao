@@ -1,0 +1,43 @@
+
+===== 2026-10-17T23:06:36.297Z =====
+$ C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\date-picker.mjs --site alimama --date 2026-10-17 --proxy http://127.0.0.1:19041
+exit=1 signal= error=none
+--- stdout ---
+
+--- stderr ---
+Error: alimama: state did not settle to 2026-10-17（读了 16 次 × 1200ms；其中读不到 16 次）; lastReadError=proxy http://127.0.0.1:19041/eval?target=EEDB264E5D59A8FF41105EAE8D7C166D failed: HTTP 400 Error: alimama filter bar not ready; triggers=0     at <anonymous>:6:36     at <anonymous>:10:5; diagnostic={"phase":"filter-bar","status":"not-rendered","detail":"proxy http://127.0.0.1:19041/eval?target=EEDB264E5D59A8FF41105EAE8D7C166D failed: HTTP 400 Error: alimama filter bar not ready; triggers=0     at <anonymous>:6:36     at <anonymous>:10:5"}; last=null
+    at settle (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:908:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async runApplyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:952:17)
+    at async applyDate (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/date-picker.mjs:820:12)
+TRACE [
+  {
+    "step": "read-before-skipped",
+    "tolerated": true,
+    "reason": "动作前页面尚未就绪；这一步只用于报告 before 与判断 REAPPLIED，按设计可缺省（随后的回读断言才是判据）",
+    "detail": "proxy http://127.0.0.1:19041/eval?target=EEDB264E5D59A8FF41105EAE8D7C166D failed: HTTP 400 Error: alimama filter bar not ready; triggers=0     at <anonymous>:6:"
+  },
+  {
+    "step": "navigate",
+    "url": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-17&endTime=2026-10-17&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day"
+  },
+  {
+    "step": "enter-report-route",
+    "landed": {
+      "t": "万相台无界版",
+      "h": "https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-17&endTime=2026-10-17&effectEqual=30&bizCodeIn=%5B%22onebpSearch%22%2C%22onebpDisplay%22%5D&granularity=day"
+    }
+  },
+  {
+    "step": "url-fallback-to-panel",
+    "reason": "alimama: state did not settle to 2026-10-17（读了 16 次 × 1200ms；其中读不到 16 次）; lastReadError=proxy http://127.0.0.1:19041/eval?target=EEDB264E5D59A8FF41105EAE8D7C166D failed: HTTP 400 Error: alimama filter"
+  },
+  {
+    "step": "panel-open",
+    "wantPreset": "昨日"
+  },
+  {
+    "step": "panel-fallback-failed",
+    "reason": "proxy http://127.0.0.1:19041/eval?target=EEDB264E5D59A8FF41105EAE8D7C166D failed: HTTP 400 Error: alimama date trigger count=0     at one (<anonymous>:12:37)     at <anonymous>:54:14     at <anonymous"
+  }
+]

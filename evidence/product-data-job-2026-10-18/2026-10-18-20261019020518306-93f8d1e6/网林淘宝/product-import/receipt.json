@@ -1,0 +1,242 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-18_2026-10-18 (5).xls",
+  "shop": "网林淘宝",
+  "date": "2026-10-18",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 37,
+  "existingRows": 4128,
+  "plannedRows": 37,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "651381481552"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "655425771252"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "661237845020"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "678591943726"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "692801937772"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "693366609819"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "709122917206"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "741173918869"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "741533016725"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "755961750576"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "863788794735"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "884833126259"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "885555256795"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "891736894217"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "896523000090"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "902054754329"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "902514561205"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "967502018098"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "968187457862"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "968804072669"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "977484199512"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "981679273634"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "981681257947"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "982348868132"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "982350728696"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "983494067536"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "984050918945"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "984053282396"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "984786645923"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "1000943467051"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "1067206697783"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "1067219197192"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "1072698463297"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "1072703039130"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "1073556554116"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "1086953430900"
+    },
+    {
+      "date": "2026-10-18",
+      "shop": "网林淘宝",
+      "productId": "1088027953263"
+    }
+  ],
+  "recordIds": [
+    "reczz28P6TLu6W9j",
+    "reczz28P6TLu7Ys4",
+    "reczz28P6TLu7KzB",
+    "reczz28P6TLu47b1",
+    "reczz28P6TLu5Wve",
+    "reczz28P6TLu4rWz",
+    "reczz28P6TLu72yf",
+    "reczz28P6TLu4Ioq",
+    "reczz28P6TLu5oSg",
+    "reczz28P6TLu6ktL",
+    "reczz28P6TLu5cvz",
+    "reczz28P6TLu7Mr9",
+    "reczz28P6TLu5ref",
+    "reczz28P6TLu5Epo",
+    "reczz28P6TLu5gMH",
+    "reczz28P6TLu7Qms",
+    "reczz28P6TLu5s3S",
+    "reczz28P6TLu7ldW",
+    "reczz28P6TLu73YG",
+    "reczz28P6TLu53Hm",
+    "reczz28P6TLu6vFt",
+    "reczz28P6TLu5x4q",
+    "reczz28P6TLu4WD9",
+    "reczz28P6TLu6RS1",
+    "reczz28P6TLu7WS8",
+    "reczz28P6TLu5LAT",
+    "reczz28P6TLu5dUG",
+    "reczz28P6TLu5x28",
+    "reczz28P6TLu4FN7",
+    "reczz28P6TLu6G88",
+    "reczz28P6TLu6Iy9",
+    "reczz28P6TLu475L",
+    "reczz28P6TLu7RaL",
+    "reczz28P6TLu5m9E",
+    "reczz28P6TLu5q5o",
+    "reczz28P6TLu7bZz",
+    "reczz28P6TLu4wfb"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 37,
+  "writeBatches": 1,
+  "afterRows": 4165
+}

@@ -1,0 +1,8 @@
+
+===== 2026-10-20T00:52:13.000Z =====
+$ node run-daily-report.mjs --date 2026-10-19 --proxy 19023 --shop-key 网林家居 --commit --shop-xlsx <same> --promotion-zip 营销场景报表_20261020_084709.zip（RELOAD_PAGE 之后重试）
+Error: source date self-check failed for 2026-10-19（shop={"column":"统计日期","matchedRowDate":"2026-10-19","workbookRows":2,"uniqueDates":1,"firstRowDate":"2026-10-19","lastRowDate":"2026-10-19","targetRowCount":1,"matches":true} ← 店铺日报_20261020_defbfd5f1fef2520bec4b10726fe5a41.xlsx；promotion={"column":"日期","csvName":"营销场景报表_20261020_084709.csv","observedDates":[],"rowCount":0,"targetRowCount":0,"matches":false} ← 营销场景报表_20261020_084709.zip）
+    at assertSourceDates (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:264:11)
+    at main (file:///D:/Retire/sycm-automation/skills/sycm-alimama-daily-report/scripts/run-daily-report.mjs:385:28)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+exit=1

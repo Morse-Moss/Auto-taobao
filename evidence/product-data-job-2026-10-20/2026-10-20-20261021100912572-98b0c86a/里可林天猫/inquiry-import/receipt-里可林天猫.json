@@ -1,0 +1,18 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-20\\2026-10-20-20261021100912572-98b0c86a\\里可林天猫\\inquiry.xls",
+  "shop": "里可林天猫",
+  "date": "2026-10-20",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 6,
+  "existingRows": 948,
+  "plannedRows": 0,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [],
+  "recordIds": [],
+  "writeStarted": true,
+  "plannedWriteRows": 0,
+  "afterRows": 948
+}

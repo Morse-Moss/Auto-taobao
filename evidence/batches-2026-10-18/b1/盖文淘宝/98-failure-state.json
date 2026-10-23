@@ -1,0 +1,46 @@
+{
+  "capturedAt": "2026-10-18T23:09:28.885Z",
+  "url": "https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Fone-fetch-report.oss-cn-zhangjiakou.aliyuncs.com%2Freports%2F3791488825%2Freport%2F202610%2F%25E5%25BA%2597%25E9%2593%25BA%25E6%2597%25A5%25E6%258A%25A5_20261019_780c1f28297bd7f20298a08fa63cf36d.xlsx%3FExpires%3D1792366745%26OSSAccessKeyId%3DLTAI5t6Ra3JTBxbA2mkDoCSn%26Signature%3DPlIlQqsafIvxGWTiTICSiwbaXwo%253D&wdOrigin=BROWSELINK",
+  "title": "店铺日报_20261019_780c1f28297bd7f20298a08fa63cf36d.xlsx",
+  "viewport": {
+    "w": 1506,
+    "h": 594,
+    "dpr": 1.25,
+    "scrollY": 0
+  },
+  "visibleText": "",
+  "dialogs": [],
+  "interactive": [],
+  "domSummary": {
+    "totalElements": 21,
+    "counts": {
+      "HTML": 1,
+      "HEAD": 1,
+      "META": 2,
+      "STYLE": 2,
+      "TITLE": 1,
+      "LINK": 1,
+      "BODY": 1,
+      "DIV": 5,
+      "IMG": 1,
+      "FORM": 2,
+      "INPUT": 2,
+      "SCRIPT": 1,
+      "IFRAME": 1
+    },
+    "containers": [
+      {
+        "tag": "DIV",
+        "id": "load_img",
+        "cls": "",
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        }
+      }
+    ]
+  },
+  "tables": []
+}

@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-22T02:37:35.334Z",
+  "shop": "里可林天猫",
+  "date": "2026-10-21",
+  "note": "轮询 30s 内未出现商品咨询分析入口",
+  "expectation": {
+    "parent": "商品分析",
+    "entry": "商品咨询分析"
+  },
+  "reading": {
+    "shop": "里可林旗舰店",
+    "hasParent": true,
+    "hasInquiry": false,
+    "exactInquiry": 0,
+    "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop",
+    "readyState": "complete"
+  },
+  "pages": [
+    {
+      "targetId": "DFB9D6CAC87BEC335D08CE0CBC682D32",
+      "url": "https://one.alimama.com/index.html"
+    },
+    {
+      "targetId": "C138E6A402D7F4A51D08B8FE2C6A9004",
+      "url": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E9%87%8C%E5%8F%AF%E6%9E%97%E5%A4%A9%E7%8C%AB&port=19051"
+    },
+    {
+      "targetId": "A2559F82BC364137377BD0052AFA302A",
+      "url": "https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop"
+    },
+    {
+      "targetId": "E41FFCED2C78801E6F3441B5005DB997",
+      "url": "edge://downloads-hub/"
+    }
+  ],
+  "screenshot": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-21\\2026-10-21-20261022021253864-e1dbdbf9\\里可林天猫\\inquiry.xls.failure.png"
+}

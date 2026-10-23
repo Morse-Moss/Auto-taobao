@@ -1,0 +1,70 @@
+<Slide style={{ width: '1280px', height: '720px', background: '#FFFFFF', fontFamily: 'Noto Sans SC', padding: '20px 64px', flexDirection: 'column' }}>
+        <Box style={{ height: '96px', flexDirection: 'column', justifyContent: 'center' }}>
+            <Text style={{ fontSize: '31px', fontWeight: 700, color: '#1B3557', lineHeight: 1.25 }}>5.3% 的主力商品，做出 80.5% 的销售额</Text>
+            <Text style={{ fontSize: '15px', color: '#5F6975', lineHeight: 1.4, marginTop: '6px' }}>468 个在售商品，18 天成交 28.0万元——商品明细覆盖 8 家店（占 12 家成交 59.5%），另 5 家见动作四。</Text>
+        </Box>
+        <Box style={{ height: '540px', flexDirection: 'row', gap: '40px' }}>
+            <Box style={{ width: '660px', flexDirection: 'column' }}>
+                <Text style={{ fontSize: '15px', fontWeight: 700, color: '#1B3557', marginBottom: '12px' }}>主力 25 个，按成交额排前 5</Text>
+                <Box style={{ flexDirection: 'row', alignItems: 'center', height: '76px', borderBottom: '1px solid #DDE2E8', gap: '14px' }}>
+                    <Text style={{ fontSize: '20px', fontWeight: 700, color: '#A97B28', width: '30px' }}>1</Text>
+                    <Box style={{ width: '420px', flexDirection: 'column', gap: '3px' }}>
+                        <Text style={{ fontSize: '13px', color: '#15181D', lineHeight: 1.4 }}>盖文Gavin人造石深泡一体浴缸日式民宿方形独立式小户型浴盆家用</Text>
+                        <Text style={{ fontSize: '11.5px', color: '#5F6975' }}>访客 940　支付买家 5</Text>
+                    </Box>
+                    <Text style={{ fontSize: '20px', fontWeight: 700, color: '#1B3557', width: '130px', textAlign: 'right' }}>2.4万元</Text>
+                </Box>
+                <Box style={{ flexDirection: 'row', alignItems: 'center', height: '76px', borderBottom: '1px solid #DDE2E8', gap: '14px' }}>
+                    <Text style={{ fontSize: '20px', fontWeight: 700, color: '#A97B28', width: '30px' }}>2</Text>
+                    <Box style={{ width: '420px', flexDirection: 'column', gap: '3px' }}>
+                        <Text style={{ fontSize: '13px', color: '#15181D', lineHeight: 1.4 }}>盖文Gavin独立式人造石浴缸鹅蛋型家用卫生间浴盆双人酒店民宿</Text>
+                        <Text style={{ fontSize: '11.5px', color: '#5F6975' }}>访客 763　支付买家 4</Text>
+                    </Box>
+                    <Text style={{ fontSize: '20px', fontWeight: 700, color: '#1B3557', width: '130px', textAlign: 'right' }}>2.1万元</Text>
+                </Box>
+                <Box style={{ flexDirection: 'row', alignItems: 'center', height: '76px', borderBottom: '1px solid #DDE2E8', gap: '14px' }}>
+                    <Text style={{ fontSize: '20px', fontWeight: 700, color: '#A97B28', width: '30px' }}>3</Text>
+                    <Box style={{ width: '420px', flexDirection: 'column', gap: '3px' }}>
+                        <Text style={{ fontSize: '13px', color: '#15181D', lineHeight: 1.4 }}>盖文Gavin小户型家用坐式浴缸人造石一体式深泡浴盆日式民宿酒店</Text>
+                        <Text style={{ fontSize: '11.5px', color: '#5F6975' }}>访客 2,078　支付买家 5</Text>
+                    </Box>
+                    <Text style={{ fontSize: '20px', fontWeight: 700, color: '#1B3557', width: '130px', textAlign: 'right' }}>1.9万元</Text>
+                </Box>
+                <Box style={{ flexDirection: 'row', alignItems: 'center', height: '76px', borderBottom: '1px solid #DDE2E8', gap: '14px' }}>
+                    <Text style={{ fontSize: '20px', fontWeight: 700, color: '#A97B28', width: '30px' }}>4</Text>
+                    <Box style={{ width: '420px', flexDirection: 'column', gap: '3px' }}>
+                        <Text style={{ fontSize: '13px', color: '#15181D', lineHeight: 1.4 }}>盖文纯亚克力一体盆台上盆琦美石家用洗手盆洗面盆洗脸盆台盆定制</Text>
+                        <Text style={{ fontSize: '11.5px', color: '#5F6975' }}>访客 21　支付买家 2</Text>
+                    </Box>
+                    <Text style={{ fontSize: '20px', fontWeight: 700, color: '#1B3557', width: '130px', textAlign: 'right' }}>1.5万元</Text>
+                </Box>
+                <Box style={{ flexDirection: 'row', alignItems: 'center', height: '76px', borderBottom: '1px solid #DDE2E8', gap: '14px' }}>
+                    <Text style={{ fontSize: '20px', fontWeight: 700, color: '#A97B28', width: '30px' }}>5</Text>
+                    <Box style={{ width: '420px', flexDirection: 'column', gap: '3px' }}>
+                        <Text style={{ fontSize: '13px', color: '#15181D', lineHeight: 1.4 }}>科塔大小户型一体人造石窄边大肚带储物收纳洗手洗脸洗漱台盆定制</Text>
+                        <Text style={{ fontSize: '11.5px', color: '#5F6975' }}>访客 1,019　支付买家 5</Text>
+                    </Box>
+                    <Text style={{ fontSize: '20px', fontWeight: 700, color: '#1B3557', width: '130px', textAlign: 'right' }}>1.3万元</Text>
+                </Box>
+                <Text style={{ fontSize: '12px', color: '#5F6975', marginTop: '10px' }}>前 5 个合计占商品层成交 32.6%</Text>
+            </Box>
+            <Box style={{ width: '450px', flexDirection: 'column', gap: '16px' }}>
+                <Box style={{ background: '#F4F6F8', padding: '22px' }}>
+                    <Text style={{ fontSize: '13px', color: '#5F6975' }}>补充档 18 个</Text>
+                    <Text style={{ fontSize: '17px', color: '#15181D', marginTop: '6px', lineHeight: 1.6 }}>分走 30.4% 的客人，做 14.7% 的销售额</Text>
+                </Box>
+                <Box style={{ background: '#FBF2EF', padding: '22px' }}>
+                    <Text style={{ fontSize: '13px', color: '#5F6975' }}>长尾档 425 个</Text>
+                    <Text style={{ fontSize: '17px', color: '#15181D', marginTop: '6px', lineHeight: 1.6 }}>分走 53.5% 的客人，只做 4.7% 的销售额</Text>
+                    <Text style={{ fontSize: '15px', fontWeight: 700, color: '#AE4128', marginTop: '10px' }}>其中 376 个 18 天零成交</Text>
+                </Box>
+                <Box style={{ borderLeft: '4px solid #A97B28', paddingLeft: '16px', marginTop: 'auto' }}>
+                    <Text style={{ fontSize: '17px', fontWeight: 600, color: '#1B3557', lineHeight: 1.6 }}>长尾不是没货，<br />是没人管。</Text>
+                </Box>
+            </Box>
+        </Box>
+        <Box style={{ height: '40px', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: '13px', color: '#5F6975' }}>经营数据诊断 · 2026-10-20</Text>
+            <Text style={{ fontSize: '13px', color: '#5F6975' }}>05 / 13</Text>
+        </Box>
+    </Slide>

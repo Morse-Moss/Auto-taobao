@@ -1,0 +1,24 @@
+===== 2026-10-21T00:37:28Z 只读实例体检 =====
+$ curl -s -m 5 http://127.0.0.1:19023/targets   # repair-request.instancePrecondition.checkCommand
+页签数= 3
+  - | 生意参谋 - 零售电商大数据产品平台 | https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  window-label | 商家浏览器（日报共用） · 日报采集窗口 | file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E5%95%86%E5%AE%B6%E6%B5%8F%E8
+  飞书底单页 | ‍​​﻿⁠​﻿​​​⁠​​​​﻿​​﻿​‬​‍﻿‬​⁠﻿​​​﻿﻿​​​ | https://rcnbpuvafkct.feishu.cn/base/RqzrbD4zIalzjxsSGcbcUPTpnKc?table=tbl6EDMzzaYUVvVC&view=vewwg0rh
+
+$ curl -s -m 5 http://127.0.0.1:19062/targets   # 该店自己的实例（alimama 报表页所在）
+页签数= 5
+  生意参谋工作页 | 生意参谋 - 零售电商大数据产品平台 | https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop
+  - | 网林家居 · 日报采集窗口 | file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%BD%91%E6%9E%97%E5%AE%B6%E5
+  阿里妈妈报表页 | 营销场景报表_万相台无界版 | https://one.alimama.com/index.html#!/report/account?rptType=account&startTime=2026-10-20&endTime=202
+  - | 店铺日报_20261021_defbfd5f1fef2520bec4b1 | https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Fone-fetch-report.oss-cn-zhangjiakou.
+  - | 下载 | edge://downloads-hub/
+
+$ cat runtime/.workflow-locks/merchant-automation.json
+{
+  "version": 1,
+  "name": "merchant-automation",
+  "owner": "daily-report",
+  "runId": "95844-1792540911631",
+  "acquiredAt": "2026-10-21T00:01:51.631Z",
+  "pid": 95844
+}

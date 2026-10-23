@@ -1,0 +1,64 @@
+{
+ "version": "sycm-automation 1.12.7",
+ "date": "2026-10-18",
+ "dateInput": "yesterday",
+ "mode": "commit",
+ "batchSize": 5,
+ "evidenceRoot": "evidence/batches-2026-10-18",
+ "release": true,
+ "hold": null,
+ "rounds": [
+  {
+   "index": 1,
+   "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝"
+   ],
+   "steps": {
+    "start": 0,
+    "viewport-gate": 0,
+    "login-preflight": 0,
+    "label:里可林淘宝": 0,
+    "label:网林天猫": 0,
+    "label:盖文淘宝": 0,
+    "label:盖文天猫": 0,
+    "label:科塔淘宝": 0,
+    "chain": 0,
+    "stop": 0
+   },
+   "chainStatus": 0,
+   "release": null,
+   "decision": {
+    "release": true,
+    "why": "这一批全绿：按计划收掉，把内存让给下一批"
+   }
+  },
+  {
+   "index": 2,
+   "shops": [
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+   ],
+   "steps": {
+    "start": 0,
+    "viewport-gate": 0,
+    "login-preflight": 0,
+    "label:网林淘宝": 0,
+    "label:里可林天猫": 0,
+    "label:网林家居": 0,
+    "chain": 0,
+    "stop": 0
+   },
+   "chainStatus": 0,
+   "release": null,
+   "decision": {
+    "release": true,
+    "why": "这一批全绿：按计划收掉，把内存让给下一批"
+   }
+  }
+ ]
+}

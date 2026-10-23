@@ -1,0 +1,111 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-20\\2026-10-20-20261021020935851-88972158\\盖文天猫\\inquiry.xls",
+  "shop": "盖文天猫",
+  "date": "2026-10-20",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 15,
+  "existingRows": 901,
+  "plannedRows": 15,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-20",
+      "productId": "916640272254",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "892895965277",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "864193973384",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "892968685760",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "916176821993",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "920624885754",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "1068512256128",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "864189269914",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "920106886202",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "703834953046",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "692677223660",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "892288895799",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "951822852489",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "892968829257",
+      "shop": "盖文天猫"
+    },
+    {
+      "date": "2026-10-20",
+      "productId": "1051578909809",
+      "shop": "盖文天猫"
+    }
+  ],
+  "recordIds": [
+    "reczz28PtYq6bsVh",
+    "reczz28PtYq6cfGG",
+    "reczz28PtYq6dPjN",
+    "reczz28PtYq6avGo",
+    "reczz28PtYq6eSpz",
+    "reczz28PtYq6e4Co",
+    "reczz28PtYq6bSYK",
+    "reczz28PtYq6e5I5",
+    "reczz28PtYq6bPKo",
+    "reczz28PtYq6ckQj",
+    "reczz28PtYq6copJ",
+    "reczz28PtYq6deff",
+    "reczz28PtYq6c2hf",
+    "reczz28PtYq6dzxQ",
+    "reczz28PtYq6cIkN"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 15,
+  "writeBatches": 1,
+  "afterRows": 916
+}

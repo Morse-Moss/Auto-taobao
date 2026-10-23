@@ -1,0 +1,57 @@
+{
+  "mode": "apply",
+  "date": "2026-10-18",
+  "shop": "网林家居",
+  "profile": "kcne",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "tables": {
+    "keyword": {
+      "tableId": "tblSPWt8ZBs0iL7f",
+      "beforeRows": 1435,
+      "plannedRows": 0,
+      "skippedRows": 0,
+      "subjectIds": []
+    },
+    "audience": {
+      "tableId": "tbl7CUAdPMKJwKYp",
+      "beforeRows": 1323,
+      "plannedRows": 9,
+      "skippedRows": 0,
+      "subjectIds": [
+        "1076026074700",
+        "1077063041893",
+        "1078064196622",
+        "1078065212901"
+      ],
+      "recordIds": [
+        "reczz28P7aqPAp7o",
+        "reczz28P7aqPBlvE",
+        "reczz28P7aqPBDu0",
+        "reczz28P7aqPBqOL",
+        "reczz28P7aqPCOZN",
+        "reczz28P7aqPEhK8",
+        "reczz28P7aqPCff7",
+        "reczz28P7aqPCcPN",
+        "reczz28P7aqPE5hE"
+      ],
+      "writeStarted": true,
+      "plannedWriteRows": 9,
+      "writeBatches": 1,
+      "afterRows": 1332
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261019_113000.zip",
+      "csvName": "关键词报表_20261019_113000.csv",
+      "rows": 0,
+      "columns": 77
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261019_113013.zip",
+      "csvName": "人群报表_20261019_113013.csv",
+      "rows": 9,
+      "columns": 75
+    }
+  }
+}
