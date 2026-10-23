@@ -8,6 +8,7 @@
 - The logged-in Edge profile, credentials, and cookies remain outside this project.
 - The active Feishu credential file is resolved from `runtime/feishu-targets.mjs` (currently the kcne tenant: `E:/小红书/.env.feishu-kcne.local`); pass its path to import commands and never copy its values into this project. Never hardcode tenant app tokens or base/table ids — read them from that single source of truth.
 - Read `docs/ops/LESSONS-2026-09-14_15.md` before changing a state machine, a release path, or collection semantics: it lists the failures that have already cost time here.
+- Read `docs/ops/REPAIR-PROTOCOL.md` before starting any repair: a fix is not done until the same-family scan (three questions), the attack pack, and the verification status are all reported. `docs/ops/COLLAB-CONVENTIONS.md` defines the default acceptance criteria for repair-class tasks when the user's instruction does not spell them out.
 
 ## Operating Rules
 
