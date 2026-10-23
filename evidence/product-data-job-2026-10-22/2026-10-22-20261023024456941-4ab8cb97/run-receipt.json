@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-22-20261023024456941-4ab8cb97",
+  "date": "2026-10-22",
+  "status": "FAILED",
+  "startedAt": "2026-10-23T02:44:56.943Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "FAILED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "COMPLETED"
+    }
+  ],
+  "shops": [
+    "网林淘宝"
+  ],
+  "failure": {
+    "class": "FAILED",
+    "reason": "UNCLASSIFIED",
+    "message": "本轮不完整（1 处）：网林淘宝/底单 未采集：采集失败：日按钮未找到（轮询 30s 仍未渲染）"
+  },
+  "failedStage": "product-import",
+  "finishedAt": "2026-10-23T02:46:35.954Z"
+}

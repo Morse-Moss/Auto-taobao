@@ -1,0 +1,46 @@
+[停] 目标 3 个实例
+  · 盖文天猫
+      将停 proxy pid=8300  ← 端口在听、进程命令行是 start-shop-proxy.mjs 盖文天猫
+         taskkill /PID 8300 /T /F
+      将停 browser pid=3160  ← CDP 自证 profile 一致；杀启动器 3160（连带浏览器进程树与保活进程）
+         taskkill /PID 3160 /T /F
+      已停 proxy pid=8300
+      已停 browser pid=3160
+      停后盘点到:missing
+  · 科塔淘宝
+      将停 proxy pid=40380  ← 端口在听、进程命令行是 start-shop-proxy.mjs 科塔淘宝
+         taskkill /PID 40380 /T /F
+      将停 browser pid=1748  ← CDP 自证 profile 一致；杀启动器 1748（连带浏览器进程树与保活进程）
+         taskkill /PID 1748 /T /F
+      已停 proxy pid=40380
+      已停 browser pid=1748
+      停后盘点到:missing
+  · 网林淘宝
+      将停 proxy pid=35520  ← 端口在听、进程命令行是 start-shop-proxy.mjs 网林淘宝
+         taskkill /PID 35520 /T /F
+      将停 browser pid=22164  ← CDP 自证 profile 一致；杀启动器 22164（连带浏览器进程树与保活进程）
+         taskkill /PID 22164 /T /F
+      已停 proxy pid=35520
+      已停 browser pid=22164
+      停后盘点到:missing
+{
+  "shops": [
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝"
+  ],
+  "stopExitCode": 0,
+  "checks": [
+    {
+      "attempt": 1,
+      "listening": 0,
+      "error": null
+    },
+    {
+      "attempt": 2,
+      "listening": 0,
+      "error": null
+    }
+  ],
+  "released": true
+}

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-21-20261023013909230-ca2851b1",
+  "date": "2026-10-21",
+  "status": "FAILED",
+  "startedAt": "2026-10-23T01:39:09.232Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "FAILED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "COMPLETED"
+    }
+  ],
+  "shops": [
+    "网林天猫"
+  ],
+  "failure": {
+    "class": "TRANSIENT_EXTERNAL",
+    "reason": "EXTERNAL_RETRYABLE",
+    "message": "本轮不完整（1 处）：网林天猫/底单 未采集：采集失败：商品排行日期或下载按钮未就绪：日期停在 2026-10-22，不是目标日 2026-10-21（现场 {\"url\":\"https://sycm.taobao.com/cc/item_rank?dateRange=2026-10-22%7C2026-10-22&dateType=day\",\"text\":\"生意参…"
+  },
+  "failedStage": "product-import",
+  "finishedAt": "2026-10-23T01:40:24.174Z"
+}

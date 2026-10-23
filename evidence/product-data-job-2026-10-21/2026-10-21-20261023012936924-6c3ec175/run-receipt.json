@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-21-20261023012936924-6c3ec175",
+  "date": "2026-10-21",
+  "status": "FAILED",
+  "startedAt": "2026-10-23T01:29:36.926Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "FAILED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "COMPLETED"
+    }
+  ],
+  "shops": [
+    "里可林天猫",
+    "盖文天猫",
+    "网林天猫"
+  ],
+  "failure": {
+    "class": "TRANSIENT_EXTERNAL",
+    "reason": "EXTERNAL_RETRYABLE",
+    "message": "本轮不完整（3 处）：里可林天猫/底单 未采集：采集失败：商品排行日期或下载按钮未就绪: {\"url\":\"https://sycm.taobao.com/cc/item_rank?dateRange=2026-10-22%7C2026-10-22&dateType=day\",\"text\":\"生意参谋\\n里可林旗舰店\\n主店\\n唤起作战大屏\\n惠商\\n我的\\n帮助\\n…；盖文天猫/底单 未采集：采集失败：商品排行日期或下载按钮未就绪: {\"url\":\"https://sycm.taobao.com/cc/item_rank?dateRange=2026-10-22%7C2026-10-22&dateType=day\",\"text\":\"生意参谋\\n盖文旗舰店\\n主店\\n唤起作战大屏\\n惠商\\n我的\\n帮助\\n退…；网林天猫/底单 未采集：采集失败：商品排行日期或下载按钮未就绪: {\"url\":\"https://sycm.taobao.com/cc/item_rank?dateRange=2026-10-22%7C2026-10-22&dateType=day\",\"text\":\"生意参谋\\n网林家居旗舰店\\n主店\\n唤起作战大屏\\n惠商\\n我的\\n帮助\\…"
+  },
+  "failedStage": "product-import",
+  "finishedAt": "2026-10-23T01:35:12.119Z"
+}

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-22-20261023064245195-44417ab6",
+  "date": "2026-10-22",
+  "status": "FAILED",
+  "startedAt": "2026-10-23T06:42:45.196Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "FAILED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝"
+  ],
+  "failure": {
+    "class": "FAILED",
+    "reason": "UNCLASSIFIED",
+    "message": "本轮不完整（2 处）：里可林淘宝/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；里可林淘宝/推广 未采集：本轮未走到（前一段未成）"
+  },
+  "failedStage": "inquiry-import",
+  "finishedAt": "2026-10-23T06:44:23.952Z"
+}

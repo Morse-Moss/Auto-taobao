@@ -1,0 +1,18 @@
+[2026-10-23T06:42:47.633Z] 飞书目标预检：1 张 base 共 3 张表，各自凭据都被认（OK）
+[2026-10-23T06:42:47.634Z] 商品数据自动采集开始：2026-10-22 → 2026-10-22；1 店；一次全起、结束统一释放；底单串行、询单/推广并行；模式 commit
+[2026-10-23T06:42:47.638Z] --- 1 家：里可林淘宝
+[2026-10-23T06:42:49.939Z] 视口回读通过：里可林淘宝=1506x642
+[2026-10-23T06:43:07.149Z] [底单] 里可林淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (27).xls
+[2026-10-23T06:43:32.647Z] [询单] 里可林淘宝 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:137
+const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面）'}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
+                                                                                                                                                                                                                                    ^
+
+Error: 页面状态不满足（轮询 21 次）：{"shop":"里可林家居","hasInquiry":true,"date":"2026-10-22","daySelected":true,"downloadBtn":0,"link":"","linkSource":"","linkReads":21}
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:137:229
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T06:44:08.823Z] [导入] 里可林淘宝 底单已写入
+[2026-10-23T06:44:08.826Z] 失败：本轮不完整（2 处）：里可林淘宝/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；里可林淘宝/推广 未采集：本轮未走到（前一段未成）（FAILED/UNCLASSIFIED；停在哪一段=inquiry-import）
+[2026-10-23T06:44:23.494Z] 浏览器已释放并完成端口二次回读
+[2026-10-23T06:44:23.953Z] 商品数据自动采集结束：退出码 1

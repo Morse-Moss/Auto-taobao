@@ -1,0 +1,28 @@
+[停] 目标 1 个实例
+  · 网林淘宝
+      将停 proxy pid=26276  ← 端口在听、进程命令行是 start-shop-proxy.mjs 网林淘宝
+         taskkill /PID 26276 /T /F
+      将停 browser pid=110824  ← CDP 自证 profile 一致；杀启动器 110824（连带浏览器进程树与保活进程）
+         taskkill /PID 110824 /T /F
+      已停 proxy pid=26276
+      未停 browser pid=110824  ERROR: The process with PID 135632 (child process of PID 64616) could not be terminated.
+      停后盘点到:missing
+{
+  "shops": [
+    "网林淘宝"
+  ],
+  "stopExitCode": 0,
+  "checks": [
+    {
+      "attempt": 1,
+      "listening": 0,
+      "error": null
+    },
+    {
+      "attempt": 2,
+      "listening": 0,
+      "error": null
+    }
+  ],
+  "released": true
+}

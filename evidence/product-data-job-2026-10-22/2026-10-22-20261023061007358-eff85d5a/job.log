@@ -1,0 +1,102 @@
+[2026-10-23T06:10:09.965Z] 飞书目标预检：1 张 base 共 3 张表，各自凭据都被认（OK）
+[2026-10-23T06:10:09.967Z] 商品数据自动采集开始：yesterday → 2026-10-22；8 店；分 3 批（每批最多 3 家，**每批跑完立刻释放**）；底单串行、询单/推广并行；模式 commit
+[2026-10-23T06:10:09.971Z] --- 第 1/3 批：里可林淘宝、网林天猫、盖文淘宝；3 家：里可林淘宝、网林天猫、盖文淘宝
+[2026-10-23T06:10:16.656Z] 视口回读通过：里可林淘宝=1506x642、网林天猫=1506x642、盖文淘宝=1506x642
+[2026-10-23T06:11:41.890Z] [底单] 里可林淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (11).xls
+[2026-10-23T06:11:48.229Z] [底单] 网林天猫 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (12).xls
+[2026-10-23T06:11:55.125Z] [底单] 盖文淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (13).xls
+[2026-10-23T06:12:21.414Z] [询单] 里可林淘宝 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120
+const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面）'}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
+                                                                                                                                                                                                                                    ^
+
+Error: 页面状态不满足（轮询 21 次）：{"shop":"里可林家居","hasInquiry":true,"date":"2026-10-22","daySelected":true,"downloadBtn":0,"link":"","linkSource":"","linkReads":21}
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120:229
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T06:12:47.114Z] [询单] 网林天猫 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120
+const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面）'}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
+                                                                                                                                                                                                                                    ^
+
+Error: 页面状态不满足（轮询 21 次）：{"shop":"网林家居旗舰店","hasInquiry":true,"date":"2026-10-22","daySelected":true,"downloadBtn":0,"link":"","linkSource":"","linkReads":21}
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120:229
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T06:13:12.753Z] [询单] 盖文淘宝 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120
+const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面）'}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
+                                                                                                                                                                                                                                    ^
+
+Error: 页面状态不满足（轮询 21 次）：{"shop":"盖文全卫定制","hasInquiry":true,"date":"2026-10-22","daySelected":true,"downloadBtn":0,"link":"","linkSource":"","linkReads":21}
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120:229
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T06:13:54.092Z] [导入] 里可林淘宝 底单已写入
+[2026-10-23T06:14:29.761Z] [导入] 网林天猫 底单已写入
+[2026-10-23T06:15:06.323Z] [导入] 盖文淘宝 底单已写入
+[2026-10-23T06:15:34.422Z] 浏览器已释放并完成端口二次回读（里可林淘宝,网林天猫,盖文淘宝）
+[2026-10-23T06:15:34.422Z] --- 第 2/3 批：盖文天猫、科塔淘宝、网林淘宝；3 家：盖文天猫、科塔淘宝、网林淘宝
+[2026-10-23T06:15:40.905Z] 视口回读通过：盖文天猫=1506x642、科塔淘宝=1506x642、网林淘宝=1506x642
+[2026-10-23T06:17:04.688Z] [底单] 盖文天猫 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (14).xls
+[2026-10-23T06:17:11.236Z] [底单] 科塔淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (15).xls
+[2026-10-23T06:17:17.836Z] [底单] 网林淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (16).xls
+[2026-10-23T06:17:43.245Z] [询单] 盖文天猫 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120
+const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面）'}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
+                                                                                                                                                                                                                                    ^
+
+Error: 页面状态不满足（轮询 21 次）：{"shop":"盖文旗舰店","hasInquiry":true,"date":"2026-10-22","daySelected":true,"downloadBtn":0,"link":"","linkSource":"","linkReads":21}
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120:229
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T06:18:08.628Z] [询单] 科塔淘宝 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120
+const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面）'}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
+                                                                                                                                                                                                                                    ^
+
+Error: 页面状态不满足（轮询 21 次）：{"shop":"科塔全卫定制","hasInquiry":true,"date":"2026-10-22","daySelected":true,"downloadBtn":0,"link":"","linkSource":"","linkReads":21}
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120:229
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T06:18:34.125Z] [询单] 网林淘宝 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120
+const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面）'}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
+                                                                                                                                                                                                                                    ^
+
+Error: 页面状态不满足（轮询 21 次）：{"shop":"网林全卫定制","hasInquiry":true,"date":"2026-10-22","daySelected":true,"downloadBtn":0,"link":"","linkSource":"","linkReads":21}
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:120:229
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T06:19:10.523Z] [导入] 盖文天猫 底单已写入
+[2026-10-23T06:19:44.742Z] [导入] 科塔淘宝 底单已写入
+[2026-10-23T06:20:21.359Z] [导入] 网林淘宝 底单已写入
+[2026-10-23T06:21:05.538Z] 浏览器已释放并完成端口二次回读（盖文天猫,科塔淘宝,网林淘宝）
+[2026-10-23T06:21:05.539Z] --- 第 3/3 批：里可林天猫、网林家居；2 家：里可林天猫、网林家居
+[2026-10-23T06:21:10.299Z] 视口回读通过：里可林天猫=1506x642、网林家居=1506x642
+[2026-10-23T06:22:05.627Z] [底单] 里可林天猫 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (17).xls
+[2026-10-23T06:22:11.772Z] [底单] 网林家居 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (18).xls
+[2026-10-23T06:22:37.077Z] [询单] 里可林天猫 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:123
+const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面）'}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
+                                                                                                                                                                                                                                    ^
+
+Error: 页面状态不满足（轮询 21 次）：{"shop":"里可林旗舰店","hasInquiry":true,"date":"2026-10-22","daySelected":true,"downloadBtn":0,"link":"","linkSource":"","linkReads":21}
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:123:229
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T06:23:02.503Z] [询单] 网林家居 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:123
+const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面）'}`); if(!state.hasInquiry||state.date!==o.date||!state.link)throw new Error(`页面状态不满足（轮询 ${polled.reads} 次）：${JSON.stringify(state)}`);
+                                                                                                                                                                                                                                    ^
+
+Error: 页面状态不满足（轮询 21 次）：{"shop":"网林定制家居","hasInquiry":true,"date":"2026-10-22","daySelected":true,"downloadBtn":0,"link":"","linkSource":"","linkReads":21}
+    at file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:123:229
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T06:23:39.540Z] [导入] 里可林天猫 底单已写入
+[2026-10-23T06:24:15.455Z] [导入] 网林家居 底单已写入
+[2026-10-23T06:24:34.091Z] 浏览器已释放并完成端口二次回读（里可林天猫,网林家居）
+[2026-10-23T06:24:34.095Z] 失败：本轮不完整（16 处）：里可林淘宝/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；里可林淘宝/推广 未采集：本轮未走到（前一段未成）；网林天猫/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；网林天猫/推广 未采集：本轮未走到（前一段未成）；盖文淘宝/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；盖文淘宝/推广 未采集：本轮未走到（前一段未成）；盖文天猫/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；盖文天猫/推广 未采集：本轮未走到（前一段未成）；科塔淘宝/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；科塔淘宝/推广 未采集：本轮未走到（前一段未成）；网林淘宝/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；网林淘宝/推广 未采集：本轮未走到（前一段未成）；里可林天猫/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；里可林天猫/推广 未采集：本轮未走到（前一段未成）；网林家居/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；网林家居/推广 未采集：本轮未走到（前一段未成）（FAILED/UNCLASSIFIED；停在哪一段=inquiry-import）
+[2026-10-23T06:24:34.525Z] 告警未发（去重）：同一条告警 234 分钟前刚发过（窗口 6 小时），不重复发（这一轮停在 inquiry-import，与上次不同，但同一业务日只报一次）
+[2026-10-23T06:24:34.526Z] 商品数据自动采集结束：退出码 1

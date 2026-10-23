@@ -1,0 +1,108 @@
+[
+  {
+    "shop": "里可林淘宝",
+    "product": {
+      "code": 1,
+      "out": "",
+      "err": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}\n"
+    },
+    "productFile": null,
+    "stoppedAt": "product-collect",
+    "error": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}"
+  },
+  {
+    "shop": "网林天猫",
+    "product": {
+      "code": 1,
+      "out": "",
+      "err": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}\n"
+    },
+    "productFile": null,
+    "stoppedAt": "product-collect",
+    "error": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}"
+  },
+  {
+    "shop": "盖文淘宝",
+    "product": {
+      "code": 1,
+      "out": "",
+      "err": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}\n"
+    },
+    "productFile": null,
+    "stoppedAt": "product-collect",
+    "error": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}"
+  },
+  {
+    "shop": "盖文天猫",
+    "product": {
+      "code": 1,
+      "out": "",
+      "err": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}\n"
+    },
+    "productFile": null,
+    "stoppedAt": "product-collect",
+    "error": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}"
+  },
+  {
+    "shop": "科塔淘宝",
+    "product": {
+      "code": 1,
+      "out": "",
+      "err": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}\n"
+    },
+    "productFile": null,
+    "stoppedAt": "product-collect",
+    "error": "采集失败：/eval HTTP 500 {\"error\":\"CDP 命令超时: Runtime.evaluate\"}"
+  },
+  {
+    "shop": "网林淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林淘宝\",\"date\":\"2026-10-22\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-22_2026-10-22.xls\",\"bytes\":64000}\n",
+      "err": "[底单] 网林淘宝 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-22_2026-10-22.xls",
+    "inquiry": {
+      "code": 1,
+      "out": "",
+      "err": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 400 {\"error\":\"SyntaxError: Unexpected token '{'\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async evalOn (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:13:67)\r\n    at async read (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:209)\r\n    at async pollInquiryLink (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/inquiry-core.mjs:189:13)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:14\r\n\r\nNode.js v22.22.2\r\n"
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-22\\2026-10-22-20261023021219222-b7b98cf8\\网林淘宝\\inquiry.xls",
+    "stoppedAt": "inquiry-collect",
+    "error": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 400 {\"error\":\"SyntaxError: Unexpected token '{'\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async evalOn (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:13:67)\r\n    at async read (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:209)\r\n    at async pollInquiryLink (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/inquiry-core.mjs:189:13)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:14\r\n\r\nNode.js v22.22.2"
+  },
+  {
+    "shop": "里可林天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"里可林天猫\",\"date\":\"2026-10-22\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (1).xls\",\"bytes\":46592}\n",
+      "err": "[底单] 里可林天猫 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (1).xls",
+    "inquiry": {
+      "code": 1,
+      "out": "",
+      "err": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 400 {\"error\":\"SyntaxError: Unexpected token '{'\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async evalOn (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:13:67)\r\n    at async read (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:209)\r\n    at async pollInquiryLink (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/inquiry-core.mjs:189:13)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:14\r\n\r\nNode.js v22.22.2\r\n"
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-22\\2026-10-22-20261023021219222-b7b98cf8\\里可林天猫\\inquiry.xls",
+    "stoppedAt": "inquiry-collect",
+    "error": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 400 {\"error\":\"SyntaxError: Unexpected token '{'\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async evalOn (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:13:67)\r\n    at async read (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:209)\r\n    at async pollInquiryLink (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/inquiry-core.mjs:189:13)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:14\r\n\r\nNode.js v22.22.2"
+  },
+  {
+    "shop": "网林家居",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林家居\",\"date\":\"2026-10-22\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (2).xls\",\"bytes\":15872}\n",
+      "err": "[底单] 网林家居 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (2).xls",
+    "inquiry": {
+      "code": 1,
+      "out": "",
+      "err": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 400 {\"error\":\"SyntaxError: Unexpected token '{'\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async evalOn (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:13:67)\r\n    at async read (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:209)\r\n    at async pollInquiryLink (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/inquiry-core.mjs:189:13)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:14\r\n\r\nNode.js v22.22.2\r\n"
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-22\\2026-10-22-20261023021219222-b7b98cf8\\网林家居\\inquiry.xls",
+    "stoppedAt": "inquiry-collect",
+    "error": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 400 {\"error\":\"SyntaxError: Unexpected token '{'\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async evalOn (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:13:67)\r\n    at async read (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:209)\r\n    at async pollInquiryLink (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/inquiry-core.mjs:189:13)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:14\r\n\r\nNode.js v22.22.2"
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "shop": "网林淘宝",
+    "product": {
+      "code": 1,
+      "out": "",
+      "err": "采集失败：日按钮未找到（轮询 30s 仍未渲染）\n"
+    },
+    "productFile": null,
+    "stoppedAt": "product-collect",
+    "error": "采集失败：日按钮未找到（轮询 30s 仍未渲染）",
+    "productError": "采集失败：日按钮未找到（轮询 30s 仍未渲染）"
+  }
+]

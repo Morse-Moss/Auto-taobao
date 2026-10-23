@@ -1,0 +1,128 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (4).xls",
+  "shop": "网林天猫",
+  "date": "2026-10-22",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 18,
+  "existingRows": 4818,
+  "plannedRows": 18,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "977271829805"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "944130346200"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "923336705176"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "943715195278"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "955514866223"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "976539362164"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "983637449275"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "1002790238345"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "1060911657748"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "1060913369469"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "1071284033110"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "1072247628377"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "1083847599252"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "1089319851297"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "1090539219000"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "1090680322925"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "1090777050096"
+    },
+    {
+      "date": "2026-10-22",
+      "shop": "网林天猫",
+      "productId": "1091308189099"
+    }
+  ],
+  "recordIds": [
+    "reczz28Qk8kbEmOi",
+    "reczz28Qk8kbI5v9",
+    "reczz28Qk8kbGYcw",
+    "reczz28Qk8kbFHJn",
+    "reczz28Qk8kbGho3",
+    "reczz28Qk8kbHgpu",
+    "reczz28Qk8kbFB3p",
+    "reczz28Qk8kbH5fO",
+    "reczz28Qk8kbFjxd",
+    "reczz28Qk8kbEKH6",
+    "reczz28Qk8kbHfK6",
+    "reczz28Qk8kbI2FE",
+    "reczz28Qk8kbHR5b",
+    "reczz28Qk8kbG9ji",
+    "reczz28Qk8kbGm3E",
+    "reczz28Qk8kbFDAv",
+    "reczz28Qk8kbErqj",
+    "reczz28Qk8kbHYyG"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 18,
+  "writeBatches": 1,
+  "afterRows": 4836
+}

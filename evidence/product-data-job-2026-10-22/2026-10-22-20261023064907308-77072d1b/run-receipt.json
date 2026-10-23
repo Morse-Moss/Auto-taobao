@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-22-20261023064907308-77072d1b",
+  "date": "2026-10-22",
+  "status": "COMPLETED",
+  "startedAt": "2026-10-23T06:49:07.309Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "promotion",
+      "status": "COMPLETED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝"
+  ],
+  "failure": null,
+  "failedStage": null,
+  "finishedAt": "2026-10-23T06:51:29.183Z"
+}

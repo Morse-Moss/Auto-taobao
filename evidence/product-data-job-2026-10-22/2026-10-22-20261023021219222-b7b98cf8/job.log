@@ -1,0 +1,61 @@
+[2026-10-23T02:12:21.903Z] 飞书目标预检：1 张 base 共 3 张表，各自凭据都被认（OK）
+[2026-10-23T02:12:21.904Z] 商品数据自动采集开始：yesterday → 2026-10-22；8 店；分 2 批（每批最多 5 家，**每批跑完立刻释放**）；底单串行、询单/推广并行；模式 commit
+[2026-10-23T02:12:21.905Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝；5 家：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝
+[2026-10-23T02:12:40.765Z] 视口回读通过：里可林淘宝=1506x642、网林天猫=1506x642、盖文淘宝=1506x642、盖文天猫=1506x642、科塔淘宝=1506x642
+[2026-10-23T02:18:28.121Z] [底单] 里可林淘宝 失败：采集失败：/eval HTTP 500 {"error":"CDP 命令超时: Runtime.evaluate"}（exit 1）
+[2026-10-23T02:19:50.689Z] [底单] 网林天猫 失败：采集失败：/eval HTTP 500 {"error":"CDP 命令超时: Runtime.evaluate"}（exit 1）
+[2026-10-23T02:21:17.689Z] [底单] 盖文淘宝 失败：采集失败：/eval HTTP 500 {"error":"CDP 命令超时: Runtime.evaluate"}（exit 1）
+[2026-10-23T02:22:27.136Z] [底单] 盖文天猫 失败：采集失败：/eval HTTP 500 {"error":"CDP 命令超时: Runtime.evaluate"}（exit 1）
+[2026-10-23T02:22:57.634Z] [底单] 科塔淘宝 失败：采集失败：/eval HTTP 500 {"error":"CDP 命令超时: Runtime.evaluate"}（exit 1）
+[2026-10-23T02:25:01.212Z] 浏览器释放未确认（里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝；exit 1）
+[2026-10-23T02:25:01.214Z] --- 第 2/2 批：网林淘宝、里可林天猫、网林家居；3 家：网林淘宝、里可林天猫、网林家居
+[2026-10-23T02:25:15.759Z] 视口回读通过：网林淘宝=1506x642、里可林天猫=1506x642、网林家居=1506x642
+[2026-10-23T02:27:11.799Z] [底单] 网林淘宝 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22.xls
+[2026-10-23T02:27:21.295Z] [底单] 里可林天猫 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (1).xls
+[2026-10-23T02:27:33.440Z] [底单] 网林家居 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-22_2026-10-22 (2).xls
+[2026-10-23T02:27:38.533Z] [询单] 网林淘宝 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12
+async function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }
+                                                                                                      ^
+
+Error: 400 {"error":"SyntaxError: Unexpected token '{'"}
+    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async evalOn (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:13:67)
+    at async read (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:209)
+    at async pollInquiryLink (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/inquiry-core.mjs:189:13)
+    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:14
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T02:27:43.726Z] [询单] 里可林天猫 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12
+async function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }
+                                                                                                      ^
+
+Error: 400 {"error":"SyntaxError: Unexpected token '{'"}
+    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async evalOn (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:13:67)
+    at async read (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:209)
+    at async pollInquiryLink (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/inquiry-core.mjs:189:13)
+    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:14
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T02:27:48.414Z] [询单] 网林家居 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12
+async function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }
+                                                                                                      ^
+
+Error: 400 {"error":"SyntaxError: Unexpected token '{'"}
+    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async evalOn (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:13:67)
+    at async read (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:209)
+    at async pollInquiryLink (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/inquiry-core.mjs:189:13)
+    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:98:14
+
+Node.js v22.22.2（exit 1）
+[2026-10-23T02:28:33.033Z] [导入] 网林淘宝 底单已写入
+[2026-10-23T02:29:17.607Z] [导入] 里可林天猫 底单已写入
+[2026-10-23T02:29:57.925Z] [导入] 网林家居 底单已写入
+[2026-10-23T02:30:56.140Z] 浏览器已释放并完成端口二次回读（网林淘宝,里可林天猫,网林家居）
+[2026-10-23T02:30:56.143Z] 失败：本轮不完整（11 处）：里可林淘宝/底单 未采集：采集失败：/eval HTTP 500 {"error":"CDP 命令超时: Runtime.evaluate"}；网林天猫/底单 未采集：采集失败：/eval HTTP 500 {"error":"CDP 命令超时: Runtime.evaluate"}；盖文淘宝/底单 未采集：采集失败：/eval HTTP 500 {"error":"CDP 命令超时: Runtime.evaluate"}；盖文天猫/底单 未采集：采集失败：/eval HTTP 500 {"error":"CDP 命令超时: Runtime.evaluate"}；科塔淘宝/底单 未采集：采集失败：/eval HTTP 500 {"error":"CDP 命令超时: Runtime.evaluate"}；网林淘宝/询单 未采集：async function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; } Er…；网林淘宝/推广 未采集：async function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; } Er…；里可林天猫/询单 未采集：async function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; } Er…；里可林天猫/推广 未采集：async function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; } Er…；网林家居/询单 未采集：async function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; } Er…；网林家居/推广 未采集：async function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; } Er…（TRANSIENT_EXTERNAL/EXTERNAL_RETRYABLE；停在哪一段=product-import）
+[2026-10-23T02:30:57.656Z] 告警投递：SENT（exit 0）
+[2026-10-23T02:30:57.656Z] 商品数据自动采集结束：退出码 1

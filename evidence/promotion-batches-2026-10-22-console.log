@@ -1,0 +1,31 @@
+[2026-10-23T03:03:03.024Z] 版本：sycm-automation 1.12.15
+[2026-10-23T03:03:03.025Z] === 分批跑开始：目标日 yesterday → 2026-10-22；每批 5 家；共 2 批；模式 commit（会写飞书） ===
+[2026-10-23T03:03:03.025Z] 本批证据根：evidence/promotion-batches-2026-10-22
+[2026-10-23T03:03:03.025Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 ---
+[2026-10-23T03:03:03.025Z] --- start：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\start-all.mjs --only 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝
+[2026-10-23T03:03:16.171Z] --- start 退出码=0
+[2026-10-23T03:03:16.171Z] --- viewport-gate：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-viewport-gate.mjs --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+[2026-10-23T03:03:37.925Z] --- viewport-gate 结论已落 evidence/promotion-batches-2026-10-22/viewport-b1.json（1710 字节）
+[2026-10-23T03:03:37.925Z] --- viewport-gate 退出码=0
+[2026-10-23T03:03:37.925Z] --- login-preflight：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\check-login-shops.mjs --login --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --json
+[2026-10-23T03:06:52.397Z] --- login-preflight 结论已落 evidence/promotion-batches-2026-10-22/login-preflight-b1.json（4683 字节；本批的链会读它）
+[2026-10-23T03:06:52.398Z] --- login-preflight 退出码=0
+[2026-10-23T03:06:52.398Z] --- label:里可林淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 里可林淘宝
+[2026-10-23T03:07:17.160Z] --- label:里可林淘宝 退出码=0
+[2026-10-23T03:07:17.160Z] --- label:网林天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 网林天猫
+[2026-10-23T03:07:32.613Z] --- label:网林天猫 退出码=0
+[2026-10-23T03:07:32.616Z] --- label:盖文淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文淘宝
+[2026-10-23T03:07:51.673Z] --- label:盖文淘宝 退出码=0
+[2026-10-23T03:07:51.674Z] --- label:盖文天猫：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 盖文天猫
+[2026-10-23T03:08:11.662Z] --- label:盖文天猫 退出码=0
+[2026-10-23T03:08:11.663Z] --- label:科塔淘宝：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\runtime\shop-window-label.mjs --commit --front --only 科塔淘宝
+[2026-10-23T03:08:12.621Z] --- label:科塔淘宝 退出码=0
+[2026-10-23T03:08:12.623Z] --- chain：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\skills\sycm-alimama-daily-report\scripts\run-promotion-sales1.mjs --date yesterday --shops 里可林淘宝,网林天猫,盖文淘宝,盖文天猫,科塔淘宝 --commit --notify --logs evidence\promotion-batches-2026-10-22\b1
+[2026-10-23T03:52:01.532Z] --- chain 退出码=1
+[2026-10-23T03:52:01.545Z] [批次] 这一批里「脚本自修没救回来」的：里可林淘宝、盖文天猫 —— 因此**不释放**，留给修复 agent／人
+[2026-10-23T03:52:01.545Z] --- stop：跳过 —— 这一批没跑成（链退出码 1），且 里可林淘宝、盖文天猫 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。
+[2026-10-23T03:52:01.545Z] [批次] 这一批不主动释放：这一批没跑成（链退出码 1），且 里可林淘宝、盖文天猫 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。；接着转驻留把这一轮挂住（不结束命令，窗口才真的留得住）
+[2026-10-23T03:52:01.545Z] --- 第 1/2 批：里可林淘宝、网林天猫、盖文淘宝、盖文天猫、科塔淘宝 小结：链退出码=1；stop（释放窗口）=未跑；这一批没跑成（链退出码 1），且 里可林淘宝、盖文天猫 的现场还没被修好 ⇒ **不释放**，把窗口留给修复 agent／人（用户 2026-10-10：转人工的前提是现场还在）。要退回旧行为给 --release-on-failure。
+[2026-10-23T03:52:01.549Z] [批次] 这一批里「脚本自修没救回来」的：里可林淘宝、盖文天猫 —— 这几家的现场要留给修复 agent／人 ⇒ 停在这里转驻留（剩下的批次不跑了）。
+[2026-10-23T03:52:01.549Z] [批次] 整轮被挡 ⇒ 转驻留（第 1 批的结论 evidence/promotion-batches-2026-10-22/b1/summary.json）：把共用窗口留住等人处理，人处理完**自动按批重跑一遍**（挂多久由驻留那一步自己决定并打印）。窗口留不留得住取决于这一轮进程不结束 —— 驻留就是「这一轮不结束」这件事本身。
+[2026-10-23T03:52:01.550Z] --- hold-and-resume：C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6\node.exe D:\Retire\sycm-automation\scripts\hold-and-resume.mjs --date 2026-10-22 --summary D:\Retire\sycm-automation\evidence\promotion-batches-2026-10-22\b1\summary.json --resume-via-batches --batch-size 5 --workflow promotion-daily

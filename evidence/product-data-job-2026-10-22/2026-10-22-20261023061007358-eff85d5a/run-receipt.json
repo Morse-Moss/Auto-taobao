@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "workflow": "product-data",
+  "runId": "2026-10-22-20261023061007358-eff85d5a",
+  "date": "2026-10-22",
+  "status": "FAILED",
+  "startedAt": "2026-10-23T06:10:07.359Z",
+  "stages": [
+    {
+      "name": "product",
+      "status": "COMPLETED"
+    },
+    {
+      "name": "inquiry",
+      "status": "FAILED"
+    },
+    {
+      "name": "promotion",
+      "status": "FAILED"
+    }
+  ],
+  "shops": [
+    "里可林淘宝",
+    "网林天猫",
+    "盖文淘宝",
+    "盖文天猫",
+    "科塔淘宝",
+    "网林淘宝",
+    "里可林天猫",
+    "网林家居"
+  ],
+  "failure": {
+    "class": "FAILED",
+    "reason": "UNCLASSIFIED",
+    "message": "本轮不完整（16 处）：里可林淘宝/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；里可林淘宝/推广 未采集：本轮未走到（前一段未成）；网林天猫/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；网林天猫/推广 未采集：本轮未走到（前一段未成）；盖文淘宝/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；盖文淘宝/推广 未采集：本轮未走到（前一段未成）；盖文天猫/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；盖文天猫/推广 未采集：本轮未走到（前一段未成）；科塔淘宝/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；科塔淘宝/推广 未采集：本轮未走到（前一段未成）；网林淘宝/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；网林淘宝/推广 未采集：本轮未走到（前一段未成）；里可林天猫/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；里可林天猫/推广 未采集：本轮未走到（前一段未成）；网林家居/询单 未采集：const identityOk=expectedShop&&String(state.shop??'').includes(expectedShop); if(!identityOk)throw new Error(`店铺身份不符：${state.shop??'（轮询 '+polled.reads+' 次都没读到页面…；网林家居/推广 未采集：本轮未走到（前一段未成）"
+  },
+  "failedStage": "inquiry-import",
+  "finishedAt": "2026-10-23T06:24:34.523Z"
+}

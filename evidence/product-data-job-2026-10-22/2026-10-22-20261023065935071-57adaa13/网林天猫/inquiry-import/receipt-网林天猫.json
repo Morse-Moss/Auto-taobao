@@ -1,0 +1,45 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-22\\2026-10-22-20261023065935071-57adaa13\\网林天猫\\inquiry.xls",
+  "shop": "网林天猫",
+  "date": "2026-10-22",
+  "base": "10月商品监控表-销售1部",
+  "baseToken": "LQgZbi78oaAmIYsc4urcwk9rnNf",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 4,
+  "existingRows": 981,
+  "plannedRows": 4,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-22",
+      "productId": "1002790238345",
+      "shop": "网林天猫"
+    },
+    {
+      "date": "2026-10-22",
+      "productId": "977271829805",
+      "shop": "网林天猫"
+    },
+    {
+      "date": "2026-10-22",
+      "productId": "976539362164",
+      "shop": "网林天猫"
+    },
+    {
+      "date": "2026-10-22",
+      "productId": "1090680322925",
+      "shop": "网林天猫"
+    }
+  ],
+  "recordIds": [
+    "reczz28QlMsfV5DI",
+    "reczz28QlMsfVUWL",
+    "reczz28QlMsfXsPJ",
+    "reczz28QlMsfVexB"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 4,
+  "writeBatches": 1,
+  "afterRows": 985
+}
