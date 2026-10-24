@@ -21,7 +21,7 @@
 //   3) **失败不致命**：这一步的兜底是视口闸门（`runtime/shop-viewport-gate.mjs`）——
 //      它读的是页面里的 `innerWidth/innerHeight`，那才是真正的判据。所以这里失败只报事实，
 //      不让启动器跟着失败（启动器失败会把「窗口小」升级成「实例起不来」）。
-import { BROWSER_WINDOW_BOUNDS } from './browser-ports.mjs';
+import { BROWSER_WINDOW_BOUNDS, pickWebPage } from './browser-ports.mjs';
 
 /** 容差：Windows 会把请求的尺寸微调 1-2 像素（实测 1528→1529），所以判等要留余量。 */
 export const WINDOW_BOUNDS_TOLERANCE = 16;
@@ -102,12 +102,14 @@ export async function applyWindowBounds({
   let page = null;
   try {
     const list = await getJson(`${base}/json/list`, timeoutMs);
-    page = (Array.isArray(list) ? list : []).find((entry) => entry?.type === 'page') ?? null;
+    // 2026-10-24：不能取「第一个 type=page」—— Edge 下载浮窗也是 page，
+    // 拿它的窗口 ID 去 setWindowBounds 会把浮窗当采集窗归位。与视口闸门共用同一份判据。
+    page = pickWebPage(list);
   } catch (error) {
     return { ok: false, changed: false, reason: 'NO_PAGE_TARGET', detail: `/json/list 读不到：${String(error?.message ?? error)}` };
   }
   if (!page) {
-    return { ok: false, changed: false, reason: 'NO_PAGE_TARGET', detail: '这个实例当前一个 page 页签都没有（没有可定位的窗口）' };
+    return { ok: false, changed: false, reason: 'NO_PAGE_TARGET', detail: '这个实例当前没有业务 page 页签（可能只剩 edge:// 等内部页，没有可定位的窗口）' };
   }
 
   const session = cdpSession(version.webSocketDebuggerUrl, timeoutMs);

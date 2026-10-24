@@ -15,6 +15,32 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.20] - 2026-10-24
+
+交付前收尾：视口「读错对象」族（㊽）修复 + 商品推广采集脚本剩余固定 sleep 点判定完毕。
+
+**为什么改**
+
+2026-10-24 11:35 推广补跑批次 viewport-gate 退 2（盖文天猫视口宽 360）。当日 17:05 定因：Edge 的「下载」浮窗 `edge://downloads-hub/` 是独立的 `type=page` target（视口恒 360x154），取件段每次真点下载都会留下它，而 `/targets` 顺序不保证——旧判据「第一个非 devtools 的 page」在浮窗排第一时把它当成采集页。同族第二处在 `browser-window-bounds.mjs`（会拿浮窗的窗口 ID 去 setWindowBounds）。这是「读错对象」族：不是视口真的窄，是读的根本不是那张页。
+
+**改了什么**
+
+- `browser-ports.mjs` 新增共用判据 `isWebPage(target)` / `pickWebPage(targets)`：排除 `devtools://` `edge://` `chrome://` `about:` 与空 URL；`file://` 店铺标识页与业务站保留（否则冷启动首屏读不到视口）。
+- `shop-viewport-gate.mjs`：页签选择改走 `pickWebPage`；读数新增 `pageUrl`/`pageTitle` 落证据（再出问题不靠复现定因）；只剩内部页时判 `VIEWPORT_UNREADABLE` 且一次 /eval 都不打。
+- `browser-window-bounds.mjs`：选页改走同一份 `pickWebPage`（同族第二处，不许只修闸门）。
+- `collect-product-report.mjs` 剩余 sleep 点逐个上下文判定：`navigateDownloadList` 的 `sleep(5000)` 属导航封装内等待（读取侧已由 `pollReportReady`/`pollNewProductTask` 轮询覆盖），`sleep(2000)` 在下载等待 while 循环内，均**不适用**，无代码改动。
+
+**没动什么（交付前夜的刻意保留）**
+
+- `collectProductReport` 的 knownRisk（重试第 2 次起导航空操作）：文件属另一会话未提交改动，且改商品链行为需要真机证据；有 clickDayExpr 轮询兜底，非交付阻断项，列交付后第一批。
+- 登录链、驻留恢复闭环、run-batches 欠账、内存闸进代码：架构项，全部列交付后 roadmap，不在交付前夜动。
+
+**验证到什么程度**
+
+- **仅离线判据，真机未验**（下一轮三链首跑即判据）。相关用例全绿：shop-viewport-gate 16（新增 4）、browser-ports 22、start-all-launch-source 3、stop-all-release-readback 4、launch-plan 20、browser-inventory 18、arch-boundary 3、head-loadable 1，合计 87；交付前复验另含 version-consistency 6，总计 **93/93**，原始输出 `tmp/verify-1.12.20-targeted.tap`。
+- 攻击包 `tmp/mutate/mutate-2026-10-24-viewport.mjs`：M6（闸门退回第一个非 devtools page）/ M7（window-bounds 退回第一个 page）/ M8（isWebPage 不再排除 edge://）全部 **RED_NAMED**，复验输出 `tmp/verify-1.12.20-viewport-mutations.txt`。
+- 未跑 `npm run test:staged`：AGENTS.md 明确机器即将交付时不启动该长时套件；本轮以上述定向用例与攻击包为判据，不把它写成全量通过。
+
 ## [1.12.19] - 2026-10-24
 
 读侧收口第一批：同族三族（固定 sleep 单次读 / 判据字符串多拷贝 / 导航后读页面的扫描盲区）合并清算，全程按 `docs/ops/REPAIR-PROTOCOL.md` 的四件套执行。

@@ -397,6 +397,28 @@ export function shopInstance(key) {
 }
 
 /**
+ * 这个 target 算不算「业务页面」—— 视口读数、窗口归位等「找一张页来操作」的判据共用这一份。
+ *
+ * 为什么必须有（2026-10-24 视口事故，证据见当日日志 ㊽）：Edge 的「下载」浮窗
+ * `edge://downloads-hub/` 是一个独立的 `type=page` target，视口恒 360x154。
+ * 旧判据「/targets 里第一个非 devtools 的 page」会把它当成采集页：
+ * 浮窗排第一 ⇒ 视口闸门误判 VIEWPORT_TOO_NARROW（退 2），浮窗排第二 ⇒ 又正常。
+ * 同族第二处在 browser-window-bounds.mjs（会拿浮窗的窗口 ID 去 setWindowBounds）。
+ * ⇒ 「第一个 page」永远不是判据；先排除内部页，再谈第一个。
+ */
+export function isWebPage(target) {
+  if (target?.type !== 'page') return false;
+  const url = String(target?.url ?? '').trim();
+  if (!url) return false;
+  return !/^(?:devtools|edge|chrome|about):/u.test(url);
+}
+
+/** 第一张业务页；没有则返回 null（调用方按「读不到」处理，不许当成达标）。 */
+export function pickWebPage(targets) {
+  return (Array.isArray(targets) ? targets : []).find((entry) => isWebPage(entry)) ?? null;
+}
+
+/**
  * 这个 profile 启动时该额外带哪些 Chromium 开关。
  *
  * 只有登记在 SHOP_BROWSERS 里的店铺 profile 会拿到（当前＝`--disable-sync`）。

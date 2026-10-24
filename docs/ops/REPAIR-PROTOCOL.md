@@ -76,14 +76,19 @@
 
 族 B：navigate 后固定 sleep 单次读（机制：对异步页面做快照断言，无等待到稳定）
 - 确认未修实例：`skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs` 的 `await delay(6000)`——navigate(SYCM_APP_URL) 之后固定睡 6 秒，然后单次读页面认店铺。与 10-21 修掉的 produceTask sleep(6500) 同机制。**2026-10-24 已修（1.12.19）**：改 `readPageValueSettled` 有界轮询，守卫钉「delay(6000) 零出现 + 导航→轮询→断言顺序」（突变 M1 RED_NAMED）。
-- 待判实例（逐个看上下文再分类）：collect-shop-report.mjs 的 delay(2500)/delay(3000)/delay(1200)；readback-daily-report.mjs 的 delay(2000)×2/delay(1500)；run-promotion-daily-report.mjs 的 sleep(2500)/sleep(1800)/sleep(5000)；collect-product-report.mjs 与 collect-product-core.mjs 的 sleep(2000)/(5000)。
+- **2026-10-24 复核（1.12.19/1.12.20）**：collect-shop-report.mjs 的 delay(2500)/delay(3000)/delay(1200)、readback-daily-report.mjs 的 delay(2000)×2/delay(1500)、run-promotion-daily-report.mjs 的 sleep(2500)/sleep(1800)/sleep(5000) 均为轮询间隔或动作缓冲，不适用；collect-product-report.mjs 的 sleep(5000) 属导航封装等待、读取侧已有轮询，sleep(2000) 在下载等待循环内，也不适用。collect-product-core.mjs 因他人会话未提交且缺真机故障现场，仍挂起。
 - 判断规则：在 for/while 轮询循环体内的 sleep 是合法轮询间隔；不在循环内、睡固定秒数后紧跟一次性读取并据此下结论的，是本族命中。
 - 复现扫描：Grep `(delay|sleep)\(\d{4,}\)` glob `*.mjs` path `skills`。
 
 族 C：reloadAndSettle 覆盖面（机制：读页面前不做真重载，读到旧渲染）
 - 现有覆盖点：`collect-core.mjs`、`collect-promotion-report.mjs`（openTaskList 已修）、`navigate-read-guard.test.mjs`（1.12.15 登记制）。
-- 未覆盖：其他 navigate 后直接读的点（与族 B 大量重叠，可合并清算）。**2026-10-24 第一轮收口（1.12.19）**：NAV 扩到本地 `navigate(` 封装（此前 collect-shop-report 的 run 从未被扫到，属扫描盲区），新扫出的 4 个函数全部登记表态；`collectProductReport` 的 knownRisk 仍挂起（他人会话文件）。剩余方向=统一走 reloadAndSettle + 特征轮询，并数出现次数。
+- 未覆盖：其他 navigate 后直接读的点（与族 B 大量重叠，可合并清算）。**2026-10-24 第一轮收口（1.12.19）**：NAV 扩到本地 `navigate(` 封装（此前 collect-shop-report 的 run 从未被扫到，属扫描盲区），新扫出的 4 个函数全部登记表态；`collectProductReport` 的 knownRisk 仍挂起（他人会话文件）。剩余方向=按路由特征选 `reloadAndSettle` 或有界特征轮询，并数出现次数；hash 路由有重载丢 hash 前科，不能一刀切强刷。
 - 复现扫描：Grep `reloadAndSettle` glob `*.mjs` 与 `navigateTo\(|navigate\(` 的调用点做差。
+
+族 D：把浏览器内部页当成业务页（机制：只用 `type=page` 选操作对象，没有校验 URL 类型）
+- 真实现场：Edge 下载浮窗 `edge://downloads-hub/` 也是独立 page target，且 `/targets` 顺序不保证；浮窗排第一时，视口闸门把 360x154 当成采集页，窗口归位也可能拿错窗口 ID。
+- **2026-10-24 已修（1.12.20）**：`runtime/browser-ports.mjs` 新增唯一判据 `isWebPage` / `pickWebPage`；`shop-viewport-gate.mjs` 与 `browser-window-bounds.mjs` 两处都改走它，只剩内部页时 fail-closed。视口证据新增 pageUrl/pageTitle。
+- 攻击包：M6/M7/M8 均 RED_NAMED；仅离线与桩化现场已验，真机首跑待补。
 
 ## 6. 故障现场库（回放桩基建第一步）
 
@@ -92,7 +97,7 @@
 1. 页面时序类。已知现场：询单总览页误判（inquiry-core.test.mjs 2026-10-23 现场用例）、promotion 下载任务表格异步渲染（evidence/daily-job-2026-10-22 科塔淘宝）。
 2. 宿主资源类。已知现场：10-20 与 10-23 两次内存枯竭（0.3-1.4GB 区间 CDP 全超时），RUN-REPORT 存 evidence。
 3. 状态泄漏类。已知现场：日期残留（evidence/product-data-job-2026-10-21 的 2026-10-23 补跑失败）、死锁残留（自动回收已解）、Edge 冷启动恢复旧页签（1.4.0 收敛）。
-4. 判据缺陷类。已知现场：词表双拷贝、双引号不插值（均有测试用例钉住）。
+4. 判据缺陷类。已知现场：词表双拷贝、双引号不插值（均有测试用例钉住）；Edge 下载浮窗被当成业务页（2026-10-24 真机证据见 `.workbuddy/memory/2026-10-24.md`，桩化用例见 `runtime/shop-viewport-gate.test.mjs`）。
 5. 分类误诊类。已知现场：UNREADABLE 升格 HUMAN_REQUIRED（10-20 商品链）、gaps 复读（1.12.13 按段取原因已修）。
 6. 工具链类。见 TOOLING-NOTES.md（沙箱、编码、push 代理、spawnSync stdio）。
 

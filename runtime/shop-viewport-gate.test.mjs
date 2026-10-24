@@ -19,6 +19,7 @@ import {
   SHOP_VIEWPORT_MIN_WIDTH, SHOP_VIEWPORT_MIN_HEIGHT,
   judgeShopViewport, summarizeShopViewports, describeViewportFailure, readShopViewport, checkShopViewports,
 } from './shop-viewport-gate.mjs';
+import { isWebPage, pickWebPage } from './browser-ports.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const ENTRY = 'scripts/run-product-data-job.mjs';
@@ -171,4 +172,58 @@ test('接线②：不达标要 throw（只记日志等于没闸门），且读�
 test('接线③：视口判红要能归到 start 段（否则收据里那一格永远是「未知」）', () => {
   const source = readSource(ENTRY);
   assert.match(source, /\[\/浏览器视口\/u, 'start'\]/u);
+});
+
+// 2026-10-24 ㊽：Edge 下载浮窗 `edge://downloads-hub/` 是独立的 type=page（视口恒 360x154），
+// 且 /targets 顺序不保证。旧判据「第一个非 devtools 的 page」在浮窗排第一时误报 TOO_NARROW。
+// 下面的靶子就是这个现场：浮窗在前、业务页在后，且两张页给出的读数不同（选错立即红）。
+test('浮窗排在业务页之前时必须读业务页（㊽ 现场：选错就判 360 太窄）', async () => {
+  const targets = [
+    { targetId: 'hub', type: 'page', url: 'edge://downloads-hub/', title: '下载' },
+    { targetId: 't1', type: 'page', url: 'https://one.alimama.com/index.html#!/report/download-list', title: '阿里妈妈' },
+  ];
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(String(url));
+    if (String(url).endsWith('/targets')) return { ok: true, json: async () => targets };
+    const isHub = String(url).includes('target=hub');
+    return { ok: true, json: async () => ({ value: JSON.stringify(isHub ? { width: 360, height: 154 } : { width: 1506, height: 642, dpr: 1.25 }) }) };
+  };
+  const entry = await readShopViewport({ shop: '盖文天猫', fetchImpl, sleep: async () => {} });
+  assert.equal(entry.targetId, 't1', '浮窗在前时必须跳过它选业务页');
+  assert.equal(entry.verdict.ok, true, '选到浮窗就会把 360x154 误判成 TOO_NARROW');
+  assert.equal(entry.width, 1506);
+  assert.match(entry.pageUrl, /one\.alimama\.com/u, '读数必须落 pageUrl（再出问题不用靠复现定因）');
+  assert.ok(calls.some((url) => url.includes('/eval?target=t1')), '/eval 必须打在业务页上');
+  assert.ok(!calls.some((url) => url.includes('/eval?target=hub')), '/eval 不许打在下载浮窗上');
+});
+
+test('只剩内部页（edge://）时判 VIEWPORT_UNREADABLE，且一次 /eval 都不打', async () => {
+  const proxy = fakeProxy({ shopPort: 19041, evalResponses: [], targets: [{ targetId: 'hub', type: 'page', url: 'edge://downloads-hub/' }] });
+  const entry = await readShopViewport({ shop: '里可林淘宝', fetchImpl: proxy.fetchImpl, attempts: 2, sleep: async () => {} });
+  assert.equal(entry.verdict.reason, 'VIEWPORT_UNREADABLE');
+  assert.match(String(entry.readError), /内部页/u);
+  assert.equal(proxy.calls.filter((url) => url.includes('/eval')).length, 0);
+});
+
+test('isWebPage 纯判据：内部页/空 URL/非 page 全排除，标识页与业务站保留', () => {
+  assert.equal(isWebPage({ type: 'page', url: 'edge://downloads-hub/' }), false);
+  assert.equal(isWebPage({ type: 'page', url: 'about:blank' }), false);
+  assert.equal(isWebPage({ type: 'page', url: 'devtools://x' }), false);
+  assert.equal(isWebPage({ type: 'page', url: 'chrome://settings' }), false);
+  assert.equal(isWebPage({ type: 'page', url: '' }), false);
+  assert.equal(isWebPage({ type: 'service_worker', url: 'https://one.alimama.com/' }), false);
+  // 冷启动首屏是店铺标识页（file://），它必须算业务页 —— 否则起完实例视口永远读不到。
+  assert.equal(isWebPage({ type: 'page', url: 'file:///label.html' }), true);
+  assert.equal(isWebPage({ type: 'page', url: 'https://sycm.taobao.com/qos/service/frame/shop/performance/new#/shop' }), true);
+  const picked = pickWebPage([{ type: 'page', url: 'edge://downloads-hub/' }, { targetId: 't1', type: 'page', url: 'file:///label.html' }]);
+  assert.equal(picked?.targetId, 't1');
+  assert.equal(pickWebPage([{ type: 'page', url: 'edge://downloads-hub/' }]), null);
+});
+
+test('接线④：window-bounds 选页也必须走同一份 pickWebPage（同族第二处，不许只修闸门）', () => {
+  const source = readSource('runtime/browser-window-bounds.mjs');
+  assert.match(source, /pickWebPage\(list\)/u, 'window-bounds 必须共用 pickWebPage');
+  assert.equal(/\.find\(\(entry\) => entry\?\.type === 'page'\)/u.test(source), false,
+    '「第一个 type=page」的旧判据又出现了 —— 会拿浮窗的窗口 ID 去 setWindowBounds');
 });

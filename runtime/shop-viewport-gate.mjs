@@ -17,7 +17,7 @@
 //
 // 「读不到」**不等于**「达标」：读失败会重试有限次，仍读不到判 `VIEWPORT_UNREADABLE` 并按红处理。
 // 「读不到就当没事」正是本仓反复在治的那个病根（把读不到当成掉了／不存在）。
-import { PROJECT_PORTS, shopInstance } from './browser-ports.mjs';
+import { PROJECT_PORTS, pickWebPage, shopInstance } from './browser-ports.mjs';
 
 export const SHOP_VIEWPORT_MIN_WIDTH = 1200;
 export const SHOP_VIEWPORT_MIN_HEIGHT = 600;
@@ -89,7 +89,10 @@ const delay = (ms) => new Promise((done) => { setTimeout(done, ms); });
  * —— 那是「还没好」，不是「不达标」。
  *
  * 每一轮重新取 `/targets`（`targetId` 会变，别存下来用第二次）；
- * 页签挑 `type === 'page'` 且不是 devtools 的第一个。
+ * 页签走 `pickWebPage`（2026-10-24）：**不是**「第一个非 devtools 的 page」——
+ * Edge 的下载浮窗 `edge://downloads-hub/` 也是 page，且 `/targets` 顺序不保证，
+ * 旧判据会把它（视口恒 360x154）当成采集页，误报 VIEWPORT_TOO_NARROW。
+ * 读数里同时落 `pageUrl`/`pageTitle`：再出问题时不用靠复现才能知道读的是哪张页。
  */
 export async function readViewportAtProxy({
   proxyPort, label = null, fetchImpl = fetch, attempts = VIEWPORT_READ_ATTEMPTS,
@@ -99,15 +102,20 @@ export async function readViewportAtProxy({
   let lastError = null;
   let reading = null;
   let targetId = null;
+  let pageUrl = null;
+  let pageTitle = null;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     targetId = null;
     reading = null;
+    pageUrl = null;
+    pageTitle = null;
     try {
       const targets = await getJson(`${base}/targets`, { fetchImpl });
-      const page = (Array.isArray(targets) ? targets : [])
-        .find((entry) => entry?.type === 'page' && !String(entry?.url ?? '').startsWith('devtools://'));
-      if (!page) throw new Error('/targets 里没有可用的 page 页签');
+      const page = pickWebPage(targets);
+      if (!page) throw new Error('/targets 里没有业务 page 页签（可能只剩 edge://downloads-hub 等内部页）');
       targetId = page.targetId;
+      pageUrl = page.url ?? null;
+      pageTitle = page.title ?? null;
       const response = await fetchImpl(`${base}/eval?target=${encodeURIComponent(targetId)}`, {
         method: 'POST', body: VIEWPORT_EXPRESSION, signal: AbortSignal.timeout(VIEWPORT_EVAL_TIMEOUT_MS),
       });
@@ -127,7 +135,7 @@ export async function readViewportAtProxy({
   }
   const verdict = judgeShopViewport(reading ?? {});
   return {
-    shop: label, proxyPort, targetId,
+    shop: label, proxyPort, targetId, pageUrl, pageTitle,
     width: reading?.width ?? null, height: reading?.height ?? null, dpr: reading?.dpr ?? null,
     readError: lastError, verdict,
   };
