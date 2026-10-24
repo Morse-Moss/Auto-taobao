@@ -1,10 +1,12 @@
-# 日报相关三条流程的统一早间调度（2026-10-10 定稿；2026-10-13 更正日报时间为 11:00；2026-10-16 日报与推广日报对调；2026-10-19 日报后移到 08:00）
+# 日报相关三条流程的统一早间调度（2026-10-10 定稿；2026-10-19 日报后移到 08:00；2026-10-24 同步推广空态参数与内存闸）
 
 | 顺序 | 流程 | 每日执行时间 | 命令（定时任务原样执行） | 与上一条的间隔 |
 |---|---|---|---|---|
-| 1 | 日报（daily-report） | **08:00**（2026-10-19 起；10-16~10-18 为 07:00） | `node scripts/run-daily-job.mjs --date yesterday --batches 5 --notify --auto-repair --mode apply` | — |
+| 1 | 日报（daily-report） | **08:00**（2026-10-19 起；10-16~10-18 为 07:00） | `node scripts/run-daily-job.mjs --date yesterday --batches 5 --notify --auto-repair --mode apply --allow-empty-promotion` | — |
 | 2 | 商品数据（product-daily） | 10:00（维持原时段不动） | `node scripts/run-product-data-job.mjs --date yesterday --commit --notify --batches 5` | 2 小时 |
-| 3 | 推广日报（promotion-daily） | 11:00（2026-10-16 起；此前为 07:00） | `node scripts/run-batches.mjs --workflow promotion-daily --date yesterday --batch-size 5 --mode apply --notify` | 1 小时 |
+| 3 | 推广日报（promotion-daily） | 11:00（2026-10-16 起；此前为 07:00） | `node scripts/run-batches.mjs --workflow promotion-daily --date yesterday --batch-size 5 --mode apply --notify`（表中 5 是资源充足时的默认值） | 1 小时 |
+
+2026-10-23 起，推广轮在宿主自动化提示词中带内存闸：可用内存 <4GB 时直接跳过并报告，4–8GB 时把 `--batch-size` 降为 3，>=8GB 才用 5。跳过不是完成，更不能当作验收通过。日报的 `--allow-empty-promotion` 只表示平台推广导出确为 0 行时按实际留空，不代表放宽店铺、日期或写入回读校验。
 
 时间安排理由（数据可用性与资源竞争双约束）：
 
