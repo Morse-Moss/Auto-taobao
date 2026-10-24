@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { waitForDownloadEntry } from './collect-promotion-report.mjs';
+import { waitForDownloadEntry, classifyListRead } from './collect-promotion-report.mjs';
 
 test('promotion-fetch：操作行延迟显形时等待后继续', async () => {
   const reads = [
@@ -199,4 +199,78 @@ test('取件段读任务列表：读到 0 行要再等一屏重读，路由丢�
   assert.match(body, /navigateTo\(/gu, '要么首读前导航、要么补导航 —— 总得有一次导航');
   assert.ok(body.lastIndexOf('navigateTo(') > body.indexOf('reloadAndSettle('),
     '重新导航必须在重载之后（补导航是「重载把路由丢了」的修法）');
+});
+
+/**
+ * 2026-10-24 真机误杀后补（㊼）：**「读到 0 行」不等于「列表里没有这个任务」**。
+ *
+ * 现场（2026-10-24 11:00 轮，目标日 2026-10-23，盖文天猫）：
+ *   台账里 关键词报表_20261024_111611（03:16:30）、人群报表_20261024_111638（03:16:49）
+ *   两笔都是提交段确认「多出一条」之后才记的；平台上「下载任务管理」里这两行
+ *   「生成成功 / 2026-10-23至2026-10-23」肉眼可见（当时另起浏览器实测读到 5 条关键词报表）。
+ *   而取件段连读 3 次，每次都报「列表里没有任何任务名形状的条目」⇒ 整店 STAGE_FAILED、
+ *   飞书零写入、证据目录没建。
+ *
+ * 病根与 ㊹（询单页判据）、㊹b（词表两份）同一个：**把「读不到」当成「不存在」**。
+ * 这一条钉两件事：
+ *   ① 三种页面状态必须给出三种结论（没渲染 / 就绪但这类型 0 条 / 就绪有行）；
+ *   ② 预算耗尽且表格始终没渲染时，抛出的必须是「没读到」，不许再落到
+ *      「--task 指定的 X 不在列表里」这种把锅推给任务的措辞上。
+ */
+test('取件段：三种页面状态必须给三种结论（没渲染 ≠ 这一类 0 条）', () => {
+  const notReady = classifyListRead({
+    probe: { href: 'https://one.alimama.com/index.html', title: '万相台无界版', trs: 0, hasTableHeader: false, hasRefresh: false, kinds: {} },
+    rows: [],
+  });
+  assert.equal(notReady.state, 'not-ready');
+  assert.equal(notReady.ok, false);
+  assert.match(notReady.reason, /还没渲染/u);
+
+  const emptyOfKind = classifyListRead({
+    probe: { href: 'https://one.alimama.com/index.html#!/report/download-list', title: '下载任务管理_万相台无界版', trs: 41,
+      hasTableHeader: true, hasRefresh: true, kinds: { 人群报表: 5, 营销场景报表: 7 } },
+    rows: [],
+  });
+  assert.equal(emptyOfKind.state, 'empty-of-kind');
+  assert.match(emptyOfKind.reason, /表格已就绪/u);
+  // 直方图必须进结论 —— 下次再犯要能一眼看出「页面里有哪些类型」
+  assert.match(emptyOfKind.reason, /人群报表 5/u);
+
+  const ready = classifyListRead({
+    probe: { href: 'https://one.alimama.com/index.html#!/report/download-list', title: '下载任务管理_万相台无界版', trs: 41,
+      hasTableHeader: true, hasRefresh: true, kinds: { 关键词报表: 5 } },
+    rows: [{ name: '关键词报表_20261024_111611' }],
+  });
+  assert.equal(ready.state, 'ready');
+  assert.equal(ready.ok, true);
+
+  // CDP 没响应时不许当「就绪」
+  assert.equal(classifyListRead({ probe: null, rows: [] }).state, 'unknown');
+});
+
+test('取件段：表格始终没渲染时必须抛「没读到」，不许说成「不在列表里」', () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8');
+  const start = src.indexOf('async function openTaskList');
+  const rest = src.slice(start);
+  const endMark = rest.indexOf('\n}\n');
+  const body = endMark > 0 ? rest.slice(0, endMark) : rest;
+
+  // 每轮必须探就绪状态，否则分不出「没渲染」和「真的没有」。
+  // ⚠️ 必须**数出现次数**：2026-10-24 突变 M3 实测，只查 `includes('probeListPage(')`
+  // 时把循环里那次探测删掉仍然全绿 —— 首读那次还在，探到的永远是同一屏的旧状态。
+  // 这与「多拼接点的守卫必须数次数」是同一条教训（M3 上一轮就是漏在这里）。
+  const probes = [...body.matchAll(/probeListPage\(/gu)].length;
+  assert.ok(probes >= 2, `openTaskList 里必须至少探两次就绪状态（首探 + 每轮重探），实际 ${probes} 次 —— `
+    + '只探一次就是「拿首读的旧状态判后面的屏」');
+  assert.match(body, /classifyListRead\(\{ probe, rows \}\)/u, '就绪判据必须走 classifyListRead（纯函数，被用例钉住）');
+  // 收尾：not-ready / unknown 都要抛，且措辞必须自证「这是没读到」
+  assert.match(body, /finalVerdict\.state === 'not-ready' \|\| finalVerdict\.state === 'unknown'/u,
+    '表格没渲染 / CDP 无响应时必须抛错，不许把空数组交出去');
+  assert.match(body, /这是「没读到」，不是「列表里没有这个任务」/u,
+    '抛错措辞必须把「没读到」和「不存在」分开');
+  assert.doesNotMatch(body, /不在列表里/u, 'openTaskList 不许自己下「不在列表里」的结论');
+  // 迟迟不渲染时要有一次主动纠偏（点刷新），且只点一次
+  assert.match(body, /refreshTaskTable\(/u, '表格迟迟不渲染时必须能点一次「刷新表格」');
+  assert.match(body, /!nudged/u, '刷新只能点一次，不许无限点');
 });

@@ -120,7 +120,21 @@ function run(args, extra) {
     '--expect-member-id', extra.identity.alimamaMemberId, ...(args.downloads ? ['--downloads', args.downloads] : []),
     '--ledger', args.ledger ?? path.resolve('runtime/promotion-task-ledger.json'),
     ...(extra.task ? ['--task', extra.task] : [])], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  if (result.status !== 0) throw new Error(result.stderr || result.stdout || `阶段失败：${extra.kind}/${extra.phase}`);
+  if (result.status !== 0) {
+    // 2026-10-24 加：失败阶段的**原始输出必须落盘**。
+    // 为什么：11:00 轮盖文天猫卡在 keyword-fetch，summary 里只剩一句被包了两层的错误，
+    // 阶段 stdout/stderr 全被吞掉，该店证据目录又从来没建过（只有 importer 会建）——
+    // 于是「到底读到什么」无从查证，根因只能靠猜。这条链的失败必须带现场。
+    const shopDir = path.join(args.evidence, extra.shop);
+    try {
+      fs.mkdirSync(shopDir, { recursive: true });
+      fs.writeFileSync(path.join(shopDir, `stage-${extra.kind}-${extra.phase}.txt`),
+        `# 失败阶段：${extra.kind}/${extra.phase}\n# 退出码：${result.status}\n# 命令：${[DRIVER, '--date', args.date, '--shop', extra.shop, '--kind', extra.kind, '--phase', extra.phase].join(' ')}\n`
+        + `\n===== stdout =====\n${result.stdout ?? ''}\n===== stderr =====\n${result.stderr ?? ''}\n`,
+        'utf8');
+    } catch { /* 落盘失败不许盖住原始错误 */ }
+    throw new Error(result.stderr || result.stdout || `阶段失败：${extra.kind}/${extra.phase}`);
+  }
   return result.stdout;
 }
 

@@ -15,6 +15,48 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.18] - 2026-10-24
+
+修「推广取件段把『没读到列表』当成『列表里没有这个任务』」—— 第三次同族缺陷（前两次是 ㊹ 询单页判据、㊹b 词表两份）。
+
+**为什么改**
+
+2026-10-24 11:00 轮（目标日 2026-10-23）盖文天猫整店 STAGE_FAILED，报
+`取件前核对未通过：--task 指定的 关键词报表_20261024_111611 不在列表里（列表里没有任何任务名形状的条目）`。
+真机复核：该任务在「下载任务管理」里「生成成功 / 2026-10-23至2026-10-23」，台账两笔（keyword 03:16:30、audience 03:16:49）
+都是提交段确认「多出一条」之后才记的 —— 任务存在，是取件段读不到。
+
+根因在判据层，不在平台、不在提交：`reloadAndSettle` 只等到 `readyState=complete`，而任务表格是**那之后**异步拉的；
+`openTaskList` 上一版只补了「hash 路由丢了」这一种情形，其它 0 行在 5×2s 预算耗尽后把空数组交出去，
+`judgeFetchCandidates` 于是把空集说成「没有任何任务名形状的条目」。**空集与「真的没有」被混为一谈。**
+
+**改了什么**
+
+- `openTaskList` 每轮先探一次页面就绪状态（`probeListPage`：tr 数 / 表头文案 / 报表任务名种类直方图；
+  判据只用页面文案，不碰 webpack 哈希 class 名），再交给纯函数 `classifyListRead` 出三种结论：
+  `not-ready`（表格没渲染）/ `empty-of-kind`（就绪但这一类 0 条）/ `ready`（有行）。
+- 预算 5×2s → 8×2.5s（约 20s）；表格迟迟不渲染时点**一次**「刷新表格」（`!nudged` 钉住只点一次）。
+- 收尾：`not-ready` / `unknown` 一律**抛错**，措辞自证「这是没读到，不是列表里没有这个任务」，并带上
+  href / title / tr 数 / 种类直方图；只有 `empty-of-kind` 才老实返回空数组。
+  **这条链不再替平台下「任务不存在」的结论。**
+- `run-promotion-sales1.mjs`：失败阶段的 stdout/stderr 落 `<--logs>/<店>/stage-<kind>-<phase>.txt`。
+  本轮根因之所以只能靠复现，是因为失败店的阶段输出被 `spawnSync` 吞掉、证据目录从来没建过
+  （只有 importer 会建目录，失败的店永远到不了 importer）。
+
+**验证到什么程度**
+
+- 跑过真机：11:27 用链路原样参数单跑盖文天猫 keyword-fetch，成功落到 `关键词报表_20261024_111611.zip`；
+  11:35–11:47 补跑 4 家（盖文天猫 / 网林淘宝 / 里可林天猫 / 网林家居），2/2 批全绿、整轮退出码 0，
+  证据 `evidence/promotion-batches-2026-10-23-resume/`，回执 `execution=SUCCEEDED`。
+- 独立回读：317 条 recordId 全部命中、缺失 0、日期不符 0（keyword 177 / audience 140）。
+- 离线定向用例 122/122 绿（promotion-fetch-wait / navigate-read-guard / promotion-task-ledger /
+  collect-core / collector-arg-contract / promotion-daily-report-core / failure-perception）。
+- 突变 3/3 转红：M1 去掉「没渲染就抛」、M2 去掉 not-ready 分支、M3 删掉循环里那次重探。
+  其中 M3 第一次**没有转红** —— 守卫只查 `includes('probeListPage(')` 没数出现次数，
+  已改成数次数（与「多拼接点的守卫必须数出现次数」同一条教训）。
+- 未跑 `npm run test:staged`：选到这个 skill 的实现改动会连带跑整套 e2e（AGENTS.md 记 7.6 小时），
+  本轮只跑上面那组定向用例。
+
 ## [1.12.17] - 2026-10-23
 
 修「推广收据被批覆盖」，并给一条**既有红灯**补登记。这一版不改采集行为，改的是「写进去多少行」这件事**能不能被读对**。

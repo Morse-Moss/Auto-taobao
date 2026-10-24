@@ -452,6 +452,69 @@ async function readTaskRows(args, targetId) {
 }
 
 /**
+ * 读「下载任务管理」这一屏的**就绪状态**（2026-10-24 加，㊼）。
+ *
+ * 为什么必须单独探一次「表格有没有渲染出来」：`reloadAndSettle` 的判据是
+ * `document.readyState === 'complete'`，而**任务表格是那之后异步拉的**。于是同一个
+ * 「读到 0 行」有两种完全不同的成因：
+ *   ① 表格还没渲染 → 这一屏根本没有任务行 ⇒ 再等等就到了；
+ *   ② 表格已就绪、但这一类任务确实 0 条 ⇒ 这才叫「列表里没有」。
+ * 之前两种都落到 `judgeFetchCandidates`，被统一说成「列表里没有任何任务名形状的条目」，
+ * 于是「没读到」被冒充成「不存在」—— 与 ㊹（询单页判据）、㊹b（词表两份）同一病根，
+ * 这已经是第三次。生产现场（2026-10-24 11:00 轮，盖文天猫）就是这么被误杀的：
+ * 台账里关键词报表_20261024_111611 / 人群报表_20261024_111638 两笔都是提交成功的，
+ * 平台上下载任务管理里这两行「生成成功、2026-10-23至2026-10-23」，
+ * 而取件段连读 3 次都说「列表里没有任何任务名形状的条目」。
+ *
+ * 判据只用**页面文案**（`刷新表格` / `文件名称` 表头、tr 数、报表任务名种类直方图），
+ * 不碰 class 名 —— 那串是 webpack 哈希（实测 `bXMILLqiFq`），下次发版就变。
+ */
+async function probeListPage(args, targetId) {
+  const probe = await evalOn(args, targetId, `(() => {
+    const text = document.body.innerText || '';
+    const names = [...new Set(text.match(/[\\u4e00-\\u9fa5]+报表_\\d{8}_\\d{6}/g) || [])];
+    const kinds = {};
+    for (const name of names) { const kind = name.split('_')[0]; kinds[kind] = (kinds[kind] || 0) + 1; }
+    return JSON.stringify({
+      href: location.href,
+      title: document.title,
+      trs: document.querySelectorAll('tr').length,
+      hasTableHeader: text.includes('文件名称'),
+      hasRefresh: text.includes('刷新表格'),
+      kinds,
+      sample: names.slice(0, 6),
+    });
+  })()`).catch(() => null);
+  return probe && typeof probe === 'object' ? probe : null;
+}
+
+/**
+ * 把「这一屏现在是什么状态」翻成一句结论：就绪 / 表格没渲染 / 就绪但这一类 0 条。
+ * 单独抽成纯函数是为了能用例钉住 —— 这条判据错一次就又是一轮误杀。
+ */
+export function classifyListRead({ probe, rows } = {}) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!probe) return { state: 'unknown', ok: false, reason: '读页面状态没有任何返回（CDP 没响应）' };
+  const ready = probe.hasTableHeader === true || probe.hasRefresh === true || (probe.trs ?? 0) > 0;
+  const kindText = Object.entries(probe.kinds ?? {}).map(([k, n]) => `${k} ${n}`).join(' / ') || '一条都没有';
+  const where = `href=${probe.href ?? '读不到'}｜title=${probe.title ?? '读不到'}｜tr=${probe.trs ?? 0}｜页面里共 ${kindText}`;
+  if (!ready) return { state: 'not-ready', ok: false, reason: `任务表格还没渲染出来（${where}）` };
+  if (list.length === 0) return { state: 'empty-of-kind', ok: false, reason: `表格已就绪但这一类任务 0 条（${where}）` };
+  return { state: 'ready', ok: true, reason: `读到 ${list.length} 条（${where}）` };
+}
+
+/** 点一次「刷新表格」——只在「表格迟迟不渲染」那条路上用，别的时候不碰页面。 */
+async function refreshTaskTable(args, targetId) {
+  return evalOn(args, targetId, `(() => {
+    const leaf = [...document.querySelectorAll('*')]
+      .find((el) => el.children.length === 0 && el.textContent.trim() === '刷新表格');
+    if (!leaf) return JSON.stringify({ clicked: false });
+    (leaf.closest('button') || leaf.closest('a') || leaf).click();
+    return JSON.stringify({ clicked: true });
+  })()`).catch(() => null);
+}
+
+/**
  * 导航到下载任务列表并读一次（任务名 + 日期范围）。
  *
  * ⚠️ 读之前必须**真重载**，不能只 navigate（2026-10-22 根修，代价是一次误杀）：
@@ -470,7 +533,7 @@ async function readTaskRows(args, targetId) {
  * **共享取件这条路上漏了** —— 这就是那个「只在出事时才走的路径等于没修」的样本。
  * 修法就一句：跟提交段用同一套（navigate → 真重载 → 再读）。
  */
-async function openTaskList(args, targetId, { settleMs = 7000, waitAttempts = 5, waitMs = 2000 } = {}) {
+async function openTaskList(args, targetId, { settleMs = 7000, waitAttempts = 8, waitMs = 2500 } = {}) {
   await navigateTo(args, targetId, ALIMAMA_LIST_URL);
   await delay(settleMs);
   // 真重载：重载会打断 eval 上下文，reloader 自带等就绪，所以重载后不必再额外 sleep。
@@ -481,21 +544,45 @@ async function openTaskList(args, targetId, { settleMs = 7000, waitAttempts = 5,
   // 另一半更硬：重载偶尔会把 hash 路由丢掉、落回首页（07-promotion-fetch.txt 里标题从
   // 「下载任务管理_万相台无界版」变成「万相台无界版」就是这次），那一屏永远等不出行。
   // 所以：读不到就等一屏再读；确认路由丢了就补一次导航（只补一次，不无限重导航）。
+  //
+  // 2026-10-24 再加一层（㊼，盖文天猫真机误杀）：**「读到 0 行」不许直接当结论**。
+  // 上一版的循环只补了「路由丢了」这一种，其它 0 行仍在预算耗尽后把空数组交出去，
+  // 于是判据说「列表里没有任何任务名形状的条目」——而那台机器上的任务其实两分钟前刚生成成功。
+  // 现在每轮都先探一次这一屏的**就绪状态**（`probeListPage`），分三种收尾：
+  //   · 表格始终没渲染 ⇒ **抛「没读到」**（不再冒充「没有」），并把 href/title/tr/任务种类直方图带上；
+  //   · 表格已就绪、这一类 0 条 ⇒ 老实返回空数组，但日志里留下直方图；
+  //   · 表格没渲染且已经等了 3 轮 ⇒ 点一次「刷新表格」再等（只点一次）。
+  // 预算也从 5×2s 抬到 8×2.5s（约 20s）：重载后表格在 5 家并行时实测要十几秒才出来。
   let rows = await readTaskRows(args, targetId);
+  let probe = await probeListPage(args, targetId);
   let renavigated = false;
+  let nudged = false;
   for (let attempt = 1; attempt <= waitAttempts && rows.length === 0; attempt += 1) {
-    const href = await evalOn(args, targetId, 'location.href').catch(() => null);
+    const verdict = classifyListRead({ probe, rows });
+    const href = probe?.href ?? await evalOn(args, targetId, 'location.href').catch(() => null);
     if (!renavigated && typeof href === 'string' && !href.includes('download-list')) {
       renavigated = true;
       console.log(`[fetch] 重载后不在下载任务管理（${href}）→ 重新导航再读`);
       await navigateTo(args, targetId, ALIMAMA_LIST_URL);
       await delay(settleMs);
+    } else if (!nudged && verdict.state === 'not-ready' && attempt >= 3) {
+      nudged = true;
+      const nudgedResult = await refreshTaskTable(args, targetId);
+      console.log(`[fetch] 表格还没渲染（${verdict.reason}）→ 点一次「刷新表格」（${JSON.stringify(nudgedResult)}）再看`);
+      await delay(waitMs);
     } else {
-      console.log(`[fetch] 列表这一屏还没渲染出行（第 ${attempt} 次读）→ ${waitMs / 1000}s 后再读`);
+      console.log(`[fetch] 列表这一屏还没渲染出行（第 ${attempt} 次读｜${verdict.reason}）→ ${waitMs / 1000}s 后再读`);
       await delay(waitMs);
     }
     rows = await readTaskRows(args, targetId);
+    probe = await probeListPage(args, targetId);
   }
+  const finalVerdict = classifyListRead({ probe, rows });
+  if (finalVerdict.state === 'not-ready' || finalVerdict.state === 'unknown') {
+    throw new Error(`取件段没读到下载任务列表（这是「没读到」，不是「列表里没有这个任务」）：`
+      + `${finalVerdict.reason}｜共读 ${waitAttempts} 次${renavigated ? '、补过 1 次导航' : ''}${nudged ? '、点过 1 次刷新表格' : ''}仍没渲染出任务表格`);
+  }
+  if (rows.length === 0) console.log(`[fetch] 列表已就绪，但这一类任务 0 条：${finalVerdict.reason}`);
   return rows;
 }
 
