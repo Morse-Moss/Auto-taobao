@@ -96,19 +96,23 @@ test('失败契约：/json/version 里没有 websocket 地址 ⇒ 同样算连�
   } finally { await server.close(); }
 });
 
-test('失败契约：一个 page 页签都没有 ⇒ NO_PAGE_TARGET（没有可定位的窗口，不猜）', async () => {
-  const server = await fakeCdp({ list: [{ id: 'w1', type: 'service_worker' }] });
+test('失败契约：一个业务 page 页签都没有 ⇒ NO_PAGE_TARGET（没有可定位的窗口，不猜）', async () => {
+  const server = await fakeCdp({ list: [
+    { id: 'w1', type: 'service_worker' },
+    { id: 'd1', type: 'page', url: 'edge://downloads-hub/' },
+  ] });
   try {
     const result = await applyWindowBounds({ port: server.port, timeoutMs: 1500 });
     assert.equal(result.ok, false);
     assert.equal(result.reason, 'NO_PAGE_TARGET');
-    assert.match(result.detail, /一个 page 页签都没有/u);
+    assert.match(result.detail, /没有业务 page 页签/u);
   } finally { await server.close(); }
 });
 
 test('失败契约：websocket 连不上 ⇒ SET_FAILED（这一步**绝不**返回「成功」）', async () => {
   // 假 CDP 给的 websocket 指向端口 1（必然连不上）⇒ 会话打不开 ⇒ 走 SET_FAILED 那一档。
-  const server = await fakeCdp({ list: [{ id: 'p1', type: 'page', url: 'about:blank' }] });
+  // URL 必须是业务页；about:blank 会被 1.12.20 的统一判据排除，根本走不到 websocket。
+  const server = await fakeCdp({ list: [{ id: 'p1', type: 'page', url: 'https://sycm.taobao.com/' }] });
   try {
     const result = await applyWindowBounds({ port: server.port, timeoutMs: 1500 });
     assert.equal(result.ok, false);

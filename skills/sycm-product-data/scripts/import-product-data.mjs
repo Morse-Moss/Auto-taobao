@@ -15,7 +15,7 @@ function args(argv) { const out = { files: [], shop: null, date: null, apply: fa
 // （`errno=-4082`），此时 `status=null`、`stderr` 是空串 —— 于是 `stderr || '…'` 会抛出一句
 // 看不出真因的「XLS parser failed」，看起来像解析器坏了，其实是进程压根没起来。
 // 2026-09-27 实测：这处裸 `spawnSync` 让五家店的底单与询单**全部**导入失败（四轮跑，飞书零写入）。
-function rowsFromXls(file) { const script = path.join(import.meta.dirname, 'read-product-xls.py'); const result = spawnSync(process.env.PYTHON || 'py', ['-3', script, file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); if(result.status!==0)throw new Error(`XLS parser failed：${result.stderr?.trim() || result.error?.message || `exit ${result.status}`}`); return JSON.parse(result.stdout); }
+function rowsFromXls(file) { const script = path.join(import.meta.dirname, 'read-product-xls.py'); const pythonCommand = process.env.PYTHON || 'py'; const pythonPrefix = process.env.PYTHON ? [] : ['-3']; const result = spawnSync(pythonCommand, [...pythonPrefix, script, file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); if(result.status!==0)throw new Error(`XLS parser failed：${result.stderr?.trim() || result.error?.message || `exit ${result.status}`}`); return JSON.parse(result.stdout); }
 function csvLine(row) { return row.map((value) => { const text=String(value ?? ''); return /[",\n]/u.test(text) ? `"${text.replaceAll('"','""')}"` : text; }).join(','); }
 async function main(){
   const options=args(process.argv.slice(2));

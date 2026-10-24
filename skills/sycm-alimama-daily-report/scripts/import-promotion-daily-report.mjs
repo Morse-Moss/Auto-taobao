@@ -41,7 +41,9 @@ function parse(argv) {
 function readZip(file) {
   // stdio 必须显式给 ['ignore','pipe','pipe']：默认带 stdin 管道时 spawnSync 在本机会 EBUSY
   // （2026-10-11 实测：解析 ZIP 恒失败，报 "spawnSync py EBUSY"）。
-  const r = spawnSync(process.env.PYTHON ?? 'py', ['-3', '-c', PY, file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  const pythonCommand = process.env.PYTHON || 'py';
+  const pythonPrefix = process.env.PYTHON ? [] : ['-3'];
+  const r = spawnSync(pythonCommand, [...pythonPrefix, '-c', PY, file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   if (r.status !== 0) throw new Error(`ZIP解析失败: ${r.stderr || r.error?.message}`);
   return JSON.parse(r.stdout);
 }

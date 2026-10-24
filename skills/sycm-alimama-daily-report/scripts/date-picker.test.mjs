@@ -637,11 +637,13 @@ test('遮挡标记：名字是跨文件约定、且驱动 import 它而不是另
 });
 
 test('遮挡标记：判定在**抛出侧**（aim 那一刻），且门槛与 collect-core 的 0.85 相等', () => {
-  const source = readFileSync(path.join(import.meta.dirname, 'date-picker.mjs'), 'utf8');
+  const source = readFileSync(path.join(import.meta.dirname, 'date-picker.mjs'), 'utf8').replace(/\r\n/g, '\n');
   // ① 判定写在 aim 里、且紧挨着「命中了别人」那一步（不是事后另起一处猜）。
   const aimStart = source.indexOf('const aim = (el, label) => {');
   assert.ok(aimStart > 0, '找不到 aim()（改代码时请同步这条判据）');
   const aimEnd = source.indexOf('\n  };\n', aimStart);
+  assert.ok(aimEnd > aimStart,
+    'aim() 函数边界必须真的找到；CRLF 未归一化时这里会是 -1，后续断言会退化成扫整份文件');
   const aimBody = source.slice(aimStart, aimEnd);
   assert.match(aimBody, /document\.elementFromPoint\(x, y\)/u, 'aim 里要拿命中点');
   assert.match(aimBody, /\bBLOCKED_BY_OVERLAY_TOKEN\b/u, '标记要在 aim 里拼进错误串 —— 只有这里手里有 hit');

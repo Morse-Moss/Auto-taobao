@@ -4,6 +4,8 @@ import { pathToFileURL } from 'node:url';
 
 const root = path.resolve(import.meta.dirname, '..');
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const pythonCommand = process.env.PYTHON || 'py';
+const pythonPrefix = process.env.PYTHON ? [] : ['-3'];
 
 export function classifyChangedFiles(files) {
   const normalized = files.map((file) => file.replaceAll('\\', '/').replace(/^\.\//, ''));
@@ -78,7 +80,7 @@ export function selectChecks(files) {
     const skillTest = file.match(/^skills\/([^/]+)\/.*\.test\.mjs$/);
     if (skillTest) add('node', ['--test', file]);
     if (file.match(/^skills\/[^/]+\/.*(?:test_.*|.*_test)\.py$/)) {
-      add('py', ['-3', '-m', 'unittest', file, '-q']);
+      add(pythonCommand, [...pythonPrefix, '-m', 'unittest', file, '-q']);
     }
   }
   for (const check of checks.filter((item) => item.startsWith('skill:'))) {

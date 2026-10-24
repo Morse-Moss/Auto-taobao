@@ -58,7 +58,7 @@ test('promotion-fetch：操作行持续隐藏超过预算时 fail-closed', async
  */
 test('整页重载后必须重新定位目标（重载会冲掉 data- 标记）', () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8');
+  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8').replace(/\r\n/g, '\n');
   const fnStart = src.indexOf('async function hitCheckDismissingOverlay');
   assert.ok(fnStart > 0, '找不到 hitCheckDismissingOverlay —— 名字变了的话这条用例要跟着更新');
   // 结束标志用「最后一个独立的 `}` 独占一行」——不能用第一个，
@@ -137,7 +137,7 @@ test('整页重载后必须重新定位目标（重载会冲掉 data- 标记）'
  */
 test('取件段读任务列表前必须真重载（同 URL navigate 是空操作）', () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8');
+  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8').replace(/\r\n/g, '\n');
 
   // 函数体边界按「独占一行的 `}`」取，不再用固定 900 字窗口 ——
   // 2026-10-23 给这个函数加了「读不到再等一屏」的循环后，窗口法会把 readTaskRows 切到窗口外。
@@ -185,7 +185,7 @@ test('取件段读任务列表前必须真重载（同 URL navigate 是空操作
  */
 test('取件段读任务列表：读到 0 行要再等一屏重读，路由丢了要补导航', () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8');
+  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8').replace(/\r\n/g, '\n');
   const start = src.indexOf('async function openTaskList');
   assert.ok(start > 0, '找不到 openTaskList —— 名字变了的话这条用例要跟着更新');
   const rest = src.slice(start);
@@ -250,7 +250,7 @@ test('取件段：三种页面状态必须给三种结论（没渲染 ≠ 这一
 
 test('取件段：表格始终没渲染时必须抛「没读到」，不许说成「不在列表里」', () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8');
+  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8').replace(/\r\n/g, '\n');
   const start = src.indexOf('async function openTaskList');
   const rest = src.slice(start);
   const endMark = rest.indexOf('\n}\n');

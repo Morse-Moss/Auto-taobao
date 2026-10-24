@@ -4,11 +4,13 @@
 # this repository (skills/*/scripts, runtime/*.py). Versions below are the
 # versions verified on the development machine on 2026-09-11.
 #
-# Install:
-#   py -3 -m pip install -r requirements.txt
+# Install (local, using the Windows launcher):
+#   py -3.12 -m pip install -r requirements.txt
 #
-# NOTE: the interpreter itself is not pinned here. The repository README uses
-# `py -3`; the verified interpreter was CPython 3.12.9 on Windows x64.
+# CI installs and tests with `python` from actions/setup-python, pinned to
+# CPython 3.12. The verified development interpreter was CPython 3.12.9 on
+# Windows x64. Do not install with one interpreter and test with `py -3`:
+# the launcher may select a different, newer Python than `python`.
 
 openpyxl==3.1.5
 Pillow==11.3.0

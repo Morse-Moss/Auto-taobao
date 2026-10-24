@@ -15,6 +15,37 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.21] - 2026-10-24
+
+CI 连续红灯分层修复：统一 Python 解释器、补齐千牛登记、修 CRLF 守卫，并清掉依赖恢复后才会暴露的下一层测试缺陷。
+
+**为什么改**
+
+- 最新 CI 的表层是 Pillow 安装失败，实际机制是 `py -3` 随 runner 漂移到了 Python 3.15；skill job 又用另一个 `python` 二次安装，安装步骤假绿，测试仍回到缺依赖的 3.15。搜索排行因此缺 openpyxl，竞品 Python 用例失败后还引发长时下游等待。
+- 历史红灯里还压着三个独立缺口：`qianniu-kefu-chat` 有测试但没进 CI 矩阵、`KEFU_WEEKLY_OK/FAILED` 没进告警闭集、日报取件守卫在 CRLF checkout 下反向自证失效。只修依赖会把这些红灯留到下一轮。
+- 本地放大验证又发现：1.12.20 的 window-bounds 两条旧夹具仍假设 `about:blank` 是业务页；审计守卫先把全部证据文件名读进默认 1MB 缓冲区再过滤，证据较多时以 ENOBUFS 假红。它们属于依赖恢复后必会遇到的下一层问题，本版一并收口。
+
+**改了什么**
+
+- 两个 CI Job 都用 `actions/setup-python` 固定 CPython 3.12；只执行一次 `python -m pip install`，随后用同一 `python` 真实导入 openpyxl / Pillow / python-docx。workflow 显式给 `PYTHON` / `SYCM_PYTHON` / `XWS_PYTHON=python`。
+- 四个技能导入解析点、`check-fast`、`run-affected-tests` 共 6 处：显式覆盖 `PYTHON` 时不再附加 `-3`；未覆盖的本机默认 `py -3` 行为不变。新增发现式守卫扫描全部同类调用点。
+- CI 矩阵加入 `qianniu-kefu-chat`；告警闭集登记两个客服周采集 type，标题仍由调用方显式给，不新增第二份通用标题。
+- `promotion-fetch-wait.test.mjs` 4 处源码读取统一 LF 归一化；`date-picker.test.mjs` 的 aim 扫描同步归一化，并补 `aimEnd > aimStart`，防止边界没找到时退化成扫整份文件。
+- window-bounds 夹具改用一个真实业务 URL 走 websocket 失败分支，并直接覆盖“只剩 edge:// 内部页”分支；审计守卫改用 `execFileSync` + Git pathspec，在 stdout 生成前排除 evidence，不改变“已跟踪 + 未跟踪非忽略代码”的扫描口径。
+
+**同族与攻击包**
+
+- `docs/ops/REPAIR-PROTOCOL.md` 新增族 E（解释器漂移与覆盖参数错接）、族 F（CRLF 源码扫描）、族 G（新能力登记缺口），逐点写明已修与不适用边界。
+- `tmp/mutate/mutate-2026-10-24-ci.mjs` 6/6 通过：新配置 + CRLF 全绿；旧 CI、旧 Python 调用点、未归一化守卫均 RED_NAMED。M6 首轮 GREEN_BAD，暴露遮挡守卫缺边界存在断言；补断言后复验才通过。
+- `tmp/mutate/mutate-2026-10-24-viewport.mjs` 复验 3/3 RED_NAMED；window-bounds 新夹具没有削弱原攻击面。
+
+**验证到什么程度**
+
+- 本地全量语法：831 个 JavaScript 文件 + 16 个 Python 文件 PASS（显式使用 CPython 3.12.9 覆盖，输出 `tmp/ci-check-fast-python-override.log`）。首次 120 秒预算截断记为 INCOMPLETE，延长到 2 分 12 秒跑完后才记通过。
+- 按 CI 入口：runtime **1434/1434**；日报技能 **651/651**；商品 **16/16**、询单 **32/32**、推广 **60/60**、搜索排行 **42/42**、千牛客服 **24/24**；竞品 Python 定向 **8/8**。原始 TAP 在 `tmp/ci-*-after.tap`。
+- 定向基线最初为 39/41，两个失败分别是千牛告警与矩阵漏项；修后相关定向 96/96。新暴露的 window-bounds / 审计 / date-picker 复验 64/64。
+- 以上是本地离线判据，不含真机，也不预写 GitHub Actions 已通过；远端结论以本提交推送后的实际运行记录为准。未把竞品完整技能套件写成本地已跑，本轮只跑了上述 8 条 Python 定向用例。
+
 ## [1.12.20] - 2026-10-24
 
 交付前收尾：视口「读错对象」族（㊽）修复 + 商品推广采集脚本剩余固定 sleep 点判定完毕。

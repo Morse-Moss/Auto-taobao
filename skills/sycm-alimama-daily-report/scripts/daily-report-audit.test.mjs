@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -174,9 +174,12 @@ test('全仓库只有写入方与迁移提到这张表（没有第二个读者�
   // 不写 stdio 时默认「三根都是管道」，而本机宿主沙箱对「给子进程管道 stdin 的同步 spawn」
   // 直接回 EBUSY ⇒ 这条守卫会**整条跑不起来**（红的是 `spawnSync …cmd.exe EBUSY`，
   // 而不是它要守的那件事）。stdout 要接下来过滤，所以只把 stdin 改成 ignore。
-  const tracked = execSync('git ls-files --cached --others --exclude-standard',
-    { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
-    .split('\n')
+  // evidence 在 Git 输出之前就按 pathspec 排除：先把全部证据文件名读进默认 1MB
+  // 缓冲区、再用 JS 过滤，会在真实运行证据较多时以 ENOBUFS 假红（2026-10-24 本地复现）。
+  const tracked = execFileSync('git', [
+    'ls-files', '--cached', '--others', '--exclude-standard', '--', '.', ':(exclude)evidence/**',
+  ], { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    .split(/\r?\n/)
     .map((line) => line.trim()).filter(Boolean)
     .filter((file) => /\.(mjs|cjs|js|ts|py|sql)$/u.test(file))
     // `evidence/` 整个目录**不在扫描范围内**（2026-09-26 补）。

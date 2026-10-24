@@ -325,6 +325,8 @@ export const ALERT_TYPES = Object.freeze({
   PROMOTION_ROUND_FAILED: Object.freeze({ title: 'explicit', note: '推广日报一轮没收完；收信人＝运营' }),
   PRODUCT_ROUND_FAILED: Object.freeze({ title: 'explicit', note: '商品数据一轮没收完；收信人＝运营' }),
   WEEKLY_ROUND_FAILED: Object.freeze({ title: 'explicit', note: '周报竞品采集有段落没跑完；收信人＝运营' }),
+  KEFU_WEEKLY_OK: Object.freeze({ title: 'explicit', note: '客服聊天记录周采集已完成；收信人＝运营' }),
+  KEFU_WEEKLY_FAILED: Object.freeze({ title: 'explicit', note: '客服聊天记录周采集没收齐；收信人＝运营' }),
   FLOW_COMPLETED: Object.freeze({ title: 'explicit', note: '任一流程收集完成（请查收）；收信人＝运营' }),
   // 标题**派生**自原来那条告警（`已恢复：<原标题>`）⇒ 流程名跟着原标题走，
   // 生成处不需要自己有【】。这是 round-notify-policy 的形态；alert-copy 的

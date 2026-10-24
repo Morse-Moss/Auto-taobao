@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { discoverSkillTests, REPO_ROOT } from '../scripts/test-suite-discovery.mjs';
+import { walkMjs } from './arch-boundary-scan.mjs';
 
 // 这条守的是「测试写了、套件能跑、但 CI 不跑它」。
 //
@@ -64,4 +65,52 @@ test('CI 矩阵里的 skill 名单与「自带测试的 skill」完全一致', (
     [],
     'CI 矩阵里有这些 skill，但它们名下没有任何被发现的测试文件 —— 要么名字写错，要么测试被搬走了',
   );
+});
+
+test('CI 两个 Job 都用 setup-python 的同一套 3.12 安装并验证依赖', () => {
+  const text = readFileSync(CI_FILE, 'utf8').replace(/\r\n/g, '\n');
+  const occurrences = (needle) => text.split(needle).length - 1;
+
+  assert.equal(occurrences('- uses: actions/setup-python@'), 2,
+    'fast-gate 与 skill-tests 都必须显式安装固定 Python；少了任一 job 就会继续吃 runner 镜像漂移');
+  assert.equal(occurrences("python-version: '3.12'"), 2,
+    '两个 Job 必须钉同一个 3.12，而不是 py -3 隐式选择最新版本');
+  assert.equal(occurrences('run: python -m pip install --disable-pip-version-check -r requirements.txt'), 2,
+    '依赖只能装进 setup-python 暴露的 python，不能再保留 py / python 双安装');
+  assert.equal(occurrences('run: python -c "import sys, openpyxl, PIL, docx;'), 2,
+    '安装后必须用同一命令真实导入 openpyxl / Pillow / python-docx，缺依赖要当场红');
+  assert.equal(occurrences('py -3 -m pip install'), 0,
+    '旧的 py -3 安装会绕过 PATH，选到 runner 上的另一套解释器');
+  for (const name of ['PYTHON', 'SYCM_PYTHON', 'XWS_PYTHON']) {
+    assert.ok(text.includes(`\n  ${name}: python\n`),
+      `workflow 顶层必须给 ${name}=python，让支持覆盖的测试与安装使用同一解释器`);
+  }
+});
+
+test('PYTHON 显式覆盖时不得再附加 Windows 启动器的 -3 参数', () => {
+  const files = [...walkMjs('skills'), ...walkMjs('scripts')];
+  const hits = [];
+  for (const relative of files) {
+    const source = readFileSync(path.join(REPO_ROOT, relative), 'utf8').replace(/\r\n/g, '\n');
+    if (/process\.env\.PYTHON\s*(?:\|\||\?\?)\s*'py'/u.test(source)) hits.push({ relative, source });
+  }
+
+  // 当前同族清单：四个技能导入解析点 + check-fast + run-affected-tests。
+  // 扫描是发现式而非抄六行白名单；以后新增同类调用点也会自动进入这道判据。
+  assert.ok(hits.length >= 6, `PYTHON 调用点扫描失效：只找到 ${hits.length} 处，预期至少 6 处`);
+  const offenders = [];
+  for (const { relative, source } of hits) {
+    const hasCommand = /const pythonCommand\s*=\s*process\.env\.PYTHON\s*\|\|\s*'py';/u.test(source);
+    const hasPrefix = /const pythonPrefix\s*=\s*process\.env\.PYTHON\s*\?\s*\[\]\s*:\s*\['-3'\];/u.test(source);
+    const prefixUses = [...source.matchAll(/\.\.\.pythonPrefix/gu)].length;
+    if (!hasCommand || !hasPrefix || prefixUses < 1 || /spawnSync\(\s*process\.env\.PYTHON/u.test(source)) {
+      offenders.push(`${relative}（command=${hasCommand} prefix=${hasPrefix} uses=${prefixUses}）`);
+    }
+  }
+  assert.deepEqual(offenders, [],
+    `显式 PYTHON=python 时，旧写法会把 -3 交给 python.exe 本身并报 Unknown option：\n${offenders.join('\n')}`);
+
+  // 反向自证：扫描判据必须认得出旧调用点，不能因文件清单或正则失效而假绿。
+  assert.ok(/process\.env\.PYTHON\s*(?:\|\||\?\?)\s*'py'/u.test("spawnSync(process.env.PYTHON || 'py', ['-3'])"),
+    'PYTHON 调用点识别正则失效');
 });

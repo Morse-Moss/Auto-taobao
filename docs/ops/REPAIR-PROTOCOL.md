@@ -90,6 +90,21 @@
 - **2026-10-24 已修（1.12.20）**：`runtime/browser-ports.mjs` 新增唯一判据 `isWebPage` / `pickWebPage`；`shop-viewport-gate.mjs` 与 `browser-window-bounds.mjs` 两处都改走它，只剩内部页时 fail-closed。视口证据新增 pageUrl/pageTitle。
 - 攻击包：M6/M7/M8 均 RED_NAMED；仅离线与桩化现场已验，真机首跑待补。
 
+族 E：CI Python 解释器漂移与覆盖参数错接（2026-10-24）
+- 真实现场：windows-latest 的 `py -3` 选到 3.15，Pillow 11.3.0 无对应 wheel；skill job 又用 `python` 二次安装掩盖首个失败，测试仍回到 `py -3`，最终缺 openpyxl 并触发长时下游等待。
+- 机制签名：安装命令与测试命令各自选择解释器；或调用方已给 `PYTHON=python`，被调侧仍把启动器专用 `-3` 交给 python.exe。
+- 已修：fast-gate / skill-tests 都用 setup-python 固定 3.12；安装后同命令导入 openpyxl / PIL / docx；`PYTHON` / `SYCM_PYTHON` / `XWS_PYTHON` 显式指向同一 `python`。四个技能导入解析点 + `check-fast` + `run-affected-tests` 共 6 处改为“未覆盖时才补 `-3`”。未覆盖的本机默认 `py -3` 行为不变。
+- 守卫与攻击包：`runtime/ci-matrix-coverage.test.mjs` 发现式扫描全部 `PYTHON` 调用点；`tmp/mutate/mutate-2026-10-24-ci.mjs` M1/M2 验证新配置过、旧配置与旧调用点转红。
+
+族 F：源码扫描测试把宿主的 CRLF 当成 LF（2026-10-24）
+- 机制签名：`readFileSync(..., 'utf8')` 后直接拿字面 `\n` 做函数边界或反向自证匹配；本机 LF 绿，CI checkout 成 CRLF 后红灯或判据范围失真。
+- 已修：`promotion-fetch-wait.test.mjs` 4 处源码读取统一先 `.replace(/\r\n/g, '\n')`；`date-picker.test.mjs` 的 aim 边界扫描同步归一化，并新增 `aimEnd > aimStart`，防止找不到边界时退化成扫整份文件。
+- 同族分类：其余已扫点若只用不含换行边界的字面判据，或正则已经用 `\s*` 吸收 `\r\n`，不属于本次故障实例，不做无差别改写；全仓 LF 重归一仍按 AGENTS.md 挂起到没有其他会话在途文件时。
+- 攻击包：M3/M4 复现取件守卫旧代码 CRLF 红、新代码绿。M6 首轮 **GREEN_BAD**，证明遮挡守卫缺“边界必须找到”断言；补断言后，撤掉归一化的突变体转 RED_NAMED，M5/M6 复验通过。
+
+族 G：新能力已进套件/告警链，但登记表没跟上（2026-10-24）
+- `qianniu-kefu-chat` 自带 24 条离线测试却不在 CI 矩阵，且 `KEFU_WEEKLY_OK/FAILED` 未进告警 type 闭集；两处均已修。矩阵仍由 `discoverSkillTests()` 推导期望值，不另抄一份名单；告警标题继续由调用方显式给，不向通用标题表加第二份真相。
+
 ## 6. 故障现场库（回放桩基建第一步）
 
 登记本仓六类故障模式与已知现场。规则：每次修复必须引用库中一个现场（给证据路径），或把新现场登记入库。目标是把「生产踩的坑」变成「测试可加载的资产」——新平台/新流程开发时直接拿这些现场打自己的新代码，这就是「经验」的工程化形态。

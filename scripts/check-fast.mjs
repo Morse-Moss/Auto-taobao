@@ -38,7 +38,9 @@ for (const file of javascript) {
 
 if (python.length > 0) {
   console.log(`==> fast syntax check: ${python.length} Python file(s)`);
-  const status = run('py', ['-3', '-m', 'compileall', '-q', ...python]);
+  const pythonCommand = process.env.PYTHON || 'py';
+  const pythonPrefix = process.env.PYTHON ? [] : ['-3'];
+  const status = run(pythonCommand, [...pythonPrefix, '-m', 'compileall', '-q', ...python]);
   if (status !== 0) process.exit(status);
 }
 
