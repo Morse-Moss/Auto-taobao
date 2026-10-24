@@ -12,7 +12,7 @@ import { reportDateEpoch } from './daily-report-core.mjs';
 import { buildEnvironment, dirHasEntries, evidenceBaseDir, resolveEvidenceDir } from './daily-report-runtime.mjs';
 import { assertEvidenceShopKey } from './shop-identities.mjs';
 import { assertShopIdentity, sycmShopIdentityExpression } from './collect-core.mjs';
-import { classifyInquiryWrite, describeFeishuRowGap, extractInquiryMetrics, findDailyStoreRow, resolveShopOptionId } from './inquiry-core.mjs';
+import { classifyInquiryWrite, DAILY_INQUIRY_COLUMN, describeFeishuRowGap, extractInquiryMetrics, findDailyStoreRow, resolveShopOptionId } from './inquiry-core.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../../..');
@@ -77,8 +77,8 @@ async function readSycmTable(args) {
     const identity = JSON.parse(${sycmShopIdentityExpression()});
     const clean = value => String(value ?? '').trim().replace(/\\s+/g, ' ');
     const tables = [...document.querySelectorAll('table')].filter(table =>
-      [...table.querySelectorAll('thead th')].some(th => clean(th.innerText) === '当日询单人数'));
-    if (tables.length !== 1) throw new Error('expected one 当日询单人数 table, got ' + tables.length);
+      [...table.querySelectorAll('thead th')].some(th => clean(th.innerText) === ${JSON.stringify(DAILY_INQUIRY_COLUMN)}));
+    if (tables.length !== 1) throw new Error('expected one ${DAILY_INQUIRY_COLUMN} table, got ' + tables.length);
     const table = tables[0];
     return JSON.stringify({
       url: location.href,
@@ -164,7 +164,7 @@ async function main() {
       }),
       evidence: { outputDir: args.outputDir, generation: resolved.generation, reason: resolved.reason },
       status: 'SOURCE_EMPTY_LEFT_BLANK',
-      source: { url: source.url, shop: source.sourceShop, column: '当日询单人数',
+      source: { url: source.url, shop: source.sourceShop, column: DAILY_INQUIRY_COLUMN,
         dateRow: args.reportDate, peerBenchmark: metrics.peerBenchmark, rows: (source.rows ?? []).length },
       values: { 询单量: null, 同层同行询单量: null },
       note: '生意参谋「询单到付款」对该店该日返回空态（表格「暂无数据」）⇒ 两格留空：不写、不算失败、不叫人。',
@@ -230,7 +230,7 @@ async function main() {
       // 认的是店名还是选项 id —— 写进产物。2026-09-29 之前没人记这个，
       // 于是「表里那行店铺存的是 optXXX」这件事只能靠人肉重读全表才发现。
       matchedBy: picked.matchedBy, shopOptionId },
-    source: { url: source.url, shop: source.sourceShop, column: '当日询单人数',
+    source: { url: source.url, shop: source.sourceShop, column: DAILY_INQUIRY_COLUMN,
       dateRow: args.reportDate, benchmarkRow: metrics.peerBenchmark === 'PEER_UNAVAILABLE' ? null : '同行同层均值',
       peerBenchmark: metrics.peerBenchmark, rows: (source.rows ?? []).length },
     degraded: metrics.peerBenchmark === 'PEER_UNAVAILABLE'

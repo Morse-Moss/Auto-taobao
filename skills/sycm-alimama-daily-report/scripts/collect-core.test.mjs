@@ -13,7 +13,7 @@ import {
   describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, describeOverlayScan,
   downloadEntryExpression, hitCheckExpression, judgeOverlayAfter, listDownloads, newEntries, newestTaskName,
   overlayAfterExpression, overlayScanExpression, pageReadyExpression, parseCollectArgs, pickNewest,
-  pickOverlayCloseCandidate, pickOverlayCloseCandidates, readAlimamaIdentitySettled, reloadPageExpression,
+  pickOverlayCloseCandidate, pickOverlayCloseCandidates, readAlimamaIdentitySettled, readPageValueSettled, reloadPageExpression,
   restoreCheckboxesExpression, scrollIntoViewExpression, shopReportNamePattern,
   sycmShopIdentityExpression, targetRowExpression, taskNameOfZip,
   ALL_DOCS_EXPR, QUERY_ALL_DOCS_EXPR,
@@ -901,7 +901,9 @@ test('两个采集脚本都必须核对身份，而且必须在点下载之前�
   assert.match(shop, /expected: args\.expectShop/u, '店铺脚本没把 --expect-shop 传给核对函数（等于没核对）');
   assert.match(shop, /observed: identity\.shopName/u, '店铺脚本没把读到的店铺名传给核对函数');
   // 位置关系：身份核对必须早于「点下载报表」—— 点完再核对，文件已经落盘了。
-  const identityAt = shop.indexOf('await evalOn(args, targetId, sycmShopIdentityExpression())');
+  // 2026-10-24：身份读取从裸 evalOn 单次读改为 readPageValueSettled 轮询，定位点同步换成轮询调用。
+  // 退回裸 evalOn 单次读 ⇒ identityAt = -1 ⇒ 本条照样红（判据没有放松，只是认新实现形态）。
+  const identityAt = shop.indexOf('await readPageValueSettled(');
   const downloadClickAt = shop.indexOf('clickVerified(args, targetId,\n    { selector: \'[data-collect-download="1"]\'');
   assert.ok(identityAt > 0, '店铺脚本里找不到身份读取处（判据失效了）');
   assert.ok(downloadClickAt > 0, '店铺脚本里找不到下载点击处（判据失效了）');
@@ -989,6 +991,61 @@ test('阿里妈妈脚本的身份读取必须走 settle 重试（单次读那一
   assert.ok(region.length > 0, '找不到 assertAlimamaIdentity 区间（判据失效了）');
   assert.equal(/await evalOn\(args, targetId, alimamaIdentityExpression\(\)\)/u.test(region), false,
     'assertAlimamaIdentity 又退回了单次读（裸 evalOn 读一次就断言）');
+});
+
+// 2026-10-24：通用「读不到就重试」原语。攻击包现场 = 前 3 次读空、第 4 次才读到 ——
+// 单次读（旧代码）在这个现场必然拿到 null 并被 fail-closed 拦下，轮询必须第 4 次救回。
+test('readPageValueSettled：前 3 次读空第 4 次读到必须救回；始终读不到原样交回不松闸门', async () => {
+  const seq = [{ shopName: null }, { shopName: null }, { shopName: null }, { shopName: '盖文全卫定制' }];
+  let calls = 0;
+  const sleeps = [];
+  const settled = await readPageValueSettled(
+    async () => seq[Math.min(calls++, seq.length - 1)],
+    { isPresent: (v) => Boolean(v?.shopName), delay: async (ms) => { sleeps.push(ms); }, attempts: 12, intervalMs: 1000 },
+  );
+  assert.equal(settled.settled, true, '旧代码（单次读）在这个现场是失败的，轮询必须读到');
+  assert.equal(settled.reads, 4);
+  assert.equal(settled.value.shopName, '盖文全卫定制');
+  assert.equal(sleeps.length, 3, '每次读空之间睡一次，命中后不再睡');
+
+  const dead = await readPageValueSettled(async () => ({}),
+    { isPresent: (v) => Boolean(v?.shopName), delay: async () => {}, attempts: 3 });
+  assert.equal(dead.settled, false);
+  assert.equal(dead.reads, 3);
+  assert.deepEqual(dead.value, {}, '读不到时把最后一次读数原样带回，交给调用方 fail-closed');
+
+  await assert.rejects(() => readPageValueSettled(async () => ({}), { isPresent: null }),
+    /isPresent/u, '缺判据必须当场炸，不许默认「任何值都算读到」');
+});
+
+// 2026-10-24 突变 M5（isPresent 丢掉 memberId 那一半）首轮 GREEN_BAD 暴露的覆盖盲区：
+// 「只有会员 ID、没有会员名」也算读到 —— 这条语义此前没有任何用例钉住，回退掉它全套测试照样绿。
+test('会员 ID 单独在场也算读到身份（M5 突变暴露的盲区，补钉）', async () => {
+  const settled = await readAlimamaIdentitySettled(async () => ({ memberName: null, memberId: '2350600069' }),
+    { delay: async () => {}, attempts: 3 });
+  assert.equal(settled.settled, true, 'memberId 单独在场必须算读到（子账号场景页头可能只有 ID）');
+  assert.equal(settled.reads, 1);
+  assert.equal(settled.identity.memberId, '2350600069');
+});
+
+// 源码守卫（接线层）：collect-shop-report 回位后的身份读取必须走轮询，且顺序是 导航 → 轮询 → 身份断言。
+// 多拼接点按出现次数钉（2026-10-23 教训）：delay(6000) 全文件 0 次，不是「出现过就算」。
+test('collect-shop-report 回位读身份：导航之后必须是 readPageValueSettled，delay(6000) 零出现', () => {
+  const shop = readScript('collect-shop-report.mjs');
+  const fixedSleeps = shop.match(/delay\(6000\)/gu) ?? [];
+  assert.equal(fixedSleeps.length, 0, '回位后固定 sleep(6000) 又出现了（同族：固定 sleep 后单次读）');
+  const runStart = shop.indexOf('async function run(args)');
+  assert.ok(runStart > 0, '找不到 run()（判据失效）');
+  const body = shop.slice(runStart);
+  const navAt = body.indexOf('await navigate(args, targetId, SYCM_APP_URL)');
+  const pollAt = body.indexOf('readPageValueSettled(');
+  const assertAt = body.indexOf('assertShopIdentity({');
+  assert.ok(navAt > 0 && pollAt > navAt && assertAt > pollAt,
+    '顺序必须是 导航回位 → readPageValueSettled 轮询读身份 → assertShopIdentity（单次读那一版会红）');
+  assert.match(body, /isPresent: \(value\) => Boolean\(value\?\.shopName\)/u,
+    '轮询判据必须钉 shopName —— 换成恒 true 就等于第一次读什么算什么');
+  assert.match(shop.slice(0, shop.indexOf('// 已验证的报表定义 id')), /readPageValueSettled/u,
+    'readPageValueSettled 必须从 collect-core import（不许在本文件再造一份轮询）');
 });
 
 // 「哪个页面才算生意参谋那个工作页」不许各写一份口径。

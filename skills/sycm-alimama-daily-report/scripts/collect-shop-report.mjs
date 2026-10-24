@@ -15,7 +15,7 @@ import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
   assertShopIdentity, createOverlayDismisser, dateWithinRange, defaultDownloadsDir,
   describeHitMiss, describeHitPass, describeOverlayAttempt, hitCheckExpression, listDownloads, newEntries,
-  parseCollectArgs, pickNewest, scrollIntoViewExpression, shopReportNamePattern, sycmShopIdentityExpression,
+  parseCollectArgs, pickNewest, readPageValueSettled, scrollIntoViewExpression, shopReportNamePattern, sycmShopIdentityExpression,
 } from './collect-core.mjs';
 import { captureCollectorFailureScene } from './collect-failure-scene.mjs';
 import {
@@ -245,14 +245,25 @@ async function run(args) {
   // 从门户直跳应用内地址会被弹回门户（SOP §3.1），所以先落到应用内页再进公共空间。
   console.log('[0/4] 先回位到应用内页（上一次运行/排练可能把这一页留在日报预览页）');
   await navigate(args, targetId, SYCM_APP_URL);
-  await delay(6000);
+  // 2026-10-24：回位后的身份读取从「固定 sleep(6000) + 单次读」改为有界轮询。
+  // 页头是 SPA 异步渲染，固定 6 秒在慢现场会读到空 ⇒ fail-closed 拦下（不会串数据，但整店失败）。
+  // 与阿里妈妈侧 readAlimamaIdentitySettled 同一把尺子（collect-core 的 readPageValueSettled）。
+  // 这里**不做真重载**：本页带 hash 路由（#/shop），重载有丢 hash 落回首页的前科；
+  // 且同 URL 空操作时旧渲染里也含页头店名，真正的风险是「页头还没画上」而不是「读到别家」。
+  const identitySettled = await readPageValueSettled(
+    () => evalOn(args, targetId, sycmShopIdentityExpression()),
+    { isPresent: (value) => Boolean(value?.shopName), delay },
+  );
+  const identity = identitySettled.value ?? {};
+  console.log(`[0/4] 回位后读身份：${identitySettled.settled
+    ? `第 ${identitySettled.reads} 次读到`
+    : `${identitySettled.reads} 次仍读不到（交给下面的身份断言 fail-closed）`}`);
 
   // 动手之前先认这一屏是哪家店（2026-09-18 加）。
   // 用户原话：「肯定是要是同一家店铺的数据的，绝对不能串数据」。
   // 生意参谋页头写的是**店铺名**（如「盖文全卫定制 主店」），这里把它读出来：
   // 给了 `--expect-shop` 就必须一致，不一致当场停 —— 因为这一屏点下去的下载，
   // 文件名里**只有日期和哈希、没有店名**，落盘之后再也回推不出它是谁家的。
-  const identity = await evalOn(args, targetId, sycmShopIdentityExpression());
   const identityCheck = assertShopIdentity({
     expected: args.expectShop, observed: identity.shopName, label: '生意参谋店铺',
   });

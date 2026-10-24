@@ -2,6 +2,26 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { classifyInquiryWrite, describeDateRowGap, describeFeishuRowGap, extractInquiryMetrics, findDailyStoreRow, INQUIRY_ROW_MISSING_TOKEN, pickShopOptionId, planInquiryRowSkeleton, selectDailyStoreRecord, shopOptionsOf, SOURCE_NO_ROW_FOR_DATE_TOKEN } from './inquiry-core.mjs';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
+// 2026-10-24 族A（判据字符串多拷贝）：列名只能有一个字面量来源，消费方展开常量。
+// 反向自证：把 backfill 的表达式改回 `=== '当日询单人数'` 字面量 ⇒ 本条转红。
+test('当日询单人数列名：backfill 页面表达式必须展开 DAILY_INQUIRY_COLUMN，不再抄字面量', () => {
+  const core = readFileSync(path.join(import.meta.dirname, 'inquiry-core.mjs'), 'utf8');
+  const backfill = readFileSync(path.join(import.meta.dirname, 'run-inquiry-backfill.mjs'), 'utf8');
+  assert.match(core, /export const DAILY_INQUIRY_COLUMN = '当日询单人数'/u, '唯一来源常量不在了？');
+  assert.match(core, /exactIndex\(headers, DAILY_INQUIRY_COLUMN, 'header'\)/u,
+    'core 自己的判据也必须吃常量，不许只要求别人');
+  const literals = backfill.match(/=== '当日询单人数'/gu) ?? [];
+  assert.equal(literals.length, 0, '页面表达式又抄了列名字面量（改列名时这里会静默漏改）');
+  assert.match(backfill, /\$\{JSON\.stringify\(DAILY_INQUIRY_COLUMN\)\}/u,
+    '页面表达式必须用 JSON.stringify 展开常量（引号才正确）');
+  const colRefs = backfill.match(/column: DAILY_INQUIRY_COLUMN/gu) ?? [];
+  assert.ok(colRefs.length >= 2, '产物里的 column 字段也必须吃常量');
+  assert.match(backfill, /import \{[^}]*DAILY_INQUIRY_COLUMN[^}]*\} from '\.\/inquiry-core\.mjs'/u,
+    '常量必须来自 inquiry-core，不许在 backfill 本地再定义一份');
+});
 
 // ---------------------------------------------------------------------------
 // 「这一天的源表里没有日期行」必须与「结构异常」分开（2026-10-06 修 ㉕）

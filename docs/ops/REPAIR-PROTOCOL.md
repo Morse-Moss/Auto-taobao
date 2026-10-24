@@ -59,6 +59,8 @@
 - 突变脚本：放 `tmp/mutate/` 目录（2026-10-23 起），命名 `mutate-YYYY-MM-DD-<主题>.mjs`；2026-10-23 之前散落在 tmp/ 根下的旧脚本留在原地参考、不搬迁（避免碰相对路径）。写法上要钉：spawnSync 必须 `stdio:['ignore','pipe','pipe']`；替换前后逐字比对（差一个字=replace 空转=全假绿）。
 - 桩化现场：构造一个复刻故障页面的最小桩，让旧判据当场放行/拦截。先例：`skills/sycm-inquiry-data/scripts/inquiry-core.test.mjs` 的「业绩总览页现场」（2026-10-23），用总览页也带「统计时间」这一事实构造出旧词表的失败现场。
 - 反向自证：守卫删掉判据那行必须转红（先例：promotion-fetch-wait.test.mjs）。
+- 通用轮询原语：`collect-core.mjs` 的 `readPageValueSettled(read, { isPresent, ... })`（2026-10-24 从 readAlimamaIdentitySettled 泛化）。「读不到就重试」一律用它，不再各写一份循环；判据（isPresent）由调用方给，fail-closed 断言仍归调用方。
+- 攻击包本身也要被攻击：2026-10-24 M5 首轮 GREEN_BAD 证明「memberId 单独在场」这一语义从无覆盖——突变没抓红不是修复没问题，而是测试有盲区，必须补用例后复验到 RED_NAMED 才算过。
 
 攻击包的最低配置：一个「旧代码失败」场景 + 一个「新代码不引入新失败」场景（对应问二）。真机不可用时允许用桩化现场顶替真机验证，但必须写明「桩化已验、真机未验」，真机首跑后补判。
 
@@ -67,20 +69,20 @@
 这是规程生效当天的第一次扫描，作为示例和欠账登记。后续每次修复按第 3 节五步法更新本节。
 
 族 A：判据字符串多拷贝（机制：同一判据知识存在多份手工字面量，改一处漏一处）
-- `当日询单人数`（列名判据）至少分布在：`skills/sycm-alimama-daily-report/scripts/inquiry-core.mjs`（exactIndex 两处）、`run-inquiry-backfill.mjs`（页面表达式内字面量一处）、对应测试文件多处。
+- `当日询单人数`（列名判据）至少分布在：`skills/sycm-alimama-daily-report/scripts/inquiry-core.mjs`（exactIndex 两处）、`run-inquiry-backfill.mjs`（页面表达式内字面量一处）、对应测试文件多处。**2026-10-24 已收敛（1.12.19）**：唯一来源 `DAILY_INQUIRY_COLUMN`，消费方全部展开常量，`inquiry-core.test.mjs` 有单一来源守卫（突变 M3 RED_NAMED）。
 - `询单人数`（页面词表）跨两个 skill：`skills/sycm-inquiry-data/scripts/inquiry-core.mjs`（单一来源 `INQUIRY_PAGE_MARKERS`，已修）与 `skills/sycm-alimama-daily-report/scripts/`（另一套询单知识，职责不同但共享知识域）。
 - 风险：平台改列名时需改 N 处，漏一处即静默漂移（本项目已有「一个分类值活在四处」的先例）。处置：登记待修，修法=收敛到各自 core 的单一常量并让页面表达式展开该常量（参照 1.12.16 对 inquiry-data 的修法）。
 - 复现扫描：Grep `询单人数` glob `*.mjs`。
 
 族 B：navigate 后固定 sleep 单次读（机制：对异步页面做快照断言，无等待到稳定）
-- 确认未修实例：`skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs` 的 `await delay(6000)`——navigate(SYCM_APP_URL) 之后固定睡 6 秒，然后单次读页面认店铺。与 10-21 修掉的 produceTask sleep(6500) 同机制。
+- 确认未修实例：`skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs` 的 `await delay(6000)`——navigate(SYCM_APP_URL) 之后固定睡 6 秒，然后单次读页面认店铺。与 10-21 修掉的 produceTask sleep(6500) 同机制。**2026-10-24 已修（1.12.19）**：改 `readPageValueSettled` 有界轮询，守卫钉「delay(6000) 零出现 + 导航→轮询→断言顺序」（突变 M1 RED_NAMED）。
 - 待判实例（逐个看上下文再分类）：collect-shop-report.mjs 的 delay(2500)/delay(3000)/delay(1200)；readback-daily-report.mjs 的 delay(2000)×2/delay(1500)；run-promotion-daily-report.mjs 的 sleep(2500)/sleep(1800)/sleep(5000)；collect-product-report.mjs 与 collect-product-core.mjs 的 sleep(2000)/(5000)。
 - 判断规则：在 for/while 轮询循环体内的 sleep 是合法轮询间隔；不在循环内、睡固定秒数后紧跟一次性读取并据此下结论的，是本族命中。
 - 复现扫描：Grep `(delay|sleep)\(\d{4,}\)` glob `*.mjs` path `skills`。
 
 族 C：reloadAndSettle 覆盖面（机制：读页面前不做真重载，读到旧渲染）
 - 现有覆盖点：`collect-core.mjs`、`collect-promotion-report.mjs`（openTaskList 已修）、`navigate-read-guard.test.mjs`（1.12.15 登记制）。
-- 未覆盖：其他 navigate 后直接读的点（与族 B 大量重叠，可合并清算）。处置：登记待修，方向=统一走 reloadAndSettle + 特征轮询，nagivate-read-guard 扩全量并数出现次数。
+- 未覆盖：其他 navigate 后直接读的点（与族 B 大量重叠，可合并清算）。**2026-10-24 第一轮收口（1.12.19）**：NAV 扩到本地 `navigate(` 封装（此前 collect-shop-report 的 run 从未被扫到，属扫描盲区），新扫出的 4 个函数全部登记表态；`collectProductReport` 的 knownRisk 仍挂起（他人会话文件）。剩余方向=统一走 reloadAndSettle + 特征轮询，并数出现次数。
 - 复现扫描：Grep `reloadAndSettle` glob `*.mjs` 与 `navigateTo\(|navigate\(` 的调用点做差。
 
 ## 6. 故障现场库（回放桩基建第一步）

@@ -802,27 +802,47 @@ export function assertMemberIdentity({ expectedName, expectedId, observed } = {}
 // 读到 `memberName` 或 `memberId` 任一即算读到（判据表达式里两者同源，实务上同生同灭）。
 // read 抛错也计入重试（页面落定中途的 eval 失败同属「还没就绪」）；若整轮都在抛，抛最后一次的错
 // （那是「读不到页」而不是「身份未知」，不该被下面的失败方向盖掉）。
-export async function readAlimamaIdentitySettled(read, {
-  attempts = 12, intervalMs = 1000, delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }),
+// 「读不到就重试」的**通用形态**（2026-10-24 从 readAlimamaIdentitySettled 泛化）。
+// 判据由调用方给：`isPresent(value)` 返回 true 即算读到。语义与阿里妈妈那份逐字一致：
+// read 抛错计入重试（页面落定中途的 eval 失败同属「还没就绪」）；整轮都在抛则抛最后一次的错
+// （那是「读不到页」而不是「值未知」，不该被下游的失败方向盖掉）。
+// 返回 { value, reads, settled }；settled:false 时 value 是最后一次读到的原始值，
+// 交给调用方的 fail-closed 断言去抛 —— 本 helper 不替代任何闸门，只消除「读得太早」这一族。
+export async function readPageValueSettled(read, {
+  isPresent, attempts = 12, intervalMs = 1000,
+  delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }),
 } = {}) {
-  if (typeof read !== 'function') throw new Error('readAlimamaIdentitySettled 需要 read 函数');
-  let identity = null;
+  if (typeof read !== 'function') throw new Error('readPageValueSettled 需要 read 函数');
+  if (typeof isPresent !== 'function') throw new Error('readPageValueSettled 需要 isPresent 判据');
+  let value = null;
   let lastError = null;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      identity = await read();
+      value = await read();
       lastError = null;
     } catch (error) {
-      identity = null;
+      value = null;
       lastError = error;
     }
-    if (identity?.memberName || identity?.memberId) {
-      return { identity, reads: attempt + 1, settled: true };
+    if (isPresent(value)) {
+      return { value, reads: attempt + 1, settled: true };
     }
     if (attempt < attempts - 1) await delay(intervalMs);
   }
   if (lastError) throw lastError;
-  return { identity, reads: attempts, settled: false };
+  return { value, reads: attempts, settled: false };
+}
+
+export async function readAlimamaIdentitySettled(read, {
+  attempts = 12, intervalMs = 1000, delay = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }),
+} = {}) {
+  // 行为与 2026-10-16 初版逐字一致（成员名或会员 ID 任一即算读到），只把循环换成通用原语。
+  if (typeof read !== 'function') throw new Error('readAlimamaIdentitySettled 需要 read 函数');
+  const result = await readPageValueSettled(read, {
+    isPresent: (identity) => Boolean(identity?.memberName || identity?.memberId),
+    attempts, intervalMs, delay,
+  });
+  return { identity: result.value, reads: result.reads, settled: result.settled };
 }
 
 // ---------------------------------------------------------------------------

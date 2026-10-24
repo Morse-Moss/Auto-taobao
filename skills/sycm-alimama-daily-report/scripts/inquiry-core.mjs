@@ -20,6 +20,12 @@
  */
 export const SOURCE_NO_ROW_FOR_DATE_TOKEN = 'SOURCE_NO_ROW_FOR_DATE';
 
+// 平台日报工作簿里「当日询单人数」这一列的**唯一字面量来源**（2026-10-24 立）。
+// 此前它至少散在三处：本文件 exactIndex/integer 两处、run-inquiry-backfill.mjs 页面表达式一处。
+// 平台改列名时要改 N 处、漏一处就静默漂移（本项目「一个分类值活在四处」的同族）。
+// 消费方一律 import 本常量；页面表达式里用 ${JSON.stringify(DAILY_INQUIRY_COLUMN)} 展开，不抄字面量。
+export const DAILY_INQUIRY_COLUMN = '当日询单人数';
+
 /**
  * 「飞书询单表里没有这一天的行骨架」的**确定性标记**（2026-10-07 加）。
  *
@@ -94,7 +100,7 @@ export function extractInquiryMetrics(table, reportDate, options = {}) {
   const headers = table?.headers ?? [];
   const rows = table?.rows ?? [];
   const dateIndex = exactIndex(headers, '日期', 'header');
-  const inquiryIndex = exactIndex(headers, '当日询单人数', 'header');
+  const inquiryIndex = exactIndex(headers, DAILY_INQUIRY_COLUMN, 'header');
   const datedRows = rows.filter(row => /^\d{4}-\d{2}-\d{2}$/u.test(cell(row[dateIndex])));
   if (datedRows.length !== 1) {
     if (datedRows.length === 0 && sourceEmptyAllowed) {
@@ -113,11 +119,11 @@ export function extractInquiryMetrics(table, reportDate, options = {}) {
   if (peerRows.length === 0 && peerBenchmarkRequired) {
     throw new Error('expected one benchmark row 同行同层均值, got 0');
   }
-  const inquiry = integer(dateRow[inquiryIndex], '当日询单人数');
+  const inquiry = integer(dateRow[inquiryIndex], DAILY_INQUIRY_COLUMN);
   if (peerRows.length === 0) return { inquiry, peerInquiry: null, peerBenchmark: 'PEER_UNAVAILABLE' };
   return {
     inquiry,
-    peerInquiry: integer(peerRows[0][inquiryIndex], '同行同层均值/当日询单人数'),
+    peerInquiry: integer(peerRows[0][inquiryIndex], `同行同层均值/${DAILY_INQUIRY_COLUMN}`),
     peerBenchmark: 'PEER_AVAILABLE',
   };
 }

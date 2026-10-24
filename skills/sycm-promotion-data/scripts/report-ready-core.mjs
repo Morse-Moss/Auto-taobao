@@ -1,7 +1,8 @@
 // 「导航到阿里妈妈商品报表后，等报表页真正就绪」—— 纯函数 + 有界轮询（2026-10-22 抽出）。
 //
-// 为什么有这个文件：`produceTask()` 里原来是
-//     await request(navigate(url)); await sleep(6500);
+// 为什么有这个文件：`produceTask()` 里原来是「先 request 导航到报表 URL，再固定 sleep(6500)」
+// （写成调用形态就是 request 包 navigate、睡 6.5 秒后直接下一步；这里故意不写成可执行调用，
+// 免得 navigate-read-guard 把注释当成顶层导航点），
 //     await setPlanDimension(...)          // 找不到 `.mx-trigger` 就**立刻** throw
 // 也就是「等待」与「判据」都是**一次性、无重试**的。真机代价（2026-10-22 网林天猫，
 // `evidence/product-data-job-2026-10-21/2026-10-21-20261022021253864-e1dbdbf9/网林天猫/promotion-collect/98-failure-state.json`）：

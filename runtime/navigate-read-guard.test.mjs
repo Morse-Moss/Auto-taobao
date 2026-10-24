@@ -40,6 +40,12 @@ const REGISTRY = [
   // ② 用有界轮询替代重载（等的是「目标东西出现」，比重载更贴切）
   { file: 'skills/sycm-promotion-data/scripts/collect-product-report.mjs', fn: 'submit', poll: 'pollNewProductTask' },
   { file: 'skills/sycm-promotion-data/scripts/collect-product-report.mjs', fn: 'produceTask', poll: 'pollReportReady' },
+  // 2026-10-24 主修：回位后读身份从「固定 sleep(6000)+单次读」改为 readPageValueSettled 有界轮询。
+  // 不做真重载的依据写在 collect-shop-report.mjs 该段注释里（hash 路由页有丢 hash 前科）。
+  { file: 'skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs', fn: 'run', poll: 'readPageValueSettled' },
+  // 同族登记（NAV 扩到本地 navigate 封装后才被扫到的三处，2026-10-24 逐个看上下文后表态）：
+  { file: 'skills/sycm-alimama-daily-report/scripts/readback-daily-report.mjs', fn: 'main', why: 'navigate 只用于切表；表格加载与行数读取均走有界轮询（while+delay(2000)），不是固定 sleep 后单次读' },
+  { file: 'skills/sycm-alimama-daily-report/scripts/run-promotion-daily-report.mjs', fn: 'main', why: '任务列表基线走 openFreshTaskList 真重载；进报表页后第一个判据是 setAllDimensions 的有界轮询，其后的 readState 是在已就绪页面上复核' },
 
   // ③ 只读 href / target 列表 / HTTP 状态，不读页面内容 ⇒ 重载没有意义
   { file: 'runtime/feishu-ui-add-fields.mjs', fn: 'ensureTable', why: '条件导航（已在目标表就不导）+ 只读 location.href，不读表格内容' },
@@ -49,6 +55,7 @@ const REGISTRY = [
   { file: 'runtime/shop-pages.mjs', fn: 'sendRequests', why: '批量发代理请求，只记 HTTP status，不读页面内容' },
   { file: 'runtime/shop-window-label.mjs', fn: 'ensureLabelTabOn', why: '读的是 /targets 列表不是页面内容；自带 3 次 × 600ms 回读预算（关页签后消失要 270ms）' },
   { file: 'skills/sycm-alimama-daily-report/scripts/login-merchant.mjs', fn: 'parkTabOn', why: '已显式跳过同 URL（url === currentHref 直接返回），且只读 location.href' },
+  { file: 'skills/sycm-alimama-daily-report/scripts/date-picker.mjs', fn: 'resolveTarget', why: '读的是 /targets 列表的 URL 片段而非页面内容；回位后 delay(3000) 只是给导航留时间，判据与 login-merchant 的 siteLoggedIn 同款' },
 
   // ④ 自带别的一致性检测
   { file: 'skills/xws-export-market-analysis/scripts/export-market-analysis.mjs', fn: 'searchKeyword', why: '自带 hydration 一致性检测：反复读输入框值并与关键词比对，不匹配就重设（currentValueMatches）' },
@@ -154,7 +161,10 @@ export function functionBodyAt(src, startIdx) {
   return null;
 }
 
-const NAV = /navigateTo\(|\/navigate\?target/u;
+// 2026-10-24 扩：本地 `navigate(...)` 封装调用也算导航点 —— 旧正则只认 navigateTo( 与
+// /navigate?target 字面量，于是 collect-shop-report.mjs 的 run()（回位后固定 sleep(6000) 再单次读身份）
+// 从来没被表态完整性抓到。扫盲区比漏登记更危险：它让「没表态」看起来像是「没这个问题」。
+const NAV = /(?:navigateTo|navigate)\(|\/navigate\?target/u;
 const READ = /evalOn\(|evalPage\(|evalValue\(|proxyJson\(|proxyText\(|request\(|fetchImpl\(|fetch\(|readTaskRows\(|readProductTasks\(|readProductTaskRows\(/u;
 
 /** 扫一个文件：返回既导航又读页面的函数，以及顶层导航点。 */
@@ -220,6 +230,16 @@ test('扫描：openTaskList 必须被认成「既导航又读页面」', () => {
   assert.ok(hit, 'openTaskList 没进扫描结果 —— 切体或正则又坏了');
   assert.equal(hit.reads, true);
   assert.equal(hit.reloads, true);
+});
+
+test('扫描：collect-shop-report 的 run 必须被认成「既导航又读页面」（本地 navigate 封装也算）', () => {
+  // 2026-10-24 前它从没被扫到：NAV 只认 navigateTo( 与 /navigate?target，而 run() 调的是本地 navigate()。
+  // 这条就是防 NAV 回退的反向自证 —— 回退后 run() 会从扫描里消失，本条转红。
+  const src = readFileSync(path.join(ROOT, 'skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs'), 'utf8');
+  const { fns } = scanSource(src);
+  const hit = fns.find((f) => f.name === 'run');
+  assert.ok(hit, 'run() 没进扫描结果 —— NAV 又退回只认 navigateTo 的旧正则了');
+  assert.equal(hit.reads, true);
 });
 
 test('表态完整性：每个「导航 + 读页面」的函数都必须在登记表里', () => {

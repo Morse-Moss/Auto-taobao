@@ -15,6 +15,42 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.19] - 2026-10-24
+
+读侧收口第一批：同族三族（固定 sleep 单次读 / 判据字符串多拷贝 / 导航后读页面的扫描盲区）合并清算，全程按 `docs/ops/REPAIR-PROTOCOL.md` 的四件套执行。
+
+**为什么改**
+
+- 首扫确认 `collect-shop-report.mjs` 回位后 `delay(6000)` + 单次读身份，与 10-21 修掉的 produceTask `sleep(6500)` 同机制：页头 SPA 异步渲染，固定 6 秒在慢现场读到空 ⇒ 身份断言 fail-closed 拦下，整店失败。
+- `当日询单人数` 列名至少 3 处手工字面量（inquiry-core 两处 + backfill 页面表达式一处），平台改列名漏一处即静默漂移。
+- `navigate-read-guard` 的 NAV 只认 `navigateTo(` 与 `/navigate?target`，本地 `navigate()` 封装调用不算导航点 ⇒ `collect-shop-report` 的 `run()` 从未被要求表态。扫描盲区比漏登记更危险：它让「没表态」看起来像「没这个问题」。
+
+**改了什么**
+
+- `collect-core` 新增通用 `readPageValueSettled(read, { isPresent, attempts, intervalMs, delay })`；`readAlimamaIdentitySettled` 改薄封装（行为逐字不变，含原参数校验措辞）。
+- `collect-shop-report` 回位读身份改有界轮询（12×1s），**不做真重载**（hash 路由页有丢 hash 前科，依据写在代码注释）；`assertShopIdentity` 的 fail-closed 语义不变。
+- `inquiry-core` 新增 `DAILY_INQUIRY_COLUMN` 唯一来源；`run-inquiry-backfill` 页面表达式与产物 `column` 字段全部展开常量，不再抄字面量。
+- `navigate-read-guard`：NAV 扩到本地 `navigate(` 封装；新扫出的 4 个函数逐个登记（`run` 主修 + `readback main` / `run-promotion-daily-report main` / `date-picker resolveTarget` 各写依据）；新增 `run` 扫描用例防 NAV 回退。
+- `report-ready-core` 注释里的旧代码示例改为非调用形态（避免被当成顶层导航点）。
+
+**同族清单（规程三问之一）**
+
+- 固定 sleep 族：`collect-shop-report delay(6000)` 已修；`readback-daily-report` 的 delay(2000/1500)、`run-promotion-daily-report` 的 sleep(2500/1800/5000)、`collect-shop-report` 其余 delay 经逐个上下文核对为轮询间隔或动作缓冲，**不适用**；`collect-product-core`（他人会话在改，未碰）与 `collect-product-report` 的剩余点**挂起待判**。
+- 判据拷贝族：`当日询单人数` 已收敛；`询单人数`（sycm-inquiry-data）1.12.16 已收敛；其他词表未扫。
+- 重载缺失族：本版本以「导航+读」全量表态替代逐点重载；`collectProductReport` 的 knownRisk 仍未修（他人会话文件）。
+
+**新条件组合（规程三问之二）**
+
+- 轮询预算内若页面始终无页头，失败时机从约 6s 推迟到约 12s；报错仍由 `assertShopIdentity` 抛出，措辞不变。
+- 身份读取前新增一行日志（第 N 次读到 / 仍读不到），不改任何收据字段。
+
+**验证到什么程度**
+
+- **仅离线判据，真机未验**。下一轮 08:00 日报链首跑即判据；身份轮询段新增日志可直接核对。
+- 用例（定向，全绿）：collect-core 52、inquiry-core 21、navigate-read-guard 9、report-ready-core 13、promotion-fetch-wait 7、collect-failure-scene 5、date-picker 44、run-multi-shop-day 152、daily-report-core 11、promotion-daily-report-core 22、collector-arg-contract 7、head-loadable 1、arch-boundary 3，合计 **347 条**（含跨文件合计口径；单文件顶层 test 数逐文件如上）。
+- 攻击包 `tmp/mutate/mutate-2026-10-24-read-side.mjs`：5 个突变全部 **RED_NAMED**。其中 M5（阿里妈妈身份判据丢掉 memberId 那一半）首轮 **GREEN_BAD**，暴露「只有会员 ID 没有会员名」这一语义从无覆盖，已补用例并复验转 RED_NAMED。
+- 未跑 `test:staged` 全量（skill 实现变更会拉起含长时 e2e 的套件，本机历史实测 7.6h）；以定向套件为判据。
+
 ## [1.12.18] - 2026-10-24
 
 修「推广取件段把『没读到列表』当成『列表里没有这个任务』」—— 第三次同族缺陷（前两次是 ㊹ 询单页判据、㊹b 词表两份）。
