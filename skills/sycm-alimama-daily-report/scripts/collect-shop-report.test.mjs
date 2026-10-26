@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
-  SHOP_REPORT_ROW_TITLES, pickDailyPreview, reportRowTitleFor, rowTitleLookupKey, rowTitleMatcher,
+  SHOP_REPORT_ROW_TITLES, describeVisibleRows, pickDailyPreview, reportRowTitleFor, rowTitleLookupKey, rowTitleMatcher,
 } from './collect-shop-report.mjs';
 
 // 夹具取「真机实测读到的行文本」的形状（2026-10-05 `98-failure-state.json` 的
@@ -66,6 +66,69 @@ test('reportRowTitleFor：未登记 ⇒ null（沿用默认），空的店名 �
   assert.equal(reportRowTitleFor('里可林淘宝'), null);
   assert.equal(reportRowTitleFor('盖文天猫'), '活动-店铺-整体-近30天');
   assert.throws(() => reportRowTitleFor(''), /没给店名/u);
+});
+
+// --- 2026-10-26：销售2部五家恢复采集首跑，三家停在 shop-report -------------------------
+// 下面三条夹具是**真机读数**（2026-10-26 14:5x 在三台窗口的「自助分析 → 公共空间」里
+// 逐格读 `td` 得到的），不是编的形状。三家都有报表、类型都是「取数报表」，名字却不一样。
+const ROW_ANBI_LEADING = [{ i: 0, rowText: '报表 取数报表 泡芙 2026-10-26 14:31:19 加入我的报表预览' }];
+const ROW_ANBI_TB = [{ i: 0, rowText: '取数 取数报表 小森 2026-10-26 10:14:01 加入我的报表预览' }];
+const ROW_KETA_LEADING = [{ i: 0, rowText: '取数 取数报表 小森 2026-10-26 10:09:20 加入我的报表预览' }];
+
+test('2026-10-26 三家：报表名不是「日报」，默认判据必然落空（这就是那次的真因）', () => {
+  // 先钉「旧判据确实找不到」——否则「登记修好了」就无从谈起，也看不出这次到底修了什么。
+  for (const rows of [ROW_ANBI_LEADING, ROW_ANBI_TB, ROW_KETA_LEADING]) {
+    assert.equal(pickDailyPreview(rows, null), null, '这三家的行文本里没有「日报」二字');
+  }
+});
+
+test('2026-10-26 三家：按登记的行标题逐家命中', () => {
+  assert.equal(reportRowTitleFor('安比龙头店'), '报表');
+  assert.equal(reportRowTitleFor('安比淘宝'), '取数');
+  assert.equal(reportRowTitleFor('科塔龙头店'), '取数');
+  assert.equal(pickDailyPreview(ROW_ANBI_LEADING, reportRowTitleFor('安比龙头店'))?.i, 0);
+  assert.equal(pickDailyPreview(ROW_ANBI_TB, reportRowTitleFor('安比淘宝'))?.i, 0);
+  assert.equal(pickDailyPreview(ROW_KETA_LEADING, reportRowTitleFor('科塔龙头店'))?.i, 0);
+});
+
+test('2026-10-26 三家：名字不统一 —— 想用一个通用值覆盖三家，必然漏掉安比龙头店', () => {
+  // 这条是给「顺手把三家都写成『取数』」的人准备的：安比龙头店那份叫「报表」，
+  // 前缀不同 ⇒ 不命中。名字是运营侧起的，没有命名约束，只能一家一家登记。
+  assert.equal(pickDailyPreview(ROW_ANBI_LEADING, '取数'), null, '安比龙头店的行以「报表」开头，不是「取数」');
+  assert.equal(pickDailyPreview(ROW_ANBI_TB, '报表'), null, '反过来也一样：别指望一个值覆盖两家');
+  // 而「报表」不能短到去吃同前缀的行：标题后必须紧跟空白或到头
+  assert.equal(rowTitleMatcher('报表')('报表2 取数报表 某人'), false, '「报表2」不能被「报表」吃掉');
+});
+
+test('describeVisibleRows：把「这一屏有哪些行」说出来 —— 名字对不上时要能自证', () => {
+  // 这条钉的是**那次被带偏的机制**：报错只写「等不到『日报』」，我据此说了「没有报表」。
+  const text = describeVisibleRows(ROW_ANBI_TB);
+  assert.match(text, /这一屏共 1 行/u);
+  assert.match(text, /取数 取数报表 小森/u, '必须把整行原样带出来，人才看得见真实名字');
+  // 去重 + 截断：同一屏里重复的行只算一次，超过 limit 要说明还剩几行
+  const many = Array.from({ length: 9 }, (_, i) => ({ i, rowText: `报表${i} 取数报表 某人` }));
+  many.push({ i: 9, rowText: '报表0 取数报表 某人' });
+  const summary = describeVisibleRows(many, 3);
+  assert.match(summary, /这一屏共 9 行/u, '重复行不许重复计数');
+  assert.match(summary, /另有 6 行/u);
+  // 空屏与「有 button 但读不到行文本」都要说清，不许返回空串（空串在日志里等于没打印）
+  assert.match(describeVisibleRows([]), /一条带「预览」按钮的行都没有/u);
+  assert.match(describeVisibleRows([{ i: 0, rowText: '   ' }]), /一条带「预览」按钮的行都没有/u);
+});
+
+test('接线守卫（五）：「没找到」的报错引用的 state 必须在外层声明（否则 ReferenceError）', () => {
+  // 2026-10-26 读代码时发现：`state` 原来在 for 块里 `const`，而「没找到」的报错在块外引用 `state?.count`。
+  // 未登记的店走的是不带 state 的另一条措辞，所以这三家从没触发过；**已登记**的店（盖文天猫）
+  // 一旦落空就会抛 `ReferenceError: state is not defined` —— 把「报表改名了」吞成「脚本坏了」。
+  const source = readFileSync(new URL('./collect-shop-report.mjs', import.meta.url), 'utf8');
+  const codeOnly = source
+    .split('\n')
+    .filter((line) => !/^\s*(\/\/|\*|\/\*)/u.test(line))
+    .map((line) => line.replace(/\/\/.*$/u, ''))
+    .join('\n');
+  assert.match(codeOnly, /let state = null;/u, 'state 必须在外层声明');
+  assert.doesNotMatch(codeOnly, /const state = await evalOn/u, '不许再在轮询块里 const 一份遮蔽外层');
+  assert.match(codeOnly, /describeVisibleRows\(/u, '落空时必须把可见行打出来，否则又会被人读成「没有报表」');
 });
 
 test('查键必须是运营叫法：拿页头店名去查 ⇒ 登记形同没登记（2026-10-05 第二次事故）', () => {

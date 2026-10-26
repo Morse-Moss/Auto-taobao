@@ -55,10 +55,30 @@ const SYCM_SPACE_URL = 'https://sycm.taobao.com/lyone/auto_analysis/my_space'
  * 而调用点写的是 `reportRowTitleFor(args.expectShop)` —— `--expect-shop` 是页头名
  * 「盖文旗舰店」，于是**查不到、静默退回默认「含『日报』」**，报的还是「等不到『日报』」。
  * 登记生效但查错键，症状与「根本没登记」逐字一样（函数级用例全绿、接线没接上，本项目第 4 次）。
- * 现在查键统一走 `resolveReportRowTitle()`，调用点必须把 `--shop-key`（运营叫法）传进来。
+ * 现在查键统一走 `rowTitleLookupKey()` → `reportRowTitleFor()`，调用点必须把 `--shop-key`（运营叫法）传进来。
+ *
+ * ⚠️ **2026-10-26 第三次同类事故（销售2部五家恢复采集的首跑）**：安比龙头店 / 安比淘宝 / 科塔龙头店
+ * 三家停在 shop-report，报「等不到『日报』这一行的预览按钮」，我据此写下「这三家没有日报报表」——
+ * **这是错的**，用户看页面后当场纠正：「我看到取数报表这边是有报表的，只不过名称叫做取数」。
+ * 实测三家都有、类型都是「取数报表」、表头与数据同日报，只是**报表名**不叫日报。已登记，见下表。
+ * 教训不是「又漏登记了一家」，而是**那句报错同时覆盖了「不存在」和「叫什么别的名字」两种现实**，
+ * 而它听起来只像前者。现在失败时会连「这一屏实际有哪些行」一起打出来（`describeVisibleRows`）：
+ * 名字对不上就当场自证，不再需要有人去开页面、也不该再有人据一句报错下「没有报表」的结论。
  */
 export const SHOP_REPORT_ROW_TITLES = Object.freeze({
   盖文天猫: '活动-店铺-整体-近30天',
+  // --- 2026-10-26 实测登记（销售2部五家恢复采集，三家停在 shop-report 的真因）---
+  // 值取自三台窗口上「自助分析 → 公共空间」列表的 `td` 逐格读数，不是推断。
+  // ⚠️ **三家的名字并不统一**（运营侧自己起的，没有任何命名约束）：
+  //   安比龙头店 → 「报表」｜创建人 泡芙｜修改时间 2026-10-26 14:31:19
+  //   安比淘宝   → 「取数」｜创建人 小森｜修改时间 2026-10-26 10:14:01
+  //   科塔龙头店 → 「取数」｜创建人 小森｜修改时间 2026-10-26 10:09:20
+  // 「报表」这个两字名要特别当心：它只比探针早十几分钟被创建/改名，像是个还没想好名字的占位。
+  // 它一旦被改名，这里必须同步改，否则又是静默落空 —— 判据在 `rowTitleMatcher`（前缀 + 空白/到头），
+  // 所以不要把这里写成更短的前缀（比如空串或「报」），那会误命中同前缀的别的报表。
+  安比龙头店: '报表',
+  安比淘宝: '取数',
+  科塔龙头店: '取数',
 });
 
 /**
@@ -113,6 +133,30 @@ export function rowTitleMatcher(rowTitle) {
 export function pickDailyPreview(info, rowTitle) {
   const matches = rowTitleMatcher(rowTitle);
   return (info || []).find((entry) => matches(entry.rowText)) ?? null;
+}
+
+/**
+ * 「这一屏到底有哪些行」——**一句话，给日志和报错用**。
+ *
+ * 为什么必须有它（2026-10-26）：失败措辞一直是「等不到『X』这一行的预览按钮」，
+ * 而它**同时**覆盖三种完全不同的现实：
+ *   ① 报表根本不存在；② 报表在、但名字不是 X；③ 报表在、名字也对、只是这一屏没渲染出来。
+ * 2026-10-05（盖文天猫叫「活动-店铺-整体-近30天」）与 2026-10-26（三家叫「取数」/「报表」）
+ * 两次都是②，而两次都被这句措辞带偏成了① —— 我据它写下「这三家没有报表」，被用户当场纠正。
+ * 把可见行原样打出来，②就当场自证：不用有人去开页面，也没人再拿一句报错当「不存在」的证据。
+ *
+ * 输出的是**整行文本**（行标题 + 报表类型 + 创建人 + 修改时间），因为改名那一刻
+ * 「新名字长什么样」正是唯一有用的信息；只给第一个词反而又要人去猜边界在哪。
+ */
+export function describeVisibleRows(info, limit = 6) {
+  const texts = (info || []).map((entry) => String(entry?.rowText ?? '').trim()).filter(Boolean);
+  const unique = [...new Set(texts)];
+  if (unique.length === 0) {
+    return '这一屏一条带「预览」按钮的行都没有（可能还没渲染出来，也可能这份报表被删了）';
+  }
+  const shown = unique.slice(0, limit).map((text, index) => `#${index} ${text}`);
+  const more = unique.length > limit ? `｜…另有 ${unique.length - limit} 行` : '';
+  return `这一屏共 ${unique.length} 行：${shown.join('｜')}${more}`;
 }
 
 // 「哪个页面才算生意参谋那个**工作页**」—— 与 date-picker.mjs 的
@@ -342,25 +386,38 @@ async function run(args) {
   })()`;
 
   let found = null;
+  // ⚠️ `state` 必须在外层声明：下面「没找到」的报错要引用它。
+  // 原来它在 for 块里 `const`，于是**只有已登记的店**能走到那条引用它的分支 ⇒
+  // 报错当场变成 `ReferenceError: state is not defined`（把「报表叫别的名字」吞成「脚本坏了」）。
+  // 未登记的店走的是另一条不带 `state` 的措辞，所以这个 bug 一直没被那三家触发过。
+  let state = null;
   // 查键在函数前半段就算好了（它同时决定「下载目录认哪个文件名」）—— 这里只用结论。
   for (let round = 1; round <= 10; round += 1) {
     await delay(2500);
-    const state = await evalOn(args, targetId, findPreview);
+    state = await evalOn(args, targetId, findPreview);
     // 挑行这件事收在 pickDailyPreview（纯函数、有独立用例钉住）。
     // 2026-10-05 那次事故就出在这一行 —— 当时把它写成 `new RegExp(rowTitleMatcher(...))`。
     const daily = pickDailyPreview(state.info, rowTitle);
     console.log(`[2/4] ${round * 2.5}s：预览按钮 ${state.count} 个`
       + `${daily ? `，日报行 #${daily.i}（命中复核=${daily.hitOk}，视口内=${daily.inViewport}）` : ''}`);
+    // 第一轮就落空时立刻把「这一屏有哪些行」打出来：改名/叫别的名字当场可见，
+    // 不用等到第 10 轮、更不用等有人去开页面（2026-10-26 就是没人打这句，才让
+    // 「报表叫『取数』」被误读成「没有报表」）。
+    if (!daily && round === 1) {
+      console.log(`      → 这一屏没有「${rowTitle ?? '日报'}」这一行｜${describeVisibleRows(state.info)}`);
+    }
     if (daily && daily.hitOk) { found = daily; break; }
     if (daily && round === 10) found = daily;
   }
   if (!found) {
-    // 措辞必须说清是「没找到」还是「不知道要找哪个」—— 把未知说成不存在会把人带偏。
-    throw new Error(rowTitle === null
+    // 措辞必须说清「没找到」与「不知道要找哪个」的区别，而且**不许把未知说成不存在**：
+    // 「等不到」只说明这一屏没有这个名字，不等于这家店没有这份报表。
+    throw new Error((rowTitle === null
       ? '等不到「日报」这一行的预览按钮'
-      : `等不到「${rowTitle}」这一行的预览按钮`
-        + `（按「${rowTitleKey}」登记的日报报表行标题就是它；该屏可见的预览按钮 ${state?.count ?? 0} 个，`
-        + '若报表刚被改名/删除，请更新 collect-shop-report.mjs 的 SHOP_REPORT_ROW_TITLES）');
+      : `等不到「${rowTitle}」这一行的预览按钮（按「${rowTitleKey}」登记的行标题就是它）`)
+      + `。预览按钮 ${state?.count ?? 0} 个｜${describeVisibleRows(state?.info)}`
+      + '｜注意：报表名是店铺侧起的，改过名就同步更新 collect-shop-report.mjs 的 SHOP_REPORT_ROW_TITLES；'
+      + '这一句只说明「这一屏没有这个名字」，不等于「这家店没有这份报表」');
   }
   console.log(`[2/4] 点开「日报」预览（#${found.i}）→ ${await click(args, targetId, `[data-collect-preview="${found.i}"]`)}`);
 
