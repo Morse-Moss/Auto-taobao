@@ -369,7 +369,16 @@ function buildPasteTsv(fields, visibleFields, reportDate) {
     if (/[\t\r\n]/u.test(value)) throw new Error(`field cannot be represented in TSV: ${field.name}`);
     return value;
   });
-  if (cells.length !== 265) throw new Error(`paste row must contain 265 cells, got ${cells.length}`);
+  // 原先这句钉的是「必须恰好 265 个格子」—— 一个**写死的字段数**，底单一加字段就红。
+  // 2026-10-26 为「73 列全导入」给底单追加了 12 个补贴字段（265 → 277），这句会当场把整条链挡下来。
+  // 而且 cells 的长度恒等于 visibleFields 的长度（上面就是 map 出来的），它本身证不出任何东西。
+  // 真正会出错的是**反面**：payload 里有字段、可见字段里却没有 —— 那样这一格会被 paste 静默丢掉，
+  // 页面看着「写成功了」，数据却少一块。改成查这个方向才有意义。
+  const known = new Set(visibleFields.map((field) => field.name));
+  const dropped = Object.keys(fields).filter((name) => !known.has(name));
+  if (dropped.length) {
+    throw new Error(`payload 里有 ${dropped.length} 个字段不在底单可见字段里，paste 会把它们静默丢掉：${dropped.join(' / ')}`);
+  }
   return `${cells.join('\t')}\n`;
 }
 

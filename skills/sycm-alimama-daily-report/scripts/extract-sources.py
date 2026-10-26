@@ -10,6 +10,10 @@ from datetime import date, datetime
 import openpyxl
 
 
+# 推广 CSV 允许的两种真实宽度（按店不同，见下方注释）。形状校验只认这两个值。
+PROMOTION_COLUMN_WIDTHS = (71, 73)
+
+
 def as_date(value):
     if isinstance(value, datetime):
         return value.date().isoformat()
@@ -41,9 +45,14 @@ def main():
             raise ValueError(f'expected one CSV in promotion ZIP, got {names}')
         text = archive.read(names[0]).decode('gb18030').lstrip('\ufeff')
     promotion_rows = [row for row in csv.reader(io.StringIO(text)) if any(cell.strip() for cell in row)]
-    if not promotion_rows or len(promotion_rows[0]) != 71:
-        raise ValueError(f'expected 71 promotion columns, got {len(promotion_rows[0]) if promotion_rows else 0}')
-    if any(len(row) != 71 for row in promotion_rows):
+    # 推广 CSV 有两种**真实**宽度，按店不同（2026-10-26 实测：同一天 3 份 71 列、保拉天猫 73 列，
+    # 差别是有没有开通「补贴」那套指标）。所以这里只做**形状**校验，不钉单值：
+    # 钉死 71 会把 73 列的店挡在门外（就是当天 push 失败的那一句）；钉死 73 会把 71 列的店挡在门外。
+    # 列的含义逐列核对在 daily-report-core.mjs 的 buildPromotionFields 里做（那里有真实表头可比）。
+    width = len(promotion_rows[0]) if promotion_rows else 0
+    if width not in PROMOTION_COLUMN_WIDTHS:
+        raise ValueError(f'expected one of {PROMOTION_COLUMN_WIDTHS} promotion columns, got {width}')
+    if any(len(row) != width for row in promotion_rows):
         raise ValueError('promotion CSV contains a row with an unexpected column count')
 
     print(json.dumps({

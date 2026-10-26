@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   SCENES, buildCombinedFields, buildPromotionFields, buildShopFields, canonicalPromotionTargetName,
+  promotionSegmentStarts, promotionSubsidyFields,
   reportDateEpoch, summarizeSourceDates,
 } from './daily-report-core.mjs';
 
@@ -132,22 +133,105 @@ test('数字字段遇到数据源的文本标记 ⇒ 留空并留痕（不写 0�
   assert.match(warnings[0], /UV价值/u);
 });
 
-test('maps promotion columns, leaves secondary scene fields blank, and drops subsidy columns', () => {
-  const headers = ['日期', '场景ID', '场景名字', ...Array.from({ length: 64 }, (_, index) => `指标${index}`),
-    '平台补贴金额', '补贴引导成交金额', '发券补贴商品个数', '补贴引导成交人数'];
-  const row = ['2026-09-15', '371', '关键词推广', ...Array.from({ length: 64 }, (_, index) => String(index)),
-    '1', '2', '3', '4'];
+// 2026-10-26：补贴那几列从「整段丢掉」改成「全导入」（用户拍板「73 列全导入」）。
+//
+// 真实来源：保拉天猫 2026-10-26 的推广 CSV 是 **73 列**（尾部多 `补贴引导成交新客数` /
+// `补贴引导成交笔数`），而当天另外三份是 **71 列**。所以两种宽度都必须认 —— 钉单值必挂一头。
+const SUBSIDY_ALL = ['平台补贴金额', '补贴引导成交金额', '发券补贴商品个数', '补贴引导成交人数',
+  '补贴引导成交新客数', '补贴引导成交笔数'];
+
+function promoFixture(width) {
+  const headers = ['日期', '场景ID', '场景名字',
+    ...Array.from({ length: 64 }, (_, index) => `指标${index}`),
+    ...SUBSIDY_ALL.slice(0, width - 67)];
+  const row = ['2026-09-15', '371', '关键词推广',
+    ...Array.from({ length: 64 }, (_, index) => String(index)),
+    ...Array.from({ length: width - 67 }, (_, index) => String(index))];
   const targetNames = ['关键词推广日期', '场景ID', '场景名字', '原二级场景ID', '原二级场景名字',
     ...headers.slice(3, 67)];
   const targets = targetNames.map((name, index) => ({ name, type: index === 0 ? 5 : index === 2 || index === 4 ? 1 : 2 }));
-  const fields = buildPromotionFields(headers, row, targets, SCENES.keyword, '2026-09-15');
-  assert.equal(fields['场景ID'], 371);
-  assert.equal(fields['场景名字'], '关键词推广');
-  assert.equal(fields['指标63'], 63);
-  assert.equal(Object.hasOwn(fields, '原二级场景ID'), false);
-  assert.equal(Object.hasOwn(fields, '原二级场景名字'), false);
-  assert.equal(Object.hasOwn(fields, '平台补贴金额'), false);
+  return { headers, row, targets };
+}
+
+function subsidyMapFor(prefixSuffix) {
+  return new Map(SUBSIDY_ALL.map((header) => [header, { name: `${header}${prefixSuffix}`, type: 2 }]));
+}
+
+test('promotion：两种真实宽度都认（71 / 73），钉死任一个都会挡掉一半店', () => {
+  for (const width of [71, 73]) {
+    const { headers, row, targets } = promoFixture(width);
+    const fields = buildPromotionFields(headers, row, targets, SCENES.keyword, '2026-09-15',
+      subsidyMapFor(''));
+    assert.equal(fields['场景ID'], 371);
+    assert.equal(fields['指标63'], 63);
+    assert.equal(Object.hasOwn(fields, '原二级场景ID'), false, '次级场景字段照旧留空');
+    assert.equal(Object.hasOwn(fields, '原二级场景名字'), false);
+    // 补贴列现在**必须**进 payload（原来是全部丢掉）
+    assert.equal(fields['平台补贴金额'], 0, '0.00 → 0（数字字段）');
+    assert.equal(fields['补贴引导成交人数'], 3);
+    if (width === 73) {
+      assert.equal(fields['补贴引导成交新客数'], 4, '73 列才有的那两列也要进');
+      assert.equal(fields['补贴引导成交笔数'], 5);
+    } else {
+      assert.equal(Object.hasOwn(fields, '补贴引导成交新客数'), false, '71 列的店没有这两列，不许凭空造');
+    }
+  }
+  // 别的宽度仍然拒绝：这不是「宽松」，是把两种**实测存在**的形状列出来而已
+  const weird = promoFixture(71);
+  weird.headers.push('多出来的一列');
+  weird.row.push('0');
+  assert.throws(() => buildPromotionFields(weird.headers, weird.row, weird.targets, SCENES.keyword, '2026-09-15',
+    subsidyMapFor('')), /promotion block must contain 71 or 73/u);
 });
+
+test('promotion：CSV 有补贴列、底单没字段 ⇒ 停下并点名缺哪个（不许静默丢列）', () => {
+  const { headers, row, targets } = promoFixture(73);
+  const partial = subsidyMapFor('');
+  partial.delete('补贴引导成交笔数');
+  assert.throws(() => buildPromotionFields(headers, row, targets, SCENES.keyword, '2026-09-15', partial),
+    /补贴引导成交笔数/u);
+});
+
+test('promotion：两段的补贴字段按「有没有 (n) 后缀」分桶，不许写到对方那段', () => {
+  const visible = [
+    { name: '平台补贴金额', type: 2 },
+    { name: '平台补贴金额 (1)', type: 2 },
+    { name: '补贴引导成交笔数', type: 2 },
+    { name: '补贴引导成交笔数 (1)', type: 2 },
+    { name: '关键词推广花费', type: 2 },
+  ];
+  const split = promotionSubsidyFields(visible);
+  assert.equal(split.keyword.get('平台补贴金额')?.name, '平台补贴金额');
+  assert.equal(split.audience.get('平台补贴金额')?.name, '平台补贴金额 (1)');
+  assert.equal(split.keyword.get('补贴引导成交笔数')?.name, '补贴引导成交笔数');
+  assert.equal(split.audience.get('补贴引导成交笔数')?.name, '补贴引导成交笔数 (1)');
+  assert.equal(split.keyword.size, 2, '只认补贴那 6 个名字，别的字段一概不进桶');
+});
+
+test('promotionSegmentStarts：按名字钉边界 —— 扛得住「追加字段」，钉得住「顺序被改」', () => {
+  const base = (extra = 0) => [
+    ...Array.from({ length: 121 }, (_, i) => ({ name: i === 2 ? '统计日期' : `店铺字段${i}`, type: 2 })),
+    { name: '关键词推广日期', type: 5 }, { name: '场景ID', type: 2 }, { name: '场景名字', type: 1 },
+    { name: '原二级场景ID', type: 2 }, { name: '原二级场景名字', type: 1 },
+    ...Array.from({ length: 64 }, (_, i) => ({ name: `关键词指标${i}`, type: 2 })),
+    { name: '人群推广日期', type: 5 }, { name: '场景ID (1)', type: 2 }, { name: '场景名字 (1)', type: 1 },
+    { name: '原二级场景ID (1)', type: 2 }, { name: '原二级场景名字 (1)', type: 1 },
+    ...Array.from({ length: 64 }, (_, i) => ({ name: `人群指标${i}`, type: 2 })),
+    ...Array.from({ length: 6 }, (_, i) => ({ name: `尾部${i}`, type: 1 })),
+    ...Array.from({ length: extra }, (_, i) => ({ name: `追加补贴${i}`, type: 2 })),
+  ];
+  assert.equal(promotionSegmentStarts(base(0)).ok, true, '原来的 265 列形状');
+  assert.equal(promotionSegmentStarts(base(12)).ok, true, '2026-10-26 追加 12 个补贴字段后仍是同一个形状');
+  // 顺序被改 ⇒ 必须红（写下去是静默串列，比报错糟得多）
+  const swapped = base(0);
+  [swapped[121], swapped[122]] = [swapped[122], swapped[121]];
+  const verdict = promotionSegmentStarts(swapped);
+  assert.equal(verdict.ok, false);
+  assert.match(verdict.message, /推广段起点/u);
+  // 字段太少 ⇒ 也红
+  assert.equal(promotionSegmentStarts(base(0).slice(0, 200)).ok, false);
+});
+
 
 test('normalizes Feishu copy suffixes and scene prefixes for schema comparison', () => {
   assert.equal(canonicalPromotionTargetName('关键词推广花费 (1)', '关键词推广'), '花费');
@@ -172,6 +256,10 @@ function makeCombined(promotionRows) {
     ...sceneFields('关键词推广', ''),
     ...sceneFields('人群推广', ' (1)'),
     ...Array.from({ length: 6 }, (_, index) => ({ name: `尾部${index}`, type: 1 })),
+    // 2026-10-26：「73 列全导入」给底单追加的两段补贴字段。**位置在表尾**（飞书新字段只能追加），
+    // 所以它们既不在 121..258 那两段里，也不能靠位置认 —— 只能按名字找（promotionSubsidyFields）。
+    ...SUBSIDY_ALL.map((header) => ({ name: header, type: 2 })),
+    ...SUBSIDY_ALL.map((header) => ({ name: `${header} (1)`, type: 2 })),
   ];
   const source = {
     shop: { headers: shopHeaders, values: [REPORT_DATE, '盖文旗舰店', ...Array.from({ length: 117 }, (_, i) => String(i))] },
@@ -200,12 +288,17 @@ const captureWarn = (fn) => {
 // 而「一个场景都没有」仍然 fail-closed：那是没采到数据，不是「这家店没开推广」。
 test('buildCombinedFields：单场景放行（有几个场景写几个），一个都没有仍 fail-closed', () => {
   const both = makeCombined([['371', '关键词推广'], ['372', '人群推广']]);
-  assert.equal(both.visibleFields.length, 265, '这份夹具本身要长成 265 列，否则后面全在测别的东西');
+  // 265 → 277：2026-10-26 追加 12 个补贴字段（6 个指标 × 两段）。
+  // 这个数字变过一次，正说明它不该被当成契约 —— 真正的判据是 promotionSegmentStarts 按名字钉的边界。
+  assert.equal(both.visibleFields.length, 277, '这份夹具要长成底单现在的真实形状，否则后面全在测别的东西');
   const full = buildCombinedFields(both.source, both.visibleFields, REPORT_DATE);
   assert.equal(full['场景ID'], 371);
   assert.equal(full['场景ID (1)'], 372);
   assert.equal(full['店铺字段0'], '盖文旗舰店', '店铺段照常映射（第 1 列＝店铺名，文本字段）');
   assert.equal(full['店铺字段1'], 0, '店铺段照常映射（第 2 列起是数字字段）');
+  // 补贴列现在两段各写各的，不许串到对方那段去
+  assert.equal(full['平台补贴金额'], 1, '关键词段的补贴列');
+  assert.equal(full['平台补贴金额 (1)'], 1, '人群段的同名列（(1) 后缀）');
 
   // 只有人群推广（网林家居那一家的形态）
   const onlyAudience = makeCombined([['372', '人群推广']]);

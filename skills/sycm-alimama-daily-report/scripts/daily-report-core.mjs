@@ -5,9 +5,95 @@ export const SCENES = Object.freeze({
   audience: Object.freeze({ id: '372', name: '人群推广', prefix: '人群推广' }),
 });
 
-const DROPPED_PROMOTION_HEADERS = Object.freeze([
+// 推广 CSV 尾部这 6 列是「补贴」指标。
+//
+// 2026-10-26 之前它们**整段被丢掉**（常量名就叫 DROPPED_PROMOTION_HEADERS，只有前 4 个）——
+// 当时的依据是「底单里根本没有补贴字段」（实测 265 个字段里含「补贴」二字的一个都没有）。
+// 用户 2026-10-26 拍板「73 列全导入」⇒ 底单补上这 6 个字段，本文件把它们**真的写进去**。
+//
+// ⚠️ 为什么补贴这 6 列必须**按名字**映射，而 1..67 仍然按位置：
+// 飞书新建字段只能**追加到表尾**，插不进 121..258 那两段里。位置映射依赖「列在段内、位置稳定」，
+// 补贴这些列不在段内（在表尾），只能按名字找。这不是风格选择，是平台约束。
+export const PROMOTION_SUBSIDY_HEADERS = Object.freeze([
   '平台补贴金额', '补贴引导成交金额', '发券补贴商品个数', '补贴引导成交人数',
+  '补贴引导成交新客数', '补贴引导成交笔数',
 ]);
+
+// 推广 CSV 的两种**真实**宽度，**按店不同**（2026-10-26 实测：同一天 3 份 71 列、保拉天猫 73 列；
+// 差别是有没有开通补贴那套指标）。所以契约不许钉成单值：
+//   · 钉死 71 ⇒ 保拉天猫永远进不来（就是 2026-10-26 push 失败的那一句）；
+//   · 钉死 73 ⇒ 另外 12 家全部进不来（它们当天就是 71 列）。
+export const PROMOTION_SOURCE_WIDTHS = Object.freeze([71, 73]);
+
+// 底单「两段推广」在可见字段里的起点（按**名字**钉，不按数量钉）。
+// 索引是 121 / 190，见下面 promotionSegmentStarts 的说明。
+const PROMOTION_SEGMENT_STARTS = Object.freeze([121, 190]);
+
+/**
+ * 把「补贴」这 6 列在底单里对应的字段找出来，并按场景分成两半。
+ *
+ * 返回 `{ keyword: Map<header, field>, audience: Map<header, field> }`。
+ *
+ * 分半判据＝**字段名带不带 ` (n)` 副本后缀**：底单里两段同名字段，飞书给后建的那段自动加 ` (1)`
+ * （实测人群段的 69 个字段全部带 ` (1)`，如 `场景ID (1)`）。不能用「位置在哪一段」分 ——
+ * 补贴字段是追加到表尾的，位置根本不在段里。
+ *
+ * 只认这 6 个名字，别的字段一概不碰：`canonicalPromotionTargetName` 会剥掉前缀与后缀，
+ * 所以 `平台补贴金额` 与 `平台补贴金额 (1)` 都会归到同一个 header 下，各进各的桶。
+ */
+export function promotionSubsidyFields(visibleFields = []) {
+  const keyword = new Map();
+  const audience = new Map();
+  for (const field of visibleFields) {
+    const name = String(field?.name ?? '');
+    const canonical = canonicalPromotionTargetName(name, '');
+    if (!PROMOTION_SUBSIDY_HEADERS.includes(canonical)) continue;
+    const bucket = / \(\d+\)$/u.test(name) ? audience : keyword;
+    if (!bucket.has(canonical)) bucket.set(canonical, field);
+  }
+  return { keyword, audience };
+}
+
+/**
+ * 两段推广在底单可见字段里的起点对不对（**按名字钉边界**）。
+ *
+ * 为什么不再钉「恰好 265 个字段」：2026-10-26 为了「73 列全导入」往底单追加了 12 个补贴字段
+ * （265 → 277），按数量钉的那条判据当天会把整条链挡在门口 —— 它挡的不是错误，是**新加的字段**。
+ * 而边界按名字钉能扛住「追加字段」，同时仍然钉得住「顺序被改」（顺序错＝数据写进错列，静默错数据，
+ * 那才是真要拦的）。
+ */
+export function promotionSegmentStarts(visibleFields = []) {
+  const nameAt = (index) => String(visibleFields[index]?.name ?? '');
+  const canonicalAt = (index) => canonicalPromotionTargetName(nameAt(index), '');
+  const MIN = PROMOTION_SEGMENT_STARTS[1] + 69; // 2 + 119 + 69 + 69
+  if (visibleFields.length < MIN) {
+    return { ok: false, message: `底单可见字段只有 ${visibleFields.length} 个，至少要 ${MIN} 个（2 + 119 + 69 + 69）` };
+  }
+  for (const start of PROMOTION_SEGMENT_STARTS) {
+    // 段首那个日期字段**带场景前缀**（`关键词推广日期` / `人群推广日期`），所以不能拿
+    // canonicalPromotionTargetName(name, '') 去比 —— 那个函数剥的是「副本后缀」，
+    // 传空前缀时它一个字符都不剥（2026-10-26 第一版就是这么红的）。
+    // 真正稳的判据是「名字以『日期』结尾」＋「字段类型是日期（5）」——这两条一起几乎不可能碰巧成立。
+    const dateField = visibleFields[start];
+    const dateOk = nameAt(start).endsWith('日期') && dateField?.type === 5;
+    const sceneIdOk = canonicalAt(start + 1) === '场景ID';
+    const sceneNameOk = canonicalAt(start + 2) === '场景名字';
+    if (!dateOk || !sceneIdOk || !sceneNameOk) {
+      return {
+        ok: false,
+        message: `推广段起点（索引 ${start}）不对：读到 ${[nameAt(start), nameAt(start + 1), nameAt(start + 2)]
+          .map((name) => name || '（空）').join(' / ')}（type=${dateField?.type ?? '空'}），`
+          + '期望「…日期（日期类型） / 场景ID / 场景名字」—— 底单字段顺序被改过，写下去会串列',
+      };
+    }
+    const second = [canonicalAt(start + 3), canonicalAt(start + 4)].join('\u0000');
+    if (visibleFields[start + 3] && visibleFields[start + 4]
+      && second !== ['原二级场景ID', '原二级场景名字'].join('\u0000')) {
+      return { ok: false, message: `推广段（索引 ${start}）的第 4/5 个字段不是「原二级场景ID / 原二级场景名字」` };
+    }
+  }
+  return { ok: true };
+}
 
 export function reportDateEpoch(reportDate) {
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(reportDate)) throw new Error(`invalid report date: ${reportDate}`);
@@ -77,12 +163,25 @@ export function buildShopFields(source, targetFields, reportDate) {
   return fields;
 }
 
-export function buildPromotionFields(headers, row, targetFields, scene, reportDate) {
-  if (headers.length !== 71 || row.length !== 71 || targetFields.length !== 69) {
-    throw new Error('promotion block must contain 71 source columns and 69 target columns');
+/**
+ * 把一行推广 CSV 映射成 payload。
+ *
+ * @param subsidyFields 该场景那半边的「补贴」字段表（`promotionSubsidyFields().keyword/audience`）。
+ *   给了就写补贴列；没给而 CSV 里又确实有补贴列 ⇒ **抛错**（不许静默丢列）。
+ */
+export function buildPromotionFields(headers, row, targetFields, scene, reportDate, subsidyFields = null) {
+  const width = headers.length;
+  if (width !== row.length || !PROMOTION_SOURCE_WIDTHS.includes(width) || targetFields.length !== 69) {
+    throw new Error('promotion block must contain 71 or 73 source columns and 69 target columns'
+      + `（读到 headers=${headers.length} row=${row.length} targets=${targetFields.length}）`);
   }
-  if (headers.slice(67).join('\u0000') !== DROPPED_PROMOTION_HEADERS.join('\u0000')) {
-    throw new Error('unexpected promotion subsidy columns');
+  // 前 67 列是固定明细（1..3 身份 + 4..67 指标），尾部才是补贴。
+  // 宽度决定尾部有几列：71 ⇒ 4 列，73 ⇒ 6 列。名字必须与真实表头**逐字**相同，
+  // 顺序也不能换 —— 换了就是「列的含义变了」，那必须人工确认，不能靠猜。
+  const subsidyCount = width - 67;
+  if (headers.slice(67).join('\u0000') !== PROMOTION_SUBSIDY_HEADERS.slice(0, subsidyCount).join('\u0000')) {
+    throw new Error(`unexpected promotion subsidy columns: ${headers.slice(67).join(' / ')}`
+      + `（期望前 ${subsidyCount} 个是 ${PROMOTION_SUBSIDY_HEADERS.slice(0, subsidyCount).join(' / ')}）`);
   }
   if (row[0] !== reportDate || row[1] !== scene.id || row[2] !== scene.name) {
     throw new Error(`unexpected ${scene.name} identity/date: ${row.slice(0, 3).join(' / ')}`);
@@ -107,6 +206,16 @@ export function buildPromotionFields(headers, row, targetFields, scene, reportDa
   assign(fields, targetFields[2], row[2], reportDate);
   for (let sourceIndex = 3; sourceIndex <= 66; sourceIndex += 1) {
     assign(fields, targetFields[sourceIndex + 2], row[sourceIndex], reportDate);
+  }
+  // 补贴列：**按名字**找字段（见 PROMOTION_SUBSIDY_HEADERS 的说明：飞书新字段只能追加到表尾）。
+  for (let index = 0; index < subsidyCount; index += 1) {
+    const header = PROMOTION_SUBSIDY_HEADERS[index];
+    const field = subsidyFields?.get?.(header) ?? null;
+    if (!field) {
+      throw new Error(`推广 CSV 有「${header}」这一列，但底单里没有对应字段（${scene.name} 段缺一个）`
+        + ' —— 要么先给底单加这个字段，要么明确决定丢掉这一列；不许静默丢');
+    }
+    assign(fields, field, row[67 + index], reportDate);
   }
   return fields;
 }
@@ -151,7 +260,9 @@ const PROMOTION_SCENE_BLOCKS = Object.freeze([
  * 再显式放行这一次。
  */
 export function buildCombinedFields(source, visibleFields, reportDate, options = {}) {
-  if (visibleFields.length !== 265) throw new Error(`expected 265 visible Feishu fields, got ${visibleFields.length}`);
+  const boundary = promotionSegmentStarts(visibleFields);
+  if (!boundary.ok) throw new Error(boundary.message);
+  const subsidyFields = promotionSubsidyFields(visibleFields);
   const allowEmptyPromotion = options.allowEmptyPromotion === true;
   const known = new Map(Object.values(SCENES).map((scene) => [scene.id, scene]));
   const rowsById = new Map();
@@ -180,7 +291,8 @@ export function buildCombinedFields(source, visibleFields, reportDate, options =
     const row = rowsById.get(scene.id);
     if (!row) { missing.push(`${scene.id}/${scene.name}`); continue; }
     Object.assign(fields, buildPromotionFields(source.promotion.headers, row,
-      visibleFields.slice(from, to), scene, reportDate));
+      visibleFields.slice(from, to), scene, reportDate,
+      scene.id === SCENES.keyword.id ? subsidyFields.keyword : subsidyFields.audience));
   }
   if (missing.length && rowsById.size > 0) {
     // 必须留痕：留空与「没采到」在飞书页面上长得一样，这一行是两者唯一的区分依据。
