@@ -1,0 +1,216 @@
+{
+ "generatedAt": "2026-10-26T14:08:51.209Z",
+ "mainTableId": "tblkYcczxBnW4v5G",
+ "items": [
+  {
+   "pid": "679380994840",
+   "status": "ready",
+   "size": "1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "功能"
+  },
+  {
+   "pid": "675174324950",
+   "status": "ready",
+   "size": "1.1m,,,1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m,,,1.8m,,,1m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、功能、风格"
+  },
+  {
+   "pid": "834577264183",
+   "status": "ready",
+   "size": "1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m",
+   "space": "optCfrPSTQ",
+   "pending": "功能、风格"
+  },
+  {
+   "pid": "902726522803",
+   "status": "ready",
+   "size": "0.8m,,,0.9m,,,1.1m,,,1.2m,,,1.3m,,,1m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、安装方式"
+  },
+  {
+   "pid": "758065104449",
+   "status": "ready",
+   "size": "1.1m,,,1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m,,,1m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "功能"
+  },
+  {
+   "pid": "674117739138",
+   "status": "ready",
+   "size": "1.1m,,,1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m,,,1.8m,,,1m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、功能、风格"
+  },
+  {
+   "pid": "955450553575",
+   "status": "ready",
+   "size": "1.1m,,,1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m,,,1m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、风格"
+  },
+  {
+   "pid": "668025247116",
+   "status": "partial",
+   "size": "",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、功能、尺寸"
+  },
+  {
+   "pid": "725950199364",
+   "status": "unusable",
+   "size": "",
+   "space": "",
+   "pending": "外形、安装方式、功能、尺寸、适用空间"
+  },
+  {
+   "pid": "646852280649",
+   "status": "ready",
+   "size": "≈1.2m,,,≈1.3m,,,≈1.4m,,,≈1.5M,,,≈1.6M,,,≈1.7M,,,≈1.8M",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "安装方式、风格"
+  },
+  {
+   "pid": "678598686014",
+   "status": "ready",
+   "size": "0.8m,,,0.9m,,,1.0m,,,1.1m,,,1.2m,,,1.3m,,,1.4m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、功能"
+  },
+  {
+   "pid": "44266876838",
+   "status": "partial",
+   "size": "≈1.2m,,,≈1.3m,,,≈1.4m,,,≈1.5M,,,≈1.6M,,,≈1.7M,,,≈1.8M,,,≈1.9M,,,≈1m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、风格"
+  },
+  {
+   "pid": "716507289883",
+   "status": "ready",
+   "size": "1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、功能、风格"
+  },
+  {
+   "pid": "540176861759",
+   "status": "partial",
+   "size": "≈1.2m,,,≈1.3m,,,≈1.4m,,,≈1.5M,,,≈1.6M,,,≈1.7M,,,≈1.8M,,,≈1.9M,,,≈1m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、风格"
+  },
+  {
+   "pid": "623177873758",
+   "status": "ready",
+   "size": "1.4m,,,1.5m,,,1.6m,,,1.7m",
+   "space": "optCfrPSTQ",
+   "pending": "外形、安装方式、风格"
+  },
+  {
+   "pid": "757779413515",
+   "status": "ready",
+   "size": "1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m,,,1.8m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、功能、风格"
+  },
+  {
+   "pid": "520089316735",
+   "status": "partial",
+   "size": "1.1m,,,1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m,,,1.8m,,,1.9m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "风格"
+  },
+  {
+   "pid": "918581952720",
+   "status": "ready",
+   "size": "1.1m,,,1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m,,,1m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、风格"
+  },
+  {
+   "pid": "783571917011",
+   "status": "ready",
+   "size": "1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、安装方式、功能、风格"
+  },
+  {
+   "pid": "779648684416",
+   "status": "partial",
+   "size": "",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、风格、尺寸"
+  },
+  {
+   "pid": "643419966873",
+   "status": "ready",
+   "size": "1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、安装方式、功能、风格"
+  },
+  {
+   "pid": "642336299874",
+   "status": "ready",
+   "size": "1.1m,,,1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m,,,1m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、功能、风格"
+  },
+  {
+   "pid": "960887737974",
+   "status": "ready",
+   "size": "1.1m,,,1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m,,,1m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "外形、风格"
+  },
+  {
+   "pid": "679101884382",
+   "status": "unusable",
+   "size": "",
+   "space": "",
+   "pending": "外形、功能、尺寸、适用空间"
+  },
+  {
+   "pid": "604488122468",
+   "status": "partial",
+   "size": "",
+   "space": "optqXKuPa7",
+   "pending": "材质分类、外形、功能、尺寸"
+  },
+  {
+   "pid": "990371081860",
+   "status": "ready",
+   "size": "1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m",
+   "space": "optCfrPSTQ",
+   "pending": "功能、风格"
+  },
+  {
+   "pid": "756622141426",
+   "status": "ready",
+   "size": "1.1m,,,1.2m,,,1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m,,,1.8m,,,1m",
+   "space": "optCfrPSTQ,optqXKuPa7",
+   "pending": "安装方式、功能、风格"
+  },
+  {
+   "pid": "800068505141",
+   "status": "unusable",
+   "size": "",
+   "space": "",
+   "pending": "外形、功能、尺寸、适用空间"
+  },
+  {
+   "pid": "738991895837",
+   "status": "ready",
+   "size": "1.4m,,,1.5m,,,1.6m,,,1.7m",
+   "space": "optCfrPSTQ",
+   "pending": "外形、功能、风格"
+  },
+  {
+   "pid": "597600994634",
+   "status": "ready",
+   "size": "1.3m,,,1.4m,,,1.5m,,,1.6m,,,1.7m,,,1.8m",
+   "space": "optCfrPSTQ",
+   "pending": "功能、风格"
+  }
+ ]
+}

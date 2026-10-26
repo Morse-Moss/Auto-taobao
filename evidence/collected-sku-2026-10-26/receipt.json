@@ -1,0 +1,14 @@
+{
+ "generatedAt": "2026-10-26T14:04:37.946Z",
+ "profile": "kcne",
+ "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+ "skuTableId": "tbl3N48H4znz304T",
+ "requested": 1618,
+ "created": 1618,
+ "skippedExisting": 42,
+ "batches": 5,
+ "readbackTotal": 2448,
+ "readbackMissing": 0,
+ "planSha256": "1a0c8e8c0659a4952b48a5ed601c896aacc858d3b736f85953a6b9f62b50cdfc",
+ "verified": true
+}

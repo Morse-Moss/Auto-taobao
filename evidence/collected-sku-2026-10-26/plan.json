@@ -1,0 +1,589 @@
+{
+ "generatedAt": "2026-10-26T14:13:54.176Z",
+ "profile": "kcne",
+ "appToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+ "mainTableId": "tblkYcczxBnW4v5G",
+ "skuTableId": "tbl3N48H4znz304T",
+ "sourceFiles": [
+  "evidence/taobao-detail-2026-10-26/auto/r1-sku.csv",
+  "evidence/taobao-detail-2026-10-26/auto/r2-sku.csv",
+  "evidence/taobao-detail-2026-10-26/auto/r3-sku.csv",
+  "evidence/taobao-detail-2026-10-26/auto/r4-sku.csv",
+  "evidence/taobao-detail-2026-10-26/r6/sku.csv",
+  "evidence/taobao-detail-2026-10-26/r7/sku.csv",
+  "evidence/taobao-detail-2026-10-26/r13/sku.csv",
+  "evidence/taobao-detail-2026-10-26/r14/sku.csv",
+  "evidence/taobao-detail-2026-10-26/r15/sku.csv"
+ ],
+ "existingSkuRows": 2448,
+ "duplicateExistingKeys": 0,
+ "skippedItems": [],
+ "statusCounts": {
+  "unusable": 3,
+  "ready": 21,
+  "partial": 6
+ },
+ "spaceCounts": {
+  "常规卫生间": 1036,
+  "小户型": 433
+ },
+ "reviewSkuCount": 191,
+ "items": [
+  {
+   "itemId": "725950199364",
+   "title": "箭牌过肩深泡浴缸家用小户型亚克力迷你缸日式网红浴盆政府补贴",
+   "skuCount": 28,
+   "judged": 0,
+   "review": 28,
+   "withSize": 0,
+   "withoutSize": 28,
+   "spaces": {},
+   "dimensionSummary": "",
+   "status": "unusable"
+  },
+  {
+   "itemId": "990371081860",
+   "title": "恒洁浴缸椭圆形家用成人亚克力独立式民宿无缝一体深泡洗澡桶浴盆",
+   "skuCount": 20,
+   "judged": 20,
+   "review": 0,
+   "withSize": 20,
+   "withoutSize": 0,
+   "spaces": {
+    "常规卫生间": 20
+   },
+   "dimensionSummary": "1.3m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "738991895837",
+   "title": "新品浴缸家用亚克力独立式无缝加厚酒店宾馆浴缸一体成型厂家直销",
+   "skuCount": 16,
+   "judged": 16,
+   "review": 0,
+   "withSize": 16,
+   "withoutSize": 0,
+   "spaces": {
+    "常规卫生间": 16
+   },
+   "dimensionSummary": "1.4m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "918581952720",
+   "title": "加厚家用免安装亚克力保温成人无缝独立式浴缸小户型民宿水疗浴盆",
+   "skuCount": 48,
+   "judged": 48,
+   "review": 0,
+   "withSize": 48,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 18,
+    "常规卫生间": 30
+   },
+   "dimensionSummary": "1m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "716507289883",
+   "title": "亚克力免安装独立式成人老人家用洗浴成人浴缸浴盆厂家直销",
+   "skuCount": 42,
+   "judged": 42,
+   "review": 0,
+   "withSize": 42,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 7,
+    "常规卫生间": 35
+   },
+   "dimensionSummary": "1.2m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "783571917011",
+   "title": "亚克力免安装欧式酒店家用成人免安装贵妃浴缸浴盆加厚",
+   "skuCount": 54,
+   "judged": 54,
+   "review": 0,
+   "withSize": 54,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 9,
+    "常规卫生间": 45
+   },
+   "dimensionSummary": "1.2m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "44266876838",
+   "title": "独立式裙边小户型深泡浴缸亚克力浴盆冲浪按摩恒温加热浴池包邮",
+   "skuCount": 126,
+   "judged": 112,
+   "review": 14,
+   "withSize": 126,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 28,
+    "常规卫生间": 84
+   },
+   "dimensionSummary": "1m-1.9m",
+   "status": "partial"
+  },
+  {
+   "itemId": "756622141426",
+   "title": "新款方形亚克力浴缸双层保温无缝一体家用成人酒店民宿泡澡缸包邮",
+   "skuCount": 126,
+   "judged": 126,
+   "review": 0,
+   "withSize": 126,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 42,
+    "常规卫生间": 84
+   },
+   "dimensionSummary": "1m-1.8m",
+   "status": "ready"
+  },
+  {
+   "itemId": "757779413515",
+   "title": "家用小户型亚克力成人无缝一体式酒店民宿高档独立式浴缸欧式浴盆",
+   "skuCount": 77,
+   "judged": 77,
+   "review": 0,
+   "withSize": 77,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 11,
+    "常规卫生间": 66
+   },
+   "dimensionSummary": "1.2m-1.8m",
+   "status": "ready"
+  },
+  {
+   "itemId": "800068505141",
+   "title": "亚克力家用小户型小型日式迷你移动坐式独立式一体深泡保温小浴缸",
+   "skuCount": 20,
+   "judged": 0,
+   "review": 20,
+   "withSize": 0,
+   "withoutSize": 20,
+   "spaces": {},
+   "dimensionSummary": "",
+   "status": "unusable"
+  },
+  {
+   "itemId": "604488122468",
+   "title": "TOTO小浴缸独立日式进口可移动迷你小户型深泡盆0.8/1/1.2米(08)",
+   "skuCount": 18,
+   "judged": 15,
+   "review": 3,
+   "withSize": 0,
+   "withoutSize": 18,
+   "spaces": {
+    "小户型": 15
+   },
+   "dimensionSummary": "",
+   "status": "partial"
+  },
+  {
+   "itemId": "960887737974",
+   "title": "免安装浴缸家用小户型老人可移动独立水疗迷你亚克力民宿成人浴盆",
+   "skuCount": 32,
+   "judged": 32,
+   "review": 0,
+   "withSize": 32,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 12,
+    "常规卫生间": 20
+   },
+   "dimensionSummary": "1m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "643419966873",
+   "title": "亚克力无缝一体家用加厚浴室浴缸成人浴盆免安装酒店宾馆厂家直销",
+   "skuCount": 12,
+   "judged": 12,
+   "review": 0,
+   "withSize": 12,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 2,
+    "常规卫生间": 10
+   },
+   "dimensionSummary": "1.2m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "623177873758",
+   "title": "【政府补贴】箭牌浴缸单人亚克力气泡按摩家用小户型成人泡澡浴盆",
+   "skuCount": 28,
+   "judged": 28,
+   "review": 0,
+   "withSize": 28,
+   "withoutSize": 0,
+   "spaces": {
+    "常规卫生间": 28
+   },
+   "dimensionSummary": "1.4m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "642336299874",
+   "title": "家用成人亚克力小户型免安装独立式浴缸儿童浴盆厂家直销一体成型",
+   "skuCount": 16,
+   "judged": 16,
+   "review": 0,
+   "withSize": 16,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 6,
+    "常规卫生间": 10
+   },
+   "dimensionSummary": "1m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "679101884382",
+   "title": "亚克力家用小户型浴缸独立成人一体日式可移动小型迷你深泡小浴缸",
+   "skuCount": 38,
+   "judged": 0,
+   "review": 38,
+   "withSize": 0,
+   "withoutSize": 38,
+   "spaces": {},
+   "dimensionSummary": "",
+   "status": "unusable"
+  },
+  {
+   "itemId": "597600994634",
+   "title": "TW特拉维尔独立式人造石浴缸家用小户型酒店民宿成人PMMA椭圆浴盆",
+   "skuCount": 60,
+   "judged": 60,
+   "review": 0,
+   "withSize": 60,
+   "withoutSize": 0,
+   "spaces": {
+    "常规卫生间": 60
+   },
+   "dimensionSummary": "1.3m-1.8m",
+   "status": "ready"
+  },
+  {
+   "itemId": "678598686014",
+   "title": "SSWW浪鲸深泡浴缸小户型家用日式亚克力独立式国家补贴迷你可移动",
+   "skuCount": 50,
+   "judged": 50,
+   "review": 0,
+   "withSize": 50,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 36,
+    "常规卫生间": 14
+   },
+   "dimensionSummary": "0.8m-1.4m",
+   "status": "ready"
+  },
+  {
+   "itemId": "675174324950",
+   "title": "新品浴缸家用无缝一体亚克力独立式成人酒店民宿小户型欧式浴盆",
+   "skuCount": 135,
+   "judged": 135,
+   "review": 0,
+   "withSize": 135,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 45,
+    "常规卫生间": 90
+   },
+   "dimensionSummary": "1m-1.8m",
+   "status": "ready"
+  },
+  {
+   "itemId": "758065104449",
+   "title": "日式免安装长方形亚克力浴缸小户型独立式家用无缝一体成型小浴盆",
+   "skuCount": 108,
+   "judged": 108,
+   "review": 0,
+   "withSize": 108,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 42,
+    "常规卫生间": 66
+   },
+   "dimensionSummary": "1m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "668025247116",
+   "title": "家用成人小户型整体日式迷你深泡独立式可移动浴盆泡澡亚克力浴缸",
+   "skuCount": 36,
+   "judged": 14,
+   "review": 22,
+   "withSize": 0,
+   "withoutSize": 36,
+   "spaces": {
+    "小户型": 10,
+    "常规卫生间": 4
+   },
+   "dimensionSummary": "",
+   "status": "partial"
+  },
+  {
+   "itemId": "955450553575",
+   "title": "加厚家用成人亚克力小户型免安装民宿双层保温独立式水疗网红浴缸",
+   "skuCount": 48,
+   "judged": 48,
+   "review": 0,
+   "withSize": 48,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 18,
+    "常规卫生间": 30
+   },
+   "dimensionSummary": "1m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "646852280649",
+   "title": "箭牌浴缸家用成人淋浴一体亚克力小户型泡澡方形可拆裙边按摩浴盆",
+   "skuCount": 91,
+   "judged": 91,
+   "review": 0,
+   "withSize": 91,
+   "withoutSize": 0,
+   "spaces": {
+    "常规卫生间": 78,
+    "小户型": 13
+   },
+   "dimensionSummary": "1.2m-1.8m",
+   "status": "ready"
+  },
+  {
+   "itemId": "679380994840",
+   "title": "TW特拉维尔浴缸家用亚克力小户型独立日式椭圆网红酒店民宿浴盆",
+   "skuCount": 40,
+   "judged": 40,
+   "review": 0,
+   "withSize": 40,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 5,
+    "常规卫生间": 35
+   },
+   "dimensionSummary": "1.2m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "902726522803",
+   "title": "东鹏深泡浴缸迷你日式小型恒温小户型家用坐式按摩亚克力一体浴盆",
+   "skuCount": 40,
+   "judged": 40,
+   "review": 0,
+   "withSize": 40,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 32,
+    "常规卫生间": 8
+   },
+   "dimensionSummary": "0.8m-1.3m",
+   "status": "ready"
+  },
+  {
+   "itemId": "834577264183",
+   "title": "【政府补贴15%】浪鲸椭圆鹅蛋泊月浴缸亚克力家用独立式成人580",
+   "skuCount": 31,
+   "judged": 31,
+   "review": 0,
+   "withSize": 31,
+   "withoutSize": 0,
+   "spaces": {
+    "常规卫生间": 31
+   },
+   "dimensionSummary": "1.3m-1.7m",
+   "status": "ready"
+  },
+  {
+   "itemId": "674117739138",
+   "title": "浴缸家用成人独立式无缝一体保温小户型亚克力酒店民宿欧式浴盆",
+   "skuCount": 54,
+   "judged": 54,
+   "review": 0,
+   "withSize": 54,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 18,
+    "常规卫生间": 36
+   },
+   "dimensionSummary": "1m-1.8m",
+   "status": "ready"
+  },
+  {
+   "itemId": "779648684416",
+   "title": "家用成人亚克力小户型免安装彩色双层保温独立式水疗网红浴缸浴盆",
+   "skuCount": 104,
+   "judged": 56,
+   "review": 48,
+   "withSize": 0,
+   "withoutSize": 104,
+   "spaces": {
+    "小户型": 28,
+    "常规卫生间": 28
+   },
+   "dimensionSummary": "",
+   "status": "partial"
+  },
+  {
+   "itemId": "540176861759",
+   "title": "豪华独立式亚克力欧式小户型家用成人小浴缸冲浪按摩恒温加热浴盆",
+   "skuCount": 126,
+   "judged": 112,
+   "review": 14,
+   "withSize": 126,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 28,
+    "常规卫生间": 84
+   },
+   "dimensionSummary": "1m-1.9m",
+   "status": "partial"
+  },
+  {
+   "itemId": "520089316735",
+   "title": "嵌入式浴缸进口加厚亚克力浴盆方形普通浴池1.2 1.41.5 1.6 1.7米",
+   "skuCount": 36,
+   "judged": 32,
+   "review": 4,
+   "withSize": 36,
+   "withoutSize": 0,
+   "spaces": {
+    "小户型": 8,
+    "常规卫生间": 24
+   },
+   "dimensionSummary": "1.1m-1.9m",
+   "status": "partial"
+  }
+ ],
+ "summary": {
+  "totalRows": 1660,
+  "toCreate": 0,
+  "alreadyPresent": 1618,
+  "existingKeptDiffers": 42,
+  "itemCount": 30,
+  "writeReady": false,
+  "duplicateExistingKeys": 0
+ },
+ "diffSamples": [
+  {
+   "key": "597600994634|6285321262530",
+   "action": "existingKeptDiffers",
+   "itemId": "597600994634",
+   "recordId": "recvt6lQz61u76",
+   "differs": [
+    "商品链接",
+    "SKU名称",
+    "SKU规格"
+   ]
+  },
+  {
+   "key": "597600994634|6285321262536",
+   "action": "existingKeptDiffers",
+   "itemId": "597600994634",
+   "recordId": "recvt6lQz62QGL",
+   "differs": [
+    "商品链接",
+    "SKU名称",
+    "SKU规格"
+   ]
+  },
+  {
+   "key": "597600994634|6285321262560",
+   "action": "existingKeptDiffers",
+   "itemId": "597600994634",
+   "recordId": "recvt6lQz6BFw6",
+   "differs": [
+    "商品链接",
+    "SKU名称",
+    "SKU规格"
+   ]
+  },
+  {
+   "key": "597600994634|6285321262566",
+   "action": "existingKeptDiffers",
+   "itemId": "597600994634",
+   "recordId": "recvt6lQz6DxfR",
+   "differs": [
+    "商品链接",
+    "SKU名称",
+    "SKU规格"
+   ]
+  },
+  {
+   "key": "597600994634|6285321262542",
+   "action": "existingKeptDiffers",
+   "itemId": "597600994634",
+   "recordId": "recvt6lQz6Tmt3",
+   "differs": [
+    "商品链接",
+    "SKU名称",
+    "SKU规格"
+   ]
+  },
+  {
+   "key": "597600994634|6285321262548",
+   "action": "existingKeptDiffers",
+   "itemId": "597600994634",
+   "recordId": "recvt6lQz6s7CF",
+   "differs": [
+    "商品链接",
+    "SKU名称",
+    "SKU规格"
+   ]
+  },
+  {
+   "key": "597600994634|6285321262572",
+   "action": "existingKeptDiffers",
+   "itemId": "597600994634",
+   "recordId": "recvt6lQz64tLh",
+   "differs": [
+    "商品链接",
+    "SKU名称",
+    "SKU规格"
+   ]
+  },
+  {
+   "key": "597600994634|6285321262531",
+   "action": "existingKeptDiffers",
+   "itemId": "597600994634",
+   "recordId": "recvt6lQz6Y4cx",
+   "differs": [
+    "商品链接",
+    "SKU名称",
+    "SKU规格"
+   ]
+  },
+  {
+   "key": "597600994634|6285321262537",
+   "action": "existingKeptDiffers",
+   "itemId": "597600994634",
+   "recordId": "recvt6lQz6WYAi",
+   "differs": [
+    "商品链接",
+    "SKU名称",
+    "SKU规格"
+   ]
+  },
+  {
+   "key": "597600994634|6285321262561",
+   "action": "existingKeptDiffers",
+   "itemId": "597600994634",
+   "recordId": "recvt6lQz66lZG",
+   "differs": [
+    "商品链接",
+    "SKU名称",
+    "SKU规格"
+   ]
+  }
+ ]
+}

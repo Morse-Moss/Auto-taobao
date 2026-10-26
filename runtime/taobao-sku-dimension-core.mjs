@@ -1,47 +1,45 @@
-// 周表「尺寸 / 适用空间」两个 Lookup 的自采数据侧映射（2026-10-26）。
+// 自采 SKU → SKU明细 记录字段的映射（2026-10-26）。
 //
-// 为什么单独一个文件：这两个字段在周表上是 Lookup(19)，不是可写字段。
-// 周表侧的定义（docs/references/COMPETITOR-FIELD-REFERENCE.md §4.5）：
-//   尺寸    ← SKU明细.SKU尺寸  的 LISTCOMBINE().UNIQUE()
-//   适用空间 ← SKU明细.适用空间
-// 跨表条件是 `SKU明细.商品标题 = 周表.商品标题`（注意是按标题匹配，不是按商品ID）。
-// 所以自采要做的事只有一件：**为每个 SKU 产出 SKU尺寸 与 适用空间**，聚合交给飞书。
+// 周表「尺寸 / 适用空间」是 Lookup(19)，源是 SKU明细 的 SKU尺寸 / 适用空间
+// （docs/references/COMPETITOR-FIELD-REFERENCE.md §4.5，跨表按商品标题匹配）。
+// 所以自采只负责把每个 SKU 落成 SKU明细 的一行，聚合交给飞书。
 //
-// 两条口径都照抄线上已生效的规则，不新造：
-//   1) 尺寸：`长度`。这是全部 928 行已采 SKU 里唯一出现的尺寸维度属性
-//      （实测属性名只有 颜色分类 928 / 长度 879 / 颜色 91）。没有 长度 的记空，
-//      由「需人工核验」承接 —— skills/xws-sku-collection/SKILL.md 1.8.0 明确：
-//      SKU尺寸 是唯一的尺寸来源，不得把 SKU规格 里的厚度之类混进空间判定。
-//   2) 适用空间：只认标题里的明确空间词，与 competitor-v2-core.mjs 第 438-439 行
-//      已上线的实现同一口径（小户型|小空间 → 小户型；常规卫生间 → 常规卫生间）。
-//      没有明确词就留空。`大户型` 永远不产出 —— SKU明细 的契约只允许
-//      小户型 / 常规卫生间（adapter.sku-collection.mjs 的 APPROVED_SPACES）。
+// ⚠️ 空间判定**不在这里重写**。第一版我自己按标题词判（小户型|小空间→小户型、
+// 常规卫生间→常规卫生间），方向是错的：线上生效的是
+// `competitor-v2-core.classifySkuSpace()`，它按 **SKU 尺寸的数值区间**判
+// （0.8–1.2m→小户型，1.3–1.8m→常规卫生间），标题词不参与。
+// 实测把 30 个商品按两套规则各跑一遍：标题词版全判「小户型」，
+// 真规则版是小户型 433 / 常规卫生间 1096 / 需人工核验 191 —— 差异不是小数。
+// 所以这里 import 线上那一份，一处不复制，杜绝两套口径漂移。
 //
-// 注意两层别搞混（2026-10-26 核过）：
-//   周表.适用空间   是 Lookup(19)，多选，选项含 大户型/无注明/不适用，只读不可写；
-//   SKU明细.适用空间 是真正要我们写的源字段，单值，只接受 小户型/常规卫生间 或空。
-//   docs/references/COMPETITOR-FIELD-REFERENCE.md §6.6/6.7 那版允许 大户型、顿号多值、
-//   无证据写「无注明」的 AI 口径，文档已标明「线上无处生效」（那个字段现在是 Lookup）。
-//   所以这里写 大户型 会被 adapter 直接判 ITEM_INVALID，绝不能为了「看起来更全」加上。
+// 字段装配照抄 runtime/xws-sku-payload-parser.mjs 的 parseXwsSkuPayload：
+//   SKU名称   ← 规格文本的第一段
+//   SKU规格   ← 属性组合全文
+//   SKU尺寸   ← 尺寸属性的**原始值**（不是标准化值）
+//   尺寸汇总  ← summarizeSkuDimensions(整个商品所有 SKU 的尺寸) 的区间
+//   空间判定状态 / 依据 / 采集状态 / 待补数据项 ← applicableSpaceFields 同口径
+//
+// 「需人工核验」的行**允许 适用空间 为空**，这是契约内的表示，
+// 不是缺数据：SKU明细 的 空间判定状态 闭集就是 ['已判定','需人工核验']，
+// 待补数据项 里也有 '空间判定' 这一项。
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-// 尺寸维度属性的优先级。当前实测只有「长度」出现，其余是给别的类目留的位置。
+import {
+  SKU_APPLICABLE_SPACES,
+  classifySkuSpace,
+  summarizeSkuDimensions,
+} from '../skills/xws-to-feishu-base/scripts/competitor-v2-core.mjs';
+
+// 尺寸维度属性的优先级。实测 1720 行 SKU 里只出现过「长度」。
 export const DIMENSION_ATTRS = Object.freeze(['长度', '宽度', '高度', '深度', '直径', '尺寸']);
-
-// SKU明细.适用空间 的闭集。大户型不在里面，且不许产出。
-export const APPROVED_SPACES = Object.freeze(['小户型', '常规卫生间']);
-
-const SPACE_KEYWORDS = Object.freeze([
-  ['小户型', ['小户型', '小空间']],
-  ['常规卫生间', ['常规卫生间']],
-]);
 
 const text = (value) => String(value ?? '').trim();
 
-// 单个 SKU 的尺寸值。取第一个命中的维度属性；都没有就返回空串。
+// 单个 SKU 的尺寸原始值。取第一个命中的维度属性；都没有就返回空串。
+// 注意这是**原始值**（可能是 1700mm），标准化由 classifySkuSpace 负责。
 export function skuSizeOf(attrs) {
   if (!attrs || typeof attrs !== 'object') return '';
   for (const name of DIMENSION_ATTRS) {
@@ -51,87 +49,81 @@ export function skuSizeOf(attrs) {
   return '';
 }
 
-// 单个 SKU 的适用空间。返回数组（多选字段），按 APPROVED_SPACES 的顺序。
-// `sizeText` 参与但不参与数值计算：只在维度缺失时用来记「为什么判不出来」。
-export function spacesOf({ title = '', attrs = {} } = {}) {
-  const source = text(title);
-  const hit = SPACE_KEYWORDS
-    .filter(([, words]) => words.some((word) => source.includes(word)))
-    .map(([space]) => space);
-  // 去过重并保持闭集顺序，杜绝任何越界值溜出去。
-  return APPROVED_SPACES.filter((space) => hit.includes(space));
+// 规格文本的第一段，作为 SKU名称。照 parseSpecification 的 name 语义：
+// 有分隔符取第一段，没有就用全文。
+export function skuNameOf(combo) {
+  const source = text(combo);
+  if (!source) return '';
+  const first = source.split(/[+;；]/u).map((part) => part.trim()).filter(Boolean)[0];
+  return first || source;
 }
 
-// 一个商品所有 SKU 的尺寸值（去重、保留出现顺序）。
-export function uniqueSizes(rows) {
-  const seen = new Set();
-  const out = [];
-  for (const row of Array.isArray(rows) ? rows : []) {
-    const size = skuSizeOf(row?.attrs ?? {});
-    if (!size || seen.has(size)) continue;
-    seen.add(size);
-    out.push(size);
-  }
-  return out;
+// 空间判定相关字段。与 xws-sku-payload-parser 的 applicableSpaceFields 同口径，
+// 两个细节必须一致：需人工核验时适用空间留空且待补数据项=[空间判定]；
+// 采集状态跟着判定状态走，不允许出现「已采集但没判定」。
+export function spaceFields(space) {
+  const fields = {
+    空间判定状态: space.status,
+    空间判定依据: space.evidence,
+    采集状态: space.status === '已判定' ? '已采集' : '需人工核验',
+  };
+  if (space.applicableSpace) fields.适用空间 = space.applicableSpace;
+  if (space.status !== '已判定') fields.待补数据项 = ['空间判定'];
+  return fields;
 }
 
-// 把一个商品的多行 SKU 汇总成「周表 Lookup 会算出什么」。
-//
-// 返回值里的 status 说明这一行的可信度，不要只看值：
-//   ready       尺寸和空间都有值，可以直接落 SKU明细
-//   needs-size  有 SKU 但没有任何尺寸属性 → 尺寸会空，周表「待补数据项」会报出来
-//   needs-space 尺寸有，但标题里没有明确空间词 → 适用空间留空，需人工核验
-// dirtyAttrs 单独计数：属性JSON 解析失败的行会被当成「无属性」继续跑，
-// 不单独报出来就等于把脏数据洗成正常缺失，那种错误最难发现。
-export function summarizeItem({ itemId, title, skus = [] }) {
-  const sizes = uniqueSizes(skus);
-  const spaces = spacesOf({ title });
-  const missingSize = skus.filter((row) => !skuSizeOf(row?.attrs ?? {})).length;
-  const dirtyAttrs = skus.filter((row) => row?.dirty === true).length;
-  let status = 'ready';
-  if (!sizes.length) status = 'needs-size';
-  else if (!spaces.length) status = 'needs-space';
+// 一个 SKU → SKU明细 的一行。缺 source 字段直接抛，不猜。
+export function buildSkuFields({ source, skuId, combo, attrs, dimensionSummary }) {
+  const itemId = text(source?.itemId);
+  const sku = text(skuId);
+  if (!/^\d{1,30}$/u.test(itemId)) throw new Error(`商品 ID 不合法：${source?.itemId}`);
+  if (!sku) throw new Error(`SKU ID 为空：${itemId}`);
+  const link = text(source?.link);
+  if (!link) throw new Error(`商品链接为空：${itemId}`);
+  const competitorClass = text(source?.competitorClass);
+  if (!competitorClass) throw new Error(`竞品分类为空：${itemId}`);
+  const mainRecordId = text(source?.mainRecordId);
+  if (!mainRecordId) throw new Error(`主表 recordId 为空：${itemId}`);
+
+  const dimension = skuSizeOf(attrs ?? {});
+  const specification = text(combo);
+  const name = skuNameOf(specification);
+  const space = classifySkuSpace({ skuSize: dimension, skuSpec: specification, skuName: name });
+
   return {
-    itemId: text(itemId),
-    title: text(title),
-    skuCount: skus.length,
-    sizes,
-    sizeText: sizes.join('、'),      // 对应 尺寸 Lookup 的 LISTCOMBINE().UNIQUE()
-    spaces,
-    spaceText: spaces.join('、'),
-    // 写入侧要的是单值：SKU明细.适用空间 只接受 APPROVED_SPACES 里的一个值或空。
-    // 两个词同时命中时按闭集顺序取第一个，并把 spaceAmbiguous 打开，交给人决定。
-    space: spaces[0] ?? '',
-    spaceAmbiguous: spaces.length > 1,
-    // 尺寸为空时的取证：把 颜色分类 的原值抄几行出来。
-    // 只做「展示」不做「推导」——SKU尺寸 是唯一尺寸来源，从 颜色分类 里抠尺寸
-    // 不在契约内，抠了就等于让周表看起来像采到了，实际没有。
-    sizeHints: sizes.length ? [] : distinctValues(skus, '颜色分类', 3),
-    missingSize,
-    dirtyAttrs,
-    status,
+    商品链接: link,
+    商品标题: text(source.title),
+    竞品分类: competitorClass,
+    SKU名称: name,
+    SKU规格: specification,
+    SKU尺寸: dimension,
+    尺寸汇总: text(dimensionSummary),
+    ...spaceFields(space),
+    商品ID: itemId,
+    SKU唯一键: `${itemId}|${sku}`,
+    // 关系字段在 batch_create 里必须是 recordId 数组。
+    所属竞品: [mainRecordId],
   };
 }
 
-// 取某个属性的若干个不同值，只用于展示取证，不参与任何判定。
-function distinctValues(skus, attrName, limit) {
-  const seen = new Set();
-  const out = [];
-  for (const row of Array.isArray(skus) ? skus : []) {
-    const value = text(row?.attrs?.[attrName]);
-    if (!value || seen.has(value)) continue;
-    seen.add(value);
-    if (out.length < limit) out.push(value);
-  }
-  return out;
+// 一个商品的全部 SKU → 行数组。尺寸汇总按商品算一次，回填到每一行。
+export function buildItemRows({ source, skus = [] }) {
+  const sizes = skus.map((sku) => skuSizeOf(sku?.attrs ?? {}));
+  const dimensionSummary = summarizeSkuDimensions(sizes);
+  return skus.map((sku) => buildSkuFields({
+    source,
+    skuId: sku?.skuId,
+    combo: sku?.combo,
+    attrs: sku?.attrs ?? {},
+    dimensionSummary,
+  }));
 }
 
-// 解析 属性JSON 一列。三种情况必须区分开，不能混成一种：
-//   空单元格   → {}    说明这个 SKU 没有属性，属正常
-//   解析失败   → null  数据脏了，要能被统计出来
-//   合法但非对象（"abc" / null / [1,2]）→ null，同样是脏数据：
-//     这一列按契约只存属性对象，出现标量或数组说明上游写错了，
-//     当成 {} 会让脏行伪装成「无属性」，这正是最难查的那种静默错误。
+// 解析 属性JSON 一列。三种情况必须分开，不能混：
+//   空单元格 → {}    这个 SKU 没有属性，属正常
+//   解析失败 → null  数据脏了
+//   合法但非对象（"abc" / null / [1,2]）→ null，同样是脏数据
+// 当成 {} 会让脏行伪装成「无属性」，那是最难查的一类静默错误。
 export function parseAttrsCell(cell) {
   const raw = text(cell);
   if (!raw) return {};
@@ -170,32 +162,77 @@ export function parseCsv(textValue) {
   return rows.filter((line) => line.some((cell) => text(cell) !== ''));
 }
 
-// 从若干份 sku.csv 汇总出「每个商品 → 尺寸 / 适用空间」。同商品多轮出现时以先出现者为准。
-export function summarizeCsvFiles(files) {
+// 读若干份 sku.csv，按商品聚合成 { itemId, title, skus: [{skuId, combo, attrs}] }。
+// 同商品多轮出现时以先出现的标题为准，SKU 按 SKU ID 去重（重跑同一轮不会翻倍）。
+export function collectSkuItems(files) {
   const byItem = new Map();
+  let dirtyAttrs = 0;
   for (const file of files) {
     if (!fs.existsSync(file)) continue;
     const rows = parseCsv(fs.readFileSync(file, 'utf8'));
     if (!rows.length) continue;
     const header = rows[0];
-    const idAt = header.indexOf('商品ID');
-    const titleAt = header.indexOf('商品标题');
-    const attrsAt = header.indexOf('属性JSON');
-    if (idAt < 0 || titleAt < 0) throw new Error(`${file} 缺少 商品ID / 商品标题 列`);
+    const at = (name) => header.indexOf(name);
+    const [idAt, titleAt, skuAt, comboAt, attrsAt] = ['商品ID', '商品标题', 'SKU ID', '属性组合', '属性JSON'].map(at);
+    if (idAt < 0 || titleAt < 0 || skuAt < 0) throw new Error(`${file} 缺少 商品ID / 商品标题 / SKU ID 列`);
     for (const line of rows.slice(1)) {
       const itemId = text(line[idAt]);
-      if (!itemId) continue;
-      const bucket = byItem.get(itemId) || { itemId, title: text(line[titleAt]), skus: [] };
-      // 没有这一列时按「全部无属性」处理，与空单元格同义；有这一列但解析失败时标 dirty。
+      const skuId = text(line[skuAt]);
+      if (!itemId || !skuId) continue;
+      const bucket = byItem.get(itemId) || { itemId, title: text(line[titleAt]), skus: new Map() };
+      if (bucket.skus.has(skuId)) continue;
       const parsed = attrsAt >= 0 ? parseAttrsCell(line[attrsAt]) : {};
-      bucket.skus.push({ attrs: parsed ?? {}, dirty: parsed === null });
+      if (parsed === null) dirtyAttrs += 1;
+      bucket.skus.set(skuId, { skuId, combo: comboAt >= 0 ? text(line[comboAt]) : '', attrs: parsed ?? {} });
       byItem.set(itemId, bucket);
     }
   }
-  return [...byItem.values()].map(summarizeItem);
+  return {
+    items: [...byItem.values()].map((bucket) => ({ ...bucket, skus: [...bucket.skus.values()] })),
+    dirtyAttrs,
+  };
 }
 
-// CLI：node runtime/taobao-sku-dimension-core.mjs --sku a.csv --sku b.csv [--out report.json]
+// 商品级汇总，只用来判断「这家能不能整批落」和「落完大概长什么样」。
+export function summarizeItem({ item, rows }) {
+  const judged = rows.filter((row) => row.空间判定状态 === '已判定').length;
+  const withSize = rows.filter((row) => text(row.SKU尺寸) !== '').length;
+  const spaces = rows.reduce((acc, row) => {
+    const space = text(row.适用空间);
+    if (space) acc[space] = (acc[space] || 0) + 1;
+    return acc;
+  }, {});
+  return {
+    itemId: item.itemId,
+    title: item.title,
+    skuCount: rows.length,
+    judged,
+    review: rows.length - judged,
+    withSize,
+    withoutSize: rows.length - withSize,
+    spaces,
+    dimensionSummary: rows[0]?.尺寸汇总 ?? '',
+    // ready 的判定标准放在一处：整家都能判定且每行都有原始尺寸，
+    // 才会让周表两个 Lookup 同时有值。否则如实报 partial。
+    status: judged === rows.length && withSize === rows.length
+      ? 'ready'
+      : (judged === 0 && withSize === 0 ? 'unusable' : 'partial'),
+  };
+}
+
+// 校验：任何越界的空间值都不许出现在待写数据里。
+export function assertApprovedSpaces(rows) {
+  for (const row of rows) {
+    const space = text(row.适用空间);
+    if (space && !SKU_APPLICABLE_SPACES.includes(space)) {
+      throw new Error(`适用空间 越界：${space}（唯一键 ${row.SKU唯一键}）`);
+    }
+  }
+  return rows;
+}
+
+// CLI：只出报告，不写飞书。
+// node runtime/taobao-sku-dimension-core.mjs --sku a.csv [--sku b.csv] [--out report.json]
 function parseCliArgs(argv) {
   const files = [];
   let out = '';
@@ -214,32 +251,37 @@ const invokedDirectly = Boolean(process.argv[1])
 
 if (invokedDirectly) {
   const { files, out } = parseCliArgs(process.argv.slice(2));
-  const items = summarizeCsvFiles(files);
+  const { items, dirtyAttrs } = collectSkuItems(files);
+
+  // 占位 source：CLI 只做口径预览，不写飞书，所以主表字段留空；
+  // 缺链接/分类时 buildSkuFields 会抛，这里补成显式占位并标注。
+  const summaries = items.map((item) => {
+    const source = {
+      itemId: item.itemId, title: item.title, link: 'about:report-only',
+      competitorClass: '无分类', mainRecordId: 'report-only',
+    };
+    const rows = buildItemRows({ source, skus: item.skus });
+    return summarizeItem({ item, rows });
+  });
   const payload = {
     generatedAt: new Date().toISOString(),
     sourceFiles: files,
-    itemCount: items.length,
-    skuCount: items.reduce((sum, item) => sum + item.skuCount, 0),
-    // 非 0 就是上游写过脏行，要回到源头看，别只看 statusCounts。
-    dirtyAttrsCount: items.reduce((sum, item) => sum + item.dirtyAttrs, 0),
-    statusCounts: items.reduce((acc, item) => {
+    itemCount: summaries.length,
+    skuCount: summaries.reduce((sum, item) => sum + item.skuCount, 0),
+    dirtyAttrs,
+    statusCounts: summaries.reduce((acc, item) => {
       acc[item.status] = (acc[item.status] || 0) + 1;
       return acc;
     }, {}),
-    // 直接给出要人看的那几条，别让人去 items 里翻 status。
-    needsReview: items
-      .filter((item) => item.status !== 'ready' || item.spaceAmbiguous)
-      .map((item) => ({
-        itemId: item.itemId,
-        title: item.title,
-        status: item.status,
-        spaceAmbiguous: item.spaceAmbiguous,
-        sizeHints: item.sizeHints,
-      })),
-    items,
+    spaceCounts: summaries.reduce((acc, item) => {
+      for (const [space, n] of Object.entries(item.spaces)) acc[space] = (acc[space] || 0) + n;
+      return acc;
+    }, {}),
+    reviewSkuCount: summaries.reduce((sum, item) => sum + item.review, 0),
+    items: summaries,
   };
   const json = `${JSON.stringify(payload, null, 1)}\n`;
   if (out) { fs.writeFileSync(out, json, 'utf8'); console.log(`[尺寸] 写出 ${out}`); }
   else process.stdout.write(json);
-  console.error(`[尺寸] ${payload.itemCount} 个商品 / ${payload.skuCount} 个 SKU；状态 ${JSON.stringify(payload.statusCounts)}`);
+  console.error(`[尺寸] ${payload.itemCount} 个商品 / ${payload.skuCount} 个 SKU；状态 ${JSON.stringify(payload.statusCounts)}；空间 ${JSON.stringify(payload.spaceCounts)}；需人工核验 SKU ${payload.reviewSkuCount}`);
 }
