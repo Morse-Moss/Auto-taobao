@@ -16,9 +16,10 @@ import { collectingShopKeys, shopBrowserKeys, SHOPS_NOT_COLLECTING_YET } from '.
 import { SHOP_DEPARTMENTS } from './feishu-targets.mjs';
 import { WORKFLOW_CATALOG } from './workflow-catalog.mjs';
 import {
-  BATCH_FILES, BATCH_SIZE_BY_MEMORY, DEFAULT_BATCH_SIZE, SHARED_INSTANCE_KEYS, assertBatchCoversRegistry,
-  batchLoginArtifactName, batchableShopKeys, buildBatchSteps, buildLoginPreflightStep, buildSharedStep,
-  describeBatch, planBatches, releaseAfterBatch, resolveBatchSize, resolveShopNames,
+  BATCH_FILES, BATCH_SIZE_BY_MEMORY, DEFAULT_BATCH_SIZE, SHARED_INSTANCE_KEYS, WORKFLOW_DEPARTMENTS,
+  assertBatchCoversRegistry, batchLoginArtifactName, batchableShopKeys, batchableShopKeysFor, buildBatchSteps,
+  buildLoginPreflightStep, buildSharedStep, describeBatch, planBatches, releaseAfterBatch, resolveBatchSize,
+  resolveShopNames,
 } from './batch-plan.mjs';
 import { REPO_ROOT } from './version.mjs';
 
@@ -67,6 +68,31 @@ test('销售2部 5 家恢复采集：13 家全部在采、登记表不动（2026
   }
   // 登记表本身不能动：实例侧（起停/登录/盘点/标签页）一律按登记表走。
   assert.equal(REGISTERED.length, 13, '登记表应当仍是 13 家 —— 采集名单的开关不动登记表');
+});
+
+test('workflow 的部门范围：推广链只切销售一部，日报链切全部（2026-10-26 恢复二部后加）', () => {
+  // 要治的不是「多跑几家」，而是**整批失败**：推广链入口 `run-promotion-sales1.mjs` 是按整批校验的
+  // （`promotionSales1Plan` 里只要有一家不在 SALES1 就抛错），二部混进批次会让同批的一部一起死。
+  const sales1 = Object.entries(SHOP_DEPARTMENTS).filter(([, dept]) => dept === 'sales1').map(([k]) => k);
+  const promotion = batchableShopKeysFor('promotion-daily');
+  assert.deepEqual(promotion, collectingShopKeys().filter((key) => sales1.includes(key)),
+    '推广链的分批对象必须恰好是「参与采集 ∩ 销售一部」');
+  assert.equal(promotion.length, sales1.length, '销售一部每一家都必须在推广链的分批对象里');
+  for (const [key, dept] of Object.entries(SHOP_DEPARTMENTS)) {
+    if (dept !== 'sales2') continue;
+    assert.equal(promotion.includes(key), false,
+      `销售二部的「${key}」不该进推广链批次（推广 base 只登记了 2026-10:sales1）`);
+    assert.equal(batchableShopKeysFor('daily-report').includes(key), true,
+      `日报链不分部门，二部恢复后「${key}」必须在里面`);
+  }
+  // 没登记部门范围的 workflow 一律＝参与采集的全部（将来加链时不会莫名被收窄）。
+  assert.deepEqual(batchableShopKeysFor('daily-report'), collectingShopKeys());
+  assert.deepEqual(batchableShopKeysFor(undefined), collectingShopKeys());
+  assert.deepEqual([...WORKFLOW_DEPARTMENTS['promotion-daily']], ['sales1']);
+  // 收窄到一家不剩时必须抛，**不许**退化成「全部店铺」——
+  // `planBatches` 把空数组当「没点名 ⇒ 全部」，静默退化会让推广链又去跑二部且毫无提示。
+  assert.throws(() => batchableShopKeysFor('promotion-daily', { departments: {} }), /一家都没有/u);
+  assert.throws(() => batchableShopKeysFor('promotion-daily', { departments: {} }), /拒绝退化成「全部店铺」/u);
 });
 
 /**

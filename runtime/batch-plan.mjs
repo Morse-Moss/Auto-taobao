@@ -28,6 +28,10 @@
 // 本层只决定**该不该发起释放**，不决定「能不能停」——两件事混在一起会写出一个
 // 「以为停了、其实拒停了」的假成功。
 import { collectingShopKeys, shopBrowserKeys, shopInstance } from './browser-ports.mjs';
+// 部门表：`SHOP_DEPARTMENTS` 与 `SHOP_BROWSERS` 同键同序，是「哪家属于哪个部门」的唯一来源。
+// 本文件只用它决定 **workflow 的分批范围**（见 `batchableShopKeysFor`），不参与实例侧任何判断；
+// 不在本文件里抄第二份店名清单 —— 抄一份的话，加店/换部门那天两边会静默不一致。
+import { SHOP_DEPARTMENTS } from './feishu-targets.mjs';
 
 /** 每一段做什么，用哪个脚本（路径相对仓库根）。**显式表，不按 kind 拼文件名**。 */
 export const BATCH_FILES = Object.freeze({
@@ -153,6 +157,42 @@ export const BATCH_SIZE_BY_MEMORY = Object.freeze({
  */
 export function batchableShopKeys() {
   return collectingShopKeys();
+}
+
+/**
+ * 各 workflow 认的**部门范围**（2026-10-26 加）。
+ *
+ * 为什么需要这一层：分批层原先默认「参与采集的店铺」就是分批对象 —— 这对日报链成立，
+ * 对推广链不成立。推广链的入口是 `run-promotion-sales1.mjs`，它对**整批**做校验
+ * （`promotionSales1Plan`：批次里只要有一家不在 SALES1 就整批抛错）。
+ * 2026-10-26 恢复销售二部采集后 `collectingShopKeys()` 从 8 家变 13 家 ⇒ 若不在本层收窄，
+ * 11:00 那轮按 13 家切批（5+5+3），二部会被混进第二、三批，**同批的一部店铺跟着整批失败**
+ * ——症状是「推广链突然报某五家『不在销售一部采集范围』，而它们本来跑得好好的」。
+ *
+ * 为什么不写在 `run-promotion-sales1.mjs` 里：那是 skills 层，runtime 不能反向 import
+ * （`runtime/arch-boundary.test.mjs`）；而「这一轮切几家」本来就是本层的职责。
+ * 部门表只从 `feishu-targets.mjs` 的 `SHOP_DEPARTMENTS` 取一份，这里不抄第二份名单。
+ */
+export const WORKFLOW_DEPARTMENTS = Object.freeze({
+  'promotion-daily': Object.freeze(['sales1']),
+});
+
+/**
+ * 某个 workflow 的分批对象：默认＝参与采集的全部，登记了部门范围的按部门收窄。
+ *
+ * 收窄后**一家都不剩**时当场抛错，不退回「全部店铺」：`resolveShopNames` 把空数组
+ * 当成「没点名 ⇒ 全部」，静默退化会让推广链又去跑二部，而那次不会有任何提示。
+ */
+export function batchableShopKeysFor(workflow = 'daily-report',
+  { collecting = collectingShopKeys(), departments = SHOP_DEPARTMENTS } = {}) {
+  const scope = WORKFLOW_DEPARTMENTS[workflow];
+  if (!scope) return collecting;
+  const scoped = collecting.filter((key) => scope.includes(departments[key]));
+  if (scoped.length === 0 && collecting.length > 0) {
+    throw new Error(`workflow「${workflow}」的部门范围（${scope.join('/')}）在参与采集的店铺里一家都没有`
+      + ' —— 拒绝退化成「全部店铺」（那会让它去跑本不属于它的部门）');
+  }
+  return scoped;
 }
 
 /**
