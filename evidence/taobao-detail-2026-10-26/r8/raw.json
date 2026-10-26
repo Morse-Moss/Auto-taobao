@@ -1,0 +1,62 @@
+{
+ "at": "2026-10-26T10:39:35.265Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 5,
+ "failures": 5,
+ "items": [
+  {
+   "itemId": "678598686014",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "Runtime.evaluate 超时（25000ms）（页面出现验证控件，需人工处理后再跑）"
+  },
+  {
+   "itemId": "679380994840",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "Runtime.evaluate 超时（25000ms）（页面出现验证控件，需人工处理后再跑）"
+  },
+  {
+   "itemId": "646852280649",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "Runtime.evaluate 超时（25000ms）（页面出现验证控件，需人工处理后再跑）"
+  },
+  {
+   "itemId": "902726522803",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "Runtime.evaluate 超时（25000ms）（页面出现验证控件，需人工处理后再跑）"
+  },
+  {
+   "itemId": "834577264183",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "Runtime.evaluate 超时（25000ms）（页面出现验证控件，需人工处理后再跑）"
+  }
+ ],
+ "outputs": [
+  {
+   "written": false,
+   "rows": 0,
+   "existing": 0
+  },
+  {
+   "written": false,
+   "rows": 0,
+   "existing": 0
+  },
+  {
+   "written": false,
+   "rows": 0,
+   "existing": 0
+  }
+ ]
+}

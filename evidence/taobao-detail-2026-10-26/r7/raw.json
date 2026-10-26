@@ -1,0 +1,126 @@
+{
+ "at": "2026-10-26T10:35:44.187Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 10,
+ "failures": 5,
+ "items": [
+  {
+   "itemId": "597600994634",
+   "ok": true,
+   "skuCount": 60,
+   "reviewCount": 40,
+   "title": "TW特拉维尔独立式人造石浴缸家用小户型酒店民宿成人PMMA椭圆浴盆",
+   "shopName": "TW特拉维尔旗舰店",
+   "attrNames": [
+    "长度(6)",
+    "颜色分类(10)"
+   ],
+   "reviewTotal": "800"
+  },
+  {
+   "itemId": "675174324950",
+   "ok": true,
+   "skuCount": 135,
+   "reviewCount": 40,
+   "title": "新品浴缸家用无缝一体亚克力独立式成人酒店民宿小户型欧式浴盆",
+   "shopName": "陈强卫浴工厂店",
+   "attrNames": [
+    "长度(9)",
+    "颜色分类(15)"
+   ],
+   "reviewTotal": "2000"
+  },
+  {
+   "itemId": "678598686014",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "Runtime.evaluate 超时（25000ms）（页面出现验证控件，需人工处理后再跑）"
+  },
+  {
+   "itemId": "679380994840",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "Runtime.evaluate 超时（25000ms）（页面出现验证控件，需人工处理后再跑）"
+  },
+  {
+   "itemId": "758065104449",
+   "ok": true,
+   "skuCount": 108,
+   "reviewCount": 40,
+   "title": "日式免安装长方形亚克力浴缸小户型独立式家用无缝一体成型小浴盆",
+   "shopName": "海浪浴缸",
+   "attrNames": [
+    "长度(8)",
+    "颜色分类(15)"
+   ],
+   "reviewTotal": "700"
+  },
+  {
+   "itemId": "646852280649",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "Runtime.evaluate 超时（25000ms）（页面出现验证控件，需人工处理后再跑）"
+  },
+  {
+   "itemId": "668025247116",
+   "ok": true,
+   "skuCount": 36,
+   "reviewCount": 40,
+   "title": "家用成人小户型整体日式迷你深泡独立式可移动浴盆泡澡亚克力浴缸",
+   "shopName": "佛山亿金卫浴厂家",
+   "attrNames": [
+    "颜色分类(36)"
+   ],
+   "reviewTotal": "400"
+  },
+  {
+   "itemId": "902726522803",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "Runtime.evaluate 超时（25000ms）（页面出现验证控件，需人工处理后再跑）"
+  },
+  {
+   "itemId": "834577264183",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "Runtime.evaluate 超时（25000ms）（页面出现验证控件，需人工处理后再跑）"
+  },
+  {
+   "itemId": "955450553575",
+   "ok": true,
+   "skuCount": 48,
+   "reviewCount": 40,
+   "title": "加厚家用成人亚克力小户型免安装民宿双层保温独立式水疗网红浴缸",
+   "shopName": "宜雅卫浴直销店",
+   "attrNames": [
+    "长度(8)",
+    "颜色分类(6)"
+   ],
+   "reviewTotal": "400"
+  }
+ ],
+ "outputs": [
+  {
+   "written": true,
+   "rows": 387,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 9,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 200,
+   "existing": 0
+  }
+ ]
+}

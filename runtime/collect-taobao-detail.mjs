@@ -21,6 +21,7 @@
 //
 // 退出码：0 = 全部商品成功；1 = 有商品失败（已采到的仍落盘）。
 // 写盘保护：本次 0 行时不落盘、原文件保持不动（加 --allow-empty 才写空表）。
+// 撞滑块：保留被验证的标签页供人工处理，并立刻停止后续商品（--close-on-challenge 可退回旧行为）。
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -78,11 +79,14 @@ function parseArgs(argv) {
     port: PROJECT_PORTS.competitorBrowser,
     dryRun: false,
     allowEmpty: false,
+    closeOnChallenge: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--dry-run') { options.dryRun = true; continue; }
     if (arg === '--allow-empty') { options.allowEmpty = true; continue; }
+    if (arg === '--close-on-challenge') { options.closeOnChallenge = true; continue; }
+    if (arg === '--reuse-tab') { options.reuseTab = true; continue; }
     const key = VALUE_OPTIONS.get(arg);
     if (!key) throw new Error(`未知参数：${arg}`);
     const value = argv[i + 1];
@@ -221,6 +225,42 @@ const PAGE_STATE_EXPR = `JSON.stringify({
   readyState: document.readyState
 })`;
 
+// 失败取证用：比 PAGE_STATE_EXPR 多几个能解释「为什么卡」的字段。
+const FAILURE_STATE_EXPR = `JSON.stringify({
+  url: location.href.slice(0, 300),
+  title: (document.title || '').slice(0, 120),
+  readyState: document.readyState,
+  hasSdk: !!(window.lib && window.lib.mtop && typeof window.lib.mtop.request === 'function'),
+  hasPuzzle: !!document.querySelector('#nocaptcha,[class*="nc_iconfont"],[id*="nc_1_wrapper"],iframe[src*="punish"]'),
+  loginWall: /login\\.taobao\\.com|havanaone|login_jump/u.test(location.href),
+  bodyText: (document.body ? document.body.innerText : '').slice(0, 600)
+})`;
+
+// 读失败时的页面状态。超时短、错误全吞：取证不能把已经出错的流程再挂一次。
+async function readState(session, sessionId) {
+  try {
+    return await evaluateJson(session, sessionId, FAILURE_STATE_EXPR, 5000);
+  } catch (error) {
+    return { unreadable: error && error.message ? error.message : String(error) };
+  }
+}
+
+// 存一张失败时的截图。文字状态读不到时（renderer 卡住），截图是唯一还能用的证据。
+async function captureScreenshot(session, sessionId, rawOut, itemId) {
+  if (!rawOut) return null;
+  try {
+    const shot = await session.send('Page.captureScreenshot', { format: 'png' }, sessionId, 8000);
+    if (!shot || !shot.data) return null;
+    const dir = path.dirname(rawOut);
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, `fail-${itemId}.png`);
+    fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
+    return file;
+  } catch {
+    return null;
+  }
+}
+
 // 在页面主世界发一次 mtop。签名与风控参数由页面自算，这里不碰。
 function mtopExpression({ api, version, data }) {
   return `(async () => {
@@ -332,6 +372,20 @@ function writeJson(filePath, value) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 1)}\n`, 'utf8');
 }
 
+// 找一个已经停在该浏览器里的淘宝标签页来复用。
+// 只认详情页/商品页，不碰搜索页和别的站点——那些是别人正在看的。
+export async function findReusableTab(port) {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return null;
+    const targets = await response.json();
+    return targets.find((t) => t.type === 'page'
+      && /^https?:\/\/(item|detail|chaoshi\.detail)\.(taobao|tmall)\.com\//u.test(t.url || '')) || null;
+  } catch {
+    return null;
+  }
+}
+
 export function resolveItemIds(options) {
   if (options.items) {
     const ids = String(options.items).split(',').map((s) => s.trim()).filter(Boolean);
@@ -378,10 +432,31 @@ async function main() {
   const reviewRows = [];
   const perItem = [];
   let failures = 0;
+  // 撞到滑块时置真：标签页留着给人拖，不关。
+  let keepTargetOpen = false;
+  // 撞到滑块的那个下标；>=0 表示已停，不再尝试后面的商品。
+  let challengedAt = -1;
 
   try {
-    const created = await session.send('Target.createTarget', { url: 'about:blank' });
-    targetId = created.targetId;
+    // 2026-10-26 实测差异：同一个商品、同一时刻，
+    //   · 新建标签页（Target.createTarget）→ 页面被盖一层滑块，mtop 挂住
+    //   · 已经在那儿放着的标签页 → 接口 2000ms 正常返回
+    // 所以给一条「复用已开标签页」的路：风控盯的是新会话，不是账号。
+    let reused = false;
+    if (options.reuseTab) {
+      const existing = await findReusableTab(options.port);
+      if (existing) {
+        targetId = existing.id;
+        reused = true;
+        console.log(`[详情] 复用已开的标签页 ${targetId}（${String(existing.url).slice(0, 70)}）`);
+      } else {
+        console.log('[详情] 没找到可复用的淘宝标签页，新建一个');
+      }
+    }
+    if (!targetId) {
+      const created = await session.send('Target.createTarget', { url: 'about:blank' });
+      targetId = created.targetId;
+    }
     const attached = await session.send('Target.attachToTarget', { targetId, flatten: true });
     sessionId = attached.sessionId;
     await session.send('Page.enable', {}, sessionId);
@@ -389,6 +464,7 @@ async function main() {
     for (let index = 0; index < itemIds.length; index += 1) {
       const itemId = itemIds[index];
       const record = { itemId, ok: false, skuCount: 0, reviewCount: 0 };
+      let stage = 'navigate';
       try {
         const url = `https://item.taobao.com/item.htm?id=${itemId}`;
         await session.send('Page.navigate', { url }, sessionId, NAV_TIMEOUT_MS);
@@ -396,6 +472,7 @@ async function main() {
         const host = new URL(state.url).hostname;
         if (!DETAIL_HOSTS.has(host)) throw new Error(`不在详情页（${state.url}）`);
 
+        stage = 'sku';
         const item = await collectSku(session, sessionId, itemId);
         record.title = item.title;
         record.shopName = item.seller.shopName;
@@ -411,6 +488,7 @@ async function main() {
           record.note = '无 skuBase（单规格）';
         }
 
+        stage = 'review';
         const { reviews, meta } = await collectReviews(session, sessionId, itemId, {
           pages: options.reviewPageCount,
           pageSize: options.pageSizeNumber,
@@ -424,9 +502,22 @@ async function main() {
       } catch (error) {
         failures += 1;
         record.error = error && error.message ? error.message : String(error);
+        record.stage = stage;
+        // 失败取证：把「屏幕上到底是什么」留下来，而不是只留一句超时。
+        // 这三个调用都用短超时且各自吞错——取证本身不能把流程再拖死一次。
+        record.state = await readState(session, sessionId);
         const challenge = await detectChallenge(session, sessionId);
         if (challenge) record.error += `（页面出现${challenge}，需人工处理后再跑）`;
-        console.error(`[详情] ${index + 1}/${itemIds.length} ${itemId} 失败：${record.error}`);
+        // 接口阶段超时，本身就是「被风控挂住」的典型形态：连状态都读不出来时
+        // detectChallenge 也是空的，所以不能只靠它判断。
+        const heldByRisk = Boolean(challenge) || (/超时/u.test(record.error) && (stage === 'sku' || stage === 'review'));
+        if (heldByRisk) {
+          keepTargetOpen = options.closeOnChallenge !== true;
+          record.note = record.note || '撞验证，后续商品不再尝试';
+          challengedAt = index;
+        }
+        record.screenshot = await captureScreenshot(session, sessionId, options.rawOut, itemId);
+        console.error(`[详情] ${index + 1}/${itemIds.length} ${itemId} 失败（${stage} 阶段）：${record.error}`);
       }
       perItem.push(record);
 
@@ -438,6 +529,15 @@ async function main() {
       }
 
       if (index < itemIds.length - 1) {
+        if (challengedAt >= 0) {
+          // 撞验证就停，剩余不再尝试。
+          for (let rest = index + 1; rest < itemIds.length; rest += 1) {
+            perItem.push({ itemId: itemIds[rest], ok: false, skuCount: 0, reviewCount: 0, skipped: true, note: '撞验证，未尝试' });
+            failures += 1;
+          }
+          console.warn(`[详情] 第 ${index + 1} 个商品撞到验证，剩余 ${itemIds.length - index - 1} 个未尝试，先停。`);
+          break;
+        }
         const wait = jitter(options.frequencyRange);
         console.log(`[详情] 等 ${(wait / 1000).toFixed(1)} 秒再取下一个商品`);
         await sleep(wait);
@@ -462,8 +562,14 @@ async function main() {
     if (skipped) console.warn(`[详情] 有 ${skipped} 个输出因 0 行被跳过，原文件未改动`);
     return failures === 0 ? 0 : 1;
   } finally {
-    if (targetId) {
+    // 撞到验证时**不关**这个标签页：滑块是画在该页面上的一层弹窗，
+    // 关掉它，人就永远没有地方去拖。留着它，并在日志里点名，才可能被解掉。
+    // 复用的标签页也一律不关——那是用户的窗口，不是我们开的。
+    if (targetId && !keepTargetOpen && !reused) {
       try { await session.send('Target.closeTarget', { targetId }, undefined, 5000); } catch { /* 关不掉就算了 */ }
+    } else if (targetId && keepTargetOpen) {
+      console.warn(`[详情] 已保留被验证的标签页（targetId=${targetId}）。`);
+      console.warn('[详情] 请在浏览器窗口里把那个滑块拖过去，然后重跑；同 profile 的验证态会一起解除。');
     }
     session.close();
   }

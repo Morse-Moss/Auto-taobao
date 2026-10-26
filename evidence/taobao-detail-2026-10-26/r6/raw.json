@@ -1,0 +1,53 @@
+{
+ "at": "2026-10-26T10:30:45.329Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 2,
+ "failures": 0,
+ "items": [
+  {
+   "itemId": "597600994634",
+   "ok": true,
+   "skuCount": 60,
+   "reviewCount": 40,
+   "title": "TW特拉维尔独立式人造石浴缸家用小户型酒店民宿成人PMMA椭圆浴盆",
+   "shopName": "TW特拉维尔旗舰店",
+   "attrNames": [
+    "长度(6)",
+    "颜色分类(10)"
+   ],
+   "reviewTotal": "800"
+  },
+  {
+   "itemId": "678598686014",
+   "ok": true,
+   "skuCount": 50,
+   "reviewCount": 40,
+   "title": "SSWW浪鲸深泡浴缸小户型家用日式亚克力独立式国家补贴迷你可移动",
+   "shopName": "ssww浪鲸浴缸旗舰店",
+   "attrNames": [
+    "长度(7)",
+    "颜色分类(8)"
+   ],
+   "reviewTotal": "700"
+  }
+ ],
+ "outputs": [
+  {
+   "written": true,
+   "rows": 110,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 4,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 80,
+   "existing": 0
+  }
+ ]
+}

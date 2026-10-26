@@ -1,0 +1,34 @@
+{
+ "at": "2026-10-26T10:28:26.915Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 1,
+ "failures": 1,
+ "items": [
+  {
+   "itemId": "597600994634",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "详情页未就绪（最后状态：{\"hasSdk\":false,\"url\":\"https://login.taobao.com/havanaone/login/login.htm?bizName=taobao&redirectURL=https%3a%2f%2fdetail.tmall.com:443/wow/z/app/tbpc/pc-detail-ssr-2025/home%2F_____tmd_____%2Fpage%2Flogin_jump%3Frand%3DS3WxGHAgAt756EpznwfNzJq2AFA2qBNla3j6EINUS8We9dazM_iKElp8DwVSHZUevpC41Bx7RzivXIj9RnZgdg%26_lgt_%3De0ae64cc0b29f2b6e28841670bbfbd53___343980___947bbbd2cc9a78dadc18266629963f44___837b211a0c5c4d0311617da5fff37e257cad377890b4c45ccdf2cb0fd662949d64f0ebf1a281b729c8196719df976e5328bb2503c61b5b88b4d6cc87f93aba7099f46f50fd68892b80ce8bb3765d02d037a699887523fbfe9363fdf5789f36817a98f6e85580eaccf7dc1693a9bfecc80fa5a006f894296684ae17bbd0aade11b95198cc4f67ea47a56eb3b0b965f863a501666864a139eff2f48f256f2d2b52ea964bd3bcdfacb9328254416ab0a02aebdbc7523fff1a1c8321561d2fd8f0c189fe2a9b55782785a79d3f206cc05e86f253a691693518fdfbc13584c01b140d742d0e67270fdc4008b556e23e273075b6badceacd0e17f352eea510560e1b9ffbb37ef67bb5ae7a7e7dcd9a6c71cdd764f0ebf1a281b729c8196719df976e5328bb2503c61b5b88b4d6cc87f93aba7099f46f50fd68892b80ce8bb3765d02d004a54ab2d251296d09ba45b1a39f97a64365be949bbfb85c2f3719bbec315ef9568ceadbda448ba90796994c3fcb9c45%26uuid%3De0ae64cc0b29f2b6e28841670bbfbd53\",\"readyState\":\"complete\"}）"
+  }
+ ],
+ "outputs": [
+  {
+   "written": false,
+   "rows": 0,
+   "existing": 0
+  },
+  {
+   "written": false,
+   "rows": 0,
+   "existing": 0
+  },
+  {
+   "written": false,
+   "rows": 0,
+   "existing": 0
+  }
+ ]
+}
