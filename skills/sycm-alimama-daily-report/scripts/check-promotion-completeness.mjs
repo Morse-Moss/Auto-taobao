@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { collectingShopKeys } from '../../../runtime/browser-ports.mjs';
-import { activeProfileName, promotionDailyTargets, targetCredentials } from '../../../runtime/feishu-targets.mjs';
+import { activeProfileName, departmentOfShop, promotionDailyTargets, targetCredentials } from '../../../runtime/feishu-targets.mjs';
 import { FeishuClient } from '../../xws-to-feishu-base/scripts/feishu-client.mjs';
 import { expectedUnits, judgePromotionCompleteness, receiptFacts, shopSubjectSets } from './promotion-completeness-core.mjs';
 
@@ -76,18 +76,34 @@ async function main(argv) {
   const units = expectedUnits({ shops: shopList });
 
   const activeProfile = profile ?? activeProfileName();
-  // 按月解析（2026-10-16）：与导入器同一口径，缺月 fail-closed，不回落上个月。
-  const target = promotionDailyTargets(activeProfile, date);
+  // 按月 × 部门解析（2026-10-26，二部接入）：与导入器同一口径，缺月/缺部门 fail-closed。
+  //
+  // 为什么这里必须改成「按部门各读一张表、再把行合起来」：原先只解析一个 target，
+  // 二部接入后那些行在**另一张表**里 —— 只读 1 部那张，二部的每个单元都会被判成
+  // 「飞书里没有」，而真实原因是「读错了表」。这种假缺口比漏检更糟：它会让人去重跑
+  // 已经写对了的数据，而重跑会因为幂等键而一行都不写、看起来像又一次失败。
+  const departments = [...new Set(shopList.map((shop) => departmentOfShop(shop)))].sort();
+  const targetsByDepartment = new Map();
+  for (const department of departments) {
+    const target = promotionDailyTargets(activeProfile, date, department);
+    if (!target.baseToken) { console.error(`推广日报目标未完整配置（profile=${activeProfile}，部门=${department}）`); return 2; }
+    targetsByDepartment.set(department, target);
+  }
   // 凭据按目标取（2026-10-17）：与导入器同一份凭据，避免「导入器用 A 组织凭据写、
   // 对账器用 B 组织凭据读」⇒ 读回 0 行、却把「读不到」当成「没写」。
-  const credentials = targetCredentials(target, activeProfile);
-  if (!target.baseToken) { console.error(`推广日报目标未完整配置（profile=${activeProfile}）`); return 2; }
   const feishuRecords = {};
   for (const kind of ['keyword', 'audience']) {
-    const tableId = target.tables?.[kind];
-    if (!tableId) { console.error(`推广日报 ${kind} 目标未配置`); return 2; }
-    const client = new FeishuClient({ appId: credentials.appId, appSecret: credentials.appSecret, appToken: target.baseToken, tableId });
-    feishuRecords[kind] = await client.listRecords();
+    const rows = [];
+    for (const [department, target] of targetsByDepartment) {
+      const tableId = target.tables?.[kind];
+      if (!tableId) { console.error(`推广日报 ${kind} 目标未配置（部门=${department}）`); return 2; }
+      const credentials = targetCredentials(target, activeProfile);
+      const client = new FeishuClient({ appId: credentials.appId, appSecret: credentials.appSecret, appToken: target.baseToken, tableId });
+      const read = await client.listRecords();
+      console.log(`[对账门] 读 ${department} ${kind}：${target.baseName} / ${tableId} → ${read.length} 行`);
+      rows.push(...read);
+    }
+    feishuRecords[kind] = rows;
   }
   // 人群归属映射的唯一来源＝回执捕获的 subjectIds（导入器从该店 CSV 实测）。
   // ⚠️ 不要用阿里妈妈会员ID（shopIdentity 的会员数字字段）做归属：会员ID 与主体ID 是

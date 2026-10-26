@@ -1,6 +1,13 @@
 #!/usr/bin/env node
-// 销售一部推广日报编排器。
+// 推广日报编排器。
 // 复用 run-promotion-daily-report.mjs 的页面/下载实现；这里只负责逐店、分批、导入和失败隔离。
+//
+// 文件名里的 `sales1` 是历史（它出生时这条链只服务销售一部）。2026-10-26 二部接入后，
+// 它的范围＝**参与采集的全部店铺**，写入哪张 base 由每家店的部门决定（导入器里
+// `departmentOfShop(店)` → `promotionDailyTargets(…, 部门)`）。文件名没改，是因为
+// `runtime/workflow-catalog.mjs` 与 `runtime/batch-plan.mjs` 两处登记表都以这个字符串为准
+// （有用例逐字钉住），改名要同时动两处登记与三份用例 —— 收益为 0，风险不为 0。
+// 但**语义已经变了**：任何按名字以为「这里只管一部」的推断，都是错的。
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,7 +28,15 @@ const REPO_ROOT = path.resolve(HERE, '../../..');
 const DRIVER = path.join(HERE, 'run-promotion-daily-report.mjs');
 const IMPORTER = path.join(HERE, 'import-promotion-daily-report.mjs');
 const NOTIFY_CLI = path.resolve('runtime/notify-feishu.mjs');
-const SALES1 = Object.freeze(['里可林淘宝', '网林天猫', '盖文淘宝', '盖文天猫', '科塔淘宝', '网林淘宝', '里可林天猫', '网林家居']);
+// 推广日报的店铺范围（2026-10-26 改）：**参与采集的全部**，不再是一部的字面名单。
+//
+// 为什么换成推导而不是把二部那 5 家补进数组：那份 8 家的数组抄自 `SHOP_BROWSERS`，
+// 是同一件事的第二份真相源。加店/换店时它不会自己变，而症状是「新店永远不在推广链里」
+// ——不报错、日志上像是一次正常的轮次。`collectingShopKeys()` 就是那个唯一来源，
+// 顺序也与登记表一致（一部 8 家在前），所以切批结果与从前逐字相同。
+function promotionDailyShops() {
+  return collectingShopKeys();
+}
 
 // 推广链的飞书告警（P0-2，2026-10-11）：失败才投递、投递前去重、成功才记账——手法逐字对齐
 // 日报链 run-multi-shop-day.mjs 的 sendRoundAlert（--alert-file 走文件不走 stdin 管道、stdio
@@ -88,15 +103,26 @@ export function deliverPromotionAlert({ alert, throttleFile, exec = spawnSync, n
   return { delivered: true, suppressed: false };
 }
 
-export function promotionSales1Plan({ shops = SALES1 } = {}) {
+/**
+ * 把点名店铺校验成「参与采集的店」，并原样作为**一批**返回（切批在分批层做）。
+ *
+ * 名字里的 `Sales1` 与文件名同理，是历史。判据已经不再是「在一部的 8 家里」——
+ * 二部接入后那条判据会把二部整批拒掉（而它们现在是要跑的）。
+ * 但**仍然 fail-closed**：不在 `collectingShopKeys()` 里的名字（拼错、已停采的店）当场抛，
+ * 且报错要点名是哪几家 —— 静默跳过会让「跑完了」和「少跑一家」长得一模一样。
+ */
+export function promotionSales1Plan({ shops = promotionDailyShops() } = {}) {
   const allowed = new Set(collectingShopKeys());
-  const unknown = shops.filter((shop) => !allowed.has(shop) || !SALES1.includes(shop));
-  if (unknown.length) throw new Error(`推广日报店铺不在销售一部采集范围：${unknown.join('、')}`);
+  const unknown = shops.filter((shop) => !allowed.has(shop));
+  if (unknown.length) {
+    throw new Error(`推广日报店铺不在采集范围：${unknown.join('、')}`
+      + `（参与采集的是 ${allowed.size} 家；拼错或已停采都不许静默跳过）`);
+  }
   return shops.length ? [shops] : [];
 }
 
 export function parsePromotionSales1Args(argv) {
-  const out = { date: null, shops: SALES1, apply: false, downloads: null, evidence: 'evidence/promotion-sales1', notify: false };
+  const out = { date: null, shops: promotionDailyShops(), apply: false, downloads: null, evidence: 'evidence/promotion-sales1', notify: false };
   for (let i = 0; i < argv.length; i += 1) {
     const key = argv[i];
     if (key === '--date') out.date = argv[++i];

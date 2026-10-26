@@ -19,8 +19,13 @@ test('推广入口保留公共批次顺序，不在入口内切批', () => {
 });
 
 
-test('推广日报拒绝销售二部或未登记店铺', () => {
-  assert.throws(() => promotionSales1Plan({ shops: ['保拉淘宝'] }), /不在销售一部采集范围/u);
+test('推广日报接受销售二部，但仍拒绝未登记店铺（2026-10-26 二部接入）', () => {
+  // 2026-10-26 白天这条断言是反的（保拉淘宝必须被拒），因为二部的推广 base 还没登记。
+  // 当晚 `2026-10:sales2` 登记后，拒掉二部就变成「少跑 5 家且不报错」。
+  assert.deepEqual(promotionSales1Plan({ shops: ['保拉淘宝', '安比淘宝'] }), [['保拉淘宝', '安比淘宝']]);
+  // 但 fail-closed 不许丢：拼错、或早已停采的店名照样当场抛，且报错要点名是哪几家。
+  assert.throws(() => promotionSales1Plan({ shops: ['不存在的店'] }), /不在采集范围/u);
+  assert.throws(() => promotionSales1Plan({ shops: ['里可林淘宝', '不存在的店'] }), /不存在的店/u);
 });
 
 test('推广入口接受公共批次的 yesterday 日期并解析为目标日期', () => {

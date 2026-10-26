@@ -298,10 +298,12 @@ export function dailyReportCredentials(name, options = {}) {
 // 因为没有任何信号会响。商品数据链 2026-09-30 已经踩过并修掉了同一形态（见
 // PRODUCT_DATA_MONTH_BASES 的注释），这里照同一模式办。
 //
-// 键形状与商品链一致（`YYYY-MM:部门`）。当前推广日报只服务销售1部
-// （`collectingShopKeys()` 那 8 家；销售2部整部门停采，未涉及）—— 部门因此由链的身份决定，
-// 而不是按店铺解析：2 部接入推广时，调用方按店铺部门分流，注册表加键即可。
-// 缺月一律抛错，**绝不回落到上个月**：回落会「跑成功但写进运营不看的表」。
+// 键形状与商品链一致（`YYYY-MM:部门`）。**部门由店铺决定，不再由链的身份决定**
+// （2026-10-26 改）：此前这条链只服务销售1部，注册表里只有 `2026-10:sales1`，
+// `promotionDailyTargets` 的 department 参数还带 `= 'sales1'` 默认值 —— 二部接入那天，
+// 任何一处调用忘了传部门，就会**静默写进一部的表**，而收据上一切正常。
+// 现在默认值已删（缺部门直接抛）、导入器与对账门都按 `departmentOfShop(店)` 解析。
+// 缺月/缺部门一律抛错，**绝不回落到上个月、也不回落到别的部门**：回落会「跑成功但写进运营不看的表」。
 export const PROMOTION_DAILY_MONTH_BASES = Object.freeze({
   // 2026-10-16 换组织：改用别的组织（rcnbpuvafkct）那张同名 base（与店铺日报同组织）。
   // 回滚 = 换回 kcne 那张：Cqavb19NlaMUIIswp5IcMHWCnKb / tblbSGMO2apOKuAZ / tblyjD5058Mjbmcv。
@@ -316,17 +318,38 @@ export const PROMOTION_DAILY_MONTH_BASES = Object.freeze({
       audience: 'tbl7CUAdPMKJwKYp',
     }),
   }),
+  // 2026-10-26：销售2部接入推广日报。base 与表 id 来自用户当天 10:17 那版
+  // 《店铺账号信息表.xlsx》的「对应飞书推广表格 / 飞书推广表格链接」两列（G/H 列），
+  // 不是猜的：链接解析出 base=RWuxbD8I3aFBkus3On8cn3sGnBe，再用接口读出三个页签。
+  // 换 base 之前**逐字段比对过**（2026-10-26 只读）：关键词数据 78 字段、人群数据 74 字段，
+  // 与 1 部那张**逐字段（含顺序）完全一致** ⇒ 写入逻辑不动，只登记目标。
+  // 这是与商品链 2026-09-30 换 base 同一条纪律：签名一致才允许「只换 token」。
+  '2026-10:sales2': Object.freeze({
+    baseToken: 'RWuxbD8I3aFBkus3On8cn3sGnBe',
+    baseName: '10月推广数据-销售2部',
+    // 同组织（rcnbpuvafkct），凭据文件与 1 部那张相同。
+    envFile: 'E:/小红书/.env.feishu-rcnb.local',
+    tables: Object.freeze({
+      keyword: 'tbl8XlaVkRtWoi5i',
+      audience: 'tbln0U2ocO3MvSIn',
+    }),
+  }),
 });
 
 /**
- * 推广日报目标解析。传了 `dateInput` 就走按月注册表（缺月 fail-closed）；
+ * 推广日报目标解析。传了 `dateInput` 就走按月注册表（缺月/缺部门一律 fail-closed）；
  * 不传则回落 profile 单对象（旧调用形态的兼容路径，只用于不按天跑的排查脚本）。
  *
- * 与 `productDataTargetsForShop` 的分工：那一支按**店铺**解析部门（一条链跑多家店），
- * 这一支的部门由链的身份固定（推广日报当前就是 sales1 专用），所以签名是
- * `(name, dateInput, department)` 而不是按店。
+ * `department` **没有默认值**（2026-10-26 改）。原先默认 `'sales1'`，看着方便，实则是
+ * 一颗「默认值即目标」的地雷：二部接入后，任何一处调用忘了传部门，数据就静默写进一部的表，
+ * 而且收据、回读、对账门全会说「齐」——因为它们读的也是同一张一部的表。
+ * 现在漏传直接抛，报错里点名该传什么。
+ *
+ * 与 `productDataTargetsForShop` 的分工：那一支按**店铺**解析部门再查注册表；
+ * 这一支收的是**已解析好的部门**（调用方用 `departmentOfShop(店)` 算），
+ * 所以签名是 `(name, dateInput, department)` 而不是按店 —— 推广链是「一家店一份回执」跑的。
  */
-export function promotionDailyTargets(name, dateInput, department = 'sales1') {
+export function promotionDailyTargets(name, dateInput, department) {
   if (dateInput === null || dateInput === undefined) {
     const legacy = getProfile(name).promotionDaily;
     if (!legacy) {
@@ -334,14 +357,21 @@ export function promotionDailyTargets(name, dateInput, department = 'sales1') {
     }
     return legacy;
   }
+  // 传了日期却不传部门 ⇒ 当场停。默认回落到某个部门是本文件最贵的一种「方便」：
+  // 写错部门不会报错，只会让两个部门的数据挤进同一张表（或写进没人看的表）。
+  if (!department) {
+    throw new Error('promotionDailyTargets 需要一个部门（sales1 / sales2 …）—— '
+      + `部门从店铺来：用 departmentOfShop(店) 算，别在这里给默认值。收到 ${JSON.stringify(department)}`);
+  }
   const key = `${feishuMonthOf(dateInput)}:${department}`;
   const target = PROMOTION_DAILY_MONTH_BASES[key];
   if (!target) {
     throw new Error(`没有「${key.split(':')[0]}」×「${DEPARTMENT_LABELS[department] ?? department}」的推广日报 base`
       + `（profile=${resolveProfileName(name)}，部门=${department}）；`
       + `已登记：${Object.keys(PROMOTION_DAILY_MONTH_BASES).join(' / ')}`
-      + ' —— 新月份要先在飞书建好 base、再把它的 baseToken 与关键词/人群表 id 登记进 PROMOTION_DAILY_MONTH_BASES；'
-      + '不许回落到上个月（那样会「跑成功但写进运营不看的表」，而且收据上看不出来）');
+      + ' —— 新月份要先在飞书建好 base、再把它的 baseToken 与关键词/人群表 id 登记进 PROMOTION_DAILY_MONTH_BASES（'
+      + '表格链接在运营的《店铺账号信息表》G/H 两列）；'
+      + '不许回落到上个月、也不许回落到别的部门（那样会「跑成功但写进运营不看的表」，而且收据上看不出来）');
   }
   return target;
 }
@@ -599,6 +629,12 @@ export function assertProductDataBaseCoverage({
  * 守的是同一件事：**每个登记条目都必须写明凭据文件**。2026-10-16 换组织后，
  * 推广日报那条链会在 `batchCreateRecords` 才炸（读得到、写不了），
  * 比商品链晚得多，也更容易被误读成「写后回读失败 = UNKNOWN_WRITE」而误重试。
+ *
+ * 2026-10-26 加第三条（二部接入后必须有）：**同一个月里，不同部门不许指向同一个 base
+ * 或同一张表**。为什么这条比前两条更值钱：销售1部/2部两张 base 的形状逐字段一致，
+ * 所以「复制 1 部那一条、改了键名忘改 token」这件事**在写入侧完全不会报错** ——
+ * 二部的数据会安静地写进一部的表，回读也对、对账门也齐（它读的也是那张表），
+ * 直到有人按店铺筛数据时才发现混了。形状一致恰恰让这个错误无法自证。
  */
 export function assertPromotionDailyBaseCoverage({ registry = PROMOTION_DAILY_MONTH_BASES } = {}) {
   const problems = [];
@@ -615,10 +651,32 @@ export function assertPromotionDailyBaseCoverage({ registry = PROMOTION_DAILY_MO
       problems.push(`「${key}」的 envFile=${JSON.stringify(entry.envFile)} 不像一个 .env 凭据文件路径`);
     }
   }
+  // 跨部门重复检查：按「月份 × 目标」看有没有两个部门撞在一起。
+  const claimed = new Map();
+  for (const [key, entry] of Object.entries(registry)) {
+    const month = key.split(':')[0];
+    const claim = (what, id) => {
+      if (!id) return;
+      const slot = `${month}|${what}|${id}`;
+      const previous = claimed.get(slot);
+      if (previous && previous !== key) {
+        problems.push(`「${previous}」与「${key}」指向同一个${what}（${id}）—— 不同部门必须是各自独立的 base/表，`
+          + '否则两个部门的数据会混进同一张表，而写入侧不会报错');
+      } else {
+        claimed.set(slot, key);
+      }
+    };
+    claim('base', entry?.baseToken);
+    claim('关键词表', entry?.tables?.keyword);
+    claim('人群表', entry?.tables?.audience);
+  }
   if (problems.length > 0) {
     throw new Error(`推广日报 base 注册表不自洽：\n- ${problems.join('\n- ')}`);
   }
-  return { months: [...new Set(Object.keys(registry).map((key) => key.split(':')[0]))].sort() };
+  return {
+    months: [...new Set(Object.keys(registry).map((key) => key.split(':')[0]))].sort(),
+    departments: [...new Set(Object.keys(registry).map((key) => key.split(':')[1] ?? ''))].filter(Boolean).sort(),
+  };
 }
 
 export function tableId(logicalName, name) {

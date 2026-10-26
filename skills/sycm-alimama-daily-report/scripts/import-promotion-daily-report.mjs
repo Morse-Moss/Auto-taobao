@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { FeishuClient } from '../../xws-to-feishu-base/scripts/feishu-client.mjs';
 import { buildFeishuFields, promotionIdempotencyKey, validateExportRows } from './promotion-daily-report-core.mjs';
-import { activeProfileName, promotionDailyTargets, targetCredentials } from '../../../runtime/feishu-targets.mjs';
+import { activeProfileName, departmentOfShop, promotionDailyTargets, targetCredentials } from '../../../runtime/feishu-targets.mjs';
 import { batchCreateWithLedger, writeFailureIsCertain } from '../../../runtime/import-write-ledger.mjs';
 const PY = `import csv,io,json,sys,zipfile
 sys.stdout.reconfigure(encoding='utf-8')
@@ -50,12 +50,17 @@ function readZip(file) {
 async function main(argv = process.argv.slice(2)) {
   const args = parse(argv); mkdirSync(args.evidence, { recursive: true });
   const profile = args.profile ?? activeProfileName();
+  // 部门按**店铺**解析（2026-10-26 二部接入）：销售1部/2部各有一张「10月推广数据-销售X部」，
+  // 两张表字段签名逐项一致，所以这里传错部门**不会报错**——只会把数据安静写进另一个部门的表。
+  // 唯一可信的来源是 `SHOP_DEPARTMENTS`（`departmentOfShop` 未登记一律抛），不是参数、不是猜。
+  const department = departmentOfShop(args.shop);
   // 按月解析（2026-10-16）：推广日报的 base 由运营按月建，单对象目标会在换 base 后静默写飞。
-  const target = promotionDailyTargets(profile, args.date);
+  const target = promotionDailyTargets(profile, args.date, department);
   // 凭据按**目标**取（2026-10-17）：10 月这张 base 在别的组织，kcne 应用对它只能读，
   // 写会 403/1063004 —— 而且它死在 batchCreateRecords 或写后回读，容易被误读成 UNKNOWN_WRITE。
   const credentials = targetCredentials(target, profile);
-  const receipt = { mode: args.apply ? 'apply' : 'dry-run', date: args.date, shop: args.shop, profile, credentialFile: credentials.file, tables: {}, sources: {} };
+  const receipt = { mode: args.apply ? 'apply' : 'dry-run', date: args.date, shop: args.shop, department, profile,
+    baseToken: target.baseToken, credentialFile: credentials.file, tables: {}, sources: {} };
   for (const kind of ['keyword', 'audience']) {
     const source = readZip(args.files[kind]);
     // 阿里妈妈关键词报表近期新增两列；历史 75 列和当前 77 列均可导入，未知列仍由目标字段映射过滤。

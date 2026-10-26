@@ -70,27 +70,30 @@ test('销售2部 5 家恢复采集：13 家全部在采、登记表不动（2026
   assert.equal(REGISTERED.length, 13, '登记表应当仍是 13 家 —— 采集名单的开关不动登记表');
 });
 
-test('workflow 的部门范围：推广链只切销售一部，日报链切全部（2026-10-26 恢复二部后加）', () => {
-  // 要治的不是「多跑几家」，而是**整批失败**：推广链入口 `run-promotion-sales1.mjs` 是按整批校验的
-  // （`promotionSales1Plan` 里只要有一家不在 SALES1 就抛错），二部混进批次会让同批的一部一起死。
-  const sales1 = Object.entries(SHOP_DEPARTMENTS).filter(([, dept]) => dept === 'sales1').map(([k]) => k);
+test('workflow 的部门范围：推广链覆盖全部已登记部门（2026-10-26 二部接入推广后）', () => {
+  // 这一层是为「整批失败」而存在的：推广链入口 `run-promotion-sales1.mjs` 是按整批校验的
+  // （`promotionSales1Plan` 里只要有一家不在采集范围就整批抛错；函数名里的 Sales1 是历史）。
+  //
+  // 2026-10-26 白天，二部的推广 base 还没登记，范围被收窄成 ['sales1']。
+  // 当晚 `2026-10:sales2` 登记进 PROMOTION_DAILY_MONTH_BASES 之后，收窄就没有理由了 ——
+  // 现在每家店按自己的部门解析 base（导入器里 departmentOfShop），同批混部门不再会整批死。
+  // 所以判据从「只有一部」翻成「全部部门都进来」，并且范围**从 SHOP_DEPARTMENTS 推导**。
   const promotion = batchableShopKeysFor('promotion-daily');
-  assert.deepEqual(promotion, collectingShopKeys().filter((key) => sales1.includes(key)),
-    '推广链的分批对象必须恰好是「参与采集 ∩ 销售一部」');
-  assert.equal(promotion.length, sales1.length, '销售一部每一家都必须在推广链的分批对象里');
+  assert.deepEqual(promotion, collectingShopKeys(),
+    '推广链的分批对象必须是参与采集的全部（二部已登记推广 base，不该再被排除）');
   for (const [key, dept] of Object.entries(SHOP_DEPARTMENTS)) {
-    if (dept !== 'sales2') continue;
-    assert.equal(promotion.includes(key), false,
-      `销售二部的「${key}」不该进推广链批次（推广 base 只登记了 2026-10:sales1）`);
+    assert.equal(promotion.includes(key), true, `部门 ${dept} 的「${key}」必须在推广链批次里`);
     assert.equal(batchableShopKeysFor('daily-report').includes(key), true,
-      `日报链不分部门，二部恢复后「${key}」必须在里面`);
+      `日报链不分部门，「${key}」必须在里面`);
   }
   // 没登记部门范围的 workflow 一律＝参与采集的全部（将来加链时不会莫名被收窄）。
   assert.deepEqual(batchableShopKeysFor('daily-report'), collectingShopKeys());
   assert.deepEqual(batchableShopKeysFor(undefined), collectingShopKeys());
-  assert.deepEqual([...WORKFLOW_DEPARTMENTS['promotion-daily']], ['sales1']);
+  assert.deepEqual([...WORKFLOW_DEPARTMENTS['promotion-daily']],
+    [...new Set(Object.values(SHOP_DEPARTMENTS))].sort(),
+    '部门范围必须从 SHOP_DEPARTMENTS 推导，不许手写一份名单');
   // 收窄到一家不剩时必须抛，**不许**退化成「全部店铺」——
-  // `planBatches` 把空数组当「没点名 ⇒ 全部」，静默退化会让推广链又去跑二部且毫无提示。
+  // `planBatches` 把空数组当「没点名 ⇒ 全部」，静默退化会让推广链去跑本不属于它的部门且毫无提示。
   assert.throws(() => batchableShopKeysFor('promotion-daily', { departments: {} }), /一家都没有/u);
   assert.throws(() => batchableShopKeysFor('promotion-daily', { departments: {} }), /拒绝退化成「全部店铺」/u);
 });

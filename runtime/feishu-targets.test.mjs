@@ -14,6 +14,7 @@ import {
   STABLE_TABLE_KEYS,
   activeProfileName,
   assertProductDataBaseCoverage,
+  assertPromotionDailyBaseCoverage,
   baseUrl,
   competitorBaseToken,
   dailyReportCredentials,
@@ -238,21 +239,60 @@ test('推广日报目标指向销售一部已确认 Base 与两张表', () => {
 // （这张就叫「10月推广数据-销售1部」），单对象目标在 11 月换 base 后会**静默写飞**
 // —— 不报错、数据写进运营不看的表、收据还绿。所以缺月必须 fail-closed，且报错要说清怎么补。
 test('推广日报按月解析：10 月走注册表，11 月未登记一律抛错不回落', () => {
-  const registered = promotionDailyTargets('kcne', '2026-10-08');
+  const registered = promotionDailyTargets('kcne', '2026-10-08', 'sales1');
   assert.equal(registered.baseToken, 'CjLsb7qXRaeaC6srePtcLBkInTh');
   assert.deepEqual(registered.tables, {
     keyword: 'tblSPWt8ZBs0iL7f',
     audience: 'tbl7CUAdPMKJwKYp',
   });
   // 月份取**数据日期**：10-01 的数据进 10 月那张，不是「跑的那天」。
-  assert.equal(promotionDailyTargets('kcne', '2026-10-01').baseToken, 'CjLsb7qXRaeaC6srePtcLBkInTh');
+  assert.equal(promotionDailyTargets('kcne', '2026-10-01', 'sales1').baseToken, 'CjLsb7qXRaeaC6srePtcLBkInTh');
   // 11 月还没登记 ⇒ 不许回落到 10 月（那会「跑成功但写进运营已经不看的那张表」）。
-  assert.throws(() => promotionDailyTargets('kcne', '2026-11-01'), /2026-11/u,
+  assert.throws(() => promotionDailyTargets('kcne', '2026-11-01', 'sales1'), /2026-11/u,
     '新月份没登记时必须停 —— 回落到上个月是最贵的静默失败');
-  assert.throws(() => promotionDailyTargets('kcne', '2026-11-01'),
+  assert.throws(() => promotionDailyTargets('kcne', '2026-11-01', 'sales1'),
     /PROMOTION_DAILY_MONTH_BASES/u, '报错要说清该怎么补：把新 base 登记进 PROMOTION_DAILY_MONTH_BASES');
-  // 部门写错同样当场停（推广日报当前只服务 sales1；2 部接入时加键即可）。
-  assert.throws(() => promotionDailyTargets('kcne', '2026-10-08', 'sales2'), /销售2部/u);
+  // 部门漏传不许回落到某个部门（2026-10-26 改）：原先默认 'sales1'，二部接入后
+  // 任何一处漏传都会把二部数据静默写进一部的表，而回读与对账门读的也是那张表 ⇒ 全绿。
+  assert.throws(() => promotionDailyTargets('kcne', '2026-10-08'), /需要一个部门/u,
+    '漏传部门必须当场停 —— 默认值即目标，是这条链最贵的一种「方便」');
+  assert.throws(() => promotionDailyTargets('kcne', '2026-10-08', ''), /需要一个部门/u);
+});
+
+test('推广日报按部门解析：二部写自己那张 base，不与一部混表', () => {
+  const sales1 = promotionDailyTargets('kcne', '2026-10-26', 'sales1');
+  const sales2 = promotionDailyTargets('kcne', '2026-10-26', 'sales2');
+  assert.equal(sales2.baseToken, 'RWuxbD8I3aFBkus3On8cn3sGnBe');
+  assert.equal(sales2.baseName, '10月推广数据-销售2部');
+  assert.deepEqual(sales2.tables, {
+    keyword: 'tbl8XlaVkRtWoi5i',
+    audience: 'tbln0U2ocO3MvSIn',
+  });
+  // 两张 base 与四个表 id 必须两两不同。形状一致恰恰让「抄错 token」在写入侧无法自证，
+  // 所以这条断言就是那个唯一的自证点。
+  assert.notEqual(sales2.baseToken, sales1.baseToken);
+  assert.notEqual(sales2.tables.keyword, sales1.tables.keyword);
+  assert.notEqual(sales2.tables.audience, sales1.tables.audience);
+  // 未登记部门照样 fail-closed，不给「猜一个」的机会。
+  assert.throws(() => promotionDailyTargets('kcne', '2026-10-26', 'sales3'), /没有「2026-10」×「sales3」|没有「2026-10」/u);
+});
+
+test('推广日报注册表：不同部门指向同一张表必须当场红', () => {
+  // 复制 1 部那条、改了键名忘改 token —— 这是两个人各加一个部门时最容易犯的错，
+  // 而它的症状是「两个部门的数据混进同一张表」，写入侧一个字都不会说。
+  const sales1 = PROMOTION_DAILY_MONTH_BASES['2026-10:sales1'];
+  assert.throws(() => assertPromotionDailyBaseCoverage({
+    registry: { '2026-10:sales1': sales1, '2026-10:sales2': { ...sales1, baseName: '10月推广数据-销售2部' } },
+  }), /指向同一个base/u, '两部共用一张 base 必须拦下');
+  assert.throws(() => assertPromotionDailyBaseCoverage({
+    registry: {
+      '2026-10:sales1': sales1,
+      '2026-10:sales2': { ...sales1, baseToken: 'RWuxbD8I3aFBkus3On8cn3sGnBe' },
+    },
+  }), /指向同一个(关键词表|人群表)/u, '换 base 但忘了换表 id，也必须拦下');
+  // 真实注册表本身必须过得去。
+  assert.doesNotThrow(() => assertPromotionDailyBaseCoverage());
+  assert.ok(assertPromotionDailyBaseCoverage().departments.includes('sales2'));
 });
 
 // 与商品链同一纪律：注册表与 profile 上那份单对象不许各自漂移（两份必有一处会抄错）。

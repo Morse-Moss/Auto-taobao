@@ -1,0 +1,51 @@
+{
+  "mode": "dry-run",
+  "date": "2026-10-25",
+  "shop": "保拉淘宝",
+  "department": "sales2",
+  "profile": "kcne",
+  "baseToken": "RWuxbD8I3aFBkus3On8cn3sGnBe",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "tables": {
+    "keyword": {
+      "tableId": "tbl8XlaVkRtWoi5i",
+      "beforeRows": 1,
+      "plannedRows": 68,
+      "skippedRows": 0,
+      "subjectIds": []
+    },
+    "audience": {
+      "tableId": "tbln0U2ocO3MvSIn",
+      "beforeRows": 1,
+      "plannedRows": 83,
+      "skippedRows": 0,
+      "subjectIds": [
+        "1049844283314",
+        "1051578909809",
+        "864193973384",
+        "892288895799",
+        "892895965277",
+        "892968685760",
+        "892968829257",
+        "916176821993",
+        "916640272254",
+        "920106886202",
+        "920624885754"
+      ]
+    }
+  },
+  "sources": {
+    "keyword": {
+      "file": "C:\\Users\\Administrator\\Downloads\\关键词报表_20261026_112309.zip",
+      "csvName": "关键词报表_20261026_112309.csv",
+      "rows": 68,
+      "columns": 75
+    },
+    "audience": {
+      "file": "C:\\Users\\Administrator\\Downloads\\人群报表_20261026_112325.zip",
+      "csvName": "人群报表_20261026_112325.csv",
+      "rows": 83,
+      "columns": 73
+    }
+  }
+}

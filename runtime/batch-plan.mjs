@@ -160,21 +160,27 @@ export function batchableShopKeys() {
 }
 
 /**
- * 各 workflow 认的**部门范围**（2026-10-26 加）。
+ * 各 workflow 认的**部门范围**（2026-10-26 加，同日二部接入推广后放开）。
  *
  * 为什么需要这一层：分批层原先默认「参与采集的店铺」就是分批对象 —— 这对日报链成立，
  * 对推广链不成立。推广链的入口是 `run-promotion-sales1.mjs`，它对**整批**做校验
- * （`promotionSales1Plan`：批次里只要有一家不在 SALES1 就整批抛错）。
+ * （`promotionSales1Plan`：批次里只要有一家不在采集范围就整批抛错 —— 函数名里的 Sales1
+ *   是历史，2026-10-26 二部接入后它的判据已经改成「在 collectingShopKeys() 里」）。
  * 2026-10-26 恢复销售二部采集后 `collectingShopKeys()` 从 8 家变 13 家 ⇒ 若不在本层收窄，
  * 11:00 那轮按 13 家切批（5+5+3），二部会被混进第二、三批，**同批的一部店铺跟着整批失败**
- * ——症状是「推广链突然报某五家『不在销售一部采集范围』，而它们本来跑得好好的」。
+ * ——症状是「推广链突然报某五家『不在采集范围』，而它们本来跑得好好的」。
+ *
+ * 2026-10-26 晚的变化：当时把范围写死成 `['sales1']`，是因为二部的推广 base 还没登记。
+ * 现在 `2026-10:sales2` 已登记（base 与两张表，字段签名与 1 部逐项一致），
+ * 所以范围改回**全部已登记部门**，并且从 `SHOP_DEPARTMENTS` 推导 —— 加部门时不用改这里。
+ * 留 key 不删：将来某条链若真要只跑一个部门，仍是从这里收窄，而不是在链里写死。
  *
  * 为什么不写在 `run-promotion-sales1.mjs` 里：那是 skills 层，runtime 不能反向 import
  * （`runtime/arch-boundary.test.mjs`）；而「这一轮切几家」本来就是本层的职责。
  * 部门表只从 `feishu-targets.mjs` 的 `SHOP_DEPARTMENTS` 取一份，这里不抄第二份名单。
  */
 export const WORKFLOW_DEPARTMENTS = Object.freeze({
-  'promotion-daily': Object.freeze(['sales1']),
+  'promotion-daily': Object.freeze([...new Set(Object.values(SHOP_DEPARTMENTS))].sort()),
 });
 
 /**

@@ -39,17 +39,22 @@ test('注册表每个条目都显式登记 envFile，跨组织的那几张指向
   for (const [key, entry] of Object.entries(PROMOTION_DAILY_MONTH_BASES)) {
     assert.ok(entry.envFile, `推广注册表「${key}」缺 envFile`);
   }
-  // 事实记账：2026-10 这三张（1 部商品 / 2 部商品 / 1 部推广）在 rcnbpuvafkct 组织里，
+  // 事实记账：2026-10 这四张（1 部商品 / 2 部商品 / 1 部推广 / 2 部推广）在 rcnbpuvafkct 组织里，
   // 2026-09 那张 9 月商品表还在本租户。哪天真换了组织，这条用例会先红，人再改注释。
   assert.equal(PRODUCT_DATA_MONTH_BASES['2026-10:sales1'].envFile, RCNB);
   assert.equal(PRODUCT_DATA_MONTH_BASES['2026-10:sales2'].envFile, RCNB);
   assert.equal(PROMOTION_DAILY_MONTH_BASES['2026-10:sales1'].envFile, RCNB);
+  assert.equal(PROMOTION_DAILY_MONTH_BASES['2026-10:sales2'].envFile, RCNB);
   assert.equal(PRODUCT_DATA_MONTH_BASES['2026-09:sales1'].envFile, 'E:/小红书/.env.feishu-kcne.local');
   // 必须与「这家店这一天该写哪张 base」走同一个解析入口，不能另开一套。
   const target = productDataTargetsForShop('盖文淘宝', '2026-10-16', 'kcne');
   assert.equal(target.envFile, RCNB);
-  const promotion = promotionDailyTargets('kcne', '2026-10-16');
+  const promotion = promotionDailyTargets('kcne', '2026-10-16', 'sales1');
   assert.equal(promotion.envFile, RCNB);
+  // 二部那张与一部同组织，凭据文件相同 —— 但 base 是另一个，别写成同一个。
+  const promotion2 = promotionDailyTargets('kcne', '2026-10-16', 'sales2');
+  assert.equal(promotion2.envFile, RCNB);
+  assert.notEqual(promotion2.baseToken, promotion.baseToken);
 });
 
 test('缺 envFile 的新条目要在启动时红，而不是跑一小时后 403', () => {
