@@ -149,6 +149,56 @@ xwsCan(k)             = !(isSearch() || isDetail()) || hasFunction(k)
 若真要做，得从移动端或其它入口找接口，PC 端当前没有入口可依。优先级应低于买家秀——
 后者至少小旺神验证过接口形态。
 
+### 4.2 详情页风控：不做自动过滑块，因为频率才是瓶颈（2026-10-26 定）
+
+结论先说：**不实现自动拖滑块。** 不是技术上做不到，是做了没有用，还会把风险放大。
+
+**被拦的到底是什么。** 弹窗出现时页面是**完整渲染**的——标题、价格、SKU 区间、评价区都在，
+`readyState=complete`、`window.lib.mtop` 存在（`hasSdk=true`），中间盖一层「请拖动下方滑块还原拼图」
+（`hasPuzzle=true`）。真正被拦的是 **mtop 接口**：弹窗挂出来后页面把 pending 请求攥住不返回，
+25 秒超时。所以「手动打开正常、采集器失败」不矛盾——手动只加载页面，不发接口。
+
+**风控是频率窗口，不是账号锁。** 同一账号、同一 profile：
+
+| 时间 | 事件 |
+|---|---|
+| 18:48 | 撞滑块，标签页挂住 |
+| 20:02 | **无人干预自己恢复**，滑块一动没动，反馈码都没变 |
+
+被挂住的那个标签页确实是废的（它永远停在那儿等人），但它**不拦新会话**。所以正确处置是
+把那个 tab 关掉、等冷却，而不是去解它。拖过去也不改变窗口预算，下一轮照样被拦。
+
+**实测节奏（决定了为什么只能慢慢跑）。**
+
+| 轮次 | 一次跑几个 | 结果 |
+|---|---|---|
+| r7 | 10 | 5 成 5 败 |
+| r13 | 1 | 1/1 |
+| r14 | 3 | 3/3 |
+| r15 | 4 | 4/4 |
+| 20:52 后 | 连续四种打法（新 tab / 复用被弹 tab / 复用干净 tab / 冷启动预热） | 全撞 |
+
+由此反推预算约 **8–10 个商品 / 75 分钟冷却**。稳的打法是**每轮 3–4 个、间隔 8–12 秒**
+（`--min-delay/--max-delay` 默认 3000–6000 已偏快，批量跑要往上调）。
+
+**`--reuse-tab` 绕不过去，还自带一个坑。** 它省不掉验证，因为验证挂在会话上不是挂在 tab 上。
+更糟的是 `findReusableTab()` 原先只按 host 匹配，会把**上一轮被弹过的那个 tab** 又选上
+（同 profile 里它还在），于是下一次跑接着失败——2026-10-26 连撞两次就是这么来的。
+现已加 `POISONED_TAB_RE`（`punish|login.taobao|havanaone|login_jump|_____tmd_____`）排除，
+且复用的页若已被污染直接关掉。
+
+**冷启动会被踢一次登录页，但不是登录态丢了。** 首次进详情页可能跳到
+`login.taobao.com/havanaone/...login_jump`，而同窗口 `www.taobao.com` 显示已登录（实测 tb452480340）。
+先预热导航一个商品再跑即可，不要去重登。
+
+**为什么不干脆做掉它。** 三条：
+
+1. **解的是症状。** 真正的约束是窗口预算，不是那道拼图。窗口满了，拖过去也照样超时。
+2. **风险不对等。** 账号是老板的真实经营账号，对抗性绕过换来的是「这一轮多采几个」，赌的是账号被降权。
+3. **收益有更好的来源。** 降低并发、拉开间隔、分批跨时段跑，是确定能得到全部商品的路；破验证码只是把同一批商品提前几个小时拿到。
+
+代价要写清楚：全量 30 个商品需要**分 3–4 个时段**跑完，不能一口气采。这是已知且接受的限制。
+
 ### 单条评价的数据结构（从 `readReview` 反推，字段名为实测）
 
 ```
@@ -245,8 +295,9 @@ jsonpCallback = xwsitembuyshow
 | 能力 | 落点 | 状态 |
 |---|---|---|
 | 搜索页市场分析 | `runtime/taobao-search-core.mjs`（16 列契约）+ `runtime/collect-taobao-search.mjs`（采集）+ 周表全链 | 已产出 1384 行周表并写入飞书 |
-| **详情页 SKU** | `runtime/taobao-detail-core.mjs`（契约）+ `runtime/collect-taobao-detail.mjs`（采集） | 代码完成、实测通过（2026-10-26，60+50 SKU 两个商品）；受详情页滑块风控限制，全量待人工过一次验证 |
-| **评价下载** | 同上（同一采集器同时取评价） | 同左，实测 40+40 条字段全对 |
+| **详情页 SKU** | `runtime/taobao-detail-core.mjs`（契约）+ `runtime/collect-taobao-detail.mjs`（采集） | 代码完成、实测通过。2026-10-26 已采 **14 个商品 / 1019 个 SKU**（`evidence/taobao-detail-2026-10-26/`）。受频率窗口约束须分时段跑，**不需要人工过验证**（见 4.2） |
+| **评价下载** | 同上（同一采集器同时取评价） | 同左，每条 40 条分页取全，字段实测全对 |
+| **尺寸 / 适用空间 汇总** | `runtime/taobao-sku-dimension-core.mjs`（映射）+ 周表 Lookup(19) | 14 个商品里 **10 个可直接落**（尺寸取自 `长度`）；2 个尺寸缺失、2 个标题无空间词，均如实留空并列出待核验线索（`sku-dimension-report.json`） |
 
 **未吸收（8 项）**，按对我们的价值排序：
 
@@ -279,6 +330,19 @@ done
 
 # 3) 页面内探接口（只读，不写）
 #    借页面 SDK：sdk('mtop.taobao.pcdetail.data.get', {id, detail_v:'3.3.2'})
+
+# 4) 自采详情页（SKU + 评价）。慢是关键，别改快：
+#    每轮 3-4 个、间隔 8-12 秒；一次 10 个会踩频率窗口（见 4.2）
+node runtime/collect-taobao-detail.mjs \
+  --from-csv 周表.csv --out-sku evidence/taobao-detail-2026-10-26/r16/sku.csv \
+  --out-review evidence/taobao-detail-2026-10-26/r16/review.csv \
+  --min-delay 8000 --max-delay 12000 --reviews 1
+
+# 5) 从已采 SKU 汇总出「周表两个 Lookup 会算出什么」，并列出待人工核验的条目
+node runtime/taobao-sku-dimension-core.mjs \
+  --sku evidence/taobao-detail-2026-10-26/r6/sku.csv \
+  --sku evidence/taobao-detail-2026-10-26/r7/sku.csv \
+  --out evidence/taobao-detail-2026-10-26/sku-dimension-report.json
 ```
 
 ---
