@@ -1,0 +1,78 @@
+{
+ "at": "2026-10-26T13:37:45.419Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 4,
+ "failures": 0,
+ "items": [
+  {
+   "itemId": "725950199364",
+   "ok": true,
+   "skuCount": 28,
+   "reviewCount": 40,
+   "title": "箭牌过肩深泡浴缸家用小户型亚克力迷你缸日式网红浴盆政府补贴",
+   "shopName": "箭牌浴缸旗舰店",
+   "attrNames": [
+    "颜色分类(28)"
+   ],
+   "reviewTotal": "500"
+  },
+  {
+   "itemId": "990371081860",
+   "ok": true,
+   "skuCount": 20,
+   "reviewCount": 40,
+   "title": "恒洁浴缸椭圆形家用成人亚克力独立式民宿无缝一体深泡洗澡桶浴盆",
+   "shopName": "恒洁浴缸旗舰店",
+   "attrNames": [
+    "长度(5)",
+    "颜色分类(4)"
+   ],
+   "reviewTotal": "100"
+  },
+  {
+   "itemId": "738991895837",
+   "ok": true,
+   "skuCount": 16,
+   "reviewCount": 40,
+   "title": "新品浴缸家用亚克力独立式无缝加厚酒店宾馆浴缸一体成型厂家直销",
+   "shopName": "步浪卫浴企业店",
+   "attrNames": [
+    "长度(4)",
+    "颜色分类(4)"
+   ],
+   "reviewTotal": "200"
+  },
+  {
+   "itemId": "918581952720",
+   "ok": true,
+   "skuCount": 48,
+   "reviewCount": 40,
+   "title": "加厚家用免安装亚克力保温成人无缝独立式浴缸小户型民宿水疗浴盆",
+   "shopName": "圣美达卫浴直销店",
+   "attrNames": [
+    "长度(8)",
+    "颜色分类(6)"
+   ],
+   "reviewTotal": "200"
+  }
+ ],
+ "outputs": [
+  {
+   "written": true,
+   "rows": 112,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 7,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 160,
+   "existing": 0
+  }
+ ]
+}

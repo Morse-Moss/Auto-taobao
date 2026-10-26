@@ -1,0 +1,77 @@
+{
+ "at": "2026-10-26T13:43:25.721Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 4,
+ "failures": 0,
+ "items": [
+  {
+   "itemId": "757779413515",
+   "ok": true,
+   "skuCount": 77,
+   "reviewCount": 40,
+   "title": "家用小户型亚克力成人无缝一体式酒店民宿高档独立式浴缸欧式浴盆",
+   "shopName": "淋淋安旗舰店",
+   "attrNames": [
+    "长度(7)",
+    "颜色分类(11)"
+   ],
+   "reviewTotal": "63"
+  },
+  {
+   "itemId": "800068505141",
+   "ok": true,
+   "skuCount": 20,
+   "reviewCount": 40,
+   "title": "亚克力家用小户型小型日式迷你移动坐式独立式一体深泡保温小浴缸",
+   "shopName": "佛山意洁卫浴",
+   "attrNames": [
+    "颜色分类(20)"
+   ],
+   "reviewTotal": "100"
+  },
+  {
+   "itemId": "604488122468",
+   "ok": true,
+   "skuCount": 18,
+   "reviewCount": 40,
+   "title": "TOTO小浴缸独立日式进口可移动迷你小户型深泡盆0.8/1/1.2米(08)",
+   "shopName": "TOTO卫浴在线商城",
+   "attrNames": [
+    "颜色分类(18)"
+   ],
+   "reviewTotal": "400"
+  },
+  {
+   "itemId": "960887737974",
+   "ok": true,
+   "skuCount": 32,
+   "reviewCount": 40,
+   "title": "免安装浴缸家用小户型老人可移动独立水疗迷你亚克力民宿成人浴盆",
+   "shopName": "浩博亚克力浴缸浴盆",
+   "attrNames": [
+    "长度(8)",
+    "颜色分类(4)"
+   ],
+   "reviewTotal": "200"
+  }
+ ],
+ "outputs": [
+  {
+   "written": true,
+   "rows": 147,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 6,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 160,
+   "existing": 0
+  }
+ ]
+}

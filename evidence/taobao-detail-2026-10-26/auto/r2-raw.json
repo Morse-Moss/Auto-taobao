@@ -1,0 +1,79 @@
+{
+ "at": "2026-10-26T13:40:32.395Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 4,
+ "failures": 0,
+ "items": [
+  {
+   "itemId": "716507289883",
+   "ok": true,
+   "skuCount": 42,
+   "reviewCount": 40,
+   "title": "亚克力免安装独立式成人老人家用洗浴成人浴缸浴盆厂家直销",
+   "shopName": "沐净雅卫浴企业店",
+   "attrNames": [
+    "长度(6)",
+    "颜色分类(7)"
+   ],
+   "reviewTotal": "400"
+  },
+  {
+   "itemId": "783571917011",
+   "ok": true,
+   "skuCount": 54,
+   "reviewCount": 40,
+   "title": "亚克力免安装欧式酒店家用成人免安装贵妃浴缸浴盆加厚",
+   "shopName": "沐净雅卫浴企业店",
+   "attrNames": [
+    "长度(6)",
+    "颜色分类(9)"
+   ],
+   "reviewTotal": "200"
+  },
+  {
+   "itemId": "44266876838",
+   "ok": true,
+   "skuCount": 126,
+   "reviewCount": 40,
+   "title": "独立式裙边小户型深泡浴缸亚克力浴盆冲浪按摩恒温加热浴池包邮",
+   "shopName": "BATHOME泊思家品牌卫浴店",
+   "attrNames": [
+    "长度(9)",
+    "颜色分类(14)"
+   ],
+   "reviewTotal": "400"
+  },
+  {
+   "itemId": "756622141426",
+   "ok": true,
+   "skuCount": 126,
+   "reviewCount": 40,
+   "title": "新款方形亚克力浴缸双层保温无缝一体家用成人酒店民宿泡澡缸包邮",
+   "shopName": "陈强卫浴工厂店",
+   "attrNames": [
+    "长度(9)",
+    "颜色分类(14)"
+   ],
+   "reviewTotal": "300"
+  }
+ ],
+ "outputs": [
+  {
+   "written": true,
+   "rows": 348,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 8,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 160,
+   "existing": 0
+  }
+ ]
+}

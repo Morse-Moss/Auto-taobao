@@ -1,0 +1,78 @@
+{
+ "at": "2026-10-26T13:46:21.006Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 4,
+ "failures": 0,
+ "items": [
+  {
+   "itemId": "643419966873",
+   "ok": true,
+   "skuCount": 12,
+   "reviewCount": 40,
+   "title": "亚克力无缝一体家用加厚浴室浴缸成人浴盆免安装酒店宾馆厂家直销",
+   "shopName": "步浪卫浴企业店",
+   "attrNames": [
+    "长度(6)",
+    "颜色分类(2)"
+   ],
+   "reviewTotal": "200"
+  },
+  {
+   "itemId": "623177873758",
+   "ok": true,
+   "skuCount": 28,
+   "reviewCount": 40,
+   "title": "【政府补贴】箭牌浴缸单人亚克力气泡按摩家用小户型成人泡澡浴盆",
+   "shopName": "ARROW箭牌卫浴上品生活馆",
+   "attrNames": [
+    "长度(4)",
+    "颜色分类(7)"
+   ],
+   "reviewTotal": "300"
+  },
+  {
+   "itemId": "642336299874",
+   "ok": true,
+   "skuCount": 16,
+   "reviewCount": 40,
+   "title": "家用成人亚克力小户型免安装独立式浴缸儿童浴盆厂家直销一体成型",
+   "shopName": "步浪卫浴企业店",
+   "attrNames": [
+    "长度(8)",
+    "颜色分类(2)"
+   ],
+   "reviewTotal": "200"
+  },
+  {
+   "itemId": "679101884382",
+   "ok": true,
+   "skuCount": 38,
+   "reviewCount": 40,
+   "title": "亚克力家用小户型浴缸独立成人一体日式可移动小型迷你深泡小浴缸",
+   "shopName": "美莱尔卫浴",
+   "attrNames": [
+    "颜色分类(38)"
+   ],
+   "reviewTotal": "200"
+  }
+ ],
+ "outputs": [
+  {
+   "written": true,
+   "rows": 94,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 7,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 160,
+   "existing": 0
+  }
+ ]
+}

@@ -1,0 +1,70 @@
+{
+ "at": "2026-10-26T12:55:53.184Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 4,
+ "failures": 4,
+ "items": [
+  {
+   "itemId": "725950199364",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "error": "Runtime.evaluate 超时（25000ms）（页面出现验证控件，需人工处理后再跑）",
+   "stage": "sku",
+   "state": {
+    "url": "https://detail.tmall.com/item.htm?id=725950199364",
+    "title": "箭牌过肩深泡浴缸家用小户型亚克力迷你缸日式网红浴盆政府补贴-tmall.com天猫",
+    "readyState": "complete",
+    "hasSdk": true,
+    "hasPuzzle": true,
+    "loginWall": false,
+    "bodyText": "tb452480340\n\n网页无障碍\n淘宝网首页\n已买到的宝贝\n我的淘宝\n\n\n购物车\n41\n\n收藏夹\n\n免费开店\n\n千牛卖家中心\n\n帮助中心\n\n亚克力迷你浴缸\n搜索\n搜本店\n箭牌浴缸旗舰店\n4.7\n88VIP好评率99%\n物流好评率98%\n平均9小时退款\n客服\n进店\n参数\n00:25 / 00:41\n倍速\n直播讲解\n视频\n图集\n参数\n用户评价\n参数信息\n图文详情\n本店推荐\n看了又看\n用户评价·400+\n近3个月好评率高达100.0%\n设计效果好看70\n光线温和41\n质量很棒82\n适用范围广17\n款式复古风格7\n出水效果优良10\n空间宽敞14\n懵懂甜心芒\n2026-10-21\n因为地漏在外面，让师傅打了个孔，终于实现了自己的跑造梦，非常不错的浴缸，深度足够，价格也实惠，值得入手\n钟**3\n2026-10-10\n深度足够，小小卫生间也实现了泡澡梦，也是不错的设计。这个能到肩膀，冬天泡着肩膀不冷，深泡真的舒服很多。\n查看全部评价\n\n参数信息\n\n70cm\n宽度\n1人\n适用人数\n防滑设计,溢水口,防滑底面\n附加功能\n亚克力\n材质\n第三方提供上门测量\n上门测量\n双裙边（左裙）\n款式\n60cm\n高度\n长方形\n形状\n品牌\nARROW/箭牌\n型号\n置物板\n安装方式\n靠墙式\n保修期\n5年\n省份\n广东省\n地市\n佛山市\n有调节脚\n有调节脚\n同城服务\n同城物流送货上门\n排水方式\n自然排水 防"
+   },
+   "note": "撞验证，后续商品不再尝试",
+   "screenshot": "evidence\\taobao-detail-2026-10-26\\auto\\fail-725950199364.png"
+  },
+  {
+   "itemId": "990371081860",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "skipped": true,
+   "note": "撞验证，未尝试"
+  },
+  {
+   "itemId": "738991895837",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "skipped": true,
+   "note": "撞验证，未尝试"
+  },
+  {
+   "itemId": "918581952720",
+   "ok": false,
+   "skuCount": 0,
+   "reviewCount": 0,
+   "skipped": true,
+   "note": "撞验证，未尝试"
+  }
+ ],
+ "outputs": [
+  {
+   "written": false,
+   "rows": 0,
+   "existing": 0
+  },
+  {
+   "written": false,
+   "rows": 0,
+   "existing": 0
+  },
+  {
+   "written": false,
+   "rows": 0,
+   "existing": 0
+  }
+ ]
+}
