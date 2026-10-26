@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { acquireWorkflowLock, inspectWorkflowLock, isProcessAlive } from './workflow-lock.mjs';
+import { acquireWorkflowLock, describeWorkflowLockConflict, inspectWorkflowLock, isProcessAlive } from './workflow-lock.mjs';
 
 function tempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'sycm-lock-'));
@@ -169,3 +169,47 @@ test('活人的锁：即使 unlink 被拒也绝不被覆盖写抢走', () => {
   assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).owner, 'daily-report', '活人的锁必须原样留着');
   fs.rmSync(directory, { recursive: true, force: true });
 });
+
+// ── 冲突文案的三态（2026-10-26）──────────────────────────────────────────────
+// 现场成因：2026-10-26 11:00 推广轮已起跑持锁，另一个同名会话到场，旧文案说
+// 「同机另一条采集流程正在跑（日报/商品/推广）」，把「本任务被重复触发」说成「别的链在跑」，
+// 正确动作（别起第二条、去看在跑那轮）一个字都没有。文案改判据不改：能不能拿锁仍由上面那些用例管。
+test('锁冲突文案：持有者是同一流程 ⇒ 说明是本任务重复触发，不给「等别的链」的误导', () => {
+  const busy = { code: 'WORKFLOW_LOCK_BUSY', message: 'workflow lock busy: merchant-automation', lock: { owner: 'run-batches:promotion-daily', pid: 32812 } };
+  const text = describeWorkflowLockConflict(busy, { selfOwner: 'run-batches:promotion-daily' });
+  assert.match(text, /同一流程/u);
+  assert.match(text, /重复触发/u);
+  assert.match(text, /不要起第二条/u);
+  assert.match(text, /32812/u, '持有者 pid 必须点名，人才找得到那条在跑的进程');
+  assert.doesNotMatch(text, /另一条流程/u, '同一个 owner 不能说成「另一条流程」');
+});
+
+test('锁冲突文案：持有者是别的链 ⇒ 让对方等它结束，不要硬跑', () => {
+  const busy = { code: 'WORKFLOW_LOCK_BUSY', message: 'workflow lock busy: merchant-automation', lock: { owner: 'daily-report', pid: 46936 } };
+  const text = describeWorkflowLockConflict(busy, { selfOwner: 'run-batches:promotion-daily' });
+  assert.match(text, /另一条流程/u);
+  assert.match(text, /daily-report/u);
+  assert.match(text, /等它结束/u);
+  assert.doesNotMatch(text, /重复触发/u, '跨链冲突不许说成重复触发 —— 那会让人不去等、直接重试');
+});
+
+test('锁冲突文案：读不出持有者 ⇒ fail-closed 表述，不许猜成「没人在跑」', () => {
+  const text = describeWorkflowLockConflict({ code: 'WORKFLOW_LOCK_BUSY', message: 'workflow lock busy: merchant-automation', lock: null }, { selfOwner: 'daily-report' });
+  assert.match(text, /读不出持有者/u);
+  assert.match(text, /有人在跑/u);
+  assert.doesNotMatch(text, /重复触发|另一条流程/u, '判不了的时候两条结论都不许给');
+});
+
+// 接线守卫（2026-10-26）：三个启动脚本必须都走这一层文案。
+// 断言的是**每个文件各出现一次**，不是全仓「至少出现一次」——单向 includes 会在
+// 「改了两个、漏了第三个」时照样绿，这个坑在 1.12.18 的刷新守卫上踩过。
+test('三个启动脚本都接了冲突文案，且旧文案已被删干净', () => {
+  const scripts = ['scripts/run-batches.mjs', 'scripts/run-daily-job.mjs', 'scripts/run-product-data-job.mjs'];
+  for (const file of scripts) {
+    const source = fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    const callSites = source.split('describeWorkflowLockConflict(').length - 1;
+    assert.equal(callSites, 1, `${file} 应恰好一处调用（import 里没有括号、不计入；实际 ${callSites}）`);
+    assert.doesNotMatch(source, /同机另一条采集流程正在跑/u, `${file} 还留着会误导人的旧文案`);
+  }
+});
+

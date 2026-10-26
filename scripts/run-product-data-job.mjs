@@ -9,7 +9,7 @@ import { describeTargetProbeFailures, probeFeishuTargets } from '../runtime/feis
 import { FeishuClient } from '../skills/xws-to-feishu-base/scripts/feishu-client.mjs';
 import { buildProductJobPlan, PRODUCT_JOB_FILES, SKIP_PROMOTION_REASON } from '../runtime/product-data-job-core.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
-import { acquireWorkflowLock, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
+import { acquireWorkflowLock, describeWorkflowLockConflict, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
 import crypto from 'node:crypto';
 import { classifyWorkflowError, createWorkflowReceipt, writeWorkflowReceipt } from '../runtime/workflow-receipt.mjs';
 import { runEnvironmentPreflight } from '../runtime/environment-preflight.mjs';
@@ -563,7 +563,15 @@ async function main(argv) {
   const logLine = `${options.date} → ${date}；${plan.shops.length} 店；`
     + (batched ? `分 ${rounds.length} 批（每批最多 ${options.batches} 家，**每批跑完立刻释放**）` : '一次全起、结束统一释放');
   try {
-    lock = acquireWorkflowLock(WORKFLOW_LOCK_NAME, 'product-data', { directory: path.join(ROOT, 'runtime', '.workflow-locks') });
+    // 锁冲突单独留一句三态文案（2026-10-26 加）：本文件此前的冲突走下面的通用 catch，
+    // 只会在日志里留下一句 workflow lock busy + 分类 HUMAN_REQUIRED，读的人分不清
+    // 「另一条链在跑」与「本任务被重复触发」。文案不改判据，error 照旧抛给外层分类与告警。
+    try {
+      lock = acquireWorkflowLock(WORKFLOW_LOCK_NAME, 'product-data', { directory: path.join(ROOT, 'runtime', '.workflow-locks') });
+    } catch (error) {
+      if (error?.code === 'WORKFLOW_LOCK_BUSY') log(describeWorkflowLockConflict(error, { selfOwner: 'product-data' }));
+      throw error;
+    }
     if (lock.staleReclaimed) log(`回收过期锁：原持有者=${lock.reclaimedFrom?.owner ?? '未知'}、pid=${lock.reclaimedFrom?.pid ?? '未知'}（该进程已不在）`);
     writeWorkflowReceipt(receiptPath, receipt);
     const preflight = runEnvironmentPreflight({ root: ROOT, workflow: 'product-data' });

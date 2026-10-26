@@ -43,7 +43,7 @@ import { pathToFileURL } from 'node:url';
 import crypto from 'node:crypto';
 
 import {
-  DEFAULT_BATCH_SIZE, batchLoginArtifactName, batchRoundBlockOf, buildBatchSteps, buildLoginPreflightStep,
+  DEFAULT_BATCH_SIZE, batchLoginArtifactName, batchRoundBlockOf, batchableShopKeysFor, buildBatchSteps, buildLoginPreflightStep,
   buildSharedStep, describeBatch, planBatches, releaseAfterBatch, resolveBatchSize,
 } from '../runtime/batch-plan.mjs';
 // 跑前登录守卫那一步的**文件、参数名**都只在那里定义一次（分批这条链与定时链共用）。
@@ -75,7 +75,7 @@ import { getWorkflow, resolveRunMode } from '../runtime/workflow-catalog.mjs';
 // 互斥单位是「机器上的采集」，不是「某条流程」）。
 // 重入保护：抢到锁的进程设 SYCM_WORKFLOW_LOCK_HELD；宿主（run-daily-job）拿锁后也设——
 // 子进程与驻留续跑继承它 ⇒ 跳过抢锁，不会自己撞自己（父进程还持着锁，第二个必 busy）。
-import { acquireWorkflowLock, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
+import { acquireWorkflowLock, describeWorkflowLockConflict, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
 // 统一运行回执（spec §6，run-receipt-v1）与运行根目录（spec §7，run-root）—— 2026-10-10 接入。
 // rounds → 回执的映射抽在 runtime/batch-rounds-receipt.mjs（纯函数，2026-10-10 对抗审查 A 项）：
 // 这里只负责喂 plain data（含逐店 unfixable 名单与 batches.json 的 size/sha256）与落盘。
@@ -382,7 +382,14 @@ async function main(argv) {
   let size;
   try {
     size = resolveBatchSize(options.batchSize, { fallback: DEFAULT_BATCH_SIZE });
-    plan = planBatches({ shops: options.shops, size });
+    // 不点名时按**这条 workflow 自己的**店铺范围切批，而不是「参与采集的全部」：
+    // 范围由 runtime/batch-plan.mjs 的 WORKFLOW_DEPARTMENTS 定（没登记的 workflow ＝ 全部）。
+    // 2026-10-26 恢复二部采集后，这个差别不再是理论上的 —— 按 13 家切批会把二部混进批次，
+    // 而推广链是按**整批**校验的，同批店铺会跟着一起失败。
+    // ⚠️ 同日稍晚推广链登记了二部（2026-10:sales2），WORKFLOW_DEPARTMENTS 已改为从
+    // SHOP_DEPARTMENTS 推导全部部门 ⇒ 现在切批结果＝13 家。这一行仍然必须有：
+    // 它管的是「哪条 workflow 认哪些部门」这件事，而不是「推广链恰好只跑一部」。
+    plan = planBatches({ shops: options.shops ?? batchableShopKeysFor(options.workflow), size });
   } catch (error) {
     console.error(`${error.message}`);
     return 2;
@@ -517,8 +524,7 @@ async function main(argv) {
           directory: path.join(REPO_ROOT, 'runtime', '.workflow-locks'),
         });
       } catch (error) {
-        log(`运行锁冲突：${error.message}；持有者=${JSON.stringify(error.lock ?? null)}`
-          + `（同机另一条采集流程正在跑：日报/商品/推广共用浏览器资源，等它结束再试）`);
+        log(describeWorkflowLockConflict(error, { selfOwner: `run-batches:${options.workflow}` }));
         return 1;
       }
       process.env.SYCM_WORKFLOW_LOCK_HELD = WORKFLOW_LOCK_NAME;

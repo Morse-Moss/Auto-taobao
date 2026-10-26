@@ -15,6 +15,52 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.22] - 2026-10-26
+
+两件事：①运行锁冲突的文案从「一句忙」改成三态判读（区分「本任务被重复触发」与「别的链在跑」，三个启动脚本走同一层文案）；②销售2部接入推广日报链（推广明细），部门不再由链的身份写死。
+
+**为什么改**
+
+- 2026-10-26 11:00 推广轮出现**同一任务被触发两次**：11:01 那一路已起跑并持有 `merchant-automation` 锁，同一时刻另一路会话到场。旧文案是「同机另一条采集流程正在跑：日报/商品/推广共用浏览器资源，等它结束再试」——把「你自己已经在跑」说成了「别的链在跑」，正确动作（别起第二条、去看在跑那轮的证据）一个字都没写出来。人读日志会去等一条根本不存在的日报链。
+- 三个启动脚本各写各的：`run-batches.mjs` 有一句带解释的文案，`run-daily-job.mjs` 只有 `JSON.stringify(lock)`，`run-product-data-job.mjs` 根本没有专门分支 —— 冲突走通用 `catch`，只剩一句 `workflow lock busy` + 分类 `HUMAN_REQUIRED`。同一件事三种说法，读的人每次都要重新推。
+- 判据本身没有缺陷，**本次不动判据**：`acquireWorkflowLock` 只在锁里 pid 确证已死（ESRCH）或已有 `releasedAt` 时回收，活人的锁绝不被覆盖写；`run-batches` 在起任何进程之前就抢锁、抢不到退 1，所以误起第二条不会双写飞书。缺的只是「把判据的结果说清楚」。
+
+**改了什么**
+
+- `runtime/workflow-lock.mjs` 新增 `describeWorkflowLockConflict(error, { selfOwner })`：owner 与 selfOwner 相同 ⇒ 点名「本任务被重复触发，不要起第二条、不要杀那一条，去看它已在跑的证据」；不同 ⇒ 点名持有链与 pid、要求等它结束；读不出 owner/pid ⇒ 按「有人在跑」fail-closed 表述。只做文案，不参与任何决策。
+- 三个调用侧接上：`scripts/run-batches.mjs`（selfOwner=`run-batches:<workflow>`，保留 `return 1`）、`scripts/run-daily-job.mjs`（selfOwner=`daily-report`）、`scripts/run-product-data-job.mjs`（单独 try/catch 只加一句三态日志，error 照旧抛出，分类与告警行为不变）。
+- 故意没改：`runtime/workflow-receipt.mjs` 把 `WORKFLOW_LOCK_BUSY` 归 `HUMAN_REQUIRED`。该路径在 `run-batches` 里不可达（抢锁失败早于收尾写回执），而失败分类是闭合集、改它要同步文档与下游告警口径，收益小于风险 —— 留作人工决策项。
+
+**验证到什么程度**
+
+- 仅离线判据。`node --test runtime/workflow-lock.test.mjs` 13/13 绿（原 9 条 + 新增 4 条：同链/跨链/读不出三态文案 + 三个脚本的接线守卫，守卫断言每个文件**恰好一处**调用且旧文案已删净）。
+- 突变验证两条都转红：把 `if (selfOwner && owner === selfOwner)` 短路成永不成立 ⇒ 同链用例红；把 `run-daily-job.mjs` 的调用换回旧 `log(...)` ⇒ 接线守卫红并指出「实际 0」。
+- 真机判据要等下一次真撞上锁才成立（本版没有主动制造冲突）。未跑 `npm run test:staged`（预算未申请），因此本次改动**没有**完整回归结论。
+
+**追加（同日第二件）：销售2部接入推广日报链**
+
+**为什么改**
+
+- 用户 2026-10-26：「按你推荐的执行，二部要全面接入系统已有的流程，推广明细链也要接」。此前 11:00 推广链只服务销售1部：`PROMOTION_DAILY_MONTH_BASES` 只有 `2026-10:sales1`，`promotionDailyTargets` 的 `department` 参数带 `= 'sales1'` 默认值，链入口里还有一份 8 家的字面名单。
+- 默认值那一条最贵：二部接入后任何一处调用漏传部门，数据会**静默写进一部的表**，而写后回读与对账门读的也是那张表 —— 收据全绿、无人发现。两张 base 字段签名逐项一致，恰恰让「抄了 1 部那条、忘改 token」在写入侧无法自证。
+- 目标表不是猜的：用户当天 10:17 那版《店铺账号信息表.xlsx》G/H 两列写着「10月推广数据-销售2部」= `RWuxbD8I3aFBkus3On8cn3sGnBe`。用接口读出三个页签（关键词 `tbl8XlaVkRtWoi5i` / 人群 `tbln0U2ocO3MvSIn` / 商品信息底单），逐字段（含顺序）与 1 部完全一致（78 / 74）⇒ 只换 token，写入逻辑不动。与商品链 2026-09-30 换 base 同一条纪律。
+
+**改了什么**
+
+- `runtime/feishu-targets.mjs`：登记 `2026-10:sales2`；**删掉** `department` 默认值（漏传当场抛，报错点名该传什么）；`assertPromotionDailyBaseCoverage` 新增「不同部门不许指向同一个 base／同一张表」的跨条目检查。
+- `runtime/batch-plan.mjs`：`WORKFLOW_DEPARTMENTS` 从 `SHOP_DEPARTMENTS` 推导全部部门（原先写死 `['sales1']`，是因为二部 base 还没登记；现在登记了，收窄就没有理由）。
+- `skills/…/run-promotion-sales1.mjs`：`SALES1` 字面名单 → `collectingShopKeys()`（字面名单是第二份真相源，加店/换店时它不会自己变，症状是「新店永远不在推广链里」且不报错）；判据改成「在采集范围里」，仍 fail-closed 并点名是哪几家。
+- `skills/…/import-promotion-daily-report.mjs`：按 `departmentOfShop(--shop)` 解析部门再查 base；回执新增 `department` 与 `baseToken`（出事时第一眼看这两个字段）。
+- `skills/…/check-promotion-completeness.mjs`：对账门改成「按部门各读一张表再合并」。原实现只读一张表，二部接入后那些行在另一张里，只读一张会把二部每个单元判成「飞书里没有」—— 这种假缺口会让人去重跑已经写对了的数据，而重跑因幂等键一行都不写，看起来像又失败了一次。
+- `scripts/run-batches.mjs`：不点名时按 `batchableShopKeysFor(workflow)` 切批的那一行保留，并更正它的注释 —— 它管的是「哪条 workflow 认哪些部门」，不是「推广链恰好只跑一部」。
+
+**验证到什么程度**
+
+- 真机：5 家店铺全部解析成 `sales2`；目标三项与 1 部全部不同；两张表用 rcnb 凭据可读 78 / 74 字段；`19063` 保拉淘宝 `--locate-only` 身份校验 + 关键词报表页 + 人群报表页双过（不提交）；真实 zip 打二部 base 的 dry-run —— `department=sales2`、关键词 68 行/75 列、人群 83 行/73 列、11 个主体ID（回执 `evidence/promo-dryrun-sales2-2026-10-26/receipt.json`）；`--plan` 展开 13 家且顺序与 `SHOP_BROWSERS` 一致。
+- 离线：日报技能 27 个文件 **661/661**（改动前后同数）；runtime 相关 8 个文件 62/62，另 6 个编排/告警/端口/汇总契约文件 156/156；`arch-boundary` / `workflow-catalog` / `hold-and-resume-plan` 共 65/65。
+- **没验到的**：真写一行 —— 二部两张表各只有 1 行 2026-09-28 的试写数据（花费 0.46 元、1 次点击），真实业务日首写要等下一次 11:00 轮自己证明；五家里只逐个验了保拉淘宝一家的报表页。
+- 详情：`evidence/promotion-sales2-wiring-2026-10-26/RUN-REPORT-2026-10-26.md`（同文另记「三链共用 `evidence/batches-<日>`，轮级文件后写覆盖先写」的现场量测，以及停掉 10-25 那一轮驻留的过程与判据）。
+
 ## [1.12.21] - 2026-10-24
 
 CI 连续红灯分层修复：统一 Python 解释器、补齐千牛登记、修 CRLF 守卫，并清掉依赖恢复后才会暴露的下一层测试缺陷。

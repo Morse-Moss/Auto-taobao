@@ -201,3 +201,37 @@ export function inspectWorkflowLock(name, options = {}) {
 }
 
 export const WORKFLOW_LOCK_NAME = 'merchant-automation';
+
+/**
+ * 把「锁冲突」翻译成一句能指导动作的话 —— **三态，不是一句「忙」**（2026-10-26 加）。
+ *
+ * 为什么必须有这一层：原先三个启动脚本各写各的，推广那条的文案是
+ * 「同机另一条采集流程正在跑：日报/商品/推广共用浏览器资源，等它结束再试」。
+ * 2026-10-26 实测到的现场是：11:00 的推广轮已起跑并持锁，同一时刻**另一个同名会话**到场，
+ * 那条文案让人以为「是日报还在跑」，正确动作（不要起第二条、去看在跑那轮的证据）根本没被说出来。
+ * 「谁持锁」决定下一步做什么，所以持有者必须被点名，并且要区分「同一条链」与「别的链」：
+ *
+ *   - owner 与 selfOwner 相同 ⇒ 本任务被重复触发（最常见：同名自动化被触发两次）。
+ *     下一步是「别再起、去看在跑那轮」，**不是**「等别的链」。
+ *   - owner 不同 ⇒ 真的跨链（日报/商品/推广共用浏览器与这把锁），等它结束。
+ *   - 读不出 owner/pid ⇒ 锁文件损坏，按「有人在跑」fail-closed。
+ *
+ * 只做文案，不改任何判据：能不能拿锁由 acquireWorkflowLock 决定，这里绝不参与决策。
+ */
+export function describeWorkflowLockConflict(error, { selfOwner = null } = {}) {
+  const holder = error?.lock && typeof error.lock === 'object' ? error.lock : null;
+  const owner = holder?.owner ?? null;
+  const pid = holder?.pid ?? null;
+  const base = `运行锁冲突：${error?.message ?? 'workflow lock busy'}`;
+  if (!holder || (!owner && !pid)) {
+    return `${base}；读不出持有者（锁文件可能损坏或正被写入）⇒ 按「有人在跑」处理，先人工核对 runtime/.workflow-locks/${WORKFLOW_LOCK_NAME}.json`;
+  }
+  if (selfOwner && owner === selfOwner) {
+    return `${base}；持有者是**同一流程**（${owner}，pid=${pid}）⇒ 这是本任务被重复触发，不是跨链冲突。`
+      + '不要起第二条、不要杀那一条：去看它已在跑的证据（evidence 下本目标日的 summary.json 与 batches.log；'
+      + 'run-receipt 只在整轮收尾落盘），按它的结果验收';
+  }
+  return `${base}；持有者是**另一条流程**（${owner ?? '未知'}，pid=${pid ?? '未知'}）⇒ 等它结束`
+    + '（日报/商品/推广共用浏览器与这把锁），不要并发硬跑、不要删锁文件';
+}
+

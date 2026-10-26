@@ -47,7 +47,7 @@ import { collectingShopKeys } from '../runtime/browser-ports.mjs';
 // 登记表只用来取 daily-report 的 manualDefault（矛盾判据在 resolveRunMode 里）。
 import { getWorkflow, resolveRunMode } from '../runtime/workflow-catalog.mjs';
 import { resolveTargetDate } from '../skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs';
-import { acquireWorkflowLock, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
+import { acquireWorkflowLock, describeWorkflowLockConflict, WORKFLOW_LOCK_NAME } from '../runtime/workflow-lock.mjs';
 import { createWorkflowReceipt, writeWorkflowReceipt } from '../runtime/workflow-receipt.mjs';
 import { runEnvironmentPreflight } from '../runtime/environment-preflight.mjs';
 
@@ -344,7 +344,7 @@ async function main(argv) {
   try {
     workflowLock = acquireWorkflowLock(WORKFLOW_LOCK_NAME, 'daily-report', { directory: path.join(REPO_ROOT, 'runtime', '.workflow-locks') });
   } catch (error) {
-    log(`运行锁冲突：${error.message}；持有者=${JSON.stringify(error.lock ?? null)}`);
+    log(describeWorkflowLockConflict(error, { selfOwner: 'daily-report' }));
     fs.closeSync(logFd);
     return 1;
   }
