@@ -374,13 +374,24 @@ function writeJson(filePath, value) {
 
 // 找一个已经停在该浏览器里的淘宝标签页来复用。
 // 只认详情页/商品页，不碰搜索页和别的站点——那些是别人正在看的。
+//
+// 必须排除验证页/登录页：被弹过滑块的那个标签页**不会自己恢复**，
+// 它就停在那儿等人拖；如果把它当成可复用目标，下一次跑会接着在它上面失败。
+// 2026-10-26 真踩过：连撞两次都是捡到了上一轮被弹的那个 tab。
+const REUSABLE_TAB_RE = /^https?:\/\/(item|detail|chaoshi\.detail)\.(taobao|tmall)\.com\//u;
+const POISONED_TAB_RE = /punish|login\.taobao|havanaone|login_jump|_____tmd_____/u;
+
+export const isReusableTabUrl = (url) => REUSABLE_TAB_RE.test(String(url ?? ''));
+export const isPoisonedTabUrl = (url) => POISONED_TAB_RE.test(String(url ?? ''));
+
 export async function findReusableTab(port) {
   try {
     const response = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) return null;
     const targets = await response.json();
     return targets.find((t) => t.type === 'page'
-      && /^https?:\/\/(item|detail|chaoshi\.detail)\.(taobao|tmall)\.com\//u.test(t.url || '')) || null;
+      && isReusableTabUrl(t.url)
+      && !isPoisonedTabUrl(t.url)) || null;
   } catch {
     return null;
   }
@@ -572,9 +583,13 @@ async function main() {
       // 复用的标签页也一律不关——那是用户的窗口，不是我们开的。
       if (targetId && !keepTargetOpen && !reused) {
         try { await session.send('Target.closeTarget', { targetId }, undefined, 5000); } catch { /* 关不掉就算了 */ }
+      } else if (targetId && reused) {
+        // 复用的标签页已经被验证污染，留着只会让下一次 --reuse-tab 再捡到它。
+        try { await session.send('Target.closeTarget', { targetId }, undefined, 5000); } catch { /* 关不掉就算了 */ }
+        if (keepTargetOpen) console.warn('[详情] 复用的标签页已被验证污染，已关掉，避免下次再捡到它。');
       } else if (targetId && keepTargetOpen) {
         console.warn(`[详情] 已保留被验证的标签页（targetId=${targetId}）。`);
-        console.warn('[详情] 请在浏览器窗口里把那个滑块拖过去，然后重跑；同 profile 的验证态会一起解除。');
+        console.warn('[详情] 这个弹窗不需要人去拖：新会话通常不再被要求验证，等冷却后重跑即可。');
       }
     } catch (error) {
       console.warn(`[详情] 收尾时出错，已忽略（不影响已写出的结果）：${error && error.message ? error.message : error}`);

@@ -14,6 +14,8 @@ import {
   mtopExpression,
   writeCsvFile,
   existingDataRows,
+  isReusableTabUrl,
+  isPoisonedTabUrl,
 } from './collect-taobao-detail.mjs';
 
 import { SKU_COLUMNS } from './taobao-detail-core.mjs';
@@ -120,4 +122,20 @@ test('--allow-empty 才允许显式写空表', () => {
 
 test('existingDataRows 对不存在的文件返回 0 而不是抛错', () => {
   assert.equal(existingDataRows(tempCsvPath('nope.csv')), 0);
+});
+
+test('可复用的标签页只认详情/商品页，不碰搜索页', () => {
+  assert.equal(isReusableTabUrl('https://detail.tmall.com/item.htm?id=1'), true);
+  assert.equal(isReusableTabUrl('https://item.taobao.com/item.htm?id=1'), true);
+  assert.equal(isReusableTabUrl('https://chaoshi.detail.tmall.com/item.htm?id=1'), true);
+  assert.equal(isReusableTabUrl('https://s.taobao.com/search?q=x'), false);
+  assert.equal(isReusableTabUrl('about:blank'), false);
+  assert.equal(isReusableTabUrl(undefined), false);
+});
+
+test('被验证污染的标签页必须认出来，否则下一次又会捡到它（2026-10-26 真踩过）', () => {
+  assert.equal(isPoisonedTabUrl('https://login.taobao.com/havanaone/login/login.htm'), true);
+  assert.equal(isPoisonedTabUrl('https://detail.tmall.com/item.htm?x=1&_____tmd_____=/page/login_jump'), true);
+  assert.equal(isPoisonedTabUrl('https://detail.tmall.com/punish?x=1'), true);
+  assert.equal(isPoisonedTabUrl('https://detail.tmall.com/item.htm?id=679380994840'), false);
 });
