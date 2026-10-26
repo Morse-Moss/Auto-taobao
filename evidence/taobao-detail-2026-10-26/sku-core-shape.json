@@ -1,0 +1,21 @@
+{
+  "note": "探针实录：mtop.taobao.pcdetail.data.get 里价格/库存的真实挂载位置。原文照抄 2026-10-26 的返回，未改写。",
+  "itemId": "597600994634",
+  "probedAt": "2026-10-26",
+  "skuBase_skus_item_keys": ["propPath", "skuId"],
+  "skuBase_skus_item_sample": {
+    "propPath": "1627207:44701014954;148242406:7392676",
+    "skuId": "6285321262530"
+  },
+  "skuCore_keys": ["sku2info", "skuItem"],
+  "sku2info_len": 61,
+  "sku2info_sample_raw": "[[\"0\",{\"logisticsTime\":\"预售，30天内发货\",\"moreQuantity\":\"true\",\"price\":{\"priceDesc\":\"起\",\"priceMoney\":\"628400\",\"priceText\":\"6284\",\"priceTitle\":\"优惠前\"},\"quantity\":\"200\",\"quantityDisplayValue\":\"1\",\"quantityText\":\"有货\"}]]",
+  "conclusions": [
+    "skuBase.skus[] 只有 propPath 与 skuId，没有价格和库存 —— 只看 skus 会得到一张空价格表。",
+    "价格在 skuCore.sku2info[skuId].price.priceText（元，字符串）；priceMoney 是分。",
+    "库存在 skuCore.sku2info[skuId].quantity（字符串）。",
+    "sku2info 里还有一个 key 为 \"0\" 的默认项（未选规格时的聚合价 6284 起），不能当成任何具体 SKU 的价格。",
+    "61 个 key = 60 个真实 SKU + 1 个 \"0\" 聚合项，与 skuBase.skus.length=60 对得上。"
+  ],
+  "how_used": "runtime/taobao-detail-core.mjs 的 parseSkuBase(skuBase, { skuCore }) 与 priceOfSku(info)；单测 SKU_CORE_FIXTURE 按本文件构造。"
+}

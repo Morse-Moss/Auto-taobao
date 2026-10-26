@@ -1,0 +1,153 @@
+{
+ "itemId": "597600994634",
+ "at": "2026-10-26T08:21:38.682Z",
+ "steps": {
+  "rate": {
+   "total": "800",
+   "totalPage": "22",
+   "hasNext": "true",
+   "count": 40,
+   "first": {
+    "addCartUrl": "https://sku.taobao.com/index.htm?itemId=597600994634&bottomMode=ADDCART&asyncApiType=norma…",
+    "allowComment": "true",
+    "allowInteract": "true",
+    "allowNote": "false",
+    "allowReportReview": "true",
+    "allowReportUser": "false",
+    "allowShieldReview": "false",
+    "allowShieldUser": "false",
+    "annoy": "0",
+    "auctionNumId": "597600994634",
+    "auctionTitle": "TW特拉维尔独立式人造石浴缸家用小户型酒店民宿成人PMMA椭圆浴盆",
+    "copy": "false",
+    "createTime": "10月13日",
+    "createTimeInterval": "1周前",
+    "creditLevel": "-1",
+    "extraInfoMap": {
+     "__object": [
+      "repurchaseCountOneTip",
+      "userGrade",
+      "report_url"
+     ]
+    },
+    "feedPicList": {
+     "__array": 4,
+     "sample": "{\"cover\":\"false\",\"extraMap\":{\"matchExpression\":\"false\"},\"fileId\":\"1939508861345106331\",\"fileIdString\":\"19395088613451063"
+    },
+    "feedPicPathList": {
+     "__array": 4,
+     "sample": "\"//img.alicdn.com/imgextra/i4/4611686018427386467/O1CN0174Nv9tvtTaFBb3AC_!!4611686018427386467-0-rate.jpg\""
+    },
+    "feedback": "非常漂亮，质量很好，水龙头质感也是很好，总之很满意👍",
+    "feedbackDate": "2026年10月13日",
+    "formalBlackUser": "false",
+    "goldUser": "false",
+    "hasDetail": "true",
+    "headFrameUrl": "",
+    "headPicUrl": "//sns.m.taobao.com/avatar/sns/user/flag/sns_logo?type=taobao&kn=wwc_tb_11&bizCode=taobao_a…",
+    "id": "1316784909222",
+    "interactInfo": {
+     "__object": [
+      "alreadyDislike",
+      "alreadyLike",
+      "commentCount",
+      "enableComment",
+      "enableLike",
+      "enableShare",
+      "extraInfo",
+      "likeCount",
+      "readCount"
+     ]
+    },
+    "own": "false",
+    "rateGradeIcon": "https://gw.alicdn.com/imgextra/i3/O1CN018jrmzM1Rh5ONrXt6O_!!6000000002142-2-tps-216-56.png",
+    "rateResourceList": {
+     "__array": 0,
+     "sample": null
+    },
+    "rateTagList": {
+     "__array": 0,
+     "sample": null
+    },
+    "rateType": "1",
+    "reduceUserNick": "t**g",
+    "repeatBusiness": "true",
+    "reply": "",
+    "share": {
+     "__object": [
+      "detailShareUrl",
+      "detailUrl",
+      "shareCover",
+      "shareSupport",
+      "shareURL"
+     ]
+    },
+    "skuId": "6285321262564",
+    "skuMap": {
+     "__object": [
+      "长度",
+      "颜色分类"
+     ]
+    },
+    "skuValueStr": "1.5m；【进口三菱PMMA高分子人造石薄边款】8507哑光白+溢水口+下水器+排水管",
+    "skuVids": "65793#44701014959",
+    "structTagEndSize": "0",
+    "topRate": "0",
+    "userId": "0",
+    "userIndexURL": "",
+    "userMark": "XD/wjEAhRi1VPev2pYAOO3xBS1jk/xtQxh0iPAyyhGo=",
+    "userNick": "t**g",
+    "userStar": "0",
+    "userStarPic": "https://img.alicdn.com/tfs/TB1VJB_zHH1gK0jSZFwXXc7aXXa-1-1.png"
+   },
+   "second": {
+    "rateType": "1",
+    "createTime": "9月17日",
+    "skuValueStr": "1.6m；【薄边款8507】哑光白+溢水口+下水器+排水管"
+   }
+  },
+  "buyerShow": [
+   {
+    "name": "request/jsonp",
+    "ok": false,
+    "ms": 53,
+    "err": "{\"ret\":[\"ABORT::接口异常退出\"],\"retJson\":-1}"
+   },
+   {
+    "name": "request/json",
+    "ok": false,
+    "ms": 52,
+    "err": "{\"ret\":[\"ABORT::接口异常退出\"],\"retJson\":-1}"
+   },
+   {
+    "name": "H5Request/jsonp",
+    "ok": false,
+    "ms": 59,
+    "err": "{\"ret\":[\"ABORT::接口异常退出\"],\"retJson\":-1}"
+   },
+   {
+    "name": "request/post-json",
+    "ok": false,
+    "ms": 45,
+    "err": "{\"ret\":[\"ABORT::接口异常退出\"],\"retJson\":-1}"
+   }
+  ],
+  "qa": {
+   "clicked": [],
+   "countText": "",
+   "capturedCount": 2,
+   "uniq": [
+    {
+     "via": "xhr",
+     "m": "POST",
+     "u": "//h5api.m.tmall.com/h5/mtop.taobao.pc.shop.redpocket.decision/1.0/?jsv=2.7.5&appKey=12574478&t=1793002908134&sign=5e43ae425eceea268275b6fd2c27463a&_bx-login=new&v=1.0&timeout=5000&type=originaljson&dataType=json&valueTyp"
+    },
+    {
+     "via": "xhr",
+     "m": "POST",
+     "u": "//h5api.m.tmall.com/h5/mtop.alibaba.fc.api.maoxland.containerfacade.singleview/1.0/?jsv=2.7.5&appKey=12574478&t=1793002908331&sign=3c28bddbb0a84164cae3a9fede6bf458&_bx-login=new&v=1.0&timeout=5000&dataType=jsonp&valueTyp"
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,272 @@
+{
+ "itemId": "597600994634",
+ "at": "2026-10-26T08:21:11.223Z",
+ "steps": {
+  "sdk": {
+   "sdk": true,
+   "url": "https://detail.tmall.com/item.htm?id=597600994634",
+   "title": "TW特拉维尔独立式人造石浴缸家用小户型酒店民宿成人PMMA椭圆浴盆-tmall.com天猫"
+  },
+  "sku": {
+   "shape": {
+    "ok": true,
+    "ms": 386,
+    "ret": [
+     "SUCCESS::调用成功"
+    ],
+    "topKeys": [
+     "seller",
+     "item",
+     "feature",
+     "plusViewVO",
+     "skuCore",
+     "params",
+     "skuBase",
+     "plusViewFieldMappingVO",
+     "pcTrade",
+     "componentsVO"
+    ],
+    "itemKeys": [
+     "bottomIcons",
+     "images",
+     "itemId",
+     "pcADescUrl",
+     "qrCode",
+     "rightFloatIcons",
+     "spuId",
+     "title",
+     "titleIcon",
+     "useWirelessDesc",
+     "vagueSellCount",
+     "videos"
+    ],
+    "item": {
+     "itemId": "597600994634",
+     "title": "TW特拉维尔独立式人造石浴缸家用小户型酒店民宿成人PMMA椭圆浴盆",
+     "imageCount": 5
+    },
+    "sellerKeys": [
+     "creditLevel",
+     "creditLevelIcon",
+     "encryptUid",
+     "evaluates",
+     "pcShopUrl",
+     "sellerId",
+     "sellerNick",
+     "sellerType",
+     "shopIcon",
+     "shopId",
+     "shopName",
+     "startsIcon",
+     "userId"
+    ],
+    "skuBaseKeys": [
+     "components",
+     "props",
+     "skus"
+    ],
+    "props": [
+     {
+      "pid": "148242406",
+      "name": "长度",
+      "valueCount": 6,
+      "values": [
+       {
+        "vid": "7392676",
+        "name": "1.3m",
+        "hasImage": false
+       },
+       {
+        "vid": "8401379",
+        "name": "1.4m",
+        "hasImage": false
+       },
+       {
+        "vid": "65793",
+        "name": "1.5m",
+        "hasImage": false
+       },
+       {
+        "vid": "3364022",
+        "name": "1.6m",
+        "hasImage": false
+       },
+       {
+        "vid": "4337316",
+        "name": "1.7m",
+        "hasImage": false
+       },
+       {
+        "vid": "66993",
+        "name": "1.8m",
+        "hasImage": false
+       }
+      ]
+     },
+     {
+      "pid": "1627207",
+      "name": "颜色分类",
+      "valueCount": 10,
+      "values": [
+       {
+        "vid": "44701014954",
+        "name": "【高分子人造石薄边款】8507哑光白+溢水口+下水器+排水管",
+        "hasImage": true
+       },
+       {
+        "vid": "44701014955",
+        "name": "【高分子人造石薄边款】8507亮光白+溢水口+下水器+排水管",
+        "hasImage": true
+       },
+       {
+        "vid": "44701014957",
+        "name": "【高分子人造石薄边款】8507卵石灰+溢水口+下水器+排水管",
+        "hasImage": true
+       },
+       {
+        "vid": "44701014958",
+        "name": "【PMMA高分子人造石薄边款】8507哑光白+溢水口+下水器+排水管",
+        "hasImage": true
+       },
+       {
+        "vid": "44701014959",
+        "name": "【进口三菱PMMA高分子人造石薄边款】8507哑光白+溢水口+下水器+排水管",
+        "hasImage": true
+       },
+       {
+        "vid": "44701014960",
+        "name": "【高分子人造石厚边款】8607哑光白+溢水口+下水器+排水管",
+        "hasImage": true
+       }
+      ]
+     }
+    ],
+    "skuCount": 60,
+    "skuSample": [
+     {
+      "propPath": "1627207:44701014954;148242406:7392676",
+      "skuId": "6285321262530"
+     },
+     {
+      "propPath": "1627207:44701014955;148242406:7392676",
+      "skuId": "6285321262536"
+     },
+     {
+      "propPath": "1627207:44701014957;148242406:7392676",
+      "skuId": "6285321262560"
+     }
+    ]
+   },
+   "raw": 43297
+  },
+  "rate": {
+   "ok": true,
+   "ms": 186,
+   "ret": [
+    "SUCCESS::调用成功"
+   ],
+   "topKeys": [
+    "abBucketName",
+    "abCode",
+    "allowInteract",
+    "canReport",
+    "configMap",
+    "extraInfo",
+    "feedAllCount",
+    "feedAllCountFuzzy",
+    "feedAppendCount",
+    "feedAppendCountFuzzy",
+    "feedMediaCount",
+    "feedMediaCountFuzzy",
+    "feedPicCount",
+    "feedPicCountFuzzy",
+    "feedStoreCount",
+    "feedVideoCount",
+    "feedVideoCountFuzzy",
+    "firstPageTips",
+    "foldCount",
+    "fuzzyRateCount",
+    "hasNext",
+    "imprItemVOS",
+    "imprNewItemVOS",
+    "inviteText",
+    "latestSort",
+    "questionnaireVO",
+    "range",
+    "rateList",
+    "showInvite",
+    "skuFilter",
+    "timePeriodDesc",
+    "total",
+    "totalFuzzy",
+    "totalPage",
+    "userType"
+   ],
+   "total": "800",
+   "listKeys": [
+    "addCartUrl",
+    "allowComment",
+    "allowInteract",
+    "allowNote",
+    "allowReportReview",
+    "allowReportUser",
+    "allowShieldReview",
+    "allowShieldUser",
+    "annoy",
+    "auctionNumId",
+    "auctionTitle",
+    "copy",
+    "createTime",
+    "createTimeInterval",
+    "creditLevel",
+    "extraInfoMap",
+    "feedPicList",
+    "feedPicPathList",
+    "feedback",
+    "feedbackDate",
+    "formalBlackUser",
+    "goldUser",
+    "hasDetail",
+    "headFrameUrl",
+    "headPicUrl",
+    "id",
+    "interactInfo",
+    "own",
+    "rateGradeIcon",
+    "rateResourceList",
+    "rateTagList",
+    "rateType",
+    "reduceUserNick",
+    "repeatBusiness",
+    "reply",
+    "share",
+    "skuId",
+    "skuMap",
+    "skuValueStr",
+    "skuVids",
+    "structTagEndSize",
+    "topRate",
+    "userId",
+    "userIndexURL",
+    "userMark",
+    "userNick",
+    "userStar",
+    "userStarPic"
+   ],
+   "listCount": 40,
+   "firstSample": {
+    "hasReviewInfo": false,
+    "reviewKeys": [],
+    "content": "",
+    "picCount": 0,
+    "hasAppend": false
+   }
+  },
+  "buyerShow": {
+   "ok": false,
+   "reason": "THREW",
+   "message": "[object Object]",
+   "ms": 52
+  }
+ }
+}
