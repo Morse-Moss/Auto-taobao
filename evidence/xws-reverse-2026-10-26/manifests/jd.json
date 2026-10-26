@@ -1,0 +1,13 @@
+{
+  "protocol": "xws-main-remote-v2",
+  "module": "jd-detail-original",
+  "version": "account-center-20261023",
+  "sha256": "39fc7afb179ad704ba5cbab7b417b55e5055c5e1f18f954b82b7d5ba54fa2cf1",
+  "file": "/modules/jd-detail.39fc7afb179ad704ba5cbab7b417b55e5055c5e1f18f954b82b7d5ba54fa2cf1.js",
+  "bytes": 2199894,
+  "shared": {
+    "file": "/shared/vendor.67ff1f8926117f927a129c9c69ba3dd0eef8491a91f1b1292e94304ca62205bc.js",
+    "bytes": 4756988,
+    "sha256": "67ff1f8926117f927a129c9c69ba3dd0eef8491a91f1b1292e94304ca62205bc"
+  }
+}

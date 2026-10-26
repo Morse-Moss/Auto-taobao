@@ -1,0 +1,13 @@
+{
+  "protocol": "xws-main-remote-v2",
+  "module": "wj-main-original",
+  "version": "display-close-20261024",
+  "sha256": "d8c1f44991e1246bd97946a8bfe9e30d6a7e676d7c3cd972281106edbee90e84",
+  "file": "/modules/wj-main.d8c1f44991e1246bd97946a8bfe9e30d6a7e676d7c3cd972281106edbee90e84.js",
+  "bytes": 7069968,
+  "shared": {
+    "file": "/shared/vendor.67ff1f8926117f927a129c9c69ba3dd0eef8491a91f1b1292e94304ca62205bc.js",
+    "bytes": 4756988,
+    "sha256": "67ff1f8926117f927a129c9c69ba3dd0eef8491a91f1b1292e94304ca62205bc"
+  }
+}

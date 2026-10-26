@@ -1,0 +1,13 @@
+{
+  "protocol": "xws-main-remote-v2",
+  "module": "tb-seller-original",
+  "version": "seller-shortcuts-retired-20261025",
+  "sha256": "ec9d54248503e1bb32bd479f851df739451aa1ee5e2bf77ebcb63650d3a1af15",
+  "file": "/modules/tb-seller.ec9d54248503e1bb32bd479f851df739451aa1ee5e2bf77ebcb63650d3a1af15.js",
+  "bytes": 2304207,
+  "shared": {
+    "file": "/shared/vendor.67ff1f8926117f927a129c9c69ba3dd0eef8491a91f1b1292e94304ca62205bc.js",
+    "bytes": 4756988,
+    "sha256": "67ff1f8926117f927a129c9c69ba3dd0eef8491a91f1b1292e94304ca62205bc"
+  }
+}

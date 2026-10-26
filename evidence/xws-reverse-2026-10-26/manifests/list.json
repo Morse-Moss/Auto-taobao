@@ -1,0 +1,13 @@
+{
+  "protocol": "xws-main-remote-v2",
+  "module": "tb-list-original",
+  "version": "retired-20261024",
+  "sha256": "2b151974f8e589b70b2ce3fb1a2c4f3cc15ef3dff983551b575b730addc5a0b5",
+  "file": "/modules/tb-list.2b151974f8e589b70b2ce3fb1a2c4f3cc15ef3dff983551b575b730addc5a0b5.js",
+  "bytes": 2756087,
+  "shared": {
+    "file": "/shared/vendor.67ff1f8926117f927a129c9c69ba3dd0eef8491a91f1b1292e94304ca62205bc.js",
+    "bytes": 4756988,
+    "sha256": "67ff1f8926117f927a129c9c69ba3dd0eef8491a91f1b1292e94304ca62205bc"
+  }
+}

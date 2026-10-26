@@ -1,0 +1,181 @@
+{
+  "generatedAt": "2026-10-26",
+  "method": "REA + 扩展源码静态读取 + chrome.storage LevelDB 离线解包",
+  "target": {
+    "name": "小旺神",
+    "extensionId": "kmbagmjnoooeiindcnfgebkekiimbnee",
+    "extensionVersion": "2.1.0.6",
+    "manifestVersion": 3,
+    "unpackedPath": "D:/Retire/edge-debug-profile/Default/Extensions/kmbagmjnoooeiindcnfgebkekiimbnee/2.1.0.6_1",
+    "contentScriptGroups": 12,
+    "jsFiles": 49,
+    "hostPermissionCount": 224
+  },
+  "architecture": {
+    "layers": [
+      "扩展壳：manifest 注入 12 组 content_scripts；js/modules-page.js 作页面内代理；js/full-background.js 作远端模块加载器；js/remote-detail-content.js 作远程模块宿主（含 JSZip）",
+      "远端模块：按内容寻址（sha256 文件名）从 https://xcj3.tqdn.cn 下发",
+      "桥接协议：window.postMessage 三类消息（xws-exec-* / XWS_PAGE_REQUEST / XWS_ORIGINAL_INSTALL）"
+    ],
+    "moduleManifestUrl": "{BASE_URL}/manifest.json",
+    "moduleFileUrl": "https://xcj3.tqdn.cn{file}",
+    "sharedVendorUrl": "https://xcj3.tqdn.cn/shared/vendor.{sha256}.js",
+    "manifestContract": {
+      "protocol": ["xws-main-remote-v1", "xws-main-remote-v2"],
+      "fields": ["protocol", "module", "version", "sha256", "file", "bytes", "shared{sha256,file,bytes}"],
+      "moduleIdPattern": "<target>-original",
+      "maxBytes": 33554432
+    },
+    "bridges": {
+      "xws-exec-getTbSearchData": "读列表页 React 数据，角色 itemsArray/goodArrRight/goodArrBottom",
+      "xws-exec-getAdapterData": "读详情页 React 数据，角色 itemDetail/comments",
+      "xws-exec-getPageData": "按 selectors+dataPath 读任意页面 React 数据",
+      "xws-exec-getReviewDownload": "按 token 从 React fiber 取单条评论（含图/视频/追评）",
+      "xws-exec-getWindowAttr": "读 window.__INITIAL_STATE__（飞猪用）",
+      "xws-exec-getFliggySeller": "飞猪卖家 ID 唯一化",
+      "XWS_PAGE_REQUEST": "通用 mtop 代理：借页面 window.lib.mtop 现算签名，api 需匹配 /^mtop\\.[a-z0-9_.]+$/i",
+      "XWS_ORIGINAL_INSTALL + id": "注册页面全局 JSONP 回调：xwsGoodCollections_marketanalysis / xwsSocialFeedTags / xwsTagQuestList / xwsitembuyshow"
+    }
+  },
+  "moduleFamilies": [
+    {"id": "tb-detail-original", "baseUrlSuffix": "", "version": "retired-20261024", "bytes": 3009007, "cacheKey": "XWS_MAIN_REMOTE_DETAIL_V1", "file": "/modules/tb-detail.211b525c88c3c9fafbdb8b77294e1c6364937176ed8674362e4d9d0801253056.js", "onCdn": 404, "inStorage": true},
+    {"id": "tb-list-original", "baseUrlSuffix": "/list", "version": "retired-20261024", "bytes": 2756087, "cacheKey": "XWS_MAIN_REMOTE_LIST_V1", "file": "/modules/tb-list.2b151974f8e589b70b2ce3fb1a2c4f3cc15ef3dff983551b575b730addc5a0b5.js", "onCdn": 404, "inStorage": true},
+    {"id": "tb-seller-original", "baseUrlSuffix": "/seller", "version": "seller-shortcuts-retired-20261025", "bytes": 2304207, "cacheKey": "XWS_MAIN_REMOTE_SELLER_V1", "file": "/modules/tb-seller.ec9d54248503e1bb32bd479f851df739451aa1ee5e2bf77ebcb63650d3a1af15.js", "onCdn": 404, "inStorage": false},
+    {"id": "wj-main-original", "baseUrlSuffix": "/wujie", "version": "display-close-20261024", "bytes": 7069968, "cacheKey": "XWS_MAIN_REMOTE_WUJIE_V1", "file": "/modules/wj-main.d8c1f44991e1246bd97946a8bfe9e30d6a7e676d7c3cd972281106edbee90e84.js", "onCdn": 404, "inStorage": false},
+    {"id": "wj-creative-original", "baseUrlSuffix": "/creative", "version": "2.1.0.6", "bytes": 214722, "cacheKey": "XWS_MAIN_REMOTE_CREATIVE_V1", "file": "/modules/wj-creative.a84c3daac6919daec455a079a672ac825207c75ab938a96b397e3b1e6b72fb05.js", "onCdn": 404, "inStorage": false},
+    {"id": "jd-detail-original", "baseUrlSuffix": "/jd", "version": "account-center-20261023", "bytes": 2199894, "cacheKey": "XWS_MAIN_REMOTE_JD_V1", "file": "/modules/jd-detail.39fc7afb179ad704ba5cbab7b417b55e5055c5e1f18f954b82b7d5ba54fa2cf1.js", "onCdn": 404, "inStorage": false},
+    {"id": "dy-detail-original", "baseUrlSuffix": "/dy", "version": "account-center-20261023", "bytes": 756513, "cacheKey": "XWS_MAIN_REMOTE_DY_V1", "file": "/modules/dy-detail.18904e54e7af80038bae7975f3018c712fc04c0a29448bfde9ff871f9f12b098.js", "onCdn": 404, "inStorage": false}
+  ],
+  "killSwitch": {
+    "location": "远端模块内（tb-detail.js / tb-list.js 均有一份），非扩展壳",
+    "policyEndpoint": "https://xiaowangshen.com/crx/xws/new/user/info/",
+    "policyParams": {"visibility": "1", "n_rt": "json", "_cb": "<now>"},
+    "retryWithShopNick": "code===1401 时取 shop_nick 后重试",
+    "hardcodedOverride": "normalize() 在展开服务端 data 之后再次写入 search:false, detail:false",
+    "gates": {
+      "allowed(k)": "policy.admin===true || policy[k]===true",
+      "hasFunction(k)": "policy.admin===true || (k==='v29' && policy.support_rate===true) || policy.functions.includes(k)",
+      "runWhenAllowed(k,fn)": "k 为 'search' 或 'detail' 时直接 Promise.resolve()，永不执行 fn",
+      "gate(component)": "!allowed(k) 时渲染 display:none 的空 span",
+      "xwsCan(k)": "!(isSearch()||isDetail()) || hasFunction(k)"
+    },
+    "conclusion": "停摆是客户端硬编码自锁；即使账号付费/管理员，search 与 detail 也被强制关掉。模块文件仍在 CDN 清单里登记，但已从 CDN 删除（404），现存副本仅在浏览器 chrome.storage 缓存。"
+  },
+  "apis": {
+    "detailItemAndSku": {
+      "api": "mtop.taobao.pcdetail.data.get",
+      "v": "1.0",
+      "params": {"id": "<itemId>"},
+      "transport": ["页面 SDK: window.lib.mtop.request，type:get dataType:jsonp", "变体: type:post dataType:originaljson"],
+      "responseFields": ["data.item.itemId", "data.item.images", "data.item.title", "data.skuBase.props[].values[].image/name", "data.skuBase.skus", "data.seller.shopUrl"],
+      "usedBy": ["SKU采集", "宝贝信息", "主图/SKU图下载"]
+    },
+    "rateList": {
+      "api": "mtop.taobao.rate.detaillist.get",
+      "v": "6.0",
+      "params": {"showTrueCount": false, "auctionNumId": "<itemId>", "pageNo": 1, "pageSize": 40, "rateType": "", "searchImpr": -8, "orderType": "", "expression": "", "rateSrc": "pc_rate_list"},
+      "extra": {"ecode": "1", "needLogin": false, "sessionOption": "AutoLoginOnly", "jsonpIncPrefix": "haloMtop", "ext_querys": {"jsv": "2.7.5"}, "ext_headers": {"x-ua": "", "x-umidtoken": ""}},
+      "usedBy": ["评价下载", "评价分析"]
+    },
+    "buyerShow": {
+      "api": "mtop.taobao.ugc.itemshow.list",
+      "v": "1.0",
+      "url": "https://h5api.m.taobao.com/h5/mtop.taobao.ugc.itemshow.list/1.0/",
+      "params": {"itemId": "<string>", "params": "{\"pagination\":{\"offset\":\"<cursor>\",\"pageSize\":50}}"},
+      "sign": "md5(_m_h5_tk.token & _m_h5_tk.ts & 12574478 & data)",
+      "jsonpCallback": "xwsitembuyshow",
+      "usedBy": ["全部买家秀下载", "洋淘买家秀下载"]
+    },
+    "buyerShowQuery": {
+      "api": "mtop.taobao.ugc.tql.facade",
+      "v": "1.0",
+      "params": {"sceneName": "query_item_buyer_show", "paramMap": "{\"itemId\":<id>,\"tab\":\"main\",\"pagination\":{\"hasMore\":true,\"pageNum\":<n>,\"pageSize\":12}}"},
+      "extra": {"jsv": "2.5.8", "appKey": "12574478", "isSec": 0, "ecode": 0, "AntiFlood": "true", "AntiCreep": "true", "H5Request": "true", "ttid": "2018@taobao_h5_9.9.9", "preventFallback": "true"},
+      "jsonpCallback": "xwsitembuyshow"
+    },
+    "shopInfo": {
+      "api": "mtop.taobao.shop.simple.fetch",
+      "v": "1.0",
+      "params": {"shopId": "<shopId>", "sellerId": "<sellerId>"},
+      "responseFields": ["data.categoryInfoDTOList[].categoryId", "data.categoryInfoDTOList[].categoryName", "data.categoryInfoDTOList[].customDecorate", "data.categoryInfoDTOList[].subCategoryInfoList"],
+      "usedBy": ["店铺上新-类目筛选"]
+    },
+    "shopItemList": {"api": "mtop.taobao.shop.simple.item.fetch", "v": "1.0", "usedBy": ["店铺上新"]},
+    "searchRank": {
+      "api": "mtop.relationrecommend.wirelessrecommend.recommend",
+      "v": "2.0",
+      "appId": "34385",
+      "params": {"q": "<keyword>", "page": "<n>", "pageSize": 50, "sort": "_coefp", "m": "pc", "style": "list", "tab": "all", "sversion": "13.6", "ttid": "600000@taobao_pc_10.7.0", "schemaType": "auction", "needTabs": "true", "vm": "nw", "sugg": "_4_1", "search_action": "initiative"},
+      "usedBy": ["批量查排名", "直通车词查询"]
+    },
+    "shopSearch": {
+      "api": "mtop.relationrecommend.wirelessrecommend.recommend",
+      "v": "2.0",
+      "appId": "44239",
+      "params": {"q": "<店铺名>", "m": "pc_shop", "page": 1, "sort": "default", "loc": "", "goodrate": "", "shopType": "", "shopRateLevel": ""},
+      "responseFields": ["itemsArray[].title", "itemsArray[].shopName", "itemsArray[].shopUrl"],
+      "usedBy": ["店铺链接解析", "店铺信誉"]
+    },
+    "imageSearch": {
+      "api": "mtop.relationrecommend.wirelessrecommend.recommend",
+      "v": "2.0",
+      "appId": "34850",
+      "params": {"pcGraphSearch": true, "region": "", "sortOrder": "0", "sversion": 15.8, "tab": "all", "vm": "nw", "ttid": "600000@taobao_android_10.16.10", "strimg": "<base64 jpeg>"},
+      "responseFields": ["data.itemsArray[].nid", "data.itemsArray[].title", "data.itemsArray[].icons", "data.itemsArray[].sellerInfo"],
+      "usedBy": ["以图搜同款", "同款数", "主图对比"]
+    },
+    "textSearchSimilar": {"api": "mtop.relationrecommend.wirelessrecommend.recommend", "v": "2.0", "appId": "30515", "params": {"brand": "<brand>", "from": "nt_history", "style": "list", "m": "pc"}, "usedBy": ["按标题搜同款"]},
+    "tmallGlobalSearch": {"api": "mtop.relationrecommend.wirelessrecommend.recommend", "v": "2.0", "appId": "33978", "params": {"bizFilter": "tmgj_wangzhan", "channelSrp": "tmgj_wangzhan", "m": "api4h5", "n": 12, "sversion": "16.0"}, "usedBy": ["天猫国际店铺商品"]},
+    "chaoshiSearch": {"api": "mtop.hexa.search.searchitems", "v": "2.0", "params": {"page_no": "<n>", "page_size": 40, "from": "chaoshi_pc", "channel": "chaoshi_pc", "spos": "preFilter", "appType": "new_h5"}, "usedBy": ["天猫超市店铺采集"]},
+    "oldDetail": {"api": "mtop.taobao.detail.getdetail", "v": null, "note": "老详情接口，保留兼容"}
+  },
+  "appIdMap": {
+    "12574478": "统一网关 appKey（所有 mtop 的 appKey）",
+    "34385": "PC 搜索（rank/关键词）",
+    "44239": "店铺搜索 pc_shop",
+    "34850": "以图搜同款",
+    "30515": "按标题搜同款",
+    "33978": "天猫国际站内搜索"
+  },
+  "detailComponents": ["XwsItemInfoFunc 宝贝信息", "SkuPreview SKU预览", "XwsRatesDownload 评价下载/评价分析", "XwsItemBuyShow 买家秀下载", "XwsShopNew 店铺上新", "XwsZtcImgDownload 车图下载", "XwsBannedWord 违禁词检测", "XwsDetailImgSimilar 详情图找同款", "XwsMonitorTable 通用表格（被 SkuPreview/评价分析复用）", "XwsDisabledPromotion", "XwsUserInfoNew", "XwsLogin", "XwsTryUseDialog"],
+  "listComponents": ["XwsMarketAnalysis 市场分析", "XwsListImgSimilar 主图对比", "XwsImgsBatchDown 批量下载主图", "XwsDescImgsBatchDown 批量下载详情图", "XwsFigureContrast 主图对比", "XwsBuyershowBatchdown 全部买家秀下载", "XwsZtcImgDownload 车图下载", "XwsShopListCopy", "XwsShopListTool", "XwsShopGoodSearchBox", "XwsAddMonitor 竞品监控"],
+  "trackingLabels": {
+    "个人中心": "淘宝详情页功能",
+    "市场分析": "淘宝列表页功能",
+    "本页主图对比": "淘宝列表页功能",
+    "批量下载详情图": "淘宝列表页功能",
+    "批量查排名": "淘宝搜索页功能",
+    "店铺上新": "淘宝详情页功能",
+    "车图下载": "淘宝详情页功能",
+    "违禁词检测": "淘宝详情页功能",
+    "全部买家秀下载": "淘宝详情页",
+    "宝贝信息": "淘宝详情页功能",
+    "评价下载": "淘宝详情页",
+    "采集问大家": "淘宝详情页功能",
+    "店铺信誉": "淘宝详情页功能"
+  },
+  "absorptionDiff": {
+    "absorbed": [
+      {"capability": "搜索页市场分析（16 列周报）", "impl": "runtime/taobao-search-core.mjs + runtime/collect-taobao-search.mjs", "note": "同源接口 mtop.relationrecommend.wirelessrecommend.recommend v2.0 appId 34385，已产出 1384 行周表"}
+    ],
+    "notAbsorbed": [
+      {"capability": "详情页 SKU 明细", "api": "mtop.taobao.pcdetail.data.get", "value": "周表「尺寸/适用空间」两个 Lookup 的来源"},
+      {"capability": "评价下载/评价分析", "api": "mtop.taobao.rate.detaillist.get v6.0"},
+      {"capability": "全部买家秀下载", "api": "mtop.taobao.ugc.itemshow.list v1.0 + mtop.taobao.ugc.tql.facade v1.0"},
+      {"capability": "问大家采集", "note": "模块内仅保留 DOM 计数读取（[class*='askAnswerWrap--'] [class*='askAnswerTitle--']），采集入口已随 search/detail 锁一起失效；需另探接口"},
+      {"capability": "店铺上新", "api": "mtop.taobao.shop.simple.fetch v1.0 + mtop.taobao.shop.simple.item.fetch v1.0"},
+      {"capability": "批量查排名", "api": "appId 34385 搜索接口翻页定位"},
+      {"capability": "以图搜同款/同款数", "api": "appId 34850 strimg"},
+      {"capability": "违禁词检测", "note": "本地词库比对 + 图片 OCR（旺豆计费），无淘宝接口"},
+      {"capability": "车图下载", "api": "appId 34385 搜索 + 创意中心"},
+      {"capability": "店铺信誉", "note": "仅出现在埋点标签表，tb-detail 模块内无对应组件，入口不在详情页模块"}
+    ]
+  },
+  "provenance": {
+    "manifests": "evidence/xws-reverse-2026-10-26/manifests/*.json（7 个，直接 GET 自 https://xcj3.tqdn.cn/modules/v1*/manifest.json）",
+    "moduleSource": "从 chrome.storage.local 的 LevelDB（Local Extension Settings/kmbagmjnoooeiindcnfgebkekiimbnee/000558.ldb）离线解包，键 XWS_MAIN_REMOTE_DETAIL_V1 / XWS_MAIN_REMOTE_LIST_V1",
+    "moduleSourceSize": {"tb-detail": 3009034, "tb-list": 2756114},
+    "cdnStatus": "清单可读（200），模块文件已删（/modules/*.js 全部 404）",
+    "reaArtifacts": ["E:/REA/.dl/out/xws-2.0.0.7.json", "E:/REA/.dl/out/xws-2.1.0.6.json"]
+  }
+}
