@@ -384,6 +384,26 @@ const POISONED_TAB_RE = /punish|login\.taobao|havanaone|login_jump|_____tmd_____
 export const isReusableTabUrl = (url) => REUSABLE_TAB_RE.test(String(url ?? ''));
 export const isPoisonedTabUrl = (url) => POISONED_TAB_RE.test(String(url ?? ''));
 
+// 收尾时到底关不关那个标签页。四条互斥规则：
+//   自己开的干净页     → 关
+//   自己开的被验证页   → 留（滑块画在它上面，关掉就没地方可看了）
+//   复用的页 + 被污染  → 关（留着只会让下一次 --reuse-tab 再捡到它）
+//   复用的页 + 没污染  → 不动它，那是用户的窗口，不是我们开的
+// 抽出来是因为这块出过两次事：reused 写在 try 里导致 finally 读不到（数据写好却退出码 1），
+// 以及注释写「复用的一律不关」而代码只要 reused 就关（采成功也会关掉用户的窗口）。
+export function closeDecision({ targetId, keepTargetOpen = false, reused = false } = {}) {
+  const warnings = [];
+  if (!targetId) return { close: false, warnings };
+  const closeSelf = !keepTargetOpen && !reused;
+  const closePoisonedReuse = reused && keepTargetOpen;
+  if (closePoisonedReuse) warnings.push('[详情] 复用的标签页已被验证污染，已关掉，避免下次再捡到它。');
+  else if (keepTargetOpen) {
+    warnings.push(`[详情] 已保留被验证的标签页（targetId=${targetId}）。`);
+    warnings.push('[详情] 这个弹窗不需要人去拖：新会话通常不再被要求验证，等冷却后重跑即可。');
+  }
+  return { close: closeSelf || closePoisonedReuse, warnings };
+}
+
 export async function findReusableTab(port) {
   try {
     const response = await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(5000) });
@@ -578,19 +598,13 @@ async function main() {
     // 这里再抛一次只会让「采到了」变成「失败」（2026-10-26 真的发生过：
     // reused 声明在 try 里，finally 读不到 → 91 行 SKU 写好了，退出码 1）。
     try {
-      // 撞到验证时**不关**这个标签页：滑块是画在该页面上的一层弹窗，
-      // 关掉它，人就永远没有地方去拖。留着它，并在日志里点名，才可能被解掉。
-      // 复用的标签页也一律不关——那是用户的窗口，不是我们开的。
-      if (targetId && !keepTargetOpen && !reused) {
+      // 关闭规则抽成纯函数（见 closeDecision）：这里已经出过两次问题，
+      // 一次是 reused 作用域写错、一次是注释和代码对不上，不能靠肉眼了。
+      const decision = closeDecision({ targetId, keepTargetOpen, reused });
+      if (decision.close) {
         try { await session.send('Target.closeTarget', { targetId }, undefined, 5000); } catch { /* 关不掉就算了 */ }
-      } else if (targetId && reused) {
-        // 复用的标签页已经被验证污染，留着只会让下一次 --reuse-tab 再捡到它。
-        try { await session.send('Target.closeTarget', { targetId }, undefined, 5000); } catch { /* 关不掉就算了 */ }
-        if (keepTargetOpen) console.warn('[详情] 复用的标签页已被验证污染，已关掉，避免下次再捡到它。');
-      } else if (targetId && keepTargetOpen) {
-        console.warn(`[详情] 已保留被验证的标签页（targetId=${targetId}）。`);
-        console.warn('[详情] 这个弹窗不需要人去拖：新会话通常不再被要求验证，等冷却后重跑即可。');
       }
+      for (const message of decision.warnings) console.warn(message);
     } catch (error) {
       console.warn(`[详情] 收尾时出错，已忽略（不影响已写出的结果）：${error && error.message ? error.message : error}`);
     } finally {

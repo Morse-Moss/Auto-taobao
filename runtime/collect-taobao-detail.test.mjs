@@ -16,6 +16,7 @@ import {
   existingDataRows,
   isReusableTabUrl,
   isPoisonedTabUrl,
+  closeDecision,
 } from './collect-taobao-detail.mjs';
 
 import { SKU_COLUMNS } from './taobao-detail-core.mjs';
@@ -138,4 +139,38 @@ test('被验证污染的标签页必须认出来，否则下一次又会捡到�
   assert.equal(isPoisonedTabUrl('https://detail.tmall.com/item.htm?x=1&_____tmd_____=/page/login_jump'), true);
   assert.equal(isPoisonedTabUrl('https://detail.tmall.com/punish?x=1'), true);
   assert.equal(isPoisonedTabUrl('https://detail.tmall.com/item.htm?id=679380994840'), false);
+});
+
+// 收尾关闭决策。这块出过两次事，规则必须钉住：
+//   reused 作用域写错 → 数据写好却退出码 1；
+//   注释说「复用的一律不关」而代码只要 reused 就关 → 采成功也关掉了用户的窗口。
+test('自己开的干净页：关，且不啰嗦', () => {
+  const d = closeDecision({ targetId: 't1', keepTargetOpen: false, reused: false });
+  assert.equal(d.close, true);
+  assert.deepEqual(d.warnings, []);
+});
+
+test('自己开的页撞了验证：留着，并告诉人不用去拖', () => {
+  const d = closeDecision({ targetId: 't1', keepTargetOpen: true, reused: false });
+  assert.equal(d.close, false);
+  assert.equal(d.warnings.length, 2);
+  assert.match(d.warnings[0], /已保留被验证的标签页/u);
+  assert.match(d.warnings[1], /不需要人去拖/u);
+});
+
+test('复用的页被验证污染：关掉，免得下次 --reuse-tab 再捡到它', () => {
+  const d = closeDecision({ targetId: 't1', keepTargetOpen: true, reused: true });
+  assert.equal(d.close, true);
+  assert.match(d.warnings[0], /已被验证污染/u);
+});
+
+test('复用干净页且采成功：不动它，那是用户的窗口', () => {
+  const d = closeDecision({ targetId: 't1', keepTargetOpen: false, reused: true });
+  assert.equal(d.close, false, '复用页采成功不得关闭用户的窗口');
+  assert.deepEqual(d.warnings, []);
+});
+
+test('没有标签页时什么都不做', () => {
+  assert.deepEqual(closeDecision({ targetId: '' }), { close: false, warnings: [] });
+  assert.deepEqual(closeDecision({}), { close: false, warnings: [] });
 });
