@@ -1,0 +1,78 @@
+{
+ "at": "2026-10-26T12:04:54.680Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 4,
+ "failures": 0,
+ "items": [
+  {
+   "itemId": "674117739138",
+   "ok": true,
+   "skuCount": 54,
+   "reviewCount": 40,
+   "title": "浴缸家用成人独立式无缝一体保温小户型亚克力酒店民宿欧式浴盆",
+   "shopName": "名门浴缸工厂店",
+   "attrNames": [
+    "长度(9)",
+    "颜色分类(6)"
+   ],
+   "reviewTotal": "600"
+  },
+  {
+   "itemId": "779648684416",
+   "ok": true,
+   "skuCount": 104,
+   "reviewCount": 40,
+   "title": "家用成人亚克力小户型免安装彩色双层保温独立式水疗网红浴缸浴盆",
+   "shopName": "大发优选商行",
+   "attrNames": [
+    "颜色分类(104)"
+   ],
+   "reviewTotal": "400"
+  },
+  {
+   "itemId": "540176861759",
+   "ok": true,
+   "skuCount": 126,
+   "reviewCount": 40,
+   "title": "豪华独立式亚克力欧式小户型家用成人小浴缸冲浪按摩恒温加热浴盆",
+   "shopName": "潮流卫浴",
+   "attrNames": [
+    "长度(9)",
+    "颜色分类(14)"
+   ],
+   "reviewTotal": "400"
+  },
+  {
+   "itemId": "520089316735",
+   "ok": true,
+   "skuCount": 36,
+   "reviewCount": 40,
+   "title": "嵌入式浴缸进口加厚亚克力浴盆方形普通浴池1.2 1.41.5 1.6 1.7米",
+   "shopName": "BATHOME泊思家品牌卫浴店",
+   "attrNames": [
+    "长度(9)",
+    "颜色分类(4)"
+   ],
+   "reviewTotal": "200"
+  }
+ ],
+ "outputs": [
+  {
+   "written": true,
+   "rows": 320,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 7,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 160,
+   "existing": 0
+  }
+ ]
+}

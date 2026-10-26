@@ -1,0 +1,66 @@
+{
+ "at": "2026-10-26T12:03:48.255Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 3,
+ "failures": 0,
+ "items": [
+  {
+   "itemId": "679380994840",
+   "ok": true,
+   "skuCount": 40,
+   "reviewCount": 40,
+   "title": "TW特拉维尔浴缸家用亚克力小户型独立日式椭圆网红酒店民宿浴盆",
+   "shopName": "TW特拉维尔旗舰店",
+   "attrNames": [
+    "长度(6)",
+    "颜色分类(7)"
+   ],
+   "reviewTotal": "800"
+  },
+  {
+   "itemId": "902726522803",
+   "ok": true,
+   "skuCount": 40,
+   "reviewCount": 40,
+   "title": "东鹏深泡浴缸迷你日式小型恒温小户型家用坐式按摩亚克力一体浴盆",
+   "shopName": "东鹏卫浴旗舰店",
+   "attrNames": [
+    "长度(6)",
+    "颜色分类(8)"
+   ],
+   "reviewTotal": "100"
+  },
+  {
+   "itemId": "834577264183",
+   "ok": true,
+   "skuCount": 31,
+   "reviewCount": 40,
+   "title": "【政府补贴15%】浪鲸椭圆鹅蛋泊月浴缸亚克力家用独立式成人580",
+   "shopName": "浪鲸卫浴官方旗舰店",
+   "attrNames": [
+    "长度(5)",
+    "颜色分类(7)"
+   ],
+   "reviewTotal": "300"
+  }
+ ],
+ "outputs": [
+  {
+   "written": true,
+   "rows": 111,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 6,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 120,
+   "existing": 0
+  }
+ ]
+}

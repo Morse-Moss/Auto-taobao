@@ -436,13 +436,14 @@ async function main() {
   let keepTargetOpen = false;
   // 撞到滑块的那个下标；>=0 表示已停，不再尝试后面的商品。
   let challengedAt = -1;
+  // 是否复用了用户已开的标签页。必须声明在 try 外面：finally 里要用它决定关不关。
+  let reused = false;
 
   try {
     // 2026-10-26 实测差异：同一个商品、同一时刻，
     //   · 新建标签页（Target.createTarget）→ 页面被盖一层滑块，mtop 挂住
     //   · 已经在那儿放着的标签页 → 接口 2000ms 正常返回
     // 所以给一条「复用已开标签页」的路：风控盯的是新会话，不是账号。
-    let reused = false;
     if (options.reuseTab) {
       const existing = await findReusableTab(options.port);
       if (existing) {
@@ -562,16 +563,24 @@ async function main() {
     if (skipped) console.warn(`[详情] 有 ${skipped} 个输出因 0 行被跳过，原文件未改动`);
     return failures === 0 ? 0 : 1;
   } finally {
-    // 撞到验证时**不关**这个标签页：滑块是画在该页面上的一层弹窗，
-    // 关掉它，人就永远没有地方去拖。留着它，并在日志里点名，才可能被解掉。
-    // 复用的标签页也一律不关——那是用户的窗口，不是我们开的。
-    if (targetId && !keepTargetOpen && !reused) {
-      try { await session.send('Target.closeTarget', { targetId }, undefined, 5000); } catch { /* 关不掉就算了 */ }
-    } else if (targetId && keepTargetOpen) {
-      console.warn(`[详情] 已保留被验证的标签页（targetId=${targetId}）。`);
-      console.warn('[详情] 请在浏览器窗口里把那个滑块拖过去，然后重跑；同 profile 的验证态会一起解除。');
+    // 清理阶段的任何异常都不许冒泡：数据已经写盘、退出码已经定好了，
+    // 这里再抛一次只会让「采到了」变成「失败」（2026-10-26 真的发生过：
+    // reused 声明在 try 里，finally 读不到 → 91 行 SKU 写好了，退出码 1）。
+    try {
+      // 撞到验证时**不关**这个标签页：滑块是画在该页面上的一层弹窗，
+      // 关掉它，人就永远没有地方去拖。留着它，并在日志里点名，才可能被解掉。
+      // 复用的标签页也一律不关——那是用户的窗口，不是我们开的。
+      if (targetId && !keepTargetOpen && !reused) {
+        try { await session.send('Target.closeTarget', { targetId }, undefined, 5000); } catch { /* 关不掉就算了 */ }
+      } else if (targetId && keepTargetOpen) {
+        console.warn(`[详情] 已保留被验证的标签页（targetId=${targetId}）。`);
+        console.warn('[详情] 请在浏览器窗口里把那个滑块拖过去，然后重跑；同 profile 的验证态会一起解除。');
+      }
+    } catch (error) {
+      console.warn(`[详情] 收尾时出错，已忽略（不影响已写出的结果）：${error && error.message ? error.message : error}`);
+    } finally {
+      session.close();
     }
-    session.close();
   }
 }
 

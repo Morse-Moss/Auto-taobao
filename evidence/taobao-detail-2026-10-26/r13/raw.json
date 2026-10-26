@@ -1,0 +1,35 @@
+{
+ "at": "2026-10-26T12:02:39.042Z",
+ "port": 9222,
+ "reviewPages": 1,
+ "pageSize": 40,
+ "itemCount": 1,
+ "failures": 0,
+ "items": [
+  {
+   "itemId": "646852280649",
+   "ok": true,
+   "skuCount": 91,
+   "reviewCount": 40,
+   "title": "箭牌浴缸家用成人淋浴一体亚克力小户型泡澡方形可拆裙边按摩浴盆",
+   "shopName": "箭牌浴缸旗舰店",
+   "attrNames": [
+    "长度(7)",
+    "颜色(13)"
+   ],
+   "reviewTotal": "400"
+  }
+ ],
+ "outputs": [
+  {
+   "written": true,
+   "rows": 91,
+   "existing": 0
+  },
+  {
+   "written": true,
+   "rows": 40,
+   "existing": 0
+  }
+ ]
+}
