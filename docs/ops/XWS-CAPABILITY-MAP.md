@@ -10,8 +10,9 @@
 
 1. **停摆不是服务端停服。** 远端清单仍在、仍可 200 读到，但客户端 `normalize()` 在展开服务端策略之后，**再次硬写入 `search:false, detail:false`**，把账号权限覆盖掉。付费号、管理员号一样被关。
 2. **模块文件已从 CDN 删除。** `/modules/tb-detail.*.js`、`/modules/tb-list.*.js` 等全部 404。现存的完整模块源码只在浏览器 `chrome.storage.local` 缓存里，本次已离线解包取出（详情 3.0MB、列表 2.76MB）。
-3. **小旺神的能力不是"一个搜索页功能"，是 7 个远端模块族、约 50 个前端组件。** 我们目前只吸收了其中 1 项（搜索页市场分析 → 16 列周报）。
-4. **SKU 与 FAQ 的取数路径已完全拿到**，见第 4 节：SKU 走 `mtop.taobao.pcdetail.data.get`，评价走 `mtop.taobao.rate.detaillist.get v6.0`，买家秀走 `mtop.taobao.ugc.itemshow.list`。三条都是**淘宝原生接口 + 页面现算签名**，不需要逆向风控。
+3. **小旺神的能力不是"一个搜索页功能"，是 7 个远端模块族、约 50 个前端组件。** 我们已吸收其中 3 项（搜索页市场分析 → 16 列周报；详情页 SKU 与评价 → `runtime/collect-taobao-detail.mjs`，2026-10-26）。
+4. **SKU 与评价的取数路径已完全拿到并跑通**，见第 4 节：SKU 走 `mtop.taobao.pcdetail.data.get`，评价走 `mtop.taobao.rate.detaillist.get v6.0`，买家秀走 `mtop.taobao.ugc.itemshow.list`。三条都是**淘宝原生接口 + 页面现算签名**，不需要逆向风控。
+5. **「问大家（FAQ）」要单独说明：小旺神本身没有这个能力**，全模块无接口、无组件，只有一处读页面数字的代码和一个从未接线的埋点标签（见 4.1）。它不占"未吸收"的额度——想做得按新建立项。
 
 ---
 
@@ -121,7 +122,32 @@ xwsCan(k)             = !(isSearch() || isDetail()) || hasFunction(k)
 | **车图下载** | `XwsZtcImgDownload` | appId `34385` 搜索 + 创意中心 | 见第 5 节 | 车图 URL 列表 | ❌ |
 | **违禁词检测** | `XwsBannedWord` | 无淘宝接口（本地词库；图片走 OCR，按旺豆计费） | — | 标题/属性/详情/文案/SKU/描述分区命中 | ❌ |
 | **店铺信誉** | 详情页模块内**无对应组件**（仅出现在埋点标签表），入口不在 `tb-detail` | — | — | — | ❌ |
-| **采集问大家** | （入口已随锁失效） | 仅剩 DOM 计数：`[class*="askAnswerWrap--"] [class*="askAnswerTitle--"]` 文本「问大家 · N」 | — | 数量 | ❌ |
+| **采集问大家** | **模块内不存在实现**（见 4.1） | 无接口，只有 DOM 计数：`[class*="askAnswerWrap--"] [class*="askAnswerTitle--"]` 文本「问大家 · N」 | — | 仅有数量 | 不适用 |
+
+### 4.1 问大家（FAQ）：小旺神也没有明细能力，不在吸收范围
+
+2026-10-26 在离线解包的 `tb-detail.js`（3,009,034 B）与 `tb-list.js`（2,756,114 B）上逐项核对，
+结论是**源头就没有可吸收的东西**，不是「入口随锁失效」：
+
+1. **没有任何问大家相关接口。** 全模块 15 个 mtop 接口（`pcdetail` / `ugc` / `rate` / `shop` / `wsearch` /
+   `detail` / `hexa.search` / `alimama.union` / `alibaba.fc` / `relationrecommend`）里，
+   匹配 `\.(ask|wenda|faq)` 的结果为 **0**。
+2. **没有对应组件。** 25 个 `Xws*` 组件全量列出后，没有一个与问答有关
+   （`XwsBannedWord`/`XwsDetailImgSimilar`/`XwsItemBuyShow`/`XwsItemInfoFunc`/`XwsRatesDownload`/
+   `XwsShopNew`/`XwsZtcImgDownload`/`XwsMonitorTable`/… 无一命中）。
+3. **`采集问大家` 只是一个从未接线的埋点标签。** 标签表声明 14 个，
+   `bindClickTracking()` 实际只绑了 8 个（个人中心 / 宝贝信息 / 店铺上新 / 评价下载 / 车图下载 /
+   违禁词检测 / 全部买家秀下载）。`采集问大家` 在表里、但没有组件绑它 —— 死代码。
+4. **唯一活着的问大家代码是读数量。** `XwsItemInfoFunc` 里的 `readPageQuestionCount()`
+   每 1.5 秒轮询 `[class*="askAnswerWrap--"] [class*="askAnswerTitle--"]`，
+   正则 `/^\s*问大家\s*[·•・]\s*(.*?)\s*$/` 取出数字，存进 `questNum`，
+   和「SKU数 / 收藏 / 评价」并排显示在宝贝信息卡上。**只显示数字，不取明细。**
+5. **它依赖的锚点在当前 PC 详情页已不存在。** 2026-10-26 实测 `askAnswerWrap` 计数 = 0，
+   区块标题只有「参数 / 用户评价 / 参数信息 / 图文详情 / 本店推荐 / 看了又看」。
+
+所以「SKU 有了、评价有了，FAQ 什么时候补」这个问题要改问法：**要补的是新建能力，不是吸收**。
+若真要做，得从移动端或其它入口找接口，PC 端当前没有入口可依。优先级应低于买家秀——
+后者至少小旺神验证过接口形态。
 
 ### 单条评价的数据结构（从 `readReview` 反推，字段名为实测）
 
@@ -214,21 +240,24 @@ jsonpCallback = xwsitembuyshow
 
 ## 6. 与我们现有实现的差集
 
-**已吸收（1 项）**
-- 搜索页市场分析 → `runtime/taobao-search-core.mjs`（16 列契约）+ `runtime/collect-taobao-search.mjs`（采集）+ 周表全链。同源接口，已产出 1384 行周表并写入飞书。
+**已吸收（3 项）**
 
-**未吸收（10 项）**，按对我们的价值排序：
+| 能力 | 落点 | 状态 |
+|---|---|---|
+| 搜索页市场分析 | `runtime/taobao-search-core.mjs`（16 列契约）+ `runtime/collect-taobao-search.mjs`（采集）+ 周表全链 | 已产出 1384 行周表并写入飞书 |
+| **详情页 SKU** | `runtime/taobao-detail-core.mjs`（契约）+ `runtime/collect-taobao-detail.mjs`（采集） | 代码完成、实测通过（2026-10-26，60+50 SKU 两个商品）；受详情页滑块风控限制，全量待人工过一次验证 |
+| **评价下载** | 同上（同一采集器同时取评价） | 同左，实测 40+40 条字段全对 |
 
-1. **详情页 SKU** → `mtop.taobao.pcdetail.data.get`。周表「尺寸 / 适用空间」两列的 Lookup 来源，优先级最高。
-2. **评价下载** → `mtop.taobao.rate.detaillist.get v6.0`。可做差评归因、卖点验证。
-3. **问大家** → 模块里只剩数量读取，采集入口已随锁失效，需另探接口（候选：`mtop.taobao.ugc.tql.facade` 的其它 `sceneName`）。
-4. **买家秀** → `mtop.taobao.ugc.itemshow.list`。可作为真实使用场景的图片素材。
-5. **店铺上新** → `mtop.taobao.shop.simple.fetch` / `item.fetch`。竞品上新监控。
-6. **批量查排名** → appId 34385 翻页定位。
-7. **以图搜同款 / 同款数** → appId 34850 `strimg`。
-8. **店铺信誉** → 详情页模块内无实现，需另找入口（`tb-seller` 模块未取得）。
-9. **违禁词检测** → 本地词库，与淘宝无关。
-10. **车图下载** → appId 34385。
+**未吸收（8 项）**，按对我们的价值排序：
+
+1. **买家秀** → `mtop.taobao.ugc.itemshow.list`。可作为真实使用场景的图片素材。实测借页面 SDK 不通（四种调用形态全部 ABORT），须自己算 `md5(token&ts&12574478&data)` 直打 h5api —— 小旺神就是这么做的。是 SKU 之后唯一还有「源头验证过形态」的一项。
+2. **店铺上新** → `mtop.taobao.shop.simple.fetch` / `item.fetch`。竞品上新监控。
+3. **批量查排名** → appId 34385 翻页定位。
+4. **以图搜同款 / 同款数** → appId 34850 `strimg`。
+5. **店铺信誉** → 详情页模块内无实现，需另找入口（`tb-seller` 模块未取得）。
+6. **违禁词检测** → 本地词库，与淘宝无关。
+7. **车图下载** → appId 34385。
+8. **问大家** → **不是「未吸收」，是「源头没有」**。全模块无接口、无组件，只有一个从未接线的埋点标签和一个 DOM 数量读取，见 4.1。要做得按新建能力立项，不占吸收预算。
 
 ---
 

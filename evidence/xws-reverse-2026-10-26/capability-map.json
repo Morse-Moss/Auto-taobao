@@ -156,19 +156,22 @@
   },
   "absorptionDiff": {
     "absorbed": [
-      {"capability": "搜索页市场分析（16 列周报）", "impl": "runtime/taobao-search-core.mjs + runtime/collect-taobao-search.mjs", "note": "同源接口 mtop.relationrecommend.wirelessrecommend.recommend v2.0 appId 34385，已产出 1384 行周表"}
+      {"capability": "搜索页市场分析（16 列周报）", "impl": "runtime/taobao-search-core.mjs + runtime/collect-taobao-search.mjs", "note": "同源接口 mtop.relationrecommend.wirelessrecommend.recommend v2.0 appId 34385，已产出 1384 行周表"},
+      {"capability": "详情页 SKU 明细", "api": "mtop.taobao.pcdetail.data.get v1.0", "impl": "runtime/taobao-detail-core.mjs + runtime/collect-taobao-detail.mjs", "note": "2026-10-26 实测通过（597600994634 共 60 SKU、678598686014 共 50 SKU）；价格与库存在 skuCore.sku2info[skuId]，skuBase.skus[] 只有 propPath+skuId"},
+      {"capability": "评价下载/评价分析", "api": "mtop.taobao.rate.detaillist.get v6.0", "impl": "runtime/taobao-detail-core.mjs + runtime/collect-taobao-detail.mjs", "note": "接口字段是 feedback/feedPicPathList/skuValueStr，不是 React 里的 reviewInfo/feedPicList"}
     ],
     "notAbsorbed": [
-      {"capability": "详情页 SKU 明细", "api": "mtop.taobao.pcdetail.data.get", "value": "周表「尺寸/适用空间」两个 Lookup 的来源"},
-      {"capability": "评价下载/评价分析", "api": "mtop.taobao.rate.detaillist.get v6.0"},
-      {"capability": "全部买家秀下载", "api": "mtop.taobao.ugc.itemshow.list v1.0 + mtop.taobao.ugc.tql.facade v1.0"},
-      {"capability": "问大家采集", "note": "模块内仅保留 DOM 计数读取（[class*='askAnswerWrap--'] [class*='askAnswerTitle--']），采集入口已随 search/detail 锁一起失效；需另探接口"},
+      {"capability": "全部买家秀下载", "api": "mtop.taobao.ugc.itemshow.list v1.0 + mtop.taobao.ugc.tql.facade v1.0", "note": "实测借页面 SDK 四种调用形态全部 ABORT，须自己算 md5(token&ts&12574478&data) 直打 h5api"},
       {"capability": "店铺上新", "api": "mtop.taobao.shop.simple.fetch v1.0 + mtop.taobao.shop.simple.item.fetch v1.0"},
       {"capability": "批量查排名", "api": "appId 34385 搜索接口翻页定位"},
       {"capability": "以图搜同款/同款数", "api": "appId 34850 strimg"},
       {"capability": "违禁词检测", "note": "本地词库比对 + 图片 OCR（旺豆计费），无淘宝接口"},
       {"capability": "车图下载", "api": "appId 34385 搜索 + 创意中心"},
       {"capability": "店铺信誉", "note": "仅出现在埋点标签表，tb-detail 模块内无对应组件，入口不在详情页模块"}
+    ],
+    "outOfScope": [
+      {"capability": "采集问大家（FAQ）", "verdict": "小旺神本身没有明细采集能力，不在吸收范围；要做得按新建能力立项",
+       "evidence": {"apiMatchPattern": "\\\\.(ask|wenda|faq) 命中 0 次", "components": 0, "deadTrackingLabel": "采集问大家（标签表声明 14 个，bindClickTracking 实际只绑 8 个）", "onlyLiveCode": "XwsItemInfoFunc.readPageQuestionCount() 每 1.5s 读 [class*='askAnswerWrap--'] [class*='askAnswerTitle--']，只取数字", "domAnchorGone": "2026-10-26 实测 PC 详情页 askAnswerWrap 计数=0"}}
     ]
   },
   "provenance": {
