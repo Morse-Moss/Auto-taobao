@@ -26,6 +26,10 @@ runtime/**/images/
 runtime/**/qa-*/
 runtime/**/xws-api-*/
 runtime/**/docx-qa-*/
+# 2026-10-26：淘宝自采周报的主图缓存（一期约 250MB，1384 个 <item_id>.img）。
+# 上面 runtime/**/*.png|jpg 那几条按扩展名忽略，抓不到这批 .img，于是它会整个目录挂在
+# git status 里、体积大到一个不小心就会进库。它是可重下的中间产物（fetch-weekly-images.mjs）。
+runtime/taobao-images-*/
 runtime/**/*.json
 runtime/**/*.jsonl
 runtime/**/*.log

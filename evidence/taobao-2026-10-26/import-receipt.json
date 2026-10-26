@@ -1,0 +1,46 @@
+{
+  "runDate": "2026-10-26",
+  "chain": "taobao-self-collect -> fetch-images -> build-xlsx -> feishu-weekly-import",
+  "table": {
+    "name": "竞品周_2026-10-18_2026-10-24",
+    "tableId": "tbl9yd1nTl54vLd3",
+    "baseToken": "QcnhbEzYpacGvUskCbVcrcm3nFd",
+    "profile": "kcne"
+  },
+  "period": {
+    "startDate": "2026-10-18",
+    "endDate": "2026-10-24",
+    "collectedAt": "2026-10-26",
+    "windowConvention": "周日->周六"
+  },
+  "source": {
+    "csv": "runtime/taobao-weekly-20261026.csv",
+    "xlsx": "runtime/taobao-weekly-20261026.xlsx",
+    "xlsxBytes": 19296773,
+    "imagesDir": "runtime/taobao-images-20261026",
+    "imageFiles": 1384,
+    "imageBytesApprox": 255852544
+  },
+  "collection": {
+    "keyword": "浴缸",
+    "sort": "_sale",
+    "pages": 40,
+    "rawItems": 1920,
+    "rowsAfterDedupe": 1384,
+    "elapsedMs": 526000
+  },
+  "import": {
+    "dryRun": false,
+    "sourceRows": 1384,
+    "importedRows": 1384,
+    "attachmentCount": 1384,
+    "elapsedMs": 1647000,
+    "runnerSelfVerify": "PASS"
+  },
+  "knownGaps": {
+    "monthlySalesBadgeBlank": 23,
+    "monthlySalesBadgeDetail": "evidence/taobao-2026-10-26/monthly-sales-badges.json",
+    "categoryIdUnmapped": 2,
+    "categoryIdDetail": "50016348 2132 50011158（泡澡桶/浴桶，被关键词搜混进来，保留原始 ID 不猜名字）"
+  }
+}

@@ -274,6 +274,25 @@ const RUNTIME_TO_SKILLS = Object.freeze([
   // 判据必须由对面自己的函数来判，不能在 runtime 里照着 argv 数组猜。
   'runtime/daily-job-plan.test.mjs',
   'runtime/xws-sku-payload-parser.mjs',
+  // 2026-10-26 登记：淘宝自采周报的三道门。三个文件都只 import **判据本身**，
+  // 不 import 任何执行流程，属于「复用裁判」而非业务倒灌。
+  //
+  // verify-weekly-xlsx.mjs → export-market-analysis 的 `validateDataset`：
+  //   16 列契约的定义只许有一份。在 runtime 重抄一遍校验，就等于给自己一个
+  //   「我这份也说是对的」的假绿；而真正会拒收的是导入链那一份。
+  //
+  // preflight-weekly-import.mjs → feishu 导入的 `buildRecordFields` / `validateTarget`：
+  //   预检的全部意义在于「跑的就是提交时会跑的那个函数」。照它的行为在 runtime 写个
+  //   仿真版，验的是仿真版，不是对面——2026-10-26 的 23 行徽标就是靠真函数才照出来的
+  //   （numericValue 对非数字强校验，会抛 SOURCE_VALUE_INVALID 让 1384 行整批失败）。
+  //
+  // blank-weekly-sales-badges.mjs 不跨目录（只依赖 runtime/taobao-search-core.mjs），
+  // 不在此登记；但它和上面两个同属一条链，改一处要先想另两处。
+  'runtime/verify-weekly-xlsx.mjs',
+  'runtime/preflight-weekly-import.mjs',
+  // 独立回读：写完再另起一次读取，拿 CSV 当期望值。导入器自己也会校一次，
+  // 但那是同一进程、同一份内存里的期望值；这一份是另一进程、另一次读。
+  'runtime/verify-weekly-import-readback.mjs',
 ]);
 
 test('skills → runtime 的依赖清单与登记逐字一致（新增与消失都要显式改这里）', () => {
