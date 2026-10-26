@@ -365,18 +365,19 @@ export function shopBrowserKeys() {
  * 2026-10-16 15:40 换外组织日报 base 时曾按用户拍板清空（13 家全采）；同日 16:22 用户改口
  * 「销售二部先暂停，只录入销售一部」⇒ **销售2部 5 家重新填回这张表**（两条链一起停）。
  * 实测依据：5 家 sycm+阿里妈妈登录态全失效（probe-20261016/probe-tabs.mjs），且 2026-09-30
- * 取证其生意参谋日报取数报表全不满足。恢复＝把这 5 行删掉（登录+报表补齐后）。
- * ⚠️ 商品链那份 `PRODUCT_DATA_STOPPED_SHOPS`（product-data-job-core.mjs）保留不删：
- * 现在两者重叠（都停 5 家）但语义不同——这张表是「整链停」，那张是「日报链放开后商品链单独停」，
- * 将来恢复日报链的二部时只需删这里 5 行、商品链仍被那张表拦住。
+ * 取证其生意参谋日报取数报表全不满足。
+ *
+ * **2026-10-26 清空（当前状态）**：用户重新给了账号表（五家会员名统一成 `<主账号>:数据监控`），
+ * 5 个 profile 全量重建并人工登录成功；只读回读五项（sycm 页头店名 + 阿里妈妈会员名/ID）
+ * 与 `shop-identities.mjs` 逐项一致，标识页 `labelActual` 全部「与登记表一致」；
+ * 用户指令「恢复采集，加入到日常的采集链中」⇒ 删掉这 5 行。
+ * ⚠️ 商品链那份 `PRODUCT_DATA_STOPPED_SHOPS`（product-data-job-core.mjs）**同一批清空**：
+ * 只清这里会让商品链在 `buildProductJobPlan` 的 notCollecting 分支 fail-closed（看似「没开始收集」）。
+ * 清空后 `collectingShopKeys()` 与 `shopBrowserKeys()` 又**逐字相同**（13 家）——
+ * `browser-ports.test.mjs` / `batch-plan.test.mjs` / `ensure-inquiry-rows.test.mjs` 里
+ * 「两者应当不同」的口径已同步改成等值/互补形态，不是放宽。
  */
-export const SHOPS_NOT_COLLECTING_YET = Object.freeze([
-  '保拉淘宝',
-  '保拉天猫',
-  '安比龙头店',
-  '科塔龙头店',
-  '安比淘宝',
-]);
+export const SHOPS_NOT_COLLECTING_YET = Object.freeze([]);
 
 /**
  * 参与采集的店铺（顺序＝登记表顺序）。

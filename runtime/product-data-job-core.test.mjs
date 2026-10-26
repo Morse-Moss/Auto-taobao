@@ -14,15 +14,16 @@ test('product job defaults to yesterday and covers all shops that actually colle
   // 家数从**参与采集**的名单推，不写死。
   // 默认名单是商品链自己的 productDataCollectingShopKeys()：
   // 2026-10-16 日报链换外组织 base 时用户拍板「13 家全采」，但那只放开**店铺日报链**——
-  // 商品数据链的销售2部维持 2026-10-05 的停采（PRODUCT_DATA_STOPPED_SHOPS），
-  // 所以商品链默认＝collectingShopKeys()（13 家）再摘掉销售2部 5 家＝销售1部 8 家。
+  // 商品数据链的销售2部维持 2026-10-05 的停采（PRODUCT_DATA_STOPPED_SHOPS）。
+  // 2026-10-26 用户指令「恢复采集，加入到日常的采集链中」⇒ 两张停采表同一批清空，
+  // 商品链默认＝参与采集的全部 13 家 ＝ 登记表全量。
   assert.deepEqual(plan.shops, productDataCollectingShopKeys());
   assert.deepEqual(plan.shops, collectingShopKeys().filter((shop) => !PRODUCT_DATA_STOPPED_SHOPS.includes(shop)));
   for (const shop of PRODUCT_DATA_STOPPED_SHOPS) {
     assert.equal(plan.shops.includes(shop), false, `商品链停采名单里的「${shop}」不该出现在默认名单`);
   }
   // ⚠️ 这条同时是一笔资源账：`parallelShopCount` 是「一次会起多少个实例」的**名义**值 ——
-  // 8 家 ＝ 8 个 Edge 实例 + 8 个代理进程同时活着（底单串行采集，但实例全起）。
+  // 13 家 ＝ 13 个 Edge 实例 + 13 个代理进程同时活着（底单串行采集，但实例全起）。
   // 入口给了 `--batches`（默认 5）：**真正同时开着的**是这个数除以批次大小，
   // 由 `scripts/run-product-data-job.mjs` 的分批循环决定（切法只来自 `runtime/batch-plan.mjs`）。
   // 这条用例刻意继续钉 plan 的名义值：改口径要连它一起改，而不是让它跟着漂。
@@ -43,11 +44,21 @@ test('product job plan rejects unknown / empty / not-yet-collecting shop selecti
   // 未登记走的是另一条报错 —— 两件事不许混。
   assert.throws(() => buildProductJobPlan({ shops: ['丁店'], registered, collecting }), /unknown shops/u);
   // 注入口的默认值必须仍是真实登记表（本条防止注入口把生产路径改掉）：
-  // 2026-10-16 起商品链默认名单＝13 家摘掉商品链停采名单（销售2部 5 家）。
+  // 2026-10-26 起两张停采表都清空 ⇒ 商品链默认名单＝参与采集的全部 13 家。
   assert.deepEqual(buildProductJobPlan().shops, productDataCollectingShopKeys());
   // 点名商品链停采名单里的店（已登记）也要被拒，且理由要指到那张表，别让人去翻 browser-ports。
-  assert.throws(() => buildProductJobPlan({ shops: ['保拉淘宝'] }), /PRODUCT_DATA_STOPPED_SHOPS/u,
-    '商品链停采的店被点名时，报错要说清停在哪张表');
+  // 2026-10-26 恢复二部后生产表已清空，**活体样本没了** —— 与上面 registered/collecting 同一个理由：
+  // 用显式注入 `productStopped` 构造现场，而不是把「报错指向哪张表」这条守卫交给运气。
+  assert.throws(() => buildProductJobPlan({ shops: ['丙店'], registered, collecting, productStopped: ['丙店'] }),
+    /PRODUCT_DATA_STOPPED_SHOPS/u, '商品链停采的店被点名时，报错要说清停在哪张表');
+  // 反面：注入表里没有它时，同一家店必须走「还没开始收集」那句（指向 browser-ports）——
+  // 两张表混成一句会让人去翻错文件，那正是这条报错最不该做的事。
+  assert.throws(() => buildProductJobPlan({ shops: ['丙店'], registered, collecting, productStopped: ['丁店'] }),
+    (error) => {
+      assert.match(error.message, /SHOPS_NOT_COLLECTING_YET/u, '不在商品链停采表里时，报错要指向整链停采表');
+      assert.doesNotMatch(error.message, /PRODUCT_DATA_STOPPED_SHOPS/u, '两张表的报错不许混成一句');
+      return true;
+    });
 });
 
 test('scheduled entry targets the independent product-data job, commits yesterday, batches, and runs promotion', () => {

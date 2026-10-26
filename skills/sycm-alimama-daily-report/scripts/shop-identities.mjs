@@ -243,10 +243,10 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'taobao',
     sycmHeader: 'Paola Lenti保拉伦...',
     sycmHeaderVerified: 'expression',
-    alimamaMemberName: '保拉伦蒂:小保',
+    alimamaMemberName: '保拉伦蒂:数据监控',
     alimamaMemberId: '1991150160',
     alimamaVerified: 'expression',
-    evidence: '页头店名 2026-09-30 用采集表达式实测（隔离 profile paola-taobao）。⚠️ **平台把长店名截断了**：页头文本本身就是 `Paola Lenti保拉伦...`（省略号在文本节点里，`offsetWidth === scrollWidth`、DOM 无 title/aria-label 可取全名），而平台店铺全称（店铺底单原文）是 `Paola Lenti保拉伦蒂` ⇒ 这里的 sycmHeader 必须是**实测到的截断值**，否则闸门会在正确的窗口上拦人。会员名与会员 ID 同日用采集表达式实测',
+    evidence: '页头店名 2026-09-30 用采集表达式实测（隔离 profile paola-taobao）。⚠️ **平台把长店名截断了**：页头文本本身就是 `Paola Lenti保拉伦...`（省略号在文本节点里，`offsetWidth === scrollWidth`、DOM 无 title/aria-label 可取全名），而平台店铺全称（店铺底单原文）是 `Paola Lenti保拉伦蒂` ⇒ 这里的 sycmHeader 必须是**实测到的截断值**，否则闸门会在正确的窗口上拦人。会员名与会员 ID 同日用采集表达式实测。**2026-10-26 子账号换成「:数据监控」**：profile 当日清空重建、人工登录后再次用采集表达式实测（会员 ID 未变）',
   }),
   Object.freeze({
     key: '保拉天猫',
@@ -254,10 +254,11 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'tmall',
     sycmHeader: '保拉伦蒂旗舰店',
     sycmHeaderVerified: 'expression',
-    alimamaMemberName: '保拉伦蒂旗舰店:小杜',
+    alimamaMemberName: '保拉伦蒂旗舰店:数据监控',
     alimamaMemberId: '7445214812',
     alimamaVerified: 'expression',
-    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile paola-tmall，当天人工登录一次）',
+    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile paola-tmall，当天人工登录一次）。'
+      + '**2026-10-26 子账号换成「:数据监控」**：profile 当日清空重建、人工登录后再次用采集表达式实测（会员 ID 未变）',
   }),
   Object.freeze({
     key: '网林淘宝',
@@ -313,10 +314,11 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'leading',
     sycmHeader: '安比全卫定制',
     sycmHeaderVerified: 'expression',
-    alimamaMemberName: 'tb720555516:泡芙',
+    alimamaMemberName: 'tb720555516:数据监控',
     alimamaMemberId: '4611324807',
     alimamaVerified: 'expression',
-    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile anbi-leading）。账号表原写的密码是错的，已按用户口述更正为 pf115588',
+    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile anbi-leading）。账号表原写的密码是错的，已按用户口述更正为 pf115588。'
+      + '**2026-10-26 子账号换成「:数据监控」**：profile 当日清空重建、人工登录后再次用采集表达式实测（会员 ID 未变）',
   }),
   Object.freeze({
     key: '科塔龙头店',
@@ -324,10 +326,11 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'leading',
     sycmHeader: '科塔建材卫浴',
     sycmHeaderVerified: 'expression',
-    alimamaMemberName: '科塔建材卫浴品牌店:小森',
+    alimamaMemberName: '科塔建材卫浴品牌店:数据监控',
     alimamaMemberId: '6438408891',
     alimamaVerified: 'expression',
-    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile keta-leading，当天人工登录一次）',
+    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile keta-leading，当天人工登录一次）。'
+      + '**2026-10-26 子账号换成「:数据监控」**：profile 当日清空重建、人工登录后再次用采集表达式实测（会员 ID 未变）',
   }),
   Object.freeze({
     key: '安比淘宝',
@@ -335,10 +338,11 @@ export const SHOP_IDENTITIES = Object.freeze([
     platform: 'taobao',
     sycmHeader: '安比定制家居',
     sycmHeaderVerified: 'expression',
-    alimamaMemberName: '安比定制家居:小森',
+    alimamaMemberName: '安比定制家居:数据监控',
     alimamaMemberId: '2979090045',
     alimamaVerified: 'expression',
-    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile anbi-taobao）。账号表原写的密码是错的，已按用户口述更正为 xs115588',
+    evidence: '页头店名、会员名、会员 ID 均于 2026-09-30 用采集表达式实测（隔离 profile anbi-taobao）。账号表原写的密码是错的，已按用户口述更正为 xs115588。'
+      + '**2026-10-26 子账号换成「:数据监控」**：profile 当日清空重建、人工登录后再次用采集表达式实测（会员 ID 未变）',
   }),
   Object.freeze({
     key: '网林家居',

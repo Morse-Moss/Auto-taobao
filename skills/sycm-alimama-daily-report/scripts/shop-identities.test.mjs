@@ -391,8 +391,11 @@ test('打印器：可粘贴内容只走 stdout，提示走 stderr；require 不�
   // （原注释说「当前没有一家带空格且已实测的店」，已经不成立。）
   const spaced = run(['保拉淘宝']);
   assert.equal(spaced.code, 0);
+  // 期望值同样从登记表派生（2026-10-26）：原来是写死的一行字面量，账号表一换子账号就变成假红。
+  // 这条要守的是「带空格的店名要加引号」，不是「会员名恰好是哪一个」。
+  const paola = shopIdentity('保拉淘宝');
   assert.equal(spaced.stdout,
-    '--expect-shop "Paola Lenti保拉伦..." --expect-member 保拉伦蒂:小保 --expect-member-id 1991150160\n',
+    `--expect-shop "${paola.sycmHeader}" --expect-member ${paola.alimamaMemberName} --expect-member-id ${paola.alimamaMemberId}\n`,
     '带空格的页头店名必须加引号，否则粘到命令行会被拆成两个参数');
   assert.equal(formatArgv(['--expect-shop', 'Paola Lenti保拉伦蒂', '--expect-member', 'j873522735:嘉慧']),
     '--expect-shop "Paola Lenti保拉伦蒂" --expect-member j873522735:嘉慧',

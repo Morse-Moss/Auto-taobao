@@ -34,23 +34,23 @@ export const PRODUCT_JOB_FILES = Object.freeze({
 export const SKIP_PROMOTION_REASON = '推广段人工熔断开关（默认关闭；仅当推广导入目标异常时手工传入）';
 
 /**
- * 商品数据链的「销售2部停采」名单（2026-10-16 加）。
+ * 商品数据链的「单链停采」名单（2026-10-16 加；**2026-10-26 清空**）。
  *
  * 背景：2026-10-16 日报链换到别的组织的 base，用户拍板「13 家全采集」⇒
  * `browser-ports.mjs` 的 `SHOPS_NOT_COLLECTING_YET` 清空（13 家都算参与采集）。
  * 但那次拍板**只放开店铺日报链**——商品数据链的销售2部维持 2026-10-05 的停采指令
  * （「现在只动店铺日报」）。两条链共用 `collectingShopKeys()`，所以商品链的停采名单
  * 落在这里：默认名单从 `collectingShopKeys()` 里再摘掉这 5 家。
- * 要整链恢复时把这张表清空即可；要点名单跑某一家仍可走 `--shops`（会走下面的
- * notCollecting 分支 fail-closed，这是有意的：商品链没恢复前点名二部的店必须先改这里）。
+ *
+ * 2026-10-26 用户指令「恢复采集，加入到日常的采集链中」⇒ 与 `SHOPS_NOT_COLLECTING_YET`
+ * **同一批清空**。只清其中一张是不够的：清的若是 `browser-ports` 那张，商品链会走进下面的
+ * notCollecting 分支 fail-closed，报错说「已登记但还没开始收集」，而这五家其实已经在采。
+ *
+ * 表**留着不删**：它是「日报链照跑、商品链单独停一家」的闸门（例如某家商品报表配置坏了、
+ * 但店铺日报还能出数时，只填这里不影响日报链）。空表 ⇒ `productDataCollectingShopKeys()`
+ * 与 `collectingShopKeys()` 逐字相同，是**期望形态**，不是判据失效。
  */
-export const PRODUCT_DATA_STOPPED_SHOPS = Object.freeze([
-  '保拉淘宝',
-  '保拉天猫',
-  '安比龙头店',
-  '科塔龙头店',
-  '安比淘宝',
-]);
+export const PRODUCT_DATA_STOPPED_SHOPS = Object.freeze([]);
 
 /** 商品数据链默认采集名单：`collectingShopKeys()` 摘掉商品链停采名单（见上）。 */
 export function productDataCollectingShopKeys() {
@@ -58,17 +58,20 @@ export function productDataCollectingShopKeys() {
 }
 
 export function buildProductJobPlan({ dateInput = 'yesterday', shops = null, commit = true, skipPromotion = false,
-  registered = shopBrowserKeys(), collecting = productDataCollectingShopKeys() } = {}) {
+  registered = shopBrowserKeys(), collecting = productDataCollectingShopKeys(),
+  productStopped = PRODUCT_DATA_STOPPED_SHOPS } = {}) {
   // 默认＝**参与采集**的店铺，不是登记表全部：登记表里可能还有没开始收集的空店
   // （2026-09-30 白天有 1 家，当晚用户拍板开 13 家后那张表清空）。把空店算进来会让登录预检
   // 多查一家、采集多起一家、导入多写一家 —— 而它三项都做不成，最后表现为「一条每天都会响的假告警」。
-  // 两个集合可注入、默认＝真实登记表：理由同 `batch-plan.mjs` 的 `resolveShopNames`
-  // （那条「还没开始收集」分支的活体样本已随空表清空，靠「仓库里恰好有空店」覆盖它＝把守卫交给运气）。
+  // 三个集合可注入、默认＝真实登记表：理由同 `batch-plan.mjs` 的 `resolveShopNames`
+  // （两条分支的活体样本都已随空表清空，靠「仓库里恰好有空店/停采店」覆盖它＝把守卫交给运气）。
+  // `productStopped` 只决定**报错指向哪张表**（inProductStop），不参与「采谁」——
+  // 采谁由 `collecting` 决定（它的默认值已经把这 5 家摘掉了）。
   const selected = shops ?? collecting;
   if (!selected.length) throw new Error('shops must contain at least one shop');
   const notCollecting = selected.filter((shop) => !collecting.includes(shop) && registered.includes(shop));
   if (notCollecting.length) {
-    const inProductStop = notCollecting.filter((shop) => PRODUCT_DATA_STOPPED_SHOPS.includes(shop));
+    const inProductStop = notCollecting.filter((shop) => productStopped.includes(shop));
     const hint = inProductStop.length === notCollecting.length
       ? '（商品数据链的销售2部停采中 —— 见 runtime/product-data-job-core.mjs 的 PRODUCT_DATA_STOPPED_SHOPS；'
         + '要让商品链也采二部，先把那张表清空）'

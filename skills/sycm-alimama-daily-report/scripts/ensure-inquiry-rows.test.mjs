@@ -3,7 +3,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { collectingShopKeys, shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
+import { collectingShopKeys, SHOPS_NOT_COLLECTING_YET, shopBrowserKeys } from '../../../runtime/browser-ports.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const MODULE_URL = pathToFileURL(path.join(SCRIPT_DIR, 'ensure-inquiry-rows.mjs')).href;
@@ -56,16 +56,22 @@ test('resolveTargetShops：未登记的店名 fail-closed，且错误里点名�
   });
 });
 
-test('真实登记表：默认范围＝collectingShopKeys()，且严格小于 shopBrowserKeys()', () => {
+test('真实登记表：默认范围＝collectingShopKeys()，且与「待收集」表互补（不重不漏）', () => {
   const registered = shopBrowserKeys();
   const collecting = collectingShopKeys();
   assert.deepEqual(resolveTargetShops(null), collecting);
-  // 2026-10-16 16:22 用户改回「销售二部先暂停」（登录态全掉＋报表全不满足）；一度清空过
-  // （13 家全采），恢复二部时这条断言要跟着改口径，不能默默放宽。
-  assert.ok(collecting.length < registered.length,
-    '当前销售2部仍在停采；若某天两部都要采，这两条口径会相等 —— 那时这条断言要跟着改口径，不能默默放宽');
-  for (const key of registered.filter((k) => !collecting.includes(k))) {
-    assert.equal(resolveTargetShops(null).includes(key), false, `${key} 不该在默认范围里`);
+  // 这条断言原来写的是 `collecting.length < registered.length`（2026-10-16 16:22「销售二部先暂停」）。
+  // 2026-10-26 五家换号重登、用户指令恢复采集 ⇒ 待收集表清空，两支名单**逐字相同**，
+  // 严格小于不再成立。所以判据换成「差集恰好由待收集表解释」：
+  //   · 表空 ⇒ 退化成等值断言（此时若仍有店没进默认范围，说明它掉缝里了）；
+  //   · 表非空 ⇒ 仍拦「有店既不在采集名单、也不在任何名单里」。
+  // 这不是放宽：原来的 `<` 只证明「有停采店」，证明不了「少的那几家正好是待收集的那几家」。
+  const missing = registered.filter((key) => !collecting.includes(key));
+  assert.deepEqual([...missing].sort(),
+    SHOPS_NOT_COLLECTING_YET.filter((key) => registered.includes(key)).sort(),
+    '登记表里没进默认范围的店，必须恰好是 SHOPS_NOT_COLLECTING_YET 里那几家 —— 否则有店掉进缝里');
+  for (const key of collecting) {
+    assert.equal(resolveTargetShops(null).includes(key), true, `${key} 在采集名单里，默认范围必须包含它`);
   }
 });
 
