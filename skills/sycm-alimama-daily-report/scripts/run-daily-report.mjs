@@ -477,7 +477,23 @@ async function main() {
       derivedReadbackAttempts: settled.attempts, checks: plan.checks }, null, 2));
     return;
   }
-  if (duplicates.length) throw new Error(`duplicate daily report row exists: ${duplicates.map(item => item.record_id).join(', ')}`);
+  if (duplicates.length) {
+    // 2026-10-26：duplicate 在这里对 **dry-run** 不再抛错。
+    // 起因很具体：三家店 10-25 的数据早已在飞书，一轮「只想验证导入前流程」的排练因此
+    // 全红在第 7 步 —— 而它红的原因恰恰是「这一天其实已经干完了」，这跟「流程跑不通」
+    // 是两件相反的事。演练不写任何东西，重复行对它不是阻断，而是**结论的一部分**：
+    // 真跑会停在这里，演练要把这句话说出来，然后继续给出可读的结论。
+    // `--commit`（真写）与 `--verify-existing`（只读核对）两条路径的判据一个字没动。
+    if (!args.commit) {
+      console.warn(`[演练] 底单里已经有这一行（${duplicates.map(item => item.record_id).join(', ')}）`
+        + ' ⇒ 真跑（--commit）会在这条判据上停下；演练不写飞书，照常给出结论');
+      console.log(JSON.stringify({ status: 'DRY_RUN_READY_BUT_DUPLICATE', planPath, tsvPath,
+        outputDir: args.outputDir, evidenceGeneration: resolved.generation, recordCount: before.length,
+        duplicateRecordIds: duplicates.map(item => item.record_id), checks: plan.checks }, null, 2));
+      return;
+    }
+    throw new Error(`duplicate daily report row exists: ${duplicates.map(item => item.record_id).join(', ')}`);
+  }
 
   if (!args.commit) {
     console.log(JSON.stringify({ status: 'DRY_RUN_READY', planPath, tsvPath,
