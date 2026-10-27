@@ -1104,7 +1104,7 @@ test('视口闸门：默认在、两种形态都在、且不是闸门（它只�
   assert.equal(argsOf(on, 'viewport-gate').includes('--json'), true);
 });
 
-test('视口闸门的目标清单：参与采集的 8 家 ＋ **共用商家浏览器**（按端口指名）', () => {
+test('视口闸门的目标清单：参与采集口径（2026-10-26 起 13 家，取自 collectingShopKeys）＋ **共用商家浏览器**（按端口指名）', () => {
   // 那台实例不属于任何一家店 ⇒ 只按店名读的那条路**永远读不到它**，
   // 而这次出事的恰恰是它。所以「按端口读」必须真的在命令行上。
   const args = argsOf(buildJobPlan(), 'viewport-gate');

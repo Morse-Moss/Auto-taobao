@@ -73,8 +73,8 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/sycm-alimama-daily-report/scripts/date-picker.mjs',
   // 2026-10-07 新增：**补飞书询单表行骨架那一步**（`ensure-inquiry-rows.mjs`）。
   // 它 import 两处 runtime：① `browser-ports.mjs` 的 `shopBrowserKeys()`（登记表全量，13 家 ——
-  // 用作 `--shops` 的**合法值集合**）与 `collectingShopKeys()`（参与采集的 8 家 ——
-  // 用作**默认范围**，2026-10-07 晚用户口径「补齐销售一部、二部先别动」）；② `feishu-targets.mjs` 的
+  // 用作 `--shops` 的**合法值集合**）与 `collectingShopKeys()`（参与采集口径 ——
+  // 2026-10-07 时是 8 家，2026-10-26 起 13 家全采，**不要再写死数字**）；② `feishu-targets.mjs` 的
   // `dailyReportTargets` / `loadFeishuCredentials` —— base/表 id 与凭据路径的唯一来源
   //（同这一族所有写飞书的脚本，绝不把 tenant token 或 base id 抄进本仓）。
   // 方向是干净的 skills → runtime（两个都是机制层叶子）。
@@ -84,8 +84,9 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/sycm-alimama-daily-report/scripts/ensure-inquiry-rows.mjs',
   // 2026-10-07 再新增一条：上一条的**离线用例**（`ensure-inquiry-rows.test.mjs`）。
   // 它 import `browser-ports.mjs` 的 `shopBrowserKeys()` / `collectingShopKeys()` ——
-  // 用来钉住「默认范围＝参与采集的 8 家（销售1部），不是登记表全量 13 家」这条 2026-10-07
-  // 用户口径，且**不许回落到登记表全量**（回归一旦发生，就会把销售2部那 5 家的行顺手铺了）。
+  // 用来钉住「默认范围＝参与采集口径，不是登记表全量」这条口径（2026-10-07 立：
+  // 当时参与采集是 8 家、登记 13 家；2026-10-26 起两者都是 13 家，但**口径来源仍是那唯一一处**），
+  // 且**不许回落到登记表全量**（回归一旦发生，就会把停采店的行顺手铺了）。
   // 方向是干净的 skills → runtime（两个名单函数都是机制层叶子），与上一条同源，不扩大锁定面。
   // 为什么断言要 import 真名单而不是抄一份字符串：抄一份的话，名单一改这条用例照样绿 ——
   // 它守的就是「默认口径来自那唯一一处」，抄本身就是被守的那件事。
@@ -98,7 +99,8 @@ const SKILLS_TO_RUNTIME = Object.freeze([
   'skills/sycm-alimama-daily-report/scripts/collector-arg-contract.test.mjs',
   // 2026-10-15 新增：**推广日报对账门** CLI（`check-promotion-completeness.mjs`）。
   // 它 import 两处 runtime：① `browser-ports.mjs` 的 `collectingShopKeys()` —— 对账分母
-  // 「参与采集的 8 家」的唯一来源（抄一份名单字符串，名单一改分母就成了第二个事实）；
+  // 「参与采集口径」的唯一来源（抄一份名单字符串，名单一改分母就成了第二个事实；
+  // 2026-10-26 起是 13 家，别再按 8 家写）；
   // ② `feishu-targets.mjs` 的 `activeProfileName`/`loadFeishuCredentials`/`promotionDailyTargets`
   // —— 读飞书做独立回读时的目标与凭据唯一来源（同这一族所有读写飞书的脚本，
   // 绝不把 tenant token 或 base id 抄进本仓）。方向是干净的 skills → runtime（都是机制层叶子）。

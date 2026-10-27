@@ -77,11 +77,50 @@ test('只有商品报表、目标日期、双场景、30 天周期和商品+计�
   ), /日期未落定/u);
 });
 
-test('商品报表允许淘宝 76 列和天猫 78 列，拒绝营销场景 71 列', () => {
+test('商品报表允许 76/78 列基线宽度，拒绝营销场景 71 列（80/81 见下一条）', () => {
   const base = ['日期', '场景ID', '计划ID'];
   assert.equal(validatePromotionReport([...base, ...Array(73).fill('指标')], [['2026-09-25', 'onebpSearch', 'p', ...Array(73).fill('0')]]).columns, 76);
   assert.equal(validatePromotionReport([...base, ...Array(75).fill('指标')], [['2026-09-25', 'onebpSearch', 'p', ...Array(75).fill('0')]]).columns, 78);
   assert.throws(() => validatePromotionReport([...base, ...Array(68).fill('指标')], [['2026-09-25', 'onebpSearch', 'p', ...Array(68).fill('0')]]), /不支持的商品报表列数/u);
+});
+
+// 80/81 列（2026-10-27 加）：销售2部换号重登后平台多给了新指标列，旧白名单把整批打掉。
+// 现场 zip：商品报表_20261027_103858.zip(80)、商品报表_20261027_104205.zip(81)。
+// 真表头结构：80 = 78 ＋ 尾部「补贴引导成交新客数/补贴引导成交笔数」；
+//            81 = 78 ＋ 中部「平台助推总成交/平台助推直接成交/平台助推点击」。
+test('商品报表 80/81 列带签名列时放行，长度对但签名列缺失一律拒绝', () => {
+  const head80 = ['日期', '场景ID', '原二级场景ID', '计划ID', ...Array(74).fill('指标'), '补贴引导成交新客数', '补贴引导成交笔数'];
+  const row80 = (date) => [date, 'onebpSearch', '371', 'plan-1', ...Array(74).fill('0'), '2', '3'];
+  assert.equal(head80.length, 80);
+  assert.equal(validatePromotionReport(head80, [row80('2026-10-26')], { date: '2026-10-26' }).columns, 80);
+
+  const head81 = ['日期', '场景ID', '原二级场景ID', '计划ID', ...Array(74).fill('指标'), '平台助推总成交', '平台助推直接成交', '平台助推点击'];
+  const row81 = (date) => [date, 'onebpSearch', '371', 'plan-1', ...Array(74).fill('0'), '1', '2', '3'];
+  assert.equal(head81.length, 81);
+  assert.equal(validatePromotionReport(head81, [row81('2026-10-26')], { date: '2026-10-26' }).columns, 81);
+
+  // 长度恰好 80，但签名列被换成普通指标 ⇒ 不能放行（否则按名映射会静默漏写补贴字段）
+  const fake80 = ['日期', '场景ID', '原二级场景ID', '计划ID', ...Array(76).fill('指标')];
+  assert.equal(fake80.length, 80);
+  assert.throws(
+    () => validatePromotionReport(fake80, [['2026-10-26', 'onebpSearch', '371', 'plan-1', ...Array(76).fill('0')]], { date: '2026-10-26' }),
+    /缺少该宽度的签名列: 补贴引导成交新客数、补贴引导成交笔数/u,
+  );
+
+  // 81 列的签名列只缺一个也要拦（三列平台助推是一个整体，缺一即说明表结构变了）
+  const almost81 = [...head81.slice(0, 80), '指标'];
+  assert.equal(almost81.length, 81);
+  assert.throws(
+    () => validatePromotionReport(almost81, [row81('2026-10-26')], { date: '2026-10-26' }),
+    /缺少该宽度的签名列: 平台助推点击/u,
+  );
+
+  // 相邻但未登记的宽度仍然拒绝（fail-closed 不放宽）
+  for (const width of [77, 79, 82]) {
+    const headers = ['日期', '场景ID', '计划ID', ...Array(width - 3).fill('指标')];
+    const row = ['2026-10-26', 'onebpSearch', 'plan-1', ...Array(width - 3).fill('0')];
+    assert.throws(() => validatePromotionReport(headers, [row], { date: '2026-10-26' }), /不支持的商品报表列数/u, `${width} 列不该被放行`);
+  }
 });
 
 // 逐行日期钉死（2026-10-17 加）：复用平台任务时任务名看不出参数，CSV 里却可能是**别的日期**；

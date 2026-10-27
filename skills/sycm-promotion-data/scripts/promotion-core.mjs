@@ -8,6 +8,34 @@ const BEIJING_OFFSET_MS = 8 * 3600 * 1000;
 const toBeijingMidnight = (year, month, day) => Date.UTC(year, month - 1, day) - BEIJING_OFFSET_MS;
 
 const PROMOTION_IDENTITY_FIELDS = Object.freeze(['日期', '场景ID', '原二级场景ID', '计划ID', '主体ID']);
+
+// 商品报表的列宽变体（2026-10-27 加 80/81）。
+//
+// 现场（evidence/product-data-job-2026-10-26/…/job.log）：销售2部换号重登后，5 家里 4 家的
+// 商品报表变成 80/81 列，旧白名单 `[76, 78]` 直接抛「不支持的商品报表列数」⇒ 整批推广导入失败，
+// 而销售1部同日仍是 78 列、照常成功 —— 一半绿一半红，最容易被当成偶发。
+//
+// 全量实证（Downloads 下 226 份历史 ZIP，2026-10-27）：只有 76/78/80/81 四种宽度，且都是
+// **同一份基础表头的增删**，不是另一个报表：
+//   76 = 78 去掉「原二级场景ID / 原二级场景名字」
+//   78 = 基线（尾部有 平台补贴金额 / 补贴引导成交金额 / 发券补贴商品个数 / 补贴引导成交人数）
+//   80 = 78 ＋ 尾部「补贴引导成交新客数 / 补贴引导成交笔数」
+//   81 = 78 ＋ 中部「平台助推总成交 / 平台助推直接成交 / 平台助推点击」
+// 导入本身是**按表头名字**映射到飞书字段（见 buildPromotionFields），与列顺序无关；
+// 且这 5 个新指标名在销售2部推广表 82 个字段里一个都没有（2026-10-27 只读实测）
+// ⇒ 它们会被按名跳过，不会写错字段。所以放行是安全的。
+//
+// 但**只放长度不够**：长度恰好对上、内容却换了列的文件会一路静默通过 ——
+// 缺的字段不写、多的字段按名跳过，收据却是绿的（同一类静默漂移，本仓已踩过多次）。
+// 所以 80/81 额外要求带着自己那批签名列出现：长度与签名必须同时成立。
+const SUPPORTED_PROMOTION_COLUMNS = Object.freeze([76, 78, 80, 81]);
+
+/** 每种「非基线」宽度必须出现的签名列；基线 76/78 不设签名（保持原有语义不动）。 */
+const PROMOTION_WIDTH_SIGNATURES = Object.freeze({
+  80: Object.freeze(['原二级场景ID', '补贴引导成交新客数', '补贴引导成交笔数']),
+  81: Object.freeze(['原二级场景ID', '平台助推总成交', '平台助推直接成交', '平台助推点击']),
+});
+
 export function promotionKey(row, headers) {
   const values = Array.isArray(row) ? Object.fromEntries(headers.map((name, index) => [name, row[index]])) : row;
   return JSON.stringify(PROMOTION_IDENTITY_FIELDS.map((name) => [
@@ -22,7 +50,13 @@ export function validatePromotionReport(headers, rows, { date } = {}) {
   if (!Array.isArray(headers) || !headers.includes('日期') || !headers.includes('场景ID') || !headers.includes('计划ID')) {
     throw new Error('商品报表缺少日期/场景ID/计划ID表头');
   }
-  if (![76, 78].includes(headers.length)) throw new Error(`不支持的商品报表列数: ${headers.length}`);
+  if (!SUPPORTED_PROMOTION_COLUMNS.includes(headers.length)) throw new Error(`不支持的商品报表列数: ${headers.length}`);
+  // 80/81 是 78 的纯增量族 ⇒ 光有长度不算数，签名列必须在场（见上方 PROMOTION_WIDTH_SIGNATURES）。
+  const missingSignature = (PROMOTION_WIDTH_SIGNATURES[headers.length] ?? []).filter((name) => !headers.includes(name));
+  if (missingSignature.length) {
+    throw new Error(`商品报表 ${headers.length} 列缺少该宽度的签名列: ${missingSignature.join('、')}`
+      + '（长度对上但内容换了的文件不能放行，否则按名映射会静默漏写字段而收据是绿的）');
+  }
   // 「平台导出零数据」是一个**合法形态**，不是文件损坏（2026-10-21 加）。
   //
   // 现场：2026-10-20 网林家居的推广 ZIP 只有 596 B，解包后是「78 列表头 + 一个空行」，
