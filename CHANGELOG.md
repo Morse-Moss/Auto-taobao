@@ -58,6 +58,10 @@
   `scripts/run-affected-tests.mjs` 注释里记着实测「跑 22 分 56 秒仍未结束」，且含会等满 60 分钟下载超时的 e2e），
   本轮被时间预算终止。改用 `test:runtime` 覆盖，是因为本次改动面全部落在 runtime 测试的登记数组上。
   **CI 侧以本次 push 后的 run 为准** —— 本地只证明这条守卫会绿，不证明 GitHub runner 上 20 分钟那套全绿。
+- **CI 已验（2026-10-27 22:49，run 40521472942）**：13 个 job 全绿（fast-gate 2m8s ＋ 12 个 skill-tests，
+  `xws-export-market-analysis` 20m32s）。fast-gate 的 `Full unit tests (main)` 为
+  **1549 用例 / 1548 pass / 0 fail / 1 skip**（那个 skip 与失败无关，修复前的红 run 里它同样 skip），
+  且 `ok 93 - runtime → skills 的依赖清单与登记逐字一致` 正是修复前 `not ok 93` 的同一条。
 - **未动的同族点**：同批新增的 `runtime/apply-collected-sku.test.mjs` 不跨目录 import，按设计不登记
   （白名单多写一行等于宣称一个不存在的依赖）；`skills → runtime` 那一侧本次无增无减（`removed: []`）。
 
