@@ -15,6 +15,52 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.27] - 2026-10-27
+
+补登记淘宝自采 SKU 的三个 runtime→skills 依赖，main 上连续 6 次全红的 fast-gate 恢复。
+
+- **改了什么**：`runtime/arch-boundary.test.mjs` 的 `RUNTIME_TO_SKILLS` 追加三条登记
+  （`apply-collected-sku.mjs`、`taobao-sku-dimension-core.mjs`、`taobao-sku-dimension-core.test.mjs`），
+  每条写明依赖的是哪个 import、为什么是复用而不是业务倒灌。用例本身一个断言都没改。
+- **为什么改**：2026-10-26 引入自采 SKU 落库（`4d3c2d5e` / `86046768`）时漏了这次登记。
+  CI 从 `feat(sku): 自采 SKU 写进 SKU明细`（run 40337888182）起连续 6 次 main push 全红，
+  全量 `npm run test:runtime` 的结果是 **1547 pass / 1 fail**，唯一失败就是这条登记守卫
+  （`runtime/arch-boundary.test.mjs:311`），12 个 skill-tests 矩阵全部绿 —— 也就是说红的是一个
+  「清单没跟着改」的守卫，不是行为回归。
+- **三个依赖点各自是什么**：
+  ① `taobao-sku-dimension-core.mjs` → `competitor-v2-core` 的 `classifySkuSpace` / `summarizeSkuDimensions` /
+  `SKU_APPLICABLE_SPACES`。空间判定按 SKU 尺寸的**数值区间**算（0.8–1.2m→小户型，1.3–1.8m→常规卫生间），
+  标题词不参与，这是线上真正生效的那一份；第一版在 runtime 按标题词重写，30 个商品全判「小户型」，
+  真规则是 小户型 433 / 常规卫生间 1096 / 需人工核验 191。口径只许有一份。
+  ② `taobao-sku-dimension-core.test.mjs` → 同一个 `classifySkuSpace` 当裁判，与 `daily-job-plan.test.mjs`
+  取 `buildShopStages` 同型：验自己的映射必须用对面那个函数。
+  ③ `apply-collected-sku.mjs` → `CompetitorV2FeishuClient`（batch_create / token / 关联·多选·文本三类字段转换）。
+  飞书写入形状只许有一份，抄一份到 runtime 就是等两份漂开，而漂开的症状是「写进去了但字段是空的」，静默。
+- **为什么不选「把判定搬进 runtime」**：周表那条链（skills 侧）才是空间判定的主场，搬走等于让 skills
+  反向 import runtime，方向脏掉；而这次要修的是登记清单漂了，不是依赖方向错了。
+- **攻击包**（`tmp/mutate/mutate-2026-10-27-arch-boundary-sku.mjs`，4/4 达到预期，脚本按惯例不入版本库）：
+  M1 三条登记全撤（＝修复前那一版）⇒ RED_NAMED 并点名 `apply-collected-sku.mjs`；M2 只漏一条 ⇒ 同样 RED_NAMED
+  （证明三条各自必要，不是凑数）；M3 多登记一条不存在的依赖 ⇒ RED_NAMED 并点名那条假依赖（证明白名单不会腐烂）；
+  M4 把三个被扫描文件改成 CRLF（模拟 CI checkout）⇒ GREEN_OK。
+  首轮 M3 报 RED_UNNAMED，原因是我自己的判据只找 `apply-collected-sku.mjs` 一个名字，而 M3 走的是 removed 方向 ——
+  守卫没问题，是攻击包有盲区；改成每个突变各自钉 `namedBy` 后复验 4/4。
+- **修复后三问**：① 同族 —— 谓词是「runtime 下的 import 变了、`RUNTIME_TO_SKILLS` 没跟着改」，
+  全仓该谓词的扫描器就是这条用例本身（`findCrossDirDeps` 遍历两侧全部 .mjs），修完命中点为 0；
+  反方向 `skills → runtime` 本次无增无减。② 新条件组合 —— 唯一已知风险是族 F（宿主 CRLF 让源码扫描失真），
+  而扫描口径 `arch-boundary-scan.mjs` 用 `split(/\r?\n/u)` 与 `\s`，M4 已实测 CRLF 下仍绿；白名单腐烂由 M3 守住。
+  ③ 调用侧契约 —— 判据输入是真实扫描结果，不是手抄清单；证据是修复前它准确报出这三个文件名（本地与 CI 逐字一致）。
+- **验证到什么程度**：① `node --test runtime/arch-boundary.test.mjs` 3/3（修复前本地复现同样的 1 失败，
+  与 CI 日志逐字一致）；② `npm run check:staged` PASS；③ `node scripts/run-test-suite.mjs runtime --concurrency=1`
+  **1549/1549 全绿**（34s）—— 这是 CI fast-gate 跑的同一道门，CI 那次的分母 1549 里含 1 个环境性 skip；
+  ④ 攻击包 4/4 见上。
+  **`npm run test:staged` 本轮未取到结论**：只暂存 `arch-boundary.test.mjs` 时它 3/3 通过（14s），
+  但加上 `package.json` 后按 `classifyChangedFiles` 会被判成 `unit` 档（67 个技能用例文件 + 108 个 runtime 文件，
+  `scripts/run-affected-tests.mjs` 注释里记着实测「跑 22 分 56 秒仍未结束」，且含会等满 60 分钟下载超时的 e2e），
+  本轮被时间预算终止。改用 `test:runtime` 覆盖，是因为本次改动面全部落在 runtime 测试的登记数组上。
+  **CI 侧以本次 push 后的 run 为准** —— 本地只证明这条守卫会绿，不证明 GitHub runner 上 20 分钟那套全绿。
+- **未动的同族点**：同批新增的 `runtime/apply-collected-sku.test.mjs` 不跨目录 import，按设计不登记
+  （白名单多写一行等于宣称一个不存在的依赖）；`skills → runtime` 那一侧本次无增无减（`removed: []`）。
+
 ## [1.12.26] - 2026-10-27
 
 商品报表列宽白名单从 76/78 扩到 76/78/80/81：销售2部换号重登后平台多给了新指标列，旧白名单把整批推广导入打掉。

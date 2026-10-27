@@ -295,6 +295,34 @@ const RUNTIME_TO_SKILLS = Object.freeze([
   // 独立回读：写完再另起一次读取，拿 CSV 当期望值。导入器自己也会校一次，
   // 但那是同一进程、同一份内存里的期望值；这一份是另一进程、另一次读。
   'runtime/verify-weekly-import-readback.mjs',
+  // 2026-10-27 登记：淘宝详情页自采 SKU 落库（2026-10-26 引入，登记漏了，
+  // 从 `feat(sku): 自采 SKU 写进 SKU明细` 起 arch-boundary 一直红）。
+  //
+  // 三个文件是**同一条链**的两层，依赖点各不相同，理由也各自成立：
+  //
+  // taobao-sku-dimension-core.mjs → competitor-v2-core 的
+  //   `classifySkuSpace` / `summarizeSkuDimensions` / `SKU_APPLICABLE_SPACES`。
+  //   空间判定按 **SKU 尺寸的数值区间**算（0.8–1.2m→小户型，1.3–1.8m→常规卫生间），
+  //   标题词不参与——这是线上真正生效的那一份。第一版在 runtime 按标题词重写，
+  //   30 个商品跑出来全判「小户型」，真规则是 小户型 433 / 常规卫生间 1096 /
+  //   需人工核验 191。差异不是小数，所以口径只许有一份，一处不复制。
+  //   不能反向搬进 runtime：周表那条链（skills 侧）才是这个判定的主场，
+  //   搬走等于让 skills 反向 import runtime，方向脏掉。
+  //
+  // taobao-sku-dimension-core.test.mjs → 同一个 `classifySkuSpace` 当裁判。
+  //   与 `runtime/daily-job-plan.test.mjs` 取 `buildShopStages` 同型：验自己的映射
+  //   必须用对面那个函数，照着行为在 runtime 写个仿真版，验的是仿真版。
+  //
+  // apply-collected-sku.mjs → `CompetitorV2FeishuClient`（batch_create / token /
+  //   多字段类型转换）。飞书写入形状只许有一份：关联、多选、文本三类字段的
+  //   转换规则在客户端里，抄一份到 runtime 就是等两份漂开，而漂开的症状是
+  //   「写进去了但字段是空的」，静默。
+  //   这条链不走进 apply-xws-sku-manifest 是另一件事：那条路的入场券是小旺神
+  //   四件套证据，自采拿不出来，硬凑等于伪造证据链；且它要求 适用空间 非空，
+  //   会把「需人工核验」的合法空值判成非法。所以只新建写入链，字段装配与判定全复用。
+  'runtime/apply-collected-sku.mjs',
+  'runtime/taobao-sku-dimension-core.mjs',
+  'runtime/taobao-sku-dimension-core.test.mjs',
 ]);
 
 test('skills → runtime 的依赖清单与登记逐字一致（新增与消失都要显式改这里）', () => {
