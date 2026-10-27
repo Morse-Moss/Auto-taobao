@@ -15,6 +15,29 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.25] - 2026-10-27
+
+三层降级的第②层补一个漏网的入口：自修救回的是**另一个阶段**时，本阶段的 `STAGE_FAILED` 会被静默跳过，于是既不派 agent、又照常叫人。
+
+**为什么改**
+
+- 2026-10-27 08:00 那轮（目标日 2026-10-26）13 家、12 家成功，保拉淘宝停在 `backfill`。`node runtime/escalation-plan.mjs --date yesterday --json` 的结论是 `failedCount=1` 但 **`needsAgent=false`、`targets=[]`**；与此同时链自身的分诊打印「需人 1 处（保拉淘宝@STAGE_FAILED）」并发出了 `daily-round-20261026`。
+- 两份结论合起来是空转：告警叫人，而人到浏览器里无事可做 —— 那次真正的修法是改代码。这正是「第②层被跳过、第③层被提前」的旧病（⑨b）复发，只是入口换了一个。
+- 漏点具体在哪：`classifyShopEscalation` 里「现场还能救、只是还没人去救」那条判据带 `!record?.autoRepair`。保拉淘宝当天的自修记录是**救回了 `sycm-date`**（撞遮挡层 → `RELOAD_PAGE` 成功），而失败发生在之后的 `backfill` ⇒ `autoRepair` 非空 ⇒ 这条判据整条不成立 ⇒ 理由为空 ⇒ 不派派单。`STAGE_FAILED` 本来就在 `AGENT_PREFERRED_CAUSES` 里，判断本身没写错，是**「这家店的哪些阶段被救过」被当成了「这个阶段的失败被救过」**。
+
+**改了什么**
+
+- `runtime/escalation-plan.mjs`：`classifyShopEscalation` 新增一条判据 —— 成因属于 `AGENT_PREFERRED_CAUSES` ＋ 有非空候选 ＋ `autoRepair.stage` 存在且**不等于** `repairRequest.stage`（或 `failedStage`）⇒ 该派 agent，理由里点名「自修那一轮修的是哪个阶段」。只在 `autoRepair` 确实存在时成立，因此与原有「没有自动修复记录」那条互斥、不重复记账。
+- `runtime/escalation-plan.test.mjs`：新增两条用例。一条逐字照抄当天 summary 的形状（`autoRepair.stage='sycm-date'` / `repairRequest.stage='backfill'`）断言 `needsAgent=true` 且理由带出被修的阶段名；一条反向守卫，同阶段记录不许出现「还没被自修碰过」这条理由。
+- 行为口径（调度侧，不在代码里）：日报线 08:00 的命令加上 `--defer-agent-actionable-alert`。此前该开关默认关，所以即便派单判对，链级告警也会照发 —— 第②层在真跑里始终是关着的。加上后：整批失败都「agent 能救」时**不发飞书**，改落盘 `escalation-handoff.json` 等会话派 agent；只要有一家只能人上，照旧叫人且点名到店（fail-closed 那条没动）。
+
+**验证到什么程度**
+
+- 离线：受影响七个测试文件 352/352（`escalation-plan` 26、`daily-job-plan` 86、`batch-plan` 29、`run-batches-cli` 5、`hold-and-resume-plan` 47、`run-multi-shop-day` 153、`version-consistency` 6）。
+- 突变验证：把新判据改成恒假 ⇒ 新增用例变红（25 pass / 1 fail），还原后文件逐字节一致。
+- **用当天真实证据回放**：`node runtime/escalation-plan.mjs --date 2026-10-26 --json` 由 `needsAgent=false / targets=[]` 变为 `needsAgent=true`，唯一 target 是保拉淘宝 `STAGE_FAILED@backfill`，理由「这一阶段的失败还没被自修碰过（自修那一轮修的是 sycm-date）」，候选 `REAPPLY_DATES` / `RELOAD_PAGE`。
+- **未跑 `npm run test:staged` 全量**，本次没有完整回归结论。开关开启后的真机行为（不发飞书、落 handoff 文件、会话派 agent 后补跑成功）**下一轮 08:00 才是首次真机判据** —— 本次只有离线与回放判据。
+
 ## [1.12.24] - 2026-10-27
 
 保拉淘宝第 10 步（询单回填）每天必挂的修复：`--source-shop` 取的是平台店铺全称，而断言对面读到的是被平台截断的页头文本。

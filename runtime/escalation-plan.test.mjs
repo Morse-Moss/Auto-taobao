@@ -73,6 +73,46 @@ test('「有非空候选、但这一轮没试过」⇒ 也派 agent（现场还�
   assert.ok(plan.targets[0].reasons.some((r) => /没有自动修复记录/u.test(r)));
 });
 
+// 2026-10-27 现场（保拉淘宝，目标日 2026-10-26）：先挂 sycm-date、自修 RELOAD_PAGE 救回，
+// 随后 backfill 挂在店铺身份断言上。这条用例的形状是**逐字照抄当天的 summary 记录**。
+test('自修救回的是**另一个阶段**时，本阶段的 STAGE_FAILED 仍要派 agent', () => {
+  const plan = buildEscalationPlan({
+    summary: { date: '2026-10-26', shops: { 保拉淘宝: shopRecord({
+      failedStage: 'backfill',
+      autoRepair: { enabled: true, cause: 'PAGE_OBSTRUCTED', stage: 'sycm-date', rescued: true, gaveUp: null },
+      repairRequest: {
+        stage: 'backfill', cause: 'STAGE_FAILED',
+        candidates: [{ action: 'REAPPLY_DATES' }, { action: 'RELOAD_PAGE' }],
+        path: 'evidence/batches-2026-10-26/b2/保拉淘宝/97-repair-request.json',
+      },
+    }) } },
+  });
+  assert.equal(plan.needsAgent, true, '自修修过 sycm-date 不等于 backfill 被救过');
+  assert.equal(plan.targets.length, 1);
+  assert.equal(plan.targets[0].shop, '保拉淘宝');
+  assert.equal(plan.targets[0].stage, 'backfill');
+  assert.deepEqual(plan.targets[0].candidates, ['REAPPLY_DATES', 'RELOAD_PAGE']);
+  assert.ok(plan.targets[0].reasons.some((r) => /还没被自修碰过/u.test(r)),
+    '派单理由必须说清「自修那一轮修的不是这个阶段」，否则读的人会以为没救过是笔误');
+  assert.ok(plan.targets[0].reasons.some((r) => /sycm-date/u.test(r)), '理由里要带出被修的那个阶段名');
+});
+
+test('自修救回的就是**失败阶段本身** ⇒ 不许凭「没被碰过」派（那条判据只认跨阶段）', () => {
+  // 反向守卫：stageUntouched 的语义严格限定为「自修那一轮修的不是这个阶段」。
+  // 同阶段的记录走既有的 gaveUp / 没自动修复 那两条判据，不许被这条新判据顺带捞进去。
+  const plan = buildEscalationPlan({
+    summary: { date: '2026-10-26', shops: { 某店: shopRecord({
+      failedStage: 'backfill',
+      autoRepair: { enabled: true, stage: 'backfill', rescued: false, gaveUp: null },
+      repairRequest: { stage: 'backfill', cause: 'STAGE_FAILED', candidates: [{ action: 'RELOAD_PAGE' }] },
+    }) } },
+  });
+  for (const target of plan.targets) {
+    assert.equal(target.reasons.some((r) => /还没被自修碰过/u.test(r)), false,
+      '同阶段不许出现「没被自修碰过」这条理由');
+  }
+});
+
 test('候选为空 + 成因在 agent 可办范围内（STAGE_FAILED）⇒ 派（让 agent 看怎么救）', () => {
   const plan = buildEscalationPlan({
     summary: { date: '2026-09-28', shops: { 科塔淘宝: shopRecord({

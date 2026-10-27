@@ -189,6 +189,21 @@ export function classifyShopEscalation({ shop, record, unfixable = new Set(), su
   if (hasCandidates && !gaveUp && !record?.autoRepair && agentPreferred) {
     reasons.push('这一轮没有自动修复记录（--auto-repair 未开或未跑到），现场还没被救过');
   }
+  // 2026-10-27 补：**自修修过别的阶段 ≠ 这个阶段被救过**。
+  // 现场（2026-10-26 保拉淘宝）：sycm-date 撞遮挡层，自修 RELOAD_PAGE 救回，`autoRepair.stage='sycm-date'`；
+  // 随后 backfill 因店铺身份断言判 `STAGE_FAILED`，repairRequest 里有两个候选动作可试。
+  // 但因为 `record.autoRepair` 非空，上面那条判据整条不成立 ⇒ reasons 为空 ⇒ 不派 agent；
+  // 而告警侧 `HUMAN_REQUIRED_CAUSES` 把 `STAGE_FAILED` 当人的活 ⇒ 发了一条「请人处理」，
+  // 人到了浏览器里却无事可做（真正要改的是代码）。这正是「第②层被跳过、第③层被提前」的旧病复发。
+  // 判据：**成因属于该交给 agent 的那一类 ＋ 有候选 ＋ 自修那一轮修的不是这个阶段** ⇒ 该派。
+  // 只在 `autoRepair` 确实存在时成立，避免与上面那条重复记账。
+  const repairedStage = typeof record?.autoRepair?.stage === 'string' ? record.autoRepair.stage : null;
+  const requestStage = record?.repairRequest?.stage ?? record?.failedStage ?? null;
+  const stageUntouched = hasCandidates && agentPreferred && Boolean(requestStage)
+    && repairedStage !== null && repairedStage !== requestStage;
+  if (stageUntouched) {
+    reasons.push(`这一阶段的失败还没被自修碰过（自修那一轮修的是 ${repairedStage}）`);
+  }
   // 空菜单在 AGENT_PREFERRED_CAUSES 之外（如 NEEDS_LOGIN / SHOP_FUNC_NO_PERMISSION）
   // ⇒ 有理由但**不是 agent 的活**：把它标出来让会话别派 agent（交给人）。
   const agentActionable = hasCandidates || (emptyMenu && agentPreferred);
