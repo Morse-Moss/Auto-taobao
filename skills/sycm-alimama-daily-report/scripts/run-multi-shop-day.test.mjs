@@ -138,10 +138,34 @@ test('驱动：三个写入方的 --shop-key 是同一个值且各只出现一�
     assert.equal(countFlag(stages[name].argv, '--shop-key'), 1, `${name} 的 --shop-key 出现次数`);
     assert.equal(flagValue(stages[name].argv, '--shop-key'), SHOP, `${name} 的 --shop-key`);
   }
-  // 回填里两个店名字段：--shop 是飞书选项名、--source-shop 是源产物/页头店名，
-  // assertEvidenceShopKey 会拿这两个互核，所以都不能是随手写的。
+  // 回填里两个店名字段：`--shop` 是飞书选项名（运营叫法），`--source-shop` 是**比对物**
+  // —— `assertShopIdentity` 的 expected 侧，对面观测值是生意参谋**页头**。
   assert.equal(flagValue(stages.backfill.argv, '--shop'), SHOP);
-  assert.equal(flagValue(stages.backfill.argv, '--source-shop'), shopIdentity(SHOP).fullName);
+  // ⚠️ 2026-10-27 改：原先这条钉的是 `fullName`，而 `SHOP = 里可林淘宝` 恰好两个值相等，
+  // 所以它绿了整整一个月，与此同时保拉淘宝每天在第 10 步被自己的页头截断值拦下
+  // （GREEN_BAD：断言写对了形状，却只踩在「两值同值」的那一家上）。现在钉 `sycmHeader`，
+  // 并在下面另加一条**专门踩漂移店**的用例。
+  assert.equal(flagValue(stages.backfill.argv, '--source-shop'), shopIdentity(SHOP).sycmHeader);
+});
+
+test('驱动：回填的 --source-shop 取页头实测值，且必须在「页头被截断」的店上也成立', () => {
+  // 这条用例的存在理由：页头店名与平台全称**不相等**的店（保拉淘宝）才是这个参数的真实考场。
+  // 2026-10-27 的故障是「同一张页面上 shop-report 通过、backfill 挂」，根因就是两处取了不同表示。
+  const drifted = shopBrowserKeys().filter((key) => {
+    const row = shopIdentity(key);
+    return row.sycmHeader && row.sycmHeader !== row.fullName;
+  });
+  assert.ok(drifted.length > 0, '登记表里应当存在「页头被平台截断」的店，否则这条用例没有考场');
+  for (const key of drifted) {
+    const row = shopIdentity(key);
+    const stages = byStage(buildShopStages(key, { date: DATE, mode: 'rehearse' }));
+    const sourceShop = flagValue(stages.backfill.argv, '--source-shop');
+    assert.equal(sourceShop, row.sycmHeader, `${key} 的 --source-shop 必须是页头实测值`);
+    assert.notEqual(sourceShop, row.fullName, `${key} 的 --source-shop 不能是全称（那正是故障形态）`);
+    // 同一张页面上，采集段用的也是这个值 —— 两处必须同源，否则必然一处过一处挂。
+    const collectShop = flagValue(stages['shop-report'].argv, '--expect-shop');
+    assert.equal(sourceShop, collectShop, `${key} 的 --source-shop 与 --expect-shop 必须同源同值`);
+  }
 });
 
 test('驱动：采集段的三个身份期望值来自登记表，且每家给的都逐字对得上', () => {
@@ -170,11 +194,12 @@ test('驱动：采集段的三个身份期望值来自登记表，且每家给�
     // 登记表这两个字段**默认同值**（页头店名就是平台店铺全称）。唯一允许分开的是
     // 「平台把长店名截断」那一情形（2026-09-30 实测：保拉淘宝页头是 `Paola Lenti保拉伦...`，
     // 底单原文是 `Paola Lenti保拉伦蒂`）。分开时**必须知道** ——
-    // 回填的 `--source-shop` 取的是 fullName，页头读回来的是 sycmHeader。
+    // 页头比对（`--expect-shop` / 回填的 `--source-shop`）一律取 sycmHeader，
+    // 底单与证据标签才取 fullName；两处串了就是 2026-10-27 那次故障。
     if (row.sycmHeader !== row.fullName) {
       const stem = row.sycmHeader.replace(/\.{3}$/u, '');
       assert.equal(stem.length >= 4 && row.fullName.startsWith(stem), true,
-        `${key} 的 sycmHeader 与 fullName 漂移了，且不构成「被平台截断」—— --source-shop 要重看`);
+        `${key} 的 sycmHeader 与 fullName 漂移了，且不构成「被平台截断」—— 页头比对取哪个值要重看`);
     }
     headers.add(row.sycmHeader);
   }

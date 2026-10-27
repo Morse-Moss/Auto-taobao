@@ -1419,7 +1419,18 @@ export function buildShopStages(shopKey, options) {
     ['--site', 'sycm', '--date', date, '--proxy', shopProxy], shopEnv,
     '回位会重置页签与日期 ⇒ 必须重跑落位，否则回填报 expected one 当日询单人数 table, got 0');
 
-  const backfillArgs = ['--date', date, '--proxy', shopProxy, '--source-shop', identity.fullName,
+  // `--source-shop` 是**比对物**，不是标签：`run-inquiry-backfill.mjs` 拿它去和生意参谋**页头**读到的
+  // 店名做 `assertShopIdentity`（expected 侧），而那份观测值来自 `sycmShopIdentityExpression()`，
+  // 与登记表里 `sycmHeader` 是同一条表达式测出来的同一个值。所以这里必须给 `sycmHeader`。
+  //
+  // 2026-10-27 修（保拉淘宝 10-26 天天挂第 10 步）：原先给的是 `identity.fullName`，而这两者在
+  // 「平台把长店名截断」的店上**不相等**（保拉淘宝页头实测 `Paola Lenti保拉伦...`，底单原文
+  // `Paola Lenti保拉伦蒂`）⇒ 同一张页面上，`shop-report` 用 `sycmHeader` 通过、`backfill` 用全称
+  // 必然报「身份对不上」，把数据本身完好的店判成串店。现场证据见
+  // `evidence/batches-2026-10-26/b2/保拉淘宝/11-backfill.txt`。
+  // 同族扫过：仓库里其余 `fullName` 用法都不是页头比对（`run-daily-report.mjs:416` 比的是底单
+  // 店铺名称，`qianniu-kefu-chat` 拿的是千牛账号命名），本处是唯一取错表示的地方。
+  const backfillArgs = ['--date', date, '--proxy', shopProxy, '--source-shop', identity.sycmHeader,
     '--shop', shopKey, '--shop-key', shopKey];
   if (mode === 'commit') backfillArgs.push('--commit');
   // 历史日的同行基准降级开关（2026-09-19 接）。

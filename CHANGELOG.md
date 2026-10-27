@@ -15,6 +15,29 @@
 - **验证到什么程度要说实话**：离线用例全绿 ≠ 真机能跑。凡是只有离线判据的，这里写明
   「仅离线判据」；跑过真机的，写明证据目录。
 
+## [1.12.24] - 2026-10-27
+
+保拉淘宝第 10 步（询单回填）每天必挂的修复：`--source-shop` 取的是平台店铺全称，而断言对面读到的是被平台截断的页头文本。
+
+**为什么改**
+
+- 2026-10-27 08:00 那轮 13 家全采，12 家成功、保拉淘宝停在 `backfill`，退出码 1。原始报错是「生意参谋店铺身份对不上：期望 `Paola Lenti保拉伦蒂`，页面实际 `Paola Lenti保拉伦...` —— 这就是一次串店，已停手」。
+- 这不是串店，也不是登录或平台没出数：失败现场 `98-failure-state.json` 里表格有 `2026-10-26` 那一行、`当日询单人数=8`，数据本来就在页面上，被断言拦下了。
+- 根因是同一实体的两种表示串了：`--source-shop` 是**比对物**（对面观测值来自 `sycmShopIdentityExpression()`，与登记表 `sycmHeader` 同源同值），而驱动给的是 `identity.fullName`。平台会把长店名截断（省略号在文本节点里、DOM 无 title/aria-label 可取全名），登记表因此专门记了 `sycmHeader`；于是同一张页面上 `shop-report` 用截断值通过、`backfill` 用全称必然不通过。
+- 旧用例一直是绿的，因为它只踩 `SHOP = 里可林淘宝`，而那家两个值恰好相等 —— 断言形状写对了，却只落在没有漂移的店里（GREEN_BAD）。
+
+**改了什么**
+
+- `skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.mjs`：`backfill` 的 `--source-shop` 由 `identity.fullName` 改为 `identity.sycmHeader`，并在原处写明「它是比对物不是标签」以及这次故障的现场证据路径。
+- `skills/sycm-alimama-daily-report/scripts/run-multi-shop-day.test.mjs`：原钉 `fullName` 的断言改钉 `sycmHeader`；**新增**一条专门遍历「页头与全称不相等」的店铺的用例，断言 `--source-shop === sycmHeader`、`!== fullName`，且与同店 `shop-report` 的 `--expect-shop` 同源同值。
+- 同族扫过：仓库里其余 `fullName` 用法都不是页头比对（`run-daily-report.mjs:416` 比的是底单「店铺名称」；`qianniu-kefu-chat` 拿它拼千牛账号），本处是唯一取错表示的点。
+
+**验证到什么程度**
+
+- 离线：`run-multi-shop-day.test.mjs` 153/153。突变验证（把改动还原成 `fullName`）→ 新增用例变红，152 pass / 1 fail，还原后文件逐字节复原。
+- 真机 + 飞书回读：起保拉淘宝实例、落位 2026-10-26、单跑 `run-inquiry-backfill --commit` → `COMMITTED_AND_VERIFIED`（询单量 8 / 同层同行询单量 41），OpenAPI 独立回读询单表 2026-10-26 由 12/13 变为 **13/13**。实例跑完已释放，19053/19063 两遍回读全 free。
+- **未跑 `npm run test:staged` 全量**（已知该命令可能触发约 7.6 小时 e2e），本次没有完整回归结论，只有上述定向与真机判据。
+
 ## [1.12.23] - 2026-10-26
 
 详情页自采从「能采几个」走到「30 个商品采完并落进 SKU明细、主表 Lookup 出值」，期间纠正了一个会污染整表的判定口径错误。
