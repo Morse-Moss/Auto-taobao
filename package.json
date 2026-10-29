@@ -1,6 +1,6 @@
 {
   "name": "sycm-automation",
-  "version": "1.12.29",
+  "version": "1.12.30",
   "private": true,
   "type": "module",
   "engines": {
@@ -20,7 +20,9 @@
     "test:integration": "node scripts/run-test-suite.mjs integration",
     "test:all": "npm run check:fast && npm run test:offline && npm run test:unit",
     "test:agent-runtime": "node --test agent-runtime/tests/*.test.mjs",
-    "run:agent-runtime-local": "node agent-runtime/run-local-task.mjs"
+    "run:agent-runtime-local": "node agent-runtime/run-local-task.mjs",
+    "test:runtime:isolated": "node scripts/run-test-suite.mjs runtime --isolation=process",
+    "verify:runtime-parity": "node scripts/verify-runtime-parity.mjs"
   },
   "dependencies": {
     "@temporalio/client": "^1.23.0",

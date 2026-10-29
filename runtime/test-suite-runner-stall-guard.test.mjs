@@ -76,11 +76,16 @@ test('runner 必须有卡死看门狗：长时间没输出就杀子进程并给 
   // 退出码语义（与 npm run test:staged 超预算一致）：3 = 无判定。
   assert.match(SRC, /const INCOMPLETE_EXIT = 3;/u, 'INCOMPLETE 必须是 3（与 test:staged 超预算同一套语义）');
 
-  // 反向自证：把看门狗里那句 killTree() 去掉，判据必须转红 —— 否则上面几条只是「源码里恰好有这些字」。
-  const broken = SRC.replace(/^\s*killTree\(\);\s*$/mu, '');
-  assert.notEqual(broken, SRC, '反向自证没生效：没匹配到 killTree() 那行（源码形状变了？）');
+  // 反向自证：把看门狗里**所有** killTree() 调用去掉，判据必须转红 ——
+  // 否则上面几条只是「源码里恰好有这些字」。
+  // ⚠️ 2026-10-29 踩过一次：runSuite 里有**两处** killTree()（卡死一支、汇总后不退出那一支），
+  // 第一版只删第一个匹配（m 标志），判据仍然为真 ⇒ 自证假绿。多调用点的自证必须删干净。
+  const killCalls = [...SRC.matchAll(/^\s*killTree\(\);\s*$/gmu)].length;
+  assert.ok(killCalls >= 2, `runSuite 里应当有两处 killTree()（卡死 / 汇总后不退出），实际 ${killCalls} 处`);
+  const broken = SRC.replace(/^\s*killTree\(\);\s*$/gmu, '');
+  assert.notEqual(broken, SRC, '反向自证没生效：没匹配到 killTree() 那几行（源码形状变了？）');
   assert.equal(judge(broken).kills, false,
-    '守卫自证失败：去掉杀进程那行后判据仍为真 ⇒ 判据没在判东西');
+    '守卫自证失败：去掉杀进程那几行后判据仍为真 ⇒ 判据没在判东西');
 });
 
 test('所有套件调用都必须 await runSuite（它返回 Promise，不 await 会拿到 undefined）', () => {
@@ -119,4 +124,35 @@ test('卡死判据默认只给 runtime 档开，别的档必须默认关', () =>
   assert.match(SRC, /const STALL_DEFAULT_MS = 180000;/u, 'runtime 档的阈值缺了（实测全量 34 秒、最慢单文件 4.9 秒）');
   assert.match(SRC, /const stallMs = options\.stallMs \?\? 0;/u,
     'runSuite 自己的兜底必须是 0（不传＝不开），否则「按档关」这件事在函数内部就被破了');
+});
+
+/**
+ * 隔离方式（2026-10-29 加）：runtime 档默认**单进程**，其余档默认「每文件一个子进程」。
+ *
+ * 为什么默认值本身要被钉住：单进程更快（51.8 秒 vs 逐文件 4 分 45 秒）且绕开了本机的
+ * 「子进程启动偶发卡死」（142 次进程创建里今天撞了 4 次）。但单进程**更宽松** ——
+ * 共享 process.env / chdir / 模块级状态，一个文件改了不还原就会让后面的文件假绿。
+ * 所以：runtime 敢换（两口径用例数逐值相同，靠 verify-runtime-parity 复核），别的档不换。
+ * 这条用例守的是「别哪天为了快，把默认值悄悄放宽到 skills/integration」。
+ */
+test('隔离方式：runtime 默认单进程，其余档默认每文件一个子进程', () => {
+  assert.match(SRC, /function defaultIsolationFor\(suiteName\) \{\s*\n\s*return suiteName === 'runtime' \? 'none' : 'process';/u,
+    "defaultIsolationFor 必须是「runtime→none，其余→process」—— 放宽到 skills/integration 会把假绿风险推到主链上");
+  // 单进程模式必须同时带 --test-force-exit：否则某个测试留下句柄时，整轮会「测试全绿但进程不退」。
+  assert.match(SRC, /isolation === 'none'\s*\n?\s*\? \['--experimental-test-isolation=none', '--test-force-exit'\]/u,
+    '单进程模式必须同时传 --experimental-test-isolation=none 与 --test-force-exit（前者免 spawn，后者收尾）');
+  // 五个调用点都要经 isolationFor —— 少一处就是那一档仍按旧口径跑，而日志会写另一种。
+  const viaIsolation = [...SRC.matchAll(/isolation: isolationFor\('/gu)].length;
+  assert.equal(viaIsolation, 5, `五个调用点都要经 isolationFor 取隔离方式，实际 ${viaIsolation} 处`);
+  assert.match(SRC, /--isolation must be either none or process/u, '非法值要显式拒绝，不许静默回退到默认值');
+  // 「汇总已打出、只是进程不退」必须与「卡在启动」分开判：前者有结论，后者没结论。
+  assert.match(SRC, /if \(sawSummary\) \{/u, '看门狗必须能区分「汇总已打出但进程不退」与「卡在启动」');
+  assert.match(SRC, /return resolve\(summaryFail === 0 \? 0 : 1\);/u,
+    '汇总后不退出这一支要按已打出的汇总判结果，不许把一次全绿说成无判定');
+
+  // 反向自证：把默认值改成两边都是 none，判据必须转红。
+  const broken = SRC.replace("return suiteName === 'runtime' ? 'none' : 'process';", "return 'none';");
+  assert.notEqual(broken, SRC, '反向自证没生效：没匹配到 defaultIsolationFor 的返回（源码形状变了？）');
+  assert.equal(/function defaultIsolationFor\(suiteName\) \{\s*\n\s*return suiteName === 'runtime' \? 'none' : 'process';/u.test(broken), false,
+    '守卫自证失败：把默认值放宽到全档 none 后判据仍为真 ⇒ 判据没在判东西');
 });

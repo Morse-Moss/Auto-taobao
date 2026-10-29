@@ -29,6 +29,15 @@
 // It exists because a silent stall used to hang forever with no verdict; the
 // measured 2026-10-29 evidence is in the long comment above runSuite.
 //
+// --isolation=none|process: runtime defaults to `none` (all files in one process,
+// zero spawned test children) because the 2026-10-29 stalls were in *process
+// creation*, not in the tests; measured 142 files / 1554 cases in 51.8s, green,
+// first try. Every other suite defaults to `process` — a shared process is a looser
+// environment and can hide cross-file pollution, so `process` stays the authority.
+// The two profiles must agree on the case count; `npm run verify:runtime-parity`
+// checks exactly that, and it is the only thing standing between "single process is
+// faster" and "single process quietly fakes a green".
+//
 // Conventions honoured from docs/standards/README.md:
 //   - explicit file lists are preferred over shell glob expansion on Windows;
 //   - integration tests must report "skipped" (not pass) when their external
@@ -89,6 +98,30 @@ function defaultStallFor(suiteName) {
   return suiteName === 'runtime' ? STALL_DEFAULT_MS : 0;
 }
 
+/**
+ * 各档默认的**隔离方式**（2026-10-29 加）。
+ *
+ * none    = 所有测试文件在同一个进程里跑，**一个子进程都不 spawn**；
+ * process = 每个文件一个子进程（node --test 的默认行为）。
+ *
+ * 为什么 runtime 档默认走 none：实测（2026-10-29，142 文件 / 1555 用例）
+ *   - 一次 spawn 全量：正常 34–60 秒，但当天 4/4 轮卡在**子进程启动**（CPU 0.02–0.08 秒、线程 3 个），
+ *     一次都没拿到完整结果；
+ *   - 逐文件 142 次 spawn：4 分 45 秒（每文件付一次 node 启动成本）；
+ *   - 单进程 none：**51.8 秒、1555/1555 绿、exit 0，一次跑完不卡**。
+ *   卡的是进程创建本身，不是在跑的测试 —— 那就不创建。快慢是附加值，稳才是理由。
+ *
+ * 为什么别的档仍然 process：
+ *   假绿风险是真实的 —— 单进程里所有文件共享全局状态（process.env、process.chdir、模块级可变状态、
+ *   全局句柄），一个文件改了不还原，后面的文件就在宽松环境下通过。隔离口径更严格，是权威口径。
+ *   runtime 这一档敢换，是因为两个口径的**用例数逐值相同**（1555 = 1555），说明当前这批文件没有互相污染；
+ *   这条等式靠 `npm run verify:runtime-parity` 定期复核，不许只信「今天绿了」。
+ *   skills/unit 的 skills 半段/integration 里有用例真起子进程、真监听端口，单进程跑会互相踩，更不能换。
+ */
+function defaultIsolationFor(suiteName) {
+  return suiteName === 'runtime' ? 'none' : 'process';
+}
+
 function runSuite(files, label, extraArgs = [], options = {}) {
   if (files.length === 0) {
     console.log(`==> ${label}: no test files`);
@@ -96,16 +129,38 @@ function runSuite(files, label, extraArgs = [], options = {}) {
   }
   console.log(`==> ${label}: ${files.length} file(s)`);
   const stallMs = options.stallMs ?? 0;
+  const isolation = options.isolation === 'process' ? 'process' : 'none';
+  const isolationArgs = isolation === 'none'
+    ? ['--experimental-test-isolation=none', '--test-force-exit']
+    : [];
+  console.log(`==> ${label}: 隔离方式=${isolation === 'none'
+    ? '单进程（不 spawn 测试子进程）'
+    : '每个文件一个子进程'}${isolation === 'none' ? '｜--test-force-exit（跑完强制退出，残留句柄不许拖住整轮）' : ''}`);
   const started = Date.now();
   let lastOutputAt = started;
-  const child = spawn(process.execPath, ['--test', ...extraArgs, ...files], {
+  // 汇总出现＝这一轮已经跑完（只是进程可能还没退）。看门狗靠这个区分两种「没动静」。
+  let sawSummary = false;
+  let summaryFail = null;
+  const scanSummary = (text) => {
+    if (sawSummary) return;
+    if (!/# fail \d+/u.test(text) && !/^1\.\.\d+/mu.test(text)) return;
+    sawSummary = true;
+    const m = text.match(/# fail (\d+)/u);
+    if (m) summaryFail = Number(m[1]);
+  };
+  const child = spawn(process.execPath, ['--test', ...isolationArgs, ...extraArgs, ...files], {
     cwd: root,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });
   // 原样转发子进程输出：内容一个字不改，只记「最后一次有输出是什么时候」。
   // （原来用 stdio:'inherit' 直连控制台，那样拿不到任何时间信号，也就没法判断卡没卡。）
-  child.stdout.on('data', (chunk) => { lastOutputAt = Date.now(); process.stdout.write(chunk); });
+  child.stdout.on('data', (chunk) => {
+    lastOutputAt = Date.now();
+    const text = chunk.toString();
+    scanSummary(text);
+    process.stdout.write(chunk);
+  });
   child.stderr.on('data', (chunk) => { lastOutputAt = Date.now(); process.stderr.write(chunk); });
 
   // 杀**整棵**子进程树，不是只杀那一个 pid（2026-10-29：实测卡住的恰恰是 `node --test` 自己
@@ -132,6 +187,17 @@ function runSuite(files, label, extraArgs = [], options = {}) {
     if (idle < stallMs || child.exitCode !== null) return;
     stalled = { idle, elapsed: Date.now() - started };
     if (watchdog) clearInterval(watchdog);
+    if (sawSummary) {
+      // 2026-10-29 加的第二档：**汇总已经打出来了，只是进程不退**（残留句柄/连接没关）。
+      // 这与「卡在启动」是两件不同的事，不能一起报成「卡死」——
+      // 单进程模式下尤其明显：测试全绿、结论已经确定，只是进程收不了尾。
+      // 判据要按已打出的汇总来，不许因为「进程不退」把一次全绿说成无判定。
+      console.error(`\n[收尾] ${label}：汇总已打完，但进程 ${Math.round(idle / 1000)} 秒没退出（残留句柄没关）`
+        + `｜按已打出的汇总判结果：# fail ${summaryFail ?? '?'}`);
+      console.error('[收尾] 这不是测试失败；杀进程后按汇总返回。要根治就在对应测试里关掉那个句柄。');
+      killTree();
+      return;
+    }
     console.error(`\n[卡死] ${label}：${Math.round(idle / 1000)} 秒没有任何输出（已跑 ${Math.round(stalled.elapsed / 1000)} 秒），判定子进程启动/运行被卡住`);
     console.error(`[卡死] 这不是测试失败。${files.length} 个文件由**同一个** node --test 拉起，`);
     console.error('[卡死] 想知道卡在哪个文件：趁着它还在，另开一个终端跑');
@@ -157,6 +223,8 @@ function runSuite(files, label, extraArgs = [], options = {}) {
     });
     child.on('close', (code, signal) => {
       if (watchdog) clearInterval(watchdog);
+      // 「汇总已打出、被我们杀掉收尾」这一支按汇总判，不按信号判。
+      if (stalled && sawSummary) return resolve(summaryFail === 0 ? 0 : 1);
       if (stalled) return resolve(INCOMPLETE_EXIT);
       if (signal) {
         console.error(`[中断] ${label} 的子进程收到 ${signal}（不是测试失败，也没有判定）`);
@@ -172,6 +240,7 @@ const suite = argv.find((value) => !value.startsWith('--'));
 const concurrencyArg = argv.find((value) => value.startsWith('--concurrency='));
 const skillArg = argv.find((value) => value.startsWith('--skill='));
 const stallArg = argv.find((value) => value.startsWith('--stall-ms='));
+const isolationArg = argv.find((value) => value.startsWith('--isolation='));
 const dryRun = argv.includes('--dry-run');
 const extraArgs = concurrencyArg ? [`--test-concurrency=${concurrencyArg.split('=')[1]}`] : [];
 if (concurrencyArg && !/^\d+$/.test(concurrencyArg.split('=')[1])) {
@@ -184,6 +253,14 @@ if (stallArg && !/^\d+$/.test(stallArg.split('=')[1])) {
   process.exit(2);
 }
 const stallFor = (suiteName) => (stallArg ? Number(stallArg.split('=')[1]) : defaultStallFor(suiteName));
+// 隔离方式的解析：显式给了就一律覆盖；不给按档取默认（见 defaultIsolationFor）。
+if (isolationArg && !/^--isolation=(none|process)$/u.test(isolationArg)) {
+  console.error('--isolation must be either none or process');
+  process.exit(2);
+}
+const isolationFor = (suiteName) => (isolationArg
+  ? isolationArg.split('=')[1]
+  : defaultIsolationFor(suiteName));
 const skillTests = discoverSkillTests();
 if (skillArg) {
   const skillName = skillArg.split('=')[1] || '';
@@ -239,27 +316,29 @@ if (dryRun) {
 }
 
 if (suite === 'skills') {
-  status = await runSuite(skills.offline, 'skills', [], { stallMs: stallFor('skills') });
+  status = await runSuite(skills.offline, 'skills', [], { stallMs: stallFor('skills'), isolation: isolationFor('skills') });
 } else if (suite === 'unit') {
   for (const [file, reason] of excluded) {
     console.log(`    excluded from offline suites: ${file} (${reason})`);
   }
-  status = await runSuite(skills.offline, 'unit:skills', [], { stallMs: stallFor('skills') });
-  if (status === 0) status = await runSuite(runtime.offline, 'unit:runtime', [], { stallMs: stallFor('runtime') });
+  status = await runSuite(skills.offline, 'unit:skills', [], { stallMs: stallFor('skills'), isolation: isolationFor('skills') });
+  if (status === 0) status = await runSuite(runtime.offline, 'unit:runtime', [], { stallMs: stallFor('runtime'), isolation: isolationFor('runtime') });
 } else if (suite === 'runtime') {
-  status = await runSuite(runtime.offline, 'runtime', [], { stallMs: stallFor('runtime') });
+  status = await runSuite(runtime.offline, 'runtime', [], { stallMs: stallFor('runtime'), isolation: isolationFor('runtime') });
 } else if (suite === 'integration') {
   const gated = [...skills.gated, ...runtime.gated];
   console.log('    NOTE: these tests need external systems and may fail fast when unavailable:');
   for (const file of gated) console.log(`      ${file} - ${excluded.get(file)}`);
-  status = await runSuite(gated, 'integration', [], { stallMs: stallFor('integration') });
+  status = await runSuite(gated, 'integration', [], { stallMs: stallFor('integration'), isolation: isolationFor('integration') });
 } else {
-  console.error('usage: node scripts/run-test-suite.mjs <unit|skills|runtime|integration> [--concurrency=N] [--stall-ms=N]');
+  console.error('usage: node scripts/run-test-suite.mjs <unit|skills|runtime|integration> [--concurrency=N] [--stall-ms=N] [--isolation=none|process]');
   console.error('  unit        - offline skill + runtime tests (no browser, proxy, clipboard or DB)');
   console.error('  skills      - the skill-test half of unit only');
   console.error('  runtime     - runtime/*.test.mjs only');
   console.error('  integration - the gated files that offline suites exclude');
   console.error(`  --stall-ms  - kill the run when it has been silent this long; overrides the per-suite default (runtime ${Math.round(STALL_DEFAULT_MS / 1000)}s, others off); exit 3 = INCOMPLETE`);
+  console.error('  --isolation - none = 全部文件在同一个进程里跑（runtime 档默认，不 spawn 子进程）');
+  console.error('                process = 每个文件一个子进程（其余档默认，更严格，是权威口径）');
   process.exit(2);
 }
 
