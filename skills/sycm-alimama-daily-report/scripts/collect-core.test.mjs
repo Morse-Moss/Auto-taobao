@@ -1274,6 +1274,141 @@ test('遮挡扫描表达式在沙箱里真的能跑：认最上层那个盖住�
   assert.equal(pickOverlayCloseCandidate(sideScan), null);
 });
 
+// ── 2026-10-29 现场：掩膜与弹窗内容**不是**同一棵子树 ─────────────────────────────
+// 真机：阿里妈妈「下载任务管理」页上，`DIV#wrapper_dlg_1351`（全屏、z=99999）子树是空的，
+// 弹窗内容写在它的**兄弟节点**里。旧判据只遍历 `top.el` 的子树 ⇒ 「层内可点小控件 0/0」，
+// 而人看屏幕上明明有「取消」与「立即体验」两枚按钮（截图见下）。
+// 证据：evidence/product-data-job-2026-10-28/2026-10-28-20261029021518600-86e75414/
+//       网林淘宝/promotion-collect/98-failure-page.png
+test('遮挡扫描：弹窗内容与掩膜是兄弟节点时，也要拿到「取消」（10-28 真机形态）', () => {
+  const rect = (x, y, width, height) => ({ x, y, width, height });
+  const node = ({ tag, id = null, cls = '', text = '', box, children = [], style = {} }) => {
+    const n = {
+      tagName: tag, id, className: cls, children, textContent: text,
+      _attrs: new Map(),
+      getAttribute(name) { return this._attrs.get(name) ?? null; },
+      getBoundingClientRect: () => box,
+      contains(other) { return other === n || children.some((c) => c.contains?.(other) === true); },
+      querySelectorAll: () => children,
+      _style: { position: 'static', display: 'block', visibility: 'visible', opacity: '1', zIndex: 'auto', ...style },
+    };
+    if (style.ownerId !== undefined) n._attrs.set('data-owner-id', style.ownerId);
+    return n;
+  };
+  // 浏览器里同 z 时**后出现的在上层** ⇒ 命中测试按数组逆序找第一个覆盖该点的元素。
+  // （这与上面 925 用例的正序桩不同，是有意的：925 的子元素本来就盖住同一个点，两种顺序同结论；
+  //   而本现场 mask 与内容互为兄弟，只有逆序才复刻出「内容在 mask 之上」的真实层叠。）
+  const scanIn = (nodes, { vw = 1506, vh = 642 } = {}) => {
+    const document = {
+      querySelectorAll: () => nodes,
+      elementFromPoint: (x, y) => [...nodes].reverse().find((n) => {
+        const b = n.getBoundingClientRect();
+        return x >= b.x && x < b.x + b.width && y >= b.y && y < b.y + b.height;
+      }) ?? null,
+    };
+    const window = { innerWidth: vw, innerHeight: vh };
+    const getComputedStyle = (el) => el._style;
+    return JSON.parse(new Function('document', 'window', 'getComputedStyle',
+      `return ${overlayScanExpression()};`)(document, window, getComputedStyle));
+  };
+
+  // 掩膜：全屏、z=99999、**子树是空的**（真机现场就是 0/0 的来源）
+  const mask = node({ tag: 'DIV', id: 'wrapper_dlg_1351', box: rect(0, 0, 1506, 642),
+    style: { position: 'fixed', zIndex: '99999', ownerId: 'app' } });
+  const cancel = node({ tag: 'SPAN', cls: 'mxgc-btn', text: '取消', box: rect(800, 600, 60, 24) });
+  const promo = node({ tag: 'SPAN', cls: 'mxgc-btn-primary', text: '立即体验', box: rect(880, 600, 90, 24) });
+  const dialog = node({ tag: 'DIV', id: 'dialog_dlg_1351', box: rect(300, 80, 900, 560),
+    style: { position: 'fixed', zIndex: '99999' }, children: [cancel, promo] });
+
+  const scan = scanIn([mask, dialog, cancel, promo]);
+  assert.equal(scan.blocked, true);
+  assert.equal(scan.layer.id, 'wrapper_dlg_1351');
+  assert.ok(scan.candidates.length >= 1, `兄弟节点里的控件也要收进候选，实际收到 ${scan.candidates.length} 个`);
+  const picked = pickOverlayCloseCandidate(scan);
+  assert.ok(picked, '人能看到「取消」，代码就必须能拿到候选 —— 这正是 10-28 三家卡住的那一步');
+  assert.equal(picked.pick.text, '取消');
+  // 兜底路径只收「明确会关掉东西」的：同屏的「立即体验」是危险词且不在右上角，
+  // 连候选都不该进（进了也只是靠选点侧再排一次，日志里会误导成「层里有 2 个可点控件」）。
+  assert.equal(scan.candidates.some((c) => c.text === '立即体验'), false,
+    '兜底不该把「立即体验」收成候选');
+  // 来源标记：文档级兜底必须能被认出来，否则选点分不清「这枚控件在不在掩膜里」
+  assert.equal(scan.candidates.find((c) => c.text === '取消').inTopLayer, false);
+  assert.equal(scan.docFallback, true, '日志与用例都靠这个标记区分两种口径');
+});
+
+test('遮挡扫描：掩膜真的吃掉点击时，文档级兜底拿不到候选 ⇒ 仍 fail-closed（不因放宽而盲点）', () => {
+  const rect = (x, y, width, height) => ({ x, y, width, height });
+  const node = ({ tag, id = null, text = '', box, children = [], style = {} }) => {
+    const n = {
+      tagName: tag, id, className: '', children, textContent: text,
+      _attrs: new Map(),
+      getAttribute() { return null; },
+      getBoundingClientRect: () => box,
+      contains(other) { return other === n || children.some((c) => c.contains?.(other) === true); },
+      querySelectorAll: () => children,
+      _style: { position: 'static', display: 'block', visibility: 'visible', opacity: '1', zIndex: 'auto', ...style },
+    };
+    return n;
+  };
+  const scanIn = (nodes) => {
+    const document = {
+      querySelectorAll: () => nodes,
+      elementFromPoint: (x, y) => [...nodes].reverse().find((n) => {
+        const b = n.getBoundingClientRect();
+        return x >= b.x && x < b.x + b.width && y >= b.y && y < b.y + b.height;
+      }) ?? null,
+    };
+    return JSON.parse(new Function('document', 'window', 'getComputedStyle',
+      `return ${overlayScanExpression()};`)(document, { innerWidth: 1506, innerHeight: 642 },
+      (el) => el._style));
+  };
+  // 一枚「取消」在页面里，但掩膜**排在它后面**（拿走了所有点击）—— 这种就只能交给，
+  // 不能因为放宽了扫描范围就去点一个点不到的位置。
+  const cancel = node({ tag: 'SPAN', text: '取消', box: rect(800, 600, 60, 24) });
+  const mask = node({ tag: 'DIV', id: 'wrapper_dlg_1351', box: rect(0, 0, 1506, 642),
+    style: { position: 'fixed', zIndex: '99999' } });
+  const scan = scanIn([cancel, mask]);
+  assert.equal(scan.blocked, true);
+  assert.equal(scan.candidates.length, 0, '点击被掩膜吃掉时，这枚「取消」不该被当成可点候选');
+  assert.equal(pickOverlayCloseCandidate(scan), null);
+});
+
+test('遮挡扫描：层内本来就有候选时不启用文档级兜底（页面别处的控件不许混进来）', () => {
+  const rect = (x, y, width, height) => ({ x, y, width, height });
+  const node = ({ tag, id = null, text = '', box, children = [], style = {} }) => {
+    const n = {
+      tagName: tag, id, className: '', children, textContent: text,
+      _attrs: new Map(),
+      getAttribute() { return null; },
+      getBoundingClientRect: () => box,
+      contains(other) { return other === n || children.some((c) => c.contains?.(other) === true); },
+      querySelectorAll: () => children,
+      _style: { position: 'static', display: 'block', visibility: 'visible', opacity: '1', zIndex: 'auto', ...style },
+    };
+    return n;
+  };
+  const scanIn = (nodes) => {
+    const document = {
+      querySelectorAll: () => nodes,
+      elementFromPoint: (x, y) => [...nodes].reverse().find((n) => {
+        const b = n.getBoundingClientRect();
+        return x >= b.x && x < b.x + b.width && y >= b.y && y < b.y + b.height;
+      }) ?? null,
+    };
+    return JSON.parse(new Function('document', 'window', 'getComputedStyle',
+      `return ${overlayScanExpression()};`)(document, { innerWidth: 1506, innerHeight: 642 },
+      (el) => el._style));
+  };
+  const innerClose = node({ tag: 'SPAN', text: '关闭', box: rect(700, 620, 40, 16) });
+  const mask = node({ tag: 'DIV', id: 'wrapper_dlg_925', box: rect(0, 0, 1506, 642),
+    style: { position: 'fixed', zIndex: '99999' }, children: [innerClose] });
+  const scan = scanIn([mask, innerClose]);
+  assert.equal(scan.blocked, true);
+  assert.ok(scan.candidates.length >= 1);
+  assert.ok(scan.candidates.every((c) => c.inTopLayer === true),
+    '层内能拿到候选时，候选来源必须仍是「层内」—— 放宽只在层内一个都拿不到时启用');
+});
+
 test('关遮挡的编排：不是这一类遮挡就不点；点完以**回读**为准，不信接口返回值', async () => {
   const scripted = (returns) => {
     const queue = returns.slice();

@@ -73,6 +73,7 @@
 - `询单人数`（页面词表）跨两个 skill：`skills/sycm-inquiry-data/scripts/inquiry-core.mjs`（单一来源 `INQUIRY_PAGE_MARKERS`，已修）与 `skills/sycm-alimama-daily-report/scripts/`（另一套询单知识，职责不同但共享知识域）。
 - 风险：平台改列名时需改 N 处，漏一处即静默漂移（本项目已有「一个分类值活在四处」的先例）。处置：登记待修，修法=收敛到各自 core 的单一常量并让页面表达式展开该常量（参照 1.12.16 对 inquiry-data 的修法）。
 - 复现扫描：Grep `询单人数` glob `*.mjs`。
+- **2026-10-26 追加实例（已收口）**：推广轮的内存闸阈值曾以手工字面量活在 5 处 —— 推广自动化提示词、`docs/ops/DAILY-FLOW-SCHEDULE.md`、`docs/ops/DELIVERY-2026-10-25.md`、`.workbuddy/memory/MEMORY.md`、以及各轮执行记录。改阈值那天只改提示词与调度文档，MEMORY.md 仍写着「<4GB 跳过」，下个会话读记忆就会按旧口径判。处置：现行数值只在 `DAILY-FLOW-SCHEDULE.md` 一处定义，提示词引用它，日期化文档保留旧值但加一行指向现行口径，MEMORY.md 同步为 2026-10-26 的四档（<2GB 跳过 / 2–4GB 用 2 / 4–8GB 用 3 / >=8GB 用 5）。复现扫描：Grep `<4GB|4–8GB|FreePhysicalMemory` glob `*.md` 与自动化提示词。
 
 族 B：navigate 后固定 sleep 单次读（机制：对异步页面做快照断言，无等待到稳定）
 - 确认未修实例：`skills/sycm-alimama-daily-report/scripts/collect-shop-report.mjs` 的 `await delay(6000)`——navigate(SYCM_APP_URL) 之后固定睡 6 秒，然后单次读页面认店铺。与 10-21 修掉的 produceTask sleep(6500) 同机制。**2026-10-24 已修（1.12.19）**：改 `readPageValueSettled` 有界轮询，守卫钉「delay(6000) 零出现 + 导航→轮询→断言顺序」（突变 M1 RED_NAMED）。
@@ -104,6 +105,42 @@
 
 族 G：新能力已进套件/告警链，但登记表没跟上（2026-10-24）
 - `qianniu-kefu-chat` 自带 24 条离线测试却不在 CI 矩阵，且 `KEFU_WEEKLY_OK/FAILED` 未进告警 type 闭集；两处均已修。矩阵仍由 `discoverSkillTests()` 推导期望值，不另抄一份名单；告警标题继续由调用方显式给，不向通用标题表加第二份真相。
+
+族 H：判据有结论、但没有统一出口（机制：同一判据的「结果」由各调用侧各写一句话，改一处漏一处，且每份文案指点下一步动作的方式还不一样）
+- 真实现场（2026-10-26）：全局锁的判据本身正确（活人的锁绝不被抢），但三个启动脚本各写各的冲突文案 —— `run-batches.mjs` 有一句带解释的话，`run-daily-job.mjs` 只有 `JSON.stringify(lock)`，`run-product-data-job.mjs` 没有专门分支、冲突走通用 catch 只剩 `workflow lock busy`。当天推广轮被**同一任务触发两次**，到场的那一路读到「同机另一条采集流程正在跑（日报/商品/推广），等它结束再试」，正确动作（别起第二条、去看在跑那轮）一个字都没有。
+- 机制签名：判据函数返回一个异常或布尔，调用侧各自 `log(...)` 拼描述；描述里没有「持有者是谁」「下一步做什么」。凡「同一结论在 N 处被重新表述」即为命中。
+- 已修（1.12.22）：`runtime/workflow-lock.mjs` 新增 `describeWorkflowLockConflict(error, { selfOwner })`，三态输出（同链重复触发 / 别的链在跑 / 读不出持有者）；三个调用侧全部改走它；`run-product-data-job.mjs` 只加日志、不改 error 传播，分类与告警行为不变。
+- 同族分类：`runtime/workflow-receipt.mjs` 把 `WORKFLOW_LOCK_BUSY` 归 `HUMAN_REQUIRED` **本次不动** —— 该路径在 run-batches 里不可达（抢锁失败早于收尾写回执），而失败分类是闭合集，改它要同步文档与下游告警口径，属人工决策项。其余 `inspectWorkflowLock` 的只读消费方（预览、诊断）只读 `locked/stale` 字段、不产出面向人的文案，不命中。
+- 攻击包：M1 把 `if (selfOwner && owner === selfOwner)` 短路成永不成立 ⇒ 同链用例 RED_NAMED；M2 把 `run-daily-job.mjs` 的调用换回旧 `log(...)` ⇒ 接线守卫 RED_NAMED 并指出「实际 0」。接线守卫断言**每个文件恰好一处**调用，不用「全仓至少一次」—— 那个写法会在「改两个漏一个」时照样绿。仅离线已验，真机判据要等下一次真撞锁。
+
+族 I：判据建立在「DOM 父子关系」假设上（2026-10-29）
+- 真实现场：2026-10-28 商品链推广段 3 家全卡在弹窗上。阿里妈妈的掩膜
+  `DIV#wrapper_dlg_1351`（全屏、z=99999）**子树是空的**，弹窗内容写在它的兄弟节点里；
+  `overlayScanExpression` 只遍历「最高 z 层」的子树 ⇒ 读到 `0/0` ⇒ 判成「没有可安全点击的关闭控件」
+  ⇒ fail-closed，而屏幕上「取消」「立即体验」都在（截图见 `evidence/product-data-job-2026-10-28/`）。
+  同日另一形态：盖文淘宝点「下载报表」后那枚「确定」被另一个弹窗吃掉，流程点到**弹窗的**确定
+  而误判 `confirmed=true`，错误拖到下游「提交任务无法唯一确认」才暴露。
+- 机制签名：**判据依赖「某容器内含一切相关元素」，而平台只保证视觉结果**。
+  与族 D（把下载浮窗当业务页）、族 B（navigate 后单次读）同属「对页面做结构假设」一支，
+  但这一族的判据本身不报错，只静默返回空集 —— 更难发现。
+- 已修（1.12.28）：
+  ① 候选改为两层口径 —— 层内优先，层内为空时按整页找（`docFallback`），
+     兜底只收关闭语义 / 消失类确认词 / 无文字右上角图标，尺寸上限从图标 48px 放宽到按钮 200×64；
+  ② `pressEscape` 补进商品链推广采集器（日报链三个早就注入了，商品链一直没注入，
+     而它自己在日志里写着「跳过 ESC 这一步」）；
+  ③ `submit()` 点「下载报表」之前先查遮挡，关不掉带 `OVERLAY_NOT_DISMISSED` 报错，不再盲点确定。
+- 同族分类：命中点只有 `collect-core.mjs` 候选收集一处（其余 `document.querySelectorAll`
+  本来就是文档级，不适用）。挂起两项：`sycm-product-data` 的商品底单采集完全没有遮挡处置
+  （无现场，商品段一直全绿）；日报链提交段无前置守卫（改它要碰每日主链，属人工决策项）。
+- 攻击包：`tmp/mutate/mutate-2026-10-29-overlay.mjs` 四个突变体（退回只看子树 / 兜底尺寸退回 48 /
+  去掉 ESC 注入 / 守卫不查）全部 `RED_NAMED`，还原 sha 一致。用例：`collect-core.test.mjs` 新增
+  3 条（兄弟节点现场、掩膜真吃点击仍 fail-closed、层内有候选时不启用兜底）；
+  `download-entry-wiring.test.mjs` 新增 2 条计数守卫（`pressEscape` 恰好 1 处、守卫在点击之前，
+  锚点用 `const clicked=await` 而不是「下载报表」四个字 —— 守卫自己的注释里也有那四个字，第一版因此假绿）。
+- 验证状态：**离线 + 桩化 + 真机注入已验，真机真实弹窗未验**。真机注入用真实布局引擎造出
+  「掩膜 + 兄弟节点」形态（`tmp/probe-new-scan-live.mjs`），新判据 `blocked=true`、层内 0、
+  兜底拿到 `BUTTON:取消`、`立即体验` 被排除、清理后 `blocked=false`。真机判据=2026-10-30 10:00 那轮。
+- 规则沉淀：`docs/ops/PAGE-JUDGEMENT-FAILURES.md`（判据只认几何与命中 / 0 不是结论 / 失败落到动作级）。
 
 ## 6. 故障现场库（回放桩基建第一步）
 

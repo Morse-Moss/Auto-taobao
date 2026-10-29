@@ -3,7 +3,7 @@ import path from 'node:path';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { PROJECT_PORTS, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { SHOP_IDENTITIES } from '../../sycm-alimama-daily-report/scripts/shop-identities.mjs';
-import { alimamaIdentityExpression, assertMemberIdentity, createOverlayDismisser, defaultDownloadsDir, listDownloads, newEntries, overlayAfterExpression, overlayScanExpression, pickOverlayCloseCandidate } from '../../sycm-alimama-daily-report/scripts/collect-core.mjs';
+import { alimamaIdentityExpression, assertMemberIdentity, createOverlayDismisser, defaultDownloadsDir, describeOverlayAttempt, describeOverlayScan, listDownloads, newEntries, overlayAfterExpression, overlayScanExpression, pickOverlayCloseCandidate } from '../../sycm-alimama-daily-report/scripts/collect-core.mjs';
 import { buildProductReportUrl, PRODUCT_TASK_PREFIX, PRODUCT_TASK_RE, PRODUCT_ZIP_RE, pickFetchCandidates, pollNewProductTask, reuseCandidateTask, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
 import { nextDownloadAction } from './download-retry-core.mjs';
 // 下载入口的判据（2026-10-21 抽出）：纯函数，有离线用例，见 download-entry-core.mjs 文件头。
@@ -33,7 +33,19 @@ async function readProductTasks(proxy,target) { return evalOn(proxy,target,`[...
  * 同一条任务在展开后会有多行都含任务名 ⇒ 按名字去重，留**第一次**出现的那行（即任务行本身）。
  */
 async function readProductTaskRows(proxy,target) { const rows=await evalOn(proxy,target,`[...document.querySelectorAll('tr')].map(tr=>{const t=(tr.innerText||'').replace(/\\s+/g,' ').trim();const m=t.match(/商品报表_\\d{8}_\\d{6}/u);return m?{name:m[0],text:t.slice(0,400)}:null}).filter(Boolean)`); const seen=new Set(); return (rows||[]).filter(r=>{if(seen.has(r.name))return false;seen.add(r.name);return true}); }
-async function submit(proxy,target,before,submittedOn) { const clicked=await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='下载报表');if(!e)return false;e.click();return true})()`); if(!clicked)throw Error('商品报表找不到下载报表按钮'); let confirmed=false; for(let round=0;round<2&&!confirmed;round+=1){ if(round>0){await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='下载报表');if(!e)return false;e.click();return true})()`);} const confirmDeadline=Date.now()+20000; while(!confirmed&&Date.now()<confirmDeadline){ await sleep(1000); confirmed=await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button,span,a,div')].find(x=>x.children.length===0&&/^(确定|确认)$/.test((x.innerText||'').trim())&&x.getBoundingClientRect().width>0);if(!e)return false;e.click();return true})()`); } } if(!confirmed)throw Error('商品报表下载弹窗没有可点击确定（轮询 40s 仍未出现）'); await sleep(2500); await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent('https://one.alimama.com/index.html#!/report/download-list')}`); await sleep(2000); const polled=await pollNewProductTask({before,read:()=>readProductTasks(proxy,target),timeoutMs:30000,intervalMs:2000,delay:sleep}); const after=polled.after; if(polled.timedOut)console.log(`[提交] 轮询 30s（读了 ${polled.reads} 次）仍没看到新任务，按「平台未生成」继续判`); let task; try{ task=uniqueNewProductTask(before,after); console.log(`[提交] ${task}`); }catch(error){ const reused=reuseCandidateTask({after,submittedOn}); if(!reused)throw error; task=reused; console.log(`[提交] 平台未生成新任务（同参数已交过），复用同日在册任务 ${task}；数据日期由导入器按 --date 校验`); } return task; }
+async function submit(proxy,target,before,submittedOn) {
+  // 2026-10-29 加：**提交前**先确认页面上没有全屏弹窗。
+  // 现场（盖文淘宝 10-28）：点「下载报表」之后那枚「确定」被「优质计划防停投」弹窗吃掉，
+  // 流程因为点到了**弹窗的**「确定」而误判 confirmed=true，错误一路拖到「轮询 30s 无新任务」
+  // 才以「提交任务无法唯一确认」的面目暴露 —— 看着像平台没生成任务，实际是点错了地方。
+  // 清不掉就明确报出来（带 OVERLAY_NOT_DISMISSED 标记），不再盲点一次确定。
+  const guard=await evalOn(proxy,target,overlayScanExpression());
+  if(guard?.blocked){
+    const cleared=await dismissOverlay(proxy,target,null);
+    if(!cleared?.dismissed)throw Error(`提交商品报表前有全屏弹窗且没能关掉：${describeOverlayAttempt(cleared)}`);
+    console.log(`[遮挡] 提交前已清掉一层：${describeOverlayScan(cleared.scan,cleared.picked)}`);
+  }
+  const clicked=await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='下载报表');if(!e)return false;e.click();return true})()`); if(!clicked)throw Error('商品报表找不到下载报表按钮'); let confirmed=false; for(let round=0;round<2&&!confirmed;round+=1){ if(round>0){await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='下载报表');if(!e)return false;e.click();return true})()`);} const confirmDeadline=Date.now()+20000; while(!confirmed&&Date.now()<confirmDeadline){ await sleep(1000); confirmed=await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button,span,a,div')].find(x=>x.children.length===0&&/^(确定|确认)$/.test((x.innerText||'').trim())&&x.getBoundingClientRect().width>0);if(!e)return false;e.click();return true})()`); } } if(!confirmed)throw Error('商品报表下载弹窗没有可点击确定（轮询 40s 仍未出现）'); await sleep(2500); await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent('https://one.alimama.com/index.html#!/report/download-list')}`); await sleep(2000); const polled=await pollNewProductTask({before,read:()=>readProductTasks(proxy,target),timeoutMs:30000,intervalMs:2000,delay:sleep}); const after=polled.after; if(polled.timedOut)console.log(`[提交] 轮询 30s（读了 ${polled.reads} 次）仍没看到新任务，按「平台未生成」继续判`); let task; try{ task=uniqueNewProductTask(before,after); console.log(`[提交] ${task}`); }catch(error){ const reused=reuseCandidateTask({after,submittedOn}); if(!reused)throw error; task=reused; console.log(`[提交] 平台未生成新任务（同参数已交过），复用同日在册任务 ${task}；数据日期由导入器按 --date 校验`); } return task; }
 async function waitForTaskReady(proxy,target,task,timeoutMs=180000) { const deadline=Date.now()+timeoutMs; let last=''; while(Date.now()<deadline){ const rows=await evalOn(proxy,target,`[...document.querySelectorAll('tr')].map(tr=>(tr.innerText||'').replace(/\\s+/g,' ').trim()).filter(text=>text.includes(${JSON.stringify(task)}))`); last=rows[0]||'missing'; if(/生成成功/u.test(last))return last; if(/生成失败|失败/u.test(last))throw Error(`商品报表任务生成失败: ${last}`); await sleep(5000); } throw Error(`商品报表生成等待超时（${timeoutMs}ms）: ${last}`); }
 async function navigateDownloadList(proxy,target) {
   await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent('https://one.alimama.com/index.html#!/report/download-list')}`);
@@ -44,11 +56,18 @@ async function dismissOverlay(proxy,target,selector) {
   const dismisser=createOverlayDismisser({
     evalOn: async (_args,id,expression)=>evalOn(proxy,id,expression),
     clickPoint: async (_args,id,point)=>clickPoint(proxy,id,point),
+    // 2026-10-29 补：ESC 是关模态框**最安全**的一招（不用点页面上任何东西，没有点错的可能），
+    // 而本脚本此前**没注入它** —— 日志里那句「没有注入 pressEscape ⇒ 跳过 ESC 这一步」就是证据。
+    // 日报链的三个采集器一直都注入着，只有商品链这两个漏了（同一机制的实现缺口）。
+    pressEscape: async (_args,id)=>pressKey(proxy,id,'Escape'),
     delay: sleep,
     log: (line)=>console.log(line),
   });
   return dismisser({},target,selector);
 }
+// 发一个真实按键（走代理的 `/key` 白名单路由）。页面里 dispatchEvent 造的伪键盘事件
+// 这一族页面不认 —— 与「el.click() 无效、真实鼠标点才落盘」是同一件事。
+async function pressKey(proxy,target,key){return request(proxy,`/key?target=${encodeURIComponent(target)}`,{method:'POST',body:JSON.stringify({key})});}
 /**
  * 对**一条**任务做一次完整取件：等就绪 → 勾选 → 展开操作行 → 点下载 → 等文件落盘。
  * 失败就抛，由调用方决定换下一条候选还是补提交 —— 这里不再自己重试同一条。

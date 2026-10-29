@@ -320,12 +320,26 @@ export const OVERLAY_DISMISS_DANGER = /报名|开通|购买|支付|确认|提交
 export const OVERLAY_MIN_COVERAGE = 0.85;
 export const OVERLAY_CANDIDATE_MAX_SIZE = 48;
 
+// 文档级兜底收候选时的尺寸上限（2026-10-29 加）。
+// 为什么不能沿用 48：48 是「图标级」的阈值，而弹窗的出口常常是一枚正常按钮
+// （实测「取消」这类是 60×32、主按钮 90×36，一律被 48 挡在门外）。
+// 为什么又必须分开而不是直接调大：层内口径是既有行为，动了它等于给所有老现场换判据 ——
+// 兜底只在「层内一个候选都没有」时启用，那里放宽才没有回归风险；
+// 且兜底路径本身还有语义白名单与坐标去重两道闸，收进来的不会是大容器。
+export const OVERLAY_DOC_CANDIDATE_MAX_W = 200;
+export const OVERLAY_DOC_CANDIDATE_MAX_H = 64;
+
 // 「让它消失」类确认词的闭集（2026-09-26 加）。
 // 为什么要有它：实测有一类弹窗**既没有「关闭」两个字，也不是右上角那个 X** —— 它唯一的出口是
 // 「我知道了／稍后再说」这一族按钮。它与「立即报名」在语义上是**相反**的两件事：
 // 一个只是让这一层消失，一个是有对外副作用的动作。所以这不是把黑名单放宽，
 // 而是**第二张白名单**：只认这几个确定的「消失」语义，其余照旧一个都不点。
 export const OVERLAY_ACK_PATTERN = /我知道了|知道了|不再提示|不再提醒|稍后|暂不|跳过|以后再说/u;
+
+// 「明确是关闭」的语义词（2026-10-29 提成常量）。
+// 原来是 `pickOverlayCloseCandidates` 里的一句内联正则；提出来是因为扫描侧（文档级兜底）
+// 也要用同一套词先把候选收敛下来 —— 两处各写一份正是本仓栽过的「判据多拷贝」。
+export const OVERLAY_CLOSE_HINT = /关闭|close|取消/iu;
 
 // 一次最多顺着试几个候选（2026-09-26 加）。原来是「只点一个」。
 // 现场依据：2026-09-26 科塔 promotion-submit 上，第一个候选是一个**无文字**的右上角图标，
@@ -345,6 +359,12 @@ export const OVERLAY_NOT_DISMISSED_TOKEN = 'OVERLAY_NOT_DISMISSED';
 export function overlayScanExpression(options = {}) {
   const coverage = options.coverage ?? OVERLAY_MIN_COVERAGE;
   const maxSize = options.maxSize ?? OVERLAY_CANDIDATE_MAX_SIZE;
+  // 文档级兜底用的两张白名单，与选点侧**同源**（不在这里另写一份字面量）。
+  const closeHintSource = (options.closeHint ?? OVERLAY_CLOSE_HINT).source;
+  const ackSource = (options.ack ?? OVERLAY_ACK_PATTERN).source;
+  const docMaxW = options.docMaxWidth ?? OVERLAY_DOC_CANDIDATE_MAX_W;
+  const docMaxH = options.docMaxHeight ?? OVERLAY_DOC_CANDIDATE_MAX_H;
+  const candidateSelector = 'button,a,div,span,i,svg,img';
   return `(() => {
     const vw = window.innerWidth, vh = window.innerHeight;
     const visible = (el) => {
@@ -367,29 +387,71 @@ export function overlayScanExpression(options = {}) {
     const top = layers[0];
     if (!top) return JSON.stringify({ blocked: false, viewport: [vw, vh], layerCount: 0 });
     const owns = (a, b) => !!a && typeof a.contains === 'function' && a.contains(b);
-    const seen = new Set();
-    const candidates = [];
-    for (const el of top.el.querySelectorAll('button,a,div,span,i,svg,img')) {
-      if (!visible(el)) continue;
+    // 一枚控件的可点性当场算完：可见、尺寸在阈值内、中心点落在视口内，
+    // 且**中心点的命中结果就是它自己（或它的祖先/后代）**。
+    // 最后那条同时就是「有没有被别的层吃掉点击」的判据 —— 被吃掉时 hit 会是那一层，
+    // 于是这枚控件不会被当成可点候选（放宽扫描范围也不会变成盲点）。
+    const candidateOf = (el, inTopLayer, maxW, maxH) => {
+      if (!visible(el)) return null;
       const r = el.getBoundingClientRect();
-      if (r.width > ${maxSize} || r.height > ${maxSize}) continue;
+      if (r.width > maxW || r.height > maxH) return null;
       const cx = Math.round(r.x + r.width / 2), cy = Math.round(r.y + r.height / 2);
-      if (cx < 0 || cx >= vw || cy < 0 || cy >= vh) continue;
+      if (cx < 0 || cx >= vw || cy < 0 || cy >= vh) return null;
       const hit = document.elementFromPoint(cx, cy);
-      if (!hit || !(hit === el || owns(el, hit) || owns(hit, el))) continue;
-      // 同一个关闭控件外面套着好几层（实测一组 4 个嵌套元素落在同一坐标）⇒ 按坐标去重，
-      // 否则「候选数」会被同一枚按钮灌水，选点日志也读不出重点。
-      const key = [cx, cy, Math.round(r.width), Math.round(r.height)].join('|');
-      if (seen.has(key)) continue;
-      seen.add(key);
-      candidates.push({
+      if (!hit || !(hit === el || owns(el, hit) || owns(hit, el))) return null;
+      return {
         tag: el.tagName, id: el.id || null,
         cls: String(el.className || '').slice(0, 60),
         text: String(el.textContent || '').trim().slice(0, 12),
         label: String(el.getAttribute('aria-label') || el.getAttribute('title') || '').slice(0, 24),
         cx, cy, w: Math.round(r.width), h: Math.round(r.height),
         atTopRight: cx > vw * 0.66 && cy < vh * 0.28,
-      });
+        // 来源标记：true=掩膜子树内的控件（旧口径），false=文档级兜底收来的。
+        // 选点侧靠它把「右上角图标」那一档限制回旧口径 —— 页面别处的图标不能当关闭按钮点。
+        inTopLayer,
+      };
+    };
+    const seen = new Set();
+    const collect = (root, inTopLayer, maxW, maxH) => {
+      const list = [];
+      for (const el of root.querySelectorAll(${JSON.stringify(candidateSelector)})) {
+        const c = candidateOf(el, inTopLayer, maxW, maxH);
+        if (!c) continue;
+        // 同一个关闭控件外面套着好几层（实测一组 4 个嵌套元素落在同一坐标）⇒ 按坐标去重，
+        // 否则「候选数」会被同一枚按钮灌水，选点日志也读不出重点。
+        const key = [c.cx, c.cy, c.w, c.h].join('|');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        list.push(c);
+      }
+      return list;
+    };
+    const inLayer = collect(top.el, true, ${maxSize}, ${maxSize});
+    let candidates = inLayer;
+    let docFallback = false;
+    if (!inLayer.length) {
+      // 2026-10-29 修：**掩膜与弹窗内容不是同一棵子树**时，旧口径恒为 0/0。
+      // 真机：阿里妈妈「下载任务管理」页 = DIV#wrapper_dlg_1351（全屏 mask，子树空）
+      // + 兄弟节点里的弹窗内容（含「取消」「立即体验」）。人看得见按钮，代码说没有可点的东西。
+      // 兜底**只在层内一个都拿不到时**启用：层内能拿到就完全维持原行为。
+      // 收的也只是「明确会关掉东西」的几类（关闭语义、消失类确认词、无文字的右上角图标），
+      // 不再全收 —— 否则一旦掩膜透传点击，整页导航栏都会变成候选。
+      docFallback = true;
+      const hint = new RegExp(${JSON.stringify(closeHintSource)}, 'iu');
+      const ack = new RegExp(${JSON.stringify(ackSource)}, 'u');
+      const pool = [];
+      for (const el of document.querySelectorAll(${JSON.stringify(candidateSelector)})) {
+        if (top.el.contains(el)) continue; // 掩膜子树已在上面收过，且为空
+        const c = candidateOf(el, false, ${docMaxW}, ${docMaxH});
+        if (!c) continue;
+        const meta = c.text + ' ' + c.label + ' ' + c.cls;
+        if (!hint.test(meta) && !ack.test(meta) && !(c.atTopRight && !c.text)) continue;
+        const key = [c.cx, c.cy, c.w, c.h].join('|');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pool.push(c);
+      }
+      candidates = pool;
     }
     return JSON.stringify({
       blocked: true, viewport: [vw, vh], layerCount: layers.length,
@@ -400,6 +462,9 @@ export function overlayScanExpression(options = {}) {
         rect: (() => { const r = top.el.getBoundingClientRect();
           return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)]; })(),
       },
+      // 层内一个候选都没收到、改按整页找的标记（日志与用例都靠它区分两种口径）
+      docFallback,
+      inLayerCandidates: inLayer.length,
       candidates: candidates.slice(0, 24), candidateTotal: candidates.length,
     });
   })()`;
@@ -417,14 +482,20 @@ export function overlayScanExpression(options = {}) {
 export function pickOverlayCloseCandidates(scan, options = {}) {
   const danger = options.danger ?? OVERLAY_DISMISS_DANGER;
   const ack = options.ack ?? OVERLAY_ACK_PATTERN;
+  const hint = options.hint ?? OVERLAY_CLOSE_HINT;
   const maxPicks = options.maxPicks ?? OVERLAY_MAX_PICKS;
   if (!scan || scan.blocked !== true || !Array.isArray(scan.candidates)) return null;
   const metaOf = (c) => `${c.text || ''} ${c.label || ''} ${c.cls || ''}`;
   const textOf = (c) => `${c.text || ''} ${c.label || ''}`;
   const safe = scan.candidates.filter((c) => !danger.test(metaOf(c)));
-  const named = safe.filter((c) => /关闭|close|取消/iu.test(textOf(c)));
+  const named = safe.filter((c) => hint.test(textOf(c)));
   const acknowledged = safe.filter((c) => ack.test(textOf(c)));
-  const icon = safe.filter((c) => c.atTopRight === true).sort((a, b) => (a.cy - b.cy) || (b.cx - a.cx));
+  // 「右上角图标」这一档只认**掩膜子树内**的候选（`inTopLayer !== false`，旧口径的候选没有这个字段）。
+  // 理由：文档级兜底收来的无文字图标可能只是页面顶栏的消息中心，点它什么都不会关掉，
+  // 却会把「没关掉」这一步白白用掉（封顶 3 次）。
+  const icon = safe
+    .filter((c) => c.atTopRight === true && c.inTopLayer !== false)
+    .sort((a, b) => (a.cy - b.cy) || (b.cx - a.cx));
   const seen = new Set();
   const picks = [];
   for (const candidate of [...named, ...acknowledged, ...icon]) {
@@ -523,7 +594,14 @@ export function describeOverlayScan(scan, picked) {
   const parts = [`全屏层 ${layer.tag}${layer.id ? `#${layer.id}` : ''}`
     + `${layer.ownerId ? `(data-owner-id=${layer.ownerId})` : ''} z=${layer.z}`];
   if (layer.rect) parts.push(`rect=${JSON.stringify(layer.rect)}`);
-  parts.push(`层内可点小控件 ${scan.candidates?.length ?? 0}/${scan.candidateTotal ?? 0} 个`);
+  // 两种口径分开说：真机上「层内 0 个」曾经是一句让人无从下手的结论
+  // （屏幕上明明有按钮），所以兜底生效时必须写明「改按整页找了」。
+  const got = `${scan.candidates?.length ?? 0}/${scan.candidateTotal ?? 0}`;
+  if (scan.docFallback === true) {
+    parts.push(`层内可点小控件 0 个 ⇒ 改按整页找，整页符合关闭语义的候选 ${got} 个`);
+  } else {
+    parts.push(`层内可点小控件 ${got} 个`);
+  }
   if (picked) {
     const target = picked.pick;
     parts.push(`选中 ${target.tag}${target.id ? `#${target.id}` : ''}`

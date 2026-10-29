@@ -59,3 +59,35 @@ test('失败信息不再是同一句符号', () => {
     '失败必须报「不可用 + 原因 + 看到了什么」，不能退回一句「入口不可见」',
   );
 });
+
+// ── 2026-10-29 加：关遮挡的两处接线 ───────────────────────────────────────────────
+// 现场：2026-10-28 三家（盖文淘宝、网林淘宝、保拉天猫）的推广段全卡在弹窗上，
+// 而日报链的三个采集器**同一天 7/7 全绿**。差别不在判据（都走 collect-core 的同一个
+// overlayScanExpression），在**接线**：日报链注入了 ESC，商品链这两个脚本没注入；
+// 日报链取件段有关遮挡，商品链的**提交段**（点「下载报表」→「确定」）一次都没查。
+// 这条守卫因此只钉调用侧实参，不钉被调侧实现（那部分在 collect-core.test.mjs 里）。
+
+test('关遮挡必须注入 pressEscape：ESC 是最安全的一招，不许只写日志说不注入', () => {
+  const hits = source.match(/pressEscape\s*:/g) ?? [];
+  assert.equal(hits.length, 1,
+    `dismisser 必须恰好注入一处 pressEscape，实际 ${hits.length} 处（0 处 = 退回「跳过 ESC」的旧行为）`);
+  assert.match(source, /\/key\?target=/, 'ESC 必须走代理的真实按键路由（页面里 dispatchEvent 造的伪键盘事件这一族页面不认）');
+  assert.doesNotMatch(source, /dispatchEvent\(\s*new\s+KeyboardEvent/,
+    '不许用页面内派发的假键盘事件冒充按键');
+});
+
+test('提交段必须先查遮挡再点「下载报表」：否则「确定」会被弹窗吃掉且误判成功', () => {
+  const start = source.indexOf('async function submit(');
+  assert.ok(start > 0, '找不到 submit 函数 —— 这段守卫的前提是它还在');
+  const body = source.slice(start, start + 4000);
+  const guardAt = body.indexOf('overlayScanExpression()');
+  // 锚点用**那一行点击语句**，不用「下载报表」这四个字：
+  // 守卫自己的注释里也写着这四个字，拿它当锚点会量到注释位置（第一版就这么假绿过）。
+  const clickAt = body.indexOf('const clicked=await');
+  assert.ok(guardAt > 0, 'submit 里必须有一次 overlayScanExpression() 做提交前守卫');
+  assert.ok(clickAt > 0, 'submit 里必须还有「下载报表」那一下点击（锚点：const clicked=await）');
+  assert.ok(guardAt < clickAt,
+    '守卫必须在点击之前：先清干净再点，否则「确定」会落到弹窗上（盖文淘宝 10-28 就是这么丢的一天）');
+  assert.match(body, /OVERLAY_NOT_DISMISSED|describeOverlayAttempt/,
+    '关不掉时必须带上标记让链能分类，不能退化成一句普通失败');
+});
