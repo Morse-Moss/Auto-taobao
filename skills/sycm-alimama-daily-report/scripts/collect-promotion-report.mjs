@@ -24,9 +24,10 @@ import { PROJECT_PORTS } from '../../../runtime/browser-ports.mjs';
 import {
   PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN, TASK_DOWNLOAD_MARK, alimamaIdentityExpression,
   assertMemberIdentity, checkboxStateExpression, createOverlayDismisser, createPageReloader, defaultDownloadsDir,
-  describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, downloadEntryExpression,
-  hitCheckExpression, listDownloads, newEntries, parseCollectArgs, pickNewest, readAlimamaIdentitySettled,
-  restoreCheckboxesExpression, scrollIntoViewExpression, targetRowExpression, taskNameOfZip,
+  describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, describeOverlayScan,
+  downloadEntryExpression, hitCheckExpression, listDownloads, newEntries, overlayScanExpression,
+  parseCollectArgs, pickNewest, readAlimamaIdentitySettled, restoreCheckboxesExpression,
+  scrollIntoViewExpression, targetRowExpression, taskNameOfZip,
 } from './collect-core.mjs';
 // 报表页 URL 形状只有 date-picker 那份实现（含场景编码与归因参数）。路由复位要重新导航到
 // 同一个报表页，所以这里**取它**而不是再抄一份 —— 抄一份就会在下次改 URL 时漂移。
@@ -356,6 +357,42 @@ async function clearLeftoverDialog(args, targetId) {
 }
 
 /**
+ * 动手之前的第二道清理：**全屏层**那一类（2026-10-29 加）。
+ *
+ * 与 `clearLeftoverDialog` 的分工（两者不重叠，都要有）：
+ *   ① 那个只认「取消 / 关闭」四个字、且要求**中心点命中自己**。真机上有一类层它的出口
+ *      被掩膜吃掉（掩膜与弹窗内容不是同一棵子树，2026-10-28 商品链三家就是这么挂的），
+ *      `hitOk=false` ⇒ 它一个都点不着，等于什么都没做；
+ *   ② 这一道补的正是那种形态：让 `createOverlayDismisser` 先发 ESC（模态框最安全、不点任何
+ *      页面控件的出口），再按「关闭语义 → 消失类确认词 → 右上角图标」的有序候选表试，
+ *      全程有回读判据，且候选要过危险词黑名单。
+ *
+ * ⚠️ 刻意**只在点「下载报表」之前**做这一步，关不掉也**不抛**：
+ *   - 点完之后页面上会多出「确定 / 取消」的下载弹窗本身。那一刻再扫一遍全屏层，扫到的很可能
+ *     就是它，而候选表里「取消」是合法候选 —— 那一下点下去等于**亲手取消掉自己刚提交的下载**。
+ *     ⇒ 提交后的现场只做诊断（见 `submitDownloadTask` 里 `waitForConfirmButton` 失败那段），
+ *     不做动作。
+ *   - 关不掉也不抛，是因为这一步只做减法、不承担判据。真正的判据仍然是紧随其后的
+ *     「下载报表」复核 + 提交后的列表差集（`waitForNewTask`）—— 不许因为多了这一步
+ *     就把失败方向改到前面去（REPAIR-PROTOCOL：修法不许改主流程的失败方向）。
+ */
+async function clearBlockingOverlayBeforeSubmit(args, targetId) {
+  const scan = await evalOn(args, targetId, overlayScanExpression());
+  if (scan?.blocked !== true) return { attempted: false };
+  const attempt = await dismissBlockingOverlay(args, targetId, null);
+  if (attempt?.dismissed) {
+    console.log(`[遮挡] 提交前清掉一层全屏层（${attempt.strategy}）：${describeOverlayScan(scan, attempt.picked)}`);
+  } else {
+    // 这里**不用** describeOverlayAttempt：它的「未关掉」分支会带上 OVERLAY_NOT_DISMISSED 标记，
+    // 而那个标记是给 `shopFailureCause` 用的（意思是「这一轮要人去关弹窗」）。这一步不抛错，
+    // 把标记写进日志就会让后面任何一次失败都可能被误归因到遮挡上。
+    console.log(`[遮挡] 提交前检出一层全屏层但没关掉（不拦，判据仍在后面的复核与列表差集）：`
+      + `${describeOverlayScan(scan, attempt?.picked)}`);
+  }
+  return { attempted: true, dismissed: attempt?.dismissed === true, attempt };
+}
+
+/**
  * 路由复位：先回首页、再进目标报表 URL。
  *
  * 2026-09-20 实测（网林天猫）：SPA 会停在「没有下载报表」的降级视图上（正文 1828 字符），
@@ -637,6 +674,9 @@ async function submitDownloadTask(args, targetId) {
   console.log(`[submit] 页面 = ${state0.href}｜正文 ${state0.textLen} 字符`);
   // 先清掉上一轮留下的弹窗，再谈定位（理由见 clearLeftoverDialog 上方）。
   await clearLeftoverDialog(args, targetId);
+  // 2026-10-29 加：再补一道「全屏层」清理（ESC + 有序候选 + 回读）。分工与「关不掉也不抛」
+  // 的理由见 clearBlockingOverlayBeforeSubmit 上方 —— 关键在于它跑在**点「下载报表」之前**。
+  await clearBlockingOverlayBeforeSubmit(args, targetId);
   // 定位表达式抽成了常量（见上方 LOCATE_DOWNLOAD_REPORT_EXPRESSION），所以这里只调用；
   // 「找不到」不再直接抛 —— 先复位路由重试，原因见 locateDownloadReportReady。
   const located = await locateDownloadReportReady(args, targetId);
@@ -686,8 +726,13 @@ async function submitDownloadTask(args, targetId) {
   if (!waited.confirm) {
     // 报错必须自带现场：视口、每个候选的 rect 与「可点/点不着/不在视口内」。
     // 没有这几项就只剩两个布尔，还原现场得另写外部探针（2026-09-20 就是这么绕了一大圈）。
+    // 2026-10-29 加：再补一句「这一屏有没有全屏层」。**只诊断、不动手** ——
+    // 此刻那个全屏层很可能就是「确定」所在的那个下载弹窗本身，去点它的候选里包含「取消」，
+    // 会把刚提交的下载亲手取消掉。判据留给人看，动作一点都不做。
+    const overlay = await evalOn(args, targetId, overlayScanExpression()).catch(() => null);
     throw new Error(`等了 ${waited.attempts} 次（每次 ${waited.intervalMs}ms、期间滚动 ${waited.scrolls} 次）`
-      + `仍没有可点的「确定」｜${describeDialogCandidates(waited.buttons, waited.viewport)}⇒ 任务未提交`);
+      + `仍没有可点的「确定」｜${describeDialogCandidates(waited.buttons, waited.viewport)}`
+      + `｜全屏层：${describeOverlayScan(overlay, null)} ⇒ 任务未提交`);
   }
   const confirm = waited.confirm;
   console.log(`[submit] 等到「确定」(#${confirm.i})，第 ${waited.attempts} 次轮询命中`

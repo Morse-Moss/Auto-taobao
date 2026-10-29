@@ -202,6 +202,71 @@ test('取件段读任务列表：读到 0 行要再等一屏重读，路由丢�
 });
 
 /**
+ * 2026-10-29 加：日报链的提交段也要**动手之前先清一次全屏层**。
+ *
+ * 为什么日报链也要补（现场在商品链，机制同源）：2026-10-28 商品链三家店栽在
+ * 「掩膜与弹窗内容不是同一棵子树」的全屏营销弹窗上 —— 人看得见「取消」，代码报「层内 0 个候选」。
+ * 日报链这一侧当时全绿，但它走的是**同一批店铺、同一个阿里妈妈后台**，只是没撞上而已。
+ * 已有的 `clearLeftoverDialog` 只认「取消/关闭」且要求中心点命中自己，掩膜吃掉点击的那种形态它够不着。
+ *
+ * 这条用例钉三件事（都是「形状」而不是实现细节，改实现不用改用例）：
+ *   ① 清理必须在**点「下载报表」之前** —— 点完之后页面上就有下载弹窗本身了，
+ *      那一刻再扫全屏层，候选表里的「取消」会把刚提交的下载亲手取消掉；
+ *   ② 顺序必须在 `clearLeftoverDialog` **之后** —— 那道先点掉能点的取消，这一道再补它够不着的；
+ *   ③ 这个清理函数里**不许有 throw** —— 它只做减法，判据仍在复核与列表差集上；
+ *      在这里抛错等于把主流程的失败方向改到前面去了。
+ */
+test('提交段全屏层清理：必须在「点下载报表」之前，且关不掉也不许抛', () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(path.join(here, 'collect-promotion-report.mjs'), 'utf8').replace(/\r\n/g, '\n');
+
+  const bodyOf = (text, startMark, endMark) => {
+    const start = text.indexOf(startMark);
+    if (start < 0) return null;
+    const end = text.indexOf(endMark, start);
+    return end > 0 ? text.slice(start, end) : text.slice(start);
+  };
+
+  const submitBody = bodyOf(src, 'async function submitDownloadTask', '\nasync function phaseSubmit');
+  assert.ok(submitBody, '找不到 submitDownloadTask —— 名字变了的话这条用例要跟着更新');
+
+  const judge = (body) => {
+    const leftoverAt = body.indexOf('clearLeftoverDialog(');
+    // 锚点带上 `(args` —— 这一行上方紧邻的注释里也写着这个名字（「理由见 xxx 上方」），
+    // 只用裸名字会量到注释位置（商品链那条守卫第一版就栽在这上面，假绿过一次）。
+    const clearAt = body.indexOf('clearBlockingOverlayBeforeSubmit(args');
+    // 锚点用**那一行点击语句**（含选择器），不用「下载报表」四个字 ——
+    // 注释里也有这四个字，拿它当锚点会量到注释位置。
+    const clickAt = body.indexOf("click(args, targetId, '[data-collect-alimama-download");
+    if (leftoverAt < 0 || clickAt < 0) return null;
+    // 调用没了就是 false，不是 null：这条用例的核心判据是「它必须在场且在正确位置」。
+    if (clearAt < 0) return false;
+    return leftoverAt < clearAt && clearAt < clickAt;
+  };
+
+  assert.equal(judge(submitBody), true,
+    'submit 段必须按「clearLeftoverDialog → clearBlockingOverlayBeforeSubmit → 点下载报表」的顺序走：'
+    + '清晚了会把下载弹窗自己的「取消」点掉（等于亲手取消刚提交的下载）');
+
+  // 反向自证：把那行清理调用去掉，判据必须转红 —— 否则上面那条只是「源码里恰好有这个名字」。
+  const broken = submitBody.replace(/^\s*await clearBlockingOverlayBeforeSubmit\(args, targetId\);\s*$/mu, '');
+  assert.notEqual(broken, submitBody, '反向自证没生效：没匹配到那行清理调用（源码形状变了？）');
+  assert.equal(judge(broken), false,
+    '守卫自证失败：去掉清理调用后判据仍为真 ⇒ 判据没在判东西');
+
+  // ③ 清理函数自己不许抛：它是减法，不是判据。
+  const helperBody = bodyOf(src, 'async function clearBlockingOverlayBeforeSubmit', '\n}\n');
+  assert.ok(helperBody, '找不到 clearBlockingOverlayBeforeSubmit —— 名字变了的话这条用例要跟着更新');
+  assert.doesNotMatch(helperBody, /\bthrow\b/u,
+    '全屏层清理不许抛错：它只做减法，主流程的失败方向由复核与列表差集决定');
+  // 只注入 pressEscape 是不够的 —— 必须真的调用带 ESC 的那个 dismisser，否则 ESC 那一招等于没接。
+  assert.match(helperBody, /dismissBlockingOverlay\(/u,
+    '必须走 createOverlayDismisser 那一条（ESC + 有序候选 + 回读），不许自己另写一套点击');
+  assert.match(helperBody, /overlayScanExpression\(\)/u,
+    '必须先扫再决定关不关（没有全屏层时这一道必须是空操作）');
+});
+
+/**
  * 2026-10-24 真机误杀后补（㊼）：**「读到 0 行」不等于「列表里没有这个任务」**。
  *
  * 现场（2026-10-24 11:00 轮，目标日 2026-10-23，盖文天猫）：
