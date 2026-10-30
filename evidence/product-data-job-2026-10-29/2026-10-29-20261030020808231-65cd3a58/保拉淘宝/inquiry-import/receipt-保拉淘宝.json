@@ -1,0 +1,81 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030020808231-65cd3a58\\保拉淘宝\\inquiry.xls",
+  "shop": "保拉淘宝",
+  "date": "2026-10-29",
+  "base": "10月商品监控表-销售2部",
+  "baseToken": "LLWcbIuVFaBm6yshX9Xc8DFZn9d",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 10,
+  "existingRows": 745,
+  "plannedRows": 10,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-29",
+      "productId": "973508860033",
+      "shop": "保拉淘宝"
+    },
+    {
+      "date": "2026-10-29",
+      "productId": "820483993548",
+      "shop": "保拉淘宝"
+    },
+    {
+      "date": "2026-10-29",
+      "productId": "822265906607",
+      "shop": "保拉淘宝"
+    },
+    {
+      "date": "2026-10-29",
+      "productId": "671385002878",
+      "shop": "保拉淘宝"
+    },
+    {
+      "date": "2026-10-29",
+      "productId": "680537126754",
+      "shop": "保拉淘宝"
+    },
+    {
+      "date": "2026-10-29",
+      "productId": "701151528946",
+      "shop": "保拉淘宝"
+    },
+    {
+      "date": "2026-10-29",
+      "productId": "824646260611",
+      "shop": "保拉淘宝"
+    },
+    {
+      "date": "2026-10-29",
+      "productId": "824539807299",
+      "shop": "保拉淘宝"
+    },
+    {
+      "date": "2026-10-29",
+      "productId": "825042608019",
+      "shop": "保拉淘宝"
+    },
+    {
+      "date": "2026-10-29",
+      "productId": "711021616982",
+      "shop": "保拉淘宝"
+    }
+  ],
+  "recordIds": [
+    "reczz28TScGfWnxH",
+    "reczz28TScGfV8Fu",
+    "reczz28TScGfV5oW",
+    "reczz28TScGfVOHJ",
+    "reczz28TScGfWeIl",
+    "reczz28TScGfUxfP",
+    "reczz28TScGfXFrP",
+    "reczz28TScGfXCvp",
+    "reczz28TScGfV0lb",
+    "reczz28TScGfXwDm"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 10,
+  "writeBatches": 1,
+  "afterRows": 755
+}

@@ -1,0 +1,464 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (8).xls",
+  "shop": "保拉淘宝",
+  "date": "2026-10-29",
+  "base": "10月商品监控表-销售2部",
+  "baseToken": "LLWcbIuVFaBm6yshX9Xc8DFZn9d",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 74,
+  "existingRows": 4563,
+  "plannedRows": 74,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "825042608019"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "657044929595"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "666171938949"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "671385002878"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "675872963981"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "680537126754"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "682354648299"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "683316307222"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "683940832180"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "701149864523"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "701151528946"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "701155016399"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "711021616982"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "711284273983"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "712516728831"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "713113755640"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "734229724692"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "734257121585"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "734543422471"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "737659321700"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "737892903321"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "743988569198"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "763368527960"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "786182110626"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "820480365079"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "820483993548"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "820980423205"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "821311961035"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "821445160641"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "821644358577"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "821648434075"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "821958680016"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "821961648255"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "822265906607"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "822580552134"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "822826870317"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "823068029808"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "823188252627"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "824537423549"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "824539807299"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "824641772941"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "824646260611"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "824820399080"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "824983354468"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "824987974146"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "825583186170"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "825614596875"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "825926772323"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "842567122043"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "842838097298"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "857706965488"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "892136998254"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "892139690751"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "908463435580"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "908771754591"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "917749263527"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "965192806118"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "966442496375"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "972163570368"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "972165870137"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "972858465809"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "973499344679"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "973508860033"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "981211820047"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "984876868808"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "999868209258"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "1000580036622"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "1065375334458"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "1065376618056"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "1067344960384"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "1089388566283"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "1090471501339"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "1090472665668"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉淘宝",
+      "productId": "1090474233159"
+    }
+  ],
+  "recordIds": [
+    "reczz28TSbfjLWgI",
+    "reczz28TSbfjLJxk",
+    "reczz28TSbfjIKHp",
+    "reczz28TSbfjLM0L",
+    "reczz28TSbfjIBYY",
+    "reczz28TSbfjLIEW",
+    "reczz28TSbfjLfNd",
+    "reczz28TSbfjKz4L",
+    "reczz28TSbfjIJ7l",
+    "reczz28TSbfjIZC5",
+    "reczz28TSbfjJxVt",
+    "reczz28TSbfjJq05",
+    "reczz28TSbfjIa7z",
+    "reczz28TSbfjLMh8",
+    "reczz28TSbfjKzS5",
+    "reczz28TSbfjIQCl",
+    "reczz28TSbfjKssG",
+    "reczz28TSbfjK3wj",
+    "reczz28TSbfjJyBN",
+    "reczz28TSbfjKIao",
+    "reczz28TSbfjL7Js",
+    "reczz28TSbfjJaaI",
+    "reczz28TSbfjKSs3",
+    "reczz28TSbfjKFLQ",
+    "reczz28TSbfjLUl3",
+    "reczz28TSbfjIbeE",
+    "reczz28TSbfjKA3U",
+    "reczz28TSbfjKO3X",
+    "reczz28TSbfjIzkG",
+    "reczz28TSbfjJ2bM",
+    "reczz28TSbfjHbTb",
+    "reczz28TSbfjKCFV",
+    "reczz28TSbfjHZDR",
+    "reczz28TSbfjI20M",
+    "reczz28TSbfjJDiT",
+    "reczz28TSbfjJqck",
+    "reczz28TSbfjIe8t",
+    "reczz28TSbfjLBHH",
+    "reczz28TSbfjIdGL",
+    "reczz28TSbfjKTmK",
+    "reczz28TSbfjIQJv",
+    "reczz28TSbfjIPig",
+    "reczz28TSbfjLJBY",
+    "reczz28TSbfjJJfR",
+    "reczz28TSbfjIGP6",
+    "reczz28TSbfjK7Mt",
+    "reczz28TSbfjL7sq",
+    "reczz28TSbfjKHat",
+    "reczz28TSbfjILuV",
+    "reczz28TSbfjJqIV",
+    "reczz28TSbfjK5jh",
+    "reczz28TSbfjLX5W",
+    "reczz28TSbfjJbN6",
+    "reczz28TSbfjJln7",
+    "reczz28TSbfjKVTv",
+    "reczz28TSbfjHmZb",
+    "reczz28TSbfjKv0W",
+    "reczz28TSbfjJ8yd",
+    "reczz28TSbfjIfN9",
+    "reczz28TSbfjJ63q",
+    "reczz28TSbfjIm4m",
+    "reczz28TSbfjLUU4",
+    "reczz28TSbfjKCkS",
+    "reczz28TSbfjKGwm",
+    "reczz28TSbfjHrP9",
+    "reczz28TSbfjKQMS",
+    "reczz28TSbfjKjhB",
+    "reczz28TSbfjKmOk",
+    "reczz28TSbfjIRFD",
+    "reczz28TSbfjJL3P",
+    "reczz28TSbfjHahp",
+    "reczz28TSbfjKlkP",
+    "reczz28TSbfjKywa",
+    "reczz28TSbfjI29t"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 74,
+  "writeBatches": 1,
+  "afterRows": 4637
+}

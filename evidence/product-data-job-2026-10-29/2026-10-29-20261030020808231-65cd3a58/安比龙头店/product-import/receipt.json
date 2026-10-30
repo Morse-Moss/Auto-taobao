@@ -1,0 +1,116 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (10).xls",
+  "shop": "安比龙头店",
+  "date": "2026-10-29",
+  "base": "10月商品监控表-销售2部",
+  "baseToken": "LLWcbIuVFaBm6yshX9Xc8DFZn9d",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 16,
+  "existingRows": 4691,
+  "plannedRows": 16,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "808846051596"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "838775675844"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "808839323472"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "808856411992"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "809154902669"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "809162946005"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "809173102684"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "809193628817"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "814212008370"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "814252133820"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "834578708173"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "838704421202"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "850241474478"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "1078444735730"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "1080365717378"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比龙头店",
+      "productId": "1091474526117"
+    }
+  ],
+  "recordIds": [
+    "reczz28TSnzGcE0E",
+    "reczz28TSnzGcVb2",
+    "reczz28TSnzGb9mO",
+    "reczz28TSnzGbdhL",
+    "reczz28TSnzGaUKG",
+    "reczz28TSnzGbZTu",
+    "reczz28TSnzGaZy8",
+    "reczz28TSnzGZGox",
+    "reczz28TSnzGbI1m",
+    "reczz28TSnzGYWM5",
+    "reczz28TSnzGYWsJ",
+    "reczz28TSnzGaglF",
+    "reczz28TSnzGcVXZ",
+    "reczz28TSnzGcGlp",
+    "reczz28TSnzGbv0o",
+    "reczz28TSnzGYUcJ"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 16,
+  "writeBatches": 1,
+  "afterRows": 4707
+}

@@ -1,0 +1,33 @@
+[2026-10-30T03:05:48.823Z] 飞书目标预检：1 张 base 共 3 张表，各自凭据都被认（OK）
+[2026-10-30T03:05:48.823Z] 商品数据自动采集开始：2026-10-29 → 2026-10-29；3 店；分 1 批（每批最多 3 家，**每批跑完立刻释放**）；底单串行、询单/推广并行；模式 commit
+[2026-10-30T03:05:48.826Z] --- 第 1/1 批：保拉天猫、安比龙头店、科塔龙头店；3 家：保拉天猫、安比龙头店、科塔龙头店
+[2026-10-30T03:05:55.893Z] 视口回读通过：保拉天猫=1506x642、安比龙头店=1506x642、科塔龙头店=1506x642
+[2026-10-30T03:08:26.495Z] [底单] 保拉天猫 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (13).xls
+[2026-10-30T03:08:33.605Z] [底单] 安比龙头店 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (14).xls
+[2026-10-30T03:08:39.350Z] [底单] 科塔龙头店 已采集 C:\Users\Administrator\Downloads\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (15).xls
+[2026-10-30T03:09:09.727Z] [询单] 保拉天猫 失败：file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12
+async function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }
+                                                                                                      ^
+
+Error: 500 {"error":"CDP 命令超时: Page.navigate"}
+    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:15:300
+
+Node.js v22.22.2（exit 1）
+[2026-10-30T03:09:43.641Z] [询单] 安比龙头店 已落盘 D:\Retire\sycm-automation\evidence\product-data-job-2026-10-29\2026-10-29-20261030030545606-4a977778\安比龙头店\inquiry.xls
+[2026-10-30T03:10:08.350Z] [推广] 安比龙头店 已采集 C:\Users\Administrator\Downloads\商品报表_20261030_110953.zip
+[2026-10-30T03:10:17.182Z] [询单] 科塔龙头店 已落盘 D:\Retire\sycm-automation\evidence\product-data-job-2026-10-29\2026-10-29-20261030030545606-4a977778\科塔龙头店\inquiry.xls
+[2026-10-30T03:10:42.200Z] [推广] 科塔龙头店 已采集 C:\Users\Administrator\Downloads\商品报表_20261030_111027.zip
+[2026-10-30T03:11:24.553Z] [导入] 保拉天猫 底单已写入
+[2026-10-30T03:12:02.794Z] [导入] 安比龙头店 底单已写入
+[2026-10-30T03:12:16.893Z] [导入] 安比龙头店 询单已写入
+[2026-10-30T03:12:59.891Z] [导入] 科塔龙头店 底单已写入
+[2026-10-30T03:13:12.837Z] [导入] 科塔龙头店 询单已写入
+[2026-10-30T03:13:12.838Z] [导入] 推广有 1 家未采到，改为逐店导入已采到的 2 家
+[2026-10-30T03:13:21.294Z] [导入] 安比龙头店 推广已写入
+[2026-10-30T03:13:31.184Z] [导入] 科塔龙头店 推广已写入
+[2026-10-30T03:14:24.632Z] 浏览器已释放并完成端口二次回读（保拉天猫,安比龙头店,科塔龙头店）
+[2026-10-30T03:14:24.646Z] 失败：本轮不完整（2 处）：保拉天猫/询单 未采集：async function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; } Er…；保拉天猫/推广 未采集：本轮未走到（前一段未成）（FAILED/UNCLASSIFIED；停在哪一段=inquiry-import）
+[2026-10-30T03:14:24.814Z] 告警未发（去重）：同一条告警 17 分钟前刚发过（窗口 6 小时），不重复发（这一轮停在 inquiry-import，与上次不同，但同一业务日只报一次）
+[2026-10-30T03:14:24.815Z] 商品数据自动采集结束：退出码 1

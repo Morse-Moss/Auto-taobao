@@ -329,6 +329,28 @@ export const OVERLAY_CANDIDATE_MAX_SIZE = 48;
 export const OVERLAY_DOC_CANDIDATE_MAX_W = 200;
 export const OVERLAY_DOC_CANDIDATE_MAX_H = 64;
 
+// 「层内到底有什么」的第二口径（2026-10-30 加）：**只进日志，绝不进选点**。
+// 为什么要有：保拉天猫 10-30 的现场，层内读到 0 个，屏幕上却明明有两枚「立即体验」。
+// 原因是 48 是图标级阈值，主按钮 110×40 被它挡在门外 —— 日志只剩一句 0/0，读的人无从下手。
+// 为什么不能直接把这个口径当候选：那等于让「立即体验」这类按钮进入选点视野，
+// 一旦危险词表哪天漏一个词，就会点出去（跳走页面，对外副作用）。所以两件事分开。
+export const OVERLAY_DIAGNOSTIC_MAX_W = 200;
+export const OVERLAY_DIAGNOSTIC_MAX_H = 64;
+
+// 「零安全出口」时的最后手段：**不点击**，直接把这个视觉层藏掉（2026-10-30 加）。
+// 适用形态：全屏营销弹窗，层里只有「立即体验 / 立即报名」这类危险 CTA，没有 X / 关闭 / 我知道了。
+// 三道闸缺一不可：
+//   ① 层必须盖住 ≥85% 视口且 position 是 fixed/absolute（与扫描同源，不另立判据）；
+//   ② 选点侧返回 null（一个安全候选都没有）—— 有候选就轮不到它；
+//   ③ 层子树里没有 input/textarea/select/table（那就不是营销层，而是业务表单/数据表，
+//      藏掉会让后续读到空页面，属于「把失败换成假绿」）。
+// 藏的是 display:none，不是 remove：可回读、可还原，也不会把平台的 SPA 状态搞乱。
+export const OVERLAY_HIDE_SKIP = Object.freeze({
+  outOfScope: 'out-of-scope',
+  noLayer: 'no-layer',
+  businessContent: 'business-content',
+});
+
 // 「让它消失」类确认词的闭集（2026-09-26 加）。
 // 为什么要有它：实测有一类弹窗**既没有「关闭」两个字，也不是右上角那个 X** —— 它唯一的出口是
 // 「我知道了／稍后再说」这一族按钮。它与「立即报名」在语义上是**相反**的两件事：
@@ -429,6 +451,10 @@ export function overlayScanExpression(options = {}) {
     const inLayer = collect(top.el, true, ${maxSize}, ${maxSize});
     let candidates = inLayer;
     let docFallback = false;
+    // 第二口径（2026-10-30）：只在层内 0 个时收，**只进日志**。
+    // 它回答的是「屏幕上明明有按钮，为什么报 0 个」——保拉天猫那枚「立即体验」是 110×40，
+    // 被 48 的图标级阈值挡在门外，于是日志只剩一句 0/0。
+    let inLayerWide = [];
     if (!inLayer.length) {
       // 2026-10-29 修：**掩膜与弹窗内容不是同一棵子树**时，旧口径恒为 0/0。
       // 真机：阿里妈妈「下载任务管理」页 = DIV#wrapper_dlg_1351（全屏 mask，子树空）
@@ -437,6 +463,12 @@ export function overlayScanExpression(options = {}) {
       // 收的也只是「明确会关掉东西」的几类（关闭语义、消失类确认词、无文字的右上角图标），
       // 不再全收 —— 否则一旦掩膜透传点击，整页导航栏都会变成候选。
       docFallback = true;
+      for (const el of top.el.querySelectorAll(${JSON.stringify(candidateSelector)})) {
+        const c = candidateOf(el, true, ${docMaxW}, ${docMaxH});
+        if (!c) continue;
+        if (inLayerWide.some((w) => w.cx === c.cx && w.cy === c.cy)) continue;
+        inLayerWide.push({ tag: c.tag, text: c.text, label: c.label, w: c.w, h: c.h, cx: c.cx, cy: c.cy });
+      }
       const hint = new RegExp(${JSON.stringify(closeHintSource)}, 'iu');
       const ack = new RegExp(${JSON.stringify(ackSource)}, 'u');
       const pool = [];
@@ -465,8 +497,61 @@ export function overlayScanExpression(options = {}) {
       // 层内一个候选都没收到、改按整页找的标记（日志与用例都靠它区分两种口径）
       docFallback,
       inLayerCandidates: inLayer.length,
+      // 层内按 200×64 的第二口径（只进日志，不进选点）
+      inLayerWide: inLayerWide.slice(0, 6),
+      inLayerWideCount: inLayerWide.length,
       candidates: candidates.slice(0, 24), candidateTotal: candidates.length,
     });
+  })()`;
+}
+
+// 「零安全出口」的关法：**不点击**，把这层藏掉（2026-10-30 加）。
+// 与扫描**同源判据**（全屏 + fixed/absolute），另加两道闸：页面族白名单、层内无业务内容。
+// 藏的只是视觉层（display:none），不 remove：SPA 再怎么重挂，回读都能如实说清现在是什么状态。
+// 返回体必须能自答三件事：藏了几个、跳过的原因是什么、跳过了哪条闸 —— 否则下次还是只能手工复现。
+export function overlayHideExpression(options = {}) {
+  const coverage = options.coverage ?? OVERLAY_MIN_COVERAGE;
+  const scopes = Array.isArray(options.scopes) ? options.scopes : [];
+  return `(() => {
+    const href = String(location.href || '');
+    const scopes = ${JSON.stringify(scopes)};
+    if (scopes.length && !scopes.some((s) => new RegExp(s, 'u').test(href))) {
+      return JSON.stringify({ hidden: 0, skipped: ${JSON.stringify(OVERLAY_HIDE_SKIP.outOfScope)}, href });
+    }
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const visible = (el) => {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    };
+    const layers = [];
+    for (const el of document.querySelectorAll('body *')) {
+      const cs = getComputedStyle(el);
+      if (cs.position !== 'fixed' && cs.position !== 'absolute') continue;
+      if (!visible(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < vw * ${coverage} || r.height < vh * ${coverage}) continue;
+      layers.push({ el, z: cs.zIndex === 'auto' ? 0 : (parseInt(cs.zIndex, 10) || 0) });
+    }
+    layers.sort((a, b) => b.z - a.z);
+    const top = layers[0];
+    if (!top) return JSON.stringify({ hidden: 0, skipped: ${JSON.stringify(OVERLAY_HIDE_SKIP.noLayer)}, href });
+    // 只动「最高那一层 z」里的层：同 z 的兄弟往往就是弹窗内容本身（1351 那族），
+    // 但页面容器一般是 static/relative，不会落进 layers —— 这条是「不误藏页面骨架」的依据。
+    const stack = layers.filter((x) => x.z === top.z);
+    // 闸③：子树里有表单/表格 ⇒ 这是业务层，不是营销层，藏掉会让后续读到空页面（假绿）。
+    if (stack.some((x) => x.el.querySelector('input,textarea,select,table'))) {
+      return JSON.stringify({ hidden: 0, skipped: ${JSON.stringify(OVERLAY_HIDE_SKIP.businessContent)},
+        href, layer: { tag: top.el.tagName, id: top.el.id || null, z: top.z } });
+    }
+    const ids = [];
+    for (const x of stack) {
+      x.el.setAttribute('data-overlay-hidden', '1');
+      x.el.style.display = 'none';
+      ids.push(x.el.tagName + (x.el.id ? '#' + x.el.id : ''));
+    }
+    return JSON.stringify({ hidden: ids.length, ids, z: top.z, skipped: null, href });
   })()`;
 }
 
@@ -599,6 +684,13 @@ export function describeOverlayScan(scan, picked) {
   const got = `${scan.candidates?.length ?? 0}/${scan.candidateTotal ?? 0}`;
   if (scan.docFallback === true) {
     parts.push(`层内可点小控件 0 个 ⇒ 改按整页找，整页符合关闭语义的候选 ${got} 个`);
+    // 第二口径（2026-10-30）：层里其实**有**东西，只是超了图标级阈值。
+    // 不说这一句，「0/0」会被下一个读日志的人读成「屏幕上什么都没有，所以点不到」。
+    const wide = Array.isArray(scan.inLayerWide) ? scan.inLayerWide : [];
+    if (wide.length) {
+      const labels = wide.map((x) => x.text || x.label || x.tag);
+      parts.push(`层内按 ${OVERLAY_DIAGNOSTIC_MAX_W}×${OVERLAY_DIAGNOSTIC_MAX_H} 口径还有 ${scan.inLayerWideCount ?? wide.length} 个可点控件（文案 ${JSON.stringify(labels)}）`);
+    }
   } else {
     parts.push(`层内可点小控件 ${got} 个`);
   }
@@ -642,12 +734,15 @@ export function judgeOverlayAfter(after = {}) {
 // 判据仍然是**回读**，不是接口返回值；但判据从「全屏层归零」放宽成
 // 「层归零 **或** 目标控件已可点」—— 理由见 `judgeOverlayAfter`。
 // `pressEscape` 可以不注入：不注入就**跳过**这一步并在日志里说清，而不是假装试过。
-export function createOverlayDismisser({ evalOn, clickPoint, pressEscape, delay, log = () => {}, settleMs = 2500, maxPicks } = {}) {
+export function createOverlayDismisser({ evalOn, clickPoint, pressEscape, hideLayer, delay, log = () => {}, settleMs = 2500, maxPicks } = {}) {
   for (const [name, fn] of Object.entries({ evalOn, clickPoint, delay })) {
     if (typeof fn !== 'function') throw new Error(`createOverlayDismisser 缺少注入实现：${name}`);
   }
   if (pressEscape !== undefined && typeof pressEscape !== 'function') {
     throw new Error('createOverlayDismisser 的 pressEscape 要么不注入，要么是一个真能发键的函数');
+  }
+  if (hideLayer !== undefined && typeof hideLayer !== 'function') {
+    throw new Error('createOverlayDismisser 的 hideLayer 要么不注入，要么是一个真能藏层的函数');
   }
   const readAfter = async (args, targetId, selector) => {
     const after = await evalOn(args, targetId, overlayAfterExpression(selector));
@@ -682,7 +777,30 @@ export function createOverlayDismisser({ evalOn, clickPoint, pressEscape, delay,
     } else {
       log('[遮挡] 没有注入 pressEscape ⇒ 跳过 ESC 这一步（不假装试过）');
     }
-    if (!picked) return { attempted: true, dismissed: false, reason: 'no-safe-candidate', scan, picked: null, tried };
+    // 零安全出口 ⇒ 这里只剩「不点击」的关法（2026-10-30 加）。
+    // 只在 picked 为 null 时走这一步：有安全候选就先点候选 —— 藏层是最后手段，不是首选。
+    // 为什么必须有这一步：保拉天猫那类营销弹窗**根本没有出口**（只有「立即体验」），
+    // 于是点击类关法在逻辑上永远失败，而屏幕上其实只是「一层挡着」。
+    if (!picked) {
+      if (typeof hideLayer === 'function') {
+        const hidden = await hideLayer(args, targetId).catch((error) => ({ hidden: 0, error: String(error).slice(0, 120) }));
+        if (hidden && hidden.hidden > 0) {
+          await delay(settleMs);
+          const { after, verdict } = await readAfter(args, targetId, selector);
+          tried.push(`隐藏层(${JSON.stringify(hidden.ids ?? [])})→${verdict.why}`);
+          if (verdict.cleared) {
+            return { attempted: true, dismissed: true, strategy: 'hide', tried,
+              remainingLayers: after.remainingLayers, targetHit: after.targetHit, scan, picked, hideAttempt: hidden };
+          }
+        } else {
+          tried.push(`隐藏层→没藏（${hidden?.skipped ?? hidden?.error ?? 'unknown'}）`);
+        }
+      } else {
+        // 不注入就跳过，且要说清「然后呢」——不许写成一句读起来像正常的「跳过」。
+        log('[遮挡] 没有注入 hideLayer ⇒ 跳过「视觉隐藏」这一步（零安全出口时这一步不可替代，登记在 docs/ops/PAGE-JUDGEMENT-FAILURES.md §7）');
+      }
+      return { attempted: true, dismissed: false, reason: 'no-safe-candidate', scan, picked: null, tried };
+    }
     let last = null;
     for (const [index, candidate] of picked.picks.entries()) {
       // 真实鼠标点击（这一族页面 JS 点击常无效）。点这一步自身失败也不该把整轮带走 ⇒ 吞掉异常，
@@ -712,7 +830,14 @@ export function createOverlayDismisser({ evalOn, clickPoint, pressEscape, delay,
 export function describeOverlayAttempt(attempt) {
   if (!attempt || attempt.attempted !== true) return '（复核失败与全屏弹窗无关）';
   const detail = describeOverlayScan(attempt.scan, attempt.picked);
-  if (attempt.dismissed) return `（遮挡层已关掉：${detail}；但复核仍不过，说明这次不是它挡的）`;
+  if (attempt.dismissed) {
+    // 说清是**怎么**关掉的：`hide` 与「点了某个候选」是完全不同的事，
+    // 混成一句「已关掉」会让下一个人以为平台上真有那个关闭按钮。
+    const how = attempt.strategy === 'hide'
+      ? `用视觉隐藏清掉（藏了 ${JSON.stringify(attempt.hideAttempt?.ids ?? [])}，未点任何控件）`
+      : '已关掉';
+    return `（遮挡层${how}：${detail}；但复核仍不过，说明这次不是它挡的）`;
+  }
   const tried = attempt.tried?.length ? `；试过的关法：${attempt.tried.join('；')}` : '';
   return `（${OVERLAY_NOT_DISMISSED_TOKEN} 检出了全屏遮挡层但没能关掉：${detail}${tried}）`;
 }

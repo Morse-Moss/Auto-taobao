@@ -1,0 +1,62 @@
+[
+  {
+    "shop": "保拉天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"保拉天猫\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (13).xls\",\"bytes\":73728}\n",
+      "err": "[底单] 保拉天猫 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (13).xls",
+    "inquiry": {
+      "code": 1,
+      "out": "",
+      "err": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 500 {\"error\":\"CDP 命令超时: Page.navigate\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:15:300\r\n\r\nNode.js v22.22.2\r\n"
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030030545606-4a977778\\保拉天猫\\inquiry.xls",
+    "stoppedAt": "inquiry-collect",
+    "error": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 500 {\"error\":\"CDP 命令超时: Page.navigate\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:15:300\r\n\r\nNode.js v22.22.2",
+    "inquiryError": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 500 {\"error\":\"CDP 命令超时: Page.navigate\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:15:300\r\n\r\nNode.js v22.22.2"
+  },
+  {
+    "shop": "安比龙头店",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"安比龙头店\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (14).xls\",\"bytes\":31744}\n",
+      "err": "[底单] 安比龙头店 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (14).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"安比龙头店\",\n  \"date\": \"2026-10-29\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-29\\\\2026-10-29-20261030030545606-4a977778\\\\安比龙头店\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261029&dateRange=1d&orderBy=cstCnt&startDate=20261029&order=desc&itemId=&excludeDates=\",\n  \"linkSource\": \"props.link\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030030545606-4a977778\\安比龙头店\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] tb720555516:数据监控 / 4611324807 ✓\n[校验] 商品报表 / 2026-10-29 / 商品+计划 ✓\n[提交] 商品报表_20261030_110953\n[候选] 判据=date-range｜1 条：商品报表_20261030_110953｜按判据排除 3 条\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261030_110953.zip (1638 bytes)\n{\"shop\":\"安比龙头店\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261030_110953.zip\",\"bytes\":1638,\"task\":\"商品报表_20261030_110953\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261030_110953.zip"
+  },
+  {
+    "shop": "科塔龙头店",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"科塔龙头店\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (15).xls\",\"bytes\":27648}\n",
+      "err": "[底单] 科塔龙头店 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (15).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"科塔龙头店\",\n  \"date\": \"2026-10-29\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-29\\\\2026-10-29-20261030030545606-4a977778\\\\科塔龙头店\\\\inquiry.xls\",\n  \"bytes\": 14336,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261029&dateRange=1d&orderBy=cstCnt&startDate=20261029&order=desc&itemId=&excludeDates=\",\n  \"linkSource\": \"props.link\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030030545606-4a977778\\科塔龙头店\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 科塔建材卫浴品牌店:数据监控 / 6438408891 ✓\n[校验] 商品报表 / 2026-10-29 / 商品+计划 ✓\n[提交] 商品报表_20261030_111027\n[候选] 判据=date-range｜1 条：商品报表_20261030_111027｜按判据排除 3 条\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261030_111027.zip (1661 bytes)\n{\"shop\":\"科塔龙头店\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261030_111027.zip\",\"bytes\":1661,\"task\":\"商品报表_20261030_111027\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261030_111027.zip"
+  }
+]

@@ -1,0 +1,140 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (12).xls",
+  "shop": "安比淘宝",
+  "date": "2026-10-29",
+  "base": "10月商品监控表-销售2部",
+  "baseToken": "LLWcbIuVFaBm6yshX9Xc8DFZn9d",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 20,
+  "existingRows": 4719,
+  "plannedRows": 20,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1045909866969"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1054053550422"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "681147213917"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1045165851157"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1045911590422"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1046867701764"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1047745892966"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1076325219858"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1076326475559"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1077179678489"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1090092015985"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1090748803609"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1092410415566"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1092438309946"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1092579299428"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1092758361138"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1093140500035"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1093811800866"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1094417901876"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "安比淘宝",
+      "productId": "1094418777339"
+    }
+  ],
+  "recordIds": [
+    "reczz28TSrxRDHNo",
+    "reczz28TSrxRGjPN",
+    "reczz28TSrxRFU45",
+    "reczz28TSrxRGf3f",
+    "reczz28TSrxRDAKg",
+    "reczz28TSrxRGTv1",
+    "reczz28TSrxRG0EJ",
+    "reczz28TSrxRD801",
+    "reczz28TSrxRG8Xs",
+    "reczz28TSrxREQ8H",
+    "reczz28TSrxRG4GG",
+    "reczz28TSrxRDfwP",
+    "reczz28TSrxRG7IX",
+    "reczz28TSrxRCptR",
+    "reczz28TSrxRDYIb",
+    "reczz28TSrxRDPk7",
+    "reczz28TSrxRDVPh",
+    "reczz28TSrxRCpl1",
+    "reczz28TSrxRFo91",
+    "reczz28TSrxRExPu"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 20,
+  "writeBatches": 1,
+  "afterRows": 4739
+}

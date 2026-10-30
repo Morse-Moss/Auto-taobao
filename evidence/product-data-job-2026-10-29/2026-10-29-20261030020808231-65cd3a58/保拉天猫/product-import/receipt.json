@@ -1,0 +1,344 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (9).xls",
+  "shop": "保拉天猫",
+  "date": "2026-10-29",
+  "base": "10月商品监控表-销售2部",
+  "baseToken": "LLWcbIuVFaBm6yshX9Xc8DFZn9d",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 54,
+  "existingRows": 4637,
+  "plannedRows": 54,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "953315957543"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "893363899760"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "893563122017"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "894411216082"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "894416896874"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "919432875096"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "919610399596"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "919978134124"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "920487101246"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "922367570452"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "922372750258"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "923366160859"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "931048003940"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "952186663788"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "952195711350"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "952670870983"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "953893340346"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "955723418710"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "955731370361"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "955733822484"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "956349329543"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "956945584056"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "956947840235"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "956969556693"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "959069147131"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "959548686166"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "960213797937"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "960800020965"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "978237806157"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "978266486018"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "979623384663"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "979625532799"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "988026527175"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "988593602008"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "992154911721"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "992736194646"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "992744154351"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "993520713347"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1002866159579"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1002871987075"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1005033224375"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1005040824728"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1005043212077"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1062767946855"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1062774110252"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1062774946855"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1069157611593"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1085328354913"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1085650962654"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1085721246024"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1087174412667"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1087746617896"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1087795840542"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "保拉天猫",
+      "productId": "1090211989851"
+    }
+  ],
+  "recordIds": [
+    "reczz28TSmu2A9Kh",
+    "reczz28TSmu2BlbF",
+    "reczz28TSmu29UNl",
+    "reczz28TSmu29uOV",
+    "reczz28TSmu28ruk",
+    "reczz28TSmu2AuWj",
+    "reczz28TSmu29PUq",
+    "reczz28TSmu2COOi",
+    "reczz28TSmu28KiL",
+    "reczz28TSmu28yxp",
+    "reczz28TSmu28jyf",
+    "reczz28TSmu29NCI",
+    "reczz28TSmu2Avas",
+    "reczz28TSmu2BgyQ",
+    "reczz28TSmu2AJot",
+    "reczz28TSmu2AeQ2",
+    "reczz28TSmu2C88Z",
+    "reczz28TSmu28hSb",
+    "reczz28TSmu2Bl6s",
+    "reczz28TSmu2CRYs",
+    "reczz28TSmu2CSa5",
+    "reczz28TSmu2907v",
+    "reczz28TSmu2Bfvt",
+    "reczz28TSmu2C4uI",
+    "reczz28TSmu28sSs",
+    "reczz28TSmu2B7Tv",
+    "reczz28TSmu29YzH",
+    "reczz28TSmu29HCQ",
+    "reczz28TSmu28P3T",
+    "reczz28TSmu29jbW",
+    "reczz28TSmu2A4T4",
+    "reczz28TSmu2BhOb",
+    "reczz28TSmu2AvU5",
+    "reczz28TSmu28X5l",
+    "reczz28TSmu2CSYW",
+    "reczz28TSmu2AVyS",
+    "reczz28TSmu28svU",
+    "reczz28TSmu29lri",
+    "reczz28TSmu2BKrD",
+    "reczz28TSmu2B3P1",
+    "reczz28TSmu29iFz",
+    "reczz28TSmu2ATIo",
+    "reczz28TSmu28xZN",
+    "reczz28TSmu2Bzww",
+    "reczz28TSmu2BFpp",
+    "reczz28TSmu2AXnS",
+    "reczz28TSmu2BhoY",
+    "reczz28TSmu2AjMP",
+    "reczz28TSmu2BJxt",
+    "reczz28TSmu2Aers",
+    "reczz28TSmu2B7kc",
+    "reczz28TSmu29Xvr",
+    "reczz28TSmu28rv2",
+    "reczz28TSmu29mrT"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 54,
+  "writeBatches": 1,
+  "afterRows": 4691
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "shop": "保拉天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"保拉天猫\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (9).xls\",\"bytes\":73728}\n",
+      "err": "[底单] 保拉天猫 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (9).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"保拉天猫\",\n  \"date\": \"2026-10-29\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-29\\\\2026-10-29-20261030020808231-65cd3a58\\\\保拉天猫\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261029&dateRange=1d&orderBy=cstCnt&startDate=20261029&order=desc&itemId=&excludeDates=\",\n  \"linkSource\": \"props.link\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030020808231-65cd3a58\\保拉天猫\\inquiry.xls",
+    "promotion": {
+      "code": 1,
+      "out": "[身份] 保拉伦蒂旗舰店:数据监控 / 7445214812 ✓\n[校验] 商品报表 / 2026-10-29 / 商品+计划 ✓\n[遮挡] 全屏层 DIV#wrapper_dlg_107(data-owner-id=app) z=99999，rect=[0,0,1506,642]，层内可点小控件 0 个 ⇒ 改按整页找，整页符合关闭语义的候选 0/0 个，没找到可安全点击的关闭控件（不盲点，交给人处理）\n[遮挡] 回读：全屏层剩 2 个（[\"DIV#mask_dlg_107 z=99998\",\"DIV#wrapper_dlg_107 z=99999\"]）｜目标可点=null ⇒ 还在挡（层还剩 2 个且目标仍不可点）\n[保拉天猫]   现场截图 = D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030020808231-65cd3a58\\保拉天猫\\promotion-collect\\98-failure-page.png\n[保拉天猫]   现场事实 = D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030020808231-65cd3a58\\保拉天猫\\promotion-collect\\98-failure-state.txt\n",
+      "err": "采集失败：提交商品报表前有全屏弹窗且没能关掉：（OVERLAY_NOT_DISMISSED 检出了全屏遮挡层但没能关掉：全屏层 DIV#wrapper_dlg_107(data-owner-id=app) z=99999，rect=[0,0,1506,642]，层内可点小控件 0 个 ⇒ 改按整页找，整页符合关闭语义的候选 0/0 个，没找到可安全点击的关闭控件（不盲点，交给人处理）；试过的关法：ESC→层还剩 2 个且目标仍不可点）\n"
+    },
+    "promotionFile": null,
+    "stoppedAt": "promotion-collect",
+    "error": "采集失败：提交商品报表前有全屏弹窗且没能关掉：（OVERLAY_NOT_DISMISSED 检出了全屏遮挡层但没能关掉：全屏层 DIV#wrapper_dlg_107(data-owner-id=app) z=99999，rect=[0,0,1506,642]，层内可点小控件 0 个 ⇒ 改按整页找，整页符合关闭语义的候选 0/0 个，没找到可安全点击的关闭控件（不盲点，交给人处理）；试过的关法：ESC→层还剩 2 个且目标仍不可点）",
+    "promotionError": "采集失败：提交商品报表前有全屏弹窗且没能关掉：（OVERLAY_NOT_DISMISSED 检出了全屏遮挡层但没能关掉：全屏层 DIV#wrapper_dlg_107(data-owner-id=app) z=99999，rect=[0,0,1506,642]，层内可点小控件 0 个 ⇒ 改按整页找，整页符合关闭语义的候选 0/0 个，没找到可安全点击的关闭控件（不盲点，交给人处理）；试过的关法：ESC→层还剩 2 个且目标仍不可点）"
+  },
+  {
+    "shop": "安比龙头店",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"安比龙头店\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (10).xls\",\"bytes\":31744}\n",
+      "err": "[底单] 安比龙头店 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (10).xls",
+    "inquiry": {
+      "code": 1,
+      "out": "",
+      "err": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 500 {\"error\":\"CDP 命令超时: Page.navigate\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:15:300\r\n\r\nNode.js v22.22.2\r\n"
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030020808231-65cd3a58\\安比龙头店\\inquiry.xls",
+    "stoppedAt": "inquiry-collect",
+    "error": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 500 {\"error\":\"CDP 命令超时: Page.navigate\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:15:300\r\n\r\nNode.js v22.22.2",
+    "inquiryError": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 500 {\"error\":\"CDP 命令超时: Page.navigate\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:15:300\r\n\r\nNode.js v22.22.2"
+  },
+  {
+    "shop": "科塔龙头店",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"科塔龙头店\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (11).xls\",\"bytes\":27648}\n",
+      "err": "[底单] 科塔龙头店 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (11).xls",
+    "inquiry": {
+      "code": 1,
+      "out": "",
+      "err": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 500 {\"error\":\"CDP 命令超时: Page.navigate\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:15:300\r\n\r\nNode.js v22.22.2\r\n"
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030020808231-65cd3a58\\科塔龙头店\\inquiry.xls",
+    "stoppedAt": "inquiry-collect",
+    "error": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 500 {\"error\":\"CDP 命令超时: Page.navigate\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:15:300\r\n\r\nNode.js v22.22.2",
+    "inquiryError": "file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12\r\nasync function req(url, init) { const r=await fetch(url,init); const t=await r.text(); if(!r.ok)throw new Error(`${r.status} ${t.slice(0,200)}`); return t; }\r\n                                                                                                      ^\r\n\r\nError: 500 {\"error\":\"CDP 命令超时: Page.navigate\"}\r\n    at req (file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:12:103)\r\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\r\n    at async file:///D:/Retire/sycm-automation/skills/sycm-inquiry-data/scripts/collect-inquiry-report.mjs:15:300\r\n\r\nNode.js v22.22.2"
+  }
+]

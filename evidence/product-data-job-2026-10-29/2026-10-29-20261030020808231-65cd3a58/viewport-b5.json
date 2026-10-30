@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "threshold": {
+    "width": 1200,
+    "height": 600
+  },
+  "checked": 1,
+  "failed": [],
+  "entries": [
+    {
+      "shop": "安比淘宝",
+      "proxyPort": 19067,
+      "targetId": "BCA8F3334A929076528511711991C0AE",
+      "pageUrl": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E5%AE%89%E6%AF%94%E6%B7%98%E5%AE%9D&port=19057",
+      "pageTitle": "安比淘宝 · 日报采集窗口",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    }
+  ]
+}

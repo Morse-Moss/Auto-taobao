@@ -8,11 +8,12 @@ import test from 'node:test';
 import {
   SHOP_REPORT_PATTERN, PROMOTION_TASK_PATTERN, PROMOTION_ZIP_PATTERN,
   OVERLAY_ACK_PATTERN, OVERLAY_DISMISS_DANGER, OVERLAY_MAX_PICKS, OVERLAY_NOT_DISMISSED_TOKEN,
+  OVERLAY_HIDE_SKIP,
   alimamaIdentityExpression, assertMemberIdentity, assertShopIdentity,
   checkboxStateExpression, createOverlayDismisser, createPageReloader, dateWithinRange, defaultDownloadsDir,
   describeEntryMiss, describeHitMiss, describeHitPass, describeOverlayAttempt, describeOverlayScan,
   downloadEntryExpression, hitCheckExpression, judgeOverlayAfter, listDownloads, newEntries, newestTaskName,
-  overlayAfterExpression, overlayScanExpression, pageReadyExpression, parseCollectArgs, pickNewest,
+  overlayAfterExpression, overlayHideExpression, overlayScanExpression, pageReadyExpression, parseCollectArgs, pickNewest,
   pickOverlayCloseCandidate, pickOverlayCloseCandidates, readAlimamaIdentitySettled, readPageValueSettled, reloadPageExpression,
   restoreCheckboxesExpression, scrollIntoViewExpression, shopReportNamePattern,
   sycmShopIdentityExpression, targetRowExpression, taskNameOfZip,
@@ -1935,4 +1936,163 @@ test('两套命中判据必须一致：中心点 vs 多采样点曾在真机给�
     assert.equal(typeof ov.hitDetail.insideSamples, 'number');
     assert.equal(typeof ov.hitDetail.inViewportSamples, 'number');
   }
+});
+
+// ── 2026-10-30：第二种形态「零安全出口」的营销弹窗 ─────────────────────────
+// 现场（保拉天猫 商品报表）：DIV#wrapper_dlg_107 全屏层，层里只有两枚 110×40 的「立即体验」，
+// 没有 X、没有取消、没有「我知道了」。48 的图标级阈值把它挡在门外 ⇒ 日志只剩一句 0/0。
+// 屏幕上明明有按钮，代码说没有可点的东西 —— 这与 10-29 那次「范围错了」不是同一件事。
+
+const ovRect = (x, y, width, height) => ({ x, y, width, height });
+const ovNode = ({ tag, id = null, text = '', box, children = [], style = {}, kind = null }) => {
+  // 真机上「藏层」写的是 `el.style.display`（内联样式），而 `visible()` 读的是 `getComputedStyle`。
+  // 夹具让两者指向同一个对象：这样「藏完之后回读看不见了」才是被真跑过的，
+  // 而不是靠一个没人写过的 `_style` 假装。
+  const inline = { position: 'static', display: 'block', visibility: 'visible', opacity: '1', zIndex: 'auto', ...style };
+  const node = {
+    tagName: tag, id, className: '', children, textContent: text, _kind: kind,
+    _attrs: new Map(),
+    style: inline,
+    _style: inline,
+    getAttribute(name) { return this._attrs.get(name) ?? null; },
+    setAttribute(name, value) { this._attrs.set(name, value); },
+    removeAttribute(name) { this._attrs.delete(name); },
+    getBoundingClientRect: () => box,
+    contains(other) { return other === node || children.some((child) => child.contains?.(other) === true); },
+    querySelectorAll: () => children,
+    querySelector: (selector) => children.find((c) => c._kind && selector.split(',').includes(c._kind)) ?? null,
+  };
+  return node;
+};
+
+test('零安全出口：层内 0 个是「超了图标级阈值」，第二口径必须把「立即体验」说出来', () => {
+  const cta = ovNode({ tag: 'BUTTON', text: '立即体验', box: ovRect(700, 300, 110, 40) });
+  const layer = ovNode({ tag: 'DIV', id: 'wrapper_dlg_107', box: ovRect(0, 0, 1506, 642),
+    style: { position: 'fixed', zIndex: '99999' }, children: [cta] });
+  const nodes = [layer, cta];
+  const document = { querySelectorAll: () => nodes, elementFromPoint: () => cta };
+  const window = { innerWidth: 1506, innerHeight: 642 };
+  const scan = JSON.parse(new Function('document', 'window', 'getComputedStyle',
+    `return ${overlayScanExpression()};`)(document, window, (el) => el._style));
+
+  assert.equal(scan.blocked, true);
+  assert.equal(scan.layer.id, 'wrapper_dlg_107');
+  assert.equal(scan.inLayerCandidates, 0, '110×40 超过 48 ⇒ 层内仍必须是 0（旧判据不许被悄悄放宽）');
+  assert.equal(scan.docFallback, true);
+  assert.equal(scan.candidateTotal, 0, '「立即体验」命中危险词 ⇒ 兜底也不许把它变成候选');
+  assert.equal(scan.inLayerWideCount, 1, '第二口径要看见它，否则 0/0 无从复现');
+  assert.equal(scan.inLayerWide[0].text, '立即体验');
+
+  const text = describeOverlayScan(scan, pickOverlayCloseCandidate(scan));
+  assert.match(text, /层内可点小控件 0 个/u);
+  assert.match(text, /立即体验/u, '日志要点名层里到底有什么 —— 0/0 那句读不出「屏幕上其实有按钮」');
+});
+
+test('视觉隐藏：只在无业务内容、且在指定页面族时才藏；跳过必须报出原因', () => {
+  const SCOPES = ['one\\.alimama\\.com/index\\.html#!/report/(item_promotion|download-list)'];
+  const runHide = (nodes, { href = 'https://one.alimama.com/index.html#!/report/item_promotion?x=1' } = {}) => {
+    const document = { querySelectorAll: () => nodes, elementFromPoint: () => null };
+    const window = { innerWidth: 1506, innerHeight: 642 };
+    const location = { href };
+    return JSON.parse(new Function('document', 'window', 'getComputedStyle', 'location',
+      `return ${overlayHideExpression({ scopes: SCOPES })};`)(document, window, (el) => el._style, location));
+  };
+
+  // ① 营销层：藏掉，并说清藏了谁
+  const mask = ovNode({ tag: 'DIV', id: 'wrapper_dlg_107', box: ovRect(0, 0, 1506, 642),
+    style: { position: 'fixed', zIndex: '99999' } });
+  const hide = runHide([mask]);
+  assert.equal(hide.hidden, 1);
+  assert.deepEqual(hide.ids, ['DIV#wrapper_dlg_107']);
+  assert.equal(mask._style.display, 'none', '必须真的改 display —— 判据靠回读，不靠这个返回值');
+
+  // ② 业务层（子树里有 input）：拒绝。藏掉它后续会读到空页面，那是把失败换成假绿。
+  const input = ovNode({ tag: 'INPUT', box: ovRect(100, 100, 120, 30), kind: 'input' });
+  const form = ovNode({ tag: 'DIV', id: 'real_form', box: ovRect(0, 0, 1506, 642),
+    style: { position: 'fixed', zIndex: '99999' }, children: [input] });
+  const refused = runHide([form]);
+  assert.equal(refused.hidden, 0);
+  assert.equal(refused.skipped, OVERLAY_HIDE_SKIP.businessContent);
+  assert.notEqual(form._style.display, 'none', '★ 真业务表单一次都不许藏');
+
+  // ③ 不在白名单页面：跳过（藏层是减法，用错页面比卡住更难查）
+  const other = ovNode({ tag: 'DIV', id: 'mask_x', box: ovRect(0, 0, 1506, 642), style: { position: 'fixed', zIndex: '99999' } });
+  const outOfScope = runHide([other], { href: 'https://sycm.taobao.com/portal/home.htm' });
+  assert.equal(outOfScope.hidden, 0);
+  assert.equal(outOfScope.skipped, OVERLAY_HIDE_SKIP.outOfScope);
+  assert.notEqual(other._style.display, 'none');
+
+  // ④ 没有全屏层：如实说「没层」，不要伪装成「藏了 0 个」
+  assert.equal(runHide([]).skipped, OVERLAY_HIDE_SKIP.noLayer);
+});
+
+const OVERLAY_ZERO_EXIT_SCAN = {
+  blocked: true, viewport: [1506, 642], docFallback: true, inLayerCandidates: 0,
+  layer: { tag: 'DIV', id: 'wrapper_dlg_107', z: 99999, rect: [0, 0, 1506, 642] },
+  candidates: [], candidateTotal: 0,
+};
+
+const makeDismisserHarness = async ({ scan, hideResult, withHide = true }) => {
+  const calls = { hide: 0, click: 0, escape: 0 };
+  const logs = [];
+  const evalOn = async (_args, _target, expression) => {
+    if (expression.includes('remainingLayers')) return { remainingLayers: [], targetHit: false };
+    if (expression.includes('data-overlay-hidden')) { calls.hide += 1; return hideResult ?? { hidden: 1, ids: ['DIV#wrapper_dlg_107'] }; }
+    return scan;
+  };
+  const dismisser = createOverlayDismisser({
+    evalOn,
+    delay: async () => {},
+    clickPoint: async () => { calls.click += 1; },
+    ...(withHide ? { hideLayer: async (args, target) => evalOn(args, target, overlayHideExpression()) } : {}),
+    log: (line) => logs.push(line),
+  });
+  return { result: await dismisser({}, 'T', null), calls, logs };
+};
+
+test('零安全出口时走视觉隐藏：一次点击都不许发生，且必须报出「是藏掉的」', async () => {
+  const { result, calls } = await makeDismisserHarness({ scan: OVERLAY_ZERO_EXIT_SCAN });
+  assert.equal(result.dismissed, true);
+  assert.equal(result.strategy, 'hide', '不能说成「点到了某个候选」—— 平台上根本没有那个按钮');
+  assert.equal(calls.click, 0, '★ 零安全出口时点击一次都不许发生');
+  assert.equal(calls.hide, 1);
+  assert.match(describeOverlayAttempt(result), /视觉隐藏清掉/u);
+});
+
+test('有安全候选时不许走隐藏：先点候选，藏层是最后手段', async () => {
+  const scan = {
+    ...OVERLAY_ZERO_EXIT_SCAN, docFallback: false, inLayerCandidates: 1, candidateTotal: 1,
+    candidates: [{ tag: 'SPAN', id: null, cls: 'x', text: '关闭', label: '', cx: 560, cy: 630, w: 24, h: 12, atTopRight: false, inTopLayer: true }],
+  };
+  const { result, calls } = await makeDismisserHarness({ scan });
+  assert.equal(result.dismissed, true);
+  assert.notEqual(result.strategy, 'hide');
+  assert.equal(calls.click, 1, '有候选就点候选');
+  assert.equal(calls.hide, 0, '★ 有安全出口就不许动「藏层」—— 那是给零出口留的');
+});
+
+test('没注入 hideLayer 不许假装试过：报 no-safe-candidate，并把待办写进日志', async () => {
+  const { result, logs } = await makeDismisserHarness({ scan: OVERLAY_ZERO_EXIT_SCAN, withHide: false });
+  assert.equal(result.dismissed, false);
+  assert.equal(result.reason, 'no-safe-candidate');
+  assert.ok(logs.some((line) => /没有注入 hideLayer/u.test(line) && /PAGE-JUDGEMENT-FAILURES/u.test(line)),
+    '「跳过」必须自带「然后呢」，否则下一个读日志的人会把它当成已完成');
+});
+
+test('藏了层但回读仍被挡：不许判成功（假绿），要如实说还在挡', async () => {
+  const calls = { clicks: 0 };
+  const evalOn = async (_a, _t, expression) => {
+    if (expression.includes('remainingLayers')) return { remainingLayers: ['DIV#wrapper_dlg_107 z=99999'], targetHit: false };
+    if (expression.includes('data-overlay-hidden')) return { hidden: 1, ids: ['DIV#wrapper_dlg_107'] };
+    return OVERLAY_ZERO_EXIT_SCAN;
+  };
+  const dismisser = createOverlayDismisser({
+    evalOn, delay: async () => {},
+    clickPoint: async () => { calls.clicks += 1; },
+    hideLayer: async (args, target) => evalOn(args, target, overlayHideExpression()),
+  });
+  const result = await dismisser({}, 'T', null);
+  assert.equal(result.dismissed, false, '★ 回读说还在挡，就只能说没关掉');
+  assert.match(JSON.stringify(result.tried), /隐藏层/u);
+  assert.match(describeOverlayAttempt(result), new RegExp(OVERLAY_NOT_DISMISSED_TOKEN, 'u'));
 });

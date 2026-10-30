@@ -1,0 +1,65 @@
+[
+  {
+    "shop": "里可林天猫",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"里可林天猫\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (6).xls\",\"bytes\":36352}\n",
+      "err": "[底单] 里可林天猫 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (6).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"里可林天猫\",\n  \"date\": \"2026-10-29\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-29\\\\2026-10-29-20261030020808231-65cd3a58\\\\里可林天猫\\\\inquiry.xls\",\n  \"bytes\": 14848,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261029&dateRange=1d&orderBy=cstCnt&startDate=20261029&order=desc&itemId=&excludeDates=\",\n  \"linkSource\": \"props.link\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030020808231-65cd3a58\\里可林天猫\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 里可林旗舰店:月饼 / 7449643996 ✓\n[校验] 商品报表 / 2026-10-29 / 商品+计划 ✓\n[遮挡] 全屏层 DIV#wrapper_dlg_292(data-owner-id=app) z=99999，rect=[0,0,1501,642]，层内可点小控件 24/44 个，选中 SPAN#mx_295「」于 (1251,32)，另有 1 个安全备选（按序试，封顶 3 个）\n[遮挡] 回读：全屏层剩 2 个（[\"DIV#mask_dlg_292 z=99998\",\"DIV#wrapper_dlg_292 z=99999\"]）｜目标可点=null ⇒ 还在挡（层还剩 2 个且目标仍不可点）\n[遮挡] 回读：全屏层剩 0 个｜目标可点=null ⇒ 不再挡事（全屏层已归零）\n[遮挡] 提交前已清掉一层：全屏层 DIV#wrapper_dlg_292(data-owner-id=app) z=99999，rect=[0,0,1501,642]，层内可点小控件 24/44 个，选中 SPAN#mx_295「」于 (1251,32)，另有 1 个安全备选（按序试，封顶 3 个）\n[提交] 商品报表_20261030_103413\n[候选] 判据=date-range｜1 条：商品报表_20261030_103413｜按判据排除 6 条\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261030_103413.zip (1833 bytes)\n{\"shop\":\"里可林天猫\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261030_103413.zip\",\"bytes\":1833,\"task\":\"商品报表_20261030_103413\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261030_103413.zip"
+  },
+  {
+    "shop": "网林家居",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"网林家居\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (7).xls\",\"bytes\":19456}\n",
+      "err": "[底单] 网林家居 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (7).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"网林家居\",\n  \"date\": \"2026-10-29\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-29\\\\2026-10-29-20261030020808231-65cd3a58\\\\网林家居\\\\inquiry.xls\",\n  \"bytes\": 13824,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261029&dateRange=1d&orderBy=cstCnt&startDate=20261029&order=desc&itemId=&excludeDates=\",\n  \"linkSource\": \"props.link\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030020808231-65cd3a58\\网林家居\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 网林定制家居:小瓜 / 1731780198 ✓\n[校验] 商品报表 / 2026-10-29 / 商品+计划 ✓\n[遮挡] 全屏层 DIV#wrapper_dlg_360(data-owner-id=app) z=99999，rect=[0,0,1501,642]，层内可点小控件 24/44 个，选中 SPAN#mx_363「」于 (1251,32)，另有 1 个安全备选（按序试，封顶 3 个）\n[遮挡] 回读：全屏层剩 2 个（[\"DIV#mask_dlg_360 z=99998\",\"DIV#wrapper_dlg_360 z=99999\"]）｜目标可点=null ⇒ 还在挡（层还剩 2 个且目标仍不可点）\n[遮挡] 回读：全屏层剩 0 个｜目标可点=null ⇒ 不再挡事（全屏层已归零）\n[遮挡] 提交前已清掉一层：全屏层 DIV#wrapper_dlg_360(data-owner-id=app) z=99999，rect=[0,0,1501,642]，层内可点小控件 24/44 个，选中 SPAN#mx_363「」于 (1251,32)，另有 1 个安全备选（按序试，封顶 3 个）\n[提交] 商品报表_20261030_103515\n[候选] 判据=date-range｜1 条：商品报表_20261030_103515｜按判据排除 4 条\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261030_103515.zip (596 bytes)\n{\"shop\":\"网林家居\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261030_103515.zip\",\"bytes\":596,\"task\":\"商品报表_20261030_103515\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261030_103515.zip"
+  },
+  {
+    "shop": "保拉淘宝",
+    "product": {
+      "code": 0,
+      "out": "{\"shop\":\"保拉淘宝\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (8).xls\",\"bytes\":96256}\n",
+      "err": "[底单] 保拉淘宝 第 1 次尝试成功（点击返回值=true）\n"
+    },
+    "productFile": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (8).xls",
+    "inquiry": {
+      "code": 0,
+      "out": "{\n  \"shop\": \"保拉淘宝\",\n  \"date\": \"2026-10-29\",\n  \"out\": \"D:\\\\Retire\\\\sycm-automation\\\\evidence\\\\product-data-job-2026-10-29\\\\2026-10-29-20261030020808231-65cd3a58\\\\保拉淘宝\\\\inquiry.xls\",\n  \"bytes\": 16384,\n  \"endpoint\": \"/csp/api/cst/item/shop/list/export.json?dateType=day&endDate=20261029&dateRange=1d&orderBy=cstCnt&startDate=20261029&order=desc&itemId=&excludeDates=\",\n  \"linkSource\": \"props.link\"\n}\n",
+      "err": ""
+    },
+    "inquiryFile": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030020808231-65cd3a58\\保拉淘宝\\inquiry.xls",
+    "promotion": {
+      "code": 0,
+      "out": "[身份] 保拉伦蒂:数据监控 / 1991150160 ✓\n[校验] 商品报表 / 2026-10-29 / 商品+计划 ✓\n[遮挡] 全屏层 DIV#wrapper_dlg_4138(data-owner-id=app) z=99999，rect=[0,0,1522,732]，层内可点小控件 24/45 个，选中 SPAN#mx_4141「」于 (1261,54)，另有 1 个安全备选（按序试，封顶 3 个）\n[遮挡] 回读：全屏层剩 2 个（[\"DIV#mask_dlg_4138 z=99998\",\"DIV#wrapper_dlg_4138 z=99999\"]）｜目标可点=null ⇒ 还在挡（层还剩 2 个且目标仍不可点）\n[遮挡] 回读：全屏层剩 0 个｜目标可点=null ⇒ 不再挡事（全屏层已归零）\n[遮挡] 提交前已清掉一层：全屏层 DIV#wrapper_dlg_4138(data-owner-id=app) z=99999，rect=[0,0,1522,732]，层内可点小控件 24/45 个，选中 SPAN#mx_4141「」于 (1261,54)，另有 1 个安全备选（按序试，封顶 3 个）\n[提交] 商品报表_20261030_103704\n[候选] 判据=date-range｜1 条：商品报表_20261030_103704｜按判据排除 3 条\n[下载] C:\\Users\\Administrator\\Downloads\\商品报表_20261030_103704.zip (2011 bytes)\n{\"shop\":\"保拉淘宝\",\"date\":\"2026-10-29\",\"file\":\"C:\\\\Users\\\\Administrator\\\\Downloads\\\\商品报表_20261030_103704.zip\",\"bytes\":2011,\"task\":\"商品报表_20261030_103704\"}\n",
+      "err": ""
+    },
+    "promotionFile": "C:\\Users\\Administrator\\Downloads\\商品报表_20261030_103704.zip"
+  }
+]

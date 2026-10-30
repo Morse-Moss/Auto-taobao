@@ -91,3 +91,32 @@ test('提交段必须先查遮挡再点「下载报表」：否则「确定」�
   assert.match(body, /OVERLAY_NOT_DISMISSED|describeOverlayAttempt/,
     '关不掉时必须带上标记让链能分类，不能退化成一句普通失败');
 });
+
+// 2026-10-30：第二种形态「零安全出口」的营销弹窗（保拉天猫 DIV#wrapper_dlg_107，
+// 层里只有两枚「立即体验」）。两条新接线必须钉住：
+//   ① 只对「零安全候选」启用的视觉隐藏，作用域锁在两个报表页；
+//   ② 撞层后**只重载一次**，第二次还清不掉就交人（循环重试是错的：同一层反复清不掉不是偶发）。
+test('零安全出口：必须注入 hideLayer，且作用域锁在商品报表与下载任务页', () => {
+  const hits = source.match(/hideLayer\s*:/g) ?? [];
+  assert.equal(hits.length, 1,
+    `dismisser 必须恰好注入一处 hideLayer，实际 ${hits.length} 处（0 处 = 这一族永远只能交人）`);
+  assert.match(source, /overlayHideExpression\(\s*\{\s*scopes:/u,
+    '藏层必须带 scopes 白名单，不许无条件藏 —— 藏错页面比卡住更难查');
+  assert.match(source, /item_promotion\|download-list/u,
+    '白名单必须同时覆盖商品报表与下载任务页');
+  // 危险词表只有一份：collect-core 里那份。这里再写一份就会出现「两处判据打架」。
+  assert.doesNotMatch(source, /OVERLAY_DISMISS_DANGER\s*=/u,
+    '不许在采集脚本里重写危险词表（唯一来源是 collect-core 的 OVERLAY_DISMISS_DANGER）');
+});
+
+test('撞层后只重载一次：有界，且第二次还清不掉必须交人', () => {
+  const start = source.indexOf('async function submit(');
+  assert.ok(start > 0, '找不到 submit 函数 —— 这条守卫的前提是它还在');
+  const body = source.slice(start, start + 5000);
+  const retries = (body.match(/const back=await waitForDownloadButton/g) ?? []).length;
+  assert.equal(retries, 1, `重载只许一处（有界），实际 ${retries} 处`);
+  assert.match(body, /已重载一次仍未清掉/u,
+    '第二次还清不掉必须抛错交人：同一层连着两次清不掉不是「偶发弹了一下」，是人的事');
+  assert.match(body, /waitForDownloadButton\(proxy,target,45000\)/u,
+    '重载后要等「下载报表」回来再扫，不能靠固定 sleep 猜页面何时就绪');
+});

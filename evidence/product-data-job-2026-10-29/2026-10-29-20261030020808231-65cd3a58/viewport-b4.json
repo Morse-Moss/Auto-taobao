@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "threshold": {
+    "width": 1200,
+    "height": 600
+  },
+  "checked": 3,
+  "failed": [],
+  "entries": [
+    {
+      "shop": "保拉天猫",
+      "proxyPort": 19064,
+      "targetId": "2A22C625E64911D7F15B41924675B04A",
+      "pageUrl": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E4%BF%9D%E6%8B%89%E5%A4%A9%E7%8C%AB&port=19054",
+      "pageTitle": "保拉天猫 · 日报采集窗口",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    },
+    {
+      "shop": "安比龙头店",
+      "proxyPort": 19065,
+      "targetId": "091D0FCE533B1A438504D1AC444D43D3",
+      "pageUrl": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E5%AE%89%E6%AF%94%E9%BE%99%E5%A4%B4%E5%BA%97&port=19055",
+      "pageTitle": "安比龙头店 · 日报采集窗口",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    },
+    {
+      "shop": "科塔龙头店",
+      "proxyPort": 19066,
+      "targetId": "948E02CA4356A979A81CC9B523973BAD",
+      "pageUrl": "file:///D:/Retire/sycm-automation/runtime/shop-window-label.html?shop=%E7%A7%91%E5%A1%94%E9%BE%99%E5%A4%B4%E5%BA%97&port=19056",
+      "pageTitle": "科塔龙头店 · 日报采集窗口",
+      "width": 1506,
+      "height": 642,
+      "dpr": 1.25,
+      "readError": null,
+      "verdict": {
+        "ok": true,
+        "reason": null,
+        "detail": "视口 1506x642"
+      }
+    }
+  ]
+}

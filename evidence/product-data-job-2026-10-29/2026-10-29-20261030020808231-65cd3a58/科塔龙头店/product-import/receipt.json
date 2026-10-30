@@ -1,0 +1,92 @@
+{
+  "source": "C:\\Users\\Administrator\\Downloads\\【生意参谋平台】商品_全部_2026-10-29_2026-10-29 (11).xls",
+  "shop": "科塔龙头店",
+  "date": "2026-10-29",
+  "base": "10月商品监控表-销售2部",
+  "baseToken": "LLWcbIuVFaBm6yshX9Xc8DFZn9d",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 12,
+  "existingRows": 4707,
+  "plannedRows": 12,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "998343808378"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "1040025525936"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "795525688535"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "797003059165"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "797068550973"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "797213936107"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "824749112478"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "829701528656"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "996058111504"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "997658033536"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "1038355219424"
+    },
+    {
+      "date": "2026-10-29",
+      "shop": "科塔龙头店",
+      "productId": "1038921834406"
+    }
+  ],
+  "recordIds": [
+    "reczz28TSoj7eChO",
+    "reczz28TSoj7cU94",
+    "reczz28TSoj7f9OG",
+    "reczz28TSoj7eE6v",
+    "reczz28TSoj7cQws",
+    "reczz28TSoj7eVxb",
+    "reczz28TSoj7dWyU",
+    "reczz28TSoj7dXCP",
+    "reczz28TSoj7g9ZQ",
+    "reczz28TSoj7dOcB",
+    "reczz28TSoj7cXWS",
+    "reczz28TSoj7e3YL"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 12,
+  "writeBatches": 1,
+  "afterRows": 4719
+}

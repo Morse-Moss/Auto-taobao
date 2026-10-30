@@ -1,0 +1,33 @@
+{
+  "source": "D:\\Retire\\sycm-automation\\evidence\\product-data-job-2026-10-29\\2026-10-29-20261030030545606-4a977778\\安比龙头店\\inquiry.xls",
+  "shop": "安比龙头店",
+  "date": "2026-10-29",
+  "base": "10月商品监控表-销售2部",
+  "baseToken": "LLWcbIuVFaBm6yshX9Xc8DFZn9d",
+  "credentialFile": "E:/小红书/.env.feishu-rcnb.local",
+  "sourceRows": 2,
+  "existingRows": 764,
+  "plannedRows": 2,
+  "excludedSummaryRows": 2,
+  "mode": "apply",
+  "manifest": [
+    {
+      "date": "2026-10-29",
+      "productId": "808846051596",
+      "shop": "安比龙头店"
+    },
+    {
+      "date": "2026-10-29",
+      "productId": "809193628817",
+      "shop": "安比龙头店"
+    }
+  ],
+  "recordIds": [
+    "reczz28TT947XzB0",
+    "reczz28TT947ZtBD"
+  ],
+  "writeStarted": true,
+  "plannedWriteRows": 2,
+  "writeBatches": 1,
+  "afterRows": 766
+}

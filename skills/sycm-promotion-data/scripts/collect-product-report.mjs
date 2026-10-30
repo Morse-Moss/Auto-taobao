@@ -3,7 +3,7 @@ import path from 'node:path';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { PROJECT_PORTS, shopInstance } from '../../../runtime/browser-ports.mjs';
 import { SHOP_IDENTITIES } from '../../sycm-alimama-daily-report/scripts/shop-identities.mjs';
-import { alimamaIdentityExpression, assertMemberIdentity, createOverlayDismisser, defaultDownloadsDir, describeOverlayAttempt, describeOverlayScan, listDownloads, newEntries, overlayAfterExpression, overlayScanExpression, pickOverlayCloseCandidate } from '../../sycm-alimama-daily-report/scripts/collect-core.mjs';
+import { alimamaIdentityExpression, assertMemberIdentity, createOverlayDismisser, defaultDownloadsDir, describeOverlayAttempt, describeOverlayScan, listDownloads, newEntries, overlayAfterExpression, overlayHideExpression, overlayScanExpression, pickOverlayCloseCandidate } from '../../sycm-alimama-daily-report/scripts/collect-core.mjs';
 import { buildProductReportUrl, PRODUCT_TASK_PREFIX, PRODUCT_TASK_RE, PRODUCT_ZIP_RE, pickFetchCandidates, pollNewProductTask, reuseCandidateTask, uniqueNewProductTask, validateProductReportState } from './product-report-core.mjs';
 import { nextDownloadAction } from './download-retry-core.mjs';
 // 下载入口的判据（2026-10-21 抽出）：纯函数，有离线用例，见 download-entry-core.mjs 文件头。
@@ -14,6 +14,10 @@ import { describeReportReadyFailure, pollReportReady } from './report-ready-core
 import { captureCollectorFailureScene } from '../../sycm-alimama-daily-report/scripts/collect-failure-scene.mjs';
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// 「视觉隐藏」允许的页面（2026-10-30）：只在这两个报表页。别处一律跳过 ——
+// 藏层是减法，用在错的页面上会把真正要读的区域一起藏掉，那种失败比卡住更难查。
+// 写成正则源码串，直接嵌进页面表达式（与页内判据同源，不在这里另写一份 href 判断）。
+const OVERLAY_HIDE_SCOPES = Object.freeze(['one\\.alimama\\.com/index\\.html#!/report/(item_promotion|download-list)']);
 function args(argv) { const o = { date: null, shop: null, task: null, downloads: defaultDownloadsDir(), logDir: null, locateOnly: false, resubmit: true }; for (let i=0;i<argv.length;i+=1) { const k=argv[i]; if(k==='--date')o.date=argv[++i]; else if(k==='--shop')o.shop=argv[++i]; else if(k==='--task')o.task=argv[++i]; else if(k==='--downloads')o.downloads=path.resolve(argv[++i]); else if(k==='--log-dir')o.logDir=argv[++i]; else if(k==='--locate-only')o.locateOnly=true; else if(k==='--no-resubmit')o.resubmit=false; else throw Error(`unknown argument ${k}`); } if(!/^\d{4}-\d{2}-\d{2}$/u.test(o.date??''))throw Error('--date must be YYYY-MM-DD'); if(!o.shop)throw Error('--shop is required'); return o; }
 async function request(proxy, endpoint, init) { const r=await fetch(`${proxy}${endpoint}`, init); const t=await r.text(); if(!r.ok)throw Error(`${endpoint} HTTP ${r.status} ${t.slice(0,200)}`); try{return JSON.parse(t)}catch{return t} }
 async function evalOn(proxy, target, expression) { const x=await request(proxy,`/eval?target=${encodeURIComponent(target)}`,{method:'POST',body:expression}); return typeof x.value==='string' ? (()=>{try{return JSON.parse(x.value)}catch{return x.value}})() : x.value; }
@@ -33,17 +37,41 @@ async function readProductTasks(proxy,target) { return evalOn(proxy,target,`[...
  * 同一条任务在展开后会有多行都含任务名 ⇒ 按名字去重，留**第一次**出现的那行（即任务行本身）。
  */
 async function readProductTaskRows(proxy,target) { const rows=await evalOn(proxy,target,`[...document.querySelectorAll('tr')].map(tr=>{const t=(tr.innerText||'').replace(/\\s+/g,' ').trim();const m=t.match(/商品报表_\\d{8}_\\d{6}/u);return m?{name:m[0],text:t.slice(0,400)}:null}).filter(Boolean)`); const seen=new Set(); return (rows||[]).filter(r=>{if(seen.has(r.name))return false;seen.add(r.name);return true}); }
+// 重载后等「下载报表」重新出现（2026-10-30 加，配合「撞层就重载一次」）：
+// 重载是异步的，不等到这个按钮回来就去扫遮挡层，会把「页面还没渲完」误报成「层还没清掉」。
+async function waitForDownloadButton(proxy,target,timeoutMs=45000){const deadline=Date.now()+timeoutMs;while(Date.now()<deadline){const ok=await evalOn(proxy,target,`!![...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='下载报表')`).catch(()=>false);if(ok===true)return true;await sleep(1500);}return false;}
 async function submit(proxy,target,before,submittedOn) {
   // 2026-10-29 加：**提交前**先确认页面上没有全屏弹窗。
   // 现场（盖文淘宝 10-28）：点「下载报表」之后那枚「确定」被「优质计划防停投」弹窗吃掉，
   // 流程因为点到了**弹窗的**「确定」而误判 confirmed=true，错误一路拖到「轮询 30s 无新任务」
   // 才以「提交任务无法唯一确认」的面目暴露 —— 看着像平台没生成任务，实际是点错了地方。
   // 清不掉就明确报出来（带 OVERLAY_NOT_DISMISSED 标记），不再盲点一次确定。
-  const guard=await evalOn(proxy,target,overlayScanExpression());
-  if(guard?.blocked){
+  // 2026-10-30：撞层后**重载同一 URL 再走一遍**，只重一次。
+  // 依据：保拉天猫这类「AI小万升级」弹窗是间歇性营销推送，同一账号第三次进页面压根没弹
+  // （主跑两次都撞、补采一次就过）。所以「重载一次」对它是有效的，而循环重试是错的 ——
+  // 同一层连着两次清不掉，说明不是偶发弹了一下，那是人的事（平台侧或新形态），交人。
+  const clearOverlayOrThrow = async (phase) => {
+    const guard=await evalOn(proxy,target,overlayScanExpression());
+    if(guard?.blocked!==true)return {attempted:false};
     const cleared=await dismissOverlay(proxy,target,null);
-    if(!cleared?.dismissed)throw Error(`提交商品报表前有全屏弹窗且没能关掉：${describeOverlayAttempt(cleared)}`);
-    console.log(`[遮挡] 提交前已清掉一层：${describeOverlayScan(cleared.scan,cleared.picked)}`);
+    if(cleared?.dismissed)console.log(`[遮挡] ${phase}已清掉一层：${describeOverlayScan(cleared.scan,cleared.picked)}`);
+    else console.log(`[遮挡] ${phase}没关掉：${describeOverlayAttempt(cleared)}`);
+    return cleared;
+  };
+  let cleared=await clearOverlayOrThrow('提交前');
+  if(cleared?.attempted===true&&cleared.dismissed!==true){
+    const href=String(await evalOn(proxy,target,'location.href').catch(()=>'')??'');
+    if(!/one\.alimama\.com/u.test(href))throw Error(`提交商品报表前有全屏弹窗且没能关掉：${describeOverlayAttempt(cleared)}`);
+    console.log(`[遮挡] 重载报表页再走一遍（同一 URL，只重一次）：${href.slice(0,140)}`);
+    // 先切 about:blank 再回同一条 URL：**同一 URL 直接 navigate 可能是空操作**
+    // （hash 路由上真踩过），那样就成了「假装重载了一次」。
+    await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent('about:blank')}`);
+    await sleep(1200);
+    await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent(href)}`);
+    const back=await waitForDownloadButton(proxy,target,45000);
+    console.log(`[遮挡] 重载后「下载报表」${back?'已回来':'45s 内没回来'}，再扫一次遮挡层`);
+    cleared=await clearOverlayOrThrow('重载后');
+    if(cleared?.attempted===true&&cleared.dismissed!==true)throw Error(`提交商品报表前有全屏弹窗且没能关掉（已重载一次仍未清掉）：${describeOverlayAttempt(cleared)}`);
   }
   const clicked=await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='下载报表');if(!e)return false;e.click();return true})()`); if(!clicked)throw Error('商品报表找不到下载报表按钮'); let confirmed=false; for(let round=0;round<2&&!confirmed;round+=1){ if(round>0){await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='下载报表');if(!e)return false;e.click();return true})()`);} const confirmDeadline=Date.now()+20000; while(!confirmed&&Date.now()<confirmDeadline){ await sleep(1000); confirmed=await evalOn(proxy,target,`(()=>{const e=[...document.querySelectorAll('button,span,a,div')].find(x=>x.children.length===0&&/^(确定|确认)$/.test((x.innerText||'').trim())&&x.getBoundingClientRect().width>0);if(!e)return false;e.click();return true})()`); } } if(!confirmed)throw Error('商品报表下载弹窗没有可点击确定（轮询 40s 仍未出现）'); await sleep(2500); await request(proxy,`/navigate?target=${target}&url=${encodeURIComponent('https://one.alimama.com/index.html#!/report/download-list')}`); await sleep(2000); const polled=await pollNewProductTask({before,read:()=>readProductTasks(proxy,target),timeoutMs:30000,intervalMs:2000,delay:sleep}); const after=polled.after; if(polled.timedOut)console.log(`[提交] 轮询 30s（读了 ${polled.reads} 次）仍没看到新任务，按「平台未生成」继续判`); let task; try{ task=uniqueNewProductTask(before,after); console.log(`[提交] ${task}`); }catch(error){ const reused=reuseCandidateTask({after,submittedOn}); if(!reused)throw error; task=reused; console.log(`[提交] 平台未生成新任务（同参数已交过），复用同日在册任务 ${task}；数据日期由导入器按 --date 校验`); } return task; }
 async function waitForTaskReady(proxy,target,task,timeoutMs=180000) { const deadline=Date.now()+timeoutMs; let last=''; while(Date.now()<deadline){ const rows=await evalOn(proxy,target,`[...document.querySelectorAll('tr')].map(tr=>(tr.innerText||'').replace(/\\s+/g,' ').trim()).filter(text=>text.includes(${JSON.stringify(task)}))`); last=rows[0]||'missing'; if(/生成成功/u.test(last))return last; if(/生成失败|失败/u.test(last))throw Error(`商品报表任务生成失败: ${last}`); await sleep(5000); } throw Error(`商品报表生成等待超时（${timeoutMs}ms）: ${last}`); }
@@ -60,6 +88,10 @@ async function dismissOverlay(proxy,target,selector) {
     // 而本脚本此前**没注入它** —— 日志里那句「没有注入 pressEscape ⇒ 跳过 ESC 这一步」就是证据。
     // 日报链的三个采集器一直都注入着，只有商品链这两个漏了（同一机制的实现缺口）。
     pressEscape: async (_args,id)=>pressKey(proxy,id,'Escape'),
+    // 2026-10-30 补：零安全出口的营销弹窗（保拉天猫 DIV#wrapper_dlg_107「AI小万升级」只有两枚
+    // 「立即体验」，没有 X/取消/我知道了）。那一族用点击类关法在逻辑上永远失败，
+    // 唯一可行的是**不点击**、把这一层视觉隐藏。作用域锁在两个报表页，别处一律跳过。
+    hideLayer: async (_args,id)=>evalOn(proxy,id,overlayHideExpression({scopes:OVERLAY_HIDE_SCOPES})),
     delay: sleep,
     log: (line)=>console.log(line),
   });
