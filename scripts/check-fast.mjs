@@ -45,4 +45,12 @@ if (python.length > 0) {
 }
 
 if (javascript.length === 0 && python.length === 0) console.log('==> fast syntax check: no changed source files');
+
+// README 守卫（2026-10-30）。**故意不受 `changed` 过滤**：
+// skills/ 下新增一个目录而 README 没跟着改，恰恰是「这次改动里没有 README」的那种情况，
+// 按变更文件列表过滤就永远查不到 —— 而漏登记正是 README 烂掉的主要方式（10-30 实测漏了 5 个）。
+// 耗时是毫秒级，每次跑不值一提；红了就改 README，那是分钟级的事。
+const readmeStatus = run(process.execPath, [path.join(root, 'scripts', 'audit-readme.mjs'), '--quiet']);
+if (readmeStatus !== 0) process.exit(readmeStatus);
+
 console.log('==> fast syntax check: PASS');
